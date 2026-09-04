@@ -133,6 +133,16 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 4,
         CollisionHeight: 4);
 
+    private static readonly VanillaProjectileDefinition RainbowRodBulletDefinition = new(
+        Width: 32,
+        Height: 32,
+        AiStyle: VanillaProjectileAiStyles.MagicMissile,
+        TileCollide: true,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 4,
+        CollisionHeight: 4);
+
     private static readonly VanillaProjectileDefinition GreenLaserDefinition = new(
         Width: 4,
         Height: 4,
@@ -486,6 +496,12 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.Flamelash)
         {
             definition = FlamelashDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.RainbowRodBullet)
+        {
+            definition = RainbowRodBulletDefinition;
             return true;
         }
 

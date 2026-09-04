@@ -78,7 +78,7 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
     [Fact]
     public void Controlled_magic_missiles_use_explicit_ai9_player_owned_profile()
     {
-        foreach (ProjectileTypeId type in new[] { VanillaProjectileIds.MagicMissile, VanillaProjectileIds.Flamelash })
+        foreach (ProjectileTypeId type in new[] { VanillaProjectileIds.MagicMissile, VanillaProjectileIds.Flamelash, VanillaProjectileIds.RainbowRodBullet })
         {
             Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(type, out VanillaProjectileBehaviorProfile profile));
             Assert.Equal(VanillaProjectileBehaviorFamily.ControlledMagicMissile, profile.Family);
@@ -181,6 +181,7 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
             VanillaProjectileIds.RetinazerDeathLaser,
             VanillaProjectileIds.MagicMissile,
             VanillaProjectileIds.Flamelash,
+            VanillaProjectileIds.RainbowRodBullet,
             VanillaProjectileIds.GolemFireball,
             VanillaProjectileIds.GolemEyeBeam,
             VanillaProjectileIds.PlanteraSeed,

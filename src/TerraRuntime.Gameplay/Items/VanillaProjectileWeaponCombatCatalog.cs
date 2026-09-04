@@ -129,13 +129,14 @@ public static class VanillaProjectileWeaponCombatCatalog
         new(VanillaItemIds.RocketIV, new ProjectileTypeId(9), VanillaProjectileAmmoFamily.Rocket, 65, 6f, 0f, true, VanillaProjectileAmmoTransform.AddToWeaponProjectile)
     ];
 
-    // Item.SetDefaults cases 113 and 218. These are channelled aiStyle-9 magic projectiles whose later aim is
-    // supplied by the owning vanilla client through packet 27 ai[0]/ai[1]. TerraRuntime admits the initial spawn
-    // only with exact source-backed weapon facts; later packet-27 coordinates/velocity remain non-authoritative.
+    // Item.SetDefaults cases 113, 218 and 495. These are the modern channelled aiStyle-9 magic projectiles
+    // whose cursor intent is supplied by the owning vanilla client through packet 27 ai[0]/ai[1]. TerraRuntime
+    // admits the initial spawn only with exact source-backed weapon facts; packet velocity remains non-authoritative.
     private static readonly VanillaChanneledMagicProjectileWeaponCombatDefinition[] ChanneledMagicWeapons =
     [
         new(VanillaItemIds.MagicMissile, VanillaProjectileIds.MagicMissile, 35, 7.5f, 6f, 14, 22, 22, SpawnRange),
-        new(VanillaItemIds.Flamelash, VanillaProjectileIds.Flamelash, 32, 6.5f, 6f, 21, 30, 30, SpawnRange)
+        new(VanillaItemIds.Flamelash, VanillaProjectileIds.Flamelash, 32, 6.5f, 6f, 21, 30, 30, SpawnRange),
+        new(VanillaItemIds.RainbowRod, VanillaProjectileIds.RainbowRodBullet, 50, 6f, 6f, 21, 25, 25, SpawnRange)
     ];
 
     // Item.SetDefaults cases 42, 154, 279, 287, 1809, 1913 and 3379. These consumable ranged weapons spawn their

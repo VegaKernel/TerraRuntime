@@ -251,6 +251,7 @@ public sealed class VanillaProjectileDefinitionCatalogTests
     [Theory]
     [InlineData(16, true)]
     [InlineData(34, false)]
+    [InlineData(79, true)]
     public void Terraria_1458_controlled_magic_definitions_match_source(int type, bool ignoreWater)
     {
         Assert.True(VanillaProjectileDefinitionCatalog.TryGet(

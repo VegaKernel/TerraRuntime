@@ -152,6 +152,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
     [Theory]
     [InlineData(16)]
     [InlineData(34)]
+    [InlineData(79)]
     public void Controlled_magic_missile_steers_to_server_owned_ai_target(int type)
     {
         ProjectileSnapshot projectile = CreateProjectile(
@@ -182,6 +183,42 @@ public sealed class VanillaProjectileBehaviorStepperTests
         Assert.Equal(14f, next.VelocityX, 4);
         Assert.Equal(0f, next.VelocityY, 4);
         Assert.Equal(300, next.TimeLeftOverride);
+    }
+
+    [Fact]
+    public void Released_controlled_magic_acquires_server_selected_npc_and_homes_toward_its_center()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.RainbowRodBullet, velocityX: 0f, velocityY: 10f, ai0: -1f, ai1: -1f,
+            positionX: 100f, positionY: 100f);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        var targets = new FixedNpcTargetResolver(slot: 7, centerX: 316f, centerY: 116f);
+        var context = new VanillaProjectileBehaviorContext(false, 0f, 0f, NpcTargets: targets);
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile, in definition, in context, out VanillaProjectileBehaviorResult next));
+
+        Assert.Equal(7f, next.Ai1Override);
+        Assert.True(next.VelocityX > 0f);
+        Assert.True(next.VelocityY < projectile.VelocityY);
+        Assert.Equal(60, next.MinimumTimeLeftOverride);
+        Assert.Null(next.TimeLeftOverride);
+    }
+
+    [Fact]
+    public void Released_controlled_magic_drops_invalid_target_and_reacquires_a_live_one()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.Flamelash, velocityX: 10f, velocityY: 0f, ai0: -1f, ai1: 4f);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        var targets = new ReacquiringNpcTargetResolver();
+        var context = new VanillaProjectileBehaviorContext(false, 0f, 0f, NpcTargets: targets);
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile, in definition, in context, out VanillaProjectileBehaviorResult next));
+
+        Assert.Equal(9f, next.Ai1Override);
+        Assert.Equal(60, next.MinimumTimeLeftOverride);
     }
 
     [Fact]
@@ -336,6 +373,54 @@ public sealed class VanillaProjectileBehaviorStepperTests
                 IsDead = false
             };
             return true;
+        }
+    }
+
+    private sealed class FixedNpcTargetResolver(int slot, float centerX, float centerY) : IVanillaProjectileNpcTargetResolver
+    {
+        public bool TryFindClosestTargetWithLineOfSight(
+            in ProjectileSnapshot projectile,
+            in VanillaProjectileDefinition projectileDefinition,
+            float maxRange,
+            out int npcSlot,
+            out float targetCenterX,
+            out float targetCenterY)
+        {
+            npcSlot = slot;
+            targetCenterX = centerX;
+            targetCenterY = centerY;
+            return true;
+        }
+
+        public bool TryGetChaseableTargetCenter(int npcSlot, out float targetCenterX, out float targetCenterY)
+        {
+            targetCenterX = centerX;
+            targetCenterY = centerY;
+            return npcSlot == slot;
+        }
+    }
+
+    private sealed class ReacquiringNpcTargetResolver : IVanillaProjectileNpcTargetResolver
+    {
+        public bool TryFindClosestTargetWithLineOfSight(
+            in ProjectileSnapshot projectile,
+            in VanillaProjectileDefinition projectileDefinition,
+            float maxRange,
+            out int npcSlot,
+            out float targetCenterX,
+            out float targetCenterY)
+        {
+            npcSlot = 9;
+            targetCenterX = 300f;
+            targetCenterY = 116f;
+            return true;
+        }
+
+        public bool TryGetChaseableTargetCenter(int npcSlot, out float targetCenterX, out float targetCenterY)
+        {
+            targetCenterX = 0f;
+            targetCenterY = 0f;
+            return false;
         }
     }
 

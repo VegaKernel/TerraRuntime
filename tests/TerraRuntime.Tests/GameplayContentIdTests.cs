@@ -23,6 +23,7 @@ public sealed class GameplayContentIdTests
         Assert.True(VanillaItemIds.TryCreate(VanillaItemIds.Count - 1, out ItemTypeId last));
         Assert.Equal(VanillaItemIds.Count - 1, last.Value);
         Assert.False(VanillaItemIds.TryCreate(VanillaItemIds.Count, out _));
+        Assert.Equal(495, VanillaItemIds.RainbowRod.Value);
     }
 
     [Fact]
@@ -41,6 +42,7 @@ public sealed class GameplayContentIdTests
         Assert.Equal(3, VanillaProjectileIds.Shuriken.Value);
         Assert.Equal(48, VanillaProjectileIds.ThrowingKnife.Value);
         Assert.Equal(54, VanillaProjectileIds.PoisonedKnife.Value);
+        Assert.Equal(79, VanillaProjectileIds.RainbowRodBullet.Value);
         Assert.Equal(599, VanillaProjectileIds.BoneDagger.Value);
         Assert.Equal(981, VanillaProjectileIds.SilverBullet.Value);
     }

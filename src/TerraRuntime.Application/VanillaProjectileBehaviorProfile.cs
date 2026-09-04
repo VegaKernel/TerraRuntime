@@ -196,7 +196,9 @@ internal static class VanillaProjectileBehaviorProfileCatalog
             return true;
         }
 
-        if (type == VanillaProjectileIds.MagicMissile || type == VanillaProjectileIds.Flamelash)
+        if (type == VanillaProjectileIds.MagicMissile ||
+            type == VanillaProjectileIds.Flamelash ||
+            type == VanillaProjectileIds.RainbowRodBullet)
         {
             profile = ControlledMagicMissileProfile;
             return true;

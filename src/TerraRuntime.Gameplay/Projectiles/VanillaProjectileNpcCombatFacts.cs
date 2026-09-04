@@ -44,6 +44,11 @@ public static class VanillaProjectileNpcCombatFacts
             penetration = 2;
             return true;
         }
+        if (type == VanillaProjectileIds.RainbowRodBullet)
+        {
+            penetration = 3;
+            return true;
+        }
         if (type == VanillaProjectileIds.StarAnise || type == VanillaProjectileIds.BoneDagger)
         {
             penetration = 6;
@@ -63,7 +68,7 @@ public static class VanillaProjectileNpcCombatFacts
     /// Terraria Projectile.Damage bypasses NPC.immune[owner] for ordinary single-penetration projectiles
     /// (maxPenetrate == 1) and, unless appliesImmunityTimeOnSingleHits is set, does not write the ordinary owner
     /// immunity after that hit. Admitted multi/infinite-penetration types use the ordinary shared owner immunity
-    /// unless their source-backed SetDefaults explicitly selects projectile-local immunity, such as Flamelash.
+    /// unless their source-backed SetDefaults explicitly selects projectile-local immunity, such as Flamelash/Rainbow Rod.
     /// </summary>
     public static bool UsesSharedOwnerNpcImmunity(ProjectileTypeId type)
     {
@@ -91,7 +96,7 @@ public static class VanillaProjectileNpcCombatFacts
             cooldown = -1;
             return true;
         }
-        if (type == VanillaProjectileIds.Flamelash)
+        if (type == VanillaProjectileIds.Flamelash || type == VanillaProjectileIds.RainbowRodBullet)
         {
             cooldown = 12;
             return true;

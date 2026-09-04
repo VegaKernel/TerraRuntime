@@ -9,12 +9,26 @@ namespace TerraRuntime;
 /// Immutable world-independent inputs consumed by vanilla projectile behavior. Weather is supplied explicitly
 /// by the runtime so AI code does not reach into world/global state.
 /// </summary>
+internal interface IVanillaProjectileNpcTargetResolver
+{
+    bool TryFindClosestTargetWithLineOfSight(
+        in ProjectileSnapshot projectile,
+        in VanillaProjectileDefinition projectileDefinition,
+        float maxRange,
+        out int npcSlot,
+        out float targetCenterX,
+        out float targetCenterY);
+
+    bool TryGetChaseableTargetCenter(int npcSlot, out float targetCenterX, out float targetCenterY);
+}
+
 internal readonly record struct VanillaProjectileBehaviorContext(
     bool WindPhysics,
     float WindSpeedCurrent,
     float WindPhysicsStrength,
     IRuntimePlayerSlotSnapshotLookup? PlayerSnapshots = null,
-    bool ExpertMode = false);
+    bool ExpertMode = false,
+    IVanillaProjectileNpcTargetResolver? NpcTargets = null);
 
 /// <summary>State produced by one supported vanilla projectile AI-family step before world motion/collision.</summary>
 internal readonly record struct VanillaProjectileBehaviorResult(
@@ -26,7 +40,8 @@ internal readonly record struct VanillaProjectileBehaviorResult(
     float? PositionYOverride = null,
     bool Kill = false,
     bool? TileCollideOverride = null,
-    int? TimeLeftOverride = null);
+    int? TimeLeftOverride = null,
+    int? MinimumTimeLeftOverride = null);
 
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 projectile behavior that is independent of tile/world queries.
@@ -217,7 +232,7 @@ internal static class VanillaProjectileBehaviorStepper
                 break;
 
             case VanillaProjectileBehaviorFamily.ControlledMagicMissile:
-                return TryStepControlledMagicMissile(in current, in definition, out next);
+                return TryStepControlledMagicMissile(in current, in definition, context.NpcTargets, out next);
 
             case VanillaProjectileBehaviorFamily.Boomerang:
                 return TryStepEnchantedBoomerang(in current, in definition, context.PlayerSnapshots, out next);
@@ -290,21 +305,67 @@ internal static class VanillaProjectileBehaviorStepper
     private static bool TryStepControlledMagicMissile(
         in ProjectileSnapshot current,
         in VanillaProjectileDefinition definition,
+        IVanillaProjectileNpcTargetResolver? npcTargets,
         out VanillaProjectileBehaviorResult next)
     {
         const float maximumSpeed = 32f;
+        const float autoTargetRange = 800f;
         float velocityX = current.VelocityX;
         float velocityY = current.VelocityY;
         float ai0 = current.Ai.Ai0;
         float ai1 = current.Ai.Ai1;
         bool released = ai0 is -1f or -2f;
+        float? targetX = null;
+        float? targetY = null;
+        float steeringAmount = 1f;
 
         if (ai0 > 0f && ai1 > 0f)
         {
+            targetX = ai0;
+            targetY = ai1;
+        }
+        else if (released)
+        {
+            if (ai1 >= 0f)
+            {
+                int targetSlot = (int)ai1;
+                if (npcTargets is not null &&
+                    npcTargets.TryGetChaseableTargetCenter(targetSlot, out float centerX, out float centerY))
+                {
+                    targetX = centerX;
+                    targetY = centerY;
+                    steeringAmount = ResolveReleasedTargetSteeringAmount(
+                        in current, in definition, centerX, centerY);
+                }
+                else
+                {
+                    ai1 = -1f;
+                }
+            }
+
+            if (ai1 < 0f && npcTargets is not null &&
+                npcTargets.TryFindClosestTargetWithLineOfSight(
+                    in current,
+                    in definition,
+                    autoTargetRange,
+                    out int acquiredTargetSlot,
+                    out float acquiredCenterX,
+                    out float acquiredCenterY))
+            {
+                ai1 = acquiredTargetSlot;
+                targetX = acquiredCenterX;
+                targetY = acquiredCenterY;
+                steeringAmount = ResolveReleasedTargetSteeringAmount(
+                    in current, in definition, acquiredCenterX, acquiredCenterY);
+            }
+        }
+
+        if (targetX.HasValue && targetY.HasValue)
+        {
             float centerX = current.PositionX + definition.Width * 0.5f;
             float centerY = current.PositionY + definition.Height * 0.5f;
-            float dx = ai0 - centerX;
-            float dy = ai1 - centerY;
+            float dx = targetX.Value - centerX;
+            float dy = targetY.Value - centerY;
             float distance = MathF.Sqrt(dx * dx + dy * dy);
             if (distance >= 64f)
             {
@@ -314,26 +375,33 @@ internal static class VanillaProjectileBehaviorStepper
                     return true;
                 }
                 float desiredSpeed = MathF.Min(maximumSpeed, distance);
-                velocityX = dx / distance * desiredSpeed;
-                velocityY = dy / distance * desiredSpeed;
+                float desiredX = dx / distance * desiredSpeed;
+                float desiredY = dy / distance * desiredSpeed;
+                velocityX += (desiredX - velocityX) * steeringAmount;
+                velocityY += (desiredY - velocityY) * steeringAmount;
             }
             else
             {
                 velocityX = velocityX * 0.3f + dx * 0.3f;
                 velocityY = velocityY * 0.3f + dy * 0.3f;
             }
+
+            next = new VanillaProjectileBehaviorResult(
+                velocityX, velocityY, ai0, Ai1Override: ai1, MinimumTimeLeftOverride: 60);
+            return true;
         }
-        else if (released && ai1 < 0f)
+
+        if (released && ai1 < 0f)
         {
             float length = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
-            float targetX = 0f;
-            float targetY = maximumSpeed;
+            float desiredX = 0f;
+            float desiredY = maximumSpeed;
             if (length > 0f && float.IsFinite(length))
             {
-                targetX = velocityX / length * maximumSpeed;
-                targetY = velocityY / length * maximumSpeed;
+                desiredX = velocityX / length * maximumSpeed;
+                desiredY = velocityY / length * maximumSpeed;
             }
-            MoveTowards(ref velocityX, ref velocityY, targetX, targetY, 4f);
+            MoveTowards(ref velocityX, ref velocityY, desiredX, desiredY, 4f);
             next = new VanillaProjectileBehaviorResult(
                 velocityX, velocityY, ai0, Ai1Override: ai1, TimeLeftOverride: 300);
             return true;
@@ -341,6 +409,44 @@ internal static class VanillaProjectileBehaviorStepper
 
         next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0, Ai1Override: ai1);
         return true;
+    }
+
+    private static float ResolveReleasedTargetSteeringAmount(
+        in ProjectileSnapshot projectile,
+        in VanillaProjectileDefinition definition,
+        float targetCenterX,
+        float targetCenterY)
+    {
+        float centerX = projectile.PositionX + definition.Width * 0.5f;
+        float centerY = projectile.PositionY + definition.Height * 0.5f;
+        float dx = targetCenterX - centerX;
+        float dy = targetCenterY - centerY;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        float envelope = GetLerpValue(0f, 100f, distance, clamped: true) *
+            GetLerpValue(600f, 400f, distance, clamped: true);
+        return 0.2f * GetLerpValue(200f, 20f, 1f - envelope, clamped: true);
+    }
+
+    private static float GetLerpValue(float from, float to, float value, bool clamped)
+    {
+        if (clamped)
+        {
+            if (from < to)
+            {
+                if (value < from)
+                    return 0f;
+                if (value > to)
+                    return 1f;
+            }
+            else
+            {
+                if (value < to)
+                    return 1f;
+                if (value > from)
+                    return 0f;
+            }
+        }
+        return (value - from) / (to - from);
     }
 
     private static void MoveTowards(ref float x, ref float y, float targetX, float targetY, float maxDistanceDelta)

@@ -142,6 +142,19 @@ internal sealed class VanillaProjectileWorldMotionResolver
             bombCollisionHandled = true;
         }
 
+        bool rainbowRodControlledCollisionHandled = false;
+        if (tileImpact && current.Type == VanillaProjectileIds.RainbowRodBullet &&
+            definition.AiStyle == VanillaProjectileAiStyles.MagicMissile && resolvedAi0 >= 0f)
+        {
+            // AI_009 type 79 is the one modern controlled-magic exception that survives tile contact while
+            // channelled. Projectile.Update damps only the collided components to 10% of the incoming velocity.
+            if (collideX)
+                collidedVelocityX = velocityX * 0.1f;
+            if (collideY)
+                collidedVelocityY = velocityY * 0.1f;
+            rainbowRodControlledCollisionHandled = true;
+        }
+
         bool golemFireballCollisionHandled = false;
         bool golemFireballKilledByImpact = false;
         if (tileImpact && current.Type == VanillaProjectileIds.GolemFireball &&
@@ -180,7 +193,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
 
         float positionX = behaviorPositionX;
         float positionY = behaviorPositionY;
-        if (tileImpact && !bombCollisionHandled && !golemFireballCollisionHandled)
+        if (tileImpact && !bombCollisionHandled && !golemFireballCollisionHandled && !rainbowRodControlledCollisionHandled)
         {
             // Supported aiStyle-1/2 families use the generic impact fallback: movement first advances by the
             // collision-clamped velocity, Kill() expires the projectile, then UpdatePosition reaches its common tail.
@@ -226,6 +239,8 @@ internal sealed class VanillaProjectileWorldMotionResolver
         int sourceTimeLeft = behavior.TimeLeftOverride.HasValue
             ? Math.Min(projectile.Lifecycle.TimeLeft, behavior.TimeLeftOverride.Value)
             : projectile.Lifecycle.TimeLeft;
+        if (behavior.MinimumTimeLeftOverride.HasValue)
+            sourceTimeLeft = Math.Max(sourceTimeLeft, behavior.MinimumTimeLeftOverride.Value);
         if (bombCollisionHandled)
         {
             // The source sets straight rockets to timeLeft=3 on impact and the common Update tail performs the
@@ -245,6 +260,13 @@ internal sealed class VanillaProjectileWorldMotionResolver
                 : timeLeft <= 0
                     ? ProjectileSimulationTerminationReason.LifetimeExpired
                     : ProjectileSimulationTerminationReason.None;
+        }
+        else if (rainbowRodControlledCollisionHandled)
+        {
+            timeLeft = sourceTimeLeft - 1;
+            terminationReason = timeLeft <= 0
+                ? ProjectileSimulationTerminationReason.LifetimeExpired
+                : ProjectileSimulationTerminationReason.None;
         }
         else
         {

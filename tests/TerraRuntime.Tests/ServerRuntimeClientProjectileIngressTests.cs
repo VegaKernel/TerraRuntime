@@ -528,6 +528,42 @@ public sealed class ServerRuntimeClientProjectileIngressTests
     }
 
     [Fact]
+    public void Rainbow_rod_spawn_is_trusted_and_consumes_source_backed_mana()
+    {
+        using var fixture = new Fixture(playerCount: 1, projectileStepper: new NoOpProjectileStepper(), withWorldTiles: true);
+        ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 81);
+        fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.RainbowRod, stack: 1);
+        fixture.SetCombatPlayer(owner, positionX: 1000f, positionY: 800f, life: 100, hostile: false, controlFlags: 0x20);
+        fixture.State.Apply(new PlayerManaRuntimeCommand(
+            owner, new PlayerManaCommitRequest(owner.Player.Slot, Mana: 50, MaxMana: 50)));
+
+        var spawn = new TerrariaProjectileUpdateState(
+            new TerrariaProjectileKeyState(owner.Player.Slot.Value, 901, 1),
+            VanillaProjectileIds.RainbowRodBullet.Value,
+            1020f,
+            800f,
+            6f,
+            0f,
+            0f,
+            0f,
+            0f,
+            0,
+            50,
+            6f,
+            0);
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, spawn));
+
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(spawn.Key, out ProjectileHandle handle));
+        Assert.True(fixture.Projectiles.IsCombatTrusted(handle));
+        Assert.True(fixture.State.TryCapturePlayerSnapshot(owner.Player, out PlayerStateSnapshot afterSpawn));
+        Assert.Equal((short)29, afterSpawn.Mana);
+        Assert.True(fixture.State.TryCaptureProjectileSnapshot(handle, out ProjectileSnapshot projectile));
+        Assert.Equal(VanillaProjectileIds.RainbowRodBullet, projectile.Type);
+        Assert.Equal(50, projectile.Damage);
+        Assert.Equal(6f, projectile.KnockBack, 4);
+    }
+
+    [Fact]
     public void Untrusted_client_projectile_cannot_mutate_pvp_health()
     {
         using var fixture = new Fixture(playerCount: 2, projectileStepper: new NoOpProjectileStepper());

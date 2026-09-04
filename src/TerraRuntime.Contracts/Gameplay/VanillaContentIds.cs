@@ -323,6 +323,7 @@ public static class VanillaItemIds
     public static readonly ItemTypeId SorcererEmblem = new(489);
     public static readonly ItemTypeId WarriorEmblem = new(490);
     public static readonly ItemTypeId RangerEmblem = new(491);
+    public static readonly ItemTypeId RainbowRod = new(495);
     public static readonly ItemTypeId MagicQuiver = new(1321);
     public static readonly ItemTypeId SharkToothNecklace = new(3212);
     public static readonly ItemTypeId BoneDagger = new(3379);
@@ -408,6 +409,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId ThrowingKnife = new(48);
     public static readonly ProjectileTypeId Seed = new(51);
     public static readonly ProjectileTypeId PoisonedKnife = new(54);
+    public static readonly ProjectileTypeId RainbowRodBullet = new(79);
     public static readonly ProjectileTypeId ProbePinkLaser = new(84);
     public static readonly ProjectileTypeId GrenadeI = new(133);
     public static readonly ProjectileTypeId RocketI = new(134);

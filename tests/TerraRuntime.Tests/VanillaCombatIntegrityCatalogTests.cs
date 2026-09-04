@@ -178,6 +178,21 @@ public sealed class VanillaCombatIntegrityCatalogTests
         Assert.True(VanillaProjectileNpcCombatFacts.TryGetLocalNpcImmunityCooldown(VanillaProjectileIds.Flamelash, out int cooldown));
         Assert.Equal(12, cooldown);
         Assert.False(VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(VanillaProjectileIds.Flamelash));
+
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryGetChanneledMagicWeapon(
+            VanillaItemIds.RainbowRod, out VanillaChanneledMagicProjectileWeaponCombatDefinition rainbowRod));
+        Assert.Equal((VanillaProjectileIds.RainbowRodBullet, 50, 6f, 6f, 21, 25),
+            (rainbowRod.ProjectileType, rainbowRod.BaseDamage, rainbowRod.BaseKnockBack, rainbowRod.BaseShootSpeed, rainbowRod.ManaCost, rainbowRod.UseTimeTicks));
+        Assert.True(VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(
+            VanillaProjectileIds.RainbowRodBullet, out int rainbowPenetration));
+        Assert.Equal(3, rainbowPenetration);
+        Assert.True(VanillaProjectileNpcCombatFacts.TryGetLocalNpcImmunityCooldown(
+            VanillaProjectileIds.RainbowRodBullet, out int rainbowCooldown));
+        Assert.Equal(12, rainbowCooldown);
+        Assert.False(VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(VanillaProjectileIds.RainbowRodBullet));
+        Assert.True(VanillaProjectileCombatFacts.TryGetDamageClass(
+            VanillaProjectileIds.RainbowRodBullet, out VanillaProjectileDamageClass rainbowDamageClass));
+        Assert.Equal(VanillaProjectileDamageClass.Magic, rainbowDamageClass);
     }
 
     [Fact]

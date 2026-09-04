@@ -57,6 +57,7 @@ public static class VanillaProjectileCombatFacts
                 return true;
             case 16: // Magic Missile
             case 34: // Flamelash
+            case 79: // Rainbow Rod Bullet
                 damageClass = VanillaProjectileDamageClass.Magic;
                 return true;
             case 6: // Enchanted Boomerang
