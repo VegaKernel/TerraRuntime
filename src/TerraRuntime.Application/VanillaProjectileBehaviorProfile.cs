@@ -21,7 +21,8 @@ internal enum VanillaProjectileBehaviorFamily : byte
     Bomb = 8,
     HostileStraightArrow = 9,
     PlanteraSeed = 10,
-    GolemFireball = 11
+    GolemFireball = 11,
+    ControlledMagicMissile = 12
 }
 
 /// <summary>
@@ -85,6 +86,14 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         BehaviorImplemented: true,
         RequiresDefaultAi2: false,
         RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile ControlledMagicMissileProfile = new(
+        VanillaProjectileBehaviorFamily.ControlledMagicMissile,
+        VanillaProjectileAiStyles.MagicMissile,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: true,
         ExemptFromPreAiWorldBounds: false);
 
     private static readonly VanillaProjectileBehaviorProfile ThrownProfile = new(
@@ -184,6 +193,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.DeerclopsShadowHand)
         {
             profile = DeerclopsShadowHandProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.MagicMissile || type == VanillaProjectileIds.Flamelash)
+        {
+            profile = ControlledMagicMissileProfile;
             return true;
         }
 

@@ -76,6 +76,21 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
     }
 
     [Fact]
+    public void Controlled_magic_missiles_use_explicit_ai9_player_owned_profile()
+    {
+        foreach (ProjectileTypeId type in new[] { VanillaProjectileIds.MagicMissile, VanillaProjectileIds.Flamelash })
+        {
+            Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(type, out VanillaProjectileBehaviorProfile profile));
+            Assert.Equal(VanillaProjectileBehaviorFamily.ControlledMagicMissile, profile.Family);
+            Assert.Equal(VanillaProjectileAiStyles.MagicMissile, profile.ExpectedAiStyle);
+            Assert.True(profile.BehaviorImplemented);
+            Assert.True(profile.RequiresDefaultAi2);
+            Assert.True(profile.RejectServerOwned);
+            Assert.False(profile.ExemptFromPreAiWorldBounds);
+        }
+    }
+
+    [Fact]
     public void Hostile_boss_projectiles_use_explicit_source_backed_runtime_families()
     {
         ProjectileTypeId[] straight =
@@ -164,6 +179,8 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
             VanillaProjectileIds.WallOfFleshEyeLaser,
             VanillaProjectileIds.ProbePinkLaser,
             VanillaProjectileIds.RetinazerDeathLaser,
+            VanillaProjectileIds.MagicMissile,
+            VanillaProjectileIds.Flamelash,
             VanillaProjectileIds.GolemFireball,
             VanillaProjectileIds.GolemEyeBeam,
             VanillaProjectileIds.PlanteraSeed,

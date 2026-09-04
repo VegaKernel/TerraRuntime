@@ -10,6 +10,7 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId Boomerang = new(3);
     public static readonly ProjectileAiStyleId FallingStar = new(5);
     public static readonly ProjectileAiStyleId Fireball = new(8);
+    public static readonly ProjectileAiStyleId MagicMissile = new(9);
     public static readonly ProjectileAiStyleId Bomb = new(16);
     public static readonly ProjectileAiStyleId SuperStar = new(151);
     public static readonly ProjectileAiStyleId SharpTears = new(157);
@@ -111,6 +112,26 @@ public static class VanillaProjectileDefinitionCatalog
         CanCutTiles: true,
         CollisionWidth: 14,
         CollisionHeight: 14);
+
+    private static readonly VanillaProjectileDefinition MagicMissileDefinition = new(
+        Width: 32,
+        Height: 32,
+        AiStyle: VanillaProjectileAiStyles.MagicMissile,
+        TileCollide: true,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 4,
+        CollisionHeight: 4);
+
+    private static readonly VanillaProjectileDefinition FlamelashDefinition = new(
+        Width: 32,
+        Height: 32,
+        AiStyle: VanillaProjectileAiStyles.MagicMissile,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 4,
+        CollisionHeight: 4);
 
     private static readonly VanillaProjectileDefinition GreenLaserDefinition = new(
         Width: 4,
@@ -453,6 +474,18 @@ public static class VanillaProjectileDefinitionCatalog
         if (type.Value is >= 133 and <= 144)
         {
             definition = RocketFamilyDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.MagicMissile)
+        {
+            definition = MagicMissileDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.Flamelash)
+        {
+            definition = FlamelashDefinition;
             return true;
         }
 

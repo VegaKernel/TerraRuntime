@@ -15,6 +15,7 @@ public static class VanillaProjectileNpcCombatFacts
             type == VanillaProjectileIds.FireArrow ||
             type == VanillaProjectileIds.Bullet ||
             type == VanillaProjectileIds.SilverBullet ||
+            type == VanillaProjectileIds.MagicMissile ||
             type == VanillaProjectileIds.Bone ||
             type == VanillaProjectileIds.RottenEgg)
         {
@@ -37,7 +38,8 @@ public static class VanillaProjectileNpcCombatFacts
             penetration = -1;
             return true;
         }
-        if (type == VanillaProjectileIds.ThrowingKnife || type == VanillaProjectileIds.PoisonedKnife)
+        if (type == VanillaProjectileIds.Flamelash ||
+            type == VanillaProjectileIds.ThrowingKnife || type == VanillaProjectileIds.PoisonedKnife)
         {
             penetration = 2;
             return true;
@@ -60,12 +62,12 @@ public static class VanillaProjectileNpcCombatFacts
     /// <summary>
     /// Terraria Projectile.Damage bypasses NPC.immune[owner] for ordinary single-penetration projectiles
     /// (maxPenetrate == 1) and, unless appliesImmunityTimeOnSingleHits is set, does not write the ordinary owner
-    /// immunity after that hit. Every currently admitted multi/infinite-penetration type uses the ordinary shared
-    /// owner immunity rather than local/static projectile immunity.
+    /// immunity after that hit. Admitted multi/infinite-penetration types use the ordinary shared owner immunity
+    /// unless their source-backed SetDefaults explicitly selects projectile-local immunity, such as Flamelash.
     /// </summary>
     public static bool UsesSharedOwnerNpcImmunity(ProjectileTypeId type)
     {
-        if (!TryGetInitialPenetration(type, out int penetration) || UsesPermanentLocalNpcImmunity(type))
+        if (!TryGetInitialPenetration(type, out int penetration) || TryGetLocalNpcImmunityCooldown(type, out _))
             return false;
         return penetration != 1;
     }
@@ -76,7 +78,27 @@ public static class VanillaProjectileNpcCombatFacts
     /// that NPC again, including through the later PrepareBombToBlow damage pass.
     /// </summary>
     public static bool UsesPermanentLocalNpcImmunity(ProjectileTypeId type) =>
-        type.Value is 133 or 136 or 139 or 142;
+        TryGetLocalNpcImmunityCooldown(type, out int cooldown) && cooldown < 0;
+
+    /// <summary>
+    /// Source-backed Projectile.SetDefaults local NPC immunity for the currently admitted slice. A negative value
+    /// means one hit per exact projectile/NPC generation; positive values are local cooldown ticks.
+    /// </summary>
+    public static bool TryGetLocalNpcImmunityCooldown(ProjectileTypeId type, out int cooldown)
+    {
+        if (type.Value is 133 or 136 or 139 or 142)
+        {
+            cooldown = -1;
+            return true;
+        }
+        if (type == VanillaProjectileIds.Flamelash)
+        {
+            cooldown = 12;
+            return true;
+        }
+        cooldown = 0;
+        return false;
+    }
 
     /// <summary>
     /// Terraria's ordinary fallback after an admitted multi/infinite-penetration hit writes NPC.immune[owner] = 10.

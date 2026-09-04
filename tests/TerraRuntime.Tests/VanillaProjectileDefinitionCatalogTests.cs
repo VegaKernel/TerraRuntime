@@ -248,4 +248,23 @@ public sealed class VanillaProjectileDefinitionCatalogTests
         Assert.False(definition.IgnoreWater);
     }
 
+    [Theory]
+    [InlineData(16, true)]
+    [InlineData(34, false)]
+    public void Terraria_1458_controlled_magic_definitions_match_source(int type, bool ignoreWater)
+    {
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(
+            new ProjectileTypeId(type), out VanillaProjectileDefinition definition));
+
+        Assert.Equal(32, definition.Width);
+        Assert.Equal(32, definition.Height);
+        Assert.Equal(VanillaProjectileAiStyles.MagicMissile, definition.AiStyle);
+        Assert.True(definition.TileCollide);
+        Assert.Equal(ignoreWater, definition.IgnoreWater);
+        Assert.Equal(4, definition.CollisionWidth);
+        Assert.Equal(4, definition.CollisionHeight);
+        Assert.Equal(14f, definition.CollisionOffsetX);
+        Assert.Equal(14f, definition.CollisionOffsetY);
+    }
+
 }

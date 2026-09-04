@@ -154,6 +154,33 @@ public sealed class VanillaCombatIntegrityCatalogTests
     }
 
     [Fact]
+    public void Channeled_magic_catalog_owns_magic_damage_speed_mana_and_local_immunity_facts()
+    {
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryGetChanneledMagicWeapon(
+            VanillaItemIds.MagicMissile, out VanillaChanneledMagicProjectileWeaponCombatDefinition missile));
+        Assert.Equal(VanillaProjectileIds.MagicMissile, missile.ProjectileType);
+        Assert.Equal((35, 7.5f, 6f, 14, 22),
+            (missile.BaseDamage, missile.BaseKnockBack, missile.BaseShootSpeed, missile.ManaCost, missile.UseTimeTicks));
+
+        Assert.True(VanillaPlayerCombatEquipmentCatalog.TryBuild(
+            [Equipment(VanillaPlayerItemSlotCatalog.ArmorStart + 3, VanillaItemIds.SorcererEmblem, prefix: 72)],
+            out VanillaPlayerCombatSnapshot attacker));
+        Assert.Equal(1.19f, attacker.MagicDamage, 3);
+        Assert.Equal(41, VanillaProjectileWeaponCombatCatalog.ResolveChanneledMagicDamage(in missile, in attacker));
+        Assert.Equal(6f, VanillaProjectileWeaponCombatCatalog.ResolveChanneledMagicLaunchSpeedEnvelope(in missile).CanonicalMagnitude, 3);
+
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryGetChanneledMagicWeapon(
+            VanillaItemIds.Flamelash, out VanillaChanneledMagicProjectileWeaponCombatDefinition flamelash));
+        Assert.Equal((VanillaProjectileIds.Flamelash, 32, 6.5f, 6f, 21, 30),
+            (flamelash.ProjectileType, flamelash.BaseDamage, flamelash.BaseKnockBack, flamelash.BaseShootSpeed, flamelash.ManaCost, flamelash.UseTimeTicks));
+        Assert.True(VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(VanillaProjectileIds.Flamelash, out int penetration));
+        Assert.Equal(2, penetration);
+        Assert.True(VanillaProjectileNpcCombatFacts.TryGetLocalNpcImmunityCooldown(VanillaProjectileIds.Flamelash, out int cooldown));
+        Assert.Equal(12, cooldown);
+        Assert.False(VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(VanillaProjectileIds.Flamelash));
+    }
+
+    [Fact]
     public void Later_rocket_ammo_ids_are_classified_but_fail_closed_until_their_pickammo_slice_is_implemented()
     {
         Assert.True(VanillaProjectileWeaponCombatCatalog.IsRocketAmmoType(new ItemTypeId(4445)));

@@ -55,6 +55,10 @@ public static class VanillaProjectileCombatFacts
             case 981: // Silver Bullet
                 damageClass = VanillaProjectileDamageClass.Ranged;
                 return true;
+            case 16: // Magic Missile
+            case 34: // Flamelash
+                damageClass = VanillaProjectileDamageClass.Magic;
+                return true;
             case 6: // Enchanted Boomerang
                 damageClass = VanillaProjectileDamageClass.Melee;
                 return true;

@@ -28,6 +28,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
     private readonly NpcGeneration[] lastOwnerNpcHitGeneration;
     private readonly ProjectileGeneration[] lastLocalProjectileHitGeneration;
     private readonly NpcGeneration[] lastLocalNpcHitGeneration;
+    private readonly long[] lastLocalNpcHitTick;
 
     public RuntimeProjectileNpcCombatPass(
         RuntimeProjectileStore projectiles,
@@ -50,7 +51,9 @@ internal sealed class RuntimeProjectileNpcCombatPass
         int localImmunityCells = checked(projectiles.Capacity * npcs.Capacity);
         lastLocalProjectileHitGeneration = new ProjectileGeneration[localImmunityCells];
         lastLocalNpcHitGeneration = new NpcGeneration[localImmunityCells];
+        lastLocalNpcHitTick = new long[localImmunityCells];
         Array.Fill(lastOwnerNpcHitTick, long.MinValue);
+        Array.Fill(lastLocalNpcHitTick, long.MinValue);
     }
 
     public long CommittedHits { get; private set; }
@@ -79,7 +82,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
                 continue;
             }
             bool sharedOwnerImmunity = VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(projectile.Type);
-            bool permanentLocalImmunity = VanillaProjectileNpcCombatFacts.UsesPermanentLocalNpcImmunity(projectile.Type);
+            bool localImmunity = VanillaProjectileNpcCombatFacts.TryGetLocalNpcImmunityCooldown(projectile.Type, out int localImmunityCooldown);
 
             bool projectileEnded = false;
             for (int npcIndex = 0; npcIndex < npcCount; npcIndex++)
@@ -88,7 +91,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
                 if (!IsEligibleTarget(in target, out VanillaNpcHitboxSize npcHitbox) ||
                     !Intersects(in projectile, in projectileDefinition, in target, in npcHitbox) ||
                     (sharedOwnerImmunity && IsOwnerNpcOnCooldown(ownerRow, target.Handle, tick)) ||
-                    (permanentLocalImmunity && IsLocalNpcImmune(projectile.Handle, target.Handle)))
+                    (localImmunity && IsLocalNpcImmune(projectile.Handle, target.Handle, tick, localImmunityCooldown)))
                 {
                     continue;
                 }
@@ -113,8 +116,8 @@ internal sealed class RuntimeProjectileNpcCombatPass
 
                 if (sharedOwnerImmunity)
                     MarkOwnerNpcCooldown(ownerRow, target.Handle, tick);
-                if (permanentLocalImmunity)
-                    MarkLocalNpcImmunity(projectile.Handle, target.Handle);
+                if (localImmunity)
+                    MarkLocalNpcImmunity(projectile.Handle, target.Handle, tick);
                 CommittedHits++;
                 if (result == RuntimeProjectileNpcDamageResult.Killed)
                     Kills++;
@@ -158,14 +161,14 @@ internal sealed class RuntimeProjectileNpcCombatPass
             }
 
             bool sharedOwnerImmunity = VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(projectile.Type);
-            bool permanentLocalImmunity = VanillaProjectileNpcCombatFacts.UsesPermanentLocalNpcImmunity(projectile.Type);
+            bool localImmunity = VanillaProjectileNpcCombatFacts.TryGetLocalNpcImmunityCooldown(projectile.Type, out int localImmunityCooldown);
             for (int npcIndex = 0; npcIndex < npcCount; npcIndex++)
             {
                 NpcSnapshot target = npcBuffer[npcIndex];
                 if (!IsEligibleTarget(in target, out VanillaNpcHitboxSize npcHitbox) ||
                     !Intersects(in explosion, in target, in npcHitbox) ||
                     (sharedOwnerImmunity && IsOwnerNpcOnCooldown(ownerRow, target.Handle, tick)) ||
-                    (permanentLocalImmunity && IsLocalNpcImmune(projectile.Handle, target.Handle)))
+                    (localImmunity && IsLocalNpcImmune(projectile.Handle, target.Handle, tick, localImmunityCooldown)))
                 {
                     continue;
                 }
@@ -191,8 +194,8 @@ internal sealed class RuntimeProjectileNpcCombatPass
 
                 if (sharedOwnerImmunity)
                     MarkOwnerNpcCooldown(ownerRow, target.Handle, tick);
-                if (permanentLocalImmunity)
-                    MarkLocalNpcImmunity(projectile.Handle, target.Handle);
+                if (localImmunity)
+                    MarkLocalNpcImmunity(projectile.Handle, target.Handle, tick);
                 CommittedHits++;
                 if (result == RuntimeProjectileNpcDamageResult.Killed)
                     Kills++;
@@ -220,7 +223,8 @@ internal sealed class RuntimeProjectileNpcCombatPass
         return profile.Family is VanillaProjectileBehaviorFamily.BasicArrow or
             VanillaProjectileBehaviorFamily.Thrown or
             VanillaProjectileBehaviorFamily.Boomerang or
-            VanillaProjectileBehaviorFamily.Bomb;
+            VanillaProjectileBehaviorFamily.Bomb or
+            VanillaProjectileBehaviorFamily.ControlledMagicMissile;
     }
 
     private static bool IsEligibleTarget(in NpcSnapshot target, out VanillaNpcHitboxSize hitbox)
@@ -318,20 +322,28 @@ internal sealed class RuntimeProjectileNpcCombatPass
         lastOwnerNpcHitTick[index] = tick;
     }
 
-    private bool IsLocalNpcImmune(ProjectileHandle projectile, NpcHandle target)
+    private bool IsLocalNpcImmune(ProjectileHandle projectile, NpcHandle target, long tick, int cooldown)
     {
         if (!projectile.IsAssigned || !target.IsAssigned)
             return true;
         int index = checked(projectile.Slot * npcs.Capacity + target.Slot);
-        return lastLocalProjectileHitGeneration[index] == projectile.Generation &&
-            lastLocalNpcHitGeneration[index] == target.Generation;
+        if (lastLocalProjectileHitGeneration[index] != projectile.Generation ||
+            lastLocalNpcHitGeneration[index] != target.Generation)
+        {
+            return false;
+        }
+        if (cooldown < 0)
+            return true;
+        long previous = lastLocalNpcHitTick[index];
+        return previous != long.MinValue && tick - previous < cooldown;
     }
 
-    private void MarkLocalNpcImmunity(ProjectileHandle projectile, NpcHandle target)
+    private void MarkLocalNpcImmunity(ProjectileHandle projectile, NpcHandle target, long tick)
     {
         int index = checked(projectile.Slot * npcs.Capacity + target.Slot);
         lastLocalProjectileHitGeneration[index] = projectile.Generation;
         lastLocalNpcHitGeneration[index] = target.Generation;
+        lastLocalNpcHitTick[index] = tick;
     }
 
 }

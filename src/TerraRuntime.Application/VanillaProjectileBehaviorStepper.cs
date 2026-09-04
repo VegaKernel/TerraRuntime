@@ -216,6 +216,9 @@ internal static class VanillaProjectileBehaviorStepper
                 }
                 break;
 
+            case VanillaProjectileBehaviorFamily.ControlledMagicMissile:
+                return TryStepControlledMagicMissile(in current, in definition, out next);
+
             case VanillaProjectileBehaviorFamily.Boomerang:
                 return TryStepEnchantedBoomerang(in current, in definition, context.PlayerSnapshots, out next);
 
@@ -281,6 +284,79 @@ internal static class VanillaProjectileBehaviorStepper
 
         next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0, ai1Override);
         return true;
+    }
+
+
+    private static bool TryStepControlledMagicMissile(
+        in ProjectileSnapshot current,
+        in VanillaProjectileDefinition definition,
+        out VanillaProjectileBehaviorResult next)
+    {
+        const float maximumSpeed = 32f;
+        float velocityX = current.VelocityX;
+        float velocityY = current.VelocityY;
+        float ai0 = current.Ai.Ai0;
+        float ai1 = current.Ai.Ai1;
+        bool released = ai0 is -1f or -2f;
+
+        if (ai0 > 0f && ai1 > 0f)
+        {
+            float centerX = current.PositionX + definition.Width * 0.5f;
+            float centerY = current.PositionY + definition.Height * 0.5f;
+            float dx = ai0 - centerX;
+            float dy = ai1 - centerY;
+            float distance = MathF.Sqrt(dx * dx + dy * dy);
+            if (distance >= 64f)
+            {
+                if (!(distance > 0f) || !float.IsFinite(distance))
+                {
+                    next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0, Kill: true);
+                    return true;
+                }
+                float desiredSpeed = MathF.Min(maximumSpeed, distance);
+                velocityX = dx / distance * desiredSpeed;
+                velocityY = dy / distance * desiredSpeed;
+            }
+            else
+            {
+                velocityX = velocityX * 0.3f + dx * 0.3f;
+                velocityY = velocityY * 0.3f + dy * 0.3f;
+            }
+        }
+        else if (released && ai1 < 0f)
+        {
+            float length = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
+            float targetX = 0f;
+            float targetY = maximumSpeed;
+            if (length > 0f && float.IsFinite(length))
+            {
+                targetX = velocityX / length * maximumSpeed;
+                targetY = velocityY / length * maximumSpeed;
+            }
+            MoveTowards(ref velocityX, ref velocityY, targetX, targetY, 4f);
+            next = new VanillaProjectileBehaviorResult(
+                velocityX, velocityY, ai0, Ai1Override: ai1, TimeLeftOverride: 300);
+            return true;
+        }
+
+        next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0, Ai1Override: ai1);
+        return true;
+    }
+
+    private static void MoveTowards(ref float x, ref float y, float targetX, float targetY, float maxDistanceDelta)
+    {
+        float dx = targetX - x;
+        float dy = targetY - y;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        if (!(distance > maxDistanceDelta) || !float.IsFinite(distance))
+        {
+            x = targetX;
+            y = targetY;
+            return;
+        }
+        float scale = maxDistanceDelta / distance;
+        x += dx * scale;
+        y += dy * scale;
     }
 
 

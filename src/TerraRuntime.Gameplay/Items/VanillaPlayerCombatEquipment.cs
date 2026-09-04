@@ -13,6 +13,7 @@ public readonly record struct VanillaPlayerCombatSnapshot(
     float Endurance,
     float MeleeDamage,
     float RangedDamage,
+    float MagicDamage,
     float RangedMultDamage,
     float ArrowDamage,
     float ArrowDamageAdditiveStack,
@@ -31,6 +32,7 @@ public readonly record struct VanillaPlayerCombatSnapshot(
         Endurance: 0f,
         MeleeDamage: 1f,
         RangedDamage: 1f,
+        MagicDamage: 1f,
         RangedMultDamage: 1f,
         ArrowDamage: 1f,
         ArrowDamageAdditiveStack: 0f,
@@ -140,7 +142,8 @@ public static class VanillaPlayerCombatEquipmentCatalog
             case 156: // Cobalt Shield
                 snapshot = snapshot with { Defense = snapshot.Defense + 1, NoKnockback = true };
                 break;
-            case 489: // Sorcerer Emblem: irrelevant to currently admitted melee/bow slices.
+            case 489: // Sorcerer Emblem: Player.UpdateEquips adds 15% magic damage.
+                snapshot = snapshot with { MagicDamage = snapshot.MagicDamage + 0.15f };
                 break;
             case 490: // Warrior Emblem
                 snapshot = snapshot with { MeleeDamage = snapshot.MeleeDamage + 0.15f };
@@ -205,7 +208,8 @@ public static class VanillaPlayerCombatEquipmentCatalog
         snapshot = snapshot with
         {
             MeleeDamage = snapshot.MeleeDamage + amount,
-            RangedDamage = snapshot.RangedDamage + amount
+            RangedDamage = snapshot.RangedDamage + amount,
+            MagicDamage = snapshot.MagicDamage + amount
         };
         return true;
     }

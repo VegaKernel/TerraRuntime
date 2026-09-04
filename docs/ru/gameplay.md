@@ -232,8 +232,9 @@ Source-backed world step также применяет vanilla pre-AI inclusive 
 | Arrow | `1` |
 | Thrown | `2` |
 | Boomerang | `3` |
+| Controlled magic missile | `9` |
 
-Definition catalog содержит growing verified set этих families: arrows, bullets/lasers, bones, shuriken/throwing-knife-style projectiles и boomerang support.
+Definition catalog содержит growing verified set этих families: arrows, bullets/lasers, bones, shuriken/throwing-knife-style projectiles, boomerang support и controlled Magic Missile/Flamelash aiStyle-9 slice. Для этих двух channeled projectiles packet 27 передаёт только bounded cursor intent; movement, release по packet-13 use control/selected-item state, damage, mana consumption и hit resolution принадлежат серверу.
 
 Это **не** complete Terraria projectile parity. Unsupported irreversible side effects, child spawning, immunity, penetration, specialized AI, damage и kill effects остаются explicit boundaries, а не guessed behavior.
 

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Globalization;
 using System.Text;
+using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Operations;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Input;

@@ -4,6 +4,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
+using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
@@ -466,6 +467,67 @@ public sealed class ServerRuntimeClientProjectileIngressTests
     }
 
     [Fact]
+    public void Magic_missile_spawn_is_trusted_consumes_mana_and_packet27_only_updates_bounded_aim()
+    {
+        using var fixture = new Fixture(playerCount: 1, projectileStepper: new NoOpProjectileStepper(), withWorldTiles: true);
+        ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 80);
+        fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.MagicMissile, stack: 1);
+        fixture.SetCombatPlayer(owner, positionX: 1000f, positionY: 800f, life: 100, hostile: false, controlFlags: 0x20);
+        fixture.State.Apply(new PlayerManaRuntimeCommand(
+            owner, new PlayerManaCommitRequest(owner.Player.Slot, Mana: 50, MaxMana: 50)));
+
+        var spawn = new TerrariaProjectileUpdateState(
+            new TerrariaProjectileKeyState(owner.Player.Slot.Value, 900, 1),
+            VanillaProjectileIds.MagicMissile.Value,
+            1020f,
+            800f,
+            6f,
+            0f,
+            0f,
+            0f,
+            0f,
+            0,
+            35,
+            7.5f,
+            0);
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, spawn));
+
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(spawn.Key, out ProjectileHandle handle));
+        Assert.True(fixture.Projectiles.IsCombatTrusted(handle));
+        Assert.True(fixture.State.TryCapturePlayerSnapshot(owner.Player, out PlayerStateSnapshot afterSpawn));
+        Assert.Equal((short)36, afterSpawn.Mana);
+
+        TerrariaProjectileUpdateState aim = spawn with
+        {
+            PositionX = 9000f,
+            PositionY = 9000f,
+            VelocityX = 999f,
+            VelocityY = -999f,
+            Ai0 = 1500f,
+            Ai1 = 1000f
+        };
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, aim));
+
+        Assert.Equal(1, fixture.State.AcceptedTrustedProjectileSteeringInputs);
+        Assert.Equal(0, fixture.State.RejectedTrustedClientProjectileUpdates);
+        Assert.True(fixture.State.TryCaptureProjectileSnapshot(handle, out ProjectileSnapshot steered));
+        Assert.Equal(1020f, steered.PositionX);
+        Assert.Equal(800f, steered.PositionY);
+        Assert.Equal(6f, steered.VelocityX, 4);
+        Assert.Equal(0f, steered.VelocityY, 4);
+        Assert.Equal(1500f, steered.Ai.Ai0, 4);
+        Assert.Equal(1000f, steered.Ai.Ai1, 4);
+
+        fixture.SetCombatPlayer(owner, positionX: 1000f, positionY: 800f, life: 100, hostile: false, controlFlags: 0);
+        fixture.State.Tick();
+        Assert.True(fixture.State.TryCaptureProjectileSnapshot(handle, out ProjectileSnapshot released));
+        Assert.Equal(-1f, released.Ai.Ai0);
+        Assert.Equal(-1f, released.Ai.Ai1);
+        float releasedSpeed = MathF.Sqrt(released.VelocityX * released.VelocityX + released.VelocityY * released.VelocityY);
+        Assert.Equal(32f, releasedSpeed, 4);
+    }
+
+    [Fact]
     public void Untrusted_client_projectile_cannot_mutate_pvp_health()
     {
         using var fixture = new Fixture(playerCount: 2, projectileStepper: new NoOpProjectileStepper());
@@ -588,13 +650,15 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         private readonly List<PlayerJoinSession> sessions = [];
         private readonly Dictionary<GameCommandSourceId, TerrariaConnectionOutboundQueue> outbound = [];
 
-        public Fixture(int playerCount, IProjectileStateStepper? projectileStepper = null)
+        public Fixture(int playerCount, IProjectileStateStepper? projectileStepper = null, bool withWorldTiles = false)
         {
             slots = new PlayerSlotPool(playerCount);
             Replication = new RuntimeProjectileReplicationRegistry();
             Projectiles = new RuntimeProjectileStore(capacity: 8, commitSink: Replication);
+            WorldTileStore? worldTiles = withWorldTiles ? new WorldTileStore(new WorldDimensions(300, 200)) : null;
             State = new ServerRuntimeState(
                 playerEvents: Replication,
+                worldTiles: worldTiles,
                 projectiles: Projectiles,
                 projectileStepper: projectileStepper,
                 projectileReplication: Replication);
@@ -647,7 +711,8 @@ public sealed class ServerRuntimeClientProjectileIngressTests
             float positionX,
             float positionY,
             short life,
-            bool hostile)
+            bool hostile,
+            byte controlFlags = 0)
         {
             // Establish a known authoritative empty equipment projection for strict combat. Packet-5 empty functional
             // slot state creates the generation-owned transfer profile without inventing any combat modifiers.
@@ -664,7 +729,7 @@ public sealed class ServerRuntimeClientProjectileIngressTests
             State.Apply(new PlayerPvpToggleRuntimeCommand(connection, hostile));
             var movement = new PlayerMovementCommitRequest(
                 connection.Player.Slot,
-                ControlFlags: 0,
+                ControlFlags: controlFlags,
                 MovementFlags: 0,
                 MiscFlags1: 0,
                 MiscFlags2: 0,

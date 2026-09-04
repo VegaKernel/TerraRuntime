@@ -149,6 +149,41 @@ public sealed class VanillaProjectileBehaviorStepperTests
         Assert.Equal(3f, next.VelocityY, 5);
     }
 
+    [Theory]
+    [InlineData(16)]
+    [InlineData(34)]
+    public void Controlled_magic_missile_steers_to_server_owned_ai_target(int type)
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            new ProjectileTypeId(type), velocityX: 6f, velocityY: 0f,
+            ai0: 200f, ai1: 116f, positionX: 100f, positionY: 100f);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
+
+        // Center is 116,116; target is 84px to the right, so AI_009 snaps desired velocity to min(32, distance).
+        Assert.Equal(32f, next.VelocityX, 4);
+        Assert.Equal(0f, next.VelocityY, 4);
+        Assert.Equal(200f, next.Ai0, 4);
+        Assert.Equal(116f, next.Ai1Override);
+    }
+
+    [Fact]
+    public void Released_magic_missile_moves_velocity_toward_32_and_caps_lifetime()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.MagicMissile, velocityX: 10f, velocityY: 0f, ai0: -1f, ai1: -1f);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
+
+        Assert.Equal(14f, next.VelocityX, 4);
+        Assert.Equal(0f, next.VelocityY, 4);
+        Assert.Equal(300, next.TimeLeftOverride);
+    }
+
     [Fact]
     public void Enchanted_boomerang_switches_to_return_after_30_outbound_ticks()
     {

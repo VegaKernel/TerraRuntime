@@ -32,6 +32,17 @@ public readonly record struct VanillaProjectileWeaponCombatDefinition(
     int WeaponAmmoConservationOneIn,
     float ImpossibleSpawnCenterDistancePixels);
 
+public readonly record struct VanillaChanneledMagicProjectileWeaponCombatDefinition(
+    ItemTypeId Type,
+    ProjectileTypeId ProjectileType,
+    int BaseDamage,
+    float BaseKnockBack,
+    float BaseShootSpeed,
+    int ManaCost,
+    int UseTimeTicks,
+    int AnimationTicks,
+    float ImpossibleSpawnCenterDistancePixels);
+
 public readonly record struct VanillaStandaloneProjectileWeaponCombatDefinition(
     ItemTypeId Type,
     ProjectileTypeId ProjectileType,
@@ -118,6 +129,15 @@ public static class VanillaProjectileWeaponCombatCatalog
         new(VanillaItemIds.RocketIV, new ProjectileTypeId(9), VanillaProjectileAmmoFamily.Rocket, 65, 6f, 0f, true, VanillaProjectileAmmoTransform.AddToWeaponProjectile)
     ];
 
+    // Item.SetDefaults cases 113 and 218. These are channelled aiStyle-9 magic projectiles whose later aim is
+    // supplied by the owning vanilla client through packet 27 ai[0]/ai[1]. TerraRuntime admits the initial spawn
+    // only with exact source-backed weapon facts; later packet-27 coordinates/velocity remain non-authoritative.
+    private static readonly VanillaChanneledMagicProjectileWeaponCombatDefinition[] ChanneledMagicWeapons =
+    [
+        new(VanillaItemIds.MagicMissile, VanillaProjectileIds.MagicMissile, 35, 7.5f, 6f, 14, 22, 22, SpawnRange),
+        new(VanillaItemIds.Flamelash, VanillaProjectileIds.Flamelash, 32, 6.5f, 6f, 21, 30, 30, SpawnRange)
+    ];
+
     // Item.SetDefaults cases 42, 154, 279, 287, 1809, 1913 and 3379. These consumable ranged weapons spawn their
     // projectile directly from the selected stack, so there is no PickAmmo source. Prefixes are not admitted.
     private static readonly VanillaStandaloneProjectileWeaponCombatDefinition[] StandaloneWeapons =
@@ -144,6 +164,47 @@ public static class VanillaProjectileWeaponCombatCatalog
         definition = default;
         return false;
     }
+
+    public static bool TryGetChanneledMagicWeapon(
+        ItemTypeId type,
+        out VanillaChanneledMagicProjectileWeaponCombatDefinition definition)
+    {
+        for (int i = 0; i < ChanneledMagicWeapons.Length; i++)
+        {
+            if (ChanneledMagicWeapons[i].Type == type)
+            {
+                definition = ChanneledMagicWeapons[i];
+                return true;
+            }
+        }
+        definition = default;
+        return false;
+    }
+
+    public static bool TryGetChanneledMagicWeaponForProjectile(
+        ProjectileTypeId type,
+        out VanillaChanneledMagicProjectileWeaponCombatDefinition definition)
+    {
+        for (int i = 0; i < ChanneledMagicWeapons.Length; i++)
+        {
+            if (ChanneledMagicWeapons[i].ProjectileType == type)
+            {
+                definition = ChanneledMagicWeapons[i];
+                return true;
+            }
+        }
+        definition = default;
+        return false;
+    }
+
+    public static int ResolveChanneledMagicDamage(
+        in VanillaChanneledMagicProjectileWeaponCombatDefinition weapon,
+        in VanillaPlayerCombatSnapshot attacker) =>
+        Math.Max(1, (int)(weapon.BaseDamage * attacker.MagicDamage + 5E-06f));
+
+    public static VanillaLaunchSpeedEnvelope ResolveChanneledMagicLaunchSpeedEnvelope(
+        in VanillaChanneledMagicProjectileWeaponCombatDefinition weapon) =>
+        new(weapon.BaseShootSpeed, weapon.BaseShootSpeed);
 
     public static bool TryGetStandaloneWeapon(ItemTypeId type, out VanillaStandaloneProjectileWeaponCombatDefinition definition)
     {

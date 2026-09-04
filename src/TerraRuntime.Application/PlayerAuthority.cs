@@ -164,6 +164,62 @@ internal sealed class PlayerAuthority
         return true;
     }
 
+    public bool TryConsumeMana(ConnectionHandle connection, int manaCost)
+    {
+        if (manaCost <= 0 || !membership.TryGet(connection, out RuntimePlayerMember? player) ||
+            player.Connection != connection || !player.HasMana || player.Mana < manaCost || !player.TryAdvanceRevision())
+        {
+            return false;
+        }
+
+        player.Mana = checked((short)(player.Mana - manaCost));
+        var request = new PlayerManaCommitRequest(player.Slot, player.Mana, player.MaxMana);
+        events?.PlayerManaUpdated(connection, in request);
+        return true;
+    }
+
+    public bool TryClampVanillaReachableAim(
+        PlayerHandle playerHandle,
+        float requestedX,
+        float requestedY,
+        out float targetX,
+        out float targetY)
+    {
+        targetX = targetY = 0f;
+        if (!float.IsFinite(requestedX) || !float.IsFinite(requestedY) || worldTiles is null ||
+            !membership.TryGet(playerHandle, out RuntimePlayerMember? player) || player.IsDead)
+        {
+            return false;
+        }
+
+        const float viewWidth = 1920f;
+        const float viewHeight = 1200f;
+        const float border = 640f;
+        float worldRight = worldTiles.Dimensions.WidthTiles * 16f - border;
+        float worldBottom = worldTiles.Dimensions.HeightTiles * 16f - border;
+        if (worldRight - border < viewWidth || worldBottom - border < viewHeight)
+            return false;
+
+        float playerCenterX = player.PositionX + VanillaBasePlayerWidth * 0.5f;
+        float playerCenterY = player.PositionY + VanillaBasePlayerHeight * 0.5f;
+        float left = Math.Clamp(playerCenterX - viewWidth * 0.5f, border, worldRight - viewWidth);
+        float top = Math.Clamp(playerCenterY - viewHeight * 0.5f, border, worldBottom - viewHeight);
+        float centerX = left + viewWidth * 0.5f;
+        float centerY = top + viewHeight * 0.5f;
+        float dx = requestedX - centerX;
+        float dy = requestedY - centerY;
+        float scale = 1f;
+        float ax = MathF.Abs(dx);
+        float ay = MathF.Abs(dy);
+        if (ax > viewWidth * 0.5f)
+            scale = MathF.Min(scale, viewWidth * 0.5f / ax);
+        if (ay > viewHeight * 0.5f)
+            scale = MathF.Min(scale, viewHeight * 0.5f / ay);
+        targetX = centerX + dx * scale;
+        targetY = centerY + dy * scale;
+        return float.IsFinite(targetX) && float.IsFinite(targetY);
+    }
+
     public bool TryCaptureEquipment(
         ConnectionHandle connection,
         out PlayerEquipmentCommitRequest[] equipment)

@@ -19,7 +19,8 @@ internal enum ClientProjectileProvenanceResolveResult : byte
 
 internal readonly record struct AuthoritativeClientProjectileSpawn(
     ProjectileStateUpdate State,
-    RuntimePlayerInventoryMutation InventoryMutation,
+    RuntimePlayerInventoryMutation? InventoryMutation,
+    int ManaCost,
     VanillaLaunchSpeedEnvelope LaunchSpeedEnvelope,
     int UseTimeTicks);
 
@@ -40,6 +41,8 @@ internal sealed class ProjectileAuthority
     private readonly Func<long> tickProvider;
     private readonly long[] lastTrustedClientUseTick = new long[byte.MaxValue + 1];
     private readonly PlayerSessionGeneration[] trustedClientUseGenerations = new PlayerSessionGeneration[byte.MaxValue + 1];
+    private readonly ProjectileSnapshot[] controlledProjectileBuffer;
+    private const byte ControlUseItemFlag = 1 << 5;
 
     public ProjectileAuthority(
         RuntimeProjectileStore projectiles,
@@ -60,6 +63,7 @@ internal sealed class ProjectileAuthority
         reflections = new RuntimeNpcProjectileReflectionPass(npcs, projectiles, playerSnapshots, goodWorld: goodWorld);
         this.replication = replication;
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
+        controlledProjectileBuffer = new ProjectileSnapshot[projectiles.Capacity];
         Array.Fill(lastTrustedClientUseTick, long.MinValue);
     }
 
@@ -93,6 +97,7 @@ internal sealed class ProjectileAuthority
             return false;
 
         explosions.Reset();
+        SynchronizeControlledProjectileReleaseInputs();
         LastTick = executor.Tick(stepper);
         return true;
     }
@@ -114,6 +119,7 @@ internal sealed class ProjectileAuthority
     public long RejectedClientUpdates { get; private set; }
     public long RejectedClientDestroys { get; private set; }
     public long RejectedTrustedClientUpdates { get; private set; }
+    public long AcceptedTrustedSteeringInputs { get; private set; }
     public long RejectedTrustedClientDestroys { get; private set; }
     public long PromotedClientProjectileSpawns { get; private set; }
     public long RejectedClientProjectileProvenance { get; private set; }
@@ -201,11 +207,21 @@ internal sealed class ProjectileAuthority
                 return;
             }
 
-            // A trusted generation has crossed the authoritative spawn boundary. From that point onward its
-            // position, velocity, ai, lifetime and termination are runtime-owned. Packet 27 may still arrive
-            // from the vanilla client, but it is diagnostic input only and must not overwrite simulation state.
+            // A trusted generation has crossed the authoritative spawn boundary. Position, velocity, lifetime and
+            // termination remain runtime-owned. aiStyle-9 controlled missiles are the deliberate exception for input:
+            // vanilla packet 27 ai[0]/ai[1] carries MouseWorld intent. We accept only that bounded intent and never
+            // copy the packet's position/velocity into the trusted generation.
             if (projectiles.IsCombatTrusted(projectile))
             {
+                if (VanillaProjectileWeaponCombatCatalog.TryGetChanneledMagicWeaponForProjectile(
+                        current.Type, out VanillaChanneledMagicProjectileWeaponCombatDefinition controlledWeapon) &&
+                    TryApplyTrustedControlledMagicInput(command.Connection, projectile, in current, in controlledWeapon, in packet))
+                {
+                    AcceptedTrustedSteeringInputs++;
+                    AppliedUpdates++;
+                    return;
+                }
+
                 RejectedTrustedClientUpdates++;
                 RejectedClientUpdates++;
                 return;
@@ -237,10 +253,9 @@ internal sealed class ProjectileAuthority
             if (provenance == ClientProjectileProvenanceResolveResult.Accepted)
             {
                 ProjectileStateUpdate authoritativeState = authoritative.State;
-                RuntimePlayerInventoryMutation inventoryMutation = authoritative.InventoryMutation;
                 if (projectiles.TrySpawnVanilla(in authoritativeState, out ProjectileSnapshot trusted) &&
                     projectiles.TryMarkCombatTrusted(trusted.Handle, command.Connection.Player) &&
-                    players.TryCommitInventoryMutation(command.Connection, in inventoryMutation))
+                    TryCommitAuthoritativeProjectileUse(command.Connection, in authoritative))
                 {
                     MarkTrustedClientUse(command.Connection.Player, tickProvider());
                     AppliedSpawns++;
@@ -348,6 +363,14 @@ internal sealed class ProjectileAuthority
             weaponItem.IsEmpty)
         {
             return ClientProjectileProvenanceResolveResult.NotApplicable;
+        }
+
+        if (VanillaProjectileWeaponCombatCatalog.TryGetChanneledMagicWeapon(
+                weaponItem.ItemType,
+                out VanillaChanneledMagicProjectileWeaponCombatDefinition channeledMagicWeapon))
+        {
+            return TryResolveStrictChanneledMagicProjectileSpawn(
+                connection, in player, in weaponItem, in channeledMagicWeapon, in packet, out authoritative);
         }
 
         if (VanillaProjectileWeaponCombatCatalog.TryGetStandaloneWeapon(
@@ -477,6 +500,7 @@ internal sealed class ProjectileAuthority
         authoritative = new AuthoritativeClientProjectileSpawn(
             state,
             new RuntimePlayerInventoryMutation(checked((short)ammoSlot), remainingAmmo),
+            ManaCost: 0,
             speedEnvelope,
             authoritativeUseTime);
         return ClientProjectileProvenanceResolveResult.Accepted;
@@ -484,6 +508,200 @@ internal sealed class ProjectileAuthority
         static ClientProjectileProvenanceResolveResult RejectProvenance() =>
             ClientProjectileProvenanceResolveResult.Rejected;
     }
+
+    private ClientProjectileProvenanceResolveResult TryResolveStrictChanneledMagicProjectileSpawn(
+        ConnectionHandle connection,
+        in PlayerStateSnapshot player,
+        in RuntimePlayerInventoryItem weaponItem,
+        in VanillaChanneledMagicProjectileWeaponCombatDefinition weapon,
+        in TerrariaProjectileUpdateState packet,
+        out AuthoritativeClientProjectileSpawn authoritative)
+    {
+        authoritative = default;
+        // Exact magic prefix formulas are deliberately not guessed in this slice. Prefix-free items plus the
+        // source-backed equipment snapshot are enough to make damage/mana/cadence authoritative.
+        if (weaponItem.Prefix != VanillaPrefixIds.None || weaponItem.Stack <= 0 ||
+            !player.HasMana || player.Mana < weapon.ManaCost ||
+            !players.TryCaptureCombatSnapshot(connection, out VanillaPlayerCombatSnapshot attackerCombat))
+        {
+            return ClientProjectileProvenanceResolveResult.NotApplicable;
+        }
+
+        int expectedDamage = VanillaProjectileWeaponCombatCatalog.ResolveChanneledMagicDamage(in weapon, in attackerCombat);
+        float expectedKnockBack = weapon.BaseKnockBack;
+        VanillaLaunchSpeedEnvelope speedEnvelope =
+            VanillaProjectileWeaponCombatCatalog.ResolveChanneledMagicLaunchSpeedEnvelope(in weapon);
+        float speedSquared = packet.VelocityX * packet.VelocityX + packet.VelocityY * packet.VelocityY;
+        if (!(speedSquared > 0f) || !float.IsFinite(speedSquared) || !speedEnvelope.IsValid)
+            return ClientProjectileProvenanceResolveResult.Rejected;
+        float packetSpeed = MathF.Sqrt(speedSquared);
+
+        float playerCx = player.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+        float playerCy = player.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+        float dx = packet.PositionX - playerCx;
+        float dy = packet.PositionY - playerCy;
+        long tick = tickProvider();
+        float knockBackTolerance = MathF.Max(0.001f, MathF.Abs(expectedKnockBack) * 0.00001f);
+        if (packet.ProjectileType != weapon.ProjectileType.Value ||
+            packet.Damage != expectedDamage || packet.OriginalDamage != 0 ||
+            MathF.Abs(packet.KnockBack - expectedKnockBack) > knockBackTolerance ||
+            !speedEnvelope.ContainsMagnitude(packetSpeed) ||
+            MathF.Abs(packet.Ai0) > 0.001f || MathF.Abs(packet.Ai1) > 0.001f || MathF.Abs(packet.Ai2) > 0.001f ||
+            dx * dx + dy * dy > weapon.ImpossibleSpawnCenterDistancePixels * weapon.ImpossibleSpawnCenterDistancePixels ||
+            IsTrustedClientUseOnCooldown(connection.Player, tick, weapon.UseTimeTicks))
+        {
+            return ClientProjectileProvenanceResolveResult.Rejected;
+        }
+
+        float canonicalSpeed = speedEnvelope.CanonicalMagnitude;
+        float scale = canonicalSpeed / packetSpeed;
+        var state = new ProjectileStateUpdate(
+            weapon.ProjectileType,
+            connection.Player.Slot.Value,
+            packet.PositionX,
+            packet.PositionY,
+            packet.VelocityX * scale,
+            packet.VelocityY * scale,
+            default,
+            BannerIdToRespondTo: 0,
+            Damage: checked((short)expectedDamage),
+            KnockBack: expectedKnockBack,
+            OriginalDamage: 0);
+        authoritative = new AuthoritativeClientProjectileSpawn(
+            state,
+            InventoryMutation: null,
+            ManaCost: weapon.ManaCost,
+            speedEnvelope,
+            weapon.UseTimeTicks);
+        return ClientProjectileProvenanceResolveResult.Accepted;
+    }
+
+    private bool TryApplyTrustedControlledMagicInput(
+        ConnectionHandle connection,
+        ProjectileHandle projectile,
+        in ProjectileSnapshot current,
+        in VanillaChanneledMagicProjectileWeaponCombatDefinition weapon,
+        in TerrariaProjectileUpdateState packet)
+    {
+        if (!projectiles.TryGetCombatTrustedOwner(projectile, out PlayerHandle trustedOwner) ||
+            trustedOwner != connection.Player || current.Spawner != trustedOwner.Slot.Value ||
+            MathF.Abs(packet.Ai2) > 0.001f ||
+            !players.TryCapture(trustedOwner, out PlayerStateSnapshot player))
+        {
+            return false;
+        }
+
+        bool channel = (player.ControlFlags & ControlUseItemFlag) != 0;
+        if (!channel || !IsHeldControlledMagicWeapon(trustedOwner, in player, in weapon))
+            return TryReleaseControlledMagicProjectile(projectile, in current, in player);
+
+        if (!(packet.Ai0 > 0f) || !(packet.Ai1 > 0f) ||
+            !players.TryClampVanillaReachableAim(trustedOwner, packet.Ai0, packet.Ai1, out float targetX, out float targetY))
+        {
+            return false;
+        }
+
+        ProjectileStateUpdate update = SnapshotToUpdate(in current) with
+        {
+            Ai = new ProjectileAiState(targetX, targetY, current.Ai.Ai2)
+        };
+        return projectiles.TryUpdate(projectile, in update, out _);
+    }
+
+    private void SynchronizeControlledProjectileReleaseInputs()
+    {
+        int count = projectiles.CopyActive(controlledProjectileBuffer);
+        for (int i = 0; i < count; i++)
+        {
+            ProjectileSnapshot current = controlledProjectileBuffer[i];
+            if (!projectiles.IsCombatTrusted(current.Handle) || current.Ai.Ai0 < 0f ||
+                !VanillaProjectileWeaponCombatCatalog.TryGetChanneledMagicWeaponForProjectile(
+                    current.Type, out VanillaChanneledMagicProjectileWeaponCombatDefinition weapon) ||
+                !projectiles.TryGetCombatTrustedOwner(current.Handle, out PlayerHandle trustedOwner) ||
+                !players.TryCapture(trustedOwner, out PlayerStateSnapshot player))
+            {
+                continue;
+            }
+
+            bool channel = (player.ControlFlags & ControlUseItemFlag) != 0;
+            if (channel && IsHeldControlledMagicWeapon(trustedOwner, in player, in weapon))
+                continue;
+            _ = TryReleaseControlledMagicProjectile(current.Handle, in current, in player);
+        }
+    }
+
+    private bool IsHeldControlledMagicWeapon(
+        PlayerHandle owner,
+        in PlayerStateSnapshot player,
+        in VanillaChanneledMagicProjectileWeaponCombatDefinition weapon)
+    {
+        int selectedSlot = player.SelectedItem;
+        return VanillaPlayerItemSlotCatalog.IsInventorySlot((short)selectedSlot) &&
+            players.TryGetInventoryItem(owner, selectedSlot, out RuntimePlayerInventoryItem held) &&
+            !held.IsEmpty && held.ItemType == weapon.Type;
+    }
+
+    private bool TryReleaseControlledMagicProjectile(
+        ProjectileHandle projectile,
+        in ProjectileSnapshot current,
+        in PlayerStateSnapshot player)
+    {
+        float vx = current.VelocityX;
+        float vy = current.VelocityY;
+        float speed = MathF.Sqrt(vx * vx + vy * vy);
+        if (!(speed >= 2f) || !float.IsFinite(speed))
+        {
+            float projectileCenterX = current.PositionX + 16f;
+            float projectileCenterY = current.PositionY + 16f;
+            float playerCenterX = player.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+            float playerCenterY = player.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+            vx = projectileCenterX - playerCenterX;
+            vy = projectileCenterY - playerCenterY;
+            speed = MathF.Sqrt(vx * vx + vy * vy);
+        }
+        if (!(speed > 0f) || !float.IsFinite(speed))
+        {
+            vx = 0f;
+            vy = 32f;
+        }
+        else
+        {
+            vx = vx / speed * 32f;
+            vy = vy / speed * 32f;
+        }
+
+        ProjectileStateUpdate update = SnapshotToUpdate(in current) with
+        {
+            VelocityX = vx,
+            VelocityY = vy,
+            Ai = new ProjectileAiState(-1f, -1f, current.Ai.Ai2)
+        };
+        return projectiles.TryUpdate(projectile, in update, out _);
+    }
+
+    private bool TryCommitAuthoritativeProjectileUse(
+        ConnectionHandle connection,
+        in AuthoritativeClientProjectileSpawn authoritative)
+    {
+        if (authoritative.ManaCost > 0)
+            return authoritative.InventoryMutation is null && players.TryConsumeMana(connection, authoritative.ManaCost);
+        if (authoritative.InventoryMutation is RuntimePlayerInventoryMutation mutation)
+            return players.TryCommitInventoryMutation(connection, in mutation);
+        return true;
+    }
+
+    private static ProjectileStateUpdate SnapshotToUpdate(in ProjectileSnapshot current) => new(
+        current.Type,
+        current.Spawner,
+        current.PositionX,
+        current.PositionY,
+        current.VelocityX,
+        current.VelocityY,
+        current.Ai,
+        current.BannerIdToRespondTo,
+        current.Damage,
+        current.KnockBack,
+        current.OriginalDamage);
 
     private ClientProjectileProvenanceResolveResult TryResolveStrictStandaloneProjectileSpawn(
         ConnectionHandle connection,
@@ -554,6 +772,7 @@ internal sealed class ProjectileAuthority
         authoritative = new AuthoritativeClientProjectileSpawn(
             state,
             new RuntimePlayerInventoryMutation(checked((short)selectedSlot), remaining),
+            ManaCost: 0,
             speedEnvelope,
             weapon.UseTimeTicks);
         return ClientProjectileProvenanceResolveResult.Accepted;

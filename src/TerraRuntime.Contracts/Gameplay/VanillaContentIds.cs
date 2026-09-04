@@ -401,8 +401,10 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId EnchantedBoomerang = new(6);
     public static readonly ProjectileTypeId PurificationPowder = new(10);
     public static readonly ProjectileTypeId Bullet = new(14);
+    public static readonly ProjectileTypeId MagicMissile = new(16);
     public static readonly ProjectileTypeId GreenLaser = new(20);
     public static readonly ProjectileTypeId Bone = new(21);
+    public static readonly ProjectileTypeId Flamelash = new(34);
     public static readonly ProjectileTypeId ThrowingKnife = new(48);
     public static readonly ProjectileTypeId Seed = new(51);
     public static readonly ProjectileTypeId PoisonedKnife = new(54);
