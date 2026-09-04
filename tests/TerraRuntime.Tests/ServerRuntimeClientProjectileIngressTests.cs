@@ -336,7 +336,10 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         fixture.SetCombatPlayer(owner, positionX: 100f, positionY: 100f, life: 100, hostile: false);
 
         var packet = new TerrariaProjectileUpdateState(
-            new TerrariaProjectileKeyState(owner.Player.Slot.Value, checked((ushort)(700 + projectileType)), 1),
+            new TerrariaProjectileKeyState(
+                owner.Player.Slot.Value,
+                checked((ushort)(600 + projectileType % 300)),
+                1),
             projectileType,
             120f,
             100f,

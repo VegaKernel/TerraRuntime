@@ -880,7 +880,7 @@ public sealed class VanillaProjectileWorldStateStepperTests
     public void Launcher_grenade_tile_impact_bounces_and_keeps_its_fuse_alive()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
-        tiles.Set(7, 10, SolidTile(1));
+        tiles.Set(8, 10, SolidTile(1));
         var stepper = new VanillaProjectileWorldStateStepper(tiles);
         ProjectileSnapshot projectile = CreateSnapshot(
             positionX: 100f,
@@ -904,7 +904,7 @@ public sealed class VanillaProjectileWorldStateStepperTests
     public void Straight_launcher_rocket_tile_impact_arms_three_tick_fuse_instead_of_despawning()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
-        tiles.Set(7, 10, SolidTile(1));
+        tiles.Set(8, 10, SolidTile(1));
         var stepper = new VanillaProjectileWorldStateStepper(tiles);
         ProjectileSnapshot projectile = CreateSnapshot(
             positionX: 100f,
@@ -930,7 +930,7 @@ public sealed class VanillaProjectileWorldStateStepperTests
     public void Golem_fireball_tile_impacts_bounce_four_times_and_advance_collision_counter()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
-        tiles.Set(7, 10, SolidTile(1));
+        tiles.Set(8, 10, SolidTile(1));
         var stepper = new VanillaProjectileWorldStateStepper(tiles);
         ProjectileSnapshot projectile = CreateSnapshot(
             positionX: 100f, positionY: 160f, velocityX: 20f, velocityY: 0f, ai0: 0f) with
@@ -953,7 +953,7 @@ public sealed class VanillaProjectileWorldStateStepperTests
     public void Golem_fireball_fifth_tile_impact_terminates_instead_of_bouncing()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
-        tiles.Set(7, 10, SolidTile(1));
+        tiles.Set(8, 10, SolidTile(1));
         var stepper = new VanillaProjectileWorldStateStepper(tiles);
         ProjectileSnapshot projectile = CreateSnapshot(
             positionX: 100f, positionY: 160f, velocityX: 20f, velocityY: 0f, ai0: 4f) with
