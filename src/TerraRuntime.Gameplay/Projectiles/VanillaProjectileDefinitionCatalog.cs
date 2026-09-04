@@ -11,6 +11,7 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId FallingStar = new(5);
     public static readonly ProjectileAiStyleId Fireball = new(8);
     public static readonly ProjectileAiStyleId MagicMissile = new(9);
+    public static readonly ProjectileAiStyleId BouncyBall = new(14);
     public static readonly ProjectileAiStyleId Bomb = new(16);
     public static readonly ProjectileAiStyleId EyeFire = new(23);
     public static readonly ProjectileAiStyleId SuperStar = new(151);
@@ -103,6 +104,26 @@ public static class VanillaProjectileDefinitionCatalog
         CanCutTiles: true,
         CollisionWidth: 4,
         CollisionHeight: 4);
+
+    private static readonly VanillaProjectileDefinition SkeletronPrimeBombDefinition = new(
+        Width: 22,
+        Height: 22,
+        AiStyle: VanillaProjectileAiStyles.Bomb,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 22,
+        CollisionHeight: 22);
+
+    private static readonly VanillaProjectileDefinition PlanteraThornBallDefinition = new(
+        Width: 38,
+        Height: 38,
+        AiStyle: VanillaProjectileAiStyles.BouncyBall,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 26,
+        CollisionHeight: 26);
 
     private static readonly VanillaProjectileDefinition RocketFamilyDefinition = new(
         Width: 14,
@@ -539,6 +560,18 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.Bullet || type == VanillaProjectileIds.SilverBullet)
         {
             definition = BulletDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SkeletronPrimeBomb)
+        {
+            definition = SkeletronPrimeBombDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PlanteraThornBall)
+        {
+            definition = PlanteraThornBallDefinition;
             return true;
         }
 

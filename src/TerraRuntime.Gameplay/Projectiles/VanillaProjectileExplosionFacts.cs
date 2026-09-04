@@ -11,10 +11,12 @@ namespace TerraRuntime.Gameplay.Projectiles;
 public readonly record struct VanillaProjectileExplosionDefinition(
     int Width,
     int Height,
-    float KnockBack);
+    float KnockBack,
+    int? DamageOverride = null);
 
 public static class VanillaProjectileExplosionFacts
 {
+    private static readonly VanillaProjectileExplosionDefinition SkeletronPrimeBombExplosion = new(128, 128, 8f, 40);
     private static readonly VanillaProjectileExplosionDefinition SmallLauncherExplosion = new(128, 128, 8f);
     private static readonly VanillaProjectileExplosionDefinition LargeLauncherExplosion = new(200, 200, 10f);
 
@@ -22,6 +24,12 @@ public static class VanillaProjectileExplosionFacts
         ProjectileTypeId type,
         out VanillaProjectileExplosionDefinition definition)
     {
+        if (type == VanillaProjectileIds.SkeletronPrimeBomb)
+        {
+            definition = SkeletronPrimeBombExplosion;
+            return true;
+        }
+
         if (type.Value is >= 133 and <= 138)
         {
             definition = SmallLauncherExplosion;

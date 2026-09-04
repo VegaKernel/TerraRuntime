@@ -23,10 +23,11 @@ internal sealed class RuntimePlayerOperationsTelemetry : global::TerraRuntime.IR
     public void PlayerAppearanceUpdated(ConnectionHandle connection, in PlayerAppearanceCommitRequest request)
     {
         string name = request.Name;
+        byte difficultyFlags = request.DifficultyFlags;
         PendingPlayerState state = GetPending(connection.Source);
         state.Name = name;
-        state.DifficultyFlags = request.DifficultyFlags;
-        UpdateLive(connection, current => current with { Name = name, DifficultyFlags = request.DifficultyFlags });
+        state.DifficultyFlags = difficultyFlags;
+        UpdateLive(connection, current => current with { Name = name, DifficultyFlags = difficultyFlags });
     }
 
     public void PlayerEquipmentUpdated(ConnectionHandle connection, in PlayerEquipmentCommitRequest request)

@@ -210,6 +210,12 @@ internal sealed class RuntimeProjectilePlayerCombatPass
         {
             RuntimeProjectileExplosionEvent explosion = explosions[explosionIndex];
             ProjectileSnapshot projectile = explosion.Projectile;
+            if (explosion.SourceNpc.IsAssigned)
+            {
+                TickHostileNpcExplosion(in explosion, tick);
+                continue;
+            }
+
             PlayerHandle trustedOwner = explosion.TrustedOwner;
             if (!projectile.IsActive || projectile.Damage <= 0 ||
                 !VanillaProjectileOwnership.IsPlayerOwned(projectile.Spawner) ||
@@ -272,6 +278,55 @@ internal sealed class RuntimeProjectilePlayerCombatPass
                         Kills++;
                 }
             }
+        }
+    }
+
+    private void TickHostileNpcExplosion(in RuntimeProjectileExplosionEvent explosion, long tick)
+    {
+        ProjectileSnapshot projectile = explosion.Projectile;
+        if (!projectile.IsActive || projectile.Damage <= 0 ||
+            !VanillaProjectileFacts.IsHostile(projectile.Type) ||
+            !VanillaProjectileExplosionFacts.TryGetOnKillExplosion(projectile.Type, out _))
+        {
+            return;
+        }
+
+        VanillaPlayerImmunityChannel1458 immunityChannel =
+            VanillaIncomingPlayerDamageFacts1458.GetHostileProjectileImmunityChannel(projectile.Type);
+        foreach (RuntimePlayerMember target in players.Members)
+        {
+            if (target.IsDead || !target.HasHealth || target.Life <= 0 || !Intersects(in explosion, target))
+                continue;
+
+            int damage = VanillaIncomingPlayerDamageFacts1458.ResolveHostileProjectileDamage(
+                projectile.Damage,
+                random.Next(-15, 16));
+            if (damage <= 0)
+                continue;
+
+            int hitDirection = ResolveExplosionDirection(in explosion, target);
+            bool killedBefore = target.IsDead;
+            PlayerDamageCommitResult result = players.TryCommitAuthoritativeNpcProjectileDamage(
+                tick,
+                explosion.SourceNpc,
+                projectile.Handle,
+                target.Connection.Player,
+                damage,
+                hitDirection,
+                immunityChannel,
+                out PlayerStateSnapshot committed);
+            if (result == PlayerDamageCommitResult.Rejected)
+                continue;
+
+            if (result == PlayerDamageCommitResult.AvoidedByGodMode)
+            {
+                HostileGodModeAvoidances++;
+                continue;
+            }
+
+            HostileCommittedHits++;
+            if (!killedBefore && committed.IsDead)
+                HostileKills++;
         }
     }
 

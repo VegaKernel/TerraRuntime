@@ -43,6 +43,19 @@ internal sealed class VanillaProjectileWorldMotionResolver
         float behaviorPositionX = behavior.PositionXOverride ?? current.PositionX;
         float behaviorPositionY = behavior.PositionYOverride ?? current.PositionY;
 
+        if (current.Type == VanillaProjectileIds.SkeletronPrimeBomb && IsPrimeBombPlatformContact(in current, in definition))
+        {
+            next = new ProjectileSimulationStepResult(
+                new ProjectileStateUpdate(
+                    current.Type, current.Spawner, behaviorPositionX, behaviorPositionY, velocityX, velocityY,
+                    new ProjectileAiState(behavior.Ai0, behavior.Ai1Override ?? current.Ai.Ai1, current.Ai.Ai2),
+                    current.BannerIdToRespondTo, current.Damage, current.KnockBack, current.OriginalDamage),
+                TimeLeft: 0,
+                Liquid: projectile.Lifecycle.Liquid,
+                TerminationReason: ProjectileSimulationTerminationReason.BehaviorKill);
+            return true;
+        }
+
         if (behavior.Kill)
         {
             next = new ProjectileSimulationStepResult(
@@ -142,6 +155,19 @@ internal sealed class VanillaProjectileWorldMotionResolver
             bombCollisionHandled = true;
         }
 
+        bool thornBallCollisionHandled = false;
+        if (tileImpact && current.Type == VanillaProjectileIds.PlanteraThornBall &&
+            definition.AiStyle == VanillaProjectileAiStyles.BouncyBall)
+        {
+            // Projectile.Update aiStyle-14 type 277 rebounds horizontal impacts at 90%. Downward impacts
+            // above 3 px/update rebound Y at 90%; gentler vertical contacts retain the collision-clamped Y.
+            if (collideX)
+                collidedVelocityX = velocityX * -0.9f;
+            if (collideY && velocityY > 3f)
+                collidedVelocityY = velocityY * -0.9f;
+            thornBallCollisionHandled = true;
+        }
+
         bool rainbowRodControlledCollisionHandled = false;
         if (tileImpact && current.Type == VanillaProjectileIds.RainbowRodBullet &&
             definition.AiStyle == VanillaProjectileAiStyles.MagicMissile && resolvedAi0 >= 0f)
@@ -193,7 +219,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
 
         float positionX = behaviorPositionX;
         float positionY = behaviorPositionY;
-        if (tileImpact && !bombCollisionHandled && !golemFireballCollisionHandled && !rainbowRodControlledCollisionHandled)
+        if (tileImpact && !bombCollisionHandled && !golemFireballCollisionHandled && !thornBallCollisionHandled && !rainbowRodControlledCollisionHandled)
         {
             // Supported aiStyle-1/2 families use the generic impact fallback: movement first advances by the
             // collision-clamped velocity, Kill() expires the projectile, then UpdatePosition reaches its common tail.
@@ -261,7 +287,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
                     ? ProjectileSimulationTerminationReason.LifetimeExpired
                     : ProjectileSimulationTerminationReason.None;
         }
-        else if (rainbowRodControlledCollisionHandled)
+        else if (rainbowRodControlledCollisionHandled || thornBallCollisionHandled)
         {
             timeLeft = sourceTimeLeft - 1;
             terminationReason = timeLeft <= 0
@@ -279,6 +305,22 @@ internal sealed class VanillaProjectileWorldMotionResolver
         }
         next = new ProjectileSimulationStepResult(state, timeLeft, liquid, terminationReason);
         return true;
+    }
+
+    private bool IsPrimeBombPlatformContact(
+        in ProjectileSnapshot projectile,
+        in VanillaProjectileDefinition definition)
+    {
+        float centerX = projectile.PositionX + definition.Width * 0.5f;
+        float centerY = projectile.PositionY + definition.Height * 0.5f;
+        int tileX = (int)(centerX / 16f);
+        int tileY = (int)(centerY / 16f);
+        if ((uint)tileX >= (uint)tiles.Dimensions.WidthTiles || (uint)tileY >= (uint)tiles.Dimensions.HeightTiles)
+            return false;
+
+        WorldTile tile = tiles.Get(tileX, tileY);
+        return tile.IsActive && !tile.IsActuated &&
+               (VanillaTileIds.IsPlatform(tile.TileType) || tile.Type == 380);
     }
 
     private void ApplyPostAiWind(

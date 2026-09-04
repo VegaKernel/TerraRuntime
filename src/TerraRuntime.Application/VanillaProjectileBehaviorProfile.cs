@@ -27,7 +27,9 @@ internal enum VanillaProjectileBehaviorFamily : byte
     SpazmatismEyeFire = 14,
     HostileStraightNoGravity = 15,
     CultistFireball = 16,
-    QueenSlimeGel = 17
+    QueenSlimeGel = 17,
+    SkeletronPrimeBomb = 18,
+    PlanteraThornBall = 19
 }
 
 /// <summary>
@@ -157,6 +159,22 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         RejectServerOwned: false,
         ExemptFromPreAiWorldBounds: false);
 
+    private static readonly VanillaProjectileBehaviorProfile SkeletronPrimeBombProfile = new(
+        VanillaProjectileBehaviorFamily.SkeletronPrimeBomb,
+        VanillaProjectileAiStyles.Bomb,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile PlanteraThornBallProfile = new(
+        VanillaProjectileBehaviorFamily.PlanteraThornBall,
+        VanillaProjectileAiStyles.BouncyBall,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
     private static readonly VanillaProjectileBehaviorProfile BoomerangProfile = new(
         VanillaProjectileBehaviorFamily.Boomerang,
         VanillaProjectileAiStyles.Boomerang,
@@ -214,6 +232,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.PlanteraSeed || type == VanillaProjectileIds.PlanteraPoisonSeed)
         {
             profile = PlanteraSeedProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PlanteraThornBall)
+        {
+            profile = PlanteraThornBallProfile;
             return true;
         }
 
@@ -288,6 +312,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (IsThrown(type))
         {
             profile = ThrownProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SkeletronPrimeBomb)
+        {
+            profile = SkeletronPrimeBombProfile;
             return true;
         }
 

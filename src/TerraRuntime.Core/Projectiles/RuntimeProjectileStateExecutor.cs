@@ -81,7 +81,8 @@ public readonly record struct ProjectileTerminationCommit(
     ProjectileSnapshot FinalProjectile,
     ProjectileSimulationTerminationReason Reason,
     bool CombatTrusted,
-    PlayerHandle TrustedOwner);
+    PlayerHandle TrustedOwner,
+    NpcHandle SourceNpc = default);
 
 public interface IProjectileTerminationCommitSink
 {
@@ -217,6 +218,8 @@ public sealed class RuntimeProjectileStateExecutor
             PlayerHandle trustedOwner = default;
             if (wasCombatTrusted)
                 _projectiles.TryGetCombatTrustedOwner(projectile.Handle, out trustedOwner);
+            NpcHandle sourceNpc = default;
+            _projectiles.TryGetServerNpcSource(projectile.Handle, out sourceNpc);
 
             ProjectileStateUpdate finalState = finalResult.State;
             if (_projectiles.TryCommitSimulationStep(
@@ -245,7 +248,8 @@ public sealed class RuntimeProjectileStateExecutor
                         committed,
                         finalResult.TerminationReason,
                         wasCombatTrusted,
-                        trustedOwner);
+                        trustedOwner,
+                        sourceNpc);
                     _terminationSink.ProjectileTerminated(in termination);
                 }
             }

@@ -7,6 +7,7 @@ namespace TerraRuntime;
 internal readonly record struct RuntimeProjectileExplosionEvent(
     ProjectileSnapshot Projectile,
     PlayerHandle TrustedOwner,
+    NpcHandle SourceNpc,
     float Left,
     float Top,
     int Width,
@@ -38,7 +39,9 @@ internal sealed class RuntimeProjectileExplosionQueue : IProjectileTerminationCo
 
     public void ProjectileTerminated(in ProjectileTerminationCommit termination)
     {
-        if (!termination.CombatTrusted || !termination.TrustedOwner.IsAssigned ||
+        bool trustedPlayerSource = termination.CombatTrusted && termination.TrustedOwner.IsAssigned;
+        bool trustedNpcSource = termination.SourceNpc.IsAssigned;
+        if ((!trustedPlayerSource && !trustedNpcSource) ||
             termination.Reason == ProjectileSimulationTerminationReason.WorldBounds ||
             !VanillaProjectileExplosionFacts.TryGetOnKillExplosion(
                 termination.FinalProjectile.Type,
@@ -58,10 +61,15 @@ internal sealed class RuntimeProjectileExplosionQueue : IProjectileTerminationCo
         ProjectileSnapshot final = termination.FinalProjectile;
         float centerX = final.PositionX + sourceDefinition.Width * 0.5f;
         float centerY = final.PositionY + sourceDefinition.Height * 0.5f;
-        ProjectileSnapshot prepared = final with { KnockBack = explosion.KnockBack };
+        ProjectileSnapshot prepared = final with
+        {
+            Damage = explosion.DamageOverride ?? final.Damage,
+            KnockBack = explosion.KnockBack
+        };
         events[count++] = new RuntimeProjectileExplosionEvent(
             prepared,
             termination.TrustedOwner,
+            termination.SourceNpc,
             centerX - explosion.Width * 0.5f,
             centerY - explosion.Height * 0.5f,
             explosion.Width,

@@ -463,4 +463,7 @@ internal readonly record struct RuntimeConnectionRouteSnapshot(
     WorldRuntimeIdentity Runtime,
     PlayerHandle? Player,
     string? PlayerName,
-    TerraRuntime.Core.PlayerJoinState? JoinState);
+    TerraRuntime.Core.PlayerJoinState? JoinState)
+{
+    public long ConnectionId => Source.Value;
+}

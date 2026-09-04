@@ -247,6 +247,71 @@ internal static class VanillaProjectileBehaviorStepper
                 // counter is collision-owned and advances only when the fireball actually hits tiles.
                 break;
 
+            case VanillaProjectileBehaviorFamily.SkeletronPrimeBomb:
+                // TerrariaServer 1.4.5.8 AI_016 type 102. The dedicated server is Main.myPlayer for NPC-owned
+                // hostile projectiles, so a grounded bomb or a fuse at <=3 ticks reaches Kill() from AI itself.
+                if (velocityY > 10f)
+                    velocityY = 10f;
+                if (velocityY == 0f || context.CurrentTimeLeft <= 3)
+                {
+                    next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0, Kill: true);
+                    return true;
+                }
+                ai0 += 1f;
+                if (ai0 > 5f)
+                {
+                    ai0 = 10f;
+                    velocityY += 0.2f;
+                }
+                break;
+
+            case VanillaProjectileBehaviorFamily.PlanteraThornBall:
+            {
+                // TerrariaServer 1.4.5.8 aiStyle 14, type 277. Expert mode steers only X toward
+                // Player.FindClosest and then caps the complete velocity vector to 16 px/update.
+                if (context.ExpertMode)
+                {
+                    if (!TryFindClosestPlayer(in current, in definition, context.PlayerSnapshots, out float targetX, out float targetY))
+                    {
+                        next = default;
+                        return false;
+                    }
+                    float centerX = current.PositionX + definition.Width * 0.5f;
+                    float centerY = current.PositionY + definition.Height * 0.5f;
+                    float dx = targetX - centerX;
+                    float dy = targetY - centerY;
+                    float distance = MathF.Sqrt(dx * dx + dy * dy);
+                    if (distance > 0f)
+                    {
+                        float desiredX = dx / distance * 12f;
+                        velocityX = (velocityX * 199f + desiredX) / 200f;
+                    }
+                    float speed = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
+                    if (speed > 16f)
+                    {
+                        velocityX = velocityX / speed * 16f;
+                        velocityY = velocityY / speed * 16f;
+                    }
+                }
+
+                ai0 += 1f;
+                if (ai0 > 15f)
+                {
+                    ai0 = 15f;
+                    if (velocityY == 0f && velocityX != 0f)
+                    {
+                        velocityX *= 0.97f;
+                        if (velocityX is > -0.01f and < 0.01f)
+                        {
+                            next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0, Kill: true);
+                            return true;
+                        }
+                    }
+                    velocityY += 0.2f;
+                }
+                break;
+            }
+
             case VanillaProjectileBehaviorFamily.Bomb:
                 // TerrariaServer 1.4.5.8 Projectile.AI_016_Bombs for launcher projectile types 133..144.
                 // Presentation-only rotation/dust/sound are intentionally omitted. Tile impact bounce/arming is

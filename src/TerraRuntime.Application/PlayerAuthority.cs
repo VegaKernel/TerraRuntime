@@ -404,7 +404,8 @@ internal sealed class PlayerAuthority
 
     private void ApplyPlayerHealth(PlayerHealthRuntimeCommand health)
     {
-        PlayerHealthCommitRequest request = VanillaPlayerVitalsRules.NormalizeHealth(in health.Request);
+        PlayerHealthCommitRequest received = health.Request;
+        PlayerHealthCommitRequest request = VanillaPlayerVitalsRules.NormalizeHealth(in received);
         if (!health.Connection.IsAssigned || health.Connection.Player.Slot != request.PlayerSlot)
         {
             RejectedHealthUpdates++;
