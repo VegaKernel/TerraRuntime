@@ -246,6 +246,18 @@ public sealed class RuntimeProjectileStoreTests
     }
 
     [Fact]
+    public void Player_owned_authoritative_simulation_without_live_owner_does_not_gain_player_combat_provenance()
+    {
+        var store = new RuntimeProjectileStore(capacity: 1);
+        ProjectileStateUpdate state = CreateUpdate(type: 1, positionX: 10f);
+
+        Assert.True(store.TrySpawn(0, in state, out ProjectileSnapshot projectile));
+        Assert.True(store.TryMarkCombatTrusted(projectile.Handle));
+        Assert.True(store.IsCombatTrusted(projectile.Handle));
+        Assert.False(store.TryGetCombatTrustedOwner(projectile.Handle, out _));
+    }
+
+    [Fact]
     public void Source_backed_penetration_is_consumed_only_on_exact_live_generation()
     {
         var store = new RuntimeProjectileStore(capacity: 2);

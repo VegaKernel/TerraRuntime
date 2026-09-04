@@ -153,8 +153,10 @@ public sealed partial class RuntimeProjectileStore
 
 
     /// <summary>
-    /// Marks one exact generation as eligible for server-authoritative combat side effects. This is runtime-only trust
-    /// metadata: it does not change packet 27 state, revision, or replication. Only server-owned command paths call it.
+    /// Marks one exact generation as server-authoritative runtime state. This is runtime-only trust metadata: it does
+    /// not change packet 27 state, revision, or replication. A player-owned generation may be authoritative without an
+    /// exact live <see cref="PlayerHandle"/>; in that case simulation remains server-owned while player combat provenance
+    /// deliberately stays unavailable through <c>TryGetCombatTrustedOwner</c>. Only server-owned command paths call it.
     /// </summary>
     public bool TryMarkCombatTrusted(ProjectileHandle handle, PlayerHandle owner = default)
     {
@@ -168,7 +170,7 @@ public sealed partial class RuntimeProjectileStore
         bool playerOwned = VanillaProjectileOwnership.IsPlayerOwned(state.Update.Spawner);
         if (playerOwned)
         {
-            if (!owner.IsAssigned || owner.Slot.Value != state.Update.Spawner)
+            if (owner.IsAssigned && owner.Slot.Value != state.Update.Spawner)
                 return false;
         }
         else if (owner.IsAssigned)

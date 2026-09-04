@@ -135,6 +135,18 @@ public sealed class ServerRuntimeEaterOfWorldsDamageIntegrationTests
             var request = new PlayerSpawnCommitRequest(session.Slot, 100, 200, 0, 0, 0, 0, 0);
             State.Apply(new PlayerSpawnRuntimeCommand(connection, session, request));
             Assert.Equal(PlayerSpawnCommitResult.Committed, State.LastSpawnCommitResult);
+
+            // This fixture validates NPC death/loot/progression, not authoritative direct-melee calculation. Keep a
+            // canonical selected item present, but use a bow so combat integrity intentionally takes LegacyFallback.
+            var equipment = new PlayerEquipmentCommitRequest(
+                connection.Player.Slot,
+                SlotId: 0,
+                Stack: 1,
+                Prefix: 0,
+                ItemNetId: checked((short)VanillaItemIds.WoodenBow.Value),
+                ItemFlags: 0);
+            State.Apply(new PlayerEquipmentRuntimeCommand(connection, equipment));
+            Assert.Equal(0, State.RejectedPlayerEquipmentUpdates);
             return connection;
         }
 

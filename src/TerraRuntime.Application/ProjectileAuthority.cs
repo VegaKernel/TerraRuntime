@@ -119,15 +119,10 @@ internal sealed class ProjectileAuthority
     {
         ProjectileStateUpdate state = command.State;
         PlayerHandle trustedOwner = default;
-        if (VanillaProjectileOwnership.IsPlayerOwned(state.Spawner))
+        if (VanillaProjectileOwnership.IsPlayerOwned(state.Spawner) &&
+            playerSnapshots.TryGetPlayer(new PlayerSlotId(state.Spawner), out PlayerStateSnapshot owner) &&
+            owner.Player.IsAssigned && owner.Player.Slot.Value == state.Spawner)
         {
-            if (!playerSnapshots.TryGetPlayer(new PlayerSlotId(state.Spawner), out PlayerStateSnapshot owner) ||
-                !owner.Player.IsAssigned || owner.Player.Slot.Value != state.Spawner)
-            {
-                RejectedSpawns++;
-                command.Completion?.TrySetResult(null);
-                return;
-            }
             trustedOwner = owner.Player;
         }
 

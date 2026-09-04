@@ -1830,18 +1830,9 @@ public sealed class VanillaNpcTargetingAiStepper :
             return 3;
         }
 
-        bool shellBroke = source.Simulation.LocalAi.Ai2 == 0f && proposed.Simulation.LocalAi.Ai2 == 1f && proposed.Ai.Ai0 == 1f;
-        if (!shellBroke) return 0;
-        int eyes = Math.Min(3, destination.Length);
-        float ex = proposed.PositionX + 23f, ey = proposed.PositionY + 33f;
-        NpcAiState eyeOwner = new(0f, 0f, 0f, source.Handle.Slot + 1f);
-        for (int i = 0; i < eyes; i++)
-        {
-            float angle = i * MathF.PI * 2f / 3f;
-            destination[i] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordFreeEye, (int)(ex + MathF.Cos(angle) * 180f), (int)(ey + MathF.Sin(angle) * 120f), 0f, 0f, proposed.Target)
-            { InitialAi = new NpcAiState(i * 120f, 0f, 0f, source.Handle.Slot), InitialLocalAi = eyeOwner };
-        }
-        return eyes;
+        // TerrariaServer creates each True Eye from the first lethal retirement of its hand/head part. The core-open
+        // transition only changes core/part state; synthesizing three eyes here duplicates those source-owned spawns.
+        return 0;
     }
 
     private int PlanDukeFishronBubble(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)

@@ -12,7 +12,9 @@ public sealed class ServerRuntimeServerPlayerPerformanceTests
     public void Empty_actor_and_shop_tick_path_stays_below_four_bytes_per_tick_after_warmup()
     {
         var runtime = new ServerRuntimeState();
-        for (int index = 0; index < 32; index++)
+        // The published CoreCLR hot path is allocation-free, but the test-host JIT can still promote Tick and its
+        // callees during the first few dozen invocations. Warm through tiering before measuring steady-state bytes.
+        for (int index = 0; index < 4_096; index++)
             runtime.Tick();
 
         long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
