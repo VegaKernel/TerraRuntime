@@ -16,17 +16,20 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
 {
     private readonly VanillaProjectileWorldMotionResolver worldMotion;
     private readonly IRuntimePlayerSlotSnapshotLookup? playerSnapshots;
+    private readonly bool expertMode;
     private bool windPhysics;
     private float windSpeedCurrent;
     private float windPhysicsStrength;
 
     public VanillaProjectileWorldStateStepper(
         WorldTileStore tiles,
-        IRuntimePlayerSlotSnapshotLookup? playerSnapshots = null)
+        IRuntimePlayerSlotSnapshotLookup? playerSnapshots = null,
+        bool expertMode = false)
     {
         worldMotion = new VanillaProjectileWorldMotionResolver(
             tiles ?? throw new ArgumentNullException(nameof(tiles)));
         this.playerSnapshots = playerSnapshots;
+        this.expertMode = expertMode;
     }
 
     /// <summary>
@@ -87,7 +90,8 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
             windPhysics,
             windSpeedCurrent,
             windPhysicsStrength,
-            playerSnapshots);
+            playerSnapshots,
+            expertMode);
         if (!VanillaProjectileBehaviorStepper.TryStep(
                 in current,
                 in definition,

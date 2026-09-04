@@ -38,6 +38,10 @@ Runtime работает fail-closed, пока одновременно не в�
 | `BasicArrow` | реализован | требуется default `ai[2]`; только явно перечисленные types |
 | `Thrown` | реализован | явное source-backed membership |
 | `Boomerang` | реализован source-backed runtime для type 6 | outbound-таймер, возврат к владельцу, отключение tile collision на return-фазе и проверенное исключение из pre-AI world-bounds |
+| `Bomb` | реализованы launcher types 133..144 | aiStyle-16 физика grenade/mine, impact-fuse прямых rocket и source-backed explosion damage shape; presentation и destructive world side effects остаются отдельно |
+| `HostileStraightArrow` | реализованы server-owned 83/84/100/259 | явный AI_001 путь без gravity и без изменения ai0; сохраняется source ai1 latch первого шага |
+| `PlanteraSeed` | реализованы server-owned 275/276 | отложенная gravity 0.025; в Expert homing, минимум speed 14, отключение tile collision и cap lifetime 180 ticks |
+| `GolemFireball` | реализован server-owned 258 | aiStyle-8 полёт без gravity; collision-owned ai0, четыре полных bounce и завершение на пятом impact |
 
 Green Laser намеренно не спрятан внутри generic basic-arrow пути. Его profile содержит `RejectServerOwned`, потому что dedicated-server owner branch меняет gameplay state, которого текущая authoritative model ещё не представляет.
 
@@ -76,6 +80,7 @@ flowchart TD
 - явную классификацию текущих basic-arrow и thrown types;
 - owner-gated исключение Green Laser;
 - source-backed профиль Enchanted Boomerang с outbound/return-фазами, возвратом к владельцу и отключением tile collision на return-фазе;
+- явные hostile boss/NPC families для прямых beams, Plantera seeds и Golem fireball, включая их нестандартные gravity/collision правила;
 - соответствие profile каждому source-backed definition `aiStyle`;
 - fail-closed поведение при несовпадении definition и runtime profile;
 - отсутствие автоматического вывода поведения для unprofiled projectile.
@@ -92,18 +97,20 @@ flowchart LR
     Trust -->|no| Sync["только movement/replication"]
     Trust -->|yes| Behavior["source-backed behavior profile"]
     Behavior --> Motion["world physics / tile collision / lifetime"]
-    Motion --> NpcPass["deterministic projectile-slot -> NPC-slot AABB pass"]
-    NpcPass --> Intent["ProjectileNpcHitIntent"]
-    Intent --> Damage["существующий NPC damage/death pipeline"]
-    Damage --> Penetration["source-backed penetration consumption"]
+    Motion --> NpcPass["generation-safe NPC AABB pass"]
+    Motion --> PvpPass["generation-safe hostile-player AABB pass"]
+    NpcPass --> Damage["server-owned NPC damage"]
+    PvpPass --> PvpDamage["server-owned PvP damage"]
+    Damage --> Penetration["source-backed penetration"]
+    PvpDamage --> Penetration
 ```
 
-Runtime-only combat trust привязан к точной generation. Projectile, созданный через server runtime command path, может быть помечен как combat-trusted; новая generation из клиентского packet 27 **не** становится trusted только потому, что owner byte совпал с connection. После пометки generation как combat-trusted владелец через packet 27/29 уже не может переписать её position/velocity/AI, identity/damage-поля или досрочно уничтожить. Untrusted compatibility-generation сохраняет bounded owner updates, но не допускается к authoritative NPC combat. Это не даёт новому server-side NPC hit pass превратить непроверенный клиентский projectile claim в authoritative world damage.
+Combat trust привязан к точной generation. Server-created generation может быть trusted напрямую, а client packet-27 generation пересекает ту же границу только после strict source-backed provenance. Сейчас admitted client paths покрывают обычные ранние bows/arrows, basic guns с Musket Ball/Silver Bullet, Grenade Launcher/Rocket Launcher/Proximity Mine Launcher с Rocket I-IV и selected-stack Shuriken/Bone/Throwing Knife/Poisoned Knife/Rotten Egg/Star Anise/Bone Dagger. Для rocket-ammo воспроизводится vanilla transform `base projectile + ammo offset`, а packet projectile type не принимается за истину. Provenance проверяет selected weapon, первый совместимый ammo, projectile transform, server-calculated damage/knockback, launch-speed magnitude, допустимые нулевые `ai[]`, spawn distance и source-backed use cadence; расход ammo/throwable коммитится только сервером. Unsupported sources остаются compatibility state и не могут наносить authoritative damage. После promotion владелец через packet 27/29 уже не может переписать position/velocity/AI, identity/damage-поля или досрочно уничтожить generation.
 
-Для combat-trusted player projectiles текущий hit pass допускает только behavior profiles с уже реализованными source-backed collision/penetration semantics. Первый slice покрывает выбранные `BasicArrow`/`Thrown` projectiles и source-backed Enchanted Boomerang, выбирает live generation-safe NPC по source-backed AABB geometry, применяет bounded baseline cooldown для пары projectile/NPC, коммитит damage/death через существующий NPC combat pipeline и только после успешного hit расходует source-backed penetration. Positive penetration уменьшается; последний hit despawn-ит точную generation; infinite penetration остаётся активным. Порядок детерминирован physical projectile slot, затем physical NPC slot.
+Для combat-trusted player projectiles текущие hit passes допускают только behavior profiles, для которых представлены source-backed collision/penetration semantics. NPC-hit выбирает live generation-safe target по source-backed AABB geometry, применяет ordinary shared owner/NPC immunity baseline для admitted multi-hit families, permanent projectile-local NPC immunity для grenade variants 133/136/139/142, рассчитывает damage variance/crit/armor penetration из server-owned combat state, коммитит через существующий NPC pipeline и расходует penetration только после успешного hit. Отдельный generation-safe PvP pass выбирает hostile legal players, отсекает same-team targets, рассчитывает PvP damage без packet 117, применяет vanilla 40-tick projectile/player immunity baseline и расходует тот же source-backed penetration state. Positive penetration уменьшается, последний hit despawn-ит точную generation, infinite penetration остаётся активным.
 
-World motion уже владеет tile collision, liquid contact, world bounds и source-backed lifetime. Новый pass добавляет entity collision и обычные NPC damage side effects, не возвращая эти обязанности в packet handling.
+World motion уже владеет tile collision, liquid contact, world bounds и source-backed lifetime. Server-owned hostile simulation slice теперь дополнительно исполняет source-backed прямые AI_001 beams Wall of Flesh, Probe, Retinazer и Golem (83/84/100/259), Plantera Seed/Poison Seed (275/276), включая Expert-mode homing и lifetime/tile-collision overrides, а также Golem Fireball (258) с aiStyle-8 collision counter, четырьмя bounce и завершением на пятом impact. Для launcher types 133..144 он также владеет source-backed aiStyle-16 bounce/arming поведением. Когда trusted launcher projectile доходит до vanilla-style `Kill()`, generation-safe termination commit сохраняет trusted owner и final snapshot уже после удаления generation из live-store; bounded same-tick handoff затем применяет к NPC/PvP source-backed `PrepareBombToBlow` AABB 128x128 для I/II или 200x200 для III/IV. В detached projectile snapshot также подставляется source-backed explosion knockback. Поэтому explosion damage остаётся authoritative, хотя live generation уже удалена.
 
-Runtime по-прежнему fail-closed на важных недостающих частях: promotion легитимных client projectiles по weapon/ammo source, полные vanilla projectile AI families, exceptional local/static NPC immunity, player/PvP collision, projectile buffs/debuffs, child/on-hit projectile spawn ordering и type-specific on-hit effects. В частности, client packet-27 projectiles остаются synchronization state, а не authoritative NPC-damage source, пока их weapon/ammo mapping не будет независимо проверен.
+Runtime по-прежнему fail-closed на важных недостающих частях: полном weapon/ammo/provenance coverage за пределами admitted families, включая более поздние rocket-ammo variants; multishot и special spawn parameters; полных vanilla projectile AI families; остальных local/static NPC immunity variants; exceptional hitboxes/target rules; explosive self-hurt/owner-hit semantics; world/tile-destruction side effects Rocket II/IV; projectile buffs/debuffs; child/on-hit projectile spawn ordering и type-specific on-hit/on-kill effects. Поэтому client packet-27 generations вне strict source-backed catalog остаются synchronization/diagnostic state, а не authoritative combat sources.
 
 `ProjectileNpcHitIntentBuilder` остаётся provenance boundary: для player-owned projectile hit owner byte разрешается через `IRuntimePlayerSlotSnapshotLookup` в текущий `PlayerHandle`, поэтому reuse slot не переносит provenance на нового игрока. Server/NPC-origin projectile provenance остаётся fail-closed, пока origin `NpcHandle` не хранится явно.

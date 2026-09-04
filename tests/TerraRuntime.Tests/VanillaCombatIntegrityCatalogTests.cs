@@ -97,6 +97,70 @@ public sealed class VanillaCombatIntegrityCatalogTests
     }
 
     [Fact]
+    public void Gun_pickammo_facts_resolve_bullet_transform_damage_knockback_speed_and_conservation()
+    {
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryGetWeapon(VanillaItemIds.FlintlockPistol, out VanillaProjectileWeaponCombatDefinition weapon));
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryGetBulletAmmo(VanillaItemIds.SilverBullet, out VanillaProjectileAmmoCombatDefinition ammo));
+        Assert.True(VanillaItemCombatCatalog.TryGetRangedPrefixModifiers(VanillaPrefixIds.None, out VanillaCombatPrefixModifiers prefix));
+        VanillaPlayerCombatSnapshot attacker = VanillaPlayerCombatSnapshot.Baseline;
+
+        Assert.Equal(VanillaProjectileAmmoFamily.Bullet, weapon.AmmoFamily);
+        Assert.Equal(VanillaProjectileIds.SilverBullet, ammo.ProjectileType);
+        Assert.Equal(22, VanillaProjectileWeaponCombatCatalog.ResolveDamage(in weapon, in ammo, in prefix, in attacker));
+        Assert.Equal(4f, VanillaProjectileWeaponCombatCatalog.ResolveKnockBack(in weapon, in ammo, in prefix, in attacker));
+        VanillaLaunchSpeedEnvelope speed = VanillaProjectileWeaponCombatCatalog.ResolveLaunchSpeedEnvelope(in weapon, in ammo, in prefix, in attacker);
+        Assert.Equal(10.5f, speed.CanonicalMagnitude, 3);
+        Assert.False(VanillaProjectileWeaponCombatCatalog.ShouldConserveAmmo(in weapon, in ammo, in attacker, -1, -1));
+
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryGetWeapon(VanillaItemIds.Minishark, out VanillaProjectileWeaponCombatDefinition minishark));
+        Assert.True(VanillaProjectileWeaponCombatCatalog.ShouldConserveAmmo(in minishark, in ammo, in attacker, 0, -1));
+        Assert.False(VanillaProjectileWeaponCombatCatalog.ShouldConserveAmmo(in minishark, in ammo, in attacker, 1, -1));
+    }
+
+    [Fact]
+    public void Rocket_pickammo_facts_apply_vanilla_launcher_base_plus_ammo_offset()
+    {
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryGetWeapon(
+            VanillaItemIds.GrenadeLauncher, out VanillaProjectileWeaponCombatDefinition grenadeLauncher));
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryGetWeapon(
+            VanillaItemIds.RocketLauncher, out VanillaProjectileWeaponCombatDefinition rocketLauncher));
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryGetWeapon(
+            VanillaItemIds.ProximityMineLauncher, out VanillaProjectileWeaponCombatDefinition mineLauncher));
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryGetRocketAmmo(
+            VanillaItemIds.RocketIV, out VanillaProjectileAmmoCombatDefinition rocketIv));
+        Assert.True(VanillaItemCombatCatalog.TryGetRangedPrefixModifiers(
+            VanillaPrefixIds.None, out VanillaCombatPrefixModifiers prefix));
+        VanillaPlayerCombatSnapshot attacker = VanillaPlayerCombatSnapshot.Baseline;
+
+        Assert.Equal(VanillaProjectileAmmoFamily.Rocket, grenadeLauncher.AmmoFamily);
+        Assert.Equal(VanillaProjectileAmmoTransform.AddToWeaponProjectile, rocketIv.Transform);
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryResolveProjectileType(
+            in grenadeLauncher, in rocketIv, out ProjectileTypeId grenadeIv));
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryResolveProjectileType(
+            in rocketLauncher, in rocketIv, out ProjectileTypeId rocketProjectileIv));
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryResolveProjectileType(
+            in mineLauncher, in rocketIv, out ProjectileTypeId mineIv));
+        Assert.Equal(VanillaProjectileIds.GrenadeIV, grenadeIv);
+        Assert.Equal(VanillaProjectileIds.RocketIV, rocketProjectileIv);
+        Assert.Equal(VanillaProjectileIds.ProximityMineIV, mineIv);
+
+        Assert.Equal(125, VanillaProjectileWeaponCombatCatalog.ResolveDamage(
+            in grenadeLauncher, in rocketIv, in prefix, in attacker));
+        Assert.Equal(10f, VanillaProjectileWeaponCombatCatalog.ResolveKnockBack(
+            in grenadeLauncher, in rocketIv, in prefix, in attacker));
+        VanillaLaunchSpeedEnvelope speed = VanillaProjectileWeaponCombatCatalog.ResolveLaunchSpeedEnvelope(
+            in grenadeLauncher, in rocketIv, in prefix, in attacker);
+        Assert.Equal(10f, speed.CanonicalMagnitude, 3);
+    }
+
+    [Fact]
+    public void Later_rocket_ammo_ids_are_classified_but_fail_closed_until_their_pickammo_slice_is_implemented()
+    {
+        Assert.True(VanillaProjectileWeaponCombatCatalog.IsRocketAmmoType(new ItemTypeId(4445)));
+        Assert.False(VanillaProjectileWeaponCombatCatalog.TryGetRocketAmmo(new ItemTypeId(4445), out _));
+    }
+
+    [Fact]
     public void Pvp_target_mitigation_is_equipment_and_difficulty_aware()
     {
         Assert.True(VanillaPlayerCombatEquipmentCatalog.TryBuild(

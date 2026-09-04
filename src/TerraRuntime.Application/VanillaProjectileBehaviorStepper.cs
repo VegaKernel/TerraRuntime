@@ -13,7 +13,8 @@ internal readonly record struct VanillaProjectileBehaviorContext(
     bool WindPhysics,
     float WindSpeedCurrent,
     float WindPhysicsStrength,
-    IRuntimePlayerSlotSnapshotLookup? PlayerSnapshots = null);
+    IRuntimePlayerSlotSnapshotLookup? PlayerSnapshots = null,
+    bool ExpertMode = false);
 
 /// <summary>State produced by one supported vanilla projectile AI-family step before world motion/collision.</summary>
 internal readonly record struct VanillaProjectileBehaviorResult(
@@ -24,7 +25,8 @@ internal readonly record struct VanillaProjectileBehaviorResult(
     float? PositionXOverride = null,
     float? PositionYOverride = null,
     bool Kill = false,
-    bool? TileCollideOverride = null);
+    bool? TileCollideOverride = null,
+    int? TimeLeftOverride = null);
 
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 projectile behavior that is independent of tile/world queries.
@@ -111,6 +113,107 @@ internal static class VanillaProjectileBehaviorStepper
 
                 if (velocityY > MaximumArrowFallSpeed)
                     velocityY = MaximumArrowFallSpeed;
+                break;
+
+            case VanillaProjectileBehaviorFamily.HostileStraightArrow:
+                // AI_001 no-gravity switch: WoF/Probe/Retinazer/Golem hostile beams do not advance ai[0]
+                // and therefore never enter the common arrow gravity branch. Their first AI step only flips ai[1]
+                // for a presentation sound, which still belongs to synchronized projectile AI state.
+                if (current.Ai.Ai1 == 0f)
+                    ai1Override = 1f;
+                break;
+
+            case VanillaProjectileBehaviorFamily.PlanteraSeed:
+            {
+                // Types 275/276 increment ai[0] through the common AI_001 gate but replace ordinary arrow gravity
+                // with a much later 0.025f fall. Expert mode additionally steers toward Player.FindClosest,
+                // disables tile collision and caps the remaining lifetime at 180 before Update decrements it.
+                ai0 += 1f;
+                if (current.Ai.Ai1 == 0f)
+                    ai1Override = 1f;
+                if (ai0 >= 35f)
+                {
+                    ai0 = 35f;
+                    velocityY += 0.025f;
+                }
+
+                bool? tileCollideOverride = null;
+                int? timeLeftOverride = null;
+                if (context.ExpertMode)
+                {
+                    if (!TryFindClosestPlayer(in current, in definition, context.PlayerSnapshots, out float planteraTargetX, out float planteraTargetY))
+                    {
+                        next = default;
+                        return false;
+                    }
+
+                    float centerX = current.PositionX + definition.Width * 0.5f;
+                    float centerY = current.PositionY + definition.Height * 0.5f;
+                    float dx = planteraTargetX - centerX;
+                    float dy = planteraTargetY - centerY;
+                    float distance = MathF.Sqrt(dx * dx + dy * dy);
+                    if (distance > 0f)
+                    {
+                        const float desiredSpeed = 18f;
+                        float desiredX = dx / distance * desiredSpeed;
+                        float desiredY = dy / distance * desiredSpeed;
+                        velocityX = (velocityX * 69f + desiredX) / 70f;
+                        velocityY = (velocityY * 69f + desiredY) / 70f;
+
+                        float planteraSpeed = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
+                        if (planteraSpeed is > 0f and < 14f)
+                        {
+                            velocityX = velocityX / planteraSpeed * 14f;
+                            velocityY = velocityY / planteraSpeed * 14f;
+                        }
+                    }
+
+                    tileCollideOverride = false;
+                    timeLeftOverride = 180;
+                }
+
+                next = new VanillaProjectileBehaviorResult(
+                    velocityX,
+                    velocityY,
+                    ai0,
+                    ai1Override,
+                    TileCollideOverride: tileCollideOverride,
+                    TimeLeftOverride: timeLeftOverride);
+                return true;
+            }
+
+            case VanillaProjectileBehaviorFamily.GolemFireball:
+                // AI_008 type 258 is an explicit no-gravity/no-counter exception. Its authoritative ai[0]
+                // counter is collision-owned and advances only when the fireball actually hits tiles.
+                break;
+
+            case VanillaProjectileBehaviorFamily.Bomb:
+                // TerrariaServer 1.4.5.8 Projectile.AI_016_Bombs for launcher projectile types 133..144.
+                // Presentation-only rotation/dust/sound are intentionally omitted. Tile impact bounce/arming is
+                // resolved by VanillaProjectileWorldMotionResolver because it depends on collision results.
+                ai0 += 1f;
+                switch ((current.Type.Value - 133) % 3)
+                {
+                    case 0: // Grenade I..IV.
+                        if (ai0 > 15f)
+                        {
+                            if (velocityY == 0f)
+                                velocityX *= 0.95f;
+                            velocityY += 0.2f;
+                        }
+                        break;
+                    case 1: // Rocket I..IV: straight flight until impact.
+                        break;
+                    case 2: // Proximity Mine I..IV.
+                        velocityY += 0.2f;
+                        velocityX *= 0.97f;
+                        velocityY *= 0.97f;
+                        if (velocityX is > -0.1f and < 0.1f)
+                            velocityX = 0f;
+                        if (velocityY is > -0.1f and < 0.1f)
+                            velocityY = 0f;
+                        break;
+                }
                 break;
 
             case VanillaProjectileBehaviorFamily.Boomerang:

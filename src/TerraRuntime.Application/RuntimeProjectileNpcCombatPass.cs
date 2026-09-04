@@ -26,6 +26,8 @@ internal sealed class RuntimeProjectileNpcCombatPass
     private readonly PlayerSessionGeneration[] ownerGenerations = new PlayerSessionGeneration[PlayerSlotCount];
     private readonly long[] lastOwnerNpcHitTick;
     private readonly NpcGeneration[] lastOwnerNpcHitGeneration;
+    private readonly ProjectileGeneration[] lastLocalProjectileHitGeneration;
+    private readonly NpcGeneration[] lastLocalNpcHitGeneration;
 
     public RuntimeProjectileNpcCombatPass(
         RuntimeProjectileStore projectiles,
@@ -45,6 +47,9 @@ internal sealed class RuntimeProjectileNpcCombatPass
         npcBuffer = new NpcSnapshot[npcs.Capacity];
         lastOwnerNpcHitTick = new long[checked(PlayerSlotCount * npcs.Capacity)];
         lastOwnerNpcHitGeneration = new NpcGeneration[lastOwnerNpcHitTick.Length];
+        int localImmunityCells = checked(projectiles.Capacity * npcs.Capacity);
+        lastLocalProjectileHitGeneration = new ProjectileGeneration[localImmunityCells];
+        lastLocalNpcHitGeneration = new NpcGeneration[localImmunityCells];
         Array.Fill(lastOwnerNpcHitTick, long.MinValue);
     }
 
@@ -62,7 +67,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
         {
             ProjectileSnapshot projectile = projectileBuffer[projectileIndex];
             if (!projectiles.IsCombatTrusted(projectile.Handle) ||
-                !IsEligible(in projectile, out VanillaProjectileDefinition projectileDefinition, out VanillaProjectileBehaviorProfile behaviorProfile))
+                !IsEligible(in projectile, out VanillaProjectileDefinition projectileDefinition, out _))
             {
                 continue;
             }
@@ -74,6 +79,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
                 continue;
             }
             bool sharedOwnerImmunity = VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(projectile.Type);
+            bool permanentLocalImmunity = VanillaProjectileNpcCombatFacts.UsesPermanentLocalNpcImmunity(projectile.Type);
 
             bool projectileEnded = false;
             for (int npcIndex = 0; npcIndex < npcCount; npcIndex++)
@@ -81,31 +87,34 @@ internal sealed class RuntimeProjectileNpcCombatPass
                 NpcSnapshot target = npcBuffer[npcIndex];
                 if (!IsEligibleTarget(in target, out VanillaNpcHitboxSize npcHitbox) ||
                     !Intersects(in projectile, in projectileDefinition, in target, in npcHitbox) ||
-                    (sharedOwnerImmunity && IsOwnerNpcOnCooldown(ownerRow, target.Handle, tick)))
+                    (sharedOwnerImmunity && IsOwnerNpcOnCooldown(ownerRow, target.Handle, tick)) ||
+                    (permanentLocalImmunity && IsLocalNpcImmune(projectile.Handle, target.Handle)))
                 {
                     continue;
                 }
 
                 int hitDirection = projectile.VelocityX > 0.01f ? 1 : projectile.VelocityX < -0.01f ? -1 : 0;
-                int sourceDamage = projectile.Damage;
-                int armorPenetration = 0;
-                bool critical = false;
-                if (behaviorProfile.Family == VanillaProjectileBehaviorFamily.BasicArrow)
+                int critRoll = random.Next(1, 101);
+                int damageVariation = random.Next(-15, 16);
+                if (!VanillaProjectileCombatFacts.TryResolvePveHit(
+                        projectile.Type,
+                        projectile.Damage,
+                        in ownerCombat,
+                        critRoll,
+                        damageVariation,
+                        out VanillaProjectileResolvedHit hit))
                 {
-                    // Projectile.Damage stores the authoritative pre-hit bow+ammo damage. Vanilla Damage() applies
-                    // DamageVar and ranged crit at collision time; use the current authoritative player snapshot.
-                    sourceDamage = Math.Max(1, (int)Math.Round(
-                        projectile.Damage * (1f + random.Next(-15, 16) * 0.01f)));
-                    critical = random.Next(1, 101) <= Math.Clamp(ownerCombat.RangedCrit, 0, 100);
-                    armorPenetration = ownerCombat.GetArmorPenetration(melee: false);
+                    continue;
                 }
                 RuntimeProjectileNpcDamageResult result = combat.TryStrikeProjectile(
-                    in projectile, target.Handle, hitDirection, sourceDamage, armorPenetration, critical);
+                    in projectile, target.Handle, hitDirection, hit.Damage, hit.ArmorPenetration, hit.Critical);
                 if (result == RuntimeProjectileNpcDamageResult.Rejected)
                     continue;
 
                 if (sharedOwnerImmunity)
                     MarkOwnerNpcCooldown(ownerRow, target.Handle, tick);
+                if (permanentLocalImmunity)
+                    MarkLocalNpcImmunity(projectile.Handle, target.Handle);
                 CommittedHits++;
                 if (result == RuntimeProjectileNpcDamageResult.Killed)
                     Kills++;
@@ -123,6 +132,71 @@ internal sealed class RuntimeProjectileNpcCombatPass
 
             if (projectileEnded)
                 continue;
+        }
+    }
+
+    public void TickExplosions(ReadOnlySpan<RuntimeProjectileExplosionEvent> explosions)
+    {
+        if (explosions.IsEmpty)
+            return;
+
+        long tick = tickProvider();
+        int npcCount = npcs.CopyActive(npcBuffer);
+        for (int explosionIndex = 0; explosionIndex < explosions.Length; explosionIndex++)
+        {
+            RuntimeProjectileExplosionEvent explosion = explosions[explosionIndex];
+            ProjectileSnapshot projectile = explosion.Projectile;
+            if (!projectile.IsActive || projectile.Damage <= 0 ||
+                !VanillaProjectileOwnership.IsPlayerOwned(projectile.Spawner) ||
+                VanillaProjectileFacts.IsHostile(projectile.Type) ||
+                !VanillaProjectileExplosionFacts.TryGetOnKillExplosion(projectile.Type, out _) ||
+                !VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(projectile.Type, out _) ||
+                !TryResolveOwnerRow(explosion.TrustedOwner, out int ownerRow) ||
+                !players.TryCaptureCombatSnapshot(explosion.TrustedOwner, out VanillaPlayerCombatSnapshot ownerCombat))
+            {
+                continue;
+            }
+
+            bool sharedOwnerImmunity = VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(projectile.Type);
+            bool permanentLocalImmunity = VanillaProjectileNpcCombatFacts.UsesPermanentLocalNpcImmunity(projectile.Type);
+            for (int npcIndex = 0; npcIndex < npcCount; npcIndex++)
+            {
+                NpcSnapshot target = npcBuffer[npcIndex];
+                if (!IsEligibleTarget(in target, out VanillaNpcHitboxSize npcHitbox) ||
+                    !Intersects(in explosion, in target, in npcHitbox) ||
+                    (sharedOwnerImmunity && IsOwnerNpcOnCooldown(ownerRow, target.Handle, tick)) ||
+                    (permanentLocalImmunity && IsLocalNpcImmune(projectile.Handle, target.Handle)))
+                {
+                    continue;
+                }
+
+                int hitDirection = ResolveExplosionDirection(in explosion, in target, in npcHitbox);
+                int critRoll = random.Next(1, 101);
+                int damageVariation = random.Next(-15, 16);
+                if (!VanillaProjectileCombatFacts.TryResolvePveHit(
+                        projectile.Type,
+                        projectile.Damage,
+                        in ownerCombat,
+                        critRoll,
+                        damageVariation,
+                        out VanillaProjectileResolvedHit hit))
+                {
+                    continue;
+                }
+
+                RuntimeProjectileNpcDamageResult result = combat.TryStrikeProjectile(
+                    in projectile, target.Handle, hitDirection, hit.Damage, hit.ArmorPenetration, hit.Critical);
+                if (result == RuntimeProjectileNpcDamageResult.Rejected)
+                    continue;
+
+                if (sharedOwnerImmunity)
+                    MarkOwnerNpcCooldown(ownerRow, target.Handle, tick);
+                if (permanentLocalImmunity)
+                    MarkLocalNpcImmunity(projectile.Handle, target.Handle);
+                CommittedHits++;
+                if (result == RuntimeProjectileNpcDamageResult.Killed)
+                    Kills++;
+            }
         }
     }
 
@@ -145,7 +219,8 @@ internal sealed class RuntimeProjectileNpcCombatPass
 
         return profile.Family is VanillaProjectileBehaviorFamily.BasicArrow or
             VanillaProjectileBehaviorFamily.Thrown or
-            VanillaProjectileBehaviorFamily.Boomerang;
+            VanillaProjectileBehaviorFamily.Boomerang or
+            VanillaProjectileBehaviorFamily.Bomb;
     }
 
     private static bool IsEligibleTarget(in NpcSnapshot target, out VanillaNpcHitboxSize hitbox)
@@ -175,6 +250,32 @@ internal sealed class RuntimeProjectileNpcCombatPass
         float npcBottom = npc.PositionY + npcHitbox.Height;
         return projectileLeft < npcRight && projectileRight > npc.PositionX &&
                projectileTop < npcBottom && projectileBottom > npc.PositionY;
+    }
+
+    private static bool Intersects(
+        in RuntimeProjectileExplosionEvent explosion,
+        in NpcSnapshot npc,
+        in VanillaNpcHitboxSize npcHitbox)
+    {
+        float right = explosion.Left + explosion.Width;
+        float bottom = explosion.Top + explosion.Height;
+        float npcRight = npc.PositionX + npcHitbox.Width;
+        float npcBottom = npc.PositionY + npcHitbox.Height;
+        return explosion.Left < npcRight && right > npc.PositionX &&
+               explosion.Top < npcBottom && bottom > npc.PositionY;
+    }
+
+    private static int ResolveExplosionDirection(
+        in RuntimeProjectileExplosionEvent explosion,
+        in NpcSnapshot target,
+        in VanillaNpcHitboxSize hitbox)
+    {
+        if (explosion.Projectile.VelocityX > 0.01f)
+            return 1;
+        if (explosion.Projectile.VelocityX < -0.01f)
+            return -1;
+        float targetCenter = target.PositionX + hitbox.Width * 0.5f;
+        return targetCenter > explosion.CenterX ? 1 : targetCenter < explosion.CenterX ? -1 : 0;
     }
 
     private bool TryResolveOwnerRow(PlayerHandle trustedOwner, out int ownerRow)
@@ -215,6 +316,22 @@ internal sealed class RuntimeProjectileNpcCombatPass
         int index = ownerRow + target.Slot;
         lastOwnerNpcHitGeneration[index] = target.Generation;
         lastOwnerNpcHitTick[index] = tick;
+    }
+
+    private bool IsLocalNpcImmune(ProjectileHandle projectile, NpcHandle target)
+    {
+        if (!projectile.IsAssigned || !target.IsAssigned)
+            return true;
+        int index = checked(projectile.Slot * npcs.Capacity + target.Slot);
+        return lastLocalProjectileHitGeneration[index] == projectile.Generation &&
+            lastLocalNpcHitGeneration[index] == target.Generation;
+    }
+
+    private void MarkLocalNpcImmunity(ProjectileHandle projectile, NpcHandle target)
+    {
+        int index = checked(projectile.Slot * npcs.Capacity + target.Slot);
+        lastLocalProjectileHitGeneration[index] = projectile.Generation;
+        lastLocalNpcHitGeneration[index] = target.Generation;
     }
 
 }

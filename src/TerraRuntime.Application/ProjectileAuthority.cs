@@ -19,7 +19,7 @@ internal enum ClientProjectileProvenanceResolveResult : byte
 
 internal readonly record struct AuthoritativeClientProjectileSpawn(
     ProjectileStateUpdate State,
-    RuntimePlayerInventoryMutation AmmoMutation,
+    RuntimePlayerInventoryMutation InventoryMutation,
     VanillaLaunchSpeedEnvelope LaunchSpeedEnvelope,
     int UseTimeTicks);
 
@@ -33,6 +33,7 @@ internal sealed class ProjectileAuthority
     private readonly PlayerAuthority players;
     private readonly IRuntimePlayerSlotSnapshotLookup playerSnapshots;
     private readonly RuntimeProjectileStateExecutor executor;
+    private readonly RuntimeProjectileExplosionQueue explosions;
     private readonly IProjectileStateStepper? stepper;
     private readonly RuntimeNpcProjectileReflectionPass reflections;
     private readonly RuntimeProjectileReplicationRegistry? replication;
@@ -53,7 +54,8 @@ internal sealed class ProjectileAuthority
         this.projectiles = projectiles;
         this.players = players;
         this.playerSnapshots = playerSnapshots ?? throw new ArgumentNullException(nameof(playerSnapshots));
-        executor = new RuntimeProjectileStateExecutor(projectiles);
+        explosions = new RuntimeProjectileExplosionQueue(projectiles.Capacity);
+        executor = new RuntimeProjectileStateExecutor(projectiles, terminationSink: explosions);
         this.stepper = stepper;
         reflections = new RuntimeNpcProjectileReflectionPass(npcs, projectiles, playerSnapshots, goodWorld: goodWorld);
         this.replication = replication;
@@ -90,9 +92,12 @@ internal sealed class ProjectileAuthority
         if (stepper is null)
             return false;
 
+        explosions.Reset();
         LastTick = executor.Tick(stepper);
         return true;
     }
+
+    public ReadOnlySpan<RuntimeProjectileExplosionEvent> PendingExplosions => explosions.Events;
 
     public void ApplyReflections() => AppliedReflections += reflections.Tick();
 
@@ -232,10 +237,10 @@ internal sealed class ProjectileAuthority
             if (provenance == ClientProjectileProvenanceResolveResult.Accepted)
             {
                 ProjectileStateUpdate authoritativeState = authoritative.State;
-                RuntimePlayerInventoryMutation ammoMutation = authoritative.AmmoMutation;
+                RuntimePlayerInventoryMutation inventoryMutation = authoritative.InventoryMutation;
                 if (projectiles.TrySpawnVanilla(in authoritativeState, out ProjectileSnapshot trusted) &&
                     projectiles.TryMarkCombatTrusted(trusted.Handle, command.Connection.Player) &&
-                    players.TryCommitInventoryMutation(command.Connection, in ammoMutation))
+                    players.TryCommitInventoryMutation(command.Connection, in inventoryMutation))
                 {
                     MarkTrustedClientUse(command.Connection.Player, tickProvider());
                     AppliedSpawns++;
@@ -340,8 +345,22 @@ internal sealed class ProjectileAuthority
         int selectedSlot = player.SelectedItem;
         if (!VanillaPlayerItemSlotCatalog.IsInventorySlot((short)selectedSlot) ||
             !players.TryGetInventoryItem(connection, selectedSlot, out RuntimePlayerInventoryItem weaponItem) ||
-            weaponItem.IsEmpty ||
-            !VanillaProjectileWeaponCombatCatalog.TryGetWeapon(weaponItem.ItemType, out VanillaProjectileWeaponCombatDefinition weapon))
+            weaponItem.IsEmpty)
+        {
+            return ClientProjectileProvenanceResolveResult.NotApplicable;
+        }
+
+        if (VanillaProjectileWeaponCombatCatalog.TryGetStandaloneWeapon(
+                weaponItem.ItemType,
+                out VanillaStandaloneProjectileWeaponCombatDefinition standaloneWeapon))
+        {
+            return TryResolveStrictStandaloneProjectileSpawn(
+                connection, in player, selectedSlot, in weaponItem, in standaloneWeapon, in packet, out authoritative);
+        }
+
+        if (!VanillaProjectileWeaponCombatCatalog.TryGetWeapon(
+                weaponItem.ItemType,
+                out VanillaProjectileWeaponCombatDefinition weapon))
         {
             return ClientProjectileProvenanceResolveResult.NotApplicable;
         }
@@ -359,27 +378,33 @@ internal sealed class ProjectileAuthority
         if (!players.TryCopyInventory(connection, inventory))
             return ClientProjectileProvenanceResolveResult.Rejected;
 
-        int ammoSlot = FindFirstArrowAmmo(
+        int ammoSlot = FindFirstAmmo(
+            weapon.AmmoFamily,
             inventory,
             VanillaPlayerItemSlotCatalog.CoinSlotStart,
             VanillaPlayerItemSlotCatalog.CoinSlotEndExclusive,
             out RuntimePlayerInventoryItem ammoItem,
             out VanillaProjectileAmmoCombatDefinition ammo);
         if (ammoSlot == -1)
-            ammoSlot = FindFirstArrowAmmo(
+            ammoSlot = FindFirstAmmo(
+                weapon.AmmoFamily,
                 inventory,
                 VanillaPlayerItemSlotCatalog.AmmoSlotStart,
                 VanillaPlayerItemSlotCatalog.AmmoSlotEndExclusive,
                 out ammoItem,
                 out ammo);
         if (ammoSlot == -1)
-            ammoSlot = FindFirstArrowAmmo(
+            ammoSlot = FindFirstAmmo(
+                weapon.AmmoFamily,
                 inventory,
                 VanillaPlayerItemSlotCatalog.MainInventoryStart,
                 VanillaPlayerItemSlotCatalog.CoinSlotEndExclusive,
                 out ammoItem,
                 out ammo);
         if (ammoSlot < 0)
+            return ClientProjectileProvenanceResolveResult.NotApplicable;
+
+        if (!VanillaProjectileWeaponCombatCatalog.TryResolveProjectileType(in weapon, in ammo, out ProjectileTypeId expectedProjectileType))
             return ClientProjectileProvenanceResolveResult.NotApplicable;
 
         int expectedDamage = VanillaProjectileWeaponCombatCatalog.ResolveDamage(
@@ -405,7 +430,7 @@ internal sealed class ProjectileAuthority
         long tick = tickProvider();
         float knockBackTolerance = MathF.Max(0.001f, MathF.Abs(expectedKnockBack) * 0.00001f);
 
-        if (packet.ProjectileType != ammo.ProjectileType.Value ||
+        if (packet.ProjectileType != expectedProjectileType.Value ||
             packet.Damage != expectedDamage ||
             packet.OriginalDamage != 0 ||
             MathF.Abs(packet.KnockBack - expectedKnockBack) > knockBackTolerance ||
@@ -424,7 +449,7 @@ internal sealed class ProjectileAuthority
         float canonicalSpeed = speedEnvelope.CanonicalMagnitude;
         float velocityScale = canonicalSpeed / packetSpeed;
         var state = new ProjectileStateUpdate(
-            ammo.ProjectileType,
+            expectedProjectileType,
             connection.Player.Slot.Value,
             packet.PositionX,
             packet.PositionY,
@@ -436,7 +461,14 @@ internal sealed class ProjectileAuthority
             KnockBack: expectedKnockBack,
             OriginalDamage: 0);
 
-        bool conserveAmmo = attackerCombat.MagicQuiver && ammo.Consumable && Random.Shared.Next(5) == 0;
+        int weaponConservationRoll = weapon.WeaponAmmoConservationOneIn > 0
+            ? Random.Shared.Next(weapon.WeaponAmmoConservationOneIn)
+            : -1;
+        int quiverConservationRoll = weapon.AmmoFamily == VanillaProjectileAmmoFamily.Arrow && attackerCombat.MagicQuiver
+            ? Random.Shared.Next(5)
+            : -1;
+        bool conserveAmmo = VanillaProjectileWeaponCombatCatalog.ShouldConserveAmmo(
+            in weapon, in ammo, in attackerCombat, weaponConservationRoll, quiverConservationRoll);
         RuntimePlayerInventoryItem remainingAmmo = conserveAmmo
             ? ammoItem
             : ammoItem.Stack == 1
@@ -453,7 +485,82 @@ internal sealed class ProjectileAuthority
             ClientProjectileProvenanceResolveResult.Rejected;
     }
 
-    private static int FindFirstArrowAmmo(
+    private ClientProjectileProvenanceResolveResult TryResolveStrictStandaloneProjectileSpawn(
+        ConnectionHandle connection,
+        in PlayerStateSnapshot player,
+        int selectedSlot,
+        in RuntimePlayerInventoryItem weaponItem,
+        in VanillaStandaloneProjectileWeaponCombatDefinition weapon,
+        in TerrariaProjectileUpdateState packet,
+        out AuthoritativeClientProjectileSpawn authoritative)
+    {
+        authoritative = default;
+        if (weaponItem.Prefix != VanillaPrefixIds.None ||
+            weaponItem.Stack <= 0 ||
+            !players.TryCaptureCombatSnapshot(connection, out VanillaPlayerCombatSnapshot attackerCombat))
+        {
+            return ClientProjectileProvenanceResolveResult.NotApplicable;
+        }
+
+        int expectedDamage = VanillaProjectileWeaponCombatCatalog.ResolveStandaloneDamage(in weapon, in attackerCombat);
+        float expectedKnockBack = weapon.BaseKnockBack;
+        VanillaLaunchSpeedEnvelope speedEnvelope =
+            VanillaProjectileWeaponCombatCatalog.ResolveStandaloneLaunchSpeedEnvelope(in weapon);
+        float speedSquared = packet.VelocityX * packet.VelocityX + packet.VelocityY * packet.VelocityY;
+        if (!(speedSquared > 0f) || !float.IsFinite(speedSquared) || !speedEnvelope.IsValid)
+            return ClientProjectileProvenanceResolveResult.Rejected;
+        float packetSpeed = MathF.Sqrt(speedSquared);
+
+        float playerCx = player.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+        float playerCy = player.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+        float dx = packet.PositionX - playerCx;
+        float dy = packet.PositionY - playerCy;
+        long tick = tickProvider();
+        float knockBackTolerance = MathF.Max(0.001f, MathF.Abs(expectedKnockBack) * 0.00001f);
+        if (packet.ProjectileType != weapon.ProjectileType.Value ||
+            packet.Damage != expectedDamage ||
+            packet.OriginalDamage != 0 ||
+            MathF.Abs(packet.KnockBack - expectedKnockBack) > knockBackTolerance ||
+            !speedEnvelope.ContainsMagnitude(packetSpeed) ||
+            MathF.Abs(packet.Ai0) > 0.001f ||
+            MathF.Abs(packet.Ai1) > 0.001f ||
+            MathF.Abs(packet.Ai2) > 0.001f ||
+            dx * dx + dy * dy > weapon.ImpossibleSpawnCenterDistancePixels * weapon.ImpossibleSpawnCenterDistancePixels ||
+            IsTrustedClientUseOnCooldown(connection.Player, tick, weapon.UseTimeTicks))
+        {
+            return ClientProjectileProvenanceResolveResult.Rejected;
+        }
+
+        float canonicalSpeed = speedEnvelope.CanonicalMagnitude;
+        float velocityScale = canonicalSpeed / packetSpeed;
+        var state = new ProjectileStateUpdate(
+            weapon.ProjectileType,
+            connection.Player.Slot.Value,
+            packet.PositionX,
+            packet.PositionY,
+            packet.VelocityX * velocityScale,
+            packet.VelocityY * velocityScale,
+            default,
+            BannerIdToRespondTo: 0,
+            Damage: checked((short)expectedDamage),
+            KnockBack: expectedKnockBack,
+            OriginalDamage: 0);
+
+        RuntimePlayerInventoryItem remaining = !weapon.Consumable
+            ? weaponItem
+            : weaponItem.Stack == 1
+                ? default
+                : weaponItem with { Stack = checked((short)(weaponItem.Stack - 1)) };
+        authoritative = new AuthoritativeClientProjectileSpawn(
+            state,
+            new RuntimePlayerInventoryMutation(checked((short)selectedSlot), remaining),
+            speedEnvelope,
+            weapon.UseTimeTicks);
+        return ClientProjectileProvenanceResolveResult.Accepted;
+    }
+
+    private static int FindFirstAmmo(
+        VanillaProjectileAmmoFamily family,
         ReadOnlySpan<RuntimePlayerInventoryItem> inventory,
         int start,
         int endExclusive,
@@ -465,13 +572,13 @@ internal sealed class ProjectileAuthority
         for (int slot = start; slot < endExclusive; slot++)
         {
             RuntimePlayerInventoryItem candidate = inventory[slot];
-            if (candidate.IsEmpty || !VanillaProjectileWeaponCombatCatalog.IsArrowAmmoType(candidate.ItemType))
+            if (candidate.IsEmpty || !VanillaProjectileWeaponCombatCatalog.IsAmmoType(family, candidate.ItemType))
                 continue;
 
-            // Terraria ammo itself is not prefixable here. Unknown arrow types are recognized as arrows but remain
+            // Terraria ammo itself is not prefixable here. Unknown compatible ammo is recognized by family but remains
             // fail-closed rather than allowing a later supported stack to leapfrog PickAmmo's first valid candidate.
             if (candidate.Prefix != VanillaPrefixIds.None ||
-                !VanillaProjectileWeaponCombatCatalog.TryGetArrowAmmo(candidate.ItemType, out ammo))
+                !VanillaProjectileWeaponCombatCatalog.TryGetAmmo(family, candidate.ItemType, out ammo))
             {
                 return -2;
             }

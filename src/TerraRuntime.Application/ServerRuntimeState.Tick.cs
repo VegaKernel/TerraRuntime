@@ -21,8 +21,9 @@ internal sealed partial class ServerRuntimeState
         _npcs.TickSimulation();
         if (_projectiles.TryTickState())
         {
-            _npcs.TickProjectileInteractions();
-            _projectilePlayerCombat.Tick();
+            ReadOnlySpan<RuntimeProjectileExplosionEvent> explosions = _projectiles.PendingExplosions;
+            _npcs.TickProjectileInteractions(explosions);
+            _projectilePlayerCombat.Tick(explosions);
             _projectiles.ApplyReflections();
         }
         _worldItems.TickInstancedLeases();

@@ -95,6 +95,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
                 ShimmerWet: shimmerWet);
         }
 
+        float resolvedAi0 = behavior.Ai0;
         float collidedVelocityX = velocityX;
         float collidedVelocityY = velocityY;
         bool collideX = false;
@@ -120,6 +121,49 @@ internal sealed class VanillaProjectileWorldMotionResolver
         }
 
         bool tileImpact = collideX || collideY;
+        bool bombCollisionHandled = false;
+        bool rocketArmedByImpact = false;
+        if (tileImpact && definition.AiStyle == VanillaProjectileAiStyles.Bomb && current.Type.Value is >= 133 and <= 144)
+        {
+            // Projectile.Update aiStyle-16 tile collision: launcher grenades/mines bounce at 40% of the incoming
+            // component. Straight rocket variants stop, hide and arm a 3-tick fuse instead of dying immediately.
+            if (collideX)
+                collidedVelocityX = velocityX * -0.4f;
+            if (collideY && velocityY > 0.7f)
+                collidedVelocityY = velocityY * -0.4f;
+
+            if ((current.Type.Value - 133) % 3 == 1)
+            {
+                collidedVelocityX = 0f;
+                collidedVelocityY = 0f;
+                rocketArmedByImpact = true;
+            }
+
+            bombCollisionHandled = true;
+        }
+
+        bool golemFireballCollisionHandled = false;
+        bool golemFireballKilledByImpact = false;
+        if (tileImpact && current.Type == VanillaProjectileIds.GolemFireball &&
+            definition.AiStyle == VanillaProjectileAiStyles.Fireball)
+        {
+            // aiStyle-8 tile collision increments ai[0]. Type 258 bounces changed components at full magnitude
+            // for impacts 1..4; the fifth impact kills after applying the collision-clamped motion.
+            resolvedAi0 += 1f;
+            if (resolvedAi0 >= 5f)
+            {
+                golemFireballKilledByImpact = true;
+            }
+            else
+            {
+                if (collideX)
+                    collidedVelocityX = -velocityX;
+                if (collideY)
+                    collidedVelocityY = -velocityY;
+            }
+            golemFireballCollisionHandled = true;
+        }
+
         float movementX = collidedVelocityX;
         float movementY = collidedVelocityY;
         if (!definition.IgnoreWater && liquid.Wet)
@@ -136,7 +180,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
 
         float positionX = behaviorPositionX;
         float positionY = behaviorPositionY;
-        if (tileImpact)
+        if (tileImpact && !bombCollisionHandled && !golemFireballCollisionHandled)
         {
             // Supported aiStyle-1/2 families use the generic impact fallback: movement first advances by the
             // collision-clamped velocity, Kill() expires the projectile, then UpdatePosition reaches its common tail.
@@ -171,16 +215,46 @@ internal sealed class VanillaProjectileWorldMotionResolver
             positionY,
             collidedVelocityX,
             collidedVelocityY,
-            new ProjectileAiState(behavior.Ai0, behavior.Ai1Override ?? current.Ai.Ai1, current.Ai.Ai2),
+            new ProjectileAiState(resolvedAi0, behavior.Ai1Override ?? current.Ai.Ai1, current.Ai.Ai2),
             current.BannerIdToRespondTo,
             current.Damage,
             current.KnockBack,
             current.OriginalDamage);
 
-        int timeLeft = tileImpact ? 0 : projectile.Lifecycle.TimeLeft - 1;
-        ProjectileSimulationTerminationReason terminationReason = tileImpact
-            ? ProjectileSimulationTerminationReason.TileCollision
-            : ProjectileSimulationTerminationReason.None;
+        int timeLeft;
+        ProjectileSimulationTerminationReason terminationReason;
+        int sourceTimeLeft = behavior.TimeLeftOverride.HasValue
+            ? Math.Min(projectile.Lifecycle.TimeLeft, behavior.TimeLeftOverride.Value)
+            : projectile.Lifecycle.TimeLeft;
+        if (bombCollisionHandled)
+        {
+            // The source sets straight rockets to timeLeft=3 on impact and the common Update tail performs the
+            // ordinary decrement. Grenade/mine variants simply continue their existing fuse/lifetime.
+            timeLeft = rocketArmedByImpact
+                ? Math.Min(sourceTimeLeft, 3) - 1
+                : sourceTimeLeft - 1;
+            terminationReason = timeLeft <= 0
+                ? ProjectileSimulationTerminationReason.LifetimeExpired
+                : ProjectileSimulationTerminationReason.None;
+        }
+        else if (golemFireballCollisionHandled)
+        {
+            timeLeft = golemFireballKilledByImpact ? 0 : sourceTimeLeft - 1;
+            terminationReason = golemFireballKilledByImpact
+                ? ProjectileSimulationTerminationReason.TileCollision
+                : timeLeft <= 0
+                    ? ProjectileSimulationTerminationReason.LifetimeExpired
+                    : ProjectileSimulationTerminationReason.None;
+        }
+        else
+        {
+            timeLeft = tileImpact ? 0 : sourceTimeLeft - 1;
+            terminationReason = tileImpact
+                ? ProjectileSimulationTerminationReason.TileCollision
+                : timeLeft <= 0
+                    ? ProjectileSimulationTerminationReason.LifetimeExpired
+                    : ProjectileSimulationTerminationReason.None;
+        }
         next = new ProjectileSimulationStepResult(state, timeLeft, liquid, terminationReason);
         return true;
     }

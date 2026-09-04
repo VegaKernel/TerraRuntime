@@ -16,6 +16,7 @@ public readonly record struct VanillaPlayerCombatSnapshot(
     float RangedMultDamage,
     float ArrowDamage,
     float ArrowDamageAdditiveStack,
+    float BulletDamage,
     int MeleeCrit,
     int RangedCrit,
     int MagicCrit,
@@ -33,6 +34,7 @@ public readonly record struct VanillaPlayerCombatSnapshot(
         RangedMultDamage: 1f,
         ArrowDamage: 1f,
         ArrowDamageAdditiveStack: 0f,
+        BulletDamage: 1f,
         MeleeCrit: VanillaItemCombatCatalog.VanillaBaseMeleeCrit,
         RangedCrit: 4,
         MagicCrit: 4,
@@ -55,6 +57,9 @@ public readonly record struct VanillaPlayerCombatSnapshot(
     /// <summary>Player.bowEffectiveDamage from the pinned server source.</summary>
     public float BowDamageMultiplier =>
         (RangedDamage / RangedMultDamage + ArrowDamageAdditiveStack) * RangedMultDamage * ArrowDamage;
+
+    /// <summary>Player.gunEffectiveDamage from the pinned server source.</summary>
+    public float GunDamageMultiplier => RangedDamage * BulletDamage;
 
     public int GetArmorPenetration(bool melee) =>
         ArmorPenetration + (melee ? MeleeArmorPenetration : 0);

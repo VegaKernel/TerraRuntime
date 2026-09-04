@@ -362,7 +362,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     }
 
     [Fact]
-    public void World_tree_context_actions_map_rows_to_typed_semantics()
+    public void World_tree_explicit_actions_map_rows_to_typed_semantics()
     {
         using var tree = new SandboxWorldTreeView();
         var arena = new SandboxName("arena");
@@ -378,10 +378,10 @@ public sealed class RuntimeOverviewDashboardInteractionTests
                 new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, arena, PlayerSelector: "#4")
             ]);
 
-        Assert.False(tree.TryInvokeContextActionForSmoke(0));
-        Assert.True(tree.TryInvokeContextActionForSmoke(1));
+        Assert.False(tree.TryInvokeActionForSmoke(0));
+        Assert.True(tree.TryInvokeActionForSmoke(1));
         Assert.Equal(arena, destroyed);
-        Assert.True(tree.TryInvokeContextActionForSmoke(2));
+        Assert.True(tree.TryInvokeActionForSmoke(2));
         Assert.Equal("#4", kicked);
     }
 

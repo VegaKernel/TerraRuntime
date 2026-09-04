@@ -877,6 +877,122 @@ public sealed class VanillaProjectileWorldStateStepperTests
     }
 
     [Fact]
+    public void Launcher_grenade_tile_impact_bounces_and_keeps_its_fuse_alive()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(7, 10, SolidTile(1));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot projectile = CreateSnapshot(
+            positionX: 100f,
+            positionY: 160f,
+            velocityX: 20f,
+            velocityY: 0f) with
+        {
+            Type = VanillaProjectileIds.GrenadeI
+        };
+        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 600);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(-8f, next.State.VelocityX, 5);
+        Assert.Equal(92f, next.State.PositionX, 5);
+        Assert.Equal(599, next.TimeLeft);
+        Assert.Equal(ProjectileSimulationTerminationReason.None, next.TerminationReason);
+    }
+
+    [Fact]
+    public void Straight_launcher_rocket_tile_impact_arms_three_tick_fuse_instead_of_despawning()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(7, 10, SolidTile(1));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot projectile = CreateSnapshot(
+            positionX: 100f,
+            positionY: 160f,
+            velocityX: 20f,
+            velocityY: 0f) with
+        {
+            Type = VanillaProjectileIds.RocketI
+        };
+        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 600);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(0f, next.State.VelocityX, 5);
+        Assert.Equal(0f, next.State.VelocityY, 5);
+        Assert.Equal(100f, next.State.PositionX, 5);
+        Assert.Equal(160f, next.State.PositionY, 5);
+        Assert.Equal(2, next.TimeLeft);
+        Assert.Equal(ProjectileSimulationTerminationReason.None, next.TerminationReason);
+    }
+
+    [Fact]
+    public void Golem_fireball_tile_impacts_bounce_four_times_and_advance_collision_counter()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(7, 10, SolidTile(1));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot projectile = CreateSnapshot(
+            positionX: 100f, positionY: 160f, velocityX: 20f, velocityY: 0f, ai0: 0f) with
+        {
+            Type = VanillaProjectileIds.GolemFireball,
+            Spawner = VanillaProjectileOwnership.ServerOwner
+        };
+        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 300);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(1f, next.State.Ai.Ai0, 5);
+        Assert.Equal(-20f, next.State.VelocityX, 5);
+        Assert.Equal(80f, next.State.PositionX, 5);
+        Assert.Equal(299, next.TimeLeft);
+        Assert.Equal(ProjectileSimulationTerminationReason.None, next.TerminationReason);
+    }
+
+    [Fact]
+    public void Golem_fireball_fifth_tile_impact_terminates_instead_of_bouncing()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(7, 10, SolidTile(1));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot projectile = CreateSnapshot(
+            positionX: 100f, positionY: 160f, velocityX: 20f, velocityY: 0f, ai0: 4f) with
+        {
+            Type = VanillaProjectileIds.GolemFireball,
+            Spawner = VanillaProjectileOwnership.ServerOwner
+        };
+        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 296);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(5f, next.State.Ai.Ai0, 5);
+        Assert.Equal(0, next.TimeLeft);
+        Assert.Equal(ProjectileSimulationTerminationReason.TileCollision, next.TerminationReason);
+    }
+
+    [Fact]
+    public void Expert_plantera_seed_caps_lifetime_before_common_decrement_and_ignores_tiles()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(7, 10, SolidTile(1));
+        var players = new SinglePlayerSnapshotLookup(positionX: 400f, positionY: 146f);
+        var stepper = new VanillaProjectileWorldStateStepper(tiles, players, expertMode: true);
+        ProjectileSnapshot projectile = CreateSnapshot(
+            positionX: 100f, positionY: 160f, velocityX: 10f, velocityY: 0f) with
+        {
+            Type = VanillaProjectileIds.PlanteraSeed,
+            Spawner = VanillaProjectileOwnership.ServerOwner
+        };
+        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 3600);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(179, next.TimeLeft);
+        Assert.True(next.State.PositionX > 100f);
+        Assert.Equal(ProjectileSimulationTerminationReason.None, next.TerminationReason);
+    }
+
+    [Fact]
     public void Uncatalogued_projectile_type_is_left_for_another_behavior_slice()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
@@ -964,6 +1080,31 @@ public sealed class VanillaProjectileWorldStateStepperTests
             LiquidAmount = byte.MaxValue,
             LiquidKind = kind
         };
+
+    private sealed class SinglePlayerSnapshotLookup(float positionX, float positionY) : IRuntimePlayerSlotSnapshotLookup
+    {
+        public bool TryGetPlayer(PlayerSlotId slot, out PlayerStateSnapshot snapshot)
+        {
+            if (slot.Value != 0)
+            {
+                snapshot = default;
+                return false;
+            }
+
+            snapshot = new PlayerStateSnapshot(
+                new PlayerHandle(slot, new PlayerSessionGeneration(1)),
+                new PlayerStateRevision(1),
+                Team: 0, ControlFlags: 0, MovementFlags: 0, MiscFlags1: 0, MiscFlags2: 0,
+                SelectedItem: 0, PositionX: positionX, PositionY: positionY, VelocityX: 0f, VelocityY: 0f,
+                MountType: 0, PotionOfReturnOriginalPositionX: 0f, PotionOfReturnOriginalPositionY: 0f,
+                PotionOfReturnHomePositionX: 0f, PotionOfReturnHomePositionY: 0f,
+                CameraTargetX: 0f, CameraTargetY: 0f)
+            {
+                IsDead = false
+            };
+            return true;
+        }
+    }
 
     private sealed class RecordingCommitSink : IProjectileStateCommitSink
     {

@@ -200,4 +200,52 @@ public sealed class VanillaProjectileDefinitionCatalogTests
         Assert.Equal(collisionOffsetX, definition.CollisionOffsetX);
         Assert.Equal(collisionOffsetY, definition.CollisionOffsetY);
     }
+    [Theory]
+    [InlineData(83, 4, 4, true, false)]
+    [InlineData(84, 4, 4, true, false)]
+    [InlineData(100, 4, 4, true, false)]
+    [InlineData(259, 8, 8, false, true)]
+    public void Terraria_1458_hostile_straight_laser_definitions_match_source(
+        int type, int width, int height, bool tileCollide, bool ignoreWater)
+    {
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(
+            new ProjectileTypeId(type), out VanillaProjectileDefinition definition));
+
+        Assert.Equal(width, definition.Width);
+        Assert.Equal(height, definition.Height);
+        Assert.Equal(VanillaProjectileAiStyles.Arrow, definition.AiStyle);
+        Assert.Equal(tileCollide, definition.TileCollide);
+        Assert.Equal(ignoreWater, definition.IgnoreWater);
+        Assert.Equal(width, definition.CollisionWidth);
+        Assert.Equal(height, definition.CollisionHeight);
+    }
+
+    [Fact]
+    public void Terraria_1458_golem_fireball_definition_matches_source()
+    {
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(
+            VanillaProjectileIds.GolemFireball, out VanillaProjectileDefinition definition));
+
+        Assert.Equal(16, definition.Width);
+        Assert.Equal(16, definition.Height);
+        Assert.Equal(VanillaProjectileAiStyles.Fireball, definition.AiStyle);
+        Assert.True(definition.TileCollide);
+        Assert.False(definition.IgnoreWater);
+    }
+
+    [Theory]
+    [InlineData(275)]
+    [InlineData(276)]
+    public void Terraria_1458_plantera_seed_definitions_match_source(int type)
+    {
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(
+            new ProjectileTypeId(type), out VanillaProjectileDefinition definition));
+
+        Assert.Equal(14, definition.Width);
+        Assert.Equal(14, definition.Height);
+        Assert.Equal(VanillaProjectileAiStyles.Arrow, definition.AiStyle);
+        Assert.True(definition.TileCollide);
+        Assert.False(definition.IgnoreWater);
+    }
+
 }

@@ -35,12 +35,12 @@ A sandbox that is still being materialized has no live game loop and is rendered
 
 The roster is a `ListView`: focus/selection highlights a complete item row rather than selecting text inside the row. Player drag-and-drop still submits the typed Level 1 move operation.
 
-Right-click opens a context menu for the selected semantic row. A live sandbox world exposes `Destroy`; a player exposes `Kick`. Primary world destruction is deliberately not offered. `Kick` requests process-owned connection shutdown through the connection route/outbound queue; it does not delete a UI row or directly mutate runtime player state.
+Actionable sandbox-world and player rows render an explicit `[X]` action at the right edge. Selecting it opens a confirmation dialog: sandbox rows confirm `Destroy`, player rows confirm `Kick`. Primary world destruction is deliberately not offered. `Kick` requests process-owned connection shutdown through the connection route/outbound queue; it does not delete a UI row or directly mutate runtime player state.
 
 A `+` control at the top of the roster opens the sandbox creation window. The form maps directly to the typed sandbox creation surface:
 
 - sandbox name;
-- two explicit, mutually exclusive isolation checkboxes: `In-process sandbox isolation` and `Dedicated-process sandbox isolation`;
+- one isolation dropdown with `In-process sandbox isolation` and `Dedicated-process sandbox isolation`;
 - generated world or existing `.wld` source;
 - generator ID and numeric/random seed;
 - primary-size or explicit width/height;
@@ -89,4 +89,4 @@ Console and the Details screens remain read-only selectable text surfaces for co
 
 ## Responsiveness
 
-Authoritative operations capture remains outside the Terminal.Gui thread. The UI reads the last atomically published cache snapshot, so input processing, row selection, context menus and the sandbox creation window do not wait for world/network/log snapshot acquisition. The detached snapshot worker is scheduled approximately every 100 ms while the lightweight UI publication/input pump runs approximately every 16 ms.
+Authoritative operations capture remains outside the Terminal.Gui thread. The UI reads the last atomically published cache snapshot, so input processing, row selection, explicit row actions and the sandbox creation window do not wait for world/network/log snapshot acquisition. The detached snapshot worker is scheduled approximately every 100 ms while the lightweight UI publication/input pump runs approximately every 16 ms.

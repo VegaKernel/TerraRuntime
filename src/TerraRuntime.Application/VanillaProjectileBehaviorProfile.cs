@@ -17,7 +17,11 @@ internal enum VanillaProjectileBehaviorFamily : byte
     SkeletronSkull = 4,
     DeerclopsIceSpike = 5,
     DeerclopsRubble = 6,
-    DeerclopsShadowHand = 7
+    DeerclopsShadowHand = 7,
+    Bomb = 8,
+    HostileStraightArrow = 9,
+    PlanteraSeed = 10,
+    GolemFireball = 11
 }
 
 /// <summary>
@@ -59,11 +63,43 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         RejectServerOwned: false,
         ExemptFromPreAiWorldBounds: false);
 
+    private static readonly VanillaProjectileBehaviorProfile HostileStraightArrowProfile = new(
+        VanillaProjectileBehaviorFamily.HostileStraightArrow,
+        VanillaProjectileAiStyles.Arrow,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile PlanteraSeedProfile = new(
+        VanillaProjectileBehaviorFamily.PlanteraSeed,
+        VanillaProjectileAiStyles.Arrow,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile GolemFireballProfile = new(
+        VanillaProjectileBehaviorFamily.GolemFireball,
+        VanillaProjectileAiStyles.Fireball,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
     private static readonly VanillaProjectileBehaviorProfile ThrownProfile = new(
         VanillaProjectileBehaviorFamily.Thrown,
         VanillaProjectileAiStyles.Thrown,
         BehaviorImplemented: true,
         RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile BombProfile = new(
+        VanillaProjectileBehaviorFamily.Bomb,
+        VanillaProjectileAiStyles.Bomb,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
         RejectServerOwned: false,
         ExemptFromPreAiWorldBounds: false);
 
@@ -115,6 +151,24 @@ internal static class VanillaProjectileBehaviorProfileCatalog
             return true;
         }
 
+        if (IsHostileStraightArrow(type))
+        {
+            profile = HostileStraightArrowProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PlanteraSeed || type == VanillaProjectileIds.PlanteraPoisonSeed)
+        {
+            profile = PlanteraSeedProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.GolemFireball)
+        {
+            profile = GolemFireballProfile;
+            return true;
+        }
+
         if (type == VanillaProjectileIds.DeerclopsIceSpike)
         {
             profile = DeerclopsIceSpikeProfile;
@@ -145,6 +199,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
             return true;
         }
 
+        if (type.Value is >= 133 and <= 144)
+        {
+            profile = BombProfile;
+            return true;
+        }
+
         if (type == VanillaProjectileIds.EnchantedBoomerang)
         {
             profile = BoomerangProfile;
@@ -155,12 +215,19 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         return false;
     }
 
+    private static bool IsHostileStraightArrow(ProjectileTypeId type) =>
+        type == VanillaProjectileIds.WallOfFleshEyeLaser ||
+        type == VanillaProjectileIds.ProbePinkLaser ||
+        type == VanillaProjectileIds.RetinazerDeathLaser ||
+        type == VanillaProjectileIds.GolemEyeBeam;
+
     private static bool IsBasicArrow(ProjectileTypeId type) =>
         type == VanillaProjectileIds.WoodenArrowFriendly ||
         type == VanillaProjectileIds.FireArrow ||
         type == VanillaProjectileIds.UnholyArrow ||
         type == VanillaProjectileIds.JestersArrow ||
         type == VanillaProjectileIds.Bullet ||
+        type == VanillaProjectileIds.SilverBullet ||
         type == VanillaProjectileIds.Seed ||
         type == VanillaProjectileIds.ConfettiGun ||
         type == VanillaProjectileIds.QueenBeeStinger ||

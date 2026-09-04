@@ -9,6 +9,8 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId Thrown = new(2);
     public static readonly ProjectileAiStyleId Boomerang = new(3);
     public static readonly ProjectileAiStyleId FallingStar = new(5);
+    public static readonly ProjectileAiStyleId Fireball = new(8);
+    public static readonly ProjectileAiStyleId Bomb = new(16);
     public static readonly ProjectileAiStyleId SuperStar = new(151);
     public static readonly ProjectileAiStyleId SharpTears = new(157);
     public static readonly ProjectileAiStyleId ShadowHand = new(187);
@@ -100,6 +102,16 @@ public static class VanillaProjectileDefinitionCatalog
         CollisionWidth: 4,
         CollisionHeight: 4);
 
+    private static readonly VanillaProjectileDefinition RocketFamilyDefinition = new(
+        Width: 14,
+        Height: 14,
+        AiStyle: VanillaProjectileAiStyles.Bomb,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 14,
+        CollisionHeight: 14);
+
     private static readonly VanillaProjectileDefinition GreenLaserDefinition = new(
         Width: 4,
         Height: 4,
@@ -139,6 +151,56 @@ public static class VanillaProjectileDefinitionCatalog
         CanCutTiles: false,
         CollisionWidth: 4,
         CollisionHeight: 4);
+
+    private static readonly VanillaProjectileDefinition ProbePinkLaserDefinition = new(
+        Width: 4,
+        Height: 4,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 4,
+        CollisionHeight: 4);
+
+    private static readonly VanillaProjectileDefinition RetinazerDeathLaserDefinition = new(
+        Width: 4,
+        Height: 4,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 4,
+        CollisionHeight: 4);
+
+    private static readonly VanillaProjectileDefinition GolemFireballDefinition = new(
+        Width: 16,
+        Height: 16,
+        AiStyle: VanillaProjectileAiStyles.Fireball,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 16,
+        CollisionHeight: 16);
+
+    private static readonly VanillaProjectileDefinition GolemEyeBeamDefinition = new(
+        Width: 8,
+        Height: 8,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: false,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 8,
+        CollisionHeight: 8);
+
+    private static readonly VanillaProjectileDefinition PlanteraSeedDefinition = new(
+        Width: 14,
+        Height: 14,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 14,
+        CollisionHeight: 14);
 
     private static readonly VanillaProjectileDefinition SuperStarDefinition = new(
         Width: 24,
@@ -382,9 +444,15 @@ public static class VanillaProjectileDefinitionCatalog
             return true;
         }
 
-        if (type == VanillaProjectileIds.Bullet)
+        if (type == VanillaProjectileIds.Bullet || type == VanillaProjectileIds.SilverBullet)
         {
             definition = BulletDefinition;
+            return true;
+        }
+
+        if (type.Value is >= 133 and <= 144)
+        {
+            definition = RocketFamilyDefinition;
             return true;
         }
 
@@ -409,6 +477,36 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.WallOfFleshEyeLaser)
         {
             definition = WallOfFleshEyeLaserDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.ProbePinkLaser)
+        {
+            definition = ProbePinkLaserDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.RetinazerDeathLaser)
+        {
+            definition = RetinazerDeathLaserDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.GolemFireball)
+        {
+            definition = GolemFireballDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.GolemEyeBeam)
+        {
+            definition = GolemEyeBeamDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PlanteraSeed || type == VanillaProjectileIds.PlanteraPoisonSeed)
+        {
+            definition = PlanteraSeedDefinition;
             return true;
         }
         if (type == VanillaProjectileIds.SuperStar)

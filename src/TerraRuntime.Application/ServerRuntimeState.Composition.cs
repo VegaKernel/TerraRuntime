@@ -69,7 +69,7 @@ internal sealed partial class ServerRuntimeState
         RuntimeNpcStore npcStore = npcs ?? new RuntimeNpcStore();
         RuntimeProjectileStore projectileStore = projectiles ?? new RuntimeProjectileStore();
         IProjectileStateStepper? configuredProjectileStepper = projectileStepper ??
-            (worldTiles is null ? null : new VanillaProjectileWorldStateStepper(worldTiles, this));
+            (worldTiles is null ? null : new VanillaProjectileWorldStateStepper(worldTiles, this, expertMode));
         _projectiles = new ProjectileAuthority(
             projectileStore,
             _players,

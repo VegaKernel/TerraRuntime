@@ -76,12 +76,16 @@ public interface IProjectileSimulationCommitSink
 /// collision is exposed here for observation/cleanup; behavior that must change the collision result should use
 /// the synchronous projectile behavior pipeline, where the termination reason is visible before commit.
 /// </summary>
+public readonly record struct ProjectileTerminationCommit(
+    ProjectileSnapshot InitialProjectile,
+    ProjectileSnapshot FinalProjectile,
+    ProjectileSimulationTerminationReason Reason,
+    bool CombatTrusted,
+    PlayerHandle TrustedOwner);
+
 public interface IProjectileTerminationCommitSink
 {
-    void ProjectileTerminated(
-        in ProjectileSnapshot initialProjectile,
-        in ProjectileSnapshot finalProjectile,
-        ProjectileSimulationTerminationReason reason);
+    void ProjectileTerminated(in ProjectileTerminationCommit termination);
 }
 
 /// <summary>Bounded accounting for one projectile state-transition pass.</summary>
@@ -209,6 +213,11 @@ public sealed class RuntimeProjectileStateExecutor
                 continue;
             }
 
+            bool wasCombatTrusted = _projectiles.IsCombatTrusted(projectile.Handle);
+            PlayerHandle trustedOwner = default;
+            if (wasCombatTrusted)
+                _projectiles.TryGetCombatTrustedOwner(projectile.Handle, out trustedOwner);
+
             ProjectileStateUpdate finalState = finalResult.State;
             if (_projectiles.TryCommitSimulationStep(
                     projectile.Handle,
@@ -231,10 +240,13 @@ public sealed class RuntimeProjectileStateExecutor
 
                 if (expired && _terminationSink is not null)
                 {
-                    _terminationSink.ProjectileTerminated(
-                        in projectile,
-                        in committed,
-                        finalResult.TerminationReason);
+                    var termination = new ProjectileTerminationCommit(
+                        projectile,
+                        committed,
+                        finalResult.TerminationReason,
+                        wasCombatTrusted,
+                        trustedOwner);
+                    _terminationSink.ProjectileTerminated(in termination);
                 }
             }
             else

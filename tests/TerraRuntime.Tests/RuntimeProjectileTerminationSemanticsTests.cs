@@ -190,14 +190,11 @@ public sealed class RuntimeProjectileTerminationSemanticsTests
         public ProjectileSnapshot Final { get; private set; }
         public ProjectileSimulationTerminationReason Reason { get; private set; }
 
-        public void ProjectileTerminated(
-            in ProjectileSnapshot initialProjectile,
-            in ProjectileSnapshot finalProjectile,
-            ProjectileSimulationTerminationReason reason)
+        public void ProjectileTerminated(in ProjectileTerminationCommit termination)
         {
-            Initial = initialProjectile;
-            Final = finalProjectile;
-            Reason = reason;
+            Initial = termination.InitialProjectile;
+            Final = termination.FinalProjectile;
+            Reason = termination.Reason;
         }
     }
 }

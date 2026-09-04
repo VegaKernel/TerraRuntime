@@ -221,6 +221,45 @@ public sealed class ServerRuntimeClientProjectileIngressTests
     }
 
     [Fact]
+    public void Source_backed_gun_projectile_uses_server_pickammo_and_silver_bullet_transform()
+    {
+        using var fixture = new Fixture(playerCount: 1);
+        ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 20);
+        fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.FlintlockPistol, stack: 1);
+        fixture.SetInventoryItem(owner, slot: VanillaPlayerItemSlotCatalog.AmmoSlotStart, VanillaItemIds.SilverBullet, stack: 2);
+        fixture.SetCombatPlayer(owner, positionX: 100f, positionY: 100f, life: 100, hostile: false);
+
+        var packet = new TerrariaProjectileUpdateState(
+            new TerrariaProjectileKeyState(owner.Player.Slot.Value, 620, 1),
+            VanillaProjectileIds.SilverBullet.Value,
+            120f,
+            100f,
+            10.5f,
+            0f,
+            0f,
+            0f,
+            0f,
+            0,
+            22,
+            4f,
+            0);
+
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, packet));
+
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(packet.Key, out ProjectileHandle handle));
+        Assert.True(fixture.Projectiles.IsCombatTrusted(handle));
+        Assert.True(fixture.State.TryCaptureProjectileSnapshot(handle, out ProjectileSnapshot projectile));
+        Assert.Equal(VanillaProjectileIds.SilverBullet, projectile.Type);
+        Assert.Equal((short)22, projectile.Damage);
+        Assert.Equal(4f, projectile.KnockBack);
+        Assert.Equal(10.5f, projectile.VelocityX, 3);
+        Assert.True(fixture.State.TryCapturePlayerInventoryItem(
+            owner.Player, VanillaPlayerItemSlotCatalog.AmmoSlotStart, out RuntimePlayerInventoryItem ammo));
+        Assert.Equal(VanillaItemIds.SilverBullet, ammo.ItemType);
+        Assert.Equal((short)1, ammo.Stack);
+    }
+
+    [Fact]
     public void Source_backed_bow_rejects_forged_damage_velocity_and_same_tick_cadence()
     {
         using var fixture = new Fixture(playerCount: 1);
@@ -273,6 +312,157 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         Assert.True(fixture.State.TryCapturePlayerInventoryItem(
             owner.Player, VanillaPlayerItemSlotCatalog.AmmoSlotStart, out RuntimePlayerInventoryItem ammo));
         Assert.Equal((short)3, ammo.Stack);
+    }
+
+    [Theory]
+    [InlineData(42, 3, 10, 0f, 9f)]
+    [InlineData(154, 21, 20, 2.3f, 8f)]
+    [InlineData(279, 48, 12, 2f, 10f)]
+    [InlineData(287, 54, 14, 2.4f, 12f)]
+    [InlineData(1809, 318, 13, 6.5f, 9f)]
+    [InlineData(1913, 330, 14, 0f, 12f)]
+    [InlineData(3379, 599, 14, 1.5f, 10f)]
+    public void Source_backed_standalone_projectile_is_promoted_and_consumes_selected_stack(
+        int itemType,
+        int projectileType,
+        int damage,
+        float knockBack,
+        float speed)
+    {
+        using var fixture = new Fixture(playerCount: 1);
+        ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 30 + itemType);
+        fixture.SetInventoryItem(owner, slot: 0, new ItemTypeId(itemType), stack: 2);
+        fixture.SetCombatPlayer(owner, positionX: 100f, positionY: 100f, life: 100, hostile: false);
+
+        var packet = new TerrariaProjectileUpdateState(
+            new TerrariaProjectileKeyState(owner.Player.Slot.Value, checked((ushort)(700 + projectileType)), 1),
+            projectileType,
+            120f,
+            100f,
+            speed,
+            0f,
+            0f,
+            0f,
+            0f,
+            0,
+            checked((short)damage),
+            knockBack,
+            0);
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, packet));
+
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(packet.Key, out ProjectileHandle handle));
+        Assert.True(fixture.Projectiles.IsCombatTrusted(handle));
+        Assert.True(fixture.State.TryCaptureProjectileSnapshot(handle, out ProjectileSnapshot projectile));
+        Assert.Equal(new ProjectileTypeId(projectileType), projectile.Type);
+        Assert.Equal(checked((short)damage), projectile.Damage);
+        Assert.Equal(knockBack, projectile.KnockBack);
+        Assert.Equal(speed, projectile.VelocityX, 3);
+        Assert.Equal(0f, projectile.VelocityY, 3);
+        Assert.True(fixture.State.TryCapturePlayerInventoryItem(owner.Player, 0, out RuntimePlayerInventoryItem remaining));
+        Assert.Equal(new ItemTypeId(itemType), remaining.ItemType);
+        Assert.Equal((short)1, remaining.Stack);
+    }
+
+    [Fact]
+    public void Source_backed_standalone_projectile_rejects_forged_velocity_damage_ai_and_cadence()
+    {
+        using var fixture = new Fixture(playerCount: 1);
+        ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 32);
+        fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.ThrowingKnife, stack: 5);
+        fixture.SetCombatPlayer(owner, positionX: 100f, positionY: 100f, life: 100, hostile: false);
+
+        TerrariaProjectileUpdateState valid = new(
+            new TerrariaProjectileKeyState(owner.Player.Slot.Value, 760, 1),
+            VanillaProjectileIds.ThrowingKnife.Value,
+            120f,
+            100f,
+            10f,
+            0f,
+            0f,
+            0f,
+            0f,
+            0,
+            12,
+            2f,
+            0);
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, valid));
+
+        TerrariaProjectileUpdateState forgedVelocity = valid with
+        {
+            Key = new TerrariaProjectileKeyState(owner.Player.Slot.Value, 761, 1),
+            VelocityX = 100f
+        };
+        TerrariaProjectileUpdateState forgedDamage = valid with
+        {
+            Key = new TerrariaProjectileKeyState(owner.Player.Slot.Value, 762, 1),
+            Damage = 120
+        };
+        TerrariaProjectileUpdateState forgedAi = valid with
+        {
+            Key = new TerrariaProjectileKeyState(owner.Player.Slot.Value, 763, 1),
+            Ai1 = 1f
+        };
+        TerrariaProjectileUpdateState sameTick = valid with
+        {
+            Key = new TerrariaProjectileKeyState(owner.Player.Slot.Value, 764, 1)
+        };
+
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, forgedVelocity));
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, forgedDamage));
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, forgedAi));
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, sameTick));
+
+        Assert.Equal(1, fixture.Projectiles.ActiveCount);
+        Assert.False(fixture.Replication.WireIdentities.TryResolve(forgedVelocity.Key, out _));
+        Assert.False(fixture.Replication.WireIdentities.TryResolve(forgedDamage.Key, out _));
+        Assert.False(fixture.Replication.WireIdentities.TryResolve(forgedAi.Key, out _));
+        Assert.False(fixture.Replication.WireIdentities.TryResolve(sameTick.Key, out _));
+        Assert.True(fixture.State.TryCapturePlayerInventoryItem(owner.Player, 0, out RuntimePlayerInventoryItem remaining));
+        Assert.Equal((short)4, remaining.Stack);
+    }
+
+    [Fact]
+    public void Trusted_shuriken_pvp_damage_is_server_owned_and_projectile_local_immunity_is_40_ticks()
+    {
+        using var fixture = new Fixture(playerCount: 2, projectileStepper: new NoOpProjectileStepper());
+        ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 33);
+        ConnectionHandle target = fixture.SpawnPlayer(connectionId: 34);
+        fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.Shuriken, stack: 2);
+        fixture.SetCombatPlayer(owner, positionX: 100f, positionY: 100f, life: 100, hostile: true);
+        fixture.SetCombatPlayer(target, positionX: 120f, positionY: 100f, life: 100, hostile: true);
+
+        TerrariaProjectileUpdateState spawn = new(
+            new TerrariaProjectileKeyState(owner.Player.Slot.Value, 770, 1),
+            VanillaProjectileIds.Shuriken.Value,
+            120f,
+            100f,
+            9f,
+            0f,
+            0f,
+            0f,
+            0f,
+            0,
+            10,
+            0f,
+            0);
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, spawn));
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(spawn.Key, out ProjectileHandle handle));
+        Assert.True(fixture.Projectiles.IsCombatTrusted(handle));
+
+        fixture.State.Tick();
+        Assert.True(fixture.State.TryCapturePlayerSnapshot(target.Player, out PlayerStateSnapshot firstHit));
+        Assert.InRange(firstHit.Life, (short)88, (short)92);
+        short afterFirstHit = firstHit.Life;
+
+        for (int i = 0; i < 20; i++)
+            fixture.State.Tick();
+        Assert.True(fixture.State.TryCapturePlayerSnapshot(target.Player, out PlayerStateSnapshot duringProjectileImmunity));
+        Assert.Equal(afterFirstHit, duringProjectileImmunity.Life);
+
+        for (int i = 0; i < 20; i++)
+            fixture.State.Tick();
+        Assert.True(fixture.State.TryCapturePlayerSnapshot(target.Player, out PlayerStateSnapshot afterSecondWindow));
+        Assert.True(afterSecondWindow.Life < afterFirstHit);
     }
 
     [Fact]

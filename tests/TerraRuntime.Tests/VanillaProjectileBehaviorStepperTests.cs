@@ -74,6 +74,81 @@ public sealed class VanillaProjectileBehaviorStepperTests
     }
 
 
+    [Theory]
+    [InlineData(83)]
+    [InlineData(84)]
+    [InlineData(100)]
+    [InlineData(259)]
+    public void Hostile_straight_ai_style_one_projectiles_keep_velocity_and_do_not_advance_ai0(int type)
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            new ProjectileTypeId(type), velocityX: 7f, velocityY: 2f, ai0: 14f, ai1: 0f,
+            spawner: VanillaProjectileOwnership.ServerOwner);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
+
+        Assert.Equal(14f, next.Ai0, 5);
+        Assert.Equal(1f, next.Ai1Override);
+        Assert.Equal(7f, next.VelocityX, 5);
+        Assert.Equal(2f, next.VelocityY, 5);
+    }
+
+    [Fact]
+    public void Plantera_seed_uses_source_delayed_gravity_in_classic_mode()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.PlanteraSeed, velocityX: 10f, velocityY: 1f, ai0: 34f, ai1: 0f,
+            spawner: VanillaProjectileOwnership.ServerOwner);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
+
+        Assert.Equal(35f, next.Ai0, 5);
+        Assert.Equal(1f, next.Ai1Override);
+        Assert.Equal(1.025f, next.VelocityY, 5);
+        Assert.Null(next.TileCollideOverride);
+        Assert.Null(next.TimeLeftOverride);
+    }
+
+    [Fact]
+    public void Plantera_seed_expert_mode_homes_disables_tiles_and_caps_lifetime()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.PlanteraPoisonSeed, velocityX: 10f, velocityY: 0f, ai0: 0f, ai1: 0f,
+            spawner: VanillaProjectileOwnership.ServerOwner, positionX: 100f, positionY: 100f);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        var context = new VanillaProjectileBehaviorContext(
+            false, 0f, 0f, new SinglePlayerLookup(400f, 86f), ExpertMode: true);
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile, in definition, in context, out VanillaProjectileBehaviorResult next));
+
+        float speed = MathF.Sqrt(next.VelocityX * next.VelocityX + next.VelocityY * next.VelocityY);
+        Assert.Equal(14f, speed, 4);
+        Assert.True(next.VelocityX > 0f);
+        Assert.False(next.TileCollideOverride.GetValueOrDefault(true));
+        Assert.Equal(180, next.TimeLeftOverride);
+    }
+
+    [Fact]
+    public void Golem_fireball_ai_has_no_gravity_and_leaves_collision_counter_to_world_motion()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.GolemFireball, velocityX: 8f, velocityY: 3f, ai0: 2f,
+            spawner: VanillaProjectileOwnership.ServerOwner);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
+
+        Assert.Equal(2f, next.Ai0, 5);
+        Assert.Equal(8f, next.VelocityX, 5);
+        Assert.Equal(3f, next.VelocityY, 5);
+    }
+
     [Fact]
     public void Enchanted_boomerang_switches_to_return_after_30_outbound_ticks()
     {

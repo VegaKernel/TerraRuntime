@@ -16,6 +16,7 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
             VanillaProjectileIds.UnholyArrow,
             VanillaProjectileIds.JestersArrow,
             VanillaProjectileIds.Bullet,
+            VanillaProjectileIds.SilverBullet,
             VanillaProjectileIds.Seed,
             VanillaProjectileIds.ConfettiGun,
             VanillaProjectileIds.ConfettiMelee,
@@ -60,6 +61,51 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
             Assert.False(profile.RejectServerOwned);
             Assert.False(profile.ExemptFromPreAiWorldBounds);
         }
+
+        for (int rawType = VanillaProjectileIds.GrenadeI.Value; rawType <= VanillaProjectileIds.ProximityMineIV.Value; rawType++)
+        {
+            var type = new ProjectileTypeId(rawType);
+            Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(type, out VanillaProjectileBehaviorProfile profile));
+            Assert.Equal(VanillaProjectileBehaviorFamily.Bomb, profile.Family);
+            Assert.Equal(VanillaProjectileAiStyles.Bomb, profile.ExpectedAiStyle);
+            Assert.True(profile.BehaviorImplemented);
+            Assert.True(profile.RequiresDefaultAi2);
+            Assert.False(profile.RejectServerOwned);
+            Assert.False(profile.ExemptFromPreAiWorldBounds);
+        }
+    }
+
+    [Fact]
+    public void Hostile_boss_projectiles_use_explicit_source_backed_runtime_families()
+    {
+        ProjectileTypeId[] straight =
+        [
+            VanillaProjectileIds.WallOfFleshEyeLaser,
+            VanillaProjectileIds.ProbePinkLaser,
+            VanillaProjectileIds.RetinazerDeathLaser,
+            VanillaProjectileIds.GolemEyeBeam
+        ];
+
+        foreach (ProjectileTypeId type in straight)
+        {
+            Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(type, out VanillaProjectileBehaviorProfile profile));
+            Assert.Equal(VanillaProjectileBehaviorFamily.HostileStraightArrow, profile.Family);
+            Assert.Equal(VanillaProjectileAiStyles.Arrow, profile.ExpectedAiStyle);
+            Assert.True(profile.RequiresDefaultAi2);
+            Assert.False(profile.RejectServerOwned);
+        }
+
+        foreach (ProjectileTypeId type in new[] { VanillaProjectileIds.PlanteraSeed, VanillaProjectileIds.PlanteraPoisonSeed })
+        {
+            Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(type, out VanillaProjectileBehaviorProfile profile));
+            Assert.Equal(VanillaProjectileBehaviorFamily.PlanteraSeed, profile.Family);
+            Assert.Equal(VanillaProjectileAiStyles.Arrow, profile.ExpectedAiStyle);
+        }
+
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(
+            VanillaProjectileIds.GolemFireball, out VanillaProjectileBehaviorProfile fireball));
+        Assert.Equal(VanillaProjectileBehaviorFamily.GolemFireball, fireball.Family);
+        Assert.Equal(VanillaProjectileAiStyles.Fireball, fireball.ExpectedAiStyle);
     }
 
     [Fact]
@@ -101,7 +147,27 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
             VanillaProjectileIds.JestersArrow,
             VanillaProjectileIds.EnchantedBoomerang,
             VanillaProjectileIds.Bullet,
+            VanillaProjectileIds.SilverBullet,
+            VanillaProjectileIds.GrenadeI,
+            VanillaProjectileIds.RocketI,
+            VanillaProjectileIds.ProximityMineI,
+            VanillaProjectileIds.GrenadeII,
+            VanillaProjectileIds.RocketII,
+            VanillaProjectileIds.ProximityMineII,
+            VanillaProjectileIds.GrenadeIII,
+            VanillaProjectileIds.RocketIII,
+            VanillaProjectileIds.ProximityMineIII,
+            VanillaProjectileIds.GrenadeIV,
+            VanillaProjectileIds.RocketIV,
+            VanillaProjectileIds.ProximityMineIV,
             VanillaProjectileIds.GreenLaser,
+            VanillaProjectileIds.WallOfFleshEyeLaser,
+            VanillaProjectileIds.ProbePinkLaser,
+            VanillaProjectileIds.RetinazerDeathLaser,
+            VanillaProjectileIds.GolemFireball,
+            VanillaProjectileIds.GolemEyeBeam,
+            VanillaProjectileIds.PlanteraSeed,
+            VanillaProjectileIds.PlanteraPoisonSeed,
             VanillaProjectileIds.Bone,
             VanillaProjectileIds.Shuriken,
             VanillaProjectileIds.ThrowingKnife,

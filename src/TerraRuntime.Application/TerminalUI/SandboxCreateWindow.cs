@@ -20,12 +20,15 @@ internal sealed class SandboxCreateWindow : Window
 
     private static readonly string[] GameModes = ["Classic", "Expert", "Master", "Journey"];
     private static readonly string[] EvilTypes = ["Corruption", "Crimson"];
+    private static readonly string[] IsolationOptions =
+    [
+        "In-process isolation (Level 1, same server process)",
+        "Dedicated-process isolation (Level 2, separate worker process)"
+    ];
 
     private readonly SandboxOperations operations;
     private readonly TextField nameField;
-    private readonly CheckBox inProcessIsolation;
-    private readonly CheckBox dedicatedProcessIsolation;
-    private readonly Label isolationSelection;
+    private readonly DropDownList isolationDropDown;
     private readonly CheckBox worldFile;
     private readonly TextField fileField;
     private readonly DropDownList generatorDropDown;
@@ -39,7 +42,6 @@ internal sealed class SandboxCreateWindow : Window
     private readonly DropDownList modeDropDown;
     private readonly DropDownList evilDropDown;
     private readonly Label feedback;
-    private bool updatingIsolation;
 
     public SandboxCreateWindow(SandboxOperations operations)
     {
@@ -52,15 +54,7 @@ internal sealed class SandboxCreateWindow : Window
         SchemeName = "Base";
 
         nameField = Field(22, 1, 49, "sandbox");
-        inProcessIsolation = IsolationCheckBox(22, 3, "In-process isolation (Level 1, same server process)", CheckState.Checked);
-        dedicatedProcessIsolation = IsolationCheckBox(22, 4, "Dedicated-process isolation (Level 2, separate worker process)", CheckState.UnChecked);
-        isolationSelection = new Label
-        {
-            X = 22,
-            Y = 5,
-            Width = 49,
-            SchemeName = "Base"
-        };
+        isolationDropDown = DropDown(22, 3, 49, IsolationOptions, selectedIndex: 0);
 
         worldFile = new CheckBox
         {
@@ -116,8 +110,7 @@ internal sealed class SandboxCreateWindow : Window
 
         Add(
             LabelAt(1, 1, "Name"), nameField,
-            LabelAt(1, 3, "Isolation"), inProcessIsolation,
-            dedicatedProcessIsolation, isolationSelection,
+            LabelAt(1, 3, "Isolation"), isolationDropDown,
             LabelAt(1, 7, "Source"), worldFile,
             LabelAt(1, 8, "World file"), fileField,
             LabelAt(1, 10, "Generator"), generatorDropDown,
@@ -127,14 +120,11 @@ internal sealed class SandboxCreateWindow : Window
             LabelAt(1, 14, "Mode"), modeDropDown, LabelAt(43, 14, "Evil"), evilDropDown,
             create, cancel, feedback);
 
-        inProcessIsolation.ValueChanged += (_, _) => KeepIsolationExclusive(inProcessIsolation, dedicatedProcessIsolation);
-        dedicatedProcessIsolation.ValueChanged += (_, _) => KeepIsolationExclusive(dedicatedProcessIsolation, inProcessIsolation);
         worldFile.ValueChanged += (_, _) => UpdateEnabledFields();
         sizeDropDown.ValueChanged += (_, _) => ApplySelectedSize();
         create.Accepted += (_, _) => Submit();
         cancel.Accepted += (_, _) => CloseRequested?.Invoke();
 
-        UpdateIsolationStatus();
         ApplySelectedSize();
         UpdateEnabledFields();
     }
@@ -146,7 +136,7 @@ internal sealed class SandboxCreateWindow : Window
 
     private void Submit()
     {
-        WorldIsolationLevel isolation = dedicatedProcessIsolation.Value == CheckState.Checked
+        WorldIsolationLevel isolation = SelectedIndex(isolationDropDown, IsolationOptions) == 1
             ? WorldIsolationLevel.DedicatedProcess
             : WorldIsolationLevel.InProcess;
         string name = nameField.Text.Trim();
@@ -218,35 +208,6 @@ internal sealed class SandboxCreateWindow : Window
 
         SetFeedback("Submitting sandbox request...");
         CreateRequested?.Invoke(operation);
-    }
-
-    private void KeepIsolationExclusive(CheckBox selected, CheckBox other)
-    {
-        if (updatingIsolation)
-            return;
-
-        updatingIsolation = true;
-        try
-        {
-            if (selected.Value == CheckState.Checked)
-                other.Value = CheckState.UnChecked;
-            else if (other.Value != CheckState.Checked)
-                selected.Value = CheckState.Checked;
-        }
-        finally
-        {
-            updatingIsolation = false;
-        }
-
-        UpdateIsolationStatus();
-    }
-
-    private void UpdateIsolationStatus()
-    {
-        bool dedicated = dedicatedProcessIsolation.Value == CheckState.Checked;
-        isolationSelection.Text = dedicated
-            ? "Selected: Dedicated-process isolation (Level 2)"
-            : "Selected: In-process isolation (Level 1)";
     }
 
     private void ApplySelectedSize()
@@ -322,16 +283,6 @@ internal sealed class SandboxCreateWindow : Window
         RandomNumberGenerator.Fill(bytes);
         return BitConverter.ToUInt64(bytes).ToString(CultureInfo.InvariantCulture);
     }
-
-    private static CheckBox IsolationCheckBox(int x, int y, string text, CheckState value) => new()
-    {
-        X = x,
-        Y = y,
-        Width = 50,
-        Text = text,
-        Value = value,
-        SchemeName = "Base"
-    };
 
     private static Label LabelAt(int x, int y, string text) => new()
     {

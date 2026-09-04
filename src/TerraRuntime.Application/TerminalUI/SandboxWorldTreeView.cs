@@ -20,7 +20,7 @@ internal readonly record struct SandboxWorldTreeRow(
 
 /// <summary>
 /// Row-selecting world roster. Unlike a read-only TextView, ListView highlights an item rather than selecting text.
-/// Player rows retain drag-and-drop world transfer and right-click exposes semantic world/player actions.
+/// Player rows retain drag-and-drop world transfer. Actionable world/player rows expose an explicit [X] zone.
 /// </summary>
 internal sealed class SandboxWorldTreeView : ListView
 {
@@ -81,7 +81,7 @@ internal sealed class SandboxWorldTreeView : ListView
         return true;
     }
 
-    internal bool TryInvokeContextActionForSmoke(int row)
+    internal bool TryInvokeActionForSmoke(int row)
     {
         if ((uint)row >= (uint)rows.Length)
             return false;
@@ -111,21 +111,21 @@ internal sealed class SandboxWorldTreeView : ListView
                 SetFocus();
             }
 
-            if (mouse.Flags.HasFlag(MouseFlags.RightButtonPressed) && (uint)row < (uint)rows.Length)
+            if (mouse.Flags.HasFlag(MouseFlags.LeftButtonPressed) && (uint)row < (uint)rows.Length)
             {
-                ShowContextMenu(row, ViewportToScreen(point));
-                mouse.Handled = true;
-                return true;
-            }
+                if (IsActionHit(row, point.X + Viewport.X) && TryInvokeActionForSmoke(row))
+                {
+                    mouse.Handled = true;
+                    return true;
+                }
 
-            if (mouse.Flags.HasFlag(MouseFlags.LeftButtonPressed) &&
-                (uint)row < (uint)rows.Length &&
-                rows[row].Kind == SandboxWorldTreeRowKind.Player)
-            {
-                draggedRow = row;
-                App?.Mouse.GrabMouse(this);
-                mouse.Handled = true;
-                return true;
+                if (rows[row].Kind == SandboxWorldTreeRowKind.Player)
+                {
+                    draggedRow = row;
+                    App?.Mouse.GrabMouse(this);
+                    mouse.Handled = true;
+                    return true;
+                }
             }
         }
 
@@ -144,33 +144,19 @@ internal sealed class SandboxWorldTreeView : ListView
         return base.OnMouseEvent(mouse);
     }
 
-    private void ShowContextMenu(int row, Point screenPoint)
+    private bool IsActionHit(int row, int column)
     {
+        if ((uint)row >= (uint)rows.Length || (uint)row >= (uint)lines.Length)
+            return false;
         SandboxWorldTreeRow item = rows[row];
-        MenuItem? action = item.Kind switch
-        {
-            SandboxWorldTreeRowKind.Player when !string.IsNullOrWhiteSpace(item.PlayerSelector) =>
-                new MenuItem("Kick", "Disconnect this player", () => KickRequested?.Invoke(item.PlayerSelector)),
-            SandboxWorldTreeRowKind.World when item.Target is SandboxName sandbox =>
-                new MenuItem("Destroy", "Destroy this sandbox world", () => DestroyRequested?.Invoke(sandbox)),
-            SandboxWorldTreeRowKind.World =>
-                new MenuItem(
-                    commandText: "Destroy",
-                    helpText: "Primary world cannot be destroyed",
-                    action: null,
-                    key: null)
-                {
-                    Enabled = false
-                },
-            _ => null
-        };
-        if (action is null)
-            return;
+        bool actionable =
+            (item.Kind == SandboxWorldTreeRowKind.Player && !string.IsNullOrWhiteSpace(item.PlayerSelector)) ||
+            (item.Kind == SandboxWorldTreeRowKind.World && item.Target is SandboxName);
+        if (!actionable)
+            return false;
 
-        var menu = new PopoverMenu([action])
-        {
-            Target = new WeakReference<Terminal.Gui.ViewBase.View>(this)
-        };
-        menu.MakeVisible(screenPoint);
+        const string suffix = "  [X]";
+        string line = lines[row];
+        return line.EndsWith(suffix, StringComparison.Ordinal) && column >= line.Length - 3 && column < line.Length;
     }
 }

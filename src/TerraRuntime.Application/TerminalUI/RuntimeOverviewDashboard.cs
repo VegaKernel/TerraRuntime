@@ -175,10 +175,8 @@ internal sealed class RuntimeOverviewDashboard : View
         worldsFrame.Add(sandboxAddButton, worldsText);
         worldsText.TransferRequested += (player, sandbox) =>
             ExecuteSandboxOperationAsync(new SandboxOperation.Move(player, sandbox));
-        worldsText.DestroyRequested += sandbox =>
-            ExecuteSandboxOperationAsync(new SandboxOperation.Destroy(sandbox));
-        worldsText.KickRequested += player =>
-            ExecuteSandboxOperationAsync(new SandboxOperation.Kick(player));
+        worldsText.DestroyRequested += ConfirmSandboxDestroy;
+        worldsText.KickRequested += ConfirmPlayerKick;
 
         AttachMaximize(consoleFrame);
         AttachMaximize(networkFrame);
@@ -215,6 +213,34 @@ internal sealed class RuntimeOverviewDashboard : View
                 superView.CanFocus = true;
             commandInput.SetFocus();
         };
+    }
+
+    private void ConfirmSandboxDestroy(SandboxName sandbox)
+    {
+        if (App is null)
+            return;
+        int? result = MessageBox.Query(
+            App,
+            "Destroy sandbox",
+            $"Destroy sandbox '{sandbox.Value}'? Players in this world will be disconnected or transferred according to runtime policy.",
+            "Destroy",
+            "Cancel");
+        if (result == 0)
+            ExecuteSandboxOperationAsync(new SandboxOperation.Destroy(sandbox));
+    }
+
+    private void ConfirmPlayerKick(string playerSelector)
+    {
+        if (App is null)
+            return;
+        int? result = MessageBox.Query(
+            App,
+            "Kick player",
+            $"Kick player '{playerSelector}' from the server?",
+            "Kick",
+            "Cancel");
+        if (result == 0)
+            ExecuteSandboxOperationAsync(new SandboxOperation.Kick(playerSelector));
     }
 
     public void Refresh(
@@ -1209,6 +1235,8 @@ internal sealed class RuntimeOverviewDashboard : View
                 line.Append("  TPS --");
             }
 
+            if (!world.IsPrimary && world.Sandbox is not null)
+                line.Append("  [X]");
             lines.Add(line.ToString());
             rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, world.Sandbox, PlayerSelector: null));
 
@@ -1229,6 +1257,7 @@ internal sealed class RuntimeOverviewDashboard : View
                     .Append(Sanitize(player.Name, 28));
                 if (!player.IsPlaying)
                     playerLine.Append("  [joining]");
+                playerLine.Append("  [X]");
                 lines.Add(playerLine.ToString());
                 rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, world.Sandbox, player.Selector));
             }
@@ -1252,7 +1281,7 @@ internal sealed class RuntimeOverviewDashboard : View
         for (int i = 0; i < players.Length; i++)
         {
             RuntimePlayerSnapshot player = players[i];
-            lines.Add($"{(i == players.Length - 1 ? "  └─ " : "  ├─ ")}#{player.Slot} {Sanitize(player.Name, 28)}");
+            lines.Add($"{(i == players.Length - 1 ? "  └─ " : "  ├─ ")}#{player.Slot} {Sanitize(player.Name, 28)}  [X]");
             rows.Add(new SandboxWorldTreeRow(
                 SandboxWorldTreeRowKind.Player,
                 Target: null,

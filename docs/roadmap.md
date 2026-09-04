@@ -386,7 +386,7 @@ Combat integrity is not an external packet-sniffing `AntiCheat`. The intended ow
 - [ ] Consume/decrement ammo only on the server and replicate the resulting inventory mutation.
 - [ ] Differential-test `PickAmmo` against TerrariaServer 1.4.5.8, including conservation and unusual ammo transforms.
 
-Checkpoint slice: the strict bow path now follows the source-backed `PickAmmo` search order `coin -> ammo -> main inventory`, rejects an unsupported earlier compatible candidate instead of skipping ahead, and owns ammo decrement. The admitted set is Wooden/Iron/Copper/Tin/Lead/Silver/Tungsten/Gold/Platinum Bow with Wooden/Flaming/Unholy/Jester Arrow; Magic Quiver's arrow damage/speed and 20% conservation are modeled. Other ammo families, transforms and conservation sources remain open and fail closed for combat trust.
+Checkpoint slice: strict projectile provenance now follows the source-backed `PickAmmo` search order `coin -> ammo -> main inventory`, rejects an unsupported earlier compatible candidate instead of skipping ahead, and owns ammo decrement. The admitted ammo paths are Wooden/Iron/Copper/Tin/Lead/Silver/Tungsten/Gold/Platinum Bow with Wooden/Flaming/Unholy/Jester Arrow; Flintlock Pistol, Musket, Minishark, Handgun, The Undertaker and Revolver with Musket Ball/Silver Bullet; plus Grenade Launcher, Rocket Launcher and Proximity Mine Launcher with Rocket I-IV. The launcher path reproduces vanilla `AmmoID.Rocket` base-projectile-plus-ammo-offset `PickAmmo` transformation, so the three launchers resolve to projectile IDs 133..144 without trusting packet 27. Silver Bullet transformation, bullet/rocket damage/knockback/speed, ammo consumption and Minishark's 1-in-3 conservation are server-owned; Magic Quiver's arrow damage/speed and 20% conservation remain modeled. Shuriken, Bone, Throwing Knife, Poisoned Knife, Rotten Egg, Star Anise and Bone Dagger are separately admitted as selected-stack standalone projectile sources. Later rocket-ammo variants (Dry/Wet/Lava/Honey and related 1.4.5.8 entries), other ammo families, transforms and conservation sources remain open and fail closed for combat trust.
 
 #### Projectile spawn validation
 
@@ -412,7 +412,7 @@ Checkpoint slice: the strict bow path now follows the source-backed `PickAmmo` s
 - [ ] Record expected min/max launch speed, received speed magnitude and all authoritative modifier inputs in combat diagnostics.
 - [ ] Hard-reject impossible launch-speed magnitude before the projectile enters authoritative combat state.
 
-Checkpoint slice: admitted bow/arrow generations now derive a real `VanillaLaunchSpeedEnvelope` from authoritative weapon `shootSpeed`, ammo `shootSpeed`, supported ranged prefixes and Magic Quiver. Deterministic combinations collapse to one magnitude with only a small floating-point/network representation epsilon in `ContainsMagnitude`; there is no generic angular envelope. Full buff/debuff, armor/set, accessory and special-weapon speed coverage remains open.
+Checkpoint slice: admitted bow/arrow and basic gun/bullet generations now derive a real `VanillaLaunchSpeedEnvelope` from authoritative weapon `shootSpeed`, ammo `shootSpeed`, supported ranged prefixes and the represented class modifiers; Magic Quiver applies only to the admitted arrow family. The admitted standalone thrown sources use source-backed fixed launch magnitudes. Deterministic combinations collapse to one magnitude with only a small floating-point/network representation epsilon in `ContainsMagnitude`; there is no generic angular envelope. Full buff/debuff, armor/set, accessory and special-weapon speed coverage remains open.
 
 #### Authoritative projectile simulation
 
@@ -420,13 +420,13 @@ Checkpoint slice: admitted bow/arrow generations now derive a real `VanillaLaunc
 - [ ] Server simulates acceleration, gravity, drag, homing, bouncing and source-backed projectile AI.
 - [ ] Client projectile position/velocity updates may be retained for diagnostics/divergence metrics only.
 - [x] Combat-trusted generations reject owner packet-27 state rewrites (`type`, damage, position/velocity, `ai[]`, ownership and related authoritative fields) and packet-29 early termination.
-- [ ] Complete vanilla projectile AI families. `BasicArrow`, `Thrown`, source-backed Enchanted Boomerang type 6, the admitted Skeletron/Deerclops families and other existing source-backed slices remain explicit profiles; known unsupported families still fail closed.
-- [ ] Complete projectile ownership/source validation. Connection ownership is enforced, combat-trusted generations are immutable to client packet 27/29 mutation, and only server-authoritative generations currently enter NPC combat; weapon/ammo promotion for legitimate client packet-27 spawns remains open.
-- [ ] Complete entity collision. Tile/world collision already exists; the deterministic post-simulation pass adds NPC AABB selection for trusted admitted friendly projectiles. Add the equivalent generation-safe player/PvP collision pass, hostility/team gating and exceptional hitboxes so trusted projectile damage is calculated server-side for both target classes.
+- [ ] Complete vanilla projectile AI families. `BasicArrow`, `Thrown`, source-backed Enchanted Boomerang type 6, launcher `Bomb` aiStyle-16 types 133..144, the admitted Skeletron/Deerclops families and other existing source-backed slices remain explicit profiles. The server-owned hostile slice now also covers straight no-gravity AI_001 beams for Wall of Flesh/Probe/Retinazer/Golem (83/84/100/259), Plantera Seed/Poison Seed (275/276) including the Expert-mode homing/minimum-speed/tile-collision/lifetime rules, and Golem Fireball (258) aiStyle-8 free flight plus its four bounces/fifth-impact termination. Known unsupported families still fail closed.
+- [ ] Complete projectile ownership/source validation. Connection ownership is enforced, combat-trusted generations are immutable to client packet 27/29 mutation, and strict source-backed packet-27 promotion now covers the admitted bow/arrow, early gun/bullet, Rocket I-IV launcher and standalone thrown families. Unsupported projectile sources remain compatibility/diagnostic state and cannot enter authoritative combat.
+- [ ] Complete entity collision. Tile/world collision already exists. Deterministic post-simulation passes now select generation-safe NPC and player AABBs for trusted admitted friendly projectiles; PvP applies hostility/team gating and a source-backed 40-tick projectile-local player immunity window. Launcher types 133..144 now use aiStyle-16 grenade/mine bounce or straight-rocket impact arming and authoritative 128x128/200x200 on-kill explosion AABBs. Exceptional hitboxes, explosive self-hurt/owner-hit rules and type-specific target exceptions remain open.
 - [ ] Buff/debuff application from projectile hits.
 - [x] Source-backed projectile lifetime remains runtime-owned rather than client-owned.
 - [ ] Complete spawn ordering. Physical projectile-slot then NPC-slot hit ordering is deterministic and committed damage precedes penetration, but child-projectile/on-hit spawn ordering is not complete.
-- [ ] Complete NPC/projectile side effects. Trusted admitted hits now commit NPC damage/death through the existing pipeline and consume source-backed penetration; immunity variants, buffs/debuffs, child spawns and special projectile families remain open.
+- [ ] Complete NPC/projectile side effects. Trusted admitted hits now commit server-resolved NPC/PvP damage, consume source-backed penetration, apply ordinary shared owner/NPC immunity for admitted multi-hit families, apply permanent local NPC immunity for grenade-launcher variants 133/136/139/142, and apply the source-backed 40-tick projectile/player immunity baseline in PvP. Launcher Kill() damage is replayed from a generation-safe same-tick termination handoff after the live projectile is removed. Buffs/debuffs, remaining local/static immunity variants, explosive self-hurt, rocket world/tile-destruction side effects, child spawns and other type-specific on-hit/on-kill effects remain open.
 
 #### Authoritative damage calculation
 
@@ -455,7 +455,7 @@ Checkpoint slice: the shared contracts now explicitly represent `AttackContext -
 
 - [ ] `MaxDamagePerHit` derived from authoritative gameplay state rather than a static anti-cheat constant.
 - [ ] Validate whether a crit is possible for the active weapon/source/state.
-- [ ] `MaxHitsPerSecond` / legal hit cadence per weapon/projectile family. Strict direct melee now has a player-global `useTime` gate plus per-target animation gate; projectile-family cadence remains open.
+- [ ] `MaxHitsPerSecond` / legal hit cadence per weapon/projectile family. Strict direct melee has a player-global `useTime` gate plus per-target animation gate; admitted strict packet-27 projectile sources now also enforce source-backed weapon/useTime cadence before promotion. Remaining projectile families and multi-projectile-per-use rules stay open.
 - [ ] `MaxProjectilesPerUse`.
 - [ ] `MaxProjectilesPerSecond`.
 - [x] Sliding-window DPS ceiling for the verified direct-melee path.
@@ -469,7 +469,7 @@ Impossible combat events must not be applied to authoritative world state merely
 - [ ] Reject impossible/incompatible ammo.
 - [ ] Reject impossible damage.
 - [ ] Reject impossible initial projectile speed magnitude outside the authoritative `[MinLaunchSpeed, MaxLaunchSpeed]` interval.
-- [ ] Reject impossible attack cadence/cooldown state. Strict direct melee already rejects cross-target cadence bypass before mutation; remaining weapon/projectile families are open.
+- [ ] Reject impossible attack cadence/cooldown state. Strict direct melee rejects cross-target cadence bypass before mutation, and admitted strict projectile sources reject same-player packet-27 spawn cadence before promotion. Remaining weapon families and multi-shot rules are open.
 - [ ] Reject projectiles without legal authoritative provenance.
 - [ ] Reject hits against impossible NPC or PvP player targets, friendly/team-protected players, or targets at impossible range.
 - [ ] Perform rejection before HP, inventory/ammo, buffs, loot, projectile side effects or replication mutate authoritative state.

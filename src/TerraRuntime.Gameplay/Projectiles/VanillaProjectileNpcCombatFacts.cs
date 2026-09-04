@@ -13,7 +13,10 @@ public static class VanillaProjectileNpcCombatFacts
     {
         if (type == VanillaProjectileIds.WoodenArrowFriendly ||
             type == VanillaProjectileIds.FireArrow ||
-            type == VanillaProjectileIds.Bullet)
+            type == VanillaProjectileIds.Bullet ||
+            type == VanillaProjectileIds.SilverBullet ||
+            type == VanillaProjectileIds.Bone ||
+            type == VanillaProjectileIds.RottenEgg)
         {
             penetration = 1;
             return true;
@@ -39,6 +42,16 @@ public static class VanillaProjectileNpcCombatFacts
             penetration = 2;
             return true;
         }
+        if (type == VanillaProjectileIds.StarAnise || type == VanillaProjectileIds.BoneDagger)
+        {
+            penetration = 6;
+            return true;
+        }
+        if (type.Value is >= 133 and <= 144)
+        {
+            penetration = -1;
+            return true;
+        }
 
         penetration = 0;
         return false;
@@ -52,14 +65,22 @@ public static class VanillaProjectileNpcCombatFacts
     /// </summary>
     public static bool UsesSharedOwnerNpcImmunity(ProjectileTypeId type)
     {
-        if (!TryGetInitialPenetration(type, out int penetration))
+        if (!TryGetInitialPenetration(type, out int penetration) || UsesPermanentLocalNpcImmunity(type))
             return false;
         return penetration != 1;
     }
 
     /// <summary>
+    /// Grenade launcher variants 133/136/139/142 set usesLocalNPCImmunity=true and localNPCHitCooldown=-1 in
+    /// Projectile.SetDefaults. Once one exact projectile generation damages an NPC generation, it cannot damage
+    /// that NPC again, including through the later PrepareBombToBlow damage pass.
+    /// </summary>
+    public static bool UsesPermanentLocalNpcImmunity(ProjectileTypeId type) =>
+        type.Value is 133 or 136 or 139 or 142;
+
+    /// <summary>
     /// Terraria's ordinary fallback after an admitted multi/infinite-penetration hit writes NPC.immune[owner] = 10.
-    /// Exceptional type-specific local/static immunity projectiles remain outside this catalog and fail closed.
+    /// The admitted grenade variants use permanent local immunity instead and therefore never enter this path.
     /// </summary>
     public const int BaselineOwnerNpcHitCooldownTicks = 10;
 }

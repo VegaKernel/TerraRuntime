@@ -35,12 +35,12 @@ Console занимает примерно две трети workspace. Спра�
 
 Roster переведён на `ListView`: focus/selection выделяет пункт целиком, а не текст внутри строки. Drag-and-drop игрока по-прежнему отправляет typed Level 1 move operation.
 
-Правая кнопка открывает context menu для выбранной semantic row. У sandbox мира есть `Destroy`, у игрока — `Kick`. Уничтожение primary мира намеренно не предлагается. `Kick` запрашивает закрытие process-owned connection через connection route/outbound queue; UI не удаляет строку самостоятельно и не мутирует player state напрямую.
+У actionable строк sandbox-world и player справа выводится явное действие `[X]`. Нажатие открывает confirmation dialog: для sandbox подтверждается `Destroy`, для player — `Kick`. Уничтожение primary мира намеренно не предлагается. `Kick` запрашивает закрытие process-owned connection через connection route/outbound queue; UI не удаляет строку самостоятельно и не мутирует player state напрямую.
 
 Кнопка `+` сверху roster открывает окно создания sandbox. Форма напрямую отображает typed sandbox creation surface:
 
 - имя sandbox;
-- два явных взаимоисключающих checkbox isolation: `In-process sandbox isolation` и `Dedicated-process sandbox isolation`;
+- один dropdown isolation с вариантами `In-process sandbox isolation` и `Dedicated-process sandbox isolation`;
 - generated world или существующий `.wld`;
 - generator ID и numeric/random seed;
 - размер primary или явные width/height;
@@ -89,4 +89,4 @@ Console и Details screens остаются read-only selectable text surfaces �
 
 ## Отзывчивость
 
-Authoritative operations capture остаётся вне Terminal.Gui thread. UI читает последний atomically published cache snapshot, поэтому input, row selection, context menu и окно создания sandbox не ждут world/network/log snapshot acquisition. Detached snapshot worker планируется примерно каждые 100 мс, а lightweight UI publication/input pump работает примерно каждые 16 мс.
+Authoritative operations capture остаётся вне Terminal.Gui thread. UI читает последний atomically published cache snapshot, поэтому input, row selection, явные row actions и окно создания sandbox не ждут world/network/log snapshot acquisition. Detached snapshot worker планируется примерно каждые 100 мс, а lightweight UI publication/input pump работает примерно каждые 16 мс.

@@ -289,9 +289,10 @@ internal sealed class NpcAuthority
         AppliedDespawns += npcs.DespawnExpired();
     }
 
-    public void TickProjectileInteractions()
+    public void TickProjectileInteractions(ReadOnlySpan<RuntimeProjectileExplosionEvent> explosions)
     {
         projectileNpcCombat.Tick();
+        projectileNpcCombat.TickExplosions(explosions);
         townNpcAuthority.TickProjectileInteractions();
     }
 
