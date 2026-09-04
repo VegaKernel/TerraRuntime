@@ -74,4 +74,15 @@ public sealed class VanillaProjectileUpdateFactsTests
     {
         Assert.Equal(0, VanillaProjectileUpdateFacts.GetExtraUpdates(new ProjectileTypeId(rawType)));
     }
+
+    [Fact]
+    public void Released_phantasmal_sphere_switches_to_two_subupdates_without_changing_SetDefaults_fact()
+    {
+        Assert.Equal(0, VanillaProjectileUpdateFacts.GetExtraUpdates(VanillaProjectileIds.PhantasmalSphere));
+        Assert.Equal(1, VanillaProjectileUpdateFacts.GetSubupdatesPerWorldTick(
+            VanillaProjectileIds.PhantasmalSphere, new ProjectileAiState(30f, 4f, 0f)));
+        Assert.Equal(2, VanillaProjectileUpdateFacts.GetSubupdatesPerWorldTick(
+            VanillaProjectileIds.PhantasmalSphere, new ProjectileAiState(-1f, 4f, 0f)));
+    }
+
 }

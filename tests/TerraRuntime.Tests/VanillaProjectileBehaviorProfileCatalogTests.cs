@@ -247,4 +247,25 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
     {
         Assert.False(VanillaProjectileBehaviorProfileCatalog.TryGet(new ProjectileTypeId(7), out _));
     }
+
+    [Theory]
+    [InlineData(452, VanillaProjectileBehaviorFamily.PhantasmalEye, 82)]
+    [InlineData(454, VanillaProjectileBehaviorFamily.PhantasmalSphere, 83)]
+    [InlineData(455, VanillaProjectileBehaviorFamily.PhantasmalDeathray, 84)]
+    [InlineData(873, VanillaProjectileBehaviorFamily.HallowBossRainbowStreak, 171)]
+    [InlineData(919, VanillaProjectileBehaviorFamily.FairyQueenLance, 179)]
+    [InlineData(923, VanillaProjectileBehaviorFamily.FairyQueenSunDance, 180)]
+    public void Late_boss_projectiles_have_explicit_source_backed_profiles(
+        int rawType, VanillaProjectileBehaviorFamily family, int aiStyle)
+    {
+        var type = new ProjectileTypeId(rawType);
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(type, out VanillaProjectileBehaviorProfile profile));
+        Assert.Equal(family, profile.Family);
+        Assert.Equal(new ProjectileAiStyleId(aiStyle), profile.ExpectedAiStyle);
+        Assert.True(profile.BehaviorImplemented);
+        Assert.False(profile.RejectServerOwned);
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(type, out VanillaProjectileDefinition definition));
+        Assert.Equal(definition.AiStyle, profile.ExpectedAiStyle);
+    }
+
 }

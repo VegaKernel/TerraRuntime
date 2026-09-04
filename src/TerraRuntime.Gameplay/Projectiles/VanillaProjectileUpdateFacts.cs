@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Gameplay.Projectiles;
 
@@ -42,4 +43,15 @@ public static class VanillaProjectileUpdateFacts
 
     public static int GetSubupdatesPerWorldTick(ProjectileTypeId type) =>
         checked(GetExtraUpdates(type) + 1);
+
+    /// <summary>
+    /// Source-backed runtime overrides for projectiles whose AI mutates <c>extraUpdates</c>. Phantasmal Sphere
+    /// (type 454, aiStyle 83) switches to <c>extraUpdates = 1</c> while released (<c>ai[0] == -1</c>).
+    /// </summary>
+    public static int GetSubupdatesPerWorldTick(ProjectileTypeId type, ProjectileAiState ai)
+    {
+        if (type == VanillaProjectileIds.PhantasmalSphere && ai.Ai0 == -1f)
+            return 2;
+        return GetSubupdatesPerWorldTick(type);
+    }
 }

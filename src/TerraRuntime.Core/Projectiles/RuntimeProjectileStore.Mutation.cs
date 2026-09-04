@@ -95,6 +95,16 @@ public sealed partial class RuntimeProjectileStore
         int timeLeft,
         ProjectileLiquidState? liquidState,
         out ProjectileSnapshot snapshot,
+        out bool expired) =>
+        TryCommitSimulationStep(handle, in update, timeLeft, liquidState, localAiState: null, out snapshot, out expired);
+
+    public bool TryCommitSimulationStep(
+        ProjectileHandle handle,
+        in ProjectileStateUpdate update,
+        int timeLeft,
+        ProjectileLiquidState? liquidState,
+        ProjectileLocalAiState? localAiState,
+        out ProjectileSnapshot snapshot,
         out bool expired)
     {
         expired = false;
@@ -150,6 +160,7 @@ public sealed partial class RuntimeProjectileStore
         {
             TimeLeft = timeLeft,
             Liquid = liquidState ?? lifecycle.Liquid,
+            LocalAi = localAiState ?? lifecycle.LocalAi,
             OldVelocityX = state.Update.VelocityX,
             OldVelocityY = state.Update.VelocityY
         };

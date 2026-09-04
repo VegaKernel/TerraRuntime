@@ -111,6 +111,7 @@ internal sealed partial class ServerRuntimeState
             evilBossDownedBaseline);
         _projectilePlayerCombat = new RuntimeProjectilePlayerCombatPass(
             projectileStore,
+            npcStore,
             _players,
             () => Updates);
         _npcPlayerCombat = new RuntimeNpcPlayerCombatPass(npcStore, _players);

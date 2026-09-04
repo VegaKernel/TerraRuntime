@@ -268,4 +268,25 @@ public sealed class VanillaProjectileDefinitionCatalogTests
         Assert.Equal(14f, definition.CollisionOffsetY);
     }
 
+
+    [Theory]
+    [InlineData(452, 14, 14, 82, true, false)]
+    [InlineData(454, 40, 40, 83, false, false)]
+    [InlineData(455, 36, 36, 84, false, false)]
+    [InlineData(873, 30, 30, 171, false, true)]
+    [InlineData(919, 8, 8, 179, false, true)]
+    [InlineData(923, 30, 30, 180, false, true)]
+    public void Terraria_1458_late_boss_projectile_definitions_match_source(
+        int rawType, int width, int height, int aiStyle, bool tileCollide, bool ignoreWater)
+    {
+        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(
+            new ProjectileTypeId(rawType), out VanillaProjectileDefinition definition));
+        Assert.Equal(width, definition.Width);
+        Assert.Equal(height, definition.Height);
+        Assert.Equal(new ProjectileAiStyleId(aiStyle), definition.AiStyle);
+        Assert.Equal(tileCollide, definition.TileCollide);
+        Assert.Equal(ignoreWater, definition.IgnoreWater);
+        Assert.True(definition.CanCutTiles);
+    }
+
 }

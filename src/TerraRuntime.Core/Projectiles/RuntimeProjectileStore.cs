@@ -33,6 +33,16 @@ public readonly record struct ProjectileLiquidState(
     bool ShimmerWet);
 
 /// <summary>
+/// Runtime-only vanilla Projectile.localAI[0..2]. These values never come from packet 27 and advance only with a
+/// committed authoritative simulation step. Keeping them beside lifecycle state prevents client traffic from
+/// manufacturing warm-up timers, beam lengths or other server-only AI phases.
+/// </summary>
+public readonly record struct ProjectileLocalAiState(float Ai0, float Ai1, float Ai2)
+{
+    public bool IsFinite => float.IsFinite(Ai0) && float.IsFinite(Ai1) && float.IsFinite(Ai2);
+}
+
+/// <summary>
 /// Runtime-owned lifecycle fields initialized by vanilla Projectile.SetDefaults and intentionally absent
 /// from packet 27. They remain authoritative server state so allocation and later simulation do not infer
 /// gameplay lifetime or liquid history from network traffic.
@@ -54,6 +64,9 @@ public readonly record struct ProjectileLifecycleState(
 
     /// <summary>Runtime-only authoritative penetrate override written by NPC.ReflectProjectile.</summary>
     public int? PenetrateOverride { get; init; }
+
+    /// <summary>Server-only vanilla Projectile.localAI state for this exact generation.</summary>
+    public ProjectileLocalAiState LocalAi { get; init; }
 }
 
 /// <summary>

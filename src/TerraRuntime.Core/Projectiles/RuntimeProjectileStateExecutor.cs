@@ -41,7 +41,8 @@ public readonly record struct ProjectileSimulationStepResult(
     ProjectileStateUpdate State,
     int TimeLeft,
     ProjectileLiquidState? Liquid = null,
-    ProjectileSimulationTerminationReason TerminationReason = ProjectileSimulationTerminationReason.None);
+    ProjectileSimulationTerminationReason TerminationReason = ProjectileSimulationTerminationReason.None,
+    ProjectileLocalAiState? LocalAi = null);
 
 /// <summary>
 /// State-only projectile simulation stepper. Returning false on the first subupdate means the stepper does
@@ -147,7 +148,7 @@ public sealed class RuntimeProjectileStateExecutor
                 continue;
             }
 
-            int subupdates = VanillaProjectileUpdateFacts.GetSubupdatesPerWorldTick(projectile.Type);
+            int subupdates = VanillaProjectileUpdateFacts.GetSubupdatesPerWorldTick(projectile.Type, projectile.Ai);
             ProjectileSnapshot currentProjectile = projectile;
             ProjectileLifecycleState currentLifecycle = lifecycle;
             ProjectileSimulationStepResult finalResult = default;
@@ -184,6 +185,7 @@ public sealed class RuntimeProjectileStateExecutor
                         currentLifecycle,
                         next.TimeLeft,
                         next.Liquid,
+                        next.LocalAi,
                         out ProjectileLifecycleState nextLifecycle))
                 {
                     invalid = true;
@@ -227,6 +229,7 @@ public sealed class RuntimeProjectileStateExecutor
                     in finalState,
                     finalResult.TimeLeft,
                     currentLifecycle.Liquid,
+                    currentLifecycle.LocalAi,
                     out ProjectileSnapshot committed,
                     out bool expired))
             {
@@ -301,6 +304,7 @@ public sealed class RuntimeProjectileStateExecutor
         ProjectileLifecycleState previous,
         int timeLeft,
         ProjectileLiquidState? liquid,
+        ProjectileLocalAiState? localAi,
         out ProjectileLifecycleState next)
     {
         bool netImportant = previous.NetImportant;
@@ -320,7 +324,14 @@ public sealed class RuntimeProjectileStateExecutor
         next = new ProjectileLifecycleState(
             timeLeft,
             netImportant,
-            liquid ?? previous.Liquid);
+            liquid ?? previous.Liquid)
+        {
+            OldVelocityX = previous.OldVelocityX,
+            OldVelocityY = previous.OldVelocityY,
+            Reflected = previous.Reflected,
+            PenetrateOverride = previous.PenetrateOverride,
+            LocalAi = localAi ?? previous.LocalAi
+        };
         return true;
     }
 

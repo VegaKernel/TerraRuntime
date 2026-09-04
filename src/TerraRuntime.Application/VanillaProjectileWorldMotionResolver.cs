@@ -1,4 +1,5 @@
 using TerraRuntime.Gameplay.Projectiles;
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -42,17 +43,19 @@ internal sealed class VanillaProjectileWorldMotionResolver
         float velocityY = behavior.VelocityY;
         float behaviorPositionX = behavior.PositionXOverride ?? current.PositionX;
         float behaviorPositionY = behavior.PositionYOverride ?? current.PositionY;
+        ProjectileLocalAiState resolvedLocalAi = behavior.LocalAiOverride ?? projectile.Lifecycle.LocalAi;
 
         if (current.Type == VanillaProjectileIds.SkeletronPrimeBomb && IsPrimeBombPlatformContact(in current, in definition))
         {
             next = new ProjectileSimulationStepResult(
                 new ProjectileStateUpdate(
                     current.Type, current.Spawner, behaviorPositionX, behaviorPositionY, velocityX, velocityY,
-                    new ProjectileAiState(behavior.Ai0, behavior.Ai1Override ?? current.Ai.Ai1, current.Ai.Ai2),
+                    new ProjectileAiState(behavior.Ai0, behavior.Ai1Override ?? current.Ai.Ai1, behavior.Ai2Override ?? current.Ai.Ai2),
                     current.BannerIdToRespondTo, current.Damage, current.KnockBack, current.OriginalDamage),
                 TimeLeft: 0,
                 Liquid: projectile.Lifecycle.Liquid,
-                TerminationReason: ProjectileSimulationTerminationReason.BehaviorKill);
+                TerminationReason: ProjectileSimulationTerminationReason.BehaviorKill,
+                LocalAi: resolvedLocalAi);
             return true;
         }
 
@@ -66,15 +69,35 @@ internal sealed class VanillaProjectileWorldMotionResolver
                     behaviorPositionY,
                     velocityX,
                     velocityY,
-                    new ProjectileAiState(behavior.Ai0, behavior.Ai1Override ?? current.Ai.Ai1, current.Ai.Ai2),
+                    new ProjectileAiState(behavior.Ai0, behavior.Ai1Override ?? current.Ai.Ai1, behavior.Ai2Override ?? current.Ai.Ai2),
                     current.BannerIdToRespondTo,
                     current.Damage,
                     current.KnockBack,
                     current.OriginalDamage),
                 TimeLeft: 0,
                 Liquid: projectile.Lifecycle.Liquid,
-                TerminationReason: ProjectileSimulationTerminationReason.BehaviorKill);
+                TerminationReason: ProjectileSimulationTerminationReason.BehaviorKill,
+                LocalAi: resolvedLocalAi);
             return true;
+        }
+
+        if (current.Type == VanillaProjectileIds.PhantasmalDeathray)
+        {
+            ProjectileLocalAiState beamLocalAi = resolvedLocalAi;
+            if (!TryResolvePhantasmalDeathrayBeam(
+                    in current,
+                    in definition,
+                    behaviorPositionX,
+                    behaviorPositionY,
+                    velocityX,
+                    velocityY,
+                    in behaviorContext,
+                    in beamLocalAi,
+                    out resolvedLocalAi))
+            {
+                next = default;
+                return false;
+            }
         }
 
         // Projectile.Update performs this wind-physics pass after AI when the projectile is above the surface,
@@ -219,7 +242,8 @@ internal sealed class VanillaProjectileWorldMotionResolver
 
         float positionX = behaviorPositionX;
         float positionY = behaviorPositionY;
-        if (tileImpact && !bombCollisionHandled && !golemFireballCollisionHandled && !thornBallCollisionHandled && !rainbowRodControlledCollisionHandled)
+        bool skipUpdatePosition = definition.AiStyle == VanillaProjectileAiStyles.PhantasmalDeathray;
+        if (!skipUpdatePosition && tileImpact && !bombCollisionHandled && !golemFireballCollisionHandled && !thornBallCollisionHandled && !rainbowRodControlledCollisionHandled)
         {
             // Supported aiStyle-1/2 families use the generic impact fallback: movement first advances by the
             // collision-clamped velocity, Kill() expires the projectile, then UpdatePosition reaches its common tail.
@@ -227,8 +251,14 @@ internal sealed class VanillaProjectileWorldMotionResolver
             positionY += collidedVelocityY;
         }
 
-        positionX += movementX;
-        positionY += movementY;
+        if (!skipUpdatePosition)
+        {
+            positionX += movementX;
+            positionY += movementY;
+        }
+
+        // Projectile.Update skips UpdatePosition entirely for aiStyle 84 beams; their AI anchor is the final
+        // authoritative position for the subupdate while velocity is a direction vector for LaserScan/collision.
 
         // Dedicated-server ownership reaches CutTiles. Until irreversible KillTile/drop effects are modeled,
         // server-owned simulation is accepted only when a conservative sweep proves no candidate is reachable.
@@ -254,7 +284,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
             positionY,
             collidedVelocityX,
             collidedVelocityY,
-            new ProjectileAiState(resolvedAi0, behavior.Ai1Override ?? current.Ai.Ai1, current.Ai.Ai2),
+            new ProjectileAiState(resolvedAi0, behavior.Ai1Override ?? current.Ai.Ai1, behavior.Ai2Override ?? current.Ai.Ai2),
             current.BannerIdToRespondTo,
             current.Damage,
             current.KnockBack,
@@ -303,7 +333,105 @@ internal sealed class VanillaProjectileWorldMotionResolver
                     ? ProjectileSimulationTerminationReason.LifetimeExpired
                     : ProjectileSimulationTerminationReason.None;
         }
-        next = new ProjectileSimulationStepResult(state, timeLeft, liquid, terminationReason);
+        next = new ProjectileSimulationStepResult(
+            state,
+            timeLeft,
+            liquid,
+            terminationReason,
+            resolvedLocalAi);
+        return true;
+    }
+
+    private bool TryResolvePhantasmalDeathrayBeam(
+        in ProjectileSnapshot projectile,
+        in VanillaProjectileDefinition definition,
+        float positionX,
+        float positionY,
+        float velocityX,
+        float velocityY,
+        in VanillaProjectileBehaviorContext behaviorContext,
+        in ProjectileLocalAiState localAi,
+        out ProjectileLocalAiState resolved)
+    {
+        int sourceSlot = (int)projectile.Ai.Ai1;
+        if (behaviorContext.NpcTargets is null ||
+            !behaviorContext.NpcTargets.TryGetActiveNpc(sourceSlot, out NpcSnapshot sourceNpc) ||
+            (sourceNpc.TypeIdentity != VanillaNpcIds.MoonLordHead &&
+             sourceNpc.TypeIdentity != VanillaNpcIds.MoonLordFreeEye))
+        {
+            resolved = default;
+            return false;
+        }
+
+        float maxScale = sourceNpc.TypeIdentity == VanillaNpcIds.MoonLordFreeEye ? 0.4f : 1f;
+        float scale = MathF.Sin(localAi.Ai0 * MathF.PI / 180f) * 10f * maxScale;
+        if (scale > maxScale)
+            scale = maxScale;
+        if (scale < 0f || !float.IsFinite(scale))
+        {
+            resolved = default;
+            return false;
+        }
+
+        float centerX = positionX + definition.Width * 0.5f;
+        float centerY = positionY + definition.Height * 0.5f;
+        float scannedDistance = VanillaWorldLaserScan1458.MeasureAverageDistance(
+            tiles,
+            centerX,
+            centerY,
+            velocityX,
+            velocityY,
+            definition.Width * scale,
+            2400f,
+            sampleCount: 3);
+        float lerpAmount = 0.5f;
+
+        if (sourceNpc.TypeIdentity == VanillaNpcIds.MoonLordHead &&
+            sourceNpc.Target < byte.MaxValue &&
+            behaviorContext.PlayerSnapshots is not null &&
+            behaviorContext.PlayerSnapshots.TryGetPlayer(new PlayerSlotId((byte)sourceNpc.Target), out PlayerStateSnapshot target) &&
+            TryResolveNpcHitbox(in sourceNpc, out VanillaNpcHitboxSize sourceHitbox) &&
+            !VanillaWorldCanHit.HasLineOfSight(
+                tiles,
+                sourceNpc.PositionX,
+                sourceNpc.PositionY,
+                sourceHitbox.Width,
+                sourceHitbox.Height,
+                target.PositionX,
+                target.PositionY,
+                (int)PlayerAuthority.VanillaBasePlayerWidth,
+                (int)PlayerAuthority.VanillaBasePlayerHeight))
+        {
+            float sourceCenterX = sourceNpc.PositionX + sourceHitbox.Width * 0.5f;
+            float sourceCenterY = sourceNpc.PositionY + sourceHitbox.Height * 0.5f;
+            float targetCenterX = target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+            float targetCenterY = target.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+            float dx = targetCenterX - sourceCenterX;
+            float dy = targetCenterY - sourceCenterY;
+            scannedDistance = Math.Min(2400f, MathF.Sqrt(dx * dx + dy * dy) + 150f);
+            lerpAmount = 0.75f;
+        }
+
+        float beamLength = localAi.Ai1 + (scannedDistance - localAi.Ai1) * lerpAmount;
+        if (!float.IsFinite(beamLength))
+        {
+            resolved = default;
+            return false;
+        }
+
+        resolved = localAi with { Ai1 = beamLength };
+        return true;
+    }
+
+    private static bool TryResolveNpcHitbox(in NpcSnapshot npc, out VanillaNpcHitboxSize hitbox)
+    {
+        if (!VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(npc.Simulation.Scale, out hitbox))
+        {
+            hitbox = default;
+            return false;
+        }
+
         return true;
     }
 

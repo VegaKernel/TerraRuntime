@@ -92,6 +92,19 @@ internal sealed class VanillaProjectileNpcTargetResolver : IVanillaProjectileNpc
         return true;
     }
 
+    public bool IsNpcSlotAddressable(int npcSlot) => (uint)npcSlot < (uint)npcs.Capacity;
+
+    public bool TryGetActiveNpc(int npcSlot, out NpcSnapshot npc)
+    {
+        if ((uint)npcSlot >= (uint)npcs.Capacity)
+        {
+            npc = default;
+            return false;
+        }
+
+        return npcs.TryGetActive(checked((byte)npcSlot), out npc);
+    }
+
     private static bool TryResolveChaseableTarget(
         in NpcSnapshot candidate,
         out VanillaNpcHitboxSize hitbox,

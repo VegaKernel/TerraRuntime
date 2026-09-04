@@ -274,6 +274,7 @@ public sealed class RuntimeProjectileBehaviorStateStepper : IProjectileStateStep
                 current.Lifecycle,
                 normalized.TimeLeft,
                 normalized.Liquid,
+                normalized.LocalAi,
                 out ProjectileLifecycleState lifecycle))
         {
             projected = default;
@@ -328,6 +329,7 @@ public sealed class RuntimeProjectileBehaviorStateStepper : IProjectileStateStep
         ProjectileLifecycleState previous,
         int timeLeft,
         ProjectileLiquidState? liquid,
+        ProjectileLocalAiState? localAi,
         out ProjectileLifecycleState next)
     {
         bool netImportant = previous.NetImportant;
@@ -342,7 +344,14 @@ public sealed class RuntimeProjectileBehaviorStateStepper : IProjectileStateStep
             netImportant = defaults.NetImportant;
         }
 
-        next = new ProjectileLifecycleState(timeLeft, netImportant, liquid ?? previous.Liquid);
+        next = new ProjectileLifecycleState(timeLeft, netImportant, liquid ?? previous.Liquid)
+        {
+            OldVelocityX = previous.OldVelocityX,
+            OldVelocityY = previous.OldVelocityY,
+            Reflected = previous.Reflected,
+            PenetrateOverride = previous.PenetrateOverride,
+            LocalAi = localAi ?? previous.LocalAi
+        };
         return true;
     }
 
@@ -362,5 +371,6 @@ public sealed class RuntimeProjectileBehaviorStateStepper : IProjectileStateStep
                 current.Projectile.OriginalDamage),
             current.Lifecycle.TimeLeft,
             current.Lifecycle.Liquid,
-            current.TerminationReason);
+            current.TerminationReason,
+            current.Lifecycle.LocalAi);
 }

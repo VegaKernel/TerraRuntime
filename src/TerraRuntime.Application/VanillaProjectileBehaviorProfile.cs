@@ -29,7 +29,13 @@ internal enum VanillaProjectileBehaviorFamily : byte
     CultistFireball = 16,
     QueenSlimeGel = 17,
     SkeletronPrimeBomb = 18,
-    PlanteraThornBall = 19
+    PlanteraThornBall = 19,
+    PhantasmalEye = 20,
+    PhantasmalSphere = 21,
+    FairyQueenLance = 22,
+    FairyQueenSunDance = 23,
+    PhantasmalDeathray = 24,
+    HallowBossRainbowStreak = 25
 }
 
 /// <summary>
@@ -175,6 +181,54 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         RejectServerOwned: false,
         ExemptFromPreAiWorldBounds: false);
 
+    private static readonly VanillaProjectileBehaviorProfile PhantasmalEyeProfile = new(
+        VanillaProjectileBehaviorFamily.PhantasmalEye,
+        VanillaProjectileAiStyles.PhantasmalEye,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile PhantasmalSphereProfile = new(
+        VanillaProjectileBehaviorFamily.PhantasmalSphere,
+        VanillaProjectileAiStyles.PhantasmalSphere,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile PhantasmalDeathrayProfile = new(
+        VanillaProjectileBehaviorFamily.PhantasmalDeathray,
+        VanillaProjectileAiStyles.PhantasmalDeathray,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile HallowBossRainbowStreakProfile = new(
+        VanillaProjectileBehaviorFamily.HallowBossRainbowStreak,
+        VanillaProjectileAiStyles.HallowBossRainbowStreak,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile FairyQueenLanceProfile = new(
+        VanillaProjectileBehaviorFamily.FairyQueenLance,
+        VanillaProjectileAiStyles.FairyQueenLance,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile FairyQueenSunDanceProfile = new(
+        VanillaProjectileBehaviorFamily.FairyQueenSunDance,
+        VanillaProjectileAiStyles.FairyQueenSunDance,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
     private static readonly VanillaProjectileBehaviorProfile BoomerangProfile = new(
         VanillaProjectileBehaviorFamily.Boomerang,
         VanillaProjectileAiStyles.Boomerang,
@@ -238,6 +292,42 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.PlanteraThornBall)
         {
             profile = PlanteraThornBallProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PhantasmalEye)
+        {
+            profile = PhantasmalEyeProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PhantasmalSphere)
+        {
+            profile = PhantasmalSphereProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PhantasmalDeathray)
+        {
+            profile = PhantasmalDeathrayProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.HallowBossRainbowStreak)
+        {
+            profile = HallowBossRainbowStreakProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.FairyQueenLance)
+        {
+            profile = FairyQueenLanceProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.FairyQueenSunDance)
+        {
+            profile = FairyQueenSunDanceProfile;
             return true;
         }
 

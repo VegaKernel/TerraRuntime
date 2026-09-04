@@ -99,7 +99,8 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
             expertMode,
             npcTargets,
             hostilePlayerTargets,
-            projectile.Lifecycle.TimeLeft);
+            projectile.Lifecycle.TimeLeft,
+            projectile.Lifecycle.LocalAi);
         if (!VanillaProjectileBehaviorStepper.TryStep(
                 in current,
                 in definition,

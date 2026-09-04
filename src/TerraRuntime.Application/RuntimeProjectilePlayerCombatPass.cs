@@ -2,6 +2,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Gameplay.Players;
 
@@ -16,6 +17,7 @@ internal sealed class RuntimeProjectilePlayerCombatPass
 {
     private const int PlayerSlotCount = byte.MaxValue + 1;
     private readonly RuntimeProjectileStore projectiles;
+    private readonly RuntimeNpcStore npcs;
     private readonly PlayerAuthority players;
     private readonly Func<long> tickProvider;
     private readonly Random random;
@@ -26,11 +28,13 @@ internal sealed class RuntimeProjectilePlayerCombatPass
 
     public RuntimeProjectilePlayerCombatPass(
         RuntimeProjectileStore projectiles,
+        RuntimeNpcStore npcs,
         PlayerAuthority players,
         Func<long> tickProvider,
         Random? random = null)
     {
         this.projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
+        this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
         this.random = random ?? Random.Shared;
@@ -143,6 +147,8 @@ internal sealed class RuntimeProjectilePlayerCombatPass
             if (!projectile.IsActive || projectile.Damage <= 0 ||
                 !VanillaProjectileFacts.IsHostile(projectile.Type) ||
                 !projectiles.TryGetServerNpcSource(projectile.Handle, out NpcHandle sourceNpc) ||
+                !projectiles.TryGetLifecycle(projectile.Handle, out ProjectileLifecycleState lifecycle) ||
+                !CanDealHostileProjectileDamage(projectile.Type, in lifecycle) ||
                 !VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition) ||
                 !VanillaProjectileBehaviorProfileCatalog.TryGet(projectile.Type, out VanillaProjectileBehaviorProfile profile) ||
                 !profile.BehaviorImplemented)
@@ -157,7 +163,7 @@ internal sealed class RuntimeProjectilePlayerCombatPass
                 PlayerHandle targetHandle = target.Connection.Player;
                 if (target.IsDead || !target.HasHealth || target.Life <= 0 ||
                     (target.GodMode && IsPlayerOnProjectileCooldown(projectile.Handle, targetHandle, tick)) ||
-                    !Intersects(in projectile, in definition, target))
+                    !IntersectsHostile(in projectile, in definition, in lifecycle, sourceNpc, target))
                 {
                     continue;
                 }
@@ -384,6 +390,180 @@ internal sealed class RuntimeProjectilePlayerCombatPass
         float playerRight = player.PositionX + PlayerAuthority.VanillaBasePlayerWidth;
         float playerBottom = player.PositionY + PlayerAuthority.VanillaBasePlayerHeight;
         return left < playerRight && right > player.PositionX && top < playerBottom && bottom > player.PositionY;
+    }
+
+
+    private static bool CanDealHostileProjectileDamage(ProjectileTypeId type, in ProjectileLifecycleState lifecycle)
+    {
+        // Projectile.Damage_CanDealDamage: Empress lance/sun-dance are harmless through localAI[0] == 60.
+        if ((type == VanillaProjectileIds.FairyQueenLance || type == VanillaProjectileIds.FairyQueenSunDance) &&
+            lifecycle.LocalAi.Ai0 <= 60f)
+        {
+            return false;
+        }
+        return true;
+    }
+
+    private bool IntersectsHostile(
+        in ProjectileSnapshot projectile,
+        in VanillaProjectileDefinition definition,
+        in ProjectileLifecycleState lifecycle,
+        NpcHandle sourceNpc,
+        RuntimePlayerMember player)
+    {
+        float playerLeft = player.PositionX;
+        float playerTop = player.PositionY;
+        float playerWidth = PlayerAuthority.VanillaBasePlayerWidth;
+        float playerHeight = PlayerAuthority.VanillaBasePlayerHeight;
+
+        // Projectile.Colliding source gates: the eye is harmless before its firing phase, while a sphere
+        // that is still attached to its source cannot hurt until ai[0] reaches 60 (unless ai[1] == -1).
+        if (projectile.Type == VanillaProjectileIds.PhantasmalEye && projectile.Ai.Ai0 < 2f)
+            return false;
+        if (projectile.Type == VanillaProjectileIds.PhantasmalSphere &&
+            projectile.Ai.Ai0 >= 0f && projectile.Ai.Ai0 < 60f && projectile.Ai.Ai1 != -1f)
+        {
+            return false;
+        }
+
+        if (projectile.Type == VanillaProjectileIds.PhantasmalDeathray)
+        {
+            if (lifecycle.LocalAi.Ai0 < 20f || !npcs.TryGet(sourceNpc, out NpcSnapshot source))
+                return false;
+
+            float maxScale = source.TypeIdentity == VanillaNpcIds.MoonLordHead
+                ? 1f
+                : source.TypeIdentity == VanillaNpcIds.MoonLordFreeEye
+                    ? 0.4f
+                    : 0f;
+            if (!(maxScale > 0f))
+                return false;
+
+            float scale = MathF.Sin(lifecycle.LocalAi.Ai0 * (MathF.PI / 180f)) * 10f * maxScale;
+            scale = MathF.Min(scale, maxScale);
+            if (!(scale > 0f) || !float.IsFinite(scale) || !(lifecycle.LocalAi.Ai1 > 0f) ||
+                !float.IsFinite(lifecycle.LocalAi.Ai1))
+            {
+                return false;
+            }
+
+            float centerX = projectile.PositionX + definition.Width * 0.5f;
+            float centerY = projectile.PositionY + definition.Height * 0.5f;
+            float endX = centerX + projectile.VelocityX * lifecycle.LocalAi.Ai1;
+            float endY = centerY + projectile.VelocityY * lifecycle.LocalAi.Ai1;
+            return CheckAabbVsLine(
+                playerLeft, playerTop, playerWidth, playerHeight,
+                centerX, centerY, endX, endY, definition.Width * scale);
+        }
+
+        if (projectile.Type == VanillaProjectileIds.FairyQueenLance)
+        {
+            float centerX = projectile.PositionX + definition.Width * 0.5f;
+            float centerY = projectile.PositionY + definition.Height * 0.5f;
+            float cos = MathF.Cos(projectile.Ai.Ai0);
+            float sin = MathF.Sin(projectile.Ai.Ai0);
+            return CheckAabbVsLine(
+                playerLeft, playerTop, playerWidth, playerHeight,
+                centerX - cos * 40f, centerY - sin * 40f,
+                centerX + cos * 40f, centerY + sin * 40f,
+                8f);
+        }
+
+        if (projectile.Type == VanillaProjectileIds.FairyQueenSunDance)
+        {
+            float localAi0 = lifecycle.LocalAi.Ai0;
+            float scaleIn = Math.Clamp(localAi0 / 20f, 0f, 1f);
+            float scaleOut = Math.Clamp((180f - localAi0) / 60f, 0f, 1f);
+            float scale = scaleIn * scaleOut;
+            if (!(scale > 0f))
+                return false;
+
+            float rotationLerp = Math.Clamp((localAi0 - 50f) / 130f, 0f, 1f);
+            float rotation = projectile.Ai.Ai0 + rotationLerp * (MathF.PI / 9f);
+            float dirX = MathF.Cos(rotation);
+            float dirY = MathF.Sin(rotation);
+            float centerX = projectile.PositionX + definition.Width * 0.5f;
+            float centerY = projectile.PositionY + definition.Height * 0.5f;
+            float rayX = dirX * scale;
+            float rayY = dirY * scale;
+            float widthScale = scale * 0.7f;
+
+            return CheckAabbVsLine(playerLeft, playerTop, playerWidth, playerHeight, centerX, centerY, centerX + rayX * 510f, centerY + rayY * 510f, widthScale * 100f) ||
+                   CheckAabbVsLine(playerLeft, playerTop, playerWidth, playerHeight, centerX, centerY, centerX + rayX * 660f, centerY + rayY * 660f, widthScale * 60f) ||
+                   CheckAabbVsLine(playerLeft, playerTop, playerWidth, playerHeight, centerX, centerY, centerX + rayX * 800f, centerY + rayY * 800f, widthScale * 10f);
+        }
+
+        return Intersects(in projectile, in definition, player);
+    }
+
+    // Allocation-free port of Terraria Collision.CheckAABBvLineCollision's gameplay geometry. The rectangle
+    // is transformed into line-local coordinates and tested against the finite strip [0,length] x +/-width/2.
+    private static bool CheckAabbVsLine(
+        float rectX, float rectY, float rectWidth, float rectHeight,
+        float lineStartX, float lineStartY, float lineEndX, float lineEndY, float lineWidth)
+    {
+        float halfWidth = lineWidth * 0.5f;
+        float broadLeft = MathF.Min(lineStartX, lineEndX) - halfWidth;
+        float broadTop = MathF.Min(lineStartY, lineEndY) - halfWidth;
+        float broadRight = MathF.Max(lineStartX, lineEndX) + halfWidth;
+        float broadBottom = MathF.Max(lineStartY, lineEndY) + halfWidth;
+        if (!(rectX < broadRight && rectX + rectWidth > broadLeft && rectY < broadBottom && rectY + rectHeight > broadTop))
+            return false;
+
+        float dx = lineEndX - lineStartX;
+        float dy = lineEndY - lineStartY;
+        float length = MathF.Sqrt(dx * dx + dy * dy);
+        if (!(length > 0f) || !float.IsFinite(length))
+            return false;
+        float cos = dx / length;
+        float sin = dy / length;
+
+        Span<float> xs = stackalloc float[4];
+        Span<float> ys = stackalloc float[4];
+        TransformLineLocal(rectX, rectY, lineStartX, lineStartY, cos, sin, out xs[0], out ys[0]);
+        TransformLineLocal(rectX + rectWidth, rectY, lineStartX, lineStartY, cos, sin, out xs[1], out ys[1]);
+        TransformLineLocal(rectX + rectWidth, rectY + rectHeight, lineStartX, lineStartY, cos, sin, out xs[2], out ys[2]);
+        TransformLineLocal(rectX, rectY + rectHeight, lineStartX, lineStartY, cos, sin, out xs[3], out ys[3]);
+
+        for (int i = 0; i < 4; i++)
+        {
+            if (MathF.Abs(ys[i]) < halfWidth && xs[i] >= 0f && xs[i] < length)
+                return true;
+        }
+
+        for (int i = 0; i < 4; i++)
+        {
+            int j = (i + 1) & 3;
+            if (SegmentCrossesHorizontalStripEdge(xs[i], ys[i], xs[j], ys[j], halfWidth, length) ||
+                SegmentCrossesHorizontalStripEdge(xs[i], ys[i], xs[j], ys[j], -halfWidth, length))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void TransformLineLocal(
+        float x, float y, float originX, float originY, float cos, float sin,
+        out float localX, out float localY)
+    {
+        float rx = x - originX;
+        float ry = y - originY;
+        localX = rx * cos + ry * sin;
+        localY = -rx * sin + ry * cos;
+    }
+
+    private static bool SegmentCrossesHorizontalStripEdge(
+        float x0, float y0, float x1, float y1, float edgeY, float length)
+    {
+        float dy = y1 - y0;
+        if (dy == 0f)
+            return y0 == edgeY && MathF.Max(MathF.Min(x0, x1), 0f) <= MathF.Min(MathF.Max(x0, x1), length);
+        float t = (edgeY - y0) / dy;
+        if (t < 0f || t > 1f)
+            return false;
+        float x = x0 + (x1 - x0) * t;
+        return x >= 0f && x <= length;
     }
 
     private static bool Intersects(in RuntimeProjectileExplosionEvent explosion, RuntimePlayerMember player)

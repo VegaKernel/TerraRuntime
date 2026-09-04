@@ -14,8 +14,14 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId BouncyBall = new(14);
     public static readonly ProjectileAiStyleId Bomb = new(16);
     public static readonly ProjectileAiStyleId EyeFire = new(23);
+    public static readonly ProjectileAiStyleId PhantasmalEye = new(82);
+    public static readonly ProjectileAiStyleId PhantasmalSphere = new(83);
+    public static readonly ProjectileAiStyleId PhantasmalDeathray = new(84);
+    public static readonly ProjectileAiStyleId HallowBossRainbowStreak = new(171);
     public static readonly ProjectileAiStyleId SuperStar = new(151);
     public static readonly ProjectileAiStyleId SharpTears = new(157);
+    public static readonly ProjectileAiStyleId FairyQueenLance = new(179);
+    public static readonly ProjectileAiStyleId FairyQueenSunDance = new(180);
     public static readonly ProjectileAiStyleId ShadowHand = new(187);
 }
 
@@ -264,6 +270,66 @@ public static class VanillaProjectileDefinitionCatalog
         CanCutTiles: true,
         CollisionWidth: 8,
         CollisionHeight: 8);
+
+    private static readonly VanillaProjectileDefinition PhantasmalEyeDefinition = new(
+        Width: 14,
+        Height: 14,
+        AiStyle: VanillaProjectileAiStyles.PhantasmalEye,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 14,
+        CollisionHeight: 14);
+
+    private static readonly VanillaProjectileDefinition PhantasmalSphereDefinition = new(
+        Width: 40,
+        Height: 40,
+        AiStyle: VanillaProjectileAiStyles.PhantasmalSphere,
+        TileCollide: false,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 40,
+        CollisionHeight: 40);
+
+    private static readonly VanillaProjectileDefinition PhantasmalDeathrayDefinition = new(
+        Width: 36,
+        Height: 36,
+        AiStyle: VanillaProjectileAiStyles.PhantasmalDeathray,
+        TileCollide: false,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 36,
+        CollisionHeight: 36);
+
+    private static readonly VanillaProjectileDefinition HallowBossRainbowStreakDefinition = new(
+        Width: 30,
+        Height: 30,
+        AiStyle: VanillaProjectileAiStyles.HallowBossRainbowStreak,
+        TileCollide: false,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 30,
+        CollisionHeight: 30);
+
+    private static readonly VanillaProjectileDefinition FairyQueenLanceDefinition = new(
+        Width: 8,
+        Height: 8,
+        AiStyle: VanillaProjectileAiStyles.FairyQueenLance,
+        TileCollide: false,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 8,
+        CollisionHeight: 8);
+
+    private static readonly VanillaProjectileDefinition FairyQueenSunDanceDefinition = new(
+        Width: 30,
+        Height: 30,
+        AiStyle: VanillaProjectileAiStyles.FairyQueenSunDance,
+        TileCollide: false,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 30,
+        CollisionHeight: 30);
 
     private static readonly VanillaProjectileDefinition CultistFireballDefinition = new(
         Width: 40,
@@ -656,6 +722,42 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.PhantasmalBolt)
         {
             definition = PhantasmalBoltDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PhantasmalEye)
+        {
+            definition = PhantasmalEyeDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PhantasmalSphere)
+        {
+            definition = PhantasmalSphereDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PhantasmalDeathray)
+        {
+            definition = PhantasmalDeathrayDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.HallowBossRainbowStreak)
+        {
+            definition = HallowBossRainbowStreakDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.FairyQueenLance)
+        {
+            definition = FairyQueenLanceDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.FairyQueenSunDance)
+        {
+            definition = FairyQueenSunDanceDefinition;
             return true;
         }
 

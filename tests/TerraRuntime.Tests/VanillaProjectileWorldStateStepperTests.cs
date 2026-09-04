@@ -993,6 +993,45 @@ public sealed class VanillaProjectileWorldStateStepperTests
     }
 
     [Fact]
+    public void Phantasmal_deathray_ai_style_84_keeps_ai_anchor_instead_of_running_common_position_update()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(200, 160));
+        var npcs = new RuntimeNpcStore(capacity: 7);
+        var headUpdate = new NpcStateUpdate(
+            Type: VanillaNpcIds.MoonLordHead.Value,
+            NetId: checked((short)VanillaNpcIds.MoonLordHead.Value),
+            PositionX: 300f,
+            PositionY: 400f,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: 0,
+            Ai: default,
+            Simulation: NpcSimulationState.Initial);
+        Assert.True(npcs.TrySpawn(6, in headUpdate, out _));
+
+        var stepper = new VanillaProjectileWorldStateStepper(tiles, npcs: npcs);
+        ProjectileSnapshot deathray = CreateSnapshot(
+            positionX: 100f, positionY: 100f, velocityX: 1f, velocityY: 0f) with
+        {
+            Type = VanillaProjectileIds.PhantasmalDeathray,
+            Spawner = VanillaProjectileOwnership.ServerOwner,
+            Ai = new ProjectileAiState(0f, 6f, 0f)
+        };
+        ProjectileSimulationStepContext context = CreateContext(deathray, timeLeft: 600);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        // Head hitbox is 38x56. With source localAI[1] == 0 the deathray is centered exactly on the head:
+        // (300+19, 400+28) - (18,18) = (301,410). Projectile.UpdatePosition explicitly skips aiStyle 84.
+        Assert.Equal(301f, next.State.PositionX, 4);
+        Assert.Equal(410f, next.State.PositionY, 4);
+        Assert.Equal(1f, next.State.VelocityX, 4);
+        Assert.Equal(0f, next.State.VelocityY, 4);
+        Assert.Equal(1f, next.LocalAi.GetValueOrDefault().Ai0, 4);
+        Assert.True(next.LocalAi.GetValueOrDefault().Ai1 > 0f);
+    }
+
+    [Fact]
     public void Uncatalogued_projectile_type_is_left_for_another_behavior_slice()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
