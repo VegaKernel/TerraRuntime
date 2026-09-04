@@ -87,6 +87,7 @@ public sealed class DashboardWorkspaceFilteringTests
                     VelocityY: -0.25f,
                     SelectedItem: 0,
                     MountType: 0,
+                    DifficultyFlags: 0,
                     HasHealth: true,
                     Life: 100,
                     MaxLife: 100,

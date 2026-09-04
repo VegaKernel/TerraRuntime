@@ -28,7 +28,9 @@ internal readonly record struct VanillaProjectileBehaviorContext(
     float WindPhysicsStrength,
     IRuntimePlayerSlotSnapshotLookup? PlayerSnapshots = null,
     bool ExpertMode = false,
-    IVanillaProjectileNpcTargetResolver? NpcTargets = null);
+    IVanillaProjectileNpcTargetResolver? NpcTargets = null,
+    VanillaProjectilePlayerTargetResolver? HostilePlayerTargets = null,
+    int CurrentTimeLeft = int.MaxValue);
 
 /// <summary>State produced by one supported vanilla projectile AI-family step before world motion/collision.</summary>
 internal readonly record struct VanillaProjectileBehaviorResult(
@@ -197,6 +199,49 @@ internal static class VanillaProjectileBehaviorStepper
                 return true;
             }
 
+            case VanillaProjectileBehaviorFamily.SpazmatismCursedFlame:
+                // AI_008 type 96 is an explicit no-counter exception, so the common aiStyle-8 gravity gate
+                // never opens. Presentation-only dust/sound/rotation are intentionally omitted.
+                break;
+
+            case VanillaProjectileBehaviorFamily.SpazmatismEyeFire:
+                // aiStyle 23 increments ai[0] every update and caps timeLeft at 60 before the normal lifetime
+                // decrement. Type 101 has no gameplay movement mutation in this AI family.
+                ai0 += 1f;
+                next = new VanillaProjectileBehaviorResult(
+                    velocityX,
+                    velocityY,
+                    ai0,
+                    TimeLeftOverride: Math.Min(context.CurrentTimeLeft, 60));
+                return true;
+
+            case VanillaProjectileBehaviorFamily.HostileStraightNoGravity:
+                // AI_001 types 462/593 live in the no-common-counter switch. Their ai[1] transition is only
+                // the synchronized one-shot presentation gate; velocity remains ballistic and gravity-free.
+                if (current.Ai.Ai1 == 0f)
+                    ai1Override = 1f;
+                break;
+
+            case VanillaProjectileBehaviorFamily.CultistFireball:
+                return TryStepCultistFireball(
+                    in current,
+                    in definition,
+                    context.HostilePlayerTargets,
+                    out next);
+
+            case VanillaProjectileBehaviorFamily.QueenSlimeGel:
+                // AI_001 type 926 uses the early-fall family: ai[0] advances to five, then clamps and adds
+                // 0.15 vertical velocity per AI update. ai[1] is the one-shot synchronized sound gate.
+                ai0 += 1f;
+                if (ai0 >= 5f)
+                {
+                    ai0 = 5f;
+                    velocityY += 0.15f;
+                }
+                if (current.Ai.Ai1 == 0f)
+                    ai1Override = 1f;
+                break;
+
             case VanillaProjectileBehaviorFamily.GolemFireball:
                 // AI_008 type 258 is an explicit no-gravity/no-counter exception. Its authoritative ai[0]
                 // counter is collision-owned and advances only when the fireball actually hits tiles.
@@ -301,6 +346,96 @@ internal static class VanillaProjectileBehaviorStepper
         return true;
     }
 
+
+    private static bool TryStepCultistFireball(
+        in ProjectileSnapshot current,
+        in VanillaProjectileDefinition definition,
+        VanillaProjectilePlayerTargetResolver? targets,
+        out VanillaProjectileBehaviorResult next)
+    {
+        float velocityX = current.VelocityX;
+        float velocityY = current.VelocityY;
+        float ai0 = current.Ai.Ai0;
+        float ai1 = current.Ai.Ai1;
+
+        if (ai1 == 0f)
+        {
+            ai1 = 1f;
+        }
+        else if (ai1 == 1f)
+        {
+            if (targets is null)
+            {
+                next = default;
+                return false;
+            }
+
+            if (targets.TryFindClosestTargetWithLineOfSight(
+                    in current, in definition, 2000f, out PlayerSlotId targetSlot,
+                    out _, out _, out float distance))
+            {
+                if (distance < 20f)
+                {
+                    next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0, Ai1Override: ai1, Kill: true);
+                    return true;
+                }
+
+                ai0 = targetSlot.Value;
+                ai1 = 21f;
+            }
+        }
+        else if (ai1 > 20f && ai1 < 200f)
+        {
+            ai1 += 1f;
+            int rawTarget = (int)ai0;
+            if ((uint)rawTarget >= byte.MaxValue || targets is null ||
+                !targets.TryGetActiveTargetCenter(new PlayerSlotId(checked((byte)rawTarget)), out float targetX, out float targetY))
+            {
+                ai1 = 1f;
+                ai0 = 0f;
+            }
+            else
+            {
+                float centerX = current.PositionX + definition.Width * 0.5f;
+                float centerY = current.PositionY + definition.Height * 0.5f;
+                float dx = targetX - centerX;
+                float dy = targetY - centerY;
+                float distance = MathF.Sqrt(dx * dx + dy * dy);
+                if (distance < 20f)
+                {
+                    next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0, Ai1Override: ai1, Kill: true);
+                    return true;
+                }
+
+                float speed = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
+                if (speed > 0f && float.IsFinite(speed) && distance > 0f && float.IsFinite(distance))
+                {
+                    float currentAngle = MathF.Atan2(velocityY, velocityX);
+                    float targetAngle = MathF.Atan2(dy, dx);
+                    float amount = current.Type == VanillaProjectileIds.CultistBossFireBall ? 0.008f : 0.01f;
+                    float nextAngle = AngleLerp(currentAngle, targetAngle, amount);
+                    velocityX = MathF.Cos(nextAngle) * speed;
+                    velocityY = MathF.Sin(nextAngle) * speed;
+                }
+            }
+        }
+
+        if (ai1 >= 1f && ai1 < 20f)
+        {
+            ai1 += 1f;
+            if (ai1 == 20f)
+                ai1 = 1f;
+        }
+
+        next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0, Ai1Override: ai1);
+        return true;
+    }
+
+    private static float AngleLerp(float current, float target, float amount)
+    {
+        float delta = WrapAngle(target - current);
+        return WrapAngle(current + delta * amount);
+    }
 
     private static bool TryStepControlledMagicMissile(
         in ProjectileSnapshot current,

@@ -19,6 +19,7 @@ internal sealed partial class ServerRuntimeState
         _npcs.CommitPending();
         _serverPlayers?.TickPhysics(this);
         _npcs.TickSimulation();
+        _npcPlayerCombat.Tick(Updates);
         if (_projectiles.TryTickState())
         {
             ReadOnlySpan<RuntimeProjectileExplosionEvent> explosions = _projectiles.PendingExplosions;

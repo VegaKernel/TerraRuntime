@@ -206,6 +206,7 @@ internal sealed class RuntimePlayerMember
     public PlayerSlotId Slot { get; init; }
     public byte Team { get; set; }
     public bool Hostile { get; set; }
+    public bool GodMode { get; set; }
     public bool HasHealth { get; set; }
     public short Life { get; set; }
     public short MaxLife { get; set; }

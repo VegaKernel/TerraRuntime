@@ -325,6 +325,7 @@ internal static class TerminalUiSmoke
                     VelocityY: -0.5f,
                     SelectedItem: 4,
                     MountType: 2,
+                    DifficultyFlags: 0,
                     HasHealth: true,
                     Life: 100,
                     MaxLife: 100,

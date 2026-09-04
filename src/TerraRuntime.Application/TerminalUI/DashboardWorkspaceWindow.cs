@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.HostContracts;
 using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.Operations;
 using Terminal.Gui.App;
@@ -68,6 +69,9 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     private string[] currentDetailLines = [];
     private string[] visibleDetailLines = [];
     private RuntimeSettingsWindow? runtimeSettingsWindow;
+    private readonly IPlayerAdministrativeOperations? playerAdministration;
+    private readonly RuntimeConnectionSessionDirectory? connectionSessions;
+    private PlayerDetailsWindow? playerDetailsWindow;
     private RuntimeWorldInspectionTarget[] worldInspectionTargets = [];
     private string[] worldInspectionLabels = [];
     private WorldRuntimeId selectedInspectionWorld;
@@ -85,7 +89,9 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         IWorldItemOperations? worldItemOperations = null,
         SandboxOperations? sandboxOperations = null,
         Func<SandboxTreeSnapshot>? sandboxTreeSource = null,
-        IRuntimeWorldInspectionOperations? worldInspectionOperations = null)
+        IRuntimeWorldInspectionOperations? worldInspectionOperations = null,
+        IPlayerAdministrativeOperations? playerAdministration = null,
+        RuntimeConnectionSessionDirectory? connectionSessions = null)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
@@ -96,6 +102,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         this.worldOperations = worldOperations ?? throw new ArgumentNullException(nameof(worldOperations));
         this.logOperations = logOperations ?? throw new ArgumentNullException(nameof(logOperations));
         this.worldInspectionOperations = worldInspectionOperations;
+        this.playerAdministration = playerAdministration;
+        this.connectionSessions = connectionSessions;
 
         Title = "TerraRuntime - System Dashboard";
         externalDashboards = CaptureExternalDashboards(terminalDashboards);
@@ -116,6 +124,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             Height = Dim.Fill()
         };
         overviewDashboard.SettingsRequested += ShowRuntimeSettings;
+        overviewDashboard.PlayerOpenRequested += ShowPlayerDetails;
 
         systemRoot = new View
         {
@@ -253,6 +262,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
 
     public void RefreshSnapshot()
     {
+        playerDetailsWindow?.RefreshLiveState();
+
         if (activeExternalDashboard >= 0)
         {
             RefreshExternalDashboard(activeExternalDashboard);
@@ -383,6 +394,38 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             ? "Admin: queued world save checkpoint"
             : "Admin: rejected world save checkpoint";
         SelectSystemScreen(WorkspaceScreen.World, "TerraRuntime - World");
+    }
+
+    private void ShowPlayerDetails(RuntimePlayerSnapshot player)
+    {
+        if (playerAdministration is null || connectionSessions is null)
+            return;
+
+        if (playerDetailsWindow is not null)
+        {
+            ClosePlayerDetails();
+        }
+
+        var window = new PlayerDetailsWindow(player, playerOperations, playerAdministration, connectionSessions);
+        playerDetailsWindow = window;
+        window.CloseRequested += ClosePlayerDetails;
+        workspace.Add(window);
+        window.SetFocus();
+        workspace.SetNeedsLayout();
+        workspace.SetNeedsDraw();
+    }
+
+    private void ClosePlayerDetails()
+    {
+        PlayerDetailsWindow? window = playerDetailsWindow;
+        if (window is null)
+            return;
+        playerDetailsWindow = null;
+        window.CloseRequested -= ClosePlayerDetails;
+        workspace.Remove(window);
+        window.Dispose();
+        overviewDashboard.SetFocus();
+        workspace.SetNeedsDraw();
     }
 
     private void ShowRuntimeSettings()

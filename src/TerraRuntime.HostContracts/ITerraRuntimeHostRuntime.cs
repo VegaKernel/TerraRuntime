@@ -11,6 +11,7 @@ public interface ITerraRuntimeHostRuntime
     TerraRuntimeHostRuntimeInfo Info { get; }
     IInterestManagementControl InterestManagement { get; }
     IPlayerStateSnapshotReader PlayerStates { get; }
+    IPlayerAdministrativeOperations PlayerAdministration => throw new NotSupportedException("Player administration is not exposed by this host runtime implementation.");
     INpcActorOperations NpcActors { get; }
     INpcShopOperations NpcShops { get; }
     IServerPlayerOperations ServerPlayers { get; }

@@ -122,7 +122,7 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                     for (int projectileIndex = 0; projectileIndex < projectileCount; projectileIndex++)
                     {
                         NpcAiProjectileIntent intent = _projectileIntentBuffer[projectileIndex];
-                        RuntimeNpcProjectileIntentApplier.TryApply(_projectiles, in intent, out _);
+                        RuntimeNpcProjectileIntentApplier.TryApply(_projectiles, committed.Handle, in intent, out _);
                     }
                 }
 

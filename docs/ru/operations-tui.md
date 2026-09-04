@@ -142,6 +142,10 @@ Double-click сначала фокусирует плитку, затем пер
 
 System Dashboard показывает lifecycle/world state, player/connection counts, interest-management state, current/target TPS, tick wall/CPU timing, slowest phase, missed deadlines, process CPU, managed heap, working set, allocation/GC state, command pressure, recent log events и public chat.
 
+Double-click по строке игрока в **Worlds / Players** открывает generation-safe live player window, без парсинга отображаемого текста строки. Окно показывает remote IP/endpoint, длительность текущей in-memory session, сложность персонажа, HP/mana, team, position/velocity и selected item. Метаданные connection session существуют только в процессе и удаляются при закрытии socket; в БД или файл они не пишутся. Checkbox GodMode вызывает `IPlayerAdministrativeOperations` для точного `PlayerHandle(slot,generation)`.
+
+Sandbox actions остаются typed UI operations. Command input dashboard и plain-console fallback не принимают mutation-команды `sandbox`/`sb`/`sb1`/`sb2`/`respawn`, а у GodMode нет chat/text command. Administrative state changes остаются за typed UI/host contracts, а не за player-visible command parsing.
+
 Dashboard также содержит видимую кнопку **Settings** и верхний пункт меню **Settings → Runtime settings**. Окно runtime settings намеренно содержит только практически полезные operator controls: текущие bind-address/IP и TCP port, listener lifecycle/generation/draining/rebind counters, active connections относительно player limit, target TPS и toggle interest management. Изменение bind/port проходит через operations boundary и заменяет поколение listener; TUI не получает `Socket` и не владеет connection lifetime. Уже accepted clients остаются подключёнными, пока предыдущий listener проходит `Active → Draining → Closed`.
 
 World detail screen также показывает section-cache pipeline health из `RuntimeWorldSnapshot`: in-flight/submitted/rejected rebuilds, stale results, encode failures, publish rejections и accumulated encode time. Строка on-demand показывает requests, unique/deduplicated requests, pending work относительно bounded capacity, rejected requests и completed/timed-out waits.

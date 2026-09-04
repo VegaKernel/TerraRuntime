@@ -17,6 +17,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
     private readonly VanillaProjectileWorldMotionResolver worldMotion;
     private readonly IRuntimePlayerSlotSnapshotLookup? playerSnapshots;
     private readonly IVanillaProjectileNpcTargetResolver? npcTargets;
+    private readonly VanillaProjectilePlayerTargetResolver? hostilePlayerTargets;
     private readonly bool expertMode;
     private bool windPhysics;
     private float windSpeedCurrent;
@@ -32,6 +33,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         worldMotion = new VanillaProjectileWorldMotionResolver(worldTiles);
         this.playerSnapshots = playerSnapshots;
         npcTargets = npcs is null ? null : new VanillaProjectileNpcTargetResolver(npcs, worldTiles);
+        hostilePlayerTargets = playerSnapshots is null ? null : new VanillaProjectilePlayerTargetResolver(playerSnapshots, worldTiles);
         this.expertMode = expertMode;
     }
 
@@ -95,7 +97,9 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
             windPhysicsStrength,
             playerSnapshots,
             expertMode,
-            npcTargets);
+            npcTargets,
+            hostilePlayerTargets,
+            projectile.Lifecycle.TimeLeft);
         if (!VanillaProjectileBehaviorStepper.TryStep(
                 in current,
                 in definition,

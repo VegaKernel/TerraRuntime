@@ -22,7 +22,12 @@ internal enum VanillaProjectileBehaviorFamily : byte
     HostileStraightArrow = 9,
     PlanteraSeed = 10,
     GolemFireball = 11,
-    ControlledMagicMissile = 12
+    ControlledMagicMissile = 12,
+    SpazmatismCursedFlame = 13,
+    SpazmatismEyeFire = 14,
+    HostileStraightNoGravity = 15,
+    CultistFireball = 16,
+    QueenSlimeGel = 17
 }
 
 /// <summary>
@@ -94,6 +99,46 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         BehaviorImplemented: true,
         RequiresDefaultAi2: true,
         RejectServerOwned: true,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile SpazmatismCursedFlameProfile = new(
+        VanillaProjectileBehaviorFamily.SpazmatismCursedFlame,
+        VanillaProjectileAiStyles.Fireball,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile SpazmatismEyeFireProfile = new(
+        VanillaProjectileBehaviorFamily.SpazmatismEyeFire,
+        VanillaProjectileAiStyles.EyeFire,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile HostileStraightNoGravityProfile = new(
+        VanillaProjectileBehaviorFamily.HostileStraightNoGravity,
+        VanillaProjectileAiStyles.Arrow,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile CultistFireballProfile = new(
+        VanillaProjectileBehaviorFamily.CultistFireball,
+        VanillaProjectileAiStyles.Arrow,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile QueenSlimeGelProfile = new(
+        VanillaProjectileBehaviorFamily.QueenSlimeGel,
+        VanillaProjectileAiStyles.Arrow,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
         ExemptFromPreAiWorldBounds: false);
 
     private static readonly VanillaProjectileBehaviorProfile ThrownProfile = new(
@@ -175,6 +220,36 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.GolemFireball)
         {
             profile = GolemFireballProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SpazmatismCursedFlame)
+        {
+            profile = SpazmatismCursedFlameProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SpazmatismEyeFire)
+        {
+            profile = SpazmatismEyeFireProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PhantasmalBolt || type == VanillaProjectileIds.AncientDoomProjectile)
+        {
+            profile = HostileStraightNoGravityProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.CultistBossFireBall || type == VanillaProjectileIds.CultistBossFireBallClone)
+        {
+            profile = CultistFireballProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.QueenSlimeGelAttack)
+        {
+            profile = QueenSlimeGelProfile;
             return true;
         }
 

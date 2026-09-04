@@ -56,3 +56,9 @@ sequenceDiagram
 Route никогда не обращается напрямую к player dictionary, inventory store или transfer-profile store другого runtime. Все переходы mutable state проходят через `RuntimePlayerTransferIngress`, поэтому только game loop destination runtime может установить перенесённое состояние.
 
 Same-runtime respawn использует ту же detach/attach transaction. Благодаря этому respawn и sandbox movement работают на одной модели ownership вместо второго независимого mutation path.
+
+## Runtime GodMode ownership
+
+GodMode — authoritative generation-scoped runtime flag. Он устанавливается только через typed trusted-host/TUI administration boundary, переносится в detached Level-1 transfer state для того же live connection и удаляется при disconnect. На диск он не сохраняется. При включённом флаге authoritative PvP, NPC contact и admitted hostile NPC-projectile damage завершаются до mutation HP/immunity.
+
+Terraria 1.4.5.8 по-прежнему считает lava, drowning и fall damage локально через `Player.Hurt`. Пока эти environmental sources не симулируются TerraRuntime полностью, GodMode player не может уменьшить authoritative HP входящим packet 16: decrease отклоняется, а текущее authoritative health сразу реплицируется обратно этому connection. Это compatibility guard, а не передача клиенту произвольной health authority.

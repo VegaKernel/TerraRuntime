@@ -38,7 +38,16 @@ internal sealed class RuntimePlayerVitalsReplicator
     public bool TryUnregister(GameCommandSourceId source) =>
         _endpoints.TryRemove(source, out _);
 
-    public void PlayerHealthUpdated(ConnectionHandle connection, in PlayerHealthCommitRequest submitted)
+    public void PlayerHealthUpdated(ConnectionHandle connection, in PlayerHealthCommitRequest submitted) =>
+        PlayerHealthUpdatedCore(connection, in submitted, includeOrigin: false);
+
+    public void PlayerAuthoritativeHealthUpdated(ConnectionHandle connection, in PlayerHealthCommitRequest submitted) =>
+        PlayerHealthUpdatedCore(connection, in submitted, includeOrigin: true);
+
+    private void PlayerHealthUpdatedCore(
+        ConnectionHandle connection,
+        in PlayerHealthCommitRequest submitted,
+        bool includeOrigin)
     {
         if (!connection.IsAssigned || connection.Player.Slot != submitted.PlayerSlot)
             return;
@@ -58,6 +67,9 @@ internal sealed class RuntimePlayerVitalsReplicator
             return;
 
         var frame = new OutboundFrame(encoded);
+        if (includeOrigin && origin.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
+            Interlocked.Increment(ref _relayedHealthFrames);
+
         foreach (KeyValuePair<GameCommandSourceId, Endpoint> pair in _endpoints)
         {
             if (pair.Key == connection.Source || !pair.Value.TryGetPlayingPlayer(out _))

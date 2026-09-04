@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using TerraRuntime.HostContracts;
 using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.Operations;
 using Terminal.Gui.App;
@@ -24,6 +25,8 @@ internal sealed class TerminalUiHost : IDisposable
     private readonly ILogOperations logOperations;
     private readonly SandboxOperations? sandboxOperations;
     private readonly IRuntimeWorldInspectionOperations? worldInspectionOperations;
+    private readonly IPlayerAdministrativeOperations? playerAdministration;
+    private readonly RuntimeConnectionSessionDirectory? connectionSessions;
     private readonly Action<bool> activityChanged;
     private readonly Action<string> failureSink;
     private readonly CancellationTokenSource stopUi;
@@ -43,7 +46,9 @@ internal sealed class TerminalUiHost : IDisposable
         IProjectileOperations? projectileOperations,
         IWorldItemOperations? worldItemOperations,
         SandboxOperations? sandboxOperations,
-        IRuntimeWorldInspectionOperations? worldInspectionOperations)
+        IRuntimeWorldInspectionOperations? worldInspectionOperations,
+        IPlayerAdministrativeOperations? playerAdministration,
+        RuntimeConnectionSessionDirectory? connectionSessions)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
@@ -55,6 +60,8 @@ internal sealed class TerminalUiHost : IDisposable
         this.logOperations = logOperations ?? throw new ArgumentNullException(nameof(logOperations));
         this.sandboxOperations = sandboxOperations;
         this.worldInspectionOperations = worldInspectionOperations;
+        this.playerAdministration = playerAdministration;
+        this.connectionSessions = connectionSessions;
         this.activityChanged = activityChanged ?? throw new ArgumentNullException(nameof(activityChanged));
         this.failureSink = failureSink ?? throw new ArgumentNullException(nameof(failureSink));
         stopUi = CancellationTokenSource.CreateLinkedTokenSource(serverCancellation);
@@ -78,7 +85,9 @@ internal sealed class TerminalUiHost : IDisposable
         IProjectileOperations? projectileOperations = null,
         IWorldItemOperations? worldItemOperations = null,
         SandboxOperations? sandboxOperations = null,
-        IRuntimeWorldInspectionOperations? worldInspectionOperations = null)
+        IRuntimeWorldInspectionOperations? worldInspectionOperations = null,
+        IPlayerAdministrativeOperations? playerAdministration = null,
+        RuntimeConnectionSessionDirectory? connectionSessions = null)
     {
         var host = new TerminalUiHost(
             dashboardOperations,
@@ -93,7 +102,9 @@ internal sealed class TerminalUiHost : IDisposable
             projectileOperations,
             worldItemOperations,
             sandboxOperations,
-            worldInspectionOperations);
+            worldInspectionOperations,
+            playerAdministration,
+            connectionSessions);
         host.thread.Start();
         return host;
     }
@@ -173,7 +184,9 @@ internal sealed class TerminalUiHost : IDisposable
                 cachedWorldItemOperations,
                 sandboxOperations,
                 snapshotCache.CaptureSandboxTreeSnapshot,
-                worldInspectionOperations is null ? null : snapshotCache);
+                worldInspectionOperations is null ? null : snapshotCache,
+                playerAdministration,
+                connectionSessions);
 
             Task? backgroundRefresh = null;
             long nextRefresh = Stopwatch.GetTimestamp() + RefreshIntervalTicks;
@@ -276,12 +289,6 @@ internal sealed class TerminalUiHost : IDisposable
             if (command.Length == 0)
                 continue;
 
-            if (SandboxCommandParser.IsCommandRoot(command))
-            {
-                Console.WriteLine(sandboxOperations?.Execute(command) ?? "sandbox: operations unavailable");
-                continue;
-            }
-
             switch (command.ToLowerInvariant())
             {
                 case "tui":
@@ -291,8 +298,6 @@ internal sealed class TerminalUiHost : IDisposable
 
                 case "help":
                     Console.WriteLine("tui | ui | dashboard  Reopen the TerraRuntime dashboard");
-                    Console.WriteLine("sandbox | sb1 | sb2   Manage sandbox runtimes");
-                    Console.WriteLine("respawn ...           Force-spawn a player into a runtime");
                     Console.WriteLine("clear                 Clear the plain console");
                     Console.WriteLine("help                  Show these console commands");
                     break;

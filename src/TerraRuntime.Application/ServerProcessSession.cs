@@ -174,6 +174,7 @@ internal sealed class ServerProcessSession : IDisposable
             },
             interestManagement,
             primaryRuntime.PlayerStateSnapshots,
+            new RuntimePlayerRouteAdministrativeOperations(connections.Directory),
             primaryRuntime.State.NpcShops,
             primaryRuntime.State.NpcArchetypes);
         try
@@ -314,7 +315,9 @@ internal sealed class ServerProcessSession : IDisposable
                 primaryRuntime.ProjectileOperations,
                 primaryRuntime.WorldItemOperations,
                 sandboxOperations,
-                worldInspectionOperations);
+                worldInspectionOperations,
+                new RuntimePlayerRouteAdministrativeOperations(connections.Directory),
+                connections.Sessions);
         }
         catch (Exception exception)
         {

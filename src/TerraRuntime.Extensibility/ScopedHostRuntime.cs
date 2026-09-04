@@ -21,6 +21,7 @@ internal sealed class ScopedHostRuntime : ITerraRuntimeHostRuntime
     public TerraRuntimeHostRuntimeInfo Info => source.Info;
     public IInterestManagementControl InterestManagement => source.InterestManagement;
     public IPlayerStateSnapshotReader PlayerStates => source.PlayerStates;
+    public IPlayerAdministrativeOperations PlayerAdministration => source.PlayerAdministration;
     public INpcActorOperations NpcActors => npcActors;
     public INpcShopOperations NpcShops => npcShops;
     public IServerPlayerOperations ServerPlayers => source.ServerPlayers;

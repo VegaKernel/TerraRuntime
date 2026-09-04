@@ -111,6 +111,7 @@ public interface ITerraRuntimeHostRuntime
     TerraRuntimeHostRuntimeInfo Info { get; }
     IInterestManagementControl InterestManagement { get; }
     IPlayerStateSnapshotReader PlayerStates { get; }
+    IPlayerAdministrativeOperations PlayerAdministration { get; }
     INpcActorOperations NpcActors { get; }
     INpcShopOperations NpcShops { get; }
     IServerPlayerOperations ServerPlayers { get; }
@@ -138,6 +139,12 @@ if (snapshot is null)
 ```
 
 The API is asynchronous because the request may be serialized through a runtime-owned boundary. A host must not assume capture is a direct dictionary/array read on the calling thread.
+
+### Trusted player administration
+
+`IPlayerAdministrativeOperations` is the typed administrative boundary for exact-generation live players. It currently exposes runtime-only GodMode get/set operations keyed by `PlayerHandle`; a stale handle returns no state/change rather than targeting a replacement player that reused the same slot. This surface is intended for trusted hosts such as Vega and the built-in TUI. It is deliberately not exposed as a chat command or a text-command grammar.
+
+GodMode remains process/runtime state rather than player persistence. Level-1 world transfer preserves it for the same live connection, while disconnect ends the state with that player generation.
 
 ## 6. Interest management
 

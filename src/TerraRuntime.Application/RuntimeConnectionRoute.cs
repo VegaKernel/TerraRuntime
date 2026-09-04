@@ -394,6 +394,27 @@ internal sealed class RuntimeConnectionDirectory
             .ThenBy(static route => route.Source.Value)
             .ToArray();
 
+    public bool TryResolve(PlayerHandle player, out RuntimeConnectionRoute? route)
+    {
+        if (!player.IsAssigned)
+        {
+            route = null;
+            return false;
+        }
+
+        foreach (RuntimeConnectionRoute candidate in routes.Values)
+        {
+            if (candidate.ActivePlayer == player)
+            {
+                route = candidate;
+                return true;
+            }
+        }
+
+        route = null;
+        return false;
+    }
+
     public bool TryResolve(string selector, out RuntimeConnectionRoute? route, out string? error)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(selector);

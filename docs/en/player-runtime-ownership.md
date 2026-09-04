@@ -56,3 +56,9 @@ Destination slot reservation happens before the source detach barrier where poss
 The route never reaches into another runtime's player dictionary, inventory store or transfer-profile store. All mutable-state transitions cross `RuntimePlayerTransferIngress`, so the destination game loop remains the only code allowed to install transferred state.
 
 Same-runtime respawn uses the same detach/attach transaction. That keeps respawn and sandbox movement on one ownership model instead of maintaining a second mutation path.
+
+## Runtime GodMode ownership
+
+GodMode is an authoritative, generation-scoped runtime flag. It is set only through the typed trusted-host/TUI administration boundary, travels with the detached Level-1 transfer state for the same live connection, and is discarded on disconnect. It is not persisted. Authoritative PvP, NPC contact and admitted hostile NPC-projectile damage return before HP/immunity mutation when the flag is enabled.
+
+Terraria 1.4.5.8 still computes lava, drowning and fall damage locally through `Player.Hurt`. Until those environmental sources are fully simulated by TerraRuntime, a GodMode player cannot lower authoritative HP through incoming packet 16: a decrease is rejected and the current authoritative health is immediately replicated back to that connection. This is a compatibility guard, not permission for arbitrary client health authority.

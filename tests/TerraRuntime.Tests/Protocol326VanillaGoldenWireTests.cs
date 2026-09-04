@@ -76,6 +76,23 @@ public sealed class Protocol326VanillaGoldenWireTests
     }
 
     [Fact]
+    public void Packet119_combat_text_matches_official_wire_vector()
+    {
+        byte[] expected =
+        [
+            0x14, 0x00, 0x77,
+            0x00, 0x00, 0x20, 0x41,
+            0x00, 0x00, 0xA0, 0x41,
+            0xBE, 0xDC, 0xFF,
+            0x00, 0x04, 0x4D, 0x49, 0x53, 0x53
+        ];
+
+        byte[] actual = TerrariaCombatTextCodec.EncodeString(10f, 20f, "MISS", new TerrariaRgbColor(190, 220, 255));
+
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
     public void Packet79_nonzero_boolean_matches_MessageBuffer_ReadBoolean_semantics()
     {
         byte[] payload = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2];

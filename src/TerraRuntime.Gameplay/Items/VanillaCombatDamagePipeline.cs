@@ -22,6 +22,19 @@ public static class VanillaCombatDamagePipeline
         bool immune,
         out FinalDamageToHp final,
         bool expertMode = false,
+        bool masterMode = false) =>
+        TryResolvePlayerDamage(in attack, in target, immune, out final, expertMode, masterMode);
+
+    /// <summary>
+    /// Shared Player.Hurt mitigation baseline for authoritative PvE/PvP sources. Source-specific immunity cooldowns
+    /// remain the caller's responsibility; defense/endurance/no-knockback math is common at this stage.
+    /// </summary>
+    public static bool TryResolvePlayerDamage(
+        in AuthoritativeAttackDamage attack,
+        in VanillaPlayerCombatSnapshot target,
+        bool immune,
+        out FinalDamageToHp final,
+        bool expertMode = false,
         bool masterMode = false)
     {
         if (!attack.IsValid || (masterMode && !expertMode) ||

@@ -12,6 +12,7 @@ internal readonly record struct RuntimePlayerSnapshot(
     float VelocityY,
     byte SelectedItem,
     ushort MountType,
+    byte DifficultyFlags,
     bool HasHealth,
     short Life,
     short MaxLife,

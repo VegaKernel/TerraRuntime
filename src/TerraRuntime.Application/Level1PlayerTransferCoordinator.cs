@@ -1,12 +1,27 @@
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Operations;
 
 namespace TerraRuntime;
 
 internal readonly record struct SandboxTreePlayerSnapshot(
     string Selector,
-    byte Slot,
-    string Name,
-    bool IsPlaying);
+    RuntimePlayerSnapshot Player,
+    bool IsPlaying)
+{
+    public SandboxTreePlayerSnapshot(string selector, byte slot, string name, bool isPlaying)
+        : this(
+            selector,
+            new RuntimePlayerSnapshot(
+                ConnectionId: 0, Slot: slot, Generation: 1, Name: name, Team: 0,
+                PositionX: 0f, PositionY: 0f, VelocityX: 0f, VelocityY: 0f, SelectedItem: 0, MountType: 0,
+                DifficultyFlags: 0, HasHealth: false, Life: 0, MaxLife: 0, HasMana: false, Mana: 0, MaxMana: 0),
+            isPlaying)
+    {
+    }
+
+    public byte Slot => Player.Slot;
+    public string Name => Player.Name;
+}
 
 internal readonly record struct SandboxTreeWorldSnapshot(
     SandboxName? Sandbox,
@@ -96,7 +111,7 @@ internal sealed class Level1PlayerTransferCoordinator
                 IsPrimary: true,
                 primarySnapshot,
                 PendingJob: null,
-                CapturePlayers(primarySnapshot.Identity, routes)));
+                CapturePlayers(primaryRuntime!, routes)));
         }
 
         foreach (SandboxSnapshot sandbox in sandboxSnapshots)
@@ -114,7 +129,7 @@ internal sealed class Level1PlayerTransferCoordinator
                 IsPrimary: false,
                 sandbox.Runtime,
                 pending,
-                CapturePlayers(sandbox.Runtime.Identity, routes)));
+                CapturePlayersForSandbox(sandbox.Runtime, routes)));
         }
 
         foreach (SandboxJobSnapshot pendingCreate in jobs)
@@ -145,20 +160,52 @@ internal sealed class Level1PlayerTransferCoordinator
         return new SandboxTreeSnapshot(worlds.ToArray(), jobs, DateTimeOffset.UtcNow);
     }
 
-    private static ReadOnlyMemory<SandboxTreePlayerSnapshot> CapturePlayers(
-        WorldRuntimeIdentity runtime,
+    private ReadOnlyMemory<SandboxTreePlayerSnapshot> CapturePlayersForSandbox(
+        WorldRuntimeSnapshot runtimeSnapshot,
         ReadOnlySpan<RuntimeConnectionRouteSnapshot> routes)
     {
+        if (!runtimes.TryGet(runtimeSnapshot.Identity.RuntimeId, out WorldRuntime? runtime) || runtime is null)
+            return ReadOnlyMemory<SandboxTreePlayerSnapshot>.Empty;
+        return CapturePlayers(runtime, routes);
+    }
+
+    private static ReadOnlyMemory<SandboxTreePlayerSnapshot> CapturePlayers(
+        WorldRuntime runtime,
+        ReadOnlySpan<RuntimeConnectionRouteSnapshot> routes)
+    {
+        RuntimePlayersSnapshot playerSnapshot = runtime.PlayerOperations.CaptureSnapshot();
+        ReadOnlySpan<RuntimePlayerSnapshot> runtimePlayers = playerSnapshot.Players.Span;
         var players = new List<SandboxTreePlayerSnapshot>();
         foreach (RuntimeConnectionRouteSnapshot route in routes)
         {
-            if (route.Runtime != runtime || route.Player is not PlayerHandle player)
+            if (route.Runtime != runtime.Identity || route.Player is not PlayerHandle player)
                 continue;
-            string name = string.IsNullOrWhiteSpace(route.PlayerName) ? $"player-{player.Slot.Value}" : route.PlayerName;
+
+            RuntimePlayerSnapshot snapshot = default;
+            bool found = false;
+            for (int i = 0; i < runtimePlayers.Length; i++)
+            {
+                RuntimePlayerSnapshot candidate = runtimePlayers[i];
+                if (candidate.ConnectionId == route.ConnectionId && candidate.Slot == player.Slot.Value && candidate.Generation == player.Generation.Value)
+                {
+                    snapshot = candidate;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+            {
+                string fallbackName = string.IsNullOrWhiteSpace(route.PlayerName) ? $"player-{player.Slot.Value}" : route.PlayerName;
+                snapshot = new RuntimePlayerSnapshot(
+                    route.ConnectionId, player.Slot.Value, player.Generation.Value, fallbackName, Team: 0,
+                    PositionX: 0f, PositionY: 0f, VelocityX: 0f, VelocityY: 0f, SelectedItem: 0, MountType: 0,
+                    DifficultyFlags: 0, HasHealth: false, Life: 0, MaxLife: 0, HasMana: false, Mana: 0, MaxMana: 0);
+            }
+
             players.Add(new SandboxTreePlayerSnapshot(
                 $"#{player.Slot.Value}",
-                player.Slot.Value,
-                name,
+                snapshot,
                 route.JoinState == TerraRuntime.Core.PlayerJoinState.Playing));
         }
         return players.ToArray();

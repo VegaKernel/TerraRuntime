@@ -12,7 +12,8 @@ internal sealed record RuntimePlayerTransferState(
     PlayerStateSnapshot Player,
     RuntimePlayerInventoryItem[] Inventory,
     PlayerAppearanceCommitRequest? Appearance,
-    PlayerEquipmentCommitRequest[] Equipment)
+    PlayerEquipmentCommitRequest[] Equipment,
+    bool GodMode)
 {
     public PlayerSlotId Slot => Player.Player.Slot;
 

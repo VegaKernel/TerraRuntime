@@ -351,7 +351,7 @@ public static class StartupProgram
         Console.WriteLine("    Game mode defaults to Classic; world evil defaults to Corruption.");
         Console.WriteLine();
         Console.WriteLine("Level 1 sandbox worlds:");
-        Console.WriteLine("  Use `sandbox help` in the terminal UI or plain console after startup.");
+        Console.WriteLine("  Manage sandbox worlds from the terminal UI; operator actions use typed runtime operations, not text commands.");
         Console.WriteLine("  Generated and .wld sources are materialized by a bounded background worker queue.");
         Console.WriteLine();
         Console.WriteLine("Terminal UI is enabled by default. Use --no-tui to disable it.");

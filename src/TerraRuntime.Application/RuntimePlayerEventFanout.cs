@@ -32,6 +32,12 @@ internal sealed class RuntimePlayerEventFanout(
         second.PlayerHealthUpdated(connection, in request);
     }
 
+    public void PlayerAuthoritativeHealthUpdated(ConnectionHandle connection, in PlayerHealthCommitRequest request)
+    {
+        first.PlayerAuthoritativeHealthUpdated(connection, in request);
+        second.PlayerAuthoritativeHealthUpdated(connection, in request);
+    }
+
     public void PlayerManaUpdated(ConnectionHandle connection, in PlayerManaCommitRequest request)
     {
         first.PlayerManaUpdated(connection, in request);
@@ -48,6 +54,12 @@ internal sealed class RuntimePlayerEventFanout(
     {
         first.PlayerMoved(connection, in request);
         second.PlayerMoved(connection, in request);
+    }
+
+    public void PlayerDamageAvoided(PlayerHandle player, float positionX, float positionY, string text)
+    {
+        first.PlayerDamageAvoided(player, positionX, positionY, text);
+        second.PlayerDamageAvoided(player, positionX, positionY, text);
     }
 
     public void PlayerDisconnected(ConnectionHandle connection)

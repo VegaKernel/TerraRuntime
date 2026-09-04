@@ -10,6 +10,7 @@ internal sealed class TerraRuntimeHostRuntime : ITerraRuntimeHostRuntime
         TerraRuntimeHostRuntimeInfo info,
         IInterestManagementControl interestManagement,
         IPlayerStateSnapshotReader playerStates,
+        IPlayerAdministrativeOperations playerAdministration,
         RuntimeNpcShopCatalogRegistry npcShops,
         RuntimeNpcArchetypeRegistry npcArchetypes)
     {
@@ -23,6 +24,7 @@ internal sealed class TerraRuntimeHostRuntime : ITerraRuntimeHostRuntime
                 nameof(playerStates));
         }
 
+        PlayerAdministration = playerAdministration ?? throw new ArgumentNullException(nameof(playerAdministration));
         NpcActors = new RuntimeNpcActorOperations(
             runtimePlayerStates.CommandIngress,
             npcArchetypes ?? throw new ArgumentNullException(nameof(npcArchetypes)));
@@ -33,6 +35,7 @@ internal sealed class TerraRuntimeHostRuntime : ITerraRuntimeHostRuntime
     public TerraRuntimeHostRuntimeInfo Info { get; }
     public IInterestManagementControl InterestManagement { get; }
     public IPlayerStateSnapshotReader PlayerStates { get; }
+    public IPlayerAdministrativeOperations PlayerAdministration { get; }
     public INpcActorOperations NpcActors { get; }
     public INpcShopOperations NpcShops { get; }
     public IServerPlayerOperations ServerPlayers { get; }

@@ -190,6 +190,7 @@ internal sealed class RuntimeOverviewDashboard : View
             ExecuteSandboxOperationAsync(new SandboxOperation.Move(player, sandbox));
         worldsText.DestroyRequested += ConfirmSandboxDestroy;
         worldsText.KickRequested += ConfirmPlayerKick;
+        worldsText.PlayerOpenRequested += player => PlayerOpenRequested?.Invoke(player);
 
         AttachMaximize(consoleFrame);
         AttachMaximize(networkFrame);
@@ -309,6 +310,7 @@ internal sealed class RuntimeOverviewDashboard : View
     }
 
     public event Action? SettingsRequested;
+    public event Action<RuntimePlayerSnapshot>? PlayerOpenRequested;
 
     internal void FocusCommandInput() => commandInput.SetFocus();
 
@@ -461,7 +463,7 @@ internal sealed class RuntimeOverviewDashboard : View
         {
             case "help":
             case "?":
-                SetCommandFeedback("help | feed | save | interest | sandbox list|status|jobs|job|move|regen|destroy|cancel | sb1 | sb2 | respawn | system | players | npcs | projectiles | items | network | world | logs");
+                SetCommandFeedback("help | feed | save | interest | system | players | npcs | projectiles | items | network | world | logs");
                 return;
             case "clear":
                 SetCommandFeedback(string.Empty);
@@ -492,13 +494,6 @@ internal sealed class RuntimeOverviewDashboard : View
                 workspace.SetInterestManagementEnabled(enabled);
                 SetCommandFeedback($"console: interest {(enabled ? "on" : "off")} requested");
                 return;
-            case "sandbox":
-            case "sb":
-            case "sb1":
-            case "sb2":
-            case "respawn":
-                ExecuteSandboxCommandAsync(input);
-                return;
             case "system":
             case "overview":
                 workspace?.ShowSystemDashboard();
@@ -528,23 +523,6 @@ internal sealed class RuntimeOverviewDashboard : View
                 SetCommandFeedback($"unknown runtime console command '{Sanitize(input, 64)}'; type help");
                 return;
         }
-    }
-
-    private void ExecuteSandboxCommandAsync(string command)
-    {
-        if (sandboxOperations is null)
-        {
-            SetCommandFeedback("sandbox: operations unavailable");
-            return;
-        }
-        if (pendingSandboxCommand is { IsCompleted: false })
-        {
-            SetCommandFeedback("sandbox: another operator command is still running");
-            return;
-        }
-
-        SetCommandFeedback("sandbox: processing command");
-        pendingSandboxCommand = Task.Run(() => sandboxOperations.Execute(command));
     }
 
     private void ExecuteSandboxOperationAsync(SandboxOperation operation)
@@ -1272,13 +1250,13 @@ internal sealed class RuntimeOverviewDashboard : View
                 SandboxTreePlayerSnapshot player = players[playerIndex];
                 var playerLine = new StringBuilder(48)
                     .Append(playerIndex == players.Length - 1 ? "  └─ " : "  ├─ ")
-                    .Append('#').Append(player.Slot).Append(' ')
-                    .Append(Sanitize(player.Name, 28));
+                    .Append('#').Append(player.Player.Slot).Append(' ')
+                    .Append(Sanitize(player.Player.Name, 28));
                 if (!player.IsPlaying)
                     playerLine.Append("  [joining]");
                 playerLine.Append("  [X]");
                 lines.Add(playerLine.ToString());
-                rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, world.Sandbox, player.Selector));
+                rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, world.Sandbox, player.Selector, player.Player));
             }
         }
 
@@ -1304,7 +1282,8 @@ internal sealed class RuntimeOverviewDashboard : View
             rows.Add(new SandboxWorldTreeRow(
                 SandboxWorldTreeRowKind.Player,
                 Target: null,
-                PlayerSelector: $"#{player.Slot}"));
+                PlayerSelector: $"#{player.Slot}",
+                Player: player));
         }
     }
 

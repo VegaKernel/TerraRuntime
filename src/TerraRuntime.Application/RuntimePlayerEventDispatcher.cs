@@ -43,6 +43,12 @@ internal sealed class RuntimePlayerEventDispatcher : IRuntimePlayerEventSink
         _operationsObserver?.PlayerHealthUpdated(connection, in request);
     }
 
+    public void PlayerAuthoritativeHealthUpdated(ConnectionHandle connection, in PlayerHealthCommitRequest request)
+    {
+        _vitals.PlayerAuthoritativeHealthUpdated(connection, in request);
+        _operationsObserver?.PlayerHealthUpdated(connection, in request);
+    }
+
     public void PlayerManaUpdated(ConnectionHandle connection, in PlayerManaCommitRequest request)
     {
         _vitals.PlayerManaUpdated(connection, in request);
@@ -62,6 +68,12 @@ internal sealed class RuntimePlayerEventDispatcher : IRuntimePlayerEventSink
     {
         _connections.PlayerMoved(connection, in request);
         _operationsObserver?.PlayerMoved(connection, in request);
+    }
+
+    public void PlayerDamageAvoided(PlayerHandle player, float positionX, float positionY, string text)
+    {
+        _connections.PlayerDamageAvoided(player, positionX, positionY, text);
+        _operationsObserver?.PlayerDamageAvoided(player, positionX, positionY, text);
     }
 
     public void PlayerDisconnected(ConnectionHandle connection)

@@ -96,6 +96,25 @@ public sealed partial class RuntimeProjectileStore
         return true;
     }
 
+
+    /// <summary>Returns the generation-safe NPC source for a server-owned projectile spawned by authoritative NPC AI.</summary>
+    public bool TryGetServerNpcSource(ProjectileHandle handle, out NpcHandle sourceNpc)
+    {
+        sourceNpc = default;
+        if (!IsCurrentHandleCandidate(handle))
+            return false;
+
+        ref readonly SlotState state = ref _slots[handle.Slot];
+        if (!state.Active || state.Generation != handle.Generation.Value || !state.SourceNpc.IsAssigned ||
+            state.Update.Spawner != byte.MaxValue)
+        {
+            return false;
+        }
+
+        sourceNpc = state.SourceNpc;
+        return true;
+    }
+
     public int CopyActive(Span<ProjectileSnapshot> destination)
     {
         if (destination.Length < _activeCount)

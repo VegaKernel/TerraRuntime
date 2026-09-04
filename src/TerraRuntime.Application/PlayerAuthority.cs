@@ -3,10 +3,18 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
+using TerraRuntime.Gameplay.Players;
 using TerraRuntime.HostContracts;
 using TerraRuntime.World;
 
 namespace TerraRuntime;
+
+internal enum PlayerDamageCommitResult : byte
+{
+    Rejected = 0,
+    Committed = 1,
+    AvoidedByGodMode = 2
+}
 
 /// <summary>
 /// Owns authoritative client-player command application and all mutable player state for one world.
@@ -29,6 +37,9 @@ internal sealed class PlayerAuthority
     private long currentCombatTick;
     private readonly long[] pvpImmuneUntil = new long[MaxPlayerSlots];
     private readonly PlayerSessionGeneration[] pvpImmuneGeneration = new PlayerSessionGeneration[MaxPlayerSlots];
+    private readonly long[] pveGeneralImmuneUntil = new long[MaxPlayerSlots];
+    private readonly long[] pveBossNoCheeseImmuneUntil = new long[MaxPlayerSlots];
+    private readonly PlayerSessionGeneration[] pveImmuneGeneration = new PlayerSessionGeneration[MaxPlayerSlots];
     private readonly bool expertMode;
     private readonly bool masterMode;
 
@@ -77,6 +88,12 @@ internal sealed class PlayerAuthority
                 return true;
             case ClientPlayerPvpHitRuntimeCommand pvpHit:
                 ApplyClientPvpHit(pvpHit);
+                return true;
+            case SetPlayerGodModeRuntimeCommand godMode:
+                ApplySetPlayerGodMode(godMode);
+                return true;
+            case GetPlayerGodModeRuntimeCommand godModeQuery:
+                ApplyGetPlayerGodMode(godModeQuery);
                 return true;
             case PlayerDisconnectRuntimeCommand disconnect:
                 ApplyPlayerDisconnect(disconnect);
@@ -396,7 +413,28 @@ internal sealed class PlayerAuthority
 
         if (membership.TryGet(request.PlayerSlot, out RuntimePlayerMember? activePlayer))
         {
-            if (activePlayer.Connection != health.Connection || !activePlayer.TryAdvanceRevision())
+            if (activePlayer.Connection != health.Connection)
+            {
+                RejectedHealthUpdates++;
+                return;
+            }
+
+            // Creative-style god mode owns incoming damage too. Terraria's lava, drowning and fall damage are
+            // client-local Player.Hurt sources; until those environmental systems are fully server-simulated,
+            // packet 16 is the only place they can attempt to lower authoritative HP. Never accept that decrease.
+            // Re-send the current authoritative value to the owner so the client is corrected immediately.
+            if (activePlayer.GodMode && activePlayer.HasHealth && request.Life < activePlayer.Life)
+            {
+                RejectedHealthUpdates++;
+                var correction = new PlayerHealthCommitRequest(
+                    activePlayer.Slot,
+                    activePlayer.Life,
+                    activePlayer.MaxLife);
+                events?.PlayerAuthoritativeHealthUpdated(activePlayer.Connection, in correction);
+                return;
+            }
+
+            if (!activePlayer.TryAdvanceRevision())
             {
                 RejectedHealthUpdates++;
                 return;
@@ -605,7 +643,7 @@ internal sealed class PlayerAuthority
             return;
         }
 
-        if (!TryCommitAuthoritativePvpDamage(
+        PlayerDamageCommitResult commitResult = TryCommitAuthoritativePvpDamage(
                 currentCombatTick,
                 hit.Attacker,
                 hit.Target,
@@ -613,16 +651,18 @@ internal sealed class PlayerAuthority
                 hit.Damage,
                 hit.Critical,
                 hit.HitDirection,
-                out _))
+                out _);
+        if (commitResult == PlayerDamageCommitResult.Rejected)
         {
             RejectedAuthoritativePvpHits++;
             return;
         }
 
-        AppliedAuthoritativePvpHits++;
+        if (commitResult == PlayerDamageCommitResult.Committed)
+            AppliedAuthoritativePvpHits++;
     }
 
-    internal bool TryCommitAuthoritativePvpDamage(
+    internal PlayerDamageCommitResult TryCommitAuthoritativePvpDamage(
         long tick,
         PlayerHandle attacker,
         PlayerHandle targetHandle,
@@ -641,11 +681,21 @@ internal sealed class PlayerAuthority
             !source.Hostile || !target.Hostile || source.IsDead || target.IsDead || !target.HasHealth || target.Life <= 0 ||
             (source.Team != 0 && source.Team == target.Team))
         {
-            return false;
+            return PlayerDamageCommitResult.Rejected;
+        }
+
+        if (target.GodMode)
+        {
+            events?.PlayerDamageAvoided(
+                targetHandle,
+                target.PositionX + VanillaBasePlayerWidth * 0.5f,
+                target.PositionY + VanillaBasePlayerHeight * 0.5f,
+                GodModeCombatText.Select(targetHandle, tick));
+            return PlayerDamageCommitResult.AvoidedByGodMode;
         }
 
         if (!TryCaptureCombatSnapshot(targetHandle, out VanillaPlayerCombatSnapshot targetCombat))
-            return false;
+            return PlayerDamageCommitResult.Rejected;
 
         int targetSlot = target.Slot.Value;
         bool immune = pvpImmuneGeneration[targetSlot] == targetHandle.Generation && tick < pvpImmuneUntil[targetSlot];
@@ -666,7 +716,7 @@ internal sealed class PlayerAuthority
             final.Damage <= 0 ||
             !target.TryAdvanceRevision())
         {
-            return false;
+            return PlayerDamageCommitResult.Rejected;
         }
 
         target.Life = checked((short)Math.Max(0, target.Life - final.Damage));
@@ -681,8 +731,145 @@ internal sealed class PlayerAuthority
         pvpImmuneUntil[targetSlot] = tick + 8;
         committed = target.CaptureSnapshot();
         var health = new PlayerHealthCommitRequest(target.Slot, target.Life, target.MaxLife);
-        events?.PlayerHealthUpdated(target.Connection, in health);
-        return true;
+        events?.PlayerAuthoritativeHealthUpdated(target.Connection, in health);
+        return PlayerDamageCommitResult.Committed;
+    }
+
+
+    internal PlayerDamageCommitResult TryCommitAuthoritativeNpcContactDamage(
+        long tick,
+        NpcHandle sourceNpc,
+        PlayerHandle targetHandle,
+        int damage,
+        int hitDirection,
+        VanillaPlayerImmunityChannel1458 immunityChannel,
+        out PlayerStateSnapshot committed) =>
+        TryCommitAuthoritativePveDamage(
+            tick,
+            targetHandle,
+            DamageSource.FromNpcContact(sourceNpc),
+            damage,
+            hitDirection,
+            immunityChannel,
+            out committed);
+
+    internal PlayerDamageCommitResult TryCommitAuthoritativeNpcProjectileDamage(
+        long tick,
+        NpcHandle sourceNpc,
+        ProjectileHandle projectile,
+        PlayerHandle targetHandle,
+        int damage,
+        int hitDirection,
+        VanillaPlayerImmunityChannel1458 immunityChannel,
+        out PlayerStateSnapshot committed) =>
+        TryCommitAuthoritativePveDamage(
+            tick,
+            targetHandle,
+            DamageSource.FromNpcProjectile(sourceNpc, projectile),
+            damage,
+            hitDirection,
+            immunityChannel,
+            out committed);
+
+    private PlayerDamageCommitResult TryCommitAuthoritativePveDamage(
+        long tick,
+        PlayerHandle targetHandle,
+        DamageSource sourceDamage,
+        int damage,
+        int hitDirection,
+        VanillaPlayerImmunityChannel1458 immunityChannel,
+        out PlayerStateSnapshot committed)
+    {
+        committed = default;
+        if (!targetHandle.IsAssigned || !sourceDamage.IsValid || damage <= 0 ||
+            hitDirection is < -1 or > 1 ||
+            !membership.TryGet(targetHandle, out RuntimePlayerMember? target) ||
+            target.IsDead || !target.HasHealth || target.Life <= 0)
+        {
+            return PlayerDamageCommitResult.Rejected;
+        }
+
+        if (target.GodMode)
+        {
+            events?.PlayerDamageAvoided(
+                targetHandle,
+                target.PositionX + VanillaBasePlayerWidth * 0.5f,
+                target.PositionY + VanillaBasePlayerHeight * 0.5f,
+                GodModeCombatText.Select(targetHandle, tick));
+            return PlayerDamageCommitResult.AvoidedByGodMode;
+        }
+
+        if (!TryCaptureCombatSnapshot(targetHandle, out VanillaPlayerCombatSnapshot targetCombat))
+            return PlayerDamageCommitResult.Rejected;
+
+        int targetSlot = target.Slot.Value;
+        bool sameGeneration = pveImmuneGeneration[targetSlot] == targetHandle.Generation;
+        long immuneUntil = immunityChannel == VanillaPlayerImmunityChannel1458.BossNoCheese
+            ? pveBossNoCheeseImmuneUntil[targetSlot]
+            : pveGeneralImmuneUntil[targetSlot];
+        bool immune = sameGeneration && tick < immuneUntil;
+        var attack = new AuthoritativeAttackDamage(
+            sourceDamage,
+            damage,
+            ArmorPenetration: 0,
+            Critical: false,
+            KnockBack: 4.5f,
+            hitDirection);
+        if (!VanillaCombatDamagePipeline.TryResolvePlayerDamage(
+                in attack,
+                in targetCombat,
+                immune,
+                out FinalDamageToHp final,
+                expertMode,
+                masterMode) ||
+            final.Damage <= 0 ||
+            !target.TryAdvanceRevision())
+        {
+            return PlayerDamageCommitResult.Rejected;
+        }
+
+        target.Life = checked((short)Math.Max(0, target.Life - final.Damage));
+        target.IsDead = target.Life <= 0;
+        if (!final.Mitigation.NoKnockback && hitDirection != 0)
+        {
+            target.VelocityX = 4.5f * hitDirection;
+            target.VelocityY = -3.5f;
+        }
+
+        if (!sameGeneration)
+        {
+            pveImmuneGeneration[targetSlot] = targetHandle.Generation;
+            pveGeneralImmuneUntil[targetSlot] = 0;
+            pveBossNoCheeseImmuneUntil[targetSlot] = 0;
+        }
+        long until = tick + VanillaIncomingPlayerDamageFacts1458.ResolvePveImmunityTicks(final.Damage);
+        if (immunityChannel == VanillaPlayerImmunityChannel1458.BossNoCheese)
+            pveBossNoCheeseImmuneUntil[targetSlot] = until;
+        else
+            pveGeneralImmuneUntil[targetSlot] = until;
+
+        committed = target.CaptureSnapshot();
+        var health = new PlayerHealthCommitRequest(target.Slot, target.Life, target.MaxLife);
+        events?.PlayerAuthoritativeHealthUpdated(target.Connection, in health);
+        return PlayerDamageCommitResult.Committed;
+    }
+
+    private void ApplySetPlayerGodMode(SetPlayerGodModeRuntimeCommand command)
+    {
+        if (!membership.TryGet(command.Player, out RuntimePlayerMember? player) || !player.TryAdvanceRevision())
+        {
+            command.Completion.TrySetResult(false);
+            return;
+        }
+
+        player.GodMode = command.Enabled;
+        command.Completion.TrySetResult(true);
+    }
+
+    private void ApplyGetPlayerGodMode(GetPlayerGodModeRuntimeCommand command)
+    {
+        command.Completion.TrySetResult(
+            membership.TryGet(command.Player, out RuntimePlayerMember? player) ? player.GodMode : null);
     }
 
     private void ApplyPlayerDisconnect(PlayerDisconnectRuntimeCommand disconnect)
@@ -724,7 +911,8 @@ internal sealed class PlayerAuthority
             player.CaptureSnapshot(),
             inventory,
             appearance,
-            equipment);
+            equipment,
+            player.GodMode);
 
         membership.ClearPending(connection);
         this.inventory.Clear(connection);
@@ -782,6 +970,7 @@ internal sealed class PlayerAuthority
             Slot = connection.Player.Slot,
             Team = previous.Team,
             Hostile = previous.Hostile,
+            GodMode = transfer.GodMode,
             HasHealth = previous.HasHealth,
             Life = life,
             MaxLife = previous.MaxLife,

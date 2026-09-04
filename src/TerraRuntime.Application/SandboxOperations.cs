@@ -23,7 +23,7 @@ public abstract record SandboxOperation
 }
 
 /// <summary>Parses the operator sandbox grammar and resolves file assets below one configured root.</summary>
-public sealed class SandboxCommandParser
+internal sealed class SandboxCommandParser
 {
     private readonly string worldAssetRoot;
     private readonly int defaultWidthTiles;
@@ -32,7 +32,7 @@ public sealed class SandboxCommandParser
     internal int DefaultWidthTiles => defaultWidthTiles;
     internal int DefaultHeightTiles => defaultHeightTiles;
 
-    public SandboxCommandParser(string worldAssetRoot, int defaultWidthTiles, int defaultHeightTiles)
+    internal SandboxCommandParser(string worldAssetRoot, int defaultWidthTiles, int defaultHeightTiles)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(worldAssetRoot);
         ArgumentOutOfRangeException.ThrowIfLessThan(defaultWidthTiles, 1);
@@ -42,7 +42,7 @@ public sealed class SandboxCommandParser
         this.defaultHeightTiles = defaultHeightTiles;
     }
 
-    public static bool IsCommandRoot(string input)
+    internal static bool IsCommandRoot(string input)
     {
         if (string.IsNullOrWhiteSpace(input))
             return false;
@@ -55,7 +55,7 @@ public sealed class SandboxCommandParser
                root.Equals("respawn", StringComparison.OrdinalIgnoreCase);
     }
 
-    public bool TryParse(string input, out SandboxOperation? operation, out string? error)
+    internal bool TryParse(string input, out SandboxOperation? operation, out string? error)
     {
         ArgumentNullException.ThrowIfNull(input);
         string[] parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -431,7 +431,7 @@ public sealed class SandboxOperations
         this.transfers = transfers;
     }
 
-    public string Execute(string command)
+    internal string Execute(string command)
     {
         bool respawnCommand = command.TrimStart().TrimStart('/').StartsWith("respawn", StringComparison.OrdinalIgnoreCase);
         if (!parser.TryParse(command, out SandboxOperation? operation, out string? error) || operation is null)

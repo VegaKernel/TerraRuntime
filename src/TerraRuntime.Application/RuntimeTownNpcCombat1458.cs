@@ -633,7 +633,7 @@ internal sealed class RuntimeTownNpcCombat1458
             return true;
         }
 
-        projectileSpawned = RuntimeNpcProjectileIntentApplier.TryApply(projectiles, in intent, out _);
+        projectileSpawned = RuntimeNpcProjectileIntentApplier.TryApply(projectiles, committed.Handle, in intent, out _);
         return true;
     }
 

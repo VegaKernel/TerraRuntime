@@ -17,6 +17,15 @@ internal interface IRuntimePlayerEventSink
     {
     }
 
+    /// <summary>
+    /// Replicates an authoritative server-owned health value back to the owning client as well as peers.
+    /// Use this for server-side damage/corrections; ordinary client packet-16 commits use PlayerHealthUpdated.
+    /// </summary>
+    void PlayerAuthoritativeHealthUpdated(ConnectionHandle connection, in PlayerHealthCommitRequest request)
+    {
+        PlayerHealthUpdated(connection, in request);
+    }
+
     void PlayerManaUpdated(ConnectionHandle connection, in PlayerManaCommitRequest request)
     {
     }
@@ -24,6 +33,10 @@ internal interface IRuntimePlayerEventSink
     void PlayerSpawned(ConnectionHandle connection, in PlayerSpawnCommitRequest request);
 
     void PlayerMoved(ConnectionHandle connection, in PlayerMovementCommitRequest request);
+
+    void PlayerDamageAvoided(PlayerHandle player, float positionX, float positionY, string text)
+    {
+    }
 
     void PlayerDisconnected(ConnectionHandle connection);
 }

@@ -12,6 +12,7 @@ internal sealed partial class ServerRuntimeState : IRuntimePlayerSnapshotLookup,
     private readonly NpcAuthority _npcs;
     private readonly ProjectileAuthority _projectiles;
     private readonly RuntimeProjectilePlayerCombatPass _projectilePlayerCombat;
+    private readonly RuntimeNpcPlayerCombatPass _npcPlayerCombat;
     private readonly WorldItemAuthority _worldItems;
     private readonly WorldTileAuthority _worldTileAuthority;
     private readonly WorldTileStore? _worldTiles;

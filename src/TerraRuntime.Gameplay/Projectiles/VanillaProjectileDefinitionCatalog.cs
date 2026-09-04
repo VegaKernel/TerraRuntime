@@ -12,6 +12,7 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId Fireball = new(8);
     public static readonly ProjectileAiStyleId MagicMissile = new(9);
     public static readonly ProjectileAiStyleId Bomb = new(16);
+    public static readonly ProjectileAiStyleId EyeFire = new(23);
     public static readonly ProjectileAiStyleId SuperStar = new(151);
     public static readonly ProjectileAiStyleId SharpTears = new(157);
     public static readonly ProjectileAiStyleId ShadowHand = new(187);
@@ -212,6 +213,66 @@ public static class VanillaProjectileDefinitionCatalog
         CanCutTiles: true,
         CollisionWidth: 16,
         CollisionHeight: 16);
+
+    private static readonly VanillaProjectileDefinition SpazmatismCursedFlameDefinition = new(
+        Width: 16,
+        Height: 16,
+        AiStyle: VanillaProjectileAiStyles.Fireball,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 16,
+        CollisionHeight: 16);
+
+    private static readonly VanillaProjectileDefinition SpazmatismEyeFireDefinition = new(
+        Width: 6,
+        Height: 6,
+        AiStyle: VanillaProjectileAiStyles.EyeFire,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 6,
+        CollisionHeight: 6);
+
+    private static readonly VanillaProjectileDefinition PhantasmalBoltDefinition = new(
+        Width: 8,
+        Height: 8,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: false,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 8,
+        CollisionHeight: 8);
+
+    private static readonly VanillaProjectileDefinition CultistFireballDefinition = new(
+        Width: 40,
+        Height: 40,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 40,
+        CollisionHeight: 40);
+
+    private static readonly VanillaProjectileDefinition AncientDoomProjectileDefinition = new(
+        Width: 16,
+        Height: 16,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 16,
+        CollisionHeight: 16);
+
+    private static readonly VanillaProjectileDefinition QueenSlimeGelAttackDefinition = new(
+        Width: 12,
+        Height: 12,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 12,
+        CollisionHeight: 12);
 
     private static readonly VanillaProjectileDefinition GolemEyeBeamDefinition = new(
         Width: 8,
@@ -544,6 +605,42 @@ public static class VanillaProjectileDefinitionCatalog
         if (type == VanillaProjectileIds.GolemFireball)
         {
             definition = GolemFireballDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SpazmatismCursedFlame)
+        {
+            definition = SpazmatismCursedFlameDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SpazmatismEyeFire)
+        {
+            definition = SpazmatismEyeFireDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PhantasmalBolt)
+        {
+            definition = PhantasmalBoltDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.CultistBossFireBall || type == VanillaProjectileIds.CultistBossFireBallClone)
+        {
+            definition = CultistFireballDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.AncientDoomProjectile)
+        {
+            definition = AncientDoomProjectileDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.QueenSlimeGelAttack)
+        {
+            definition = QueenSlimeGelAttackDefinition;
             return true;
         }
 

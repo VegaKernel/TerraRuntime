@@ -113,5 +113,6 @@ internal sealed partial class ServerRuntimeState
             projectileStore,
             _players,
             () => Updates);
+        _npcPlayerCombat = new RuntimeNpcPlayerCombatPass(npcStore, _players);
     }
 }

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Drawing;
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Operations;
 using Terminal.Gui.Input;
 using Terminal.Gui.Views;
 
@@ -16,7 +17,8 @@ internal enum SandboxWorldTreeRowKind : byte
 internal readonly record struct SandboxWorldTreeRow(
     SandboxWorldTreeRowKind Kind,
     SandboxName? Target,
-    string? PlayerSelector);
+    string? PlayerSelector,
+    RuntimePlayerSnapshot? Player = null);
 
 /// <summary>
 /// Row-selecting world roster. Unlike a read-only TextView, ListView highlights an item rather than selecting text.
@@ -36,6 +38,7 @@ internal sealed class SandboxWorldTreeView : ListView
     public event Action<string, SandboxName?>? TransferRequested;
     public event Action<SandboxName>? DestroyRequested;
     public event Action<string>? KickRequested;
+    public event Action<RuntimePlayerSnapshot>? PlayerOpenRequested;
 
     public void SetRows(string[] valueLines, SandboxWorldTreeRow[] valueRows)
     {
@@ -109,6 +112,14 @@ internal sealed class SandboxWorldTreeView : ListView
             {
                 SelectedItem = row;
                 SetFocus();
+            }
+
+            if (mouse.Flags.HasFlag(MouseFlags.LeftButtonDoubleClicked) && (uint)row < (uint)rows.Length &&
+                rows[row].Kind == SandboxWorldTreeRowKind.Player && rows[row].Player is RuntimePlayerSnapshot player)
+            {
+                PlayerOpenRequested?.Invoke(player);
+                mouse.Handled = true;
+                return true;
             }
 
             if (mouse.Flags.HasFlag(MouseFlags.LeftButtonPressed) && (uint)row < (uint)rows.Length)

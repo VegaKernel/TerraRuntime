@@ -3,6 +3,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Gameplay.Projectiles;
+using TerraRuntime.Gameplay.Players;
 
 namespace TerraRuntime;
 
@@ -44,6 +45,9 @@ internal sealed class RuntimeProjectilePlayerCombatPass
     public long CommittedHits { get; private set; }
     public long Kills { get; private set; }
     public long ConsumedProjectiles { get; private set; }
+    public long HostileCommittedHits { get; private set; }
+    public long HostileGodModeAvoidances { get; private set; }
+    public long HostileKills { get; private set; }
 
     public void Tick(ReadOnlySpan<RuntimeProjectileExplosionEvent> explosions)
     {
@@ -92,7 +96,7 @@ internal sealed class RuntimeProjectilePlayerCombatPass
 
                 int direction = projectile.VelocityX > 0.01f ? 1 : projectile.VelocityX < -0.01f ? -1 : 0;
                 bool killedBefore = target.IsDead;
-                if (!players.TryCommitAuthoritativePvpDamage(
+                PlayerDamageCommitResult commitResult = players.TryCommitAuthoritativePvpDamage(
                         tick,
                         owner.Connection.Player,
                         target.Connection.Player,
@@ -100,15 +104,17 @@ internal sealed class RuntimeProjectilePlayerCombatPass
                         hit.Damage,
                         hit.Critical,
                         direction,
-                        out PlayerStateSnapshot committed))
-                {
+                        out PlayerStateSnapshot committed);
+                if (commitResult == PlayerDamageCommitResult.Rejected)
                     continue;
-                }
 
                 MarkPlayerProjectileCooldown(projectile.Handle, target.Connection.Player, tick);
-                CommittedHits++;
-                if (!killedBefore && committed.IsDead)
-                    Kills++;
+                if (commitResult == PlayerDamageCommitResult.Committed)
+                {
+                    CommittedHits++;
+                    if (!killedBefore && committed.IsDead)
+                        Kills++;
+                }
 
                 if (!projectiles.TryConsumeCombatHitPenetration(projectile.Handle, out bool despawned, out ProjectileSnapshot current))
                     break;
@@ -125,8 +131,78 @@ internal sealed class RuntimeProjectilePlayerCombatPass
                 continue;
         }
 
+        TickServerHostilePve(projectileBuffer.AsSpan(0, projectileCount), tick);
         TickExplosions(explosions, tick);
     }
+
+    private void TickServerHostilePve(ReadOnlySpan<ProjectileSnapshot> activeProjectiles, long tick)
+    {
+        for (int i = 0; i < activeProjectiles.Length; i++)
+        {
+            ProjectileSnapshot projectile = activeProjectiles[i];
+            if (!projectile.IsActive || projectile.Damage <= 0 ||
+                !VanillaProjectileFacts.IsHostile(projectile.Type) ||
+                !projectiles.TryGetServerNpcSource(projectile.Handle, out NpcHandle sourceNpc) ||
+                !VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition) ||
+                !VanillaProjectileBehaviorProfileCatalog.TryGet(projectile.Type, out VanillaProjectileBehaviorProfile profile) ||
+                !profile.BehaviorImplemented)
+            {
+                continue;
+            }
+
+            VanillaPlayerImmunityChannel1458 immunityChannel =
+                VanillaIncomingPlayerDamageFacts1458.GetHostileProjectileImmunityChannel(projectile.Type);
+            foreach (RuntimePlayerMember target in players.Members)
+            {
+                PlayerHandle targetHandle = target.Connection.Player;
+                if (target.IsDead || !target.HasHealth || target.Life <= 0 ||
+                    (target.GodMode && IsPlayerOnProjectileCooldown(projectile.Handle, targetHandle, tick)) ||
+                    !Intersects(in projectile, in definition, target))
+                {
+                    continue;
+                }
+
+                int damage = VanillaIncomingPlayerDamageFacts1458.ResolveHostileProjectileDamage(
+                    projectile.Damage,
+                    random.Next(-15, 16));
+                if (damage <= 0)
+                    continue;
+
+                float projectileCenterX = projectile.PositionX + definition.Width * 0.5f;
+                float targetCenterX = target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+                int hitDirection = targetCenterX < projectileCenterX ? -1 : 1;
+                bool killedBefore = target.IsDead;
+                PlayerDamageCommitResult result = players.TryCommitAuthoritativeNpcProjectileDamage(
+                    tick,
+                    sourceNpc,
+                    projectile.Handle,
+                    targetHandle,
+                    damage,
+                    hitDirection,
+                    immunityChannel,
+                    out PlayerStateSnapshot committed);
+                if (result == PlayerDamageCommitResult.Rejected)
+                    continue;
+
+                if (result == PlayerDamageCommitResult.AvoidedByGodMode)
+                {
+                    HostileGodModeAvoidances++;
+                    // Creative god mode returns before vanilla Hurt mutates immunity. This is presentation-only
+                    // throttling so a projectile overlapping for many ticks does not flood packet 119.
+                    MarkPlayerProjectileCooldown(projectile.Handle, targetHandle, tick);
+                    continue;
+                }
+
+                HostileCommittedHits++;
+                if (!killedBefore && committed.IsDead)
+                    HostileKills++;
+
+                // Projectile.Damage_EVP does not generically decrement penetrate on player contact. Only a small
+                // explicit type set does so; none is admitted here until those per-type side effects are modeled.
+            }
+        }
+    }
+
 
     private void TickExplosions(ReadOnlySpan<RuntimeProjectileExplosionEvent> explosions, long tick)
     {
@@ -176,7 +252,7 @@ internal sealed class RuntimeProjectilePlayerCombatPass
 
                 int direction = ResolveExplosionDirection(in explosion, target);
                 bool killedBefore = target.IsDead;
-                if (!players.TryCommitAuthoritativePvpDamage(
+                PlayerDamageCommitResult commitResult = players.TryCommitAuthoritativePvpDamage(
                         tick,
                         trustedOwner,
                         target.Connection.Player,
@@ -184,15 +260,17 @@ internal sealed class RuntimeProjectilePlayerCombatPass
                         hit.Damage,
                         hit.Critical,
                         direction,
-                        out PlayerStateSnapshot committed))
-                {
+                        out PlayerStateSnapshot committed);
+                if (commitResult == PlayerDamageCommitResult.Rejected)
                     continue;
-                }
 
                 MarkPlayerProjectileCooldown(projectile.Handle, target.Connection.Player, tick);
-                CommittedHits++;
-                if (!killedBefore && committed.IsDead)
-                    Kills++;
+                if (commitResult == PlayerDamageCommitResult.Committed)
+                {
+                    CommittedHits++;
+                    if (!killedBefore && committed.IsDead)
+                        Kills++;
+                }
             }
         }
     }

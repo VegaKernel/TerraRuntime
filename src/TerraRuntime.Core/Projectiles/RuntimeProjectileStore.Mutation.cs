@@ -6,6 +6,21 @@ namespace TerraRuntime.Core;
 
 public sealed partial class RuntimeProjectileStore
 {
+    /// <summary>Attaches authoritative NPC provenance to one exact server-owned projectile generation.</summary>
+    public bool TrySetServerNpcSource(ProjectileHandle handle, NpcHandle sourceNpc)
+    {
+        if (!sourceNpc.IsAssigned || !IsCurrentHandleCandidate(handle))
+            return false;
+
+        ref SlotState state = ref _slots[handle.Slot];
+        if (!state.Active || state.Generation != handle.Generation.Value ||
+            !VanillaProjectileOwnership.IsServerOwned(state.Update.Spawner))
+            return false;
+
+        state.SourceNpc = sourceNpc;
+        return true;
+    }
+
     public bool TryUpdate(ProjectileHandle handle, in ProjectileStateUpdate update, out ProjectileSnapshot snapshot)
     {
         if (!IsCurrentHandleCandidate(handle) || !IsValidState(in update))

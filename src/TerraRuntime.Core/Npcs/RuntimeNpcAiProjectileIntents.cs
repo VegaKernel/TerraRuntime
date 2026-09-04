@@ -45,6 +45,13 @@ public static class RuntimeNpcProjectileIntentApplier
     public static bool TryApply(
         RuntimeProjectileStore projectiles,
         in NpcAiProjectileIntent intent,
+        out ProjectileSnapshot spawned) =>
+        TryApply(projectiles, default, in intent, out spawned);
+
+    public static bool TryApply(
+        RuntimeProjectileStore projectiles,
+        NpcHandle sourceNpc,
+        in NpcAiProjectileIntent intent,
         out ProjectileSnapshot spawned)
     {
         ArgumentNullException.ThrowIfNull(projectiles);
@@ -79,6 +86,14 @@ public static class RuntimeNpcProjectileIntentApplier
             Damage: damage,
             KnockBack: intent.KnockBack,
             OriginalDamage: damage);
-        return projectiles.TrySpawnVanilla(in update, intent.TimeLeftOverride > 0 ? intent.TimeLeftOverride : null, out spawned);
+        if (!projectiles.TrySpawnVanilla(in update, intent.TimeLeftOverride > 0 ? intent.TimeLeftOverride : null, out spawned))
+            return false;
+        if (sourceNpc.IsAssigned && !projectiles.TrySetServerNpcSource(spawned.Handle, sourceNpc))
+        {
+            projectiles.TryDespawn(spawned.Handle, out _);
+            spawned = default;
+            return false;
+        }
+        return true;
     }
 }

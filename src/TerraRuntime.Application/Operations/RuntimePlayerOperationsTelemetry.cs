@@ -25,7 +25,8 @@ internal sealed class RuntimePlayerOperationsTelemetry : global::TerraRuntime.IR
         string name = request.Name;
         PendingPlayerState state = GetPending(connection.Source);
         state.Name = name;
-        UpdateLive(connection, current => current with { Name = name });
+        state.DifficultyFlags = request.DifficultyFlags;
+        UpdateLive(connection, current => current with { Name = name, DifficultyFlags = request.DifficultyFlags });
     }
 
     public void PlayerEquipmentUpdated(ConnectionHandle connection, in PlayerEquipmentCommitRequest request)
@@ -83,6 +84,7 @@ internal sealed class RuntimePlayerOperationsTelemetry : global::TerraRuntime.IR
             VelocityY: 0f,
             SelectedItem: 0,
             MountType: 0,
+            DifficultyFlags: state?.DifficultyFlags ?? 0,
             HasHealth: state?.HasHealth ?? false,
             Life: state?.Life ?? 0,
             MaxLife: state?.MaxLife ?? 0,
@@ -158,6 +160,7 @@ internal sealed class RuntimePlayerOperationsTelemetry : global::TerraRuntime.IR
     private sealed class PendingPlayerState
     {
         public string Name { get; set; } = string.Empty;
+        public byte DifficultyFlags { get; set; }
         public bool HasHealth { get; set; }
         public short Life { get; set; }
         public short MaxLife { get; set; }

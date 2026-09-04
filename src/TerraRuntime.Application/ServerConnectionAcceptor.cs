@@ -24,6 +24,7 @@ internal sealed class ServerConnectionAcceptor : IDisposable
     private readonly RuntimeConnectionStopTelemetry stopTelemetry = new();
     private readonly ConcurrentDictionary<long, Task> connectionTasks = new();
     private readonly RuntimeConnectionDirectory connectionDirectory = new();
+    private readonly RuntimeConnectionSessionDirectory sessionDirectory = new();
     private long nextConnectionId;
     private int disposed;
 
@@ -50,6 +51,7 @@ internal sealed class ServerConnectionAcceptor : IDisposable
 
     public TerrariaConnectionAdmissionGate Admission => admission;
     public RuntimeConnectionDirectory Directory => connectionDirectory;
+    public RuntimeConnectionSessionDirectory Sessions => sessionDirectory;
     public LocalRuntimeNetworkOperations Operations { get; }
 
     /// <summary>
@@ -115,6 +117,11 @@ internal sealed class ServerConnectionAcceptor : IDisposable
         CancellationToken cancellationToken)
     {
         string remote = socket.RemoteEndPoint?.ToString() ?? "unknown";
+        string remoteAddress = socket.RemoteEndPoint is System.Net.IPEndPoint remoteIp
+            ? remoteIp.Address.ToString()
+            : remote;
+        int remotePort = socket.RemoteEndPoint is System.Net.IPEndPoint remoteEndpoint ? remoteEndpoint.Port : 0;
+        DateTimeOffset connectedAtUtc = DateTimeOffset.UtcNow;
         GameCommandSourceId source = GameCommandSourceId.FromConnection(connectionId);
         var connectionContext = new StructuredLogContext(
             CorrelationId: $"connection-{connectionId}",
@@ -167,6 +174,7 @@ internal sealed class ServerConnectionAcceptor : IDisposable
                 return;
             }
 
+            sessionDirectory.Register(connectionId, remoteAddress, remotePort, connectedAtUtc);
             try
             {
                 try
@@ -215,6 +223,7 @@ internal sealed class ServerConnectionAcceptor : IDisposable
             }
             finally
             {
+                sessionDirectory.Unregister(connectionId);
                 rateTelemetry.TryUnregister(connectionId);
                 queueTelemetry.TryUnregister(connectionId);
                 connectionDirectory.TryUnregister(source, out _);
