@@ -66,7 +66,7 @@ Catalog содержит только facts, реально нужные current
 | Player spawn/state/movement | partial-to-substantial | есть authoritative ingress/state, normalization и replication foundations; complete anti-cheat movement model отсутствует |
 | Inventory/equipment | partial | есть typed commit/request paths и packet handling, но full server-authoritative item-use/equipment semantics не завершена |
 | World items | substantial foundation | runtime-owned store, allocation/reservation/update/replication paths и tests существуют |
-| Tiles | partial | verified mutation slices, dirt/stone behavior и replication есть; full placement/framing/wiring/growth breadth нет |
+| Tiles | partial | definition-driven simple-cell mining/drop/transform slices и replication есть; frame-important/object placement/destruction и full framing/wiring/growth breadth отсутствуют |
 | Chests | substantial slice | runtime chest state, live open/content path, replication и persistence проверяются; complete chest/item authority ещё растёт |
 | Signs | substantial slice | authoritative read/update/store/replication, source-backed tile normalization и `.wld` persistence есть; complete placement/destruction/object lifecycle parity отсутствует |
 | Projectiles | partial | lifecycle/store/ownership/AI-style physics/collision/replication есть для verified type families; full projectile catalog/combat/side effects нет |
@@ -74,7 +74,7 @@ Catalog содержит только facts, реально нужные current
 | NPC AI breadth | early partial | есть selected verified NPCs/AI families, но не весь vanilla roster |
 | Combat/damage | early/partial | supporting structures существуют, полный vanilla PvE/PvP damage pipeline не завершён |
 | Bosses | largely incomplete | broad boss parity предполагать нельзя |
-| Loot/drops | early/partial | selected world/tile drop paths есть; complete NPC loot tables/RNG behavior нет |
+| Loot/drops | partial | complete 1.4.5.8 simple-cell tile drop classification и пять contextual simple-cell identities definition-driven; frame/object drops и complete NPC loot/RNG пока incomplete |
 | Housing/town NPCs | incomplete | target architecture есть, broad behavior отсутствует |
 | Events/invasions/progression | incomplete | production parity пока нет |
 | Wiring/liquids/growth | foundation/partial | world/liquid primitives существуют; full vanilla simulation отсутствует |
@@ -122,9 +122,9 @@ World-item identity отделена от item content type. Future pickup/stack
 
 World edits проходят semantic/runtime mutation paths, а не напрямую переписывают tile из decoder.
 
-Runtime имеет verified slices tile kill/update/replication и world collision/query behavior. Selected dirt/stone cases закреплены official-source/reference workflows.
+Runtime имеет verified slices tile kill/update/replication и world collision/query behavior. `WorldTile` хранит только mutable state клетки; один flyweight `VanillaTileDefinition` на каждый TileID 1.4.5.8 владеет break-path, mining, drop и failed-pick transform semantics. Поэтому обычный simple-cell mining больше не использует положительный TileID allow-list.
 
-В broad vanilla scale пока incomplete все placement rules, frame-important/multi-tile object behavior, slope/platform interactions, wiring/actuation, growth/spread families и complete tool/item requirements/drops.
+В broad vanilla scale пока incomplete frame-important/multi-tile object destruction/placement, все slope/platform interactions, wiring/actuation, growth/spread families, полный `HitTile`/reach и оставшиеся environment-dependent правила `CanKillTile`.
 
 Tile mutation не завершена только потому, что resulting tile ID выглядит правильно. Neighbor framing, object validity, drops, liquid interaction, persistence и network replication могут быть observable parts одного vanilla action.
 
@@ -248,7 +248,7 @@ Authoritative становятся только verified portions. Пока comp
 
 ## 19. Drops и loot
 
-Selected tile/world-item drop paths реализованы/tested, но complete vanilla loot намного шире.
+Simple-cell tile drops теперь source-pinned definition data, а не вручную поддерживаемый allow-list. Пять contextual simple-cell identities 1.4.5.8 имеют явные стратегии: vines/flowering vines используют Cordage ближайшего игрока, Mushroom Vines — vanilla half-chance, Hive может оставить honey и породить Bee/SmallBee до RNG создания Hive Block item. Frame-important/object drops и полный NPC loot остаются отдельными incomplete families.
 
 NPC loot parity потребует rules/data structures, сохраняющих conditions, probabilities, stack ranges, progression/event dependencies и RNG ordering.
 

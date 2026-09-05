@@ -239,6 +239,37 @@ internal sealed partial class PlayerAuthority
         return float.IsFinite(targetX) && float.IsFinite(targetY);
     }
 
+
+    public bool ClosestPlayerHasFunctionalItem(
+        int tileX,
+        int tileY,
+        ItemTypeId itemType)
+    {
+        float targetX = tileX * 16f + 8f;
+        float targetY = tileY * 16f + 8f;
+        RuntimePlayerMember? closest = null;
+        float closestDistanceSquared = float.PositiveInfinity;
+
+        foreach (RuntimePlayerMember candidate in membership.Members)
+        {
+            if (candidate.IsDead)
+                continue;
+
+            float centerX = candidate.PositionX + VanillaBasePlayerWidth * 0.5f;
+            float centerY = candidate.PositionY + VanillaBasePlayerHeight * 0.5f;
+            float dx = centerX - targetX;
+            float dy = centerY - targetY;
+            float distanceSquared = dx * dx + dy * dy;
+            if (distanceSquared >= closestDistanceSquared)
+                continue;
+
+            closestDistanceSquared = distanceSquared;
+            closest = candidate;
+        }
+
+        return closest is not null && transferProfiles.HasFunctionalItem(closest.Connection, itemType);
+    }
+
     public bool TryCaptureEquipment(
         ConnectionHandle connection,
         out PlayerEquipmentCommitRequest[] equipment)

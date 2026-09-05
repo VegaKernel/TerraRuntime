@@ -117,6 +117,7 @@ internal sealed class ServerRuntimeComposition
         var playerSnapshots = new RuntimePlayerSnapshotLookup(playersAuthority, serverPlayers);
 
         RuntimeWorldItemStore worldItemStore = worldItems ?? new RuntimeWorldItemStore();
+        RuntimeNpcStore npcStore = npcs ?? new RuntimeNpcStore();
         IWorldItemSpawnRandom spawnRandom = worldItemSpawnRandom ?? new SystemWorldItemSpawnRandom();
         var worldItemAuthority = new WorldItemAuthority(
             playersAuthority,
@@ -128,10 +129,10 @@ internal sealed class ServerRuntimeComposition
             commands,
             worldTiles,
             worldItemStore,
+            npcStore,
             spawnRandom,
             tileManipulationReplication);
 
-        RuntimeNpcStore npcStore = npcs ?? new RuntimeNpcStore();
         RuntimeProjectileStore projectileStore = projectiles ?? new RuntimeProjectileStore();
         IProjectileStateStepper? configuredProjectileStepper = projectileStepper ??
             (worldTiles is null ? null : new VanillaProjectileWorldStateStepper(worldTiles, playerSnapshots, expertMode, npcStore));

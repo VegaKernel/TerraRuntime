@@ -71,6 +71,37 @@ public sealed class VanillaTileWallDefinitionCatalogTests
     }
 
     [Fact]
+    public void Simple_cell_contextual_drop_families_are_definition_driven()
+    {
+        AssertContextualSimpleCell(VanillaTileIds.Vines, VanillaTileContextualDropKind.CordageVine);
+        AssertContextualSimpleCell(VanillaTileIds.JungleVines, VanillaTileContextualDropKind.CordageVine);
+        AssertContextualSimpleCell(VanillaTileIds.VineFlowers, VanillaTileContextualDropKind.CordageVine);
+        AssertContextualSimpleCell(VanillaTileIds.MushroomVines, VanillaTileContextualDropKind.MushroomVine);
+        AssertContextualSimpleCell(VanillaTileIds.Hive, VanillaTileContextualDropKind.Hive);
+
+        VanillaTileDefinition torch = VanillaTileDefinitionCatalog.Get(VanillaTileIds.Torches);
+        Assert.Equal(VanillaTileBreakPath.FrameImportant, torch.BreakPath);
+        Assert.Equal(VanillaTileDropRuleKind.Contextual, torch.DropRule.Kind);
+        Assert.Equal(VanillaTileContextualDropKind.None, torch.ContextualDropKind);
+    }
+
+    [Fact]
+    public void Every_non_frame_contextual_1458_tile_has_an_explicit_simple_cell_strategy()
+    {
+        for (int rawType = 0; rawType < VanillaTileDefinitionCatalog.Count; rawType++)
+        {
+            VanillaTileDefinition definition = VanillaTileDefinitionCatalog.Get(new TileTypeId(rawType));
+            if (definition.BreakPath != VanillaTileBreakPath.SimpleCell ||
+                definition.DropRule.Kind != VanillaTileDropRuleKind.Contextual)
+            {
+                continue;
+            }
+
+            Assert.NotEqual(VanillaTileContextualDropKind.None, definition.ContextualDropKind);
+        }
+    }
+
+    [Fact]
     public void Wall_catalog_covers_exact_1458_identity_range_and_named_ids()
     {
         Assert.Equal(367, VanillaWallIds.Count);
@@ -143,4 +174,14 @@ public sealed class VanillaTileWallDefinitionCatalogTests
         Assert.Equal(9, dungeon);
         Assert.Equal(16, light);
     }
+    private static void AssertContextualSimpleCell(
+        TileTypeId type,
+        VanillaTileContextualDropKind expectedKind)
+    {
+        VanillaTileDefinition definition = VanillaTileDefinitionCatalog.Get(type);
+        Assert.Equal(VanillaTileBreakPath.SimpleCell, definition.BreakPath);
+        Assert.Equal(VanillaTileDropRuleKind.Contextual, definition.DropRule.Kind);
+        Assert.Equal(expectedKind, definition.ContextualDropKind);
+    }
+
 }

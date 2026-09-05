@@ -7,14 +7,14 @@ TerraRuntime отделяет декодированное представле�
 Сервис владеет текущими проверенными однотайловыми операциями хранения:
 
 - `PlaceTile` для обычных vanilla-тайлов без frame-important семантики, уже допущенных вызывающим gameplay-слоем;
-- `KillTile` только для source-backed simple-removal среза `Dirt`, `Stone` и `Sand`;
+- `KillTile` для обычных single-cell vanilla-тайлов, допущенных definition-моделью; frame-important/multi-tile/object content идёт отдельными путями;
 - `PlaceWall` и `KillWall` с типизированной проверкой `WallTypeId`;
 - `SetShape` для solid-тайлов, которые не являются платформами и frame-important объектами;
 - ограниченной канонизацией frame обычных тайлов и dirty propagation для сети и persistence.
 
 Запрос задаётся как `WorldTileMutationRequest`. Этот API не принимает сырые номера packet action. Сетевой ingress сначала обязан декодировать и аутентифицировать пакет, а верхние gameplay-слои по-прежнему отвечают за reach, удерживаемый предмет/мощность инструмента, расход инвентаря, protection policy и резервирование drop.
 
-`VanillaSimpleTileKillCatalog` намеренно является каталогом **возможностей mutation**, а не глобальной таблицей mining hardness. Тайл попадает туда только тогда, когда generic storage transition и production drop path достаточно полно смоделированы и очистка ячейки не стирает молча vanilla-поведение.
+Обычный mining теперь управляется definition-моделью. `VanillaTileDefinitionCatalog` — flyweight-таблица для каждого vanilla tile 1.4.5.8: она хранит mutation path, mining profile, drop rule и failed-pick transform. Положительного списка «разрешённых» обычных тайлов больше нет: простой single-cell removal является базовым поведением, а frame-important объекты, contextual drops, transforms и progression gates выбирают специализированный путь явно.
 
 ## Почему generic `KillTile` работает fail-closed
 
@@ -22,7 +22,7 @@ Pinned source TerrariaServer 1.4.5.8 показывает, что внешне �
 
 Source contract сейчас закрепляет, среди прочего, порог `65` pick power для Ebonstone/Crimstone и `210` для Lihzahrd content, а Grass явно входит в transform-on-kill family. Поэтому считать любой не-frame-important тайл операцией `Type = 0; Active = false` было бы не упрощением, а повреждением поведения.
 
-Пока для этих семейств не реализованы собственные типизированные семантики, generic mutation service возвращает `UnsupportedState`. В результате production packet-17 path больше не может медной киркой удалить Grass, Snow, Lihzahrd Brick или любой другой не реализованный тайл только потому, что его storage-definition не является frame-important.
+Storage mutation service принимает только definitions с `BreakPath = SimpleCell`; gameplay-authority до commit разрешает мощность кирки, failed-pick transforms, contextual drop semantics и progression-sensitive requirements. Frame-important и multi-tile content остаётся fail-closed, пока отдельный object path не владеет его геометрией и lifecycle метаданных.
 
 ## Владение состоянием
 
@@ -38,14 +38,14 @@ Frame-important и известный multi-tile content намеренно от
 
 ## Mining boundary packet 17
 
-Текущий production proof инструмента для packet 17 намеренно узкий: выбранный предмет должен разрешаться в source-verified Copper Pickaxe (`pick = 35`). Успешная клиентская команда `KillTile` после этого может быть зафиксирована только тогда, когда target также входит в `VanillaSimpleTileKillCatalog`.
+Packet 17 разрешает выбранный предмет через source-backed pick-tool catalog, после чего проверяет `VanillaTileDefinition` целевого тайла. Обычные single-cell тайлы идут по базовому mutation path; мощность кирки, contextual drops, failed-pick transforms и object/frame-important пути задаются типизированными правилами вместо списков сырых TileID.
 
-Это **не** заявление о полной vanilla mining parity. TerraRuntime пока не воспроизводит полный lifecycle накопления `HitTile`, полный каталог кирок, все world-position/progression gates, transforming tiles и server-owned модель reach. Всё это остаётся явными gameplay-задачами. Ключевой инвариант теперь в другом: отсутствующая семантика закрывается fail-closed, а не превращается в destructive generic behavior.
+Это **не** заявление о полной vanilla mining parity. TerraRuntime всё ещё не воспроизводит полный lifecycle накопления `HitTile`, все frame-important/object destruction rules, все world-position/progression gates и server-owned модель reach. Failed-pick transform families и полный drop-table simple-cell тайлов 1.4.5.8 теперь definition-driven; отсутствующая object/frame семантика остаётся явной fail-closed boundary.
 
-`tools/ci/probe_tile_mining.py` закрепляет эту boundary непосредственно по официальному бинарнику TerrariaServer 1.4.5.8. Изменения simple-kill каталога, mutation service или packet-level regression tests повторно запускают этот source contract.
+`tools/ci/probe_tile_mining.py` закрепляет mining identities и requirements непосредственно по официальному бинарнику TerrariaServer 1.4.5.8. Drop-rule data отдельно pinned к `WorldGen.KillTile_GetItemDrops`; gameplay использует typed definitions, а не положительный allow-list сырых TileID.
 
 ## Статус roadmap
 
-**Operation boundary** D5 для placement/break/framing остаётся завершённой в пределах объявленного поддерживаемого среза: typed requests, один authoritative commit owner, ограниченный simple framing и отдельная replication используются production path. Последнее усиление authority сужает generic `KillTile` до доказанного среза Dirt/Stone/Sand и превращает неподдерживаемые mining families в явные capability gaps.
+**Operation boundary** D5 для placement/break/framing остаётся завершённой в пределах объявленного поддерживаемого среза: typed requests, один authoritative commit owner, ограниченный simple framing и отдельная replication используются production path. Обычный single-cell mining больше не зависит от вручную поддерживаемого положительного TileID allow-list; immutable definitions типа выбирают mining, transform и drop behavior.
 
-Полная mining parity всё ещё требует source-backed breadth инструментов, hit accumulation, environment-dependent правил `CanKillTile`, transform-on-kill семейств, object destruction и reach/protection policy. Они должны добавляться через типизированные boundaries, а не повторным открытием generic packet-driven очистки ячеек.
+Полная mining parity всё ещё требует hit accumulation, оставшихся environment-dependent правил `CanKillTile`, frame-important/object destruction и reach/protection policy. Они должны добавляться через типизированные boundaries, а не повторным открытием generic packet-driven очистки ячеек.

@@ -311,6 +311,14 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
             bootstrap.DungeonSide,
             context.CancellationToken);
         workspace.SetVanillaDungeonGraph(graph);
+        DungeonFeaturePipeline1458.Result features = DungeonFeaturePipeline1458.Apply(
+            workspace,
+            graph,
+            context.VanillaRandom ?? throw new InvalidOperationException(
+                "Source-backed Dungeon features require shared UnifiedRandom semantics."),
+            state.WorldSurface,
+            state.RockLayer,
+            context.CancellationToken);
         state.DungeonX = graph.Anchor.X;
         state.DungeonY = graph.Anchor.Y;
         state.DungeonBrick = graph.BrickTileType;
@@ -322,7 +330,10 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
 
         context.ReportProgress(
             1d,
-            $"Generating Terraria dungeon graph: {graph.RoomCount} rooms, {graph.HallCount} halls");
+            $"Generating Terraria dungeon graph: {graph.RoomCount} rooms, {graph.HallCount} halls; " +
+            $"features doors={features.Doors}, platforms={features.Platforms}, spikes={features.Spikes}, " +
+            $"biomeChests={features.BiomeChests}, chests={features.BasicChests}, shelves={features.Bookshelves}, " +
+            $"lights={features.Lights}, traps={features.Traps}, furniture={features.Furniture}, banners={features.Banners}");
     }
 
     private void ApplyMountainCaves(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)

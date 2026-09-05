@@ -14,7 +14,8 @@ public enum WorldTileMutationKind : byte
     KillTile = 2,
     PlaceWall = 3,
     KillWall = 4,
-    SetShape = 5
+    SetShape = 5,
+    TransformTile = 6
 }
 
 public enum WorldTileMutationStatus : byte
@@ -88,6 +89,7 @@ public sealed class VanillaWorldTileMutationService
             WorldTileMutationKind.PlaceWall => PlaceWall(in request, in before),
             WorldTileMutationKind.KillWall => KillWall(in request, in before),
             WorldTileMutationKind.SetShape => SetShape(in request, in before),
+            WorldTileMutationKind.TransformTile => TransformTile(in request, in before),
             _ => Rejected(WorldTileMutationStatus.UnsupportedState, in before)
         };
     }
@@ -96,7 +98,7 @@ public sealed class VanillaWorldTileMutationService
     {
         if (!VanillaTileDefinitionCatalog.TryGet(request.TileType, out VanillaTileDefinition definition))
             return Rejected(WorldTileMutationStatus.InvalidContent, in before);
-        if (definition.IsFrameImportant || VanillaMultiTileObjectCatalog.TryGet(request.TileType, out _))
+        if (definition.BreakPath != VanillaTileBreakPath.SimpleCell)
             return Rejected(WorldTileMutationStatus.FrameImportantUnsupported, in before);
         if (before.IsActive)
             return Rejected(WorldTileMutationStatus.Occupied, in before);
@@ -120,10 +122,8 @@ public sealed class VanillaWorldTileMutationService
             return Rejected(WorldTileMutationStatus.Empty, in before);
         if (!VanillaTileDefinitionCatalog.TryGet(before.TileType, out VanillaTileDefinition definition))
             return Rejected(WorldTileMutationStatus.InvalidContent, in before);
-        if (definition.IsFrameImportant || VanillaMultiTileObjectCatalog.TryGet(before.TileType, out _))
+        if (definition.BreakPath != VanillaTileBreakPath.SimpleCell)
             return Rejected(WorldTileMutationStatus.FrameImportantUnsupported, in before);
-        if (!VanillaSimpleTileKillCatalog.IsSupported(before.TileType))
-            return Rejected(WorldTileMutationStatus.UnsupportedState, in before);
 
         WorldTile after = before;
         after.Type = 0;
@@ -137,6 +137,31 @@ public sealed class VanillaWorldTileMutationService
             WorldTileFlags.Inactive |
             WorldTileFlags.InvisibleBlock |
             WorldTileFlags.FullbrightBlock);
+        return CommitAndFrame(request.X, request.Y, in before, in after, tileFrame: true, wallFrame: false);
+    }
+
+    private WorldTileMutationResult TransformTile(in WorldTileMutationRequest request, in WorldTile before)
+    {
+        if (!before.IsActive)
+            return Rejected(WorldTileMutationStatus.Empty, in before);
+        if (!VanillaTileDefinitionCatalog.TryGet(before.TileType, out VanillaTileDefinition sourceDefinition) ||
+            sourceDefinition.BreakPath != VanillaTileBreakPath.SimpleCell ||
+            !VanillaTileDefinitionCatalog.TryGet(request.TileType, out VanillaTileDefinition targetDefinition) ||
+            targetDefinition.BreakPath != VanillaTileBreakPath.SimpleCell)
+        {
+            return Rejected(WorldTileMutationStatus.UnsupportedState, in before);
+        }
+        if (before.TileType == request.TileType)
+            return Rejected(WorldTileMutationStatus.NoChange, in before);
+
+        WorldTile after = before;
+        if (!after.TrySetTileType(request.TileType))
+            return Rejected(WorldTileMutationStatus.InvalidContent, in before);
+
+        // Vanilla failed-pick transforms preserve the cell and independent state; SquareTileFrame then recomputes
+        // sprite framing. TerraRuntime canonicalizes simple frames to zero and keeps paint/shape/wires/liquid intact.
+        after.FrameX = 0;
+        after.FrameY = 0;
         return CommitAndFrame(request.X, request.Y, in before, in after, tileFrame: true, wallFrame: false);
     }
 

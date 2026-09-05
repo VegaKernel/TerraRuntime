@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core;
+using TerraRuntime.Core.Npcs;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
@@ -23,7 +24,9 @@ internal sealed class WorldTileAuthority
     private readonly RuntimeTileManipulationReplicationRegistry? replication;
     private readonly RuntimeObjectPlacementCommandProcessor? objectPlacement;
     private readonly RuntimeWorldItemStore worldItems;
+    private readonly RuntimeNpcStore npcs;
     private readonly IWorldItemSpawnRandom worldItemSpawnRandom;
+    private readonly VanillaWorldLiquidMutationService? liquidMutations;
     private readonly PlayerTileEditBudget editBudget = new(MaxPlayerSlots);
 
     public WorldTileAuthority(
@@ -31,6 +34,7 @@ internal sealed class WorldTileAuthority
         RuntimeCommandCounter commands,
         WorldTileStore? tiles,
         RuntimeWorldItemStore worldItems,
+        RuntimeNpcStore npcs,
         IWorldItemSpawnRandom worldItemSpawnRandom,
         RuntimeTileManipulationReplicationRegistry? replication)
     {
@@ -38,9 +42,11 @@ internal sealed class WorldTileAuthority
         this.commands = commands ?? throw new ArgumentNullException(nameof(commands));
         this.tiles = tiles;
         this.worldItems = worldItems ?? throw new ArgumentNullException(nameof(worldItems));
+        this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.worldItemSpawnRandom = worldItemSpawnRandom ?? throw new ArgumentNullException(nameof(worldItemSpawnRandom));
         this.replication = replication;
         mutations = tiles is null ? null : new VanillaWorldTileMutationService(tiles);
+        liquidMutations = tiles is null ? null : new VanillaWorldLiquidMutationService(tiles);
         liquidSimulator = tiles is null ? null : new VanillaWorldLiquidSimulator1458(tiles);
 
         if (tiles is not null &&
@@ -201,16 +207,11 @@ internal sealed class WorldTileAuthority
                 return;
             }
 
-            if (tileState.Data == 1)
-            {
-                AppliedClientManipulations++;
-                replication?.TryPublishAccepted(command.Connection.Source, in tileState);
-                return;
-            }
-
             WorldTile beforeKill = tiles.Get(tileState.TileX, tileState.TileY);
             TileTypeId beforeType = beforeKill.TileType;
-            if (!VanillaTileMiningRequirements1458.CanMine(
+            if (!VanillaTileDefinitionCatalog.TryGet(beforeType, out VanillaTileDefinition tileDefinition) ||
+                tileDefinition.BreakPath != VanillaTileBreakPath.SimpleCell ||
+                !VanillaTileMiningRequirements1458.CanMine(
                     tiles,
                     tileState.TileX,
                     tileState.TileY,
@@ -220,27 +221,65 @@ internal sealed class WorldTileAuthority
                 RejectedClientManipulations++;
                 return;
             }
-            bool isDirtKill = beforeType == VanillaTileIds.Dirt;
-            if (isDirtKill && !VanillaDirtRules1458.CanKillIsolated(tiles, tileState.TileX, tileState.TileY))
+
+            if (tileState.Data == 1)
+            {
+                if (tileDefinition.FailedPickTransformTarget is TileTypeId transformTarget)
+                {
+                    if (!ApplyTileMutation(
+                            tileMutations,
+                            WorldTileMutationKind.TransformTile,
+                            tileState.TileX,
+                            tileState.TileY,
+                            transformTarget))
+                    {
+                        RejectedClientManipulations++;
+                        return;
+                    }
+
+                    AppliedClientManipulations++;
+                    replication?.TryPublishCommitted(command.Connection.Source, in tileState);
+                    return;
+                }
+
+                AppliedClientManipulations++;
+                replication?.TryPublishAccepted(command.Connection.Source, in tileState);
+                return;
+            }
+
+            if (!tileDefinition.IsBreakableByPick || tileDefinition.TransformsOnFailedPick)
             {
                 RejectedClientManipulations++;
                 return;
             }
 
-            bool hasDrop = VanillaTileWorldItemDrop.TryCreate(
-                beforeType,
-                tileState.TileX,
-                tileState.TileY,
-                worldItemSpawnRandom,
-                out WorldItemDropStateUpdate dropState);
-            if (!hasDrop && isDirtKill)
+            if (beforeType == VanillaTileIds.Dirt &&
+                !VanillaDirtRules1458.CanKillIsolated(tiles, tileState.TileX, tileState.TileY))
             {
-                hasDrop = true;
-                dropState = VanillaDirtWorldItemDrop.Create(
+                RejectedClientManipulations++;
+                return;
+            }
+
+            bool closestPlayerHasCordage =
+                tileDefinition.ContextualDropKind == VanillaTileContextualDropKind.CordageVine &&
+                players.ClosestPlayerHasFunctionalItem(
                     tileState.TileX,
                     tileState.TileY,
-                    worldItemSpawnRandom);
+                    VanillaItemIds.GuideToPlantFiberCordage);
+            VanillaSimpleTileBreakOutcome breakOutcome = VanillaSimpleTileBreakResolver1458.Resolve(
+                tileDefinition,
+                tileState.TileX,
+                tileState.TileY,
+                closestPlayerHasCordage,
+                worldItemSpawnRandom);
+            if (breakOutcome.DropStatus == VanillaTileDropResolutionStatus.WrongPath)
+            {
+                UnsupportedClientManipulations++;
+                return;
             }
+
+            bool hasDrop = breakOutcome.HasDrop;
+            WorldItemDropStateUpdate dropState = breakOutcome.Drop;
 
             WorldItemDropReservation reservation = default;
             bool reserved = false;
@@ -267,6 +306,35 @@ internal sealed class WorldTileAuthority
                 RejectedClientManipulations++;
                 return;
             }
+
+            if (breakOutcome.FillWithHoney)
+            {
+                if (liquidMutations is null)
+                    throw new InvalidOperationException("Hive break requires an authoritative liquid mutation owner.");
+
+                var liquidRequest = new WorldLiquidMutationRequest(
+                    WorldLiquidMutationKind.SetLiquid,
+                    tileState.TileX,
+                    tileState.TileY,
+                    byte.MaxValue,
+                    WorldLiquidKind.Honey);
+                WorldLiquidMutationResult liquidResult = liquidMutations.Apply(in liquidRequest);
+                if (liquidResult.Status is not WorldLiquidMutationStatus.Applied and not WorldLiquidMutationStatus.NoChange)
+                {
+                    throw new InvalidOperationException(
+                        $"Authoritative Hive honey mutation failed after tile commit: {liquidResult.Status}.");
+                }
+
+                var liquidState = new TerrariaLiquidState(
+                    checked((short)tileState.TileX),
+                    checked((short)tileState.TileY),
+                    byte.MaxValue,
+                    (byte)WorldLiquidKind.Honey);
+                replication?.TryPublishLiquidToAll(in liquidState);
+            }
+
+            SpawnTileBreakNpc(in breakOutcome.FirstNpc, breakOutcome.NpcSpawnCount >= 1);
+            SpawnTileBreakNpc(in breakOutcome.SecondNpc, breakOutcome.NpcSpawnCount >= 2);
 
             if (reserved)
             {
@@ -348,6 +416,15 @@ internal sealed class WorldTileAuthority
             default:
                 throw new InvalidOperationException("Unknown client tile-manipulation consistency result.");
         }
+    }
+
+
+    private void SpawnTileBreakNpc(in NpcAiSpawnIntent intent, bool shouldSpawn)
+    {
+        if (!shouldSpawn || intent.Type.Value <= 0)
+            return;
+
+        _ = npcs.TrySpawnIntent(in intent, out _);
     }
 
     private static bool ApplyTileMutation(

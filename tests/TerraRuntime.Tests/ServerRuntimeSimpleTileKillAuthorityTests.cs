@@ -9,21 +9,9 @@ namespace TerraRuntime.Tests;
 public sealed class ServerRuntimeSimpleTileKillAuthorityTests
 {
     [Theory]
-    [InlineData(0, true)]
-    [InlineData(1, true)]
-    [InlineData(53, true)]
-    [InlineData(2, false)]
-    [InlineData(147, false)]
-    [InlineData(226, false)]
-    public void Simple_kill_catalog_is_explicit_and_fail_closed(int rawTileType, bool expected)
-    {
-        Assert.True(VanillaTileIds.TryCreate(rawTileType, out TileTypeId tileType));
-        Assert.Equal(expected, VanillaSimpleTileKillCatalog.IsSupported(tileType));
-    }
-
-    [Theory]
     [InlineData(1, 3)]
     [InlineData(53, 169)]
+    [InlineData(147, 593)]
     public void Copper_pickaxe_commits_supported_simple_tile_and_drop(int rawTileType, int expectedDropItem)
     {
         using var fixture = new Fixture();
@@ -50,10 +38,9 @@ public sealed class ServerRuntimeSimpleTileKillAuthorityTests
     }
 
     [Theory]
-    [InlineData(2)]   // Grass transforms to Dirt when a pick breaks the grass layer.
-    [InlineData(147)] // Snow is not yet an end-to-end modelled drop/removal family.
+    [InlineData(2)]   // Grass must use vanilla failed-pick transform semantics, not direct generic removal.
     [InlineData(226)] // Lihzahrd Brick has a source-backed 210 pick-power gate.
-    public void Copper_pickaxe_cannot_generic_clear_unmodelled_tile(int rawTileType)
+    public void Copper_pickaxe_cannot_bypass_special_mining_semantics(int rawTileType)
     {
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 9500 + rawTileType);
@@ -78,7 +65,7 @@ public sealed class ServerRuntimeSimpleTileKillAuthorityTests
     }
 
     [Fact]
-    public void Generic_world_mutation_reports_transforming_grass_as_unsupported_state()
+    public void Failed_pick_transform_is_an_explicit_typed_mutation()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         var grass = new WorldTile
@@ -88,12 +75,17 @@ public sealed class ServerRuntimeSimpleTileKillAuthorityTests
         };
         tiles.Set(20, 20, in grass);
         var service = new VanillaWorldTileMutationService(tiles);
-        var request = new WorldTileMutationRequest(WorldTileMutationKind.KillTile, 20, 20);
+        var request = new WorldTileMutationRequest(
+            WorldTileMutationKind.TransformTile,
+            20,
+            20,
+            TileType: VanillaTileIds.Dirt);
 
         WorldTileMutationResult result = service.Apply(in request);
 
-        Assert.Equal(WorldTileMutationStatus.UnsupportedState, result.Status);
-        Assert.Equal(grass, tiles.Get(20, 20));
+        Assert.True(result.Applied);
+        Assert.True(tiles.Get(20, 20).IsActive);
+        Assert.Equal(VanillaTileIds.Dirt, tiles.Get(20, 20).TileType);
     }
 
     private sealed class Fixture : IDisposable

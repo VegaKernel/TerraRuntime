@@ -79,6 +79,29 @@ internal sealed class RuntimePlayerTransferProfileStore
         return true;
     }
 
+
+    public bool HasFunctionalItem(ConnectionHandle connection, ItemTypeId itemType)
+    {
+        Entry? entry = Get(connection);
+        if (entry is null || itemType.IsNone)
+            return false;
+
+        foreach (PlayerEquipmentCommitRequest request in entry.Equipment.Values)
+        {
+            if (!VanillaPlayerItemSlotCatalog.IsFunctionalArmorSlot(request.SlotId) ||
+                request.Stack <= 0 ||
+                !request.TryGetCanonicalItemType(out ItemTypeId equippedType))
+            {
+                continue;
+            }
+
+            if (equippedType == itemType)
+                return true;
+        }
+
+        return false;
+    }
+
     public void Restore(
         ConnectionHandle connection,
         PlayerAppearanceCommitRequest? appearance,

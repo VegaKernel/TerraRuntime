@@ -3,45 +3,6 @@ using TerraRuntime.Contracts.Gameplay;
 namespace TerraRuntime.World;
 
 /// <summary>
-/// Immutable TerrariaServer 1.4.5.8 tile definition assembled from version-pinned identity, collision and world-file
-/// frame catalogs. Object metadata flags describe section side tables, not object dimensions or placement rules.
-/// </summary>
-public readonly record struct VanillaTileDefinition(
-    TileTypeId Type,
-    bool IsSolid,
-    bool IsSolidTop,
-    bool IsFrameImportant,
-    bool CarriesContainerMetadata,
-    bool CarriesSignMetadata);
-
-/// <summary>
-/// Typed definition view for every vanilla 1.4.5.8 tile identity. This composes existing source-backed tables so
-/// gameplay code does not recover tile capabilities from raw IDs or independent masks.
-/// </summary>
-public static class VanillaTileDefinitionCatalog
-{
-    public const int Count = VanillaTileIds.Count;
-
-    public static bool TryGet(TileTypeId type, out VanillaTileDefinition definition)
-    {
-        if (!VanillaTileIds.TryCreate(type.Value, out _))
-        {
-            definition = default;
-            return false;
-        }
-
-        definition = new VanillaTileDefinition(
-            type,
-            VanillaTileCollisionCatalog.IsSolid(type),
-            VanillaTileCollisionCatalog.IsSolidTop(type),
-            VanillaWorldFrameImportance326.IsFrameImportant(type.Value),
-            VanillaTileIds.IsChestAnchor(type),
-            VanillaTileIds.CarriesSignText(type));
-        return true;
-    }
-}
-
-/// <summary>
 /// Immutable TerrariaServer 1.4.5.8 wall definition. <see cref="IsPresent"/> distinguishes the valid zero no-wall
 /// identity from an occupied wall cell without weakening catalog validation.
 /// </summary>

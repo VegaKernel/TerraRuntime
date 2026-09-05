@@ -15,7 +15,9 @@ flowchart LR
     Catalog --> Gameplay["World and gameplay policy"]
 ```
 
-`VanillaTileDefinitionCatalog` covers exactly `754` vanilla tile identities. Each definition combines the existing source-backed solid, solid-top and format-`326` frame-important tables and identifies tiles whose section snapshots carry container or sign side-table metadata.
+`VanillaTileDefinitionCatalog` covers exactly `754` vanilla tile identities. It is a flyweight table: mutable `WorldTile` cells keep only per-cell state, while one immutable `VanillaTileDefinition` per type carries collision/frame facts, mutation path, mining profile, source-pinned drop rule, contextual simple-cell strategy and failed-pick transform target. This avoids duplicating invariant behavior across millions of world cells and prevents runtime authority from growing parallel raw-TileID allow-lists.
+
+The simple-cell drop image is pinned to TerrariaServer 1.4.5.8 `WorldGen.KillTile_GetItemDrops`. `Fixed`, `None`, `Contextual` and `Object` are behavior categories rather than a `CanDrop` boolean: vines depend on the nearest player's functional Cordage equipment, Mushroom Vines use their vanilla RNG branch, Hive can produce honey and Bee/SmallBee spawns, and frame-important contextual identities remain on their frame/object path.
 
 `VanillaWallDefinitionCatalog` covers exactly `367` vanilla wall identities. Its packed definition image mirrors `Main.wallHouse`, `Main.wallDungeon` and `Main.wallLight` after `Main.Initialize_TileAndNPCData2`. `WallTypeId(0)` is a valid catalog identity for no wall; `VanillaWallDefinition.IsPresent` distinguishes it from an occupied wall cell.
 

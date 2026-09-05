@@ -1,14 +1,16 @@
-using TerraRuntime.Core.Worlds;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Application;
 
 /// <summary>
-/// TerrariaServer 1.4.5.8 pick-power gates for the ordinary single-cell mining slice.
-/// Position-dependent gates intentionally receive the authoritative world store instead of trusting packet data.
+/// TerrariaServer 1.4.5.8 pick-power policy for authoritative mining. Tile identities are classified once by
+/// <see cref="VanillaTileDefinitionCatalog"/>; this policy applies only the position-sensitive world rules and never
+/// reconstructs tile semantics from raw numeric IDs.
 /// </summary>
 internal static class VanillaTileMiningRequirements1458
 {
+    private const int VanillaUnderworldLayerOffsetTiles = 200;
+
     public static bool CanMine(
         WorldTileStore tiles,
         int tileX,
@@ -18,33 +20,42 @@ internal static class VanillaTileMiningRequirements1458
     {
         ArgumentNullException.ThrowIfNull(tiles);
 
-        int type = tileType.Value;
-        double worldSurface = tiles.WorldSurfaceTiles ?? tiles.Dimensions.HeightTiles * 0.3d;
-        int required = type switch
+        if (!VanillaTileDefinitionCatalog.TryGet(tileType, out VanillaTileDefinition definition) ||
+            !definition.IsBreakableByPick)
         {
-            25 or 117 or 203 => 65,      // Ebonstone / Pearlstone / Crimstone
-            37 => 50,                    // Meteorite
-            56 => 55,                    // Obsidian
-            58 => 65,                    // Hellstone
-            107 or 221 => 100,           // Cobalt / Palladium
-            108 or 222 => 110,           // Mythril / Orichalcum
-            111 or 223 => 150,           // Adamantite / Titanium
-            211 => 200,                  // Chlorophyte
-            226 => 210,                  // Lihzahrd brick
-            _ => 0
-        };
-
-        if ((type == 22 || type == 204) && tileY > worldSurface)
-            required = Math.Max(required, 55);
-
-        if (IsDungeonBrick(type) && tileY > worldSurface &&
-            (tileX < tiles.Dimensions.WidthTiles * 0.35d || tileX > tiles.Dimensions.WidthTiles * 0.65d))
-        {
-            required = Math.Max(required, 100);
+            return false;
         }
+
+        double worldSurface = tiles.WorldSurfaceTiles ?? tiles.Dimensions.HeightTiles * 0.3d;
+        int required = definition.MiningProfile switch
+        {
+            VanillaTileMiningProfile.Standard => 0,
+            VanillaTileMiningProfile.EvilStone => 65,
+            VanillaTileMiningProfile.Meteorite => 50,
+            VanillaTileMiningProfile.Obsidian => 55,
+            VanillaTileMiningProfile.Hellstone => 65,
+            VanillaTileMiningProfile.DemoniteCrimtaneDepthSensitive => tileY > worldSurface ? 55 : 0,
+            VanillaTileMiningProfile.HellforgeDepthSensitive =>
+                tileY >= tiles.Dimensions.HeightTiles - VanillaUnderworldLayerOffsetTiles ? 65 : 0,
+            VanillaTileMiningProfile.DungeonBrick =>
+                IsProtectedDungeonDepth(tiles, tileX, tileY, worldSurface) ? 100 : 0,
+            VanillaTileMiningProfile.CobaltTier => 100,
+            VanillaTileMiningProfile.MythrilTier => 110,
+            VanillaTileMiningProfile.AdamantiteTier => 150,
+            VanillaTileMiningProfile.Chlorophyte => 200,
+            VanillaTileMiningProfile.LihzahrdTemple => 210,
+            VanillaTileMiningProfile.Unbreakable => int.MaxValue,
+            _ => int.MaxValue
+        };
 
         return pickPower >= required;
     }
 
-    private static bool IsDungeonBrick(int type) => type is 41 or 43 or 44 or 677 or 678 or 679;
+    private static bool IsProtectedDungeonDepth(
+        WorldTileStore tiles,
+        int tileX,
+        int tileY,
+        double worldSurface) =>
+        tileY > worldSurface &&
+        (tileX < tiles.Dimensions.WidthTiles * 0.35d || tileX > tiles.Dimensions.WidthTiles * 0.65d);
 }

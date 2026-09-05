@@ -66,7 +66,7 @@ The following table is deliberately conservative.
 | Player spawn/state/movement | partial-to-substantial | authoritative ingress/state, normalization and replication foundations exist; complete anti-cheat movement model does not |
 | Inventory/equipment | partial | typed commit/request paths and packet handling exist, but full server-authoritative item-use/equipment semantics are not complete |
 | World items | substantial foundation | runtime-owned store, allocation/reservation/update/replication paths and tests exist |
-| Tiles | partial | verified mutation slices, dirt/stone behavior and replication exist; full placement/framing/wiring/growth breadth does not |
+| Tiles | partial | definition-driven simple-cell mining/drop/transform slices and replication exist; frame-important/object placement/destruction, full framing/wiring/growth breadth do not |
 | Chests | substantial slice | runtime chest state, live open/content path, replication and persistence are exercised; complete chest/item authority is still growing |
 | Signs | substantial slice | authoritative read/update/store/replication, source-backed tile normalization and `.wld` persistence exist; complete placement/destruction/object lifecycle parity does not |
 | Projectiles | partial | lifecycle/store/ownership/AI-style physics/collision/replication exist for verified type families; full projectile catalog/combat/side effects do not |
@@ -74,7 +74,7 @@ The following table is deliberately conservative.
 | NPC AI breadth | early partial | selected verified NPCs and AI families exist, not the full vanilla roster |
 | Combat/damage | early/partial | supporting structures exist but full vanilla PvE/PvP damage pipeline is not complete |
 | Bosses | largely incomplete | no broad boss parity should be assumed |
-| Loot/drops | early/partial | selected world/tile drop paths exist; complete NPC loot tables and RNG behavior do not |
+| Loot/drops | partial | the complete 1.4.5.8 simple-cell tile drop classification plus its five contextual simple-cell identities are definition-driven; frame/object drops and complete NPC loot/RNG remain incomplete |
 | Housing/town NPCs | incomplete | target architecture exists; broad behavior not implemented |
 | Events/invasions/progression | incomplete | not production-parity yet |
 | Wiring/liquids/growth | foundation/partial | world/liquid primitives exist; full vanilla simulation is not complete |
@@ -122,9 +122,9 @@ World-item identity is separate from item content type. Future pickup/stack/owne
 
 World edits pass through semantic/runtime mutation paths rather than directly rewriting tiles in a decoder.
 
-The runtime already has verified slices for tile kill/update/replication and world collision/query behavior. Selected dirt/stone cases are pinned by official-source/reference workflows.
+The runtime already has verified slices for tile kill/update/replication and world collision/query behavior. `WorldTile` stores mutable cell state only; one flyweight `VanillaTileDefinition` per 1.4.5.8 TileID owns break-path, mining, drop and failed-pick transform semantics. Ordinary simple-cell mining therefore has no positive TileID allow-list.
 
-Still incomplete at broad vanilla scale are all placement rules, frame-important and multi-tile object behavior, every slope/platform interaction, wiring/actuation, growth/spread families, and complete tool/item requirements/drops.
+Still incomplete at broad vanilla scale are frame-important and multi-tile object destruction/placement, every slope/platform interaction, wiring/actuation, growth/spread families, full `HitTile`/reach semantics and the remaining environment-dependent `CanKillTile` rules.
 
 A tile mutation is not complete merely because the resulting tile ID looks correct. Neighbor framing, object validity, drops, liquid interaction, persistence and network replication may all be observable parts of the same vanilla action.
 
@@ -248,7 +248,7 @@ Only verified portions should be made authoritative. Until complete conservation
 
 ## 19. Drops and loot
 
-Selected tile/world-item drop paths are implemented and tested, but complete vanilla loot is much larger.
+Simple-cell tile drops are now source-pinned as definition data rather than a manually maintained allow-list. The five contextual simple-cell identities in 1.4.5.8 are explicit strategies: vines/flowering vines use nearest-player Cordage state, Mushroom Vines use the vanilla half-chance, and Hive can leave honey and spawn Bee/SmallBee NPCs before the Hive Block item RNG. Frame-important/object drops and complete NPC loot remain separate incomplete families.
 
 NPC loot parity eventually requires rule/data structures that preserve conditions, probabilities, stack ranges, progression/event dependencies and RNG ordering.
 
