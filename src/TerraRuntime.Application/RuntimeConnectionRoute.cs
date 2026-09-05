@@ -183,10 +183,12 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
             error = null;
             try
             {
+                // World-space coordinates are runtime-local. Crossing a world boundary always lands at
+                // the destination world spawn; only rollback to the original runtime restores old coordinates.
                 attached = transfer.TryAttach(
                     destination,
                     destinationConnection,
-                    preserveWorldPosition: !forceRespawn,
+                    preserveWorldPosition: false,
                     forceRespawn,
                     cancellation.Token);
             }

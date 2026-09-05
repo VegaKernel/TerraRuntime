@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.HostContracts;
@@ -21,8 +22,13 @@ internal sealed class PlayerDetailsWindow : Window
     private readonly Label character;
     private readonly Label vitals;
     private readonly Label position;
-    private readonly CheckBox godMode;
+    private const string GodModeDisabled = "Disabled";
+    private const string GodModeEnabled = "Enabled";
+
+    private readonly DropDownList godMode;
     private readonly Label feedback;
+    private bool updatingGodModeSelection;
+    private bool godModeDirty;
 
     public PlayerDetailsWindow(
         RuntimePlayerSnapshot player,
@@ -49,12 +55,23 @@ internal sealed class PlayerDetailsWindow : Window
         character = LabelAt(1, 6);
         vitals = LabelAt(1, 7);
         position = LabelAt(1, 8);
-        godMode = new CheckBox
+        godMode = new DropDownList
         {
             X = 20,
             Y = 10,
-            Text = "Enabled",
+            Width = 18,
+            ReadOnly = true,
+            Source = new ListWrapper<string>(new ObservableCollection<string>([GodModeDisabled, GodModeEnabled])),
+            Text = GodModeDisabled,
             SchemeName = "Base"
+        };
+        godMode.ValueChanged += (_, _) =>
+        {
+            if (updatingGodModeSelection)
+                return;
+
+            godModeDirty = true;
+            feedback.Text = $"God mode {godMode.Text}; click Apply to commit this player session.";
         };
         feedback = new Label
         {
@@ -89,7 +106,7 @@ internal sealed class PlayerDetailsWindow : Window
     public event Action? CloseRequested;
 
     internal PlayerHandle Player => handle;
-    internal bool GodModeForSmoke => godMode.Value == CheckState.Checked;
+    internal bool GodModeForSmoke => IsGodModeSelected();
     internal string SessionTextForSmoke => sessionDuration.Text?.ToString() ?? string.Empty;
     internal string EndpointTextForSmoke => endpoint.Text?.ToString() ?? string.Empty;
 
@@ -126,12 +143,16 @@ internal sealed class PlayerDetailsWindow : Window
             if (!connected || enabled is null)
             {
                 godMode.Enabled = false;
+                godModeDirty = false;
                 feedback.Text = "Player generation is no longer connected.";
             }
             else
             {
                 godMode.Enabled = true;
-                godMode.Value = enabled.Value ? CheckState.Checked : CheckState.UnChecked;
+                // Dashboard refreshes are periodic. Do not overwrite an operator selection that is
+                // waiting for Apply, otherwise the control appears impossible to change.
+                if (!godModeDirty)
+                    SetGodModeSelection(enabled.Value);
                 if (feedback.Text?.ToString() is not { Length: > 0 })
                     feedback.Text = "God mode is runtime-only and is not persisted.";
             }
@@ -164,21 +185,53 @@ internal sealed class PlayerDetailsWindow : Window
 
     private void ApplyGodMode()
     {
-        bool enabled = godMode.Value == CheckState.Checked;
+        bool enabled = IsGodModeSelected();
         try
         {
             bool applied = administration.SetGodModeAsync(handle, enabled).AsTask().GetAwaiter().GetResult();
             feedback.Text = applied
                 ? $"God mode {(enabled ? "enabled" : "disabled")} for this exact player session."
                 : "Player generation is no longer connected; no change was applied.";
-            if (!applied)
+            if (applied)
+            {
+                godModeDirty = false;
+                SetGodModeSelection(enabled);
+            }
+            else
+            {
+                godModeDirty = false;
                 godMode.Enabled = false;
+            }
         }
         catch (Exception exception)
         {
             feedback.Text = $"God mode change failed: {exception.Message}";
         }
     }
+
+    private bool IsGodModeSelected() =>
+        string.Equals(godMode.Text, GodModeEnabled, StringComparison.Ordinal);
+
+    private void SetGodModeSelection(bool enabled)
+    {
+        updatingGodModeSelection = true;
+        try
+        {
+            godMode.Text = enabled ? GodModeEnabled : GodModeDisabled;
+        }
+        finally
+        {
+            updatingGodModeSelection = false;
+        }
+    }
+
+    internal void SetGodModeForSmoke(bool enabled)
+    {
+        SetGodModeSelection(enabled);
+        godModeDirty = true;
+    }
+
+    internal void ApplyGodModeForSmoke() => ApplyGodMode();
 
     internal static string FormatDifficulty(byte flags)
     {

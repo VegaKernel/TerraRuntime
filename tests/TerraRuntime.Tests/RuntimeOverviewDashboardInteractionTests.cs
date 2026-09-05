@@ -337,28 +337,72 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     }
 
     [Fact]
-    public void World_tree_drag_maps_player_row_to_destination_semantic_target()
+    public void World_tree_drag_maps_exact_player_session_to_destination_semantic_target()
     {
         using var tree = new SandboxWorldTreeView();
         var destination = new SandboxName("arena");
-        string? player = null;
+        RuntimePlayerSnapshot alice = CreatePlayer(0, 11, "Alice");
+        PlayerHandle? player = null;
         SandboxName? target = null;
-        tree.TransferRequested += (selector, sandbox) =>
+        tree.TransferRequested += (handle, sandbox) =>
         {
-            player = selector;
+            player = handle;
             target = sandbox;
         };
         tree.SetRows(
         ["primary", "#0 Alice", "arena"],
         [
             new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, Target: null, PlayerSelector: null),
-            new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, Target: null, PlayerSelector: "#0"),
+            new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, Target: null, PlayerSelector: "#0", alice),
             new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, destination, PlayerSelector: null)
         ]);
 
         Assert.True(tree.TryTransferRows(sourceRow: 1, targetRow: 2));
-        Assert.Equal("#0", player);
+        Assert.Equal(new PlayerHandle(new PlayerSlotId(0), new PlayerSessionGeneration(1)), player);
         Assert.Equal(destination, target);
+    }
+
+    [Fact]
+    public void World_tree_drag_keeps_original_player_across_refresh_and_accepts_player_row_as_target()
+    {
+        using var tree = new SandboxWorldTreeView();
+        var arena = new SandboxName("arena");
+        RuntimePlayerSnapshot alice = CreatePlayer(0, 11, "Alice");
+        RuntimePlayerSnapshot bob = CreatePlayer(1, 12, "Bob");
+        RuntimePlayerSnapshot carol = CreatePlayer(2, 13, "Carol");
+        PlayerHandle? moved = null;
+        SandboxName? target = null;
+        tree.TransferRequested += (handle, sandbox) =>
+        {
+            moved = handle;
+            target = sandbox;
+        };
+
+        tree.SetRows(
+            ["primary", "#0 Alice", "#1 Bob", "arena", "#2 Carol"],
+            [
+                new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, Target: null, PlayerSelector: null),
+                new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, Target: null, PlayerSelector: "#0", alice),
+                new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, Target: null, PlayerSelector: "#1", bob),
+                new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, arena, PlayerSelector: null),
+                new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, arena, PlayerSelector: "#2", carol)
+            ]);
+        Assert.True(tree.BeginDragForSmoke(2));
+
+        // A dashboard refresh reorders the primary rows while the drag is still active.
+        tree.SetRows(
+            ["primary", "#1 Bob", "#0 Alice", "arena", "#2 Carol"],
+            [
+                new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, Target: null, PlayerSelector: null),
+                new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, Target: null, PlayerSelector: "#1", bob),
+                new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, Target: null, PlayerSelector: "#0", alice),
+                new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, arena, PlayerSelector: null),
+                new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, arena, PlayerSelector: "#2", carol)
+            ]);
+
+        Assert.True(tree.DropDraggedForSmoke(4));
+        Assert.Equal(new PlayerHandle(new PlayerSlotId(1), new PlayerSessionGeneration(1)), moved);
+        Assert.Equal(arena, target);
     }
 
     [Fact]

@@ -187,7 +187,7 @@ internal sealed class RuntimeOverviewDashboard : View
         worldsText.Height = Dim.Fill();
         worldsFrame.Add(sandboxAddButton, settingsButton, worldsText);
         worldsText.TransferRequested += (player, sandbox) =>
-            ExecuteSandboxOperationAsync(new SandboxOperation.Move(player, sandbox));
+            ExecuteSandboxOperationAsync(new SandboxOperation.MoveExact(player, sandbox));
         worldsText.DestroyRequested += ConfirmSandboxDestroy;
         worldsText.KickRequested += ConfirmPlayerKick;
         worldsText.PlayerOpenRequested += player => PlayerOpenRequested?.Invoke(player);
@@ -538,9 +538,12 @@ internal sealed class RuntimeOverviewDashboard : View
             return;
         }
 
-        SetCommandFeedback(operation is SandboxOperation.Move move
-            ? $"sandbox: moving {move.PlayerSelector} to {move.Sandbox?.ToString() ?? "primary"}"
-            : "sandbox: processing operation");
+        SetCommandFeedback(operation switch
+        {
+            SandboxOperation.Move move => $"sandbox: moving {move.PlayerSelector} to {move.Sandbox?.ToString() ?? "primary"}",
+            SandboxOperation.MoveExact move => $"sandbox: moving #{move.Player.Slot.Value} to {move.Sandbox?.ToString() ?? "primary"}",
+            _ => "sandbox: processing operation"
+        });
         pendingSandboxCommand = Task.Run(() => sandboxOperations.Execute(operation));
     }
 

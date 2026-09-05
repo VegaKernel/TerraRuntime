@@ -28,14 +28,14 @@ internal sealed class SandboxWorldTreeView : ListView
 {
     private SandboxWorldTreeRow[] rows = [];
     private string[] lines = [];
-    private int? draggedRow;
+    private SandboxWorldTreeRow? draggedPlayer;
 
     public SandboxWorldTreeView()
     {
         CanFocus = true;
     }
 
-    public event Action<string, SandboxName?>? TransferRequested;
+    public event Action<PlayerHandle, SandboxName?>? TransferRequested;
     public event Action<SandboxName>? DestroyRequested;
     public event Action<string>? KickRequested;
     public event Action<RuntimePlayerSnapshot>? PlayerOpenRequested;
@@ -70,17 +70,52 @@ internal sealed class SandboxWorldTreeView : ListView
     {
         if ((uint)sourceRow >= (uint)rows.Length || (uint)targetRow >= (uint)rows.Length)
             return false;
+        return TryTransfer(rows[sourceRow], targetRow);
+    }
 
-        SandboxWorldTreeRow source = rows[sourceRow];
-        SandboxWorldTreeRow target = rows[targetRow];
-        if (source.Kind != SandboxWorldTreeRowKind.Player ||
-            string.IsNullOrWhiteSpace(source.PlayerSelector) ||
-            target.Kind == SandboxWorldTreeRowKind.Placeholder)
+    internal bool BeginDragForSmoke(int sourceRow) => TryBeginDrag(sourceRow);
+
+    internal bool DropDraggedForSmoke(int targetRow) => TryDropDragged(targetRow);
+
+    private bool TryBeginDrag(int sourceRow)
+    {
+        if ((uint)sourceRow >= (uint)rows.Length ||
+            rows[sourceRow].Kind != SandboxWorldTreeRowKind.Player ||
+            rows[sourceRow].Player is not RuntimePlayerSnapshot)
         {
             return false;
         }
 
-        TransferRequested?.Invoke(source.PlayerSelector, target.Target);
+        draggedPlayer = rows[sourceRow];
+        return true;
+    }
+
+    private bool TryDropDragged(int targetRow)
+    {
+        if (draggedPlayer is not SandboxWorldTreeRow source)
+            return false;
+
+        draggedPlayer = null;
+        return TryTransfer(in source, targetRow);
+    }
+
+    private bool TryTransfer(in SandboxWorldTreeRow source, int targetRow)
+    {
+        if ((uint)targetRow >= (uint)rows.Length ||
+            source.Kind != SandboxWorldTreeRowKind.Player ||
+            source.Player is not RuntimePlayerSnapshot player ||
+            player.Generation == 0)
+        {
+            return false;
+        }
+
+        SandboxWorldTreeRow target = rows[targetRow];
+        // Every row inside a world branch is a valid drop surface, including another player and
+        // the <no players> placeholder. Target carries the branch identity independently of row kind.
+        var handle = new PlayerHandle(
+            new PlayerSlotId(player.Slot),
+            new PlayerSessionGeneration(player.Generation));
+        TransferRequested?.Invoke(handle, target.Target);
         return true;
     }
 
@@ -130,9 +165,10 @@ internal sealed class SandboxWorldTreeView : ListView
                     return true;
                 }
 
-                if (rows[row].Kind == SandboxWorldTreeRowKind.Player)
+                if (TryBeginDrag(row))
                 {
-                    draggedRow = row;
+                    // Capture semantic identity now. The dashboard refreshes this list while the mouse is held,
+                    // so retaining a visual row index can silently switch the dragged player underneath us.
                     App?.Mouse.GrabMouse(this);
                     mouse.Handled = true;
                     return true;
@@ -140,14 +176,16 @@ internal sealed class SandboxWorldTreeView : ListView
             }
         }
 
-        if (mouse.Flags.HasFlag(MouseFlags.LeftButtonReleased) && draggedRow is int sourceRow)
+        if (mouse.Flags.HasFlag(MouseFlags.LeftButtonReleased) && draggedPlayer is not null)
         {
-            draggedRow = null;
             App?.Mouse.UngrabMouse();
             if (mouse.Position is not Point releasedAt)
+            {
+                draggedPlayer = null;
                 return true;
+            }
             int targetRow = releasedAt.Y + Viewport.Y;
-            bool handled = TryTransferRows(sourceRow, targetRow);
+            bool handled = TryDropDragged(targetRow);
             mouse.Handled = handled;
             return handled;
         }

@@ -89,6 +89,23 @@ internal sealed partial class RuntimeConnectionRegistry : IRuntimePlayerEventSin
         return delivered;
     }
 
+    internal int BroadcastToPlayingExcept(GameCommandSourceId excludedSource, ReadOnlyMemory<byte> encodedFrame)
+    {
+        if (encodedFrame.IsEmpty)
+            return 0;
+
+        var frame = new OutboundFrame(encodedFrame);
+        int delivered = 0;
+        foreach ((GameCommandSourceId source, RuntimeConnectionEndpoint endpoint) in _endpoints)
+        {
+            if (source == excludedSource || !endpoint.TryGetPlayingSlot(out _))
+                continue;
+            if (endpoint.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
+                delivered++;
+        }
+        return delivered;
+    }
+
     internal int CollectNearbyPlayers(
         PlayerSlotId subject,
         int radiusSections,

@@ -148,7 +148,9 @@ internal sealed partial class RuntimeConnectionRegistry
             request.ClaimedSlot, positionX, positionY, entered, left);
         ResetMovementVisibilityReadiness(request.ClaimedSlot, visibility, entered, left);
         byte[] encoded = TerrariaPlayerReplicationFrameEncoder.EncodeSpawn(in request);
-        Interlocked.Add(ref _relayedMovementFrames, BroadcastToPlaying(encoded));
+        // Packet 12 originated from this client. Echoing the same spawn back to it can retrigger the
+        // local spawn transition, causing visible flicker, input lock and a packet feedback loop.
+        Interlocked.Add(ref _relayedMovementFrames, BroadcastToPlayingExcept(connection.Source, encoded));
     }
 
     public void PlayerTeleported(ConnectionHandle connection, float positionX, float positionY, byte style, bool failed)

@@ -15,6 +15,7 @@ public abstract record SandboxOperation
     public sealed record Job(SandboxJobId Id) : SandboxOperation;
     public sealed record Create(SandboxCreateRequest Request) : SandboxOperation;
     public sealed record Move(string PlayerSelector, SandboxName? Sandbox) : SandboxOperation;
+    internal sealed record MoveExact(PlayerHandle Player, SandboxName? Sandbox) : SandboxOperation;
     public sealed record Respawn(string PlayerSelector, SandboxName? Sandbox) : SandboxOperation;
     public sealed record Regenerate(SandboxName Name, ulong? Seed) : SandboxOperation;
     public sealed record Destroy(SandboxName Name) : SandboxOperation;
@@ -456,6 +457,7 @@ public sealed class SandboxOperations
                 ? $"sandbox: create accepted as operation {id}"
                 : $"sandbox: {error}",
             SandboxOperation.Move move => ExecuteTransfer(move.PlayerSelector, move.Sandbox, forceRespawn: false),
+            SandboxOperation.MoveExact move => ExecuteTransfer(move.Player, move.Sandbox),
             SandboxOperation.Respawn respawn => ExecuteTransfer(respawn.PlayerSelector, respawn.Sandbox, forceRespawn: true),
             SandboxOperation.Regenerate regenerate => host.TryRegenerate(regenerate.Name, regenerate.Seed, out SandboxJobId id, out string? error)
                 ? $"sandbox: regeneration accepted as operation {id}"
@@ -545,6 +547,16 @@ public sealed class SandboxOperations
         return forceRespawn
             ? $"respawn: {player} -> {target} completed"
             : $"sandbox: {player} -> {target} completed";
+    }
+
+    private string ExecuteTransfer(PlayerHandle player, SandboxName? sandbox)
+    {
+        if (transfers is null)
+            return "sandbox: player transfer operations are unavailable";
+        if (!transfers.TryMove(player, sandbox, forceRespawn: false, out string? error))
+            return $"sandbox: {error}";
+        string target = sandbox?.ToString() ?? "primary";
+        return $"sandbox: #{player.Slot.Value} -> {target} completed";
     }
 
     private static string FormatSandboxes(SandboxSnapshot[] sandboxes)

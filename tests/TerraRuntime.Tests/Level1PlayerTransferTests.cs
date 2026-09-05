@@ -125,8 +125,8 @@ public sealed class Level1PlayerTransferTests
             sandboxPlayer,
             TestContext.Current.CancellationToken);
         Assert.NotNull(sandboxSnapshot);
-        Assert.Equal(96f, sandboxSnapshot.Value.PositionX);
-        Assert.Equal(128f, sandboxSnapshot.Value.PositionY);
+        Assert.Equal(sandbox.World.RuntimeMetadata.SpawnX * 16f, sandboxSnapshot.Value.PositionX);
+        Assert.Equal(sandbox.World.RuntimeMetadata.SpawnY * 16f, sandboxSnapshot.Value.PositionY);
         Assert.Equal((short)70, sandboxSnapshot.Value.Life);
         Assert.Equal((short)100, sandboxSnapshot.Value.MaxLife);
 
@@ -140,8 +140,8 @@ public sealed class Level1PlayerTransferTests
             primaryPlayer,
             TestContext.Current.CancellationToken);
         Assert.NotNull(returned);
-        Assert.Equal(96f, returned.Value.PositionX);
-        Assert.Equal(128f, returned.Value.PositionY);
+        Assert.Equal(primary.World.RuntimeMetadata.SpawnX * 16f, returned.Value.PositionX);
+        Assert.Equal(primary.World.RuntimeMetadata.SpawnY * 16f, returned.Value.PositionY);
         Assert.Equal((short)70, returned.Value.Life);
     }
 

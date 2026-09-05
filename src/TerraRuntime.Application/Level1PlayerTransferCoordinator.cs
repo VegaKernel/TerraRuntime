@@ -57,6 +57,21 @@ internal sealed class Level1PlayerTransferCoordinator
     }
 
     public bool TryMove(
+        PlayerHandle player,
+        SandboxName? sandbox,
+        bool forceRespawn,
+        out string? error)
+    {
+        if (!connections.TryResolve(player, out RuntimeConnectionRoute? route) || route is null)
+        {
+            error = $"player #{player.Slot.Value} generation {player.Generation.Value} is no longer connected";
+            return false;
+        }
+
+        return TryMove(route, sandbox, forceRespawn, out error);
+    }
+
+    public bool TryMove(
         string playerSelector,
         SandboxName? sandbox,
         bool forceRespawn,
@@ -65,6 +80,15 @@ internal sealed class Level1PlayerTransferCoordinator
         if (!connections.TryResolve(playerSelector, out RuntimeConnectionRoute? route, out error) || route is null)
             return false;
 
+        return TryMove(route, sandbox, forceRespawn, out error);
+    }
+
+    private bool TryMove(
+        RuntimeConnectionRoute route,
+        SandboxName? sandbox,
+        bool forceRespawn,
+        out string? error)
+    {
         WorldRuntime destination;
         if (sandbox is SandboxName name)
         {
