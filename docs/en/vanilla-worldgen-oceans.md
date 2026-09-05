@@ -25,3 +25,16 @@ workflow runs this finalizer for Small, Medium and Large worlds and sweeps seeds
 
 This closes the ocean visual-audit item. It is a scoped claim about the ordinary 1.4.5.8 `Beaches` behavior and
 structural output, not a claim that the entire world generator is byte-for-byte identical to Terraria.
+
+## Deep-ocean validation regression
+
+The finalizer uses `OceanIntegrity1458` as the single basin geometry gate. The retired aggregate check counted water
+and sand in a fixed $50\,\mathrm{tiles}$ vertical band around `WorldSurface + 80`. That band missed the valid left
+ocean floor in Large seed `8675309` and rejected the world with `Ocean sand insufficient left=0 right=795`.
+`Beaches` anchors each coast to local terrain, so the basin gate searches the actual water surface and sand floor.
+Water continuity, floor coverage and beach-rise limits remain enforced; no ocean tiles or generation RNG were changed.
+
+`VanillaWorldGenerationValidator1458Tests` retains the failing Large seed as a full generation/finalization regression.
+`VanillaOceanGeneration1458Tests` separately rejects a connected water body without a sand floor and a wide dry gap.
+Canonical-size and reference-differential workflow filters now follow the moved `TerraRuntime.WorldGeneration` and
+`TerraRuntime.Application` sources so generation changes continue to trigger these checks.

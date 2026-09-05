@@ -19,3 +19,8 @@ reference-seed dungeon equality remain outside this visual-audit item. The under
 the source-backed `Beaches` block and structural basin validator. The coordinate-driven jagged/half-block-heavy surface
 writer is closed by the source-backed `Smooth World` block. Segmented ordinary trees without crowns are closed by the
 source-backed growth/framing block; palm/vanity-tree placement remains outside that claim.
+
+The deep-ocean finalization regression for Large seed `8675309` is covered by full generation/finalization tests.
+The obsolete fixed-height water/sand census was removed in favor of the existing basin geometry gate, without
+changing generation or relaxing its water-continuity, sand-floor and beach-rise limits. See the
+[ocean validation contract](../en/vanilla-worldgen-oceans.md).

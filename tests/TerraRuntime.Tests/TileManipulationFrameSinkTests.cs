@@ -146,6 +146,17 @@ public sealed class TileManipulationFrameSinkTests
 
     private sealed class CapturingIngress : ITileNetworkIngress
     {
+        public int LiquidCount { get; private set; }
+        public TerrariaLiquidState Liquid { get; private set; }
+
+        public bool TryPostLiquid(ConnectionHandle connection, in TerrariaLiquidState state)
+        {
+            LiquidCount++;
+            Connection = connection;
+            Liquid = state;
+            return true;
+        }
+
         public int Count { get; private set; }
         public ConnectionHandle Connection { get; private set; }
         public TerrariaTileManipulationState State { get; private set; }
@@ -161,6 +172,8 @@ public sealed class TileManipulationFrameSinkTests
 
     private sealed class RejectingIngress : ITileNetworkIngress
     {
+        public bool TryPostLiquid(ConnectionHandle connection, in TerrariaLiquidState state) => false;
+
         public bool TryPost(ConnectionHandle connection, in TerrariaTileManipulationState state) => false;
     }
 }

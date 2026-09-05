@@ -481,7 +481,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
             // Packet 12 is also the vanilla recall/respawn path after the join has completed.
             // Treat queue pressure as replaceable state rather than killing the socket.
-            _ = _spawnIngress.TryPostRespawn(_source, session.Handle, in commit);
+            _ = _spawnIngress.TryPostRespawn(_source, _session.Handle, in commit);
             return TerrariaFrameSinkResult.Continue;
         }
 

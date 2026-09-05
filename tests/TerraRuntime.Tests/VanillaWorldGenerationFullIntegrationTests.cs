@@ -10,6 +10,46 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
     private static readonly WorldGeneratorId VanillaId = new("terraruntime:vanilla");
 
     [Fact]
+    public void Canonical_passes_preserve_registered_chest_anchors()
+    {
+        var request = new WorldGenerationRequest(VanillaId, "Chest anchors", 42, 4200, 1200) { SeedText = "42" };
+        var workspace = new Workspace(request.WidthTiles, request.HeightTiles);
+        WorldGenerationExecutionResult result = RuntimeWorldGenerationExecutor.Execute(
+            new ChestCheckingProvider(), in request, workspace,
+            cancellationToken: TestContext.Current.CancellationToken);
+        Assert.True(result.Succeeded, result.Error?.ToString());
+    }
+
+    private sealed class ChestCheckingProvider : IWorldGenerationProvider
+    {
+        public WorldGeneratorId Id => VanillaId;
+        public void BuildPlan(in WorldGenerationRequest request, IWorldGenerationPlanBuilder builder) =>
+            new SourceBackedFinal1458().BuildPlan(in request, new ChestCheckingBuilder(builder));
+    }
+
+    private sealed class ChestCheckingBuilder(IWorldGenerationPlanBuilder inner) : IWorldGenerationPlanBuilder
+    {
+        public void Add(WorldGenerationPassDescriptor descriptor, IWorldGenerationPass pass) =>
+            inner.Add(descriptor, new ChestCheckingPass(descriptor.Id, pass));
+    }
+
+    private sealed class ChestCheckingPass(WorldGenerationPassId id, IWorldGenerationPass inner) : IWorldGenerationPass
+    {
+        public void Execute(IWorldGenerationContext context)
+        {
+            inner.Execute(context);
+            var workspace = Assert.IsType<Workspace>(context.Workspace);
+            foreach (WorldChest chest in workspace.CaptureGeneratedChests())
+            {
+                WorldTile tile = workspace.TileStore.Get(chest.X, chest.Y);
+                Assert.True(tile.IsActive && tile.Type is 21 or 467,
+                    $"Pass {id} damaged chest ({chest.X},{chest.Y}): type={tile.Type}, active={tile.IsActive}.");
+            }
+        }
+    }
+
+
+    [Fact]
     public void Built_in_source_resolves_vanilla_provider()
     {
         var source = BuiltInWorldGeneratorSource.Instance;
@@ -31,7 +71,7 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
             in request,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.True(result.Succeeded, result.Generation.Execution?.Error?.ToString());
+        Assert.True(result.Succeeded, result.Finalization?.Validation?.Detail ?? result.Generation.Execution?.Error?.ToString());
         Assert.NotNull(result.Candidate);
         Assert.NotNull(result.Generation.Execution);
         Assert.Equal(WorldGenerationExecutionStatus.Completed, result.Generation.Execution.Value.Status);
@@ -127,7 +167,7 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
             in request,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.True(result.Succeeded, result.Generation.Execution?.Error?.ToString());
+        Assert.True(result.Succeeded, result.Finalization?.Validation?.Detail ?? result.Generation.Execution?.Error?.ToString());
         Assert.NotNull(result.Candidate);
         Assert.True(result.Candidate!.TryGetSpawn(out WorldGenerationPoint spawn));
         Assert.InRange(spawn.X, 0, request.WidthTiles - 1);
@@ -208,7 +248,7 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
         RuntimeWorldCreationPipelineResult result = pipeline.CreateCandidate(
             in request,
             cancellationToken: TestContext.Current.CancellationToken);
-        Assert.True(result.Succeeded, result.Generation.Execution?.Error?.ToString());
+        Assert.True(result.Succeeded, result.Finalization?.Validation?.Detail ?? result.Generation.Execution?.Error?.ToString());
         Assert.NotNull(result.Candidate);
         Assert.Equal(w, result.Candidate!.WidthTiles);
         Assert.Equal(h, result.Candidate.HeightTiles);

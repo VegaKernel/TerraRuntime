@@ -333,8 +333,8 @@ internal sealed class WorldTileAuthority
                 replication?.TryPublishLiquidToAll(in liquidState);
             }
 
-            SpawnTileBreakNpc(in breakOutcome.FirstNpc, breakOutcome.NpcSpawnCount >= 1);
-            SpawnTileBreakNpc(in breakOutcome.SecondNpc, breakOutcome.NpcSpawnCount >= 2);
+            SpawnTileBreakNpc(breakOutcome.FirstNpc, breakOutcome.NpcSpawnCount >= 1);
+            SpawnTileBreakNpc(breakOutcome.SecondNpc, breakOutcome.NpcSpawnCount >= 2);
 
             if (reserved)
             {
