@@ -320,14 +320,17 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         {
             context.CancellationToken.ThrowIfCancellationRequested();
             int x = random.Next(bootstrap.LeftBeachEnd + 140, bootstrap.RightBeachStart - 140);
-            if (!IsLivingTreeSiteAllowed(grid, bootstrap, x))
-                continue;
-
             int surface = grid.FindFirstActiveY(
                 x,
                 25,
                 Math.Min(grid.Height, Math.Max((int)state.WorldSurface + 100, (int)state.RockLayer)));
-            if (surface >= grid.Height - 20 || surface < 50)
+            // Vanilla GrowLivingTree candidates are discarded when the ground scan lands too high.
+            // In ordinary worlds this is effectively j > 150 before the source decrements onto the
+            // placement cell.  The old <50 guard admitted sky-adjacent candidates and produced the
+            // "giant trees in absurd places" failure reported by live testing.
+            if (surface >= grid.Height - 20 || surface <= 151)
+                continue;
+            if (!IsLivingTreeSiteAllowed(grid, bootstrap, x, surface))
                 continue;
 
             ref WorldTile ground = ref grid.At(x, surface);
@@ -348,15 +351,34 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Growing source-shaped living trees ({placed}/{target})");
     }
 
-    private bool IsLivingTreeSiteAllowed(RuntimeGrid grid, VanillaWorldGenerationBootstrapState1458 bootstrap, int x)
+    private bool IsLivingTreeSiteAllowed(RuntimeGrid grid, VanillaWorldGenerationBootstrapState1458 bootstrap, int x, int surface)
     {
         int spawn = grid.Width / 2;
         if (Math.Abs(x - spawn) < 200)
             return false;
-        // The source pass rejects nearby protected/frame-important structures rather than declaring
-        // entire biomes illegal.  Preserve the major generated structures without starving candidates.
         if (Math.Abs(x - bootstrap.DungeonLocation) < 100)
             return false;
+
+        // 1.4.5.8 rejects living-tree sites overlapping dungeon bricks or cloud-family tiles.
+        // Do the same bounded neighbourhood test so trees do not consume floating islands or the
+        // dungeon shell merely because those passes happened to leave dirt at the probe column.
+        int minX = Math.Max(1, x - 50);
+        int maxX = Math.Min(grid.Width - 2, x + 50);
+        int minY = Math.Max(1, surface - 50);
+        int maxY = Math.Min(grid.Height - 2, surface + 50);
+        for (int yy = minY; yy <= maxY; yy++)
+        {
+            for (int xx = minX; xx <= maxX; xx++)
+            {
+                ref WorldTile tile = ref grid.At(xx, yy);
+                if (!tile.IsActive)
+                    continue;
+                ushort type = tile.Type;
+                if (type is 41 or 43 or 44 or 481 or 482 or 483 or 189 or 196 or 460)
+                    return false;
+            }
+        }
+
         return true;
     }
 

@@ -20,22 +20,27 @@ internal static class ConnectionOutboundQueueSizing
     public const int MaximumInitialJoinFrames =
         InitialJoinControlFrames + PlayerBootstrapFrameBudget.MaximumTileSectionFrames;
 
-    // PlayerSpawned publishes the current runtime entity baselines to the joining connection.
+    // PlayerSpawned publishes the current runtime entity baselines to the joining connection. NPC bootstrap includes
+    // the ordinary NPC sync plus independently cached town identity and home packets. The previous sizing counted
+    // only the ordinary NPC frame and could therefore classify a healthy join as a slow client when the world had
+    // enough persisted town-NPC metadata.
     public const int MaximumRuntimeEntityBaselineFrames =
         RuntimeNpcStore.MaximumAddressableCapacity +
+        (RuntimeTownNpcStateStore.MaximumTownNpcs * 2) +
         RuntimeProjectileStore.MaximumProtocolAddressableCapacity;
 
-    // For each already-playing peer the joining connection can receive:
-    // active + appearance + every relayable equipment slot + health + mana.
-    public const int MaximumPlayerBaselineFramesPerPeer =
-        2 + VanillaPlayerItemSlotCatalog.RelayableCount + 2;
+    // Every other occupied player slot is either another connection or a server-owned player. A connected peer can
+    // contribute active + appearance + relayable equipment + health + mana. A server-owned player adds movement too,
+    // so use that slightly larger envelope for every non-origin slot instead of under-sizing by ownership kind.
+    public const int MaximumOtherPlayerBaselineFramesPerSlot =
+        2 + VanillaPlayerItemSlotCatalog.RelayableCount + 3;
 
     public const int DefaultPlayerCount = ServerHostOptions.DefaultMaxPlayers;
 
     public const int DefaultStructuralFrameBudget =
         MaximumInitialJoinFrames +
         MaximumRuntimeEntityBaselineFrames +
-        ((DefaultPlayerCount - 1) * MaximumPlayerBaselineFramesPerPeer);
+        ((DefaultPlayerCount - 1) * MaximumOtherPlayerBaselineFramesPerSlot);
 
     // Preserve the deployed eight-player byte envelope while frame capacity becomes structural. Until queue
     // high-water measurements replace this baseline, scale bytes linearly with the same structural workload.
@@ -49,7 +54,7 @@ internal static class ConnectionOutboundQueueSizing
         int maxFrames = checked(
             MaximumInitialJoinFrames +
             MaximumRuntimeEntityBaselineFrames +
-            ((maxPlayers - 1) * MaximumPlayerBaselineFramesPerPeer));
+            ((maxPlayers - 1) * MaximumOtherPlayerBaselineFramesPerSlot));
 
         long scaledBytes = checked(
             ((DefaultByteBudget * maxFrames) + DefaultStructuralFrameBudget - 1) /

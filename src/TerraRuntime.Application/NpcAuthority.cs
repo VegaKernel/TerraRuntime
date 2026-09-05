@@ -40,6 +40,7 @@ internal sealed class NpcAuthority
     private readonly bool expertMode;
     private readonly bool masterMode;
     private readonly VanillaTownSceneMetricsScanner1458? npcSceneMetrics;
+    private readonly RuntimeTownCommerceWorldFacts1458? naturalSpawnWorldFacts;
     private readonly VanillaNpcTargetCandidate[] targetCandidates =
         new VanillaNpcTargetCandidate[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
     private readonly PlayerStateSnapshot[] serverPlayerSnapshots =
@@ -91,7 +92,10 @@ internal sealed class NpcAuthority
         this.expertMode = expertMode;
         this.masterMode = masterMode;
         if (worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 sceneWorldFacts)
+        {
+            naturalSpawnWorldFacts = sceneWorldFacts;
             npcSceneMetrics = new VanillaTownSceneMetricsScanner1458(worldTiles, in sceneWorldFacts);
+        }
         ArgumentNullException.ThrowIfNull(progression);
 
         aiExecutor = new RuntimeNpcAiStateExecutor(npcs, projectiles);
@@ -322,7 +326,10 @@ internal sealed class NpcAuthority
             return;
 
         var type = new NpcTypeId(command.NpcType);
-        if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition) || !definition.IsBoss)
+        // Packet 61 is gated by NPCID.Sets.MPAllowedEnemies in vanilla, not by the IsBoss flag.
+        // The allow-list also contains Skeletron Prime limbs, so rejecting non-boss definitions here
+        // diverges from the source and can break otherwise valid summon flows.
+        if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition))
             return;
 
         int activeCount = npcs.CopyActive(naturalSpawnNpcBuffer);
@@ -414,17 +421,22 @@ internal sealed class NpcAuthority
         if (!player.Active || player.Dead || player.Ghost)
             return;
 
-        // Terraria's ordinary baseline spawn rate is around one roll per 600 ticks before environment modifiers.
-        // Keep that source-scale cadence and cap nearby hostile population rather than scanning all players each tick.
-        if (naturalSpawnRandom.Next(600) != 0 || CountNearbyOrdinaryNpcs(player.CenterX, player.CenterY, 1600f) >= 5)
+        GetNaturalSpawnBudget(in player, out int spawnRate, out int maxSpawns);
+        if (naturalSpawnRandom.Next(spawnRate) != 0 ||
+            CountNearbyOrdinaryNpcs(player.CenterX, player.CenterY, 1600f) >= maxSpawns)
+        {
+            return;
+        }
+
+        if (!TryFindVanillaNaturalSpawnFloor(in player, out int tileX, out int floorY))
             return;
 
-        if (!TryFindNaturalSpawnFloor(in player, minimumHorizontalTiles: 38, maximumHorizontalTiles: 72, out int tileX, out int floorY))
+        NpcTypeId type = SelectNaturalHostileType(in player, tileX, floorY);
+        if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition) || definition.IsBoss ||
+            !VanillaNpcAiCoverageCatalog.TryGet(type, out _))
+        {
             return;
-
-        NpcTypeId type = SelectNaturalHostileType(tileX, floorY);
-        if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition) || definition.IsBoss)
-            return;
+        }
 
         float spawnX = tileX * 16f + 8f - definition.Width * 0.5f;
         float spawnY = floorY * 16f - definition.Height;
@@ -440,6 +452,129 @@ internal sealed class NpcAuthority
             Simulation: NpcSimulationState.Initial with { TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft });
         if (npcs.TrySpawnVanilla(in update, out _))
             AppliedSpawns++;
+    }
+
+    private void GetNaturalSpawnBudget(
+        in VanillaNpcTargetCandidate player,
+        out int spawnRate,
+        out int maxSpawns)
+    {
+        // TerrariaServer 1.4.5.8 NPC.Spawner defaults are 600 ticks / 5 NPC slots.  The runtime
+        // intentionally imports the vertical/day-night modifiers that can be evaluated from server-owned
+        // world state without pretending that unsupported player buffs/candles/town suppression are known.
+        const int defaultSpawnRate = 600;
+        const int defaultMaxSpawns = 5;
+        spawnRate = defaultSpawnRate;
+        maxSpawns = defaultMaxSpawns;
+
+        bool hardMode = naturalSpawnWorldFacts?.HardMode ?? false;
+        if (hardMode)
+        {
+            spawnRate = (int)(defaultSpawnRate * 0.9d);
+            maxSpawns = defaultMaxSpawns + 1;
+        }
+
+        WorldTileStore tiles = worldTiles!;
+        double playerTileY = player.CenterY / 16d;
+        double surface = tiles.WorldSurfaceTiles ?? naturalSpawnWorldFacts?.WorldSurface ?? tiles.Dimensions.HeightTiles / 3d;
+        double rockLayer = naturalSpawnWorldFacts?.RockLayer ?? Math.Max(surface + 1d, tiles.Dimensions.HeightTiles * 0.45d);
+        // NPC.sHeight is pinned to 1200 in 1.4.5.8; GetSpawnRate compares player.position.Y to
+        // worldSurface/rockLayer plus one screen height. 75 tiles is the exact 1200 / 16 projection.
+        const double sourceScreenHeightTiles = 75d;
+
+        if (playerTileY > tiles.Dimensions.HeightTiles - 200d)
+        {
+            maxSpawns = (int)(maxSpawns * 2f);
+        }
+        else if (playerTileY > rockLayer + sourceScreenHeightTiles)
+        {
+            spawnRate = (int)(spawnRate * 0.4d);
+            maxSpawns = (int)(maxSpawns * 1.9f);
+        }
+        else if (playerTileY > surface + sourceScreenHeightTiles)
+        {
+            spawnRate = (int)(spawnRate * (hardMode ? 0.45d : 0.5d));
+            maxSpawns = (int)(maxSpawns * (hardMode ? 1.8f : 1.7f));
+        }
+        else if (!worldClock!.DayTime)
+        {
+            spawnRate = (int)(spawnRate * 0.6d);
+            maxSpawns = (int)(maxSpawns * 1.3f);
+            if (worldClock.BloodMoonActive)
+            {
+                spawnRate = (int)(spawnRate * 0.3d);
+                maxSpawns = (int)(maxSpawns * 1.8f);
+            }
+        }
+
+        spawnRate = Math.Max(defaultSpawnRate / 10, spawnRate);
+        maxSpawns = Math.Clamp(maxSpawns, 1, defaultMaxSpawns * 3);
+    }
+
+    private bool TryFindVanillaNaturalSpawnFloor(
+        in VanillaNpcTargetCandidate player,
+        out int tileX,
+        out int floorY)
+    {
+        WorldTileStore tiles = worldTiles!;
+        int playerTileX = (int)(player.CenterX / 16f);
+        int playerTileY = (int)(player.CenterY / 16f);
+        int width = tiles.Dimensions.WidthTiles;
+        int height = tiles.Dimensions.HeightTiles;
+
+        // TerrariaServer 1.4.5.8 NPC.GetSpawnArea uses the fixed 1920x1200 NPC spawn screen:
+        // spawn range = 70% (84x52 tiles), safe range = 52% (62x39 tiles), then tries 50 samples.
+        const int spawnRangeX = 84;
+        const int spawnRangeY = 52;
+        const int safeRangeX = 62;
+        const int safeRangeY = 39;
+        for (int attempt = 0; attempt < 50; attempt++)
+        {
+            int x = playerTileX + naturalSpawnRandom.Next(-spawnRangeX, spawnRangeX + 1);
+            int y = playerTileY + naturalSpawnRandom.Next(-spawnRangeY, spawnRangeY + 1);
+            if (x < 10 || x >= width - 10 || y < 10 || y >= height - 12)
+                continue;
+
+            WorldTile start = tiles.Get(x, y);
+            if ((start.IsActive && !start.IsActuated && VanillaTileCollisionCatalog.IsSolid(start.TileType)) ||
+                IsHouseWall(start.Wall))
+            {
+                continue;
+            }
+
+            int bottom = Math.Min(height - 6, playerTileY + spawnRangeY);
+            for (; y <= bottom; y++)
+            {
+                WorldTile floor = tiles.Get(x, y);
+                if (!floor.IsActive || floor.IsActuated ||
+                    (!VanillaTileCollisionCatalog.IsSolid(floor.TileType) &&
+                     !VanillaTileCollisionCatalog.IsSolidTop(floor.TileType)))
+                {
+                    continue;
+                }
+
+                if (Math.Abs(x - playerTileX) < safeRangeX && Math.Abs(y - playerTileY) < safeRangeY)
+                    break;
+                if (!HasNpcSpawnClearance(tiles, x, y))
+                    break;
+
+                tileX = x;
+                floorY = y;
+                return true;
+            }
+        }
+
+        tileX = floorY = 0;
+        return false;
+    }
+
+    private static bool IsHouseWall(ushort wallType)
+    {
+        // This is deliberately conservative for the current natural-spawn slice: the common player-placed
+        // housing walls suppress hostile spawn selection. Full WallID.Sets.HousingWalls parity remains a
+        // separate source-backed catalog rather than trusting arbitrary client wall state.
+        return wallType is 1 or 4 or 5 or 6 or 10 or 11 or 12 or 13 or 14 or 15 or 16 or 17 or 18 or 19 or 20 or
+            21 or 22 or 23 or 24 or 27 or 29 or 30 or 31 or 32 or 33 or 34 or 35 or 36 or 37 or 38 or 39;
     }
 
     private int CountNearbyOrdinaryNpcs(float x, float y, float radius)
@@ -515,20 +650,45 @@ internal sealed class NpcAuthority
         return true;
     }
 
-    private NpcTypeId SelectNaturalHostileType(int tileX, int floorY)
+    private NpcTypeId SelectNaturalHostileType(
+        in VanillaNpcTargetCandidate player,
+        int tileX,
+        int floorY)
     {
         WorldTileStore tiles = worldTiles!;
-        ushort floorType = tiles.Get(tileX, floorY).Type;
-        int surfaceThreshold = tiles.Dimensions.HeightTiles / 3;
+        double surfaceThreshold = Math.Clamp(
+            tiles.WorldSurfaceTiles ?? naturalSpawnWorldFacts?.WorldSurface ?? tiles.Dimensions.HeightTiles / 3d,
+            1d,
+            tiles.Dimensions.HeightTiles - 1d);
         bool surface = floorY < surfaceThreshold;
+
+        VanillaTownSceneMetrics1458? scene = npcSceneMetrics?.Scan(
+            Math.Clamp((int)(player.CenterX / 16f), 0, tiles.Dimensions.WidthTiles - 1),
+            Math.Clamp((int)(player.CenterY / 16f), 0, tiles.Dimensions.HeightTiles - 1));
+
+        if (scene is VanillaTownSceneMetrics1458 biome)
+        {
+            if (biome.ZoneJungle && !surface)
+                return VanillaNpcIds.Hornet;
+            if (biome.ZoneCorrupt)
+                return VanillaNpcIds.EaterOfSouls;
+            if (biome.ZoneCrimson)
+                return VanillaNpcIds.Crimera;
+            if (biome.ZoneDesert && surface && worldClock!.DayTime)
+                return VanillaNpcIds.Vulture;
+            if (biome.ZoneDungeon && !surface)
+                return VanillaNpcIds.Skeleton;
+        }
 
         if (surface && !worldClock!.DayTime)
             return naturalSpawnRandom.Next(3) == 0 ? VanillaNpcIds.DemonEye : VanillaNpcIds.Zombie;
-        if (floorType == 53) // sand
-            return VanillaNpcIds.BlueSlime;
         if (surface)
             return VanillaNpcIds.BlueSlime;
-        return naturalSpawnRandom.Next(4) == 0 ? VanillaNpcIds.Zombie : VanillaNpcIds.BlueSlime;
+
+        // The current ordinary underground AI catalog is intentionally conservative. Skeleton has the
+        // server-owned ground-fighter motion slice; unsupported cave families stay out instead of spawning
+        // entities that cannot simulate authoritatively.
+        return naturalSpawnRandom.Next(3) == 0 ? VanillaNpcIds.Skeleton : VanillaNpcIds.BlueSlime;
     }
 
     private void ApplySpawn(NpcSpawnRuntimeCommand command)

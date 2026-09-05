@@ -51,6 +51,14 @@ public sealed class TerrariaConnectionOutboundQueue
         return result;
     }
 
+    /// <summary>
+    /// Attempts to enqueue replaceable/opportunistic state without permanently classifying the peer as a slow
+    /// client when the per-connection queue is momentarily full. Use only for state that can be recomputed and
+    /// retried later (for example post-join section streaming), never for ordered bootstrap/control traffic.
+    /// </summary>
+    public OutboundEnqueueResult TryEnqueueOpportunistic(OutboundFrame frame) =>
+        _queue.TryEnqueue(frame);
+
     public OutboundEnqueueResult TryEnqueueBatch(ReadOnlySpan<OutboundFrame> frames)
     {
         OutboundEnqueueResult result = _queue.TryEnqueueBatch(frames);

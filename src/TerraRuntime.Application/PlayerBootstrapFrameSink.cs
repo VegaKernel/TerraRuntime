@@ -1,4 +1,4 @@
-﻿using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
@@ -564,8 +564,14 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             }
             if (lookup != SectionFrameLookupResult.Available)
                 return PlayerBootstrapStopReason.SectionEncodingFailure;
-            if (!TryQueue(frame))
-                return PlayerBootstrapStopReason.OutboundBackpressure;
+            if (!TryQueueOpportunistic(frame))
+            {
+                // Post-join section streaming is replaceable/opportunistic state too. Do not use the normal
+                // enqueue path here: its overflow policy permanently marks the peer as a slow client and the
+                // socket loop disconnects it even if this method merely returns Continue. Leave the section
+                // unmarked so a later movement sample retries it. Initial bootstrap remains strict.
+                continue;
+            }
 
             streaming.MarkSent(section);
         }
@@ -606,6 +612,9 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
     private bool TryQueue(ReadOnlyMemory<byte> frame) =>
         _outbound.TryEnqueue(new OutboundFrame(frame)) == OutboundEnqueueResult.Enqueued;
+
+    private bool TryQueueOpportunistic(ReadOnlyMemory<byte> frame) =>
+        _outbound.TryEnqueueOpportunistic(new OutboundFrame(frame)) == OutboundEnqueueResult.Enqueued;
 
     private TerrariaFrameSinkResult Stop(PlayerBootstrapStopReason reason)
     {

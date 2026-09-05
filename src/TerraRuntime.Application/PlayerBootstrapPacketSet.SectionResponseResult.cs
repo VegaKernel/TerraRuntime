@@ -67,7 +67,7 @@ public sealed partial class PlayerBootstrapPacketSet
         var additionalFrames = new List<ReadOnlyMemory<byte>>(additionalCount);
         for (int i = 0; i < additionalCount; i++)
         {
-            SectionFrameLookupResult lookup = ResolveSectionFrame(
+            SectionFrameLookupResult lookup = ResolveSectionFrameForInitialBootstrap(
                 additionalSections[i],
                 out ReadOnlyMemory<byte> sectionFrame);
             if (lookup != SectionFrameLookupResult.Available)
@@ -90,6 +90,16 @@ public sealed partial class PlayerBootstrapPacketSet
         return PlayerBootstrapSectionResponseResult.Created;
     }
 
+    /// <summary>
+    /// Resolves the spawn-window packet-10 frames against the live tile revisions for an already admitted
+    /// runtime bootstrap (respawn/world transfer). Reusing the immutable startup BaseSectionFrames here would
+    /// visually roll changed tiles back on the client even though the authoritative world and persistence shadow
+    /// still contain the edits. The same one-shot admission bypass as packet 8 is safe because the bounded,
+    /// deduplicated section rebuild pipeline remains the hard work-capacity limit.
+    /// </summary>
+    internal bool TryResolveLiveBaseSectionFrames(out ReadOnlyMemory<byte>[] frames) =>
+        ResolveBaseSectionFramesDetailed(out frames) == SectionFrameLookupResult.Available;
+
     private SectionFrameLookupResult ResolveBaseSectionFramesDetailed(
         out ReadOnlyMemory<byte>[] frames)
     {
@@ -104,7 +114,7 @@ public sealed partial class PlayerBootstrapPacketSet
         frames = new ReadOnlyMemory<byte>[_baseSections.Length];
         for (int i = 0; i < _baseSections.Length; i++)
         {
-            SectionFrameLookupResult lookup = ResolveSectionFrame(
+            SectionFrameLookupResult lookup = ResolveSectionFrameForInitialBootstrap(
                 _baseSections[i],
                 out ReadOnlyMemory<byte> frame);
             if (lookup != SectionFrameLookupResult.Available)

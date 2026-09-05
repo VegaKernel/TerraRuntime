@@ -55,6 +55,24 @@ public sealed partial class PlayerBootstrapPacketSet
 
     internal SectionFrameLookupResult ResolveSectionFrame(
         WorldSectionId section,
+        out ReadOnlyMemory<byte> frame) =>
+        ResolveSectionFrameCore(section, bypassGlobalAdmissionBudget: false, out frame);
+
+    /// <summary>
+    /// Resolves an initial packet-8 section after the connection has already acquired a bounded player slot and the
+    /// join state machine has admitted its single bootstrap request. Terraria 1.4.5.8 serves this request directly;
+    /// applying the post-join global streaming throttle here can reject a perfectly valid second client when dirty
+    /// spawn sections are being rebuilt. The rebuild pipeline's own deduplicated on-demand capacity remains the hard
+    /// bound, so bypassing only the per-second global admission window does not create an unbounded compression queue.
+    /// </summary>
+    internal SectionFrameLookupResult ResolveSectionFrameForInitialBootstrap(
+        WorldSectionId section,
+        out ReadOnlyMemory<byte> frame) =>
+        ResolveSectionFrameCore(section, bypassGlobalAdmissionBudget: true, out frame);
+
+    private SectionFrameLookupResult ResolveSectionFrameCore(
+        WorldSectionId section,
+        bool bypassGlobalAdmissionBudget,
         out ReadOnlyMemory<byte> frame)
     {
         frame = default;
@@ -94,15 +112,25 @@ public sealed partial class PlayerBootstrapPacketSet
             return SectionFrameLookupResult.Available;
         }
 
-        SectionRebuildGlobalBudgetRequestResult requestResult = _sectionRebuildGlobalBudget.RequestDetailed(
-            index,
-            section,
-            requester,
-            out SectionRebuildRequestTicket ticket);
-        if (requestResult == SectionRebuildGlobalBudgetRequestResult.GlobalRateLimited)
-            return SectionFrameLookupResult.RateLimited;
-        if (requestResult != SectionRebuildGlobalBudgetRequestResult.Accepted)
-            return SectionFrameLookupResult.Unavailable;
+        SectionRebuildRequestTicket ticket;
+        if (bypassGlobalAdmissionBudget)
+        {
+            ticket = requester(section);
+            if (!ticket.Accepted)
+                return SectionFrameLookupResult.Unavailable;
+        }
+        else
+        {
+            SectionRebuildGlobalBudgetRequestResult requestResult = _sectionRebuildGlobalBudget.RequestDetailed(
+                index,
+                section,
+                requester,
+                out ticket);
+            if (requestResult == SectionRebuildGlobalBudgetRequestResult.GlobalRateLimited)
+                return SectionFrameLookupResult.RateLimited;
+            if (requestResult != SectionRebuildGlobalBudgetRequestResult.Accepted)
+                return SectionFrameLookupResult.Unavailable;
+        }
 
         Interlocked.Increment(ref _sectionCacheWaits);
         long started = Stopwatch.GetTimestamp();

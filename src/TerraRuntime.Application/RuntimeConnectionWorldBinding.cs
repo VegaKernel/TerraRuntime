@@ -187,13 +187,20 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
 
     public OutboundEnqueueResult TryQueueWorldBootstrap()
     {
-        var frames = new List<OutboundFrame>(16);
         PlayerBootstrapPacketSet packets = Runtime.BootstrapPackets;
-        frames.Add(new OutboundFrame(packets.WorldInfoFrame));
-        frames.Add(new OutboundFrame(packets.StatusFrame));
-        for (int i = 0; i < packets.BaseSectionFrames.Count; i++)
+        if (!packets.TryResolveLiveBaseSectionFrames(out ReadOnlyMemory<byte>[] liveBaseSectionFrames))
         {
-            frames.Add(new OutboundFrame(packets.BaseSectionFrames[i]));
+            // Do not fall back to the immutable startup packet-10 frames. A temporary rebuild-capacity miss is
+            // preferable to telling the vanilla client that authoritative edits disappeared after respawn/transfer.
+            return OutboundEnqueueResult.FrameBudgetExceeded;
+        }
+
+        var frames = new List<OutboundFrame>(16);
+        frames.Add(new OutboundFrame(Runtime.CreateLiveWorldInfoFrame()));
+        frames.Add(new OutboundFrame(packets.StatusFrame));
+        for (int i = 0; i < liveBaseSectionFrames.Length; i++)
+        {
+            frames.Add(new OutboundFrame(liveBaseSectionFrames[i]));
             foreach (ReadOnlyMemory<byte> post in packets.BaseSectionPostFrames[i])
                 frames.Add(new OutboundFrame(post));
         }

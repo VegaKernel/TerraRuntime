@@ -9,13 +9,13 @@ public sealed class ConnectionOutboundQueueSizingTests
     public void Default_eight_player_budget_matches_the_current_join_and_replication_envelope()
     {
         Assert.Equal(69, ConnectionOutboundQueueSizing.MaximumInitialJoinFrames);
-        Assert.Equal(1_257, ConnectionOutboundQueueSizing.MaximumRuntimeEntityBaselineFrames);
-        Assert.Equal(393, ConnectionOutboundQueueSizing.MaximumPlayerBaselineFramesPerPeer);
-        Assert.Equal(4_077, ConnectionOutboundQueueSizing.DefaultStructuralFrameBudget);
+        Assert.Equal(1_657, ConnectionOutboundQueueSizing.MaximumRuntimeEntityBaselineFrames);
+        Assert.Equal(394, ConnectionOutboundQueueSizing.MaximumOtherPlayerBaselineFramesPerSlot);
+        Assert.Equal(4_484, ConnectionOutboundQueueSizing.DefaultStructuralFrameBudget);
 
         OutboundQueueOptions options = ConnectionOutboundQueueSizing.Create(ServerHostOptions.DefaultMaxPlayers);
 
-        Assert.Equal(4_077, options.MaxFrames);
+        Assert.Equal(4_484, options.MaxFrames);
         Assert.Equal(16L * 1024 * 1024, options.MaxQueuedBytes);
         Assert.Equal(TerrariaFrameDecoderOptions.AbsoluteMaximumFrameLength, options.MaxFrameBytes);
     }
@@ -27,8 +27,8 @@ public sealed class ConnectionOutboundQueueSizingTests
         OutboundQueueOptions ninePlayers = ConnectionOutboundQueueSizing.Create(9);
         OutboundQueueOptions maximumPlayers = ConnectionOutboundQueueSizing.Create(byte.MaxValue);
 
-        Assert.Equal(4_077, eightPlayers.MaxFrames);
-        Assert.Equal(4_470, ninePlayers.MaxFrames);
+        Assert.Equal(4_484, eightPlayers.MaxFrames);
+        Assert.Equal(4_878, ninePlayers.MaxFrames);
         Assert.True(ninePlayers.MaxFrames > 4_096);
         Assert.True(ninePlayers.MaxQueuedBytes > eightPlayers.MaxQueuedBytes);
         Assert.True(maximumPlayers.MaxFrames > ninePlayers.MaxFrames);

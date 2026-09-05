@@ -210,7 +210,12 @@ internal sealed class WorldTileAuthority
 
             WorldTile beforeKill = tiles.Get(tileState.TileX, tileState.TileY);
             TileTypeId beforeType = beforeKill.TileType;
-            if (!VanillaTileMiningRequirements1458.CanMine(beforeType, pickPower))
+            if (!VanillaTileMiningRequirements1458.CanMine(
+                    tiles,
+                    tileState.TileX,
+                    tileState.TileY,
+                    beforeType,
+                    pickPower))
             {
                 RejectedClientManipulations++;
                 return;

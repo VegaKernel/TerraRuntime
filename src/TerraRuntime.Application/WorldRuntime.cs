@@ -314,6 +314,24 @@ public sealed class WorldRuntime : IDisposable
 
     internal PlayerBootstrapPacketSet BootstrapPackets { get; }
     internal RuntimeWorldClock WorldClock { get; }
+    internal ReadOnlyMemory<byte> CreateLiveWorldInfoFrame()
+    {
+        var liveClock = new WorldInfoRuntimeState(
+            checked((int)Math.Clamp(WorldClock.Time, 0d, int.MaxValue)),
+            WorldClock.DayTime,
+            checked((byte)WorldClock.MoonPhase),
+            WorldClock.BloodMoonActive,
+            WorldClock.SlimeRainActive);
+        var transient = new WorldInfoTransientState(
+            PumpkinMoon: false,
+            SnowMoon: false,
+            Dd2EventOngoing: false,
+            FreeCake: false,
+            SkyblockLowTiles: VanillaSkyblockRuntimePolicy1458.Evaluate(World).LowTiles,
+            LobbyId: 0);
+        return PlayerJoinFrameEncoder.EncodeWorldInfo(World, transient, liveClock);
+    }
+
     internal RuntimeWorldProgressionMutations WorldProgression { get; }
     internal RuntimeConnectionRegistry RuntimeConnections { get; }
     internal RuntimeNpcReplicationRegistry NpcReplication { get; }

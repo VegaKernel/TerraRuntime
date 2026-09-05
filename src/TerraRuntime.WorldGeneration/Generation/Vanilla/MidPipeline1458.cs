@@ -215,8 +215,11 @@ internal sealed class MidPass1458 : IWorldGenerationPass
     private const ushort Silt = 123;
     private const ushort Snow = 147;
     private const ushort Ice = 161;
+    private const ushort CorruptIce = 163;
     private const ushort Cloud = 189;
+    private const ushort RainCloud = 196;
     private const ushort CrimsonGrass = 199;
+    private const ushort FleshIce = 200;
     private const ushort Crimstone = 203;
     private const ushort Slush = 224;
     private const ushort Crimsand = 234;
@@ -224,6 +227,11 @@ internal sealed class MidPass1458 : IWorldGenerationPass
     private const ushort Granite = 368;
     private const ushort Sandstone = 396;
     private const ushort HardenedSand = 397;
+    private const ushort CorruptHardenedSand = 398;
+    private const ushort CrimsonHardenedSand = 399;
+    private const ushort CorruptSandstone = 400;
+    private const ushort CrimsonSandstone = 401;
+    private const ushort CloudWall = 73;
 
     private readonly MidStage1458 stage;
     private readonly MidState1458 state;
@@ -465,23 +473,326 @@ internal sealed class MidPass1458 : IWorldGenerationPass
             int maxYExclusive = Math.Max(91, ground - 100);
             int y = random.Next(90, maxYExclusive);
             y = Math.Min(y, Math.Max(90, (int)state.WorldSurfaceLow - 50));
-            int rx = random.Next(34, 62);
-            int ry = random.Next(9, 17);
-
-            FillEllipse(grid, x, y + 8, rx, ry, Cloud, overwriteAir: true);
-            FillEllipse(grid, x, y, Math.Max(16, rx - 8), Math.Max(6, ry - 3), Dirt, overwriteAir: true);
-            ConvertExposedSurface(grid, x - rx, x + rx, y - ry - 4, y + ry + 6, Dirt, Grass, random, 1);
-
+            // Terraria's CloudIsland/CloudLake are not ellipses. They are long, drifting,
+            // anisotropic cloud bodies followed by a second material pass. Recreate that topology
+            // clean-room so islands have the vanilla horizontal, irregular silhouette instead of
+            // the old compact oval "potato" shape.
             if (i >= islandCount)
-            {
-                int lakeRx = Math.Max(8, rx / 3);
-                int lakeRy = Math.Max(3, ry / 3);
-                CarveEllipse(grid, x, y - 1, lakeRx, lakeRy);
-                FillLiquidEllipse(grid, x, y, lakeRx - 1, Math.Max(2, lakeRy - 1), WorldLiquidKind.Water);
-            }
+                GenerateSkyLake(grid, random, x, y);
+            else
+                GenerateFloatingIsland(grid, random, x, y);
         }
 
         context.ReportProgress(1d, "Generating floating islands and sky lakes");
+    }
+
+    private static void GenerateFloatingIsland(RuntimeGrid grid, IRandom random, int startX, int startY)
+    {
+        CloudBounds bounds = GenerateCloudBody(grid, random, startX, startY);
+        AddCloudBulges(grid, random, bounds);
+        ReplaceCloudCoreWithDirt(grid, random, startX, bounds);
+        ApplyCloudInteriorWalls(grid, bounds);
+        ConvertExposedSurface(
+            grid,
+            bounds.MinX - 8,
+            bounds.MaxX + 9,
+            bounds.MinY - 4,
+            bounds.MaxY + 5,
+            Dirt,
+            Grass,
+            random,
+            1);
+        AddCloudPockets(grid, random, bounds);
+    }
+
+    private static void GenerateSkyLake(RuntimeGrid grid, IRandom random, int startX, int startY)
+    {
+        CloudBounds bounds = GenerateCloudBody(grid, random, startX, startY);
+        AddCloudBulges(grid, random, bounds);
+        ApplyCloudInteriorWalls(grid, bounds);
+
+        // The lake uses the same drifting second pass as an island core, but opens a basin in the
+        // cloud body. Water is seeded only into cells with supporting cloud below; the authoritative
+        // liquid runtime performs the subsequent settling instead of baking a static ellipse.
+        double width = random.Next(80, 95);
+        int steps = random.Next(10, 15);
+        double x = startX;
+        double y = bounds.MinY;
+        double vx = PickCloudDrift(random);
+        double vy = random.Next(-20, -10) * 0.02d;
+
+        while (width > 0d && steps-- > 0)
+        {
+            width -= random.Next(4);
+            double effective = width * random.Next(80, 120) * 0.01d;
+            int left = Math.Max(2, (int)(x - width * 0.5d));
+            int right = Math.Min(grid.Width - 2, (int)(x + width * 0.5d));
+            int top = Math.Max(2, bounds.MinY - 1);
+            int bottom = Math.Min(grid.Height - 2, (int)(y + width * 0.5d));
+            double surface = y + 1d;
+
+            for (int tx = left; tx < right; tx++)
+            {
+                if (random.Next(2) == 0)
+                    surface += random.Next(-1, 2);
+                surface = Math.Clamp(surface, y, y + 2d);
+
+                for (int ty = top; ty < bottom; ty++)
+                {
+                    if (ty <= surface)
+                        continue;
+                    double dx = Math.Abs(tx - x);
+                    double dy = Math.Abs(ty - y) * 3d;
+                    if (Math.Sqrt(dx * dx + dy * dy) >= effective * 0.34d)
+                        continue;
+
+                    ref WorldTile tile = ref grid.At(tx, ty);
+                    if (!tile.IsActive || (tile.Type != Cloud && tile.Type != RainCloud))
+                        continue;
+
+                    ClearTile(ref tile);
+                    if (ty + 1 < grid.Height && grid.At(tx, ty + 1).IsActive)
+                    {
+                        tile.LiquidAmount = byte.MaxValue;
+                        tile.LiquidKind = WorldLiquidKind.Water;
+                    }
+                }
+            }
+
+            AdvanceCloudTrail(random, ref x, ref y, ref vx, ref vy);
+        }
+
+        // Seed a continuous shallow waterline so generated lakes never start as a few disconnected
+        // droplets when the random basin pass happens to be sparse.
+        for (int tx = Math.Max(2, bounds.MinX + 6); tx <= Math.Min(grid.Width - 3, bounds.MaxX - 6); tx++)
+        {
+            int top = Math.Max(2, bounds.MinY - 4);
+            int bottom = Math.Min(grid.Height - 3, bounds.MaxY);
+            for (int ty = top; ty <= bottom; ty++)
+            {
+                ref WorldTile tile = ref grid.At(tx, ty);
+                if (tile.IsActive)
+                    continue;
+                if (!grid.At(tx, ty + 1).IsActive)
+                    continue;
+                tile.LiquidAmount = byte.MaxValue;
+                tile.LiquidKind = WorldLiquidKind.Water;
+                break;
+            }
+        }
+    }
+
+    private static CloudBounds GenerateCloudBody(RuntimeGrid grid, IRandom random, int startX, int startY)
+    {
+        double width = random.Next(100, 150);
+        int steps = random.Next(20, 30);
+        double x = startX;
+        double y = startY;
+        double vx = PickCloudDrift(random);
+        double vy = random.Next(-20, -10) * 0.02d;
+        var bounds = new CloudBounds(startX, startX, startY, startY);
+
+        while (width > 0d && steps-- > 0)
+        {
+            width -= random.Next(4);
+            double effective = width * random.Next(80, 120) * 0.01d;
+            int left = Math.Max(2, (int)(x - width * 0.5d));
+            int right = Math.Min(grid.Width - 2, (int)(x + width * 0.5d));
+            int top = Math.Max(2, (int)(y - width * 0.5d));
+            int bottom = Math.Min(grid.Height - 2, (int)(y + width * 0.5d));
+            double surface = y + 1d;
+
+            for (int tx = left; tx < right; tx++)
+            {
+                if (random.Next(2) == 0)
+                    surface += random.Next(-1, 2);
+                surface = Math.Clamp(surface, y, y + 2d);
+
+                for (int ty = top; ty < bottom; ty++)
+                {
+                    if (ty <= surface)
+                        continue;
+                    double dx = Math.Abs(tx - x);
+                    double dy = Math.Abs(ty - y) * 3d;
+                    if (Math.Sqrt(dx * dx + dy * dy) >= effective * 0.4d)
+                        continue;
+
+                    ref WorldTile tile = ref grid.At(tx, ty);
+                    SetType(ref tile, Cloud);
+                    tile.LiquidAmount = 0;
+                    tile.LiquidKind = WorldLiquidKind.Water;
+                    bounds = bounds.Include(tx, ty);
+                }
+            }
+
+            AdvanceCloudTrail(random, ref x, ref y, ref vx, ref vy);
+        }
+
+        return bounds;
+    }
+
+    private static void AddCloudBulges(RuntimeGrid grid, IRandom random, CloudBounds bounds)
+    {
+        int x = bounds.MinX + random.Next(5);
+        while (x < bounds.MaxX)
+        {
+            int bottom = Math.Min(grid.Height - 3, bounds.MaxY + 8);
+            while (bottom > bounds.MinY && !grid.At(x, bottom).IsActive)
+                bottom--;
+            bottom += random.Next(-3, 4);
+            int radius = random.Next(4, 8);
+            ushort type = random.Next(4) == 0 ? RainCloud : Cloud;
+            PaintAnisotropicCloudBlob(grid, random, x, bottom, radius, type, bounds.MinY);
+            int maxStep = Math.Max(radius + 1, (int)(radius * 1.5d));
+            x += random.Next(radius, maxStep);
+        }
+    }
+
+    private static void ReplaceCloudCoreWithDirt(RuntimeGrid grid, IRandom random, int startX, CloudBounds bounds)
+    {
+        double width = random.Next(80, 95);
+        int steps = random.Next(10, 15);
+        double x = startX;
+        double y = bounds.MinY;
+        double vx = PickCloudDrift(random);
+        double vy = random.Next(-20, -10) * 0.02d;
+
+        while (width > 0d && steps-- > 0)
+        {
+            width -= random.Next(4);
+            double effective = width * random.Next(80, 120) * 0.01d;
+            int left = Math.Max(2, (int)(x - width * 0.5d));
+            int right = Math.Min(grid.Width - 2, (int)(x + width * 0.5d));
+            int top = Math.Max(2, bounds.MinY - 1);
+            int bottom = Math.Min(grid.Height - 2, (int)(y + width * 0.5d));
+            double surface = y + 1d;
+
+            for (int tx = left; tx < right; tx++)
+            {
+                if (random.Next(2) == 0)
+                    surface += random.Next(-1, 2);
+                surface = Math.Clamp(surface, y, y + 2d);
+
+                for (int ty = top; ty < bottom; ty++)
+                {
+                    if (ty <= surface)
+                        continue;
+                    double dx = Math.Abs(tx - x);
+                    double dy = Math.Abs(ty - y) * 3d;
+                    if (Math.Sqrt(dx * dx + dy * dy) >= effective * 0.4d)
+                        continue;
+                    ref WorldTile tile = ref grid.At(tx, ty);
+                    if (tile.IsActive && (tile.Type == Cloud || tile.Type == RainCloud))
+                    {
+                        tile.Type = Dirt;
+                        tile.FrameX = -1;
+                        tile.FrameY = -1;
+                    }
+                }
+            }
+
+            AdvanceCloudTrail(random, ref x, ref y, ref vx, ref vy);
+        }
+    }
+
+    private static void ApplyCloudInteriorWalls(RuntimeGrid grid, CloudBounds bounds)
+    {
+        int left = Math.Max(2, bounds.MinX - 20);
+        int right = Math.Min(grid.Width - 2, bounds.MaxX + 20);
+        int top = Math.Max(2, bounds.MinY - 20);
+        int bottom = Math.Min(grid.Height - 2, bounds.MaxY + 20);
+        for (int x = left; x <= right; x++)
+        {
+            for (int y = top; y <= bottom; y++)
+            {
+                bool enclosed = true;
+                for (int dx = -1; dx <= 1 && enclosed; dx++)
+                {
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        ref WorldTile neighbor = ref grid.At(x + dx, y + dy);
+                        if (!neighbor.IsActive || (neighbor.Wall != 0 && neighbor.Wall != CloudWall))
+                        {
+                            enclosed = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (enclosed)
+                    grid.At(x, y).Wall = CloudWall;
+            }
+        }
+    }
+
+    private static void AddCloudPockets(RuntimeGrid grid, IRandom random, CloudBounds bounds)
+    {
+        int count = random.Next(4);
+        for (int i = 0; i <= count; i++)
+        {
+            int x = random.Next(Math.Max(2, bounds.MinX - 5), Math.Min(grid.Width - 2, bounds.MaxX + 6));
+            int y = Math.Max(3, bounds.MinY - random.Next(20, 40));
+            int radius = random.Next(4, 8);
+            ushort type = random.Next(2) == 0 ? RainCloud : Cloud;
+            PaintAnisotropicCloudBlob(grid, random, x, y, radius, type, 0);
+        }
+    }
+
+    private static void PaintAnisotropicCloudBlob(
+        RuntimeGrid grid,
+        IRandom random,
+        int centerX,
+        int centerY,
+        int radius,
+        ushort type,
+        int minYExclusive)
+    {
+        for (int x = centerX - radius; x <= centerX + radius; x++)
+        {
+            for (int y = centerY - radius; y <= centerY + radius; y++)
+            {
+                if (!grid.Contains(x, y) || y <= minYExclusive)
+                    continue;
+                double dx = Math.Abs(x - centerX);
+                double dy = Math.Abs(y - centerY) * 2d;
+                if (Math.Sqrt(dx * dx + dy * dy) >= radius + random.Next(2))
+                    continue;
+                ref WorldTile tile = ref grid.At(x, y);
+                SetType(ref tile, type);
+                tile.LiquidAmount = 0;
+                tile.LiquidKind = WorldLiquidKind.Water;
+            }
+        }
+    }
+
+    private static double PickCloudDrift(IRandom random)
+    {
+        double drift;
+        do
+        {
+            drift = random.Next(-20, 21) * 0.2d;
+        }
+        while (drift > -2d && drift < 2d);
+        return drift;
+    }
+
+    private static void AdvanceCloudTrail(IRandom random, ref double x, ref double y, ref double vx, ref double vy)
+    {
+        x += vx;
+        y += vy;
+        vx = Math.Clamp(vx + random.Next(-20, 21) * 0.05d, -1d, 1d);
+        // 1.4.5.8 keeps the cloud pass gently rising after the initial velocity is chosen.
+        if (vy > 0.2d || vy < -0.2d)
+            vy = -0.2d;
+    }
+
+    private readonly record struct CloudBounds(int MinX, int MaxX, int MinY, int MaxY)
+    {
+        public CloudBounds Include(int x, int y) => new(
+            Math.Min(MinX, x),
+            Math.Max(MaxX, x),
+            Math.Min(MinY, y),
+            Math.Max(MaxY, y));
     }
 
     private void ApplyDirtToMud(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
@@ -709,6 +1020,9 @@ internal sealed class MidPass1458 : IWorldGenerationPass
         ushort evilGrass = crimson ? CrimsonGrass : CorruptGrass;
         ushort evilStone = crimson ? Crimstone : Ebonstone;
         ushort evilSand = crimson ? Crimsand : Ebonsand;
+        ushort evilHardenedSand = crimson ? CrimsonHardenedSand : CorruptHardenedSand;
+        ushort evilSandstone = crimson ? CrimsonSandstone : CorruptSandstone;
+        ushort evilIce = crimson ? FleshIce : CorruptIce;
 
         for (int biome = 0; biome < biomeCount; biome++)
         {
@@ -733,8 +1047,9 @@ internal sealed class MidPass1458 : IWorldGenerationPass
                         Grass => evilGrass,
                         Stone => evilStone,
                         Sand => evilSand,
-                        HardenedSand => evilSand,
-                        Sandstone => evilStone,
+                        HardenedSand => evilHardenedSand,
+                        Sandstone => evilSandstone,
+                        Ice => evilIce,
                         _ => tile.Type
                     };
                 }
