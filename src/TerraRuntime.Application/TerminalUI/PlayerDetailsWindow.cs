@@ -63,7 +63,7 @@ internal sealed class PlayerDetailsWindow : Window
             Height = 2,
             SchemeName = "Base"
         };
-        godMode = new DropDownList
+        godMode = new CyclingDropDownList
         {
             X = 20,
             Y = 10,

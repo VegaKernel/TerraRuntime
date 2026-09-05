@@ -840,6 +840,15 @@ internal static class DungeonFeaturePipeline1458
             if (floor <= y + 1)
                 continue;
             int plateY = floor - 1;
+            // TerrariaServer 1.4.5.8 WorldGen.placeTrap rejects the pressure-plate site
+            // when any nactive tile exists in the 3x3 volume covering the plate row
+            // and the two rows above it. This is what prevents dungeon traps from
+            // overwriting chests and other frame-important objects placed earlier in
+            // MakeDungeon's feature order. Generation has no actuated-inactive objects
+            // here, so IsActive is the source-equivalent predicate for this workspace.
+            if (!HasPressurePlateClearance(grid, x, plateY))
+                continue;
+
             int side = random.Next(2) == 0 ? -1 : 1;
             int trapX = x + side * random.Next(5, 13);
             if (!grid.Contains(trapX, plateY - 1) || grid.At(trapX, plateY - 1).IsActive)
@@ -1227,6 +1236,21 @@ internal static class DungeonFeaturePipeline1458
         foundX = 0;
         foundY = 0;
         return false;
+    }
+
+    private static bool HasPressurePlateClearance(Grid grid, int x, int plateY)
+    {
+        if (!grid.Contains(x - 1, plateY - 2) || !grid.Contains(x + 1, plateY))
+            return false;
+
+        for (int yy = plateY - 2; yy <= plateY; yy++)
+        for (int xx = x - 1; xx <= x + 1; xx++)
+        {
+            if (grid.At(xx, yy).IsActive)
+                return false;
+        }
+
+        return true;
     }
 
     private static int FindFloor(Grid grid, int x, int startY, int maxY)

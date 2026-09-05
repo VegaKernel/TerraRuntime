@@ -15,19 +15,22 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
     private readonly TerrariaConnectionOutboundQueue outbound;
     private int registered;
     private int disposed;
+    private readonly Func<string, bool>? playerNameAdmission;
 
     private RuntimeConnectionWorldBinding(
         WorldRuntime runtime,
         GameCommandSourceId source,
         TerrariaConnectionOutboundQueue outbound,
         PlayerBootstrapFrameSink bootstrap,
-        ITerrariaFrameSink root)
+        ITerrariaFrameSink root,
+        Func<string, bool>? playerNameAdmission)
     {
         Runtime = runtime;
         this.source = source;
         this.outbound = outbound;
         Bootstrap = bootstrap;
         Root = root;
+        this.playerNameAdmission = playerNameAdmission;
     }
 
     public WorldRuntime Runtime { get; }
@@ -36,17 +39,19 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
     public PlayerHandle? Player => Bootstrap.AssignedPlayerHandle;
     public string? PlayerName => Bootstrap.PlayerName;
     public bool IsRegistered => Volatile.Read(ref registered) != 0;
+    internal Func<string, bool>? PlayerNameAdmission => playerNameAdmission;
 
     public static bool TryCreateInitial(
         WorldRuntime runtime,
         GameCommandSourceId source,
         TerrariaConnectionOutboundQueue outbound,
-        out RuntimeConnectionWorldBinding? binding)
+        out RuntimeConnectionWorldBinding? binding,
+        Func<string, bool>? playerNameAdmission = null)
     {
         ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(outbound);
-        var bootstrap = CreateBootstrap(runtime, source, outbound);
-        var created = new RuntimeConnectionWorldBinding(runtime, source, outbound, bootstrap, CreateSinkChain(runtime, source, bootstrap));
+        var bootstrap = CreateBootstrap(runtime, source, outbound, playerNameAdmission);
+        var created = new RuntimeConnectionWorldBinding(runtime, source, outbound, bootstrap, CreateSinkChain(runtime, source, bootstrap), playerNameAdmission);
         if (!created.TryRegister())
         {
             created.Dispose();
@@ -63,7 +68,8 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
         TerrariaConnectionOutboundQueue outbound,
         PlayerSlotId wireSlot,
         string? playerName,
-        out RuntimeConnectionWorldBinding? binding)
+        out RuntimeConnectionWorldBinding? binding,
+        Func<string, bool>? playerNameAdmission = null)
     {
         ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(outbound);
@@ -83,10 +89,10 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
                 throw new InvalidOperationException("Could not establish a transferred playing session.");
             }
 
-            bootstrap = CreateBootstrap(runtime, source, outbound);
+            bootstrap = CreateBootstrap(runtime, source, outbound, playerNameAdmission);
             bootstrap.AdoptPlayingSession(session, playerName);
             session = null; // ownership moved to bootstrap
-            var created = new RuntimeConnectionWorldBinding(runtime, source, outbound, bootstrap, CreateSinkChain(runtime, source, bootstrap));
+            var created = new RuntimeConnectionWorldBinding(runtime, source, outbound, bootstrap, CreateSinkChain(runtime, source, bootstrap), playerNameAdmission);
             bootstrap = null;
             binding = created;
             return true;
@@ -185,8 +191,17 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
         Runtime.RuntimeConnections.TryUnregister(source, out _);
     }
 
-    public OutboundEnqueueResult TryQueueWorldBootstrap()
+    public OutboundEnqueueResult TryQueueWorldBootstrap() =>
+        TryQueueWorldBootstrap(Runtime.BootstrapPackets.EnterWorldFrame);
+
+    internal OutboundEnqueueResult TryQueueWorldTransferBootstrap(in PlayerSpawnCommitRequest ownerSpawn) =>
+        TryQueueWorldBootstrap(TerrariaPlayerReplicationFrameEncoder.EncodeSpawn(in ownerSpawn));
+
+    private OutboundEnqueueResult TryQueueWorldBootstrap(ReadOnlyMemory<byte> finalHandoffFrame)
     {
+        if (finalHandoffFrame.IsEmpty)
+            throw new ArgumentException("A world-bootstrap handoff frame is required.", nameof(finalHandoffFrame));
+
         PlayerBootstrapPacketSet packets = Runtime.BootstrapPackets;
         if (!packets.TryResolveLiveBaseSectionFrames(out ReadOnlyMemory<byte>[] liveBaseSectionFrames))
         {
@@ -204,9 +219,11 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
             foreach (ReadOnlyMemory<byte> post in packets.BaseSectionPostFrames[i])
                 frames.Add(new OutboundFrame(post));
         }
-        frames.Add(new OutboundFrame(packets.EnterWorldFrame));
         foreach (ReadOnlyMemory<byte> post in packets.GlobalPostSectionFrames)
             frames.Add(new OutboundFrame(post));
+        // A live world replacement must not expose the player spawn before the destination's persisted global
+        // baseline. Keep the packet-12/49 handoff last in the atomic batch.
+        frames.Add(new OutboundFrame(finalHandoffFrame));
         return outbound.TryEnqueueBatch(CollectionsMarshal.AsSpan(frames));
     }
 
@@ -232,8 +249,10 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
     private static PlayerBootstrapFrameSink CreateBootstrap(
         WorldRuntime runtime,
         GameCommandSourceId source,
-        TerrariaConnectionOutboundQueue outbound) =>
-        new(
+        TerrariaConnectionOutboundQueue outbound,
+        Func<string, bool>? playerNameAdmission)
+    {
+        var bootstrap = new PlayerBootstrapFrameSink(
             runtime.Slots,
             outbound,
             runtime.BootstrapPackets,
@@ -244,6 +263,9 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
             runtime.MovementIngress,
             inner: null,
             worldItems: runtime.WorldItems);
+        bootstrap.SetPlayerNameAdmission(playerNameAdmission);
+        return bootstrap;
+    }
 
     private static ITerrariaFrameSink CreateSinkChain(
         WorldRuntime runtime,

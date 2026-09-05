@@ -13,7 +13,6 @@ public enum WorldItemFrameStopReason : byte
     MalformedDrop = 2,
     MalformedOwner = 3,
     PlayerOwnershipMismatch = 4,
-    GameIngressBackpressure = 5
 }
 
 /// <summary>
@@ -63,7 +62,6 @@ public sealed class WorldItemFrameSink :
         WorldItemFrameStopReason.InvalidJoinState => TerrariaFrameRejectionCategory.InvalidState,
         WorldItemFrameStopReason.MalformedDrop or WorldItemFrameStopReason.MalformedOwner => TerrariaFrameRejectionCategory.MalformedProtocol,
         WorldItemFrameStopReason.PlayerOwnershipMismatch => TerrariaFrameRejectionCategory.GameplayRejected,
-        WorldItemFrameStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
         _ => _inner is ITerrariaFrameRejectionSource source
             ? source.RejectionCategory
             : TerrariaFrameRejectionCategory.None
@@ -101,9 +99,10 @@ public sealed class WorldItemFrameSink :
 
         if (drop.IsRemoval)
         {
-            return _ingress.TryPostRemove(connection, drop.ItemIndex)
-                ? TerrariaFrameSinkResult.Continue
-                : Stop(WorldItemFrameStopReason.GameIngressBackpressure);
+            // Removal is a discrete proposal. Saturation leaves the authoritative item in place and keeps the
+            // playing socket alive; normal replication can converge the client afterwards.
+            _ = _ingress.TryPostRemove(connection, drop.ItemIndex);
+            return TerrariaFrameSinkResult.Continue;
         }
 
         var state = new WorldItemDropStateUpdate(
@@ -122,9 +121,10 @@ public sealed class WorldItemFrameSink :
         bool posted = drop.IsNewItemRequest
             ? _ingress.TryPostAllocate(connection, in state)
             : _ingress.TryPostDrop(connection, drop.ItemIndex, in state);
-        return posted
-            ? TerrariaFrameSinkResult.Continue
-            : Stop(WorldItemFrameStopReason.GameIngressBackpressure);
+        // Allocation/update is fail-closed on mailbox saturation: no authoritative item mutation occurs, but
+        // internal queue pressure is not grounds to disconnect a valid playing client.
+        _ = posted;
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private bool TryGetPlayingConnection(out ConnectionHandle connection)

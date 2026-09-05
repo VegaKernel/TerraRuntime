@@ -24,7 +24,8 @@ public enum PlayerBootstrapStopReason : byte
     MalformedPlayerSpawn = 12,
     DynamicEntityBootstrapFailure = 13,
     MalformedChat = 14,
-    SectionWorkRateLimited = 15
+    SectionWorkRateLimited = 15,
+    DuplicatePlayerName = 16
 }
 
 /// <summary>
@@ -57,6 +58,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
     private string? _playerName;
     private bool _chatRegistered;
     private bool _spawnSubmitted;
+    private Func<string, bool>? _playerNameAdmission;
 
     public PlayerBootstrapFrameSink(
         PlayerSlotPool slots,
@@ -162,6 +164,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         : _session.Slot.Value;
     public PlayerHandle? AssignedPlayerHandle => _assignedPlayerHandle;
     internal string? PlayerName => _playerName;
+    internal void SetPlayerNameAdmission(Func<string, bool>? admission) => _playerNameAdmission = admission;
 
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
     {
@@ -279,6 +282,9 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         if (decode != TerrariaPlayerAppearanceDecodeResult.Decoded)
             return Stop(PlayerBootstrapStopReason.MalformedPlayerAppearance);
 
+        if (_playerNameAdmission is not null && !_playerNameAdmission(appearance.Name))
+            return Stop(PlayerBootstrapStopReason.DuplicatePlayerName);
+
         _playerName = appearance.Name;
 
         if (_appearanceIngress is null)
@@ -308,7 +314,13 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
         var connection = new ConnectionHandle(_source, _session.Handle);
         if (!_appearanceIngress.TryPost(connection, in commit))
-            return Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
+        {
+            // Initial appearance is required to complete a coherent join baseline. Once Playing, later appearance
+            // packets are replaceable state and transient mailbox pressure must not disconnect the client.
+            return _session.State == PlayerJoinState.Playing
+                ? TerrariaFrameSinkResult.Continue
+                : Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
+        }
 
         return TerrariaFrameSinkResult.Continue;
     }
@@ -334,7 +346,13 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
         var connection = new ConnectionHandle(_source, _session.Handle);
         if (!_equipmentIngress.TryPost(connection, in commit))
-            return Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
+        {
+            // Equipment is part of the initial join baseline, but after Playing each packet is superseded by later
+            // inventory/equipment state. Keep initial bootstrap strict and normal gameplay tolerant of backlog.
+            return _session.State == PlayerJoinState.Playing
+                ? TerrariaFrameSinkResult.Continue
+                : Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
+        }
 
         return TerrariaFrameSinkResult.Continue;
     }

@@ -130,7 +130,8 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
                          outbound,
                          sourcePlayer.Slot,
                          sourceBinding.PlayerName,
-                         out destinationBinding) ||
+                         out destinationBinding,
+                         sourceBinding.PlayerNameAdmission) ||
                      destinationBinding is null)
             {
                 error = $"destination runtime cannot reserve player slot {sourcePlayer.Slot.Value}";
@@ -169,7 +170,13 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
             }
 
             destinationBinding.SetPlayerName(transfer.PlayerName);
-            OutboundEnqueueResult bootstrapResult = destinationBinding.TryQueueWorldBootstrap();
+            // Packet 49 only invokes Player.Spawn while the vanilla client is in connection state 6. A live
+            // cross-world transfer is already in state 10, so packet 49 is a no-op there. End the replacement-world
+            // bootstrap with packet 12 instead: it installs the destination floor tile and calls Player.Spawn without
+            // the state-6 gate. The complete world+spawn sequence is one outbound batch, so queue admission remains
+            // atomic before the authoritative destination attach barrier.
+            PlayerSpawnCommitRequest destinationSpawn = transfer.CreateWorldSpawnRequest(destination, spawnContext: 1);
+            OutboundEnqueueResult bootstrapResult = destinationBinding.TryQueueWorldTransferBootstrap(in destinationSpawn);
             if (bootstrapResult != OutboundEnqueueResult.Enqueued)
             {
                 RollBackWithoutClientWorldChange(sourceBinding, transfer, cancellation.Token);
@@ -362,9 +369,17 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
         RuntimePlayerTransferTransaction transfer,
         CancellationToken cancellationToken)
     {
-        if (sourceBinding.TryQueueWorldBootstrap() != OutboundEnqueueResult.Enqueued)
+        // The destination batch already told the state-10 vanilla client to spawn in another world. Rollback must
+        // therefore perform the same explicit packet-12 handoff back to the source world; packet 49 would be ignored.
+        // Restore the authoritative player at that same source spawn so client and server cannot diverge after a
+        // failed destination attach.
+        PlayerSpawnCommitRequest sourceSpawn = transfer.CreateWorldSpawnRequest(sourceBinding.Runtime, spawnContext: 1);
+        if (sourceBinding.TryQueueWorldTransferBootstrap(in sourceSpawn) != OutboundEnqueueResult.Enqueued)
             throw new InvalidOperationException("Source runtime could not queue rollback bootstrap after failed transfer.");
-        RollBackWithoutClientWorldChange(sourceBinding, transfer, cancellationToken);
+        if (!sourceBinding.TryRegister())
+            throw new InvalidOperationException("Source runtime could not restore connection registrations after failed transfer.");
+        transfer.RestoreSourceAtWorldSpawn(cancellationToken);
+        sourceBinding.MarkPlaying();
     }
 
     private static void ReleaseUnusedDestination(
@@ -382,12 +397,56 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
 internal sealed class RuntimeConnectionDirectory
 {
     private readonly ConcurrentDictionary<GameCommandSourceId, RuntimeConnectionRoute> routes = new();
+    private readonly object playerNameGate = new();
+    private readonly Dictionary<string, GameCommandSourceId> playerNameOwners = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<GameCommandSourceId, string> sourcePlayerNames = new();
 
     public bool TryRegister(GameCommandSourceId source, RuntimeConnectionRoute route) =>
         !source.IsSystem && routes.TryAdd(source, route);
 
-    public bool TryUnregister(GameCommandSourceId source, out RuntimeConnectionRoute? route) =>
-        routes.TryRemove(source, out route);
+    public bool TryUnregister(GameCommandSourceId source, out RuntimeConnectionRoute? route)
+    {
+        bool removed = routes.TryRemove(source, out route);
+        if (removed)
+            ReleasePlayerName(source);
+        return removed;
+    }
+
+    internal bool TryReservePlayerName(GameCommandSourceId source, string playerName)
+    {
+        if (source.IsSystem || string.IsNullOrWhiteSpace(playerName))
+            return false;
+
+        string key = playerName.Trim();
+        lock (playerNameGate)
+        {
+            if (sourcePlayerNames.TryGetValue(source, out string? current) &&
+                string.Equals(current, key, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (playerNameOwners.TryGetValue(key, out GameCommandSourceId owner) && owner != source)
+                return false;
+
+            if (current is not null)
+                playerNameOwners.Remove(current);
+            sourcePlayerNames[source] = key;
+            playerNameOwners[key] = source;
+            return true;
+        }
+    }
+
+    private void ReleasePlayerName(GameCommandSourceId source)
+    {
+        lock (playerNameGate)
+        {
+            if (!sourcePlayerNames.Remove(source, out string? current))
+                return;
+            if (playerNameOwners.TryGetValue(current, out GameCommandSourceId owner) && owner == source)
+                playerNameOwners.Remove(current);
+        }
+    }
 
     public RuntimeConnectionRouteSnapshot[] Capture() =>
         routes.Values

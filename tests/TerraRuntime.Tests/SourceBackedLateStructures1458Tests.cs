@@ -94,6 +94,98 @@ public sealed class SourceBackedLateStructures1458Tests
             entry.Descriptor.Id == SourceBackedLateStructures1458.FloatingIslandHousesId);
     }
 
+
+    [Fact]
+    public void Cave_wall_region_count_follows_connected_enclosed_air_instead_of_an_ellipse()
+    {
+        var workspace = new Workspace(24, 24);
+        FillStoneBox(workspace, 5, 5, 14, 14);
+
+        WorldTile lava = workspace.TileStore.Get(9, 9);
+        lava.LiquidAmount = 255;
+        lava.LiquidKind = WorldLiquidKind.Lava;
+        workspace.TileStore.Set(9, 9, in lava);
+
+        CaveRegionStats1458 stats = LateStructurePass1458.CountCaveRegionForTesting(
+            workspace,
+            8,
+            8,
+            jungle: false,
+            lavaOk: true);
+
+        Assert.Equal(64, stats.Count);
+        Assert.Equal(1, stats.LavaCount);
+        Assert.True(stats.RockCount > 0);
+    }
+
+    [Fact]
+    public void Cave_wall_spread_fills_only_the_connected_cavity_and_its_solid_boundary()
+    {
+        var workspace = new Workspace(24, 24);
+        FillStoneBox(workspace, 5, 5, 14, 14);
+
+        int painted = LateStructurePass1458.SpreadWallForTesting(workspace, 8, 8, 170);
+
+        Assert.Equal(96, painted);
+        for (int x = 6; x <= 13; x++)
+        for (int y = 6; y <= 13; y++)
+            Assert.Equal((ushort)170, workspace.TileStore.Get(x, y).Wall);
+
+        Assert.Equal((ushort)170, workspace.TileStore.Get(5, 8).Wall);
+        Assert.Equal((ushort)170, workspace.TileStore.Get(14, 8).Wall);
+        Assert.Equal((ushort)0, workspace.TileStore.Get(4, 8).Wall);
+        Assert.Equal((ushort)0, workspace.TileStore.Get(5, 5).Wall);
+    }
+
+    [Fact]
+    public void Cave_wall_region_rejects_existing_wall_and_shimmer_like_vanilla_count_tiles()
+    {
+        var workspace = new Workspace(24, 24);
+        FillStoneBox(workspace, 5, 5, 14, 14);
+
+        WorldTile wall = workspace.TileStore.Get(10, 10);
+        wall.Wall = 1;
+        workspace.TileStore.Set(10, 10, in wall);
+
+        CaveRegionStats1458 blocked = LateStructurePass1458.CountCaveRegionForTesting(
+            workspace,
+            8,
+            8,
+            jungle: false,
+            lavaOk: true);
+        Assert.Equal(1500, blocked.Count);
+
+        wall.Wall = 0;
+        wall.LiquidAmount = 255;
+        wall.LiquidKind = WorldLiquidKind.Shimmer;
+        workspace.TileStore.Set(10, 10, in wall);
+
+        CaveRegionStats1458 shimmer = LateStructurePass1458.CountCaveRegionForTesting(
+            workspace,
+            8,
+            8,
+            jungle: false,
+            lavaOk: true);
+        Assert.Equal(1500, shimmer.Count);
+    }
+
+    private static void FillStoneBox(Workspace workspace, int left, int top, int right, int bottom)
+    {
+        for (int x = left; x <= right; x++)
+        for (int y = top; y <= bottom; y++)
+        {
+            if (x != left && x != right && y != top && y != bottom)
+                continue;
+
+            var tile = new WorldTile
+            {
+                Type = 1,
+                Flags = WorldTileFlags.Active
+            };
+            workspace.TileStore.Set(x, y, in tile);
+        }
+    }
+
     private static CaptureEntry Find(CaptureBuilder builder, string id) =>
         Assert.Single(builder.Entries, entry => entry.Descriptor.Id.Value == id);
 

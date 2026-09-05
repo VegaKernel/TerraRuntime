@@ -23,6 +23,10 @@ public sealed class RuntimePlayerOperationsTelemetryTests
         telemetry.PlayerManaUpdated(connection, in mana);
         var spawn = new PlayerSpawnCommitRequest(slot, 100, 200, 0, 0, 0, 4, 0);
         telemetry.PlayerSpawned(connection, in spawn);
+        RuntimePlayerSnapshot spawned = Assert.Single(telemetry.CaptureSnapshot().Players.ToArray());
+        Assert.Equal(1598f, spawned.PositionX);
+        Assert.Equal(3158f, spawned.PositionY);
+
         var movement = new PlayerMovementCommitRequest(
             slot,
             ControlFlags: 0,

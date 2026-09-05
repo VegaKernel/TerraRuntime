@@ -48,6 +48,39 @@ public sealed class VanillaWorldTileMutationServiceTests
     }
 
     [Fact]
+    public void Kill_tile_wakes_adjacent_liquid_for_immediate_authoritative_flow()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(20, 20));
+        var water = new WorldTile
+        {
+            LiquidAmount = byte.MaxValue,
+            LiquidKind = WorldLiquidKind.Water
+        };
+        var support = new WorldTile
+        {
+            Type = checked((ushort)VanillaTileIds.Dirt.Value),
+            Flags = WorldTileFlags.Active
+        };
+        tiles.Set(10, 9, in water);
+        tiles.Set(10, 10, in support);
+        tiles.LiquidUpdates.Clear();
+
+        var service = new VanillaWorldTileMutationService(tiles);
+        var kill = new WorldTileMutationRequest(WorldTileMutationKind.KillTile, 10, 10);
+        Assert.True(service.Apply(in kill).Applied);
+        Assert.True(tiles.LiquidUpdates.IsQueued(10, 9));
+
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 16, discoveryBudgetPerTick: 1);
+        Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[32];
+        Assert.True(simulator.Tick(changes) > 0);
+        Assert.Equal((byte)0, tiles.Get(10, 9).LiquidAmount);
+        int downwardMass = 0;
+        for (int y = 10; y < tiles.Dimensions.HeightTiles; y++)
+            downwardMass += tiles.Get(10, y).LiquidAmount;
+        Assert.Equal(byte.MaxValue, downwardMass);
+    }
+
+    [Fact]
     public void Place_and_kill_wall_preserve_tile_and_dirty_frame_neighborhood_sections()
     {
         var tiles = new WorldTileStore(new WorldDimensions(400, 300));

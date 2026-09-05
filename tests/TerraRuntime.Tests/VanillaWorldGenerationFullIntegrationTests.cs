@@ -41,9 +41,16 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
             var workspace = Assert.IsType<Workspace>(context.Workspace);
             foreach (WorldChest chest in workspace.CaptureGeneratedChests())
             {
-                WorldTile tile = workspace.TileStore.Get(chest.X, chest.Y);
-                Assert.True(tile.IsActive && tile.Type is 21 or 467,
-                    $"Pass {id} damaged chest ({chest.X},{chest.Y}): type={tile.Type}, active={tile.IsActive}.");
+                ushort containerType = workspace.TileStore.Get(chest.X, chest.Y).Type;
+                for (int dy = 0; dy < 2; dy++)
+                for (int dx = 0; dx < 2; dx++)
+                {
+                    WorldTile tile = workspace.TileStore.Get(chest.X + dx, chest.Y + dy);
+                    Assert.True(
+                        tile.IsActive && containerType is 21 or 467 && tile.Type == containerType,
+                        $"Pass {id} damaged chest ({chest.X},{chest.Y}) cell ({chest.X + dx},{chest.Y + dy}): " +
+                        $"type={tile.Type}, active={tile.IsActive}.");
+                }
             }
         }
     }
@@ -92,11 +99,13 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
         Assert.True(graph.Bounds.Height >= 120, $"Dungeon graph height was only {graph.Bounds.Height} tiles.");
         Assert.Contains(graph.Components, static component => component.Kind == DungeonComponentKind1458.EntranceHall);
         Assert.Contains(graph.Components, static component => component.Kind == DungeonComponentKind1458.Entrance);
+        AssertCanonicalContentCoverage(result.Candidate);
     }
 
     [Theory]
     [InlineData(14419291354518832569UL)]
     [InlineData(18104330376949184882UL)]
+    [InlineData(9876543210123456789UL)]
     public void Canonical_small_regression_seeds_finalize_without_world_corruption(ulong seed)
     {
         var request = new WorldGenerationRequest(VanillaId, $"Regression-{seed}", seed, 4200, 1200)
@@ -272,6 +281,120 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
         Assert.NotNull(result.Candidate);
         Assert.Equal(w, result.Candidate!.WidthTiles);
         Assert.Equal(h, result.Candidate.HeightTiles);
+    }
+
+
+    private static void AssertCanonicalContentCoverage(Workspace workspace)
+    {
+        long dungeonTiles = 0;
+        long dungeonWalls = 0;
+        long underworldAsh = 0;
+        long underworldHellstone = 0;
+        long underworldLavaUnits = 0;
+        long jungleTiles = 0;
+        long snowTiles = 0;
+        long desertTiles = 0;
+        long evilTiles = 0;
+
+        int underworldTop = Math.Max(0, workspace.HeightTiles - 250);
+        for (int y = 0; y < workspace.HeightTiles; y++)
+        for (int x = 0; x < workspace.WidthTiles; x++)
+        {
+            WorldTile tile = workspace.TileStore.Get(x, y);
+            if (tile.IsActive)
+            {
+                if (tile.Type is 41 or 43 or 44)
+                    dungeonTiles++;
+                if (tile.Type is 59 or 60)
+                    jungleTiles++;
+                if (tile.Type is 147 or 161)
+                    snowTiles++;
+                // Sand, hardened sand and sandstone ids are pinned by the 1.4.5.8 ordinary-world passes.
+                if (tile.Type is 53 or 396 or 397)
+                    desertTiles++;
+                if (tile.Type is 23 or 25 or 112 or 199 or 203 or 234 or 400 or 401)
+                    evilTiles++;
+
+                if (y >= underworldTop)
+                {
+                    if (tile.Type == 57)
+                        underworldAsh++;
+                    else if (tile.Type == VanillaTileIds.Hellstone.Value)
+                        underworldHellstone++;
+                }
+            }
+
+            if (tile.Wall is 7 or 8 or 9 or 94 or 95 or 96 or 97 or 98 or 99)
+                dungeonWalls++;
+            if (y >= underworldTop && tile.LiquidAmount > 0 && tile.LiquidKind == WorldLiquidKind.Lava)
+                underworldLavaUnits += tile.LiquidAmount;
+        }
+
+        Assert.True(dungeonTiles >= 20_000, $"Canonical dungeon contained only {dungeonTiles} dungeon-brick tiles.");
+        Assert.True(dungeonWalls >= 20_000, $"Canonical dungeon contained only {dungeonWalls} unsafe dungeon-wall tiles.");
+        Assert.True(underworldAsh >= 50_000, $"Canonical Underworld contained only {underworldAsh} ash tiles.");
+        Assert.True(underworldHellstone >= 1_000, $"Canonical Underworld contained only {underworldHellstone} hellstone tiles.");
+        Assert.True(underworldLavaUnits >= 100_000, $"Canonical Underworld contained only {underworldLavaUnits} lava units.");
+        Assert.True(jungleTiles >= 50_000, $"Canonical jungle footprint was only {jungleTiles} tiles.");
+        Assert.True(snowTiles >= 20_000, $"Canonical snow footprint was only {snowTiles} tiles.");
+        Assert.True(desertTiles >= 20_000, $"Canonical desert footprint was only {desertTiles} tiles.");
+        Assert.True(evilTiles >= 5_000, $"Canonical evil-biome footprint was only {evilTiles} tiles.");
+
+        WorldChest[] chests = workspace.CaptureGeneratedChests();
+        Assert.True(chests.Length >= 50, $"Canonical small world generated only {chests.Length} chests.");
+        Assert.DoesNotContain(chests, static chest => chest.Items.All(static item => item.IsEmpty));
+        Assert.All(chests, static chest =>
+            Assert.All(chest.Items.Where(static item => !item.IsEmpty), static item =>
+            {
+                Assert.InRange(item.ItemType, 1, VanillaItemIds.Count - 1);
+                Assert.True(item.Stack > 0);
+            }));
+        int nonEmptyStacks = chests.Sum(static chest => chest.Items.Count(static item => !item.IsEmpty));
+        Assert.True(nonEmptyStacks >= 200, $"Canonical small world generated only {nonEmptyStacks} non-empty chest item stacks.");
+
+        int[] requiredStyles = [0, 1, 2, 4, 10, 17];
+        foreach (int style in requiredStyles)
+        {
+            Assert.Contains(chests, chest =>
+            {
+                WorldTile anchor = workspace.TileStore.Get(chest.X, chest.Y);
+                return anchor.IsActive && anchor.Type == VanillaTileIds.Containers.Value && anchor.FrameX / 36 == style;
+            });
+        }
+
+        var surfacePrimary = new HashSet<int> { 280, 281, 284, 285, 953, 946, 3068, 3069, 3084, 4341, 6165 };
+        var undergroundPrimary = new HashSet<int> { 49, 50, 53, 54, 5011, 975, 906, 997, 930 };
+        var hellPrimary = new HashSet<int> { 274, 220, 112, 218, 3019 };
+        var junglePrimary = new HashSet<int> { 211, 212, 213, 964, 2292, 3017 };
+        var waterPrimary = new HashSet<int> { 863, 186, 4404, 277, 187 };
+
+        foreach (WorldChest chest in chests)
+        {
+            WorldTile anchor = workspace.TileStore.Get(chest.X, chest.Y);
+            if (!anchor.IsActive || anchor.Type != VanillaTileIds.Containers.Value)
+                continue;
+
+            int style = anchor.FrameX / 36;
+            WorldChestItem primary = chest.Items.First(static item => !item.IsEmpty);
+            switch (style)
+            {
+                case 0:
+                    Assert.Contains(primary.ItemType, surfacePrimary);
+                    break;
+                case 1:
+                    Assert.Contains(primary.ItemType, undergroundPrimary);
+                    break;
+                case 4:
+                    Assert.Contains(primary.ItemType, hellPrimary);
+                    break;
+                case 10:
+                    Assert.Contains(primary.ItemType, junglePrimary);
+                    break;
+                case 17:
+                    Assert.Contains(primary.ItemType, waterPrimary);
+                    break;
+            }
+        }
     }
 
     private static IWorldGenerationProvider? GetVanillaProvider(

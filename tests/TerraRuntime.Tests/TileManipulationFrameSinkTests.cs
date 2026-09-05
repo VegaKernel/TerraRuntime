@@ -61,15 +61,15 @@ public sealed class TileManipulationFrameSinkTests
     }
 
     [Fact]
-    public void Bounded_game_ingress_rejection_stops_connection()
+    public void Bounded_game_ingress_rejection_drops_action_without_stopping_connection()
     {
         GameCommandSourceId source = GameCommandSourceId.FromConnection(804);
         using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
         var sink = new TileManipulationFrameSink(source, bootstrap, new PassthroughSink(), new RejectingIngress());
         var state = new TerrariaTileManipulationState(0, 1, 1, 0, 0);
 
-        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(Packet17(in state)));
-        Assert.Equal(TileManipulationFrameStopReason.GameIngressBackpressure, sink.StopReason);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Packet17(in state)));
+        Assert.Equal(TileManipulationFrameStopReason.None, sink.StopReason);
     }
 
     private static TerrariaFrame Packet17(in TerrariaTileManipulationState state)

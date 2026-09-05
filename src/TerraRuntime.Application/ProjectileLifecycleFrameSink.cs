@@ -14,7 +14,6 @@ public enum ProjectileLifecycleFrameStopReason : byte
     InvalidJoinState = 1,
     MalformedUpdate = 2,
     MalformedDestroy = 3,
-    GameIngressBackpressure = 4,
     MalformedNpcDamage = 5
 }
 
@@ -90,7 +89,6 @@ public sealed class ProjectileLifecycleFrameSink :
                 ProjectileLifecycleFrameStopReason.MalformedUpdate or
                 ProjectileLifecycleFrameStopReason.MalformedDestroy or
                 ProjectileLifecycleFrameStopReason.MalformedNpcDamage => TerrariaFrameRejectionCategory.MalformedProtocol,
-                ProjectileLifecycleFrameStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
                 _ => TerrariaFrameRejectionCategory.None
             };
             if (own != TerrariaFrameRejectionCategory.None)
@@ -162,8 +160,7 @@ public sealed class ProjectileLifecycleFrameSink :
         // Packet 27 is a replaceable projectile snapshot. When the authoritative mailbox is temporarily full,
         // dropping this stale sample is equivalent to losing one intermediate network update: a later packet 27
         // converges position/velocity/AI state. Do not turn ordinary projectile bursts into "Connection lost".
-        // Discrete destroy and NPC-damage events below remain strict and still fail closed on backpressure.
-        Interlocked.Increment(ref droppedAuthorityUpdates);
+                Interlocked.Increment(ref droppedAuthorityUpdates);
         return TerrariaFrameSinkResult.Continue;
     }
 
@@ -178,9 +175,10 @@ public sealed class ProjectileLifecycleFrameSink :
         if (decode != TerrariaNpcDamageDecodeResult.Decoded)
             return Stop(ProjectileLifecycleFrameStopReason.MalformedNpcDamage);
 
-        return npcDamageIngress!.TryPostNpcDamage(connection, in state)
-            ? TerrariaFrameSinkResult.Continue
-            : Stop(ProjectileLifecycleFrameStopReason.GameIngressBackpressure);
+        // Packet 28 is a damage claim. Mailbox saturation fails closed for damage but must not tear down the
+        // playing socket; message/rate policy already owns abusive-traffic disconnects.
+        _ = npcDamageIngress!.TryPostNpcDamage(connection, in state);
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private TerrariaFrameSinkResult HandleDestroy(in TerrariaFrame frame)
@@ -194,9 +192,10 @@ public sealed class ProjectileLifecycleFrameSink :
         if (decode != TerrariaProjectileDecodeResult.Decoded)
             return Stop(ProjectileLifecycleFrameStopReason.MalformedDestroy);
 
-        return ingress.TryPostDestroy(connection, in state)
-            ? TerrariaFrameSinkResult.Continue
-            : Stop(ProjectileLifecycleFrameStopReason.GameIngressBackpressure);
+        // Destroy is a discrete client proposal. If it cannot enter the authoritative mailbox, retain the
+        // server-owned projectile generation and let its authoritative lifetime/collision resolve it later.
+        _ = ingress.TryPostDestroy(connection, in state);
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private bool TryGetPlayingConnection(out ConnectionHandle connection)

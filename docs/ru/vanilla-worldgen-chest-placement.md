@@ -32,9 +32,11 @@ Chest регистрируется только после того, как ег
 
 Style identities Ivy Chest и Water Chest дополнительно сверены с официальной Terraria Wiki: style `10` у `Containers` соответствует Ivy Chest, style `17` соответствует Water Chest.
 
-## Граница loot parity
+## Владение loot
 
-В этом блоке generated chests намеренно начинают с нулевого числа persisted item slots. Сейчас закрепляется более фундаментальный invariant: каждый generated chest tile object имеет ровно один соответствующий `.wld` chest record. Vanilla loot tables, stack rolls, prefixes и progression-dependent uniqueness будут отдельным loot-parity слоем. Заполнять правильные сундуки случайным набором «похожих» предметов было бы удобным способом превратить структурную корректность в художественную самодеятельность.
+Обычные generated chests теперь получают source-backed loot default-world непосредственно в момент placement, пока pass ещё точно знает семейство сундука и depth branch. Это важно, потому что `WorldGen.AddBuriedChest` расходует общий `genRand` во время размещения и заполнения контейнера; поздний cleanup-pass уже не может восстановить этот порядок, не сдвинув RNG последующих стадий worldgen.
+
+Текущий clean-room порт покрывает используемые этими четырьмя pass-ами default-world ветви surface, underground, cavern, Underworld/Shadow, jungle и water, включая primary families, stack ranges и stateful циклы hell/jungle/water. Прежний поздний filler сундуков из `FinalCleanup` удалён полностью и не оставлен fallback-ом. Prefix generation пока находится вне этого slice, потому что Terraria проводит `Prefix(-1)` через item-prefix RNG, а не через world-generation `genRand`.
 
 ## Acceptance
 
@@ -45,4 +47,4 @@ Production acceptance по-прежнему требует:
 3. полный `.wld` encode/decode через `TerraRuntime.WorldVerify`;
 4. успешный boot pinned official TerrariaServer 1.4.5.8.
 
-Это доказывает persistent chest topology и валидность файла. Exact vanilla chest counts, coordinates, RNG consumption и loot parity пока не заявляются.
+Acceptance дополнительно проверяет, что canonical Small мир содержит непустой loot во всех generated chests, валидные vanilla item ids, ожидаемые primary families для styles Wooden/Gold/Shadow/Ivy/Water и нетривиальный объём secondary loot. Это всё ещё не означает bit-identical chest coordinates или полный parity для семейств сундуков, которыми владеют другие worldgen passes вне этого четырёхпроходного slice.

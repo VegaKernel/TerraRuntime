@@ -1,9 +1,12 @@
+using System.Buffers;
+using System.Reflection;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.HostContracts.WorldGeneration;
 using TerraRuntime.Network;
+using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
@@ -125,8 +128,8 @@ public sealed class Level1PlayerTransferTests
             sandboxPlayer,
             TestContext.Current.CancellationToken);
         Assert.NotNull(sandboxSnapshot);
-        Assert.Equal(sandbox.World.RuntimeMetadata.SpawnX * 16f, sandboxSnapshot.Value.PositionX);
-        Assert.Equal(sandbox.World.RuntimeMetadata.SpawnY * 16f, sandboxSnapshot.Value.PositionY);
+        Assert.Equal(sandbox.World.RuntimeMetadata.SpawnX * 16f + 8f - PlayerAuthority.VanillaBasePlayerWidth * 0.5f, sandboxSnapshot.Value.PositionX);
+        Assert.Equal(sandbox.World.RuntimeMetadata.SpawnY * 16f - PlayerAuthority.VanillaBasePlayerHeight, sandboxSnapshot.Value.PositionY);
         Assert.Equal((short)70, sandboxSnapshot.Value.Life);
         Assert.Equal((short)100, sandboxSnapshot.Value.MaxLife);
 
@@ -140,9 +143,62 @@ public sealed class Level1PlayerTransferTests
             primaryPlayer,
             TestContext.Current.CancellationToken);
         Assert.NotNull(returned);
-        Assert.Equal(primary.World.RuntimeMetadata.SpawnX * 16f, returned.Value.PositionX);
-        Assert.Equal(primary.World.RuntimeMetadata.SpawnY * 16f, returned.Value.PositionY);
+        Assert.Equal(primary.World.RuntimeMetadata.SpawnX * 16f + 8f - PlayerAuthority.VanillaBasePlayerWidth * 0.5f, returned.Value.PositionX);
+        Assert.Equal(primary.World.RuntimeMetadata.SpawnY * 16f - PlayerAuthority.VanillaBasePlayerHeight, returned.Value.PositionY);
         Assert.Equal((short)70, returned.Value.Life);
+    }
+
+    [Fact]
+    public async Task Cross_world_transfer_finishes_replacement_world_batch_with_explicit_packet12_spawn()
+    {
+        using WorldRuntime primary = CreateRuntime("Primary", seed: 707);
+        using WorldRuntime sandbox = CreateRuntime("Arena", seed: 808);
+        primary.Start();
+        sandbox.Start();
+
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(47);
+        var outbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 8192, maxQueuedBytes: 64 * 1024 * 1024, maxFrameBytes: 4 * 1024 * 1024));
+        Assert.True(RuntimeConnectionWorldBinding.TryCreateTransferred(
+            primary,
+            source,
+            outbound,
+            new PlayerSlotId(0),
+            "Wire",
+            out RuntimeConnectionWorldBinding? binding));
+        Assert.NotNull(binding);
+        Assert.True(binding!.TryRegister());
+        using var route = new RuntimeConnectionRoute(source, outbound, binding);
+        PlayerHandle player = AssertPlayer(route.ActivePlayer);
+        await AttachInitialPlayerAsync(primary, source, player, "Wire", x: 96f, y: 128f, life: 80, maxLife: 100);
+        DrainOutbound(outbound);
+
+        Assert.True(route.TryTransfer(sandbox, forceRespawn: false, out string? error), error);
+
+        TerrariaFrame[] frames = DrainOutbound(outbound);
+        Assert.NotEmpty(frames);
+        Assert.Equal((byte)TerrariaMessageId.WorldData, frames[0].MessageId);
+        Assert.DoesNotContain(frames, static frame => frame.MessageId == (byte)TerrariaMessageId.PlayerSpawnSelf);
+        int spawnIndex = Array.FindLastIndex(
+            frames,
+            static frame => frame.MessageId == (byte)TerrariaMessageId.PlayerSpawn);
+        Assert.True(spawnIndex >= 0);
+        TerrariaFrame spawnFrame = frames[spawnIndex];
+        // Packet 12 is the final handoff inside the atomic replacement-world bootstrap. The successful
+        // destination attach may immediately enqueue packet 82 (CreativePowers SyncEveryone) afterwards;
+        // that post-attach baseline does not carry position/world state and must not be confused with the
+        // bootstrap handoff itself.
+        Assert.All(
+            frames[(spawnIndex + 1)..],
+            static frame => Assert.Equal((byte)TerrariaMessageId.LoadNetModule, frame.MessageId));
+        Assert.Equal(
+            TerrariaJoinDecodeResult.Decoded,
+            TerrariaJoinRequestDecoder.TryDecodePlayerSpawn(in spawnFrame, out TerrariaPlayerSpawnRequest spawn));
+        Assert.Equal(player.Slot.Value, spawn.ClaimedPlayerId);
+        Assert.Equal((short)sandbox.World.RuntimeMetadata.SpawnX, spawn.SpawnX);
+        Assert.Equal((short)sandbox.World.RuntimeMetadata.SpawnY, spawn.SpawnY);
+        Assert.Equal((byte)2, spawn.Team);
+        Assert.Equal((byte)1, spawn.SpawnContext);
     }
 
     [Fact]
@@ -218,8 +274,8 @@ public sealed class Level1PlayerTransferTests
         Assert.NotNull(snapshot);
         Assert.False(snapshot.Value.IsDead);
         Assert.Equal((short)120, snapshot.Value.Life);
-        Assert.Equal(primary.World.RuntimeMetadata.SpawnX * 16f, snapshot.Value.PositionX);
-        Assert.Equal(primary.World.RuntimeMetadata.SpawnY * 16f, snapshot.Value.PositionY);
+        Assert.Equal(primary.World.RuntimeMetadata.SpawnX * 16f + 8f - PlayerAuthority.VanillaBasePlayerWidth * 0.5f, snapshot.Value.PositionX);
+        Assert.Equal(primary.World.RuntimeMetadata.SpawnY * 16f - PlayerAuthority.VanillaBasePlayerHeight, snapshot.Value.PositionY);
         Assert.Equal(0f, snapshot.Value.VelocityX);
         Assert.Equal(0f, snapshot.Value.VelocityY);
         Assert.Equal((ushort)0, snapshot.Value.MountType);
@@ -343,6 +399,24 @@ public sealed class Level1PlayerTransferTests
             preserveWorldPosition: true,
             forceRespawn: false,
             TestContext.Current.CancellationToken));
+    }
+
+    private static TerrariaFrame[] DrainOutbound(TerrariaConnectionOutboundQueue outbound)
+    {
+        PropertyInfo property = typeof(TerrariaConnectionOutboundQueue).GetProperty(
+            "InnerQueue",
+            BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("Outbound queue internal contract changed.");
+        var queue = Assert.IsType<BoundedOutboundQueue>(property.GetValue(outbound));
+        var frames = new List<TerrariaFrame>();
+        while (queue.TryRead(out OutboundFrame outboundFrame))
+        {
+            var sequence = new ReadOnlySequence<byte>(outboundFrame.Bytes);
+            Assert.Equal(TerrariaFrameReadResult.Frame, TerrariaFrameDecoder.TryRead(ref sequence, out TerrariaFrame frame));
+            Assert.Equal(0, sequence.Length);
+            frames.Add(frame);
+        }
+        return frames.ToArray();
     }
 
     private static PlayerHandle AssertPlayer(PlayerHandle? player)

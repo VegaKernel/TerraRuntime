@@ -122,6 +122,7 @@ internal sealed class LateStructureState1458
     public double WorldSurface { get; private set; }
     public double RockLayer { get; private set; }
     public int UnderworldTop { get; private set; }
+    public int LavaLine { get; private set; }
 
     public void EnsureInitialized(IWorldGenerationContext context, Workspace workspace)
     {
@@ -135,9 +136,20 @@ internal sealed class LateStructureState1458
 
         WorldSurface = layers.WorldSurface;
         RockLayer = layers.RockLayer;
+        VanillaLiquidLines1458 liquidLines = workspace.VanillaLiquidLines ??
+            throw new InvalidOperationException("Late-structure vanilla generation requires exact Early-pass liquid lines.");
+        LavaLine = liquidLines.LavaLine;
         UnderworldTop = Math.Clamp(workspace.HeightTiles - 200, (int)RockLayer + 120, workspace.HeightTiles - 90);
     }
 }
+
+internal readonly record struct CaveRegionStats1458(
+    int Count,
+    int ShroomCount,
+    int LavaCount,
+    int IceCount,
+    int SandCount,
+    int RockCount);
 
 internal sealed class LateStructurePass1458 : IWorldGenerationPass
 {
@@ -162,10 +174,15 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
     private const ushort SpiderUnsafeWall = 62;
     private const ushort DiscWall = 82;
     private const ushort LihzahrdBrickUnsafeWall = 87;
+    private const ushort JungleUnsafeWall = 64;
+    private const ushort JungleCaveWall = 15;
+    private const ushort ShimmerUnsafeWall = 244;
+
+    private const int CaveRegionMaxTiles = 1500;
+    private const int JungleWallSpreadLimit = 5000;
 
     private static readonly ushort[] GemTiles = [Sapphire, Ruby, Emerald, Topaz, Amethyst, Diamond];
     private static readonly ushort[] MossTiles = [179, 180, 181, 182, 183];
-    private static readonly ushort[] CaveWalls = [54, 55, 56, 57, 58, 170, 171];
 
     private readonly LateStructureStage1458 stage;
     private readonly LateStructureState1458 state;
@@ -386,41 +403,319 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
 
     private void ApplyCaveWalls(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
-        int patches = grid.Width switch
-        {
-            <= 4200 => 85,
-            <= 6400 => 125,
-            _ => 165
-        };
-        int minY = Math.Clamp((int)state.WorldSurface + 35, 20, state.UnderworldTop - 100);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 35);
+        // TerrariaServer 1.4.5.8 WorldGen "Cave Walls" ordinary-world path. The old clean-room
+        // implementation painted fixed ellipses, which produced detached artificial wall blobs and did not
+        // preserve the shared-RNG contract. Vanilla instead searches for a bounded connected cave, derives the
+        // wall family from the tiles/liquid touching that cave, and flood-spreads through that exact cavity.
+        int ordinaryAttempts = (int)(grid.Width * 0.04d);
+        int minY = (int)(state.WorldSurface + state.RockLayer) / 2;
+        int maxY = grid.Height - 220;
         int painted = 0;
+        int accepted = 0;
 
-        for (int patch = 0; patch < patches; patch++)
+        for (int attempt = 0; attempt < ordinaryAttempts; attempt++)
         {
-            if ((patch & 15) == 0)
+            if ((attempt & 15) == 0)
                 context.CancellationToken.ThrowIfCancellationRequested();
 
-            int cx = random.Next(20, grid.Width - 20);
-            int cy = random.Next(minY, maxY);
-            int rx = random.Next(5, 13);
-            int ry = random.Next(4, 10);
-            ushort wall = CaveWalls[random.Next(CaveWalls.Length)];
-            for (int x = cx - rx; x <= cx + rx; x++)
-            for (int y = cy - ry; y <= cy + ry; y++)
+            int retries = 0;
+            int x = random.Next(200, grid.Width - 200);
+            int y = random.Next(minY, maxY);
+            CaveRegionStats1458 stats = CountCaveRegion(grid, x, y, jungle: false, lavaOk: true);
+            while ((stats.Count >= CaveRegionMaxTiles || stats.Count < 10) && retries < 500)
             {
-                if ((x - cx) * (x - cx) * ry * ry + (y - cy) * (y - cy) * rx * rx > rx * rx * ry * ry)
+                retries++;
+                x = random.Next(200, grid.Width - 200);
+                y = random.Next(minY, maxY);
+                stats = CountCaveRegion(grid, x, y, jungle: false, lavaOk: true);
+            }
+
+            if (retries >= 500)
+                continue;
+
+            int wallChoice = random.Next(2); // consumed unconditionally by the pinned source before its branch chain.
+            ushort wall;
+            if (stats.ShroomCount > stats.RockCount * 0.75d)
+            {
+                wall = 80;
+            }
+            else if (stats.IceCount > 0)
+            {
+                wall = wallChoice == 0 ? (ushort)40 : (ushort)71;
+            }
+            else if (stats.LavaCount > 0)
+            {
+                wall = 79;
+            }
+            else
+            {
+                wall = random.Next(4) switch
+                {
+                    0 => (ushort)59,
+                    1 => (ushort)61,
+                    2 => (ushort)170,
+                    _ => (ushort)171
+                };
+            }
+
+            painted += SpreadWall(grid, x, y, wall);
+            accepted++;
+        }
+
+        // The ordinary jungle-wall phase depends on the exact GenVars.lavaLine selected by the Early pass. That
+        // source state is now carried forward explicitly instead of reconstructing it from later layer metadata.
+        double jungleAttempts = grid.Width * 0.02d;
+        int jungleMaxY = state.LavaLine;
+        if (jungleMaxY > (int)state.WorldSurface)
+        {
+            for (int attempt = 0; attempt < jungleAttempts; attempt++)
+            {
+                if ((attempt & 15) == 0)
+                    context.CancellationToken.ThrowIfCancellationRequested();
+
+                int retries = 0;
+                int x = random.Next(200, grid.Width - 200);
+                int y = random.Next((int)state.WorldSurface, jungleMaxY);
+                CaveRegionStats1458 stats = default;
+                if (grid.At(x, y).Wall == JungleUnsafeWall)
+                    stats = CountCaveRegion(grid, x, y, jungle: true, lavaOk: false);
+
+                while ((stats.Count >= CaveRegionMaxTiles || stats.Count < 10) && retries < 1000)
+                {
+                    retries++;
+                    x = random.Next(200, grid.Width - 200);
+                    y = random.Next((int)state.WorldSurface, jungleMaxY);
+                    ushort currentWall = grid.At(x, y).Wall;
+                    if (!IsHousingWall(currentWall) && currentWall != ShimmerUnsafeWall)
+                    {
+                        stats = currentWall == JungleUnsafeWall
+                            ? CountCaveRegion(grid, x, y, jungle: true, lavaOk: false)
+                            : default;
+                    }
+                }
+
+                if (retries < 1000)
+                    painted += SpreadWall2(grid, x, y, JungleCaveWall);
+            }
+        }
+
+        context.ReportProgress(1d, $"Adding source-backed cave walls ({accepted} enclosed caves, {painted} wall cells)");
+    }
+
+    internal static CaveRegionStats1458 CountCaveRegionForTesting(
+        Workspace workspace,
+        int x,
+        int y,
+        bool jungle = false,
+        bool lavaOk = false) =>
+        CountCaveRegion(new RuntimeGrid(workspace), x, y, jungle, lavaOk);
+
+    internal static int SpreadWallForTesting(Workspace workspace, int x, int y, ushort wall) =>
+        SpreadWall(new RuntimeGrid(workspace), x, y, wall);
+
+    private static CaveRegionStats1458 CountCaveRegion(
+        RuntimeGrid grid,
+        int startX,
+        int startY,
+        bool jungle,
+        bool lavaOk)
+    {
+        int count = 0;
+        int shroomCount = 0;
+        int lavaCount = 0;
+        int iceCount = 0;
+        int sandCount = 0;
+        int rockCount = 0;
+        var countedOpenTiles = new HashSet<int>();
+        var pending = new Stack<(int X, int Y)>();
+        pending.Push((startX, startY));
+
+        while (pending.Count > 0)
+        {
+            if (count >= CaveRegionMaxTiles)
+                break;
+
+            (int x, int y) = pending.Pop();
+            if (x <= 1 || x >= grid.Width - 1 || y <= 1 || y >= grid.Height - 1)
+                return new CaveRegionStats1458(CaveRegionMaxTiles, shroomCount, lavaCount, iceCount, sandCount, rockCount);
+
+            int key = x * grid.Height + y;
+            if (countedOpenTiles.Contains(key))
+                continue;
+
+            WorldTile tile = grid.At(x, y);
+            if (tile.Wall == ShimmerUnsafeWall ||
+                (tile.LiquidAmount > 0 && tile.LiquidKind == WorldLiquidKind.Shimmer))
+            {
+                return new CaveRegionStats1458(CaveRegionMaxTiles, shroomCount, lavaCount, iceCount, sandCount, rockCount);
+            }
+
+            if (!jungle)
+            {
+                if (tile.Wall != 0)
+                    return new CaveRegionStats1458(CaveRegionMaxTiles, shroomCount, lavaCount, iceCount, sandCount, rockCount);
+
+                if (tile.LiquidAmount > 0 && tile.LiquidKind == WorldLiquidKind.Lava)
+                {
+                    lavaCount++;
+                    if (!lavaOk)
+                        return new CaveRegionStats1458(CaveRegionMaxTiles, shroomCount, lavaCount, iceCount, sandCount, rockCount);
+                }
+            }
+
+            if (tile.IsActive)
+            {
+                switch (tile.Type)
+                {
+                    case 70:
+                        shroomCount++;
+                        break;
+                    case Stone:
+                        rockCount++;
+                        break;
+                    case 147:
+                    case 161:
+                        iceCount++;
+                        break;
+                    case 53:
+                    case 396:
+                    case 397:
+                        sandCount++;
+                        break;
+                }
+            }
+
+            if (IsCaveWallSolid(in tile))
+                continue;
+
+            countedOpenTiles.Add(key);
+            count++;
+
+            // Source recursion order is left, right, up, down. Stack push order is reversed to preserve it.
+            pending.Push((x, y + 1));
+            pending.Push((x, y - 1));
+            pending.Push((x + 1, y));
+            pending.Push((x - 1, y));
+        }
+
+        return new CaveRegionStats1458(count, shroomCount, lavaCount, iceCount, sandCount, rockCount);
+    }
+
+    private static int SpreadWall(RuntimeGrid grid, int startX, int startY, ushort wall)
+    {
+        if ((uint)startX >= (uint)grid.Width || (uint)startY >= (uint)grid.Height)
+            return 0;
+
+        int painted = 0;
+        var visited = new HashSet<int>();
+        var pending = new Queue<(int X, int Y)>();
+        pending.Enqueue((startX, startY));
+
+        while (pending.Count > 0)
+        {
+            (int x, int y) = pending.Dequeue();
+            if (x < 1 || x >= grid.Width - 1 || y < 1 || y >= grid.Height - 1)
+                continue;
+
+            int key = x * grid.Height + y;
+            if (!visited.Add(key))
+                continue;
+
+            ref WorldTile tile = ref grid.At(x, y);
+            if (IsCaveWallSolid(in tile) || tile.Wall != 0)
+            {
+                if (tile.IsActive && tile.Wall == 0)
+                {
+                    tile.Wall = wall;
+                    painted++;
+                }
+                continue;
+            }
+
+            if (tile.Wall != wall)
+            {
+                tile.Wall = wall;
+                painted++;
+            }
+
+            pending.Enqueue((x - 1, y));
+            pending.Enqueue((x + 1, y));
+            pending.Enqueue((x, y - 1));
+            pending.Enqueue((x, y + 1));
+        }
+
+        return painted;
+    }
+
+    private static int SpreadWall2(RuntimeGrid grid, int startX, int startY, ushort wall)
+    {
+        if ((uint)startX >= (uint)grid.Width || (uint)startY >= (uint)grid.Height)
+            return 0;
+
+        int wallOut = 0;
+        int painted = 0;
+        var visited = new HashSet<int>();
+        var pending = new Queue<(int X, int Y)>();
+        pending.Enqueue((startX, startY));
+
+        while (pending.Count > 0)
+        {
+            (int x, int y) = pending.Dequeue();
+            if (x < 1 || x >= grid.Width - 1 || y < 1 || y >= grid.Height - 1)
+                continue;
+
+            int key = x * grid.Height + y;
+            if (!visited.Add(key))
+                continue;
+
+            ref WorldTile tile = ref grid.At(x, y);
+            if (tile.Wall == wall || CannotBeReplacedByWallSpread(tile.Wall))
+                continue;
+
+            if (!IsCaveWallSolid(in tile))
+            {
+                wallOut++;
+                if (wallOut >= JungleWallSpreadLimit)
                     continue;
-                ref WorldTile tile = ref grid.At(x, y);
-                if (tile.IsActive || tile.Wall is not (0 or 1 or 2 or 54 or 55 or 56 or 57 or 58 or 59 or 170 or 171))
-                    continue;
+
+                tile.Wall = wall;
+                painted++;
+                pending.Enqueue((x - 1, y));
+                pending.Enqueue((x + 1, y));
+                pending.Enqueue((x, y - 1));
+                pending.Enqueue((x, y + 1));
+            }
+            else if (tile.IsActive)
+            {
                 tile.Wall = wall;
                 painted++;
             }
         }
 
-        context.ReportProgress(1d, $"Adding cave-wall variety ({painted} cells)");
+        return painted;
     }
+
+    private static bool IsCaveWallSolid(in WorldTile tile)
+    {
+        if (!tile.IsActive || tile.IsActuated || tile.Shape != 0)
+            return false;
+
+        bool solid = tile.Type switch
+        {
+            162 => false,
+            LihzahrdBrick => true,
+            232 => false,
+            _ => VanillaTileCollisionCatalog.IsSolid(tile.TileType)
+        };
+        return solid && !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
+    }
+
+    private static bool CannotBeReplacedByWallSpread(ushort wall) =>
+        wall is 3 or 4 or 34 or 40 or 83 or 87 or 244;
+
+    private static bool IsHousingWall(ushort wall) =>
+        VanillaWallDefinitionCatalog.TryGet(new WallTypeId(wall), out VanillaWallDefinition definition) &&
+        definition.IsHousingWall;
 
     private void ApplyJungleTrees(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {

@@ -11,7 +11,6 @@ public enum SignInteractionFrameStopReason : byte
     None = 0,
     InvalidJoinState = 1,
     MalformedSignPacket = 2,
-    GameIngressBackpressure = 3
 }
 
 /// <summary>
@@ -60,7 +59,6 @@ public sealed class SignInteractionFrameSink :
     {
         SignInteractionFrameStopReason.InvalidJoinState => TerrariaFrameRejectionCategory.InvalidState,
         SignInteractionFrameStopReason.MalformedSignPacket => TerrariaFrameRejectionCategory.MalformedProtocol,
-        SignInteractionFrameStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
         _ => inner is ITerrariaFrameRejectionSource source
             ? source.RejectionCategory
             : TerrariaFrameRejectionCategory.None
@@ -109,12 +107,11 @@ public sealed class SignInteractionFrameSink :
                 return inner.OnFrame(in frame);
         }
 
-        if (posted || retryableReadRequest)
-            return TerrariaFrameSinkResult.Continue;
-
-        // Sign text updates are persistent mutations and stay fail-closed. A read request is retryable and may be
-        // dropped during a transient authoritative-queue backlog without turning it into Connection lost.
-        return Stop(SignInteractionFrameStopReason.GameIngressBackpressure);
+        // Reads are retryable; sign writes are discrete authoritative proposals. If the mailbox is saturated,
+        // fail closed for that update but keep the connection alive. Internal backpressure is not malformed traffic.
+        _ = posted;
+        _ = retryableReadRequest;
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private bool TryGetPlayingConnection(out ConnectionHandle connection)

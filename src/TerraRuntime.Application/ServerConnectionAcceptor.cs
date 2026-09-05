@@ -147,7 +147,8 @@ internal sealed class ServerConnectionAcceptor : IDisposable
                     primaryRuntime,
                     source,
                     outbound,
-                    out RuntimeConnectionWorldBinding? primaryBinding) ||
+                    out RuntimeConnectionWorldBinding? primaryBinding,
+                    playerName => connectionDirectory.TryReservePlayerName(source, playerName)) ||
                 primaryBinding is null)
             {
                 socket.Dispose();

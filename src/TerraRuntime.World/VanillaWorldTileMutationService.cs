@@ -234,6 +234,8 @@ public sealed class VanillaWorldTileMutationService
         bool wallFrame)
     {
         _tiles.Set(x, y, in after);
+        if (tileFrame)
+            VanillaWorldLiquidWakeup1458.WakeCellAndNeighbours(_tiles, x, y);
         int minX = Math.Max(0, x - 1);
         int maxX = Math.Min(_tiles.Dimensions.WidthTiles - 1, x + 1);
         int minY = Math.Max(0, y - 1);

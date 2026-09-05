@@ -138,6 +138,12 @@ public sealed class VanillaMultiTileObjectMutationService
             return Rejected(VanillaMultiTileObjectMutationStatus.MetadataCommitFailed, in descriptor);
 
         int changed = CommitPlacement(in descriptor);
+        VanillaWorldLiquidWakeup1458.WakeRegion(
+            _tiles,
+            descriptor.Bounds.X,
+            descriptor.Bounds.Y,
+            descriptor.Bounds.Width,
+            descriptor.Bounds.Height);
         MarkFrameNeighborhoodDirty(descriptor.Bounds);
         return new VanillaMultiTileObjectMutationResult(
             VanillaMultiTileObjectMutationStatus.Applied,
@@ -164,6 +170,12 @@ public sealed class VanillaMultiTileObjectMutationService
             return Rejected(VanillaMultiTileObjectMutationStatus.MetadataCommitFailed, in descriptor);
 
         int changed = CommitBreak(in descriptor);
+        VanillaWorldLiquidWakeup1458.WakeRegion(
+            _tiles,
+            descriptor.Bounds.X,
+            descriptor.Bounds.Y,
+            descriptor.Bounds.Width,
+            descriptor.Bounds.Height);
         MarkFrameNeighborhoodDirty(descriptor.Bounds);
         return new VanillaMultiTileObjectMutationResult(
             VanillaMultiTileObjectMutationStatus.Applied,

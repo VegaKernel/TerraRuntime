@@ -308,7 +308,7 @@ internal sealed class SandboxCreateWindow : Window
         IReadOnlyList<string> items,
         int selectedIndex)
     {
-        var dropDown = new DropDownList
+        var dropDown = new CyclingDropDownList
         {
             X = x,
             Y = y,

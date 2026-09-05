@@ -11,7 +11,6 @@ public enum ChestInteractionFrameStopReason : byte
     None = 0,
     InvalidJoinState = 1,
     MalformedChestPacket = 2,
-    GameIngressBackpressure = 3
 }
 
 /// <summary>
@@ -57,7 +56,6 @@ public sealed class ChestInteractionFrameSink :
     {
         ChestInteractionFrameStopReason.InvalidJoinState => TerrariaFrameRejectionCategory.InvalidState,
         ChestInteractionFrameStopReason.MalformedChestPacket => TerrariaFrameRejectionCategory.MalformedProtocol,
-        ChestInteractionFrameStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
         _ => inner is ITerrariaFrameRejectionSource source
             ? source.RejectionCategory
             : TerrariaFrameRejectionCategory.None
@@ -128,13 +126,12 @@ public sealed class ChestInteractionFrameSink :
                 return inner.OnFrame(in frame);
         }
 
-        if (posted || retryableReadRequest)
-            return TerrariaFrameSinkResult.Continue;
-
-        // Chest item/active-state mutations are discrete authoritative events and remain fail-closed. Read-only
-        // open/name requests are naturally retryable UI probes, so a transient queue backlog above does not tear
-        // down the connection.
-        return Stop(ChestInteractionFrameStopReason.GameIngressBackpressure);
+        // Read requests are naturally retryable. Item/active-state writes are discrete authoritative proposals:
+        // if the mailbox is full they fail closed for this action, but transient server backlog is not a protocol
+        // violation and must not tear down an otherwise healthy playing connection.
+        _ = posted;
+        _ = retryableReadRequest;
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private bool TryGetPlayingConnection(out ConnectionHandle connection)

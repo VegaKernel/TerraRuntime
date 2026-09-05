@@ -57,16 +57,16 @@ public sealed class NpcDamageLifecycleFrameSinkTests
     }
 
     [Fact]
-    public void Packet_28_backpressure_stops_connection()
+    public void Packet_28_backpressure_drops_claim_without_stopping_connection()
     {
         GameCommandSourceId source = GameCommandSourceId.FromConnection(9904);
         using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
         var sink = new ProjectileLifecycleFrameSink(source, bootstrap, new PassthroughSink(), new RejectingIngress());
         var state = new TerrariaNpcDamageState(1, 1, 10, 0f, 1, 0);
 
-        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(DamageFrame(in state)));
-        Assert.Equal(ProjectileLifecycleFrameStopReason.GameIngressBackpressure, sink.StopReason);
-        Assert.Equal(TerrariaFrameRejectionCategory.Backpressure, sink.RejectionCategory);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(DamageFrame(in state)));
+        Assert.Equal(ProjectileLifecycleFrameStopReason.None, sink.StopReason);
+        Assert.Equal(TerrariaFrameRejectionCategory.None, sink.RejectionCategory);
     }
 
     private static TerrariaFrame DamageFrame(in TerrariaNpcDamageState state)

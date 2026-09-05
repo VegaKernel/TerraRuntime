@@ -12,7 +12,6 @@ public enum NpcCatchFrameStopReason : byte
     InvalidJoinState = 1,
     MalformedPacket = 2,
     InvalidNpcSlot = 3,
-    GameIngressBackpressure = 4
 }
 
 /// <summary>Connection-owned packet-70 ingress; authoritative catch state is applied only by the game-loop owner.</summary>
@@ -44,7 +43,6 @@ public sealed class NpcCatchFrameSink : ITerrariaFrameSink, ITerrariaFrameReject
         NpcCatchFrameStopReason.InvalidJoinState => TerrariaFrameRejectionCategory.InvalidState,
         NpcCatchFrameStopReason.MalformedPacket => TerrariaFrameRejectionCategory.MalformedProtocol,
         NpcCatchFrameStopReason.InvalidNpcSlot => TerrariaFrameRejectionCategory.InvalidState,
-        NpcCatchFrameStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
         _ => inner is ITerrariaFrameRejectionSource rejection ? rejection.RejectionCategory : TerrariaFrameRejectionCategory.None
     };
 
@@ -62,9 +60,9 @@ public sealed class NpcCatchFrameSink : ITerrariaFrameSink, ITerrariaFrameReject
             return Stop(NpcCatchFrameStopReason.InvalidNpcSlot);
 
         var connection = new ConnectionHandle(source, player);
-        return ingress.TryPost(connection, in state)
-            ? TerrariaFrameSinkResult.Continue
-            : Stop(NpcCatchFrameStopReason.GameIngressBackpressure);
+        // Catch is a discrete authoritative proposal. Queue saturation rejects the action, not the connection.
+        _ = ingress.TryPost(connection, in state);
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private TerrariaFrameSinkResult Stop(NpcCatchFrameStopReason reason)

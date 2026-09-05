@@ -107,6 +107,22 @@ public sealed class ProjectileLifecycleFrameSinkTests
         Assert.Equal(1, sink.DroppedAuthorityUpdates);
     }
 
+    [Fact]
+    public void Bounded_game_ingress_rejection_drops_destroy_claim_without_stopping_connection()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(707);
+        using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
+        var sink = new ProjectileLifecycleFrameSink(source, bootstrap, new PassthroughSink(), new RejectingIngress());
+        var state = new TerrariaProjectileDestroyState(
+            new TerrariaProjectileKeyState(Spawner: 0, ProjectileIndex: 7, Generation: 2),
+            PositionX: 100f,
+            PositionY: 200f);
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(DestroyFrame(in state)));
+        Assert.Equal(ProjectileLifecycleFrameStopReason.None, sink.StopReason);
+        Assert.Equal(TerrariaFrameRejectionCategory.None, sink.RejectionCategory);
+    }
+
     private static TerrariaProjectileUpdateState CreateUpdate(byte spawner, int type, ushort index, ushort generation) =>
         new(
             new TerrariaProjectileKeyState(spawner, index, generation),

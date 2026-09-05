@@ -27,6 +27,20 @@ internal sealed class RuntimePlayerTransferTransaction
 
     public string? PlayerName => transfer.PlayerName;
 
+    public PlayerSpawnCommitRequest CreateWorldSpawnRequest(WorldRuntime runtime, byte spawnContext)
+    {
+        ArgumentNullException.ThrowIfNull(runtime);
+        return new PlayerSpawnCommitRequest(
+            transfer.Slot,
+            checked((short)runtime.World.RuntimeMetadata.SpawnX),
+            checked((short)runtime.World.RuntimeMetadata.SpawnY),
+            RespawnTimer: 0,
+            DeathsPve: 0,
+            DeathsPvp: 0,
+            Team: transfer.Player.Team,
+            SpawnContext: spawnContext);
+    }
+
     public static RuntimePlayerTransferTransaction? Detach(
         WorldRuntime sourceRuntime,
         ConnectionHandle sourceConnection,
@@ -92,6 +106,23 @@ internal sealed class RuntimePlayerTransferTransaction
             .AsTask().GetAwaiter().GetResult();
         if (!restored)
             throw new InvalidOperationException("Source runtime could not restore player state after failed transfer.");
+        completed = true;
+    }
+
+    public void RestoreSourceAtWorldSpawn(CancellationToken cancellationToken)
+    {
+        EnsureDetached();
+        bool restored = sourceRuntime.TransferIngress.AttachAsync(
+                sourceConnection,
+                transfer,
+                checked((short)sourceRuntime.World.RuntimeMetadata.SpawnX),
+                checked((short)sourceRuntime.World.RuntimeMetadata.SpawnY),
+                preserveWorldPosition: false,
+                forceRespawn: false,
+                cancellationToken)
+            .AsTask().GetAwaiter().GetResult();
+        if (!restored)
+            throw new InvalidOperationException("Source runtime could not restore player state at world spawn after failed client world transfer.");
         completed = true;
     }
 

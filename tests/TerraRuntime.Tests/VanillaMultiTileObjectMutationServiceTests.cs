@@ -166,6 +166,36 @@ public sealed class VanillaMultiTileObjectMutationServiceTests
     }
 
     [Fact]
+    public void Breaking_multi_tile_container_wakes_liquid_above_the_entire_vacated_footprint()
+    {
+        var tiles = CreateSupportedContainerWorld();
+        var metadata = new RecordingMetadataLifecycle();
+        var service = new VanillaMultiTileObjectMutationService(tiles);
+        Assert.True(service.TryPlaceAtOrigin(VanillaTileIds.Containers, 210, 161, metadata).Applied);
+
+        var water = tiles.Get(210, 159);
+        water.LiquidAmount = byte.MaxValue;
+        water.LiquidKind = WorldLiquidKind.Water;
+        tiles.Set(210, 159, in water);
+        tiles.LiquidUpdates.Clear();
+
+        Assert.True(service.TryBreakAt(210, 160, metadata).Applied);
+        Assert.True(tiles.LiquidUpdates.IsQueued(210, 159));
+        Assert.True(tiles.LiquidUpdates.IsQueued(210, 160));
+        Assert.True(tiles.LiquidUpdates.IsQueued(211, 161));
+
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 32, discoveryBudgetPerTick: 1);
+        Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[64];
+        _ = simulator.Tick(changes);
+
+        Assert.Equal((byte)0, tiles.Get(210, 159).LiquidAmount);
+        int massBelow = 0;
+        for (int y = 160; y <= 161; y++)
+            massBelow += tiles.Get(210, y).LiquidAmount + tiles.Get(211, y).LiquidAmount;
+        Assert.True(massBelow > 0);
+    }
+
+    [Fact]
     public void Malformed_object_frame_rejects_break_atomically()
     {
         var tiles = CreateSupportedContainerWorld();

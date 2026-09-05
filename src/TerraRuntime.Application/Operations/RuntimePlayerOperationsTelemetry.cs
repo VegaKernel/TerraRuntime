@@ -73,14 +73,15 @@ internal sealed class RuntimePlayerOperationsTelemetry : IRuntimePlayerEventSink
     public void PlayerSpawned(ConnectionHandle connection, in PlayerSpawnCommitRequest request)
     {
         pending.TryGetValue(connection.Source, out PendingPlayerState? state);
+        VanillaPlayerSpawnPosition1458.FromFloorTile(request.SpawnX, request.SpawnY, out float positionX, out float positionY);
         RuntimePlayerSnapshot snapshot = new(
             ConnectionId: connection.Source.Value,
             Slot: connection.Player.Slot.Value,
             Generation: connection.Player.Generation.Value,
             Name: state?.Name ?? string.Empty,
             Team: request.Team,
-            PositionX: request.SpawnX * 16f,
-            PositionY: request.SpawnY * 16f,
+            PositionX: positionX,
+            PositionY: positionY,
             VelocityX: 0f,
             VelocityY: 0f,
             SelectedItem: 0,

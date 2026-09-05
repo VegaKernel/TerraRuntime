@@ -56,15 +56,15 @@ public sealed class ObjectPlacementFrameSinkTests
     }
 
     [Fact]
-    public void Bounded_game_ingress_rejection_stops_connection()
+    public void Bounded_game_ingress_rejection_drops_action_without_stopping_connection()
     {
         GameCommandSourceId source = GameCommandSourceId.FromConnection(1804);
         using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
         var sink = new ObjectPlacementFrameSink(source, bootstrap, new PassthroughSink(), new RejectingIngress());
         var state = new TerrariaPlaceObjectState(10, 10, 21, 0, 0, -1, false);
 
-        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(Packet79(in state)));
-        Assert.Equal(ObjectPlacementFrameStopReason.GameIngressBackpressure, sink.StopReason);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Packet79(in state)));
+        Assert.Equal(ObjectPlacementFrameStopReason.None, sink.StopReason);
     }
 
     private static TerrariaFrame Packet79(in TerrariaPlaceObjectState state)

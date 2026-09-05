@@ -469,6 +469,91 @@ public sealed class Level1SandboxRuntimeTests
     }
 
     [Fact]
+    public async Task Sandbox_operations_create_vanilla_small_world_through_the_same_request_path_as_ui()
+    {
+        WorldRuntime primary = CreateRuntime("Primary", seed: 46);
+        using var registry = new WorldRegistry(capacity: 3);
+        Assert.True(registry.TryAdmit(primary, primary: true));
+        using var sandboxes = new SandboxHost(
+            registry,
+            BuiltInWorldGeneratorSource.Instance,
+            ServerWorldLoadPolicy.CreateLimits());
+        var operations = new SandboxOperations(
+            sandboxes,
+            Path.GetTempPath(),
+            defaultWidthTiles: 4200,
+            defaultHeightTiles: 1200);
+
+        Assert.True(operations.TryBuildGeneratedCreate(
+            "vanilla_form",
+            WorldIsolationLevel.InProcess,
+            "terraruntime:vanilla",
+            "42",
+            widthTiles: 4200,
+            heightTiles: 1200,
+            WorldGenerationGameMode.Classic,
+            WorldGenerationEvil.Corruption,
+            out SandboxOperation.Create? operation,
+            out string? buildError), buildError);
+        Assert.NotNull(operation);
+
+        string feedback = operations.Execute(operation);
+        Assert.Contains("accepted as operation", feedback, StringComparison.OrdinalIgnoreCase);
+        SandboxJobSnapshot queued = Assert.Single(sandboxes.CaptureJobs());
+        SandboxJobSnapshot completed = await sandboxes.WaitForJobAsync(
+            queued.Id,
+            TimeSpan.FromSeconds(30),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(SandboxJobStatus.Completed, completed.Status);
+        Assert.True(sandboxes.TryGetSandbox(new SandboxName("vanilla_form"), out SandboxSnapshot sandbox));
+        Assert.Equal(WorldRuntimeLifecycle.Running, sandbox.Runtime.Lifecycle);
+        SandboxWorldSource.Generated generated = Assert.IsType<SandboxWorldSource.Generated>(sandbox.Runtime.Source);
+        Assert.Equal(4200, generated.WidthTiles);
+        Assert.Equal(1200, generated.HeightTiles);
+    }
+
+    [Fact]
+    public void Sandbox_create_window_submits_selected_vanilla_small_request()
+    {
+        WorldRuntime primary = CreateRuntime("Primary", seed: 47);
+        using var registry = new WorldRegistry(capacity: 3);
+        Assert.True(registry.TryAdmit(primary, primary: true));
+        using var sandboxes = new SandboxHost(
+            registry,
+            BuiltInWorldGeneratorSource.Instance,
+            ServerWorldLoadPolicy.CreateLimits());
+        var operations = new SandboxOperations(
+            sandboxes,
+            Path.GetTempPath(),
+            defaultWidthTiles: 8400,
+            defaultHeightTiles: 2400);
+        using var window = new TerraRuntime.Application.TerminalUI.SandboxCreateWindow(operations);
+
+        SetPrivateViewText(window, "nameField", "vanilla_window");
+        SetPrivateViewText(window, "generatorDropDown", "terraruntime:vanilla");
+        SetPrivateViewText(window, "seedField", "42");
+        SetPrivateViewText(window, "sizeDropDown", "Small (4200x1200)");
+        SetPrivateViewText(window, "modeDropDown", "Classic");
+        SetPrivateViewText(window, "evilDropDown", "Corruption");
+
+        SandboxOperation.Create? captured = null;
+        window.CreateRequested += operation => captured = operation;
+        typeof(TerraRuntime.Application.TerminalUI.SandboxCreateWindow)
+            .GetMethod("Submit", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .Invoke(window, null);
+
+        Assert.NotNull(captured);
+        SandboxWorldSource.Generated generated = Assert.IsType<SandboxWorldSource.Generated>(captured!.Request.Source);
+        Assert.Equal("terraruntime:vanilla", generated.GeneratorId.Value);
+        Assert.Equal((ulong)42, generated.Seed);
+        Assert.Equal(4200, generated.WidthTiles);
+        Assert.Equal(1200, generated.HeightTiles);
+        Assert.Equal(WorldGenerationGameMode.Classic, generated.Options.GameMode);
+        Assert.Equal(WorldGenerationEvil.Corruption, generated.Options.Evil);
+    }
+
+    [Fact]
     public void Sandbox_command_parser_rejects_absolute_and_parent_world_paths()
     {
         string root = Path.Combine(Path.GetTempPath(), "TerraRuntimeSandboxAssets");
@@ -687,4 +772,17 @@ public sealed class Level1SandboxRuntimeTests
             public void Execute(IWorldGenerationContext context) => throw new InvalidOperationException("regen failure");
         }
     }
+    private static void SetPrivateViewText(object owner, string fieldName, string text)
+    {
+        var field = owner.GetType().GetField(
+            fieldName,
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        Assert.NotNull(field);
+        object? view = field!.GetValue(owner);
+        Assert.NotNull(view);
+        var property = view!.GetType().GetProperty("Text");
+        Assert.NotNull(property);
+        property!.SetValue(view, text);
+    }
+
 }

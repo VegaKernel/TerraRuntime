@@ -369,6 +369,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             terrain.CurrentRockLayer,
             grid.Height,
             profile.Special == VanillaSpecialWorldSeed1458.Remix);
+        workspace.SetVanillaLiquidLines(state.WaterLine, state.LavaLine);
         state.SnowMinX = new int[grid.Height];
         state.SnowMaxX = new int[grid.Height];
         context.ReportProgress(1d, "Finalizing Terraria Terrain layer state");

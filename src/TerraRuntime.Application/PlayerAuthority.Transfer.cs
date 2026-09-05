@@ -87,8 +87,10 @@ internal sealed partial class PlayerAuthority
         }
 
         PlayerStateSnapshot previous = transfer.Player;
-        float spawnPositionX = command.SpawnX * 16f;
-        float spawnPositionY = command.SpawnY * 16f;
+        // TerrariaServer 1.4.5.8 Player.Spawn_SetPosition treats SpawnX/SpawnY as the floor tile,
+        // not as the player's top-left pixel position. Keep the authoritative snapshot aligned with the exact
+        // client spawn formula so a cross-world transfer cannot place the 20x42 player body inside the floor.
+        VanillaPlayerSpawnPosition1458.FromFloorTile(command.SpawnX, command.SpawnY, out float spawnPositionX, out float spawnPositionY);
         bool preservePosition = command.PreserveWorldPosition && IsTransferPositionValid(previous.PositionX, previous.PositionY);
         float positionX = preservePosition ? previous.PositionX : spawnPositionX;
         float positionY = preservePosition ? previous.PositionY : spawnPositionY;
@@ -137,8 +139,7 @@ internal sealed partial class PlayerAuthority
         membership.Commit(state);
         transferProfiles.Restore(connection, transfer.Appearance, transfer.Equipment);
 
-        short eventSpawnX = checked((short)Math.Clamp((int)(positionX / 16f), short.MinValue, short.MaxValue));
-        short eventSpawnY = checked((short)Math.Clamp((int)(positionY / 16f), short.MinValue, short.MaxValue));
+        VanillaPlayerSpawnPosition1458.ToFloorTile(positionX, positionY, out short eventSpawnX, out short eventSpawnY);
         var spawn = new PlayerSpawnCommitRequest(
             connection.Player.Slot,
             eventSpawnX,

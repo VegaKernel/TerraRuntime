@@ -111,6 +111,11 @@ internal sealed class ChestPlacementState1458
     public double WorldSurface { get; private set; }
     public double RockLayer { get; private set; }
     public int UnderworldTop { get; private set; }
+    public int LavaLine { get; private set; }
+    public int HellChestIndex { get; set; }
+    public int JungleItemCount { get; set; }
+    public int WaterItemCount { get; set; }
+    public bool LivingMahoganyWandsGenerated { get; set; }
 
     public void EnsureInitialized(IWorldGenerationContext context, Workspace workspace)
     {
@@ -125,6 +130,7 @@ internal sealed class ChestPlacementState1458
         WorldSurface = layers.WorldSurface;
         RockLayer = layers.RockLayer;
         UnderworldTop = Math.Clamp(workspace.HeightTiles - 200, (int)RockLayer + 120, workspace.HeightTiles - 90);
+        LavaLine = workspace.VanillaLiquidLines?.LavaLine ?? checked((int)Math.Round(RockLayer));
     }
 }
 
@@ -155,9 +161,8 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
             throw new InvalidOperationException("Chest-placement Terraria generation requires Workspace.");
         state.EnsureInitialized(context, workspace);
         var grid = new RuntimeGrid(workspace);
-        var random = new VanillaRandom(
-            context.VanillaRandom ??
-            throw new InvalidOperationException("Chest-placement Terraria generation requires shared UnifiedRandom semantics."));
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Chest-placement Terraria generation requires shared UnifiedRandom semantics.");
 
         switch (stage)
         {
@@ -182,7 +187,7 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         IWorldGenerationContext context,
         Workspace workspace,
         RuntimeGrid grid,
-        IRandom random)
+        IWorldGenerationVanillaRandom random)
     {
         // Terraria 1.4.5.8 configuration uses CaveChestCount=35..40 scaled by world area and
         // UnderworldChestCount=10..15 scaled by world width. Preserve both independent budgets; the
@@ -212,7 +217,9 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
             int top = floor - 2;
             if (!CanPlaceChest(grid, x, top, allowLiquid: false, frameImportantRadius: 14))
                 continue;
-            if (!PlaceGeneratedChest(workspace, grid, x, top, GoldChestStyle))
+            WorldGenerationChestItem[] loot = ChestLoot1458.BuildBuried(
+                random, RequireBootstrap(), floor, state.RockLayer, state.LavaLine, grid.Height);
+            if (!PlaceGeneratedChest(workspace, grid, x, top, GoldChestStyle, loot))
                 continue;
             cavePlaced++;
         }
@@ -231,7 +238,9 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
             int top = floor - 2;
             if (!CanPlaceChest(grid, x, top, allowLiquid: false, frameImportantRadius: 12))
                 continue;
-            if (!PlaceGeneratedChest(workspace, grid, x, top, ShadowChestStyle))
+            int primary = NextHellChestPrimary();
+            WorldGenerationChestItem[] loot = ChestLoot1458.BuildShadow(random, RequireBootstrap(), primary);
+            if (!PlaceGeneratedChest(workspace, grid, x, top, ShadowChestStyle, loot))
                 continue;
             underworldPlaced++;
         }
@@ -245,7 +254,7 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         IWorldGenerationContext context,
         Workspace workspace,
         RuntimeGrid grid,
-        IRandom random)
+        IWorldGenerationVanillaRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
         // Source pass attempts floor(maxTilesX * 0.005) surface chests.
@@ -264,7 +273,8 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
             int top = surface - 2;
             if (surface > state.WorldSurface + 90 || !CanPlaceChest(grid, x, top, allowLiquid: false, frameImportantRadius: 20))
                 continue;
-            if (!PlaceGeneratedChest(workspace, grid, x, top, WoodenChestStyle))
+            WorldGenerationChestItem[] loot = ChestLoot1458.BuildSurface(random, RequireBootstrap());
+            if (!PlaceGeneratedChest(workspace, grid, x, top, WoodenChestStyle, loot))
                 continue;
             placed++;
         }
@@ -276,7 +286,7 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         IWorldGenerationContext context,
         Workspace workspace,
         RuntimeGrid grid,
-        IRandom random)
+        IWorldGenerationVanillaRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
         int target = grid.Width switch
@@ -305,7 +315,10 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
                 continue;
             if (!HasJungleMaterialNearby(grid, x, top, 24, 18))
                 continue;
-            if (!PlaceGeneratedChest(workspace, grid, x, top, IvyChestStyle))
+            int primary = NextJungleChestPrimary(random);
+            WorldGenerationChestItem[] loot = ChestLoot1458.BuildJungle(
+                random, RequireBootstrap(), state, primary, floor, state.RockLayer, state.LavaLine, grid.Height);
+            if (!PlaceGeneratedChest(workspace, grid, x, top, IvyChestStyle, loot))
                 continue;
             placed++;
         }
@@ -317,7 +330,7 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         IWorldGenerationContext context,
         Workspace workspace,
         RuntimeGrid grid,
-        IRandom random)
+        IWorldGenerationVanillaRandom random)
     {
         // WaterChests runs nine width-scaled placements before separate ocean-cave treasure.
         int target = Math.Max(1, (int)Math.Round(9d * grid.Width / 4200d));
@@ -343,7 +356,10 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
                 continue;
             if (!IsWaterCell(grid.At(x, top)) && !IsWaterCell(grid.At(x + 1, top)))
                 continue;
-            if (!PlaceGeneratedChest(workspace, grid, x, top, WaterChestStyle))
+            int primary = NextWaterChestPrimary(random);
+            WorldGenerationChestItem[] loot = ChestLoot1458.BuildWater(
+                random, RequireBootstrap(), primary, floor, state.RockLayer, state.LavaLine, grid.Height);
+            if (!PlaceGeneratedChest(workspace, grid, x, top, WaterChestStyle, loot))
                 continue;
             placed++;
         }
@@ -421,7 +437,8 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         RuntimeGrid grid,
         int left,
         int top,
-        int style)
+        int style,
+        ReadOnlySpan<WorldGenerationChestItem> loot)
     {
         WorldTile a = grid.At(left, top);
         WorldTile b = grid.At(left + 1, top);
@@ -441,7 +458,7 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
             tile.LiquidKind = WorldLiquidKind.Water;
         }
 
-        if (workspace.TryAddGeneratedChest(left, top, string.Empty, ReadOnlySpan<WorldChestItem>.Empty))
+        if (workspace.TryAddChest(left, top, string.Empty, loot))
             return true;
 
         grid.At(left, top) = a;
@@ -451,24 +468,58 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         return false;
     }
 
+    private int NextHellChestPrimary()
+    {
+        int[] items = RequireBootstrap().HellChestItems;
+        if (items.Length == 0)
+            throw new InvalidOperationException("WorldGen.Reset produced an empty hellChestItem cycle.");
+
+        int primary = items[state.HellChestIndex];
+        state.HellChestIndex++;
+        if (state.HellChestIndex >= items.Length)
+            state.HellChestIndex = 0;
+        return primary;
+    }
+
+    private int NextJungleChestPrimary(IWorldGenerationVanillaRandom random)
+    {
+        int primary = (state.JungleItemCount % 4) switch
+        {
+            0 => 211,
+            1 => 212,
+            2 => 213,
+            _ => 964
+        };
+        if (random.Next(15) == 0)
+            primary = 2292;
+        else if (random.Next(20) == 0)
+            primary = 3017;
+        state.JungleItemCount++;
+        return primary;
+    }
+
+    private int NextWaterChestPrimary(IWorldGenerationVanillaRandom random)
+    {
+        state.WaterItemCount++;
+        if (random.Next(10) == 0)
+            return 863;
+
+        switch (state.WaterItemCount)
+        {
+            case 1:
+                return 186;
+            case 2:
+                return 4404;
+            case 3:
+                return 277;
+            default:
+                state.WaterItemCount = 0;
+                return 187;
+        }
+    }
+
     private VanillaWorldGenerationBootstrapState1458 RequireBootstrap() =>
         state.Bootstrap ?? throw new InvalidOperationException("Chest-placement pass executed before bootstrap initialization.");
-
-    private interface IRandom
-    {
-        int Next();
-        int Next(int max);
-        int Next(int min, int max);
-        double NextDouble();
-    }
-
-    private sealed class VanillaRandom(IWorldGenerationVanillaRandom inner) : IRandom
-    {
-        public int Next() => inner.Next();
-        public int Next(int max) => inner.Next(max);
-        public int Next(int min, int max) => inner.Next(min, max);
-        public double NextDouble() => inner.NextDouble();
-    }
 
     private sealed class RuntimeGrid
     {

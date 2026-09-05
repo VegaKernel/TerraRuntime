@@ -11,7 +11,6 @@ public enum PlayerVitalsStopReason : byte
     None = 0,
     MalformedHealth = 1,
     MalformedMana = 2,
-    GameIngressBackpressure = 3
 }
 
 /// <summary>
@@ -61,7 +60,6 @@ public sealed class PlayerVitalsFrameSink :
             return StopReason switch
             {
                 PlayerVitalsStopReason.MalformedHealth or PlayerVitalsStopReason.MalformedMana => TerrariaFrameRejectionCategory.MalformedProtocol,
-                PlayerVitalsStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
                 _ => ClassifyBootstrapRejection(_bootstrap.StopReason)
             };
         }
@@ -150,7 +148,6 @@ public sealed class PlayerVitalsFrameSink :
         PlayerBootstrapStopReason.PlayerSlotMismatch => TerrariaFrameRejectionCategory.InvalidState,
         PlayerBootstrapStopReason.SectionWorkRateLimited => TerrariaFrameRejectionCategory.RateLimited,
         PlayerBootstrapStopReason.OutboundBackpressure or
-        PlayerBootstrapStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
         _ => TerrariaFrameRejectionCategory.None
     };
 

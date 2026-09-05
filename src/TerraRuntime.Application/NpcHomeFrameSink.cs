@@ -11,7 +11,6 @@ public enum NpcHomeFrameStopReason : byte
     None = 0,
     InvalidJoinState = 1,
     MalformedHomeUpdate = 2,
-    GameIngressBackpressure = 3
 }
 
 /// <summary>
@@ -45,7 +44,6 @@ public sealed class NpcHomeFrameSink : ITerrariaFrameSink, ITerrariaFrameRejecti
     {
         NpcHomeFrameStopReason.InvalidJoinState => TerrariaFrameRejectionCategory.InvalidState,
         NpcHomeFrameStopReason.MalformedHomeUpdate => TerrariaFrameRejectionCategory.MalformedProtocol,
-        NpcHomeFrameStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
         _ => inner is ITerrariaFrameRejectionSource rejection
             ? rejection.RejectionCategory
             : TerrariaFrameRejectionCategory.None
@@ -72,9 +70,10 @@ public sealed class NpcHomeFrameSink : ITerrariaFrameSink, ITerrariaFrameRejecti
         }
 
         var connection = new ConnectionHandle(source, player);
-        return ingress.TryPost(connection, in state)
-            ? TerrariaFrameSinkResult.Continue
-            : Stop(NpcHomeFrameStopReason.GameIngressBackpressure);
+        // Housing assignment is a discrete authoritative proposal. Transient mailbox pressure fails closed for
+        // the assignment while preserving the playing session; malformed/state-invalid traffic still stops above.
+        _ = ingress.TryPost(connection, in state);
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private TerrariaFrameSinkResult Stop(NpcHomeFrameStopReason reason)

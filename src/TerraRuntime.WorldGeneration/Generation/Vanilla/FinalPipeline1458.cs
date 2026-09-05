@@ -63,7 +63,6 @@ public sealed class SourceBackedFinal1458 : IWorldGenerationProvider
                 new FinalPass1458(FinalStage1458.RemoveBrokenTraps, state));
             Add(builder, FinalCleanupId, RemoveBrokenTrapsId,
                 new FinalPass1458(FinalStage1458.FinalCleanup, state));
-
             builder.Add(CloneDescriptor(entry.Descriptor, [FinalCleanupId]), entry.Pass);
         }
     }

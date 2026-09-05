@@ -98,7 +98,7 @@ public sealed class ChestInteractionFrameSinkTests
     }
 
     [Fact]
-    public void Chest_item_backpressure_remains_connection_stopping_because_mutation_is_discrete()
+    public void Chest_item_backpressure_drops_mutation_without_stopping_connection()
     {
         GameCommandSourceId source = GameCommandSourceId.FromConnection(905);
         using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
@@ -112,8 +112,8 @@ public sealed class ChestInteractionFrameSinkTests
             ItemNetId = 1
         });
 
-        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(in item));
-        Assert.Equal(ChestInteractionFrameStopReason.GameIngressBackpressure, sink.StopReason);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(in item));
+        Assert.Equal(ChestInteractionFrameStopReason.None, sink.StopReason);
     }
 
     [Fact]

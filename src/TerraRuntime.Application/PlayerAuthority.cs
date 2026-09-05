@@ -544,14 +544,15 @@ internal sealed partial class PlayerAuthority
 
         CommittedSpawns++;
         damageImmunity.ResetPvp(request.ClaimedSlot);
+        VanillaPlayerSpawnPosition1458.FromFloorTile(request.SpawnX, request.SpawnY, out float spawnPositionX, out float spawnPositionY);
         membership.Commit(new RuntimePlayerMember
         {
             Connection = spawn.Connection,
             Revision = 1,
             Slot = request.ClaimedSlot,
             Team = request.Team,
-            PositionX = request.SpawnX * 16f,
-            PositionY = request.SpawnY * 16f,
+            PositionX = spawnPositionX,
+            PositionY = spawnPositionY,
             HasHealth = hasPending && pending!.HasHealth,
             Life = hasPending ? pending!.Life : (short)0,
             MaxLife = hasPending ? pending!.MaxLife : (short)0,
@@ -579,8 +580,9 @@ internal sealed partial class PlayerAuthority
             return;
 
         player.Team = request.Team;
-        player.PositionX = request.SpawnX * 16f;
-        player.PositionY = request.SpawnY * 16f;
+        VanillaPlayerSpawnPosition1458.FromFloorTile(request.SpawnX, request.SpawnY, out float respawnPositionX, out float respawnPositionY);
+        player.PositionX = respawnPositionX;
+        player.PositionY = respawnPositionY;
         // A respawn is a movement discontinuity. Never carry pre-death packet-13 transient bits into
         // the new life before the client's first fresh movement packet arrives.
         player.ControlFlags = 0;
@@ -728,7 +730,7 @@ internal sealed partial class PlayerAuthority
     private static void ToPlayerPosition(int landingTileX, int floorTileY, out float positionX, out float positionY)
     {
         positionX = landingTileX * 16f - VanillaBasePlayerWidth * 0.5f + 8f;
-        positionY = floorTileY * 16f + 16f - VanillaBasePlayerHeight;
+        positionY = floorTileY * 16f - VanillaBasePlayerHeight;
     }
 
     private void ApplyPlayerMovement(PlayerMovementRuntimeCommand movement)

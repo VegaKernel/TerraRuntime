@@ -150,7 +150,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             SchemeName = "Base",
             Visible = false
         };
-        worldSelector = new DropDownList
+        worldSelector = new CyclingDropDownList
         {
             X = 9,
             Y = 1,

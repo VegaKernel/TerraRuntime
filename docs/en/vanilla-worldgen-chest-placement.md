@@ -32,9 +32,11 @@ All four use `Containers` tile `21`, the existing source-backed 2 × 2 chest obj
 
 The Ivy Chest and Water Chest style identities were cross-checked against the official Terraria Wiki: `Containers` style `10` is Ivy Chest and style `17` is Water Chest.
 
-## Loot boundary
+## Loot ownership
 
-This block deliberately starts generated chests with zero persisted item slots. The important invariant being established here is structural ownership: every generated chest tile object has exactly one matching `.wld` chest record. Vanilla chest loot tables, stack rolls, prefixes and progression-dependent uniqueness are the next loot-parity layer and must not be approximated by stuffing arbitrary items into otherwise-correct chests.
+Ordinary generated chests now receive source-backed default-world loot at placement time, in the same generation phase that still knows the chest family and depth branch. This matters because `WorldGen.AddBuriedChest` consumes the shared `genRand` stream while placing and filling the container; a later cleanup pass cannot reconstruct that ordering without changing downstream world generation.
+
+The current clean-room port covers the default-world surface, underground, cavern, Underworld/Shadow, jungle and water branches used by these four passes, including their primary-item families, stack ranges and the stateful hell/jungle/water cycles. The previous late `FinalCleanup` chest filler has been removed rather than kept as a fallback. Prefix generation remains outside this slice because Terraria routes `Prefix(-1)` through item-prefix RNG rather than the world-generation `genRand` surface.
 
 ## Acceptance
 
@@ -45,4 +47,4 @@ Production acceptance still requires:
 3. full `.wld` encode/decode through `TerraRuntime.WorldVerify`;
 4. successful boot by the pinned official TerrariaServer 1.4.5.8 executable.
 
-This proves persistent chest topology and file validity. It does not yet claim exact vanilla chest counts, coordinates, RNG consumption or loot parity.
+Acceptance additionally verifies that canonical Small worlds contain non-empty loot for every generated chest, valid vanilla item ids, the expected primary families for Wooden/Gold/Shadow/Ivy/Water chest styles, and a non-trivial secondary-loot volume. This still does not claim bit-identical chest coordinates or complete parity for chest families owned by world-generation passes outside this four-pass slice.

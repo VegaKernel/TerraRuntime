@@ -13,7 +13,6 @@ public enum PlayerCombatFrameStopReason : byte
     MalformedPvpToggle = 2,
     MalformedTeam = 3,
     MalformedHurt = 4,
-    GameIngressBackpressure = 5
 }
 
 /// <summary>
@@ -53,7 +52,6 @@ public sealed class PlayerCombatFrameSink : ITerrariaFrameSink, ITerrariaFrameRe
     {
         PlayerCombatFrameStopReason.InvalidJoinState => TerrariaFrameRejectionCategory.InvalidState,
         PlayerCombatFrameStopReason.MalformedPvpToggle or PlayerCombatFrameStopReason.MalformedTeam or PlayerCombatFrameStopReason.MalformedHurt => TerrariaFrameRejectionCategory.MalformedProtocol,
-        PlayerCombatFrameStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
         _ => inner is ITerrariaFrameRejectionSource nested ? nested.RejectionCategory : TerrariaFrameRejectionCategory.None
     };
 
@@ -104,9 +102,10 @@ public sealed class PlayerCombatFrameSink : ITerrariaFrameSink, ITerrariaFrameRe
             return Stop(PlayerCombatFrameStopReason.MalformedHurt);
         if (!state.Pvp)
             return inner.OnFrame(in frame);
-        return ingress.TryPostPvpHit(connection, in state)
-            ? TerrariaFrameSinkResult.Continue
-            : Stop(PlayerCombatFrameStopReason.GameIngressBackpressure);
+        // PVP hurt is only a claim until authoritative validation. If the mailbox is full, dropping the claim
+        // fails closed for damage and is safer than converting transient server load into Connection lost.
+        _ = ingress.TryPostPvpHit(connection, in state);
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private bool TryGetPlayingConnection(out ConnectionHandle connection)

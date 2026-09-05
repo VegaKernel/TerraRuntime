@@ -850,7 +850,7 @@ internal sealed class RuntimeOverviewDashboard : View
         SchemeName = BaseSchemeName
     };
 
-    private static DropDownList CreateFeedDropDown(int x, int width, IEnumerable<string> items) => new()
+    private static DropDownList CreateFeedDropDown(int x, int width, IEnumerable<string> items) => new CyclingDropDownList()
     {
         X = x,
         Y = 0,

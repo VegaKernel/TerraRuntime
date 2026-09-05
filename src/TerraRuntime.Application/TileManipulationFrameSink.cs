@@ -11,7 +11,6 @@ public enum TileManipulationFrameStopReason : byte
     None = 0,
     InvalidJoinState = 1,
     MalformedManipulation = 2,
-    GameIngressBackpressure = 3
 }
 
 /// <summary>
@@ -50,7 +49,6 @@ public sealed class TileManipulationFrameSink : ITerrariaFrameSink, ITerrariaFra
     {
         TileManipulationFrameStopReason.InvalidJoinState => TerrariaFrameRejectionCategory.InvalidState,
         TileManipulationFrameStopReason.MalformedManipulation => TerrariaFrameRejectionCategory.MalformedProtocol,
-        TileManipulationFrameStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
         _ => inner is ITerrariaFrameRejectionSource source
             ? source.RejectionCategory
             : TerrariaFrameRejectionCategory.None
@@ -87,9 +85,11 @@ public sealed class TileManipulationFrameSink : ITerrariaFrameSink, ITerrariaFra
         if (decode != TerrariaTileManipulationDecodeResult.Decoded)
             return Stop(TileManipulationFrameStopReason.MalformedManipulation);
 
-        return ingress.TryPost(connection, in state)
-            ? TerrariaFrameSinkResult.Continue
-            : Stop(TileManipulationFrameStopReason.GameIngressBackpressure);
+        // A decoded tile mutation is a discrete proposal. If the authoritative mailbox is temporarily full,
+        // fail closed for this action but keep the playing connection alive. Protocol/rate abuse is handled
+        // above this layer; internal queue pressure must never become a client-visible disconnect primitive.
+        _ = ingress.TryPost(connection, in state);
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private bool TryGetPlayingConnection(out ConnectionHandle connection)

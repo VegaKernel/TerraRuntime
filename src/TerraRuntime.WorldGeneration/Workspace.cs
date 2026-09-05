@@ -4,6 +4,7 @@ using TerraRuntime.World;
 namespace TerraRuntime.WorldGeneration.Runtime;
 
 internal readonly record struct VanillaPyramidCandidate1458(int X, int Y);
+internal readonly record struct VanillaLiquidLines1458(int WaterLine, int LavaLine);
 
 /// <summary>
 /// Isolated mutable tile workspace for a candidate generated world. Writes bypass live-world dirty tracking because
@@ -38,6 +39,7 @@ public sealed class Workspace :
     private VanillaWorldSeedProfile1458 vanillaSeedProfile;
     private VanillaWorldGenerationBootstrapState1458? vanillaBootstrapState;
     private TerrainGenerationState1458? vanillaTerrainState;
+    private VanillaLiquidLines1458? vanillaLiquidLines;
     private DungeonSetupProfile1458? vanillaDungeonSetupProfile;
     private DungeonGraph1458? vanillaDungeonGraph;
     private readonly List<VanillaPyramidCandidate1458> vanillaPyramidCandidates = [];
@@ -58,6 +60,7 @@ public sealed class Workspace :
     internal VanillaWorldSeedProfile1458 VanillaSeedProfile => vanillaSeedProfile;
     internal VanillaWorldGenerationBootstrapState1458? VanillaBootstrapState => vanillaBootstrapState;
     internal TerrainGenerationState1458? VanillaTerrainState => vanillaTerrainState;
+    internal VanillaLiquidLines1458? VanillaLiquidLines => vanillaLiquidLines;
     internal DungeonSetupProfile1458? VanillaDungeonSetupProfile => vanillaDungeonSetupProfile;
     internal DungeonGraph1458? VanillaDungeonGraph => vanillaDungeonGraph;
 
@@ -66,6 +69,8 @@ public sealed class Workspace :
         vanillaBootstrapState = value ?? throw new ArgumentNullException(nameof(value));
     internal void SetVanillaTerrainState(TerrainGenerationState1458 value) =>
         vanillaTerrainState = value;
+    internal void SetVanillaLiquidLines(int waterLine, int lavaLine) =>
+        vanillaLiquidLines = new VanillaLiquidLines1458(waterLine, lavaLine);
     internal void SetVanillaDungeonSetupProfile(DungeonSetupProfile1458 value) =>
         vanillaDungeonSetupProfile = value;
     internal void SetVanillaDungeonGraph(DungeonGraph1458 value) =>

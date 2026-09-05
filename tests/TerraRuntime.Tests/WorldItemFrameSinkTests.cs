@@ -91,6 +91,21 @@ public sealed class WorldItemFrameSinkTests
         Assert.Equal(0, ingress.RemoveCount);
     }
 
+
+    [Fact]
+    public void World_item_backpressure_drops_mutations_without_stopping_connection()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(906);
+        using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
+        var sink = new WorldItemFrameSink(source, bootstrap, new PassthroughSink(), new RejectingWorldItemIngress());
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(ItemDrop(itemIndex: 400, stack: 3, itemNetId: 1)));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(ItemDrop(itemIndex: 12, stack: 4, itemNetId: 2)));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(ItemRemoval(itemIndex: 12)));
+        Assert.Equal(WorldItemFrameStopReason.None, sink.StopReason);
+        Assert.Equal(TerrariaFrameRejectionCategory.None, sink.RejectionCategory);
+    }
+
     private static PlayerBootstrapFrameSink CreatePlayingBootstrap(GameCommandSourceId source)
     {
         var spawnIngress = new CommittingSpawnIngress();
@@ -279,4 +294,12 @@ public sealed class WorldItemFrameSinkTests
             return true;
         }
     }
+    private sealed class RejectingWorldItemIngress : IWorldItemIngress
+    {
+        public bool TryPostAllocate(ConnectionHandle connection, in WorldItemDropStateUpdate state) => false;
+        public bool TryPostDrop(ConnectionHandle connection, short slot, in WorldItemDropStateUpdate state) => false;
+        public bool TryPostRemove(ConnectionHandle connection, short slot) => false;
+        public bool TryPostOwner(ConnectionHandle connection, short slot, in WorldItemOwnerStateUpdate state) => false;
+    }
+
 }

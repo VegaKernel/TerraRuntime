@@ -11,7 +11,6 @@ public enum ObjectPlacementFrameStopReason : byte
     None = 0,
     InvalidJoinState = 1,
     MalformedPlacement = 2,
-    GameIngressBackpressure = 3
 }
 
 /// <summary>
@@ -50,7 +49,6 @@ public sealed class ObjectPlacementFrameSink : ITerrariaFrameSink, ITerrariaFram
     {
         ObjectPlacementFrameStopReason.InvalidJoinState => TerrariaFrameRejectionCategory.InvalidState,
         ObjectPlacementFrameStopReason.MalformedPlacement => TerrariaFrameRejectionCategory.MalformedProtocol,
-        ObjectPlacementFrameStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
         _ => inner is ITerrariaFrameRejectionSource source
             ? source.RejectionCategory
             : TerrariaFrameRejectionCategory.None
@@ -73,9 +71,10 @@ public sealed class ObjectPlacementFrameSink : ITerrariaFrameSink, ITerrariaFram
         if (decode != TerrariaPlaceObjectDecodeResult.Decoded)
             return Stop(ObjectPlacementFrameStopReason.MalformedPlacement);
 
-        return ingress.TryPost(connection, in state)
-            ? TerrariaFrameSinkResult.Continue
-            : Stop(ObjectPlacementFrameStopReason.GameIngressBackpressure);
+        // Placement is an authoritative proposal. On transient mailbox saturation the placement simply does
+        // not commit; the socket survives and authoritative tile/object replication remains the source of truth.
+        _ = ingress.TryPost(connection, in state);
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private bool TryGetPlayingConnection(out ConnectionHandle connection)

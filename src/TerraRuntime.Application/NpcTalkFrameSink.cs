@@ -12,7 +12,6 @@ public enum NpcTalkFrameStopReason : byte
     InvalidJoinState = 1,
     MalformedTalkPacket = 2,
     InvalidNpcSlot = 3,
-    GameIngressBackpressure = 4
 }
 
 /// <summary>
@@ -47,7 +46,6 @@ public sealed class NpcTalkFrameSink : ITerrariaFrameSink, ITerrariaFrameRejecti
         NpcTalkFrameStopReason.InvalidJoinState => TerrariaFrameRejectionCategory.InvalidState,
         NpcTalkFrameStopReason.MalformedTalkPacket => TerrariaFrameRejectionCategory.MalformedProtocol,
         NpcTalkFrameStopReason.InvalidNpcSlot => TerrariaFrameRejectionCategory.InvalidState,
-        NpcTalkFrameStopReason.GameIngressBackpressure => TerrariaFrameRejectionCategory.Backpressure,
         _ => inner is ITerrariaFrameRejectionSource rejection
             ? rejection.RejectionCategory
             : TerrariaFrameRejectionCategory.None

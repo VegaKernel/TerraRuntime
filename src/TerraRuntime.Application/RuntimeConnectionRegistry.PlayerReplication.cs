@@ -125,8 +125,7 @@ internal sealed partial class RuntimeConnectionRegistry
         if (!_endpoints.TryGetValue(source, out RuntimeConnectionEndpoint? endpoint))
             return;
 
-        float positionX = request.SpawnX * VanillaTileSizePixels;
-        float positionY = request.SpawnY * VanillaTileSizePixels;
+        VanillaPlayerSpawnPosition1458.FromFloorTile(request.SpawnX, request.SpawnY, out float positionX, out float positionY);
         endpoint.MarkPlaying(connection.Player);
         endpoint.UpdatePosition(positionX, positionY);
         Interlocked.Exchange(ref _playingEndpoints[request.ClaimedSlot.Value], endpoint);
@@ -155,8 +154,7 @@ internal sealed partial class RuntimeConnectionRegistry
             !endpoint.TryGetPlayingPlayer(out PlayerHandle player) || player != connection.Player)
             return;
 
-        float positionX = request.SpawnX * VanillaTileSizePixels;
-        float positionY = request.SpawnY * VanillaTileSizePixels;
+        VanillaPlayerSpawnPosition1458.FromFloorTile(request.SpawnX, request.SpawnY, out float positionX, out float positionY);
         // Respawn is a position discontinuity represented by packet 12. Any retained pre-death packet-13
         // baseline is now stale and must not be reused by a later AOI-enter resync.
         endpoint.ClearLatestMovementFrame(connection.Player);
