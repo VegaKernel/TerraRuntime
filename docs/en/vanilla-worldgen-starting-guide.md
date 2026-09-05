@@ -12,7 +12,7 @@ For canonical ordinary worlds the production plan grows from 88 to 89 entries. `
 
 A generated town NPC is not a tile. Keeping the Guide only in transient generation code would make the fresh world appear correct until persistence, then silently lose the NPC.
 
-`RuntimeWorldGenerationWorkspace` therefore owns a generated town-NPC side table alongside the existing generated chest side table. Generation registers the NPC before publication; `RuntimeWorldCreationPersistencePipeline` captures that side table with the finalized candidate; `WorldFileFreshComposer326` forwards it to the existing canonical `WorldFileNpcEncoder`.
+`Workspace` therefore owns a generated town-NPC side table alongside the existing generated chest side table. Generation registers the NPC before publication; `RuntimeWorldCreationPersistencePipeline` captures that side table with the finalized candidate; `WorldFileFreshComposer326` forwards it to the existing canonical `WorldFileNpcEncoder`.
 
 The composer then reloads the completed byte image through `WorldFileLoader` and verifies that the encoded NPC counts survive the transaction. This keeps generated NPC data inside the same candidate-to-file atomic boundary as tiles and chests.
 

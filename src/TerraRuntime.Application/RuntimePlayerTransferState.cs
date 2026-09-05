@@ -2,7 +2,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Protocol-neutral player payload captured and retired at one authoritative source-world barrier.

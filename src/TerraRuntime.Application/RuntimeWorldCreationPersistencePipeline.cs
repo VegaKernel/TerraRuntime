@@ -3,7 +3,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.HostContracts.WorldGeneration;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal enum RuntimeWorldCreationPersistenceStatus : byte
 {

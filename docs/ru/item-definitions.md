@@ -7,14 +7,14 @@ TerraRuntime использует намеренно разреженный sour
 ```mermaid
 flowchart LR
     Source["TerrariaServer 1.4.5.8"] --> Probe["Pinned source contracts"]
-    Probe --> Catalog["VanillaItemDefinitionCatalog"]
+    Probe --> Catalog["VanillaDefinitionCatalog"]
     Catalog --> Placement["Placement"]
     Catalog --> Tools["Tool authority"]
     Catalog --> WorldDrop["World-item materialization"]
     WorldDrop --> Prefixes["VanillaItemPrefixCatalog"]
 ```
 
-`VanillaItemIds` владеет content identity. `TerraRuntime.Gameplay.Items.VanillaItemDefinitionCatalog` владеет неизменяемыми проверенными item-фактами, а связанные object-placement/prefix catalogs находятся в том же gameplay-слое. Runtime inventory/world-item stores в Core/application-коде владеют mutable stack, prefix, slot, generation и revision.
+`VanillaItemIds` владеет content identity. `TerraRuntime.Gameplay.Items.VanillaDefinitionCatalog` владеет неизменяемыми проверенными item-фактами, а связанные object-placement/prefix catalogs находятся в том же gameplay-слое. Runtime inventory/world-item stores в Core/application-коде владеют mutable stack, prefix, slot, generation и revision.
 
 ## Проверенные capabilities
 

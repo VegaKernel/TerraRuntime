@@ -1,6 +1,6 @@
 using TerraRuntime.World;
 
-namespace TerraRuntime.Operations;
+namespace TerraRuntime.Application.Operations;
 
 internal readonly record struct RuntimeWorldPersistenceSnapshot(
     bool AcceptingRequests,

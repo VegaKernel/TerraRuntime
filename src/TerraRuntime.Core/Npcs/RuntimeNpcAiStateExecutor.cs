@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 /// <summary>
 /// State-only NPC AI step. World side effects such as spawns, projectiles, transforms and tile actions

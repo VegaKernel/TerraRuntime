@@ -1,11 +1,11 @@
 using TerraRuntime.Contracts.Diagnostics;
-using TerraRuntime.Diagnostics;
-using TerraRuntime.Operations;
-using TerraRuntime.TerminalUI;
+using TerraRuntime.Application.Diagnostics;
+using TerraRuntime.Application.Operations;
+using TerraRuntime.Application.TerminalUI;
 using StructuredLogLevel = TerraRuntime.Contracts.Diagnostics.RuntimeLogLevel;
-using OperationsLogLevel = TerraRuntime.Operations.RuntimeLogLevel;
+using OperationsLogLevel = TerraRuntime.Application.Operations.OperationsLogLevel;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal sealed class RuntimeHostLog : IAsyncDisposable
 {

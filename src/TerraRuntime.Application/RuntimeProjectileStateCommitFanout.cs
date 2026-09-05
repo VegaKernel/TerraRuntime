@@ -1,7 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Keeps authoritative projectile commits available to independent replication and operations observers

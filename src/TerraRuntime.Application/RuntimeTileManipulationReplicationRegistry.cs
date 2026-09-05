@@ -5,7 +5,7 @@ using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Relays accepted packet-17 tile effects, committed packet-79 object placements and server-authored packet-19

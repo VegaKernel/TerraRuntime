@@ -33,7 +33,7 @@ flowchart LR
 
 ## Финальный overlay из восьми проходов
 
-`SourceBackedVanillaWorldGenerationFinal1458` завершает ordinary canonical sequence после `Micro Biomes` последними восемью регистрациями TerrariaServer 1.4.5.8:
+`SourceBackedFinal1458` завершает ordinary canonical sequence после `Micro Biomes` последними восемью регистрациями TerrariaServer 1.4.5.8:
 
 1. `Settle Liquids Again`
 2. `Cactus, Palm Trees, & Coral`
@@ -57,15 +57,15 @@ flowchart LR
 
 Synthetic noncanonical dimensions намеренно воспроизводят compatibility provider. Special и secret profiles также используют его, кроме узкого source-backed исключения: чистый профиль `Don't Dig Up`/Remix на canonical размере исполняет проверенные ветви `Reset` и `Terrain`, а затем возвращается к compatibility-проходам. Он не включает ordinary source-shaped overlays или canonical structural checks. Zenith, комбинации специальных переключателей и любой secret switch остаются только compatibility-путём, поскольку их поздние pass-модификации ещё не перенесены.
 
-Production-регистрация в `BuiltInWorldGeneratorSource` разрешает `terraruntime:vanilla` в `SourceBackedVanillaWorldGenerationFinal1458`. Более ранние overlay-классы остаются внутренними слоями этой цепочки, а не отдельными публичными генераторами.
+Production-регистрация в `BuiltInWorldGeneratorSource` разрешает `terraruntime:vanilla` в `SourceBackedFinal1458`. Более ранние overlay-классы остаются внутренними слоями этой цепочки, а не отдельными публичными генераторами.
 
 ## Persistence и authority
 
-Generation работает с неопубликованным `RuntimeWorldGenerationWorkspace` поверх contiguous `WorldTileStore`. Tiles, chests, metadata стартовых town NPC, spawn/dungeon anchors и layers остаются candidate state до успешной validation. Generation passes не изменяют live network-visible world.
+Generation работает с неопубликованным `Workspace` поверх contiguous `WorldTileStore`. Tiles, chests, metadata стартовых town NPC, spawn/dungeon anchors и layers остаются candidate state до успешной validation. Generation passes не изменяют live network-visible world.
 
 `Final Cleanup` отвергает tile/wall ID вне закреплённых vanilla catalogs и неизвестные runtime tile flags до передачи результата обычному world-generation finalizer и fresh `.wld` v326 composer.
 
-`RuntimeWorldGenerationFinalizer` теперь требует fail-closed `VanillaWorldGenerationValidator1458` перед публикацией:
+`Finalizer` теперь требует fail-closed `Validator1458` перед публикацией:
 
 - `Finalized` возвращается только когда структурный валидатор даёт `Valid`;
 - любой `InvalidTileType`, `InvalidWallType`, `InvalidLiquid`, orphan frame-important object, chest-anchor mismatch, дубликат сундука, объект вне границ, отсутствие dungeon/temple, нарушение ocean bounds или невалидный spawn/beam даёт `ValidationFailed`, и candidate отбрасывается, не достигая `WorldFileFreshComposer326`.
@@ -87,7 +87,7 @@ Generation работает с неопубликованным `RuntimeWorldGen
 
 `VanillaWorldGenerationFullIntegrationTests` является внутрипроцессным executable proof, дополняющим нативный acceptance gate:
 
-- генерирует полный `4200x1200` ordinary canonical мир через `BuiltInWorldGeneratorSource`/`SourceBackedVanillaWorldGenerationFinal1458` (114-plan до `Final Cleanup`);
+- генерирует полный `4200x1200` ordinary canonical мир через `BuiltInWorldGeneratorSource`/`SourceBackedFinal1458` (114-plan до `Final Cleanup`);
 - проверяет длину плана и то, что каждый tile/wall id, shape и flag находятся в границах `VanillaTileIds`/`VanillaWallIds`/known-flag — тот же инвариант, что и в `Final Cleanup`;
 - убеждается, что сгенерированные сундуки образуют плотные `2x2` объекты `Containers` с уникальными якорями, что side-table переживает fresh `.wld` v326 композицию и что spawn/dungeon/layers/bootstrap находятся в канонических диапазонах;
 - утверждает, что стартовый town NPC `Guide` (`netId 22`, имя `Andrew`) выпускается ровно один раз в `spawn * 16` и делает round-trip через `WorldFileFreshComposer326`;

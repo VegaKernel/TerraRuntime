@@ -6,7 +6,7 @@ using TerraRuntime.Core;
 using TerraRuntime.World;
 using TerraRuntime.Gameplay.Worlds;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 [Flags]
 internal enum RuntimeTownCommerceMissingFacts1458 : ushort

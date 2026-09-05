@@ -3,16 +3,16 @@ using TerraRuntime.HostContracts.TerminalUI;
 namespace TerraRuntime.Extensibility;
 
 internal sealed class TerminalDashboardRegistry :
-    ITerraRuntimeTerminalDashboardRegistry,
-    ITerraRuntimeTerminalDashboardSource
+    IDashboardRegistry,
+    IDashboardSource
 {
     private const int MaximumDashboards = 32;
 
     private readonly object gate = new();
-    private readonly Dictionary<string, ITerraRuntimeTerminalDashboardProvider> providers =
+    private readonly Dictionary<string, IDashboardProvider> providers =
         new(StringComparer.OrdinalIgnoreCase);
 
-    public bool TryRegister(ITerraRuntimeTerminalDashboardProvider provider)
+    public bool TryRegister(IDashboardProvider provider)
     {
         ArgumentNullException.ThrowIfNull(provider);
         string id = NormalizeId(provider.Id);
@@ -36,14 +36,14 @@ internal sealed class TerminalDashboardRegistry :
             return providers.Remove(id.Trim());
     }
 
-    public ReadOnlyMemory<ITerraRuntimeTerminalDashboardProvider> CaptureDashboards()
+    public ReadOnlyMemory<IDashboardProvider> CaptureDashboards()
     {
         lock (gate)
         {
             if (providers.Count == 0)
-                return ReadOnlyMemory<ITerraRuntimeTerminalDashboardProvider>.Empty;
+                return ReadOnlyMemory<IDashboardProvider>.Empty;
 
-            ITerraRuntimeTerminalDashboardProvider[] snapshot = providers.Values.ToArray();
+            IDashboardProvider[] snapshot = providers.Values.ToArray();
             Array.Sort(
                 snapshot,
                 static (left, right) =>
@@ -86,7 +86,7 @@ internal sealed class TerminalDashboardRegistry :
         return normalized;
     }
 
-    internal sealed class Scope : ITerraRuntimeTerminalDashboardRegistry, IDisposable
+    internal sealed class Scope : IDashboardRegistry, IDisposable
     {
         private readonly TerminalDashboardRegistry owner;
         private readonly object gate = new();
@@ -95,7 +95,7 @@ internal sealed class TerminalDashboardRegistry :
 
         public Scope(TerminalDashboardRegistry owner) => this.owner = owner;
 
-        public bool TryRegister(ITerraRuntimeTerminalDashboardProvider provider)
+        public bool TryRegister(IDashboardProvider provider)
         {
             ArgumentNullException.ThrowIfNull(provider);
             lock (gate)

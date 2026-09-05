@@ -56,7 +56,7 @@ internal sealed class HostModuleLoadContext : AssemblyLoadContext
 
     private static IReadOnlyDictionary<string, Assembly> CreateSharedContractAssemblies()
     {
-        Assembly hostContracts = typeof(ITerraRuntimeHostModule).Assembly;
+        Assembly hostContracts = typeof(IModule).Assembly;
         Assembly runtimeContracts = typeof(IInterestManagementControl).Assembly;
         Assembly terminalGui = typeof(View).Assembly;
         return new Dictionary<string, Assembly>(StringComparer.Ordinal)

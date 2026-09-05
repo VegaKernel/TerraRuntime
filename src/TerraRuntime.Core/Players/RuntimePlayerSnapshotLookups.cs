@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Players;
 
 /// <summary>
 /// Synchronous authoritative-thread lookup used by actor simulation. This is deliberately separate from the

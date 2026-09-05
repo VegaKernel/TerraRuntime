@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Worlds;
 
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 packet-17 world-coordinate rules.
@@ -11,7 +11,7 @@ public static class VanillaTileManipulationWorldRules
 {
     public const int Packet17WorldMargin = 3;
 
-    public static bool IsInPacket17WorldBounds(WorldTileBounds dimensions, int x, int y) =>
+    public static bool IsInPacket17WorldBounds(WorldTileDimensions dimensions, int x, int y) =>
         IsInPacket17WorldBounds(dimensions.WidthTiles, dimensions.HeightTiles, x, y);
 
     public static bool IsInPacket17WorldBounds(int widthTiles, int heightTiles, int x, int y) =>

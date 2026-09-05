@@ -12,7 +12,7 @@
 
 Сгенерированный town NPC не является тайлом. Если оставить Guide только во временном состоянии генерации, мир будет выглядеть правильным до сохранения, после чего NPC молча исчезнет.
 
-Поэтому `RuntimeWorldGenerationWorkspace` теперь владеет side table сгенерированных town NPC рядом с уже существующей side table сундуков. Generation регистрирует NPC до публикации; `RuntimeWorldCreationPersistencePipeline` забирает side table вместе с финализированным candidate; `WorldFileFreshComposer326` передаёт её существующему canonical `WorldFileNpcEncoder`.
+Поэтому `Workspace` теперь владеет side table сгенерированных town NPC рядом с уже существующей side table сундуков. Generation регистрирует NPC до публикации; `RuntimeWorldCreationPersistencePipeline` забирает side table вместе с финализированным candidate; `WorldFileFreshComposer326` передаёт её существующему canonical `WorldFileNpcEncoder`.
 
 После композиции готовый byte image снова загружается через `WorldFileLoader`, и composer проверяет, что количество NPC пережило encode/load transaction. Таким образом generated NPC находятся в той же атомарной границе candidate-to-file, что tiles и chests.
 

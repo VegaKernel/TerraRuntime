@@ -1,6 +1,6 @@
 using TerraRuntime.Network;
 
-namespace TerraRuntime.Operations;
+namespace TerraRuntime.Application.Operations;
 
 internal readonly record struct RuntimeNetworkSnapshot(
     int ActiveConnections,

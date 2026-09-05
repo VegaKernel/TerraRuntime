@@ -2,7 +2,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Protocol;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Authoritative-loop lifecycle commands for runtime-owned projectiles. Server-created gameplay state uses

@@ -2,7 +2,7 @@ using System.Buffers;
 using System.Text.Json;
 using TerraRuntime.Contracts.Diagnostics;
 
-namespace TerraRuntime.Diagnostics;
+namespace TerraRuntime.Application.Diagnostics;
 
 internal sealed class RuntimeJsonLinesLogSink : IRuntimeLogSink
 {

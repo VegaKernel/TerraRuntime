@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
-namespace TerraRuntime.Operations;
+namespace TerraRuntime.Application.Operations;
 
 /// <summary>
 /// Maintains a bounded immutable player read model from already validated authoritative events.

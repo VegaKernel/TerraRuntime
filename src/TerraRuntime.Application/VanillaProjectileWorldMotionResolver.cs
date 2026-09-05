@@ -5,7 +5,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Resolves the world-dependent half of a supported vanilla projectile update after AI-family behavior has run.

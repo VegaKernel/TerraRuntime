@@ -5,7 +5,7 @@ using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Owns the world-scoped town-NPC lifecycle and interaction services. All methods are invoked by the authoritative

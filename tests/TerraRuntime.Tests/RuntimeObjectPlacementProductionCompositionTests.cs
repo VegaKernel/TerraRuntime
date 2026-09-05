@@ -17,9 +17,13 @@ public sealed class RuntimeObjectPlacementProductionCompositionTests
         fixture.SetSupport(10, 11);
         fixture.SetSupport(11, 11);
         TerrariaPlaceObjectState packet = fixture.BaseChestPacket();
+        long commandsBefore = fixture.State.AppliedCommands;
 
         fixture.State.Apply(new ClientPlaceObjectRuntimeCommand(connection, packet));
 
+        // Preserve the historical accounting of the outer placement command plus the authoritative
+        // equipment mutation that used to re-enter ServerRuntimeState.Apply.
+        Assert.Equal(commandsBefore + 2, fixture.State.AppliedCommands);
         AssertCell(fixture.Tiles.Get(10, 9), frameX: 0, frameY: 0);
         AssertCell(fixture.Tiles.Get(11, 9), frameX: 18, frameY: 0);
         AssertCell(fixture.Tiles.Get(10, 10), frameX: 0, frameY: 18);

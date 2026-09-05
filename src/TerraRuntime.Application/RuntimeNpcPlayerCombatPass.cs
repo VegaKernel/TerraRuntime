@@ -4,7 +4,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Gameplay.Players;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Post-NPC-simulation authoritative contact pass for the source-backed vanilla hitbox slice. Player HP is mutated

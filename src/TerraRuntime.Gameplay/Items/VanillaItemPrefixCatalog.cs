@@ -133,7 +133,7 @@ public static class VanillaItemPrefixCatalog
 public static class VanillaNaturalItemPrefixRoller
 {
     public static bool CanRoll(ItemTypeId itemType) =>
-        VanillaItemDefinitionCatalog.TryGetWorldDrop(itemType, out VanillaItemWorldDropDefinition definition) &&
+        VanillaDefinitionCatalog.TryGetWorldDrop(itemType, out VanillaItemWorldDropDefinition definition) &&
         definition.PrefixFamily is VanillaItemPrefixFamily.None or VanillaItemPrefixFamily.Summon;
 
     public static bool TryRoll(
@@ -144,7 +144,7 @@ public static class VanillaNaturalItemPrefixRoller
         ArgumentNullException.ThrowIfNull(random);
         prefix = default;
 
-        if (!VanillaItemDefinitionCatalog.TryGetWorldDrop(itemType, out VanillaItemWorldDropDefinition definition))
+        if (!VanillaDefinitionCatalog.TryGetWorldDrop(itemType, out VanillaItemWorldDropDefinition definition))
             return false;
 
         if (definition.PrefixFamily == VanillaItemPrefixFamily.None)

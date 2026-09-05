@@ -1,7 +1,7 @@
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 
 namespace TerraRuntime.Tests;
 

@@ -9,10 +9,10 @@ public sealed class MultiplicityProtocolTests
     {
         byte[] packet = [3, 0, 1];
 
-        Assert.True(MultiplicityPacketInspector.TryReadHeader(packet, out PacketHeaderInfo header));
+        Assert.True(PacketInspector.TryReadHeader(packet, out PacketHeaderInfo header));
         Assert.Equal((ushort)3, header.PacketLength);
         Assert.Equal((byte)1, header.MessageId);
         Assert.Equal(0, header.PayloadLength);
-        Assert.True(MultiplicityPacketInspector.IsCompletePacket(packet));
+        Assert.True(PacketInspector.IsCompletePacket(packet));
     }
 }

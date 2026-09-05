@@ -1,5 +1,5 @@
-using TerraRuntime.Diagnostics;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Diagnostics;
+using TerraRuntime.Application.Operations;
 
 namespace TerraRuntime.Tests;
 

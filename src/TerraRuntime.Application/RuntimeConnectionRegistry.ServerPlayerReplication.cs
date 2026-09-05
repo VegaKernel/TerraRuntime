@@ -7,7 +7,7 @@ using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal sealed partial class RuntimeConnectionRegistry
 {

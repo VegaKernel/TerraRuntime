@@ -1,7 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 /// <summary>
 /// Immutable generation-safe role classification for one runtime-defined NPC occupation. RegistryRevision pins

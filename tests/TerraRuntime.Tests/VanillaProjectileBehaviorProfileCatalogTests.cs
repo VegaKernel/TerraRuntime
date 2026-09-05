@@ -207,7 +207,7 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
 
         foreach (ProjectileTypeId type in types)
         {
-            Assert.True(VanillaProjectileDefinitionCatalog.TryGet(type, out VanillaProjectileDefinition definition));
+            Assert.True(VanillaDefinitionCatalog.TryGet(type, out VanillaProjectileDefinition definition));
             Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(type, out VanillaProjectileBehaviorProfile profile));
             Assert.Equal(definition.AiStyle, profile.ExpectedAiStyle);
         }
@@ -230,7 +230,7 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
             Damage: 10,
             KnockBack: 1f,
             OriginalDamage: 10);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(projectile.Type, out VanillaProjectileBehaviorProfile profile));
         VanillaProjectileDefinition mismatched = definition with { AiStyle = VanillaProjectileAiStyles.Arrow };
 
@@ -252,6 +252,7 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
     [InlineData(384, VanillaProjectileBehaviorFamily.Sharknado, 64)]
     [InlineData(385, VanillaProjectileBehaviorFamily.SharknadoBolt, 65)]
     [InlineData(386, VanillaProjectileBehaviorFamily.Sharknado, 64)]
+    [InlineData(464, VanillaProjectileBehaviorFamily.CultistIceMist, 86)]
     [InlineData(452, VanillaProjectileBehaviorFamily.PhantasmalEye, 82)]
     [InlineData(454, VanillaProjectileBehaviorFamily.PhantasmalSphere, 83)]
     [InlineData(455, VanillaProjectileBehaviorFamily.PhantasmalDeathray, 84)]
@@ -270,7 +271,7 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
         Assert.Equal(new ProjectileAiStyleId(aiStyle), profile.ExpectedAiStyle);
         Assert.True(profile.BehaviorImplemented);
         Assert.False(profile.RejectServerOwned);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(type, out VanillaProjectileDefinition definition));
         Assert.Equal(definition.AiStyle, profile.ExpectedAiStyle);
     }
 

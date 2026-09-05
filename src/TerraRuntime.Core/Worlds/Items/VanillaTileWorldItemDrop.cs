@@ -2,7 +2,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Gameplay.Items;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Worlds;
 
 /// <summary>
 /// Generic source-backed world-item drop for simple tiles.
@@ -33,7 +33,7 @@ public static class VanillaTileWorldItemDrop
 
         // Resolve item half-size from catalog when available, otherwise 6 (12x12 Dirt default).
         float halfSize = 6f;
-        if (VanillaItemDefinitionCatalog.TryGetRuntimeDefaults(itemType, out VanillaItemRuntimeDefaults defaults) && defaults.IsValid)
+        if (VanillaDefinitionCatalog.TryGetRuntimeDefaults(itemType, out VanillaItemRuntimeDefaults defaults) && defaults.IsValid)
         {
             halfSize = Math.Min(defaults.Width, defaults.Height) * 0.5f;
         }

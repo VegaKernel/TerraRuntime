@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Players;
 
 /// <summary>
 /// Posts a normalized player appearance candidate into authoritative execution.

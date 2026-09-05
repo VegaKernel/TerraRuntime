@@ -2,7 +2,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Network;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Retained per-connection replication state. Socket lifetime stays outside this type; it owns the currently playing

@@ -20,7 +20,7 @@ graph LR
     ST --> C[chest placement series]
 ```
 
-The nine names and their order are pinned by `VanillaWorldGenerationPassCatalog1458` from the verified TerrariaServer 1.4.5.8 registration sequence.
+The nine names and their order are pinned by `PassCatalog1458` from the verified TerrariaServer 1.4.5.8 registration sequence.
 
 ## Implemented slice
 

@@ -97,7 +97,7 @@ The extensible host additionally exposes:
 - `HostModules/` — trusted host module assemblies;
 - `ServerPlugins/` — reserved/exposed server-plugin location.
 
-These paths are passed to trusted modules through `ITerraRuntimeHostEnvironment`; modules should use the supplied paths instead of reconstructing deployment-relative paths themselves.
+These paths are passed to trusted modules through `IEnvironment`; modules should use the supplied paths instead of reconstructing deployment-relative paths themselves.
 
 Directory creation failure is fatal before world startup. The core startup path returns exit code `24`; the extensible wrapper returns `30` if its expanded directory layout cannot be initialized.
 
@@ -178,7 +178,7 @@ Startup behavior is deterministic:
 2. sort file names case-insensitively;
 3. create a collectible `AssemblyLoadContext` per candidate;
 4. validate the TerraRuntime assembly boundary;
-5. locate exactly one exported concrete `ITerraRuntimeHostModule` implementation;
+5. locate exactly one exported concrete `IModule` implementation;
 6. instantiate it through a public parameterless constructor;
 7. require a non-empty, case-insensitively unique module name;
 8. call `StartAsync` before the TerraRuntime world is attached;

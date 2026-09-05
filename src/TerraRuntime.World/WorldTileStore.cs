@@ -119,7 +119,7 @@ public sealed class WorldTileStore
             return false;
         }
 
-        WorldTileBounds bounds = TerrariaSectionGeometry.GetBounds(Dimensions, section);
+        WorldTileRegion bounds = TerrariaSectionGeometry.GetBounds(Dimensions, section);
         var copy = GC.AllocateUninitializedArray<WorldTile>(checked(bounds.Width * bounds.Height));
         int destination = 0;
         for (int y = bounds.Y; y < bounds.ExclusiveBottom; y++)

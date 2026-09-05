@@ -3,7 +3,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Protocol;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Owns the active client-player membership and pre-spawn vitals for one world runtime.

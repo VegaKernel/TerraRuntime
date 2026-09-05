@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Worlds;
 
 /// <summary>
 /// Writes a complete save to a same-directory temporary file before replacing the destination.

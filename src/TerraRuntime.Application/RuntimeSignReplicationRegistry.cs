@@ -6,7 +6,7 @@ using TerraRuntime.Network;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Transport-only projection of authoritative sign reads and commits. Endpoints are transport state; sign authority

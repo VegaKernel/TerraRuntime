@@ -1,7 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.HostContracts.WorldGeneration;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Startup-only composite over runtime-owned and trusted-host world generators. Built-in IDs are reserved and cannot

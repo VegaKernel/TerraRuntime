@@ -24,7 +24,6 @@ public sealed class RuntimeObjectPlacementReplicationTests
         var packet = new TerrariaPlaceObjectState(10, 10, 21, 0, 0, -1, false);
 
         Assert.True(fixture.Processor.TryApply(
-            fixture.State,
             new ClientPlaceObjectRuntimeCommand(origin, packet)));
 
         Assert.Equal(RuntimeObjectPlacementResult.Applied, fixture.Processor.LastResult);
@@ -51,14 +50,16 @@ public sealed class RuntimeObjectPlacementReplicationTests
             Tiles = new WorldTileStore(new WorldDimensions(200, 150));
             Chests = new RuntimeChestStore([]);
             Replication = new RuntimeTileManipulationReplicationRegistry();
-            State = new ServerRuntimeState(playerEvents: Replication, worldTiles: Tiles);
-            Processor = new RuntimeObjectPlacementCommandProcessor(Tiles, Chests, Replication);
+            Players = new PlayerAuthority(Replication, Tiles);
+            Commands = new RuntimeCommandCounter();
+            Processor = new RuntimeObjectPlacementCommandProcessor(Tiles, Chests, Players, Commands, Replication);
         }
 
         public WorldTileStore Tiles { get; }
         public RuntimeChestStore Chests { get; }
         public RuntimeTileManipulationReplicationRegistry Replication { get; }
-        public ServerRuntimeState State { get; }
+        public PlayerAuthority Players { get; }
+        public RuntimeCommandCounter Commands { get; }
         public RuntimeObjectPlacementCommandProcessor Processor { get; }
 
         public ConnectionHandle SpawnPlayer(long connectionId)
@@ -77,8 +78,8 @@ public sealed class RuntimeObjectPlacementReplicationTests
 
             var connection = new ConnectionHandle(source, session.Handle);
             var spawn = new PlayerSpawnCommitRequest(session.Slot, 20, 20, 0, 0, 0, 0, 0);
-            State.Apply(new PlayerSpawnRuntimeCommand(connection, session, spawn));
-            Assert.Equal(PlayerSpawnCommitResult.Committed, State.LastSpawnCommitResult);
+            Players.TryApply(new PlayerSpawnRuntimeCommand(connection, session, spawn));
+            Assert.Equal(PlayerSpawnCommitResult.Committed, Players.LastSpawnCommitResult);
             return connection;
         }
 
@@ -93,8 +94,8 @@ public sealed class RuntimeObjectPlacementReplicationTests
                 Prefix: 0,
                 ItemNetId: checked((short)VanillaItemIds.Chest.Value),
                 ItemFlags: 0);
-            State.Apply(new PlayerEquipmentRuntimeCommand(connection, equipment));
-            Assert.Equal(0, State.RejectedPlayerEquipmentUpdates);
+            Players.TryApply(new PlayerEquipmentRuntimeCommand(connection, equipment));
+            Assert.Equal(0, Players.RejectedEquipmentUpdates);
         }
 
         public void SetSupport(int x, int y)

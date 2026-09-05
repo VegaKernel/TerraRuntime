@@ -1,7 +1,7 @@
 using TerraRuntime.Core;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Source-shaped Queen Bee world facts. ZoneJungle mirrors the TerrariaServer 1.4.5.8 SceneMetrics jungle

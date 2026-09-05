@@ -1,11 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Drawing;
 using TerraRuntime.Contracts.Runtime;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 using Terminal.Gui.Input;
 using Terminal.Gui.Views;
 
-namespace TerraRuntime.TerminalUI;
+namespace TerraRuntime.Application.TerminalUI;
 
 internal enum SandboxWorldTreeRowKind : byte
 {

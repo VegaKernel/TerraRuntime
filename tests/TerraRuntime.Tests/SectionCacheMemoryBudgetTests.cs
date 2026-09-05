@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
 using System.Reflection;
-using TerraRuntime;
+using TerraRuntime.Application;
 using TerraRuntime.Protocol;
 using TerraRuntime.World;
 

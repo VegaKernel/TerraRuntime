@@ -4,7 +4,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Protocol;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>Production world-item and addressed Boss Bag delivery for the Deerclops death-loot slice.</summary>
 internal sealed class RuntimeDeerclopsLootDeliverySink : IDeerclopsLootDeliverySink

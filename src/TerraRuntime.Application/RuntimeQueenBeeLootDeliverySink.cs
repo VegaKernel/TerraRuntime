@@ -3,7 +3,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Protocol;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>Production world-item/instanced delivery for the TerrariaServer 1.4.5.8 Queen Bee death-loot slice.</summary>
 internal sealed class RuntimeQueenBeeLootDeliverySink : IQueenBeeLootDeliverySink

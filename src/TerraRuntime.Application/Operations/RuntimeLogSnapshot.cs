@@ -1,8 +1,8 @@
 using TerraRuntime.Contracts.Diagnostics;
 
-namespace TerraRuntime.Operations;
+namespace TerraRuntime.Application.Operations;
 
-internal enum RuntimeLogLevel : byte
+internal enum OperationsLogLevel : byte
 {
     Debug = 0,
     Information = 1,
@@ -13,7 +13,7 @@ internal enum RuntimeLogLevel : byte
 internal readonly record struct RuntimeLogEntry(
     long Sequence,
     DateTimeOffset TimestampUtc,
-    RuntimeLogLevel Level,
+    OperationsLogLevel Level,
     string Source,
     string Message,
     int EventId = 0,
@@ -21,7 +21,7 @@ internal readonly record struct RuntimeLogEntry(
     string? CorrelationId = null);
 
 internal readonly record struct RuntimeLogQuery(
-    RuntimeLogLevel MinimumLevel,
+    OperationsLogLevel MinimumLevel,
     int MaxEntries,
     string? Source = null,
     RuntimeLogCategory? Category = null,
@@ -59,6 +59,6 @@ internal readonly record struct RuntimeLogSnapshot(
     ReadOnlyMemory<RuntimeLogEntry> Entries,
     long PublishedEntries,
     long OverwrittenEntries,
-    RuntimeLogLevel MinimumLevel,
+    OperationsLogLevel MinimumLevel,
     DateTimeOffset CapturedAtUtc,
     RuntimeLogDiagnosticsSnapshot Diagnostics = default);

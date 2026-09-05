@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Operations;
+namespace TerraRuntime.Application.Operations;
 
 /// <summary>
 /// Bounded TUI projection over the authoritative world-item snapshot boundary. The source store owns

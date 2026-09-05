@@ -1,4 +1,4 @@
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal sealed class RuntimeDirectoryLayout
 {

@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.HostContracts.WorldGeneration;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal static class InteractiveWorldCreationPrompt
 {

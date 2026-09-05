@@ -76,7 +76,7 @@ public static class VanillaProjectileReflection1458
             return false;
         }
 
-        if (!VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition))
+        if (!VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition))
         {
             result = default;
             return false;

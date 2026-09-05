@@ -1,4 +1,4 @@
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 /// <summary>
 /// World-facing facts consumed by the source-backed TerrariaServer 1.4.5.8 AI_002 lifecycle layer.

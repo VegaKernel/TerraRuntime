@@ -4,7 +4,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>Authoritative source-shaped bound-town transform transaction for TerrariaServer 1.4.5.8.</summary>
 internal sealed class RuntimeTownNpcRescueService1458

@@ -13,7 +13,7 @@ public sealed class VanillaReferenceDifferentialCheckpoint1458Tests
         var adapter = new VanillaRandomAdapter(sourceRandom);
 
         VanillaWorldGenerationBootstrapState1458 bootstrap =
-            VanillaWorldGenerationBootstrapPass1458.Run(adapter, 4_200, effectiveCrimson: false);
+            BootstrapPass1458.Run(adapter, 4_200, effectiveCrimson: false);
 
         Assert.Equal(1, bootstrap.DungeonSide);
         Assert.Equal(3_364, bootstrap.DungeonLocation);

@@ -5,7 +5,7 @@ using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 public enum PlayerBootstrapStopReason : byte
 {

@@ -1,5 +1,5 @@
-using TerraRuntime.Operations;
-using TerraRuntime.TerminalUI;
+using TerraRuntime.Application.Operations;
+using TerraRuntime.Application.TerminalUI;
 
 namespace TerraRuntime.Tests;
 

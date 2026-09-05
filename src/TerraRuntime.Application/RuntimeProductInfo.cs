@@ -1,4 +1,4 @@
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Single source of truth for operator-facing product identity. The version comes from the running assembly so

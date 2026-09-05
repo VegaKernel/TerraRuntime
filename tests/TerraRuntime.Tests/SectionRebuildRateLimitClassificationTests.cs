@@ -1,5 +1,5 @@
 using System.Reflection;
-using TerraRuntime;
+using TerraRuntime.Application;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;

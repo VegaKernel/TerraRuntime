@@ -23,9 +23,9 @@ The optimized profile is layered instead of growing one monolithic provider:
 
 ```mermaid
 flowchart TD
-    Base["OptimizedWorldGenerationProvider<br/>layout / terrain / biomes / caves / islands / ores / mandatory structures"]
-    Play["OptimizedPlayableWorldGenerationProvider<br/>large caverns / shafts / underground lakes / Life Crystals / generic caches"]
-    Land["OptimizedLandmarkWorldGenerationProvider<br/>organic transitions / landmarks / micro-biomes / landmark caches"]
+    Base["OptimizedProvider<br/>layout / terrain / biomes / caves / islands / ores / mandatory structures"]
+    Play["PlayableProvider<br/>large caverns / shafts / underground lakes / Life Crystals / generic caches"]
+    Land["LandmarkProvider<br/>organic transitions / landmarks / micro-biomes / landmark caches"]
     Meta["metadata"]
     Dungeon["optimized dungeon v2<br/>rooms / branches / locked loot / traps"]
     PVal["base + playability validators"]
@@ -33,9 +33,9 @@ flowchart TD
     Ecology["jungle ecology v2<br/>isolated hives / Queen Bee arenas / glowing mushroom pockets"]
     Content["progression content<br/>evil anchors / distributed Larva / forge pocket"]
     Shape["surface shaping<br/>natural top slopes / half-block transitions"]
-    Surf["OptimizedSurfaceDecorationWorldGenerationProvider<br/>foliage-anchored trees / undergrowth / sunflowers"]
+    Surf["SurfaceDecorationProvider<br/>foliage-anchored trees / undergrowth / sunflowers"]
     Loot["exploration loot v2<br/>Skyware / generic / biome / ocean families"]
-    Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]
+    Prog["ProgressionValidationProvider<br/>resource / structure / reachability gate"]
     Commit["candidate finalization / commit"]
 
     Base --> Play --> Land --> Meta --> Dungeon --> PVal --> LVal --> Ecology --> Content --> Shape --> Surf --> Loot --> Prog --> Commit
@@ -187,7 +187,7 @@ runtime work and are not falsely counted as complete here.
 Generation remains fail-closed. Before playability validation, incomplete Life Crystal fragments are removed, complete 2x2 frame footprints are recounted and only missing objects are deterministically replenished to the original area-scaled target; the minimum is never reduced. The validators then require exact landmark budgets, persistent chest side-table entries,
 source-backed exploration-loot family budgets, minimum generated material/wall counts, a readable dungeon entrance, the
 Dungeon v2 room/loot/trap contracts, and final progression topology. The final
-`OptimizedProgressionValidationWorldGenerationProvider` enforces area-scaled minimum quantities for Copper, Iron,
+`ProgressionValidationProvider` enforces area-scaled minimum quantities for Copper, Iron,
 Silver, Gold and Hellstone; verifies complete progression-object footprints; requires non-trivial connected dungeon,
 hive and Jungle Temple interiors; and builds a bounded excavation-aware reachability graph from spawn to required
 surface/deep-world targets. This is a structural topology gate, not a claim of pixel-exact Terraria player movement or

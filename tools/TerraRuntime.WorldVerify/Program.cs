@@ -81,7 +81,7 @@ WorldSectionPacketEncodeResult packetResult = WorldSectionPacketEncoder.TryEncod
     sectionHeight,
     out byte[] sectionFrame);
 if (packetResult != WorldSectionPacketEncodeResult.Encoded ||
-    !MultiplicityPacketInspector.TryReadHeader(sectionFrame, out PacketHeaderInfo sectionHeader) ||
+    !PacketInspector.TryReadHeader(sectionFrame, out PacketHeaderInfo sectionHeader) ||
     sectionHeader.MessageId != (byte)PacketTypes.TileSendSection ||
     sectionHeader.PacketLength != sectionFrame.Length)
 {

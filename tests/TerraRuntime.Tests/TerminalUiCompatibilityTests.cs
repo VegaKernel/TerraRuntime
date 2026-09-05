@@ -1,4 +1,4 @@
-using TerraRuntime.TerminalUI;
+using TerraRuntime.Application.TerminalUI;
 using Terminal.Gui.Drawing;
 
 namespace TerraRuntime.Tests;
@@ -8,15 +8,15 @@ public sealed class TerminalUiCompatibilityTests
     [Fact]
     public void Windows_production_dashboard_uses_dotnet_driver_instead_of_native_windows_driver()
     {
-        Assert.Equal("dotnet", TerminalUiHost.ResolveProductionDriverName(isWindows: true));
-        Assert.Null(TerminalUiHost.ResolveProductionDriverName(isWindows: false));
+        Assert.Equal("dotnet", Host.ResolveProductionDriverName(isWindows: true));
+        Assert.Null(Host.ResolveProductionDriverName(isWindows: false));
     }
 
     [Fact]
     public void Hacker_theme_keeps_base_and_menu_text_explicit_and_contrasting()
     {
-        Scheme baseScheme = TerminalUiTheme.CreateBaseScheme();
-        Scheme menuScheme = TerminalUiTheme.CreateMenuScheme();
+        Scheme baseScheme = Theme.CreateBaseScheme();
+        Scheme menuScheme = Theme.CreateMenuScheme();
 
         AssertExplicitContrast(baseScheme.Normal);
         AssertExplicitContrast(baseScheme.Focus);

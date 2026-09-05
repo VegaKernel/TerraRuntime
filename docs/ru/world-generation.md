@@ -122,7 +122,7 @@ Passes нельзя parallelize/reorder только потому, что RNG п
 
 ## 11. Trusted-host registration
 
-Trusted CoreCLR modules явно регистрируют providers через `ITerraRuntimeWorldGeneratorRegistry`. Registration возвращает lifetime handle, который retire/dispose до unload owning module.
+Trusted CoreCLR modules явно регистрируют providers через `IGeneratorRegistry`. Registration возвращает lifetime handle, который retire/dispose до unload owning module.
 
 Runtime не reflection-scan'ит arbitrary assemblies. Generator listing остаётся literal CLI:
 
@@ -198,7 +198,7 @@ Built-in ordinary canonical provider теперь доходит до всей s
 
 ## 18. Валидация после генерации
 
-Каждый валидный мир теперь проходит fail-closed `VanillaWorldGenerationValidator1458`:
+Каждый валидный мир теперь проходит fail-closed `Validator1458`:
 
 ```mermaid
 flowchart TD
@@ -221,7 +221,7 @@ flowchart TD
 
 Для canonical `$4200\times1200$`, `$6400\times1800$` и `$8400\times2400$` ordinary миров валидатор проверяет плотность active tiles, `$147$`/`$161$` snow, `$59$`/`$60$` jungle, `$53$` desert, `$70$` mushroom, `$41$` dungeon, `$226$` temple, `$58$` hellstone, $2\times2$ `21`-chest footprints (modulo `$36$` style), уникальность chest-anchor, дубликаты сундуков, объекты вне границ, solid/liquid exclusion, spawn ground, минимумы ocean sand/water и непрерывную связанную с краем геометрию океанского бассейна с подъёмом к пляжу. Non-canonical и custom-generator миры валидируются только по tile/wall каталогу, liquid, chest-anchor и metadata, чтобы fixture generators и synthetic миры не отбрасывались ложно.
 
-Валидация выполняется внутри `RuntimeWorldGenerationFinalizer`: `Finalized` возвращается только когда `Validate` даёт `Valid`; иначе возвращается `ValidationFailed` и candidate отбрасывается до сохранения. Новый `VanillaWorldGenerationValidator1458Tests` проверяет валидную canonical генерацию, невалидные tile/wall types, orphan chest anchors, дубликаты сундуков, spawn вне мира и нарушения ocean bounds.
+Валидация выполняется внутри `Finalizer`: `Finalized` возвращается только когда `Validate` даёт `Valid`; иначе возвращается `ValidationFailed` и candidate отбрасывается до сохранения. Новый `VanillaWorldGenerationValidator1458Tests` проверяет валидную canonical генерацию, невалидные tile/wall types, orphan chest anchors, дубликаты сундуков, spawn вне мира и нарушения ocean bounds.
 
 ## 19. Evidence и limitations
 

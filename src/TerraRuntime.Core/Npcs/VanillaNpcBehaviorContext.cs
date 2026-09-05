@@ -3,7 +3,7 @@ using TerraRuntime.Gameplay.Players;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 /// <summary>
 /// Mutable per-world inputs shared by verified vanilla NPC behavior-family strategies. This object owns the

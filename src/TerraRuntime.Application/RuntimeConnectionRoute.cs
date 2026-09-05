@@ -4,7 +4,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Process-owned routing state for one accepted TCP connection. Exactly one WorldRuntime binding receives inbound

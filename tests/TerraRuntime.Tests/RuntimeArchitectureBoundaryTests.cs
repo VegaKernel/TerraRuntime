@@ -206,7 +206,7 @@ public sealed class RuntimeArchitectureBoundaryTests
             typeof(VanillaPlayerAppearanceNormalizer),
             typeof(VanillaPlayerMovementNormalizer),
             typeof(VanillaPlayerSpawnValidator),
-            typeof(VanillaPlayerVitalsRules),
+            typeof(VanillaVitalsRules),
             typeof(VanillaPlayerHitboxFacts)
         ];
 
@@ -288,7 +288,7 @@ public sealed class RuntimeArchitectureBoundaryTests
 
         Type[] gameplayTypes =
         [
-            typeof(VanillaProjectileDefinitionCatalog),
+            typeof(VanillaDefinitionCatalog),
             typeof(VanillaProjectileLifecycleFacts),
             typeof(VanillaProjectileFacts),
             typeof(VanillaProjectileOwnership),

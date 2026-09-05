@@ -3,7 +3,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
 using TerraRuntime.WorldGeneration;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Short-lived executable proof for CI: generate one built-in world at the requested dimensions and seed, validate its
@@ -65,7 +65,7 @@ internal static class WorldGenerationCreateSmoke
             return true;
         }
 
-        WorldGeneratorId generatorId = FlatWorldGenerationProvider.GeneratorId;
+        WorldGeneratorId generatorId = FlatProvider.GeneratorId;
         if (index + 2 < args.Count && !string.IsNullOrWhiteSpace(args[index + 2]))
         {
             try
@@ -130,14 +130,14 @@ internal static class WorldGenerationCreateSmoke
 
         var request = new WorldGenerationRequest(
             generatorId,
-            generatorId == VanillaWorldGenerationProvider1458.GeneratorId
+            generatorId == Provider1458.GeneratorId
                 ? "TerraRuntimeVanillaSmoke"
                 : "TerraRuntimeGeneratedSmoke",
             Seed: seed,
             WidthTiles: widthTiles,
             HeightTiles: heightTiles)
         {
-            SeedText = generatorId == VanillaWorldGenerationProvider1458.GeneratorId
+            SeedText = generatorId == Provider1458.GeneratorId
                 ? seed.ToString(CultureInfo.InvariantCulture)
                 : null,
             Options = WorldGenerationOptions.Default
@@ -157,7 +157,7 @@ internal static class WorldGenerationCreateSmoke
             lastPlayedBinary: timestamp);
         if (!result.Succeeded)
         {
-            RuntimeWorldGenerationFinalizationResult? finalization = result.Creation?.Finalization;
+            FinalizationResult? finalization = result.Creation?.Finalization;
             Console.Error.WriteLine(
                 $"Worldgen create smoke failed: status={result.Status}, " +
                 $"generation={result.Creation?.Generation.Status}, " +

@@ -2,7 +2,7 @@ using System.Threading;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Worlds;
 
 /// <summary>
 /// Mutable state accepted by the authoritative world-item store. Wire-specific flags are intentionally absent.

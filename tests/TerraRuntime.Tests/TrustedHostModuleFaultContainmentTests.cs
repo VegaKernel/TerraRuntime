@@ -105,7 +105,7 @@ public sealed class TrustedHostModuleFaultContainmentTests
             diagnostics);
         var actors = new RejectingActorOperations();
         var runtime = new TestRuntime(
-            new TerraRuntimeHostRuntimeInfo(
+            new RuntimeInfo(
                 "Fault World",
                 Path.Combine(root.Worlds, "fault.wld"),
                 8400,
@@ -180,7 +180,7 @@ public sealed class TrustedHostModuleFaultContainmentTests
             diagnostics);
         var actors = new PermissiveActorOperations();
         var runtime = new TestRuntime(
-            new TerraRuntimeHostRuntimeInfo(
+            new RuntimeInfo(
                 "Detach Fault World",
                 Path.Combine(root.Worlds, "detach-fault.wld"),
                 8400,
@@ -285,9 +285,9 @@ public sealed class TrustedHostModuleFaultContainmentTests
 
     private static void AssertHealthDashboardPresent(TrustedHostModuleLoader loader, int expectedDashboardCount)
     {
-        ITerraRuntimeTerminalDashboardProvider[] dashboards = loader.CaptureDashboards().ToArray();
+        IDashboardProvider[] dashboards = loader.CaptureDashboards().ToArray();
         Assert.Equal(expectedDashboardCount, dashboards.Length);
-        ITerraRuntimeTerminalDashboardProvider health = Assert.Single(
+        IDashboardProvider health = Assert.Single(
             dashboards,
             provider => provider.Id == TrustedHostModuleHealthDashboardProvider.DashboardId);
         using View root = health.CreateDashboard();
@@ -317,7 +317,7 @@ public sealed class TrustedHostModuleFaultContainmentTests
         public string Data { get; }
         public string Logs { get; }
 
-        public ITerraRuntimeHostEnvironment CreateEnvironment(TrustedHostModuleLoader loader) =>
+        public IEnvironment CreateEnvironment(TrustedHostModuleLoader loader) =>
             new TestEnvironment(
                 Root,
                 HostModules,
@@ -352,16 +352,16 @@ public sealed class TrustedHostModuleFaultContainmentTests
         string ConfigDirectory,
         string DataDirectory,
         string LogsDirectory,
-        ITerraRuntimeTerminalDashboardRegistry TerminalDashboards,
-        ITerraRuntimeWorldGeneratorRegistry WorldGenerators) : ITerraRuntimeHostEnvironment;
+        IDashboardRegistry TerminalDashboards,
+        IGeneratorRegistry WorldGenerators) : IEnvironment;
 
     private sealed record TestRuntime(
-        TerraRuntimeHostRuntimeInfo Info,
+        RuntimeInfo Info,
         IInterestManagementControl InterestManagement,
         IPlayerStateSnapshotReader PlayerStates,
         INpcActorOperations NpcActors,
         INpcShopOperations NpcShops,
-        IServerPlayerOperations ServerPlayers) : ITerraRuntimeHostRuntime;
+        IServerPlayerOperations ServerPlayers) : IRuntime;
 
     private sealed class InterestControl : IInterestManagementControl
     {
@@ -596,7 +596,7 @@ public sealed class TrustedHostModuleFaultContainmentTests
             CancellationToken cancellationToken = default) => ValueTask.FromResult(false);
     }
 
-    private sealed class TestDashboard : ITerraRuntimeTerminalDashboardProvider
+    private sealed class TestDashboard : IDashboardProvider
     {
         public string Id => "test.crash-containment";
         public string Title => "Crash containment";

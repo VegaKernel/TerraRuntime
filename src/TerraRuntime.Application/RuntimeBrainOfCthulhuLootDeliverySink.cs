@@ -3,7 +3,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Protocol;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>Production world-item/instanced delivery for the Brain of Cthulhu death-loot slice.</summary>
 internal sealed class RuntimeBrainOfCthulhuLootDeliverySink : IBrainOfCthulhuLootDeliverySink

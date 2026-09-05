@@ -68,7 +68,7 @@ stateDiagram-v2
     Stopping --> [*]
 ```
 
-UI работает на собственном background thread `TerraRuntime Terminal UI`, не на authoritative game-loop thread. `TerminalUiHost` владеет linked cancellation и ждёт UI thread только bounded interval при disposal.
+UI работает на собственном background thread `TerraRuntime Terminal UI`, не на authoritative game-loop thread. `Host` владеет linked cancellation и ждёт UI thread только bounded interval при disposal.
 
 На Windows TerraRuntime намеренно использует cross-platform `dotnet` driver Terminal.Gui вместо принудительного native `windows` driver. Это compatibility policy для Windows 10/conhost-подобных rendering failures, при которых Terminal.Gui 2.4.x может оставить content area пустой/чёрной, хотя menu chrome продолжает отображаться. На Linux и остальных платформах сохраняется обычный platform selection Terminal.Gui.
 
@@ -82,7 +82,7 @@ $$
 T_{\mathrm{snapshot}}\approx100\,\mathrm{ms},
 $$
 
-но сбор snapshot больше не выполняется на Terminal.Gui thread. `TerminalUiOperationsCache` собирает detached operations state в worker task и публикует целый cache одним atomic reference swap. UI thread только читает уже опубликованное состояние и форматирует его во views.
+но сбор snapshot больше не выполняется на Terminal.Gui thread. `OperationsCache` собирает detached operations state в worker task и публикует целый cache одним atomic reference swap. UI thread только читает уже опубликованное состояние и форматирует его во views.
 
 Лёгкий Terminal.Gui timer проверяет появление новой cache version примерно каждые
 
@@ -109,7 +109,7 @@ sequenceDiagram
 
 Overview постоянно обновляет dashboard/player/network/world/log state, который ему нужен. Detail-only snapshots NPC, projectiles, dropped items и full-debug log обновляются demand-driven: пока соответствующий detail screen реально читается. Так отзывчивость UI не превращается в постоянный allocation/copy tax для всех сущностей на каждом refresh.
 
-World-scoped inspection вынесен в отдельную ответственность cache. `LocalRuntimeWorldInspectionOperations` разрешает live worlds по стабильному `WorldRuntimeId`, а `TerminalUiWorldInspectionCache` хранит выбранный оператором мир и снимает только запрошенный Players/NPCs/Projectiles/Items/World snapshot этого мира. Terminal.Gui thread получает только detached read models и не хранит ссылки на `WorldRuntime`. Operations telemetry для sandbox включается только при включённом TUI.
+World-scoped inspection вынесен в отдельную ответственность cache. `LocalRuntimeWorldInspectionOperations` разрешает live worlds по стабильному `WorldRuntimeId`, а `WorldInspectionCache` хранит выбранный оператором мир и снимает только запрошенный Players/NPCs/Projectiles/Items/World snapshot этого мира. Terminal.Gui thread получает только detached read models и не хранит ссылки на `WorldRuntime`. Operations telemetry для sandbox включается только при включённом TUI.
 
 Плитка Worlds / Players содержит действие `+ Sandbox` в той же Base-схеме, что и дерево, без отдельного подсвеченного фона кнопки. В окне создания isolation выбирается через dropdown; отдельная строка `Selected:` больше не выводится. Generator, game mode, world evil и size preset выбираются через dropdown. Список генераторов снимается из реального runtime/host generator registry. Size presets: Primary, Small `4200x1200`, Medium `6400x1800`, Large `8400x2400` и Custom. При открытии формы сразу создаётся случайный unsigned seed; кнопка `Random` генерирует новый без ручного ввода слова `random`.
 
@@ -207,7 +207,7 @@ Unknown commands reported, а не превращаются в runtime mutations
 
 ## 11. Trusted host dashboards
 
-CoreCLR trusted hosts могут регистрировать complete dashboards через `ITerraRuntimeTerminalDashboardRegistry`.
+CoreCLR trusted hosts могут регистрировать complete dashboards через `IDashboardRegistry`.
 
 Provider задаёт stable `Id`, display `Title`, `CreateDashboard()` и `Refresh(View rootView)` на Terminal.Gui UI thread. Он предоставляет собственный root view и не inject'ит arbitrary controls в built-in TerraRuntime dashboard.
 

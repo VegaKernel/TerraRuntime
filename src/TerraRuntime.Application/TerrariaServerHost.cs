@@ -2,9 +2,9 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
 using TerraRuntime.HostContracts.WorldGeneration;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 public static class TerrariaServerHost
 {
@@ -15,7 +15,7 @@ public static class TerrariaServerHost
     public static async Task<int> RunAsync(
         ServerHostOptions options,
         IInterestManagementControl? interestManagement = null,
-        ITerraRuntimeHostLifecycle? hostLifecycle = null,
+        ILifecycle? hostLifecycle = null,
         ITerraRuntimeWorldGeneratorSource? worldGenerators = null)
     {
         ArgumentNullException.ThrowIfNull(options);

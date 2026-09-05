@@ -70,7 +70,7 @@ public sealed class VanillaSkyblockRuntimePolicy1458Tests
             new StartupWorldGeneratorSource(host: null),
             maxTileCount: 32_000_000);
         var request = new WorldGenerationRequest(
-            SkyblockWorldGenerationProvider.GeneratorId,
+            SkyblockProvider.GeneratorId,
             "SkyblockRuntimePolicy",
             Seed: 1458UL,
             WidthTiles: 512,

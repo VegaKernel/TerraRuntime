@@ -310,6 +310,6 @@ This slice is not complete until:
 - [x] custom worldgen provider can add/replace passes in deterministic validated plan;
 - [x] failed/cancelled generation cannot partially commit;
 - [x] official-client-compatible generated worlds contain only client-known IDs – enforced by `Final Cleanup` (`VanillaTileIds`/`VanillaWallIds`/known-flag gate) and covered by `VanillaWorldGenerationFullIntegrationTests` (tile/wall/shape/flag scan plus `WorldFileFreshComposer326`→`WorldFileLoader` round-trip);
-- [x] built-in vanilla generator matches the complete source-pinned Terraria 1.4.5.8 pass pipeline (109 names through `Final Cleanup`, `114-plan` via `SourceBackedVanillaWorldGenerationFinal1458`) – reference-world byte-identical parity remains the remaining open item;
+- [x] built-in vanilla generator matches the complete source-pinned Terraria 1.4.5.8 pass pipeline (109 names through `Final Cleanup`, `114-plan` via `SourceBackedFinal1458`) – reference-world byte-identical parity remains the remaining open item;
 - [ ] reference-world byte-identical vanilla parity for fixed official seeds;
 - [x] Linux/Windows NativeAOT smoke remains green with extension contracts present.

@@ -1,7 +1,7 @@
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Authoritative-thread processor for the protocol-326 sign slice. Packet sinks only decode and enqueue; this

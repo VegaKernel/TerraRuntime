@@ -3,7 +3,7 @@ using System.Globalization;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.HostContracts;
 using TerraRuntime.HostContracts.TerminalUI;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
@@ -11,7 +11,7 @@ using Terminal.Gui.Views;
 
 #pragma warning disable CS0618 // Terminal.Gui TextView remains the built-in selectable read-only surface in 2.4.17.
 
-namespace TerraRuntime.TerminalUI;
+namespace TerraRuntime.Application.TerminalUI;
 
 /// <summary>
 /// Operator-facing terminal workspace. Runtime-owned detail screens consume bounded snapshots and render their
@@ -84,7 +84,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         INetworkOperations networkOperations,
         IWorldOperations worldOperations,
         ILogOperations logOperations,
-        ITerraRuntimeTerminalDashboardSource? terminalDashboards,
+        IDashboardSource? terminalDashboards,
         IProjectileOperations? projectileOperations = null,
         IWorldItemOperations? worldItemOperations = null,
         SandboxOperations? sandboxOperations = null,
@@ -828,8 +828,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         RuntimeNetworkSnapshot network = networkOperations.CaptureSnapshot();
         RuntimeWorldSnapshot world = worldOperations.CaptureSnapshot();
         RuntimePlayersSnapshot players = playerOperations.CaptureSnapshot();
-        RuntimeLogSnapshot chat = logOperations.CaptureSnapshot(RuntimeLogLevel.Debug, "Chat", 8);
-        RuntimeLogSnapshot logs = logOperations.CaptureSnapshot(RuntimeLogLevel.Information, 12);
+        RuntimeLogSnapshot chat = logOperations.CaptureSnapshot(OperationsLogLevel.Debug, "Chat", 8);
+        RuntimeLogSnapshot logs = logOperations.CaptureSnapshot(OperationsLogLevel.Information, 12);
 
         smokeRows[0] =
             $"{runtime.Lifecycle} | world {SanitizeText(runtime.WorldName, 24)} | players {players.Players.Length}/{runtime.MaxPlayers} | " +
@@ -1162,7 +1162,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
 
     private void RefreshLogs()
     {
-        RuntimeLogSnapshot snapshot = logOperations.CaptureSnapshot(RuntimeLogLevel.Debug, MaximumLogEntries);
+        RuntimeLogSnapshot snapshot = logOperations.CaptureSnapshot(OperationsLogLevel.Debug, MaximumLogEntries);
         ReadOnlySpan<RuntimeLogEntry> entries = snapshot.Entries.Span;
         var lines = new string[entries.Length];
         for (int i = 0; i < entries.Length; i++)
@@ -1231,12 +1231,12 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     }
 
     private static ExternalDashboard[] CaptureExternalDashboards(
-        ITerraRuntimeTerminalDashboardSource? source)
+        IDashboardSource? source)
     {
         if (source is null)
             return [];
 
-        ReadOnlySpan<ITerraRuntimeTerminalDashboardProvider> providers = source.CaptureDashboards().Span;
+        ReadOnlySpan<IDashboardProvider> providers = source.CaptureDashboards().Span;
         if (providers.Length == 0)
             return [];
 
@@ -1268,13 +1268,13 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     private static string FormatLogEntry(RuntimeLogEntry entry) =>
         $"{entry.TimestampUtc:HH:mm:ss.fff} {FormatLevel(entry.Level),-4} {SanitizeText(entry.Source, 14),-14} {SanitizeText(entry.Message, 92)}";
 
-    private static string FormatLevel(RuntimeLogLevel level) =>
+    private static string FormatLevel(OperationsLogLevel level) =>
         level switch
         {
-            RuntimeLogLevel.Debug => "DBG",
-            RuntimeLogLevel.Information => "INFO",
-            RuntimeLogLevel.Warning => "WARN",
-            RuntimeLogLevel.Error => "ERR",
+            OperationsLogLevel.Debug => "DBG",
+            OperationsLogLevel.Information => "INFO",
+            OperationsLogLevel.Warning => "WARN",
+            OperationsLogLevel.Error => "ERR",
             _ => "?"
         };
 
@@ -1297,9 +1297,9 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             "F2 opens the tiled TerraRuntime System Dashboard. Details use complete bounded scrollable snapshots; Ctrl+F filters the current detail view and Ctrl+L clears it. Double-click an overview tile to maximize/restore it. F3-F12 open independent dashboards registered by trusted host modules.",
             "OK");
 
-    private sealed class ExternalDashboard(ITerraRuntimeTerminalDashboardProvider provider)
+    private sealed class ExternalDashboard(IDashboardProvider provider)
     {
-        public ITerraRuntimeTerminalDashboardProvider Provider { get; } = provider;
+        public IDashboardProvider Provider { get; } = provider;
         public View? Root { get; set; }
     }
 

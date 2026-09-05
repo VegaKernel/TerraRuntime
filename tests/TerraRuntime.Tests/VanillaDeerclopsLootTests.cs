@@ -91,9 +91,9 @@ public sealed class VanillaDeerclopsLootTests
     public void Deerclops_loot_items_have_source_backed_world_drop_dimensions(int rawType, int width, int height)
     {
         var type = new ItemTypeId(rawType);
-        Assert.True(VanillaItemDefinitionCatalog.TryGetRuntimeDefaults(type, out VanillaItemRuntimeDefaults defaults));
+        Assert.True(VanillaDefinitionCatalog.TryGetRuntimeDefaults(type, out VanillaItemRuntimeDefaults defaults));
         Assert.Equal((width, height), (defaults.Width, defaults.Height));
-        Assert.True(VanillaItemDefinitionCatalog.TryGetWorldDrop(type, out VanillaItemWorldDropDefinition worldDrop));
+        Assert.True(VanillaDefinitionCatalog.TryGetWorldDrop(type, out VanillaItemWorldDropDefinition worldDrop));
         Assert.Equal((width, height), (worldDrop.Width, worldDrop.Height));
     }
 

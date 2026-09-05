@@ -1,6 +1,6 @@
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Owns the bounded decode policy used for server-controlled world loads and sandbox materialization.

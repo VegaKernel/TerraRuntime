@@ -1,7 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Protocol;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal sealed partial class RuntimeConnectionRegistry
 {

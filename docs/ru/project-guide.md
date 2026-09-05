@@ -225,7 +225,7 @@ sequenceDiagram
     H->>M: StopAsync()
 ```
 
-`ITerraRuntimeHostEnvironment` предоставляет deployment paths и registration surfaces до появления live world. `ITerraRuntimeHostRuntime` attach'ится позже и отдаёт narrow snapshots/operations, не mutable implementation state.
+`IEnvironment` предоставляет deployment paths и registration surfaces до появления live world. `IRuntime` attach'ится позже и отдаёт narrow snapshots/operations, не mutable implementation state.
 
 ## 15. World generation
 

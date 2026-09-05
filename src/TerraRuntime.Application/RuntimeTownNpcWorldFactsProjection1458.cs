@@ -1,7 +1,7 @@
 using TerraRuntime.Core;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal static class RuntimeTownNpcWorldFactsProjection1458
 {

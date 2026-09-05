@@ -4,7 +4,7 @@ using TerraRuntime.HostContracts;
 using TerraRuntime.World;
 using TerraRuntime.Core.Players;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// World-writer owner of runtime-controlled players. It owns slot leases, semantic control intent, connection-free

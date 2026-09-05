@@ -1,7 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Extensions;
 
 /// <summary>
 /// Generation-safe server archetype identity for live NPCs. Vanilla NPCs deliberately have no binding. The

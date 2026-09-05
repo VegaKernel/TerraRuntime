@@ -6,7 +6,7 @@ Source-backed каталог определений и runtime-каталог п
 
 Владение runtime-частью projectile-кода теперь следует foundation dependency layers. Стабильные projectile identities и detached DTO остаются в `TerraRuntime.Contracts`; source-backed protocol-neutral семантика simulation, включая definitions, lifecycle-факты `Projectile.SetDefaults`, hostility, owner sentinels, extra-update counts и математику NPC reflection, находится в `TerraRuntime.Gameplay.Projectiles`; generation-safe mutable stores, lifecycle mutations, execution и commit boundaries остаются в `TerraRuntime.Core`. Существующий world-only предикат `CutTilesAt` намеренно не переносится вверх: `TerraRuntime.World` остаётся sibling foundation layer и зависит только от Contracts, поэтому эту границу нужно переработать отдельно, а не добавлять зависимость World от Gameplay.
 
-- `VanillaProjectileDefinitionCatalog` хранит проверенные факты TerrariaServer 1.4.5.8: размеры, collision shape, `aiStyle`, поведение в воде и флаги tile collision;
+- `VanillaDefinitionCatalog` хранит проверенные факты TerrariaServer 1.4.5.8: размеры, collision shape, `aiStyle`, поведение в воде и флаги tile collision;
 - `VanillaProjectileBehaviorProfileCatalog` явно разрешает конкретному projectile type использовать реализацию TerraRuntime и хранит runtime-ограничения/исключения.
 
 ```mermaid
@@ -80,12 +80,15 @@ flowchart TD
 - явную классификацию текущих basic-arrow и thrown types;
 - owner-gated исключение Green Laser;
 - source-backed профиль Enchanted Boomerang с outbound/return-фазами, возвратом к владельцу и отключением tile collision на return-фазе;
-- явные hostile boss/NPC families для прямых beams, Plantera seeds и Golem fireball, включая их нестандартные gravity/collision правила;
+- явные hostile boss/NPC families для прямых beams, Plantera seeds, Golem fireball, Duke Fishron tornado chains и Cultist Ice Mist/Fireball slices, включая их нестандартные gravity/collision правила;
+- post-commit staging живых children для aiStyle-64 tornado segments/Sharkron children и aiStyle-86 Ice Mist children с повторной проверкой точных projectile/NPC generations перед публикацией;
 - соответствие profile каждому source-backed definition `aiStyle`;
 - fail-closed поведение при несовпадении definition и runtime profile;
 - отсутствие автоматического вывода поведения для unprofiled projectile.
 
 Существующие projectile behavior/world tests продолжают проверять фактическую скорость, таймеры, collision и lifecycle через те же production steppers.
+
+Текущий admitted live-child slice намеренно работает через post-commit границу. Переход Sharknado/Cthulunado из `ai[0] = 2` в `1` может поставить следующий segment и source-interval Sharkron/Sharkron2 spawn в очередь только после commit точной generation родительского projectile; затем authority повторно проверяет точную generation исходного `NpcHandle`. Cultist Ice Mist использует ту же границу для 30-update cadence своих children. Поэтому reused projectile/NPC slots не могут унаследовать устаревшую child-работу. Exact same-pass physical-slot update ordering для только что выделенных children пока остаётся открытым.
 
 ## Combat handoff и runtime integrity
 

@@ -88,6 +88,35 @@ public sealed class RuntimeProjectileExplosionQueueTests
         Assert.Equal(sourceNpc, explosion.SourceNpc);
     }
 
+    [Theory]
+    [InlineData(467)]
+    [InlineData(468)]
+    public void Cultist_fireball_kill_damage_preserves_npc_provenance_and_expands_to_176_square(int rawType)
+    {
+        var queue = new RuntimeProjectileExplosionQueue(4);
+        ProjectileSnapshot projectile = CreateProjectile(new ProjectileTypeId(rawType), 100f, 200f, 3.25f) with
+        {
+            Spawner = VanillaProjectileOwnership.ServerOwner
+        };
+        var sourceNpc = new NpcHandle(14, new NpcGeneration(9));
+        var termination = new ProjectileTerminationCommit(
+            projectile,
+            projectile,
+            ProjectileSimulationTerminationReason.BehaviorKill,
+            CombatTrusted: false,
+            TrustedOwner: default,
+            SourceNpc: sourceNpc);
+
+        queue.ProjectileTerminated(in termination);
+
+        Assert.Single(queue.Events.ToArray());
+        RuntimeProjectileExplosionEvent explosion = queue.Events[0];
+        Assert.Equal(176, explosion.Width);
+        Assert.Equal(176, explosion.Height);
+        Assert.Equal(3.25f, explosion.Projectile.KnockBack, 5);
+        Assert.Equal(sourceNpc, explosion.SourceNpc);
+    }
+
     private static ProjectileSnapshot CreateProjectile(
         ProjectileTypeId type,
         float positionX,

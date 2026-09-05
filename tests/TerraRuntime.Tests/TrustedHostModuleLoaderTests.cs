@@ -20,7 +20,7 @@ public sealed class TrustedHostModuleLoaderTests
         var npcActors = new TestNpcActorOperations(acquire: true);
         var npcShops = new TestNpcShopOperations();
         var source = new TestHostRuntime(
-            new TerraRuntimeHostRuntimeInfo("Scope World", "scope.wld", 100, 100, 7777, 8),
+            new RuntimeInfo("Scope World", "scope.wld", 100, 100, 7777, 8),
             new TestInterestManagementControl(),
             new TestPlayerStateSnapshotReader(),
             npcActors,
@@ -103,7 +103,7 @@ public sealed class TrustedHostModuleLoaderTests
         var npcShops = new TestNpcShopOperations();
         var npcActors = new TestNpcActorOperations(acquire: true);
         var runtime = new TestHostRuntime(
-            new TerraRuntimeHostRuntimeInfo(
+            new RuntimeInfo(
                 "Fixture World",
                 Path.Combine(worlds, "fixture.wld"),
                 8400,
@@ -129,9 +129,9 @@ public sealed class TrustedHostModuleLoaderTests
                 serverPlugins,
                 await File.ReadAllTextAsync(startedMarker, cancellationToken));
 
-            ReadOnlyMemory<ITerraRuntimeTerminalDashboardProvider> dashboardProviders = loader.CaptureDashboards();
+            ReadOnlyMemory<IDashboardProvider> dashboardProviders = loader.CaptureDashboards();
             Assert.Single(dashboardProviders.ToArray());
-            ITerraRuntimeTerminalDashboardProvider provider = dashboardProviders.Span[0];
+            IDashboardProvider provider = dashboardProviders.Span[0];
             Assert.Equal(FixtureHostModule.DashboardId, provider.Id);
             Assert.Equal("Fixture Dashboard", provider.Title);
 
@@ -234,16 +234,16 @@ public sealed class TrustedHostModuleLoaderTests
         string ConfigDirectory,
         string DataDirectory,
         string LogsDirectory,
-        ITerraRuntimeTerminalDashboardRegistry TerminalDashboards,
-        ITerraRuntimeWorldGeneratorRegistry WorldGenerators) : ITerraRuntimeHostEnvironment;
+        IDashboardRegistry TerminalDashboards,
+        IGeneratorRegistry WorldGenerators) : IEnvironment;
 
     private sealed record TestHostRuntime(
-        TerraRuntimeHostRuntimeInfo Info,
+        RuntimeInfo Info,
         IInterestManagementControl InterestManagement,
         IPlayerStateSnapshotReader PlayerStates,
         INpcActorOperations NpcActors,
         INpcShopOperations NpcShops,
-        IServerPlayerOperations ServerPlayers) : ITerraRuntimeHostRuntime;
+        IServerPlayerOperations ServerPlayers) : IRuntime;
 
     private sealed class TestNpcShopOperations : INpcShopOperations
     {

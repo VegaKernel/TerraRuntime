@@ -5,7 +5,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal readonly record struct RuntimeTownNpcMoveInConditions1458(
     bool DayTime,

@@ -10,7 +10,7 @@ public sealed class WorldSectionTileSnapshot
 
     internal WorldSectionTileSnapshot(
         WorldSectionId section,
-        WorldTileBounds bounds,
+        WorldTileRegion bounds,
         long revision,
         WorldTile[] tiles)
     {
@@ -26,7 +26,7 @@ public sealed class WorldSectionTileSnapshot
 
     public WorldSectionId Section { get; }
 
-    public WorldTileBounds Bounds { get; }
+    public WorldTileRegion Bounds { get; }
 
     public long Revision { get; }
 

@@ -2,13 +2,13 @@ using System.Collections.Concurrent;
 using System.Net.Sockets;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Network;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 using TerraRuntime.Protocol;
 using StructuredLogCategory = TerraRuntime.Contracts.Diagnostics.RuntimeLogCategory;
 using StructuredLogContext = TerraRuntime.Contracts.Diagnostics.RuntimeLogContext;
 using StructuredLogEventIds = TerraRuntime.Contracts.Diagnostics.RuntimeLogEventIds;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Owns accepted Terraria connection lifetime independently from the public listening endpoint. Listener generations

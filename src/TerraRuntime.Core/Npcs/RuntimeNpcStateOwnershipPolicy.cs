@@ -2,7 +2,7 @@ using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 /// <summary>
 /// Owns runtime-local NPC state defaults and preservation rules independently from slot storage.

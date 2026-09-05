@@ -29,7 +29,7 @@ public sealed class VanillaMultiTileObjectMutationServiceTests
             metadata);
 
         Assert.True(result.Applied);
-        Assert.Equal(new WorldTileBounds(210, 160, 2, 2), result.Descriptor.Bounds);
+        Assert.Equal(new WorldTileRegion(210, 160, 2, 2), result.Descriptor.Bounds);
         Assert.Equal(4, result.ChangedTiles);
         Assert.Equal(VanillaTileObjectMetadataKind.Chest, result.Descriptor.MetadataKind);
         Assert.Equal(1, metadata.CreateCount);
@@ -86,7 +86,7 @@ public sealed class VanillaMultiTileObjectMutationServiceTests
             metadata);
 
         Assert.True(result.Applied);
-        Assert.Equal(new WorldTileBounds(219, 160, 3, 2), result.Descriptor.Bounds);
+        Assert.Equal(new WorldTileRegion(219, 160, 3, 2), result.Descriptor.Bounds);
         Assert.Equal(6, result.ChangedTiles);
         Assert.Equal(220, result.Descriptor.OriginX);
         Assert.Equal(161, result.Descriptor.OriginY);
@@ -145,7 +145,7 @@ public sealed class VanillaMultiTileObjectMutationServiceTests
         VanillaMultiTileObjectMutationResult result = service.TryBreakAt(211, 161, metadata);
 
         Assert.True(result.Applied);
-        Assert.Equal(new WorldTileBounds(210, 160, 2, 2), result.Descriptor.Bounds);
+        Assert.Equal(new WorldTileRegion(210, 160, 2, 2), result.Descriptor.Bounds);
         Assert.Equal(4, result.ChangedTiles);
         Assert.Equal(1, metadata.RemoveCount);
         for (int y = 160; y <= 161; y++)
@@ -301,7 +301,7 @@ public sealed class VanillaMultiTileObjectMutationServiceTests
             out VanillaMultiTileObjectMutationDescriptor descriptor);
 
         Assert.Equal(VanillaMultiTileObjectMutationStatus.Applied, status);
-        Assert.Equal(new WorldTileBounds(210, 160, 2, 2), descriptor.Bounds);
+        Assert.Equal(new WorldTileRegion(210, 160, 2, 2), descriptor.Bounds);
         Assert.Equal(VanillaTileIds.Containers, descriptor.Definition.TileType);
     }
 

@@ -70,19 +70,24 @@ Owned state includes, as implementation grows:
 
 Other threads may receive network data, decode bounded input, build immutable work products, perform disk I/O, serialize snapshots, update UI from immutable telemetry, and return results through explicit completion/command boundaries. They may not mutate authoritative collections directly.
 
-`ServerRuntimeState` is the authoritative command/tick coordinator, not the owner of every entity subsystem. World-scoped collaborators own coherent mutation lifecycles while remaining callable only from that same writer: `PlayerAuthority` owns connection-player state application; `ServerPlayerAuthority` owns runtime-controlled player leases, semantic control intent, dry-physics progression and per-generation liquid-contact state; `NpcAuthority` owns NPC commands/AI/combat/actor-archetype lifecycle and coordinates `TownNpcAuthority`; `ProjectileAuthority` owns projectile mutation; `WorldItemAuthority` owns world-item commands and instanced leases; and `WorldTileAuthority` owns tile/object mutation admission. Extraction changes ownership structure, not tick-thread ownership.
+`ServerRuntimeState` is the authoritative command/tick coordinator, not the owner of every entity subsystem. Its immutable `ServerRuntimeComposition` owns the world-scoped subsystem graph and performs cross-subsystem construction/wiring once. The composition graph has no back-reference to `ServerRuntimeState`: a world-owned `RuntimeTickCounter` and `RuntimeCommandCounter` expose the two orchestration counters, while `RuntimePlayerSnapshotLookup` combines connection-owned and runtime-controlled player snapshots without making NPC/projectile/tile collaborators depend on the central facade. `ServerRuntimeState` alone determines command and tick ordering and is the only code that advances those counters. World-scoped collaborators own coherent mutation lifecycles while remaining callable only from that same writer: `PlayerAuthority` owns connection-player state application and delegates generation-scoped incoming-damage immunity deadlines to `RuntimePlayerDamageImmunityStore`; `ServerPlayerAuthority` owns runtime-controlled player leases, semantic control intent, dry-physics progression and per-generation liquid-contact state; `NpcAuthority` owns NPC commands/AI/combat/actor-archetype lifecycle and coordinates `TownNpcAuthority`; `ProjectileAuthority` owns projectile mutation; `WorldItemAuthority` owns world-item commands and instanced leases; and `WorldTileAuthority` owns tile/object mutation admission. Object placement now commits its authoritative inventory decrement directly through the shared `PlayerAuthority` while recording the same command accounting, rather than re-entering `ServerRuntimeState.Apply`. This split changes composition structure, not tick-thread ownership, and deliberately avoids a second mutable runtime-state container.
 
 Connection fanout is decomposed independently from simulation ownership. `RuntimeConnectionEndpoint` owns one connection's retained playing-generation and bounded appearance/equipment/movement baselines, while `ServerPlayerReplicaStore` owns retained protocol projections for runtime-controlled players. `RuntimeConnectionRegistry` remains the routing/fanout owner and does not become an alternate simulation writer.
 
 ```mermaid
 flowchart TD
-    State["ServerRuntimeState\ncommand + tick coordinator"] --> Players["PlayerAuthority"]
-    State --> ServerPlayers["ServerPlayerAuthority"]
-    State --> Npcs["NpcAuthority"]
+    State["ServerRuntimeState\ncommand + tick coordinator"] --> Composition["ServerRuntimeComposition\nimmutable subsystem graph"]
+    Composition --> Counters["RuntimeTickCounter + RuntimeCommandCounter"]
+    Composition --> PlayerLookup["RuntimePlayerSnapshotLookup"]
+    PlayerLookup --> Players["PlayerAuthority"]
+    PlayerLookup --> ServerPlayers["ServerPlayerAuthority"]
+    Composition --> Players
+    Composition --> ServerPlayers
+    Composition --> Npcs["NpcAuthority"]
     Npcs --> Town["TownNpcAuthority"]
-    State --> Projectiles["ProjectileAuthority"]
-    State --> Items["WorldItemAuthority"]
-    State --> Tiles["WorldTileAuthority"]
+    Composition --> Projectiles["ProjectileAuthority"]
+    Composition --> Items["WorldItemAuthority"]
+    Composition --> Tiles["WorldTileAuthority"]
     Npcs --> NpcStore["RuntimeNpcStore"]
     Projectiles --> ProjectileStore["RuntimeProjectileStore"]
     Items --> ItemStore["RuntimeWorldItemStore"]
@@ -289,11 +294,11 @@ A trusted host module receives API in two stages.
 
 ### Bootstrap environment
 
-`ITerraRuntimeHostEnvironment` is available before a live runtime and contains root/deployment paths, the dashboard registry and the world-generator registry.
+`IEnvironment` is available before a live runtime and contains root/deployment paths, the dashboard registry and the world-generator registry.
 
 ### Live runtime
 
-`ITerraRuntimeHostRuntime` is attached after the authoritative runtime starts and provides runtime info, interest-management control, player snapshots, NPC actor operations and controlled server-player operations.
+`IRuntime` is attached after the authoritative runtime starts and provides runtime info, interest-management control, player snapshots, NPC actor operations and controlled server-player operations.
 
 None of these contracts permit retaining mutable references to internal stores.
 
@@ -344,3 +349,11 @@ When an architecture boundary changes, verify at the same time that:
 4. failure behavior is defined;
 5. tests can detect the regression;
 6. RU and EN documentation is updated in the same change.
+
+## 23. Namespace and type naming
+
+Namespaces carry stable architectural domain context; type names carry the role inside that domain. Public and internal names should not repeat the same domain merely because the code was historically kept in a flatter namespace.
+
+Current examples include `TerraRuntime.Application`, `TerraRuntime.Core.Npcs`, `TerraRuntime.Core.Projectiles`, `TerraRuntime.WorldGeneration.Vanilla` and `TerraRuntime.WorldGeneration.Runtime`. Within those namespaces the type name is shortened when the removed word is already unambiguous from the namespace. Distinct concepts must still have distinct names: world dimensions are `WorldTileDimensions`, while a rectangular tile area is `WorldTileRegion`; structured diagnostic severity remains `RuntimeLogLevel`, while the operations read model uses `OperationsLogLevel`.
+
+The rule is not "make every name short". Domain words stay in a type when they distinguish sibling concepts or make call sites materially clearer. Namespace migration and semantic renaming must update production code, fixtures, tests and documentation together; compatibility aliases are not kept merely to preserve obsolete full names.

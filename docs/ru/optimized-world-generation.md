@@ -23,9 +23,9 @@ Optimized строится слоями, а не одним разрастающ
 
 ```mermaid
 flowchart TD
-    Base["OptimizedWorldGenerationProvider<br/>layout / terrain / biomes / caves / islands / ores / mandatory structures"]
-    Play["OptimizedPlayableWorldGenerationProvider<br/>large caverns / shafts / underground lakes / Life Crystals / generic caches"]
-    Land["OptimizedLandmarkWorldGenerationProvider<br/>organic transitions / landmarks / micro-biomes / landmark caches"]
+    Base["OptimizedProvider<br/>layout / terrain / biomes / caves / islands / ores / mandatory structures"]
+    Play["PlayableProvider<br/>large caverns / shafts / underground lakes / Life Crystals / generic caches"]
+    Land["LandmarkProvider<br/>organic transitions / landmarks / micro-biomes / landmark caches"]
     Meta["metadata"]
     Dungeon["optimized dungeon v2<br/>rooms / branches / locked loot / traps"]
     PVal["base + playability validators"]
@@ -33,9 +33,9 @@ flowchart TD
     Ecology["jungle ecology v2<br/>isolated hives / Queen Bee arenas / glowing mushroom pockets"]
     Content["progression content<br/>evil anchors / distributed Larva / forge pocket"]
     Shape["surface shaping<br/>natural top slopes / half-block transitions"]
-    Surf["OptimizedSurfaceDecorationWorldGenerationProvider<br/>trees с foliage anchors / undergrowth / sunflowers"]
+    Surf["SurfaceDecorationProvider<br/>trees с foliage anchors / undergrowth / sunflowers"]
     Loot["exploration loot v2<br/>Skyware / generic / biome / ocean families"]
-    Prog["OptimizedProgressionValidationWorldGenerationProvider<br/>resource / structure / reachability gate"]
+    Prog["ProgressionValidationProvider<br/>resource / structure / reachability gate"]
     Commit["candidate finalization / commit"]
 
     Base --> Play --> Land --> Meta --> Dungeon --> PVal --> LVal --> Ecology --> Content --> Shape --> Surf --> Loot --> Prog --> Commit
@@ -188,7 +188,7 @@ runtime и здесь намеренно не объявляется завер�
 Generation остаётся fail-closed. Перед playability validation неполные фрагменты Life Crystal удаляются, полные 2x2 frame footprints пересчитываются, а недостающие объекты детерминированно восстанавливаются до исходного area-scaled target без снижения минимума. После этого validators требуют точные landmark budgets, persistent chest side-table entries,
 source-backed exploration-loot family budgets, минимальные material/wall counts, читаемый dungeon entrance, Dungeon v2
 room/loot/trap contracts и финальную progression topology. Финальный
-`OptimizedProgressionValidationWorldGenerationProvider` требует масштабируемые по площади минимумы Copper, Iron,
+`ProgressionValidationProvider` требует масштабируемые по площади минимумы Copper, Iron,
 Silver, Gold и Hellstone; проверяет полные footprints progression objects; требует нетривиальные связные interiors
 dungeon, hive и Jungle Temple; а также строит bounded excavation-aware reachability graph от spawn до обязательных
 surface/deep-world targets. Это structural topology gate, а не заявление о pixel-exact физике движения игрока или точной

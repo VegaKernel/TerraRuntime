@@ -3,7 +3,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
 
-namespace TerraRuntime.Operations;
+namespace TerraRuntime.Application.Operations;
 
 internal sealed class LocalRuntimeDashboardOperations : IRuntimeDashboardOperations
 {

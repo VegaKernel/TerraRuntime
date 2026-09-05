@@ -1,8 +1,8 @@
 using TerraRuntime.Contracts.Diagnostics;
-using TerraRuntime.Diagnostics;
+using TerraRuntime.Application.Diagnostics;
 using StructuredLogLevel = TerraRuntime.Contracts.Diagnostics.RuntimeLogLevel;
 
-namespace TerraRuntime.Operations;
+namespace TerraRuntime.Application.Operations;
 
 internal sealed class RuntimeLogBuffer : ILogOperations, IRuntimeLogSink
 {
@@ -36,9 +36,9 @@ internal sealed class RuntimeLogBuffer : ILogOperations, IRuntimeLogSink
         Volatile.Write(ref this.sinkHealthProvider, sinkHealthProvider);
     }
 
-    public void Publish(RuntimeLogLevel level, string source, string message)
+    public void Publish(OperationsLogLevel level, string source, string message)
     {
-        if (level < RuntimeLogLevel.Debug || level > RuntimeLogLevel.Error)
+        if (level < OperationsLogLevel.Debug || level > OperationsLogLevel.Error)
             throw new ArgumentOutOfRangeException(nameof(level));
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(message);
@@ -63,10 +63,10 @@ internal sealed class RuntimeLogBuffer : ILogOperations, IRuntimeLogSink
     public ValueTask FlushAsync(CancellationToken cancellationToken) => store.FlushAsync(cancellationToken);
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
-    public RuntimeLogSnapshot CaptureSnapshot(RuntimeLogLevel minimumLevel, int maxEntries) =>
+    public RuntimeLogSnapshot CaptureSnapshot(OperationsLogLevel minimumLevel, int maxEntries) =>
         CaptureSnapshot(new RuntimeLogQuery(minimumLevel, maxEntries));
 
-    public RuntimeLogSnapshot CaptureSnapshot(RuntimeLogLevel minimumLevel, string? source, int maxEntries) =>
+    public RuntimeLogSnapshot CaptureSnapshot(OperationsLogLevel minimumLevel, string? source, int maxEntries) =>
         CaptureSnapshot(new RuntimeLogQuery(minimumLevel, maxEntries, source));
 
     public RuntimeLogSnapshot CaptureSnapshot(RuntimeLogQuery query)
@@ -112,7 +112,7 @@ internal sealed class RuntimeLogBuffer : ILogOperations, IRuntimeLogSink
         return snapshot.AsMemory();
     }
 
-    private RuntimeLogSnapshot EmptySnapshot(RuntimeLogLevel minimumLevel) =>
+    private RuntimeLogSnapshot EmptySnapshot(OperationsLogLevel minimumLevel) =>
         CreateSnapshot(ReadOnlyMemory<RuntimeLogEntry>.Empty, minimumLevel);
 
     private RuntimeLogSnapshot CaptureChatSnapshot(RuntimeLogQuery query)
@@ -120,7 +120,7 @@ internal sealed class RuntimeLogBuffer : ILogOperations, IRuntimeLogSink
         if (query.Category is not null || query.EventId is not null || query.CorrelationId is not null)
             return EmptySnapshot(query.MinimumLevel);
         ReadOnlySpan<RuntimeChatEntry> chat = RuntimeChatTelemetry.Capture(query.MaxEntries).Span;
-        if (chat.Length == 0 || query.MinimumLevel > RuntimeLogLevel.Information)
+        if (chat.Length == 0 || query.MinimumLevel > OperationsLogLevel.Information)
             return EmptySnapshot(query.MinimumLevel);
         var snapshot = new RuntimeLogEntry[chat.Length];
         for (int i = 0; i < chat.Length; i++)
@@ -129,7 +129,7 @@ internal sealed class RuntimeLogBuffer : ILogOperations, IRuntimeLogSink
             snapshot[i] = new RuntimeLogEntry(
                 entry.Sequence,
                 entry.TimestampUtc,
-                RuntimeLogLevel.Information,
+                OperationsLogLevel.Information,
                 ChatSource,
                 $"#{entry.PlayerSlot}: {entry.Text}",
                 RuntimeLogEventIds.OperationsReadModelMessage.Value,
@@ -145,7 +145,7 @@ internal sealed class RuntimeLogBuffer : ILogOperations, IRuntimeLogSink
             CaptureDiagnostics());
     }
 
-    private RuntimeLogSnapshot CreateSnapshot(ReadOnlyMemory<RuntimeLogEntry> entries, RuntimeLogLevel minimumLevel) =>
+    private RuntimeLogSnapshot CreateSnapshot(ReadOnlyMemory<RuntimeLogEntry> entries, OperationsLogLevel minimumLevel) =>
         new(
             entries,
             store.Published,
@@ -200,7 +200,7 @@ internal sealed class RuntimeLogBuffer : ILogOperations, IRuntimeLogSink
 
     private static void ValidateQuery(RuntimeLogQuery query)
     {
-        if (query.MinimumLevel < RuntimeLogLevel.Debug || query.MinimumLevel > RuntimeLogLevel.Error)
+        if (query.MinimumLevel < OperationsLogLevel.Debug || query.MinimumLevel > OperationsLogLevel.Error)
             throw new ArgumentOutOfRangeException(nameof(query));
         if (query.MaxEntries < 0)
             throw new ArgumentOutOfRangeException(nameof(query));
@@ -231,21 +231,21 @@ internal sealed class RuntimeLogBuffer : ILogOperations, IRuntimeLogSink
             record.Category,
             record.Context.CorrelationId);
 
-    private static StructuredLogLevel ToStructuredLevel(RuntimeLogLevel level) => level switch
+    private static StructuredLogLevel ToStructuredLevel(OperationsLogLevel level) => level switch
     {
-        RuntimeLogLevel.Debug => StructuredLogLevel.Debug,
-        RuntimeLogLevel.Information => StructuredLogLevel.Information,
-        RuntimeLogLevel.Warning => StructuredLogLevel.Warning,
-        RuntimeLogLevel.Error => StructuredLogLevel.Error,
+        OperationsLogLevel.Debug => StructuredLogLevel.Debug,
+        OperationsLogLevel.Information => StructuredLogLevel.Information,
+        OperationsLogLevel.Warning => StructuredLogLevel.Warning,
+        OperationsLogLevel.Error => StructuredLogLevel.Error,
         _ => throw new ArgumentOutOfRangeException(nameof(level))
     };
 
-    private static RuntimeLogLevel ToOperationsLevel(StructuredLogLevel level) => level switch
+    private static OperationsLogLevel ToOperationsLevel(StructuredLogLevel level) => level switch
     {
-        StructuredLogLevel.Trace or StructuredLogLevel.Debug => RuntimeLogLevel.Debug,
-        StructuredLogLevel.Information => RuntimeLogLevel.Information,
-        StructuredLogLevel.Warning => RuntimeLogLevel.Warning,
-        StructuredLogLevel.Error or StructuredLogLevel.Critical => RuntimeLogLevel.Error,
+        StructuredLogLevel.Trace or StructuredLogLevel.Debug => OperationsLogLevel.Debug,
+        StructuredLogLevel.Information => OperationsLogLevel.Information,
+        StructuredLogLevel.Warning => OperationsLogLevel.Warning,
+        StructuredLogLevel.Error or StructuredLogLevel.Critical => OperationsLogLevel.Error,
         _ => throw new ArgumentOutOfRangeException(nameof(level))
     };
 

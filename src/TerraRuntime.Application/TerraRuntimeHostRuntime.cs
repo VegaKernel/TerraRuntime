@@ -2,12 +2,12 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
-internal sealed class TerraRuntimeHostRuntime : ITerraRuntimeHostRuntime
+internal sealed class TerraRuntimeHostRuntime : IRuntime
 {
     public TerraRuntimeHostRuntime(
-        TerraRuntimeHostRuntimeInfo info,
+        RuntimeInfo info,
         IInterestManagementControl interestManagement,
         IPlayerStateSnapshotReader playerStates,
         IPlayerAdministrativeOperations playerAdministration,
@@ -32,7 +32,7 @@ internal sealed class TerraRuntimeHostRuntime : ITerraRuntimeHostRuntime
         ServerPlayers = new RuntimeServerPlayerOperations(runtimePlayerStates.CommandIngress);
     }
 
-    public TerraRuntimeHostRuntimeInfo Info { get; }
+    public RuntimeInfo Info { get; }
     public IInterestManagementControl InterestManagement { get; }
     public IPlayerStateSnapshotReader PlayerStates { get; }
     public IPlayerAdministrativeOperations PlayerAdministration { get; }

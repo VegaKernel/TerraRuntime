@@ -97,7 +97,7 @@ Extensible host дополнительно предоставляет:
 - `HostModules/` — trusted host module assemblies;
 - `ServerPlugins/` — зарезервированный/экспортируемый server-plugin location.
 
-Эти пути передаются trusted modules через `ITerraRuntimeHostEnvironment`; модули должны использовать предоставленные пути, а не самостоятельно восстанавливать deployment-relative paths.
+Эти пути передаются trusted modules через `IEnvironment`; модули должны использовать предоставленные пути, а не самостоятельно восстанавливать deployment-relative paths.
 
 Ошибка создания каталогов фатальна до запуска мира. Core startup path возвращает exit code `24`; extensible wrapper возвращает `30`, если расширенный directory layout не удалось инициализировать.
 
@@ -178,7 +178,7 @@ Startup behavior детерминирован:
 2. имена файлов сортируются case-insensitive;
 3. для каждого кандидата создаётся collectible `AssemblyLoadContext`;
 4. проверяется TerraRuntime assembly boundary;
-5. ищется ровно одна exported concrete реализация `ITerraRuntimeHostModule`;
+5. ищется ровно одна exported concrete реализация `IModule`;
 6. она создаётся через public parameterless constructor;
 7. требуется непустое и case-insensitive уникальное имя module;
 8. `StartAsync` вызывается до attachment TerraRuntime world;

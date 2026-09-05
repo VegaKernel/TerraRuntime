@@ -1,4 +1,4 @@
-namespace TerraRuntime.Operations;
+namespace TerraRuntime.Application.Operations;
 
 /// <summary>
 /// Converts observed process-lifetime outbound queue high-water marks into a conservative sizing recommendation.

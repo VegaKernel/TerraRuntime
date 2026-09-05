@@ -51,7 +51,7 @@ public sealed class RuntimeServerPlayerMutableStateTests
         Assert.True(states.TryGet(created.Player, out PlayerStateSnapshot player));
         Assert.True(player.HasHealth);
         Assert.Equal((short)0, player.Life);
-        Assert.Equal(VanillaPlayerVitalsRules.MinimumMaxLife, player.MaxLife);
+        Assert.Equal(VanillaVitalsRules.MinimumMaxLife, player.MaxLife);
         Assert.True(player.IsDead);
         Assert.True(player.HasMana);
         Assert.Equal((short)37, player.Mana);

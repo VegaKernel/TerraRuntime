@@ -27,7 +27,6 @@ public sealed class RuntimeObjectPlacementCommandProcessorTests
             Direction: false);
 
         Assert.True(fixture.Processor.TryApply(
-            fixture.State,
             new ClientPlaceObjectRuntimeCommand(connection, packet)));
 
         Assert.Equal(RuntimeObjectPlacementResult.Applied, fixture.Processor.LastResult);
@@ -47,7 +46,7 @@ public sealed class RuntimeObjectPlacementCommandProcessorTests
         Assert.Equal(9, chest.Y);
         Assert.Equal(VanillaChestStorageFacts1458.DefaultItemSlots, chest.Items.Length);
 
-        Assert.True(fixture.State.TryCapturePlayerInventoryItem(connection.Player, 0, out RuntimePlayerInventoryItem remaining));
+        Assert.True(fixture.Players.TryGetInventoryItem(connection.Player, 0, out RuntimePlayerInventoryItem remaining));
         Assert.Equal(VanillaItemIds.Chest, remaining.ItemType);
         Assert.Equal((short)1, remaining.Stack);
     }
@@ -63,14 +62,13 @@ public sealed class RuntimeObjectPlacementCommandProcessorTests
         TerrariaPlaceObjectState packet = fixture.BaseChestPacket();
 
         Assert.True(fixture.Processor.TryApply(
-            fixture.State,
             new ClientPlaceObjectRuntimeCommand(connection, packet)));
 
         Assert.Equal(RuntimeObjectPlacementResult.UnsupportedSelectedItem, fixture.Processor.LastResult);
         Assert.Equal(1, fixture.Processor.Unsupported);
         Assert.False(fixture.Tiles.Get(10, 9).IsActive);
         Assert.Empty(fixture.Chests.CaptureSnapshot());
-        Assert.True(fixture.State.TryCapturePlayerInventoryItem(connection.Player, 0, out RuntimePlayerInventoryItem item));
+        Assert.True(fixture.Players.TryGetInventoryItem(connection.Player, 0, out RuntimePlayerInventoryItem item));
         Assert.Equal((short)20, item.Stack);
     }
 
@@ -93,13 +91,12 @@ public sealed class RuntimeObjectPlacementCommandProcessorTests
         };
 
         Assert.True(fixture.Processor.TryApply(
-            fixture.State,
             new ClientPlaceObjectRuntimeCommand(connection, packet)));
 
         Assert.Equal(RuntimeObjectPlacementResult.PacketMismatch, fixture.Processor.LastResult);
         Assert.False(fixture.Tiles.Get(10, 9).IsActive);
         Assert.Empty(fixture.Chests.CaptureSnapshot());
-        Assert.True(fixture.State.TryCapturePlayerInventoryItem(connection.Player, 0, out RuntimePlayerInventoryItem item));
+        Assert.True(fixture.Players.TryGetInventoryItem(connection.Player, 0, out RuntimePlayerInventoryItem item));
         Assert.Equal((short)2, item.Stack);
     }
 
@@ -112,14 +109,13 @@ public sealed class RuntimeObjectPlacementCommandProcessorTests
         TerrariaPlaceObjectState packet = fixture.BaseChestPacket();
 
         Assert.True(fixture.Processor.TryApply(
-            fixture.State,
             new ClientPlaceObjectRuntimeCommand(connection, packet)));
 
         Assert.Equal(RuntimeObjectPlacementResult.WorldRejected, fixture.Processor.LastResult);
         Assert.Equal(VanillaMultiTileObjectMutationStatus.MissingSupport, fixture.Processor.LastWorldStatus);
         Assert.False(fixture.Tiles.Get(10, 9).IsActive);
         Assert.Empty(fixture.Chests.CaptureSnapshot());
-        Assert.True(fixture.State.TryCapturePlayerInventoryItem(connection.Player, 0, out RuntimePlayerInventoryItem item));
+        Assert.True(fixture.Players.TryGetInventoryItem(connection.Player, 0, out RuntimePlayerInventoryItem item));
         Assert.Equal((short)2, item.Stack);
     }
 
@@ -137,7 +133,6 @@ public sealed class RuntimeObjectPlacementCommandProcessorTests
         TerrariaPlaceObjectState packet = fixture.BaseChestPacket();
 
         Assert.True(fixture.Processor.TryApply(
-            fixture.State,
             new ClientPlaceObjectRuntimeCommand(wrongSource, packet)));
 
         Assert.Equal(RuntimeObjectPlacementResult.InventoryCommitFailed, fixture.Processor.LastResult);
@@ -145,7 +140,7 @@ public sealed class RuntimeObjectPlacementCommandProcessorTests
         Assert.False(fixture.Tiles.Get(10, 9).IsActive);
         Assert.False(fixture.Tiles.Get(11, 10).IsActive);
         Assert.Empty(fixture.Chests.CaptureSnapshot());
-        Assert.True(fixture.State.TryCapturePlayerInventoryItem(connection.Player, 0, out RuntimePlayerInventoryItem item));
+        Assert.True(fixture.Players.TryGetInventoryItem(connection.Player, 0, out RuntimePlayerInventoryItem item));
         Assert.Equal((short)2, item.Stack);
     }
 
@@ -179,13 +174,15 @@ public sealed class RuntimeObjectPlacementCommandProcessorTests
         {
             Tiles = new WorldTileStore(new WorldDimensions(200, 150));
             Chests = new RuntimeChestStore([]);
-            State = new ServerRuntimeState(worldTiles: Tiles);
-            Processor = new RuntimeObjectPlacementCommandProcessor(Tiles, Chests);
+            Players = new PlayerAuthority(events: null, worldTiles: Tiles);
+            Commands = new RuntimeCommandCounter();
+            Processor = new RuntimeObjectPlacementCommandProcessor(Tiles, Chests, Players, Commands);
         }
 
         public WorldTileStore Tiles { get; }
         public RuntimeChestStore Chests { get; }
-        public ServerRuntimeState State { get; }
+        public PlayerAuthority Players { get; }
+        public RuntimeCommandCounter Commands { get; }
         public RuntimeObjectPlacementCommandProcessor Processor { get; }
 
         public ConnectionHandle SpawnPlayer(long connectionId)
@@ -199,8 +196,8 @@ public sealed class RuntimeObjectPlacementCommandProcessorTests
                 GameCommandSourceId.FromConnection(connectionId),
                 session.Handle);
             var request = new PlayerSpawnCommitRequest(session.Slot, 20, 20, 0, 0, 0, 0, 0);
-            State.Apply(new PlayerSpawnRuntimeCommand(connection, session, request));
-            Assert.Equal(PlayerSpawnCommitResult.Committed, State.LastSpawnCommitResult);
+            Players.TryApply(new PlayerSpawnRuntimeCommand(connection, session, request));
+            Assert.Equal(PlayerSpawnCommitResult.Committed, Players.LastSpawnCommitResult);
             return connection;
         }
 
@@ -213,8 +210,8 @@ public sealed class RuntimeObjectPlacementCommandProcessorTests
                 Prefix: 0,
                 ItemNetId: checked((short)itemType.Value),
                 ItemFlags: 0);
-            State.Apply(new PlayerEquipmentRuntimeCommand(connection, request));
-            Assert.Equal(0, State.RejectedPlayerEquipmentUpdates);
+            Players.TryApply(new PlayerEquipmentRuntimeCommand(connection, request));
+            Assert.Equal(0, Players.RejectedEquipmentUpdates);
         }
 
         public TerrariaPlaceObjectState BaseChestPacket() =>

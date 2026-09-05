@@ -2,7 +2,7 @@ using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 /// <summary>TerrariaServer 1.4.5.8 aiStyle 32 gameplay state for Skeletron Prime.</summary>
 internal sealed class VanillaSkeletronPrimeNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy

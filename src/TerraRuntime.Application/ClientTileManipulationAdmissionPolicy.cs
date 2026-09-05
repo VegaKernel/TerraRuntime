@@ -1,6 +1,6 @@
 using TerraRuntime.Protocol.Multiplicity;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal enum ClientTileManipulationAdmissionResult : byte
 {

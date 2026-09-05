@@ -1,5 +1,5 @@
 ﻿using TerraRuntime.World;
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 internal sealed class RuntimeTallGateOccupancyProbe : IVanillaTallGateOccupancyProbe
 {
     private readonly Func<int, int, bool> isFree;

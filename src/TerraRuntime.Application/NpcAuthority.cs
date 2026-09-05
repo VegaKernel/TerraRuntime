@@ -7,7 +7,7 @@ using TerraRuntime.HostContracts;
 using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Owns non-player NPC command application, AI execution, actor/archetype state, combat and town-NPC orchestration
@@ -42,7 +42,8 @@ internal sealed class NpcAuthority
         new PlayerStateSnapshot[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
 
     public NpcAuthority(
-        ServerRuntimeState runtime,
+        RuntimePlayerSnapshotLookup playerSnapshots,
+        Func<long> tickProvider,
         PlayerAuthority players,
         RuntimeNpcStore npcs,
         RuntimeProjectileStore projectiles,
@@ -72,7 +73,8 @@ internal sealed class NpcAuthority
         bool isThereAWorldSurface,
         bool evilBossDownedBaseline)
     {
-        ArgumentNullException.ThrowIfNull(runtime);
+        ArgumentNullException.ThrowIfNull(playerSnapshots);
+        ArgumentNullException.ThrowIfNull(tickProvider);
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         ArgumentNullException.ThrowIfNull(projectiles);
@@ -94,7 +96,7 @@ internal sealed class NpcAuthority
             npcArchetypeIdentities ?? new RuntimeNpcArchetypeIdentityStore(npcs.Capacity);
         var presentationBehaviors = new RuntimeGameplayBehaviorRegistry<NpcTypeId, INpcAiStateStepper>();
         var archetypeBehaviors = new RuntimeArchetypeBehaviorRegistry<INpcAiStateStepper>();
-        var behaviorQueries = new RuntimeNpcBehaviorQueries(runtime, npcs, worldTiles);
+        var behaviorQueries = new RuntimeNpcBehaviorQueries(tickProvider, playerSnapshots, npcs, worldTiles);
         actorControlOwner = new RuntimeNpcActorControlOwner(
             npcs,
             actorControls,
@@ -123,14 +125,14 @@ internal sealed class NpcAuthority
             expertMode,
             masterMode);
         mysticFrogCatch = worldTiles is not null
-            ? new RuntimeMysticFrogCatchService1458(npcs, worldTiles, runtime)
+            ? new RuntimeMysticFrogCatchService1458(npcs, worldTiles, playerSnapshots)
             : null;
         combat = new RuntimeNpcNetworkCombatPipeline(
             npcs,
             worldItems,
-            runtime,
+            playerSnapshots,
             players,
-            () => runtime.Updates,
+            tickProvider,
             npcReplication,
             instancedItemLeases,
             worldItemReplication,
@@ -144,7 +146,7 @@ internal sealed class NpcAuthority
             isThereAWorldSurface,
             evilBossDownedBaseline);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
-            projectiles, npcs, combat, players, () => runtime.Updates);
+            projectiles, npcs, combat, players, tickProvider);
         townNpcAuthority.SetMeleeDamageSink(combat);
 
         if (npcAiStepper is null)
@@ -160,7 +162,7 @@ internal sealed class NpcAuthority
             var actorIntent = new RuntimeNpcActorIntentStateStepper(
                 behaviorDispatch,
                 actorControls,
-                runtime);
+                playerSnapshots);
             if (worldTiles is null)
             {
                 aiStepper = actorIntent;

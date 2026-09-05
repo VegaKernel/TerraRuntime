@@ -1,9 +1,9 @@
-using TerraRuntime.Diagnostics;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Diagnostics;
+using TerraRuntime.Application.Operations;
 using StructuredLogCategory = TerraRuntime.Contracts.Diagnostics.RuntimeLogCategory;
 using StructuredLogEventIds = TerraRuntime.Contracts.Diagnostics.RuntimeLogEventIds;
 using StructuredLogLevel = TerraRuntime.Contracts.Diagnostics.RuntimeLogLevel;
-using OperationsLogLevel = TerraRuntime.Operations.RuntimeLogLevel;
+using OperationsLogLevel = TerraRuntime.Application.Operations.OperationsLogLevel;
 
 namespace TerraRuntime.Tests;
 

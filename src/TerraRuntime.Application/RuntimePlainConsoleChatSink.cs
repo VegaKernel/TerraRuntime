@@ -1,7 +1,7 @@
 using System.Threading.Channels;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Non-blocking projection of public chat into the plain terminal. Network/chat producers only perform

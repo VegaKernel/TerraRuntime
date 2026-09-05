@@ -205,7 +205,7 @@ static WorldStructuralFingerprint CaptureFingerprint(WorldFileData world)
         TownNpcCount: world.Npcs.TownNpcs.Length,
         PersistentNpcCount: world.Npcs.PersistentNpcs.Length,
         TileEntityCount: world.TileEntities.Length,
-        TerrainSilhouette: VanillaTerrainSilhouetteAnalyzer1458.Capture(tiles),
+        TerrainSilhouette: TerrainSilhouetteAnalyzer1458.Capture(tiles),
         StructuralSha256: Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant());
 }
 
@@ -225,7 +225,7 @@ static WorldStructuralComparison Compare(
         DungeonDeltaY: candidate.DungeonY - reference.DungeonY,
         WorldSurfaceDelta: candidate.WorldSurface - reference.WorldSurface,
         RockLayerDelta: candidate.RockLayer - reference.RockLayer,
-        TerrainSilhouette: VanillaTerrainSilhouetteAnalyzer1458.Compare(
+        TerrainSilhouette: TerrainSilhouetteAnalyzer1458.Compare(
             reference.TerrainSilhouette,
             candidate.TerrainSilhouette),
         SameDungeonSide: Math.Sign(candidate.DungeonX - candidate.Width / 2) ==
@@ -388,7 +388,7 @@ internal sealed record WorldStructuralFingerprint(
     int TownNpcCount,
     int PersistentNpcCount,
     int TileEntityCount,
-    VanillaTerrainSilhouette1458 TerrainSilhouette,
+    TerrainSilhouette1458 TerrainSilhouette,
     string StructuralSha256);
 
 internal sealed record WorldStructuralComparison(
@@ -403,7 +403,7 @@ internal sealed record WorldStructuralComparison(
     int DungeonDeltaY,
     int WorldSurfaceDelta,
     int RockLayerDelta,
-    VanillaTerrainSilhouetteComparison1458 TerrainSilhouette,
+    TerrainSilhouetteComparison1458 TerrainSilhouette,
     bool SameDungeonSide);
 
 internal sealed record WorldReferenceComparisonReport(

@@ -3,7 +3,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Authoritative ordinary-inventory purchase transaction for runtime-defined NPC shops. The executor plans the

@@ -2,7 +2,7 @@ using System.Numerics;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Tracks symmetric player-to-player visibility membership with section-based hysteresis.

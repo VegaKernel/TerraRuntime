@@ -1,7 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Protocol.Multiplicity;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal sealed record ClientNpcTalkRuntimeCommand(
     ConnectionHandle Connection,

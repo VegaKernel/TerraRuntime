@@ -2,7 +2,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Projectiles;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal readonly record struct RuntimeProjectileExplosionEvent(
     ProjectileSnapshot Projectile,
@@ -46,7 +46,7 @@ internal sealed class RuntimeProjectileExplosionQueue : IProjectileTerminationCo
             !VanillaProjectileExplosionFacts.TryGetOnKillExplosion(
                 termination.FinalProjectile.Type,
                 out VanillaProjectileExplosionDefinition explosion) ||
-            !VanillaProjectileDefinitionCatalog.TryGet(
+            !VanillaDefinitionCatalog.TryGet(
                 termination.FinalProjectile.Type,
                 out VanillaProjectileDefinition sourceDefinition))
         {

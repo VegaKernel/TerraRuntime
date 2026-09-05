@@ -2,7 +2,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal static class AuthoritativePlayerSpawnSmoke
 {

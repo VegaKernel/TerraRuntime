@@ -3,7 +3,7 @@ using TerraRuntime.Gameplay.Players;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 public readonly record struct RuntimeKingSlimeDifficultyLootResult(
     NpcHandle Target,

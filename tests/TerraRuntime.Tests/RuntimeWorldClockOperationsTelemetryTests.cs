@@ -1,5 +1,5 @@
 using TerraRuntime.Contracts.Runtime;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;

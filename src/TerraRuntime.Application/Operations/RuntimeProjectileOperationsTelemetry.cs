@@ -1,7 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
-namespace TerraRuntime.Operations;
+namespace TerraRuntime.Application.Operations;
 
 /// <summary>
 /// TUI-only projection of committed authoritative projectile state. The simulation thread publishes one

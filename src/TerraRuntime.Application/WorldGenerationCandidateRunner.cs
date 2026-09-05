@@ -4,7 +4,7 @@ using TerraRuntime.HostContracts.WorldGeneration;
 using TerraRuntime.World;
 using TerraRuntime.WorldGeneration;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 public enum RuntimeWorldGenerationCandidateStatus : byte
 {
@@ -20,7 +20,7 @@ public enum RuntimeWorldGenerationCandidateStatus : byte
 /// </summary>
 public readonly record struct RuntimeWorldGenerationCandidateResult(
     RuntimeWorldGenerationCandidateStatus Status,
-    RuntimeWorldGenerationWorkspace? Candidate,
+    Workspace? Candidate,
     WorldGenerationExecutionResult? Execution)
 {
     public bool Succeeded => Status == RuntimeWorldGenerationCandidateStatus.Generated && Candidate is not null;
@@ -55,10 +55,10 @@ public sealed class WorldGenerationCandidateRunner
                 Execution: null);
         }
 
-        RuntimeWorldGenerationWorkspace candidate;
+        Workspace candidate;
         try
         {
-            candidate = new RuntimeWorldGenerationWorkspace(request.WidthTiles, request.HeightTiles);
+            candidate = new Workspace(request.WidthTiles, request.HeightTiles);
         }
         catch (Exception exception) when (exception is ArgumentException or OverflowException)
         {

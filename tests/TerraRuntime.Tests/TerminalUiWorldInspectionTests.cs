@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
-using TerraRuntime.Operations;
-using TerraRuntime.TerminalUI;
+using TerraRuntime.Application.Operations;
+using TerraRuntime.Application.TerminalUI;
 
 namespace TerraRuntime.Tests;
 
@@ -74,7 +74,7 @@ public sealed class TerminalUiWorldInspectionTests
     public void Inspection_cache_refreshes_only_demanded_category_for_selected_world()
     {
         var source = new InspectionOperations();
-        var cache = new TerminalUiOperationsCache(
+        var cache = new OperationsCache(
             source,
             source,
             source,

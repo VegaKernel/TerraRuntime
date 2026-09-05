@@ -3,7 +3,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal readonly record struct RuntimePlayerInventoryItem(
     ItemTypeId ItemType,
@@ -33,7 +33,7 @@ internal readonly record struct RuntimePlayerInventoryItem(
     public bool IsCanonical =>
         IsEmpty
             ? ItemType.IsNone && Stack <= 0 && Prefix == VanillaPrefixIds.None && ItemFlags == 0
-            : VanillaItemDefinitionCatalog.IsValidKnownStack(ItemType, Stack) &&
+            : VanillaDefinitionCatalog.IsValidKnownStack(ItemType, Stack) &&
               !ItemType.IsNone &&
               VanillaItemIds.TryCreate(ItemType.Value, out ItemTypeId canonical) &&
               canonical == ItemType &&

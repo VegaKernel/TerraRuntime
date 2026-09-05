@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal sealed record PlayerStateSnapshotRuntimeCommand(
     PlayerHandle Player,

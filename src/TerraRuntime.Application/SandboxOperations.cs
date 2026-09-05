@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 public abstract record SandboxOperation
 {

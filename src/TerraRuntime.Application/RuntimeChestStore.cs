@@ -3,7 +3,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Authoritative runtime projection of protocol-326 world chests. The store is owned exclusively by the game

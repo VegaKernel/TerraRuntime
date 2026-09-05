@@ -5,7 +5,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal readonly record struct SectionCacheRebuildWork(
     WorldSectionPacketSnapshot Snapshot,

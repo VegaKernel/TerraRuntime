@@ -9,7 +9,7 @@ public sealed class OptimizedVanillaTreeReferenceTests
     public void Optimized_ordinary_trees_use_source_backed_vanilla_growth_frames()
     {
         var request = new WorldGenerationRequest(
-            OptimizedWorldGenerationProvider.GeneratorId,
+            OptimizedProvider.GeneratorId,
             "Optimized vanilla tree reference",
             Seed: 0x5EEDC0DEUL,
             WidthTiles: 640,
@@ -24,7 +24,7 @@ public sealed class OptimizedVanillaTreeReferenceTests
             result.Succeeded,
             $"{result.Status} execution={result.Generation.Execution?.Status} " +
             $"pass={result.Generation.Execution?.PassId.Value} err={result.Generation.Execution?.Error}");
-        RuntimeWorldGenerationWorkspace world = Assert.IsType<RuntimeWorldGenerationWorkspace>(result.Candidate);
+        Workspace world = Assert.IsType<Workspace>(result.Candidate);
 
         var frames = new HashSet<(short X, short Y)>();
         int treeTiles = 0;
@@ -52,8 +52,8 @@ public sealed class OptimizedVanillaTreeReferenceTests
     {
         for (int variant = 0; variant < 3; variant++)
         {
-            VanillaTreeFrame1458 leafy = VanillaTreeFrameCatalog1458.Top(leafy: true, variant);
-            VanillaTreeFrame1458 bare = VanillaTreeFrameCatalog1458.Top(leafy: false, variant);
+            TreeFrame1458 leafy = TreeFrameCatalog1458.Top(leafy: true, variant);
+            TreeFrame1458 bare = TreeFrameCatalog1458.Top(leafy: false, variant);
             if (frame == (leafy.X, leafy.Y) || frame == (bare.X, bare.Y))
                 return true;
         }
@@ -64,8 +64,8 @@ public sealed class OptimizedVanillaTreeReferenceTests
     {
         for (int variant = 0; variant < 3; variant++)
         {
-            VanillaTreeFrame1458 left = VanillaTreeFrameCatalog1458.LeftRoot(variant);
-            VanillaTreeFrame1458 right = VanillaTreeFrameCatalog1458.RightRoot(variant);
+            TreeFrame1458 left = TreeFrameCatalog1458.LeftRoot(variant);
+            TreeFrame1458 right = TreeFrameCatalog1458.RightRoot(variant);
             if (frame == (left.X, left.Y) || frame == (right.X, right.Y))
                 return true;
         }

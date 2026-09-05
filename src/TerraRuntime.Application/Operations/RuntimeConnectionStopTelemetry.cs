@@ -1,6 +1,6 @@
 using TerraRuntime.Network;
 
-namespace TerraRuntime.Operations;
+namespace TerraRuntime.Application.Operations;
 
 /// <summary>
 /// Retains bounded lifetime counters for normalized connection stop causes. Recording happens once

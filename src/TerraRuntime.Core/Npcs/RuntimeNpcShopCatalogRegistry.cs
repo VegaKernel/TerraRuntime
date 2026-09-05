@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 public enum NpcShopRegistrationResult : byte
 {

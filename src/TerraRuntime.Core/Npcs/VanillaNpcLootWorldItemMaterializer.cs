@@ -2,7 +2,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Gameplay.Items;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 /// <summary>
 /// TerrariaServer 1.4.5.8 world-item materializer for the currently source-backed NPC loot items.
@@ -17,7 +17,7 @@ public sealed class VanillaNpcLootWorldItemMaterializer : INpcLootWorldItemMater
     }
 
     public bool CanMaterialize(ItemTypeId itemType) =>
-        VanillaItemDefinitionCatalog.TryGetWorldDrop(itemType, out _) &&
+        VanillaDefinitionCatalog.TryGetWorldDrop(itemType, out _) &&
         VanillaNaturalItemPrefixRoller.CanRoll(itemType);
 
     public bool TryMaterialize(
@@ -32,7 +32,7 @@ public sealed class VanillaNpcLootWorldItemMaterializer : INpcLootWorldItemMater
         if (!origin.IsValid ||
             !drop.IsValid ||
             !CanMaterialize(drop.ItemType) ||
-            !VanillaItemDefinitionCatalog.TryGetWorldDrop(
+            !VanillaDefinitionCatalog.TryGetWorldDrop(
                 drop.ItemType,
                 out VanillaItemWorldDropDefinition definition) ||
             !VanillaNaturalItemPrefixRoller.TryRoll(drop.ItemType, random, out PrefixId prefix) ||

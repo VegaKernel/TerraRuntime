@@ -2,7 +2,7 @@
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 public readonly record struct PlayerBootstrapSectionResponse(
     ReadOnlyMemory<byte> StatusFrame,
@@ -459,7 +459,7 @@ public sealed partial class PlayerBootstrapPacketSet
             return false;
         }
 
-        WorldTileBounds bounds = TerrariaSectionGeometry.GetBounds(world.Header.Dimensions, section);
+        WorldTileRegion bounds = TerrariaSectionGeometry.GetBounds(world.Header.Dimensions, section);
         WorldSectionPacketEncodeResult result = WorldSectionPacketEncoder.TryEncode(
             world,
             bounds.X,

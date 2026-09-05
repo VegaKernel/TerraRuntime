@@ -2,7 +2,7 @@ using System.Buffers.Binary;
 using System.Text;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal static class WorldNativeSmoke
 {

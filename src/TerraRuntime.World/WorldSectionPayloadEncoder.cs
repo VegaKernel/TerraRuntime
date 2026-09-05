@@ -60,7 +60,7 @@ public static class WorldSectionPayloadEncoder
         ArgumentNullException.ThrowIfNull(snapshot);
         payload = [];
 
-        WorldTileBounds bounds = snapshot.Bounds;
+        WorldTileRegion bounds = snapshot.Bounds;
         WorldSectionPayloadEncodeResult validation = ValidateArea(
             context,
             bounds.X,
@@ -70,7 +70,7 @@ public static class WorldSectionPayloadEncoder
         if (validation != WorldSectionPayloadEncodeResult.Encoded)
             return validation;
 
-        WorldTileBounds expectedBounds;
+        WorldTileRegion expectedBounds;
         try
         {
             expectedBounds = TerrariaSectionGeometry.GetBounds(context.Dimensions, snapshot.Section);

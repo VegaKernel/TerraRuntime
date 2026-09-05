@@ -5,7 +5,7 @@ using TerraRuntime.Core;
 using TerraRuntime.World;
 using TerraRuntime.Protocol.Multiplicity;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal enum RuntimeTownNpcScheduleState1458 : byte
 {

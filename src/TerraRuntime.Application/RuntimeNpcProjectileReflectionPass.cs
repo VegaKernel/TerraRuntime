@@ -4,7 +4,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Source-shaped projectile/NPC reflection pass for committed projectile positions. Terraria Projectile.Update
@@ -51,7 +51,7 @@ internal sealed class RuntimeNpcProjectileReflectionPass
         {
             ProjectileSnapshot projectile = projectileScratch[projectileIndex];
             if (!projectiles.TryGetLifecycle(projectile.Handle, out ProjectileLifecycleState lifecycle) ||
-                !VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition projectileDefinition) ||
+                !VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition projectileDefinition) ||
                 !VanillaProjectileReflection1458.CanBeReflected(in projectile, lifecycle.Reflected, in projectileDefinition) ||
                 !players.TryGetPlayer(new PlayerSlotId(projectile.Spawner), out PlayerStateSnapshot owner) ||
                 !owner.Player.IsAssigned)

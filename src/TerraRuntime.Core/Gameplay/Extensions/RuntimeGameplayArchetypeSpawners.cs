@@ -2,7 +2,7 @@ using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Extensions;
 
 public readonly record struct NpcArchetypeSpawnRequest(
     GameplayArchetypeId ArchetypeId,

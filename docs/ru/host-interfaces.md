@@ -25,16 +25,16 @@ Ordinary plugins должны работать через Vega/его Plugin SDK
 Основной contract:
 
 ```csharp
-public interface ITerraRuntimeHostModule
+public interface IModule
 {
     string Name { get; }
 
     ValueTask StartAsync(
-        ITerraRuntimeHostEnvironment environment,
+        IEnvironment environment,
         CancellationToken cancellationToken = default);
 
     ValueTask AttachRuntimeAsync(
-        ITerraRuntimeHostRuntime runtime,
+        IRuntime runtime,
         CancellationToken cancellationToken = default);
 
     ValueTask DetachRuntimeAsync(CancellationToken cancellationToken = default);
@@ -46,7 +46,7 @@ public interface ITerraRuntimeHostModule
 ```mermaid
 sequenceDiagram
     participant H as Extensible host
-    participant M as ITerraRuntimeHostModule
+    participant M as IModule
     participant R as TerraRuntime
 
     H->>M: load
@@ -63,18 +63,18 @@ sequenceDiagram
 ### Правила lifecycle
 
 - `StartAsync` не предполагает наличие live world.
-- Модуль, реализующий `ITerraRuntimeHostModuleWorldActivation`, получает immutable identity мира перед каждым runtime attach. `false` пропускает `AttachRuntimeAsync`, не создаёт runtime scope и поэтому не публикует actor/shop state для этого мира. Activation policy и configuration остаются во владении модуля.
+- Модуль, реализующий `IModuleWorldActivation`, получает immutable identity мира перед каждым runtime attach. `false` пропускает `AttachRuntimeAsync`, не создаёт runtime scope и поэтому не публикует actor/shop state для этого мира. Activation policy и configuration остаются во владении модуля.
 - Registration handles/resources module retire до unload.
 - После `DetachRuntimeAsync` retained references не используются как attached live world.
 - `StopAsync` освобождает host-owned resources.
 - Cancellation tokens уважаются; lifecycle calls не должны зависать indefinitely.
 
-## 3. `ITerraRuntimeHostEnvironment`
+## 3. `IEnvironment`
 
 Bootstrap environment доступен в `StartAsync`.
 
 ```csharp
-public interface ITerraRuntimeHostEnvironment
+public interface IEnvironment
 {
     string RootDirectory { get; }
     string HostModulesDirectory { get; }
@@ -84,8 +84,8 @@ public interface ITerraRuntimeHostEnvironment
     string DataDirectory { get; }
     string LogsDirectory { get; }
 
-    ITerraRuntimeTerminalDashboardRegistry TerminalDashboards { get; }
-    ITerraRuntimeWorldGeneratorRegistry WorldGenerators { get; }
+    IDashboardRegistry TerminalDashboards { get; }
+    IGeneratorRegistry WorldGenerators { get; }
 }
 ```
 
@@ -101,14 +101,14 @@ public interface ITerraRuntimeHostEnvironment
 - считать deployment paths заменой runtime API;
 - напрямую rewrite `.wld` running world в обход persistence boundary.
 
-## 4. `ITerraRuntimeHostRuntime`
+## 4. `IRuntime`
 
 Live runtime surface attach'ится после запуска authoritative runtime.
 
 ```csharp
-public interface ITerraRuntimeHostRuntime
+public interface IRuntime
 {
-    TerraRuntimeHostRuntimeInfo Info { get; }
+    RuntimeInfo Info { get; }
     IInterestManagementControl InterestManagement { get; }
     IPlayerStateSnapshotReader PlayerStates { get; }
     IPlayerAdministrativeOperations PlayerAdministration { get; }
@@ -328,7 +328,7 @@ Created server player использует generation-safe runtime identity. Raw
 ## 9. Terminal dashboard registration
 
 ```csharp
-public interface ITerraRuntimeTerminalDashboardProvider
+public interface IDashboardProvider
 {
     string Id { get; }
     string Title { get; }
@@ -368,13 +368,13 @@ flowchart LR
 
 Host владеет provider discovery/lifetime и pass logic. TerraRuntime владеет selection, plan validation, isolated workspace, execution boundary, final acceptance и cancellation/error containment. Explicit registration существует вместо reflection-driven discovery.
 
-## 11. `ITerraRuntimeHostLifecycle`
+## 11. `ILifecycle`
 
 ```csharp
-public interface ITerraRuntimeHostLifecycle
+public interface ILifecycle
 {
     ValueTask AttachRuntimeAsync(
-        ITerraRuntimeHostRuntime runtime,
+        IRuntime runtime,
         CancellationToken cancellationToken = default);
 
     ValueTask DetachRuntimeAsync(CancellationToken cancellationToken = default);
@@ -388,15 +388,15 @@ Reload path CoreCLR loader сначала detach'ит каждый live runtime 
 ## 12. Pattern реализации host module
 
 ```csharp
-public sealed class ExampleHostModule : ITerraRuntimeHostModule
+public sealed class ExampleHostModule : IModule
 {
-    private ITerraRuntimeHostEnvironment? environment;
-    private ITerraRuntimeHostRuntime? runtime;
+    private IEnvironment? environment;
+    private IRuntime? runtime;
 
     public string Name => "Example";
 
     public ValueTask StartAsync(
-        ITerraRuntimeHostEnvironment environment,
+        IEnvironment environment,
         CancellationToken cancellationToken = default)
     {
         this.environment = environment;
@@ -404,7 +404,7 @@ public sealed class ExampleHostModule : ITerraRuntimeHostModule
     }
 
     public ValueTask AttachRuntimeAsync(
-        ITerraRuntimeHostRuntime runtime,
+        IRuntime runtime,
         CancellationToken cancellationToken = default)
     {
         this.runtime = runtime;

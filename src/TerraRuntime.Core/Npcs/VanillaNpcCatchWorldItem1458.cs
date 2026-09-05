@@ -1,7 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 /// <summary>
 /// Item.NewItem state used by NPC.CatchNPC. DefaultToCapturedCritter fixes all captured-critter item hitboxes at

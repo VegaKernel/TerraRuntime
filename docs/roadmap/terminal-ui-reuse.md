@@ -45,7 +45,7 @@ The standalone server has eight exercised runtime-owned operational views:
 - **World** consumes `IWorldOperations` / `RuntimeWorldSnapshot` for world identity, clock, cache and persistence/checkpoint status plus bounded manual save request.
 - **Logs** consumes `ILogOperations` over bounded `RuntimeLogBuffer` independently of plain-console ownership.
 
-Trusted host modules may contribute **independent dashboard roots** through `ITerraRuntimeTerminalDashboardSource` / `ITerraRuntimeTerminalDashboardProvider`. TerraRuntime keeps its System Dashboard intact; hosts do not inject arbitrary controls into built-in detail screens.
+Trusted host modules may contribute **independent dashboard roots** through `IDashboardSource` / `IDashboardProvider`. TerraRuntime keeps its System Dashboard intact; hosts do not inject arbitrary controls into built-in detail screens.
 
 ## Operational behavior
 
@@ -87,7 +87,7 @@ src/TerraRuntime.Application/
     TerminalUI/
 ```
 
-A separate `TerraRuntime.TerminalUI` project is justified only by an actual second consumer or material maintenance pressure. Toolkit-independent read models/contracts move to `TerraRuntime.Contracts` only when they become genuine cross-component contracts.
+A separate `TerraRuntime.Application.TerminalUI` project is justified only by an actual second consumer or material maintenance pressure. Toolkit-independent read models/contracts move to `TerraRuntime.Contracts` only when they become genuine cross-component contracts.
 
 ## UI-facing operations boundary
 

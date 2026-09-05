@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Projectiles;
 
 public sealed partial class RuntimeProjectileStore
 {

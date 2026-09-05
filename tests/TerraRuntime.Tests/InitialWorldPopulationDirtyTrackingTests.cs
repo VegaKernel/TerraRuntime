@@ -65,7 +65,7 @@ public sealed class InitialWorldPopulationDirtyTrackingTests
     [Fact]
     public void Generation_workspace_bulk_population_never_manufactures_live_dirty_backlog()
     {
-        var workspace = new RuntimeWorldGenerationWorkspace(widthTiles: 201, heightTiles: 151);
+        var workspace = new Workspace(widthTiles: 201, heightTiles: 151);
         var tile = new WorldGenerationTile(
             Type: 0,
             Wall: 0,

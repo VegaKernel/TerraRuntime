@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Diagnostics;
 
-namespace TerraRuntime.Diagnostics;
+namespace TerraRuntime.Application.Diagnostics;
 
 /// <summary>
 /// Host-local delivery hint carried beside a structured record inside the bounded pipeline.

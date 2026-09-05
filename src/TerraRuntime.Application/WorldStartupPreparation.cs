@@ -1,12 +1,12 @@
 using System.Diagnostics;
 using TerraRuntime.Core;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 using TerraRuntime.Protocol;
 using TerraRuntime.World;
 using StructuredLogCategory = TerraRuntime.Contracts.Diagnostics.RuntimeLogCategory;
 using StructuredLogEventIds = TerraRuntime.Contracts.Diagnostics.RuntimeLogEventIds;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal enum WorldStartupPreparationStatus : byte
 {

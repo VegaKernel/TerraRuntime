@@ -40,7 +40,7 @@ Trap placement also writes a continuous red-wire path between the trigger and tr
 
 `Spawn Point` now owns a source-order spawn decision near the world center. It rejects excessive liquid and frame-important obstructions, clears ordinary non-frame-important material from the player clearance volume, and publishes the resulting semantic spawn through `IWorldGenerationMetadataWorkspace`.
 
-The legacy compatibility Metadata pass still runs later because it owns unrelated header anchors. A narrow `VanillaSpawnPreservingMetadataPass1458` wrapper restores the source-backed spawn after that fallback executes, matching the same preservation pattern already used for source-backed terrain layers.
+The legacy compatibility Metadata pass still runs later because it owns unrelated header anchors. A narrow `SpawnPreservingMetadataPass1458` wrapper restores the source-backed spawn after that fallback executes, matching the same preservation pattern already used for source-backed terrain layers.
 
 ## Cleanup, grass, and walls
 

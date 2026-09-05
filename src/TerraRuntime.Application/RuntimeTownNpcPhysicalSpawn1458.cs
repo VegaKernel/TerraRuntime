@@ -1,6 +1,6 @@
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Final TerrariaServer 1.4.5.8 SpawnTownNPC physical bottom-tile choice. Vanilla always materializes the NPC after

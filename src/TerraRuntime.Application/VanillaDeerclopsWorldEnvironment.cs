@@ -1,7 +1,7 @@
 using TerraRuntime.Core;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// WorldTileStore-backed queries for TerrariaServer 1.4.5.8 Deerclops AI_123. ZoneSnow uses the same

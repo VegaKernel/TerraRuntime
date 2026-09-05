@@ -4,7 +4,7 @@ using Terminal.Gui.Views;
 
 namespace TerraRuntime.Extensibility;
 
-internal sealed class TrustedHostModuleHealthDashboardProvider : ITerraRuntimeTerminalDashboardProvider
+internal sealed class TrustedHostModuleHealthDashboardProvider : IDashboardProvider
 {
     internal const string DashboardId = "terraruntime.hostmodules.health";
 

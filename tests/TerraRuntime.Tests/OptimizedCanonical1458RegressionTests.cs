@@ -9,7 +9,7 @@ public sealed class OptimizedCanonical1458RegressionTests
     public void Optimized_canonical_small_seed_1458_satisfies_landmark_budget()
     {
         var request = new WorldGenerationRequest(
-            OptimizedWorldGenerationProvider.GeneratorId,
+            OptimizedProvider.GeneratorId,
             "Optimized canonical Small seed 1458",
             Seed: 1458UL,
             WidthTiles: 4200,
@@ -24,7 +24,7 @@ public sealed class OptimizedCanonical1458RegressionTests
             result.Succeeded,
             $"{result.Status} gen={result.Generation.Status} execution={result.Generation.Execution?.Status} " +
             $"pass={result.Generation.Execution?.PassId.Value} err={result.Generation.Execution?.Error}");
-        RuntimeWorldGenerationWorkspace world = Assert.IsType<RuntimeWorldGenerationWorkspace>(result.Candidate);
+        Workspace world = Assert.IsType<Workspace>(result.Candidate);
 
         WorldChest[] generated = world.CaptureGeneratedChests();
         Assert.Equal(4, generated.Count(static chest => chest.Name.StartsWith("Sky Cache ", StringComparison.Ordinal)));

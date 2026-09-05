@@ -19,7 +19,7 @@ public static class VanillaWorldProjectileTileCut
     /// Mirrors Projectile.CutTilesAt integer conversion and clamping. The returned bounds are half-open and
     /// may be empty when the whole projectile rectangle lies outside the normalized runtime world.
     /// </summary>
-    public static WorldTileBounds GetCutBounds(
+    public static WorldTileRegion GetCutBounds(
         WorldDimensions dimensions,
         float positionX,
         float positionY,
@@ -63,7 +63,7 @@ public static class VanillaWorldProjectileTileCut
         double top = Math.Min(startY, endY);
         double right = Math.Max((double)startX + boxWidth, (double)endX + boxWidth);
         double bottom = Math.Max((double)startY + boxHeight, (double)endY + boxHeight);
-        WorldTileBounds bounds = GetBoundsFromPixelEdges(tiles.Dimensions, left, top, right, bottom);
+        WorldTileRegion bounds = GetBoundsFromPixelEdges(tiles.Dimensions, left, top, right, bottom);
 
         for (int x = bounds.X; x < bounds.ExclusiveRight; x++)
         {
@@ -91,7 +91,7 @@ public static class VanillaWorldProjectileTileCut
         Span<VanillaProjectileTileCutCandidate> destination)
     {
         ArgumentNullException.ThrowIfNull(tiles);
-        WorldTileBounds bounds = GetCutBounds(tiles.Dimensions, positionX, positionY, boxWidth, boxHeight);
+        WorldTileRegion bounds = GetCutBounds(tiles.Dimensions, positionX, positionY, boxWidth, boxHeight);
         int traversalCount = checked(bounds.Width * bounds.Height);
         if (destination.Length < traversalCount)
             throw new ArgumentException("Destination must hold the complete projectile CutTilesAt traversal.", nameof(destination));
@@ -132,7 +132,7 @@ public static class VanillaWorldProjectileTileCut
         return CanCutTile(tiles, x, y, in tile);
     }
 
-    private static WorldTileBounds GetBoundsFromPixelEdges(
+    private static WorldTileRegion GetBoundsFromPixelEdges(
         WorldDimensions dimensions,
         double leftPixels,
         double topPixels,
@@ -149,7 +149,7 @@ public static class VanillaWorldProjectileTileCut
         if (bottom < top)
             bottom = top;
 
-        return new WorldTileBounds(left, top, right - left, bottom - top);
+        return new WorldTileRegion(left, top, right - left, bottom - top);
     }
 
     private static int ProjectStart(double pixels, int maximumTiles)

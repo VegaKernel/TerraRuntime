@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
-using TerraRuntime.Diagnostics;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Diagnostics;
+using TerraRuntime.Application.Operations;
 
 namespace TerraRuntime.Tests;
 

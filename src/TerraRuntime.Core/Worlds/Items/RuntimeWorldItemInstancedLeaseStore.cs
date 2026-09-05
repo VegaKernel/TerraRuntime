@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Worlds;
 
 /// <summary>
 /// Runtime projection of TerrariaServer 1.4.5.8 Main.timeItemSlotCannotBeReusedFor for server-side instanced items.

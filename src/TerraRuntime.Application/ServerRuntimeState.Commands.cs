@@ -7,26 +7,26 @@ using TerraRuntime.HostContracts;
 using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal sealed partial class ServerRuntimeState
 {
     public void Apply(RuntimeCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        AppliedCommands++;
+        _runtime.Commands.Record();
 
-        if (_serverPlayers?.TryApply(command) == true)
+        if (_runtime.ServerPlayers?.TryApply(command) == true)
             return;
-        if (_worldTileAuthority.TryApply(this, command))
+        if (_runtime.WorldTileAuthority.TryApply(command))
             return;
-        if (_players.TryApply(command))
+        if (_runtime.Players.TryApply(command))
             return;
-        if (_projectiles.TryApply(command))
+        if (_runtime.Projectiles.TryApply(command))
             return;
-        if (_npcs.TryApply(command))
+        if (_runtime.Npcs.TryApply(command))
             return;
-        if (_worldItems.TryApply(command))
+        if (_runtime.WorldItems.TryApply(command))
             return;
 
         switch (command)

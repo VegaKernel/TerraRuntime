@@ -40,7 +40,7 @@ Canonical production-план вырастает с 78 до 88 entries. Identity
 
 `Spawn Point` теперь принимает source-order решение около центра мира. Pass отклоняет чрезмерную жидкость и frame-important obstructions, очищает обычные non-frame-important blocks из player-clearance volume и публикует semantic spawn через `IWorldGenerationMetadataWorkspace`.
 
-Legacy compatibility Metadata pass всё ещё выполняется позже, потому что владеет другими header anchors. Узкий `VanillaSpawnPreservingMetadataPass1458` восстанавливает source-backed spawn после fallback, по той же модели, по которой ранее были сохранены source-backed terrain layers.
+Legacy compatibility Metadata pass всё ещё выполняется позже, потому что владеет другими header anchors. Узкий `SpawnPreservingMetadataPass1458` восстанавливает source-backed spawn после fallback, по той же модели, по которой ранее были сохранены source-backed terrain layers.
 
 ## Cleanup, grass и walls
 

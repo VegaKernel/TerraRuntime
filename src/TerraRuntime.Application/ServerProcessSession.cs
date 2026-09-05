@@ -5,13 +5,13 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
 using TerraRuntime.HostContracts.WorldGeneration;
-using TerraRuntime.Operations;
-using TerraRuntime.TerminalUI;
+using TerraRuntime.Application.Operations;
+using TerraRuntime.Application.TerminalUI;
 using TerraRuntime.World;
 using StructuredLogCategory = TerraRuntime.Contracts.Diagnostics.RuntimeLogCategory;
 using StructuredLogEventIds = TerraRuntime.Contracts.Diagnostics.RuntimeLogEventIds;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Owns one server-process session after a world has been prepared: the primary runtime, sandbox/runtime registry,
@@ -23,7 +23,7 @@ internal sealed class ServerProcessSession : IDisposable
 {
     private readonly ServerHostOptions options;
     private readonly IInterestManagementControl interestManagement;
-    private readonly ITerraRuntimeHostLifecycle? hostLifecycle;
+    private readonly ILifecycle? hostLifecycle;
     private readonly RuntimeLogBuffer runtimeLogs;
     private readonly RuntimeHostLog hostLog;
     private readonly PreparedWorldStartup startup;
@@ -35,7 +35,7 @@ internal sealed class ServerProcessSession : IDisposable
     private readonly CancellationTokenSource shutdown = new();
     private readonly ConsoleCancelEventHandler cancelHandler;
     private PosixSignalRegistration? terminateSignalRegistration;
-    private TerminalUiHost? terminalUi;
+    private Host? terminalUi;
     private bool hostRuntimeAttached;
     private bool consoleHandlerAttached;
     private int disposed;
@@ -43,7 +43,7 @@ internal sealed class ServerProcessSession : IDisposable
     public ServerProcessSession(
         ServerHostOptions options,
         IInterestManagementControl interestManagement,
-        ITerraRuntimeHostLifecycle? hostLifecycle,
+        ILifecycle? hostLifecycle,
         ITerraRuntimeWorldGeneratorSource? worldGenerators,
         RuntimeLogBuffer runtimeLogs,
         RuntimeHostLog hostLog,
@@ -160,7 +160,7 @@ internal sealed class ServerProcessSession : IDisposable
 
         WorldFileData world = startup.World;
         var hostRuntime = new TerraRuntimeHostRuntime(
-            new TerraRuntimeHostRuntimeInfo(
+            new RuntimeInfo(
                 world.Header.Name,
                 options.WorldPath,
                 world.Header.Dimensions.WidthTiles,
@@ -296,7 +296,7 @@ internal sealed class ServerProcessSession : IDisposable
             var worldInspectionOperations = new LocalRuntimeWorldInspectionOperations(
                 runtimeRegistry,
                 sandboxHost);
-            terminalUi = TerminalUiHost.Start(
+            terminalUi = Host.Start(
                 dashboardOperations,
                 primaryRuntime.PlayerOperations,
                 primaryRuntime.NpcOperations!,

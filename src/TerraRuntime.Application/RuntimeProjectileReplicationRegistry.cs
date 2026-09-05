@@ -5,7 +5,7 @@ using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Network-side projection/cache for authoritative projectile commits. Active projectile baselines are

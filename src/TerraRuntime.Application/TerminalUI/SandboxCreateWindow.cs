@@ -6,7 +6,7 @@ using TerraRuntime.Contracts.Runtime;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
-namespace TerraRuntime.TerminalUI;
+namespace TerraRuntime.Application.TerminalUI;
 
 /// <summary>Operator form for typed sandbox creation.</summary>
 internal sealed class SandboxCreateWindow : Window

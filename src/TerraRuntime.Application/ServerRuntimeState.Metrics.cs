@@ -7,130 +7,130 @@ using TerraRuntime.HostContracts;
 using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal sealed partial class ServerRuntimeState
 {
-    public long AppliedCommands { get; private set; }
+    public long AppliedCommands => _runtime.Commands.Current;
 
-    internal RuntimeNpcShopCatalogRegistry NpcShops => _npcs.Shops;
+    internal RuntimeNpcShopCatalogRegistry NpcShops => _runtime.Npcs.Shops;
 
     internal bool TryGetPlayerTownShopSession(PlayerHandle player, out RuntimeTownShopSession1458? session)
-        => _players.TryGetTownShopSession(player, out session);
+        => _runtime.Players.TryGetTownShopSession(player, out session);
 
-    internal RuntimeNpcArchetypeRegistry NpcArchetypes => _npcs.Archetypes;
+    internal RuntimeNpcArchetypeRegistry NpcArchetypes => _runtime.Npcs.Archetypes;
 
-    internal IWorldItemSpawnRandom WorldItemSpawnRandom => _worldItems.SpawnRandom;
+    internal IWorldItemSpawnRandom WorldItemSpawnRandom => _runtime.WorldItems.SpawnRandom;
 
-    internal RuntimeWorldProgressionMutations WorldProgression => _worldProgression;
+    internal RuntimeWorldProgressionMutations WorldProgression => _runtime.WorldProgression;
 
-    public long Updates { get; private set; }
+    public long Updates => _runtime.Updates.Current;
 
-    public long AppliedPlayerAppearances => _players.AppliedAppearances;
+    public long AppliedPlayerAppearances => _runtime.Players.AppliedAppearances;
 
-    public long RejectedPlayerAppearances => _players.RejectedAppearances;
+    public long RejectedPlayerAppearances => _runtime.Players.RejectedAppearances;
 
-    public long AppliedPlayerEquipmentUpdates => _players.AppliedEquipmentUpdates;
+    public long AppliedPlayerEquipmentUpdates => _runtime.Players.AppliedEquipmentUpdates;
 
-    public long RejectedPlayerEquipmentUpdates => _players.RejectedEquipmentUpdates;
+    public long RejectedPlayerEquipmentUpdates => _runtime.Players.RejectedEquipmentUpdates;
 
-    public long AppliedPlayerHealthUpdates => _players.AppliedHealthUpdates;
+    public long AppliedPlayerHealthUpdates => _runtime.Players.AppliedHealthUpdates;
 
-    public long RejectedPlayerHealthUpdates => _players.RejectedHealthUpdates;
+    public long RejectedPlayerHealthUpdates => _runtime.Players.RejectedHealthUpdates;
 
-    public long AppliedPlayerManaUpdates => _players.AppliedManaUpdates;
+    public long AppliedPlayerManaUpdates => _runtime.Players.AppliedManaUpdates;
 
-    public long RejectedPlayerManaUpdates => _players.RejectedManaUpdates;
+    public long RejectedPlayerManaUpdates => _runtime.Players.RejectedManaUpdates;
 
-    public long CommittedPlayerSpawns => _players.CommittedSpawns;
+    public long CommittedPlayerSpawns => _runtime.Players.CommittedSpawns;
 
-    public long AppliedPlayerMovements => _players.AppliedMovements;
+    public long AppliedPlayerMovements => _runtime.Players.AppliedMovements;
 
-    public long RejectedPlayerMovements => _players.RejectedMovements;
+    public long RejectedPlayerMovements => _runtime.Players.RejectedMovements;
 
-    public long DisconnectedPlayers => _players.DisconnectedPlayers;
+    public long DisconnectedPlayers => _runtime.Players.DisconnectedPlayers;
 
-    public long AppliedNpcSpawns => _npcs.AppliedSpawns;
+    public long AppliedNpcSpawns => _runtime.Npcs.AppliedSpawns;
 
-    public long RejectedNpcSpawns => _npcs.RejectedSpawns;
+    public long RejectedNpcSpawns => _runtime.Npcs.RejectedSpawns;
 
-    public long AppliedNpcUpdates => _npcs.AppliedUpdates;
+    public long AppliedNpcUpdates => _runtime.Npcs.AppliedUpdates;
 
-    public long RejectedNpcUpdates => _npcs.RejectedUpdates;
+    public long RejectedNpcUpdates => _runtime.Npcs.RejectedUpdates;
 
-    public long AppliedNpcDespawns => _npcs.AppliedDespawns;
+    public long AppliedNpcDespawns => _runtime.Npcs.AppliedDespawns;
 
-    public long RejectedNpcDespawns => _npcs.RejectedDespawns;
+    public long RejectedNpcDespawns => _runtime.Npcs.RejectedDespawns;
 
-    public long AppliedProjectileSpawns => _projectiles.AppliedSpawns;
+    public long AppliedProjectileSpawns => _runtime.Projectiles.AppliedSpawns;
 
-    public long RejectedProjectileSpawns => _projectiles.RejectedSpawns;
+    public long RejectedProjectileSpawns => _runtime.Projectiles.RejectedSpawns;
 
-    public long AppliedProjectileUpdates => _projectiles.AppliedUpdates;
+    public long AppliedProjectileUpdates => _runtime.Projectiles.AppliedUpdates;
 
-    public long RejectedProjectileUpdates => _projectiles.RejectedUpdates;
+    public long RejectedProjectileUpdates => _runtime.Projectiles.RejectedUpdates;
 
-    public long AppliedProjectileDespawns => _projectiles.AppliedDespawns;
+    public long AppliedProjectileDespawns => _runtime.Projectiles.AppliedDespawns;
 
-    public long RejectedProjectileDespawns => _projectiles.RejectedDespawns;
+    public long RejectedProjectileDespawns => _runtime.Projectiles.RejectedDespawns;
 
-    public long AppliedProjectileReflections => _projectiles.AppliedReflections;
+    public long AppliedProjectileReflections => _runtime.Projectiles.AppliedReflections;
 
-    public long RejectedClientProjectileUpdates => _projectiles.RejectedClientUpdates;
+    public long RejectedClientProjectileUpdates => _runtime.Projectiles.RejectedClientUpdates;
 
-    public long RejectedClientProjectileDestroys => _projectiles.RejectedClientDestroys;
+    public long RejectedClientProjectileDestroys => _runtime.Projectiles.RejectedClientDestroys;
 
-    public long RejectedTrustedClientProjectileUpdates => _projectiles.RejectedTrustedClientUpdates;
+    public long RejectedTrustedClientProjectileUpdates => _runtime.Projectiles.RejectedTrustedClientUpdates;
 
-    public long AcceptedTrustedProjectileSteeringInputs => _projectiles.AcceptedTrustedSteeringInputs;
+    public long AcceptedTrustedProjectileSteeringInputs => _runtime.Projectiles.AcceptedTrustedSteeringInputs;
 
-    public long RejectedTrustedClientProjectileDestroys => _projectiles.RejectedTrustedClientDestroys;
+    public long RejectedTrustedClientProjectileDestroys => _runtime.Projectiles.RejectedTrustedClientDestroys;
 
-    public long AppliedClientNpcDamage => _npcs.AppliedClientDamage;
+    public long AppliedClientNpcDamage => _runtime.Npcs.AppliedClientDamage;
 
-    public long RejectedClientNpcDamage => _npcs.RejectedClientDamage;
+    public long RejectedClientNpcDamage => _runtime.Npcs.RejectedClientDamage;
 
-    public long RelayedUnknownProjectileDestroys => _projectiles.RelayedUnknownDestroys;
+    public long RelayedUnknownProjectileDestroys => _runtime.Projectiles.RelayedUnknownDestroys;
 
-    public long ClientTileManipulationRequests => _worldTileAuthority.ClientManipulationRequests;
+    public long ClientTileManipulationRequests => _runtime.WorldTileAuthority.ClientManipulationRequests;
 
-    public long ValidatedClientTileManipulations => _worldTileAuthority.ValidatedClientManipulations;
+    public long ValidatedClientTileManipulations => _runtime.WorldTileAuthority.ValidatedClientManipulations;
 
-    public long AppliedClientTileManipulations => _worldTileAuthority.AppliedClientManipulations;
+    public long AppliedClientTileManipulations => _runtime.WorldTileAuthority.AppliedClientManipulations;
 
-    public long RejectedClientTileManipulations => _worldTileAuthority.RejectedClientManipulations;
+    public long RejectedClientTileManipulations => _runtime.WorldTileAuthority.RejectedClientManipulations;
 
-    public long UnsupportedClientTileManipulations => _worldTileAuthority.UnsupportedClientManipulations;
+    public long UnsupportedClientTileManipulations => _runtime.WorldTileAuthority.UnsupportedClientManipulations;
 
     public long AppliedWorldItemAllocations =>
-        _worldItems.AppliedAllocations + _worldTileAuthority.AppliedWorldItemAllocations;
+        _runtime.WorldItems.AppliedAllocations + _runtime.WorldTileAuthority.AppliedWorldItemAllocations;
 
     public long RejectedWorldItemAllocations =>
-        _worldItems.RejectedAllocations + _worldTileAuthority.RejectedWorldItemAllocations;
+        _runtime.WorldItems.RejectedAllocations + _runtime.WorldTileAuthority.RejectedWorldItemAllocations;
 
-    public long AppliedWorldItemDrops => _worldItems.AppliedDrops;
+    public long AppliedWorldItemDrops => _runtime.WorldItems.AppliedDrops;
 
-    public long RejectedWorldItemDrops => _worldItems.RejectedDrops;
+    public long RejectedWorldItemDrops => _runtime.WorldItems.RejectedDrops;
 
-    public long AppliedWorldItemRemovals => _worldItems.AppliedRemovals;
+    public long AppliedWorldItemRemovals => _runtime.WorldItems.AppliedRemovals;
 
-    public long RejectedWorldItemRemovals => _worldItems.RejectedRemovals;
+    public long RejectedWorldItemRemovals => _runtime.WorldItems.RejectedRemovals;
 
-    public long AppliedWorldItemOwners => _worldItems.AppliedOwners;
+    public long AppliedWorldItemOwners => _runtime.WorldItems.AppliedOwners;
 
-    public long RejectedWorldItemOwners => _worldItems.RejectedOwners;
+    public long RejectedWorldItemOwners => _runtime.WorldItems.RejectedOwners;
 
-    public NpcAiStateTickSummary LastNpcAiTick => _npcs.LastAiTick;
+    public NpcAiStateTickSummary LastNpcAiTick => _runtime.Npcs.LastAiTick;
 
-    public ProjectileStateTickSummary LastProjectileTick => _projectiles.LastTick;
+    public ProjectileStateTickSummary LastProjectileTick => _runtime.Projectiles.LastTick;
 
-    public PlayerSlotId? LastMovementPlayerSlot => _players.LastMovementSlot;
+    public PlayerSlotId? LastMovementPlayerSlot => _runtime.Players.LastMovementSlot;
 
-    public float LastMovementPositionX => _players.LastMovementPositionX;
+    public float LastMovementPositionX => _runtime.Players.LastMovementPositionX;
 
-    public float LastMovementPositionY => _players.LastMovementPositionY;
+    public float LastMovementPositionY => _runtime.Players.LastMovementPositionY;
 
     public int LastWorkerResult => Volatile.Read(ref lastWorkerResult);
 
-    public PlayerSpawnCommitResult? LastSpawnCommitResult => _players.LastSpawnCommitResult;
+    public PlayerSpawnCommitResult? LastSpawnCommitResult => _runtime.Players.LastSpawnCommitResult;
 }

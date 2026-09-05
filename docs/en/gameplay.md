@@ -221,7 +221,7 @@ Projectile support has moved beyond a relay-only design.
 
 Current architecture includes runtime projectile store, ownership/provenance facts, lifecycle handling, definition catalog, behavior state executor/stepper, world physics/collision, tile-cut integration for supported cases, and packet projection/replication.
 
-Projectile-to-NPC combat now has a separate mutation-free intent boundary. Player-owned provenance resolves the byte owner to the current generation-safe `PlayerHandle`; server-owned/NPC provenance and actual entity-hit selection remain fail-closed until modeled explicitly.
+Projectile combat now has separate mutation-free intent boundaries for player-owned and admitted server-owned/NPC-owned sources. Player-owned provenance resolves the byte owner to the current generation-safe `PlayerHandle`; admitted hostile projectiles retain the exact source `NpcHandle` generation, and generation-safe player/NPC hit selection is authoritative only for source-backed collision families.
 
 Generic supported tile impacts now retain `TileCollision` as their semantic termination reason through the generation-safe authoritative commit. Post-behavior decorators and termination observers can therefore distinguish an impact from ordinary lifetime expiry without inspecting wire state.
 
@@ -335,6 +335,8 @@ A green build is not parity evidence by itself.
 ## 28. Adding a new NPC/projectile behavior
 
 Before adding a new behavior slice:
+
+Projectile behavior dispatch stays centralized, but family-specific helpers are split by responsibility: boss families, player-owned families, Deerclops-specific behavior and shared math/targeting helpers live in separate `VanillaProjectileBehaviorStepper.*.cs` partial files. New behavior belongs in the narrowest existing family file; do not grow the dispatcher back into one monolithic implementation file.
 
 1. identify the exact Terraria 1.4.5.8 type and AI/default facts;
 2. decide whether it belongs to an existing verified behavior family or needs a separate strategy;

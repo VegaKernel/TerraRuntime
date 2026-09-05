@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>Maintains a low-cost rolling TPS observation for one authoritative game loop.</summary>
 internal sealed class RuntimeTickRateObserver

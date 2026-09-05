@@ -119,6 +119,6 @@ public sealed class TrustedHostWorldGenerationIntegrationTests
         string ConfigDirectory,
         string DataDirectory,
         string LogsDirectory,
-        ITerraRuntimeTerminalDashboardRegistry TerminalDashboards,
-        ITerraRuntimeWorldGeneratorRegistry WorldGenerators) : ITerraRuntimeHostEnvironment;
+        IDashboardRegistry TerminalDashboards,
+        IGeneratorRegistry WorldGenerators) : IEnvironment;
 }

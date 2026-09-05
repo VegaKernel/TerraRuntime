@@ -1,7 +1,7 @@
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Runtime adapter between AI_003 typed opening intents, the authoritative WorldGen-shaped tile mutation service,

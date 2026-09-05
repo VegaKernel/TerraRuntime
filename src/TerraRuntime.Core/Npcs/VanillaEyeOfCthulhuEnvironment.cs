@@ -1,4 +1,4 @@
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 /// <summary>
 /// World-facing geometry required by TerrariaServer 1.4.5.8 Eye of Cthulhu AI_004. Core AI owns state

@@ -1,6 +1,6 @@
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Runtime-owned chest metadata adapter for authoritative multi-tile transactions. The world layer owns geometry and

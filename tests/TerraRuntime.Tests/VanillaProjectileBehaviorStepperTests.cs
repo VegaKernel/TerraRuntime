@@ -16,7 +16,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
             velocityX: 4f,
             velocityY: 0f,
             ai0: 19f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var context = new VanillaProjectileBehaviorContext(
             WindPhysics: true,
             WindSpeedCurrent: 1f,
@@ -41,7 +41,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
             velocityX: 4f,
             velocityY: 15.95f,
             ai0: 14f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var context = default(VanillaProjectileBehaviorContext);
 
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
@@ -64,7 +64,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
             velocityY: 0f,
             ai0: 0f,
             ai2: 1f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var context = default(VanillaProjectileBehaviorContext);
 
         Assert.False(VanillaProjectileBehaviorStepper.TryStep(
@@ -85,7 +85,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             new ProjectileTypeId(type), velocityX: 7f, velocityY: 2f, ai0: 14f, ai1: 0f,
             spawner: VanillaProjectileOwnership.ServerOwner);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
 
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
             in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
@@ -102,7 +102,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.PlanteraSeed, velocityX: 10f, velocityY: 1f, ai0: 34f, ai1: 0f,
             spawner: VanillaProjectileOwnership.ServerOwner);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
 
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
             in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
@@ -120,7 +120,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.PlanteraPoisonSeed, velocityX: 10f, velocityY: 0f, ai0: 0f, ai1: 0f,
             spawner: VanillaProjectileOwnership.ServerOwner, positionX: 100f, positionY: 100f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var context = new VanillaProjectileBehaviorContext(
             false, 0f, 0f, new SinglePlayerLookup(400f, 86f), ExpertMode: true);
 
@@ -140,7 +140,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.GolemFireball, velocityX: 8f, velocityY: 3f, ai0: 2f,
             spawner: VanillaProjectileOwnership.ServerOwner);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
 
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
             in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
@@ -159,7 +159,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             new ProjectileTypeId(type), velocityX: 6f, velocityY: 0f,
             ai0: 200f, ai1: 116f, positionX: 100f, positionY: 100f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
 
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
             in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
@@ -176,7 +176,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
     {
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.MagicMissile, velocityX: 10f, velocityY: 0f, ai0: -1f, ai1: -1f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
 
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
             in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
@@ -192,7 +192,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.RainbowRodBullet, velocityX: 0f, velocityY: 10f, ai0: -1f, ai1: -1f,
             positionX: 100f, positionY: 100f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var targets = new FixedNpcTargetResolver(slot: 7, centerX: 316f, centerY: 116f);
         var context = new VanillaProjectileBehaviorContext(false, 0f, 0f, NpcTargets: targets);
 
@@ -211,7 +211,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
     {
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.Flamelash, velocityX: 10f, velocityY: 0f, ai0: -1f, ai1: 4f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var targets = new ReacquiringNpcTargetResolver();
         var context = new VanillaProjectileBehaviorContext(false, 0f, 0f, NpcTargets: targets);
 
@@ -231,7 +231,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
             velocityY: 0f,
             ai0: 0f,
             ai1: 29f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var context = new VanillaProjectileBehaviorContext(false, 0f, 0f, new SinglePlayerLookup(100f, 300f));
 
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
@@ -258,7 +258,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
             ai1: 0f,
             positionX: 300f,
             positionY: 300f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var context = new VanillaProjectileBehaviorContext(false, 0f, 0f, new SinglePlayerLookup(100f, 300f));
 
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
@@ -283,7 +283,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
             ai1: 0f,
             positionX: 100f,
             positionY: 300f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var context = new VanillaProjectileBehaviorContext(false, 0f, 0f, new SinglePlayerLookup(100f, 300f));
 
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
@@ -305,7 +305,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
             velocityY: 0f,
             ai0: 0f,
             spawner: byte.MaxValue);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var context = default(VanillaProjectileBehaviorContext);
 
         Assert.False(VanillaProjectileBehaviorStepper.TryStep(
@@ -322,7 +322,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.FairyQueenLance, 0f, 0f, ai0: MathF.PI * 0.5f,
             spawner: VanillaProjectileOwnership.ServerOwner);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var context = new VanillaProjectileBehaviorContext(
             false, 0f, 0f, LocalAi: new ProjectileLocalAiState(59f, 0f, 0f));
 
@@ -341,7 +341,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.FairyQueenSunDance, 5f, -3f, ai0: 1.25f, ai1: 7f,
             spawner: VanillaProjectileOwnership.ServerOwner, positionX: 10f, positionY: 20f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var targets = new ActiveNpcResolver(7, VanillaNpcIds.EmpressOfLight, 300f, 400f);
         var context = new VanillaProjectileBehaviorContext(
             false, 0f, 0f, NpcTargets: targets,
@@ -364,7 +364,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.PhantasmalEye, 4f, 1f, ai0: 0f, ai1: 0.1f,
             spawner: VanillaProjectileOwnership.ServerOwner);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var context = new VanillaProjectileBehaviorContext(
             false, 0f, 0f, LocalAi: new ProjectileLocalAiState(44f, 0f, 0f));
 
@@ -383,7 +383,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.PhantasmalSphere, 6f, -2f, ai0: 0f, ai1: 4f,
             spawner: VanillaProjectileOwnership.ServerOwner);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var targets = new ActiveNpcResolver(4, VanillaNpcIds.MoonLordHand, 500f, 300f);
         var context = new VanillaProjectileBehaviorContext(false, 0f, 0f, NpcTargets: targets);
 
@@ -404,7 +404,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.HallowBossRainbowStreak, 6f, 0f, ai0: 0f,
             spawner: VanillaProjectileOwnership.ServerOwner, positionX: 100f, positionY: 100f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var tiles = new WorldTileStore(new WorldDimensions(200, 160));
         var hostileTargets = new VanillaProjectilePlayerTargetResolver(new SinglePlayerLookup(400f, 100f), tiles);
         var context = new VanillaProjectileBehaviorContext(
@@ -424,7 +424,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.HallowBossRainbowStreak, 10f, 0f, ai0: 0f,
             spawner: VanillaProjectileOwnership.ServerOwner, positionX: 160f, positionY: 160f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var context = new VanillaProjectileBehaviorContext(false, 0f, 0f, CurrentTimeLeft: 180);
 
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
@@ -441,7 +441,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.HallowBossLastingRainbow, 8f, 0f, ai0: 0f,
             spawner: VanillaProjectileOwnership.ServerOwner);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
 
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
             in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
@@ -457,7 +457,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.HallowBossDeathAurora, 0f, 0f, ai0: 3f,
             spawner: VanillaProjectileOwnership.ServerOwner);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
 
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
             in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
@@ -474,7 +474,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.QueenSlimeSmash, 4f, 2f, ai0: 0f,
             spawner: VanillaProjectileOwnership.ServerOwner, positionX: 100f, positionY: 200f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
 
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
             in projectile, in definition, default, out VanillaProjectileBehaviorResult first));
@@ -500,7 +500,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.Sharknado, -0.01f, 0f, ai0: 16f, ai1: 15f,
             spawner: VanillaProjectileOwnership.ServerOwner, positionX: 100f, positionY: 200f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
 
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
             in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
@@ -519,7 +519,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.Cthulunado, 0f, 0f, ai0: 16f, ai1: 24f,
             spawner: VanillaProjectileOwnership.ServerOwner, positionX: 100f, positionY: 200f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
 
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
             in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
@@ -537,7 +537,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.SharknadoBolt, 2f, 8f, ai0: 0f,
             spawner: VanillaProjectileOwnership.ServerOwner, positionX: 100f, positionY: 200f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
 
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
             in projectile, in definition, default, out VanillaProjectileBehaviorResult wave));
@@ -560,7 +560,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.PhantasmalDeathray, 1f, 0f, ai0: MathF.PI * 0.5f, ai1: 6f,
             spawner: VanillaProjectileOwnership.ServerOwner, positionX: 0f, positionY: 0f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var targets = new ActiveNpcResolver(
             6, VanillaNpcIds.MoonLordHead, 300f, 400f,
             LocalAi: new NpcAiState(0f, 1f, 0f, 0f));
@@ -586,7 +586,7 @@ public sealed class VanillaProjectileBehaviorStepperTests
         ProjectileSnapshot projectile = CreateProjectile(
             VanillaProjectileIds.PhantasmalDeathray, 0f, -1f, ai0: 0f, ai1: 6f,
             spawner: VanillaProjectileOwnership.ServerOwner);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var targets = new ActiveNpcResolver(7, VanillaNpcIds.MoonLordHead, 300f, 400f);
         var context = new VanillaProjectileBehaviorContext(
             false, 0f, 0f, NpcTargets: targets,
@@ -595,6 +595,56 @@ public sealed class VanillaProjectileBehaviorStepperTests
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
             in projectile, in definition, in context, out VanillaProjectileBehaviorResult next));
         Assert.True(next.Kill);
+    }
+
+    [Fact]
+    public void Cultist_ice_mist_emitter_advances_rotation_and_kills_at_150_updates()
+    {
+        ProjectileSnapshot emitter = CreateProjectile(
+            VanillaProjectileIds.CultistBossIceMist, 0f, 0f, ai0: 29f, ai1: 1f,
+            spawner: VanillaProjectileOwnership.ServerOwner, positionX: 100f, positionY: 200f);
+        Assert.True(VanillaDefinitionCatalog.TryGet(emitter.Type, out VanillaProjectileDefinition definition));
+        var context = new VanillaProjectileBehaviorContext(
+            false, 0f, 0f, LocalAi: new ProjectileLocalAiState(0f, 0f, 0.5f));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in emitter, in definition, in context, out VanillaProjectileBehaviorResult next));
+
+        Assert.False(next.Kill);
+        Assert.Equal(30f, next.Ai0, 5);
+        Assert.Equal(0.5f + MathF.PI / 30f, next.LocalAiOverride!.Value.Ai2, 5);
+        Assert.Equal(1f, next.LocalAiOverride.Value.Ai1, 5);
+
+        ProjectileSnapshot terminal = emitter with { Ai = emitter.Ai with { Ai0 = 149f } };
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in terminal, in definition, in context, out VanillaProjectileBehaviorResult killed));
+        Assert.True(killed.Kill);
+        Assert.Equal(150f, killed.Ai0, 5);
+        Assert.Equal(0.5f, killed.LocalAiOverride!.Value.Ai2, 5);
+    }
+
+    [Fact]
+    public void Cultist_ice_mist_child_cancels_generic_translation_and_kills_at_45_updates()
+    {
+        ProjectileSnapshot child = CreateProjectile(
+            VanillaProjectileIds.CultistBossIceMist, 3f, -4f, ai0: 10f, ai1: 0f,
+            spawner: VanillaProjectileOwnership.ServerOwner, positionX: 100f, positionY: 200f);
+        Assert.True(VanillaDefinitionCatalog.TryGet(child.Type, out VanillaProjectileDefinition definition));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in child, in definition, default, out VanillaProjectileBehaviorResult next));
+        Assert.False(next.Kill);
+        Assert.Equal(11f, next.Ai0, 5);
+        Assert.Equal(97f, next.PositionXOverride!.Value, 5);
+        Assert.Equal(204f, next.PositionYOverride!.Value, 5);
+
+        ProjectileSnapshot terminal = child with { Ai = child.Ai with { Ai0 = 44f } };
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in terminal, in definition, default, out VanillaProjectileBehaviorResult killed));
+        Assert.True(killed.Kill);
+        Assert.Equal(45f, killed.Ai0, 5);
+        Assert.Equal(97f, killed.PositionXOverride!.Value, 5);
+        Assert.Equal(204f, killed.PositionYOverride!.Value, 5);
     }
 
     private static ProjectileSnapshot CreateProjectile(

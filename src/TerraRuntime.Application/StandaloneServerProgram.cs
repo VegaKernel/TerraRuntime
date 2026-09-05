@@ -4,10 +4,10 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
-using TerraRuntime.TerminalUI;
+using TerraRuntime.Application.TerminalUI;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal static class StandaloneServerProgram
 {

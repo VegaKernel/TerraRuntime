@@ -2,23 +2,23 @@ using System.Security.Cryptography;
 using TerraRuntime.HostContracts;
 using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.HostContracts.WorldGeneration;
-using TerraRuntime.TerminalUI;
+using TerraRuntime.Application.TerminalUI;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 public static class StartupProgram
 {
-    private static ITerraRuntimeTerminalDashboardSource? currentTerminalDashboards;
+    private static IDashboardSource? currentTerminalDashboards;
 
-    internal static ITerraRuntimeTerminalDashboardSource? CurrentTerminalDashboards =>
+    internal static IDashboardSource? CurrentTerminalDashboards =>
         Volatile.Read(ref currentTerminalDashboards);
 
     public static int Main(string[] args) => Run(args);
 
     public static int Run(
         string[] args,
-        ITerraRuntimeHostLifecycle? hostLifecycle = null,
-        ITerraRuntimeTerminalDashboardSource? terminalDashboards = null,
+        ILifecycle? hostLifecycle = null,
+        IDashboardSource? terminalDashboards = null,
         ITerraRuntimeWorldGeneratorSource? worldGenerators = null)
     {
         ArgumentNullException.ThrowIfNull(args);
@@ -153,7 +153,7 @@ public static class StartupProgram
                 static message => Console.Error.WriteLine(message))
             : null;
 
-        ITerraRuntimeTerminalDashboardSource? previous =
+        IDashboardSource? previous =
             Interlocked.Exchange(ref currentTerminalDashboards, terminalDashboards);
         try
         {

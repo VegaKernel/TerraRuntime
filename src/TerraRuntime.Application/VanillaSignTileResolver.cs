@@ -1,6 +1,6 @@
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// TerrariaServer 1.4.5.8 Sign.ReadSign coordinate normalization for packet 46.

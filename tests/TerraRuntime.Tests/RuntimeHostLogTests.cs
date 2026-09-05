@@ -1,6 +1,6 @@
 using System.Text;
-using TerraRuntime.Diagnostics;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Diagnostics;
+using TerraRuntime.Application.Operations;
 using StructuredLogCategory = TerraRuntime.Contracts.Diagnostics.RuntimeLogCategory;
 using StructuredLogContext = TerraRuntime.Contracts.Diagnostics.RuntimeLogContext;
 using StructuredLogEventIds = TerraRuntime.Contracts.Diagnostics.RuntimeLogEventIds;
@@ -27,21 +27,21 @@ public sealed class RuntimeHostLogTests
             });
 
         log.Log(
-            RuntimeLogLevel.Information,
+            OperationsLogLevel.Information,
             StructuredLogEventIds.LifecycleInformation,
             StructuredLogCategory.Lifecycle,
             "Server",
             "before");
         log.SetTerminalUiActive(true);
         log.Log(
-            RuntimeLogLevel.Warning,
+            OperationsLogLevel.Warning,
             StructuredLogEventIds.NetworkAcceptFailed,
             StructuredLogCategory.Network,
             "Network",
             "hidden-warning",
             useStandardError: true);
         log.Log(
-            RuntimeLogLevel.Debug,
+            OperationsLogLevel.Debug,
             StructuredLogEventIds.OperationsReadModelMessage,
             StructuredLogCategory.Operations,
             "Runtime",
@@ -54,13 +54,13 @@ public sealed class RuntimeHostLogTests
         Assert.False(log.IsTerminalUiActive);
 
         log.Log(
-            RuntimeLogLevel.Information,
+            OperationsLogLevel.Information,
             StructuredLogEventIds.NetworkConnectionAccepted,
             StructuredLogCategory.Network,
             "Network",
             "plain-semantic");
         log.Log(
-            RuntimeLogLevel.Error,
+            OperationsLogLevel.Error,
             StructuredLogEventIds.LifecycleError,
             StructuredLogCategory.Lifecycle,
             "Runtime",
@@ -74,7 +74,7 @@ public sealed class RuntimeHostLogTests
             standardOutput.ToString());
         Assert.Equal("after" + Environment.NewLine, standardError.ToString());
 
-        RuntimeLogSnapshot snapshot = runtimeLogs.CaptureSnapshot(RuntimeLogLevel.Debug, maxEntries: 8);
+        RuntimeLogSnapshot snapshot = runtimeLogs.CaptureSnapshot(OperationsLogLevel.Debug, maxEntries: 8);
         Assert.Equal(5, snapshot.Entries.Length);
         Assert.Equal("hidden-warning", snapshot.Entries.Span[1].Message);
         Assert.Equal("buffer-only", snapshot.Entries.Span[2].Message);
@@ -107,7 +107,7 @@ public sealed class RuntimeHostLogTests
 
         Task producer = Task.Run(
             () => log.Log(
-                RuntimeLogLevel.Information,
+                OperationsLogLevel.Information,
                 StructuredLogEventIds.LifecycleInformation,
                 StructuredLogCategory.Lifecycle,
                 "Server",
@@ -122,7 +122,7 @@ public sealed class RuntimeHostLogTests
         blockedOutput.Release.TrySetResult(true);
         await log.DisposeAsync();
 
-        RuntimeLogSnapshot snapshot = runtimeLogs.CaptureSnapshot(RuntimeLogLevel.Debug, maxEntries: 8);
+        RuntimeLogSnapshot snapshot = runtimeLogs.CaptureSnapshot(OperationsLogLevel.Debug, maxEntries: 8);
         Assert.Single(snapshot.Entries.ToArray());
         Assert.Equal("non-blocking", snapshot.Entries.Span[0].Message);
     }
@@ -147,7 +147,7 @@ public sealed class RuntimeHostLogTests
 
         log.SetWorldId("world-17");
         log.Log(
-            RuntimeLogLevel.Information,
+            OperationsLogLevel.Information,
             StructuredLogEventIds.NetworkConnectionAccepted,
             StructuredLogCategory.Network,
             "Network",

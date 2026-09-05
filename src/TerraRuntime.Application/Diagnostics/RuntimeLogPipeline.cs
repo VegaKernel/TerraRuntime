@@ -1,7 +1,7 @@
 using System.Threading.Channels;
 using TerraRuntime.Contracts.Diagnostics;
 
-namespace TerraRuntime.Diagnostics;
+namespace TerraRuntime.Application.Diagnostics;
 
 /// <summary>
 /// Runtime-owned MPSC logging pipeline. Producers only normalize bounded scalar text and use TryWrite;

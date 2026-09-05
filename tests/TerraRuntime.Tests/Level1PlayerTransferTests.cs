@@ -22,7 +22,7 @@ public sealed class Level1PlayerTransferTests
             ServerWorldLoadPolicy.CreateLimits());
         var sandboxName = new SandboxName("arena");
         var sandboxSource = new SandboxWorldSource.Generated(
-            FlatWorldGenerationProvider.GeneratorId,
+            FlatProvider.GeneratorId,
             "Arena",
             Seed: 91,
             WidthTiles: 32,
@@ -353,7 +353,7 @@ public sealed class Level1PlayerTransferTests
     private static WorldRuntime CreateRuntime(string name, ulong seed)
     {
         var source = new SandboxWorldSource.Generated(
-            FlatWorldGenerationProvider.GeneratorId,
+            FlatProvider.GeneratorId,
             name,
             seed,
             WidthTiles: 32,

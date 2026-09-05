@@ -4,7 +4,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// World-backed player target lookup for hostile projectile AI. Physical slot order, the 2000 px acquisition

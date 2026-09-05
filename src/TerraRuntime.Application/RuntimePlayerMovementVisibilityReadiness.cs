@@ -1,7 +1,7 @@
 using System.Numerics;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Tracks whether an observer has received a current movement baseline for a visible subject.

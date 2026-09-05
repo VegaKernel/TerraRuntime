@@ -2,7 +2,7 @@ using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Core;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>TerrariaServer 1.4.5.8 AI_006 solid/deep-liquid overlap query.</summary>
 internal sealed class VanillaWormWorldEnvironment : IVanillaWormEnvironment

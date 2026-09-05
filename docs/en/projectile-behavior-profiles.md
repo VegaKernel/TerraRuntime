@@ -6,7 +6,7 @@ The source-backed definition catalog and the runtime-owned behavior catalog answ
 
 Projectile runtime ownership now follows the foundation dependency layers. Stable projectile identities and detached DTOs stay in `TerraRuntime.Contracts`; source-backed protocol-neutral simulation semantics such as definitions, `Projectile.SetDefaults` lifecycle facts, hostility, owner sentinels, extra-update counts and NPC reflection math live in `TerraRuntime.Gameplay.Projectiles`; generation-safe mutable stores, lifecycle mutation, execution and commit boundaries stay in `TerraRuntime.Core`. The existing world-only `CutTilesAt` predicate is intentionally not moved upward: `TerraRuntime.World` remains a sibling foundation layer that depends only on Contracts, so that boundary needs a separate redesign rather than a new World-to-Gameplay project reference.
 
-- `VanillaProjectileDefinitionCatalog` stores verified TerrariaServer 1.4.5.8 facts such as dimensions, collision shape, `aiStyle`, water behavior and tile-collision flags;
+- `VanillaDefinitionCatalog` stores verified TerrariaServer 1.4.5.8 facts such as dimensions, collision shape, `aiStyle`, water behavior and tile-collision flags;
 - `VanillaProjectileBehaviorProfileCatalog` explicitly opts a projectile type into a TerraRuntime behavior implementation and records runtime capability exceptions.
 
 ```mermaid
@@ -81,13 +81,16 @@ Do not infer a behavior profile solely from `AiStyle`. This is intentional dupli
 - explicit classification of the currently supported basic-arrow and thrown types;
 - the Green Laser owner-gated exception;
 - the source-backed Enchanted Boomerang outbound/return profile, including owner-targeted return and return-phase tile-collision disable;
-- explicit hostile boss/NPC families for straight beams, Plantera seeds and Golem fireball, including their non-generic gravity/collision rules;
+- explicit hostile boss/NPC families for straight beams, Plantera seeds, Golem fireball, Duke Fishron tornado chains and Cultist Ice Mist/Fireball slices, including their non-generic gravity/collision rules;
+- post-commit live-child staging for aiStyle-64 tornado segments/Sharkron children and aiStyle-86 Ice Mist children, with exact projectile/NPC generation provenance revalidation before publication;
 - the player-owned modern aiStyle-9 controlled-magic profile for Magic Missile/Flamelash/Rainbow Rod, including its server-only ownership gate;
 - agreement between every profiled type and its source-backed definition `aiStyle`;
 - fail-closed behavior when definition and runtime profile disagree;
 - no behavior inference for an unprofiled projectile.
 
 Existing projectile behavior/world tests continue to exercise the actual velocity, timer, collision and lifecycle paths through the same production steppers.
+
+The currently admitted live-child slice is deliberately post-commit. A Sharknado/Cthulunado transition from `ai[0] = 2` to `1` may stage its next segment and the source-interval Sharkron/Sharkron2 spawn only after the exact parent projectile generation commits; the authority then revalidates the exact originating `NpcHandle` generation. Cultist Ice Mist uses the same boundary for the emitter's 30-update child cadence. This prevents reused projectile or NPC slots from inheriting stale child work. Exact same-pass physical-slot update ordering for newly allocated children remains open.
 
 ## Combat handoff and runtime integrity
 

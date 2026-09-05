@@ -5,7 +5,7 @@ using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// World-backed target lookup used by the modern AI_009 controlled-magic slice. Slot ordering, 800 px range and

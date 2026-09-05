@@ -1,5 +1,5 @@
 using System.Reflection;
-using TerraRuntime;
+using TerraRuntime.Application;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;

@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Worlds;
 
 public readonly record struct WorldSaveCoordinatorTimingSnapshot(
     TimeSpan LastSnapshotCaptureDuration,

@@ -1,7 +1,7 @@
 using System.Text;
 using TerraRuntime.Contracts.Diagnostics;
 
-namespace TerraRuntime.Diagnostics;
+namespace TerraRuntime.Application.Diagnostics;
 
 internal sealed class RuntimeConsoleLogSink(TextWriter? writer = null) : IRuntimeLogSink
 {

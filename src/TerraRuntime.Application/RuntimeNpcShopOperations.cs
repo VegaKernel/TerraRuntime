@@ -2,7 +2,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal sealed class RuntimeNpcShopOperations(RuntimeNpcShopCatalogRegistry shops) : INpcShopOperations
 {

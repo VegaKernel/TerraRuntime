@@ -2,7 +2,7 @@ using System.Buffers;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Protocol.Multiplicity;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal enum RuntimeEntityBootstrapCaptureResult : byte
 {

@@ -1,5 +1,5 @@
 using System.Reflection;
-using TerraRuntime;
+using TerraRuntime.Application;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
@@ -188,7 +188,7 @@ public sealed class SectionCacheRebuildPipelineTests
         WorldSectionId requestedSection = new(1, 1);
         Assert.True(world.Tiles.DirtySections.MarkDirty(backlogSection));
 
-        WorldTileBounds requestedBounds = TerrariaSectionGeometry.GetBounds(
+        WorldTileRegion requestedBounds = TerrariaSectionGeometry.GetBounds(
             world.Header.Dimensions,
             requestedSection);
         WorldTile tile = world.Tiles.Get(requestedBounds.X, requestedBounds.Y);

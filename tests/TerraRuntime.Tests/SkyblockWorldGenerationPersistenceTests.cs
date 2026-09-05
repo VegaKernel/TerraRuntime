@@ -14,7 +14,7 @@ public sealed class SkyblockWorldGenerationPersistenceTests
             new StartupWorldGeneratorSource(host: null),
             maxTileCount: 32_000_000);
         var request = new WorldGenerationRequest(
-            SkyblockWorldGenerationProvider.GeneratorId,
+            SkyblockProvider.GeneratorId,
             "SkyblockRoundTrip",
             Seed: 0x51A7B10CUL,
             WidthTiles: 512,

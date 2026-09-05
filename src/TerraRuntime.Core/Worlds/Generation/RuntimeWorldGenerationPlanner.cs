@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Worlds;
 
 public enum WorldGenerationPassRegistrationResult : byte
 {

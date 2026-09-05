@@ -2,7 +2,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Gameplay.Items;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Canonicalizes raw packet-5 equipment fields at the network/application ingress boundary.
@@ -27,7 +27,7 @@ internal static class PlayerEquipmentPacket5Normalizer
     {
         if (!TryNormalizeNetId(request.ItemNetId, out ItemTypeId itemType) ||
             itemType.IsNone ||
-            !VanillaItemDefinitionCatalog.IsValidKnownStack(itemType, request.Stack))
+            !VanillaDefinitionCatalog.IsValidKnownStack(itemType, request.Stack))
         {
             return request with
             {

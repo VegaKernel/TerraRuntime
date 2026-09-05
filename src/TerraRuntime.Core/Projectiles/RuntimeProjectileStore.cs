@@ -1,7 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Projectiles;
 
 /// <summary>
 /// Mutable state accepted by the authoritative projectile store. Type is the vanilla client-visible

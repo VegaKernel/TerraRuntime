@@ -4,7 +4,7 @@ using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Owns authoritative client tile/object mutation admission for one live world. The enclosing world loop remains the
@@ -16,6 +16,7 @@ internal sealed class WorldTileAuthority
     private const int MaxPlayerSlots = byte.MaxValue + 1;
 
     private readonly PlayerAuthority players;
+    private readonly RuntimeCommandCounter commands;
     private readonly WorldTileStore? tiles;
     private readonly VanillaWorldTileMutationService? mutations;
     private readonly RuntimeTileManipulationReplicationRegistry? replication;
@@ -26,12 +27,14 @@ internal sealed class WorldTileAuthority
 
     public WorldTileAuthority(
         PlayerAuthority players,
+        RuntimeCommandCounter commands,
         WorldTileStore? tiles,
         RuntimeWorldItemStore worldItems,
         IWorldItemSpawnRandom worldItemSpawnRandom,
         RuntimeTileManipulationReplicationRegistry? replication)
     {
         this.players = players ?? throw new ArgumentNullException(nameof(players));
+        this.commands = commands ?? throw new ArgumentNullException(nameof(commands));
         this.tiles = tiles;
         this.worldItems = worldItems ?? throw new ArgumentNullException(nameof(worldItems));
         this.worldItemSpawnRandom = worldItemSpawnRandom ?? throw new ArgumentNullException(nameof(worldItemSpawnRandom));
@@ -46,6 +49,8 @@ internal sealed class WorldTileAuthority
             objectPlacement = new RuntimeObjectPlacementCommandProcessor(
                 tiles,
                 objectMetadata,
+                players,
+                commands,
                 replication);
         }
     }
@@ -60,12 +65,11 @@ internal sealed class WorldTileAuthority
 
     public void AdvanceTo(long tick) => editBudget.AdvanceTo(tick);
 
-    public bool TryApply(ServerRuntimeState runtime, RuntimeCommand command)
+    public bool TryApply(RuntimeCommand command)
     {
-        ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(command);
 
-        if (objectPlacement?.TryApply(runtime, command) == true)
+        if (objectPlacement?.TryApply(command) == true)
             return true;
         if (command is not ClientTileManipulationRuntimeCommand tile)
             return false;
@@ -122,7 +126,7 @@ internal sealed class WorldTileAuthority
                     out RuntimePlayerInventoryItem toolItem) ||
                 toolItem.IsEmpty ||
                 toolItem.ItemType != VanillaItemIds.CopperPickaxe ||
-                !VanillaItemDefinitionCatalog.TryGetPickTool(toolItem.ItemType, out _))
+                !VanillaDefinitionCatalog.TryGetPickTool(toolItem.ItemType, out _))
             {
                 RejectedClientManipulations++;
                 return;

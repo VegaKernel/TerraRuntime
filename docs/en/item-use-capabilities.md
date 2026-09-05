@@ -3,7 +3,7 @@
 The selected-item boundary and the source-backed item-definition catalog are separate on purpose:
 
 1. `RuntimePlayerItemUseBoundary` answers **which exact inventory item this exact player generation selected**;
-2. `VanillaItemDefinitionCatalog` answers **which gameplay capabilities TerraRuntime has verified for that item type**;
+2. `VanillaDefinitionCatalog` answers **which gameplay capabilities TerraRuntime has verified for that item type**;
 3. `VanillaPlayerItemUseSemanticResolver` combines both into typed gameplay intents without re-reading packet state or branching on raw item ids.
 
 ```mermaid
@@ -12,7 +12,7 @@ flowchart LR
     Inv["authoritative inventory\nexact ConnectionHandle"] --> Boundary
     Boundary --> Request["PlayerItemUseRequest"]
     Request --> Resolver["VanillaPlayerItemUseSemanticResolver"]
-    Definitions["VanillaItemDefinitionCatalog"] --> Resolver
+    Definitions["VanillaDefinitionCatalog"] --> Resolver
     Resolver --> Placement["PlayerItemPlacementUse"]
     Resolver --> Pick["PlayerItemPickToolUse"]
 ```
@@ -73,7 +73,7 @@ The resolver never infers behavior from numeric ids, neighboring definitions, st
 
 ## Production placement consistency
 
-`ClientTileManipulationConsistency` and authoritative tile-mining validation now read placement/tool facts directly from `TerraRuntime.Gameplay.Items.VanillaItemDefinitionCatalog`. The transparent `VanillaTileInteractionItemFacts` compatibility facade has been removed.
+`ClientTileManipulationConsistency` and authoritative tile-mining validation now read placement/tool facts directly from `TerraRuntime.Gameplay.Items.VanillaDefinitionCatalog`. The transparent `VanillaTileInteractionItemFacts` compatibility facade has been removed.
 
 This keeps the packet-17 consistency policy unchanged while leaving one source-backed item capability owner instead of a second forwarding API.
 

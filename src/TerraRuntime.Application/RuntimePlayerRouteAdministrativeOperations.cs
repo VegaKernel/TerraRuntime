@@ -1,7 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.HostContracts;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>Process-level router for trusted player administration across the primary runtime and live sandboxes.</summary>
 internal sealed class RuntimePlayerRouteAdministrativeOperations : IPlayerAdministrativeOperations

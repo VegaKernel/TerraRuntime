@@ -20,7 +20,7 @@ graph LR
     S --> N[remaining vanilla migration]
 ```
 
-The nine pass names and their order are pinned by `VanillaWorldGenerationPassCatalog1458` from the verified TerrariaServer 1.4.5.8 pass registration sequence.
+The nine pass names and their order are pinned by `PassCatalog1458` from the verified TerrariaServer 1.4.5.8 pass registration sequence.
 
 ## Implemented behavior
 

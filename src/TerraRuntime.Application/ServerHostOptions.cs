@@ -1,4 +1,4 @@
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 public sealed record ServerHostOptions(
     string WorldPath,

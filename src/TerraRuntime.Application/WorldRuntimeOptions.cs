@@ -1,6 +1,6 @@
 using TerraRuntime.Core;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 public sealed record WorldRuntimeOptions
 {

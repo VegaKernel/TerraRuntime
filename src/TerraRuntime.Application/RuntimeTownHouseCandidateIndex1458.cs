@@ -2,7 +2,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal readonly record struct RuntimeTownHouseCandidate1458(
     int SeedTileX,

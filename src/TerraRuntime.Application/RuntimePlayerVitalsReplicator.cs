@@ -5,7 +5,7 @@ using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Owns bounded network replication state for player health and mana independently from the
@@ -52,7 +52,7 @@ internal sealed class RuntimePlayerVitalsReplicator
         if (!connection.IsAssigned || connection.Player.Slot != submitted.PlayerSlot)
             return;
 
-        PlayerHealthCommitRequest request = VanillaPlayerVitalsRules.NormalizeHealth(in submitted);
+        PlayerHealthCommitRequest request = VanillaVitalsRules.NormalizeHealth(in submitted);
         if (!_endpoints.TryGetValue(connection.Source, out Endpoint? origin))
             return;
 

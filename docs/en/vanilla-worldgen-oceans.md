@@ -14,7 +14,7 @@ The clean-room `Beaches` port now preserves the 1.4.5.8 behavior routes that def
 - the `depth * 0.75 - 3` water/floor split, full water rows, the 127-liquid shoreline row, sand floor and cleared walls;
 - the original left-to-edge and right-to-edge column order and shared RNG consumption.
 
-Raw tile identity and numeric profile facts are owned by `VanillaOceanGenerationCatalog1458`, not scattered through
+Raw tile identity and numeric profile facts are owned by `OceanGenerationCatalog1458`, not scattered through
 the writer. The source-contract probe independently compares the routes and both 16-band depth tables with the pinned
 TerrariaServer 1.4.5.8 decompile.
 

@@ -1,7 +1,7 @@
 using System.Globalization;
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal readonly record struct StartupWorldCreationRequest(
     WorldGenerationRequest Generation,

@@ -4,7 +4,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Production Eater of Worlds loot delivery. Ordinary drops use the shared authoritative world-item store. Expert

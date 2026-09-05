@@ -1,7 +1,7 @@
 using System.Text;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.HostContracts.TerminalUI;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 using TerraRuntime.World;
 using Terminal.Gui.App;
 using Terminal.Gui.Drivers;
@@ -9,7 +9,7 @@ using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
-namespace TerraRuntime.TerminalUI;
+namespace TerraRuntime.Application.TerminalUI;
 
 internal static class TerminalUiSmoke
 {
@@ -24,8 +24,8 @@ internal static class TerminalUiSmoke
         {
             var operations = new SmokeOperations();
             var logs = new RuntimeLogBuffer(capacity: 16);
-            logs.Publish(RuntimeLogLevel.Information, "Server", "Terminal UI smoke startup");
-            logs.Publish(RuntimeLogLevel.Warning, "Network", "Synthetic bounded log warning");
+            logs.Publish(OperationsLogLevel.Information, "Server", "Terminal UI smoke startup");
+            logs.Publish(OperationsLogLevel.Warning, "Network", "Synthetic bounded log warning");
             RuntimeChatTelemetry.Publish(0, "Synthetic dashboard chat message");
 
             using (IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI))
@@ -214,14 +214,14 @@ internal static class TerminalUiSmoke
         }
     }
 
-    private sealed class SmokeDashboardSource : ITerraRuntimeTerminalDashboardSource
+    private sealed class SmokeDashboardSource : IDashboardSource
     {
-        private readonly ITerraRuntimeTerminalDashboardProvider[] dashboards = [new SmokeDashboardProvider()];
+        private readonly IDashboardProvider[] dashboards = [new SmokeDashboardProvider()];
 
-        public ReadOnlyMemory<ITerraRuntimeTerminalDashboardProvider> CaptureDashboards() => dashboards;
+        public ReadOnlyMemory<IDashboardProvider> CaptureDashboards() => dashboards;
     }
 
-    private sealed class SmokeDashboardProvider : ITerraRuntimeTerminalDashboardProvider
+    private sealed class SmokeDashboardProvider : IDashboardProvider
     {
         public string Id => "smoke.external";
 

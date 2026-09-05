@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Extensions;
 
 /// <summary>
 /// Safe-boundary registry for behaviors addressed directly by stable extension ID rather than by vanilla content

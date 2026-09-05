@@ -1,4 +1,4 @@
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Worlds;
 
 public readonly record struct CoalescingSaveSchedulerSnapshot(
     bool AcceptingRequests,

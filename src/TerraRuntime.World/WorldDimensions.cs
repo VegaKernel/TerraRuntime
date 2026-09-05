@@ -1,4 +1,4 @@
-using RuntimeWorldTileBounds = TerraRuntime.Contracts.Runtime.WorldTileBounds;
+using RuntimeWorldTileDimensions = TerraRuntime.Contracts.Runtime.WorldTileDimensions;
 
 namespace TerraRuntime.World;
 
@@ -36,9 +36,9 @@ public sealed class WorldDimensions
 
     public int SectionCount { get; }
 
-    public static implicit operator RuntimeWorldTileBounds(WorldDimensions dimensions)
+    public static implicit operator RuntimeWorldTileDimensions(WorldDimensions dimensions)
     {
         ArgumentNullException.ThrowIfNull(dimensions);
-        return new RuntimeWorldTileBounds(dimensions.WidthTiles, dimensions.HeightTiles);
+        return new RuntimeWorldTileDimensions(dimensions.WidthTiles, dimensions.HeightTiles);
     }
 }

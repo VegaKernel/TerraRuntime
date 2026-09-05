@@ -33,7 +33,7 @@ The permanent `terraria-worldgen-pass-catalog.yml` source contract decompiles th
 
 ## Final eight-pass overlay
 
-`SourceBackedVanillaWorldGenerationFinal1458` completes the ordinary canonical pass identity sequence after `Micro Biomes` with the final eight TerrariaServer 1.4.5.8 registrations:
+`SourceBackedFinal1458` completes the ordinary canonical pass identity sequence after `Micro Biomes` with the final eight TerrariaServer 1.4.5.8 registrations:
 
 1. `Settle Liquids Again`
 2. `Cactus, Palm Trees, & Coral`
@@ -57,15 +57,15 @@ The full source-backed chain is selected only when both conditions are true:
 
 Noncanonical synthetic dimensions deliberately replay the compatibility provider. Special and secret profiles do too, with one narrow source-backed exception: a pure `Don't Dig Up`/Remix profile on a canonical size executes the verified `Reset` and `Terrain` branches, then returns to the compatibility passes. It does not activate the ordinary source-shaped overlays or canonical structural checks. Zenith, combined special switches and every secret switch remain compatibility-only because their later pass mutations have not been ported.
 
-The production registration in `BuiltInWorldGeneratorSource` resolves `terraruntime:vanilla` to `SourceBackedVanillaWorldGenerationFinal1458`. The older overlay classes remain implementation layers in the chain, not alternative public generators.
+The production registration in `BuiltInWorldGeneratorSource` resolves `terraruntime:vanilla` to `SourceBackedFinal1458`. The older overlay classes remain implementation layers in the chain, not alternative public generators.
 
 ## Persistence and authority
 
-Generation writes into an unpublished `RuntimeWorldGenerationWorkspace` backed by the contiguous `WorldTileStore`. Generated tiles, chests, starting town NPC metadata, spawn/dungeon anchors and layers remain candidate state until validation succeeds. No generation pass mutates the live network-visible world.
+Generation writes into an unpublished `Workspace` backed by the contiguous `WorldTileStore`. Generated tiles, chests, starting town NPC metadata, spawn/dungeon anchors and layers remain candidate state until validation succeeds. No generation pass mutates the live network-visible world.
 
 Final cleanup rejects out-of-catalog tile/wall identities and unknown runtime tile flags before the normal world-generation finalizer and fresh `.wld` v326 composition take ownership.
 
-`RuntimeWorldGenerationFinalizer` now enforces the fail-closed `VanillaWorldGenerationValidator1458` before publication:
+`Finalizer` now enforces the fail-closed `Validator1458` before publication:
 
 - `Finalized` is returned only when the structural validator reports `Valid`;
 - any `InvalidTileType`, `InvalidWallType`, `InvalidLiquid`, orphan frame-important object, chest-anchor mismatch, duplicate chest, out-of-bounds object, dungeon/temple absence, ocean-bounds violation or spawn/beam invalidity yields `ValidationFailed` and the candidate is discarded without ever reaching `WorldFileFreshComposer326`.
@@ -87,7 +87,7 @@ The first milestone is implemented by the final overlay. The second remains an e
 
 `VanillaWorldGenerationFullIntegrationTests` is the in-process executable proof that complements the native acceptance gate:
 
-- generates a full `4200x1200` ordinary canonical world via `BuiltInWorldGeneratorSource`/`SourceBackedVanillaWorldGenerationFinal1458` (114-plan through `Final Cleanup`);
+- generates a full `4200x1200` ordinary canonical world via `BuiltInWorldGeneratorSource`/`SourceBackedFinal1458` (114-plan through `Final Cleanup`);
 - verifies plan length and that every tile/wall id, shape and flag is within `VanillaTileIds`/`VanillaWallIds`/known-flag bounds – the same invariant enforced by `Final Cleanup`;
 - checks that generated chests form dense `2x2` `Containers` objects with unique anchors, that the side-table survives fresh `.wld` v326 composition and that spawn/dungeon/layers/bootstrap are within canonical ranges;
 - asserts that the starting `Guide` town NPC (`netId 22`, name `Andrew`) is emitted exactly once at `spawn * 16` and round-trips through `WorldFileFreshComposer326`;

@@ -1,7 +1,7 @@
 using TerraRuntime.Core;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Restores the canonical checkpoint embedded in a runtime-world cache without bypassing the production

@@ -5,7 +5,7 @@ using TerraRuntime.Network;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Transport-only projection of authoritative chest commits. The game thread decides ownership and state first;

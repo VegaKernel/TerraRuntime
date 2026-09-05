@@ -28,9 +28,9 @@ public sealed class VanillaQueenBeeLootTests
     public void Queen_bee_loot_items_have_materializable_source_dimensions(int raw, int width, int height)
     {
         var type = new ItemTypeId(raw);
-        Assert.True(VanillaItemDefinitionCatalog.TryGetRuntimeDefaults(type, out VanillaItemRuntimeDefaults defaults));
+        Assert.True(VanillaDefinitionCatalog.TryGetRuntimeDefaults(type, out VanillaItemRuntimeDefaults defaults));
         Assert.Equal((width, height), (defaults.Width, defaults.Height));
-        Assert.True(VanillaItemDefinitionCatalog.TryGetWorldDrop(type, out _));
+        Assert.True(VanillaDefinitionCatalog.TryGetWorldDrop(type, out _));
     }
 
     private sealed class ScriptedRolls : INpcLootRollSource

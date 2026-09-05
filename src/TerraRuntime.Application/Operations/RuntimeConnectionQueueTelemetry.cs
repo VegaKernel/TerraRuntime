@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using TerraRuntime.Network;
 
-namespace TerraRuntime.Operations;
+namespace TerraRuntime.Application.Operations;
 
 internal sealed class RuntimeConnectionQueueTelemetry
 {

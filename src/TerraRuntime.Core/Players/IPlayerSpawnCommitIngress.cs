@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Players;
 
 /// <summary>
 /// Posts a validated spawn candidate without exposing mutable game state to the network thread.

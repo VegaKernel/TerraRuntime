@@ -1,7 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal readonly record struct SandboxTreePlayerSnapshot(
     string Selector,

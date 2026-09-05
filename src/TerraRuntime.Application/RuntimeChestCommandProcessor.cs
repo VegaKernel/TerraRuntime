@@ -1,7 +1,7 @@
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Authoritative-thread processor for protocol-326 world-chest commands. Socket-owned sinks only decode and enqueue;

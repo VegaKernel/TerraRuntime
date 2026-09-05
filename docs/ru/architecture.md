@@ -63,19 +63,24 @@ flowchart BT
 
 Другие threads могут принимать сеть, декодировать bounded input, строить immutable work products, выполнять disk I/O, сериализовать snapshots, обновлять UI из immutable telemetry и возвращать результаты через explicit completion/command boundaries. Они не могут напрямую менять authoritative collections.
 
-`ServerRuntimeState` является authoritative coordinator команд и тика, а не владельцем каждой entity-подсистемы. World-scoped collaborators владеют связными mutation lifecycle, но вызываются только тем же единственным writer: `PlayerAuthority` владеет применением connection-player state; `ServerPlayerAuthority` владеет leases runtime-controlled игроков, semantic control intent, dry-physics progression и per-generation liquid-contact state; `NpcAuthority` владеет NPC commands/AI/combat/actor-archetype lifecycle и координирует `TownNpcAuthority`; `ProjectileAuthority` владеет projectile mutation; `WorldItemAuthority` владеет world-item commands и instanced leases; `WorldTileAuthority` владеет admission для tile/object mutations. Такое выделение меняет структуру ownership, но не создаёт дополнительный tick thread.
+`ServerRuntimeState` является authoritative coordinator команд и тика, а не владельцем каждой entity-подсистемы. Его immutable `ServerRuntimeComposition` владеет world-scoped subsystem graph и один раз выполняет cross-subsystem construction/wiring. У composition graph больше нет обратной ссылки на `ServerRuntimeState`: world-owned `RuntimeTickCounter` и `RuntimeCommandCounter` хранят два orchestration counter, а `RuntimePlayerSnapshotLookup` объединяет snapshots connection-owned и runtime-controlled игроков, не заставляя NPC/projectile/tile collaborators зависеть от центрального facade. Только `ServerRuntimeState` определяет порядок команд и тика и продвигает эти counters. World-scoped collaborators владеют связными mutation lifecycle, но вызываются только тем же единственным writer: `PlayerAuthority` владеет применением connection-player state и делегирует generation-scoped deadlines входящей damage immunity в `RuntimePlayerDamageImmunityStore`; `ServerPlayerAuthority` владеет leases runtime-controlled игроков, semantic control intent, dry-physics progression и per-generation liquid-contact state; `NpcAuthority` владеет NPC commands/AI/combat/actor-archetype lifecycle и координирует `TownNpcAuthority`; `ProjectileAuthority` владеет projectile mutation; `WorldItemAuthority` владеет world-item commands и instanced leases; `WorldTileAuthority` владеет admission для tile/object mutations. Object placement теперь делает authoritative inventory decrement напрямую через общий `PlayerAuthority`, сохраняя прежний command accounting, вместо повторного входа в `ServerRuntimeState.Apply`. Такое разделение меняет composition structure, но не создаёт дополнительный tick thread и намеренно не вводит второй mutable runtime-state container.
 
 Connection fanout декомпозирован отдельно от simulation ownership. `RuntimeConnectionEndpoint` владеет retained playing-generation одного соединения и bounded appearance/equipment/movement baselines, а `ServerPlayerReplicaStore` владеет retained protocol projections runtime-controlled игроков. `RuntimeConnectionRegistry` остаётся владельцем routing/fanout и не становится альтернативным simulation writer.
 
 ```mermaid
 flowchart TD
-    State["ServerRuntimeState\ncommand + tick coordinator"] --> Players["PlayerAuthority"]
-    State --> ServerPlayers["ServerPlayerAuthority"]
-    State --> Npcs["NpcAuthority"]
+    State["ServerRuntimeState\ncommand + tick coordinator"] --> Composition["ServerRuntimeComposition\nimmutable subsystem graph"]
+    Composition --> Counters["RuntimeTickCounter + RuntimeCommandCounter"]
+    Composition --> PlayerLookup["RuntimePlayerSnapshotLookup"]
+    PlayerLookup --> Players["PlayerAuthority"]
+    PlayerLookup --> ServerPlayers["ServerPlayerAuthority"]
+    Composition --> Players
+    Composition --> ServerPlayers
+    Composition --> Npcs["NpcAuthority"]
     Npcs --> Town["TownNpcAuthority"]
-    State --> Projectiles["ProjectileAuthority"]
-    State --> Items["WorldItemAuthority"]
-    State --> Tiles["WorldTileAuthority"]
+    Composition --> Projectiles["ProjectileAuthority"]
+    Composition --> Items["WorldItemAuthority"]
+    Composition --> Tiles["WorldTileAuthority"]
     Npcs --> NpcStore["RuntimeNpcStore"]
     Projectiles --> ProjectileStore["RuntimeProjectileStore"]
     Items --> ItemStore["RuntimeWorldItemStore"]
@@ -273,11 +278,11 @@ Trusted host module получает API в две стадии.
 
 ### Bootstrap environment
 
-`ITerraRuntimeHostEnvironment` доступен до live runtime и содержит root/deployment paths, dashboard registry и world-generator registry.
+`IEnvironment` доступен до live runtime и содержит root/deployment paths, dashboard registry и world-generator registry.
 
 ### Live runtime
 
-`ITerraRuntimeHostRuntime` прикрепляется после старта authoritative runtime и предоставляет runtime info, interest-management control, player snapshots, NPC actor operations и controlled server-player operations.
+`IRuntime` прикрепляется после старта authoritative runtime и предоставляет runtime info, interest-management control, player snapshots, NPC actor operations и controlled server-player operations.
 
 Ни один из contracts не разрешает хранить mutable references на internal stores.
 
@@ -328,3 +333,11 @@ Telemetry должна объяснять, где runtime тратит врем�
 4. failure behavior определён;
 5. tests способны поймать regression;
 6. RU и EN документация обновлена в том же change.
+
+## 23. Namespace и именование типов
+
+Namespace несёт устойчивый контекст архитектурного домена, а имя типа описывает его роль внутри этого домена. Public и internal имена не должны повторять тот же домен только потому, что исторически код лежал в более плоском namespace.
+
+Текущие примеры: `TerraRuntime.Application`, `TerraRuntime.Core.Npcs`, `TerraRuntime.Core.Projectiles`, `TerraRuntime.WorldGeneration.Vanilla` и `TerraRuntime.WorldGeneration.Runtime`. Внутри таких namespace имя типа сокращается, когда удалённое слово уже однозначно задаётся namespace. Разные концепции при этом обязаны иметь разные имена: размеры мира называются `WorldTileDimensions`, прямоугольная область тайлов — `WorldTileRegion`; structured diagnostic severity остаётся `RuntimeLogLevel`, а operations read model использует `OperationsLogLevel`.
+
+Правило не означает «сделать все имена короткими». Доменное слово сохраняется в имени типа, когда оно различает соседние концепции или заметно улучшает читаемость call site. Namespace migration и semantic rename должны одновременно обновлять production code, fixtures, tests и документацию; compatibility aliases только ради сохранения устаревших полных имён не оставляются.

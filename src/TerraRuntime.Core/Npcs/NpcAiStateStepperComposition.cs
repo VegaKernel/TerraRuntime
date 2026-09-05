@@ -1,4 +1,4 @@
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 /// <summary>
 /// Explicit composition marker for allocation-stable NPC AI decorators. It lets runtime orchestration discover

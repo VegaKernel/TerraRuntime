@@ -4,7 +4,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal readonly record struct RuntimeProjectileChildSpawnEvent(
     ProjectileSnapshot Projectile,
@@ -80,7 +80,7 @@ internal static class RuntimeSharknadoChildSpawn1458
     {
         ProjectileSnapshot parent = child.Projectile;
         if (!child.SourceNpc.IsAssigned || parent.Type != VanillaProjectileIds.SharknadoBolt ||
-            !VanillaProjectileDefinitionCatalog.TryGet(parent.Type, out VanillaProjectileDefinition parentDefinition))
+            !VanillaDefinitionCatalog.TryGet(parent.Type, out VanillaProjectileDefinition parentDefinition))
         {
             intent = default;
             return false;
@@ -93,7 +93,7 @@ internal static class RuntimeSharknadoChildSpawn1458
         {
             // Entity.direction defaults to +1 and aiStyle 65 never rewrites it. Projectile.Kill() therefore
             // creates the ordinary Sharknado 30 px to the left with a tiny leftward velocity.
-            VanillaProjectileDefinitionCatalog.TryGet(VanillaProjectileIds.Sharknado, out VanillaProjectileDefinition childDefinition);
+            VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.Sharknado, out VanillaProjectileDefinition childDefinition);
             intent = new NpcAiProjectileIntent(
                 VanillaProjectileIds.Sharknado,
                 centerX - 30f - childDefinition.Width * 0.5f,
@@ -132,7 +132,7 @@ internal static class RuntimeSharknadoChildSpawn1458
             }
         }
 
-        VanillaProjectileDefinitionCatalog.TryGet(VanillaProjectileIds.Cthulunado, out VanillaProjectileDefinition cthulunadoDefinition);
+        VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.Cthulunado, out VanillaProjectileDefinition cthulunadoDefinition);
         intent = new NpcAiProjectileIntent(
             VanillaProjectileIds.Cthulunado,
             tileX * 16f + 8f - cthulunadoDefinition.Width * 0.5f,

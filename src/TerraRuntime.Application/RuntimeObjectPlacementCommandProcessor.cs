@@ -5,7 +5,7 @@ using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal enum RuntimeObjectPlacementResult : byte
 {
@@ -30,15 +30,21 @@ internal sealed class RuntimeObjectPlacementCommandProcessor
 {
     private readonly VanillaMultiTileObjectMutationService mutations;
     private readonly IVanillaMultiTileObjectMetadataLifecycle metadata;
+    private readonly PlayerAuthority players;
+    private readonly RuntimeCommandCounter commands;
     private readonly RuntimeTileManipulationReplicationRegistry? replication;
 
     public RuntimeObjectPlacementCommandProcessor(
         WorldTileStore tiles,
         RuntimeChestStore chests,
+        PlayerAuthority players,
+        RuntimeCommandCounter commands,
         RuntimeTileManipulationReplicationRegistry? replication = null)
         : this(
             tiles,
             new RuntimeChestObjectMetadataLifecycle(chests ?? throw new ArgumentNullException(nameof(chests))),
+            players,
+            commands,
             replication)
     {
     }
@@ -46,12 +52,16 @@ internal sealed class RuntimeObjectPlacementCommandProcessor
     public RuntimeObjectPlacementCommandProcessor(
         WorldTileStore tiles,
         IVanillaMultiTileObjectMetadataLifecycle metadata,
+        PlayerAuthority players,
+        RuntimeCommandCounter commands,
         RuntimeTileManipulationReplicationRegistry? replication = null)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentNullException.ThrowIfNull(metadata);
         mutations = new VanillaMultiTileObjectMutationService(tiles);
         this.metadata = metadata;
+        this.players = players ?? throw new ArgumentNullException(nameof(players));
+        this.commands = commands ?? throw new ArgumentNullException(nameof(commands));
         this.replication = replication;
     }
 
@@ -63,14 +73,14 @@ internal sealed class RuntimeObjectPlacementCommandProcessor
     public RuntimeObjectPlacementResult LastResult { get; private set; }
     public VanillaMultiTileObjectMutationStatus LastWorldStatus { get; private set; }
 
-    public bool TryApply(ServerRuntimeState runtime, RuntimeCommand command)
+    public bool TryApply(RuntimeCommand command)
     {
-        ArgumentNullException.ThrowIfNull(runtime);
+        ArgumentNullException.ThrowIfNull(command);
         if (command is not ClientPlaceObjectRuntimeCommand placement)
             return false;
 
         Requests++;
-        RuntimeObjectPlacementResult result = ApplyPlacement(runtime, placement);
+        RuntimeObjectPlacementResult result = ApplyPlacement(placement);
         LastResult = result;
         if (result == RuntimeObjectPlacementResult.Applied)
             Applied++;
@@ -82,19 +92,18 @@ internal sealed class RuntimeObjectPlacementCommandProcessor
     }
 
     private RuntimeObjectPlacementResult ApplyPlacement(
-        ServerRuntimeState runtime,
         ClientPlaceObjectRuntimeCommand command)
     {
         LastWorldStatus = default;
         if (!command.Connection.IsAssigned ||
-            !runtime.TryCapturePlayerSnapshot(command.Connection.Player, out PlayerStateSnapshot player))
+            !players.TryCapture(command.Connection.Player, out PlayerStateSnapshot player))
         {
             return RuntimeObjectPlacementResult.StalePlayer;
         }
 
         short selectedSlot = player.SelectedItem;
         if (!VanillaPlayerItemSlotCatalog.IsInventorySlot(selectedSlot) ||
-            !runtime.TryCapturePlayerInventoryItem(
+            !players.TryGetInventoryItem(
                 command.Connection.Player,
                 selectedSlot,
                 out RuntimePlayerInventoryItem selected))
@@ -135,14 +144,15 @@ internal sealed class RuntimeObjectPlacementCommandProcessor
             command.Connection.Player.Slot,
             selectedSlot);
 
-        long appliedBefore = runtime.AppliedPlayerEquipmentUpdates;
-        long rejectedBefore = runtime.RejectedPlayerEquipmentUpdates;
-        runtime.Apply(new PlayerEquipmentRuntimeCommand(command.Connection, decrement));
+        long appliedBefore = players.AppliedEquipmentUpdates;
+        long rejectedBefore = players.RejectedEquipmentUpdates;
+        commands.Record();
+        players.TryApply(new PlayerEquipmentRuntimeCommand(command.Connection, decrement));
 
         bool inventoryCommitted =
-            runtime.AppliedPlayerEquipmentUpdates == appliedBefore + 1 &&
-            runtime.RejectedPlayerEquipmentUpdates == rejectedBefore &&
-            runtime.TryCapturePlayerInventoryItem(
+            players.AppliedEquipmentUpdates == appliedBefore + 1 &&
+            players.RejectedEquipmentUpdates == rejectedBefore &&
+            players.TryGetInventoryItem(
                 command.Connection.Player,
                 selectedSlot,
                 out RuntimePlayerInventoryItem committed) &&

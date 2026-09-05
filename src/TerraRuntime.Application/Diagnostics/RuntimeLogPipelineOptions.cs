@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Diagnostics;
 
-namespace TerraRuntime.Diagnostics;
+namespace TerraRuntime.Application.Diagnostics;
 
 internal sealed record RuntimeLogPipelineOptions
 {

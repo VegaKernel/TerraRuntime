@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Worlds;
 
 public enum WorldGenerationExecutionStatus : byte
 {

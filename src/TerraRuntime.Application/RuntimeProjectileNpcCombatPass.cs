@@ -5,7 +5,7 @@ using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Gameplay.Projectiles;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Deterministic post-simulation projectile/NPC collision pass for the source-backed friendly projectile slice.
@@ -99,7 +99,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
                 int hitDirection = projectile.VelocityX > 0.01f ? 1 : projectile.VelocityX < -0.01f ? -1 : 0;
                 int critRoll = random.Next(1, 101);
                 int damageVariation = random.Next(-15, 16);
-                if (!VanillaProjectileCombatFacts.TryResolvePveHit(
+                if (!VanillaCombatFacts.TryResolvePveHit(
                         projectile.Type,
                         projectile.Damage,
                         in ownerCombat,
@@ -176,7 +176,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
                 int hitDirection = ResolveExplosionDirection(in explosion, in target, in npcHitbox);
                 int critRoll = random.Next(1, 101);
                 int damageVariation = random.Next(-15, 16);
-                if (!VanillaProjectileCombatFacts.TryResolvePveHit(
+                if (!VanillaCombatFacts.TryResolvePveHit(
                         projectile.Type,
                         projectile.Damage,
                         in ownerCombat,
@@ -210,7 +210,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
     {
         if (!projectile.IsActive || projectile.Damage <= 0 || !VanillaProjectileOwnership.IsPlayerOwned(projectile.Spawner) ||
             VanillaProjectileFacts.IsHostile(projectile.Type) ||
-            !VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out definition) ||
+            !VanillaDefinitionCatalog.TryGet(projectile.Type, out definition) ||
             !VanillaProjectileBehaviorProfileCatalog.TryGet(projectile.Type, out profile) ||
             !profile.BehaviorImplemented ||
             !VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(projectile.Type, out _))

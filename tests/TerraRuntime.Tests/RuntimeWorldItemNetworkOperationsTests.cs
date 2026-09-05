@@ -1,7 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 
 namespace TerraRuntime.Tests;
 

@@ -21,7 +21,7 @@ public readonly record struct PlayerItemUseRequest(
     public bool IsValid =>
         Connection.IsAssigned &&
         VanillaPlayerItemSlotCatalog.IsInventorySlot(InventorySlot) &&
-        VanillaItemDefinitionCatalog.IsValidKnownStack(ItemType, Stack) &&
+        VanillaDefinitionCatalog.IsValidKnownStack(ItemType, Stack) &&
         !ItemType.IsNone &&
         VanillaItemIds.TryCreate(ItemType.Value, out ItemTypeId canonical) &&
         canonical == ItemType &&

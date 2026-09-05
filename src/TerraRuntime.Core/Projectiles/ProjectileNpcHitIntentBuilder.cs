@@ -2,7 +2,7 @@ using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Projectiles;
 
 /// <summary>
 /// Converts a target selected by a future projectile/NPC collision pass into a generation-safe combat intent.

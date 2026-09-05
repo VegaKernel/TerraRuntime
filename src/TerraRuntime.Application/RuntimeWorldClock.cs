@@ -1,7 +1,7 @@
 using TerraRuntime.World;
 using TerraRuntime.Gameplay.Worlds;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Narrow world-event projection consumed by admitted NPC behavior. Blood Moon is suppressed for restricted

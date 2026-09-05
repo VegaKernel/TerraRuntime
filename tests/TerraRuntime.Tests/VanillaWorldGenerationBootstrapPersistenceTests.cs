@@ -11,13 +11,13 @@ public sealed class VanillaWorldGenerationBootstrapPersistenceTests
     {
         var random = new VanillaRandomAdapter(new VanillaUnifiedRandom1458(1458));
         VanillaWorldGenerationBootstrapState1458 bootstrap =
-            VanillaWorldGenerationBootstrapPass1458.Run(random, 4200, effectiveCrimson: false);
-        var state = new VanillaWorldGenerationParityState1458
+            BootstrapPass1458.Run(random, 4200, effectiveCrimson: false);
+        var state = new ParityState1458
         {
             Bootstrap = bootstrap,
             TerrainLayers = new WorldGenerationLayers(300d, 500d)
         };
-        var workspace = new RuntimeWorldGenerationWorkspace(4200, 1200);
+        var workspace = new Workspace(4200, 1200);
         var fallback = new ActionPass(context =>
         {
             Assert.NotNull(context.Metadata);
@@ -25,7 +25,7 @@ public sealed class VanillaWorldGenerationBootstrapPersistenceTests
             Assert.True(context.Metadata.TrySetDungeon(500, 350));
             Assert.True(context.Metadata.TrySetLayers(310d, 510d));
         });
-        var pass = new VanillaMetadataParityPass1458(fallback, state);
+        var pass = new MetadataParityPass1458(fallback, state);
         var context = new GenerationContext(workspace);
         Assert.True(workspace.TrySetDungeon(bootstrap.DungeonLocation, 333));
 
@@ -35,7 +35,7 @@ public sealed class VanillaWorldGenerationBootstrapPersistenceTests
         Assert.Equal(new WorldGenerationPoint(bootstrap.DungeonLocation, 333), preservedDungeon);
         FillMinimalValidWorld(workspace, bootstrap);
         workspace.SetVanillaSeedProfile(new VanillaWorldSeedProfile1458(VanillaSpecialWorldSeed1458.NoTraps, VanillaSecretWorldSeed1458.None));
-        RuntimeWorldGenerationFinalizationResult finalized = RuntimeWorldGenerationFinalizer.Finalize(workspace);
+        FinalizationResult finalized = Finalizer.Finalize(workspace);
 
         Assert.True(finalized.Succeeded);
         Assert.Same(bootstrap, finalized.Metadata.VanillaBootstrapState);
@@ -47,7 +47,7 @@ public sealed class VanillaWorldGenerationBootstrapPersistenceTests
     {
         var random = new VanillaRandomAdapter(new VanillaUnifiedRandom1458(1458));
         VanillaWorldGenerationBootstrapState1458 bootstrap =
-            VanillaWorldGenerationBootstrapPass1458.Run(random, 4200, effectiveCrimson: false);
+            BootstrapPass1458.Run(random, 4200, effectiveCrimson: false);
         WorldFileHeader header = VanillaFreshWorldHeader326.Create(
             "VanillaBootstrap",
             "1458",
@@ -157,12 +157,12 @@ public sealed class VanillaWorldGenerationBootstrapPersistenceTests
 
     private sealed class GenerationContext : IWorldGenerationContext
     {
-        public GenerationContext(RuntimeWorldGenerationWorkspace workspace)
+        public GenerationContext(Workspace workspace)
         {
             Workspace = workspace;
             Metadata = workspace;
             Request = new WorldGenerationRequest(
-                VanillaWorldGenerationProvider1458.GeneratorId,
+                Provider1458.GeneratorId,
                 "BootstrapPersistence",
                 1458,
                 workspace.WidthTiles,
@@ -195,7 +195,7 @@ public sealed class VanillaWorldGenerationBootstrapPersistenceTests
         public void NextBytes(byte[] buffer) => random.NextBytes(buffer);
     }
 
-    private static void FillMinimalValidWorld(RuntimeWorldGenerationWorkspace workspace, VanillaWorldGenerationBootstrapState1458 bootstrap)
+    private static void FillMinimalValidWorld(Workspace workspace, VanillaWorldGenerationBootstrapState1458 bootstrap)
     {
         int width = workspace.WidthTiles;
         int height = workspace.HeightTiles;

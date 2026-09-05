@@ -3,7 +3,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Derives the per-connection outbound queue envelope from the largest synchronous join/baseline bursts the

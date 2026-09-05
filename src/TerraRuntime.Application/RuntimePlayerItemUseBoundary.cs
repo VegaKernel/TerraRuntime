@@ -2,7 +2,7 @@ using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Crosses the player's packet-13 selected-slot value into a detached authoritative item-use request.

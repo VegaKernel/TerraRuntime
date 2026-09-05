@@ -2,7 +2,7 @@ using System.Numerics;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Authoritative-thread spatial index for player slots, bucketed by Terraria network sections.

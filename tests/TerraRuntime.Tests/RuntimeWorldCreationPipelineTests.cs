@@ -59,7 +59,7 @@ public sealed class RuntimeWorldCreationPipelineTests
         Assert.Equal(RuntimeWorldCreationPipelineStatus.FinalizationFailed, result.Status);
         Assert.Null(result.Candidate);
         Assert.True(result.Generation.Succeeded);
-        Assert.Equal(RuntimeWorldGenerationFinalizationStatus.MissingDungeon, result.Finalization?.Status);
+        Assert.Equal(FinalizationStatus.MissingDungeon, result.Finalization?.Status);
     }
 
     [Fact]

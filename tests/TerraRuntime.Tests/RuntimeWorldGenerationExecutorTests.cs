@@ -78,8 +78,8 @@ public sealed class RuntimeWorldGenerationExecutorTests
                     }));
             });
         var request = new WorldGenerationRequest(provider.Id, "Deterministic", 0x1234UL, 64, 32);
-        var first = new RuntimeWorldGenerationWorkspace(request.WidthTiles, request.HeightTiles);
-        var second = new RuntimeWorldGenerationWorkspace(request.WidthTiles, request.HeightTiles);
+        var first = new Workspace(request.WidthTiles, request.HeightTiles);
+        var second = new Workspace(request.WidthTiles, request.HeightTiles);
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
 
         WorldGenerationExecutionResult firstResult = RuntimeWorldGenerationExecutor.Execute(provider, in request, first, cancellationToken: cancellationToken);
@@ -104,7 +104,7 @@ public sealed class RuntimeWorldGenerationExecutorTests
                 builder.Add(new WorldGenerationPassDescriptor(id), new ActionPass(static _ => { }));
             });
         var request = new WorldGenerationRequest(provider.Id, "Broken", 1, 16, 16);
-        var workspace = new RuntimeWorldGenerationWorkspace(16, 16);
+        var workspace = new Workspace(16, 16);
 
         WorldGenerationExecutionResult result = RuntimeWorldGenerationExecutor.Execute(
             provider,
@@ -145,7 +145,7 @@ public sealed class RuntimeWorldGenerationExecutorTests
         {
             SeedText = "123456"
         };
-        var workspace = new RuntimeWorldGenerationWorkspace(16, 16);
+        var workspace = new Workspace(16, 16);
 
         WorldGenerationExecutionResult result = RuntimeWorldGenerationExecutor.Execute(
             provider,
@@ -172,7 +172,7 @@ public sealed class RuntimeWorldGenerationExecutorTests
                 new WorldGenerationPassDescriptor(id, WorldGenerationRngMode.CustomProviderRng),
                 new ActionPass(_ => executed = true)));
         var request = new WorldGenerationRequest(provider.Id, "Rng", 1, 16, 16);
-        var workspace = new RuntimeWorldGenerationWorkspace(16, 16);
+        var workspace = new Workspace(16, 16);
 
         WorldGenerationExecutionResult result = RuntimeWorldGenerationExecutor.Execute(
             provider,
@@ -199,7 +199,7 @@ public sealed class RuntimeWorldGenerationExecutorTests
                     new ActionPass(static _ => { }));
             });
         var request = new WorldGenerationRequest(provider.Id, "Cancelled", 1, 16, 16);
-        var workspace = new RuntimeWorldGenerationWorkspace(16, 16);
+        var workspace = new Workspace(16, 16);
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
 
@@ -227,7 +227,7 @@ public sealed class RuntimeWorldGenerationExecutorTests
                         context.ReportProgress(0.5d, "working");
                 })));
         var request = new WorldGenerationRequest(provider.Id, "Progress", 1, 16, 16);
-        var workspace = new RuntimeWorldGenerationWorkspace(16, 16);
+        var workspace = new Workspace(16, 16);
         var progress = new CountingProgressSink();
 
         WorldGenerationExecutionResult result = RuntimeWorldGenerationExecutor.Execute(
@@ -244,7 +244,7 @@ public sealed class RuntimeWorldGenerationExecutorTests
     [Fact]
     public void Workspace_rejects_unknown_official_client_tile_id_and_out_of_bounds_writes()
     {
-        var workspace = new RuntimeWorldGenerationWorkspace(16, 16);
+        var workspace = new Workspace(16, 16);
         var invalid = new WorldGenerationTile(
             Type: (ushort)VanillaTileIds.Count,
             Wall: 0,
@@ -262,7 +262,7 @@ public sealed class RuntimeWorldGenerationExecutorTests
         Assert.False(workspace.TrySetTile(16, 1, default));
     }
 
-    private static int FindActiveX(RuntimeWorldGenerationWorkspace workspace, int y)
+    private static int FindActiveX(Workspace workspace, int y)
     {
         for (int x = 0; x < workspace.WidthTiles; x++)
         {

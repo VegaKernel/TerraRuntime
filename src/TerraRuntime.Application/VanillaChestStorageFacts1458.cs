@@ -1,4 +1,4 @@
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 chest storage limits used by runtime-owned world-chest creation.

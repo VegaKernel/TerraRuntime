@@ -31,7 +31,7 @@ public sealed class VanillaLauncherProjectileFactsTests
     public void Grenade_ai_starts_gravity_after_15_ticks()
     {
         ProjectileSnapshot projectile = Create(VanillaProjectileIds.GrenadeI, 5f, 0f, 15f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
 
         var context = default(VanillaProjectileBehaviorContext);
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
@@ -46,7 +46,7 @@ public sealed class VanillaLauncherProjectileFactsTests
     public void Mine_ai_applies_gravity_and_drag_every_tick()
     {
         ProjectileSnapshot projectile = Create(VanillaProjectileIds.ProximityMineI, 2f, 1f, 0f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
 
         var context = default(VanillaProjectileBehaviorContext);
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(
@@ -61,7 +61,7 @@ public sealed class VanillaLauncherProjectileFactsTests
     public void Rocket_ai_keeps_launch_velocity()
     {
         ProjectileSnapshot projectile = Create(VanillaProjectileIds.RocketI, 12f, -3f, 7f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
 
         var context = default(VanillaProjectileBehaviorContext);
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(

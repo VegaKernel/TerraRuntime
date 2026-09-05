@@ -2,7 +2,7 @@ using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 /// <summary>Tile/LOS facts consumed by TerrariaServer 1.4.5.8 AI_054 teleport selection.</summary>
 public interface IVanillaBrainOfCthulhuEnvironment

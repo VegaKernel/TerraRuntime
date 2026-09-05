@@ -6,7 +6,7 @@ using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.HostContracts;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal sealed partial class ServerRuntimeState
 {
@@ -42,56 +42,17 @@ internal sealed partial class ServerRuntimeState
         bool isThereAWorldSurface = true,
         bool evilBossDownedBaseline = false)
     {
-        if (masterMode && !expertMode)
-            throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
-
-        _worldTiles = worldTiles;
-        _worldClock = worldClock;
-        _worldProgression = worldProgression ?? new RuntimeWorldProgressionMutations();
-        _players = new PlayerAuthority(playerEvents, worldTiles, expertMode, masterMode);
-
-        RuntimeWorldItemStore worldItemStore = worldItems ?? new RuntimeWorldItemStore();
-        IWorldItemSpawnRandom spawnRandom = worldItemSpawnRandom ?? new SystemWorldItemSpawnRandom();
-        _worldItems = new WorldItemAuthority(
-            _players,
-            worldItemStore,
-            spawnRandom,
-            worldItemReplication);
-        _worldTileAuthority = new WorldTileAuthority(
-            _players,
-            worldTiles,
-            worldItemStore,
-            spawnRandom,
-            tileManipulationReplication);
-
-        _serverPlayers = serverPlayers;
-
-        RuntimeNpcStore npcStore = npcs ?? new RuntimeNpcStore();
-        RuntimeProjectileStore projectileStore = projectiles ?? new RuntimeProjectileStore();
-        IProjectileStateStepper? configuredProjectileStepper = projectileStepper ??
-            (worldTiles is null ? null : new VanillaProjectileWorldStateStepper(worldTiles, this, expertMode, npcStore));
-        _projectiles = new ProjectileAuthority(
-            projectileStore,
-            _players,
-            npcStore,
-            this,
-            configuredProjectileStepper,
-            projectileReplication,
-            () => Updates,
-            goodWorld: worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false,
-            worldTiles: worldTiles,
-            expertMode: expertMode);
-        _npcs = new NpcAuthority(
-            this,
-            _players,
-            npcStore,
-            projectileStore,
-            worldItemStore,
-            spawnRandom,
-            _worldItems.InstancedLeases,
+        _runtime = ServerRuntimeComposition.Create(
+            playerEvents,
+            npcs,
+            npcAiStepper,
             worldTiles,
             worldClock,
-            _worldProgression,
+            worldProgression,
+            projectiles,
+            projectileStepper,
+            worldItems,
+            projectileReplication,
             npcReplication,
             worldItemReplication,
             townNpcs,
@@ -101,21 +62,16 @@ internal sealed partial class ServerRuntimeState
             townInitialRaining,
             townInitialEclipse,
             townInitialInvasionActive,
+            tileManipulationReplication,
             serverPlayers,
             npcShops,
             npcArchetypes,
             npcArchetypeIdentities,
-            npcAiStepper,
+            worldItemSpawnRandom,
             expertMode,
             masterMode,
             skyblockLowTiles,
             isThereAWorldSurface,
             evilBossDownedBaseline);
-        _projectilePlayerCombat = new RuntimeProjectilePlayerCombatPass(
-            projectileStore,
-            npcStore,
-            _players,
-            () => Updates);
-        _npcPlayerCombat = new RuntimeNpcPlayerCombatPass(npcStore, _players);
     }
 }

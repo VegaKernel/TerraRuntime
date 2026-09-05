@@ -1,7 +1,7 @@
 using TerraRuntime.Contracts.Diagnostics;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 using StructuredLogLevel = TerraRuntime.Contracts.Diagnostics.RuntimeLogLevel;
-using OperationsLogLevel = TerraRuntime.Operations.RuntimeLogLevel;
+using OperationsLogLevel = TerraRuntime.Application.Operations.OperationsLogLevel;
 
 namespace TerraRuntime.Tests;
 

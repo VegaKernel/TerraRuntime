@@ -5,7 +5,7 @@ using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Protocol;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal enum CombatIntegrityResolveResult : byte
 {

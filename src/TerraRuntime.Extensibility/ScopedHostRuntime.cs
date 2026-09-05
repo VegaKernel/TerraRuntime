@@ -4,21 +4,21 @@ using TerraRuntime.HostContracts;
 
 namespace TerraRuntime.Extensibility;
 
-internal sealed class ScopedHostRuntime : ITerraRuntimeHostRuntime
+internal sealed class ScopedHostRuntime : IRuntime
 {
-    private readonly ITerraRuntimeHostRuntime source;
+    private readonly IRuntime source;
     private readonly ScopedNpcActorOperations npcActors;
     private readonly ScopedNpcShopOperations npcShops;
     private int retired;
 
-    public ScopedHostRuntime(ITerraRuntimeHostRuntime source)
+    public ScopedHostRuntime(IRuntime source)
     {
         this.source = source ?? throw new ArgumentNullException(nameof(source));
         npcActors = new ScopedNpcActorOperations(source.NpcActors);
         npcShops = new ScopedNpcShopOperations(source.NpcShops);
     }
 
-    public TerraRuntimeHostRuntimeInfo Info => source.Info;
+    public RuntimeInfo Info => source.Info;
     public IInterestManagementControl InterestManagement => source.InterestManagement;
     public IPlayerStateSnapshotReader PlayerStates => source.PlayerStates;
     public IPlayerAdministrativeOperations PlayerAdministration => source.PlayerAdministration;

@@ -18,7 +18,7 @@ public sealed class EncodedSectionCacheContractTests
         long before = world.Tiles.GetSectionVersion(section);
         Assert.True(packets.TryPublishSectionFrame(section, before, CreateFrame(4096, 0x61)));
 
-        WorldTileBounds bounds = TerrariaSectionGeometry.GetBounds(world.Header.Dimensions, section);
+        WorldTileRegion bounds = TerrariaSectionGeometry.GetBounds(world.Header.Dimensions, section);
         WorldTile unchanged = world.Tiles.Get(bounds.X, bounds.Y);
         world.Tiles.Set(bounds.X, bounds.Y, in unchanged);
 
@@ -47,7 +47,7 @@ public sealed class EncodedSectionCacheContractTests
         Assert.True(packets.IsPinnedBaseSection(section));
 
         long before = world.Tiles.GetSectionVersion(section);
-        WorldTileBounds bounds = TerrariaSectionGeometry.GetBounds(world.Header.Dimensions, section);
+        WorldTileRegion bounds = TerrariaSectionGeometry.GetBounds(world.Header.Dimensions, section);
         WorldTile unchanged = world.Tiles.Get(bounds.X, bounds.Y);
         world.Tiles.Set(bounds.X, bounds.Y, in unchanged);
         long after = world.Tiles.GetSectionVersion(section);

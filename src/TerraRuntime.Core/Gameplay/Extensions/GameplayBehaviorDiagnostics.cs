@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Extensions;
 
 /// <summary>
 /// Receives faults raised by host-provided gameplay behavior. Diagnostics must remain observational; callers of

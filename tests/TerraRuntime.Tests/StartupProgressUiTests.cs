@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text;
-using TerraRuntime.TerminalUI;
+using TerraRuntime.Application.TerminalUI;
 using Terminal.Gui.App;
 using Terminal.Gui.Drivers;
 
@@ -11,8 +11,8 @@ public sealed class StartupProgressUiTests
     [Fact]
     public void Runtime_and_startup_ui_pumps_fit_inside_one_60hz_frame()
     {
-        Assert.True(TerminalUiHost.UiPumpIntervalForTests <= TimeSpan.FromMilliseconds(16));
-        Assert.True(TerminalUiHost.SnapshotRefreshIntervalForTests <= TimeSpan.FromMilliseconds(100));
+        Assert.True(Host.UiPumpIntervalForTests <= TimeSpan.FromMilliseconds(16));
+        Assert.True(Host.SnapshotRefreshIntervalForTests <= TimeSpan.FromMilliseconds(100));
         Assert.True(StartupProgressUiHost.PumpIntervalForTests <= TimeSpan.FromMilliseconds(16));
     }
 
@@ -37,7 +37,7 @@ public sealed class StartupProgressUiTests
     {
         using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
         app.Driver!.SetScreenSize(100, 26);
-        TerminalUiTheme.Apply();
+        Theme.Apply();
 
         using var window = new StartupProgressWindow();
         SessionToken token = app.Begin(window)!;

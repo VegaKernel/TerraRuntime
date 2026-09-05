@@ -3,10 +3,10 @@ using System.Runtime.CompilerServices;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 using TerraRuntime.Protocol.Multiplicity;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Per-server transport relay for protocol chat. The relay is scoped by the server's PlayerSlotPool,

@@ -3,7 +3,7 @@ using TerraRuntime.HostContracts.WorldGeneration;
 using TerraRuntime.World;
 using TerraRuntime.WorldGeneration;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 public enum RuntimeWorldCreationPipelineStatus : byte
 {
@@ -19,10 +19,10 @@ public enum RuntimeWorldCreationPipelineStatus : byte
 /// </summary>
 public readonly record struct RuntimeWorldCreationPipelineResult(
     RuntimeWorldCreationPipelineStatus Status,
-    RuntimeWorldGenerationWorkspace? Candidate,
+    Workspace? Candidate,
     RuntimeWorldGenerationMetadataSnapshot Metadata,
     RuntimeWorldGenerationCandidateResult Generation,
-    RuntimeWorldGenerationFinalizationResult? Finalization)
+    FinalizationResult? Finalization)
 {
     public bool Succeeded =>
         Status == RuntimeWorldCreationPipelineStatus.ReadyToPersist &&
@@ -60,9 +60,9 @@ public sealed class RuntimeWorldCreationPipeline
                 Finalization: null);
         }
 
-        RuntimeWorldGenerationValidationMode validationMode = ResolveValidationMode(request.GeneratorId);
-        RuntimeWorldGenerationFinalizationResult finalized =
-            RuntimeWorldGenerationFinalizer.Finalize(generated.Candidate, validationMode);
+        ValidationMode validationMode = ResolveValidationMode(request.GeneratorId);
+        FinalizationResult finalized =
+            Finalizer.Finalize(generated.Candidate, validationMode);
         if (!finalized.Succeeded)
         {
             // The workspace is intentionally dropped here. A caller cannot accidentally persist a candidate whose
@@ -84,24 +84,24 @@ public sealed class RuntimeWorldCreationPipeline
             finalized);
     }
 
-    internal static RuntimeWorldGenerationValidationMode ResolveValidationMode(WorldGeneratorId generatorId)
+    internal static ValidationMode ResolveValidationMode(WorldGeneratorId generatorId)
     {
-        if (generatorId == VanillaWorldGenerationProvider1458.GeneratorId ||
-            generatorId == OptimizedSurfaceDecorationWorldGenerationProvider.GeneratorId)
+        if (generatorId == Provider1458.GeneratorId ||
+            generatorId == SurfaceDecorationProvider.GeneratorId)
         {
-            return RuntimeWorldGenerationValidationMode.VanillaComplete;
+            return ValidationMode.VanillaComplete;
         }
 
         // Flat, skyblock and trusted-host/custom generators still receive structural validation, but canonical
         // Terraria dimensions alone must never imply that they promise the complete vanilla biome/content contract.
-        return RuntimeWorldGenerationValidationMode.GenericStructural;
+        return ValidationMode.GenericStructural;
     }
 
-    private static RuntimeWorldGenerationFinalizationResult ApplyBuiltInWorldSemantics(
+    private static FinalizationResult ApplyBuiltInWorldSemantics(
         in WorldGenerationRequest request,
-        RuntimeWorldGenerationFinalizationResult finalized)
+        FinalizationResult finalized)
     {
-        if (request.GeneratorId != SkyblockWorldGenerationProvider.GeneratorId)
+        if (request.GeneratorId != SkyblockProvider.GeneratorId)
             return finalized;
 
         VanillaWorldSeedProfile1458 profile = finalized.Metadata.VanillaSeedProfile;

@@ -3,7 +3,7 @@
 Граница выбранного предмета и source-backed каталог item definitions намеренно разделены:
 
 1. `RuntimePlayerItemUseBoundary` отвечает на вопрос **какой именно inventory item выбрала именно эта generation игрока**;
-2. `VanillaItemDefinitionCatalog` отвечает **какие gameplay capabilities TerraRuntime уже проверил для этого item type**;
+2. `VanillaDefinitionCatalog` отвечает **какие gameplay capabilities TerraRuntime уже проверил для этого item type**;
 3. `VanillaPlayerItemUseSemanticResolver` объединяет оба слоя в типизированные gameplay intents без повторного чтения packet state и без ветвления по raw item ids.
 
 ```mermaid
@@ -12,7 +12,7 @@ flowchart LR
     Inv["authoritative inventory\nexact ConnectionHandle"] --> Boundary
     Boundary --> Request["PlayerItemUseRequest"]
     Request --> Resolver["VanillaPlayerItemUseSemanticResolver"]
-    Definitions["VanillaItemDefinitionCatalog"] --> Resolver
+    Definitions["VanillaDefinitionCatalog"] --> Resolver
     Resolver --> Placement["PlayerItemPlacementUse"]
     Resolver --> Pick["PlayerItemPickToolUse"]
 ```
@@ -73,7 +73,7 @@ Resolver не выводит поведение из числового id, со
 
 ## Production placement consistency
 
-`ClientTileManipulationConsistency` и authoritative-проверка добычи tiles теперь читают placement/tool-факты напрямую из `TerraRuntime.Gameplay.Items.VanillaItemDefinitionCatalog`. Прозрачный compatibility facade `VanillaTileInteractionItemFacts` удалён.
+`ClientTileManipulationConsistency` и authoritative-проверка добычи tiles теперь читают placement/tool-факты напрямую из `TerraRuntime.Gameplay.Items.VanillaDefinitionCatalog`. Прозрачный compatibility facade `VanillaTileInteractionItemFacts` удалён.
 
 Так сохраняется существующая packet-17 consistency policy и остаётся один source-backed владелец item capabilities вместо второго forwarding API.
 

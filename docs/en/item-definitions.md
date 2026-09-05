@@ -7,14 +7,14 @@ TerraRuntime uses a deliberately sparse, source-backed item-definition catalog. 
 ```mermaid
 flowchart LR
     Source["TerrariaServer 1.4.5.8"] --> Probe["Pinned source contracts"]
-    Probe --> Catalog["VanillaItemDefinitionCatalog"]
+    Probe --> Catalog["VanillaDefinitionCatalog"]
     Catalog --> Placement["Placement"]
     Catalog --> Tools["Tool authority"]
     Catalog --> WorldDrop["World-item materialization"]
     WorldDrop --> Prefixes["VanillaItemPrefixCatalog"]
 ```
 
-`VanillaItemIds` owns content identity. `TerraRuntime.Gameplay.Items.VanillaItemDefinitionCatalog` owns immutable verified item facts, and the related object-placement/prefix catalogs live in the same gameplay layer. Runtime inventory/world-item stores in Core/application code own mutable stack, prefix, slot, generation and revision state.
+`VanillaItemIds` owns content identity. `TerraRuntime.Gameplay.Items.VanillaDefinitionCatalog` owns immutable verified item facts, and the related object-placement/prefix catalogs live in the same gameplay layer. Runtime inventory/world-item stores in Core/application code own mutable stack, prefix, slot, generation and revision state.
 
 ## Verified capabilities
 

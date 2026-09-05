@@ -1,6 +1,6 @@
 using TerraRuntime.Network;
 
-namespace TerraRuntime.Operations;
+namespace TerraRuntime.Application.Operations;
 
 internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
 {

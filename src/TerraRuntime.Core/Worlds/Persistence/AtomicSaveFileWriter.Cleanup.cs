@@ -2,7 +2,7 @@ using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Worlds;
 
 public readonly record struct AtomicSaveFileRecoveryDiagnostic(
     int RecoveredWrites,

@@ -4,7 +4,7 @@
 
 ## Current migration model
 
-The built-in vanilla generator is intentionally migrated pass by pass. `SourceBackedVanillaWorldGenerationProvider1458` keeps the previous compatibility passes, inserts source-backed prerequisites where required, and replaces individual pass implementations under the same generator identity.
+The built-in vanilla generator is intentionally migrated pass by pass. `SourceBackedProvider1458` keeps the previous compatibility passes, inserts source-backed prerequisites where required, and replaces individual pass implementations under the same generator identity.
 
 This prevents a half-ported pass set from being presented as a second generator and keeps existing special-seed compatibility behavior available while source-backed implementations are introduced.
 
@@ -59,7 +59,7 @@ This persistence bridge matters to later pass work: Jungle, desert, ocean, struc
 
 The ordinary canonical path now runs a clean-room implementation of TerrariaServer 1.4.5.8 `Smooth World` instead of the previous coordinate-based shaping heuristic. The pass preserves the two source-ordered scans inside the $20\,\text{tile}$ border, their shared-RNG decision points, exposed-edge erosion and gap filling, all four slope orientations, half-bricks, sand-family `SmoothSlope` normalization and orphan-slope correction.
 
-Shape representation is explicit: `VanillaTileShape1458` owns the runtime mapping from full block and half-brick to the four vanilla slope values. `VanillaWorldSmoothingCatalog1458` separately owns the version-pinned tile capabilities for generation clearing, slope prevention, pounding exclusions, support-above guards, sand conversion and temporary cracked-brick solidity. Topology code therefore does not contain anonymous tile-identity chains or atlas/storage numbers.
+Shape representation is explicit: `TileShape1458` owns the runtime mapping from full block and half-brick to the four vanilla slope values. `WorldSmoothingCatalog1458` separately owns the version-pinned tile capabilities for generation clearing, slope prevention, pounding exclusions, support-above guards, sand conversion and temporary cracked-brick solidity. Topology code therefore does not contain anonymous tile-identity chains or atlas/storage numbers.
 
 Focused fixtures exercise the exact ordered RNG calls and every mutation family, including both top and bottom slope orientations. The canonical Small integration check requires all five non-full shape forms in the composed world. `tools/ci/probe_worldgen_smooth_world.py` independently compares the runtime capability sets and decision routes with the pinned decompile; `.github/workflows/terraria-worldgen-smooth-world.yml` recreates that evidence from the SHA-256-pinned official binary.
 

@@ -1,4 +1,4 @@
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 /// <summary>
 /// World-owned Main.UpdateTime_SpawnTownNPCs cadence state for TerrariaServer 1.4.5.8.

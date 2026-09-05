@@ -4,7 +4,7 @@ using TerraRuntime.Core;
 using TerraRuntime.HostContracts.WorldGeneration;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 public readonly record struct SandboxJobId(long Value)
 {

@@ -3,7 +3,7 @@ using TerraRuntime.HostContracts.WorldGeneration;
 using TerraRuntime.World;
 using TerraRuntime.WorldGeneration;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Runtime-owned generators are registered explicitly rather than discovered. Flat remains the minimal deterministic
@@ -15,16 +15,16 @@ internal sealed class BuiltInWorldGeneratorSource : ITerraRuntimeWorldGeneratorS
 {
     public static BuiltInWorldGeneratorSource Instance { get; } = new();
 
-    private readonly FlatWorldGenerationProvider flat = new();
-    private readonly SourceBackedVanillaWorldGenerationFinal1458 vanilla = new();
-    private readonly OptimizedSurfaceDecorationWorldGenerationProvider optimized = new();
-    private readonly SkyblockWorldGenerationProvider skyblock = new();
+    private readonly FlatProvider flat = new();
+    private readonly SourceBackedFinal1458 vanilla = new();
+    private readonly SurfaceDecorationProvider optimized = new();
+    private readonly SkyblockProvider skyblock = new();
     private readonly WorldGeneratorId[] ids =
         [
-            FlatWorldGenerationProvider.GeneratorId,
-            VanillaWorldGenerationProvider1458.GeneratorId,
-            OptimizedSurfaceDecorationWorldGenerationProvider.GeneratorId,
-            SkyblockWorldGenerationProvider.GeneratorId
+            FlatProvider.GeneratorId,
+            Provider1458.GeneratorId,
+            SurfaceDecorationProvider.GeneratorId,
+            SkyblockProvider.GeneratorId
         ];
 
     private BuiltInWorldGeneratorSource()

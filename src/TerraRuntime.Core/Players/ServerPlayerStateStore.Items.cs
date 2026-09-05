@@ -78,7 +78,7 @@ public sealed partial class ServerPlayerStateStore
             !VanillaItemIds.TryCreate(item.ItemType.Value, out ItemTypeId canonicalItemType) ||
             canonicalItemType != item.ItemType ||
             canonicalItemType.IsNone ||
-            !VanillaItemDefinitionCatalog.IsValidKnownStack(canonicalItemType, item.Stack))
+            !VanillaDefinitionCatalog.IsValidKnownStack(canonicalItemType, item.Stack))
         {
             normalized = default;
             return false;

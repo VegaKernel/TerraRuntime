@@ -122,7 +122,7 @@ Passes must not be parallelized or reordered merely because their RNG stream is 
 
 ## 11. Trusted-host registration
 
-Trusted CoreCLR modules register providers explicitly through `ITerraRuntimeWorldGeneratorRegistry`. Registration returns a lifetime handle that must be retired/disposed before unloading the module owning the provider.
+Trusted CoreCLR modules register providers explicitly through `IGeneratorRegistry`. Registration returns a lifetime handle that must be retired/disposed before unloading the module owning the provider.
 
 The runtime does not reflection-scan arbitrary assemblies for generators. This keeps registration compatible with AOT/static-discovery constraints.
 
@@ -200,7 +200,7 @@ What remains is **deeper parity, not pass-name plumbing**: fixed-seed differenti
 
 ## 18. Post-generation validation
 
-Every validated world now passes the fail-closed `VanillaWorldGenerationValidator1458`:
+Every validated world now passes the fail-closed `Validator1458`:
 
 ```mermaid
 flowchart TD
@@ -223,7 +223,7 @@ flowchart TD
 
 For canonical `$4200\times1200$`, `$6400\times1800$` and `$8400\times2400$` ordinary worlds the validator checks active-tile density, `$147$`/`$161$` snow, `$59$`/`$60$` jungle, `$53$` desert, `$70$` mushroom, `$41$` dungeon, `$226$` temple, `$58$` hellstone, $2\times2$ `21`-chest footprints (modulo `$36$` style), chest-anchor uniqueness, duplicate chests, out-of-bounds objects, solid/liquid exclusion, spawn ground, ocean sand/water minima, and continuous edge-connected ocean-basin geometry with rising beach transitions. Non-canonical and custom-generator worlds are validated only for tile/wall catalog, liquid, chest-anchor and metadata bounds so that fixture generators and small synthetic worlds are not spuriously rejected.
 
-Validation is enforced inside `RuntimeWorldGenerationFinalizer`: `Finalized` is returned only when `Validate` is `Valid`; otherwise `ValidationFailed` is returned and the candidate is discarded before persistence. The new `VanillaWorldGenerationValidator1458Tests` exercise valid canonical generation, invalid tile/wall types, orphan chest anchors, duplicate chests, spawn outside world and ocean-bounds violations.
+Validation is enforced inside `Finalizer`: `Finalized` is returned only when `Validate` is `Valid`; otherwise `ValidationFailed` is returned and the candidate is discarded before persistence. The new `VanillaWorldGenerationValidator1458Tests` exercise valid canonical generation, invalid tile/wall types, orphan chest anchors, duplicate chests, spawn outside world and ocean-bounds violations.
 
 ## 19. Evidence and limitations
 

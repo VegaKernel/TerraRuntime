@@ -1,7 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal sealed record PlayerHealthRuntimeCommand : RuntimeCommand
 {
@@ -37,7 +37,7 @@ internal sealed class RuntimePlayerHealthIngress : IPlayerHealthIngress
         if (!connection.IsAssigned || connection.Player.Slot != request.PlayerSlot)
             return false;
 
-        PlayerHealthCommitRequest normalized = VanillaPlayerVitalsRules.NormalizeHealth(in request);
+        PlayerHealthCommitRequest normalized = VanillaVitalsRules.NormalizeHealth(in request);
         return _ingress.TryPost(
             connection.Source,
             new PlayerHealthRuntimeCommand(connection, normalized));

@@ -36,11 +36,11 @@ public sealed class VanillaProjectileReflection1458Tests
     public void Current_admitted_arrow_and_thrown_styles_are_reflectable_but_boomerang_and_reflected_state_are_not()
     {
         ProjectileSnapshot arrow = Projectile(damage: 20, velocityX: 3f, velocityY: 4f);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(arrow.Type, out VanillaProjectileDefinition arrowDefinition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(arrow.Type, out VanillaProjectileDefinition arrowDefinition));
         var lifecycle = new ProjectileLifecycleState(600, false) { OldVelocityX = 3f, OldVelocityY = 4f };
         Assert.True(VanillaProjectileReflection1458.CanBeReflected(in arrow, lifecycle.Reflected, in arrowDefinition));
 
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(VanillaProjectileIds.EnchantedBoomerang, out VanillaProjectileDefinition boomerangDefinition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.EnchantedBoomerang, out VanillaProjectileDefinition boomerangDefinition));
         ProjectileSnapshot boomerang = arrow with { Type = VanillaProjectileIds.EnchantedBoomerang };
         Assert.False(VanillaProjectileReflection1458.CanBeReflected(in boomerang, lifecycle.Reflected, in boomerangDefinition));
 

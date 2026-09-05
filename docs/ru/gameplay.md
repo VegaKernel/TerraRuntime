@@ -221,7 +221,7 @@ Projectile support уже вышел из relay-only design.
 
 Current architecture включает runtime projectile store, ownership/provenance facts, lifecycle handling, definition catalog, behavior state executor/stepper, world physics/collision, tile-cut integration supported cases и packet projection/replication.
 
-Projectile-to-NPC combat теперь имеет отдельную boundary не выполняющего mutation intent. Player-owned provenance разрешает byte owner в текущий generation-safe `PlayerHandle`; server-owned/NPC provenance и реальный entity-hit selection остаются fail-closed до явного моделирования.
+Projectile combat теперь имеет отдельные mutation-free intent boundaries для player-owned и admitted server-owned/NPC-owned sources. Player-owned provenance разрешает byte owner в текущий generation-safe `PlayerHandle`; admitted hostile projectiles сохраняют точную generation исходного `NpcHandle`, а generation-safe player/NPC hit selection становится authoritative только для source-backed collision families.
 
 Generic supported tile impacts теперь сохраняют `TileCollision` как semantic termination reason через generation-safe authoritative commit. Post-behavior decorators и termination observers могут отличить столкновение от обычного lifetime expiry без анализа wire state.
 
@@ -335,6 +335,8 @@ Green build сам по себе не parity evidence.
 ## 28. Добавление нового NPC/projectile behavior
 
 Перед новым behavior slice:
+
+Projectile behavior dispatch остаётся централизованным, но family-specific helpers разделены по ответственности: boss families, player-owned families, Deerclops-specific behavior и shared math/targeting helpers находятся в отдельных partial-файлах `VanillaProjectileBehaviorStepper.*.cs`. Новый behavior следует помещать в самый узкий подходящий family-файл; dispatcher не должен снова разрастаться в один монолитный implementation-файл.
 
 1. identify exact Terraria 1.4.5.8 type и AI/default facts;
 2. определить existing verified family или separate strategy;

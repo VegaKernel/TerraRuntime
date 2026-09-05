@@ -5,7 +5,7 @@ using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Relays authoritative packet-21/22 world-item commits to playing connections. It also owns the addressed packet-90

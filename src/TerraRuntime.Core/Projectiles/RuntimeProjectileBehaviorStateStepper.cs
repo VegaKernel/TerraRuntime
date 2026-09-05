@@ -2,7 +2,7 @@ using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Projectiles;
 
 /// <summary>
 /// Composes host-registered projectile behaviors around the verified vanilla/default stepper for one local

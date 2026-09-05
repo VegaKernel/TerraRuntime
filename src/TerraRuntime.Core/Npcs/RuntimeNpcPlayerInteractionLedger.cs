@@ -1,7 +1,7 @@
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 /// <summary>
 /// Source-shaped NPC.playerInteraction projection. TerrariaServer 1.4.5.8 records interaction by player slot,

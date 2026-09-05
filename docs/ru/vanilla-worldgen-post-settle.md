@@ -20,7 +20,7 @@ graph LR
     ST --> C[серия chest placement]
 ```
 
-Названия и порядок девяти проходов закреплены `VanillaWorldGenerationPassCatalog1458`, полученным из проверенной registration sequence TerrariaServer 1.4.5.8.
+Названия и порядок девяти проходов закреплены `PassCatalog1458`, полученным из проверенной registration sequence TerrariaServer 1.4.5.8.
 
 ## Реализованный срез
 

@@ -1,11 +1,11 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 using TerraRuntime.World;
 using TerraRuntime.Core.Players;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 public enum WorldRuntimeLifecycle : byte
 {

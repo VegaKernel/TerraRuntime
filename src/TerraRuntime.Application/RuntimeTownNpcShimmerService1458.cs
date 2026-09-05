@@ -4,7 +4,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Authoritative TerrariaServer 1.4.5.8 AI_007 shimmer lifecycle for persistent town residents. The service owns

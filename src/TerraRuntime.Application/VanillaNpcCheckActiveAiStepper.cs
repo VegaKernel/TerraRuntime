@@ -3,7 +3,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Final ordinary-NPC lifecycle layer after AI and world movement. For explicitly admitted AI_003 fighters,

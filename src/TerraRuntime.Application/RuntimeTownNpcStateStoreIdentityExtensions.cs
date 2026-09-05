@@ -1,4 +1,4 @@
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal static class RuntimeTownNpcStateStoreIdentityExtensions
 {

@@ -3,7 +3,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Protocol.Multiplicity;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal enum ClientTileManipulationConsistencyResult : byte
 {
@@ -34,7 +34,7 @@ internal static class ClientTileManipulationConsistency
             return ClientTileManipulationConsistencyResult.Mismatch;
         }
 
-        if (!VanillaItemDefinitionCatalog.TryGetPlacement(
+        if (!VanillaDefinitionCatalog.TryGetPlacement(
                 selectedItem.ItemType,
                 out VanillaItemPlacementDefinition placement))
         {

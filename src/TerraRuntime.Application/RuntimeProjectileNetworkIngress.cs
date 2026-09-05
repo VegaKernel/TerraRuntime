@@ -3,7 +3,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal interface IProjectileNetworkIngress
 {

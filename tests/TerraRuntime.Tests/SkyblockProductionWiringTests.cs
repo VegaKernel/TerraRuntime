@@ -11,7 +11,7 @@ public sealed class SkyblockProductionWiringTests
     public void Skyblock_bootstrap_world_info_reflects_low_tiles_and_guide_persists()
     {
         var request = new WorldGenerationRequest(
-            SkyblockWorldGenerationProvider.GeneratorId,
+            SkyblockProvider.GeneratorId,
             "SkyblockWiring",
             Seed: 0x5A17B10CUL,
             WidthTiles: 512,
@@ -22,7 +22,7 @@ public sealed class SkyblockProductionWiringTests
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Succeeded, result.Generation.Execution?.Error?.ToString());
-        RuntimeWorldGenerationWorkspace candidate = Assert.IsType<RuntimeWorldGenerationWorkspace>(result.Candidate);
+        Workspace candidate = Assert.IsType<Workspace>(result.Candidate);
 
         WorldNpcPersistence npcs = candidate.CaptureGeneratedNpcs();
         WorldTownNpc guide = Assert.Single(npcs.TownNpcs);
@@ -112,7 +112,7 @@ public sealed class SkyblockProductionWiringTests
     public void Vanilla_skyblock_fallback_produces_valid_nonempty_world()
     {
         var request = new WorldGenerationRequest(
-            VanillaWorldGenerationProvider1458.GeneratorId,
+            Provider1458.GeneratorId,
             "VanillaSkyblockFallback",
             Seed: 12345,
             WidthTiles: 640,

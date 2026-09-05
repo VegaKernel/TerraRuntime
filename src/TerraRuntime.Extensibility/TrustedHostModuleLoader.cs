@@ -8,8 +8,8 @@ using TerraRuntime.HostContracts.WorldGeneration;
 namespace TerraRuntime.Extensibility;
 
 internal sealed class TrustedHostModuleLoader :
-    ITerraRuntimeHostLifecycle,
-    ITerraRuntimeTerminalDashboardSource,
+    ILifecycle,
+    IDashboardSource,
     ITerraRuntimeWorldGeneratorSource,
     IAsyncDisposable
 {
@@ -51,17 +51,17 @@ internal sealed class TrustedHostModuleLoader :
         healthDashboard = new TrustedHostModuleHealthDashboardProvider(CaptureFaults);
     }
 
-    internal ITerraRuntimeTerminalDashboardRegistry TerminalDashboards => terminalDashboards;
-    internal ITerraRuntimeWorldGeneratorRegistry WorldGenerators => worldGenerators;
+    internal IDashboardRegistry TerminalDashboards => terminalDashboards;
+    internal IGeneratorRegistry WorldGenerators => worldGenerators;
 
-    public ReadOnlyMemory<ITerraRuntimeTerminalDashboardProvider> CaptureDashboards()
+    public ReadOnlyMemory<IDashboardProvider> CaptureDashboards()
     {
-        ReadOnlyMemory<ITerraRuntimeTerminalDashboardProvider> moduleDashboards =
+        ReadOnlyMemory<IDashboardProvider> moduleDashboards =
             terminalDashboards.CaptureDashboards();
         if (CaptureFaults().IsEmpty)
             return moduleDashboards;
 
-        var result = new ITerraRuntimeTerminalDashboardProvider[moduleDashboards.Length + 1];
+        var result = new IDashboardProvider[moduleDashboards.Length + 1];
         moduleDashboards.Span.CopyTo(result);
         result[^1] = healthDashboard;
         return result;
@@ -82,7 +82,7 @@ internal sealed class TrustedHostModuleLoader :
         worldGenerators.TryResolveWorldGenerator(id, out provider);
 
     public async ValueTask<int> StartAllAsync(
-        ITerraRuntimeHostEnvironment environment,
+        IEnvironment environment,
         CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
@@ -132,7 +132,7 @@ internal sealed class TrustedHostModuleLoader :
     }
 
     public async ValueTask AttachRuntimeAsync(
-        ITerraRuntimeHostRuntime runtime,
+        IRuntime runtime,
         CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
@@ -148,7 +148,7 @@ internal sealed class TrustedHostModuleLoader :
             foreach (LoadedHostModule loadedModule in loaded.ToArray())
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (loadedModule.Module is ITerraRuntimeHostModuleWorldActivation activation &&
+                if (loadedModule.Module is IModuleWorldActivation activation &&
                     !activation.IsEnabledForWorld(runtime.Info))
                 {
                     continue;
@@ -235,8 +235,8 @@ internal sealed class TrustedHostModuleLoader :
     }
 
     public async ValueTask<int> ReloadAllAsync(
-        ITerraRuntimeHostEnvironment environment,
-        ITerraRuntimeHostRuntime runtime,
+        IEnvironment environment,
+        IRuntime runtime,
         CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
@@ -290,7 +290,7 @@ internal sealed class TrustedHostModuleLoader :
 
     private async ValueTask TryLoadAndStartAsync(
         string path,
-        ITerraRuntimeHostEnvironment environment,
+        IEnvironment environment,
         CancellationToken cancellationToken)
     {
         var loadContext = new HostModuleLoadContext(path);
@@ -321,7 +321,7 @@ internal sealed class TrustedHostModuleLoader :
                 .Where(static type =>
                     !type.IsAbstract &&
                     !type.IsInterface &&
-                    typeof(ITerraRuntimeHostModule).IsAssignableFrom(type))
+                    typeof(IModule).IsAssignableFrom(type))
                 .ToArray();
 
             if (moduleTypes.Length == 0)
@@ -334,10 +334,10 @@ internal sealed class TrustedHostModuleLoader :
             {
                 throw new InvalidOperationException(
                     $"Trusted host module assembly '{Path.GetFileName(path)}' must export exactly one " +
-                    $"{nameof(ITerraRuntimeHostModule)} implementation; found {moduleTypes.Length}.");
+                    $"{nameof(IModule)} implementation; found {moduleTypes.Length}.");
             }
 
-            if (Activator.CreateInstance(moduleTypes[0]) is not ITerraRuntimeHostModule module)
+            if (Activator.CreateInstance(moduleTypes[0]) is not IModule module)
             {
                 throw new InvalidOperationException(
                     $"Trusted host module '{moduleTypes[0].FullName}' requires a public parameterless constructor.");
@@ -634,14 +634,14 @@ internal sealed class TrustedHostModuleLoader :
             "and explicitly admitted contract assemblies only.");
     }
 
-    private sealed class ScopedHostEnvironment : ITerraRuntimeHostEnvironment
+    private sealed class ScopedHostEnvironment : IEnvironment
     {
-        private readonly ITerraRuntimeHostEnvironment source;
+        private readonly IEnvironment source;
 
         public ScopedHostEnvironment(
-            ITerraRuntimeHostEnvironment source,
-            ITerraRuntimeTerminalDashboardRegistry terminalDashboards,
-            ITerraRuntimeWorldGeneratorRegistry worldGenerators)
+            IEnvironment source,
+            IDashboardRegistry terminalDashboards,
+            IGeneratorRegistry worldGenerators)
         {
             this.source = source;
             TerminalDashboards = terminalDashboards;
@@ -655,15 +655,15 @@ internal sealed class TrustedHostModuleLoader :
         public string ConfigDirectory => source.ConfigDirectory;
         public string DataDirectory => source.DataDirectory;
         public string LogsDirectory => source.LogsDirectory;
-        public ITerraRuntimeTerminalDashboardRegistry TerminalDashboards { get; }
-        public ITerraRuntimeWorldGeneratorRegistry WorldGenerators { get; }
+        public IDashboardRegistry TerminalDashboards { get; }
+        public IGeneratorRegistry WorldGenerators { get; }
     }
 
     private sealed class LoadedHostModule
     {
         public LoadedHostModule(
             string path,
-            ITerraRuntimeHostModule module,
+            IModule module,
             HostModuleLoadContext loadContext,
             IDisposable dashboardScope,
             IDisposable worldGeneratorScope)
@@ -676,7 +676,7 @@ internal sealed class TrustedHostModuleLoader :
         }
 
         public string Path { get; }
-        public ITerraRuntimeHostModule Module { get; }
+        public IModule Module { get; }
         public HostModuleLoadContext LoadContext { get; }
         public IDisposable DashboardScope { get; }
         public IDisposable WorldGeneratorScope { get; }

@@ -325,7 +325,7 @@ def run_self_test() -> None:
         if expected not in hits:
             raise SystemExit(f"audit self-test failed: {expected} did not match {source!r}; hits={hits}")
 
-    if not is_boundary_file(Path("VanillaProjectileDefinitionCatalog.cs")):
+    if not is_boundary_file(Path("VanillaDefinitionCatalog.cs")):
         raise SystemExit("audit self-test failed: catalog files must be excluded from raw-domain literal scanning")
 
     safe = (

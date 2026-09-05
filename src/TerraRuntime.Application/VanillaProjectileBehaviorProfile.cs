@@ -1,7 +1,7 @@
 using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Runtime-owned projectile behavior implementation family. This is deliberately distinct from the
@@ -40,7 +40,8 @@ internal enum VanillaProjectileBehaviorFamily : byte
     HallowBossDeathAurora = 27,
     QueenSlimeSmash = 28,
     Sharknado = 29,
-    SharknadoBolt = 30
+    SharknadoBolt = 30,
+    CultistIceMist = 31
 }
 
 /// <summary>
@@ -133,6 +134,14 @@ internal static class VanillaProjectileBehaviorProfileCatalog
     private static readonly VanillaProjectileBehaviorProfile HostileStraightNoGravityProfile = new(
         VanillaProjectileBehaviorFamily.HostileStraightNoGravity,
         VanillaProjectileAiStyles.Arrow,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile CultistIceMistProfile = new(
+        VanillaProjectileBehaviorFamily.CultistIceMist,
+        VanillaProjectileAiStyles.CultistIceMist,
         BehaviorImplemented: true,
         RequiresDefaultAi2: true,
         RejectServerOwned: false,
@@ -427,6 +436,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.PhantasmalBolt || type == VanillaProjectileIds.AncientDoomProjectile)
         {
             profile = HostileStraightNoGravityProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.CultistBossIceMist)
+        {
+            profile = CultistIceMistProfile;
             return true;
         }
 

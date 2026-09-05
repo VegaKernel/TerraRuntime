@@ -1,7 +1,7 @@
 using TerraRuntime.Core;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>Production world queries for source-backed AI_002 daylight and Pigron phasing state.</summary>
 internal sealed class VanillaFlyingEyeWorldEnvironment : IVanillaFlyingEyeEnvironment

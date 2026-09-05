@@ -1,7 +1,7 @@
 using TerraRuntime.Core;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// WorldTileStore-backed source queries for TerrariaServer 1.4.5.8 Wall of Flesh AI_027/028 and the Good-World

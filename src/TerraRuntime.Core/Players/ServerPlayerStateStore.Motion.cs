@@ -68,7 +68,7 @@ public sealed partial class ServerPlayerStateStore
         }
 
         var health = new PlayerHealthCommitRequest(player.Slot, vitals.Life, vitals.MaxLife);
-        PlayerHealthCommitRequest normalizedHealth = VanillaPlayerVitalsRules.NormalizeHealth(in health);
+        PlayerHealthCommitRequest normalizedHealth = VanillaVitalsRules.NormalizeHealth(in health);
         state.Revision++;
         state.HasHealth = true;
         state.Life = normalizedHealth.Life;

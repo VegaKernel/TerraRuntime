@@ -27,7 +27,7 @@ This repository has no backwards-compatibility commitment yet. When a type moves
 
 Follow `src/AGENTS.md` and use the shortest unambiguous domain name after namespace ownership is correct.
 
-Use `Vanilla` only when it communicates a real source/version/vanilla boundary. Source-backed catalogs such as `VanillaItemDefinitionCatalog` intentionally keep that marker.
+Use `Vanilla` only when it communicates a real source/version/vanilla boundary. Source-backed catalogs such as `VanillaDefinitionCatalog` intentionally keep that marker.
 
 Avoid proxy-only `*Facts`, `*Helper`, `*Provider`, `*Manager`, `*Service`, `*Factory` types. In particular, do not create a `WorldRuntimeManager` simply because multiple worlds exist; use the concrete owner such as a runtime registry/host only if it owns real lifecycle/state.
 

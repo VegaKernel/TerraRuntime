@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
-using TerraRuntime.Operations;
-using TerraRuntime.TerminalUI;
+using TerraRuntime.Application.Operations;
+using TerraRuntime.Application.TerminalUI;
 using Terminal.Gui.App;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.ViewBase;
@@ -174,8 +174,8 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         SessionToken token = app.Begin(window)!;
         try
         {
-            RuntimeLogSnapshot logs = CreateLogs(48, "Runtime", RuntimeLogLevel.Information);
-            RuntimeLogSnapshot chat = CreateLogs(32, "Chat", RuntimeLogLevel.Information);
+            RuntimeLogSnapshot logs = CreateLogs(48, "Runtime", OperationsLogLevel.Information);
+            RuntimeLogSnapshot chat = CreateLogs(32, "Chat", OperationsLogLevel.Information);
             RuntimeDashboardSnapshot first = default(RuntimeDashboardSnapshot) with
             {
                 Tick = 100,
@@ -213,14 +213,14 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         DateTimeOffset startedAt = new(2026, 9, 1, 0, 0, 0, TimeSpan.Zero);
         RuntimeLogSnapshot logs = CreateSnapshot(
         [
-            new RuntimeLogEntry(1, startedAt.AddSeconds(1), RuntimeLogLevel.Debug, "Runtime", "debug-entry"),
-            new RuntimeLogEntry(2, startedAt.AddSeconds(2), RuntimeLogLevel.Information, "Runtime", "info-entry"),
-            new RuntimeLogEntry(3, startedAt.AddSeconds(3), RuntimeLogLevel.Warning, "Network", "warn-entry"),
-            new RuntimeLogEntry(4, startedAt.AddSeconds(4), RuntimeLogLevel.Error, "World", "error-entry")
+            new RuntimeLogEntry(1, startedAt.AddSeconds(1), OperationsLogLevel.Debug, "Runtime", "debug-entry"),
+            new RuntimeLogEntry(2, startedAt.AddSeconds(2), OperationsLogLevel.Information, "Runtime", "info-entry"),
+            new RuntimeLogEntry(3, startedAt.AddSeconds(3), OperationsLogLevel.Warning, "Network", "warn-entry"),
+            new RuntimeLogEntry(4, startedAt.AddSeconds(4), OperationsLogLevel.Error, "World", "error-entry")
         ]);
         RuntimeLogSnapshot chat = CreateSnapshot(
         [
-            new RuntimeLogEntry(1, startedAt.AddSeconds(2.5), RuntimeLogLevel.Information, "Chat", "#3: hello-chat")
+            new RuntimeLogEntry(1, startedAt.AddSeconds(2.5), OperationsLogLevel.Information, "Chat", "#3: hello-chat")
         ]);
 
         dashboard.Refresh(
@@ -232,13 +232,13 @@ public sealed class RuntimeOverviewDashboardInteractionTests
             chat,
             status: null);
 
-        dashboard.SetFeedForSmoke(logs: false, chat: true, RuntimeLogLevel.Debug);
+        dashboard.SetFeedForSmoke(logs: false, chat: true, OperationsLogLevel.Debug);
         string chatOnly = dashboard.GetConsoleTextForSmoke();
         Assert.Contains("CHAT #3: hello-chat", chatOnly);
         Assert.DoesNotContain("warn-entry", chatOnly);
         Assert.Contains("Logs OFF", dashboard.GetFeedControlsForSmoke());
 
-        dashboard.SetFeedForSmoke(logs: true, chat: false, RuntimeLogLevel.Warning);
+        dashboard.SetFeedForSmoke(logs: true, chat: false, OperationsLogLevel.Warning);
         string warnings = dashboard.GetConsoleTextForSmoke();
         Assert.Contains("WARN Network warn-entry", warnings);
         Assert.Contains("ERR  World error-entry", warnings);
@@ -418,7 +418,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
             Mana: 20,
             MaxMana: 20);
 
-    private static RuntimeLogSnapshot CreateLogs(int count, string source, RuntimeLogLevel level)
+    private static RuntimeLogSnapshot CreateLogs(int count, string source, OperationsLogLevel level)
     {
         DateTimeOffset startedAt = new(2026, 9, 1, 0, 0, 0, TimeSpan.Zero);
         RuntimeLogEntry[] entries = Enumerable.Range(1, count)
@@ -439,7 +439,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
             entries.AsMemory(),
             PublishedEntries: entries.Length,
             OverwrittenEntries: 0,
-            MinimumLevel: RuntimeLogLevel.Debug,
+            MinimumLevel: OperationsLogLevel.Debug,
             CapturedAtUtc: capturedAt);
     }
 }

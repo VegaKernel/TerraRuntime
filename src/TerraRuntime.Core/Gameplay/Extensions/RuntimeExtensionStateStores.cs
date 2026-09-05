@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Extensions;
 
 /// <summary>
 /// Fixed-capacity typed side state owned by one NPC behavior/extension. State is keyed by the runtime's

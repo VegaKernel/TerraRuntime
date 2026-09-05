@@ -8,7 +8,7 @@ using Terminal.Gui.Views;
 
 namespace TerraRuntime.HostModuleFixture;
 
-public sealed class FixtureHostModule : ITerraRuntimeHostModule, ITerraRuntimeHostModuleWorldActivation
+public sealed class FixtureHostModule : IModule, IModuleWorldActivation
 {
     public const string DashboardId = "fixture.dashboard";
     public const string WorldGeneratorId = "fixture:worldgen";
@@ -23,7 +23,7 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule, ITerraRuntimeHo
     public const string FaultStopMarker = "fixture-host-module.fail-stop";
 
     private string? dataDirectory;
-    private ITerraRuntimeTerminalDashboardRegistry? terminalDashboards;
+    private IDashboardRegistry? terminalDashboards;
     private IServerPlayerOperations? serverPlayers;
     private INpcActorOperations? npcActors;
     private INpcShopRegistration? merchantShop;
@@ -33,11 +33,11 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule, ITerraRuntimeHo
 
     public string Name => "FixtureHostModule";
 
-    public bool IsEnabledForWorld(TerraRuntimeHostRuntimeInfo world) =>
+    public bool IsEnabledForWorld(RuntimeInfo world) =>
         !string.Equals(world.WorldName, DisabledWorldName, StringComparison.Ordinal);
 
     public async ValueTask StartAsync(
-        ITerraRuntimeHostEnvironment environment,
+        IEnvironment environment,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(environment);
@@ -63,7 +63,7 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule, ITerraRuntimeHo
     }
 
     public async ValueTask AttachRuntimeAsync(
-        ITerraRuntimeHostRuntime runtime,
+        IRuntime runtime,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(runtime);
@@ -293,7 +293,7 @@ public sealed class FixtureHostModule : ITerraRuntimeHostModule, ITerraRuntimeHo
         }
     }
 
-    private sealed class FixtureDashboardProvider : ITerraRuntimeTerminalDashboardProvider
+    private sealed class FixtureDashboardProvider : IDashboardProvider
     {
         public string Id => DashboardId;
 

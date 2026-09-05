@@ -23,6 +23,6 @@ Logs request up to 256 recent entries from the already bounded log operations su
 
 ## Responsiveness contract
 
-The TUI thread still consumes detached snapshots from `TerminalUiOperationsCache`. Filtering and string formatting run only on those bounded snapshots. Detail text replacement is deferred while the operator has an active selection, preserving copy/select behavior across periodic refreshes.
+The TUI thread still consumes detached snapshots from `OperationsCache`. Filtering and string formatting run only on those bounded snapshots. Detail text replacement is deferred while the operator has an active selection, preserving copy/select behavior across periodic refreshes.
 
 No authoritative gameplay state is mutated by filtering, scrolling, selection or navigation.

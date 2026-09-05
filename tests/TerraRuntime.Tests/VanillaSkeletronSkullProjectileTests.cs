@@ -72,7 +72,7 @@ public sealed class VanillaSkeletronSkullProjectileTests
             Damage: 17,
             KnockBack: 0f,
             OriginalDamage: 17);
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
         var context = new VanillaProjectileBehaviorContext(false, 0f, 0f, new SinglePlayerLookup());
 
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(

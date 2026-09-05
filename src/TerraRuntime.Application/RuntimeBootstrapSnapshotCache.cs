@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Disposable cache of already encoded immutable join bootstrap frames. The cache is tied to the

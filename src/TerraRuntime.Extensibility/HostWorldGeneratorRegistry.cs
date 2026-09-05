@@ -9,7 +9,7 @@ namespace TerraRuntime.Extensibility;
 /// view so every registration is retired before that module's collectible AssemblyLoadContext is unloaded.
 /// </summary>
 internal sealed class HostWorldGeneratorRegistry :
-    ITerraRuntimeWorldGeneratorRegistry,
+    IGeneratorRegistry,
     ITerraRuntimeWorldGeneratorSource
 {
     private readonly RuntimeWorldGeneratorRegistry registry = new();
@@ -53,7 +53,7 @@ internal sealed class HostWorldGeneratorRegistry :
 
     public Scope CreateScope() => new(this);
 
-    internal sealed class Scope : ITerraRuntimeWorldGeneratorRegistry, IDisposable
+    internal sealed class Scope : IGeneratorRegistry, IDisposable
     {
         private readonly HostWorldGeneratorRegistry owner;
         private readonly object gate = new();

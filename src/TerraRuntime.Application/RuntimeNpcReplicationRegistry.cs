@@ -6,7 +6,7 @@ using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Network-side projection/cache for authoritative NPC commits. Active-slot baselines are stored in

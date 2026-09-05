@@ -103,7 +103,7 @@ public sealed class WorldTileStoreTests
         Assert.True(store.TryCaptureSectionSnapshot(section, out WorldSectionTileSnapshot? snapshot));
         Assert.NotNull(snapshot);
         Assert.Equal(store.GetSectionVersion(section), snapshot.Revision);
-        Assert.Equal(new WorldTileBounds(200, 150, 200, 150), snapshot.Bounds);
+        Assert.Equal(new WorldTileRegion(200, 150, 200, 150), snapshot.Bounds);
         Assert.Equal(original, snapshot.Get(200, 150));
 
         store.Set(200, 150, replacement);
@@ -123,7 +123,7 @@ public sealed class WorldTileStoreTests
 
         Assert.True(store.TryCaptureSectionSnapshot(section, out WorldSectionTileSnapshot? snapshot));
         Assert.NotNull(snapshot);
-        Assert.Equal(new WorldTileBounds(400, 300, 1, 1), snapshot.Bounds);
+        Assert.Equal(new WorldTileRegion(400, 300, 1, 1), snapshot.Bounds);
         Assert.Equal(1, snapshot.Count);
         Assert.Equal(tile, snapshot.Get(400, 300));
     }

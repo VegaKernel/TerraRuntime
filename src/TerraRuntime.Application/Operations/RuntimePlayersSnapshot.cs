@@ -1,4 +1,4 @@
-namespace TerraRuntime.Operations;
+namespace TerraRuntime.Application.Operations;
 
 internal readonly record struct RuntimePlayerSnapshot(
     long ConnectionId,

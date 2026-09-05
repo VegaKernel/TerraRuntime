@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using TerraRuntime;
+using TerraRuntime.Application;
 using TerraRuntime.World;
 
 if (args.Length != 1)

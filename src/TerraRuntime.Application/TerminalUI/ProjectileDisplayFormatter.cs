@@ -1,7 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 
-namespace TerraRuntime.TerminalUI;
+namespace TerraRuntime.Application.TerminalUI;
 
 internal static class ProjectileDisplayFormatter
 {

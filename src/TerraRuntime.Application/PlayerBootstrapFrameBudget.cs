@@ -2,7 +2,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Hard upper bounds for the packet-8 tile bootstrap before packet 49 hands the connection over to normal

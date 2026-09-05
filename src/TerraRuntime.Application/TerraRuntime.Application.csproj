@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net11.0</TargetFramework>
-    <RootNamespace>TerraRuntime</RootNamespace>
+    <RootNamespace>TerraRuntime.Application</RootNamespace>
     <AssemblyName>TerraRuntime.Application</AssemblyName>
     <IsAotCompatible>true</IsAotCompatible>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>

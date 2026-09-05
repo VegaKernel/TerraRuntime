@@ -2,7 +2,7 @@ using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Extensions;
 
 public enum GameplayArchetypeRegistrationResult : byte
 {

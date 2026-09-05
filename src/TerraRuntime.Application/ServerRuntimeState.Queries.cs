@@ -7,66 +7,38 @@ using TerraRuntime.HostContracts;
 using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal sealed partial class ServerRuntimeState
 {
     internal bool TryCapturePlayerSnapshot(PlayerHandle player, out PlayerStateSnapshot snapshot)
-        => _players.TryCapture(player, out snapshot);
+        => _runtime.Players.TryCapture(player, out snapshot);
 
-    private bool TryCaptureRuntimePlayerSnapshot(PlayerHandle player, out PlayerStateSnapshot snapshot)
-    {
-        if (TryCapturePlayerSnapshot(player, out snapshot))
-            return true;
-
-        if (_serverPlayers is not null && _serverPlayers.TryGet(player, out snapshot))
-            return true;
-
-        snapshot = default;
-        return false;
-    }
-
-    bool IRuntimePlayerSnapshotLookup.TryGetPlayer(
-        PlayerHandle player,
-        out PlayerStateSnapshot snapshot) =>
-        TryCaptureRuntimePlayerSnapshot(player, out snapshot);
-
-    bool IRuntimePlayerSlotSnapshotLookup.TryGetPlayer(
-        PlayerSlotId slot,
-        out PlayerStateSnapshot snapshot)
-    {
-        if (_players.TryGet(slot, out RuntimePlayerMember? player))
-            return TryCaptureRuntimePlayerSnapshot(player.Connection.Player, out snapshot);
-
-        if (_serverPlayers is not null)
-            return _serverPlayers.TryGet(slot, out snapshot);
-
-        snapshot = default;
-        return false;
-    }
+    private bool TryCaptureRuntimePlayerSnapshot(PlayerHandle player, out PlayerStateSnapshot snapshot) =>
+        _runtime.PlayerSnapshots.TryGetPlayer(player, out snapshot);
 
     internal bool TryCapturePlayerInventoryItem(
         PlayerHandle player,
         int inventorySlot,
         out RuntimePlayerInventoryItem item)
     {
-        return _players.TryGetInventoryItem(player, inventorySlot, out item);
+        return _runtime.Players.TryGetInventoryItem(player, inventorySlot, out item);
     }
 
     internal bool TryGetPlayerTalkNpc(PlayerHandle player, out short npcSlot) =>
-        _players.TryGetTalkNpc(player, out npcSlot);
+        _runtime.Players.TryGetTalkNpc(player, out npcSlot);
 
     internal bool TryCaptureNpcSnapshot(NpcHandle npc, out NpcSnapshot snapshot) =>
-        _npcs.TryCapture(npc, out snapshot);
+        _runtime.Npcs.TryCapture(npc, out snapshot);
 
     internal int CopyCombatIntegrityDiagnostics(Span<CombatIntegrityDiagnostic> destination) =>
-        _npcs.CopyCombatIntegrityDiagnostics(destination);
+        _runtime.Npcs.CopyCombatIntegrityDiagnostics(destination);
 
     internal bool TryCaptureProjectileSnapshot(ProjectileHandle projectile, out ProjectileSnapshot snapshot) =>
-        _projectiles.TryCapture(projectile, out snapshot);
+        _runtime.Projectiles.TryCapture(projectile, out snapshot);
 
     internal bool TryCaptureWorldItemSnapshot(short slot, out WorldItemSnapshot snapshot) =>
-        _worldItems.TryCapture(slot, out snapshot);
+        _runtime.WorldItems.TryCapture(slot, out snapshot);
 
     private void CompletePlayerSnapshot(PlayerStateSnapshotRuntimeCommand command)
     {

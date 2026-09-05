@@ -32,7 +32,7 @@ public sealed class IncrementalWorldTileSaveShadow
         ArgumentNullException.ThrowIfNull(snapshot);
 
         int sectionIndex = TerrariaSectionGeometry.ToLinearIndex(Dimensions, snapshot.Section);
-        WorldTileBounds expectedBounds = TerrariaSectionGeometry.GetBounds(Dimensions, snapshot.Section);
+        WorldTileRegion expectedBounds = TerrariaSectionGeometry.GetBounds(Dimensions, snapshot.Section);
         if (snapshot.Bounds != expectedBounds)
         {
             throw new ArgumentException(
@@ -141,7 +141,7 @@ public sealed class WorldTileSaveImage
         for (int sectionY = 0; sectionY < Dimensions.SectionRows; sectionY++)
         {
             WorldSectionTileSnapshot snapshot = sections[(sectionY * Dimensions.SectionColumns) + sectionX];
-            WorldTileBounds bounds = snapshot.Bounds;
+            WorldTileRegion bounds = snapshot.Bounds;
             for (int y = bounds.Y; y < bounds.ExclusiveBottom; y++)
                 destination[y] = snapshot.GetUnchecked(x, y);
         }

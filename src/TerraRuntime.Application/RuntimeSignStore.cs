@@ -2,7 +2,7 @@ using System.Text;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Game-thread-owned protocol-326 sign table. Runtime slot identity follows TerrariaServer 1.4.5.8 while the server is

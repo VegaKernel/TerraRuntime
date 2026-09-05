@@ -4,7 +4,7 @@ using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Adapts the public trusted-host behavior contract to the internal state-only NPC AI primitive. Presentation
@@ -75,29 +75,33 @@ internal sealed class RuntimeHostNpcBehaviorStepper : INpcAiStateStepper
 /// </summary>
 internal sealed class RuntimeNpcBehaviorQueries : INpcBehaviorQueries
 {
-    private readonly ServerRuntimeState runtime;
+    private readonly Func<long> tickProvider;
+    private readonly RuntimePlayerSnapshotLookup players;
     private readonly RuntimeNpcStore npcs;
     private readonly WorldTileStore? tiles;
 
     public RuntimeNpcBehaviorQueries(
-        ServerRuntimeState runtime,
+        Func<long> tickProvider,
+        RuntimePlayerSnapshotLookup players,
         RuntimeNpcStore npcs,
         WorldTileStore? tiles)
     {
-        ArgumentNullException.ThrowIfNull(runtime);
+        ArgumentNullException.ThrowIfNull(tickProvider);
+        ArgumentNullException.ThrowIfNull(players);
         ArgumentNullException.ThrowIfNull(npcs);
-        this.runtime = runtime;
+        this.tickProvider = tickProvider;
+        this.players = players;
         this.npcs = npcs;
         this.tiles = tiles;
     }
 
-    public long Tick => runtime.Updates;
+    public long Tick => tickProvider();
 
     public bool TryGetPlayer(PlayerHandle player, out PlayerStateSnapshot snapshot) =>
-        ((IRuntimePlayerSnapshotLookup)runtime).TryGetPlayer(player, out snapshot);
+        players.TryGetPlayer(player, out snapshot);
 
     public bool TryGetPlayer(PlayerSlotId slot, out PlayerStateSnapshot snapshot) =>
-        ((IRuntimePlayerSlotSnapshotLookup)runtime).TryGetPlayer(slot, out snapshot);
+        players.TryGetPlayer(slot, out snapshot);
 
     public bool TryGetNpc(NpcHandle npc, out NpcSnapshot snapshot) =>
         npcs.TryGet(npc, out snapshot);

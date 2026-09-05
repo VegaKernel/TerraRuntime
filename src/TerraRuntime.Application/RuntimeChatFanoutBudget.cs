@@ -1,4 +1,4 @@
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Server-scoped fixed-window ceiling for chat fan-out operations. The budget limits the O(players)

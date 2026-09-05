@@ -7,43 +7,43 @@ using TerraRuntime.HostContracts;
 using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal sealed partial class ServerRuntimeState
 {
     public void Tick()
     {
-        _players.AdvanceCombatTick(Updates);
-        _worldTileAuthority.AdvanceTo(Updates);
+        _runtime.Players.AdvanceCombatTick(Updates);
+        _runtime.WorldTileAuthority.AdvanceTo(Updates);
 
-        _npcs.CommitPending();
-        _serverPlayers?.TickPhysics(this);
-        _npcs.TickSimulation();
-        _npcPlayerCombat.Tick(Updates);
-        if (_projectiles.TryTickState())
+        _runtime.Npcs.CommitPending();
+        _runtime.ServerPlayers?.TickPhysics(_runtime.PlayerSnapshots);
+        _runtime.Npcs.TickSimulation();
+        _runtime.NpcPlayerCombat.Tick(Updates);
+        if (_runtime.Projectiles.TryTickState())
         {
-            ReadOnlySpan<RuntimeProjectileExplosionEvent> explosions = _projectiles.PendingExplosions;
-            _npcs.TickProjectileInteractions(explosions);
-            _projectilePlayerCombat.Tick(explosions);
-            _projectiles.ApplyReflections();
+            ReadOnlySpan<RuntimeProjectileExplosionEvent> explosions = _runtime.Projectiles.PendingExplosions;
+            _runtime.Npcs.TickProjectileInteractions(explosions);
+            _runtime.ProjectilePlayerCombat.Tick(explosions);
+            _runtime.Projectiles.ApplyReflections();
         }
-        _worldItems.TickInstancedLeases();
+        _runtime.WorldItems.TickInstancedLeases();
 
-        _worldClock?.Tick();
-        Updates++;
+        _runtime.WorldClock?.Tick();
+        _runtime.Updates.Advance();
     }
 
     private bool IsTileActorFree(int tileX, int tileY)
     {
-        if (_worldTiles is null)
+        if (_runtime.WorldTiles is null)
             return false;
-        if ((uint)tileX >= (uint)_worldTiles.Dimensions.WidthTiles || (uint)tileY >= (uint)_worldTiles.Dimensions.HeightTiles)
+        if ((uint)tileX >= (uint)_runtime.WorldTiles.Dimensions.WidthTiles || (uint)tileY >= (uint)_runtime.WorldTiles.Dimensions.HeightTiles)
             return false;
         int tileLeft = tileX * 16;
         int tileTop = tileY * 16;
         int tileRight = tileLeft + 16;
         int tileBottom = tileTop + 16;
-        foreach (RuntimePlayerMember player in _players.Members)
+        foreach (RuntimePlayerMember player in _runtime.Players.Members)
         {
             if (player.IsDead)
                 continue;
@@ -58,7 +58,7 @@ internal sealed partial class ServerRuntimeState
                     tileBottom))
                 return false;
         }
-        if (_serverPlayers?.IntersectsLivingPlayer(
+        if (_runtime.ServerPlayers?.IntersectsLivingPlayer(
                 tileLeft,
                 tileTop,
                 tileRight,
@@ -68,8 +68,8 @@ internal sealed partial class ServerRuntimeState
         {
             return false;
         }
-        var npcBuffer = new NpcSnapshot[_npcs.Capacity];
-        int npcCount = _npcs.CopyActive(npcBuffer);
+        var npcBuffer = new NpcSnapshot[_runtime.Npcs.Capacity];
+        int npcCount = _runtime.Npcs.CopyActive(npcBuffer);
         for (int i = 0; i < npcCount; i++)
         {
             if (!IsNpcFree(npcBuffer[i], tileLeft, tileTop, tileRight, tileBottom))

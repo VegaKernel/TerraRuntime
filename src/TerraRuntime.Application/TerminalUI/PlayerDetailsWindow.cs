@@ -1,11 +1,11 @@
 using System.Globalization;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.HostContracts;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
-namespace TerraRuntime.TerminalUI;
+namespace TerraRuntime.Application.TerminalUI;
 
 /// <summary>Live, generation-safe operator view for one connected player session.</summary>
 internal sealed class PlayerDetailsWindow : Window

@@ -14,8 +14,8 @@ public readonly record struct PlayerItemPlacementUse(
 {
     public bool IsValid =>
         ItemUse.IsValid &&
-        VanillaItemDefinitionCatalog.TryGetPlacement(ItemUse.ItemType, out VanillaItemPlacementDefinition placement) &&
-        VanillaItemDefinitionCatalog.TryGetUseTiming(ItemUse.ItemType, out VanillaItemUseTimingDefinition timing) &&
+        VanillaDefinitionCatalog.TryGetPlacement(ItemUse.ItemType, out VanillaItemPlacementDefinition placement) &&
+        VanillaDefinitionCatalog.TryGetUseTiming(ItemUse.ItemType, out VanillaItemUseTimingDefinition timing) &&
         placement.TileType == TileType &&
         placement.Consumable == Consumable &&
         timing == Timing;
@@ -33,8 +33,8 @@ public readonly record struct PlayerItemPickToolUse(
 {
     public bool IsValid =>
         ItemUse.IsValid &&
-        VanillaItemDefinitionCatalog.TryGetPickTool(ItemUse.ItemType, out VanillaItemPickToolDefinition pickTool) &&
-        VanillaItemDefinitionCatalog.TryGetUseTiming(ItemUse.ItemType, out VanillaItemUseTimingDefinition timing) &&
+        VanillaDefinitionCatalog.TryGetPickTool(ItemUse.ItemType, out VanillaItemPickToolDefinition pickTool) &&
+        VanillaDefinitionCatalog.TryGetUseTiming(ItemUse.ItemType, out VanillaItemUseTimingDefinition timing) &&
         pickTool.PickPower == PickPower &&
         pickTool.TileBoost == TileBoost &&
         timing == Timing;
@@ -51,10 +51,10 @@ public static class VanillaPlayerItemUseSemanticResolver
         out PlayerItemPlacementUse placementUse)
     {
         if (!itemUse.IsValid ||
-            !VanillaItemDefinitionCatalog.TryGetPlacement(
+            !VanillaDefinitionCatalog.TryGetPlacement(
                 itemUse.ItemType,
                 out VanillaItemPlacementDefinition placement) ||
-            !VanillaItemDefinitionCatalog.TryGetUseTiming(
+            !VanillaDefinitionCatalog.TryGetUseTiming(
                 itemUse.ItemType,
                 out VanillaItemUseTimingDefinition timing))
         {
@@ -75,10 +75,10 @@ public static class VanillaPlayerItemUseSemanticResolver
         out PlayerItemPickToolUse pickToolUse)
     {
         if (!itemUse.IsValid ||
-            !VanillaItemDefinitionCatalog.TryGetPickTool(
+            !VanillaDefinitionCatalog.TryGetPickTool(
                 itemUse.ItemType,
                 out VanillaItemPickToolDefinition pickTool) ||
-            !VanillaItemDefinitionCatalog.TryGetUseTiming(
+            !VanillaDefinitionCatalog.TryGetUseTiming(
                 itemUse.ItemType,
                 out VanillaItemUseTimingDefinition timing))
         {

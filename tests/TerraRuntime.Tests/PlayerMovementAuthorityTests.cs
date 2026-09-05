@@ -1,6 +1,6 @@
 using System.Buffers;
 using System.Buffers.Binary;
-using TerraRuntime;
+using TerraRuntime.Application;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;

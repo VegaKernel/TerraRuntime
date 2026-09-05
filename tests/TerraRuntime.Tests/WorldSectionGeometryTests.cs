@@ -13,7 +13,7 @@ public sealed class WorldSectionGeometryTests
         Assert.Equal(3, dimensions.SectionRows);
         Assert.Equal(9, dimensions.SectionCount);
         Assert.Equal(new WorldSectionId(2, 2), TerrariaSectionGeometry.FromTile(dimensions, 420, 300));
-        Assert.Equal(new WorldTileBounds(400, 300, 21, 1),
+        Assert.Equal(new WorldTileRegion(400, 300, 21, 1),
             TerrariaSectionGeometry.GetBounds(dimensions, new WorldSectionId(2, 2)));
     }
 

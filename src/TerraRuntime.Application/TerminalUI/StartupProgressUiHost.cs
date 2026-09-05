@@ -7,7 +7,7 @@ using Terminal.Gui.Drivers;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
-namespace TerraRuntime.TerminalUI;
+namespace TerraRuntime.Application.TerminalUI;
 
 internal enum StartupProgressOperation : byte
 {
@@ -220,12 +220,12 @@ internal sealed class StartupProgressUiHost : IWorldGenerationProgressSink, IDis
         try
         {
             using IApplication app = Application.Create();
-            string? forcedDriver = TerminalUiHost.ResolveProductionDriverName(OperatingSystem.IsWindows());
+            string? forcedDriver = Host.ResolveProductionDriverName(OperatingSystem.IsWindows());
             if (forcedDriver is not null)
                 app.ForceDriver = forcedDriver;
 
             app.Init();
-            TerminalUiTheme.Apply();
+            Theme.Apply();
             using var window = new StartupProgressWindow();
             long appliedVersion = -1;
             int animationFrame = 0;

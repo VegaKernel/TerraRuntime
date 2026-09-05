@@ -4,12 +4,12 @@ using TerraRuntime.HostContracts.WorldGeneration;
 
 namespace TerraRuntime.Extensibility;
 
-internal sealed class TerraRuntimeHostEnvironment : ITerraRuntimeHostEnvironment
+internal sealed class TerraRuntimeHostEnvironment : IEnvironment
 {
     public TerraRuntimeHostEnvironment(
         ExtensibleHostDirectoryLayout layout,
-        ITerraRuntimeTerminalDashboardRegistry terminalDashboards,
-        ITerraRuntimeWorldGeneratorRegistry worldGenerators)
+        IDashboardRegistry terminalDashboards,
+        IGeneratorRegistry worldGenerators)
     {
         ArgumentNullException.ThrowIfNull(layout);
         ArgumentNullException.ThrowIfNull(terminalDashboards);
@@ -33,6 +33,6 @@ internal sealed class TerraRuntimeHostEnvironment : ITerraRuntimeHostEnvironment
     public string ConfigDirectory { get; }
     public string DataDirectory { get; }
     public string LogsDirectory { get; }
-    public ITerraRuntimeTerminalDashboardRegistry TerminalDashboards { get; }
-    public ITerraRuntimeWorldGeneratorRegistry WorldGenerators { get; }
+    public IDashboardRegistry TerminalDashboards { get; }
+    public IGeneratorRegistry WorldGenerators { get; }
 }

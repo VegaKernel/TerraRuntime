@@ -190,7 +190,7 @@ public sealed class VanillaCombatIntegrityCatalogTests
             VanillaProjectileIds.RainbowRodBullet, out int rainbowCooldown));
         Assert.Equal(12, rainbowCooldown);
         Assert.False(VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(VanillaProjectileIds.RainbowRodBullet));
-        Assert.True(VanillaProjectileCombatFacts.TryGetDamageClass(
+        Assert.True(VanillaCombatFacts.TryGetDamageClass(
             VanillaProjectileIds.RainbowRodBullet, out VanillaProjectileDamageClass rainbowDamageClass));
         Assert.Equal(VanillaProjectileDamageClass.Magic, rainbowDamageClass);
     }

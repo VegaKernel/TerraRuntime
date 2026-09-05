@@ -1,4 +1,4 @@
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Worlds;
 
 /// <summary>
 /// Server-owned random source for vanilla world-item spawn values. Calls are made only from the authoritative

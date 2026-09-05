@@ -9,12 +9,12 @@ public sealed class BuiltInWorldGeneratorSourceTests
     public void Flat_generator_is_explicitly_registered_and_finalizes_complete_candidate()
     {
         BuiltInWorldGeneratorSource source = BuiltInWorldGeneratorSource.Instance;
-        Assert.Contains(FlatWorldGenerationProvider.GeneratorId, source.CaptureWorldGeneratorIds().Span.ToArray());
-        Assert.True(source.TryResolveWorldGenerator(FlatWorldGenerationProvider.GeneratorId, out var provider));
+        Assert.Contains(FlatProvider.GeneratorId, source.CaptureWorldGeneratorIds().Span.ToArray());
+        Assert.True(source.TryResolveWorldGenerator(FlatProvider.GeneratorId, out var provider));
         Assert.NotNull(provider);
 
         var request = new WorldGenerationRequest(
-            FlatWorldGenerationProvider.GeneratorId,
+            FlatProvider.GeneratorId,
             "Flat",
             Seed: 123,
             WidthTiles: 16,
@@ -48,18 +48,18 @@ public sealed class BuiltInWorldGeneratorSourceTests
     {
         BuiltInWorldGeneratorSource source = BuiltInWorldGeneratorSource.Instance;
         Assert.Equal(4, source.CaptureWorldGeneratorIds().Length);
-        Assert.Contains(VanillaWorldGenerationProvider1458.GeneratorId, source.CaptureWorldGeneratorIds().Span.ToArray());
-        Assert.Contains(OptimizedWorldGenerationProvider.GeneratorId, source.CaptureWorldGeneratorIds().Span.ToArray());
-        Assert.Contains(SkyblockWorldGenerationProvider.GeneratorId, source.CaptureWorldGeneratorIds().Span.ToArray());
-        Assert.True(source.TryResolveWorldGenerator(VanillaWorldGenerationProvider1458.GeneratorId, out var provider));
+        Assert.Contains(Provider1458.GeneratorId, source.CaptureWorldGeneratorIds().Span.ToArray());
+        Assert.Contains(OptimizedProvider.GeneratorId, source.CaptureWorldGeneratorIds().Span.ToArray());
+        Assert.Contains(SkyblockProvider.GeneratorId, source.CaptureWorldGeneratorIds().Span.ToArray());
+        Assert.True(source.TryResolveWorldGenerator(Provider1458.GeneratorId, out var provider));
         Assert.NotNull(provider);
-        Assert.True(source.TryResolveWorldGenerator(OptimizedWorldGenerationProvider.GeneratorId, out var optimized));
+        Assert.True(source.TryResolveWorldGenerator(OptimizedProvider.GeneratorId, out var optimized));
         Assert.NotNull(optimized);
-        Assert.True(source.TryResolveWorldGenerator(SkyblockWorldGenerationProvider.GeneratorId, out var skyblock));
+        Assert.True(source.TryResolveWorldGenerator(SkyblockProvider.GeneratorId, out var skyblock));
         Assert.NotNull(skyblock);
 
         var request = new WorldGenerationRequest(
-            VanillaWorldGenerationProvider1458.GeneratorId,
+            Provider1458.GeneratorId,
             "Vanilla",
             Seed: 8675309,
             WidthTiles: 192,
@@ -89,7 +89,7 @@ public sealed class BuiltInWorldGeneratorSourceTests
     public void Vanilla_generator_carries_special_and_secret_seed_profile_into_finalization()
     {
         var request = new WorldGenerationRequest(
-            VanillaWorldGenerationProvider1458.GeneratorId,
+            Provider1458.GeneratorId,
             "Secret",
             Seed: 123,
             WidthTiles: 160,
@@ -114,7 +114,7 @@ public sealed class BuiltInWorldGeneratorSourceTests
     public void Flat_generator_rejects_world_too_short_for_required_layers()
     {
         var request = new WorldGenerationRequest(
-            FlatWorldGenerationProvider.GeneratorId,
+            FlatProvider.GeneratorId,
             "TooShort",
             Seed: 1,
             WidthTiles: 8,
@@ -130,7 +130,7 @@ public sealed class BuiltInWorldGeneratorSourceTests
         Assert.Null(result.Candidate);
     }
 
-    private static int FindSurface(RuntimeWorldGenerationWorkspace workspace, int x)
+    private static int FindSurface(Workspace workspace, int x)
     {
         for (int y = 0; y < workspace.HeightTiles; y++)
         {

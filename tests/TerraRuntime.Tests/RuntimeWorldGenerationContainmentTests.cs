@@ -11,20 +11,20 @@ public sealed class RuntimeWorldGenerationContainmentTests
     public void Startup_validation_policy_does_not_infer_vanilla_completeness_from_dimensions()
     {
         Assert.Equal(
-            RuntimeWorldGenerationValidationMode.GenericStructural,
+            ValidationMode.GenericStructural,
             RuntimeWorldCreationPipeline.ResolveValidationMode(new WorldGeneratorId("fixture:worldgen")));
         Assert.Equal(
-            RuntimeWorldGenerationValidationMode.GenericStructural,
-            RuntimeWorldCreationPipeline.ResolveValidationMode(FlatWorldGenerationProvider.GeneratorId));
+            ValidationMode.GenericStructural,
+            RuntimeWorldCreationPipeline.ResolveValidationMode(FlatProvider.GeneratorId));
         Assert.Equal(
-            RuntimeWorldGenerationValidationMode.GenericStructural,
-            RuntimeWorldCreationPipeline.ResolveValidationMode(SkyblockWorldGenerationProvider.GeneratorId));
+            ValidationMode.GenericStructural,
+            RuntimeWorldCreationPipeline.ResolveValidationMode(SkyblockProvider.GeneratorId));
         Assert.Equal(
-            RuntimeWorldGenerationValidationMode.VanillaComplete,
-            RuntimeWorldCreationPipeline.ResolveValidationMode(VanillaWorldGenerationProvider1458.GeneratorId));
+            ValidationMode.VanillaComplete,
+            RuntimeWorldCreationPipeline.ResolveValidationMode(Provider1458.GeneratorId));
         Assert.Equal(
-            RuntimeWorldGenerationValidationMode.VanillaComplete,
-            RuntimeWorldCreationPipeline.ResolveValidationMode(OptimizedSurfaceDecorationWorldGenerationProvider.GeneratorId));
+            ValidationMode.VanillaComplete,
+            RuntimeWorldCreationPipeline.ResolveValidationMode(SurfaceDecorationProvider.GeneratorId));
     }
 
     [Fact]

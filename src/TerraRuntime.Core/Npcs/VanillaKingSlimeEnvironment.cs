@@ -1,7 +1,7 @@
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 /// <summary>Resolved vanilla King Slime teleport destination using NPC.Bottom coordinates.</summary>
 public readonly record struct VanillaKingSlimeTeleportDestination(float BottomX, float BottomY)

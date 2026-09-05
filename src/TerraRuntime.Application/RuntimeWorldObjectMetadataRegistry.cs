@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Runtime composition binding between one loaded world tile store and its runtime-owned object metadata lifecycle.

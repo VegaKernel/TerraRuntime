@@ -1,4 +1,4 @@
-namespace TerraRuntime.Diagnostics;
+namespace TerraRuntime.Application.Diagnostics;
 
 internal readonly record struct RuntimeLogPipelineMetrics(
     long Accepted,

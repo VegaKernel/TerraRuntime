@@ -519,7 +519,7 @@ public sealed class Level1SandboxRuntimeTests
 
     private static SandboxWorldSource.Generated FlatSource(string name, ulong seed) =>
         new(
-            FlatWorldGenerationProvider.GeneratorId,
+            FlatProvider.GeneratorId,
             name,
             seed,
             WidthTiles: 32,
@@ -631,7 +631,7 @@ public sealed class Level1SandboxRuntimeTests
             builder.Add(
                 new WorldGenerationPassDescriptor(new WorldGenerationPassId("tests:block")),
                 new BlockingPass(entered, release));
-            new FlatWorldGenerationProvider().BuildPlan(in request, builder);
+            new FlatProvider().BuildPlan(in request, builder);
         }
 
         private sealed class BlockingPass(
@@ -678,7 +678,7 @@ public sealed class Level1SandboxRuntimeTests
                     SwitchFailPass.Instance);
                 return;
             }
-            new FlatWorldGenerationProvider().BuildPlan(in request, builder);
+            new FlatProvider().BuildPlan(in request, builder);
         }
 
         private sealed class SwitchFailPass : IWorldGenerationPass

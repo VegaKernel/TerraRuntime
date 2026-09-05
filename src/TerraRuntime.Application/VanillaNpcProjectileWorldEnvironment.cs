@@ -1,7 +1,7 @@
 using TerraRuntime.Core;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>Production tile LOS adapter for source-backed ordinary NPC projectile attacks.</summary>
 internal sealed class VanillaNpcProjectileWorldEnvironment : IVanillaNpcProjectileEnvironment

@@ -1,6 +1,6 @@
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal enum SectionRebuildGlobalBudgetRequestResult : byte
 {

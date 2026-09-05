@@ -1,6 +1,6 @@
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 liquid displacement rules for the ordinary player collision path.

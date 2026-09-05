@@ -5,7 +5,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.HostContracts.WorldGeneration;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal enum SandboxWorldMaterializationStatus : byte
 {

@@ -5,7 +5,7 @@ using TerraRuntime.HostContracts;
 using TerraRuntime.World;
 using TerraRuntime.Core.Players;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal static class RuntimeActorCommerceSmoke
 {

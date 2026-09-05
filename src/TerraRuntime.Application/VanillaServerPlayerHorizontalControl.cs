@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Source-backed ordinary-player horizontal movement slice from TerrariaServer 1.4.5.8 Player.HorizontalMovement.

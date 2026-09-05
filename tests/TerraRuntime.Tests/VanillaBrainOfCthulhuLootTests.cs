@@ -60,11 +60,11 @@ public sealed class VanillaBrainOfCthulhuLootTests
     public void Brain_drop_item_defaults_are_materializable(int rawType, int width, int height)
     {
         ItemTypeId type = new(rawType);
-        Assert.True(VanillaItemDefinitionCatalog.TryGetRuntimeDefaults(type, out VanillaItemRuntimeDefaults defaults));
+        Assert.True(VanillaDefinitionCatalog.TryGetRuntimeDefaults(type, out VanillaItemRuntimeDefaults defaults));
         Assert.Equal(width, defaults.Width);
         Assert.Equal(height, defaults.Height);
-        Assert.Equal(VanillaItemDefinitionCatalog.CommonMaximumStack, defaults.MaximumStack);
-        Assert.True(VanillaItemDefinitionCatalog.TryGetWorldDrop(type, out _));
+        Assert.Equal(VanillaDefinitionCatalog.CommonMaximumStack, defaults.MaximumStack);
+        Assert.True(VanillaDefinitionCatalog.TryGetWorldDrop(type, out _));
     }
 
     private sealed class RecordingSink : IBrainOfCthulhuLootDeliverySink

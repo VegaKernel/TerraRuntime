@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using TerraRuntime.Network;
 
-namespace TerraRuntime.Operations;
+namespace TerraRuntime.Application.Operations;
 
 /// <summary>
 /// Samples the network layer's existing per-connection inbound rate accountants. No packet-path

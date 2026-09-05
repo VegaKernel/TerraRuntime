@@ -68,7 +68,7 @@ stateDiagram-v2
     Stopping --> [*]
 ```
 
-The UI runs on its own background thread `TerraRuntime Terminal UI`, not on the authoritative game-loop thread. `TerminalUiHost` owns linked cancellation and waits only a bounded interval during disposal.
+The UI runs on its own background thread `TerraRuntime Terminal UI`, not on the authoritative game-loop thread. `Host` owns linked cancellation and waits only a bounded interval during disposal.
 
 On Windows, TerraRuntime deliberately selects Terminal.Gui's cross-platform `dotnet` driver instead of forcing the native `windows` driver. This is a compatibility policy for Windows 10/conhost-class rendering failures where Terminal.Gui 2.4.x can leave the content area blank/black while menu chrome remains visible. Linux and other platforms keep Terminal.Gui's normal platform selection.
 
@@ -82,7 +82,7 @@ $$
 T_{\mathrm{snapshot}}\approx100\,\mathrm{ms}
 $$
 
-snapshot cadence, but snapshot capture no longer runs on the Terminal.Gui thread. `TerminalUiOperationsCache` captures detached operations state on a worker task and publishes the complete cache through one atomic reference swap. The UI thread only reads the already-published state and formats it into views.
+snapshot cadence, but snapshot capture no longer runs on the Terminal.Gui thread. `OperationsCache` captures detached operations state on a worker task and publishes the complete cache through one atomic reference swap. The UI thread only reads the already-published state and formats it into views.
 
 A lightweight Terminal.Gui timer checks for a newly published cache version approximately every
 
@@ -109,7 +109,7 @@ sequenceDiagram
 
 The overview always refreshes the dashboard/player/network/world/log state it needs. Detail-only NPC, projectile, dropped-item and full-debug-log snapshots are demand-driven: they are refreshed while their detail screen is actually being read, avoiding a permanent allocation/copy cost merely to make the UI responsive.
 
-World-scoped detail inspection is a separate cache responsibility. `LocalRuntimeWorldInspectionOperations` resolves live worlds by stable `WorldRuntimeId`, while `TerminalUiWorldInspectionCache` remembers the operator-selected world and captures only the demanded Players/NPCs/Projectiles/Items/World snapshot for that world. The Terminal.Gui thread receives detached read models only; it never retains `WorldRuntime` references. Sandbox operations telemetry is enabled only when TUI is enabled.
+World-scoped detail inspection is a separate cache responsibility. `LocalRuntimeWorldInspectionOperations` resolves live worlds by stable `WorldRuntimeId`, while `WorldInspectionCache` remembers the operator-selected world and captures only the demanded Players/NPCs/Projectiles/Items/World snapshot for that world. The Terminal.Gui thread receives detached read models only; it never retains `WorldRuntime` references. Sandbox operations telemetry is enabled only when TUI is enabled.
 
 The Worlds / Players tile exposes a `+ Sandbox` action using the same Base scheme as the tree rather than a separate highlighted button background. The creation window exposes isolation as a dropdown and no longer renders a separate `Selected:` status line. Generator identity, game mode, world evil and size preset are dropdown selections. Generator choices are captured from the actual runtime/host generator registry. Size presets include Primary, Small `4200x1200`, Medium `6400x1800`, Large `8400x2400` and Custom. A cryptographically generated unsigned seed is populated when the window opens, and `Random` replaces it without requiring the operator to type `random`.
 
@@ -207,7 +207,7 @@ Unknown commands are reported rather than interpreted as runtime mutations. Clos
 
 ## 11. Trusted host dashboards
 
-CoreCLR trusted hosts can register complete dashboards via `ITerraRuntimeTerminalDashboardRegistry`.
+CoreCLR trusted hosts can register complete dashboards via `IDashboardRegistry`.
 
 A provider supplies stable `Id`, display `Title`, `CreateDashboard()` and `Refresh(View rootView)` on the Terminal.Gui UI thread. It contributes its own root view and does not inject arbitrary controls into the built-in TerraRuntime dashboard.
 

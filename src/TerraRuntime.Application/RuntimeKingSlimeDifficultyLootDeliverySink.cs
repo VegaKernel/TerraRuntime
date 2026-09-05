@@ -4,7 +4,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Production delivery boundary for the source-backed King Slime Expert/Master rules. Ordinary Master items enter the

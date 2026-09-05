@@ -79,7 +79,7 @@ public sealed class WorldSectionPacketSnapshot
 
     public WorldSectionId Section => Tiles.Section;
 
-    public WorldTileBounds Bounds => Tiles.Bounds;
+    public WorldTileRegion Bounds => Tiles.Bounds;
 
     public long Revision => Tiles.Revision;
 }
@@ -116,7 +116,7 @@ public static class WorldSectionPacketSnapshotCapture
         if (before != tiles.Revision || (before & 1L) != 0)
             return WorldSectionPacketSnapshotCaptureResult.StaleTileSnapshot;
 
-        WorldTileBounds bounds = tiles.Bounds;
+        WorldTileRegion bounds = tiles.Bounds;
         WorldSectionObjectMetadataEncodeResult metadataResult = WorldSectionObjectMetadataEncoder.TryEncode(
             world,
             bounds.X,

@@ -24,7 +24,7 @@ public sealed class WorldSectionPacketSnapshotTests
 
         Assert.Equal(WorldSectionPacketSnapshotCaptureResult.Captured, captureResult);
         Assert.NotNull(packetSnapshot);
-        WorldTileBounds bounds = tileSnapshot!.Bounds;
+        WorldTileRegion bounds = tileSnapshot!.Bounds;
         Assert.Equal(
             WorldSectionPacketEncodeResult.Encoded,
             WorldSectionPacketEncoder.TryEncode(
@@ -78,7 +78,7 @@ public sealed class WorldSectionPacketSnapshotTests
             WorldSectionPayloadAssembler.TryEncode(packetSnapshot!, out byte[] capturedAfter));
         Assert.Equal(capturedBefore, capturedAfter);
 
-        WorldTileBounds bounds = tileSnapshot!.Bounds;
+        WorldTileRegion bounds = tileSnapshot!.Bounds;
         Assert.Equal(
             WorldSectionPayloadAssemblyResult.Encoded,
             WorldSectionPayloadAssembler.TryEncode(

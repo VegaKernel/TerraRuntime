@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Text;
-using TerraRuntime.Operations;
-using TerraRuntime.TerminalUI;
+using TerraRuntime.Application.Operations;
+using TerraRuntime.Application.TerminalUI;
 using TerraRuntime.World;
 using Terminal.Gui.App;
 using Terminal.Gui.Drivers;

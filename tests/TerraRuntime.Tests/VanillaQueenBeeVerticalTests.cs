@@ -20,7 +20,7 @@ public sealed class VanillaQueenBeeVerticalTests
         Assert.True(queen.NoGravityAtSpawn);
         Assert.True(queen.NoTileCollideAtSpawn);
 
-        Assert.True(VanillaProjectileDefinitionCatalog.TryGet(VanillaProjectileIds.QueenBeeStinger, out VanillaProjectileDefinition stinger));
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.QueenBeeStinger, out VanillaProjectileDefinition stinger));
         Assert.Equal((10, 10), (stinger.Width, stinger.Height));
         Assert.Equal(VanillaProjectileAiStyles.Arrow, stinger.AiStyle);
         Assert.True(stinger.TileCollide);

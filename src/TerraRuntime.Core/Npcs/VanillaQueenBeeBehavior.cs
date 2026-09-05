@@ -2,7 +2,7 @@ using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 /// <summary>World facts consumed by TerrariaServer 1.4.5.8 Queen Bee aiStyle 43.</summary>
 public interface IVanillaQueenBeeEnvironment

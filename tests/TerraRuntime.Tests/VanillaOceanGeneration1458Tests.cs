@@ -25,15 +25,15 @@ public sealed class VanillaOceanGeneration1458Tests
     {
         Assert.Equal(
             expectedScale,
-            VanillaOceanGenerationCatalog1458.GetDepthIncrementScale(inlandColumn, floridaStyle));
+            OceanGenerationCatalog1458.GetDepthIncrementScale(inlandColumn, floridaStyle));
     }
 
     [Fact]
     public void Canonical_provider_leaves_final_cleanup_unwrapped()
     {
-        var provider = new SourceBackedVanillaWorldGenerationFinal1458();
+        var provider = new SourceBackedFinal1458();
         var request = new WorldGenerationRequest(
-            VanillaWorldGenerationProvider1458.GeneratorId,
+            Provider1458.GeneratorId,
             "OceanPlan",
             1458,
             4200,
@@ -46,7 +46,7 @@ public sealed class VanillaOceanGeneration1458Tests
         provider.BuildPlan(in request, builder);
 
         CaptureEntry finalCleanup = Assert.Single(builder.Entries, static entry =>
-            entry.Descriptor.Id == SourceBackedVanillaWorldGenerationFinal1458.FinalCleanupId);
+            entry.Descriptor.Id == SourceBackedFinal1458.FinalCleanupId);
         Assert.DoesNotContain("Ocean", finalCleanup.Pass.GetType().Name, StringComparison.Ordinal);
     }
 
@@ -55,7 +55,7 @@ public sealed class VanillaOceanGeneration1458Tests
     {
         WorldTileStore store = CreateSyntheticOcean(dryGapStart: -1, dryGapWidth: 0);
 
-        VanillaOceanIntegrityResult1458 result = VanillaOceanIntegrity1458.Validate(
+        OceanIntegrityResult1458 result = OceanIntegrity1458.Validate(
             store,
             beachBoundary: 250,
             left: true,
@@ -69,7 +69,7 @@ public sealed class VanillaOceanGeneration1458Tests
     {
         WorldTileStore store = CreateSyntheticOcean(dryGapStart: 80, dryGapWidth: 12);
 
-        VanillaOceanIntegrityResult1458 result = VanillaOceanIntegrity1458.Validate(
+        OceanIntegrityResult1458 result = OceanIntegrity1458.Validate(
             store,
             beachBoundary: 250,
             left: true,
@@ -96,7 +96,7 @@ public sealed class VanillaOceanGeneration1458Tests
             }
 
             ref WorldTile sand = ref store.Tiles[store.GetUncheckedIndex(x, floor)];
-            sand.Type = VanillaOceanGenerationCatalog1458.SandTileType;
+            sand.Type = OceanGenerationCatalog1458.SandTileType;
             sand.Flags = WorldTileFlags.Active;
         }
 

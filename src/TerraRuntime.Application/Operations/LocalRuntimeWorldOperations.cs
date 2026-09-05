@@ -1,4 +1,4 @@
-namespace TerraRuntime.Operations;
+namespace TerraRuntime.Application.Operations;
 
 internal sealed class LocalRuntimeWorldOperations : IWorldOperations
 {

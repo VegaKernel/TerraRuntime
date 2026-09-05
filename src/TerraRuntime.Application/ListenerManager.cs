@@ -1,11 +1,11 @@
 using System.Net;
 using System.Net.Sockets;
 using TerraRuntime.Contracts.Runtime;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 using StructuredLogCategory = TerraRuntime.Contracts.Diagnostics.RuntimeLogCategory;
 using StructuredLogEventIds = TerraRuntime.Contracts.Diagnostics.RuntimeLogEventIds;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Owns replaceable public listening endpoints independently from accepted client sockets. A listener generation

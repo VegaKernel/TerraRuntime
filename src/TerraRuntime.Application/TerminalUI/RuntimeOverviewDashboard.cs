@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Globalization;
 using System.Text;
 using TerraRuntime.Contracts.Runtime;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
@@ -13,7 +13,7 @@ using TuiColor = Terminal.Gui.Drawing.Color;
 
 #pragma warning disable CS0618 // Terminal.Gui TextView is still the built-in selectable read-only surface in 2.4.17.
 
-namespace TerraRuntime.TerminalUI;
+namespace TerraRuntime.Application.TerminalUI;
 
 /// <summary>
 /// Runtime-owned tiled dashboard. Runtime snapshots arrive already detached from authoritative state; this view
@@ -62,7 +62,7 @@ internal sealed class RuntimeOverviewDashboard : View
     private string appliedConsoleText = string.Empty;
     private string pendingConsoleText = string.Empty;
     private string? appliedWorkspaceStatus;
-    private RuntimeLogLevel? minimumLogLevel = RuntimeLogLevel.Information;
+    private OperationsLogLevel? minimumLogLevel = OperationsLogLevel.Information;
     private bool showChat = true;
     private RuntimeLogSnapshot latestLogs;
     private RuntimeLogSnapshot latestChat;
@@ -431,7 +431,7 @@ internal sealed class RuntimeOverviewDashboard : View
 
     internal void RequestSettingsForSmoke() => SettingsRequested?.Invoke();
 
-    internal void SetFeedForSmoke(bool logs, bool chat, RuntimeLogLevel minimumLevel)
+    internal void SetFeedForSmoke(bool logs, bool chat, OperationsLogLevel minimumLevel)
     {
         this.minimumLogLevel = logs ? minimumLevel : null;
         showChat = chat;
@@ -596,7 +596,7 @@ internal sealed class RuntimeOverviewDashboard : View
         string action = parts[1].ToLowerInvariant();
         if (action == "all")
         {
-            minimumLogLevel = RuntimeLogLevel.Information;
+            minimumLogLevel = OperationsLogLevel.Information;
             showChat = true;
             UpdateFeedControlText();
             RefreshFeedProjection();
@@ -624,12 +624,12 @@ internal sealed class RuntimeOverviewDashboard : View
                 if (parts[2].Equals("on", StringComparison.OrdinalIgnoreCase) ||
                     parts[2].Equals("enable", StringComparison.OrdinalIgnoreCase))
                 {
-                    SetLogMode(minimumLogLevel ?? RuntimeLogLevel.Information);
-                    SetCommandFeedback($"feed: logs {FormatLevelName(minimumLogLevel ?? RuntimeLogLevel.Information)}+");
+                    SetLogMode(minimumLogLevel ?? OperationsLogLevel.Information);
+                    SetCommandFeedback($"feed: logs {FormatLevelName(minimumLogLevel ?? OperationsLogLevel.Information)}+");
                     return;
                 }
 
-                if (!TryParseLogLevel(parts[2], out RuntimeLogLevel logLevel))
+                if (!TryParseLogLevel(parts[2], out OperationsLogLevel logLevel))
                 {
                     SetCommandFeedback("usage: feed logs off|debug|info|warn|error");
                     return;
@@ -648,7 +648,7 @@ internal sealed class RuntimeOverviewDashboard : View
                 return;
             case "level":
                 // Backward-compatible alias from the previous dashboard revision. Selecting a level also enables logs.
-                if (!TryParseLogLevel(parts[2], out RuntimeLogLevel level))
+                if (!TryParseLogLevel(parts[2], out OperationsLogLevel level))
                 {
                     SetCommandFeedback("usage: feed level debug|info|warn|error");
                     return;
@@ -662,7 +662,7 @@ internal sealed class RuntimeOverviewDashboard : View
         }
     }
 
-    private void SetLogMode(RuntimeLogLevel? level)
+    private void SetLogMode(OperationsLogLevel? level)
     {
         minimumLogLevel = level;
         UpdateFeedControlText();
@@ -681,13 +681,13 @@ internal sealed class RuntimeOverviewDashboard : View
         if (updatingFeedControls || string.IsNullOrWhiteSpace(selection))
             return;
 
-        RuntimeLogLevel? level = selection switch
+        OperationsLogLevel? level = selection switch
         {
             "Logs OFF" => null,
-            "Logs DEBUG+" => RuntimeLogLevel.Debug,
-            "Logs INFO+" => RuntimeLogLevel.Information,
-            "Logs WARN+" => RuntimeLogLevel.Warning,
-            "Logs ERROR+" => RuntimeLogLevel.Error,
+            "Logs DEBUG+" => OperationsLogLevel.Debug,
+            "Logs INFO+" => OperationsLogLevel.Information,
+            "Logs WARN+" => OperationsLogLevel.Warning,
+            "Logs ERROR+" => OperationsLogLevel.Error,
             _ => minimumLogLevel
         };
         SetLogMode(level);
@@ -709,7 +709,7 @@ internal sealed class RuntimeOverviewDashboard : View
         updatingFeedControls = true;
         try
         {
-            feedLogModeDropDown.Text = minimumLogLevel is RuntimeLogLevel level
+            feedLogModeDropDown.Text = minimumLogLevel is OperationsLogLevel level
                 ? $"Logs {FormatLevelName(level)}+"
                 : "Logs OFF";
             feedChatDropDown.Text = $"Chat {(showChat ? "ON" : "OFF")}";
@@ -778,25 +778,25 @@ internal sealed class RuntimeOverviewDashboard : View
         return false;
     }
 
-    private static bool TryParseLogLevel(string value, out RuntimeLogLevel level)
+    private static bool TryParseLogLevel(string value, out OperationsLogLevel level)
     {
         switch (value.ToLowerInvariant())
         {
             case "debug":
             case "dbg":
-                level = RuntimeLogLevel.Debug;
+                level = OperationsLogLevel.Debug;
                 return true;
             case "info":
             case "information":
-                level = RuntimeLogLevel.Information;
+                level = OperationsLogLevel.Information;
                 return true;
             case "warn":
             case "warning":
-                level = RuntimeLogLevel.Warning;
+                level = OperationsLogLevel.Warning;
                 return true;
             case "err":
             case "error":
-                level = RuntimeLogLevel.Error;
+                level = OperationsLogLevel.Error;
                 return true;
             default:
                 level = default;
@@ -1127,11 +1127,11 @@ internal sealed class RuntimeOverviewDashboard : View
     private static string RenderConsoleFeed(
         ReadOnlySpan<RuntimeLogEntry> logs,
         ReadOnlySpan<RuntimeLogEntry> chat,
-        RuntimeLogLevel? minimumLogLevel,
+        OperationsLogLevel? minimumLogLevel,
         bool showChat)
     {
         var lines = new List<FeedEntry>(logs.Length + chat.Length);
-        if (minimumLogLevel is RuntimeLogLevel level)
+        if (minimumLogLevel is OperationsLogLevel level)
         {
             for (int i = 0; i < logs.Length; i++)
             {
@@ -1302,21 +1302,21 @@ internal sealed class RuntimeOverviewDashboard : View
         return new string(buffer);
     }
 
-    private static string FormatLevel(RuntimeLogLevel level) => level switch
+    private static string FormatLevel(OperationsLogLevel level) => level switch
     {
-        RuntimeLogLevel.Debug => "DBG ",
-        RuntimeLogLevel.Information => "INFO",
-        RuntimeLogLevel.Warning => "WARN",
-        RuntimeLogLevel.Error => "ERR ",
+        OperationsLogLevel.Debug => "DBG ",
+        OperationsLogLevel.Information => "INFO",
+        OperationsLogLevel.Warning => "WARN",
+        OperationsLogLevel.Error => "ERR ",
         _ => "?   "
     };
 
-    private static string FormatLevelName(RuntimeLogLevel level) => level switch
+    private static string FormatLevelName(OperationsLogLevel level) => level switch
     {
-        RuntimeLogLevel.Debug => "DEBUG",
-        RuntimeLogLevel.Information => "INFO",
-        RuntimeLogLevel.Warning => "WARN",
-        RuntimeLogLevel.Error => "ERROR",
+        OperationsLogLevel.Debug => "DEBUG",
+        OperationsLogLevel.Information => "INFO",
+        OperationsLogLevel.Warning => "WARN",
+        OperationsLogLevel.Error => "ERROR",
         _ => "?"
     };
 

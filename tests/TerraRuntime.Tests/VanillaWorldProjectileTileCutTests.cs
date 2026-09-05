@@ -9,21 +9,21 @@ public sealed class VanillaWorldProjectileTileCutTests
     {
         var dimensions = new WorldDimensions(100, 100);
 
-        WorldTileBounds bounds = VanillaWorldProjectileTileCut.GetCutBounds(
+        WorldTileRegion bounds = VanillaWorldProjectileTileCut.GetCutBounds(
             dimensions,
             positionX: 15f,
             positionY: 31f,
             boxWidth: 22,
             boxHeight: 22);
-        WorldTileBounds outside = VanillaWorldProjectileTileCut.GetCutBounds(
+        WorldTileRegion outside = VanillaWorldProjectileTileCut.GetCutBounds(
             dimensions,
             positionX: -100f,
             positionY: -100f,
             boxWidth: 12,
             boxHeight: 12);
 
-        Assert.Equal(new WorldTileBounds(0, 1, 3, 3), bounds);
-        Assert.Equal(new WorldTileBounds(0, 0, 0, 0), outside);
+        Assert.Equal(new WorldTileRegion(0, 1, 3, 3), bounds);
+        Assert.Equal(new WorldTileRegion(0, 0, 0, 0), outside);
     }
 
     [Fact]

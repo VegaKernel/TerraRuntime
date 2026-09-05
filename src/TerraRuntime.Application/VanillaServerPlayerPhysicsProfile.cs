@@ -1,6 +1,6 @@
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Ordinary unmounted player constants selected near the start of TerrariaServer 1.4.5.8 Player.Update.

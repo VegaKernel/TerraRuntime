@@ -38,7 +38,7 @@ Failure remains transactional. If tile decoding fails, the candidate store is di
 
 ## Runtime snapshots and generation
 
-Runtime snapshot restore uses the same unpublished-store principle. `RuntimeWorldGenerationWorkspace` routes generation writes through the explicit `SetInitialPopulationTile` path so generation code no longer reaches into backing storage directly while still avoiding live dirty/revision bookkeeping.
+Runtime snapshot restore uses the same unpublished-store principle. `Workspace` routes generation writes through the explicit `SetInitialPopulationTile` path so generation code no longer reaches into backing storage directly while still avoiding live dirty/revision bookkeeping.
 
 The optimization is intentionally scoped to unpublished construction. It is not a global switch that can disable dirty tracking for live mutations.
 

@@ -1,6 +1,6 @@
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Per-connection packet-10 visibility state. Terraria joins with only a bounded section window, so a playing

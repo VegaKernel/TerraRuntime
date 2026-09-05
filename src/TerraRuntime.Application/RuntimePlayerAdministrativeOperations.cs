@@ -2,7 +2,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal sealed record SetPlayerGodModeRuntimeCommand(
     PlayerHandle Player,

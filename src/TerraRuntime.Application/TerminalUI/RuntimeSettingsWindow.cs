@@ -1,9 +1,9 @@
 using System.Globalization;
-using TerraRuntime.Operations;
+using TerraRuntime.Application.Operations;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
-namespace TerraRuntime.TerminalUI;
+namespace TerraRuntime.Application.TerminalUI;
 
 /// <summary>Small operator surface for live host settings that are safe to change without mutating game state.</summary>
 internal sealed class RuntimeSettingsWindow : Window

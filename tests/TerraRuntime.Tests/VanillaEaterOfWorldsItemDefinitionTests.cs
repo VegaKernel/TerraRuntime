@@ -22,7 +22,7 @@ public sealed class VanillaEaterOfWorldsItemDefinitionTests
     [MemberData(nameof(Drops))]
     public void Eater_drop_defaults_are_source_backed(ItemTypeId type, int width, int height)
     {
-        Assert.True(VanillaItemDefinitionCatalog.TryGetWorldDrop(type, out VanillaItemWorldDropDefinition drop));
+        Assert.True(VanillaDefinitionCatalog.TryGetWorldDrop(type, out VanillaItemWorldDropDefinition drop));
         Assert.Equal(width, drop.Width);
         Assert.Equal(height, drop.Height);
         Assert.False(drop.NoGravity);

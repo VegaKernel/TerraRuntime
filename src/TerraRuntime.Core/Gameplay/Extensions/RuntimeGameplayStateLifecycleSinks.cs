@@ -1,6 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Extensions;
 
 /// <summary>
 /// Allocation-free hot-path fan-out for immutable NPC commit events. Composition happens once on the cold path;

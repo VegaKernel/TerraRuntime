@@ -4,7 +4,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.World;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 /// <summary>
 /// Production orchestration boundary for the source-backed TerrariaServer 1.4.5.8 projectile simulation slice.
@@ -58,7 +58,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         out ProjectileSimulationStepResult next)
     {
         ProjectileSnapshot current = projectile.Projectile;
-        if (!VanillaProjectileDefinitionCatalog.TryGet(current.Type, out VanillaProjectileDefinition definition) ||
+        if (!VanillaDefinitionCatalog.TryGet(current.Type, out VanillaProjectileDefinition definition) ||
             !VanillaProjectileBehaviorProfileCatalog.TryGet(current.Type, out VanillaProjectileBehaviorProfile profile) ||
             definition.AiStyle != profile.ExpectedAiStyle)
         {

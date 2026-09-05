@@ -1,7 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Gameplay.Npcs;
 
-namespace TerraRuntime.Core;
+namespace TerraRuntime.Core.Npcs;
 
 public sealed partial class RuntimeNpcStore
 {

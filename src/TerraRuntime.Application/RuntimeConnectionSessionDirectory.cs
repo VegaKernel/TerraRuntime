@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace TerraRuntime;
+namespace TerraRuntime.Application;
 
 internal readonly record struct RuntimeConnectionSessionSnapshot(
     long ConnectionId,

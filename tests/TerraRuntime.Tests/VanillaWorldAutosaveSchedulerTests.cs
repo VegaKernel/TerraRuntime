@@ -1,4 +1,4 @@
-using TerraRuntime;
+using TerraRuntime.Application;
 
 namespace TerraRuntime.Tests;
 

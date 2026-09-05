@@ -29,7 +29,7 @@ public enum VanillaMultiTileObjectMutationStatus : byte
 /// </summary>
 public readonly record struct VanillaMultiTileObjectMutationDescriptor(
     VanillaMultiTileObjectDefinition Definition,
-    WorldTileBounds Bounds,
+    WorldTileRegion Bounds,
     int OriginX,
     int OriginY)
 {
@@ -238,7 +238,7 @@ public sealed class VanillaMultiTileObjectMutationService
         int originY = checked(topLeftY + definition.PlacementOriginRow);
         descriptor = new VanillaMultiTileObjectMutationDescriptor(
             definition,
-            new WorldTileBounds(topLeftX, topLeftY, definition.Width, definition.Height),
+            new WorldTileRegion(topLeftX, topLeftY, definition.Width, definition.Height),
             originX,
             originY);
         return true;
@@ -342,7 +342,7 @@ public sealed class VanillaMultiTileObjectMutationService
         return changed;
     }
 
-    private void MarkFrameNeighborhoodDirty(in WorldTileBounds bounds)
+    private void MarkFrameNeighborhoodDirty(in WorldTileRegion bounds)
     {
         int minX = Math.Max(0, bounds.X - 1);
         int minY = Math.Max(0, bounds.Y - 1);

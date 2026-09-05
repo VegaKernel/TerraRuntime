@@ -16,7 +16,7 @@ public static class TerrariaSectionGeometry
         return new WorldSectionId(tileX / WidthTiles, tileY / HeightTiles);
     }
 
-    public static WorldTileBounds GetBounds(WorldDimensions dimensions, WorldSectionId section)
+    public static WorldTileRegion GetBounds(WorldDimensions dimensions, WorldSectionId section)
     {
         ArgumentNullException.ThrowIfNull(dimensions);
         ValidateSection(dimensions, section);
@@ -25,7 +25,7 @@ public static class TerrariaSectionGeometry
         int y = checked(section.Y * HeightTiles);
         int width = Math.Min(WidthTiles, dimensions.WidthTiles - x);
         int height = Math.Min(HeightTiles, dimensions.HeightTiles - y);
-        return new WorldTileBounds(x, y, width, height);
+        return new WorldTileRegion(x, y, width, height);
     }
 
     public static int ToLinearIndex(WorldDimensions dimensions, WorldSectionId section)
