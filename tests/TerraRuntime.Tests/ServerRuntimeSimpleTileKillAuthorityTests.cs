@@ -204,6 +204,101 @@ public sealed class ServerRuntimeSimpleTileKillAuthorityTests
         Assert.Equal(0, fixture.Items.ActiveCount);
     }
 
+
+    [Fact]
+    public void Copper_hammer_commits_housing_wall_break_and_exact_wall_drop()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 9901);
+        fixture.SetSelectedInventoryItem(connection, VanillaItemIds.CopperHammer, stack: 1);
+        fixture.SetWall(10, 10, VanillaWallIds.Stone);
+
+        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(
+            connection,
+            new TerrariaTileManipulationState(
+                (byte)TerrariaTileManipulationAction.KillWall,
+                TileX: 10,
+                TileY: 10,
+                Data: 0,
+                Style: 0)));
+
+        Assert.Equal(VanillaWallIds.None, fixture.Tiles.Get(10, 10).WallType);
+        Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
+        Assert.Equal(0, fixture.State.RejectedClientTileManipulations);
+        Assert.True(fixture.Items.TryGetActive(0, out WorldItemSnapshot drop));
+        Assert.Equal(26, drop.ItemNetId);
+    }
+
+    [Fact]
+    public void Incomplete_hammer_hit_is_relay_only_and_does_not_remove_wall_or_drop_item()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 9902);
+        fixture.SetSelectedInventoryItem(connection, VanillaItemIds.CopperHammer, stack: 1);
+        fixture.SetWall(10, 10, VanillaWallIds.Stone);
+
+        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(
+            connection,
+            new TerrariaTileManipulationState(
+                (byte)TerrariaTileManipulationAction.KillWall,
+                TileX: 10,
+                TileY: 10,
+                Data: 1,
+                Style: 0)));
+
+        Assert.Equal(VanillaWallIds.Stone, fixture.Tiles.Get(10, 10).WallType);
+        Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
+        Assert.Equal(0, fixture.Items.ActiveCount);
+    }
+
+    [Fact]
+    public void Natural_wall_inside_same_wall_mass_is_rejected_until_an_edge_is_exposed()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 9903);
+        fixture.SetSelectedInventoryItem(connection, VanillaItemIds.CopperHammer, stack: 1);
+        for (int y = 9; y <= 11; y++)
+        for (int x = 9; x <= 11; x++)
+            fixture.SetWall(x, y, VanillaWallIds.DirtUnsafe);
+
+        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(
+            connection,
+            new TerrariaTileManipulationState((byte)TerrariaTileManipulationAction.KillWall, 10, 10, 0, 0)));
+        Assert.Equal(VanillaWallIds.DirtUnsafe, fixture.Tiles.Get(10, 10).WallType);
+        Assert.Equal(1, fixture.State.RejectedClientTileManipulations);
+
+        fixture.SetWall(9, 9, VanillaWallIds.None);
+        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(
+            connection,
+            new TerrariaTileManipulationState((byte)TerrariaTileManipulationAction.KillWall, 10, 10, 0, 0)));
+        Assert.Equal(VanillaWallIds.None, fixture.Tiles.Get(10, 10).WallType);
+        Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
+    }
+
+    [Fact]
+    public void Dungeon_wall_completion_is_gated_by_skeletron_progression()
+    {
+        using var locked = new Fixture();
+        ConnectionHandle lockedConnection = locked.SpawnPlayer(connectionId: 9904);
+        locked.SetSelectedInventoryItem(lockedConnection, VanillaItemIds.CopperHammer, stack: 1);
+        locked.SetWall(10, 10, VanillaWallIds.BlueDungeonUnsafe);
+        locked.SetWall(9, 9, VanillaWallIds.None);
+        locked.State.Apply(new ClientTileManipulationRuntimeCommand(
+            lockedConnection,
+            new TerrariaTileManipulationState((byte)TerrariaTileManipulationAction.KillWall, 10, 10, 0, 0)));
+        Assert.Equal(VanillaWallIds.BlueDungeonUnsafe, locked.Tiles.Get(10, 10).WallType);
+
+        using var unlocked = new Fixture(skeletronDownedBaseline: true);
+        ConnectionHandle unlockedConnection = unlocked.SpawnPlayer(connectionId: 9905);
+        unlocked.SetSelectedInventoryItem(unlockedConnection, VanillaItemIds.CopperHammer, stack: 1);
+        unlocked.SetWall(10, 10, VanillaWallIds.BlueDungeonUnsafe);
+        unlocked.SetWall(9, 9, VanillaWallIds.None);
+        unlocked.State.Apply(new ClientTileManipulationRuntimeCommand(
+            unlockedConnection,
+            new TerrariaTileManipulationState((byte)TerrariaTileManipulationAction.KillWall, 10, 10, 0, 0)));
+        Assert.Equal(VanillaWallIds.None, unlocked.Tiles.Get(10, 10).WallType);
+    }
+
     [Fact]
     public void Failed_pick_transform_is_an_explicit_typed_mutation()
     {
@@ -233,13 +328,17 @@ public sealed class ServerRuntimeSimpleTileKillAuthorityTests
         private readonly PlayerSlotPool slots = new(1);
         private PlayerJoinSession? session;
 
-        public Fixture()
+        public Fixture(bool skeletronDownedBaseline = false, bool golemDownedBaseline = false)
         {
             Tiles = new WorldTileStore(new WorldDimensions(200, 150));
             Items = new RuntimeWorldItemStore();
             Chests = new RuntimeChestStore([]);
             RuntimeWorldObjectMetadataRegistry.Bind(Tiles, Chests);
-            State = new ServerRuntimeState(worldTiles: Tiles, worldItems: Items);
+            State = new ServerRuntimeState(
+                worldTiles: Tiles,
+                worldItems: Items,
+                skeletronDownedBaseline: skeletronDownedBaseline,
+                golemDownedBaseline: golemDownedBaseline);
         }
 
         public WorldTileStore Tiles { get; }
@@ -284,6 +383,14 @@ public sealed class ServerRuntimeSimpleTileKillAuthorityTests
                 Type = checked((ushort)tileType.Value),
                 Flags = WorldTileFlags.Active
             };
+            Tiles.Set(x, y, in tile);
+        }
+
+
+        public void SetWall(int x, int y, WallTypeId wallType)
+        {
+            WorldTile tile = Tiles.Get(x, y);
+            Assert.True(tile.TrySetWallType(wallType));
             Tiles.Set(x, y, in tile);
         }
 

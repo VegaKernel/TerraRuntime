@@ -4,6 +4,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
+using TerraRuntime.World;
 
 namespace TerraRuntime.Application;
 
@@ -49,6 +50,27 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
         }
 
         return TryPublishFrame(excludedSource, encoded);
+    }
+
+    public bool TryPublishAuthoritativeCorrection(
+        GameCommandSourceId source,
+        WorldTileStore tiles,
+        int tileX,
+        int tileY)
+    {
+        ArgumentNullException.ThrowIfNull(tiles);
+        if (source.IsSystem ||
+            !TerrariaTileSquareCodec.TryEncodeCorrection(tiles, tileX, tileY, out byte[] encoded))
+        {
+            Interlocked.Increment(ref encodeFailures);
+            return false;
+        }
+
+        if (!endpoints.TryGetValue(source, out Endpoint? endpoint) || !endpoint.IsPlaying)
+            return false;
+
+        Publish(endpoint, new OutboundFrame(encoded));
+        return true;
     }
 
     public bool TryPublishPlaceObject(

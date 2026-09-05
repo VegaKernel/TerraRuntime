@@ -7,7 +7,7 @@ public sealed class ClientTileManipulationAdmissionPolicyTests
     [Theory]
     [InlineData((byte)TerrariaTileManipulationAction.KillTile, (byte)ClientTileManipulationAdmissionResult.Admitted)]
     [InlineData((byte)TerrariaTileManipulationAction.PlaceTile, (byte)ClientTileManipulationAdmissionResult.Admitted)]
-    [InlineData((byte)TerrariaTileManipulationAction.KillWall, (byte)ClientTileManipulationAdmissionResult.AuthorityUnavailable)]
+    [InlineData((byte)TerrariaTileManipulationAction.KillWall, (byte)ClientTileManipulationAdmissionResult.Admitted)]
     [InlineData((byte)TerrariaTileManipulationAction.PlaceWall, (byte)ClientTileManipulationAdmissionResult.AuthorityUnavailable)]
     [InlineData((byte)TerrariaTileManipulationAction.KillTileNoItem, (byte)ClientTileManipulationAdmissionResult.AuthorityUnavailable)]
     [InlineData(255, (byte)ClientTileManipulationAdmissionResult.UnknownWireAction)]

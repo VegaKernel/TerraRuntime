@@ -105,7 +105,9 @@ internal sealed class ServerRuntimeComposition
         bool masterMode,
         bool skyblockLowTiles,
         bool isThereAWorldSurface,
-        bool evilBossDownedBaseline)
+        bool evilBossDownedBaseline,
+        bool skeletronDownedBaseline,
+        bool golemDownedBaseline)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -131,6 +133,9 @@ internal sealed class ServerRuntimeComposition
             worldItemStore,
             npcStore,
             spawnRandom,
+            progression,
+            skeletronDownedBaseline,
+            golemDownedBaseline,
             tileManipulationReplication);
 
         RuntimeProjectileStore projectileStore = projectiles ?? new RuntimeProjectileStore();

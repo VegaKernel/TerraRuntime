@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using System.Buffers;
 using System.Reflection;
 using TerraRuntime.Contracts.Runtime;
@@ -5,6 +6,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
+using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
@@ -51,6 +53,38 @@ public sealed class RuntimeTileManipulationReplicationRegistryTests
         Assert.Equal(1, replication.RelayedFrames);
         Assert.Equal(0, replication.RejectedFrames);
         Assert.Equal(0, replication.EncodeFailures);
+    }
+
+
+    [Fact]
+    public void Authoritative_correction_targets_only_the_origin_with_packet20_tile_square()
+    {
+        var replication = new RuntimeTileManipulationReplicationRegistry();
+        GameCommandSourceId sourceA = GameCommandSourceId.FromConnection(805);
+        GameCommandSourceId sourceB = GameCommandSourceId.FromConnection(806);
+        TerrariaConnectionOutboundQueue outboundA = CreateOutbound();
+        TerrariaConnectionOutboundQueue outboundB = CreateOutbound();
+        Assert.True(replication.TryRegister(sourceA, outboundA));
+        Assert.True(replication.TryRegister(sourceB, outboundB));
+        ConnectionHandle playerA = Connection(sourceA, slot: 4, generation: 1);
+        ConnectionHandle playerB = Connection(sourceB, slot: 5, generation: 1);
+        PlayerSpawnCommitRequest spawnA = Spawn(playerA.Player.Slot);
+        PlayerSpawnCommitRequest spawnB = Spawn(playerB.Player.Slot);
+        replication.PlayerSpawned(playerA, in spawnA);
+        replication.PlayerSpawned(playerB, in spawnB);
+
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        WorldTile authoritative = tiles.Get(10, 10);
+        Assert.True(authoritative.TrySetWallType(VanillaWallIds.Stone));
+        tiles.Set(10, 10, in authoritative);
+
+        Assert.True(replication.TryPublishAuthoritativeCorrection(sourceA, tiles, 10, 10));
+
+        Assert.Equal(1, outboundA.QueuedFrames);
+        Assert.Equal(0, outboundB.QueuedFrames);
+        TerrariaFrame correction = DequeueFrame(outboundA);
+        Assert.Equal((byte)TerrariaMessageId.TileSquare, correction.MessageId);
+        Assert.Equal(1, replication.RelayedFrames);
     }
 
     [Fact]

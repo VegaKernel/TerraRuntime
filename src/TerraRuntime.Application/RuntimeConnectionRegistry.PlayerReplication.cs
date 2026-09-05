@@ -134,6 +134,7 @@ internal sealed partial class RuntimeConnectionRegistry
 
         SynchronizePlayerBaselines(source, request.ClaimedSlot, endpoint);
         SynchronizeServerPlayerBaselines(endpoint);
+        SynchronizeCreativeGodModeBaseline(endpoint);
 
         Span<PlayerSlotId> entered = stackalloc PlayerSlotId[ProtocolPlayerSlotCount];
         Span<PlayerSlotId> left = stackalloc PlayerSlotId[ProtocolPlayerSlotCount];
@@ -189,26 +190,6 @@ internal sealed partial class RuntimeConnectionRegistry
         ResetMovementVisibilityReadiness(player.Slot, visibility, entered, left);
         byte[] encoded = TerrariaPlayerReplicationFrameEncoder.EncodeTeleport(player.Slot, positionX, positionY, style, failed);
         Interlocked.Add(ref _relayedMovementFrames, BroadcastToPlaying(encoded));
-    }
-
-    public void PlayerAuthoritativeMovementCorrected(ConnectionHandle connection, in PlayerStateSnapshot player)
-    {
-        if (!connection.IsAssigned ||
-            player.Player != connection.Player ||
-            !_endpoints.TryGetValue(connection.Source, out RuntimeConnectionEndpoint? endpoint) ||
-            !endpoint.TryGetPlayingPlayer(out PlayerHandle currentPlayer) ||
-            currentPlayer != connection.Player)
-        {
-            return;
-        }
-
-        byte[] encoded = TerrariaPlayerReplicationFrameEncoder.EncodeMovement(in player);
-        endpoint.UpdatePosition(player.PositionX, player.PositionY);
-        endpoint.UpdateLatestMovementFrame(player.Player, encoded);
-
-        // This frame repairs client-local Hurt/knockback state for the owner. No authoritative movement
-        // changed, so relaying it to peers would be duplicate traffic and could create visible jitter.
-        _ = endpoint.Outbound.TryEnqueue(new OutboundFrame(encoded));
     }
 
     public void PlayerMoved(ConnectionHandle connection, in PlayerMovementCommitRequest request)
@@ -278,6 +259,8 @@ internal sealed partial class RuntimeConnectionRegistry
     {
         GameCommandSourceId source = connection.Source;
         PlayerSlotId slot = connection.Player.Slot;
+        if (slot.Value < _godModeByPlayer.Length)
+            _godModeByPlayer[slot.Value] = false;
         _interestRouter.RemovePlayer(slot);
         _movementVisibilityReadiness.ClearPlayer(slot);
 
@@ -297,6 +280,12 @@ internal sealed partial class RuntimeConnectionRegistry
             Interlocked.CompareExchange(ref _playingEndpoints[slot.Value], null, endpoint);
             endpoint.ClearPlaying(connection.Player);
         }
+    }
+
+    private void SynchronizeCreativeGodModeBaseline(RuntimeConnectionEndpoint endpoint)
+    {
+        byte[] encoded = TerrariaCreativeGodModeCodec1458.EncodeSyncEveryone(_godModeByPlayer);
+        _ = endpoint.Outbound.TryEnqueue(new OutboundFrame(encoded));
     }
 
     private void SynchronizePlayerBaselines(

@@ -23,7 +23,9 @@ internal static class ClientTileManipulationAdmissionPolicy
         if (!state.TryGetWireAction(out action))
             return ClientTileManipulationAdmissionResult.UnknownWireAction;
 
-        return action is TerrariaTileManipulationAction.KillTile or TerrariaTileManipulationAction.PlaceTile
+        return action is TerrariaTileManipulationAction.KillTile or
+            TerrariaTileManipulationAction.PlaceTile or
+            TerrariaTileManipulationAction.KillWall
             ? ClientTileManipulationAdmissionResult.Admitted
             : ClientTileManipulationAdmissionResult.AuthorityUnavailable;
     }

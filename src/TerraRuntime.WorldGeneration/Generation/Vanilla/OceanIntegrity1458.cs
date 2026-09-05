@@ -36,8 +36,6 @@ internal static class OceanIntegrity1458
         var floorByOffset = new int?[scanWidth];
         var wetByOffset = new bool[scanWidth];
         int lastWetOffset = -1;
-        int wetColumns = 0;
-        int floorColumns = 0;
 
         for (int offset = 0; offset < scanWidth; offset++)
         {
@@ -48,38 +46,53 @@ internal static class OceanIntegrity1458
 
             wetByOffset[offset] = true;
             lastWetOffset = offset;
-            wetColumns++;
             int sandY = FindSandFloor(store, x, waterSurface + 1, scanBottom);
             if (sandY >= 0)
             {
                 floorByOffset[offset] = sandY;
-                floorColumns++;
             }
         }
 
+        // Terraria's Beaches pass grows the basin from the inland anchor toward the map edge. Near that inland
+        // anchor the first several columns can legitimately be dry while depth ramps up. Later passes can also leave
+        // unrelated inland pools inside our deliberately wider scan window. Treat the first sustained dry run after
+        // a source-sized body as the end of the edge-connected ocean instead of extending the basin to the last
+        // incidental water column we happen to observe.
         int connectedWidth = lastWetOffset + 1;
-        if (connectedWidth < MinimumWetColumns)
-            return Invalid(left, $"only {connectedWidth} edge-connected columns contain ocean water");
-
+        int connectedWetColumns = 0;
+        int connectedFloorColumns = 0;
         int currentDryRun = 0;
         int maximumDryRun = 0;
         for (int offset = 0; offset < connectedWidth; offset++)
         {
             if (wetByOffset[offset])
             {
+                connectedWetColumns++;
+                if (floorByOffset[offset].HasValue)
+                    connectedFloorColumns++;
                 currentDryRun = 0;
                 continue;
             }
 
             currentDryRun++;
             maximumDryRun = Math.Max(maximumDryRun, currentDryRun);
+            if (currentDryRun <= MaximumConsecutiveDryColumns)
+                continue;
+
+            int dryRunStart = offset - currentDryRun + 1;
+            if (dryRunStart < MinimumWetColumns || connectedWetColumns < MinimumWetColumns)
+                return Invalid(left, $"water body contains a {currentDryRun}-column dry break");
+
+            connectedWidth = dryRunStart;
+            break;
         }
-        if (maximumDryRun > MaximumConsecutiveDryColumns)
-            return Invalid(left, $"water body contains a {maximumDryRun}-column dry break");
-        if (wetColumns < connectedWidth * MinimumWetCoverage)
-            return Invalid(left, $"wet coverage is {wetColumns}/{connectedWidth}");
-        if (floorColumns < wetColumns * MinimumFloorCoverage)
-            return Invalid(left, $"sand-floor coverage is {floorColumns}/{wetColumns}");
+
+        if (connectedWidth < MinimumWetColumns || connectedWetColumns < MinimumWetColumns)
+            return Invalid(left, $"only {connectedWidth} edge-connected columns contain ocean water");
+        if (connectedWetColumns < connectedWidth * MinimumWetCoverage)
+            return Invalid(left, $"wet coverage is {connectedWetColumns}/{connectedWidth}");
+        if (connectedFloorColumns < connectedWetColumns * MinimumFloorCoverage)
+            return Invalid(left, $"sand-floor coverage is {connectedFloorColumns}/{connectedWetColumns}");
 
         int comparableSteps = 0;
         int continuousSteps = 0;

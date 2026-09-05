@@ -636,38 +636,282 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
     private void ApplyOceanCaves(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        CarveOceanCaveSide(context, grid, random, left: true, bootstrap.LeftBeachEnd);
-        CarveOceanCaveSide(context, grid, random, left: false, bootstrap.RightBeachStart);
-        context.ReportProgress(1d, "Carving ocean caves");
+
+        // TerrariaServer 1.4.5.8 GenPassNameID.OceanCaves: ordinary worlds attempt at most one cave per side,
+        // never on the dungeon side, with a 1-in-3 roll. The previous compatibility implementation carved 2..4
+        // tunnels on both sides and could therefore erase freshly generated dungeon chests.
+        for (int side = 0; side < 2; side++)
+        {
+            bool left = side == 0;
+            if ((left && bootstrap.DungeonSide >= 1) || (!left && bootstrap.DungeonSide <= -1))
+                continue;
+            if (random.Next(3) != 0)
+                continue;
+
+            int x = left
+                ? random.Next(55, 95)
+                : random.Next(grid.Width - 95, grid.Width - 55);
+            int surface = grid.FindFirstActiveY(x, 0, grid.Height);
+            if (surface >= grid.Height)
+                continue;
+
+            CarveSourceOceanCave1458(
+                context,
+                grid,
+                random,
+                x,
+                surface,
+                state.WorldSurface,
+                state.RockLayer);
+        }
+
+        context.ReportProgress(1d, "Carving Terraria ocean caves");
     }
 
-    private static void CarveOceanCaveSide(
+    private static void CarveSourceOceanCave1458(
         IWorldGenerationContext context,
         RuntimeGrid grid,
         IRandom random,
-        bool left,
-        int beachBoundary)
+        int startX,
+        int startY,
+        double worldSurface,
+        double rockLayer)
     {
-        int caveCount = random.Next(2, 5);
-        for (int i = 0; i < caveCount; i++)
+        const int beachDistance = 380;
+        const ushort innerCaveType = 264;
+        const ushort sandType = 53;
+        const ushort hardenedSandType = 397;
+        const double minimumRadius = 4d;
+
+        double centerX = startX;
+        double centerY = startY;
+        double velocityX = startX < grid.Width / 2
+            ? 0.25d + random.NextDouble() * 0.25d
+            : -0.35d - random.NextDouble() * 0.5d;
+        double velocityY = 0.4d + random.NextDouble() * 0.25d;
+        double radius = random.Next(17, 25);
+        double remaining = random.Next(600, 800);
+        bool descending = true;
+
+        int iteration = 0;
+        while (radius > minimumRadius && remaining > 0d)
         {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            int x = left
-                ? random.Next(Math.Max(30, beachBoundary / 3), Math.Max(31, beachBoundary + 50))
-                : random.Next(
-                    Math.Min(grid.Width - 31, beachBoundary - 50),
-                    Math.Min(grid.Width - 30, grid.Width - (grid.Width - beachBoundary) / 3));
-            x = Math.Clamp(x, 20, grid.Width - 21);
-            int surface = grid.FindFirstActiveY(x, 20, Math.Min(grid.Height, grid.Height / 2));
-            if (surface >= grid.Height)
-                continue;
-            int y = Math.Min(grid.Height - 40, surface + random.Next(18, 46));
-            double angle = left
-                ? random.NextDouble() * 0.45d + 0.15d
-                : Math.PI - (random.NextDouble() * 0.45d + 0.15d);
-            CarveTunnel(grid, random, x, y, random.Next(55, 110), angle, random.Next(4, 7), downwardBias: 0.05d);
+            if ((iteration++ & 31) == 0)
+                context.CancellationToken.ThrowIfCancellationRequested();
+
+            bool placedSideShelf = false;
+            bool placedWaterShaft = false;
+            bool treasureSection = true;
+
+            if (centerX > beachDistance - 50 && centerX < grid.Width - beachDistance + 50)
+            {
+                radius *= 0.96d;
+                remaining *= 0.96d;
+            }
+            if (radius < minimumRadius + 2d || remaining < 20d)
+                treasureSection = false;
+
+            if (descending)
+            {
+                radius -= 0.01d + random.NextDouble() * 0.01d;
+                remaining -= 0.5d;
+            }
+            else
+            {
+                radius -= 0.02d + random.NextDouble() * 0.02d;
+                remaining -= 1d;
+            }
+
+            int left = Math.Max(1, (int)(centerX - radius * 3d));
+            int right = Math.Min(grid.Width - 1, (int)(centerX + radius * 3d));
+            int top = Math.Max(1, (int)(centerY - radius * 3d));
+            int bottom = Math.Min(grid.Height - 1, (int)(centerY + radius * 3d));
+
+            for (int x = left; x < right; x++)
+            {
+                for (int y = top; y < bottom; y++)
+                {
+                    if (IsBadOceanCaveTile1458(grid.At(x, y)))
+                        continue;
+
+                    double dx = Math.Abs(x - centerX);
+                    double dy = Math.Abs(y - centerY);
+                    double distance = Math.Sqrt(dx * dx + dy * dy);
+                    ref WorldTile tile = ref grid.At(x, y);
+
+                    if (treasureSection && distance < radius * 0.5d + 1d)
+                    {
+                        tile.Type = innerCaveType;
+                        tile.Flags &= ~WorldTileFlags.Active;
+                        tile.FrameX = -1;
+                        tile.FrameY = -1;
+                        tile.Shape = 0;
+                    }
+                    else if (distance < radius * 1.5d + 1d && tile.Type != innerCaveType)
+                    {
+                        if (y < centerY)
+                        {
+                            if ((velocityX < 0d && x < centerX) || (velocityX > 0d && x > centerX))
+                            {
+                                if (distance < radius * 1.1d + 1d)
+                                {
+                                    tile.Type = hardenedSandType;
+                                    if (tile.LiquidAmount == byte.MaxValue)
+                                        tile.Wall = 0;
+                                }
+                                else if (tile.Type != hardenedSandType)
+                                {
+                                    tile.Type = sandType;
+                                }
+                            }
+                        }
+                        else if ((velocityX < 0d && x < startX) || (velocityX > 0d && x > startX))
+                        {
+                            if (tile.LiquidAmount == byte.MaxValue)
+                                tile.Wall = 0;
+                            SetType(ref tile, sandType);
+
+                            if (x == (int)centerX && !placedSideShelf)
+                            {
+                                placedSideShelf = true;
+                                int shelfHeight = 50 + random.Next(3);
+                                int hardHeight = 43 + random.Next(3);
+                                int shelfWidth = 20 + random.Next(3);
+                                int shelfLeft = x;
+                                int shelfRight = x + shelfWidth;
+                                if (velocityX < 0d)
+                                {
+                                    shelfLeft = x - shelfWidth;
+                                    shelfRight = x;
+                                }
+                                if (remaining < 100d)
+                                {
+                                    shelfHeight = (int)(shelfHeight * (remaining / 100d));
+                                    hardHeight = (int)(hardHeight * (remaining / 100d));
+                                    shelfWidth = (int)(shelfWidth * (remaining / 100d));
+                                }
+                                if (radius < minimumRadius + 5d)
+                                {
+                                    double scale = (radius - minimumRadius) / 5d;
+                                    shelfHeight = (int)(shelfHeight * scale);
+                                    hardHeight = (int)(hardHeight * scale);
+                                    shelfWidth = (int)(shelfWidth * scale);
+                                }
+
+                                for (int sx = shelfLeft; sx <= shelfRight; sx++)
+                                {
+                                    if ((uint)sx >= (uint)grid.Width)
+                                        continue;
+                                    for (int sy = y; sy < y + shelfHeight && sy < grid.Height; sy++)
+                                    {
+                                        if (IsBadOceanCaveTile1458(grid.At(sx, sy)))
+                                            break;
+                                        ref WorldTile shelf = ref grid.At(sx, sy);
+                                        if (sy > y + hardHeight)
+                                        {
+                                            if (shelf.IsActive && shelf.Type != sandType)
+                                                break;
+                                            SetType(ref shelf, hardenedSandType);
+                                        }
+                                        else
+                                        {
+                                            SetType(ref shelf, sandType);
+                                        }
+
+                                        if (random.Next(3) == 0 && sx > 0)
+                                            SetType(ref grid.At(sx - 1, sy), sandType);
+                                        if (random.Next(3) == 0 && sx + 1 < grid.Width)
+                                            SetType(ref grid.At(sx + 1, sy), sandType);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (distance < radius * 1.3d + 1d && y > startY - 10 && !tile.IsActive)
+                    {
+                        // Terraria temporarily permits liquid bytes inside solids and relies on its later liquid
+                        // settling implementation to normalize them. TerraRuntime's compacting settle pass never
+                        // visits liquid trapped inside active solids, so store the post-settle semantic state here.
+                        tile.LiquidAmount = byte.MaxValue;
+                        tile.LiquidKind = WorldLiquidKind.Water;
+                    }
+
+                    if (!placedWaterShaft && x == (int)centerX && y > centerY)
+                    {
+                        placedWaterShaft = true;
+                        const int shaftHeight = 100;
+                        const int shaftHalfWidth = 2;
+                        for (int sx = x - shaftHalfWidth; sx <= x + shaftHalfWidth; sx++)
+                        {
+                            if ((uint)sx >= (uint)grid.Width)
+                                continue;
+                            for (int sy = y; sy < y + shaftHeight && sy < grid.Height; sy++)
+                            {
+                                ref WorldTile shaft = ref grid.At(sx, sy);
+                                if (IsBadOceanCaveTile1458(shaft) || shaft.IsActive)
+                                    continue;
+                                shaft.LiquidAmount = byte.MaxValue;
+                                shaft.LiquidKind = WorldLiquidKind.Water;
+                            }
+                        }
+                    }
+                }
+            }
+
+            centerX += velocityX;
+            centerY += velocityY;
+            velocityX += random.NextDouble() * 0.1d - 0.05d;
+            velocityY += random.NextDouble() * 0.1d - 0.05d;
+
+            if (descending)
+            {
+                if (centerY > (worldSurface * 2d + rockLayer) / 3d && centerY > startY + 30d)
+                    descending = false;
+                velocityY = Math.Clamp(velocityY, 0.35d, 1d);
+            }
+            else
+            {
+                if (centerX < grid.Width / 2)
+                {
+                    if (velocityX < 0.5d)
+                        velocityX += 0.02d;
+                }
+                else if (velocityX > -0.5d)
+                {
+                    velocityX -= 0.02d;
+                }
+
+                if (!treasureSection)
+                {
+                    if (velocityY < 0d)
+                        velocityY *= 0.95d;
+                    velocityY += 0.04d;
+                }
+                else if (centerY < (worldSurface * 4d + rockLayer) / 5d)
+                {
+                    if (velocityY < 0d)
+                        velocityY *= 0.97d;
+                    velocityY += 0.02d;
+                }
+                else if (velocityY > -0.1d)
+                {
+                    velocityY *= 0.99d;
+                    velocityY -= 0.01d;
+                }
+
+                velocityY = Math.Clamp(velocityY, -1d, 1d);
+            }
+
+            velocityX = centerX < grid.Width / 2
+                ? Math.Clamp(velocityX, 0.1d, 1d)
+                : Math.Clamp(velocityX, -1d, -0.1d);
         }
     }
+
+    private static bool IsBadOceanCaveTile1458(in WorldTile tile) =>
+        tile.Wall is 83 or 3 or 7 or 8 or 9 or 94 or 95 or 96 or 97 or 98 or 99 ||
+        tile.Type is 203 or 25 or 26 or 31 or 41 or 43 or 44 or 677 or 678 or 679;
 
     private void ApplyShimmer(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {

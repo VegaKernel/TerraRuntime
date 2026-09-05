@@ -22,6 +22,9 @@ internal sealed class WorldTileAuthority
     private readonly VanillaWorldTileMutationService? mutations;
     private readonly VanillaWorldLiquidSimulator1458? liquidSimulator;
     private readonly RuntimeTileManipulationReplicationRegistry? replication;
+    private readonly RuntimeWorldProgressionMutations progression;
+    private readonly bool skeletronDownedBaseline;
+    private readonly bool golemDownedBaseline;
     private readonly RuntimeObjectPlacementCommandProcessor? objectPlacement;
     private readonly VanillaMultiTileObjectMutationService? objectMutations;
     private readonly IVanillaMultiTileObjectMetadataLifecycle? objectMetadata;
@@ -38,6 +41,9 @@ internal sealed class WorldTileAuthority
         RuntimeWorldItemStore worldItems,
         RuntimeNpcStore npcs,
         IWorldItemSpawnRandom worldItemSpawnRandom,
+        RuntimeWorldProgressionMutations progression,
+        bool skeletronDownedBaseline,
+        bool golemDownedBaseline,
         RuntimeTileManipulationReplicationRegistry? replication)
     {
         this.players = players ?? throw new ArgumentNullException(nameof(players));
@@ -46,6 +52,9 @@ internal sealed class WorldTileAuthority
         this.worldItems = worldItems ?? throw new ArgumentNullException(nameof(worldItems));
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.worldItemSpawnRandom = worldItemSpawnRandom ?? throw new ArgumentNullException(nameof(worldItemSpawnRandom));
+        this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
+        this.skeletronDownedBaseline = skeletronDownedBaseline;
+        this.golemDownedBaseline = golemDownedBaseline;
         this.replication = replication;
         mutations = tiles is null ? null : new VanillaWorldTileMutationService(tiles);
         liquidMutations = tiles is null ? null : new VanillaWorldLiquidMutationService(tiles);
@@ -124,7 +133,7 @@ internal sealed class WorldTileAuthority
         IVanillaMultiTileObjectMetadataLifecycle? metadata = objectMetadata;
         if (tiles is null || objectService is null || metadata is null || tileState.Data != 0)
         {
-            UnsupportedClientManipulations++;
+            UnsupportedWithCorrection(command, in tileState);
             return;
         }
 
@@ -134,7 +143,7 @@ internal sealed class WorldTileAuthority
             out VanillaMultiTileObjectMutationDescriptor descriptor);
         if (resolve != VanillaMultiTileObjectMutationStatus.Applied)
         {
-            RejectedClientManipulations++;
+            RejectWithCorrection(command, in tileState);
             return;
         }
 
@@ -142,7 +151,7 @@ internal sealed class WorldTileAuthority
         int framePeriod = descriptor.Definition.Width * VanillaMultiTileObjectMutationService.FrameCellSize;
         if (framePeriod <= 0 || topLeft.FrameX < 0 || topLeft.FrameX % framePeriod != 0)
         {
-            UnsupportedClientManipulations++;
+            UnsupportedWithCorrection(command, in tileState);
             return;
         }
 
@@ -153,14 +162,14 @@ internal sealed class WorldTileAuthority
                 alternate: 0,
                 out VanillaItemObjectPlacementDefinition itemDefinition))
         {
-            UnsupportedClientManipulations++;
+            UnsupportedWithCorrection(command, in tileState);
             return;
         }
 
         if (!worldItems.TryReserveDropSlot(out WorldItemDropReservation reservation))
         {
-            RejectedClientManipulations++;
             RejectedWorldItemAllocations++;
+            RejectWithCorrection(command, in tileState);
             return;
         }
 
@@ -171,7 +180,7 @@ internal sealed class WorldTileAuthority
         if (!broken.Applied)
         {
             _ = worldItems.TryReleaseDropReservation(in reservation);
-            RejectedClientManipulations++;
+            RejectWithCorrection(command, in tileState);
             return;
         }
 
@@ -190,6 +199,106 @@ internal sealed class WorldTileAuthority
         }
 
         AppliedWorldItemAllocations++;
+        AppliedClientManipulations++;
+        replication?.TryPublishCommitted(command.Connection.Source, in tileState);
+    }
+
+    private void ApplyClientWallBreak(
+        ClientTileManipulationRuntimeCommand command,
+        RuntimePlayerMember player,
+        in TerrariaTileManipulationState tileState)
+    {
+        if (tiles is null || mutations is null)
+            throw new InvalidOperationException("Wall authority requires an authoritative tile store.");
+
+        if (tileState.Data != 0 && tileState.Data != 1)
+        {
+            UnsupportedWithCorrection(command, in tileState);
+            return;
+        }
+
+        if (!players.TryGetInventoryItem(
+                command.Connection,
+                player.SelectedItem,
+                out RuntimePlayerInventoryItem toolItem) ||
+            toolItem.IsEmpty ||
+            !VanillaHammerToolCatalog1458.TryGetHammerPower(toolItem.ItemType, out _))
+        {
+            RejectWithCorrection(command, in tileState);
+            return;
+        }
+
+        WorldTile before = tiles.Get(tileState.TileX, tileState.TileY);
+        WallTypeId wall = before.WallType;
+        if (wall == VanillaWallIds.None ||
+            !VanillaWallDefinitionCatalog.TryGet(wall, out _) ||
+            !VanillaWallBreakRules1458.CanPlayerSmashWall(tiles, tileState.TileX, tileState.TileY))
+        {
+            RejectWithCorrection(command, in tileState);
+            return;
+        }
+
+        // PickWall sends packet-17 Data=1 while accumulated hammer damage is below 100. It is a source-backed
+        // visual attempt, not a completed wall removal, so relay it without mutating authoritative state.
+        if (tileState.Data == 1)
+        {
+            AppliedClientManipulations++;
+            replication?.TryPublishAccepted(command.Connection.Source, in tileState);
+            return;
+        }
+
+        bool skeletronDowned =
+            skeletronDownedBaseline || progression.IsCompleted(VanillaWorldProgressionId.Skeletron);
+        bool golemDowned =
+            golemDownedBaseline || progression.IsCompleted(VanillaWorldProgressionId.Golem);
+        if (!VanillaWallBreakRules1458.IsProgressionUnlocked(wall, skeletronDowned, golemDowned) ||
+            !VanillaWallDropCatalog1458.TryResolve(wall, out ItemTypeId dropItem))
+        {
+            RejectWithCorrection(command, in tileState);
+            return;
+        }
+
+        WorldItemDropReservation reservation = default;
+        bool reserved = false;
+        if (!dropItem.IsNone)
+        {
+            if (!worldItems.TryReserveDropSlot(out reservation))
+            {
+                RejectedWorldItemAllocations++;
+                RejectWithCorrection(command, in tileState);
+                return;
+            }
+            reserved = true;
+        }
+
+        if (!ApplyTileMutation(
+                mutations,
+                WorldTileMutationKind.KillWall,
+                tileState.TileX,
+                tileState.TileY))
+        {
+            if (reserved)
+                _ = worldItems.TryReleaseDropReservation(in reservation);
+            RejectWithCorrection(command, in tileState);
+            return;
+        }
+
+        if (reserved)
+        {
+            WorldItemDropStateUpdate dropState = VanillaSimpleTileBreakResolver1458.MaterializeItemState(
+                dropItem,
+                stack: 1,
+                tileState.TileX,
+                tileState.TileY,
+                worldItemSpawnRandom);
+            if (!worldItems.TryCommitReservedDrop(in reservation, in dropState, out _))
+            {
+                throw new InvalidOperationException(
+                    "Reserved wall drop could not commit after authoritative wall mutation.");
+            }
+            AppliedWorldItemAllocations++;
+        }
+
         AppliedClientManipulations++;
         replication?.TryPublishCommitted(command.Connection.Source, in tileState);
     }
@@ -254,27 +363,33 @@ internal sealed class WorldTileAuthority
             return;
         }
 
-        if (ClientTileManipulationAdmissionPolicy.Evaluate(command.State, out var action) !=
+        var tileState = command.State;
+        if (ClientTileManipulationAdmissionPolicy.Evaluate(tileState, out var action) !=
             ClientTileManipulationAdmissionResult.Admitted)
         {
-            UnsupportedClientManipulations++;
+            UnsupportedWithCorrection(command, in tileState);
             return;
         }
 
         if (!editBudget.TryConsume(command.Connection.Player.Slot))
         {
-            RejectedClientManipulations++;
+            RejectWithCorrection(command, in tileState);
             return;
         }
 
         ValidatedClientManipulations++;
-        var tileState = command.State;
+
+        if (action == TerrariaTileManipulationAction.KillWall)
+        {
+            ApplyClientWallBreak(command, player, in tileState);
+            return;
+        }
 
         if (action == TerrariaTileManipulationAction.KillTile)
         {
             if (tileState.Data != 0 && tileState.Data != 1)
             {
-                UnsupportedClientManipulations++;
+                UnsupportedWithCorrection(command, in tileState);
                 return;
             }
 
@@ -285,7 +400,7 @@ internal sealed class WorldTileAuthority
                 toolItem.IsEmpty ||
                 !VanillaPickToolCatalog1458.TryGetPickPower(toolItem.ItemType, out short pickPower))
             {
-                RejectedClientManipulations++;
+                RejectWithCorrection(command, in tileState);
                 return;
             }
 
@@ -299,7 +414,7 @@ internal sealed class WorldTileAuthority
                     beforeType,
                     pickPower))
             {
-                RejectedClientManipulations++;
+                RejectWithCorrection(command, in tileState);
                 return;
             }
 
@@ -312,7 +427,7 @@ internal sealed class WorldTileAuthority
             if (tileDefinition.BreakPath is not VanillaTileBreakPath.SimpleCell and
                 not VanillaTileBreakPath.FrameImportantSingleCell)
             {
-                UnsupportedClientManipulations++;
+                UnsupportedWithCorrection(command, in tileState);
                 return;
             }
 
@@ -327,7 +442,7 @@ internal sealed class WorldTileAuthority
                             tileState.TileY,
                             transformTarget))
                     {
-                        RejectedClientManipulations++;
+                        RejectWithCorrection(command, in tileState);
                         return;
                     }
 
@@ -343,7 +458,7 @@ internal sealed class WorldTileAuthority
 
             if (!tileDefinition.IsBreakableByPick || tileDefinition.TransformsOnFailedPick)
             {
-                RejectedClientManipulations++;
+                RejectWithCorrection(command, in tileState);
                 return;
             }
 
@@ -366,7 +481,7 @@ internal sealed class WorldTileAuthority
                 worldItemSpawnRandom);
             if (breakOutcome.DropStatus == VanillaTileDropResolutionStatus.WrongPath)
             {
-                UnsupportedClientManipulations++;
+                UnsupportedWithCorrection(command, in tileState);
                 return;
             }
 
@@ -379,8 +494,8 @@ internal sealed class WorldTileAuthority
             {
                 if (!worldItems.TryReserveDropSlot(out reservation))
                 {
-                    RejectedClientManipulations++;
                     RejectedWorldItemAllocations++;
+                    RejectWithCorrection(command, in tileState);
                     return;
                 }
 
@@ -395,7 +510,7 @@ internal sealed class WorldTileAuthority
             {
                 if (reserved)
                     _ = worldItems.TryReleaseDropReservation(in reservation);
-                RejectedClientManipulations++;
+                RejectWithCorrection(command, in tileState);
                 return;
             }
 
@@ -452,7 +567,7 @@ internal sealed class WorldTileAuthority
                 player.SelectedItem,
                 out RuntimePlayerInventoryItem selectedItem))
         {
-            RejectedClientManipulations++;
+            RejectWithCorrection(command, in tileState);
             return;
         }
 
@@ -461,17 +576,17 @@ internal sealed class WorldTileAuthority
         switch (consistency)
         {
             case ClientTileManipulationConsistencyResult.Mismatch:
-                RejectedClientManipulations++;
+                RejectWithCorrection(command, in tileState);
                 return;
 
             case ClientTileManipulationConsistencyResult.Unsupported:
-                UnsupportedClientManipulations++;
+                UnsupportedWithCorrection(command, in tileState);
                 return;
 
             case ClientTileManipulationConsistencyResult.Consistent:
                 if (!VanillaTileIds.TryCreate(tileState.Data, out TileTypeId requestedTile))
                 {
-                    RejectedClientManipulations++;
+                    RejectWithCorrection(command, in tileState);
                     return;
                 }
 
@@ -479,14 +594,14 @@ internal sealed class WorldTileAuthority
                     definition.IsFrameImportant ||
                     VanillaMultiTileObjectCatalog.TryGet(requestedTile, out _))
                 {
-                    RejectedClientManipulations++;
+                    RejectWithCorrection(command, in tileState);
                     return;
                 }
 
                 if (requestedTile == VanillaTileIds.Dirt &&
                     !VanillaDirtRules1458.CanPlaceOnEmpty(tiles, tileState.TileX, tileState.TileY))
                 {
-                    RejectedClientManipulations++;
+                    RejectWithCorrection(command, in tileState);
                     return;
                 }
 
@@ -497,7 +612,7 @@ internal sealed class WorldTileAuthority
                         tileState.TileY,
                         requestedTile))
                 {
-                    RejectedClientManipulations++;
+                    RejectWithCorrection(command, in tileState);
                     return;
                 }
 
@@ -510,6 +625,24 @@ internal sealed class WorldTileAuthority
         }
     }
 
+
+    private void RejectWithCorrection(
+        ClientTileManipulationRuntimeCommand command,
+        in TerrariaTileManipulationState state)
+    {
+        RejectedClientManipulations++;
+        if (tiles is not null)
+            replication?.TryPublishAuthoritativeCorrection(command.Connection.Source, tiles, state.TileX, state.TileY);
+    }
+
+    private void UnsupportedWithCorrection(
+        ClientTileManipulationRuntimeCommand command,
+        in TerrariaTileManipulationState state)
+    {
+        UnsupportedClientManipulations++;
+        if (tiles is not null)
+            replication?.TryPublishAuthoritativeCorrection(command.Connection.Source, tiles, state.TileX, state.TileY);
+    }
 
     private void SpawnTileBreakNpc(in NpcAiSpawnIntent intent, bool shouldSpawn)
     {

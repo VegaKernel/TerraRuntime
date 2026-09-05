@@ -146,63 +146,6 @@ public sealed class RuntimeConnectionRegistryMovementSnapshotTests
         Assert.Equal(1, registry.SuppressedDuplicateMovementFrames);
     }
 
-    [Fact]
-    public void Authoritative_movement_correction_is_sent_only_to_the_owning_client()
-    {
-        var registry = new RuntimeConnectionRegistry();
-        GameCommandSourceId ownerSource = GameCommandSourceId.FromConnection(61);
-        GameCommandSourceId peerSource = GameCommandSourceId.FromConnection(62);
-        var ownerOutbound = new TerrariaConnectionOutboundQueue(
-            new OutboundQueueOptions(maxFrames: 32, maxQueuedBytes: 32_768, maxFrameBytes: 1_024));
-        var peerOutbound = new TerrariaConnectionOutboundQueue(
-            new OutboundQueueOptions(maxFrames: 32, maxQueuedBytes: 32_768, maxFrameBytes: 1_024));
-        var ownerSlot = new PlayerSlotId(11);
-        var peerSlot = new PlayerSlotId(12);
-        ConnectionHandle owner = Connection(ownerSource, ownerSlot);
-        ConnectionHandle peer = Connection(peerSource, peerSlot);
-
-        Assert.True(registry.TryRegister(ownerSource, ownerOutbound));
-        Assert.True(registry.TryRegister(peerSource, peerOutbound));
-        PlayerSpawnCommitRequest ownerSpawn = CreateSpawnRequest(ownerSlot);
-        PlayerSpawnCommitRequest peerSpawn = CreateSpawnRequest(peerSlot);
-        registry.PlayerSpawned(owner, in ownerSpawn);
-        registry.PlayerSpawned(peer, in peerSpawn);
-
-        int ownerBefore = ownerOutbound.QueuedFrames;
-        int peerBefore = peerOutbound.QueuedFrames;
-        PlayerMovementCommitRequest movement = CreateMovementRequest(ownerSlot, 1_777f, 2_999f, selectedItem: 4);
-        PlayerStateSnapshot correction = Snapshot(owner.Player, in movement);
-
-        registry.PlayerAuthoritativeMovementCorrected(owner, in correction);
-
-        Assert.Equal(ownerBefore + 1, ownerOutbound.QueuedFrames);
-        Assert.Equal(peerBefore, peerOutbound.QueuedFrames);
-        Assert.True(registry.TryGetLatestPlayerMovementFrame(ownerSlot, out OutboundFrame retained));
-        Assert.True(retained.Bytes.Span.SequenceEqual(Encode(in movement)));
-    }
-
-    private static PlayerStateSnapshot Snapshot(PlayerHandle player, in PlayerMovementCommitRequest movement) =>
-        new(
-            player,
-            new PlayerStateRevision(1),
-            Team: 0,
-            movement.ControlFlags,
-            movement.MovementFlags,
-            movement.MiscFlags1,
-            movement.MiscFlags2,
-            movement.SelectedItem,
-            movement.PositionX,
-            movement.PositionY,
-            movement.VelocityX,
-            movement.VelocityY,
-            movement.MountType,
-            movement.PotionOfReturnOriginalPositionX,
-            movement.PotionOfReturnOriginalPositionY,
-            movement.PotionOfReturnHomePositionX,
-            movement.PotionOfReturnHomePositionY,
-            movement.CameraTargetX,
-            movement.CameraTargetY);
-
     private static PlayerSpawnCommitRequest CreateSpawnRequest(PlayerSlotId slot) =>
         new(
             slot,

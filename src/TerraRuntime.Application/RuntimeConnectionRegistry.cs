@@ -22,6 +22,7 @@ internal sealed partial class RuntimeConnectionRegistry : IRuntimePlayerEventSin
     private readonly ServerPlayerReplicaStore _serverPlayers = new();
     private readonly RuntimeInterestRouter _interestRouter;
     private readonly RuntimePlayerMovementVisibilityReadiness _movementVisibilityReadiness = new();
+    private readonly bool[] _godModeByPlayer = new bool[TerrariaCreativeGodModeCodec1458.PlayerStateCount];
     private long _relayedAppearanceFrames;
     private long _appearanceBaselineFrames;
     private long _relayedEquipmentFrames;

@@ -40,7 +40,9 @@ internal sealed partial class ServerRuntimeState
         bool masterMode = false,
         bool skyblockLowTiles = false,
         bool isThereAWorldSurface = true,
-        bool evilBossDownedBaseline = false)
+        bool evilBossDownedBaseline = false,
+        bool skeletronDownedBaseline = false,
+        bool golemDownedBaseline = false)
     {
         _runtime = ServerRuntimeComposition.Create(
             playerEvents,
@@ -72,6 +74,8 @@ internal sealed partial class ServerRuntimeState
             masterMode,
             skyblockLowTiles,
             isThereAWorldSurface,
-            evilBossDownedBaseline);
+            evilBossDownedBaseline,
+            skeletronDownedBaseline,
+            golemDownedBaseline);
     }
 }

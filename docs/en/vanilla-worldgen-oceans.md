@@ -38,3 +38,22 @@ Water continuity, floor coverage and beach-rise limits remain enforced; no ocean
 `VanillaOceanGeneration1458Tests` separately rejects a connected water body without a sand floor and a wide dry gap.
 Canonical-size and reference-differential workflow filters now follow the moved `TerraRuntime.WorldGeneration` and
 `TerraRuntime.Application` sources so generation changes continue to trigger these checks.
+
+## Small-world ocean-cave and basin-terminus regressions
+
+The canonical Small-world seed sweep now retains two failures that exposed different source-parity bugs.
+
+`Create Ocean Caves` follows the ordinary TerrariaServer 1.4.5.8 side-selection contract: at most one cave is
+attempted per coast, the dungeon coast is skipped, and the ordinary attempt uses the source 1-in-3 roll and
+`[55, 95)` edge start range. The cave body follows the pinned `WorldGen.oceanCave` / `badOceanCaveTiles` geometry and
+protected-content rules rather than the previous synthetic multi-tunnel approximation. TerraRuntime normalizes
+liquid writes into active solids to the post-settle state because its compacting liquid pass does not revisit liquid
+bytes trapped inside solid tiles.
+
+`OceanIntegrity1458` now stops the edge-connected basin at the first sustained dry run after a source-sized ocean
+body. This prevents unrelated inland ponds beyond the natural shoreline from extending the validation window and
+turning the shoreline itself into a false "dry break". Wide gaps before the minimum connected body are still rejected.
+
+Regression seeds `14419291354518832569` and `18104330376949184882` exercise the former dungeon-chest corruption and
+false ocean-boundary rejection respectively through canonical Small-world finalization. A separate synthetic integrity
+test keeps the inland-water terminus case isolated from the full generator.

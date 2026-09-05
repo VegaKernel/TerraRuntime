@@ -95,15 +95,16 @@ public sealed class ProjectileLifecycleFrameSinkTests
     }
 
     [Fact]
-    public void Bounded_game_ingress_rejection_stops_connection()
+    public void Bounded_game_ingress_rejection_drops_replaceable_update_without_stopping_connection()
     {
         GameCommandSourceId source = GameCommandSourceId.FromConnection(706);
         using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
         var sink = new ProjectileLifecycleFrameSink(source, bootstrap, new PassthroughSink(), new RejectingIngress());
         TerrariaProjectileUpdateState state = CreateUpdate(spawner: 0, type: 1, index: 1, generation: 1);
 
-        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(UpdateFrame(in state)));
-        Assert.Equal(ProjectileLifecycleFrameStopReason.GameIngressBackpressure, sink.StopReason);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(UpdateFrame(in state)));
+        Assert.Equal(ProjectileLifecycleFrameStopReason.None, sink.StopReason);
+        Assert.Equal(1, sink.DroppedAuthorityUpdates);
     }
 
     private static TerrariaProjectileUpdateState CreateUpdate(byte spawner, int type, ushort index, ushort generation) =>

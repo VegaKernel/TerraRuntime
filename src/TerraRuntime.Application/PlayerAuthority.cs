@@ -35,9 +35,6 @@ internal sealed partial class PlayerAuthority
     private readonly RuntimePvpCombatIntegrity pvpCombat;
     private int lastSpawnCommitResult = -1;
     private long currentCombatTick;
-    private const long GodModeMovementCorrectionTicks = 2;
-    private readonly PlayerHandle[] godModeMovementCorrectionPlayers = new PlayerHandle[MaxPlayerSlots];
-    private readonly long[] godModeMovementCorrectionUntil = new long[MaxPlayerSlots];
     private readonly RuntimePlayerDamageImmunityStore damageImmunity = new(MaxPlayerSlots);
     private readonly bool expertMode;
     private readonly bool masterMode;
@@ -456,20 +453,6 @@ internal sealed partial class PlayerAuthority
                 return;
             }
 
-            // Creative-style god mode owns incoming damage too. Terraria's lava, drowning and fall damage are
-            // client-local Player.Hurt sources; until those environmental systems are fully server-simulated,
-            // packet 16 is the only place they can attempt to lower authoritative HP. Never accept that decrease.
-            // Re-send the current authoritative value to the owner so the client is corrected immediately.
-            if (activePlayer.GodMode && activePlayer.HasHealth && request.Life < activePlayer.Life)
-            {
-                RejectedHealthUpdates++;
-                // Environmental/client-local Hurt sources can change both life and velocity before their
-                // packet 16/13 reports reach us. Reassert both owner states and keep the short movement
-                // correction epoch active for every packet 13 that arrives during the same local Hurt.
-                ReassertGodModeOwnerState(activePlayer, currentCombatTick);
-                return;
-            }
-
             if (!activePlayer.TryAdvanceRevision())
             {
                 RejectedHealthUpdates++;
@@ -598,9 +581,8 @@ internal sealed partial class PlayerAuthority
         player.Team = request.Team;
         player.PositionX = request.SpawnX * 16f;
         player.PositionY = request.SpawnY * 16f;
-        // A respawn is a movement discontinuity. Never carry the pre-death packet-13 transient bits into
-        // the new life: GodMode or another owner correction could otherwise replay stale controls/mount/
-        // return-camera state before the client's first fresh movement packet arrives.
+        // A respawn is a movement discontinuity. Never carry pre-death packet-13 transient bits into
+        // the new life before the client's first fresh movement packet arrives.
         player.ControlFlags = 0;
         player.MovementFlags = 0;
         player.MiscFlags1 = 0;
@@ -749,50 +731,6 @@ internal sealed partial class PlayerAuthority
         positionY = floorTileY * 16f + 16f - VanillaBasePlayerHeight;
     }
 
-    private void ArmGodModeMovementCorrection(PlayerHandle player, long tick)
-    {
-        int slot = player.Slot.Value;
-        godModeMovementCorrectionPlayers[slot] = player;
-        godModeMovementCorrectionUntil[slot] = tick > long.MaxValue - GodModeMovementCorrectionTicks
-            ? long.MaxValue
-            : tick + GodModeMovementCorrectionTicks;
-    }
-
-    private bool IsGodModeMovementCorrectionActive(PlayerHandle player, long tick)
-    {
-        int slot = player.Slot.Value;
-        if (godModeMovementCorrectionPlayers[slot] != player)
-            return false;
-
-        if (tick <= godModeMovementCorrectionUntil[slot])
-            return true;
-
-        godModeMovementCorrectionPlayers[slot] = default;
-        godModeMovementCorrectionUntil[slot] = 0;
-        return false;
-    }
-
-    private void ReassertGodModeOwnerState(RuntimePlayerMember player, long tick)
-    {
-        ArmGodModeMovementCorrection(player.Connection.Player, tick);
-
-        var health = new PlayerHealthCommitRequest(player.Slot, player.Life, player.MaxLife);
-        events?.PlayerAuthoritativeHealthUpdated(player.Connection, in health);
-
-        PlayerStateSnapshot movement = player.CaptureSnapshot();
-        events?.PlayerAuthoritativeMovementCorrected(player.Connection, in movement);
-    }
-
-    private void ClearGodModeMovementCorrection(PlayerHandle player)
-    {
-        int slot = player.Slot.Value;
-        if (godModeMovementCorrectionPlayers[slot] != player)
-            return;
-
-        godModeMovementCorrectionPlayers[slot] = default;
-        godModeMovementCorrectionUntil[slot] = 0;
-    }
-
     private void ApplyPlayerMovement(PlayerMovementRuntimeCommand movement)
     {
         PlayerMovementCommitRequest submitted = movement.Request;
@@ -807,16 +745,6 @@ internal sealed partial class PlayerAuthority
         if (!membership.TryGet(movement.Connection, out RuntimePlayerMember? player))
         {
             RejectedMovements++;
-            return;
-        }
-
-        if (IsGodModeMovementCorrectionActive(player.Connection.Player, currentCombatTick))
-        {
-            // Packet 13 frames arriving during the short local-Hurt correction epoch can still carry client-side
-            // knockback. None of them is an authoritative movement decision; keep and reassert the pre-hit state.
-            RejectedMovements++;
-            PlayerStateSnapshot correction = player.CaptureSnapshot();
-            events?.PlayerAuthoritativeMovementCorrected(player.Connection, in correction);
             return;
         }
 

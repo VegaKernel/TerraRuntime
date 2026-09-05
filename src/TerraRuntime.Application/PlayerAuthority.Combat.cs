@@ -239,11 +239,9 @@ internal sealed partial class PlayerAuthority
         PlayerHandle targetHandle,
         RuntimePlayerMember target)
     {
-        // Terraria applies several Hurt paths locally before packet 16/13 reach the server. Merely refusing
-        // authoritative damage therefore leaves a brief local HP loss and knockback. Reassert both owner-only
-        // states immediately; MISS remains a separate visual acknowledgement for observers.
-        ReassertGodModeOwnerState(target, tick);
-
+        // player.GodMode mirrors Terraria's CreativePowers.GodmodePower. The client prevents Player.Hurt
+        // locally while the authoritative runtime refuses the same damage against its mirrored player state.
+        // No health or movement repair path exists here.
         events?.PlayerDamageAvoided(
             targetHandle,
             target.PositionX + VanillaBasePlayerWidth * 0.5f,
@@ -260,9 +258,11 @@ internal sealed partial class PlayerAuthority
             return;
         }
 
-        player.GodMode = command.Enabled;
-        if (!command.Enabled)
-            ClearGodModeMovementCorrection(command.Player);
+        if (player.GodMode != command.Enabled)
+        {
+            player.GodMode = command.Enabled;
+            events?.PlayerGodModeChanged(command.Player, command.Enabled);
+        }
         command.Completion.TrySetResult(true);
     }
 

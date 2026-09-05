@@ -156,9 +156,15 @@ public sealed class ProjectileLifecycleFrameSink :
             return TerrariaFrameSinkResult.Continue;
         }
 
-        return ingress.TryPostUpdate(connection, in state)
-            ? TerrariaFrameSinkResult.Continue
-            : Stop(ProjectileLifecycleFrameStopReason.GameIngressBackpressure);
+        if (ingress.TryPostUpdate(connection, in state))
+            return TerrariaFrameSinkResult.Continue;
+
+        // Packet 27 is a replaceable projectile snapshot. When the authoritative mailbox is temporarily full,
+        // dropping this stale sample is equivalent to losing one intermediate network update: a later packet 27
+        // converges position/velocity/AI state. Do not turn ordinary projectile bursts into "Connection lost".
+        // Discrete destroy and NPC-damage events below remain strict and still fail closed on backpressure.
+        Interlocked.Increment(ref droppedAuthorityUpdates);
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private TerrariaFrameSinkResult HandleNpcDamage(in TerrariaFrame frame)

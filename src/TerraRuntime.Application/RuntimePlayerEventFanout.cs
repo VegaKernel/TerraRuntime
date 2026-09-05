@@ -68,16 +68,16 @@ internal sealed class RuntimePlayerEventFanout(
         second.PlayerMoved(connection, in request);
     }
 
-    public void PlayerAuthoritativeMovementCorrected(ConnectionHandle connection, in PlayerStateSnapshot player)
-    {
-        first.PlayerAuthoritativeMovementCorrected(connection, in player);
-        second.PlayerAuthoritativeMovementCorrected(connection, in player);
-    }
-
     public void PlayerDamageAvoided(PlayerHandle player, float positionX, float positionY, string text)
     {
         first.PlayerDamageAvoided(player, positionX, positionY, text);
         second.PlayerDamageAvoided(player, positionX, positionY, text);
+    }
+
+    public void PlayerGodModeChanged(PlayerHandle player, bool enabled)
+    {
+        first.PlayerGodModeChanged(player, enabled);
+        second.PlayerGodModeChanged(player, enabled);
     }
 
     public void PlayerDisconnected(ConnectionHandle connection)

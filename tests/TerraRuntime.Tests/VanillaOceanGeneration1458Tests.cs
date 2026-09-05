@@ -80,6 +80,31 @@ public sealed class VanillaOceanGeneration1458Tests
     }
 
     [Fact]
+    public void Integrity_gate_stops_at_the_ocean_terminus_before_unrelated_inland_water()
+    {
+        WorldTileStore store = CreateSyntheticOcean(dryGapStart: 200, dryGapWidth: 16);
+        for (int x = 216; x < 232; x++)
+        {
+            int floor = 180 - x / 4;
+            for (int y = 100; y < floor; y++)
+            {
+                ref WorldTile water = ref store.Tiles[store.GetUncheckedIndex(x, y)];
+                water.LiquidAmount = byte.MaxValue;
+                water.LiquidKind = WorldLiquidKind.Water;
+            }
+
+            ref WorldTile sand = ref store.Tiles[store.GetUncheckedIndex(x, floor)];
+            sand.Type = OceanGenerationCatalog1458.SandTileType;
+            sand.Flags = WorldTileFlags.Active;
+        }
+
+        OceanIntegrityResult1458 result = OceanIntegrity1458.Validate(
+            store, beachBoundary: 250, left: true, worldSurface: 100d);
+
+        Assert.True(result.IsValid, result.Detail);
+    }
+
+    [Fact]
     public void Integrity_gate_rejects_connected_water_without_sand_floor()
     {
         WorldTileStore store = CreateSyntheticOcean(dryGapStart: -1, dryGapWidth: 0);

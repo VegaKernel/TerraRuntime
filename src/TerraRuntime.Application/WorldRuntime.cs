@@ -213,7 +213,9 @@ public sealed class WorldRuntime : IDisposable
             masterMode: world.RuntimeMetadata.GameMode == (byte)WorldGenerationGameMode.Master,
             skyblockLowTiles: skyblockRuntime.LowTiles,
             isThereAWorldSurface: world.RuntimeMetadata.WorldSurface > 50,
-            evilBossDownedBaseline: world.RuntimeMetadata.DownedBoss2);
+            evilBossDownedBaseline: world.RuntimeMetadata.DownedBoss2,
+            skeletronDownedBaseline: world.RuntimeMetadata.DownedBoss3,
+            golemDownedBaseline: world.RuntimeMetadata.DownedGolemBoss);
 
         sectionCacheRebuild = new SectionCacheRebuildPipeline(
             world,

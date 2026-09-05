@@ -95,6 +95,26 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
     }
 
     [Theory]
+    [InlineData(14419291354518832569UL)]
+    [InlineData(18104330376949184882UL)]
+    public void Canonical_small_regression_seeds_finalize_without_world_corruption(ulong seed)
+    {
+        var request = new WorldGenerationRequest(VanillaId, $"Regression-{seed}", seed, 4200, 1200)
+        {
+            SeedText = seed.ToString()
+        };
+        var pipeline = new RuntimeWorldCreationPipeline(BuiltInWorldGeneratorSource.Instance);
+
+        RuntimeWorldCreationPipelineResult result = pipeline.CreateCandidate(
+            in request,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(
+            result.Succeeded,
+            result.Finalization?.Validation?.Detail ?? result.Generation.Execution?.Error?.ToString());
+    }
+
+    [Theory]
     [InlineData(4200, 1200)]
     [InlineData(6400, 1800)]
     [InlineData(8400, 2400)]
