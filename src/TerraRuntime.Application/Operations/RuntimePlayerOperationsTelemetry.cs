@@ -8,7 +8,7 @@ namespace TerraRuntime.Application.Operations;
 /// Maintains a bounded immutable player read model from already validated authoritative events.
 /// The TUI never reads ServerRuntimeState or mutable player objects directly.
 /// </summary>
-internal sealed class RuntimePlayerOperationsTelemetry : global::TerraRuntime.IRuntimePlayerEventSink, IPlayerOperations
+internal sealed class RuntimePlayerOperationsTelemetry : IRuntimePlayerEventSink, IPlayerOperations
 {
     private readonly ConcurrentDictionary<byte, RuntimePlayerSnapshot> players = new();
     private readonly Dictionary<GameCommandSourceId, PendingPlayerState> pending = [];

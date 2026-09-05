@@ -82,7 +82,7 @@ public sealed class ManualWorldCheckpointOperationsTests
         var operations = new ManualSaveOperations();
         var logs = new RuntimeLogBuffer(capacity: 4);
 
-        using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
+        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI);
         app.Driver!.SetScreenSize(SmokeWidth, SmokeHeight);
         using var workspace = new DashboardWorkspaceWindow(
             operations,
@@ -122,7 +122,7 @@ public sealed class ManualWorldCheckpointOperationsTests
         var operations = new ManualSaveOperations(acceptSave: false);
         var logs = new RuntimeLogBuffer(capacity: 4);
 
-        using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
+        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI);
         app.Driver!.SetScreenSize(SmokeWidth, SmokeHeight);
         using var workspace = new DashboardWorkspaceWindow(
             operations,

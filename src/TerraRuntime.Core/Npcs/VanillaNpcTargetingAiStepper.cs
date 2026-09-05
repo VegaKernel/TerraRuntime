@@ -2172,6 +2172,8 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     private int PlanMoonLordProjectiles(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
     {
+        if (proposed.Simulation.Life == 0 || proposed.Simulation.TimeLeft == 0)
+            return 0;
         if (proposed.Target >= byte.MaxValue || !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || !target.Active || target.Dead)
             return 0;
         float cx, cy;

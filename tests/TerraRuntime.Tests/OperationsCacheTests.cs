@@ -104,7 +104,7 @@ public sealed class OperationsCacheTests
     [Fact]
     public void Overview_maximize_hides_other_tiles_and_title_has_real_double_click_binding()
     {
-        using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
+        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI);
         app.Driver!.SetScreenSize(120, 28);
         using var window = new Window
         {

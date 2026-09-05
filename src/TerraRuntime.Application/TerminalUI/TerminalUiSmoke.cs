@@ -28,7 +28,7 @@ internal static class TerminalUiSmoke
             logs.Publish(OperationsLogLevel.Warning, "Network", "Synthetic bounded log warning");
             RuntimeChatTelemetry.Publish(0, "Synthetic dashboard chat message");
 
-            using (IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI))
+            using (IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI))
             {
                 app.Driver!.SetScreenSize(SmokeWidth, SmokeHeight);
                 using var workspace = new DashboardWorkspaceWindow(

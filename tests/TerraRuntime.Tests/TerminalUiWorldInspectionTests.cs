@@ -290,6 +290,7 @@ public sealed class TerminalUiWorldInspectionTests
                         VelocityY: 0,
                         SelectedItem: 0,
                         MountType: 0,
+            DifficultyFlags: 0,
                         HasHealth: true,
                         Life: 100,
                         MaxLife: 100,

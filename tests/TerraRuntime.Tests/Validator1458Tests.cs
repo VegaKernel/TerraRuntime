@@ -39,13 +39,16 @@ public sealed class VanillaWorldGenerationValidator1458Tests
         Assert.Contains("sparse", result.Detail, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void Validator_accepts_canonical_generated_world()
+    [Theory]
+    [InlineData(4200, 1200, 1458)]
+    [InlineData(8400, 2400, 8675309)]
+    public void Validator_accepts_canonical_generated_world(int width, int height, int seed)
     {
         var provider = new SourceBackedFinal1458();
-        var request = new WorldGenerationRequest(Provider1458.GeneratorId, "Validator", 1458, 4200, 1200) { SeedText = "1458" };
+        var request = new WorldGenerationRequest(Provider1458.GeneratorId, "Validator", checked((ulong)seed), width, height)
+        { SeedText = seed.ToString(System.Globalization.CultureInfo.InvariantCulture) };
         var workspace = new Workspace(request.WidthTiles, request.HeightTiles);
-        var exec = TerraRuntime.Core.RuntimeWorldGenerationExecutor.Execute(provider, in request, workspace, cancellationToken: TestContext.Current.CancellationToken);
+        var exec = TerraRuntime.Core.Worlds.RuntimeWorldGenerationExecutor.Execute(provider, in request, workspace, cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(exec.Succeeded, exec.Error?.ToString());
         var final = Finalizer.Finalize(workspace);
         Assert.True(final.Succeeded, final.Validation?.Detail ?? final.Status.ToString());

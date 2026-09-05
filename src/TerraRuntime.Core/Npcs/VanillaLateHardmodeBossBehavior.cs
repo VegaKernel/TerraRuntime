@@ -498,6 +498,25 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
 
     private static bool TryCore(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, out NpcStateUpdate next)
     {
+        // NPC.AI_077_MoonLordCore (1.4.5.8): death drama is independent of target availability.
+        // The first lethal strike was intercepted by checkDead; only tick 600 makes the core terminal.
+        if (npc.Ai.Ai0 == 2f)
+        {
+            NpcAiState deathAi = npc.Ai with { Ai1 = npc.Ai.Ai1 + 1f };
+            NpcSimulationState death = npc.Simulation with
+            {
+                Life = deathAi.Ai1 >= 600f ? 0 : npc.Simulation.Life,
+                NoGravity = true,
+                NoTileCollide = true,
+                DontTakeDamage = true,
+                JustHit = false
+            };
+            float deathVx = npc.VelocityX + (0f - npc.VelocityX) * .98f;
+            float deathVy = npc.VelocityY + (-.5f - npc.VelocityY) * .98f;
+            next = LateBossMath.Build(in npc, deathVx, deathVy, npc.Target, in deathAi, in death);
+            return true;
+        }
+
         ushort target = npc.Target;
         if (!LateBossMath.TryTarget(in npc, in definition, context, ref target, out VanillaNpcTargetCandidate player))
         { next = default; return false; }
@@ -521,12 +540,6 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
                 ai = ai with { Ai0 = 1f };
             invulnerable = ai.Ai0 != 1f;
         }
-        else if (ai.Ai0 == 2f)
-        {
-            vx = vx * .98f; vy = vy * .98f - .01f;
-            ai = ai with { Ai1 = ai.Ai1 + 1f };
-            invulnerable = true;
-        }
         sim = sim with { NoGravity = true, NoTileCollide = true, LocalAi = local, DontTakeDamage = invulnerable, JustHit = false };
         next = LateBossMath.Build(in npc, vx, vy, target, in ai, in sim);
         return true;
@@ -534,7 +547,8 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
 
     private static bool TryPart(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, bool isHead, out NpcStateUpdate next)
     {
-        if (!TryRoot(in npc, context, out NpcSnapshot root)) { next = default; return false; }
+        if (!TryRoot(in npc, context, out NpcSnapshot root))
+            return RetireOrphan(in npc, out next);
         if (npc.Ai.Ai0 is -2f or -3f)
             return TryRetiredPart(in npc, in definition, in root, isHead, out next);
 
@@ -641,7 +655,8 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
 
     private static bool TryEye(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, out NpcStateUpdate next)
     {
-        if (!TryRoot(in npc, context, out NpcSnapshot root)) { next = default; return false; }
+        if (!TryRoot(in npc, context, out NpcSnapshot root))
+            return RetireOrphan(in npc, out next);
         ushort target = root.Target;
         if (target >= byte.MaxValue || !context.TryFindCandidate((byte)target, out VanillaNpcTargetCandidate player))
         { next = default; return false; }
@@ -715,15 +730,25 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         return 0;
     }
 
+    private static bool RetireOrphan(in NpcSnapshot npc, out NpcStateUpdate next)
+    {
+        // NPC.AI_078/079/081 (1.4.5.8) deactivate a part whose ai[3] owner is absent or not a core.
+        // TimeLeft=0 carries that removal through the authoritative store after the state commit.
+        NpcSimulationState terminal = npc.Simulation with
+        {
+            Life = 0, TimeLeft = 0, DontTakeDamage = true, DamageOverride = 0, JustHit = false
+        };
+        NpcAiState ai = npc.Ai;
+        next = LateBossMath.Build(in npc, 0f, 0f, npc.Target, in ai, in terminal);
+        return true;
+    }
+
     private static bool TryRoot(in NpcSnapshot child, VanillaNpcBehaviorContext context, out NpcSnapshot root)
     {
-        int encodedLocal = (int)child.Simulation.LocalAi.Ai3 - 1;
-        if (encodedLocal >= 0 && encodedLocal <= byte.MaxValue && context.TryFindNpcPeer((byte)encodedLocal, out root) && root.TypeIdentity == VanillaNpcIds.MoonLordCore)
-            return true;
-        int raw = (int)child.Ai.Ai3;
-        if (raw >= 0 && raw <= byte.MaxValue && context.TryFindNpcPeer((byte)raw, out root) && root.TypeIdentity == VanillaNpcIds.MoonLordCore)
-            return true;
-        return context.TryFindFirstNpcPeer(VanillaNpcIds.MoonLordCore, out root);
+        root = default;
+        float slot = child.Ai.Ai3;
+        return float.IsFinite(slot) && slot >= 0f && slot < byte.MaxValue && slot == MathF.Truncate(slot) &&
+               context.TryFindNpcPeer((byte)slot, out root) && root.TypeIdentity == VanillaNpcIds.MoonLordCore;
     }
 }
 

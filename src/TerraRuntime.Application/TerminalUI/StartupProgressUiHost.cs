@@ -219,7 +219,7 @@ internal sealed class StartupProgressUiHost : IWorldGenerationProgressSink, IDis
         Exception? failure = null;
         try
         {
-            using IApplication app = Application.Create();
+            using IApplication app = Terminal.Gui.App.Application.Create();
             string? forcedDriver = Host.ResolveProductionDriverName(OperatingSystem.IsWindows());
             if (forcedDriver is not null)
                 app.ForceDriver = forcedDriver;

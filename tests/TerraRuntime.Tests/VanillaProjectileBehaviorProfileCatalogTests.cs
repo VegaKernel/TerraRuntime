@@ -249,25 +249,25 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
     }
 
     [Theory]
-    [InlineData(384, VanillaProjectileBehaviorFamily.Sharknado, 64)]
-    [InlineData(385, VanillaProjectileBehaviorFamily.SharknadoBolt, 65)]
-    [InlineData(386, VanillaProjectileBehaviorFamily.Sharknado, 64)]
-    [InlineData(464, VanillaProjectileBehaviorFamily.CultistIceMist, 86)]
-    [InlineData(452, VanillaProjectileBehaviorFamily.PhantasmalEye, 82)]
-    [InlineData(454, VanillaProjectileBehaviorFamily.PhantasmalSphere, 83)]
-    [InlineData(455, VanillaProjectileBehaviorFamily.PhantasmalDeathray, 84)]
-    [InlineData(872, VanillaProjectileBehaviorFamily.HallowBossLastingRainbow, 173)]
-    [InlineData(873, VanillaProjectileBehaviorFamily.HallowBossRainbowStreak, 171)]
-    [InlineData(874, VanillaProjectileBehaviorFamily.HallowBossDeathAurora, 0)]
-    [InlineData(919, VanillaProjectileBehaviorFamily.FairyQueenLance, 179)]
-    [InlineData(922, VanillaProjectileBehaviorFamily.QueenSlimeSmash, 135)]
-    [InlineData(923, VanillaProjectileBehaviorFamily.FairyQueenSunDance, 180)]
+    [InlineData(384, (int)VanillaProjectileBehaviorFamily.Sharknado, 64)]
+    [InlineData(385, (int)VanillaProjectileBehaviorFamily.SharknadoBolt, 65)]
+    [InlineData(386, (int)VanillaProjectileBehaviorFamily.Sharknado, 64)]
+    [InlineData(464, (int)VanillaProjectileBehaviorFamily.CultistIceMist, 86)]
+    [InlineData(452, (int)VanillaProjectileBehaviorFamily.PhantasmalEye, 82)]
+    [InlineData(454, (int)VanillaProjectileBehaviorFamily.PhantasmalSphere, 83)]
+    [InlineData(455, (int)VanillaProjectileBehaviorFamily.PhantasmalDeathray, 84)]
+    [InlineData(872, (int)VanillaProjectileBehaviorFamily.HallowBossLastingRainbow, 173)]
+    [InlineData(873, (int)VanillaProjectileBehaviorFamily.HallowBossRainbowStreak, 171)]
+    [InlineData(874, (int)VanillaProjectileBehaviorFamily.HallowBossDeathAurora, 0)]
+    [InlineData(919, (int)VanillaProjectileBehaviorFamily.FairyQueenLance, 179)]
+    [InlineData(922, (int)VanillaProjectileBehaviorFamily.QueenSlimeSmash, 135)]
+    [InlineData(923, (int)VanillaProjectileBehaviorFamily.FairyQueenSunDance, 180)]
     public void Late_boss_projectiles_have_explicit_source_backed_profiles(
-        int rawType, VanillaProjectileBehaviorFamily family, int aiStyle)
+        int rawType, int family, int aiStyle)
     {
         var type = new ProjectileTypeId(rawType);
         Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(type, out VanillaProjectileBehaviorProfile profile));
-        Assert.Equal(family, profile.Family);
+        Assert.Equal((VanillaProjectileBehaviorFamily)family, profile.Family);
         Assert.Equal(new ProjectileAiStyleId(aiStyle), profile.ExpectedAiStyle);
         Assert.True(profile.BehaviorImplemented);
         Assert.False(profile.RejectServerOwned);

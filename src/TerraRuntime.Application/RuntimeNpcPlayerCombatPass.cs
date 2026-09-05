@@ -51,7 +51,7 @@ internal sealed class RuntimeNpcPlayerCombatPass
                 definition.Role == NpcArchetypeRole.Town ||
                 !VanillaIncomingPlayerDamageFacts1458.TryGetNpcContactImmunityChannel(
                     npc.TypeIdentity,
-                    in npc.Ai,
+                    npc.Ai,
                     out VanillaPlayerImmunityChannel1458 immunityChannel) ||
                 ResolveContactDamage(in npc, in definition) <= 0 ||
                 !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))

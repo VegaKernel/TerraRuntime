@@ -74,7 +74,7 @@ internal static class WorldStartupPreparation
         if (!File.Exists(options.WorldPath))
         {
             hostLog.Log(
-                RuntimeLogLevel.Error,
+                OperationsLogLevel.Error,
                 StructuredLogEventIds.WorldFileMissing,
                 StructuredLogCategory.World,
                 "World",
@@ -101,7 +101,7 @@ internal static class WorldStartupPreparation
         {
             sourceStatDuration = Stopwatch.GetElapsedTime(sourceStatStart);
             hostLog.Log(
-                RuntimeLogLevel.Error,
+                OperationsLogLevel.Error,
                 StructuredLogEventIds.WorldSourceStatFailed,
                 StructuredLogCategory.World,
                 "World",
@@ -131,7 +131,7 @@ internal static class WorldStartupPreparation
             if (!statOk)
             {
                 hostLog.Log(
-                    RuntimeLogLevel.Error,
+                    OperationsLogLevel.Error,
                     StructuredLogEventIds.WorldSourceRestatFailed,
                     StructuredLogCategory.World,
                     "World",
@@ -155,7 +155,7 @@ internal static class WorldStartupPreparation
             runtimeCacheHit = true;
             worldReadyDuration = Stopwatch.GetElapsedTime(startupStart);
             hostLog.Log(
-                RuntimeLogLevel.Information,
+                OperationsLogLevel.Information,
                 StructuredLogEventIds.WorldCacheHit,
                 StructuredLogCategory.World,
                 "World",
@@ -164,7 +164,7 @@ internal static class WorldStartupPreparation
         else
         {
             hostLog.Log(
-                RuntimeLogLevel.Information,
+                OperationsLogLevel.Information,
                 StructuredLogEventIds.WorldCacheMiss,
                 StructuredLogCategory.World,
                 "World",
@@ -177,7 +177,7 @@ internal static class WorldStartupPreparation
             if (!stableRead.Success || stableRead.Bytes is null)
             {
                 hostLog.Log(
-                    RuntimeLogLevel.Error,
+                    OperationsLogLevel.Error,
                     StructuredLogEventIds.WorldReadFailed,
                     StructuredLogCategory.World,
                     "World",
@@ -196,7 +196,7 @@ internal static class WorldStartupPreparation
             if (!diagnostic.IsLoaded || world is null)
             {
                 hostLog.Log(
-                    RuntimeLogLevel.Error,
+                    OperationsLogLevel.Error,
                     StructuredLogEventIds.WorldLoadFailed,
                     StructuredLogCategory.World,
                     "World",
@@ -206,7 +206,7 @@ internal static class WorldStartupPreparation
                 if (!RuntimeWorldCheckpointRecovery.CanAutomaticallyRestoreAfter(diagnostic))
                 {
                     hostLog.Log(
-                        RuntimeLogLevel.Error,
+                        OperationsLogLevel.Error,
                         StructuredLogEventIds.WorldRecoverySuppressed,
                         StructuredLogCategory.World,
                         "World",
@@ -222,7 +222,7 @@ internal static class WorldStartupPreparation
                 if (!recovery.IsRestored)
                 {
                     hostLog.Log(
-                        RuntimeLogLevel.Error,
+                        OperationsLogLevel.Error,
                         StructuredLogEventIds.WorldCheckpointRecoveryFailed,
                         StructuredLogCategory.World,
                         "World",
@@ -232,7 +232,7 @@ internal static class WorldStartupPreparation
                 }
 
                 hostLog.Log(
-                    RuntimeLogLevel.Information,
+                    OperationsLogLevel.Information,
                     StructuredLogEventIds.WorldCheckpointRecovered,
                     StructuredLogCategory.World,
                     "World",
@@ -252,7 +252,7 @@ internal static class WorldStartupPreparation
             if (cacheWrite.IsWritten)
             {
                 hostLog.Log(
-                    RuntimeLogLevel.Information,
+                    OperationsLogLevel.Information,
                     StructuredLogEventIds.PersistenceWorldCacheRebuilt,
                     StructuredLogCategory.Persistence,
                     "WorldCache",
@@ -261,7 +261,7 @@ internal static class WorldStartupPreparation
             else
             {
                 hostLog.Log(
-                    RuntimeLogLevel.Warning,
+                    OperationsLogLevel.Warning,
                     StructuredLogEventIds.PersistenceWorldCacheWriteFailed,
                     StructuredLogCategory.Persistence,
                     "WorldCache",
@@ -279,7 +279,7 @@ internal static class WorldStartupPreparation
         if (!saveTemplateLoad.Success || worldSaveTemplate is null)
         {
             hostLog.Log(
-                RuntimeLogLevel.Error,
+                OperationsLogLevel.Error,
                 StructuredLogEventIds.PersistenceSaveTemplateLoadFailed,
                 StructuredLogCategory.Persistence,
                 "WorldSave",
@@ -289,7 +289,7 @@ internal static class WorldStartupPreparation
         }
 
         hostLog.Log(
-            RuntimeLogLevel.Information,
+            OperationsLogLevel.Information,
             StructuredLogEventIds.PersistenceSaveTemplateReady,
             StructuredLogCategory.Persistence,
             "WorldSave",
@@ -312,7 +312,7 @@ internal static class WorldStartupPreparation
             bootstrapCacheHit = true;
             bootstrapDuration = Stopwatch.GetElapsedTime(bootstrapStart);
             hostLog.Log(
-                RuntimeLogLevel.Information,
+                OperationsLogLevel.Information,
                 StructuredLogEventIds.WorldBootstrapCacheHit,
                 StructuredLogCategory.World,
                 "Bootstrap",
@@ -329,7 +329,7 @@ internal static class WorldStartupPreparation
             {
                 bootstrapDuration = Stopwatch.GetElapsedTime(bootstrapStart);
                 hostLog.Log(
-                    RuntimeLogLevel.Error,
+                    OperationsLogLevel.Error,
                     StructuredLogEventIds.WorldBootstrapPreparationFailed,
                     StructuredLogCategory.World,
                     "Bootstrap",
@@ -348,7 +348,7 @@ internal static class WorldStartupPreparation
             if (bootstrapCacheWrite.IsWritten)
             {
                 hostLog.Log(
-                    RuntimeLogLevel.Information,
+                    OperationsLogLevel.Information,
                     StructuredLogEventIds.PersistenceBootstrapCacheRebuilt,
                     StructuredLogCategory.Persistence,
                     "Bootstrap",
@@ -357,7 +357,7 @@ internal static class WorldStartupPreparation
             else
             {
                 hostLog.Log(
-                    RuntimeLogLevel.Warning,
+                    OperationsLogLevel.Warning,
                     StructuredLogEventIds.PersistenceBootstrapCacheWriteFailed,
                     StructuredLogCategory.Persistence,
                     "Bootstrap",
@@ -397,7 +397,7 @@ internal static class WorldStartupPreparation
         if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(worldPath))
         {
             hostLog.Log(
-                RuntimeLogLevel.Warning,
+                OperationsLogLevel.Warning,
                 StructuredLogEventIds.PersistenceCanonicalCleanupFailed,
                 StructuredLogCategory.Persistence,
                 "WorldSave",
@@ -409,7 +409,7 @@ internal static class WorldStartupPreparation
         if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(checkpointBackupPath))
         {
             hostLog.Log(
-                RuntimeLogLevel.Warning,
+                OperationsLogLevel.Warning,
                 StructuredLogEventIds.PersistenceBackupCleanupFailed,
                 StructuredLogCategory.Persistence,
                 "WorldSave",

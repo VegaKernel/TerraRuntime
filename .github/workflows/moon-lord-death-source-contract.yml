@@ -1,0 +1,50 @@
+name: Moon Lord Death Source Contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime.Core/Npcs/**'
+      - 'src/TerraRuntime.Application/NpcAuthority.cs'
+      - 'src/TerraRuntime.Application/RuntimeNpcNetworkCombatPipeline*.cs'
+      - 'tests/TerraRuntime.Tests/MoonLordDeathSequenceTests.cs'
+      - 'tests/TerraRuntime.Tests/LateHardmodeBossParityTests.cs'
+      - 'tools/ci/check_moon_lord_death_source.py'
+      - '.github/workflows/moon-lord-death-source-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - name: Build
+        run: dotnet build build/TerraRuntime.slnx -c Release -warnaserror
+      - name: Exercise death lifecycle and late boss transitions
+        run: >-
+          dotnet tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll
+          -class TerraRuntime.Tests.MoonLordDeathSequenceTests
+          -class TerraRuntime.Tests.LateHardmodeBossParityTests
+      - name: Download reference and install pinned decompiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/terraria-1458 .tools
+          curl -fL https://terraria.org/api/download/pc-dedicated-server/terraria-server-1458.zip -o .cache/terraria-1458/server.zip
+          unzip -q -o .cache/terraria-1458/server.zip -d .cache/terraria-1458/extracted
+          dotnet tool install ilspycmd --tool-path .tools --version 11.0.0.9375
+      - name: Verify source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          assembly=.cache/terraria-1458/extracted/1458/Windows/TerrariaServer.exe
+          echo "d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e  $assembly" | sha256sum --check
+          .tools/ilspycmd --disable-updatecheck -r "$(dirname "$assembly")" -t Terraria.NPC "$assembly" > .cache/terraria-1458/NPC.cs
+          python3 tools/ci/check_moon_lord_death_source.py --assembly "$assembly" --npc .cache/terraria-1458/NPC.cs

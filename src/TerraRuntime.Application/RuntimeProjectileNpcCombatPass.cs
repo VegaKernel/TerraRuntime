@@ -210,7 +210,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
     {
         if (!projectile.IsActive || projectile.Damage <= 0 || !VanillaProjectileOwnership.IsPlayerOwned(projectile.Spawner) ||
             VanillaProjectileFacts.IsHostile(projectile.Type) ||
-            !VanillaDefinitionCatalog.TryGet(projectile.Type, out definition) ||
+            !TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(projectile.Type, out definition) ||
             !VanillaProjectileBehaviorProfileCatalog.TryGet(projectile.Type, out profile) ||
             !profile.BehaviorImplemented ||
             !VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(projectile.Type, out _))

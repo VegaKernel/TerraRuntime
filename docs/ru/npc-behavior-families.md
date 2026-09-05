@@ -120,3 +120,5 @@ Pigron теперь использует исходный автомат `ai[0]/
 ### Граница projectile-side-effects AI_005
 
 Обычные атаки Probe и Blood Squid теперь хранят source-backed таймер `localAI[0]` в той же ревизии симуляции NPC, а создание снарядов планируется через `INpcAiProjectileIntentPlanner`. Executor выделяет projectile-слот только после успешного коммита точного поколения исходного NPC, поэтому stale/rejected AI-transition не может породить призрачный лазер или blood shot. Production LOS использует тот же source-backed адаптер tile `Collision.CanHit`, что и остальные world-запросы NPC, а глобальный firing gate фиксирует TerrariaServer 1.4.5.8 `Main.MaxWorldViewSize` 1920x1200 и исходный отступ 50 пикселей. Stinger-атаки Hornet и Good World Eater child намеренно не входят в этот claim до появления недостающего authoritative player-state / определения NPC 666.
+
+[Moon Lord: death lifecycle](moon-lord-death-sequence.md)

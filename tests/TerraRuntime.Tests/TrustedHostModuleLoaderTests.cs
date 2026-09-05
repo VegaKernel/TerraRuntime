@@ -142,7 +142,7 @@ public sealed class TrustedHostModuleLoaderTests
             Assert.NotNull(generator);
             Assert.Equal(fixtureGeneratorId, generator.Id);
 
-            using (IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI))
+            using (IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI))
             using (View dashboard = provider.CreateDashboard())
             {
                 Assert.NotNull(dashboard);

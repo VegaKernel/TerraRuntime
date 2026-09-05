@@ -149,7 +149,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 !projectiles.TryGetServerNpcSource(projectile.Handle, out NpcHandle sourceNpc) ||
                 !projectiles.TryGetLifecycle(projectile.Handle, out ProjectileLifecycleState lifecycle) ||
                 !CanDealHostileProjectileDamage(projectile.Type, in lifecycle) ||
-                !VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition) ||
+                !TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition) ||
                 !VanillaProjectileBehaviorProfileCatalog.TryGet(projectile.Type, out VanillaProjectileBehaviorProfile profile) ||
                 !profile.BehaviorImplemented)
             {
@@ -236,7 +236,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
     {
         if (!projectile.IsActive || projectile.Damage <= 0 || !VanillaProjectileOwnership.IsPlayerOwned(projectile.Spawner) ||
             VanillaProjectileFacts.IsHostile(projectile.Type) ||
-            !VanillaDefinitionCatalog.TryGet(projectile.Type, out definition) ||
+            !TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(projectile.Type, out definition) ||
             !VanillaProjectileBehaviorProfileCatalog.TryGet(projectile.Type, out VanillaProjectileBehaviorProfile profile) ||
             !profile.BehaviorImplemented ||
             !VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(projectile.Type, out _) ||

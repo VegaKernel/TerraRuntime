@@ -120,3 +120,5 @@ Pigrons now preserve the source `ai[0]/ai[1]` phase machine. Missing line of sig
 ### AI_005 projectile side-effect boundary
 
 Ordinary Probe and Blood Squid attacks now keep their source-backed `localAI[0]` cadence in the NPC simulation revision and stage projectile creation through `INpcAiProjectileIntentPlanner`. The executor allocates projectile slots only after the exact source NPC generation commits, so a stale or rejected AI transition cannot emit a ghost laser/blood shot. Production LOS uses the same source-backed tile `Collision.CanHit` adapter as other NPC world queries, and the global firing gate pins TerrariaServer 1.4.5.8 `Main.MaxWorldViewSize` at 1920x1200 with the source 50-pixel inset. Hornet stingers and the Good World Eater child remain deliberately outside this claim until their missing authoritative player state / NPC 666 definition is admitted.
+
+[Moon Lord: death lifecycle](moon-lord-death-sequence.md)

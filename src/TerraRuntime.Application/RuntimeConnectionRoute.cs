@@ -55,7 +55,7 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
         get { lock (gate) return active.Bootstrap.StopReason; }
     }
 
-    public TerraRuntime.Core.PlayerJoinState? ActiveJoinState
+    public TerraRuntime.Core.Players.PlayerJoinState? ActiveJoinState
     {
         get { lock (gate) return active.Bootstrap.JoinState; }
     }
@@ -101,7 +101,7 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
 
             RuntimeConnectionWorldBinding sourceBinding = active;
             if (sourceBinding.Player is not PlayerHandle sourcePlayer ||
-                sourceBinding.Bootstrap.JoinState != TerraRuntime.Core.PlayerJoinState.Playing)
+                sourceBinding.Bootstrap.JoinState != TerraRuntime.Core.Players.PlayerJoinState.Playing)
             {
                 error = "player connection has not completed the authoritative spawn transition";
                 return false;
@@ -242,7 +242,7 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
             if (Volatile.Read(ref disposed) != 0)
                 return;
 
-            if (active.Player is PlayerHandle player && active.Bootstrap.JoinState == TerraRuntime.Core.PlayerJoinState.Playing)
+            if (active.Player is PlayerHandle player && active.Bootstrap.JoinState == TerraRuntime.Core.Players.PlayerJoinState.Playing)
             {
                 using var cancellation = new CancellationTokenSource(timeout ?? DefaultTransferTimeout);
                 try
@@ -463,7 +463,7 @@ internal readonly record struct RuntimeConnectionRouteSnapshot(
     WorldRuntimeIdentity Runtime,
     PlayerHandle? Player,
     string? PlayerName,
-    TerraRuntime.Core.PlayerJoinState? JoinState)
+    TerraRuntime.Core.Players.PlayerJoinState? JoinState)
 {
     public long ConnectionId => Source.Value;
 }

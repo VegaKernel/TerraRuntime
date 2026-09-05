@@ -24,7 +24,7 @@ public sealed class ListenerManagerTests
 
         manager.Start(IPAddress.Loopback.ToString(), firstPort, shutdown.Token);
         using var firstClient = new TcpClient(AddressFamily.InterNetwork);
-        await firstClient.ConnectAsync(IPAddress.Loopback, firstPort);
+        await firstClient.ConnectAsync(IPAddress.Loopback, firstPort, TestContext.Current.CancellationToken);
         Assert.True(SpinWait.SpinUntil(() => accepted.Count == 1, TimeSpan.FromSeconds(2)));
         Assert.True(accepted.TryPeek(out Socket? firstServerSocket));
         Assert.NotNull(firstServerSocket);
@@ -39,14 +39,14 @@ public sealed class ListenerManagerTests
         Assert.Equal(1, rebound.SuccessfulRebinds);
 
         byte[] payload = [0x5A];
-        await firstClient.GetStream().WriteAsync(payload);
+        await firstClient.GetStream().WriteAsync(payload, TestContext.Current.CancellationToken);
         var received = new byte[1];
-        int read = await firstServerSocket!.ReceiveAsync(received, SocketFlags.None);
+        int read = await firstServerSocket!.ReceiveAsync(received, SocketFlags.None, TestContext.Current.CancellationToken);
         Assert.Equal(1, read);
         Assert.Equal(payload[0], received[0]);
 
         using var secondClient = new TcpClient(AddressFamily.InterNetwork);
-        await secondClient.ConnectAsync(IPAddress.Loopback, secondPort);
+        await secondClient.ConnectAsync(IPAddress.Loopback, secondPort, TestContext.Current.CancellationToken);
         Assert.True(SpinWait.SpinUntil(() => accepted.Count == 2, TimeSpan.FromSeconds(2)));
 
         await manager.CloseAsync();
@@ -71,7 +71,7 @@ public sealed class ListenerManagerTests
 
         manager.Start(IPAddress.Loopback.ToString(), port, shutdown.Token);
         using var firstClient = new TcpClient(AddressFamily.InterNetwork);
-        await firstClient.ConnectAsync(IPAddress.Loopback, port);
+        await firstClient.ConnectAsync(IPAddress.Loopback, port, TestContext.Current.CancellationToken);
         Assert.True(SpinWait.SpinUntil(() => accepted.Count == 1, TimeSpan.FromSeconds(2)));
         Assert.True(accepted.TryPeek(out Socket? firstServerSocket));
         Assert.NotNull(firstServerSocket);
@@ -85,14 +85,14 @@ public sealed class ListenerManagerTests
         Assert.Equal(port, rebound.Port);
         Assert.Equal(1, rebound.SuccessfulRebinds);
 
-        await firstClient.GetStream().WriteAsync(new byte[] { 0x66 });
+        await firstClient.GetStream().WriteAsync(new byte[] { 0x66 }, TestContext.Current.CancellationToken);
         var received = new byte[1];
-        int read = await firstServerSocket!.ReceiveAsync(received, SocketFlags.None);
+        int read = await firstServerSocket!.ReceiveAsync(received, SocketFlags.None, TestContext.Current.CancellationToken);
         Assert.Equal(1, read);
         Assert.Equal(0x66, received[0]);
 
         using var secondClient = new TcpClient(AddressFamily.InterNetwork);
-        await secondClient.ConnectAsync(IPAddress.Loopback, port);
+        await secondClient.ConnectAsync(IPAddress.Loopback, port, TestContext.Current.CancellationToken);
         Assert.True(SpinWait.SpinUntil(() => accepted.Count == 2, TimeSpan.FromSeconds(2)));
 
         await manager.CloseAsync();
@@ -129,7 +129,7 @@ public sealed class ListenerManagerTests
         Assert.Equal(0, snapshot.SuccessfulRebinds);
 
         using var client = new TcpClient(AddressFamily.InterNetwork);
-        await client.ConnectAsync(IPAddress.Loopback, activePort);
+        await client.ConnectAsync(IPAddress.Loopback, activePort, TestContext.Current.CancellationToken);
         Assert.True(SpinWait.SpinUntil(() => accepted.Count == 1, TimeSpan.FromSeconds(2)));
 
         await manager.CloseAsync();

@@ -121,7 +121,7 @@ internal sealed class ServerProcessSession : IDisposable
         {
             string message = $"Failed to start listener on {options.BindAddress}:{options.Port}: {exception.Message}";
             hostLog.Log(
-                RuntimeLogLevel.Error,
+                OperationsLogLevel.Error,
                 StructuredLogEventIds.NetworkListenerStartFailed,
                 StructuredLogCategory.Network,
                 "Network",
@@ -187,7 +187,7 @@ internal sealed class ServerProcessSession : IDisposable
         {
             string message = $"Trusted host runtime attachment failed: {exception.Message}";
             hostLog.Log(
-                RuntimeLogLevel.Error,
+                OperationsLogLevel.Error,
                 StructuredLogEventIds.PluginHostRuntimeAttachFailed,
                 StructuredLogCategory.Plugin,
                 "HostModule",
@@ -207,7 +207,7 @@ internal sealed class ServerProcessSession : IDisposable
             GC.GetTotalAllocatedBytes(precise: false) - metrics.AllocatedBytesAtStart);
         string startupProfile = FormattableString.Invariant($"startup_profile source={(metrics.RuntimeCacheHit ? "runtime-cache" : "canonical-wld")} cache_result={metrics.CacheDiagnostic.Result} cache_parallel_reads={RuntimeWorldCacheReadOptions.Default.MaxParallelReads} source_stat_ms={metrics.SourceStatDuration.TotalMilliseconds:F3} file_read_ms={metrics.FileReadDuration.TotalMilliseconds:F3} cache_load_ms={metrics.CacheLoadDuration.TotalMilliseconds:F3} wld_total_ms={canonicalLoadProfile.Total.TotalMilliseconds:F3} wld_envelope_header_ms={canonicalLoadProfile.EnvelopeAndHeader.TotalMilliseconds:F3} wld_tile_alloc_ms={canonicalLoadProfile.TileAllocation.TotalMilliseconds:F3} wld_tile_decode_ms={canonicalLoadProfile.TileDecode.TotalMilliseconds:F3} wld_non_tile_ms={canonicalLoadProfile.NonTileSections.TotalMilliseconds:F3} cache_write_ms={metrics.CacheWriteDuration.TotalMilliseconds:F3} bootstrap_cache_hit={(metrics.BootstrapCacheHit ? "true" : "false")} bootstrap_cache_result={metrics.BootstrapCacheDiagnostic.Result} bootstrap_cache_load_ms={metrics.BootstrapCacheLoadDuration.TotalMilliseconds:F3} bootstrap_cache_write_ms={metrics.BootstrapCacheWriteDuration.TotalMilliseconds:F3} bootstrap_ms={metrics.BootstrapDuration.TotalMilliseconds:F3} world_ready_ms={metrics.WorldReadyDuration.TotalMilliseconds:F3} network_ready_ms={networkReadyDuration.TotalMilliseconds:F3} allocated_mib={allocatedBytes / (1024d * 1024d):F3}");
         hostLog.Log(
-            RuntimeLogLevel.Debug,
+            OperationsLogLevel.Debug,
             StructuredLogEventIds.StartupProfile,
             StructuredLogCategory.Lifecycle,
             "Startup",
@@ -220,7 +220,7 @@ internal sealed class ServerProcessSession : IDisposable
             $"interestManagement={(interestManagement.IsEnabled ? "enabled" : "disabled")}; " +
             $"tui={(options.TerminalUiEnabled ? "enabled" : "disabled")}.";
         hostLog.Log(
-            RuntimeLogLevel.Information,
+            OperationsLogLevel.Information,
             StructuredLogEventIds.NetworkListenerReady,
             StructuredLogCategory.Network,
             "Server",
@@ -305,7 +305,7 @@ internal sealed class ServerProcessSession : IDisposable
                 runtimeLogs,
                 hostLog.SetTerminalUiActive,
                 message => hostLog.Log(
-                    RuntimeLogLevel.Error,
+                    OperationsLogLevel.Error,
                     StructuredLogEventIds.OperationsTerminalUiFailed,
                     StructuredLogCategory.Operations,
                     "TerminalUI",
@@ -324,7 +324,7 @@ internal sealed class ServerProcessSession : IDisposable
             string message =
                 $"Terminal UI could not start; continuing in plain-console mode: {exception.Message}";
             hostLog.Log(
-                RuntimeLogLevel.Error,
+                OperationsLogLevel.Error,
                 StructuredLogEventIds.OperationsTerminalUiFailed,
                 StructuredLogCategory.Operations,
                 "TerminalUI",
@@ -358,7 +358,7 @@ internal sealed class ServerProcessSession : IDisposable
         {
             string message = $"Trusted host runtime detach failed: {exception.Message}";
             hostLog.Log(
-                RuntimeLogLevel.Error,
+                OperationsLogLevel.Error,
                 StructuredLogEventIds.PluginHostRuntimeDetachFailed,
                 StructuredLogCategory.Plugin,
                 "HostModule",
@@ -383,7 +383,7 @@ internal sealed class ServerProcessSession : IDisposable
                 const string message =
                     "Authoritative commands did not drain or the world loop did not stop within the shutdown deadline; the canonical checkpoint was not replaced.";
                 hostLog.Log(
-                    RuntimeLogLevel.Error,
+                    OperationsLogLevel.Error,
                     StructuredLogEventIds.ShutdownCommandDrainTimedOut,
                     StructuredLogCategory.Lifecycle,
                     "Runtime",
@@ -394,7 +394,7 @@ internal sealed class ServerProcessSession : IDisposable
             {
                 InvalidateRuntimeCache(startup.RuntimeBootstrapCachePath);
                 hostLog.Log(
-                    RuntimeLogLevel.Information,
+                    OperationsLogLevel.Information,
                     StructuredLogEventIds.PersistenceWorldCheckpointCommitted,
                     StructuredLogCategory.Persistence,
                     "WorldSave",
@@ -405,7 +405,7 @@ internal sealed class ServerProcessSession : IDisposable
             exception is IOException or UnauthorizedAccessException or InvalidDataException or InvalidOperationException)
         {
             hostLog.Log(
-                RuntimeLogLevel.Error,
+                OperationsLogLevel.Error,
                 StructuredLogEventIds.PersistenceWorldCheckpointSaveFailed,
                 StructuredLogCategory.Persistence,
                 "WorldSave",
@@ -416,7 +416,7 @@ internal sealed class ServerProcessSession : IDisposable
         if (primaryRuntime.GameLoop.Fault is Exception gameLoopFault)
         {
             hostLog.Log(
-                RuntimeLogLevel.Error,
+                OperationsLogLevel.Error,
                 StructuredLogEventIds.PersistenceWorldCheckpointSuppressedByLoopFault,
                 StructuredLogCategory.Persistence,
                 "WorldSave",
@@ -434,7 +434,7 @@ internal sealed class ServerProcessSession : IDisposable
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             hostLog.Log(
-                RuntimeLogLevel.Warning,
+                OperationsLogLevel.Warning,
                 StructuredLogEventIds.PersistenceRuntimeCacheInvalidationFailed,
                 StructuredLogCategory.Persistence,
                 "WorldSave",
@@ -447,7 +447,7 @@ internal sealed class ServerProcessSession : IDisposable
     {
         bool failed = job.Status is SandboxJobStatus.Failed or SandboxJobStatus.Canceled;
         hostLog.Log(
-            failed ? RuntimeLogLevel.Error : RuntimeLogLevel.Information,
+            failed ? OperationsLogLevel.Error : OperationsLogLevel.Information,
             failed
                 ? StructuredLogEventIds.OperationsSandboxJobFailed
                 : StructuredLogEventIds.OperationsSandboxJobCompleted,

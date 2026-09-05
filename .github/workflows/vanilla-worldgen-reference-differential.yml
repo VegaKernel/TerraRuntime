@@ -4,10 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime.World/Generation/Vanilla/**'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/**'
       - 'src/TerraRuntime.World/RuntimeWorldGenerationWorkspace.cs'
-      - 'src/TerraRuntime/BuiltInWorldGeneratorSource.cs'
-      - 'src/TerraRuntime/WorldGenerationCreateSmoke.cs'
+      - 'src/TerraRuntime.Application/BuiltInWorldGeneratorSource.cs'
+      - 'src/TerraRuntime.Application/WorldGenerationCreateSmoke.cs'
       - 'tools/TerraRuntime.WorldCompare/**'
       - 'tests/TerraRuntime.Tests/VanillaReferenceDifferentialCheckpoint1458Tests.cs'
       - '.github/workflows/vanilla-worldgen-reference-differential.yml'

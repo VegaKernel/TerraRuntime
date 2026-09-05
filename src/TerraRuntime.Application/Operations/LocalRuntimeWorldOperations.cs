@@ -4,15 +4,15 @@ internal sealed class LocalRuntimeWorldOperations : IWorldOperations
 {
     private readonly RuntimeWorldSnapshot snapshot;
     private readonly RuntimeWorldClockOperationsTelemetry? clockTelemetry;
-    private readonly Func<global::TerraRuntime.SectionCacheRebuildPipelineSnapshot>? sectionCacheSnapshotProvider;
-    private readonly Func<global::TerraRuntime.RuntimeWorldSaveStatus>? persistenceSnapshotProvider;
+    private readonly Func<SectionCacheRebuildPipelineSnapshot>? sectionCacheSnapshotProvider;
+    private readonly Func<RuntimeWorldSaveStatus>? persistenceSnapshotProvider;
     private readonly Func<bool>? persistenceSaveRequest;
 
     public LocalRuntimeWorldOperations(
         RuntimeWorldSnapshot snapshot,
         RuntimeWorldClockOperationsTelemetry? clockTelemetry = null,
-        Func<global::TerraRuntime.SectionCacheRebuildPipelineSnapshot>? sectionCacheSnapshotProvider = null,
-        Func<global::TerraRuntime.RuntimeWorldSaveStatus>? persistenceSnapshotProvider = null,
+        Func<SectionCacheRebuildPipelineSnapshot>? sectionCacheSnapshotProvider = null,
+        Func<RuntimeWorldSaveStatus>? persistenceSnapshotProvider = null,
         Func<bool>? persistenceSaveRequest = null)
     {
         this.snapshot = snapshot;
@@ -43,7 +43,7 @@ internal sealed class LocalRuntimeWorldOperations : IWorldOperations
 
         if (sectionCacheSnapshotProvider is not null)
         {
-            global::TerraRuntime.SectionCacheRebuildPipelineSnapshot sectionCache = sectionCacheSnapshotProvider();
+            SectionCacheRebuildPipelineSnapshot sectionCache = sectionCacheSnapshotProvider();
             current = current with
             {
                 SectionCacheAvailable = true,
@@ -79,7 +79,7 @@ internal sealed class LocalRuntimeWorldOperations : IWorldOperations
 
         if (persistenceSnapshotProvider is not null)
         {
-            global::TerraRuntime.RuntimeWorldSaveStatus persistence = persistenceSnapshotProvider();
+            RuntimeWorldSaveStatus persistence = persistenceSnapshotProvider();
             current = current with
             {
                 Persistence = new RuntimeWorldPersistenceSnapshot(

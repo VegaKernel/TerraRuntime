@@ -31,6 +31,7 @@ public sealed class ProjectileDisplayFormatterTests
                 VelocityY: 0f,
                 SelectedItem: 0,
                 MountType: 0,
+            DifficultyFlags: 0,
                 HasHealth: false,
                 Life: 0,
                 MaxLife: 0,

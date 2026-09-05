@@ -287,36 +287,9 @@ public static class Validator1458
         {
             int leftBeach = metadata.VanillaBootstrapState.LeftBeachEnd;
             int rightBeach = metadata.VanillaBootstrapState.RightBeachStart;
-            int waterLine = Math.Clamp((int)metadata.Layers.WorldSurface + 80, 0, height - 1);
-            int waterTilesLeft = 0;
-            int sandTilesLeft = 0;
-            for (int x = 0; x < leftBeach; x++)
-            {
-                for (int y = waterLine - 20; y < waterLine + 30 && y < height; y++)
-                {
-                    if (y < 0) continue;
-                    WorldTile t = store.Get(x, y);
-                    if (t.LiquidAmount > 0 && t.LiquidKind == WorldLiquidKind.Water) waterTilesLeft++;
-                    if (t.IsActive && t.Type == 53) sandTilesLeft++;
-                }
-            }
-            int waterTilesRight = 0;
-            int sandTilesRight = 0;
-            for (int x = rightBeach; x < width; x++)
-            {
-                for (int y = waterLine - 20; y < waterLine + 30 && y < height; y++)
-                {
-                    if (y < 0) continue;
-                    WorldTile t = store.Get(x, y);
-                    if (t.LiquidAmount > 0 && t.LiquidKind == WorldLiquidKind.Water) waterTilesRight++;
-                    if (t.IsActive && t.Type == 53) sandTilesRight++;
-                }
-            }
-            if (waterTilesLeft < 30 || waterTilesRight < 30)
-                return new(WorldValidationStatus.OceanBoundsViolation, $"Ocean water insufficient left={waterTilesLeft} right={waterTilesRight}.");
-            if (sandTilesLeft < 50 || sandTilesRight < 50)
-                return new(WorldValidationStatus.OceanBoundsViolation, $"Ocean sand insufficient left={sandTilesLeft} right={sandTilesRight}.");
-
+            // Beaches anchors each basin to its local terrain, not worldSurface + a fixed offset.
+            // The old 50-row census rejected valid deep Large-world oceans (seed 8675309). Validate
+            // actual edge-connected water and its sand floor using the shared geometry gate below.
             OceanIntegrityResult1458 leftIntegrity = OceanIntegrity1458.Validate(
                 store,
                 leftBeach,

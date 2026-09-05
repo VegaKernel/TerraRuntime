@@ -35,7 +35,7 @@ public sealed class StartupProgressUiTests
     [Fact]
     public void Startup_screen_renders_into_terminal_gui_ansi_backbuffer()
     {
-        using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
+        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI);
         app.Driver!.SetScreenSize(100, 26);
         Theme.Apply();
 

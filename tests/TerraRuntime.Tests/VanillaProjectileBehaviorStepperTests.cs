@@ -374,7 +374,8 @@ public sealed class VanillaProjectileBehaviorStepperTests
         Assert.Equal(1f, next.Ai0);
         Assert.Equal(-0.1f, next.Ai1Override!.Value, 5);
         Assert.Equal(0f, next.LocalAiOverride!.Value.Ai0);
-        Assert.Equal(0.92f, next.VelocityY, 4);
+        // TerrariaServer 1.4.5.8 Projectile.AI, aiStyle 82: subtract 0.08, then another 0.2 while Y is positive.
+        Assert.Equal(0.72f, next.VelocityY, 4);
     }
 
     [Fact]

@@ -9,22 +9,22 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
     private const int MaximumMessageTrafficDetails = 8;
 
     private readonly TerrariaConnectionAdmissionGate admission;
-    private readonly global::TerraRuntime.RuntimeConnectionRegistry connections;
+    private readonly RuntimeConnectionRegistry connections;
     private readonly RuntimeConnectionQueueTelemetry queueTelemetry;
     private readonly RuntimeConnectionRateTelemetry rateTelemetry;
-    private readonly global::TerraRuntime.RuntimeNpcReplicationRegistry? npcReplication;
-    private readonly global::TerraRuntime.RuntimeProjectileReplicationRegistry? projectileReplication;
-    private readonly global::TerraRuntime.RuntimeWorldItemReplicationRegistry? worldItemReplication;
+    private readonly RuntimeNpcReplicationRegistry? npcReplication;
+    private readonly RuntimeProjectileReplicationRegistry? projectileReplication;
+    private readonly RuntimeWorldItemReplicationRegistry? worldItemReplication;
     private readonly RuntimeConnectionStopTelemetry? stopTelemetry;
 
     public LocalRuntimeNetworkOperations(
         TerrariaConnectionAdmissionGate admission,
-        global::TerraRuntime.RuntimeConnectionRegistry connections,
+        RuntimeConnectionRegistry connections,
         RuntimeConnectionQueueTelemetry queueTelemetry,
         RuntimeConnectionRateTelemetry rateTelemetry,
-        global::TerraRuntime.RuntimeNpcReplicationRegistry? npcReplication = null,
-        global::TerraRuntime.RuntimeProjectileReplicationRegistry? projectileReplication = null,
-        global::TerraRuntime.RuntimeWorldItemReplicationRegistry? worldItemReplication = null,
+        RuntimeNpcReplicationRegistry? npcReplication = null,
+        RuntimeProjectileReplicationRegistry? projectileReplication = null,
+        RuntimeWorldItemReplicationRegistry? worldItemReplication = null,
         RuntimeConnectionStopTelemetry? stopTelemetry = null)
     {
         this.admission = admission ?? throw new ArgumentNullException(nameof(admission));

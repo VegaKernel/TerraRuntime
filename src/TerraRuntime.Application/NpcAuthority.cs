@@ -144,7 +144,8 @@ internal sealed class NpcAuthority
             townCommerceWorldFacts?.Crimson ?? false,
             skyblockLowTiles,
             isThereAWorldSurface,
-            evilBossDownedBaseline);
+            evilBossDownedBaseline,
+            projectiles);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
             projectiles, npcs, combat, players, tickProvider);
         townNpcAuthority.SetMeleeDamageSink(combat);
@@ -285,7 +286,7 @@ internal sealed class NpcAuthority
             }
         }
 
-        LastAiTick = aiExecutor.Tick(aiStepper);
+        LastAiTick = aiExecutor.Tick(aiStepper, combat);
         townNpcAuthority.TickShimmer();
         townNpcAuthority.TickLifecycle(worldClock);
         AppliedDespawns += npcs.DespawnExpired();

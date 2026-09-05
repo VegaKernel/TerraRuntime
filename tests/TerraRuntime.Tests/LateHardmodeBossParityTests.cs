@@ -277,6 +277,42 @@ public sealed class LateHardmodeBossParityTests
         Assert.Equal(0, stepper.PlanNpcSpawns(in root, in proposed, intents));
     }
 
+    [Theory]
+    [InlineData(598, false)]
+    [InlineData(599, true)]
+    public void Moon_lord_death_reaches_terminal_life_only_at_tick_600(int timer, bool terminal)
+    {
+        // TerrariaServer 1.4.5.8 NPC.AI_077_MoonLordCore: state 2 lerps toward (0, -0.5)
+        // with amount 0.98 and calls checkDead at ai[1] >= 600.
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot core = CreateNpc(VanillaNpcIds.MoonLordCore, new NpcAiState(2f, timer, 0f, 0f),
+            life: 50_000, localAi: new NpcAiState(0f, 0f, 0f, 1f)) with
+        {
+            VelocityX = 4f,
+            VelocityY = 1f
+        };
+
+        Assert.True(stepper.TryStepState(in core, out NpcStateUpdate next));
+        Assert.Equal(timer + 1f, next.Ai.Ai1);
+        Assert.Equal(terminal ? 0 : 50_000, next.Simulation.Life);
+        Assert.True(next.Simulation.DontTakeDamage);
+        Assert.Equal(0.08f, next.VelocityX, 5);
+        Assert.Equal(-0.47f, next.VelocityY, 5);
+    }
+
+    [Fact]
+    public void Moon_lord_death_keeps_advancing_after_the_last_player_leaves()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        stepper.SetCandidates([]);
+        NpcSnapshot core = CreateNpc(VanillaNpcIds.MoonLordCore, new NpcAiState(2f, 599f, 0f, 0f),
+            life: 50_000, localAi: new NpcAiState(0f, 0f, 0f, 1f));
+
+        Assert.True(stepper.TryStepState(in core, out NpcStateUpdate next));
+        Assert.Equal(600f, next.Ai.Ai1);
+        Assert.Equal(0, next.Simulation.Life);
+    }
+
     private static VanillaNpcTargetingAiStepper CreateStepper(bool dayTime)
     {
         var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: new ZeroRandom());

@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths:
       - 'src/TerraRuntime/**'
+      - 'src/TerraRuntime.Application/**'
+      - 'tests/TerraRuntime.Tests/*Boss*.cs'
+      - 'tests/TerraRuntime.Tests/MoonLordDeathSequenceTests.cs'
       - 'src/TerraRuntime.Core/**'
       - 'src/TerraRuntime.Gameplay/**'
       - 'src/TerraRuntime.Contracts/Gameplay/**'
@@ -61,7 +64,7 @@ jobs:
         run: >-
           dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
           -c Release --no-build
-          --filter "FullyQualifiedName~Projectile|FullyQualifiedName~Npc|FullyQualifiedName~ItemUse|FullyQualifiedName~ItemSlot|FullyQualifiedName~VanillaItemDefinition|FullyQualifiedName~NpcLoot"
+          --filter "FullyQualifiedName~Boss|FullyQualifiedName~MoonLord|FullyQualifiedName~Projectile|FullyQualifiedName~Npc|FullyQualifiedName~ItemUse|FullyQualifiedName~ItemSlot|FullyQualifiedName~VanillaItemDefinition|FullyQualifiedName~NpcLoot"
 
       - name: Authoritative loop smoke
         run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- --loop-smoke

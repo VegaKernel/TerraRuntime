@@ -11,7 +11,7 @@ public static class ExtensibleStartup
     private static async Task<int> RunAsync(string[] args)
     {
         if (ShouldBypassHostModules(args))
-            return global::TerraRuntime.StartupProgram.Main(args);
+            return global::TerraRuntime.Application.StartupProgram.Main(args);
 
         ExtensibleHostDirectoryLayout layout = ExtensibleHostDirectoryLayout.CreateDefault();
         try
@@ -55,7 +55,7 @@ public static class ExtensibleStartup
         if (args.Contains("--host-module-smoke", StringComparer.Ordinal))
             return 0;
 
-        return global::TerraRuntime.StartupProgram.Run(args, loader, loader, loader);
+        return global::TerraRuntime.Application.StartupProgram.Run(args, loader, loader, loader);
     }
 
     private static bool ShouldBypassHostModules(IEnumerable<string> args)

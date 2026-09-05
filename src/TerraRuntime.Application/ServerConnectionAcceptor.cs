@@ -101,7 +101,7 @@ internal sealed class ServerConnectionAcceptor : IDisposable
         {
             string message = $"Connection shutdown observed a fault: {exception.Message}";
             hostLog.Log(
-                RuntimeLogLevel.Error,
+                OperationsLogLevel.Error,
                 StructuredLogEventIds.NetworkShutdownFault,
                 StructuredLogCategory.Network,
                 "Network",
@@ -127,7 +127,7 @@ internal sealed class ServerConnectionAcceptor : IDisposable
             CorrelationId: $"connection-{connectionId}",
             ConnectionId: connectionId.ToString());
         hostLog.Log(
-            RuntimeLogLevel.Information,
+            OperationsLogLevel.Information,
             StructuredLogEventIds.NetworkConnectionAccepted,
             StructuredLogCategory.Network,
             "Network",
@@ -194,7 +194,7 @@ internal sealed class ServerConnectionAcceptor : IDisposable
                         $"runtime={activeRuntime.Identity}, bootstrap={route.ActiveBootstrapStopReason}, state={route.ActiveJoinState}; " +
                         $"inbound={result.Inbound}; rate={result.Rate}; outbound={result.Outbound.Reason}.";
                     hostLog.Log(
-                        RuntimeLogLevel.Information,
+                        OperationsLogLevel.Information,
                         StructuredLogEventIds.NetworkConnectionStopped,
                         StructuredLogCategory.Network,
                         "Network",
@@ -206,7 +206,7 @@ internal sealed class ServerConnectionAcceptor : IDisposable
                     if (!cancellationToken.IsCancellationRequested)
                     {
                         hostLog.Log(
-                            RuntimeLogLevel.Warning,
+                            OperationsLogLevel.Warning,
                             StructuredLogEventIds.NetworkConnectionFailed,
                             StructuredLogCategory.Network,
                             "Network",
@@ -236,7 +236,7 @@ internal sealed class ServerConnectionAcceptor : IDisposable
                     if (!cancellationToken.IsCancellationRequested)
                     {
                         hostLog.Log(
-                            RuntimeLogLevel.Warning,
+                            OperationsLogLevel.Warning,
                             StructuredLogEventIds.NetworkDisconnectEnqueueFailed,
                             StructuredLogCategory.Network,
                             "Network",

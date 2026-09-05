@@ -50,7 +50,7 @@ public sealed class WorldSaveTimingTelemetryTests
     [Fact]
     public void World_operations_project_persistence_timing_without_exposing_coordinator()
     {
-        var persistence = new global::TerraRuntime.RuntimeWorldSaveStatus(
+        var persistence = new global::TerraRuntime.Application.RuntimeWorldSaveStatus(
             AcceptingRequests: true,
             TileShadowReady: true,
             RemainingBootstrapSections: 0,

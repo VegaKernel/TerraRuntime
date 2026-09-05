@@ -79,6 +79,23 @@ public sealed class VanillaOceanGeneration1458Tests
         Assert.Contains("dry break", result.Detail, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Integrity_gate_rejects_connected_water_without_sand_floor()
+    {
+        WorldTileStore store = CreateSyntheticOcean(dryGapStart: -1, dryGapWidth: 0);
+        for (int x = 0; x < 220; x++)
+        {
+            int floor = 180 - x / 4;
+            store.Tiles[store.GetUncheckedIndex(x, floor)].Type = 0; // Dirt is not an ocean sand floor.
+        }
+
+        OceanIntegrityResult1458 result = OceanIntegrity1458.Validate(
+            store, beachBoundary: 250, left: true, worldSurface: 100d);
+
+        Assert.False(result.IsValid);
+        Assert.Contains("sand-floor coverage", result.Detail, StringComparison.Ordinal);
+    }
+
     private static WorldTileStore CreateSyntheticOcean(int dryGapStart, int dryGapWidth)
     {
         var store = new WorldTileStore(new WorldDimensions(420, 500));

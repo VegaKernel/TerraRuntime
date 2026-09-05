@@ -162,7 +162,7 @@ internal sealed class ListenerManager : IDisposable
             replacement.StartAcceptLoop();
 
             hostLog.Log(
-                RuntimeLogLevel.Information,
+                OperationsLogLevel.Information,
                 StructuredLogEventIds.NetworkListenerRebound,
                 StructuredLogCategory.Network,
                 "Network",
@@ -267,7 +267,7 @@ internal sealed class ListenerManager : IDisposable
         catch (Exception exception) when (exception is SocketException or InvalidOperationException)
         {
             hostLog.Log(
-                RuntimeLogLevel.Error,
+                OperationsLogLevel.Error,
                 StructuredLogEventIds.NetworkListenerStartFailed,
                 StructuredLogCategory.Network,
                 "Network",
@@ -281,7 +281,7 @@ internal sealed class ListenerManager : IDisposable
     {
         string detail = failure?.Message ?? "unknown listener error";
         hostLog.Log(
-            RuntimeLogLevel.Warning,
+            OperationsLogLevel.Warning,
             StructuredLogEventIds.NetworkListenerStartFailed,
             StructuredLogCategory.Network,
             "Network",
@@ -302,7 +302,7 @@ internal sealed class ListenerManager : IDisposable
     private void OnListenerClosed(ListenerRegistration listener)
     {
         hostLog.Log(
-            RuntimeLogLevel.Debug,
+            OperationsLogLevel.Debug,
             StructuredLogEventIds.NetworkListenerDrained,
             StructuredLogCategory.Network,
             "Network",
@@ -470,7 +470,7 @@ internal sealed class ListenerManager : IDisposable
                     catch (SocketException exception)
                     {
                         hostLog.Log(
-                            RuntimeLogLevel.Warning,
+                            OperationsLogLevel.Warning,
                             StructuredLogEventIds.NetworkAcceptFailed,
                             StructuredLogCategory.Network,
                             "Network",

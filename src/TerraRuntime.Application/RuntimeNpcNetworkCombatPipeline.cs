@@ -29,7 +29,7 @@ internal enum RuntimeProjectileNpcDamageResult : byte
 /// -> packet 23, including shared Eater-of-Worlds interaction credit and last-segment boss promotion. Socket threads never
 /// mutate runtime entity state directly.
 /// </summary>
-internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDamageSink1458
+internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcMeleeDamageSink1458, INpcAiStateCommitSink
 {
     private const int MaxOrdinaryDrops = 16;
     private const float VanillaPlayerWidth = 20f;
@@ -101,9 +101,12 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         bool crimsonWorld = false,
         bool skyblockLowTiles = false,
         bool isThereAWorldSurface = true,
-        bool evilBossDownedBaseline = false)
+        bool evilBossDownedBaseline = false,
+        RuntimeProjectileStore? projectiles = null)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
+        moonLordProjectiles = projectiles;
+        moonLordProjectileBuffer = projectiles is null ? [] : new ProjectileSnapshot[projectiles.Capacity];
         this.worldItems = worldItems ?? throw new ArgumentNullException(nameof(worldItems));
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         ArgumentNullException.ThrowIfNull(playerAuthority);

@@ -206,7 +206,7 @@ internal sealed class Level1PlayerTransferCoordinator
             players.Add(new SandboxTreePlayerSnapshot(
                 $"#{player.Slot.Value}",
                 snapshot,
-                route.JoinState == TerraRuntime.Core.PlayerJoinState.Playing));
+                route.JoinState == TerraRuntime.Core.Players.PlayerJoinState.Playing));
         }
         return players.ToArray();
     }

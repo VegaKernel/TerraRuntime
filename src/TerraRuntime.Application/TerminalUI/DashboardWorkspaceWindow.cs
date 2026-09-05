@@ -543,7 +543,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         if (externalDashboards.Length > 0)
             status.Add(new Shortcut(Key.F3, "Host dashboard", () => ShowExternalDashboard(0)));
         status.Add(new Shortcut(
-            Application.GetDefaultKey(Command.Quit),
+            Terminal.Gui.App.Application.GetDefaultKey(Command.Quit),
             "Close UI",
             () => App?.RequestStop()));
         return status;

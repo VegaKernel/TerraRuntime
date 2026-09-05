@@ -13,7 +13,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     [Fact]
     public void Dashboard_initialization_repairs_focus_chain_and_focuses_command_input()
     {
-        using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
+        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI);
         app.Driver!.SetScreenSize(80, 20);
         using var window = new Window
         {
@@ -52,7 +52,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     [Fact]
     public void Dashboard_layout_uses_wide_console_network_row_and_world_player_tree_without_global_tps_tile()
     {
-        using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
+        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI);
         app.Driver!.SetScreenSize(160, 28);
         using var window = new Window
         {
@@ -110,7 +110,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     [Fact]
     public void Maximized_network_graph_scales_history_across_wide_viewport()
     {
-        using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
+        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI);
         app.Driver!.SetScreenSize(160, 28);
         using var window = new Window
         {
@@ -157,7 +157,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     [Fact]
     public void Console_feed_follows_tail_but_preserves_manual_history_scroll()
     {
-        using IApplication app = Application.Create().Init(DriverRegistry.Names.ANSI);
+        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI);
         app.Driver!.SetScreenSize(80, 20);
         using var window = new Window
         {
@@ -295,7 +295,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
                 PendingJob: null,
                 Players: new SandboxTreePlayerSnapshot[]
                 {
-                    new("#0", 0, "Alice", IsPlaying: true)
+                    new("#0", 0, "Alice", isPlaying: true)
                 }),
             new(
                 new SandboxName("arena"),
@@ -312,7 +312,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
                 PendingJob: null,
                 Players: new SandboxTreePlayerSnapshot[]
                 {
-                    new("#1", 1, "Bob", IsPlaying: true)
+                    new("#1", 1, "Bob", isPlaying: true)
                 })
         ];
         var tree = new SandboxTreeSnapshot(worlds, ReadOnlyMemory<SandboxJobSnapshot>.Empty, DateTimeOffset.UtcNow);
@@ -411,6 +411,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
             VelocityY: 0,
             SelectedItem: 0,
             MountType: 0,
+            DifficultyFlags: 0,
             HasHealth: true,
             Life: 100,
             MaxLife: 100,
