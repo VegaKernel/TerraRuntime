@@ -4,6 +4,8 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.HostContracts;
 using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.Application.Operations;
+using TerraRuntime.Network;
+using TerraRuntime.Protocol;
 using Terminal.Gui.App;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
@@ -1030,6 +1032,27 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             }
         }
 
+        ReadOnlySpan<TerrariaMessageTrafficDetail> topMessages = snapshot.TopMessageTraffic.Span;
+        if (topMessages.Length == 0)
+        {
+            lines.Add("MSG <no message traffic in rolling window>");
+        }
+        else
+        {
+            double windowSeconds = Math.Max(1d, snapshot.MessageTrafficWindow.TotalSeconds);
+            for (int i = 0; i < topMessages.Length; i++)
+            {
+                TerrariaMessageTrafficDetail traffic = topMessages[i];
+                string direction = traffic.Direction == TerrariaMessageDirection.Outbound ? "OUT" : "IN ";
+                string messageName = traffic.IsKnownMessageId
+                    ? ((TerrariaMessageId)traffic.MessageId).ToString()
+                    : "Unknown";
+                lines.Add(
+                    $"MSG {direction} #{traffic.MessageId,-3} {messageName,-24} " +
+                    $"{traffic.WindowFrames / windowSeconds,7:F1} f/s  {FormatKibibytesPerSecond(traffic.WindowBytes / windowSeconds),10}  total {traffic.TotalFrames:N0}");
+            }
+        }
+
         lines.Add(
             $"Frame reject malformed {snapshot.RejectedMalformedProtocol:N0}  rate {snapshot.RejectedRateLimited:N0}  state {snapshot.RejectedInvalidState:N0}  gameplay {snapshot.RejectedGameplay:N0}  backpressure {snapshot.RejectedBackpressure:N0}");
 
@@ -1280,6 +1303,13 @@ internal sealed class DashboardWorkspaceWindow : Runnable
 
     private static string FormatMebibytes(long bytes) =>
         (bytes / (1024d * 1024d)).ToString("F1", CultureInfo.InvariantCulture) + " MiB";
+
+    private static string FormatKibibytesPerSecond(double bytesPerSecond)
+    {
+        if (!double.IsFinite(bytesPerSecond) || bytesPerSecond <= 0d)
+            return "0 KiB/s";
+        return string.Create(CultureInfo.InvariantCulture, $"{bytesPerSecond / 1024d:F1} KiB/s");
+    }
 
     private static string FormatKibibytes(long bytes) =>
         (bytes / 1024d).ToString("F1", CultureInfo.InvariantCulture) + " KiB";

@@ -37,7 +37,6 @@ public sealed class RuntimePlayerLifecycleRelayTests
         Assert.Equal(1, registry.PlayerDeactivationFrames);
     }
 
-
     [Fact]
     public void Respawn_relay_excludes_originating_client_to_avoid_spawn_feedback_loop()
     {

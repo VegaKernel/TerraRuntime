@@ -33,7 +33,7 @@ Console занимает примерно две трети workspace. Спра�
 
 У sandbox, который ещё materialize/start, live game loop пока нет, поэтому выводится `TPS --`, а не метрика primary мира.
 
-Roster переведён на `ListView`: focus/selection выделяет пункт целиком, а не текст внутри строки. Drag-and-drop игрока по-прежнему отправляет typed Level 1 move operation.
+Roster переведён на `ListView`: focus/selection выделяет пункт целиком, а не текст внутри строки. Drag-and-drop игрока отправляет typed Level 1 move operation с точным `PlayerHandle` (`slot + generation`), захваченным в момент начала drag. Поэтому фоновый refresh/reorder списка не может подменить переносимого игрока. Drop surface — вся ветка destination world: заголовок мира, строка любого игрока этой ветки и `<no players>` placeholder ведут в один и тот же semantic target.
 
 У actionable строк sandbox-world и player справа выводится явное действие `[X]`. Нажатие открывает confirmation dialog: для sandbox подтверждается `Destroy`, для player — `Kick`. Уничтожение primary мира намеренно не предлагается. `Kick` запрашивает закрытие process-owned connection через connection route/outbound queue; UI не удаляет строку самостоятельно и не мутирует player state напрямую.
 
@@ -48,6 +48,10 @@ Roster переведён на `ListView`: focus/selection выделяет пу
 - выпадающий список evil: Corruption и Crimson.
 
 Форма строит тот же typed `SandboxCreateRequest`, который использует command handling, а не собирает строку команды и не парсит её повторно.
+
+## Player details и GodMode
+
+Double-click по player row открывает generation-safe окно конкретной player session. `God mode` отображается как `Disabled` / `Enabled` dropdown и применяется кнопкой `Apply`. Периодический dashboard refresh не перетирает пользовательский выбор, ожидающий Apply; после применения значение проходит через typed trusted-host administration boundary и authoritative game loop.
 
 ## Выбор мира в detail screens
 
@@ -78,6 +82,8 @@ feed level debug|info|warn|error
 ## Network graph
 
 Network использует Terminal.Gui `GraphView` с inbound/outbound packet-rate histories. Legend показывает packet rate и throughput в `KiB/s`. Rate считается по разнице process-lifetime message counters между detached snapshots. Некорректный interval или rollback counters сбрасывает локальный sample вместо искусственного spike.
+
+Detail screen Network дополнительно показывает самые тяжёлые Terraria message IDs из rolling message-traffic window: направление, numeric ID, известное enum-имя, frames/s, KiB/s и lifetime frame count. Это позволяет отличить нормальный entity replication от конкретного packet family, которое создаёт аномальный outbound поток, не включая глобальный packet dump.
 
 ## Строка команд Console
 

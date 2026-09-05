@@ -55,6 +55,14 @@ internal sealed class PlayerDetailsWindow : Window
         character = LabelAt(1, 6);
         vitals = LabelAt(1, 7);
         position = LabelAt(1, 8);
+        feedback = new Label
+        {
+            X = 1,
+            Y = 13,
+            Width = Dim.Fill(1),
+            Height = 2,
+            SchemeName = "Base"
+        };
         godMode = new DropDownList
         {
             X = 20,
@@ -72,14 +80,6 @@ internal sealed class PlayerDetailsWindow : Window
 
             godModeDirty = true;
             feedback.Text = $"God mode {godMode.Text}; click Apply to commit this player session.";
-        };
-        feedback = new Label
-        {
-            X = 1,
-            Y = 13,
-            Width = Dim.Fill(1),
-            Height = 2,
-            SchemeName = "Base"
         };
 
         var apply = new Button { X = 20, Y = 12, Text = "Apply", SchemeName = "Base" };

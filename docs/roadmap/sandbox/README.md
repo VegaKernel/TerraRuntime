@@ -190,7 +190,7 @@ The invariant is strict: **exactly one process performs application-level reads/
 - [ ] no other mutable gameplay service becomes shared merely because runtimes are in one process;
 - [ ] deterministic teardown retires registrations, timers, extension/game-mode state and world-owned resources;
 - [x] transfer one client between two in-process runtime sessions without packet-emulation hacks, retaining the accepted socket in the process and switching one connection route between runtime-local bindings;
-- [x] show primary and all pending/live Level 1 sandboxes with their routed players in the operator TUI, and map player drag/drop to the same typed semantic transfer operation;
+- [x] show primary and all pending/live Level 1 sandboxes with their routed players in the operator TUI, capture drag identity by exact player generation, accept the full destination branch as a drop surface, and map drag/drop to the same typed semantic transfer operation;
 - [x] publish background sandbox job failures to both TUI feedback and plain-console structured logging without making observers part of lifecycle ownership;
 - [x] default single-world behavior remains unchanged when sandbox support is unused.
 

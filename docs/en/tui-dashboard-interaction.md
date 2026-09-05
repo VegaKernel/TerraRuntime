@@ -33,7 +33,7 @@ Each live `WorldRuntime` publishes both target TPS and an observed TPS sample fr
 
 A sandbox that is still being materialized has no live game loop and is rendered as `TPS --` instead of borrowing the primary runtime metric.
 
-The roster is a `ListView`: focus/selection highlights a complete item row rather than selecting text inside the row. Player drag-and-drop still submits the typed Level 1 move operation.
+The roster is a `ListView`: focus/selection highlights a complete item row rather than selecting text inside the row. Player drag-and-drop submits the typed Level 1 move operation with the exact `PlayerHandle` (`slot + generation`) captured when the drag begins. A background refresh/reorder therefore cannot silently substitute another player. The complete destination-world branch is a drop surface: the world header, any player row in that branch, and its `<no players>` placeholder all resolve to the same semantic target.
 
 Actionable sandbox-world and player rows render an explicit `[X]` action at the right edge. Selecting it opens a confirmation dialog: sandbox rows confirm `Destroy`, player rows confirm `Kick`. Primary world destruction is deliberately not offered. `Kick` requests process-owned connection shutdown through the connection route/outbound queue; it does not delete a UI row or directly mutate runtime player state.
 
@@ -48,6 +48,10 @@ A `+` control at the top of the roster opens the sandbox creation window. The fo
 - an evil drop-down with Corruption and Crimson.
 
 The form builds the same typed `SandboxCreateRequest` used by command handling. It does not round-trip through a generated command string.
+
+## Player details and GodMode
+
+Double-clicking a player row opens a generation-safe window for that exact player session. `God mode` is presented as a `Disabled` / `Enabled` drop-down and committed with `Apply`. Periodic dashboard refreshes do not overwrite an operator selection that is still awaiting Apply; the committed value crosses the typed trusted-host administration boundary and authoritative game loop.
 
 ## World-scoped detail inspection
 
@@ -78,6 +82,8 @@ feed level debug|info|warn|error
 ## Network graph
 
 Network uses Terminal.Gui `GraphView` with inbound and outbound packet-rate histories. The legend also shows current packet rate and throughput in `KiB/s`. Rates are calculated from process-lifetime message-counter deltas across detached network snapshots. Invalid intervals/counter rollback reset the local sample instead of emitting a synthetic spike.
+
+The Network detail screen also renders the heaviest Terraria message IDs from the rolling message-traffic window: direction, numeric ID, known enum name, frames/s, KiB/s and lifetime frame count. This makes it possible to distinguish normal entity replication from a specific packet family producing abnormal outbound traffic without enabling a global packet dump.
 
 ## Console command line
 

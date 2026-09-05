@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.HostContracts;
 using TerraRuntime.Application.Operations;
 using TerraRuntime.Application.TerminalUI;
 using Terminal.Gui.App;
@@ -358,7 +359,8 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         ]);
 
         Assert.True(tree.TryTransferRows(sourceRow: 1, targetRow: 2));
-        Assert.Equal(new PlayerHandle(new PlayerSlotId(0), new PlayerSessionGeneration(1)), player);
+        Assert.True(player.HasValue);
+        Assert.Equal(new PlayerHandle(new PlayerSlotId(0), new PlayerSessionGeneration(1)), player.Value);
         Assert.Equal(destination, target);
     }
 
@@ -401,7 +403,8 @@ public sealed class RuntimeOverviewDashboardInteractionTests
             ]);
 
         Assert.True(tree.DropDraggedForSmoke(4));
-        Assert.Equal(new PlayerHandle(new PlayerSlotId(1), new PlayerSessionGeneration(1)), moved);
+        Assert.True(moved.HasValue);
+        Assert.Equal(new PlayerHandle(new PlayerSlotId(1), new PlayerSessionGeneration(1)), moved.Value);
         Assert.Equal(arena, target);
     }
 
@@ -427,6 +430,28 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         Assert.Equal(arena, destroyed);
         Assert.True(tree.TryInvokeActionForSmoke(2));
         Assert.Equal("#4", kicked);
+    }
+
+    [Fact]
+    public void Player_details_godmode_selection_survives_periodic_refresh_until_apply()
+    {
+        RuntimePlayerSnapshot alice = CreatePlayer(3, 33, "Alice");
+        var players = new FixedPlayerOperations(alice);
+        var administration = new FakePlayerAdministration(initialGodMode: false);
+        var sessions = new RuntimeConnectionSessionDirectory();
+        sessions.Register(alice.ConnectionId, "127.0.0.1", 7777, DateTimeOffset.UtcNow);
+        using var window = new PlayerDetailsWindow(alice, players, administration, sessions);
+
+        Assert.False(window.GodModeForSmoke);
+        window.SetGodModeForSmoke(enabled: true);
+        window.RefreshLiveState();
+        Assert.True(window.GodModeForSmoke);
+
+        window.ApplyGodModeForSmoke();
+
+        Assert.True(administration.GodMode);
+        Assert.True(administration.LastSetPlayer.HasValue);
+        Assert.Equal(window.Player, administration.LastSetPlayer.Value);
     }
 
     [Fact]
@@ -462,6 +487,33 @@ public sealed class RuntimeOverviewDashboardInteractionTests
             HasMana: true,
             Mana: 20,
             MaxMana: 20);
+
+    private sealed class FixedPlayerOperations(RuntimePlayerSnapshot player) : IPlayerOperations
+    {
+        public RuntimePlayersSnapshot CaptureSnapshot() =>
+            new(new[] { player }.AsMemory(), DateTimeOffset.UtcNow);
+    }
+
+    private sealed class FakePlayerAdministration(bool initialGodMode) : IPlayerAdministrativeOperations
+    {
+        public bool GodMode { get; private set; } = initialGodMode;
+        public PlayerHandle? LastSetPlayer { get; private set; }
+
+        public ValueTask<bool> SetGodModeAsync(
+            PlayerHandle player,
+            bool enabled,
+            CancellationToken cancellationToken = default)
+        {
+            LastSetPlayer = player;
+            GodMode = enabled;
+            return ValueTask.FromResult(true);
+        }
+
+        public ValueTask<bool?> GetGodModeAsync(
+            PlayerHandle player,
+            CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult<bool?>(GodMode);
+    }
 
     private static RuntimeLogSnapshot CreateLogs(int count, string source, OperationsLogLevel level)
     {
