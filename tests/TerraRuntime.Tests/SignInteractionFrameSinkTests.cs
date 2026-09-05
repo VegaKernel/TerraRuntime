@@ -63,14 +63,26 @@ public sealed class SignInteractionFrameSinkTests
     }
 
     [Fact]
-    public void Bounded_sign_ingress_rejection_stops_connection()
+    public void Sign_read_backpressure_is_retryable_and_does_not_stop_connection()
     {
         GameCommandSourceId source = GameCommandSourceId.FromConnection(954);
         using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
         var sink = new SignInteractionFrameSink(source, bootstrap, new CountingSink(), new RejectingIngress());
         TerrariaFrame read = SignRead(10, 20);
 
-        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(in read));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(in read));
+        Assert.Equal(SignInteractionFrameStopReason.None, sink.StopReason);
+    }
+
+    [Fact]
+    public void Sign_update_backpressure_remains_connection_stopping_because_mutation_is_persistent()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(956);
+        using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
+        var sink = new SignInteractionFrameSink(source, bootstrap, new CountingSink(), new RejectingIngress());
+        TerrariaFrame update = SignState(new TerrariaSignState(3, 120, 45, "TerraRuntime", 77, 1));
+
+        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(in update));
         Assert.Equal(SignInteractionFrameStopReason.GameIngressBackpressure, sink.StopReason);
     }
 

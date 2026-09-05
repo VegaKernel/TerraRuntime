@@ -22,37 +22,6 @@ public static class VanillaDirtRules1458
         return IsCompletelyEmpty(in current);
     }
 
-    /// <summary>
-    /// Preflights the strict isolated canonical Dirt subset accepted by authoritative packet-17 tile mutation
-    /// without mutating the world. The authoritative game thread may use this before reserving cross-subsystem
-    /// resources; single-writer ownership keeps the preflight stable until the following commit attempt.
-    /// </summary>
-    public static bool CanKillIsolated(WorldTileStore tiles, int x, int y)
-    {
-        ArgumentNullException.ThrowIfNull(tiles);
-
-        if (x <= 0 || y <= 0 || x >= tiles.Dimensions.WidthTiles - 1 || y >= tiles.Dimensions.HeightTiles - 1)
-            return false;
-
-        WorldTile current = tiles.Get(x, y);
-        if (!IsCanonicalDirt(in current))
-            return false;
-
-        for (int offsetY = -1; offsetY <= 1; offsetY++)
-        {
-            for (int offsetX = -1; offsetX <= 1; offsetX++)
-            {
-                if (offsetX == 0 && offsetY == 0)
-                    continue;
-
-                if (tiles.Get(x + offsetX, y + offsetY).IsActive)
-                    return false;
-            }
-        }
-
-        return true;
-    }
-
     private static bool Contains(WorldTileStore tiles, int x, int y) =>
         (uint)x < (uint)tiles.Dimensions.WidthTiles &&
         (uint)y < (uint)tiles.Dimensions.HeightTiles;

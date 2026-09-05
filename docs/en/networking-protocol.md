@@ -82,7 +82,7 @@ A successful handshake records completion and wakes the watchdog. Production exp
 
 Frame-rejection telemetry remains a separate diagnostic dimension and normalizes malformed protocol, rate-limited, invalid-state, gameplay-rejected and backpressure failures. The lifetime reason answers why the connection ended; the rejection category answers what class of frame was rejected. These dimensions must not be flattened into one generic network error.
 
-The production sink chain propagates rejection category through sign, chest, projectile/tile, world-item and vitals/bootstrap layers. Bootstrap failures such as malformed join/player packets, illegal join state, player-slot mismatch and ingress/outbound backpressure therefore remain visible even though `PlayerVitalsFrameSink` is the first rejection-source wrapper around the bootstrap layer.
+The production sink chain propagates rejection category through sign, chest, projectile/tile, world-item and vitals/bootstrap layers. Bootstrap failures such as malformed join/player packets, illegal join state, player-slot mismatch and ingress/outbound backpressure therefore remain visible even though `PlayerVitalsFrameSink` is the first rejection-source wrapper around the bootstrap layer. Once a player is in `Playing`, `PlayerHp` and `PlayerMana` are replaceable snapshots: transient saturation of the bounded authoritative gameplay mailbox drops that stale snapshot instead of ending the connection, while connection-wide and per-message abuse limits still run above this sink. Discrete projectile spawn/destroy, NPC-damage and world-mutation intents remain fail-closed because silently dropping them would lose gameplay events rather than merely supersede state.
 
 ## 7. Handshake and state legality
 

@@ -124,7 +124,7 @@ World edits pass through semantic/runtime mutation paths rather than directly re
 
 The runtime already has verified slices for tile kill/update/replication and world collision/query behavior. `WorldTile` stores mutable cell state only; one flyweight `VanillaTileDefinition` per 1.4.5.8 TileID owns break-path, mining, drop and failed-pick transform semantics. Ordinary simple-cell mining therefore has no positive TileID allow-list.
 
-Still incomplete at broad vanilla scale are frame-important and multi-tile object destruction/placement, every slope/platform interaction, wiring/actuation, growth/spread families, full `HitTile`/reach semantics and the remaining environment-dependent `CanKillTile` rules.
+Still incomplete at broad vanilla scale are the remaining frame-important/multi-tile object destruction and placement families beyond the exact base Chest slice, every slope/platform interaction, wiring/actuation, growth/spread families, full `HitTile`/reach semantics and the remaining environment-dependent `CanKillTile` rules.
 
 A tile mutation is not complete merely because the resulting tile ID looks correct. Neighbor framing, object validity, drops, liquid interaction, persistence and network replication may all be observable parts of the same vanilla action.
 

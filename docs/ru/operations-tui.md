@@ -142,7 +142,7 @@ Double-click сначала фокусирует плитку, затем пер
 
 System Dashboard показывает lifecycle/world state, player/connection counts, interest-management state, current/target TPS, tick wall/CPU timing, slowest phase, missed deadlines, process CPU, managed heap, working set, allocation/GC state, command pressure, recent log events и public chat.
 
-Double-click по строке игрока в **Worlds / Players** открывает generation-safe live player window, без парсинга отображаемого текста строки. Окно показывает remote IP/endpoint, длительность текущей in-memory session, сложность персонажа, HP/mana, team, position/velocity и selected item. Метаданные connection session существуют только в процессе и удаляются при закрытии socket; в БД или файл они не пишутся. Checkbox GodMode вызывает `IPlayerAdministrativeOperations` для точного `PlayerHandle(slot,generation)`.
+Double-click по строке игрока в **Worlds / Players** открывает generation-safe live player window, без парсинга отображаемого текста строки. Окно показывает remote IP/endpoint, длительность текущей in-memory session, сложность персонажа, HP/mana, team, position/velocity и selected item. Метаданные connection session существуют только в процессе и удаляются при закрытии socket; в БД или файл они не пишутся. GodMode drop-down `Disabled` / `Enabled` вызывает `IPlayerAdministrativeOperations` для точного `PlayerHandle(slot,generation)`.
 
 Sandbox actions остаются typed UI operations. Command input dashboard и plain-console fallback не принимают mutation-команды `sandbox`/`sb`/`sb1`/`sb2`/`respawn`, а у GodMode нет chat/text command. Administrative state changes остаются за typed UI/host contracts, а не за player-visible command parsing.
 
@@ -177,7 +177,7 @@ ANSI TUI smoke проходит реальный menu path и проверяет
 
 ## 8. Network telemetry
 
-`INetworkOperations` отдаёт bounded network state без передачи UI ownership connection lifecycle. Он включает active/registered connections, admission totals/rejections, one-second и lifetime inbound totals, per-connection inbound details, outbound current/capacity/high-water/rejection state, slow clients, player lifecycle/replication counters, unsupported replication commits, typed terminal stops и normalized frame-rejection categories.
+`INetworkOperations` отдаёт bounded network state без передачи UI ownership connection lifecycle. Он включает active/registered connections, admission totals/rejections, one-second и lifetime inbound totals, per-connection inbound details, outbound current/capacity/high-water/rejection state, slow clients, player lifecycle/replication counters, health/mana baseline counters и health duplicate-suppression counters, unsupported replication commits, typed terminal stops и normalized frame-rejection categories.
 
 TUI потребляет subsystem-owned counters, а не парсит log text и не создаёт duplicate packet-hot-path counters.
 

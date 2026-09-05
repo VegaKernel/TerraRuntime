@@ -42,9 +42,16 @@ public sealed class LandmarkProvider : IWorldGenerationProvider
     private const ushort Sandstone = 396;
     private const ushort HardenedSand = 397;
 
-    private const ushort SpiderUnsafeWall = 62;
+    private static readonly ushort SpiderUnsafeWall = checked((ushort)VanillaWallIds.SpiderUnsafe.Value);
     private const ushort DiscWall = 82;
-    private const ushort LivingWoodUnsafeWall = 244;
+    private static readonly ushort LivingWoodUnsafeWall = checked((ushort)VanillaWallIds.LivingWoodUnsafe.Value);
+    private static readonly ushort DirtUnsafeWall = checked((ushort)VanillaWallIds.DirtUnsafe.Value);
+    private static readonly ushort MudUnsafeWall = checked((ushort)VanillaWallIds.MudUnsafe.Value);
+    private static readonly ushort SnowUnsafeWall = checked((ushort)VanillaWallIds.SnowUnsafe.Value);
+    private static readonly ushort RockyDirtUnsafeWall = checked((ushort)VanillaWallIds.RockyDirtUnsafe.Value);
+    private static readonly ushort OldStoneUnsafeWall = checked((ushort)VanillaWallIds.OldStoneUnsafe.Value);
+    private static readonly ushort JungleUnsafeWall = checked((ushort)VanillaWallIds.JungleUnsafe.Value);
+    private static readonly ushort IceUnsafeWall = checked((ushort)VanillaWallIds.IceUnsafe.Value);
 
     private static readonly ushort ObsidianBrick = checked((ushort)VanillaTileIds.ObsidianBrick.Value);
     private static readonly ushort HellstoneBrick = checked((ushort)VanillaTileIds.HellstoneBrick.Value);
@@ -146,7 +153,12 @@ public sealed class LandmarkProvider : IWorldGenerationProvider
 
     private sealed class LandmarkState
     {
-        public int BiomeTransitionCells { get; set; }
+        public int SnowTransitionCells { get; set; }
+        public int DesertTransitionCells { get; set; }
+        public int JungleTransitionCells { get; set; }
+        public int EvilTransitionCells { get; set; }
+        public int BiomeTransitionCells => SnowTransitionCells + DesertTransitionCells + JungleTransitionCells + EvilTransitionCells;
+        public int NaturalWallCells { get; set; }
         public int SkyHouseTarget { get; set; }
         public int SkyHousesPlaced { get; set; }
         public int FloatingLakeTarget { get; set; }
@@ -196,11 +208,19 @@ public sealed class LandmarkProvider : IWorldGenerationProvider
                 throw new InvalidOperationException("Optimized landmark generation requires persistent generated-chest support.");
 
             ApproximateLayers layers = CalculateApproximateLayers(context.Workspace);
-            state.BiomeTransitionCells = WarpBiomeTransitions(context, layers);
-            context.ReportProgress(0.12d, "Warping biome transition silhouettes");
+            BiomeTransitionResult transitions = WarpBiomeTransitions(context, layers);
+            state.SnowTransitionCells = transitions.Snow;
+            state.DesertTransitionCells = transitions.Desert;
+            state.JungleTransitionCells = transitions.Jungle;
+            state.EvilTransitionCells = transitions.Evil;
+            context.ReportProgress(
+                0.08d,
+                $"Warping biome transition silhouettes ({state.BiomeTransitionCells} cells)");
+            state.NaturalWallCells = PaintNaturalUndergroundWalls(context, layers);
+            context.ReportProgress(0.15d, "Painting natural underground background walls");
 
             BuildSkyLandmarks(context, chests, layers, state);
-            context.ReportProgress(0.30d, "Building sky houses and floating lakes");
+            context.ReportProgress(0.32d, "Building sky houses and floating lakes");
             BuildPyramids(context, chests, layers, state);
             context.ReportProgress(0.44d, "Building desert pyramids");
             BuildLivingTrees(context, chests, layers, state);
@@ -239,8 +259,22 @@ public sealed class LandmarkProvider : IWorldGenerationProvider
             RequireExact("marble pockets", state.MarblePlaced, state.MarbleTarget);
             RequireExact("spider grottoes", state.SpiderPlaced, state.SpiderTarget);
 
-            if (state.BiomeTransitionCells < 24)
-                throw new InvalidOperationException($"Optimized landmark validation found only {state.BiomeTransitionCells}/24 warped biome-transition cells.");
+            const int minimumTransitionCellsPerBiome = 6;
+            RequireBiomeTransitionBudget("snow", state.SnowTransitionCells, minimumTransitionCellsPerBiome);
+            RequireBiomeTransitionBudget("desert", state.DesertTransitionCells, minimumTransitionCellsPerBiome);
+            RequireBiomeTransitionBudget("jungle", state.JungleTransitionCells, minimumTransitionCellsPerBiome);
+            RequireBiomeTransitionBudget("evil", state.EvilTransitionCells, minimumTransitionCellsPerBiome);
+            if (state.BiomeTransitionCells < minimumTransitionCellsPerBiome * 4)
+            {
+                throw new InvalidOperationException(
+                    $"Optimized landmark validation found only {state.BiomeTransitionCells}/{minimumTransitionCellsPerBiome * 4} total warped biome-transition cells.");
+            }
+            int minimumNaturalWallCells = Math.Max(48, context.Workspace.WidthTiles / 3);
+            if (state.NaturalWallCells < minimumNaturalWallCells)
+            {
+                throw new InvalidOperationException(
+                    $"Optimized landmark validation found only {state.NaturalWallCells}/{minimumNaturalWallCells} natural underground wall cells.");
+            }
             if (!state.DungeonEntranceOpened)
                 throw new InvalidOperationException("Optimized landmark validation found no opened dungeon entrance.");
             if (CountActiveTile(context.Workspace, Sunplate) < state.SkyHouseTarget * 30)
@@ -310,7 +344,18 @@ public sealed class LandmarkProvider : IWorldGenerationProvider
             if (namedChestCount < state.ExpectedNamedChests)
                 throw new InvalidOperationException($"Optimized landmark validation found only {namedChestCount}/{state.ExpectedNamedChests} persistent landmark chests.");
 
-            context.ReportProgress(1d, $"Validated organic biome edges and {state.ExpectedNamedChests} persistent landmark caches");
+            context.ReportProgress(
+                1d,
+                $"Validated organic biome edges, {state.NaturalWallCells} natural wall cells and {state.ExpectedNamedChests} persistent landmark caches");
+        }
+
+        private static void RequireBiomeTransitionBudget(string biome, int actual, int minimum)
+        {
+            if (actual < minimum)
+            {
+                throw new InvalidOperationException(
+                    $"Optimized landmark validation found only {actual}/{minimum} warped {biome} transition cells.");
+            }
         }
 
         private static void RequireExact(string role, int actual, int target)
@@ -320,17 +365,187 @@ public sealed class LandmarkProvider : IWorldGenerationProvider
         }
     }
 
-    private static int WarpBiomeTransitions(IWorldGenerationContext context, ApproximateLayers layers)
+    private static int PaintNaturalUndergroundWalls(IWorldGenerationContext context, ApproximateLayers layers)
     {
-        int changed = 0;
-        changed += WarpMaterialBand(context, layers, [Snow, Ice], Snow, Ice, 0x534E4F57UL);
-        changed += WarpMaterialBand(context, layers, [Sand, Sandstone, HardenedSand], Sand, Sandstone, 0x53414E44UL);
-        changed += WarpMaterialBand(context, layers, [JungleGrass, Mud], JungleGrass, Mud, 0x4A554E474C45UL);
+        IWorldGenerationWorkspace workspace = context.Workspace;
+        int width = workspace.WidthTiles;
+        int height = workspace.HeightTiles;
+        int globalTop = Math.Clamp(layers.Surface + 6, 8, Math.Max(8, layers.UnderworldTop - 8));
+        int bottom = Math.Clamp(layers.UnderworldTop - 6, globalTop + 1, height - 2);
+        int left = Math.Clamp(layers.OceanWidth + 3, 2, Math.Max(2, width - 3));
+        int right = Math.Clamp(width - layers.OceanWidth - 4, left, width - 3);
+        int painted = 0;
+
+        for (int x = left; x <= right; x++)
+        {
+            if ((x & 127) == 0)
+                context.CancellationToken.ThrowIfCancellationRequested();
+
+            int surface = FindFirstActiveY(
+                workspace,
+                x,
+                Math.Max(4, layers.Surface - 50),
+                Math.Min(bottom, layers.RockLayer + 24));
+            if (surface < 0)
+                continue;
+
+            int columnTop = Math.Max(globalTop, surface + 6);
+            for (int y = columnTop; y <= bottom; y++)
+            {
+                if (!workspace.TryGetTile(x, y, out WorldGenerationTile tile) ||
+                    (tile.Flags & WorldGenerationTileFlags.Active) != 0 ||
+                    tile.Wall != VanillaWallIds.None.Value)
+                {
+                    continue;
+                }
+
+                if (!TryResolveNaturalWall(workspace, x, y, layers, context.Request.Seed, out ushort wall))
+                    continue;
+
+                WorldGenerationTile paintedTile = tile with { Wall = wall };
+                if (!workspace.TrySetTile(x, y, in paintedTile))
+                    throw new InvalidOperationException($"Optimized landmark layer could not paint natural wall {wall} at ({x}, {y}).");
+                painted++;
+            }
+        }
+
+        return painted;
+    }
+
+    private static bool TryResolveNaturalWall(
+        IWorldGenerationWorkspace workspace,
+        int x,
+        int y,
+        ApproximateLayers layers,
+        ulong seed,
+        out ushort wall)
+    {
+        int snow = 0;
+        int jungle = 0;
+        int ordinary = 0;
+
+        // Sampling the four cardinal rays keeps this pass linear in world area while still letting cave
+        // backgrounds inherit the enclosing biome instead of painting hard vertical wall bands.
+        for (int distance = 1; distance <= 4; distance++)
+        {
+            ScoreWallMaterial(workspace, x - distance, y, ref snow, ref jungle, ref ordinary, out bool protectedContent);
+            if (protectedContent)
+            {
+                wall = 0;
+                return false;
+            }
+            ScoreWallMaterial(workspace, x + distance, y, ref snow, ref jungle, ref ordinary, out protectedContent);
+            if (protectedContent)
+            {
+                wall = 0;
+                return false;
+            }
+            ScoreWallMaterial(workspace, x, y - distance, ref snow, ref jungle, ref ordinary, out protectedContent);
+            if (protectedContent)
+            {
+                wall = 0;
+                return false;
+            }
+            ScoreWallMaterial(workspace, x, y + distance, ref snow, ref jungle, ref ordinary, out protectedContent);
+            if (protectedContent)
+            {
+                wall = 0;
+                return false;
+            }
+        }
+
+        ulong selector = Mix64(seed ^ (ulong)(uint)x * 0x9E3779B97F4A7C15UL ^ (ulong)(uint)y * 0xD1B54A32D192ED03UL);
+        if (snow > jungle && snow >= ordinary)
+        {
+            wall = (selector & 3UL) == 0 ? SnowUnsafeWall : IceUnsafeWall;
+            return true;
+        }
+        if (jungle > snow && jungle >= ordinary)
+        {
+            wall = (selector & 3UL) == 0 ? MudUnsafeWall : JungleUnsafeWall;
+            return true;
+        }
+
+        // Large cavern centres can be farther than four cells from solid terrain. They still need a background;
+        // depth chooses a dirt/rock family while the hash prevents one enormous uniform sheet.
+        bool rocky = y >= layers.RockLayer || ordinary > 0;
+        wall = rocky
+            ? ((selector & 1UL) == 0 ? RockyDirtUnsafeWall : OldStoneUnsafeWall)
+            : DirtUnsafeWall;
+        return true;
+    }
+
+    private static void ScoreWallMaterial(
+        IWorldGenerationWorkspace workspace,
+        int x,
+        int y,
+        ref int snow,
+        ref int jungle,
+        ref int ordinary,
+        out bool protectedContent)
+    {
+        protectedContent = false;
+        if ((uint)x >= (uint)workspace.WidthTiles || (uint)y >= (uint)workspace.HeightTiles ||
+            !workspace.TryGetTile(x, y, out WorldGenerationTile tile) ||
+            (tile.Flags & WorldGenerationTileFlags.Active) == 0)
+        {
+            return;
+        }
+
+        if (IsProtectedStructureTile(tile.Type) || VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
+        {
+            protectedContent = true;
+            return;
+        }
+
+        switch (tile.Type)
+        {
+            case Snow:
+            case Ice:
+                snow += 3;
+                break;
+            case Mud:
+            case JungleGrass:
+                jungle += 3;
+                break;
+            case Dirt:
+            case Grass:
+            case Stone:
+            case CorruptGrass:
+            case Ebonstone:
+            case CrimsonGrass:
+            case Crimstone:
+            case Sand:
+            case Sandstone:
+            case HardenedSand:
+                ordinary++;
+                break;
+        }
+    }
+
+    private static bool IsProtectedStructureTile(ushort type) =>
+        type == VanillaTileIds.BlueDungeonBrick.Value ||
+        type == VanillaTileIds.GreenDungeonBrick.Value ||
+        type == VanillaTileIds.PinkDungeonBrick.Value ||
+        type == VanillaTileIds.Hive.Value ||
+        type == VanillaTileIds.LihzahrdBrick.Value ||
+        type == ObsidianBrick ||
+        type == HellstoneBrick ||
+        type == Sunplate ||
+        type == LivingWood;
+
+    private readonly record struct BiomeTransitionResult(int Snow, int Desert, int Jungle, int Evil);
+
+    private static BiomeTransitionResult WarpBiomeTransitions(IWorldGenerationContext context, ApproximateLayers layers)
+    {
+        int snow = WarpMaterialBand(context, layers, [Snow, Ice], Snow, Ice, 0x534E4F57UL);
+        int desert = WarpMaterialBand(context, layers, [Sand, Sandstone, HardenedSand], Sand, Sandstone, 0x53414E44UL);
+        int jungle = WarpMaterialBand(context, layers, [JungleGrass, Mud], JungleGrass, Mud, 0x4A554E474C45UL);
         bool crimson = context.Request.Options.Evil == WorldGenerationEvil.Crimson;
-        changed += crimson
+        int evil = crimson
             ? WarpMaterialBand(context, layers, [CrimsonGrass, Crimstone], CrimsonGrass, Crimstone, 0x4352494D534F4EUL)
             : WarpMaterialBand(context, layers, [CorruptGrass, Ebonstone], CorruptGrass, Ebonstone, 0x434F5252555054UL);
-        return changed;
+        return new BiomeTransitionResult(snow, desert, jungle, evil);
     }
 
     private static int WarpMaterialBand(
@@ -628,8 +843,44 @@ public sealed class LandmarkProvider : IWorldGenerationProvider
             SetBlock(workspace, centerX + dx, Math.Min(workspace.HeightTiles - 2, floorY - 1 + localDepth), Stone);
         }
 
+        // The outer columns are always two cells deep because of the clamped arch above. Retaining
+        // lips on those two rows turn the carved water into an actual basin instead of a strip that
+        // drains horizontally as soon as runtime liquid simulation starts.
+        int leftLipX = centerX - halfWidth - 1;
+        int rightLipX = centerX + halfWidth + 1;
+        for (int dy = 0; dy < 2; dy++)
+        {
+            int y = floorY - 1 + dy;
+            SetBlock(workspace, leftLipX, y, Stone);
+            SetBlock(workspace, rightLipX, y, Stone);
+        }
+
         int minimumWaterCells = checked((halfWidth * 2 + 1) * 2);
-        return waterCells >= minimumWaterCells;
+        return waterCells >= minimumWaterCells &&
+               IsRetainedLakeEdge(workspace, centerX - halfWidth, floorY - 1, direction: -1) &&
+               IsRetainedLakeEdge(workspace, centerX + halfWidth, floorY - 1, direction: 1);
+    }
+
+    private static bool IsRetainedLakeEdge(
+        IWorldGenerationWorkspace workspace,
+        int waterX,
+        int topY,
+        int direction)
+    {
+        int lipX = waterX + direction;
+        for (int dy = 0; dy < 2; dy++)
+        {
+            if (!workspace.TryGetTile(waterX, topY + dy, out WorldGenerationTile water) ||
+                water.LiquidAmount == 0 ||
+                water.LiquidKind != WorldGenerationLiquidKind.Water ||
+                !workspace.TryGetTile(lipX, topY + dy, out WorldGenerationTile lip) ||
+                (lip.Flags & WorldGenerationTileFlags.Active) == 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static int[] GetSkyPlacementCenters(SkyIslandCandidate island, int halfFootprint)
@@ -1286,14 +1537,20 @@ public sealed class LandmarkProvider : IWorldGenerationProvider
     private static int NextRange(IWorldGenerationRandom random, int minInclusive, int maxExclusive) =>
         maxExclusive <= minInclusive ? minInclusive : minInclusive + random.NextInt32(maxExclusive - minInclusive);
 
-    private static double Hash01(ulong seed, int value)
+    private static ulong Mix64(ulong value)
     {
-        ulong z = seed ^ unchecked((ulong)(long)value * 0x9E3779B97F4A7C15UL);
+        ulong z = value;
         z ^= z >> 30;
         z *= 0xBF58476D1CE4E5B9UL;
         z ^= z >> 27;
         z *= 0x94D049BB133111EBUL;
         z ^= z >> 31;
+        return z;
+    }
+
+    private static double Hash01(ulong seed, int value)
+    {
+        ulong z = Mix64(seed ^ unchecked((ulong)(long)value * 0x9E3779B97F4A7C15UL));
         return (z >> 11) * (1d / (1UL << 53));
     }
 }

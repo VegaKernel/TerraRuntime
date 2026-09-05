@@ -33,7 +33,7 @@ Each live `WorldRuntime` publishes both target TPS and an observed TPS sample fr
 
 A sandbox that is still being materialized has no live game loop and is rendered as `TPS --` instead of borrowing the primary runtime metric.
 
-The roster is a `ListView`: focus/selection highlights a complete item row rather than selecting text inside the row. Player drag-and-drop submits the typed Level 1 move operation with the exact `PlayerHandle` (`slot + generation`) captured when the drag begins. A background refresh/reorder therefore cannot silently substitute another player. The complete destination-world branch is a drop surface: the world header, any player row in that branch, and its `<no players>` placeholder all resolve to the same semantic target.
+The roster is a `ListView`: focus/selection highlights a complete item row rather than selecting text inside the row. Player drag-and-drop submits the typed Level 1 move operation with the exact `PlayerHandle` (`slot + generation`) captured when the drag begins. That captured source remains immutable until button release, so neither a background refresh/reorder nor repeated held-button mouse events over another player row can silently substitute another player. The complete destination-world branch is a drop surface: the world header, any player row in that branch, and its `<no players>` placeholder all resolve to the same semantic target.
 
 Actionable sandbox-world and player rows render an explicit `[X]` action at the right edge. Selecting it opens a confirmation dialog: sandbox rows confirm `Destroy`, player rows confirm `Kick`. Primary world destruction is deliberately not offered. `Kick` requests process-owned connection shutdown through the connection route/outbound queue; it does not delete a UI row or directly mutate runtime player state.
 
@@ -84,6 +84,8 @@ feed level debug|info|warn|error
 Network uses Terminal.Gui `GraphView` with inbound and outbound packet-rate histories. The legend also shows current packet rate and throughput in `KiB/s`. Rates are calculated from process-lifetime message-counter deltas across detached network snapshots. Invalid intervals/counter rollback reset the local sample instead of emitting a synthetic spike.
 
 The Network detail screen also renders the heaviest Terraria message IDs from the rolling message-traffic window: direction, numeric ID, known enum name, frames/s, KiB/s and lifetime frame count. This makes it possible to distinguish normal entity replication from a specific packet family producing abnormal outbound traffic without enabling a global packet dump.
+
+The same detail view reports exact duplicate updates suppressed before peer fanout for movement, appearance, equipment, health packet 16, NPC packet 23 and projectile packet 27. Vitals counters also expose relayed health plus health/mana spawn baselines. These counters are process-lifetime diagnostics; the rolling message table remains the source for actual on-wire packet rates.
 
 ## Console command line
 

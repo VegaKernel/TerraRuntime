@@ -688,12 +688,21 @@ public static class VanillaWallIds
     public static readonly WallTypeId GreenDungeonTileUnsafe = new(99);
     public static readonly WallTypeId HellstoneBrickUnsafe = new(13);
     public static readonly WallTypeId ObsidianBrickUnsafe = new(14);
+    public static readonly WallTypeId MudUnsafe = new(15);
     public static readonly WallTypeId Dirt = new(16);
+    // Natural-background wall ids below are pinned by the clean-room TerrariaServer 1.4.5.8 worldgen passes.
+    public static readonly WallTypeId SnowUnsafe = new(40);
+    public static readonly WallTypeId RockyDirtUnsafe = new(59);
+    public static readonly WallTypeId OldStoneUnsafe = new(61);
+    public static readonly WallTypeId GrassUnsafe = new(63);
+    public static readonly WallTypeId JungleUnsafe = new(64);
+    public static readonly WallTypeId IceUnsafe = new(71);
     public static readonly WallTypeId BlueDungeon = new(17);
     public static readonly WallTypeId Glass = new(21);
     public static readonly WallTypeId SpiderUnsafe = new(62);
     public static readonly WallTypeId HiveUnsafe = new(86);
     public static readonly WallTypeId LihzahrdBrickUnsafe = new(87);
+    public static readonly WallTypeId LivingWoodUnsafe = new(244);
     public static readonly WallTypeId UnbreakableTemple = new(350);
 
     public static bool TryCreate(int rawType, out WallTypeId type)

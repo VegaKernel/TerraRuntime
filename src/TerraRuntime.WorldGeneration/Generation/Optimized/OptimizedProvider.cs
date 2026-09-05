@@ -752,22 +752,9 @@ public sealed class OptimizedProvider : IWorldGenerationProvider
             }
         }
 
-        if ((island.Ordinal & 1) == 1)
-        {
-            int basinY = island.SurfaceY - 1;
-            for (int x = centerX - 3; x <= centerX + 3; x++)
-            {
-                SetTile(
-                    workspace,
-                    x,
-                    basinY,
-                    0,
-                    0,
-                    WorldGenerationTileFlags.None,
-                    byte.MaxValue,
-                    WorldGenerationLiquidKind.Water);
-            }
-        }
+        // Sky lakes are placed later by LandmarkProvider, which can carve a closed basin after
+        // houses/progression content are known. Do not seed naked water strips here: once liquid
+        // simulation starts, an uncontained strip simply drains off the island.
     }
 
     private static void PlaceOreFamily(

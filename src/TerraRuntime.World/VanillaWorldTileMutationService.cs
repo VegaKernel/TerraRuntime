@@ -122,7 +122,9 @@ public sealed class VanillaWorldTileMutationService
             return Rejected(WorldTileMutationStatus.Empty, in before);
         if (!VanillaTileDefinitionCatalog.TryGet(before.TileType, out VanillaTileDefinition definition))
             return Rejected(WorldTileMutationStatus.InvalidContent, in before);
-        if (definition.BreakPath != VanillaTileBreakPath.SimpleCell)
+        bool simpleCell = definition.BreakPath == VanillaTileBreakPath.SimpleCell;
+        bool frameImportantSingleCell = definition.BreakPath == VanillaTileBreakPath.FrameImportantSingleCell;
+        if (!simpleCell && !frameImportantSingleCell)
             return Rejected(WorldTileMutationStatus.FrameImportantUnsupported, in before);
 
         WorldTile after = before;
@@ -137,7 +139,13 @@ public sealed class VanillaWorldTileMutationService
             WorldTileFlags.Inactive |
             WorldTileFlags.InvisibleBlock |
             WorldTileFlags.FullbrightBlock);
-        return CommitAndFrame(request.X, request.Y, in before, in after, tileFrame: true, wallFrame: false);
+        return CommitAndFrame(
+            request.X,
+            request.Y,
+            in before,
+            in after,
+            tileFrame: simpleCell,
+            wallFrame: false);
     }
 
     private WorldTileMutationResult TransformTile(in WorldTileMutationRequest request, in WorldTile before)

@@ -54,7 +54,7 @@ The optimized profile currently produces and validates:
 - an Underworld band with Lava, Hellstone and a Hellforge;
 - small correlated caves plus large warped caverns, vertical shafts and inland underground lakes;
 - multiple floating islands;
-- a connected dungeon room/branch graph with a readable entrance, locked dungeon loot, Golden Keys, spikes and wired dart traps;
+- a connected dungeon room/branch graph with a readable entrance, source-backed Blue Dungeon Platform traversal levels in vertical shafts, 2x3 player-clearance reachability validation, locked dungeon loot, Golden Keys, spikes and wired dart traps;
 - world-width-scaled isolated jungle hives with dry Queen Bee arenas and Honey basins, plus Jungle Temple and Aether/Shimmer pocket;
 - pre-Hardmode ore tiers;
 - a world-area-scaled Life Crystal budget;
@@ -67,12 +67,17 @@ The optimized profile currently produces and validates:
 - bounded Underworld houses using source-backed Hell brick/wall families, lava-safe furniture and Shadow Chests, connected by undulating platform bridges;
 - granite, marble, spider/cobweb and distinct glowing-mushroom cave micro-biomes;
 - domain-warped material tongues at snow, desert, jungle and world-evil boundaries;
+- natural underground unsafe background walls that inherit nearby snow/ice or jungle/mud families and use dirt/rock families in ordinary caverns without overwriting structure walls;
 - deterministic ordinary forest, jungle and snow trees grown through the clean-room TerrariaServer `1.4.5.8` `GrowTree` clearance/branch/root/frame semantics via an optimized-RNG adapter, plus grass/jungle undergrowth and sunflower patches, all placed after landmarks so progression objects and caches are protected;
 - a deterministic surface-finishing pass that converts clean one-tile natural height transitions into persisted walkable slopes/half-blocks and publishes vanilla-format tree foliage anchors.
 
 The landmark layer uses tile/wall identities already source-backed by the repository's TerrariaServer `1.4.5.8`
 world-generation work. Exploration loot now uses pinned source primary families, while pyramid, Living Tree and
 Pyramid and Living Tree landmark-cache contents remain intentionally custom roles rather than claims of exact vanilla chest tables. Underworld caches now use the pinned TerrariaServer `1.4.5.8` Shadow Chest style and primary family, while their placement schedule remains optimized-profile-owned.
+
+## Natural underground walls
+
+The optimized landmark layer now fills previously empty (`wall=0`) underground cave backgrounds with deterministic unsafe wall families. It only touches inactive underground cells, preserves liquid and wall-paint state, and refuses to paint through frame-important content or dungeon/hive/temple/landmark structure material. Snow/Ice and Jungle/Mud surroundings select their corresponding source-backed wall families; ordinary cavern centres use source-backed dirt/rock unsafe walls. Existing structure walls always win.
 
 ## Organic transitions
 
@@ -88,7 +93,7 @@ This removes the most obvious straight vertical material boundaries while preser
 Sky terrain is scanned as separate horizontal masses. Candidate columns must prove open air below the shallow island body before horizontal grouping, so high mountain silhouettes cannot inflate the sky-landmark budget and a real island overlapping a mountain in X remains independently detectable. The landmark pass assigns two distinct roles:
 
 - **sky house**: Sunplate shell, Disc Wall interior and a persistent sky cache;
-- **Floating Lake**: a carved bounded water basin reinforced inside the existing island mass.
+- **Floating Lake**: a carved bounded water basin reinforced inside the existing island mass; the outer water columns have explicit solid retaining lips, and generation rejects a lake whose horizontal edges are left open to drain when runtime liquid simulation starts.
 
 Both roles have explicit minimum budgets. A pass that cannot place the requested house/lake counts fails generation
 rather than silently returning a visually incomplete world.

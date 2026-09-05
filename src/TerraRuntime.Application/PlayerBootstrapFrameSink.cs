@@ -555,15 +555,15 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         {
             WorldSectionId section = sections[i];
             SectionFrameLookupResult lookup = _packets.ResolveSectionFrame(section, out ReadOnlyMemory<byte> frame);
-            if (lookup == SectionFrameLookupResult.RateLimited)
+            if (lookup != SectionFrameLookupResult.Available)
             {
-                // Section streaming after join is opportunistic. A global rebuild-budget collision is
-                // temporary server pressure, not malformed client state. Leave the section unsent so a
-                // later movement sample retries it instead of disconnecting an otherwise healthy player.
+                // Post-join section streaming is opportunistic regardless of why the current frame is
+                // temporarily unavailable. Rate-limit collisions, a saturated rebuild worker, revision
+                // churn while a section is being encoded, or a transient rebuild failure must not turn an
+                // otherwise healthy playing connection into "Connection lost". The section remains
+                // unmarked, so a later movement sample retries it. Initial packet-8 bootstrap stays strict.
                 continue;
             }
-            if (lookup != SectionFrameLookupResult.Available)
-                return PlayerBootstrapStopReason.SectionEncodingFailure;
             if (!TryQueueOpportunistic(frame))
             {
                 // Post-join section streaming is replaceable/opportunistic state too. Do not use the normal

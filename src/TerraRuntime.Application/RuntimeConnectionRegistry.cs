@@ -33,6 +33,9 @@ internal sealed partial class RuntimeConnectionRegistry : IRuntimePlayerEventSin
     private long _movementResyncFrames;
     private long _serverPlayerHealthFrames;
     private long _serverPlayerManaFrames;
+    private long _suppressedDuplicateAppearanceFrames;
+    private long _suppressedDuplicateEquipmentFrames;
+    private long _suppressedDuplicateMovementFrames;
 
     public RuntimeConnectionRegistry(
         IInterestManagementControl? interestManagement = null,
@@ -62,6 +65,12 @@ internal sealed partial class RuntimeConnectionRegistry : IRuntimePlayerEventSin
     public long RelayedMovementFrames => Interlocked.Read(ref _relayedMovementFrames);
 
     public long MovementResyncFrames => Interlocked.Read(ref _movementResyncFrames);
+
+    public long SuppressedDuplicateAppearanceFrames => Interlocked.Read(ref _suppressedDuplicateAppearanceFrames);
+
+    public long SuppressedDuplicateEquipmentFrames => Interlocked.Read(ref _suppressedDuplicateEquipmentFrames);
+
+    public long SuppressedDuplicateMovementFrames => Interlocked.Read(ref _suppressedDuplicateMovementFrames);
 
     internal RuntimePlayerSpatialIndexSnapshot? PlayerSpatialSnapshot =>
         _interestRouter.PlayerSpatialSnapshot;

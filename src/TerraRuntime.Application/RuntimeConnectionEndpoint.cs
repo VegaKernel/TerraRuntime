@@ -69,21 +69,34 @@ internal sealed class RuntimeConnectionEndpoint
         hasPosition = true;
     }
 
-    public void UpdateLatestAppearanceFrame(PlayerHandle owner, byte[] encoded)
+    public bool UpdateLatestAppearanceFrame(PlayerHandle owner, byte[] encoded)
     {
         ArgumentNullException.ThrowIfNull(encoded);
         if (!owner.IsAssigned)
             throw new ArgumentException("Appearance baseline owner must be assigned.", nameof(owner));
 
+        RetainedFrame? current = Volatile.Read(ref latestAppearance);
+        if (current is not null && current.Owner == owner && current.Encoded.AsSpan().SequenceEqual(encoded))
+            return false;
+
         Volatile.Write(ref latestAppearance, new RetainedFrame(owner, encoded));
+        return true;
     }
 
     public bool TryGetLatestAppearanceFrame(PlayerHandle expectedOwner, out OutboundFrame frame) =>
         TryGetRetainedFrame(Volatile.Read(ref latestAppearance), expectedOwner, out frame);
 
-    public bool UpdateLatestEquipmentFrame(PlayerHandle owner, short equipmentSlot, byte[] encoded)
+    public bool UpdateLatestEquipmentFrame(PlayerHandle owner, short equipmentSlot, byte[] encoded) =>
+        UpdateLatestEquipmentFrame(owner, equipmentSlot, encoded, out _);
+
+    public bool UpdateLatestEquipmentFrame(
+        PlayerHandle owner,
+        short equipmentSlot,
+        byte[] encoded,
+        out bool changed)
     {
         ArgumentNullException.ThrowIfNull(encoded);
+        changed = false;
         if (!owner.IsAssigned)
             return false;
 
@@ -95,9 +108,13 @@ internal sealed class RuntimeConnectionEndpoint
                 equipmentOwner = owner;
             }
 
-            if (equipmentFrames.ContainsKey(equipmentSlot))
+            if (equipmentFrames.TryGetValue(equipmentSlot, out byte[]? current))
             {
+                if (current.AsSpan().SequenceEqual(encoded))
+                    return true;
+
                 equipmentFrames[equipmentSlot] = encoded;
+                changed = true;
                 return true;
             }
 
@@ -105,6 +122,7 @@ internal sealed class RuntimeConnectionEndpoint
                 return false;
 
             equipmentFrames.Add(equipmentSlot, encoded);
+            changed = true;
             return true;
         }
     }
@@ -128,17 +146,25 @@ internal sealed class RuntimeConnectionEndpoint
         return enqueued;
     }
 
-    public void UpdateLatestMovementFrame(PlayerHandle owner, byte[] encoded)
+    public bool UpdateLatestMovementFrame(PlayerHandle owner, byte[] encoded)
     {
         ArgumentNullException.ThrowIfNull(encoded);
         if (!owner.IsAssigned)
             throw new ArgumentException("Movement baseline owner must be assigned.", nameof(owner));
 
+        RetainedFrame? current = Volatile.Read(ref latestMovement);
+        if (current is not null && current.Owner == owner && current.Encoded.AsSpan().SequenceEqual(encoded))
+            return false;
+
         Volatile.Write(ref latestMovement, new RetainedFrame(owner, encoded));
+        return true;
     }
 
     public bool TryGetLatestMovementFrame(PlayerHandle expectedOwner, out OutboundFrame frame) =>
         TryGetRetainedFrame(Volatile.Read(ref latestMovement), expectedOwner, out frame);
+
+    public void ClearLatestMovementFrame(PlayerHandle owner) =>
+        ClearRetainedFrame(ref latestMovement, owner);
 
     public RuntimePlayerInterestState CreateInterestState(PlayerSlotId slot) =>
         new(slot, hasPosition, positionX, positionY);

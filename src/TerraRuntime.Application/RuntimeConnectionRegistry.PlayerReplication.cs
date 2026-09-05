@@ -54,10 +54,15 @@ internal sealed partial class RuntimeConnectionRegistry
             return;
 
         byte[] encoded = TerrariaPlayerReplicationFrameEncoder.EncodeAppearance(in normalized);
-        endpoint.UpdateLatestAppearanceFrame(connection.Player, encoded);
+        bool changed = endpoint.UpdateLatestAppearanceFrame(connection.Player, encoded);
 
         if (!endpoint.TryGetPlayingPlayer(out PlayerHandle currentPlayer) || currentPlayer != connection.Player)
             return;
+        if (!changed)
+        {
+            Interlocked.Increment(ref _suppressedDuplicateAppearanceFrames);
+            return;
+        }
 
         var frame = new OutboundFrame(encoded);
         foreach (KeyValuePair<GameCommandSourceId, RuntimeConnectionEndpoint> pair in _endpoints)
@@ -83,11 +88,21 @@ internal sealed partial class RuntimeConnectionRegistry
             return;
 
         byte[] encoded = TerrariaPlayerReplicationFrameEncoder.EncodeEquipment(in request);
-        if (!endpoint.UpdateLatestEquipmentFrame(connection.Player, request.SlotId, encoded))
+        bool retained = endpoint.UpdateLatestEquipmentFrame(
+            connection.Player,
+            request.SlotId,
+            encoded,
+            out bool changed);
+        if (!retained)
             Interlocked.Increment(ref _droppedEquipmentSnapshotUpdates);
 
         if (!endpoint.TryGetPlayingPlayer(out PlayerHandle currentPlayer) || currentPlayer != connection.Player)
             return;
+        if (retained && !changed)
+        {
+            Interlocked.Increment(ref _suppressedDuplicateEquipmentFrames);
+            return;
+        }
 
         var frame = new OutboundFrame(encoded);
         foreach (KeyValuePair<GameCommandSourceId, RuntimeConnectionEndpoint> pair in _endpoints)
@@ -141,6 +156,9 @@ internal sealed partial class RuntimeConnectionRegistry
 
         float positionX = request.SpawnX * VanillaTileSizePixels;
         float positionY = request.SpawnY * VanillaTileSizePixels;
+        // Respawn is a position discontinuity represented by packet 12. Any retained pre-death packet-13
+        // baseline is now stale and must not be reused by a later AOI-enter resync.
+        endpoint.ClearLatestMovementFrame(connection.Player);
         endpoint.UpdatePosition(positionX, positionY);
         Span<PlayerSlotId> entered = stackalloc PlayerSlotId[ProtocolPlayerSlotCount];
         Span<PlayerSlotId> left = stackalloc PlayerSlotId[ProtocolPlayerSlotCount];
@@ -160,6 +178,9 @@ internal sealed partial class RuntimeConnectionRegistry
             !endpoint.TryGetPlayingPlayer(out PlayerHandle player) || player != connection.Player)
             return;
 
+        // Packet 65 establishes the discontinuous teleport position. Do not let an older retained packet 13
+        // become a future AOI resync baseline and pull an observer back toward the pre-teleport position.
+        endpoint.ClearLatestMovementFrame(player);
         endpoint.UpdatePosition(positionX, positionY);
         Span<PlayerSlotId> entered = stackalloc PlayerSlotId[ProtocolPlayerSlotCount];
         Span<PlayerSlotId> left = stackalloc PlayerSlotId[ProtocolPlayerSlotCount];
@@ -168,6 +189,26 @@ internal sealed partial class RuntimeConnectionRegistry
         ResetMovementVisibilityReadiness(player.Slot, visibility, entered, left);
         byte[] encoded = TerrariaPlayerReplicationFrameEncoder.EncodeTeleport(player.Slot, positionX, positionY, style, failed);
         Interlocked.Add(ref _relayedMovementFrames, BroadcastToPlaying(encoded));
+    }
+
+    public void PlayerAuthoritativeMovementCorrected(ConnectionHandle connection, in PlayerStateSnapshot player)
+    {
+        if (!connection.IsAssigned ||
+            player.Player != connection.Player ||
+            !_endpoints.TryGetValue(connection.Source, out RuntimeConnectionEndpoint? endpoint) ||
+            !endpoint.TryGetPlayingPlayer(out PlayerHandle currentPlayer) ||
+            currentPlayer != connection.Player)
+        {
+            return;
+        }
+
+        byte[] encoded = TerrariaPlayerReplicationFrameEncoder.EncodeMovement(in player);
+        endpoint.UpdatePosition(player.PositionX, player.PositionY);
+        endpoint.UpdateLatestMovementFrame(player.Player, encoded);
+
+        // This frame repairs client-local Hurt/knockback state for the owner. No authoritative movement
+        // changed, so relaying it to peers would be duplicate traffic and could create visible jitter.
+        _ = endpoint.Outbound.TryEnqueue(new OutboundFrame(encoded));
     }
 
     public void PlayerMoved(ConnectionHandle connection, in PlayerMovementCommitRequest request)
@@ -191,7 +232,7 @@ internal sealed partial class RuntimeConnectionRegistry
         // Cache the current authoritative movement before refreshing visibility. A future AOI-enter
         // resync can therefore use this exact movement as the subject's baseline in the same commit.
         byte[] encoded = TerrariaPlayerReplicationFrameEncoder.EncodeMovement(in normalized);
-        origin.UpdateLatestMovementFrame(originPlayer, encoded);
+        bool changed = origin.UpdateLatestMovementFrame(originPlayer, encoded);
         var frame = new OutboundFrame(encoded);
 
         // Track authoritative positions even while interest management is disabled. A live enable
@@ -205,6 +246,14 @@ internal sealed partial class RuntimeConnectionRegistry
             entered,
             left);
         ResetMovementVisibilityReadiness(normalized.PlayerSlot, visibility, entered, left);
+
+        // Vanilla clients can repeat packet 13 with an identical payload while idle. Once AOI membership
+        // is also unchanged, relaying that exact state again only burns every peer's outbound queue.
+        if (!changed && visibility.Entered == 0 && visibility.Left == 0)
+        {
+            Interlocked.Increment(ref _suppressedDuplicateMovementFrames);
+            return;
+        }
 
         RuntimePlayerInterestState subject = origin.CreateInterestState(originSlot);
 

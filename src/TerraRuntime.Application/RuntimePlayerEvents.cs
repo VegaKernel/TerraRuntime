@@ -42,6 +42,14 @@ internal interface IRuntimePlayerEventSink
 
     void PlayerMoved(ConnectionHandle connection, in PlayerMovementCommitRequest request);
 
+    /// <summary>
+    /// Reasserts the current authoritative movement state to the owning client only.
+    /// This is a correction path, not a new movement commit and must not be fanned out to peers.
+    /// </summary>
+    void PlayerAuthoritativeMovementCorrected(ConnectionHandle connection, in PlayerStateSnapshot player)
+    {
+    }
+
     void PlayerDamageAvoided(PlayerHandle player, float positionX, float positionY, string text)
     {
     }

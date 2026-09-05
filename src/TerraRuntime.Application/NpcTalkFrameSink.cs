@@ -72,9 +72,11 @@ public sealed class NpcTalkFrameSink : ITerrariaFrameSink, ITerrariaFrameRejecti
             return Stop(NpcTalkFrameStopReason.InvalidNpcSlot);
 
         var connection = new ConnectionHandle(source, player);
-        return ingress.TryPost(connection, in state)
-            ? TerrariaFrameSinkResult.Continue
-            : Stop(NpcTalkFrameStopReason.GameIngressBackpressure);
+        // Talk target is replaceable per-player UI state (NPC slot or -1). If the authoritative queue is
+        // momentarily full, discard this stale sample rather than disconnecting a healthy client. A later talk/close
+        // packet carries the current target; persistent NPC mutations use separate strict ingress paths.
+        _ = ingress.TryPost(connection, in state);
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private TerrariaFrameSinkResult Stop(NpcTalkFrameStopReason reason)

@@ -7,14 +7,14 @@ TerraRuntime separates decoded Terraria packet/file representation from authorit
 The service owns the currently verified single-tile storage operations:
 
 - `PlaceTile` for ordinary non-frame-important vanilla tiles admitted by the caller;
-- `KillTile` for definition-admitted ordinary single-cell vanilla tiles; frame-important/multi-tile/object content uses separate paths;
+- `KillTile` for definition-admitted ordinary single-cell vanilla tiles plus the explicit source-pinned `FrameImportantSingleCell` subset; other frame-important/multi-tile/object content uses separate paths;
 - `PlaceWall` and `KillWall` with typed `WallTypeId` validation;
 - `SetShape` for solid, non-platform, non-frame-important tiles;
 - bounded simple-tile frame canonicalization and network/persistence dirty propagation.
 
 Each request is expressed as `WorldTileMutationRequest`. Raw packet action numbers are not accepted by this API. Network ingress must first decode and authenticate the packet and higher gameplay layers remain responsible for reach, held item/tool power, inventory consumption, protection policy and drop reservation.
 
-Ordinary mining is definition-driven. `VanillaTileDefinitionCatalog` is a flyweight table for every vanilla 1.4.5.8 tile identity and carries the mutation path, mining profile, drop rule and failed-pick transform semantics. There is no positive allow-list of "supported" ordinary tiles: normal single-cell removal is the default path, while frame-important objects, contextual drops, transforms and progression gates select explicit specialized behavior.
+Ordinary mining is definition-driven. `VanillaTileDefinitionCatalog` is a flyweight table for every vanilla 1.4.5.8 tile identity and carries the mutation path, mining profile, drop rule and failed-pick transform semantics. There is no positive allow-list of "supported" ordinary tiles: normal single-cell removal is the default path, while frame-important objects, contextual drops, transforms and progression gates select explicit specialized behavior. Ordinary Dirt follows that same simple-cell path: an adjacent active terrain tile is not a reason to reject the completed packet-17 break, and the committed mutation preserves all neighbouring cells while materializing the Dirt Block drop through the same reservation boundary.
 
 ## Why generic `KillTile` is fail-closed
 
@@ -22,7 +22,7 @@ Pinned TerrariaServer 1.4.5.8 source proves that ordinary-looking tiles do not s
 
 The source contract currently pins representative rules including Ebonstone/Crimstone at `65` pick power and Lihzahrd content at `210`, while Grass is explicitly in the transform-on-kill family. Treating every non-frame-important tile as `Type = 0; Active = false` would therefore be behavior corruption, not a harmless simplification.
 
-The storage mutation service therefore accepts only definitions whose `BreakPath` is `SimpleCell`; the gameplay authority resolves mining power, failed-pick transforms, contextual drop semantics and progression-sensitive requirements before committing that storage mutation. Frame-important and multi-tile content remains fail-closed until its object path owns the corresponding geometry and metadata lifecycle.
+The storage mutation service accepts ordinary `SimpleCell` definitions and a deliberately tiny `FrameImportantSingleCell` family whose one-cell footprint and fixed 1.4.5.8 drop are independently pinned. The gameplay authority resolves mining power, failed-pick transforms, contextual drop semantics and progression-sensitive requirements before committing that storage mutation. The currently admitted framed single-cell identities are Water Candle, Switch, and the six coloured Team Platforms. Ordinary Platforms and Torches remain fail-closed because their drop/style semantics depend on frame state. Multi-tile content uses its separate object transaction. The production packet-17 bridge also admits the exact base Chest identity, where coherent 2x2 geometry, runtime metadata removal and the authoritative Chest item drop commit as one bounded operation; other frame-important/object families remain fail-closed.
 
 ## State ownership
 
@@ -34,7 +34,7 @@ Every committed cell write goes through `WorldTileStore.Set`, so section seqlock
 
 For non-frame-important tiles, vanilla `.wld` does not persist meaningful tile-frame coordinates. TerraRuntime therefore canonicalizes the affected `3×3` simple-tile neighborhood to frame `(0,0)` instead of implementing client sprite-frame selection in authoritative storage. Wall mutations mark every section touched by that bounded frame neighborhood dirty.
 
-Frame-important and known multi-tile content are deliberately rejected by the generic service. Their placement/break path must use verified `TileObjectData` geometry, anchors, style/frame mapping and metadata lifecycle rather than guessing frame arithmetic.
+Generic frame-important and known multi-tile content remain rejected by the storage service. The only exception is the explicit `FrameImportantSingleCell` catalog, where removal clears exactly one source-pinned cell and deliberately does not rewrite neighbouring frame coordinates. Wider placement/break support must still use verified `TileObjectData` geometry, anchors, style/frame mapping and metadata lifecycle rather than guessing frame arithmetic.
 
 ## Packet-17 mining boundary
 

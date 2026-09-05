@@ -124,7 +124,7 @@ World edits проходят semantic/runtime mutation paths, а не напря
 
 Runtime имеет verified slices tile kill/update/replication и world collision/query behavior. `WorldTile` хранит только mutable state клетки; один flyweight `VanillaTileDefinition` на каждый TileID 1.4.5.8 владеет break-path, mining, drop и failed-pick transform semantics. Поэтому обычный simple-cell mining больше не использует положительный TileID allow-list.
 
-В broad vanilla scale пока incomplete frame-important/multi-tile object destruction/placement, все slope/platform interactions, wiring/actuation, growth/spread families, полный `HitTile`/reach и оставшиеся environment-dependent правила `CanKillTile`.
+В broad vanilla scale пока incomplete остальные frame-important/multi-tile object destruction/placement families за пределами точного base Chest slice, все slope/platform interactions, wiring/actuation, growth/spread families, полный `HitTile`/reach и оставшиеся environment-dependent правила `CanKillTile`.
 
 Tile mutation не завершена только потому, что resulting tile ID выглядит правильно. Neighbor framing, object validity, drops, liquid interaction, persistence и network replication могут быть observable parts одного vanilla action.
 

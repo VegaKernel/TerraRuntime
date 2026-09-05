@@ -14,7 +14,7 @@ Pinned bootstrap sections obey the same revision contract as dynamic sections. T
 
 Base spawn sections are encoded once when `PlayerBootstrapPacketSet` is constructed. Other sections are rebuilt from immutable section snapshots on the bounded section-cache worker pipeline. A worker result is published only if its captured revision still equals the committed live revision.
 
-The per-player streaming tracker is updated only after a packet-10 frame has successfully entered the outbound queue. Encoding failure, stale worker output, rate limiting, or outbound backpressure therefore cannot create a false "already delivered" section.
+The per-player streaming tracker is updated only after a packet-10 frame has successfully entered the outbound queue. Encoding failure, stale worker output, rate limiting, or outbound backpressure therefore cannot create a false "already delivered" section. After a player has entered the world, section streaming is opportunistic: any temporary rebuild unavailability leaves the section unsent and retries it on a later movement sample instead of disconnecting the player. The initial packet-8 bootstrap remains strict because the client cannot enter the world without its required base sections.
 
 ## Initial load and generation
 

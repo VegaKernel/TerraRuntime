@@ -22,6 +22,7 @@ internal sealed partial class PlayerAuthority
         if (!membership.TryRemove(connection, out _))
             return;
 
+        ClearGodModeMovementCorrection(connection.Player);
         DisconnectedPlayers++;
         events?.PlayerDisconnected(connection);
     }
@@ -58,6 +59,7 @@ internal sealed partial class PlayerAuthority
         transferProfiles.Clear(connection);
         if (!membership.TryRemove(connection, out _))
             throw new InvalidOperationException("Player membership changed during authoritative transfer detach.");
+        ClearGodModeMovementCorrection(connection.Player);
         events?.PlayerDisconnected(connection);
         command.Completion.TrySetResult(transfer);
     }

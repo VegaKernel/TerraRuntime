@@ -93,9 +93,11 @@ public sealed class PlayerVitalsFrameSink :
 
         var connection = new ConnectionHandle(_source, player);
         var request = new PlayerHealthCommitRequest(player.Slot, health.Life, health.MaxLife);
-        return _healthIngress.TryPost(connection, in request)
-            ? TerrariaFrameSinkResult.Continue
-            : Stop(PlayerVitalsStopReason.GameIngressBackpressure);
+        // Health is a replaceable snapshot. A transient authoritative mailbox backlog must not convert one stale
+        // client sample into a connection teardown; the next legal health snapshot (or server-owned damage/heal)
+        // supersedes it. The connection/message hard-abuse limits still bound hostile traffic before this layer.
+        _ = _healthIngress.TryPost(connection, in request);
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private TerrariaFrameSinkResult HandleMana(in TerrariaFrame frame)
@@ -111,9 +113,10 @@ public sealed class PlayerVitalsFrameSink :
 
         var connection = new ConnectionHandle(_source, player);
         var request = new PlayerManaCommitRequest(player.Slot, mana.Mana, mana.MaxMana);
-        return _manaIngress.TryPost(connection, in request)
-            ? TerrariaFrameSinkResult.Continue
-            : Stop(PlayerVitalsStopReason.GameIngressBackpressure);
+        // Mana is the same replaceable snapshot class as health: temporary queue pressure drops this sample rather
+        // than disconnecting an otherwise healthy vanilla client. A later snapshot converges authoritative state.
+        _ = _manaIngress.TryPost(connection, in request);
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private TerrariaFrameSinkResult DelegateToBootstrap(in TerrariaFrame frame)

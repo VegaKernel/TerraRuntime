@@ -82,6 +82,12 @@ internal sealed class RuntimePlayerEventDispatcher : IRuntimePlayerEventSink
         _operationsObserver?.PlayerMoved(connection, in request);
     }
 
+    public void PlayerAuthoritativeMovementCorrected(ConnectionHandle connection, in PlayerStateSnapshot player)
+    {
+        _connections.PlayerAuthoritativeMovementCorrected(connection, in player);
+        _operationsObserver?.PlayerAuthoritativeMovementCorrected(connection, in player);
+    }
+
     public void PlayerDamageAvoided(PlayerHandle player, float positionX, float positionY, string text)
     {
         _connections.PlayerDamageAvoided(player, positionX, positionY, text);

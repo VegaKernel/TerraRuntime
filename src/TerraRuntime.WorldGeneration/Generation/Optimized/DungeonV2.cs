@@ -17,7 +17,9 @@ internal static class DungeonV2
     private const ushort PressurePlate = 135;
     private const ushort DartTrap = 137;
     private const ushort Containers = 21;
-    private const ushort BlueDungeonUnsafeWall = 7;
+    private static readonly ushort Platform = checked((ushort)VanillaTileIds.Platforms.Value);
+    private static readonly ushort BlueDungeonUnsafeWall = checked((ushort)VanillaWallIds.BlueDungeonUnsafe.Value);
+    private const int BlueDungeonPlatformStyle1458 = 6;
 
     private static readonly ItemTypeId[] LockedChestMainLoot =
     [
@@ -52,11 +54,15 @@ internal static class DungeonV2
         ResetDungeonMass(context.Workspace, bounds);
         context.ReportProgress(0.12d, "Resetting reserved dungeon mass");
 
-        List<DungeonRoom> mainRooms = BuildMainGraph(context, bounds, dungeonAnchor);
+        List<DungeonRoom> mainRooms = BuildMainGraph(
+            context,
+            bounds,
+            dungeonAnchor,
+            out int traversalPlatformTiles);
         List<DungeonRoom> branchRooms = BuildBranchGraph(context, bounds, mainRooms);
-        OpenEntrance(context.Workspace, bounds, dungeonAnchor, mainRooms[0]);
+        traversalPlatformTiles += OpenEntrance(context.Workspace, bounds, dungeonAnchor, mainRooms[0]);
         RestorePreexistingDungeonChests(context.Workspace, preservedChests);
-        context.ReportProgress(0.46d, "Carving connected dungeon rooms and branches");
+        context.ReportProgress(0.46d, "Carving connected dungeon rooms, branches and climbable shafts");
 
         int lockedChestTarget = Math.Clamp(mainRooms.Count - 1, 3, LockedChestMainLoot.Length);
         PlaceKeyCache(context.Workspace, chestWorkspace, mainRooms[0], lockedChestTarget);
@@ -73,6 +79,12 @@ internal static class DungeonV2
         int spikes = PlaceSpikes(context.Workspace, mainRooms, branchRooms, spikeTarget);
         context.ReportProgress(0.82d, "Wiring dungeon traps and placing spikes");
 
+        int playerReachableRooms = CountPlayerReachableRooms(
+            context.Workspace,
+            bounds,
+            dungeonAnchor,
+            mainRooms,
+            branchRooms);
         int connectedInterior = MeasureConnectedInterior(context.Workspace, bounds, mainRooms[0].Center);
         DungeonV2Report report = ValidateGeneratedDungeon(
             runtimeWorkspace,
@@ -86,12 +98,15 @@ internal static class DungeonV2
             traps,
             spikeTarget,
             spikes,
+            traversalPlatformTiles,
+            playerReachableRooms,
             connectedInterior);
 
         context.ReportProgress(
             1d,
             $"Built dungeon v2: rooms={report.MainRooms}+{report.BranchRooms}, locked={report.LockedChests}, " +
-            $"traps={report.DartTraps}, spikes={report.SpikeTiles}, connected={report.ConnectedInteriorCells}");
+            $"traps={report.DartTraps}, spikes={report.SpikeTiles}, platforms={report.TraversalPlatformTiles}, " +
+            $"player-reachable={report.PlayerReachableRooms}, connected={report.ConnectedInteriorCells}");
         return report;
     }
 
@@ -193,8 +208,10 @@ internal static class DungeonV2
     private static List<DungeonRoom> BuildMainGraph(
         IWorldGenerationContext context,
         DungeonBounds bounds,
-        WorldGenerationPoint dungeonAnchor)
+        WorldGenerationPoint dungeonAnchor,
+        out int traversalPlatformTiles)
     {
+        traversalPlatformTiles = 0;
         int roomCount = Math.Clamp(bounds.Height / 30, 4, 18);
         int halfWidth = Math.Clamp(bounds.Width / 5, 5, 10);
         int halfHeight = Math.Clamp(bounds.Height / (roomCount * 5), 4, 7);
@@ -223,7 +240,13 @@ internal static class DungeonV2
             CarveRoom(context.Workspace, room);
 
             if (rooms.Count > 0)
-                CarveDoglegCorridor(context.Workspace, rooms[^1].Center, room.Center, corridorRadius: 2);
+            {
+                traversalPlatformTiles += CarveDoglegCorridor(
+                    context.Workspace,
+                    rooms[^1].Center,
+                    room.Center,
+                    corridorRadius: 2);
+            }
             rooms.Add(room);
         }
 
@@ -270,7 +293,7 @@ internal static class DungeonV2
         return branches;
     }
 
-    private static void OpenEntrance(
+    private static int OpenEntrance(
         IWorldGenerationWorkspace workspace,
         DungeonBounds bounds,
         WorldGenerationPoint dungeonAnchor,
@@ -282,11 +305,18 @@ internal static class DungeonV2
         for (int x = centerX - 2; x <= centerX + 2; x++)
             SetAir(workspace, x, y, y >= bounds.Top ? BlueDungeonUnsafeWall : (ushort)0);
 
-        CarveDoglegCorridor(
+        int platformTiles = PlaceVerticalTraversalPlatforms(
+            workspace,
+            centerX,
+            Math.Max(1, dungeonAnchor.Y),
+            targetY,
+            shaftRadius: 2);
+        platformTiles += CarveDoglegCorridor(
             workspace,
             new WorldGenerationPoint(centerX, targetY),
             firstRoom.Center,
             corridorRadius: 2);
+        return platformTiles;
     }
 
     private static void PlaceKeyCache(
@@ -561,6 +591,8 @@ internal static class DungeonV2
         int trapsPlaced,
         int spikeTarget,
         int spikesPlaced,
+        int traversalPlatformTiles,
+        int playerReachableRooms,
         int connectedInterior)
     {
         if (mainRooms < 4 || branchRooms < 2 || lockedPlaced != lockedTarget ||
@@ -572,6 +604,16 @@ internal static class DungeonV2
         {
             throw new InvalidOperationException(
                 $"Optimized dungeon v2 connected interior is too small ({connectedInterior} cells).");
+        }
+        if (traversalPlatformTiles < Math.Max(6, mainRooms * 2))
+        {
+            throw new InvalidOperationException(
+                $"Optimized dungeon v2 has too few vertical traversal platforms ({traversalPlatformTiles}).");
+        }
+        if (playerReachableRooms != mainRooms + branchRooms)
+        {
+            throw new InvalidOperationException(
+                $"Optimized dungeon v2 player-clearance validation reached {playerReachableRooms}/{mainRooms + branchRooms} rooms.");
         }
 
         int lockedChestCount = 0;
@@ -629,6 +671,8 @@ internal static class DungeonV2
             keyCount,
             trapsPlaced,
             spikesPlaced,
+            traversalPlatformTiles,
+            playerReachableRooms,
             connectedInterior,
             bounds.Left,
             bounds.Top,
@@ -643,7 +687,7 @@ internal static class DungeonV2
             SetAir(workspace, x, y, BlueDungeonUnsafeWall);
     }
 
-    private static void CarveDoglegCorridor(
+    private static int CarveDoglegCorridor(
         IWorldGenerationWorkspace workspace,
         WorldGenerationPoint from,
         WorldGenerationPoint to,
@@ -653,6 +697,191 @@ internal static class DungeonV2
         CarveVertical(workspace, from.X, from.Y, bendY, corridorRadius);
         CarveHorizontal(workspace, from.X, to.X, bendY, corridorRadius);
         CarveVertical(workspace, to.X, bendY, to.Y, corridorRadius);
+
+        int platforms = PlaceVerticalTraversalPlatforms(
+            workspace,
+            from.X,
+            from.Y,
+            bendY,
+            corridorRadius);
+        if (to.X != from.X || to.Y != bendY)
+        {
+            platforms += PlaceVerticalTraversalPlatforms(
+                workspace,
+                to.X,
+                bendY,
+                to.Y,
+                corridorRadius);
+        }
+        return platforms;
+    }
+
+    private static int PlaceVerticalTraversalPlatforms(
+        IWorldGenerationWorkspace workspace,
+        int centerX,
+        int fromY,
+        int toY,
+        int shaftRadius)
+    {
+        int top = Math.Min(fromY, toY);
+        int bottom = Math.Max(fromY, toY);
+        if (bottom - top < 6)
+            return 0;
+
+        int placed = 0;
+        int left = centerX - Math.Max(1, shaftRadius);
+        int right = centerX + Math.Max(1, shaftRadius);
+        short frameY = checked((short)(BlueDungeonPlatformStyle1458 * 18));
+        for (int y = top + 4; y <= bottom - 2; y += 4)
+        {
+            for (int x = left; x <= right; x++)
+            {
+                if (!IsAir(workspace, x, y))
+                    continue;
+                SetObject(workspace, x, y, Platform, BlueDungeonUnsafeWall, frameX: 0, frameY: frameY);
+                placed++;
+            }
+        }
+        return placed;
+    }
+
+    private static int CountPlayerReachableRooms(
+        IWorldGenerationWorkspace workspace,
+        DungeonBounds bounds,
+        WorldGenerationPoint dungeonAnchor,
+        IReadOnlyList<DungeonRoom> mainRooms,
+        IReadOnlyList<DungeonRoom> branchRooms)
+    {
+        int left = bounds.Left;
+        int top = Math.Max(1, Math.Min(bounds.Top, dungeonAnchor.Y));
+        int anchorWidth = Math.Max(0, bounds.Right - left);
+        int anchorHeight = Math.Max(0, bounds.Bottom - top - 1);
+        if (anchorWidth == 0 || anchorHeight == 0)
+            return 0;
+
+        bool[] visited = new bool[checked(anchorWidth * anchorHeight)];
+        var queue = new Queue<int>();
+        int entranceCenterX = Math.Clamp(dungeonAnchor.X, bounds.Left + 2, bounds.Right - 2);
+        if (!TryFindPlayerClearanceAnchor(
+                workspace,
+                left,
+                top,
+                anchorWidth,
+                anchorHeight,
+                entranceCenterX,
+                Math.Max(bounds.Top, dungeonAnchor.Y + 1),
+                searchRadius: 4,
+                out int startX,
+                out int startY))
+        {
+            return 0;
+        }
+
+        int startIndex = (startY - top) * anchorWidth + (startX - left);
+        visited[startIndex] = true;
+        queue.Enqueue(startIndex);
+        while (queue.TryDequeue(out int node))
+        {
+            int localX = node % anchorWidth;
+            int localY = node / anchorWidth;
+            Visit(localX - 1, localY);
+            Visit(localX + 1, localY);
+            Visit(localX, localY - 1);
+            Visit(localX, localY + 1);
+
+            void Visit(int nx, int ny)
+            {
+                if ((uint)nx >= (uint)anchorWidth || (uint)ny >= (uint)anchorHeight)
+                    return;
+                int index = ny * anchorWidth + nx;
+                if (visited[index])
+                    return;
+                int x = left + nx;
+                int y = top + ny;
+                if (!HasPlayerClearance(workspace, x, y))
+                    return;
+                visited[index] = true;
+                queue.Enqueue(index);
+            }
+        }
+
+        int reachable = 0;
+        foreach (DungeonRoom room in mainRooms)
+        {
+            if (RoomHasVisitedPlayerAnchor(room))
+                reachable++;
+        }
+        foreach (DungeonRoom room in branchRooms)
+        {
+            if (RoomHasVisitedPlayerAnchor(room))
+                reachable++;
+        }
+        return reachable;
+
+        bool RoomHasVisitedPlayerAnchor(DungeonRoom room)
+        {
+            int minX = Math.Max(left, room.Left + 1);
+            int maxX = Math.Min(left + anchorWidth - 1, room.Right - 2);
+            int minY = Math.Max(top, room.Top + 1);
+            int maxY = Math.Min(top + anchorHeight - 1, room.Bottom - 3);
+            for (int y = minY; y <= maxY; y++)
+            for (int x = minX; x <= maxX; x++)
+            {
+                int index = (y - top) * anchorWidth + (x - left);
+                if (visited[index])
+                    return true;
+            }
+            return false;
+        }
+    }
+
+    private static bool TryFindPlayerClearanceAnchor(
+        IWorldGenerationWorkspace workspace,
+        int left,
+        int top,
+        int width,
+        int height,
+        int centerX,
+        int centerY,
+        int searchRadius,
+        out int anchorX,
+        out int anchorY)
+    {
+        for (int radius = 0; radius <= searchRadius; radius++)
+        for (int dy = -radius; dy <= radius; dy++)
+        for (int dx = -radius; dx <= radius; dx++)
+        {
+            if (Math.Max(Math.Abs(dx), Math.Abs(dy)) != radius)
+                continue;
+            int x = centerX - 1 + dx;
+            int y = centerY - 2 + dy;
+            if (x < left || y < top || x >= left + width || y >= top + height)
+                continue;
+            if (!HasPlayerClearance(workspace, x, y))
+                continue;
+            anchorX = x;
+            anchorY = y;
+            return true;
+        }
+        anchorX = 0;
+        anchorY = 0;
+        return false;
+    }
+
+    private static bool HasPlayerClearance(IWorldGenerationWorkspace workspace, int left, int top)
+    {
+        for (int dy = 0; dy < 3; dy++)
+        for (int dx = 0; dx < 2; dx++)
+        {
+            if (!workspace.TryGetTile(left + dx, top + dy, out WorldGenerationTile tile))
+                return false;
+            if ((tile.Flags & WorldGenerationTileFlags.Active) == 0)
+                continue;
+            TileTypeId type = new(tile.Type);
+            if (VanillaTileCollisionCatalog.IsSolid(type) && !VanillaTileCollisionCatalog.IsSolidTop(type))
+                return false;
+        }
+        return true;
     }
 
     private static void CarveHorizontalCorridor(
@@ -759,7 +988,7 @@ internal static class DungeonV2
     private static bool IsDungeonInterior(IWorldGenerationWorkspace workspace, int x, int y) =>
         workspace.TryGetTile(x, y, out WorldGenerationTile tile) &&
         tile.Wall == BlueDungeonUnsafeWall &&
-        (tile.Flags & WorldGenerationTileFlags.Active) == 0;
+        ((tile.Flags & WorldGenerationTileFlags.Active) == 0 || tile.Type == Platform);
 
     private static bool HasOpenEntrance(
         IWorldGenerationWorkspace workspace,
@@ -906,6 +1135,8 @@ internal readonly record struct DungeonV2Report(
     int GoldenKeys,
     int DartTraps,
     int SpikeTiles,
+    int TraversalPlatformTiles,
+    int PlayerReachableRooms,
     int ConnectedInteriorCells,
     int Left,
     int Top,

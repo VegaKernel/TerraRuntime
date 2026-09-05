@@ -17,6 +17,7 @@ internal sealed class RuntimePlayerVitalsReplicator
     private long _relayedHealthFrames;
     private long _healthBaselineFrames;
     private long _manaBaselineFrames;
+    private long _suppressedDuplicateHealthFrames;
 
     public int Count => _endpoints.Count;
 
@@ -25,6 +26,8 @@ internal sealed class RuntimePlayerVitalsReplicator
     public long HealthBaselineFrames => Interlocked.Read(ref _healthBaselineFrames);
 
     public long ManaBaselineFrames => Interlocked.Read(ref _manaBaselineFrames);
+
+    public long SuppressedDuplicateHealthFrames => Interlocked.Read(ref _suppressedDuplicateHealthFrames);
 
     public bool TryRegister(GameCommandSourceId source, TerrariaConnectionOutboundQueue outbound)
     {
@@ -61,7 +64,7 @@ internal sealed class RuntimePlayerVitalsReplicator
             request.Life,
             request.MaxLife);
         byte[] encoded = TerrariaPlayerVitalsCodec.EncodeHealth(in state);
-        origin.UpdateHealth(connection.Player, encoded);
+        bool changed = origin.UpdateHealth(connection.Player, encoded);
 
         if (!origin.IsPlaying(connection.Player))
             return;
@@ -74,6 +77,16 @@ internal sealed class RuntimePlayerVitalsReplicator
         {
             if (pair.Key == connection.Source || !pair.Value.TryGetPlayingPlayer(out _))
                 continue;
+
+            // Packet 16 may be repeated with byte-identical life/max-life while the player is already playing.
+            // Retain the baseline, but do not burn every peer queue on a state that did not change. Authoritative
+            // owner corrections are deliberately exempt above: the owner must receive the repair even when its
+            // retained server baseline is identical.
+            if (!changed)
+            {
+                Interlocked.Increment(ref _suppressedDuplicateHealthFrames);
+                continue;
+            }
 
             if (pair.Value.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
                 Interlocked.Increment(ref _relayedHealthFrames);
@@ -164,10 +177,15 @@ internal sealed class RuntimePlayerVitalsReplicator
 
         public TerrariaConnectionOutboundQueue Outbound { get; }
 
-        public void UpdateHealth(PlayerHandle player, byte[] encoded)
+        public bool UpdateHealth(PlayerHandle player, byte[] encoded)
         {
             ArgumentNullException.ThrowIfNull(encoded);
+            OwnedFrame? current = Volatile.Read(ref healthFrame);
+            if (current is not null && current.Owner == player && current.Encoded.AsSpan().SequenceEqual(encoded))
+                return false;
+
             Volatile.Write(ref healthFrame, new OwnedFrame(player, encoded));
+            return true;
         }
 
         public void UpdateMana(PlayerHandle player, byte[] encoded)

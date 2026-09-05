@@ -164,6 +164,46 @@ public sealed class VanillaWorldTileMutationServiceTests
         Assert.Equal((short)18, tiles.Get(21, 20).FrameY);
     }
 
+
+    [Fact]
+    public void Supported_frame_important_single_cell_kill_preserves_independent_state_without_reframing_neighbours()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var switchTile = new WorldTile
+        {
+            Type = checked((ushort)VanillaTileIds.Switches.Value),
+            FrameX = 0,
+            FrameY = 0,
+            Wall = checked((ushort)VanillaWallIds.Stone.Value),
+            LiquidAmount = 42,
+            LiquidKind = WorldLiquidKind.Water,
+            Flags = WorldTileFlags.Active | WorldTileFlags.WireRed
+        };
+        var framedNeighbour = new WorldTile
+        {
+            Type = checked((ushort)VanillaTileIds.WaterCandle.Value),
+            FrameX = 18,
+            FrameY = 36,
+            Flags = WorldTileFlags.Active
+        };
+        tiles.Set(20, 20, in switchTile);
+        tiles.Set(21, 20, in framedNeighbour);
+        ClearDirty(tiles);
+        var service = new VanillaWorldTileMutationService(tiles);
+
+        var kill = new WorldTileMutationRequest(WorldTileMutationKind.KillTile, 20, 20);
+        WorldTileMutationResult result = service.Apply(in kill);
+
+        Assert.True(result.Applied);
+        Assert.False(result.After.IsActive);
+        Assert.Equal(VanillaWallIds.Stone, result.After.WallType);
+        Assert.Equal((byte)42, result.After.LiquidAmount);
+        Assert.True(result.After.HasAnyWire);
+        Assert.Equal((short)18, tiles.Get(21, 20).FrameX);
+        Assert.Equal((short)36, tiles.Get(21, 20).FrameY);
+        Assert.Equal(1, result.ChangedTiles);
+    }
+
     [Fact]
     public void Invalid_content_out_of_bounds_and_frame_important_placement_are_side_effect_free()
     {
@@ -195,12 +235,11 @@ public sealed class VanillaWorldTileMutationServiceTests
     }
 
     [Fact]
-    public void Dirt_compatibility_facade_uses_shared_mutation_semantics_without_weakening_isolation_rules()
+    public void Dirt_compatibility_facade_uses_shared_mutation_semantics()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
         Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(tiles, 20, 20));
-        Assert.True(VanillaDirtRules1458.CanKillIsolated(tiles, 20, 20));
-        Assert.True(WorldTileTestMutations.TryKillIsolatedDirt(tiles, 20, 20));
+        Assert.True(WorldTileTestMutations.TryKillDirt(tiles, 20, 20));
         Assert.Equal(default, tiles.Get(20, 20));
 
         var wallOnly = new WorldTile { Wall = checked((ushort)VanillaWallIds.Stone.Value) };

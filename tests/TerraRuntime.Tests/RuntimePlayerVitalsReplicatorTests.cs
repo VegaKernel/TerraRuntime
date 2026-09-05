@@ -1,3 +1,4 @@
+using TerraRuntime.Application.Operations;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
@@ -39,6 +40,75 @@ public sealed class RuntimePlayerVitalsReplicatorTests
         Assert.Equal(0, firstOutbound.QueuedFrames);
         Assert.Equal(1, secondOutbound.QueuedFrames);
         Assert.Equal(1, replicator.RelayedHealthFrames);
+    }
+
+    [Fact]
+    public void Identical_playing_health_is_not_relayed_twice_to_peers()
+    {
+        var replicator = new RuntimePlayerVitalsReplicator();
+        GameCommandSourceId firstSource = GameCommandSourceId.FromConnection(3);
+        GameCommandSourceId secondSource = GameCommandSourceId.FromConnection(4);
+        var firstOutbound = CreateOutbound();
+        var secondOutbound = CreateOutbound();
+        ConnectionHandle first = Connection(firstSource, slot: 3, generation: 1);
+        ConnectionHandle second = Connection(secondSource, slot: 4, generation: 1);
+
+        Assert.True(replicator.TryRegister(firstSource, firstOutbound));
+        Assert.True(replicator.TryRegister(secondSource, secondOutbound));
+        PlayerSpawnCommitRequest firstSpawn = CreateSpawn(first.Player.Slot);
+        PlayerSpawnCommitRequest secondSpawn = CreateSpawn(second.Player.Slot);
+        replicator.PlayerSpawned(first, in firstSpawn);
+        replicator.PlayerSpawned(second, in secondSpawn);
+
+        var health = new PlayerHealthCommitRequest(first.Player.Slot, Life: 80, MaxLife: 100);
+        replicator.PlayerHealthUpdated(first, in health);
+        int afterFirst = secondOutbound.QueuedFrames;
+        replicator.PlayerHealthUpdated(first, in health);
+
+        Assert.Equal(afterFirst, secondOutbound.QueuedFrames);
+        Assert.Equal(1, replicator.RelayedHealthFrames);
+        Assert.Equal(1, replicator.SuppressedDuplicateHealthFrames);
+
+        var operations = new LocalRuntimeNetworkOperations(
+            new TerrariaConnectionAdmissionGate(8),
+            new RuntimeConnectionRegistry(),
+            new RuntimeConnectionQueueTelemetry(),
+            new RuntimeConnectionRateTelemetry(),
+            vitalsReplication: replicator);
+        RuntimeNetworkSnapshot snapshot = operations.CaptureSnapshot();
+        Assert.Equal(1, snapshot.HealthRelayedFrames);
+        Assert.Equal(1, snapshot.SuppressedDuplicateHealthFrames);
+    }
+
+    [Fact]
+    public void Authoritative_identical_health_reasserts_owner_without_relaying_duplicate_to_peer()
+    {
+        var replicator = new RuntimePlayerVitalsReplicator();
+        GameCommandSourceId ownerSource = GameCommandSourceId.FromConnection(5);
+        GameCommandSourceId peerSource = GameCommandSourceId.FromConnection(6);
+        var ownerOutbound = CreateOutbound();
+        var peerOutbound = CreateOutbound();
+        ConnectionHandle owner = Connection(ownerSource, slot: 5, generation: 1);
+        ConnectionHandle peer = Connection(peerSource, slot: 6, generation: 1);
+
+        Assert.True(replicator.TryRegister(ownerSource, ownerOutbound));
+        Assert.True(replicator.TryRegister(peerSource, peerOutbound));
+        PlayerSpawnCommitRequest ownerSpawn = CreateSpawn(owner.Player.Slot);
+        PlayerSpawnCommitRequest peerSpawn = CreateSpawn(peer.Player.Slot);
+        replicator.PlayerSpawned(owner, in ownerSpawn);
+        replicator.PlayerSpawned(peer, in peerSpawn);
+
+        var health = new PlayerHealthCommitRequest(owner.Player.Slot, Life: 100, MaxLife: 100);
+        replicator.PlayerHealthUpdated(owner, in health);
+        int peerAfterInitial = peerOutbound.QueuedFrames;
+        int ownerBeforeCorrection = ownerOutbound.QueuedFrames;
+
+        replicator.PlayerAuthoritativeHealthUpdated(owner, in health);
+
+        Assert.Equal(ownerBeforeCorrection + 1, ownerOutbound.QueuedFrames);
+        Assert.Equal(peerAfterInitial, peerOutbound.QueuedFrames);
+        Assert.Equal(2, replicator.RelayedHealthFrames);
+        Assert.Equal(1, replicator.SuppressedDuplicateHealthFrames);
     }
 
     [Fact]

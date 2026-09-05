@@ -86,15 +86,52 @@ public sealed class ChestInteractionFrameSinkTests
     }
 
     [Fact]
-    public void Bounded_chest_ingress_rejection_stops_connection()
+    public void Read_only_chest_open_backpressure_is_retryable_and_does_not_stop_connection()
     {
         GameCommandSourceId source = GameCommandSourceId.FromConnection(904);
         using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
         var sink = new ChestInteractionFrameSink(source, bootstrap, new PassthroughSink(), new RejectingIngress());
         TerrariaFrame open = Packet(new ChestGetContents { TileX = 10, TileY = 20 });
 
-        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(in open));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(in open));
+        Assert.Equal(ChestInteractionFrameStopReason.None, sink.StopReason);
+    }
+
+    [Fact]
+    public void Chest_item_backpressure_remains_connection_stopping_because_mutation_is_discrete()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(905);
+        using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
+        var sink = new ChestInteractionFrameSink(source, bootstrap, new PassthroughSink(), new RejectingIngress());
+        TerrariaFrame item = Packet(new ChestItem
+        {
+            ChestId = 3,
+            ItemSlot = 1,
+            Stack = 5,
+            Prefix = 2,
+            ItemNetId = 1
+        });
+
+        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(in item));
         Assert.Equal(ChestInteractionFrameStopReason.GameIngressBackpressure, sink.StopReason);
+    }
+
+    [Fact]
+    public void Chest_name_lookup_backpressure_is_retryable_and_does_not_stop_connection()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(906);
+        using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
+        var sink = new ChestInteractionFrameSink(source, bootstrap, new PassthroughSink(), new RejectingIngress());
+        TerrariaFrame lookup = Packet(new ChestName
+        {
+            ChestId = -1,
+            ChestX = 10,
+            ChestY = 20,
+            HasName = false
+        });
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(in lookup));
+        Assert.Equal(ChestInteractionFrameStopReason.None, sink.StopReason);
     }
 
     private static TerrariaFrame Packet(TerrariaPacket packet)

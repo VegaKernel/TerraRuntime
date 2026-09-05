@@ -1012,8 +1012,10 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             $"Movement    relay {snapshot.RelayedMovementFrames:N0}  AOI resync {snapshot.MovementResyncFrames:N0}  player active {snapshot.PlayerActiveBaselineFrames:N0}  deactivated {snapshot.PlayerDeactivationFrames:N0}",
             $"Appearance  relay {snapshot.RelayedAppearanceFrames:N0}  baseline {snapshot.AppearanceBaselineFrames:N0}",
             $"Equipment   relay {snapshot.RelayedEquipmentFrames:N0}  baseline {snapshot.EquipmentBaselineFrames:N0}  dropped {snapshot.DroppedEquipmentSnapshotUpdates:N0}",
-            $"NPC         relay {snapshot.NpcRelayedFrames:N0}  baseline {snapshot.NpcBaselineFrames:N0}  rejected {snapshot.NpcRejectedFrames:N0}  unsupported {snapshot.NpcUnsupportedCommits:N0}",
-            $"Projectile  relay {snapshot.ProjectileRelayedFrames:N0}  baseline {snapshot.ProjectileBaselineFrames:N0}  rejected {snapshot.ProjectileRejectedFrames:N0}  unsupported {snapshot.ProjectileUnsupportedCommits:N0}",
+            $"Vitals      health relay {snapshot.HealthRelayedFrames:N0}  health baseline {snapshot.HealthBaselineFrames:N0}  mana baseline {snapshot.ManaBaselineFrames:N0}",
+            $"Duplicates  move {snapshot.SuppressedDuplicateMovementFrames:N0}  appearance {snapshot.SuppressedDuplicateAppearanceFrames:N0}  equipment {snapshot.SuppressedDuplicateEquipmentFrames:N0}  health {snapshot.SuppressedDuplicateHealthFrames:N0}",
+            $"NPC         relay {snapshot.NpcRelayedFrames:N0}  baseline {snapshot.NpcBaselineFrames:N0}  duplicate {snapshot.NpcSuppressedDuplicateFrames:N0}  rejected {snapshot.NpcRejectedFrames:N0}  unsupported {snapshot.NpcUnsupportedCommits:N0}",
+            $"Projectile  relay {snapshot.ProjectileRelayedFrames:N0}  baseline {snapshot.ProjectileBaselineFrames:N0}  duplicate {snapshot.ProjectileSuppressedDuplicateFrames:N0}  rejected {snapshot.ProjectileRejectedFrames:N0}  unsupported {snapshot.ProjectileUnsupportedCommits:N0}",
             $"Items       relay {snapshot.WorldItemRelayedFrames:N0}  rejected {snapshot.WorldItemRejectedFrames:N0}  unsupported {snapshot.WorldItemUnsupportedCommits:N0}",
             $"Stops       protocol {snapshot.StopProtocolFailures:N0}  rate {snapshot.StopRateLimited:N0}  handshake {snapshot.StopInvalidHandshake:N0}  unsupported {snapshot.StopUnsupportedProtocol:N0}  slow {snapshot.StopSlowClient:N0}  frame-rejected {snapshot.StopFrameRejected:N0}"
         };

@@ -52,6 +52,38 @@ public sealed class ServerRuntimeDirtKillDropTests
     }
 
     [Fact]
+    public void Dirt_embedded_in_ordinary_terrain_can_be_mined_and_drops_dirt()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 9305);
+        fixture.SetSelectedInventoryItem(connection, VanillaItemIds.CopperPickaxe, stack: 1);
+        fixture.SetActiveDirt(10, 10);
+        fixture.SetActiveDirt(9, 10);
+        fixture.SetActiveDirt(11, 10);
+        fixture.SetActiveDirt(10, 11);
+        fixture.DrainTileDirty();
+
+        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(
+            connection,
+            new TerrariaTileManipulationState(
+                (byte)TerrariaTileManipulationAction.KillTile,
+                TileX: 10,
+                TileY: 10,
+                Data: 0,
+                Style: 0)));
+
+        Assert.False(fixture.Tiles.Get(10, 10).IsActive);
+        Assert.True(fixture.Tiles.Get(9, 10).IsActive);
+        Assert.True(fixture.Tiles.Get(11, 10).IsActive);
+        Assert.True(fixture.Tiles.Get(10, 11).IsActive);
+        Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
+        Assert.Equal(0, fixture.State.RejectedClientTileManipulations);
+        Assert.Equal(1, fixture.State.AppliedWorldItemAllocations);
+        Assert.True(fixture.Items.TryGetActive(0, out WorldItemSnapshot drop));
+        Assert.Equal(checked((short)VanillaItemIds.DirtBlock.Value), drop.ItemNetId);
+    }
+
+    [Fact]
     public void Full_world_item_pool_rejects_kill_without_mutating_dirt()
     {
         using var fixture = new Fixture();
@@ -209,6 +241,22 @@ public sealed class ServerRuntimeDirtKillDropTests
                 ItemFlags: 0);
             State.Apply(new PlayerEquipmentRuntimeCommand(connection, request));
             Assert.Equal(0, State.RejectedPlayerEquipmentUpdates);
+        }
+
+        public void SetActiveDirt(int x, int y)
+        {
+            var tile = new WorldTile
+            {
+                Type = checked((ushort)VanillaTileIds.Dirt.Value),
+                Flags = WorldTileFlags.Active
+            };
+            Tiles.Set(x, y, in tile);
+        }
+
+        public void DrainTileDirty()
+        {
+            Span<WorldSectionId> drained = stackalloc WorldSectionId[16];
+            _ = Tiles.DirtySections.Drain(drained);
         }
 
         public void Dispose() => session?.Dispose();

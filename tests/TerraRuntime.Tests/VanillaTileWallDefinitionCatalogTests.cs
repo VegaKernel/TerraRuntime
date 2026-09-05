@@ -109,7 +109,15 @@ public sealed class VanillaTileWallDefinitionCatalogTests
         Assert.Equal(0, VanillaWallIds.None.Value);
         Assert.Equal(1, VanillaWallIds.Stone.Value);
         Assert.Equal(2, VanillaWallIds.DirtUnsafe.Value);
+        Assert.Equal(15, VanillaWallIds.MudUnsafe.Value);
         Assert.Equal(16, VanillaWallIds.Dirt.Value);
+        Assert.Equal(40, VanillaWallIds.SnowUnsafe.Value);
+        Assert.Equal(59, VanillaWallIds.RockyDirtUnsafe.Value);
+        Assert.Equal(61, VanillaWallIds.OldStoneUnsafe.Value);
+        Assert.Equal(63, VanillaWallIds.GrassUnsafe.Value);
+        Assert.Equal(64, VanillaWallIds.JungleUnsafe.Value);
+        Assert.Equal(71, VanillaWallIds.IceUnsafe.Value);
+        Assert.Equal(244, VanillaWallIds.LivingWoodUnsafe.Value);
 
         for (int rawType = 0; rawType < VanillaWallDefinitionCatalog.Count; rawType++)
         {

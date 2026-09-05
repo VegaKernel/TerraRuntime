@@ -26,9 +26,10 @@ internal readonly record struct VanillaSimpleTileBreakOutcome(
 }
 
 /// <summary>
-/// Resolves TerrariaServer 1.4.5.8 simple-cell break outcomes from one immutable tile definition. Runtime authority
+/// Resolves TerrariaServer 1.4.5.8 single-cell break outcomes from one immutable tile definition. Runtime authority
 /// supplies only contextual facts (nearest-player equipment and the server-owned RNG stream); raw TileID branching
-/// stays confined to the definition catalog.
+/// stays confined to the definition catalogs. Explicit source-pinned frame-important 1x1 identities are admitted only
+/// when their drop is fixed; the wider frame-important family remains fail-closed.
 /// </summary>
 internal static class VanillaSimpleTileBreakResolver1458
 {
@@ -47,10 +48,14 @@ internal static class VanillaSimpleTileBreakResolver1458
         ArgumentNullException.ThrowIfNull(definition);
         ArgumentNullException.ThrowIfNull(random);
 
-        if (definition.BreakPath != VanillaTileBreakPath.SimpleCell)
+        bool ordinarySimpleCell = definition.BreakPath == VanillaTileBreakPath.SimpleCell;
+        bool frameImportantSingleCell = definition.BreakPath == VanillaTileBreakPath.FrameImportantSingleCell;
+        if (!ordinarySimpleCell && !frameImportantSingleCell)
             return new VanillaSimpleTileBreakOutcome(VanillaTileDropResolutionStatus.WrongPath, default, false, 0, default, default);
 
         VanillaTileDropRule rule = definition.DropRule;
+        if (frameImportantSingleCell && rule.Kind is not VanillaTileDropRuleKind.Fixed and not VanillaTileDropRuleKind.None)
+            return new VanillaSimpleTileBreakOutcome(VanillaTileDropResolutionStatus.WrongPath, default, false, 0, default, default);
         switch (rule.Kind)
         {
             case VanillaTileDropRuleKind.None:
@@ -166,8 +171,26 @@ internal static class VanillaSimpleTileBreakResolver1458
         ushort stack,
         int tileX,
         int tileY,
+        IWorldItemSpawnRandom random) =>
+        new(
+            VanillaTileDropResolutionStatus.Resolved,
+            MaterializeItemState(item, stack, tileX, tileY, random),
+            false,
+            0,
+            default,
+            default);
+
+    internal static WorldItemDropStateUpdate MaterializeItemState(
+        ItemTypeId item,
+        ushort stack,
+        int tileX,
+        int tileY,
         IWorldItemSpawnRandom random)
     {
+        ArgumentNullException.ThrowIfNull(random);
+        if (item.IsNone || stack == 0)
+            throw new ArgumentOutOfRangeException(nameof(item), "Authoritative item-drop materialization requires a concrete item and non-zero stack.");
+
         float halfSize = 6f;
         if (VanillaDefinitionCatalog.TryGetRuntimeDefaults(item, out VanillaItemRuntimeDefaults defaults) && defaults.IsValid)
             halfSize = Math.Min(defaults.Width, defaults.Height) * 0.5f;
@@ -177,7 +200,7 @@ internal static class VanillaSimpleTileBreakResolver1458
         float velocityX = random.NextInt32(-30, 31) * ItemVelocityScale;
         float velocityY = random.NextInt32(-40, -15) * ItemVelocityScale;
 
-        var drop = new WorldItemDropStateUpdate(
+        return new WorldItemDropStateUpdate(
             PositionX: centerX - halfSize,
             PositionY: centerY - halfSize,
             VelocityX: velocityX,
@@ -189,7 +212,6 @@ internal static class VanillaSimpleTileBreakResolver1458
             Shimmered: false,
             ShimmerTime: 0f,
             EnemyGrabDelayTime: 0);
-        return new VanillaSimpleTileBreakOutcome(VanillaTileDropResolutionStatus.Resolved, drop, false, 0, default, default);
     }
 
     private static VanillaSimpleTileBreakOutcome NoDrop() =>

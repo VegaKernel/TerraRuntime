@@ -54,7 +54,7 @@ Optimized profile сейчас создаёт и валидирует:
 - Underworld band с Lava, Hellstone и Hellforge;
 - малые correlated caves, крупные warped caverns, vertical shafts и inland underground lakes;
 - несколько floating islands;
-- связный dungeon graph с main rooms/branches, читаемым входом, locked dungeon loot, Golden Keys, spikes и wired dart traps;
+- связный dungeon graph с main rooms/branches, читаемым входом, source-backed уровнями Blue Dungeon Platform в вертикальных шахтах, проверкой достижимости комнат для 2x3 player clearance, locked dungeon loot, Golden Keys, spikes и wired dart traps;
 - масштабируемые по ширине изолированные jungle hives с сухими Queen Bee arenas и Honey basins, а также Jungle Temple и Aether/Shimmer pocket;
 - pre-Hardmode ore tiers;
 - масштабируемый по площади мира бюджет Life Crystals;
@@ -67,12 +67,17 @@ Optimized profile сейчас создаёт и валидирует:
 - ограниченное число Underworld houses с source-backed Hell brick/wall families, lava-safe мебелью и Shadow Chests, соединённых волнистыми platform bridges;
 - granite, marble, spider/cobweb и отдельные glowing-mushroom cave micro-biomes;
 - domain-warped material tongues на границах snow, desert, jungle и world evil;
+- естественные unsafe background walls под землёй: snow/ice и jungle/mud наследуют свои семейства, обычные cavern cells получают dirt/rock walls, а стены структур не перезаписываются;
 - детерминированные обычные forest/jungle/snow trees, выращиваемые через clean-room семантику TerrariaServer `1.4.5.8` `GrowTree` для clearance/branches/roots/frames с адаптером optimized RNG, плюс surface undergrowth и sunflower patches; всё ставится после landmarks и обходит progression objects/caches;
 - deterministic surface-finishing pass, который превращает чистые однотайловые перепады natural terrain в сохраняемые walkable slopes/half-blocks и публикует vanilla-format foliage anchors для обычных деревьев.
 
 Landmark layer использует tile/wall identities, которые уже source-backed текущей работой репозитория с TerrariaServer
 `1.4.5.8`. Exploration loot теперь использует pinned source primary families, а содержимое pyramid, Living Tree и
 Pyramid и Living Tree landmark caches остаются намеренно собственными ролями, а не заявлением о точных vanilla chest tables. Underworld caches теперь используют закреплённый TerrariaServer `1.4.5.8` стиль Shadow Chest и primary family, при этом их placement schedule остаётся собственной логикой optimized profile.
+
+## Естественные подземные стены
+
+Landmark layer optimized-профиля теперь заполняет ранее пустой (`wall=0`) фон подземных пещер детерминированными unsafe wall families. Pass меняет только неактивные клетки под землёй, сохраняет liquid и wall paint и не рисует сквозь frame-important content либо материал dungeon/hive/temple/landmarks. Окружение Snow/Ice и Jungle/Mud выбирает соответствующие source-backed wall families, а центр обычных cavern получает source-backed dirt/rock unsafe walls. Уже существующие стены структур всегда имеют приоритет.
 
 ## Органичные переходы
 
@@ -88,7 +93,7 @@ ores, frame-important objects и обязательные structures не рас
 Sky terrain сканируется как отдельные горизонтальные masses. До горизонтальной группировки каждая candidate-column должна подтвердить открытый воздух под неглубоким телом острова: высокий горный силуэт больше не раздувает sky-landmark budget, а настоящий остров, пересекающий гору по X, остаётся отдельным кандидатом. Landmark pass назначает две distinct роли:
 
 - **sky house**: Sunplate shell, Disc Wall interior и persistent sky cache;
-- **Floating Lake**: ограниченный вырезанный water basin внутри существующей island mass.
+- **Floating Lake**: ограниченный вырезанный water basin внутри существующей island mass; крайние water-columns получают явные solid retaining lips, а generation отклоняет lake с открытым горизонтальным краем, который начал бы стекать при запуске runtime liquid simulation.
 
 У обеих ролей есть явные минимальные бюджеты. Если pass не может разместить требуемое число houses/lakes, generation
 завершается ошибкой вместо тихой публикации неполного мира.

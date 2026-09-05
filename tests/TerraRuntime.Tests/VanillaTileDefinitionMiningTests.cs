@@ -36,5 +36,15 @@ public sealed class VanillaTileDefinitionMiningTests
         Assert.Equal(VanillaTileBreakPath.MultiTileObject, chest.BreakPath);
         Assert.Equal(VanillaTileDropRuleKind.Object, chest.DropRule.Kind);
         Assert.NotEqual(VanillaTileBreakPath.SimpleCell, tree.BreakPath);
+
+        VanillaTileDefinition waterCandle = VanillaTileDefinitionCatalog.Get(VanillaTileIds.WaterCandle);
+        VanillaTileDefinition switchTile = VanillaTileDefinitionCatalog.Get(VanillaTileIds.Switches);
+        VanillaTileDefinition ordinaryPlatform = VanillaTileDefinitionCatalog.Get(VanillaTileIds.Platforms);
+
+        Assert.Equal(VanillaTileBreakPath.FrameImportantSingleCell, waterCandle.BreakPath);
+        Assert.Equal(VanillaTileDropRuleKind.Fixed, waterCandle.DropRule.Kind);
+        Assert.Equal(VanillaTileBreakPath.FrameImportantSingleCell, switchTile.BreakPath);
+        Assert.Equal(VanillaTileDropRuleKind.Fixed, switchTile.DropRule.Kind);
+        Assert.Equal(VanillaTileBreakPath.FrameImportant, ordinaryPlatform.BreakPath);
     }
 }

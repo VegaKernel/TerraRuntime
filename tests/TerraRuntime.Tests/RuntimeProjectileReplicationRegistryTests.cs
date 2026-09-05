@@ -88,6 +88,52 @@ public sealed class RuntimeProjectileReplicationRegistryTests
     }
 
     [Fact]
+    public void Identical_projectile_wire_update_is_not_relayed_twice_for_same_generation()
+    {
+        var replication = new RuntimeProjectileReplicationRegistry();
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(1);
+        TerrariaConnectionOutboundQueue outbound = CreateOutbound();
+        Assert.True(replication.TryRegister(source, outbound));
+        ConnectionHandle player = Connection(source, slot: 1, generation: 1);
+        PlayerSpawnCommitRequest spawn = CreatePlayerSpawn(player.Player.Slot);
+        replication.PlayerSpawned(player, in spawn);
+
+        ProjectileSnapshot first = CreateProjectile(revision: 1, positionX: 100f);
+        replication.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in first);
+        ProjectileSnapshot sameWireState = first with { Revision = new ProjectileRevision(2) };
+        replication.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in sameWireState);
+
+        Assert.Equal(1, outbound.QueuedFrames);
+        Assert.Equal(1, replication.RelayedFrames);
+        Assert.Equal(1, replication.SuppressedDuplicateFrames);
+    }
+
+    [Fact]
+    public void Identical_projectile_wire_update_is_not_suppressed_after_slot_generation_changes()
+    {
+        var replication = new RuntimeProjectileReplicationRegistry();
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(1);
+        TerrariaConnectionOutboundQueue outbound = CreateOutbound();
+        Assert.True(replication.TryRegister(source, outbound));
+        ConnectionHandle player = Connection(source, slot: 1, generation: 1);
+        PlayerSpawnCommitRequest spawn = CreatePlayerSpawn(player.Player.Slot);
+        replication.PlayerSpawned(player, in spawn);
+
+        ProjectileSnapshot first = CreateProjectile(revision: 1, positionX: 100f);
+        replication.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in first);
+        ProjectileSnapshot replacement = first with
+        {
+            Handle = new ProjectileHandle(first.Handle.Slot, new ProjectileGeneration(16384)),
+            Revision = new ProjectileRevision(1)
+        };
+        replication.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in replacement);
+
+        Assert.Equal(2, outbound.QueuedFrames);
+        Assert.Equal(2, replication.RelayedFrames);
+        Assert.Equal(0, replication.SuppressedDuplicateFrames);
+    }
+
+    [Fact]
     public void Reused_projectile_slot_replaces_baseline_with_new_generation()
     {
         var replication = new RuntimeProjectileReplicationRegistry();

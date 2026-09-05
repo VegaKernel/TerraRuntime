@@ -63,6 +63,8 @@ Break accepts any cell of a coherent object already described by `VanillaMultiTi
 
 Removing the object clears only tile-owned state: active identity, object frames, tile color, shape and block-specific actuator/visibility/fullbright flags. Independent wall, wall color, wires and liquid state remain intact.
 
+The production packet-17 break path now admits the exact source-pinned base Chest identity (`Containers`, style 0, alternate 0). It resolves any clicked cell to the coherent 2x2 footprint, applies the runtime chest metadata veto, removes the footprint atomically and materializes one authoritative Chest item drop through a reserved world-item slot. Open or non-empty chests remain unchanged. Other styles and object families stay fail-closed until an exact reverse object-to-item mapping and secondary effects are pinned.
+
 ## Dirty propagation
 
 Every changed cell flows through `WorldTileStore.Set`, so its network and persistence section revisions are dirtied. The bounded one-tile framing neighborhood is also marked network-dirty, including both sides of a Terraria section boundary when an object spans or touches it.
@@ -77,6 +79,6 @@ This is the world transaction layer, not a claim of complete `TileObjectData` pa
 - alternate placement origins and style/substyle mapping;
 - liquid-placement rules;
 - concrete sign/tile-entity metadata adapters and replication semantics;
-- object-specific drops and secondary effects.
+- remaining object-specific drops and secondary effects beyond the exact base Chest break slice.
 
 Accordingly the broad D5 placement/break/framing roadmap item remains open until those production boundaries are connected and verified by CI.

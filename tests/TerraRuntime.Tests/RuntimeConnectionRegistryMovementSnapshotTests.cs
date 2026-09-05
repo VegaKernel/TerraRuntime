@@ -40,6 +40,56 @@ public sealed class RuntimeConnectionRegistryMovementSnapshotTests
     }
 
     [Fact]
+    public void Respawn_invalidates_predeath_movement_baseline_until_new_packet_13_arrives()
+    {
+        var registry = new RuntimeConnectionRegistry();
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(43);
+        var outbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 8, maxQueuedBytes: 8_192, maxFrameBytes: 1_024));
+        var slot = new PlayerSlotId(9);
+        ConnectionHandle connection = Connection(source, slot);
+
+        Assert.True(registry.TryRegister(source, outbound));
+        PlayerSpawnCommitRequest spawn = CreateSpawnRequest(slot);
+        registry.PlayerSpawned(connection, in spawn);
+        PlayerMovementCommitRequest beforeDeath = CreateMovementRequest(slot, 900f, 1_200f, selectedItem: 2);
+        registry.PlayerMoved(connection, in beforeDeath);
+        Assert.True(registry.TryGetLatestPlayerMovementFrame(slot, out _));
+
+        var respawn = new PlayerSpawnCommitRequest(slot, SpawnX: 120, SpawnY: 210, RespawnTimer: 0, DeathsPve: 1, DeathsPvp: 0, Team: 0, SpawnContext: 0);
+        registry.PlayerRespawned(connection, in respawn);
+
+        Assert.False(registry.TryGetLatestPlayerMovementFrame(slot, out _));
+
+        PlayerMovementCommitRequest afterRespawn = CreateMovementRequest(slot, 1_920f, 3_360f, selectedItem: 2);
+        registry.PlayerMoved(connection, in afterRespawn);
+        Assert.True(registry.TryGetLatestPlayerMovementFrame(slot, out OutboundFrame retained));
+        Assert.True(retained.Bytes.Span.SequenceEqual(Encode(in afterRespawn)));
+    }
+
+    [Fact]
+    public void Teleport_invalidates_preteleport_movement_baseline_until_new_packet_13_arrives()
+    {
+        var registry = new RuntimeConnectionRegistry();
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(44);
+        var outbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 8, maxQueuedBytes: 8_192, maxFrameBytes: 1_024));
+        var slot = new PlayerSlotId(10);
+        ConnectionHandle connection = Connection(source, slot);
+
+        Assert.True(registry.TryRegister(source, outbound));
+        PlayerSpawnCommitRequest spawn = CreateSpawnRequest(slot);
+        registry.PlayerSpawned(connection, in spawn);
+        PlayerMovementCommitRequest beforeTeleport = CreateMovementRequest(slot, 1_000f, 2_000f, selectedItem: 2);
+        registry.PlayerMoved(connection, in beforeTeleport);
+        Assert.True(registry.TryGetLatestPlayerMovementFrame(slot, out _));
+
+        registry.PlayerTeleported(connection, positionX: 4_000f, positionY: 5_000f, style: 1, failed: false);
+
+        Assert.False(registry.TryGetLatestPlayerMovementFrame(slot, out _));
+    }
+
+    [Fact]
     public void Movement_from_non_owner_source_does_not_replace_cached_snapshot()
     {
         var registry = new RuntimeConnectionRegistry();
@@ -63,6 +113,95 @@ public sealed class RuntimeConnectionRegistryMovementSnapshotTests
         Assert.True(registry.TryGetLatestPlayerMovementFrame(slot, out OutboundFrame after));
         Assert.True(after.Bytes.Span.SequenceEqual(before.Bytes.Span));
     }
+
+    [Fact]
+    public void Identical_playing_movement_update_is_not_relayed_twice_when_aoi_is_unchanged()
+    {
+        var registry = new RuntimeConnectionRegistry();
+        GameCommandSourceId firstSource = GameCommandSourceId.FromConnection(51);
+        GameCommandSourceId secondSource = GameCommandSourceId.FromConnection(52);
+        var firstOutbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 16, maxQueuedBytes: 16_384, maxFrameBytes: 1_024));
+        var secondOutbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 16, maxQueuedBytes: 16_384, maxFrameBytes: 1_024));
+        var first = new PlayerSlotId(7);
+        var second = new PlayerSlotId(8);
+        ConnectionHandle firstConnection = Connection(firstSource, first);
+        ConnectionHandle secondConnection = Connection(secondSource, second);
+
+        Assert.True(registry.TryRegister(firstSource, firstOutbound));
+        Assert.True(registry.TryRegister(secondSource, secondOutbound));
+        PlayerSpawnCommitRequest firstSpawn = CreateSpawnRequest(first);
+        PlayerSpawnCommitRequest secondSpawn = CreateSpawnRequest(second);
+        registry.PlayerSpawned(firstConnection, in firstSpawn);
+        registry.PlayerSpawned(secondConnection, in secondSpawn);
+
+        PlayerMovementCommitRequest movement = CreateMovementRequest(first, 1_600f, 3_200f, selectedItem: 3);
+        registry.PlayerMoved(firstConnection, in movement);
+        int afterFirst = secondOutbound.QueuedFrames;
+        registry.PlayerMoved(firstConnection, in movement);
+
+        Assert.Equal(afterFirst, secondOutbound.QueuedFrames);
+        Assert.Equal(1, registry.RelayedMovementFrames);
+        Assert.Equal(1, registry.SuppressedDuplicateMovementFrames);
+    }
+
+    [Fact]
+    public void Authoritative_movement_correction_is_sent_only_to_the_owning_client()
+    {
+        var registry = new RuntimeConnectionRegistry();
+        GameCommandSourceId ownerSource = GameCommandSourceId.FromConnection(61);
+        GameCommandSourceId peerSource = GameCommandSourceId.FromConnection(62);
+        var ownerOutbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 32, maxQueuedBytes: 32_768, maxFrameBytes: 1_024));
+        var peerOutbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 32, maxQueuedBytes: 32_768, maxFrameBytes: 1_024));
+        var ownerSlot = new PlayerSlotId(11);
+        var peerSlot = new PlayerSlotId(12);
+        ConnectionHandle owner = Connection(ownerSource, ownerSlot);
+        ConnectionHandle peer = Connection(peerSource, peerSlot);
+
+        Assert.True(registry.TryRegister(ownerSource, ownerOutbound));
+        Assert.True(registry.TryRegister(peerSource, peerOutbound));
+        PlayerSpawnCommitRequest ownerSpawn = CreateSpawnRequest(ownerSlot);
+        PlayerSpawnCommitRequest peerSpawn = CreateSpawnRequest(peerSlot);
+        registry.PlayerSpawned(owner, in ownerSpawn);
+        registry.PlayerSpawned(peer, in peerSpawn);
+
+        int ownerBefore = ownerOutbound.QueuedFrames;
+        int peerBefore = peerOutbound.QueuedFrames;
+        PlayerMovementCommitRequest movement = CreateMovementRequest(ownerSlot, 1_777f, 2_999f, selectedItem: 4);
+        PlayerStateSnapshot correction = Snapshot(owner.Player, in movement);
+
+        registry.PlayerAuthoritativeMovementCorrected(owner, in correction);
+
+        Assert.Equal(ownerBefore + 1, ownerOutbound.QueuedFrames);
+        Assert.Equal(peerBefore, peerOutbound.QueuedFrames);
+        Assert.True(registry.TryGetLatestPlayerMovementFrame(ownerSlot, out OutboundFrame retained));
+        Assert.True(retained.Bytes.Span.SequenceEqual(Encode(in movement)));
+    }
+
+    private static PlayerStateSnapshot Snapshot(PlayerHandle player, in PlayerMovementCommitRequest movement) =>
+        new(
+            player,
+            new PlayerStateRevision(1),
+            Team: 0,
+            movement.ControlFlags,
+            movement.MovementFlags,
+            movement.MiscFlags1,
+            movement.MiscFlags2,
+            movement.SelectedItem,
+            movement.PositionX,
+            movement.PositionY,
+            movement.VelocityX,
+            movement.VelocityY,
+            movement.MountType,
+            movement.PotionOfReturnOriginalPositionX,
+            movement.PotionOfReturnOriginalPositionY,
+            movement.PotionOfReturnHomePositionX,
+            movement.PotionOfReturnHomePositionY,
+            movement.CameraTargetX,
+            movement.CameraTargetY);
 
     private static PlayerSpawnCommitRequest CreateSpawnRequest(PlayerSlotId slot) =>
         new(

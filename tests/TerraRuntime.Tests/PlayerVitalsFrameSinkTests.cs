@@ -53,6 +53,44 @@ public sealed class PlayerVitalsFrameSinkTests
     }
 
     [Fact]
+    public void Health_ingress_backpressure_drops_replaceable_snapshot_without_stopping_connection()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(4401);
+        using var bootstrap = CreateBootstrap(source);
+        var sink = new PlayerVitalsFrameSink(
+            source,
+            bootstrap,
+            new RejectingHealthIngress(),
+            new CapturingManaIngress());
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Hello()));
+        Assert.Equal(
+            TerrariaFrameSinkResult.Continue,
+            sink.OnFrame(Health(claimedPlayerId: 0, life: 123, maxLife: 200)));
+        Assert.Equal(PlayerVitalsStopReason.None, sink.StopReason);
+        Assert.Equal(TerrariaFrameRejectionCategory.None, sink.RejectionCategory);
+    }
+
+    [Fact]
+    public void Mana_ingress_backpressure_drops_replaceable_snapshot_without_stopping_connection()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(4402);
+        using var bootstrap = CreateBootstrap(source);
+        var sink = new PlayerVitalsFrameSink(
+            source,
+            bootstrap,
+            new CapturingHealthIngress(),
+            new RejectingManaIngress());
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Hello()));
+        Assert.Equal(
+            TerrariaFrameSinkResult.Continue,
+            sink.OnFrame(Mana(claimedPlayerId: 0, mana: 40, maxMana: 80)));
+        Assert.Equal(PlayerVitalsStopReason.None, sink.StopReason);
+        Assert.Equal(TerrariaFrameRejectionCategory.None, sink.RejectionCategory);
+    }
+
+    [Fact]
     public void Malformed_health_stops_the_vitals_layer()
     {
         GameCommandSourceId source = GameCommandSourceId.FromConnection(44);
@@ -163,6 +201,16 @@ public sealed class PlayerVitalsFrameSinkTests
             GameCommandSourceId source,
             PlayerJoinSession session,
             in PlayerSpawnCommitRequest request) => true;
+    }
+
+    private sealed class RejectingHealthIngress : IPlayerHealthIngress
+    {
+        public bool TryPost(ConnectionHandle connection, in PlayerHealthCommitRequest request) => false;
+    }
+
+    private sealed class RejectingManaIngress : IPlayerManaIngress
+    {
+        public bool TryPost(ConnectionHandle connection, in PlayerManaCommitRequest request) => false;
     }
 
     private sealed class CapturingHealthIngress : IPlayerHealthIngress

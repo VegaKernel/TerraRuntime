@@ -14,7 +14,7 @@ Pinned bootstrap-секции подчиняются тому же revision-ко
 
 Базовые spawn-секции кодируются при создании `PlayerBootstrapPacketSet`. Остальные секции перестраиваются из immutable snapshots в ограниченном worker pipeline кэша. Результат worker публикуется только если захваченная ревизия всё ещё совпадает с зафиксированной ревизией живого мира.
 
-Per-player streaming tracker обновляется только после того, как packet-10 frame успешно попал в outbound queue. Ошибка кодирования, stale-результат worker, rate limit или outbound backpressure поэтому не могут создать ложное состояние «секция уже доставлена».
+Per-player streaming tracker обновляется только после того, как packet-10 frame успешно попал в outbound queue. Ошибка кодирования, stale-результат worker, rate limit или outbound backpressure поэтому не могут создать ложное состояние «секция уже доставлена». После входа игрока в мир section streaming является opportunistic: любая временная недоступность rebuild оставляет секцию неотправленной и повторяет попытку на следующем movement sample вместо разрыва соединения. Начальный bootstrap по packet 8 остаётся строгим, потому что клиент не может войти в мир без обязательных base sections.
 
 ## Начальная загрузка и генерация
 

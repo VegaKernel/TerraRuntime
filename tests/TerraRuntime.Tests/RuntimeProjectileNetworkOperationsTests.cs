@@ -39,16 +39,19 @@ public sealed class RuntimeProjectileNetworkOperationsTests
         };
         replication.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in moved);
 
+        ProjectileSnapshot duplicate = moved with { Revision = new ProjectileRevision(3) };
+        replication.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in duplicate);
+
         ProjectileSnapshot rejected = moved with
         {
-            Revision = new ProjectileRevision(3),
+            Revision = new ProjectileRevision(4),
             PositionX = 150f
         };
         replication.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in rejected);
 
         ProjectileSnapshot unsupported = rejected with
         {
-            Revision = new ProjectileRevision(4),
+            Revision = new ProjectileRevision(5),
             PositionX = float.NaN
         };
         replication.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in unsupported);
@@ -59,6 +62,7 @@ public sealed class RuntimeProjectileNetworkOperationsTests
         Assert.Equal(1, snapshot.ProjectileRelayedFrames);
         Assert.Equal(1, snapshot.ProjectileRejectedFrames);
         Assert.Equal(1, snapshot.ProjectileUnsupportedCommits);
+        Assert.Equal(1, snapshot.ProjectileSuppressedDuplicateFrames);
     }
 
     private static ConnectionHandle Connection(

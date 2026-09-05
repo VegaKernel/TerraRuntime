@@ -75,6 +75,36 @@ public sealed class RuntimePlayerEquipmentRelayTests
         Assert.Equal(0, registry.DroppedEquipmentSnapshotUpdates);
     }
 
+    [Fact]
+    public void Identical_playing_equipment_update_is_not_relayed_twice()
+    {
+        var registry = new RuntimeConnectionRegistry();
+        GameCommandSourceId firstSource = GameCommandSourceId.FromConnection(41);
+        GameCommandSourceId secondSource = GameCommandSourceId.FromConnection(42);
+        var firstOutbound = CreateOutbound();
+        var secondOutbound = CreateOutbound();
+        var first = new PlayerSlotId(5);
+        var second = new PlayerSlotId(6);
+        ConnectionHandle firstConnection = Connection(firstSource, first);
+        ConnectionHandle secondConnection = Connection(secondSource, second);
+
+        Assert.True(registry.TryRegister(firstSource, firstOutbound));
+        Assert.True(registry.TryRegister(secondSource, secondOutbound));
+        PlayerSpawnCommitRequest firstSpawn = CreateSpawn(first);
+        PlayerSpawnCommitRequest secondSpawn = CreateSpawn(second);
+        registry.PlayerSpawned(firstConnection, in firstSpawn);
+        registry.PlayerSpawned(secondConnection, in secondSpawn);
+
+        PlayerEquipmentCommitRequest equipment = CreateEquipment(first, equipmentSlot: 0, itemNetId: 10);
+        registry.PlayerEquipmentUpdated(firstConnection, in equipment);
+        int afterFirst = secondOutbound.QueuedFrames;
+        registry.PlayerEquipmentUpdated(firstConnection, in equipment);
+
+        Assert.Equal(afterFirst, secondOutbound.QueuedFrames);
+        Assert.Equal(1, registry.RelayedEquipmentFrames);
+        Assert.Equal(1, registry.SuppressedDuplicateEquipmentFrames);
+    }
+
     private static TerrariaConnectionOutboundQueue CreateOutbound() =>
         new(new OutboundQueueOptions(maxFrames: 16, maxQueuedBytes: 16_384, maxFrameBytes: 1_024));
 

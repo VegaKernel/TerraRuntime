@@ -45,7 +45,7 @@ public sealed class VanillaDirtRules1458Tests
     }
 
     [Fact]
-    public void Isolated_canonical_dirt_kill_commits_once_and_can_be_placed_again()
+    public void Canonical_dirt_kill_commits_once_and_can_be_placed_again()
     {
         var tiles = new WorldTileStore(new WorldDimensions(400, 300));
         const int x = 210;
@@ -57,7 +57,7 @@ public sealed class VanillaDirtRules1458Tests
         Assert.Equal(1, tiles.DirtySections.Drain(drained));
         Assert.Equal(2, tiles.GetSectionVersion(section));
 
-        Assert.True(WorldTileTestMutations.TryKillIsolatedDirt(tiles, x, y));
+        Assert.True(WorldTileTestMutations.TryKillDirt(tiles, x, y));
 
         Assert.False(tiles.Get(x, y).IsActive);
         Assert.Equal(default, tiles.Get(x, y));
@@ -71,44 +71,21 @@ public sealed class VanillaDirtRules1458Tests
     }
 
     [Fact]
-    public void Kill_preflight_accepts_isolated_dirt_without_world_side_effects()
-    {
-        var tiles = new WorldTileStore(new WorldDimensions(400, 300));
-        const int x = 210;
-        const int y = 160;
-        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(tiles, x, y));
-        WorldSectionId section = TerrariaSectionGeometry.FromTile(tiles.Dimensions, x, y);
-        long beforeVersion = tiles.GetSectionVersion(section);
-        Span<WorldSectionId> drained = stackalloc WorldSectionId[1];
-        Assert.Equal(1, tiles.DirtySections.Drain(drained));
-        WorldTile before = tiles.Get(x, y);
-
-        Assert.True(VanillaDirtRules1458.CanKillIsolated(tiles, x, y));
-
-        Assert.Equal(before, tiles.Get(x, y));
-        Assert.Equal(beforeVersion, tiles.GetSectionVersion(section));
-        Assert.Equal(0, tiles.DirtySections.DirtyCount);
-    }
-
-    [Fact]
-    public void Active_neighbor_rejects_dirt_kill_without_world_side_effects()
+    public void Active_neighbor_is_preserved_when_dirt_cell_is_killed()
     {
         var tiles = new WorldTileStore(new WorldDimensions(400, 300));
         const int x = 210;
         const int y = 160;
         Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(tiles, x, y));
         Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(tiles, x + 1, y));
-        WorldSectionId section = TerrariaSectionGeometry.FromTile(tiles.Dimensions, x, y);
-        long beforeVersion = tiles.GetSectionVersion(section);
         Span<WorldSectionId> drained = stackalloc WorldSectionId[2];
         _ = tiles.DirtySections.Drain(drained);
-        WorldTile before = tiles.Get(x, y);
 
-        Assert.False(VanillaDirtRules1458.CanKillIsolated(tiles, x, y));
-        Assert.False(WorldTileTestMutations.TryKillIsolatedDirt(tiles, x, y));
+        Assert.True(WorldTileTestMutations.TryKillDirt(tiles, x, y));
 
-        Assert.Equal(before, tiles.Get(x, y));
-        Assert.Equal(beforeVersion, tiles.GetSectionVersion(section));
-        Assert.Equal(0, tiles.DirtySections.DirtyCount);
+        Assert.False(tiles.Get(x, y).IsActive);
+        Assert.True(tiles.Get(x + 1, y).IsActive);
+        Assert.Equal(VanillaTileIds.Dirt, tiles.Get(x + 1, y).TileType);
+        Assert.Equal(1, tiles.DirtySections.DirtyCount);
     }
 }

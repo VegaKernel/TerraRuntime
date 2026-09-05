@@ -63,6 +63,8 @@ Break принимает любую клетку согласованного о
 
 Удаление объекта очищает только состояние, принадлежащее тайлу: active identity, object frames, tile color, shape и block-specific actuator/visibility/fullbright flags. Независимые wall, wall color, wires и liquid state сохраняются.
 
+Production break-path packet 17 теперь допускает точную source-pinned identity базового Chest (`Containers`, style 0, alternate 0). Клик по любой клетке нормализуется к согласованному 2x2 footprint, runtime chest metadata выполняет veto, footprint удаляется атомарно, а через reserved world-item slot создаётся один authoritative Chest item drop. Открытый или непустой сундук остаётся неизменным. Остальные styles и object families остаются fail-closed до точного reverse object-to-item mapping и secondary effects.
+
 ## Dirty propagation
 
 Каждая изменённая клетка проходит через `WorldTileStore.Set`, поэтому dirty/revision получают соответствующие network и persistence sections. Ограниченная framing-окрестность в один тайл дополнительно помечается network-dirty, включая обе стороны границы Terraria section, если объект её пересекает или касается.
@@ -77,6 +79,6 @@ Break принимает любую клетку согласованного о
 - alternate placement origins и style/substyle mapping;
 - правила размещения в жидкости;
 - конкретные adapters для sign/tile-entity metadata и их replication semantics;
-- object-specific drops и вторичные эффекты.
+- оставшиеся object-specific drops и вторичные эффекты за пределами точного base Chest break slice.
 
 Поэтому широкий пункт D5 placement/break/framing остаётся открытым до подключения этих production-boundaries и подтверждения CI.

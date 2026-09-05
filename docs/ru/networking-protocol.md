@@ -82,7 +82,7 @@ Successful handshake фиксирует completion и будит watchdog. Produ
 
 Frame-rejection telemetry остаётся отдельной diagnostic dimension и нормализует malformed protocol, rate-limited, invalid-state, gameplay-rejected и backpressure failures. Lifetime reason отвечает, почему завершился connection; rejection category отвечает, какой класс frame был отклонён. Эти две оси нельзя сплющивать в generic network error.
 
-Production sink chain протаскивает rejection category через sign, chest, projectile/tile, world-item и vitals/bootstrap layers. Поэтому bootstrap failures, включая malformed join/player packets, illegal join state, player-slot mismatch и ingress/outbound backpressure, остаются видимыми, хотя `PlayerVitalsFrameSink` является первым rejection-source wrapper вокруг bootstrap layer.
+Production sink chain протаскивает rejection category через sign, chest, projectile/tile, world-item и vitals/bootstrap layers. Поэтому bootstrap failures, включая malformed join/player packets, illegal join state, player-slot mismatch и ingress/outbound backpressure, остаются видимыми, хотя `PlayerVitalsFrameSink` является первым rejection-source wrapper вокруг bootstrap layer. После перехода игрока в `Playing` пакеты `PlayerHp` и `PlayerMana` считаются replaceable snapshots: кратковременное заполнение bounded authoritative gameplay mailbox отбрасывает устаревший snapshot вместо разрыва соединения, а connection-wide и per-message abuse limits по-прежнему работают выше этого sink. Дискретные projectile spawn/destroy, NPC-damage и world-mutation intents остаются fail-closed, потому что их молчаливый drop потерял бы игровое событие, а не просто заменяемое состояние.
 
 ## 7. Handshake и legality состояния
 

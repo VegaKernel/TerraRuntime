@@ -77,9 +77,11 @@ public sealed class PlayerCombatFrameSink : ITerrariaFrameSink, ITerrariaFrameRe
             return Stop(PlayerCombatFrameStopReason.InvalidJoinState);
         if (!TerrariaPlayerCombatCodec.TryDecodePvpToggle(in frame, out _, out bool hostile))
             return Stop(PlayerCombatFrameStopReason.MalformedPvpToggle);
-        return ingress.TryPostPvpToggle(connection, hostile)
-            ? TerrariaFrameSinkResult.Continue
-            : Stop(PlayerCombatFrameStopReason.GameIngressBackpressure);
+        // PVP mode is replaceable connection state. If the single-writer ingress is momentarily full,
+        // dropping this stale sample is safer than tearing down an otherwise healthy socket; the next toggle
+        // (and later authoritative replication) carries the current state. Discrete combat claims stay strict.
+        _ = ingress.TryPostPvpToggle(connection, hostile);
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private TerrariaFrameSinkResult HandleTeam(in TerrariaFrame frame)
@@ -88,9 +90,10 @@ public sealed class PlayerCombatFrameSink : ITerrariaFrameSink, ITerrariaFrameRe
             return Stop(PlayerCombatFrameStopReason.InvalidJoinState);
         if (!TerrariaPlayerCombatCodec.TryDecodeTeam(in frame, out _, out byte team))
             return Stop(PlayerCombatFrameStopReason.MalformedTeam);
-        return ingress.TryPostTeam(connection, team)
-            ? TerrariaFrameSinkResult.Continue
-            : Stop(PlayerCombatFrameStopReason.GameIngressBackpressure);
+        // Team selection is likewise a replaceable snapshot. A transient gameplay-queue backlog must not become
+        // "Connection lost" for a normal UI action. Hurt packets below remain fail-closed because they are events.
+        _ = ingress.TryPostTeam(connection, team);
+        return TerrariaFrameSinkResult.Continue;
     }
 
     private TerrariaFrameSinkResult HandleHurt(in TerrariaFrame frame)

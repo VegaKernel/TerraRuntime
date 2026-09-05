@@ -409,6 +409,33 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     }
 
     [Fact]
+    public void World_tree_drag_source_cannot_be_replaced_by_later_pressed_player_row()
+    {
+        using var tree = new SandboxWorldTreeView();
+        var arena = new SandboxName("arena");
+        RuntimePlayerSnapshot alice = CreatePlayer(0, 21, "Alice");
+        RuntimePlayerSnapshot bob = CreatePlayer(1, 22, "Bob");
+        PlayerHandle? moved = null;
+        tree.TransferRequested += (handle, _) => moved = handle;
+        tree.SetRows(
+            ["primary", "#0 Alice", "#1 Bob", "arena"],
+            [
+                new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, Target: null, PlayerSelector: null),
+                new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, Target: null, PlayerSelector: "#0", alice),
+                new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, Target: null, PlayerSelector: "#1", bob),
+                new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, arena, PlayerSelector: null)
+            ]);
+
+        Assert.True(tree.BeginDragForSmoke(2));
+        // A held-button move over Alice must not recapture the drag source.
+        Assert.True(tree.BeginDragForSmoke(1));
+        Assert.True(tree.DropDraggedForSmoke(3));
+
+        Assert.True(moved.HasValue);
+        Assert.Equal(new PlayerHandle(new PlayerSlotId(1), new PlayerSessionGeneration(1)), moved.Value);
+    }
+
+    [Fact]
     public void World_tree_explicit_actions_map_rows_to_typed_semantics()
     {
         using var tree = new SandboxWorldTreeView();

@@ -23,11 +23,8 @@ internal static class WorldTileTestMutations
         return mutations.Apply(in request).Applied;
     }
 
-    public static bool TryKillIsolatedDirt(WorldTileStore tiles, int x, int y)
+    public static bool TryKillDirt(WorldTileStore tiles, int x, int y)
     {
-        if (!VanillaDirtRules1458.CanKillIsolated(tiles, x, y))
-            return false;
-
         var mutations = new VanillaWorldTileMutationService(tiles);
         var request = new WorldTileMutationRequest(WorldTileMutationKind.KillTile, x, y);
         return mutations.Apply(in request).Applied;

@@ -79,6 +79,12 @@ internal sealed class SandboxWorldTreeView : ListView
 
     private bool TryBeginDrag(int sourceRow)
     {
+        // Mouse move events can continue carrying LeftButtonPressed while the pointer crosses other rows.
+        // Once a drag starts its semantic player identity is immutable until release/cancel; otherwise a second
+        // player row under the cursor can silently replace the player that was actually picked up.
+        if (draggedPlayer is not null)
+            return true;
+
         if ((uint)sourceRow >= (uint)rows.Length ||
             rows[sourceRow].Kind != SandboxWorldTreeRowKind.Player ||
             rows[sourceRow].Player is not RuntimePlayerSnapshot)
@@ -142,8 +148,10 @@ internal sealed class SandboxWorldTreeView : ListView
         if (mouse.Position is Point point)
         {
             int row = point.Y + Viewport.Y;
+            bool leftPressed = mouse.Flags.HasFlag(MouseFlags.LeftButtonPressed);
+            bool rightPressed = mouse.Flags.HasFlag(MouseFlags.RightButtonPressed);
             if ((uint)row < (uint)rows.Length &&
-                (mouse.Flags.HasFlag(MouseFlags.LeftButtonPressed) || mouse.Flags.HasFlag(MouseFlags.RightButtonPressed)))
+                (rightPressed || (leftPressed && draggedPlayer is null)))
             {
                 SelectedItem = row;
                 SetFocus();
@@ -157,7 +165,7 @@ internal sealed class SandboxWorldTreeView : ListView
                 return true;
             }
 
-            if (mouse.Flags.HasFlag(MouseFlags.LeftButtonPressed) && (uint)row < (uint)rows.Length)
+            if (leftPressed && draggedPlayer is null && (uint)row < (uint)rows.Length)
             {
                 if (IsActionHit(row, point.X + Viewport.X) && TryInvokeActionForSmoke(row))
                 {

@@ -95,14 +95,7 @@ internal sealed partial class PlayerAuthority
         }
 
         if (target.GodMode)
-        {
-            events?.PlayerDamageAvoided(
-                targetHandle,
-                target.PositionX + VanillaBasePlayerWidth * 0.5f,
-                target.PositionY + VanillaBasePlayerHeight * 0.5f,
-                GodModeCombatText.Select(targetHandle, tick));
-            return PlayerDamageCommitResult.AvoidedByGodMode;
-        }
+            return AvoidGodModeDamage(tick, targetHandle, target);
 
         if (!TryCaptureCombatSnapshot(targetHandle, out VanillaPlayerCombatSnapshot targetCombat))
             return PlayerDamageCommitResult.Rejected;
@@ -198,14 +191,7 @@ internal sealed partial class PlayerAuthority
         }
 
         if (target.GodMode)
-        {
-            events?.PlayerDamageAvoided(
-                targetHandle,
-                target.PositionX + VanillaBasePlayerWidth * 0.5f,
-                target.PositionY + VanillaBasePlayerHeight * 0.5f,
-                GodModeCombatText.Select(targetHandle, tick));
-            return PlayerDamageCommitResult.AvoidedByGodMode;
-        }
+            return AvoidGodModeDamage(tick, targetHandle, target);
 
         if (!TryCaptureCombatSnapshot(targetHandle, out VanillaPlayerCombatSnapshot targetCombat))
             return PlayerDamageCommitResult.Rejected;
@@ -248,6 +234,24 @@ internal sealed partial class PlayerAuthority
         return PlayerDamageCommitResult.Committed;
     }
 
+    private PlayerDamageCommitResult AvoidGodModeDamage(
+        long tick,
+        PlayerHandle targetHandle,
+        RuntimePlayerMember target)
+    {
+        // Terraria applies several Hurt paths locally before packet 16/13 reach the server. Merely refusing
+        // authoritative damage therefore leaves a brief local HP loss and knockback. Reassert both owner-only
+        // states immediately; MISS remains a separate visual acknowledgement for observers.
+        ReassertGodModeOwnerState(target, tick);
+
+        events?.PlayerDamageAvoided(
+            targetHandle,
+            target.PositionX + VanillaBasePlayerWidth * 0.5f,
+            target.PositionY + VanillaBasePlayerHeight * 0.5f,
+            GodModeCombatText.Select(targetHandle, tick));
+        return PlayerDamageCommitResult.AvoidedByGodMode;
+    }
+
     private void ApplySetPlayerGodMode(SetPlayerGodModeRuntimeCommand command)
     {
         if (!membership.TryGet(command.Player, out RuntimePlayerMember? player) || !player.TryAdvanceRevision())
@@ -257,6 +261,8 @@ internal sealed partial class PlayerAuthority
         }
 
         player.GodMode = command.Enabled;
+        if (!command.Enabled)
+            ClearGodModeMovementCorrection(command.Player);
         command.Completion.TrySetResult(true);
     }
 

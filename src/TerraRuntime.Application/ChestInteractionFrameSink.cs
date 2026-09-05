@@ -81,6 +81,7 @@ public sealed class ChestInteractionFrameSink :
             return Stop(ChestInteractionFrameStopReason.InvalidJoinState);
 
         bool posted;
+        bool retryableReadRequest = false;
         switch (messageId)
         {
             case TerrariaMessageId.RequestChestOpen:
@@ -89,6 +90,7 @@ public sealed class ChestInteractionFrameSink :
                 if (decode != TerrariaChestDecodeResult.Decoded)
                     return Stop(ChestInteractionFrameStopReason.MalformedChestPacket);
                 posted = ingress.TryPostOpen(connection, in request);
+                retryableReadRequest = true;
                 break;
             }
 
@@ -118,6 +120,7 @@ public sealed class ChestInteractionFrameSink :
                 if (decode != TerrariaChestDecodeResult.Decoded)
                     return Stop(ChestInteractionFrameStopReason.MalformedChestPacket);
                 posted = ingress.TryPostNameLookup(connection, in lookupRequest);
+                retryableReadRequest = true;
                 break;
             }
 
@@ -125,9 +128,13 @@ public sealed class ChestInteractionFrameSink :
                 return inner.OnFrame(in frame);
         }
 
-        return posted
-            ? TerrariaFrameSinkResult.Continue
-            : Stop(ChestInteractionFrameStopReason.GameIngressBackpressure);
+        if (posted || retryableReadRequest)
+            return TerrariaFrameSinkResult.Continue;
+
+        // Chest item/active-state mutations are discrete authoritative events and remain fail-closed. Read-only
+        // open/name requests are naturally retryable UI probes, so a transient queue backlog above does not tear
+        // down the connection.
+        return Stop(ChestInteractionFrameStopReason.GameIngressBackpressure);
     }
 
     private bool TryGetPlayingConnection(out ConnectionHandle connection)

@@ -7,14 +7,14 @@ TerraRuntime отделяет декодированное представле�
 Сервис владеет текущими проверенными однотайловыми операциями хранения:
 
 - `PlaceTile` для обычных vanilla-тайлов без frame-important семантики, уже допущенных вызывающим gameplay-слоем;
-- `KillTile` для обычных single-cell vanilla-тайлов, допущенных definition-моделью; frame-important/multi-tile/object content идёт отдельными путями;
+- `KillTile` для обычных single-cell vanilla-тайлов, допущенных definition-моделью, плюс явно закреплённый поднабор `FrameImportantSingleCell`; остальной frame-important/multi-tile/object content идёт отдельными путями;
 - `PlaceWall` и `KillWall` с типизированной проверкой `WallTypeId`;
 - `SetShape` для solid-тайлов, которые не являются платформами и frame-important объектами;
 - ограниченной канонизацией frame обычных тайлов и dirty propagation для сети и persistence.
 
 Запрос задаётся как `WorldTileMutationRequest`. Этот API не принимает сырые номера packet action. Сетевой ingress сначала обязан декодировать и аутентифицировать пакет, а верхние gameplay-слои по-прежнему отвечают за reach, удерживаемый предмет/мощность инструмента, расход инвентаря, protection policy и резервирование drop.
 
-Обычный mining теперь управляется definition-моделью. `VanillaTileDefinitionCatalog` — flyweight-таблица для каждого vanilla tile 1.4.5.8: она хранит mutation path, mining profile, drop rule и failed-pick transform. Положительного списка «разрешённых» обычных тайлов больше нет: простой single-cell removal является базовым поведением, а frame-important объекты, contextual drops, transforms и progression gates выбирают специализированный путь явно.
+Обычный mining теперь управляется definition-моделью. `VanillaTileDefinitionCatalog` — flyweight-таблица для каждого vanilla tile 1.4.5.8: она хранит mutation path, mining profile, drop rule и failed-pick transform. Положительного списка «разрешённых» обычных тайлов больше нет: простой single-cell removal является базовым поведением, а frame-important объекты, contextual drops, transforms и progression gates выбирают специализированный путь явно. Обычный Dirt идёт тем же simple-cell путём: наличие соседнего активного грунта не является причиной отклонять завершённый break из packet 17; commit сохраняет соседние клетки и через тот же reservation boundary создаёт drop Dirt Block.
 
 ## Почему generic `KillTile` работает fail-closed
 
@@ -22,7 +22,7 @@ Pinned source TerrariaServer 1.4.5.8 показывает, что внешне �
 
 Source contract сейчас закрепляет, среди прочего, порог `65` pick power для Ebonstone/Crimstone и `210` для Lihzahrd content, а Grass явно входит в transform-on-kill family. Поэтому считать любой не-frame-important тайл операцией `Type = 0; Active = false` было бы не упрощением, а повреждением поведения.
 
-Storage mutation service принимает только definitions с `BreakPath = SimpleCell`; gameplay-authority до commit разрешает мощность кирки, failed-pick transforms, contextual drop semantics и progression-sensitive requirements. Frame-important и multi-tile content остаётся fail-closed, пока отдельный object path не владеет его геометрией и lifecycle метаданных.
+Storage mutation service принимает обычные definitions с `BreakPath = SimpleCell` и намеренно узкое семейство `FrameImportantSingleCell`, для которого независимо закреплены одноклеточный footprint и фиксированный drop 1.4.5.8. Gameplay-authority до commit разрешает мощность кирки, failed-pick transforms, contextual drop semantics и progression-sensitive requirements. Сейчас в этот framed single-cell срез входят Water Candle, Switch и шесть цветных Team Platforms. Обычные Platforms и Torches остаются fail-closed, потому что их drop/style semantics зависят от frame state. Multi-tile content использует отдельную object transaction. Production bridge packet 17 также допускает точную base Chest identity: согласованный 2x2 footprint, удаление runtime metadata и authoritative Chest item drop коммитятся как одна bounded operation; остальные frame-important/object families остаются fail-closed.
 
 ## Владение состоянием
 
@@ -34,7 +34,7 @@ Storage mutation service принимает только definitions с `BreakPa
 
 Для не-frame-important тайлов vanilla `.wld` не сохраняет значимые координаты tile frame. Поэтому TerraRuntime канонизирует затронутую окрестность `3×3` обычных тайлов в frame `(0,0)`, а не пытается воспроизводить выбор клиентского sprite frame внутри авторитетного storage. Изменение стены помечает dirty все секции, затронутые этой ограниченной frame-окрестностью.
 
-Frame-important и известный multi-tile content намеренно отклоняется generic-сервисом. Для его placement/break требуется проверенная геометрия `TileObjectData`, anchors, style/frame mapping и lifecycle метаданных, а не угадывание арифметики frame.
+Generic frame-important и известный multi-tile content по-прежнему отклоняются storage-сервисом. Единственное исключение — явный каталог `FrameImportantSingleCell`: его removal очищает ровно одну закреплённую ячейку и намеренно не переписывает frame соседей. Более широкий placement/break всё ещё требует проверенной геометрии `TileObjectData`, anchors, style/frame mapping и lifecycle метаданных, а не угадывания арифметики frame.
 
 ## Mining boundary packet 17
 

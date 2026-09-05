@@ -79,6 +79,7 @@ public sealed class SignInteractionFrameSink :
             return Stop(SignInteractionFrameStopReason.InvalidJoinState);
 
         bool posted;
+        bool retryableReadRequest = false;
         switch (messageId)
         {
             case TerrariaMessageId.RequestSign:
@@ -89,6 +90,7 @@ public sealed class SignInteractionFrameSink :
                 if (decode != TerrariaSignDecodeResult.Decoded)
                     return Stop(SignInteractionFrameStopReason.MalformedSignPacket);
                 posted = ingress.TryPostRead(connection, in request);
+                retryableReadRequest = true;
                 break;
             }
 
@@ -107,9 +109,12 @@ public sealed class SignInteractionFrameSink :
                 return inner.OnFrame(in frame);
         }
 
-        return posted
-            ? TerrariaFrameSinkResult.Continue
-            : Stop(SignInteractionFrameStopReason.GameIngressBackpressure);
+        if (posted || retryableReadRequest)
+            return TerrariaFrameSinkResult.Continue;
+
+        // Sign text updates are persistent mutations and stay fail-closed. A read request is retryable and may be
+        // dropped during a transient authoritative-queue backlog without turning it into Connection lost.
+        return Stop(SignInteractionFrameStopReason.GameIngressBackpressure);
     }
 
     private bool TryGetPlayingConnection(out ConnectionHandle connection)

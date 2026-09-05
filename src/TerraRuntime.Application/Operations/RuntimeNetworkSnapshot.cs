@@ -80,4 +80,13 @@ internal readonly record struct RuntimeNetworkSnapshot(
     int OutboundRecommendedMaxFrames = 0,
     long OutboundRecommendedMaxQueuedBytes = 0,
     bool OutboundSizingHasMeasurements = false,
-    bool OutboundSizingRequiresReview = false);
+    bool OutboundSizingRequiresReview = false,
+    long SuppressedDuplicateAppearanceFrames = 0,
+    long SuppressedDuplicateEquipmentFrames = 0,
+    long SuppressedDuplicateMovementFrames = 0,
+    long NpcSuppressedDuplicateFrames = 0,
+    long ProjectileSuppressedDuplicateFrames = 0,
+    long HealthRelayedFrames = 0,
+    long HealthBaselineFrames = 0,
+    long ManaBaselineFrames = 0,
+    long SuppressedDuplicateHealthFrames = 0);

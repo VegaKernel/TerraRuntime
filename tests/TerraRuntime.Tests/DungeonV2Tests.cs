@@ -72,6 +72,8 @@ public sealed class OptimizedDungeonV2Tests
         int dartTraps = 0;
         int wiredDartTraps = 0;
         int spikes = 0;
+        int traversalPlatforms = 0;
+        var traversalPlatformRows = new HashSet<int>();
         for (int y = 0; y < world.HeightTiles; y++)
         for (int x = 0; x < world.WidthTiles; x++)
         {
@@ -98,6 +100,11 @@ public sealed class OptimizedDungeonV2Tests
                     Assert.True(tile.FrameX is 0 or 18, $"Unexpected dungeon dart-trap frameX {tile.FrameX}.");
                     Assert.Equal((ushort)7, tile.Wall);
                     break;
+                case 19 when tile.Wall == VanillaWallIds.BlueDungeonUnsafe.Value:
+                    traversalPlatforms++;
+                    traversalPlatformRows.Add(y);
+                    Assert.Equal((short)(6 * 18), tile.FrameY);
+                    break;
             }
         }
 
@@ -106,6 +113,8 @@ public sealed class OptimizedDungeonV2Tests
         Assert.Equal(pressurePlates, wiredPressurePlates);
         Assert.Equal(dartTraps, wiredDartTraps);
         Assert.True(spikes >= 12, $"Dungeon v2 generated only {spikes} spike tiles.");
+        Assert.True(traversalPlatforms >= 8, $"Dungeon v2 generated only {traversalPlatforms} traversal platforms.");
+        Assert.True(traversalPlatformRows.Count >= 2, "Dungeon v2 traversal platforms collapsed onto too few shaft levels.");
     }
 
     [Fact]

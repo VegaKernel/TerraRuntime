@@ -23,6 +23,8 @@ internal sealed class WorldTileAuthority
     private readonly VanillaWorldLiquidSimulator1458? liquidSimulator;
     private readonly RuntimeTileManipulationReplicationRegistry? replication;
     private readonly RuntimeObjectPlacementCommandProcessor? objectPlacement;
+    private readonly VanillaMultiTileObjectMutationService? objectMutations;
+    private readonly IVanillaMultiTileObjectMetadataLifecycle? objectMetadata;
     private readonly RuntimeWorldItemStore worldItems;
     private readonly RuntimeNpcStore npcs;
     private readonly IWorldItemSpawnRandom worldItemSpawnRandom;
@@ -52,11 +54,13 @@ internal sealed class WorldTileAuthority
         if (tiles is not null &&
             RuntimeWorldObjectMetadataRegistry.TryGet(
                 tiles,
-                out IVanillaMultiTileObjectMetadataLifecycle objectMetadata))
+                out IVanillaMultiTileObjectMetadataLifecycle boundObjectMetadata))
         {
+            objectMetadata = boundObjectMetadata;
+            objectMutations = new VanillaMultiTileObjectMutationService(tiles);
             objectPlacement = new RuntimeObjectPlacementCommandProcessor(
                 tiles,
-                objectMetadata,
+                boundObjectMetadata,
                 players,
                 commands,
                 replication);
@@ -110,6 +114,84 @@ internal sealed class WorldTileAuthority
                 (byte)change.Kind);
             replication?.TryPublishLiquidToAll(in state);
         }
+    }
+
+    private void ApplyMultiTileObjectBreak(
+        ClientTileManipulationRuntimeCommand command,
+        in TerrariaTileManipulationState tileState)
+    {
+        VanillaMultiTileObjectMutationService? objectService = objectMutations;
+        IVanillaMultiTileObjectMetadataLifecycle? metadata = objectMetadata;
+        if (tiles is null || objectService is null || metadata is null || tileState.Data != 0)
+        {
+            UnsupportedClientManipulations++;
+            return;
+        }
+
+        VanillaMultiTileObjectMutationStatus resolve = objectService.TryResolveObjectAt(
+            tileState.TileX,
+            tileState.TileY,
+            out VanillaMultiTileObjectMutationDescriptor descriptor);
+        if (resolve != VanillaMultiTileObjectMutationStatus.Applied)
+        {
+            RejectedClientManipulations++;
+            return;
+        }
+
+        WorldTile topLeft = tiles.Get(descriptor.TopLeftX, descriptor.TopLeftY);
+        int framePeriod = descriptor.Definition.Width * VanillaMultiTileObjectMutationService.FrameCellSize;
+        if (framePeriod <= 0 || topLeft.FrameX < 0 || topLeft.FrameX % framePeriod != 0)
+        {
+            UnsupportedClientManipulations++;
+            return;
+        }
+
+        short style = checked((short)(topLeft.FrameX / framePeriod));
+        if (!VanillaItemObjectPlacementCatalog.TryGet(
+                descriptor.Definition.TileType,
+                style,
+                alternate: 0,
+                out VanillaItemObjectPlacementDefinition itemDefinition))
+        {
+            UnsupportedClientManipulations++;
+            return;
+        }
+
+        if (!worldItems.TryReserveDropSlot(out WorldItemDropReservation reservation))
+        {
+            RejectedClientManipulations++;
+            RejectedWorldItemAllocations++;
+            return;
+        }
+
+        VanillaMultiTileObjectMutationResult broken = objectService.TryBreakAt(
+            tileState.TileX,
+            tileState.TileY,
+            metadata);
+        if (!broken.Applied)
+        {
+            _ = worldItems.TryReleaseDropReservation(in reservation);
+            RejectedClientManipulations++;
+            return;
+        }
+
+        int dropTileX = descriptor.TopLeftX + (descriptor.Definition.Width - 1) / 2;
+        int dropTileY = descriptor.TopLeftY + (descriptor.Definition.Height - 1) / 2;
+        WorldItemDropStateUpdate dropState = VanillaSimpleTileBreakResolver1458.MaterializeItemState(
+            itemDefinition.ItemType,
+            stack: 1,
+            dropTileX,
+            dropTileY,
+            worldItemSpawnRandom);
+        if (!worldItems.TryCommitReservedDrop(in reservation, in dropState, out _))
+        {
+            throw new InvalidOperationException(
+                "Reserved object drop could not commit after authoritative multi-tile break.");
+        }
+
+        AppliedWorldItemAllocations++;
+        AppliedClientManipulations++;
+        replication?.TryPublishCommitted(command.Connection.Source, in tileState);
     }
 
     private void ApplyClientLiquidWakeup(ClientLiquidRuntimeCommand command)
@@ -210,7 +292,6 @@ internal sealed class WorldTileAuthority
             WorldTile beforeKill = tiles.Get(tileState.TileX, tileState.TileY);
             TileTypeId beforeType = beforeKill.TileType;
             if (!VanillaTileDefinitionCatalog.TryGet(beforeType, out VanillaTileDefinition tileDefinition) ||
-                tileDefinition.BreakPath != VanillaTileBreakPath.SimpleCell ||
                 !VanillaTileMiningRequirements1458.CanMine(
                     tiles,
                     tileState.TileX,
@@ -219,6 +300,19 @@ internal sealed class WorldTileAuthority
                     pickPower))
             {
                 RejectedClientManipulations++;
+                return;
+            }
+
+            if (tileDefinition.BreakPath == VanillaTileBreakPath.MultiTileObject)
+            {
+                ApplyMultiTileObjectBreak(command, in tileState);
+                return;
+            }
+
+            if (tileDefinition.BreakPath is not VanillaTileBreakPath.SimpleCell and
+                not VanillaTileBreakPath.FrameImportantSingleCell)
+            {
+                UnsupportedClientManipulations++;
                 return;
             }
 
@@ -253,12 +347,10 @@ internal sealed class WorldTileAuthority
                 return;
             }
 
-            if (beforeType == VanillaTileIds.Dirt &&
-                !VanillaDirtRules1458.CanKillIsolated(tiles, tileState.TileX, tileState.TileY))
-            {
-                RejectedClientManipulations++;
-                return;
-            }
+            // Packet 17 reports a completed pick attempt. Dirt is an ordinary simple-cell tile here;
+            // requiring it to be isolated from every active neighbour made normal terrain effectively
+            // unmineable even though the same mutation service can safely preserve neighbouring cells.
+            // Environment-dependent CanKillTile families remain definition-specific/fail-closed elsewhere.
 
             bool closestPlayerHasCordage =
                 tileDefinition.ContextualDropKind == VanillaTileContextualDropKind.CordageVine &&

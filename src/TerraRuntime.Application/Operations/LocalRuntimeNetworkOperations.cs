@@ -16,6 +16,7 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
     private readonly RuntimeProjectileReplicationRegistry? projectileReplication;
     private readonly RuntimeWorldItemReplicationRegistry? worldItemReplication;
     private readonly RuntimeConnectionStopTelemetry? stopTelemetry;
+    private readonly RuntimePlayerVitalsReplicator? vitalsReplication;
 
     public LocalRuntimeNetworkOperations(
         TerrariaConnectionAdmissionGate admission,
@@ -25,7 +26,8 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
         RuntimeNpcReplicationRegistry? npcReplication = null,
         RuntimeProjectileReplicationRegistry? projectileReplication = null,
         RuntimeWorldItemReplicationRegistry? worldItemReplication = null,
-        RuntimeConnectionStopTelemetry? stopTelemetry = null)
+        RuntimeConnectionStopTelemetry? stopTelemetry = null,
+        RuntimePlayerVitalsReplicator? vitalsReplication = null)
     {
         this.admission = admission ?? throw new ArgumentNullException(nameof(admission));
         this.connections = connections ?? throw new ArgumentNullException(nameof(connections));
@@ -35,6 +37,7 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
         this.projectileReplication = projectileReplication;
         this.worldItemReplication = worldItemReplication;
         this.stopTelemetry = stopTelemetry;
+        this.vitalsReplication = vitalsReplication;
     }
 
     public RuntimeNetworkSnapshot CaptureSnapshot()
@@ -130,6 +133,15 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             OutboundRecommendedMaxFrames: queueSizing.RecommendedMaxFrames,
             OutboundRecommendedMaxQueuedBytes: queueSizing.RecommendedMaxQueuedBytes,
             OutboundSizingHasMeasurements: queueSizing.HasMeasurements,
-            OutboundSizingRequiresReview: queueSizing.RequiresReview);
+            OutboundSizingRequiresReview: queueSizing.RequiresReview,
+            SuppressedDuplicateAppearanceFrames: connections.SuppressedDuplicateAppearanceFrames,
+            SuppressedDuplicateEquipmentFrames: connections.SuppressedDuplicateEquipmentFrames,
+            SuppressedDuplicateMovementFrames: connections.SuppressedDuplicateMovementFrames,
+            NpcSuppressedDuplicateFrames: npcReplication?.SuppressedDuplicateFrames ?? 0,
+            ProjectileSuppressedDuplicateFrames: projectileReplication?.SuppressedDuplicateFrames ?? 0,
+            HealthRelayedFrames: vitalsReplication?.RelayedHealthFrames ?? 0,
+            HealthBaselineFrames: vitalsReplication?.HealthBaselineFrames ?? 0,
+            ManaBaselineFrames: vitalsReplication?.ManaBaselineFrames ?? 0,
+            SuppressedDuplicateHealthFrames: vitalsReplication?.SuppressedDuplicateHealthFrames ?? 0);
     }
 }

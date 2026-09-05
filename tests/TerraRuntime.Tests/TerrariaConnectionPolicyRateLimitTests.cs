@@ -96,6 +96,36 @@ public sealed class TerrariaConnectionPolicyRateLimitTests
     }
 
     [Fact]
+    public void PlayerControls_message_budget_drops_excess_samples_without_stopping_connection()
+    {
+        var messageLimits = new ConnectionMessageRateLimits(
+            new ConnectionMessageRateRule(
+                (byte)TerrariaMessageId.PlayerControls,
+                new ConnectionRateBudgetOptions(TimeSpan.FromSeconds(1), maxFrames: 1, maxBytes: null)));
+        var options = new TerrariaConnectionPolicyOptions(
+            TimeSpan.FromSeconds(5),
+            TimeSpan.FromSeconds(30),
+            new ConnectionRateBudgetOptions(TimeSpan.FromSeconds(1), maxFrames: 100, maxBytes: null),
+            messageLimits);
+        var state = new TerrariaConnectionPolicyState(options);
+        var accountant = new TerrariaConnectionRateAccountant(options.RateBudget);
+        var inner = new CountingSink();
+        var policy = new TerrariaConnectionPolicySink(inner, state, accountant);
+        TerrariaFrame hello = Decode(CurrentHelloPacket());
+        TerrariaFrame firstMovement = Decode([3, 0, (byte)TerrariaMessageId.PlayerControls]);
+        TerrariaFrame burstMovement = Decode([3, 0, (byte)TerrariaMessageId.PlayerControls]);
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, policy.OnFrame(in hello));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, policy.OnFrame(in firstMovement));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, policy.OnFrame(in burstMovement));
+
+        Assert.Equal(TerrariaConnectionStopReason.None, state.StopReason);
+        Assert.Equal(2, inner.Count); // hello + first movement; replaceable excess state is dropped
+        Assert.Equal(3, accountant.Snapshot.TotalFrames);
+        Assert.Equal(1, accountant.Snapshot.RejectedFrames);
+    }
+
+    [Fact]
     public void Expensive_packet_classes_keep_independent_message_budgets()
     {
         var limits = new ConnectionMessageRateLimits(

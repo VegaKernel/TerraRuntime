@@ -13,7 +13,8 @@ namespace TerraRuntime.Application;
 /// spawn transition. Exact inbound ProjectileKeys are retained independently from physical runtime slots;
 /// runtime-created projectiles receive a canonical fallback key only when no wire identity is registered.
 /// Client-originated authoritative commits preserve their exact key and are relayed to every playing peer
-/// except the source connection, matching vanilla server packet-27/29 echo suppression.
+/// except the source connection, matching vanilla server packet-27/29 echo suppression. Exact packet-27
+/// update duplicates are coalesced per full runtime generation before peer fanout.
 /// </summary>
 internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCommitSink, IRuntimePlayerEventSink
 {
@@ -21,12 +22,16 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
 
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> endpoints = new();
     private readonly byte[]?[] baselineFrames = new byte[MaxProjectileSlots][];
+    private readonly object liveFrameGate = new();
+    private readonly ProjectileHandle[] liveFrameOwners = new ProjectileHandle[MaxProjectileSlots];
+    private readonly byte[]?[] liveFrames = new byte[MaxProjectileSlots][];
     private readonly RuntimeProjectileWireIdentityRegistry identities;
     private readonly RuntimeProjectileClientCommitContext clientCommits;
     private long relayedFrames;
     private long baselineFrameCount;
     private long rejectedFrames;
     private long unsupportedCommits;
+    private long suppressedDuplicateFrames;
 
     public RuntimeProjectileReplicationRegistry()
         : this(new RuntimeProjectileWireIdentityRegistry(), new RuntimeProjectileClientCommitContext())
@@ -53,6 +58,8 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
     public long RejectedFrames => Interlocked.Read(ref rejectedFrames);
 
     public long UnsupportedCommits => Interlocked.Read(ref unsupportedCommits);
+
+    public long SuppressedDuplicateFrames => Interlocked.Read(ref suppressedDuplicateFrames);
 
     internal RuntimeProjectileWireIdentityRegistry WireIdentities => identities;
 
@@ -84,6 +91,7 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
         if (kind == ProjectileStateCommitKind.Remove)
         {
             Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
+            ClearLiveFrame(snapshot.Handle);
             identities.TryUnbind(snapshot.Handle, out _);
             return;
         }
@@ -122,6 +130,7 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
             finally
             {
                 Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
+                ClearLiveFrame(snapshot.Handle);
                 identities.TryUnbind(snapshot.Handle, out _);
             }
 
@@ -165,7 +174,41 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
         }
 
         Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], updateFrame);
+        bool duplicate = UpdateLiveFrame(snapshot.Handle, updateFrame);
+        if (kind == ProjectileStateCommitKind.Update && duplicate)
+        {
+            Interlocked.Increment(ref suppressedDuplicateFrames);
+            return;
+        }
+
         Broadcast(updateFrame, clientCommit, excludedSource);
+    }
+
+    private bool UpdateLiveFrame(ProjectileHandle owner, byte[] encoded)
+    {
+        int slot = owner.Slot;
+        lock (liveFrameGate)
+        {
+            byte[]? previous = liveFrames[slot];
+            bool duplicate = liveFrameOwners[slot] == owner &&
+                previous is not null &&
+                previous.AsSpan().SequenceEqual(encoded);
+            liveFrameOwners[slot] = owner;
+            liveFrames[slot] = encoded;
+            return duplicate;
+        }
+    }
+
+    private void ClearLiveFrame(ProjectileHandle owner)
+    {
+        int slot = owner.Slot;
+        lock (liveFrameGate)
+        {
+            if (liveFrameOwners[slot] != owner)
+                return;
+            liveFrameOwners[slot] = default;
+            liveFrames[slot] = null;
+        }
     }
 
     /// <summary>

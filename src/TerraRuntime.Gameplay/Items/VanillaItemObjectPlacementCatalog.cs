@@ -61,4 +61,27 @@ public static class VanillaItemObjectPlacementCatalog
         definition = default;
         return false;
     }
+
+    /// <summary>
+    /// Reverse lookup used by authoritative object breaking. Only exact source-pinned placement identities can
+    /// materialize an item drop; unknown styles/alternates remain fail-closed instead of guessing an item id.
+    /// </summary>
+    public static bool TryGet(
+        TileTypeId tileType,
+        short style,
+        byte alternate,
+        out VanillaItemObjectPlacementDefinition definition)
+    {
+        foreach (VanillaItemObjectPlacementDefinition candidate in Definitions)
+        {
+            if (candidate.Matches(tileType, style, alternate))
+            {
+                definition = candidate;
+                return true;
+            }
+        }
+
+        definition = default;
+        return false;
+    }
 }

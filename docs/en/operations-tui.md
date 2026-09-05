@@ -142,7 +142,7 @@ Double-clicking a tile first focuses it and then toggles it between the tiled la
 
 The System Dashboard shows lifecycle/world state, player and connection counts, interest-management state, current/target TPS, tick wall/CPU timing, slowest phase, missed deadlines, process CPU, managed heap, working set, allocation/GC state, command pressure, recent log events and public chat.
 
-Double-clicking a player row in **Worlds / Players** opens a generation-safe live player window rather than parsing the rendered row text. The window shows the remote IP/endpoint, current in-memory session duration, character difficulty, HP/mana, team, position/velocity and selected item. Connection-session metadata is process-local only and is removed when the socket closes; it is never written to a database or file. The GodMode checkbox calls `IPlayerAdministrativeOperations` for the exact `PlayerHandle(slot,generation)`.
+Double-clicking a player row in **Worlds / Players** opens a generation-safe live player window rather than parsing the rendered row text. The window shows the remote IP/endpoint, current in-memory session duration, character difficulty, HP/mana, team, position/velocity and selected item. Connection-session metadata is process-local only and is removed when the socket closes; it is never written to a database or file. The GodMode `Disabled` / `Enabled` drop-down calls `IPlayerAdministrativeOperations` for the exact `PlayerHandle(slot,generation)`.
 
 Sandbox actions remain typed UI operations. The dashboard command input and plain-console fallback do not accept `sandbox`/`sb`/`sb1`/`sb2`/`respawn` mutation commands, and GodMode has no chat/text command. This keeps administrative state changes behind typed UI/host contracts instead of player-visible command parsing.
 
@@ -177,7 +177,7 @@ The ANSI TUI smoke exercises the real menu path and verifies pending-save state;
 
 ## 8. Network telemetry
 
-`INetworkOperations` exposes bounded network state without transferring connection ownership to the UI. It includes active/registered connections, admission totals/rejections, inbound one-second and lifetime totals, per-connection inbound details, outbound current/capacity/high-water/rejection state, slow clients, player lifecycle and replication counters, unsupported replication commits, typed terminal stop categories and normalized frame-rejection categories.
+`INetworkOperations` exposes bounded network state without transferring connection ownership to the UI. It includes active/registered connections, admission totals/rejections, inbound one-second and lifetime totals, per-connection inbound details, outbound current/capacity/high-water/rejection state, slow clients, player lifecycle/replication counters, health/mana baseline and health duplicate-suppression counters, unsupported replication commits, typed terminal stop categories and normalized frame-rejection categories.
 
 TUI projections consume subsystem-owned counters; they do not parse log text or add packet-hot-path counters of their own.
 

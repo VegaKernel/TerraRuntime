@@ -1,6 +1,8 @@
 using System.Buffers.Binary;
 using System.Reflection;
 using TerraRuntime.Protocol;
+using TerraRuntime.Core;
+using TerraRuntime.Network;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
@@ -35,6 +37,32 @@ public sealed class EncodedSectionCacheContractTests
         Assert.Equal(1L, snapshot.Invalidations);
         Assert.Equal(1L, snapshot.StaleReads);
         Assert.True(snapshot.Misses >= 1);
+    }
+
+    [Fact]
+    public void Immediate_reconnect_lookup_after_live_tile_mutation_cannot_reuse_pre_mutation_packet10_bytes()
+    {
+        WorldFileData world = CreateLargeSectionWorld();
+        PlayerBootstrapPacketSet packets = PlayerBootstrapPacketSet.Create(world);
+        var section = new WorldSectionId(4, 4);
+        WorldTileRegion bounds = TerrariaSectionGeometry.GetBounds(world.Header.Dimensions, section);
+
+        Assert.True(packets.TryGetOrRequestSectionFrame(section, out ReadOnlyMemory<byte> beforeFrame));
+        byte[] beforeBytes = beforeFrame.ToArray();
+        long beforeRevision = world.Tiles.GetSectionVersion(section);
+
+        WorldTile changed = world.Tiles.Get(bounds.X + 3, bounds.Y + 3);
+        changed.Type = VanillaTileIds.Dirt;
+        changed.Flags |= WorldTileFlags.Active;
+        world.Tiles.Set(bounds.X + 3, bounds.Y + 3, in changed);
+
+        long afterRevision = world.Tiles.GetSectionVersion(section);
+        Assert.NotEqual(beforeRevision, afterRevision);
+        Assert.True(packets.TryGetOrRequestSectionFrame(section, out ReadOnlyMemory<byte> afterFrame));
+        Assert.True(packets.TryGetCachedSectionFrame(section, afterRevision, out ReadOnlyMemory<byte> cachedAfter));
+        Assert.Equal(afterFrame.ToArray(), cachedAfter.ToArray());
+        Assert.False(beforeBytes.AsSpan().SequenceEqual(afterFrame.Span));
+        Assert.False(packets.TryGetCachedSectionFrame(section, beforeRevision, out _));
     }
 
     [Fact]
@@ -103,6 +131,75 @@ public sealed class EncodedSectionCacheContractTests
         for (int i = 0; i < retryCount; i++)
             state.MarkSent(retry[i]);
         Assert.Equal(0, state.PlanUnsent(nextCenterTileX * 16f, 300 * 16f, retry));
+    }
+
+    [Fact]
+    public void Initial_bootstrap_bypasses_post_join_global_section_admission_window_for_second_client()
+    {
+        WorldFileData world = CreateLargeSectionWorld();
+        PlayerBootstrapPacketSet packets = PlayerBootstrapPacketSet.Create(world);
+        packets.ConfigureSectionRebuildGlobalBudget(
+            new SectionRebuildGlobalBudgetOptions(TimeSpan.FromMinutes(1), MaxUniqueRequests: 1));
+
+        WorldSectionId[] dynamicSections = Enumerable.Range(0, world.Header.Dimensions.SectionCount)
+            .Select(index => TerrariaSectionGeometry.FromLinearIndex(world.Header.Dimensions, index))
+            .Where(section => !packets.IsPinnedBaseSection(section))
+            .Take(2)
+            .ToArray();
+        Assert.Equal(2, dynamicSections.Length);
+
+        long generation = 0;
+        packets.AttachSectionRebuildRequester(section =>
+        {
+            long revision = world.Tiles.GetSectionVersion(section);
+            byte marker = checked((byte)(0x70 + ++generation));
+            Assert.True(packets.TryPublishSectionFrame(section, revision, CreateFrame(64, marker)));
+            return new SectionRebuildRequestTicket(true, generation);
+        });
+
+        Assert.Equal(
+            SectionFrameLookupResult.Available,
+            packets.ResolveSectionFrame(dynamicSections[0], out _));
+        Assert.Equal(
+            SectionFrameLookupResult.RateLimited,
+            packets.ResolveSectionFrame(dynamicSections[1], out _));
+
+        Assert.Equal(
+            SectionFrameLookupResult.Available,
+            packets.ResolveSectionFrameForInitialBootstrap(dynamicSections[1], out ReadOnlyMemory<byte> secondClientFrame));
+        Assert.False(secondClientFrame.IsEmpty);
+        packets.DetachSectionRebuildRequester();
+    }
+
+    [Fact]
+    public void Post_join_section_streaming_retries_temporary_rebuild_rejection_without_disconnect()
+    {
+        WorldFileData world = CreateLargeSectionWorld();
+        PlayerBootstrapPacketSet packets = PlayerBootstrapPacketSet.Create(world);
+        int rebuildRequests = 0;
+        packets.AttachSectionRebuildRequester(_ =>
+        {
+            rebuildRequests++;
+            return SectionRebuildRequestTicket.Rejected;
+        });
+
+        using var sink = new PlayerBootstrapFrameSink(
+            new PlayerSlotPool(1),
+            new TerrariaConnectionOutboundQueue(
+                new OutboundQueueOptions(maxFrames: 32, maxQueuedBytes: 64 * 1024, maxFrameBytes: ushort.MaxValue)),
+            packets);
+
+        MethodInfo stream = typeof(PlayerBootstrapFrameSink).GetMethod(
+            "StreamSectionsAroundPlayer",
+            BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("Post-join section streaming method was not found.");
+
+        object? result = stream.Invoke(sink, [400f * 16f, 300f * 16f]);
+
+        Assert.Equal(PlayerBootstrapStopReason.None, Assert.IsType<PlayerBootstrapStopReason>(result));
+        Assert.True(rebuildRequests > 0);
+        Assert.Equal(PlayerBootstrapStopReason.None, sink.StopReason);
+        packets.DetachSectionRebuildRequester();
     }
 
     [Fact]

@@ -12,6 +12,7 @@ namespace TerraRuntime.Application;
 /// Network-side projection/cache for authoritative NPC commits. Active-slot baselines are stored in
 /// spawn form so a joining client always resets the slot even when its wrapped byte generation happens
 /// to match. Live commits are broadcast only to connections that completed the player spawn transition.
+/// Exact packet-23 update duplicates are coalesced per full runtime generation before peer fanout.
 /// </summary>
 internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRuntimePlayerEventSink
 {
@@ -19,12 +20,16 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
 
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> endpoints = new();
     private readonly byte[]?[] baselineFrames = new byte[MaxNpcSlots][];
+    private readonly object liveFrameGate = new();
+    private readonly NpcHandle[] liveFrameOwners = new NpcHandle[MaxNpcSlots];
+    private readonly byte[]?[] liveFrames = new byte[MaxNpcSlots][];
     private readonly byte[]?[] townHomeBaselineFrames = new byte[RuntimeTownNpcStateStore.MaximumTownNpcs][];
     private readonly byte[]?[] townIdentityBaselineFrames = new byte[RuntimeTownNpcStateStore.MaximumTownNpcs][];
     private long relayedFrames;
     private long baselineFrameCount;
     private long rejectedFrames;
     private long unsupportedCommits;
+    private long suppressedDuplicateFrames;
     private NpcHandle suppressedClientDamageNpc;
 
     public long RelayedFrames => Interlocked.Read(ref relayedFrames);
@@ -34,6 +39,8 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
     public long RejectedFrames => Interlocked.Read(ref rejectedFrames);
 
     public long UnsupportedCommits => Interlocked.Read(ref unsupportedCommits);
+
+    public long SuppressedDuplicateFrames => Interlocked.Read(ref suppressedDuplicateFrames);
 
     public bool TryRegister(GameCommandSourceId source, TerrariaConnectionOutboundQueue outbound)
     {
@@ -107,6 +114,7 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
         }
 
         Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
+        ClearLiveFrame(snapshot.Handle);
         Broadcast(encoded);
         return true;
     }
@@ -209,6 +217,7 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
             if (!suppressBroadcast)
                 Broadcast(encoded);
             Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
+            ClearLiveFrame(snapshot.Handle);
             return;
         }
 
@@ -223,8 +232,42 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
             Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], baseline);
         }
 
+        bool duplicate = UpdateLiveFrame(snapshot.Handle, encoded);
+        if (!suppressBroadcast && kind == NpcStateCommitKind.Update && duplicate)
+        {
+            Interlocked.Increment(ref suppressedDuplicateFrames);
+            return;
+        }
+
         if (!suppressBroadcast)
             Broadcast(encoded);
+    }
+
+    private bool UpdateLiveFrame(NpcHandle owner, byte[] encoded)
+    {
+        int slot = owner.Slot;
+        lock (liveFrameGate)
+        {
+            byte[]? previous = liveFrames[slot];
+            bool duplicate = liveFrameOwners[slot] == owner &&
+                previous is not null &&
+                previous.AsSpan().SequenceEqual(encoded);
+            liveFrameOwners[slot] = owner;
+            liveFrames[slot] = encoded;
+            return duplicate;
+        }
+    }
+
+    private void ClearLiveFrame(NpcHandle owner)
+    {
+        int slot = owner.Slot;
+        lock (liveFrameGate)
+        {
+            if (liveFrameOwners[slot] != owner)
+                return;
+            liveFrameOwners[slot] = default;
+            liveFrames[slot] = null;
+        }
     }
 
     public void PlayerSpawned(ConnectionHandle connection, in PlayerSpawnCommitRequest request)

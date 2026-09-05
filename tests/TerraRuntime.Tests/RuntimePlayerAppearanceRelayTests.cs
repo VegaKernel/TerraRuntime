@@ -81,6 +81,36 @@ public sealed class RuntimePlayerAppearanceRelayTests
         AssertAppearance(frame, first.Value, "Updated");
     }
 
+    [Fact]
+    public void Identical_playing_appearance_update_is_not_relayed_twice()
+    {
+        var registry = new RuntimeConnectionRegistry();
+        GameCommandSourceId firstSource = GameCommandSourceId.FromConnection(31);
+        GameCommandSourceId secondSource = GameCommandSourceId.FromConnection(32);
+        var firstOutbound = CreateOutbound();
+        var secondOutbound = CreateOutbound();
+        var first = new PlayerSlotId(3);
+        var second = new PlayerSlotId(4);
+        ConnectionHandle firstConnection = Connection(firstSource, first);
+        ConnectionHandle secondConnection = Connection(secondSource, second);
+
+        Assert.True(registry.TryRegister(firstSource, firstOutbound));
+        Assert.True(registry.TryRegister(secondSource, secondOutbound));
+        PlayerSpawnCommitRequest firstSpawn = CreateSpawn(first);
+        PlayerSpawnCommitRequest secondSpawn = CreateSpawn(second);
+        registry.PlayerSpawned(firstConnection, in firstSpawn);
+        registry.PlayerSpawned(secondConnection, in secondSpawn);
+
+        PlayerAppearanceCommitRequest appearance = CreateAppearance(first, "Stable");
+        registry.PlayerAppearanceUpdated(firstConnection, in appearance);
+        int afterFirst = secondOutbound.QueuedFrames;
+        registry.PlayerAppearanceUpdated(firstConnection, in appearance);
+
+        Assert.Equal(afterFirst, secondOutbound.QueuedFrames);
+        Assert.Equal(1, registry.RelayedAppearanceFrames);
+        Assert.Equal(1, registry.SuppressedDuplicateAppearanceFrames);
+    }
+
     private static void AssertAppearance(OutboundFrame outbound, byte expectedSlot, string expectedName)
     {
         var input = new ReadOnlySequence<byte>(outbound.Bytes);

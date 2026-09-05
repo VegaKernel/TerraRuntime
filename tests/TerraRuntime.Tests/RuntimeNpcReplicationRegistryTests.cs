@@ -68,6 +68,52 @@ public sealed class RuntimeNpcReplicationRegistryTests
     }
 
     [Fact]
+    public void Identical_npc_wire_update_is_not_relayed_twice_for_same_generation()
+    {
+        var replication = new RuntimeNpcReplicationRegistry();
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(1);
+        TerrariaConnectionOutboundQueue outbound = CreateOutbound();
+        Assert.True(replication.TryRegister(source, outbound));
+        ConnectionHandle player = Connection(source, slot: 1, generation: 1);
+        PlayerSpawnCommitRequest spawn = CreatePlayerSpawn(player.Player.Slot);
+        replication.PlayerSpawned(player, in spawn);
+
+        NpcSnapshot first = CreateNpc(revision: 1, positionX: 100f);
+        replication.NpcStateCommitted(NpcStateCommitKind.Update, in first);
+        NpcSnapshot sameWireState = first with { Revision = new NpcRevision(2) };
+        replication.NpcStateCommitted(NpcStateCommitKind.Update, in sameWireState);
+
+        Assert.Equal(1, outbound.QueuedFrames);
+        Assert.Equal(1, replication.RelayedFrames);
+        Assert.Equal(1, replication.SuppressedDuplicateFrames);
+    }
+
+    [Fact]
+    public void Identical_npc_wire_update_is_not_suppressed_after_slot_generation_changes()
+    {
+        var replication = new RuntimeNpcReplicationRegistry();
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(1);
+        TerrariaConnectionOutboundQueue outbound = CreateOutbound();
+        Assert.True(replication.TryRegister(source, outbound));
+        ConnectionHandle player = Connection(source, slot: 1, generation: 1);
+        PlayerSpawnCommitRequest spawn = CreatePlayerSpawn(player.Player.Slot);
+        replication.PlayerSpawned(player, in spawn);
+
+        NpcSnapshot first = CreateNpc(revision: 1, positionX: 100f);
+        replication.NpcStateCommitted(NpcStateCommitKind.Update, in first);
+        NpcSnapshot replacement = first with
+        {
+            Handle = new NpcHandle(first.Handle.Slot, new NpcGeneration(256)),
+            Revision = new NpcRevision(1)
+        };
+        replication.NpcStateCommitted(NpcStateCommitKind.Update, in replacement);
+
+        Assert.Equal(2, outbound.QueuedFrames);
+        Assert.Equal(2, replication.RelayedFrames);
+        Assert.Equal(0, replication.SuppressedDuplicateFrames);
+    }
+
+    [Fact]
     public void Unsupported_npc_type_is_not_put_on_the_wire()
     {
         var replication = new RuntimeNpcReplicationRegistry();
@@ -120,9 +166,12 @@ public sealed class RuntimeNpcReplicationRegistryTests
         };
         replication.NpcStateCommitted(NpcStateCommitKind.Update, in moved);
 
+        NpcSnapshot duplicate = moved with { Revision = new NpcRevision(3) };
+        replication.NpcStateCommitted(NpcStateCommitKind.Update, in duplicate);
+
         NpcSnapshot rejected = moved with
         {
-            Revision = new NpcRevision(3),
+            Revision = new NpcRevision(4),
             PositionX = 150f
         };
         replication.NpcStateCommitted(NpcStateCommitKind.Update, in rejected);
@@ -130,7 +179,7 @@ public sealed class RuntimeNpcReplicationRegistryTests
         // 900 is truly unsupported; 99 is now worm-family supported.
         NpcSnapshot unsupported = rejected with
         {
-            Revision = new NpcRevision(4),
+            Revision = new NpcRevision(5),
             Type = 900,
             NetId = 900
         };
@@ -142,6 +191,7 @@ public sealed class RuntimeNpcReplicationRegistryTests
         Assert.Equal(1, snapshot.NpcRelayedFrames);
         Assert.Equal(1, snapshot.NpcRejectedFrames);
         Assert.Equal(1, snapshot.NpcUnsupportedCommits);
+        Assert.Equal(1, snapshot.NpcSuppressedDuplicateFrames);
     }
 
     private static TerrariaConnectionOutboundQueue CreateOutbound() =>

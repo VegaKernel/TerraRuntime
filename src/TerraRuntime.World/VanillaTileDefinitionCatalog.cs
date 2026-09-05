@@ -11,7 +11,8 @@ public enum VanillaTileBreakPath : byte
     SimpleCell = 0,
     FrameImportant = 1,
     MultiTileObject = 2,
-    Unbreakable = 3
+    Unbreakable = 3,
+    FrameImportantSingleCell = 4
 }
 
 /// <summary>How TerrariaServer 1.4.5.8 resolves an item drop for a tile identity.</summary>
@@ -138,9 +139,11 @@ public static class VanillaTileDefinitionCatalog
                 ? VanillaTileBreakPath.Unbreakable
                 : multiTile
                     ? VanillaTileBreakPath.MultiTileObject
-                    : frameImportant
-                        ? VanillaTileBreakPath.FrameImportant
-                        : VanillaTileBreakPath.SimpleCell;
+                    : frameImportant && VanillaFrameImportantSingleCellCatalog1458.IsSupported(type)
+                        ? VanillaTileBreakPath.FrameImportantSingleCell
+                        : frameImportant
+                            ? VanillaTileBreakPath.FrameImportant
+                            : VanillaTileBreakPath.SimpleCell;
 
             VanillaTileDropRule dropRule = multiTile
                 ? new VanillaTileDropRule(VanillaTileDropRuleKind.Object, default, 0, default, 0, false)
