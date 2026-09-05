@@ -8,6 +8,10 @@ internal sealed record PlayerSpawnRuntimeCommand(
     PlayerJoinSession Session,
     PlayerSpawnCommitRequest Request) : RuntimeCommand;
 
+internal sealed record PlayerRespawnRuntimeCommand(
+    ConnectionHandle Connection,
+    PlayerSpawnCommitRequest Request) : RuntimeCommand;
+
 internal sealed class RuntimePlayerSpawnCommitIngress : IPlayerSpawnCommitIngress
 {
     private readonly IGameCommandIngress<RuntimeCommand> _ingress;
@@ -36,5 +40,19 @@ internal sealed class RuntimePlayerSpawnCommitIngress : IPlayerSpawnCommitIngres
         return _ingress.TryPost(
             source,
             new PlayerSpawnRuntimeCommand(connection, session, request));
+    }
+
+    public bool TryPostRespawn(
+        GameCommandSourceId source,
+        PlayerHandle player,
+        in PlayerSpawnCommitRequest request)
+    {
+        if (source.IsSystem || player.Slot != request.ClaimedSlot ||
+            !VanillaPlayerSpawnValidator.IsValid(in request))
+            return false;
+
+        return _ingress.TryPost(
+            source,
+            new PlayerRespawnRuntimeCommand(new ConnectionHandle(source, player), request));
     }
 }

@@ -65,6 +65,18 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
         return TryPublishFrame(excludedSource, encoded);
     }
 
+
+    public bool TryPublishLiquidToAll(in TerrariaLiquidState state)
+    {
+        if (!TerrariaLiquidCodec.TryEncode(in state, out byte[] encoded))
+        {
+            Interlocked.Increment(ref encodeFailures);
+            return false;
+        }
+
+        return TryPublishFrameToAll(encoded);
+    }
+
     public bool TryPublishDoorToggle(in TerrariaDoorToggleState state)
     {
         if (TerrariaDoorToggleCodec.TryEncode(in state, out byte[] encoded) !=

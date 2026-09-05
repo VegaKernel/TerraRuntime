@@ -246,6 +246,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
     private const ushort Snow = 147;
     private const ushort Ice = 161;
     private const ushort DirtWall = 2;
+    private const ushort SnowWall = 40;
     private const ushort MudWall = 15;
     private const ushort JungleWall = 64;
     private static readonly double[] ExtraStepThresholds =
@@ -737,19 +738,43 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         }
     }
 
-    private static void ApplyDirtWallBackgrounds(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyDirtWallBackgrounds(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
+        // Terraria 1.4.5.8 does not paint a fixed band below the first solid tile.  It walks each
+        // surface column down to worldSurface+drift, waits until a fully enclosed 3x2 solid cap is
+        // reached, then fills the *background* below that cap.  The former approximation painted
+        // walls into active dirt/stone instead, which produced exposed/striped walls and polluted
+        // later biome and vegetation assumptions.
         int drift = 0;
+        int maxBaseY = Math.Clamp((int)Math.Ceiling(state.MainWorldSurface) + 10, 1, grid.Height - 2);
         for (int x = 1; x < grid.Width - 1; x++)
         {
-            drift = Math.Clamp(drift + random.Next(-1, 2), -6, 6);
-            int top = grid.FindFirstActiveY(x, 0, grid.Height);
-            int bottom = Math.Min(grid.Height - 210, top + 80 + Math.Abs(drift) * 4);
-            for (int y = top + 2; y < bottom; y++)
+            if ((x & 63) == 0)
+                context.CancellationToken.ThrowIfCancellationRequested();
+
+            drift = Math.Clamp(drift + random.Next(-1, 2), 0, 10);
+            int bottom = Math.Min(maxBaseY, Math.Clamp((int)Math.Ceiling(state.MainWorldSurface) + drift + 1, 1, grid.Height - 2));
+            ushort wall = DirtWall;
+            bool enclosed = false;
+
+            for (int y = 0; y < bottom; y++)
             {
                 ref WorldTile tile = ref grid.At(x, y);
-                if (tile.IsActive && tile.Wall == 0 && tile.Type is Dirt or Stone)
-                    tile.Wall = DirtWall;
+                if (tile.IsActive)
+                    wall = tile.Type == Snow ? SnowWall : DirtWall;
+
+                if (enclosed && tile.Wall != 64)
+                    tile.Wall = wall;
+
+                if (tile.IsActive &&
+                    grid.At(x - 1, y).IsActive &&
+                    grid.At(x + 1, y).IsActive &&
+                    grid.At(x, y + 1).IsActive &&
+                    grid.At(x - 1, y + 1).IsActive &&
+                    grid.At(x + 1, y + 1).IsActive)
+                {
+                    enclosed = true;
+                }
             }
         }
         context.ReportProgress(1d, "Generating Terraria dirt wall backgrounds");

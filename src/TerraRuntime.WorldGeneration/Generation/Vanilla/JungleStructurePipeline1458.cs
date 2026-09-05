@@ -307,14 +307,14 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
     private void ApplyLivingTrees(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int target = grid.Width switch
-        {
-            <= 4200 => 3,
-            <= 6400 => 4,
-            _ => 5
-        };
+        // Default 1.4.5.8 worlds choose 0..floor(2 * width/4200) living-tree seeds, with a
+        // 50% rescue when zero was selected.  Fixed 3/4/5 targets made forests of giant trees.
+        double scale = grid.Width / 4200d;
+        int target = random.Next(0, (int)(2d * scale) + 1);
+        if (target == 0 && random.Next(2) == 0)
+            target = 1;
         int placed = 0;
-        int attempts = target * 80;
+        int attempts = Math.Max(1, target) * Math.Max(80, grid.Width / 2);
 
         for (int attempt = 0; attempt < attempts && placed < target; attempt++)
         {
@@ -331,10 +331,12 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
                 continue;
 
             ref WorldTile ground = ref grid.At(x, surface);
-            if (!ground.IsActive || !IsNatural(ground.Type))
+            if (!ground.IsActive || ground.Type != Dirt)
                 continue;
 
-            int trunkHeight = random.Next(28, 48);
+            // GrowLivingTree is substantially taller than an ordinary tree, but its footprint varies.
+            // Keep the clean-room renderer bounded and tapered instead of emitting the old uniform columns.
+            int trunkHeight = random.Next(30, 46);
             int trunkHalfWidth = random.Next(2, 4);
             if (surface - trunkHeight - 18 < 4)
                 continue;
@@ -349,13 +351,11 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
     private bool IsLivingTreeSiteAllowed(RuntimeGrid grid, VanillaWorldGenerationBootstrapState1458 bootstrap, int x)
     {
         int spawn = grid.Width / 2;
-        if (Math.Abs(x - spawn) < 220)
+        if (Math.Abs(x - spawn) < 200)
             return false;
-        if (Math.Abs(x - bootstrap.JungleOriginX) < Math.Max(320, grid.Width / 11))
-            return false;
-        if (x > bootstrap.SnowOriginLeft - 120 && x < bootstrap.SnowOriginRight + 120)
-            return false;
-        if (Math.Abs(x - bootstrap.DungeonLocation) < 220)
+        // The source pass rejects nearby protected/frame-important structures rather than declaring
+        // entire biomes illegal.  Preserve the major generated structures without starving candidates.
+        if (Math.Abs(x - bootstrap.DungeonLocation) < 100)
             return false;
         return true;
     }

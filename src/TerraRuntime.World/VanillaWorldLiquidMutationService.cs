@@ -83,12 +83,25 @@ public sealed class VanillaWorldLiquidMutationService
     private int ScheduleAffectedCells(int x, int y)
     {
         int scheduled = 0;
-        if (_tiles.LiquidUpdates.TryEnqueue(x, y)) scheduled++;
-        if (_tiles.LiquidUpdates.TryEnqueue(x - 1, y)) scheduled++;
-        if (_tiles.LiquidUpdates.TryEnqueue(x + 1, y)) scheduled++;
-        if (_tiles.LiquidUpdates.TryEnqueue(x, y - 1)) scheduled++;
-        if (_tiles.LiquidUpdates.TryEnqueue(x, y + 1)) scheduled++;
+        scheduled += TrySchedule(x, y);
+        scheduled += TrySchedule(x - 1, y);
+        scheduled += TrySchedule(x + 1, y);
+        scheduled += TrySchedule(x, y - 1);
+        scheduled += TrySchedule(x, y + 1);
         return scheduled;
+    }
+
+    private int TrySchedule(int x, int y)
+    {
+        // Packet 48 is client-triggerable.  Bound unique pending work so bucket/pump spam can be
+        // rejected/deferred without turning liquid simulation into an unbounded memory/CPU amplifier.
+        if (_tiles.LiquidUpdates.ActiveCount + _tiles.LiquidUpdates.BufferedCount >=
+            VanillaWorldLiquidSimulator1458.MaximumPendingCells)
+        {
+            return 0;
+        }
+
+        return _tiles.LiquidUpdates.TryEnqueue(x, y) ? 1 : 0;
     }
 
     private bool Contains(int x, int y) =>

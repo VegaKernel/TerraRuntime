@@ -174,6 +174,7 @@ internal sealed class MidState1458
 {
     public VanillaWorldGenerationBootstrapState1458? Bootstrap { get; private set; }
     public double WorldSurface { get; private set; }
+    public double WorldSurfaceLow { get; private set; }
     public double RockLayer { get; private set; }
     public int UnderworldTop { get; set; }
     public int DesertLeft { get; set; } = -1;
@@ -190,6 +191,7 @@ internal sealed class MidState1458
             throw new InvalidOperationException("Mid vanilla world generation requires source-backed Terrain layers.");
 
         WorldSurface = layers.WorldSurface;
+        WorldSurfaceLow = workspace.VanillaTerrainState?.WorldSurfaceLow ?? layers.WorldSurface;
         RockLayer = layers.RockLayer;
         UnderworldTop = Math.Max((int)RockLayer + 180, workspace.HeightTiles - 200);
     }
@@ -444,13 +446,12 @@ internal sealed class MidPass1458 : IWorldGenerationPass
     private void ApplyFloatingIslands(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int count = grid.Width switch
-        {
-            <= 4200 => 3,
-            <= 6400 => 5,
-            _ => 7
-        };
-        int lakeBudget = Math.Clamp(bootstrap.SkyLakes, 0, count);
+        // 1.4.5.8 creates floor(width * 0.0008) ordinary islands *plus* GenVars.skyLakes.
+        // The old code folded lakes into the same fixed count and even emitted seven total on large
+        // worlds, losing the source topology/count relationship.
+        int islandCount = Math.Max(1, (int)(grid.Width * 0.0008d));
+        int lakeBudget = Math.Max(0, bootstrap.SkyLakes);
+        int count = islandCount + lakeBudget;
         var used = new List<int>(count);
 
         for (int i = 0; i < count; i++)
@@ -458,8 +459,12 @@ internal sealed class MidPass1458 : IWorldGenerationPass
             context.CancellationToken.ThrowIfCancellationRequested();
             int x = PickFloatingIslandX(grid, random, used);
             used.Add(x);
-            int maxY = Math.Max(120, (int)state.WorldSurface - 90);
-            int y = random.Next(85, maxY);
+            int ground = grid.FindFirstActiveY(x, 200, Math.Min(grid.Height, Math.Max(201, (int)state.WorldSurface + 1)));
+            if (ground <= 200)
+                ground = Math.Max(201, (int)state.WorldSurface);
+            int maxYExclusive = Math.Max(91, ground - 100);
+            int y = random.Next(90, maxYExclusive);
+            y = Math.Min(y, Math.Max(90, (int)state.WorldSurfaceLow - 50));
             int rx = random.Next(34, 62);
             int ry = random.Next(9, 17);
 
@@ -467,7 +472,7 @@ internal sealed class MidPass1458 : IWorldGenerationPass
             FillEllipse(grid, x, y, Math.Max(16, rx - 8), Math.Max(6, ry - 3), Dirt, overwriteAir: true);
             ConvertExposedSurface(grid, x - rx, x + rx, y - ry - 4, y + ry + 6, Dirt, Grass, random, 1);
 
-            if (i < lakeBudget)
+            if (i >= islandCount)
             {
                 int lakeRx = Math.Max(8, rx / 3);
                 int lakeRy = Math.Max(3, ry / 3);
@@ -838,13 +843,13 @@ internal sealed class MidPass1458 : IWorldGenerationPass
     {
         for (int attempt = 0; attempt < 2000; attempt++)
         {
-            int x = random.Next(180, grid.Width - 180);
-            if (Math.Abs(x - grid.Width / 2) < 220)
+            int x = random.Next((int)(grid.Width * 0.1d), (int)(grid.Width * 0.9d));
+            if (Math.Abs(x - grid.Width / 2) < 150)
                 continue;
             bool close = false;
             foreach (int previous in used)
             {
-                if (Math.Abs(previous - x) < 260)
+                if (Math.Abs(previous - x) < 180)
                 {
                     close = true;
                     break;
@@ -854,7 +859,8 @@ internal sealed class MidPass1458 : IWorldGenerationPass
                 return x;
         }
 
-        return Math.Clamp((used.Count + 1) * grid.Width / (used.Count + 2), 180, grid.Width - 180);
+        int margin = Math.Max(1, (int)(grid.Width * 0.1d));
+        return Math.Clamp((used.Count + 1) * grid.Width / (used.Count + 2), margin, grid.Width - margin);
     }
 
     private int PickEvilCenter(RuntimeGrid grid, IRandom random, VanillaWorldGenerationBootstrapState1458 bootstrap)

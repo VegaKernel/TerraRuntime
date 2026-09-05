@@ -133,6 +133,7 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
     private const ushort Containers = 21;
     private const int WoodenChestStyle = 0;
     private const int GoldChestStyle = 1;
+    private const int ShadowChestStyle = 4;
     private const int IvyChestStyle = 10;
     private const int WaterChestStyle = 17;
 
@@ -183,33 +184,61 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         RuntimeGrid grid,
         IRandom random)
     {
-        int target = grid.Width switch
-        {
-            <= 4200 => 28,
-            <= 6400 => 42,
-            _ => 56
-        };
-        int minY = Math.Clamp((int)state.WorldSurface + 75, 10, state.UnderworldTop - 100);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 55);
-        int placed = 0;
+        // Terraria 1.4.5.8 configuration uses CaveChestCount=35..40 scaled by world area and
+        // UnderworldChestCount=10..15 scaled by world width. Preserve both independent budgets; the
+        // previous implementation omitted the entire Underworld budget and always selected the lower
+        // cave bound, which made ordinary worlds visibly chest-starved.
+        double areaScale = grid.Width * (double)grid.Height / (4200d * 1200d);
+        double widthScale = grid.Width / 4200d;
+        int caveMinimum = Math.Max(1, (int)(35d * areaScale));
+        int caveMaximum = Math.Max(caveMinimum, (int)(40d * areaScale));
+        int caveTarget = random.Next(caveMinimum, caveMaximum + 1);
+        int underworldMinimum = Math.Max(1, (int)(10d * widthScale));
+        int underworldMaximum = Math.Max(underworldMinimum, (int)(15d * widthScale));
+        int underworldTarget = random.Next(underworldMinimum, underworldMaximum + 1);
 
-        for (int attempt = 0; attempt < target * 180 && placed < target; attempt++)
+        int minY = Math.Clamp((int)((state.WorldSurface + 20d + state.RockLayer) / 2d), 10, state.UnderworldTop - 100);
+        int maxY = Math.Max(minY + 1, state.UnderworldTop - 55);
+        int cavePlaced = 0;
+
+        for (int attempt = 0; attempt < caveTarget * 240 && cavePlaced < caveTarget; attempt++)
         {
             if ((attempt & 63) == 0)
                 context.CancellationToken.ThrowIfCancellationRequested();
 
-            int x = random.Next(35, grid.Width - 37);
+            int x = random.Next(20, grid.Width - 22);
             int probeY = random.Next(minY, maxY);
-            int floor = grid.FindFirstActiveY(x, probeY, Math.Min(grid.Height - 1, probeY + 55));
+            int floor = grid.FindFirstActiveY(x, probeY, Math.Min(grid.Height - 1, probeY + 70));
             int top = floor - 2;
             if (!CanPlaceChest(grid, x, top, allowLiquid: false, frameImportantRadius: 14))
                 continue;
             if (!PlaceGeneratedChest(workspace, grid, x, top, GoldChestStyle))
                 continue;
-            placed++;
+            cavePlaced++;
         }
 
-        context.ReportProgress(1d, $"Placing buried Gold Chests ({placed}/{target})");
+        int underworldPlaced = 0;
+        int underworldMinY = Math.Clamp(state.UnderworldTop, 10, grid.Height - 60);
+        int underworldMaxY = Math.Max(underworldMinY + 1, grid.Height - 50);
+        for (int attempt = 0; attempt < underworldTarget * 320 && underworldPlaced < underworldTarget; attempt++)
+        {
+            if ((attempt & 63) == 0)
+                context.CancellationToken.ThrowIfCancellationRequested();
+
+            int x = random.Next(20, grid.Width - 22);
+            int probeY = random.Next(underworldMinY, underworldMaxY);
+            int floor = grid.FindFirstActiveY(x, probeY, Math.Min(grid.Height - 1, probeY + 50));
+            int top = floor - 2;
+            if (!CanPlaceChest(grid, x, top, allowLiquid: false, frameImportantRadius: 12))
+                continue;
+            if (!PlaceGeneratedChest(workspace, grid, x, top, ShadowChestStyle))
+                continue;
+            underworldPlaced++;
+        }
+
+        context.ReportProgress(
+            1d,
+            $"Placing buried chests (cave {cavePlaced}/{caveTarget}, underworld {underworldPlaced}/{underworldTarget})");
     }
 
     private void ApplySurfaceChests(
@@ -219,12 +248,8 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         IRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int target = grid.Width switch
-        {
-            <= 4200 => 14,
-            <= 6400 => 20,
-            _ => 28
-        };
+        // Source pass attempts floor(maxTilesX * 0.005) surface chests.
+        int target = Math.Max(1, (int)(grid.Width * 0.005d));
         int placed = 0;
 
         for (int attempt = 0; attempt < target * 220 && placed < target; attempt++)
@@ -294,12 +319,8 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         RuntimeGrid grid,
         IRandom random)
     {
-        int target = grid.Width switch
-        {
-            <= 4200 => 8,
-            <= 6400 => 12,
-            _ => 16
-        };
+        // WaterChests runs nine width-scaled placements before separate ocean-cave treasure.
+        int target = Math.Max(1, (int)Math.Round(9d * grid.Width / 4200d));
         int minY = Math.Clamp((int)state.WorldSurface + 20, 10, state.UnderworldTop - 90);
         int maxY = Math.Max(minY + 1, state.UnderworldTop - 40);
         int placed = 0;

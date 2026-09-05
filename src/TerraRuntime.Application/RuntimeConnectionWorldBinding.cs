@@ -251,6 +251,8 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
         var signs = new SignInteractionFrameSink(source, bootstrap, chests, runtime.SignIngress);
         var homes = new NpcHomeFrameSink(source, bootstrap, signs, runtime.TownNpcHomeIngress);
         var talk = new NpcTalkFrameSink(source, bootstrap, homes, runtime.NpcTalkIngress);
-        return new NpcCatchFrameSink(source, bootstrap, talk, runtime.NpcCatchIngress);
+        var catches = new NpcCatchFrameSink(source, bootstrap, talk, runtime.NpcCatchIngress);
+        var teleports = new PlayerTeleportRequestFrameSink(source, bootstrap, catches, runtime.PlayerTeleportIngress);
+        return new BossSummonFrameSink(source, bootstrap, teleports, runtime.BossSummonIngress);
     }
 }

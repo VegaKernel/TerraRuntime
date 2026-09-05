@@ -131,6 +131,43 @@ internal sealed partial class RuntimeConnectionRegistry
         ResetMovementVisibilityReadiness(request.ClaimedSlot, visibility, entered, left);
     }
 
+    public void PlayerRespawned(ConnectionHandle connection, in PlayerSpawnCommitRequest request)
+    {
+        if (connection.Player.Slot != request.ClaimedSlot ||
+            !VanillaPlayerSpawnValidator.IsValid(in request) ||
+            !_endpoints.TryGetValue(connection.Source, out RuntimeConnectionEndpoint? endpoint) ||
+            !endpoint.TryGetPlayingPlayer(out PlayerHandle player) || player != connection.Player)
+            return;
+
+        float positionX = request.SpawnX * VanillaTileSizePixels;
+        float positionY = request.SpawnY * VanillaTileSizePixels;
+        endpoint.UpdatePosition(positionX, positionY);
+        Span<PlayerSlotId> entered = stackalloc PlayerSlotId[ProtocolPlayerSlotCount];
+        Span<PlayerSlotId> left = stackalloc PlayerSlotId[ProtocolPlayerSlotCount];
+        RuntimePlayerVisibilityUpdate visibility = _interestRouter.TrackPlayer(
+            request.ClaimedSlot, positionX, positionY, entered, left);
+        ResetMovementVisibilityReadiness(request.ClaimedSlot, visibility, entered, left);
+        byte[] encoded = TerrariaPlayerReplicationFrameEncoder.EncodeSpawn(in request);
+        Interlocked.Add(ref _relayedMovementFrames, BroadcastToPlaying(encoded));
+    }
+
+    public void PlayerTeleported(ConnectionHandle connection, float positionX, float positionY, byte style, bool failed)
+    {
+        if (!float.IsFinite(positionX) || !float.IsFinite(positionY) ||
+            !_endpoints.TryGetValue(connection.Source, out RuntimeConnectionEndpoint? endpoint) ||
+            !endpoint.TryGetPlayingPlayer(out PlayerHandle player) || player != connection.Player)
+            return;
+
+        endpoint.UpdatePosition(positionX, positionY);
+        Span<PlayerSlotId> entered = stackalloc PlayerSlotId[ProtocolPlayerSlotCount];
+        Span<PlayerSlotId> left = stackalloc PlayerSlotId[ProtocolPlayerSlotCount];
+        RuntimePlayerVisibilityUpdate visibility = _interestRouter.TrackPlayer(
+            player.Slot, positionX, positionY, entered, left);
+        ResetMovementVisibilityReadiness(player.Slot, visibility, entered, left);
+        byte[] encoded = TerrariaPlayerReplicationFrameEncoder.EncodeTeleport(player.Slot, positionX, positionY, style, failed);
+        Interlocked.Add(ref _relayedMovementFrames, BroadcastToPlaying(encoded));
+    }
+
     public void PlayerMoved(ConnectionHandle connection, in PlayerMovementCommitRequest request)
     {
         if (!VanillaPlayerMovementNormalizer.TryNormalize(in request, out PlayerMovementCommitRequest normalized))

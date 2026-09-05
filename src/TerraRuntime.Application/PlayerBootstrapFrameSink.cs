@@ -465,6 +465,26 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             return TerrariaFrameSinkResult.Continue;
         }
 
+        if (_spawnIngress is not null && _session.State == PlayerJoinState.Playing)
+        {
+            var commit = new PlayerSpawnCommitRequest(
+                assignedSlot,
+                request.SpawnX,
+                request.SpawnY,
+                request.RespawnTimer,
+                request.DeathsPve,
+                request.DeathsPvp,
+                request.Team,
+                request.SpawnContext);
+            if (!VanillaPlayerSpawnValidator.IsValid(in commit))
+                return Stop(PlayerBootstrapStopReason.MalformedPlayerSpawn);
+
+            // Packet 12 is also the vanilla recall/respawn path after the join has completed.
+            // Treat queue pressure as replaceable state rather than killing the socket.
+            _ = _spawnIngress.TryPostRespawn(_source, session.Handle, in commit);
+            return TerrariaFrameSinkResult.Continue;
+        }
+
         return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;
     }
 
@@ -508,8 +528,11 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             request.CameraTargetY);
 
         var connection = new ConnectionHandle(_source, session.Handle);
+        // PlayerControls is replaceable state. A temporary authoritative ingress backlog must
+        // drop this sample rather than disconnecting a healthy client (notably after alt-tab
+        // or scheduler stalls where the vanilla client can deliver a short movement burst).
         if (!_movementIngress.TryPost(connection, in commit))
-            return Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
+            return TerrariaFrameSinkResult.Continue;
 
         PlayerBootstrapStopReason sectionStop = StreamSectionsAroundPlayer(
             request.PositionX,
@@ -533,7 +556,12 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             WorldSectionId section = sections[i];
             SectionFrameLookupResult lookup = _packets.ResolveSectionFrame(section, out ReadOnlyMemory<byte> frame);
             if (lookup == SectionFrameLookupResult.RateLimited)
-                return PlayerBootstrapStopReason.SectionWorkRateLimited;
+            {
+                // Section streaming after join is opportunistic. A global rebuild-budget collision is
+                // temporary server pressure, not malformed client state. Leave the section unsent so a
+                // later movement sample retries it instead of disconnecting an otherwise healthy player.
+                continue;
+            }
             if (lookup != SectionFrameLookupResult.Available)
                 return PlayerBootstrapStopReason.SectionEncodingFailure;
             if (!TryQueue(frame))

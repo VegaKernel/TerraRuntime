@@ -15,6 +15,7 @@ internal sealed partial class ServerRuntimeState
     {
         _runtime.Players.AdvanceCombatTick(Updates);
         _runtime.WorldTileAuthority.AdvanceTo(Updates);
+        _runtime.WorldTileAuthority.TickLiquids();
 
         _runtime.Npcs.CommitPending();
         _runtime.ServerPlayers?.TickPhysics(_runtime.PlayerSnapshots);

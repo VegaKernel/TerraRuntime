@@ -32,7 +32,11 @@ internal sealed class NpcAuthority
     private readonly RuntimeWorldItemStore worldItems;
     private readonly IWorldItemSpawnRandom worldItemSpawnRandom;
     private readonly RuntimeWorldClock? worldClock;
+    private readonly WorldTileStore? worldTiles;
     private readonly ServerPlayerAuthority? serverPlayers;
+    private readonly Random naturalSpawnRandom = new();
+    private readonly NpcSnapshot[] naturalSpawnNpcBuffer = new NpcSnapshot[RuntimeNpcStore.MaximumAddressableCapacity];
+    private int naturalSpawnPlayerCursor;
     private readonly bool expertMode;
     private readonly bool masterMode;
     private readonly VanillaTownSceneMetricsScanner1458? npcSceneMetrics;
@@ -82,6 +86,7 @@ internal sealed class NpcAuthority
         this.worldItemSpawnRandom = worldItemSpawnRandom ?? throw new ArgumentNullException(nameof(worldItemSpawnRandom));
         ArgumentNullException.ThrowIfNull(instancedItemLeases);
         this.worldClock = worldClock;
+        this.worldTiles = worldTiles;
         this.serverPlayers = serverPlayers;
         this.expertMode = expertMode;
         this.masterMode = masterMode;
@@ -255,6 +260,9 @@ internal sealed class NpcAuthority
             case ClientNpcCatchRuntimeCommand npcCatch:
                 ApplyClientCatch(npcCatch);
                 return true;
+            case ClientBossSummonRuntimeCommand bossSummon:
+                ApplyClientBossSummon(bossSummon);
+                return true;
             default:
                 return false;
         }
@@ -286,6 +294,7 @@ internal sealed class NpcAuthority
             }
         }
 
+        TickNaturalHostileSpawning();
         LastAiTick = aiExecutor.Tick(aiStepper, combat);
         townNpcAuthority.TickShimmer();
         townNpcAuthority.TickLifecycle(worldClock);
@@ -305,6 +314,222 @@ internal sealed class NpcAuthority
 
     internal int CopyCombatIntegrityDiagnostics(Span<CombatIntegrityDiagnostic> destination) =>
         combat.CopyCombatIntegrityDiagnostics(destination);
+
+    private void ApplyClientBossSummon(ClientBossSummonRuntimeCommand command)
+    {
+        if (!command.Connection.IsAssigned || !players.IsCurrent(command.Connection) ||
+            !IsVanillaMultiplayerAllowedSummon(command.NpcType))
+            return;
+
+        var type = new NpcTypeId(command.NpcType);
+        if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition) || !definition.IsBoss)
+            return;
+
+        int activeCount = npcs.CopyActive(naturalSpawnNpcBuffer);
+        for (int i = 0; i < activeCount; i++)
+        {
+            if (naturalSpawnNpcBuffer[i].TypeIdentity == type)
+                return;
+        }
+
+        if (!TryGetPlayerTarget(command.Connection.Player.Slot.Value, out VanillaNpcTargetCandidate player) ||
+            !TryFindBossSpawnPosition(player, definition, out float x, out float y))
+            return;
+
+        var update = new NpcStateUpdate(
+            Type: type.Value,
+            NetId: checked((short)type.Value),
+            PositionX: x,
+            PositionY: y,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: command.Connection.Player.Slot.Value,
+            Ai: default,
+            Simulation: NpcSimulationState.Initial with { TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft });
+        if (npcs.TrySpawnVanilla(in update, out _))
+            AppliedSpawns++;
+        else
+            RejectedSpawns++;
+    }
+
+    private static bool IsVanillaMultiplayerAllowedSummon(short npcType) => npcType is
+        4 or 13 or 50 or 125 or 126 or 127 or 128 or 129 or 130 or 131 or 134 or 222 or 245 or 266 or 370 or 657 or 668;
+
+    private bool TryGetPlayerTarget(byte slot, out VanillaNpcTargetCandidate target)
+    {
+        int count = CopyTargetCandidates(targetCandidates);
+        for (int i = 0; i < count; i++)
+        {
+            VanillaNpcTargetCandidate candidate = targetCandidates[i];
+            if (candidate.Slot == slot && candidate.Active && !candidate.Dead && !candidate.Ghost)
+            {
+                target = candidate;
+                return true;
+            }
+        }
+        target = default;
+        return false;
+    }
+
+    private bool TryFindBossSpawnPosition(
+        in VanillaNpcTargetCandidate player,
+        in VanillaNpcDefinition definition,
+        out float x,
+        out float y)
+    {
+        // Vanilla SpawnOnPlayer searches outside the player's safe rectangle. Bosses with no-tile-collide
+        // can safely materialize above/aside the player; grounded bosses use the same bounded floor scan as
+        // natural hostile spawns.
+        if (definition.NoTileCollideAtSpawn || worldTiles is null)
+        {
+            float direction = naturalSpawnRandom.Next(2) == 0 ? -1f : 1f;
+            x = player.CenterX + direction * 720f - definition.Width * 0.5f;
+            y = player.CenterY - 360f - definition.Height * 0.5f;
+            return float.IsFinite(x) && float.IsFinite(y);
+        }
+
+        if (TryFindNaturalSpawnFloor(in player, minimumHorizontalTiles: 36, maximumHorizontalTiles: 62, out int tileX, out int floorY))
+        {
+            x = tileX * 16f + 8f - definition.Width * 0.5f;
+            y = floorY * 16f - definition.Height;
+            return true;
+        }
+
+        x = y = 0f;
+        return false;
+    }
+
+    private void TickNaturalHostileSpawning()
+    {
+        if (worldTiles is null || worldClock is null || npcs.ActiveCount >= Math.Min(npcs.Capacity - 8, 180))
+            return;
+
+        int count = CopyTargetCandidates(targetCandidates);
+        if (count == 0)
+            return;
+
+        // One candidate maximum per authoritative tick keeps spawn work bounded regardless of player count.
+        int start = naturalSpawnPlayerCursor++ % count;
+        VanillaNpcTargetCandidate player = targetCandidates[start];
+        if (!player.Active || player.Dead || player.Ghost)
+            return;
+
+        // Terraria's ordinary baseline spawn rate is around one roll per 600 ticks before environment modifiers.
+        // Keep that source-scale cadence and cap nearby hostile population rather than scanning all players each tick.
+        if (naturalSpawnRandom.Next(600) != 0 || CountNearbyOrdinaryNpcs(player.CenterX, player.CenterY, 1600f) >= 5)
+            return;
+
+        if (!TryFindNaturalSpawnFloor(in player, minimumHorizontalTiles: 38, maximumHorizontalTiles: 72, out int tileX, out int floorY))
+            return;
+
+        NpcTypeId type = SelectNaturalHostileType(tileX, floorY);
+        if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition) || definition.IsBoss)
+            return;
+
+        float spawnX = tileX * 16f + 8f - definition.Width * 0.5f;
+        float spawnY = floorY * 16f - definition.Height;
+        var update = new NpcStateUpdate(
+            Type: type.Value,
+            NetId: checked((short)type.Value),
+            PositionX: spawnX,
+            PositionY: spawnY,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: player.Slot,
+            Ai: default,
+            Simulation: NpcSimulationState.Initial with { TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft });
+        if (npcs.TrySpawnVanilla(in update, out _))
+            AppliedSpawns++;
+    }
+
+    private int CountNearbyOrdinaryNpcs(float x, float y, float radius)
+    {
+        int count = npcs.CopyActive(naturalSpawnNpcBuffer);
+        float radiusSq = radius * radius;
+        int nearby = 0;
+        for (int i = 0; i < count; i++)
+        {
+            NpcSnapshot npc = naturalSpawnNpcBuffer[i];
+            if (!VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, out VanillaNpcDefinition definition) || definition.IsBoss)
+                continue;
+            float dx = npc.PositionX - x;
+            float dy = npc.PositionY - y;
+            if (dx * dx + dy * dy <= radiusSq)
+                nearby++;
+        }
+        return nearby;
+    }
+
+    private bool TryFindNaturalSpawnFloor(
+        in VanillaNpcTargetCandidate player,
+        int minimumHorizontalTiles,
+        int maximumHorizontalTiles,
+        out int tileX,
+        out int floorY)
+    {
+        WorldTileStore tiles = worldTiles!;
+        int playerTileX = (int)(player.CenterX / 16f);
+        int playerTileY = (int)(player.CenterY / 16f);
+        int width = tiles.Dimensions.WidthTiles;
+        int height = tiles.Dimensions.HeightTiles;
+
+        for (int attempt = 0; attempt < 24; attempt++)
+        {
+            int horizontal = naturalSpawnRandom.Next(minimumHorizontalTiles, maximumHorizontalTiles + 1);
+            if (naturalSpawnRandom.Next(2) == 0)
+                horizontal = -horizontal;
+            int x = playerTileX + horizontal;
+            if (x < 10 || x >= width - 10)
+                continue;
+            int y = Math.Clamp(playerTileY + naturalSpawnRandom.Next(-28, 29), 10, height - 12);
+            int bottom = Math.Min(height - 6, y + 48);
+            for (; y <= bottom; y++)
+            {
+                WorldTile floor = tiles.Get(x, y);
+                if (!floor.IsActive || floor.IsActuated ||
+                    (!VanillaTileCollisionCatalog.IsSolid(floor.TileType) && !VanillaTileCollisionCatalog.IsSolidTop(floor.TileType)))
+                    continue;
+                if (!HasNpcSpawnClearance(tiles, x, y))
+                    break;
+                tileX = x;
+                floorY = y;
+                return true;
+            }
+        }
+        tileX = floorY = 0;
+        return false;
+    }
+
+    private static bool HasNpcSpawnClearance(WorldTileStore tiles, int x, int floorY)
+    {
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dy = 1; dy <= 4; dy++)
+            {
+                WorldTile tile = tiles.Get(x + dx, floorY - dy);
+                if ((tile.IsActive && !tile.IsActuated && VanillaTileCollisionCatalog.IsSolid(tile.TileType)) ||
+                    tile.LiquidAmount > 160)
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    private NpcTypeId SelectNaturalHostileType(int tileX, int floorY)
+    {
+        WorldTileStore tiles = worldTiles!;
+        ushort floorType = tiles.Get(tileX, floorY).Type;
+        int surfaceThreshold = tiles.Dimensions.HeightTiles / 3;
+        bool surface = floorY < surfaceThreshold;
+
+        if (surface && !worldClock!.DayTime)
+            return naturalSpawnRandom.Next(3) == 0 ? VanillaNpcIds.DemonEye : VanillaNpcIds.Zombie;
+        if (floorType == 53) // sand
+            return VanillaNpcIds.BlueSlime;
+        if (surface)
+            return VanillaNpcIds.BlueSlime;
+        return naturalSpawnRandom.Next(4) == 0 ? VanillaNpcIds.Zombie : VanillaNpcIds.BlueSlime;
+    }
 
     private void ApplySpawn(NpcSpawnRuntimeCommand command)
     {

@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
@@ -83,6 +84,43 @@ internal static class TerrariaPlayerReplicationFrameEncoder
             checked((short)item.ItemType.Value),
             item.ItemFlags);
         return TerrariaPlayerEquipmentCodec.Encode(in state);
+    }
+
+    public static byte[] EncodeSpawn(in PlayerSpawnCommitRequest spawn)
+    {
+        const int payloadLength = 15;
+        byte[] payload = new byte[payloadLength];
+        payload[0] = spawn.ClaimedSlot.Value;
+        BinaryPrimitives.WriteInt16LittleEndian(payload.AsSpan(1), spawn.SpawnX);
+        BinaryPrimitives.WriteInt16LittleEndian(payload.AsSpan(3), spawn.SpawnY);
+        BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(5), spawn.RespawnTimer);
+        BinaryPrimitives.WriteInt16LittleEndian(payload.AsSpan(9), spawn.DeathsPve);
+        BinaryPrimitives.WriteInt16LittleEndian(payload.AsSpan(11), spawn.DeathsPvp);
+        payload[13] = spawn.Team;
+        payload[14] = spawn.SpawnContext;
+
+        byte[] frame = new byte[payloadLength + TerrariaFrameDecoderOptions.MinimumFrameLength];
+        if (TerrariaFrameEncoder.TryWrite(frame, (byte)TerrariaMessageId.PlayerSpawn, payload) != TerrariaFrameWriteResult.Written)
+            throw new InvalidOperationException("Could not encode authoritative packet-12 player spawn frame.");
+        return frame;
+    }
+
+    public static byte[] EncodeTeleport(PlayerSlotId player, float positionX, float positionY, byte style, bool failed)
+    {
+        const int payloadLength = 12;
+        byte[] payload = new byte[payloadLength];
+        // Bits 0-1 select player/NPC mode; both clear means player. Bit 3 carries ExtraInfo, unused here.
+        payload[0] = 0;
+        BinaryPrimitives.WriteInt16LittleEndian(payload.AsSpan(1), player.Value);
+        BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(3), BitConverter.SingleToInt32Bits(positionX));
+        BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(7), BitConverter.SingleToInt32Bits(positionY));
+        payload[11] = style;
+
+        byte[] frame = new byte[payloadLength + TerrariaFrameDecoderOptions.MinimumFrameLength];
+        if (TerrariaFrameEncoder.TryWrite(frame, (byte)TerrariaMessageId.TeleportEntity, payload) != TerrariaFrameWriteResult.Written)
+            throw new InvalidOperationException("Could not encode authoritative packet-65 player teleport frame.");
+        _ = failed; // failure is represented by unchanged coordinates, matching the vanilla request path.
+        return frame;
     }
 
     public static byte[] EncodeMovement(in PlayerMovementCommitRequest movement)

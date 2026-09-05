@@ -134,6 +134,14 @@ internal sealed class FinalState1458
 
 internal sealed class FinalPass1458 : IWorldGenerationPass
 {
+    private const ushort Grass = 2;
+    private const ushort Plants = 3;
+    private const ushort JungleGrass = 60;
+    private const ushort JunglePlants = 61;
+    private const ushort MushroomGrass = 70;
+    private const ushort MushroomPlants = 71;
+    private const ushort Plants2 = 73;
+    private const ushort JunglePlants2 = 74;
     private const ushort Sand = 53;
     private const ushort Cactus = 80;
     private const ushort Coral = 81;
@@ -545,6 +553,11 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 if (!tile.HasOnlyKnownFlags)
                     throw new InvalidOperationException($"Final Cleanup found unknown tile flags at ({x}, {y}).");
 
+                if (tile.IsActive && y + 1 < grid.Height && IsUnsupportedSingleTilePlant(in tile, in grid.At(x, y + 1)))
+                {
+                    ClearTile(ref tile, preserveLiquid: true);
+                    normalized++;
+                }
                 if (!tile.IsActive && (tile.FrameX != 0 || tile.FrameY != 0 || tile.Shape != 0))
                 {
                     tile.FrameX = 0;
@@ -561,6 +574,21 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
             }
         }
         context.ReportProgress(1d, $"Final Cleanup complete; normalized={normalized}");
+    }
+
+
+    private static bool IsUnsupportedSingleTilePlant(in WorldTile plant, in WorldTile support)
+    {
+        if (!support.IsActive || support.IsActuated)
+            return plant.Type is Plants or Plants2 or JunglePlants or JunglePlants2 or MushroomPlants;
+
+        return plant.Type switch
+        {
+            Plants or Plants2 => support.Type != Grass,
+            JunglePlants or JunglePlants2 => support.Type != JungleGrass,
+            MushroomPlants => support.Type != MushroomGrass,
+            _ => false
+        };
     }
 
     private VanillaWorldGenerationBootstrapState1458 RequireBootstrap() =>

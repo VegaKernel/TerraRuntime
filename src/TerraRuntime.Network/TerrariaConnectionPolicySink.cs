@@ -60,6 +60,14 @@ public sealed class TerrariaConnectionPolicySink : ITerrariaFrameSink
         {
             _rateAccountant.RecordSecondaryRateRejection();
             TerrariaFrameRejectionTelemetry.Record(TerrariaFrameRejectionCategory.RateLimited);
+
+            // PlayerControls is replaceable state. Desktop focus/scheduler stalls can release a short
+            // accumulated burst when the vanilla client resumes; dropping samples above the per-message
+            // ceiling preserves the newest subsequent state without turning an ordinary alt-tab into a kick.
+            // The connection-wide hard-abuse budget above remains fatal and still bounds aggregate parser work.
+            if (frame.MessageId == (byte)TerrariaMessageId.PlayerControls)
+                return TerrariaFrameSinkResult.Continue;
+
             _state.TryStop(TerrariaConnectionStopReason.RateLimited);
             return TerrariaFrameSinkResult.Stop;
         }

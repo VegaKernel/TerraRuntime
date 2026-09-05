@@ -12,3 +12,9 @@ namespace TerraRuntime.Application;
 internal sealed record ClientTileManipulationRuntimeCommand(
     ConnectionHandle Connection,
     TerrariaTileManipulationState State) : RuntimeCommand;
+
+
+/// <summary>Connection-authenticated packet-48 liquid proposal carried to the authoritative world thread.</summary>
+internal sealed record ClientLiquidRuntimeCommand(
+    ConnectionHandle Connection,
+    TerrariaLiquidState State) : RuntimeCommand;

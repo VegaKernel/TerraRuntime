@@ -19,6 +19,7 @@ internal sealed class WorldTileAuthority
     private readonly RuntimeCommandCounter commands;
     private readonly WorldTileStore? tiles;
     private readonly VanillaWorldTileMutationService? mutations;
+    private readonly VanillaWorldLiquidSimulator1458? liquidSimulator;
     private readonly RuntimeTileManipulationReplicationRegistry? replication;
     private readonly RuntimeObjectPlacementCommandProcessor? objectPlacement;
     private readonly RuntimeWorldItemStore worldItems;
@@ -40,6 +41,7 @@ internal sealed class WorldTileAuthority
         this.worldItemSpawnRandom = worldItemSpawnRandom ?? throw new ArgumentNullException(nameof(worldItemSpawnRandom));
         this.replication = replication;
         mutations = tiles is null ? null : new VanillaWorldTileMutationService(tiles);
+        liquidSimulator = tiles is null ? null : new VanillaWorldLiquidSimulator1458(tiles);
 
         if (tiles is not null &&
             RuntimeWorldObjectMetadataRegistry.TryGet(
@@ -71,11 +73,79 @@ internal sealed class WorldTileAuthority
 
         if (objectPlacement?.TryApply(command) == true)
             return true;
+        if (command is ClientLiquidRuntimeCommand liquid)
+        {
+            ApplyClientLiquidWakeup(liquid);
+            return true;
+        }
         if (command is not ClientTileManipulationRuntimeCommand tile)
             return false;
 
         ApplyClientTileManipulation(tile);
         return true;
+    }
+
+
+    public void TickLiquids()
+    {
+        if (tiles is null || liquidSimulator is null)
+            return;
+
+        Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[
+            VanillaWorldLiquidSimulator1458.DefaultWorkBudgetPerTick * 2];
+        int count = liquidSimulator.Tick(changes);
+        for (int i = 0; i < count; i++)
+        {
+            WorldLiquidSimulationChange change = changes[i];
+            var state = new TerrariaLiquidState(
+                checked((short)change.X),
+                checked((short)change.Y),
+                change.Amount,
+                (byte)change.Kind);
+            replication?.TryPublishLiquidToAll(in state);
+        }
+    }
+
+    private void ApplyClientLiquidWakeup(ClientLiquidRuntimeCommand command)
+    {
+        ClientManipulationRequests++;
+        if (tiles is null ||
+            !command.Connection.IsAssigned ||
+            !players.TryGet(command.Connection, out RuntimePlayerMember? player) ||
+            (uint)command.State.TileX >= (uint)tiles.Dimensions.WidthTiles ||
+            (uint)command.State.TileY >= (uint)tiles.Dimensions.HeightTiles ||
+            !IsWithinLiquidReach(player, command.State.TileX, command.State.TileY) ||
+            !editBudget.TryConsume(command.Connection.Player.Slot))
+        {
+            RejectedClientManipulations++;
+            return;
+        }
+
+        // Packet 48 is a client proposal, not authority.  Until bucket/pump item semantics are source-backed,
+        // never accept client-supplied amount/kind (which would allow arbitrary water/lava creation).  A valid
+        // nearby packet merely wakes the authoritative cell and neighbours; the server-owned state then flows.
+        int pending = tiles.LiquidUpdates.ActiveCount + tiles.LiquidUpdates.BufferedCount;
+        if (pending >= VanillaWorldLiquidSimulator1458.MaximumPendingCells)
+        {
+            RejectedClientManipulations++;
+            return;
+        }
+
+        int x = command.State.TileX;
+        int y = command.State.TileY;
+        _ = tiles.LiquidUpdates.TryEnqueue(x, y);
+        if (pending + 1 < VanillaWorldLiquidSimulator1458.MaximumPendingCells) _ = tiles.LiquidUpdates.TryEnqueue(x - 1, y);
+        if (pending + 2 < VanillaWorldLiquidSimulator1458.MaximumPendingCells) _ = tiles.LiquidUpdates.TryEnqueue(x + 1, y);
+        if (pending + 3 < VanillaWorldLiquidSimulator1458.MaximumPendingCells) _ = tiles.LiquidUpdates.TryEnqueue(x, y - 1);
+        if (pending + 4 < VanillaWorldLiquidSimulator1458.MaximumPendingCells) _ = tiles.LiquidUpdates.TryEnqueue(x, y + 1);
+        ValidatedClientManipulations++;
+    }
+
+    private static bool IsWithinLiquidReach(RuntimePlayerMember player, int tileX, int tileY)
+    {
+        float playerTileX = (player.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f) / 16f;
+        float playerTileY = (player.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f) / 16f;
+        return Math.Abs(playerTileX - tileX) <= 12f && Math.Abs(playerTileY - tileY) <= 12f;
     }
 
     private void ApplyClientTileManipulation(ClientTileManipulationRuntimeCommand command)
@@ -125,8 +195,7 @@ internal sealed class WorldTileAuthority
                     player.SelectedItem,
                     out RuntimePlayerInventoryItem toolItem) ||
                 toolItem.IsEmpty ||
-                toolItem.ItemType != VanillaItemIds.CopperPickaxe ||
-                !VanillaDefinitionCatalog.TryGetPickTool(toolItem.ItemType, out _))
+                !VanillaPickToolCatalog1458.TryGetPickPower(toolItem.ItemType, out short pickPower))
             {
                 RejectedClientManipulations++;
                 return;
@@ -141,6 +210,11 @@ internal sealed class WorldTileAuthority
 
             WorldTile beforeKill = tiles.Get(tileState.TileX, tileState.TileY);
             TileTypeId beforeType = beforeKill.TileType;
+            if (!VanillaTileMiningRequirements1458.CanMine(beforeType, pickPower))
+            {
+                RejectedClientManipulations++;
+                return;
+            }
             bool isDirtKill = beforeType == VanillaTileIds.Dirt;
             if (isDirtKill && !VanillaDirtRules1458.CanKillIsolated(tiles, tileState.TileX, tileState.TileY))
             {

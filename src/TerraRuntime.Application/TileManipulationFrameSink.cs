@@ -61,11 +61,25 @@ public sealed class TileManipulationFrameSink : ITerrariaFrameSink, ITerrariaFra
         if (StopReason != TileManipulationFrameStopReason.None)
             return TerrariaFrameSinkResult.Stop;
 
-        if ((TerrariaMessageId)frame.MessageId != TerrariaMessageId.TileManipulation)
+        TerrariaMessageId messageId = (TerrariaMessageId)frame.MessageId;
+        if (messageId is not (TerrariaMessageId.TileManipulation or TerrariaMessageId.LiquidSet))
             return inner.OnFrame(in frame);
 
         if (!TryGetPlayingConnection(out ConnectionHandle connection))
             return Stop(TileManipulationFrameStopReason.InvalidJoinState);
+
+        if (messageId == TerrariaMessageId.LiquidSet)
+        {
+            TerrariaLiquidDecodeResult liquidDecode = TerrariaLiquidCodec.TryDecode(in frame, out TerrariaLiquidState liquid);
+            if (liquidDecode != TerrariaLiquidDecodeResult.Decoded)
+                return Stop(TileManipulationFrameStopReason.MalformedManipulation);
+
+            // Packet 48 is replaceable state and can be spammed by bucket/pump exploits.  When the bounded
+            // game ingress is full we keep the connection and discard the stale proposal instead of allowing
+            // liquid traffic to turn queue pressure into a disconnect primitive.
+            _ = ingress.TryPostLiquid(connection, in liquid);
+            return TerrariaFrameSinkResult.Continue;
+        }
 
         TerrariaTileManipulationDecodeResult decode = TerrariaTileManipulationCodec.TryDecode(
             in frame,

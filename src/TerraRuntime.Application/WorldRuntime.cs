@@ -4,6 +4,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Application.Operations;
 using TerraRuntime.World;
 using TerraRuntime.Core.Players;
+using TerraRuntime.Protocol.Multiplicity;
 
 namespace TerraRuntime.Application;
 
@@ -220,6 +221,11 @@ public sealed class WorldRuntime : IDisposable
             workerCount: SectionCacheWorkerCount,
             workCapacity: SectionCacheWorkCapacity,
             completionCapacity: SectionCacheCompletionCapacity);
+        long worldInfoSyncTicks = 0;
+        bool lastWorldInfoDayTime = WorldClock.DayTime;
+        byte lastWorldInfoMoonPhase = (byte)WorldClock.MoonPhase;
+        int worldInfoSyncPeriodTicks = checked(Math.Max(1, options.TargetTicksPerSecond * 60));
+
         GameLoop = new AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand>(
             State,
             (runtime, command) =>
@@ -230,6 +236,36 @@ public sealed class WorldRuntime : IDisposable
             runtime =>
             {
                 runtime.Tick();
+
+                worldInfoSyncTicks++;
+                byte liveMoonPhase = (byte)WorldClock.MoonPhase;
+                bool timeBoundaryChanged =
+                    WorldClock.DayTime != lastWorldInfoDayTime ||
+                    liveMoonPhase != lastWorldInfoMoonPhase;
+                if (timeBoundaryChanged || worldInfoSyncTicks >= worldInfoSyncPeriodTicks)
+                {
+                    var liveClock = new WorldInfoRuntimeState(
+                        checked((int)Math.Clamp(WorldClock.Time, 0d, int.MaxValue)),
+                        WorldClock.DayTime,
+                        liveMoonPhase,
+                        WorldClock.BloodMoonActive,
+                        WorldClock.SlimeRainActive);
+                    byte[] worldInfoFrame = PlayerJoinFrameEncoder.EncodeWorldInfo(
+                        world,
+                        new WorldInfoTransientState(
+                            PumpkinMoon: false,
+                            SnowMoon: false,
+                            Dd2EventOngoing: false,
+                            FreeCake: false,
+                            SkyblockLowTiles: skyblockRuntime.LowTiles,
+                            LobbyId: 0),
+                        liveClock);
+                    RuntimeConnections.BroadcastToPlaying(worldInfoFrame);
+                    worldInfoSyncTicks = 0;
+                    lastWorldInfoDayTime = WorldClock.DayTime;
+                    lastWorldInfoMoonPhase = liveMoonPhase;
+                }
+
                 sectionCacheRebuild.Tick();
                 if (autosave?.Tick() == true)
                     worldSave!.RequestSave();
@@ -241,6 +277,8 @@ public sealed class WorldRuntime : IDisposable
         PlayerStateSnapshots = new RuntimePlayerStateSnapshotReader(CommandIngress);
         TransferIngress = new RuntimePlayerTransferIngress(CommandIngress);
         SpawnIngress = new RuntimePlayerSpawnCommitIngress(CommandIngress);
+        PlayerTeleportIngress = new RuntimePlayerTeleportIngress(CommandIngress);
+        BossSummonIngress = new RuntimeBossSummonIngress(CommandIngress);
         AppearanceIngress = new RuntimePlayerAppearanceIngress(CommandIngress);
         EquipmentIngress = new RuntimePlayerEquipmentIngress(CommandIngress);
         HealthIngress = new RuntimePlayerHealthIngress(CommandIngress);
@@ -303,6 +341,8 @@ public sealed class WorldRuntime : IDisposable
     internal RuntimePlayerStateSnapshotReader PlayerStateSnapshots { get; }
     internal RuntimePlayerTransferIngress TransferIngress { get; }
     internal RuntimePlayerSpawnCommitIngress SpawnIngress { get; }
+    internal RuntimePlayerTeleportIngress PlayerTeleportIngress { get; }
+    internal RuntimeBossSummonIngress BossSummonIngress { get; }
     internal RuntimePlayerAppearanceIngress AppearanceIngress { get; }
     internal RuntimePlayerEquipmentIngress EquipmentIngress { get; }
     internal RuntimePlayerHealthIngress HealthIngress { get; }

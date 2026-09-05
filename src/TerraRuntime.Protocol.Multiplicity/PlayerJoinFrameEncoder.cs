@@ -29,10 +29,11 @@ public static class PlayerJoinFrameEncoder
 
     public static byte[] EncodeWorldInfo(
         WorldFileData world,
-        WorldInfoTransientState transient = default)
+        WorldInfoTransientState transient = default,
+        WorldInfoRuntimeState? runtime = null)
     {
         ArgumentNullException.ThrowIfNull(world);
-        return (WorldInfoPacketMapper.Create(world, transient)).ToArray();
+        return (WorldInfoPacketMapper.Create(world, transient, runtime)).ToArray();
     }
 
     public static byte[] EncodeStatus(int sectionCount)

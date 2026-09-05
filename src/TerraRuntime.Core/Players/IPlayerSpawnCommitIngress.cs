@@ -11,4 +11,13 @@ public interface IPlayerSpawnCommitIngress
         GameCommandSourceId source,
         PlayerJoinSession session,
         in PlayerSpawnCommitRequest request);
+
+    /// <summary>
+    /// Posts a subsequent vanilla packet-12 spawn/recall for an already-playing slot.
+    /// Implementations that only support initial join may keep the default rejection.
+    /// </summary>
+    bool TryPostRespawn(
+        GameCommandSourceId source,
+        PlayerHandle player,
+        in PlayerSpawnCommitRequest request) => false;
 }

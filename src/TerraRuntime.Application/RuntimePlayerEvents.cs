@@ -32,6 +32,14 @@ internal interface IRuntimePlayerEventSink
 
     void PlayerSpawned(ConnectionHandle connection, in PlayerSpawnCommitRequest request);
 
+    void PlayerRespawned(ConnectionHandle connection, in PlayerSpawnCommitRequest request)
+    {
+    }
+
+    void PlayerTeleported(ConnectionHandle connection, float positionX, float positionY, byte style, bool failed)
+    {
+    }
+
     void PlayerMoved(ConnectionHandle connection, in PlayerMovementCommitRequest request);
 
     void PlayerDamageAvoided(PlayerHandle player, float positionX, float positionY, string text)

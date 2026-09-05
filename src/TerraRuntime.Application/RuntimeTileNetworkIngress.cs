@@ -7,6 +7,7 @@ namespace TerraRuntime.Application;
 internal interface ITileNetworkIngress
 {
     bool TryPost(ConnectionHandle connection, in TerrariaTileManipulationState state);
+    bool TryPostLiquid(ConnectionHandle connection, in TerrariaLiquidState state);
 }
 
 /// <summary>
@@ -32,5 +33,15 @@ internal class RuntimeTileNetworkIngress : ITileNetworkIngress
         return Ingress.TryPost(
             connection.Source,
             new ClientTileManipulationRuntimeCommand(connection, state));
+    }
+
+    public bool TryPostLiquid(ConnectionHandle connection, in TerrariaLiquidState state)
+    {
+        if (!connection.IsAssigned)
+            return false;
+
+        return Ingress.TryPost(
+            connection.Source,
+            new ClientLiquidRuntimeCommand(connection, state));
     }
 }

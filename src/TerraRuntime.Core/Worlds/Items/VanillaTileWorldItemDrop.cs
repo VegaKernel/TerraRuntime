@@ -5,11 +5,9 @@ using TerraRuntime.Gameplay.Items;
 namespace TerraRuntime.Core.Worlds;
 
 /// <summary>
-/// Generic source-backed world-item drop for simple tiles.
-/// Vanilla Dirt tile 0 maps to DirtBlock item 2, Stone 1 to StoneBlock 3, Sand 53 to SandBlock 169, etc.
-/// Position/velocity semantics match <see cref="VanillaDirtWorldItemDrop"/>: center the item in the 16x16 tile
-/// and apply vanilla's random gravity ranges. For tiles without a known item mapping the helper returns false
-/// so the caller can perform a bare KillTile without a drop reservation.
+/// Source-backed world-item drops for the ordinary single-cell terrain slice admitted by packet 17.
+/// Raw identities are pinned to TerrariaServer 1.4.5.8 Item.SetDefaults/createTile facts; grass variants intentionally
+/// collapse to their underlying dirt/mud block, matching pickaxe removal rather than seed placement.
 /// </summary>
 public static class VanillaTileWorldItemDrop
 {
@@ -31,12 +29,9 @@ public static class VanillaTileWorldItemDrop
             return false;
         }
 
-        // Resolve item half-size from catalog when available, otherwise 6 (12x12 Dirt default).
         float halfSize = 6f;
         if (VanillaDefinitionCatalog.TryGetRuntimeDefaults(itemType, out VanillaItemRuntimeDefaults defaults) && defaults.IsValid)
-        {
             halfSize = Math.Min(defaults.Width, defaults.Height) * 0.5f;
-        }
 
         float centerX = tileX * TileSize + SpawnCenterOffset;
         float centerY = tileY * TileSize + SpawnCenterOffset;
@@ -60,48 +55,48 @@ public static class VanillaTileWorldItemDrop
 
     private static bool TryGetItemForTile(TileTypeId tileType, out ItemTypeId itemType)
     {
-        if (tileType == VanillaTileIds.Dirt)
+        int itemId = tileType.Value switch
         {
-            itemType = VanillaItemIds.DirtBlock;
-            return true;
-        }
+            0 => 2,
+            1 => 3,
+            2 or 23 or 109 or 199 => 2,
+            25 => 61,
+            53 => 169,
+            57 => 172,
+            59 or 60 or 70 => 176,
+            112 => 370,
+            116 => 408,
+            117 => 409,
+            123 => 424,
+            147 => 593,
+            161 => 664,
+            163 => 833,
+            164 => 834,
+            200 => 835,
+            203 => 836,
+            224 => 1103,
+            225 => 1129,
+            226 => 1101,
+            234 => 1246,
+            396 => 3271,
+            397 => 3272,
+            398 => 3274,
+            399 => 3275,
+            400 => 3276,
+            401 => 3277,
+            402 => 3338,
+            403 => 3339,
+            404 => 3347,
+            407 => 3380,
+            408 => 3460,
+            _ => 0
+        };
 
-        if (tileType == VanillaTileIds.Stone)
+        if (itemId <= 0 || !VanillaItemIds.TryCreate(itemId, out itemType))
         {
-            itemType = VanillaItemIds.StoneBlock;
-            return true;
-        }
-
-        if (tileType == VanillaTileIds.Sand)
-        {
-            itemType = VanillaItemIds.SandBlock;
-            return true;
-        }
-
-        if (tileType == VanillaTileIds.Grass)
-        {
-            // Grass tile drops DirtBlock in vanilla when broken with pickaxe (grass is dirt with grass).
-            itemType = VanillaItemIds.DirtBlock;
-            return true;
-        }
-
-        if (tileType == VanillaTileIds.Mud)
-        {
-            itemType = VanillaItemIds.DirtBlock; // fallback: mud has its own item but not yet catalogued
-            return false;
-        }
-
-        // Try reverse lookup via placement catalog: find an item whose placement tile matches.
-        // This covers cases where the tile was placed via an item we have catalogued but not
-        // explicitly handled above. We scan the sparse catalog (dirt/stone/sand) for now.
-        if (tileType == VanillaTileIds.SnowBlock)
-        {
-            // SnowBlock item not yet catalogued -> no drop
             itemType = default;
             return false;
         }
-
-        itemType = default;
-        return false;
+        return true;
     }
 }

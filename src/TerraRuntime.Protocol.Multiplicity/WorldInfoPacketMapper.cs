@@ -15,21 +15,35 @@ public readonly record struct WorldInfoTransientState(
     ulong LobbyId);
 
 /// <summary>
+/// Mutable server-owned clock/event values that must override the persisted world snapshot in live packet 7 broadcasts.
+/// </summary>
+public readonly record struct WorldInfoRuntimeState(
+    int Time,
+    bool DayTime,
+    byte MoonPhase,
+    bool BloodMoon,
+    bool SlimeRainActive);
+
+/// <summary>
 /// Maps validated Terraria 1.4.5.8 world state plus live runtime flags to protocol 326 packet 7.
 /// Bit assignments remain at the Multiplicity boundary rather than leaking wire layout into the world model.
 /// </summary>
 public static class WorldInfoPacketMapper
 {
-    public static WorldInfo Create(WorldFileData world, WorldInfoTransientState transient = default)
+    public static WorldInfo Create(
+        WorldFileData world,
+        WorldInfoTransientState transient = default,
+        WorldInfoRuntimeState? runtime = null)
     {
         ArgumentNullException.ThrowIfNull(world);
-        return Create(world.Header, world.RuntimeMetadata, transient);
+        return Create(world.Header, world.RuntimeMetadata, transient, runtime);
     }
 
     public static WorldInfo Create(
         WorldFileHeader header,
         WorldFileRuntimeMetadata state,
-        WorldInfoTransientState transient = default)
+        WorldInfoTransientState transient = default,
+        WorldInfoRuntimeState? runtime = null)
     {
         ArgumentNullException.ThrowIfNull(header);
         ArgumentNullException.ThrowIfNull(state);
@@ -48,11 +62,14 @@ public static class WorldInfoPacketMapper
             extraSpawns[i] = new global::Multiplicity.Packets.WorldSpawnPoint(source.X, source.Y);
         }
 
+        WorldInfoRuntimeState live = runtime ?? new WorldInfoRuntimeState(
+            state.Time, state.DayTime, state.MoonPhase, state.BloodMoon, state.SlimeRainActive);
+
         return new WorldInfo
         {
-            Time = state.Time,
-            DayandMoonInfo = Bits(state.DayTime, state.BloodMoon, state.Eclipse),
-            MoonPhase = state.MoonPhase,
+            Time = live.Time,
+            DayandMoonInfo = Bits(live.DayTime, live.BloodMoon, state.Eclipse),
+            MoonPhase = live.MoonPhase,
             MaxTilesX = checked((short)header.Dimensions.WidthTiles),
             MaxTilesY = checked((short)header.Dimensions.HeightTiles),
             SpawnX = state.SpawnX,
@@ -120,7 +137,7 @@ public static class WorldInfoPacketMapper
             EventInfo3 = Bits(
                 false,
                 state.FastForwardTimeToDawn,
-                state.SlimeRainActive,
+                live.SlimeRainActive,
                 state.DownedSlimeKing,
                 state.DownedQueenBee,
                 state.DownedFishron,

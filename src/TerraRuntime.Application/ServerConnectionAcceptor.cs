@@ -223,6 +223,10 @@ internal sealed class ServerConnectionAcceptor : IDisposable
             }
             finally
             {
+                // A disconnect/kick must not create a persistence window where recent authoritative tile/chest
+                // mutations vanish if the host is subsequently stopped. Save requests are coalesced by the
+                // checkpoint coordinator, so multiple simultaneous disconnects stay bounded.
+                _ = route.ActiveRuntime.TryRequestSave();
                 sessionDirectory.Unregister(connectionId);
                 rateTelemetry.TryUnregister(connectionId);
                 queueTelemetry.TryUnregister(connectionId);

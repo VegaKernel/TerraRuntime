@@ -97,8 +97,10 @@ public sealed class SourceBackedChestPlacement1458Tests
         Assert.Equal((short)1, chests[1].SlotId);
         Assert.Equal((5, 7), (chests[0].X, chests[0].Y));
         Assert.Equal((12, 9), (chests[1].X, chests[1].Y));
-        Assert.Empty(chests[0].Items);
-        Assert.Empty(chests[1].Items);
+        Assert.Equal(WorldGenerationChestRules.VanillaItemSlotCount, chests[0].Items.Length);
+        Assert.Equal(WorldGenerationChestRules.VanillaItemSlotCount, chests[1].Items.Length);
+        Assert.All(chests[0].Items, static item => Assert.True(item.IsEmpty));
+        Assert.All(chests[1].Items, static item => Assert.True(item.IsEmpty));
     }
 
     [Fact]

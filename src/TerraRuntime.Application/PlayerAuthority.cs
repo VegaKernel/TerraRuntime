@@ -73,6 +73,12 @@ internal sealed partial class PlayerAuthority
             case PlayerSpawnRuntimeCommand spawn:
                 ApplyPlayerSpawn(spawn);
                 return true;
+            case PlayerRespawnRuntimeCommand respawn:
+                ApplyPlayerRespawn(respawn);
+                return true;
+            case PlayerTeleportRuntimeCommand teleport:
+                ApplyPlayerTeleport(teleport);
+                return true;
             case PlayerMovementRuntimeCommand movement:
                 ApplyPlayerMovement(movement);
                 return true;
@@ -539,6 +545,161 @@ internal sealed partial class PlayerAuthority
             MaxMana = hasPending ? pending!.MaxMana : (short)0
         });
         events?.PlayerSpawned(spawn.Connection, in request);
+    }
+
+    private void ApplyPlayerRespawn(PlayerRespawnRuntimeCommand respawn)
+    {
+        PlayerSpawnCommitRequest request = respawn.Request;
+        if (!VanillaPlayerSpawnValidator.IsValid(in request) ||
+            !respawn.Connection.IsAssigned ||
+            respawn.Connection.Player.Slot != request.ClaimedSlot ||
+            !membership.TryGet(respawn.Connection, out RuntimePlayerMember? player))
+        {
+            Volatile.Write(ref lastSpawnCommitResult, (int)PlayerSpawnCommitResult.InvalidSpawnData);
+            return;
+        }
+
+        if (!player.TryAdvanceRevision())
+            return;
+
+        player.Team = request.Team;
+        player.PositionX = request.SpawnX * 16f;
+        player.PositionY = request.SpawnY * 16f;
+        player.VelocityX = 0f;
+        player.VelocityY = 0f;
+        player.IsDead = request.RespawnTimer > 0;
+        damageImmunity.ResetPvp(request.ClaimedSlot);
+        events?.PlayerRespawned(respawn.Connection, in request);
+    }
+
+    private void ApplyPlayerTeleport(PlayerTeleportRuntimeCommand teleport)
+    {
+        if (worldTiles is null || !membership.TryGet(teleport.Connection, out RuntimePlayerMember? player))
+            return;
+
+        if (!TryResolveTeleportDestination(worldTiles, player, teleport.Kind, out float positionX, out float positionY, out byte style))
+        {
+            // Vanilla still emits a failed teleport effect at the current position. Keep the authoritative
+            // position unchanged and let the client render the item effect without inventing coordinates.
+            events?.PlayerTeleported(teleport.Connection, player.PositionX, player.PositionY, style: teleport.Kind == RuntimePlayerTeleportRequestKind.MagicConch ? (byte)5 : (byte)7, failed: true);
+            return;
+        }
+
+        if (!player.TryAdvanceRevision())
+            return;
+        player.PositionX = positionX;
+        player.PositionY = positionY;
+        player.VelocityX = 0f;
+        player.VelocityY = 0f;
+        events?.PlayerTeleported(teleport.Connection, positionX, positionY, style, failed: false);
+    }
+
+    private static bool TryResolveTeleportDestination(
+        WorldTileStore tiles,
+        RuntimePlayerMember player,
+        RuntimePlayerTeleportRequestKind kind,
+        out float positionX,
+        out float positionY,
+        out byte style)
+    {
+        int width = tiles.Dimensions.WidthTiles;
+        int height = tiles.Dimensions.HeightTiles;
+        style = kind == RuntimePlayerTeleportRequestKind.MagicConch ? (byte)5 : (byte)7;
+
+        if (kind == RuntimePlayerTeleportRequestKind.MagicConch)
+        {
+            bool currentlyLeft = player.PositionX < width * 8f;
+            if (TryFindOceanLanding(tiles, currentlyLeft, out int x, out int y) ||
+                TryFindOceanLanding(tiles, !currentlyLeft, out x, out y))
+            {
+                ToPlayerPosition(x, y, out positionX, out positionY);
+                return true;
+            }
+        }
+        else if (kind == RuntimePlayerTeleportRequestKind.DemonConch)
+        {
+            int underworldStart = Math.Clamp(height - 180, 40, height - 20);
+            int middle = width / 2;
+            ReadOnlySpan<int> centers = stackalloc int[]
+            {
+                middle, middle - 75, middle + 75, 300, Math.Max(100, width - 300)
+            };
+            foreach (int center in centers)
+            {
+                int left = Math.Clamp(center - 50, 10, width - 11);
+                int right = Math.Clamp(center + 50, 11, width - 10);
+                for (int x = left; x <= right; x += 3)
+                {
+                    for (int y = underworldStart; y < Math.Min(height - 5, underworldStart + 100); y++)
+                    {
+                        if (!IsSafeTeleportFloor(tiles, x, y, avoidWalls: true))
+                            continue;
+                        ToPlayerPosition(x, y, out positionX, out positionY);
+                        return true;
+                    }
+                }
+            }
+        }
+
+        positionX = positionY = 0f;
+        return false;
+    }
+
+    private static bool TryFindOceanLanding(WorldTileStore tiles, bool leftSide, out int landingX, out int landingY)
+    {
+        int width = tiles.Dimensions.WidthTiles;
+        int height = tiles.Dimensions.HeightTiles;
+        int edgePadding = 55;
+        int inlandLimit = Math.Clamp(width / 12, 220, 650);
+        int start = leftSide ? edgePadding : width - edgePadding - 1;
+        int end = leftSide ? inlandLimit : width - inlandLimit;
+        int step = leftSide ? 2 : -2;
+
+        for (int x = start; leftSide ? x <= end : x >= end; x += step)
+        {
+            for (int y = 40; y < Math.Min(height - 5, height / 2); y++)
+            {
+                if (!IsSafeTeleportFloor(tiles, x, y, avoidWalls: false))
+                    continue;
+                landingX = x;
+                landingY = y;
+                return true;
+            }
+        }
+
+        landingX = landingY = 0;
+        return false;
+    }
+
+    private static bool IsSafeTeleportFloor(WorldTileStore tiles, int x, int floorY, bool avoidWalls)
+    {
+        if ((uint)x >= (uint)tiles.Dimensions.WidthTiles || floorY < 4 || floorY >= tiles.Dimensions.HeightTiles - 1)
+            return false;
+
+        WorldTile floor = tiles.Get(x, floorY);
+        if (!floor.IsActive || floor.IsActuated ||
+            (!VanillaTileCollisionCatalog.IsSolid(floor.TileType) && !VanillaTileCollisionCatalog.IsSolidTop(floor.TileType)))
+            return false;
+
+        // A vanilla player is a little over 2.5 tiles tall. Require a 2x3 clear body volume and no liquid.
+        for (int dx = -1; dx <= 0; dx++)
+        {
+            for (int dy = 1; dy <= 3; dy++)
+            {
+                WorldTile body = tiles.Get(x + dx, floorY - dy);
+                if ((body.IsActive && !body.IsActuated && VanillaTileCollisionCatalog.IsSolid(body.TileType)) ||
+                    body.LiquidAmount != 0 ||
+                    (avoidWalls && body.Wall != 0))
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    private static void ToPlayerPosition(int landingTileX, int floorTileY, out float positionX, out float positionY)
+    {
+        positionX = landingTileX * 16f - VanillaBasePlayerWidth * 0.5f + 8f;
+        positionY = floorTileY * 16f + 16f - VanillaBasePlayerHeight;
     }
 
     private void ApplyPlayerMovement(PlayerMovementRuntimeCommand movement)

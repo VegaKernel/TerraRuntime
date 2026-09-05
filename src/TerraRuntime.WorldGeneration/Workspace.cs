@@ -109,7 +109,12 @@ public sealed class Workspace :
                 return false;
         }
 
-        WorldChestItem[] detachedItems = items.ToArray();
+        // Every vanilla world-generation chest is an ordinary 40-slot container.  Passing an empty
+        // span from a placement pass means "no generated loot yet", not "create a zero-slot chest".
+        // Packet 155 publishes this length to the client, so preserving a zero-length array here makes
+        // generated chests unusable even though their 2x2 tile object is structurally valid.
+        var detachedItems = new WorldChestItem[VanillaChestItemSlots];
+        items.CopyTo(detachedItems);
         foreach (WorldChestItem item in detachedItems)
         {
             if (item.Stack < 0 || item.Stack > short.MaxValue ||
