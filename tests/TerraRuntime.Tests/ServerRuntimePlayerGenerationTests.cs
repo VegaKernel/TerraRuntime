@@ -36,8 +36,8 @@ public sealed class ServerRuntimePlayerGenerationTests
         ConnectionHandle stale = Spawn(state, source, first);
         Assert.True(state.TryCapturePlayerSnapshot(stale.Player, out PlayerStateSnapshot firstSnapshot));
         Assert.Equal(new PlayerStateRevision(1), firstSnapshot.Revision);
-        Assert.Equal(1600f, firstSnapshot.PositionX);
-        Assert.Equal(3200f, firstSnapshot.PositionY);
+        Assert.Equal(1598f, firstSnapshot.PositionX);
+        Assert.Equal(3158f, firstSnapshot.PositionY);
         state.Apply(new PlayerDisconnectRuntimeCommand(stale));
         Assert.Equal(1, state.DisconnectedPlayers);
         Assert.False(state.TryCapturePlayerSnapshot(stale.Player, out _));

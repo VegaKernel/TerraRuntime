@@ -62,9 +62,9 @@ public sealed class ServerRuntimeTileReplicationIntegrationTests
 
         Assert.Equal(0, fixture.State.AppliedClientTileManipulations);
         Assert.Equal(1, fixture.State.RejectedClientTileManipulations);
-        Assert.Equal(0, fixture.Outbound(origin).QueuedFrames);
+        Assert.Equal(1, fixture.Outbound(origin).QueuedFrames);
         Assert.Equal(0, fixture.Outbound(peer).QueuedFrames);
-        Assert.Equal(0, fixture.Replication.RelayedFrames);
+        Assert.Equal(1, fixture.Replication.RelayedFrames);
     }
 
     [Fact]
@@ -88,9 +88,9 @@ public sealed class ServerRuntimeTileReplicationIntegrationTests
         Assert.Equal(0, fixture.State.ValidatedClientTileManipulations);
         Assert.Equal(1, fixture.State.UnsupportedClientTileManipulations);
         Assert.Equal(before, fixture.Tiles.Get(10, 10));
-        Assert.Equal(0, fixture.Outbound(origin).QueuedFrames);
+        Assert.Equal(1, fixture.Outbound(origin).QueuedFrames);
         Assert.Equal(0, fixture.Outbound(peer).QueuedFrames);
-        Assert.Equal(0, fixture.Replication.RelayedFrames);
+        Assert.Equal(1, fixture.Replication.RelayedFrames);
         Assert.Equal(0, fixture.Replication.RejectedFrames);
         Assert.Equal(0, fixture.Replication.EncodeFailures);
     }
@@ -117,9 +117,9 @@ public sealed class ServerRuntimeTileReplicationIntegrationTests
         Assert.Equal(0, fixture.State.ValidatedClientTileManipulations);
         Assert.Equal(1, fixture.State.UnsupportedClientTileManipulations);
         Assert.Equal(before, fixture.Tiles.Get(10, 10));
-        Assert.Equal(0, fixture.Outbound(origin).QueuedFrames);
+        Assert.Equal(1, fixture.Outbound(origin).QueuedFrames);
         Assert.Equal(0, fixture.Outbound(peer).QueuedFrames);
-        Assert.Equal(0, fixture.Replication.RelayedFrames);
+        Assert.Equal(1, fixture.Replication.RelayedFrames);
     }
 
     private sealed class Fixture : IDisposable

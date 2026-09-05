@@ -51,10 +51,12 @@ public sealed class EncodedSectionCacheContractTests
         byte[] beforeBytes = beforeFrame.ToArray();
         long beforeRevision = world.Tiles.GetSectionVersion(section);
 
-        WorldTile changed = world.Tiles.Get(bounds.X + 3, bounds.Y + 3);
-        changed.Type = VanillaTileIds.Dirt;
+        int changedX = Math.Min(bounds.X + 3, world.Header.Dimensions.WidthTiles - 1);
+        int changedY = Math.Min(bounds.Y + 3, world.Header.Dimensions.HeightTiles - 1);
+        WorldTile changed = world.Tiles.Get(changedX, changedY);
+        changed.Type = checked((ushort)VanillaTileIds.Dirt.Value);
         changed.Flags |= WorldTileFlags.Active;
-        world.Tiles.Set(bounds.X + 3, bounds.Y + 3, in changed);
+        world.Tiles.Set(changedX, changedY, in changed);
 
         long afterRevision = world.Tiles.GetSectionVersion(section);
         Assert.NotEqual(beforeRevision, afterRevision);

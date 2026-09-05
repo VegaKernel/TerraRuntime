@@ -78,6 +78,8 @@ public sealed class TypedProtocolDecoderFuzzTests
             DecoderKind.ActiveChest => (byte)TerrariaMessageId.SyncPlayerChest,
             DecoderKind.ChestNameLookup => (byte)TerrariaMessageId.ChestName,
             DecoderKind.Chat => (byte)TerrariaMessageId.LoadNetModule,
+            DecoderKind.BossSummon => (byte)TerrariaMessageId.SpawnBoss,
+            DecoderKind.TeleportRequest => (byte)TerrariaMessageId.TeleportRequest,
             _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };
 
@@ -207,6 +209,20 @@ public sealed class TypedProtocolDecoderFuzzTests
                 Assert.True(Enum.IsDefined(result));
                 break;
             }
+            case DecoderKind.BossSummon:
+            {
+                TerrariaRuntimeActionRequestDecodeResult result =
+                    TerrariaRuntimeActionRequestDecoder.TryDecodeBossSummon(frame, out _);
+                Assert.True(Enum.IsDefined(result));
+                break;
+            }
+            case DecoderKind.TeleportRequest:
+            {
+                TerrariaRuntimeActionRequestDecodeResult result =
+                    TerrariaRuntimeActionRequestDecoder.TryDecodeTeleportRequest(frame, out _);
+                Assert.True(Enum.IsDefined(result));
+                break;
+            }
             default:
                 throw new ArgumentOutOfRangeException(nameof(kind));
         }
@@ -252,6 +268,8 @@ public sealed class TypedProtocolDecoderFuzzTests
         ActiveChest,
         ChestNameLookup,
         Chat,
+        BossSummon,
+        TeleportRequest,
         Count
     }
 

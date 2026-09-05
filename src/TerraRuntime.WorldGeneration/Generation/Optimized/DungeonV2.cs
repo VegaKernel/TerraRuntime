@@ -375,10 +375,25 @@ internal static class DungeonV2
     {
         int leftCandidate = room.Left + 2;
         int rightCandidate = room.Right - 3;
-        int first = preferLeft ? leftCandidate : rightCandidate;
-        int second = preferLeft ? rightCandidate : leftCandidate;
-        return TryPrepareChestPadAndPlace(workspace, chests, first, room.Bottom - 2, style, name, loot) ||
-               (second != first && TryPrepareChestPadAndPlace(workspace, chests, second, room.Bottom - 2, style, name, loot));
+        int candidateCount = rightCandidate - leftCandidate + 1;
+        for (int offset = 0; offset < candidateCount; offset++)
+        {
+            int candidate = preferLeft
+                ? leftCandidate + offset
+                : rightCandidate - offset;
+            if (TryPrepareChestPadAndPlace(
+                    workspace,
+                    chests,
+                    candidate,
+                    room.Bottom - 2,
+                    style,
+                    name,
+                    loot))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static bool TryPrepareChestPadAndPlace(
@@ -401,6 +416,7 @@ internal static class DungeonV2
             WorldGenerationTile tile = Read(workspace, left + dx, top + dy);
             original[index++] = tile;
             if ((tile.Flags & WorldGenerationTileFlags.Active) != 0 &&
+                tile.Type != Platform &&
                 VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
             {
                 return false;
@@ -1002,7 +1018,8 @@ internal static class DungeonV2
             for (int x = centerX - 2; x <= centerX + 2; x++)
             {
                 if (workspace.TryGetTile(x, y, out WorldGenerationTile tile) &&
-                    (tile.Flags & WorldGenerationTileFlags.Active) == 0 && tile.LiquidAmount == 0)
+                    ((tile.Flags & WorldGenerationTileFlags.Active) == 0 || tile.Type == Platform) &&
+                    tile.LiquidAmount == 0)
                 {
                     open++;
                 }

@@ -90,7 +90,9 @@ public sealed class OptimizedWorldGenerationProviderTests
         Assert.True(CountWall(world, checked((ushort)VanillaWallIds.ObsidianBrickUnsafe.Value)) >= 90, "Obsidian Brick houses must retain the source-backed unsafe wall family.");
         Assert.True(CountWall(world, checked((ushort)VanillaWallIds.HellstoneBrickUnsafe.Value)) >= 90, "Hellstone Brick houses must retain the source-backed unsafe wall family.");
         Assert.True(CountNaturalUndergroundWalls(world) >= 250, "Optimized underground caves must receive a substantial natural unsafe-wall background instead of remaining wall=0 voids.");
-        Assert.Equal(0, CountNaturalWallsAbove(world, (int)result.Metadata.Layers.WorldSurface), "Natural underground wall painting must not leak into open sky/surface space.");
+        Assert.True(
+            CountNaturalWallsAbove(world, (int)result.Metadata.Layers.WorldSurface) == 0,
+            "Natural underground wall painting must not leak into open sky/surface space.");
         Assert.True(CountObjectStyleAnchors(world, checked((ushort)VanillaTileIds.Tables.Value), width: 3, style: 13) >= 2, "Underworld houses must contain source-backed Hell tables.");
         Assert.True(CountObjectStyleAnchors(world, checked((ushort)VanillaTileIds.Bookcases.Value), width: 3, style: 4) >= 2, "Underworld houses must contain source-backed Hell bookcases.");
         Assert.True(CountActiveTiles(world, checked((ushort)VanillaTileIds.Granite.Value)) >= 35, "Granite micro-biome budget must exist.");

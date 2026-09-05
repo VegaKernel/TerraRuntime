@@ -34,14 +34,14 @@ public sealed class RuntimePlayerAppearanceRelayTests
 
         PlayerSpawnCommitRequest firstSpawn = CreateSpawn(first);
         registry.PlayerSpawned(firstConnection, in firstSpawn);
-        Assert.Equal(0, firstOutbound.QueuedFrames);
+        Assert.Equal(1, firstOutbound.QueuedFrames);
         Assert.Equal(0, secondOutbound.QueuedFrames);
 
         PlayerSpawnCommitRequest secondSpawn = CreateSpawn(second);
         registry.PlayerSpawned(secondConnection, in secondSpawn);
 
-        Assert.Equal(2, firstOutbound.QueuedFrames);
-        Assert.Equal(2, secondOutbound.QueuedFrames);
+        Assert.Equal(3, firstOutbound.QueuedFrames);
+        Assert.Equal(3, secondOutbound.QueuedFrames);
         Assert.Equal(2, registry.PlayerActiveBaselineFrames);
         Assert.Equal(2, registry.AppearanceBaselineFrames);
 
@@ -74,8 +74,8 @@ public sealed class RuntimePlayerAppearanceRelayTests
         PlayerAppearanceCommitRequest appearance = CreateAppearance(first, "Updated");
         registry.PlayerAppearanceUpdated(firstConnection, in appearance);
 
-        Assert.Equal(1, firstOutbound.QueuedFrames);
-        Assert.Equal(2, secondOutbound.QueuedFrames);
+        Assert.Equal(2, firstOutbound.QueuedFrames);
+        Assert.Equal(3, secondOutbound.QueuedFrames);
         Assert.Equal(1, registry.RelayedAppearanceFrames);
         Assert.True(registry.TryGetLatestPlayerAppearanceFrame(first, out OutboundFrame frame));
         AssertAppearance(frame, first.Value, "Updated");

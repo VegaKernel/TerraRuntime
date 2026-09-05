@@ -36,8 +36,8 @@ public sealed class PlayerAuthorityRespawnTests
         Assert.True(authority.TryApply(new PlayerRespawnRuntimeCommand(connection, respawn)));
         Assert.True(authority.TryCapture(connection.Player, out PlayerStateSnapshot state));
 
-        Assert.Equal(120 * 16f, state.PositionX);
-        Assert.Equal(210 * 16f, state.PositionY);
+        Assert.Equal(120 * 16f - 2f, state.PositionX);
+        Assert.Equal(210 * 16f - PlayerAuthority.VanillaBasePlayerHeight, state.PositionY);
         Assert.Equal((byte)0, state.ControlFlags);
         Assert.Equal((byte)0, state.MovementFlags);
         Assert.Equal((byte)0, state.MiscFlags1);

@@ -2,6 +2,7 @@ using TerraRuntime.Network;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Protocol;
+using TerraRuntime.Protocol.Multiplicity;
 
 namespace TerraRuntime.Application;
 
@@ -59,11 +60,14 @@ internal sealed class PlayerTeleportRequestFrameSink : ITerrariaFrameSink
 
         // Packet 73 carries only the request subtype. Coordinates never come from the client.
         if (bootstrap.JoinState != TerraRuntime.Core.Players.PlayerJoinState.Playing ||
-            bootstrap.AssignedPlayerHandle is not PlayerHandle player ||
-            frame.Payload.Length != 1)
+            bootstrap.AssignedPlayerHandle is not PlayerHandle player)
             return TerrariaFrameSinkResult.Continue;
 
-        RuntimePlayerTeleportRequestKind kind = (RuntimePlayerTeleportRequestKind)frame.Payload.FirstSpan[0];
+        if (TerrariaRuntimeActionRequestDecoder.TryDecodeTeleportRequest(in frame, out TerrariaTeleportRequest request) !=
+            TerrariaRuntimeActionRequestDecodeResult.Decoded)
+            return TerrariaFrameSinkResult.Continue;
+
+        RuntimePlayerTeleportRequestKind kind = (RuntimePlayerTeleportRequestKind)request.Subtype;
         if (kind is not (RuntimePlayerTeleportRequestKind.MagicConch or RuntimePlayerTeleportRequestKind.DemonConch))
             return inner.OnFrame(in frame);
 

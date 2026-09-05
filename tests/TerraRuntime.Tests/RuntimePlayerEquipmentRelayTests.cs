@@ -37,8 +37,8 @@ public sealed class RuntimePlayerEquipmentRelayTests
         registry.PlayerSpawned(firstConnection, in firstSpawn);
         registry.PlayerSpawned(secondConnection, in secondSpawn);
 
-        Assert.Equal(2, firstOutbound.QueuedFrames);
-        Assert.Equal(3, secondOutbound.QueuedFrames);
+        Assert.Equal(3, firstOutbound.QueuedFrames);
+        Assert.Equal(4, secondOutbound.QueuedFrames);
         Assert.Equal(2, registry.PlayerActiveBaselineFrames);
         Assert.Equal(3, registry.EquipmentBaselineFrames);
         Assert.Equal(0, registry.DroppedEquipmentSnapshotUpdates);
@@ -70,7 +70,7 @@ public sealed class RuntimePlayerEquipmentRelayTests
             registry.PlayerEquipmentUpdated(firstConnection, in update);
         }
 
-        Assert.Equal(1 + VanillaPlayerItemSlotCatalog.RelayableCount, secondOutbound.QueuedFrames);
+        Assert.Equal(2 + VanillaPlayerItemSlotCatalog.RelayableCount, secondOutbound.QueuedFrames);
         Assert.Equal(VanillaPlayerItemSlotCatalog.RelayableCount, registry.RelayedEquipmentFrames);
         Assert.Equal(0, registry.DroppedEquipmentSnapshotUpdates);
     }

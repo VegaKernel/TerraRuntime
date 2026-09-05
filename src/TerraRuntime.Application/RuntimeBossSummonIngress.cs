@@ -1,9 +1,8 @@
-using System.Buffers;
 using TerraRuntime.Network;
-using System.Buffers.Binary;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Protocol;
+using TerraRuntime.Protocol.Multiplicity;
 
 namespace TerraRuntime.Application;
 
@@ -45,15 +44,15 @@ internal sealed class BossSummonFrameSink : ITerrariaFrameSink
         if ((TerrariaMessageId)frame.MessageId != TerrariaMessageId.SpawnBoss)
             return inner.OnFrame(in frame);
         if (bootstrap.JoinState != TerraRuntime.Core.Players.PlayerJoinState.Playing ||
-            bootstrap.AssignedPlayerHandle is not PlayerHandle player ||
-            frame.Payload.Length != 4)
+            bootstrap.AssignedPlayerHandle is not PlayerHandle player)
             return TerrariaFrameSinkResult.Continue;
 
-        Span<byte> payload = stackalloc byte[4];
-        frame.Payload.CopyTo(payload);
+        if (TerrariaRuntimeActionRequestDecoder.TryDecodeBossSummon(in frame, out TerrariaBossSummonRequest request) !=
+            TerrariaRuntimeActionRequestDecodeResult.Decoded)
+            return TerrariaFrameSinkResult.Continue;
+
         // Vanilla overwrites the claimed packet player with the connection owner for player-directed actions.
-        short npcType = BinaryPrimitives.ReadInt16LittleEndian(payload[2..]);
-        _ = ingress.TryPost(new ConnectionHandle(source, player), npcType);
+        _ = ingress.TryPost(new ConnectionHandle(source, player), request.NpcType);
         return TerrariaFrameSinkResult.Continue;
     }
 }

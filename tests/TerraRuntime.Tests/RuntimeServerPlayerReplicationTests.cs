@@ -39,7 +39,7 @@ public sealed class RuntimeServerPlayerReplicationTests
         Assert.True(service.SetAppearance(id, in appearance));
         Assert.True(service.SetVitals(id, in vitals));
         Assert.True(service.SetItem(id, in item));
-        Assert.Equal(6, outbound.QueuedFrames);
+        Assert.Equal(7, outbound.QueuedFrames);
 
         Assert.True(registry.TryGetServerPlayerAppearanceFrame(created.Player, out OutboundFrame appearanceFrame));
         TerrariaFrame decodedAppearanceFrame = Decode(appearanceFrame);
@@ -76,10 +76,10 @@ public sealed class RuntimeServerPlayerReplicationTests
             TerrariaPlayerMovementDecoder.TryDecode(decodedMovementFrame, out TerrariaPlayerMovementRequest movement));
         Assert.Equal(created.Player.Slot.Value, movement.ClaimedPlayerId);
         Assert.Equal(176f, movement.PositionX);
-        Assert.Equal(7, outbound.QueuedFrames);
+        Assert.Equal(8, outbound.QueuedFrames);
 
         Assert.True(service.Despawn(id));
-        Assert.Equal(8, outbound.QueuedFrames);
+        Assert.Equal(9, outbound.QueuedFrames);
         Assert.False(registry.TryGetServerPlayerMovementFrame(created.Player, out _));
         occupied.Dispose();
     }
@@ -111,7 +111,7 @@ public sealed class RuntimeServerPlayerReplicationTests
         PlayerSpawnCommitRequest realSpawn = CreateSpawn(real.Player.Slot);
         registry.PlayerSpawned(real, in realSpawn);
 
-        Assert.Equal(6, outbound.QueuedFrames);
+        Assert.Equal(7, outbound.QueuedFrames);
         occupied.Dispose();
     }
 

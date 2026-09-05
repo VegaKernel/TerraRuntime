@@ -28,7 +28,7 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
         Assert.Equal(0, fixture.State.AppliedWorldItemAllocations);
         Assert.Equal(RuntimeWorldItemStore.VanillaCapacity, fixture.Items.ActiveCount);
         Assert.Equal(before, fixture.Tiles.Get(10, 10));
-        fixture.AssertNoReplication(origin, peer);
+        fixture.AssertOnlyOriginCorrection(origin, peer);
     }
 
     [Fact]
@@ -60,7 +60,7 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
     }
 
     [Fact]
-    public void Failed_hit_without_copper_pickaxe_is_rejected_and_stays_off_wire()
+    public void Failed_hit_without_copper_pickaxe_is_rejected_with_authoritative_origin_correction()
     {
         using var fixture = new Fixture();
         ConnectionHandle origin = fixture.SpawnPlayer(connectionId: 9513);
@@ -76,11 +76,11 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
         Assert.Equal(0, fixture.State.AppliedWorldItemAllocations);
         Assert.Equal(0, fixture.Items.ActiveCount);
         Assert.Equal(before, fixture.Tiles.Get(10, 10));
-        fixture.AssertNoReplication(origin, peer);
+        fixture.AssertOnlyOriginCorrection(origin, peer);
     }
 
     [Fact]
-    public void Active_neighbor_rejects_before_reservation_and_leaves_first_item_slot_untouched()
+    public void Active_neighbor_does_not_block_source_backed_dirt_mining()
     {
         using var fixture = new Fixture();
         ConnectionHandle origin = fixture.SpawnPlayer(connectionId: 9521);
@@ -92,15 +92,13 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
 
         fixture.State.Apply(new ClientTileManipulationRuntimeCommand(origin, KillRequest(data: 0)));
 
-        Assert.Equal(1, fixture.State.RejectedClientTileManipulations);
+        Assert.Equal(0, fixture.State.RejectedClientTileManipulations);
         Assert.Equal(0, fixture.State.RejectedWorldItemAllocations);
-        Assert.Equal(0, fixture.State.AppliedClientTileManipulations);
-        Assert.Equal(0, fixture.Items.ActiveCount);
-        Assert.Equal(before, fixture.Tiles.Get(10, 10));
-        fixture.AssertNoReplication(origin, peer);
-
-        WorldItemDropStateUpdate probeDrop = CreateProbeDrop();
-        Assert.True(fixture.Items.TryAllocateDrop(in probeDrop, out WorldItemSnapshot allocated));
+        Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
+        Assert.Equal(1, fixture.Items.ActiveCount);
+        Assert.False(fixture.Tiles.Get(10, 10).IsActive);
+        Assert.NotEqual(before, fixture.Tiles.Get(10, 10));
+        Assert.True(fixture.Items.TryGetActive(0, out WorldItemSnapshot allocated));
         Assert.Equal((short)0, allocated.Handle.Slot);
         Assert.Equal((ulong)1, allocated.Handle.Generation.Value);
     }
@@ -203,11 +201,11 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
             Assert.Equal(0, State.RejectedPlayerEquipmentUpdates);
         }
 
-        public void AssertNoReplication(ConnectionHandle origin, ConnectionHandle peer)
+        public void AssertOnlyOriginCorrection(ConnectionHandle origin, ConnectionHandle peer)
         {
-            Assert.Equal(0, Outbound(origin).QueuedFrames);
+            Assert.Equal(1, Outbound(origin).QueuedFrames);
             Assert.Equal(0, Outbound(peer).QueuedFrames);
-            Assert.Equal(0, TileReplication.RelayedFrames);
+            Assert.Equal(1, TileReplication.RelayedFrames);
             Assert.Equal(0, TileReplication.RejectedFrames);
             Assert.Equal(0, TileReplication.EncodeFailures);
             Assert.Equal(0, WorldItemReplication.RelayedFrames);

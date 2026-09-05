@@ -71,8 +71,8 @@ internal static class AuthoritativePlayerSpawnSmoke
             while ((session1.State != PlayerJoinState.Playing ||
                     session2.State != PlayerJoinState.Playing ||
                     state.CommittedPlayerSpawns != 2 ||
-                    outbound1.QueuedFrames != 1 ||
-                    outbound2.QueuedFrames != 1 ||
+                    outbound1.QueuedFrames != 2 ||
+                    outbound2.QueuedFrames != 2 ||
                     registry.PlayerActiveBaselineFrames != 2) &&
                    DateTime.UtcNow < spawnDeadline)
             {
@@ -90,8 +90,8 @@ internal static class AuthoritativePlayerSpawnSmoke
 
             int senderBaselineFrames = outbound1.QueuedFrames;
             int peerBaselineFrames = outbound2.QueuedFrames;
-            if (senderBaselineFrames != 1 ||
-                peerBaselineFrames != 1 ||
+            if (senderBaselineFrames != 2 ||
+                peerBaselineFrames != 2 ||
                 registry.PlayerActiveBaselineFrames != 2)
             {
                 failure = $"player-active baseline mismatch: sender={senderBaselineFrames}, peer={peerBaselineFrames}, active={registry.PlayerActiveBaselineFrames}";

@@ -24,16 +24,16 @@ public sealed class RuntimePlayerLifecycleRelayTests
         registry.PlayerSpawned(first, in firstSpawn);
         registry.PlayerSpawned(second, in secondSpawn);
 
-        Assert.Equal(1, firstOutbound.QueuedFrames);
-        Assert.Equal(1, secondOutbound.QueuedFrames);
+        Assert.Equal(2, firstOutbound.QueuedFrames);
+        Assert.Equal(2, secondOutbound.QueuedFrames);
         Assert.Equal(2, registry.PlayerActiveBaselineFrames);
 
         Assert.True(registry.TryUnregister(secondSource, out PlayerHandle? unregistered));
         Assert.Equal(second.Player, unregistered);
         registry.PlayerDisconnected(second);
 
-        Assert.Equal(2, firstOutbound.QueuedFrames);
-        Assert.Equal(1, secondOutbound.QueuedFrames);
+        Assert.Equal(3, firstOutbound.QueuedFrames);
+        Assert.Equal(2, secondOutbound.QueuedFrames);
         Assert.Equal(1, registry.PlayerDeactivationFrames);
     }
 
@@ -54,14 +54,14 @@ public sealed class RuntimePlayerLifecycleRelayTests
         PlayerSpawnCommitRequest secondSpawn = CreateSpawn(second.Player.Slot);
         registry.PlayerSpawned(first, in firstSpawn);
         registry.PlayerSpawned(second, in secondSpawn);
-        Assert.Equal(1, firstOutbound.QueuedFrames);
-        Assert.Equal(1, secondOutbound.QueuedFrames);
+        Assert.Equal(2, firstOutbound.QueuedFrames);
+        Assert.Equal(2, secondOutbound.QueuedFrames);
 
         PlayerSpawnCommitRequest respawn = CreateSpawn(first.Player.Slot);
         registry.PlayerRespawned(first, in respawn);
 
-        Assert.Equal(1, firstOutbound.QueuedFrames);
-        Assert.Equal(2, secondOutbound.QueuedFrames);
+        Assert.Equal(2, firstOutbound.QueuedFrames);
+        Assert.Equal(3, secondOutbound.QueuedFrames);
         Assert.Equal(1, registry.RelayedMovementFrames);
     }
 

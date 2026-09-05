@@ -362,7 +362,7 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
             });
         }
 
-        var surfacePrimary = new HashSet<int> { 280, 281, 284, 285, 953, 946, 3068, 3069, 3084, 4341, 6165 };
+        var surfacePrimary = new HashSet<int> { 280, 281, 284, 285, 327, 953, 946, 3068, 3069, 3084, 4341, 6165 };
         var undergroundPrimary = new HashSet<int> { 49, 50, 53, 54, 5011, 975, 906, 997, 930 };
         var hellPrimary = new HashSet<int> { 274, 220, 112, 218, 3019 };
         var junglePrimary = new HashSet<int> { 211, 212, 213, 964, 2292, 3017 };

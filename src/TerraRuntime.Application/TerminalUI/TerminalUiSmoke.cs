@@ -69,8 +69,8 @@ internal static class TerminalUiSmoke
                     AssertRendered(app.Driver!, "total 120/16.0 KiB");
                     AssertRendered(app.Driver!, "rejected 1  slow 1");
                     AssertRendered(app.Driver!, "player active 1  deactivated 0");
-                    AssertRendered(app.Driver!, "NPC         relay 8  baseline 2  rejected 1  unsupported 1");
-                    AssertRendered(app.Driver!, "Projectile  relay 15  baseline 4  rejected 2  unsupported 1");
+                    AssertRendered(app.Driver!, "NPC         relay 8  baseline 2  duplicate 0  rejected 1  unsupported 1");
+                    AssertRendered(app.Driver!, "Projectile  relay 15  baseline 4  duplicate 0  rejected 2  unsupported 1");
                     AssertRendered(app.Driver!, "Items       relay 9  rejected 1  unsupported 1");
                     AssertRendered(app.Driver!, "capacity 2");
                     AssertRendered(app.Driver!, "2/256 frames");

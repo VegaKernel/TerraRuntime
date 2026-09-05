@@ -98,6 +98,8 @@ Use the `VegaKernel/Multiplicity` NuGet package (`Multiplicity`) as the typed pa
 - [ ] Put protocol fixes in Multiplicity when they belong to the shared protocol model rather than duplicating a second full packet parser in the runtime.
 - [ ] Keep golden-byte and real-client captures as the final independent protocol verification; a green Multiplicity round trip cannot prove parity by itself.
 
+The typed-boundary migration now also covers client `packet 61` boss/invasion requests and `packet 73` teleport requests: Multiplicity views own their fixed wire layouts, including segmented-frame handling, while application code receives TerraRuntime-owned values and no longer reads packet offsets directly. The broader packet-model and hot-path checkboxes remain open until every ownership/re-serialization and inspection path follows the same rule.
+
 ### Framing
 
 - [x] Incremental parser for `[u16 length][u8 message id][payload]`.

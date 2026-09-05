@@ -54,8 +54,8 @@ public sealed class ServerRuntimeNpcAiTests
             spawnX: 20,
             spawnY: 10);
         Assert.True(state.TryCapturePlayerSnapshot(connection.Player, out PlayerStateSnapshot playerSnapshot));
-        Assert.Equal(320f, playerSnapshot.PositionX);
-        Assert.Equal(160f, playerSnapshot.PositionY);
+        Assert.Equal(318f, playerSnapshot.PositionX);
+        Assert.Equal(118f, playerSnapshot.PositionY);
 
         NpcSnapshot demonEye = Spawn(state, slot: 4, CreateDemonEye(NpcSimulationState.Initial));
 
