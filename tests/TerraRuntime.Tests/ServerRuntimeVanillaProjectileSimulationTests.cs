@@ -224,10 +224,20 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
     public async Task Authoritative_tick_persists_fire_arrow_wet_latch_and_transforms_on_second_water_update()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
-        WorldTile water = default;
-        water.LiquidAmount = byte.MaxValue;
-        water.LiquidKind = WorldLiquidKind.Water;
-        tiles.Set(6, 6, water);
+        // Keep the contact fixture in a basin now that the runtime also settles world liquids.
+        var basinWall = new WorldTile { Type = 0, Flags = WorldTileFlags.Active };
+        var basinWater = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+        for (int x = 4; x <= 9; x++)
+        {
+            for (int y = 6; y <= 10; y++)
+                tiles.Set(x, y, in basinWater);
+            tiles.Set(x, 11, in basinWall);
+        }
+        for (int y = 6; y <= 10; y++)
+        {
+            tiles.Set(3, y, in basinWall);
+            tiles.Set(10, y, in basinWall);
+        }
         var projectiles = new RuntimeProjectileStore(capacity: 4);
         var state = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles);
         ProjectileStateUpdate projectile = new(

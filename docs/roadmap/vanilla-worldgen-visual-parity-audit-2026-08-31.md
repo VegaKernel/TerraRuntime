@@ -24,3 +24,8 @@ The deep-ocean finalization regression for Large seed `8675309` is covered by fu
 The obsolete fixed-height water/sand census was removed in favor of the existing basin geometry gate, without
 changing generation or relaxing its water-continuity, sand-floor and beach-rise limits. See the
 [ocean validation contract](../en/vanilla-worldgen-oceans.md).
+
+The Small seed `42` chest-corruption regression is fixed at `MountainCaves`: ordinary mountains now fill inactive
+cells according to the pinned `WorldGen.Mountinater` rules instead of carving through the existing dungeon.
+The per-pass chest-anchor regression fails on the former implementation. This does not close reference-seed terrain
+identity or secret-seed mountain parity; see the [mountain behavior boundary](../en/vanilla-worldgen-dungeon-stage.md#mountain-caves-and-existing-world-objects).

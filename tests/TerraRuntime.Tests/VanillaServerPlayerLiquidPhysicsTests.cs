@@ -36,11 +36,20 @@ public sealed class VanillaServerPlayerLiquidPhysicsTests
     public void Runtime_carries_current_water_contact_into_next_tick_gravity()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
-        tiles.Set(6, 6, new WorldTile
+        // Keep the contact fixture in a basin now that the runtime also settles world liquids.
+        var basinWall = new WorldTile { Type = 0, Flags = WorldTileFlags.Active };
+        var basinWater = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+        for (int x = 4; x <= 9; x++)
         {
-            LiquidAmount = byte.MaxValue,
-            LiquidKind = WorldLiquidKind.Water
-        });
+            for (int y = 6; y <= 10; y++)
+                tiles.Set(x, y, in basinWater);
+            tiles.Set(x, 11, in basinWall);
+        }
+        for (int y = 6; y <= 10; y++)
+        {
+            tiles.Set(3, y, in basinWall);
+            tiles.Set(10, y, in basinWall);
+        }
         var slots = new PlayerSlotPool(1);
         var identities = new ServerPlayerSlotRegistry(slots);
         var id = new ServerPlayerId("test:water-physics");

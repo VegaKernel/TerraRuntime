@@ -62,6 +62,14 @@ of byte-for-byte dungeon equality. Exact collision/protection interactions betwe
 distribution, doors/platforms, furniture, locked and biome chests, traps, paintings, banners, and every global dungeon
 feature remain future parity work.
 
+## Mountain Caves and existing world objects
+
+For ordinary seeds, `MountainCaves` now follows the pinned `WorldGen.Mountinater` behavior: it raises dirt mounds in inactive cells, preserving every existing active tile. The previous downward tunnel approximation could erase dungeon chests and made Small seed `42` fail finalization. Candidate selection now uses the central half of the world, the source spawn and mountain spacing exclusions, and the source sand-family exclusion. Brush strength, step count and movement consume the shared RNG in the source order.
+
+Solid placement immediately clears displaced liquid through the existing tile placement helper; the runtime liquid compactor does not process liquid trapped in solid cells. This is a representation normalization, not a claim of identical intermediate liquid states. A regression checks registered chest anchors after every generation pass and fails on the old carving implementation. Exact terrain equality and secret-seed mountain variants remain outside this verified scope.
+
+Local Windows NativeAOT verification covers generation and reload for Small, Medium and Large with seeds `1`, `42` and `8675309`. The pinned official server also loads all three sizes for `8675309`. Small passes the existing reference-world structural budgets, but contains `104` chests versus the reference's `178`; this evidence does not establish full vanilla parity. Linux NativeAOT execution remains a CI check and was not exercised in this Windows workspace.
+
 ## Beaches and ocean caves
 
 `Beaches` uses the Reset-owned `LeftBeachEnd` and `RightBeachStart` boundaries instead of inventing new edge widths. It shapes sand and the waterline at both world edges. `Create Ocean Caves` then carves cave entrances from those same beach regions.

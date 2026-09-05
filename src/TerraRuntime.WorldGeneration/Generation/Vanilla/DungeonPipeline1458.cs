@@ -338,36 +338,95 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
 
     private void ApplyMountainCaves(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int count = Math.Max(4, grid.Width / 850);
-        int minX = Math.Max(180, bootstrap.LeftBeachEnd + 80);
-        int maxX = Math.Min(grid.Width - 180, bootstrap.RightBeachStart - 80);
+        // Terraria 1.4.5.8 MountainCaves calls Mountinater: it fills empty
+        // cells with dirt. Carving here destroys previously placed dungeon chests.
+        int count = (int)(grid.Width * 0.001d);
+        var mountainColumns = new List<int>(count);
+        int minX = grid.Width / 4;
+        int maxX = grid.Width * 3 / 4;
 
         for (int i = 0; i < count; i++)
         {
             context.CancellationToken.ThrowIfCancellationRequested();
             int x = random.Next(minX, maxX);
-            if (Math.Abs(x - state.DungeonX) < 180)
+            while (x > grid.Width / 2 - 90 && x < grid.Width / 2 + 90)
             {
-                i--;
-                continue;
+                context.CancellationToken.ThrowIfCancellationRequested();
+                x = random.Next(minX, maxX);
             }
 
-            int surface = grid.FindFirstActiveY(
-                x,
-                20,
-                Math.Min(grid.Height, Math.Max((int)state.WorldSurface + 120, (int)state.RockLayer)));
-            if (surface >= grid.Height)
+            // The source's spacing retry does not draw another column; it
+            // eventually abandons this attempt without consuming more random values.
+            if (mountainColumns.Exists(previous => Math.Abs(x - previous) < 100))
                 continue;
 
-            int y = Math.Max(10, surface - random.Next(4, 14));
-            double angle = Math.PI * (0.40d + random.NextDouble() * 0.20d);
-            int length = random.Next(90, 180);
-            double radius = random.Next(5, 9);
-            CarveTunnel(grid, random, x, y, length, angle, radius, downwardBias: 0.08d);
+            int surfaceLimit = Math.Min(grid.Height, (int)Math.Ceiling(state.WorldSurface));
+            int surface = grid.FindFirstActiveY(x, 0, surfaceLimit);
+            if (surface >= surfaceLimit || HasMountainSurfaceExclusion(grid, x, surface))
+                continue;
+
+            RaiseMountain(context, grid, random, x, surface);
+            mountainColumns.Add(x);
         }
 
-        context.ReportProgress(1d, "Carving post-dungeon mountain caves");
+        context.ReportProgress(1d, "Raising post-dungeon mountains");
+    }
+
+    private static bool HasMountainSurfaceExclusion(RuntimeGrid grid, int x, int y)
+    {
+        // Mountinater's caller excludes sand, sandstone brick and sandstone slab.
+        const ushort sandstoneSlab = 274;
+        for (int scanX = Math.Max(0, x - 50); scanX < Math.Min(grid.Width, x + 50); scanX++)
+        for (int scanY = Math.Max(0, y - 25); scanY < Math.Min(grid.Height, y + 25); scanY++)
+        {
+            ref WorldTile tile = ref grid.At(scanX, scanY);
+            if (tile.IsActive && tile.Type is Sand or SandstoneBrick or sandstoneSlab)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static void RaiseMountain(
+        IWorldGenerationContext context, RuntimeGrid grid, IRandom random, int x, int surface)
+    {
+        double strength = random.Next(80, 120);
+        int remainingSteps = random.Next(40, 55);
+        double centerX = x;
+        double centerY = surface + remainingSteps / 2d;
+        double velocityX = random.Next(-10, 11) * 0.1d;
+        double velocityY = random.Next(-20, -10) * 0.1d;
+
+        while (strength > 0d && remainingSteps-- > 0)
+        {
+            context.CancellationToken.ThrowIfCancellationRequested();
+            strength -= random.Next(4);
+            int left = Math.Max(0, (int)(centerX - strength * 0.5d));
+            int right = Math.Min(grid.Width, (int)(centerX + strength * 0.5d));
+            int top = Math.Max(0, (int)(centerY - strength * 0.5d));
+            int bottom = Math.Min(grid.Height, (int)(centerY + strength * 0.5d));
+            double radius = strength * random.Next(80, 120) * 0.01d * 0.4d;
+
+            for (int fillX = left; fillX < right; fillX++)
+            for (int fillY = top; fillY < bottom; fillY++)
+            {
+                ref WorldTile tile = ref grid.At(fillX, fillY);
+                if (tile.IsActive)
+                    continue;
+                double dx = fillX - centerX;
+                double dy = fillY - centerY;
+                if (Math.Sqrt(dx * dx + dy * dy) >= radius)
+                    continue;
+                // Normalize displaced liquid at placement, as other solid fills do:
+                // our liquid compactor does not visit liquid trapped inside solids.
+                SetType(ref tile, Dirt);
+            }
+
+            centerX += velocityX;
+            centerY += velocityY;
+            velocityX = Math.Clamp(velocityX + random.Next(-10, 11) * 0.05d, -0.5d, 0.5d);
+            velocityY = Math.Clamp(velocityY + random.Next(-10, 11) * 0.05d, -1.5d, -0.5d);
+        }
     }
 
     private void ApplyBeaches(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
