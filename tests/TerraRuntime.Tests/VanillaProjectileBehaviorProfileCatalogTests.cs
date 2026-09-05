@@ -121,6 +121,16 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
             VanillaProjectileIds.GolemFireball, out VanillaProjectileBehaviorProfile fireball));
         Assert.Equal(VanillaProjectileBehaviorFamily.GolemFireball, fireball.Family);
         Assert.Equal(VanillaProjectileAiStyles.Fireball, fireball.ExpectedAiStyle);
+
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(
+            VanillaProjectileIds.CultistBossLightningOrb, out VanillaProjectileBehaviorProfile lightningOrb));
+        Assert.Equal(VanillaProjectileBehaviorFamily.CultistLightningOrb, lightningOrb.Family);
+        Assert.Equal(VanillaProjectileAiStyles.CultistLightning, lightningOrb.ExpectedAiStyle);
+
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(
+            VanillaProjectileIds.CultistBossLightningOrbArc, out VanillaProjectileBehaviorProfile lightningArc));
+        Assert.Equal(VanillaProjectileBehaviorFamily.CultistLightningArc, lightningArc.Family);
+        Assert.Equal(VanillaProjectileAiStyles.CultistLightning, lightningArc.ExpectedAiStyle);
     }
 
     [Fact]
@@ -186,6 +196,8 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
             VanillaProjectileIds.GolemEyeBeam,
             VanillaProjectileIds.PlanteraSeed,
             VanillaProjectileIds.PlanteraPoisonSeed,
+            VanillaProjectileIds.CultistBossLightningOrb,
+            VanillaProjectileIds.CultistBossLightningOrbArc,
             VanillaProjectileIds.Bone,
             VanillaProjectileIds.Shuriken,
             VanillaProjectileIds.ThrowingKnife,
@@ -253,6 +265,8 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
     [InlineData(385, (int)VanillaProjectileBehaviorFamily.SharknadoBolt, 65)]
     [InlineData(386, (int)VanillaProjectileBehaviorFamily.Sharknado, 64)]
     [InlineData(464, (int)VanillaProjectileBehaviorFamily.CultistIceMist, 86)]
+    [InlineData(465, (int)VanillaProjectileBehaviorFamily.CultistLightningOrb, 88)]
+    [InlineData(466, (int)VanillaProjectileBehaviorFamily.CultistLightningArc, 88)]
     [InlineData(452, (int)VanillaProjectileBehaviorFamily.PhantasmalEye, 82)]
     [InlineData(454, (int)VanillaProjectileBehaviorFamily.PhantasmalSphere, 83)]
     [InlineData(455, (int)VanillaProjectileBehaviorFamily.PhantasmalDeathray, 84)]

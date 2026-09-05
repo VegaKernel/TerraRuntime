@@ -83,6 +83,8 @@ public sealed class GameplayContentIdTests
         Assert.Equal(452, VanillaProjectileIds.PhantasmalEye.Value);
         Assert.Equal(455, VanillaProjectileIds.PhantasmalDeathray.Value);
         Assert.Equal(464, VanillaProjectileIds.CultistBossIceMist.Value);
+        Assert.Equal(465, VanillaProjectileIds.CultistBossLightningOrb.Value);
+        Assert.Equal(466, VanillaProjectileIds.CultistBossLightningOrbArc.Value);
         Assert.Equal(490, VanillaProjectileIds.CultistRitual.Value);
         Assert.Equal(872, VanillaProjectileIds.HallowBossLastingRainbow.Value);
         Assert.Equal(919, VanillaProjectileIds.FairyQueenLance.Value);

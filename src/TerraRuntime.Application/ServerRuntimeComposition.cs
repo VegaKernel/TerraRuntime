@@ -187,7 +187,8 @@ internal sealed class ServerRuntimeComposition
             projectileStore,
             npcStore,
             playersAuthority,
-            () => updates.Current);
+            () => updates.Current,
+            cultistLightningArcTrails: projectileAuthority.CultistLightningArcTrails);
         var npcPlayerCombat = new RuntimeNpcPlayerCombatPass(npcStore, playersAuthority);
 
         return new ServerRuntimeComposition(

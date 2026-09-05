@@ -157,6 +157,8 @@ internal sealed class VanillaProjectileWorldMotionResolver
         }
 
         bool tileImpact = collideX || collideY;
+        float collisionClampedVelocityX = collidedVelocityX;
+        float collisionClampedVelocityY = collidedVelocityY;
         bool bombCollisionHandled = false;
         bool rocketArmedByImpact = false;
         if (tileImpact && definition.AiStyle == VanillaProjectileAiStyles.Bomb && current.Type.Value is >= 133 and <= 144)
@@ -226,6 +228,18 @@ internal sealed class VanillaProjectileWorldMotionResolver
             golemFireballCollisionHandled = true;
         }
 
+        bool cultistLightningArcCollisionHandled = false;
+        if (tileImpact && current.Type == VanillaProjectileIds.CultistBossLightningOrbArc &&
+            definition.AiStyle == VanillaProjectileAiStyles.CultistLightning && resolvedLocalAi.Ai1 < 1f)
+        {
+            // Projectile.Update type 466 collision exception: advance by the collision-clamped velocity,
+            // mark the arc stopped and retain it while its 20-point trail collapses instead of calling Kill().
+            collidedVelocityX = 0f;
+            collidedVelocityY = 0f;
+            resolvedLocalAi = new ProjectileLocalAiState(0f, resolvedLocalAi.Ai1 + 2f, resolvedLocalAi.Ai2);
+            cultistLightningArcCollisionHandled = true;
+        }
+
         float movementX = collidedVelocityX;
         float movementY = collidedVelocityY;
         if (!definition.IgnoreWater && liquid.Wet)
@@ -243,7 +257,8 @@ internal sealed class VanillaProjectileWorldMotionResolver
         float positionX = behaviorPositionX;
         float positionY = behaviorPositionY;
         bool skipUpdatePosition = definition.AiStyle == VanillaProjectileAiStyles.PhantasmalDeathray;
-        if (!skipUpdatePosition && tileImpact && !bombCollisionHandled && !golemFireballCollisionHandled && !thornBallCollisionHandled && !rainbowRodControlledCollisionHandled)
+        if (!skipUpdatePosition && tileImpact && !bombCollisionHandled && !golemFireballCollisionHandled &&
+            !thornBallCollisionHandled && !rainbowRodControlledCollisionHandled && !cultistLightningArcCollisionHandled)
         {
             // Supported aiStyle-1/2 families use the generic impact fallback: movement first advances by the
             // collision-clamped velocity, Kill() expires the projectile, then UpdatePosition reaches its common tail.
@@ -253,8 +268,16 @@ internal sealed class VanillaProjectileWorldMotionResolver
 
         if (!skipUpdatePosition)
         {
-            positionX += movementX;
-            positionY += movementY;
+            if (cultistLightningArcCollisionHandled)
+            {
+                positionX += collisionClampedVelocityX;
+                positionY += collisionClampedVelocityY;
+            }
+            else
+            {
+                positionX += movementX;
+                positionY += movementY;
+            }
         }
 
         // Projectile.Update skips UpdatePosition entirely for aiStyle 84 beams; their AI anchor is the final
@@ -317,7 +340,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
                     ? ProjectileSimulationTerminationReason.LifetimeExpired
                     : ProjectileSimulationTerminationReason.None;
         }
-        else if (rainbowRodControlledCollisionHandled || thornBallCollisionHandled)
+        else if (rainbowRodControlledCollisionHandled || thornBallCollisionHandled || cultistLightningArcCollisionHandled)
         {
             timeLeft = sourceTimeLeft - 1;
             terminationReason = timeLeft <= 0

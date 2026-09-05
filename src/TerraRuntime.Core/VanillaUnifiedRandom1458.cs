@@ -2,8 +2,8 @@ namespace TerraRuntime.Core;
 
 /// <summary>
 /// Source-pinned implementation of Terraria 1.4.5.8 <c>Terraria.Utilities.UnifiedRandom</c>.
-/// This type exists for vanilla world-generation parity only; custom generators continue to use the independent
-/// runtime RNG exposed through the public world-generation contracts.
+/// World generation and AI paths whose synchronized state carries a vanilla RNG seed share this algorithm;
+/// custom generators continue to use the independent runtime RNG exposed through their public contracts.
 /// </summary>
 internal sealed class VanillaUnifiedRandom1458
 {

@@ -8,6 +8,32 @@ namespace TerraRuntime.Tests;
 public sealed class TerrariaChatCodecTests
 {
     [Fact]
+    public void Argumentless_help_command_is_valid_client_chat_module_traffic()
+    {
+        var packet = new LoadNetModule
+        {
+            LoadedModule = new NetTextModule
+            {
+                PayloadKind = NetTextModulePayloadKind.ClientChatMessage,
+                CommandName = "Help",
+                ChatMessage = string.Empty
+            }
+        };
+        byte[] bytes = Serialize(packet);
+        var frame = new TerrariaFrame(
+            checked((ushort)bytes.Length),
+            bytes[2],
+            new ReadOnlySequence<byte>(bytes),
+            new ReadOnlySequence<byte>(bytes.AsMemory(TerrariaPacket.PacketHeaderLength)));
+
+        Assert.Equal(
+            TerrariaClientChatDecodeResult.Decoded,
+            TerrariaChatCodec.TryDecodeClientMessage(in frame, out TerrariaClientChatMessage message));
+        Assert.Equal("Help", message.CommandName);
+        Assert.Equal(string.Empty, message.Text);
+    }
+
+    [Fact]
     public void Client_chat_decodes_and_server_chat_round_trips()
     {
         var clientPacket = new LoadNetModule

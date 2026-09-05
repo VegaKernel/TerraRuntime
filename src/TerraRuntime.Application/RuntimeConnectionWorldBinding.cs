@@ -194,10 +194,27 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
     public OutboundEnqueueResult TryQueueWorldBootstrap() =>
         TryQueueWorldBootstrap(Runtime.BootstrapPackets.EnterWorldFrame);
 
-    internal OutboundEnqueueResult TryQueueWorldTransferBootstrap(in PlayerSpawnCommitRequest ownerSpawn) =>
-        TryQueueWorldBootstrap(TerrariaPlayerReplicationFrameEncoder.EncodeSpawn(in ownerSpawn));
+    internal OutboundEnqueueResult TryQueueWorldTransferBootstrap(in PlayerSpawnCommitRequest ownerSpawn)
+        => TryQueueWorldTransferBootstrap(in ownerSpawn, ReadOnlySpan<ReadOnlyMemory<byte>>.Empty);
 
-    private OutboundEnqueueResult TryQueueWorldBootstrap(ReadOnlyMemory<byte> finalHandoffFrame)
+    internal OutboundEnqueueResult TryQueueWorldTransferBootstrap(
+        in PlayerSpawnCommitRequest ownerSpawn,
+        ReadOnlySpan<ReadOnlyMemory<byte>> cleanupFrames)
+    {
+        OutboundEnqueueResult result = TryQueueWorldBootstrap(
+            TerrariaPlayerReplicationFrameEncoder.EncodeSpawn(in ownerSpawn),
+            cleanupFrames);
+        if (result == OutboundEnqueueResult.Enqueued)
+            Bootstrap.BeginWorldTransferLanding(in ownerSpawn);
+        return result;
+    }
+
+    internal ReadOnlyMemory<byte>[] CaptureWorldTransferCleanupFrames() =>
+        Runtime.NpcReplication.CaptureWorldTransferDespawnFrames();
+
+    private OutboundEnqueueResult TryQueueWorldBootstrap(
+        ReadOnlyMemory<byte> finalHandoffFrame,
+        ReadOnlySpan<ReadOnlyMemory<byte>> cleanupFrames = default)
     {
         if (finalHandoffFrame.IsEmpty)
             throw new ArgumentException("A world-bootstrap handoff frame is required.", nameof(finalHandoffFrame));
@@ -210,7 +227,9 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
             return OutboundEnqueueResult.FrameBudgetExceeded;
         }
 
-        var frames = new List<OutboundFrame>(16);
+        var frames = new List<OutboundFrame>(16 + cleanupFrames.Length);
+        for (int i = 0; i < cleanupFrames.Length; i++)
+            frames.Add(new OutboundFrame(cleanupFrames[i]));
         frames.Add(new OutboundFrame(Runtime.CreateLiveWorldInfoFrame()));
         frames.Add(new OutboundFrame(packets.StatusFrame));
         for (int i = 0; i < liveBaseSectionFrames.Length; i++)

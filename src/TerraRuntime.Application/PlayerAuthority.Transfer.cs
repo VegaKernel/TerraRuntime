@@ -214,11 +214,10 @@ internal sealed partial class PlayerAuthority
 
     private bool IsTransferPositionValid(float positionX, float positionY)
     {
-        if (worldTiles is null || !float.IsFinite(positionX) || !float.IsFinite(positionY))
+        if (worldTiles is null)
             return false;
 
-        float maximumX = worldTiles.Dimensions.WidthTiles * 16f - VanillaBasePlayerWidth;
-        float maximumY = worldTiles.Dimensions.HeightTiles * 16f - VanillaBasePlayerHeight;
-        return positionX >= 0f && positionY >= 0f && positionX <= maximumX && positionY <= maximumY;
+        WorldTileDimensions dimensions = worldTiles.Dimensions;
+        return VanillaPlayerWorldBounds1458.ContainsTopLeft(in dimensions, positionX, positionY);
     }
 }

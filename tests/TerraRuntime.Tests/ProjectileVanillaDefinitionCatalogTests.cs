@@ -276,6 +276,8 @@ public sealed class ProjectileVanillaDefinitionCatalogTests
     [InlineData(452, 14, 14, 82, true, false)]
     [InlineData(454, 40, 40, 83, false, false)]
     [InlineData(455, 36, 36, 84, false, false)]
+    [InlineData(465, 80, 80, 88, false, true)]
+    [InlineData(466, 14, 14, 88, true, true)]
     [InlineData(872, 30, 30, 173, false, true)]
     [InlineData(873, 30, 30, 171, false, true)]
     [InlineData(874, 30, 30, 0, false, true)]

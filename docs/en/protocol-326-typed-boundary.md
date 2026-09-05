@@ -51,6 +51,8 @@ TerraRuntime previously rejected values greater than `1`. That stricter behavior
 
 Packet `19` direction follows the same non-zero rule on decode: any non-zero byte maps to direction `+1`, while zero maps to `-1`. Encoding remains canonical and writes only `0` or `1`.
 
+Client text modules may carry an argumentless command such as `CommandName = "Help"` with an empty `ChatMessage`. This is valid command traffic and must not be classified as malformed chat or disconnect the client. A module where both fields are empty remains invalid.
+
 ## Independent wire evidence
 
 The golden vectors in `Protocol326VanillaGoldenWireTests` are literal bytes transcribed from the locally decompiled official TerrariaServer `1.4.5.8` implementation. The relevant official switch cases are:
@@ -69,6 +71,7 @@ Protocol changes in this area must preserve all of the following:
 - vanilla non-zero boolean behavior for packet `79`;
 - strict UTF-8 rejection for malformed sign text;
 - segmented fixed-payload decode and pooled segmented sign/chat/chest decode where ownership permits it;
+- argumentless command text modules remain valid when `CommandName` is non-empty;
 - exact-size serialization that rejects both under-write and over-write before publishing a frame;
 - an integration allocation guard on Multiplicity v3 exact-size serialization so a second complete frame buffer cannot return unnoticed;
 - packet-10 framing directly from the completed DEFLATE writer into the final frame array;

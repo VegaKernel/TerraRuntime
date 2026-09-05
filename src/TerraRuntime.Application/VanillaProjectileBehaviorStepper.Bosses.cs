@@ -398,4 +398,141 @@ internal static partial class VanillaProjectileBehaviorStepper
         next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0, Ai1Override: ai1);
         return true;
     }
+
+
+    private static bool TryStepCultistLightningOrb(
+        in ProjectileSnapshot current,
+        in VanillaProjectileBehaviorContext context,
+        out VanillaProjectileBehaviorResult next)
+    {
+        // TerrariaServer 1.4.5.8 AI(), aiStyle 88, type 465. Alpha is presentation-only and can be
+        // reconstructed from ai[0]: the orb fades in through tick 51, emits arcs at 30..150, begins fading
+        // out at 180 and reaches the source alpha > 255 kill branch while entering update 232.
+        float ai0 = current.Ai.Ai0;
+        ProjectileLocalAiState localAi = context.LocalAi.Ai1 == 0f
+            ? context.LocalAi with { Ai1 = 1f }
+            : context.LocalAi;
+        if (ai0 >= 231f)
+        {
+            next = new VanillaProjectileBehaviorResult(
+                current.VelocityX,
+                current.VelocityY,
+                ai0,
+                Kill: true,
+                LocalAiOverride: localAi);
+            return true;
+        }
+
+        next = new VanillaProjectileBehaviorResult(
+            current.VelocityX,
+            current.VelocityY,
+            ai0 + 1f,
+            LocalAiOverride: localAi);
+        return true;
+    }
+
+
+    private static bool TryStepCultistLightningArc(
+        in ProjectileSnapshot current,
+        in VanillaProjectileBehaviorContext context,
+        out VanillaProjectileBehaviorResult next)
+    {
+        // TerrariaServer 1.4.5.8 AI(), aiStyle 88, type 466. Projectile.frameCounter is retained in
+        // runtime-only localAI[2]. Once stopped, localAI[0] is no longer read by vanilla direction selection,
+        // so TerraRuntime reuses it as the number of collapsed 20-point trail samples needed for exact expiry.
+        const int turnSubupdateInterval = 8;
+        const int trailLength = 20;
+        float velocityX = current.VelocityX;
+        float velocityY = current.VelocityY;
+        ProjectileLocalAiState localAi = context.LocalAi;
+        int frameCounter = localAi.Ai2 is >= 0f and < turnSubupdateInterval
+            ? (int)localAi.Ai2 + 1
+            : 1;
+
+        if (velocityX == 0f && velocityY == 0f)
+        {
+            if (frameCounter >= turnSubupdateInterval)
+            {
+                frameCounter = 0;
+                float collapsedSamples = localAi.Ai0 + 1f;
+                localAi = localAi with { Ai0 = collapsedSamples };
+                if (collapsedSamples >= trailLength)
+                {
+                    next = new VanillaProjectileBehaviorResult(
+                        0f, 0f, current.Ai.Ai0, Kill: true,
+                        LocalAiOverride: localAi with { Ai2 = frameCounter });
+                    return true;
+                }
+            }
+
+            next = new VanillaProjectileBehaviorResult(
+                0f, 0f, current.Ai.Ai0,
+                LocalAiOverride: localAi with { Ai2 = frameCounter });
+            return true;
+        }
+
+        if (frameCounter < turnSubupdateInterval)
+        {
+            next = new VanillaProjectileBehaviorResult(
+                velocityX, velocityY, current.Ai.Ai0,
+                LocalAiOverride: localAi with { Ai2 = frameCounter });
+            return true;
+        }
+
+        frameCounter = 0;
+        float speed = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
+        if (!(speed > 0f) || !float.IsFinite(speed))
+        {
+            next = default;
+            return false;
+        }
+
+        var random = new VanillaUnifiedRandom1458((int)current.Ai.Ai1);
+        float nextAi1 = current.Ai.Ai1;
+        float directionX = 0f;
+        float directionY = -1f;
+        bool foundDirection = false;
+        for (int rejected = 0; rejected <= 100; rejected++)
+        {
+            int seed = random.Next();
+            nextAi1 = seed;
+            float angle = seed % 100 / 100f * (MathF.PI * 2f);
+            float candidateX = MathF.Cos(angle);
+            float candidateY = MathF.Sin(angle);
+            if (candidateY > 0f)
+                candidateY = -candidateY;
+
+            float nextHorizontalOffset = candidateX * 10f * speed + localAi.Ai0;
+            if (candidateY <= -0.02f && nextHorizontalOffset is >= -40f and <= 40f)
+            {
+                directionX = candidateX;
+                directionY = candidateY;
+                foundDirection = true;
+                break;
+            }
+        }
+
+        if (!foundDirection)
+        {
+            next = new VanillaProjectileBehaviorResult(
+                0f, 0f, current.Ai.Ai0,
+                Ai1Override: nextAi1,
+                LocalAiOverride: new ProjectileLocalAiState(0f, 1f, frameCounter));
+            return true;
+        }
+
+        float horizontalOffset = localAi.Ai0 + directionX * 10f * speed;
+        float rotation = current.Ai.Ai0 + MathF.PI * 0.5f;
+        float cos = MathF.Cos(rotation);
+        float sin = MathF.Sin(rotation);
+        velocityX = (directionX * cos - directionY * sin) * speed;
+        velocityY = (directionX * sin + directionY * cos) * speed;
+        next = new VanillaProjectileBehaviorResult(
+            velocityX,
+            velocityY,
+            current.Ai.Ai0,
+            Ai1Override: nextAi1,
+            LocalAiOverride: localAi with { Ai0 = horizontalOffset, Ai2 = frameCounter });
+        return true;
+    }
 }

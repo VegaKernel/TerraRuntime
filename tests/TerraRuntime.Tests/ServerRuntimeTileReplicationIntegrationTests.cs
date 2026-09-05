@@ -13,6 +13,29 @@ namespace TerraRuntime.Tests;
 public sealed class ServerRuntimeTileReplicationIntegrationTests
 {
     [Fact]
+    public void Nearby_packet48_commits_and_relays_authoritative_water_before_settling()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle origin = fixture.SpawnPlayer(899);
+        ConnectionHandle peer = fixture.SpawnPlayer(900);
+        var request = new TerrariaLiquidState(10, 10, byte.MaxValue, (byte)WorldLiquidKind.Water);
+
+        fixture.State.Apply(new ClientLiquidRuntimeCommand(origin, request));
+
+        WorldTile committed = fixture.Tiles.Get(10, 10);
+        Assert.Equal(byte.MaxValue, committed.LiquidAmount);
+        Assert.Equal(WorldLiquidKind.Water, committed.LiquidKind);
+        Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
+        Assert.Equal(1, fixture.Outbound(origin).QueuedFrames);
+        Assert.Equal(1, fixture.Outbound(peer).QueuedFrames);
+        TerrariaFrame frame = DequeueFrame(fixture.Outbound(origin));
+        Assert.Equal(
+            TerrariaLiquidDecodeResult.Decoded,
+            TerrariaLiquidCodec.TryDecode(in frame, out TerrariaLiquidState relayed));
+        Assert.Equal(request, relayed);
+    }
+
+    [Fact]
     public void Successful_authoritative_dirt_commit_relays_to_peer_but_not_origin()
     {
         using var fixture = new Fixture();

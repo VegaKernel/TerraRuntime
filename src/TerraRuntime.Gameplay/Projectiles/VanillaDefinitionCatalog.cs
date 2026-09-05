@@ -21,6 +21,7 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId PhantasmalSphere = new(83);
     public static readonly ProjectileAiStyleId PhantasmalDeathray = new(84);
     public static readonly ProjectileAiStyleId CultistIceMist = new(86);
+    public static readonly ProjectileAiStyleId CultistLightning = new(88);
     public static readonly ProjectileAiStyleId HallowBossRainbowStreak = new(171);
     public static readonly ProjectileAiStyleId HallowBossRainbowTrail = new(173);
     public static readonly ProjectileAiStyleId QueenSlimeSmash = new(135);
@@ -406,6 +407,26 @@ public static class VanillaDefinitionCatalog
         CanCutTiles: true,
         CollisionWidth: 60,
         CollisionHeight: 60);
+
+    private static readonly VanillaProjectileDefinition CultistLightningOrbDefinition = new(
+        Width: 80,
+        Height: 80,
+        AiStyle: VanillaProjectileAiStyles.CultistLightning,
+        TileCollide: false,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 80,
+        CollisionHeight: 80);
+
+    private static readonly VanillaProjectileDefinition CultistLightningArcDefinition = new(
+        Width: 14,
+        Height: 14,
+        AiStyle: VanillaProjectileAiStyles.CultistLightning,
+        TileCollide: true,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 14,
+        CollisionHeight: 14);
 
     private static readonly VanillaProjectileDefinition CultistFireballDefinition = new(
         Width: 40,
@@ -876,6 +897,18 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.CultistBossIceMist)
         {
             definition = CultistIceMistDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.CultistBossLightningOrb)
+        {
+            definition = CultistLightningOrbDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.CultistBossLightningOrbArc)
+        {
+            definition = CultistLightningArcDefinition;
             return true;
         }
 

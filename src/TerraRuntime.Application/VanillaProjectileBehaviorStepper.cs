@@ -278,6 +278,12 @@ internal static partial class VanillaProjectileBehaviorStepper
                 return true;
             }
 
+            case VanillaProjectileBehaviorFamily.CultistLightningOrb:
+                return TryStepCultistLightningOrb(in current, in context, out next);
+
+            case VanillaProjectileBehaviorFamily.CultistLightningArc:
+                return TryStepCultistLightningArc(in current, in context, out next);
+
             case VanillaProjectileBehaviorFamily.CultistFireball:
                 return TryStepCultistFireball(
                     in current,

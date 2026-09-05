@@ -20,6 +20,7 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
 
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> endpoints = new();
     private readonly byte[]?[] baselineFrames = new byte[MaxNpcSlots][];
+    private readonly byte[]?[] despawnFrames = new byte[MaxNpcSlots][];
     private readonly object liveFrameGate = new();
     private readonly NpcHandle[] liveFrameOwners = new NpcHandle[MaxNpcSlots];
     private readonly byte[]?[] liveFrames = new byte[MaxNpcSlots][];
@@ -114,6 +115,7 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
         }
 
         Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
+        Volatile.Write(ref despawnFrames[snapshot.Handle.Slot], null);
         ClearLiveFrame(snapshot.Handle);
         Broadcast(encoded);
         return true;
@@ -217,6 +219,7 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
             if (!suppressBroadcast)
                 Broadcast(encoded);
             Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
+            Volatile.Write(ref despawnFrames[snapshot.Handle.Slot], null);
             ClearLiveFrame(snapshot.Handle);
             return;
         }
@@ -230,6 +233,14 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
             TerrariaNpcUpdateEncoder.TryEncode(in baselineState, out byte[] baseline))
         {
             Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], baseline);
+        }
+        if (RuntimeNpcPacketProjection.TryCreate(
+                in snapshot,
+                RuntimeNpcSyncKind.Despawn,
+                out var despawnState) &&
+            TerrariaNpcUpdateEncoder.TryEncode(in despawnState, out byte[] despawn))
+        {
+            Volatile.Write(ref despawnFrames[snapshot.Handle.Slot], despawn);
         }
 
         bool duplicate = UpdateLiveFrame(snapshot.Handle, encoded);
@@ -268,6 +279,18 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
             liveFrameOwners[slot] = default;
             liveFrames[slot] = null;
         }
+    }
+
+    internal ReadOnlyMemory<byte>[] CaptureWorldTransferDespawnFrames()
+    {
+        var result = new List<ReadOnlyMemory<byte>>();
+        for (int slot = 0; slot < despawnFrames.Length; slot++)
+        {
+            byte[]? encoded = Volatile.Read(ref despawnFrames[slot]);
+            if (encoded is not null)
+                result.Add(encoded);
+        }
+        return result.ToArray();
     }
 
     public void PlayerSpawned(ConnectionHandle connection, in PlayerSpawnCommitRequest request)

@@ -648,6 +648,67 @@ public sealed class VanillaProjectileBehaviorStepperTests
         Assert.Equal(204f, killed.PositionYOverride!.Value, 5);
     }
 
+    [Fact]
+    public void Cultist_lightning_orb_advances_emission_counter_and_kills_on_source_fade_boundary()
+    {
+        ProjectileSnapshot orb = CreateProjectile(
+            VanillaProjectileIds.CultistBossLightningOrb, 2f, -1f, ai0: 29f,
+            spawner: VanillaProjectileOwnership.ServerOwner);
+        Assert.True(VanillaDefinitionCatalog.TryGet(orb.Type, out VanillaProjectileDefinition definition));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in orb, in definition, default, out VanillaProjectileBehaviorResult emitted));
+        Assert.False(emitted.Kill);
+        Assert.Equal(30f, emitted.Ai0);
+        Assert.Equal(1f, emitted.LocalAiOverride!.Value.Ai1);
+
+        ProjectileSnapshot terminal = orb with { Ai = orb.Ai with { Ai0 = 231f } };
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in terminal, in definition, default, out VanillaProjectileBehaviorResult killed));
+        Assert.True(killed.Kill);
+        Assert.Equal(231f, killed.Ai0);
+    }
+
+    [Fact]
+    public void Cultist_lightning_arc_turns_from_synchronized_seed_every_eighth_subupdate()
+    {
+        ProjectileSnapshot arc = CreateProjectile(
+            VanillaProjectileIds.CultistBossLightningOrbArc, 7f, 0f, ai0: 0.35f, ai1: 37f,
+            spawner: VanillaProjectileOwnership.ServerOwner);
+        Assert.True(VanillaDefinitionCatalog.TryGet(arc.Type, out VanillaProjectileDefinition definition));
+        var context = new VanillaProjectileBehaviorContext(
+            false, 0f, 0f, LocalAi: new ProjectileLocalAiState(0f, 0f, 7f));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in arc, in definition, in context, out VanillaProjectileBehaviorResult first));
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in arc, in definition, in context, out VanillaProjectileBehaviorResult second));
+
+        Assert.Equal(first, second);
+        Assert.Equal(0f, first.LocalAiOverride!.Value.Ai2);
+        Assert.InRange(first.LocalAiOverride.Value.Ai0, -40f, 40f);
+        Assert.NotEqual(37f, first.Ai1Override);
+        Assert.Equal(7f, MathF.Sqrt(first.VelocityX * first.VelocityX + first.VelocityY * first.VelocityY), 4);
+    }
+
+    [Fact]
+    public void Stopped_cultist_lightning_arc_expires_when_twentieth_trail_sample_collapses()
+    {
+        ProjectileSnapshot arc = CreateProjectile(
+            VanillaProjectileIds.CultistBossLightningOrbArc, 0f, 0f, ai0: 0f, ai1: 1f,
+            spawner: VanillaProjectileOwnership.ServerOwner);
+        Assert.True(VanillaDefinitionCatalog.TryGet(arc.Type, out VanillaProjectileDefinition definition));
+        var context = new VanillaProjectileBehaviorContext(
+            false, 0f, 0f, LocalAi: new ProjectileLocalAiState(19f, 2f, 7f));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in arc, in definition, in context, out VanillaProjectileBehaviorResult next));
+
+        Assert.True(next.Kill);
+        Assert.Equal(20f, next.LocalAiOverride!.Value.Ai0);
+        Assert.Equal(0f, next.LocalAiOverride.Value.Ai2);
+    }
+
     private static ProjectileSnapshot CreateProjectile(
         ProjectileTypeId type,
         float velocityX,

@@ -318,9 +318,9 @@ internal sealed class WorldTileAuthority
             return;
         }
 
-        // Packet 48 is a client proposal, not authority.  Until bucket/pump item semantics are source-backed,
-        // never accept client-supplied amount/kind (which would allow arbitrary water/lava creation).  A valid
-        // nearby packet merely wakes the authoritative cell and neighbours; the server-owned state then flows.
+        // TerrariaServer 1.4.5.8 MessageBuffer.GetData case 48 applies the packet cell state before normal settling.
+        // Keep the stricter runtime connection, world-bounds, reach and edit-budget checks above, then commit the
+        // exact decoded amount/kind through the authoritative liquid mutation owner.
         int pending = tiles.LiquidUpdates.ActiveCount + tiles.LiquidUpdates.BufferedCount;
         if (pending >= VanillaWorldLiquidSimulator1458.MaximumPendingCells)
         {
@@ -328,14 +328,38 @@ internal sealed class WorldTileAuthority
             return;
         }
 
-        int x = command.State.TileX;
-        int y = command.State.TileY;
-        _ = tiles.LiquidUpdates.TryEnqueue(x, y);
-        if (pending + 1 < VanillaWorldLiquidSimulator1458.MaximumPendingCells) _ = tiles.LiquidUpdates.TryEnqueue(x - 1, y);
-        if (pending + 2 < VanillaWorldLiquidSimulator1458.MaximumPendingCells) _ = tiles.LiquidUpdates.TryEnqueue(x + 1, y);
-        if (pending + 3 < VanillaWorldLiquidSimulator1458.MaximumPendingCells) _ = tiles.LiquidUpdates.TryEnqueue(x, y - 1);
-        if (pending + 4 < VanillaWorldLiquidSimulator1458.MaximumPendingCells) _ = tiles.LiquidUpdates.TryEnqueue(x, y + 1);
+        if (liquidMutations is null)
+        {
+            RejectedClientManipulations++;
+            return;
+        }
+
+        WorldLiquidMutationKind mutationKind = command.State.Amount == 0
+            ? WorldLiquidMutationKind.ClearLiquid
+            : WorldLiquidMutationKind.SetLiquid;
+        var request = new WorldLiquidMutationRequest(
+            mutationKind,
+            command.State.TileX,
+            command.State.TileY,
+            command.State.Amount,
+            (WorldLiquidKind)command.State.LiquidKind);
+        WorldLiquidMutationResult result = liquidMutations.Apply(in request);
+        if (result.Status is not (WorldLiquidMutationStatus.Applied or WorldLiquidMutationStatus.NoChange))
+        {
+            RejectedClientManipulations++;
+            return;
+        }
+
         ValidatedClientManipulations++;
+        if (result.Applied)
+            AppliedClientManipulations++;
+
+        var normalized = new TerrariaLiquidState(
+            command.State.TileX,
+            command.State.TileY,
+            result.After.LiquidAmount,
+            (byte)result.After.LiquidKind);
+        replication?.TryPublishLiquidToAll(in normalized);
     }
 
     private static bool IsWithinLiquidReach(RuntimePlayerMember player, int tileX, int tileY)

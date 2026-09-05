@@ -161,6 +161,7 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
             }
 
             sourceBinding.Unregister();
+            ReadOnlyMemory<byte>[] sourceCleanupFrames = sourceBinding.CaptureWorldTransferCleanupFrames();
             if (!destinationBinding.TryRegister())
             {
                 RollBackWithoutClientWorldChange(sourceBinding, transfer, cancellation.Token);
@@ -176,7 +177,9 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
             // the state-6 gate. The complete world+spawn sequence is one outbound batch, so queue admission remains
             // atomic before the authoritative destination attach barrier.
             PlayerSpawnCommitRequest destinationSpawn = transfer.CreateWorldSpawnRequest(destination, spawnContext: 1);
-            OutboundEnqueueResult bootstrapResult = destinationBinding.TryQueueWorldTransferBootstrap(in destinationSpawn);
+            OutboundEnqueueResult bootstrapResult = destinationBinding.TryQueueWorldTransferBootstrap(
+                in destinationSpawn,
+                sourceCleanupFrames);
             if (bootstrapResult != OutboundEnqueueResult.Enqueued)
             {
                 RollBackWithoutClientWorldChange(sourceBinding, transfer, cancellation.Token);
@@ -207,7 +210,7 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
 
             if (!attached)
             {
-                RollBackAfterClientBootstrap(sourceBinding, transfer, cancellation.Token);
+                RollBackAfterClientBootstrap(sourceBinding, destinationBinding, transfer, cancellation.Token);
                 ReleaseUnusedDestination(destinationBinding, destinationIsPrimary);
                 error ??= "destination runtime rejected the transferred player state";
                 return false;
@@ -366,6 +369,7 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
 
     private static void RollBackAfterClientBootstrap(
         RuntimeConnectionWorldBinding sourceBinding,
+        RuntimeConnectionWorldBinding destinationBinding,
         RuntimePlayerTransferTransaction transfer,
         CancellationToken cancellationToken)
     {
@@ -374,7 +378,9 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
         // Restore the authoritative player at that same source spawn so client and server cannot diverge after a
         // failed destination attach.
         PlayerSpawnCommitRequest sourceSpawn = transfer.CreateWorldSpawnRequest(sourceBinding.Runtime, spawnContext: 1);
-        if (sourceBinding.TryQueueWorldTransferBootstrap(in sourceSpawn) != OutboundEnqueueResult.Enqueued)
+        ReadOnlyMemory<byte>[] destinationCleanupFrames = destinationBinding.CaptureWorldTransferCleanupFrames();
+        if (sourceBinding.TryQueueWorldTransferBootstrap(in sourceSpawn, destinationCleanupFrames) !=
+            OutboundEnqueueResult.Enqueued)
             throw new InvalidOperationException("Source runtime could not queue rollback bootstrap after failed transfer.");
         if (!sourceBinding.TryRegister())
             throw new InvalidOperationException("Source runtime could not restore connection registrations after failed transfer.");

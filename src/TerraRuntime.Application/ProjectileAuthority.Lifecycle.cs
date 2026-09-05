@@ -30,6 +30,8 @@ internal sealed partial class ProjectileAuthority
 
     private void ApplyPendingLiveChildSpawns()
     {
+        Span<NpcAiProjectileIntent> lightningIntents =
+            stackalloc NpcAiProjectileIntent[RuntimeCultistLightningOrbLiveChildSpawn1458.MaximumTargets];
         foreach (RuntimeProjectileLiveChildSpawnEvent child in liveChildSpawns.Events)
         {
             // The simulation sink proves the parent transition committed. Re-read the exact handle here so a
@@ -64,6 +66,19 @@ internal sealed partial class ProjectileAuthority
                 RuntimeCultistIceMistLiveChildSpawn1458.TryCreateIntent(in child, out NpcAiProjectileIntent mistIntent))
             {
                 RuntimeNpcProjectileIntentApplier.TryApply(projectiles, sourceNpc, in mistIntent, out _);
+                continue;
+            }
+
+            if (child.Kind == RuntimeProjectileLiveChildKind.CultistLightningOrb && hostilePlayerTargets is not null)
+            {
+                lightningIntents.Clear();
+                int intentCount = RuntimeCultistLightningOrbLiveChildSpawn1458.CopyIntents(
+                    in child,
+                    hostilePlayerTargets,
+                    projectileRandom,
+                    lightningIntents);
+                for (int i = 0; i < intentCount; i++)
+                    RuntimeNpcProjectileIntentApplier.TryApply(projectiles, sourceNpc, in lightningIntents[i], out _);
             }
         }
     }

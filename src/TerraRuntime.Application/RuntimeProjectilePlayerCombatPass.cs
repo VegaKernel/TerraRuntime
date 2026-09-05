@@ -25,19 +25,23 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
     private readonly long[] lastProjectilePlayerHitTick;
     private readonly ProjectileGeneration[] lastProjectileHitGeneration;
     private readonly PlayerSessionGeneration[] lastTargetGeneration;
+    private readonly RuntimeCultistLightningArcTrailRegistry cultistLightningArcTrails;
 
     public RuntimeProjectilePlayerCombatPass(
         RuntimeProjectileStore projectiles,
         RuntimeNpcStore npcs,
         PlayerAuthority players,
         Func<long> tickProvider,
-        Random? random = null)
+        Random? random = null,
+        RuntimeCultistLightningArcTrailRegistry? cultistLightningArcTrails = null)
     {
         this.projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
         this.random = random ?? Random.Shared;
+        this.cultistLightningArcTrails = cultistLightningArcTrails ??
+            new RuntimeCultistLightningArcTrailRegistry(projectiles.Capacity);
         projectileBuffer = new ProjectileSnapshot[projectiles.Capacity];
         int immunityCells = checked(projectiles.Capacity * PlayerSlotCount);
         lastProjectilePlayerHitTick = new long[immunityCells];

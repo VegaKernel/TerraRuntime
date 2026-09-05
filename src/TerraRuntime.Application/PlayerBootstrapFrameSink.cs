@@ -58,6 +58,10 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
     private string? _playerName;
     private bool _chatRegistered;
     private bool _spawnSubmitted;
+    private bool _awaitingWorldTransferLanding;
+    private bool _hasCorrectionPosition;
+    private float _correctionPositionX;
+    private float _correctionPositionY;
     private Func<string, bool>? _playerNameAdmission;
 
     public PlayerBootstrapFrameSink(
@@ -227,6 +231,17 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
     }
 
     internal void SetTransferredPlayerName(string? playerName) => _playerName = playerName;
+
+    internal void BeginWorldTransferLanding(in PlayerSpawnCommitRequest spawn)
+    {
+        VanillaPlayerSpawnPosition1458.FromFloorTile(
+            spawn.SpawnX,
+            spawn.SpawnY,
+            out _correctionPositionX,
+            out _correctionPositionY);
+        _hasCorrectionPosition = true;
+        _awaitingWorldTransferLanding = true;
+    }
 
     internal void SetRuntimeParticipation(bool active)
     {
@@ -475,6 +490,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             if (!_spawnIngress.TryPost(_source, _session, in commit))
                 return Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
 
+            RememberSpawnPosition(in commit);
             _spawnSubmitted = true;
             if (!TryQueue(FinishedConnectingFrame))
                 return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
@@ -500,6 +516,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             // Packet 12 is also the vanilla recall/respawn path after the join has completed.
             // Treat queue pressure as replaceable state rather than killing the socket.
             _ = _spawnIngress.TryPostRespawn(_source, _session.Handle, in commit);
+            RememberSpawnPosition(in commit);
             return TerrariaFrameSinkResult.Continue;
         }
 
@@ -546,11 +563,23 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             request.CameraTargetY);
 
         var connection = new ConnectionHandle(_source, session.Handle);
+        if (!IsMovementInsideWorld(in commit) ||
+            (_awaitingWorldTransferLanding && !IsNearTransferLanding(in commit)))
+        {
+            QueueMovementCorrection(in commit);
+            return TerrariaFrameSinkResult.Continue;
+        }
+
+        _awaitingWorldTransferLanding = false;
         // PlayerControls is replaceable state. A temporary authoritative ingress backlog must
         // drop this sample rather than disconnecting a healthy client (notably after alt-tab
         // or scheduler stalls where the vanilla client can deliver a short movement burst).
         if (!_movementIngress.TryPost(connection, in commit))
             return TerrariaFrameSinkResult.Continue;
+
+        _correctionPositionX = commit.PositionX;
+        _correctionPositionY = commit.PositionY;
+        _hasCorrectionPosition = true;
 
         PlayerBootstrapStopReason sectionStop = StreamSectionsAroundPlayer(
             request.PositionX,
@@ -559,6 +588,52 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             return Stop(sectionStop);
 
         return TerrariaFrameSinkResult.Continue;
+    }
+
+    private bool IsMovementInsideWorld(in PlayerMovementCommitRequest movement)
+    {
+        if (_packets.StreamingDimensions is not WorldDimensions dimensions)
+            return true;
+
+        var worldDimensions = new WorldTileDimensions(dimensions.WidthTiles, dimensions.HeightTiles);
+        return VanillaPlayerWorldBounds1458.ContainsTopLeft(
+            in worldDimensions,
+            movement.PositionX,
+            movement.PositionY);
+    }
+
+    private bool IsNearTransferLanding(in PlayerMovementCommitRequest movement)
+    {
+        const float tolerancePixels = 128f;
+        float dx = movement.PositionX - _correctionPositionX;
+        float dy = movement.PositionY - _correctionPositionY;
+        return float.IsFinite(dx) && float.IsFinite(dy) &&
+            dx * dx + dy * dy <= tolerancePixels * tolerancePixels;
+    }
+
+    private void QueueMovementCorrection(in PlayerMovementCommitRequest submitted)
+    {
+        if (!_hasCorrectionPosition)
+            return;
+
+        // The vanilla client ignores packet 13 for its own slot unless server-side characters are enabled.
+        // Packet 65 is the source-backed owner correction path and produces the normal client teleport ack.
+        _ = TryQueueOpportunistic(TerrariaPlayerReplicationFrameEncoder.EncodeTeleport(
+            submitted.PlayerSlot,
+            _correctionPositionX,
+            _correctionPositionY,
+            style: 0,
+            failed: false));
+    }
+
+    private void RememberSpawnPosition(in PlayerSpawnCommitRequest spawn)
+    {
+        VanillaPlayerSpawnPosition1458.FromFloorTile(
+            spawn.SpawnX,
+            spawn.SpawnY,
+            out _correctionPositionX,
+            out _correctionPositionY);
+        _hasCorrectionPosition = true;
     }
 
     private PlayerBootstrapStopReason StreamSectionsAroundPlayer(float positionX, float positionY)

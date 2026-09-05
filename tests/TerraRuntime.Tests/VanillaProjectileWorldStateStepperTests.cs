@@ -193,6 +193,38 @@ public sealed class VanillaProjectileWorldStateStepperTests
     }
 
     [Fact]
+    public void Cultist_lightning_arc_tile_impact_stops_without_expiring()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(8, 10, SolidTile(1));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot arc = CreateSnapshot(
+            positionX: 100f,
+            positionY: 160f,
+            velocityX: 20f,
+            velocityY: 0f) with
+        {
+            Type = VanillaProjectileIds.CultistBossLightningOrbArc,
+            Ai = new ProjectileAiState(0f, 37f, 0f)
+        };
+        var context = new ProjectileSimulationStepContext(
+            arc,
+            new ProjectileLifecycleState(600, false),
+            SubupdateIndex: 0,
+            SubupdatesPerWorldTick: 5);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(114f, next.State.PositionX, 5);
+        Assert.Equal(160f, next.State.PositionY, 5);
+        Assert.Equal(0f, next.State.VelocityX);
+        Assert.Equal(0f, next.State.VelocityY);
+        Assert.Equal(599, next.TimeLeft);
+        Assert.Equal(ProjectileSimulationTerminationReason.None, next.TerminationReason);
+        Assert.Equal(2f, next.LocalAi!.Value.Ai1);
+    }
+
+    [Fact]
     public void Sound_gun_water_contact_uses_generic_half_speed_liquid_motion()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));

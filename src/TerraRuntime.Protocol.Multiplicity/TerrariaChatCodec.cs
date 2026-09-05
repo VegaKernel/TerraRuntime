@@ -57,8 +57,9 @@ public static class TerrariaChatCodec
         string commandName = textModule.CommandName ?? string.Empty;
         string text = textModule.ChatMessage ?? string.Empty;
         if (commandName.Length > MaximumCommandNameLength ||
-            text.Length == 0 ||
+            (commandName.Length == 0 && text.Length == 0) ||
             text.Length > MaximumTextLength ||
+            commandName.IndexOf('\0') >= 0 ||
             text.IndexOf('\0') >= 0)
         {
             return TerrariaClientChatDecodeResult.InvalidText;

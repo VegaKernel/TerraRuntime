@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="TerraRuntime.Tests" />
+    <InternalsVisibleTo Include="TerraRuntime.Application" />
     <InternalsVisibleTo Include="TerraRuntime.AtomicSaveCrashProbe" />
   </ItemGroup>
   <ItemGroup>

@@ -9,7 +9,8 @@ namespace TerraRuntime.Application;
 internal enum RuntimeProjectileLiveChildKind : byte
 {
     TornadoSegment = 1,
-    CultistIceMist = 2
+    CultistIceMist = 2,
+    CultistLightningOrb = 3
 }
 
 internal readonly record struct RuntimeProjectileLiveChildSpawnEvent(
@@ -68,6 +69,13 @@ internal sealed class RuntimeProjectileLiveChildSpawnQueue : IProjectileSimulati
         {
             // AI_086 increments ai[0] before the modulo check and emits at 30/60/90/120.
             kind = RuntimeProjectileLiveChildKind.CultistIceMist;
+        }
+        else if (initialProjectile.Type == VanillaProjectileIds.CultistBossLightningOrb &&
+                 finalProjectile.Ai.Ai0 is > 0f and < 180f &&
+                 IsThirtyUpdateBoundary(finalProjectile.Ai.Ai0))
+        {
+            // AI_088 increments ai[0] before emitting arcs at 30/60/90/120/150.
+            kind = RuntimeProjectileLiveChildKind.CultistLightningOrb;
         }
         else
         {
@@ -213,5 +221,77 @@ internal static class RuntimeCultistIceMistLiveChildSpawn1458
             parent.Damage,
             parent.KnockBack);
         return true;
+    }
+}
+
+/// <summary>TerrariaServer 1.4.5.8 AI_088 child facts for CultistBossLightningOrb (#465).</summary>
+internal static class RuntimeCultistLightningOrbLiveChildSpawn1458
+{
+    public const int MaximumTargets = 5;
+
+    public static int CopyIntents(
+        in RuntimeProjectileLiveChildSpawnEvent child,
+        VanillaProjectilePlayerTargetResolver targets,
+        VanillaUnifiedRandom1458 random,
+        Span<NpcAiProjectileIntent> intents)
+    {
+        ArgumentNullException.ThrowIfNull(targets);
+        ArgumentNullException.ThrowIfNull(random);
+        if (child.Kind != RuntimeProjectileLiveChildKind.CultistLightningOrb ||
+            child.InitialProjectile.Type != VanillaProjectileIds.CultistBossLightningOrb ||
+            intents.IsEmpty ||
+            !VanillaDefinitionCatalog.TryGet(child.InitialProjectile.Type, out VanillaProjectileDefinition definition))
+        {
+            return 0;
+        }
+
+        ProjectileSnapshot parent = child.InitialProjectile;
+        float sourceCenterX = parent.PositionX + definition.Width * 0.5f;
+        float sourceCenterY = parent.PositionY + definition.Height * 0.5f;
+        Span<PlayerSlotId> slots = stackalloc PlayerSlotId[MaximumTargets];
+        Span<float> centerXs = stackalloc float[MaximumTargets];
+        Span<float> centerYs = stackalloc float[MaximumTargets];
+        int targetCount = targets.CopyTargetsWithLineOfSight(
+            sourceCenterX,
+            sourceCenterY,
+            2000f,
+            slots,
+            centerXs,
+            centerYs);
+        int candidateCount = Math.Min(targetCount, intents.Length);
+        int count = 0;
+
+        for (int i = 0; i < candidateCount; i++)
+        {
+            float dx = centerXs[i] - sourceCenterX;
+            float dy = centerYs[i] - sourceCenterY;
+            float distance = MathF.Sqrt(dx * dx + dy * dy);
+            if (!(distance > 0f) || !float.IsFinite(distance))
+                continue;
+
+            float aiSeed = random.Next(100);
+            const double maximumRotation = Math.PI / 4d;
+            // Terraria.Utils.RotatedByRandom consumes two Main.rand samples and subtracts the angles.
+            double randomRotation = random.NextDouble() * maximumRotation - random.NextDouble() * maximumRotation;
+            double cos = Math.Cos(randomRotation);
+            double sin = Math.Sin(randomRotation);
+            float normalizedX = dx / distance;
+            float normalizedY = dy / distance;
+            float velocityX = (float)(normalizedX * cos - normalizedY * sin) * 7f;
+            float velocityY = (float)(normalizedX * sin + normalizedY * cos) * 7f;
+            intents[count++] = new NpcAiProjectileIntent(
+                VanillaProjectileIds.CultistBossLightningOrbArc,
+                sourceCenterX - 7f,
+                sourceCenterY - 7f,
+                velocityX,
+                velocityY,
+                parent.Damage,
+                0f)
+            {
+                InitialAi = new ProjectileAiState(MathF.Atan2(dy, dx), aiSeed, 0f)
+            };
+        }
+
+        return count;
     }
 }

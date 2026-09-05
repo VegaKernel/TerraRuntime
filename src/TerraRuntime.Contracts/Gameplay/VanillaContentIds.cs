@@ -450,6 +450,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId PhantasmalBolt = new(462);
     public static readonly ProjectileTypeId CultistBossIceMist = new(464);
     public static readonly ProjectileTypeId CultistBossLightningOrb = new(465);
+    public static readonly ProjectileTypeId CultistBossLightningOrbArc = new(466);
     public static readonly ProjectileTypeId CultistBossFireBall = new(467);
     public static readonly ProjectileTypeId CultistBossFireBallClone = new(468);
     public static readonly ProjectileTypeId CultistRitual = new(490);
@@ -717,4 +718,3 @@ public static class VanillaWallIds
         return true;
     }
 }
-

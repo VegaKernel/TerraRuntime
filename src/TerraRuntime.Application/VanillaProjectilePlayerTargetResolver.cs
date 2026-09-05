@@ -90,4 +90,53 @@ internal sealed class VanillaProjectilePlayerTargetResolver
         centerY = player.PositionY + PlayerCenterOffsetY;
         return float.IsFinite(centerX) && float.IsFinite(centerY);
     }
+
+    public int CopyTargetsWithLineOfSight(
+        float sourceCenterX,
+        float sourceCenterY,
+        float maxRange,
+        Span<PlayerSlotId> slots,
+        Span<float> centerXs,
+        Span<float> centerYs)
+    {
+        int capacity = Math.Min(slots.Length, Math.Min(centerXs.Length, centerYs.Length));
+        if (capacity == 0 || !(maxRange > 0f) || !float.IsFinite(maxRange) ||
+            !float.IsFinite(sourceCenterX) || !float.IsFinite(sourceCenterY))
+        {
+            return 0;
+        }
+
+        int count = 0;
+        for (int rawSlot = 0; rawSlot < byte.MaxValue && count < capacity; rawSlot++)
+        {
+            var candidateSlot = new PlayerSlotId(checked((byte)rawSlot));
+            if (!TryGetActiveTargetCenter(candidateSlot, out float centerX, out float centerY))
+                continue;
+
+            float dx = centerX - sourceCenterX;
+            float dy = centerY - sourceCenterY;
+            float distance = MathF.Sqrt(dx * dx + dy * dy);
+            if (!float.IsFinite(distance) || !(distance < maxRange) ||
+                !VanillaWorldCanHit.HasLineOfSight(
+                    tiles,
+                    sourceCenterX,
+                    sourceCenterY,
+                    1,
+                    1,
+                    centerX,
+                    centerY,
+                    1,
+                    1))
+            {
+                continue;
+            }
+
+            slots[count] = candidateSlot;
+            centerXs[count] = centerX;
+            centerYs[count] = centerY;
+            count++;
+        }
+
+        return count;
+    }
 }

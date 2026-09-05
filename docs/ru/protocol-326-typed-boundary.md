@@ -51,6 +51,8 @@ Official TerrariaServer `1.4.5.8` в `MessageBuffer` читает direction pack
 
 Direction packet `19` при decode использует ту же non-zero semantics: любой ненулевой byte даёт направление `+1`, ноль даёт `-1`. Encoder остаётся canonical и пишет только `0` или `1`.
 
+Client text module может передавать команду без аргументов, например `CommandName = "Help"` с пустым `ChatMessage`. Это корректный command traffic: он не должен классифицироваться как malformed chat или отключать клиента. Module с двумя пустыми полями остаётся невалидным.
+
 ## Independent wire evidence
 
 Golden vectors в `Protocol326VanillaGoldenWireTests` являются literal bytes, вручную выведенными из локально декомпилированного official TerrariaServer `1.4.5.8`. Проверялись следующие official switch cases:
@@ -69,6 +71,7 @@ Golden vectors в `Protocol326VanillaGoldenWireTests` являются literal b
 - vanilla non-zero boolean behavior packet `79`;
 - strict UTF-8 rejection для malformed sign text;
 - segmented fixed-payload decode и pooled segmented sign/chat/chest decode там, где ownership это допускает;
+- argumentless command text modules остаются валидными при непустом `CommandName`;
 - exact-size serialization с rejection как under-write, так и over-write до публикации frame;
 - allocation guard, не позволяющий общему Multiplicity serializer снова получить второй полный frame buffer;
 - packet-10 framing напрямую из завершённого DEFLATE writer в финальный frame array;

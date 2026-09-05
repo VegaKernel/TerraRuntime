@@ -3,6 +3,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Gameplay.Projectiles;
+using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
@@ -121,6 +122,41 @@ public sealed class RuntimeProjectileLiveChildSpawnQueueTests
         Assert.Empty(queue.Events.ToArray());
     }
 
+    [Fact]
+    public void Cultist_lightning_orb_emits_source_ordered_seeded_arcs_at_30_boundary()
+    {
+        var queue = new RuntimeProjectileLiveChildSpawnQueue(4);
+        ProjectileSnapshot initial = CreateProjectile(
+            VanillaProjectileIds.CultistBossLightningOrb, positionX: 100f, positionY: 200f,
+            velocityX: 0f, velocityY: 0f, ai0: 29f, ai1: 0f);
+        ProjectileSnapshot final = initial with { Ai = initial.Ai with { Ai0 = 30f } };
+        ProjectileLifecycleState lifecycle = new(3600, false);
+        ProjectileSimulationStepResult step = CreateStep(final, 3599);
+        queue.ProjectileSimulationCommitted(in initial, in lifecycle, [step], in final, expired: false);
+
+        RuntimeProjectileLiveChildSpawnEvent child = Assert.Single(queue.Events.ToArray());
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var targets = new VanillaProjectilePlayerTargetResolver(
+            new TwoPlayerLookup((220f, 219f), (80f, 300f)), tiles);
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[5];
+
+        int count = RuntimeCultistLightningOrbLiveChildSpawn1458.CopyIntents(
+            in child, targets, new VanillaUnifiedRandom1458(1234), intents);
+
+        Assert.Equal(2, count);
+        Assert.All(intents[..count].ToArray(), intent =>
+        {
+            Assert.Equal(VanillaProjectileIds.CultistBossLightningOrbArc, intent.Type);
+            Assert.Equal(133f, intent.PositionX, 5);
+            Assert.Equal(233f, intent.PositionY, 5);
+            Assert.Equal(7f, MathF.Sqrt(intent.VelocityX * intent.VelocityX + intent.VelocityY * intent.VelocityY), 4);
+            Assert.Equal(0f, intent.KnockBack);
+        });
+        Assert.Equal(0f, intents[0].InitialAi.Ai0, 5);
+        Assert.True(intents[1].InitialAi.Ai0 > 1f);
+        Assert.NotEqual(intents[0].InitialAi.Ai1, intents[1].InitialAi.Ai1);
+    }
+
     private static ProjectileSimulationStepResult CreateStep(ProjectileSnapshot projectile, int timeLeft) =>
         new(
             new ProjectileStateUpdate(
@@ -159,4 +195,34 @@ public sealed class RuntimeProjectileLiveChildSpawnQueueTests
             Damage: 60,
             KnockBack: 4f,
             OriginalDamage: 60);
+
+    private sealed class TwoPlayerLookup(
+        (float X, float Y) first,
+        (float X, float Y) second) : IRuntimePlayerSlotSnapshotLookup
+    {
+        public bool TryGetPlayer(PlayerSlotId slot, out PlayerStateSnapshot snapshot)
+        {
+            (float X, float Y) position = slot.Value switch
+            {
+                0 => first,
+                1 => second,
+                _ => default
+            };
+            if (slot.Value > 1)
+            {
+                snapshot = default;
+                return false;
+            }
+
+            snapshot = new PlayerStateSnapshot(
+                new PlayerHandle(slot, new PlayerSessionGeneration(1)),
+                new PlayerStateRevision(1),
+                Team: 0, ControlFlags: 0, MovementFlags: 0, MiscFlags1: 0, MiscFlags2: 0,
+                SelectedItem: 0, PositionX: position.X, PositionY: position.Y, VelocityX: 0f, VelocityY: 0f,
+                MountType: 0, PotionOfReturnOriginalPositionX: 0f, PotionOfReturnOriginalPositionY: 0f,
+                PotionOfReturnHomePositionX: 0f, PotionOfReturnHomePositionY: 0f,
+                CameraTargetX: 0f, CameraTargetY: 0f);
+            return true;
+        }
+    }
 }

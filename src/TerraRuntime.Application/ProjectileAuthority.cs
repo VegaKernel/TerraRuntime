@@ -38,12 +38,15 @@ internal sealed partial class ProjectileAuthority
     private readonly RuntimeProjectileExplosionQueue explosions;
     private readonly RuntimeProjectileChildSpawnQueue childSpawns;
     private readonly RuntimeProjectileLiveChildSpawnQueue liveChildSpawns;
+    private readonly RuntimeCultistLightningArcTrailRegistry cultistLightningArcTrails;
     private readonly IProjectileStateStepper? stepper;
     private readonly RuntimeNpcProjectileReflectionPass reflections;
     private readonly RuntimeProjectileReplicationRegistry? replication;
     private readonly Func<long> tickProvider;
     private readonly WorldTileStore? worldTiles;
     private readonly bool expertMode;
+    private readonly VanillaProjectilePlayerTargetResolver? hostilePlayerTargets;
+    private readonly VanillaUnifiedRandom1458 projectileRandom;
     private readonly RuntimeProjectileClientUseCadenceTracker trustedClientUseCadence = new();
     private readonly ProjectileSnapshot[] controlledProjectileBuffer;
     private const byte ControlUseItemFlag = 1 << 5;
@@ -58,7 +61,8 @@ internal sealed partial class ProjectileAuthority
         Func<long> tickProvider,
         bool goodWorld = false,
         WorldTileStore? worldTiles = null,
-        bool expertMode = false)
+        bool expertMode = false,
+        VanillaUnifiedRandom1458? projectileRandom = null)
     {
         this.projectiles = projectiles;
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
@@ -67,14 +71,18 @@ internal sealed partial class ProjectileAuthority
         explosions = new RuntimeProjectileExplosionQueue(projectiles.Capacity);
         childSpawns = new RuntimeProjectileChildSpawnQueue(projectiles.Capacity);
         liveChildSpawns = new RuntimeProjectileLiveChildSpawnQueue(projectiles.Capacity);
+        cultistLightningArcTrails = new RuntimeCultistLightningArcTrailRegistry(projectiles.Capacity);
         var terminationEffects = new RuntimeProjectileTerminationEffectSink(explosions, childSpawns);
-        executor = new RuntimeProjectileStateExecutor(projectiles, liveChildSpawns, terminationEffects);
+        var simulationEffects = new RuntimeProjectileSimulationCommitSink(liveChildSpawns, cultistLightningArcTrails);
+        executor = new RuntimeProjectileStateExecutor(projectiles, simulationEffects, terminationEffects);
         this.stepper = stepper;
         reflections = new RuntimeNpcProjectileReflectionPass(npcs, projectiles, playerSnapshots, goodWorld: goodWorld);
         this.replication = replication;
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
         this.worldTiles = worldTiles;
         this.expertMode = expertMode;
+        hostilePlayerTargets = worldTiles is null ? null : new VanillaProjectilePlayerTargetResolver(playerSnapshots, worldTiles);
+        this.projectileRandom = projectileRandom ?? new VanillaUnifiedRandom1458(Random.Shared.Next());
         controlledProjectileBuffer = new ProjectileSnapshot[projectiles.Capacity];
     }
 
@@ -104,6 +112,8 @@ internal sealed partial class ProjectileAuthority
 
 
     public ReadOnlySpan<RuntimeProjectileExplosionEvent> PendingExplosions => explosions.Events;
+
+    internal RuntimeCultistLightningArcTrailRegistry CultistLightningArcTrails => cultistLightningArcTrails;
 
     public void ApplyReflections() => AppliedReflections += reflections.Tick();
 

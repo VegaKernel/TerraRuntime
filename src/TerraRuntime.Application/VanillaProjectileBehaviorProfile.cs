@@ -41,7 +41,9 @@ internal enum VanillaProjectileBehaviorFamily : byte
     QueenSlimeSmash = 28,
     Sharknado = 29,
     SharknadoBolt = 30,
-    CultistIceMist = 31
+    CultistIceMist = 31,
+    CultistLightningOrb = 32,
+    CultistLightningArc = 33
 }
 
 /// <summary>
@@ -142,6 +144,22 @@ internal static class VanillaProjectileBehaviorProfileCatalog
     private static readonly VanillaProjectileBehaviorProfile CultistIceMistProfile = new(
         VanillaProjectileBehaviorFamily.CultistIceMist,
         VanillaProjectileAiStyles.CultistIceMist,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile CultistLightningOrbProfile = new(
+        VanillaProjectileBehaviorFamily.CultistLightningOrb,
+        VanillaProjectileAiStyles.CultistLightning,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile CultistLightningArcProfile = new(
+        VanillaProjectileBehaviorFamily.CultistLightningArc,
+        VanillaProjectileAiStyles.CultistLightning,
         BehaviorImplemented: true,
         RequiresDefaultAi2: true,
         RejectServerOwned: false,
@@ -442,6 +460,18 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.CultistBossIceMist)
         {
             profile = CultistIceMistProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.CultistBossLightningOrb)
+        {
+            profile = CultistLightningOrbProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.CultistBossLightningOrbArc)
+        {
+            profile = CultistLightningArcProfile;
             return true;
         }
 

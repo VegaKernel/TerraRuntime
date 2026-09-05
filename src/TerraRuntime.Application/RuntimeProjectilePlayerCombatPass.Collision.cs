@@ -66,6 +66,18 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
             return false;
         }
 
+        if (projectile.Type == VanillaProjectileIds.CultistBossLightningOrbArc)
+        {
+            return cultistLightningArcTrails.Intersects(
+                projectile.Handle,
+                definition.Width,
+                definition.Height,
+                playerLeft,
+                playerTop,
+                playerWidth,
+                playerHeight);
+        }
+
         if (projectile.Type == VanillaProjectileIds.QueenSlimeSmash)
         {
             float size = lifecycle.LocalAi.Ai1 > 0f ? lifecycle.LocalAi.Ai1 : definition.Width;

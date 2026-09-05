@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Reflection;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
@@ -199,6 +200,61 @@ public sealed class Level1PlayerTransferTests
         Assert.Equal((short)sandbox.World.RuntimeMetadata.SpawnY, spawn.SpawnY);
         Assert.Equal((byte)2, spawn.Team);
         Assert.Equal((byte)1, spawn.SpawnContext);
+    }
+
+    [Fact]
+    public async Task Cross_world_transfer_rejects_stale_source_coordinates_until_destination_landing_arrives()
+    {
+        using WorldRuntime primary = CreateRuntime("Primary", seed: 711);
+        using WorldRuntime sandbox = CreateRuntime("Arena", seed: 812);
+        primary.Start();
+        sandbox.Start();
+
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(49);
+        var outbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 8192, maxQueuedBytes: 64 * 1024 * 1024, maxFrameBytes: 4 * 1024 * 1024));
+        Assert.True(RuntimeConnectionWorldBinding.TryCreateTransferred(
+            primary,
+            source,
+            outbound,
+            new PlayerSlotId(0),
+            "Landing",
+            out RuntimeConnectionWorldBinding? binding));
+        Assert.NotNull(binding);
+        Assert.True(binding!.TryRegister());
+        using var route = new RuntimeConnectionRoute(source, outbound, binding);
+        PlayerHandle player = AssertPlayer(route.ActivePlayer);
+        await AttachInitialPlayerAsync(primary, source, player, "Landing", x: 490f, y: 300f, life: 80, maxLife: 100);
+        DrainOutbound(outbound);
+
+        Assert.True(route.TryTransfer(sandbox, forceRespawn: false, out string? error), error);
+        DrainOutbound(outbound);
+        PlayerStateSnapshot? landed = await sandbox.PlayerStateSnapshots.CaptureAsync(
+            AssertPlayer(route.ActivePlayer),
+            TestContext.Current.CancellationToken);
+        Assert.NotNull(landed);
+
+        TerrariaFrame stale = MovementFrame(player.Slot, positionX: 490f, positionY: 300f);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, route.OnFrame(in stale));
+        await Task.Delay(25, TestContext.Current.CancellationToken);
+
+        PlayerStateSnapshot? afterStale = await sandbox.PlayerStateSnapshots.CaptureAsync(
+            AssertPlayer(route.ActivePlayer),
+            TestContext.Current.CancellationToken);
+        Assert.NotNull(afterStale);
+        Assert.Equal(landed.Value.PositionX, afterStale.Value.PositionX);
+        Assert.Equal(landed.Value.PositionY, afterStale.Value.PositionY);
+
+        TerrariaFrame correction = Assert.Single(DrainOutbound(outbound));
+        Assert.Equal((byte)TerrariaMessageId.TeleportEntity, correction.MessageId);
+        byte[] payload = correction.Payload.ToArray();
+        Assert.Equal(12, payload.Length);
+        Assert.Equal(0, payload[0]);
+        Assert.Equal(player.Slot.Value, BinaryPrimitives.ReadInt16LittleEndian(payload.AsSpan(1)));
+        Assert.Equal(landed.Value.PositionX, BitConverter.Int32BitsToSingle(
+            BinaryPrimitives.ReadInt32LittleEndian(payload.AsSpan(3))));
+        Assert.Equal(landed.Value.PositionY, BitConverter.Int32BitsToSingle(
+            BinaryPrimitives.ReadInt32LittleEndian(payload.AsSpan(7))));
     }
 
     [Fact]
@@ -417,6 +473,37 @@ public sealed class Level1PlayerTransferTests
             frames.Add(frame);
         }
         return frames.ToArray();
+    }
+
+    private static TerrariaFrame MovementFrame(PlayerSlotId slot, float positionX, float positionY)
+    {
+        var movement = new PlayerMovementCommitRequest(
+            slot,
+            ControlFlags: 0,
+            MovementFlags: 0,
+            MiscFlags1: 0,
+            MiscFlags2: 0,
+            SelectedItem: 0,
+            PositionX: positionX,
+            PositionY: positionY,
+            HasVelocity: false,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            HasMount: false,
+            MountType: 0,
+            HasPotionOfReturnPositions: false,
+            PotionOfReturnOriginalPositionX: 0f,
+            PotionOfReturnOriginalPositionY: 0f,
+            PotionOfReturnHomePositionX: 0f,
+            PotionOfReturnHomePositionY: 0f,
+            HasCameraTarget: false,
+            CameraTargetX: 0f,
+            CameraTargetY: 0f);
+        byte[] encoded = TerrariaPlayerReplicationFrameEncoder.EncodeMovement(in movement);
+        var sequence = new ReadOnlySequence<byte>(encoded);
+        Assert.Equal(TerrariaFrameReadResult.Frame, TerrariaFrameDecoder.TryRead(ref sequence, out TerrariaFrame frame));
+        Assert.True(sequence.IsEmpty);
+        return frame;
     }
 
     private static PlayerHandle AssertPlayer(PlayerHandle? player)

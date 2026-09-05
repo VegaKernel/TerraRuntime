@@ -750,6 +750,19 @@ internal sealed partial class PlayerAuthority
             return;
         }
 
+        if (worldTiles is not null)
+        {
+            WorldTileDimensions dimensions = worldTiles.Dimensions;
+            if (!VanillaPlayerWorldBounds1458.ContainsTopLeft(
+                    in dimensions,
+                    request.PositionX,
+                    request.PositionY))
+            {
+                RejectedMovements++;
+                return;
+            }
+        }
+
         if (!player.TryAdvanceRevision())
         {
             RejectedMovements++;

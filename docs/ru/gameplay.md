@@ -233,8 +233,11 @@ Source-backed world step также применяет vanilla pre-AI inclusive 
 | Thrown | `2` |
 | Boomerang | `3` |
 | Controlled magic missile | `9` |
+| Cultist lightning | `88` |
 
 Definition catalog содержит growing verified set этих families: arrows, bullets/lasers, bones, shuriken/throwing-knife-style projectiles, boomerang support и controlled Magic Missile/Flamelash aiStyle-9 slice. Для этих двух channeled projectiles packet 27 передаёт только bounded cursor intent; movement, release по packet-13 use control/selected-item state, damage, mana consumption и hit resolution принадлежат серверу.
+
+Hostile Cultist lightning slice теперь владеет Orb `465` и Arc `466`. Orb использует source fade/lifetime counter и на updates `30`, `60`, `90`, `120` и `150` создаёт до пяти arcs, выбирая живых игроков в порядке физических slots в пределах `$2000\,\mathrm{px}$` при наличии line of sight. RNG дочерних снарядов сохраняет порядок вызовов Terraria `UnifiedRandom`. Каждая Arc выполняет пять subupdates за world tick, получает новый поворот каждый восьмой subupdate из синхронизированного `ai[1]`, при столкновении с тайлом останавливается, а не исчезает, generation-safe хранит source trail из 20 позиций и использует этот trail для authoritative collision с игроком до его схлопывания.
 
 Это **не** complete Terraria projectile parity. Unsupported irreversible side effects, child spawning, immunity, penetration, specialized AI, damage и kill effects остаются explicit boundaries, а не guessed behavior.
 
@@ -298,6 +301,8 @@ flowchart LR
 ```
 
 Runtime replication registries существуют для player-related events, NPCs, projectiles, world items, chests, signs и tile manipulation.
+
+Входящий liquid packet `48` является bounded client proposal. Для текущего поколения игрока world writer проверяет tile bounds, дальность `$12\,\text{tiles}$`, вид жидкости и per-connection edit budget, затем коммитит точные decoded amount/type через `VanillaWorldLiquidMutationService`. Mutation планирует authoritative settling и публикует normalized cell всем playing clients. Значение клиента больше не отбрасывается как один лишь wake-up hint, а distant, malformed или saturated proposals по-прежнему fail closed.
 
 Separation важно, потому что одна mutation может иметь много recipients, recipients меняются interest management, identical encoded state может safe-share'иться, а persistence не должна зависеть от того, что последний раз отправили client.
 

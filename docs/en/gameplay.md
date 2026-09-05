@@ -233,8 +233,11 @@ The source-backed world step also applies vanilla's pre-AI inclusive world-edge 
 | Thrown | `2` |
 | Boomerang | `3` |
 | Controlled magic missile | `9` |
+| Cultist lightning | `88` |
 
 The definition catalog contains a growing verified set across these families, including multiple arrows, bullets/lasers, bones, shuriken/throwing-knife-style projectiles, boomerang support and the controlled Magic Missile/Flamelash aiStyle-9 slice. For those two channeled projectiles packet 27 contributes only bounded cursor intent; the server owns movement, release from packet-13 use control/selected-item state, damage, mana consumption and hit resolution.
+
+The hostile Cultist lightning slice now owns Orb `465` and Arc `466`. The orb uses its source fade/lifetime counter and emits up to five arcs at updates `30`, `60`, `90`, `120` and `150`, selecting live players in physical slot order within the `$2000\,\mathrm{px}$` line-of-sight envelope. Child randomness preserves the Terraria `UnifiedRandom` call order. Each arc executes five subupdates per world tick, derives every eighth-subupdate turn from synchronized `ai[1]`, stops rather than expires on tile impact, retains the source 20-position trail generation-safely and uses that trail for authoritative player collision until it collapses.
 
 This still does **not** mean complete Terraria projectile parity. Unsupported irreversible side effects, child spawning, immunity, penetration, specialized AI, damage and kill effects must remain explicit boundaries rather than silently guessed behavior.
 
@@ -298,6 +301,8 @@ flowchart LR
 ```
 
 Runtime replication registries exist for multiple entity/object classes, including player-related events, NPCs, projectiles, world items, chests, signs and tile manipulation.
+
+Inbound liquid packet `48` is a bounded client proposal. For the current player generation, the world writer validates tile bounds, `$12\,\text{tiles}$` reach, liquid kind and the per-connection edit budget, then commits the exact decoded amount/type through `VanillaWorldLiquidMutationService`. The mutation schedules authoritative settling and publishes the normalized cell to all playing clients. The client value is therefore no longer discarded as a wake-up-only hint, while distant, malformed or saturated proposals still fail closed.
 
 This separation matters because one mutation may have multiple recipients, recipients may change under interest management, identical encoded state can be shared where safe, and persistence must not depend on what was last sent to a client.
 

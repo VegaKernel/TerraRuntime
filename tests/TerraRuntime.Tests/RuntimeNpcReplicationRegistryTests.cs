@@ -8,6 +8,21 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimeNpcReplicationRegistryTests
 {
     [Fact]
+    public void World_transfer_cleanup_tracks_active_npc_despawns_only()
+    {
+        var replication = new RuntimeNpcReplicationRegistry();
+        NpcSnapshot npc = CreateNpc(revision: 1, positionX: 100f);
+
+        replication.NpcStateCommitted(NpcStateCommitKind.Spawn, in npc);
+
+        Assert.Single(replication.CaptureWorldTransferDespawnFrames());
+
+        replication.NpcStateCommitted(NpcStateCommitKind.Despawn, in npc);
+
+        Assert.Empty(replication.CaptureWorldTransferDespawnFrames());
+    }
+
+    [Fact]
     public void Existing_npc_is_sent_as_spawn_baseline_only_after_player_enters_playing_state()
     {
         var replication = new RuntimeNpcReplicationRegistry();
