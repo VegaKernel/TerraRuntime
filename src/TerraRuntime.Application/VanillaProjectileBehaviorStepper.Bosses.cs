@@ -439,7 +439,7 @@ internal static partial class VanillaProjectileBehaviorStepper
     {
         // TerrariaServer 1.4.5.8 AI(), aiStyle 88, type 466. Projectile.frameCounter is retained in
         // runtime-only localAI[2]. Once stopped, localAI[0] is no longer read by vanilla direction selection,
-        // so TerraRuntime reuses it as the number of collapsed 20-point trail samples needed for exact expiry.
+        // so TerraRuntime reuses it as a bounded count of collapsed 20-point trail samples for expiry.
         const int turnSubupdateInterval = 8;
         const int trailLength = 20;
         float velocityX = current.VelocityX;
