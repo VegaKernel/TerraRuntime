@@ -14,7 +14,7 @@ Actuation требует active tile и установленный actuator. Cir
 
 `VanillaWorldLiquidMutationService` владеет `SetLiquid` и `ClearLiquid`. Он проверяет именованный `WorldLiquidKind`, canonicalizes empty cell в zero Water state, сохраняет unrelated tile state и планирует изменённую cell вместе с in-bounds orthogonal neighbors в `WorldLiquidUpdateQueue`.
 
-Material state и scheduler state остаются отдельными и уже сохраняются runtime world snapshots. Flow, settling, реакции water/lava/honey/shimmer и bounded per-tick simulation consumer остаются явными capability gaps.
+Material state и scheduler state остаются отдельными и уже сохраняются runtime world snapshots. `VanillaWorldLiquidSimulator1458` теперь потребляет очередь с фиксированным per-tick budget, выполняет проверенный ordinary same-kind gravity/horizontal settling slice и воспроизводит open/inactive-cell material reactions `Liquid.LiquidCheck` для water/lava/honey/shimmer. Merge products и порог 24 units source-pinned, material blocks реплицируются packet 20, а неподдержанные active replacement/cut/container paths fail closed. Обычный dedicated-server `kill` lifecycle также source-backed: одна запись продвигается максимум на один logical liquid update за TerraRuntime tick, изменение amount сбрасывает `kill` и будит клетку сверху, стабильные `254` нормализуются в `255` при retirement, а порог retirement повторяет TerrariaServer 1.4.5.8 `10 + activePlayersInSlots0To14 / 3`. Water ниже `Main.UnderworldLayer == maxTilesY - 200` теряет две units за liquid update. Оставшиеся gaps: side effects active `tileObsidianKill`/`tileCut`/container, `quickFall`/`quickSettle`, panic/forced-settle behavior и полная parity post-load initialization.
 
 ## Growth и spread
 
@@ -24,4 +24,4 @@ Random selection, light/biome/time checks, source-specific adjacency/support rul
 
 ## Статус roadmap
 
-Это завершает checkpoint **декомпозиции** D5: wiring, liquids и growth больше не должны делить raw flag/field writes или packet-owned mutation code. Это не заявление о полной Terraria simulation parity. Новые circuit devices, liquid reactions и growth families должны входить через эти boundaries с source-backed rules и per-tick budgets.
+Это завершает checkpoint **декомпозиции** D5: wiring, liquids и growth больше не должны делить raw flag/field writes или packet-owned mutation code. Ordinary liquid flow/material-reaction runtime теперь использует эти boundaries, но это не заявление о полной Terraria simulation parity. Новые circuit devices, оставшиеся liquid lifecycle/object-interaction paths и growth families должны входить через эти boundaries с source-backed rules и per-tick budgets.

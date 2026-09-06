@@ -102,6 +102,8 @@ The typed-boundary migration now also covers client `packet 61` boss/invasion re
 
 The 2026-09-06 Level 1 live-stability slice closes the observed delayed-coordinate transfer failure: replacement bootstrap now removes source NPC projections, gates stale packet-13 samples until destination landing, applies the source-backed `$640\,\mathrm{px}$` player world border before authoritative movement/section streaming, accepts argumentless text commands without disconnecting, and commits bounded packet-48 liquid state instead of treating it only as a scheduler wake-up. Real-client revalidation remains required for the reported transfer/render crash scenarios.
 
+The same checkpoint also replaces the runtime liquid simulator's former one-sided 32-unit horizontal trickle with the verified ordinary same-kind `Liquid.Update` gravity-first and 2/3/4/5/7-cell horizontal leveling shape from TerrariaServer 1.4.5.8. Follow-up slices close partial downward-fill continuation, the vanilla `$255 \rightarrow 254$` one-unit preservation case, the fed-source-column exception in 5/7-cell averaging, the source-backed lava/honey flow delays, ordinary open-cell `LiquidCheck` material reactions with packet-20 material replication, the dedicated-server `kill` retirement tail (`10 + activePlayersInSlots0To14 / 3`), and two-unit Underworld water evaporation below `maxTilesY - 200`. Full liquid parity remains open for active `tileObsidianKill`/`tileCut`/container side effects, `quickFall`/`quickSettle`, panic/forced-settle behavior and complete post-load initialization.
+
 ### Framing
 
 - [x] Incremental parser for `[u16 length][u8 message id][payload]`.

@@ -267,7 +267,11 @@ Buffs и prefixes теперь имеют typed version-pinned identity ranges �
 
 Wiring, liquid material и growth commits теперь имеют отдельные typed mutation boundaries. Liquids также имеют explicit runtime work queue, persistable через warm snapshots.
 
-Эта декомпозиция не является full vanilla simulation. Circuit traversal/devices, liquid flow/reactions и families growth/spread rules остаются incomplete.
+Обычное settling жидкости одного вида теперь повторяет verified-схему TerrariaServer 1.4.5.8 `Liquid.Update`: сначала gravity transfer, затем при оставшейся жидкости horizontal leveling в том же update. Сохранён vanilla-случай полного source `255 -> 254`, где нижняя клетка добирает одну единицу без уменьшения source. Горизонтальный проход использует source-backed окна усреднения на 2/3/4/5/7 клеток; ветки на 5/7 клеток также сохраняют подпитываемую source-column, когда соседи уже равны округлённому уровню. Lava и honey используют source-backed задержки потока на пять и десять updates.
+
+Обычные open-cell material-contact paths из `Liquid.LiquidCheck` теперь также authoritative. Water будит соседние lava/honey/shimmer и оставляет выбор merge-location update чужого типа жидкости. Проверенные merges создают Obsidian (`56`) для water/lava, Honey Block (`229`) для water/honey, Crispy Honey Block (`230`) для lava/honey и Shimmer Block (`659`), когда shimmer побеждает в source-order выборе merge. Vanilla-порог `24` units, поглощение чужой жидкости слева/справа/сверху, очистка source меньше `24` над чужой жидкостью и packet-20 tile-square replication для material mutations закреплены focused runtime tests.
+
+Обычный dedicated-server lifecycle активной liquid entry теперь также входит в authoritative slice. Одна liquid entry может продвинуться максимум на один logical update за TerraRuntime tick даже при work budget больше единицы, изменение amount сбрасывает `kill` и будит клетку сверху, стабильные entries retire по порогу TerrariaServer 1.4.5.8 `10 + activePlayersInSlots0To14 / 3`, а стабильные `254` при retirement нормализуются в `255`. Water ниже `Main.UnderworldLayer == maxTilesY - 200` испаряется по две units за liquid update. Полная vanilla liquid simulation всё ещё не закрыта для active `tileObsidianKill`, разрушения `tileCut`, container-specific lower-cell handling, `quickFall`/`quickSettle`, panic/forced-settle paths и полной post-load initialization parity. Circuit traversal/devices и families growth/spread rules также остаются отдельной работой.
 
 Эти subsystems order-sensitive и могут затрагивать large world areas, поэтому implementation сочетает exact behavioral verification, global bounded per-tick work, deterministic owner-thread commits, dirty/replication tracking и save compatibility.
 
@@ -283,9 +287,9 @@ Permanent milestones, active events и invasion identities теперь прое
 
 TerraRuntime имеет world-generation **framework** с provider registration, planning, ordered passes, isolated workspace execution и final validation.
 
-Built-in generator сейчас deterministic flat dirt/stone baseline и explicitly не approximation vanilla Terraria WorldGen.
+Built-in catalog теперь включает source-backed vanilla provider Terraria `1.4.5.8` наряду с flat, optimized и skyblock providers. Canonical small-world integration уже проверяет source-shaped terrain, framed trees, много-комнатный dungeon graph, покрытие Underworld ash/hellstone/lava, footprints jungle/snow/desert/evil biome и generated chests с непустыми source-pinned loot families. Этот же provider используется генерацией sandbox.
 
-Vanilla worldgen остаётся incomplete, хотя architecture custom/pluggable worldgen развита существенно.
+Vanilla worldgen parity всё ещё incomplete: успешное structural/content coverage не означает bit-identical output `WorldGen`, а оставшиеся passes и order-sensitive RNG behavior требуют дальнейшего source-backed porting и differential evidence.
 
 ## 24. Replication
 

@@ -88,6 +88,39 @@ public sealed class RuntimeTileManipulationReplicationRegistryTests
     }
 
     [Fact]
+    public void Server_authored_tile_square_is_relayed_to_every_playing_peer()
+    {
+        var replication = new RuntimeTileManipulationReplicationRegistry();
+        GameCommandSourceId sourceA = GameCommandSourceId.FromConnection(807);
+        GameCommandSourceId sourceB = GameCommandSourceId.FromConnection(808);
+        TerrariaConnectionOutboundQueue outboundA = CreateOutbound();
+        TerrariaConnectionOutboundQueue outboundB = CreateOutbound();
+        Assert.True(replication.TryRegister(sourceA, outboundA));
+        Assert.True(replication.TryRegister(sourceB, outboundB));
+        ConnectionHandle playerA = Connection(sourceA, slot: 6, generation: 1);
+        ConnectionHandle playerB = Connection(sourceB, slot: 7, generation: 1);
+        PlayerSpawnCommitRequest spawnA = Spawn(playerA.Player.Slot);
+        PlayerSpawnCommitRequest spawnB = Spawn(playerB.Player.Slot);
+        replication.PlayerSpawned(playerA, in spawnA);
+        replication.PlayerSpawned(playerB, in spawnB);
+
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        WorldTile merge = tiles.Get(20, 20);
+        merge.Flags |= WorldTileFlags.Active;
+        Assert.True(merge.TrySetTileType(VanillaTileIds.Obsidian));
+        tiles.Set(20, 20, in merge);
+
+        Assert.True(replication.TryPublishTileSquareToAll(tiles, 20, 20));
+
+        Assert.Equal(1, outboundA.QueuedFrames);
+        Assert.Equal(1, outboundB.QueuedFrames);
+        Assert.Equal((byte)TerrariaMessageId.TileSquare, DequeueFrame(outboundA).MessageId);
+        Assert.Equal((byte)TerrariaMessageId.TileSquare, DequeueFrame(outboundB).MessageId);
+        Assert.Equal(2, replication.RelayedFrames);
+        Assert.Equal(0, replication.EncodeFailures);
+    }
+
+    [Fact]
     public void Disconnect_removes_playing_generation_from_live_relay()
     {
         var replication = new RuntimeTileManipulationReplicationRegistry();

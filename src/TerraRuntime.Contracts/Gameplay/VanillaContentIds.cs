@@ -610,6 +610,8 @@ public static class VanillaTileIds
     public static readonly TileTypeId CrimtaneBrick = new(347);
     public static readonly TileTypeId Hive = new(225);
     public static readonly TileTypeId LihzahrdBrick = new(226);
+    public static readonly TileTypeId HoneyBlock = new(229);
+    public static readonly TileTypeId CrispyHoneyBlock = new(230);
     public static readonly TileTypeId Larva = new(231);
     public static readonly TileTypeId LihzahrdAltar = new(237);
     public static readonly TileTypeId Marble = new(367);
@@ -640,6 +642,7 @@ public static class VanillaTileIds
     public static readonly TileTypeId TeleportationPylon = new(597);
     public static readonly TileTypeId StinkbugHousingBlocker = new(630);
     public static readonly TileTypeId StinkbugHousingBlockerEcho = new(631);
+    public static readonly TileTypeId ShimmerBlock = new(659);
     public static readonly TileTypeId AncientBlueBrick = new(677);
     public static readonly TileTypeId AncientGreenBrick = new(678);
     public static readonly TileTypeId AncientPinkBrick = new(679);

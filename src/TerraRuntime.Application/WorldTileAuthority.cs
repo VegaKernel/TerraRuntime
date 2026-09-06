@@ -111,11 +111,25 @@ internal sealed class WorldTileAuthority
             return;
 
         Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[
-            VanillaWorldLiquidSimulator1458.DefaultWorkBudgetPerTick * 2];
-        int count = liquidSimulator.Tick(changes);
+            VanillaWorldLiquidSimulator1458.DefaultWorkBudgetPerTick *
+            VanillaWorldLiquidSimulator1458.MaximumChangesPerProcessedCell];
+        int activeServerPlayersInLiquidWindow = 0;
+        foreach (RuntimePlayerMember player in players.Members)
+        {
+            if (player.Slot.Value < VanillaWorldLiquidSimulator1458.DedicatedServerCountedPlayerSlots1458)
+                activeServerPlayersInLiquidWindow++;
+        }
+
+        int count = liquidSimulator.Tick(activeServerPlayersInLiquidWindow, changes);
         for (int i = 0; i < count; i++)
         {
             WorldLiquidSimulationChange change = changes[i];
+            if (change.RequiresTileSquareReplication)
+            {
+                replication?.TryPublishTileSquareToAll(tiles, change.X, change.Y);
+                continue;
+            }
+
             var state = new TerrariaLiquidState(
                 checked((short)change.X),
                 checked((short)change.Y),

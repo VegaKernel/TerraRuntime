@@ -72,7 +72,7 @@ public sealed class VanillaWorldTileMutationServiceTests
 
         var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 16, discoveryBudgetPerTick: 1);
         Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[32];
-        Assert.True(simulator.Tick(changes) > 0);
+        Assert.True(simulator.Tick(activeServerPlayersInLiquidWindow: 0, changes) > 0);
         Assert.Equal((byte)0, tiles.Get(10, 9).LiquidAmount);
         int downwardMass = 0;
         for (int y = 10; y < tiles.Dimensions.HeightTiles; y++)

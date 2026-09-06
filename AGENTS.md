@@ -2,7 +2,7 @@
 
 These instructions apply to every coding agent working in this repository.
 
-Before non-trivial work, read the relevant parts of `docs/roadmap.md` and `docs/native-aot-baseline.md`. Follow the roadmap unless the requested change requires correcting it first.
+Before non-trivial work, read `docs/agent-memory/work-state.md` and `docs/agent-memory/production-graph.md`, then the relevant parts of `docs/roadmap.md` and `docs/native-aot-baseline.md`. When touching vanilla behavior or protocol semantics, also read `docs/agent-memory/verified-vanilla.md`. Follow the roadmap unless the requested change requires correcting it first. Keep the agent-memory files current when a substantial pass changes their recorded facts or resume point.
 
 ## 1. Source-of-truth hierarchy
 
@@ -162,3 +162,5 @@ A non-trivial change is not done until the relevant checks are green:
 If CI or a smoke path is red, fix it before stacking unrelated roadmap work on top.
 
 When implementation changes what is actually supported, update the roadmap/status documentation in the same work so documentation does not describe a different server than the code.
+
+Before producing a clean checkpoint ZIP, update `docs/agent-memory/work-state.md` with the checkpoint name and exact resume state, and refresh `production-graph.md` / `verified-vanilla.md` when their facts changed.

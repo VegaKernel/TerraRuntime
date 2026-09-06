@@ -73,6 +73,32 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
         return true;
     }
 
+    /// <summary>
+    /// Publishes a server-authored 3x3 authoritative tile square around a runtime material mutation.
+    /// Liquid merge reactions are only admitted at the one-tile world margin, matching vanilla
+    /// <c>Liquid.LiquidCheck</c>, so the exact surrounding 3x3 square is always representable.
+    /// </summary>
+    public bool TryPublishTileSquareToAll(WorldTileStore tiles, int tileX, int tileY)
+    {
+        ArgumentNullException.ThrowIfNull(tiles);
+        if (tileX <= 0 || tileY <= 0 ||
+            tileX + 1 >= tiles.Dimensions.WidthTiles ||
+            tileY + 1 >= tiles.Dimensions.HeightTiles ||
+            !TerrariaTileSquareCodec.TryEncode(
+                tiles,
+                tileX - 1,
+                tileY - 1,
+                width: 3,
+                height: 3,
+                out byte[] encoded))
+        {
+            Interlocked.Increment(ref encodeFailures);
+            return false;
+        }
+
+        return TryPublishFrameToAll(encoded);
+    }
+
     public bool TryPublishPlaceObject(
         GameCommandSourceId excludedSource,
         in TerrariaPlaceObjectState state)

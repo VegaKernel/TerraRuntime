@@ -36,6 +36,76 @@ public sealed class ServerRuntimeTileReplicationIntegrationTests
     }
 
     [Fact]
+    public void Liquid_material_merge_tick_relays_authoritative_tile_square_to_every_playing_peer()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle first = fixture.SpawnPlayer(909);
+        ConnectionHandle second = fixture.SpawnPlayer(910);
+
+        var lava = new WorldTile
+        {
+            LiquidAmount = byte.MaxValue,
+            LiquidKind = WorldLiquidKind.Lava
+        };
+        var water = new WorldTile
+        {
+            LiquidAmount = 24,
+            LiquidKind = WorldLiquidKind.Water
+        };
+        fixture.Tiles.Set(12, 10, in lava);
+        fixture.Tiles.Set(12, 9, in water);
+        fixture.Tiles.LiquidUpdates.Clear();
+        Assert.True(fixture.Tiles.LiquidUpdates.TryEnqueue(12, 10));
+
+        fixture.State.Tick();
+
+        WorldTile merged = fixture.Tiles.Get(12, 10);
+        Assert.True(merged.IsActive);
+        Assert.Equal(VanillaTileIds.Obsidian, merged.TileType);
+        Assert.Equal((byte)0, merged.LiquidAmount);
+        Assert.Equal((byte)0, fixture.Tiles.Get(12, 9).LiquidAmount);
+
+        Assert.Contains(DrainFrames(fixture.Outbound(first)), frame =>
+            frame.MessageId == (byte)TerrariaMessageId.TileSquare);
+        Assert.Contains(DrainFrames(fixture.Outbound(second)), frame =>
+            frame.MessageId == (byte)TerrariaMessageId.TileSquare);
+        Assert.Equal(4, fixture.Replication.RelayedFrames);
+        Assert.Equal(0, fixture.Replication.EncodeFailures);
+    }
+
+    [Fact]
+    public void Three_active_players_extend_dedicated_server_liquid_retirement_to_eleven_updates()
+    {
+        using var fixture = new Fixture();
+        _ = fixture.SpawnPlayer(911);
+        _ = fixture.SpawnPlayer(912);
+        _ = fixture.SpawnPlayer(913);
+
+        var water = new WorldTile
+        {
+            LiquidAmount = 200,
+            LiquidKind = WorldLiquidKind.Water
+        };
+        var stone = new WorldTile
+        {
+            Type = checked((ushort)VanillaTileIds.Stone.Value),
+            Flags = WorldTileFlags.Active
+        };
+        fixture.Tiles.Set(12, 10, in water);
+        fixture.Tiles.Set(11, 10, in stone);
+        fixture.Tiles.Set(13, 10, in stone);
+        fixture.Tiles.Set(12, 11, in stone);
+        fixture.Tiles.LiquidUpdates.Clear();
+        Assert.True(fixture.Tiles.LiquidUpdates.TryEnqueue(12, 10, delay: 0, kill: 9));
+
+        fixture.State.Tick();
+        Assert.Equal(1, fixture.Tiles.LiquidUpdates.ActiveCount);
+
+        fixture.State.Tick();
+        Assert.Equal(0, fixture.Tiles.LiquidUpdates.ActiveCount);
+    }
+
+    [Fact]
     public void Successful_authoritative_dirt_commit_relays_to_peer_but_not_origin()
     {
         using var fixture = new Fixture();
@@ -147,7 +217,7 @@ public sealed class ServerRuntimeTileReplicationIntegrationTests
 
     private sealed class Fixture : IDisposable
     {
-        private readonly PlayerSlotPool slots = new(2);
+        private readonly PlayerSlotPool slots = new(3);
         private readonly List<PlayerJoinSession> sessions = [];
         private readonly Dictionary<GameCommandSourceId, TerrariaConnectionOutboundQueue> outbound = [];
 
@@ -206,6 +276,14 @@ public sealed class ServerRuntimeTileReplicationIntegrationTests
             foreach (PlayerJoinSession session in sessions)
                 session.Dispose();
         }
+    }
+
+    private static TerrariaFrame[] DrainFrames(TerrariaConnectionOutboundQueue outbound)
+    {
+        var frames = new List<TerrariaFrame>(outbound.QueuedFrames);
+        while (outbound.QueuedFrames > 0)
+            frames.Add(DequeueFrame(outbound));
+        return [.. frames];
     }
 
     private static TerrariaFrame DequeueFrame(TerrariaConnectionOutboundQueue outbound)

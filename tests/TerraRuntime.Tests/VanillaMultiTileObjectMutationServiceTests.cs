@@ -186,7 +186,7 @@ public sealed class VanillaMultiTileObjectMutationServiceTests
 
         var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 32, discoveryBudgetPerTick: 1);
         Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[64];
-        _ = simulator.Tick(changes);
+        _ = simulator.Tick(activeServerPlayersInLiquidWindow: 0, changes);
 
         Assert.Equal((byte)0, tiles.Get(210, 159).LiquidAmount);
         int massBelow = 0;
