@@ -123,7 +123,7 @@ Runtime нормализует `--world` до абсолютного пути. �
 
 ### Смена listener endpoint на живом сервере
 
-Пара `--bind`/`--port` задаёт только начальный public endpoint. Во время работы сервера **Settings → Runtime settings** и видимая кнопка **Settings** на System Dashboard позволяют заменить bind-address и/или порт без отключения уже принятых клиентов. DNS lookup намеренно не входит в этот control surface: используется numeric IPv4/IPv6, `*`/`any` либо `localhost`.
+Пара `--bind`/`--port` задаёт только начальный public endpoint. Во время работы сервера **Settings → Runtime settings** позволяет заменить bind-address и/или порт без отключения уже принятых клиентов. На System Dashboard намеренно нет дублирующей кнопки Settings. DNS lookup не входит в этот control surface: используется numeric IPv4/IPv6, `*`/`any` либо `localhost`.
 
 `ListenerManager` владеет listening sockets по поколениям, а `ServerConnectionAcceptor` независимо владеет уже accepted client sockets. У каждого поколения listener есть явный lifecycle:
 

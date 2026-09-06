@@ -12,8 +12,8 @@
 flowchart LR
     Console["Console\nнастраиваемый Logs + Chat feed\ncommand line"]
     subgraph Right["Правая колонка"]
-        Network["Network graph"]
-        Worlds["Worlds / Players\nTPS каждого мира"]
+        Network["Network\npackets/s graph"]
+        Worlds["Worlds / Players\nTPS каждого мира + bots"]
     end
     Console --- Right
 ```
@@ -35,9 +35,9 @@ Console занимает примерно две трети workspace. Спра�
 
 Roster переведён на `ListView`: focus/selection выделяет пункт целиком, а не текст внутри строки. Drag-and-drop игрока отправляет typed Level 1 move operation с точным `PlayerHandle` (`slot + generation`), захваченным в момент начала drag. Этот captured source остаётся неизменным до release кнопки, поэтому ни фоновый refresh/reorder, ни повторные held-button mouse events над строкой другого игрока не могут подменить переносимого player. Drop surface — вся ветка destination world: заголовок мира, строка любого игрока этой ветки и `<no players>` placeholder ведут в один и тот же semantic target.
 
-У actionable строк sandbox-world и player справа выводится явное действие `[X]`. Нажатие открывает confirmation dialog: для sandbox подтверждается `Destroy`, для player — `Kick`. Уничтожение primary мира намеренно не предлагается. `Kick` запрашивает закрытие process-owned connection через connection route/outbound queue; UI не удаляет строку самостоятельно и не мутирует player state напрямую.
+У actionable строк sandbox-world, player и bot справа выводится явное действие `[X]`. Нажатие проходит через typed operations: для sandbox подтверждается `Destroy`, для player — `Kick`, для bot запрашивается typed despawn. Уничтожение primary мира намеренно не предлагается. `Kick` запрашивает закрытие process-owned connection через connection route/outbound queue; UI никогда не удаляет authoritative state напрямую.
 
-Кнопка `+` сверху roster открывает окно создания sandbox. Форма напрямую отображает typed sandbox creation surface:
+Action row roster содержит ровно **`+ Sandbox`**, затем **`+ Bot`**. `+ Sandbox` открывает окно создания sandbox. Форма напрямую отображает typed sandbox creation surface:
 
 - имя sandbox;
 - один dropdown isolation с вариантами `In-process sandbox isolation` и `Dedicated-process sandbox isolation`;
@@ -48,6 +48,10 @@ Roster переведён на `ListView`: focus/selection выделяет пу
 - выпадающий список evil: Corruption и Crimson.
 
 Форма строит тот же typed `SandboxCreateRequest`, который использует command handling, а не собирает строку команды и не парсит её повторно.
+
+`+ Bot` по умолчанию создаёт PlayerBot в primary world. Строки bot показывают body kind; double-click открывает typed settings window с PlayerBot/NpcBot body, source-verified NPC preset, clothing/armor, weapon policy, target, режимом Idle/Follow/Guard и toggles pickup/consumables. PlayerBot переиспользует обычные server-player/projectile/world-item authorities. NpcBot является настоящим authoritative hostile-NPC presentation/motion actor; presets ограничены verified ground-fighter, AI_002 flying-eye, AI_005 flyer и обычными pre-wander AI_014 bat motion families. Тело бота имеет zero contact damage и invulnerability до появления bot-specific death/drop semantics; неподтверждённая NPC combat semantics остаётся fail-closed.
+
+На dashboard **нет дублирующей видимой кнопки Settings**. Runtime listener/settings controls остаются в **Settings → Runtime settings**.
 
 ## Player details и GodMode
 
@@ -81,7 +85,7 @@ feed level debug|info|warn|error
 
 ## Network graph
 
-Network использует bounded custom block-column view для истории inbound/outbound throughput. IN рисуется по левой вертикальной шкале, OUT — по независимой правой, а временная ось у них общая. Направления имеют разные attributes и столбцы `█` / `▓`; `▒` показывает наложение. Поскольку IN и OUT нормализуются независимо, тихий поток 2 KiB/s остаётся видимым рядом с потоком в несколько MiB/s и не сплющивается общей шкалой. Legend по-прежнему показывает текущие packet rate и throughput в `KiB/s`. Rate считается по разнице process-lifetime message counters между detached snapshots. Некорректный interval или rollback counters сбрасывает локальный sample вместо искусственного spike.
+Network использует bounded custom block-column view для истории inbound/outbound **packet rate**. IN рисуется по левой вертикальной шкале, OUT — по независимой правой, а временная ось у них общая. Направления имеют разные attributes и столбцы `█` / `▓`; `▒` показывает наложение. Поскольку packet rates IN и OUT нормализуются независимо, тихое направление остаётся видимым рядом с интенсивным и не сплющивается общей шкалой. Numeric legend показывает одновременно текущий packet rate (`p/s`) и byte throughput (`KiB/s` или `MiB/s`). Rates считаются по разнице process-lifetime message counters и byte counters между detached snapshots. Некорректный interval или rollback counters сбрасывает локальный sample вместо искусственного spike.
 
 Detail screen Network дополнительно показывает самые тяжёлые Terraria message IDs из rolling message-traffic window: направление, numeric ID, известное enum-имя, frames/s, KiB/s и lifetime frame count. Это позволяет отличить нормальный entity replication от конкретного packet family, которое создаёт аномальный outbound поток, не включая глобальный packet dump.
 

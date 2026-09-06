@@ -81,7 +81,7 @@ public sealed class RuntimeNpcActorControlRegistryTests
     }
 
     [Fact]
-    public void Initial_slice_rejects_npc_families_without_verified_walking_actor_physics()
+    public void Unsupported_npc_families_stay_fail_closed()
     {
         var store = new RuntimeNpcStore(capacity: 2);
         NpcStateUpdate initial = CreateNpc(VanillaNpcIds.BlueSlime.Value);
@@ -91,6 +91,34 @@ public sealed class RuntimeNpcActorControlRegistryTests
         Assert.Equal(
             NpcActorControlAcquireResult.UnsupportedNpcType,
             controls.TryAcquire(slime.Handle, new ActorControllerId("test:slime"), out _));
+    }
+
+    public static TheoryData<int, VanillaNpcActorControlMotionFamily1458> VerifiedFlyingActorControlCases => new()
+    {
+        { VanillaNpcIds.DemonEye.Value, VanillaNpcActorControlMotionFamily1458.FlyingEye },
+        { VanillaNpcIds.EaterOfSouls.Value, VanillaNpcActorControlMotionFamily1458.Flyer },
+        { VanillaNpcIds.CaveBat.Value, VanillaNpcActorControlMotionFamily1458.Bat }
+    };
+
+    [Theory]
+    [MemberData(nameof(VerifiedFlyingActorControlCases))]
+    public void Verified_flying_families_accept_actor_control(
+        int npcType,
+        VanillaNpcActorControlMotionFamily1458 expectedFamily)
+    {
+        var store = new RuntimeNpcStore(capacity: 2);
+        NpcStateUpdate initial = CreateNpc(npcType);
+        Assert.True(store.TrySpawn(0, in initial, out NpcSnapshot npc));
+        var controls = new RuntimeNpcActorControlRegistry(store);
+
+        Assert.True(NpcTypeId.TryCreate(npcType, out NpcTypeId type));
+        Assert.True(VanillaNpcActorControlSupport1458.TryGetMotionFamily(
+            type,
+            out VanillaNpcActorControlMotionFamily1458 family));
+        Assert.Equal(expectedFamily, family);
+        Assert.Equal(
+            NpcActorControlAcquireResult.Acquired,
+            controls.TryAcquire(npc.Handle, new ActorControllerId("test:flying"), out _));
     }
 
     private static NpcStateUpdate CreateNpc(int type) =>

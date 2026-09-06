@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Gameplay.Npcs;
 
 namespace TerraRuntime.Core.Npcs;
 
@@ -94,7 +95,7 @@ public sealed class RuntimeNpcActorControlRegistry
             return NpcActorControlAcquireResult.InvalidController;
         }
 
-        if (snapshot.TypeIdentity != VanillaNpcIds.Zombie)
+        if (!VanillaNpcActorControlSupport1458.IsSupported(snapshot.TypeIdentity))
         {
             lease = null;
             return NpcActorControlAcquireResult.UnsupportedNpcType;

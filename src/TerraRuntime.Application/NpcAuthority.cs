@@ -158,7 +158,7 @@ internal sealed class NpcAuthority
             evilBossDownedBaseline,
             projectiles);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
-            projectiles, npcs, combat, players, tickProvider);
+            projectiles, npcs, combat, players, tickProvider, serverPlayers: serverPlayers);
         townNpcAuthority.SetMeleeDamageSink(combat);
 
         if (npcAiStepper is null)
@@ -323,6 +323,113 @@ internal sealed class NpcAuthority
     public bool TryCapture(NpcHandle npc, out NpcSnapshot snapshot) => npcs.TryGet(npc, out snapshot);
 
     public int CopyActive(Span<NpcSnapshot> destination) => npcs.CopyActive(destination);
+
+    /// <summary>
+    /// Creates one runtime-owned hostile-NPC presentation for bot control. The supported surface is deliberately
+    /// narrower than the vanilla NPC ID space: a definition and authoritative actor-control coverage must both exist,
+    /// bosses and town NPCs are excluded, contact damage is disabled, and the presentation actor is invulnerable.
+    /// Until bot-specific death/drop semantics exist, invulnerability prevents operator actors from becoming a loot or
+    /// progression farm through the ordinary vanilla NPC death pipeline.
+    /// </summary>
+    internal bool TrySpawnBotNpc(
+        NpcTypeId type,
+        ActorControllerId controllerId,
+        float positionX,
+        float positionY,
+        out NpcHandle npc)
+    {
+        npc = default;
+        if (!type.IsAssigned || !controllerId.IsAssigned ||
+            !float.IsFinite(positionX) || !float.IsFinite(positionY) ||
+            !VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition) ||
+            definition.Role == NpcArchetypeRole.Town || definition.IsBoss || definition.Damage <= 0 ||
+            !VanillaNpcActorControlSupport1458.IsSupported(type))
+        {
+            return false;
+        }
+
+        var state = new NpcStateUpdate(
+            Type: type.Value,
+            NetId: checked((short)type.Value),
+            PositionX: positionX,
+            PositionY: positionY,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: byte.MaxValue,
+            Ai: default,
+            Simulation: NpcSimulationState.Initial with
+            {
+                TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft,
+                DamageOverride = 0,
+                DontTakeDamage = true
+            });
+        if (!npcs.TrySpawnVanilla(in state, out NpcSnapshot spawned))
+            return false;
+
+        if (actorControlOwner.Acquire(spawned.Handle, controllerId) != NpcActorAcquireStatus.Acquired)
+        {
+            _ = npcs.TryDespawn(spawned.Handle);
+            return false;
+        }
+
+        AppliedSpawns++;
+        npc = spawned.Handle;
+        return true;
+    }
+
+    internal bool TrySetBotNpcIntent(NpcHandle npc, ActorControllerId controllerId, in NpcActorIntent intent) =>
+        actorControlOwner.SetIntent(npc, controllerId, in intent);
+
+    internal bool TryTeleportBotNpc(
+        NpcHandle npc,
+        ActorControllerId controllerId,
+        float positionX,
+        float positionY)
+    {
+        NpcActorIntent stop = NpcActorIntent.Stop();
+        if (!float.IsFinite(positionX) || !float.IsFinite(positionY) ||
+            !actorControlOwner.SetIntent(npc, controllerId, in stop) ||
+            !npcs.TryGet(npc, out NpcSnapshot current))
+        {
+            return false;
+        }
+
+        var update = new NpcStateUpdate(
+            current.Type,
+            current.NetId,
+            positionX,
+            positionY,
+            0f,
+            0f,
+            current.Target,
+            current.Ai,
+            current.Simulation with
+            {
+                OldPositionX = positionX,
+                OldPositionY = positionY,
+                OldVelocityX = 0f,
+                OldVelocityY = 0f,
+                DamageOverride = 0
+            });
+        if (!npcs.TryUpdate(npc, in update, out _))
+            return false;
+
+        AppliedUpdates++;
+        return true;
+    }
+
+    internal bool TryDespawnBotNpc(NpcHandle npc, ActorControllerId controllerId)
+    {
+        if (!npc.IsAssigned || !controllerId.IsAssigned)
+            return false;
+
+        _ = actorControlOwner.Release(npc, controllerId);
+        if (!npcs.TryDespawn(npc))
+            return false;
+
+        AppliedDespawns++;
+        return true;
+    }
 
     internal int CopyCombatIntegrityDiagnostics(Span<CombatIntegrityDiagnostic> destination) =>
         combat.CopyCombatIntegrityDiagnostics(destination);

@@ -1,3 +1,4 @@
+using TerraRuntime.Application.Bots;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -184,6 +185,12 @@ public sealed class WorldRuntime : IDisposable
             serverPlayerIdentities,
             world.Tiles,
             RuntimeConnections);
+        BotTelemetry = new RuntimeBotTelemetry();
+        VanillaPlayerSpawnPosition1458.FromFloorTile(
+            checked((short)world.RuntimeMetadata.SpawnX),
+            checked((short)world.RuntimeMetadata.SpawnY),
+            out float botSpawnX,
+            out float botSpawnY);
         VanillaSkyblockRuntimeState1458 skyblockRuntime = VanillaSkyblockRuntimePolicy1458.Evaluate(world);
         State = new ServerRuntimeState(
             playerEvents,
@@ -205,6 +212,9 @@ public sealed class WorldRuntime : IDisposable
             townInitialInvasionActive: world.RuntimeMetadata.InvasionType > 0,
             tileManipulationReplication: TileManipulationReplication,
             serverPlayers: ServerPlayers,
+            botTelemetry: BotTelemetry,
+            botSpawnX: botSpawnX,
+            botSpawnY: botSpawnY,
             npcArchetypes: NpcArchetypes,
             npcArchetypeIdentities: NpcArchetypeIdentities,
             expertMode: world.RuntimeMetadata.GameMode is
@@ -276,6 +286,7 @@ public sealed class WorldRuntime : IDisposable
             loopOptions);
 
         CommandIngress = new AuthoritativeCommandIngress<ServerRuntimeState, RuntimeCommand>(GameLoop);
+        BotOperations = new RuntimeBotOperations(CommandIngress, BotTelemetry);
         PlayerStateSnapshots = new RuntimePlayerStateSnapshotReader(CommandIngress);
         TransferIngress = new RuntimePlayerTransferIngress(CommandIngress);
         SpawnIngress = new RuntimePlayerSpawnCommitIngress(CommandIngress);
@@ -355,6 +366,8 @@ public sealed class WorldRuntime : IDisposable
     internal RuntimeNpcArchetypeIdentityStore NpcArchetypeIdentities { get; }
     internal PlayerSlotPool Slots { get; }
     internal ServerPlayerAuthority ServerPlayers { get; }
+    internal RuntimeBotTelemetry BotTelemetry { get; }
+    internal RuntimeBotOperations BotOperations { get; }
     internal ServerRuntimeState State { get; }
     internal AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand> GameLoop { get; }
     internal AuthoritativeCommandIngress<ServerRuntimeState, RuntimeCommand> CommandIngress { get; }

@@ -1,3 +1,4 @@
+using TerraRuntime.Application.Bots;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Globalization;
@@ -37,13 +38,14 @@ internal sealed class RuntimeOverviewDashboard : View
     private readonly Label networkLegend;
     private readonly Label commandFeedback;
     private readonly Button sandboxAddButton;
-    private readonly Button settingsButton;
+    private readonly Button botAddButton;
     private readonly DropDownList feedLogModeDropDown;
     private readonly DropDownList feedChatDropDown;
     private readonly TextField commandInput;
     private readonly NetworkTrafficChartView networkGraph;
     private readonly SandboxOperations? sandboxOperations;
     private readonly Func<SandboxTreeSnapshot>? sandboxTreeSource;
+    private readonly RuntimeBotOperations? botOperations;
     private readonly HashSet<long> observedTerminalSandboxJobs = [];
     private readonly NetworkTrafficSample[] history = new NetworkTrafficSample[HistoryLength];
     private int historyCount;
@@ -59,7 +61,10 @@ internal sealed class RuntimeOverviewDashboard : View
     private bool hasFeedSnapshot;
     private bool hasNetworkCounterSample;
     private Task<string>? pendingSandboxCommand;
+    private Task<string>? pendingBotCommand;
     private SandboxCreateWindow? sandboxCreateWindow;
+    private BotSettingsWindow? botSettingsWindow;
+    private RuntimePlayerSnapshot[] latestPrimaryPlayers = [];
     private DateTimeOffset lastNetworkCapturedAtUtc;
     private long lastMessageInboundFrames;
     private long lastMessageInboundBytes;
@@ -69,10 +74,12 @@ internal sealed class RuntimeOverviewDashboard : View
 
     public RuntimeOverviewDashboard(
         SandboxOperations? sandboxOperations = null,
-        Func<SandboxTreeSnapshot>? sandboxTreeSource = null)
+        Func<SandboxTreeSnapshot>? sandboxTreeSource = null,
+        RuntimeBotOperations? botOperations = null)
     {
         this.sandboxOperations = sandboxOperations;
         this.sandboxTreeSource = sandboxTreeSource;
+        this.botOperations = botOperations;
         Width = Dim.Fill();
         Height = Dim.Fill();
         CanFocus = true;
@@ -130,18 +137,18 @@ internal sealed class RuntimeOverviewDashboard : View
             Enabled = sandboxOperations is not null
         };
         sandboxAddButton.Accepted += (_, _) => ShowSandboxCreateWindow();
-        settingsButton = new Button
+        botAddButton = new Button
         {
-            X = Pos.AnchorEnd(12),
+            X = Pos.Right(sandboxAddButton) + 2,
             Y = 0,
-            Text = "Settings",
+            Text = "+ Bot",
             NoPadding = true,
             NoDecorations = true,
             CanFocus = true,
-            SchemeName = BaseSchemeName
+            SchemeName = BaseSchemeName,
+            Enabled = botOperations is not null
         };
-        settingsButton.Accepted += (_, _) => SettingsRequested?.Invoke();
-
+        botAddButton.Accepted += (_, _) => CreateBotAsync();
         consoleFrame = CreateFrame("Console", consoleText, commandInput, feedLogModeDropDown, feedChatDropDown);
         networkFrame = CreateFrame("Network", networkGraph);
         worldsFrame = CreateFrame("Worlds / Players", worldsText);
@@ -175,12 +182,14 @@ internal sealed class RuntimeOverviewDashboard : View
         worldsText.Y = 1;
         worldsText.Width = Dim.Fill();
         worldsText.Height = Dim.Fill();
-        worldsFrame.Add(sandboxAddButton, settingsButton, worldsText);
+        worldsFrame.Add(sandboxAddButton, botAddButton, worldsText);
         worldsText.TransferRequested += (player, sandbox) =>
             ExecuteSandboxOperationAsync(new SandboxOperation.MoveExact(player, sandbox));
         worldsText.DestroyRequested += ConfirmSandboxDestroy;
         worldsText.KickRequested += ConfirmPlayerKick;
         worldsText.PlayerOpenRequested += player => PlayerOpenRequested?.Invoke(player);
+        worldsText.BotOpenRequested += ShowBotSettings;
+        worldsText.BotDespawnRequested += DespawnBotAsync;
 
         AttachMaximize(consoleFrame);
         AttachMaximize(networkFrame);
@@ -259,6 +268,8 @@ internal sealed class RuntimeOverviewDashboard : View
         AppendHistory(networkRates);
 
         ReadOnlySpan<RuntimePlayerSnapshot> players = playersSnapshot.Players.Span;
+        latestPrimaryPlayers = players.ToArray();
+        RuntimeBotSnapshot[] bots = botOperations?.CaptureSnapshot() ?? [];
         latestLogs = logs;
         latestChat = chat;
         hasFeedSnapshot = true;
@@ -268,13 +279,14 @@ internal sealed class RuntimeOverviewDashboard : View
         (string[] worldTreeLines, SandboxWorldTreeRow[] worldTreeRows) = RenderWorldTree(
             runtime,
             players,
-            sandboxTree.Worlds.Span);
+            sandboxTree.Worlds.Span,
+            bots);
         worldsText.SetRows(worldTreeLines, worldTreeRows);
 
         networkLegend.Text = string.Create(
             CultureInfo.InvariantCulture,
-            $"IN {networkRates.InboundPacketsPerSecond:F1}p/s {networkRates.InboundKiBPerSecond:F1}K  " +
-            $"OUT {networkRates.OutboundPacketsPerSecond:F1}p/s {networkRates.OutboundKiBPerSecond:F1}K");
+            $"IN {networkRates.InboundPacketsPerSecond:F1} p/s · {FormatByteRate(networkRates.InboundKiBPerSecond)}  " +
+            $"OUT {networkRates.OutboundPacketsPerSecond:F1} p/s · {FormatByteRate(networkRates.OutboundKiBPerSecond)}");
 
         if (FindWorkspace() is { } workspace)
         {
@@ -291,13 +303,13 @@ internal sealed class RuntimeOverviewDashboard : View
         }
 
         PublishSandboxCommandCompletion();
+        PublishBotCommandCompletion();
         ObserveSandboxJobs(sandboxTree.Jobs.Span);
 
         UpdateGraphs();
         SetNeedsDraw();
     }
 
-    public event Action? SettingsRequested;
     public event Action<RuntimePlayerSnapshot>? PlayerOpenRequested;
 
     internal void FocusCommandInput() => commandInput.SetFocus();
@@ -360,16 +372,10 @@ internal sealed class RuntimeOverviewDashboard : View
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing && pendingSandboxCommand is { IsCompleted: false } command)
+        if (disposing)
         {
-            try
-            {
-                _ = command.Wait(OperatorCommandShutdownTimeout);
-            }
-            catch (AggregateException)
-            {
-                // Command failures are already projected into operator feedback while the view is alive.
-            }
+            WaitForPendingOperatorCommand(pendingSandboxCommand);
+            WaitForPendingOperatorCommand(pendingBotCommand);
         }
         base.Dispose(disposing);
     }
@@ -414,9 +420,10 @@ internal sealed class RuntimeOverviewDashboard : View
 
     internal bool SandboxAddEnabledForSmoke => sandboxAddButton.Enabled;
 
-    internal bool SettingsButtonEnabledForSmoke => settingsButton.Enabled;
+    internal string[] WorldActionButtonsForSmoke =>
+        [sandboxAddButton.Text?.ToString() ?? string.Empty, botAddButton.Text?.ToString() ?? string.Empty];
 
-    internal void RequestSettingsForSmoke() => SettingsRequested?.Invoke();
+    internal bool BotAddEnabledForSmoke => botAddButton.Enabled;
 
     internal void SetFeedForSmoke(bool logs, bool chat, OperationsLogLevel minimumLevel)
     {
@@ -509,6 +516,104 @@ internal sealed class RuntimeOverviewDashboard : View
             default:
                 SetCommandFeedback($"unknown runtime console command '{Sanitize(input, 64)}'; type help");
                 return;
+        }
+    }
+
+    private void CreateBotAsync()
+    {
+        if (botOperations is null)
+        {
+            SetCommandFeedback("bot: runtime bot operations are unavailable");
+            return;
+        }
+        StartBotCommand(async () =>
+        {
+            RuntimeBotSnapshot? bot = await botOperations.CreateAsync().ConfigureAwait(false);
+            return bot is RuntimeBotSnapshot created
+                ? $"bot: created {created.Name} in primary"
+                : "bot: creation rejected";
+        });
+    }
+
+    private void DespawnBotAsync(int id)
+    {
+        if (botOperations is null)
+            return;
+        StartBotCommand(async () =>
+            await botOperations.DespawnAsync(id).ConfigureAwait(false)
+                ? $"bot: despawned #{id}"
+                : $"bot: despawn #{id} rejected");
+    }
+
+    private void StartBotCommand(Func<Task<string>> operation)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+        if (pendingBotCommand is { IsCompleted: false })
+        {
+            SetCommandFeedback("bot: another operator command is still running");
+            return;
+        }
+
+        SetCommandFeedback("bot: processing operation");
+        pendingBotCommand = Task.Run(operation);
+    }
+
+    private void PublishBotCommandCompletion()
+    {
+        if (pendingBotCommand is not { IsCompleted: true } completed)
+            return;
+
+        pendingBotCommand = null;
+        try
+        {
+            SetCommandFeedback(completed.GetAwaiter().GetResult());
+        }
+        catch (Exception exception)
+        {
+            SetCommandFeedback($"bot: command failed: {exception.Message}");
+        }
+    }
+
+    private void ShowBotSettings(RuntimeBotSnapshot bot)
+    {
+        if (botOperations is null)
+            return;
+        if (botSettingsWindow is not null)
+            CloseBotSettings();
+
+        var window = new BotSettingsWindow(bot, (RuntimePlayerSnapshot[])latestPrimaryPlayers.Clone(), botOperations);
+        botSettingsWindow = window;
+        window.CloseRequested += CloseBotSettings;
+        Add(window);
+        window.SetFocus();
+        SetNeedsLayout();
+        SetNeedsDraw();
+    }
+
+    private void CloseBotSettings()
+    {
+        BotSettingsWindow? window = botSettingsWindow;
+        if (window is null)
+            return;
+        botSettingsWindow = null;
+        window.CloseRequested -= CloseBotSettings;
+        Remove(window);
+        window.Dispose();
+        worldsText.SetFocus();
+        SetNeedsDraw();
+    }
+
+    private static void WaitForPendingOperatorCommand(Task? command)
+    {
+        if (command is not { IsCompleted: false })
+            return;
+        try
+        {
+            _ = command.Wait(OperatorCommandShutdownTimeout);
+        }
+        catch (AggregateException)
+        {
+            // Completion/failure is projected into operator feedback while the view is alive.
         }
     }
 
@@ -941,8 +1046,8 @@ internal sealed class RuntimeOverviewDashboard : View
     private void AppendHistory(NetworkRates network)
     {
         history[historyNext] = new NetworkTrafficSample(
-            SanitizeSample(network.InboundKiBPerSecond),
-            SanitizeSample(network.OutboundKiBPerSecond));
+            SanitizeSample(network.InboundPacketsPerSecond),
+            SanitizeSample(network.OutboundPacketsPerSecond));
         historyNext = (historyNext + 1) % history.Length;
         if (historyCount < history.Length)
             historyCount++;
@@ -1000,6 +1105,15 @@ internal sealed class RuntimeOverviewDashboard : View
         lastMessageInboundBytes = network.MessageInboundBytes;
         lastMessageOutboundFrames = network.MessageOutboundFrames;
         lastMessageOutboundBytes = network.MessageOutboundBytes;
+    }
+
+    private static string FormatByteRate(double kibPerSecond)
+    {
+        if (!double.IsFinite(kibPerSecond) || kibPerSecond <= 0d)
+            return "0 KiB/s";
+        if (kibPerSecond >= 1024d)
+            return string.Create(CultureInfo.InvariantCulture, $"{kibPerSecond / 1024d:0.#} MiB/s");
+        return string.Create(CultureInfo.InvariantCulture, $"{kibPerSecond:0.#} KiB/s");
     }
 
     private static void SetSelectableText(
@@ -1117,7 +1231,8 @@ internal sealed class RuntimeOverviewDashboard : View
     private static (string[] Lines, SandboxWorldTreeRow[] Rows) RenderWorldTree(
         RuntimeDashboardSnapshot runtime,
         ReadOnlySpan<RuntimePlayerSnapshot> primaryPlayers,
-        ReadOnlySpan<SandboxTreeWorldSnapshot> worlds)
+        ReadOnlySpan<SandboxTreeWorldSnapshot> worlds,
+        ReadOnlySpan<RuntimeBotSnapshot> bots)
     {
         var lines = new List<string>(Math.Max(2, primaryPlayers.Length + worlds.Length * 2));
         var rows = new List<SandboxWorldTreeRow>(Math.Max(2, primaryPlayers.Length + worlds.Length * 2));
@@ -1128,7 +1243,7 @@ internal sealed class RuntimeOverviewDashboard : View
                 CultureInfo.InvariantCulture,
                 $"▼ {Sanitize(runtime.WorldName, 24)}  [primary]  TPS {runtime.ObservedTicksPerSecond:F1}/{runtime.TargetTicksPerSecond}"));
             rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, Target: null, PlayerSelector: null));
-            AppendPrimaryPlayers(lines, rows, primaryPlayers);
+            AppendPrimaryRoster(lines, rows, primaryPlayers, bots);
             return (lines.ToArray(), rows.ToArray());
         }
 
@@ -1167,18 +1282,21 @@ internal sealed class RuntimeOverviewDashboard : View
             rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.World, world.Sandbox, PlayerSelector: null));
 
             ReadOnlySpan<SandboxTreePlayerSnapshot> players = world.Players.Span;
-            if (players.Length == 0)
+            int botCount = world.IsPrimary ? bots.Length : 0;
+            int rosterCount = players.Length + botCount;
+            if (rosterCount == 0)
             {
                 lines.Add("  └─ <no players>");
                 rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Placeholder, world.Sandbox, PlayerSelector: null));
                 continue;
             }
 
-            for (int playerIndex = 0; playerIndex < players.Length; playerIndex++)
+            int rosterIndex = 0;
+            for (int playerIndex = 0; playerIndex < players.Length; playerIndex++, rosterIndex++)
             {
                 SandboxTreePlayerSnapshot player = players[playerIndex];
                 var playerLine = new StringBuilder(48)
-                    .Append(playerIndex == players.Length - 1 ? "  └─ " : "  ├─ ")
+                    .Append(rosterIndex == rosterCount - 1 ? "  └─ " : "  ├─ ")
                     .Append('#').Append(player.Player.Slot).Append(' ')
                     .Append(Sanitize(player.Player.Name, 28));
                 if (!player.IsPlaying)
@@ -1187,33 +1305,72 @@ internal sealed class RuntimeOverviewDashboard : View
                 lines.Add(playerLine.ToString());
                 rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Player, world.Sandbox, player.Selector, player.Player));
             }
+            if (world.IsPrimary)
+            {
+                for (int botIndex = 0; botIndex < bots.Length; botIndex++, rosterIndex++)
+                    AppendBot(lines, rows, bots[botIndex], rosterIndex == rosterCount - 1);
+            }
         }
 
         return (lines.ToArray(), rows.ToArray());
     }
 
-    private static void AppendPrimaryPlayers(
+    private static void AppendPrimaryRoster(
         List<string> lines,
         List<SandboxWorldTreeRow> rows,
-        ReadOnlySpan<RuntimePlayerSnapshot> players)
+        ReadOnlySpan<RuntimePlayerSnapshot> players,
+        ReadOnlySpan<RuntimeBotSnapshot> bots)
     {
-        if (players.Length == 0)
+        int count = players.Length + bots.Length;
+        if (count == 0)
         {
             lines.Add("  └─ <no players>");
             rows.Add(new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Placeholder, Target: null, PlayerSelector: null));
             return;
         }
 
-        for (int i = 0; i < players.Length; i++)
+        int rosterIndex = 0;
+        for (int i = 0; i < players.Length; i++, rosterIndex++)
         {
             RuntimePlayerSnapshot player = players[i];
-            lines.Add($"{(i == players.Length - 1 ? "  └─ " : "  ├─ ")}#{player.Slot} {Sanitize(player.Name, 28)}  [X]");
+            lines.Add($"{(rosterIndex == count - 1 ? "  └─ " : "  ├─ ")}#{player.Slot} {Sanitize(player.Name, 28)}  [X]");
             rows.Add(new SandboxWorldTreeRow(
                 SandboxWorldTreeRowKind.Player,
                 Target: null,
                 PlayerSelector: $"#{player.Slot}",
                 Player: player));
         }
+        for (int i = 0; i < bots.Length; i++, rosterIndex++)
+            AppendBot(lines, rows, bots[i], rosterIndex == count - 1);
+    }
+
+    private static void AppendBot(
+        List<string> lines,
+        List<SandboxWorldTreeRow> rows,
+        RuntimeBotSnapshot bot,
+        bool isLast)
+    {
+        var line = new StringBuilder(80)
+            .Append(isLast ? "  └─ " : "  ├─ ")
+            .Append(bot.Configuration.Body == RuntimeBotBodyKind.Npc
+                ? $"[NpcBot #{bot.Configuration.NpcType.Value}] "
+                : "[PlayerBot] ")
+            .Append(Sanitize(bot.Name, 22))
+            .Append("  [").Append(bot.Configuration.Mode.ToString().ToLowerInvariant());
+        if (bot.Configuration.Target.IsAssigned)
+            line.Append(" -> ").Append(Sanitize(bot.Configuration.Target.DisplayName, 18));
+        if (bot.PvpEnabled)
+            line.Append(" · pvp");
+        if (bot.IsStuck)
+            line.Append(" · stuck");
+        line.Append("]  [X]");
+        lines.Add(line.ToString());
+        rows.Add(new SandboxWorldTreeRow(
+            SandboxWorldTreeRowKind.Bot,
+            Target: null,
+            PlayerSelector: null,
+            Player: null,
+            Bot: bot));
     }
 
     private static double SanitizeSample(double value) =>

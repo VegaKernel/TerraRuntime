@@ -4,6 +4,25 @@ Last evidence refresh: 2026-09-06.
 
 This file stores concise facts already checked against the locally decompiled official TerrariaServer **1.4.5.8**. It prevents repeated source archaeology, but it does not authorize guessing adjacent behavior. Unknown cases remain fail-closed until separately verified.
 
+## Runtime bot source facts
+
+Primary evidence: TerrariaServer 1.4.5.8 `Player.QuickHeal`, `Player.QuickHeal_GetItemToUse`, `Player.UpdateBuffs`, `Player.PickAmmo`, `Item.SetDefaults`, `MessageBuffer.GetData` packet cases 30/55 and `NetMessage.SendData` packet cases 30/55.
+
+Verified facts used by the TZ-29 bot slice:
+
+- `Player.defaultItemGrabRange` is `42` pixels before accessory modifiers. Bot pickup uses that base range and does not invent accessory bonuses.
+- ordinary potion delay is `Item.potionDelay = 3600` ticks. `Player.QuickHeal` refuses healing while dead, full-life or already under potion delay.
+- QuickHeal candidates require `stack > 0`, `type > 0`, `potion == true` and `healLife > 0`. Its candidate ordering prefers the largest still-underhealing potion while all candidates under-heal, otherwise the smallest non-negative overheal. The special Restoration Potion type `227` adjustment is not part of the admitted bot healing subset.
+- the source-pinned healing subset used by bots is Healing Potion `188` / `100 HP`, Greater Healing Potion `499` / `150 HP`, and Super Healing Potion `3544` / `200 HP`; each has the ordinary potion flag and a `14x24` item hitbox. Absence from the catalog is fail-closed.
+- packet `30` encodes `[player byte][hostile bool]`. On a dedicated server an incoming player index is replaced with the sending connection's player slot before the authoritative hostile flag is stored and rebroadcast.
+- packet `55` (`AddPlayerBuffPvP`) encodes `[player byte][buff ushort][time int32]`. The dedicated-server ingress path admits network PvP buffs only when the target and sender are both hostile and `Main.pvpBuff[buff]` is true. On a multiplayer client the packet is applied only when the encoded player slot equals `Main.myPlayer`; vanilla therefore uses packet `55` as targeted local-player PvP buff delivery, not as observer-visible remote-player buff replication. Server-owned fake-player bot combat buffs must not be broadcast to unrelated observers through packet `55`.
+- Archery buff `16` sets the archery state and multiplies arrow damage by `1.1`; `Player.PickAmmo` additionally multiplies arrow speed by `1.2` when below `20`, capped at `20`.
+- Wrath buff `117` adds `0.1` to melee, ranged, magic and minion damage multipliers. TZ-29 reproduces only the outgoing combat effects it actually owns; catalogued potion buffs without an implemented authoritative effect remain fail-closed for bot pickup/use.
+- supported bot ammunition/weapon facts come from the existing source-backed projectile weapon/ammo catalog. TZ-29's ranged presets pair Wooden Bow with Wooden Arrow and Musket with Musket Ball; it does not infer arbitrary Terraria ammo compatibility.
+- AI_002 (`FloatingEye`) performs collision rebound before target-direction steering and applies source-specific horizontal/vertical pursuit acceleration. The controlled NpcBot lane reuses only this verified steering/motion primitive; daylight/despawn/attack side effects remain outside actor-control unless separately admitted.
+- AI_005 (`EaterOfSouls`) resolves a target and then applies source-specific pursuit velocity/collision behavior. Controlled flyers reuse the verified pursuit primitive but do not opt back into ordinary AI projectile or spawn side effects.
+- ordinary AI_014 bats set no-gravity, rebound from `collideX/collideY`, call `TargetClosest`, apply directional pursuit acceleration, then advance `ai[1]`; the wander branch starts only after `ai[1] > 200`. TerraRuntime's controlled bat helper resets that ordinary AI clock for each call and therefore exposes the source-ordered pre-wander pursuit/collision slice only. Queen Slime's purple minion shares AI_014 machinery but is boss-owned and is explicitly excluded from the standalone bot-preset helper.
+
 ## Liquids
 
 Primary evidence: `Terraria.Liquid.Update`, `Terraria.Liquid.LiquidCheck`, and the relevant liquid helper/check paths in TerrariaServer 1.4.5.8.

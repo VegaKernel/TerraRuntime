@@ -104,7 +104,7 @@ public sealed class OperationsCacheTests
     [Fact]
     public void Overview_maximize_hides_other_tiles_and_title_has_real_double_click_binding()
     {
-        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI);
+        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.DOTNET);
         app.Driver!.SetScreenSize(120, 28);
         using var window = new Window
         {
@@ -166,8 +166,8 @@ public sealed class OperationsCacheTests
         dashboard.Refresh(default, second, default, default, default, default, status: null);
 
         string legend = dashboard.GetNetworkLegendForSmoke();
-        Assert.Contains("IN 10.0p/s 1.0K", legend);
-        Assert.Contains("OUT 20.0p/s 2.0K", legend);
+        Assert.Contains("IN 10.0 p/s · 1 KiB/s", legend);
+        Assert.Contains("OUT 20.0 p/s · 2 KiB/s", legend);
     }
 
     private sealed class BlockingOperations :

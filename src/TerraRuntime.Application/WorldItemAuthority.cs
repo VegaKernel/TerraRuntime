@@ -78,6 +78,28 @@ internal sealed class WorldItemAuthority
     public bool TryCapture(short slot, out WorldItemSnapshot snapshot) =>
         worldItems.TryGetActive(slot, out snapshot);
 
+    internal int CopyActive(Span<WorldItemSnapshot> destination) => worldItems.CopyActive(destination);
+
+    /// <summary>
+    /// Exact-generation removal for a trusted server-owned actor. The caller has already decided that the item is
+    /// eligible for pickup; this boundary owns the authoritative world-item mutation and rejects stale handles.
+    /// </summary>
+    internal bool TryTakeTrusted(WorldItemHandle target, out WorldItemSnapshot removed)
+    {
+        removed = default;
+        if (!target.IsAssigned ||
+            !worldItems.TryGetActive(target.Slot, out WorldItemSnapshot current) ||
+            current.Handle != target ||
+            !worldItems.TryRemove(target.Slot, out WorldItemHandle removedHandle) ||
+            removedHandle != target)
+        {
+            return false;
+        }
+
+        removed = current;
+        return true;
+    }
+
     private bool IsCurrentTarget(WorldItemHandle target) =>
         target.IsAssigned &&
         worldItems.TryGetActive(target.Slot, out WorldItemSnapshot snapshot) &&

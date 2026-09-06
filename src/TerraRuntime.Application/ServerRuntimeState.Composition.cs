@@ -1,3 +1,4 @@
+using TerraRuntime.Application.Bots;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -32,6 +33,9 @@ internal sealed partial class ServerRuntimeState
         bool townInitialInvasionActive = false,
         RuntimeTileManipulationReplicationRegistry? tileManipulationReplication = null,
         ServerPlayerAuthority? serverPlayers = null,
+        RuntimeBotTelemetry? botTelemetry = null,
+        float botSpawnX = 0f,
+        float botSpawnY = 0f,
         RuntimeNpcShopCatalogRegistry? npcShops = null,
         RuntimeNpcArchetypeRegistry? npcArchetypes = null,
         RuntimeNpcArchetypeIdentityStore? npcArchetypeIdentities = null,
@@ -66,6 +70,9 @@ internal sealed partial class ServerRuntimeState
             townInitialInvasionActive,
             tileManipulationReplication,
             serverPlayers,
+            botTelemetry,
+            botSpawnX,
+            botSpawnY,
             npcShops,
             npcArchetypes,
             npcArchetypeIdentities,

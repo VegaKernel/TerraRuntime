@@ -8,11 +8,11 @@ using TuiColor = Terminal.Gui.Drawing.Color;
 namespace TerraRuntime.Application.TerminalUI;
 
 internal readonly record struct NetworkTrafficSample(
-    double InboundKiBPerSecond,
-    double OutboundKiBPerSecond);
+    double InboundPacketsPerSecond,
+    double OutboundPacketsPerSecond);
 
 /// <summary>
-/// Overlayed inbound/outbound network throughput bars with independent vertical scales.
+/// Overlayed inbound/outbound network packet-rate bars with independent vertical scales.
 /// The left scale belongs to inbound traffic and the right scale belongs to outbound traffic, so a quiet direction
 /// remains visible even when the opposite direction is orders of magnitude larger.
 /// </summary>
@@ -36,8 +36,8 @@ internal sealed class NetworkTrafficChartView : View
     {
         ArgumentNullException.ThrowIfNull(value);
         samples = value;
-        inboundScaleMaximum = CalculateScaleMaximum(value, static sample => sample.InboundKiBPerSecond);
-        outboundScaleMaximum = CalculateScaleMaximum(value, static sample => sample.OutboundKiBPerSecond);
+        inboundScaleMaximum = CalculateScaleMaximum(value, static sample => sample.InboundPacketsPerSecond);
+        outboundScaleMaximum = CalculateScaleMaximum(value, static sample => sample.OutboundPacketsPerSecond);
         SetNeedsDraw();
     }
 
@@ -48,8 +48,8 @@ internal sealed class NetworkTrafficChartView : View
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(plotHeight);
         NetworkTrafficSample sample = samples[sampleIndex];
         return (
-            ScaleHeight(sample.InboundKiBPerSecond, inboundScaleMaximum, plotHeight),
-            ScaleHeight(sample.OutboundKiBPerSecond, outboundScaleMaximum, plotHeight));
+            ScaleHeight(sample.InboundPacketsPerSecond, inboundScaleMaximum, plotHeight),
+            ScaleHeight(sample.OutboundPacketsPerSecond, outboundScaleMaximum, plotHeight));
     }
 
     protected override bool OnDrawingContent(DrawContext? context)
@@ -73,8 +73,8 @@ internal sealed class NetworkTrafficChartView : View
         {
             int sampleIndex = MapSampleIndex(column, plotWidth, samples.Length);
             NetworkTrafficSample sample = samples[sampleIndex];
-            int inboundHeight = ScaleHeight(sample.InboundKiBPerSecond, inboundScaleMaximum, height);
-            int outboundHeight = ScaleHeight(sample.OutboundKiBPerSecond, outboundScaleMaximum, height);
+            int inboundHeight = ScaleHeight(sample.InboundPacketsPerSecond, inboundScaleMaximum, height);
+            int outboundHeight = ScaleHeight(sample.OutboundPacketsPerSecond, outboundScaleMaximum, height);
 
             for (int row = 0; row < height; row++)
             {
@@ -185,16 +185,18 @@ internal sealed class NetworkTrafficChartView : View
         return Math.Max(1d, nice * power);
     }
 
-    private static string FormatScale(double kibPerSecond)
+    private static string FormatScale(double packetsPerSecond)
     {
-        if (!double.IsFinite(kibPerSecond) || kibPerSecond <= 0d)
+        if (!double.IsFinite(packetsPerSecond) || packetsPerSecond <= 0d)
             return "0";
-        if (kibPerSecond >= 1024d)
-            return string.Create(CultureInfo.InvariantCulture, $"{kibPerSecond / 1024d:0.#}M");
-        if (kibPerSecond >= 100d)
-            return string.Create(CultureInfo.InvariantCulture, $"{kibPerSecond:0}K");
-        if (kibPerSecond >= 10d)
-            return string.Create(CultureInfo.InvariantCulture, $"{kibPerSecond:0.#}K");
-        return string.Create(CultureInfo.InvariantCulture, $"{kibPerSecond:0.##}K");
+        if (packetsPerSecond >= 1_000_000d)
+            return string.Create(CultureInfo.InvariantCulture, $"{packetsPerSecond / 1_000_000d:0.#}M");
+        if (packetsPerSecond >= 1_000d)
+            return string.Create(CultureInfo.InvariantCulture, $"{packetsPerSecond / 1_000d:0.#}k");
+        if (packetsPerSecond >= 100d)
+            return string.Create(CultureInfo.InvariantCulture, $"{packetsPerSecond:0}");
+        if (packetsPerSecond >= 10d)
+            return string.Create(CultureInfo.InvariantCulture, $"{packetsPerSecond:0.#}");
+        return string.Create(CultureInfo.InvariantCulture, $"{packetsPerSecond:0.##}");
     }
 }

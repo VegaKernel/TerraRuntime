@@ -26,6 +26,7 @@ internal sealed partial class RuntimeConnectionRegistry : IRuntimePlayerEventSin
     private long _relayedAppearanceFrames;
     private long _appearanceBaselineFrames;
     private long _relayedEquipmentFrames;
+    private long _relayedPvpFrames;
     private long _equipmentBaselineFrames;
     private long _droppedEquipmentSnapshotUpdates;
     private long _playerActiveBaselineFrames;
@@ -54,6 +55,8 @@ internal sealed partial class RuntimeConnectionRegistry : IRuntimePlayerEventSin
     public long AppearanceBaselineFrames => Interlocked.Read(ref _appearanceBaselineFrames);
 
     public long RelayedEquipmentFrames => Interlocked.Read(ref _relayedEquipmentFrames);
+
+    public long RelayedPvpFrames => Interlocked.Read(ref _relayedPvpFrames);
 
     public long EquipmentBaselineFrames => Interlocked.Read(ref _equipmentBaselineFrames);
 

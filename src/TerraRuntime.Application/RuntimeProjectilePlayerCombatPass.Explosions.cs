@@ -27,10 +27,11 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 VanillaProjectileFacts.IsHostile(projectile.Type) ||
                 !VanillaProjectileExplosionFacts.TryGetOnKillExplosion(projectile.Type, out _) ||
                 !VanillaCombatFacts.TryGetDamageClass(projectile.Type, out _) ||
-                !players.TryGet(trustedOwner, out RuntimePlayerMember? owner) ||
-                !players.TryCaptureCombatSnapshot(trustedOwner, out VanillaPlayerCombatSnapshot ownerCombat) ||
-                owner.Connection.Player != trustedOwner || owner.Slot.Value != projectile.Spawner ||
-                !owner.Hostile || owner.IsDead)
+                !TryResolveTrustedPvpOwner(
+                    trustedOwner,
+                    projectile.Spawner,
+                    out PlayerStateSnapshot owner,
+                    out VanillaPlayerCombatSnapshot ownerCombat))
             {
                 continue;
             }
@@ -63,9 +64,9 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
 
                 int direction = ResolveExplosionDirection(in explosion, target);
                 bool killedBefore = target.IsDead;
-                PlayerDamageCommitResult commitResult = players.TryCommitAuthoritativePvpDamage(
+                PlayerDamageCommitResult commitResult = players.TryCommitAuthoritativePvpDamageFromSnapshot(
                         tick,
-                        trustedOwner,
+                        in owner,
                         target.Connection.Player,
                         DamageSource.FromPlayerProjectile(trustedOwner, projectile.Handle),
                         hit.Damage,

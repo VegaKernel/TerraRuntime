@@ -81,6 +81,28 @@ public static class WorldFileFreshComposer326
         WorldFileHeader header,
         RuntimeWorldGenerationMetadataSnapshot generation,
         WorldTileStore tiles,
+        byte gameMode,
+        bool crimson,
+        long creationTimeBinary,
+        long lastPlayedBinary,
+        out byte[] file,
+        out WorldFileData? validatedWorld) =>
+        TryCompose(
+            header,
+            generation,
+            tiles,
+            CreateSections(ReadOnlySpan<WorldChest>.Empty, EmptyNpcPersistence()),
+            gameMode,
+            crimson,
+            creationTimeBinary,
+            lastPlayedBinary,
+            out file,
+            out validatedWorld);
+
+    public static WorldFileFreshCompose326Diagnostic TryCompose(
+        WorldFileHeader header,
+        RuntimeWorldGenerationMetadataSnapshot generation,
+        WorldTileStore tiles,
         ReadOnlySpan<WorldChest> chests,
         byte gameMode,
         bool crimson,
@@ -134,7 +156,35 @@ public static class WorldFileFreshComposer326
         bool crimson,
         long creationTimeBinary,
         long lastPlayedBinary,
-        out byte[] file)
+        out byte[] file) =>
+        TryCompose(
+            header,
+            generation,
+            tiles,
+            sections,
+            gameMode,
+            crimson,
+            creationTimeBinary,
+            lastPlayedBinary,
+            out file,
+            out _);
+
+    /// <summary>
+    /// Same current-format composition/validation path, but also returns the already validated runtime projection.
+    /// The validated projection owns the caller-supplied <paramref name="tiles"/> store, so generated-world callers
+    /// can bootstrap the accepted candidate without decoding every tile into a second full world image.
+    /// </summary>
+    public static WorldFileFreshCompose326Diagnostic TryCompose(
+        WorldFileHeader header,
+        RuntimeWorldGenerationMetadataSnapshot generation,
+        WorldTileStore tiles,
+        WorldFileFreshSections326 sections,
+        byte gameMode,
+        bool crimson,
+        long creationTimeBinary,
+        long lastPlayedBinary,
+        out byte[] file,
+        out WorldFileData? validatedWorld)
     {
         ArgumentNullException.ThrowIfNull(header);
         ArgumentNullException.ThrowIfNull(tiles);
@@ -148,6 +198,7 @@ public static class WorldFileFreshComposer326
         ArgumentNullException.ThrowIfNull(sections.Bestiary);
         ArgumentNullException.ThrowIfNull(sections.CreativePowers);
         file = Array.Empty<byte>();
+        validatedWorld = null;
 
         if (header.Dimensions.WidthTiles != tiles.Dimensions.WidthTiles ||
             header.Dimensions.HeightTiles != tiles.Dimensions.HeightTiles)
@@ -318,6 +369,7 @@ public static class WorldFileFreshComposer326
                 Validation: validation);
         }
 
+        validatedWorld = loaded;
         return new WorldFileFreshCompose326Diagnostic(
             WorldFileFreshCompose326Result.Composed,
             Validation: validation);

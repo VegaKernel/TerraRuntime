@@ -336,8 +336,17 @@ public static class VanillaItemIds
     public static readonly ItemTypeId JestersArrow = new(51);
     public static readonly ItemTypeId EnchantedBoomerang = new(55);
     public static readonly ItemTypeId CopperGreaves = new(76);
+    public static readonly ItemTypeId IronGreaves = new(77);
+    public static readonly ItemTypeId SilverGreaves = new(78);
+    public static readonly ItemTypeId GoldGreaves = new(79);
     public static readonly ItemTypeId CopperChainmail = new(80);
+    public static readonly ItemTypeId IronChainmail = new(81);
+    public static readonly ItemTypeId SilverChainmail = new(82);
+    public static readonly ItemTypeId GoldChainmail = new(83);
     public static readonly ItemTypeId CopperHelmet = new(89);
+    public static readonly ItemTypeId IronHelmet = new(90);
+    public static readonly ItemTypeId SilverHelmet = new(91);
+    public static readonly ItemTypeId GoldHelmet = new(92);
     public static readonly ItemTypeId IronBow = new(99);
     public static readonly ItemTypeId Chest = new(48);
     public static readonly ItemTypeId FlowerOfFire = new(112);
@@ -348,6 +357,9 @@ public static class VanillaItemIds
     public static readonly ItemTypeId SorcererEmblem = new(489);
     public static readonly ItemTypeId WarriorEmblem = new(490);
     public static readonly ItemTypeId RangerEmblem = new(491);
+    public static readonly ItemTypeId WoodHelmet = new(727);
+    public static readonly ItemTypeId WoodBreastplate = new(728);
+    public static readonly ItemTypeId WoodGreaves = new(729);
     public static readonly ItemTypeId RainbowRod = new(495);
     public static readonly ItemTypeId MagicQuiver = new(1321);
     public static readonly ItemTypeId SharkToothNecklace = new(3212);
@@ -404,6 +416,16 @@ public static class VanillaItemIds
     public static readonly ItemTypeId CopperPickaxe = new(3509);
     public static readonly ItemTypeId SilverBow = new(3510);
     public static readonly ItemTypeId GoldBow = new(3516);
+    public static readonly ItemTypeId FishronWings = new(2609);
+    public static readonly ItemTypeId RegenerationPotion = new(289);
+    public static readonly ItemTypeId SwiftnessPotion = new(290);
+    public static readonly ItemTypeId IronskinPotion = new(292);
+    public static readonly ItemTypeId ArcheryPotion = new(303);
+    public static readonly ItemTypeId GreaterHealingPotion = new(499);
+    public static readonly ItemTypeId EndurancePotion = new(2346);
+    public static readonly ItemTypeId RagePotion = new(2347);
+    public static readonly ItemTypeId WrathPotion = new(2349);
+    public static readonly ItemTypeId SuperHealingPotion = new(3544);
 
     public static bool TryCreate(int rawType, out ItemTypeId type)
     {

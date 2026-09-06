@@ -123,7 +123,7 @@ The runtime normalizes `--world` to an absolute path. Invalid host options that 
 
 ### Live listener endpoint replacement
 
-The startup `--bind`/`--port` pair defines only the initial public endpoint. While the server is running, **Settings → Runtime settings** and the visible **Settings** button on the System Dashboard can replace the bind address and/or port without disconnecting already accepted clients. Hostname lookup is intentionally not part of this control surface: use a numeric IPv4/IPv6 address, `*`/`any`, or `localhost`.
+The startup `--bind`/`--port` pair defines only the initial public endpoint. While the server is running, **Settings → Runtime settings** can replace the bind address and/or port without disconnecting already accepted clients. The System Dashboard intentionally has no duplicate Settings button. Hostname lookup is not part of this control surface: use a numeric IPv4/IPv6 address, `*`/`any`, or `localhost`.
 
 `ListenerManager` owns listening sockets as generations, while `ServerConnectionAcceptor` owns accepted client sockets independently. A listener generation has the explicit lifecycle below:
 

@@ -514,6 +514,46 @@ public sealed class Level1SandboxRuntimeTests
     }
 
     [Fact]
+    public async Task Sandbox_operations_create_vanilla_large_world_through_the_same_request_path_as_ui()
+    {
+        WorldRuntime primary = CreateRuntime("Primary", seed: 4600);
+        using var registry = new WorldRegistry(capacity: 3);
+        Assert.True(registry.TryAdmit(primary, primary: true));
+        using var sandboxes = new SandboxHost(
+            registry,
+            BuiltInWorldGeneratorSource.Instance,
+            ServerWorldLoadPolicy.CreateLimits());
+        var operations = new SandboxOperations(
+            sandboxes,
+            Path.GetTempPath(),
+            defaultWidthTiles: 8400,
+            defaultHeightTiles: 2400);
+
+        Assert.True(operations.TryBuildGeneratedCreate(
+            "vanilla_large_form",
+            WorldIsolationLevel.InProcess,
+            "terraruntime:vanilla",
+            "42",
+            widthTiles: 8400,
+            heightTiles: 2400,
+            WorldGenerationGameMode.Classic,
+            WorldGenerationEvil.Corruption,
+            out SandboxOperation.Create? operation,
+            out string? buildError), buildError);
+        Assert.NotNull(operation);
+
+        string feedback = operations.Execute(operation);
+        Assert.Contains("accepted as operation", feedback, StringComparison.OrdinalIgnoreCase);
+        SandboxJobSnapshot queued = Assert.Single(sandboxes.CaptureJobs());
+        SandboxJobSnapshot completed = await sandboxes.WaitForJobAsync(
+            queued.Id,
+            TimeSpan.FromSeconds(120),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(SandboxJobStatus.Completed, completed.Status);
+    }
+
+    [Fact]
     public void Sandbox_create_window_submits_selected_vanilla_small_request()
     {
         WorldRuntime primary = CreateRuntime("Primary", seed: 47);

@@ -73,6 +73,19 @@ internal sealed class ServerPlayerReplicaStore
         return true;
     }
 
+    public bool TryUpdatePvp(PlayerHandle player, bool hostile, out byte[] encoded)
+    {
+        if (!TryGet(player, out ServerPlayerReplica replica))
+        {
+            encoded = [];
+            return false;
+        }
+
+        encoded = TerrariaPlayerCombatCodec.EncodePvpToggle(player.Slot.Value, hostile);
+        replica.Pvp = encoded;
+        return true;
+    }
+
     public bool TryUpdateItem(PlayerHandle player, in ServerPlayerItemState item, out byte[] encoded)
     {
         if (!VanillaPlayerItemSlotCatalog.CanRelay(item.Slot) ||
@@ -144,6 +157,7 @@ internal sealed class ServerPlayerReplicaStore
         int active = 0;
         int appearance = 0;
         int equipment = 0;
+        int pvp = 0;
         int health = 0;
         int mana = 0;
         int movement = 0;
@@ -158,12 +172,13 @@ internal sealed class ServerPlayerReplicaStore
             appearance += TryEnqueue(recipient, replica.Appearance);
             foreach (byte[] item in replica.Items.Values)
                 equipment += TryEnqueue(recipient, item);
+            pvp += TryEnqueue(recipient, replica.Pvp);
             health += TryEnqueue(recipient, replica.Health);
             mana += TryEnqueue(recipient, replica.Mana);
             movement += TryEnqueue(recipient, replica.Movement);
         }
 
-        return new ServerPlayerBaselineEnqueueCounts(active, appearance, equipment, health, mana, movement);
+        return new ServerPlayerBaselineEnqueueCounts(active, appearance, equipment, pvp, health, mana, movement);
     }
 
     private bool TryGet(PlayerHandle player, out ServerPlayerReplica replica)
@@ -213,6 +228,8 @@ internal sealed class ServerPlayerReplicaStore
 
         public SortedDictionary<short, byte[]> Items { get; } = [];
 
+        public byte[]? Pvp { get; set; }
+
         public byte[]? Health { get; set; }
 
         public byte[]? Mana { get; set; }
@@ -225,6 +242,7 @@ internal readonly record struct ServerPlayerBaselineEnqueueCounts(
     int Active,
     int Appearance,
     int Equipment,
+    int Pvp,
     int Health,
     int Mana,
     int Movement);

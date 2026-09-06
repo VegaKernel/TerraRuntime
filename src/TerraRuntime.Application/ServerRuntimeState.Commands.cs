@@ -16,6 +16,8 @@ internal sealed partial class ServerRuntimeState
         ArgumentNullException.ThrowIfNull(command);
         _runtime.Commands.Record();
 
+        if (_runtime.Bots?.TryApply(command) == true)
+            return;
         if (_runtime.ServerPlayers?.TryApply(command) == true)
             return;
         if (_runtime.WorldTileAuthority.TryApply(command))

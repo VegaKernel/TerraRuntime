@@ -34,11 +34,90 @@ public readonly record struct VanillaBatMotionResult1458(
     NpcAiState Ai);
 
 /// <summary>
+/// Source-backed AI_014 pursuit/collision slice for externally controlled ordinary bats. The ordinary ai[1]/ai[2]
+/// wander clock is deliberately reset for each call, so this helper exposes only the pre-wander target pursuit that
+/// vanilla performs immediately after TargetClosest. Projectile/transform side effects are not part of this motion
+/// helper and remain outside trusted actor control.
+/// </summary>
+public readonly record struct VanillaBatPursuitInput1458(
+    float VelocityX,
+    float VelocityY,
+    float OldVelocityX,
+    float OldVelocityY,
+    int DirectionX,
+    int DirectionY,
+    ushort Target,
+    bool Wet,
+    bool CollideX,
+    bool CollideY)
+{
+    public bool IsValid =>
+        float.IsFinite(VelocityX) && float.IsFinite(VelocityY) &&
+        float.IsFinite(OldVelocityX) && float.IsFinite(OldVelocityY) &&
+        DirectionX is >= -1 and <= 1 && DirectionY is >= -1 and <= 1;
+}
+
+public readonly record struct VanillaBatPursuitResult1458(
+    float VelocityX,
+    float VelocityY,
+    int DirectionX,
+    int DirectionY,
+    ushort Target);
+
+/// <summary>
 /// Server-relevant TerrariaServer 1.4.5.8 aiStyle 14 collision rebound, pursuit, wet escape and wander clock for
 /// the admitted ordinary bat/Slimer/Queen Slime minion roster. Shooters and Vampire Bat remain separate slices.
 /// </summary>
 public static class VanillaBatMotion1458
 {
+    public static bool TryStepPursuit(
+        NpcTypeId type,
+        in VanillaBatPursuitInput1458 input,
+        out VanillaBatPursuitResult1458 result)
+    {
+        // Exclude Queen Slime's minion special case: it shares aiStyle 14 motion machinery but is not an ordinary
+        // standalone bat preset and its lifecycle belongs to a boss-owned child path.
+        if (!input.IsValid || !VanillaBatNpcCatalog1458.TryGetDefinition(type, out _))
+        {
+            result = default;
+            return false;
+        }
+
+        var closest = new VanillaBlueSlimeTargetRefresh(
+            HasTarget: true,
+            Target: input.Target,
+            DirectionX: input.DirectionX,
+            DirectionY: input.DirectionY);
+        var motionInput = new VanillaBatMotionInput1458(
+            input.VelocityX,
+            input.VelocityY,
+            input.OldVelocityX,
+            input.OldVelocityY,
+            input.DirectionX,
+            input.DirectionY,
+            input.Target,
+            Ai: default,
+            input.Wet,
+            input.CollideX,
+            input.CollideY,
+            closest,
+            TargetDryAndVisible: true);
+        if (!TryStep(type, in motionInput, out VanillaBatMotionResult1458 stepped))
+        {
+            result = default;
+            return false;
+        }
+
+        // ai[1] starts from zero above, so vanilla's >200 wander branch cannot run in this controlled pursuit call.
+        result = new VanillaBatPursuitResult1458(
+            stepped.VelocityX,
+            stepped.VelocityY,
+            stepped.DirectionX,
+            stepped.DirectionY,
+            stepped.Target);
+        return true;
+    }
+
     public static bool TryStep(
         NpcTypeId type,
         in VanillaBatMotionInput1458 input,

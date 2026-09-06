@@ -119,34 +119,27 @@ Administrative operations are not cached writes. Interest-management changes and
 
 ## 6. Tiled System Dashboard
 
-The default System Dashboard is a tiled operational workspace inspired by the Vega operations view while remaining runtime-owned. The left side is a large **Console** tile. The right column contains **Server**, **TPS / CPU**, **Memory / GC**, and **Chat** tiles.
+The default System Dashboard is a runtime-owned three-surface workspace. **Console** occupies the wide left column. The right column contains a compact **Network** graph above the larger **Worlds / Players** roster. There is no separate global TPS tile because each live world has its own authoritative loop and publishes its own observed/target TPS.
 
 ```mermaid
 flowchart LR
-    subgraph Workspace["System Dashboard"]
-        Console["Console\nrecent runtime events"]
-        subgraph Right["Right column"]
-            Server["Server"]
-            Perf["TPS / CPU"]
-            Memory["Memory / GC"]
-            Chat["Chat"]
-        end
+    Console["Console\nLogs + Chat + command input"]
+    subgraph Right["Right column"]
+        Network["Network\npackets/s graph"]
+        Worlds["Worlds / Players\nper-world TPS + bots"]
     end
+    Console --- Right
 ```
 
-The Console tile includes current tick/process/command pressure followed by recent runtime events. The performance and memory tiles maintain short in-memory histories only for rendering local sparklines; those histories are UI-owned and are never authoritative telemetry.
+Focusable panels have an explicit selection state. Keyboard focus or a mouse press applies the Accent scheme and prefixes the focused title with `▶`. Double-clicking a panel title toggles that panel between tiled and full-workspace view. These are presentation-only operations; authoritative state remains behind operations contracts.
 
-Focusable tiles now have an explicit selection state. Keyboard focus or a mouse press applies the Accent scheme with a distinct dark-green selected-panel background and prefixes the focused tile title with `▶`. This textual marker deliberately remains useful even when a terminal reduces or remaps colors. Focus changes remove the marker and restore the Base scheme.
+The Console surface combines a bounded structured-log/chat feed and an always-visible accented `>` command input. The Worlds / Players roster is a `ListView` of typed world/player/bot entries rather than parsed display text. Double-clicking a player opens its generation-safe live details window. Drag-and-drop player moves use the captured exact `PlayerHandle(slot,generation)`. `[X]` on a sandbox/player/bot row routes to typed destroy/kick/despawn operations.
 
-Double-clicking a tile first focuses it and then toggles it between the tiled layout and full-workspace view. This is a presentation-only operation. Existing Details screens for Players, NPCs, Projectiles, Items, Network, World and Logs remain available and keep their existing bounded read-model contracts. External trusted-host dashboards remain separate roots.
+The roster action row is exactly **`+ Sandbox`** followed by **`+ Bot`**. `+ Sandbox` opens the typed sandbox creation form. `+ Bot` creates a primary-world PlayerBot by default; double-clicking a bot row opens its typed settings window. Bot settings expose PlayerBot/NpcBot body, a source-verified NPC preset, clothing/armor, weapon policy, target, Idle/Follow/Guard mode, pickup and consumable toggles. PlayerBot reuses existing server-player/projectile/world-item authorities; NpcBot is a real authoritative NPC presentation/motion actor. Its supported presets are restricted to source-backed controlled-motion families (ground fighters, AI_002 flying eyes, AI_005 flyers and ordinary pre-wander AI_014 bats), and the bot body is zero-contact plus invulnerable so it cannot enter ordinary NPC death/loot/progression paths. Supported PlayerBot Archery/Wrath potion effects are trusted server-side combat state; they are not broadcast to unrelated observers as packet `55`, because vanilla 1.4.5.8 applies that PvP-buff packet only to the encoded local player. Unsupported NPC combat semantics remain fail-closed rather than being approximated.
 
-The System Dashboard shows lifecycle/world state, player and connection counts, interest-management state, current/target TPS, tick wall/CPU timing, slowest phase, missed deadlines, process CPU, managed heap, working set, allocation/GC state, command pressure, recent log events and public chat.
+The dashboard has **no duplicate visible Settings button**. Runtime settings remain available through the top-level **Settings → Runtime settings** menu. The runtime settings window is deliberately limited to operator controls with concrete runtime value: current bind address/IP and TCP port, listener lifecycle/generation/draining/rebind counters, active connections versus the player limit, target TPS, and the interest-management toggle. Applying a bind/port change calls the operations boundary and replaces the listener generation; the TUI never receives a `Socket` and never owns connection lifetime. Existing accepted clients remain connected while the previous listener moves `Active → Draining → Closed`.
 
-Double-clicking a player row in **Worlds / Players** opens a generation-safe live player window rather than parsing the rendered row text. The window shows the remote IP/endpoint, current in-memory session duration, character difficulty, HP/mana, team, position/velocity and selected item. Connection-session metadata is process-local only and is removed when the socket closes; it is never written to a database or file. The GodMode `Disabled` / `Enabled` drop-down calls `IPlayerAdministrativeOperations` for the exact `PlayerHandle(slot,generation)`.
-
-Sandbox actions remain typed UI operations. The dashboard command input and plain-console fallback do not accept `sandbox`/`sb`/`sb1`/`sb2`/`respawn` mutation commands, and GodMode has no chat/text command. This keeps administrative state changes behind typed UI/host contracts instead of player-visible command parsing.
-
-The dashboard also exposes a visible **Settings** button and a top-level **Settings → Runtime settings** menu entry. The runtime settings window is deliberately limited to operator controls with concrete runtime value: current bind address/IP and TCP port, listener lifecycle/generation/draining/rebind counters, active connections versus the player limit, target TPS, and the interest-management toggle. Applying a bind/port change calls the operations boundary and replaces the listener generation; the TUI never receives a `Socket` and never owns connection lifetime. Existing accepted clients remain connected while the previous listener moves `Active → Draining → Closed`.
+The Network graph stores **packets/second** history, not byte-volume history. IN uses the left vertical scale and OUT uses an independent right scale so a quiet direction remains visible beside a busy one. The numeric line reports both packet rate and byte throughput (`KiB/s` or `MiB/s`). Rates come from process-lifetime message-counter deltas across detached network snapshots; invalid intervals/counter rollback reset the UI-local sample instead of inventing a spike.
 
 The World detail screen also surfaces section-cache pipeline health from `RuntimeWorldSnapshot`: in-flight/submitted/rejected rebuilds, stale results, encode failures, publish rejections and accumulated encode time. Its on-demand row shows requests, unique/deduplicated requests, pending work versus bounded capacity, rejected requests and completed/timed-out waits.
 
@@ -173,7 +166,7 @@ sequenceDiagram
     end
 ```
 
-The ANSI TUI smoke exercises the real menu path and verifies pending-save state; unit tests cover accepted and rejected requests.
+The headless Terminal.Gui TUI smoke exercises the real menu path and verifies pending-save state; unit tests cover accepted and rejected requests.
 
 ## 8. Network telemetry
 

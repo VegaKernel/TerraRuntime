@@ -1,4 +1,7 @@
 using System.Text;
+using TerraRuntime.Application.Bots;
+using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.HostContracts;
 using TerraRuntime.Application.Operations;
@@ -15,7 +18,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     [Fact]
     public void Dashboard_initialization_repairs_focus_chain_and_focuses_command_input()
     {
-        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI);
+        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.DOTNET);
         app.Driver!.SetScreenSize(80, 20);
         using var window = new Window
         {
@@ -54,7 +57,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     [Fact]
     public void Dashboard_layout_uses_wide_console_network_row_and_world_player_tree_without_global_tps_tile()
     {
-        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI);
+        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.DOTNET);
         app.Driver!.SetScreenSize(160, 28);
         using var window = new Window
         {
@@ -101,6 +104,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
             Assert.Contains("Logs INFO+", dashboard.GetFeedControlsForSmoke());
             Assert.Contains("Chat ON", dashboard.GetFeedControlsForSmoke());
             Assert.DoesNotContain("Level", dashboard.GetFeedControlsForSmoke(), StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(["+ Sandbox", "+ Bot"], dashboard.WorldActionButtonsForSmoke);
             Assert.True(dashboard.CommandInputFrameUsesAccentForSmoke);
         }
         finally
@@ -112,7 +116,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     [Fact]
     public void Maximized_network_chart_expands_history_across_wide_viewport()
     {
-        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI);
+        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.DOTNET);
         app.Driver!.SetScreenSize(160, 28);
         using var window = new Window
         {
@@ -163,8 +167,8 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         using var chart = new NetworkTrafficChartView();
         chart.SetSamples(
         [
-            new NetworkTrafficSample(InboundKiBPerSecond: 2048d, OutboundKiBPerSecond: 2d),
-            new NetworkTrafficSample(InboundKiBPerSecond: 1024d, OutboundKiBPerSecond: 1d)
+            new NetworkTrafficSample(InboundPacketsPerSecond: 2048d, OutboundPacketsPerSecond: 2d),
+            new NetworkTrafficSample(InboundPacketsPerSecond: 1024d, OutboundPacketsPerSecond: 1d)
         ]);
 
         Assert.True(chart.InboundScaleMaximumForSmoke >= 2048d);
@@ -178,9 +182,9 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     }
 
     [Fact]
-    public void Network_chart_renders_block_columns_and_both_axes_in_ansi_framebuffer()
+    public void Network_chart_renders_block_columns_and_both_axes_in_headless_framebuffer()
     {
-        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI);
+        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.DOTNET);
         app.Driver!.SetScreenSize(60, 10);
         using var window = new Window
         {
@@ -199,9 +203,9 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         {
             chart.SetSamples(
             [
-                new NetworkTrafficSample(InboundKiBPerSecond: 2048d, OutboundKiBPerSecond: 2d),
-                new NetworkTrafficSample(InboundKiBPerSecond: 512d, OutboundKiBPerSecond: 1.5d),
-                new NetworkTrafficSample(InboundKiBPerSecond: 0d, OutboundKiBPerSecond: 1d)
+                new NetworkTrafficSample(InboundPacketsPerSecond: 2048d, OutboundPacketsPerSecond: 2d),
+                new NetworkTrafficSample(InboundPacketsPerSecond: 512d, OutboundPacketsPerSecond: 1.5d),
+                new NetworkTrafficSample(InboundPacketsPerSecond: 0d, OutboundPacketsPerSecond: 1d)
             ]);
             app.LayoutAndDraw();
             Assert.NotNull(app.Driver.Contents);
@@ -229,7 +233,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     [Fact]
     public void Console_feed_follows_tail_but_preserves_manual_history_scroll()
     {
-        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI);
+        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.DOTNET);
         app.Driver!.SetScreenSize(80, 20);
         using var window = new Window
         {
@@ -569,19 +573,6 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         Assert.Equal(window.Player, administration.LastSetPlayer.Value);
     }
 
-    [Fact]
-    public void Settings_button_raises_runtime_settings_request()
-    {
-        using var dashboard = new RuntimeOverviewDashboard();
-        int requests = 0;
-        dashboard.SettingsRequested += () => requests++;
-
-        Assert.True(dashboard.SettingsButtonEnabledForSmoke);
-        dashboard.RequestSettingsForSmoke();
-
-        Assert.Equal(1, requests);
-    }
-
     private static RuntimePlayerSnapshot CreatePlayer(byte slot, long connectionId, string name) =>
         new(
             connectionId,
@@ -654,4 +645,42 @@ public sealed class RuntimeOverviewDashboardInteractionTests
             MinimumLevel: OperationsLogLevel.Debug,
             CapturedAtUtc: capturedAt);
     }
+
+    [Fact]
+    public void World_tree_bot_row_supports_double_click_open_and_explicit_despawn_action()
+    {
+        using var tree = new SandboxWorldTreeView();
+        var bot = new RuntimeBotSnapshot(
+            Id: 7,
+            new ServerPlayerId("bot:7"),
+            Player: default,
+            Npc: new NpcHandle(3, new NpcGeneration(1)),
+            Name: "Bot 7",
+            new RuntimeBotConfiguration(
+                RuntimeBotClothingPreset.Classic,
+                RuntimeBotArmorPreset.None,
+                RuntimeBotMode.Guard,
+                Target: default,
+                Body: RuntimeBotBodyKind.Npc,
+                NpcType: VanillaNpcIds.Zombie),
+            TargetAvailable: false,
+            PvpEnabled: false,
+            IsStuck: false,
+            TeleportCount: 0,
+            UpdatedAtUtc: DateTimeOffset.UtcNow);
+        tree.SetRows(
+            ["  └─ [NpcBot #3] Bot 7  [guard]  [X]"],
+            [new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Bot, null, null, Bot: bot)]);
+
+        RuntimeBotSnapshot? opened = null;
+        int? despawned = null;
+        tree.BotOpenRequested += value => opened = value;
+        tree.BotDespawnRequested += id => despawned = id;
+
+        Assert.True(tree.TryOpenRowForSmoke(0));
+        Assert.Equal(7, opened?.Id);
+        Assert.True(tree.TryInvokeActionForSmoke(0));
+        Assert.Equal(7, despawned);
+    }
+
 }

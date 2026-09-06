@@ -134,6 +134,37 @@ public sealed class VanillaBatAi1458Tests
     }
 
     [Fact]
+    public void Controlled_pursuit_slice_reuses_pre_wander_source_motion_and_excludes_boss_child_special_case()
+    {
+        var input = new VanillaBatPursuitInput1458(
+            VelocityX: 0f,
+            VelocityY: 0f,
+            OldVelocityX: 0f,
+            OldVelocityY: 0f,
+            DirectionX: 1,
+            DirectionY: -1,
+            Target: 7,
+            Wet: false,
+            CollideX: false,
+            CollideY: false);
+
+        Assert.True(VanillaBatMotion1458.TryStepPursuit(
+            VanillaNpcIds.CaveBat,
+            in input,
+            out VanillaBatPursuitResult1458 result));
+        Assert.Equal(0.2f, result.VelocityX, 5); // ordinary pass + source-backed bat double-acceleration pass
+        Assert.Equal(-0.08f, result.VelocityY, 5);
+        Assert.Equal(1, result.DirectionX);
+        Assert.Equal(-1, result.DirectionY);
+        Assert.Equal((ushort)7, result.Target);
+
+        Assert.False(VanillaBatMotion1458.TryStepPursuit(
+            VanillaNpcIds.QueenSlimeMinionPurple,
+            in input,
+            out _));
+    }
+
+    [Fact]
     public void Dispatcher_routes_bat_family_and_commits_no_gravity_state()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper());

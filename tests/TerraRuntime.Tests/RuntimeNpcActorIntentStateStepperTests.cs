@@ -113,6 +113,126 @@ public sealed class RuntimeNpcActorIntentStateStepperTests
         Assert.True(simulated.Simulation.OldVelocityY > 0f);
     }
 
+    [Fact]
+    public void Controlled_flying_eye_follow_reuses_verified_steering_without_fallback_side_effects()
+    {
+        var store = new RuntimeNpcStore(capacity: 2);
+        NpcStateUpdate initial = CreateNpc(VanillaNpcIds.DemonEye, positionX: 100f, positionY: 100f);
+        Assert.True(store.TrySpawn(0, in initial, out NpcSnapshot npc));
+        var controls = new RuntimeNpcActorControlRegistry(store);
+        PlayerHandle target = new(new PlayerSlotId(4), new PlayerSessionGeneration(2));
+        Assert.Equal(
+            NpcActorControlAcquireResult.Acquired,
+            controls.TryAcquire(npc.Handle, new ActorControllerId("test:eye"), out NpcActorControlLease? lease));
+        Assert.True(lease!.TryFollowPlayer(target));
+        controls.CommitPending();
+
+        var lookup = new FixedPlayerLookup(CreatePlayer(target, positionX: 300f, positionY: 20f));
+        var fallback = new FixedVelocityStepper(99f);
+        var stepper = new RuntimeNpcActorIntentStateStepper(fallback, controls, lookup);
+
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+
+        Assert.Equal(0, fallback.Calls);
+        Assert.Equal(npc.PositionX, next.PositionX);
+        Assert.Equal(npc.PositionY, next.PositionY);
+        Assert.True(next.VelocityX > 0f);
+        Assert.InRange(next.VelocityX, 0f, NpcActorMotionOptions.Default.HorizontalAcceleration);
+        Assert.True(next.VelocityY < 0f);
+        Assert.Equal(target.Slot.Value, next.Target);
+        Assert.True(next.Simulation.NoGravity);
+    }
+
+    [Fact]
+    public void Controlled_flyer_follow_reuses_verified_pursuit_without_fallback_side_effects()
+    {
+        var store = new RuntimeNpcStore(capacity: 2);
+        NpcStateUpdate initial = CreateNpc(VanillaNpcIds.EaterOfSouls, positionX: 100f, positionY: 100f);
+        Assert.True(store.TrySpawn(0, in initial, out NpcSnapshot npc));
+        var controls = new RuntimeNpcActorControlRegistry(store);
+        PlayerHandle target = new(new PlayerSlotId(5), new PlayerSessionGeneration(2));
+        Assert.Equal(
+            NpcActorControlAcquireResult.Acquired,
+            controls.TryAcquire(npc.Handle, new ActorControllerId("test:flyer"), out NpcActorControlLease? lease));
+        Assert.True(lease!.TryFollowPlayer(target));
+        controls.CommitPending();
+
+        var lookup = new FixedPlayerLookup(CreatePlayer(target, positionX: 300f, positionY: 100f));
+        var fallback = new FixedVelocityStepper(99f);
+        var stepper = new RuntimeNpcActorIntentStateStepper(fallback, controls, lookup);
+
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+
+        Assert.Equal(0, fallback.Calls);
+        Assert.Equal(npc.PositionX, next.PositionX);
+        Assert.Equal(npc.PositionY, next.PositionY);
+        Assert.True(next.VelocityX > 0f);
+        Assert.InRange(next.VelocityX, 0f, NpcActorMotionOptions.Default.HorizontalAcceleration);
+        Assert.Equal(target.Slot.Value, next.Target);
+        Assert.True(next.Simulation.NoGravity);
+    }
+
+    [Fact]
+    public void Controlled_flying_follow_with_stale_player_generation_brakes_instead_of_falling_back()
+    {
+        var store = new RuntimeNpcStore(capacity: 2);
+        NpcStateUpdate initial = CreateNpc(VanillaNpcIds.DemonEye, positionX: 100f, positionY: 100f) with
+        {
+            VelocityX = 1f,
+            VelocityY = -0.5f
+        };
+        Assert.True(store.TrySpawn(0, in initial, out NpcSnapshot npc));
+        var controls = new RuntimeNpcActorControlRegistry(store);
+        PlayerHandle stale = new(new PlayerSlotId(6), new PlayerSessionGeneration(2));
+        Assert.Equal(
+            NpcActorControlAcquireResult.Acquired,
+            controls.TryAcquire(npc.Handle, new ActorControllerId("test:stale-eye"), out NpcActorControlLease? lease));
+        Assert.True(lease!.TryFollowPlayer(stale));
+        controls.CommitPending();
+
+        PlayerHandle replacement = new(new PlayerSlotId(6), new PlayerSessionGeneration(3));
+        var lookup = new FixedPlayerLookup(CreatePlayer(replacement, positionX: 500f, positionY: 20f));
+        var fallback = new FixedVelocityStepper(99f);
+        var stepper = new RuntimeNpcActorIntentStateStepper(fallback, controls, lookup);
+
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+
+        Assert.Equal(0, fallback.Calls);
+        Assert.True(MathF.Abs(next.VelocityX) < MathF.Abs(npc.VelocityX));
+        Assert.True(MathF.Abs(next.VelocityY) < MathF.Abs(npc.VelocityY));
+        Assert.Equal(npc.Target, next.Target);
+        Assert.True(next.Simulation.NoGravity);
+    }
+
+    [Fact]
+    public void Controlled_bat_follow_uses_pre_wander_pursuit_slice_without_fallback_side_effects()
+    {
+        var store = new RuntimeNpcStore(capacity: 2);
+        NpcStateUpdate initial = CreateNpc(VanillaNpcIds.CaveBat, positionX: 100f, positionY: 100f);
+        Assert.True(store.TrySpawn(0, in initial, out NpcSnapshot npc));
+        var controls = new RuntimeNpcActorControlRegistry(store);
+        PlayerHandle target = new(new PlayerSlotId(8), new PlayerSessionGeneration(2));
+        Assert.Equal(
+            NpcActorControlAcquireResult.Acquired,
+            controls.TryAcquire(npc.Handle, new ActorControllerId("test:bat"), out NpcActorControlLease? lease));
+        Assert.True(lease!.TryFollowPlayer(target));
+        controls.CommitPending();
+
+        var lookup = new FixedPlayerLookup(CreatePlayer(target, positionX: 300f, positionY: 20f));
+        var fallback = new FixedVelocityStepper(99f);
+        var stepper = new RuntimeNpcActorIntentStateStepper(fallback, controls, lookup);
+
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+
+        Assert.Equal(0, fallback.Calls);
+        Assert.True(next.VelocityX > 0f);
+        Assert.InRange(next.VelocityX, 0f, NpcActorMotionOptions.Default.HorizontalAcceleration);
+        Assert.True(next.VelocityY < 0f);
+        Assert.Equal(target.Slot.Value, next.Target);
+        Assert.True(next.Simulation.NoGravity);
+        Assert.Equal(npc.Ai, next.Ai); // controlled pursuit does not advance vanilla wander/shooter timers
+    }
+
     private static NpcStateUpdate CreateZombie(float positionX, float positionY) =>
         new(
             Type: VanillaNpcIds.Zombie.Value,
@@ -129,6 +249,18 @@ public sealed class RuntimeNpcActorIntentStateStepperTests
                 DirectionY = 0,
                 NoGravity = false
             });
+
+    private static NpcStateUpdate CreateNpc(NpcTypeId type, float positionX, float positionY) =>
+        new(
+            Type: type.Value,
+            NetId: checked((short)type.Value),
+            PositionX: positionX,
+            PositionY: positionY,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: VanillaNpcDefinitionCatalog.DefaultTarget,
+            Ai: default,
+            Simulation: NpcSimulationState.Initial);
 
     private static PlayerStateSnapshot CreatePlayer(
         PlayerHandle player,

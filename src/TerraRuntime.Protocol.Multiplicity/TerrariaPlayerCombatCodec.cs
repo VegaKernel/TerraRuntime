@@ -20,6 +20,17 @@ public static class TerrariaPlayerCombatCodec
         return payload[1] is 0 or 1;
     }
 
+    public static byte[] EncodePvpToggle(byte player, bool hostile)
+    {
+        Span<byte> payload = stackalloc byte[2];
+        payload[0] = player;
+        payload[1] = hostile ? (byte)1 : (byte)0;
+        byte[] frame = new byte[payload.Length + TerrariaFrameDecoderOptions.MinimumFrameLength];
+        if (TerrariaFrameEncoder.TryWrite(frame, (byte)TerrariaMessageId.TogglePvp, payload) != TerrariaFrameWriteResult.Written)
+            throw new InvalidOperationException("Could not encode Terraria packet 30 PvP state.");
+        return frame;
+    }
+
     public static bool TryDecodeTeam(in TerrariaFrame frame, out byte player, out byte team)
     {
         player = 0;

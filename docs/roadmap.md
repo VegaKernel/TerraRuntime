@@ -605,6 +605,12 @@ flowchart TD
 - [x] Use Terminal.Gui v2 as the first UI implementation, but keep core contracts toolkit-independent.
 - [x] Dashboard: lifecycle, world, TPS/tick phase, players, queues, packet rates, memory/GC, save/cache state, warnings and recent structured logs.
 - [x] `ListenerManager` separates listening generations from accepted client lifetime; live bind-address/port replacement uses `Active -> Draining -> Closed` and is exposed through bounded dashboard settings without disconnecting accepted clients.
+- [x] Worlds / Players action row exposes `+ Sandbox` followed by `+ Bot`; the duplicate dashboard Settings button is removed while runtime settings remain in the top-level Settings menu.
+- [x] Operator bot policy is isolated in `TerraRuntime.Application.Bots` with source-pinned content facts in `TerraRuntime.Gameplay.Bots`; PlayerBot owns Idle/Follow/Guard, target/PvP mirroring, stuck recovery, bounded ammo/healing/useful-potion pickup and source-backed consumable use.
+- [x] NpcBot uses a real authoritative hostile NPC presentation/motion actor for verified controlled-motion presets, with Idle/Follow/Guard positioning and stuck recovery; current families include ground fighters, AI_002 flying eyes, AI_005 flyers and ordinary pre-wander AI_014 bats. Bot NPC bodies are zero-contact and invulnerable until bot-specific death/drop semantics exist, and unsupported NPC-owned offensive Guard remains fail-closed.
+- [x] Bot production-graph packet acceptance composes the real connection/server-player/projectile/world-item/NPC replication registries and covers late join, packet `30` mirroring/reset, Guard projectile ownership/ammo, pickup removal/inventory, NpcBot lifecycle and PlayerBot/NpcBot body replacement.
+- [ ] Complete independent official Terraria 1.4.5.8 client acceptance for the bot slice; automated packet-graph acceptance does not replace this evidence gate.
+- [x] The compact Network chart stores packets/second history with independent IN/OUT scales while its numeric line retains packet rate and byte throughput.
 - [x] Logs viewer uses bounded retention, filters and follow/pause without blocking telemetry refresh.
 
 ## Phase 11 - Observability and performance discipline

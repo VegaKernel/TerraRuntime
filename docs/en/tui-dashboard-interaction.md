@@ -12,8 +12,8 @@ The built-in TerraRuntime System Dashboard keeps presentation state detached fro
 flowchart LR
     Console["Console\nconfigurable Logs + Chat feed\ncommand line"]
     subgraph Right["Right column"]
-        Network["Network graph"]
-        Worlds["Worlds / Players roster\nper-world TPS"]
+        Network["Network\npackets/s graph"]
+        Worlds["Worlds / Players roster\nper-world TPS + bots"]
     end
     Console --- Right
 ```
@@ -35,9 +35,9 @@ A running sandbox omits the redundant `running` lifecycle word and renders simpl
 
 The roster is a `ListView`: focus/selection highlights a complete item row rather than selecting text inside the row. Player drag-and-drop submits the typed Level 1 move operation with the exact `PlayerHandle` (`slot + generation`) captured when the drag begins. That captured source remains immutable until button release, so neither a background refresh/reorder nor repeated held-button mouse events over another player row can silently substitute another player. The complete destination-world branch is a drop surface: the world header, any player row in that branch, and its `<no players>` placeholder all resolve to the same semantic target.
 
-Actionable sandbox-world and player rows render an explicit `[X]` action at the right edge. Selecting it opens a confirmation dialog: sandbox rows confirm `Destroy`, player rows confirm `Kick`. Primary world destruction is deliberately not offered. `Kick` requests process-owned connection shutdown through the connection route/outbound queue; it does not delete a UI row or directly mutate runtime player state.
+Actionable sandbox-world, player and bot rows render an explicit `[X]` action at the right edge. Selecting it routes through typed operations: sandbox rows confirm `Destroy`, player rows confirm `Kick`, and bot rows request typed despawn. Primary world destruction is deliberately not offered. `Kick` requests process-owned connection shutdown through the connection route/outbound queue; the UI never deletes authoritative state directly.
 
-A `+` control at the top of the roster opens the sandbox creation window. The form maps directly to the typed sandbox creation surface:
+The roster action row is exactly **`+ Sandbox`** followed by **`+ Bot`**. `+ Sandbox` opens the sandbox creation window. The form maps directly to the typed sandbox creation surface:
 
 - sandbox name;
 - one isolation dropdown with `In-process sandbox isolation` and `Dedicated-process sandbox isolation`;
@@ -48,6 +48,10 @@ A `+` control at the top of the roster opens the sandbox creation window. The fo
 - an evil drop-down with Corruption and Crimson.
 
 The form builds the same typed `SandboxCreateRequest` used by command handling. It does not round-trip through a generated command string.
+
+`+ Bot` creates a primary-world PlayerBot by default. Bot rows display the body kind, and double-clicking a bot row opens a typed settings window for PlayerBot/NpcBot body, source-verified NPC preset, clothing/armor, weapon policy, target, Idle/Follow/Guard mode, pickup and consumable toggles. PlayerBot reuses the normal server-player/projectile/world-item authorities. NpcBot is a real authoritative hostile-NPC presentation/motion actor; presets are restricted to verified ground-fighter, AI_002 flying-eye, AI_005 flyer and ordinary pre-wander AI_014 bat motion families. The bot body is zero-contact and invulnerable until bot-specific death/drop semantics exist; unsupported NPC combat semantics stay fail-closed.
+
+The dashboard has **no duplicate visible Settings button**. Runtime listener/settings controls remain under **Settings → Runtime settings**.
 
 ## Player details and GodMode
 
@@ -81,7 +85,7 @@ feed level debug|info|warn|error
 
 ## Network graph
 
-Network uses a bounded custom block-column view over inbound/outbound throughput history. IN is drawn against the left vertical scale, OUT against an independent right vertical scale, and both histories share the same time axis. The two directions use distinct attributes and `█` / `▓` columns; `▒` marks overlap. Because IN and OUT are normalized independently, a quiet 2 KiB/s direction remains visible next to a multi-MiB/s direction instead of collapsing against a shared maximum. The legend still shows current packet rate and throughput in `KiB/s`. Rates are calculated from process-lifetime message-counter deltas across detached network snapshots. Invalid intervals/counter rollback reset the local sample instead of emitting a synthetic spike.
+Network uses a bounded custom block-column view over inbound/outbound **packet-rate** history. IN is drawn against the left vertical scale, OUT against an independent right vertical scale, and both histories share the same time axis. The two directions use distinct attributes and `█` / `▓` columns; `▒` marks overlap. Because IN and OUT packet rates are normalized independently, a quiet direction remains visible beside a busy one instead of collapsing against a shared maximum. The numeric legend reports both the current packet rate (`p/s`) and byte throughput (`KiB/s` or `MiB/s`). Rates are calculated from process-lifetime message-counter and byte-counter deltas across detached network snapshots. Invalid intervals/counter rollback reset the local sample instead of emitting a synthetic spike.
 
 The Network detail screen also renders the heaviest Terraria message IDs from the rolling message-traffic window: direction, numeric ID, known enum name, frames/s, KiB/s and lifetime frame count. This makes it possible to distinguish normal entity replication from a specific packet family producing abnormal outbound traffic without enabling a global packet dump.
 

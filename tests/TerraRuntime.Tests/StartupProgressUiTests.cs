@@ -33,9 +33,9 @@ public sealed class StartupProgressUiTests
     }
 
     [Fact]
-    public void Startup_screen_renders_into_terminal_gui_ansi_backbuffer()
+    public void Startup_screen_renders_into_terminal_gui_headless_backbuffer()
     {
-        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI);
+        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.DOTNET);
         app.Driver!.SetScreenSize(100, 26);
         Theme.Apply();
 
@@ -74,7 +74,7 @@ public sealed class StartupProgressUiTests
     private static void AssertRendered(IDriver driver, string expected)
     {
         if (driver.Contents is null)
-            throw new InvalidOperationException("ANSI driver did not expose a framebuffer.");
+            throw new InvalidOperationException("Terminal.Gui driver did not expose a framebuffer.");
 
         int height = driver.Contents.GetLength(0);
         int width = driver.Contents.GetLength(1);
@@ -92,6 +92,6 @@ public sealed class StartupProgressUiTests
         }
 
         throw new InvalidOperationException(
-            $"ANSI framebuffer did not contain '{expected}'.{Environment.NewLine}{screen}");
+            $"Terminal.Gui framebuffer did not contain '{expected}'.{Environment.NewLine}{screen}");
     }
 }

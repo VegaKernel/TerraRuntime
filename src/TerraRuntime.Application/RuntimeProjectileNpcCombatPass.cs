@@ -19,6 +19,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
     private const int PlayerSlotCount = byte.MaxValue + 1;
     private readonly RuntimeNpcNetworkCombatPipeline combat;
     private readonly PlayerAuthority players;
+    private readonly ServerPlayerAuthority? serverPlayers;
     private readonly Func<long> tickProvider;
     private readonly Random random;
     private readonly ProjectileSnapshot[] projectileBuffer;
@@ -36,12 +37,14 @@ internal sealed class RuntimeProjectileNpcCombatPass
         RuntimeNpcNetworkCombatPipeline combat,
         PlayerAuthority players,
         Func<long> tickProvider,
-        Random? random = null)
+        Random? random = null,
+        ServerPlayerAuthority? serverPlayers = null)
     {
         this.projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.combat = combat ?? throw new ArgumentNullException(nameof(combat));
         this.players = players ?? throw new ArgumentNullException(nameof(players));
+        this.serverPlayers = serverPlayers;
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
         this.random = random ?? Random.Shared;
         projectileBuffer = new ProjectileSnapshot[projectiles.Capacity];
@@ -77,7 +80,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
 
             if (!projectiles.TryGetCombatTrustedOwner(projectile.Handle, out PlayerHandle trustedOwner) ||
                 !TryResolveOwnerRow(trustedOwner, out int ownerRow) ||
-                !players.TryCaptureCombatSnapshot(trustedOwner, out VanillaPlayerCombatSnapshot ownerCombat))
+                !TryCaptureOwnerCombatSnapshot(trustedOwner, out VanillaPlayerCombatSnapshot ownerCombat))
             {
                 continue;
             }
@@ -155,7 +158,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
                 !VanillaProjectileExplosionFacts.TryGetOnKillExplosion(projectile.Type, out _) ||
                 !VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(projectile.Type, out _) ||
                 !TryResolveOwnerRow(explosion.TrustedOwner, out int ownerRow) ||
-                !players.TryCaptureCombatSnapshot(explosion.TrustedOwner, out VanillaPlayerCombatSnapshot ownerCombat))
+                !TryCaptureOwnerCombatSnapshot(explosion.TrustedOwner, out VanillaPlayerCombatSnapshot ownerCombat))
             {
                 continue;
             }
@@ -282,15 +285,37 @@ internal sealed class RuntimeProjectileNpcCombatPass
         return targetCenter > explosion.CenterX ? 1 : targetCenter < explosion.CenterX ? -1 : 0;
     }
 
+    private bool TryCaptureOwnerSnapshot(PlayerHandle owner, out PlayerStateSnapshot snapshot)
+    {
+        if (players.TryCapture(owner, out snapshot) && snapshot.Player == owner)
+            return true;
+        if (serverPlayers is not null && serverPlayers.TryGet(owner, out snapshot) && snapshot.Player == owner)
+            return true;
+        snapshot = default;
+        return false;
+    }
+
+    private bool TryCaptureOwnerCombatSnapshot(PlayerHandle owner, out VanillaPlayerCombatSnapshot snapshot)
+    {
+        if (players.TryCaptureCombatSnapshot(owner, out snapshot))
+            return true;
+        if (serverPlayers is not null && serverPlayers.TryGet(owner, out PlayerStateSnapshot player) &&
+            player.Player == owner && !player.IsDead)
+        {
+            // Runtime-owned bot presets currently contain only ordinary clothing/metal armor with no outgoing
+            // damage bonuses. Baseline therefore matches the source-backed offensive modifiers used by its bow.
+            snapshot = VanillaPlayerCombatSnapshot.Baseline;
+            return true;
+        }
+        snapshot = default;
+        return false;
+    }
+
     private bool TryResolveOwnerRow(PlayerHandle trustedOwner, out int ownerRow)
     {
         ownerRow = -1;
-        if (!trustedOwner.IsAssigned ||
-            !players.TryCapture(trustedOwner, out PlayerStateSnapshot currentOwner) ||
-            currentOwner.Player != trustedOwner)
-        {
+        if (!trustedOwner.IsAssigned || !TryCaptureOwnerSnapshot(trustedOwner, out PlayerStateSnapshot currentOwner))
             return false;
-        }
 
         byte spawner = trustedOwner.Slot.Value;
         if (ownerGenerations[spawner] != trustedOwner.Generation)

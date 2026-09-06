@@ -19,6 +19,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
     private readonly RuntimeProjectileStore projectiles;
     private readonly RuntimeNpcStore npcs;
     private readonly PlayerAuthority players;
+    private readonly ServerPlayerAuthority? serverPlayers;
     private readonly Func<long> tickProvider;
     private readonly Random random;
     private readonly ProjectileSnapshot[] projectileBuffer;
@@ -33,11 +34,13 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
         PlayerAuthority players,
         Func<long> tickProvider,
         Random? random = null,
-        RuntimeCultistLightningArcTrailRegistry? cultistLightningArcTrails = null)
+        RuntimeCultistLightningArcTrailRegistry? cultistLightningArcTrails = null,
+        ServerPlayerAuthority? serverPlayers = null)
     {
         this.projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.players = players ?? throw new ArgumentNullException(nameof(players));
+        this.serverPlayers = serverPlayers;
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
         this.random = random ?? Random.Shared;
         this.cultistLightningArcTrails = cultistLightningArcTrails ??
@@ -67,11 +70,11 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
             if (!projectiles.IsCombatTrusted(projectile.Handle) ||
                 !projectiles.TryGetCombatTrustedOwner(projectile.Handle, out PlayerHandle trustedOwner) ||
                 !IsEligible(in projectile, out VanillaProjectileDefinition definition) ||
-                !players.TryGet(trustedOwner, out RuntimePlayerMember? owner) ||
-                !players.TryCaptureCombatSnapshot(trustedOwner, out VanillaPlayerCombatSnapshot ownerCombat) ||
-                owner.Connection.Player != trustedOwner ||
-                owner.Slot.Value != projectile.Spawner ||
-                !owner.Hostile || owner.IsDead)
+                !TryResolveTrustedPvpOwner(
+                    trustedOwner,
+                    projectile.Spawner,
+                    out PlayerStateSnapshot owner,
+                    out VanillaPlayerCombatSnapshot ownerCombat))
             {
                 continue;
             }
@@ -104,11 +107,11 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
 
                 int direction = projectile.VelocityX > 0.01f ? 1 : projectile.VelocityX < -0.01f ? -1 : 0;
                 bool killedBefore = target.IsDead;
-                PlayerDamageCommitResult commitResult = players.TryCommitAuthoritativePvpDamage(
+                PlayerDamageCommitResult commitResult = players.TryCommitAuthoritativePvpDamageFromSnapshot(
                         tick,
-                        owner.Connection.Player,
+                        in owner,
                         target.Connection.Player,
-                        DamageSource.FromPlayerProjectile(owner.Connection.Player, projectile.Handle),
+                        DamageSource.FromPlayerProjectile(trustedOwner, projectile.Handle),
                         hit.Damage,
                         hit.Critical,
                         direction,
@@ -141,6 +144,36 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
 
         TickServerHostilePve(projectileBuffer.AsSpan(0, projectileCount), tick);
         TickExplosions(explosions, tick);
+    }
+
+    private bool TryResolveTrustedPvpOwner(
+        PlayerHandle owner,
+        byte spawner,
+        out PlayerStateSnapshot snapshot,
+        out VanillaPlayerCombatSnapshot combat)
+    {
+        snapshot = default;
+        combat = default;
+        if (!owner.IsAssigned || owner.Slot.Value != spawner)
+            return false;
+
+        if (players.TryCapture(owner, out snapshot) && snapshot.Player == owner)
+        {
+            return snapshot.Hostile && !snapshot.IsDead &&
+                players.TryCaptureCombatSnapshot(owner, out combat);
+        }
+
+        if (serverPlayers is not null && serverPlayers.TryGet(owner, out snapshot) && snapshot.Player == owner)
+        {
+            if (!snapshot.Hostile || snapshot.IsDead)
+                return false;
+            // Bot armor presets are ordinary clothing/metal sets with no offensive projectile modifiers.
+            combat = VanillaPlayerCombatSnapshot.Baseline;
+            return true;
+        }
+
+        snapshot = default;
+        return false;
     }
 
     private void TickServerHostilePve(ReadOnlySpan<ProjectileSnapshot> activeProjectiles, long tick)

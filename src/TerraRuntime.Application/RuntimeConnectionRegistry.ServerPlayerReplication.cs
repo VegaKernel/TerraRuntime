@@ -54,6 +54,12 @@ internal sealed partial class RuntimeConnectionRegistry
         Interlocked.Add(ref _serverPlayerManaFrames, BroadcastToPlaying(mana));
     }
 
+    public void ServerPlayerPvpUpdated(PlayerHandle player, bool hostile)
+    {
+        if (_serverPlayers.TryUpdatePvp(player, hostile, out byte[] encoded))
+            Interlocked.Add(ref _relayedPvpFrames, BroadcastToPlaying(encoded));
+    }
+
     public void ServerPlayerItemUpdated(PlayerHandle player, in ServerPlayerItemState item)
     {
         if (_serverPlayers.TryUpdateItem(player, in item, out byte[] encoded))
@@ -79,6 +85,7 @@ internal sealed partial class RuntimeConnectionRegistry
         Interlocked.Add(ref _playerActiveBaselineFrames, counts.Active);
         Interlocked.Add(ref _appearanceBaselineFrames, counts.Appearance);
         Interlocked.Add(ref _equipmentBaselineFrames, counts.Equipment);
+        Interlocked.Add(ref _relayedPvpFrames, counts.Pvp);
         Interlocked.Add(ref _serverPlayerHealthFrames, counts.Health);
         Interlocked.Add(ref _serverPlayerManaFrames, counts.Mana);
         Interlocked.Add(ref _movementResyncFrames, counts.Movement);

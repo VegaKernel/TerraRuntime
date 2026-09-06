@@ -6,9 +6,55 @@ This is the resume point for the next agent/session. Read it before reconstructi
 
 ## Last clean checkpoint
 
-- Checkpoint: `/TZ/TerraRuntime-main-TZ-28.zip`.
-- Base clean checkpoint: `/TZ/TerraRuntime-main-TZ-27.zip`.
-- TZ-28 closes the normal-world TerrariaServer 1.4.5.8 post-load liquid preparation/cache-admission slice and hardens runtime-cache layout 2 so an unprepared canonical world cannot be serialized as a prepared startup image.
+- Checkpoint: `/TZ/TerraRuntime-main-TZ-29.zip`.
+- Base clean checkpoint: `/TZ/TerraRuntime-main-TZ-28.zip`.
+- TZ-29 closes the first production operator-bot slice, the fresh-sandbox worldgen memory reuse fix, packets/sec dashboard graph semantics, and headless Terminal.Gui smoke-test reliability.
+
+## TZ-30 stabilization / network acceptance in progress
+
+- Checkpoint: `/TZ/TerraRuntime-main-TZ-30-WIP.zip` (derived from `/TZ/TerraRuntime-main-TZ-29.zip`). Do not call TZ-30 released until the production NativeAOT gates are exercised.
+- `RuntimeBotNetworkAcceptanceTests` now composes the real connection, server-player, projectile, world-item and NPC replication registries around one `ServerRuntimeState` rather than asserting only bot-internal snapshots.
+- The acceptance set is 9/9 green in Release. It covers PlayerBot observer baseline, packet `30` PvP mirroring, target disconnect reset, Guard projectile ownership plus ammo consumption, exact-hitbox item removal plus inventory update, NpcBot spawn/despawn, PlayerBot/NpcBot body replacement, and late-join baselines for both body kinds. The complete Release runner discovers 2530 test cases and exits 0 in the normal parallel profile; the recorded wall time for this pass was 22.42 s with about 2.26 GiB peak RSS.
+- TerrariaServer 1.4.5.8 re-check corrected the previous resume note about packet `55`: `AddPlayerBuffPvP` is targeted local-player PvP buff delivery. A client applies it only when the encoded slot is `Main.myPlayer`; it is not a remote fake-player buff replication mechanism. Supported bot Archery/Wrath effects remain internal trusted combat state and are explicitly acceptance-tested not to emit packet `55` to unrelated observers.
+- Exact .NET `11.0.0-preview.7.26381.103` Linux runtime/NativeAOT packages are published upstream, but this container has no external DNS and the supplied offline cache still lacks the Linux ILCompiler/runtime packs. Linux NativeAOT therefore remains unexercised in this local pass; Windows NativeAOT also requires its Windows gate. Do not classify either AOT gate as green from ordinary Release build/tests.
+- An official Terraria 1.4.5.8 GUI client is not present in this environment. The production-graph packet acceptance materially narrows the risk but does not replace independent official-client acceptance.
+- Release build after the TZ-30 hardening changes is green with 0 warnings / 0 errors. `python3 tools/ci/check_documentation.py` is green for 92 mirrored RU/EN pages and 223 Markdown files.
+
+## TZ-31 NpcBot actor hardening in progress
+
+- Checkpoint: `/TZ/TerraRuntime-main-TZ-31-WIP.zip`, derived from `/TZ/TerraRuntime-main-TZ-30-WIP.zip`. This is a clean WIP checkpoint, not a released TZ-31, because the external NativeAOT and official-client evidence gates are still unavailable in this environment.
+- NpcBot presentation actors are now spawned with `DamageOverride=0` and `DontTakeDamage=true`. This closes the ordinary hostile-NPC death/loot/progression farming path while bot-specific death/drop semantics remain undefined.
+- Generic actor-control coverage now admits four source-backed motion families: ground fighters, AI_002 flying-eye steering, AI_005 flyer pursuit, and ordinary AI_014 bat pursuit. The bat controlled helper deliberately exposes only the pre-wander pursuit/collision slice; it excludes Queen Slime's boss-owned purple minion and does not advance ordinary wander/shooter timers.
+- Demon Eye, Eater of Souls and Cave Bat are exercised as real NpcBot Follow presets through the safe actor-control commit boundary. Controlled NPC projectile/attack side effects remain absent; NpcBot offensive Guard is still fail-closed.
+- Current affected Release pass is green for 69/69 tests across bot authority/network acceptance, actor-control, bat source motion, AI coverage/production composition and architecture boundaries. The narrower bot/actor/preset focused set is 46/46 green.
+- Complete Release in-process runner after the actor hardening changes is green: 3194 tests, 0 failures, 25.31 s test time / 25.74 s process wall time, about 2.0 GiB peak RSS, exit 0.
+
+## Operator bots at TZ-29
+
+- Bot behavior/policy is isolated under `TerraRuntime.Application.Bots`; source-pinned bot item/NPC facts live under `TerraRuntime.Gameplay.Bots`. There is intentionally no bot-specific dependency from `TerraRuntime.Core`.
+- `PlayerBot` owns only policy. Its body remains a normal server-owned player and reuses existing server-player, player, projectile and world-item authorities for state, physics, combat and item removal.
+- `PlayerBot` supports `Idle`, `Follow` and `Guard`, clothing/armor presets, target selection, weapon policy, stuck/hard-distance recovery and bounded detached telemetry.
+- A Follow/Guard target is considered live only when the exact `PlayerHandle(slot,generation)` resolves with an authoritative health baseline and positive life.
+- Guard PvP is fail-closed unless the protected target and candidate opponent both have vanilla hostile/PvP enabled. PlayerBot ranged attacks use the trusted server-player projectile path and consume source-backed ammo.
+- Pickup is deliberately narrow: only the currently required arrow/bullet ammo, supported healing potions, and combat potions whose effect TerraRuntime reproduces. Unsupported item semantics are ignored.
+- Auto-heal mirrors the source-backed QuickHeal candidate ordering for the admitted healing subset and observes the ordinary 3600-tick potion delay. Auto-buff currently commits only Archery and Wrath because those outgoing combat effects are reproduced by the bot controller; other catalogued potion buffs remain fail-closed.
+- `NpcBot` is a real authoritative NPC actor, not a fake-player disguise. It supports `Idle`, `Follow`, `Guard` positioning and stuck/hard-distance recovery through the existing NPC actor-control/physics path. Presets are admitted only for hostile, non-boss NPCs with a verified controlled-motion family; current coverage includes ground fighters, AI_002 flying eyes, AI_005 flyers and ordinary AI_014 bats. The bot body is invulnerable and has zero contact damage so it cannot become an ordinary NPC loot/progression farm.
+- NpcBot offensive Guard remains fail-closed until NPC-owned attack/projectile provenance for the controlled-actor path is separately source-verified. Do not synthesize a player projectile owner for an NPC body.
+- Switching bot body/preset replaces the authoritative actor through the existing server-player/NPC lifecycle boundary; the UI never mutates actor state directly.
+
+## TUI and network presentation at TZ-29
+
+- The Worlds / Players action row is exactly `+ Sandbox`, then `+ Bot`; the duplicate dashboard Settings button is removed. Runtime settings remain available from the top-level Settings menu.
+- Bot rows render their body kind and support double-click settings plus typed despawn. The settings window exposes PlayerBot/NpcBot type, supported NPC preset, clothing, armor, weapon policy, target, mode, pickup and consumable toggles.
+- The Network graph history is packets/second, with independently scaled IN and OUT axes. The numeric line reports both packet rate and byte throughput (`KiB/s` or `MiB/s`).
+- Terminal.Gui framebuffer smoke tests use the `.NET System.Console` driver in tests. The ANSI driver performs terminal-capability handshakes and can block indefinitely in a non-TTY CI/container; production driver selection is unchanged.
+
+## Fresh generated sandbox memory invariant at TZ-29
+
+- `WorldFileFreshComposer326.TryCompose` validates the freshly composed canonical bytes while preserving the already generated `WorldTileStore`; the returned validated `WorldFileData.Tiles` is the same instance as the generation candidate.
+- `SandboxWorldMaterializer` passes that validated world directly to bootstrap instead of loading the canonical bytes a second time. Existing `.wld` sandbox sources still use the normal loader.
+- This removes the second full tile decode/allocation from the fresh-generation path.
+- Acceptance measurements in this environment: small `4200x1200` completed at about 204 MiB peak RSS in Debug; large `8400x2400` completed in Release in about 10.3 s process wall time at about 462 MiB peak RSS, with zero swap/OOM.
 
 ## Authoritative liquid runtime state
 
@@ -58,14 +104,16 @@ Cross-world TUI moves attach the authoritative player at the destination spawn. 
 - live sandbox rows show `[sandbox]` without redundant `running`; non-running lifecycle statuses remain visible;
 - Network uses a block-column overlay with IN on the left independently scaled axis, OUT on the right independently scaled axis, and a distinct overlap cell/color.
 
-## Validation recorded for TZ-28
+## Validation recorded for TZ-29
 
-- `TerraRuntime.World`, `TerraRuntime.Application` and the complete `TerraRuntime.Tests` production/test graph build on the local .NET 11 SDK with 0 warnings and 0 errors;
-- affected liquid/load/cache/startup/checkpoint regression set: 92/92;
-- cache/rebuilder/exporter focused set: 31/31 before the broader affected run;
-- `python3 tools/ci/check_documentation.py`: green, 92 mirrored RU/EN pages and 223 Markdown files checked;
-- an attempted nearly-full in-process test run excluding the known heavy worldgen acceptance classes exceeded the environment timeout after entering unrelated tests; it produced no failure attributable to this pass and is not counted as a green full-suite result.
+- local .NET 11 Release build of the test/production graph: 0 warnings and 0 errors;
+- focused bot authority set: 11/11; NPC actor-control set: 4/4; dashboard interaction: 15/15; network/operations cache: 7/7;
+- affected sandbox/worldgen/player/projectile/TUI suites are green, including `Level1SandboxRuntimeTests` and `WorldFileFreshComposer326Tests`;
+- complete Release `TerraRuntime.Tests` in-process suite exits 0 in 53.69 s wall time in this environment; peak process RSS was about 1.24 GiB and swap remained zero;
+- the previous full-suite hang was isolated to Terminal.Gui ANSI smoke tests in a non-TTY runner. Test harnesses now use `DriverRegistry.Names.DOTNET`; production TUI driver selection is unchanged.
+- small and large generated-sandbox materialization paths are both green; large Release generation no longer exhibits the former second-decode OOM behavior.
+- local Linux NativeAOT publish was attempted after the green test pass, but the supplied minimal offline NuGet cache does not contain the required `runtime.linux-x64.Microsoft.DotNet.ILCompiler`, `Microsoft.NETCore.App.Runtime.linux-x64`, `Microsoft.AspNetCore.App.Runtime.linux-x64` or NativeAOT runtime packs. Restore therefore fails with `NU1100` before compilation; this is an environment/cache limitation, not a recorded green AOT result. Windows NativeAOT is likewise not publishable from this Linux host.
 
 ## Next recommended pass
 
-Stay on liquid parity unless a live bug has higher priority. The next source-backed targets are panic/forced-settle behavior and the remaining complex `WorldGen.ReplaceTile` cases. Remix/Zenith post-load liquid mapping should remain fail-closed until the exact `GenVars.lavaLine`/`WorldGen.oceanDepths` load inputs can be reconstructed without approximation. After those are closed, run a worldgen + post-load liquid acceptance pass on canonical 1.4.5.8 worlds rather than adding another parallel liquid implementation.
+Complete the still-external TZ-30 release gates when the environment provides them: exercise Linux and Windows NativeAOT with the exact .NET 11 preview-7 packs, then perform independent official Terraria 1.4.5.8 client acceptance for fake-player appearance/equipment, packet-30 hostile state, Guard projectile ownership, item pickup visibility, late join and PlayerBot/NpcBot body replacement. Do **not** expect packet `55` remote-bot buff replication; source verification proves that is not its vanilla client role. For further NpcBot coverage, admit another motion family only after a source-backed controlled pursuit/physics slice can be separated from ordinary AI side effects; offensive Guard stays fail-closed until a real NPC-owned PvP/combat provenance exists. Keep presentation actors invulnerable/zero-contact until bot-specific death/drop semantics are designed. Do not move bot policy back into Core or create a bot project that introduces an Application command-cycle merely for cosmetic separation.

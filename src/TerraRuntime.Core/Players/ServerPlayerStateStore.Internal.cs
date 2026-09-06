@@ -15,6 +15,7 @@ public sealed partial class ServerPlayerStateStore
         public float VelocityX { get; set; }
         public float VelocityY { get; set; }
         public bool IsDead { get; set; }
+        public bool Hostile { get; set; }
         public ServerPlayerAppearanceState? Appearance { get; set; }
         public bool HasHealth { get; set; }
         public short Life { get; set; }
@@ -46,7 +47,7 @@ public sealed partial class ServerPlayerStateStore
                 CameraTargetX: 0f,
                 CameraTargetY: 0f)
             {
-                Hostile = false,
+                Hostile = Hostile,
                 HasHealth = HasHealth,
                 Life = Life,
                 MaxLife = MaxLife,

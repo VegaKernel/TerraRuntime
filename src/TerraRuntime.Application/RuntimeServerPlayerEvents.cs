@@ -13,6 +13,8 @@ internal interface IRuntimeServerPlayerEventSink
 
     void ServerPlayerVitalsUpdated(PlayerHandle player, in ServerPlayerVitalsState vitals);
 
+    void ServerPlayerPvpUpdated(PlayerHandle player, bool hostile);
+
     void ServerPlayerItemUpdated(PlayerHandle player, in ServerPlayerItemState item);
 
     void ServerPlayerMoved(in PlayerStateSnapshot player);

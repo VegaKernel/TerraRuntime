@@ -108,25 +108,40 @@ internal sealed class SandboxWorldMaterializer
             Guid.NewGuid(),
             RandomNumberGenerator.GetInt32(1, int.MaxValue));
         long now = DateTime.UtcNow.ToBinary();
+        var sections = new WorldFileFreshSections326(
+            created.Candidate.CaptureGeneratedChests(),
+            [],
+            created.Candidate.CaptureGeneratedNpcs(),
+            [],
+            [],
+            [],
+            new WorldBestiaryData([], [], []),
+            new WorldCreativePowersData(
+                FreezeTime: false,
+                TimeRateSlider: 0f,
+                FreezeRain: false,
+                FreezeWind: false,
+                DifficultySlider: 0f,
+                StopBiomeSpread: false));
         WorldFileFreshCompose326Diagnostic composition = WorldFileFreshComposer326.TryCompose(
             header,
             created.Metadata,
             created.Candidate.TileStore,
-            created.Candidate.CaptureGeneratedChests(),
-            created.Candidate.CaptureGeneratedNpcs(),
+            sections,
             gameMode: (byte)request.Options.GameMode,
             crimson: request.Options.Evil == WorldGenerationEvil.Crimson,
             creationTimeBinary: now,
             lastPlayedBinary: now,
-            out byte[] canonicalWorld);
-        if (!composition.Succeeded)
+            out _,
+            out WorldFileData? validatedWorld);
+        if (!composition.Succeeded || validatedWorld is null)
         {
             return new SandboxWorldMaterializationResult(
                 SandboxWorldMaterializationStatus.CompositionFailed,
                 Error: $"Composition={composition.Result}, stage={composition.StageResultCode}.");
         }
 
-        return LoadAndBootstrap(canonicalWorld);
+        return BootstrapValidatedWorld(validatedWorld);
     }
 
     private SandboxWorldMaterializationResult MaterializeFile(
@@ -158,6 +173,12 @@ internal sealed class SandboxWorldMaterializer
                 Error: $"Load={load.Result}, stage={load.Stage}, code={load.StageResultCode}.");
         }
 
+        return BootstrapValidatedWorld(world);
+    }
+
+    private static SandboxWorldMaterializationResult BootstrapValidatedWorld(WorldFileData world)
+    {
+        ArgumentNullException.ThrowIfNull(world);
         try
         {
             return new SandboxWorldMaterializationResult(

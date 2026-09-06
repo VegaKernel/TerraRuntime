@@ -82,14 +82,42 @@ internal sealed partial class PlayerAuthority
         int hitDirection,
         out PlayerStateSnapshot committed)
     {
+        if (!membership.TryGet(attacker, out RuntimePlayerMember? source))
+        {
+            committed = default;
+            return PlayerDamageCommitResult.Rejected;
+        }
+
+        PlayerStateSnapshot attackerSnapshot = source.CaptureSnapshot();
+        return TryCommitAuthoritativePvpDamageFromSnapshot(
+            tick,
+            in attackerSnapshot,
+            targetHandle,
+            sourceDamage,
+            damage,
+            critical,
+            hitDirection,
+            out committed);
+    }
+
+    internal PlayerDamageCommitResult TryCommitAuthoritativePvpDamageFromSnapshot(
+        long tick,
+        in PlayerStateSnapshot attacker,
+        PlayerHandle targetHandle,
+        DamageSource sourceDamage,
+        int damage,
+        bool critical,
+        int hitDirection,
+        out PlayerStateSnapshot committed)
+    {
         committed = default;
-        if (!attacker.IsAssigned || !targetHandle.IsAssigned || attacker == targetHandle ||
-            !sourceDamage.IsValid || sourceDamage.Player != attacker || damage <= 0 ||
+        PlayerHandle attackerHandle = attacker.Player;
+        if (!attackerHandle.IsAssigned || !targetHandle.IsAssigned || attackerHandle == targetHandle ||
+            !sourceDamage.IsValid || sourceDamage.Player != attackerHandle || damage <= 0 ||
             hitDirection is < -1 or > 1 ||
-            !membership.TryGet(attacker, out RuntimePlayerMember? source) ||
             !membership.TryGet(targetHandle, out RuntimePlayerMember? target) ||
-            !source.Hostile || !target.Hostile || source.IsDead || target.IsDead || !target.HasHealth || target.Life <= 0 ||
-            (source.Team != 0 && source.Team == target.Team))
+            !attacker.Hostile || !target.Hostile || attacker.IsDead || target.IsDead || !target.HasHealth || target.Life <= 0 ||
+            (attacker.Team != 0 && attacker.Team == target.Team))
         {
             return PlayerDamageCommitResult.Rejected;
         }

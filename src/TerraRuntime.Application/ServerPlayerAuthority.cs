@@ -315,6 +315,23 @@ internal sealed class ServerPlayerAuthority
             ? intent
             : ServerPlayerJumpIntent.Released;
 
+    public bool TryTeleport(ServerPlayerId id, float positionX, float positionY)
+    {
+        if (!float.IsFinite(positionX) || !float.IsFinite(positionY) ||
+            !TryGetPlayer(id, out PlayerHandle player) ||
+            !states.TrySetMotion(player, positionX, positionY, 0f, 0f, out PlayerStateSnapshot committed))
+        {
+            return false;
+        }
+
+        jumpIntents.Remove(player);
+        jumpStates.Remove(player);
+        liquidOwners[player.Slot.Value] = default;
+        liquidContacts[player.Slot.Value] = default;
+        events?.ServerPlayerMoved(in committed);
+        return true;
+    }
+
     public bool SetAppearance(ServerPlayerId id, in ServerPlayerAppearanceState appearance)
     {
         if (!TryGetPlayer(id, out PlayerHandle player) ||
@@ -324,6 +341,18 @@ internal sealed class ServerPlayerAuthority
         }
 
         events?.ServerPlayerAppearanceUpdated(player, in normalized);
+        return true;
+    }
+
+    public bool SetHostile(ServerPlayerId id, bool hostile)
+    {
+        if (!TryGetPlayer(id, out PlayerHandle player) ||
+            !states.TrySetHostile(player, hostile, out PlayerStateSnapshot normalized))
+        {
+            return false;
+        }
+
+        events?.ServerPlayerPvpUpdated(player, hostile);
         return true;
     }
 
@@ -354,6 +383,17 @@ internal sealed class ServerPlayerAuthority
 
         events?.ServerPlayerItemUpdated(player, in normalized);
         return true;
+    }
+
+    public bool TryGetItem(ServerPlayerId id, short slot, out ServerPlayerItemState item)
+    {
+        if (!TryGetPlayer(id, out PlayerHandle player))
+        {
+            item = default;
+            return false;
+        }
+
+        return states.TryGetItem(player, slot, out item);
     }
 
     public VanillaServerPlayerJumpState GetJumpState(PlayerHandle player) =>

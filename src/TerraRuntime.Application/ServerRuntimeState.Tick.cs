@@ -18,6 +18,7 @@ internal sealed partial class ServerRuntimeState
         _runtime.WorldTileAuthority.TickLiquids();
 
         _runtime.Npcs.CommitPending();
+        _runtime.Bots?.Tick();
         _runtime.ServerPlayers?.TickPhysics(_runtime.PlayerSnapshots);
         _runtime.Npcs.TickSimulation();
         _runtime.NpcPlayerCombat.Tick(Updates);

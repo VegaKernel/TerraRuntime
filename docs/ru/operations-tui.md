@@ -119,34 +119,27 @@ Administrative operations не становятся cached writes. Interest-mana
 
 ## 6. Плиточный System Dashboard
 
-Default System Dashboard является tiled operational workspace в стиле operations view Vega, но остаётся полностью runtime-owned. Слева находится большая плитка **Console**. В правой колонке расположены **Server**, **TPS / CPU**, **Memory / GC** и **Chat**.
+Default System Dashboard является runtime-owned workspace из трёх основных поверхностей. **Console** занимает широкую левую колонку. Справа сверху находится компактный **Network** graph, а остальное место занимает **Worlds / Players**. Отдельного global TPS tile нет: у каждого live world свой authoritative loop и собственные observed/target TPS.
 
 ```mermaid
 flowchart LR
-    subgraph Workspace["System Dashboard"]
-        Console["Console\nrecent runtime events"]
-        subgraph Right["Right column"]
-            Server["Server"]
-            Perf["TPS / CPU"]
-            Memory["Memory / GC"]
-            Chat["Chat"]
-        end
+    Console["Console\nLogs + Chat + command input"]
+    subgraph Right["Правая колонка"]
+        Network["Network\npackets/s graph"]
+        Worlds["Worlds / Players\nper-world TPS + bots"]
     end
+    Console --- Right
 ```
 
-Console tile показывает текущие tick/process/command pressure и затем recent runtime events. Performance и memory tiles держат короткие in-memory histories только для local sparklines; эти histories принадлежат UI и не являются authoritative telemetry.
+Focusable panels имеют явное selection state. Keyboard focus или mouse press включает Accent scheme и добавляет к title активной панели `▶`. Double-click по title переключает панель между tiled и full-workspace view. Это presentation-only operations; authoritative state остаётся за operations contracts.
 
-Focusable tiles теперь имеют явное состояние selection. Keyboard focus или mouse press включает Accent scheme с отдельным тёмно-зелёным фоном выбранной панели и добавляет к title активной плитки префикс `▶`. Этот текстовый marker намеренно остаётся полезным даже если terminal урезает или переназначает цвета. При уходе focus marker снимается и возвращается Base scheme.
+Console объединяет bounded structured-log/chat feed и постоянно видимый Accent input `>`. Worlds / Players является `ListView` с typed world/player/bot entries, а не результатом парсинга отображаемого текста. Double-click по player открывает generation-safe live details window. Drag-and-drop использует захваченный точный `PlayerHandle(slot,generation)`. `[X]` на строке sandbox/player/bot вызывает typed destroy/kick/despawn operation.
 
-Double-click сначала фокусирует плитку, затем переключает её между tiled layout и full-workspace view. Это presentation-only operation. Existing Details screens для Players, NPCs, Projectiles, Items, Network, World и Logs остаются доступны и сохраняют прежние bounded read-model contracts. External trusted-host dashboards остаются отдельными roots.
+Action row roster содержит ровно **`+ Sandbox`**, затем **`+ Bot`**. `+ Sandbox` открывает typed форму создания sandbox. `+ Bot` по умолчанию создаёт PlayerBot в primary world; double-click по строке бота открывает typed settings window. Настройки бота содержат PlayerBot/NpcBot body, source-verified NPC preset, clothing/armor, weapon policy, target, режим Idle/Follow/Guard и toggles pickup/consumables. PlayerBot использует существующие server-player/projectile/world-item authorities; NpcBot является настоящим authoritative NPC presentation/motion actor. Поддерживаемые presets ограничены source-backed controlled-motion families: ground fighters, AI_002 flying eyes, AI_005 flyers и обычные pre-wander AI_014 bats. Тело NpcBot имеет zero contact damage и invulnerability, поэтому не попадает в обычные NPC death/loot/progression paths. Поддерживаемые эффекты Archery/Wrath potion для PlayerBot являются trusted server-side combat state и не рассылаются посторонним наблюдателям как packet `55`, потому что vanilla 1.4.5.8 применяет этот PvP-buff packet только к закодированному local player. Неподтверждённая NPC combat semantics остаётся fail-closed и не аппроксимируется.
 
-System Dashboard показывает lifecycle/world state, player/connection counts, interest-management state, current/target TPS, tick wall/CPU timing, slowest phase, missed deadlines, process CPU, managed heap, working set, allocation/GC state, command pressure, recent log events и public chat.
+На dashboard **нет дублирующей видимой кнопки Settings**. Runtime settings остаются доступны через верхнее меню **Settings → Runtime settings**. Окно runtime settings содержит только practically useful operator controls: текущие bind-address/IP и TCP port, listener lifecycle/generation/draining/rebind counters, active connections относительно player limit, target TPS и toggle interest management. Изменение bind/port проходит operations boundary и заменяет поколение listener; TUI не получает `Socket` и не владеет connection lifetime. Уже accepted clients остаются подключёнными, пока предыдущий listener проходит `Active → Draining → Closed`.
 
-Double-click по строке игрока в **Worlds / Players** открывает generation-safe live player window, без парсинга отображаемого текста строки. Окно показывает remote IP/endpoint, длительность текущей in-memory session, сложность персонажа, HP/mana, team, position/velocity и selected item. Метаданные connection session существуют только в процессе и удаляются при закрытии socket; в БД или файл они не пишутся. GodMode drop-down `Disabled` / `Enabled` вызывает `IPlayerAdministrativeOperations` для точного `PlayerHandle(slot,generation)`.
-
-Sandbox actions остаются typed UI operations. Command input dashboard и plain-console fallback не принимают mutation-команды `sandbox`/`sb`/`sb1`/`sb2`/`respawn`, а у GodMode нет chat/text command. Administrative state changes остаются за typed UI/host contracts, а не за player-visible command parsing.
-
-Dashboard также содержит видимую кнопку **Settings** и верхний пункт меню **Settings → Runtime settings**. Окно runtime settings намеренно содержит только практически полезные operator controls: текущие bind-address/IP и TCP port, listener lifecycle/generation/draining/rebind counters, active connections относительно player limit, target TPS и toggle interest management. Изменение bind/port проходит через operations boundary и заменяет поколение listener; TUI не получает `Socket` и не владеет connection lifetime. Уже accepted clients остаются подключёнными, пока предыдущий listener проходит `Active → Draining → Closed`.
+Network graph хранит историю **packets/second**, а не byte-volume. IN использует левую вертикальную шкалу, OUT — независимую правую, поэтому тихое направление остаётся видимым рядом с загруженным. Числовая строка одновременно показывает packet rate и byte throughput (`KiB/s` или `MiB/s`). Rates вычисляются по delta process-lifetime message counters между detached network snapshots; некорректный interval или rollback counters сбрасывает UI-local sample вместо искусственного spike.
 
 World detail screen также показывает section-cache pipeline health из `RuntimeWorldSnapshot`: in-flight/submitted/rejected rebuilds, stale results, encode failures, publish rejections и accumulated encode time. Строка on-demand показывает requests, unique/deduplicated requests, pending work относительно bounded capacity, rejected requests и completed/timed-out waits.
 

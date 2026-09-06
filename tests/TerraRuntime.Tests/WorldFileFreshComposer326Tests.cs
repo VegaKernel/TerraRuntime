@@ -45,11 +45,14 @@ public sealed class WorldFileFreshComposer326Tests
             crimson: false,
             creationTimeBinary: new DateTime(2026, 8, 29, 12, 0, 0, DateTimeKind.Utc).ToBinary(),
             lastPlayedBinary: new DateTime(2026, 8, 29, 12, 1, 0, DateTimeKind.Utc).ToBinary(),
-            out byte[] file);
+            out byte[] file,
+            out WorldFileData? validatedWorld);
 
         Assert.True(result.Succeeded, result.ToString());
         Assert.True(result.Validation.IsLoaded, result.Validation.ToString());
         Assert.NotEmpty(file);
+        Assert.NotNull(validatedWorld);
+        Assert.Same(tiles, validatedWorld.Tiles);
 
         WorldFileLoadDiagnostic load = WorldFileLoader.TryLoad(
             file,

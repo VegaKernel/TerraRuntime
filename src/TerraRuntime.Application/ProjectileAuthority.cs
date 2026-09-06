@@ -120,6 +120,30 @@ internal sealed partial class ProjectileAuthority
     public bool TryCapture(ProjectileHandle projectile, out ProjectileSnapshot snapshot) =>
         projectiles.TryGet(projectile, out snapshot);
 
+    internal bool TrySpawnTrustedServerPlayerProjectile(
+        PlayerHandle owner,
+        in ProjectileStateUpdate state,
+        out ProjectileSnapshot snapshot)
+    {
+        snapshot = default;
+        if (!owner.IsAssigned || state.Spawner != owner.Slot.Value ||
+            !playerSnapshots.TryGetPlayer(owner.Slot, out PlayerStateSnapshot current) || current.Player != owner ||
+            !projectiles.TrySpawnVanilla(in state, out ProjectileSnapshot spawned))
+        {
+            return false;
+        }
+
+        if (!projectiles.TryMarkCombatTrusted(spawned.Handle, owner))
+        {
+            projectiles.TryDespawn(spawned.Handle, out _);
+            return false;
+        }
+
+        AppliedSpawns++;
+        snapshot = spawned;
+        return true;
+    }
+
     public long AppliedSpawns { get; private set; }
     public long RejectedSpawns { get; private set; }
     public long AppliedUpdates { get; private set; }

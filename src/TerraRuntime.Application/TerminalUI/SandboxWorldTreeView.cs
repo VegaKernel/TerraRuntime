@@ -1,3 +1,4 @@
+using TerraRuntime.Application.Bots;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using TerraRuntime.Contracts.Runtime;
@@ -11,14 +12,16 @@ internal enum SandboxWorldTreeRowKind : byte
 {
     World = 0,
     Player = 1,
-    Placeholder = 2
+    Bot = 2,
+    Placeholder = 3
 }
 
 internal readonly record struct SandboxWorldTreeRow(
     SandboxWorldTreeRowKind Kind,
     SandboxName? Target,
     string? PlayerSelector,
-    RuntimePlayerSnapshot? Player = null);
+    RuntimePlayerSnapshot? Player = null,
+    RuntimeBotSnapshot? Bot = null);
 
 /// <summary>
 /// Row-selecting world roster. Unlike a read-only TextView, ListView highlights an item rather than selecting text.
@@ -39,6 +42,8 @@ internal sealed class SandboxWorldTreeView : ListView
     public event Action<SandboxName>? DestroyRequested;
     public event Action<string>? KickRequested;
     public event Action<RuntimePlayerSnapshot>? PlayerOpenRequested;
+    public event Action<RuntimeBotSnapshot>? BotOpenRequested;
+    public event Action<int>? BotDespawnRequested;
 
     public void SetRows(string[] valueLines, SandboxWorldTreeRow[] valueRows)
     {
@@ -76,6 +81,8 @@ internal sealed class SandboxWorldTreeView : ListView
     internal bool BeginDragForSmoke(int sourceRow) => TryBeginDrag(sourceRow);
 
     internal bool DropDraggedForSmoke(int targetRow) => TryDropDragged(targetRow);
+
+    internal bool TryOpenRowForSmoke(int row) => TryOpenRow(row);
 
     private bool TryBeginDrag(int sourceRow)
     {
@@ -140,6 +147,11 @@ internal sealed class SandboxWorldTreeView : ListView
             DestroyRequested?.Invoke(sandbox);
             return true;
         }
+        if (item.Kind == SandboxWorldTreeRowKind.Bot && item.Bot is RuntimeBotSnapshot bot)
+        {
+            BotDespawnRequested?.Invoke(bot.Id);
+            return true;
+        }
         return false;
     }
 
@@ -157,10 +169,8 @@ internal sealed class SandboxWorldTreeView : ListView
                 SetFocus();
             }
 
-            if (mouse.Flags.HasFlag(MouseFlags.LeftButtonDoubleClicked) && (uint)row < (uint)rows.Length &&
-                rows[row].Kind == SandboxWorldTreeRowKind.Player && rows[row].Player is RuntimePlayerSnapshot player)
+            if (mouse.Flags.HasFlag(MouseFlags.LeftButtonDoubleClicked) && TryOpenRow(row))
             {
-                PlayerOpenRequested?.Invoke(player);
                 mouse.Handled = true;
                 return true;
             }
@@ -201,6 +211,25 @@ internal sealed class SandboxWorldTreeView : ListView
         return base.OnMouseEvent(mouse);
     }
 
+    private bool TryOpenRow(int row)
+    {
+        if ((uint)row >= (uint)rows.Length)
+            return false;
+
+        SandboxWorldTreeRow selectedRow = rows[row];
+        if (selectedRow.Kind == SandboxWorldTreeRowKind.Player && selectedRow.Player is RuntimePlayerSnapshot player)
+        {
+            PlayerOpenRequested?.Invoke(player);
+            return true;
+        }
+        if (selectedRow.Kind == SandboxWorldTreeRowKind.Bot && selectedRow.Bot is RuntimeBotSnapshot bot)
+        {
+            BotOpenRequested?.Invoke(bot);
+            return true;
+        }
+        return false;
+    }
+
     private bool IsActionHit(int row, int column)
     {
         if ((uint)row >= (uint)rows.Length || (uint)row >= (uint)lines.Length)
@@ -208,7 +237,8 @@ internal sealed class SandboxWorldTreeView : ListView
         SandboxWorldTreeRow item = rows[row];
         bool actionable =
             (item.Kind == SandboxWorldTreeRowKind.Player && !string.IsNullOrWhiteSpace(item.PlayerSelector)) ||
-            (item.Kind == SandboxWorldTreeRowKind.World && item.Target is SandboxName);
+            (item.Kind == SandboxWorldTreeRowKind.World && item.Target is SandboxName) ||
+            (item.Kind == SandboxWorldTreeRowKind.Bot && item.Bot is RuntimeBotSnapshot);
         if (!actionable)
             return false;
 

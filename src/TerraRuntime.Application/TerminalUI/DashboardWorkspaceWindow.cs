@@ -125,7 +125,6 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             Width = Dim.Fill(),
             Height = Dim.Fill()
         };
-        overviewDashboard.SettingsRequested += ShowRuntimeSettings;
         overviewDashboard.PlayerOpenRequested += ShowPlayerDetails;
 
         systemRoot = new View

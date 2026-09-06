@@ -1,3 +1,4 @@
+using TerraRuntime.Application.Bots;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -21,6 +22,7 @@ internal sealed class ServerRuntimeComposition
         RuntimePlayerSnapshotLookup playerSnapshots,
         PlayerAuthority players,
         ServerPlayerAuthority? serverPlayers,
+        RuntimeBotAuthority? bots,
         NpcAuthority npcs,
         ProjectileAuthority projectiles,
         RuntimeProjectilePlayerCombatPass projectilePlayerCombat,
@@ -37,6 +39,7 @@ internal sealed class ServerRuntimeComposition
         PlayerSnapshots = playerSnapshots;
         Players = players;
         ServerPlayers = serverPlayers;
+        Bots = bots;
         Npcs = npcs;
         Projectiles = projectiles;
         ProjectilePlayerCombat = projectilePlayerCombat;
@@ -58,6 +61,8 @@ internal sealed class ServerRuntimeComposition
     internal PlayerAuthority Players { get; }
 
     internal ServerPlayerAuthority? ServerPlayers { get; }
+
+    internal RuntimeBotAuthority? Bots { get; }
 
     internal NpcAuthority Npcs { get; }
 
@@ -101,6 +106,9 @@ internal sealed class ServerRuntimeComposition
         bool townInitialInvasionActive,
         RuntimeTileManipulationReplicationRegistry? tileManipulationReplication,
         ServerPlayerAuthority? serverPlayers,
+        RuntimeBotTelemetry? botTelemetry,
+        float botSpawnX,
+        float botSpawnY,
         RuntimeNpcShopCatalogRegistry? npcShops,
         RuntimeNpcArchetypeRegistry? npcArchetypes,
         RuntimeNpcArchetypeIdentityStore? npcArchetypeIdentities,
@@ -192,12 +200,26 @@ internal sealed class ServerRuntimeComposition
             skyblockLowTiles,
             isThereAWorldSurface,
             evilBossDownedBaseline);
+        RuntimeBotAuthority? botAuthority = serverPlayers is not null && botTelemetry is not null
+            ? new RuntimeBotAuthority(
+                serverPlayers,
+                playersAuthority,
+                playerSnapshots,
+                npcAuthority,
+                projectileAuthority,
+                worldItemAuthority,
+                botTelemetry,
+                () => updates.Current,
+                botSpawnX,
+                botSpawnY)
+            : null;
         var projectilePlayerCombat = new RuntimeProjectilePlayerCombatPass(
             projectileStore,
             npcStore,
             playersAuthority,
             () => updates.Current,
-            cultistLightningArcTrails: projectileAuthority.CultistLightningArcTrails);
+            cultistLightningArcTrails: projectileAuthority.CultistLightningArcTrails,
+            serverPlayers: serverPlayers);
         var npcPlayerCombat = new RuntimeNpcPlayerCombatPass(npcStore, playersAuthority);
 
         return new ServerRuntimeComposition(
@@ -206,6 +228,7 @@ internal sealed class ServerRuntimeComposition
             playerSnapshots,
             playersAuthority,
             serverPlayers,
+            botAuthority,
             npcAuthority,
             projectileAuthority,
             projectilePlayerCombat,
