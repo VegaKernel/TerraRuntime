@@ -43,7 +43,29 @@ public sealed class RuntimeBotNetworkAcceptanceTests
             TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
                 TerrariaPlayerEquipmentDecodeResult.Decoded &&
             equipment.PlayerId == bot.Player.Slot.Value && equipment.SlotId == 0 &&
+            equipment.ItemNetId == VanillaItemIds.CopperBroadsword.Value);
+        Assert.Contains(baseline, frame =>
+            TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
+                TerrariaPlayerEquipmentDecodeResult.Decoded &&
+            equipment.PlayerId == bot.Player.Slot.Value && equipment.SlotId == 1 &&
             equipment.ItemNetId == VanillaItemIds.WoodenBow.Value);
+        Assert.Contains(baseline, frame =>
+            TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
+                TerrariaPlayerEquipmentDecodeResult.Decoded &&
+            equipment.PlayerId == bot.Player.Slot.Value && equipment.SlotId == 2 &&
+            equipment.ItemNetId == VanillaItemIds.Musket.Value);
+        Assert.Contains(baseline, frame =>
+            TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
+                TerrariaPlayerEquipmentDecodeResult.Decoded &&
+            equipment.PlayerId == bot.Player.Slot.Value &&
+            equipment.SlotId == VanillaPlayerItemSlotCatalog.ArmorStart + 3 &&
+            equipment.ItemNetId == VanillaItemIds.FishronWings.Value);
+        Assert.Contains(baseline, frame =>
+            TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
+                TerrariaPlayerEquipmentDecodeResult.Decoded &&
+            equipment.PlayerId == bot.Player.Slot.Value &&
+            equipment.SlotId == VanillaPlayerItemSlotCatalog.ArmorStart + 4 &&
+            equipment.ItemNetId == VanillaItemIds.EmpressFlightBooster.Value);
         Assert.Contains(baseline, frame =>
             TerrariaPlayerCombatCodec.TryDecodePvpToggle(frame, out byte player, out bool hostile) &&
             player == bot.Player.Slot.Value && !hostile);
@@ -63,6 +85,12 @@ public sealed class RuntimeBotNetworkAcceptanceTests
         fixture.DrainFrames(); // target's own packet-30 relay is not the bot transition under test.
         fixture.State.Tick();
         TerrariaFrame[] hostileFrames = fixture.DrainFrames();
+        Assert.Contains(hostileFrames, frame =>
+            TerrariaPlayerMovementDecoder.TryDecode(frame, out TerrariaPlayerMovementRequest movement) ==
+                TerrariaPlayerMovementDecodeResult.Decoded &&
+            movement.ClaimedPlayerId == bot.Player.Slot.Value &&
+            (movement.ControlFlags & ((1 << 3) | (1 << 6))) == ((1 << 3) | (1 << 6)) &&
+            movement.HasVelocity && movement.VelocityX > 0f);
         Assert.Contains(hostileFrames, frame =>
             TerrariaPlayerCombatCodec.TryDecodePvpToggle(frame, out byte player, out bool hostile) &&
             player == bot.Player.Slot.Value && hostile);
@@ -109,6 +137,11 @@ public sealed class RuntimeBotNetworkAcceptanceTests
             equipment.SlotId >= VanillaPlayerItemSlotCatalog.AmmoSlotStart &&
             equipment.SlotId < VanillaPlayerItemSlotCatalog.AmmoSlotEndExclusive &&
             equipment.ItemNetId == VanillaItemIds.WoodenArrow.Value && equipment.Stack == 99);
+        Assert.Contains(frames, frame =>
+            TerrariaPlayerMovementDecoder.TryDecode(frame, out TerrariaPlayerMovementRequest movement) ==
+                TerrariaPlayerMovementDecodeResult.Decoded &&
+            movement.ClaimedPlayerId == bot.Player.Slot.Value && movement.SelectedItem == 0 &&
+            (movement.ControlFlags & (1 << 5)) != 0);
     }
 
     [Fact]
@@ -194,7 +227,7 @@ public sealed class RuntimeBotNetworkAcceptanceTests
             TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
                 TerrariaPlayerEquipmentDecodeResult.Decoded &&
             equipment.PlayerId == bot.Player.Slot.Value && equipment.SlotId == 0 &&
-            equipment.ItemNetId == VanillaItemIds.WoodenBow.Value);
+            equipment.ItemNetId == VanillaItemIds.CopperBroadsword.Value);
         Assert.Contains(lateFrames, frame =>
             TerrariaPlayerCombatCodec.TryDecodePvpToggle(frame, out byte player, out bool hostile) &&
             player == bot.Player.Slot.Value && hostile);

@@ -46,7 +46,8 @@ The source-backed dungeon stage no longer invokes the old aggregate compatibilit
 
 - `DungeonSide` determines the side chosen during Reset;
 - `DungeonLocation` supplies the horizontal anchor;
-- the generated dungeon publishes that anchor into world metadata;
+- the entrance search uses the source countdown, the strict 380-tile beach boundary, downward surface exit, and exact cloud-set rejection instead of choosing an already generated sky island;
+- the generated dungeon publishes the accepted anchor into world metadata and registers Old Man NPC 37 at the source bottom-center position with that home;
 - dungeon brick/wall/cracked-brick palettes are selected during `Dunes`, where Terraria initializes dungeon generation;
 - the `Dungeon` pass consumes the pinned unique shelf/lantern selections, entrance-hall mode, start-depth adjustment,
   entrance strengths and width-scaled layout-step count;
@@ -98,6 +99,8 @@ Two old aggregates are now explicitly prevented from corrupting parity:
 The vanilla acceptance workflow builds TerraRuntime, runs only the focused world-generation contract classes, generates a canonical small `terraruntime:vanilla` world, validates it with `TerraRuntime.WorldVerify`, and boots pinned TerrariaServer 1.4.5.8 against the resulting `.wld`.
 
 A green official-server acceptance proves that the generated world file is structurally loadable by the pinned server. It does not claim reference-seed terrain identity or complete vanilla world-generation parity.
+
+The large `4200x1200` seed-`1458` differential was rerun after the entrance fix. Against the pinned official 1.4.5.8 world it passes all structural budgets: spawn delta `(1,0)`, dungeon delta `(69,6)`, surface and rock-layer deltas `0`, silhouette NMAE `0.021349` / p95 `0.13` / correlation `0.606524`, and `181 -> 98` chests. Those remaining differences are explicit evidence that this is not byte parity or complete vanilla worldgen.
 
 The canonical generated-world contract additionally requires at least three rooms, a width-scaled hall count,
 horizontal and vertical halls, a non-shaft graph span, and a connected surface entrance. The fail-closed finalizer

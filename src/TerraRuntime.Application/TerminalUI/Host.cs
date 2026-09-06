@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using TerraRuntime.Application.Bots;
 using TerraRuntime.HostContracts;
 using TerraRuntime.HostContracts.TerminalUI;
 using TerraRuntime.Application.Operations;
@@ -24,6 +25,7 @@ internal sealed class Host : IDisposable
     private readonly IWorldOperations worldOperations;
     private readonly ILogOperations logOperations;
     private readonly SandboxOperations? sandboxOperations;
+    private readonly RuntimeBotOperations? botOperations;
     private readonly IRuntimeWorldInspectionOperations? worldInspectionOperations;
     private readonly IPlayerAdministrativeOperations? playerAdministration;
     private readonly RuntimeConnectionSessionDirectory? connectionSessions;
@@ -48,7 +50,8 @@ internal sealed class Host : IDisposable
         SandboxOperations? sandboxOperations,
         IRuntimeWorldInspectionOperations? worldInspectionOperations,
         IPlayerAdministrativeOperations? playerAdministration,
-        RuntimeConnectionSessionDirectory? connectionSessions)
+        RuntimeConnectionSessionDirectory? connectionSessions,
+        RuntimeBotOperations? botOperations)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
@@ -59,6 +62,7 @@ internal sealed class Host : IDisposable
         this.worldOperations = worldOperations ?? throw new ArgumentNullException(nameof(worldOperations));
         this.logOperations = logOperations ?? throw new ArgumentNullException(nameof(logOperations));
         this.sandboxOperations = sandboxOperations;
+        this.botOperations = botOperations;
         this.worldInspectionOperations = worldInspectionOperations;
         this.playerAdministration = playerAdministration;
         this.connectionSessions = connectionSessions;
@@ -87,7 +91,8 @@ internal sealed class Host : IDisposable
         SandboxOperations? sandboxOperations = null,
         IRuntimeWorldInspectionOperations? worldInspectionOperations = null,
         IPlayerAdministrativeOperations? playerAdministration = null,
-        RuntimeConnectionSessionDirectory? connectionSessions = null)
+        RuntimeConnectionSessionDirectory? connectionSessions = null,
+        RuntimeBotOperations? botOperations = null)
     {
         var host = new Host(
             dashboardOperations,
@@ -104,7 +109,8 @@ internal sealed class Host : IDisposable
             sandboxOperations,
             worldInspectionOperations,
             playerAdministration,
-            connectionSessions);
+            connectionSessions,
+            botOperations);
         host.thread.Start();
         return host;
     }
@@ -186,7 +192,8 @@ internal sealed class Host : IDisposable
                 snapshotCache.CaptureSandboxTreeSnapshot,
                 worldInspectionOperations is null ? null : snapshotCache,
                 playerAdministration,
-                connectionSessions);
+                connectionSessions,
+                botOperations);
 
             Task? backgroundRefresh = null;
             long nextRefresh = Stopwatch.GetTimestamp() + RefreshIntervalTicks;

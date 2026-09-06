@@ -99,7 +99,40 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
         Assert.True(graph.Bounds.Height >= 120, $"Dungeon graph height was only {graph.Bounds.Height} tiles.");
         Assert.Contains(graph.Components, static component => component.Kind == DungeonComponentKind1458.EntranceHall);
         Assert.Contains(graph.Components, static component => component.Kind == DungeonComponentKind1458.Entrance);
+        WorldTownNpc[] startingNpcs = result.Candidate.CaptureGeneratedNpcs().TownNpcs;
+        Assert.Contains(startingNpcs, static npc => npc.NetId == VanillaNpcIds.Guide.Value);
+        WorldTownNpc oldMan = Assert.Single(startingNpcs, static npc => npc.NetId == VanillaNpcIds.OldMan.Value);
+        Assert.False(oldMan.Homeless);
+        Assert.Equal(graph.Anchor.X, oldMan.HomeTileX);
+        Assert.Equal(graph.Anchor.Y, oldMan.HomeTileY);
+        Assert.Equal(graph.Anchor.X * 16f + 8f, oldMan.X);
+        Assert.Equal(graph.Anchor.Y * 16f, oldMan.Y);
         AssertCanonicalContentCoverage(result.Candidate);
+    }
+
+    [Fact]
+    public void Canonical_seed_1458_rejects_clouds_as_precalculated_dungeon_surface()
+    {
+        var request = new WorldGenerationRequest(VanillaId, "Dungeon cloud regression", 1458, 4200, 1200)
+        {
+            SeedText = "1458"
+        };
+        var pipeline = new RuntimeWorldCreationPipeline(BuiltInWorldGeneratorSource.Instance);
+
+        RuntimeWorldCreationPipelineResult result = pipeline.CreateCandidate(
+            in request,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(result.Succeeded, result.Finalization?.Validation?.Detail ?? result.Generation.Execution?.Error?.ToString());
+        Assert.NotNull(result.Candidate);
+        Assert.True(result.Candidate!.TryGetLayers(out WorldGenerationLayers layers));
+        DungeonGraph1458 graph = Assert.IsType<DungeonGraph1458>(result.Candidate.VanillaDungeonGraph);
+        Assert.InRange(graph.Anchor.Y, (int)layers.WorldSurface - 160, (int)layers.WorldSurface + 20);
+        WorldTownNpc oldMan = Assert.Single(
+            result.Candidate.CaptureGeneratedNpcs().TownNpcs,
+            static npc => npc.NetId == VanillaNpcIds.OldMan.Value);
+        Assert.Equal(graph.Anchor.X, oldMan.HomeTileX);
+        Assert.Equal(graph.Anchor.Y, oldMan.HomeTileY);
     }
 
     [Theory]

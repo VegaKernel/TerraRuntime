@@ -115,6 +115,24 @@ public sealed class VanillaServerPlayerDryPhysicsStepperTests
     }
 
     [Fact]
+    public void Grounded_forward_collision_requests_bot_jump_but_airborne_collision_does_not()
+    {
+        WorldTileStore tiles = CreateWorld();
+        tiles.Set(6, 8, SolidTile());
+        tiles.Set(7, 8, SolidTile());
+        for (int y = 5; y <= 7; y++)
+            tiles.Set(8, y, SolidTile());
+        using SpawnedServerPlayer grounded = Spawn(100f, 86f, velocityX: 20f);
+        var stepper = new VanillaServerPlayerDryPhysicsStepper(tiles);
+
+        Assert.True(stepper.ShouldAutoJumpObstacle(grounded.Snapshot, ServerPlayerHorizontalIntent.Right));
+
+        PlayerStateSnapshot airborne = grounded.Snapshot with { PositionY = 60f, VelocityY = -2f };
+        Assert.False(stepper.ShouldAutoJumpObstacle(in airborne, ServerPlayerHorizontalIntent.Right));
+        Assert.True(stepper.ShouldAscendPastObstacle(in airborne, ServerPlayerHorizontalIntent.Right));
+    }
+
+    [Fact]
     public void Dead_and_mounted_players_are_outside_the_verified_dry_slice()
     {
         WorldTileStore tiles = CreateWorld();

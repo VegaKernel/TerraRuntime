@@ -27,6 +27,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId ArmsDealer = new(19);
     public static readonly NpcTypeId Dryad = new(20);
     public static readonly NpcTypeId Guide = new(22);
+    public static readonly NpcTypeId OldMan = new(37);
     public static readonly NpcTypeId FireImp = new(24);
     public static readonly NpcTypeId BurningSphere = new(25);
     public static readonly NpcTypeId SkeletronHead = new(35);
@@ -423,6 +424,7 @@ public static class VanillaItemIds
     public static readonly ItemTypeId SilverBow = new(3510);
     public static readonly ItemTypeId GoldBow = new(3516);
     public static readonly ItemTypeId FishronWings = new(2609);
+    public static readonly ItemTypeId EmpressFlightBooster = new(4989);
     public static readonly ItemTypeId RegenerationPotion = new(289);
     public static readonly ItemTypeId SwiftnessPotion = new(290);
     public static readonly ItemTypeId IronskinPotion = new(292);

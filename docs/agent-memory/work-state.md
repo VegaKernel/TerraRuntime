@@ -1,6 +1,6 @@
 # Work state
 
-Updated: 2026-09-06.
+Updated: 2026-09-07.
 
 This is the resume point for the next agent/session. Read it before reconstructing project state from source.
 
@@ -31,7 +31,7 @@ This is the resume point for the next agent/session. Read it before reconstructi
 
 ## TZ-32 live-stability WIP
 
-- TZ-32 remains WIP; no final checkpoint archive has been produced. The latest complete Release suite is green at 3232/3232 tests, and the Release build reports 0 warnings / 0 errors.
+- TZ-32 remains WIP; no final checkpoint archive has been produced. The latest complete Release suite is green at 3245/3245 tests, and the Release build reports 0 warnings / 0 errors.
 - Trusted explosive projectile termination now owns terrain mutation. Exact admitted defaults/motion cover Bomb `28`, Dynamite `29`, launcher aiStyle-16 types, Mini Nuke family `793..810` except `802`, Celebration Mk2 holder `714`, and child rockets `715..718` with their separate aiStyle `147` behavior. Holder `714` remains untrusted presentation state; children require exact volley provenance. Unknown types remain fail-closed.
 - Terrain explosions use source-pinned strict radii and `CanExplodeTile`/wall gates. Celebration Rocket IV uses `< 5`; Mini Nuke II uses `< 7`. Chests, dungeon/temple tiles and protected walls are regression-tested. Matching owner packet-17 edits are bounded convergence echoes after the authoritative mutation; they are not a second mining path and cannot grant an untrusted projectile terrain authority.
 - Packet-17 network admission is now pinned to the verified Celebration worst-case burst: 2314 frames per 60 ticks, with a 2400 per-message ceiling and 4096 aggregate ceiling. This removes the old false `RateLimit` for the admitted legitimate burst without an unbounded bypass.
@@ -41,6 +41,17 @@ This is the resume point for the next agent/session. Read it before reconstructi
 - The production-order mining regression now sends all 59 packet-5 slots before world request, then packet 13 and packet 17 at a position outside the vanilla 640-pixel edge band. It covers Copper Pickaxe, Cobalt/Nebula/Solar/Stardust drills and Drill Containment Unit mount type `8` with source-backed pick power `210`. This fixed missing drill catalog IDs and removed a false-positive synthetic test position.
 - Sandbox GodMode administration now resolves the selected player's process-level runtime route instead of using primary telemetry as a liveness gate.
 - Remaining external acceptance: reproduce the original live official-client mining/tool/mount and explosion flows, stress liquids in several simultaneous worlds, and exercise transfer around disconnect/reconnect boundaries before declaring TZ-32 final.
+
+## TZ-32 bot and vanilla-worldgen follow-up
+
+- The production TUI composition now receives the primary runtime's real `RuntimeBotOperations`; `+ Bot` is therefore actionable in the shipping dashboard rather than only in isolated UI fixtures.
+- Player-only controls are hidden for NpcBot. The NPC presentation actor uses internal `MoveTo` coordinates while publishing vanilla target `255`, remains invulnerable and zero-contact, and therefore does not turn the selected Follow/Guard player into an ordinary hostile NPC target.
+- PlayerBot owns a visible three-weapon automatic loadout: Copper Broadsword in slot 0, Wooden Bow in slot 1 and Musket in slot 2, with separate arrows and bullets. Attack commits publish the selected hotbar slot and packet-13 use-item bit. Automatic policy selects conservative melee at close NPC range, bow at ordinary range and musket for long/fast targets; manual policies remain exact single-weapon presets.
+- Ranged aim uses the source-backed `PickAmmo` launch magnitude, projectile `extraUpdates`, and the admitted aiStyle-1 arrow gravity slice. It solves against target velocity, simulates projectile/target rectangles over time and rejects tile- or liquid-blocked paths. Guard target acquisition also requires exact `VanillaWorldCanHit` visibility, so ammo is not consumed through walls. Copper Broadsword attacks reuse the existing player-owned NPC damage/loot/progression finalizer.
+- PlayerBot movement now publishes direction controls, auto-jumps low forward obstacles and uses a source-backed Fishron Wings/Soaring Insignia flight loadout. While airborne, a blocked forward probe keeps jump held to ascend past the obstruction instead of drifting through it.
+- The vanilla dungeon entrance search now follows the 1.4.5.8 surface-exit loop, beach distance and exact cloud-tile rejection rather than selecting an arbitrary generated sky island. The dungeon pass registers the Old Man at the source anchor. A fresh large seed-1458 candidate passed the official reference-world structural budgets: spawn delta `(1,0)`, dungeon delta `(69,6)`, surface/rock deltas `0`, silhouette NMAE `0.021349`, and `181 -> 98` chests. This is structural evidence, not byte parity or complete vanilla worldgen.
+- Focused bot/player/movement tests are 45/45 and affected UI/worldgen/movement tests are 58/58. The complete Release runner is 3245/3245 green; Release build is 0 warnings / 0 errors.
+- Remaining scope is still material: official-client bot acceptance, richer obstacle route planning, additional weapon/projectile families, more NPC/boss AI, and the unported vanilla worldgen passes/features. Do not describe this follow-up as complete Sandbox Level 2.
 
 ## Operator bots at TZ-29
 

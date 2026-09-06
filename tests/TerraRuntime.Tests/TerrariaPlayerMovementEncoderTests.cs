@@ -8,6 +8,45 @@ namespace TerraRuntime.Tests;
 public sealed class TerrariaPlayerMovementEncoderTests
 {
     [Fact]
+    public void Optional_field_presence_is_derived_from_authoritative_has_flags()
+    {
+        var movement = new TerrariaPlayerMovementState(
+            PlayerId: 3,
+            ControlFlags: (1 << 3) | (1 << 6),
+            MovementFlags: 0,
+            MiscFlags1: byte.MaxValue,
+            MiscFlags2: byte.MaxValue,
+            SelectedItem: 0,
+            PositionX: 32f,
+            PositionY: 48f,
+            HasVelocity: true,
+            VelocityX: 1.25f,
+            VelocityY: -0.5f,
+            HasMount: false,
+            MountType: 0,
+            HasPotionOfReturnPositions: false,
+            PotionOfReturnOriginalPositionX: 0f,
+            PotionOfReturnOriginalPositionY: 0f,
+            PotionOfReturnHomePositionX: 0f,
+            PotionOfReturnHomePositionY: 0f,
+            HasCameraTarget: false,
+            CameraTargetX: 0f,
+            CameraTargetY: 0f);
+
+        byte[] encoded = TerrariaPlayerMovementEncoder.Encode(in movement);
+        var input = new ReadOnlySequence<byte>(encoded);
+
+        Assert.Equal(TerrariaFrameReadResult.Frame, TerrariaFrameDecoder.TryRead(ref input, out TerrariaFrame frame));
+        PlayerUpdateView view = PlayerUpdateView.FromPayload(frame.Payload.FirstSpan);
+        Assert.True(view.HasVelocity);
+        Assert.Equal(1.25f, view.VelocityX);
+        Assert.Equal(-0.5f, view.VelocityY);
+        Assert.False(view.HasMount);
+        Assert.False(view.HasPotionOfReturnPositions);
+        Assert.False(view.HasCameraTarget);
+    }
+
+    [Fact]
     public void Encodes_authoritative_slot_and_optional_movement_fields_through_multiplicity()
     {
         var movement = new TerrariaPlayerMovementState(

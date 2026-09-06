@@ -317,7 +317,8 @@ internal sealed class ServerProcessSession : IDisposable
                 sandboxOperations,
                 worldInspectionOperations,
                 new RuntimePlayerRouteAdministrativeOperations(connections.Directory),
-                connections.Sessions);
+                connections.Sessions,
+                primaryRuntime.BotOperations);
         }
         catch (Exception exception)
         {

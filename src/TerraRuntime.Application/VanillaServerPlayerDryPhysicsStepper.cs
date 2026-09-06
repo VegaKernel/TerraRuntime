@@ -6,8 +6,9 @@ namespace TerraRuntime.Application;
 /// <summary>
 /// One authoritative ordinary-world physics step for the verified TerrariaServer 1.4.5.8 player path.
 /// This slice owns source-backed baseline horizontal/jump input, the base hitbox, gravity/fall-speed profiles,
-/// walk-down-slope, ordinary StepDown/StepUp, tile collision, liquid-aware position advance, contact transitions
-/// and post-move slope collision. Accessory swimming/floating, mounts, grapples and extra jumps remain outside it.
+/// walk-down-slope, ordinary StepDown/StepUp, tile collision, liquid-aware position advance, contact transitions,
+/// post-move slope collision and the admitted Fishron-wing vertical slice. Swimming accessories, mounts, grapples
+/// and extra jumps remain outside it.
 /// </summary>
 internal sealed class VanillaServerPlayerDryPhysicsStepper
 {
@@ -56,6 +57,7 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             in player,
             horizontalIntent,
             jumpIntent,
+            flightEnabled: false,
             in jumpState,
             in previousContacts,
             out next,
@@ -66,6 +68,25 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
         in PlayerStateSnapshot player,
         ServerPlayerHorizontalIntent horizontalIntent,
         ServerPlayerJumpIntent jumpIntent,
+        in VanillaServerPlayerJumpState jumpState,
+        in VanillaLiquidContactState previousContacts,
+        out ServerPlayerDryPhysicsStepResult next,
+        out VanillaServerPlayerJumpState nextJumpState) =>
+        TryStep(
+            in player,
+            horizontalIntent,
+            jumpIntent,
+            flightEnabled: false,
+            in jumpState,
+            in previousContacts,
+            out next,
+            out nextJumpState);
+
+    public bool TryStep(
+        in PlayerStateSnapshot player,
+        ServerPlayerHorizontalIntent horizontalIntent,
+        ServerPlayerJumpIntent jumpIntent,
+        bool flightEnabled,
         in VanillaServerPlayerJumpState jumpState,
         in VanillaLiquidContactState previousContacts,
         out ServerPlayerDryPhysicsStepResult next,
@@ -97,6 +118,14 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             return false;
         }
 
+        if (flightEnabled &&
+            jumpIntent == ServerPlayerJumpIntent.Held &&
+            nextJumpState.RemainingTicks == 0 &&
+            velocityY != 0f)
+        {
+            velocityY = ApplyFishronWingFlight(velocityY, profile.JumpSpeed);
+        }
+
         return TryStepCore(
             in player,
             velocityX,
@@ -105,6 +134,82 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             in profile,
             ref nextJumpState,
             out next);
+    }
+
+    public bool ShouldAutoJumpObstacle(
+        in PlayerStateSnapshot player,
+        ServerPlayerHorizontalIntent horizontalIntent)
+    {
+        if (horizontalIntent == ServerPlayerHorizontalIntent.Stop ||
+            player.IsDead || player.MountType != 0 ||
+            !float.IsFinite(player.PositionX) || !float.IsFinite(player.PositionY))
+        {
+            return false;
+        }
+
+        VanillaTileCollisionResult ground = VanillaWorldCollision.TileCollision(
+            tiles,
+            player.PositionX,
+            player.PositionY,
+            0f,
+            Gravity,
+            PlayerWidth,
+            PlayerHeight,
+            fallThrough: false,
+            fall2: false);
+        if (ground.VelocityY != 0f)
+            return false;
+
+        return IsForwardBlocked(in player, horizontalIntent);
+    }
+
+    public bool ShouldAscendPastObstacle(
+        in PlayerStateSnapshot player,
+        ServerPlayerHorizontalIntent horizontalIntent)
+    {
+        if (horizontalIntent == ServerPlayerHorizontalIntent.Stop ||
+            player.IsDead || player.MountType != 0 ||
+            !float.IsFinite(player.PositionX) || !float.IsFinite(player.PositionY))
+        {
+            return false;
+        }
+
+        return IsForwardBlocked(in player, horizontalIntent);
+    }
+
+    private bool IsForwardBlocked(
+        in PlayerStateSnapshot player,
+        ServerPlayerHorizontalIntent horizontalIntent)
+    {
+        float velocityX = VanillaServerPlayerHorizontalControl.Apply(
+            player.VelocityX,
+            player.VelocityY,
+            horizontalIntent);
+        if (velocityX == 0f)
+            return false;
+
+        VanillaTileCollisionResult forward = VanillaWorldCollision.TileCollision(
+            tiles,
+            player.PositionX,
+            player.PositionY,
+            velocityX,
+            0f,
+            PlayerWidth,
+            PlayerHeight,
+            fallThrough: false,
+            fall2: false);
+        return forward.VelocityX != velocityX;
+    }
+
+    private static float ApplyFishronWingFlight(float velocityY, float jumpSpeed)
+    {
+        // TerrariaServer 1.4.5.8 Player.WingMovement branch for Fishron Wings (item 2609, wingSlot 26).
+        velocityY -= 0.125f;
+        if (velocityY > 0f)
+            velocityY -= 0.75f;
+        else if (velocityY > -jumpSpeed)
+            velocityY -= 0.15f;
+        return Math.Max(velocityY, -jumpSpeed * 2.5f);
     }
 
     private bool TryStepCore(

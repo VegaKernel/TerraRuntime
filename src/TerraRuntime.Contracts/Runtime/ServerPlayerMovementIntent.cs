@@ -14,12 +14,16 @@ public enum ServerPlayerMovementIntentKind : byte
 public readonly record struct ServerPlayerMovementOptions(
     float StopDistance,
     float JumpVerticalThreshold,
-    float MaximumDistance)
+    float MaximumDistance,
+    bool AutoJumpObstacles = false,
+    bool FlightEnabled = false)
 {
     public static ServerPlayerMovementOptions Default => new(
         StopDistance: 12f,
         JumpVerticalThreshold: 24f,
-        MaximumDistance: 0f);
+        MaximumDistance: 0f,
+        AutoJumpObstacles: false,
+        FlightEnabled: false);
 
     public bool IsValid =>
         float.IsFinite(StopDistance) && StopDistance is >= 0f and <= 1_024f &&

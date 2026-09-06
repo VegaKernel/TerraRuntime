@@ -1,12 +1,12 @@
 # Verified vanilla facts
 
-Last evidence refresh: 2026-09-06.
+Last evidence refresh: 2026-09-07.
 
 This file stores concise facts already checked against the locally decompiled official TerrariaServer **1.4.5.8**. It prevents repeated source archaeology, but it does not authorize guessing adjacent behavior. Unknown cases remain fail-closed until separately verified.
 
 ## Runtime bot source facts
 
-Primary evidence: TerrariaServer 1.4.5.8 `Player.QuickHeal`, `Player.QuickHeal_GetItemToUse`, `Player.UpdateBuffs`, `Player.PickAmmo`, `Item.SetDefaults`, `MessageBuffer.GetData` packet cases 30/55 and `NetMessage.SendData` packet cases 30/55.
+Primary evidence: TerrariaServer 1.4.5.8 `Player.QuickHeal`, `Player.QuickHeal_GetItemToUse`, `Player.UpdateBuffs`, `Player.PickAmmo`, `Player.WingMovement`, `Item.SetDefaults`, `Projectile.SetDefaults`, `Projectile.AI_001`, `Collision.CanHit`, `MessageBuffer.GetData` packet cases 13/30/55 and `NetMessage.SendData` packet cases 13/30/55.
 
 Verified facts used by the TZ-29 bot slice:
 
@@ -19,9 +19,24 @@ Verified facts used by the TZ-29 bot slice:
 - Archery buff `16` sets the archery state and multiplies arrow damage by `1.1`; `Player.PickAmmo` additionally multiplies arrow speed by `1.2` when below `20`, capped at `20`.
 - Wrath buff `117` adds `0.1` to melee, ranged, magic and minion damage multipliers. TZ-29 reproduces only the outgoing combat effects it actually owns; catalogued potion buffs without an implemented authoritative effect remain fail-closed for bot pickup/use.
 - supported bot ammunition/weapon facts come from the existing source-backed projectile weapon/ammo catalog. TZ-29's ranged presets pair Wooden Bow with Wooden Arrow and Musket with Musket Ball; it does not infer arbitrary Terraria ammo compatibility.
+- Copper Broadsword is item `3508`, Wooden Bow is item `39`, Musket is item `96`, Wooden Arrow is item `40`, and Musket Ball is item `97`. Their admitted damage, use timing, projectile and ammo conversions come from the existing 1.4.5.8 item/weapon catalogs rather than bot-local guesses.
+- Wooden Bow plus Wooden Arrow resolves through `Player.PickAmmo` to launch magnitude `9.1`; Musket plus Musket Ball resolves to `13`. aiStyle-1 arrow gravity begins after 15 projectile substeps at `+0.1` vertical velocity and caps at `16`; projectile `extraUpdates` controls the number of substeps per game tick.
+- Packet 13 control bits are up `0`, down `1`, left `2`, right `3`, jump `4`, use-item `5`, direction-right `6`, and pulley/dash `7`. Movement flag bit `2` carries velocity. A server-owned PlayerBot must publish the actual selected hotbar slot and use-item bit for observers to render weapon switching/use.
+- Fishron Wings are item `2609` with wing slot `26`; Soaring Insignia is item `4989`. The admitted bot flight step uses the source Fishron-wing vertical acceleration/cap slice and does not infer other accessory effects.
+- `Collision.CanHit` is a tile-aware rectangle visibility test. Bot Guard acquisition and projectile admission reuse the runtime's exact `VanillaWorldCanHit` port; a solid obstacle is not ignored merely because target range is valid.
 - AI_002 (`FloatingEye`) performs collision rebound before target-direction steering and applies source-specific horizontal/vertical pursuit acceleration. The controlled NpcBot lane reuses only this verified steering/motion primitive; daylight/despawn/attack side effects remain outside actor-control unless separately admitted.
 - AI_005 (`EaterOfSouls`) resolves a target and then applies source-specific pursuit velocity/collision behavior. Controlled flyers reuse the verified pursuit primitive but do not opt back into ordinary AI projectile or spawn side effects.
 - ordinary AI_014 bats set no-gravity, rebound from `collideX/collideY`, call `TargetClosest`, apply directional pursuit acceleration, then advance `ai[1]`; the wander branch starts only after `ai[1] > 200`. TerraRuntime's controlled bat helper resets that ordinary AI clock for each call and therefore exposes the source-ordered pre-wander pursuit/collision slice only. Queen Slime's purple minion shares AI_014 machinery but is boss-owned and is explicitly excluded from the standalone bot-preset helper.
+
+## Dungeon entrance source facts
+
+Primary evidence: TerrariaServer 1.4.5.8 `DungeonCrawler.SetupDungeonDataVariables`, `DungeonUtils.SetOldManSpawnAndSpawnOldManIfDefaultDungeon`, `WorldGen.beachDistance`, and the final `TileID.Sets.Clouds` initialization.
+
+- An ordinary precalculated entrance search starts from y `10`, scans downward while the tile is inactive and has neither liquid nor wall, and accepts only x strictly inside `WorldGen.beachDistance == 380` from both world edges.
+- The search initializes its countdown to `3000`, decrements before evaluating a candidate and stops at zero, so it can evaluate at most `2999` candidates. Each candidate x is drawn within 100 tiles of the Reset-owned dungeon location.
+- Acceptance rejects a cloud-set tile within radius `15` of the surface exit or within radius `50` around `max(50, y - 50)`, and requires `y - 40 - RoughHeight > 0`. The final 1.4.5.8 cloud set used by this check is tiles `189`, `196`, `460`, `717`, `718`, and `719`.
+- After acceptance, the horizontal dungeon location receives the source `+25-Next(50)` adjustment while the entrance position remains the accepted surface coordinate.
+- For the default dungeon, Old Man is NPC type `37` at `dungeonX * 16 + 8, dungeonY * 16`, with `homeless=false` and home tile set to the dungeon anchor.
 
 ## Liquids
 

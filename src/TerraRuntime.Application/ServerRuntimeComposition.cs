@@ -202,7 +202,7 @@ internal sealed class ServerRuntimeComposition
             skyblockLowTiles,
             isThereAWorldSurface,
             evilBossDownedBaseline);
-        RuntimeBotAuthority? botAuthority = serverPlayers is not null && botTelemetry is not null
+        RuntimeBotAuthority? botAuthority = serverPlayers is not null && botTelemetry is not null && worldTiles is not null
             ? new RuntimeBotAuthority(
                 serverPlayers,
                 playersAuthority,
@@ -210,6 +210,7 @@ internal sealed class ServerRuntimeComposition
                 npcAuthority,
                 projectileAuthority,
                 worldItemAuthority,
+                worldTiles,
                 botTelemetry,
                 () => updates.Current,
                 botSpawnX,

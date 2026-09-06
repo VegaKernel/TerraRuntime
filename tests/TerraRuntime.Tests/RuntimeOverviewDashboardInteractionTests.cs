@@ -707,4 +707,55 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         Assert.Equal(7, despawned);
     }
 
+    [Fact]
+    public void Bot_settings_show_only_controls_applicable_to_selected_body()
+    {
+        var operations = new RuntimeBotOperations(new RejectingBotCommandIngress(), new RuntimeBotTelemetry());
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        var playerBot = new RuntimeBotSnapshot(
+            1,
+            new ServerPlayerId("bot:1"),
+            new PlayerHandle(new PlayerSlotId(1), new PlayerSessionGeneration(1)),
+            default,
+            "Bot 1",
+            new RuntimeBotConfiguration(
+                RuntimeBotClothingPreset.Classic,
+                RuntimeBotArmorPreset.None,
+                RuntimeBotMode.Idle,
+                default),
+            false,
+            false,
+            false,
+            0,
+            now);
+        var npcBot = playerBot with
+        {
+            Id = 2,
+            ServerPlayerId = new ServerPlayerId("bot:2"),
+            Player = default,
+            Npc = new NpcHandle(2, new NpcGeneration(1)),
+            Configuration = playerBot.Configuration with
+            {
+                Body = RuntimeBotBodyKind.Npc,
+                NpcType = VanillaNpcIds.Zombie,
+                FlightEnabled = false,
+                AutoPickup = false,
+                AutoUseConsumables = false
+            }
+        };
+
+        using var playerWindow = new BotSettingsWindow(playerBot, [], operations);
+        Assert.False(playerWindow.NpcPresetVisibleForSmoke);
+        Assert.True(playerWindow.PlayerFieldsVisibleForSmoke);
+
+        using var npcWindow = new BotSettingsWindow(npcBot, [], operations);
+        Assert.True(npcWindow.NpcPresetVisibleForSmoke);
+        Assert.False(npcWindow.PlayerFieldsVisibleForSmoke);
+    }
+
+    private sealed class RejectingBotCommandIngress : IGameCommandIngress<RuntimeCommand>
+    {
+        public bool TryPost(GameCommandSourceId source, RuntimeCommand command) => false;
+    }
+
 }

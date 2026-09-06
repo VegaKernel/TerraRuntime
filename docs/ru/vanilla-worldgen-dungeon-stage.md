@@ -46,7 +46,8 @@ Compatibility residual/barrier entries не потребляют общий Terr
 
 - `DungeonSide` задаёт сторону, выбранную Reset;
 - `DungeonLocation` задаёт горизонтальный anchor;
-- созданное подземелье публикует anchor в world metadata;
+- поиск входа использует source countdown, строгую 380-tile beach boundary, нисходящий поиск surface exit и точное исключение cloud set вместо выбора уже созданного sky island;
+- созданное подземелье публикует принятый anchor в world metadata и регистрирует Old Man NPC 37 в исходной bottom-center позиции с этим home;
 - палитры dungeon brick/wall/cracked brick выбираются в `Dunes`, где Terraria инициализирует dungeon generation;
 - проход `Dungeon` расходует закреплённые выборы уникальных shelf/lantern styles, режим entrance halls,
   корректировку стартовой глубины, размеры входа и масштабированное по ширине число layout steps;
@@ -97,6 +98,8 @@ dungeon features остаются дальнейшей parity-работой.
 Vanilla acceptance workflow собирает TerraRuntime, запускает только focused world-generation contract classes, генерирует канонический small world через `terraruntime:vanilla`, проверяет его `TerraRuntime.WorldVerify`, а затем запускает закреплённый TerrariaServer 1.4.5.8 с полученным `.wld`.
 
 Зелёный official-server acceptance доказывает, что созданный файл мира структурно принимается закреплённым сервером. Это не заявление о reference-seed identity или полной готовности vanilla worldgen.
+
+После исправления входа повторно выполнен differential для large `4200x1200` seed `1458`. В сравнении с закреплённым официальным миром 1.4.5.8 пройдены все structural budgets: spawn delta `(1,0)`, dungeon delta `(69,6)`, surface и rock-layer deltas `0`, silhouette NMAE `0.021349` / p95 `0.13` / correlation `0.606524` и `181 -> 98` chests. Оставшиеся различия явно показывают, что это не byte parity и не полный vanilla worldgen.
 
 Canonical generated-world contract дополнительно требует минимум три rooms, масштабируемое по ширине число halls,
 горизонтальные и вертикальные halls, не-шахтный span графа и связанный surface entrance. Fail-closed finalizer повторяет

@@ -7,6 +7,26 @@ namespace TerraRuntime.Tests;
 public sealed class ServerPlayerStateStoreTests
 {
     [Fact]
+    public void Server_owned_hotbar_selection_and_use_state_commit_into_packet13_snapshot()
+    {
+        var slots = new PlayerSlotPool(1);
+        var identities = new ServerPlayerSlotRegistry(slots);
+        var states = new ServerPlayerStateStore(identities, slots.Capacity);
+        var id = new ServerPlayerId("bot:held-item");
+        Assert.Equal(ServerPlayerSlotAcquireResult.Acquired, identities.TryAcquire(id, out var lease));
+        using ServerPlayerSlotRegistry.ServerPlayerSlotLease owned = Assert.IsType<ServerPlayerSlotRegistry.ServerPlayerSlotLease>(lease);
+        Assert.True(states.TrySpawn(id, 10f, 20f, out _));
+
+        Assert.True(states.TrySetHeldItem(owned.Player, selectedItem: 2, useItem: true, out PlayerStateSnapshot usingGun));
+
+        Assert.Equal(2, usingGun.SelectedItem);
+        Assert.NotEqual(0, usingGun.ControlFlags & (1 << 5));
+        Assert.True(states.TrySetHeldItem(owned.Player, selectedItem: 2, useItem: false, out PlayerStateSnapshot released));
+        Assert.Equal(0, released.ControlFlags & (1 << 5));
+        Assert.False(states.TrySetHeldItem(owned.Player, selectedItem: 10, useItem: true, out _));
+    }
+
+    [Fact]
     public void Spawn_and_motion_use_exact_server_owned_generation()
     {
         var slots = new PlayerSlotPool(2);

@@ -5,7 +5,9 @@ using TerraRuntime.Core.Projectiles;
 using TerraRuntime.Gameplay.Bots;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Gameplay.Npcs;
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.HostContracts;
+using TerraRuntime.World;
 
 namespace TerraRuntime.Application.Bots;
 
@@ -27,6 +29,16 @@ internal sealed class RuntimeBotAuthority
     private const long TelemetryPeriodTicks = 6;
     private const int MaximumNpcSlots = 256;
     private const short StarterAmmoStack = 100;
+    private const byte MeleeWeaponSlot = 0;
+    private const byte BowWeaponSlot = 1;
+    private const byte GunWeaponSlot = 2;
+    private const byte ControlUseItemFlag = 1 << 5;
+    // Tactical switch thresholds belong to bot policy. Weapon timing, launch velocity, projectile motion,
+    // and damage below continue to come from the verified 1.4.5.8 catalogs.
+    private const float ConservativeMeleeCenterDistancePixels = 64f;
+    private const float AutomaticGunDistancePixels = 256f;
+    private const float AutomaticGunTargetSpeedPixelsPerTick = 3f;
+    private const int MaximumPredictiveAimTicks = 120;
 
     private readonly ServerPlayerAuthority serverPlayers;
     private readonly PlayerAuthority players;
@@ -34,6 +46,7 @@ internal sealed class RuntimeBotAuthority
     private readonly NpcAuthority npcs;
     private readonly ProjectileAuthority projectiles;
     private readonly WorldItemAuthority worldItems;
+    private readonly WorldTileStore worldTiles;
     private readonly RuntimeBotTelemetry telemetry;
     private readonly Func<long> tickProvider;
     private readonly float spawnX;
@@ -51,6 +64,7 @@ internal sealed class RuntimeBotAuthority
         NpcAuthority npcs,
         ProjectileAuthority projectiles,
         WorldItemAuthority worldItems,
+        WorldTileStore worldTiles,
         RuntimeBotTelemetry telemetry,
         Func<long> tickProvider,
         float spawnX,
@@ -62,6 +76,7 @@ internal sealed class RuntimeBotAuthority
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         this.worldItems = worldItems ?? throw new ArgumentNullException(nameof(worldItems));
+        this.worldTiles = worldTiles ?? throw new ArgumentNullException(nameof(worldTiles));
         this.telemetry = telemetry ?? throw new ArgumentNullException(nameof(telemetry));
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
         if (!float.IsFinite(spawnX) || !float.IsFinite(spawnY))
@@ -116,9 +131,9 @@ internal sealed class RuntimeBotAuthority
             Body: request.Body,
             NpcType: request.NpcType,
             WeaponPolicy: RuntimeBotWeaponPolicy.Automatic,
-            FlightEnabled: true,
-            AutoPickup: true,
-            AutoUseConsumables: true);
+            FlightEnabled: request.Body == RuntimeBotBodyKind.Player,
+            AutoPickup: request.Body == RuntimeBotBodyKind.Player,
+            AutoUseConsumables: request.Body == RuntimeBotBodyKind.Player);
         var state = new BotState(id, serverId, controllerId, name, configuration, tickProvider());
 
         bool created = request.Body switch
@@ -220,6 +235,13 @@ internal sealed class RuntimeBotAuthority
             return;
         }
 
+        if (tick >= bot.UseItemUntilTick && (self.ControlFlags & ControlUseItemFlag) != 0)
+        {
+            _ = serverPlayers.SetHeldItem(bot.ServerPlayerId, self.SelectedItem, useItem: false);
+            if (serverPlayers.TryGet(bot.Player, out PlayerStateSnapshot refreshedHeldState))
+                self = refreshedHeldState;
+        }
+
         RuntimeBotConfiguration configuration = bot.Configuration;
         if (configuration.AutoPickup)
             TryPickupOneUsefulItem(bot, in self);
@@ -234,6 +256,7 @@ internal sealed class RuntimeBotAuthority
         {
             ResetUnavailableTarget(bot, tick);
             _ = serverPlayers.SetMovementIntent(bot.ServerPlayerId, ServerPlayerMovementIntent.Stop());
+            _ = serverPlayers.SetHeldItem(bot.ServerPlayerId, self.SelectedItem, useItem: false);
             if (self.Hostile)
                 _ = serverPlayers.SetHostile(bot.ServerPlayerId, hostile: false);
             return;
@@ -247,7 +270,13 @@ internal sealed class RuntimeBotAuthority
 
         _ = serverPlayers.SetMovementIntent(
             bot.ServerPlayerId,
-            ServerPlayerMovementIntent.FollowPlayer(configuration.Target.Player));
+            ServerPlayerMovementIntent.FollowPlayer(
+                configuration.Target.Player,
+                ServerPlayerMovementOptions.Default with
+                {
+                    AutoJumpObstacles = true,
+                    FlightEnabled = configuration.FlightEnabled
+                }));
 
         UpdatePlayerStuckRecovery(bot, in self, in target, tick);
 
@@ -279,9 +308,33 @@ internal sealed class RuntimeBotAuthority
 
         bot.TargetAvailable = true;
         bot.PvpEnabled = false; // No source-backed NPC-owned PvP provenance exists; fail closed.
-        NpcActorIntent follow = NpcActorIntent.FollowPlayer(target.Player);
-        _ = npcs.TrySetBotNpcIntent(bot.Npc, bot.ControllerId, in follow);
-        UpdateNpcStuckRecovery(bot, in self, in target, tick);
+        if (!VanillaNpcDefinitionCatalog.TryGet(self.TypeIdentity, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(self.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+        {
+            NpcActorIntent failClosed = NpcActorIntent.Stop();
+            _ = npcs.TrySetBotNpcIntent(bot.Npc, bot.ControllerId, in failClosed);
+            return;
+        }
+
+        // The selected player is a movement destination, never the hostile NPC.target. Keep enough center distance
+        // that the NPC and player hitboxes cannot overlap even on a diagonal approach.
+        float noContactX = hitbox.Width * 0.5f + PlayerAuthority.VanillaBasePlayerWidth * 0.5f + 8f;
+        float noContactY = hitbox.Height * 0.5f + PlayerAuthority.VanillaBasePlayerHeight * 0.5f + 8f;
+        var motion = NpcActorMotionOptions.Default with
+        {
+            StopDistance = MathF.Sqrt(noContactX * noContactX + noContactY * noContactY)
+        };
+        NpcActorIntent follow = NpcActorIntent.MoveTo(
+            target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
+            target.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f,
+            motion);
+        if (!npcs.TrySetBotNpcIntent(bot.Npc, bot.ControllerId, in follow))
+        {
+            bot.TargetAvailable = false;
+            bot.IsStuck = false;
+            return;
+        }
+        UpdateNpcStuckRecovery(bot, in self, in target, in hitbox, tick);
         // Guard intentionally shares follow/stuck behavior only. NPC offensive combat remains fail-closed until a
         // source-backed NPC bot combat provenance path exists; do not fake player-owned projectiles from an NPC body.
     }
@@ -320,6 +373,7 @@ internal sealed class RuntimeBotAuthority
         BotState bot,
         in NpcSnapshot self,
         in PlayerStateSnapshot target,
+        in VanillaNpcHitboxSize hitbox,
         long tick)
     {
         float distanceSquared = DistanceSquared(self.PositionX, self.PositionY, target.PositionX, target.PositionY);
@@ -327,7 +381,10 @@ internal sealed class RuntimeBotAuthority
         if (!ShouldTeleport(bot, distanceSquared, tick))
             return;
 
-        if (npcs.TryTeleportBotNpc(bot.Npc, bot.ControllerId, target.PositionX, target.PositionY))
+        float safeX = self.PositionX <= target.PositionX
+            ? target.PositionX - hitbox.Width - 8f
+            : target.PositionX + PlayerAuthority.VanillaBasePlayerWidth + 8f;
+        if (npcs.TryTeleportBotNpc(bot.Npc, bot.ControllerId, safeX, target.PositionY))
             CommitTeleport(bot, tick);
     }
 
@@ -366,13 +423,44 @@ internal sealed class RuntimeBotAuthority
 
     private void TryGuardAttack(BotState bot, in PlayerStateSnapshot self, in PlayerStateSnapshot protectedPlayer, long tick)
     {
-        if (!TryFindGuardAim(bot, in protectedPlayer, out float aimX, out float aimY) ||
-            !TryResolveRangedLoadout(bot.Configuration.WeaponPolicy, out ItemTypeId weaponItem, out ItemTypeId ammoItem,
+        if (!TryFindGuardTarget(bot, in self, in protectedPlayer, out BotGuardTarget target))
+            return;
+
+        RuntimeBotAttackKind attack = ResolveAttackKind(bot.Configuration.WeaponPolicy, in self, in target);
+        if (attack == RuntimeBotAttackKind.Melee)
+        {
+            TryGuardMeleeAttack(bot, in self, in target, tick);
+            return;
+        }
+
+        if (TryGuardRangedAttack(bot, in self, in target, attack, tick))
+            return;
+
+        if (bot.Configuration.WeaponPolicy == RuntimeBotWeaponPolicy.Automatic)
+        {
+            RuntimeBotAttackKind fallback = attack == RuntimeBotAttackKind.Gun
+                ? RuntimeBotAttackKind.Bow
+                : RuntimeBotAttackKind.Gun;
+            _ = TryGuardRangedAttack(bot, in self, in target, fallback, tick);
+        }
+    }
+
+    private bool TryGuardRangedAttack(
+        BotState bot,
+        in PlayerStateSnapshot self,
+        in BotGuardTarget target,
+        RuntimeBotAttackKind attack,
+        long tick)
+    {
+        if (!TryResolveRangedLoadout(attack, out _, out ItemTypeId ammoItem,
                 out VanillaProjectileWeaponCombatDefinition weapon, out VanillaProjectileAmmoCombatDefinition ammo) ||
             !TryFindAmmoSlot(bot.ServerPlayerId, ammoItem, out short ammoSlot, out ServerPlayerItemState ammoState) ||
-            !VanillaProjectileWeaponCombatCatalog.TryResolveProjectileType(in weapon, in ammo, out ProjectileTypeId projectileType))
+            !VanillaProjectileWeaponCombatCatalog.TryResolveProjectileType(in weapon, in ammo, out ProjectileTypeId projectileType) ||
+            !TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(
+                projectileType,
+                out VanillaProjectileDefinition projectileDefinition))
         {
-            return;
+            return false;
         }
 
         VanillaPlayerCombatSnapshot combat = BuildBotCombatSnapshot(bot, tick);
@@ -382,15 +470,7 @@ internal sealed class RuntimeBotAuthority
         int damage = VanillaProjectileWeaponCombatCatalog.ResolveDamage(in weapon, in ammo, in prefix, in combat);
         float knockBack = VanillaProjectileWeaponCombatCatalog.ResolveKnockBack(in weapon, in ammo, in prefix, in combat);
         if (!speedEnvelope.IsValid || damage <= 0 || damage > short.MaxValue || !float.IsFinite(knockBack))
-            return;
-
-        float originX = self.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
-        float originY = self.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
-        float dx = aimX - originX;
-        float dy = aimY - originY;
-        float length = MathF.Sqrt(dx * dx + dy * dy);
-        if (!(length > 0.001f) || !float.IsFinite(length))
-            return;
+            return false;
 
         float speed = speedEnvelope.CanonicalMagnitude;
         if (weapon.AmmoFamily == VanillaProjectileAmmoFamily.Arrow &&
@@ -399,20 +479,42 @@ internal sealed class RuntimeBotAuthority
             speed = Math.Min(20f, speed * 1.2f);
         }
 
+        float originX = self.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+        float originY = self.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+        if (!TryResolveProjectileLaunch(
+                originX,
+                originY,
+                projectileType,
+                in projectileDefinition,
+                speed,
+                in target,
+                out float velocityX,
+                out float velocityY))
+        {
+            return false;
+        }
+
+        byte weaponSlot = ResolveWeaponSlot(bot.Configuration.WeaponPolicy, attack);
+        if (!serverPlayers.SetHeldItem(bot.ServerPlayerId, weaponSlot, useItem: true))
+            return false;
+
         // Consume first, rollback if projectile allocation fails. This keeps the world-writer path duplication-safe.
         var consumed = ammoState.Stack == 1
             ? new ServerPlayerItemState(ammoSlot, VanillaItemIds.None, 0, VanillaPrefixIds.None, 0)
             : ammoState with { Stack = checked((short)(ammoState.Stack - 1)) };
         if (!serverPlayers.SetItem(bot.ServerPlayerId, in consumed))
-            return;
+        {
+            _ = serverPlayers.SetHeldItem(bot.ServerPlayerId, weaponSlot, useItem: false);
+            return false;
+        }
 
         var projectile = new ProjectileStateUpdate(
             projectileType,
             bot.Player.Slot.Value,
             originX,
             originY,
-            dx / length * speed,
-            dy / length * speed,
+            velocityX,
+            velocityY,
             default,
             BannerIdToRespondTo: 0,
             Damage: checked((short)damage),
@@ -422,21 +524,71 @@ internal sealed class RuntimeBotAuthority
         {
             if (!serverPlayers.SetItem(bot.ServerPlayerId, in ammoState))
                 throw new InvalidOperationException("Bot ammo rollback failed after rejected trusted projectile spawn.");
-            return;
+            _ = serverPlayers.SetHeldItem(bot.ServerPlayerId, weaponSlot, useItem: false);
+            return false;
         }
 
         bot.NextAttackTick = tick + Math.Max(1, weapon.UseTimeTicks);
-        _ = weaponItem; // Documents the configured held weapon used to resolve this source-backed shot.
+        bot.UseItemUntilTick = tick + Math.Max(1, weapon.AnimationTicks);
+        return true;
     }
 
-    private bool TryFindGuardAim(
+    private void TryGuardMeleeAttack(
         BotState bot,
-        in PlayerStateSnapshot protectedPlayer,
-        out float aimX,
-        out float aimY)
+        in PlayerStateSnapshot self,
+        in BotGuardTarget target,
+        long tick)
     {
-        aimX = 0f;
-        aimY = 0f;
+        if (!target.Npc.IsAssigned ||
+            !VanillaItemCombatCatalog.TryGetDirectMelee(
+                VanillaItemIds.CopperBroadsword,
+                out VanillaDirectMeleeCombatDefinition weapon))
+        {
+            return;
+        }
+
+        float sourceCenterX = self.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+        float sourceCenterY = self.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+        float dx = target.CenterX - sourceCenterX;
+        float dy = target.CenterY - sourceCenterY;
+        float distanceSquared = dx * dx + dy * dy;
+        if (distanceSquared > ConservativeMeleeCenterDistancePixels * ConservativeMeleeCenterDistancePixels)
+            return;
+
+        VanillaResolvedDirectMeleeUse resolved = VanillaDirectMeleeCombatMath.Resolve(
+            in weapon,
+            VanillaCombatPrefixModifiers.Identity,
+            BuildBotCombatSnapshot(bot, tick),
+            Random.Shared.Next(-15, 16),
+            Random.Shared.Next(1, 101),
+            pvp: false);
+        int hitDirection = dx < 0f ? -1 : 1;
+        byte weaponSlot = ResolveWeaponSlot(bot.Configuration.WeaponPolicy, RuntimeBotAttackKind.Melee);
+        if (!serverPlayers.SetHeldItem(bot.ServerPlayerId, weaponSlot, useItem: true) ||
+            !npcs.TryStrikeBotPlayerMelee(
+                bot.Player,
+                target.Npc,
+                resolved.Damage,
+                resolved.ArmorPenetration,
+                resolved.Critical,
+                resolved.KnockBack,
+                hitDirection))
+        {
+            _ = serverPlayers.SetHeldItem(bot.ServerPlayerId, weaponSlot, useItem: false);
+            return;
+        }
+
+        bot.NextAttackTick = tick + Math.Max(1, resolved.UseTimeTicks);
+        bot.UseItemUntilTick = tick + Math.Max(1, resolved.AnimationTicks);
+    }
+
+    private bool TryFindGuardTarget(
+        BotState bot,
+        in PlayerStateSnapshot self,
+        in PlayerStateSnapshot protectedPlayer,
+        out BotGuardTarget target)
+    {
+        target = default;
         float protectedCenterX = protectedPlayer.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
         float protectedCenterY = protectedPlayer.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
         float bestDistanceSquared = float.PositiveInfinity;
@@ -456,11 +608,30 @@ internal sealed class RuntimeBotAuthority
             float centerX = npc.PositionX + hitbox.Width * 0.5f;
             float centerY = npc.PositionY + hitbox.Height * 0.5f;
             float distanceSquared = DistanceSquared(protectedCenterX, protectedCenterY, centerX, centerY);
-            if (distanceSquared > GuardRadiusSquared || distanceSquared >= bestDistanceSquared)
+            if (distanceSquared > GuardRadiusSquared || distanceSquared >= bestDistanceSquared ||
+                !VanillaWorldCanHit.HasLineOfSight(
+                    worldTiles,
+                    self.PositionX,
+                    self.PositionY,
+                    (int)PlayerAuthority.VanillaBasePlayerWidth,
+                    (int)PlayerAuthority.VanillaBasePlayerHeight,
+                    npc.PositionX,
+                    npc.PositionY,
+                    hitbox.Width,
+                    hitbox.Height))
+            {
                 continue;
+            }
             bestDistanceSquared = distanceSquared;
-            aimX = centerX;
-            aimY = centerY;
+            target = new BotGuardTarget(
+                npc.Handle,
+                default,
+                centerX,
+                centerY,
+                npc.VelocityX,
+                npc.VelocityY,
+                hitbox.Width,
+                hitbox.Height);
         }
 
         // PvP is admitted only when both the protected target and the opponent have vanilla hostile enabled.
@@ -478,15 +649,204 @@ internal sealed class RuntimeBotAuthority
                 float centerX = candidate.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
                 float centerY = candidate.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
                 float distanceSquared = DistanceSquared(protectedCenterX, protectedCenterY, centerX, centerY);
-                if (distanceSquared > GuardRadiusSquared || distanceSquared >= bestDistanceSquared)
+                if (distanceSquared > GuardRadiusSquared || distanceSquared >= bestDistanceSquared ||
+                    !VanillaWorldCanHit.HasLineOfSight(
+                        worldTiles,
+                        self.PositionX,
+                        self.PositionY,
+                        (int)PlayerAuthority.VanillaBasePlayerWidth,
+                        (int)PlayerAuthority.VanillaBasePlayerHeight,
+                        candidate.PositionX,
+                        candidate.PositionY,
+                        (int)PlayerAuthority.VanillaBasePlayerWidth,
+                        (int)PlayerAuthority.VanillaBasePlayerHeight))
+                {
                     continue;
+                }
                 bestDistanceSquared = distanceSquared;
-                aimX = centerX;
-                aimY = centerY;
+                target = new BotGuardTarget(
+                    default,
+                    candidateHandle,
+                    centerX,
+                    centerY,
+                    candidate.VelocityX,
+                    candidate.VelocityY,
+                    PlayerAuthority.VanillaBasePlayerWidth,
+                    PlayerAuthority.VanillaBasePlayerHeight);
             }
         }
 
         return float.IsFinite(bestDistanceSquared);
+    }
+
+    private static RuntimeBotAttackKind ResolveAttackKind(
+        RuntimeBotWeaponPolicy policy,
+        in PlayerStateSnapshot self,
+        in BotGuardTarget target)
+    {
+        if (policy == RuntimeBotWeaponPolicy.Melee)
+            return RuntimeBotAttackKind.Melee;
+        if (policy == RuntimeBotWeaponPolicy.Gun)
+            return RuntimeBotAttackKind.Gun;
+        if (policy == RuntimeBotWeaponPolicy.Bow)
+            return RuntimeBotAttackKind.Bow;
+
+        float sourceCenterX = self.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+        float sourceCenterY = self.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+        float distanceSquared = DistanceSquared(sourceCenterX, sourceCenterY, target.CenterX, target.CenterY);
+        if (target.Npc.IsAssigned &&
+            distanceSquared <= ConservativeMeleeCenterDistancePixels * ConservativeMeleeCenterDistancePixels)
+        {
+            return RuntimeBotAttackKind.Melee;
+        }
+
+        float targetSpeedSquared = target.VelocityX * target.VelocityX + target.VelocityY * target.VelocityY;
+        return distanceSquared >= AutomaticGunDistancePixels * AutomaticGunDistancePixels ||
+               targetSpeedSquared >= AutomaticGunTargetSpeedPixelsPerTick * AutomaticGunTargetSpeedPixelsPerTick
+            ? RuntimeBotAttackKind.Gun
+            : RuntimeBotAttackKind.Bow;
+    }
+
+    private static byte ResolveWeaponSlot(RuntimeBotWeaponPolicy policy, RuntimeBotAttackKind attack)
+    {
+        if (policy != RuntimeBotWeaponPolicy.Automatic)
+            return MeleeWeaponSlot;
+
+        return attack switch
+        {
+            RuntimeBotAttackKind.Melee => MeleeWeaponSlot,
+            RuntimeBotAttackKind.Bow => BowWeaponSlot,
+            RuntimeBotAttackKind.Gun => GunWeaponSlot,
+            _ => MeleeWeaponSlot
+        };
+    }
+
+    private bool TryResolveProjectileLaunch(
+        float originX,
+        float originY,
+        ProjectileTypeId projectileType,
+        in VanillaProjectileDefinition definition,
+        float launchSpeed,
+        in BotGuardTarget target,
+        out float velocityX,
+        out float velocityY)
+    {
+        velocityX = 0f;
+        velocityY = 0f;
+        if (definition.AiStyle != VanillaProjectileAiStyles.Arrow ||
+            !(launchSpeed > 0f) || !float.IsFinite(launchSpeed))
+        {
+            return false;
+        }
+
+        int subupdates = VanillaProjectileUpdateFacts.GetSubupdatesPerWorldTick(projectileType);
+        float projectileCenterX = originX + definition.Width * 0.5f;
+        float projectileCenterY = originY + definition.Height * 0.5f;
+        for (int ticks = 1; ticks <= MaximumPredictiveAimTicks; ticks++)
+        {
+            int steps = checked(ticks * subupdates);
+            float predictedTargetX = target.CenterX + target.VelocityX * ticks;
+            float predictedTargetY = target.CenterY + target.VelocityY * ticks;
+            int gravitySteps = Math.Max(0, steps - 14);
+            float gravityDisplacement = gravitySteps * (gravitySteps + 1) * 0.05f;
+            float requiredX = (predictedTargetX - projectileCenterX) / steps;
+            float requiredY = (predictedTargetY - projectileCenterY - gravityDisplacement) / steps;
+            float requiredLength = MathF.Sqrt(requiredX * requiredX + requiredY * requiredY);
+            if (!(requiredLength > 0.001f) || !float.IsFinite(requiredLength))
+                continue;
+
+            float candidateVelocityX = requiredX / requiredLength * launchSpeed;
+            float candidateVelocityY = requiredY / requiredLength * launchSpeed;
+            if (!TrajectoryReachesTarget(
+                    originX,
+                    originY,
+                    candidateVelocityX,
+                    candidateVelocityY,
+                    subupdates,
+                    ticks,
+                    in definition,
+                    in target))
+            {
+                continue;
+            }
+
+            velocityX = candidateVelocityX;
+            velocityY = candidateVelocityY;
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TrajectoryReachesTarget(
+        float originX,
+        float originY,
+        float initialVelocityX,
+        float initialVelocityY,
+        int subupdates,
+        int maximumTicks,
+        in VanillaProjectileDefinition definition,
+        in BotGuardTarget target)
+    {
+        float positionX = originX;
+        float positionY = originY;
+        float velocityX = initialVelocityX;
+        float velocityY = initialVelocityY;
+        float ai0 = 0f;
+        int maximumSteps = checked(subupdates * maximumTicks);
+        for (int step = 0; step < maximumSteps; step++)
+        {
+            ai0 += 1f;
+            if (ai0 >= 15f)
+            {
+                ai0 = 15f;
+                velocityY = Math.Min(16f, velocityY + 0.1f);
+            }
+
+            if (!definition.IgnoreWater &&
+                VanillaWorldCollision.GetLiquidContacts(
+                    worldTiles,
+                    positionX,
+                    positionY,
+                    definition.Width,
+                    definition.Height).Wet)
+            {
+                return false;
+            }
+
+            VanillaTileCollisionResult collision = VanillaWorldCollision.TileCollision(
+                worldTiles,
+                positionX + definition.CollisionOffsetX,
+                positionY + definition.CollisionOffsetY,
+                velocityX,
+                velocityY,
+                definition.CollisionWidth,
+                definition.CollisionHeight,
+                fallThrough: true,
+                fall2: true);
+            if (collision.VelocityX != velocityX || collision.VelocityY != velocityY)
+                return false;
+
+            positionX += velocityX;
+            positionY += velocityY;
+            float elapsedTicks = (step + 1f) / subupdates;
+            float targetLeft = target.CenterX + target.VelocityX * elapsedTicks - target.Width * 0.5f;
+            float targetTop = target.CenterY + target.VelocityY * elapsedTicks - target.Height * 0.5f;
+            if (RectanglesIntersect(
+                    positionX,
+                    positionY,
+                    definition.Width,
+                    definition.Height,
+                    targetLeft,
+                    targetTop,
+                    target.Width,
+                    target.Height))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void TryPickupOneUsefulItem(BotState bot, in PlayerStateSnapshot self)
@@ -529,8 +889,7 @@ internal sealed class RuntimeBotAuthority
         return definition.Kind switch
         {
             VanillaBotItemKind.RequiredAmmo =>
-                TryResolveRangedLoadout(bot.Configuration.WeaponPolicy, out _, out ItemTypeId requiredAmmo, out _, out _) &&
-                itemType == requiredAmmo,
+                IsRequiredAmmo(bot.Configuration.WeaponPolicy, itemType),
             VanillaBotItemKind.HealingPotion => true,
             VanillaBotItemKind.UsefulBuffPotion =>
                 VanillaBotItemDefinitionCatalog1458.IsSupportedCombatBuff(definition.BuffType) &&
@@ -730,7 +1089,11 @@ internal sealed class RuntimeBotAuthority
         if (IsBuffActive(bot, VanillaBuffIds.Archery, tick))
             snapshot = snapshot with { ArrowDamage = snapshot.ArrowDamage * 1.1f };
         if (IsBuffActive(bot, VanillaBuffIds.Wrath, tick))
-            snapshot = snapshot with { RangedDamage = snapshot.RangedDamage + 0.1f };
+            snapshot = snapshot with
+            {
+                MeleeDamage = snapshot.MeleeDamage + 0.1f,
+                RangedDamage = snapshot.RangedDamage + 0.1f
+            };
         return snapshot;
     }
 
@@ -748,8 +1111,16 @@ internal sealed class RuntimeBotAuthority
     private static bool IsBuffUsefulForWeapon(RuntimeBotWeaponPolicy policy, BuffTypeId buff)
     {
         if (buff == VanillaBuffIds.Wrath)
-            return policy is RuntimeBotWeaponPolicy.Automatic or RuntimeBotWeaponPolicy.Bow or RuntimeBotWeaponPolicy.Gun;
+            return policy is RuntimeBotWeaponPolicy.Automatic or RuntimeBotWeaponPolicy.Melee or RuntimeBotWeaponPolicy.Bow or RuntimeBotWeaponPolicy.Gun;
         return buff == VanillaBuffIds.Archery && policy is RuntimeBotWeaponPolicy.Automatic or RuntimeBotWeaponPolicy.Bow;
+    }
+
+    private static bool IsRequiredAmmo(RuntimeBotWeaponPolicy policy, ItemTypeId itemType)
+    {
+        if (policy == RuntimeBotWeaponPolicy.Automatic)
+            return itemType == VanillaItemIds.WoodenArrow || itemType == VanillaItemIds.MusketBall;
+        return TryResolveRangedLoadout(policy, out _, out ItemTypeId requiredAmmo, out _, out _) &&
+               itemType == requiredAmmo;
     }
 
     private static bool TryResolveRangedLoadout(
@@ -776,6 +1147,24 @@ internal sealed class RuntimeBotAuthority
             _ => FailAmmo(out ammo)
         };
     }
+
+    private static bool TryResolveRangedLoadout(
+        RuntimeBotAttackKind attack,
+        out ItemTypeId weaponItem,
+        out ItemTypeId ammoItem,
+        out VanillaProjectileWeaponCombatDefinition weapon,
+        out VanillaProjectileAmmoCombatDefinition ammo) =>
+        TryResolveRangedLoadout(
+            attack switch
+            {
+                RuntimeBotAttackKind.Bow => RuntimeBotWeaponPolicy.Bow,
+                RuntimeBotAttackKind.Gun => RuntimeBotWeaponPolicy.Gun,
+                _ => RuntimeBotWeaponPolicy.Melee
+            },
+            out weaponItem,
+            out ammoItem,
+            out weapon,
+            out ammo);
 
     private static bool FailAmmo(out VanillaProjectileAmmoCombatDefinition ammo)
     {
@@ -916,9 +1305,13 @@ internal sealed class RuntimeBotAuthority
             return false;
 
         ResolveArmor(configuration.Armor, out ItemTypeId head, out ItemTypeId body, out ItemTypeId legs);
+        ItemTypeId wings = configuration.FlightEnabled ? VanillaItemIds.FishronWings : VanillaItemIds.None;
+        ItemTypeId flightBooster = configuration.FlightEnabled ? VanillaItemIds.EmpressFlightBooster : VanillaItemIds.None;
         return SetArmorSlot(bot.ServerPlayerId, VanillaPlayerItemSlotCatalog.ArmorStart, head) &&
                SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 1)), body) &&
-               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 2)), legs);
+               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 2)), legs) &&
+               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 3)), wings) &&
+               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 4)), flightBooster);
     }
 
     private bool EnsurePlayerLoadout(BotState bot, RuntimeBotConfiguration configuration, bool addStarterAmmo)
@@ -926,41 +1319,73 @@ internal sealed class RuntimeBotAuthority
         if (!bot.Player.IsAssigned)
             return false;
 
-        ItemTypeId weapon = configuration.WeaponPolicy switch
+        ItemTypeId firstWeapon = configuration.WeaponPolicy switch
         {
             RuntimeBotWeaponPolicy.Melee => VanillaItemIds.CopperBroadsword,
             RuntimeBotWeaponPolicy.Gun => VanillaItemIds.Musket,
-            RuntimeBotWeaponPolicy.Automatic or RuntimeBotWeaponPolicy.Bow => VanillaItemIds.WoodenBow,
+            RuntimeBotWeaponPolicy.Bow => VanillaItemIds.WoodenBow,
+            RuntimeBotWeaponPolicy.Automatic => VanillaItemIds.CopperBroadsword,
             _ => VanillaItemIds.None
         };
-        if (weapon.IsNone || !serverPlayers.SetItem(
+        if (firstWeapon.IsNone || !serverPlayers.SetItem(
                 bot.ServerPlayerId,
-                new ServerPlayerItemState(0, weapon, 1, VanillaPrefixIds.None, 0)))
+                new ServerPlayerItemState(MeleeWeaponSlot, firstWeapon, 1, VanillaPrefixIds.None, 0)))
         {
             return false;
         }
 
-        if (!addStarterAmmo || configuration.WeaponPolicy == RuntimeBotWeaponPolicy.Melee ||
-            !TryResolveRangedLoadout(configuration.WeaponPolicy, out _, out ItemTypeId ammoType, out _, out _))
+        ItemTypeId secondWeapon = configuration.WeaponPolicy == RuntimeBotWeaponPolicy.Automatic
+            ? VanillaItemIds.WoodenBow
+            : VanillaItemIds.None;
+        ItemTypeId thirdWeapon = configuration.WeaponPolicy == RuntimeBotWeaponPolicy.Automatic
+            ? VanillaItemIds.Musket
+            : VanillaItemIds.None;
+        if (!SetInventorySlot(bot.ServerPlayerId, BowWeaponSlot, secondWeapon) ||
+            !SetInventorySlot(bot.ServerPlayerId, GunWeaponSlot, thirdWeapon) ||
+            !serverPlayers.SetHeldItem(bot.ServerPlayerId, MeleeWeaponSlot, useItem: false))
         {
-            return true;
+            return false;
         }
-        if (TryFindAmmoSlot(bot.ServerPlayerId, ammoType, out _, out _))
+
+        if (!addStarterAmmo || configuration.WeaponPolicy == RuntimeBotWeaponPolicy.Melee)
+            return true;
+
+        if (configuration.WeaponPolicy == RuntimeBotWeaponPolicy.Automatic)
+        {
+            return EnsureStarterAmmo(bot.ServerPlayerId, VanillaItemIds.WoodenArrow) &&
+                   EnsureStarterAmmo(bot.ServerPlayerId, VanillaItemIds.MusketBall);
+        }
+
+        return TryResolveRangedLoadout(configuration.WeaponPolicy, out _, out ItemTypeId ammoType, out _, out _) &&
+               EnsureStarterAmmo(bot.ServerPlayerId, ammoType);
+    }
+
+    private bool EnsureStarterAmmo(ServerPlayerId id, ItemTypeId ammoType)
+    {
+        if (TryFindAmmoSlot(id, ammoType, out _, out _))
             return true;
 
         for (short slot = VanillaPlayerItemSlotCatalog.AmmoSlotStart;
              slot < VanillaPlayerItemSlotCatalog.AmmoSlotEndExclusive;
              slot++)
         {
-            if (!serverPlayers.TryGetItem(bot.ServerPlayerId, slot, out ServerPlayerItemState current))
+            if (!serverPlayers.TryGetItem(id, slot, out ServerPlayerItemState current))
                 return false;
             if (!current.IsEmpty)
                 continue;
             var starter = new ServerPlayerItemState(slot, ammoType, StarterAmmoStack, VanillaPrefixIds.None, 0);
-            return serverPlayers.SetItem(bot.ServerPlayerId, in starter);
+            return serverPlayers.SetItem(id, in starter);
         }
 
-        return true;
+        return false;
+    }
+
+    private bool SetInventorySlot(ServerPlayerId id, short slot, ItemTypeId item)
+    {
+        ServerPlayerItemState state = item.IsNone
+            ? new ServerPlayerItemState(slot, VanillaItemIds.None, 0, VanillaPrefixIds.None, 0)
+            : new ServerPlayerItemState(slot, item, 1, VanillaPrefixIds.None, 0);
+        return serverPlayers.SetItem(id, in state);
     }
 
     private bool SetArmorSlot(ServerPlayerId id, short slot, ItemTypeId item)
@@ -994,6 +1419,7 @@ internal sealed class RuntimeBotAuthority
         bot.LastDistance = float.PositiveInfinity;
         bot.LastProgressTick = tick;
         bot.NextAttackTick = 0;
+        bot.UseItemUntilTick = 0;
     }
 
     private void ResetUnavailableTarget(BotState bot, long tick)
@@ -1011,6 +1437,8 @@ internal sealed class RuntimeBotAuthority
         {
             _ = serverPlayers.SetMovementIntent(bot.ServerPlayerId, ServerPlayerMovementIntent.Stop());
             _ = serverPlayers.SetHostile(bot.ServerPlayerId, hostile: false);
+            if (serverPlayers.TryGet(bot.Player, out PlayerStateSnapshot player))
+                _ = serverPlayers.SetHeldItem(bot.ServerPlayerId, player.SelectedItem, useItem: false);
         }
         else if (bot.Configuration.Body == RuntimeBotBodyKind.Npc && bot.Npc.IsAssigned)
         {
@@ -1114,6 +1542,23 @@ internal sealed class RuntimeBotAuthority
         leftA < leftB + widthB && leftA + widthA > leftB &&
         topA < topB + heightB && topA + heightA > topB;
 
+    private enum RuntimeBotAttackKind : byte
+    {
+        Melee,
+        Bow,
+        Gun
+    }
+
+    private readonly record struct BotGuardTarget(
+        NpcHandle Npc,
+        PlayerHandle Player,
+        float CenterX,
+        float CenterY,
+        float VelocityX,
+        float VelocityY,
+        float Width,
+        float Height);
+
     private sealed class BotState(
         int id,
         ServerPlayerId serverPlayerId,
@@ -1136,6 +1581,7 @@ internal sealed class RuntimeBotAuthority
         public long LastProgressTick { get; set; } = createdAtTick;
         public long TeleportCooldownUntil { get; set; }
         public long NextAttackTick { get; set; }
+        public long UseItemUntilTick { get; set; }
         public long PotionDelayUntilTick { get; set; }
         public float LastDistance { get; set; } = float.PositiveInfinity;
         public Dictionary<BuffTypeId, long> ActiveBuffs { get; } = [];

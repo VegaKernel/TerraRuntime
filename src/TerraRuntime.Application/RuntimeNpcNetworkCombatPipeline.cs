@@ -383,6 +383,44 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             return RuntimeProjectileNpcDamageResult.Rejected;
         }
 
+        return TryStrikePlayerOwnedDamage(in liveTarget, in request);
+    }
+
+    public RuntimeProjectileNpcDamageResult TryStrikeServerPlayerMelee(
+        PlayerHandle attacker,
+        NpcHandle target,
+        int authoritativeDamage,
+        int armorPenetration,
+        bool critical,
+        float knockBack,
+        int hitDirection)
+    {
+        if (!attacker.IsAssigned || !target.IsAssigned || authoritativeDamage <= 0 || armorPenetration < 0 ||
+            !float.IsFinite(knockBack) || knockBack < 0f || hitDirection is not (-1 or 1) ||
+            !players.TryGetPlayer(attacker.Slot, out PlayerStateSnapshot liveAttacker) ||
+            liveAttacker.Player != attacker || liveAttacker.IsDead ||
+            !npcs.TryGet(target, out NpcSnapshot liveTarget) || !liveTarget.IsActive)
+        {
+            return RuntimeProjectileNpcDamageResult.Rejected;
+        }
+
+        var request = new NpcDamageRequest(
+            liveTarget.Handle,
+            DamageSource.FromPlayerItem(attacker),
+            authoritativeDamage,
+            ArmorPenetration: armorPenetration,
+            Critical: critical,
+            KnockBack: knockBack,
+            HitDirection: hitDirection);
+        return TryStrikePlayerOwnedDamage(in liveTarget, in request);
+    }
+
+    private RuntimeProjectileNpcDamageResult TryStrikePlayerOwnedDamage(
+        in NpcSnapshot target,
+        in NpcDamageRequest sourceRequest)
+    {
+        NpcSnapshot liveTarget = target;
+        NpcDamageRequest request = sourceRequest;
         if (VanillaEaterOfWorldsLifecycle.IsSegment(liveTarget.TypeIdentity))
         {
             VanillaEaterOfWorldsLifecycle.MarkPlayerInteractionAcrossActiveSegments(
@@ -407,7 +445,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         if (destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle && liveTarget.Simulation.Life != destroyerRoot.Simulation.Life)
         {
             if (!TrySetNpcLife(in liveTarget, destroyerRoot.Simulation.Life, out liveTarget))
-                throw new InvalidOperationException("Destroyer segment could not synchronize shared root life before projectile damage.");
+                throw new InvalidOperationException("Destroyer segment could not synchronize shared root life before player-owned damage.");
             request = request with { Target = liveTarget.Handle };
         }
 
@@ -419,7 +457,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             TryResolveWallOfFleshRoot(in liveTarget, out NpcSnapshot wallRoot))
         {
             if (!TrySetWallOfFleshRootLife(in wallRoot, result.LifeAfter, out NpcSnapshot updatedRoot))
-                throw new InvalidOperationException("Projectile damage could not commit Wall of Flesh shared root life.");
+                throw new InvalidOperationException("Player-owned damage could not commit Wall of Flesh shared root life.");
             if (!result.Lethal)
                 return RuntimeProjectileNpcDamageResult.Committed;
             dead = updatedRoot;
@@ -429,7 +467,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             if (liveTarget.Handle != destroyerRoot.Handle)
             {
                 if (!TrySetDestroyerRootLife(in destroyerRoot, result.LifeAfter, out NpcSnapshot updatedRoot))
-                    throw new InvalidOperationException("Projectile damage could not commit Destroyer shared root life.");
+                    throw new InvalidOperationException("Player-owned damage could not commit Destroyer shared root life.");
                 if (!result.Lethal)
                     return RuntimeProjectileNpcDamageResult.Committed;
                 dead = updatedRoot;
@@ -439,7 +477,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                 if (!result.Lethal)
                     return RuntimeProjectileNpcDamageResult.Committed;
                 if (!npcs.TryGet(liveTarget.Handle, out dead))
-                    throw new InvalidOperationException("A lethal Destroyer projectile commit disappeared before death finalization.");
+                    throw new InvalidOperationException("A lethal Destroyer player-owned commit disappeared before death finalization.");
             }
         }
         else
@@ -447,14 +485,14 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             if (!result.Lethal)
                 return RuntimeProjectileNpcDamageResult.Committed;
             if (!npcs.TryGet(liveTarget.Handle, out dead))
-                throw new InvalidOperationException("A lethal projectile commit disappeared before death finalization.");
+                throw new InvalidOperationException("A lethal player-owned commit disappeared before death finalization.");
         }
 
         bool eaterBoss =
             VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity) &&
             VanillaEaterOfWorldsLifecycle.IsLastActiveSegment(npcs, in dead, npcFamilyBuffer);
         if (!TryExecuteImportedLoot(in dead, eaterBoss))
-            throw new InvalidOperationException("Imported NPC loot could not be finalized after projectile damage.");
+            throw new InvalidOperationException("Imported NPC loot could not be finalized after player-owned damage.");
 
         if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
             ApplyKingSlimeDeathEffects(in dead);
@@ -478,7 +516,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         if (dead.TypeIdentity == VanillaNpcIds.Destroyer)
             CleanupDestroyerSegments(dead.Handle.Slot);
         if (!npcs.TryDespawn(dead.Handle))
-            throw new InvalidOperationException("A projectile kill could not despawn the exact NPC generation.");
+            throw new InvalidOperationException("A player-owned kill could not despawn the exact NPC generation.");
         interactions.Forget(dead.Handle);
         npcReplication?.TryPublishDeath(in dead);
         return RuntimeProjectileNpcDamageResult.Killed;

@@ -360,14 +360,21 @@ public sealed class RuntimeNpcActorIntentStateStepper : INpcAiStateStepper, INpc
             return true;
         }
 
+        // AI_014's pure pursuit slice validates the TargetClosest result even though the slot does not affect its
+        // velocity math. Vanilla TargetClosest always supplies signed directions; actor-control may independently
+        // damp one axis inside StopDistance, so keep those two concepts separate. MoveTo deliberately has no hostile
+        // NPC.target, therefore it uses a bounded internal steering token and publishes DefaultTarget below.
+        ushort pursuitTarget = target == VanillaNpcDefinitionCatalog.DefaultTarget ? (ushort)0 : target;
+        int pursuitDirectionX = deltaX > 0f ? 1 : -1;
+        int pursuitDirectionY = deltaY > 0f ? 1 : -1;
         var input = new VanillaBatPursuitInput1458(
             npc.VelocityX,
             npc.VelocityY,
             npc.Simulation.OldVelocityX,
             npc.Simulation.OldVelocityY,
-            directionX,
-            directionY,
-            target,
+            pursuitDirectionX,
+            pursuitDirectionY,
+            pursuitTarget,
             npc.Simulation.Wet,
             npc.Simulation.CollideX,
             npc.Simulation.CollideY);

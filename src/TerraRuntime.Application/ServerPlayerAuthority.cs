@@ -14,6 +14,7 @@ namespace TerraRuntime.Application;
 /// </summary>
 internal sealed class ServerPlayerAuthority
 {
+    private const byte ControlUseItemFlag = 1 << 5;
     private readonly ServerPlayerStateStore states;
     private readonly ServerPlayerSlotRegistry? identities;
     private readonly IRuntimeServerPlayerEventSink? events;
@@ -126,6 +127,17 @@ internal sealed class ServerPlayerAuthority
                 jumpIntent = GetJumpIntent(player.Player);
             }
 
+            if (movementIntent.Options.AutoJumpObstacles &&
+                dryPhysics.ShouldAutoJumpObstacle(in player, horizontalIntent))
+            {
+                jumpIntent = ServerPlayerJumpIntent.Held;
+            }
+            if (movementIntent.Options.FlightEnabled &&
+                dryPhysics.ShouldAscendPastObstacle(in player, horizontalIntent))
+            {
+                jumpIntent = ServerPlayerJumpIntent.Held;
+            }
+
             VanillaServerPlayerJumpState jumpState = GetJumpState(player.Player);
             int slot = player.Player.Slot.Value;
             VanillaLiquidContactState previousLiquidContacts = liquidOwners[slot] == player.Player
@@ -135,6 +147,7 @@ internal sealed class ServerPlayerAuthority
                     in player,
                     horizontalIntent,
                     jumpIntent,
+                    movementIntent.Options.FlightEnabled,
                     in jumpState,
                     in previousLiquidContacts,
                     out ServerPlayerDryPhysicsStepResult next,
@@ -147,10 +160,12 @@ internal sealed class ServerPlayerAuthority
             liquidOwners[slot] = player.Player;
             liquidContacts[slot] = next.LiquidContacts;
 
+            byte controlFlags = ResolveControlFlags(player.ControlFlags, horizontalIntent, jumpIntent);
             if (next.PositionX == player.PositionX &&
                 next.PositionY == player.PositionY &&
                 next.VelocityX == player.VelocityX &&
-                next.VelocityY == player.VelocityY)
+                next.VelocityY == player.VelocityY &&
+                controlFlags == player.ControlFlags)
             {
                 continue;
             }
@@ -161,11 +176,30 @@ internal sealed class ServerPlayerAuthority
                 next.PositionY,
                 next.VelocityX,
                 next.VelocityY,
+                controlFlags,
                 out PlayerStateSnapshot committed))
             {
                 events?.ServerPlayerMoved(in committed);
             }
         }
+    }
+
+    private static byte ResolveControlFlags(
+        byte previous,
+        ServerPlayerHorizontalIntent horizontal,
+        ServerPlayerJumpIntent jump)
+    {
+        // TerrariaServer 1.4.5.8 MessageBuffer packet 13: left/right/jump are bits 2/3/4 and bit 6 is facing right.
+        byte flags = (byte)(previous & ControlUseItemFlag);
+        if (horizontal == ServerPlayerHorizontalIntent.Left)
+            flags |= 1 << 2;
+        else if (horizontal == ServerPlayerHorizontalIntent.Right)
+            flags |= (1 << 3) | (1 << 6);
+        else
+            flags |= (byte)(previous & (1 << 6));
+        if (jump == ServerPlayerJumpIntent.Held)
+            flags |= 1 << 4;
+        return flags;
     }
 
     public bool TryGet(PlayerHandle player, out PlayerStateSnapshot snapshot) => states.TryGet(player, out snapshot);
@@ -382,6 +416,20 @@ internal sealed class ServerPlayerAuthority
         }
 
         events?.ServerPlayerItemUpdated(player, in normalized);
+        return true;
+    }
+
+    public bool SetHeldItem(ServerPlayerId id, byte selectedItem, bool useItem)
+    {
+        if (!TryGetPlayer(id, out PlayerHandle player) ||
+            !states.TryGet(player, out PlayerStateSnapshot before) ||
+            !states.TrySetHeldItem(player, selectedItem, useItem, out PlayerStateSnapshot normalized))
+        {
+            return false;
+        }
+
+        if (before.Revision != normalized.Revision)
+            events?.ServerPlayerMoved(in normalized);
         return true;
     }
 

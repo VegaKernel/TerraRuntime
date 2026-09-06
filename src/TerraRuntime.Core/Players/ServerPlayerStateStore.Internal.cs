@@ -14,6 +14,8 @@ public sealed partial class ServerPlayerStateStore
         public float PositionY { get; set; }
         public float VelocityX { get; set; }
         public float VelocityY { get; set; }
+        public byte ControlFlags { get; set; } = 1 << 6;
+        public byte SelectedItem { get; set; }
         public bool IsDead { get; set; }
         public bool Hostile { get; set; }
         public ServerPlayerAppearanceState? Appearance { get; set; }
@@ -30,11 +32,11 @@ public sealed partial class ServerPlayerStateStore
                 Player,
                 new PlayerStateRevision(Revision),
                 Team: 0,
-                ControlFlags: 0,
+                ControlFlags,
                 MovementFlags: 0,
                 MiscFlags1: 0,
                 MiscFlags2: 0,
-                SelectedItem: 0,
+                SelectedItem,
                 PositionX,
                 PositionY,
                 VelocityX,

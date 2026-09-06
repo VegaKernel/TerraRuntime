@@ -1,6 +1,6 @@
 # Production graph
 
-Last structural refresh: 2026-09-06.
+Last structural refresh: 2026-09-07.
 
 This page records the dependency and ownership graph that is expensive to reconstruct repeatedly. It describes shipping projects under `src/`; tests are intentionally omitted.
 
@@ -212,6 +212,7 @@ flowchart LR
     NPC[NpcAuthority actor control]
     Proj[ProjectileAuthority]
     Items[WorldItemAuthority]
+    Tiles[WorldTileStore visibility / collision]
     Telemetry[RuntimeBotTelemetry detached snapshots]
 
     TUI --> Ops --> Queue --> Bots
@@ -219,6 +220,7 @@ flowchart LR
     Bots --> NPC
     Bots --> Proj
     Bots --> Items
+    Bots --> Tiles
     Bots --> Telemetry --> TUI
 ```
 
@@ -226,8 +228,9 @@ Ownership/invariants for this path:
 
 - `TerraRuntime.Application.Bots` owns bot lifecycle and high-level policy only. It does not own a parallel player/NPC/projectile/item simulation.
 - source-pinned bot content facts live in `TerraRuntime.Gameplay.Bots`; `TerraRuntime.Core` has no bot-specific dependency. Generic NPC actor-control capability remains a Core/runtime primitive because trusted-host actors use it too.
-- PlayerBot actor state is a normal server-owned player and crosses existing server-player/player/projectile/world-item authority boundaries.
-- NpcBot is a normal authoritative NPC actor bound to an exact `ActorControllerId`; only source-verified controlled-motion families are admitted. The current controlled roster is ground fighters plus AI_002 flying-eye steering, AI_005 flyer pursuit and the ordinary pre-wander AI_014 bat pursuit slice.
+- PlayerBot actor state is a normal server-owned player and crosses existing server-player/player/projectile/world-item authority boundaries. Held-weapon selection and use animation are committed through `ServerPlayerAuthority`; trusted ranged and melee damage continue through the existing projectile and player-owned NPC combat finalizers.
+- PlayerBot target acquisition and predictive trajectory admission read the authoritative `WorldTileStore`. A blocked line or simulated tile/liquid collision rejects the attack before ammo consumption; movement obstacle probes are part of the existing server-player dry-physics path.
+- NpcBot is a normal authoritative NPC actor bound to an exact `ActorControllerId`; only source-verified controlled-motion families are admitted. The current controlled roster is ground fighters plus AI_002 flying-eye steering, AI_005 flyer pursuit and the ordinary pre-wander AI_014 bat pursuit slice. Follow/Guard supplies private actor-control coordinates, while the replicated vanilla NPC target remains `255`.
 - NpcBot uses the vanilla NPC body only as a trusted presentation/motion actor: bot spawn forces `DamageOverride=0` and `DontTakeDamage=true`. Until bot-specific death/drop semantics exist, this prevents operator actors from entering ordinary contact-damage, death, loot or progression farming paths.
 - bot mutations are serialized through the authoritative runtime command queue. Terminal.Gui consumes detached immutable telemetry and never receives mutable actor stores.
 - unsupported bot content/AI/combat semantics are rejected rather than approximated. In particular, NpcBot offensive Guard is not synthesized through a fake player projectile owner.

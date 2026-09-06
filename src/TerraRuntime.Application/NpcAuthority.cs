@@ -322,6 +322,23 @@ internal sealed class NpcAuthority
 
     public bool TryCapture(NpcHandle npc, out NpcSnapshot snapshot) => npcs.TryGet(npc, out snapshot);
 
+    public bool TryStrikeBotPlayerMelee(
+        PlayerHandle attacker,
+        NpcHandle target,
+        int authoritativeDamage,
+        int armorPenetration,
+        bool critical,
+        float knockBack,
+        int hitDirection) =>
+        combat.TryStrikeServerPlayerMelee(
+            attacker,
+            target,
+            authoritativeDamage,
+            armorPenetration,
+            critical,
+            knockBack,
+            hitDirection) != RuntimeProjectileNpcDamageResult.Rejected;
+
     public int CopyActive(Span<NpcSnapshot> destination) => npcs.CopyActive(destination);
 
     /// <summary>

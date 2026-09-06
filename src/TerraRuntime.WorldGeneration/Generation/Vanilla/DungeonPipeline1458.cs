@@ -327,6 +327,19 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
         state.DungeonGenerationX = finalHall.End.X;
         if (context.Metadata is not null && !context.Metadata.TrySetDungeon(graph.Anchor.X, graph.Anchor.Y))
             throw new InvalidOperationException("Source-backed Dungeon produced an invalid dungeon anchor.");
+        if (!workspace.TryAddGeneratedTownNpc(
+                VanillaNpcIds.OldMan.Value,
+                string.Empty,
+                checked(graph.Anchor.X * 16f + 8f),
+                checked(graph.Anchor.Y * 16f),
+                homeless: false,
+                homeTileX: graph.Anchor.X,
+                homeTileY: graph.Anchor.Y,
+                townNpcVariationIndex: null,
+                homelessDespawn: false))
+        {
+            throw new InvalidOperationException("Could not register the source-generated dungeon Old Man.");
+        }
 
         context.ReportProgress(
             1d,

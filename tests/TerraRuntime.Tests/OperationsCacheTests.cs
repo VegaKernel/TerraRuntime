@@ -1,5 +1,7 @@
+using TerraRuntime.Application.Bots;
 using TerraRuntime.Application.Operations;
 using TerraRuntime.Application.TerminalUI;
+using TerraRuntime.Contracts.Runtime;
 using Terminal.Gui.App;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.ViewBase;
@@ -99,6 +101,24 @@ public sealed class OperationsCacheTests
             terminalDashboards: null);
 
         Assert.True(workspace.DetailTextSupportsSelectionForSmoke);
+    }
+
+    [Fact]
+    public void Workspace_forwards_runtime_bot_operations_to_overview_action_row()
+    {
+        using var source = new BlockingOperations();
+        var bots = new RuntimeBotOperations(new RejectingCommandIngress(), new RuntimeBotTelemetry());
+        using var workspace = new DashboardWorkspaceWindow(
+            source,
+            source,
+            source,
+            source,
+            source,
+            source,
+            terminalDashboards: null,
+            botOperations: bots);
+
+        Assert.True(workspace.BotAddEnabledForSmoke);
     }
 
     [Fact]
@@ -227,5 +247,10 @@ public sealed class OperationsCacheTests
             dashboardCaptureStarted.Dispose();
             dashboardCaptureRelease.Dispose();
         }
+    }
+
+    private sealed class RejectingCommandIngress : IGameCommandIngress<RuntimeCommand>
+    {
+        public bool TryPost(GameCommandSourceId source, RuntimeCommand command) => false;
     }
 }

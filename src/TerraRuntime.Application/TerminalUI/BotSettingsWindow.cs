@@ -22,12 +22,15 @@ internal sealed class BotSettingsWindow : Window
     private readonly CyclingDropDownList clothing;
     private readonly CyclingDropDownList armor;
     private readonly CyclingDropDownList weapon;
+    private readonly CyclingDropDownList flight;
     private readonly CyclingDropDownList target;
     private readonly CyclingDropDownList mode;
     private readonly CyclingDropDownList autoPickup;
     private readonly CyclingDropDownList autoConsumables;
     private readonly Label status;
     private readonly Label feedback;
+    private readonly View[] playerOnlyViews;
+    private readonly View[] npcOnlyViews;
 
     public BotSettingsWindow(
         RuntimeBotSnapshot bot,
@@ -41,7 +44,7 @@ internal sealed class BotSettingsWindow : Window
 
         Title = $"Bot #{bot.Id} · {bot.Name}";
         Width = 72;
-        Height = 27;
+        Height = 29;
         X = Pos.Center();
         Y = Pos.Center();
         SchemeName = "Base";
@@ -51,49 +54,75 @@ internal sealed class BotSettingsWindow : Window
         clothing = CreateDropDown(24, 5, 28, Enum.GetNames<RuntimeBotClothingPreset>());
         armor = CreateDropDown(24, 7, 28, Enum.GetNames<RuntimeBotArmorPreset>());
         weapon = CreateDropDown(24, 9, 28, Enum.GetNames<RuntimeBotWeaponPolicy>());
-        target = CreateDropDown(24, 11, 38, BuildTargetLabels(players));
-        mode = CreateDropDown(24, 13, 28, Enum.GetNames<RuntimeBotMode>());
-        autoPickup = CreateDropDown(24, 15, 28, ["On", "Off"]);
-        autoConsumables = CreateDropDown(24, 17, 28, ["On", "Off"]);
-        status = new Label { X = 1, Y = 19, Width = Dim.Fill(1), SchemeName = "Base" };
-        feedback = new Label { X = 1, Y = 23, Width = Dim.Fill(1), Height = 2, SchemeName = "Base" };
+        flight = CreateDropDown(24, 11, 28, ["On", "Off"]);
+        target = CreateDropDown(24, 13, 38, BuildTargetLabels(players));
+        mode = CreateDropDown(24, 15, 28, Enum.GetNames<RuntimeBotMode>());
+        autoPickup = CreateDropDown(24, 17, 28, ["On", "Off"]);
+        autoConsumables = CreateDropDown(24, 19, 28, ["On", "Off"]);
+        status = new Label { X = 1, Y = 21, Width = Dim.Fill(1), SchemeName = "Base" };
+        feedback = new Label { X = 1, Y = 25, Width = Dim.Fill(1), Height = 2, SchemeName = "Base" };
+
+        Label npcPresetLabel = LabelAt("NPC preset", 3);
+        Label clothingLabel = LabelAt("Clothing preset", 5);
+        Label armorLabel = LabelAt("Armor preset", 7);
+        Label weaponLabel = LabelAt("Weapon policy", 9);
+        Label flightLabel = LabelAt("Flight accessories", 11);
+        Label autoPickupLabel = LabelAt("Auto pickup", 17);
+        Label autoConsumablesLabel = LabelAt("Auto heal/buffs", 19);
+        npcOnlyViews = [npcPresetLabel, npcPreset];
+        playerOnlyViews =
+        [
+            clothingLabel, clothing,
+            armorLabel, armor,
+            weaponLabel, weapon,
+            flightLabel, flight,
+            autoPickupLabel, autoPickup,
+            autoConsumablesLabel, autoConsumables
+        ];
 
         SelectText(body, bot.Configuration.Body.ToString());
         SelectNpc(bot.Configuration.NpcType);
         SelectText(clothing, bot.Configuration.Clothing.ToString());
         SelectText(armor, bot.Configuration.Armor.ToString());
         SelectText(weapon, bot.Configuration.WeaponPolicy.ToString());
+        SelectText(flight, bot.Configuration.FlightEnabled ? "On" : "Off");
         SelectText(mode, bot.Configuration.Mode.ToString());
         SelectText(autoPickup, bot.Configuration.AutoPickup ? "On" : "Off");
         SelectText(autoConsumables, bot.Configuration.AutoUseConsumables ? "On" : "Off");
         SelectTarget(bot.Configuration.Target);
         RefreshStatus(bot);
 
-        var apply = new Button { X = 24, Y = 21, Text = "Apply", SchemeName = "Base" };
-        var close = new Button { X = 36, Y = 21, Text = "Close", SchemeName = "Base" };
+        var apply = new Button { X = 24, Y = 23, Text = "Apply", SchemeName = "Base" };
+        var close = new Button { X = 36, Y = 23, Text = "Close", SchemeName = "Base" };
         apply.Accepted += (_, _) => Apply();
         close.Accepted += (_, _) => CloseRequested?.Invoke();
 
         Add(
             LabelAt("Bot type", 1), body,
-            LabelAt("NPC preset", 3), npcPreset,
-            LabelAt("Clothing preset", 5), clothing,
-            LabelAt("Armor preset", 7), armor,
-            LabelAt("Weapon policy", 9), weapon,
-            LabelAt("Follow target", 11), target,
-            LabelAt("Mode", 13), mode,
-            LabelAt("Auto pickup", 15), autoPickup,
-            LabelAt("Auto heal/buffs", 17), autoConsumables,
+            npcPresetLabel, npcPreset,
+            clothingLabel, clothing,
+            armorLabel, armor,
+            weaponLabel, weapon,
+            flightLabel, flight,
+            LabelAt("Follow target", 13), target,
+            LabelAt("Mode", 15), mode,
+            autoPickupLabel, autoPickup,
+            autoConsumablesLabel, autoConsumables,
             status,
             apply,
             close,
             feedback);
+
+        body.ValueChanged += (_, _) => UpdateBodySpecificFields();
+        UpdateBodySpecificFields();
     }
 
     public event Action? CloseRequested;
 
     internal int BotId => bot.Id;
     internal string FeedbackTextForSmoke => feedback.Text?.ToString() ?? string.Empty;
+    internal bool NpcPresetVisibleForSmoke => npcPreset.Visible;
+    internal bool PlayerFieldsVisibleForSmoke => clothing.Visible && armor.Visible && weapon.Visible && flight.Visible;
 
     private void Apply()
     {
@@ -102,6 +131,7 @@ internal sealed class BotSettingsWindow : Window
             !Enum.TryParse(armor.Text?.ToString(), ignoreCase: false, out RuntimeBotArmorPreset armorValue) ||
             !Enum.TryParse(weapon.Text?.ToString(), ignoreCase: false, out RuntimeBotWeaponPolicy weaponValue) ||
             !Enum.TryParse(mode.Text?.ToString(), ignoreCase: false, out RuntimeBotMode modeValue) ||
+            !TryParseToggle(flight, out bool flightValue) ||
             !TryParseToggle(autoPickup, out bool autoPickupValue) ||
             !TryParseToggle(autoConsumables, out bool autoConsumablesValue))
         {
@@ -114,6 +144,15 @@ internal sealed class BotSettingsWindow : Window
         {
             feedback.Text = "bot: NPC type requires a source-backed hostile preset";
             return;
+        }
+        if (bodyValue == RuntimeBotBodyKind.Npc)
+        {
+            clothingValue = RuntimeBotClothingPreset.Classic;
+            armorValue = RuntimeBotArmorPreset.None;
+            weaponValue = RuntimeBotWeaponPolicy.Automatic;
+            flightValue = false;
+            autoPickupValue = false;
+            autoConsumablesValue = false;
         }
 
         RuntimeBotTarget targetValue = ResolveTarget();
@@ -131,7 +170,7 @@ internal sealed class BotSettingsWindow : Window
             Body: bodyValue,
             NpcType: npcType,
             WeaponPolicy: weaponValue,
-            FlightEnabled: bot.Configuration.FlightEnabled,
+            FlightEnabled: flightValue,
             AutoPickup: autoPickupValue,
             AutoUseConsumables: autoConsumablesValue);
         try
@@ -151,6 +190,16 @@ internal sealed class BotSettingsWindow : Window
         {
             feedback.Text = $"bot: configuration failed: {exception.Message}";
         }
+    }
+
+    private void UpdateBodySpecificFields()
+    {
+        bool npc = Enum.TryParse(body.Text?.ToString(), ignoreCase: false, out RuntimeBotBodyKind selected) &&
+            selected == RuntimeBotBodyKind.Npc;
+        foreach (View view in npcOnlyViews)
+            view.Visible = npc;
+        foreach (View view in playerOnlyViews)
+            view.Visible = !npc;
     }
 
     private RuntimeBotTarget ResolveTarget()

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using TerraRuntime.Application.Bots;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.HostContracts;
 using TerraRuntime.HostContracts.TerminalUI;
@@ -93,7 +94,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
         Func<SandboxTreeSnapshot>? sandboxTreeSource = null,
         IRuntimeWorldInspectionOperations? worldInspectionOperations = null,
         IPlayerAdministrativeOperations? playerAdministration = null,
-        RuntimeConnectionSessionDirectory? connectionSessions = null)
+        RuntimeConnectionSessionDirectory? connectionSessions = null,
+        RuntimeBotOperations? botOperations = null)
     {
         this.dashboardOperations = dashboardOperations ?? throw new ArgumentNullException(nameof(dashboardOperations));
         this.playerOperations = playerOperations ?? throw new ArgumentNullException(nameof(playerOperations));
@@ -120,7 +122,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             Height = Dim.Fill(status)
         };
 
-        overviewDashboard = new RuntimeOverviewDashboard(sandboxOperations, sandboxTreeSource)
+        overviewDashboard = new RuntimeOverviewDashboard(sandboxOperations, sandboxTreeSource, botOperations)
         {
             Width = Dim.Fill(),
             Height = Dim.Fill()
@@ -322,6 +324,8 @@ internal sealed class DashboardWorkspaceWindow : Runnable
     internal void ShowRuntimeSettingsForSmoke() => ShowRuntimeSettings();
 
     internal bool RuntimeSettingsVisibleForSmoke => runtimeSettingsWindow is not null;
+
+    internal bool BotAddEnabledForSmoke => overviewDashboard.BotAddEnabledForSmoke;
 
     internal string GetRowTextForSmoke(int index)
     {

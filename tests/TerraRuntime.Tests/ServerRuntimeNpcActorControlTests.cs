@@ -104,6 +104,52 @@ public sealed class ServerRuntimeNpcActorControlTests
     }
 
     [Fact]
+    public async Task Cave_bat_move_to_flows_through_production_actor_and_world_motion_layers()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(300, 120));
+        var setup = CreateStateWithServerPlayerTarget(tiles, targetX: 478f, targetY: 118f);
+        using var targetPlayer = setup.Target;
+        ServerRuntimeState state = setup.State;
+        var spawnCompletion = new TaskCompletionSource<NpcSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var spawn = new NpcStateUpdate(
+            VanillaNpcIds.CaveBat.Value,
+            checked((short)VanillaNpcIds.CaveBat.Value),
+            160f,
+            160f,
+            0f,
+            0f,
+            VanillaNpcDefinitionCatalog.DefaultTarget,
+            default,
+            NpcSimulationState.Initial with
+            {
+                TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft,
+                DamageOverride = 0,
+                DontTakeDamage = true
+            });
+        state.Apply(new NpcSpawnRuntimeCommand(9, spawn, spawnCompletion));
+        NpcSnapshot created = Assert.IsType<NpcSnapshot>(await spawnCompletion.Task);
+        var controllerId = new ActorControllerId("test:cave-bat-move-to");
+        var acquire = new TaskCompletionSource<NpcActorAcquireStatus>(TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Apply(new NpcActorAcquireRuntimeCommand(created.Handle, controllerId, acquire));
+        Assert.Equal(NpcActorAcquireStatus.Acquired, await acquire.Task);
+        var motion = NpcActorMotionOptions.Default with { StopDistance = 45f };
+        var intent = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Apply(new NpcActorSetIntentRuntimeCommand(
+            created.Handle,
+            controllerId,
+            NpcActorIntent.MoveTo(488f, 139f, motion),
+            intent));
+        Assert.True(await intent.Task);
+
+        state.Tick();
+
+        Assert.True(state.TryCaptureNpcSnapshot(created.Handle, out NpcSnapshot moved));
+        Assert.True(moved.PositionX > created.PositionX, $"x={moved.PositionX}, vx={moved.VelocityX}");
+        Assert.True(moved.VelocityX > 0f);
+        Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTarget, moved.Target);
+    }
+
+    [Fact]
     public async Task Release_controller_stages_all_owned_leases_and_restores_vanilla_fallback_next_tick()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
