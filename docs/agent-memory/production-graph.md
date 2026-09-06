@@ -91,8 +91,54 @@ Ownership/invariants for this path:
 - `WorldTileAuthority` owns the runtime integration point for authoritative tile/liquid mutation and replication.
 - `VanillaWorldLiquidSimulator1458` mutates `WorldTileStore` and consumes bounded `WorldLiquidUpdateQueue` work.
 - `WorldLiquidSimulationChange.RequiresTileSquareReplication == false` means packet `48` replication is sufficient for the committed liquid amount/kind change.
-- `RequiresTileSquareReplication == true` means the mutation changed tile/material state and must replicate through packet `20` tile-square state.
+- `RequiresTileSquareReplication == true` means the mutation changed tile/material state and must replicate through packet `20`; merge changes may carry an explicit source-backed square and `TileChangeType`.
+- material merge side effects cross a synchronous prepare/commit boundary owned by `WorldTileAuthority`; unsupported active targets fail before participating liquids are cleared.
+- a committed material merge is represented by its packet-20 tile square, not redundant packet-48 updates for the liquid cells cleared as part of that merge.
 - Re-enqueued liquid work must not allow one tile to consume multiple logical vanilla update steps in the same TerraRuntime server tick.
+
+## Live cross-world player transfer path
+
+```mermaid
+flowchart LR
+    TUI[SandboxWorldTreeView / MoveExact]
+    Coordinator[Level1PlayerTransferCoordinator]
+    Route[RuntimeConnectionRoute.TryTransfer]
+    Bootstrap[RuntimeConnectionWorldBinding replacement bootstrap]
+    Gate[PlayerBootstrapFrameSink.BeginWorldTransferLanding]
+    Attach[RuntimePlayerTransferIngress destination attach]
+    Spawn[packet 12 destination spawn]
+    Echo[client packet 12 SpawningIntoWorld echo]
+    Movement[packet 13 landing movement]
+
+    TUI --> Coordinator --> Route --> Bootstrap --> Gate --> Attach --> Spawn
+    Spawn --> Echo
+    Echo --> Gate
+    Movement --> Gate
+```
+
+Ownership/invariants for this path:
+
+- cross-world position is not portable state; destination authoritative attach owns the destination world spawn;
+- the synthetic packet 12 is a world-handoff frame, not permission for its immediate client echo to create another authoritative respawn;
+- while the landing gate is active, a client packet 12 with `SpawnContext=SpawningIntoWorld` is consumed as transfer echo and cannot overwrite the correction target;
+- stale packet-13 movement from the old world remains rejected/corrected until the client lands near the destination spawn.
+
+## Terminal UI network presentation path
+
+```mermaid
+flowchart LR
+    Snapshot[detached process network snapshots]
+    Dashboard[RuntimeOverviewDashboard history]
+    Chart[NetworkTrafficChartView]
+    In[IN left scale]
+    Out[OUT right scale]
+
+    Snapshot --> Dashboard --> Chart
+    Chart --> In
+    Chart --> Out
+```
+
+This is presentation-only state. IN and OUT throughput histories share one plot but use independent scale maxima; the UI must not feed chart state back into network/runtime authority.
 
 ## Change-impact shortcuts
 

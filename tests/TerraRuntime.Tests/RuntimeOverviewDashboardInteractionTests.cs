@@ -1,3 +1,4 @@
+using System.Text;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.HostContracts;
 using TerraRuntime.Application.Operations;
@@ -109,7 +110,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     }
 
     [Fact]
-    public void Maximized_network_graph_scales_history_across_wide_viewport()
+    public void Maximized_network_chart_expands_history_across_wide_viewport()
     {
         using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI);
         app.Driver!.SetScreenSize(160, 28);
@@ -139,7 +140,8 @@ public sealed class RuntimeOverviewDashboardInteractionTests
                 dashboard.Refresh(runtime with { Tick = i + 1 }, default, default, default, default, default, status: null);
 
             app.LayoutAndDraw();
-            Assert.True(dashboard.GetGraphCellSizeForSmoke("Network").X >= 1f);
+            int tiledPlotWidth = dashboard.GetNetworkPlotWidthForSmoke();
+            Assert.True(tiledPlotWidth > 0);
 
             dashboard.TogglePanelForSmoke("Network");
             app.LayoutAndDraw();
@@ -147,7 +149,76 @@ public sealed class RuntimeOverviewDashboardInteractionTests
             app.LayoutAndDraw();
 
             Assert.Equal(1, dashboard.GetVisiblePanelCountForSmoke());
-            Assert.True(dashboard.GetGraphCellSizeForSmoke("Network").X < 1f);
+            Assert.True(dashboard.GetNetworkPlotWidthForSmoke() > tiledPlotWidth);
+        }
+        finally
+        {
+            app.End(token);
+        }
+    }
+
+    [Fact]
+    public void Network_chart_scales_inbound_and_outbound_independently_so_quiet_direction_stays_visible()
+    {
+        using var chart = new NetworkTrafficChartView();
+        chart.SetSamples(
+        [
+            new NetworkTrafficSample(InboundKiBPerSecond: 2048d, OutboundKiBPerSecond: 2d),
+            new NetworkTrafficSample(InboundKiBPerSecond: 1024d, OutboundKiBPerSecond: 1d)
+        ]);
+
+        Assert.True(chart.InboundScaleMaximumForSmoke >= 2048d);
+        Assert.True(chart.OutboundScaleMaximumForSmoke >= 2d);
+        Assert.True(chart.InboundScaleMaximumForSmoke > chart.OutboundScaleMaximumForSmoke * 100d);
+
+        (int inboundHeight, int outboundHeight) = chart.GetBarHeightsForSmoke(sampleIndex: 0, plotHeight: 6);
+        Assert.True(inboundHeight >= 2);
+        Assert.True(outboundHeight >= 2);
+        Assert.InRange(Math.Abs(inboundHeight - outboundHeight), 0, 1);
+    }
+
+    [Fact]
+    public void Network_chart_renders_block_columns_and_both_axes_in_ansi_framebuffer()
+    {
+        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.ANSI);
+        app.Driver!.SetScreenSize(60, 10);
+        using var window = new Window
+        {
+            Width = Dim.Fill(),
+            Height = Dim.Fill()
+        };
+        using var chart = new NetworkTrafficChartView
+        {
+            Width = Dim.Fill(),
+            Height = Dim.Fill()
+        };
+        window.Add(chart);
+
+        SessionToken token = app.Begin(window)!;
+        try
+        {
+            chart.SetSamples(
+            [
+                new NetworkTrafficSample(InboundKiBPerSecond: 2048d, OutboundKiBPerSecond: 2d),
+                new NetworkTrafficSample(InboundKiBPerSecond: 512d, OutboundKiBPerSecond: 1.5d),
+                new NetworkTrafficSample(InboundKiBPerSecond: 0d, OutboundKiBPerSecond: 1d)
+            ]);
+            app.LayoutAndDraw();
+            Assert.NotNull(app.Driver.Contents);
+
+            var framebuffer = new StringBuilder();
+            for (int row = 0; row < app.Driver.Contents!.GetLength(0); row++)
+            {
+                for (int column = 0; column < app.Driver.Contents.GetLength(1); column++)
+                    framebuffer.Append(app.Driver.Contents[row, column]!.Grapheme);
+                framebuffer.AppendLine();
+            }
+
+            string rendered = framebuffer.ToString();
+            Assert.Contains("IN", rendered);
+            Assert.Contains("OUT", rendered);
+            Assert.Contains('▒', rendered);
+            Assert.True(rendered.Contains('█') || rendered.Contains('▓'));
         }
         finally
         {
@@ -279,6 +350,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     {
         WorldRuntimeIdentity primaryIdentity = new(WorldRuntimeId.CreateNew(), WorldSessionId.CreateNew());
         WorldRuntimeIdentity arenaIdentity = new(WorldRuntimeId.CreateNew(), WorldSessionId.CreateNew());
+        WorldRuntimeIdentity drainingIdentity = new(WorldRuntimeId.CreateNew(), WorldSessionId.CreateNew());
         SandboxTreeWorldSnapshot[] worlds =
         [
             new(
@@ -314,7 +386,21 @@ public sealed class RuntimeOverviewDashboardInteractionTests
                 Players: new SandboxTreePlayerSnapshot[]
                 {
                     new("#1", 1, "Bob", isPlaying: true)
-                })
+                }),
+            new(
+                new SandboxName("draining"),
+                "draining",
+                IsPrimary: false,
+                Runtime: default(WorldRuntimeSnapshot) with
+                {
+                    Identity = drainingIdentity,
+                    WorldName = "Draining World",
+                    Lifecycle = WorldRuntimeLifecycle.Stopping,
+                    TargetTicksPerSecond = 60,
+                    ObservedTicksPerSecond = 0d
+                },
+                PendingJob: null,
+                Players: ReadOnlyMemory<SandboxTreePlayerSnapshot>.Empty)
         ];
         var tree = new SandboxTreeSnapshot(worlds, ReadOnlyMemory<SandboxJobSnapshot>.Empty, DateTimeOffset.UtcNow);
         using var dashboard = new RuntimeOverviewDashboard(sandboxTreeSource: () => tree);
@@ -332,7 +418,9 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         Assert.Contains("Main  [primary]", rendered);
         Assert.Contains("TPS 59.8/60", rendered);
         Assert.Contains("#0 Alice", rendered);
-        Assert.Contains("arena  [sandbox · running]", rendered);
+        Assert.Contains("arena  [sandbox]", rendered);
+        Assert.DoesNotContain("sandbox · running", rendered, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("draining  [sandbox · stopping]", rendered);
         Assert.Contains("TPS 119.6/120", rendered);
         Assert.Contains("#1 Bob", rendered);
     }

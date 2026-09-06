@@ -8,8 +8,6 @@ using Terminal.Gui.Drawing;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
-using TuiAttribute = Terminal.Gui.Drawing.Attribute;
-using TuiColor = Terminal.Gui.Drawing.Color;
 
 #pragma warning disable CS0618 // Terminal.Gui TextView is still the built-in selectable read-only surface in 2.4.17.
 
@@ -43,19 +41,11 @@ internal sealed class RuntimeOverviewDashboard : View
     private readonly DropDownList feedLogModeDropDown;
     private readonly DropDownList feedChatDropDown;
     private readonly TextField commandInput;
-    private readonly GraphView networkGraph;
+    private readonly NetworkTrafficChartView networkGraph;
     private readonly SandboxOperations? sandboxOperations;
     private readonly Func<SandboxTreeSnapshot>? sandboxTreeSource;
     private readonly HashSet<long> observedTerminalSandboxJobs = [];
-    private readonly PathAnnotation inboundPath = new()
-    {
-        LineColor = new TuiAttribute(TuiColor.BrightCyan, TuiColor.Black)
-    };
-    private readonly PathAnnotation outboundPath = new()
-    {
-        LineColor = new TuiAttribute(TuiColor.BrightYellow, TuiColor.Black)
-    };
-    private readonly MetricSample[] history = new MetricSample[HistoryLength];
+    private readonly NetworkTrafficSample[] history = new NetworkTrafficSample[HistoryLength];
     private int historyCount;
     private int historyNext;
     private FrameView? maximized;
@@ -93,7 +83,7 @@ internal sealed class RuntimeOverviewDashboard : View
             ViewportSettings = ViewportSettingsFlags.HasScrollBars,
             SchemeName = BaseSchemeName
         };
-        networkGraph = CreateGraph();
+        networkGraph = new NetworkTrafficChartView { SchemeName = BaseSchemeName };
         networkLegend = CreateLegend();
 
         feedLogModeDropDown = CreateFeedDropDown(1, 18,
@@ -195,8 +185,6 @@ internal sealed class RuntimeOverviewDashboard : View
         AttachMaximize(consoleFrame);
         AttachMaximize(networkFrame);
         AttachMaximize(worldsFrame);
-
-        ConfigureNetworkGraph();
 
         commandInput.Accepting += (_, args) =>
         {
@@ -419,11 +407,10 @@ internal sealed class RuntimeOverviewDashboard : View
 
     internal string GetWorldsTextForSmoke() => worldsText.RenderedText;
 
-    internal PointF GetGraphCellSizeForSmoke(string panelTitle) => panelTitle switch
-    {
-        "Network" => networkGraph.CellSize,
-        _ => throw new ArgumentOutOfRangeException(nameof(panelTitle))
-    };
+    internal int GetNetworkPlotWidthForSmoke() => networkGraph.PlotWidthForSmoke;
+
+    internal (double Inbound, double Outbound) GetNetworkScaleMaximumsForSmoke() =>
+        (networkGraph.InboundScaleMaximumForSmoke, networkGraph.OutboundScaleMaximumForSmoke);
 
     internal bool SandboxAddEnabledForSmoke => sandboxAddButton.Enabled;
 
@@ -861,12 +848,6 @@ internal sealed class RuntimeOverviewDashboard : View
         SchemeName = BaseSchemeName
     };
 
-    private static GraphView CreateGraph() => new()
-    {
-        SchemeName = BaseSchemeName,
-        GraphColor = new TuiAttribute(TuiColor.BrightGreen, TuiColor.Black)
-    };
-
     private void AttachMaximize(FrameView frame)
     {
         frame.Initialized += (_, _) =>
@@ -952,47 +933,24 @@ internal sealed class RuntimeOverviewDashboard : View
         yield return worldsFrame;
     }
 
-    private void ConfigureNetworkGraph()
-    {
-        networkGraph.Annotations.Add(inboundPath);
-        networkGraph.Annotations.Add(outboundPath);
-        networkGraph.AxisX.Visible = false;
-        networkGraph.AxisY.Minimum = 0;
-        networkGraph.AxisY.Increment = 1;
-        networkGraph.AxisY.ShowLabelsEvery = 1;
-        networkGraph.AxisY.LabelGetter = value => value.Value.ToString("N0", CultureInfo.InvariantCulture);
-        networkGraph.MarginLeft = 5;
-        networkGraph.MarginBottom = 0;
-    }
-
     private void UpdateGraphs()
     {
-        MetricSample[] samples = CaptureHistory();
-        if (samples.Length == 0)
-            return;
-
-        inboundPath.Points = Points(samples, static sample => (float)sample.InboundPacketsPerSecond);
-        outboundPath.Points = Points(samples, static sample => (float)sample.OutboundPacketsPerSecond);
-        float networkMaximum = (float)Math.Max(
-            1d,
-            samples.Max(static sample => Math.Max(sample.InboundPacketsPerSecond, sample.OutboundPacketsPerSecond)) * 1.15d);
-        networkGraph.AxisY.Increment = NiceIncrement(networkMaximum / 3f);
-        FitGraph(networkGraph, samples.Length, networkMaximum);
+        networkGraph.SetSamples(CaptureHistory());
     }
 
     private void AppendHistory(NetworkRates network)
     {
-        history[historyNext] = new MetricSample(
-            SanitizeSample(network.InboundPacketsPerSecond),
-            SanitizeSample(network.OutboundPacketsPerSecond));
+        history[historyNext] = new NetworkTrafficSample(
+            SanitizeSample(network.InboundKiBPerSecond),
+            SanitizeSample(network.OutboundKiBPerSecond));
         historyNext = (historyNext + 1) % history.Length;
         if (historyCount < history.Length)
             historyCount++;
     }
 
-    private MetricSample[] CaptureHistory()
+    private NetworkTrafficSample[] CaptureHistory()
     {
-        var samples = new MetricSample[historyCount];
+        var samples = new NetworkTrafficSample[historyCount];
         int oldest = (historyNext - historyCount + history.Length) % history.Length;
         for (int i = 0; i < samples.Length; i++)
             samples[i] = history[(oldest + i) % history.Length];
@@ -1042,43 +1000,6 @@ internal sealed class RuntimeOverviewDashboard : View
         lastMessageInboundBytes = network.MessageInboundBytes;
         lastMessageOutboundFrames = network.MessageOutboundFrames;
         lastMessageOutboundBytes = network.MessageOutboundBytes;
-    }
-
-    private static void FitGraph(GraphView graph, int sampleCount, float yMaximum)
-    {
-        if (graph.Viewport.Width <= graph.MarginLeft || graph.Viewport.Height <= graph.MarginBottom)
-            return;
-
-        int width = Math.Max(1, graph.Viewport.Width - (int)graph.MarginLeft);
-        int height = Math.Max(1, graph.Viewport.Height - (int)graph.MarginBottom);
-
-        // GraphView CellSize is data-units per terminal cell. Capping X at 1 made a 60-sample history occupy only
-        // ~60 columns when a graph tile was maximized to a 120-160 column viewport. Allow sub-unit X scaling so the
-        // bounded history expands across the full available width instead of remaining stuck at its tiled size.
-        float horizontalCellSize = sampleCount <= 1
-            ? 1f
-            : Math.Max(0.01f, (sampleCount - 1f) / width);
-        graph.CellSize = new PointF(
-            horizontalCellSize,
-            Math.Max(0.1f, yMaximum / height));
-        graph.ScrollOffset = PointF.Empty;
-        graph.SetNeedsDraw();
-    }
-
-    private static List<PointF> Points(
-        IReadOnlyList<MetricSample> samples,
-        Func<MetricSample, float> selector) =>
-        samples.Select((sample, index) => new PointF(index, selector(sample))).ToList();
-
-    private static float NiceIncrement(float value)
-    {
-        if (value <= 1f)
-            return 1f;
-
-        double power = Math.Pow(10d, Math.Floor(Math.Log10(value)));
-        double normalized = value / power;
-        double nice = normalized <= 1d ? 1d : normalized <= 2d ? 2d : normalized <= 5d ? 5d : 10d;
-        return (float)(nice * power);
     }
 
     private static void SetSelectableText(
@@ -1218,7 +1139,12 @@ internal sealed class RuntimeOverviewDashboard : View
             if (world.IsPrimary)
                 line.Append("  [primary]");
             else if (world.Runtime is WorldRuntimeSnapshot liveState)
-                line.Append("  [sandbox · ").Append(liveState.Lifecycle.ToString().ToLowerInvariant()).Append(']');
+            {
+                line.Append("  [sandbox");
+                if (liveState.Lifecycle != WorldRuntimeLifecycle.Running)
+                    line.Append(" · ").Append(liveState.Lifecycle.ToString().ToLowerInvariant());
+                line.Append(']');
+            }
             else if (world.PendingJob is SandboxJobSnapshot pending)
                 line.Append("  [sandbox · ").Append(pending.Status.ToString().ToLowerInvariant()).Append(']');
             else
@@ -1324,10 +1250,6 @@ internal sealed class RuntimeOverviewDashboard : View
     };
 
     private readonly record struct FeedEntry(RuntimeLogEntry Entry, bool IsChat);
-
-    private readonly record struct MetricSample(
-        double InboundPacketsPerSecond,
-        double OutboundPacketsPerSecond);
 
     private readonly record struct NetworkRates(
         double InboundPacketsPerSecond,

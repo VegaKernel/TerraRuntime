@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Core.Npcs;
 using TerraRuntime.Gameplay.Items;
@@ -12,7 +13,7 @@ namespace TerraRuntime.Application;
 /// sole caller; this owner keeps packet-17 budgets, tile mutation services, object metadata transactions and tile
 /// replication scoped to the same runtime as the tiles they mutate.
 /// </summary>
-internal sealed class WorldTileAuthority
+internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
 {
     private const int MaxPlayerSlots = byte.MaxValue + 1;
 
@@ -33,6 +34,8 @@ internal sealed class WorldTileAuthority
     private readonly IWorldItemSpawnRandom worldItemSpawnRandom;
     private readonly VanillaWorldLiquidMutationService? liquidMutations;
     private readonly PlayerTileEditBudget editBudget = new(MaxPlayerSlots);
+    private LiquidMergePreparation liquidMergePreparation;
+    private bool hasLiquidMergePreparation;
 
     public WorldTileAuthority(
         PlayerAuthority players,
@@ -58,7 +61,7 @@ internal sealed class WorldTileAuthority
         this.replication = replication;
         mutations = tiles is null ? null : new VanillaWorldTileMutationService(tiles);
         liquidMutations = tiles is null ? null : new VanillaWorldLiquidMutationService(tiles);
-        liquidSimulator = tiles is null ? null : new VanillaWorldLiquidSimulator1458(tiles);
+        liquidSimulator = tiles is null ? null : new VanillaWorldLiquidSimulator1458(tiles, sideEffects: this);
 
         if (tiles is not null &&
             RuntimeWorldObjectMetadataRegistry.TryGet(
@@ -126,7 +129,21 @@ internal sealed class WorldTileAuthority
             WorldLiquidSimulationChange change = changes[i];
             if (change.RequiresTileSquareReplication)
             {
-                replication?.TryPublishTileSquareToAll(tiles, change.X, change.Y);
+                if (change.HasExplicitTileSquare)
+                {
+                    replication?.TryPublishTileSquareToAll(
+                        tiles,
+                        change.TileSquareStartX,
+                        change.TileSquareStartY,
+                        change.TileSquareWidth,
+                        change.TileSquareHeight,
+                        change.TileChangeType);
+                }
+                else
+                {
+                    replication?.TryPublishTileSquareToAll(tiles, change.X, change.Y);
+                }
+
                 continue;
             }
 
@@ -138,6 +155,255 @@ internal sealed class WorldTileAuthority
             replication?.TryPublishLiquidToAll(in state);
         }
     }
+
+
+    public bool TryCutTile(int x, int y)
+    {
+        if (tiles is null || mutations is null || !ContainsTile(x, y))
+            return false;
+
+        WorldTile before = tiles.Get(x, y);
+        if (!before.IsActive || !VanillaProjectileTileCutFacts.IsCuttable(before.TileType))
+            return false;
+        if (!TryPrepareSimpleBreak(x, y, in before, out PreparedSimpleBreak prepared))
+            return false;
+
+        var request = new WorldTileMutationRequest(WorldTileMutationKind.KillTile, x, y);
+        WorldTileMutationResult result = mutations.Apply(in request);
+        if (!result.Applied)
+        {
+            ReleasePreparedBreak(in prepared);
+            return false;
+        }
+
+        CommitPreparedBreak(in prepared);
+        var state = new TerrariaTileManipulationState(
+            (byte)TerrariaTileManipulationAction.KillTile,
+            checked((short)x),
+            checked((short)y),
+            Data: 0,
+            Style: 0);
+        replication?.TryPublishCommitted(GameCommandSourceId.System, in state);
+        return true;
+    }
+
+    public bool TryPrepareMergeTile(in VanillaLiquidMergeTileRequest1458 request)
+    {
+        if (hasLiquidMergePreparation)
+            throw new InvalidOperationException("A liquid merge preparation is already outstanding.");
+        if (tiles is null || mutations is null || !ContainsTile(request.X, request.Y))
+            return false;
+        if (!VanillaTileDefinitionCatalog.TryGet(request.MergeTileType, out VanillaTileDefinition mergeDefinition) ||
+            mergeDefinition.BreakPath != VanillaTileBreakPath.SimpleCell)
+        {
+            return false;
+        }
+
+        WorldTile current = tiles.Get(request.X, request.Y);
+        WorldTile targetBefore = request.TargetBefore;
+        if (!SameMergeTarget(in current, in targetBefore))
+            return false;
+
+        PreparedSimpleBreak preparedBreak = default;
+        if (current.IsActive)
+        {
+            if ((!request.ContainerOverride && !VanillaLiquidInteractionFacts1458.IsObsidianKill(current.TileType)) ||
+                !CanSafelyReplaceLiquidMergeTarget(request.X, request.Y, in current) ||
+                !TryPrepareSimpleBreak(request.X, request.Y, in current, out preparedBreak))
+            {
+                return false;
+            }
+        }
+
+        liquidMergePreparation = new LiquidMergePreparation(request, preparedBreak, current.IsActive);
+        hasLiquidMergePreparation = true;
+        return true;
+    }
+
+    public void CommitPreparedMergeTile(in VanillaLiquidMergeTileRequest1458 request)
+    {
+        if (!hasLiquidMergePreparation ||
+            liquidMergePreparation.Request.X != request.X ||
+            liquidMergePreparation.Request.Y != request.Y ||
+            liquidMergePreparation.Request.MergeTileType != request.MergeTileType)
+        {
+            throw new InvalidOperationException("Liquid merge commit does not match the outstanding preparation.");
+        }
+        if (tiles is null || mutations is null)
+            throw new InvalidOperationException("Liquid merge commit lost its world mutation owner.");
+
+        LiquidMergePreparation prepared = liquidMergePreparation;
+        if (prepared.BreakExisting)
+        {
+            var kill = new WorldTileMutationRequest(WorldTileMutationKind.KillTile, request.X, request.Y);
+            WorldTileMutationResult killResult = mutations.Apply(in kill);
+            if (!killResult.Applied)
+                throw new InvalidOperationException($"Prepared liquid merge KillTile failed: {killResult.Status}.");
+        }
+
+        var place = new WorldTileMutationRequest(
+            WorldTileMutationKind.PlaceTile,
+            request.X,
+            request.Y,
+            TileType: request.MergeTileType);
+        WorldTileMutationResult placeResult = mutations.Apply(in place);
+        if (!placeResult.Applied)
+            throw new InvalidOperationException($"Prepared liquid merge PlaceTile failed: {placeResult.Status}.");
+
+        if (prepared.BreakExisting)
+        {
+            PreparedSimpleBreak preparedBreak = prepared.Break;
+            CommitPreparedBreak(in preparedBreak);
+        }
+
+        liquidMergePreparation = default;
+        hasLiquidMergePreparation = false;
+    }
+
+    public void AbortPreparedMergeTile()
+    {
+        if (!hasLiquidMergePreparation)
+            return;
+
+        if (liquidMergePreparation.BreakExisting)
+        {
+            PreparedSimpleBreak preparedBreak = liquidMergePreparation.Break;
+            ReleasePreparedBreak(in preparedBreak);
+        }
+        liquidMergePreparation = default;
+        hasLiquidMergePreparation = false;
+    }
+
+    private bool TryPrepareSimpleBreak(
+        int x,
+        int y,
+        in WorldTile before,
+        out PreparedSimpleBreak prepared)
+    {
+        prepared = default;
+        if (!before.IsActive ||
+            !VanillaTileDefinitionCatalog.TryGet(before.TileType, out VanillaTileDefinition definition) ||
+            definition.BreakPath is not VanillaTileBreakPath.SimpleCell and
+                not VanillaTileBreakPath.FrameImportantSingleCell)
+        {
+            return false;
+        }
+
+        bool closestPlayerHasCordage =
+            definition.ContextualDropKind == VanillaTileContextualDropKind.CordageVine &&
+            players.ClosestPlayerHasFunctionalItem(x, y, VanillaItemIds.GuideToPlantFiberCordage);
+        VanillaSimpleTileBreakOutcome outcome = VanillaSimpleTileBreakResolver1458.Resolve(
+            definition,
+            x,
+            y,
+            closestPlayerHasCordage,
+            worldItemSpawnRandom);
+        if (outcome.DropStatus == VanillaTileDropResolutionStatus.WrongPath || outcome.FillWithHoney)
+            return false;
+
+        WorldItemDropReservation reservation = default;
+        bool reserved = false;
+        if (outcome.HasDrop)
+        {
+            if (!worldItems.TryReserveDropSlot(out reservation))
+                return false;
+            reserved = true;
+        }
+
+        prepared = new PreparedSimpleBreak(outcome, reservation, reserved);
+        return true;
+    }
+
+    private void CommitPreparedBreak(in PreparedSimpleBreak prepared)
+    {
+        SpawnTileBreakNpc(prepared.Outcome.FirstNpc, prepared.Outcome.NpcSpawnCount >= 1);
+        SpawnTileBreakNpc(prepared.Outcome.SecondNpc, prepared.Outcome.NpcSpawnCount >= 2);
+        if (!prepared.Reserved)
+            return;
+
+        WorldItemDropReservation reservation = prepared.Reservation;
+        WorldItemDropStateUpdate drop = prepared.Outcome.Drop;
+        if (!worldItems.TryCommitReservedDrop(
+                in reservation,
+                in drop,
+                out _))
+        {
+            throw new InvalidOperationException(
+                "Reserved liquid tile-side-effect drop could not commit after authoritative tile mutation.");
+        }
+
+        AppliedWorldItemAllocations++;
+    }
+
+    private void ReleasePreparedBreak(in PreparedSimpleBreak prepared)
+    {
+        if (prepared.Reserved)
+        {
+            WorldItemDropReservation reservation = prepared.Reservation;
+            _ = worldItems.TryReleaseDropReservation(in reservation);
+        }
+    }
+
+    private bool CanSafelyReplaceLiquidMergeTarget(int x, int y, in WorldTile target)
+    {
+        if (target.Shape != 0 ||
+            (target.Flags & (WorldTileFlags.Actuator | WorldTileFlags.Inactive |
+                             WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock)) != 0 ||
+            VanillaLiquidInteractionFacts1458.IsLiquidMergeReplacementBlockedByWall(target.WallType))
+        {
+            return false;
+        }
+
+        if (y > 0)
+        {
+            WorldTile above = tiles!.Get(x, y - 1);
+            if (above.IsActive &&
+                (VanillaLiquidInteractionFacts1458.PreventsReplacementWhenOnTop(above.TileType) ||
+                 VanillaLiquidInteractionFacts1458.BreaksWhenSupportIsReplacedAbove(above.TileType)))
+            {
+                return false;
+            }
+        }
+
+        if (y + 1 < tiles!.Dimensions.HeightTiles)
+        {
+            WorldTile below = tiles.Get(x, y + 1);
+            if (below.IsActive &&
+                VanillaLiquidInteractionFacts1458.BreaksWhenSupportIsReplacedBelow(below.TileType))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool ContainsTile(int x, int y) =>
+        tiles is not null &&
+        (uint)x < (uint)tiles.Dimensions.WidthTiles &&
+        (uint)y < (uint)tiles.Dimensions.HeightTiles;
+
+    private static bool SameMergeTarget(in WorldTile current, in WorldTile before) =>
+        current.Type == before.Type &&
+        current.Wall == before.Wall &&
+        current.FrameX == before.FrameX &&
+        current.FrameY == before.FrameY &&
+        current.Flags == before.Flags &&
+        current.TileColor == before.TileColor &&
+        current.WallColor == before.WallColor &&
+        current.Shape == before.Shape &&
+        current.LiquidKind == before.LiquidKind &&
+        current.LiquidAmount == before.LiquidAmount;
+
+    private readonly record struct PreparedSimpleBreak(
+        VanillaSimpleTileBreakOutcome Outcome,
+        WorldItemDropReservation Reservation,
+        bool Reserved);
+
+    private readonly record struct LiquidMergePreparation(
+        VanillaLiquidMergeTileRequest1458 Request,
+        PreparedSimpleBreak Break,
+        bool BreakExisting);
 
     private void ApplyMultiTileObjectBreak(
         ClientTileManipulationRuntimeCommand command,

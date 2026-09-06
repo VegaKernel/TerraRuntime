@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Protocol;
 using TerraRuntime.World;
 
@@ -52,6 +53,16 @@ public static class TerrariaTileSquareCodec
         int startY,
         byte width,
         byte height,
+        out byte[] frame) =>
+        TryEncode(tiles, startX, startY, width, height, VanillaTileChangeType1458.None, out frame);
+
+    public static bool TryEncode(
+        WorldTileStore tiles,
+        int startX,
+        int startY,
+        byte width,
+        byte height,
+        VanillaTileChangeType1458 changeType,
         out byte[] frame)
     {
         ArgumentNullException.ThrowIfNull(tiles);
@@ -76,7 +87,7 @@ public static class TerrariaTileSquareCodec
         offset += sizeof(short);
         frame[offset++] = width;
         frame[offset++] = height;
-        frame[offset++] = 0; // TileChangeType.None
+        frame[offset++] = (byte)changeType;
 
         for (int x = startX; x < startX + width; x++)
         {

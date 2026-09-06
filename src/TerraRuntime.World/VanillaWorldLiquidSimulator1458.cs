@@ -1,3 +1,5 @@
+using TerraRuntime.Contracts.Gameplay;
+
 namespace TerraRuntime.World;
 
 /// <summary>
@@ -23,6 +25,7 @@ public sealed class VanillaWorldLiquidSimulator1458
 
     private readonly WorldTileStore tiles;
     private readonly VanillaWorldTileMutationService tileMutations;
+    private readonly IVanillaLiquidTileSideEffectSink1458 sideEffects;
     private readonly int workBudget;
     private readonly int discoveryBudget;
     private int discoveryCursor;
@@ -31,10 +34,12 @@ public sealed class VanillaWorldLiquidSimulator1458
     public VanillaWorldLiquidSimulator1458(
         WorldTileStore tiles,
         int workBudgetPerTick = DefaultWorkBudgetPerTick,
-        int discoveryBudgetPerTick = DefaultDiscoveryBudgetPerTick)
+        int discoveryBudgetPerTick = DefaultDiscoveryBudgetPerTick,
+        IVanillaLiquidTileSideEffectSink1458? sideEffects = null)
     {
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
         tileMutations = new VanillaWorldTileMutationService(tiles);
+        this.sideEffects = sideEffects ?? new LocalLiquidTileSideEffectSink1458(tileMutations, tiles);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(workBudgetPerTick);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(discoveryBudgetPerTick);
         workBudget = workBudgetPerTick;
@@ -283,11 +288,10 @@ public sealed class VanillaWorldLiquidSimulator1458
     }
 
     /// <summary>
-    /// Replays the ordinary open-cell material merge paths from TerrariaServer 1.4.5.8
-    /// <c>Liquid.LiquidCheck</c>. The source-backed merge products are Obsidian, Honey Block,
-    /// Crispy Honey Block and Shimmer Block. Active replaceable furniture/cut-tile/container cases
-    /// depend on the separate <c>tileObsidianKill</c>/<c>tileCut</c>/container tables and deliberately
-    /// remain fail-closed here instead of guessing those object-specific destruction semantics.
+    /// Replays TerrariaServer 1.4.5.8 <c>Liquid.LiquidCheck</c> ordering for the supported runtime subset.
+    /// The liquid simulator owns the source-ordered liquid clears; irreversible KillTile/ReplaceTile/drop effects
+    /// cross <see cref="IVanillaLiquidTileSideEffectSink1458"/> so unsupported active targets fail before any liquid
+    /// state is destroyed.
     /// </summary>
     private void ApplyForeignLiquidReaction1458(
         int x,
@@ -305,9 +309,6 @@ public sealed class VanillaWorldLiquidSimulator1458
         }
 
         WorldTile source = tiles.Get(x, y);
-        if (source.IsActive)
-            return;
-
         WorldTile left = tiles.Get(x - 1, y);
         WorldTile right = tiles.Get(x + 1, y);
         WorldTile above = tiles.Get(x, y - 1);
@@ -335,41 +336,126 @@ public sealed class VanillaWorldLiquidSimulator1458
                 (foreignRight ? right.LiquidAmount : 0) +
                 (foreignAbove ? above.LiquidAmount : 0);
 
-            TerraRuntime.Contracts.Gameplay.TileTypeId mergeTile = default;
-            bool createMerge = foreignAmount >= 24 &&
-                               VanillaLiquidMergeCatalog1458.TryResolve(
-                                   sourceKind,
-                                   waterNearby,
-                                   lavaNearby,
-                                   honeyNearby,
-                                   shimmerNearby,
-                                   out mergeTile,
-                                   out _);
+            TileTypeId mergeTile = default;
+            WorldLiquidKind mergeKind = default;
+            bool resolvedMerge = foreignAmount >= 24 &&
+                                 VanillaLiquidMergeCatalog1458.TryResolve(
+                                     sourceKind,
+                                     waterNearby,
+                                     lavaNearby,
+                                     honeyNearby,
+                                     shimmerNearby,
+                                     out mergeTile,
+                                     out mergeKind);
+            bool targetEligible = !source.IsActive ||
+                                  VanillaLiquidInteractionFacts1458.IsObsidianKill(source.TileType);
 
-            if (createMerge && !TryPlaceMergeTile(x, y, mergeTile))
+            if (resolvedMerge && targetEligible)
+            {
+                var request = new VanillaLiquidMergeTileRequest1458(
+                    x,
+                    y,
+                    mergeTile,
+                    sourceKind,
+                    mergeKind,
+                    source,
+                    ContainerOverride: false);
+                if (!CanRepresentMergeTileSquare1458(x, y) ||
+                    !sideEffects.TryPrepareMergeTile(in request))
+                {
+                    return;
+                }
+
+                try
+                {
+                    if (foreignLeft)
+                        ClearLiquidCellRaw(x - 1, y);
+                    if (foreignRight)
+                        ClearLiquidCellRaw(x + 1, y);
+                    if (foreignAbove)
+                        ClearLiquidCellRaw(x, y - 1);
+                    ClearLiquidCellRaw(x, y);
+
+                    sideEffects.CommitPreparedMergeTile(in request);
+                }
+                catch
+                {
+                    sideEffects.AbortPreparedMergeTile();
+                    RestoreReactionCells(x, y, in source, in left, in right, in above);
+                    throw;
+                }
+
+                WorldTile committed = tiles.Get(x, y);
+                RecordTileSquare(
+                    x,
+                    y,
+                    in committed,
+                    startX: x - 2,
+                    startY: y - 2,
+                    width: 3,
+                    height: 3,
+                    VanillaLiquidMergeCatalog1458.ResolveTileChangeType(sourceKind, mergeKind),
+                    changes,
+                    ref changed);
                 return;
+            }
 
+            // LiquidCheck consumes foreign left/right/up liquid even when the 24-unit threshold is not reached or
+            // the active source tile is not obsidian-kill eligible. No merge tile/packet-20 event is created here.
             if (foreignLeft)
                 ClearLiquidCell(x - 1, y, changes, ref changed);
             if (foreignRight)
                 ClearLiquidCell(x + 1, y, changes, ref changed);
             if (foreignAbove)
                 ClearLiquidCell(x, y - 1, changes, ref changed);
-
-            if (createMerge)
-                ClearLiquidCell(x, y, changes, ref changed, requiresTileSquareReplication: true);
             return;
         }
 
+        WorldTile belowBefore = tiles.Get(x, y + 1);
+        if (!IsForeignLiquid(in belowBefore, sourceKind))
+            return;
+
+        bool containerOverride =
+            source.IsActive &&
+            VanillaLiquidInteractionFacts1458.IsContainer(source.TileType) &&
+            !VanillaLiquidInteractionFacts1458.IsContainer(belowBefore.TileType);
+
+        // LiquidCheck kills tileCut content below non-water before testing merge eligibility. The cut is therefore a
+        // standalone committed side effect: when the application cannot model that KillTile path we fail closed
+        // before touching either liquid cell.
+        if (sourceKind != WorldLiquidKind.Water &&
+            belowBefore.IsActive &&
+            VanillaProjectileTileCutFacts.IsCuttable(belowBefore.TileType))
+        {
+            if (!sideEffects.TryCutTile(x, y + 1))
+                return;
+        }
+
         WorldTile below = tiles.Get(x, y + 1);
-        if (!IsForeignLiquid(in below, sourceKind) || below.IsActive)
+        bool lowerEligible = !below.IsActive ||
+                             VanillaLiquidInteractionFacts1458.IsObsidianKill(below.TileType) ||
+                             containerOverride;
+        if (!lowerEligible)
             return;
 
         if (source.LiquidAmount < 24)
         {
-            // TerrariaServer 1.4.5.8 Liquid.LiquidCheck clears this source and sends packet 20
-            // (SendTileSquare) rather than packet 48, even though no merge block is created.
-            ClearLiquidCell(x, y, changes, ref changed, requiresTileSquareReplication: true);
+            if (!CanRepresentSub24LowerSquare1458(x, y))
+                return;
+
+            ClearLiquidCellRaw(x, y);
+            WorldTile cleared = tiles.Get(x, y);
+            RecordTileSquare(
+                x,
+                y,
+                in cleared,
+                startX: x - 2,
+                startY: y - 1,
+                width: 3,
+                height: 3,
+                VanillaTileChangeType1458.None,
+                changes,
+                ref changed);
             return;
         }
 
@@ -379,50 +465,130 @@ public sealed class VanillaWorldLiquidSimulator1458
                 IsLiquidKind(in below, WorldLiquidKind.Lava),
                 IsLiquidKind(in below, WorldLiquidKind.Honey),
                 IsLiquidKind(in below, WorldLiquidKind.Shimmer),
-                out var belowMergeTile,
-                out _) ||
-            !TryPlaceMergeTile(x, y + 1, belowMergeTile))
+                out TileTypeId belowMergeTile,
+                out WorldLiquidKind belowMergeKind) ||
+            !CanRepresentMergeTileSquare1458(x, y + 1))
         {
             return;
         }
 
-        ClearLiquidCell(x, y, changes, ref changed);
-        ClearLiquidCell(x, y + 1, changes, ref changed, requiresTileSquareReplication: true);
-    }
+        var lowerRequest = new VanillaLiquidMergeTileRequest1458(
+            x,
+            y + 1,
+            belowMergeTile,
+            sourceKind,
+            belowMergeKind,
+            below,
+            containerOverride);
+        if (!sideEffects.TryPrepareMergeTile(in lowerRequest))
+            return;
 
-    private bool TryPlaceMergeTile(int x, int y, TerraRuntime.Contracts.Gameplay.TileTypeId mergeTile)
-    {
-        WorldTile before = tiles.Get(x, y);
-        if (before.IsActive ||
-            !VanillaTileDefinitionCatalog.TryGet(mergeTile, out VanillaTileDefinition definition) ||
-            definition.BreakPath != VanillaTileBreakPath.SimpleCell)
+        try
         {
-            return false;
+            ClearLiquidCellRaw(x, y);
+            ClearLiquidCellRaw(x, y + 1);
+            sideEffects.CommitPreparedMergeTile(in lowerRequest);
+        }
+        catch
+        {
+            sideEffects.AbortPreparedMergeTile();
+            tiles.Set(x, y, in source);
+            tiles.Set(x, y + 1, in below);
+            throw;
         }
 
-        var request = new WorldTileMutationRequest(
-            WorldTileMutationKind.PlaceTile,
+        WorldTile lowerCommitted = tiles.Get(x, y + 1);
+        RecordTileSquare(
+            x,
+            y + 1,
+            in lowerCommitted,
+            startX: x - 2,
+            startY: y - 1,
+            width: 3,
+            height: 3,
+            VanillaLiquidMergeCatalog1458.ResolveTileChangeType(sourceKind, belowMergeKind),
+            changes,
+            ref changed);
+    }
+
+    private bool CanRepresentMergeTileSquare1458(int targetX, int targetY) =>
+        ContainsSquare(targetX - 2, targetY - 2, width: 3, height: 3);
+
+    private bool CanRepresentSub24LowerSquare1458(int sourceX, int sourceY) =>
+        ContainsSquare(sourceX - 2, sourceY - 1, width: 3, height: 3);
+
+    private bool ContainsSquare(int startX, int startY, int width, int height) =>
+        startX >= 0 && startY >= 0 &&
+        startX + width <= tiles.Dimensions.WidthTiles &&
+        startY + height <= tiles.Dimensions.HeightTiles;
+
+    private void RestoreReactionCells(
+        int x,
+        int y,
+        in WorldTile source,
+        in WorldTile left,
+        in WorldTile right,
+        in WorldTile above)
+    {
+        tiles.Set(x, y, in source);
+        tiles.Set(x - 1, y, in left);
+        tiles.Set(x + 1, y, in right);
+        tiles.Set(x, y - 1, in above);
+    }
+
+    private void ClearLiquidCellRaw(int x, int y)
+    {
+        WorldTile tile = tiles.Get(x, y);
+        tile.LiquidAmount = 0;
+        tile.LiquidKind = WorldLiquidKind.Water;
+        tiles.Set(x, y, in tile);
+    }
+
+    private static void RecordTileSquare(
+        int x,
+        int y,
+        in WorldTile tile,
+        int startX,
+        int startY,
+        byte width,
+        byte height,
+        VanillaTileChangeType1458 changeType,
+        Span<WorldLiquidSimulationChange> changes,
+        ref int changed)
+    {
+        if ((uint)changed >= (uint)changes.Length)
+        {
+            throw new InvalidOperationException(
+                "Liquid simulation change buffer is smaller than the verified per-tick mutation footprint.");
+        }
+
+        changes[changed++] = new WorldLiquidSimulationChange(
             x,
             y,
-            TileType: mergeTile);
-        return tileMutations.Apply(in request).Applied;
+            tile.LiquidAmount,
+            tile.LiquidKind,
+            RequiresTileSquareReplication: true,
+            startX,
+            startY,
+            width,
+            height,
+            changeType);
     }
 
     private void ClearLiquidCell(
         int x,
         int y,
         Span<WorldLiquidSimulationChange> changes,
-        ref int changed,
-        bool requiresTileSquareReplication = false)
+        ref int changed)
     {
         WorldTile tile = tiles.Get(x, y);
-        if (tile.LiquidAmount == 0 && !requiresTileSquareReplication)
+        if (tile.LiquidAmount == 0)
             return;
 
         tile.LiquidAmount = 0;
         tile.LiquidKind = WorldLiquidKind.Water;
         tiles.Set(x, y, in tile);
-        Record(x, y, in tile, changes, ref changed, requiresTileSquareReplication);
+        Record(x, y, in tile, changes, ref changed);
     }
 
     private static bool IsForeignLiquid(in WorldTile tile, WorldLiquidKind sourceKind) =>
@@ -751,6 +917,62 @@ public sealed class VanillaWorldLiquidSimulator1458
 
     private int PendingCount => tiles.LiquidUpdates.ActiveCount + tiles.LiquidUpdates.BufferedCount;
 
+    private sealed class LocalLiquidTileSideEffectSink1458(
+        VanillaWorldTileMutationService mutations,
+        WorldTileStore tiles) : IVanillaLiquidTileSideEffectSink1458
+    {
+        private VanillaLiquidMergeTileRequest1458 prepared;
+        private bool hasPrepared;
+
+        public bool TryCutTile(int x, int y) => false;
+
+        public bool TryPrepareMergeTile(in VanillaLiquidMergeTileRequest1458 request)
+        {
+            if (hasPrepared)
+                throw new InvalidOperationException("A liquid merge preparation is already outstanding.");
+
+            WorldTile current = tiles.Get(request.X, request.Y);
+            if (current.IsActive || request.TargetBefore.IsActive ||
+                current.Type != request.TargetBefore.Type ||
+                current.Flags != request.TargetBefore.Flags ||
+                !VanillaTileDefinitionCatalog.TryGet(request.MergeTileType, out VanillaTileDefinition definition) ||
+                definition.BreakPath != VanillaTileBreakPath.SimpleCell)
+            {
+                return false;
+            }
+
+            prepared = request;
+            hasPrepared = true;
+            return true;
+        }
+
+        public void CommitPreparedMergeTile(in VanillaLiquidMergeTileRequest1458 request)
+        {
+            if (!hasPrepared || prepared != request)
+                throw new InvalidOperationException("Liquid merge commit does not match the outstanding preparation.");
+
+            var mutation = new WorldTileMutationRequest(
+                WorldTileMutationKind.PlaceTile,
+                request.X,
+                request.Y,
+                TileType: request.MergeTileType);
+            WorldTileMutationResult result = mutations.Apply(in mutation);
+            hasPrepared = false;
+            prepared = default;
+            if (!result.Applied)
+            {
+                throw new InvalidOperationException(
+                    $"Prepared inactive liquid merge placement failed unexpectedly: {result.Status}.");
+            }
+        }
+
+        public void AbortPreparedMergeTile()
+        {
+            hasPrepared = false;
+            prepared = default;
+        }
+    }
+
     private static void Record(
         int x,
         int y,
@@ -767,12 +989,18 @@ public sealed class VanillaWorldLiquidSimulator1458
             if (changes[i].X != x || changes[i].Y != y)
                 continue;
 
+            WorldLiquidSimulationChange existing = changes[i];
             changes[i] = new WorldLiquidSimulationChange(
                 x,
                 y,
                 tile.LiquidAmount,
                 tile.LiquidKind,
-                changes[i].RequiresTileSquareReplication || requiresTileSquareReplication);
+                existing.RequiresTileSquareReplication || requiresTileSquareReplication,
+                existing.TileSquareStartX,
+                existing.TileSquareStartY,
+                existing.TileSquareWidth,
+                existing.TileSquareHeight,
+                existing.TileChangeType);
             return;
         }
 
@@ -796,4 +1024,13 @@ public readonly record struct WorldLiquidSimulationChange(
     int Y,
     byte Amount,
     WorldLiquidKind Kind,
-    bool RequiresTileSquareReplication = false);
+    bool RequiresTileSquareReplication = false,
+    int TileSquareStartX = 0,
+    int TileSquareStartY = 0,
+    byte TileSquareWidth = 0,
+    byte TileSquareHeight = 0,
+    VanillaTileChangeType1458 TileChangeType = VanillaTileChangeType1458.None)
+{
+    public bool HasExplicitTileSquare =>
+        RequiresTileSquareReplication && TileSquareWidth != 0 && TileSquareHeight != 0;
+}

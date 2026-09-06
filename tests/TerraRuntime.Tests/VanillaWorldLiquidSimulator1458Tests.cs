@@ -342,14 +342,17 @@ public sealed class VanillaWorldLiquidSimulator1458Tests
 
         int changed = simulator.Tick(activeServerPlayersInLiquidWindow: 0, changes);
 
-        Assert.Equal(2, changed);
+        Assert.Equal(1, changed);
         Assert.Equal((byte)0, tiles.Get(12, 9).LiquidAmount);
         WorldTile merge = tiles.Get(12, 10);
         Assert.True(merge.IsActive);
         Assert.Equal(VanillaTileIds.Obsidian, merge.TileType);
         Assert.Equal((byte)0, merge.LiquidAmount);
-        Assert.Contains(changes[..changed].ToArray(), change =>
-            change.X == 12 && change.Y == 10 && change.RequiresTileSquareReplication);
+        AssertMergeChange(
+            changes[0],
+            targetX: 12,
+            targetY: 10,
+            VanillaTileChangeType1458.LavaWater);
     }
 
     [Fact]
@@ -390,14 +393,17 @@ public sealed class VanillaWorldLiquidSimulator1458Tests
 
         int changed = simulator.Tick(activeServerPlayersInLiquidWindow: 0, changes);
 
-        Assert.Equal(2, changed);
+        Assert.Equal(1, changed);
         Assert.Equal((byte)0, tiles.Get(12, 10).LiquidAmount);
         WorldTile merge = tiles.Get(12, 11);
         Assert.True(merge.IsActive);
         Assert.Equal(VanillaTileIds.HoneyBlock, merge.TileType);
         Assert.Equal((byte)0, merge.LiquidAmount);
-        Assert.Contains(changes[..changed].ToArray(), change =>
-            change.X == 12 && change.Y == 11 && change.RequiresTileSquareReplication);
+        AssertMergeChange(
+            changes[0],
+            targetX: 12,
+            targetY: 11,
+            VanillaTileChangeType1458.HoneyWater);
     }
 
     [Fact]
@@ -472,7 +478,7 @@ public sealed class VanillaWorldLiquidSimulator1458Tests
 
         int changed = simulator.Tick(activeServerPlayersInLiquidWindow: 0, changes);
 
-        Assert.Equal(4, changed);
+        Assert.Equal(1, changed);
         WorldTile merge = tiles.Get(12, 10);
         Assert.True(merge.IsActive);
         Assert.Equal(VanillaTileIds.ShimmerBlock, merge.TileType);
@@ -480,6 +486,11 @@ public sealed class VanillaWorldLiquidSimulator1458Tests
         Assert.Equal((byte)0, tiles.Get(11, 10).LiquidAmount);
         Assert.Equal((byte)0, tiles.Get(13, 10).LiquidAmount);
         Assert.Equal((byte)0, tiles.Get(12, 9).LiquidAmount);
+        AssertMergeChange(
+            changes[0],
+            targetX: 12,
+            targetY: 10,
+            VanillaTileChangeType1458.ShimmerHoney);
     }
 
     [Fact]
@@ -508,11 +519,43 @@ public sealed class VanillaWorldLiquidSimulator1458Tests
 
         int changed = simulator.Tick(activeServerPlayersInLiquidWindow: 0, changes);
 
-        Assert.Equal(2, changed);
+        Assert.Equal(1, changed);
         WorldTile merge = tiles.Get(11, 10);
         Assert.True(merge.IsActive);
         Assert.Equal(VanillaTileIds.Obsidian, merge.TileType);
         Assert.Equal((byte)0, tiles.Get(12, 10).LiquidAmount);
+        AssertMergeChange(
+            changes[0],
+            targetX: 11,
+            targetY: 10,
+            VanillaTileChangeType1458.LavaWater);
+    }
+
+    [Fact]
+    public void Rejected_merge_preparation_leaves_all_participating_liquid_cells_untouched()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(24, 24));
+        SetLiquid(tiles, 12, 10, byte.MaxValue, WorldLiquidKind.Lava);
+        SetWater(tiles, 12, 9, 24);
+        tiles.LiquidUpdates.Clear();
+        Assert.True(tiles.LiquidUpdates.TryEnqueue(12, 10));
+
+        var sink = new RejectingLiquidSideEffectSink();
+        var simulator = new VanillaWorldLiquidSimulator1458(
+            tiles,
+            workBudgetPerTick: 1,
+            discoveryBudgetPerTick: 1,
+            sideEffects: sink);
+        Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[
+            VanillaWorldLiquidSimulator1458.MaximumChangesPerProcessedCell];
+
+        Assert.Equal(0, simulator.Tick(activeServerPlayersInLiquidWindow: 0, changes));
+        Assert.Equal(byte.MaxValue, tiles.Get(12, 10).LiquidAmount);
+        Assert.Equal(WorldLiquidKind.Lava, tiles.Get(12, 10).LiquidKind);
+        Assert.Equal((byte)24, tiles.Get(12, 9).LiquidAmount);
+        Assert.Equal(WorldLiquidKind.Water, tiles.Get(12, 9).LiquidKind);
+        Assert.Equal(1, sink.PrepareCalls);
+        Assert.Equal(0, sink.CommitCalls);
     }
 
     private static void AssertDelayedFlow(WorldLiquidKind kind, int expectedDelayedUpdates)
@@ -562,13 +605,34 @@ public sealed class VanillaWorldLiquidSimulator1458Tests
 
         int changed = simulator.Tick(activeServerPlayersInLiquidWindow: 0, changes);
 
-        Assert.Equal(2, changed);
+        Assert.Equal(1, changed);
         Assert.Equal((byte)0, tiles.Get(11, 10).LiquidAmount);
         WorldTile merge = tiles.Get(12, 10);
         Assert.True(merge.IsActive);
         Assert.Equal(expectedTile, merge.TileType);
         Assert.Equal((byte)0, merge.LiquidAmount);
-        Assert.Contains(changes[..changed].ToArray(), change => change.RequiresTileSquareReplication);
+        AssertMergeChange(
+            changes[0],
+            targetX: 12,
+            targetY: 10,
+            VanillaLiquidMergeCatalog1458.ResolveTileChangeType(sourceKind, foreignKind));
+    }
+
+    private static void AssertMergeChange(
+        in WorldLiquidSimulationChange change,
+        int targetX,
+        int targetY,
+        VanillaTileChangeType1458 expectedChangeType)
+    {
+        Assert.True(change.RequiresTileSquareReplication);
+        Assert.True(change.HasExplicitTileSquare);
+        Assert.Equal(targetX, change.X);
+        Assert.Equal(targetY, change.Y);
+        Assert.Equal(targetX - 2, change.TileSquareStartX);
+        Assert.Equal(targetY - 2, change.TileSquareStartY);
+        Assert.Equal((byte)3, change.TileSquareWidth);
+        Assert.Equal((byte)3, change.TileSquareHeight);
+        Assert.Equal(expectedChangeType, change.TileChangeType);
     }
 
     private static WorldTileStore CreateBlockedStableWater(byte amount, int initialKill = 0)
@@ -613,4 +677,22 @@ public sealed class VanillaWorldLiquidSimulator1458Tests
             total += tiles.Get(x, y).LiquidAmount;
         return total;
     }
+    private sealed class RejectingLiquidSideEffectSink : IVanillaLiquidTileSideEffectSink1458
+    {
+        public int PrepareCalls { get; private set; }
+        public int CommitCalls { get; private set; }
+
+        public bool TryCutTile(int x, int y) => false;
+
+        public bool TryPrepareMergeTile(in VanillaLiquidMergeTileRequest1458 request)
+        {
+            PrepareCalls++;
+            return false;
+        }
+
+        public void CommitPreparedMergeTile(in VanillaLiquidMergeTileRequest1458 request) => CommitCalls++;
+
+        public void AbortPreparedMergeTile() { }
+    }
+
 }

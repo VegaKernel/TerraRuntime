@@ -27,11 +27,11 @@ Each live `WorldRuntime` publishes both target TPS and an observed TPS sample fr
 ```text
 ▼ Main   [primary]            TPS 60.0/60
   └─ #0 Alice
-▼ arena  [sandbox · running]  TPS 119.8/120
+▼ arena  [sandbox]            TPS 119.8/120
   └─ #1 Bob
 ```
 
-A sandbox that is still being materialized has no live game loop and is rendered as `TPS --` instead of borrowing the primary runtime metric.
+A running sandbox omits the redundant `running` lifecycle word and renders simply as `[sandbox]`; non-running states remain explicit, for example `[sandbox · stopping]`. A sandbox that is still being materialized has no live game loop and is rendered as `TPS --` instead of borrowing the primary runtime metric.
 
 The roster is a `ListView`: focus/selection highlights a complete item row rather than selecting text inside the row. Player drag-and-drop submits the typed Level 1 move operation with the exact `PlayerHandle` (`slot + generation`) captured when the drag begins. That captured source remains immutable until button release, so neither a background refresh/reorder nor repeated held-button mouse events over another player row can silently substitute another player. The complete destination-world branch is a drop surface: the world header, any player row in that branch, and its `<no players>` placeholder all resolve to the same semantic target.
 
@@ -81,7 +81,7 @@ feed level debug|info|warn|error
 
 ## Network graph
 
-Network uses Terminal.Gui `GraphView` with inbound and outbound packet-rate histories. The legend also shows current packet rate and throughput in `KiB/s`. Rates are calculated from process-lifetime message-counter deltas across detached network snapshots. Invalid intervals/counter rollback reset the local sample instead of emitting a synthetic spike.
+Network uses a bounded custom block-column view over inbound/outbound throughput history. IN is drawn against the left vertical scale, OUT against an independent right vertical scale, and both histories share the same time axis. The two directions use distinct attributes and `█` / `▓` columns; `▒` marks overlap. Because IN and OUT are normalized independently, a quiet 2 KiB/s direction remains visible next to a multi-MiB/s direction instead of collapsing against a shared maximum. The legend still shows current packet rate and throughput in `KiB/s`. Rates are calculated from process-lifetime message-counter deltas across detached network snapshots. Invalid intervals/counter rollback reset the local sample instead of emitting a synthetic spike.
 
 The Network detail screen also renders the heaviest Terraria message IDs from the rolling message-traffic window: direction, numeric ID, known enum name, frames/s, KiB/s and lifetime frame count. This makes it possible to distinguish normal entity replication from a specific packet family producing abnormal outbound traffic without enabling a global packet dump.
 

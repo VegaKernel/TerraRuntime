@@ -9,6 +9,26 @@ namespace TerraRuntime.World;
 /// </summary>
 internal static class VanillaLiquidMergeCatalog1458
 {
+    public static VanillaTileChangeType1458 ResolveTileChangeType(
+        WorldLiquidKind first,
+        WorldLiquidKind second) =>
+        (first, second) switch
+        {
+            (WorldLiquidKind.Water, WorldLiquidKind.Lava) or
+            (WorldLiquidKind.Lava, WorldLiquidKind.Water) => VanillaTileChangeType1458.LavaWater,
+            (WorldLiquidKind.Water, WorldLiquidKind.Honey) or
+            (WorldLiquidKind.Honey, WorldLiquidKind.Water) => VanillaTileChangeType1458.HoneyWater,
+            (WorldLiquidKind.Lava, WorldLiquidKind.Honey) or
+            (WorldLiquidKind.Honey, WorldLiquidKind.Lava) => VanillaTileChangeType1458.HoneyLava,
+            (WorldLiquidKind.Water, WorldLiquidKind.Shimmer) or
+            (WorldLiquidKind.Shimmer, WorldLiquidKind.Water) => VanillaTileChangeType1458.ShimmerWater,
+            (WorldLiquidKind.Lava, WorldLiquidKind.Shimmer) or
+            (WorldLiquidKind.Shimmer, WorldLiquidKind.Lava) => VanillaTileChangeType1458.ShimmerLava,
+            (WorldLiquidKind.Honey, WorldLiquidKind.Shimmer) or
+            (WorldLiquidKind.Shimmer, WorldLiquidKind.Honey) => VanillaTileChangeType1458.ShimmerHoney,
+            _ => VanillaTileChangeType1458.None
+        };
+
     public static bool TryResolve(
         WorldLiquidKind sourceKind,
         bool waterNearby,

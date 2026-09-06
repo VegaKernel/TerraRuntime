@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Reflection;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
@@ -65,12 +66,126 @@ public sealed class ServerRuntimeTileReplicationIntegrationTests
         Assert.Equal((byte)0, merged.LiquidAmount);
         Assert.Equal((byte)0, fixture.Tiles.Get(12, 9).LiquidAmount);
 
-        Assert.Contains(DrainFrames(fixture.Outbound(first)), frame =>
-            frame.MessageId == (byte)TerrariaMessageId.TileSquare);
-        Assert.Contains(DrainFrames(fixture.Outbound(second)), frame =>
-            frame.MessageId == (byte)TerrariaMessageId.TileSquare);
-        Assert.Equal(4, fixture.Replication.RelayedFrames);
+        TerrariaFrame firstFrame = Assert.Single(DrainFrames(fixture.Outbound(first)));
+        TerrariaFrame secondFrame = Assert.Single(DrainFrames(fixture.Outbound(second)));
+        AssertLiquidMergeTileSquare(firstFrame, 10, 8, VanillaTileChangeType1458.LavaWater);
+        AssertLiquidMergeTileSquare(secondFrame, 10, 8, VanillaTileChangeType1458.LavaWater);
+        Assert.Equal(2, fixture.Replication.RelayedFrames);
         Assert.Equal(0, fixture.Replication.EncodeFailures);
+    }
+
+    [Fact]
+    public void Active_obsidian_kill_cobweb_merge_commits_drop_and_only_tile_square_replication()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle peer = fixture.SpawnPlayer(914);
+
+        var source = new WorldTile
+        {
+            Type = checked((ushort)VanillaTileIds.Cobweb.Value),
+            Flags = WorldTileFlags.Active,
+            LiquidAmount = byte.MaxValue,
+            LiquidKind = WorldLiquidKind.Lava
+        };
+        var water = new WorldTile
+        {
+            LiquidAmount = 24,
+            LiquidKind = WorldLiquidKind.Water
+        };
+        fixture.Tiles.Set(12, 10, in source);
+        fixture.Tiles.Set(12, 9, in water);
+        fixture.Tiles.LiquidUpdates.Clear();
+        Assert.True(fixture.Tiles.LiquidUpdates.TryEnqueue(12, 10));
+
+        fixture.State.Tick();
+
+        WorldTile merged = fixture.Tiles.Get(12, 10);
+        Assert.True(merged.IsActive);
+        Assert.Equal(VanillaTileIds.Obsidian, merged.TileType);
+        Assert.Equal((byte)0, merged.LiquidAmount);
+        Assert.Equal(1, fixture.State.AppliedWorldItemAllocations);
+        TerrariaFrame frame = Assert.Single(DrainFrames(fixture.Outbound(peer)));
+        AssertLiquidMergeTileSquare(frame, 10, 8, VanillaTileChangeType1458.LavaWater);
+    }
+
+    [Fact]
+    public void Lower_tile_cut_is_packet17_then_material_merge_packet20()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle peer = fixture.SpawnPlayer(915);
+
+        var source = new WorldTile
+        {
+            LiquidAmount = 24,
+            LiquidKind = WorldLiquidKind.Honey
+        };
+        var cuttableWater = new WorldTile
+        {
+            Type = checked((ushort)VanillaTileIds.Cobweb.Value),
+            Flags = WorldTileFlags.Active,
+            LiquidAmount = byte.MaxValue,
+            LiquidKind = WorldLiquidKind.Water
+        };
+        var stone = new WorldTile
+        {
+            Type = checked((ushort)VanillaTileIds.Stone.Value),
+            Flags = WorldTileFlags.Active
+        };
+        fixture.Tiles.Set(12, 10, in source);
+        fixture.Tiles.Set(12, 11, in cuttableWater);
+        fixture.Tiles.Set(11, 10, in stone);
+        fixture.Tiles.Set(13, 10, in stone);
+        fixture.Tiles.LiquidUpdates.Clear();
+        Assert.True(fixture.Tiles.LiquidUpdates.TryEnqueue(12, 10));
+
+        fixture.State.Tick();
+
+        WorldTile merged = fixture.Tiles.Get(12, 11);
+        Assert.True(merged.IsActive);
+        Assert.Equal(VanillaTileIds.HoneyBlock, merged.TileType);
+        Assert.Equal((byte)0, fixture.Tiles.Get(12, 10).LiquidAmount);
+        Assert.Equal(1, fixture.State.AppliedWorldItemAllocations);
+        TerrariaFrame[] frames = DrainFrames(fixture.Outbound(peer));
+        Assert.Equal(2, frames.Length);
+        Assert.Equal((byte)TerrariaMessageId.TileManipulation, frames[0].MessageId);
+        AssertLiquidMergeTileSquare(frames[1], 10, 9, VanillaTileChangeType1458.HoneyWater);
+    }
+
+    [Fact]
+    public void Container_source_allows_supported_lower_solid_replacement_without_packet17()
+    {
+        using var fixture = new Fixture();
+        ConnectionHandle peer = fixture.SpawnPlayer(916);
+
+        var source = new WorldTile
+        {
+            Type = checked((ushort)VanillaTileIds.Containers.Value),
+            Flags = WorldTileFlags.Active,
+            LiquidAmount = 24,
+            LiquidKind = WorldLiquidKind.Honey
+        };
+        var lower = new WorldTile
+        {
+            Type = checked((ushort)VanillaTileIds.Stone.Value),
+            Flags = WorldTileFlags.Active,
+            LiquidAmount = byte.MaxValue,
+            LiquidKind = WorldLiquidKind.Water
+        };
+        fixture.Tiles.Set(12, 10, in source);
+        fixture.Tiles.Set(12, 11, in lower);
+        fixture.Tiles.LiquidUpdates.Clear();
+        Assert.True(fixture.Tiles.LiquidUpdates.TryEnqueue(12, 10));
+
+        fixture.State.Tick();
+
+        WorldTile merged = fixture.Tiles.Get(12, 11);
+        Assert.True(merged.IsActive);
+        Assert.Equal(VanillaTileIds.HoneyBlock, merged.TileType);
+        Assert.True(fixture.Tiles.Get(12, 10).IsActive);
+        Assert.Equal(VanillaTileIds.Containers, fixture.Tiles.Get(12, 10).TileType);
+        Assert.Equal(1, fixture.State.AppliedWorldItemAllocations);
+        TerrariaFrame frame = Assert.Single(DrainFrames(fixture.Outbound(peer)));
+        AssertLiquidMergeTileSquare(frame, 10, 9, VanillaTileChangeType1458.HoneyWater);
     }
 
     [Fact]
@@ -276,6 +391,22 @@ public sealed class ServerRuntimeTileReplicationIntegrationTests
             foreach (PlayerJoinSession session in sessions)
                 session.Dispose();
         }
+    }
+
+    private static void AssertLiquidMergeTileSquare(
+        in TerrariaFrame frame,
+        short expectedStartX,
+        short expectedStartY,
+        VanillaTileChangeType1458 expectedChangeType)
+    {
+        Assert.Equal((byte)TerrariaMessageId.TileSquare, frame.MessageId);
+        byte[] payload = frame.Payload.ToArray();
+        Assert.True(payload.Length >= 7);
+        Assert.Equal(expectedStartX, BinaryPrimitives.ReadInt16LittleEndian(payload));
+        Assert.Equal(expectedStartY, BinaryPrimitives.ReadInt16LittleEndian(payload.AsSpan(2)));
+        Assert.Equal((byte)3, payload[4]);
+        Assert.Equal((byte)3, payload[5]);
+        Assert.Equal((byte)expectedChangeType, payload[6]);
     }
 
     private static TerrariaFrame[] DrainFrames(TerrariaConnectionOutboundQueue outbound)

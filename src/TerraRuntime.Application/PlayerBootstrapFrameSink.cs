@@ -513,6 +513,18 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             if (!VanillaPlayerSpawnValidator.IsValid(in commit))
                 return Stop(PlayerBootstrapStopReason.MalformedPlayerSpawn);
 
+            if (_awaitingWorldTransferLanding && request.SpawnContext == 1)
+            {
+                // A live cross-world replacement sends packet 12/SpawningIntoWorld to make the vanilla client
+                // execute Player.Spawn after the destination world/bootstrap batch. Player.Spawn immediately echoes
+                // packet 12 back to the server. During that synthetic transition the client can legitimately reduce
+                // its personal SpawnX/SpawnY to -1/-1 after FindSpawn/CheckSpawn; treating that echo as an ordinary
+                // post-join respawn moves authoritative state to the top-left and also poisons the movement-correction
+                // target. The authoritative destination attach has already committed the destination world spawn, so
+                // consume only this transfer echo and wait for the first movement sample near that landing position.
+                return TerrariaFrameSinkResult.Continue;
+            }
+
             // Packet 12 is also the vanilla recall/respawn path after the join has completed.
             // Treat queue pressure as replaceable state rather than killing the socket.
             _ = _spawnIngress.TryPostRespawn(_source, _session.Handle, in commit);

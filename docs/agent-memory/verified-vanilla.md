@@ -24,6 +24,11 @@ Verified runtime facts currently implemented/tested:
 - The verified ordinary open-cell merge threshold is 24 liquid units.
 - Left/right/up foreign-liquid handling and the lower-cell sub-24 source clear follow `LiquidCheck` ordering.
 - Material mutations and the verified lower-cell sub-24 foreign-liquid clear use packet `20` tile-square replication, not packet `48` alone.
+- `LiquidCheck` clears participating merge liquids before `CreateLiquidMergeTile`; the material merge is then synchronized by the tile-square packet rather than separate packet-48 updates for every cleared merge cell.
+- TerrariaServer 1.4.5.8 packet-20 `TileChangeType` values for these merges are `LavaWater=1`, `HoneyWater=2`, `HoneyLava=3`, `ShimmerWater=4`, `ShimmerLava=5`, `ShimmerHoney=6`.
+- the final initialized `Main.tileObsidianKill` set contains 276 tile types; TerraRuntime stores the exact source-pinned set instead of deriving it from a guessed category.
+- `TileID.Sets.IsAContainer` for this path is exactly tiles `21`, `467`, and `88`.
+- for non-water lower contact, `LiquidCheck` performs the verified `Main.tileCut` lower-cell kill before lower merge eligibility is evaluated.
 - In dedicated-server `Liquid.UpdateLiquid`, stable active entries retire at `10 + activePlayersInSlots0To14 / 3`; Terraria 1.4.5.8 counts only player slots `0..14` for this liquid-cycle threshold.
 - A changed liquid amount resets `kill` to zero and schedules the cell above; unchanged entries increment `kill`.
 - A stable `254` liquid amount is normalized to `255` when the active entry retires.
@@ -31,12 +36,21 @@ Verified runtime facts currently implemented/tested:
 
 Known liquid gaps that must not be guessed:
 
-- active `tileObsidianKill` replacement/destruction paths;
-- `tileCut` side effects;
-- container-specific lower-cell handling;
+- complex `WorldGen.ReplaceTile` dependency/shape/actuator/object cases beyond the currently supported safe single-cell active-merge subset;
 - quick-settle/panic/forced-settle lifecycle branches beyond the ordinary dedicated-server active-entry retirement path;
 - `quickFall` / `quickSettle` generation modes;
 - complete post-load liquid initialization behavior.
+
+## Cross-world spawn echo
+
+Primary evidence: TerrariaServer 1.4.5.8 `Player.Spawn(PlayerSpawnContext)` and `MessageBuffer` packet-12 handling.
+
+Verified facts used by the live transfer gate:
+
+- when `Player.Spawn` runs with `PlayerSpawnContext.SpawningIntoWorld`, it calls `FindSpawn` and validates the personal spawn; an invalid personal spawn may leave `SpawnX/SpawnY` as `-1/-1`;
+- a multiplayer client sends packet 12 back after that spawn transition;
+- therefore the immediate packet-12 `SpawningIntoWorld` response to TerraRuntime's synthetic replacement-world spawn is an acknowledgement/echo of the handoff, not a fresh authoritative respawn request;
+- ordinary post-join packet-12 respawn remains a separate path and must not be globally suppressed.
 
 ## Working rule for new vanilla facts
 

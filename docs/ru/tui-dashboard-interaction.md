@@ -27,11 +27,11 @@ Console занимает примерно две трети workspace. Спра�
 ```text
 ▼ Main   [primary]            TPS 60.0/60
   └─ #0 Alice
-▼ arena  [sandbox · running]  TPS 119.8/120
+▼ arena  [sandbox]            TPS 119.8/120
   └─ #1 Bob
 ```
 
-У sandbox, который ещё materialize/start, live game loop пока нет, поэтому выводится `TPS --`, а не метрика primary мира.
+У запущенного sandbox избыточное слово `running` не показывается: строка содержит просто `[sandbox]`. Остальные lifecycle states остаются явными, например `[sandbox · stopping]`. У sandbox, который ещё materialize/start, live game loop пока нет, поэтому выводится `TPS --`, а не метрика primary мира.
 
 Roster переведён на `ListView`: focus/selection выделяет пункт целиком, а не текст внутри строки. Drag-and-drop игрока отправляет typed Level 1 move operation с точным `PlayerHandle` (`slot + generation`), захваченным в момент начала drag. Этот captured source остаётся неизменным до release кнопки, поэтому ни фоновый refresh/reorder, ни повторные held-button mouse events над строкой другого игрока не могут подменить переносимого player. Drop surface — вся ветка destination world: заголовок мира, строка любого игрока этой ветки и `<no players>` placeholder ведут в один и тот же semantic target.
 
@@ -81,7 +81,7 @@ feed level debug|info|warn|error
 
 ## Network graph
 
-Network использует Terminal.Gui `GraphView` с inbound/outbound packet-rate histories. Legend показывает packet rate и throughput в `KiB/s`. Rate считается по разнице process-lifetime message counters между detached snapshots. Некорректный interval или rollback counters сбрасывает локальный sample вместо искусственного spike.
+Network использует bounded custom block-column view для истории inbound/outbound throughput. IN рисуется по левой вертикальной шкале, OUT — по независимой правой, а временная ось у них общая. Направления имеют разные attributes и столбцы `█` / `▓`; `▒` показывает наложение. Поскольку IN и OUT нормализуются независимо, тихий поток 2 KiB/s остаётся видимым рядом с потоком в несколько MiB/s и не сплющивается общей шкалой. Legend по-прежнему показывает текущие packet rate и throughput в `KiB/s`. Rate считается по разнице process-lifetime message counters между detached snapshots. Некорректный interval или rollback counters сбрасывает локальный sample вместо искусственного spike.
 
 Detail screen Network дополнительно показывает самые тяжёлые Terraria message IDs из rolling message-traffic window: направление, numeric ID, известное enum-имя, frames/s, KiB/s и lifetime frame count. Это позволяет отличить нормальный entity replication от конкретного packet family, которое создаёт аномальный outbound поток, не включая глобальный packet dump.
 

@@ -258,6 +258,73 @@ public sealed class Level1PlayerTransferTests
     }
 
     [Fact]
+    public async Task Cross_world_transfer_ignores_spawning_into_world_packet12_echo_until_destination_landing()
+    {
+        using WorldRuntime primary = CreateRuntime("Primary", seed: 713);
+        using WorldRuntime sandbox = CreateRuntime("Arena", seed: 814);
+        primary.Start();
+        sandbox.Start();
+
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(50);
+        var outbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 8192, maxQueuedBytes: 64 * 1024 * 1024, maxFrameBytes: 4 * 1024 * 1024));
+        Assert.True(RuntimeConnectionWorldBinding.TryCreateTransferred(
+            primary,
+            source,
+            outbound,
+            new PlayerSlotId(0),
+            "SpawnEcho",
+            out RuntimeConnectionWorldBinding? binding));
+        Assert.NotNull(binding);
+        Assert.True(binding!.TryRegister());
+        using var route = new RuntimeConnectionRoute(source, outbound, binding);
+        PlayerHandle player = AssertPlayer(route.ActivePlayer);
+        await AttachInitialPlayerAsync(primary, source, player, "SpawnEcho", x: 490f, y: 300f, life: 80, maxLife: 100);
+        DrainOutbound(outbound);
+
+        Assert.True(route.TryTransfer(sandbox, forceRespawn: false, out string? error), error);
+        DrainOutbound(outbound);
+        PlayerHandle destinationPlayer = AssertPlayer(route.ActivePlayer);
+        PlayerStateSnapshot? landed = await sandbox.PlayerStateSnapshots.CaptureAsync(
+            destinationPlayer,
+            TestContext.Current.CancellationToken);
+        Assert.NotNull(landed);
+
+        // Terraria 1.4.5.8 Player.Spawn(SpawningIntoWorld) echoes packet 12 to the server after the synthetic
+        // replacement-world handoff. FindSpawn/CheckSpawn is allowed to reduce a personal spawn to -1/-1.
+        // That echo is not a new authoritative respawn for TerraRuntime's already-attached destination player.
+        var echo = new PlayerSpawnCommitRequest(
+            destinationPlayer.Slot,
+            SpawnX: -1,
+            SpawnY: -1,
+            RespawnTimer: 0,
+            DeathsPve: 0,
+            DeathsPvp: 0,
+            Team: 2,
+            SpawnContext: 1);
+        TerrariaFrame echoFrame = DecodeFrame(TerrariaPlayerReplicationFrameEncoder.EncodeSpawn(in echo));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, route.OnFrame(in echoFrame));
+        await Task.Delay(25, TestContext.Current.CancellationToken);
+
+        PlayerStateSnapshot? afterEcho = await sandbox.PlayerStateSnapshots.CaptureAsync(
+            destinationPlayer,
+            TestContext.Current.CancellationToken);
+        Assert.NotNull(afterEcho);
+        Assert.Equal(landed.Value.PositionX, afterEcho.Value.PositionX);
+        Assert.Equal(landed.Value.PositionY, afterEcho.Value.PositionY);
+
+        TerrariaFrame stale = MovementFrame(destinationPlayer.Slot, positionX: 0f, positionY: 0f);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, route.OnFrame(in stale));
+        TerrariaFrame correction = Assert.Single(DrainOutbound(outbound));
+        Assert.Equal((byte)TerrariaMessageId.TeleportEntity, correction.MessageId);
+        byte[] correctionPayload = correction.Payload.ToArray();
+        Assert.Equal(landed.Value.PositionX, BitConverter.Int32BitsToSingle(
+            BinaryPrimitives.ReadInt32LittleEndian(correctionPayload.AsSpan(3))));
+        Assert.Equal(landed.Value.PositionY, BitConverter.Int32BitsToSingle(
+            BinaryPrimitives.ReadInt32LittleEndian(correctionPayload.AsSpan(7))));
+    }
+
+    [Fact]
     public async Task Destination_wire_slot_collision_fails_without_detaching_source_player()
     {
         using WorldRuntime primary = CreateRuntime("Primary", seed: 404);
@@ -500,6 +567,14 @@ public sealed class Level1PlayerTransferTests
             CameraTargetX: 0f,
             CameraTargetY: 0f);
         byte[] encoded = TerrariaPlayerReplicationFrameEncoder.EncodeMovement(in movement);
+        var sequence = new ReadOnlySequence<byte>(encoded);
+        Assert.Equal(TerrariaFrameReadResult.Frame, TerrariaFrameDecoder.TryRead(ref sequence, out TerrariaFrame frame));
+        Assert.True(sequence.IsEmpty);
+        return frame;
+    }
+
+    private static TerrariaFrame DecodeFrame(ReadOnlyMemory<byte> encoded)
+    {
         var sequence = new ReadOnlySequence<byte>(encoded);
         Assert.Equal(TerrariaFrameReadResult.Frame, TerrariaFrameDecoder.TryRead(ref sequence, out TerrariaFrame frame));
         Assert.True(sequence.IsEmpty);
