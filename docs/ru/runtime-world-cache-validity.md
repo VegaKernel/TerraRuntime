@@ -22,6 +22,12 @@
 
 Старые образы, у которых ранее зарезервированные байты заголовка не содержат текущий schema/layout contract, намеренно дают cache miss и перестраиваются из `.wld`; миграция runtime-cache не нужна.
 
+## Инвариант post-load preparation
+
+Layout `2` означает не только бинарный layout записей. Он гарантирует, что cached tile image и liquid scheduler уже прошли canonical post-load liquid sequence TerrariaServer 1.4.5.8: `QuickWater -> WaterCheck -> quickSettle drain -> WaterCheck`. `RuntimeWorldSnapshotCache.TryWriteAtomic` отказывается записывать неподготовленный `WorldTileStore`, поэтому ни один production caller не может выдать raw canonical state за layout-2 image. Prepared-marker является runtime-only; application code не может выставлять его вручную, а cache decoder восстанавливает его только после успешной проверки schema/layout, payload hashes, world format и dimensions.
+
+Пересборка после canonical save следует тому же правилу. `RuntimeWorldSnapshotRebuilder` валидирует новый `.wld`, повторяет post-load liquid preparation и только после этого публикует derived cache. Поэтому startup cache hit и post-save rebuild имеют одинаковую семантику.
+
 ## Проверка при тёплом запуске
 
 ```mermaid
@@ -58,4 +64,4 @@ Schema mismatch, layout mismatch, ошибка/несовпадение source f
 
 ## Проверка
 
-Регрессионные тесты доказывают приём совпадающего canonical source, отказ после изменения `.wld` той же длины с восстановленным старым timestamp, машиночитаемые schema/layout/world-format mismatches и обнаружение повреждения tile shard после успешной проверки fingerprint самого canonical source.
+Регрессионные тесты доказывают приём совпадающего canonical source, отказ после изменения `.wld` той же длины с восстановленным старым timestamp, машиночитаемые schema/layout/world-format mismatches, обнаружение повреждения tile shard после успешной проверки fingerprint canonical source, отказ layout-2 writer для неподготовленного мира и восстановление post-load-prepared invariant после успешного cache decode.

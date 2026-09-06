@@ -96,6 +96,35 @@ Ownership/invariants for this path:
 - a committed material merge is represented by its packet-20 tile square, not redundant packet-48 updates for the liquid cells cleared as part of that merge.
 - Re-enqueued liquid work must not allow one tile to consume multiple logical vanilla update steps in the same TerraRuntime server tick.
 
+## Canonical load and runtime-cache preparation path
+
+```mermaid
+flowchart LR
+    Canonical[canonical .wld]
+    Loader[WorldFileLoader]
+    Prepare[VanillaWorldLiquidLoadInitializer1458]
+    CacheWrite[RuntimeWorldSnapshotCache.TryWriteAtomic]
+    Cache[runtime-world layout 2]
+    CacheRead[RuntimeWorldSnapshotCache.TryLoad]
+    Bootstrap[bootstrap/cache admission]
+    Save[canonical save commit]
+    Rebuild[RuntimeWorldSnapshotRebuilder]
+
+    Canonical --> Loader --> Prepare --> CacheWrite --> Cache
+    Cache --> CacheRead --> Bootstrap
+    Prepare --> Bootstrap
+    Save --> Rebuild --> Prepare
+```
+
+Ownership/invariants for this path:
+
+- canonical `.wld` bytes remain the persistence/recovery source of truth; post-load preparation mutates only the unpublished runtime candidate;
+- the supported normal-world preparation order is `QuickWater -> WaterCheck -> quickSettle drain (maximum 100000 iterations) -> WaterCheck`;
+- runtime-cache layout `2` is a semantic contract as well as a binary layout: `TryWriteAtomic` rejects any `WorldTileStore` that does not carry the post-load-prepared marker;
+- only `TerraRuntime.World` can set that marker. Cache decode restores it after complete layout/hash/world validation; application code cannot forge it;
+- a post-save runtime-cache rebuild replays the same preparation before atomic cache publication, so cache hit, canonical fallback and save-triggered rebuild converge on the same runtime liquid state;
+- Remix/Zenith post-load remapping remains fail-closed before cache publication until its generation-only inputs are represented.
+
 ## Live cross-world player transfer path
 
 ```mermaid
@@ -149,6 +178,7 @@ This is presentation-only state. IN and OUT throughput histories share one plot 
 | Liquid simulation | `VanillaWorldLiquidSimulator1458.cs` | `WorldLiquidUpdateQueue.cs`, `WorldTileStore.cs`, snapshot persistence, replication |
 | Tile/material replication | `RuntimeTileManipulationReplicationRegistry.cs` | `TerrariaTileSquareCodec`, `TerrariaLiquidCodec` |
 | Snapshot liquid persistence | `RuntimeWorldSnapshotCache.*.cs` | `WorldLiquidUpdateQueue`, `WorldTile` |
+| Canonical load / runtime-cache admission | `WorldStartupPreparation.cs` | `VanillaWorldLiquidLoadInitializer1458.cs`, `RuntimeWorldSnapshotCache.*.cs`, `RuntimeWorldSnapshotRebuilder.cs` |
 | Vanilla world generation | `TerraRuntime.WorldGeneration` | generation plan/provider, `TerraRuntime.World`, world-file writer/loader |
 | Sandbox orchestration | `TerraRuntime.Application` sandbox owners | world generation/load path, player transfer/bootstrap, process worker contracts |
 | Protocol wire semantics | `TerraRuntime.Protocol.Multiplicity` | `TerraRuntime.Protocol`, official 1.4.5.8 server/client behavior |

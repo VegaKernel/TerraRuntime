@@ -39,6 +39,7 @@ public sealed class InitialWorldPopulationDirtyTrackingTests
         var stamp = new RuntimeWorldSourceStamp(source.LongLength, DateTime.UtcNow.Ticks);
         try
         {
+            original.Tiles.MarkPostLoadLiquidPrepared();
             Assert.True(RuntimeWorldSnapshotCache.TryWriteAtomic(cachePath, source, stamp, original).IsWritten);
             Assert.True(RuntimeWorldSnapshotCache.TryLoad(cachePath, stamp, limits, out WorldFileData? cached).IsLoaded);
             WorldFileData world = Assert.IsType<WorldFileData>(cached);

@@ -25,6 +25,7 @@ public sealed class WorldCheckpointExporterTests
             Assert.True(RuntimeWorldSnapshotCache.TryCaptureSourceStamp(
                 worldPath,
                 out RuntimeWorldSourceStamp initialStamp));
+            world.Tiles.MarkPostLoadLiquidPrepared();
             Assert.True(RuntimeWorldSnapshotCache.TryWriteAtomic(
                 cachePath,
                 canonical,
@@ -57,6 +58,7 @@ public sealed class WorldCheckpointExporterTests
                 out WorldFileData? cached);
             Assert.True(cacheLoad.IsLoaded);
             Assert.NotNull(cached);
+            Assert.True(cached!.Tiles.IsPostLoadLiquidPrepared);
 
             Assert.Empty(Directory.EnumerateFiles(directory, "*.tmp.lease"));
             Assert.Empty(Directory.EnumerateFiles(directory, "*.tmp.recovery"));
@@ -88,6 +90,7 @@ public sealed class WorldCheckpointExporterTests
             Assert.True(RuntimeWorldSnapshotCache.TryCaptureSourceStamp(
                 worldPath,
                 out RuntimeWorldSourceStamp initialStamp));
+            world.Tiles.MarkPostLoadLiquidPrepared();
             Assert.True(RuntimeWorldSnapshotCache.TryWriteAtomic(
                 cachePath,
                 canonical,

@@ -33,13 +33,19 @@ Verified runtime facts currently implemented/tested:
 - A changed liquid amount resets `kill` to zero and schedules the cell above; unchanged entries increment `kill`.
 - A stable `254` liquid amount is normalized to `255` when the active entry retires.
 - Water with `y > Main.UnderworldLayer` loses two liquid units per `Liquid.Update`; `Main.UnderworldLayer == Main.maxTilesY - 200`.
+- While `WorldGen.isGeneratingOrLoadingWorld`, `Liquid.quickSettle` implies quick-fall scheduling: lava/honey delay gates are bypassed, the active-entry retirement threshold is the fixed value `8`, and a source left above `250` after downward transfer is restored to `255`.
+- Loading-time `LiquidCheck(..., createMergeTilesDuringGen: false)` clears participating foreign liquids but does not create Obsidian/Honey/Crispy/Shimmer merge blocks.
+- `Liquid.QuickWater` scans bottom-up with default y bounds `3..maxTilesY-3` and x bounds `4..maxTilesX-5`; `tilesIgnoreWater(true)` temporarily makes tiles `138`, `484`, `546`, `664`, `711..716` non-solid, while tile `379` (Bubble) is explicitly solid.
+- `WorldFile.LoadWorld` invokes `Liquid.QuickWater(2)` where `2` is verbosity, not a y-coordinate or scan bound; the normal-world load therefore runs the complete QuickWater scan.
+- The normal 1.4.5.8 post-load liquid sequence is `QuickWater -> WorldGen.WaterCheck -> quickSettle UpdateLiquid until the active queue is empty or 100000 iterations are reached -> WorldGen.WaterCheck`. Reaching the 100000 guard does not fail loading; vanilla continues to the final WaterCheck.
+- `TileObjectData.UsesGlobalLiquidChecks` is initialized `true` and is not assigned `false` in the 1.4.5.8 source, so `CheckWaterDeath` / `CheckLavaDeath` resolve to the final global `Main.tileWaterDeath` / `Main.tileLavaDeath` tables for this version.
+- The final 1.4.5.8 `tileWaterDeath` set contains 10 tile types and the final `tileLavaDeath` set contains 267 tile types. Loading-time supported liquid-death removal is itemless because the world is still in the generating/loading state.
 
 Known liquid gaps that must not be guessed:
 
 - complex `WorldGen.ReplaceTile` dependency/shape/actuator/object cases beyond the currently supported safe single-cell active-merge subset;
-- quick-settle/panic/forced-settle lifecycle branches beyond the ordinary dedicated-server active-entry retirement path;
-- `quickFall` / `quickSettle` generation modes;
-- complete post-load liquid initialization behavior.
+- Remix/Zenith load-time liquid remapping until the generation-only lava-line/ocean-depth inputs consumed by `SettleWaterAt` are represented in the load context;
+- panic/forced-settle lifecycle beyond the verified loading quick-settle scheduler slice.
 
 ## Cross-world spawn echo
 

@@ -22,6 +22,12 @@ The 128-bit fingerprint uses the first 16 bytes of SHA-256. The cache is disposa
 
 Older images whose previously reserved header bytes contain no current schema/layout contract intentionally miss and are rebuilt from `.wld`; runtime-cache migration is unnecessary.
 
+## Post-load preparation invariant
+
+Layout `2` means more than a binary record layout. It guarantees that the cached tile image and liquid scheduler have already passed the TerrariaServer 1.4.5.8 canonical post-load liquid sequence `QuickWater -> WaterCheck -> quickSettle drain -> WaterCheck`. `RuntimeWorldSnapshotCache.TryWriteAtomic` refuses an unprepared `WorldTileStore`, so no production caller can mint a layout-2 image from raw canonical state. The prepared marker is runtime-only and cannot be forged by application code; cache decode restores it only after schema/layout, payload hashes, world format and dimensions have all validated.
+
+A canonical save rebuild follows the same rule. `RuntimeWorldSnapshotRebuilder` validates the new `.wld`, replays post-load liquid preparation, and only then publishes the derived cache. This keeps startup cache hits and post-save rebuilds semantically equivalent.
+
 ## Warm-start validation
 
 ```mermaid
@@ -58,4 +64,4 @@ Schema mismatch, layout mismatch, source fingerprint failure/mismatch, Terraria 
 
 ## Verification
 
-Regression tests prove that a matching canonical source is accepted, a same-length `.wld` mutation with its original timestamp restored is rejected, schema/layout/world-format mismatches remain machine-readable, and tile-shard corruption is detected after the canonical fingerprint itself has passed.
+Regression tests prove that a matching canonical source is accepted, a same-length `.wld` mutation with its original timestamp restored is rejected, schema/layout/world-format mismatches remain machine-readable, tile-shard corruption is detected after the canonical fingerprint itself has passed, an unprepared world is refused by the layout-2 writer, and a successfully decoded cache restores the post-load-prepared invariant.

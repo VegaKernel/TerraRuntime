@@ -59,6 +59,15 @@ public static class RuntimeWorldSnapshotRebuilder
                     ((int)load.Stage << 16) | (load.StageResultCode & 0xFFFF));
             }
 
+            VanillaWorldLiquidLoadPreparationDiagnostic1458 preparation =
+                VanillaWorldLiquidLoadInitializer1458.TryPrepare(world);
+            if (!preparation.IsPrepared)
+            {
+                return new RuntimeWorldSnapshotRebuildDiagnostic(
+                    RuntimeWorldSnapshotRebuildResult.LiquidPreparationFailed,
+                    (int)preparation.Result);
+            }
+
             RuntimeWorldSnapshotWriteDiagnostic write = RuntimeWorldSnapshotCache.TryWriteAtomic(
                 cachePath,
                 canonical,
@@ -107,7 +116,8 @@ public enum RuntimeWorldSnapshotRebuildResult : byte
     SourceChangedDuringRebuild = 2,
     InvalidCanonicalWorld = 3,
     CacheWriteFailed = 4,
-    IoError = 5
+    IoError = 5,
+    LiquidPreparationFailed = 6
 }
 
 public readonly record struct RuntimeWorldSnapshotRebuildDiagnostic(

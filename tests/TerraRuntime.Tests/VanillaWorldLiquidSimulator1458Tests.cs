@@ -199,6 +199,258 @@ public sealed class VanillaWorldLiquidSimulator1458Tests
         Assert.Equal(byte.MaxValue, tiles.Get(12, 11).LiquidAmount);
     }
 
+    [Theory]
+    [InlineData(WorldLiquidKind.Lava)]
+    [InlineData(WorldLiquidKind.Honey)]
+    public void Quick_settle_bypasses_lava_and_honey_flow_delay(WorldLiquidKind kind)
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(24, 24));
+        SetLiquid(tiles, 12, 10, byte.MaxValue, kind);
+        tiles.LiquidUpdates.Clear();
+        Assert.True(tiles.LiquidUpdates.TryEnqueue(12, 10));
+
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 1, discoveryBudgetPerTick: 1);
+        Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[
+            VanillaWorldLiquidSimulator1458.MaximumChangesPerProcessedCell];
+
+        Assert.Equal(2, simulator.TickQuickSettle(changes));
+        Assert.Equal((byte)0, tiles.Get(12, 10).LiquidAmount);
+        Assert.Equal(byte.MaxValue, tiles.Get(12, 11).LiquidAmount);
+    }
+
+    [Fact]
+    public void WaterCheck_clears_liquid_inside_ordinary_solid_but_keeps_ignored_boulder_and_bubble()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(24, 24));
+        SetActiveLiquidTile(tiles, 8, 10, VanillaTileIds.Stone, 100, WorldLiquidKind.Water);
+        SetActiveLiquidTile(tiles, 12, 10, new TileTypeId(138), 100, WorldLiquidKind.Water);
+        SetActiveLiquidTile(tiles, 16, 10, VanillaTileIds.Bubble, 100, WorldLiquidKind.Water);
+        for (int x = 0; x < 24; x++)
+            SetSolid(tiles, x, 11);
+        tiles.LiquidUpdates.Clear();
+
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 1, discoveryBudgetPerTick: 1);
+        VanillaWaterCheckDiagnostic1458 result = simulator.WaterCheckLoading();
+
+        Assert.True(result.IsApplied);
+        Assert.Equal((byte)0, tiles.Get(8, 10).LiquidAmount);
+        Assert.Equal((byte)100, tiles.Get(12, 10).LiquidAmount);
+        Assert.Equal((byte)100, tiles.Get(16, 10).LiquidAmount);
+    }
+
+    [Fact]
+    public void WaterCheck_normalizes_below_amount_above_250_to_full()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(24, 24));
+        SetWater(tiles, 12, 10, 100);
+        SetWater(tiles, 12, 11, 251);
+        SetSolid(tiles, 12, 12);
+        SetSolid(tiles, 11, 10);
+        SetSolid(tiles, 13, 10);
+        SetSolid(tiles, 11, 11);
+        SetSolid(tiles, 13, 11);
+        tiles.LiquidUpdates.Clear();
+
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 1, discoveryBudgetPerTick: 1);
+        VanillaWaterCheckDiagnostic1458 result = simulator.WaterCheckLoading();
+
+        Assert.True(result.IsApplied);
+        Assert.Equal(byte.MaxValue, tiles.Get(12, 11).LiquidAmount);
+    }
+
+    [Fact]
+    public void WaterCheck_rebuilds_active_queue_when_horizontal_amount_differs()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(24, 24));
+        SetWater(tiles, 12, 10, 100);
+        SetSolid(tiles, 12, 11);
+        tiles.LiquidUpdates.Clear();
+
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 1, discoveryBudgetPerTick: 1);
+        VanillaWaterCheckDiagnostic1458 result = simulator.WaterCheckLoading();
+
+        Assert.True(result.IsApplied);
+        Assert.True(tiles.LiquidUpdates.IsQueued(12, 10));
+        Assert.False(tiles.LiquidUpdates.IsBuffered(12, 10));
+    }
+
+    [Fact]
+    public void WaterCheck_queues_lava_when_foreign_liquid_is_above_even_if_horizontal_amounts_match()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(24, 24));
+        SetLiquid(tiles, 12, 10, 100, WorldLiquidKind.Lava);
+        SetLiquid(tiles, 11, 10, 100, WorldLiquidKind.Lava);
+        SetLiquid(tiles, 13, 10, 100, WorldLiquidKind.Lava);
+        SetWater(tiles, 12, 9, 100);
+        SetSolid(tiles, 12, 11);
+        tiles.LiquidUpdates.Clear();
+
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 1, discoveryBudgetPerTick: 1);
+        VanillaWaterCheckDiagnostic1458 result = simulator.WaterCheckLoading();
+
+        Assert.True(result.IsApplied);
+        Assert.True(tiles.LiquidUpdates.IsQueued(12, 10));
+    }
+
+    [Fact]
+    public void WaterCheck_kills_supported_single_cell_water_death_tile_without_dropping_liquid()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(24, 24));
+        SetActiveLiquidTile(tiles, 12, 10, VanillaTileIds.Cobweb, 100, WorldLiquidKind.Water);
+        SetSolid(tiles, 12, 11);
+        tiles.LiquidUpdates.Clear();
+
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 1, discoveryBudgetPerTick: 1);
+        VanillaWaterCheckDiagnostic1458 result = simulator.WaterCheckLoading();
+
+        Assert.True(result.IsApplied);
+        WorldTile tile = tiles.Get(12, 10);
+        Assert.False(tile.IsActive);
+        Assert.Equal((byte)100, tile.LiquidAmount);
+        Assert.Equal(WorldLiquidKind.Water, tile.LiquidKind);
+    }
+
+    [Fact]
+    public void WaterCheck_fails_closed_before_mutation_for_unsupported_multi_tile_liquid_death()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(24, 24));
+        SetActiveLiquidTile(tiles, 12, 10, new TileTypeId(215), 100, WorldLiquidKind.Water);
+        tiles.LiquidUpdates.Clear();
+
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 1, discoveryBudgetPerTick: 1);
+        VanillaWaterCheckDiagnostic1458 result = simulator.WaterCheckLoading();
+
+        Assert.Equal(VanillaWaterCheckResult1458.UnsupportedLiquidDeathTile, result.Result);
+        Assert.Equal(12, result.X);
+        Assert.Equal(10, result.Y);
+        Assert.Equal(new TileTypeId(215), result.TileType);
+        Assert.True(tiles.Get(12, 10).IsActive);
+        Assert.Equal((byte)100, tiles.Get(12, 10).LiquidAmount);
+        Assert.False(tiles.LiquidUpdates.HasPendingWork);
+    }
+
+    [Fact]
+    public void QuickWater_moves_liquid_to_the_lowest_open_cell_above_a_floor()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(24, 24));
+        SetWater(tiles, 12, 5, 200);
+        for (int x = 0; x < 24; x++)
+            SetSolid(tiles, x, 15);
+        tiles.LiquidUpdates.Clear();
+
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 1, discoveryBudgetPerTick: 1);
+        simulator.QuickWater();
+
+        Assert.Equal((byte)0, tiles.Get(12, 5).LiquidAmount);
+        Assert.Equal(200, SumLiquid(tiles, 0, 23, 14));
+    }
+
+    [Fact]
+    public void QuickWater_keeps_bubble_379_as_a_barrier()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(24, 24));
+        SetWater(tiles, 12, 5, 200);
+        for (int y = 5; y <= 15; y++)
+        {
+            SetSolid(tiles, 11, y);
+            SetSolid(tiles, 13, y);
+        }
+        SetActiveTile(tiles, 12, 10, VanillaTileIds.Bubble);
+        SetSolid(tiles, 12, 15);
+        tiles.LiquidUpdates.Clear();
+
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 1, discoveryBudgetPerTick: 1);
+        simulator.QuickWater();
+
+        Assert.Equal((byte)200, tiles.Get(12, 9).LiquidAmount);
+        Assert.Equal((byte)0, tiles.Get(12, 11).LiquidAmount);
+    }
+
+    [Fact]
+    public void QuickWater_temporarily_ignores_source_pinned_boulder_solidity()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(24, 24));
+        SetWater(tiles, 12, 5, 200);
+        for (int y = 5; y <= 15; y++)
+        {
+            SetSolid(tiles, 11, y);
+            SetSolid(tiles, 13, y);
+        }
+        SetActiveTile(tiles, 12, 10, new TileTypeId(138));
+        SetSolid(tiles, 12, 15);
+        tiles.LiquidUpdates.Clear();
+
+        Assert.True(VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringSettle(new TileTypeId(138)));
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 1, discoveryBudgetPerTick: 1);
+        simulator.QuickWater();
+
+        Assert.Equal((byte)0, tiles.Get(12, 9).LiquidAmount);
+        Assert.Equal((byte)200, tiles.Get(12, 14).LiquidAmount);
+    }
+
+    [Fact]
+    public void Quick_settle_loading_collision_clears_liquids_without_creating_merge_tile()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(24, 24));
+        SetLiquid(tiles, 12, 10, 100, WorldLiquidKind.Lava);
+        SetWater(tiles, 11, 10, 100);
+        tiles.LiquidUpdates.Clear();
+        Assert.True(tiles.LiquidUpdates.TryEnqueue(12, 10));
+
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 1, discoveryBudgetPerTick: 1);
+        Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[
+            VanillaWorldLiquidSimulator1458.MaximumChangesPerProcessedCell];
+
+        int changed = simulator.TickQuickSettle(changes);
+
+        Assert.Equal(2, changed);
+        Assert.Equal((byte)0, tiles.Get(12, 10).LiquidAmount);
+        Assert.Equal((byte)0, tiles.Get(11, 10).LiquidAmount);
+        Assert.False(tiles.Get(12, 10).IsActive);
+        Assert.All(changes[..changed].ToArray(), change => Assert.False(change.RequiresTileSquareReplication));
+    }
+
+    [Fact]
+    public void Quick_settle_retires_stable_liquid_after_eight_completed_updates()
+    {
+        var tiles = CreateBlockedStableWater(amount: 200);
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 64, discoveryBudgetPerTick: 1);
+        Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[
+            64 * VanillaWorldLiquidSimulator1458.MaximumChangesPerProcessedCell];
+
+        for (int i = 0; i < VanillaWorldLiquidSimulator1458.GeneratingOrLoadingKillUpdates1458 - 1; i++)
+        {
+            Assert.Equal(0, simulator.TickQuickSettle(changes));
+            Assert.Equal(1, tiles.LiquidUpdates.ActiveCount);
+        }
+
+        Assert.Equal(0, simulator.TickQuickSettle(changes));
+        Assert.Equal(0, tiles.LiquidUpdates.ActiveCount);
+    }
+
+    [Fact]
+    public void Quick_settle_refills_nearly_full_source_after_partial_downward_transfer()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(24, 24));
+        SetWater(tiles, 12, 10, byte.MaxValue);
+        SetWater(tiles, 12, 11, 252);
+        SetSolid(tiles, 11, 10);
+        SetSolid(tiles, 13, 10);
+        tiles.LiquidUpdates.Clear();
+        Assert.True(tiles.LiquidUpdates.TryEnqueue(12, 10));
+
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 1, discoveryBudgetPerTick: 1);
+        Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[
+            VanillaWorldLiquidSimulator1458.MaximumChangesPerProcessedCell];
+
+        int changed = simulator.TickQuickSettle(changes);
+
+        Assert.Equal(1, changed);
+        Assert.Equal(byte.MaxValue, tiles.Get(12, 10).LiquidAmount);
+        Assert.Equal(byte.MaxValue, tiles.Get(12, 11).LiquidAmount);
+        Assert.Equal((12, 11), (changes[0].X, changes[0].Y));
+    }
+
     [Fact]
     public void Stable_dedicated_server_liquid_retires_after_ten_completed_updates_with_no_players()
     {
@@ -654,6 +906,34 @@ public sealed class VanillaWorldLiquidSimulator1458Tests
     {
         var tile = new WorldTile
         {
+            LiquidAmount = amount,
+            LiquidKind = kind
+        };
+        tiles.Set(x, y, in tile);
+    }
+
+    private static void SetActiveTile(WorldTileStore tiles, int x, int y, TileTypeId type)
+    {
+        var tile = new WorldTile
+        {
+            Type = checked((ushort)type.Value),
+            Flags = WorldTileFlags.Active
+        };
+        tiles.Set(x, y, in tile);
+    }
+
+    private static void SetActiveLiquidTile(
+        WorldTileStore tiles,
+        int x,
+        int y,
+        TileTypeId type,
+        byte amount,
+        WorldLiquidKind kind)
+    {
+        var tile = new WorldTile
+        {
+            Type = checked((ushort)type.Value),
+            Flags = WorldTileFlags.Active,
             LiquidAmount = amount,
             LiquidKind = kind
         };

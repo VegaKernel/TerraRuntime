@@ -37,6 +37,7 @@ public sealed class RuntimeWorldSnapshotRebuilderTests
                 out WorldFileData? cachedWorld);
             Assert.True(load.IsLoaded);
             Assert.NotNull(cachedWorld);
+            Assert.True(cachedWorld!.Tiles.IsPostLoadLiquidPrepared);
 
             Assert.True(WorldFileLoader.TryLoad(sourceFile, limits, out WorldFileData? sourceWorld).IsLoaded);
             Assert.Equal(sourceWorld!.Header.WorldId, cachedWorld!.Header.WorldId);

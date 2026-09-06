@@ -151,6 +151,10 @@ internal static class WorldStartupPreparation
         TimeSpan worldReadyDuration;
         if (cacheDiagnostic.IsLoaded && world is not null)
         {
+            // RuntimeWorldSnapshotCache restores the runtime-only prepared marker only after a complete
+            // layout-v2 payload/hash/dimension validation. Application code must not forge that invariant.
+            if (!world.Tiles.IsPostLoadLiquidPrepared)
+                return WorldStartupPreparationResult.Failed(25);
             hostLog.SetWorldId(world.Header.WorldId.ToString());
             runtimeCacheHit = true;
             worldReadyDuration = Stopwatch.GetElapsedTime(startupStart);
@@ -238,6 +242,20 @@ internal static class WorldStartupPreparation
                     "World",
                     $"Canonical world recovered from validated checkpoint backup: {RuntimeWorldCheckpointRecovery.GetBackupPath(options.WorldPath)}.");
                 return WorldStartupPreparationResult.RestartAfterRecovery();
+            }
+
+            VanillaWorldLiquidLoadPreparationDiagnostic1458 liquidPreparation =
+                VanillaWorldLiquidLoadInitializer1458.TryPrepare(world);
+            if (!liquidPreparation.IsPrepared)
+            {
+                hostLog.Log(
+                    OperationsLogLevel.Error,
+                    StructuredLogEventIds.WorldLoadFailed,
+                    StructuredLogCategory.World,
+                    "World",
+                    $"Post-load liquid preparation failed: result={liquidPreparation.Result}, x={liquidPreparation.X}, y={liquidPreparation.Y}, tile={liquidPreparation.TileType.Value}.",
+                    useStandardError: true);
+                return WorldStartupPreparationResult.Failed(26);
             }
 
             hostLog.SetWorldId(world.Header.WorldId.ToString());

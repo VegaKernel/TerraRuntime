@@ -223,6 +223,59 @@ public sealed class RuntimeWorldCheckpointCoordinatorTests
         }
     }
 
+    [Fact]
+    public async Task Canonical_commit_rebuilds_only_a_post_load_prepared_runtime_cache()
+    {
+        byte[] sourceFile = LoaderFixture<byte[]>("CreateCompleteCurrentWorld");
+        WorldFileLoadLimits limits = LoaderFixture<WorldFileLoadLimits>("CreateLimits");
+        Assert.True(WorldFileLoader.TryLoad(sourceFile, limits, out WorldFileData? sourceWorld).IsLoaded);
+        WorldFileData source = Assert.IsType<WorldFileData>(sourceWorld);
+        Assert.True(WorldFilePreservedSections.TryCapture(
+            sourceFile,
+            source.Envelope,
+            out WorldFilePreservedSections? preserved));
+        Assert.NotNull(preserved);
+
+        string directory = Path.Combine(Path.GetTempPath(), $"terraruntime-save-cache-{Guid.NewGuid():N}");
+        string destinationPath = Path.Combine(directory, "world.wld");
+        string cachePath = RuntimeWorldSnapshotCache.GetCachePath(destinationPath);
+        Directory.CreateDirectory(directory);
+        var service = new RuntimeWorldCheckpointCoordinator(
+            destinationPath,
+            source.Envelope,
+            source.Header,
+            preserved!,
+            source.Tiles,
+            new RuntimeChestStore(source.Chests),
+            synchronizationSectionsPerTick: 1,
+            checkpointValidationLimits: limits);
+
+        try
+        {
+            service.CaptureFinalSaveAfterOwnerStopped();
+            await service.CompleteAsync(TestContext.Current.CancellationToken);
+
+            RuntimeWorldSaveStatus status = service.CaptureStatus();
+            Assert.Equal(RuntimeWorldSnapshotRebuildResult.Rebuilt, status.LastRuntimeCacheRebuildResult);
+            Assert.Equal(0, status.RuntimeCacheRebuildFailures);
+            Assert.True(File.Exists(cachePath));
+
+            RuntimeWorldSnapshotLoadDiagnostic cacheLoad = RuntimeWorldSnapshotCache.TryLoadValidatedSource(
+                cachePath,
+                destinationPath,
+                limits,
+                out WorldFileData? cachedWorld);
+            Assert.True(cacheLoad.IsLoaded);
+            Assert.NotNull(cachedWorld);
+            Assert.True(cachedWorld!.Tiles.IsPostLoadLiquidPrepared);
+        }
+        finally
+        {
+            await service.DisposeAsync();
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static T LoaderFixture<T>(string methodName)
     {
         MethodInfo? method = typeof(WorldFileLoaderTests).GetMethod(

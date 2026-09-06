@@ -22,6 +22,30 @@ public sealed class VanillaLiquidInteractionFacts1458Tests
     }
 
     [Fact]
+    public void Final_water_and_lava_death_tables_have_source_pinned_counts()
+    {
+        int water = 0;
+        int lava = 0;
+        for (int raw = 0; raw < VanillaTileIds.Count; raw++)
+        {
+            var type = new TileTypeId(raw);
+            if (VanillaLiquidInteractionFacts1458.IsWaterDeath(type))
+                water++;
+            if (VanillaLiquidInteractionFacts1458.IsLavaDeath(type))
+                lava++;
+        }
+
+        Assert.Equal(VanillaLiquidInteractionFacts1458.WaterDeathTileTypeCount, water);
+        Assert.Equal(VanillaLiquidInteractionFacts1458.LavaDeathTileTypeCount, lava);
+        Assert.True(VanillaLiquidInteractionFacts1458.IsWaterDeath(new TileTypeId(4)));
+        Assert.True(VanillaLiquidInteractionFacts1458.IsWaterDeath(VanillaTileIds.Cobweb));
+        Assert.False(VanillaLiquidInteractionFacts1458.IsWaterDeath(VanillaTileIds.Stone));
+        Assert.True(VanillaLiquidInteractionFacts1458.IsLavaDeath(new TileTypeId(710)));
+        Assert.False(VanillaLiquidInteractionFacts1458.IsLavaDeath(new TileTypeId(411)));
+        Assert.False(VanillaLiquidInteractionFacts1458.IsLavaDeath(new TileTypeId(638)));
+    }
+
+    [Fact]
     public void Container_set_is_exactly_the_three_1458_identities()
     {
         Assert.True(VanillaLiquidInteractionFacts1458.IsContainer(VanillaTileIds.Containers));

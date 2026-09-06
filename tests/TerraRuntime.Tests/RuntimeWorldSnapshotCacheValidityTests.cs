@@ -7,6 +7,38 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimeWorldSnapshotCacheValidityTests
 {
     [Fact]
+    public void Runtime_cache_layout_revision_tracks_post_load_liquid_preparation()
+    {
+        Assert.Equal(2, RuntimeWorldSnapshotCache.CurrentLayoutVersion);
+    }
+
+    [Fact]
+    public void Layout_v2_writer_rejects_raw_canonical_world_without_post_load_preparation()
+    {
+        byte[] sourceFile = LoaderFixture<byte[]>("CreateCompleteCurrentWorld");
+        WorldFileLoadLimits limits = LoaderFixture<WorldFileLoadLimits>("CreateLimits");
+        Assert.True(WorldFileLoader.TryLoad(sourceFile, limits, out WorldFileData? loaded).IsLoaded);
+        WorldFileData world = Assert.IsType<WorldFileData>(loaded);
+        string cachePath = Path.Combine(Path.GetTempPath(), $"TerraRuntime-unprepared-{Guid.NewGuid():N}.runtime-world");
+        try
+        {
+            RuntimeWorldSnapshotWriteDiagnostic write = RuntimeWorldSnapshotCache.TryWriteAtomic(
+                cachePath,
+                sourceFile,
+                new RuntimeWorldSourceStamp(sourceFile.LongLength, DateTime.UtcNow.Ticks),
+                world);
+
+            Assert.Equal(RuntimeWorldSnapshotWriteResult.PostLoadLiquidNotPrepared, write.Result);
+            Assert.False(File.Exists(cachePath));
+        }
+        finally
+        {
+            File.Delete(cachePath);
+            File.Delete(cachePath + ".tmp");
+        }
+    }
+
+    [Fact]
     public async Task Validated_load_accepts_matching_canonical_fingerprint()
     {
         CacheFixture fixture = await CacheFixture.CreateAsync(TestContext.Current.CancellationToken);
@@ -20,7 +52,8 @@ public sealed class RuntimeWorldSnapshotCacheValidityTests
 
             Assert.True(load.IsLoaded);
             Assert.NotNull(cachedWorld);
-            Assert.Equal(fixture.World.Header.WorldId, cachedWorld!.Header.WorldId);
+            Assert.True(cachedWorld!.Tiles.IsPostLoadLiquidPrepared);
+            Assert.Equal(fixture.World.Header.WorldId, cachedWorld.Header.WorldId);
         }
         finally
         {
@@ -205,6 +238,7 @@ public sealed class RuntimeWorldSnapshotCacheValidityTests
             Assert.True(RuntimeWorldSnapshotCache.TryCaptureSourceStamp(
                 worldPath,
                 out RuntimeWorldSourceStamp sourceStamp));
+            world.Tiles.MarkPostLoadLiquidPrepared();
             RuntimeWorldSnapshotWriteDiagnostic write = RuntimeWorldSnapshotCache.TryWriteAtomic(
                 cachePath,
                 sourceFile,

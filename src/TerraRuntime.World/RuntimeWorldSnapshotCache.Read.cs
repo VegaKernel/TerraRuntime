@@ -209,6 +209,9 @@ public static partial class RuntimeWorldSnapshotCache
                 return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.DimensionsMismatch);
             }
 
+            // A successfully decoded layout-v2 snapshot can only have been written from a post-load prepared world.
+            // Restore that runtime-only invariant after every payload/hash/dimension check has succeeded.
+            world.Tiles.MarkPostLoadLiquidPrepared();
             return new RuntimeWorldSnapshotLoadDiagnostic(RuntimeWorldSnapshotLoadResult.Loaded);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or OverflowException)

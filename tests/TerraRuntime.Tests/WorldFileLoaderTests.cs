@@ -53,6 +53,7 @@ public sealed class WorldFileLoaderTests
         var stamp = new RuntimeWorldSourceStamp(file.LongLength, DateTime.UtcNow.Ticks);
         try
         {
+            expected.Tiles.MarkPostLoadLiquidPrepared();
             RuntimeWorldSnapshotWriteDiagnostic writeDiagnostic = RuntimeWorldSnapshotCache.TryWriteAtomic(
                 cachePath,
                 file,
@@ -99,6 +100,7 @@ public sealed class WorldFileLoaderTests
         var stamp = new RuntimeWorldSourceStamp(file.LongLength, DateTime.UtcNow.Ticks);
         try
         {
+            expected.Tiles.MarkPostLoadLiquidPrepared();
             Assert.True(RuntimeWorldSnapshotCache.TryWriteAtomic(cachePath, file, stamp, expected).IsWritten);
 
             var newerStamp = new RuntimeWorldSourceStamp(stamp.Length, stamp.LastWriteTimeUtcTicks + 1);

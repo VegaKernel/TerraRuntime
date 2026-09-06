@@ -22,6 +22,7 @@ public sealed class RuntimeWorldSnapshotLiquidTests
         var stamp = new RuntimeWorldSourceStamp(file.LongLength, DateTime.UtcNow.Ticks);
         try
         {
+            expected.Tiles.MarkPostLoadLiquidPrepared();
             Assert.True(RuntimeWorldSnapshotCache.TryWriteAtomic(cachePath, file, stamp, expected).IsWritten);
 
             RuntimeWorldSnapshotLoadDiagnostic diagnostic = RuntimeWorldSnapshotCache.TryLoad(
@@ -84,6 +85,7 @@ public sealed class RuntimeWorldSnapshotLiquidTests
         var stamp = new RuntimeWorldSourceStamp(file.LongLength, DateTime.UtcNow.Ticks);
         try
         {
+            world.Tiles.MarkPostLoadLiquidPrepared();
             Assert.True(RuntimeWorldSnapshotCache.TryWriteAtomic(cachePath, file, stamp, world).IsWritten);
             byte[] bytes = File.ReadAllBytes(cachePath);
             int liquidHeaderOffset = bytes.AsSpan().IndexOf("LIQSTATE"u8);
@@ -119,6 +121,7 @@ public sealed class RuntimeWorldSnapshotLiquidTests
         var stamp = new RuntimeWorldSourceStamp(file.LongLength, DateTime.UtcNow.Ticks);
         try
         {
+            world.Tiles.MarkPostLoadLiquidPrepared();
             Assert.True(RuntimeWorldSnapshotCache.TryWriteAtomic(cachePath, file, stamp, world).IsWritten);
             byte[] bytes = File.ReadAllBytes(cachePath);
             int preparedHeaderOffset = bytes.AsSpan().IndexOf("PREPARED"u8);

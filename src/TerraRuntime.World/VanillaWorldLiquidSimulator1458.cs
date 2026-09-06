@@ -13,13 +13,20 @@ public sealed class VanillaWorldLiquidSimulator1458
 {
     public const int DefaultWorkBudgetPerTick = 64;
     public const int DefaultDiscoveryBudgetPerTick = 4096;
-    public const int MaximumPendingCells = 16384;
+    // TerrariaServer 1.4.5.8 defaults: maxLiquid=25000 and maxLiquidBuffer=50000.
+    // AddWater admits active entries while numLiquid < curMaxLiquid - 1 and LiquidBuffer admits
+    // entries while numLiquidBuffer < maxLiquidBuffer - 2, yielding a source-backed total bound of 74,997.
+    public const int LoadingActiveLiquidCapacity1458 = 24999;
+    public const int LoadingBufferedLiquidCapacity1458 = 49998;
+    public const int MaximumPendingCells = LoadingActiveLiquidCapacity1458 + LoadingBufferedLiquidCapacity1458;
+    public const int LoadingWorkBudgetPerUpdate1458 = 2500;
     public const int MaximumChangesPerProcessedCell = 9;
     internal const int LavaFlowDelayUpdates1458 = 5;
     internal const int HoneyFlowDelayUpdates1458 = 10;
     public const int DedicatedServerCountedPlayerSlots1458 = 15;
     internal const int DedicatedServerBaseKillUpdates1458 = 10;
     internal const int DedicatedServerKillPlayerDivisor1458 = 3;
+    internal const int GeneratingOrLoadingKillUpdates1458 = 8;
     internal const int UnderworldLayerOffset1458 = 200;
     internal const byte UnderworldWaterEvaporationPerUpdate1458 = 2;
 
@@ -30,6 +37,7 @@ public sealed class VanillaWorldLiquidSimulator1458
     private readonly int discoveryBudget;
     private int discoveryCursor;
     private bool discoveryComplete;
+    private bool useInitialPopulationWrites;
 
     public VanillaWorldLiquidSimulator1458(
         WorldTileStore tiles,
@@ -44,6 +52,11 @@ public sealed class VanillaWorldLiquidSimulator1458
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(discoveryBudgetPerTick);
         workBudget = workBudgetPerTick;
         discoveryBudget = discoveryBudgetPerTick;
+        if (tiles.IsPostLoadLiquidPrepared)
+        {
+            discoveryCursor = tiles.Count;
+            discoveryComplete = true;
+        }
     }
 
     public int WorkBudgetPerTick => workBudget;
@@ -67,6 +80,429 @@ public sealed class VanillaWorldLiquidSimulator1458
         int stableKillUpdates = DedicatedServerBaseKillUpdates1458 +
             activeServerPlayersInLiquidWindow / DedicatedServerKillPlayerDivisor1458;
 
+        return TickCore(stableKillUpdates, VanillaLiquidUpdateMode1458.Ordinary, changes);
+    }
+
+    /// <summary>
+    /// Runs one source-backed <c>Liquid.quickSettle</c>/<c>quickFall</c> scheduler slice used while
+    /// TerrariaServer 1.4.5.8 is generating or loading a world. In that state <c>UpdateLiquid</c>
+    /// uses a fixed kill threshold of 8, forces every active entry's delay to 10 and therefore bypasses
+    /// ordinary lava/honey flow delays. The caller remains responsible for the higher-level QuickWater /
+    /// WaterCheck orchestration and for draining until the load/generation settle has completed.
+    /// </summary>
+    public int TickQuickSettle(Span<WorldLiquidSimulationChange> changes)
+    {
+        bool previous = useInitialPopulationWrites;
+        useInitialPopulationWrites = true;
+        try
+        {
+            return TickCore(GeneratingOrLoadingKillUpdates1458, VanillaLiquidUpdateMode1458.QuickSettle, changes);
+        }
+        finally
+        {
+            useInitialPopulationWrites = previous;
+        }
+    }
+
+    /// <summary>
+    /// Replays TerrariaServer 1.4.5.8 <c>Liquid.QuickWater</c> for an already decoded world. This is the
+    /// generating/loading fast-settle pre-pass, not the live bounded scheduler. Its source-backed default scan
+    /// bounds are y=3..height-3 and x=4..width-5, processed bottom-up. Boulder-family tiles and tile 546 are
+    /// temporarily non-solid while Bubble (379) remains an explicit barrier, matching <c>tilesIgnoreWater</c>.
+    /// </summary>
+    public void QuickWater(int minY = -1, int maxY = -1)
+    {
+        int width = tiles.Dimensions.WidthTiles;
+        int height = tiles.Dimensions.HeightTiles;
+        if (width < 9 || height < 7)
+            return;
+
+        minY = minY < 0 ? 3 : minY;
+        maxY = maxY < 0 ? height - 3 : maxY;
+        if (minY < 0 || maxY >= height || minY > maxY)
+            throw new ArgumentOutOfRangeException(nameof(minY));
+
+        for (int y = maxY; y >= minY; y--)
+        {
+            for (int x = 4; x < width - 4; x++)
+            {
+                if (tiles.Get(x, y).LiquidAmount != 0)
+                    SettleWaterAt1458(x, y);
+            }
+        }
+    }
+
+    private void SettleWaterAt1458(int originX, int originY)
+    {
+        WorldTile origin = tiles.Get(originX, originY);
+        if (origin.LiquidAmount == 0 || IsQuickWaterBubbleBarrier1458(in origin))
+            return;
+
+        int x = originX;
+        int y = originY;
+        bool originWasLava = origin.LiquidKind == WorldLiquidKind.Lava;
+        bool originWasHoney = origin.LiquidKind == WorldLiquidKind.Honey;
+        bool originWasShimmer = origin.LiquidKind == WorldLiquidKind.Shimmer;
+        int remaining = origin.LiquidAmount;
+        WorldLiquidKind kind = origin.LiquidKind;
+
+        origin.LiquidAmount = 0;
+        origin.LiquidKind = WorldLiquidKind.Water;
+        tiles.SetInitialPopulationTile(originX, originY, in origin);
+
+        bool firstRow = true;
+        while (true)
+        {
+            WorldTile below = tiles.Get(x, y + 1);
+            while (y < tiles.Dimensions.HeightTiles - 5 &&
+                   below.LiquidAmount == 0 &&
+                   IsQuickWaterPassable1458(in below))
+            {
+                y++;
+                firstRow = false;
+                below = tiles.Get(x, y + 1);
+            }
+
+            // Loading (not generating) keeps the original liquid kind; the worldgen water-line conversion is inactive.
+            int direction = -1;
+            int offset = 0;
+            int lastEmptyDirection = -1;
+            int lastEmptyOffset = 0;
+            bool rightBlocked = false;
+            bool leftBlocked = false;
+            bool canFallFromRow = false;
+
+            while (true)
+            {
+                int currentX = x + offset * direction;
+                WorldTile current = tiles.Get(currentX, y);
+                if (current.LiquidAmount == 0)
+                {
+                    lastEmptyDirection = direction;
+                    lastEmptyOffset = offset;
+                }
+
+                if (direction == -1 && currentX < 5)
+                    leftBlocked = true;
+                else if (direction == 1 && currentX > tiles.Dimensions.WidthTiles - 5)
+                    rightBlocked = true;
+
+                WorldTile down = tiles.Get(currentX, y + 1);
+                if (down.LiquidAmount != 0 &&
+                    down.LiquidAmount != byte.MaxValue &&
+                    down.LiquidKind == kind)
+                {
+                    int amount = Math.Min(byte.MaxValue - down.LiquidAmount, remaining);
+                    down.LiquidAmount = checked((byte)(down.LiquidAmount + amount));
+                    tiles.SetInitialPopulationTile(currentX, y + 1, in down);
+                    remaining -= amount;
+                    if (remaining == 0)
+                        break;
+                }
+
+                if (y < tiles.Dimensions.HeightTiles - 5 &&
+                    down.LiquidAmount == 0 &&
+                    IsQuickWaterPassable1458(in down))
+                {
+                    canFallFromRow = true;
+                    break;
+                }
+
+                int nextX = x + (offset + 1) * direction;
+                WorldTile next = tiles.Get(nextX, y);
+                if ((next.LiquidAmount != 0 && (!firstRow || direction != 1)) ||
+                    IsQuickWaterBarrier1458(in next))
+                {
+                    if (direction == 1)
+                        rightBlocked = true;
+                    else
+                        leftBlocked = true;
+                }
+
+                if (leftBlocked && rightBlocked)
+                    break;
+
+                if (rightBlocked)
+                {
+                    direction = -1;
+                    offset++;
+                }
+                else if (leftBlocked)
+                {
+                    if (direction == 1)
+                        offset++;
+                    direction = 1;
+                }
+                else
+                {
+                    if (direction == 1)
+                        offset++;
+                    direction = -direction;
+                }
+            }
+
+            x += lastEmptyOffset * lastEmptyDirection;
+            if (remaining == 0 || !canFallFromRow)
+                break;
+            y++;
+        }
+
+        WorldTile destination = tiles.Get(x, y);
+        destination.LiquidAmount = checked((byte)remaining);
+        destination.LiquidKind = kind;
+        tiles.SetInitialPopulationTile(x, y, in destination);
+
+        if (destination.LiquidAmount == 0)
+            return;
+
+        AttemptQuickWaterLoadingReaction1458(x, y, WorldLiquidKind.Lava, originWasLava);
+        AttemptQuickWaterLoadingReaction1458(x, y, WorldLiquidKind.Honey, originWasHoney);
+        AttemptQuickWaterLoadingReaction1458(x, y, WorldLiquidKind.Shimmer, originWasShimmer);
+    }
+
+    private void AttemptQuickWaterLoadingReaction1458(
+        int x,
+        int y,
+        WorldLiquidKind testedKind,
+        bool originHadTestedKind)
+    {
+        Span<(int X, int Y)> neighbours = stackalloc (int X, int Y)[4]
+        {
+            (x - 1, y),
+            (x + 1, y),
+            (x, y - 1),
+            (x, y + 1)
+        };
+
+        for (int i = 0; i < neighbours.Length; i++)
+        {
+            (int neighbourX, int neighbourY) = neighbours[i];
+            WorldTile neighbour = tiles.Get(neighbourX, neighbourY);
+            if (neighbour.LiquidAmount == 0 ||
+                (neighbour.LiquidKind == testedKind) == originHadTestedKind)
+            {
+                continue;
+            }
+
+            int targetX = originHadTestedKind ? x : neighbourX;
+            int targetY = originHadTestedKind ? y : neighbourY;
+            WorldTile source = tiles.Get(targetX, targetY);
+            if (source.LiquidAmount == 0 || source.LiquidKind != testedKind)
+                return;
+
+            WorldTile left = tiles.Get(targetX - 1, targetY);
+            WorldTile right = tiles.Get(targetX + 1, targetY);
+            WorldTile above = tiles.Get(targetX, targetY - 1);
+            Span<WorldLiquidSimulationChange> scratch = stackalloc WorldLiquidSimulationChange[MaximumChangesPerProcessedCell];
+            int ignoredChangeCount = 0;
+            ApplyGeneratingOrLoadingForeignLiquidReaction1458(
+                targetX, targetY, testedKind, in source, in left, in right, in above, scratch, ref ignoredChangeCount);
+            return;
+        }
+    }
+
+    private static bool IsQuickWaterPassable1458(in WorldTile tile) =>
+        !IsQuickWaterBarrier1458(in tile);
+
+    private static bool IsQuickWaterBubbleBarrier1458(in WorldTile tile) =>
+        tile.IsActive && !tile.IsActuated && tile.TileType == VanillaTileIds.Bubble;
+
+    private static bool IsQuickWaterBarrier1458(in WorldTile tile)
+    {
+        if (!tile.IsActive || tile.IsActuated)
+            return false;
+        if (tile.TileType == VanillaTileIds.Bubble)
+            return true;
+        if (VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringSettle(tile.TileType))
+            return false;
+        return VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+               !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
+    }
+
+    /// <summary>
+    /// Replays the source-backed <c>WorldGen.WaterCheck</c> pass used by TerrariaServer 1.4.5.8 while a
+    /// canonical world is still unpublished. The pass clears both liquid queues, applies the temporary
+    /// <c>tilesIgnoreWater(true)</c> solidity rules, removes only liquid-death tiles whose removal semantics are
+    /// already modelled as a single-cell mutation, normalizes nearly-full cells below, and rebuilds active/buffered
+    /// liquid work through the exact loading <c>Liquid.AddWater</c> gates. Unsupported object removal fails before
+    /// any mutation so startup can discard the candidate rather than publishing an approximated world.
+    /// </summary>
+    public VanillaWaterCheckDiagnostic1458 WaterCheckLoading()
+    {
+        VanillaWaterCheckDiagnostic1458 preflight = PreflightWaterCheckLiquidDeaths1458();
+        if (!preflight.IsApplied)
+            return preflight;
+
+        tiles.LiquidUpdates.Clear();
+        discoveryCursor = tiles.Count;
+        discoveryComplete = true;
+
+        int width = tiles.Dimensions.WidthTiles;
+        int height = tiles.Dimensions.HeightTiles;
+        for (int x = 1; x < width - 1; x++)
+        {
+            for (int y = height - 2; y > 0; y--)
+            {
+                WorldTile tile = tiles.Get(x, y);
+                if (tile.LiquidAmount > 0 && IsWaterCheckSolidBarrier1458(in tile))
+                {
+                    if (tile.TileType != VanillaTileIds.Bubble)
+                    {
+                        tile.LiquidAmount = 0;
+                        tile.LiquidKind = WorldLiquidKind.Water;
+                        tiles.SetInitialPopulationTile(x, y, in tile);
+                    }
+                    continue;
+                }
+
+                if (tile.LiquidAmount == 0)
+                    continue;
+
+                if (tile.IsActive && ShouldDieInLoadingLiquid1458(in tile))
+                {
+                    KillSingleCellDuringLoading1458(x, y, in tile);
+                    tile = tiles.Get(x, y);
+                }
+
+                WorldTile below = tiles.Get(x, y + 1);
+                if (!IsWaterCheckSolidBarrier1458(in below) && below.LiquidAmount < byte.MaxValue)
+                {
+                    if (below.LiquidAmount > 250)
+                    {
+                        below.LiquidAmount = byte.MaxValue;
+                        tiles.SetInitialPopulationTile(x, y + 1, in below);
+                    }
+                    else
+                    {
+                        TryAddWaterLoading1458(x, y);
+                    }
+                }
+
+                WorldTile left = tiles.Get(x - 1, y);
+                WorldTile right = tiles.Get(x + 1, y);
+                if (!IsWaterCheckSolidBarrier1458(in left) && left.LiquidAmount != tile.LiquidAmount)
+                {
+                    TryAddWaterLoading1458(x, y);
+                }
+                else if (!IsWaterCheckSolidBarrier1458(in right) && right.LiquidAmount != tile.LiquidAmount)
+                {
+                    TryAddWaterLoading1458(x, y);
+                }
+
+                if (tile.LiquidKind == WorldLiquidKind.Lava &&
+                    (IsNonLavaLiquid1458(in left) ||
+                     IsNonLavaLiquid1458(in right) ||
+                     IsNonLavaLiquid1458(tiles.Get(x, y - 1)) ||
+                     IsNonLavaLiquid1458(in below)))
+                {
+                    TryAddWaterLoading1458(x, y);
+                }
+            }
+        }
+
+        return VanillaWaterCheckDiagnostic1458.Applied;
+    }
+
+    private VanillaWaterCheckDiagnostic1458 PreflightWaterCheckLiquidDeaths1458()
+    {
+        int width = tiles.Dimensions.WidthTiles;
+        int height = tiles.Dimensions.HeightTiles;
+        for (int x = 1; x < width - 1; x++)
+        {
+            for (int y = height - 2; y > 0; y--)
+            {
+                WorldTile tile = tiles.Get(x, y);
+                if (tile.LiquidAmount == 0 || IsWaterCheckSolidBarrier1458(in tile) ||
+                    !tile.IsActive || !ShouldDieInLoadingLiquid1458(in tile))
+                {
+                    continue;
+                }
+
+                if (!VanillaTileDefinitionCatalog.TryGet(tile.TileType, out VanillaTileDefinition definition) ||
+                    definition.BreakPath is not (VanillaTileBreakPath.SimpleCell or VanillaTileBreakPath.FrameImportantSingleCell))
+                {
+                    return new VanillaWaterCheckDiagnostic1458(
+                        VanillaWaterCheckResult1458.UnsupportedLiquidDeathTile,
+                        x,
+                        y,
+                        tile.TileType);
+                }
+            }
+        }
+
+        return VanillaWaterCheckDiagnostic1458.Applied;
+    }
+
+    private static bool ShouldDieInLoadingLiquid1458(in WorldTile tile) =>
+        tile.LiquidKind == WorldLiquidKind.Lava
+            ? VanillaLiquidInteractionFacts1458.IsLavaDeath(tile.TileType)
+            : VanillaLiquidInteractionFacts1458.IsWaterDeath(tile.TileType);
+
+    private static bool IsWaterCheckSolidBarrier1458(in WorldTile tile)
+    {
+        if (!tile.IsActive || tile.IsActuated)
+            return false;
+        if (VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringSettle(tile.TileType))
+            return false;
+        return VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+               !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
+    }
+
+    private static bool IsNonLavaLiquid1458(in WorldTile tile) =>
+        tile.LiquidAmount > 0 && tile.LiquidKind != WorldLiquidKind.Lava;
+
+    private void TryAddWaterLoading1458(int x, int y)
+    {
+        int width = tiles.Dimensions.WidthTiles;
+        int height = tiles.Dimensions.HeightTiles;
+        if (x >= width - 5 || y >= height - 5 || x < 5 || y < 5)
+            return;
+
+        WorldTile tile = tiles.Get(x, y);
+        if (tile.LiquidAmount == 0 || IsQueuedForLoading1458(x, y))
+            return;
+
+        // Liquid.AddWater has an explicit tile-546 exception while tilesIgnoreWater(true) also makes the
+        // boulder family non-solid. IsWaterCheckSolidBarrier1458 captures the final effective gate.
+        if (IsWaterCheckSolidBarrier1458(in tile))
+            return;
+
+        if (tiles.LiquidUpdates.ActiveCount >= LoadingActiveLiquidCapacity1458)
+        {
+            if (tiles.LiquidUpdates.BufferedCount < LoadingBufferedLiquidCapacity1458)
+                _ = tiles.LiquidUpdates.TryBuffer(x, y);
+            return;
+        }
+
+        _ = tiles.LiquidUpdates.TryEnqueue(x, y);
+    }
+
+    private bool IsQueuedForLoading1458(int x, int y) =>
+        tiles.LiquidUpdates.IsQueued(x, y) || tiles.LiquidUpdates.IsBuffered(x, y);
+
+    private void KillSingleCellDuringLoading1458(int x, int y, in WorldTile before)
+    {
+        WorldTile after = before;
+        after.Type = 0;
+        after.FrameX = 0;
+        after.FrameY = 0;
+        after.TileColor = 0;
+        after.Shape = 0;
+        after.Flags &= ~(
+            WorldTileFlags.Active |
+            WorldTileFlags.Actuator |
+            WorldTileFlags.Inactive |
+            WorldTileFlags.InvisibleBlock |
+            WorldTileFlags.FullbrightBlock);
+        tiles.SetInitialPopulationTile(x, y, in after);
+    }
+
+    private int TickCore(
+        int stableKillUpdates,
+        VanillaLiquidUpdateMode1458 mode,
+        Span<WorldLiquidSimulationChange> changes)
+    {
+
         DiscoverExistingLiquid();
         PromoteBuffered();
 
@@ -76,7 +512,10 @@ public sealed class VanillaWorldLiquidSimulator1458
         while (processed < processCount && tiles.LiquidUpdates.TryDequeue(out WorldLiquidUpdate update))
         {
             processed++;
-            RelaxCell(in update, stableKillUpdates, changes, ref changed);
+            WorldLiquidUpdate effectiveUpdate = mode == VanillaLiquidUpdateMode1458.QuickSettle
+                ? update with { Delay = HoneyFlowDelayUpdates1458 }
+                : update;
+            RelaxCell(in effectiveUpdate, stableKillUpdates, mode, changes, ref changed);
         }
 
         return changed;
@@ -117,6 +556,7 @@ public sealed class VanillaWorldLiquidSimulator1458
     private void RelaxCell(
         in WorldLiquidUpdate update,
         int stableKillUpdates,
+        VanillaLiquidUpdateMode1458 mode,
         Span<WorldLiquidSimulationChange> changes,
         ref int changed)
     {
@@ -143,13 +583,13 @@ public sealed class VanillaWorldLiquidSimulator1458
         }
         else
         {
-            ApplyForeignLiquidReaction1458(x, y, source.LiquidKind, changes, ref changed);
+            ApplyForeignLiquidReaction1458(x, y, source.LiquidKind, mode, changes, ref changed);
             source = tiles.Get(x, y);
             if (source.LiquidAmount == 0 || IsLiquidBarrier(in source))
                 return;
         }
 
-        if (ShouldDelayFlow1458(in update, in source))
+        if (ShouldDelayFlow1458(in update, in source, mode))
             return;
 
         if (y + 1 < tiles.Dimensions.HeightTiles)
@@ -157,7 +597,7 @@ public sealed class VanillaWorldLiquidSimulator1458
             WorldTile below = tiles.Get(x, y + 1);
             if (CanAccept(in below, source.LiquidKind) && below.LiquidAmount < byte.MaxValue)
             {
-                FlowDown1458(x, y, in source, in below, changes, ref changed);
+                FlowDown1458(x, y, in source, in below, mode, changes, ref changed);
                 source = tiles.Get(x, y);
             }
         }
@@ -165,7 +605,7 @@ public sealed class VanillaWorldLiquidSimulator1458
         if (source.LiquidAmount > 0)
             LevelHorizontally1458(x, y, in source, changes, ref changed);
 
-        CompleteActiveLifecycle1458(in update, amountAtStart, stableKillUpdates, changes, ref changed);
+        CompleteActiveLifecycle1458(in update, amountAtStart, stableKillUpdates, mode, changes, ref changed);
     }
 
     /// <summary>
@@ -195,7 +635,7 @@ public sealed class VanillaWorldLiquidSimulator1458
         if (source.LiquidAmount == 0)
             source.LiquidKind = WorldLiquidKind.Water;
 
-        tiles.Set(x, y, in source);
+        SetTile(x, y, in source);
         Record(x, y, in source, changes, ref changed);
     }
 
@@ -211,6 +651,7 @@ public sealed class VanillaWorldLiquidSimulator1458
         in WorldLiquidUpdate update,
         byte amountAtStart,
         int stableKillUpdates,
+        VanillaLiquidUpdateMode1458 mode,
         Span<WorldLiquidSimulationChange> changes,
         ref int changed)
     {
@@ -225,6 +666,13 @@ public sealed class VanillaWorldLiquidSimulator1458
         }
 
         bool oneUnitFullSourceCase = current.LiquidAmount == 254 && amountAtStart == byte.MaxValue;
+        if (oneUnitFullSourceCase && mode == VanillaLiquidUpdateMode1458.QuickSettle)
+        {
+            current.LiquidAmount = byte.MaxValue;
+            SetTile(update.X, update.Y, in current);
+            Record(update.X, update.Y, in current, changes, ref changed);
+        }
+
         int nextKill;
         if (current.LiquidAmount != amountAtStart && !oneUnitFullSourceCase)
         {
@@ -241,15 +689,17 @@ public sealed class VanillaWorldLiquidSimulator1458
             if (current.LiquidAmount == 254)
             {
                 current.LiquidAmount = byte.MaxValue;
-                tiles.Set(update.X, update.Y, in current);
+                SetTile(update.X, update.Y, in current);
                 Record(update.X, update.Y, in current, changes, ref changed);
             }
             return;
         }
 
-        int nextDelay = current.LiquidKind is WorldLiquidKind.Lava or WorldLiquidKind.Honey
-            ? 0
-            : update.Delay;
+        int nextDelay = mode == VanillaLiquidUpdateMode1458.QuickSettle
+            ? HoneyFlowDelayUpdates1458
+            : current.LiquidKind is WorldLiquidKind.Lava or WorldLiquidKind.Honey
+                ? 0
+                : update.Delay;
         if (!tiles.LiquidUpdates.TryEnqueue(update.X, update.Y, nextDelay, nextKill))
         {
             throw new InvalidOperationException(
@@ -297,6 +747,7 @@ public sealed class VanillaWorldLiquidSimulator1458
         int x,
         int y,
         WorldLiquidKind sourceKind,
+        VanillaLiquidUpdateMode1458 mode,
         Span<WorldLiquidSimulationChange> changes,
         ref int changed)
     {
@@ -312,6 +763,13 @@ public sealed class VanillaWorldLiquidSimulator1458
         WorldTile left = tiles.Get(x - 1, y);
         WorldTile right = tiles.Get(x + 1, y);
         WorldTile above = tiles.Get(x, y - 1);
+
+        if (mode == VanillaLiquidUpdateMode1458.QuickSettle)
+        {
+            ApplyGeneratingOrLoadingForeignLiquidReaction1458(
+                x, y, sourceKind, in source, in left, in right, in above, changes, ref changed);
+            return;
+        }
 
         bool foreignLeft = IsForeignLiquid(in left, sourceKind);
         bool foreignRight = IsForeignLiquid(in right, sourceKind);
@@ -492,8 +950,8 @@ public sealed class VanillaWorldLiquidSimulator1458
         catch
         {
             sideEffects.AbortPreparedMergeTile();
-            tiles.Set(x, y, in source);
-            tiles.Set(x, y + 1, in below);
+            SetTile(x, y, in source);
+            SetTile(x, y + 1, in below);
             throw;
         }
 
@@ -509,6 +967,119 @@ public sealed class VanillaWorldLiquidSimulator1458
             VanillaLiquidMergeCatalog1458.ResolveTileChangeType(sourceKind, belowMergeKind),
             changes,
             ref changed);
+    }
+
+    /// <summary>
+    /// TerrariaServer 1.4.5.8 calls <c>LiquidCheck(..., createMergeTilesDuringGen: false)</c> while
+    /// <c>WorldGen.isGeneratingOrLoadingWorld</c>. In that mode <c>CreateLiquidMergeTile</c> does not
+    /// place Obsidian/Honey/Crispy/Shimmer blocks. The participating liquid cells have already been
+    /// zeroed before the helper is entered, so its <c>LiquidOverwriteStrip</c> starts on an empty target
+    /// and performs no material placement. This branch therefore preserves the loading-time liquid clears
+    /// without inventing runtime merge tiles.
+    /// </summary>
+    private void ApplyGeneratingOrLoadingForeignLiquidReaction1458(
+        int x,
+        int y,
+        WorldLiquidKind sourceKind,
+        in WorldTile source,
+        in WorldTile left,
+        in WorldTile right,
+        in WorldTile above,
+        Span<WorldLiquidSimulationChange> changes,
+        ref int changed)
+    {
+        bool foreignLeft = IsForeignLiquid(in left, sourceKind);
+        bool foreignRight = IsForeignLiquid(in right, sourceKind);
+        bool foreignAbove = IsForeignLiquid(in above, sourceKind);
+        if (foreignLeft || foreignRight || foreignAbove)
+        {
+            bool waterNearby = IsLiquidKind(in left, WorldLiquidKind.Water) ||
+                               IsLiquidKind(in right, WorldLiquidKind.Water) ||
+                               IsLiquidKind(in above, WorldLiquidKind.Water);
+            bool lavaNearby = IsLiquidKind(in left, WorldLiquidKind.Lava) ||
+                              IsLiquidKind(in right, WorldLiquidKind.Lava) ||
+                              IsLiquidKind(in above, WorldLiquidKind.Lava);
+            bool honeyNearby = IsLiquidKind(in left, WorldLiquidKind.Honey) ||
+                               IsLiquidKind(in right, WorldLiquidKind.Honey) ||
+                               IsLiquidKind(in above, WorldLiquidKind.Honey);
+            bool shimmerNearby = IsLiquidKind(in left, WorldLiquidKind.Shimmer) ||
+                                 IsLiquidKind(in right, WorldLiquidKind.Shimmer) ||
+                                 IsLiquidKind(in above, WorldLiquidKind.Shimmer);
+            int foreignAmount =
+                (foreignLeft ? left.LiquidAmount : 0) +
+                (foreignRight ? right.LiquidAmount : 0) +
+                (foreignAbove ? above.LiquidAmount : 0);
+
+            bool resolvedMerge = foreignAmount >= 24 &&
+                                 VanillaLiquidMergeCatalog1458.TryResolve(
+                                     sourceKind,
+                                     waterNearby,
+                                     lavaNearby,
+                                     honeyNearby,
+                                     shimmerNearby,
+                                     out _,
+                                     out WorldLiquidKind mergeKind) &&
+                                 mergeKind != sourceKind;
+            bool targetEligible = !source.IsActive ||
+                                  VanillaLiquidInteractionFacts1458.IsObsidianKill(source.TileType);
+
+            if (foreignLeft)
+                ClearLiquidCell(x - 1, y, changes, ref changed);
+            if (foreignRight)
+                ClearLiquidCell(x + 1, y, changes, ref changed);
+            if (foreignAbove)
+                ClearLiquidCell(x, y - 1, changes, ref changed);
+
+            if (resolvedMerge && targetEligible)
+                ClearLiquidCell(x, y, changes, ref changed);
+            return;
+        }
+
+        WorldTile belowBefore = tiles.Get(x, y + 1);
+        if (!IsForeignLiquid(in belowBefore, sourceKind))
+            return;
+
+        bool containerOverride =
+            source.IsActive &&
+            VanillaLiquidInteractionFacts1458.IsContainer(source.TileType) &&
+            !VanillaLiquidInteractionFacts1458.IsContainer(belowBefore.TileType);
+
+        if (sourceKind != WorldLiquidKind.Water &&
+            belowBefore.IsActive &&
+            VanillaProjectileTileCutFacts.IsCuttable(belowBefore.TileType))
+        {
+            if (!sideEffects.TryCutTile(x, y + 1))
+                return;
+        }
+
+        WorldTile below = tiles.Get(x, y + 1);
+        bool lowerEligible = !below.IsActive ||
+                             VanillaLiquidInteractionFacts1458.IsObsidianKill(below.TileType) ||
+                             containerOverride;
+        if (!lowerEligible)
+            return;
+
+        if (source.LiquidAmount < 24)
+        {
+            ClearLiquidCell(x, y, changes, ref changed);
+            return;
+        }
+
+        if (!VanillaLiquidMergeCatalog1458.TryResolve(
+                sourceKind,
+                IsLiquidKind(in below, WorldLiquidKind.Water),
+                IsLiquidKind(in below, WorldLiquidKind.Lava),
+                IsLiquidKind(in below, WorldLiquidKind.Honey),
+                IsLiquidKind(in below, WorldLiquidKind.Shimmer),
+                out _,
+                out WorldLiquidKind lowerMergeKind) ||
+            lowerMergeKind == sourceKind)
+        {
+            return;
+        }
+
+        ClearLiquidCell(x, y, changes, ref changed);
+        ClearLiquidCell(x, y + 1, changes, ref changed);
     }
 
     private bool CanRepresentMergeTileSquare1458(int targetX, int targetY) =>
@@ -530,10 +1101,10 @@ public sealed class VanillaWorldLiquidSimulator1458
         in WorldTile right,
         in WorldTile above)
     {
-        tiles.Set(x, y, in source);
-        tiles.Set(x - 1, y, in left);
-        tiles.Set(x + 1, y, in right);
-        tiles.Set(x, y - 1, in above);
+        SetTile(x, y, in source);
+        SetTile(x - 1, y, in left);
+        SetTile(x + 1, y, in right);
+        SetTile(x, y - 1, in above);
     }
 
     private void ClearLiquidCellRaw(int x, int y)
@@ -541,7 +1112,7 @@ public sealed class VanillaWorldLiquidSimulator1458
         WorldTile tile = tiles.Get(x, y);
         tile.LiquidAmount = 0;
         tile.LiquidKind = WorldLiquidKind.Water;
-        tiles.Set(x, y, in tile);
+        SetTile(x, y, in tile);
     }
 
     private static void RecordTileSquare(
@@ -587,7 +1158,7 @@ public sealed class VanillaWorldLiquidSimulator1458
 
         tile.LiquidAmount = 0;
         tile.LiquidKind = WorldLiquidKind.Water;
-        tiles.Set(x, y, in tile);
+        SetTile(x, y, in tile);
         Record(x, y, in tile, changes, ref changed);
     }
 
@@ -608,6 +1179,7 @@ public sealed class VanillaWorldLiquidSimulator1458
         int y,
         in WorldTile sourceBefore,
         in WorldTile belowBefore,
+        VanillaLiquidUpdateMode1458 mode,
         Span<WorldLiquidSimulationChange> changes,
         ref int changed)
     {
@@ -629,19 +1201,27 @@ public sealed class VanillaWorldLiquidSimulator1458
         below.LiquidAmount = checked((byte)(below.LiquidAmount + amount));
         below.LiquidKind = sourceBefore.LiquidKind;
 
-        if (!preserveFullSource)
+        bool quickSettleSaturatedSource =
+            mode == VanillaLiquidUpdateMode1458.QuickSettle && source.LiquidAmount > 250;
+        if (quickSettleSaturatedSource)
         {
-            tiles.Set(x, y, in source);
+            source.LiquidAmount = byte.MaxValue;
+            source.LiquidKind = sourceBefore.LiquidKind;
+        }
+
+        if (source.LiquidAmount != sourceBefore.LiquidAmount || source.LiquidKind != sourceBefore.LiquidKind)
+        {
+            SetTile(x, y, in source);
             Record(x, y, in source, changes, ref changed);
         }
 
-        tiles.Set(x, y + 1, in below);
+        SetTile(x, y + 1, in below);
         Record(x, y + 1, in below, changes, ref changed);
 
         // Vanilla always schedules the lower cell. It additionally wakes the horizontal neighbours
         // when the source actually lost liquid; the 255->254 exception deliberately skips that wake-up.
         TryBuffer(x, y + 1);
-        if (!preserveFullSource)
+        if (!preserveFullSource && !quickSettleSaturatedSource)
         {
             TryBuffer(x - 1, y);
             TryBuffer(x + 1, y);
@@ -654,8 +1234,14 @@ public sealed class VanillaWorldLiquidSimulator1458
     /// flow delay. Material reaction checks occur before those delays in vanilla and are handled earlier
     /// in this update path.
     /// </summary>
-    private bool ShouldDelayFlow1458(in WorldLiquidUpdate update, in WorldTile source)
+    private bool ShouldDelayFlow1458(
+        in WorldLiquidUpdate update,
+        in WorldTile source,
+        VanillaLiquidUpdateMode1458 mode)
     {
+        if (mode == VanillaLiquidUpdateMode1458.QuickSettle)
+            return false;
+
         int threshold = source.LiquidKind switch
         {
             WorldLiquidKind.Lava => LavaFlowDelayUpdates1458,
@@ -825,7 +1411,7 @@ public sealed class VanillaWorldLiquidSimulator1458
 
         tile.LiquidAmount = amount;
         tile.LiquidKind = normalizedKind;
-        tiles.Set(x, y, in tile);
+        SetTile(x, y, in tile);
         Record(x, y, in tile, changes, ref changed);
         BufferAffected(x, y);
     }
@@ -910,6 +1496,14 @@ public sealed class VanillaWorldLiquidSimulator1458
         !tile.IsActuated &&
         VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
         !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
+
+    private void SetTile(int x, int y, in WorldTile tile)
+    {
+        if (useInitialPopulationWrites)
+            tiles.SetInitialPopulationTile(x, y, in tile);
+        else
+            tiles.Set(x, y, in tile);
+    }
 
     private bool Contains(int x, int y) =>
         (uint)x < (uint)tiles.Dimensions.WidthTiles &&
@@ -1019,6 +1613,24 @@ public sealed class VanillaWorldLiquidSimulator1458
     }
 }
 
+public enum VanillaWaterCheckResult1458 : byte
+{
+    Applied = 0,
+    UnsupportedLiquidDeathTile = 1
+}
+
+public readonly record struct VanillaWaterCheckDiagnostic1458(
+    VanillaWaterCheckResult1458 Result,
+    int X,
+    int Y,
+    TileTypeId TileType)
+{
+    public static VanillaWaterCheckDiagnostic1458 Applied =>
+        new(VanillaWaterCheckResult1458.Applied, 0, 0, default);
+
+    public bool IsApplied => Result == VanillaWaterCheckResult1458.Applied;
+}
+
 public readonly record struct WorldLiquidSimulationChange(
     int X,
     int Y,
@@ -1033,4 +1645,10 @@ public readonly record struct WorldLiquidSimulationChange(
 {
     public bool HasExplicitTileSquare =>
         RequiresTileSquareReplication && TileSquareWidth != 0 && TileSquareHeight != 0;
+}
+
+internal enum VanillaLiquidUpdateMode1458 : byte
+{
+    Ordinary = 0,
+    QuickSettle = 1
 }

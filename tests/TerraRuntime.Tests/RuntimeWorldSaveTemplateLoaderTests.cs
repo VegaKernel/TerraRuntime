@@ -63,6 +63,7 @@ public sealed class RuntimeWorldSaveTemplateLoaderTests
         {
             File.WriteAllBytes(worldPath, canonical);
             Assert.True(RuntimeWorldSnapshotCache.TryCaptureSourceStamp(worldPath, out RuntimeWorldSourceStamp stamp));
+            loaded.Tiles.MarkPostLoadLiquidPrepared();
             Assert.True(RuntimeWorldSnapshotCache.TryWriteAtomic(cachePath, canonical, stamp, loaded).IsWritten);
 
             RuntimeWorldSaveTemplateLoadResult result = RuntimeWorldSaveTemplateLoader.TryLoad(

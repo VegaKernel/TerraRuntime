@@ -102,7 +102,7 @@ The typed-boundary migration now also covers client `packet 61` boss/invasion re
 
 The 2026-09-06 Level 1 live-stability slice closes the observed delayed-coordinate transfer failure: replacement bootstrap removes source NPC projections, gates stale packet-13 samples until destination landing, applies the source-backed `$640\,\mathrm{px}$` player world border before authoritative movement/section streaming, and consumes the client's immediate packet-12 `SpawningIntoWorld` response to the synthetic replacement-world spawn as a handoff echo rather than a new authoritative respawn. This prevents a vanilla `SpawnX/SpawnY=-1/-1` echo from replacing the destination spawn/correction target with upper-left coordinates. Argumentless text commands are accepted without disconnecting, and bounded packet-48 liquid state is committed instead of treated only as a scheduler wake-up. Real-client revalidation remains required for the reported transfer/render crash scenarios.
 
-The same checkpoint also replaces the runtime liquid simulator's former one-sided 32-unit horizontal trickle with the verified ordinary same-kind `Liquid.Update` gravity-first and 2/3/4/5/7-cell horizontal leveling shape from TerrariaServer 1.4.5.8. Follow-up slices close partial downward-fill continuation, the vanilla `$255 \rightarrow 254$` one-unit preservation case, the fed-source-column exception in 5/7-cell averaging, source-backed lava/honey flow delays, material reactions, the dedicated-server `kill` retirement tail (`10 + activePlayersInSlots0To14 / 3`), and two-unit Underworld water evaporation below `maxTilesY - 200`. The current active-cell slice source-pins the 276-entry final `tileObsidianKill` set, the `21/467/88` container set, lower `tileCut`, packet-20 `TileChangeType` identities and vanilla-order transactional merge clears. Supported safe single-cell active/container replacements own drops/NPC side effects through the authoritative tile boundary; complex `WorldGen.ReplaceTile` dependency/shape cases remain fail-closed. Full liquid parity remains open for those complex replacement cases, `quickFall`/`quickSettle`, panic/forced-settle behavior and complete post-load initialization.
+The same checkpoint also replaces the runtime liquid simulator's former one-sided 32-unit horizontal trickle with the verified ordinary same-kind `Liquid.Update` gravity-first and 2/3/4/5/7-cell horizontal leveling shape from TerrariaServer 1.4.5.8. Follow-up slices close partial downward-fill continuation, the vanilla `$255 \rightarrow 254$` one-unit preservation case, the fed-source-column exception in 5/7-cell averaging, source-backed lava/honey flow delays, material reactions, the dedicated-server `kill` retirement tail (`10 + activePlayersInSlots0To14 / 3`), and two-unit Underworld water evaporation below `maxTilesY - 200`. The current active-cell slice source-pins the 276-entry final `tileObsidianKill` set, the `21/467/88` container set, lower `tileCut`, packet-20 `TileChangeType` identities and vanilla-order transactional merge clears. Supported safe single-cell active/container replacements own drops/NPC side effects through the authoritative tile boundary; complex `WorldGen.ReplaceTile` dependency/shape cases remain fail-closed. The loading slice now also source-pins `quickSettle`/quick-fall scheduling (fixed kill threshold 8, lava/honey delay bypass and the `>250 -> 255` source refill), loading-time no-merge-block `LiquidCheck`, the bottom-up `Liquid.QuickWater` pre-pass, and `WorldGen.WaterCheck` against the final 10-entry `tileWaterDeath` and 267-entry `tileLavaDeath` tables. Canonical startup now executes `QuickWater -> WaterCheck -> quickSettle drain (maximum 100000 iterations) -> WaterCheck` before runtime/bootstrap cache admission. Runtime cache layout 2 can be serialized only from a world carrying the post-load-prepared invariant; cache decode restores that invariant only after complete validation, and post-save cache rebuilders replay the same initializer before publication. Full liquid parity remains open for complex replacement cases, Remix/Zenith load-time liquid remapping and panic/forced-settle behavior.
 
 ### Framing
 
@@ -254,7 +254,7 @@ Candidate contents:
 - [ ] packed/predecoded tiles or section blocks;
 - [ ] world metadata;
 - [ ] chests, signs and tile entities;
-- [ ] liquid state and pending liquid work where required for behavioral parity;
+- [x] liquid state and pending liquid work where required for behavioral parity;
 - [ ] section metadata and dirty-state bootstrap data;
 - [ ] measured expensive runtime indexes;
 - [ ] prebuilt data useful for initial player section synchronization.
@@ -292,7 +292,7 @@ Measure independently:
 
 - [ ] file read;
 - [ ] tile reconstruction;
-- [ ] liquids/post-load initialization;
+- [x] liquids/post-load initialization;
 - [ ] index construction;
 - [ ] cache validation;
 - [ ] `WorldReady`;

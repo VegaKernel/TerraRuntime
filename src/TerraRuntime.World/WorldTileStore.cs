@@ -65,6 +65,16 @@ public sealed class WorldTileStore
     /// </summary>
     public double? WorldSurfaceTiles { get; private set; }
 
+    /// <summary>
+    /// True only after the canonical Terraria 1.4.5.8 post-load liquid preparation sequence has completed.
+    /// The marker is runtime-only: cache layout revision 2 guarantees a startup cache was produced from an
+    /// already prepared candidate, while canonical loads set the marker only after QuickWater/WaterCheck settle.
+    /// </summary>
+    public bool IsPostLoadLiquidPrepared { get; private set; }
+
+    /// <summary>Marks an unpublished or cache-restored store as having completed canonical liquid preparation.</summary>
+    internal void MarkPostLoadLiquidPrepared() => IsPostLoadLiquidPrepared = true;
+
     public int Count => _tiles.Length;
 
     public WorldTile Get(int x, int y) => _tiles[GetIndex(x, y)];

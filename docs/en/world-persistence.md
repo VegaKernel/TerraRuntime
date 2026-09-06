@@ -52,6 +52,8 @@ flowchart LR
 
 The current snapshot is self-contained for startup and stores an embedded validated canonical `.wld` checkpoint, normalized runtime tiles split into integrity-checked shards, dimensions/version metadata, tile liquid contents, pending liquid scheduler state, source file length/`LastWriteTimeUtc`, and integrity metadata for embedded payloads.
 
+Runtime layout `2` additionally means the tile image and liquid scheduler have already passed the supported TerrariaServer 1.4.5.8 post-load liquid preparation. The writer refuses raw canonical state; canonical fallback and post-save rebuild both run that initializer before cache publication. A warm-cache decode restores the prepared marker only after full cache validation.
+
 The snapshot is not a migration format. An incompatible header/layout is a normal cache miss and triggers canonical `.wld` fallback.
 
 ## 5. Snapshot layout

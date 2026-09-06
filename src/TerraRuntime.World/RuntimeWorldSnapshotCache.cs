@@ -9,7 +9,7 @@ namespace TerraRuntime.World;
 public static partial class RuntimeWorldSnapshotCache
 {
     public const int CurrentSchemaVersion = 1;
-    public const int CurrentLayoutVersion = 1;
+    public const int CurrentLayoutVersion = 2;
 
     private const int HeaderSize = 128;
     private const int TileRecordSize = 16;

@@ -58,7 +58,8 @@ public enum RuntimeWorldSnapshotWriteResult : byte
 {
     Written = 0,
     InvalidWorld = 1,
-    IoError = 2
+    IoError = 2,
+    PostLoadLiquidNotPrepared = 3
 }
 
 public readonly record struct RuntimeWorldSnapshotWriteDiagnostic(RuntimeWorldSnapshotWriteResult Result)

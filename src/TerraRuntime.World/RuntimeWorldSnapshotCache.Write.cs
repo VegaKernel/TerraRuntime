@@ -18,6 +18,12 @@ public static partial class RuntimeWorldSnapshotCache
         if (!NativeTileLayoutSupported || sourceStamp.Length != sourceWorld.Length || sourceWorld.Length == 0)
             return new RuntimeWorldSnapshotWriteDiagnostic(RuntimeWorldSnapshotWriteResult.InvalidWorld);
 
+        // Layout v2 means the tile image and liquid scheduler already passed the canonical Terraria 1.4.5.8
+        // post-load QuickWater/WaterCheck/quickSettle sequence. Keep this guard at the serializer boundary so a
+        // new caller cannot accidentally mint a cache that claims prepared semantics for raw canonical state.
+        if (!world.Tiles.IsPostLoadLiquidPrepared)
+            return new RuntimeWorldSnapshotWriteDiagnostic(RuntimeWorldSnapshotWriteResult.PostLoadLiquidNotPrepared);
+
         long expectedTileCount = (long)world.Header.Dimensions.WidthTiles * world.Header.Dimensions.HeightTiles;
         if (expectedTileCount != world.Tiles.Count || expectedTileCount <= 0)
             return new RuntimeWorldSnapshotWriteDiagnostic(RuntimeWorldSnapshotWriteResult.InvalidWorld);
@@ -239,6 +245,17 @@ public static partial class RuntimeWorldSnapshotCache
                     ((int)loadDiagnostic.Stage << 16) | (loadDiagnostic.StageResultCode & 0xFFFF));
             }
 
+            VanillaWorldLiquidLoadPreparationDiagnostic1458 preparation =
+                VanillaWorldLiquidLoadInitializer1458.TryPrepare(world);
+            if (!preparation.IsPrepared)
+            {
+                return new RuntimeWorldCheckpointSaveDiagnostic(
+                    RuntimeWorldCheckpointSaveResult.InvalidCache,
+                    (int)preparation.Result);
+            }
+
+            // Preserve the exact scheduler state stored by the validated runtime cache after reconstructing the
+            // prepared tile image from canonical bytes. The initializer necessarily consumes/rebuilds its own queue.
             if (!world.Tiles.LiquidUpdates.TryRestoreSnapshot(liquidActive, liquidBuffered))
             {
                 return new RuntimeWorldCheckpointSaveDiagnostic(
