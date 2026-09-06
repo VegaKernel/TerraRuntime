@@ -28,7 +28,12 @@ public sealed class ConnectionMessageRateLimits
         Rule(TerrariaMessageId.PlayerControls, maxFrames: 600, maxBytes: 96 * 1024),
         Rule(TerrariaMessageId.SyncEquipment, maxFrames: 600, maxBytes: 64 * 1024),
         Rule(TerrariaMessageId.PlayerHp, maxFrames: 240, maxBytes: 32 * 1024),
-        Rule(TerrariaMessageId.TileManipulation, maxFrames: 480, maxBytes: 64 * 1024),
+        // Terraria 1.4.5.8 Projectile.Kill_ExplodeTiles can legitimately emit one packet-17 per destroyed tile/wall.
+        // Celebration Mk2 projectile 714 emits eight volleys per 60 ticks. Across its seven-pattern cycle the
+        // worst aligned eight-volley window contains 13 children. A radius-5 blast has at most 69 tile edits plus
+        // 109 distinct neighboring wall edits, so 13 * 178 = 2,314 packet-17 echoes fits below this 2,400 ceiling.
+        // Gameplay authority remains bounded separately; the connection-wide 4,096/s ceiling still caps abuse.
+        Rule(TerrariaMessageId.TileManipulation, maxFrames: 2_400, maxBytes: 256 * 1024),
         Rule(TerrariaMessageId.WorldItemDrop, maxFrames: 240, maxBytes: 64 * 1024),
         Rule(TerrariaMessageId.WorldItemOwner, maxFrames: 240, maxBytes: 32 * 1024),
         Rule(TerrariaMessageId.ChatMessage, maxFrames: 120, maxBytes: 128 * 1024),

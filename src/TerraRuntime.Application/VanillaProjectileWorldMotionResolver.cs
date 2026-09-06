@@ -44,6 +44,8 @@ internal sealed class VanillaProjectileWorldMotionResolver
         float behaviorPositionX = behavior.PositionXOverride ?? current.PositionX;
         float behaviorPositionY = behavior.PositionYOverride ?? current.PositionY;
         ProjectileLocalAiState resolvedLocalAi = behavior.LocalAiOverride ?? projectile.Lifecycle.LocalAi;
+        short resolvedDamage = behavior.DamageOverride ?? current.Damage;
+        float resolvedKnockBack = behavior.KnockBackOverride ?? current.KnockBack;
 
         if (current.Type == VanillaProjectileIds.SkeletronPrimeBomb && IsPrimeBombPlatformContact(in current, in definition))
         {
@@ -51,7 +53,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
                 new ProjectileStateUpdate(
                     current.Type, current.Spawner, behaviorPositionX, behaviorPositionY, velocityX, velocityY,
                     new ProjectileAiState(behavior.Ai0, behavior.Ai1Override ?? current.Ai.Ai1, behavior.Ai2Override ?? current.Ai.Ai2),
-                    current.BannerIdToRespondTo, current.Damage, current.KnockBack, current.OriginalDamage),
+                    current.BannerIdToRespondTo, resolvedDamage, resolvedKnockBack, current.OriginalDamage),
                 TimeLeft: 0,
                 Liquid: projectile.Lifecycle.Liquid,
                 TerminationReason: ProjectileSimulationTerminationReason.BehaviorKill,
@@ -71,8 +73,8 @@ internal sealed class VanillaProjectileWorldMotionResolver
                     velocityY,
                     new ProjectileAiState(behavior.Ai0, behavior.Ai1Override ?? current.Ai.Ai1, behavior.Ai2Override ?? current.Ai.Ai2),
                     current.BannerIdToRespondTo,
-                    current.Damage,
-                    current.KnockBack,
+                    resolvedDamage,
+                    resolvedKnockBack,
                     current.OriginalDamage),
                 TimeLeft: 0,
                 Liquid: projectile.Lifecycle.Liquid,
@@ -161,7 +163,9 @@ internal sealed class VanillaProjectileWorldMotionResolver
         float collisionClampedVelocityY = collidedVelocityY;
         bool bombCollisionHandled = false;
         bool rocketArmedByImpact = false;
-        if (tileImpact && definition.AiStyle == VanillaProjectileAiStyles.Bomb && current.Type.Value is >= 133 and <= 144)
+        if (tileImpact &&
+            definition.AiStyle == VanillaProjectileAiStyles.Bomb &&
+            VanillaExplosiveProjectileFacts1458.TryGetAi016MotionKind(current.Type, out VanillaAi016MotionKind1458 bombMotionKind))
         {
             // Projectile.Update aiStyle-16 tile collision: launcher grenades/mines bounce at 40% of the incoming
             // component. Straight rocket variants stop, hide and arm a 3-tick fuse instead of dying immediately.
@@ -170,7 +174,15 @@ internal sealed class VanillaProjectileWorldMotionResolver
             if (collideY && velocityY > 0.7f)
                 collidedVelocityY = velocityY * -0.4f;
 
-            if ((current.Type.Value - 133) % 3 == 1)
+            if (current.Type == VanillaProjectileIds.Dynamite)
+            {
+                if (collideX)
+                    collidedVelocityX *= 0.8f;
+                if (collideY && velocityY > 0.7f)
+                    collidedVelocityY *= 0.8f;
+            }
+
+            if (bombMotionKind == VanillaAi016MotionKind1458.StraightRocket)
             {
                 collidedVelocityX = 0f;
                 collidedVelocityY = 0f;
@@ -309,8 +321,8 @@ internal sealed class VanillaProjectileWorldMotionResolver
             collidedVelocityY,
             new ProjectileAiState(resolvedAi0, behavior.Ai1Override ?? current.Ai.Ai1, behavior.Ai2Override ?? current.Ai.Ai2),
             current.BannerIdToRespondTo,
-            current.Damage,
-            current.KnockBack,
+            resolvedDamage,
+            resolvedKnockBack,
             current.OriginalDamage);
 
         int timeLeft;

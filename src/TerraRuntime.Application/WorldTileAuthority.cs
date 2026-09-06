@@ -1,8 +1,10 @@
+using System.Buffers;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Core.Npcs;
 using TerraRuntime.Gameplay.Items;
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
@@ -16,6 +18,12 @@ namespace TerraRuntime.Application;
 internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
 {
     private const int MaxPlayerSlots = byte.MaxValue + 1;
+    private const byte ControlUseItemFlag = 1 << 5;
+    private const ushort DrillMountType1458 = 8;
+    private const short DrillMountPickPower1458 = 210;
+    private const int LiquidChangeBufferLength =
+        VanillaWorldLiquidSimulator1458.DefaultWorkBudgetPerTick *
+        VanillaWorldLiquidSimulator1458.MaximumChangesPerProcessedCell;
 
     private readonly PlayerAuthority players;
     private readonly RuntimeCommandCounter commands;
@@ -26,6 +34,8 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
     private readonly RuntimeWorldProgressionMutations progression;
     private readonly bool skeletronDownedBaseline;
     private readonly bool golemDownedBaseline;
+    private readonly bool hardModeBaseline;
+    private readonly bool goodWorld;
     private readonly RuntimeObjectPlacementCommandProcessor? objectPlacement;
     private readonly VanillaMultiTileObjectMutationService? objectMutations;
     private readonly IVanillaMultiTileObjectMetadataLifecycle? objectMetadata;
@@ -34,6 +44,7 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
     private readonly IWorldItemSpawnRandom worldItemSpawnRandom;
     private readonly VanillaWorldLiquidMutationService? liquidMutations;
     private readonly PlayerTileEditBudget editBudget = new(MaxPlayerSlots);
+    private readonly RuntimeProjectileTileExplosionEchoTracker projectileExplosionEchoes = new();
     private LiquidMergePreparation liquidMergePreparation;
     private bool hasLiquidMergePreparation;
 
@@ -47,6 +58,8 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
         RuntimeWorldProgressionMutations progression,
         bool skeletronDownedBaseline,
         bool golemDownedBaseline,
+        bool hardModeBaseline,
+        bool goodWorld,
         RuntimeTileManipulationReplicationRegistry? replication)
     {
         this.players = players ?? throw new ArgumentNullException(nameof(players));
@@ -58,6 +71,8 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
         this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
         this.skeletronDownedBaseline = skeletronDownedBaseline;
         this.golemDownedBaseline = golemDownedBaseline;
+        this.hardModeBaseline = hardModeBaseline;
+        this.goodWorld = goodWorld;
         this.replication = replication;
         mutations = tiles is null ? null : new VanillaWorldTileMutationService(tiles);
         liquidMutations = tiles is null ? null : new VanillaWorldLiquidMutationService(tiles);
@@ -84,10 +99,15 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
     public long AppliedClientManipulations { get; private set; }
     public long RejectedClientManipulations { get; private set; }
     public long UnsupportedClientManipulations { get; private set; }
+    public long AcceptedProjectileExplosionEchoes { get; private set; }
     public long AppliedWorldItemAllocations { get; private set; }
     public long RejectedWorldItemAllocations { get; private set; }
 
-    public void AdvanceTo(long tick) => editBudget.AdvanceTo(tick);
+    public void AdvanceTo(long tick)
+    {
+        editBudget.AdvanceTo(tick);
+        projectileExplosionEchoes.AdvanceTo(tick);
+    }
 
     public bool TryApply(RuntimeCommand command)
     {
@@ -113,49 +133,204 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
         if (tiles is null || liquidSimulator is null)
             return;
 
-        Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[
-            VanillaWorldLiquidSimulator1458.DefaultWorkBudgetPerTick *
-            VanillaWorldLiquidSimulator1458.MaximumChangesPerProcessedCell];
-        int activeServerPlayersInLiquidWindow = 0;
-        foreach (RuntimePlayerMember player in players.Members)
+        WorldLiquidSimulationChange[] rented =
+            ArrayPool<WorldLiquidSimulationChange>.Shared.Rent(LiquidChangeBufferLength);
+        try
         {
-            if (player.Slot.Value < VanillaWorldLiquidSimulator1458.DedicatedServerCountedPlayerSlots1458)
-                activeServerPlayersInLiquidWindow++;
-        }
-
-        int count = liquidSimulator.Tick(activeServerPlayersInLiquidWindow, changes);
-        for (int i = 0; i < count; i++)
-        {
-            WorldLiquidSimulationChange change = changes[i];
-            if (change.RequiresTileSquareReplication)
+            Span<WorldLiquidSimulationChange> changes = rented.AsSpan(0, LiquidChangeBufferLength);
+            int activeServerPlayersInLiquidWindow = 0;
+            foreach (RuntimePlayerMember player in players.Members)
             {
-                if (change.HasExplicitTileSquare)
-                {
-                    replication?.TryPublishTileSquareToAll(
-                        tiles,
-                        change.TileSquareStartX,
-                        change.TileSquareStartY,
-                        change.TileSquareWidth,
-                        change.TileSquareHeight,
-                        change.TileChangeType);
-                }
-                else
-                {
-                    replication?.TryPublishTileSquareToAll(tiles, change.X, change.Y);
-                }
-
-                continue;
+                if (player.Slot.Value < VanillaWorldLiquidSimulator1458.DedicatedServerCountedPlayerSlots1458)
+                    activeServerPlayersInLiquidWindow++;
             }
 
-            var state = new TerrariaLiquidState(
-                checked((short)change.X),
-                checked((short)change.Y),
-                change.Amount,
-                (byte)change.Kind);
-            replication?.TryPublishLiquidToAll(in state);
+            int count = liquidSimulator.Tick(activeServerPlayersInLiquidWindow, changes);
+            for (int i = 0; i < count; i++)
+            {
+                WorldLiquidSimulationChange change = changes[i];
+                if (change.RequiresTileSquareReplication)
+                {
+                    if (change.HasExplicitTileSquare)
+                    {
+                        replication?.TryPublishTileSquareToAll(
+                            tiles,
+                            change.TileSquareStartX,
+                            change.TileSquareStartY,
+                            change.TileSquareWidth,
+                            change.TileSquareHeight,
+                            change.TileChangeType);
+                    }
+                    else
+                    {
+                        replication?.TryPublishTileSquareToAll(tiles, change.X, change.Y);
+                    }
+
+                    continue;
+                }
+
+                var state = new TerrariaLiquidState(
+                    checked((short)change.X),
+                    checked((short)change.Y),
+                    change.Amount,
+                    (byte)change.Kind);
+                replication?.TryPublishLiquidToAll(in state);
+            }
+        }
+        finally
+        {
+            ArrayPool<WorldLiquidSimulationChange>.Shared.Return(rented, clearArray: false);
         }
     }
 
+
+    public void TickProjectileTileExplosions(ReadOnlySpan<RuntimeProjectileTileExplosionEvent> explosions)
+    {
+        if (tiles is null || mutations is null || explosions.IsEmpty)
+            return;
+
+        bool hardMode = hardModeBaseline || progression.IsCompleted(VanillaWorldProgressionId.Hardmode);
+        bool golemDowned = golemDownedBaseline || progression.IsCompleted(VanillaWorldProgressionId.Golem);
+        bool skeletronDowned = skeletronDownedBaseline || progression.IsCompleted(VanillaWorldProgressionId.Skeletron);
+
+        foreach (RuntimeProjectileTileExplosionEvent explosion in explosions)
+        {
+            ProjectileSnapshot projectile = explosion.Projectile;
+            VanillaProjectileTileExplosionDefinition1458 definition = explosion.Definition;
+            float compareX = projectile.PositionX;
+            float compareY = projectile.PositionY;
+            if (definition.Center == VanillaProjectileTileExplosionCenter1458.Center)
+            {
+                if (!TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition projectileDefinition))
+                    continue;
+                compareX += projectileDefinition.Width * 0.5f;
+                compareY += projectileDefinition.Height * 0.5f;
+            }
+
+            int radius = definition.RadiusTiles;
+            int minX = Math.Max(0, (int)(compareX / 16f - radius));
+            int maxX = Math.Min(tiles.Dimensions.WidthTiles - 1, (int)(compareX / 16f + radius));
+            int minY = Math.Max(0, (int)(compareY / 16f - radius));
+            int maxY = Math.Min(tiles.Dimensions.HeightTiles - 1, (int)(compareY / 16f + radius));
+            if (minX > maxX || minY > maxY)
+                continue;
+
+            bool wallSplode = VanillaProjectileTileExplosionRules1458.ShouldExplodeWalls(
+                tiles,
+                compareX,
+                compareY,
+                radius,
+                minX,
+                maxX,
+                minY,
+                maxY);
+
+            for (int x = minX; x <= maxX; x++)
+            {
+                for (int y = minY; y <= maxY; y++)
+                {
+                    float dx = MathF.Abs(x - compareX / 16f);
+                    float dy = MathF.Abs(y - compareY / 16f);
+                    if (MathF.Sqrt(dx * dx + dy * dy) >= radius)
+                        continue;
+
+                    WorldTile before = tiles.Get(x, y);
+                    bool canExplodeCell = !before.IsActive || VanillaProjectileTileExplosionRules1458.CanExplodeTile(
+                        tiles,
+                        x,
+                        y,
+                        definition.ExplodeHardmodeOres,
+                        hardMode,
+                        goodWorld,
+                        golemDowned);
+
+                    if (before.IsActive && canExplodeCell)
+                    {
+                        // WorldGen.KillTile supports many object-specific families. TerraRuntime deliberately keeps
+                        // the blast path fail-closed until their exact removal/drop semantics live in authority.
+                        if (!TryPrepareSimpleBreak(x, y, in before, out PreparedSimpleBreak prepared))
+                        {
+                            canExplodeCell = false;
+                        }
+                        else
+                        {
+                            var request = new WorldTileMutationRequest(WorldTileMutationKind.KillTile, x, y);
+                            WorldTileMutationResult result = mutations.Apply(in request);
+                            if (!result.Applied)
+                            {
+                                ReleasePreparedBreak(in prepared);
+                                canExplodeCell = false;
+                            }
+                            else
+                            {
+                                CommitPreparedBreak(in prepared);
+                                var state = new TerrariaTileManipulationState(
+                                    (byte)TerrariaTileManipulationAction.KillTile,
+                                    checked((short)x),
+                                    checked((short)y),
+                                    Data: 0,
+                                    Style: 0);
+                                projectileExplosionEchoes.Register(explosion.TrustedOwner, in state);
+                                replication?.TryPublishCommitted(GameCommandSourceId.System, in state);
+                            }
+                        }
+                    }
+
+                    if (!wallSplode || !canExplodeCell)
+                        continue;
+
+                    for (int wallX = Math.Max(0, x - 1); wallX <= Math.Min(tiles.Dimensions.WidthTiles - 1, x + 1); wallX++)
+                    {
+                        for (int wallY = Math.Max(0, y - 1); wallY <= Math.Min(tiles.Dimensions.HeightTiles - 1, y + 1); wallY++)
+                        {
+                            WorldTile wallBefore = tiles.Get(wallX, wallY);
+                            WallTypeId wall = wallBefore.WallType;
+                            if (wall == VanillaWallIds.None || wall == VanillaWallIds.UnbreakableTemple ||
+                                !VanillaWallBreakRules1458.IsProgressionUnlocked(wall, skeletronDowned, golemDowned))
+                            {
+                                continue;
+                            }
+
+                            ItemTypeId wallDrop = default;
+                            bool hasDrop = VanillaWallDropCatalog1458.TryResolve(wall, out wallDrop) && !wallDrop.IsNone;
+                            WorldItemDropReservation reservation = default;
+                            if (hasDrop && !worldItems.TryReserveDropSlot(out reservation))
+                                continue;
+
+                            if (!ApplyTileMutation(mutations, WorldTileMutationKind.KillWall, wallX, wallY))
+                            {
+                                if (hasDrop)
+                                    _ = worldItems.TryReleaseDropReservation(in reservation);
+                                continue;
+                            }
+
+                            if (hasDrop)
+                            {
+                                WorldItemDropStateUpdate dropState = VanillaSimpleTileBreakResolver1458.MaterializeItemState(
+                                    wallDrop,
+                                    stack: 1,
+                                    wallX,
+                                    wallY,
+                                    worldItemSpawnRandom);
+                                if (!worldItems.TryCommitReservedDrop(in reservation, in dropState, out _))
+                                    throw new InvalidOperationException("Reserved explosive wall drop failed after authoritative wall mutation.");
+                                AppliedWorldItemAllocations++;
+                            }
+
+                            var wallState = new TerrariaTileManipulationState(
+                                (byte)TerrariaTileManipulationAction.KillWall,
+                                checked((short)wallX),
+                                checked((short)wallY),
+                                Data: 0,
+                                Style: 0);
+                            projectileExplosionEchoes.Register(explosion.TrustedOwner, in wallState);
+                            replication?.TryPublishCommitted(GameCommandSourceId.System, in wallState);
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     public bool TryCutTile(int x, int y)
     {
@@ -675,6 +850,13 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
             return;
         }
 
+        if (projectileExplosionEchoes.TryConsume(command.Connection.Player, in tileState))
+        {
+            ValidatedClientManipulations++;
+            AcceptedProjectileExplosionEchoes++;
+            return;
+        }
+
         if (!editBudget.TryConsume(command.Connection.Player.Slot))
         {
             RejectWithCorrection(command, in tileState);
@@ -697,12 +879,7 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
                 return;
             }
 
-            if (!players.TryGetInventoryItem(
-                    command.Connection,
-                    player.SelectedItem,
-                    out RuntimePlayerInventoryItem toolItem) ||
-                toolItem.IsEmpty ||
-                !VanillaPickToolCatalog1458.TryGetPickPower(toolItem.ItemType, out short pickPower))
+            if (!TryResolveClientPickPower(command.Connection, player, out short pickPower))
             {
                 RejectWithCorrection(command, in tileState);
                 return;
@@ -927,6 +1104,56 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
             default:
                 throw new InvalidOperationException("Unknown client tile-manipulation consistency result.");
         }
+    }
+
+    private bool TryResolveClientPickPower(
+        ConnectionHandle connection,
+        RuntimePlayerMember player,
+        out short pickPower)
+    {
+        if (players.TryGetInventoryItem(
+                connection,
+                player.SelectedItem,
+                out RuntimePlayerInventoryItem selected) &&
+            !selected.IsEmpty &&
+            VanillaPickToolCatalog1458.TryGetPickPower(selected.ItemType, out pickPower))
+        {
+            return true;
+        }
+
+        // TerrariaServer 1.4.5.8 Mount.UseDrill (mount 8) calls Player.PickTile with Mount.drillPickPower=210.
+        // Packet 17 is still the ordinary KillTile action, so the selected inventory item is not the authority
+        // source. Require the live mount/control state and the summon item in ordinary inventory; unknown mounts
+        // and item-less mount claims remain fail-closed.
+        if (player.MountType != DrillMountType1458 ||
+            (player.ControlFlags & ControlUseItemFlag) == 0)
+        {
+            pickPower = 0;
+            return false;
+        }
+
+        Span<RuntimePlayerInventoryItem> inventory =
+            stackalloc RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
+        if (!players.TryCopyInventory(connection, inventory))
+        {
+            pickPower = 0;
+            return false;
+        }
+
+        for (int slot = VanillaPlayerItemSlotCatalog.MainInventoryStart;
+             slot < VanillaPlayerItemSlotCatalog.MainInventoryEndExclusive;
+             slot++)
+        {
+            RuntimePlayerInventoryItem item = inventory[slot];
+            if (!item.IsEmpty && item.ItemType == VanillaItemIds.DrillContainmentUnit)
+            {
+                pickPower = DrillMountPickPower1458;
+                return true;
+            }
+        }
+
+        pickPower = 0;
+        return false;
     }
 
 

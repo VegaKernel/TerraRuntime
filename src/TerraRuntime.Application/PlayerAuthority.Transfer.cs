@@ -36,7 +36,8 @@ internal sealed partial class PlayerAuthority
         }
 
         var inventory = new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
-        if (!this.inventory.TryCopyInventory(connection, inventory))
+        if (!this.inventory.TryCopyInventory(connection, inventory) ||
+            !TryNormalizeTransferMouseItem(inventory, out bool mouseItemNormalized))
         {
             command.Completion.TrySetResult(null);
             return;
@@ -51,7 +52,8 @@ internal sealed partial class PlayerAuthority
             inventory,
             appearance,
             equipment,
-            player.GodMode);
+            player.GodMode,
+            mouseItemNormalized);
 
         membership.ClearPending(connection);
         this.inventory.Clear(connection);
@@ -60,6 +62,35 @@ internal sealed partial class PlayerAuthority
             throw new InvalidOperationException("Player membership changed during authoritative transfer detach.");
         events?.PlayerDisconnected(connection);
         command.Completion.TrySetResult(transfer);
+    }
+
+    private static bool TryNormalizeTransferMouseItem(
+        RuntimePlayerInventoryItem[] inventory,
+        out bool normalized)
+    {
+        normalized = false;
+        RuntimePlayerInventoryItem mouse = inventory[VanillaPlayerItemSlotCatalog.InventoryMouseItem];
+        if (mouse.IsEmpty)
+            return true;
+
+        // Player.dropItemCheck moves Main.mouseItem back through Player.GetItem before closing inventory. Replaying
+        // complete max-stack/special-storage semantics server-side is not admitted yet, so cross-world transfer uses
+        // the conservative source-backed subset: move the whole cursor stack only into an empty main slot. If all
+        // 0..49 slots are occupied, fail closed and leave the source player attached rather than risking loss/dup.
+        for (short slot = VanillaPlayerItemSlotCatalog.MainInventoryStart;
+             slot < VanillaPlayerItemSlotCatalog.MainInventoryEndExclusive;
+             slot++)
+        {
+            if (!inventory[slot].IsEmpty)
+                continue;
+
+            inventory[slot] = mouse;
+            inventory[VanillaPlayerItemSlotCatalog.InventoryMouseItem] = default;
+            normalized = true;
+            return true;
+        }
+
+        return false;
     }
 
     private void ApplyPlayerTransferAttach(PlayerTransferAttachRuntimeCommand command)
@@ -157,6 +188,17 @@ internal sealed partial class PlayerAuthority
         {
             PlayerAppearanceCommitRequest normalizedAppearance = appearance with { PlayerSlot = connection.Player.Slot };
             events?.PlayerAppearanceUpdated(connection, in normalizedAppearance);
+        }
+
+        if (transfer.MouseItemNormalized)
+        {
+            // TerrariaServer 1.4.5.8 maps packet-5 slot 58 to Main.mouseItem for the owning client. A world
+            // replacement can run Player.dropItemCheck after the source snapshot was captured, so explicitly clear
+            // the cursor before replaying the normalized inventory image in the destination world.
+            PlayerEquipmentCommitRequest clearMouse = default(RuntimePlayerInventoryItem).ToCommitRequest(
+                connection.Player.Slot,
+                VanillaPlayerItemSlotCatalog.InventoryMouseItem);
+            events?.PlayerEquipmentUpdated(connection, in clearMouse);
         }
 
         for (short inventorySlot = 0; inventorySlot < transfer.Inventory.Length; inventorySlot++)

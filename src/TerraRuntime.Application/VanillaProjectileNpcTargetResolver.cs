@@ -92,6 +92,77 @@ internal sealed class VanillaProjectileNpcTargetResolver : IVanillaProjectileNpc
         return true;
     }
 
+    public bool TryFindClosestCelebrationRocketTarget(
+        in ProjectileSnapshot projectile,
+        in VanillaProjectileDefinition projectileDefinition,
+        float maximumManhattanDistance,
+        out int npcSlot,
+        out float targetCenterX,
+        out float targetCenterY)
+    {
+        npcSlot = -1;
+        targetCenterX = 0f;
+        targetCenterY = 0f;
+        if (!(maximumManhattanDistance > 0f) || !float.IsFinite(maximumManhattanDistance))
+            return false;
+
+        float projectileCenterX = projectile.PositionX + projectileDefinition.Width * 0.5f;
+        float projectileCenterY = projectile.PositionY + projectileDefinition.Height * 0.5f;
+        float closest = maximumManhattanDistance;
+        for (int slot = 0; slot < npcs.Capacity; slot++)
+        {
+            if (!npcs.TryGetActive(checked((byte)slot), out NpcSnapshot candidate) ||
+                !TryResolveChaseableTarget(in candidate, ignoreDontTakeDamage: false, out VanillaNpcHitboxSize hitbox, out float centerX, out float centerY))
+            {
+                continue;
+            }
+
+            float distance = MathF.Abs(projectileCenterX - centerX) + MathF.Abs(projectileCenterY - centerY);
+            if (!(distance < closest) ||
+                !VanillaWorldCanHit.HasLineOfSight(
+                    tiles,
+                    projectileCenterX,
+                    projectileCenterY,
+                    1,
+                    1,
+                    candidate.PositionX,
+                    candidate.PositionY,
+                    hitbox.Width,
+                    hitbox.Height))
+            {
+                continue;
+            }
+
+            closest = distance;
+            npcSlot = slot;
+            targetCenterX = centerX;
+            targetCenterY = centerY;
+        }
+
+        return npcSlot >= 0;
+    }
+
+    public bool TryGetCelebrationRocketTargetCenter(
+        int npcSlot,
+        float projectileCenterX,
+        float projectileCenterY,
+        float maximumManhattanDistance,
+        out float targetCenterX,
+        out float targetCenterY)
+    {
+        targetCenterX = 0f;
+        targetCenterY = 0f;
+        if ((uint)npcSlot >= (uint)npcs.Capacity ||
+            !npcs.TryGetActive(checked((byte)npcSlot), out NpcSnapshot candidate) ||
+            !TryResolveChaseableTarget(in candidate, ignoreDontTakeDamage: true, out _, out targetCenterX, out targetCenterY))
+        {
+            return false;
+        }
+
+        return MathF.Abs(projectileCenterX - targetCenterX) + MathF.Abs(projectileCenterY - targetCenterY) <
+            maximumManhattanDistance;
+    }
+
     public bool IsNpcSlotAddressable(int npcSlot) => (uint)npcSlot < (uint)npcs.Capacity;
 
     public bool TryGetActiveNpc(int npcSlot, out NpcSnapshot npc)
@@ -109,6 +180,19 @@ internal sealed class VanillaProjectileNpcTargetResolver : IVanillaProjectileNpc
         in NpcSnapshot candidate,
         out VanillaNpcHitboxSize hitbox,
         out float centerX,
+        out float centerY) =>
+        TryResolveChaseableTarget(
+            in candidate,
+            ignoreDontTakeDamage: false,
+            out hitbox,
+            out centerX,
+            out centerY);
+
+    private static bool TryResolveChaseableTarget(
+        in NpcSnapshot candidate,
+        bool ignoreDontTakeDamage,
+        out VanillaNpcHitboxSize hitbox,
+        out float centerX,
         out float centerY)
     {
         centerX = 0f;
@@ -116,7 +200,7 @@ internal sealed class VanillaProjectileNpcTargetResolver : IVanillaProjectileNpc
         if (!candidate.IsActive ||
             candidate.Simulation.Life <= 0 ||
             candidate.Simulation.LifeMax <= 5 ||
-            candidate.Simulation.DontTakeDamage ||
+            (!ignoreDontTakeDamage && candidate.Simulation.DontTakeDamage) ||
             VanillaNpcCatchCatalog1458.CountsAsCritter(candidate.TypeIdentity) ||
             !VanillaNpcDefinitionCatalog.TryGet(
                 candidate.TypeIdentity,

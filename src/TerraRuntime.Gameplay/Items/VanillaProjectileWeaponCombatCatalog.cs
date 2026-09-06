@@ -111,7 +111,9 @@ public static class VanillaProjectileWeaponCombatCatalog
         // Item.SetDefaults cases 758..760. Player.PickAmmo uses projToShoot += item.shoot for AmmoID.Rocket.
         new(VanillaItemIds.GrenadeLauncher, VanillaProjectileIds.GrenadeI, VanillaProjectileAmmoFamily.Rocket, 60, 4f, 10f, 20, 20, 0, SpawnRange),
         new(VanillaItemIds.RocketLauncher, VanillaProjectileIds.RocketI, VanillaProjectileAmmoFamily.Rocket, 55, 4f, 5f, 30, 30, 0, SpawnRange),
-        new(VanillaItemIds.ProximityMineLauncher, VanillaProjectileIds.ProximityMineI, VanillaProjectileAmmoFamily.Rocket, 80, 4f, 12f, 50, 50, 0, SpawnRange)
+        new(VanillaItemIds.ProximityMineLauncher, VanillaProjectileIds.ProximityMineI, VanillaProjectileAmmoFamily.Rocket, 80, 4f, 12f, 50, 50, 0, SpawnRange),
+        // Item.SetDefaults case 3930. PickAmmo resolves projectile identity through AmmoID.Sets.SpecificLauncherAmmoProjectileMatches.
+        new(VanillaItemIds.CelebrationMk2, new ProjectileTypeId(714), VanillaProjectileAmmoFamily.Rocket, 50, 10f, 17f, 6, 6, 2, SpawnRange)
     ];
 
     private static readonly VanillaProjectileAmmoCombatDefinition[] Ammo =
@@ -126,7 +128,10 @@ public static class VanillaProjectileWeaponCombatCatalog
         new(VanillaItemIds.RocketI, new ProjectileTypeId(0), VanillaProjectileAmmoFamily.Rocket, 40, 4f, 0f, true, VanillaProjectileAmmoTransform.AddToWeaponProjectile),
         new(VanillaItemIds.RocketII, new ProjectileTypeId(3), VanillaProjectileAmmoFamily.Rocket, 40, 4f, 0f, true, VanillaProjectileAmmoTransform.AddToWeaponProjectile),
         new(VanillaItemIds.RocketIII, new ProjectileTypeId(6), VanillaProjectileAmmoFamily.Rocket, 65, 6f, 0f, true, VanillaProjectileAmmoTransform.AddToWeaponProjectile),
-        new(VanillaItemIds.RocketIV, new ProjectileTypeId(9), VanillaProjectileAmmoFamily.Rocket, 65, 6f, 0f, true, VanillaProjectileAmmoTransform.AddToWeaponProjectile)
+        new(VanillaItemIds.RocketIV, new ProjectileTypeId(9), VanillaProjectileAmmoFamily.Rocket, 65, 6f, 0f, true, VanillaProjectileAmmoTransform.AddToWeaponProjectile),
+        // Item.SetDefaults cases 4457/4458. Their projectile identity is launcher-specific in AmmoID.Sets.
+        new(VanillaItemIds.MiniNukeI, new ProjectileTypeId(0), VanillaProjectileAmmoFamily.Rocket, 75, 4f, 0f, true),
+        new(VanillaItemIds.MiniNukeII, new ProjectileTypeId(0), VanillaProjectileAmmoFamily.Rocket, 75, 4f, 0f, true)
     ];
 
     // Item.SetDefaults cases 113, 218 and 495. These are the modern channelled aiStyle-9 magic projectiles
@@ -143,6 +148,8 @@ public static class VanillaProjectileWeaponCombatCatalog
     // projectile directly from the selected stack, so there is no PickAmmo source. Prefixes are not admitted.
     private static readonly VanillaStandaloneProjectileWeaponCombatDefinition[] StandaloneWeapons =
     [
+        new(VanillaItemIds.Bomb, VanillaProjectileIds.Bomb, 0, 0f, 5f, 25, 25, true, SpawnRange),
+        new(VanillaItemIds.Dynamite, VanillaProjectileIds.Dynamite, 0, 0f, 4f, 40, 40, true, SpawnRange),
         new(VanillaItemIds.Shuriken, VanillaProjectileIds.Shuriken, 10, 0f, 9f, 15, 15, true, SpawnRange),
         new(VanillaItemIds.Bone, VanillaProjectileIds.Bone, 20, 2.3f, 8f, 12, 12, true, SpawnRange),
         new(VanillaItemIds.ThrowingKnife, VanillaProjectileIds.ThrowingKnife, 12, 2f, 10f, 15, 15, true, SpawnRange),
@@ -224,7 +231,7 @@ public static class VanillaProjectileWeaponCombatCatalog
     public static int ResolveStandaloneDamage(
         in VanillaStandaloneProjectileWeaponCombatDefinition weapon,
         in VanillaPlayerCombatSnapshot attacker) =>
-        Math.Max(1, (int)(weapon.BaseDamage * attacker.RangedDamage + 5E-06f));
+        Math.Max(0, (int)(weapon.BaseDamage * attacker.RangedDamage + 5E-06f));
 
     public static VanillaLaunchSpeedEnvelope ResolveStandaloneLaunchSpeedEnvelope(
         in VanillaStandaloneProjectileWeaponCombatDefinition weapon) =>
@@ -285,6 +292,9 @@ public static class VanillaProjectileWeaponCombatCatalog
         if (weapon.AmmoFamily != ammo.Family)
             return false;
 
+        if (TryResolveSpecificLauncherAmmoProjectile(weapon.Type, ammo.Type, out projectileType))
+            return true;
+
         int rawType = ammo.Transform switch
         {
             VanillaProjectileAmmoTransform.ReplaceWeaponProjectile => ammo.ProjectileType.Value,
@@ -292,6 +302,32 @@ public static class VanillaProjectileWeaponCombatCatalog
             _ => -1
         };
         return VanillaProjectileIds.TryCreate(rawType, out projectileType) && projectileType != VanillaProjectileIds.None;
+    }
+
+    private static bool TryResolveSpecificLauncherAmmoProjectile(
+        ItemTypeId weaponType,
+        ItemTypeId ammoType,
+        out ProjectileTypeId projectileType)
+    {
+        projectileType = default;
+        int raw = (weaponType.Value, ammoType.Value) switch
+        {
+            // Terraria.ID.AmmoID.Sets.SpecificLauncherAmmoProjectileMatches, pinned 1.4.5.8.
+            (3930, 771) => 715,
+            (3930, 772) => 716,
+            (3930, 773) => 717,
+            (3930, 774) => 718,
+            (3930, 4457) => 717,
+            (3930, 4458) => 718,
+            (759, 4457) => 793,
+            (759, 4458) => 796,
+            (758, 4457) => 794,
+            (758, 4458) => 797,
+            (760, 4457) => 795,
+            (760, 4458) => 798,
+            _ => 0
+        };
+        return raw != 0 && VanillaProjectileIds.TryCreate(raw, out projectileType);
     }
 
     public static VanillaLaunchSpeedEnvelope ResolveLaunchSpeedEnvelope(

@@ -2,6 +2,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 using TerraRuntime.World;
@@ -315,7 +316,87 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         Assert.Equal((short)3, ammo.Stack);
     }
 
+    [Fact]
+    public void Celebration_mk2_holder_stays_untrusted_and_exact_child_volleys_are_promoted_once_per_ammo_pick()
+    {
+        using var fixture = new Fixture(playerCount: 1);
+        ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 191);
+        fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.CelebrationMk2, stack: 1);
+        fixture.SetInventoryItem(owner, slot: VanillaPlayerItemSlotCatalog.AmmoSlotStart, VanillaItemIds.RocketIV, stack: 5);
+        fixture.SetCombatPlayer(owner, positionX: 100f, positionY: 100f, life: 100, hostile: false);
+
+        TerrariaProjectileUpdateState holder = new(
+            new TerrariaProjectileKeyState(owner.Player.Slot.Value, 700, 1),
+            VanillaProjectileIds.CelebrationMk2HeldProjectile.Value,
+            120f,
+            100f,
+            17f,
+            0f,
+            25f,
+            0f,
+            0f,
+            0,
+            115,
+            16f,
+            0);
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, holder));
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(holder.Key, out ProjectileHandle holderHandle));
+        Assert.False(fixture.Projectiles.IsCombatTrusted(holderHandle));
+
+        TerrariaProjectileUpdateState first = CreateCelebrationChild(owner, index: 701, pattern: 4, ai1: 0f);
+        TerrariaProjectileUpdateState second = CreateCelebrationChild(owner, index: 702, pattern: 4, ai1: 1f);
+        TerrariaProjectileUpdateState forgedThird = CreateCelebrationChild(owner, index: 703, pattern: 4, ai1: 1f);
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, first));
+        Assert.True(fixture.State.TryCapturePlayerInventoryItem(
+            owner.Player,
+            VanillaPlayerItemSlotCatalog.AmmoSlotStart,
+            out RuntimePlayerInventoryItem afterFirst));
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, second));
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, forgedThird));
+
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(first.Key, out ProjectileHandle firstHandle));
+        Assert.True(fixture.Projectiles.IsCombatTrusted(firstHandle));
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(second.Key, out ProjectileHandle secondHandle));
+        Assert.True(fixture.Projectiles.IsCombatTrusted(secondHandle));
+        Assert.False(fixture.Replication.WireIdentities.TryResolve(forgedThird.Key, out _));
+        Assert.True(fixture.State.TryCapturePlayerInventoryItem(
+            owner.Player,
+            VanillaPlayerItemSlotCatalog.AmmoSlotStart,
+            out RuntimePlayerInventoryItem afterSecond));
+        Assert.Equal(afterFirst, afterSecond);
+
+        for (int i = 0; i < 8; i++)
+            fixture.State.Tick();
+
+        TerrariaProjectileUpdateState nextVolley = CreateCelebrationChild(owner, index: 704, pattern: 5, ai1: 0f);
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, nextVolley));
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(nextVolley.Key, out ProjectileHandle nextHandle));
+        Assert.True(fixture.Projectiles.IsCombatTrusted(nextHandle));
+    }
+
+    private static TerrariaProjectileUpdateState CreateCelebrationChild(
+        ConnectionHandle owner,
+        ushort index,
+        int pattern,
+        float ai1) =>
+        new(
+            new TerrariaProjectileKeyState(owner.Player.Slot.Value, index, 1),
+            VanillaProjectileIds.CelebrationRocketIV.Value,
+            120f,
+            100f,
+            VanillaExplosiveProjectileFacts1458.GetCelebrationLaunchSpeed(pattern),
+            0f,
+            pattern,
+            ai1,
+            0f,
+            0,
+            115,
+            16f,
+            0);
+
     [Theory]
+    [InlineData(166, 28, 0, 0f, 5f)]
+    [InlineData(167, 29, 0, 0f, 4f)]
     [InlineData(42, 3, 10, 0f, 9f)]
     [InlineData(154, 21, 20, 2.3f, 8f)]
     [InlineData(279, 48, 12, 2f, 10f)]
@@ -362,9 +443,47 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         Assert.Equal(knockBack, projectile.KnockBack);
         Assert.Equal(speed, projectile.VelocityX, 3);
         Assert.Equal(0f, projectile.VelocityY, 3);
+        Assert.True(fixture.Projectiles.TryGetLifecycle(handle, out ProjectileLifecycleState lifecycle));
+        if (projectileType == VanillaProjectileIds.Bomb.Value)
+            Assert.Equal(180, lifecycle.TimeLeft);
+        else if (projectileType == VanillaProjectileIds.Dynamite.Value)
+            Assert.Equal(300, lifecycle.TimeLeft);
         Assert.True(fixture.State.TryCapturePlayerInventoryItem(owner.Player, 0, out RuntimePlayerInventoryItem remaining));
         Assert.Equal(new ItemTypeId(itemType), remaining.ItemType);
         Assert.Equal((short)1, remaining.Stack);
+    }
+
+    [Fact]
+    public void Rocket_launcher_mini_nuke_two_is_promoted_with_exact_pickammo_identity()
+    {
+        using var fixture = new Fixture(playerCount: 1);
+        ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 759);
+        fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.RocketLauncher, stack: 1);
+        fixture.SetInventoryItem(owner, slot: VanillaPlayerItemSlotCatalog.AmmoSlotStart, VanillaItemIds.MiniNukeII, stack: 2);
+        fixture.SetCombatPlayer(owner, positionX: 100f, positionY: 100f, life: 100, hostile: false);
+
+        var packet = new TerrariaProjectileUpdateState(
+            new TerrariaProjectileKeyState(owner.Player.Slot.Value, 796, 1),
+            VanillaProjectileIds.MiniNukeRocketII.Value,
+            120f,
+            100f,
+            5f,
+            0f,
+            0f,
+            0f,
+            0f,
+            0,
+            130,
+            8f,
+            0);
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, packet));
+
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(packet.Key, out ProjectileHandle handle));
+        Assert.True(fixture.Projectiles.IsCombatTrusted(handle));
+        Assert.True(fixture.State.TryCaptureProjectileSnapshot(handle, out ProjectileSnapshot projectile));
+        Assert.Equal(VanillaProjectileIds.MiniNukeRocketII, projectile.Type);
+        Assert.Equal((short)130, projectile.Damage);
+        Assert.Equal(8f, projectile.KnockBack);
     }
 
     [Fact]

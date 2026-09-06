@@ -58,7 +58,7 @@ public sealed class VanillaLauncherProjectileFactsTests
     }
 
     [Fact]
-    public void Rocket_ai_keeps_launch_velocity()
+    public void Rocket_ai_accelerates_below_the_vanilla_axis_caps()
     {
         ProjectileSnapshot projectile = Create(VanillaProjectileIds.RocketI, 12f, -3f, 7f);
         Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
@@ -68,8 +68,8 @@ public sealed class VanillaLauncherProjectileFactsTests
             in projectile, in definition, in context, out VanillaProjectileBehaviorResult next));
 
         Assert.Equal(8f, next.Ai0, 5);
-        Assert.Equal(12f, next.VelocityX, 5);
-        Assert.Equal(-3f, next.VelocityY, 5);
+        Assert.Equal(13.2f, next.VelocityX, 5);
+        Assert.Equal(-3.3f, next.VelocityY, 5);
     }
 
     private static ProjectileSnapshot Create(ProjectileTypeId type, float velocityX, float velocityY, float ai0) =>

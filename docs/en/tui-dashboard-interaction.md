@@ -55,7 +55,7 @@ The dashboard has **no duplicate visible Settings button**. Runtime listener/set
 
 ## Player details and GodMode
 
-Double-clicking a player row opens a generation-safe window for that exact player session. `God mode` is presented as a `Disabled` / `Enabled` drop-down and committed with `Apply`. Periodic dashboard refreshes do not overwrite an operator selection that is still awaiting Apply; the committed value crosses the typed trusted-host administration boundary and authoritative game loop.
+Double-clicking a player row opens a generation-safe window for that exact player session. `God mode` is presented as a `Disabled` / `Enabled` drop-down and committed with `Apply`. Periodic dashboard refreshes do not overwrite an operator selection that is still awaiting Apply; the committed value crosses the typed trusted-host administration boundary and authoritative game loop. Liveness and command routing use the process-level world route for the selected player, so the same control applies to primary and sandbox players instead of treating primary telemetry as the gate.
 
 ## World-scoped detail inspection
 

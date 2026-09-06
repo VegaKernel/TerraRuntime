@@ -11,7 +11,10 @@ namespace TerraRuntime.World;
 /// </summary>
 public sealed class VanillaWorldLiquidSimulator1458
 {
-    public const int DefaultWorkBudgetPerTick = 64;
+    // TerrariaServer 1.4.5.8 Liquid.UpdateLiquid defaults to maxLiquid=25,000 and cycles=10,
+    // therefore an empty dedicated server processes 2,500 active liquid entries per update. Player count
+    // lowers curMaxLiquid and raises cycles; Tick() derives that exact live slice and this constant is only the cap.
+    public const int DefaultWorkBudgetPerTick = 2500;
     public const int DefaultDiscoveryBudgetPerTick = 4096;
     // TerrariaServer 1.4.5.8 defaults: maxLiquid=25000 and maxLiquidBuffer=50000.
     // AddWater admits active entries while numLiquid < curMaxLiquid - 1 and LiquidBuffer admits
@@ -80,7 +83,11 @@ public sealed class VanillaWorldLiquidSimulator1458
         int stableKillUpdates = DedicatedServerBaseKillUpdates1458 +
             activeServerPlayersInLiquidWindow / DedicatedServerKillPlayerDivisor1458;
 
-        return TickCore(stableKillUpdates, VanillaLiquidUpdateMode1458.Ordinary, changes);
+        int cycles = 10 + activeServerPlayersInLiquidWindow / DedicatedServerKillPlayerDivisor1458;
+        int currentMaximum = 25_000 - activeServerPlayersInLiquidWindow * 250;
+        int sourceSlice = Math.Max(1, currentMaximum / cycles);
+        int liveBudget = Math.Min(workBudget, sourceSlice);
+        return TickCore(stableKillUpdates, VanillaLiquidUpdateMode1458.Ordinary, liveBudget, changes);
     }
 
     /// <summary>
@@ -96,7 +103,7 @@ public sealed class VanillaWorldLiquidSimulator1458
         useInitialPopulationWrites = true;
         try
         {
-            return TickCore(GeneratingOrLoadingKillUpdates1458, VanillaLiquidUpdateMode1458.QuickSettle, changes);
+            return TickCore(GeneratingOrLoadingKillUpdates1458, VanillaLiquidUpdateMode1458.QuickSettle, workBudget, changes);
         }
         finally
         {
@@ -500,15 +507,17 @@ public sealed class VanillaWorldLiquidSimulator1458
     private int TickCore(
         int stableKillUpdates,
         VanillaLiquidUpdateMode1458 mode,
+        int processBudget,
         Span<WorldLiquidSimulationChange> changes)
     {
 
         DiscoverExistingLiquid();
-        PromoteBuffered();
+        PromoteBuffered(processBudget);
 
         int changed = 0;
         int processed = 0;
-        int processCount = Math.Min(workBudget, tiles.LiquidUpdates.ActiveCount);
+        int capacityBudget = changes.Length / MaximumChangesPerProcessedCell;
+        int processCount = Math.Min(Math.Min(processBudget, capacityBudget), tiles.LiquidUpdates.ActiveCount);
         while (processed < processCount && tiles.LiquidUpdates.TryDequeue(out WorldLiquidUpdate update))
         {
             processed++;
@@ -542,10 +551,10 @@ public sealed class VanillaWorldLiquidSimulator1458
             discoveryComplete = true;
     }
 
-    private void PromoteBuffered()
+    private void PromoteBuffered(int processBudget)
     {
         int promoted = 0;
-        while (promoted < workBudget && PendingCount < MaximumPendingCells &&
+        while (promoted < processBudget && PendingCount < MaximumPendingCells &&
                tiles.LiquidUpdates.TryDequeueBuffered(out int x, out int y))
         {
             _ = tiles.LiquidUpdates.TryEnqueue(x, y);

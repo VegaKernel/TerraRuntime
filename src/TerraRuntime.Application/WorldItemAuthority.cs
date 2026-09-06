@@ -15,6 +15,12 @@ internal sealed class WorldItemAuthority
     private readonly RuntimeWorldItemReplicationRegistry? replication;
     private readonly RuntimeWorldItemInstancedLeaseStore instancedItemLeases;
     private readonly short[] expiredInstancedItemSlots = new short[RuntimeWorldItemStore.VanillaCapacity];
+    private readonly WorldItemSnapshot[] reservationScan = new WorldItemSnapshot[RuntimeWorldItemStore.VanillaCapacity];
+
+    // TerrariaServer 1.4.5.8 Main.UpdateServer calls FindOwner for unowned items on a 5-tick cadence.
+    private const int OwnerDiscoveryCadenceTicks1458 = 5;
+    private const int OwnerSearchManhattanRange1458 = 1920; // NPC.sWidth
+    private const int DefaultOwnerReservationTicks1458 = 15; // WorldItem.ReserveFor default parameter
 
     public WorldItemAuthority(
         PlayerAuthority players,
@@ -65,6 +71,86 @@ internal sealed class WorldItemAuthority
         }
     }
 
+    public void TickPlayerReservations(long tick)
+    {
+        if (tick < 0 || tick % OwnerDiscoveryCadenceTicks1458 != 1)
+            return;
+
+        int count = worldItems.CopyActive(reservationScan);
+        for (int index = 0; index < count; index++)
+        {
+            WorldItemSnapshot item = reservationScan[index];
+            if (!item.Handle.IsAssigned || item.ShimmerTime > 0f)
+                continue;
+
+            RuntimePlayerMember? currentOwner = null;
+            if (item.OwnerPlayerId != byte.MaxValue)
+            {
+                foreach (RuntimePlayerMember player in players.Members)
+                {
+                    if (player.Slot.Value == item.OwnerPlayerId && !player.IsDead)
+                    {
+                        currentOwner = player;
+                        break;
+                    }
+                }
+            }
+
+            if (currentOwner is not null)
+                continue;
+
+            RuntimePlayerMember? selected = FindNearestEligibleOwner(in item);
+            byte owner = selected?.Slot.Value ?? byte.MaxValue;
+            if (owner == item.OwnerPlayerId)
+                continue;
+
+            var update = new WorldItemOwnerStateUpdate(
+                OwnerPlayerId: owner,
+                TimeToKeepReservation: owner == byte.MaxValue ? 0 : DefaultOwnerReservationTicks1458,
+                GrabDelayPlayer: item.GrabDelayPlayer,
+                GrabDelayTime: item.GrabDelayTime,
+                PositionX: item.PositionX,
+                PositionY: item.PositionY);
+            _ = worldItems.TryApplyOwner(item.Handle.Slot, in update, out _);
+        }
+    }
+
+    private RuntimePlayerMember? FindNearestEligibleOwner(in WorldItemSnapshot item)
+    {
+        RuntimePlayerMember? selected = null;
+        float bestDistance = OwnerSearchManhattanRange1458;
+        foreach (RuntimePlayerMember player in players.Members)
+        {
+            if (player.IsDead || !HasConservativeOrdinaryItemSpace(player.Connection))
+                continue;
+            if (item.GrabDelayTime > 0 && (item.GrabDelayPlayer == player.Slot.Value || item.GrabDelayPlayer == byte.MaxValue))
+                continue;
+
+            float playerCenterX = player.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+            float playerCenterY = player.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+            float distance = Math.Abs(playerCenterX - item.PositionX) + Math.Abs(playerCenterY - item.PositionY);
+            if (distance >= bestDistance)
+                continue;
+
+            bestDistance = distance;
+            selected = player;
+        }
+        return selected;
+    }
+
+    private bool HasConservativeOrdinaryItemSpace(ConnectionHandle connection)
+    {
+        // Player.ItemSpace checks stacking, ammo slots, void bag and special pickups. We do not have complete
+        // max-stack/special-pickup facts for every item yet, so reserve only when an ordinary 0..49 slot is empty.
+        // This is a safe subset: the vanilla client performs the real GetItem/PickupItem mutation after packet 22.
+        for (short slot = 0; slot < 50; slot++)
+        {
+            if (players.TryGetInventoryItem(connection, slot, out RuntimePlayerInventoryItem item) && item.IsEmpty)
+                return true;
+        }
+        return false;
+    }
+
     public void TickInstancedLeases()
     {
         int expired = instancedItemLeases.Tick(expiredInstancedItemSlots);
@@ -105,6 +191,12 @@ internal sealed class WorldItemAuthority
         worldItems.TryGetActive(target.Slot, out WorldItemSnapshot snapshot) &&
         snapshot.Handle == target;
 
+    private bool IsCurrentReservedTarget(ConnectionHandle connection, WorldItemHandle target) =>
+        target.IsAssigned &&
+        worldItems.TryGetActive(target.Slot, out WorldItemSnapshot snapshot) &&
+        snapshot.Handle == target &&
+        snapshot.OwnerPlayerId == connection.Player.Slot.Value;
+
     private void ApplyAllocate(WorldItemAllocateRuntimeCommand command)
     {
         if (!players.IsCurrent(command.Connection))
@@ -128,7 +220,11 @@ internal sealed class WorldItemAuthority
 
     private void ApplyDrop(WorldItemDropRuntimeCommand command)
     {
-        if (!players.IsCurrent(command.Connection) || !IsCurrentTarget(command.Target))
+        // TerrariaServer 1.4.5.8 MessageBuffer case 21 accepts updates to an existing world-item slot only
+        // when that slot is currently reserved for whoAmI. New-item allocation (wire slot 400) is the separate
+        // allocate command above. Keep the same owner gate for movement/stack updates so a client cannot mutate
+        // another player's reserved item after server-side FindOwner selected the pickup recipient.
+        if (!players.IsCurrent(command.Connection) || !IsCurrentReservedTarget(command.Connection, command.Target))
         {
             RejectedDrops++;
             return;
@@ -146,7 +242,10 @@ internal sealed class WorldItemAuthority
 
     private void ApplyRemove(WorldItemRemoveRuntimeCommand command)
     {
-        if (!players.IsCurrent(command.Connection) || !IsCurrentTarget(command.Target))
+        // A pickup completion is just packet 21 with an air/zero-stack state. Vanilla accepts that mutation only
+        // from the player for whom the item is reserved; applying the same rule here closes both pickup theft and
+        // arbitrary remote item deletion while preserving the normal server-reservation -> client-pickup flow.
+        if (!players.IsCurrent(command.Connection) || !IsCurrentReservedTarget(command.Connection, command.Target))
         {
             RejectedRemovals++;
             return;

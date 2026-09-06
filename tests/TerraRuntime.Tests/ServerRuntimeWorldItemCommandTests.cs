@@ -136,6 +136,10 @@ public sealed class ServerRuntimeWorldItemCommandTests
         Assert.True(runtime.TryCaptureWorldItemSnapshot(allocated.Handle.Slot, out WorldItemSnapshot afterStale));
         Assert.Equal(before, afterStale);
 
+        runtime.Apply(new WorldItemOwnerRuntimeCommand(
+            current,
+            allocated.Handle,
+            new WorldItemOwnerStateUpdate(current.Player.Slot.Value, 15, byte.MaxValue, 0, before.PositionX, before.PositionY)));
         runtime.Apply(new WorldItemDropRuntimeCommand(
             current,
             allocated.Handle,
@@ -161,6 +165,10 @@ public sealed class ServerRuntimeWorldItemCommandTests
             CreateDrop(positionX: 100f, stack: 2),
             firstCompletion));
         WorldItemSnapshot first = Assert.IsType<WorldItemSnapshot>(await firstCompletion.Task);
+        runtime.Apply(new WorldItemOwnerRuntimeCommand(
+            connection,
+            first.Handle,
+            new WorldItemOwnerStateUpdate(connection.Player.Slot.Value, 15, byte.MaxValue, 0, first.PositionX, first.PositionY)));
 
         var captured = new CapturingCommandIngress();
         var ingress = new RuntimeWorldItemIngress(captured, store);
@@ -185,6 +193,38 @@ public sealed class ServerRuntimeWorldItemCommandTests
         Assert.Equal(second.Handle, current.Handle);
         Assert.Equal(200f, current.PositionX);
         Assert.Equal((short)4, current.Stack);
+    }
+
+    [Fact]
+    public async Task Existing_world_item_packet21_mutations_require_server_reservation_owner()
+    {
+        var store = new RuntimeWorldItemStore();
+        var runtime = new ServerRuntimeState(worldItems: store);
+        var slots = new PlayerSlotPool(2);
+        using PlayerJoinSession firstSession = CreateAwaitingSpawnSession(slots);
+        using PlayerJoinSession secondSession = CreateAwaitingSpawnSession(slots);
+        ConnectionHandle owner = Spawn(runtime, GameCommandSourceId.FromConnection(605), firstSession);
+        ConnectionHandle stranger = Spawn(runtime, GameCommandSourceId.FromConnection(606), secondSession);
+        var completion = new TaskCompletionSource<WorldItemSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        runtime.Apply(new WorldItemAllocateRuntimeCommand(owner, CreateDrop(positionX: 100f, stack: 2), completion));
+        WorldItemSnapshot item = Assert.IsType<WorldItemSnapshot>(await completion.Task);
+        runtime.Apply(new WorldItemOwnerRuntimeCommand(
+            owner,
+            item.Handle,
+            new WorldItemOwnerStateUpdate(owner.Player.Slot.Value, 15, byte.MaxValue, 0, item.PositionX, item.PositionY)));
+
+        runtime.Apply(new WorldItemDropRuntimeCommand(stranger, item.Handle, CreateDrop(positionX: 999f, stack: 7)));
+        runtime.Apply(new WorldItemRemoveRuntimeCommand(stranger, item.Handle));
+
+        Assert.Equal(1, runtime.RejectedWorldItemDrops);
+        Assert.Equal(1, runtime.RejectedWorldItemRemovals);
+        Assert.True(runtime.TryCaptureWorldItemSnapshot(item.Handle.Slot, out WorldItemSnapshot afterStranger));
+        Assert.Equal(item.Handle, afterStranger.Handle);
+        Assert.Equal((short)2, afterStranger.Stack);
+
+        runtime.Apply(new WorldItemRemoveRuntimeCommand(owner, item.Handle));
+        Assert.Equal(1, runtime.AppliedWorldItemRemovals);
+        Assert.False(runtime.TryCaptureWorldItemSnapshot(item.Handle.Slot, out _));
     }
 
     private sealed class CapturingCommandIngress : IGameCommandIngress<RuntimeCommand>

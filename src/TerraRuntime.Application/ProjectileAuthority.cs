@@ -22,7 +22,8 @@ internal readonly record struct AuthoritativeClientProjectileSpawn(
     RuntimePlayerInventoryMutation? InventoryMutation,
     int ManaCost,
     VanillaLaunchSpeedEnvelope LaunchSpeedEnvelope,
-    int UseTimeTicks);
+    int UseTimeTicks,
+    RuntimeCelebrationMk2VolleyAdmission? CelebrationVolley = null);
 
 /// <summary>
 /// Owns the projectile store, simulation, client commit validation and lifecycle metrics for one world.
@@ -36,6 +37,7 @@ internal sealed partial class ProjectileAuthority
     private readonly IRuntimePlayerSlotSnapshotLookup playerSnapshots;
     private readonly RuntimeProjectileStateExecutor executor;
     private readonly RuntimeProjectileExplosionQueue explosions;
+    private readonly RuntimeProjectileTileExplosionQueue tileExplosions;
     private readonly RuntimeProjectileChildSpawnQueue childSpawns;
     private readonly RuntimeProjectileLiveChildSpawnQueue liveChildSpawns;
     private readonly RuntimeCultistLightningArcTrailRegistry cultistLightningArcTrails;
@@ -48,6 +50,7 @@ internal sealed partial class ProjectileAuthority
     private readonly VanillaProjectilePlayerTargetResolver? hostilePlayerTargets;
     private readonly VanillaUnifiedRandom1458 projectileRandom;
     private readonly RuntimeProjectileClientUseCadenceTracker trustedClientUseCadence = new();
+    private readonly RuntimeCelebrationMk2VolleyTracker celebrationMk2Volleys = new();
     private readonly ProjectileSnapshot[] controlledProjectileBuffer;
     private const byte ControlUseItemFlag = 1 << 5;
 
@@ -69,10 +72,11 @@ internal sealed partial class ProjectileAuthority
         this.players = players;
         this.playerSnapshots = playerSnapshots ?? throw new ArgumentNullException(nameof(playerSnapshots));
         explosions = new RuntimeProjectileExplosionQueue(projectiles.Capacity);
+        tileExplosions = new RuntimeProjectileTileExplosionQueue(projectiles.Capacity);
         childSpawns = new RuntimeProjectileChildSpawnQueue(projectiles.Capacity);
         liveChildSpawns = new RuntimeProjectileLiveChildSpawnQueue(projectiles.Capacity);
         cultistLightningArcTrails = new RuntimeCultistLightningArcTrailRegistry(projectiles.Capacity);
-        var terminationEffects = new RuntimeProjectileTerminationEffectSink(explosions, childSpawns);
+        var terminationEffects = new RuntimeProjectileTerminationEffectSink(explosions, tileExplosions, childSpawns);
         var simulationEffects = new RuntimeProjectileSimulationCommitSink(liveChildSpawns, cultistLightningArcTrails);
         executor = new RuntimeProjectileStateExecutor(projectiles, simulationEffects, terminationEffects);
         this.stepper = stepper;
@@ -112,6 +116,8 @@ internal sealed partial class ProjectileAuthority
 
 
     public ReadOnlySpan<RuntimeProjectileExplosionEvent> PendingExplosions => explosions.Events;
+
+    internal ReadOnlySpan<RuntimeProjectileTileExplosionEvent> PendingTileExplosions => tileExplosions.Events;
 
     internal RuntimeCultistLightningArcTrailRegistry CultistLightningArcTrails => cultistLightningArcTrails;
 

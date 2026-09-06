@@ -43,7 +43,8 @@ internal enum VanillaProjectileBehaviorFamily : byte
     SharknadoBolt = 30,
     CultistIceMist = 31,
     CultistLightningOrb = 32,
-    CultistLightningArc = 33
+    CultistLightningArc = 33,
+    CelebrationRocket = 34
 }
 
 /// <summary>
@@ -195,6 +196,14 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         BehaviorImplemented: true,
         RequiresDefaultAi2: true,
         RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile CelebrationRocketProfile = new(
+        VanillaProjectileBehaviorFamily.CelebrationRocket,
+        VanillaProjectileAiStyles.CelebrationRocket,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: true,
         ExemptFromPreAiWorldBounds: false);
 
     private static readonly VanillaProjectileBehaviorProfile SkeletronPrimeBombProfile = new(
@@ -531,9 +540,15 @@ internal static class VanillaProjectileBehaviorProfileCatalog
             return true;
         }
 
-        if (type.Value is >= 133 and <= 144)
+        if (VanillaExplosiveProjectileFacts1458.TryGetAi016MotionKind(type, out _))
         {
             profile = BombProfile;
+            return true;
+        }
+
+        if (type.Value is >= 715 and <= 718)
+        {
+            profile = CelebrationRocketProfile;
             return true;
         }
 

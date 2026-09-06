@@ -31,7 +31,11 @@ public static class VanillaWorldLiquidWakeup1458
                     return;
                 }
 
-                _ = tiles.LiquidUpdates.TryEnqueue(tx, ty);
+                // TerrariaServer 1.4.5.8 Liquid.AddWater returns immediately for a zero-liquid cell.
+                // Geometry wakeups therefore must not fill the active queue with empty neighbours ahead of the
+                // actual liquid source; doing so can starve the source under a bounded per-tick change buffer.
+                if (tiles.Get(tx, ty).LiquidAmount != 0)
+                    _ = tiles.LiquidUpdates.TryEnqueue(tx, ty);
             }
         }
     }

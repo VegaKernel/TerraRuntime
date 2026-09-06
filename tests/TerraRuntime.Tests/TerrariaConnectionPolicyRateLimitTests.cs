@@ -21,7 +21,7 @@ public sealed class TerrariaConnectionPolicyRateLimitTests
         AssertBudget(limits, TerrariaMessageId.SpawnTileData, 120, 16 * 1024);
         AssertBudget(limits, TerrariaMessageId.PlayerControls, 600, 96 * 1024);
         AssertBudget(limits, TerrariaMessageId.SyncEquipment, 600, 64 * 1024);
-        AssertBudget(limits, TerrariaMessageId.TileManipulation, 480, 64 * 1024);
+        AssertBudget(limits, TerrariaMessageId.TileManipulation, 2_400, 256 * 1024);
         AssertBudget(limits, TerrariaMessageId.WorldItemDrop, 240, 64 * 1024);
         AssertBudget(limits, TerrariaMessageId.ChatMessage, 120, 128 * 1024);
         AssertBudget(limits, TerrariaMessageId.ProjectileNew, 1_200, 256 * 1024);
@@ -29,6 +29,16 @@ public sealed class TerrariaConnectionPolicyRateLimitTests
         AssertBudget(limits, TerrariaMessageId.LiquidSet, 600, 64 * 1024);
         AssertBudget(limits, TerrariaMessageId.PlaceObject, 240, 32 * 1024);
         AssertBudget(limits, TerrariaMessageId.LoadNetModule, 120, 256 * 1024);
+
+        Assert.True(limits.TryGet((byte)TerrariaMessageId.TileManipulation, out ConnectionRateBudgetOptions tileBudget));
+        const int maximumCelebrationChildrenPerSixtyTicks = 13;
+        const int radiusFiveTileEdits = 69;
+        const int radiusFiveWallEdits = 109;
+        int maximumVerifiedCelebrationPacket17Burst =
+            maximumCelebrationChildrenPerSixtyTicks * (radiusFiveTileEdits + radiusFiveWallEdits);
+        Assert.Equal(2_314, maximumVerifiedCelebrationPacket17Burst);
+        Assert.True(tileBudget.MaxFrames >= maximumVerifiedCelebrationPacket17Burst);
+        Assert.True(tileBudget.MaxFrames < options.RateBudget.MaxFrames);
 
         Assert.False(limits.TryGet((byte)TerrariaMessageId.Hello, out _));
         Assert.False(limits.TryGet((byte)TerrariaMessageId.PlayerInfo, out _));

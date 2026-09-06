@@ -114,7 +114,7 @@ Current packet/commit infrastructure should not be mistaken for complete authori
 
 `RuntimeWorldItemStore` is an authoritative runtime entity store rather than a transparent client relay.
 
-The implemented foundation includes tested slot allocation/reservation, updates/partial updates, runtime ingress/commands, replication-registry integration and selected tile-drop integration.
+The implemented foundation includes tested slot allocation/reservation, updates/partial updates, runtime ingress/commands, replication-registry integration and selected tile-drop integration. The server now runs a conservative `WorldItem.FindOwner` slice every five ticks: it selects the nearest live player with an empty ordinary inventory slot, publishes packet 22, and accepts packet-21 removal/update only from that exact reservation owner. Inbound packet 22 remains non-authoritative. Stack merging, special pickup magnets, void-bag routing and the remaining `ItemSpace`/`CanPullItem` branches stay fail-closed.
 
 World-item identity is separate from item content type. Future pickup/stack/ownership validation builds on this server-owned identity instead of trusting arbitrary client slot metadata.
 
@@ -123,6 +123,8 @@ World-item identity is separate from item content type. Future pickup/stack/owne
 World edits pass through semantic/runtime mutation paths rather than directly rewriting tiles in a decoder.
 
 The runtime already has verified slices for tile kill/update/replication and world collision/query behavior. `WorldTile` stores mutable cell state only; one flyweight `VanillaTileDefinition` per 1.4.5.8 TileID owns break-path, mining, drop and failed-pick transform semantics. Ordinary simple-cell mining therefore has no positive TileID allow-list.
+
+Packet-17 mining resolves the selected packet-13 inventory slot through the exact connection generation. The verified pick catalog includes ordinary pickaxes and drills, including the Nebula, Solar Flare and Stardust drill variants. Drill Containment Unit mining is a separate source-backed authority source: mount type `8` with `controlUseItem`, the summon item present in ordinary inventory, and vanilla mount pick power `210`. It does not pretend that the selected item is a pickaxe.
 
 Still incomplete at broad vanilla scale are the remaining frame-important/multi-tile object destruction and placement families beyond the exact base Chest slice, every slope/platform interaction, wiring/actuation, growth/spread families, full `HitTile`/reach semantics and the remaining environment-dependent `CanKillTile` rules.
 
@@ -272,6 +274,8 @@ Ordinary same-kind liquid settling now follows the verified TerrariaServer 1.4.5
 The ordinary open-cell material-contact paths from `Liquid.LiquidCheck` are also authoritative. Water wakes adjacent lava/honey/shimmer and lets that foreign-liquid update own the merge location. Verified merges produce Obsidian (`56`) for water/lava, Honey Block (`229`) for water/honey, Crispy Honey Block (`230`) for lava/honey and Shimmer Block (`659`) whenever shimmer wins the source-order merge selection. The vanilla `24`-unit threshold, left/right/up foreign-liquid consumption, the sub-24 lower-cell source clear, and packet-20 tile-square replication for material mutations are pinned by focused runtime tests.
 
 The ordinary dedicated-server active-entry lifecycle is now part of that authoritative slice as well. A liquid entry can advance only once per TerraRuntime tick even when the work budget is larger than one, amount changes reset `kill` and wake the cell above, stable entries retire at the TerrariaServer 1.4.5.8 threshold `10 + activePlayersInSlots0To14 / 3`, and stable `254` is normalized to `255` on retirement. Water below `Main.UnderworldLayer == maxTilesY - 200` evaporates by two units per liquid update. The generating/loading slice covers quick-settle scheduling, the `Liquid.QuickWater` pre-pass, and `WorldGen.WaterCheck` using the final source-pinned 10-entry water-death and 267-entry lava-death tables. Canonical load now runs the supported sequence `QuickWater -> WaterCheck -> quickSettle drain (maximum 100000 iterations) -> WaterCheck` before runtime/bootstrap cache admission, and runtime cache layout 2 is writable only from that prepared state. Full vanilla liquid simulation is still open for complex `WorldGen.ReplaceTile` cases beyond the safe active subset, Remix/Zenith load-time liquid remapping, and panic/forced-settle paths. Circuit traversal/devices and growth/spread rule families are likewise separate work.
+
+The live scheduler derives the TerrariaServer 1.4.5.8 slice from `curMaxLiquid = 25000 - players * 250` and `cycles = 10 + players / 3`, capped at `2500` entries per TerraRuntime tick for an empty server. Water, lava and shimmer backlog tests prove that independent worlds at the same TPS receive the same slice. Zero-liquid cells do not occupy the active queue, while a committed tile mutation immediately wakes adjacent non-empty liquid.
 
 These subsystems are order-sensitive and can touch large world areas, so their implementation must combine exact behavioral verification, global bounded per-tick work, deterministic owner-thread commits, dirty/replication tracking and save compatibility.
 

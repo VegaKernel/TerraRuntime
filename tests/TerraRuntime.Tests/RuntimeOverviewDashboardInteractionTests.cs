@@ -552,6 +552,24 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     }
 
     [Fact]
+    public void Player_details_keeps_routed_godmode_enabled_when_primary_telemetry_does_not_contain_sandbox_player()
+    {
+        RuntimePlayerSnapshot sandboxPlayer = CreatePlayer(4, 44, "SandboxAlice");
+        var players = new EmptyPlayerOperations();
+        var administration = new FakePlayerAdministration(initialGodMode: false);
+        var sessions = new RuntimeConnectionSessionDirectory();
+        sessions.Register(sandboxPlayer.ConnectionId, "127.0.0.1", 7777, DateTimeOffset.UtcNow);
+        using var window = new PlayerDetailsWindow(sandboxPlayer, players, administration, sessions);
+
+        Assert.True(window.GodModeControlEnabledForSmoke);
+        window.SetGodModeForSmoke(enabled: true);
+        window.ApplyGodModeForSmoke();
+
+        Assert.True(administration.GodMode);
+        Assert.Equal(window.Player, administration.LastSetPlayer);
+    }
+
+    [Fact]
     public void Player_details_godmode_selection_survives_periodic_refresh_until_apply()
     {
         RuntimePlayerSnapshot alice = CreatePlayer(3, 33, "Alice");
@@ -593,6 +611,12 @@ public sealed class RuntimeOverviewDashboardInteractionTests
             HasMana: true,
             Mana: 20,
             MaxMana: 20);
+
+    private sealed class EmptyPlayerOperations : IPlayerOperations
+    {
+        public RuntimePlayersSnapshot CaptureSnapshot() =>
+            new(ReadOnlyMemory<RuntimePlayerSnapshot>.Empty, DateTimeOffset.UtcNow);
+    }
 
     private sealed class FixedPlayerOperations(RuntimePlayerSnapshot player) : IPlayerOperations
     {

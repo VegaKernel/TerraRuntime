@@ -166,7 +166,7 @@ public sealed class VanillaMultiTileObjectMutationServiceTests
     }
 
     [Fact]
-    public void Breaking_multi_tile_container_wakes_liquid_above_the_entire_vacated_footprint()
+    public void Breaking_multi_tile_container_wakes_real_liquid_without_queueing_empty_vacated_cells()
     {
         var tiles = CreateSupportedContainerWorld();
         var metadata = new RecordingMetadataLifecycle();
@@ -181,8 +181,8 @@ public sealed class VanillaMultiTileObjectMutationServiceTests
 
         Assert.True(service.TryBreakAt(210, 160, metadata).Applied);
         Assert.True(tiles.LiquidUpdates.IsQueued(210, 159));
-        Assert.True(tiles.LiquidUpdates.IsQueued(210, 160));
-        Assert.True(tiles.LiquidUpdates.IsQueued(211, 161));
+        Assert.False(tiles.LiquidUpdates.IsQueued(210, 160));
+        Assert.False(tiles.LiquidUpdates.IsQueued(211, 161));
 
         var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 32, discoveryBudgetPerTick: 1);
         Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[64];

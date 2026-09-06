@@ -18,6 +18,7 @@ internal sealed partial class ProjectileAuthority
             return false;
 
         explosions.Reset();
+        tileExplosions.Reset();
         childSpawns.Reset();
         liveChildSpawns.Reset();
         SynchronizeControlledProjectileReleaseInputs();

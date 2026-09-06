@@ -55,7 +55,7 @@ Action row roster содержит ровно **`+ Sandbox`**, затем **`+ B
 
 ## Player details и GodMode
 
-Double-click по player row открывает generation-safe окно конкретной player session. `God mode` отображается как `Disabled` / `Enabled` dropdown и применяется кнопкой `Apply`. Периодический dashboard refresh не перетирает пользовательский выбор, ожидающий Apply; после применения значение проходит через typed trusted-host administration boundary и authoritative game loop.
+Double-click по player row открывает generation-safe окно конкретной player session. `God mode` отображается как `Disabled` / `Enabled` dropdown и применяется кнопкой `Apply`. Периодический dashboard refresh не перетирает пользовательский выбор, ожидающий Apply; после применения значение проходит через typed trusted-host administration boundary и authoritative game loop. Liveness и command routing используют process-level world route выбранного игрока, поэтому управление одинаково работает для primary и sandbox players, а primary telemetry больше не служит gate.
 
 ## Выбор мира в detail screens
 

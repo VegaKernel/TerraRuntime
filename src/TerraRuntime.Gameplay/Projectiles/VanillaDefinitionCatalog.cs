@@ -15,6 +15,7 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId BouncyBall = new(14);
     public static readonly ProjectileAiStyleId Bomb = new(16);
     public static readonly ProjectileAiStyleId EyeFire = new(23);
+    public static readonly ProjectileAiStyleId HeldProjectile = new(75);
     public static readonly ProjectileAiStyleId Sharknado = new(64);
     public static readonly ProjectileAiStyleId SharknadoBolt = new(65);
     public static readonly ProjectileAiStyleId PhantasmalEye = new(82);
@@ -30,6 +31,7 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId FairyQueenLance = new(179);
     public static readonly ProjectileAiStyleId FairyQueenSunDance = new(180);
     public static readonly ProjectileAiStyleId ShadowHand = new(187);
+    public static readonly ProjectileAiStyleId CelebrationRocket = new(147);
 }
 
 /// <summary>
@@ -741,6 +743,22 @@ public static class VanillaDefinitionCatalog
         if (type.Value is >= 133 and <= 144)
         {
             definition = RocketFamilyDefinition;
+            return true;
+        }
+
+        if (VanillaExplosiveProjectileFacts1458.TryGetDefaults(
+                type,
+                out VanillaExplosiveProjectileDefaults1458 explosive))
+        {
+            definition = new VanillaProjectileDefinition(
+                explosive.Width,
+                explosive.Height,
+                explosive.AiStyle,
+                explosive.TileCollide,
+                explosive.IgnoreWater,
+                CanCutTiles: true,
+                CollisionWidth: explosive.Width,
+                CollisionHeight: explosive.Height);
             return true;
         }
 

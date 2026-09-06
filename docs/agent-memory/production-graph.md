@@ -95,6 +95,8 @@ Ownership/invariants for this path:
 - material merge side effects cross a synchronous prepare/commit boundary owned by `WorldTileAuthority`; unsupported active targets fail before participating liquids are cleared.
 - a committed material merge is represented by its packet-20 tile square, not redundant packet-48 updates for the liquid cells cleared as part of that merge.
 - Re-enqueued liquid work must not allow one tile to consume multiple logical vanilla update steps in the same TerraRuntime server tick.
+- The live work slice follows the pinned dedicated-server budget: `curMaxLiquid = 25000 - players * 250`, divided by `cycles = 10 + players / 3`, capped at 2500 entries on an empty server. Each world computes its own equal-TPS slice; no process-global backlog can starve another world.
+- Zero-liquid cells do not enter the active queue. A committed tile mutation explicitly wakes adjacent non-empty liquid. The simulator rents its large per-tick change scratch from `ArrayPool` and returns it after replication processing.
 
 ## Canonical load and runtime-cache preparation path
 
@@ -132,6 +134,7 @@ flowchart LR
     TUI[SandboxWorldTreeView / MoveExact]
     Coordinator[Level1PlayerTransferCoordinator]
     Route[RuntimeConnectionRoute.TryTransfer]
+    Preflight[PlayerAuthority detach / slot-58 normalization]
     Bootstrap[RuntimeConnectionWorldBinding replacement bootstrap]
     Gate[PlayerBootstrapFrameSink.BeginWorldTransferLanding]
     Attach[RuntimePlayerTransferIngress destination attach]
@@ -139,7 +142,7 @@ flowchart LR
     Echo[client packet 12 SpawningIntoWorld echo]
     Movement[packet 13 landing movement]
 
-    TUI --> Coordinator --> Route --> Bootstrap --> Gate --> Attach --> Spawn
+    TUI --> Coordinator --> Route --> Preflight --> Bootstrap --> Gate --> Attach --> Spawn
     Spawn --> Echo
     Echo --> Gate
     Movement --> Gate
@@ -148,9 +151,54 @@ flowchart LR
 Ownership/invariants for this path:
 
 - cross-world position is not portable state; destination authoritative attach owns the destination world spawn;
+- vanilla inventory slot 58 is `Main.mouseItem`; detach moves a non-empty cursor stack exactly once into an empty main slot 0..49 or aborts before source detach. Destination publishes an explicit empty slot 58 before the normalized inventory image;
 - the synthetic packet 12 is a world-handoff frame, not permission for its immediate client echo to create another authoritative respawn;
 - while the landing gate is active, a client packet 12 with `SpawnContext=SpawningIntoWorld` is consumed as transfer echo and cannot overwrite the correction target;
-- stale packet-13 movement from the old world remains rejected/corrected until the client lands near the destination spawn.
+- stale packet-5 inventory echoes and packet-13 movement from the old world remain rejected/corrected until the client lands near the destination spawn.
+
+## Trusted projectile terrain-explosion path
+
+```mermaid
+flowchart LR
+    P27[owner packet 27]
+    Provenance[ProjectileAuthority provenance]
+    Simulation[authoritative projectile simulation]
+    Termination[trusted termination]
+    Queue[RuntimeProjectileTileExplosionQueue]
+    Tiles[WorldTileAuthority]
+    Rules[1.4.5.8 radius / tile / wall rules]
+    Commit[tile drops + liquid wake + replication]
+    Echo[matching owner packet 17]
+
+    P27 --> Provenance --> Simulation --> Termination --> Queue --> Tiles --> Rules --> Commit
+    Echo --> Tiles
+```
+
+Ownership/invariants for this path:
+
+- only a generation admitted by strict weapon/ammo/volley provenance can enqueue terrain destruction; client packet 17 is never the explosion authority;
+- Bomb/Dynamite, admitted launcher/Mini Nuke types and Celebration children use exact source-backed defaults. Celebration holder 714 stays untrusted and children 715..718 use a separate aiStyle-147 simulation slice;
+- `RuntimeProjectileTileExplosionQueue` observes committed trusted termination and carries the exact type-derived definition into `WorldTileAuthority` in the same runtime tick;
+- `WorldTileAuthority` applies strict radius membership, `CanExplodeTile`, wall eligibility, transactional drops, liquid wake and packet replication. Unknown types and unsupported tile/object cases fail closed;
+- a short-lived, bounded `RuntimeProjectileTileExplosionEchoTracker` consumes only exact owner/tile/action convergence echoes after authoritative mutation. The network packet-17 ceiling remains an emergency containment boundary, not gameplay authority.
+
+## Server-owned world-item pickup path
+
+```mermaid
+flowchart LR
+    Tick[ServerRuntimeState.Tick]
+    Owner[WorldItemAuthority.TickPlayerReservations]
+    Store[RuntimeWorldItemStore owner reservation]
+    P22[packet 22 ItemOwner]
+    Client[reserved client]
+    P21[inbound packet 21]
+    Remove[owner-gated authoritative removal]
+    Peers[packet 21 replication]
+
+    Tick --> Owner --> Store --> P22 --> Client --> P21 --> Remove --> Peers
+```
+
+The current `WorldItem.FindOwner` slice runs every five ticks and selects the nearest live player that has an empty ordinary inventory slot. Inbound packet 22 is never accepted as ownership. Packet 21 may remove an existing item only when its sender is the exact current reservation owner; another playing connection fails closed. Stacking, special pickup magnets and alternate-storage routing remain outside this admitted slice.
 
 ## Operator bot ownership path
 
@@ -207,12 +255,15 @@ This is presentation-only state. IN and OUT packet-rate histories share one plot
 | --- | --- | --- |
 | Runtime tick ordering | `ServerRuntimeState.Tick.cs` | subsystem authority/store, replication |
 | Client tile/liquid admission | `WorldTileAuthority.cs` | mutation service, budgets, Multiplicity codec |
+| Projectile terrain explosions | `ProjectileAuthority` / `RuntimeProjectileTileExplosionQueue.cs` | `WorldTileAuthority.cs`, 1.4.5.8 explosion facts/rules, echo tracker, packet-17 budgets |
+| World-item pickup ownership | `WorldItemAuthority.cs` | `RuntimeWorldItemStore`, replication registry, packet 21/22 ingress |
 | Liquid simulation | `VanillaWorldLiquidSimulator1458.cs` | `WorldLiquidUpdateQueue.cs`, `WorldTileStore.cs`, snapshot persistence, replication |
 | Tile/material replication | `RuntimeTileManipulationReplicationRegistry.cs` | `TerrariaTileSquareCodec`, `TerrariaLiquidCodec` |
 | Snapshot liquid persistence | `RuntimeWorldSnapshotCache.*.cs` | `WorldLiquidUpdateQueue`, `WorldTile` |
 | Canonical load / runtime-cache admission | `WorldStartupPreparation.cs` | `VanillaWorldLiquidLoadInitializer1458.cs`, `RuntimeWorldSnapshotCache.*.cs`, `RuntimeWorldSnapshotRebuilder.cs` |
 | Vanilla world generation | `TerraRuntime.WorldGeneration` | generation plan/provider, `TerraRuntime.World`, world-file writer/loader |
 | Sandbox orchestration | `TerraRuntime.Application` sandbox owners | world generation/load path, player transfer/bootstrap, process worker contracts |
+| Cross-world inventory conservation | `PlayerAuthority.Transfer.cs` | `RuntimeConnectionRoute`, landing gate, packet-5 ingress, transfer tests |
 | Protocol wire semantics | `TerraRuntime.Protocol.Multiplicity` | `TerraRuntime.Protocol`, official 1.4.5.8 server/client behavior |
 
 When a change crosses one of these rows, refresh the relevant graph rather than assuming the old impact boundary still holds.

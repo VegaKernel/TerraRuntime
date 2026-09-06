@@ -107,6 +107,7 @@ internal sealed class PlayerDetailsWindow : Window
 
     internal PlayerHandle Player => handle;
     internal bool GodModeForSmoke => IsGodModeSelected();
+    internal bool GodModeControlEnabledForSmoke => godMode.Enabled;
     internal string SessionTextForSmoke => sessionDuration.Text?.ToString() ?? string.Empty;
     internal string EndpointTextForSmoke => endpoint.Text?.ToString() ?? string.Empty;
 
@@ -140,7 +141,10 @@ internal sealed class PlayerDetailsWindow : Window
         try
         {
             bool? enabled = administration.GetGodModeAsync(handle).AsTask().GetAwaiter().GetResult();
-            if (!connected || enabled is null)
+            // The dashboard player telemetry may belong to a different runtime (primary vs sandbox), while
+            // administration is process-routed by exact PlayerHandle. Treat the routed administration result as the
+            // liveness/authority signal for god mode; primary-only telemetry must not disable sandbox controls.
+            if (enabled is null)
             {
                 godMode.Enabled = false;
                 godModeDirty = false;

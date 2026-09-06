@@ -25,6 +25,32 @@ internal interface IVanillaProjectileNpcTargetResolver
     bool IsNpcSlotAddressable(int npcSlot);
 
     bool TryGetActiveNpc(int npcSlot, out NpcSnapshot npc);
+
+    bool TryFindClosestCelebrationRocketTarget(
+        in ProjectileSnapshot projectile,
+        in VanillaProjectileDefinition projectileDefinition,
+        float maximumManhattanDistance,
+        out int npcSlot,
+        out float targetCenterX,
+        out float targetCenterY) =>
+        TryFindClosestTargetWithLineOfSight(
+            in projectile,
+            in projectileDefinition,
+            maximumManhattanDistance,
+            out npcSlot,
+            out targetCenterX,
+            out targetCenterY);
+
+    bool TryGetCelebrationRocketTargetCenter(
+        int npcSlot,
+        float projectileCenterX,
+        float projectileCenterY,
+        float maximumManhattanDistance,
+        out float targetCenterX,
+        out float targetCenterY) =>
+        TryGetChaseableTargetCenter(npcSlot, out targetCenterX, out targetCenterY) &&
+        MathF.Abs(projectileCenterX - targetCenterX) + MathF.Abs(projectileCenterY - targetCenterY) <
+            maximumManhattanDistance;
 }
 
 internal readonly record struct VanillaProjectileBehaviorContext(
@@ -52,7 +78,9 @@ internal readonly record struct VanillaProjectileBehaviorResult(
     bool? TileCollideOverride = null,
     int? TimeLeftOverride = null,
     int? MinimumTimeLeftOverride = null,
-    ProjectileLocalAiState? LocalAiOverride = null);
+    ProjectileLocalAiState? LocalAiOverride = null,
+    short? DamageOverride = null,
+    float? KnockBackOverride = null);
 
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 projectile behavior that is independent of tile/world queries.
@@ -653,13 +681,42 @@ internal static partial class VanillaProjectileBehaviorStepper
             }
 
             case VanillaProjectileBehaviorFamily.Bomb:
-                // TerrariaServer 1.4.5.8 Projectile.AI_016_Bombs for launcher projectile types 133..144.
+                // TerrariaServer 1.4.5.8 Projectile.AI_016_Bombs for the exact admitted launcher families.
                 // Presentation-only rotation/dust/sound are intentionally omitted. Tile impact bounce/arming is
                 // resolved by VanillaProjectileWorldMotionResolver because it depends on collision results.
-                ai0 += 1f;
-                switch ((current.Type.Value - 133) % 3)
+                if (!VanillaExplosiveProjectileFacts1458.TryGetAi016MotionKind(current.Type, out VanillaAi016MotionKind1458 motionKind))
                 {
-                    case 0: // Grenade I..IV.
+                    next = default;
+                    return false;
+                }
+                if (context.CurrentTimeLeft is > 0 and <= 3)
+                {
+                    short? armedDamage = current.Type.Value switch
+                    {
+                        28 => 100,
+                        29 => 250,
+                        _ => null
+                    };
+                    float? armedKnockBack = current.Type.Value switch
+                    {
+                        28 => 8f,
+                        29 => 10f,
+                        _ => null
+                    };
+                    next = new VanillaProjectileBehaviorResult(
+                        velocityX,
+                        velocityY,
+                        ai0,
+                        Kill: true,
+                        TileCollideOverride: false,
+                        DamageOverride: armedDamage,
+                        KnockBackOverride: armedKnockBack);
+                    return true;
+                }
+                ai0 += 1f;
+                switch (motionKind)
+                {
+                    case VanillaAi016MotionKind1458.Grenade:
                         if (ai0 > 15f)
                         {
                             if (velocityY == 0f)
@@ -667,9 +724,14 @@ internal static partial class VanillaProjectileBehaviorStepper
                             velocityY += 0.2f;
                         }
                         break;
-                    case 1: // Rocket I..IV: straight flight until impact.
+                    case VanillaAi016MotionKind1458.StraightRocket:
+                        if (MathF.Abs(velocityX) < 15f && MathF.Abs(velocityY) < 15f)
+                        {
+                            velocityX *= 1.1f;
+                            velocityY *= 1.1f;
+                        }
                         break;
-                    case 2: // Proximity Mine I..IV.
+                    case VanillaAi016MotionKind1458.ProximityMine:
                         velocityY += 0.2f;
                         velocityX *= 0.97f;
                         velocityY *= 0.97f;
@@ -678,8 +740,32 @@ internal static partial class VanillaProjectileBehaviorStepper
                         if (velocityY is > -0.1f and < 0.1f)
                             velocityY = 0f;
                         break;
+                    case VanillaAi016MotionKind1458.OrdinaryFuse:
+                        if (ai0 > 5f)
+                        {
+                            ai0 = 10f;
+                            if (velocityY == 0f && velocityX != 0f)
+                            {
+                                velocityX *= 0.97f;
+                                if (current.Type == VanillaProjectileIds.Dynamite)
+                                    velocityX *= 0.99f;
+                                if (velocityX is > -0.01f and < 0.01f)
+                                    velocityX = 0f;
+                            }
+                            velocityY += 0.2f;
+                        }
+                        break;
                 }
                 break;
+
+            case VanillaProjectileBehaviorFamily.CelebrationRocket:
+                ProjectileLocalAiState celebrationLocalAi = context.LocalAi;
+                return TryStepCelebrationRocket(
+                    in current,
+                    in definition,
+                    in celebrationLocalAi,
+                    context.NpcTargets,
+                    out next);
 
             case VanillaProjectileBehaviorFamily.ControlledMagicMissile:
                 return TryStepControlledMagicMissile(in current, in definition, context.NpcTargets, out next);

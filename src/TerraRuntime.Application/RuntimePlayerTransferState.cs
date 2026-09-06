@@ -13,7 +13,8 @@ internal sealed record RuntimePlayerTransferState(
     RuntimePlayerInventoryItem[] Inventory,
     PlayerAppearanceCommitRequest? Appearance,
     PlayerEquipmentCommitRequest[] Equipment,
-    bool GodMode)
+    bool GodMode,
+    bool MouseItemNormalized = false)
 {
     public PlayerSlotId Slot => Player.Player.Slot;
 

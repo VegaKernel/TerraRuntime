@@ -87,11 +87,19 @@ internal sealed partial class ProjectileAuthority
             if (provenance == ClientProjectileProvenanceResolveResult.Accepted)
             {
                 ProjectileStateUpdate authoritativeState = authoritative.State;
-                if (projectiles.TrySpawnVanilla(in authoritativeState, out ProjectileSnapshot trusted) &&
+                int? timeLeftOverride = VanillaExplosiveProjectileFacts1458.TryGetPlayerOwnedSpawnTimeLeftOverride(
+                    authoritativeState.Type,
+                    out int sourceTimeLeft)
+                    ? sourceTimeLeft
+                    : null;
+                if (projectiles.TrySpawnVanilla(in authoritativeState, timeLeftOverride, out ProjectileSnapshot trusted) &&
                     projectiles.TryMarkCombatTrusted(trusted.Handle, command.Connection.Player) &&
                     TryCommitAuthoritativeProjectileUse(command.Connection, in authoritative))
                 {
-                    trustedClientUseCadence.MarkUse(command.Connection.Player, tickProvider());
+                    if (authoritative.CelebrationVolley is RuntimeCelebrationMk2VolleyAdmission celebrationVolley)
+                        celebrationMk2Volleys.Commit(command.Connection.Player, in celebrationVolley);
+                    else
+                        trustedClientUseCadence.MarkUse(command.Connection.Player, tickProvider());
                     AppliedSpawns++;
                     PromotedClientProjectileSpawns++;
                     return;

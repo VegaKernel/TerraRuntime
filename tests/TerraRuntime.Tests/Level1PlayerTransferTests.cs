@@ -447,6 +447,228 @@ public sealed class Level1PlayerTransferTests
         }
     }
 
+    [Fact]
+    public async Task Cursor_item_is_normalized_once_and_preserved_across_repeated_world_transfers_and_landing_echo()
+    {
+        using WorldRuntime primary = CreateRuntime("Primary", seed: 901);
+        using WorldRuntime sandbox = CreateRuntime("Arena", seed: 902);
+        primary.Start();
+        sandbox.Start();
+
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(901);
+        var outbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 8192, maxQueuedBytes: 64 * 1024 * 1024, maxFrameBytes: 4 * 1024 * 1024));
+        Assert.True(RuntimeConnectionWorldBinding.TryCreateTransferred(
+            primary,
+            source,
+            outbound,
+            new PlayerSlotId(0),
+            "Cursor",
+            out RuntimeConnectionWorldBinding? binding));
+        Assert.NotNull(binding);
+        Assert.True(binding!.TryRegister());
+        using var route = new RuntimeConnectionRoute(source, outbound, binding);
+
+        RuntimePlayerInventoryItem[] inventory = new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
+        inventory[VanillaPlayerItemSlotCatalog.InventoryMouseItem] =
+            new RuntimePlayerInventoryItem(VanillaItemIds.DirtBlock, 7, VanillaPrefixIds.None, 0);
+        PlayerHandle initial = AssertPlayer(route.ActivePlayer);
+        await AttachInitialPlayerAsync(
+            primary,
+            source,
+            initial,
+            "Cursor",
+            x: 96f,
+            y: 128f,
+            life: 70,
+            maxLife: 100,
+            inventory: inventory);
+        DrainOutbound(outbound);
+
+        Assert.True(route.TryTransfer(sandbox, forceRespawn: false, out string? firstError), firstError);
+        PlayerHandle sandboxPlayer = AssertPlayer(route.ActivePlayer);
+        AssertInventoryTotalAndEmptyCursor(sandbox.State, sandboxPlayer, expectedTotal: 7);
+
+        var staleMouse = new TerrariaPlayerEquipmentState(
+            sandboxPlayer.Slot.Value,
+            VanillaPlayerItemSlotCatalog.InventoryMouseItem,
+            Stack: 7,
+            Prefix: VanillaPrefixIds.NoneValue,
+            ItemNetId: checked((short)VanillaItemIds.DirtBlock.Value),
+            ItemFlags: 0);
+        TerrariaFrame staleMouseFrame = DecodeFrame(TerrariaPlayerEquipmentCodec.Encode(in staleMouse));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, route.OnFrame(in staleMouseFrame));
+        await Task.Delay(25, TestContext.Current.CancellationToken);
+        AssertInventoryTotalAndEmptyCursor(sandbox.State, sandboxPlayer, expectedTotal: 7);
+
+        PlayerStateSnapshot? sandboxPosition = await sandbox.PlayerStateSnapshots.CaptureAsync(
+            sandboxPlayer,
+            TestContext.Current.CancellationToken);
+        Assert.NotNull(sandboxPosition);
+        Assert.Equal(
+            TerrariaFrameSinkResult.Continue,
+            route.OnFrame(MovementFrame(
+                sandboxPlayer.Slot,
+                sandboxPosition.Value.PositionX,
+                sandboxPosition.Value.PositionY)));
+
+        Assert.True(route.TryTransfer(primary, forceRespawn: false, out string? returnError), returnError);
+        PlayerHandle returnedPlayer = AssertPlayer(route.ActivePlayer);
+        AssertInventoryTotalAndEmptyCursor(primary.State, returnedPlayer, expectedTotal: 7);
+        Assert.True(route.TryTransfer(sandbox, forceRespawn: false, out string? repeatedError), repeatedError);
+        AssertInventoryTotalAndEmptyCursor(sandbox.State, AssertPlayer(route.ActivePlayer), expectedTotal: 7);
+    }
+
+    [Fact]
+    public async Task Full_main_inventory_with_cursor_item_aborts_transfer_without_detaching_source()
+    {
+        using WorldRuntime primary = CreateRuntime("Primary", seed: 903);
+        using WorldRuntime sandbox = CreateRuntime("Arena", seed: 904);
+        primary.Start();
+        sandbox.Start();
+
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(903);
+        var outbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 8192, maxQueuedBytes: 64 * 1024 * 1024, maxFrameBytes: 4 * 1024 * 1024));
+        Assert.True(RuntimeConnectionWorldBinding.TryCreateTransferred(
+            primary,
+            source,
+            outbound,
+            new PlayerSlotId(0),
+            "FullCursor",
+            out RuntimeConnectionWorldBinding? binding));
+        Assert.NotNull(binding);
+        Assert.True(binding!.TryRegister());
+        using var route = new RuntimeConnectionRoute(source, outbound, binding);
+
+        RuntimePlayerInventoryItem[] inventory = new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
+        for (int slot = VanillaPlayerItemSlotCatalog.MainInventoryStart;
+             slot < VanillaPlayerItemSlotCatalog.MainInventoryEndExclusive;
+             slot++)
+        {
+            inventory[slot] = new RuntimePlayerInventoryItem(VanillaItemIds.DirtBlock, 1, VanillaPrefixIds.None, 0);
+        }
+        inventory[VanillaPlayerItemSlotCatalog.InventoryMouseItem] =
+            new RuntimePlayerInventoryItem(VanillaItemIds.DirtBlock, 7, VanillaPrefixIds.None, 0);
+
+        PlayerHandle player = AssertPlayer(route.ActivePlayer);
+        await AttachInitialPlayerAsync(
+            primary,
+            source,
+            player,
+            "FullCursor",
+            x: 96f,
+            y: 128f,
+            life: 70,
+            maxLife: 100,
+            inventory: inventory);
+
+        Assert.False(route.TryTransfer(sandbox, forceRespawn: false, out _));
+        Assert.Same(primary, route.ActiveRuntime);
+        Assert.Equal(player, route.ActivePlayer);
+        Assert.True(primary.State.TryCapturePlayerInventoryItem(
+            player,
+            VanillaPlayerItemSlotCatalog.InventoryMouseItem,
+            out RuntimePlayerInventoryItem cursor));
+        Assert.Equal((short)7, cursor.Stack);
+        Assert.Equal(57, CountInventoryItems(primary.State, player));
+    }
+
+    [Fact]
+    public async Task Disconnect_during_transfer_landing_clears_old_generation_before_reconnect()
+    {
+        using WorldRuntime primary = CreateRuntime("Primary", seed: 905);
+        using WorldRuntime sandbox = CreateRuntime("Arena", seed: 906);
+        primary.Start();
+        sandbox.Start();
+
+        GameCommandSourceId oldSource = GameCommandSourceId.FromConnection(905);
+        var oldOutbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 8192, maxQueuedBytes: 64 * 1024 * 1024, maxFrameBytes: 4 * 1024 * 1024));
+        Assert.True(RuntimeConnectionWorldBinding.TryCreateTransferred(
+            primary,
+            oldSource,
+            oldOutbound,
+            new PlayerSlotId(0),
+            "ReconnectCursor",
+            out RuntimeConnectionWorldBinding? oldBinding));
+        Assert.NotNull(oldBinding);
+        Assert.True(oldBinding!.TryRegister());
+        using var oldRoute = new RuntimeConnectionRoute(oldSource, oldOutbound, oldBinding);
+
+        RuntimePlayerInventoryItem[] initialInventory =
+            new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
+        initialInventory[VanillaPlayerItemSlotCatalog.InventoryMouseItem] =
+            new RuntimePlayerInventoryItem(VanillaItemIds.DirtBlock, 7, VanillaPrefixIds.None, 0);
+        PlayerHandle initialPlayer = AssertPlayer(oldRoute.ActivePlayer);
+        await AttachInitialPlayerAsync(
+            primary,
+            oldSource,
+            initialPlayer,
+            "ReconnectCursor",
+            x: 96f,
+            y: 128f,
+            life: 70,
+            maxLife: 100,
+            inventory: initialInventory);
+        DrainOutbound(oldOutbound);
+
+        Assert.True(oldRoute.TryTransfer(sandbox, forceRespawn: false, out string? transferError), transferError);
+        PlayerHandle landingPlayer = AssertPlayer(oldRoute.ActivePlayer);
+        AssertInventoryTotalAndEmptyCursor(sandbox.State, landingPlayer, expectedTotal: 7);
+
+        // Disconnect before the first destination packet-13 landing sample. The old landing gate and its normalized
+        // inventory image belong only to this connection/generation and must disappear with it.
+        oldRoute.DisconnectActive();
+        oldRoute.Dispose();
+        Assert.Null(await sandbox.PlayerStateSnapshots.CaptureAsync(
+            landingPlayer,
+            TestContext.Current.CancellationToken));
+
+        RuntimePlayerInventoryItem[] reconnectInventory =
+            new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
+        reconnectInventory[VanillaPlayerItemSlotCatalog.MainInventoryStart] =
+            new RuntimePlayerInventoryItem(VanillaItemIds.DirtBlock, 7, VanillaPrefixIds.None, 0);
+
+        GameCommandSourceId reconnectSource = GameCommandSourceId.FromConnection(906);
+        var reconnectOutbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 8192, maxQueuedBytes: 64 * 1024 * 1024, maxFrameBytes: 4 * 1024 * 1024));
+        Assert.True(RuntimeConnectionWorldBinding.TryCreateTransferred(
+            primary,
+            reconnectSource,
+            reconnectOutbound,
+            new PlayerSlotId(0),
+            "ReconnectCursor",
+            out RuntimeConnectionWorldBinding? reconnectBinding));
+        Assert.NotNull(reconnectBinding);
+        Assert.True(reconnectBinding!.TryRegister());
+        using var reconnectRoute = new RuntimeConnectionRoute(reconnectSource, reconnectOutbound, reconnectBinding);
+        PlayerHandle reconnectedPlayer = AssertPlayer(reconnectRoute.ActivePlayer);
+        Assert.NotEqual(initialPlayer.Generation, reconnectedPlayer.Generation);
+        await AttachInitialPlayerAsync(
+            primary,
+            reconnectSource,
+            reconnectedPlayer,
+            "ReconnectCursor",
+            x: 96f,
+            y: 128f,
+            life: 70,
+            maxLife: 100,
+            inventory: reconnectInventory);
+
+        AssertInventoryTotalAndEmptyCursor(primary.State, reconnectedPlayer, expectedTotal: 7);
+        var staleMouse = new TerrariaPlayerEquipmentState(
+            landingPlayer.Slot.Value,
+            VanillaPlayerItemSlotCatalog.InventoryMouseItem,
+            Stack: 7,
+            Prefix: VanillaPrefixIds.NoneValue,
+            ItemNetId: checked((short)VanillaItemIds.DirtBlock.Value),
+            ItemFlags: 0);
+        TerrariaFrame staleMouseFrame = DecodeFrame(TerrariaPlayerEquipmentCodec.Encode(in staleMouse));
+        Assert.Equal(TerrariaFrameSinkResult.Stop, oldRoute.OnFrame(in staleMouseFrame));
+        AssertInventoryTotalAndEmptyCursor(primary.State, reconnectedPlayer, expectedTotal: 7);
+    }
+
     private static async Task AttachInitialPlayerAsync(
         WorldRuntime runtime,
         GameCommandSourceId source,
@@ -456,7 +678,8 @@ public sealed class Level1PlayerTransferTests
         float y,
         short life,
         short maxLife,
-        bool dead = false)
+        bool dead = false,
+        RuntimePlayerInventoryItem[]? inventory = null)
     {
         var snapshot = new PlayerStateSnapshot(
             player,
@@ -509,7 +732,7 @@ public sealed class Level1PlayerTransferTests
             ConsumableUnlockFlags: 0);
         var transfer = new RuntimePlayerTransferState(
             snapshot,
-            new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount],
+            inventory ?? new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount],
             appearance,
             [],
             GodMode: false);
@@ -522,6 +745,42 @@ public sealed class Level1PlayerTransferTests
             preserveWorldPosition: true,
             forceRespawn: false,
             TestContext.Current.CancellationToken));
+    }
+
+    private static void AssertInventoryTotalAndEmptyCursor(
+        ServerRuntimeState state,
+        PlayerHandle player,
+        int expectedTotal)
+    {
+        int total = 0;
+        for (int slot = 0; slot < VanillaPlayerItemSlotCatalog.InventoryCount; slot++)
+        {
+            Assert.True(state.TryCapturePlayerInventoryItem(player, slot, out RuntimePlayerInventoryItem item));
+            if (!item.IsEmpty)
+                total += item.Stack;
+        }
+
+        Assert.Equal(expectedTotal, total);
+        Assert.True(state.TryCapturePlayerInventoryItem(
+            player,
+            VanillaPlayerItemSlotCatalog.InventoryMouseItem,
+            out RuntimePlayerInventoryItem mouse));
+        Assert.True(mouse.IsEmpty);
+        Assert.True(state.TryCapturePlayerInventoryItem(player, 0, out RuntimePlayerInventoryItem first));
+        Assert.Equal(VanillaItemIds.DirtBlock, first.ItemType);
+        Assert.Equal((short)expectedTotal, first.Stack);
+    }
+
+    private static int CountInventoryItems(ServerRuntimeState state, PlayerHandle player)
+    {
+        int total = 0;
+        for (int slot = 0; slot < VanillaPlayerItemSlotCatalog.InventoryCount; slot++)
+        {
+            Assert.True(state.TryCapturePlayerInventoryItem(player, slot, out RuntimePlayerInventoryItem item));
+            if (!item.IsEmpty)
+                total += item.Stack;
+        }
+        return total;
     }
 
     private static TerrariaFrame[] DrainOutbound(TerrariaConnectionOutboundQueue outbound)

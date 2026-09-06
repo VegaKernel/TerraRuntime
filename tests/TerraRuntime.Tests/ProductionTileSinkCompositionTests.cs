@@ -46,6 +46,113 @@ public sealed class ProductionTileSinkCompositionTests
         Assert.Equal(ChestInteractionFrameStopReason.None, chestSink.StopReason);
     }
 
+
+    [Theory]
+    [InlineData(3509, false)] // Copper Pickaxe
+    [InlineData(385, false)] // Cobalt Drill
+    [InlineData(2779, false)] // Nebula Drill
+    [InlineData(2784, false)] // Solar Flare Drill
+    [InlineData(3464, false)] // Stardust Drill
+    [InlineData(2768, true)] // Drill Containment Unit / mount 8
+    public void Production_vanilla_join_packet5_packet13_packet17_path_breaks_dirt(
+        short miningItemType,
+        bool drillMount)
+    {
+        var tiles = new TerraRuntime.World.WorldTileStore(new TerraRuntime.World.WorldDimensions(200, 150));
+        var state = new ServerRuntimeState(worldTiles: tiles);
+        var slots = new PlayerSlotPool(1);
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(907);
+        var immediate = new ApplyingCommandIngress(state);
+        var outbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 32, maxQueuedBytes: 8_192, maxFrameBytes: 2_048));
+        using var bootstrap = new PlayerBootstrapFrameSink(
+            slots,
+            outbound,
+            PlayerBootstrapPacketSet.CreateForTesting(
+                new byte[] { 3, 0, (byte)TerrariaMessageId.WorldData },
+                Array.Empty<ReadOnlyMemory<byte>>(),
+                new byte[] { 3, 0, (byte)TerrariaMessageId.PlayerSpawnSelf }),
+            source,
+            new RuntimePlayerSpawnCommitIngress(immediate),
+            appearanceIngress: null,
+            new RuntimePlayerEquipmentIngress(immediate),
+            new RuntimePlayerMovementIngress(immediate));
+        var gameplayIngress = new RuntimeProjectileNetworkIngress(immediate);
+        var projectileSink = new ProjectileLifecycleFrameSink(
+            source,
+            bootstrap,
+            new PassthroughSink(),
+            gameplayIngress);
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Hello()));
+
+        // Vanilla 1.4.5.8 client MessageBuffer case 3 sends all inventory slots 0..58 before packet 6/world request.
+        const short miningSlot = 7;
+        for (short slot = 0; slot < TerraRuntime.Gameplay.Items.VanillaPlayerItemSlotCatalog.InventoryCount; slot++)
+        {
+            bool isMiningItem = slot == miningSlot;
+            var equipment = new TerrariaPlayerEquipmentState(
+                PlayerId: 0,
+                SlotId: slot,
+                Stack: isMiningItem ? (short)1 : (short)0,
+                Prefix: 0,
+                ItemNetId: isMiningItem ? miningItemType : (short)0,
+                ItemFlags: 0);
+            Assert.Equal(
+                TerrariaFrameSinkResult.Continue,
+                bootstrap.OnFrame(Decode(TerrariaPlayerEquipmentCodec.Encode(in equipment))));
+        }
+        Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Frame(TerrariaMessageId.RequestWorldData, [])));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Frame(TerrariaMessageId.SpawnTileData, new byte[9])));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(PlayerSpawn()));
+        Assert.Equal(PlayerJoinState.Playing, bootstrap.JoinState);
+
+        var movement = new TerrariaPlayerMovementState(
+            PlayerId: 0,
+            ControlFlags: 1 << 5,
+            MovementFlags: drillMount ? (byte)(1 << 7) : (byte)0,
+            MiscFlags1: 0,
+            MiscFlags2: 0,
+            SelectedItem: drillMount ? (byte)0 : (byte)miningSlot,
+            PositionX: 800f,
+            PositionY: 800f,
+            HasVelocity: false,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            HasMount: drillMount,
+            MountType: drillMount ? (ushort)8 : (ushort)0,
+            HasPotionOfReturnPositions: false,
+            PotionOfReturnOriginalPositionX: 0f,
+            PotionOfReturnOriginalPositionY: 0f,
+            PotionOfReturnHomePositionX: 0f,
+            PotionOfReturnHomePositionY: 0f,
+            HasCameraTarget: false,
+            CameraTargetX: 0f,
+            CameraTargetY: 0f);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Decode(TerrariaPlayerMovementEncoder.Encode(in movement))));
+
+        PlayerHandle player = Assert.IsType<PlayerHandle>(bootstrap.AssignedPlayerHandle);
+        Assert.True(state.TryCapturePlayerSnapshot(player, out PlayerStateSnapshot livePlayer));
+        Assert.Equal(drillMount ? (ushort)8 : (ushort)0, livePlayer.MountType);
+        Assert.Equal((byte)(1 << 5), livePlayer.ControlFlags);
+        Assert.Equal(drillMount ? (byte)0 : (byte)miningSlot, livePlayer.SelectedItem);
+        Assert.True(state.TryCapturePlayerInventoryItem(player, miningSlot, out RuntimePlayerInventoryItem liveItem));
+        Assert.Equal(miningItemType, liveItem.ItemType.Value);
+
+        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(tiles, 50, 52));
+        var kill = new TerrariaTileManipulationState(
+            (byte)TerrariaTileManipulationAction.KillTile,
+            TileX: 50,
+            TileY: 52,
+            Data: 0,
+            Style: 0);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, projectileSink.OnFrame(Packet17(in kill)));
+
+        Assert.Equal(default, tiles.Get(50, 52));
+        Assert.Equal(1, state.AppliedClientTileManipulations);
+        Assert.Equal(0, state.RejectedClientTileManipulations);
+    }
+
     [Fact]
     public void Production_chest_outer_sink_routes_packet79_through_projectile_object_composition()
     {
@@ -154,6 +261,16 @@ public sealed class ProductionTileSinkCompositionTests
             (byte)id,
             ReadOnlySequence<byte>.Empty,
             new ReadOnlySequence<byte>(payload));
+
+
+    private sealed class ApplyingCommandIngress(ServerRuntimeState state) : IGameCommandIngress<RuntimeCommand>
+    {
+        public bool TryPost(GameCommandSourceId source, RuntimeCommand command)
+        {
+            state.Apply(command);
+            return true;
+        }
+    }
 
     private sealed class RecordingCommandIngress : IGameCommandIngress<RuntimeCommand>
     {

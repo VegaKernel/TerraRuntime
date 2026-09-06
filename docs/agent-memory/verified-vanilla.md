@@ -43,6 +43,7 @@ Verified runtime facts currently implemented/tested:
 - The verified ordinary open-cell merge threshold is 24 liquid units.
 - Left/right/up foreign-liquid handling and the lower-cell sub-24 source clear follow `LiquidCheck` ordering.
 - Material mutations and the verified lower-cell sub-24 foreign-liquid clear use packet `20` tile-square replication, not packet `48` alone.
+- `Liquid.maxLiquid` is `25000`. On an ordinary dedicated server, `UpdateLiquid` counts active players only in slots `0..14`, sets `cycles = 10 + activePlayers / 3`, and sets `curMaxLiquid = 25000 - activePlayers * 250` unless the reduced-max-liquid setting forces `5000`. Each cycle processes the corresponding `curMaxLiquid / cycles` slice, with the last cycle extending to the current active count.
 - `LiquidCheck` clears participating merge liquids before `CreateLiquidMergeTile`; the material merge is then synchronized by the tile-square packet rather than separate packet-48 updates for every cleared merge cell.
 - TerrariaServer 1.4.5.8 packet-20 `TileChangeType` values for these merges are `LavaWater=1`, `HoneyWater=2`, `HoneyLava=3`, `ShimmerWater=4`, `ShimmerLava=5`, `ShimmerHoney=6`.
 - the final initialized `Main.tileObsidianKill` set contains 276 tile types; TerraRuntime stores the exact source-pinned set instead of deriving it from a guessed category.
@@ -76,6 +77,36 @@ Verified facts used by the live transfer gate:
 - a multiplayer client sends packet 12 back after that spawn transition;
 - therefore the immediate packet-12 `SpawningIntoWorld` response to TerraRuntime's synthetic replacement-world spawn is an acknowledgement/echo of the handoff, not a fresh authoritative respawn request;
 - ordinary post-join packet-12 respawn remains a separate path and must not be globally suppressed.
+
+## Mining, drills and join inventory ordering
+
+Primary evidence: TerrariaServer 1.4.5.8 `MessageBuffer.GetData` case `3`, `NetMessage.SyncConnectedPlayer`, `Mount.UseDrill`, `Mount.drillPickPower`, `Player.PickTile`, and `ItemID.Sets.IsDrill`/item defaults.
+
+- On receipt of the client slot assignment (packet 3), the vanilla multiplayer client sends all 59 ordinary inventory packet-5 entries before it sends packet 6 requesting world data. Pre-world-request inventory is therefore normal join ordering, not malformed gameplay traffic.
+- Packet 13 carries `selectedItem`, `controlUseItem` and mount state; the client drill/pick path ultimately emits ordinary packet-17 tile manipulation.
+- Drill Containment Unit is mount type `8`. `Mount.UseDrill` requires the drill ability to be active and `controlUseItem`, uses static `drillPickPower = 210`, and calls `Player.PickTile` for its selected beam target. The mount ability-active bit itself is not represented by packet 13, so TerraRuntime's admitted server slice additionally requires the DCU summon item `2768` in ordinary inventory and otherwise fails closed.
+- Source-backed drill IDs needed by the current pick catalog include Cobalt Drill `385`, Nebula Drill `2779`, Solar Flare Drill `2784`, and Stardust Drill `3464`; the latter three inherit pick power `225` through the shared defaults branch.
+- `Player.BordersMovement` reserves a 640-pixel edge band in normal-sized worlds. A mining regression whose movement sample sits inside that band has not proved selected-slot/control state reached the authoritative player; production-order tests must use an accepted position and assert the committed packet-13 snapshot before packet 17.
+
+## Explosive projectiles and terrain destruction
+
+Primary evidence: TerrariaServer 1.4.5.8 `Item.SetDefaults`, `Player.PickAmmo`, `Projectile.SetDefaults`, `Projectile.AI_016_Bombs`, `Projectile.AI_147_Celeb2Rocket`, `Projectile.Kill_ExplodeTiles`, `Projectile.ShouldWallExplode`, and `Projectile.CanExplodeTile`.
+
+- Celebration Mk2 is item `3930`: damage `50`, knockback `10`, shoot speed `17`, use time/animation `6`, rocket ammo and holder projectile `714`. `Player.PickAmmo` transforms its rocket-ammo result as `715 + ammo.type - AmmoID.Rocket` rather than the ordinary launcher offset.
+- Holder `714` is `22x22`, non-friendly, non-hostile, non-tile-colliding, ranged presentation/channel state. Children `715..718` are `14x14`, friendly ranged aiStyle `147`, penetrate `1`, timeLeft `1080`, tile-colliding and run with `extraUpdates = 2`. Their seven-pattern sequence emits one child except pattern 4 (two) and pattern 5 (three); pattern 3 launches at speed `9`, the others at `8`.
+- Bomb `28` and Dynamite `29` are aiStyle `16`. The admitted Mini Nuke defaults cover `793..801` and `803..810` (`802` is not inferred): `14x14`, friendly ranged, penetrate `-1`, ordinary default lifetime and tile collision. Exact type membership, not aiStyle alone, decides the ordinary-fuse/grenade/mine/straight-rocket branch.
+- `Kill_ExplodeTiles` is owner-local in vanilla (`owner == Main.myPlayer`) and sends packet 17 for successful tile/wall kills. TerraRuntime instead lets only a provenance-trusted authoritative termination perform that irreversible mutation and treats the matching client packet-17 stream as convergence echo.
+- The destruction membership test is strict Euclidean distance `< radius`, not `<=`. Celebration Rocket IV `718` uses center-based radius `5`; Mini Nuke II rocket/grenade/mine `796/797/798` use position-based radius `7`. Celebration Rocket I/III `715/717` have no `Kill_ExplodeTiles` terrain branch.
+- `CanExplodeTile` always rejects dungeon tile types (`Main.tileDungeon`), `TileID.Sets.BasicChest`, temple wall `350`, and the exact hard-protected tile switch. It conditionally gates hardmode ores, Demon/Crimson Altar, Underworld Hellstone, and the remaining world-state-dependent cases. Wall removal is enabled only when `ShouldWallExplode` finds an empty wall cell inside the same strict radius; wall `350` is never killed. Unrepresented object/world-state cases remain fail-closed.
+
+## World-item reservation and cursor transfer
+
+Primary evidence: TerrariaServer 1.4.5.8 `Main.UpdateServer`, `WorldItem.FindOwner`, `MessageBuffer.GetData` packet cases `21`/`22`, packet-5 inventory handling, and `Player.dropItemCheck`.
+
+- `Main.UpdateServer` calls `FindOwner` for an unreserved active world item when its reservation timer modulo 5 equals 1. `FindOwner` skips inactive/dead players, consults `ItemSpace`/`CanPullItem`, compares candidates by source Manhattan-distance expression (including supported magnet modifiers), and checks grab-range intersection before changing the reservation.
+- Server packet-21 handling ignores an existing item when `playerIndexTheItemIsReservedFor != whoAmI`; a different playing client therefore has no vanilla authority to remove or rewrite another player's reserved item. Packet 22 is a server-to-client item-owner projection in this path, not a client ownership grant.
+- Packet-5 slot `58` maps to the owning client's `Main.mouseItem`. `Player.dropItemCheck` copies the mouse item into inventory slot 58 and, when the inventory closes, runs `GetOrDropItem`, clears `Main.mouseItem`, and clears inventory slot 58. A cross-world snapshot racing that client transition can therefore neither replay the old cursor image nor guess the full `GetItem`/special-storage semantics.
+- TerraRuntime admits the conservative lossless subset: before detach it moves the whole cursor stack only into an empty ordinary main slot `0..49`; if none exists, it cancels the transfer while the source player is still attached. This is an intentional fail-closed policy built from the verified vanilla role of slot 58, not a claim that vanilla `GetItem` itself is limited to empty main slots.
 
 ## Working rule for new vanilla facts
 

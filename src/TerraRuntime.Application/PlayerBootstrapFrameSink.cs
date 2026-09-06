@@ -351,6 +351,14 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         if (_equipmentIngress is null)
             return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;
 
+        if (_awaitingWorldTransferLanding)
+        {
+            // World replacement closes/rebuilds client UI state before the first destination movement sample.
+            // Packet-5 echoes produced by Player.dropItemCheck during that window describe the retired source-world
+            // cursor state and must not overwrite the normalized authoritative transfer image.
+            return TerrariaFrameSinkResult.Continue;
+        }
+
         var commit = new PlayerEquipmentCommitRequest(
             _session!.Slot,
             equipment.SlotId,

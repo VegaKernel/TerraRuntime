@@ -114,7 +114,7 @@ Current packet/commit infrastructure нельзя считать complete author
 
 `RuntimeWorldItemStore` является authoritative runtime entity store, а не transparent client relay.
 
-Implemented foundation покрывает slot allocation/reservation, updates/partial updates, runtime ingress/commands, replication-registry integration и selected tile-drop integration.
+Implemented foundation покрывает slot allocation/reservation, updates/partial updates, runtime ingress/commands, replication-registry integration и selected tile-drop integration. Сервер теперь каждые пять ticks выполняет консервативный slice `WorldItem.FindOwner`: выбирает ближайшего живого игрока со свободным обычным inventory slot, публикует packet 22 и принимает removal/update packet 21 только от точного владельца reservation. Входящий packet 22 остаётся неавторитетным. Stack merging, специальные pickup magnets, routing в void bag и оставшиеся ветки `ItemSpace`/`CanPullItem` остаются fail-closed.
 
 World-item identity отделена от item content type. Future pickup/stack/ownership validation строится на server-owned identity, а не на доверии arbitrary client slot metadata.
 
@@ -123,6 +123,8 @@ World-item identity отделена от item content type. Future pickup/stack
 World edits проходят semantic/runtime mutation paths, а не напрямую переписывают tile из decoder.
 
 Runtime имеет verified slices tile kill/update/replication и world collision/query behavior. `WorldTile` хранит только mutable state клетки; один flyweight `VanillaTileDefinition` на каждый TileID 1.4.5.8 владеет break-path, mining, drop и failed-pick transform semantics. Поэтому обычный simple-cell mining больше не использует положительный TileID allow-list.
+
+Mining через packet 17 разрешает выбранный packet-13 inventory slot через точное generation соединения. Verified pick catalog включает обычные кирки и буры, в том числе варианты Nebula, Solar Flare и Stardust. Drill Containment Unit является отдельным source-backed источником authority: mount type `8` с `controlUseItem`, summon item в обычном inventory и vanilla mount pick power `210`. Он не маскируется под кирку в выбранном slot.
 
 В broad vanilla scale пока incomplete остальные frame-important/multi-tile object destruction/placement families за пределами точного base Chest slice, все slope/platform interactions, wiring/actuation, growth/spread families, полный `HitTile`/reach и оставшиеся environment-dependent правила `CanKillTile`.
 
@@ -272,6 +274,8 @@ Wiring, liquid material и growth commits теперь имеют отдельн
 Обычные open-cell material-contact paths из `Liquid.LiquidCheck` теперь также authoritative. Water будит соседние lava/honey/shimmer и оставляет выбор merge-location update чужого типа жидкости. Проверенные merges создают Obsidian (`56`) для water/lava, Honey Block (`229`) для water/honey, Crispy Honey Block (`230`) для lava/honey и Shimmer Block (`659`), когда shimmer побеждает в source-order выборе merge. Vanilla-порог `24` units, поглощение чужой жидкости слева/справа/сверху, очистка source меньше `24` над чужой жидкостью и packet-20 tile-square replication для material mutations закреплены focused runtime tests.
 
 Обычный dedicated-server lifecycle активной liquid entry теперь также входит в authoritative slice. Одна liquid entry может продвинуться максимум на один logical update за TerraRuntime tick даже при work budget больше единицы, изменение amount сбрасывает `kill` и будит клетку сверху, стабильные entries retire по порогу TerrariaServer 1.4.5.8 `10 + activePlayersInSlots0To14 / 3`, а стабильные `254` при retirement нормализуются в `255`. Water ниже `Main.UnderworldLayer == maxTilesY - 200` испаряется по две units за liquid update. Generating/loading slice покрывает quick-settle scheduling, `Liquid.QuickWater` и `WorldGen.WaterCheck` с финальными source-pinned таблицами water-death из 10 и lava-death из 267 TileID. Canonical load теперь выполняет поддержанный sequence `QuickWater -> WaterCheck -> quickSettle drain (максимум 100000 итераций) -> WaterCheck` до admission runtime/bootstrap cache, а runtime cache layout 2 можно записать только из такого prepared state. Полная vanilla liquid simulation всё ещё открыта для сложных `WorldGen.ReplaceTile` cases вне safe active subset, Remix/Zenith load-time liquid remapping и panic/forced-settle paths. Circuit traversal/devices и families growth/spread rules также остаются отдельной работой.
+
+Live scheduler вычисляет slice TerrariaServer 1.4.5.8 по формулам `curMaxLiquid = 25000 - players * 250` и `cycles = 10 + players / 3`, с максимумом `2500` entries за TerraRuntime tick на пустом сервере. Backlog-тесты water, lava и shimmer доказывают, что независимые миры при одинаковом TPS получают одинаковый slice. Клетки с нулевым количеством жидкости не занимают active queue, а committed tile mutation немедленно будит соседнюю непустую жидкость.
 
 Эти subsystems order-sensitive и могут затрагивать large world areas, поэтому implementation сочетает exact behavioral verification, global bounded per-tick work, deterministic owner-thread commits, dirty/replication tracking и save compatibility.
 

@@ -503,6 +503,67 @@ public sealed class VanillaWorldLiquidSimulator1458Tests
     }
 
     [Fact]
+    public void Default_scheduler_retires_a_full_2500_entry_water_backlog_slice_per_tick()
+    {
+        WorldTileStore tiles = CreateStableBacklog(WorldLiquidKind.Water, count: 3_000, initialKill: 9);
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles);
+        var changes = new WorldLiquidSimulationChange[
+            VanillaWorldLiquidSimulator1458.DefaultWorkBudgetPerTick *
+            VanillaWorldLiquidSimulator1458.MaximumChangesPerProcessedCell];
+
+        Assert.Equal(0, simulator.Tick(activeServerPlayersInLiquidWindow: 0, changes));
+        Assert.Equal(500, tiles.LiquidUpdates.ActiveCount);
+    }
+
+    [Fact]
+    public void Default_scheduler_advances_a_full_2500_entry_lava_backlog_slice_per_tick()
+    {
+        WorldTileStore tiles = CreateStableBacklog(WorldLiquidKind.Lava, count: 3_000, initialKill: 0);
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles);
+        var changes = new WorldLiquidSimulationChange[
+            VanillaWorldLiquidSimulator1458.DefaultWorkBudgetPerTick *
+            VanillaWorldLiquidSimulator1458.MaximumChangesPerProcessedCell];
+
+        Assert.Equal(0, simulator.Tick(activeServerPlayersInLiquidWindow: 0, changes));
+
+        WorldLiquidUpdateEntry[] active = tiles.LiquidUpdates.CaptureActiveSnapshot();
+        Assert.Equal(3_000, active.Length);
+        Assert.Equal(2_500, active.Count(static entry => entry.Delay == 1));
+        Assert.Equal(500, active.Count(static entry => entry.Delay == 0));
+    }
+
+    [Fact]
+    public void Default_scheduler_retires_a_full_2500_entry_shimmer_backlog_slice_per_tick()
+    {
+        WorldTileStore tiles = CreateStableBacklog(WorldLiquidKind.Shimmer, count: 3_000, initialKill: 9);
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles);
+        var changes = new WorldLiquidSimulationChange[
+            VanillaWorldLiquidSimulator1458.DefaultWorkBudgetPerTick *
+            VanillaWorldLiquidSimulator1458.MaximumChangesPerProcessedCell];
+
+        Assert.Equal(0, simulator.Tick(activeServerPlayersInLiquidWindow: 0, changes));
+        Assert.Equal(500, tiles.LiquidUpdates.ActiveCount);
+    }
+
+    [Fact]
+    public void Equal_tps_worlds_advance_identical_liquid_backlogs_independently()
+    {
+        WorldTileStore first = CreateStableBacklog(WorldLiquidKind.Water, count: 3_000, initialKill: 9);
+        WorldTileStore second = CreateStableBacklog(WorldLiquidKind.Water, count: 3_000, initialKill: 9);
+        var firstSimulator = new VanillaWorldLiquidSimulator1458(first);
+        var secondSimulator = new VanillaWorldLiquidSimulator1458(second);
+        var firstChanges = new WorldLiquidSimulationChange[
+            VanillaWorldLiquidSimulator1458.DefaultWorkBudgetPerTick *
+            VanillaWorldLiquidSimulator1458.MaximumChangesPerProcessedCell];
+        var secondChanges = new WorldLiquidSimulationChange[firstChanges.Length];
+
+        Assert.Equal(0, firstSimulator.Tick(activeServerPlayersInLiquidWindow: 0, firstChanges));
+        Assert.Equal(0, secondSimulator.Tick(activeServerPlayersInLiquidWindow: 0, secondChanges));
+        Assert.Equal(first.LiquidUpdates.ActiveCount, second.LiquidUpdates.ActiveCount);
+        Assert.Equal(500, first.LiquidUpdates.ActiveCount);
+    }
+
+    [Fact]
     public void Stable_254_cell_is_normalized_to_255_when_liquid_entry_retires()
     {
         var tiles = CreateBlockedStableWater(amount: 254, initialKill: 9);
@@ -896,6 +957,28 @@ public sealed class VanillaWorldLiquidSimulator1458Tests
         SetSolid(tiles, 12, 11);
         tiles.LiquidUpdates.Clear();
         Assert.True(tiles.LiquidUpdates.TryEnqueue(12, 10, delay: 0, kill: initialKill));
+        return tiles;
+    }
+
+    private static WorldTileStore CreateStableBacklog(
+        WorldLiquidKind kind,
+        int count,
+        int initialKill)
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(count * 3 + 2, 4));
+        for (int i = 0; i < count; i++)
+        {
+            int x = 2 + i * 3;
+            SetLiquid(tiles, x, 1, 200, kind);
+            SetSolid(tiles, x - 1, 1);
+            SetSolid(tiles, x + 1, 1);
+            SetSolid(tiles, x, 2);
+        }
+
+        tiles.LiquidUpdates.Clear();
+        for (int i = 0; i < count; i++)
+            Assert.True(tiles.LiquidUpdates.TryEnqueue(2 + i * 3, 1, delay: 0, kill: initialKill));
+        tiles.MarkPostLoadLiquidPrepared();
         return tiles;
     }
 

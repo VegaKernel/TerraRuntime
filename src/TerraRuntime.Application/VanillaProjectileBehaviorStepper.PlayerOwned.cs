@@ -8,6 +8,168 @@ namespace TerraRuntime.Application;
 
 internal static partial class VanillaProjectileBehaviorStepper
 {
+    private static bool TryStepCelebrationRocket(
+        in ProjectileSnapshot current,
+        in VanillaProjectileDefinition definition,
+        in ProjectileLocalAiState localAi,
+        IVanillaProjectileNpcTargetResolver? npcTargets,
+        out VanillaProjectileBehaviorResult next)
+    {
+        int pattern = (int)current.Ai.Ai0;
+        if (current.Ai.Ai0 != pattern || pattern is < 0 or > 6)
+        {
+            next = default;
+            return false;
+        }
+
+        float localAi0 = localAi.Ai0 + 1f;
+        float localAi1 = localAi.Ai1;
+        float velocityX = current.VelocityX;
+        float velocityY = current.VelocityY;
+        float ai1 = current.Ai.Ai1;
+        float? positionX = null;
+        float? positionY = null;
+
+        switch (pattern)
+        {
+            case 0:
+                if (localAi0 >= 20f)
+                    velocityY += 0.12f;
+                ClampFallSpeed(ref velocityY);
+                break;
+            case 1:
+                if (localAi0 == 10f)
+                    velocityY -= 10f;
+                if (localAi0 >= 10f)
+                    velocityY += 0.25f;
+                ClampFallSpeed(ref velocityY);
+                break;
+            case 2:
+                if (localAi0 >= 60f)
+                    velocityY += 0.15f;
+                ClampFallSpeed(ref velocityY);
+                break;
+            case 3:
+            {
+                float speed = localAi1;
+                if (speed == 0f)
+                {
+                    speed = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
+                    if (!float.IsFinite(speed))
+                    {
+                        next = default;
+                        return false;
+                    }
+                    localAi1 = speed;
+                }
+
+                float centerX = current.PositionX + definition.Width * 0.5f;
+                float centerY = current.PositionY + definition.Height * 0.5f;
+                bool hasTarget = false;
+                float targetX = 0f;
+                float targetY = 0f;
+                if (localAi0 >= 20f && npcTargets is not null)
+                {
+                    if (ai1 == 0f)
+                    {
+                        if (npcTargets.TryFindClosestCelebrationRocketTarget(
+                                in current,
+                                in definition,
+                                maximumManhattanDistance: 800f,
+                                out int acquiredSlot,
+                                out targetX,
+                                out targetY))
+                        {
+                            ai1 = acquiredSlot + 1;
+                            hasTarget = true;
+                        }
+                    }
+                    else if (ai1 == (int)ai1 && ai1 > 0f)
+                    {
+                        hasTarget = npcTargets.TryGetCelebrationRocketTargetCenter(
+                            (int)ai1 - 1,
+                            centerX,
+                            centerY,
+                            maximumManhattanDistance: 1_000f,
+                            out targetX,
+                            out targetY);
+                    }
+                }
+
+                if (localAi0 >= 25f && ai1 == 0f)
+                {
+                    velocityY += 0.15f;
+                    ClampFallSpeed(ref velocityY);
+                }
+
+                if (hasTarget)
+                {
+                    float dx = targetX - centerX;
+                    float dy = targetY - centerY;
+                    float distance = MathF.Sqrt(dx * dx + dy * dy);
+                    if (!(distance > 0f) || !float.IsFinite(distance))
+                    {
+                        next = default;
+                        return false;
+                    }
+                    float desiredX = dx / distance * speed;
+                    float desiredY = dy / distance * speed;
+                    velocityX = (velocityX * 7f + desiredX) / 8f;
+                    velocityY = (velocityY * 7f + desiredY) / 8f;
+                }
+                break;
+            }
+            case 4:
+            {
+                if (localAi0 == 1f && ai1 == 1f)
+                    localAi0 += 45f;
+
+                float length = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
+                if (length > 0f && float.IsFinite(length))
+                {
+                    float normalizedX = velocityX / length;
+                    float normalizedY = velocityY / length;
+                    float rotatedX = normalizedX * MathF.Cos(localAi0 * MathF.PI / 45f) -
+                        normalizedY * MathF.Sin(localAi0 * MathF.PI / 45f);
+                    float perpendicularX = -normalizedY;
+                    float perpendicularY = normalizedX;
+                    positionX = current.PositionX + perpendicularX * rotatedX * 3f;
+                    positionY = current.PositionY + perpendicularY * rotatedX * 3f;
+                }
+                if (localAi0 >= 10f)
+                    velocityY += 0.04f;
+                ClampFallSpeed(ref velocityY);
+                break;
+            }
+            case 5:
+                if (localAi0 >= 40f)
+                    velocityY += 0.08f;
+                ClampFallSpeed(ref velocityY);
+                break;
+            case 6:
+                if (localAi0 >= 30f)
+                    velocityY += 0.1f;
+                ClampFallSpeed(ref velocityY);
+                break;
+        }
+
+        next = new VanillaProjectileBehaviorResult(
+            velocityX,
+            velocityY,
+            current.Ai.Ai0,
+            Ai1Override: ai1,
+            PositionXOverride: positionX,
+            PositionYOverride: positionY,
+            LocalAiOverride: new ProjectileLocalAiState(localAi0, localAi1, localAi.Ai2));
+        return true;
+    }
+
+    private static void ClampFallSpeed(ref float velocityY)
+    {
+        if (velocityY > 16f)
+            velocityY = 16f;
+    }
+
     private static bool TryStepControlledMagicMissile(
         in ProjectileSnapshot current,
         in VanillaProjectileDefinition definition,

@@ -94,6 +94,14 @@ internal sealed partial class ProjectileAuthority
         if (!VanillaProjectileWeaponCombatCatalog.TryResolveProjectileType(in weapon, in ammo, out ProjectileTypeId expectedProjectileType))
             return ClientProjectileProvenanceResolveResult.NotApplicable;
 
+        // Projectile 714 is the vanilla client-owned presentation/channel holder. It never receives terrain
+        // authority; only its exact child volley can cross the CombatTrusted boundary below.
+        if (weapon.Type == VanillaItemIds.CelebrationMk2 &&
+            packet.ProjectileType == VanillaProjectileIds.CelebrationMk2HeldProjectile.Value)
+        {
+            return ClientProjectileProvenanceResolveResult.NotApplicable;
+        }
+
         int expectedDamage = VanillaProjectileWeaponCombatCatalog.ResolveDamage(
             in weapon, in ammo, in prefix, in attackerCombat);
         float expectedKnockBack = VanillaProjectileWeaponCombatCatalog.ResolveKnockBack(
@@ -116,6 +124,28 @@ internal sealed partial class ProjectileAuthority
         int authoritativeUseTime = Math.Max(1, (int)Math.Round(weapon.UseTimeTicks * prefix.SpeedMultiplier));
         long tick = tickProvider();
         float knockBackTolerance = MathF.Max(0.001f, MathF.Abs(expectedKnockBack) * 0.00001f);
+
+        if (weapon.Type == VanillaItemIds.CelebrationMk2)
+        {
+            return TryResolveStrictCelebrationMk2ChildSpawn(
+                connection,
+                in packet,
+                in expectedProjectileType,
+                expectedDamage,
+                expectedKnockBack,
+                knockBackTolerance,
+                maximumDistance,
+                tick,
+                ammoSlot,
+                in ammoItem,
+                in weapon,
+                in ammo,
+                in attackerCombat,
+                packetSpeed,
+                dx,
+                dy,
+                out authoritative);
+        }
 
         if (packet.ProjectileType != expectedProjectileType.Value ||
             packet.Damage != expectedDamage ||
@@ -171,6 +201,90 @@ internal sealed partial class ProjectileAuthority
 
         static ClientProjectileProvenanceResolveResult RejectProvenance() =>
             ClientProjectileProvenanceResolveResult.Rejected;
+    }
+
+    private ClientProjectileProvenanceResolveResult TryResolveStrictCelebrationMk2ChildSpawn(
+        ConnectionHandle connection,
+        in TerrariaProjectileUpdateState packet,
+        in ProjectileTypeId expectedProjectileType,
+        int expectedDamage,
+        float expectedKnockBack,
+        float knockBackTolerance,
+        float maximumDistance,
+        long tick,
+        int ammoSlot,
+        in RuntimePlayerInventoryItem ammoItem,
+        in VanillaProjectileWeaponCombatDefinition weapon,
+        in VanillaProjectileAmmoCombatDefinition ammo,
+        in VanillaPlayerCombatSnapshot attackerCombat,
+        float packetSpeed,
+        float dx,
+        float dy,
+        out AuthoritativeClientProjectileSpawn authoritative)
+    {
+        authoritative = default;
+        int pattern = (int)packet.Ai0;
+        float expectedSpeed = VanillaExplosiveProjectileFacts1458.GetCelebrationLaunchSpeed(pattern);
+        if (packet.Ai0 != pattern ||
+            packet.ProjectileType != expectedProjectileType.Value ||
+            packet.Damage != expectedDamage ||
+            packet.OriginalDamage != 0 ||
+            MathF.Abs(packet.KnockBack - expectedKnockBack) > knockBackTolerance ||
+            MathF.Abs(packetSpeed - expectedSpeed) > MathF.Max(0.0005f, expectedSpeed * 0.00001f) ||
+            MathF.Abs(packet.Ai2) > 0.001f ||
+            dx * dx + dy * dy > maximumDistance * maximumDistance ||
+            !celebrationMk2Volleys.TryInspect(
+                connection.Player,
+                tick,
+                pattern,
+                packet.Ai1,
+                out RuntimeCelebrationMk2VolleyAdmission volley))
+        {
+            return ClientProjectileProvenanceResolveResult.Rejected;
+        }
+
+        float velocityScale = expectedSpeed / packetSpeed;
+        var state = new ProjectileStateUpdate(
+            expectedProjectileType,
+            connection.Player.Slot.Value,
+            packet.PositionX,
+            packet.PositionY,
+            packet.VelocityX * velocityScale,
+            packet.VelocityY * velocityScale,
+            new ProjectileAiState(pattern, packet.Ai1, 0f),
+            BannerIdToRespondTo: 0,
+            Damage: checked((short)expectedDamage),
+            KnockBack: expectedKnockBack,
+            OriginalDamage: 0);
+
+        RuntimePlayerInventoryMutation? inventoryMutation = null;
+        if (volley.StartsVolley)
+        {
+            int weaponConservationRoll = weapon.WeaponAmmoConservationOneIn > 0
+                ? Random.Shared.Next(weapon.WeaponAmmoConservationOneIn)
+                : -1;
+            bool conserveAmmo = VanillaProjectileWeaponCombatCatalog.ShouldConserveAmmo(
+                in weapon,
+                in ammo,
+                in attackerCombat,
+                weaponConservationRoll,
+                quiverConservationRoll: -1);
+            RuntimePlayerInventoryItem remainingAmmo = conserveAmmo
+                ? ammoItem
+                : ammoItem.Stack == 1
+                    ? default
+                    : ammoItem with { Stack = checked((short)(ammoItem.Stack - 1)) };
+            inventoryMutation = new RuntimePlayerInventoryMutation(checked((short)ammoSlot), remainingAmmo);
+        }
+
+        authoritative = new AuthoritativeClientProjectileSpawn(
+            state,
+            inventoryMutation,
+            ManaCost: 0,
+            new VanillaLaunchSpeedEnvelope(expectedSpeed, expectedSpeed),
+            UseTimeTicks: 8,
+            CelebrationVolley: volley);
+        return ClientProjectileProvenanceResolveResult.Accepted;
     }
 
 

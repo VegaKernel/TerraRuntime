@@ -102,6 +102,8 @@ internal sealed partial class ServerRuntimeState
 
     public long UnsupportedClientTileManipulations => _runtime.WorldTileAuthority.UnsupportedClientManipulations;
 
+    public long AcceptedProjectileExplosionEchoes => _runtime.WorldTileAuthority.AcceptedProjectileExplosionEchoes;
+
     public long AppliedWorldItemAllocations =>
         _runtime.WorldItems.AppliedAllocations + _runtime.WorldTileAuthority.AppliedWorldItemAllocations;
 

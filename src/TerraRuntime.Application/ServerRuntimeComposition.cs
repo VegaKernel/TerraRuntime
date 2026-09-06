@@ -151,6 +151,8 @@ internal sealed class ServerRuntimeComposition
             progression,
             skeletronDownedBaseline,
             golemDownedBaseline,
+            townCommerceWorldFacts?.HardMode ?? false,
+            worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false,
             tileManipulationReplication);
 
         RuntimeProjectileStore projectileStore = projectiles ?? new RuntimeProjectileStore();

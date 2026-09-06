@@ -27,8 +27,10 @@ internal sealed partial class ServerRuntimeState
             ReadOnlySpan<RuntimeProjectileExplosionEvent> explosions = _runtime.Projectiles.PendingExplosions;
             _runtime.Npcs.TickProjectileInteractions(explosions);
             _runtime.ProjectilePlayerCombat.Tick(explosions);
+            _runtime.WorldTileAuthority.TickProjectileTileExplosions(_runtime.Projectiles.PendingTileExplosions);
             _runtime.Projectiles.ApplyReflections();
         }
+        _runtime.WorldItems.TickPlayerReservations(Updates);
         _runtime.WorldItems.TickInstancedLeases();
 
         _runtime.WorldClock?.Tick();

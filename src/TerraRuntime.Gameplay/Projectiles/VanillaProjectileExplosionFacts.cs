@@ -23,6 +23,11 @@ public static class VanillaProjectileExplosionFacts
     private static readonly VanillaProjectileExplosionDefinition CultistFireballExplosion = new(176, 176, 0f, PreserveKnockBack: true);
     private static readonly VanillaProjectileExplosionDefinition SmallLauncherExplosion = new(128, 128, 8f);
     private static readonly VanillaProjectileExplosionDefinition LargeLauncherExplosion = new(200, 200, 10f);
+    private static readonly VanillaProjectileExplosionDefinition BombExplosion = new(128, 128, 8f, 100);
+    private static readonly VanillaProjectileExplosionDefinition DynamiteExplosion = new(250, 250, 10f, 250);
+    private static readonly VanillaProjectileExplosionDefinition CelebrationSmallExplosion = new(128, 128, 0f, PreserveKnockBack: true);
+    private static readonly VanillaProjectileExplosionDefinition CelebrationLargeExplosion = new(240, 240, 0f, PreserveKnockBack: true);
+    private static readonly VanillaProjectileExplosionDefinition MiniNukeExplosion = new(250, 250, 12f);
 
     public static bool TryGetOnKillExplosion(
         ProjectileTypeId type,
@@ -50,6 +55,36 @@ public static class VanillaProjectileExplosionFacts
             type == VanillaProjectileIds.CultistBossFireBallClone)
         {
             definition = CultistFireballExplosion;
+            return true;
+        }
+
+        if (type.Value is 28 or 37 or 516 or 519)
+        {
+            definition = BombExplosion;
+            return true;
+        }
+
+        if (type.Value is 29 or 470 or 637)
+        {
+            definition = DynamiteExplosion;
+            return true;
+        }
+
+        if (type.Value is 715 or 716)
+        {
+            definition = CelebrationSmallExplosion;
+            return true;
+        }
+
+        if (type.Value is 717 or 718)
+        {
+            definition = CelebrationLargeExplosion;
+            return true;
+        }
+
+        if (type.Value is 793 or 794 or 795 or 796 or 797 or 798 or 808 or 809)
+        {
+            definition = MiniNukeExplosion;
             return true;
         }
 
