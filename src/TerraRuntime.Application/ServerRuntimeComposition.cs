@@ -27,6 +27,7 @@ internal sealed class ServerRuntimeComposition
         RuntimeNpcPlayerCombatPass npcPlayerCombat,
         WorldItemAuthority worldItems,
         WorldTileAuthority worldTileAuthority,
+        RuntimeTallGateOccupancyProbe? tallGateOccupancy,
         WorldTileStore? worldTiles,
         RuntimeWorldClock? worldClock,
         RuntimeWorldProgressionMutations worldProgression)
@@ -42,6 +43,7 @@ internal sealed class ServerRuntimeComposition
         NpcPlayerCombat = npcPlayerCombat;
         WorldItems = worldItems;
         WorldTileAuthority = worldTileAuthority;
+        TallGateOccupancy = tallGateOccupancy;
         WorldTiles = worldTiles;
         WorldClock = worldClock;
         WorldProgression = worldProgression;
@@ -68,6 +70,8 @@ internal sealed class ServerRuntimeComposition
     internal WorldItemAuthority WorldItems { get; }
 
     internal WorldTileAuthority WorldTileAuthority { get; }
+
+    internal RuntimeTallGateOccupancyProbe? TallGateOccupancy { get; }
 
     internal WorldTileStore? WorldTiles { get; }
 
@@ -120,6 +124,9 @@ internal sealed class ServerRuntimeComposition
 
         RuntimeWorldItemStore worldItemStore = worldItems ?? new RuntimeWorldItemStore();
         RuntimeNpcStore npcStore = npcs ?? new RuntimeNpcStore();
+        RuntimeTallGateOccupancyProbe? tallGateOccupancy = worldTiles is null
+            ? null
+            : new RuntimeTallGateOccupancyProbe(playersAuthority, serverPlayers, npcStore);
         IWorldItemSpawnRandom spawnRandom = worldItemSpawnRandom ?? new SystemWorldItemSpawnRandom();
         var worldItemAuthority = new WorldItemAuthority(
             playersAuthority,
@@ -166,6 +173,8 @@ internal sealed class ServerRuntimeComposition
             progression,
             npcReplication,
             worldItemReplication,
+            tileManipulationReplication,
+            tallGateOccupancy,
             townNpcs,
             townSpawnWorldFacts,
             townCommerceWorldFacts,
@@ -203,6 +212,7 @@ internal sealed class ServerRuntimeComposition
             npcPlayerCombat,
             worldItemAuthority,
             worldTileAuthority,
+            tallGateOccupancy,
             worldTiles,
             worldClock,
             progression);

@@ -57,7 +57,9 @@ public enum VanillaNpcAiCapability : ulong
     HardmodeBossStateSlice = 1ul << 47,
     HardmodeBossLinkedChildSlice = 1ul << 48,
     HardmodeBossProjectileSlice = 1ul << 49,
-    GroundFighterCloseRangeLungeSlice = 1ul << 50
+    GroundFighterCloseRangeLungeSlice = 1ul << 50,
+    BatMotionSlice = 1ul << 51,
+    FishMotionSlice = 1ul << 52
 }
 
 /// <summary>
@@ -119,7 +121,9 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaFlyerNpcCatalog.DefinitionCount +
             VanillaWormNpcCatalog.Count +
             VanillaNpcAi17_20_21Catalog1458.DefinitionCount +
-            VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount];
+            VanillaBatNpcCatalog1458.DefinitionCount +
+            VanillaFishNpcCatalog1458.DefinitionCount +
+            VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount + 1];
         entries[0] = Partial(
             VanillaNpcIds.BlueSlime,
             OrdinaryCore |
@@ -252,6 +256,9 @@ public static class VanillaNpcAiCoverageCatalog
         entries[index++] = Partial(VanillaNpcIds.MoonLordFreeEye, hardmodePart | VanillaNpcAiCapability.HardmodeBossProjectileSlice);
         entries[index++] = Partial(VanillaNpcIds.EmpressOfLight, hardmodeProjectileRoot);
         entries[index++] = Partial(VanillaNpcIds.QueenSlime, hardmodeProjectileRoot | VanillaNpcAiCapability.ChildSpawnSlice);
+        entries[index++] = Partial(
+            VanillaNpcIds.QueenSlimeMinionPurple,
+            hardmodePart | VanillaNpcAiCapability.BatMotionSlice);
 
         foreach (NpcTypeId type in VanillaGroundFighterNpcCatalog.AdditionalHostileTypes)
         {
@@ -345,6 +352,20 @@ public static class VanillaNpcAiCoverageCatalog
                 _ => throw new InvalidOperationException("Unexpected AI_017/020/021 behavior family.")
             };
             entries[index++] = Partial(definition.Type, OrdinaryCore | slice);
+        }
+
+        foreach (VanillaNpcDefinition definition in VanillaBatNpcCatalog1458.AllDefinitions)
+        {
+            entries[index++] = Partial(
+                definition.Type,
+                OrdinaryCore | VanillaNpcAiCapability.BatMotionSlice);
+        }
+
+        foreach (VanillaNpcDefinition definition in VanillaFishNpcCatalog1458.AllDefinitions)
+        {
+            entries[index++] = Partial(
+                definition.Type,
+                OrdinaryCore | VanillaNpcAiCapability.FishMotionSlice);
         }
 
         if (index != entries.Length)

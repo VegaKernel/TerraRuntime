@@ -45,6 +45,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly IVanillaNpcBehaviorStrategy _vulture = new VanillaVultureNpcBehaviorStrategy();
     private readonly VanillaSpikeBallNpcBehaviorStrategy _spikeBall;
     private readonly IVanillaNpcBehaviorStrategy _blazingWheel = new VanillaBlazingWheelNpcBehaviorStrategy();
+    private readonly VanillaBatNpcBehaviorStrategy _bat = new();
+    private readonly VanillaFishNpcBehaviorStrategy _fish;
     private readonly VanillaSkeletronHeadNpcBehaviorStrategy _skeletronHead = new();
     private readonly VanillaSkeletronHandNpcBehaviorStrategy _skeletronHand = new();
     private readonly VanillaQueenBeeNpcBehaviorStrategy _queenBee;
@@ -87,6 +89,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         _brainOfCthulhu = new VanillaBrainOfCthulhuNpcBehaviorStrategy(_random);
         _brainCreeper = new VanillaBrainCreeperNpcBehaviorStrategy(_random);
         _spikeBall = new VanillaSpikeBallNpcBehaviorStrategy(_random);
+        _fish = new VanillaFishNpcBehaviorStrategy(_random);
         _queenBee = new VanillaQueenBeeNpcBehaviorStrategy(_random);
         _queenSlime = new VanillaQueenSlimeNpcBehaviorStrategy(_random, kingSlimeEnvironment);
         _destroyer = new VanillaDestroyerNpcBehaviorStrategy(_random);
@@ -148,6 +151,9 @@ public sealed class VanillaNpcTargetingAiStepper :
         _destroyer.SetEnvironment(environment);
     }
 
+    public void SetFishEnvironment(IVanillaFishEnvironment1458 environment) =>
+        _fish.SetEnvironment(environment);
+
     public void SetFlyingEyeEnvironment(IVanillaFlyingEyeEnvironment environment) =>
         _flyingEye.SetEnvironment(environment);
 
@@ -156,6 +162,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         ArgumentNullException.ThrowIfNull(environment);
         _projectileEnvironment = environment;
         _flyer.SetProjectileEnvironment(environment);
+        _bat.SetEnvironment(environment);
         _queenBee.SetProjectileEnvironment(environment);
     }
 
@@ -208,6 +215,8 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.Vulture => _vulture,
             VanillaNpcBehaviorFamily.SpikeBall => _spikeBall,
             VanillaNpcBehaviorFamily.BlazingWheel => _blazingWheel,
+            VanillaNpcBehaviorFamily.Bat => _bat,
+            VanillaNpcBehaviorFamily.Fish => _fish,
             VanillaNpcBehaviorFamily.SkeletronHead => _skeletronHead,
             VanillaNpcBehaviorFamily.SkeletronHand => _skeletronHand,
             VanillaNpcBehaviorFamily.QueenBee => _queenBee,

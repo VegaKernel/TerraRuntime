@@ -60,6 +60,8 @@ internal sealed class NpcAuthority
         RuntimeWorldProgressionMutations progression,
         RuntimeNpcReplicationRegistry? npcReplication,
         RuntimeWorldItemReplicationRegistry? worldItemReplication,
+        RuntimeTileManipulationReplicationRegistry? tileManipulationReplication,
+        IVanillaTallGateOccupancyProbe? tallGateOccupancy,
         RuntimeTownNpcStateStore? townNpcs,
         VanillaTownSpawnWorldFacts1458? townSpawnWorldFacts,
         RuntimeTownCommerceWorldFacts1458? townCommerceWorldFacts,
@@ -198,6 +200,12 @@ internal sealed class NpcAuthority
                     worldTiles,
                     worldSurfaceTiles,
                     worldClock,
+                    doorOpeningSink: new RuntimeGroundFighterDoorOpeningSink(
+                        worldTiles,
+                        tileManipulationReplication,
+                        tallGateOccupancy,
+                        worldItems,
+                        worldItemSpawnRandom),
                     progressionMutations: progression);
                 vanillaCheckActive = new VanillaNpcCheckActiveAiStepper(worldMotion);
                 aiStepper = vanillaCheckActive;
@@ -839,7 +847,7 @@ internal sealed class NpcAuthority
                 if (player.MountType != 0)
                     continue;
 
-                destination[written++] = WithBiomeZoneFacts(new VanillaNpcTargetCandidate(
+                destination[written++] = WithPlayerWorldFacts(new VanillaNpcTargetCandidate(
                     Slot: checked((byte)slot),
                     CenterX: player.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
                     CenterY: player.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f,
@@ -867,7 +875,7 @@ internal sealed class NpcAuthority
             if (serverPlayer.MountType != 0)
                 continue;
 
-            destination[written++] = WithBiomeZoneFacts(new VanillaNpcTargetCandidate(
+            destination[written++] = WithPlayerWorldFacts(new VanillaNpcTargetCandidate(
                 Slot: checked((byte)slot),
                 CenterX: serverPlayer.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
                 CenterY: serverPlayer.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f,
@@ -912,6 +920,28 @@ internal sealed class NpcAuthority
         {
             HasBiomeZoneFacts = true,
             ZoneCrimson = scene.ZoneCrimson
+        };
+    }
+
+    private VanillaNpcTargetCandidate WithPlayerWorldFacts(
+        VanillaNpcTargetCandidate candidate,
+        bool includeBiomeZoneFacts)
+    {
+        candidate = WithBiomeZoneFacts(candidate, includeBiomeZoneFacts);
+        if (worldTiles is null)
+            return candidate;
+
+        float playerX = candidate.CenterX - PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+        float playerY = candidate.CenterY - PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+        return candidate with
+        {
+            Wet = VanillaWorldCollision.TryGetWetContact(
+                worldTiles,
+                playerX,
+                playerY,
+                (int)PlayerAuthority.VanillaBasePlayerWidth,
+                (int)PlayerAuthority.VanillaBasePlayerHeight,
+                out _)
         };
     }
 }

@@ -16,15 +16,23 @@ public readonly record struct VanillaGroundFighterDoorEnvironment(
         (float.IsFinite(TargetCenterX) && float.IsFinite(TargetCenterY));
 }
 
+public enum VanillaGroundFighterDoorOperation : byte
+{
+    Open = 0,
+    Destroy = 1
+}
+
 public readonly record struct VanillaGroundFighterDoorOpeningIntent(
     int TileX,
     int TileY,
     int DirectionX,
-    TileTypeId ClosedType)
+    TileTypeId ClosedType,
+    VanillaGroundFighterDoorOperation Operation = VanillaGroundFighterDoorOperation.Open)
 {
     public bool IsValid =>
         DirectionX is -1 or 1 &&
-        VanillaTileIds.IsClosedDoor(ClosedType);
+        VanillaTileIds.IsClosedDoor(ClosedType) &&
+        Operation is VanillaGroundFighterDoorOperation.Open or VanillaGroundFighterDoorOperation.Destroy;
 }
 
 public interface IVanillaGroundFighterDoorRandom
@@ -55,8 +63,8 @@ public readonly record struct VanillaZombieDoorContactResult(
 /// Source-backed AI_003 door-pressure primitive from TerrariaServer 1.4.5.8 NPC.AI_003_Fighters.
 /// Closed doors and tall gates are hit every 60 contact ticks. The version-pinned pressure policy owns the
 /// restricted-reset list, GetGoodWorld gate, inside-unbreakable-wall bonus and type-specific bonus/force-open rules.
-/// Type 26's destructive door branch deliberately emits no ordinary opening intent until its destruction side
-/// effect has its own authoritative contract. Crossing ten points clamps ai[1] to vanilla's threshold.
+/// Type 26 emits the source destructive operation instead of masquerading as an ordinary open. Crossing ten points
+/// clamps ai[1] to vanilla's threshold.
 /// </summary>
 public static class VanillaWorldZombieDoorContact
 {
@@ -210,13 +218,16 @@ public static class VanillaWorldZombieDoorContact
             if (ai1 >= OpeningThreshold)
                 ai1 = OpeningThreshold;
 
-            if (shouldOpen && !pressure.DestroyDoorInsteadOfOpen)
+            if (shouldOpen)
             {
                 openingIntent = new VanillaGroundFighterDoorOpeningIntent(
                     tileX,
                     doorY,
                     directionX,
-                    door.TileType);
+                    door.TileType,
+                    pressure.DestroyDoorInsteadOfOpen
+                        ? VanillaGroundFighterDoorOperation.Destroy
+                        : VanillaGroundFighterDoorOperation.Open);
             }
         }
 

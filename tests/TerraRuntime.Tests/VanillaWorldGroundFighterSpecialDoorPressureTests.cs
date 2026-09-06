@@ -65,7 +65,7 @@ public sealed class VanillaWorldGroundFighterSpecialDoorPressureTests
     }
 
     [Fact]
-    public void Type460_forces_open_below_threshold_while_type26_never_masquerades_as_open()
+    public void Type460_forces_open_below_threshold_while_type26_requests_destruction()
     {
         WorldTileStore forceTiles = CreateDoorWorld();
         VanillaZombieDoorContactResult force = Resolve(
@@ -83,8 +83,10 @@ public sealed class VanillaWorldGroundFighterSpecialDoorPressureTests
 
         Assert.Equal(5f, force.Ai.Ai1, 5);
         Assert.NotNull(force.OpeningIntent);
+        Assert.Equal(VanillaGroundFighterDoorOperation.Open, force.OpeningIntent.Value.Operation);
         Assert.Equal(10f, destroy.Ai.Ai1, 5);
-        Assert.Null(destroy.OpeningIntent);
+        Assert.NotNull(destroy.OpeningIntent);
+        Assert.Equal(VanillaGroundFighterDoorOperation.Destroy, destroy.OpeningIntent.Value.Operation);
     }
 
     private static VanillaZombieDoorContactResult Resolve(

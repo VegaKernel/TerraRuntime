@@ -1,4 +1,5 @@
 using TerraRuntime.Gameplay.Npcs;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.World;
@@ -200,6 +201,29 @@ public sealed class VanillaNpcWorldMotionAiStepperTests
         Assert.Equal(82f, updated.Simulation.OldPositionY, 5);
     }
 
+    [Fact]
+    public void Ai_016_fish_collides_with_platforms_instead_of_falling_through()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(6, 7, SolidTile(checked((ushort)VanillaTileIds.Platforms.Value)));
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcStateUpdate state = CreateFish() with
+        {
+            PositionX = 96f,
+            PositionY = 91f
+        };
+        Assert.True(store.TrySpawn(0, in state, out NpcSnapshot spawned));
+        var executor = new RuntimeNpcAiStateExecutor(store);
+        var stepper = new VanillaNpcWorldMotionAiStepper(new FixedVelocityStepper(0f, 4f), tiles);
+
+        executor.Tick(stepper);
+
+        Assert.True(store.TryGet(spawned.Handle, out NpcSnapshot updated));
+        Assert.Equal(92f, updated.PositionY, 5);
+        Assert.Equal(1f, updated.VelocityY, 5);
+        Assert.True(updated.Simulation.CollideY);
+    }
+
     private static NpcStateUpdate CreateDemonEye() =>
         new(
             Type: 2,
@@ -231,6 +255,23 @@ public sealed class VanillaNpcWorldMotionAiStepperTests
             {
                 DirectionX = 1,
                 DirectionY = 1
+            });
+
+    private static NpcStateUpdate CreateFish() =>
+        new(
+            Type: VanillaNpcIds.Piranha.Value,
+            NetId: checked((short)VanillaNpcIds.Piranha.Value),
+            PositionX: 96f,
+            PositionY: 91f,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: VanillaNpcDefinitionCatalog.DefaultTarget,
+            Ai: default,
+            Simulation: NpcSimulationState.Initial with
+            {
+                DirectionX = 1,
+                DirectionY = 1,
+                NoGravity = true
             });
 
     private static WorldTile SolidTile(ushort type) =>

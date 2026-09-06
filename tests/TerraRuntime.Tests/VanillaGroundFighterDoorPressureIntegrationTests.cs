@@ -2,12 +2,63 @@ using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Core.Worlds;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
 public sealed class VanillaGroundFighterDoorPressureIntegrationTests
 {
+    [Fact]
+    public async Task Default_server_composition_commits_goblin_peon_door_destruction()
+    {
+        WorldTileStore tiles = CreateWorld();
+        for (int row = 0; row < 3; row++)
+        {
+            WorldTile door = new()
+            {
+                Type = checked((ushort)VanillaTileIds.ClosedDoor.Value),
+                FrameX = 0,
+                FrameY = checked((short)(row * 18)),
+                Flags = WorldTileFlags.Active
+            };
+            tiles.Set(7, 4 + row, in door);
+        }
+
+        var items = new RuntimeWorldItemStore();
+        var state = new ServerRuntimeState(
+            worldTiles: tiles,
+            worldItems: items,
+            worldItemSpawnRandom: new FixedWorldItemRandom());
+        var completion = new TaskCompletionSource<NpcSnapshot?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var peon = new NpcStateUpdate(
+            Type: VanillaNpcIds.GoblinPeon.Value,
+            NetId: checked((short)VanillaNpcIds.GoblinPeon.Value),
+            PositionX: 96f,
+            PositionY: 80f,
+            VelocityX: 0.5f,
+            VelocityY: 0f,
+            Target: VanillaNpcDefinitionCatalog.DefaultTarget,
+            Ai: new NpcAiState(0f, 9f, 59f, 0f),
+            Simulation: NpcSimulationState.Initial with
+            {
+                DirectionX = 1,
+                DirectionY = 1,
+                OldPositionX = 95f,
+                OldPositionY = 80f,
+                TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft,
+                Scale = 1f
+            });
+        state.Apply(new NpcSpawnRuntimeCommand(0, peon, completion));
+        Assert.NotNull(await completion.Task);
+
+        state.Tick();
+
+        for (int row = 0; row < 3; row++)
+            Assert.False(tiles.Get(7, 4 + row).IsActive);
+        Assert.Equal(1, items.ActiveCount);
+    }
+
     [Fact]
     public void Blood_moon_world_state_reaches_fighter_door_opening_sink()
     {
@@ -146,6 +197,11 @@ public sealed class VanillaGroundFighterDoorPressureIntegrationTests
     private sealed class FixedDoorRandom(bool result) : IVanillaGroundFighterDoorRandom
     {
         public bool NextGraveyardProgress() => result;
+    }
+
+    private sealed class FixedWorldItemRandom : IWorldItemSpawnRandom
+    {
+        public int NextInt32(int inclusiveMin, int exclusiveMax) => inclusiveMin;
     }
 
     private sealed class RejectingStepper : INpcAiStateStepper

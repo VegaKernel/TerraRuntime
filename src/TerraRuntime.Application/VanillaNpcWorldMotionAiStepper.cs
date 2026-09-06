@@ -89,6 +89,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             targeting.EnableZombieMotion(worldSurfaceTiles);
             targeting.SetKingSlimeEnvironment(new VanillaKingSlimeWorldEnvironment(tiles));
             targeting.SetWormEnvironment(new VanillaWormWorldEnvironment(tiles));
+            targeting.SetFishEnvironment(new VanillaFishWorldEnvironment1458(tiles));
         }
     }
 
@@ -298,6 +299,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         bool fallThroughPlatforms = definition.PhysicsFamily switch
         {
             VanillaNpcPhysicsFamily.FlyingEye => true,
+            VanillaNpcPhysicsFamily.BatFlight => true,
             VanillaNpcPhysicsFamily.GroundFighter => simulation.DirectionY == 1,
             _ => false
         };

@@ -34,6 +34,9 @@ public readonly record struct VanillaNpcTargetCandidate(
 
     /// <summary>Terraria Player.ZoneCrimson projected from the pinned SceneMetrics scan.</summary>
     public bool ZoneCrimson { get; init; }
+
+    /// <summary>Live player liquid contact used by ordinary flying-family state clocks.</summary>
+    public bool Wet { get; init; }
 }
 
 public readonly record struct VanillaNpcTargetSelection(

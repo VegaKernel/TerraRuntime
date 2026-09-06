@@ -82,7 +82,8 @@ public static class VanillaHardmodeBossCatalog1458
         Boss(VanillaNpcIds.QueenSlime, VanillaNpcAiStyles.QueenSlime, 114, 100, 60, 26, 18_000,
             behavior: VanillaNpcBehaviorFamily.QueenSlime, physics: VanillaNpcPhysicsFamily.GenericGround),
         Part(VanillaNpcIds.QueenSlimeMinionPurple, new NpcAiStyleId(14), 40, 30, 50, 30, 120,
-            knockBackResist: 0.8f)
+            knockBackResist: 0.8f, behavior: VanillaNpcBehaviorFamily.Bat,
+            physics: VanillaNpcPhysicsFamily.BatFlight)
     ];
 
     public static ReadOnlySpan<VanillaNpcDefinition> All => Definitions;

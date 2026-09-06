@@ -57,7 +57,9 @@ public enum VanillaNpcBehaviorFamily : byte
     MoonLordCore = 44,
     MoonLordHand = 45,
     MoonLordHead = 46,
-    MoonLordFreeEye = 47
+    MoonLordFreeEye = 47,
+    Bat = 48,
+    Fish = 49
 }
 
 /// <summary>
@@ -75,7 +77,9 @@ public enum VanillaNpcPhysicsFamily : byte
     Vulture = 5,
     SpikeBall = 6,
     BlazingWheel = 7,
-    GenericGround = 8
+    GenericGround = 8,
+    BatFlight = 9,
+    FishSwimming = 10
 }
 
 /// <summary>One resolved vanilla NPC hitbox for the current runtime scale.</summary>
@@ -275,6 +279,12 @@ public static class VanillaNpcDefinitionCatalog
             return true;
 
         if (VanillaNpcAi17_20_21Catalog1458.TryGetDefinition(type, out definition))
+            return true;
+
+        if (VanillaBatNpcCatalog1458.TryGetDefinition(type, out definition))
+            return true;
+
+        if (VanillaFishNpcCatalog1458.TryGetDefinition(type, out definition))
             return true;
 
         if (type == VanillaNpcIds.QueenBee)

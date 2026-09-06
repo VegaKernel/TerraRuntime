@@ -73,12 +73,12 @@ Conversely, packet emission, NPC/projectile/item spawn, player/NPC damage or buf
 - [x] project live `insideUnbreakableWalls` target state via `VanillaWorldUnbreakableWallScan` (8×250 ray scan for wall 350, color ≥16);
 - [x] route the admitted ordinary hostile AI_003 roster through concrete NPC types instead of Zombie fallback: Goblin Peon/Thief/Warrior/Scout, Angry Bones, Doctor Bones, The Groom, Armored Skeleton, Bald Zombie, Zombie Eskimo, Undead Viking and Pincushion/Slimed/Swamp/Twiggy/Female Zombie now carry pinned SetDefaults, speed/scale profiles and type-aware door pressure;
 - [x] import the source-grounded close-range lunge for Angry Bones and Armored Skeleton after obstacle/stuck-hop resolution (`|dx| < 100`, `|dy| < 50`, X doubled/clamped to `±3`, Y `-4`);
-- [ ] implement type `26` authoritative door destruction before claiming that special side effect;
+- [x] implement type `26` authoritative closed-door/tall-gate destruction, object drops and packet-17 replication;
 - [ ] partition and import remaining AI_003 movement parameter families and subtype-only projectile/transformation/event branches;
 - [ ] type-specific authoritative attacks, transformations, projectiles and spawn side effects; presentation-only spawn effects are intentionally out of scope;
 - [ ] differential scenarios for each admitted AI_003 subtype.
 
-The current door layer is no longer guessing frame geometry. Normal-door mutation reproduces the pinned 1.4.5.8 `OpenDoor` transform, including locked-door rejection and the source clearance set; successful authoritative mutations can be represented exactly as packet 19. The exact AI_003 pressure/reset table is also executable, and the currently admitted restricted Zombie/Skeleton slice now receives the persisted `GetGoodWorld` suppression and live `insideUnbreakableWalls` projection via `VanillaWorldUnbreakableWallScan` (8×250 ray scan for wall 350, color ≥16). Tall-gate type shifting is now fully wired through the production `RuntimeTallGateOccupancyProbe` (live `Collision.EmptyTile(ignoreTiles:true)` actor-rectangle checks) and the authoritative `RuntimeGroundFighterDoorOpeningSink` in default `ServerRuntimeState` composition. The ordinary hostile roster above is now routed with its concrete type and source-backed movement profile. Special subtype-only effects remain explicitly partial: in particular type 26 can reach the source `DestroyDoorInsteadOfOpen` disposition, but authoritative door destruction is still fail-closed until that world mutation has its own contract.
+The current door layer is no longer guessing frame geometry. Normal-door mutation reproduces the pinned 1.4.5.8 `OpenDoor` transform, including locked-door rejection and the source clearance set; successful authoritative mutations are represented exactly as packet 19. The exact AI_003 pressure/reset table is also executable, and the currently admitted restricted Zombie/Skeleton slice now receives the persisted `GetGoodWorld` suppression and live `insideUnbreakableWalls` projection via `VanillaWorldUnbreakableWallScan` (8×250 ray scan for wall 350, color ≥16). Tall-gate type shifting is fully wired through the production `RuntimeTallGateOccupancyProbe` (live `Collision.EmptyTile(ignoreTiles:true)` actor-rectangle checks) and the authoritative `RuntimeGroundFighterDoorOpeningSink` in default `ServerRuntimeState` composition. Type 26 now follows its distinct `WorldGen.KillTile` branch: the complete closed-door or tall-gate object is removed, locked Dungeon doors remain protected, the source style drop is materialized and packet 17 is broadcast from the server-authored commit. The ordinary hostile roster above is routed with its concrete type and source-backed movement profile; other subtype-only attacks, transformations and spawn effects remain explicitly partial.
 
 ## N2 — Common ordinary families
 
@@ -109,7 +109,10 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] remaining AI_006 worm family definitions and profiles;
 - [x] source-backed AI_017 Vulture/Raven activation, collision rebound, steering and wet escape;
 - [x] source-backed AI_020 Spike Ball and AI_021 Blazing Wheel authoritative motion state machines;
-- [ ] bats, fish, casters, mimics, critters and event enemy families;
+- [x] source-backed ordinary AI_014 bat family: Cave/Jungle/Hell/Giant/Illuminant/Ice/Lava Bat, Giant Flying Fox and Spore Bat defaults, collision rebound, closest-target steering, wet escape and wander clock;
+- [x] extend deterministic AI_014 motion to Slimer and Queen Slime's Purple Slime minion, including their single-pass/default and dedicated high-acceleration profiles;
+- [x] complete AI_016 for Goldfish/Corrupt Goldfish/Piranha/Shark/Angler Fish/Arapaima/Blood Feeder/Crimson Goldfish/Gold Goldfish/Pupfish/Dolphin/Pufferfish/Orca: source defaults, passive/hostile targeting, slope/collision/depth steering, wet pursuit profiles, dry flop RNG, Dolphin breach/surface states and Pufferfish inflation/water-line state;
+- [ ] remaining bat special branches (shooters and Vampire Bat transformation), casters, mimics, remaining critters and event enemy families;
 - [ ] spawn pool, biome, time, weather and progression eligibility.
 
 ## N3 — Bosses

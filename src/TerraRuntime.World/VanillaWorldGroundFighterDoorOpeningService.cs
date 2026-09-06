@@ -10,7 +10,9 @@ public interface IVanillaTallGateOccupancyProbe
 public enum VanillaGroundFighterDoorOpeningKind : byte
 {
     Door = 1,
-    TallGate = 2
+    TallGate = 2,
+    DestroyedDoor = 3,
+    DestroyedTallGate = 4
 }
 
 public readonly record struct VanillaGroundFighterDoorOpeningMutation(
@@ -18,10 +20,13 @@ public readonly record struct VanillaGroundFighterDoorOpeningMutation(
     int PacketTileX,
     int PacketTileY,
     int DirectionX,
-    int ChangedTiles);
+    int ChangedTiles,
+    ItemTypeId DropItem = default,
+    int DropTileX = 0,
+    int DropTileY = 0);
 
 /// <summary>
-/// Object-specific TerrariaServer 1.4.5.8 WorldGen.OpenDoor / ShiftTallGate(opening) mutation.
+/// Object-specific TerrariaServer 1.4.5.8 WorldGen.OpenDoor / ShiftTallGate(opening) / KillTile mutation.
 /// Normal doors reproduce the source 1x3 -> 2x3 frame/style transform, locked-Dungeon-door rejection,
 /// row block-paint/coating transfer and destination tile-cut rules. Tall gates reproduce the 1x5 388 -> 389
 /// type shift while preserving frames; their source Collision.EmptyTile(ignoreTiles:true) actor check is an
@@ -71,12 +76,128 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
         if (!touched.IsActive || touched.TileType != intent.ClosedType)
             return false;
 
+        if (intent.Operation == VanillaGroundFighterDoorOperation.Destroy)
+            return TryDestroy(in intent, in touched, out mutation);
+
         if (intent.ClosedType == VanillaTileIds.ClosedDoor)
             return TryOpenDoor(in intent, in touched, out mutation);
         if (intent.ClosedType == VanillaTileIds.TallGateClosed)
             return TryOpenTallGate(in intent, in touched, out mutation);
 
         return false;
+    }
+
+    private bool TryDestroy(
+        in VanillaGroundFighterDoorOpeningIntent intent,
+        in WorldTile touched,
+        out VanillaGroundFighterDoorOpeningMutation mutation)
+    {
+        if (intent.ClosedType == VanillaTileIds.ClosedDoor)
+            return TryDestroyDoor(in intent, in touched, out mutation);
+        if (intent.ClosedType == VanillaTileIds.TallGateClosed)
+            return TryDestroyTallGate(in intent, in touched, out mutation);
+
+        mutation = default;
+        return false;
+    }
+
+    private bool TryDestroyDoor(
+        in VanillaGroundFighterDoorOpeningIntent intent,
+        in WorldTile touched,
+        out VanillaGroundFighterDoorOpeningMutation mutation)
+    {
+        mutation = default;
+        if (IsLockedDoor(in touched) || touched.FrameX < 0 || touched.FrameY < 0)
+            return false;
+
+        int row = touched.FrameY % ClosedDoorStyleHeight / FrameUnit;
+        if ((uint)row >= 3u)
+            return false;
+
+        int topY = intent.TileY - row;
+        if (!Contains(intent.TileX, topY) || !Contains(intent.TileX, topY + 2))
+            return false;
+
+        for (int offset = 0; offset < 3; offset++)
+        {
+            WorldTile door = tiles.Get(intent.TileX, topY + offset);
+            if (!door.IsActive || door.TileType != VanillaTileIds.ClosedDoor)
+                return false;
+        }
+
+        int style = touched.FrameY / ClosedDoorStyleHeight +
+            touched.FrameX / ClosedDoorHorizontalStyleWidth * DoorStyleCountPerHorizontalBand;
+        for (int offset = 0; offset < 3; offset++)
+        {
+            WorldTile door = tiles.Get(intent.TileX, topY + offset);
+            ClearCutTile(ref door);
+            tiles.Set(intent.TileX, topY + offset, in door);
+        }
+
+        mutation = new VanillaGroundFighterDoorOpeningMutation(
+            VanillaGroundFighterDoorOpeningKind.DestroyedDoor,
+            intent.TileX,
+            intent.TileY,
+            intent.DirectionX,
+            ChangedTiles: 3,
+            VanillaDoorDropCatalog1458.GetDoorItem(style),
+            intent.TileX,
+            intent.TileY);
+        return true;
+    }
+
+    private bool TryDestroyTallGate(
+        in VanillaGroundFighterDoorOpeningIntent intent,
+        in WorldTile touched,
+        out VanillaGroundFighterDoorOpeningMutation mutation)
+    {
+        mutation = default;
+        if (touched.FrameX < 0 || touched.FrameY < 0)
+            return false;
+
+        int frameWithinStyle = touched.FrameY % TallGateCoordinateFullHeight;
+        if (frameWithinStyle % FrameUnit != 0)
+            return false;
+
+        int row = frameWithinStyle / FrameUnit;
+        if ((uint)row >= TallGateHeight)
+            return false;
+
+        int topY = intent.TileY - row;
+        int expectedFrameX = touched.FrameX / FrameUnit * FrameUnit;
+        int styleFrameY = touched.FrameY / TallGateCoordinateFullHeight * TallGateCoordinateFullHeight;
+        if (!Contains(intent.TileX, topY) || !Contains(intent.TileX, topY + TallGateHeight - 1))
+            return false;
+
+        for (int offset = 0; offset < TallGateHeight; offset++)
+        {
+            WorldTile gate = tiles.Get(intent.TileX, topY + offset);
+            if (!gate.IsActive ||
+                gate.TileType != VanillaTileIds.TallGateClosed ||
+                gate.FrameX != expectedFrameX ||
+                gate.FrameY != styleFrameY + offset * FrameUnit)
+            {
+                return false;
+            }
+        }
+
+        for (int offset = 0; offset < TallGateHeight; offset++)
+        {
+            WorldTile gate = tiles.Get(intent.TileX, topY + offset);
+            ClearCutTile(ref gate);
+            tiles.Set(intent.TileX, topY + offset, in gate);
+        }
+
+        mutation = new VanillaGroundFighterDoorOpeningMutation(
+            VanillaGroundFighterDoorOpeningKind.DestroyedTallGate,
+            intent.TileX,
+            intent.TileY,
+            intent.DirectionX,
+            ChangedTiles: TallGateHeight,
+            VanillaDoorDropCatalog1458.TallGateItem,
+            intent.TileX,
+            topY);
+        return true;
     }
 
     private bool TryOpenDoor(

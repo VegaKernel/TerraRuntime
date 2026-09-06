@@ -85,6 +85,61 @@ public sealed class VanillaWorldGroundFighterDoorOpeningServiceTests
     }
 
     [Fact]
+    public void Goblin_peon_destroys_complete_door_and_surfaces_source_style_drop()
+    {
+        WorldTileStore tiles = CreateWorld();
+        PlaceClosedDoor(tiles, 10, 10, frameX: 54, frameYBase: 108);
+        WorldTile middle = tiles.Get(10, 11);
+        middle.Wall = 7;
+        middle.LiquidAmount = 81;
+        middle.LiquidKind = WorldLiquidKind.Honey;
+        middle.Flags |= WorldTileFlags.WireBlue | WorldTileFlags.Actuator;
+        tiles.Set(10, 11, in middle);
+        var service = new VanillaWorldGroundFighterDoorOpeningService(tiles);
+        var intent = new VanillaGroundFighterDoorOpeningIntent(
+            10,
+            11,
+            1,
+            VanillaTileIds.ClosedDoor,
+            VanillaGroundFighterDoorOperation.Destroy);
+
+        Assert.True(service.TryOpen(in intent, out VanillaGroundFighterDoorOpeningMutation mutation));
+
+        Assert.Equal(VanillaGroundFighterDoorOpeningKind.DestroyedDoor, mutation.Kind);
+        Assert.Equal(3, mutation.ChangedTiles);
+        Assert.Equal(new ItemTypeId(3967), mutation.DropItem);
+        Assert.Equal(10, mutation.DropTileX);
+        Assert.Equal(11, mutation.DropTileY);
+        for (int row = 0; row < 3; row++)
+            Assert.False(tiles.Get(10, 10 + row).IsActive);
+
+        WorldTile preserved = tiles.Get(10, 11);
+        Assert.Equal((ushort)7, preserved.Wall);
+        Assert.Equal((byte)81, preserved.LiquidAmount);
+        Assert.Equal(WorldLiquidKind.Honey, preserved.LiquidKind);
+        Assert.True((preserved.Flags & WorldTileFlags.WireBlue) != 0);
+        Assert.True((preserved.Flags & WorldTileFlags.Actuator) != 0);
+    }
+
+    [Fact]
+    public void Goblin_peon_cannot_destroy_locked_dungeon_door()
+    {
+        WorldTileStore tiles = CreateWorld();
+        PlaceClosedDoor(tiles, 10, 10, frameX: 0, frameYBase: 594);
+        var service = new VanillaWorldGroundFighterDoorOpeningService(tiles);
+        var intent = new VanillaGroundFighterDoorOpeningIntent(
+            10,
+            11,
+            1,
+            VanillaTileIds.ClosedDoor,
+            VanillaGroundFighterDoorOperation.Destroy);
+
+        Assert.False(service.TryOpen(in intent, out _));
+        for (int row = 0; row < 3; row++)
+            Assert.Equal(VanillaTileIds.ClosedDoor, tiles.Get(10, 10 + row).TileType);
+    }
+
+    [Fact]
     public void Non_cuttable_destination_blocks_normal_door()
     {
         WorldTileStore tiles = CreateWorld();
@@ -174,6 +229,29 @@ public sealed class VanillaWorldGroundFighterDoorOpeningServiceTests
         Assert.False(service.TryOpen(in intent, out _));
         for (int row = 0; row < 5; row++)
             Assert.Equal(VanillaTileIds.TallGateClosed, tiles.Get(15, 10 + row).TileType);
+    }
+
+    [Fact]
+    public void Goblin_peon_destroys_tall_gate_without_opening_occupancy_check()
+    {
+        WorldTileStore tiles = CreateWorld();
+        PlaceClosedTallGate(tiles, 15, 10);
+        var occupancy = new FixedOccupancyProbe(actorFree: false);
+        var service = new VanillaWorldGroundFighterDoorOpeningService(tiles, occupancy);
+        var intent = new VanillaGroundFighterDoorOpeningIntent(
+            15,
+            12,
+            1,
+            VanillaTileIds.TallGateClosed,
+            VanillaGroundFighterDoorOperation.Destroy);
+
+        Assert.True(service.TryOpen(in intent, out VanillaGroundFighterDoorOpeningMutation mutation));
+
+        Assert.Equal(VanillaGroundFighterDoorOpeningKind.DestroyedTallGate, mutation.Kind);
+        Assert.Equal(new ItemTypeId(3240), mutation.DropItem);
+        Assert.Equal(0, occupancy.Calls);
+        for (int row = 0; row < 5; row++)
+            Assert.False(tiles.Get(15, 10 + row).IsActive);
     }
 
     private static WorldTileStore CreateWorld() =>
