@@ -236,8 +236,15 @@ internal sealed class ServerRuntimeComposition
             () => updates.Current,
             random: projectilePlayerCombatRandom,
             cultistLightningArcTrails: projectileAuthority.CultistLightningArcTrails,
-            serverPlayers: serverPlayers);
-        var npcPlayerCombat = new RuntimeNpcPlayerCombatPass(npcStore, playersAuthority);
+            serverPlayers: serverPlayers,
+            expertMode: expertMode,
+            masterMode: masterMode);
+        var npcPlayerCombat = new RuntimeNpcPlayerCombatPass(
+            npcStore,
+            playersAuthority,
+            serverPlayers: serverPlayers,
+            expertMode: expertMode,
+            masterMode: masterMode);
 
         return new ServerRuntimeComposition(
             updates,

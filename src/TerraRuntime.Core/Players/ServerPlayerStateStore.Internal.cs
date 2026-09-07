@@ -18,6 +18,7 @@ public sealed partial class ServerPlayerStateStore
         public byte SelectedItem { get; set; }
         public bool IsDead { get; set; }
         public bool Hostile { get; set; }
+        public bool GodMode { get; set; }
         public ServerPlayerAppearanceState? Appearance { get; set; }
         public bool HasHealth { get; set; }
         public short Life { get; set; }
@@ -50,6 +51,7 @@ public sealed partial class ServerPlayerStateStore
                 CameraTargetY: 0f)
             {
                 Hostile = Hostile,
+                GodMode = GodMode,
                 HasHealth = HasHealth,
                 Life = Life,
                 MaxLife = MaxLife,

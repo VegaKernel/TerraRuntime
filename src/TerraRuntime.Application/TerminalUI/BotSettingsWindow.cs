@@ -1,32 +1,25 @@
 using System.Collections.ObjectModel;
 using TerraRuntime.Application.Bots;
 using TerraRuntime.Application.Operations;
-using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
-using TerraRuntime.Gameplay.Bots;
-using TerraRuntime.Gameplay.Npcs;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
 namespace TerraRuntime.Application.TerminalUI;
 
-/// <summary>Operator editor for one runtime-owned primary-world bot.</summary>
+/// <summary>Operator editor for one runtime-owned fake player.</summary>
 internal sealed class BotSettingsWindow : Window
 {
     private readonly RuntimeBotOperations operations;
     private readonly RuntimeBotSnapshot bot;
     private readonly RuntimePlayerSnapshot[] players;
-    private readonly NpcPresetOption[] npcPresets;
-    private readonly CyclingDropDownList body;
-    private readonly CyclingDropDownList npcPreset;
     private readonly CyclingDropDownList weapon;
     private readonly CyclingDropDownList flight;
+    private readonly CyclingDropDownList godMode;
     private readonly CyclingDropDownList target;
     private readonly CyclingDropDownList mode;
     private readonly Label status;
     private readonly Label feedback;
-    private readonly View[] playerOnlyViews;
-    private readonly View[] npcOnlyViews;
 
     public BotSettingsWindow(
         RuntimeBotSnapshot bot,
@@ -36,92 +29,66 @@ internal sealed class BotSettingsWindow : Window
         this.bot = bot;
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.operations = operations ?? throw new ArgumentNullException(nameof(operations));
-        npcPresets = BuildNpcPresets();
 
         Title = $"Bot #{bot.Id} · {bot.Name}";
         Width = 72;
-        Height = 21;
+        Height = 19;
         X = Pos.Center();
         Y = Pos.Center();
         SchemeName = "Base";
 
-        body = CreateDropDown(24, 1, 28, Enum.GetNames<RuntimeBotBodyKind>());
-        npcPreset = CreateDropDown(24, 3, 38, npcPresets.Select(static value => value.Label));
-        weapon = CreateDropDown(24, 5, 28, Enum.GetNames<RuntimeBotWeaponPolicy>());
-        flight = CreateDropDown(24, 7, 28, ["On", "Off"]);
-        target = CreateDropDown(24, 9, 38, BuildTargetLabels(players));
-        mode = CreateDropDown(24, 11, 28, Enum.GetNames<RuntimeBotMode>());
-        status = new Label { X = 1, Y = 13, Width = Dim.Fill(1), SchemeName = "Base" };
-        feedback = new Label { X = 1, Y = 17, Width = Dim.Fill(1), Height = 2, SchemeName = "Base" };
+        weapon = CreateDropDown(24, 1, 28, Enum.GetNames<RuntimeBotWeaponPolicy>());
+        flight = CreateDropDown(24, 3, 28, ["On", "Off"]);
+        godMode = CreateDropDown(24, 5, 28, ["Off", "On"]);
+        target = CreateDropDown(24, 7, 38, BuildTargetLabels(players));
+        mode = CreateDropDown(24, 9, 28, Enum.GetNames<RuntimeBotMode>());
+        status = new Label { X = 1, Y = 11, Width = Dim.Fill(1), SchemeName = "Base" };
+        feedback = new Label { X = 1, Y = 15, Width = Dim.Fill(1), Height = 2, SchemeName = "Base" };
 
-        Label npcPresetLabel = LabelAt("NPC type", 3);
-        Label weaponLabel = LabelAt("Weapon policy", 5);
-        Label flightLabel = LabelAt("Mobility accessories", 7);
-        npcOnlyViews = [npcPresetLabel, npcPreset];
-        playerOnlyViews =
-        [
-            weaponLabel, weapon,
-            flightLabel, flight
-        ];
-
-        SelectText(body, bot.Configuration.Body.ToString());
-        SelectNpc(bot.Configuration.NpcType);
         SelectText(weapon, bot.Configuration.WeaponPolicy.ToString());
         SelectText(flight, bot.Configuration.FlightEnabled ? "On" : "Off");
+        SelectText(godMode, bot.Configuration.GodMode ? "On" : "Off");
         SelectText(mode, bot.Configuration.Mode.ToString());
         SelectTarget(bot.Configuration.Target);
         RefreshStatus(bot);
 
-        var apply = new Button { X = 24, Y = 15, Text = "Apply", SchemeName = "Base" };
-        var close = new Button { X = 36, Y = 15, Text = "Close", SchemeName = "Base" };
+        var apply = new Button { X = 24, Y = 13, Text = "Apply", SchemeName = "Base" };
+        var close = new Button { X = 36, Y = 13, Text = "Close", SchemeName = "Base" };
         apply.Accepted += (_, _) => Apply();
         close.Accepted += (_, _) => CloseRequested?.Invoke();
 
         Add(
-            LabelAt("Bot type", 1), body,
-            npcPresetLabel, npcPreset,
-            weaponLabel, weapon,
-            flightLabel, flight,
-            LabelAt("Follow target", 9), target,
-            LabelAt("Mode", 11), mode,
+            LabelAt("Weapon policy", 1), weapon,
+            LabelAt("Mobility accessories", 3), flight,
+            LabelAt("God mode", 5), godMode,
+            LabelAt("Follow target", 7), target,
+            LabelAt("Mode", 9), mode,
             status,
             apply,
             close,
             feedback);
-
-        body.ValueChanged += (_, _) => UpdateBodySpecificFields();
-        UpdateBodySpecificFields();
     }
 
     public event Action? CloseRequested;
 
     internal int BotId => bot.Id;
     internal string FeedbackTextForSmoke => feedback.Text?.ToString() ?? string.Empty;
-    internal bool NpcPresetVisibleForSmoke => npcPreset.Visible;
-    internal bool PlayerFieldsVisibleForSmoke => weapon.Visible && flight.Visible;
-    internal int NpcPresetCountForSmoke => npcPresets.Length;
+    internal bool NpcPresetVisibleForSmoke => false;
+    internal bool PlayerFieldsVisibleForSmoke => weapon.Visible && flight.Visible && godMode.Visible;
+    internal int NpcPresetCountForSmoke => 0;
+    internal bool GodModeForSmoke => string.Equals(godMode.Text?.ToString(), "On", StringComparison.Ordinal);
+
+    internal void SetGodModeForSmoke(bool enabled) => SelectText(godMode, enabled ? "On" : "Off");
 
     private void Apply()
     {
-        if (!Enum.TryParse(body.Text?.ToString(), ignoreCase: false, out RuntimeBotBodyKind bodyValue) ||
-            !Enum.TryParse(weapon.Text?.ToString(), ignoreCase: false, out RuntimeBotWeaponPolicy weaponValue) ||
+        if (!Enum.TryParse(weapon.Text?.ToString(), ignoreCase: false, out RuntimeBotWeaponPolicy weaponValue) ||
             !Enum.TryParse(mode.Text?.ToString(), ignoreCase: false, out RuntimeBotMode modeValue) ||
-            !TryParseToggle(flight, out bool flightValue))
+            !TryParseToggle(flight, out bool flightValue) ||
+            !TryParseToggle(godMode, out bool godModeValue))
         {
             feedback.Text = "bot: invalid selection";
             return;
-        }
-
-        NpcTypeId npcType = default;
-        if (bodyValue == RuntimeBotBodyKind.Npc && !TryResolveNpcPreset(out npcType))
-        {
-            feedback.Text = "bot: NPC type requires a source-backed hostile preset";
-            return;
-        }
-        if (bodyValue == RuntimeBotBodyKind.Npc)
-        {
-            weaponValue = RuntimeBotWeaponPolicy.Automatic;
-            flightValue = false;
         }
 
         RuntimeBotTarget targetValue = ResolveTarget();
@@ -134,10 +101,9 @@ internal sealed class BotSettingsWindow : Window
         var configuration = new RuntimeBotConfiguration(
             modeValue,
             targetValue,
-            Body: bodyValue,
-            NpcType: npcType,
             WeaponPolicy: weaponValue,
-            FlightEnabled: flightValue);
+            FlightEnabled: flightValue,
+            GodMode: godModeValue);
         try
         {
             RuntimeBotSnapshot? updated = operations.ConfigureAsync(bot.Id, configuration)
@@ -157,16 +123,6 @@ internal sealed class BotSettingsWindow : Window
         }
     }
 
-    private void UpdateBodySpecificFields()
-    {
-        bool npc = Enum.TryParse(body.Text?.ToString(), ignoreCase: false, out RuntimeBotBodyKind selected) &&
-            selected == RuntimeBotBodyKind.Npc;
-        foreach (View view in npcOnlyViews)
-            view.Visible = npc;
-        foreach (View view in playerOnlyViews)
-            view.Visible = !npc;
-    }
-
     private RuntimeBotTarget ResolveTarget()
     {
         string selected = target.Text?.ToString() ?? string.Empty;
@@ -183,36 +139,6 @@ internal sealed class BotSettingsWindow : Window
                 player.Name);
         }
         return default;
-    }
-
-    private bool TryResolveNpcPreset(out NpcTypeId type)
-    {
-        string selected = npcPreset.Text?.ToString() ?? string.Empty;
-        for (int i = 0; i < npcPresets.Length; i++)
-        {
-            if (!string.Equals(selected, npcPresets[i].Label, StringComparison.Ordinal))
-                continue;
-            type = npcPresets[i].Type;
-            return true;
-        }
-        type = default;
-        return false;
-    }
-
-    private void SelectNpc(NpcTypeId selected)
-    {
-        if (selected.IsAssigned)
-        {
-            for (int i = 0; i < npcPresets.Length; i++)
-            {
-                if (npcPresets[i].Type != selected)
-                    continue;
-                SelectText(npcPreset, npcPresets[i].Label);
-                return;
-            }
-        }
-        if (npcPresets.Length > 0)
-            SelectText(npcPreset, npcPresets[0].Label);
     }
 
     private void SelectTarget(RuntimeBotTarget selected)
@@ -238,13 +164,11 @@ internal sealed class BotSettingsWindow : Window
 
     private void RefreshStatus(RuntimeBotSnapshot snapshot)
     {
-        string bodyText = snapshot.Configuration.Body == RuntimeBotBodyKind.Npc
-            ? $"NpcBot #{snapshot.Configuration.NpcType.Value}"
-            : "PlayerBot";
         string targetState = snapshot.Configuration.Target.IsAssigned
             ? snapshot.TargetAvailable ? snapshot.Configuration.Target.DisplayName : $"{snapshot.Configuration.Target.DisplayName} (offline)"
             : "none";
-        status.Text = $"{bodyText} · Target: {targetState} · PvP {(snapshot.PvpEnabled ? "ON" : "OFF")} · teleports {snapshot.TeleportCount}";
+        string lifeState = snapshot.IsDead ? "DEAD" : "alive";
+        status.Text = $"PlayerBot · {lifeState} · Target: {targetState} · PvP {(snapshot.PvpEnabled ? "ON" : "OFF")} · God {(snapshot.Configuration.GodMode ? "ON" : "OFF")} · teleports {snapshot.TeleportCount}";
     }
 
     private static CyclingDropDownList CreateDropDown(int x, int y, int width, IEnumerable<string> values) => new()
@@ -274,25 +198,6 @@ internal sealed class BotSettingsWindow : Window
         return labels;
     }
 
-    private static NpcPresetOption[] BuildNpcPresets()
-    {
-        var result = new List<NpcPresetOption>(VanillaNpcAiCoverageCatalog.Count);
-        var admittedTypes = new HashSet<int>();
-        foreach (VanillaNpcAiCoverage coverage in VanillaNpcAiCoverageCatalog.All)
-        {
-            if (!VanillaBotNpcPresetCatalog1458.IsSupported(coverage.Type) ||
-                !VanillaNpcDefinitionCatalog.TryGet(coverage.Type, out VanillaNpcDefinition definition) ||
-                !admittedTypes.Add(coverage.Type.Value))
-            {
-                continue;
-            }
-            result.Add(new NpcPresetOption(
-                coverage.Type,
-                $"#{coverage.Type.Value} {definition.BehaviorFamily}"));
-        }
-        return result.OrderBy(static value => value.Type.Value).ToArray();
-    }
-
     private static bool TryParseToggle(DropDownList list, out bool value)
     {
         string selected = list.Text?.ToString() ?? string.Empty;
@@ -313,6 +218,4 @@ internal sealed class BotSettingsWindow : Window
     private static string FormatTarget(RuntimePlayerSnapshot player) => $"#{player.Slot} {player.Name}";
 
     private static void SelectText(DropDownList list, string value) => list.Text = value;
-
-    private readonly record struct NpcPresetOption(NpcTypeId Type, string Label);
 }

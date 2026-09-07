@@ -60,6 +60,44 @@ internal sealed partial class RuntimeConnectionRegistry
             Interlocked.Add(ref _relayedPvpFrames, BroadcastToPlaying(encoded));
     }
 
+
+    public void ServerPlayerGodModeUpdated(PlayerHandle player, bool enabled) =>
+        PlayerGodModeChanged(player, enabled);
+
+    public void ServerPlayerDied(
+        PlayerHandle player,
+        DamageSource source,
+        ProjectileTypeId projectileType,
+        int damage,
+        int hitDirection)
+    {
+        TerrariaPlayerDeathReasonState reason = source.Kind switch
+        {
+            DamageSourceKind.NpcContact when source.Npc.IsAssigned => new TerrariaPlayerDeathReasonState(
+                -1, checked((short)source.Npc.Slot), -1, -1, 0, 0, 0, null),
+            // Projectile.Damage_EVP in TerrariaServer 1.4.5.8 uses PlayerDeathReason.ByProjectile(-1, whoAmI)
+            // for ordinary hostile NPC projectiles. Player index 255 would be a materially different death reason.
+            DamageSourceKind.NpcProjectile when source.Npc.IsAssigned && source.Projectile.IsAssigned && projectileType != default =>
+                new TerrariaPlayerDeathReasonState(
+                    -1, -1, checked((short)source.Projectile.Slot), -1, checked((short)projectileType.Value), 0, 0, null),
+            _ => default
+        };
+        if (source.Kind is not (DamageSourceKind.NpcContact or DamageSourceKind.NpcProjectile) ||
+            damage is < 0 or > short.MaxValue || hitDirection is < -1 or > 1)
+        {
+            return;
+        }
+
+        var death = new TerrariaPlayerDeathState(
+            player.Slot.Value,
+            reason,
+            checked((short)damage),
+            checked((byte)(hitDirection + 1)),
+            Flags: 0);
+        if (TerrariaPlayerCombatCodec.TryEncodeDeath(in death, out byte[] encoded) == TerrariaPlayerDeathEncodeResult.Encoded)
+            BroadcastToPlaying(encoded);
+    }
+
     public void ServerPlayerItemUpdated(PlayerHandle player, in ServerPlayerItemState item)
     {
         if (_serverPlayers.TryUpdateItem(player, in item, out byte[] encoded))

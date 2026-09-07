@@ -122,6 +122,41 @@ public static class TerrariaPlayerCombatCodec
         }
     }
 
+
+    public static TerrariaPlayerDeathEncodeResult TryEncodeDeath(
+        in TerrariaPlayerDeathState state,
+        out byte[] frame)
+    {
+        frame = [];
+        if (!state.IsStructurallyValid || state.Damage < 0)
+            return TerrariaPlayerDeathEncodeResult.InvalidState;
+
+        try
+        {
+            using var payloadStream = new MemoryStream(64);
+            using (var writer = new BinaryWriter(payloadStream, Encoding.UTF8, leaveOpen: true))
+            {
+                writer.Write(state.TargetPlayer);
+                TerrariaPlayerDeathReasonState reason = state.Reason;
+                WriteReason(writer, in reason);
+                writer.Write(state.Damage);
+                writer.Write(state.HitDirectionWire);
+                writer.Write(state.Flags);
+            }
+
+            byte[] payload = payloadStream.ToArray();
+            frame = new byte[payload.Length + TerrariaFrameDecoderOptions.MinimumFrameLength];
+            return TerrariaFrameEncoder.TryWrite(frame, (byte)TerrariaMessageId.PlayerDeathV2, payload) == TerrariaFrameWriteResult.Written
+                ? TerrariaPlayerDeathEncodeResult.Encoded
+                : TerrariaPlayerDeathEncodeResult.Failed;
+        }
+        catch (IOException)
+        {
+            frame = [];
+            return TerrariaPlayerDeathEncodeResult.Failed;
+        }
+    }
+
     private static TerrariaPlayerDeathReasonState ReadReason(BinaryReader reader)
     {
         byte bits = reader.ReadByte();

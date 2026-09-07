@@ -13,7 +13,7 @@ namespace TerraRuntime.Application;
 /// A state store can be supplied without lifecycle identities for simulation/query-only scenarios; authoritative
 /// create/control/despawn commands are admitted only when the identity registry is present.
 /// </summary>
-internal sealed class ServerPlayerAuthority
+internal sealed partial class ServerPlayerAuthority
 {
     private const byte ControlUseItemFlag = 1 << 5;
     private readonly ServerPlayerStateStore states;
@@ -28,6 +28,7 @@ internal sealed class ServerPlayerAuthority
     private readonly Dictionary<PlayerHandle, ServerPlayerJumpIntent> jumpIntents = [];
     private readonly Dictionary<PlayerHandle, VanillaServerPlayerJumpState> jumpStates = [];
     private readonly Dictionary<PlayerHandle, ServerPlayerMovementIntent> movementIntents = [];
+    private readonly RuntimePlayerDamageImmunityStore damageImmunity;
 
     public ServerPlayerAuthority(
         ServerPlayerStateStore states,
@@ -42,6 +43,7 @@ internal sealed class ServerPlayerAuthority
         snapshots = new PlayerStateSnapshot[states.Capacity];
         liquidOwners = new PlayerHandle[states.Capacity];
         liquidContacts = new VanillaLiquidContactState[states.Capacity];
+        damageImmunity = new RuntimePlayerDamageImmunityStore(states.Capacity);
     }
 
     public bool TryApply(RuntimeCommand command)
@@ -110,6 +112,8 @@ internal sealed class ServerPlayerAuthority
         for (int index = 0; index < count; index++)
         {
             PlayerStateSnapshot player = snapshots[index];
+            if (player.HasHealth && (player.IsDead || player.Life <= 0))
+                continue;
             ServerPlayerMovementIntent movementIntent = GetMovementIntent(player.Player);
             ServerPlayerHorizontalIntent horizontalIntent;
             ServerPlayerJumpIntent jumpIntent;
@@ -262,7 +266,7 @@ internal sealed class ServerPlayerAuthority
         for (int index = 0; index < count; index++)
         {
             PlayerStateSnapshot player = snapshots[index];
-            if (player.IsDead)
+            if (player.HasHealth && player.IsDead)
                 continue;
 
             if (Intersects(
@@ -429,6 +433,18 @@ internal sealed class ServerPlayerAuthority
         }
 
         events?.ServerPlayerPvpUpdated(player, hostile);
+        return true;
+    }
+
+    public bool SetGodMode(ServerPlayerId id, bool enabled)
+    {
+        if (!TryGetPlayer(id, out PlayerHandle player) ||
+            !states.TrySetGodMode(player, enabled, out PlayerStateSnapshot normalized))
+        {
+            return false;
+        }
+
+        events?.ServerPlayerGodModeUpdated(player, normalized.GodMode);
         return true;
     }
 

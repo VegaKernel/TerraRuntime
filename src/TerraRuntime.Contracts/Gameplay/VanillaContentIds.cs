@@ -437,6 +437,29 @@ public static class VanillaItemIds
     public static readonly ItemTypeId RagePotion = new(2347);
     public static readonly ItemTypeId WrathPotion = new(2349);
     public static readonly ItemTypeId SuperHealingPotion = new(3544);
+    public static readonly ItemTypeId LesserManaPotion = new(110);
+    public static readonly ItemTypeId ManaPotion = new(189);
+    public static readonly ItemTypeId GreaterManaPotion = new(500);
+    public static readonly ItemTypeId SuperManaPotion = new(2209);
+    public static readonly ItemTypeId DestroyerEmblem = new(1301);
+    public static readonly ItemTypeId FireGauntlet = new(1343);
+    public static readonly ItemTypeId ShroomiteHeadgear = new(1546);
+    public static readonly ItemTypeId ShroomiteMask = new(1547);
+    public static readonly ItemTypeId ShroomiteBreastplate = new(1549);
+    public static readonly ItemTypeId ShroomiteLeggings = new(1550);
+    public static readonly ItemTypeId AnkhShield = new(1613);
+    public static readonly ItemTypeId SniperScope = new(1858);
+    public static readonly ItemTypeId BeetleHelmet = new(2199);
+    public static readonly ItemTypeId BeetleScaleMail = new(2200);
+    public static readonly ItemTypeId BeetleShell = new(2201);
+    public static readonly ItemTypeId BeetleLeggings = new(2202);
+    public static readonly ItemTypeId VortexHelmet = new(2757);
+    public static readonly ItemTypeId VortexBreastplate = new(2758);
+    public static readonly ItemTypeId VortexLeggings = new(2759);
+    public static readonly ItemTypeId SolarFlareHelmet = new(2763);
+    public static readonly ItemTypeId SolarFlareBreastplate = new(2764);
+    public static readonly ItemTypeId SolarFlareLeggings = new(2765);
+    public static readonly ItemTypeId CelestialShell = new(3110);
 
     public static bool TryCreate(int rawType, out ItemTypeId type)
     {

@@ -70,6 +70,7 @@ internal sealed class RuntimeOverviewDashboard : View
     private long lastMessageInboundBytes;
     private long lastMessageOutboundFrames;
     private long lastMessageOutboundBytes;
+    private NetworkRates lastNetworkRates;
     private bool updatingFeedControls;
 
     public RuntimeOverviewDashboard(
@@ -264,8 +265,7 @@ internal sealed class RuntimeOverviewDashboard : View
         string? status)
     {
         _ = world;
-        NetworkRates networkRates = CalculateNetworkRates(network);
-        AppendHistory(networkRates);
+        NetworkRates networkRates = UpdateNetworkRates(network);
 
         ReadOnlySpan<RuntimePlayerSnapshot> players = playersSnapshot.Players.Span;
         latestPrimaryPlayers = players.ToArray();
@@ -417,6 +417,8 @@ internal sealed class RuntimeOverviewDashboard : View
 
     internal (double Inbound, double Outbound) GetNetworkScaleMaximumsForSmoke() =>
         (networkGraph.InboundScaleMaximumForSmoke, networkGraph.OutboundScaleMaximumForSmoke);
+
+    internal int NetworkHistoryCountForSmoke => historyCount;
 
     internal bool SandboxAddEnabledForSmoke => sandboxAddButton.Enabled;
 
@@ -1070,15 +1072,27 @@ internal sealed class RuntimeOverviewDashboard : View
         return samples;
     }
 
-    private NetworkRates CalculateNetworkRates(RuntimeNetworkSnapshot network)
+    private NetworkRates UpdateNetworkRates(RuntimeNetworkSnapshot network)
     {
         if (!hasNetworkCounterSample)
         {
             SaveNetworkCounterSample(network);
-            return default;
+            return lastNetworkRates;
         }
 
         double elapsedSeconds = (network.CapturedAtUtc - lastNetworkCapturedAtUtc).TotalSeconds;
+        bool countersUnchanged =
+            network.MessageInboundFrames == lastMessageInboundFrames &&
+            network.MessageInboundBytes == lastMessageInboundBytes &&
+            network.MessageOutboundFrames == lastMessageOutboundFrames &&
+            network.MessageOutboundBytes == lastMessageOutboundBytes;
+
+        // Dashboard refresh can run more often than network telemetry publication. Re-rendering the same counter
+        // snapshot must not manufacture a zero-rate history point; that produced alternating real/zero columns and
+        // visible flicker even though traffic itself was steady.
+        if (elapsedSeconds == 0d && countersUnchanged)
+            return lastNetworkRates;
+
         bool validInterval = double.IsFinite(elapsedSeconds) && elapsedSeconds > 0d && elapsedSeconds <= 10d;
         bool countersMonotonic =
             network.MessageInboundFrames >= lastMessageInboundFrames &&
@@ -1089,7 +1103,8 @@ internal sealed class RuntimeOverviewDashboard : View
         if (!validInterval || !countersMonotonic)
         {
             SaveNetworkCounterSample(network);
-            return default;
+            lastNetworkRates = default;
+            return lastNetworkRates;
         }
 
         long inboundFrames = network.MessageInboundFrames - lastMessageInboundFrames;
@@ -1098,11 +1113,13 @@ internal sealed class RuntimeOverviewDashboard : View
         long outboundBytes = network.MessageOutboundBytes - lastMessageOutboundBytes;
         SaveNetworkCounterSample(network);
 
-        return new NetworkRates(
+        lastNetworkRates = new NetworkRates(
             inboundFrames / elapsedSeconds,
             outboundFrames / elapsedSeconds,
             inboundBytes / 1024d / elapsedSeconds,
             outboundBytes / 1024d / elapsedSeconds);
+        AppendHistory(lastNetworkRates);
+        return lastNetworkRates;
     }
 
     private void SaveNetworkCounterSample(RuntimeNetworkSnapshot network)
@@ -1360,9 +1377,7 @@ internal sealed class RuntimeOverviewDashboard : View
     {
         var line = new StringBuilder(80)
             .Append(isLast ? "  └─ " : "  ├─ ")
-            .Append(bot.Configuration.Body == RuntimeBotBodyKind.Npc
-                ? $"[NpcBot #{bot.Configuration.NpcType.Value}] "
-                : "[PlayerBot] ")
+            .Append("[PlayerBot] ")
             .Append(Sanitize(bot.Name, 22))
             .Append("  [").Append(bot.Configuration.Mode.ToString().ToLowerInvariant());
         if (bot.Configuration.Target.IsAssigned)

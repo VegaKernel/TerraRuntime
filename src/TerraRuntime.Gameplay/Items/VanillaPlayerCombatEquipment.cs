@@ -92,28 +92,16 @@ public static class VanillaPlayerCombatEquipmentCatalog
                 return false;
 
             int armorIndex = request.SlotId - VanillaPlayerItemSlotCatalog.ArmorStart;
-            if (armorIndex == 0)
+            if (armorIndex <= 2)
             {
-                if (type != VanillaItemIds.CopperHelmet || request.PrefixId != VanillaPrefixIds.None)
+                if (request.PrefixId != VanillaPrefixIds.None ||
+                    !TryApplyArmorPiece(type, armorIndex, ref snapshot))
+                {
                     return false;
-                head = type;
-                snapshot = snapshot with { Defense = snapshot.Defense + 1 };
-                continue;
-            }
-            if (armorIndex == 1)
-            {
-                if (type != VanillaItemIds.CopperChainmail || request.PrefixId != VanillaPrefixIds.None)
-                    return false;
-                body = type;
-                snapshot = snapshot with { Defense = snapshot.Defense + 2 };
-                continue;
-            }
-            if (armorIndex == 2)
-            {
-                if (type != VanillaItemIds.CopperGreaves || request.PrefixId != VanillaPrefixIds.None)
-                    return false;
-                legs = type;
-                snapshot = snapshot with { Defense = snapshot.Defense + 1 };
+                }
+                if (armorIndex == 0) head = type;
+                else if (armorIndex == 1) body = type;
+                else legs = type;
                 continue;
             }
 
@@ -129,7 +117,57 @@ public static class VanillaPlayerCombatEquipmentCatalog
             snapshot = snapshot with { Defense = snapshot.Defense + 2 };
         }
 
+        // Full endgame sets have dynamic set-bonus state (Solar shields, Vortex/Shroomite stealth, Beetle orbs)
+        // that is not part of this bounded combat snapshot. Individual pieces are source-backed; complete sets
+        // remain fail-closed until those transient states are represented. Runtime PlayerBot presets deliberately
+        // use coordinated mixed endgame pieces so their exact static bonuses stay inside this contract.
+        if ((head == VanillaItemIds.SolarFlareHelmet && body == VanillaItemIds.SolarFlareBreastplate && legs == VanillaItemIds.SolarFlareLeggings) ||
+            (head == VanillaItemIds.VortexHelmet && body == VanillaItemIds.VortexBreastplate && legs == VanillaItemIds.VortexLeggings) ||
+            ((head == VanillaItemIds.ShroomiteHeadgear || head == VanillaItemIds.ShroomiteMask) && body == VanillaItemIds.ShroomiteBreastplate && legs == VanillaItemIds.ShroomiteLeggings) ||
+            (head == VanillaItemIds.BeetleHelmet && (body == VanillaItemIds.BeetleScaleMail || body == VanillaItemIds.BeetleShell) && legs == VanillaItemIds.BeetleLeggings))
+        {
+            snapshot = default;
+            return false;
+        }
+
         return true;
+    }
+
+    private static bool TryApplyArmorPiece(ItemTypeId type, int armorIndex, ref VanillaPlayerCombatSnapshot snapshot)
+    {
+        if (armorIndex == 0)
+        {
+            if (type == VanillaItemIds.CopperHelmet) { snapshot = snapshot with { Defense = snapshot.Defense + 1 }; return true; }
+            if (type == VanillaItemIds.SolarFlareHelmet) { snapshot = snapshot with { Defense = snapshot.Defense + 24, MeleeCrit = snapshot.MeleeCrit + 26 }; return true; }
+            if (type == VanillaItemIds.VortexHelmet) { snapshot = snapshot with { Defense = snapshot.Defense + 14, RangedCrit = snapshot.RangedCrit + 7, RangedDamage = snapshot.RangedDamage + 0.16f }; return true; }
+            if (type == VanillaItemIds.ShroomiteHeadgear) { snapshot = snapshot with { Defense = snapshot.Defense + 11, RangedCrit = snapshot.RangedCrit + 5, ArrowDamage = snapshot.ArrowDamage * 1.12f }; return true; }
+            if (type == VanillaItemIds.ShroomiteMask) { snapshot = snapshot with { Defense = snapshot.Defense + 11, RangedCrit = snapshot.RangedCrit + 5, BulletDamage = snapshot.BulletDamage * 1.12f }; return true; }
+            if (type == VanillaItemIds.BeetleHelmet) { snapshot = snapshot with { Defense = snapshot.Defense + 23, MeleeDamage = snapshot.MeleeDamage + 0.06f }; return true; }
+            return false;
+        }
+
+        if (armorIndex == 1)
+        {
+            if (type == VanillaItemIds.CopperChainmail) { snapshot = snapshot with { Defense = snapshot.Defense + 2 }; return true; }
+            if (type == VanillaItemIds.SolarFlareBreastplate) { snapshot = snapshot with { Defense = snapshot.Defense + 34, MeleeDamage = snapshot.MeleeDamage + 0.29f }; return true; }
+            if (type == VanillaItemIds.VortexBreastplate) { snapshot = snapshot with { Defense = snapshot.Defense + 28, RangedCrit = snapshot.RangedCrit + 12, RangedDamage = snapshot.RangedDamage + 0.12f }; return true; }
+            if (type == VanillaItemIds.ShroomiteBreastplate) { snapshot = snapshot with { Defense = snapshot.Defense + 24, RangedCrit = snapshot.RangedCrit + 13, RangedDamage = snapshot.RangedDamage + 0.13f }; return true; }
+            if (type == VanillaItemIds.BeetleScaleMail) { snapshot = snapshot with { Defense = snapshot.Defense + 20, MeleeDamage = snapshot.MeleeDamage + 0.08f, MeleeCrit = snapshot.MeleeCrit + 8, MeleeAttackSpeed = snapshot.MeleeAttackSpeed + 0.06f }; return true; }
+            if (type == VanillaItemIds.BeetleShell) { snapshot = snapshot with { Defense = snapshot.Defense + 32, MeleeDamage = snapshot.MeleeDamage + 0.05f, MeleeCrit = snapshot.MeleeCrit + 5 }; return true; }
+            return false;
+        }
+
+        if (armorIndex == 2)
+        {
+            if (type == VanillaItemIds.CopperGreaves) { snapshot = snapshot with { Defense = snapshot.Defense + 1 }; return true; }
+            if (type == VanillaItemIds.SolarFlareLeggings) { snapshot = snapshot with { Defense = snapshot.Defense + 20, MeleeAttackSpeed = snapshot.MeleeAttackSpeed + 0.15f }; return true; }
+            if (type == VanillaItemIds.VortexLeggings) { snapshot = snapshot with { Defense = snapshot.Defense + 20, RangedCrit = snapshot.RangedCrit + 8, RangedDamage = snapshot.RangedDamage + 0.08f }; return true; }
+            if (type == VanillaItemIds.ShroomiteLeggings) { snapshot = snapshot with { Defense = snapshot.Defense + 16, RangedCrit = snapshot.RangedCrit + 7 }; return true; }
+            if (type == VanillaItemIds.BeetleLeggings) { snapshot = snapshot with { Defense = snapshot.Defense + 18, MeleeAttackSpeed = snapshot.MeleeAttackSpeed + 0.06f }; return true; }
+            return false;
+        }
+
+        return false;
     }
 
     private static bool TryApplyAccessory(
@@ -160,6 +198,40 @@ public static class VanillaPlayerCombatEquipmentCatalog
                 break;
             case 3212: // Shark Tooth Necklace
                 snapshot = snapshot with { ArmorPenetration = snapshot.ArmorPenetration + 5 };
+                break;
+            case 1301: // Destroyer Emblem
+                snapshot = snapshot with
+                {
+                    MeleeCrit = snapshot.MeleeCrit + 8,
+                    RangedCrit = snapshot.RangedCrit + 8,
+                    MagicCrit = snapshot.MagicCrit + 8,
+                    MeleeDamage = snapshot.MeleeDamage + 0.10f,
+                    RangedDamage = snapshot.RangedDamage + 0.10f,
+                    MagicDamage = snapshot.MagicDamage + 0.10f
+                };
+                break;
+            case 1858: // Sniper Scope
+                snapshot = snapshot with { RangedCrit = snapshot.RangedCrit + 10, RangedDamage = snapshot.RangedDamage + 0.10f };
+                break;
+            case 1613: // Ankh Shield: Item.SetDefaults defense=5; UpdateEquips grants noKnockback.
+                snapshot = snapshot with { Defense = snapshot.Defense + 5, NoKnockback = true };
+                break;
+            case 3110: // Celestial Shell / skyStoneEffects
+                snapshot = snapshot with
+                {
+                    Defense = snapshot.Defense + 4,
+                    MeleeAttackSpeed = snapshot.MeleeAttackSpeed + 0.10f,
+                    MeleeDamage = snapshot.MeleeDamage + 0.10f,
+                    RangedDamage = snapshot.RangedDamage + 0.10f,
+                    MagicDamage = snapshot.MagicDamage + 0.10f,
+                    MeleeCrit = snapshot.MeleeCrit + 2,
+                    RangedCrit = snapshot.RangedCrit + 2,
+                    MagicCrit = snapshot.MagicCrit + 2
+                };
+                break;
+            case 2609: // Fishron Wings: movement only for the represented combat slice.
+            case 5000: // Terraspark Boots: movement only.
+            case 5107: // Magiluminescence: movement/light only here.
                 break;
             default:
                 return false;

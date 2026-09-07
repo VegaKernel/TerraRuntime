@@ -129,7 +129,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
             () =>
             {
                 dashboard.PublishBotCommandCompletionForSmoke();
-                return dashboard.CommandFeedbackForSmoke.Contains("created Bot 1", StringComparison.Ordinal);
+                return dashboard.CommandFeedbackForSmoke.Contains("created ", StringComparison.Ordinal);
             },
             TimeSpan.FromSeconds(2)));
     }
@@ -180,6 +180,38 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         {
             app.End(token);
         }
+    }
+
+    [Fact]
+    public void Repeated_identical_network_snapshot_does_not_append_false_zero_history_sample()
+    {
+        using var dashboard = new RuntimeOverviewDashboard();
+        DateTimeOffset t0 = new(2026, 9, 7, 10, 0, 0, TimeSpan.Zero);
+        RuntimeDashboardSnapshot runtime = default(RuntimeDashboardSnapshot) with { WorldName = "Primary" };
+        RuntimeNetworkSnapshot first = default(RuntimeNetworkSnapshot) with
+        {
+            CapturedAtUtc = t0,
+            MessageInboundFrames = 100,
+            MessageInboundBytes = 1000,
+            MessageOutboundFrames = 200,
+            MessageOutboundBytes = 2000
+        };
+        dashboard.Refresh(runtime, first, default, default, default, default, status: null);
+        Assert.Equal(0, dashboard.NetworkHistoryCountForSmoke);
+
+        RuntimeNetworkSnapshot second = first with
+        {
+            CapturedAtUtc = t0.AddSeconds(1),
+            MessageInboundFrames = 110,
+            MessageInboundBytes = 1500,
+            MessageOutboundFrames = 220,
+            MessageOutboundBytes = 3000
+        };
+        dashboard.Refresh(runtime with { Tick = 1 }, second, default, default, default, default, status: null);
+        Assert.Equal(1, dashboard.NetworkHistoryCountForSmoke);
+
+        dashboard.Refresh(runtime with { Tick = 2 }, second, default, default, default, default, status: null);
+        Assert.Equal(1, dashboard.NetworkHistoryCountForSmoke);
     }
 
     [Fact]
@@ -698,21 +730,17 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         var bot = new RuntimeBotSnapshot(
             Id: 7,
             new ServerPlayerId("bot:7"),
-            Player: default,
-            Npc: new NpcHandle(3, new NpcGeneration(1)),
-            Name: "Bot 7",
-            new RuntimeBotConfiguration(
-                RuntimeBotMode.Guard,
-                Target: default,
-                Body: RuntimeBotBodyKind.Npc,
-                NpcType: VanillaNpcIds.Zombie),
+            Player: new PlayerHandle(new PlayerSlotId(3), new PlayerSessionGeneration(1)),
+            Name: "Vega",
+            new RuntimeBotConfiguration(RuntimeBotMode.Guard, Target: default),
             TargetAvailable: false,
             PvpEnabled: false,
             IsStuck: false,
+            IsDead: false,
             TeleportCount: 0,
             UpdatedAtUtc: DateTimeOffset.UtcNow);
         tree.SetRows(
-            ["  └─ [NpcBot #3] Bot 7  [guard]  [X]"],
+            ["  └─ [PlayerBot #3] Vega  [guard]  [X]"],
             [new SandboxWorldTreeRow(SandboxWorldTreeRowKind.Bot, null, null, Bot: bot)]);
 
         RuntimeBotSnapshot? opened = null;
@@ -727,51 +755,29 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     }
 
     [Fact]
-    public void Bot_settings_show_only_controls_applicable_to_selected_body()
+    public void Bot_settings_are_player_only_and_expose_godmode()
     {
         var operations = new RuntimeBotOperations(new RejectingBotCommandIngress(), new RuntimeBotTelemetry());
-        DateTimeOffset now = DateTimeOffset.UtcNow;
-        var playerBot = new RuntimeBotSnapshot(
+        var bot = new RuntimeBotSnapshot(
             1,
             new ServerPlayerId("bot:1"),
             new PlayerHandle(new PlayerSlotId(1), new PlayerSessionGeneration(1)),
-            default,
-            "Bot 1",
-            new RuntimeBotConfiguration(
-                RuntimeBotMode.Idle,
-                default),
+            "Viper",
+            new RuntimeBotConfiguration(RuntimeBotMode.Idle, default, GodMode: false),
+            false,
             false,
             false,
             false,
             0,
-            now);
-        var npcBot = playerBot with
-        {
-            Id = 2,
-            ServerPlayerId = new ServerPlayerId("bot:2"),
-            Player = default,
-            Npc = new NpcHandle(2, new NpcGeneration(1)),
-            Configuration = playerBot.Configuration with
-            {
-                Body = RuntimeBotBodyKind.Npc,
-                NpcType = VanillaNpcIds.Zombie,
-                FlightEnabled = false
-            }
-        };
+            DateTimeOffset.UtcNow);
 
-        using var playerWindow = new BotSettingsWindow(playerBot, [], operations);
-        Assert.False(playerWindow.NpcPresetVisibleForSmoke);
-        Assert.True(playerWindow.PlayerFieldsVisibleForSmoke);
-        int expectedNpcTypes = VanillaNpcAiCoverageCatalog.All
-            .ToArray()
-            .Select(static value => value.Type)
-            .Distinct()
-            .Count(VanillaBotNpcPresetCatalog1458.IsSupported);
-        Assert.Equal(expectedNpcTypes, playerWindow.NpcPresetCountForSmoke);
-
-        using var npcWindow = new BotSettingsWindow(npcBot, [], operations);
-        Assert.True(npcWindow.NpcPresetVisibleForSmoke);
-        Assert.False(npcWindow.PlayerFieldsVisibleForSmoke);
+        using var window = new BotSettingsWindow(bot, [], operations);
+        Assert.False(window.NpcPresetVisibleForSmoke);
+        Assert.Equal(0, window.NpcPresetCountForSmoke);
+        Assert.True(window.PlayerFieldsVisibleForSmoke);
+        Assert.False(window.GodModeForSmoke);
+        window.SetGodModeForSmoke(true);
+        Assert.True(window.GodModeForSmoke);
     }
 
     private sealed class RejectingBotCommandIngress : IGameCommandIngress<RuntimeCommand>
@@ -793,9 +799,9 @@ public sealed class RuntimeOverviewDashboardInteractionTests
                 1,
                 new ServerPlayerId("bot:1"),
                 new PlayerHandle(new PlayerSlotId(1), new PlayerSessionGeneration(1)),
-                default,
-                "Bot 1",
+                "Vega",
                 new RuntimeBotConfiguration(RuntimeBotMode.Idle, default),
+                false,
                 false,
                 false,
                 false,

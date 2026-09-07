@@ -27,4 +27,22 @@ public sealed partial class ServerPlayerStateStore
         snapshot = state.CaptureSnapshot();
         return true;
     }
+
+    public bool TrySetGodMode(PlayerHandle player, bool enabled, out PlayerStateSnapshot snapshot)
+    {
+        if (!TryGetState(player, out ServerPlayerRuntimeState? state) || state.Revision == ulong.MaxValue)
+        {
+            snapshot = default;
+            return false;
+        }
+        if (state.GodMode == enabled)
+        {
+            snapshot = state.CaptureSnapshot();
+            return true;
+        }
+        state.Revision++;
+        state.GodMode = enabled;
+        snapshot = state.CaptureSnapshot();
+        return true;
+    }
 }

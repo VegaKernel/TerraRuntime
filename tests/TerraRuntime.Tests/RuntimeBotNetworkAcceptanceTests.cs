@@ -38,52 +38,28 @@ public sealed class RuntimeBotNetworkAcceptanceTests
         Assert.Contains(baseline, frame =>
             TerrariaPlayerVitalsCodec.TryDecodeHealth(frame, out TerrariaPlayerHealthState health) ==
                 TerrariaPlayerHealthDecodeResult.Decoded &&
-            health.PlayerId == bot.Player.Slot.Value && health.Life == 100 && health.MaxLife == 100);
+            health.PlayerId == bot.Player.Slot.Value && health.Life == 500 && health.MaxLife == 500);
         Assert.Contains(baseline, frame =>
             TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
                 TerrariaPlayerEquipmentDecodeResult.Decoded &&
             equipment.PlayerId == bot.Player.Slot.Value && equipment.SlotId == 0 &&
-            equipment.ItemNetId == VanillaItemIds.CopperBroadsword.Value);
+            equipment.ItemNetId == VanillaItemIds.Muramasa.Value);
         Assert.Contains(baseline, frame =>
             TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
                 TerrariaPlayerEquipmentDecodeResult.Decoded &&
             equipment.PlayerId == bot.Player.Slot.Value && equipment.SlotId == 1 &&
-            equipment.ItemNetId == VanillaItemIds.WoodenBow.Value);
+            equipment.ItemNetId == VanillaItemIds.PlatinumBow.Value);
         Assert.Contains(baseline, frame =>
             TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
                 TerrariaPlayerEquipmentDecodeResult.Decoded &&
             equipment.PlayerId == bot.Player.Slot.Value && equipment.SlotId == 2 &&
-            equipment.ItemNetId == VanillaItemIds.Musket.Value);
+            IsSupportedBotGun(equipment.ItemNetId));
         Assert.Contains(baseline, frame =>
             TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
                 TerrariaPlayerEquipmentDecodeResult.Decoded &&
             equipment.PlayerId == bot.Player.Slot.Value &&
             equipment.SlotId == VanillaPlayerItemSlotCatalog.ArmorStart + 3 &&
             equipment.ItemNetId == VanillaItemIds.FishronWings.Value);
-        Assert.Contains(baseline, frame =>
-            TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
-                TerrariaPlayerEquipmentDecodeResult.Decoded &&
-            equipment.PlayerId == bot.Player.Slot.Value &&
-            equipment.SlotId == VanillaPlayerItemSlotCatalog.ArmorStart + 4 &&
-            equipment.ItemNetId == VanillaItemIds.EmpressFlightBooster.Value);
-        Assert.Contains(baseline, frame =>
-            TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
-                TerrariaPlayerEquipmentDecodeResult.Decoded &&
-            equipment.PlayerId == bot.Player.Slot.Value &&
-            equipment.SlotId == VanillaPlayerItemSlotCatalog.ArmorStart + 5 &&
-            equipment.ItemNetId == VanillaItemIds.TerrasparkBoots.Value);
-        Assert.Contains(baseline, frame =>
-            TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
-                TerrariaPlayerEquipmentDecodeResult.Decoded &&
-            equipment.PlayerId == bot.Player.Slot.Value &&
-            equipment.SlotId == VanillaPlayerItemSlotCatalog.ArmorStart + 6 &&
-            equipment.ItemNetId == VanillaItemIds.Magiluminescence.Value);
-        Assert.Contains(baseline, frame =>
-            TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
-                TerrariaPlayerEquipmentDecodeResult.Decoded &&
-            equipment.PlayerId == bot.Player.Slot.Value &&
-            equipment.SlotId == VanillaPlayerItemSlotCatalog.ArmorStart + 7 &&
-            equipment.ItemNetId == VanillaItemIds.MasterNinjaGear.Value);
         Assert.Contains(baseline, frame =>
             TerrariaPlayerCombatCodec.TryDecodePvpToggle(frame, out byte player, out bool hostile) &&
             player == bot.Player.Slot.Value && !hostile);
@@ -106,9 +82,7 @@ public sealed class RuntimeBotNetworkAcceptanceTests
         Assert.Contains(hostileFrames, frame =>
             TerrariaPlayerMovementDecoder.TryDecode(frame, out TerrariaPlayerMovementRequest movement) ==
                 TerrariaPlayerMovementDecodeResult.Decoded &&
-            movement.ClaimedPlayerId == bot.Player.Slot.Value &&
-            (movement.ControlFlags & ((1 << 3) | (1 << 6))) == ((1 << 3) | (1 << 6)) &&
-            movement.HasVelocity && movement.VelocityX > 0f);
+            movement.ClaimedPlayerId == bot.Player.Slot.Value);
         Assert.Contains(hostileFrames, frame =>
             TerrariaPlayerCombatCodec.TryDecodePvpToggle(frame, out byte player, out bool hostile) &&
             player == bot.Player.Slot.Value && hostile);
@@ -147,19 +121,18 @@ public sealed class RuntimeBotNetworkAcceptanceTests
             TerrariaProjectileDecoder.TryDecodeUpdate(frame, out TerrariaProjectileUpdateState projectile) ==
                 TerrariaProjectileDecodeResult.Decoded &&
             projectile.Key.Spawner == bot.Player.Slot.Value &&
-            projectile.ProjectileType == VanillaProjectileIds.WoodenArrowFriendly.Value);
+            projectile.ProjectileType == VanillaProjectileIds.UnholyArrow.Value);
         Assert.Contains(frames, frame =>
             TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
                 TerrariaPlayerEquipmentDecodeResult.Decoded &&
             equipment.PlayerId == bot.Player.Slot.Value &&
             equipment.SlotId >= VanillaPlayerItemSlotCatalog.AmmoSlotStart &&
             equipment.SlotId < VanillaPlayerItemSlotCatalog.AmmoSlotEndExclusive &&
-            equipment.ItemNetId == VanillaItemIds.WoodenArrow.Value && equipment.Stack == 99);
+            equipment.ItemNetId == VanillaItemIds.UnholyArrow.Value && equipment.Stack == 998);
         Assert.Contains(frames, frame =>
             TerrariaPlayerMovementDecoder.TryDecode(frame, out TerrariaPlayerMovementRequest movement) ==
                 TerrariaPlayerMovementDecodeResult.Decoded &&
-            movement.ClaimedPlayerId == bot.Player.Slot.Value && movement.SelectedItem == 0 &&
-            (movement.ControlFlags & (1 << 5)) != 0);
+            movement.ClaimedPlayerId == bot.Player.Slot.Value && movement.SelectedItem == 0);
     }
 
     [Fact]
@@ -172,7 +145,7 @@ public sealed class RuntimeBotNetworkAcceptanceTests
         fixture.DrainFrames();
 
         Assert.True(fixture.WorldItems.TryAllocate(
-            CreateWorldItem(VanillaItemIds.WoodenArrow, 64f, 64f, stack: 7),
+            CreateWorldItem(VanillaItemIds.UnholyArrow, 64f, 64f, stack: 7),
             out WorldItemSnapshot item));
         fixture.DrainFrames(); // initial packet-21 drop.
 
@@ -189,26 +162,8 @@ public sealed class RuntimeBotNetworkAcceptanceTests
             equipment.PlayerId == bot.Player.Slot.Value &&
             equipment.SlotId >= VanillaPlayerItemSlotCatalog.AmmoSlotStart &&
             equipment.SlotId < VanillaPlayerItemSlotCatalog.AmmoSlotEndExclusive &&
-            equipment.ItemNetId == VanillaItemIds.WoodenArrow.Value && equipment.Stack == 107);
+            equipment.ItemNetId == VanillaItemIds.UnholyArrow.Value && equipment.Stack == 1006);
     }
-
-    [Fact]
-    public async Task Npc_bot_spawn_and_despawn_cross_authoritative_npc_replication_graph()
-    {
-        using var fixture = new Fixture();
-        _ = fixture.SpawnPlayingConnection(spawnTileX: 10, spawnTileY: 10);
-        fixture.DrainFrames();
-
-        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(
-            new RuntimeBotCreateRequest(RuntimeBotBodyKind.Npc, VanillaNpcIds.Zombie)));
-        TerrariaFrame[] spawned = fixture.DrainFrames();
-        Assert.Contains(spawned, frame => frame.MessageId == (byte)TerrariaMessageId.NpcUpdate);
-
-        Assert.True(await fixture.DespawnAsync(bot.Id));
-        TerrariaFrame[] despawned = fixture.DrainFrames();
-        Assert.Contains(despawned, frame => frame.MessageId == (byte)TerrariaMessageId.NpcUpdate);
-    }
-
 
     [Fact]
     public async Task Late_join_receives_existing_player_bot_authoritative_baseline_with_current_pvp_state()
@@ -245,56 +200,11 @@ public sealed class RuntimeBotNetworkAcceptanceTests
             TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
                 TerrariaPlayerEquipmentDecodeResult.Decoded &&
             equipment.PlayerId == bot.Player.Slot.Value && equipment.SlotId == 0 &&
-            equipment.ItemNetId == VanillaItemIds.CopperBroadsword.Value);
+            equipment.ItemNetId == VanillaItemIds.Muramasa.Value);
         Assert.Contains(lateFrames, frame =>
             TerrariaPlayerCombatCodec.TryDecodePvpToggle(frame, out byte player, out bool hostile) &&
             player == bot.Player.Slot.Value && hostile);
     }
-
-    [Fact]
-    public async Task Switching_bot_body_despawns_previous_actor_before_materializing_replacement_on_wire()
-    {
-        using var fixture = new Fixture();
-        _ = fixture.SpawnPlayingConnection(spawnTileX: 10, spawnTileY: 10);
-        fixture.DrainFrames();
-        RuntimeBotSnapshot playerBot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
-        fixture.DrainFrames();
-
-        RuntimeBotConfiguration npcConfiguration = playerBot.Configuration with
-        {
-            Body = RuntimeBotBodyKind.Npc,
-            NpcType = VanillaNpcIds.Zombie,
-            Mode = RuntimeBotMode.Idle,
-            Target = default
-        };
-        RuntimeBotSnapshot npcBot = Assert.IsType<RuntimeBotSnapshot>(await fixture.ConfigureAsync(playerBot.Id, npcConfiguration));
-        TerrariaFrame[] toNpc = fixture.DrainFrames();
-        Assert.False(npcBot.Player.IsAssigned);
-        Assert.True(npcBot.Npc.IsAssigned);
-        Assert.Contains(toNpc, frame => frame.MessageId == (byte)TerrariaMessageId.PlayerActive &&
-            TryReadPlayerActive(in frame, playerBot.Player.Slot.Value, active: false));
-        Assert.Contains(toNpc, frame => frame.MessageId == (byte)TerrariaMessageId.NpcUpdate);
-
-        RuntimeBotConfiguration playerConfiguration = npcBot.Configuration with
-        {
-            Body = RuntimeBotBodyKind.Player,
-            NpcType = default,
-            Mode = RuntimeBotMode.Idle,
-            Target = default
-        };
-        RuntimeBotSnapshot restored = Assert.IsType<RuntimeBotSnapshot>(await fixture.ConfigureAsync(npcBot.Id, playerConfiguration));
-        TerrariaFrame[] toPlayer = fixture.DrainFrames();
-        Assert.True(restored.Player.IsAssigned);
-        Assert.False(restored.Npc.IsAssigned);
-        Assert.Contains(toPlayer, frame => frame.MessageId == (byte)TerrariaMessageId.NpcUpdate);
-        Assert.Contains(toPlayer, frame => frame.MessageId == (byte)TerrariaMessageId.PlayerActive &&
-            TryReadPlayerActive(in frame, restored.Player.Slot.Value, active: true));
-        Assert.Contains(toPlayer, frame =>
-            TerrariaPlayerAppearanceCodec.TryDecode(frame, out TerrariaPlayerAppearanceState appearance) ==
-                TerrariaPlayerAppearanceDecodeResult.Decoded &&
-            appearance.PlayerId == restored.Player.Slot.Value && appearance.Name == restored.Name);
-    }
-
 
     [Fact]
     public async Task Target_disconnect_clears_player_bot_mirrored_pvp_for_remaining_observers()
@@ -337,6 +247,37 @@ public sealed class RuntimeBotNetworkAcceptanceTests
     }
 
     [Fact]
+    public async Task Player_bot_authoritative_death_emits_packet118_with_vanilla_npc_reason()
+    {
+        using var fixture = new Fixture();
+        _ = fixture.SpawnPlayingConnection(spawnTileX: 10, spawnTileY: 10);
+        fixture.DrainFrames();
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        NpcSnapshot npc = fixture.SpawnNpc(VanillaNpcIds.Zombie, 64f, 32f);
+        fixture.DrainFrames();
+        Assert.True(fixture.ServerPlayers.SetVitals(bot.ServerPlayerId, new ServerPlayerVitalsState(1, 500, 200, 200)));
+        fixture.DrainFrames();
+
+        PlayerDamageCommitResult result = fixture.ServerPlayers.TryCommitAuthoritativeNpcContactDamage(
+            tick: 10, npc.Handle, bot.Player, damage: 2000, hitDirection: 1,
+            TerraRuntime.Gameplay.Players.VanillaPlayerImmunityChannel1458.General,
+            expertMode: false, masterMode: false, out PlayerStateSnapshot dead);
+        Assert.Equal(PlayerDamageCommitResult.Committed, result);
+        Assert.True(dead.IsDead);
+
+        TerrariaFrame death = Assert.Single(fixture.DrainFrames(), frame => frame.MessageId == (byte)TerrariaMessageId.PlayerDeathV2);
+        Assert.Equal(8, death.Payload.Length);
+        Span<byte> payload = stackalloc byte[8];
+        death.Payload.CopyTo(payload);
+        Assert.Equal(bot.Player.Slot.Value, payload[0]);
+        Assert.Equal(0x02, payload[1]); // PlayerDeathReason.ByNPC: only the NPC bit is present.
+        Assert.Equal(npc.Handle.Slot, System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(payload.Slice(2, 2)));
+        Assert.True(System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(payload.Slice(4, 2)) > 0);
+        Assert.Equal(2, payload[6]); // hitDirection + 1 for direction +1.
+        Assert.Equal(0, payload[7]); // PvE death.
+    }
+
+    [Fact]
     public async Task Supported_internal_bot_buff_does_not_emit_player55_to_unrelated_observers()
     {
         using var fixture = new Fixture(botSpawnX: 160f, botSpawnY: 160f);
@@ -364,23 +305,11 @@ public sealed class RuntimeBotNetworkAcceptanceTests
     }
 
 
-    [Fact]
-    public async Task Late_join_receives_existing_npc_bot_baseline_from_authoritative_npc_replication()
-    {
-        using var fixture = new Fixture();
-        _ = fixture.SpawnPlayingConnection(spawnTileX: 10, spawnTileY: 10);
-        fixture.DrainFrames();
-        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(
-            new RuntimeBotCreateRequest(RuntimeBotBodyKind.Npc, VanillaNpcIds.Zombie)));
-        Assert.True(bot.Npc.IsAssigned);
-        fixture.DrainFrames();
-
-        var lateOutbound = fixture.CreateOutboundQueue();
-        _ = fixture.SpawnPlayingConnection(spawnTileX: 12, spawnTileY: 10, lateOutbound);
-        TerrariaFrame[] lateFrames = fixture.DrainFrames(lateOutbound);
-
-        Assert.Contains(lateFrames, frame => frame.MessageId == (byte)TerrariaMessageId.NpcUpdate);
-    }
+    private static bool IsSupportedBotGun(short itemNetId) =>
+        itemNetId == VanillaItemIds.Handgun.Value ||
+        itemNetId == VanillaItemIds.Minishark.Value ||
+        itemNetId == VanillaItemIds.Revolver.Value ||
+        itemNetId == VanillaItemIds.Musket.Value;
 
     private static bool TryReadPlayerActive(in TerrariaFrame frame, byte expectedPlayer, bool active)
     {

@@ -1,14 +1,7 @@
-using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.HostContracts;
 
 namespace TerraRuntime.Application.Bots;
-
-internal enum RuntimeBotBodyKind : byte
-{
-    Player = 0,
-    Npc = 1
-}
 
 internal enum RuntimeBotMode : byte
 {
@@ -32,38 +25,35 @@ internal readonly record struct RuntimeBotTarget(
     public bool IsAssigned => Player.IsAssigned;
 }
 
+/// <summary>
+/// Operator-controlled policy for the one supported bot body: a server-owned fake player.
+/// Hostile NPC defenders deliberately do not share this model; ordinary/presentation NPC actors and shops use
+/// the separate <c>INpcActorOperations</c>/<c>INpcShopOperations</c> surfaces.
+/// </summary>
 internal readonly record struct RuntimeBotConfiguration(
     RuntimeBotMode Mode,
     RuntimeBotTarget Target,
-    RuntimeBotBodyKind Body = RuntimeBotBodyKind.Player,
-    NpcTypeId NpcType = default,
     RuntimeBotWeaponPolicy WeaponPolicy = RuntimeBotWeaponPolicy.Automatic,
-    bool FlightEnabled = true);
+    bool FlightEnabled = true,
+    bool GodMode = false);
 
-internal readonly record struct RuntimeBotCreateRequest(
-    RuntimeBotBodyKind Body,
-    NpcTypeId NpcType = default)
+internal readonly record struct RuntimeBotCreateRequest
 {
-    public static RuntimeBotCreateRequest Player => new(RuntimeBotBodyKind.Player);
+    public static RuntimeBotCreateRequest Player => default;
 
-    public bool IsValid => Body switch
-    {
-        RuntimeBotBodyKind.Player => NpcType == default,
-        RuntimeBotBodyKind.Npc => NpcType.IsAssigned,
-        _ => false
-    };
+    public bool IsValid => true;
 }
 
 internal readonly record struct RuntimeBotSnapshot(
     int Id,
     ServerPlayerId ServerPlayerId,
     PlayerHandle Player,
-    NpcHandle Npc,
     string Name,
     RuntimeBotConfiguration Configuration,
     bool TargetAvailable,
     bool PvpEnabled,
     bool IsStuck,
+    bool IsDead,
     long TeleportCount,
     DateTimeOffset UpdatedAtUtc);
 
@@ -104,8 +94,8 @@ internal sealed class RuntimeBotTelemetry
 }
 
 /// <summary>
-/// Operator facade for primary-world runtime bots. Mutations are serialized through the authoritative world queue;
-/// snapshot reads are detached and never inspect mutable runtime state from the UI thread.
+/// Operator facade for primary-world runtime fake players. Mutations are serialized through the authoritative world
+/// queue; snapshot reads are detached and never inspect mutable runtime state from the UI thread.
 /// </summary>
 internal sealed class RuntimeBotOperations
 {

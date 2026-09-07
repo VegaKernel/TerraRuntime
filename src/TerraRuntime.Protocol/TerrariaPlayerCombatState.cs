@@ -46,3 +46,23 @@ public enum TerrariaPlayerHurtEncodeResult : byte
     InvalidState = 1,
     Failed = 2
 }
+
+/// <summary>TerrariaServer 1.4.5.8 packet 118 / PlayerDeathV2.</summary>
+public readonly record struct TerrariaPlayerDeathState(
+    byte TargetPlayer,
+    TerrariaPlayerDeathReasonState Reason,
+    short Damage,
+    byte HitDirectionWire,
+    byte Flags)
+{
+    public int HitDirection => HitDirectionWire - 1;
+    public bool Pvp => (Flags & 0x01) != 0;
+    public bool IsStructurallyValid => HitDirection is >= -1 and <= 1;
+}
+
+public enum TerrariaPlayerDeathEncodeResult : byte
+{
+    Encoded = 0,
+    InvalidState = 1,
+    Failed = 2
+}

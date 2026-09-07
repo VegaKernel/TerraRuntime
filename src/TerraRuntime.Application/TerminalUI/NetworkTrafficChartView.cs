@@ -35,6 +35,9 @@ internal sealed class NetworkTrafficChartView : View
     internal void SetSamples(NetworkTrafficSample[] value)
     {
         ArgumentNullException.ThrowIfNull(value);
+        if (samples.AsSpan().SequenceEqual(value))
+            return;
+
         samples = value;
         inboundScaleMaximum = CalculateScaleMaximum(value, static sample => sample.InboundPacketsPerSecond);
         outboundScaleMaximum = CalculateScaleMaximum(value, static sample => sample.OutboundPacketsPerSecond);

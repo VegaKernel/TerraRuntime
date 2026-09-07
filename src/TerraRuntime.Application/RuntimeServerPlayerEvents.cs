@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Application;
@@ -14,6 +15,10 @@ internal interface IRuntimeServerPlayerEventSink
     void ServerPlayerVitalsUpdated(PlayerHandle player, in ServerPlayerVitalsState vitals);
 
     void ServerPlayerPvpUpdated(PlayerHandle player, bool hostile);
+
+    void ServerPlayerGodModeUpdated(PlayerHandle player, bool enabled);
+
+    void ServerPlayerDied(PlayerHandle player, DamageSource source, ProjectileTypeId projectileType, int damage, int hitDirection);
 
     void ServerPlayerItemUpdated(PlayerHandle player, in ServerPlayerItemState item);
 

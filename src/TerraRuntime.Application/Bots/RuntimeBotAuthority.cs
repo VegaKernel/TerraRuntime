@@ -29,7 +29,7 @@ internal sealed class RuntimeBotAuthority
     private const long TeleportCooldownTicks = 120;
     private const long TelemetryPeriodTicks = 6;
     private const int MaximumNpcSlots = 256;
-    private const short StarterAmmoStack = 100;
+    private const short StarterAmmoStack = 999;
     private const byte MeleeWeaponSlot = 0;
     private const byte BowWeaponSlot = 1;
     private const byte GunWeaponSlot = 2;
@@ -46,6 +46,18 @@ internal sealed class RuntimeBotAuthority
     private const float FlightAscentThresholdPixels = 32f;
     private const float ObstacleClimbTargetPixels = 96f;
     private const long FlightDecisionHoldTicks = 45;
+    private const long GuardTargetLockTicks = 90;
+    private const float GuardMeleeApproachDistancePixels = 46f;
+    private const float GuardMeleeReleaseDistancePixels = 68f;
+    private const float GuardBowMinimumDistancePixels = 150f;
+    private const float GuardBowMaximumDistancePixels = 280f;
+    private const float GuardGunMinimumDistancePixels = 220f;
+    private const float GuardGunMaximumDistancePixels = 380f;
+    private const float GuardRepositionPixels = 48f;
+    private const long GuardRepositionPeriodTicks = 150;
+    private const short MaximumVanillaPermanentLife = 500;
+    private const short MaximumVanillaPermanentMana = 200;
+    private const short StarterPotionStack = 30;
 
     private readonly ServerPlayerAuthority serverPlayers;
     private readonly PlayerAuthority players;
@@ -56,6 +68,7 @@ internal sealed class RuntimeBotAuthority
     private readonly WorldTileStore worldTiles;
     private readonly RuntimeBotTelemetry telemetry;
     private readonly Func<long> tickProvider;
+    private readonly Random botRandom;
     private readonly float spawnX;
     private readonly float spawnY;
     private readonly Dictionary<int, BotState> bots = [];
@@ -75,7 +88,8 @@ internal sealed class RuntimeBotAuthority
         RuntimeBotTelemetry telemetry,
         Func<long> tickProvider,
         float spawnX,
-        float spawnY)
+        float spawnY,
+        Random? botRandom = null)
     {
         this.serverPlayers = serverPlayers ?? throw new ArgumentNullException(nameof(serverPlayers));
         this.players = players ?? throw new ArgumentNullException(nameof(players));
@@ -86,6 +100,7 @@ internal sealed class RuntimeBotAuthority
         this.worldTiles = worldTiles ?? throw new ArgumentNullException(nameof(worldTiles));
         this.telemetry = telemetry ?? throw new ArgumentNullException(nameof(telemetry));
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
+        this.botRandom = botRandom ?? Random.Shared;
         if (!float.IsFinite(spawnX) || !float.IsFinite(spawnY))
             throw new ArgumentOutOfRangeException(nameof(spawnX));
         this.spawnX = spawnX;
@@ -120,7 +135,7 @@ internal sealed class RuntimeBotAuthority
 
     private RuntimeBotSnapshot? Create(RuntimeBotCreateRequest request)
     {
-        if (!request.IsValid || !IsSupportedBody(request.Body, request.NpcType))
+        if (!request.IsValid)
             return null;
 
         int id = nextId;
@@ -128,31 +143,27 @@ internal sealed class RuntimeBotAuthority
             return null;
 
         var serverId = new ServerPlayerId($"bot:{id}");
-        var controllerId = new ActorControllerId($"bot:{id}");
-        string name = $"Bot {id}";
+        string name = RuntimeBotNameGenerator.Generate(
+            botRandom,
+            candidate => bots.Values.Any(existing => string.Equals(existing.Name, candidate, StringComparison.OrdinalIgnoreCase)));
+        RuntimePlayerBotLoadout1458 loadout = RuntimePlayerBotLoadoutCatalog1458.Pick(botRandom);
         var configuration = new RuntimeBotConfiguration(
             RuntimeBotMode.Idle,
             default,
-            Body: request.Body,
-            NpcType: request.NpcType,
             WeaponPolicy: RuntimeBotWeaponPolicy.Automatic,
-            FlightEnabled: request.Body == RuntimeBotBodyKind.Player);
+            FlightEnabled: true,
+            GodMode: false);
         var state = new BotState(
             id,
             serverId,
-            controllerId,
             name,
             configuration,
-            CreateVisualIdentity(id),
-            CreatePersonality(id),
+            loadout,
+            CreateVisualIdentity(botRandom.Next()),
+            CreatePersonality(botRandom.Next()),
             tickProvider());
 
-        bool created = request.Body switch
-        {
-            RuntimeBotBodyKind.Player => TryCreatePlayerActor(state, spawnX, spawnY),
-            RuntimeBotBodyKind.Npc => TryCreateNpcActor(state, request.NpcType, spawnX, spawnY),
-            _ => false
-        };
+        bool created = TryCreatePlayerActor(state, spawnX, spawnY);
         if (!created)
             return null;
 
@@ -177,16 +188,9 @@ internal sealed class RuntimeBotAuthority
             return null;
         }
 
-        RuntimeBotConfiguration previous = bot.Configuration;
-        if ((previous.Body != configuration.Body ||
-             configuration.Body == RuntimeBotBodyKind.Npc && previous.NpcType != configuration.NpcType) &&
-            !TryReplaceActor(bot, configuration))
-        {
-            return null;
-        }
-
-        if (configuration.Body == RuntimeBotBodyKind.Player &&
-            (!ApplyPlayerPresentation(bot, configuration) || !EnsurePlayerLoadout(bot, configuration, addStarterAmmo: true)))
+        if (!ApplyPlayerPresentation(bot, configuration) ||
+            !EnsurePlayerLoadout(bot, configuration, addStarterAmmo: true) ||
+            !serverPlayers.SetGodMode(bot.ServerPlayerId, configuration.GodMode))
         {
             // A replacement actor has already crossed an authoritative boundary. Do not attempt a lossy reverse
             // resurrection here; reject only before replacement wherever possible, and treat this as an invariant.
@@ -207,33 +211,12 @@ internal sealed class RuntimeBotAuthority
         if (!bots.Remove(id, out BotState? bot))
             return false;
 
-        bool despawned = bot.Configuration.Body switch
-        {
-            RuntimeBotBodyKind.Player when bot.Player.IsAssigned => serverPlayers.Despawn(bot.ServerPlayerId),
-            RuntimeBotBodyKind.Npc when bot.Npc.IsAssigned => npcs.TryDespawnBotNpc(bot.Npc, bot.ControllerId),
-            _ => false
-        };
+        bool despawned = bot.Player.IsAssigned && serverPlayers.Despawn(bot.ServerPlayerId);
         PublishTelemetry(tickProvider(), force: true);
         return despawned;
     }
 
-    private void TickBot(BotState bot, long tick)
-    {
-        switch (bot.Configuration.Body)
-        {
-            case RuntimeBotBodyKind.Player:
-                TickPlayerBot(bot, tick);
-                break;
-            case RuntimeBotBodyKind.Npc:
-                TickNpcBot(bot, tick);
-                break;
-            default:
-                bot.TargetAvailable = false;
-                bot.PvpEnabled = false;
-                bot.IsStuck = false;
-                break;
-        }
-    }
+    private void TickBot(BotState bot, long tick) => TickPlayerBot(bot, tick);
 
     private void TickPlayerBot(BotState bot, long tick)
     {
@@ -243,8 +226,10 @@ internal sealed class RuntimeBotAuthority
             bot.TargetAvailable = false;
             bot.PvpEnabled = false;
             bot.IsStuck = false;
+            bot.IsDead = true;
             return;
         }
+        bot.IsDead = false;
 
         if (tick >= bot.UseItemUntilTick && (self.ControlFlags & ControlUseItemFlag) != 0)
         {
@@ -258,6 +243,7 @@ internal sealed class RuntimeBotAuthority
         // created deceptively half-functional actors and split one authoritative inventory path into UI variants.
         TryPickupOneUsefulItem(bot, in self);
         TryAutoHeal(bot, in self, tick);
+        TryAutoMana(bot, in self, tick);
         if (serverPlayers.TryGet(bot.Player, out PlayerStateSnapshot refreshed))
             self = refreshed;
 
@@ -277,17 +263,44 @@ internal sealed class RuntimeBotAuthority
         if (self.Hostile != pvp)
             _ = serverPlayers.SetHostile(bot.ServerPlayerId, pvp);
 
-        ResolvePlayerEscortDestination(bot, in self, in target, tick, out float escortX, out float escortY);
-        escortX = ClampWorldCenterX(escortX, PlayerAuthority.VanillaBasePlayerWidth * 0.5f);
-        escortY = ClampWorldCenterY(escortY, PlayerAuthority.VanillaBasePlayerHeight * 0.5f);
+        BotGuardTarget guardTarget = default;
+        bool hasGuardTarget = configuration.Mode == RuntimeBotMode.Guard &&
+            TryFindGuardTarget(bot, in self, in target, tick, out guardTarget);
+        RuntimeBotAttackKind guardAttack = hasGuardTarget
+            ? ResolveAttackKind(bot.Configuration.WeaponPolicy, in self, in guardTarget)
+            : RuntimeBotAttackKind.Melee;
+
+        float destinationX;
+        float destinationY;
+        float stopDistance;
+        if (hasGuardTarget)
+        {
+            ResolveGuardMovementDestination(
+                bot,
+                in self,
+                in target,
+                in guardTarget,
+                guardAttack,
+                tick,
+                out destinationX,
+                out destinationY,
+                out stopDistance);
+        }
+        else
+        {
+            ResolvePlayerEscortDestination(bot, in self, in target, tick, out destinationX, out destinationY);
+            stopDistance = 20f;
+        }
+        destinationX = ClampWorldCenterX(destinationX, PlayerAuthority.VanillaBasePlayerWidth * 0.5f);
+        destinationY = ClampWorldCenterY(destinationY, PlayerAuthority.VanillaBasePlayerHeight * 0.5f);
         _ = serverPlayers.SetMovementIntent(
             bot.ServerPlayerId,
             ServerPlayerMovementIntent.MoveTo(
-                escortX,
-                escortY,
+                destinationX,
+                destinationY,
                 ServerPlayerMovementOptions.Default with
                 {
-                    StopDistance = 20f,
+                    StopDistance = stopDistance,
                     AutoJumpObstacles = true,
                     FlightEnabled = configuration.FlightEnabled
                 }));
@@ -297,101 +310,8 @@ internal sealed class RuntimeBotAuthority
         if (configuration.Mode == RuntimeBotMode.Guard)
             TryAutoUseCombatBuffs(bot, tick);
 
-        if (configuration.Mode == RuntimeBotMode.Guard && tick >= bot.NextAttackTick)
-            TryGuardAttack(bot, in self, in target, tick);
-    }
-
-    private void TickNpcBot(BotState bot, long tick)
-    {
-        if (!bot.Npc.IsAssigned || !npcs.TryCapture(bot.Npc, out NpcSnapshot self) ||
-            !self.IsActive || self.Simulation.Life <= 0)
-        {
-            bot.TargetAvailable = false;
-            bot.PvpEnabled = false;
-            bot.IsStuck = false;
-            return;
-        }
-
-        if (!TryResolveLiveTarget(bot, out PlayerStateSnapshot target))
-        {
-            ResetUnavailableTarget(bot, tick);
-            NpcActorIntent stop = NpcActorIntent.Stop();
-            _ = npcs.TrySetBotNpcIntent(bot.Npc, bot.ControllerId, in stop);
-            return;
-        }
-
-        bot.TargetAvailable = true;
-        bot.PvpEnabled = false; // No source-backed NPC-owned PvP provenance exists; fail closed.
-        if (!VanillaNpcDefinitionCatalog.TryGet(self.TypeIdentity, out VanillaNpcDefinition definition) ||
-            !definition.TryResolveHitbox(self.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
-        {
-            NpcActorIntent failClosed = NpcActorIntent.Stop();
-            _ = npcs.TrySetBotNpcIntent(bot.Npc, bot.ControllerId, in failClosed);
-            return;
-        }
-
-        // The selected player is never the hostile NPC.target. A presentation NPC cannot publish a per-instance
-        // friendly/contact-damage override to an unmodified Terraria client, so it must also stay physically outside
-        // the player's collision rectangle; the server-side DamageOverride=0 remains the final authority backstop.
-        float noContactX = hitbox.Width * 0.5f + PlayerAuthority.VanillaBasePlayerWidth * 0.5f + 8f;
-        float noContactY = hitbox.Height * 0.5f + PlayerAuthority.VanillaBasePlayerHeight * 0.5f + 8f;
-        bool flying = VanillaNpcActorControlSupport1458.TryGetMotionFamily(
-                self.TypeIdentity,
-                out VanillaNpcActorControlMotionFamily1458 motionFamily) &&
-            motionFamily != VanillaNpcActorControlMotionFamily1458.GroundFighter;
-        ResolveEscortDestination(bot, in target, tick, allowVerticalWander: flying,
-            out float escortX, out float escortY);
-        escortX = ClampWorldCenterX(escortX, hitbox.Width * 0.5f);
-        escortY = ClampWorldCenterY(escortY, hitbox.Height * 0.5f);
-        if (RectanglesIntersect(
-                self.PositionX,
-                self.PositionY,
-                hitbox.Width,
-                hitbox.Height,
-                target.PositionX - 16f,
-                target.PositionY - 16f,
-                PlayerAuthority.VanillaBasePlayerWidth + 32f,
-                PlayerAuthority.VanillaBasePlayerHeight + 32f))
-        {
-            float separatedY = flying
-                ? escortY - hitbox.Height * 0.5f
-                : target.PositionY + PlayerAuthority.VanillaBasePlayerHeight - hitbox.Height;
-            if (npcs.TryTeleportBotNpc(
-                    bot.Npc,
-                    bot.ControllerId,
-                    escortX - hitbox.Width * 0.5f,
-                    separatedY) &&
-                npcs.TryCapture(bot.Npc, out NpcSnapshot separated))
-            {
-                self = separated;
-                CommitTeleport(bot, tick);
-            }
-        }
-        float targetCenterX = target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
-        float npcCenterX = self.PositionX + hitbox.Width * 0.5f;
-        if (MathF.Abs(npcCenterX - targetCenterX) < noContactX + 24f)
-        {
-            float side = npcCenterX < targetCenterX ? -1f : 1f;
-            escortX = targetCenterX + side * Math.Max(MathF.Abs(bot.Personality.EscortOffsetX), noContactX + 48f);
-            escortX = ClampWorldCenterX(escortX, hitbox.Width * 0.5f);
-        }
-        var motion = NpcActorMotionOptions.Default with
-        {
-            StopDistance = MathF.Sqrt(noContactX * noContactX + noContactY * noContactY)
-        };
-        NpcActorIntent follow = NpcActorIntent.MoveTo(
-            escortX,
-            flying ? escortY : target.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f,
-            motion);
-        if (!npcs.TrySetBotNpcIntent(bot.Npc, bot.ControllerId, in follow))
-        {
-            bot.TargetAvailable = false;
-            bot.IsStuck = false;
-            return;
-        }
-        UpdateNpcStuckRecovery(bot, in self, in target, in hitbox, tick);
-        // Guard intentionally shares follow/stuck behavior only. NPC offensive combat remains fail-closed until a
-        // source-backed NPC bot combat provenance path exists; do not fake player-owned projectiles from an NPC body.
+        if (hasGuardTarget && tick >= bot.NextAttackTick)
+            TryGuardAttack(bot, in self, in guardTarget, tick);
     }
 
     private bool TryResolveLiveTarget(BotState bot, out PlayerStateSnapshot target)
@@ -428,34 +348,6 @@ internal sealed class RuntimeBotAuthority
                 bot.ServerPlayerId,
                 destinationX - PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
                 destinationY - PlayerAuthority.VanillaBasePlayerHeight * 0.5f))
-            CommitTeleport(bot, tick);
-    }
-
-    private void UpdateNpcStuckRecovery(
-        BotState bot,
-        in NpcSnapshot self,
-        in PlayerStateSnapshot target,
-        in VanillaNpcHitboxSize hitbox,
-        long tick)
-    {
-        float distanceSquared = DistanceSquared(self.PositionX, self.PositionY, target.PositionX, target.PositionY);
-        UpdateProgress(bot, distanceSquared, tick);
-        if (!ShouldTeleport(bot, distanceSquared, tick))
-            return;
-
-        bool flying = VanillaNpcActorControlSupport1458.TryGetMotionFamily(
-                self.TypeIdentity,
-                out VanillaNpcActorControlMotionFamily1458 motionFamily) &&
-            motionFamily != VanillaNpcActorControlMotionFamily1458.GroundFighter;
-        ResolveEscortDestination(bot, in target, tick, allowVerticalWander: flying,
-            out float destinationX, out float destinationY);
-        destinationX = ClampWorldCenterX(destinationX, hitbox.Width * 0.5f);
-        destinationY = ClampWorldCenterY(destinationY, hitbox.Height * 0.5f);
-        float safeX = destinationX - hitbox.Width * 0.5f;
-        float safeY = flying
-            ? destinationY - hitbox.Height * 0.5f
-            : target.PositionY + PlayerAuthority.VanillaBasePlayerHeight - hitbox.Height;
-        if (npcs.TryTeleportBotNpc(bot.Npc, bot.ControllerId, safeX, safeY))
             CommitTeleport(bot, tick);
     }
 
@@ -559,17 +451,73 @@ internal sealed class RuntimeBotAuthority
             (allowVerticalWander ? bot.Personality.EscortOffsetY : 0f) + wanderY;
     }
 
+    private void ResolveGuardMovementDestination(
+        BotState bot,
+        in PlayerStateSnapshot self,
+        in PlayerStateSnapshot protectedPlayer,
+        in BotGuardTarget target,
+        RuntimeBotAttackKind attack,
+        long tick,
+        out float centerX,
+        out float centerY,
+        out float stopDistance)
+    {
+        float selfCenterX = self.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+        float selfCenterY = self.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+        float dx = target.CenterX - selfCenterX;
+        float dy = target.CenterY - selfCenterY;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        float minimum = attack switch
+        {
+            RuntimeBotAttackKind.Bow => GuardBowMinimumDistancePixels,
+            RuntimeBotAttackKind.Gun => GuardGunMinimumDistancePixels,
+            _ => 0f
+        };
+        float maximum = attack switch
+        {
+            RuntimeBotAttackKind.Bow => GuardBowMaximumDistancePixels,
+            RuntimeBotAttackKind.Gun => GuardGunMaximumDistancePixels,
+            _ => GuardMeleeReleaseDistancePixels
+        };
+
+        if (attack == RuntimeBotAttackKind.Melee || distance > maximum)
+        {
+            centerX = target.CenterX;
+            centerY = target.CenterY;
+            stopDistance = attack == RuntimeBotAttackKind.Melee ? GuardMeleeApproachDistancePixels : maximum * 0.88f;
+            return;
+        }
+
+        if (distance < minimum && distance > 0.001f)
+        {
+            float inv = 1f / distance;
+            centerX = target.CenterX - dx * inv * (minimum + GuardRepositionPixels);
+            centerY = selfCenterY;
+            stopDistance = 18f;
+            return;
+        }
+
+        // Inside the weapon's comfortable band, keep a short-lived side preference instead of issuing alternating
+        // approach/retreat commands on every tiny distance change. This is bot policy, not Terraria combat semantics.
+        float side = (((tick + bot.Personality.WanderPhaseTicks) / GuardRepositionPeriodTicks) & 1L) == 0 ? -1f : 1f;
+        centerX = selfCenterX + side * GuardRepositionPixels;
+        centerY = selfCenterY;
+        stopDistance = 14f;
+
+        // Never wander away from the protected player just to look clever.
+        float protectedCenterX = protectedPlayer.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+        if (MathF.Abs(centerX - protectedCenterX) > GuardRadiusPixels)
+            centerX = selfCenterX;
+    }
+
     private float ClampWorldCenterX(float centerX, float halfWidth) =>
         Math.Clamp(centerX, halfWidth, worldTiles.Dimensions.WidthTiles * 16f - halfWidth);
 
     private float ClampWorldCenterY(float centerY, float halfHeight) =>
         Math.Clamp(centerY, halfHeight, worldTiles.Dimensions.HeightTiles * 16f - halfHeight);
 
-    private void TryGuardAttack(BotState bot, in PlayerStateSnapshot self, in PlayerStateSnapshot protectedPlayer, long tick)
+    private void TryGuardAttack(BotState bot, in PlayerStateSnapshot self, in BotGuardTarget target, long tick)
     {
-        if (!TryFindGuardTarget(bot, in self, in protectedPlayer, out BotGuardTarget target))
-            return;
-
         RuntimeBotAttackKind attack = ResolveAttackKind(bot.Configuration.WeaponPolicy, in self, in target);
         if (attack == RuntimeBotAttackKind.Melee)
         {
@@ -596,7 +544,7 @@ internal sealed class RuntimeBotAuthority
         RuntimeBotAttackKind attack,
         long tick)
     {
-        if (!TryResolveRangedLoadout(attack, out _, out ItemTypeId ammoItem,
+        if (!TryResolveRangedLoadout(bot, attack, out _, out ItemTypeId ammoItem,
                 out VanillaProjectileWeaponCombatDefinition weapon, out VanillaProjectileAmmoCombatDefinition ammo) ||
             !TryFindAmmoSlot(bot.ServerPlayerId, ammoItem, out short ammoSlot, out ServerPlayerItemState ammoState) ||
             !VanillaProjectileWeaponCombatCatalog.TryResolveProjectileType(in weapon, in ammo, out ProjectileTypeId projectileType) ||
@@ -607,7 +555,8 @@ internal sealed class RuntimeBotAuthority
             return false;
         }
 
-        VanillaPlayerCombatSnapshot combat = BuildBotCombatSnapshot(bot, tick);
+        if (!TryBuildBotCombatSnapshot(bot, tick, out VanillaPlayerCombatSnapshot combat))
+            return false;
         VanillaCombatPrefixModifiers prefix = VanillaCombatPrefixModifiers.Identity;
         VanillaLaunchSpeedEnvelope speedEnvelope = VanillaProjectileWeaponCombatCatalog.ResolveLaunchSpeedEnvelope(
             in weapon, in ammo, in prefix, in combat);
@@ -685,7 +634,7 @@ internal sealed class RuntimeBotAuthority
     {
         if (!target.Npc.IsAssigned ||
             !VanillaItemCombatCatalog.TryGetDirectMelee(
-                VanillaItemIds.CopperBroadsword,
+                bot.Loadout.MeleeWeapon,
                 out VanillaDirectMeleeCombatDefinition weapon))
         {
             return;
@@ -699,10 +648,12 @@ internal sealed class RuntimeBotAuthority
         if (distanceSquared > ConservativeMeleeCenterDistancePixels * ConservativeMeleeCenterDistancePixels)
             return;
 
+        if (!TryBuildBotCombatSnapshot(bot, tick, out VanillaPlayerCombatSnapshot combat))
+            return;
         VanillaResolvedDirectMeleeUse resolved = VanillaDirectMeleeCombatMath.Resolve(
             in weapon,
             VanillaCombatPrefixModifiers.Identity,
-            BuildBotCombatSnapshot(bot, tick),
+            combat,
             Random.Shared.Next(-15, 16),
             Random.Shared.Next(1, 101),
             pvp: false);
@@ -730,8 +681,15 @@ internal sealed class RuntimeBotAuthority
         BotState bot,
         in PlayerStateSnapshot self,
         in PlayerStateSnapshot protectedPlayer,
+        long tick,
         out BotGuardTarget target)
     {
+        if (tick < bot.GuardTargetLockUntilTick &&
+            TryResolveLockedGuardTarget(bot, in protectedPlayer, out target))
+        {
+            return true;
+        }
+
         target = default;
         float protectedCenterX = protectedPlayer.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
         float protectedCenterY = protectedPlayer.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
@@ -741,7 +699,7 @@ internal sealed class RuntimeBotAuthority
         for (int i = 0; i < npcCount; i++)
         {
             NpcSnapshot npc = npcBuffer[i];
-            if (!npc.IsActive || npc.Handle == bot.Npc || npc.Simulation.Life <= 0 || npc.Simulation.DontTakeDamage ||
+            if (!npc.IsActive || npc.Simulation.Life <= 0 || npc.Simulation.DontTakeDamage ||
                 !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) ||
                 definition.Role == NpcArchetypeRole.Town || definition.Damage <= 0 ||
                 !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
@@ -752,17 +710,7 @@ internal sealed class RuntimeBotAuthority
             float centerX = npc.PositionX + hitbox.Width * 0.5f;
             float centerY = npc.PositionY + hitbox.Height * 0.5f;
             float distanceSquared = DistanceSquared(protectedCenterX, protectedCenterY, centerX, centerY);
-            if (distanceSquared > GuardRadiusSquared || distanceSquared >= bestDistanceSquared ||
-                !VanillaWorldCanHit.HasLineOfSight(
-                    worldTiles,
-                    self.PositionX,
-                    self.PositionY,
-                    (int)PlayerAuthority.VanillaBasePlayerWidth,
-                    (int)PlayerAuthority.VanillaBasePlayerHeight,
-                    npc.PositionX,
-                    npc.PositionY,
-                    hitbox.Width,
-                    hitbox.Height))
+            if (distanceSquared > GuardRadiusSquared || distanceSquared >= bestDistanceSquared)
             {
                 continue;
             }
@@ -793,17 +741,7 @@ internal sealed class RuntimeBotAuthority
                 float centerX = candidate.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
                 float centerY = candidate.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
                 float distanceSquared = DistanceSquared(protectedCenterX, protectedCenterY, centerX, centerY);
-                if (distanceSquared > GuardRadiusSquared || distanceSquared >= bestDistanceSquared ||
-                    !VanillaWorldCanHit.HasLineOfSight(
-                        worldTiles,
-                        self.PositionX,
-                        self.PositionY,
-                        (int)PlayerAuthority.VanillaBasePlayerWidth,
-                        (int)PlayerAuthority.VanillaBasePlayerHeight,
-                        candidate.PositionX,
-                        candidate.PositionY,
-                        (int)PlayerAuthority.VanillaBasePlayerWidth,
-                        (int)PlayerAuthority.VanillaBasePlayerHeight))
+                if (distanceSquared > GuardRadiusSquared || distanceSquared >= bestDistanceSquared)
                 {
                     continue;
                 }
@@ -820,7 +758,79 @@ internal sealed class RuntimeBotAuthority
             }
         }
 
-        return float.IsFinite(bestDistanceSquared);
+        if (!float.IsFinite(bestDistanceSquared))
+        {
+            bot.LockedGuardNpc = default;
+            bot.LockedGuardPlayer = default;
+            bot.GuardTargetLockUntilTick = 0;
+            return false;
+        }
+
+        bot.LockedGuardNpc = target.Npc;
+        bot.LockedGuardPlayer = target.Player;
+        bot.GuardTargetLockUntilTick = tick + GuardTargetLockTicks;
+        return true;
+    }
+
+    private bool TryResolveLockedGuardTarget(
+        BotState bot,
+        in PlayerStateSnapshot protectedPlayer,
+        out BotGuardTarget target)
+    {
+        target = default;
+        float protectedCenterX = protectedPlayer.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+        float protectedCenterY = protectedPlayer.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+
+        if (bot.LockedGuardNpc.IsAssigned && npcs.TryCapture(bot.LockedGuardNpc, out NpcSnapshot npc) &&
+            npc.IsActive && npc.Simulation.Life > 0 && !npc.Simulation.DontTakeDamage &&
+            VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) &&
+            definition.Role != NpcArchetypeRole.Town && definition.Damage > 0 &&
+            definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+        {
+            float centerX = npc.PositionX + hitbox.Width * 0.5f;
+            float centerY = npc.PositionY + hitbox.Height * 0.5f;
+            if (DistanceSquared(protectedCenterX, protectedCenterY, centerX, centerY) <= GuardRadiusSquared)
+            {
+                target = new BotGuardTarget(
+                    npc.Handle,
+                    default,
+                    centerX,
+                    centerY,
+                    npc.VelocityX,
+                    npc.VelocityY,
+                    hitbox.Width,
+                    hitbox.Height);
+                return true;
+            }
+        }
+
+        if (bot.PvpEnabled && bot.LockedGuardPlayer.IsAssigned)
+        {
+            foreach (RuntimePlayerMember candidate in players.Members)
+            {
+                if (candidate.Connection.Player != bot.LockedGuardPlayer || !candidate.Hostile || candidate.IsDead ||
+                    !candidate.HasHealth || candidate.Life <= 0)
+                {
+                    continue;
+                }
+                float centerX = candidate.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+                float centerY = candidate.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+                if (DistanceSquared(protectedCenterX, protectedCenterY, centerX, centerY) > GuardRadiusSquared)
+                    return false;
+                target = new BotGuardTarget(
+                    default,
+                    candidate.Connection.Player,
+                    centerX,
+                    centerY,
+                    candidate.VelocityX,
+                    candidate.VelocityY,
+                    PlayerAuthority.VanillaBasePlayerWidth,
+                    PlayerAuthority.VanillaBasePlayerHeight);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static RuntimeBotAttackKind ResolveAttackKind(
@@ -853,6 +863,8 @@ internal sealed class RuntimeBotAuthority
 
     private static byte ResolveWeaponSlot(RuntimeBotWeaponPolicy policy, RuntimeBotAttackKind attack)
     {
+        // Explicit policies place their only weapon in slot 0. Automatic owns the three visible hotbar slots and
+        // therefore publishes the actual selected slot as it switches between melee/bow/gun.
         if (policy != RuntimeBotWeaponPolicy.Automatic)
             return MeleeWeaponSlot;
 
@@ -1033,8 +1045,9 @@ internal sealed class RuntimeBotAuthority
         return definition.Kind switch
         {
             VanillaBotItemKind.RequiredAmmo =>
-                IsRequiredAmmo(bot.Configuration.WeaponPolicy, itemType),
+                IsRequiredAmmo(bot, itemType),
             VanillaBotItemKind.HealingPotion => true,
+            VanillaBotItemKind.ManaPotion => true,
             VanillaBotItemKind.UsefulBuffPotion =>
                 VanillaBotItemDefinitionCatalog1458.IsSupportedCombatBuff(definition.BuffType) &&
                 IsBuffUsefulForWeapon(bot.Configuration.WeaponPolicy, definition.BuffType),
@@ -1196,6 +1209,43 @@ internal sealed class RuntimeBotAuthority
         bot.PotionDelayUntilTick = tick + VanillaBotItemDefinitionCatalog1458.OrdinaryHealingPotionDelayTicks;
     }
 
+    private void TryAutoMana(BotState bot, in PlayerStateSnapshot self, long tick)
+    {
+        _ = tick;
+        if (!self.HasMana || self.Mana < 0 || self.Mana >= self.MaxMana || self.IsDead)
+            return;
+
+        // Player.QuickMana_GetItemToUse scans inventory[0..57] in order. In the pinned build ordinary mana
+        // potions are consumables with healMana but not Item.potion, so healing Potion Sickness does not block them.
+        for (short slot = VanillaPlayerItemSlotCatalog.InventoryStart;
+             slot < VanillaPlayerItemSlotCatalog.OrdinaryInventoryEndExclusive;
+             slot++)
+        {
+            if (!serverPlayers.TryGetItem(bot.ServerPlayerId, slot, out ServerPlayerItemState item) ||
+                item.IsEmpty || item.Prefix != VanillaPrefixIds.None ||
+                !VanillaBotItemDefinitionCatalog1458.TryGet(item.ItemType, out VanillaBotItemDefinition1458 definition) ||
+                definition.Kind != VanillaBotItemKind.ManaPotion || definition.HealMana <= 0)
+            {
+                continue;
+            }
+
+            ServerPlayerItemState consumed = item.Stack == 1
+                ? new ServerPlayerItemState(slot, VanillaItemIds.None, 0, VanillaPrefixIds.None, 0)
+                : item with { Stack = checked((short)(item.Stack - 1)) };
+            if (!serverPlayers.SetItem(bot.ServerPlayerId, in consumed))
+                return;
+
+            short restoredMana = checked((short)Math.Min(self.MaxMana, self.Mana + definition.HealMana));
+            var vitals = new ServerPlayerVitalsState(self.Life, self.MaxLife, restoredMana, self.MaxMana);
+            if (!serverPlayers.SetVitals(bot.ServerPlayerId, in vitals))
+            {
+                if (!serverPlayers.SetItem(bot.ServerPlayerId, in item))
+                    throw new InvalidOperationException("Bot mana-item rollback failed after vitals rejection.");
+            }
+            return;
+        }
+    }
+
     private void TryAutoUseCombatBuffs(BotState bot, long tick)
     {
         for (short slot = VanillaPlayerItemSlotCatalog.InventoryStart;
@@ -1227,9 +1277,10 @@ internal sealed class RuntimeBotAuthority
         }
     }
 
-    private static VanillaPlayerCombatSnapshot BuildBotCombatSnapshot(BotState bot, long tick)
+    private bool TryBuildBotCombatSnapshot(BotState bot, long tick, out VanillaPlayerCombatSnapshot snapshot)
     {
-        VanillaPlayerCombatSnapshot snapshot = VanillaPlayerCombatSnapshot.Baseline;
+        if (!serverPlayers.TryCaptureCombatSnapshot(bot.Player, out snapshot))
+            return false;
         if (IsBuffActive(bot, VanillaBuffIds.Archery, tick))
             snapshot = snapshot with { ArrowDamage = snapshot.ArrowDamage * 1.1f };
         if (IsBuffActive(bot, VanillaBuffIds.Wrath, tick))
@@ -1238,7 +1289,7 @@ internal sealed class RuntimeBotAuthority
                 MeleeDamage = snapshot.MeleeDamage + 0.1f,
                 RangedDamage = snapshot.RangedDamage + 0.1f
             };
-        return snapshot;
+        return true;
     }
 
     private static bool IsBuffActive(BotState bot, BuffTypeId buff, long tick) =>
@@ -1259,23 +1310,25 @@ internal sealed class RuntimeBotAuthority
         return buff == VanillaBuffIds.Archery && policy is RuntimeBotWeaponPolicy.Automatic or RuntimeBotWeaponPolicy.Bow;
     }
 
-    private static bool IsRequiredAmmo(RuntimeBotWeaponPolicy policy, ItemTypeId itemType)
+    private static bool IsRequiredAmmo(BotState bot, ItemTypeId itemType)
     {
+        RuntimeBotWeaponPolicy policy = bot.Configuration.WeaponPolicy;
         if (policy == RuntimeBotWeaponPolicy.Automatic)
-            return itemType == VanillaItemIds.WoodenArrow || itemType == VanillaItemIds.MusketBall;
-        return TryResolveRangedLoadout(policy, out _, out ItemTypeId requiredAmmo, out _, out _) &&
+            return itemType == bot.Loadout.ArrowAmmo || itemType == bot.Loadout.BulletAmmo;
+        return TryResolveRangedLoadout(bot, policy, out _, out ItemTypeId requiredAmmo, out _, out _) &&
                itemType == requiredAmmo;
     }
 
     private static bool TryResolveRangedLoadout(
+        BotState bot,
         RuntimeBotWeaponPolicy policy,
         out ItemTypeId weaponItem,
         out ItemTypeId ammoItem,
         out VanillaProjectileWeaponCombatDefinition weapon,
         out VanillaProjectileAmmoCombatDefinition ammo)
     {
-        weaponItem = policy == RuntimeBotWeaponPolicy.Gun ? VanillaItemIds.Musket : VanillaItemIds.WoodenBow;
-        ammoItem = policy == RuntimeBotWeaponPolicy.Gun ? VanillaItemIds.MusketBall : VanillaItemIds.WoodenArrow;
+        weaponItem = policy == RuntimeBotWeaponPolicy.Gun ? bot.Loadout.GunWeapon : bot.Loadout.BowWeapon;
+        ammoItem = policy == RuntimeBotWeaponPolicy.Gun ? bot.Loadout.BulletAmmo : bot.Loadout.ArrowAmmo;
         if (policy == RuntimeBotWeaponPolicy.Melee || !Enum.IsDefined(policy) ||
             !VanillaProjectileWeaponCombatCatalog.TryGetWeapon(weaponItem, out weapon))
         {
@@ -1293,12 +1346,14 @@ internal sealed class RuntimeBotAuthority
     }
 
     private static bool TryResolveRangedLoadout(
+        BotState bot,
         RuntimeBotAttackKind attack,
         out ItemTypeId weaponItem,
         out ItemTypeId ammoItem,
         out VanillaProjectileWeaponCombatDefinition weapon,
         out VanillaProjectileAmmoCombatDefinition ammo) =>
         TryResolveRangedLoadout(
+            bot,
             attack switch
             {
                 RuntimeBotAttackKind.Bow => RuntimeBotWeaponPolicy.Bow,
@@ -1350,52 +1405,6 @@ internal sealed class RuntimeBotAuthority
         return false;
     }
 
-    private bool TryReplaceActor(BotState bot, RuntimeBotConfiguration next)
-    {
-        float x = spawnX;
-        float y = spawnY;
-        if (bot.Player.IsAssigned && serverPlayers.TryGet(bot.Player, out PlayerStateSnapshot player))
-        {
-            x = player.PositionX;
-            y = player.PositionY;
-        }
-        else if (bot.Npc.IsAssigned && npcs.TryCapture(bot.Npc, out NpcSnapshot npc))
-        {
-            x = npc.PositionX;
-            y = npc.PositionY;
-        }
-
-        if (next.Body == RuntimeBotBodyKind.Player)
-        {
-            if (!TryCreatePlayerActor(bot, x, y, mutateHandles: false, out PlayerHandle replacement))
-                return false;
-            if (bot.Npc.IsAssigned && !npcs.TryDespawnBotNpc(bot.Npc, bot.ControllerId))
-            {
-                _ = serverPlayers.Despawn(bot.ServerPlayerId);
-                return false;
-            }
-            bot.Player = replacement;
-            bot.Npc = default;
-            return true;
-        }
-
-        if (!TryCreateNpcActor(bot, next.NpcType, x, y, mutateHandles: false, out NpcHandle replacementNpc))
-            return false;
-        if (bot.Player.IsAssigned && !serverPlayers.Despawn(bot.ServerPlayerId))
-        {
-            _ = npcs.TryDespawnBotNpc(replacementNpc, bot.ControllerId);
-            return false;
-        }
-        if (bot.Npc.IsAssigned && !npcs.TryDespawnBotNpc(bot.Npc, bot.ControllerId))
-        {
-            _ = npcs.TryDespawnBotNpc(replacementNpc, bot.ControllerId);
-            return false;
-        }
-        bot.Player = default;
-        bot.Npc = replacementNpc;
-        return true;
-    }
-
     private bool TryCreatePlayerActor(BotState bot, float x, float y) =>
         TryCreatePlayerActor(bot, x, y, mutateHandles: true, out _);
 
@@ -1409,10 +1418,18 @@ internal sealed class RuntimeBotAuthority
         PlayerHandle previous = bot.Player;
         bot.Player = created.Player;
         bool initialized = ApplyPlayerPresentation(bot, bot.Configuration) &&
-            serverPlayers.SetVitals(bot.ServerPlayerId, new ServerPlayerVitalsState(100, 100, 20, 20)) &&
+            serverPlayers.SetVitals(
+                bot.ServerPlayerId,
+                new ServerPlayerVitalsState(
+                    MaximumVanillaPermanentLife,
+                    MaximumVanillaPermanentLife,
+                    MaximumVanillaPermanentMana,
+                    MaximumVanillaPermanentMana)) &&
+            serverPlayers.SetGodMode(bot.ServerPlayerId, bot.Configuration.GodMode) &&
             serverPlayers.SetHostile(bot.ServerPlayerId, hostile: false) &&
             serverPlayers.SetMovementIntent(bot.ServerPlayerId, ServerPlayerMovementIntent.Stop()) &&
-            EnsurePlayerLoadout(bot, bot.Configuration, addStarterAmmo: true);
+            EnsurePlayerLoadout(bot, bot.Configuration, addStarterAmmo: true) &&
+            EnsureStarterConsumables(bot.ServerPlayerId);
         if (!initialized)
         {
             bot.Player = previous;
@@ -1426,20 +1443,6 @@ internal sealed class RuntimeBotAuthority
         return true;
     }
 
-    private bool TryCreateNpcActor(BotState bot, NpcTypeId type, float x, float y) =>
-        TryCreateNpcActor(bot, type, x, y, mutateHandles: true, out _);
-
-    private bool TryCreateNpcActor(BotState bot, NpcTypeId type, float x, float y, bool mutateHandles, out NpcHandle npc)
-    {
-        npc = default;
-        if (!npcs.TrySpawnBotNpc(type, bot.ControllerId, x, y, out NpcHandle created))
-            return false;
-        npc = created;
-        if (mutateHandles)
-            bot.Npc = created;
-        return true;
-    }
-
     private bool ApplyPlayerPresentation(BotState bot, RuntimeBotConfiguration configuration)
     {
         if (!bot.Player.IsAssigned)
@@ -1449,22 +1452,19 @@ internal sealed class RuntimeBotAuthority
         if (!serverPlayers.SetAppearance(bot.ServerPlayerId, in appearance))
             return false;
 
-        ItemTypeId head = bot.VisualIdentity.HeadArmor;
-        ItemTypeId body = bot.VisualIdentity.BodyArmor;
-        ItemTypeId legs = bot.VisualIdentity.LegArmor;
-        ItemTypeId wings = configuration.FlightEnabled ? VanillaItemIds.FishronWings : VanillaItemIds.None;
-        ItemTypeId flightBooster = configuration.FlightEnabled ? VanillaItemIds.EmpressFlightBooster : VanillaItemIds.None;
-        ItemTypeId boots = configuration.FlightEnabled ? VanillaItemIds.TerrasparkBoots : VanillaItemIds.None;
-        ItemTypeId acceleration = configuration.FlightEnabled ? VanillaItemIds.Magiluminescence : VanillaItemIds.None;
-        ItemTypeId agility = configuration.FlightEnabled ? VanillaItemIds.MasterNinjaGear : VanillaItemIds.None;
-        return SetArmorSlot(bot.ServerPlayerId, VanillaPlayerItemSlotCatalog.ArmorStart, head) &&
-               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 1)), body) &&
-               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 2)), legs) &&
-               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 3)), wings) &&
-               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 4)), flightBooster) &&
-               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 5)), boots) &&
-               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 6)), acceleration) &&
-               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 7)), agility);
+        RuntimePlayerBotLoadout1458 loadout = bot.Loadout;
+        ItemTypeId firstAccessory = configuration.FlightEnabled ? loadout.Accessory1 : VanillaItemIds.None;
+        return SetArmorSlot(bot.ServerPlayerId, VanillaPlayerItemSlotCatalog.ArmorStart, loadout.FunctionalHead) &&
+               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 1)), loadout.FunctionalBody) &&
+               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 2)), loadout.FunctionalLegs) &&
+               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 3)), firstAccessory) &&
+               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 4)), loadout.Accessory2) &&
+               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 5)), loadout.Accessory3) &&
+               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 6)), loadout.Accessory4) &&
+               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 7)), loadout.Accessory5) &&
+               SetArmorSlot(bot.ServerPlayerId, VanillaPlayerItemSlotCatalog.VanityArmorStart, loadout.VanityHead) &&
+               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.VanityArmorStart + 1)), loadout.VanityBody) &&
+               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.VanityArmorStart + 2)), loadout.VanityLegs);
     }
 
     private bool EnsurePlayerLoadout(BotState bot, RuntimeBotConfiguration configuration, bool addStarterAmmo)
@@ -1474,10 +1474,10 @@ internal sealed class RuntimeBotAuthority
 
         ItemTypeId firstWeapon = configuration.WeaponPolicy switch
         {
-            RuntimeBotWeaponPolicy.Melee => VanillaItemIds.CopperBroadsword,
-            RuntimeBotWeaponPolicy.Gun => VanillaItemIds.Musket,
-            RuntimeBotWeaponPolicy.Bow => VanillaItemIds.WoodenBow,
-            RuntimeBotWeaponPolicy.Automatic => VanillaItemIds.CopperBroadsword,
+            RuntimeBotWeaponPolicy.Melee => bot.Loadout.MeleeWeapon,
+            RuntimeBotWeaponPolicy.Gun => bot.Loadout.GunWeapon,
+            RuntimeBotWeaponPolicy.Bow => bot.Loadout.BowWeapon,
+            RuntimeBotWeaponPolicy.Automatic => bot.Loadout.MeleeWeapon,
             _ => VanillaItemIds.None
         };
         if (firstWeapon.IsNone || !serverPlayers.SetItem(
@@ -1488,10 +1488,10 @@ internal sealed class RuntimeBotAuthority
         }
 
         ItemTypeId secondWeapon = configuration.WeaponPolicy == RuntimeBotWeaponPolicy.Automatic
-            ? VanillaItemIds.WoodenBow
+            ? bot.Loadout.BowWeapon
             : VanillaItemIds.None;
         ItemTypeId thirdWeapon = configuration.WeaponPolicy == RuntimeBotWeaponPolicy.Automatic
-            ? VanillaItemIds.Musket
+            ? bot.Loadout.GunWeapon
             : VanillaItemIds.None;
         if (!SetInventorySlot(bot.ServerPlayerId, BowWeaponSlot, secondWeapon) ||
             !SetInventorySlot(bot.ServerPlayerId, GunWeaponSlot, thirdWeapon) ||
@@ -1505,12 +1505,26 @@ internal sealed class RuntimeBotAuthority
 
         if (configuration.WeaponPolicy == RuntimeBotWeaponPolicy.Automatic)
         {
-            return EnsureStarterAmmo(bot.ServerPlayerId, VanillaItemIds.WoodenArrow) &&
-                   EnsureStarterAmmo(bot.ServerPlayerId, VanillaItemIds.MusketBall);
+            return EnsureStarterAmmo(bot.ServerPlayerId, bot.Loadout.ArrowAmmo) &&
+                   EnsureStarterAmmo(bot.ServerPlayerId, bot.Loadout.BulletAmmo);
         }
 
-        return TryResolveRangedLoadout(configuration.WeaponPolicy, out _, out ItemTypeId ammoType, out _, out _) &&
+        return TryResolveRangedLoadout(bot, configuration.WeaponPolicy, out _, out ItemTypeId ammoType, out _, out _) &&
                EnsureStarterAmmo(bot.ServerPlayerId, ammoType);
+    }
+
+    private bool EnsureStarterConsumables(ServerPlayerId id) =>
+        EnsureStarterStack(id, 3, VanillaItemIds.SuperHealingPotion, StarterPotionStack) &&
+        EnsureStarterStack(id, 4, VanillaItemIds.GreaterManaPotion, StarterPotionStack);
+
+    private bool EnsureStarterStack(ServerPlayerId id, short slot, ItemTypeId itemType, short stack)
+    {
+        if (!serverPlayers.TryGetItem(id, slot, out ServerPlayerItemState current))
+            return false;
+        if (!current.IsEmpty)
+            return current.ItemType == itemType && current.Stack > 0;
+        var item = new ServerPlayerItemState(slot, itemType, stack, VanillaPrefixIds.None, 0);
+        return serverPlayers.SetItem(id, in item);
     }
 
     private bool EnsureStarterAmmo(ServerPlayerId id, ItemTypeId ammoType)
@@ -1550,17 +1564,7 @@ internal sealed class RuntimeBotAuthority
     }
 
     private static bool IsValidConfiguration(RuntimeBotConfiguration configuration) =>
-        Enum.IsDefined(configuration.Mode) &&
-        Enum.IsDefined(configuration.Body) &&
-        Enum.IsDefined(configuration.WeaponPolicy) &&
-        IsSupportedBody(configuration.Body, configuration.NpcType);
-
-    private static bool IsSupportedBody(RuntimeBotBodyKind body, NpcTypeId npcType)
-    {
-        if (body == RuntimeBotBodyKind.Player)
-            return npcType == default;
-        return body == RuntimeBotBodyKind.Npc && VanillaBotNpcPresetCatalog1458.IsSupported(npcType);
-    }
+        Enum.IsDefined(configuration.Mode) && Enum.IsDefined(configuration.WeaponPolicy);
 
     private static void ResetBehaviorState(BotState bot, long tick)
     {
@@ -1572,6 +1576,9 @@ internal sealed class RuntimeBotAuthority
         bot.NextAttackTick = 0;
         bot.UseItemUntilTick = 0;
         bot.FlightDecisionUntilTick = 0;
+        bot.LockedGuardNpc = default;
+        bot.LockedGuardPlayer = default;
+        bot.GuardTargetLockUntilTick = 0;
     }
 
     private void ResetUnavailableTarget(BotState bot, long tick)
@@ -1582,22 +1589,19 @@ internal sealed class RuntimeBotAuthority
         bot.LastDistance = float.PositiveInfinity;
         bot.LastProgressTick = tick;
         bot.FlightDecisionUntilTick = 0;
+        bot.LockedGuardNpc = default;
+        bot.LockedGuardPlayer = default;
+        bot.GuardTargetLockUntilTick = 0;
     }
 
     private void StopActor(BotState bot)
     {
-        if (bot.Configuration.Body == RuntimeBotBodyKind.Player && bot.Player.IsAssigned)
-        {
-            _ = serverPlayers.SetMovementIntent(bot.ServerPlayerId, ServerPlayerMovementIntent.Stop());
-            _ = serverPlayers.SetHostile(bot.ServerPlayerId, hostile: false);
-            if (serverPlayers.TryGet(bot.Player, out PlayerStateSnapshot player))
-                _ = serverPlayers.SetHeldItem(bot.ServerPlayerId, player.SelectedItem, useItem: false);
-        }
-        else if (bot.Configuration.Body == RuntimeBotBodyKind.Npc && bot.Npc.IsAssigned)
-        {
-            NpcActorIntent stop = NpcActorIntent.Stop();
-            _ = npcs.TrySetBotNpcIntent(bot.Npc, bot.ControllerId, in stop);
-        }
+        if (!bot.Player.IsAssigned)
+            return;
+        _ = serverPlayers.SetMovementIntent(bot.ServerPlayerId, ServerPlayerMovementIntent.Stop());
+        _ = serverPlayers.SetHostile(bot.ServerPlayerId, hostile: false);
+        if (serverPlayers.TryGet(bot.Player, out PlayerStateSnapshot player))
+            _ = serverPlayers.SetHeldItem(bot.ServerPlayerId, player.SelectedItem, useItem: false);
     }
 
     private static ServerPlayerAppearanceState CreateAppearance(string name, in PlayerBotVisualIdentity visual)
@@ -1723,12 +1727,12 @@ internal sealed class RuntimeBotAuthority
         bot.Id,
         bot.ServerPlayerId,
         bot.Player,
-        bot.Npc,
         bot.Name,
         bot.Configuration,
         bot.TargetAvailable,
         bot.PvpEnabled,
         bot.IsStuck,
+        bot.IsDead,
         bot.TeleportCount,
         DateTimeOffset.UtcNow);
 
@@ -1786,25 +1790,25 @@ internal sealed class RuntimeBotAuthority
     private sealed class BotState(
         int id,
         ServerPlayerId serverPlayerId,
-        ActorControllerId controllerId,
         string name,
         RuntimeBotConfiguration configuration,
+        RuntimePlayerBotLoadout1458 loadout,
         PlayerBotVisualIdentity visualIdentity,
         PlayerBotPersonality personality,
         long createdAtTick)
     {
         public int Id { get; } = id;
         public ServerPlayerId ServerPlayerId { get; } = serverPlayerId;
-        public ActorControllerId ControllerId { get; } = controllerId;
         public PlayerHandle Player { get; set; }
-        public NpcHandle Npc { get; set; }
         public string Name { get; } = name;
         public RuntimeBotConfiguration Configuration { get; set; } = configuration;
+        public RuntimePlayerBotLoadout1458 Loadout { get; } = loadout;
         public PlayerBotVisualIdentity VisualIdentity { get; } = visualIdentity;
         public PlayerBotPersonality Personality { get; } = personality;
         public bool TargetAvailable { get; set; }
         public bool PvpEnabled { get; set; }
         public bool IsStuck { get; set; }
+        public bool IsDead { get; set; }
         public long TeleportCount { get; set; }
         public long LastProgressTick { get; set; } = createdAtTick;
         public long TeleportCooldownUntil { get; set; }
@@ -1812,6 +1816,9 @@ internal sealed class RuntimeBotAuthority
         public long NextAttackTick { get; set; }
         public long UseItemUntilTick { get; set; }
         public long PotionDelayUntilTick { get; set; }
+        public NpcHandle LockedGuardNpc { get; set; }
+        public PlayerHandle LockedGuardPlayer { get; set; }
+        public long GuardTargetLockUntilTick { get; set; }
         public float LastDistance { get; set; } = float.PositiveInfinity;
         public Dictionary<BuffTypeId, long> ActiveBuffs { get; } = [];
     }

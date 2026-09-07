@@ -24,10 +24,9 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
         in VanillaProjectileDefinition definition,
         in ProjectileLifecycleState lifecycle,
         NpcHandle sourceNpc,
-        RuntimePlayerMember player)
+        float playerLeft,
+        float playerTop)
     {
-        float playerLeft = player.PositionX;
-        float playerTop = player.PositionY;
         float playerWidth = PlayerAuthority.VanillaBasePlayerWidth;
         float playerHeight = PlayerAuthority.VanillaBasePlayerHeight;
 
@@ -158,7 +157,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                    CheckAabbVsLine(playerLeft, playerTop, playerWidth, playerHeight, centerX, centerY, centerX + rayX * 800f, centerY + rayY * 800f, widthScale * 10f);
         }
 
-        return Intersects(in projectile, in definition, player);
+        return Intersects(in projectile, in definition, playerLeft, playerTop);
     }
 
     private static float GetHostileProjectileCenterX(

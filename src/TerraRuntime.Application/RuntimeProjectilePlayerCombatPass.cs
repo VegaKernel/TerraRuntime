@@ -27,6 +27,9 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
     private readonly ProjectileGeneration[] lastProjectileHitGeneration;
     private readonly PlayerSessionGeneration[] lastTargetGeneration;
     private readonly RuntimeCultistLightningArcTrailRegistry cultistLightningArcTrails;
+    private readonly PlayerStateSnapshot[] serverPlayerBuffer = new PlayerStateSnapshot[byte.MaxValue + 1];
+    private readonly bool expertMode;
+    private readonly bool masterMode;
 
     public RuntimeProjectilePlayerCombatPass(
         RuntimeProjectileStore projectiles,
@@ -35,12 +38,18 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
         Func<long> tickProvider,
         Random? random = null,
         RuntimeCultistLightningArcTrailRegistry? cultistLightningArcTrails = null,
-        ServerPlayerAuthority? serverPlayers = null)
+        ServerPlayerAuthority? serverPlayers = null,
+        bool expertMode = false,
+        bool masterMode = false)
     {
         this.projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.serverPlayers = serverPlayers;
+        if (masterMode && !expertMode)
+            throw new ArgumentException("Master mode requires expert-mode player damage semantics.", nameof(masterMode));
+        this.expertMode = expertMode;
+        this.masterMode = masterMode;
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
         this.random = random ?? Random.Shared;
         this.cultistLightningArcTrails = cultistLightningArcTrails ??
@@ -86,7 +95,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 if (target.Slot.Value == projectile.Spawner || !target.Hostile || target.IsDead || !target.HasHealth || target.Life <= 0 ||
                     (owner.Team != 0 && owner.Team == target.Team) ||
                     IsPlayerOnProjectileCooldown(projectile.Handle, target.Connection.Player, tick) ||
-                    !Intersects(in projectile, in definition, target))
+                    !Intersects(in projectile, in definition, target.PositionX, target.PositionY))
                 {
                     continue;
                 }
@@ -184,9 +193,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
         {
             if (!snapshot.Hostile || snapshot.IsDead)
                 return false;
-            // Bot armor presets are ordinary clothing/metal sets with no offensive projectile modifiers.
-            combat = VanillaPlayerCombatSnapshot.Baseline;
-            return true;
+            return serverPlayers.TryCaptureCombatSnapshot(owner, out combat);
         }
 
         snapshot = default;
@@ -217,7 +224,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 PlayerHandle targetHandle = target.Connection.Player;
                 if (target.IsDead || !target.HasHealth || target.Life <= 0 ||
                     (target.GodMode && IsPlayerOnProjectileCooldown(projectile.Handle, targetHandle, tick)) ||
-                    !IntersectsHostile(in projectile, in definition, in lifecycle, sourceNpc, target))
+                    !IntersectsHostile(in projectile, in definition, in lifecycle, sourceNpc, target.PositionX, target.PositionY))
                 {
                     continue;
                 }
@@ -259,6 +266,56 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
 
                 // Projectile.Damage_EVP does not generically decrement penetrate on player contact. Only a small
                 // explicit type set does so; none is admitted here until those per-type side effects are modeled.
+            }
+
+            if (serverPlayers is null)
+                continue;
+            int serverCount = serverPlayers.CopySnapshots(serverPlayerBuffer);
+            for (int targetIndex = 0; targetIndex < serverCount; targetIndex++)
+            {
+                PlayerStateSnapshot target = serverPlayerBuffer[targetIndex];
+                PlayerHandle targetHandle = target.Player;
+                if (target.IsDead || !target.HasHealth || target.Life <= 0 ||
+                    (target.GodMode && IsPlayerOnProjectileCooldown(projectile.Handle, targetHandle, tick)) ||
+                    !IntersectsHostile(in projectile, in definition, in lifecycle, sourceNpc, target.PositionX, target.PositionY))
+                {
+                    continue;
+                }
+
+                int damage = VanillaIncomingPlayerDamageFacts1458.ResolveHostileProjectileDamage(
+                    projectile.Damage,
+                    random.Next(-15, 16));
+                if (damage <= 0)
+                    continue;
+
+                float projectileCenterX = GetHostileProjectileCenterX(in projectile, in definition, in lifecycle);
+                float targetCenterX = target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+                int hitDirection = targetCenterX < projectileCenterX ? -1 : 1;
+                bool killedBefore = target.IsDead;
+                PlayerDamageCommitResult result = serverPlayers.TryCommitAuthoritativeNpcProjectileDamage(
+                    tick,
+                    sourceNpc,
+                    projectile.Handle,
+                    projectile.Type,
+                    targetHandle,
+                    damage,
+                    hitDirection,
+                    immunityChannel,
+                    expertMode,
+                    masterMode,
+                    out PlayerStateSnapshot committed);
+                if (result == PlayerDamageCommitResult.Rejected)
+                    continue;
+                if (result == PlayerDamageCommitResult.AvoidedByGodMode)
+                {
+                    HostileGodModeAvoidances++;
+                    MarkPlayerProjectileCooldown(projectile.Handle, targetHandle, tick);
+                    continue;
+                }
+
+                HostileCommittedHits++;
+                if (!killedBefore && committed.IsDead)
+                    HostileKills++;
             }
         }
     }
@@ -309,15 +366,16 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
     private static bool Intersects(
         in ProjectileSnapshot projectile,
         in VanillaProjectileDefinition definition,
-        RuntimePlayerMember player)
+        float playerX,
+        float playerY)
     {
         float left = projectile.PositionX + definition.CollisionOffsetX;
         float top = projectile.PositionY + definition.CollisionOffsetY;
         float right = left + definition.CollisionWidth;
         float bottom = top + definition.CollisionHeight;
-        float playerRight = player.PositionX + PlayerAuthority.VanillaBasePlayerWidth;
-        float playerBottom = player.PositionY + PlayerAuthority.VanillaBasePlayerHeight;
-        return left < playerRight && right > player.PositionX && top < playerBottom && bottom > player.PositionY;
+        float playerRight = playerX + PlayerAuthority.VanillaBasePlayerWidth;
+        float playerBottom = playerY + PlayerAuthority.VanillaBasePlayerHeight;
+        return left < playerRight && right > playerX && top < playerBottom && bottom > playerY;
     }
 
 

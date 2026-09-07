@@ -55,6 +55,7 @@ public enum TerrariaMessageId : byte
     SyncPlayerChestIndex = 80,
     LoadNetModule = 82,
     PlayerHurt = 117,
+    PlayerDeathV2 = 118,
     FinishedConnectingToServer = 129,
     InstancedItemSlotRelease = 151,
     SyncChestSize = 155,

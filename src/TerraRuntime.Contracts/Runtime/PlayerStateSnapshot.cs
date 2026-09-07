@@ -47,6 +47,8 @@ public readonly record struct PlayerStateSnapshot(
 {
     public bool Hostile { get; init; }
 
+    public bool GodMode { get; init; }
+
     public bool HasHealth { get; init; }
 
     public short Life { get; init; }

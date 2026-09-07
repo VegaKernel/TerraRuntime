@@ -134,6 +134,48 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
             if (!killedBefore && committed.IsDead)
                 HostileKills++;
         }
+
+
+        if (serverPlayers is null)
+            return;
+        int serverCount = serverPlayers.CopySnapshots(serverPlayerBuffer);
+        for (int targetIndex = 0; targetIndex < serverCount; targetIndex++)
+        {
+            PlayerStateSnapshot target = serverPlayerBuffer[targetIndex];
+            if (target.IsDead || !target.HasHealth || target.Life <= 0 || !Intersects(in explosion, in target))
+                continue;
+
+            int damage = VanillaIncomingPlayerDamageFacts1458.ResolveHostileProjectileDamage(
+                projectile.Damage,
+                random.Next(-15, 16));
+            if (damage <= 0)
+                continue;
+
+            int hitDirection = ResolveExplosionDirection(in explosion, in target);
+            bool killedBefore = target.IsDead;
+            PlayerDamageCommitResult result = serverPlayers.TryCommitAuthoritativeNpcProjectileDamage(
+                tick,
+                explosion.SourceNpc,
+                projectile.Handle,
+                projectile.Type,
+                target.Player,
+                damage,
+                hitDirection,
+                immunityChannel,
+                expertMode,
+                masterMode,
+                out PlayerStateSnapshot committed);
+            if (result == PlayerDamageCommitResult.Rejected)
+                continue;
+            if (result == PlayerDamageCommitResult.AvoidedByGodMode)
+            {
+                HostileGodModeAvoidances++;
+                continue;
+            }
+            HostileCommittedHits++;
+            if (!killedBefore && committed.IsDead)
+                HostileKills++;
+        }
     }
 
     private static bool Intersects(in RuntimeProjectileExplosionEvent explosion, RuntimePlayerMember player)
@@ -146,9 +188,31 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                explosion.Top < playerBottom && bottom > player.PositionY;
     }
 
+    private static bool Intersects(in RuntimeProjectileExplosionEvent explosion, in PlayerStateSnapshot player)
+    {
+        float right = explosion.Left + explosion.Width;
+        float bottom = explosion.Top + explosion.Height;
+        float playerRight = player.PositionX + PlayerAuthority.VanillaBasePlayerWidth;
+        float playerBottom = player.PositionY + PlayerAuthority.VanillaBasePlayerHeight;
+        return explosion.Left < playerRight && right > player.PositionX &&
+               explosion.Top < playerBottom && bottom > player.PositionY;
+    }
+
     private static int ResolveExplosionDirection(
         in RuntimeProjectileExplosionEvent explosion,
         RuntimePlayerMember target)
+    {
+        if (explosion.Projectile.VelocityX > 0.01f)
+            return 1;
+        if (explosion.Projectile.VelocityX < -0.01f)
+            return -1;
+        float targetCenter = target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+        return targetCenter > explosion.CenterX ? 1 : targetCenter < explosion.CenterX ? -1 : 0;
+    }
+
+    private static int ResolveExplosionDirection(
+        in RuntimeProjectileExplosionEvent explosion,
+        in PlayerStateSnapshot target)
     {
         if (explosion.Projectile.VelocityX > 0.01f)
             return 1;

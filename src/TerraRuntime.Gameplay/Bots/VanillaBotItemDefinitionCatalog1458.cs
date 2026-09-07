@@ -11,7 +11,8 @@ public enum VanillaBotItemKind : byte
 {
     RequiredAmmo = 1,
     HealingPotion = 2,
-    UsefulBuffPotion = 3
+    UsefulBuffPotion = 3,
+    ManaPotion = 4
 }
 
 public readonly record struct VanillaBotItemDefinition1458(
@@ -23,14 +24,18 @@ public readonly record struct VanillaBotItemDefinition1458(
     BuffTypeId BuffType,
     int BuffTimeTicks)
 {
+    public int HealMana { get; init; }
+
     public bool IsValid =>
         !ItemType.IsNone &&
         Enum.IsDefined(Kind) &&
         Width > 0 &&
         Height > 0 &&
         HealLife >= 0 &&
+        HealMana >= 0 &&
         BuffTimeTicks >= 0 &&
         (Kind != VanillaBotItemKind.HealingPotion || HealLife > 0) &&
+        (Kind != VanillaBotItemKind.ManaPotion || HealMana > 0) &&
         (Kind != VanillaBotItemKind.UsefulBuffPotion || (BuffType.Value > 0 && BuffTimeTicks > 0));
 }
 
@@ -57,6 +62,24 @@ public static class VanillaBotItemDefinitionCatalog1458
         VanillaBotItemKind.RequiredAmmo,
         Width: 10,
         Height: 28,
+        HealLife: 0,
+        BuffType: VanillaBuffIds.None,
+        BuffTimeTicks: 0);
+
+    private static readonly VanillaBotItemDefinition1458 UnholyArrow = new(
+        VanillaItemIds.UnholyArrow,
+        VanillaBotItemKind.RequiredAmmo,
+        Width: 10,
+        Height: 28,
+        HealLife: 0,
+        BuffType: VanillaBuffIds.None,
+        BuffTimeTicks: 0);
+
+    private static readonly VanillaBotItemDefinition1458 SilverBullet = new(
+        VanillaItemIds.SilverBullet,
+        VanillaBotItemKind.RequiredAmmo,
+        Width: 8,
+        Height: 8,
         HealLife: 0,
         BuffType: VanillaBuffIds.None,
         BuffTimeTicks: 0);
@@ -88,6 +111,15 @@ public static class VanillaBotItemDefinitionCatalog1458
         BuffType: VanillaBuffIds.None,
         BuffTimeTicks: 0);
 
+    private static readonly VanillaBotItemDefinition1458 LesserManaPotion = Mana(
+        VanillaItemIds.LesserManaPotion, 50);
+    private static readonly VanillaBotItemDefinition1458 ManaPotion = Mana(
+        VanillaItemIds.ManaPotion, 100);
+    private static readonly VanillaBotItemDefinition1458 GreaterManaPotion = Mana(
+        VanillaItemIds.GreaterManaPotion, 200);
+    private static readonly VanillaBotItemDefinition1458 SuperManaPotion = Mana(
+        VanillaItemIds.SuperManaPotion, 400);
+
     private static readonly VanillaBotItemDefinition1458 RegenerationPotion = Buff(
         VanillaItemIds.RegenerationPotion, VanillaBuffIds.Regeneration, 28_800);
     private static readonly VanillaBotItemDefinition1458 SwiftnessPotion = Buff(
@@ -106,10 +138,16 @@ public static class VanillaBotItemDefinitionCatalog1458
     public static bool TryGet(ItemTypeId itemType, out VanillaBotItemDefinition1458 definition)
     {
         if (itemType == VanillaItemIds.WoodenArrow) definition = WoodenArrow;
+        else if (itemType == VanillaItemIds.UnholyArrow) definition = UnholyArrow;
         else if (itemType == VanillaItemIds.MusketBall) definition = MusketBall;
+        else if (itemType == VanillaItemIds.SilverBullet) definition = SilverBullet;
         else if (itemType == VanillaWallOfFleshItemIds.HealingPotion) definition = HealingPotion;
         else if (itemType == VanillaItemIds.GreaterHealingPotion) definition = GreaterHealingPotion;
         else if (itemType == VanillaItemIds.SuperHealingPotion) definition = SuperHealingPotion;
+        else if (itemType == VanillaItemIds.LesserManaPotion) definition = LesserManaPotion;
+        else if (itemType == VanillaItemIds.ManaPotion) definition = ManaPotion;
+        else if (itemType == VanillaItemIds.GreaterManaPotion) definition = GreaterManaPotion;
+        else if (itemType == VanillaItemIds.SuperManaPotion) definition = SuperManaPotion;
         else if (itemType == VanillaItemIds.RegenerationPotion) definition = RegenerationPotion;
         else if (itemType == VanillaItemIds.SwiftnessPotion) definition = SwiftnessPotion;
         else if (itemType == VanillaItemIds.IronskinPotion) definition = IronskinPotion;
@@ -162,4 +200,16 @@ public static class VanillaBotItemDefinitionCatalog1458
         HealLife: 0,
         BuffType: buffType,
         BuffTimeTicks: timeTicks);
+
+    private static VanillaBotItemDefinition1458 Mana(ItemTypeId itemType, int healMana) => new(
+        itemType,
+        VanillaBotItemKind.ManaPotion,
+        Width: 14,
+        Height: 24,
+        HealLife: 0,
+        BuffType: VanillaBuffIds.None,
+        BuffTimeTicks: 0)
+    {
+        HealMana = healMana
+    };
 }

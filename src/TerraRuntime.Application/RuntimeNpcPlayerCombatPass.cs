@@ -17,17 +17,32 @@ internal sealed class RuntimeNpcPlayerCombatPass
     private const long GodModeMissThrottleTicks = 40;
     private readonly RuntimeNpcStore npcs;
     private readonly PlayerAuthority players;
+    private readonly ServerPlayerAuthority? serverPlayers;
     private readonly Random random;
     private readonly NpcSnapshot[] npcBuffer;
+    private readonly PlayerStateSnapshot[] serverPlayerBuffer = new PlayerStateSnapshot[byte.MaxValue + 1];
+    private readonly bool expertMode;
+    private readonly bool masterMode;
     private readonly long[] lastGodModeContactTick;
     private readonly NpcGeneration[] npcGenerations;
     private readonly PlayerSessionGeneration[] playerGenerations;
 
-    public RuntimeNpcPlayerCombatPass(RuntimeNpcStore npcs, PlayerAuthority players, Random? random = null)
+    public RuntimeNpcPlayerCombatPass(
+        RuntimeNpcStore npcs,
+        PlayerAuthority players,
+        Random? random = null,
+        ServerPlayerAuthority? serverPlayers = null,
+        bool expertMode = false,
+        bool masterMode = false)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.players = players ?? throw new ArgumentNullException(nameof(players));
+        this.serverPlayers = serverPlayers;
         this.random = random ?? Random.Shared;
+        if (masterMode && !expertMode)
+            throw new ArgumentException("Master mode requires expert-mode player damage semantics.", nameof(masterMode));
+        this.expertMode = expertMode;
+        this.masterMode = masterMode;
         npcBuffer = new NpcSnapshot[npcs.Capacity];
         int cells = checked(npcs.Capacity * PlayerSlotCount);
         lastGodModeContactTick = new long[cells];
@@ -104,6 +119,51 @@ internal sealed class RuntimeNpcPlayerCombatPass
                 if (!killedBefore && committed.IsDead)
                     Kills++;
             }
+
+            if (serverPlayers is null)
+                continue;
+            int serverCount = serverPlayers.CopySnapshots(serverPlayerBuffer);
+            for (int targetIndex = 0; targetIndex < serverCount; targetIndex++)
+            {
+                PlayerStateSnapshot target = serverPlayerBuffer[targetIndex];
+                if (target.IsDead || !target.HasHealth || target.Life <= 0 ||
+                    !Intersects(npcLeft, npcTop, npcRight, npcBottom, target) ||
+                    (target.GodMode && IsGodModeCoolingDown(npc.Handle, target.Player, tick)))
+                {
+                    continue;
+                }
+
+                int rawDamage = ResolveContactDamage(in npc, in definition);
+                int damage = VanillaIncomingPlayerDamageFacts1458.ResolveNpcContactDamage(rawDamage, random.Next(-15, 16));
+                if (damage <= 0)
+                    continue;
+
+                int hitDirection = npcLeft + hitbox.Width * 0.5f < target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f
+                    ? 1
+                    : -1;
+                bool killedBefore = target.IsDead;
+                PlayerDamageCommitResult result = serverPlayers.TryCommitAuthoritativeNpcContactDamage(
+                    tick,
+                    npc.Handle,
+                    target.Player,
+                    damage,
+                    hitDirection,
+                    immunityChannel,
+                    expertMode,
+                    masterMode,
+                    out PlayerStateSnapshot committed);
+                if (result == PlayerDamageCommitResult.Rejected)
+                    continue;
+                if (result == PlayerDamageCommitResult.AvoidedByGodMode)
+                {
+                    GodModeAvoidances++;
+                    MarkGodModeContact(npc.Handle, target.Player, tick);
+                    continue;
+                }
+                CommittedHits++;
+                if (!killedBefore && committed.IsDead)
+                    Kills++;
+            }
         }
     }
 
@@ -128,6 +188,12 @@ internal sealed class RuntimeNpcPlayerCombatPass
     }
 
     private static bool Intersects(float left, float top, float right, float bottom, RuntimePlayerMember player) =>
+        left < player.PositionX + PlayerAuthority.VanillaBasePlayerWidth &&
+        right > player.PositionX &&
+        top < player.PositionY + PlayerAuthority.VanillaBasePlayerHeight &&
+        bottom > player.PositionY;
+
+    private static bool Intersects(float left, float top, float right, float bottom, in PlayerStateSnapshot player) =>
         left < player.PositionX + PlayerAuthority.VanillaBasePlayerWidth &&
         right > player.PositionX &&
         top < player.PositionY + PlayerAuthority.VanillaBasePlayerHeight &&
