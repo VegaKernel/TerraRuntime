@@ -412,6 +412,22 @@ internal sealed partial class ServerPlayerAuthority
         return true;
     }
 
+    internal bool TryTeleportWithRecallPresentation(ServerPlayerId id, short floorX, short floorY)
+    {
+        if (floorX < 0 || floorY < 0 || !TryGetPlayer(id, out PlayerHandle player) ||
+            !states.TryGet(player, out PlayerStateSnapshot before) || before.IsDead)
+            return false;
+
+        // Player.Spawn_SetPosition floor anchor. Destination selection remains server actor policy;
+        // this does not grant client recall authority or change the real player's saved spawn.
+        float x = floorX * 16 + 8 - PlayerAuthority.VanillaBasePlayerWidth / 2;
+        float y = floorY * 16 - PlayerAuthority.VanillaBasePlayerHeight;
+        if (!TryTeleport(id, x, y) || !states.TryGet(player, out PlayerStateSnapshot committed))
+            return false;
+        events?.ServerPlayerRecallPresented(in committed, floorX, floorY);
+        return true;
+    }
+
     public bool SetAppearance(ServerPlayerId id, in ServerPlayerAppearanceState appearance)
     {
         if (!TryGetPlayer(id, out PlayerHandle player) ||

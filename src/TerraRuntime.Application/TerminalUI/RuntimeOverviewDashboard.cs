@@ -307,7 +307,8 @@ internal sealed class RuntimeOverviewDashboard : View
         ObserveSandboxJobs(sandboxTree.Jobs.Span);
 
         UpdateGraphs();
-        SetNeedsDraw();
+        // Child setters own their dirty regions. Invalidating the dashboard here also invalidates the unchanged
+        // chart on every telemetry/UI refresh, defeating its sample equality guard and forcing a full redraw.
     }
 
     public event Action<RuntimePlayerSnapshot>? PlayerOpenRequested;
@@ -419,6 +420,8 @@ internal sealed class RuntimeOverviewDashboard : View
         (networkGraph.InboundScaleMaximumForSmoke, networkGraph.OutboundScaleMaximumForSmoke);
 
     internal int NetworkHistoryCountForSmoke => historyCount;
+
+    internal NetworkTrafficChartView NetworkGraphForSmoke => networkGraph;
 
     internal bool SandboxAddEnabledForSmoke => sandboxAddButton.Enabled;
 

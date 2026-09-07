@@ -52,6 +52,14 @@ internal sealed class SandboxWorldTreeView : ListView
         if (valueLines.Length != valueRows.Length)
             throw new ArgumentException("World tree line and row metadata counts must match.");
 
+        if (lines.AsSpan().SequenceEqual(valueLines))
+        {
+            // Keep command/selection metadata current without rebuilding ListView's source and invalidating
+            // layout (including sibling charts) when only the detached telemetry snapshots have changed.
+            rows = valueRows;
+            return;
+        }
+
         SandboxWorldTreeRow? selected = SelectedItem is int selectedIndex &&
                                             (uint)selectedIndex < (uint)rows.Length
             ? rows[selectedIndex]

@@ -349,7 +349,14 @@ public sealed class RuntimeBotAuthorityTests
         float directY = moving.PositionY + hitbox.Height * 0.5f - (originY + 5f);
         float directLength = MathF.Sqrt(directX * directX + directY * directY);
         // Platinum Bow 6.6 + Unholy Arrow 3.4 = exact PickAmmo magnitude 10.0 in 1.4.5.8.
-        const float expectedLaunchMagnitude = 10f;
+        float expectedLaunchMagnitude = 10f;
+        for (short slot = VanillaPlayerItemSlotCatalog.ArmorStart;
+             slot < VanillaPlayerItemSlotCatalog.BaselineFunctionalArmorEndExclusive; slot++)
+        {
+            Assert.True(fixture.ServerPlayers.TryGetItem(bot.ServerPlayerId, slot, out ServerPlayerItemState equipped));
+            if (equipped.ItemType == VanillaItemIds.MagicQuiver)
+                expectedLaunchMagnitude *= 1.1f; // Player.PickAmmo, independent of the runtime launch resolver.
+        }
         float directVelocityY = directY / directLength * expectedLaunchMagnitude;
 
         fixture.State.Tick();
@@ -358,7 +365,8 @@ public sealed class RuntimeBotAuthorityTests
         Assert.Equal(1, fixture.Projectiles.CopyActive(projectiles));
         ProjectileSnapshot arrow = projectiles[0];
         Assert.Equal(VanillaProjectileIds.UnholyArrow, arrow.Type);
-        Assert.InRange(MathF.Sqrt(arrow.VelocityX * arrow.VelocityX + arrow.VelocityY * arrow.VelocityY), 9.999f, 10.001f);
+        Assert.InRange(MathF.Sqrt(arrow.VelocityX * arrow.VelocityX + arrow.VelocityY * arrow.VelocityY),
+            expectedLaunchMagnitude - .001f, expectedLaunchMagnitude + .001f);
         Assert.True(arrow.VelocityY > directVelocityY + 0.5f,
             $"Predictive vy {arrow.VelocityY} did not lead moving target beyond direct vy {directVelocityY}.");
     }
@@ -395,6 +403,36 @@ public sealed class RuntimeBotAuthorityTests
             VanillaPlayerItemSlotCatalog.AmmoSlotStart,
             out ServerPlayerItemState ammo));
         Assert.Equal(999, ammo.Stack);
+        ServerPlayerMovementIntent reposition = fixture.ServerPlayers.GetMovementIntent(bot.Player);
+        Assert.True(reposition.TargetY < 160f); // Flight climbs to recover the blocked line, not endless low strafing.
+        fixture.State.Tick();
+        ServerPlayerMovementIntent heldReposition = fixture.ServerPlayers.GetMovementIntent(bot.Player);
+        Assert.Equal(reposition.TargetX, heldReposition.TargetX);
+        Assert.Equal(reposition.TargetY, heldReposition.TargetY);
+    }
+
+    [Fact]
+    public async Task Guard_holds_clear_firing_position_and_lock_when_another_npc_moves_closer()
+    {
+        using var fixture = new Fixture(botSpawnX: 160f, botSpawnY: 160f);
+        ConnectionHandle target = fixture.SpawnConnectionPlayer(10, 10);
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        _ = await fixture.ConfigureAsync(bot.Id, bot.Configuration with
+        {
+            Mode = RuntimeBotMode.Guard, Target = new RuntimeBotTarget(target.Player, "target"),
+            WeaponPolicy = RuntimeBotWeaponPolicy.Bow
+        });
+        _ = fixture.SpawnNpc(VanillaNpcIds.Zombie, 360f, 160f);
+        fixture.State.Tick();
+        ServerPlayerMovementIntent aim = fixture.ServerPlayers.GetMovementIntent(bot.Player);
+        Assert.Equal(160f + PlayerAuthority.VanillaBasePlayerWidth / 2, aim.TargetX);
+        Assert.Equal(160f + PlayerAuthority.VanillaBasePlayerHeight / 2, aim.TargetY);
+        _ = fixture.SpawnNpc(VanillaNpcIds.Zombie, 210f, 160f);
+        fixture.State.Tick();
+        ServerPlayerMovementIntent locked = fixture.ServerPlayers.GetMovementIntent(bot.Player);
+        // A reacquisition would retreat from the new close NPC. The current target stays in a clear firing band.
+        Assert.Equal(aim.TargetX, locked.TargetX);
+        Assert.InRange(locked.TargetY, aim.TargetY, aim.TargetY + 1f);
     }
 
     [Fact]
@@ -500,6 +538,40 @@ public sealed class RuntimeBotAuthorityTests
     }
 
     [Fact]
+    public async Task Healing_and_mana_in_same_tick_preserve_both_vitals_and_consume_once()
+    {
+        using var fixture = new Fixture();
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        Assert.True(fixture.ServerPlayers.SetVitals(bot.ServerPlayerId, new ServerPlayerVitalsState(250, 500, 10, 200)));
+        fixture.State.Tick();
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out PlayerStateSnapshot state));
+        Assert.Equal(450, state.Life);
+        Assert.Equal(200, state.Mana);
+        Assert.True(fixture.ServerPlayers.TryGetItem(bot.ServerPlayerId, 3, out ServerPlayerItemState heal));
+        Assert.True(fixture.ServerPlayers.TryGetItem(bot.ServerPlayerId, 4, out ServerPlayerItemState mana));
+        Assert.Equal(29, heal.Stack);
+        Assert.Equal(29, mana.Stack);
+        fixture.Tick(3);
+        Assert.True(fixture.ServerPlayers.TryGetItem(bot.ServerPlayerId, 3, out heal));
+        Assert.True(fixture.ServerPlayers.TryGetItem(bot.ServerPlayerId, 4, out mana));
+        Assert.Equal(29, heal.Stack);
+        Assert.Equal(29, mana.Stack);
+    }
+
+    [Fact]
+    public async Task Minor_vital_loss_does_not_waste_large_potions()
+    {
+        using var fixture = new Fixture();
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        Assert.True(fixture.ServerPlayers.SetVitals(bot.ServerPlayerId, new ServerPlayerVitalsState(499, 500, 199, 200)));
+        fixture.Tick(3);
+        Assert.True(fixture.ServerPlayers.TryGetItem(bot.ServerPlayerId, 3, out ServerPlayerItemState heal));
+        Assert.True(fixture.ServerPlayers.TryGetItem(bot.ServerPlayerId, 4, out ServerPlayerItemState mana));
+        Assert.Equal(30, heal.Stack);
+        Assert.Equal(30, mana.Stack);
+    }
+
+    [Fact]
     public async Task Player_bot_configuration_updates_server_owned_godmode()
     {
         using var fixture = new Fixture();
@@ -571,6 +643,11 @@ public sealed class RuntimeBotAuthorityTests
         _ = Assert.IsType<RuntimeBotSnapshot>(await fixture.ConfigureAsync(bot.Id, configuration));
 
         fixture.Tick(7);
+        Assert.Equal(0, Assert.Single(fixture.Telemetry.Capture()).TeleportCount);
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out PlayerStateSnapshot windingUp));
+        Assert.Equal(5, windingUp.SelectedItem);
+        Assert.NotEqual(0, windingUp.ControlFlags & (1 << 5));
+        fixture.Tick(45);
         Assert.Equal(1, Assert.Single(fixture.Telemetry.Capture()).TeleportCount);
 
         configuration = configuration with { Target = new RuntimeBotTarget(origin.Player, "origin") };
@@ -578,7 +655,7 @@ public sealed class RuntimeBotAuthorityTests
         fixture.Tick(6);
         Assert.Equal(1, Assert.Single(fixture.Telemetry.Capture()).TeleportCount);
 
-        fixture.Tick(120);
+        fixture.Tick(180);
         Assert.Equal(2, Assert.Single(fixture.Telemetry.Capture()).TeleportCount);
     }
 

@@ -136,6 +136,131 @@ public sealed class RuntimeBotNetworkAcceptanceTests
     }
 
     [Fact]
+    public async Task Catchup_uses_owned_mirror_then_replicates_recall_floor_at_source_half_time()
+    {
+        using var fixture = new Fixture(botSpawnX: 32, botSpawnY: 32);
+        ConnectionHandle target = fixture.SpawnPlayingConnection(150, 20);
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        Assert.True(fixture.ServerPlayers.TryGetItem(bot.ServerPlayerId, 5, out ServerPlayerItemState mirror));
+        Assert.Equal(VanillaItemIds.MagicMirror, mirror.ItemType);
+        _ = await fixture.ConfigureAsync(bot.Id, bot.Configuration with
+        {
+            Mode = RuntimeBotMode.Follow, Target = new RuntimeBotTarget(target.Player, "target")
+        });
+        fixture.DrainFrames();
+        fixture.State.Tick();
+        TerrariaFrame[] windup = fixture.DrainFrames();
+        Assert.Contains(windup, frame =>
+            TerrariaPlayerMovementDecoder.TryDecode(frame, out TerrariaPlayerMovementRequest movement) ==
+                TerrariaPlayerMovementDecodeResult.Decoded && movement.ClaimedPlayerId == bot.Player.Slot.Value &&
+            movement.SelectedItem == 5 && (movement.ControlFlags & (1 << 5)) != 0);
+        Assert.DoesNotContain(windup, frame => frame.MessageId == (byte)TerrariaMessageId.PlayerSpawn);
+        for (int tick = 0; tick < 44; tick++)
+            fixture.State.Tick();
+        Assert.DoesNotContain(fixture.DrainFrames(), frame => frame.MessageId == (byte)TerrariaMessageId.PlayerSpawn);
+        fixture.State.Tick();
+        TerrariaFrame recall = Assert.Single(fixture.DrainFrames(), frame => frame.MessageId == (byte)TerrariaMessageId.PlayerSpawn);
+        byte[] payload = recall.Payload.ToArray();
+        Assert.Equal(bot.Player.Slot.Value, payload[0]);
+        Assert.Equal(2, payload[14]); // PlayerSpawnContext.RecallFromItem.
+        short floorX = System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(payload.AsSpan(1));
+        short floorY = System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(payload.AsSpan(3));
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out PlayerStateSnapshot landed));
+        Assert.Equal(floorX * 16 + 8 - PlayerAuthority.VanillaBasePlayerWidth / 2, landed.PositionX);
+        Assert.InRange(landed.PositionY, floorY * 16 - PlayerAuthority.VanillaBasePlayerHeight,
+            floorY * 16 - PlayerAuthority.VanillaBasePlayerHeight + 1); // Same-tick ordinary gravity.
+        Assert.True(fixture.ServerPlayers.TryGetItem(bot.ServerPlayerId, 5, out mirror));
+        Assert.Equal(1, mirror.Stack);
+        for (int tick = 0; tick < 50; tick++)
+            fixture.State.Tick();
+        Assert.DoesNotContain(fixture.DrainFrames(), frame => frame.MessageId == (byte)TerrariaMessageId.PlayerSpawn);
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out PlayerStateSnapshot resumed));
+        Assert.NotEqual(5, resumed.SelectedItem);
+    }
+
+    [Fact]
+    public async Task Losing_follow_target_cancels_mirror_without_recall_or_stale_held_slot()
+    {
+        using var fixture = new Fixture(botSpawnX: 32, botSpawnY: 32);
+        _ = fixture.SpawnPlayingConnection(8, 10);
+        var targetOutbound = fixture.CreateOutboundQueue();
+        ConnectionHandle target = fixture.SpawnPlayingConnection(150, 20, targetOutbound);
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        _ = await fixture.ConfigureAsync(bot.Id, bot.Configuration with
+        {
+            Mode = RuntimeBotMode.Follow, Target = new RuntimeBotTarget(target.Player, "target")
+        });
+        fixture.State.Tick();
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out PlayerStateSnapshot windingUp));
+        Assert.Equal(5, windingUp.SelectedItem);
+        fixture.State.Apply(new PlayerDisconnectRuntimeCommand(target));
+        fixture.DrainFrames();
+
+        fixture.State.Tick();
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out PlayerStateSnapshot cancelled));
+        Assert.Equal(0, cancelled.SelectedItem);
+        Assert.Equal(0, cancelled.ControlFlags & (1 << 5));
+        for (int tick = 0; tick < 100; tick++)
+            fixture.State.Tick();
+        Assert.DoesNotContain(fixture.DrainFrames(), frame => frame.MessageId == (byte)TerrariaMessageId.PlayerSpawn);
+    }
+
+    [Theory]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, true)]
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    public async Task Npc_projectile_and_termination_explosion_reach_bot_vitals_only_with_provenance(
+        bool explosion, bool godMode, bool trusted)
+    {
+        using var fixture = new Fixture(botSpawnX: 100, botSpawnY: 100);
+        _ = fixture.SpawnPlayingConnection(100, 80);
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        _ = await fixture.ConfigureAsync(bot.Id, bot.Configuration with { GodMode = godMode });
+        NpcSnapshot cultist = fixture.SpawnNpc(VanillaNpcIds.LunaticCultist, 1200, 500);
+        var intent = new NpcAiProjectileIntent(VanillaProjectileIds.CultistBossFireBall,
+            explosion ? 160 : 100, 100, 0, 0, 1000, 0)
+        {
+            TimeLeftOverride = explosion ? 1 : 120
+        };
+        Assert.True(RuntimeNpcProjectileIntentApplier.TryApply(fixture.Projectiles,
+            trusted ? cultist.Handle : default, intent, out _));
+        fixture.DrainFrames();
+        fixture.State.Tick();
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out PlayerStateSnapshot victim));
+        bool killed = trusted && !godMode;
+        Assert.Equal(killed ? 0 : 500, victim.Life);
+        Assert.Equal(killed, victim.IsDead);
+        TerrariaFrame[] frames = fixture.DrainFrames();
+        if (killed)
+            Assert.Single(frames, frame => frame.MessageId == (byte)TerrariaMessageId.PlayerDeathV2);
+        else
+            Assert.DoesNotContain(frames, frame => frame.MessageId == (byte)TerrariaMessageId.PlayerDeathV2);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Npc_contact_pass_respects_live_friendly_flag_for_bot(bool friendly)
+    {
+        using var fixture = new Fixture(botSpawnX: 100, botSpawnY: 100);
+        _ = fixture.SpawnPlayingConnection(100, 80);
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        NpcSnapshot npc = fixture.SpawnNpc(VanillaNpcIds.Zombie, 100, 100);
+        var update = new NpcStateUpdate(npc.Type, npc.NetId, npc.PositionX, npc.PositionY,
+            npc.VelocityX, npc.VelocityY, npc.Target, npc.Ai,
+            npc.Simulation with { Friendly = friendly, DamageOverride = 2000 });
+        Assert.True(fixture.Npcs.TryUpdate(npc.Handle, update, out _));
+        fixture.DrainFrames();
+        fixture.State.Tick();
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out PlayerStateSnapshot victim));
+        Assert.Equal(friendly ? 500 : 0, victim.Life);
+        Assert.Equal(!friendly, victim.IsDead);
+    }
+
+    [Fact]
     public async Task Player_bot_pickup_removes_exact_world_item_on_wire_and_updates_inventory_on_wire()
     {
         using var fixture = new Fixture(botSpawnX: 64f, botSpawnY: 64f);

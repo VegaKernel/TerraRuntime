@@ -35,6 +35,12 @@ the signed identity instead of silently using the positive type defaults.
 
 ## N0 — Evidence and fail-closed admission
 
+- [x] Duke AI69 phase-three relocation at incoming timer `15`, opposite-side position, fade/damping and the nine-step dash/teleport schedule are source-pinned and regression-tested, including old-behavior negative controls.
+- [ ] Remaining Duke ocean/enrage inputs, other phase details and official-client combat acceptance; the narrow phase-three fix does not complete boss parity.
+
+- [x] TZ-35 server-owned `Friendly/Chaseable/Immortal` materialization/preservation and fail-closed controlled-magic/Guard targeting; clone 440 and Ancient Doom 523 spawn exclusions, Duke executed-state chaseability and Cultist intro/movement/ritual targeting/damage gates have source-backed regressions.
+- [ ] Remaining NPC-specific transient allegiance/immortality and catchable temporary-immunity transitions; these new fields do not establish full AI parity.
+
 - [x] separate decomposition completion from exhaustive parity;
 - [x] machine-readable per-NPC capability claims with no full-parity claims;
 - [x] packet-23 sync for every admitted definition, including live hitbox sync anchors;

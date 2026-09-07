@@ -7,6 +7,96 @@ namespace TerraRuntime.Tests;
 
 public sealed class LateHardmodeBossParityTests
 {
+    [Theory]
+    [InlineData(0, 11)]
+    [InlineData(1, 12)]
+    [InlineData(2, 11)]
+    [InlineData(3, 11)]
+    [InlineData(4, 12)]
+    [InlineData(5, 11)]
+    [InlineData(6, 11)]
+    [InlineData(7, 11)]
+    [InlineData(8, 12)]
+    public void Duke_phase_three_repeats_one_two_three_dashes_between_teleports(int cycle, int expectedAttack)
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot duke = CreateNpc(VanillaNpcIds.DukeFishron, new NpcAiState(10, 0, 29, cycle),
+            life: 60_000, localAi: new NpcAiState(1, 0, 0, 0));
+        Assert.True(stepper.TryStepState(in duke, out NpcStateUpdate next));
+        Assert.Equal(expectedAttack, next.Ai.Ai0);
+        Assert.False(next.Simulation.Chaseable);
+        if (expectedAttack == 11)
+            Assert.Equal(27f, MathF.Sqrt(next.VelocityX * next.VelocityX + next.VelocityY * next.VelocityY), 4);
+    }
+
+    [Theory]
+    [InlineData(14, false)]
+    [InlineData(15, true)]
+    [InlineData(16, false)]
+    public void Duke_teleports_to_opposite_side_at_incoming_tick_15_only(int timer, bool teleported)
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot duke = CreateNpc(VanillaNpcIds.DukeFishron, new NpcAiState(12, 0, timer, 8),
+            life: 60_000, localAi: new NpcAiState(1, 0, 0, 0)) with { VelocityX = 10, VelocityY = 5 };
+        Assert.True(stepper.TryStepState(in duke, out NpcStateUpdate next));
+        Assert.Equal(teleported ? 800f - 75f : duke.PositionX, next.PositionX);
+        Assert.Equal(teleported ? 100f - 50f : duke.PositionY, next.PositionY);
+        Assert.Equal(9.8f, next.VelocityX, 4);
+        Assert.Equal(4.802f, next.VelocityY, 4);
+        Assert.True(next.Simulation.DontTakeDamage);
+        Assert.False(next.Simulation.Chaseable);
+        if (teleported)
+        {
+            Assert.Equal(-1, next.Simulation.DirectionX);
+            Assert.Equal(1, next.Simulation.SpriteDirection);
+        }
+    }
+
+    [Fact]
+    public void Duke_last_teleport_wraps_nine_step_cycle()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot duke = CreateNpc(VanillaNpcIds.DukeFishron, new NpcAiState(12, -300, 29, 8),
+            life: 60_000, localAi: new NpcAiState(1, 0, 0, 0));
+        Assert.True(stepper.TryStepState(in duke, out NpcStateUpdate next));
+        Assert.Equal(10f, next.Ai.Ai0);
+        Assert.Equal(0f, next.Ai.Ai3);
+    }
+
+    [Theory]
+    [InlineData(-1, 0, false, true)]
+    [InlineData(1, 2, true, true)]
+    [InlineData(5, 119, false, true)]
+    [InlineData(5, 120, false, false)]
+    [InlineData(5, 419, false, false)]
+    [InlineData(0, 0, true, false)]
+    public void Cultist_commits_source_ritual_chase_and_damage_gates(int state, int timer, bool chaseable, bool immune)
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot cultist = CreateNpc(VanillaNpcIds.LunaticCultist, new NpcAiState(state, timer, 0, 0),
+            life: 32_000, localAi: new NpcAiState(1, 0, 0, 0));
+        Assert.True(stepper.TryStepState(in cultist, out NpcStateUpdate next));
+        Assert.Equal(chaseable, next.Simulation.Chaseable);
+        Assert.Equal(immune, next.Simulation.DontTakeDamage);
+    }
+
+    [Theory]
+    [InlineData(10, 29, true, false, 11)]
+    [InlineData(11, 24, false, true, 10)]
+    [InlineData(12, 29, true, false, 10)]
+    [InlineData(13, 0, false, false, 13)]
+    public void Duke_chaseability_follows_executed_branch_not_next_ai_state(
+        int state, int timer, bool previousChaseable, bool expectedChaseable, int nextState)
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot duke = CreateNpc(VanillaNpcIds.DukeFishron, new NpcAiState(state, 0, timer, 0),
+            life: 60_000, localAi: new NpcAiState(1, 0, 0, 0));
+        duke = duke with { Simulation = duke.Simulation with { Chaseable = previousChaseable } };
+        Assert.True(stepper.TryStepState(in duke, out NpcStateUpdate next));
+        Assert.Equal(nextState, next.Ai.Ai0);
+        Assert.Equal(expectedChaseable, next.Simulation.Chaseable);
+    }
+
     [Fact]
     public void Sharkron_ai71_leaves_emergence_and_enters_source_charge_state()
     {

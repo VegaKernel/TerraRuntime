@@ -107,6 +107,12 @@ public readonly record struct NpcSimulationState(
     /// <summary>Authoritative damage gate for vanilla transitions such as King Slime teleport disappearance.</summary>
     public bool DontTakeDamage { get; init; }
 
+    /// <summary>Server-owned NPC targeting flags. Null means unspecified, never permission to target.
+    /// Spawn materializes verified defaults; state-only updates preserve the committed instance values.</summary>
+    public bool? Friendly { get; init; }
+    public bool? Chaseable { get; init; }
+    public bool? Immortal { get; init; }
+
     /// <summary>Vanilla NPC.alpha. AI_054 consumes this presentation value as an authoritative teleport timer.</summary>
     public int Alpha { get; init; }
 
@@ -199,4 +205,3 @@ public readonly record struct NpcSnapshot(
     public NpcTypeId TypeIdentity => new(Type);
     public NpcNetId NetIdentity => new(NetId);
 }
-

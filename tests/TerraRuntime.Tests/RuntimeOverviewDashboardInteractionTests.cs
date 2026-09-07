@@ -215,6 +215,44 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     }
 
     [Fact]
+    public void Dashboard_refresh_does_not_redraw_unchanged_network_but_new_sample_does()
+    {
+        using IApplication app = Terminal.Gui.App.Application.Create().Init(DriverRegistry.Names.DOTNET);
+        app.Driver!.SetScreenSize(100, 25);
+        using var window = new Window { Width = Dim.Fill(), Height = Dim.Fill() };
+        var dashboard = new RuntimeOverviewDashboard { Width = Dim.Fill(), Height = Dim.Fill() };
+        window.Add(dashboard);
+        int draws = 0;
+        dashboard.NetworkGraphForSmoke.DrawComplete += (_, _) => draws++;
+        SessionToken token = app.Begin(window)!;
+        try
+        {
+            RuntimeDashboardSnapshot runtime = default(RuntimeDashboardSnapshot) with { WorldName = "Primary" };
+            RuntimeNetworkSnapshot network = default(RuntimeNetworkSnapshot) with { CapturedAtUtc = DateTimeOffset.UtcNow };
+            dashboard.Refresh(runtime, network, default, default, default, default, status: null);
+            app.LayoutAndDraw();
+            app.LayoutAndDraw();
+            Assert.True(draws > 0);
+            int before = draws;
+            for (int i = 0; i < 3; i++)
+            {
+                dashboard.Refresh(runtime, network, default, default, default, default, status: null);
+                app.LayoutAndDraw();
+            }
+            Assert.Equal(before, draws);
+            network = network with { CapturedAtUtc = network.CapturedAtUtc.AddSeconds(1), MessageInboundFrames = 10 };
+            dashboard.Refresh(runtime, network, default, default, default, default, status: null);
+            app.LayoutAndDraw();
+            Assert.True(draws > before);
+            Assert.Contains("10.0 p/s", dashboard.GetNetworkLegendForSmoke());
+        }
+        finally
+        {
+            app.End(token);
+        }
+    }
+
+    [Fact]
     public void Network_chart_scales_inbound_and_outbound_independently_so_quiet_direction_stays_visible()
     {
         using var chart = new NetworkTrafficChartView();

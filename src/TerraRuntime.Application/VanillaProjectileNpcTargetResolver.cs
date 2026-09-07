@@ -9,9 +9,8 @@ namespace TerraRuntime.Application;
 
 /// <summary>
 /// World-backed target lookup used by the modern AI_009 controlled-magic slice. Slot ordering, 800 px range and
-/// rectangle line-of-sight follow TerrariaServer 1.4.5.8 Projectile.FindTargetWithLineOfSight. The current NPC
-/// runtime does not expose vanilla's transient chaseable/immortal flags; verified town NPCs, critters, dead and
-/// invulnerable NPCs are therefore rejected explicitly while ordinary verified hostile definitions remain eligible.
+/// rectangle line-of-sight follow TerrariaServer 1.4.5.8 Projectile.FindTargetWithLineOfSight. Targeting consumes
+/// the committed server-owned CanBeChasedBy flags, not a definition-level approximation of instance allegiance.
 /// </summary>
 internal sealed class VanillaProjectileNpcTargetResolver : IVanillaProjectileNpcTargetResolver
 {
@@ -213,16 +212,13 @@ internal sealed class VanillaProjectileNpcTargetResolver : IVanillaProjectileNpc
     {
         centerX = 0f;
         centerY = 0f;
-        if (!candidate.IsActive ||
+        if (!VanillaNpcChaseability1458.CanBeChasedBy(in candidate, ignoreDontTakeDamage) ||
             candidate.Simulation.Life <= 0 ||
-            candidate.Simulation.LifeMax <= 5 ||
-            (!ignoreDontTakeDamage && candidate.Simulation.DontTakeDamage) ||
             VanillaNpcCatchCatalog1458.CountsAsCritter(candidate.TypeIdentity) ||
             !VanillaNpcDefinitionCatalog.TryGet(
                 candidate.TypeIdentity,
                 candidate.NetIdentity,
                 out VanillaNpcDefinition definition) ||
-            definition.Role == NpcArchetypeRole.Town ||
             !definition.TryResolveHitbox(candidate.Simulation.Scale, out hitbox))
         {
             hitbox = default;

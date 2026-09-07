@@ -2,6 +2,15 @@
 
 Last evidence refresh: 2026-09-07.
 
+## TZ-35 targeting and mirror evidence
+
+- `NPC.SetDefaults` resets friendly=false, chaseable=true, immortal=false. Source exceptions are pinned in `VanillaNpcChaseability1458`; in particular clone 440 and Ancient Doom 523 are unchaseable. `NPC.CanBeChasedBy` requires active, chaseable, lifeMax>5, !friendly, !immortal (ordinary debug settings), and !dontTakeDamage unless explicitly ignored. The runtime additionally excludes dead/catchable candidates conservatively; temporary catchable immunity remains incomplete.
+- `AI_069_DukeFishron`: executed states 10/12 set chaseable=false, 11 sets true, other branches preserve it. Do not derive flags from the *resulting* ai[0]: the transition tick retains the old branch's flags.
+- AI69 ordinary phase-three state10 uses horizontal hover offset 360 and selects dash11 for cycle 0/2/3/5/6/7, teleport12 for 1/4/8. State12 teleports only at incoming ai[2]==15: resolve ai[1]=300*sign(npc.Center.X-player.Center.X) when zero, then center=player.Center+(-ai[1],-200). Velocity multiplies by .98, then Y lerps toward zero by .02. Its outgoing 30-tick boundary increments the cycle and wraps at 9. State10/11 alpha changes by +25/-25, state12 by +17. Ocean/enrage and other phase details are not covered by this slice.
+- `AI_084_LunaticCultist`: intro is unchaseable/invulnerable; movement state 1 is invulnerable but does not set the chaseability gate; ritual state 5 is unchaseable throughout and invulnerable while its incoming timer is below 120. Timer 119->120 is still invulnerable; 419->idle remains unchaseable for that tick. Ritual-hit abort occurs before branch evaluation.
+- `Item.SetDefaults(50)`: Magic Mirror, width/height 20, useStyle=4, useTime/useAnimation=90. `Player.ItemCheck` invokes recall when itemTime==useTime/2. `Player.Spawn_SetPosition` maps floor tile to (x*16+8-width/2, y*16-height). Packet 12 transmits SpawnX/Y and PlayerSpawnContext.RecallFromItem=2 before the observer calls Spawn. Bot follow relocation is custom server policy, not a claim that vanilla mirrors target players; its recall presentation supplies the bot's landing floor instead of retaining an unrelated observer spawn.
+- `Player.PickAmmo`: Magic Quiver scales arrow launch speed by 1.1. Random loadout tests must account for the equipped accessory, not assume every Platinum Bow + Unholy Arrow launches at 10 rather than 11.
+
 This file stores concise facts already checked against the locally decompiled official TerrariaServer **1.4.5.8**. It prevents repeated source archaeology, but it does not authorize guessing adjacent behavior. Unknown cases remain fail-closed until separately verified.
 
 ## Runtime bot source facts

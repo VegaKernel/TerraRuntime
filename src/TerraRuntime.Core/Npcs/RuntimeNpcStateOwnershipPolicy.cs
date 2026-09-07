@@ -25,7 +25,13 @@ internal static class RuntimeNpcStateOwnershipPolicy
                 };
             }
 
-            simulation = simulation with { Scale = definition.Scale };
+            simulation = simulation with
+            {
+                Scale = definition.Scale,
+                Friendly = simulation.Friendly ?? VanillaNpcChaseability1458.FriendlyAtSpawn(update.Type),
+                Chaseable = simulation.Chaseable ?? VanillaNpcChaseability1458.ChaseableAtSpawn(update.Type),
+                Immortal = simulation.Immortal ?? VanillaNpcChaseability1458.ImmortalAtSpawn(update.Type)
+            };
 
             if (definition.DontTakeDamageAtSpawn)
                 simulation = simulation with { DontTakeDamage = true };
@@ -58,6 +64,16 @@ internal static class RuntimeNpcStateOwnershipPolicy
         bool sameDefinition = sameType && update.NetId == previous.NetId;
         VanillaNpcDefinition definition = default;
         bool hasDefinition = TryGetDefinition(update.Type, update.NetId, out definition);
+
+        simulation = simulation with
+        {
+            Friendly = simulation.Friendly ?? (sameDefinition ? previous.Simulation.Friendly : null) ??
+                (hasDefinition ? VanillaNpcChaseability1458.FriendlyAtSpawn(update.Type) : null),
+            Chaseable = simulation.Chaseable ?? (sameDefinition ? previous.Simulation.Chaseable : null) ??
+                (hasDefinition ? VanillaNpcChaseability1458.ChaseableAtSpawn(update.Type) : null),
+            Immortal = simulation.Immortal ?? (sameDefinition ? previous.Simulation.Immortal : null) ??
+                (hasDefinition ? VanillaNpcChaseability1458.ImmortalAtSpawn(update.Type) : null)
+        };
 
         if (simulation.LifeMax == 0)
         {

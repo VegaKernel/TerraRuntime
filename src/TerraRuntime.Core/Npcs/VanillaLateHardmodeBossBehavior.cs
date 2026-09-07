@@ -72,9 +72,13 @@ internal sealed class VanillaLunaticCultistNpcBehaviorStrategy : IVanillaNpcBeha
             vy *= .95f;
         }
 
+        bool chaseable = true;
+        bool dontTakeDamage = false;
         switch ((int)ai.Ai0)
         {
             case -1:
+                chaseable = false;
+                dontTakeDamage = true;
                 ai = ai with { Ai1 = ai.Ai1 + 1f };
                 if (ai.Ai1 > 300f && ai.Ai1 <= 360f) { vx = 0f; vy = -1f; }
                 else if (ai.Ai1 > 360f) { vx *= .95f; vy *= .95f; }
@@ -99,6 +103,7 @@ internal sealed class VanillaLunaticCultistNpcBehaviorStrategy : IVanillaNpcBeha
                 }
                 break;
             case 1:
+                dontTakeDamage = true;
                 ai = ai with { Ai1 = ai.Ai1 - 1f };
                 if (((int)ai.Ai1 & 1) != 0 && ai.Ai1 != 1f) { /* source moves every second tick; committed velocity carries it */ }
                 if (ai.Ai1 <= 0f) { ai = ai with { Ai0 = 0f, Ai1 = 0f, Ai3 = ai.Ai3 + 1f }; vx = 0f; vy = 0f; }
@@ -128,6 +133,10 @@ internal sealed class VanillaLunaticCultistNpcBehaviorStrategy : IVanillaNpcBeha
                 break;
             }
             case 5:
+                // AI84 tests the incoming ritual clock, before increment/reset; the last ritual tick remains
+                // unchaseable even when the committed ai[0] has already returned to idle.
+                chaseable = false;
+                dontTakeDamage = ai.Ai1 is >= 0f and < 120f;
                 vx *= .95f; vy *= .95f;
                 ai = ai with { Ai1 = ai.Ai1 + 1f };
                 int alpha = sim.Alpha;
@@ -170,6 +179,8 @@ internal sealed class VanillaLunaticCultistNpcBehaviorStrategy : IVanillaNpcBeha
             NoTileCollide = true,
             LocalAi = local,
             DefenseOverride = phaseTwo ? (int)(definition.Defense * .65f) : definition.Defense,
+            Chaseable = chaseable,
+            DontTakeDamage = dontTakeDamage,
             JustHit = false
         };
         next = LateBossMath.Build(in npc, vx, vy, target, in ai, in sim);

@@ -79,6 +79,8 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
         float vy = npc.VelocityY;
         float cx = npc.PositionX + definition.Width * .5f;
         float cy = npc.PositionY + definition.Height * .5f;
+        float positionX = npc.PositionX;
+        float positionY = npc.PositionY;
         bool vulnerable = true;
 
         switch ((int)ai.Ai0)
@@ -169,24 +171,53 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
                 if (ai.Ai2 >= 180f) ai = ai with { Ai0 = 10f, Ai1 = 0f, Ai2 = 0f, Ai3 = 0f };
                 break;
             case 10:
-                Hover(in target, cx, cy, 12f, .7f, ref ai, ref vx, ref vy);
+                sim = sim with { Chaseable = false, Alpha = Math.Min(255, sim.Alpha + 25) };
+                Hover(in target, cx, cy, 12f, .7f, ref ai, ref vx, ref vy, horizontalOffset: 360f);
                 ai = ai with { Ai2 = ai.Ai2 + 1f };
                 if (ai.Ai2 >= 30f)
                 {
-                    bool teleport = ((int)ai.Ai3 % 4) == 3;
-                    ai = ai with { Ai0 = teleport ? 12f : 11f, Ai1 = 0f, Ai2 = 0f };
-                    if (!teleport) SetToward(cx, cy, target.CenterX, target.CenterY, 27f, ref vx, ref vy);
+                    int attack = (int)ai.Ai3 switch
+                    {
+                        0 or 2 or 3 or 5 or 6 or 7 => 11,
+                        1 or 4 or 8 => 12,
+                        _ => 0
+                    };
+                    if (attack != 0)
+                    {
+                        ai = ai with { Ai0 = attack, Ai1 = 0f, Ai2 = 0f };
+                        if (attack == 11) SetToward(cx, cy, target.CenterX, target.CenterY, 27f, ref vx, ref vy);
+                    }
                 }
                 break;
             case 11:
+                sim = sim with { Chaseable = true, Alpha = Math.Max(0, sim.Alpha - 25) };
                 ai = ai with { Ai2 = ai.Ai2 + 1f };
                 if (ai.Ai2 >= 25f) ai = ai with { Ai0 = 10f, Ai1 = 0f, Ai2 = 0f, Ai3 = ai.Ai3 + 1f };
                 break;
             case 12:
+                sim = sim with { Chaseable = false, Alpha = Math.Min(255, sim.Alpha + 17) };
                 vulnerable = false;
-                vx *= .9f; vy *= .9f;
+                vx *= .98f; vy *= .98f;
+                vy += (0f - vy) * .02f;
+                // AI69 teleports at the incoming half-time (15), before incrementing the 30-tick clock.
+                if (ai.Ai2 == 15f)
+                {
+                    if (ai.Ai1 == 0f)
+                        ai = ai with { Ai1 = 300f * MathF.Sign(cx - target.CenterX) };
+                    cx = target.CenterX - ai.Ai1;
+                    cy = target.CenterY - 200f;
+                    positionX = cx - definition.Width * .5f;
+                    positionY = cy - definition.Height * .5f;
+                    int direction = Math.Sign(target.CenterX - cx);
+                    if (direction != 0)
+                        sim = sim with { DirectionX = direction, SpriteDirection = -direction };
+                }
                 ai = ai with { Ai2 = ai.Ai2 + 1f };
-                if (ai.Ai2 >= 30f) ai = ai with { Ai0 = 10f, Ai1 = 0f, Ai2 = 0f, Ai3 = ai.Ai3 + 1f };
+                if (ai.Ai2 >= 30f)
+                {
+                    float cycle = ai.Ai3 + 1f;
+                    ai = ai with { Ai0 = 10f, Ai1 = 0f, Ai2 = 0f, Ai3 = cycle >= 9f ? 0f : cycle };
+                }
                 break;
             case 13:
                 ai = ai with { Ai2 = ai.Ai2 + 1f };
@@ -212,6 +243,7 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
             JustHit = false
         };
         next = Build(in npc, vx, vy, targetSlot, in ai, in sim);
+        next = next with { PositionX = positionX, PositionY = positionY };
         return true;
     }
 
@@ -316,10 +348,10 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
     }
 
     private static void Hover(in VanillaNpcTargetCandidate target, float cx, float cy, float speed, float acceleration,
-        ref NpcAiState ai, ref float vx, ref float vy)
+        ref NpcAiState ai, ref float vx, ref float vy, float horizontalOffset = 300f)
     {
         if (ai.Ai1 == 0f)
-            ai = ai with { Ai1 = 300f * MathF.Sign(cx - target.CenterX) };
+            ai = ai with { Ai1 = horizontalOffset * MathF.Sign(cx - target.CenterX) };
         float dx = target.CenterX + ai.Ai1 - cx - vx;
         float dy = target.CenterY - 200f - cy - vy;
         float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));

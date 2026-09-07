@@ -58,6 +58,9 @@ internal sealed class RuntimeBotAuthority
     private const short MaximumVanillaPermanentLife = 500;
     private const short MaximumVanillaPermanentMana = 200;
     private const short StarterPotionStack = 30;
+    private const byte MirrorSlot = 5;
+    // Item 50 SetDefaults: useTime/useAnimation=90. ItemCheck recalls at useTime/2.
+    private const long MirrorUseTicks = 90;
 
     private readonly ServerPlayerAuthority serverPlayers;
     private readonly PlayerAuthority players;
@@ -243,15 +246,17 @@ internal sealed class RuntimeBotAuthority
         // created deceptively half-functional actors and split one authoritative inventory path into UI variants.
         TryPickupOneUsefulItem(bot, in self);
         TryAutoHeal(bot, in self, tick);
+        if (serverPlayers.TryGet(bot.Player, out PlayerStateSnapshot afterHealing))
+            self = afterHealing;
         TryAutoMana(bot, in self, tick);
         if (serverPlayers.TryGet(bot.Player, out PlayerStateSnapshot refreshed))
             self = refreshed;
 
         if (!TryResolveLiveTarget(bot, out PlayerStateSnapshot target))
         {
-            ResetUnavailableTarget(bot, tick);
             _ = serverPlayers.SetMovementIntent(bot.ServerPlayerId, ServerPlayerMovementIntent.Stop());
             _ = serverPlayers.SetHeldItem(bot.ServerPlayerId, self.SelectedItem, useItem: false);
+            ResetUnavailableTarget(bot, tick);
             if (self.Hostile)
                 _ = serverPlayers.SetHostile(bot.ServerPlayerId, hostile: false);
             return;
@@ -262,6 +267,12 @@ internal sealed class RuntimeBotAuthority
         bot.PvpEnabled = pvp;
         if (self.Hostile != pvp)
             _ = serverPlayers.SetHostile(bot.ServerPlayerId, pvp);
+
+        if (UpdatePlayerStuckRecovery(bot, in self, in target, tick))
+        {
+            _ = serverPlayers.SetMovementIntent(bot.ServerPlayerId, ServerPlayerMovementIntent.Stop());
+            return;
+        }
 
         BotGuardTarget guardTarget = default;
         bool hasGuardTarget = configuration.Mode == RuntimeBotMode.Guard &&
@@ -305,8 +316,6 @@ internal sealed class RuntimeBotAuthority
                     FlightEnabled = configuration.FlightEnabled
                 }));
 
-        UpdatePlayerStuckRecovery(bot, in self, in target, tick);
-
         if (configuration.Mode == RuntimeBotMode.Guard)
             TryAutoUseCombatBuffs(bot, tick);
 
@@ -329,7 +338,7 @@ internal sealed class RuntimeBotAuthority
         return true;
     }
 
-    private void UpdatePlayerStuckRecovery(
+    private bool UpdatePlayerStuckRecovery(
         BotState bot,
         in PlayerStateSnapshot self,
         in PlayerStateSnapshot target,
@@ -337,18 +346,44 @@ internal sealed class RuntimeBotAuthority
     {
         float distanceSquared = DistanceSquared(self.PositionX, self.PositionY, target.PositionX, target.PositionY);
         UpdateProgress(bot, distanceSquared, tick);
-        if (!ShouldTeleport(bot, distanceSquared, tick))
-            return;
+        if (bot.MirrorStartedAtTick < 0)
+        {
+            if (!ShouldTeleport(bot, distanceSquared, tick) ||
+                !serverPlayers.TryGetItem(bot.ServerPlayerId, MirrorSlot, out ServerPlayerItemState mirror) ||
+                mirror.ItemType != VanillaItemIds.MagicMirror || mirror.Stack != 1 ||
+                !serverPlayers.SetHeldItem(bot.ServerPlayerId, MirrorSlot, useItem: true))
+                return false;
+            bot.MirrorStartedAtTick = tick;
+            bot.MirrorTeleported = false;
+            bot.UseItemUntilTick = tick + MirrorUseTicks;
+        }
+
+        long elapsed = tick - bot.MirrorStartedAtTick;
+        if (elapsed >= MirrorUseTicks)
+        {
+            bot.MirrorStartedAtTick = -1;
+            _ = serverPlayers.SetHeldItem(bot.ServerPlayerId, MeleeWeaponSlot, useItem: false);
+            return false;
+        }
+        if (elapsed < MirrorUseTicks / 2 || bot.MirrorTeleported)
+            return true;
 
         ResolveEscortDestination(bot, in target, tick, allowVerticalWander: bot.Configuration.FlightEnabled,
             out float destinationX, out float destinationY);
         destinationX = ClampWorldCenterX(destinationX, PlayerAuthority.VanillaBasePlayerWidth * 0.5f);
         destinationY = ClampWorldCenterY(destinationY, PlayerAuthority.VanillaBasePlayerHeight * 0.5f);
-        if (serverPlayers.TryTeleport(
+        short floorX = checked((short)MathF.Floor((destinationX - 8f) / 16f));
+        short floorY = checked((short)MathF.Floor((destinationY + PlayerAuthority.VanillaBasePlayerHeight * .5f) / 16f));
+        if (serverPlayers.TryTeleportWithRecallPresentation(
                 bot.ServerPlayerId,
-                destinationX - PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
-                destinationY - PlayerAuthority.VanillaBasePlayerHeight * 0.5f))
+                floorX,
+                floorY))
+        {
             CommitTeleport(bot, tick);
+            bot.MirrorTeleported = true;
+            _ = serverPlayers.SetHeldItem(bot.ServerPlayerId, MirrorSlot, useItem: false);
+        }
+        return true;
     }
 
     private static void UpdateProgress(BotState bot, float distanceSquared, long tick)
@@ -497,11 +532,29 @@ internal sealed class RuntimeBotAuthority
             return;
         }
 
-        // Inside the weapon's comfortable band, keep a short-lived side preference instead of issuing alternating
-        // approach/retreat commands on every tiny distance change. This is bot policy, not Terraria combat semantics.
-        float side = (((tick + bot.Personality.WanderPhaseTicks) / GuardRepositionPeriodTicks) & 1L) == 0 ? -1f : 1f;
-        centerX = selfCenterX + side * GuardRepositionPixels;
-        centerY = selfCenterY;
+        bool clearShot = VanillaWorldCanHit.HasLineOfSight(worldTiles,
+            self.PositionX, self.PositionY, (int)PlayerAuthority.VanillaBasePlayerWidth, (int)PlayerAuthority.VanillaBasePlayerHeight,
+            target.CenterX - target.Width * .5f, target.CenterY - target.Height * .5f, (int)target.Width, (int)target.Height);
+        if (clearShot)
+        {
+            centerX = selfCenterX;
+            centerY = selfCenterY;
+            stopDistance = 14f;
+            bot.GuardRepositionUntilTick = 0;
+            return;
+        }
+
+        // Reposition only to recover a blocked shot. A destination anchored to the current body every tick
+        // never becomes reachable and made bots continuously strafe even with a clear, comfortable firing lane.
+        if (tick >= bot.GuardRepositionUntilTick)
+        {
+            float side = (((tick + bot.Personality.WanderPhaseTicks) / GuardRepositionPeriodTicks) & 1L) == 0 ? -1f : 1f;
+            bot.GuardRepositionX = selfCenterX + side * GuardRepositionPixels;
+            bot.GuardRepositionY = selfCenterY - (bot.Configuration.FlightEnabled ? ObstacleClimbTargetPixels : 0f);
+            bot.GuardRepositionUntilTick = tick + GuardRepositionPeriodTicks;
+        }
+        centerX = bot.GuardRepositionX;
+        centerY = bot.GuardRepositionY;
         stopDistance = 14f;
 
         // Never wander away from the protected player just to look clever.
@@ -699,7 +752,7 @@ internal sealed class RuntimeBotAuthority
         for (int i = 0; i < npcCount; i++)
         {
             NpcSnapshot npc = npcBuffer[i];
-            if (!npc.IsActive || npc.Simulation.Life <= 0 || npc.Simulation.DontTakeDamage ||
+            if (!VanillaNpcChaseability1458.CanBeChasedBy(in npc) || npc.Simulation.Life <= 0 ||
                 !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) ||
                 definition.Role == NpcArchetypeRole.Town || definition.Damage <= 0 ||
                 !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
@@ -782,7 +835,7 @@ internal sealed class RuntimeBotAuthority
         float protectedCenterY = protectedPlayer.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
 
         if (bot.LockedGuardNpc.IsAssigned && npcs.TryCapture(bot.LockedGuardNpc, out NpcSnapshot npc) &&
-            npc.IsActive && npc.Simulation.Life > 0 && !npc.Simulation.DontTakeDamage &&
+            VanillaNpcChaseability1458.CanBeChasedBy(in npc) && npc.Simulation.Life > 0 &&
             VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) &&
             definition.Role != NpcArchetypeRole.Town && definition.Damage > 0 &&
             definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
@@ -1188,7 +1241,9 @@ internal sealed class RuntimeBotAuthority
             bestDefinition = definition;
         }
 
-        if (bestSlot < 0)
+        // Consumption timing is bot policy, not an alteration of QuickHeal's source candidate ordering.
+        // Save a large potion for efficient healing unless health is already at or below half.
+        if (bestSlot < 0 || (missingLife < bestDefinition.HealLife && self.Life > self.MaxLife / 2))
             return;
 
         ServerPlayerItemState consumed = bestItem.Stack == 1
@@ -1228,6 +1283,9 @@ internal sealed class RuntimeBotAuthority
             {
                 continue;
             }
+
+            if (self.MaxMana - self.Mana < definition.HealMana && self.Mana > self.MaxMana / 5)
+                return;
 
             ServerPlayerItemState consumed = item.Stack == 1
                 ? new ServerPlayerItemState(slot, VanillaItemIds.None, 0, VanillaPrefixIds.None, 0)
@@ -1515,7 +1573,8 @@ internal sealed class RuntimeBotAuthority
 
     private bool EnsureStarterConsumables(ServerPlayerId id) =>
         EnsureStarterStack(id, 3, VanillaItemIds.SuperHealingPotion, StarterPotionStack) &&
-        EnsureStarterStack(id, 4, VanillaItemIds.GreaterManaPotion, StarterPotionStack);
+        EnsureStarterStack(id, 4, VanillaItemIds.GreaterManaPotion, StarterPotionStack) &&
+        EnsureStarterStack(id, MirrorSlot, VanillaItemIds.MagicMirror, 1);
 
     private bool EnsureStarterStack(ServerPlayerId id, short slot, ItemTypeId itemType, short stack)
     {
@@ -1575,14 +1634,19 @@ internal sealed class RuntimeBotAuthority
         bot.LastProgressTick = tick;
         bot.NextAttackTick = 0;
         bot.UseItemUntilTick = 0;
+        bot.MirrorStartedAtTick = -1;
         bot.FlightDecisionUntilTick = 0;
         bot.LockedGuardNpc = default;
         bot.LockedGuardPlayer = default;
         bot.GuardTargetLockUntilTick = 0;
+        bot.GuardRepositionUntilTick = 0;
     }
 
     private void ResetUnavailableTarget(BotState bot, long tick)
     {
+        if (bot.MirrorStartedAtTick >= 0)
+            _ = serverPlayers.SetHeldItem(bot.ServerPlayerId, MeleeWeaponSlot, useItem: false);
+        bot.MirrorStartedAtTick = -1;
         bot.TargetAvailable = false;
         bot.PvpEnabled = false;
         bot.IsStuck = false;
@@ -1812,6 +1876,8 @@ internal sealed class RuntimeBotAuthority
         public long TeleportCount { get; set; }
         public long LastProgressTick { get; set; } = createdAtTick;
         public long TeleportCooldownUntil { get; set; }
+        public long MirrorStartedAtTick { get; set; } = -1;
+        public bool MirrorTeleported { get; set; }
         public long FlightDecisionUntilTick { get; set; }
         public long NextAttackTick { get; set; }
         public long UseItemUntilTick { get; set; }
@@ -1819,6 +1885,9 @@ internal sealed class RuntimeBotAuthority
         public NpcHandle LockedGuardNpc { get; set; }
         public PlayerHandle LockedGuardPlayer { get; set; }
         public long GuardTargetLockUntilTick { get; set; }
+        public long GuardRepositionUntilTick { get; set; }
+        public float GuardRepositionX { get; set; }
+        public float GuardRepositionY { get; set; }
         public float LastDistance { get; set; } = float.PositiveInfinity;
         public Dictionary<BuffTypeId, long> ActiveBuffs { get; } = [];
     }

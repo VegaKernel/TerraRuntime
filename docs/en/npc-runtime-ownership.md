@@ -1,6 +1,10 @@
 # NPC runtime ownership boundaries
 
+TZ-35 adds server-owned nullable `Friendly`, `Chaseable` and `Immortal` to the committed simulation revision. Null means unspecified (targeting fails closed); verified spawn defaults materialize values, state-only updates preserve them, and AI writes live transitions atomically. Controlled magic and bot Guard consume these flags through the source-backed `CanBeChasedBy` predicate; NPC contact also rejects friendly instances. Clone 440 and Ancient Doom 523 start unchaseable. Duke states 10/12 clear chaseability, 11 sets it, and untouched branches retain it, including transition ticks. Cultist intro/ritual and reposition damage gates follow the executed source branch. This does not claim every NPC's transient allegiance/immortality branch or temporary catchable immunity is implemented.
+
 [Русский](../ru/npc-runtime-ownership.md) · [NPC behavior families](npc-behavior-families.md) · [Gameplay decomposition roadmap](../roadmap/gameplay-decomposition-and-catalogs.md)
+
+The follow-on Duke Fishron AI69 slice fixes actual phase-three relocation at incoming timer `15`, its opposite-side destination, damping/fade, and the nine-step one/two/three-dash cycle between teleports. Focused tests pin the adjacent timer boundaries and all nine decisions; restoring the old wait-only/modulo-four behavior makes six regressions fail. This is not full Duke parity: ocean/enrage inputs, remaining phase details and official-client combat acceptance remain open.
 
 TerraRuntime keeps NPC storage, spawn/default materialization, AI, physics, combat and loot as separate ownership layers. The point is not directory decoration. Each layer must be able to evolve without teaching the slot store about vanilla combat rules or teaching physics about concrete NPC content IDs.
 

@@ -110,6 +110,14 @@ internal sealed partial class RuntimeConnectionRegistry
             Interlocked.Add(ref _relayedMovementFrames, BroadcastToPlaying(encoded));
     }
 
+    public void ServerPlayerRecallPresented(in PlayerStateSnapshot player, short floorX, short floorY)
+    {
+        // Packet 12 updates the remote actor's SpawnX/Y before Spawn(RecallFromItem=2). Without it the
+        // observer's Magic Mirror ItemCheck can recall a fake player to an unrelated world-spawn position.
+        var recall = new PlayerSpawnCommitRequest(player.Player.Slot, floorX, floorY, 0, 0, 0, player.Team, 2);
+        BroadcastToPlaying(TerrariaPlayerReplicationFrameEncoder.EncodeSpawn(in recall));
+    }
+
     public void ServerPlayerDespawned(PlayerHandle player)
     {
         if (_serverPlayers.TryRemove(player, out byte[] inactive))
