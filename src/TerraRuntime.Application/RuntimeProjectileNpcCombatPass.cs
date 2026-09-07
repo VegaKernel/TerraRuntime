@@ -27,9 +27,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
     private readonly PlayerSessionGeneration[] ownerGenerations = new PlayerSessionGeneration[PlayerSlotCount];
     private readonly long[] lastOwnerNpcHitTick;
     private readonly NpcGeneration[] lastOwnerNpcHitGeneration;
-    private readonly ProjectileGeneration[] lastLocalProjectileHitGeneration;
-    private readonly NpcGeneration[] lastLocalNpcHitGeneration;
-    private readonly long[] lastLocalNpcHitTick;
+    private readonly RuntimeProjectileNpcLocalImmunityRegistry localNpcImmunity;
 
     public RuntimeProjectileNpcCombatPass(
         RuntimeProjectileStore projectiles,
@@ -38,7 +36,8 @@ internal sealed class RuntimeProjectileNpcCombatPass
         PlayerAuthority players,
         Func<long> tickProvider,
         Random? random = null,
-        ServerPlayerAuthority? serverPlayers = null)
+        ServerPlayerAuthority? serverPlayers = null,
+        RuntimeProjectileNpcLocalImmunityRegistry? localNpcImmunity = null)
     {
         this.projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
@@ -51,12 +50,9 @@ internal sealed class RuntimeProjectileNpcCombatPass
         npcBuffer = new NpcSnapshot[npcs.Capacity];
         lastOwnerNpcHitTick = new long[checked(PlayerSlotCount * npcs.Capacity)];
         lastOwnerNpcHitGeneration = new NpcGeneration[lastOwnerNpcHitTick.Length];
-        int localImmunityCells = checked(projectiles.Capacity * npcs.Capacity);
-        lastLocalProjectileHitGeneration = new ProjectileGeneration[localImmunityCells];
-        lastLocalNpcHitGeneration = new NpcGeneration[localImmunityCells];
-        lastLocalNpcHitTick = new long[localImmunityCells];
+        this.localNpcImmunity = localNpcImmunity ??
+            new RuntimeProjectileNpcLocalImmunityRegistry(projectiles.Capacity, npcs.Capacity);
         Array.Fill(lastOwnerNpcHitTick, long.MinValue);
-        Array.Fill(lastLocalNpcHitTick, long.MinValue);
     }
 
     public long CommittedHits { get; private set; }
@@ -94,7 +90,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
                 if (!IsEligibleTarget(in target, out VanillaNpcHitboxSize npcHitbox) ||
                     !Intersects(in projectile, in projectileDefinition, in target, in npcHitbox) ||
                     (sharedOwnerImmunity && IsOwnerNpcOnCooldown(ownerRow, target.Handle, tick)) ||
-                    (localImmunity && IsLocalNpcImmune(projectile.Handle, target.Handle, tick, localImmunityCooldown)))
+                    (localImmunity && localNpcImmunity.IsImmune(projectile.Handle, target.Handle, tick, localImmunityCooldown)))
                 {
                     continue;
                 }
@@ -120,7 +116,9 @@ internal sealed class RuntimeProjectileNpcCombatPass
                 if (sharedOwnerImmunity)
                     MarkOwnerNpcCooldown(ownerRow, target.Handle, tick);
                 if (localImmunity)
-                    MarkLocalNpcImmunity(projectile.Handle, target.Handle, tick);
+                    localNpcImmunity.MarkHit(projectile.Handle, target.Handle, tick);
+                if (!TryApplyControlledMagicPostHitTargetReset(ref projectile))
+                    throw new InvalidOperationException("Committed controlled-magic NPC hit could not apply its source-backed target reset.");
                 CommittedHits++;
                 if (result == RuntimeProjectileNpcDamageResult.Killed)
                     Kills++;
@@ -171,7 +169,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
                 if (!IsEligibleTarget(in target, out VanillaNpcHitboxSize npcHitbox) ||
                     !Intersects(in explosion, in target, in npcHitbox) ||
                     (sharedOwnerImmunity && IsOwnerNpcOnCooldown(ownerRow, target.Handle, tick)) ||
-                    (localImmunity && IsLocalNpcImmune(projectile.Handle, target.Handle, tick, localImmunityCooldown)))
+                    (localImmunity && localNpcImmunity.IsImmune(projectile.Handle, target.Handle, tick, localImmunityCooldown)))
                 {
                     continue;
                 }
@@ -198,7 +196,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
                 if (sharedOwnerImmunity)
                     MarkOwnerNpcCooldown(ownerRow, target.Handle, tick);
                 if (localImmunity)
-                    MarkLocalNpcImmunity(projectile.Handle, target.Handle, tick);
+                    localNpcImmunity.MarkHit(projectile.Handle, target.Handle, tick);
                 CommittedHits++;
                 if (result == RuntimeProjectileNpcDamageResult.Killed)
                     Kills++;
@@ -347,28 +345,33 @@ internal sealed class RuntimeProjectileNpcCombatPass
         lastOwnerNpcHitTick[index] = tick;
     }
 
-    private bool IsLocalNpcImmune(ProjectileHandle projectile, NpcHandle target, long tick, int cooldown)
-    {
-        if (!projectile.IsAssigned || !target.IsAssigned)
-            return true;
-        int index = checked(projectile.Slot * npcs.Capacity + target.Slot);
-        if (lastLocalProjectileHitGeneration[index] != projectile.Generation ||
-            lastLocalNpcHitGeneration[index] != target.Generation)
-        {
-            return false;
-        }
-        if (cooldown < 0)
-            return true;
-        long previous = lastLocalNpcHitTick[index];
-        return previous != long.MinValue && tick - previous < cooldown;
-    }
 
-    private void MarkLocalNpcImmunity(ProjectileHandle projectile, NpcHandle target, long tick)
+    private bool TryApplyControlledMagicPostHitTargetReset(ref ProjectileSnapshot projectile)
     {
-        int index = checked(projectile.Slot * npcs.Capacity + target.Slot);
-        lastLocalProjectileHitGeneration[index] = projectile.Generation;
-        lastLocalNpcHitGeneration[index] = target.Generation;
-        lastLocalNpcHitTick[index] = tick;
+        if (!VanillaProjectileNpcCombatFacts.ShouldResetReleasedControlledMagicTargetAfterNpcHit(
+                projectile.Type, projectile.Ai.Ai0) ||
+            projectile.Ai.Ai1 == -1f)
+        {
+            return true;
+        }
+
+        var update = new ProjectileStateUpdate(
+            projectile.Type,
+            projectile.Spawner,
+            projectile.PositionX,
+            projectile.PositionY,
+            projectile.VelocityX,
+            projectile.VelocityY,
+            new ProjectileAiState(projectile.Ai.Ai0, -1f, projectile.Ai.Ai2),
+            projectile.BannerIdToRespondTo,
+            projectile.Damage,
+            projectile.KnockBack,
+            projectile.OriginalDamage);
+        if (!projectiles.TryUpdate(projectile.Handle, in update, out ProjectileSnapshot committed))
+            return false;
+
+        projectile = committed;
+        return true;
     }
 
 }

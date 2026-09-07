@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
@@ -13,6 +14,7 @@ internal sealed record RuntimePlayerTransferState(
     RuntimePlayerInventoryItem[] Inventory,
     PlayerAppearanceCommitRequest? Appearance,
     PlayerEquipmentCommitRequest[] Equipment,
+    BuffTypeId[]? BuffTypes,
     bool GodMode,
     bool MouseItemNormalized = false)
 {
@@ -29,6 +31,8 @@ internal sealed record RuntimePlayerTransferState(
 internal sealed class RuntimePlayerTransferProfileStore
 {
     private const int PlayerSlotCount = byte.MaxValue + 1;
+    // TerrariaServer 1.4.5.8 Player.maxBuffs. Packet 50 cannot legally describe more active buff slots.
+    private const int MaximumPlayerBuffs = 44;
 
     private readonly Entry?[] entries = new Entry?[PlayerSlotCount];
 
@@ -39,6 +43,18 @@ internal sealed class RuntimePlayerTransferProfileStore
 
         Entry entry = GetOrReplace(connection);
         entry.Appearance = request;
+        return true;
+    }
+
+
+    public bool TrySetBuffTypes(ConnectionHandle connection, ReadOnlyMemory<BuffTypeId> buffTypes)
+    {
+        ReadOnlySpan<BuffTypeId> source = buffTypes.Span;
+        if (!connection.IsAssigned || !AreValidBuffTypes(source))
+            return false;
+
+        Entry entry = GetOrReplace(connection);
+        entry.BuffTypes = source.ToArray();
         return true;
     }
 
@@ -63,13 +79,15 @@ internal sealed class RuntimePlayerTransferProfileStore
     public bool TryCapture(
         ConnectionHandle connection,
         out PlayerAppearanceCommitRequest? appearance,
-        out PlayerEquipmentCommitRequest[] equipment)
+        out PlayerEquipmentCommitRequest[] equipment,
+        out BuffTypeId[]? buffTypes)
     {
         Entry? entry = Get(connection);
         if (entry is null)
         {
             appearance = null;
             equipment = [];
+            buffTypes = null;
             return false;
         }
 
@@ -77,6 +95,7 @@ internal sealed class RuntimePlayerTransferProfileStore
         equipment = entry.Equipment.Count == 0
             ? []
             : entry.Equipment.Values.OrderBy(static item => item.SlotId).ToArray();
+        buffTypes = entry.BuffTypes is null ? null : entry.BuffTypes.ToArray();
         return true;
     }
 
@@ -106,12 +125,20 @@ internal sealed class RuntimePlayerTransferProfileStore
     public void Restore(
         ConnectionHandle connection,
         PlayerAppearanceCommitRequest? appearance,
-        ReadOnlySpan<PlayerEquipmentCommitRequest> equipment)
+        ReadOnlySpan<PlayerEquipmentCommitRequest> equipment,
+        BuffTypeId[]? buffTypes)
     {
         if (!connection.IsAssigned)
             throw new ArgumentException("An assigned connection is required.", nameof(connection));
 
-        var entry = new Entry(connection) { Appearance = appearance };
+        if (buffTypes is not null && !AreValidBuffTypes(buffTypes))
+            throw new ArgumentException("Transferred player buffs must be valid Terraria 1.4.5.8 buff ids within Player.maxBuffs.", nameof(buffTypes));
+
+        var entry = new Entry(connection)
+        {
+            Appearance = appearance,
+            BuffTypes = buffTypes is null ? null : buffTypes.ToArray()
+        };
         for (int i = 0; i < equipment.Length; i++)
         {
             PlayerEquipmentCommitRequest request = equipment[i];
@@ -125,6 +152,20 @@ internal sealed class RuntimePlayerTransferProfileStore
             entry.Equipment[request.SlotId] = request;
         }
         entries[connection.Player.Slot.Value] = entry;
+    }
+
+    private static bool AreValidBuffTypes(ReadOnlySpan<BuffTypeId> buffTypes)
+    {
+        if (buffTypes.Length > MaximumPlayerBuffs)
+            return false;
+
+        for (int i = 0; i < buffTypes.Length; i++)
+        {
+            if (buffTypes[i] == VanillaBuffIds.None || !VanillaBuffIds.TryCreate(buffTypes[i].Value, out _))
+                return false;
+        }
+
+        return true;
     }
 
     public void Clear(ConnectionHandle connection)
@@ -158,6 +199,7 @@ internal sealed class RuntimePlayerTransferProfileStore
     {
         public ConnectionHandle Connection { get; } = connection;
         public PlayerAppearanceCommitRequest? Appearance { get; set; }
+        public BuffTypeId[]? BuffTypes { get; set; }
         public Dictionary<short, PlayerEquipmentCommitRequest> Equipment { get; } = [];
     }
 }

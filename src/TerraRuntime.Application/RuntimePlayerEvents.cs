@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
@@ -47,6 +48,18 @@ internal interface IRuntimePlayerEventSink
     }
 
     void PlayerGodModeChanged(PlayerHandle player, bool enabled)
+    {
+    }
+
+    void PlayerBuffTypesUpdated(ConnectionHandle connection, in PlayerBuffTypesCommitRequest request)
+    {
+    }
+
+    /// <summary>
+    /// Relays a source-backed authoritative PvP buff to the exact target generation using Terraria packet 55.
+    /// This is a network side effect only; exact buff duration remains client-owned as in vanilla PvP.
+    /// </summary>
+    void PlayerPvpBuffApplied(PlayerHandle player, BuffTypeId buffType, int durationTicks)
     {
     }
 

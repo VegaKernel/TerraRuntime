@@ -28,6 +28,18 @@ Fragmented fixed-size payloads собираются в bounded stack storage. Д
 
 В закреплённой версии Multiplicity `3.0.0` `PacketViewParser` работает со span и не имеет overload для `ReadOnlySequence<byte>`. Поэтому fragmented fixed-size frame нельзя передать Multiplicity view без предварительного получения contiguous data. Для маленьких fixed payload TerraRuntime оставляет этот fallback bounded через stack storage, не создавая временный heap array. Single-segment frames по-прежнему передаются напрямую соответствующему Multiplicity view.
 
+### Player-buff snapshot packet `50`
+
+Packet `50` (`PlayerBuff`) также проходит через typed bounded boundary. Official TerrariaServer `1.4.5.8` записывает один byte игрока, все ненулевые active buff types из `44` buff slots игрока и завершающий `ushort 0`. Duration в wire payload отсутствует. TerraRuntime принимает не более `44` ненулевых version-pinned buff IDs плюс terminator; malformed length, внутренний zero, отсутствующий terminator или buff ID вне диапазона отклоняются как malformed protocol.
+
+На server ingress заявленный клиентом player byte не считается доверенным. Identity заменяется на connection-owned generation `PlayerHandle` до того, как owned snapshot типов баффов попадает в authoritative queue. Committed snapshot остаётся только presentation/synchronization state: его можно удерживать для peer relay, late-join baseline и cross-world transfer, но он не превращается в authoritative combat buff с выдуманной remaining duration. Реально наблюдённый пустой snapshot намеренно отличается от игрока, для которого packet `50` ещё никогда не наблюдался.
+
+Такое разделение соответствует official dedicated-server boundary: hostile projectile `Damage_EVP` пропускается в server mode, а пострадавший client применяет эти PvE status effects локально и позднее сообщает только список active types через packet `50`. Packet `55` является отдельным targeted PvP buff-delivery path и не используется как fallback для восстановления duration packet `50`.
+
+### Targeted PvP buff packet `55`
+
+`TerrariaPlayerPvpBuffCodec1458` фиксирует packet `55` с точным payload `[target player byte][buff ushort][duration int32]`. Decode отвергает wrong ID, неверную payload length, неизвестный buff ID и nonpositive duration. Egress дополнительно требует source-pinned 1.4.5.8 allow-set `Main.pvpBuff` до отправки frame. Authoritative projectile path использует этот codec только после server-resolved admitted `StatusPvP` proc и только для exact playing target generation; это не broadcast snapshot и не grant combat authority входящему client packet `55`.
+
 ## Serialization path
 
 В Multiplicity `3.0.0` перенесена exact-size packet-buffer механика, которую TerraRuntime раньше держал у себя. Owned packet models теперь напрямую используют `TerrariaPacket.TrySerialize(...)` / `ToArray()`, а segmented payload decode напрямую вызывает `TerrariaPacket.TryDeserializePayload(..., ReadOnlySequence<byte>, ...)`. Удалены локальные прокладки `MultiplicityPacketSerializer`, `FixedBufferWriteStream` и `MultiplicityPacketDeserializer`.
@@ -57,8 +69,9 @@ Client text module может передавать команду без арг�
 
 Golden vectors в `Protocol326VanillaGoldenWireTests` являются literal bytes, вручную выведенными из локально декомпилированного official TerrariaServer `1.4.5.8`. Проверялись следующие official switch cases:
 
-- `NetMessage.SendData`: packets `17`, `19`, `47`, `79`;
-- `MessageBuffer.GetData`: packets `17`, `19`, `46`, `47`, `79`.
+- `NetMessage.SendData`: packets `17`, `19`, `47`, `50`, `79`;
+- `MessageBuffer.GetData`: packets `17`, `19`, `46`, `47`, `50`, `55`, `79`;
+- `Projectile.Damage` / `Damage_EVP` / `StatusPlayer` и `Player.AddBuff` для разграничения authority packet `50`/`55`.
 
 Декомпилированный official source остаётся только локальным reference material и в repository не коммитится. В tests коммитятся лишь independently derived wire vectors и behavioral assertions.
 

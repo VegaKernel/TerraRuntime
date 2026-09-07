@@ -41,6 +41,7 @@ public enum TerrariaMessageId : byte
     SignNew = 47,
     LiquidSet = 48,
     PlayerSpawnSelf = 49,
+    PlayerBuffs = 50,
     SetNpcTalk = 40,
     AddPlayerBuffPvp = 55,
     UniqueTownNpcInfoSyncRequest = 56,

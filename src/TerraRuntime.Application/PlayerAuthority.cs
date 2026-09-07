@@ -91,6 +91,9 @@ internal sealed partial class PlayerAuthority
             case ClientPlayerPvpHitRuntimeCommand pvpHit:
                 ApplyClientPvpHit(pvpHit);
                 return true;
+            case PlayerBuffTypesRuntimeCommand buffs:
+                ApplyPlayerBuffTypes(buffs);
+                return true;
             case SetPlayerGodModeRuntimeCommand godMode:
                 ApplySetPlayerGodMode(godMode);
                 return true;
@@ -275,7 +278,7 @@ internal sealed partial class PlayerAuthority
         out PlayerEquipmentCommitRequest[] equipment)
     {
         if (!membership.IsCurrent(connection) ||
-            !transferProfiles.TryCapture(connection, out _, out equipment))
+            !transferProfiles.TryCapture(connection, out _, out equipment, out _))
         {
             equipment = [];
             return false;
@@ -348,6 +351,8 @@ internal sealed partial class PlayerAuthority
     public long RejectedPvpToggles { get; private set; }
     public long AppliedTeamChanges { get; private set; }
     public long RejectedTeamChanges { get; private set; }
+    public long AppliedBuffSnapshots { get; private set; }
+    public long RejectedBuffSnapshots { get; private set; }
     public long AppliedAuthoritativePvpHits { get; private set; }
     public long RejectedAuthoritativePvpHits { get; private set; }
     public long LegacyPvpFallbackHits { get; private set; }

@@ -292,7 +292,8 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
         PlayerBootstrapFrameSink bootstrap)
     {
         var vitals = new PlayerVitalsFrameSink(source, bootstrap, runtime.HealthIngress, runtime.ManaIngress);
-        var combat = new PlayerCombatFrameSink(source, bootstrap, vitals, runtime.PlayerCombatIngress);
+        var buffs = new PlayerBuffFrameSink(source, bootstrap, vitals, runtime.PlayerBuffIngress);
+        var combat = new PlayerCombatFrameSink(source, bootstrap, buffs, runtime.PlayerCombatIngress);
         var items = new WorldItemFrameSink(source, bootstrap, combat, runtime.WorldItemIngress);
         var projectiles = new ProjectileLifecycleFrameSink(source, bootstrap, items, runtime.ProjectileIngress);
         var chests = new ChestInteractionFrameSink(source, bootstrap, projectiles, runtime.ChestIngress);

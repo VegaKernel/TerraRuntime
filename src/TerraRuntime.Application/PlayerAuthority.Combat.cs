@@ -1,4 +1,5 @@
 using TerraRuntime.Gameplay.Npcs;
+using TerraRuntime.Gameplay.Buffs;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -162,6 +163,24 @@ internal sealed partial class PlayerAuthority
         var health = new PlayerHealthCommitRequest(target.Slot, target.Life, target.MaxLife);
         events?.PlayerAuthoritativeHealthUpdated(target.Connection, in health);
         return PlayerDamageCommitResult.Committed;
+    }
+
+    internal bool TryPublishAuthoritativePvpBuff(PlayerHandle targetHandle, BuffTypeId buffType, int durationTicks)
+    {
+        if (!targetHandle.IsAssigned ||
+            buffType == VanillaBuffIds.None ||
+            !VanillaBuffIds.TryCreate(buffType.Value, out _) ||
+            !VanillaPvpBuffFacts1458.IsRelayable(buffType) ||
+            durationTicks <= 0 ||
+            !membership.TryGet(targetHandle, out RuntimePlayerMember? target))
+        {
+            return false;
+        }
+
+        // Projectile.StatusPvP runs before Hurt, so a lethal committed hit may still leave a PvP debuff.
+        // Do not reject merely because the authoritative HP commit has just marked the target dead.
+        events?.PlayerPvpBuffApplied(targetHandle, buffType, durationTicks);
+        return true;
     }
 
 

@@ -118,3 +118,12 @@ public readonly record struct PlayerManaCommitRequest(
     PlayerSlotId PlayerSlot,
     short Mana,
     short MaxMana);
+
+/// <summary>
+/// Server-owned player identity plus the client-reported active buff type presentation snapshot from packet 50.
+/// Exact buff times are intentionally absent because TerrariaServer 1.4.5.8 packet 50 does not carry them.
+/// This contract is presentation/synchronization state, not proof of an authoritative combat modifier.
+/// </summary>
+public readonly record struct PlayerBuffTypesCommitRequest(
+    PlayerSlotId PlayerSlot,
+    ReadOnlyMemory<BuffTypeId> BuffTypes);

@@ -4,11 +4,11 @@ Updated: 2026-09-07.
 
 This is the resume point for the next agent/session. Read it before reconstructing project state from source.
 
-## Last clean checkpoint
+## Latest checkpoint / base provenance
 
-- Checkpoint: `/TZ/TerraRuntime-main-TZ-29.zip`.
-- Base clean checkpoint: `/TZ/TerraRuntime-main-TZ-28.zip`.
-- TZ-29 closes the first production operator-bot slice, the fresh-sandbox worldgen memory reuse fix, packets/sec dashboard graph semantics, and headless Terminal.Gui smoke-test reliability.
+- Latest clean WIP checkpoint: `/TZ/TerraRuntime-main-TZ-34-WIP.zip`. It is derived from the `TerraRuntime-main.zip` attached in the 2026-09-07 continuation session, which the user explicitly designated as the latest project base, through the source-correct TZ-32/TZ-33 checkpoints. Do not reconstruct this state by starting from TZ-29/30/31 library archives.
+- Latest released clean checkpoint remains `/TZ/TerraRuntime-main-TZ-29.zip`; TZ-34 is still WIP because the external official-client and NativeAOT evidence gates listed below are unavailable in this environment.
+- The attached base already contained the accumulated TZ-32 live-stability, bot and vanilla-worldgen work described below. TZ-32 added source-correct packet-50 player-buff presentation synchronization; TZ-33 closed admitted controlled-magic local-immunity/reacquisition; TZ-34 adds the admitted source-backed projectile-specific PvP status/packet-55 path. Hostile PvE projectile-debuff authority remains open.
 
 ## TZ-30 stabilization / network acceptance in progress
 
@@ -31,7 +31,7 @@ This is the resume point for the next agent/session. Read it before reconstructi
 
 ## TZ-32 live-stability WIP
 
-- TZ-32 remains WIP; no final checkpoint archive has been produced. The latest complete Release suite is green at 3258/3258 tests, and the Release build reports 0 warnings / 0 errors.
+- TZ-32 remains WIP; `/TZ/TerraRuntime-main-TZ-32-WIP.zip` is the latest clean checkpoint but is not a final/released TZ-32. The latest complete Release suite is green at 3270/3270 tests, and the Release build reports 0 warnings / 0 errors.
 - Trusted explosive projectile termination now owns terrain mutation. Exact admitted defaults/motion cover Bomb `28`, Dynamite `29`, launcher aiStyle-16 types, Mini Nuke family `793..810` except `802`, Celebration Mk2 holder `714`, and child rockets `715..718` with their separate aiStyle `147` behavior. Holder `714` remains untrusted presentation state; children require exact volley provenance. Unknown types remain fail-closed.
 - Terrain explosions use source-pinned strict radii and `CanExplodeTile`/wall gates. Celebration Rocket IV uses `< 5`; Mini Nuke II uses `< 7`. Chests, dungeon/temple tiles and protected walls are regression-tested. Matching owner packet-17 edits are bounded convergence echoes after the authoritative mutation; they are not a second mining path and cannot grant an untrusted projectile terrain authority.
 - Packet-17 network admission is now pinned to the verified Celebration worst-case burst: 2314 frames per 60 ticks, with a 2400 per-message ceiling and 4096 aggregate ceiling. This removes the old false `RateLimit` for the admitted legitimate burst without an unbounded bypass.
@@ -56,6 +56,25 @@ This is the resume point for the next agent/session. Read it before reconstructi
 - The complete Release runner is 3258/3258 green; Release build is 0 warnings / 0 errors. Bot regressions cover generated visual diversity, distinct escort destinations, actual clear-route ground walking, actual obstacle ascent, NpcBot separation/no-contact damage, deduplicated UI types, five accessory replication, exact Terraspark/Magiluminescence movement constants and the real `+ Bot` Accept-to-operations path. The cave-house integration set is 25/25 green across canonical/multi-seed generation and chest placement; Larva has six focused object/runtime tests.
 - Remaining scope is still material: official-client bot acceptance, richer obstacle route planning, additional weapon/projectile families, more NPC/boss AI, and the unported vanilla worldgen passes/features. Do not describe this follow-up as complete Sandbox Level 2.
 
+## TZ-33 controlled-magic local-immunity/reacquisition WIP
+
+- Checkpoint: `/TZ/TerraRuntime-main-TZ-33-WIP.zip`, derived only from the 2026-09-07 attached `TerraRuntime-main.zip` working tree plus the source-correct TZ-32 packet-50 changes already carried in that tree. Do not reconstruct it from older TZ-29/30/31 archives.
+- Flamelash `34` and Rainbow Rod `79` now share one `RuntimeProjectileNpcLocalImmunityRegistry` between authoritative NPC collision and AI target lookup. The registry is keyed by exact projectile and NPC generations, preserves the source `12`-tick positive cooldown boundary, and preserves permanent negative local immunity for admitted grenade variants.
+- A committed released Flamelash/Rainbow Rod NPC hit now applies the source type-specific post-hit reset `ai[1] = -1`. The next AI_009 `FindTargetWithLineOfSight` lookup skips exact NPC generations still marked nonzero in projectile-local immunity, so another legal line-of-sight NPC can be acquired; the prior target becomes eligible again at the exact 12-tick boundary.
+- This closes the previous roadmap gap named `localNPCImmunity-aware post-hit target reacquisition` for the admitted Flamelash/Rainbow Rod slice. It does not claim full `NPC.CanBeChasedBy` parity: transient friendly/chaseable/immortal flags not represented by the runtime remain an explicit fail-closed gap.
+- Explosive self-hurt remains open. Terraria 1.4.5.8 `Projectile.SelfHurtPlayers` feeds self-damage through `Main.DamageVar(..., -localPlayer.luck)`, while TerraRuntime does not yet own exact player luck; substituting luck zero would not be source-correct.
+- Current TZ-33 local verification before packing: Release build 0 warnings / 0 errors and complete Release test suite 3275/3275 green. Re-run both after documentation changes and before treating the checkpoint as clean.
+
+## TZ-34 projectile-specific PvP status / packet-55 WIP
+
+- Checkpoint: `/TZ/TerraRuntime-main-TZ-34-WIP.zip`, derived from the current TZ-33 working tree whose provenance ultimately remains the user-designated 2026-09-07 attached `TerraRuntime-main.zip`. Do not replace it with an older library archive.
+- TerrariaServer 1.4.5.8 source order is preserved: a legal PvP projectile hit calls `StatusPvP(target)` before `TryDoingOnHitEffects` and before `Player.Hurt(..., pvp: true, ...)`. Creative GodMode can therefore avoid the damage inside `Hurt` while the preceding status roll still succeeds; TerraRuntime intentionally reproduces that non-obvious ordering.
+- The admitted type-specific `StatusPvP` subset is exact: Fire Arrow `2` -> `On Fire!` `24` for `180` ticks at `1/3`; Flamelash `34` -> `On Fire!` for `240` ticks at `1/2`; Poisoned Knife `54` -> `Poisoned` `20` for `600` ticks at `1/2`. Equipment/melee-enchant status effects and unsupported projectile families remain fail-closed.
+- `VanillaPvpBuffFacts1458` pins the exact 1.4.5.8 `Main.pvpBuff` true set. `TerrariaPlayerPvpBuffCodec1458` owns packet `55` with exact payload `[target player byte][buff ushort][duration int32]` and rejects invalid IDs/durations.
+- Authoritative combat publishes only a proven PvP status side effect. `PlayerAuthority` validates the exact target generation and relayable buff type, `RuntimePlayerEventDispatcher` carries the event, and `RuntimeConnectionRegistry` enqueues packet `55` only to that exact playing target generation. It is not broadcast to observers and does not become a server-owned buff-duration mirror.
+- Focused validation: packet-55 codec/facts/relay classes are 11/11 green; Fire Arrow PvP ingress/status scenarios are 3/3 green; the Creative-GodMode ordering regression is included in that set. The known `ListenerManagerTests.Same_port_bind_address_change_preserves_existing_client` scheduler flake was observed once during a full run and then passed three consecutive isolated 3/3 class runs. Final candidate verification after documentation changes: Release affected production/test graph build 0 warnings / 0 errors; direct `dotnet vstest` on the built Release assembly 3284/3284 green in 27 s; documentation validation 92 mirrored RU/EN pages and 223 Markdown files.
+- Remaining status gap is intentionally narrower, not falsely closed: hostile PvE projectile status such as Cultist Fireball `467` `On Fire!` still cannot be reconstructed from packet `50` because official dedicated server skips `Damage_EVP` and packet `50` has no duration. Exact equipment-derived PvP status also remains open until the corresponding owner state is authoritative.
+
 ## Operator bots at TZ-29
 
 - Bot behavior/policy is isolated under `TerraRuntime.Application.Bots`; source-pinned bot item/NPC facts live under `TerraRuntime.Gameplay.Bots`. There is intentionally no bot-specific dependency from `TerraRuntime.Core`.
@@ -68,6 +87,17 @@ This is the resume point for the next agent/session. Read it before reconstructi
 - `NpcBot` is a real authoritative NPC actor, not a fake-player disguise. It supports `Idle`, `Follow`, `Guard` positioning and stuck/hard-distance recovery through the existing NPC actor-control/physics path. Presets are admitted only for hostile, non-boss NPCs with a verified controlled-motion family; current coverage includes ground fighters, AI_002 flying eyes, AI_005 flyers and ordinary AI_014 bats. The bot body is invulnerable and has zero contact damage so it cannot become an ordinary NPC loot/progression farm.
 - NpcBot offensive Guard remains fail-closed until NPC-owned attack/projectile provenance for the controlled-actor path is separately source-verified. Do not synthesize a player projectile owner for an NPC body.
 - Switching bot body/preset replaces the authoritative actor through the existing server-player/NPC lifecycle boundary; the UI never mutates actor state directly.
+
+## TZ-32 packet-50 player-buff presentation synchronization
+
+- TerrariaServer 1.4.5.8 source verification corrected an initially considered but rejected design: hostile projectile `Damage_EVP` is skipped when `Main.netMode == 2`, so dedicated server does not independently roll the client-side PvE status duration. Packet `55` is targeted PvP buff delivery and must not be repurposed as a PvE duration fallback.
+- Packet `50` is now a bounded typed ingress/egress path. The accepted shape is one claimed player byte, at most 44 nonzero version-pinned buff IDs, and one explicit zero `ushort` terminator. Invalid length, missing/floating terminator and invalid IDs fail as malformed protocol.
+- `PlayerBuffFrameSink` discards the claimed player byte after slot assignment, uses the exact connection-owned `PlayerHandle` generation, and posts an owned replaceable snapshot through the existing authoritative queue. Queue saturation may drop this presentation sample; malformed protocol does not.
+- `PlayerAuthority` stores only the client-reported type list in the generation-scoped transfer/presentation profile. It is not wired into authoritative combat modifiers because packet `50` has no duration and the client's active list can reflect local `AddBuff` immunity/timing semantics the dedicated server cannot reconstruct from this packet.
+- `RuntimeConnectionRegistry` retains the exact generation's encoded packet-50 frame, suppresses duplicate snapshots, relays changes to playing peers and exchanges the retained state during late-join baseline. A never-observed snapshot remains distinct from an observed empty snapshot.
+- Cross-world transfer carries packet-50 presentation state only when it was actually observed; generation reuse cannot expose a prior player's retained frame.
+- Final local validation for this checkpoint: .NET `11.0.100-preview.7.26381.103`, Release affected production/test graph build 0 warnings / 0 errors; complete `TerraRuntime.Tests` 3270/3270 passed in 23 s test time / 25.34 s process wall time, peak RSS about 128 MiB; `python3 tools/ci/check_documentation.py` passes 92 mirrored RU/EN pages and 223 Markdown files.
+- Authoritative projectile buff/debuff mutation remains open in `docs/roadmap.md`. Do not infer exact remaining PvE debuff duration from packet `50` and do not create a parallel packet-55 authority path to make the checklist green.
 
 ## TUI and network presentation at TZ-29
 
@@ -143,4 +173,4 @@ Cross-world TUI moves attach the authoritative player at the destination spawn. 
 
 ## Next recommended pass
 
-First complete TZ-32 official-client acceptance: Celebration Mk2 with Rocket IV and Mini Nuke II under sustained legal fire, Bomb/Dynamite, ordinary picks and all admitted drills/DCU, large water/lava/shimmer backlogs across multiple worlds, ordinary world-item pickup, cursor-item/full-inventory/repeated transfers, and disconnect/reconnect near the transfer boundary. Treat any mismatch as a source/production-path investigation; do not relax authority or add a legacy path. Then complete the still-external TZ-30 NativeAOT gates when the exact .NET 11 preview-7 packs are available. For further NpcBot coverage, keep offensive Guard fail-closed and presentation actors invulnerable/zero-contact until their source-backed combat/death/drop semantics exist.
+First complete TZ-32 official-client acceptance: Celebration Mk2 with Rocket IV and Mini Nuke II under sustained legal fire, Bomb/Dynamite, ordinary picks and all admitted drills/DCU, large water/lava/shimmer backlogs across multiple worlds, ordinary world-item pickup, cursor-item/full-inventory/repeated transfers, disconnect/reconnect near the transfer boundary, and packet-50 buff-list convergence around ordinary hostile-projectile hits. Treat any mismatch as a source/production-path investigation; do not relax authority or add a legacy path. Then continue the roadmap from authoritative combat/projectile side effects, with projectile buff/debuff mutation still explicitly open until a source-correct server authority model can represent the required duration/immunity semantics. Complete the still-external TZ-30 NativeAOT gates when the exact .NET 11 preview-7 packs are available. For further NpcBot coverage, keep offensive Guard fail-closed and presentation actors invulnerable/zero-contact until their source-backed combat/death/drop semantics exist.

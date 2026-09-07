@@ -46,7 +46,8 @@ internal sealed partial class ServerRuntimeState
         bool isThereAWorldSurface = true,
         bool evilBossDownedBaseline = false,
         bool skeletronDownedBaseline = false,
-        bool golemDownedBaseline = false)
+        bool golemDownedBaseline = false,
+        Random? projectilePlayerCombatRandom = null)
     {
         _runtime = ServerRuntimeComposition.Create(
             playerEvents,
@@ -83,6 +84,7 @@ internal sealed partial class ServerRuntimeState
             isThereAWorldSurface,
             evilBossDownedBaseline,
             skeletronDownedBaseline,
-            golemDownedBaseline);
+            golemDownedBaseline,
+            projectilePlayerCombatRandom);
     }
 }

@@ -20,6 +20,7 @@ internal sealed class RuntimeConnectionEndpoint
     private float positionX;
     private float positionY;
     private RetainedFrame? latestAppearance;
+    private RetainedFrame? latestBuffs;
     private RetainedFrame? latestMovement;
 
     public RuntimeConnectionEndpoint(TerrariaConnectionOutboundQueue outbound)
@@ -85,6 +86,23 @@ internal sealed class RuntimeConnectionEndpoint
 
     public bool TryGetLatestAppearanceFrame(PlayerHandle expectedOwner, out OutboundFrame frame) =>
         TryGetRetainedFrame(Volatile.Read(ref latestAppearance), expectedOwner, out frame);
+
+    public bool UpdateLatestBuffFrame(PlayerHandle owner, byte[] encoded)
+    {
+        ArgumentNullException.ThrowIfNull(encoded);
+        if (!owner.IsAssigned)
+            throw new ArgumentException("Buff baseline owner must be assigned.", nameof(owner));
+
+        RetainedFrame? current = Volatile.Read(ref latestBuffs);
+        if (current is not null && current.Owner == owner && current.Encoded.AsSpan().SequenceEqual(encoded))
+            return false;
+
+        Volatile.Write(ref latestBuffs, new RetainedFrame(owner, encoded));
+        return true;
+    }
+
+    public bool TryGetLatestBuffFrame(PlayerHandle expectedOwner, out OutboundFrame frame) =>
+        TryGetRetainedFrame(Volatile.Read(ref latestBuffs), expectedOwner, out frame);
 
     public bool UpdateLatestEquipmentFrame(PlayerHandle owner, short equipmentSlot, byte[] encoded) =>
         UpdateLatestEquipmentFrame(owner, equipmentSlot, encoded, out _);
@@ -181,6 +199,7 @@ internal sealed class RuntimeConnectionEndpoint
 
         hasPosition = false;
         ClearRetainedFrame(ref latestAppearance, player);
+        ClearRetainedFrame(ref latestBuffs, player);
         ClearRetainedFrame(ref latestMovement, player);
 
         lock (equipmentGate)

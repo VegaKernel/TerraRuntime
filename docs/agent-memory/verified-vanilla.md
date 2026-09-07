@@ -132,6 +132,17 @@ Primary evidence: TerrariaServer 1.4.5.8 `Item.SetDefaults`, `Player.PickAmmo`, 
 - The destruction membership test is strict Euclidean distance `< radius`, not `<=`. Celebration Rocket IV `718` uses center-based radius `5`; Mini Nuke II rocket/grenade/mine `796/797/798` use position-based radius `7`. Celebration Rocket I/III `715/717` have no `Kill_ExplodeTiles` terrain branch.
 - `CanExplodeTile` always rejects dungeon tile types (`Main.tileDungeon`), `TileID.Sets.BasicChest`, temple wall `350`, and the exact hard-protected tile switch. It conditionally gates hardmode ores, Demon/Crimson Altar, Underworld Hellstone, and the remaining world-state-dependent cases. Wall removal is enabled only when `ShouldWallExplode` finds an empty wall cell inside the same strict radius; wall `350` is never killed. Unrepresented object/world-state cases remain fail-closed.
 
+## Player buff synchronization and hostile projectile debuffs
+
+Primary evidence: TerrariaServer 1.4.5.8 `Projectile.Damage`, `Projectile.Damage_EVP`, `Projectile.StatusPlayer`, `Projectile.ApplyBuffTo`, `MessageBuffer.GetData` packet cases `3`/`50`/`55`, `NetMessage.SendData` packet case `50`, and `Player.maxBuffs`.
+
+- packet `50` (`PlayerBuff`) encodes `[player byte][zero or more buff ushort][zero ushort terminator]`; `Player.maxBuffs` is `44`. It carries buff **types only**, never durations.
+- on dedicated-server ingress, packet `50` discards the claimed player byte and replaces it with `whoAmI`. Each reported nonzero type is mirrored with temporary server-side `buffTime = 60`, the remainder of the arrays is cleared, and packet `50` is relayed to peers. The client also sends packet `50` during the normal join handshake, and `SyncOnePlayer` includes it in late-join player baselines.
+- hostile projectile player-status application is not a dedicated-server execution path: `Projectile.Damage()` calls `Damage_EVP` only when `Main.netMode != 2`. A multiplayer client that survives a hostile projectile `Hurt` runs `StatusPlayer` locally and later synchronizes the resulting active buff-type list through packet `50`.
+- Cultist Fireball `467` is one concrete example: `StatusPlayer` locally calls `ApplyBuffTo(player, 24, Main.rand.Next(30, 150))`, while `Kill()` expands the projectile to a `176x176` damage area and calls `Damage()` again. The exact PvE debuff duration/RNG result is therefore not transmitted to the dedicated server by packet `50`.
+- packet `55` must not be repurposed to manufacture those PvE durations. It is the separate targeted PvP `AddPlayerBuffPvP` path described above; independently rolling a server duration and delivering packet `55` would not be vanilla packet semantics and can extend or alter the client-owned result.
+- TerraRuntime packet-50 state is consequently presentation/synchronization evidence only. It may be generation-scoped, relayed, late-join baselined and transferred, but it is not by itself proof that an authoritative combat modifier with a known remaining duration exists.
+
 ## World-item reservation and cursor transfer
 
 Primary evidence: TerrariaServer 1.4.5.8 `Main.UpdateServer`, `WorldItem.FindOwner`, `MessageBuffer.GetData` packet cases `21`/`22`, packet-5 inventory handling, and `Player.dropItemCheck`.
@@ -140,6 +151,29 @@ Primary evidence: TerrariaServer 1.4.5.8 `Main.UpdateServer`, `WorldItem.FindOwn
 - Server packet-21 handling ignores an existing item when `playerIndexTheItemIsReservedFor != whoAmI`; a different playing client therefore has no vanilla authority to remove or rewrite another player's reserved item. Packet 22 is a server-to-client item-owner projection in this path, not a client ownership grant.
 - Packet-5 slot `58` maps to the owning client's `Main.mouseItem`. `Player.dropItemCheck` copies the mouse item into inventory slot 58 and, when the inventory closes, runs `GetOrDropItem`, clears `Main.mouseItem`, and clears inventory slot 58. A cross-world snapshot racing that client transition can therefore neither replay the old cursor image nor guess the full `GetItem`/special-storage semantics.
 - TerraRuntime admits the conservative lossless subset: before detach it moves the whole cursor stack only into an empty ordinary main slot `0..49`; if none exists, it cancels the transfer while the source player is still attached. This is an intentional fail-closed policy built from the verified vanilla role of slot 58, not a claim that vanilla `GetItem` itself is limited to empty main slots.
+
+
+## Projectile-local NPC immunity and controlled-magic reacquisition
+
+Primary evidence: TerrariaServer 1.4.5.8 `Projectile.SetDefaults`, `Projectile.Damage_PVE`, `Projectile.Damage_PVE_Inner`, `Projectile.FindTargetWithLineOfSight`, `Projectile.DecrementLocalImmuneTimeCounters`, and the type-specific post-hit branch for projectiles `34`/`79`.
+
+- Flamelash `34` and Rainbow Rod `79` both set `usesLocalNPCImmunity = true` and `localNPCHitCooldown = 12`; their source penetration is `2` and `3` respectively.
+- `Damage_PVE` rejects an NPC while the projectile's corresponding `localNPCImmunity[npcSlot]` cell is nonzero. After a successful ordinary local-immunity hit, `Damage_PVE_Inner` clears the owner's shared `NPC.immune` cell and writes the projectile's `localNPCHitCooldown` into that local cell.
+- `DecrementLocalImmuneTimeCounters` decrements only positive local-immunity cells once per projectile update; negative values remain nonzero/permanent. TerraRuntime represents the admitted slice as tick-bound generation-safe state rather than copying a mutable 200-slot array per projectile, but preserves the exact positive cooldown boundary and permanent-negative semantics.
+- The source `FindTargetWithLineOfSight` scans physical NPC slots and explicitly rejects any candidate whose projectile `localNPCImmunity[i] != 0`. Target acquisition and collision therefore must consult the same logical immunity state; maintaining separate mirrors can cause a released projectile to immediately reacquire an NPC that vanilla still considers locally immune.
+- After a successful hit, projectile type `34` or `79` with exact released state `ai[0] == -1` sets `ai[1] = -1` and requests a net update. On the following AI_009 target search, the just-hit NPC is skipped while its local-immunity cell remains nonzero, allowing another line-of-sight target to be selected. At the positive 12-tick boundary the same exact NPC generation becomes eligible again.
+- TerraRuntime scopes each local-immunity cell by both exact `ProjectileHandle` generation and exact `NpcHandle` generation. Reusing either physical slot cannot carry an old local-immunity decision into the replacement entity.
+
+## Projectile PvP status and packet 55
+
+Primary evidence: TerrariaServer 1.4.5.8 `Projectile.StatusPvP`, the PvP branch of `Projectile.Damage()`, `Player.AddBuff`, `MessageBuffer.GetData` case `55`, `NetMessage.SendData` case `55`, and `Main.Initialize` assignments to `Main.pvpBuff`.
+
+- In the PvP damage branch, vanilla checks projectile/player immunity and then calls `StatusPvP(targetSlot)` before `TryDoingOnHitEffects` and before `Player.Hurt(..., pvp: true, ...)`. `Player.Hurt` can subsequently avoid the damage because of Creative GodMode, so a legal PvP hit may still roll/apply its status even when HP does not change. Do not move the status proc after the HP commit merely because that ordering looks cleaner.
+- For the currently admitted authoritative projectile set, source-pinned projectile-specific `StatusPvP` rules are: Fire Arrow `2` -> `On Fire!` buff `24`, `180` ticks, chance `1/3`; Flamelash `34` -> `On Fire!` `24`, `240` ticks, chance `1/2`; Poisoned Knife `54` -> `Poisoned` buff `20`, `600` ticks, chance `1/2`.
+- `StatusPvP` also contains melee-enchant/equipment-derived effects and many projectile families not currently admitted. Those effects depend on owner state TerraRuntime does not yet own completely and therefore remain fail-closed rather than being inferred.
+- `Player.AddBuff(type,time)` on a multiplayer client, when targeting a remote player, sends packet `55` only for a `Main.pvpBuff[type]` entry and does not mutate that remote player's local buff array. Packet `55` is exactly `[player byte][buff ushort][time int32]`.
+- Dedicated-server packet-55 handling relays only when both encoded target and sender are hostile and `Main.pvpBuff[buff]` is true. Client handling applies the packet only when the encoded target equals `Main.myPlayer`, using `AddBuff(..., fromNetPvP: true)`. This is targeted owner delivery, not observer replication.
+- The exact 1.4.5.8 `Main.pvpBuff` true set is `{20,70,24,323,31,39,44,324,69,103,119,120,137,320,30,36,397,398,399,400}`. TerraRuntime's packet-55 egress must remain bounded to this source-pinned set.
 
 ## Working rule for new vanilla facts
 

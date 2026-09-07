@@ -589,6 +589,130 @@ public sealed class ServerRuntimeClientProjectileIngressTests
     }
 
     [Fact]
+    public void Trusted_fire_arrow_pvp_hit_publishes_source_backed_OnFire_packet55_side_effect()
+    {
+        var observer = new RecordingPlayerEvents();
+        using var fixture = new Fixture(
+            playerCount: 2,
+            projectileStepper: new NoOpProjectileStepper(),
+            projectilePlayerCombatRandom: new SequenceRandom(0, 0),
+            playerEventObserver: observer);
+        ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 70);
+        ConnectionHandle target = fixture.SpawnPlayer(connectionId: 71);
+        fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.WoodenBow, stack: 1);
+        fixture.SetInventoryItem(owner, slot: VanillaPlayerItemSlotCatalog.AmmoSlotStart, VanillaItemIds.FlamingArrow, stack: 2);
+        fixture.SetCombatPlayer(owner, positionX: 100f, positionY: 100f, life: 100, hostile: true);
+        fixture.SetCombatPlayer(target, positionX: 120f, positionY: 100f, life: 100, hostile: true);
+
+        var spawn = new TerrariaProjectileUpdateState(
+            new TerrariaProjectileKeyState(owner.Player.Slot.Value, 880, 1),
+            VanillaProjectileIds.FireArrow.Value,
+            120f,
+            100f,
+            9.6f,
+            0f,
+            0f,
+            0f,
+            0f,
+            0,
+            11,
+            2f,
+            0);
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, spawn));
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(spawn.Key, out ProjectileHandle handle));
+        Assert.True(fixture.Projectiles.IsCombatTrusted(handle));
+
+        fixture.State.Tick();
+
+        Assert.Single(observer.PvpBuffs);
+        Assert.Equal(
+            (target.Player, VanillaBuffIds.OnFire, 180),
+            observer.PvpBuffs[0]);
+        Assert.True(fixture.State.TryCapturePlayerSnapshot(target.Player, out PlayerStateSnapshot damaged));
+        Assert.True(damaged.Life < 100);
+    }
+
+    [Fact]
+    public void Trusted_fire_arrow_pvp_status_runs_before_godmode_Hurt_avoidance_like_vanilla()
+    {
+        var observer = new RecordingPlayerEvents();
+        using var fixture = new Fixture(
+            playerCount: 2,
+            projectileStepper: new NoOpProjectileStepper(),
+            projectilePlayerCombatRandom: new SequenceRandom(0, 0),
+            playerEventObserver: observer);
+        ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 74);
+        ConnectionHandle target = fixture.SpawnPlayer(connectionId: 75);
+        fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.WoodenBow, stack: 1);
+        fixture.SetInventoryItem(owner, slot: VanillaPlayerItemSlotCatalog.AmmoSlotStart, VanillaItemIds.FlamingArrow, stack: 2);
+        fixture.SetCombatPlayer(owner, positionX: 100f, positionY: 100f, life: 100, hostile: true);
+        fixture.SetCombatPlayer(target, positionX: 120f, positionY: 100f, life: 100, hostile: true);
+        fixture.SetGodMode(target.Player, enabled: true);
+
+        var spawn = new TerrariaProjectileUpdateState(
+            new TerrariaProjectileKeyState(owner.Player.Slot.Value, 882, 1),
+            VanillaProjectileIds.FireArrow.Value,
+            120f,
+            100f,
+            9.6f,
+            0f,
+            0f,
+            0f,
+            0f,
+            0,
+            11,
+            2f,
+            0);
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, spawn));
+
+        fixture.State.Tick();
+
+        Assert.Single(observer.PvpBuffs);
+        Assert.Equal((target.Player, VanillaBuffIds.OnFire, 180), observer.PvpBuffs[0]);
+        Assert.True(fixture.State.TryCapturePlayerSnapshot(target.Player, out PlayerStateSnapshot after));
+        Assert.Equal((short)100, after.Life);
+    }
+
+    [Fact]
+    public void Trusted_fire_arrow_pvp_status_chance_miss_does_not_publish_packet55_side_effect()
+    {
+        var observer = new RecordingPlayerEvents();
+        using var fixture = new Fixture(
+            playerCount: 2,
+            projectileStepper: new NoOpProjectileStepper(),
+            projectilePlayerCombatRandom: new SequenceRandom(0, 1),
+            playerEventObserver: observer);
+        ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 72);
+        ConnectionHandle target = fixture.SpawnPlayer(connectionId: 73);
+        fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.WoodenBow, stack: 1);
+        fixture.SetInventoryItem(owner, slot: VanillaPlayerItemSlotCatalog.AmmoSlotStart, VanillaItemIds.FlamingArrow, stack: 2);
+        fixture.SetCombatPlayer(owner, positionX: 100f, positionY: 100f, life: 100, hostile: true);
+        fixture.SetCombatPlayer(target, positionX: 120f, positionY: 100f, life: 100, hostile: true);
+
+        var spawn = new TerrariaProjectileUpdateState(
+            new TerrariaProjectileKeyState(owner.Player.Slot.Value, 881, 1),
+            VanillaProjectileIds.FireArrow.Value,
+            120f,
+            100f,
+            9.6f,
+            0f,
+            0f,
+            0f,
+            0f,
+            0,
+            11,
+            2f,
+            0);
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, spawn));
+
+        fixture.State.Tick();
+
+        Assert.Empty(observer.PvpBuffs);
+        Assert.True(fixture.State.TryCapturePlayerSnapshot(target.Player, out PlayerStateSnapshot damaged));
+        Assert.True(damaged.Life < 100);
+    }
+
+    [Fact]
     public void Magic_missile_spawn_is_trusted_consumes_mana_and_packet27_only_updates_bounded_aim()
     {
         using var fixture = new Fixture(playerCount: 1, projectileStepper: new NoOpProjectileStepper(), withWorldTiles: true);
@@ -802,24 +926,64 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         }
     }
 
+    private sealed class SequenceRandom(params int[] values) : Random
+    {
+        private readonly Queue<int> values = new(values);
+
+        public override int Next(int maxValue) => Take(0, maxValue);
+
+        public override int Next(int minValue, int maxValue) => Take(minValue, maxValue);
+
+        private int Take(int minValue, int maxValue)
+        {
+            Assert.NotEmpty(values);
+            int value = values.Dequeue();
+            Assert.InRange(value, minValue, maxValue - 1);
+            return value;
+        }
+    }
+
+    private sealed class RecordingPlayerEvents : IRuntimePlayerEventSink
+    {
+        public List<(PlayerHandle Player, BuffTypeId BuffType, int DurationTicks)> PvpBuffs { get; } = [];
+
+        public void PlayerAppearanceUpdated(ConnectionHandle connection, in PlayerAppearanceCommitRequest request) { }
+        public void PlayerEquipmentUpdated(ConnectionHandle connection, in PlayerEquipmentCommitRequest request) { }
+        public void PlayerSpawned(ConnectionHandle connection, in PlayerSpawnCommitRequest request) { }
+        public void PlayerMoved(ConnectionHandle connection, in PlayerMovementCommitRequest request) { }
+        public void PlayerDisconnected(ConnectionHandle connection) { }
+
+        public void PlayerPvpBuffApplied(PlayerHandle player, BuffTypeId buffType, int durationTicks) =>
+            PvpBuffs.Add((player, buffType, durationTicks));
+    }
+
     private sealed class Fixture : IDisposable
     {
         private readonly PlayerSlotPool slots;
         private readonly List<PlayerJoinSession> sessions = [];
         private readonly Dictionary<GameCommandSourceId, TerrariaConnectionOutboundQueue> outbound = [];
 
-        public Fixture(int playerCount, IProjectileStateStepper? projectileStepper = null, bool withWorldTiles = false)
+        public Fixture(
+            int playerCount,
+            IProjectileStateStepper? projectileStepper = null,
+            bool withWorldTiles = false,
+            Random? projectilePlayerCombatRandom = null,
+            IRuntimePlayerEventSink? playerEventObserver = null)
         {
             slots = new PlayerSlotPool(playerCount);
             Replication = new RuntimeProjectileReplicationRegistry();
             Projectiles = new RuntimeProjectileStore(capacity: 8, commitSink: Replication);
             WorldTileStore? worldTiles = withWorldTiles ? new WorldTileStore(new WorldDimensions(300, 200)) : null;
+            IRuntimePlayerEventSink playerEvents = playerEventObserver is null
+                ? Replication
+                : new RuntimePlayerEventFanout(Replication, playerEventObserver);
             State = new ServerRuntimeState(
-                playerEvents: Replication,
+                playerEvents: playerEvents,
                 worldTiles: worldTiles,
                 projectiles: Projectiles,
                 projectileStepper: projectileStepper,
-                projectileReplication: Replication);
+                projectileReplication: Replication,
+                projectilePlayerCombatRandom: projectilePlayerCombatRandom);
         }
 
         public RuntimeProjectileReplicationRegistry Replication { get; }
@@ -908,6 +1072,13 @@ public sealed class ServerRuntimeClientProjectileIngressTests
                 CameraTargetX: 0f,
                 CameraTargetY: 0f);
             State.Apply(new PlayerMovementRuntimeCommand(connection, movement));
+        }
+
+        public void SetGodMode(PlayerHandle player, bool enabled)
+        {
+            var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            State.Apply(new SetPlayerGodModeRuntimeCommand(player, enabled, completion));
+            Assert.True(completion.Task.GetAwaiter().GetResult());
         }
 
         public TerrariaConnectionOutboundQueue Outbound(GameCommandSourceId source) => outbound[source];

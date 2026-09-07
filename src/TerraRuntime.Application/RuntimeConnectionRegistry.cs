@@ -27,6 +27,9 @@ internal sealed partial class RuntimeConnectionRegistry : IRuntimePlayerEventSin
     private long _appearanceBaselineFrames;
     private long _relayedEquipmentFrames;
     private long _relayedPvpFrames;
+    private long _relayedBuffFrames;
+    private long _relayedPvpBuffFrames;
+    private long _buffBaselineFrames;
     private long _equipmentBaselineFrames;
     private long _droppedEquipmentSnapshotUpdates;
     private long _playerActiveBaselineFrames;
@@ -38,6 +41,7 @@ internal sealed partial class RuntimeConnectionRegistry : IRuntimePlayerEventSin
     private long _suppressedDuplicateAppearanceFrames;
     private long _suppressedDuplicateEquipmentFrames;
     private long _suppressedDuplicateMovementFrames;
+    private long _suppressedDuplicateBuffFrames;
 
     public RuntimeConnectionRegistry(
         IInterestManagementControl? interestManagement = null,
@@ -58,6 +62,12 @@ internal sealed partial class RuntimeConnectionRegistry : IRuntimePlayerEventSin
 
     public long RelayedPvpFrames => Interlocked.Read(ref _relayedPvpFrames);
 
+    public long RelayedBuffFrames => Interlocked.Read(ref _relayedBuffFrames);
+
+    public long RelayedPvpBuffFrames => Interlocked.Read(ref _relayedPvpBuffFrames);
+
+    public long BuffBaselineFrames => Interlocked.Read(ref _buffBaselineFrames);
+
     public long EquipmentBaselineFrames => Interlocked.Read(ref _equipmentBaselineFrames);
 
     public long DroppedEquipmentSnapshotUpdates => Interlocked.Read(ref _droppedEquipmentSnapshotUpdates);
@@ -75,6 +85,8 @@ internal sealed partial class RuntimeConnectionRegistry : IRuntimePlayerEventSin
     public long SuppressedDuplicateEquipmentFrames => Interlocked.Read(ref _suppressedDuplicateEquipmentFrames);
 
     public long SuppressedDuplicateMovementFrames => Interlocked.Read(ref _suppressedDuplicateMovementFrames);
+
+    public long SuppressedDuplicateBuffFrames => Interlocked.Read(ref _suppressedDuplicateBuffFrames);
 
     internal RuntimePlayerSpatialIndexSnapshot? PlayerSpatialSnapshot =>
         _interestRouter.PlayerSpatialSnapshot;

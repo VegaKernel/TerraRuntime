@@ -106,6 +106,13 @@ public static class VanillaProjectileNpcCombatFacts
     }
 
     /// <summary>
+    /// Projectile.Damage_PVE post-hit behavior for released Flamelash/Rainbow Rod. When ai[0] is exactly -1,
+    /// the successful hit clears ai[1] so the next AI_009 target search can choose a different non-immune NPC.
+    /// </summary>
+    public static bool ShouldResetReleasedControlledMagicTargetAfterNpcHit(ProjectileTypeId type, float ai0) =>
+        ai0 == -1f && (type == VanillaProjectileIds.Flamelash || type == VanillaProjectileIds.RainbowRodBullet);
+
+    /// <summary>
     /// Terraria's ordinary fallback after an admitted multi/infinite-penetration hit writes NPC.immune[owner] = 10.
     /// The admitted grenade variants use permanent local immunity instead and therefore never enter this path.
     /// </summary>

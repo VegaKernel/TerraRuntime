@@ -17,11 +17,21 @@ internal sealed class VanillaProjectileNpcTargetResolver : IVanillaProjectileNpc
 {
     private readonly RuntimeNpcStore npcs;
     private readonly WorldTileStore tiles;
+    private readonly RuntimeProjectileNpcLocalImmunityRegistry? localNpcImmunity;
+    private readonly Func<long>? tickProvider;
 
-    public VanillaProjectileNpcTargetResolver(RuntimeNpcStore npcs, WorldTileStore tiles)
+    public VanillaProjectileNpcTargetResolver(
+        RuntimeNpcStore npcs,
+        WorldTileStore tiles,
+        RuntimeProjectileNpcLocalImmunityRegistry? localNpcImmunity = null,
+        Func<long>? tickProvider = null)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
+        if ((localNpcImmunity is null) != (tickProvider is null))
+            throw new ArgumentException("Local NPC immunity lookup and tick provider must be supplied together.");
+        this.localNpcImmunity = localNpcImmunity;
+        this.tickProvider = tickProvider;
     }
 
     public bool TryFindClosestTargetWithLineOfSight(
@@ -41,12 +51,18 @@ internal sealed class VanillaProjectileNpcTargetResolver : IVanillaProjectileNpc
         float projectileCenterX = projectile.PositionX + projectileDefinition.Width * 0.5f;
         float projectileCenterY = projectile.PositionY + projectileDefinition.Height * 0.5f;
         float closest = maxRange;
+        int localImmunityCooldown = 0;
+        bool hasLocalImmunity = localNpcImmunity is not null &&
+            VanillaProjectileNpcCombatFacts.TryGetLocalNpcImmunityCooldown(projectile.Type, out localImmunityCooldown);
+        long tick = hasLocalImmunity ? tickProvider!() : 0;
 
         // Main.npc is scanned in physical slot order. The strict distance comparison intentionally preserves the
         // first slot on exact ties, matching FindTargetWithLineOfSight rather than introducing sort/allocation work.
         for (int slot = 0; slot < npcs.Capacity; slot++)
         {
             if (!npcs.TryGetActive(checked((byte)slot), out NpcSnapshot candidate) ||
+                (hasLocalImmunity && localNpcImmunity!.IsImmune(
+                    projectile.Handle, candidate.Handle, tick, localImmunityCooldown)) ||
                 !TryResolveChaseableTarget(in candidate, out VanillaNpcHitboxSize hitbox, out float centerX, out float centerY))
             {
                 continue;

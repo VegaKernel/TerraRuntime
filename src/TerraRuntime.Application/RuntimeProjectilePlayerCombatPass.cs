@@ -56,6 +56,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
     public long CommittedHits { get; private set; }
     public long Kills { get; private set; }
     public long ConsumedProjectiles { get; private set; }
+    public long PublishedPvpBuffs { get; private set; }
     public long HostileCommittedHits { get; private set; }
     public long HostileGodModeAvoidances { get; private set; }
     public long HostileKills { get; private set; }
@@ -120,6 +121,9 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                     continue;
 
                 MarkPlayerProjectileCooldown(projectile.Handle, target.Connection.Player, tick);
+                // Vanilla Projectile.Damage_PVP calls StatusPvP before Player.Hurt. Creative god mode returns
+                // from Hurt afterwards, so a source-backed PvP status proc still occurs on an avoided god-mode hit.
+                TryApplyTypeSpecificPvpStatus(projectile.Type, target.Connection.Player);
                 if (commitResult == PlayerDamageCommitResult.Committed)
                 {
                     CommittedHits++;
@@ -144,6 +148,19 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
 
         TickServerHostilePve(projectileBuffer.AsSpan(0, projectileCount), tick);
         TickExplosions(explosions, tick);
+    }
+
+    private void TryApplyTypeSpecificPvpStatus(ProjectileTypeId projectileType, PlayerHandle target)
+    {
+        if (!VanillaProjectilePvpStatusFacts1458.TryGetTypeSpecificRule(projectileType, out var rule) ||
+            !rule.IsValid ||
+            random.Next(rule.ChanceDenominator) != 0)
+        {
+            return;
+        }
+
+        if (players.TryPublishAuthoritativePvpBuff(target, rule.BuffType, rule.DurationTicks))
+            PublishedPvpBuffs++;
     }
 
     private bool TryResolveTrustedPvpOwner(

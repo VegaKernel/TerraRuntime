@@ -46,12 +46,14 @@ internal sealed partial class PlayerAuthority
         transferProfiles.TryCapture(
             connection,
             out PlayerAppearanceCommitRequest? appearance,
-            out PlayerEquipmentCommitRequest[] equipment);
+            out PlayerEquipmentCommitRequest[] equipment,
+            out BuffTypeId[]? buffTypes);
         var transfer = new RuntimePlayerTransferState(
             player.CaptureSnapshot(),
             inventory,
             appearance,
             equipment,
+            buffTypes,
             player.GodMode,
             mouseItemNormalized);
 
@@ -168,7 +170,7 @@ internal sealed partial class PlayerAuthority
         };
         damageImmunity.ResetPvp(connection.Player.Slot);
         membership.Commit(state);
-        transferProfiles.Restore(connection, transfer.Appearance, transfer.Equipment);
+        transferProfiles.Restore(connection, transfer.Appearance, transfer.Equipment, transfer.BuffTypes);
 
         VanillaPlayerSpawnPosition1458.ToFloorTile(positionX, positionY, out short eventSpawnX, out short eventSpawnY);
         var spawn = new PlayerSpawnCommitRequest(
@@ -188,6 +190,12 @@ internal sealed partial class PlayerAuthority
         {
             PlayerAppearanceCommitRequest normalizedAppearance = appearance with { PlayerSlot = connection.Player.Slot };
             events?.PlayerAppearanceUpdated(connection, in normalizedAppearance);
+        }
+
+        if (transfer.BuffTypes is { } transferredBuffTypes)
+        {
+            var transferredBuffs = new PlayerBuffTypesCommitRequest(connection.Player.Slot, transferredBuffTypes);
+            events?.PlayerBuffTypesUpdated(connection, in transferredBuffs);
         }
 
         if (transfer.MouseItemNormalized)

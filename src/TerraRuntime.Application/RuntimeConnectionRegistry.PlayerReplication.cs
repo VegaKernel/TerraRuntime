@@ -296,6 +296,9 @@ internal sealed partial class RuntimeConnectionRegistry
         OutboundFrame originAppearance = default;
         bool hasOriginAppearance = endpoint.TryGetPlayingPlayer(out PlayerHandle originPlayer) &&
             endpoint.TryGetLatestAppearanceFrame(originPlayer, out originAppearance);
+        OutboundFrame originBuffs = default;
+        bool hasOriginBuffs = endpoint.TryGetPlayingPlayer(out originPlayer) &&
+            endpoint.TryGetLatestBuffFrame(originPlayer, out originBuffs);
 
         foreach (KeyValuePair<GameCommandSourceId, RuntimeConnectionEndpoint> pair in _endpoints)
         {
@@ -320,6 +323,18 @@ internal sealed partial class RuntimeConnectionRegistry
                 endpoint.Outbound.TryEnqueue(peerAppearance) == OutboundEnqueueResult.Enqueued)
             {
                 Interlocked.Increment(ref _appearanceBaselineFrames);
+            }
+
+            if (hasOriginBuffs &&
+                pair.Value.Outbound.TryEnqueue(originBuffs) == OutboundEnqueueResult.Enqueued)
+            {
+                Interlocked.Increment(ref _buffBaselineFrames);
+            }
+
+            if (pair.Value.TryGetLatestBuffFrame(peerPlayer, out OutboundFrame peerBuffs) &&
+                endpoint.Outbound.TryEnqueue(peerBuffs) == OutboundEnqueueResult.Enqueued)
+            {
+                Interlocked.Increment(ref _buffBaselineFrames);
             }
 
             Interlocked.Add(

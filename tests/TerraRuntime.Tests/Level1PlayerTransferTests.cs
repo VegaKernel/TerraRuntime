@@ -735,6 +735,7 @@ public sealed class Level1PlayerTransferTests
             inventory ?? new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount],
             appearance,
             [],
+            BuffTypes: null,
             GodMode: false);
         var connection = new ConnectionHandle(source, player);
         Assert.True(await runtime.TransferIngress.AttachAsync(

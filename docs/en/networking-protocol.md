@@ -82,7 +82,7 @@ A successful handshake records completion and wakes the watchdog. Production exp
 
 Frame-rejection telemetry remains a separate diagnostic dimension and normalizes malformed protocol, rate-limited, invalid-state, gameplay-rejected and backpressure failures. The lifetime reason answers why the connection ended; the rejection category answers what class of frame was rejected. These dimensions must not be flattened into one generic network error.
 
-The production sink chain propagates rejection category through sign, chest, projectile/tile, world-item and vitals/bootstrap layers. Bootstrap failures such as malformed join/player packets, illegal join state, player-slot mismatch and ingress/outbound backpressure therefore remain visible even though `PlayerVitalsFrameSink` is the first rejection-source wrapper around the bootstrap layer. Once a player is in `Playing`, `PlayerHp` and `PlayerMana` are replaceable snapshots: transient saturation of the bounded authoritative gameplay mailbox drops that stale snapshot instead of ending the connection, while connection-wide and per-message abuse limits still run above this sink. Discrete projectile spawn/destroy, NPC-damage and world-mutation intents remain fail-closed because silently dropping them would lose gameplay events rather than merely supersede state.
+The production sink chain propagates rejection category through sign, chest, projectile/tile, world-item, combat, player-buff and vitals/bootstrap layers. Bootstrap failures such as malformed join/player packets, illegal join state, player-slot mismatch and ingress/outbound backpressure therefore remain visible through the wrapper chain. Once a player is assigned, `PlayerHp`, `PlayerMana` and packet-50 buff-type state are replaceable snapshots: transient saturation of the bounded authoritative gameplay mailbox may drop that stale sample instead of ending the connection, while connection-wide and per-message abuse limits still run above these sinks. Malformed packet-50 shape/IDs remain protocol failure, not a replaceable-state drop. Discrete projectile spawn/destroy, NPC-damage and world-mutation intents remain fail-closed because silently dropping them would lose gameplay events rather than merely supersede state.
 
 ## 7. Handshake and state legality
 
@@ -112,6 +112,18 @@ Connection-owned identity wins over client-claimed identity wherever ownership i
 Multiplicity is a protocol dependency, not a gameplay dependency. `TerraRuntime.Protocol.Multiplicity` translates wire models into TerraRuntime-owned protocol/domain representations and back.
 
 Critical layouts require independent evidence such as golden bytes, official traffic or differential probes. A successful encode/decode round trip proves only that our two sides agree.
+
+### Packet `50` presentation synchronization
+
+The client packet `50` path is deliberately narrower than authoritative buff gameplay. The protocol adapter validates the `44`-slot/zero-terminator shape and version-pinned IDs, the connection replaces the claimed player byte with its exact `PlayerHandle`, and the authoritative queue commits only the owned type-list snapshot. Runtime replication may retain and relay that snapshot to peers and late joiners, and world transfer carries it only when one was actually observed.
+
+No buff time is transmitted, so this snapshot is not consumed as authoritative combat modifier state. This matters for hostile projectile debuffs: official TerrariaServer `1.4.5.8` skips `Projectile.Damage_EVP` on dedicated server, leaving the affected client to apply the PvE status locally and report only its active types. Packet `55` remains the independently validated targeted PvP buff path.
+
+### Packet `55` targeted PvP status delivery
+
+The pinned payload is exactly `[target player byte][buff ushort][duration int32]`. Vanilla dedicated-server ingress relays it only when sender and target are both hostile and `Main.pvpBuff[buff]` is true; a multiplayer client applies the packet only when the encoded target is `Main.myPlayer`. TerraRuntime therefore treats packet `55` as exact-target delivery rather than observer replication.
+
+For server-authoritative projectile PvP, a proven type-specific status proc is emitted through the existing player-event boundary and encoded only after the exact `PlayerHandle` generation still resolves to a playing endpoint. The egress codec rejects invalid buff IDs/durations and the registry additionally requires the exact 1.4.5.8 `Main.pvpBuff` allow-set. Client-originated packet `55` is not promoted into TerraRuntime combat authority; server-owned combat resolves the admitted proc itself, preventing a client from manufacturing PvP status.
 
 ## 9. Inbound and fan-out rate accounting
 

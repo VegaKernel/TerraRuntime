@@ -78,7 +78,8 @@ internal sealed class NpcAuthority
         bool masterMode,
         bool skyblockLowTiles,
         bool isThereAWorldSurface,
-        bool evilBossDownedBaseline)
+        bool evilBossDownedBaseline,
+        RuntimeProjectileNpcLocalImmunityRegistry? projectileNpcLocalImmunity = null)
     {
         ArgumentNullException.ThrowIfNull(playerSnapshots);
         ArgumentNullException.ThrowIfNull(tickProvider);
@@ -158,7 +159,13 @@ internal sealed class NpcAuthority
             evilBossDownedBaseline,
             projectiles);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
-            projectiles, npcs, combat, players, tickProvider, serverPlayers: serverPlayers);
+            projectiles,
+            npcs,
+            combat,
+            players,
+            tickProvider,
+            serverPlayers: serverPlayers,
+            localNpcImmunity: projectileNpcLocalImmunity);
         townNpcAuthority.SetMeleeDamageSink(combat);
 
         if (npcAiStepper is null)

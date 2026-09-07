@@ -190,6 +190,14 @@ public sealed class VanillaCombatIntegrityCatalogTests
             VanillaProjectileIds.RainbowRodBullet, out int rainbowCooldown));
         Assert.Equal(12, rainbowCooldown);
         Assert.False(VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(VanillaProjectileIds.RainbowRodBullet));
+        Assert.True(VanillaProjectileNpcCombatFacts.ShouldResetReleasedControlledMagicTargetAfterNpcHit(
+            VanillaProjectileIds.Flamelash, ai0: -1f));
+        Assert.True(VanillaProjectileNpcCombatFacts.ShouldResetReleasedControlledMagicTargetAfterNpcHit(
+            VanillaProjectileIds.RainbowRodBullet, ai0: -1f));
+        Assert.False(VanillaProjectileNpcCombatFacts.ShouldResetReleasedControlledMagicTargetAfterNpcHit(
+            VanillaProjectileIds.MagicMissile, ai0: -1f));
+        Assert.False(VanillaProjectileNpcCombatFacts.ShouldResetReleasedControlledMagicTargetAfterNpcHit(
+            VanillaProjectileIds.Flamelash, ai0: -2f));
         Assert.True(VanillaCombatFacts.TryGetDamageClass(
             VanillaProjectileIds.RainbowRodBullet, out VanillaProjectileDamageClass rainbowDamageClass));
         Assert.Equal(VanillaProjectileDamageClass.Magic, rainbowDamageClass);

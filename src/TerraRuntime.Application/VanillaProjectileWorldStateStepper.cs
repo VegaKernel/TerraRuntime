@@ -27,12 +27,16 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         WorldTileStore tiles,
         IRuntimePlayerSlotSnapshotLookup? playerSnapshots = null,
         bool expertMode = false,
-        RuntimeNpcStore? npcs = null)
+        RuntimeNpcStore? npcs = null,
+        RuntimeProjectileNpcLocalImmunityRegistry? localNpcImmunity = null,
+        Func<long>? tickProvider = null)
     {
         WorldTileStore worldTiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
         worldMotion = new VanillaProjectileWorldMotionResolver(worldTiles);
         this.playerSnapshots = playerSnapshots;
-        npcTargets = npcs is null ? null : new VanillaProjectileNpcTargetResolver(npcs, worldTiles);
+        npcTargets = npcs is null
+            ? null
+            : new VanillaProjectileNpcTargetResolver(npcs, worldTiles, localNpcImmunity, tickProvider);
         hostilePlayerTargets = playerSnapshots is null ? null : new VanillaProjectilePlayerTargetResolver(playerSnapshots, worldTiles);
         this.expertMode = expertMode;
     }

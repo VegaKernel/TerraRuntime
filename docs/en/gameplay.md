@@ -263,7 +263,13 @@ A declarative loot table is useful only if it reproduces the verified sequence; 
 
 Buffs and prefixes now have typed, version-pinned identity ranges and selected source-backed definition traits rather than scattered raw integers.
 
-Their complete gameplay remains broad future work. Identity validation must not be confused with implementing every buff effect, immunity, prefix stat family or reforging rule.
+Player packet `50` is now a typed presentation boundary for TerrariaServer 1.4.5.8. The runtime validates the source shape `[player][buff ushort...][0]` against `Player.maxBuffs = 44`, discards the client-claimed slot in favor of the connection-owned generation, retains observed snapshots for peer/late-join replication, and transfers the observed snapshot across worlds. An observed empty list is distinct from a packet-50 snapshot that has never been received.
+
+This packet carries no buff duration and is not an authoritative combat modifier input. Vanilla dedicated server does not execute hostile projectile `Damage_EVP`; the affected multiplayer client applies those projectile statuses locally and reports only the active type list through packet `50`. Packet `55` remains a separate targeted PvP buff-delivery path and is not used as a PvE fallback.
+
+The admitted projectile-specific PvP status slice is now server-resolved from source-pinned `Projectile.StatusPvP` rules: Fire Arrow `2` can apply `On Fire!` `24` for 180 ticks at `1/3`, Flamelash `34` can apply it for 240 ticks at `1/2`, and Poisoned Knife `54` can apply `Poisoned` `20` for 600 ticks at `1/2`. The status roll occurs at vanilla ordering before `Player.Hurt`, so Creative GodMode can avoid HP damage without retroactively canceling a proc. Successful effects are encoded as packet `55` only to the exact target generation; equipment/enchantment-driven status remains fail-closed.
+
+Complete buff gameplay remains broad future work. Identity/presentation validation must not be confused with implementing every buff effect, immunity, duration/RNG rule, prefix stat family or reforging rule.
 
 ## 21. Wiring, liquids and growth
 

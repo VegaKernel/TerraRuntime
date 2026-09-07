@@ -57,6 +57,65 @@ flowchart LR
 
 `TerraRuntime.Schematics` and `TerraRuntime.Transport` currently have no project references in their own `.csproj` files. The graph above is about compile-time references, not every runtime/data-flow edge.
 
+## Player buff presentation-sync path
+
+```mermaid
+flowchart LR
+    P50[client packet 50]
+    Sink[PlayerBuffFrameSink]
+    Codec[TerrariaPlayerBuffCodec1458]
+    Ingress[RuntimePlayerBuffNetworkIngress]
+    Authority[PlayerAuthority]
+    Profile[RuntimePlayerTransferProfileStore]
+    Events[RuntimePlayerEventDispatcher]
+    Registry[RuntimeConnectionRegistry]
+    Peer[playing peers]
+    Baseline[late-join baseline]
+    Transfer[RuntimePlayerTransferState]
+
+    P50 --> Sink --> Codec --> Ingress --> Authority --> Profile
+    Authority --> Events --> Registry
+    Registry --> Peer
+    Registry --> Baseline
+    Profile --> Transfer --> Profile
+```
+
+Ownership/invariants for this path:
+
+- packet `50` is a bounded client presentation snapshot, not authoritative proof of a combat buff. The 1.4.5.8 wire shape is `[player][0..44 buff ushort][zero ushort terminator]`; it contains no durations.
+- `PlayerBuffFrameSink` accepts the snapshot only after connection slot assignment, discards the claimed player byte, and posts an owned typed command for the exact `PlayerHandle` generation. Malformed shape/IDs stop as malformed protocol; mailbox pressure may drop this replaceable snapshot.
+- `PlayerAuthority` owns mutation of the generation-scoped transfer/presentation profile. Client-reported buff types do not mutate authoritative combat modifier state.
+- `RuntimeConnectionRegistry` owns retained encoded packet-50 state, duplicate suppression, peer relay and late-join baseline exchange. A never-observed snapshot remains distinct from an observed empty snapshot.
+- cross-world transfer carries the observed snapshot if one exists; it does not manufacture an empty snapshot when packet `50` was never received.
+- TerrariaServer 1.4.5.8 dedicated server skips hostile projectile `Damage_EVP`; the affected client applies such PvE status locally and reports only the resulting active type list. Packet `55` remains the separate targeted PvP path and is not a fallback for missing packet-50 duration.
+
+## Authoritative projectile PvP status path
+
+```mermaid
+flowchart LR
+    Hit[trusted projectile PvP collision]
+    Combat[RuntimeProjectilePlayerCombatPass]
+    Facts[VanillaProjectilePvpStatusFacts1458]
+    Authority[PlayerAuthority.TryPublishAuthoritativePvpBuff]
+    Events[RuntimePlayerEventDispatcher]
+    Registry[RuntimeConnectionRegistry.PlayerPvpBuffApplied]
+    PvpFacts[VanillaPvpBuffFacts1458]
+    Codec[TerrariaPlayerPvpBuffCodec1458]
+    Target[exact playing target generation]
+
+    Hit --> Combat --> Facts --> Authority --> Events --> Registry
+    Registry --> PvpFacts
+    Registry --> Codec --> Target
+```
+
+Ownership/invariants for this path:
+
+- the status roll exists only after the ordinary legal PvP collision/hostility/team/immunity gate. For the admitted type-specific slice the source rules are Fire Arrow `2` -> `On Fire!` `24`/180 ticks/`1/3`, Flamelash `34` -> `On Fire!`/240/`1/2`, and Poisoned Knife `54` -> `Poisoned` `20`/600/`1/2`; unsupported/equipment-derived `StatusPvP` effects fail closed.
+- vanilla calls `StatusPvP` before `Player.Hurt`. TerraRuntime preserves that ordering point logically: a Creative-GodMode damage avoidance does not suppress a status roll that already passed the legal hit gate.
+- `PlayerAuthority` does not create a server-owned buff-duration mirror. It validates exact target generation plus relayable type/duration and emits a side-effect event.
+- `RuntimeConnectionRegistry` resolves that exact generation to one playing endpoint and enqueues packet `55` only there. Slot reuse/stale generations cannot receive it; observers do not.
+- `TerrariaPlayerPvpBuffCodec1458` pins `[target byte][buff ushort][duration int32]`. `VanillaPvpBuffFacts1458` pins the exact 1.4.5.8 `Main.pvpBuff` true set. Client-originated packet `55` is not trusted as TerraRuntime combat authority.
+
 ## Authoritative liquid runtime path
 
 ```mermaid
@@ -267,6 +326,7 @@ This is presentation-only state. IN and OUT packet-rate histories share one plot
 | Vanilla world generation | `TerraRuntime.WorldGeneration` | generation plan/provider, `CaveHousePlacement1458`, `TerraRuntime.World`, world-file writer/loader |
 | Sandbox orchestration | `TerraRuntime.Application` sandbox owners | world generation/load path, player transfer/bootstrap, process worker contracts |
 | Cross-world inventory conservation | `PlayerAuthority.Transfer.cs` | `RuntimeConnectionRoute`, landing gate, packet-5 ingress, transfer tests |
+| Player buff presentation sync | `PlayerBuffFrameSink.cs` / `TerrariaPlayerBuffCodec1458.cs` | `PlayerAuthority.BuffPresentation.cs`, `RuntimeConnectionRegistry.PlayerBuffs.cs`, transfer profile |
 | Protocol wire semantics | `TerraRuntime.Protocol.Multiplicity` | `TerraRuntime.Protocol`, official 1.4.5.8 server/client behavior |
 
 When a change crosses one of these rows, refresh the relevant graph rather than assuming the old impact boundary still holds.

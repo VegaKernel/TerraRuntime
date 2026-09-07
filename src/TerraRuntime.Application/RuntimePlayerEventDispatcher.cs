@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
@@ -92,6 +93,18 @@ internal sealed class RuntimePlayerEventDispatcher : IRuntimePlayerEventSink
     {
         _connections.PlayerGodModeChanged(player, enabled);
         _operationsObserver?.PlayerGodModeChanged(player, enabled);
+    }
+
+    public void PlayerBuffTypesUpdated(ConnectionHandle connection, in PlayerBuffTypesCommitRequest request)
+    {
+        _connections.PlayerBuffTypesUpdated(connection, in request);
+        _operationsObserver?.PlayerBuffTypesUpdated(connection, in request);
+    }
+
+    public void PlayerPvpBuffApplied(PlayerHandle player, BuffTypeId buffType, int durationTicks)
+    {
+        _connections.PlayerPvpBuffApplied(player, buffType, durationTicks);
+        _operationsObserver?.PlayerPvpBuffApplied(player, buffType, durationTicks);
     }
 
     public void PlayerDisconnected(ConnectionHandle connection)

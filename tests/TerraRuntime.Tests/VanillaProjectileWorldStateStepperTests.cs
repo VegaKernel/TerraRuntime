@@ -1024,6 +1024,39 @@ public sealed class VanillaProjectileWorldStateStepperTests
         Assert.Equal(ProjectileSimulationTerminationReason.None, next.TerminationReason);
     }
 
+    [Theory]
+    [InlineData(34)]
+    [InlineData(79)]
+    public void Released_controlled_magic_reacquisition_skips_locally_immune_npc_until_cooldown_expires(int projectileType)
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var npcs = new RuntimeNpcStore(capacity: 2);
+        NpcSnapshot close = SpawnDemonEye(npcs, slot: 0, positionX: 260f, positionY: 100f);
+        NpcSnapshot far = SpawnDemonEye(npcs, slot: 1, positionX: 460f, positionY: 100f);
+        var localImmunity = new RuntimeProjectileNpcLocalImmunityRegistry(projectileCapacity: 1, npcCapacity: 2);
+        long tick = 100;
+        var stepper = new VanillaProjectileWorldStateStepper(
+            tiles,
+            npcs: npcs,
+            localNpcImmunity: localImmunity,
+            tickProvider: () => tick);
+        ProjectileSnapshot projectile = CreateSnapshot(
+            positionX: 100f, positionY: 100f, velocityX: 6f, velocityY: 0f) with
+        {
+            Type = new ProjectileTypeId(projectileType),
+            Ai = new ProjectileAiState(-1f, -1f, 0f)
+        };
+        localImmunity.MarkHit(projectile.Handle, close.Handle, tick);
+        ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 3600);
+
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult whileImmune));
+        Assert.Equal(far.Handle.Slot, (int)whileImmune.State.Ai.Ai1);
+
+        tick += 12;
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult afterCooldown));
+        Assert.Equal(close.Handle.Slot, (int)afterCooldown.State.Ai.Ai1);
+    }
+
     [Fact]
     public void Phantasmal_deathray_ai_style_84_keeps_ai_anchor_instead_of_running_common_position_update()
     {
@@ -1079,6 +1112,22 @@ public sealed class VanillaProjectileWorldStateStepperTests
         ProjectileSimulationStepContext context = CreateContext(projectile, timeLeft: 3600);
 
         Assert.False(stepper.TryStepState(in context, out _));
+    }
+
+    private static NpcSnapshot SpawnDemonEye(RuntimeNpcStore npcs, byte slot, float positionX, float positionY)
+    {
+        var update = new NpcStateUpdate(
+            Type: VanillaNpcIds.DemonEye.Value,
+            NetId: checked((short)VanillaNpcIds.DemonEye.Value),
+            PositionX: positionX,
+            PositionY: positionY,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: VanillaNpcDefinitionCatalog.DefaultTarget,
+            Ai: default,
+            Simulation: NpcSimulationState.Initial);
+        Assert.True(npcs.TrySpawn(slot, in update, out NpcSnapshot npc));
+        return npc;
     }
 
     private static ProjectileStateUpdate CreateShuriken(

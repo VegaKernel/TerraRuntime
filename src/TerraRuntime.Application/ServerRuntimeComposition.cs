@@ -119,7 +119,8 @@ internal sealed class ServerRuntimeComposition
         bool isThereAWorldSurface,
         bool evilBossDownedBaseline,
         bool skeletronDownedBaseline,
-        bool golemDownedBaseline)
+        bool golemDownedBaseline,
+        Random? projectilePlayerCombatRandom)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -142,8 +143,19 @@ internal sealed class ServerRuntimeComposition
             spawnRandom,
             worldItemReplication);
         RuntimeProjectileStore projectileStore = projectiles ?? new RuntimeProjectileStore();
+        var projectileNpcLocalImmunity = new RuntimeProjectileNpcLocalImmunityRegistry(
+            projectileStore.Capacity,
+            npcStore.Capacity);
         IProjectileStateStepper? configuredProjectileStepper = projectileStepper ??
-            (worldTiles is null ? null : new VanillaProjectileWorldStateStepper(worldTiles, playerSnapshots, expertMode, npcStore));
+            (worldTiles is null
+                ? null
+                : new VanillaProjectileWorldStateStepper(
+                    worldTiles,
+                    playerSnapshots,
+                    expertMode,
+                    npcStore,
+                    projectileNpcLocalImmunity,
+                    () => updates.Current));
         var projectileAuthority = new ProjectileAuthority(
             projectileStore,
             playersAuthority,
@@ -187,7 +199,8 @@ internal sealed class ServerRuntimeComposition
             masterMode,
             skyblockLowTiles,
             isThereAWorldSurface,
-            evilBossDownedBaseline);
+            evilBossDownedBaseline,
+            projectileNpcLocalImmunity);
         var worldTileAuthority = new WorldTileAuthority(
             playersAuthority,
             commands,
@@ -221,6 +234,7 @@ internal sealed class ServerRuntimeComposition
             npcStore,
             playersAuthority,
             () => updates.Current,
+            random: projectilePlayerCombatRandom,
             cultistLightningArcTrails: projectileAuthority.CultistLightningArcTrails,
             serverPlayers: serverPlayers);
         var npcPlayerCombat = new RuntimeNpcPlayerCombatPass(npcStore, playersAuthority);

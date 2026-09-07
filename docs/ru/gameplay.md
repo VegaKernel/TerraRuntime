@@ -263,7 +263,13 @@ Declarative loot table полезна только если воспроизво
 
 Buffs и prefixes теперь имеют typed version-pinned identity ranges и выбранные source-backed definition traits вместо scattered raw integers.
 
-Их complete gameplay остаётся broad future work. Identity validation нельзя путать с реализацией каждого buff effect, immunity, prefix stat family или reforging rule.
+Player packet `50` теперь является typed presentation boundary для TerrariaServer 1.4.5.8. Runtime проверяет source shape `[player][buff ushort...][0]` с лимитом `Player.maxBuffs = 44`, отбрасывает заявленный клиентом slot в пользу generation, принадлежащей connection, удерживает полученные snapshots для peer/late-join replication и переносит наблюдённый snapshot между мирами. Реально полученный пустой список отличается от состояния, когда packet `50` ещё вообще не приходил.
+
+Этот packet не содержит buff duration и не является authoritative combat modifier input. Vanilla dedicated server не исполняет hostile projectile `Damage_EVP`: пострадавший multiplayer client применяет такие projectile statuses локально и сообщает серверу только список активных types через packet `50`. Packet `55` остаётся отдельным targeted PvP buff-delivery path и не используется как PvE fallback.
+
+Admitted projectile-specific PvP status slice теперь server-resolved из source-pinned правил `Projectile.StatusPvP`: Fire Arrow `2` может наложить `On Fire!` `24` на 180 ticks с шансом `1/3`, Flamelash `34` — на 240 ticks с `1/2`, Poisoned Knife `54` — `Poisoned` `20` на 600 ticks с `1/2`. Status roll выполняется в vanilla ordering до `Player.Hurt`, поэтому Creative GodMode может избежать HP damage, не отменяя уже состоявшийся proc. Успешный эффект кодируется packet `55` только exact target generation; equipment/enchantment-driven status остаётся fail-closed.
+
+Полный buff gameplay остаётся broad future work. Identity/presentation validation нельзя путать с реализацией каждого buff effect, immunity, duration/RNG rule, prefix stat family или reforging rule.
 
 ## 21. Wiring, liquids и growth
 

@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 
@@ -78,6 +79,18 @@ internal sealed class RuntimePlayerEventFanout(
     {
         first.PlayerGodModeChanged(player, enabled);
         second.PlayerGodModeChanged(player, enabled);
+    }
+
+    public void PlayerBuffTypesUpdated(ConnectionHandle connection, in PlayerBuffTypesCommitRequest request)
+    {
+        first.PlayerBuffTypesUpdated(connection, in request);
+        second.PlayerBuffTypesUpdated(connection, in request);
+    }
+
+    public void PlayerPvpBuffApplied(PlayerHandle player, BuffTypeId buffType, int durationTicks)
+    {
+        first.PlayerPvpBuffApplied(player, buffType, durationTicks);
+        second.PlayerPvpBuffApplied(player, buffType, durationTicks);
     }
 
     public void PlayerDisconnected(ConnectionHandle connection)
