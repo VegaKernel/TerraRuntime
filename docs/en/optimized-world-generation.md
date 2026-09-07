@@ -169,8 +169,9 @@ basin and at least one dry 3x3 Larva-capable site. Missing hives are placed only
 with full-cell checks that reject frame-important objects, dungeon/Temple content, Shimmer and existing hives.
 
 Progression content then places at most one Larva in each distinct hive before its compatibility fallback, so the final
-1/2/3 Larva budget is spatially distributed rather than clustered in one component. Queen Bee activation/destruction
-semantics remain gameplay-owned; world generation proves the arena and Larva anchor contract.
+1/2/3 Larva budget is spatially distributed rather than clustered in one component. World generation proves the
+arena/anchor contract; the gameplay authority now resolves complete framed-object destruction and the source-shaped
+nearest-player Queen Bee trigger.
 
 The same ecology pass adds deterministic underground glowing-mushroom pockets with a width-scaled 1/2/3/4 budget.
 Pockets are kept distinct from one another and from the baseline mushroom region, and reject frame-important, hive,
@@ -184,8 +185,8 @@ using the pinned 1.4.5.8 frame contract (`+36` frame-X for Crimson), dry 3x3 Lar
 Jungle Progression Cache containing source-backed Jungle Spores/Stingers/Vines, and a dry Underworld forge pocket with
 reachable Obsidian plus exposed Hellstone. The final topology validator treats all four roles as mandatory route targets.
 
-Larva placement proves the worldgen anchor only. Queen Bee activation/destruction semantics remain owned by gameplay
-runtime work and are not falsely counted as complete here.
+Larva placement proves the worldgen anchor only. Its complete framed-object destruction and nearest-player Queen Bee
+trigger are now owned by the gameplay runtime and are tested independently of generator geometry.
 
 ## Validation
 

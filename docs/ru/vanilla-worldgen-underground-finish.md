@@ -54,7 +54,7 @@ Pass продолжает moss по exposed Stone и добавляет соот
 
 Larva не представляется одним anchor tile. Terraria определяет её как frame-important background object размером 3x3. Pass ищет внутри существующих Hive regions свободные Hive-wall pockets, окружённые Hive material, и записывает все девять framed Larva cells с шагом frame coordinate 18 пикселей. Placement также запрещён рядом с другими frame-important objects.
 
-Это важно и для валидности файла, и для gameplay semantics: частично записанная Larva была бы orphan framed object и не могла бы считаться корректным Queen Bee trigger.
+Это важно и для валидности файла, и для gameplay semantics: частично записанная Larva является orphan framed object и отклоняется gameplay mutation path. Полный объект теперь может вызвать source-shaped Queen Bee spawn для ближайшего игрока.
 
 ## RNG и gating
 

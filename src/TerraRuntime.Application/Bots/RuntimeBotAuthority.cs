@@ -5,6 +5,7 @@ using TerraRuntime.Core.Projectiles;
 using TerraRuntime.Gameplay.Bots;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Gameplay.Npcs;
+using TerraRuntime.Gameplay.Players;
 using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.HostContracts;
 using TerraRuntime.World;
@@ -39,6 +40,12 @@ internal sealed class RuntimeBotAuthority
     private const float AutomaticGunDistancePixels = 256f;
     private const float AutomaticGunTargetSpeedPixelsPerTick = 3f;
     private const int MaximumPredictiveAimTicks = 120;
+    private const float MinimumPlayerEscortOffsetPixels = 64f;
+    private const float EscortWanderRadiusPixels = 12f;
+    private const long EscortWanderPeriodTicks = 360;
+    private const float FlightAscentThresholdPixels = 32f;
+    private const float ObstacleClimbTargetPixels = 96f;
+    private const long FlightDecisionHoldTicks = 45;
 
     private readonly ServerPlayerAuthority serverPlayers;
     private readonly PlayerAuthority players;
@@ -124,17 +131,21 @@ internal sealed class RuntimeBotAuthority
         var controllerId = new ActorControllerId($"bot:{id}");
         string name = $"Bot {id}";
         var configuration = new RuntimeBotConfiguration(
-            RuntimeBotClothingPreset.Classic,
-            RuntimeBotArmorPreset.None,
             RuntimeBotMode.Idle,
             default,
             Body: request.Body,
             NpcType: request.NpcType,
             WeaponPolicy: RuntimeBotWeaponPolicy.Automatic,
-            FlightEnabled: request.Body == RuntimeBotBodyKind.Player,
-            AutoPickup: request.Body == RuntimeBotBodyKind.Player,
-            AutoUseConsumables: request.Body == RuntimeBotBodyKind.Player);
-        var state = new BotState(id, serverId, controllerId, name, configuration, tickProvider());
+            FlightEnabled: request.Body == RuntimeBotBodyKind.Player);
+        var state = new BotState(
+            id,
+            serverId,
+            controllerId,
+            name,
+            configuration,
+            CreateVisualIdentity(id),
+            CreatePersonality(id),
+            tickProvider());
 
         bool created = request.Body switch
         {
@@ -243,14 +254,12 @@ internal sealed class RuntimeBotAuthority
         }
 
         RuntimeBotConfiguration configuration = bot.Configuration;
-        if (configuration.AutoPickup)
-            TryPickupOneUsefulItem(bot, in self);
-        if (configuration.AutoUseConsumables)
-        {
-            TryAutoHeal(bot, in self, tick);
-            if (serverPlayers.TryGet(bot.Player, out PlayerStateSnapshot refreshed))
-                self = refreshed;
-        }
+        // PlayerBot quality-of-life behavior is an invariant, not an operator switch: disabling pickup/healing
+        // created deceptively half-functional actors and split one authoritative inventory path into UI variants.
+        TryPickupOneUsefulItem(bot, in self);
+        TryAutoHeal(bot, in self, tick);
+        if (serverPlayers.TryGet(bot.Player, out PlayerStateSnapshot refreshed))
+            self = refreshed;
 
         if (!TryResolveLiveTarget(bot, out PlayerStateSnapshot target))
         {
@@ -268,19 +277,24 @@ internal sealed class RuntimeBotAuthority
         if (self.Hostile != pvp)
             _ = serverPlayers.SetHostile(bot.ServerPlayerId, pvp);
 
+        ResolvePlayerEscortDestination(bot, in self, in target, tick, out float escortX, out float escortY);
+        escortX = ClampWorldCenterX(escortX, PlayerAuthority.VanillaBasePlayerWidth * 0.5f);
+        escortY = ClampWorldCenterY(escortY, PlayerAuthority.VanillaBasePlayerHeight * 0.5f);
         _ = serverPlayers.SetMovementIntent(
             bot.ServerPlayerId,
-            ServerPlayerMovementIntent.FollowPlayer(
-                configuration.Target.Player,
+            ServerPlayerMovementIntent.MoveTo(
+                escortX,
+                escortY,
                 ServerPlayerMovementOptions.Default with
                 {
+                    StopDistance = 20f,
                     AutoJumpObstacles = true,
                     FlightEnabled = configuration.FlightEnabled
                 }));
 
         UpdatePlayerStuckRecovery(bot, in self, in target, tick);
 
-        if (configuration.AutoUseConsumables && configuration.Mode == RuntimeBotMode.Guard)
+        if (configuration.Mode == RuntimeBotMode.Guard)
             TryAutoUseCombatBuffs(bot, tick);
 
         if (configuration.Mode == RuntimeBotMode.Guard && tick >= bot.NextAttackTick)
@@ -316,17 +330,58 @@ internal sealed class RuntimeBotAuthority
             return;
         }
 
-        // The selected player is a movement destination, never the hostile NPC.target. Keep enough center distance
-        // that the NPC and player hitboxes cannot overlap even on a diagonal approach.
+        // The selected player is never the hostile NPC.target. A presentation NPC cannot publish a per-instance
+        // friendly/contact-damage override to an unmodified Terraria client, so it must also stay physically outside
+        // the player's collision rectangle; the server-side DamageOverride=0 remains the final authority backstop.
         float noContactX = hitbox.Width * 0.5f + PlayerAuthority.VanillaBasePlayerWidth * 0.5f + 8f;
         float noContactY = hitbox.Height * 0.5f + PlayerAuthority.VanillaBasePlayerHeight * 0.5f + 8f;
+        bool flying = VanillaNpcActorControlSupport1458.TryGetMotionFamily(
+                self.TypeIdentity,
+                out VanillaNpcActorControlMotionFamily1458 motionFamily) &&
+            motionFamily != VanillaNpcActorControlMotionFamily1458.GroundFighter;
+        ResolveEscortDestination(bot, in target, tick, allowVerticalWander: flying,
+            out float escortX, out float escortY);
+        escortX = ClampWorldCenterX(escortX, hitbox.Width * 0.5f);
+        escortY = ClampWorldCenterY(escortY, hitbox.Height * 0.5f);
+        if (RectanglesIntersect(
+                self.PositionX,
+                self.PositionY,
+                hitbox.Width,
+                hitbox.Height,
+                target.PositionX - 16f,
+                target.PositionY - 16f,
+                PlayerAuthority.VanillaBasePlayerWidth + 32f,
+                PlayerAuthority.VanillaBasePlayerHeight + 32f))
+        {
+            float separatedY = flying
+                ? escortY - hitbox.Height * 0.5f
+                : target.PositionY + PlayerAuthority.VanillaBasePlayerHeight - hitbox.Height;
+            if (npcs.TryTeleportBotNpc(
+                    bot.Npc,
+                    bot.ControllerId,
+                    escortX - hitbox.Width * 0.5f,
+                    separatedY) &&
+                npcs.TryCapture(bot.Npc, out NpcSnapshot separated))
+            {
+                self = separated;
+                CommitTeleport(bot, tick);
+            }
+        }
+        float targetCenterX = target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+        float npcCenterX = self.PositionX + hitbox.Width * 0.5f;
+        if (MathF.Abs(npcCenterX - targetCenterX) < noContactX + 24f)
+        {
+            float side = npcCenterX < targetCenterX ? -1f : 1f;
+            escortX = targetCenterX + side * Math.Max(MathF.Abs(bot.Personality.EscortOffsetX), noContactX + 48f);
+            escortX = ClampWorldCenterX(escortX, hitbox.Width * 0.5f);
+        }
         var motion = NpcActorMotionOptions.Default with
         {
             StopDistance = MathF.Sqrt(noContactX * noContactX + noContactY * noContactY)
         };
         NpcActorIntent follow = NpcActorIntent.MoveTo(
-            target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
-            target.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f,
+            escortX,
+            flying ? escortY : target.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f,
             motion);
         if (!npcs.TrySetBotNpcIntent(bot.Npc, bot.ControllerId, in follow))
         {
@@ -365,7 +420,14 @@ internal sealed class RuntimeBotAuthority
         if (!ShouldTeleport(bot, distanceSquared, tick))
             return;
 
-        if (serverPlayers.TryTeleport(bot.ServerPlayerId, target.PositionX, target.PositionY))
+        ResolveEscortDestination(bot, in target, tick, allowVerticalWander: bot.Configuration.FlightEnabled,
+            out float destinationX, out float destinationY);
+        destinationX = ClampWorldCenterX(destinationX, PlayerAuthority.VanillaBasePlayerWidth * 0.5f);
+        destinationY = ClampWorldCenterY(destinationY, PlayerAuthority.VanillaBasePlayerHeight * 0.5f);
+        if (serverPlayers.TryTeleport(
+                bot.ServerPlayerId,
+                destinationX - PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
+                destinationY - PlayerAuthority.VanillaBasePlayerHeight * 0.5f))
             CommitTeleport(bot, tick);
     }
 
@@ -381,10 +443,19 @@ internal sealed class RuntimeBotAuthority
         if (!ShouldTeleport(bot, distanceSquared, tick))
             return;
 
-        float safeX = self.PositionX <= target.PositionX
-            ? target.PositionX - hitbox.Width - 8f
-            : target.PositionX + PlayerAuthority.VanillaBasePlayerWidth + 8f;
-        if (npcs.TryTeleportBotNpc(bot.Npc, bot.ControllerId, safeX, target.PositionY))
+        bool flying = VanillaNpcActorControlSupport1458.TryGetMotionFamily(
+                self.TypeIdentity,
+                out VanillaNpcActorControlMotionFamily1458 motionFamily) &&
+            motionFamily != VanillaNpcActorControlMotionFamily1458.GroundFighter;
+        ResolveEscortDestination(bot, in target, tick, allowVerticalWander: flying,
+            out float destinationX, out float destinationY);
+        destinationX = ClampWorldCenterX(destinationX, hitbox.Width * 0.5f);
+        destinationY = ClampWorldCenterY(destinationY, hitbox.Height * 0.5f);
+        float safeX = destinationX - hitbox.Width * 0.5f;
+        float safeY = flying
+            ? destinationY - hitbox.Height * 0.5f
+            : target.PositionY + PlayerAuthority.VanillaBasePlayerHeight - hitbox.Height;
+        if (npcs.TryTeleportBotNpc(bot.Npc, bot.ControllerId, safeX, safeY))
             CommitTeleport(bot, tick);
     }
 
@@ -420,6 +491,79 @@ internal sealed class RuntimeBotAuthority
         bot.LastDistance = 0f;
         bot.IsStuck = false;
     }
+
+    private void ResolvePlayerEscortDestination(
+        BotState bot,
+        in PlayerStateSnapshot self,
+        in PlayerStateSnapshot target,
+        long tick,
+        out float centerX,
+        out float centerY)
+    {
+        // Walking is the normal state. Wings are a traversal capability: they become useful only when the protected
+        // player is materially above the bot or a solid obstacle blocks the direct route. Keeping the ordinary target
+        // on the target player's ground level also prevents the old permanent low hover caused by a negative formation
+        // offset on every Follow tick.
+        ResolveEscortDestination(bot, in target, tick, allowVerticalWander: false, out centerX, out centerY);
+        if (!bot.Configuration.FlightEnabled)
+        {
+            bot.FlightDecisionUntilTick = 0;
+            return;
+        }
+
+        float selfCenterY = self.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+        float targetCenterY = target.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+        bool targetRequiresAscent = targetCenterY < selfCenterY - FlightAscentThresholdPixels;
+        bool routeBlocked = !VanillaWorldCanHit.HasLineOfSight(
+            worldTiles,
+            self.PositionX,
+            self.PositionY,
+            (int)PlayerAuthority.VanillaBasePlayerWidth,
+            (int)PlayerAuthority.VanillaBasePlayerHeight,
+            centerX - PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
+            target.PositionY,
+            (int)PlayerAuthority.VanillaBasePlayerWidth,
+            (int)PlayerAuthority.VanillaBasePlayerHeight);
+
+        if (targetRequiresAscent || routeBlocked)
+            bot.FlightDecisionUntilTick = tick + FlightDecisionHoldTicks;
+        if (!targetRequiresAscent && !routeBlocked && tick >= bot.FlightDecisionUntilTick)
+            return;
+
+        float phase = ((tick + bot.Personality.WanderPhaseTicks) % EscortWanderPeriodTicks) /
+            (float)EscortWanderPeriodTicks * MathF.Tau;
+        float airborneFormationY = targetCenterY + bot.Personality.EscortOffsetY +
+            MathF.Cos(phase * 0.75f) * EscortWanderRadiusPixels;
+        centerY = routeBlocked
+            ? MathF.Min(airborneFormationY, selfCenterY - ObstacleClimbTargetPixels)
+            : airborneFormationY;
+    }
+
+    private static void ResolveEscortDestination(
+        BotState bot,
+        in PlayerStateSnapshot target,
+        long tick,
+        bool allowVerticalWander,
+        out float centerX,
+        out float centerY)
+    {
+        float phase = ((tick + bot.Personality.WanderPhaseTicks) % EscortWanderPeriodTicks) /
+            (float)EscortWanderPeriodTicks * MathF.Tau;
+        float wanderX = MathF.Sin(phase) * EscortWanderRadiusPixels;
+        float wanderY = allowVerticalWander
+            ? MathF.Cos(phase * 0.75f) * EscortWanderRadiusPixels
+            : 0f;
+        centerX = target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f +
+            bot.Personality.EscortOffsetX + wanderX;
+        centerY = target.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f +
+            (allowVerticalWander ? bot.Personality.EscortOffsetY : 0f) + wanderY;
+    }
+
+    private float ClampWorldCenterX(float centerX, float halfWidth) =>
+        Math.Clamp(centerX, halfWidth, worldTiles.Dimensions.WidthTiles * 16f - halfWidth);
+
+    private float ClampWorldCenterY(float centerY, float halfHeight) =>
+        Math.Clamp(centerY, halfHeight, worldTiles.Dimensions.HeightTiles * 16f - halfHeight);
 
     private void TryGuardAttack(BotState bot, in PlayerStateSnapshot self, in PlayerStateSnapshot protectedPlayer, long tick)
     {
@@ -1300,18 +1444,27 @@ internal sealed class RuntimeBotAuthority
     {
         if (!bot.Player.IsAssigned)
             return false;
-        ServerPlayerAppearanceState appearance = CreateAppearance(bot.Name, configuration.Clothing);
+        PlayerBotVisualIdentity visual = bot.VisualIdentity;
+        ServerPlayerAppearanceState appearance = CreateAppearance(bot.Name, in visual);
         if (!serverPlayers.SetAppearance(bot.ServerPlayerId, in appearance))
             return false;
 
-        ResolveArmor(configuration.Armor, out ItemTypeId head, out ItemTypeId body, out ItemTypeId legs);
+        ItemTypeId head = bot.VisualIdentity.HeadArmor;
+        ItemTypeId body = bot.VisualIdentity.BodyArmor;
+        ItemTypeId legs = bot.VisualIdentity.LegArmor;
         ItemTypeId wings = configuration.FlightEnabled ? VanillaItemIds.FishronWings : VanillaItemIds.None;
         ItemTypeId flightBooster = configuration.FlightEnabled ? VanillaItemIds.EmpressFlightBooster : VanillaItemIds.None;
+        ItemTypeId boots = configuration.FlightEnabled ? VanillaItemIds.TerrasparkBoots : VanillaItemIds.None;
+        ItemTypeId acceleration = configuration.FlightEnabled ? VanillaItemIds.Magiluminescence : VanillaItemIds.None;
+        ItemTypeId agility = configuration.FlightEnabled ? VanillaItemIds.MasterNinjaGear : VanillaItemIds.None;
         return SetArmorSlot(bot.ServerPlayerId, VanillaPlayerItemSlotCatalog.ArmorStart, head) &&
                SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 1)), body) &&
                SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 2)), legs) &&
                SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 3)), wings) &&
-               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 4)), flightBooster);
+               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 4)), flightBooster) &&
+               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 5)), boots) &&
+               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 6)), acceleration) &&
+               SetArmorSlot(bot.ServerPlayerId, checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 7)), agility);
     }
 
     private bool EnsurePlayerLoadout(BotState bot, RuntimeBotConfiguration configuration, bool addStarterAmmo)
@@ -1397,8 +1550,6 @@ internal sealed class RuntimeBotAuthority
     }
 
     private static bool IsValidConfiguration(RuntimeBotConfiguration configuration) =>
-        Enum.IsDefined(configuration.Clothing) &&
-        Enum.IsDefined(configuration.Armor) &&
         Enum.IsDefined(configuration.Mode) &&
         Enum.IsDefined(configuration.Body) &&
         Enum.IsDefined(configuration.WeaponPolicy) &&
@@ -1420,6 +1571,7 @@ internal sealed class RuntimeBotAuthority
         bot.LastProgressTick = tick;
         bot.NextAttackTick = 0;
         bot.UseItemUntilTick = 0;
+        bot.FlightDecisionUntilTick = 0;
     }
 
     private void ResetUnavailableTarget(BotState bot, long tick)
@@ -1429,6 +1581,7 @@ internal sealed class RuntimeBotAuthority
         bot.IsStuck = false;
         bot.LastDistance = float.PositiveInfinity;
         bot.LastProgressTick = tick;
+        bot.FlightDecisionUntilTick = 0;
     }
 
     private void StopActor(BotState bot)
@@ -1447,61 +1600,111 @@ internal sealed class RuntimeBotAuthority
         }
     }
 
-    private static void ResolveArmor(
-        RuntimeBotArmorPreset preset,
-        out ItemTypeId head,
-        out ItemTypeId body,
-        out ItemTypeId legs)
+    private static ServerPlayerAppearanceState CreateAppearance(string name, in PlayerBotVisualIdentity visual)
     {
-        (head, body, legs) = preset switch
-        {
-            RuntimeBotArmorPreset.None => (VanillaItemIds.None, VanillaItemIds.None, VanillaItemIds.None),
-            RuntimeBotArmorPreset.Wood => (VanillaItemIds.WoodHelmet, VanillaItemIds.WoodBreastplate, VanillaItemIds.WoodGreaves),
-            RuntimeBotArmorPreset.Copper => (VanillaItemIds.CopperHelmet, VanillaItemIds.CopperChainmail, VanillaItemIds.CopperGreaves),
-            RuntimeBotArmorPreset.Iron => (VanillaItemIds.IronHelmet, VanillaItemIds.IronChainmail, VanillaItemIds.IronGreaves),
-            RuntimeBotArmorPreset.Silver => (VanillaItemIds.SilverHelmet, VanillaItemIds.SilverChainmail, VanillaItemIds.SilverGreaves),
-            RuntimeBotArmorPreset.Gold => (VanillaItemIds.GoldHelmet, VanillaItemIds.GoldChainmail, VanillaItemIds.GoldGreaves),
-            _ => (VanillaItemIds.None, VanillaItemIds.None, VanillaItemIds.None)
-        };
-    }
-
-    private static ServerPlayerAppearanceState CreateAppearance(string name, RuntimeBotClothingPreset preset)
-    {
-        (PlayerRgbColor shirt, PlayerRgbColor undershirt, PlayerRgbColor pants, PlayerRgbColor shoes, PlayerRgbColor hair) = preset switch
-        {
-            RuntimeBotClothingPreset.Forest => (
-                new PlayerRgbColor(54, 110, 63), new PlayerRgbColor(103, 148, 91),
-                new PlayerRgbColor(62, 74, 57), new PlayerRgbColor(43, 35, 29), new PlayerRgbColor(92, 64, 38)),
-            RuntimeBotClothingPreset.Crimson => (
-                new PlayerRgbColor(145, 45, 52), new PlayerRgbColor(92, 28, 36),
-                new PlayerRgbColor(57, 48, 54), new PlayerRgbColor(36, 30, 33), new PlayerRgbColor(48, 30, 24)),
-            RuntimeBotClothingPreset.Monochrome => (
-                new PlayerRgbColor(110, 110, 110), new PlayerRgbColor(72, 72, 72),
-                new PlayerRgbColor(48, 48, 48), new PlayerRgbColor(28, 28, 28), new PlayerRgbColor(38, 38, 38)),
-            _ => (
-                new PlayerRgbColor(30, 110, 170), new PlayerRgbColor(180, 180, 180),
-                new PlayerRgbColor(45, 70, 120), new PlayerRgbColor(65, 45, 30), new PlayerRgbColor(80, 55, 35))
-        };
-
         return new ServerPlayerAppearanceState(
-            SkinVariant: 0,
-            VoiceVariant: 0,
-            VoicePitchOffset: 0f,
-            Hair: 0,
+            SkinVariant: visual.SkinVariant,
+            VoiceVariant: visual.VoiceVariant,
+            VoicePitchOffset: visual.VoicePitchOffset,
+            Hair: visual.Hair,
             Name: name,
             HairDye: 0,
             HideVisibleAccessory: 0,
             HideMisc: 0,
-            HairColor: hair,
-            SkinColor: new PlayerRgbColor(255, 215, 180),
-            EyeColor: new PlayerRgbColor(75, 105, 145),
-            ShirtColor: shirt,
-            UnderShirtColor: undershirt,
-            PantsColor: pants,
-            ShoeColor: shoes,
+            HairColor: visual.HairColor,
+            SkinColor: visual.SkinColor,
+            EyeColor: visual.EyeColor,
+            ShirtColor: visual.ShirtColor,
+            UnderShirtColor: visual.UnderShirtColor,
+            PantsColor: visual.PantsColor,
+            ShoeColor: visual.ShoeColor,
             DifficultyFlags: 0,
             TorchAndCartFlags: 0,
             ConsumableUnlockFlags: 0);
+    }
+
+    private static PlayerBotPersonality CreatePersonality(int id)
+    {
+        uint state = Mix(unchecked((uint)id) ^ 0xA511E9B3u);
+        int ring = (id - 1) / 2;
+        float side = (id & 1) == 0 ? 1f : -1f;
+        float radialJitter = Next(ref state, 0, 17);
+        float offsetX = side * (MinimumPlayerEscortOffsetPixels + ring % 5 * 32f + radialJitter);
+        float offsetY = -72f - Next(ref state, 0, 49);
+        long phase = Next(ref state, 0, checked((int)EscortWanderPeriodTicks));
+        return new PlayerBotPersonality(offsetX, offsetY, phase);
+    }
+
+    private static PlayerBotVisualIdentity CreateVisualIdentity(int id)
+    {
+        uint state = Mix(unchecked((uint)id) ^ 0x6D2B79F5u);
+        int armor = Next(ref state, 0, 6);
+        (ItemTypeId head, ItemTypeId body, ItemTypeId legs) = armor switch
+        {
+            1 => (VanillaItemIds.WoodHelmet, VanillaItemIds.WoodBreastplate, VanillaItemIds.WoodGreaves),
+            2 => (VanillaItemIds.CopperHelmet, VanillaItemIds.CopperChainmail, VanillaItemIds.CopperGreaves),
+            3 => (VanillaItemIds.IronHelmet, VanillaItemIds.IronChainmail, VanillaItemIds.IronGreaves),
+            4 => (VanillaItemIds.SilverHelmet, VanillaItemIds.SilverChainmail, VanillaItemIds.SilverGreaves),
+            5 => (VanillaItemIds.GoldHelmet, VanillaItemIds.GoldChainmail, VanillaItemIds.GoldGreaves),
+            _ => (VanillaItemIds.None, VanillaItemIds.None, VanillaItemIds.None)
+        };
+
+        (PlayerRgbColor shirt, PlayerRgbColor undershirt, PlayerRgbColor pants, PlayerRgbColor shoes) =
+            Next(ref state, 0, 6) switch
+            {
+                0 => (new PlayerRgbColor(30, 110, 170), new PlayerRgbColor(180, 180, 180), new PlayerRgbColor(45, 70, 120), new PlayerRgbColor(65, 45, 30)),
+                1 => (new PlayerRgbColor(54, 110, 63), new PlayerRgbColor(103, 148, 91), new PlayerRgbColor(62, 74, 57), new PlayerRgbColor(43, 35, 29)),
+                2 => (new PlayerRgbColor(145, 45, 52), new PlayerRgbColor(92, 28, 36), new PlayerRgbColor(57, 48, 54), new PlayerRgbColor(36, 30, 33)),
+                3 => (new PlayerRgbColor(110, 110, 110), new PlayerRgbColor(72, 72, 72), new PlayerRgbColor(48, 48, 48), new PlayerRgbColor(28, 28, 28)),
+                4 => (new PlayerRgbColor(120, 72, 168), new PlayerRgbColor(203, 170, 228), new PlayerRgbColor(50, 43, 95), new PlayerRgbColor(40, 28, 62)),
+                _ => (new PlayerRgbColor(205, 128, 34), new PlayerRgbColor(244, 211, 121), new PlayerRgbColor(58, 92, 105), new PlayerRgbColor(48, 34, 25))
+            };
+        PlayerRgbColor skin = Next(ref state, 0, 5) switch
+        {
+            0 => new(255, 215, 180),
+            1 => new(232, 190, 151),
+            2 => new(198, 142, 105),
+            3 => new(141, 92, 65),
+            _ => new(92, 61, 48)
+        };
+        var hair = new PlayerRgbColor(
+            checked((byte)Next(ref state, 30, 221)),
+            checked((byte)Next(ref state, 25, 196)),
+            checked((byte)Next(ref state, 20, 171)));
+        var eyes = new PlayerRgbColor(
+            checked((byte)Next(ref state, 40, 181)),
+            checked((byte)Next(ref state, 60, 201)),
+            checked((byte)Next(ref state, 70, 221)));
+        return new PlayerBotVisualIdentity(
+            checked((byte)Next(ref state, 0, VanillaPlayerAppearanceNormalizer.PlayerVariantCount)),
+            checked((byte)Next(ref state, 1, 5)),
+            (Next(ref state, -20, 21) / 100f),
+            checked((byte)Next(ref state, 0, VanillaPlayerAppearanceNormalizer.HairCount)),
+            hair,
+            skin,
+            eyes,
+            shirt,
+            undershirt,
+            pants,
+            shoes,
+            head,
+            body,
+            legs);
+    }
+
+    private static uint Mix(uint value)
+    {
+        value ^= value >> 16;
+        value *= 0x7FEB352Du;
+        value ^= value >> 15;
+        value *= 0x846CA68Bu;
+        return value ^ (value >> 16);
+    }
+
+    private static int Next(ref uint state, int minimumInclusive, int maximumExclusive)
+    {
+        state = Mix(state + 0x9E3779B9u);
+        return minimumInclusive + (int)(state % checked((uint)(maximumExclusive - minimumInclusive)));
     }
 
     private void PublishTelemetry(long tick, bool force)
@@ -1559,12 +1762,35 @@ internal sealed class RuntimeBotAuthority
         float Width,
         float Height);
 
+    private readonly record struct PlayerBotPersonality(
+        float EscortOffsetX,
+        float EscortOffsetY,
+        long WanderPhaseTicks);
+
+    private readonly record struct PlayerBotVisualIdentity(
+        byte SkinVariant,
+        byte VoiceVariant,
+        float VoicePitchOffset,
+        byte Hair,
+        PlayerRgbColor HairColor,
+        PlayerRgbColor SkinColor,
+        PlayerRgbColor EyeColor,
+        PlayerRgbColor ShirtColor,
+        PlayerRgbColor UnderShirtColor,
+        PlayerRgbColor PantsColor,
+        PlayerRgbColor ShoeColor,
+        ItemTypeId HeadArmor,
+        ItemTypeId BodyArmor,
+        ItemTypeId LegArmor);
+
     private sealed class BotState(
         int id,
         ServerPlayerId serverPlayerId,
         ActorControllerId controllerId,
         string name,
         RuntimeBotConfiguration configuration,
+        PlayerBotVisualIdentity visualIdentity,
+        PlayerBotPersonality personality,
         long createdAtTick)
     {
         public int Id { get; } = id;
@@ -1574,12 +1800,15 @@ internal sealed class RuntimeBotAuthority
         public NpcHandle Npc { get; set; }
         public string Name { get; } = name;
         public RuntimeBotConfiguration Configuration { get; set; } = configuration;
+        public PlayerBotVisualIdentity VisualIdentity { get; } = visualIdentity;
+        public PlayerBotPersonality Personality { get; } = personality;
         public bool TargetAvailable { get; set; }
         public bool PvpEnabled { get; set; }
         public bool IsStuck { get; set; }
         public long TeleportCount { get; set; }
         public long LastProgressTick { get; set; } = createdAtTick;
         public long TeleportCooldownUntil { get; set; }
+        public long FlightDecisionUntilTick { get; set; }
         public long NextAttackTick { get; set; }
         public long UseItemUntilTick { get; set; }
         public long PotionDelayUntilTick { get; set; }

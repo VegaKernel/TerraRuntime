@@ -52,6 +52,21 @@ public sealed class RuntimeBotAuthorityTests
             checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 4)),
             out ServerPlayerItemState booster));
         Assert.Equal(VanillaItemIds.EmpressFlightBooster, booster.ItemType);
+        Assert.True(fixture.ServerPlayers.TryGetItem(
+            player.ServerPlayerId,
+            checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 5)),
+            out ServerPlayerItemState boots));
+        Assert.Equal(VanillaItemIds.TerrasparkBoots, boots.ItemType);
+        Assert.True(fixture.ServerPlayers.TryGetItem(
+            player.ServerPlayerId,
+            checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 6)),
+            out ServerPlayerItemState acceleration));
+        Assert.Equal(VanillaItemIds.Magiluminescence, acceleration.ItemType);
+        Assert.True(fixture.ServerPlayers.TryGetItem(
+            player.ServerPlayerId,
+            checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 7)),
+            out ServerPlayerItemState agility));
+        Assert.Equal(VanillaItemIds.MasterNinjaGear, agility.ItemType);
 
         RuntimeBotSnapshot npc = Assert.IsType<RuntimeBotSnapshot>(
             await fixture.CreateBotAsync(new RuntimeBotCreateRequest(RuntimeBotBodyKind.Npc, VanillaNpcIds.Zombie)));
@@ -66,6 +81,128 @@ public sealed class RuntimeBotAuthorityTests
         RuntimeBotSnapshot? rejected = await fixture.CreateBotAsync(
             new RuntimeBotCreateRequest(RuntimeBotBodyKind.Npc, VanillaNpcIds.Merchant));
         Assert.Null(rejected);
+    }
+
+    [Fact]
+    public async Task Player_bots_receive_distinct_automatic_visual_identity_and_escort_destinations()
+    {
+        using var fixture = new Fixture(botSpawnX: 160f, botSpawnY: 160f);
+        ConnectionHandle target = fixture.SpawnConnectionPlayer(spawnTileX: 30, spawnTileY: 13);
+        Assert.True(fixture.State.TryCapturePlayerSnapshot(target.Player, out PlayerStateSnapshot targetState));
+        var bots = new RuntimeBotSnapshot[3];
+        for (int index = 0; index < bots.Length; index++)
+        {
+            RuntimeBotSnapshot created = Assert.IsType<RuntimeBotSnapshot>(
+                await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+            bots[index] = Assert.IsType<RuntimeBotSnapshot>(await fixture.ConfigureAsync(
+                created.Id,
+                created.Configuration with
+                {
+                    Mode = RuntimeBotMode.Follow,
+                    Target = new RuntimeBotTarget(target.Player, "target")
+                }));
+        }
+
+        fixture.State.Tick();
+
+        var destinations = new HashSet<float>();
+        var visuals = new HashSet<(byte Skin, byte Hair, PlayerRgbColor Shirt, PlayerRgbColor HairColor)>();
+        float targetCenterX = targetState.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+        foreach (RuntimeBotSnapshot bot in bots)
+        {
+            ServerPlayerMovementIntent intent = fixture.ServerPlayers.GetMovementIntent(bot.Player);
+            Assert.Equal(ServerPlayerMovementIntentKind.MoveTo, intent.Kind);
+            Assert.False(intent.TargetPlayer.IsAssigned);
+            Assert.True(MathF.Abs(intent.TargetX - targetCenterX) >= 40f);
+            destinations.Add(intent.TargetX);
+
+            Assert.True(fixture.ServerPlayers.TryGetAppearance(bot.Player, out ServerPlayerAppearanceState appearance));
+            visuals.Add((appearance.SkinVariant, appearance.Hair, appearance.ShirtColor, appearance.HairColor));
+        }
+        Assert.Equal(bots.Length, destinations.Count);
+        Assert.True(visuals.Count > 1);
+    }
+
+    [Fact]
+    public async Task Player_bot_walks_at_target_level_when_the_escort_route_is_clear()
+    {
+        using var fixture = new Fixture(botSpawnX: 160f, botSpawnY: 160f);
+        ConnectionHandle target = fixture.SpawnConnectionPlayer(spawnTileX: 30, spawnTileY: 13);
+        Assert.True(fixture.State.TryCapturePlayerSnapshot(target.Player, out PlayerStateSnapshot targetState));
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(
+            await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        _ = Assert.IsType<RuntimeBotSnapshot>(await fixture.ConfigureAsync(
+            bot.Id,
+            bot.Configuration with
+            {
+                Mode = RuntimeBotMode.Follow,
+                Target = new RuntimeBotTarget(target.Player, "target")
+            }));
+        for (int x = 0; x < 80; x++)
+        {
+            fixture.Tiles.Set(x, 13, new WorldTile
+            {
+                Type = checked((ushort)VanillaTileIds.Stone.Value),
+                Flags = WorldTileFlags.Active
+            });
+        }
+
+        fixture.State.Tick();
+
+        ServerPlayerMovementIntent intent = fixture.ServerPlayers.GetMovementIntent(bot.Player);
+        float targetCenterY = targetState.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+        Assert.Equal(targetCenterY, intent.TargetY, 3);
+        Assert.True(intent.Options.FlightEnabled); // Wings remain available without forcing a permanent hover target.
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out PlayerStateSnapshot self));
+        float selfCenterY = self.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+        Assert.True(intent.TargetY >= selfCenterY - intent.Options.JumpVerticalThreshold);
+
+        fixture.Tick(30);
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out PlayerStateSnapshot walking));
+        Assert.True(walking.PositionX > 160f);
+        Assert.Equal(0, walking.ControlFlags & (1 << 4));
+        Assert.InRange(walking.PositionY, 165f, 167f);
+    }
+
+    [Fact]
+    public async Task Player_bot_raises_its_flight_target_when_solid_terrain_blocks_the_escort_route()
+    {
+        using var fixture = new Fixture(botSpawnX: 160f, botSpawnY: 160f);
+        ConnectionHandle target = fixture.SpawnConnectionPlayer(spawnTileX: 30, spawnTileY: 13);
+        Assert.True(fixture.State.TryCapturePlayerSnapshot(target.Player, out PlayerStateSnapshot targetState));
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(
+            await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        _ = Assert.IsType<RuntimeBotSnapshot>(await fixture.ConfigureAsync(
+            bot.Id,
+            bot.Configuration with
+            {
+                Mode = RuntimeBotMode.Follow,
+                Target = new RuntimeBotTarget(target.Player, "target")
+            }));
+        for (int y = 6; y <= 16; y++)
+        {
+            fixture.Tiles.Set(18, y, new WorldTile
+            {
+                Type = checked((ushort)VanillaTileIds.Stone.Value),
+                Flags = WorldTileFlags.Active
+            });
+        }
+
+        fixture.State.Tick();
+
+        ServerPlayerMovementIntent intent = fixture.ServerPlayers.GetMovementIntent(bot.Player);
+        float targetCenterY = targetState.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+        Assert.True(intent.TargetY <= targetCenterY - 64f,
+            $"Obstacle-aware flight target {intent.TargetY} did not rise above target center {targetCenterY}.");
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out PlayerStateSnapshot self));
+        float selfCenterY = self.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+        Assert.True(intent.TargetY < selfCenterY - intent.Options.JumpVerticalThreshold);
+
+        fixture.Tick(30);
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out PlayerStateSnapshot ascending));
+        Assert.NotEqual(0, ascending.ControlFlags & (1 << 4));
+        Assert.True(ascending.PositionY < 120f,
+            $"Obstacle-aware bot remained at low height {ascending.PositionY} instead of ascending above the route.");
     }
 
     [Fact]
@@ -145,8 +282,8 @@ public sealed class RuntimeBotAuthorityTests
         Assert.True(fixture.State.TryCaptureNpcSnapshot(bot.Npc, out NpcSnapshot moved));
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Zombie, out VanillaNpcDefinition zombie));
         Assert.True(zombie.TryResolveHitbox(moved.Simulation.Scale, out VanillaNpcHitboxSize hitbox));
-        Assert.InRange(targetState.PositionX - (moved.PositionX + hitbox.Width), 7.99f, 8.01f);
-        Assert.InRange(MathF.Abs(moved.PositionY - targetState.PositionY), 0f, 2f); // NPC simulation may apply gravity after bot tick.
+        Assert.True(targetState.PositionX - (moved.PositionX + hitbox.Width) >= 32f);
+        Assert.InRange(MathF.Abs(moved.PositionY - targetState.PositionY), 0f, 3f); // NPC simulation may apply gravity after bot tick.
         Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTarget, moved.Target);
         fixture.Tick(6); // First runtime tick executes at update 0; reach update 6 before sampling telemetry.
         RuntimeBotSnapshot telemetry = Assert.Single(fixture.Telemetry.Capture());
@@ -175,8 +312,8 @@ public sealed class RuntimeBotAuthorityTests
         Assert.True(fixture.State.TryCaptureNpcSnapshot(bot.Npc, out NpcSnapshot moved));
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Skeleton, out VanillaNpcDefinition skeleton));
         Assert.True(skeleton.TryResolveHitbox(moved.Simulation.Scale, out VanillaNpcHitboxSize hitbox));
-        Assert.InRange(targetState.PositionX - (moved.PositionX + hitbox.Width), 7.99f, 8.01f);
-        Assert.InRange(MathF.Abs(moved.PositionY - targetState.PositionY), 0f, 2f);
+        Assert.True(targetState.PositionX - (moved.PositionX + hitbox.Width) >= 32f);
+        Assert.InRange(MathF.Abs(moved.PositionY - targetState.PositionY), 0f, 3f);
         Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTarget, moved.Target);
     }
 
@@ -214,8 +351,8 @@ public sealed class RuntimeBotAuthorityTests
 
         Assert.True(telemetry.TargetAvailable, $"NPC #{npcType} lost its configured live target.");
         Assert.True(
-            after.PositionX > before.PositionX,
-            $"NPC #{npcType} did not advance: x {before.PositionX}->{after.PositionX}, vx={after.VelocityX}, " +
+            MathF.Abs(after.PositionX - before.PositionX) > 0.01f || MathF.Abs(after.PositionY - before.PositionY) > 0.01f,
+            $"NPC #{npcType} did not advance: ({before.PositionX},{before.PositionY})->({after.PositionX},{after.PositionY}), vx={after.VelocityX}, " +
             $"life={after.Simulation.Life}/{after.Simulation.LifeMax}, timeLeft={after.Simulation.TimeLeft}, target={after.Target}, " +
             $"direction=({after.Simulation.DirectionX},{after.Simulation.DirectionY}).");
         Assert.True(after.Simulation.NoGravity);
@@ -223,6 +360,38 @@ public sealed class RuntimeBotAuthorityTests
         Assert.True(after.Simulation.DontTakeDamage);
         Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTarget, after.Target);
         Assert.Equal(0, fixture.Projectiles.ActiveCount);
+    }
+
+    [Fact]
+    public async Task Npc_bot_separates_from_followed_player_and_never_commits_contact_damage()
+    {
+        using var fixture = new Fixture(botSpawnX: 160f, botSpawnY: 160f);
+        ConnectionHandle target = fixture.SpawnConnectionPlayer(spawnTileX: 10, spawnTileY: 10);
+        Assert.True(fixture.State.TryCapturePlayerSnapshot(target.Player, out PlayerStateSnapshot before));
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(
+            new RuntimeBotCreateRequest(RuntimeBotBodyKind.Npc, VanillaNpcIds.Zombie)));
+        _ = Assert.IsType<RuntimeBotSnapshot>(await fixture.ConfigureAsync(
+            bot.Id,
+            bot.Configuration with
+            {
+                Mode = RuntimeBotMode.Follow,
+                Target = new RuntimeBotTarget(target.Player, "target")
+            }));
+
+        fixture.Tick(7);
+
+        Assert.True(fixture.State.TryCapturePlayerSnapshot(target.Player, out PlayerStateSnapshot after));
+        Assert.Equal(before.Life, after.Life);
+        Assert.True(fixture.State.TryCaptureNpcSnapshot(bot.Npc, out NpcSnapshot npc));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, out VanillaNpcDefinition definition));
+        Assert.True(definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox));
+        Assert.False(
+            npc.PositionX < after.PositionX + PlayerAuthority.VanillaBasePlayerWidth &&
+            npc.PositionX + hitbox.Width > after.PositionX &&
+            npc.PositionY < after.PositionY + PlayerAuthority.VanillaBasePlayerHeight &&
+            npc.PositionY + hitbox.Height > after.PositionY);
+        Assert.Equal(0, npc.Simulation.DamageOverride);
+        Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTarget, npc.Target);
     }
 
     [Fact]
@@ -496,9 +665,7 @@ public sealed class RuntimeBotAuthorityTests
         {
             Mode = RuntimeBotMode.Guard,
             Target = new RuntimeBotTarget(target.Player, "target"),
-            WeaponPolicy = RuntimeBotWeaponPolicy.Bow,
-            AutoPickup = true,
-            AutoUseConsumables = true
+            WeaponPolicy = RuntimeBotWeaponPolicy.Bow
         };
         _ = Assert.IsType<RuntimeBotSnapshot>(await fixture.ConfigureAsync(bot.Id, configuration));
         Assert.True(fixture.WorldItems.TryAllocate(

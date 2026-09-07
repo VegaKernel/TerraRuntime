@@ -74,7 +74,7 @@ Pass `structures` идёт после жидкостей, чтобы resource ge
 
 ### Hive
 
-Jungle/Honey-остров получает оболочку `Hive` и фон `HiveUnsafe` вокруг Honey-бассейна. Это worldgen anchor. Larva/Queen Bee interaction остаётся отдельной задачей authoritative gameplay и не считается закрытой только потому, что мы нарисовали улей.
+Jungle/Honey-остров получает оболочку `Hive` и фон `HiveUnsafe` вокруг Honey-бассейна. Это worldgen anchor. Отдельный authoritative gameplay path теперь обрабатывает разрушение полной Larva и выбор ближайшего игрока для вызова Queen Bee; одна геометрия улья всё ещё не доказывает это runtime-поведение.
 
 ### Lihzahrd chamber
 

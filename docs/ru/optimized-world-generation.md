@@ -170,8 +170,9 @@ jungle-зоне; full-cell проверки запрещают затрагив�
 существующие hives.
 
 Progression-content затем ставит не более одной Larva в каждый отдельный hive до compatibility fallback, поэтому
-финальный budget 1/2/3 распределён по разным компонентам, а не скучен в одном улье. Семантика активации/разрушения
-Larva и Queen Bee остаётся gameplay-owned; worldgen доказывает контракт арены и anchor.
+финальный budget 1/2/3 распределён по разным компонентам, а не скучен в одном улье. Worldgen доказывает контракт
+арены/anchor; gameplay authority теперь обрабатывает разрушение полного framed object и source-shaped выбор ближайшего
+игрока для вызова Queen Bee.
 
 Тот же ecology pass добавляет детерминированные underground glowing-mushroom pockets с budget 1/2/3/4 по ширине мира.
 Pockets не сливаются друг с другом или с baseline mushroom region и обходят frame-important, hive, Temple, dungeon,
@@ -185,8 +186,8 @@ seed-identical размещении micro-biomes Terraria.
 `Jungle Progression Cache` с source-backed Jungle Spores/Stingers/Vines и сухой Underworld forge pocket с доступными
 Obsidian и открытым Hellstone. Финальный topology validator считает все четыре роли обязательными route targets.
 
-Размещение Larva доказывает только worldgen anchor. Семантика разрушения Larva/активации Queen Bee принадлежит gameplay
-runtime и здесь намеренно не объявляется завершённой.
+Размещение Larva доказывает только worldgen anchor. Разрушение полного framed object и выбор ближайшего игрока для
+вызова Queen Bee теперь принадлежат gameplay runtime и тестируются независимо от геометрии генератора.
 
 ## Validation
 

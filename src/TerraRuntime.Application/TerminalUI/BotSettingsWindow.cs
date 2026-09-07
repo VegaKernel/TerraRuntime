@@ -19,14 +19,10 @@ internal sealed class BotSettingsWindow : Window
     private readonly NpcPresetOption[] npcPresets;
     private readonly CyclingDropDownList body;
     private readonly CyclingDropDownList npcPreset;
-    private readonly CyclingDropDownList clothing;
-    private readonly CyclingDropDownList armor;
     private readonly CyclingDropDownList weapon;
     private readonly CyclingDropDownList flight;
     private readonly CyclingDropDownList target;
     private readonly CyclingDropDownList mode;
-    private readonly CyclingDropDownList autoPickup;
-    private readonly CyclingDropDownList autoConsumables;
     private readonly Label status;
     private readonly Label feedback;
     private readonly View[] playerOnlyViews;
@@ -44,70 +40,50 @@ internal sealed class BotSettingsWindow : Window
 
         Title = $"Bot #{bot.Id} · {bot.Name}";
         Width = 72;
-        Height = 29;
+        Height = 21;
         X = Pos.Center();
         Y = Pos.Center();
         SchemeName = "Base";
 
         body = CreateDropDown(24, 1, 28, Enum.GetNames<RuntimeBotBodyKind>());
         npcPreset = CreateDropDown(24, 3, 38, npcPresets.Select(static value => value.Label));
-        clothing = CreateDropDown(24, 5, 28, Enum.GetNames<RuntimeBotClothingPreset>());
-        armor = CreateDropDown(24, 7, 28, Enum.GetNames<RuntimeBotArmorPreset>());
-        weapon = CreateDropDown(24, 9, 28, Enum.GetNames<RuntimeBotWeaponPolicy>());
-        flight = CreateDropDown(24, 11, 28, ["On", "Off"]);
-        target = CreateDropDown(24, 13, 38, BuildTargetLabels(players));
-        mode = CreateDropDown(24, 15, 28, Enum.GetNames<RuntimeBotMode>());
-        autoPickup = CreateDropDown(24, 17, 28, ["On", "Off"]);
-        autoConsumables = CreateDropDown(24, 19, 28, ["On", "Off"]);
-        status = new Label { X = 1, Y = 21, Width = Dim.Fill(1), SchemeName = "Base" };
-        feedback = new Label { X = 1, Y = 25, Width = Dim.Fill(1), Height = 2, SchemeName = "Base" };
+        weapon = CreateDropDown(24, 5, 28, Enum.GetNames<RuntimeBotWeaponPolicy>());
+        flight = CreateDropDown(24, 7, 28, ["On", "Off"]);
+        target = CreateDropDown(24, 9, 38, BuildTargetLabels(players));
+        mode = CreateDropDown(24, 11, 28, Enum.GetNames<RuntimeBotMode>());
+        status = new Label { X = 1, Y = 13, Width = Dim.Fill(1), SchemeName = "Base" };
+        feedback = new Label { X = 1, Y = 17, Width = Dim.Fill(1), Height = 2, SchemeName = "Base" };
 
-        Label npcPresetLabel = LabelAt("NPC preset", 3);
-        Label clothingLabel = LabelAt("Clothing preset", 5);
-        Label armorLabel = LabelAt("Armor preset", 7);
-        Label weaponLabel = LabelAt("Weapon policy", 9);
-        Label flightLabel = LabelAt("Flight accessories", 11);
-        Label autoPickupLabel = LabelAt("Auto pickup", 17);
-        Label autoConsumablesLabel = LabelAt("Auto heal/buffs", 19);
+        Label npcPresetLabel = LabelAt("NPC type", 3);
+        Label weaponLabel = LabelAt("Weapon policy", 5);
+        Label flightLabel = LabelAt("Mobility accessories", 7);
         npcOnlyViews = [npcPresetLabel, npcPreset];
         playerOnlyViews =
         [
-            clothingLabel, clothing,
-            armorLabel, armor,
             weaponLabel, weapon,
-            flightLabel, flight,
-            autoPickupLabel, autoPickup,
-            autoConsumablesLabel, autoConsumables
+            flightLabel, flight
         ];
 
         SelectText(body, bot.Configuration.Body.ToString());
         SelectNpc(bot.Configuration.NpcType);
-        SelectText(clothing, bot.Configuration.Clothing.ToString());
-        SelectText(armor, bot.Configuration.Armor.ToString());
         SelectText(weapon, bot.Configuration.WeaponPolicy.ToString());
         SelectText(flight, bot.Configuration.FlightEnabled ? "On" : "Off");
         SelectText(mode, bot.Configuration.Mode.ToString());
-        SelectText(autoPickup, bot.Configuration.AutoPickup ? "On" : "Off");
-        SelectText(autoConsumables, bot.Configuration.AutoUseConsumables ? "On" : "Off");
         SelectTarget(bot.Configuration.Target);
         RefreshStatus(bot);
 
-        var apply = new Button { X = 24, Y = 23, Text = "Apply", SchemeName = "Base" };
-        var close = new Button { X = 36, Y = 23, Text = "Close", SchemeName = "Base" };
+        var apply = new Button { X = 24, Y = 15, Text = "Apply", SchemeName = "Base" };
+        var close = new Button { X = 36, Y = 15, Text = "Close", SchemeName = "Base" };
         apply.Accepted += (_, _) => Apply();
         close.Accepted += (_, _) => CloseRequested?.Invoke();
 
         Add(
             LabelAt("Bot type", 1), body,
             npcPresetLabel, npcPreset,
-            clothingLabel, clothing,
-            armorLabel, armor,
             weaponLabel, weapon,
             flightLabel, flight,
-            LabelAt("Follow target", 13), target,
-            LabelAt("Mode", 15), mode,
-            autoPickupLabel, autoPickup,
-            autoConsumablesLabel, autoConsumables,
+            LabelAt("Follow target", 9), target,
+            LabelAt("Mode", 11), mode,
             status,
             apply,
             close,
@@ -122,18 +98,15 @@ internal sealed class BotSettingsWindow : Window
     internal int BotId => bot.Id;
     internal string FeedbackTextForSmoke => feedback.Text?.ToString() ?? string.Empty;
     internal bool NpcPresetVisibleForSmoke => npcPreset.Visible;
-    internal bool PlayerFieldsVisibleForSmoke => clothing.Visible && armor.Visible && weapon.Visible && flight.Visible;
+    internal bool PlayerFieldsVisibleForSmoke => weapon.Visible && flight.Visible;
+    internal int NpcPresetCountForSmoke => npcPresets.Length;
 
     private void Apply()
     {
         if (!Enum.TryParse(body.Text?.ToString(), ignoreCase: false, out RuntimeBotBodyKind bodyValue) ||
-            !Enum.TryParse(clothing.Text?.ToString(), ignoreCase: false, out RuntimeBotClothingPreset clothingValue) ||
-            !Enum.TryParse(armor.Text?.ToString(), ignoreCase: false, out RuntimeBotArmorPreset armorValue) ||
             !Enum.TryParse(weapon.Text?.ToString(), ignoreCase: false, out RuntimeBotWeaponPolicy weaponValue) ||
             !Enum.TryParse(mode.Text?.ToString(), ignoreCase: false, out RuntimeBotMode modeValue) ||
-            !TryParseToggle(flight, out bool flightValue) ||
-            !TryParseToggle(autoPickup, out bool autoPickupValue) ||
-            !TryParseToggle(autoConsumables, out bool autoConsumablesValue))
+            !TryParseToggle(flight, out bool flightValue))
         {
             feedback.Text = "bot: invalid selection";
             return;
@@ -147,12 +120,8 @@ internal sealed class BotSettingsWindow : Window
         }
         if (bodyValue == RuntimeBotBodyKind.Npc)
         {
-            clothingValue = RuntimeBotClothingPreset.Classic;
-            armorValue = RuntimeBotArmorPreset.None;
             weaponValue = RuntimeBotWeaponPolicy.Automatic;
             flightValue = false;
-            autoPickupValue = false;
-            autoConsumablesValue = false;
         }
 
         RuntimeBotTarget targetValue = ResolveTarget();
@@ -163,16 +132,12 @@ internal sealed class BotSettingsWindow : Window
         }
 
         var configuration = new RuntimeBotConfiguration(
-            clothingValue,
-            armorValue,
             modeValue,
             targetValue,
             Body: bodyValue,
             NpcType: npcType,
             WeaponPolicy: weaponValue,
-            FlightEnabled: flightValue,
-            AutoPickup: autoPickupValue,
-            AutoUseConsumables: autoConsumablesValue);
+            FlightEnabled: flightValue);
         try
         {
             RuntimeBotSnapshot? updated = operations.ConfigureAsync(bot.Id, configuration)
@@ -312,10 +277,12 @@ internal sealed class BotSettingsWindow : Window
     private static NpcPresetOption[] BuildNpcPresets()
     {
         var result = new List<NpcPresetOption>(VanillaNpcAiCoverageCatalog.Count);
+        var admittedTypes = new HashSet<int>();
         foreach (VanillaNpcAiCoverage coverage in VanillaNpcAiCoverageCatalog.All)
         {
             if (!VanillaBotNpcPresetCatalog1458.IsSupported(coverage.Type) ||
-                !VanillaNpcDefinitionCatalog.TryGet(coverage.Type, out VanillaNpcDefinition definition))
+                !VanillaNpcDefinitionCatalog.TryGet(coverage.Type, out VanillaNpcDefinition definition) ||
+                !admittedTypes.Add(coverage.Type.Value))
             {
                 continue;
             }

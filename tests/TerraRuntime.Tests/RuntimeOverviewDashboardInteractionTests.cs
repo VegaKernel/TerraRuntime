@@ -1,6 +1,7 @@
 using System.Text;
 using TerraRuntime.Application.Bots;
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Gameplay.Bots;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.HostContracts;
@@ -111,6 +112,26 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         {
             app.End(token);
         }
+    }
+
+    [Fact]
+    public void Bot_add_button_accept_command_reaches_runtime_bot_operations()
+    {
+        var ingress = new CompletingBotCommandIngress();
+        var operations = new RuntimeBotOperations(ingress, new RuntimeBotTelemetry());
+        using var dashboard = new RuntimeOverviewDashboard(botOperations: operations);
+
+        Assert.True(dashboard.BotAddEnabledForSmoke);
+        Assert.NotNull(dashboard.InvokeBotAddForSmoke());
+        Assert.True(SpinWait.SpinUntil(() => Volatile.Read(ref ingress.CreateCount) == 1, TimeSpan.FromSeconds(2)));
+        Assert.True(dashboard.HasPendingBotCommandForSmoke);
+        Assert.True(SpinWait.SpinUntil(
+            () =>
+            {
+                dashboard.PublishBotCommandCompletionForSmoke();
+                return dashboard.CommandFeedbackForSmoke.Contains("created Bot 1", StringComparison.Ordinal);
+            },
+            TimeSpan.FromSeconds(2)));
     }
 
     [Fact]
@@ -681,8 +702,6 @@ public sealed class RuntimeOverviewDashboardInteractionTests
             Npc: new NpcHandle(3, new NpcGeneration(1)),
             Name: "Bot 7",
             new RuntimeBotConfiguration(
-                RuntimeBotClothingPreset.Classic,
-                RuntimeBotArmorPreset.None,
                 RuntimeBotMode.Guard,
                 Target: default,
                 Body: RuntimeBotBodyKind.Npc,
@@ -719,8 +738,6 @@ public sealed class RuntimeOverviewDashboardInteractionTests
             default,
             "Bot 1",
             new RuntimeBotConfiguration(
-                RuntimeBotClothingPreset.Classic,
-                RuntimeBotArmorPreset.None,
                 RuntimeBotMode.Idle,
                 default),
             false,
@@ -738,15 +755,19 @@ public sealed class RuntimeOverviewDashboardInteractionTests
             {
                 Body = RuntimeBotBodyKind.Npc,
                 NpcType = VanillaNpcIds.Zombie,
-                FlightEnabled = false,
-                AutoPickup = false,
-                AutoUseConsumables = false
+                FlightEnabled = false
             }
         };
 
         using var playerWindow = new BotSettingsWindow(playerBot, [], operations);
         Assert.False(playerWindow.NpcPresetVisibleForSmoke);
         Assert.True(playerWindow.PlayerFieldsVisibleForSmoke);
+        int expectedNpcTypes = VanillaNpcAiCoverageCatalog.All
+            .ToArray()
+            .Select(static value => value.Type)
+            .Distinct()
+            .Count(VanillaBotNpcPresetCatalog1458.IsSupported);
+        Assert.Equal(expectedNpcTypes, playerWindow.NpcPresetCountForSmoke);
 
         using var npcWindow = new BotSettingsWindow(npcBot, [], operations);
         Assert.True(npcWindow.NpcPresetVisibleForSmoke);
@@ -756,6 +777,32 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     private sealed class RejectingBotCommandIngress : IGameCommandIngress<RuntimeCommand>
     {
         public bool TryPost(GameCommandSourceId source, RuntimeCommand command) => false;
+    }
+
+    private sealed class CompletingBotCommandIngress : IGameCommandIngress<RuntimeCommand>
+    {
+        public int CreateCount;
+
+        public bool TryPost(GameCommandSourceId source, RuntimeCommand command)
+        {
+            if (source != GameCommandSourceId.System || command is not RuntimeBotCreateCommand create)
+                return false;
+
+            Interlocked.Increment(ref CreateCount);
+            create.Completion.TrySetResult(new RuntimeBotSnapshot(
+                1,
+                new ServerPlayerId("bot:1"),
+                new PlayerHandle(new PlayerSlotId(1), new PlayerSessionGeneration(1)),
+                default,
+                "Bot 1",
+                new RuntimeBotConfiguration(RuntimeBotMode.Idle, default),
+                false,
+                false,
+                false,
+                0,
+                DateTimeOffset.UtcNow));
+            return true;
+        }
     }
 
 }

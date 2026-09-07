@@ -107,6 +107,13 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
         Assert.Equal(graph.Anchor.Y, oldMan.HomeTileY);
         Assert.Equal(graph.Anchor.X * 16f + 8f, oldMan.X);
         Assert.Equal(graph.Anchor.Y * 16f, oldMan.Y);
+        VanillaCaveHouseCounts1458 caveHouses = Assert.IsType<VanillaCaveHouseCounts1458>(
+            result.Candidate.VanillaCaveHouseCounts);
+        Assert.InRange(caveHouses.Ordinary, 35, 40);
+        Assert.Equal(2, caveHouses.AdditionalDesert);
+        WorldChest[] generatedChests = result.Candidate.CaptureGeneratedChests();
+        Assert.True(generatedChests.Length >= caveHouses.Total);
+        Assert.Contains(generatedChests, chest => IsCaveHouseChest(result.Candidate, chest));
         AssertCanonicalContentCoverage(result.Candidate);
     }
 
@@ -474,6 +481,17 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
                 hash *= prime;
             }
         }
+    }
+
+    private static bool IsCaveHouseChest(Workspace workspace, WorldChest chest)
+    {
+        WorldTile anchor = workspace.TileStore.Get(chest.X, chest.Y);
+        int style = anchor.FrameX / 36;
+        if (anchor.Type == 467)
+            return style == 10;
+        if (anchor.Type != 21)
+            return false;
+        return style is 8 or 11 or 32 or 50 or 51;
     }
 
     private static void AssertSourceFramedTrees(Workspace workspace)

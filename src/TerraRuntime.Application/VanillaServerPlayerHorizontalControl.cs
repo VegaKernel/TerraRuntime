@@ -18,23 +18,48 @@ internal static class VanillaServerPlayerHorizontalControl
     public static float Apply(
         float velocityX,
         float velocityY,
-        ServerPlayerHorizontalIntent intent)
+        ServerPlayerHorizontalIntent intent) =>
+        Apply(velocityX, velocityY, intent, VanillaServerPlayerHorizontalProfile1458.Baseline);
+
+    public static float Apply(
+        float velocityX,
+        float velocityY,
+        ServerPlayerHorizontalIntent intent,
+        in VanillaServerPlayerHorizontalProfile1458 profile)
     {
-        if (!float.IsFinite(velocityX) || !float.IsFinite(velocityY))
+        if (!float.IsFinite(velocityX) || !float.IsFinite(velocityY) || !profile.IsValid)
             return velocityX;
 
-        if (intent == ServerPlayerHorizontalIntent.Left && velocityX > -MaximumRunSpeed)
+        if (intent == ServerPlayerHorizontalIntent.Left && velocityX > -profile.MaximumRunSpeed)
         {
-            if (velocityX > RunSlowdown)
-                velocityX -= RunSlowdown;
-            return velocityX - RunAcceleration;
+            if (velocityX > profile.RunSlowdown)
+                velocityX -= profile.RunSlowdown;
+            return velocityX - profile.RunAcceleration;
         }
 
-        if (intent == ServerPlayerHorizontalIntent.Right && velocityX < MaximumRunSpeed)
+        if (intent == ServerPlayerHorizontalIntent.Right && velocityX < profile.MaximumRunSpeed)
         {
-            if (velocityX < -RunSlowdown)
-                velocityX += RunSlowdown;
-            return velocityX + RunAcceleration;
+            if (velocityX < -profile.RunSlowdown)
+                velocityX += profile.RunSlowdown;
+            return velocityX + profile.RunAcceleration;
+        }
+
+        if (intent == ServerPlayerHorizontalIntent.Left && velocityX > -profile.AcceleratedRunSpeed &&
+            (velocityY == 0f || profile.WingHorizontalAcceleration))
+        {
+            float acceleration = profile.RunAcceleration * 0.2f;
+            if (profile.WingHorizontalAcceleration)
+                acceleration *= 2f;
+            return velocityX - acceleration;
+        }
+
+        if (intent == ServerPlayerHorizontalIntent.Right && velocityX < profile.AcceleratedRunSpeed &&
+            (velocityY == 0f || profile.WingHorizontalAcceleration))
+        {
+            float acceleration = profile.RunAcceleration * 0.2f;
+            if (profile.WingHorizontalAcceleration)
+                acceleration *= 2f;
+            return velocityX + acceleration;
         }
 
         if (intent is not ServerPlayerHorizontalIntent.Left and
@@ -44,11 +69,69 @@ internal static class VanillaServerPlayerHorizontalControl
             throw new ArgumentOutOfRangeException(nameof(intent), intent, "Unknown server-player horizontal intent.");
         }
 
-        float slowdown = velocityY == 0f ? RunSlowdown : AirborneRunSlowdown;
+        float slowdown = velocityY == 0f ? profile.RunSlowdown : profile.RunSlowdown * 0.5f;
         if (velocityX > slowdown)
             return velocityX - slowdown;
         if (velocityX < -slowdown)
             return velocityX + slowdown;
         return 0f;
     }
+}
+
+/// <summary>
+/// Verified TerrariaServer 1.4.5.8 horizontal parameters after the admitted functional-accessory slice. Terraspark
+/// Boots set <c>accRunSpeed=6.75</c> and add <c>0.08</c> move speed; grounded Magiluminescence multiplies run
+/// acceleration by <c>1.75</c> and both run-speed caps by <c>1.15</c>. No unmodelled dash is granted.
+/// </summary>
+internal readonly record struct VanillaServerPlayerHorizontalProfile1458(
+    float MaximumRunSpeed,
+    float AcceleratedRunSpeed,
+    float RunAcceleration,
+    float RunSlowdown,
+    bool WingHorizontalAcceleration)
+{
+    public static VanillaServerPlayerHorizontalProfile1458 Baseline => new(
+        VanillaServerPlayerHorizontalControl.MaximumRunSpeed,
+        VanillaServerPlayerHorizontalControl.MaximumRunSpeed,
+        VanillaServerPlayerHorizontalControl.RunAcceleration,
+        VanillaServerPlayerHorizontalControl.RunSlowdown,
+        WingHorizontalAcceleration: false);
+
+    public static VanillaServerPlayerHorizontalProfile1458 ResolveBotMobility(
+        bool terrasparkBoots,
+        bool magiluminescence,
+        bool fishronWings,
+        bool grounded)
+    {
+        if (!terrasparkBoots && (!magiluminescence || !grounded))
+            return Baseline;
+
+        float moveSpeed = terrasparkBoots ? 1.08f : 1f;
+        float maximumRunSpeed = VanillaServerPlayerHorizontalControl.MaximumRunSpeed * moveSpeed;
+        float acceleratedRunSpeed = terrasparkBoots
+            ? 6.75f
+            : VanillaServerPlayerHorizontalControl.MaximumRunSpeed;
+        float runAcceleration = VanillaServerPlayerHorizontalControl.RunAcceleration * moveSpeed;
+        float runSlowdown = VanillaServerPlayerHorizontalControl.RunSlowdown;
+        if (magiluminescence && grounded)
+        {
+            maximumRunSpeed *= 1.15f;
+            acceleratedRunSpeed *= 1.15f;
+            runAcceleration *= 1.75f;
+            runSlowdown *= 1.75f;
+        }
+
+        return new VanillaServerPlayerHorizontalProfile1458(
+            maximumRunSpeed,
+            acceleratedRunSpeed,
+            runAcceleration,
+            runSlowdown,
+            WingHorizontalAcceleration: fishronWings);
+    }
+
+    public bool IsValid =>
+        float.IsFinite(MaximumRunSpeed) && MaximumRunSpeed > 0f &&
+        float.IsFinite(AcceleratedRunSpeed) && AcceleratedRunSpeed >= MaximumRunSpeed &&
+        float.IsFinite(RunAcceleration) && RunAcceleration > 0f &&
+        float.IsFinite(RunSlowdown) && RunSlowdown > 0f;
 }

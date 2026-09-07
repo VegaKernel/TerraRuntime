@@ -425,6 +425,14 @@ internal sealed class RuntimeOverviewDashboard : View
 
     internal bool BotAddEnabledForSmoke => botAddButton.Enabled;
 
+    internal bool? InvokeBotAddForSmoke() => botAddButton.InvokeCommand(Command.Accept);
+
+    internal bool HasPendingBotCommandForSmoke => pendingBotCommand is not null;
+
+    internal void PublishBotCommandCompletionForSmoke() => PublishBotCommandCompletion();
+
+    internal string CommandFeedbackForSmoke => commandFeedback.Text?.ToString() ?? string.Empty;
+
     internal void SetFeedForSmoke(bool logs, bool chat, OperationsLogLevel minimumLevel)
     {
         this.minimumLogLevel = logs ? minimumLevel : null;

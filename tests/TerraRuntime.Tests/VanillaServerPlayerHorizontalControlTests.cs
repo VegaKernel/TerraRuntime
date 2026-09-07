@@ -66,4 +66,55 @@ public sealed class VanillaServerPlayerHorizontalControlTests
         Assert.Equal(0.2f, VanillaServerPlayerHorizontalControl.RunSlowdown);
         Assert.Equal(0.1f, VanillaServerPlayerHorizontalControl.AirborneRunSlowdown);
     }
+
+    [Fact]
+    public void Terraspark_and_grounded_magiluminescence_profile_pins_verified_accessory_math()
+    {
+        VanillaServerPlayerHorizontalProfile1458 profile =
+            VanillaServerPlayerHorizontalProfile1458.ResolveBotMobility(
+                terrasparkBoots: true,
+                magiluminescence: true,
+                fishronWings: true,
+                grounded: true);
+
+        Assert.Equal(3.726f, profile.MaximumRunSpeed, 5);
+        Assert.Equal(7.7625f, profile.AcceleratedRunSpeed, 5);
+        Assert.Equal(0.1512f, profile.RunAcceleration, 5);
+        Assert.Equal(0.35f, profile.RunSlowdown, 5);
+        Assert.True(profile.WingHorizontalAcceleration);
+
+        float velocity = 0f;
+        for (int tick = 0; tick < 100; tick++)
+        {
+            velocity = VanillaServerPlayerHorizontalControl.Apply(
+                velocity,
+                velocityY: 0f,
+                ServerPlayerHorizontalIntent.Right,
+                in profile);
+        }
+        Assert.True(velocity > 6.5f, $"Accessory-equipped player only reached {velocity} px/tick.");
+    }
+
+    [Fact]
+    public void Magiluminescence_ground_effect_is_independent_and_air_effect_stays_absent()
+    {
+        VanillaServerPlayerHorizontalProfile1458 grounded =
+            VanillaServerPlayerHorizontalProfile1458.ResolveBotMobility(
+                terrasparkBoots: false,
+                magiluminescence: true,
+                fishronWings: false,
+                grounded: true);
+        Assert.Equal(3.45f, grounded.MaximumRunSpeed, 5);
+        Assert.Equal(3.45f, grounded.AcceleratedRunSpeed, 5);
+        Assert.Equal(0.14f, grounded.RunAcceleration, 5);
+        Assert.Equal(0.35f, grounded.RunSlowdown, 5);
+
+        VanillaServerPlayerHorizontalProfile1458 airborne =
+            VanillaServerPlayerHorizontalProfile1458.ResolveBotMobility(
+                terrasparkBoots: false,
+                magiluminescence: true,
+                fishronWings: false,
+                grounded: false);
+        Assert.Equal(VanillaServerPlayerHorizontalProfile1458.Baseline, airborne);
+    }
 }

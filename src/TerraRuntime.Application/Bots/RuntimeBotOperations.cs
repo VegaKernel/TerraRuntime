@@ -25,24 +25,6 @@ internal enum RuntimeBotWeaponPolicy : byte
     Bow = 3
 }
 
-internal enum RuntimeBotClothingPreset : byte
-{
-    Classic = 0,
-    Forest = 1,
-    Crimson = 2,
-    Monochrome = 3
-}
-
-internal enum RuntimeBotArmorPreset : byte
-{
-    None = 0,
-    Wood = 1,
-    Copper = 2,
-    Iron = 3,
-    Silver = 4,
-    Gold = 5
-}
-
 internal readonly record struct RuntimeBotTarget(
     PlayerHandle Player,
     string DisplayName)
@@ -51,16 +33,12 @@ internal readonly record struct RuntimeBotTarget(
 }
 
 internal readonly record struct RuntimeBotConfiguration(
-    RuntimeBotClothingPreset Clothing,
-    RuntimeBotArmorPreset Armor,
     RuntimeBotMode Mode,
     RuntimeBotTarget Target,
     RuntimeBotBodyKind Body = RuntimeBotBodyKind.Player,
     NpcTypeId NpcType = default,
     RuntimeBotWeaponPolicy WeaponPolicy = RuntimeBotWeaponPolicy.Automatic,
-    bool FlightEnabled = true,
-    bool AutoPickup = true,
-    bool AutoUseConsumables = true);
+    bool FlightEnabled = true);
 
 internal readonly record struct RuntimeBotCreateRequest(
     RuntimeBotBodyKind Body,

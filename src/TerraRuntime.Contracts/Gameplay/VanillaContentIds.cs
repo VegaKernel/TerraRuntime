@@ -425,6 +425,9 @@ public static class VanillaItemIds
     public static readonly ItemTypeId GoldBow = new(3516);
     public static readonly ItemTypeId FishronWings = new(2609);
     public static readonly ItemTypeId EmpressFlightBooster = new(4989);
+    public static readonly ItemTypeId TerrasparkBoots = new(5000);
+    public static readonly ItemTypeId Magiluminescence = new(5107);
+    public static readonly ItemTypeId MasterNinjaGear = new(984);
     public static readonly ItemTypeId RegenerationPotion = new(289);
     public static readonly ItemTypeId SwiftnessPotion = new(290);
     public static readonly ItemTypeId IronskinPotion = new(292);

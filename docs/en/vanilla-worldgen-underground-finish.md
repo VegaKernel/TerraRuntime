@@ -54,7 +54,7 @@ Empty cave cells adjacent to Mud or Jungle Grass inside the Reset-owned Jungle s
 
 Larva is not represented as a single anchor tile. Terraria defines it as a frame-important 3x3 background object. The pass scans existing Hive regions for empty Hive-wall pockets surrounded by Hive material and writes all nine framed Larva cells with 18-pixel frame increments. Placement also rejects nearby frame-important objects.
 
-This is important for both file validity and gameplay semantics: a partially emitted Larva would be an orphan framed object and could not be treated as a faithful Queen Bee trigger.
+This is important for both file validity and gameplay semantics: a partially emitted Larva is an orphan framed object and is rejected by the gameplay mutation path. A complete object can now trigger the source-shaped nearest-player Queen Bee spawn.
 
 ## RNG and gating
 

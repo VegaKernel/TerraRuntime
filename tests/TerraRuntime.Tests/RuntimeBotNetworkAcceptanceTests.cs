@@ -67,6 +67,24 @@ public sealed class RuntimeBotNetworkAcceptanceTests
             equipment.SlotId == VanillaPlayerItemSlotCatalog.ArmorStart + 4 &&
             equipment.ItemNetId == VanillaItemIds.EmpressFlightBooster.Value);
         Assert.Contains(baseline, frame =>
+            TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
+                TerrariaPlayerEquipmentDecodeResult.Decoded &&
+            equipment.PlayerId == bot.Player.Slot.Value &&
+            equipment.SlotId == VanillaPlayerItemSlotCatalog.ArmorStart + 5 &&
+            equipment.ItemNetId == VanillaItemIds.TerrasparkBoots.Value);
+        Assert.Contains(baseline, frame =>
+            TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
+                TerrariaPlayerEquipmentDecodeResult.Decoded &&
+            equipment.PlayerId == bot.Player.Slot.Value &&
+            equipment.SlotId == VanillaPlayerItemSlotCatalog.ArmorStart + 6 &&
+            equipment.ItemNetId == VanillaItemIds.Magiluminescence.Value);
+        Assert.Contains(baseline, frame =>
+            TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
+                TerrariaPlayerEquipmentDecodeResult.Decoded &&
+            equipment.PlayerId == bot.Player.Slot.Value &&
+            equipment.SlotId == VanillaPlayerItemSlotCatalog.ArmorStart + 7 &&
+            equipment.ItemNetId == VanillaItemIds.MasterNinjaGear.Value);
+        Assert.Contains(baseline, frame =>
             TerrariaPlayerCombatCodec.TryDecodePvpToggle(frame, out byte player, out bool hostile) &&
             player == bot.Player.Slot.Value && !hostile);
         Assert.Contains(baseline, frame =>
@@ -331,9 +349,7 @@ public sealed class RuntimeBotNetworkAcceptanceTests
             {
                 Mode = RuntimeBotMode.Guard,
                 Target = new RuntimeBotTarget(target.Player, "target"),
-                WeaponPolicy = RuntimeBotWeaponPolicy.Bow,
-                AutoPickup = true,
-                AutoUseConsumables = true
+                WeaponPolicy = RuntimeBotWeaponPolicy.Bow
             }));
         Assert.True(fixture.WorldItems.TryAllocate(
             CreateWorldItem(VanillaItemIds.ArcheryPotion, 160f, 160f, stack: 1),

@@ -23,12 +23,14 @@ Chest регистрируется только после того, как ег
 
 ## Реализованные passes
 
-- `Buried Chests` размещает Gold Chest style `1` в underground/cavern openings.
+- `Buried Chests` размещает Gold Chest style `1` в underground/cavern openings, затем выполняет ordinary-seed structural slice `Underground Houses and Buried Chests`. Он в source order выбирает area-scaled Terraria 1.4.5.8 budget `35..40` для cave houses и area-scaled фиксированный budget `2` для дополнительных desert houses. Pass находит от одной до трёх комнат, выбирает Wood/Ice/Desert/Jungle/Mushroom/Granite/Marble palette по окружающим tiles, защищает принятые rooms от пересечения и создаёт palette shell, unsafe interior walls, stairs/platform exits, doors, support beams и гарантированный source persistent chest.
 - `Surface Chests` размещает Wooden Chest style `0` на подходящем surface floor вне тесных spawn/dungeon exclusion zones.
 - `Jungle Chests Placement` размещает Ivy Chest style `10` в underground jungle material.
 - `Water Chests` размещает Water Chest style `17` в submerged chambers с solid floor.
 
 Все четыре используют `Containers` tile `21`, существующую source-backed геометрию chest object 2 × 2, полные frame coordinates, расстояние от других frame-important objects и соответствующие records `WorldChest`.
+
+Декоративная мебель и aging cave houses пока не перенесены. Они остаются отсутствующими вместо генерации одиночных tiles с неверным framing. Additional desert-house path использует underground-desert region, сохранённый существующим source-backed desert pass; отсутствие region обрабатывается fail-closed и не перенаправляет дома в произвольный biome.
 
 Style identities Ivy Chest и Water Chest дополнительно сверены с официальной Terraria Wiki: style `10` у `Containers` соответствует Ivy Chest, style `17` соответствует Water Chest.
 

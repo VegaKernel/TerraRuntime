@@ -74,7 +74,7 @@ The reserved Lava island receives one `$3\times2$` `Hellforge` placed beside, ra
 
 ### Hive
 
-The Honey/Jungle island receives a `Hive` shell with `HiveUnsafe` background wall around the Honey basin. This is a world-generation anchor. Larva/Queen Bee interaction remains a separate authoritative-gameplay task and is not falsely claimed as complete merely because Hive geometry exists.
+The Honey/Jungle island receives a `Hive` shell with `HiveUnsafe` background wall around the Honey basin. This is a world-generation anchor. The separate authoritative gameplay path now resolves complete Larva destruction and the nearest-player Queen Bee trigger; Hive geometry alone still does not prove that runtime behavior.
 
 ### Lihzahrd chamber
 

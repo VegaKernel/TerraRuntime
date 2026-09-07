@@ -451,6 +451,93 @@ internal sealed class NpcAuthority
     internal int CopyCombatIntegrityDiagnostics(Span<CombatIntegrityDiagnostic> destination) =>
         combat.CopyCombatIntegrityDiagnostics(destination);
 
+    /// <summary>
+    /// Applies the server-side <c>NPC.SpawnOnPlayer</c> boundary used by world-owned boss triggers such as Larva.
+    /// Player selection remains slot ordered and uses the source's Manhattan distance from player position.
+    /// </summary>
+    internal bool TrySpawnBossFromTile(NpcTypeId type, int tileX, int tileY, float maximumDistance)
+    {
+        if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition) ||
+            !definition.IsBoss ||
+            !float.IsFinite(maximumDistance) ||
+            maximumDistance <= 0f)
+        {
+            return false;
+        }
+
+        float sourceX = tileX * 16f;
+        float sourceY = tileY * 16f;
+        bool found = false;
+        float closestDistance = 0f;
+        VanillaNpcTargetCandidate closest = default;
+        for (int slot = 0; slot < byte.MaxValue; slot++)
+        {
+            float positionX;
+            float positionY;
+            bool dead;
+            if (players.TryGet(checked((byte)slot), out RuntimePlayerMember? player))
+            {
+                positionX = player.PositionX;
+                positionY = player.PositionY;
+                dead = player.IsDead;
+            }
+            else if (serverPlayers?.TryGet(new PlayerSlotId(checked((byte)slot)), out PlayerStateSnapshot serverPlayer) == true)
+            {
+                positionX = serverPlayer.PositionX;
+                positionY = serverPlayer.PositionY;
+                dead = serverPlayer.IsDead;
+            }
+            else
+            {
+                continue;
+            }
+
+            if (dead || !float.IsFinite(positionX) || !float.IsFinite(positionY))
+                continue;
+
+            float distance = MathF.Abs(positionX - sourceX) + MathF.Abs(positionY - sourceY);
+            if (found && distance >= closestDistance)
+                continue;
+
+            found = true;
+            closestDistance = distance;
+            closest = new VanillaNpcTargetCandidate(
+                Slot: checked((byte)slot),
+                CenterX: positionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
+                CenterY: positionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f,
+                Aggro: 0,
+                Active: true,
+                Dead: false,
+                Ghost: false,
+                NoAggro: false);
+        }
+
+        if (!found || closestDistance >= maximumDistance ||
+            !TryFindBossSpawnPosition(in closest, definition, out float x, out float y))
+        {
+            return false;
+        }
+
+        var update = new NpcStateUpdate(
+            Type: type.Value,
+            NetId: checked((short)type.Value),
+            PositionX: x,
+            PositionY: y,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: closest.Slot,
+            Ai: default,
+            Simulation: NpcSimulationState.Initial with { TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft });
+        if (!npcs.TrySpawnVanilla(in update, out _))
+        {
+            RejectedSpawns++;
+            return false;
+        }
+
+        AppliedSpawns++;
+        return true;
+    }
+
     private void ApplyClientBossSummon(ClientBossSummonRuntimeCommand command)
     {
         if (!command.Connection.IsAssigned || !players.IsCurrent(command.Connection) ||

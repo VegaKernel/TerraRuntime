@@ -261,7 +261,7 @@ internal sealed class MidPass1458 : IWorldGenerationPass
                 ApplyMudCavesToGrass(context, grid, random);
                 break;
             case MidStage1458.FullDesert:
-                ApplyFullDesert(context, grid, random);
+                ApplyFullDesert(context, workspace, grid, random);
                 break;
             case MidStage1458.MushroomPatches:
                 ApplyMushroomPatches(context, grid, random);
@@ -337,7 +337,7 @@ internal sealed class MidPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Spreading jungle grass across mud cave surfaces ({converted} tiles)");
     }
 
-    private void ApplyFullDesert(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyFullDesert(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
         int width = Math.Clamp((int)Math.Round(grid.Width * 0.12d), 360, 920);
@@ -347,6 +347,8 @@ internal sealed class MidPass1458 : IWorldGenerationPass
         state.DesertRight = right;
 
         int maxDepth = Math.Min(state.UnderworldTop - 80, (int)state.RockLayer + Math.Max(180, grid.Height / 7));
+        int undergroundTop = Math.Clamp((int)state.WorldSurface + 26, 1, maxDepth - 1);
+        workspace.SetVanillaUndergroundDesertRegion(left, undergroundTop, right - left, maxDepth - undergroundTop);
         for (int x = left; x < right; x++)
         {
             if ((x & 63) == 0)

@@ -141,20 +141,6 @@ internal sealed class ServerRuntimeComposition
             worldItemStore,
             spawnRandom,
             worldItemReplication);
-        var worldTileAuthority = new WorldTileAuthority(
-            playersAuthority,
-            commands,
-            worldTiles,
-            worldItemStore,
-            npcStore,
-            spawnRandom,
-            progression,
-            skeletronDownedBaseline,
-            golemDownedBaseline,
-            townCommerceWorldFacts?.HardMode ?? false,
-            worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false,
-            tileManipulationReplication);
-
         RuntimeProjectileStore projectileStore = projectiles ?? new RuntimeProjectileStore();
         IProjectileStateStepper? configuredProjectileStepper = projectileStepper ??
             (worldTiles is null ? null : new VanillaProjectileWorldStateStepper(worldTiles, playerSnapshots, expertMode, npcStore));
@@ -202,6 +188,20 @@ internal sealed class ServerRuntimeComposition
             skyblockLowTiles,
             isThereAWorldSurface,
             evilBossDownedBaseline);
+        var worldTileAuthority = new WorldTileAuthority(
+            playersAuthority,
+            commands,
+            worldTiles,
+            worldItemStore,
+            npcStore,
+            npcAuthority,
+            spawnRandom,
+            progression,
+            skeletronDownedBaseline,
+            golemDownedBaseline,
+            townCommerceWorldFacts?.HardMode ?? false,
+            worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false,
+            tileManipulationReplication);
         RuntimeBotAuthority? botAuthority = serverPlayers is not null && botTelemetry is not null && worldTiles is not null
             ? new RuntimeBotAuthority(
                 serverPlayers,

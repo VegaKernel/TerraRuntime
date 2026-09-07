@@ -41,8 +41,10 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
     private readonly IVanillaMultiTileObjectMetadataLifecycle? objectMetadata;
     private readonly RuntimeWorldItemStore worldItems;
     private readonly RuntimeNpcStore npcs;
+    private readonly NpcAuthority npcAuthority;
     private readonly IWorldItemSpawnRandom worldItemSpawnRandom;
     private readonly VanillaWorldLiquidMutationService? liquidMutations;
+    private readonly VanillaLarvaObjectMutationService1458? larvaMutations;
     private readonly PlayerTileEditBudget editBudget = new(MaxPlayerSlots);
     private readonly RuntimeProjectileTileExplosionEchoTracker projectileExplosionEchoes = new();
     private LiquidMergePreparation liquidMergePreparation;
@@ -54,6 +56,7 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
         WorldTileStore? tiles,
         RuntimeWorldItemStore worldItems,
         RuntimeNpcStore npcs,
+        NpcAuthority npcAuthority,
         IWorldItemSpawnRandom worldItemSpawnRandom,
         RuntimeWorldProgressionMutations progression,
         bool skeletronDownedBaseline,
@@ -67,6 +70,7 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
         this.tiles = tiles;
         this.worldItems = worldItems ?? throw new ArgumentNullException(nameof(worldItems));
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
+        this.npcAuthority = npcAuthority ?? throw new ArgumentNullException(nameof(npcAuthority));
         this.worldItemSpawnRandom = worldItemSpawnRandom ?? throw new ArgumentNullException(nameof(worldItemSpawnRandom));
         this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
         this.skeletronDownedBaseline = skeletronDownedBaseline;
@@ -77,6 +81,7 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
         mutations = tiles is null ? null : new VanillaWorldTileMutationService(tiles);
         liquidMutations = tiles is null ? null : new VanillaWorldLiquidMutationService(tiles);
         liquidSimulator = tiles is null ? null : new VanillaWorldLiquidSimulator1458(tiles, sideEffects: this);
+        larvaMutations = tiles is null ? null : new VanillaLarvaObjectMutationService1458(tiles);
 
         if (tiles is not null &&
             RuntimeWorldObjectMetadataRegistry.TryGet(
@@ -246,33 +251,46 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
 
                     if (before.IsActive && canExplodeCell)
                     {
-                        // WorldGen.KillTile supports many object-specific families. TerraRuntime deliberately keeps
-                        // the blast path fail-closed until their exact removal/drop semantics live in authority.
-                        if (!TryPrepareSimpleBreak(x, y, in before, out PreparedSimpleBreak prepared))
+                        bool larva = before.TileType == VanillaTileIds.Larva;
+                        if (larva)
                         {
-                            canExplodeCell = false;
+                            canExplodeCell = TryBreakLarvaObject(x, y);
                         }
                         else
                         {
-                            var request = new WorldTileMutationRequest(WorldTileMutationKind.KillTile, x, y);
-                            WorldTileMutationResult result = mutations.Apply(in request);
-                            if (!result.Applied)
+                            // WorldGen.KillTile supports many object-specific families. TerraRuntime deliberately
+                            // keeps every other blast object family fail-closed until its exact removal/drop
+                            // semantics live in authority.
+                            if (!TryPrepareSimpleBreak(x, y, in before, out PreparedSimpleBreak prepared))
                             {
-                                ReleasePreparedBreak(in prepared);
                                 canExplodeCell = false;
                             }
                             else
                             {
-                                CommitPreparedBreak(in prepared);
-                                var state = new TerrariaTileManipulationState(
-                                    (byte)TerrariaTileManipulationAction.KillTile,
-                                    checked((short)x),
-                                    checked((short)y),
-                                    Data: 0,
-                                    Style: 0);
-                                projectileExplosionEchoes.Register(explosion.TrustedOwner, in state);
-                                replication?.TryPublishCommitted(GameCommandSourceId.System, in state);
+                                var request = new WorldTileMutationRequest(WorldTileMutationKind.KillTile, x, y);
+                                WorldTileMutationResult result = mutations.Apply(in request);
+                                if (!result.Applied)
+                                {
+                                    ReleasePreparedBreak(in prepared);
+                                    canExplodeCell = false;
+                                }
+                                else
+                                {
+                                    CommitPreparedBreak(in prepared);
+                                }
                             }
+                        }
+
+                        if (canExplodeCell)
+                        {
+                            var state = new TerrariaTileManipulationState(
+                                (byte)TerrariaTileManipulationAction.KillTile,
+                                checked((short)x),
+                                checked((short)y),
+                                Data: 0,
+                                Style: 0);
+                            projectileExplosionEchoes.Register(explosion.TrustedOwner, in state);
+                            replication?.TryPublishCommitted(GameCommandSourceId.System, in state);
                         }
                     }
 
@@ -340,6 +358,20 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
         WorldTile before = tiles.Get(x, y);
         if (!before.IsActive || !VanillaProjectileTileCutFacts.IsCuttable(before.TileType))
             return false;
+        if (before.TileType == VanillaTileIds.Larva)
+        {
+            if (!TryBreakLarvaObject(x, y))
+                return false;
+
+            var larvaState = new TerrariaTileManipulationState(
+                (byte)TerrariaTileManipulationAction.KillTile,
+                checked((short)x),
+                checked((short)y),
+                Data: 0,
+                Style: 0);
+            replication?.TryPublishCommitted(GameCommandSourceId.System, in larvaState);
+            return true;
+        }
         if (!TryPrepareSimpleBreak(x, y, in before, out PreparedSimpleBreak prepared))
             return false;
 
@@ -905,6 +937,21 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
                 return;
             }
 
+            if (tileDefinition.BreakPath == VanillaTileBreakPath.LarvaObject)
+            {
+                // TileID 231 is tileNoFail in 1.4.5.8: a real pick strike completes immediately. The generic
+                // selected-pick validation above keeps raw packet 17 from becoming arbitrary boss-spawn authority.
+                if (tileState.Data != 0 || !TryBreakLarvaObject(tileState.TileX, tileState.TileY))
+                {
+                    RejectWithCorrection(command, in tileState);
+                    return;
+                }
+
+                AppliedClientManipulations++;
+                replication?.TryPublishCommitted(command.Connection.Source, in tileState);
+                return;
+            }
+
             if (tileDefinition.BreakPath is not VanillaTileBreakPath.SimpleCell and
                 not VanillaTileBreakPath.FrameImportantSingleCell)
             {
@@ -1181,6 +1228,25 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
             return;
 
         _ = npcs.TrySpawnIntent(in intent, out _);
+    }
+
+    private bool TryBreakLarvaObject(int tileX, int tileY)
+    {
+        if (larvaMutations is null)
+            return false;
+
+        VanillaLarvaObjectMutationResult1458 result = larvaMutations.TryBreakAt(tileX, tileY);
+        if (!result.Applied)
+            return false;
+
+        // WorldGen.Check3x3 uses the frame-check coordinates as its player-distance origin and destroys the Larva
+        // even when no eligible player is within 4800 pixels or NPC allocation later fails.
+        _ = npcAuthority.TrySpawnBossFromTile(
+            VanillaNpcIds.QueenBee,
+            tileX,
+            tileY,
+            maximumDistance: 4800f);
+        return true;
     }
 
     private static bool ApplyTileMutation(

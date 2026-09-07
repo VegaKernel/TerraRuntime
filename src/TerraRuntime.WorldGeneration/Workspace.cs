@@ -5,6 +5,15 @@ namespace TerraRuntime.WorldGeneration.Runtime;
 
 internal readonly record struct VanillaPyramidCandidate1458(int X, int Y);
 internal readonly record struct VanillaLiquidLines1458(int WaterLine, int LavaLine);
+internal readonly record struct VanillaCaveHouseCounts1458(int Ordinary, int AdditionalDesert)
+{
+    public int Total => Ordinary + AdditionalDesert;
+}
+internal readonly record struct VanillaUndergroundDesertRegion1458(int X, int Y, int Width, int Height)
+{
+    public int Right => X + Width;
+    public int Bottom => Y + Height;
+}
 
 /// <summary>
 /// Isolated mutable tile workspace for a candidate generated world. Writes bypass live-world dirty tracking because
@@ -40,6 +49,8 @@ public sealed class Workspace :
     private VanillaWorldGenerationBootstrapState1458? vanillaBootstrapState;
     private TerrainGenerationState1458? vanillaTerrainState;
     private VanillaLiquidLines1458? vanillaLiquidLines;
+    private VanillaCaveHouseCounts1458? vanillaCaveHouseCounts;
+    private VanillaUndergroundDesertRegion1458? vanillaUndergroundDesertRegion;
     private DungeonSetupProfile1458? vanillaDungeonSetupProfile;
     private DungeonGraph1458? vanillaDungeonGraph;
     private readonly List<VanillaPyramidCandidate1458> vanillaPyramidCandidates = [];
@@ -61,6 +72,8 @@ public sealed class Workspace :
     internal VanillaWorldGenerationBootstrapState1458? VanillaBootstrapState => vanillaBootstrapState;
     internal TerrainGenerationState1458? VanillaTerrainState => vanillaTerrainState;
     internal VanillaLiquidLines1458? VanillaLiquidLines => vanillaLiquidLines;
+    internal VanillaCaveHouseCounts1458? VanillaCaveHouseCounts => vanillaCaveHouseCounts;
+    internal VanillaUndergroundDesertRegion1458? VanillaUndergroundDesertRegion => vanillaUndergroundDesertRegion;
     internal DungeonSetupProfile1458? VanillaDungeonSetupProfile => vanillaDungeonSetupProfile;
     internal DungeonGraph1458? VanillaDungeonGraph => vanillaDungeonGraph;
 
@@ -71,6 +84,18 @@ public sealed class Workspace :
         vanillaTerrainState = value;
     internal void SetVanillaLiquidLines(int waterLine, int lavaLine) =>
         vanillaLiquidLines = new VanillaLiquidLines1458(waterLine, lavaLine);
+    internal void SetVanillaCaveHouseCounts(int ordinary, int additionalDesert)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(ordinary);
+        ArgumentOutOfRangeException.ThrowIfNegative(additionalDesert);
+        vanillaCaveHouseCounts = new VanillaCaveHouseCounts1458(ordinary, additionalDesert);
+    }
+    internal void SetVanillaUndergroundDesertRegion(int x, int y, int width, int height)
+    {
+        if (x < 0 || y < 0 || width <= 0 || height <= 0 || x + width > WidthTiles || y + height > HeightTiles)
+            throw new ArgumentOutOfRangeException(nameof(x), $"Underground desert region ({x},{y},{width},{height}) is outside the generation workspace.");
+        vanillaUndergroundDesertRegion = new VanillaUndergroundDesertRegion1458(x, y, width, height);
+    }
     internal void SetVanillaDungeonSetupProfile(DungeonSetupProfile1458 value) =>
         vanillaDungeonSetupProfile = value;
     internal void SetVanillaDungeonGraph(DungeonGraph1458 value) =>

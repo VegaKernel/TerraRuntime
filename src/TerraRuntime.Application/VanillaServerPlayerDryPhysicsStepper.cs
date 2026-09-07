@@ -7,8 +7,8 @@ namespace TerraRuntime.Application;
 /// One authoritative ordinary-world physics step for the verified TerrariaServer 1.4.5.8 player path.
 /// This slice owns source-backed baseline horizontal/jump input, the base hitbox, gravity/fall-speed profiles,
 /// walk-down-slope, ordinary StepDown/StepUp, tile collision, liquid-aware position advance, contact transitions,
-/// post-move slope collision and the admitted Fishron-wing vertical slice. Swimming accessories, mounts, grapples
-/// and extra jumps remain outside it.
+/// post-move slope collision, the admitted Fishron-wing vertical slice and the verified Terraspark/Magiluminescence
+/// horizontal accessory slice. Swimming accessories, mounts, grapples, dashes and extra jumps remain outside it.
 /// </summary>
 internal sealed class VanillaServerPlayerDryPhysicsStepper
 {
@@ -92,6 +92,30 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
         out ServerPlayerDryPhysicsStepResult next,
         out VanillaServerPlayerJumpState nextJumpState)
     {
+        VanillaServerPlayerHorizontalProfile1458 horizontalProfile = VanillaServerPlayerHorizontalProfile1458.Baseline;
+        return TryStep(
+            in player,
+            horizontalIntent,
+            jumpIntent,
+            flightEnabled,
+            in horizontalProfile,
+            in jumpState,
+            in previousContacts,
+            out next,
+            out nextJumpState);
+    }
+
+    public bool TryStep(
+        in PlayerStateSnapshot player,
+        ServerPlayerHorizontalIntent horizontalIntent,
+        ServerPlayerJumpIntent jumpIntent,
+        bool flightEnabled,
+        in VanillaServerPlayerHorizontalProfile1458 horizontalProfile,
+        in VanillaServerPlayerJumpState jumpState,
+        in VanillaLiquidContactState previousContacts,
+        out ServerPlayerDryPhysicsStepResult next,
+        out VanillaServerPlayerJumpState nextJumpState)
+    {
         if (!IsValidHorizontalIntent(horizontalIntent))
         {
             next = default;
@@ -104,7 +128,8 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
         float velocityX = VanillaServerPlayerHorizontalControl.Apply(
             player.VelocityX,
             player.VelocityY,
-            horizontalIntent);
+            horizontalIntent,
+            in horizontalProfile);
         if (!VanillaServerPlayerJumpControl.TryApply(
                 player.VelocityY,
                 jumpIntent,

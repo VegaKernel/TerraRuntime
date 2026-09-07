@@ -6,7 +6,7 @@ This file stores concise facts already checked against the locally decompiled of
 
 ## Runtime bot source facts
 
-Primary evidence: TerrariaServer 1.4.5.8 `Player.QuickHeal`, `Player.QuickHeal_GetItemToUse`, `Player.UpdateBuffs`, `Player.PickAmmo`, `Player.WingMovement`, `Item.SetDefaults`, `Projectile.SetDefaults`, `Projectile.AI_001`, `Collision.CanHit`, `MessageBuffer.GetData` packet cases 13/30/55 and `NetMessage.SendData` packet cases 13/30/55.
+Primary evidence: TerrariaServer 1.4.5.8 `Player.QuickHeal`, `Player.QuickHeal_GetItemToUse`, `Player.UpdateBuffs`, `Player.ApplyEquipFunctional`, `Player.HorizontalMovement`, `Player.Update_NPCCollision`, `Player.PickAmmo`, `Player.WingMovement`, `Item.SetDefaults`, `Projectile.SetDefaults`, `Projectile.AI_001`, `Collision.CanHit`, `MessageBuffer.GetData` packet cases 13/23/30/55 and `NetMessage.SendData` packet cases 13/23/30/55.
 
 Verified facts used by the TZ-29 bot slice:
 
@@ -22,11 +22,20 @@ Verified facts used by the TZ-29 bot slice:
 - Copper Broadsword is item `3508`, Wooden Bow is item `39`, Musket is item `96`, Wooden Arrow is item `40`, and Musket Ball is item `97`. Their admitted damage, use timing, projectile and ammo conversions come from the existing 1.4.5.8 item/weapon catalogs rather than bot-local guesses.
 - Wooden Bow plus Wooden Arrow resolves through `Player.PickAmmo` to launch magnitude `9.1`; Musket plus Musket Ball resolves to `13`. aiStyle-1 arrow gravity begins after 15 projectile substeps at `+0.1` vertical velocity and caps at `16`; projectile `extraUpdates` controls the number of substeps per game tick.
 - Packet 13 control bits are up `0`, down `1`, left `2`, right `3`, jump `4`, use-item `5`, direction-right `6`, and pulley/dash `7`. Movement flag bit `2` carries velocity. A server-owned PlayerBot must publish the actual selected hotbar slot and use-item bit for observers to render weapon switching/use.
-- Fishron Wings are item `2609` with wing slot `26`; Soaring Insignia is item `4989`. The admitted bot flight step uses the source Fishron-wing vertical acceleration/cap slice and does not infer other accessory effects.
+- Fishron Wings are item `2609` with wing slot `26`; Soaring Insignia is item `4989`, Terraspark Boots are `5000`, Magiluminescence is `5107`, and Master Ninja Gear is `984`. Terraspark sets `accRunSpeed=6.75`, enables rocket boots and adds `0.08` to move speed. Grounded Magiluminescence multiplies run acceleration and slowdown by `1.75` and both run-speed caps by `1.15`. The admitted bot physics uses these exact horizontal parameters plus the existing Fishron-wing vertical slice; Master Ninja dash and other accessory side effects remain fail-closed.
+- `Player.Update_NPCCollision` on the client skips only inactive, friendly or non-positive-damage NPC state, but packet 23 does not transmit a per-instance `friendly` or `damage` field. A hostile-type presentation actor with server-only `DamageOverride=0` must therefore remain spatially separated from the followed player to avoid local contact-hurt presentation; authoritative contact damage still resolves the stored override and remains zero.
 - `Collision.CanHit` is a tile-aware rectangle visibility test. Bot Guard acquisition and projectile admission reuse the runtime's exact `VanillaWorldCanHit` port; a solid obstacle is not ignored merely because target range is valid.
 - AI_002 (`FloatingEye`) performs collision rebound before target-direction steering and applies source-specific horizontal/vertical pursuit acceleration. The controlled NpcBot lane reuses only this verified steering/motion primitive; daylight/despawn/attack side effects remain outside actor-control unless separately admitted.
 - AI_005 (`EaterOfSouls`) resolves a target and then applies source-specific pursuit velocity/collision behavior. Controlled flyers reuse the verified pursuit primitive but do not opt back into ordinary AI projectile or spawn side effects.
 - ordinary AI_014 bats set no-gravity, rebound from `collideX/collideY`, call `TargetClosest`, apply directional pursuit acceleration, then advance `ai[1]`; the wander branch starts only after `ai[1] > 200`. TerraRuntime's controlled bat helper resets that ordinary AI clock for each call and therefore exposes the source-ordered pre-wander pursuit/collision slice only. Queen Slime's purple minion shares AI_014 machinery but is boss-owned and is explicitly excluded from the standalone bot-preset helper.
+
+## Larva destruction source facts
+
+Primary evidence: TerrariaServer 1.4.5.8 `WorldGen.Check3x3`, `WorldGen.KillTile`, `Projectile.CutTiles` and `Projectile.ExplodeTiles`.
+
+- Larva is frame-important tile `231` and resolves as one complete 3x3 object with 18-pixel frame steps. A corrupt/incomplete footprint is not a valid object mutation target.
+- After Larva destruction, `WorldGen.Check3x3` scans live, non-dead players in slot order, minimizes Manhattan distance from the tile source and calls `NPC.SpawnOnPlayer(player, 222)` only when the nearest distance is strictly below `4800` pixels.
+- Tile `231` is in the final `tileCut` set and is not excluded by `Projectile.CanExplodeTile`; admitted server projectile cutting and trusted terrain explosions therefore reach the same framed-object/Queen Bee authority boundary as an accepted pick break.
 
 ## Dungeon entrance source facts
 
@@ -37,6 +46,15 @@ Primary evidence: TerrariaServer 1.4.5.8 `DungeonCrawler.SetupDungeonDataVariabl
 - Acceptance rejects a cloud-set tile within radius `15` of the surface exit or within radius `50` around `max(50, y - 50)`, and requires `y - 40 - RoughHeight > 0`. The final 1.4.5.8 cloud set used by this check is tiles `189`, `196`, `460`, `717`, `718`, and `719`.
 - After acceptance, the horizontal dungeon location receives the source `+25-Next(50)` adjustment while the entrance position remains the accepted surface coordinate.
 - For the default dungeon, Old Man is NPC type `37` at `dungeonX * 16 + 8, dungeonY * 16`, with `homeless=false` and home tile set to the dungeon anchor.
+
+## Underground house source facts
+
+Primary evidence: TerrariaServer 1.4.5.8 `WorldGen` pass `Underground Houses and Buried Chests`, `CaveHouseBiome`, `HouseUtils`, `HouseBuilder`, the seven house palette builders, `StructureMap`, `SetFactory`, and `WorldGenRange`.
+
+- The pass draws its budgets before placement in this order: area-scaled `CaveHouseCount 35..40`, width-scaled `UnderworldChestCount 10..15`, area-scaled `CaveChestCount 35..40`, then area-scaled fixed `AdditionalDesertHouseCount 2`. Placement then runs cave chests, Underworld chests, ordinary cave houses and additional desert houses.
+- Cave-house room search scans down by at most `200`, searches each side by `25` and upward by `10`, clamps room width to `15..30` and height to `8..12`, and admits the optional upper/lower rooms through their solid percentage plus `0.2` tests.
+- `StructureMap` rejects the exact source tile set `225, 41, 43, 44, 226, 203, 112, 25, 151, 21, 467`; non-Granite houses also reject lava in the padded rooms. All ordinary `CaveHouseBiome` chest chances are `1.0`, so an admitted house without its configured persistent chest is invalid.
+- The palette defaults used by the current structural slice are Wood `30/27/124/0/0/chest 21 style 1`, Ice `321/149/574/19/30/chest 21 style 11`, Desert `396/187/577/42/43/chest 467 style 10`, Jungle `158/42/575/2/2/chest 21 style 8`, Mushroom `190/74/578/18/6/chest 21 style 32`, Granite `369/181/576/28/34/chest 21 style 50`, and Marble `357/179/561/29/35/chest 21 style 51`; each tuple is tile/wall/beam/platform/door/chest. Decorative furniture and aging are not implied by these palette facts and remain unported.
 
 ## Liquids
 

@@ -5,8 +5,9 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 
 /// <summary>
 /// Sixth source-backed Terraria 1.4.5.8 world-generation overlay. It owns the four chest placement passes immediately
-/// after Statues and couples every 2x2 chest tile object to the candidate workspace chest side table. Loot generation
-/// remains a separate parity slice; this stage establishes structurally correct persistent containers first.
+/// after Statues, including the structural Underground Houses and Buried Chests slice, and couples every 2x2 chest tile
+/// object to the candidate workspace chest side table. Admitted loot is generated at placement time through the shared
+/// vanilla RNG; unported chest families remain outside this overlay rather than using a late fallback filler.
 /// </summary>
 public sealed class SourceBackedChestPlacement1458 : IWorldGenerationProvider
 {
@@ -109,6 +110,7 @@ internal sealed class ChestPlacementState1458
 {
     public VanillaWorldGenerationBootstrapState1458? Bootstrap { get; private set; }
     public double WorldSurface { get; private set; }
+    public double WorldSurfaceHigh { get; private set; }
     public double RockLayer { get; private set; }
     public int UnderworldTop { get; private set; }
     public int LavaLine { get; private set; }
@@ -116,6 +118,7 @@ internal sealed class ChestPlacementState1458
     public int JungleItemCount { get; set; }
     public int WaterItemCount { get; set; }
     public bool LivingMahoganyWandsGenerated { get; set; }
+    public List<CaveHouseRoom1458> ProtectedHouseRooms { get; } = [];
 
     public void EnsureInitialized(IWorldGenerationContext context, Workspace workspace)
     {
@@ -128,6 +131,7 @@ internal sealed class ChestPlacementState1458
             throw new InvalidOperationException("Chest-placement vanilla generation requires source-backed Terrain layers.");
 
         WorldSurface = layers.WorldSurface;
+        WorldSurfaceHigh = workspace.VanillaTerrainState?.WorldSurfaceHigh ?? layers.WorldSurface;
         RockLayer = layers.RockLayer;
         UnderworldTop = Math.Clamp(workspace.HeightTiles - 200, (int)RockLayer + 120, workspace.HeightTiles - 90);
         LavaLine = workspace.VanillaLiquidLines?.LavaLine ?? checked((int)Math.Round(RockLayer));
@@ -195,12 +199,18 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         // cave bound, which made ordinary worlds visibly chest-starved.
         double areaScale = grid.Width * (double)grid.Height / (4200d * 1200d);
         double widthScale = grid.Width / 4200d;
-        int caveMinimum = Math.Max(1, (int)(35d * areaScale));
-        int caveMaximum = Math.Max(caveMinimum, (int)(40d * areaScale));
-        int caveTarget = random.Next(caveMinimum, caveMaximum + 1);
+        int houseMinimum = Math.Max(1, (int)(35d * areaScale));
+        int houseMaximum = Math.Max(houseMinimum, (int)(40d * areaScale));
+        int houseTarget = random.Next(houseMinimum, houseMaximum + 1);
         int underworldMinimum = Math.Max(1, (int)(10d * widthScale));
         int underworldMaximum = Math.Max(underworldMinimum, (int)(15d * widthScale));
         int underworldTarget = random.Next(underworldMinimum, underworldMaximum + 1);
+        int caveMinimum = Math.Max(1, (int)(35d * areaScale));
+        int caveMaximum = Math.Max(caveMinimum, (int)(40d * areaScale));
+        int caveTarget = random.Next(caveMinimum, caveMaximum + 1);
+        int additionalDesertMinimum = Math.Max(1, (int)(2d * areaScale));
+        int additionalDesertMaximum = Math.Max(additionalDesertMinimum, (int)(2d * areaScale));
+        int additionalDesertTarget = random.Next(additionalDesertMinimum, additionalDesertMaximum + 1);
 
         int minY = Math.Clamp((int)((state.WorldSurface + 20d + state.RockLayer) / 2d), 10, state.UnderworldTop - 100);
         int maxY = Math.Max(minY + 1, state.UnderworldTop - 55);
@@ -245,9 +255,45 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
             underworldPlaced++;
         }
 
+        int housePlaced = 0;
+        int houseMinimumY = Math.Clamp((int)(state.WorldSurfaceHigh + 20d), 30, grid.Height - 231);
+        int houseMaximumY = Math.Max(houseMinimumY + 1, grid.Height - 230);
+        for (int attempt = 0; attempt < 10_000 && housePlaced < houseTarget; attempt++)
+        {
+            if ((attempt & 63) == 0)
+                context.CancellationToken.ThrowIfCancellationRequested();
+
+            int x = random.Next(80, grid.Width - 80);
+            int y = random.Next(houseMinimumY, houseMaximumY);
+            if (CaveHousePlacement1458.TryPlace(workspace, state, random, x, y, out _))
+                housePlaced++;
+        }
+
+        int additionalDesertPlaced = 0;
+        if (workspace.VanillaUndergroundDesertRegion is VanillaUndergroundDesertRegion1458 desert)
+        {
+            int desertTop = Math.Max(desert.Y, (int)state.WorldSurface + 26);
+            int desertBottom = Math.Min(desert.Bottom, grid.Height - 230);
+            for (int attempt = 0;
+                 attempt < 10_000 && additionalDesertPlaced < additionalDesertTarget && desertBottom > desertTop;
+                 attempt++)
+            {
+                if ((attempt & 63) == 0)
+                    context.CancellationToken.ThrowIfCancellationRequested();
+
+                int x = random.Next(desert.X, desert.Right);
+                int y = random.Next(desertTop, desertBottom);
+                if (CaveHousePlacement1458.TryPlace(workspace, state, random, x, y, out _))
+                    additionalDesertPlaced++;
+            }
+        }
+        workspace.SetVanillaCaveHouseCounts(housePlaced, additionalDesertPlaced);
+
         context.ReportProgress(
             1d,
-            $"Placing buried chests (cave {cavePlaced}/{caveTarget}, underworld {underworldPlaced}/{underworldTarget})");
+            $"Placing underground houses and buried chests (cave {cavePlaced}/{caveTarget}, " +
+            $"underworld {underworldPlaced}/{underworldTarget}, houses {housePlaced}/{houseTarget}, " +
+            $"additional desert {additionalDesertPlaced}/{additionalDesertTarget})");
     }
 
     private void ApplySurfaceChests(

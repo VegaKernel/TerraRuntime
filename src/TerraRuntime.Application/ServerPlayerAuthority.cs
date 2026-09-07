@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Gameplay.Items;
 using TerraRuntime.HostContracts;
 using TerraRuntime.World;
 using TerraRuntime.Core.Players;
@@ -143,11 +144,16 @@ internal sealed class ServerPlayerAuthority
             VanillaLiquidContactState previousLiquidContacts = liquidOwners[slot] == player.Player
                 ? liquidContacts[slot]
                 : default;
+            VanillaServerPlayerHorizontalProfile1458 horizontalProfile = ResolveHorizontalProfile(
+                player.Player,
+                in player,
+                movementIntent.Options.FlightEnabled);
             if (!dryPhysics.TryStep(
                     in player,
                     horizontalIntent,
                     jumpIntent,
                     movementIntent.Options.FlightEnabled,
+                    in horizontalProfile,
                     in jumpState,
                     in previousLiquidContacts,
                     out ServerPlayerDryPhysicsStepResult next,
@@ -184,6 +190,39 @@ internal sealed class ServerPlayerAuthority
         }
     }
 
+    private VanillaServerPlayerHorizontalProfile1458 ResolveHorizontalProfile(
+        PlayerHandle player,
+        in PlayerStateSnapshot snapshot,
+        bool flightEnabled)
+    {
+        if (!flightEnabled)
+            return VanillaServerPlayerHorizontalProfile1458.Baseline;
+
+        bool terraspark = HasFunctionalAccessory(player, VanillaItemIds.TerrasparkBoots);
+        bool magiluminescence = HasFunctionalAccessory(player, VanillaItemIds.Magiluminescence);
+        bool fishronWings = flightEnabled && HasFunctionalAccessory(player, VanillaItemIds.FishronWings);
+        return VanillaServerPlayerHorizontalProfile1458.ResolveBotMobility(
+            terraspark,
+            magiluminescence,
+            fishronWings,
+            grounded: snapshot.VelocityY == 0f);
+    }
+
+    private bool HasFunctionalAccessory(PlayerHandle player, ItemTypeId itemType)
+    {
+        for (short slot = checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 3));
+             slot < VanillaPlayerItemSlotCatalog.BaselineFunctionalArmorEndExclusive;
+             slot++)
+        {
+            if (states.TryGetItem(player, slot, out ServerPlayerItemState item) &&
+                !item.IsEmpty && item.ItemType == itemType)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static byte ResolveControlFlags(
         byte previous,
         ServerPlayerHorizontalIntent horizontal,
@@ -205,6 +244,9 @@ internal sealed class ServerPlayerAuthority
     public bool TryGet(PlayerHandle player, out PlayerStateSnapshot snapshot) => states.TryGet(player, out snapshot);
 
     public bool TryGet(PlayerSlotId slot, out PlayerStateSnapshot snapshot) => states.TryGet(slot, out snapshot);
+
+    public bool TryGetAppearance(PlayerHandle player, out ServerPlayerAppearanceState appearance) =>
+        states.TryGetAppearance(player, out appearance);
 
     public int CopySnapshots(Span<PlayerStateSnapshot> destination) => states.CopySnapshots(destination);
 
