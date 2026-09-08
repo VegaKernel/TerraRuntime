@@ -304,7 +304,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
         Assert.Equal(new ProjectileRevision(2), updated.Revision);
         Assert.Equal(108f, updated.PositionX, 5);
         Assert.Equal(104f, updated.PositionY, 5);
-        Assert.Equal(2f, updated.Ai.Ai0, 5);
+        Assert.Equal(0f, updated.Ai.Ai0, 5);
         Assert.True(projectiles.TryGetLifecycle(spawned.Handle, out ProjectileLifecycleState lifecycle));
         Assert.Equal(118, lifecycle.TimeLeft);
         Assert.False(lifecycle.Liquid.Wet);
@@ -329,7 +329,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
         Assert.Equal(new ProjectileRevision(2), updated.Revision);
         Assert.Equal(108f, updated.PositionX, 5);
         Assert.Equal(100f, updated.PositionY, 5);
-        Assert.Equal(2f, updated.Ai.Ai0, 5);
+        Assert.Equal(0f, updated.Ai.Ai0, 5);
         Assert.True(projectiles.TryGetLifecycle(spawned.Handle, out ProjectileLifecycleState lifecycle));
         Assert.Equal(598, lifecycle.TimeLeft);
     }
@@ -353,7 +353,7 @@ public sealed class ServerRuntimeVanillaProjectileSimulationTests
         Assert.Equal(new ProjectileRevision(2), updated.Revision);
         Assert.Equal(112f, updated.PositionX, 5);
         Assert.Equal(100f, updated.PositionY, 5);
-        Assert.Equal(3f, updated.Ai.Ai0, 5);
+        Assert.Equal(0f, updated.Ai.Ai0, 5);
         Assert.True(projectiles.TryGetLifecycle(spawned.Handle, out ProjectileLifecycleState lifecycle));
         Assert.Equal(597, lifecycle.TimeLeft);
     }

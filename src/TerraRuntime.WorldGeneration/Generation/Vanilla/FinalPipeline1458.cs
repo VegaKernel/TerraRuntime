@@ -142,14 +142,12 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
     private const ushort Plants2 = 73;
     private const ushort JunglePlants2 = 74;
     private const ushort Sand = 53;
-    private const ushort Cactus = 80;
     private const ushort Coral = 81;
     private const ushort PressurePlate = 135;
     private const ushort Trap = 137;
     private const ushort Stalactite = 165;
     private const ushort LihzahrdBrick = 226;
     private const ushort LihzahrdAltar = 237;
-    private const ushort PalmTree = 323;
     private const ushort LilyPad = 518;
     private const ushort Cattail = 519;
 
@@ -294,8 +292,10 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
         int cactus = 0;
         int palms = 0;
         int coral = 0;
-        int minSurface = Math.Max(2, (int)state.Layers.WorldSurface - 40);
-        int maxSurface = Math.Min(grid.Height - 20, (int)state.Layers.WorldSurface + 120);
+        // The ordinary source pass scans from the world top to worldSurface-1, not a narrow band
+        // around that layer marker: dry beach surfaces can be well above the marker.
+        const int minSurface = 1;
+        int maxSurface = Math.Min(grid.Height - 1, (int)Math.Ceiling(state.Layers.WorldSurface - 1));
 
         for (int x = 3; x < grid.Width - 3; x++)
         {
@@ -307,41 +307,19 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 continue;
 
             bool beach = x <= bootstrap.LeftBeachEnd + 90 || x >= bootstrap.RightBeachStart - 90;
-            if (beach && random.Next(9) == 0 && TryGrowPalm(grid, x, floor, random))
+            if (beach && random.Next(9) == 0 && PalmTreeGrower1458.TryGrow(grid.Store, x, floor, random))
             {
                 palms++;
                 continue;
             }
 
-            if (!beach && random.Next(18) == 0 && TryGrowCactus(grid, x, floor, random))
+            if (!beach && random.Next(18) == 0 && CactusGrower1458.Plant(grid.Store, x, floor, random))
                 cactus++;
         }
 
         coral += PlaceCoralBand(context, grid, random, 3, Math.Min(grid.Width - 3, bootstrap.LeftBeachEnd + 110));
         coral += PlaceCoralBand(context, grid, random, Math.Max(3, bootstrap.RightBeachStart - 110), grid.Width - 3);
         context.ReportProgress(1d, $"Cactus, Palm Trees, & Coral complete; cactus={cactus}, palms={palms}, coral={coral}");
-    }
-
-    private static bool TryGrowCactus(RuntimeGrid grid, int x, int floor, IWorldGenerationVanillaRandom random)
-    {
-        int height = random.Next(2, 6);
-        if (!grid.IsEmptyColumn(x, floor - height, floor - 1))
-            return false;
-
-        for (int y = floor - 1; y >= floor - height; y--)
-            SetObjectTile(ref grid.At(x, y), Cactus, preserveLiquid: false);
-        return true;
-    }
-
-    private static bool TryGrowPalm(RuntimeGrid grid, int x, int floor, IWorldGenerationVanillaRandom random)
-    {
-        int height = random.Next(8, 16);
-        if (!grid.IsEmptyColumn(x, floor - height, floor - 1))
-            return false;
-
-        for (int y = floor - 1; y >= floor - height; y--)
-            SetObjectTile(ref grid.At(x, y), PalmTree, preserveLiquid: false);
-        return true;
     }
 
     private static int PlaceCoralBand(
@@ -676,6 +654,7 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
     {
         private readonly WorldTileStore store;
         public RuntimeGrid(Workspace workspace) => store = workspace.TileStore;
+        public WorldTileStore Store => store;
         public int Width => store.Dimensions.WidthTiles;
         public int Height => store.Dimensions.HeightTiles;
         public ref WorldTile At(int x, int y) => ref store.Tiles[store.GetUncheckedIndex(x, y)];
@@ -689,18 +668,6 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                     return y;
             }
             return max;
-        }
-
-        public bool IsEmptyColumn(int x, int top, int bottom)
-        {
-            if ((uint)x >= (uint)Width || top < 1 || bottom >= Height - 1 || top > bottom)
-                return false;
-            for (int y = top; y <= bottom; y++)
-            {
-                if (At(x, y).IsActive)
-                    return false;
-            }
-            return true;
         }
 
         public bool IsEmptyRectangle(int left, int top, int width, int height)

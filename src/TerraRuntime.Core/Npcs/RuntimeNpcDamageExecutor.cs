@@ -170,13 +170,19 @@ public sealed class RuntimeNpcDamageExecutor
             JustHit = true
         };
 
-        // TerrariaServer 1.4.5.8 NPC.checkDead does not actually kill Moon Lord hands/head/core on the first
+        // TerrariaServer 1.4.5.8 NPC.checkDead does not actually kill Detonating Bubbles or Moon Lord parts on the first
         // lethal strike. PrepareForDeathAnimation restores life, makes the NPC invulnerable and leaves a special
         // ai[] state for the normal authoritative AI loop. Keep that transition in the shared damage boundary so
         // packet 28, projectile hits and Town-NPC melee cannot disagree or briefly commit a false dead revision.
         if (lifeAfter == 0)
         {
-            if ((current.TypeIdentity == VanillaNpcIds.MoonLordHand || current.TypeIdentity == VanillaNpcIds.MoonLordHead) &&
+            if (current.TypeIdentity == VanillaNpcIds.DetonatingBubble)
+            {
+                ai = current.Ai with { Ai0 = 1f, Ai1 = 4f };
+                simulation = simulation with { Life = current.Simulation.LifeMax, DontTakeDamage = true };
+                deathIntercepted = true;
+            }
+            else if ((current.TypeIdentity == VanillaNpcIds.MoonLordHand || current.TypeIdentity == VanillaNpcIds.MoonLordHead) &&
                 current.Ai.Ai0 != -2f)
             {
                 ai = current.TypeIdentity == VanillaNpcIds.MoonLordHand

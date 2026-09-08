@@ -9,6 +9,42 @@ namespace TerraRuntime.Tests;
 
 public sealed class WorldItemFrameSinkTests
 {
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    [InlineData(255, true)]
+    public void Release_packet39_decodes_source_boolean_without_accepting_a_new_owner(byte wireBoolean, bool forced)
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(910);
+        using var bootstrap = CreatePlayingBootstrap(source);
+        var ingress = new CapturingWorldItemIngress();
+        var sink = new WorldItemFrameSink(source, bootstrap, new PassthroughSink(), ingress);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Frame(TerrariaMessageId.ReleaseWorldItem, [143, 1, wireBoolean])));
+        Assert.Equal(1, ingress.ReleaseCount);
+        Assert.Equal(399, ingress.Slot);
+        Assert.Equal(forced, ingress.ForceServer);
+        Assert.Equal(source, ingress.Connection.Source);
+        Assert.Equal(0, ingress.OwnerCount);
+    }
+
+    [Theory]
+    [InlineData(new byte[] { })]
+    [InlineData(new byte[] { 0, 0 })]
+    [InlineData(new byte[] { 0, 0, 1, 0 })]
+    [InlineData(new byte[] { 144, 1, 1 })]
+    [InlineData(new byte[] { 255, 255, 1 })]
+    public void Release_packet39_rejects_malformed_or_nonphysical_slot(byte[] payload)
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(911);
+        using var bootstrap = CreatePlayingBootstrap(source);
+        var ingress = new CapturingWorldItemIngress();
+        var sink = new WorldItemFrameSink(source, bootstrap, new PassthroughSink(), ingress);
+        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(Frame(TerrariaMessageId.ReleaseWorldItem, payload)));
+        Assert.Equal(WorldItemFrameStopReason.MalformedRelease, sink.StopReason);
+        Assert.Equal(TerrariaFrameRejectionCategory.MalformedProtocol, sink.RejectionCategory);
+        Assert.Equal(0, ingress.TotalCount);
+    }
+
     [Fact]
     public void Playing_session_routes_allocate_drop_remove_and_ignores_server_only_owner_packet()
     {
@@ -254,7 +290,9 @@ public sealed class WorldItemFrameSinkTests
         public int DropCount { get; private set; }
         public int RemoveCount { get; private set; }
         public int OwnerCount { get; private set; }
-        public int TotalCount => AllocateCount + DropCount + RemoveCount + OwnerCount;
+        public int ReleaseCount { get; private set; }
+        public bool ForceServer { get; private set; }
+        public int TotalCount => AllocateCount + DropCount + RemoveCount + OwnerCount + ReleaseCount;
         public ConnectionHandle Connection { get; private set; }
         public short Slot { get; private set; }
         public WorldItemDropStateUpdate Drop { get; private set; }
@@ -265,6 +303,15 @@ public sealed class WorldItemFrameSinkTests
             AllocateCount++;
             Connection = connection;
             Drop = state;
+            return true;
+        }
+
+        public bool TryPostRelease(ConnectionHandle connection, short slot, bool forceServer)
+        {
+            ReleaseCount++;
+            Connection = connection;
+            Slot = slot;
+            ForceServer = forceServer;
             return true;
         }
 
@@ -300,6 +347,7 @@ public sealed class WorldItemFrameSinkTests
         public bool TryPostDrop(ConnectionHandle connection, short slot, in WorldItemDropStateUpdate state) => false;
         public bool TryPostRemove(ConnectionHandle connection, short slot) => false;
         public bool TryPostOwner(ConnectionHandle connection, short slot, in WorldItemOwnerStateUpdate state) => false;
+        public bool TryPostRelease(ConnectionHandle connection, short slot, bool forceServer) => false;
     }
 
 }

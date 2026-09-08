@@ -26,6 +26,18 @@ internal sealed class VanillaNpcBehaviorContext
 
     public double WorldSurfacePixels { get; private set; } = double.PositiveInfinity;
 
+    public double WorldWidthPixels { get; private set; }
+
+    public void SetWorldBounds(int widthTiles, double worldSurfaceTiles)
+    {
+        if (widthTiles <= 0)
+            throw new ArgumentOutOfRangeException(nameof(widthTiles));
+        if (!double.IsFinite(worldSurfaceTiles) || worldSurfaceTiles <= 0d)
+            throw new ArgumentOutOfRangeException(nameof(worldSurfaceTiles));
+        WorldWidthPixels = widthTiles * 16d;
+        WorldSurfacePixels = worldSurfaceTiles * 16d;
+    }
+
     public bool DayTime { get; private set; } = true;
 
     public bool SlimeRainActive { get; private set; }
@@ -35,6 +47,8 @@ internal sealed class VanillaNpcBehaviorContext
     public bool ExpertMode { get; private set; }
 
     public bool MasterMode { get; private set; }
+
+    public float WindSpeedCurrent { get; private set; }
 
     public void SetPlayerSnapshotLookup(IRuntimePlayerSlotSnapshotLookup playerSnapshots) =>
         _playerSnapshots = playerSnapshots ?? throw new ArgumentNullException(nameof(playerSnapshots));
@@ -58,16 +72,20 @@ internal sealed class VanillaNpcBehaviorContext
         bool slimeRainActive,
         bool goodWorld = false,
         bool expertMode = false,
-        bool masterMode = false)
+        bool masterMode = false,
+        float windSpeedCurrent = 0f)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
+        if (!float.IsFinite(windSpeedCurrent))
+            throw new ArgumentOutOfRangeException(nameof(windSpeedCurrent));
 
         DayTime = dayTime;
         SlimeRainActive = slimeRainActive;
         GoodWorld = goodWorld;
         ExpertMode = expertMode;
         MasterMode = masterMode;
+        WindSpeedCurrent = windSpeedCurrent;
     }
 
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates)
@@ -168,7 +186,7 @@ internal sealed class VanillaNpcBehaviorContext
             NpcSnapshot candidate = _npcPeers[index];
             if (!candidate.IsActive || candidate.TypeIdentity != type ||
                 !VanillaNpcDefinitionCatalog.TryGet(type, candidate.NetIdentity, out VanillaNpcDefinition definition) ||
-                !definition.TryResolveHitbox(candidate.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+                !definition.TryResolveHitbox(candidate.Simulation, out VanillaNpcHitboxSize hitbox))
                 continue;
             sumX += candidate.PositionX + hitbox.Width * 0.5f;
             sumY += candidate.PositionY + hitbox.Height * 0.5f;
@@ -221,7 +239,7 @@ internal sealed class VanillaNpcBehaviorContext
             NpcSnapshot candidate = _npcPeers[index];
             if (!candidate.IsActive || candidate.TypeIdentity != type || candidate.Simulation.LocalAi.Ai3 != encodedOwner ||
                 !VanillaNpcDefinitionCatalog.TryGet(type, candidate.NetIdentity, out VanillaNpcDefinition definition) ||
-                !definition.TryResolveHitbox(candidate.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+                !definition.TryResolveHitbox(candidate.Simulation, out VanillaNpcHitboxSize hitbox))
                 continue;
             sumX += candidate.PositionX + hitbox.Width * 0.5f;
             sumY += candidate.PositionY + hitbox.Height * 0.5f;
@@ -293,7 +311,7 @@ internal sealed class VanillaNpcBehaviorContext
     {
         target = default;
         if (_candidateCount == 0 ||
-            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             return false;
         }
@@ -325,7 +343,7 @@ internal sealed class VanillaNpcBehaviorContext
         if (npc.Target >= byte.MaxValue ||
             !TryFindCandidate((byte)npc.Target, out VanillaNpcTargetCandidate candidate) ||
             !candidate.Active || candidate.Dead || candidate.Ghost ||
-            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             return false;
         }
@@ -336,6 +354,22 @@ internal sealed class VanillaNpcBehaviorContext
                npc.PositionX + hitbox.Width > playerLeft &&
                npc.PositionY < playerTop + VanillaPlayerHitboxFacts.BaseHeight &&
                npc.PositionY + hitbox.Height > playerTop;
+    }
+
+    public bool AnyLivingPlayerIntersects(int left, int top, int width, int height)
+    {
+        for (int index = 0; index < _candidateCount; index++)
+        {
+            VanillaNpcTargetCandidate player = _candidates[index];
+            if (!player.Active || player.Dead)
+                continue;
+            int playerLeft = (int)(player.CenterX - VanillaPlayerHitboxFacts.BaseWidth * .5f);
+            int playerTop = (int)(player.CenterY - VanillaPlayerHitboxFacts.BaseHeight * .5f);
+            if (left < playerLeft + VanillaPlayerHitboxFacts.BaseWidth && left + width > playerLeft &&
+                top < playerTop + VanillaPlayerHitboxFacts.BaseHeight && top + height > playerTop)
+                return true;
+        }
+        return false;
     }
 
     public bool ShadowSpawnIntersectsOtherPlayer(

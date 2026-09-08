@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
+using TerraRuntime.Protocol.Multiplicity;
 
 namespace TerraRuntime.Application;
 
@@ -209,8 +210,22 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
         return result;
     }
 
-    internal ReadOnlyMemory<byte>[] CaptureWorldTransferCleanupFrames() =>
-        Runtime.NpcReplication.CaptureWorldTransferDespawnFrames();
+    internal ReadOnlyMemory<byte>[] CaptureWorldTransferCleanupFrames()
+    {
+        ReadOnlyMemory<byte>[] npcs = Runtime.NpcReplication.CaptureWorldTransferDespawnFrames();
+        var frames = new List<ReadOnlyMemory<byte>>(byte.MaxValue + npcs.Length);
+        // A replacement packet 7 does not clear Main.player[]. MessageBuffer case 14 is the vanilla
+        // remote-player reset boundary. Clear every remote wire slot, including projections whose source
+        // actor despawned just after unregister; never deactivate the socket's own player or sentinel 255.
+        for (int slot = 0; slot < byte.MaxValue; slot++)
+        {
+            if (Player is PlayerHandle owner && slot == owner.Slot.Value)
+                continue;
+            frames.Add(TerrariaPlayerActiveEncoder.Encode(checked((byte)slot), active: false));
+        }
+        frames.AddRange(npcs);
+        return frames.ToArray();
+    }
 
     private OutboundEnqueueResult TryQueueWorldBootstrap(
         ReadOnlyMemory<byte> finalHandoffFrame,

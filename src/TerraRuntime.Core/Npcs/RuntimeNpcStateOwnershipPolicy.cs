@@ -67,6 +67,7 @@ internal static class RuntimeNpcStateOwnershipPolicy
 
         simulation = simulation with
         {
+            HitboxOverride = sameDefinition ? simulation.HitboxOverride ?? previous.Simulation.HitboxOverride : simulation.HitboxOverride,
             Friendly = simulation.Friendly ?? (sameDefinition ? previous.Simulation.Friendly : null) ??
                 (hasDefinition ? VanillaNpcChaseability1458.FriendlyAtSpawn(update.Type) : null),
             Chaseable = simulation.Chaseable ?? (sameDefinition ? previous.Simulation.Chaseable : null) ??

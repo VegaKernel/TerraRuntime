@@ -178,7 +178,7 @@ internal sealed class CombatValidator
         PreparePlayerGeneration(player.Player);
 
         if (!VanillaNpcDefinitionCatalog.TryGet(target.TypeIdentity, target.NetIdentity, out VanillaNpcDefinition npcDef) ||
-            !npcDef.TryResolveHitbox(target.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !npcDef.TryResolveHitbox(target.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             return Reject(tick, player.Player, target.Handle, CombatIntegrityReason.UnmodeledTargetGeometry,
                 Math.Max(wire.Damage, (short)0), in roll, 1f, out diagnostic);

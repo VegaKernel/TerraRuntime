@@ -29,7 +29,7 @@ internal sealed class VanillaQueenSlimeNpcBehaviorStrategy : IVanillaNpcBehavior
     {
         _ = inner;
         if (definition.AiStyle != VanillaNpcAiStyles.QueenSlime || npc.TypeIdentity != VanillaNpcIds.QueenSlime ||
-            _environment is null || !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            _environment is null || !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             next = default;
             return false;

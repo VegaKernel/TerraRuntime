@@ -36,7 +36,7 @@ internal sealed class VanillaFlyingEyeNpcBehaviorStrategy : IVanillaNpcBehaviorS
 
         if (_environment is null ||
             !NpcTypeId.TryCreate(npc.Type, out NpcTypeId type) ||
-            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             return TryLegacyTargetRefresh(in npc, in definition, context, inner, out next);
         }
@@ -507,7 +507,7 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
             !VanillaFlyerNpcCatalog.TryGetMotionProfile(
                 definition.Type,
                 out VanillaFlyerMotionProfile profile) ||
-            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             next = default;
             return false;
@@ -632,7 +632,7 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
             !NpcTypeId.TryCreate(source.Type, out NpcTypeId type) ||
             !VanillaFlyerProjectileAttack.IsSupportedShooter(type) ||
             !VanillaNpcDefinitionCatalog.TryGet(type, source.NetIdentity, out VanillaNpcDefinition definition) ||
-            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox) ||
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox) ||
             proposed.Target >= byte.MaxValue ||
             !context.TryFindCandidate(checked((byte)proposed.Target), out VanillaNpcTargetCandidate target))
         {
@@ -758,9 +758,9 @@ internal sealed class VanillaWormNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             return true;
         }
 
-        if (!definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox) ||
+        if (!definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox) ||
             !leaderDefinition.TryResolveHitbox(
-                leader.Simulation.Scale,
+                leader.Simulation,
                 out VanillaNpcHitboxSize leaderHitbox))
         {
             next = default;
@@ -937,7 +937,7 @@ internal sealed class VanillaWormNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         out NpcStateUpdate next)
     {
         if (environment is null ||
-            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox) ||
+            !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox) ||
             !context.TrySelectClosestTarget(
                 in npc,
                 in definition,

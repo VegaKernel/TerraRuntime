@@ -35,6 +35,7 @@ public enum TerrariaMessageId : byte
     RequestChestOpen = 31,
     SyncChestItem = 32,
     SyncPlayerChest = 33,
+    ReleaseWorldItem = 39,
     PlayerMana = 42,
     PlayerTeam = 45,
     RequestSign = 46,

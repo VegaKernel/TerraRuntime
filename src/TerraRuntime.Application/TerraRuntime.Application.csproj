@@ -21,6 +21,7 @@
     <ProjectReference Include="../TerraRuntime.Gameplay/TerraRuntime.Gameplay.csproj" />
     <ProjectReference Include="../TerraRuntime.HostContracts/TerraRuntime.HostContracts.csproj" />
     <ProjectReference Include="../TerraRuntime.Network/TerraRuntime.Network.csproj" />
+    <ProjectReference Include="../TerraRuntime.Transport/TerraRuntime.Transport.csproj" />
     <ProjectReference Include="../TerraRuntime.Protocol/TerraRuntime.Protocol.csproj" />
     <ProjectReference Include="../TerraRuntime.Protocol.Multiplicity/TerraRuntime.Protocol.Multiplicity.csproj" />
     <ProjectReference Include="../TerraRuntime.World/TerraRuntime.World.csproj" />

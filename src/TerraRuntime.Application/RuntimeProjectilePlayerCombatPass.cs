@@ -28,6 +28,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
     private readonly PlayerSessionGeneration[] lastTargetGeneration;
     private readonly RuntimeCultistLightningArcTrailRegistry cultistLightningArcTrails;
     private readonly PlayerStateSnapshot[] serverPlayerBuffer = new PlayerStateSnapshot[byte.MaxValue + 1];
+    private readonly PlayerStateSnapshot[] pvpTargetBuffer = new PlayerStateSnapshot[byte.MaxValue + 1];
     private readonly bool expertMode;
     private readonly bool masterMode;
 
@@ -90,11 +91,13 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
             }
 
             bool ended = false;
-            foreach (RuntimePlayerMember target in players.Members)
+            int targetCount = players.CopyCombatTargets(pvpTargetBuffer);
+            for (int targetIndex = 0; targetIndex < targetCount; targetIndex++)
             {
-                if (target.Slot.Value == projectile.Spawner || !target.Hostile || target.IsDead || !target.HasHealth || target.Life <= 0 ||
+                PlayerStateSnapshot target = pvpTargetBuffer[targetIndex];
+                if (target.Player.Slot.Value == projectile.Spawner || !target.Hostile || target.IsDead || !target.HasHealth || target.Life <= 0 ||
                     (owner.Team != 0 && owner.Team == target.Team) ||
-                    IsPlayerOnProjectileCooldown(projectile.Handle, target.Connection.Player, tick) ||
+                    IsPlayerOnProjectileCooldown(projectile.Handle, target.Player, tick) ||
                     !Intersects(in projectile, in definition, target.PositionX, target.PositionY))
                 {
                     continue;
@@ -120,7 +123,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 PlayerDamageCommitResult commitResult = players.TryCommitAuthoritativePvpDamageFromSnapshot(
                         tick,
                         in owner,
-                        target.Connection.Player,
+                        target.Player,
                         DamageSource.FromPlayerProjectile(trustedOwner, projectile.Handle),
                         hit.Damage,
                         hit.Critical,
@@ -129,10 +132,10 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 if (commitResult == PlayerDamageCommitResult.Rejected)
                     continue;
 
-                MarkPlayerProjectileCooldown(projectile.Handle, target.Connection.Player, tick);
+                MarkPlayerProjectileCooldown(projectile.Handle, target.Player, tick);
                 // Vanilla Projectile.Damage_PVP calls StatusPvP before Player.Hurt. Creative god mode returns
                 // from Hurt afterwards, so a source-backed PvP status proc still occurs on an avoided god-mode hit.
-                TryApplyTypeSpecificPvpStatus(projectile.Type, target.Connection.Player);
+                TryApplyTypeSpecificPvpStatus(projectile.Type, target.Player);
                 if (commitResult == PlayerDamageCommitResult.Committed)
                 {
                     CommittedHits++;

@@ -32,7 +32,10 @@ internal sealed class ServerRuntimeComposition
         RuntimeTallGateOccupancyProbe? tallGateOccupancy,
         WorldTileStore? worldTiles,
         RuntimeWorldClock? worldClock,
-        RuntimeWorldProgressionMutations worldProgression)
+        RuntimeWorldProgressionMutations worldProgression,
+        RuntimeTownCommerceWorldFacts1458? environmentWorldFacts,
+        bool expertMode,
+        bool masterMode)
     {
         Updates = updates;
         Commands = commands;
@@ -50,6 +53,9 @@ internal sealed class ServerRuntimeComposition
         WorldTiles = worldTiles;
         WorldClock = worldClock;
         WorldProgression = worldProgression;
+        EnvironmentWorldFacts = environmentWorldFacts;
+        ExpertMode = expertMode;
+        MasterMode = masterMode;
     }
 
     internal RuntimeTickCounter Updates { get; }
@@ -83,6 +89,9 @@ internal sealed class ServerRuntimeComposition
     internal RuntimeWorldClock? WorldClock { get; }
 
     internal RuntimeWorldProgressionMutations WorldProgression { get; }
+    internal RuntimeTownCommerceWorldFacts1458? EnvironmentWorldFacts { get; }
+    internal bool ExpertMode { get; }
+    internal bool MasterMode { get; }
 
     internal static ServerRuntimeComposition Create(
         IRuntimePlayerEventSink? playerEvents,
@@ -120,7 +129,8 @@ internal sealed class ServerRuntimeComposition
         bool evilBossDownedBaseline,
         bool skeletronDownedBaseline,
         bool golemDownedBaseline,
-        Random? projectilePlayerCombatRandom)
+        Random? projectilePlayerCombatRandom,
+        IVanillaNpcRandom? naturalSpawnRandom = null)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -128,7 +138,8 @@ internal sealed class ServerRuntimeComposition
         var progression = worldProgression ?? new RuntimeWorldProgressionMutations();
         var updates = new RuntimeTickCounter();
         var commands = new RuntimeCommandCounter();
-        var playersAuthority = new PlayerAuthority(playerEvents, worldTiles, expertMode, masterMode);
+        var playersAuthority = new PlayerAuthority(playerEvents, worldTiles, expertMode, masterMode, serverPlayers,
+            oceanTeleportSurface: townCommerceWorldFacts is { SkyblockWorld: false } oceanFacts ? oceanFacts.WorldSurface : null);
         var playerSnapshots = new RuntimePlayerSnapshotLookup(playersAuthority, serverPlayers);
 
         RuntimeWorldItemStore worldItemStore = worldItems ?? new RuntimeWorldItemStore();
@@ -200,7 +211,8 @@ internal sealed class ServerRuntimeComposition
             skyblockLowTiles,
             isThereAWorldSurface,
             evilBossDownedBaseline,
-            projectileNpcLocalImmunity);
+            projectileNpcLocalImmunity,
+            naturalSpawnRandom);
         var worldTileAuthority = new WorldTileAuthority(
             playersAuthority,
             commands,
@@ -262,6 +274,9 @@ internal sealed class ServerRuntimeComposition
             tallGateOccupancy,
             worldTiles,
             worldClock,
-            progression);
+            progression,
+            townCommerceWorldFacts,
+            expertMode,
+            masterMode);
     }
 }

@@ -62,9 +62,8 @@ internal sealed class RuntimePvpCombatIntegrity
             !wire.Reason.HasPlayer || wire.Reason.SourcePlayer != attackerConnection.Player.Slot.Value)
             return PvpCombatResolveResult.LegacyFallback;
         if (!players.TryCapture(attackerConnection.Player, out PlayerStateSnapshot attacker) ||
-            !players.TryGet(wire.TargetPlayer, out RuntimePlayerMember targetMember))
+            !players.TryCaptureCombatTarget(wire.TargetPlayer, out PlayerStateSnapshot target))
             return PvpCombatResolveResult.Rejected;
-        PlayerStateSnapshot target = targetMember.CaptureSnapshot();
         if (!attacker.Hostile || !target.Hostile || attacker.IsDead || target.IsDead || !target.HasHealth || target.Life <= 0)
             return PvpCombatResolveResult.Rejected;
         if (attacker.Team != 0 && attacker.Team == target.Team)

@@ -204,6 +204,8 @@ internal sealed class RuntimeBotAuthority
         ResetBehaviorState(bot, tickProvider());
         if (configuration.Mode == RuntimeBotMode.Idle)
             StopActor(bot);
+        if (serverPlayers.TryGet(bot.Player, out PlayerStateSnapshot configuredPlayer))
+            bot.PvpEnabled = configuredPlayer.Hostile;
 
         PublishTelemetry(tickProvider(), force: true);
         return Capture(bot);
@@ -227,7 +229,7 @@ internal sealed class RuntimeBotAuthority
         if (!serverPlayers.TryGet(bot.Player, out PlayerStateSnapshot self) || self.IsDead)
         {
             bot.TargetAvailable = false;
-            bot.PvpEnabled = false;
+            bot.PvpEnabled = self.Hostile;
             bot.IsStuck = false;
             bot.IsDead = true;
             return;
@@ -432,6 +434,15 @@ internal sealed class RuntimeBotAuthority
         // on the target player's ground level also prevents the old permanent low hover caused by a negative formation
         // offset on every Follow tick.
         ResolveEscortDestination(bot, in target, tick, allowVerticalWander: false, out centerX, out centerY);
+        // Formation is bot policy, not a demand to occupy a wall beside the followed player. Contract the
+        // offset toward that player's free position before choosing walk/flight, using vanilla body collision.
+        float formationX = centerX;
+        float targetX = target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+        for (int attempt = 0; attempt < 4 && VanillaWorldSolidCollision.Intersects(
+                 worldTiles, centerX - PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
+                 centerY - PlayerAuthority.VanillaBasePlayerHeight * 0.5f,
+                 (int)PlayerAuthority.VanillaBasePlayerWidth, (int)PlayerAuthority.VanillaBasePlayerHeight); attempt++)
+            centerX = formationX + (targetX - formationX) * ((attempt + 1) / 4f);
         if (!bot.Configuration.FlightEnabled)
         {
             bot.FlightDecisionUntilTick = 0;
@@ -676,6 +687,7 @@ internal sealed class RuntimeBotAuthority
 
         bot.NextAttackTick = tick + Math.Max(1, weapon.UseTimeTicks);
         bot.UseItemUntilTick = tick + Math.Max(1, weapon.AnimationTicks);
+        _ = serverPlayers.PresentItemUse(bot.ServerPlayerId, velocityX, velocityY, Math.Max(1, weapon.AnimationTicks));
         return true;
     }
 
@@ -755,7 +767,7 @@ internal sealed class RuntimeBotAuthority
             if (!VanillaNpcChaseability1458.CanBeChasedBy(in npc) || npc.Simulation.Life <= 0 ||
                 !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) ||
                 definition.Role == NpcArchetypeRole.Town || definition.Damage <= 0 ||
-                !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+                !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
             {
                 continue;
             }
@@ -838,7 +850,7 @@ internal sealed class RuntimeBotAuthority
             VanillaNpcChaseability1458.CanBeChasedBy(in npc) && npc.Simulation.Life > 0 &&
             VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) &&
             definition.Role != NpcArchetypeRole.Town && definition.Damage > 0 &&
-            definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             float centerX = npc.PositionX + hitbox.Width * 0.5f;
             float centerY = npc.PositionY + hitbox.Height * 0.5f;
@@ -949,6 +961,7 @@ internal sealed class RuntimeBotAuthority
         }
 
         int subupdates = VanillaProjectileUpdateFacts.GetSubupdatesPerWorldTick(projectileType);
+        bool gravity = !VanillaProjectileBehaviorProfileCatalog.SkipsBasicArrowGravity(projectileType);
         float projectileCenterX = originX + definition.Width * 0.5f;
         float projectileCenterY = originY + definition.Height * 0.5f;
         for (int ticks = 1; ticks <= MaximumPredictiveAimTicks; ticks++)
@@ -956,7 +969,7 @@ internal sealed class RuntimeBotAuthority
             int steps = checked(ticks * subupdates);
             float predictedTargetX = target.CenterX + target.VelocityX * ticks;
             float predictedTargetY = target.CenterY + target.VelocityY * ticks;
-            int gravitySteps = Math.Max(0, steps - 14);
+            int gravitySteps = gravity ? Math.Max(0, steps - 14) : 0;
             float gravityDisplacement = gravitySteps * (gravitySteps + 1) * 0.05f;
             float requiredX = (predictedTargetX - projectileCenterX) / steps;
             float requiredY = (predictedTargetY - projectileCenterY - gravityDisplacement) / steps;
@@ -973,6 +986,7 @@ internal sealed class RuntimeBotAuthority
                     candidateVelocityY,
                     subupdates,
                     ticks,
+                    gravity,
                     in definition,
                     in target))
             {
@@ -994,6 +1008,7 @@ internal sealed class RuntimeBotAuthority
         float initialVelocityY,
         int subupdates,
         int maximumTicks,
+        bool gravity,
         in VanillaProjectileDefinition definition,
         in BotGuardTarget target)
     {
@@ -1005,7 +1020,8 @@ internal sealed class RuntimeBotAuthority
         int maximumSteps = checked(subupdates * maximumTicks);
         for (int step = 0; step < maximumSteps; step++)
         {
-            ai0 += 1f;
+            if (gravity)
+                ai0 += 1f;
             if (ai0 >= 15f)
             {
                 ai0 = 15f;
@@ -1644,6 +1660,11 @@ internal sealed class RuntimeBotAuthority
 
     private void ResetUnavailableTarget(BotState bot, long tick)
     {
+        // Generation loss (disconnect/transfer) is different from a temporarily dead target. Never bind
+        // to a replacement player just because the slot/name matches, and do not retain a misleading UI target.
+        if (bot.Configuration.Target.IsAssigned &&
+            !playerSnapshots.TryGetPlayer(bot.Configuration.Target.Player, out _))
+            bot.Configuration = bot.Configuration with { Target = default, Mode = RuntimeBotMode.Idle };
         if (bot.MirrorStartedAtTick >= 0)
             _ = serverPlayers.SetHeldItem(bot.ServerPlayerId, MeleeWeaponSlot, useItem: false);
         bot.MirrorStartedAtTick = -1;

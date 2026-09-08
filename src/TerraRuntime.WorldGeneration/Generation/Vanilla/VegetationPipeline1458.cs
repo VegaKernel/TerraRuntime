@@ -173,7 +173,6 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
     private const ushort Herbs = 82;
     private const ushort SnowBlock = 147;
     private const ushort DyePlants = 227;
-    private const ushort PlantDetritus = 233;
 
     private static readonly int[] FlowerStyles = [6, 7, 9, 10, 12, 14, 19];
 
@@ -515,8 +514,8 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
             int style;
             if (roll == 0)
             {
-                type = PlantDetritus;
-                style = random.Next(8);
+                if (JungleDetritusPlacement1458.TryPlace(grid.Store, x, floor - 1, random.Next(8))) placed++;
+                continue;
             }
             else if (roll < 4)
             {
@@ -529,8 +528,6 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
                 style = random.Next(10, 23);
             }
 
-            // Tall/detritus identities have richer framing in vanilla. Keep placement one-cell and source-shaped until
-            // their exact framing helpers are ported; this preserves section validity without inventing adjacent cells.
             SetPlant(ref grid.At(x, floor - 1), type, style * 18, 0);
             placed++;
         }

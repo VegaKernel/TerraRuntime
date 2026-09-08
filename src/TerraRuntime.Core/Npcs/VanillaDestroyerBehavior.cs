@@ -27,7 +27,7 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
         _ = inner;
         if (definition.AiStyle != VanillaNpcAiStyles.Destroyer ||
             (npc.TypeIdentity != VanillaNpcIds.Destroyer && npc.TypeIdentity != VanillaNpcIds.DestroyerBody && npc.TypeIdentity != VanillaNpcIds.DestroyerTail) ||
-            _environment is null || !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            _environment is null || !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
         { next = default; return false; }
 
         NpcAiState ai = npc.Ai;
@@ -46,7 +46,7 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
             }
 
             if (!VanillaNpcDefinitionCatalog.TryGet(parent.TypeIdentity, parent.NetIdentity, out VanillaNpcDefinition parentDef) ||
-                !parentDef.TryResolveHitbox(parent.Simulation.Scale, out VanillaNpcHitboxSize parentHitbox))
+                !parentDef.TryResolveHitbox(parent.Simulation, out VanillaNpcHitboxSize parentHitbox))
             { next = default; return false; }
 
             // realLife ownership: every linked segment mirrors the head's authoritative life.

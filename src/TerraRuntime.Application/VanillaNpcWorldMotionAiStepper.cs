@@ -116,7 +116,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         }
 
         NpcSimulationState simulation = aiState.Simulation;
-        if (!definition.TryResolveHitbox(simulation.Scale, out VanillaNpcHitboxSize hitbox))
+        if (!definition.TryResolveHitbox(simulation, out VanillaNpcHitboxSize hitbox))
         {
             next = default;
             return false;
@@ -445,7 +445,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     {
         intent = default;
         if (!VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.KingSlime, out VanillaNpcDefinition definition) ||
-            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             return false;
         }

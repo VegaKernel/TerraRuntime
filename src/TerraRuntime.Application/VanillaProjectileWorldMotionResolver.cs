@@ -461,7 +461,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
     private static bool TryResolveNpcHitbox(in NpcSnapshot npc, out VanillaNpcHitboxSize hitbox)
     {
         if (!VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) ||
-            !definition.TryResolveHitbox(npc.Simulation.Scale, out hitbox))
+            !definition.TryResolveHitbox(npc.Simulation, out hitbox))
         {
             hitbox = default;
             return false;

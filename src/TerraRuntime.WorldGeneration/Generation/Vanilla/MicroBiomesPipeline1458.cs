@@ -535,38 +535,73 @@ internal sealed class MicroBiomesPass1458 : IWorldGenerationPass
         var path = new List<WorldGenerationPoint>(requestedLength);
         for (int step = 0; step < requestedLength; step++)
         {
-            if (!grid.Contains(x, y) || x < 4 || x >= grid.Width - 4 || y < 4 || y >= grid.Height - 205)
+            if (!grid.Contains(x, y) || x < 4 || x >= grid.Width - 4 || y < 9 || y >= grid.Height - 205)
                 break;
-            if (protectedAreas.Intersects(x - 2, y - 2, 5, 5))
+            // Reserve the largest source tunnel clearance before any carving, including objects above the rail.
+            if (protectedAreas.Intersects(x - 2, y - 8, 5, 11))
                 break;
             if (grid.HasFrameImportantNearby(x, y, 2))
                 break;
             path.Add(new WorldGenerationPoint(x, y));
             x += direction;
             if (step > 0 && step % 12 == 0)
-                y = Math.Clamp(y + random.Next(-1, 2), 5, grid.Height - 206);
+                y = Math.Clamp(y + random.Next(-1, 2), 9, grid.Height - 206);
         }
         if (path.Count < Math.Min(requestedLength, 40))
             return false;
 
-        foreach (WorldGenerationPoint point in path)
+        // Minecart.Initialize/FrameTrack (1.4.5.8): frameX is a connection-table INDEX,
+        // not an atlas pixel coordinate. Frame 0 has no connections; frameY=-1 means no switch.
+        // Validate the entire reserved chain before carving, so an unsupported bend cannot publish fragments.
+        var frames = new short[path.Count];
+        for (int i = 0; i < path.Count; i++)
         {
-            for (int clearY = point.Y - 2; clearY <= point.Y; clearY++)
+            int previous = i == 0 ? -2 : path[i - 1].Y - path[i].Y;
+            int next = i == path.Count - 1 ? -2 : path[i + 1].Y - path[i].Y;
+            frames[i] = TrackFrame1458(direction == 1 ? previous : next, direction == 1 ? next : previous);
+            if (frames[i] < 0)
+                return false;
+        }
+
+        int clearance = 6; // TrackGenerator.playerHeight; PlacePath redraws 5..8 on each Next(7)==0.
+        for (int i = 0; i < path.Count; i++)
+        {
+            WorldGenerationPoint point = path[i];
+            if (random.Next(7) == 0)
+                clearance = random.Next(5, 9);
+            for (int clearY = point.Y - clearance + 1; clearY <= point.Y; clearY++)
             {
                 ref WorldTile tile = ref grid.At(point.X, clearY);
                 if (tile.IsActive && !VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
                     ClearTile(ref tile);
             }
             ref WorldTile track = ref grid.At(point.X, point.Y);
-            SetTile(ref track, MinecartTrack, frameX: 0, frameY: 0);
+            // TrackGenerator.PlacePath resets the track cell (including liquid/paint/actuation),
+            // retaining its wall and four wire channels before reframing.
+            track = new WorldTile
+            {
+                Type = MinecartTrack, FrameX = frames[i], FrameY = -1,
+                Wall = track.Wall,
+                Flags = WorldTileFlags.Active | (track.Flags & WorldTileFlagMasks.Wires)
+            };
         }
         protectedAreas.Add(
             Math.Min(path[0].X, path[^1].X) - 2,
-            Math.Min(path.Min(p => p.Y), path.Max(p => p.Y)) - 2,
+            path.Min(p => p.Y) - 8,
             Math.Abs(path[^1].X - path[0].X) + 5,
-            path.Max(p => p.Y) - path.Min(p => p.Y) + 5);
+            path.Max(p => p.Y) - path.Min(p => p.Y) + 11);
         return true;
     }
+
+    internal static short TrackFrame1458(int leftDeltaY, int rightDeltaY) => (leftDeltaY, rightDeltaY) switch
+    {
+        (-2, -2) => 0,
+        (0, 0) => 1, (-2, 0) => 2, (0, -2) => 3,
+        (1, 0) => 4, (0, 1) => 5, (0, -1) => 6, (-1, 0) => 7,
+        (-1, 1) => 8, (1, -1) => 9,
+        (1, -2) => 10, (-2, 1) => 11, (-1, -2) => 12, (-2, -1) => 13,
+        _ => -1 // No ordinary single-track frame connects a one-cell peak or valley.
+    };
 
     private static int ApplyLavaTraps(
         IWorldGenerationContext context,

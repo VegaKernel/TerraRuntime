@@ -54,6 +54,17 @@ internal sealed class RuntimeWorldItemReplicationRegistry : IWorldItemStateCommi
         Broadcast(encoded);
     }
 
+    /// <summary>Whether this exact player generation has an active client-local item consumer.</summary>
+    public bool HasClientLocalItemReceiver(PlayerHandle player)
+    {
+        if (!player.IsAssigned)
+            return false;
+        foreach (Endpoint endpoint in endpoints.Values)
+            if (endpoint.IsPlayingAs(player) && !endpoint.Outbound.IsCompleted)
+                return true;
+        return false;
+    }
+
     /// <summary>Sends one already encoded packet-90 item copy to the currently playing connection for a player slot.</summary>
     public bool TrySendInstanced(PlayerSlotId playerSlot, ReadOnlyMemory<byte> encoded)
     {
@@ -187,6 +198,10 @@ internal sealed class RuntimeWorldItemReplicationRegistry : IWorldItemStateCommi
 
         public bool IsPlayingAs(PlayerSlotId slot) =>
             Volatile.Read(ref playingSlot) == slot.Value && Volatile.Read(ref playingGeneration) != 0;
+
+        public bool IsPlayingAs(PlayerHandle player) =>
+            Volatile.Read(ref playingSlot) == player.Slot.Value &&
+            Volatile.Read(ref playingGeneration) == player.Generation.Value;
 
         public void MarkPlaying(PlayerHandle player)
         {

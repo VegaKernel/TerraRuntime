@@ -38,12 +38,16 @@ internal sealed partial class PlayerAuthority
     private readonly RuntimePlayerDamageImmunityStore damageImmunity = new(MaxPlayerSlots);
     private readonly bool expertMode;
     private readonly bool masterMode;
+    private readonly ServerPlayerAuthority? serverPlayers;
+    private readonly double? oceanTeleportSurface;
 
     public PlayerAuthority(
         IRuntimePlayerEventSink? events,
         WorldTileStore? worldTiles,
         bool expertMode = false,
-        bool masterMode = false)
+        bool masterMode = false,
+        ServerPlayerAuthority? serverPlayers = null,
+        double? oceanTeleportSurface = null)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -51,6 +55,8 @@ internal sealed partial class PlayerAuthority
         this.worldTiles = worldTiles;
         this.expertMode = expertMode;
         this.masterMode = masterMode;
+        this.serverPlayers = serverPlayers;
+        this.oceanTeleportSurface = oceanTeleportSurface;
         pvpCombat = new RuntimePvpCombatIntegrity(this);
     }
 
@@ -115,6 +121,25 @@ internal sealed partial class PlayerAuthority
     }
 
     public IEnumerable<RuntimePlayerMember> Members => membership.Members;
+
+    internal bool TryCaptureCombatTarget(byte slot, out PlayerStateSnapshot snapshot)
+    {
+        if (membership.TryGet(slot, out RuntimePlayerMember member))
+        {
+            snapshot = member.CaptureSnapshot();
+            return true;
+        }
+        snapshot = default;
+        return serverPlayers is not null && serverPlayers.TryGet(new PlayerSlotId(slot), out snapshot);
+    }
+
+    internal int CopyCombatTargets(Span<PlayerStateSnapshot> destination)
+    {
+        int count = 0;
+        foreach (RuntimePlayerMember member in membership.Members)
+            destination[count++] = member.CaptureSnapshot();
+        return count + (serverPlayers?.CopySnapshots(destination[count..]) ?? 0);
+    }
 
     public void AdvanceCombatTick(long tick) => currentCombatTick = tick;
 
@@ -318,7 +343,7 @@ internal sealed partial class PlayerAuthority
         if (!membership.TryGet(player, out RuntimePlayerMember member))
         {
             snapshot = default;
-            return false;
+            return serverPlayers is not null && serverPlayers.TryCaptureCombatSnapshot(player, out snapshot);
         }
         return TryCaptureCombatSnapshot(member.Connection, out snapshot);
     }
@@ -630,7 +655,7 @@ internal sealed partial class PlayerAuthority
         events?.PlayerTeleported(teleport.Connection, positionX, positionY, style, failed: false);
     }
 
-    private static bool TryResolveTeleportDestination(
+    private bool TryResolveTeleportDestination(
         WorldTileStore tiles,
         RuntimePlayerMember player,
         RuntimePlayerTeleportRequestKind kind,
@@ -644,13 +669,12 @@ internal sealed partial class PlayerAuthority
 
         if (kind == RuntimePlayerTeleportRequestKind.MagicConch)
         {
-            bool currentlyLeft = player.PositionX < width * 8f;
-            if (TryFindOceanLanding(tiles, currentlyLeft, out int x, out int y) ||
-                TryFindOceanLanding(tiles, !currentlyLeft, out x, out y))
-            {
-                ToPlayerPosition(x, y, out positionX, out positionY);
+            // Mounted physical body dimensions are not represented by this ordinary-player landing slice.
+            if ((player.MovementFlags & VanillaPlayerMovementNormalizer.MovementMountPresentFlag) == 0 &&
+                oceanTeleportSurface is double surface &&
+                VanillaOceanLanding1458.TryFind(tiles, surface, player.PositionX,
+                    (player.MovementFlags & 16) != 0 ? 1 : -1, out positionX, out positionY))
                 return true;
-            }
         }
         else if (kind == RuntimePlayerTeleportRequestKind.DemonConch)
         {
@@ -678,32 +702,6 @@ internal sealed partial class PlayerAuthority
         }
 
         positionX = positionY = 0f;
-        return false;
-    }
-
-    private static bool TryFindOceanLanding(WorldTileStore tiles, bool leftSide, out int landingX, out int landingY)
-    {
-        int width = tiles.Dimensions.WidthTiles;
-        int height = tiles.Dimensions.HeightTiles;
-        int edgePadding = 55;
-        int inlandLimit = Math.Clamp(width / 12, 220, 650);
-        int start = leftSide ? edgePadding : width - edgePadding - 1;
-        int end = leftSide ? inlandLimit : width - inlandLimit;
-        int step = leftSide ? 2 : -2;
-
-        for (int x = start; leftSide ? x <= end : x >= end; x += step)
-        {
-            for (int y = 40; y < Math.Min(height - 5, height / 2); y++)
-            {
-                if (!IsSafeTeleportFloor(tiles, x, y, avoidWalls: false))
-                    continue;
-                landingX = x;
-                landingY = y;
-                return true;
-            }
-        }
-
-        landingX = landingY = 0;
         return false;
     }
 

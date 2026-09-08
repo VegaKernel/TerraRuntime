@@ -176,6 +176,27 @@ public sealed class RuntimeBotAuthorityTests
     }
 
     [Fact]
+    public async Task Follow_formation_does_not_keep_a_destination_inside_a_wall_beside_the_player()
+    {
+        using var fixture = new Fixture(botSpawnX: 160f, botSpawnY: 160f);
+        ConnectionHandle escort = fixture.SpawnConnectionPlayer(30, 13);
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        _ = await fixture.ConfigureAsync(bot.Id, bot.Configuration with
+        {
+            Mode = RuntimeBotMode.Follow, Target = new RuntimeBotTarget(escort.Player, "escort"), FlightEnabled = false
+        });
+        fixture.State.Tick();
+        ServerPlayerMovementIntent original = fixture.ServerPlayers.GetMovementIntent(bot.Player);
+        int tileX = (int)(original.TargetX / 16f);
+        for (int y = 9; y <= 12; y++)
+            fixture.Tiles.Set(tileX, y, new WorldTile { Type = checked((ushort)VanillaTileIds.Stone.Value), Flags = WorldTileFlags.Active });
+        Assert.True(VanillaWorldSolidCollision.Intersects(fixture.Tiles, original.TargetX - 10f, original.TargetY - 21f, 20, 42));
+        fixture.State.Tick();
+        ServerPlayerMovementIntent updated = fixture.ServerPlayers.GetMovementIntent(bot.Player);
+        Assert.False(VanillaWorldSolidCollision.Intersects(fixture.Tiles, updated.TargetX - 10f, updated.TargetY - 21f, 20, 42));
+    }
+
+    [Fact]
     public async Task Player_bot_auto_heal_consumes_closest_source_backed_quick_heal_item_and_obeys_delay()
     {
         using var fixture = new Fixture();
@@ -369,6 +390,27 @@ public sealed class RuntimeBotAuthorityTests
             expectedLaunchMagnitude - .001f, expectedLaunchMagnitude + .001f);
         Assert.True(arrow.VelocityY > directVelocityY + 0.5f,
             $"Predictive vy {arrow.VelocityY} did not lead moving target beyond direct vy {directVelocityY}.");
+    }
+
+    [Fact]
+    public async Task Gun_guard_does_not_lob_silver_bullets_above_stationary_distant_target()
+    {
+        using var fixture = new Fixture(botSpawnX: 160f, botSpawnY: 160f);
+        ConnectionHandle escort = fixture.SpawnConnectionPlayer(10, 10);
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        _ = await fixture.ConfigureAsync(bot.Id, bot.Configuration with
+        {
+            Mode = RuntimeBotMode.Guard, Target = new RuntimeBotTarget(escort.Player, "escort"), WeaponPolicy = RuntimeBotWeaponPolicy.Gun
+        });
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.BlueSlime, out VanillaNpcDefinition definition));
+        Assert.True(definition.TryResolveHitbox(1f, out VanillaNpcHitboxSize hitbox));
+        // Projectile center is bot center + half the four-pixel bullet body, as in the current spawn contract.
+        fixture.SpawnNpc(VanillaNpcIds.BlueSlime, 740f, 183f - hitbox.Height * 0.5f);
+        fixture.State.Tick();
+        var projectiles = new ProjectileSnapshot[fixture.Projectiles.Capacity];
+        Assert.Equal(1, fixture.Projectiles.CopyActive(projectiles));
+        Assert.Equal(VanillaProjectileIds.SilverBullet, projectiles[0].Type);
+        Assert.InRange(projectiles[0].VelocityY, -0.05f, 0.05f);
     }
 
     [Fact]

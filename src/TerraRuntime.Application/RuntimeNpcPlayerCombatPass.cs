@@ -70,7 +70,7 @@ internal sealed class RuntimeNpcPlayerCombatPass
                     npc.Ai,
                     out VanillaPlayerImmunityChannel1458 immunityChannel) ||
                 ResolveContactDamage(in npc, in definition) <= 0 ||
-                !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+                !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
             {
                 continue;
             }

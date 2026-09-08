@@ -1,5 +1,7 @@
 # Sandbox runtime roadmap
 
+2026-09-07 continuation decision: the user deferred Level2 after the Windows async-socket handoff probe and requested continued gameplay/worldgen work. Preserve the internal worker foundation; no production transport I/O redesign or player handoff is authorized for this pass.
+
 This directory is the normative delivery roadmap for TerraRuntime sandbox worlds. User-facing architecture is documented in [`../../en/sandbox/README.md`](../../en/sandbox/README.md) and [`../../ru/sandbox/README.md`](../../ru/sandbox/README.md).
 
 Detailed source/materialization and `.trschem` delivery is tracked in [`world-sources-schematics.md`](world-sources-schematics.md). That page is normative for the shared `SandboxWorldSource` model and the TerraRuntime Schematic format used directly by TerraRuntime, Vega and WorldEdit.
@@ -209,6 +211,8 @@ The detailed WS0-WS6 checklist is maintained in [`world-sources-schematics.md`](
 
 ### S4 - Level 2 worker lifecycle
 
+Runtime-only foundation now exists: internal `SandboxSupervisor`, private worker entry point, one ephemeral shared `WorldRuntime`, authenticated bounded local control, built-in generation/hash-verified `.wld`, heartbeat, graceful stop and exact-child failure cleanup. Real process tests and Windows NativeAOT worker smoke exercise it. This is not host/Vega admission or playable Level2; `.trschem`, selected local logic, enforceable process quotas and all S5 socket-transfer gates remain open. Full S3/S4 checkboxes below deliberately remain unchecked until their broader contracts are met. See the [implemented scope](../../en/sandbox/level-2.md#implemented-runtime-only-foundation).
+
 - [ ] introduce `SandboxSupervisor` in the TerraRuntime host layer;
 - [ ] first implementation uses one sandbox world per worker process;
 - [ ] creation descriptor accepts the same `.wld` / `Generated` / `.trschem` / snapshot source model as Level 1, plus selected sandbox-side game mode/plugin package, configuration and resource limits;
@@ -221,6 +225,8 @@ The detailed WS0-WS6 checklist is maintained in [`world-sources-schematics.md`](
 - [ ] plugin-bearing workers use a CoreCLR extensible profile; runtime-only workers may remain NativeAOT when no dynamic module loading is required.
 
 ### S5 - bidirectional TCP socket handoff
+
+Windows implementation blocker confirmed on local .NET11 and NativeAOT: BCL duplication succeeds for a sync-only socket but destination async I/O fails after the source has used pending async receive. Existing production sockets are IOCP-bound. Frame-boundary quiescence alone is insufficient; see [the platform evidence](../../en/sandbox/socket-handoff.md#windows). No gameplay proxy or replacement of the working data plane was introduced.
 
 - [ ] define a connection-transfer safe point at a complete Terraria protocol-frame boundary;
 - [ ] no partial frame or untransferred bytes may remain in process-local decoder/pipe buffers when ownership commits;

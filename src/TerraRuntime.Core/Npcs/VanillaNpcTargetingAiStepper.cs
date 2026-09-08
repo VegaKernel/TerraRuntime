@@ -64,7 +64,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaDestroyerNpcBehaviorStrategy _destroyer;
     private readonly VanillaPlanteraNpcBehaviorStrategy _plantera = new();
     private readonly VanillaGolemNpcBehaviorStrategy _golem = new();
-    private readonly VanillaDukeFishronNpcBehaviorStrategy _dukeFishron = new();
+    private readonly VanillaDukeFishronNpcBehaviorStrategy _dukeFishron;
     private readonly VanillaLunaticCultistNpcBehaviorStrategy _lunaticCultist = new();
     private readonly VanillaEmpressOfLightNpcBehaviorStrategy _empressOfLight = new();
     private readonly VanillaMoonLordNpcBehaviorStrategy _moonLord = new();
@@ -93,6 +93,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         _queenBee = new VanillaQueenBeeNpcBehaviorStrategy(_random);
         _queenSlime = new VanillaQueenSlimeNpcBehaviorStrategy(_random, kingSlimeEnvironment);
         _destroyer = new VanillaDestroyerNpcBehaviorStrategy(_random);
+        _dukeFishron = new VanillaDukeFishronNpcBehaviorStrategy(_random);
         if (kingSlimeEnvironment is IVanillaEyeOfCthulhuEnvironment eyeEnvironment)
             _eyeOfCthulhu.SetEnvironment(eyeEnvironment);
         if (kingSlimeEnvironment is IVanillaBrainOfCthulhuEnvironment brainEnvironment)
@@ -104,6 +105,9 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public void EnableZombieMotion(double worldSurfaceTiles) =>
         _context.EnableGroundFighter(worldSurfaceTiles);
+
+    public void SetWorldBounds(int widthTiles, double worldSurfaceTiles) =>
+        _context.SetWorldBounds(widthTiles, worldSurfaceTiles);
 
     public void SetPlayerSnapshotLookup(IRuntimePlayerSlotSnapshotLookup playerSnapshots) =>
         _context.SetPlayerSnapshotLookup(playerSnapshots);
@@ -171,8 +175,9 @@ public sealed class VanillaNpcTargetingAiStepper :
         bool slimeRainActive,
         bool goodWorld = false,
         bool expertMode = false,
-        bool masterMode = false) =>
-        _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld, expertMode, masterMode);
+        bool masterMode = false,
+        float windSpeedCurrent = 0f) =>
+        _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld, expertMode, masterMode, windSpeedCurrent);
 
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates) =>
         _context.SetCandidates(candidates);
@@ -420,7 +425,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     {
         if (_wallOfFleshEnvironment is null ||
             !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.WallOfFlesh, out VanillaNpcDefinition definition) ||
-            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox))
             return 0;
 
         NpcAiState sourceLocal = source.Simulation.LocalAi;
@@ -554,7 +559,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (destination.IsEmpty || proposed.Simulation.LocalAi.Ai0 != 1f || proposed.Target >= byte.MaxValue ||
             !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) ||
             !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.WallOfFleshEye, out VanillaNpcDefinition definition) ||
-            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox) ||
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox) ||
             !VanillaWallOfFleshEyeNpcBehaviorStrategy.TryResolveRoot(in source, _context, out NpcSnapshot root))
             return 0;
 
@@ -614,7 +619,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     {
         if (destination.IsEmpty || !_context.ExpertMode || _projectileEnvironment is null ||
             !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.SkeletronHead, out VanillaNpcDefinition definition) ||
-            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox) ||
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox) ||
             source.Target >= byte.MaxValue ||
             !_context.TryFindCandidate((byte)source.Target, out VanillaNpcTargetCandidate target) ||
             !target.Active || target.Dead || target.Ghost)
@@ -805,7 +810,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             proposed.Ai.Ai0 != 1f ||
             proposed.Type != source.Type ||
             !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.SkeletronHead, out VanillaNpcDefinition definition) ||
-            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             return 0;
         }
@@ -848,7 +853,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             worm.Role == VanillaWormSegmentRole.Tail ||
             !VanillaWormNpcCatalog.HasChainProfile(worm.HeadType) ||
             !worm.Definition.TryResolveHitbox(
-                proposed.Simulation.Scale,
+                proposed.Simulation,
                 out VanillaNpcHitboxSize hitbox))
         {
             return 0;
@@ -936,7 +941,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (source.Simulation.LocalAi.Ai0 != 0f ||
             proposed.Simulation.LocalAi.Ai0 != 1f ||
             !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.BrainOfCthulhu, out VanillaNpcDefinition brain) ||
-            !brain.TryResolveHitbox(proposed.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !brain.TryResolveHitbox(proposed.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             return 0;
         }
@@ -1012,7 +1017,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             target.Dead ||
             target.Ghost ||
             !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.EyeOfCthulhu, out VanillaNpcDefinition eye) ||
-            !eye.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !eye.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             return 0;
         }
@@ -1051,7 +1056,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (!VanillaNpcDefinitionCatalog.TryGet(
                 VanillaNpcIds.EyeOfCthulhu,
                 out VanillaNpcDefinition definition) ||
-            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             return 0;
         }
@@ -1092,7 +1097,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (source.Ai.Ai3 <= 0f ||
             proposed.Ai.Ai3 != life ||
             !((float)(life + threshold) < source.Ai.Ai3) ||
-            !definition.TryResolveHitbox(proposed.Simulation.Scale, out VanillaNpcHitboxSize hitbox) ||
+            !definition.TryResolveHitbox(proposed.Simulation, out VanillaNpcHitboxSize hitbox) ||
             hitbox.Width <= 32 || hitbox.Height <= 32)
         {
             return 0;
@@ -1135,7 +1140,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (destination.IsEmpty ||
             _deerclopsEnvironment is null ||
             !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Deerclops, out VanillaNpcDefinition definition) ||
-            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             return 0;
         }
@@ -1175,7 +1180,7 @@ public sealed class VanillaNpcTargetingAiStepper :
 
         int rotationIndex = counter / interval % 3;
         if (!VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Deerclops, out VanillaNpcDefinition definition) ||
-            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             return 0;
         }
@@ -1897,25 +1902,31 @@ public sealed class VanillaNpcTargetingAiStepper :
             !target.Active || target.Dead || target.Ghost)
             return 0;
 
-        bool bubbleState = source.Ai.Ai0 == 2f || source.Ai.Ai0 == 7f;
-        if (!bubbleState || proposed.Ai.Ai2 <= source.Ai.Ai2 || ((int)proposed.Ai.Ai2 % 4) != 0)
+        // AI_069 (1.4.5.8) emits before incrementing ai[2] and before rotating the circle velocity.
+        bool circle = source.Ai.Ai0 == 7f;
+        float timer = source.Ai.Ai2;
+        if ((source.Ai.Ai0 != 2f && !circle) || !float.IsFinite(timer) || timer < 0f ||
+            timer >= (circle ? 120f : 80f) || timer % 4f != 0f)
             return 0;
 
-        float cx = proposed.PositionX + 75f;
-        float cy = proposed.PositionY + 50f;
-        float dx = target.CenterX - cx;
-        float dy = target.CenterY - cy;
-        float distance = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
-        float speed = _random.NextInt32(165, 265) / 15f;
+        float cx = source.PositionX + 75f;
+        float cy = source.PositionY + 50f;
+        float dx = circle ? source.VelocityX : target.CenterX - cx;
+        float dy = circle ? source.VelocityY : target.CenterY - cy;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        if (!float.IsFinite(distance) || distance <= 0f || (circle && source.Simulation.DirectionX is not (-1 or 1)))
+            return 0;
+        float nx = dx / distance, ny = dy / distance;
         destination[0] = new NpcAiSpawnIntent(
             VanillaNpcIds.DetonatingBubble,
-            (int)(cx + dx / distance * 85f),
-            (int)(cy + dy / distance * 85f + 45f),
-            dx / distance * speed,
-            dy / distance * speed,
-            proposed.Target)
+            (int)(cx + nx * 85f),
+            (int)(cy + ny * 85f) + 45,
+            circle ? -ny * source.Simulation.DirectionX * 6f : 0f,
+            circle ? nx * source.Simulation.DirectionX * 6f : 0f,
+            circle ? proposed.Target : VanillaNpcDefinitionCatalog.DefaultTarget)
         {
-            InitialAi = new NpcAiState(0f, 0f, 0f, _random.NextInt32(80, 121) / 100f)
+            // Ordinary bubbles defer targeting, random launch and scale to AI70's first update.
+            InitialAi = circle ? new NpcAiState(0f, 0f, 0f, _random.NextInt32(80, 121) / 100f) : default
         };
         return 1;
     }
@@ -1924,6 +1935,11 @@ public sealed class VanillaNpcTargetingAiStepper :
     private int PlanDukeFishronProjectiles(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
     {
         if (source.Ai.Ai2 != 60f || (source.Ai.Ai0 != 3f && source.Ai.Ai0 != 8f))
+            return 0;
+        if (proposed.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate player) ||
+            !player.Active || player.Dead ||
+            !VanillaDukeFishronNpcBehaviorStrategy.TryResolveEnrage(_context, in player, out bool enraged))
             return 0;
         int requested = source.Ai.Ai0 == 3f ? 2 : 1;
         if (destination.Length < requested) return destination.Length + 1;
@@ -1939,7 +1955,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             return 2;
         }
         destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.SharknadoBolt, cx, cy, 0f, 0f, 0, 0f)
-        { InitialAi = new ProjectileAiState(1f, proposed.Target + 1f, 0f) };
+        { InitialAi = new ProjectileAiState(1f, proposed.Target + 1f, enraged ? 1f : 0f) };
         return 1;
     }
 
@@ -2391,7 +2407,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         }
         NpcTypeId child = remaining >= 0 ? VanillaNpcIds.DestroyerBody : VanillaNpcIds.DestroyerTail;
         if (!VanillaNpcDefinitionCatalog.TryGet(NpcTypeId.TryCreate(source.Type, out var st) ? st : VanillaNpcIds.Destroyer, out VanillaNpcDefinition def) ||
-            !def.TryResolveHitbox(proposed.Simulation.Scale, out VanillaNpcHitboxSize hb)) return 0;
+            !def.TryResolveHitbox(proposed.Simulation, out VanillaNpcHitboxSize hb)) return 0;
         destination[0] = new NpcAiSpawnIntent(child, (int)(proposed.PositionX + hb.Width*.5f), (int)(proposed.PositionY + hb.Height), 0f, 0f, proposed.Target)
         {
             InitialAi = new NpcAiState(0f, source.Handle.Slot, Math.Max(remaining,0), root),

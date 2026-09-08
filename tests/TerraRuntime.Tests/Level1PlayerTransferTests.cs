@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Reflection;
+using TerraRuntime.Application.Bots;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -14,6 +15,47 @@ namespace TerraRuntime.Tests;
 
 public sealed class Level1PlayerTransferTests
 {
+    [Fact]
+    public async Task Existing_bot_is_deactivated_on_world_exit_and_rebaselined_only_on_return()
+    {
+        using WorldRuntime primary = CreateRuntime("Primary", seed: 910);
+        using WorldRuntime sandbox = CreateRuntime("Arena", seed: 911);
+        primary.Start();
+        sandbox.Start();
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await primary.BotOperations.CreateAsync(
+            cancellationToken: TestContext.Current.CancellationToken));
+        var outbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 8192, maxQueuedBytes: 64 * 1024 * 1024, maxFrameBytes: 4 * 1024 * 1024));
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(71);
+        Assert.True(RuntimeConnectionWorldBinding.TryCreateTransferred(primary, source, outbound,
+            new PlayerSlotId(1), "Observer", out RuntimeConnectionWorldBinding? binding));
+        Assert.NotNull(binding);
+        Assert.True(binding.TryRegister());
+        using var route = new RuntimeConnectionRoute(source, outbound, binding);
+        PlayerHandle owner = AssertPlayer(route.ActivePlayer);
+        await AttachInitialPlayerAsync(primary, source, owner, "Observer", 96f, 128f, 100, 100);
+        DrainOutbound(outbound);
+        for (int iteration = 0; iteration < 3; iteration++)
+        {
+            Assert.True(route.TryTransfer(sandbox, false, out string? error), error);
+            TerrariaFrame[] away = DrainOutbound(outbound);
+            int clear = Array.FindIndex(away, frame => frame.MessageId == 14 &&
+                frame.Payload.ToArray().SequenceEqual(new byte[] { bot.Player.Slot.Value, 0 }));
+            int world = Array.FindIndex(away, frame => frame.MessageId == 7);
+            Assert.InRange(clear, 0, world - 1);
+            Assert.DoesNotContain(away[(world + 1)..], frame => frame.MessageId == 13 && frame.Payload.ToArray()[0] == bot.Player.Slot.Value);
+            Assert.DoesNotContain(away, frame => frame.MessageId == 14 &&
+                frame.Payload.ToArray().SequenceEqual(new byte[] { owner.Slot.Value, 0 }));
+            Assert.True(route.TryTransfer(primary, false, out error), error);
+            TerrariaFrame[] returned = DrainOutbound(outbound);
+            int spawn = Array.FindIndex(returned, frame => frame.MessageId == 12);
+            Assert.Contains(returned[(spawn + 1)..], frame => frame.MessageId == 14 &&
+                frame.Payload.ToArray().SequenceEqual(new byte[] { bot.Player.Slot.Value, 1 }));
+            Assert.Single(primary.BotOperations.CaptureSnapshot());
+            Assert.Empty(sandbox.BotOperations.CaptureSnapshot());
+        }
+    }
+
     [Fact]
     public async Task Process_world_tree_tracks_route_membership_across_semantic_transfer()
     {
@@ -178,7 +220,15 @@ public sealed class Level1PlayerTransferTests
 
         TerrariaFrame[] frames = DrainOutbound(outbound);
         Assert.NotEmpty(frames);
-        Assert.Equal((byte)TerrariaMessageId.WorldData, frames[0].MessageId);
+        int worldIndex = Array.FindIndex(frames, frame => frame.MessageId == (byte)TerrariaMessageId.WorldData);
+        Assert.Equal(254, worldIndex);
+        Assert.All(frames[..worldIndex], frame =>
+        {
+            Assert.Equal((byte)14, frame.MessageId);
+            byte[] payload = frame.Payload.ToArray();
+            Assert.NotEqual(player.Slot.Value, payload[0]);
+            Assert.Equal(0, payload[1]);
+        });
         Assert.DoesNotContain(frames, static frame => frame.MessageId == (byte)TerrariaMessageId.PlayerSpawnSelf);
         int spawnIndex = Array.FindLastIndex(
             frames,

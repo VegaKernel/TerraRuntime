@@ -9,6 +9,122 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
 {
     private static readonly WorldGeneratorId VanillaId = new("terraruntime:vanilla");
 
+    [Theory]
+    [InlineData(4200, 1200)]
+    [InlineData(6400, 1800)]
+    [InlineData(8400, 2400)]
+    public void Canonical_world_retains_connected_rideable_rail_frames(int width, int height)
+    {
+        var request = new WorldGenerationRequest(VanillaId, "Rails", 42, width, height) { SeedText = "42" };
+        var pipeline = new RuntimeWorldCreationPipeline(BuiltInWorldGeneratorSource.Instance);
+        var result = pipeline.CreateCandidate(in request, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.True(result.Succeeded, result.Finalization?.Validation?.Detail ?? result.Generation.Execution?.Error?.ToString());
+        var tiles = result.Candidate!.TileStore;
+        int count = 0;
+        for (int y = 1; y < height - 1; y++)
+        for (int x = 1; x < width - 1; x++)
+        {
+            WorldTile tile = tiles.Get(x, y);
+            if (!tile.IsActive || tile.Type != 314) continue;
+            count++;
+            SourceBackedMicroBiomes1458Tests.AssertTrackConnections(tiles, x, y);
+        }
+        Assert.True(count > 0, "Micro Biomes must actually publish tracks, not merely reject all routes.");
+    }
+
+    [Theory]
+    [InlineData(4200, 1200)]
+    [InlineData(6400, 1800)]
+    [InlineData(8400, 2400)]
+    public void Canonical_underworld_retains_forts_connections_and_house_hellforges(int width, int height)
+    {
+        var request = new WorldGenerationRequest(VanillaId, "Hell settlement", 42, width, height) { SeedText = "42" };
+        var pipeline = new RuntimeWorldCreationPipeline(BuiltInWorldGeneratorSource.Instance);
+        RuntimeWorldCreationPipelineResult result = pipeline.CreateCandidate(in request, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.True(result.Succeeded, result.Finalization?.Validation?.Detail ?? result.Generation.Execution?.Error?.ToString());
+        WorldTileStore store = result.Candidate!.TileStore;
+        int bricks = 0, walls = 0, doors = 0, platforms = 0, forges = 0, torches = 0, ashGrass = 0, ashTrees = 0, furniture = 0;
+        int paintings = 0, banners = 0, chandeliers = 0, lanterns = 0;
+        for (int y = height - 250; y < height; y++)
+        for (int x = 5; x < width - 5; x++)
+        {
+            WorldTile tile = store.Get(x, y);
+            if (tile.Wall is 13 or 14) walls++;
+            if (!tile.IsActive) continue;
+            if (tile.Type is 75 or 76) bricks++;
+            if (tile.Type is 14 or 15 or 18 or 79 or 87 or 88 or 89 or 90 or 93 or 100 or 101 or 104 or 105) furniture++;
+            if (tile.Type is 240 or 242 or 245 or 246) paintings++;
+            if (tile.Type == 91 && tile.FrameY == 0 && tile.FrameX is >= 288 and <= 378) banners++;
+            if (tile.Type == 34 && tile.FrameY == 1728 && tile.FrameX == 0) chandeliers++;
+            if (tile.Type == 42 && tile.FrameY == 1152) lanterns++;
+            if (tile.Type is 240 or 242 or 245 or 246 or 91 or 34 or 42)
+                AssertHellDecorationFootprint(store, x, y, tile);
+            if (tile.Type == 633) ashGrass++;
+            if (tile.Type == 634 && tile.FrameX is 0 or 22 && tile.FrameY >= 198)
+            {
+                ashTrees++;
+                Assert.True(UnderworldVegetation1458.IsEdgeForest(x, width));
+            }
+            if (tile.Type == 4 && tile.FrameY == 154)
+            {
+                torches++;
+                Assert.Contains(tile.FrameX, new short[] { 0, 22, 44 });
+                Assert.True(tile.Wall > 0);
+            }
+            if (tile.Type == 19 && tile.FrameY == 234) platforms++;
+            if (tile.Type == 10 && tile.FrameY == 1026)
+            {
+                doors++;
+                for (int dy = 0; dy < 3; dy++)
+                {
+                    WorldTile cell = store.Get(x, y + dy);
+                    Assert.True(cell.IsActive); Assert.Equal(10, cell.Type); Assert.Equal(1026 + dy * 18, cell.FrameY);
+                }
+            }
+            if (tile.Type != 77 || tile.FrameX != 0 || tile.FrameY != 0) continue;
+            forges++;
+            Assert.True(store.Get(x + 1, y + 1).Wall is 13 or 14, $"Hellforge outside a house at {x},{y}");
+            for (int dx = 0; dx < 3; dx++)
+            for (int dy = 0; dy < 2; dy++)
+            {
+                WorldTile cell = store.Get(x + dx, y + dy);
+                Assert.True(cell.IsActive); Assert.Equal(77, cell.Type);
+                Assert.Equal(dx * 18, cell.FrameX); Assert.Equal(dy * 18, cell.FrameY);
+            }
+        }
+        Assert.True(bricks > 0 && walls > 0 && doors > 0 && platforms > 0,
+            $"Incomplete Underworld settlement: bricks={bricks}, walls={walls}, doors={doors}, platforms={platforms}");
+        Assert.InRange(forges, 1, width / 200);
+        Assert.InRange(torches, 1, HellFortLighting1458.AttemptCount(width));
+        Assert.True(ashGrass > 0 && ashTrees > 0, $"Missing edge forests: grass={ashGrass}, crowns={ashTrees}");
+        Assert.True(furniture > 0, "Missing Underworld furniture");
+        Assert.True(paintings > 0 && banners > 0 && chandeliers > 0 && lanterns > 0,
+            $"Missing Underworld decorations: paintings={paintings}, banners={banners}, chandeliers={chandeliers}, lanterns={lanterns}");
+        WorldChest[] dressers = result.Candidate.CaptureGeneratedChests().Where(chest => store.Get(chest.X, chest.Y).Type == 88).ToArray();
+        Assert.NotEmpty(dressers);
+        Assert.All(dressers, chest =>
+        {
+            Assert.True(GeneratedContainerFootprint.IsValid(store, chest.X, chest.Y));
+            Assert.Equal(40, chest.Items.Length); Assert.All(chest.Items, item => Assert.True(item.IsEmpty));
+            Assert.InRange(chest.Y, height - 250, height - 20);
+        });
+    }
+
+    private static void AssertHellDecorationFootprint(WorldTileStore store, int x, int y, WorldTile tile)
+    {
+        (int width, int height) = tile.Type switch { 240 => (3, 3), 242 => (6, 4), 245 => (2, 3), 246 => (3, 2), 91 => (1, 3), 34 => (3, 3), _ => (1, 2) };
+        int dx = tile.FrameX % (width * 18) / 18, dy = tile.FrameY % (height * 18) / 18;
+        if (dx != 0 || dy != 0) return;
+        for (int column = 0; column < width; column++)
+        for (int row = 0; row < height; row++)
+        {
+            WorldTile cell = store.Get(x + column, y + row);
+            Assert.True(cell.IsActive, $"Partial Hell decoration {tile.Type} at {x},{y}"); Assert.Equal(tile.Type, cell.Type);
+            Assert.Equal(tile.FrameX + column * 18, cell.FrameX); Assert.Equal(tile.FrameY + row * 18, cell.FrameY);
+            if (tile.Type is 240 or 242 or 245 or 246) Assert.NotEqual(0, cell.Wall);
+        }
+    }
+
     [Fact]
     public void Canonical_passes_preserve_registered_chest_anchors()
     {
@@ -43,11 +159,11 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
             {
                 ushort containerType = workspace.TileStore.Get(chest.X, chest.Y).Type;
                 for (int dy = 0; dy < 2; dy++)
-                for (int dx = 0; dx < 2; dx++)
+                for (int dx = 0; dx < (containerType == 88 ? 3 : 2); dx++)
                 {
                     WorldTile tile = workspace.TileStore.Get(chest.X + dx, chest.Y + dy);
                     Assert.True(
-                        tile.IsActive && containerType is 21 or 467 && tile.Type == containerType,
+                        tile.IsActive && containerType is 21 or 467 or 88 && tile.Type == containerType,
                         $"Pass {id} damaged chest ({chest.X},{chest.Y}) cell ({chest.X + dx},{chest.Y + dy}): " +
                         $"type={tile.Type}, active={tile.IsActive}.");
                 }
@@ -90,6 +206,30 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
         Assert.True(layers.RockLayer > layers.WorldSurface);
         AssertSourceShapedTerrain(result.Candidate);
         AssertSourceFramedTrees(result.Candidate);
+        int palmBases = 0;
+        int palmCrowns = 0;
+        foreach (WorldTile tile in result.Candidate.TileStore.Tiles)
+        {
+            if (!tile.IsActive || tile.Type != 323)
+                continue;
+            Assert.Contains(tile.FrameX, new short[] { 0, 22, 44, 66, 88, 110, 132 });
+            palmBases += tile.FrameX == 66 ? 1 : 0;
+            palmCrowns += tile.FrameX >= 88 ? 1 : 0;
+        }
+        Assert.True(palmBases > 0, "Canonical generation must include source-framed palm bases.");
+        Assert.Equal(palmBases, palmCrowns);
+        int cactusArms = 0;
+        WorldTileStore vegetation = result.Candidate.TileStore;
+        for (int x = 1; x < request.WidthTiles - 1; x++)
+        for (int y = 1; y < (int)layers.WorldSurface; y++)
+        {
+            if (vegetation.Get(x, y) is not { IsActive: true, Type: 80 } || vegetation.Get(x, y + 1).IsActive)
+                continue;
+            if (vegetation.Get(x - 1, y) is { IsActive: true, Type: 80 } ||
+                vegetation.Get(x + 1, y) is { IsActive: true, Type: 80 })
+                cactusArms++;
+        }
+        Assert.True(cactusArms > 0, "Canonical cacti must include raised arms, not only vertical columns.");
         DungeonGraph1458 graph = Assert.IsType<DungeonGraph1458>(result.Candidate.VanillaDungeonGraph);
         Assert.InRange(graph.RoomCount, 3, 40);
         Assert.InRange(graph.HallCount, 45, 120);
@@ -382,7 +522,11 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
 
         WorldChest[] chests = workspace.CaptureGeneratedChests();
         Assert.True(chests.Length >= 50, $"Canonical small world generated only {chests.Length} chests.");
-        Assert.DoesNotContain(chests, static chest => chest.Items.All(static item => item.IsEmpty));
+        // Chest.CreateChest gives generated dressers empty storage, not exploration loot.
+        Assert.DoesNotContain(chests.Where(chest => workspace.TileStore.Get(chest.X, chest.Y).Type != 88),
+            static chest => chest.Items.All(static item => item.IsEmpty));
+        Assert.All(chests.Where(chest => workspace.TileStore.Get(chest.X, chest.Y).Type == 88),
+            chest => { Assert.Equal(40, chest.Items.Length); Assert.All(chest.Items, item => Assert.True(item.IsEmpty)); });
         Assert.All(chests, static chest =>
             Assert.All(chest.Items.Where(static item => !item.IsEmpty), static item =>
             {

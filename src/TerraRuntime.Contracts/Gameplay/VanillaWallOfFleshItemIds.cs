@@ -3,6 +3,7 @@ namespace TerraRuntime.Contracts.Gameplay;
 /// <summary>TerrariaServer 1.4.5.8 ItemID values consumed by the Wall of Flesh death-loot slice.</summary>
 public static class VanillaWallOfFleshItemIds
 {
+    public static readonly ItemTypeId GuideVoodooDoll = new(267);
     public static readonly ItemTypeId HealingPotion = new(188);
     public static readonly ItemTypeId Heart = new(58);
     public static readonly ItemTypeId Pwnhammer = new(367);

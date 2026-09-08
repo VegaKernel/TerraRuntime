@@ -13,6 +13,7 @@ internal sealed class RuntimePlayerDamageImmunityStore
     private readonly PlayerSessionGeneration[] pvpGeneration;
     private readonly long[] pveGeneralUntil;
     private readonly long[] pveBossNoCheeseUntil;
+    private readonly long[] pveLavaUntil;
     private readonly PlayerSessionGeneration[] pveGeneration;
 
     public RuntimePlayerDamageImmunityStore(int capacity)
@@ -24,6 +25,7 @@ internal sealed class RuntimePlayerDamageImmunityStore
         pvpGeneration = new PlayerSessionGeneration[capacity];
         pveGeneralUntil = new long[capacity];
         pveBossNoCheeseUntil = new long[capacity];
+        pveLavaUntil = new long[capacity];
         pveGeneration = new PlayerSessionGeneration[capacity];
     }
 
@@ -45,13 +47,19 @@ internal sealed class RuntimePlayerDamageImmunityStore
         VanillaPlayerImmunityChannel1458 channel,
         long tick)
     {
+        if (channel is not (VanillaPlayerImmunityChannel1458.General or VanillaPlayerImmunityChannel1458.BossNoCheese or VanillaPlayerImmunityChannel1458.Lava))
+            return true;
         int slot = player.Slot.Value;
         if (pveGeneration[slot] != player.Generation)
             return false;
 
-        long immuneUntil = channel == VanillaPlayerImmunityChannel1458.BossNoCheese
-            ? pveBossNoCheeseUntil[slot]
-            : pveGeneralUntil[slot];
+        long immuneUntil = channel switch
+        {
+            VanillaPlayerImmunityChannel1458.General => pveGeneralUntil[slot],
+            VanillaPlayerImmunityChannel1458.BossNoCheese => pveBossNoCheeseUntil[slot],
+            VanillaPlayerImmunityChannel1458.Lava => pveLavaUntil[slot],
+            _ => long.MaxValue
+        };
         return tick < immuneUntil;
     }
 
@@ -66,11 +74,14 @@ internal sealed class RuntimePlayerDamageImmunityStore
             pveGeneration[slot] = player.Generation;
             pveGeneralUntil[slot] = 0;
             pveBossNoCheeseUntil[slot] = 0;
+            pveLavaUntil[slot] = 0;
         }
 
         if (channel == VanillaPlayerImmunityChannel1458.BossNoCheese)
             pveBossNoCheeseUntil[slot] = immuneUntil;
-        else
+        else if (channel == VanillaPlayerImmunityChannel1458.Lava)
+            pveLavaUntil[slot] = immuneUntil;
+        else if (channel == VanillaPlayerImmunityChannel1458.General)
             pveGeneralUntil[slot] = immuneUntil;
     }
 

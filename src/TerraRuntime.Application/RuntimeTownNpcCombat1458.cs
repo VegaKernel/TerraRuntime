@@ -734,7 +734,7 @@ internal sealed class RuntimeTownNpcCombat1458
             VanillaTownNpcFacts1458.IsHousingEligible(candidateType) ||
             !VanillaNpcDefinitionCatalog.TryGet(candidateType, candidate.NetIdentity, out VanillaNpcDefinition definition) ||
             definition.Damage <= 0 || candidate.Simulation.DontTakeDamage ||
-            !definition.TryResolveHitbox(candidate.Simulation.Scale, out VanillaNpcHitboxSize hitbox) ||
+            !definition.TryResolveHitbox(candidate.Simulation, out VanillaNpcHitboxSize hitbox) ||
             !swing.Intersects(candidate.PositionX, candidate.PositionY, hitbox.Width, hitbox.Height))
         {
             return false;
@@ -873,7 +873,7 @@ internal sealed class RuntimeTownNpcCombat1458
         out NpcAiProjectileIntent intent)
     {
         if (!VanillaTownNpcFacts1458.TryGetDefinition(sourceType, out VanillaNpcDefinition sourceDefinition) ||
-            !sourceDefinition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize sourceHitbox))
+            !sourceDefinition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize sourceHitbox))
         {
             intent = default;
             return false;
@@ -886,7 +886,7 @@ internal sealed class RuntimeTownNpcCombat1458
         if (hasTarget &&
             NpcTypeId.TryCreate(target.Type, out NpcTypeId targetType) &&
             VanillaNpcDefinitionCatalog.TryGet(targetType, target.NetIdentity, out VanillaNpcDefinition targetDefinition) &&
-            targetDefinition.TryResolveHitbox(target.Simulation.Scale, out VanillaNpcHitboxSize targetHitbox))
+            targetDefinition.TryResolveHitbox(target.Simulation, out VanillaNpcHitboxSize targetHitbox))
         {
             aimX = target.PositionX + targetHitbox.Width * 0.5f;
             aimY = target.PositionY + targetHitbox.Height * 0.5f;
@@ -975,7 +975,7 @@ internal sealed class RuntimeTownNpcCombat1458
         target = default;
         direction = source.Simulation.DirectionX is -1 or 1 ? source.Simulation.DirectionX : 1;
         if (!VanillaTownNpcFacts1458.TryGetDefinition(source.TypeIdentity, out VanillaNpcDefinition sourceDefinition) ||
-            !sourceDefinition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize sourceHitbox))
+            !sourceDefinition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize sourceHitbox))
         {
             return false;
         }
@@ -997,7 +997,7 @@ internal sealed class RuntimeTownNpcCombat1458
                 !VanillaNpcDefinitionCatalog.TryGet(candidateType, candidate.NetIdentity, out VanillaNpcDefinition definition) ||
                 definition.Damage <= 0 ||
                 candidate.Simulation.DontTakeDamage ||
-                !definition.TryResolveHitbox(candidate.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+                !definition.TryResolveHitbox(candidate.Simulation, out VanillaNpcHitboxSize hitbox))
             {
                 continue;
             }
@@ -1068,7 +1068,7 @@ internal sealed class RuntimeTownNpcCombat1458
                 hitbox = default;
                 return false;
             }
-            return definition.TryResolveHitbox(snapshot.Simulation.Scale, out hitbox);
+            return definition.TryResolveHitbox(snapshot.Simulation, out hitbox);
         }
 
         public static bool TryGetCenter(

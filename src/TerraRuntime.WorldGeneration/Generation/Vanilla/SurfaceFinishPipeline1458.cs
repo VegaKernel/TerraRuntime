@@ -194,7 +194,6 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
     private const ushort Ash = 57;
     private const ushort Mud = 59;
     private const ushort JungleGrass = 60;
-    private const ushort Hellforge = 77;
     private const ushort PressurePlate = 135;
     private const ushort Trap = 137;
     private const ushort SmallPile = 185;
@@ -232,7 +231,8 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
                 ApplyPots(context, grid, random);
                 break;
             case SurfaceFinishStage1458.Hellforge:
-                ApplyHellforge(context, grid, random);
+                int forges = HellforgePlacement1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
+                context.ReportProgress(1d, $"Placing Hellforges ({forges}/{workspace.WidthTiles / 200})");
                 break;
             case SurfaceFinishStage1458.SpreadingGrass:
                 ApplySpreadingGrass(context, grid);
@@ -324,39 +324,6 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
         }
 
         context.ReportProgress(1d, $"Placing cavern pots ({placed}/{target})");
-    }
-
-    private void ApplyHellforge(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
-    {
-        int target = grid.Width switch
-        {
-            <= 4200 => 12,
-            <= 6400 => 18,
-            _ => 24
-        };
-        int minY = Math.Clamp(state.UnderworldTop + 10, 20, grid.Height - 20);
-        int placed = 0;
-
-        for (int attempt = 0; attempt < target * 160 && placed < target; attempt++)
-        {
-            if ((attempt & 127) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            int left = random.Next(10, grid.Width - 13);
-            int floor = grid.FindFirstActiveY(left + 1, minY, grid.Height - 3);
-            int top = floor - 2;
-            if (!CanPlaceObject(grid, left, top, width: 3, height: 2))
-                continue;
-
-            ushort support = grid.At(left + 1, floor).Type;
-            if (support is not (Ash or Stone or 75 or 76))
-                continue;
-
-            PlaceFramedObject(grid, left, top, width: 3, height: 2, Hellforge, styleWidthPixels: 54, style: 0);
-            placed++;
-        }
-
-        context.ReportProgress(1d, $"Placing Hellforges ({placed}/{target})");
     }
 
     private void ApplySpreadingGrass(IWorldGenerationContext context, RuntimeGrid grid)

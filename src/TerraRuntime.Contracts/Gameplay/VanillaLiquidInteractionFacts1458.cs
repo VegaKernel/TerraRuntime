@@ -28,8 +28,8 @@ public static class VanillaLiquidInteractionFacts1458
     ];
 
 
-    // Final TerrariaServer 1.4.5.8 Main.tileWaterDeath table. TileObjectData.UsesGlobalLiquidChecks is
-    // initialized true and is never assigned false in 1.4.5.8, so CheckWaterDeath(Tile) resolves to this table.
+    // Raw TerrariaServer 1.4.5.8 Main.tileWaterDeath table. TileObjectData defaults to custom
+    // liquid checks; CheckWaterDeath(Tile) can override this table by object style and alternate.
     private static readonly ushort[] WaterDeathTileTypes =
     [
         4, 51, 93, 98, 215, 372, 405, 552, 646, 697

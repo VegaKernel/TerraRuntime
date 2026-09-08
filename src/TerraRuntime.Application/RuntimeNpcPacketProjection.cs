@@ -34,7 +34,7 @@ internal static class RuntimeNpcPacketProjection
         NpcTypeId npcType = npc.TypeIdentity;
         if (!VanillaNpcDefinitionCatalog.TryGet(npcType, npc.NetIdentity, out VanillaNpcDefinition definition) ||
             !definition.SyncAnchor.IsValid ||
-            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox) ||
+            !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox) ||
             npc.Target == ushort.MaxValue)
         {
             state = default;

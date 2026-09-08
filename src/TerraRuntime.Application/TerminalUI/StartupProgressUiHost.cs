@@ -40,12 +40,15 @@ internal sealed class StartupProgressUiHost : IWorldGenerationProgressSink, IDis
     private readonly Thread thread;
     private readonly Action<string>? failureSink;
     private StartupProgressSnapshot snapshot;
+    private string? serverFailure;
+    private string? pendingConsoleFailure;
+    private int serverFailureReleased;
     private long version;
     private int ownsTerminal = 1;
     private int finalFrameRequested;
     private int disposed;
 
-    private StartupProgressUiHost(
+    internal StartupProgressUiHost(
         StartupProgressOperation operation,
         string world,
         string stage,
@@ -143,6 +146,8 @@ internal sealed class StartupProgressUiHost : IWorldGenerationProgressSink, IDis
 
     internal void CompleteAndRelease(string detail)
     {
+        // A recovered startup must not replay an earlier, already resolved load error on normal shutdown.
+        Volatile.Write(ref serverFailure, null);
         StartupProgressSnapshot current = Snapshot;
         Publish(
             current.Operation == StartupProgressOperation.WorldGeneration ? "World ready" : "Server ready",
@@ -176,6 +181,41 @@ internal sealed class StartupProgressUiHost : IWorldGenerationProgressSink, IDis
             stopUi.Cancel();
             WaitForThread(DisposeWait);
         }
+    }
+
+    internal void RememberServerFailure(string detail)
+    {
+        if (Snapshot.Operation == StartupProgressOperation.ServerStartup)
+            Volatile.Write(ref serverFailure, Sanitize(detail, 1024));
+    }
+
+    internal void ReportServerExit(int exitCode)
+    {
+        string? failure = Volatile.Read(ref serverFailure);
+        if (exitCode == 0 || (!OwnsTerminal && failure is null) ||
+            Interlocked.Exchange(ref serverFailureReleased, 1) != 0)
+            return;
+
+        string detail = failure is null
+            ? $"Server startup stopped with exit code {exitCode}."
+            : $"Server startup stopped with exit code {exitCode}: {failure}";
+        // The framebuffer may disappear without ever drawing its last snapshot. Retain one diagnostic until
+        // the driver has actually released the tty, including when the bounded join below times out.
+        Volatile.Write(ref pendingConsoleFailure, detail);
+        FailAndRelease(detail);
+        if (!thread.IsAlive)
+        {
+            StartupProgressTelemetry.Detach(this);
+            Volatile.Write(ref ownsTerminal, 0);
+            ReportPendingConsoleFailure();
+        }
+    }
+
+    private void ReportPendingConsoleFailure()
+    {
+        string? detail = Interlocked.Exchange(ref pendingConsoleFailure, null);
+        if (detail is not null)
+            ReportFailure(detail);
     }
 
     public void Dispose()
@@ -288,6 +328,7 @@ internal sealed class StartupProgressUiHost : IWorldGenerationProgressSink, IDis
         {
             Volatile.Write(ref ownsTerminal, 0);
             StartupProgressTelemetry.Detach(this);
+            ReportPendingConsoleFailure();
         }
 
         if (failure is not null)
@@ -356,11 +397,19 @@ internal static class StartupProgressTelemetry
         Interlocked.CompareExchange(ref current, null, host);
     }
 
-    internal static void Observe(RuntimeLogEventId eventId, string message)
+    internal static void Observe(RuntimeLogLevel level, RuntimeLogEventId eventId, string message)
     {
         StartupProgressUiHost? host = Volatile.Read(ref current);
         if (host is null || host.Snapshot.Operation != StartupProgressOperation.ServerStartup)
             return;
+
+        if (level >= RuntimeLogLevel.Error)
+        {
+            host.RememberServerFailure(message);
+            host.ReportServerStage("Startup error", message, host.Snapshot.StageIndex,
+                ServerStageCount, host.Snapshot.Fraction, failed: true);
+            return;
+        }
 
         if (eventId == RuntimeLogEventIds.WorldCacheHit)
         {
@@ -395,7 +444,7 @@ internal static class StartupProgressTelemetry
         }
         else if (eventId == RuntimeLogEventIds.WorldLoadFailed)
         {
-            host.ReportServerStage("Checking recovery", "Canonical world load failed; checking validated checkpoint", 3, ServerStageCount, 0.30d);
+            host.ReportServerStage("World load failed", message, 3, ServerStageCount, 0.30d, failed: true);
         }
         else if (eventId == RuntimeLogEventIds.NetworkListenerReady)
         {

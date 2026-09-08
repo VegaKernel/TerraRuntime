@@ -4,6 +4,12 @@
 
 ## 1. Purpose
 
+### Ocean teleport correction
+
+Magic Conch `4263` and Shellphone Ocean `5360` use the same client `packet 73`, subtype `1`. The existing player authority now tries the opposite ocean first, then the original side only if the first search fails, as `Player.MagicConch` does in 1.4.5.8. A bounded surface crawl replaces the arbitrary underground-floor scan: start at edge offset $40\,\text{tiles}$ / height $50\,\text{tiles}$, follow the water edge inland, check body clearance and hazards, and preserve the source air-cell landing offset. Repeated use alternates valid shores. Failed `packet 65` carries bit `2`, telling the client to retain its current position.
+
+The ordinary fixed-size player slice requires verified world-surface metadata; mounted body sizes, Skyblock low-tiles mode and equipment/secret-seed hazard exemptions remain fail-closed. Twelve direct official-server helper calls matched both-shore outputs for dirt, grass, sand, platforms, spikes and Hellstone. Literal ingress/egress and repeated authoritative-use tests cover the actual runtime path. Official-client visual acceptance and proactive destination-section preload ordering remain separate open checks; other Shellphone modes are not completed by this correction.
+
 TerraRuntime implements Terraria gameplay as authoritative runtime systems rather than as side effects inside packet handlers.
 
 The goal is **observable TerrariaServer 1.4.5.8 parity**, not source-structure parity. Internal implementation may differ completely when player-visible results, ordering and compatibility remain correct.
@@ -11,6 +17,28 @@ The goal is **observable TerrariaServer 1.4.5.8 parity**, not source-structure p
 This document distinguishes implemented foundations from broad vanilla coverage. A subsystem having a runtime store or an AI dispatcher does not mean every Terraria entity that can use that subsystem is implemented.
 
 ## 2. Core gameplay flow
+
+### Underworld spawning and lava: bounded support
+
+The ordinary dry Underworld branch now uses `NPC.Spawner.SpawnAnNPC`'s strict `floorY > height - 190` boundary and ordered rolls. Runtime composition supplies server-owned progression and existing-NPC facts; newly reached Hardmode/mechanical milestones are visible without restarting. The existing definition/AI coverage gate still applies. Currently Lava Slime, Hellbat, Lava Bat and Bone Serpent are admitted; the lava-bait multi-actor branch and selected types without admitted AI (including Fire Imp and demons) produce no spawn, never a replacement Blue Slime/Skeleton. Earlier event/biome branches, secret seeds, general biome populations and source spawn-budget parity remain incomplete. Optional `IVanillaNpcRandom` injection uses the same production path for reproducible regression tests.
+
+An ordinary-world direct lava-contact slice now covers NPC types `1`, `2`, `3`, `21`, `22`. It samples the committed physical rectangle against `Collision.LavaCollision`, not client wet state or the smaller central wet probe, and submits source base damage `50` to the existing defense/death/loot pipeline without player attribution. A generation-keyed contact cooldown lasts $30\,\text{updates}$. Invulnerable actors and unverified types are not assumed vulnerable; Remix/For-the-Worthy are not admitted here. This is **not full lava parity**: NPC OnFire buffs/DoT, the shared cross-source `immune[255]` channel, remaining NPC immunity/state families, player/bot equipment-aware lava damage and world-item burning/Guide Voodoo Doll summoning are still open. Contact observes committed post-motion state; exact vanilla within-update collision ordering also remains open.
+
+### Server-owned player lava damage
+
+PlayerBot and other clientless players now evaluate lava before movement on the world writer, using the existing equipment, HP and death authority. Ordinary contact starts from `80` damage (`200` in Remix), applies armor and the separate `Lava` immunity channel, and adds OnFire only after a successful surviving hit. Functional Terraspark Boots `5000` supply $420\,\text{updates}$ of protection, recharge one per dry update, reduce contact damage by `45` and burning duration by $210\,\text{updates}$. Vanity equipment does not protect. Current random bot loadouts do **not** guarantee these boots. Recall refills the protection gauge; ordinary teleport does not.
+
+Ordinary OnFire contributes `-8` per update to the `120`-unit regeneration counter, bypassing armor and hit immunity. Water/honey extinguish it. GodMode prevents HP loss; death clears the generation-owned burn state. Both contact and burning use the existing vitals/death commit. `packet 118` uses `ByOther(2)` for lava and `ByOther(8)` with death damage `10` for burning. The retained `packet 50` buff-type baseline includes burning for late joiners; duration is server-owned, never accepted from client presentation. `packet 55` is not used for remote-player buff display.
+
+This closes a bounded **server-owned actor** slice, not human-client environmental authority or a complete buff engine. Missing world facts, Vampire OnFire and unknown functional equipment are not assigned guessed semantics. Other lava accessories, Obsidian Skin/Ash Wood, mount/shimmer interactions, compound debuffs and natural regeneration are not covered. NPC DoT/shared immunity and general world-item burning remain open; Guide doll support is scoped separately below.
+
+### Guide Voodoo Doll and item ownership release
+
+The ordinary server-owned Guide Voodoo Doll (`267`) now falls with verified item gravity and burns on lava contact. The world writer removes the **whole stack** before the existing NPC combat/death path strikes every active Guide. Without a Guide the item still burns, but other town NPCs are spared. With a Guide, remaining dolls strike randomly selected admitted town-like NPCs without replacement. `NPC.SpawnWOF` placement is separate from generic spawn-on-player: source depth/duplicate gates, midpoint side, active-player exclusion, vertical liquid/solid search and final Underworld band are represented. A second Guide does not create a second Wall. Summoning does not grant Hardmode; the existing boss-death progression remains the owner.
+
+Client `packet 39` is a bounded release request, not an ownership grant or boss trigger. Only the exact current item owner and both current connection/item generations can release it; the request cannot supply a new recipient or position. `packet 22` remains outbound-only. Initial `packet 21` ownership modes now preserve the source $100\,\text{updates}$ grab delay/reservation. Server-owned timers and admitted motion advance without broadcasting a drop/owner packet every tick; discrete changes still use existing replication.
+
+Scope is deliberately limited to ordinary `14x26` doll motion on flat terrain, including dry/water/honey movement and contact before movement used for post-movement burning. Slopes, platforms, conveyors, shimmer and excessive/unrepresented motion refuse this simulation slice. Client-reserved motion/pickup attraction, full general item physics/rarity burning, dynamic town identity and boss announcements/Bestiary credit remain incomplete. The player/NPC limitations above still apply, but Guide-doll burning is no longer wholly absent. This is not a complete vanilla playthrough or generator-parity claim.
 
 ```mermaid
 flowchart LR
@@ -209,6 +237,8 @@ Rules for expanding AI:
 
 Boss orchestration should not be forced through abstractions designed for ordinary early-game NPCs.
 
+Duke Fishron's ordinary AI69 now consumes verified world width/surface through the existing NPC authority. Ocean checks use the player's top-left (strict800/6400/surface/right-edge comparisons). Enrage changes hover to10 ticks, adds6 to dash speed, replaces bubble specials, overrides damage/defense and marks the Cthulhunado bolt; returning to the ocean restores normal phase behavior. Ordinary Classic/Expert/Master defDamage is100/140/210 before phase/enrage. Missing world bounds refuse the root step/projectile plan. These source-pinned slices do not complete difficulty-dependent spawn life, distant-target/despawn ordering, secret seeds or official-client encounter acceptance.
+
 ## 16. Trusted-host NPC actors
 
 `INpcActorOperations` lets a trusted host acquire a lease over an existing runtime NPC and submit semantic `NpcActorIntent`.
@@ -251,6 +281,8 @@ The target model includes damage source/provenance, attacker/target, base/final 
 
 Only verified portions should be made authoritative. Until complete conservation/damage rules exist, the server should not invent strict rejection rules that break legal vanilla behavior.
 
+Server-owned PlayerBots now participate as PvP targets in the admitted direct-melee, trusted projectile and termination-explosion paths. These reuse authoritative weapon/equipment mitigation, hostility/team/generation checks, GodMode and the source eight-tick PvP immunity. Lethal damage publishes packet `118`; this does not imply every weapon, buff/debuff or equipment effect is supported. AI_001 motion and bot prediction distinguish straight Bullet `14` / Silver Bullet `981` / Green Laser `20` / Jester's Arrow `5` from falling arrows.
+
 ## 19. Drops and loot
 
 Simple-cell tile drops are now source-pinned as definition data rather than a manually maintained allow-list. The five contextual simple-cell identities in 1.4.5.8 are explicit strategies: vines/flowering vines use nearest-player Cordage state, Mushroom Vines use the vanilla half-chance, and Hive can leave honey and spawn Bee/SmallBee NPCs before the Hive Block item RNG. Frame-important/object drops and complete NPC loot remain separate incomplete families.
@@ -280,6 +312,8 @@ Ordinary same-kind liquid settling now follows the verified TerrariaServer 1.4.5
 The ordinary open-cell material-contact paths from `Liquid.LiquidCheck` are also authoritative. Water wakes adjacent lava/honey/shimmer and lets that foreign-liquid update own the merge location. Verified merges produce Obsidian (`56`) for water/lava, Honey Block (`229`) for water/honey, Crispy Honey Block (`230`) for lava/honey and Shimmer Block (`659`) whenever shimmer wins the source-order merge selection. The vanilla `24`-unit threshold, left/right/up foreign-liquid consumption, the sub-24 lower-cell source clear, and packet-20 tile-square replication for material mutations are pinned by focused runtime tests.
 
 The ordinary dedicated-server active-entry lifecycle is now part of that authoritative slice as well. A liquid entry can advance only once per TerraRuntime tick even when the work budget is larger than one, amount changes reset `kill` and wake the cell above, stable entries retire at the TerrariaServer 1.4.5.8 threshold `10 + activePlayersInSlots0To14 / 3`, and stable `254` is normalized to `255` on retirement. Water below `Main.UnderworldLayer == maxTilesY - 200` evaporates by two units per liquid update. The generating/loading slice covers quick-settle scheduling, the `Liquid.QuickWater` pre-pass, and `WorldGen.WaterCheck` using the final source-pinned 10-entry water-death and 267-entry lava-death tables. Canonical load now runs the supported sequence `QuickWater -> WaterCheck -> quickSettle drain (maximum 100000 iterations) -> WaterCheck` before runtime/bootstrap cache admission, and runtime cache layout 2 is writable only from that prepared state. Full vanilla liquid simulation is still open for complex `WorldGen.ReplaceTile` cases beyond the safe active subset, Remix/Zenith load-time liquid remapping, and panic/forced-settle paths. Circuit traversal/devices and growth/spread rule families are likewise separate work.
+
+The raw 10-entry water and 267-entry lava tables are not the effective object-death rules. Loading now resolves `TileObjectData.Check*(Tile)` style/subtile/alternate semantics first: obsidian furniture/platforms survive lava, while lantern `42`/style `32` inherits a lava-vulnerable alternate. A static resolver was compared directly with official 1.4.5.8 across 3,853,832 nonnegative type/frame cases without differences; a fixed 1,961,154-case golden hash is retained in tests. Verified loading removal includes single-cell plants/torches/herbs/moss, coherent hearts/pots/lamps/campfires/detritus/paintings/banners/lanterns, with no item drops. Walls, wires, liquid and actuators survive removal; block frames become `-1`. Incoherent footprints, protected members, platform dependents and unrepresented object cascades remain fail-closed. This does not widen live mining or item-drop authority. See [actual startup failure evidence](startup-performance-gate.md#generated-world-startup-failures).
 
 The live scheduler derives the TerrariaServer 1.4.5.8 slice from `curMaxLiquid = 25000 - players * 250` and `cycles = 10 + players / 3`, capped at `2500` entries per TerraRuntime tick for an empty server. Water, lava and shimmer backlog tests prove that independent worlds at the same TPS receive the same slice. Zero-liquid cells do not occupy the active queue, while a committed tile mutation immediately wakes adjacent non-empty liquid.
 

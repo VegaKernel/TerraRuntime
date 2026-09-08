@@ -31,6 +31,7 @@ internal readonly record struct SandboxWorldMaterializationResult(
 /// <summary>Materializes one detached source into validated world/bootstrap state without touching a live runtime.</summary>
 internal sealed class SandboxWorldMaterializer
 {
+    internal const int MaximumSourceBytes = 128 * 1024 * 1024;
     private readonly RuntimeWorldCreationPipeline generation;
     private readonly WorldFileLoadLimits loadLimits;
 
@@ -45,19 +46,23 @@ internal sealed class SandboxWorldMaterializer
 
     public SandboxWorldMaterializationResult Materialize(
         SandboxWorldSource source,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ReadOnlyMemory<byte> expectedSha256 = default)
     {
         ArgumentNullException.ThrowIfNull(source);
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!expectedSha256.IsEmpty && (source is not SandboxWorldSource.WorldFile || expectedSha256.Length != 32))
+                return new SandboxWorldMaterializationResult(SandboxWorldMaterializationStatus.ValidationFailed,
+                    Error: "Source integrity requires a world file and a SHA-256 digest.");
             return source switch
             {
                 SandboxWorldSource.Generated generated => MaterializeGenerated(generated, cancellationToken),
-                SandboxWorldSource.WorldFile file => MaterializeFile(file, cancellationToken),
+                SandboxWorldSource.WorldFile file => MaterializeFile(file, cancellationToken, expectedSha256),
                 _ => new SandboxWorldMaterializationResult(
                     SandboxWorldMaterializationStatus.UnsupportedSource,
-                    Error: $"Source '{source.GetType().Name}' is not materialized by Level 1 yet.")
+                    Error: $"Source '{source.GetType().Name}' is not materialized yet.")
             };
         }
         catch (OperationCanceledException)
@@ -146,12 +151,23 @@ internal sealed class SandboxWorldMaterializer
 
     private SandboxWorldMaterializationResult MaterializeFile(
         SandboxWorldSource.WorldFile source,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ReadOnlyMemory<byte> expectedSha256)
     {
         byte[] bytes;
         try
         {
-            bytes = File.ReadAllBytesAsync(source.AssetPath, cancellationToken).GetAwaiter().GetResult();
+            using var stream = new FileStream(source.AssetPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            long length = stream.Length;
+            if (length <= 0 || length > MaximumSourceBytes)
+                return new SandboxWorldMaterializationResult(SandboxWorldMaterializationStatus.SourceReadFailed,
+                    Error: "World source exceeds the bounded file-size limit.");
+            bytes = new byte[checked((int)length)];
+            stream.ReadExactlyAsync(bytes, cancellationToken).AsTask().GetAwaiter().GetResult();
+            if (!expectedSha256.IsEmpty &&
+                !CryptographicOperations.FixedTimeEquals(SHA256.HashData(bytes), expectedSha256.Span))
+                return new SandboxWorldMaterializationResult(SandboxWorldMaterializationStatus.ValidationFailed,
+                    Error: "World source SHA-256 mismatch.");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {

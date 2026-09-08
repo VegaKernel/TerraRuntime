@@ -25,7 +25,7 @@ internal sealed class VanillaFishNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
     {
         if (definition.AiStyle != VanillaNpcAiStyles.Fish ||
             !VanillaFishNpcCatalog1458.TryGetDefinition(definition.Type, out _) ||
-            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox) ||
+            !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox) ||
             environment is null)
         {
             next = default;

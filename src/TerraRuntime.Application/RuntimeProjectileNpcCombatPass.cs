@@ -233,7 +233,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
         if (!target.IsActive || target.Simulation.Life <= 0 || target.Simulation.DontTakeDamage ||
             !VanillaNpcDefinitionCatalog.TryGet(target.TypeIdentity, target.NetIdentity, out VanillaNpcDefinition definition) ||
             definition.Role == NpcArchetypeRole.Town ||
-            !definition.TryResolveHitbox(target.Simulation.Scale, out hitbox))
+            !definition.TryResolveHitbox(target.Simulation, out hitbox))
         {
             hitbox = default;
             return false;

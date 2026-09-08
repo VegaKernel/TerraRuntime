@@ -8,6 +8,25 @@ namespace TerraRuntime.Tests;
 
 public sealed class VanillaProjectileBehaviorStepperTests
 {
+    [Theory]
+    [InlineData(14)]
+    [InlineData(981)]
+    [InlineData(20)]
+    [InlineData(5)]
+    public void Ai001_no_gravity_switch_keeps_admitted_projectiles_straight_after_many_updates(int type)
+    {
+        ProjectileSnapshot projectile = CreateProjectile(new ProjectileTypeId(type), velocityX: 8f, velocityY: 0f, ai0: 0f);
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        for (int step = 0; step < 120; step++)
+        {
+            Assert.True(VanillaProjectileBehaviorStepper.TryStep(in projectile, in definition, default, out VanillaProjectileBehaviorResult next));
+            Assert.Equal(0f, next.Ai0);
+            Assert.Equal(0f, next.VelocityY);
+            Assert.Equal(8f, next.VelocityX);
+            projectile = projectile with { VelocityX = next.VelocityX, VelocityY = next.VelocityY, Ai = projectile.Ai with { Ai0 = next.Ai0 } };
+        }
+    }
+
     [Fact]
     public void Thrown_family_applies_ai_wind_then_gravity_and_drag()
     {

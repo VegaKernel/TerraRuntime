@@ -4,6 +4,12 @@
 
 ## 1. Назначение
 
+### Исправление телепорта к океану
+
+Волшебная ракушка `4263` и океанический Shellphone `5360` используют один клиентский `packet 73`, подтип `1`. Существующая authority игрока теперь сначала проверяет противоположный океан и только при неудаче — исходную сторону, как `Player.MagicConch` в 1.4.5.8. Произвольный поиск подземного пола заменён ограниченным обходом поверхности: начало в $40\,\text{тайлах}$ от края на высоте $50\,\text{тайлов}$, движение вдоль воды к суше, проверки габаритов и опасностей, исходное смещение относительно воздушной клетки приземления. Повторное использование чередует доступные берега. Неудачный `packet 65` содержит бит `2`, оставляющий клиенту его текущую позицию.
+
+Обычный игрок фиксированного размера требует подтверждённой метадаты поверхности мира; габариты на маунтах, Skyblock low-tiles и исключения опасностей от экипировки/особых сидов остаются fail-closed. Двенадцать прямых вызовов официального серверного helper дали совпадающие координаты обоих берегов для земли, травы, песка, платформ, шипов и адского камня. Литеральные входящие/исходящие пакеты и повторные authoritative-телепорты проверяют реальный runtime. Визуальная проверка официальным клиентом и порядок предварительной отправки секций назначения остаются отдельными открытыми проверками; другие режимы Shellphone этим исправлением не закрыты.
+
 TerraRuntime реализует gameplay Terraria как authoritative runtime systems, а не как побочные эффекты внутри packet handlers.
 
 Цель: **наблюдаемая parity TerrariaServer 1.4.5.8**, а не повторение source structure. Внутренняя implementation может отличаться полностью, если player-visible results, ordering и compatibility остаются корректными.
@@ -11,6 +17,28 @@ TerraRuntime реализует gameplay Terraria как authoritative runtime s
 Этот документ различает implemented foundations и broad vanilla coverage. Наличие runtime store или AI dispatcher не означает implementation всех Terraria entities этой subsystem.
 
 ## 2. Базовый gameplay flow
+
+### Спавн Ада и лава: ограниченный поддержанный участок
+
+Обычная сухая ветка Ада теперь использует строгую границу `floorY > height - 190` и порядок бросков из `NPC.Spawner.SpawnAnNPC`. Runtime composition передаёт server-owned progression и наличие NPC; достигнутые в текущем сеансе Hardmode/mechanical milestones учитываются без перезапуска. Существующий definition/AI coverage gate сохранён. Сейчас допущены Lava Slime, Hellbat, Lava Bat и Bone Serpent; multi-actor ветка lava bait и выбранные типы без допущенного AI (включая Fire Imp и демонов) не создают NPC и никогда не подменяются Blue Slime/Skeleton. Предшествующие event/biome ветки, специальные seed, население остальных биомов и точный spawn budget остаются неполными. Необязательная инъекция `IVanillaNpcRandom` позволяет воспроизводить regression через тот же production path.
+
+Для NPC типов `1`, `2`, `3`, `21`, `22` добавлен прямой контактный урон лавой в обычном мире. Проверяется committed physical rectangle по `Collision.LavaCollision`, а не клиентский wet-флаг или уменьшенная центральная wet-проба; source base damage `50` проходит существующий defense/death/loot pipeline без приписывания игроку. Generation-keyed контактный cooldown длится $30\,\text{updates}$. Invulnerable actors и непроверенные типы не считаются уязвимыми; Remix/For-the-Worthy здесь не допущены. Это **не полная lava parity**: открыты NPC OnFire buffs/DoT, общий межисточниковый канал `immune[255]`, остальные immunity/state families, урон игроку/боту с учётом экипировки и сгорание world items/призыв через Guide Voodoo Doll. Контакт проверяется после committed motion; точный порядок collision внутри vanilla update также остаётся открытым.
+
+### Урон лавой server-owned игрокам
+
+PlayerBot и другие игроки без клиента теперь проверяют лаву до движения на world writer, через существующую authority экипировки, HP и смерти. Обычный контакт начинается с урона `80` (`200` в Remix), учитывает броню и отдельный канал иммунитета `Lava`, добавляя OnFire только после успешного несмертельного удара. Функциональные Terraspark Boots `5000` дают $420\,\text{updates}$ защиты, восстанавливают её по единице за сухое обновление, снижают контактный урон на `45` и длительность горения на $210\,\text{updates}$. Vanity-экипировка не защищает. Текущие случайные наборы ботов **не гарантируют** эти сапоги. Recall заполняет запас защиты; обычный teleport — нет.
+
+Обычный OnFire вносит `-8` за обновление в регенерационный счётчик с порогом `120`, обходя броню и hit immunity. Вода/мёд гасят горение. GodMode предотвращает потерю HP; смерть очищает generation-owned состояние горения. Контакт и горение используют существующий vitals/death commit. В `packet 118` передаются `ByOther(2)` для лавы и `ByOther(8)` с death damage `10` для горения. Сохранённый buff-type baseline `packet 50` показывает горение и поздно подключившимся; длительность принадлежит серверу, клиентское представление не задаёт её. `packet 55` для отображения баффов удалённого игрока не используется.
+
+Закрыт ограниченный участок **server-owned actors**, а не environmental authority обычного клиента или полный buff engine. При неизвестных world facts, Vampire OnFire и неизвестной функциональной экипировке семантика не угадывается. Другие lava accessories, Obsidian Skin/Ash Wood, mount/shimmer interactions, сочетания дебаффов и естественная регенерация не покрыты. NPC DoT/общий иммунитет и общее сгорание world items открыты; область поддержки куклы Гида описана отдельно ниже.
+
+### Кукла Гида и возврат владения предметом
+
+Обычная server-owned кукла Гида (`267`) теперь падает с проверенной гравитацией предмета и сгорает при контакте с лавой. World writer удаляет **весь стек** до того, как существующий NPC combat/death path наносит удар каждому активному Гиду. Без Гида предмет всё равно сгорает, но другие town NPC не страдают. При наличии Гида оставшиеся куклы поражают случайно выбранных допущенных town-like NPC без повторного выбора. Размещение `NPC.SpawnWOF` отделено от обычного spawn-on-player: воспроизведены source depth/duplicate gates, сторона относительно середины мира, отступ от активных игроков, вертикальный поиск по жидкости/твёрдым блокам и итоговая полоса Ада. Второй Гид не создаёт вторую Стену. Призыв не открывает Hardmode; progression по-прежнему принадлежит существующему пути смерти босса.
+
+Клиентский `packet 39` — ограниченный запрос освобождения, а не назначение владельца или команда призыва. Освободить предмет может только текущий владелец при совпадении актуальных connection/item generations; запрос не задаёт нового получателя или координаты. `packet 22` остаётся только исходящим. Режимы владения начального `packet 21` теперь сохраняют source grab delay/reservation в $100\,\text{updates}$. Server-owned таймеры и допущенное движение обновляются без drop/owner-пакетов каждый tick; дискретные изменения используют прежнюю репликацию.
+
+Область ограничена обычным движением куклы `14x26` на ровном рельефе, включая движение в воздухе/воде/мёде и определение контакта до движения для последующего сгорания. Склоны, платформы, конвейеры, shimmer и чрезмерное/непредставленное движение отклоняют этот участок симуляции. Движение зарезервированного клиенту предмета/притягивание при подборе, полная физика и сгорание всех предметов по rarity, динамический town identity, объявления боссов/Bestiary credit остаются неполными. Ограничения игроков/NPC выше сохраняются, но сгорание куклы Гида уже не отсутствует целиком. Это не утверждение о полном vanilla-прохождении или parity генератора.
 
 ```mermaid
 flowchart LR
@@ -209,6 +237,8 @@ Rules расширения AI:
 
 Boss orchestration не нужно запихивать в abstractions, придуманные для ordinary early-game NPCs.
 
+Обычный AI69 Duke Fishron теперь получает подтверждённые ширину мира и surface через существующую NPC authority. Ocean gates используют левый верхний угол игрока и строгие сравнения800/6400/surface/правого края. Enrage сокращает hover до10 ticks, добавляет6 к скорости рывка, заменяет bubble-specials, меняет damage/defense и передаёт признак Cthulhunado bolt; возвращение к океану восстанавливает обычную фазу. Обычный Classic/Expert/Master defDamage равен100/140/210 до phase/enrage. Без границ мира root step/projectile plan отклоняется. Эти source-backed части не закрывают difficulty-dependent spawn life, distant-target/despawn ordering, special seeds и официальный client encounter acceptance.
+
 ## 16. Trusted-host NPC actors
 
 `INpcActorOperations` позволяет trusted host получить lease existing runtime NPC и отправлять semantic `NpcActorIntent`.
@@ -251,6 +281,8 @@ Target model включает damage source/provenance, attacker/target, base/fi
 
 Authoritative становятся только verified portions. Пока complete conservation/damage rules отсутствуют, server не должен invent strict rejection rules, ломающие legal vanilla behavior.
 
+Серверные PlayerBot теперь участвуют как PvP-цели в поддерживаемых direct-melee, trusted projectile и termination-explosion paths. Используются authoritative weapon/equipment mitigation, hostility/team/generation checks, GodMode и source PvP immunity в восемь ticks. Смертельный урон отправляет packet `118`; это не означает поддержку всех weapons, buffs/debuffs и equipment effects. AI_001 motion и prediction бота различают прямолинейные Bullet `14` / Silver Bullet `981` / Green Laser `20` / Jester's Arrow `5` и падающие стрелы.
+
 ## 19. Drops и loot
 
 Simple-cell tile drops теперь source-pinned definition data, а не вручную поддерживаемый allow-list. Пять contextual simple-cell identities 1.4.5.8 имеют явные стратегии: vines/flowering vines используют Cordage ближайшего игрока, Mushroom Vines — vanilla half-chance, Hive может оставить honey и породить Bee/SmallBee до RNG создания Hive Block item. Frame-important/object drops и полный NPC loot остаются отдельными incomplete families.
@@ -280,6 +312,8 @@ Wiring, liquid material и growth commits теперь имеют отдельн
 Обычные open-cell material-contact paths из `Liquid.LiquidCheck` теперь также authoritative. Water будит соседние lava/honey/shimmer и оставляет выбор merge-location update чужого типа жидкости. Проверенные merges создают Obsidian (`56`) для water/lava, Honey Block (`229`) для water/honey, Crispy Honey Block (`230`) для lava/honey и Shimmer Block (`659`), когда shimmer побеждает в source-order выборе merge. Vanilla-порог `24` units, поглощение чужой жидкости слева/справа/сверху, очистка source меньше `24` над чужой жидкостью и packet-20 tile-square replication для material mutations закреплены focused runtime tests.
 
 Обычный dedicated-server lifecycle активной liquid entry теперь также входит в authoritative slice. Одна liquid entry может продвинуться максимум на один logical update за TerraRuntime tick даже при work budget больше единицы, изменение amount сбрасывает `kill` и будит клетку сверху, стабильные entries retire по порогу TerrariaServer 1.4.5.8 `10 + activePlayersInSlots0To14 / 3`, а стабильные `254` при retirement нормализуются в `255`. Water ниже `Main.UnderworldLayer == maxTilesY - 200` испаряется по две units за liquid update. Generating/loading slice покрывает quick-settle scheduling, `Liquid.QuickWater` и `WorldGen.WaterCheck` с финальными source-pinned таблицами water-death из 10 и lava-death из 267 TileID. Canonical load теперь выполняет поддержанный sequence `QuickWater -> WaterCheck -> quickSettle drain (максимум 100000 итераций) -> WaterCheck` до admission runtime/bootstrap cache, а runtime cache layout 2 можно записать только из такого prepared state. Полная vanilla liquid simulation всё ещё открыта для сложных `WorldGen.ReplaceTile` cases вне safe active subset, Remix/Zenith load-time liquid remapping и panic/forced-settle paths. Circuit traversal/devices и families growth/spread rules также остаются отдельной работой.
+
+Общие таблицы из 10 water- и 267 lava-идентичностей не являются итоговыми правилами разрушения объектов. Загрузка теперь сначала разрешает style/subtile/alternate из `TileObjectData.Check*(Tile)`: обсидиановые мебель/платформы переживают лаву, но lantern `42`/style `32` наследует разрушаемый лавой alternate. Статический resolver напрямую сравнен с официальным 1.4.5.8 на 3 853 832 неотрицательных сочетаниях type/frame без расхождений; тест хранит golden hash фиксированных 1 961 154 случаев. Проверенное удаление при загрузке охватывает одноклеточные растения/факелы/травы/мох и согласованные сердца/горшки/лампы/костры/декор джунглей/картины/знамёна/фонари без item drops. Стены, провода, жидкость и актуаторы сохраняются, block frames становятся `-1`. Несогласованные структуры, защищённые части, зависимые от платформ объекты и непредставленные каскады остаются fail-closed. Live mining и права создания drops не расширяются. См. [доказательства отказов запуска](startup-performance-gate.md).
 
 Live scheduler вычисляет slice TerrariaServer 1.4.5.8 по формулам `curMaxLiquid = 25000 - players * 250` и `cycles = 10 + players / 3`, с максимумом `2500` entries за TerraRuntime tick на пустом сервере. Backlog-тесты water, lava и shimmer доказывают, что независимые миры при одинаковом TPS получают одинаковый slice. Клетки с нулевым количеством жидкости не занимают active queue, а committed tile mutation немедленно будит соседнюю непустую жидкость.
 

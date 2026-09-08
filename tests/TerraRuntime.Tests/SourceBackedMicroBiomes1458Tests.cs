@@ -5,6 +5,66 @@ namespace TerraRuntime.Tests;
 
 public sealed class SourceBackedMicroBiomes1458Tests
 {
+    [Theory]
+    [InlineData(1, 0)]
+    [InlineData(-1, 0)]
+    [InlineData(1, 1)]
+    [InlineData(-1, 1)]
+    [InlineData(1, -1)]
+    [InlineData(-1, -1)]
+    public void Generated_tracks_connect_in_both_directions_with_no_phantom_switch(int direction, int slope)
+    {
+        var workspace = new Workspace(160, 400);
+        var grid = new MicroBiomesPass1458.RuntimeGrid(workspace);
+        var areas = new MicroBiomesPass1458.ProtectedAreaIndex(workspace);
+        for (int x = 0; x < 160; x++)
+        for (int y = 10; y < 180; y++)
+            workspace.TileStore.SetInitialPopulationTile(x, y, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+        Assert.True(MicroBiomesPass1458.TryPlaceTrack(grid, areas, new SlopeRandom(slope),
+            direction == 1 ? 20 : 130, 90, direction, 80));
+        int count = 0;
+        for (int x = 1; x < 159; x++)
+        for (int y = 1; y < 399; y++)
+        {
+            WorldTile tile = workspace.TileStore.Get(x, y);
+            if (!tile.IsActive || tile.Type != 314) continue;
+            count++;
+            AssertTrackConnections(workspace.TileStore, x, y);
+            for (int up = 1; up < 5; up++) Assert.False(workspace.TileStore.Get(x, y - up).IsActive);
+        }
+        Assert.Equal(80, count);
+    }
+
+    internal static void AssertTrackConnections(WorldTileStore tiles, int x, int y)
+    {
+        WorldTile tile = tiles.Get(x, y);
+        // Independent literal Minecart.Initialize left/right connection table; -2 means no neighbor.
+        (int Left, int Right)[] connections = [(-2, -2), (0, 0), (-2, 0), (0, -2),
+            (1, 0), (0, 1), (0, -1), (-1, 0), (-1, 1), (1, -1), (1, -2), (-2, 1), (-1, -2), (-2, -1)];
+        Assert.InRange(tile.FrameX, (short)1, (short)13);
+        Assert.Equal(-1, tile.FrameY);
+        var pair = connections[tile.FrameX];
+        foreach (int side in new[] { -1, 1 })
+        {
+            int dy = side == -1 ? pair.Left : pair.Right;
+            if (dy == -2) continue;
+            WorldTile neighbor = tiles.Get(x + side, y + dy);
+            Assert.True(neighbor.IsActive && neighbor.Type == 314, $"Disconnected track {x},{y}");
+            Assert.InRange(neighbor.FrameX, (short)1, (short)13);
+            var other = connections[neighbor.FrameX];
+            Assert.Equal(-dy, side == -1 ? other.Right : other.Left);
+        }
+    }
+
+    private sealed class SlopeRandom(int slope) : IWorldGenerationVanillaRandom
+    {
+        public int Next() => 0;
+        public int Next(int maxValue) => 0;
+        public int Next(int minValue, int maxValue) => minValue == -1 ? slope : minValue;
+        public double NextDouble() => .5;
+        public void NextBytes(byte[] buffer) => Array.Clear(buffer);
+    }
+
     [Fact]
     public void Canonical_ordinary_world_registers_one_micro_biomes_pass_after_larva()
     {
@@ -59,11 +119,13 @@ public sealed class SourceBackedMicroBiomes1458Tests
         Assert.True(VanillaWorldFrameImportance326.IsFrameImportant(MicroBiomesPass1458.LargePiles2));
     }
 
-    [Fact]
-    public void Track_placer_refuses_to_cut_through_frame_important_object()
+    [Theory]
+    [InlineData(30)]
+    [InlineData(24)]
+    public void Track_placer_refuses_to_cut_through_frame_important_object(int objectY)
     {
         var workspace = new Workspace(128, 256);
-        workspace.TileStore.SetInitialPopulationTile(30, 30, new WorldTile
+        workspace.TileStore.SetInitialPopulationTile(30, objectY, new WorldTile
         {
             Type = MicroBiomesPass1458.Campfire,
             Flags = WorldTileFlags.Active,
@@ -83,7 +145,7 @@ public sealed class SourceBackedMicroBiomes1458Tests
             requestedLength: 80);
 
         Assert.False(placed);
-        Assert.Equal(MicroBiomesPass1458.Campfire, workspace.TileStore.Get(30, 30).Type);
+        Assert.Equal(MicroBiomesPass1458.Campfire, workspace.TileStore.Get(30, objectY).Type);
         Assert.NotEqual(MicroBiomesPass1458.MinecartTrack, workspace.TileStore.Get(10, 30).Type);
     }
 

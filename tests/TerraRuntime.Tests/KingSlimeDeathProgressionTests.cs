@@ -110,7 +110,8 @@ public sealed class KingSlimeDeathProgressionTests
             out WorldFilePreservedSections? preserved));
 
         var mutations = new RuntimeWorldProgressionMutations();
-        mutations.MarkCompleted(VanillaWorldProgressionId.EyeOfCthulhu);
+        // Eye of Cthulhu now owns its source-backed saved flag; Clown remains outside this patcher.
+        mutations.MarkCompleted(VanillaWorldProgressionId.Clown);
         RuntimeWorldProgressionMutationSnapshot snapshot = mutations.CaptureSnapshot();
 
         Assert.Equal(

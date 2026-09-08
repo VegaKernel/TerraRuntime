@@ -6,6 +6,22 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimePlayerDamageImmunityStoreTests
 {
     [Fact]
+    public void Lava_cooldown_is_independent_and_unknown_channels_fail_closed_even_before_first_hit()
+    {
+        var store = new RuntimePlayerDamageImmunityStore(8);
+        var first = new PlayerHandle(new PlayerSlotId(3), new PlayerSessionGeneration(1));
+        var reused = new PlayerHandle(first.Slot, new PlayerSessionGeneration(2));
+        Assert.True(store.IsPveImmune(first, (VanillaPlayerImmunityChannel1458)200, 0));
+        store.RecordPve(first, VanillaPlayerImmunityChannel1458.Lava, 40);
+        Assert.True(store.IsPveImmune(first, VanillaPlayerImmunityChannel1458.Lava, 39));
+        Assert.False(store.IsPveImmune(first, VanillaPlayerImmunityChannel1458.Lava, 40));
+        Assert.False(store.IsPveImmune(first, VanillaPlayerImmunityChannel1458.General, 0));
+        Assert.False(store.IsPveImmune(first, VanillaPlayerImmunityChannel1458.BossNoCheese, 0));
+        Assert.False(store.IsPveImmune(reused, VanillaPlayerImmunityChannel1458.Lava, 0));
+        store.RecordPve(reused, VanillaPlayerImmunityChannel1458.General, 80);
+        Assert.False(store.IsPveImmune(reused, VanillaPlayerImmunityChannel1458.Lava, 0));
+    }
+    [Fact]
     public void ImmunityIsScopedToExactPlayerGenerationAndPveChannel()
     {
         var store = new RuntimePlayerDamageImmunityStore(byte.MaxValue + 1);

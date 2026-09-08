@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Gameplay.Npcs;
 
@@ -104,7 +105,7 @@ public readonly record struct VanillaNpcSyncAnchor(float X, float Y)
 /// Source-backed vanilla NPC defaults required by authoritative lifecycle and AI bring-up.
 /// BaseWidth/BaseHeight are the raw SetDefaults dimensions before vanilla applies NPC.scale. Width/Height expose
 /// the initial post-scale hitbox for compatibility. Runtime geometry that observes mutable NPC scale must call
-/// TryResolveHitbox with the live simulation scale instead of freezing the initial dimensions.
+/// TryResolveHitbox with the live simulation state so physical AI overrides do not become visual scale changes.
 /// </summary>
 public readonly record struct VanillaNpcDefinition(
     NpcTypeId Type,
@@ -131,6 +132,14 @@ public readonly record struct VanillaNpcDefinition(
     public int Width => TryResolveHitbox(Scale, out VanillaNpcHitboxSize hitbox) ? hitbox.Width : BaseWidth;
 
     public int Height => TryResolveHitbox(Scale, out VanillaNpcHitboxSize hitbox) ? hitbox.Height : BaseHeight;
+
+    public bool TryResolveHitbox(in NpcSimulationState simulation, out VanillaNpcHitboxSize hitbox)
+    {
+        if (simulation.HitboxOverride is not NpcHitboxDimensions dimensions)
+            return TryResolveHitbox(simulation.Scale, out hitbox);
+        hitbox = dimensions.IsValid ? new VanillaNpcHitboxSize(dimensions.Width, dimensions.Height) : default;
+        return dimensions.IsValid;
+    }
 
     public bool TryResolveHitbox(float scale, out VanillaNpcHitboxSize hitbox)
     {

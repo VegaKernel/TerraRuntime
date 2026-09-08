@@ -329,8 +329,8 @@ public sealed class VanillaWorldLiquidSimulator1458
     /// <summary>
     /// Replays the source-backed <c>WorldGen.WaterCheck</c> pass used by TerrariaServer 1.4.5.8 while a
     /// canonical world is still unpublished. The pass clears both liquid queues, applies the temporary
-    /// <c>tilesIgnoreWater(true)</c> solidity rules, removes only liquid-death tiles whose removal semantics are
-    /// already modelled as a single-cell mutation, normalizes nearly-full cells below, and rebuilds active/buffered
+    /// <c>tilesIgnoreWater(true)</c> solidity rules, removes verified single cells and complete no-metadata loading
+    /// objects, normalizes nearly-full cells below, and rebuilds active/buffered
     /// liquid work through the exact loading <c>Liquid.AddWater</c> gates. Unsupported object removal fails before
     /// any mutation so startup can discard the candidate rather than publishing an approximated world.
     /// </summary>
@@ -367,7 +367,11 @@ public sealed class VanillaWorldLiquidSimulator1458
 
                 if (tile.IsActive && ShouldDieInLoadingLiquid1458(in tile))
                 {
-                    KillSingleCellDuringLoading1458(x, y, in tile);
+                    if (!TryResolveLoadingDeath1458(x, y, in tile, out WorldTileRegion death))
+                        throw new InvalidOperationException("A preflighted loading liquid-death object changed.");
+                    for (int objectX = death.X; objectX < death.ExclusiveRight; objectX++)
+                    for (int objectY = death.Y; objectY < death.ExclusiveBottom; objectY++)
+                        KillSingleCellDuringLoading1458(objectX, objectY, tiles.Get(objectX, objectY));
                     tile = tiles.Get(x, y);
                 }
 
@@ -425,8 +429,7 @@ public sealed class VanillaWorldLiquidSimulator1458
                     continue;
                 }
 
-                if (!VanillaTileDefinitionCatalog.TryGet(tile.TileType, out VanillaTileDefinition definition) ||
-                    definition.BreakPath is not (VanillaTileBreakPath.SimpleCell or VanillaTileBreakPath.FrameImportantSingleCell))
+                if (!TryResolveLoadingDeath1458(x, y, in tile, out _))
                 {
                     return new VanillaWaterCheckDiagnostic1458(
                         VanillaWaterCheckResult1458.UnsupportedLiquidDeathTile,
@@ -440,10 +443,82 @@ public sealed class VanillaWorldLiquidSimulator1458
         return VanillaWaterCheckDiagnostic1458.Applied;
     }
 
+    private bool TryResolveLoadingDeath1458(int x, int y, in WorldTile tile, out WorldTileRegion region)
+    {
+        region = new WorldTileRegion(x, y, 1, 1);
+        if (!VanillaTileObjectLiquidDeath1458.TryGet(in tile, out _, out _)) return false;
+        // KillTile.CheckTileBreakability checks a locked temple door below even for non-solid objects.
+        WorldTile support = tiles.Get(x, y + 1);
+        if (support.IsActive && support.Type == 10 && support.FrameY is >= 594 and <= 646 && support.FrameX < 54)
+            return false;
+        // TileID.Sets.Platforms: apply this before the generic single-cell catalog, which also
+        // admits team platforms. Supports above/below can require unrepresented cascading kills.
+        if (tile.Type is 19 or 427 or >= 435 and <= 439)
+        {
+            WorldTile above = tiles.Get(x, y - 1);
+            return !above.IsActive && (!support.IsActive ||
+                (VanillaTileDefinitionCatalog.TryGet(support.TileType, out var floor) && floor.IsSolid && !floor.IsFrameImportant));
+        }
+        if (VanillaTileDefinitionCatalog.TryGet(tile.TileType, out VanillaTileDefinition definition) &&
+            definition.BreakPath is VanillaTileBreakPath.SimpleCell or VanillaTileBreakPath.FrameImportantSingleCell)
+            return true;
+
+        // WorldFile.LoadWorld sets isGeneratingOrLoadingWorld: KillTile forces noItem and Item.NewItem
+        // itself refuses creation. PlantCheck identities are single cells despite being frame-important.
+        // This does NOT widen live mining/drop authority, whose contextual plant loot is a different boundary.
+        // Torches and StyleAlch herbs likewise have no multi-cell or persistent metadata footprint.
+        if (tile.Type is 3 or 4 or 24 or 61 or 71 or 73 or 74 or 82 or 83 or 84 or 110 or 113 or 184 or 201 or 637 or 703)
+            return true;
+
+        // Source CheckOrb/CheckPot/Check3x2/Check1xX, Check1x2Top/CheckBanner and painting Check*Wall
+        // remove the remaining coherent object after a cell is killed.
+        // The metadata object catalog intentionally covers chests/signs/entities, not these objects; do not
+        // invent a metadata identity or a runtime placement path just to admit their loading-time destruction.
+        if (tile.Type is not (12 or 28 or 42 or 91 or 93 or 215 or 233 or 240 or 242 or 245 or 246) || tile.FrameX < 0 || tile.FrameY < 0 ||
+            tile.FrameX % 18 != 0 || tile.FrameY % 18 != 0 ||
+            (tile.Type == 12 && (tile.FrameX > 54 || tile.FrameY > 18)) ||
+            (tile.Type == 233 && tile.FrameY > 54) ||
+            (tile.Type == 245 && tile.FrameY >= 54) || (tile.Type == 246 && tile.FrameX >= 54)) return false;
+        (int width, int height) = tile.Type switch
+        {
+            42 => (1, 2),
+            91 or 93 => (1, 3),
+            215 or 246 => (3, 2),
+            233 => (tile.FrameY >= 36 ? 2 : 3, 2),
+            240 => (3, 3),
+            242 => (6, 4),
+            245 => (2, 3),
+            _ => (2, 2)
+        };
+        int column = tile.FrameX / 18 % width, row = tile.FrameY / 18 % height;
+        int left = x - column, top = y - row;
+        // Source SquareTileFrame cannot propagate object removal inside the five-cell world border.
+        if (left <= 5 || top <= 5 || left + width - 1 >= tiles.Dimensions.WidthTiles - 5 || top + height - 1 >= tiles.Dimensions.HeightTiles - 5)
+            return false;
+        int frameX = tile.FrameX - column * 18, frameY = tile.FrameY - row * 18;
+        // CheckJunglePlant's 3x2 branch also scans a third row for same-type remnants. Do not erase
+        // an adjacent malformed object: ordinary grass support is unaffected, ambiguous remnants reject.
+        if (tile.Type == 233 && width == 3)
+            for (int dx = 0; dx < width; dx++)
+                if (tiles.Get(left + dx, top + height) is { IsActive: true, Type: 233 }) return false;
+        for (int dx = 0; dx < width; dx++)
+        for (int dy = 0; dy < height; dy++)
+        {
+            WorldTile cell = tiles.Get(left + dx, top + dy);
+            // Incoherent/overlapping objects stay fail-closed; never erase a foreign neighbor or its metadata.
+            if (!cell.IsActive || cell.Type != tile.Type || cell.FrameX != frameX + dx * 18 || cell.FrameY != frameY + dy * 18)
+                return false;
+            WorldTile below = tiles.Get(left + dx, top + dy + 1);
+            if (below.IsActive && below.Type == 10 && below.FrameY is >= 594 and <= 646 && below.FrameX < 54)
+                return false;
+        }
+        region = new WorldTileRegion(left, top, width, height);
+        return true;
+    }
+
     private static bool ShouldDieInLoadingLiquid1458(in WorldTile tile) =>
-        tile.LiquidKind == WorldLiquidKind.Lava
-            ? VanillaLiquidInteractionFacts1458.IsLavaDeath(tile.TileType)
-            : VanillaLiquidInteractionFacts1458.IsWaterDeath(tile.TileType);
+        !VanillaTileObjectLiquidDeath1458.TryGet(in tile, out bool water, out bool lava) ||
+        (tile.LiquidKind == WorldLiquidKind.Lava ? lava : water);
 
     private static bool IsWaterCheckSolidBarrier1458(in WorldTile tile)
     {
@@ -491,13 +566,12 @@ public sealed class VanillaWorldLiquidSimulator1458
     {
         WorldTile after = before;
         after.Type = 0;
-        after.FrameX = 0;
-        after.FrameY = 0;
+        after.FrameX = -1;
+        after.FrameY = -1;
         after.TileColor = 0;
         after.Shape = 0;
         after.Flags &= ~(
             WorldTileFlags.Active |
-            WorldTileFlags.Actuator |
             WorldTileFlags.Inactive |
             WorldTileFlags.InvisibleBlock |
             WorldTileFlags.FullbrightBlock);

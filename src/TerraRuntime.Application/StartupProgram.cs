@@ -23,6 +23,12 @@ public static class StartupProgram
     {
         ArgumentNullException.ThrowIfNull(args);
 
+        if (SandboxWorkerProgram.TryRun(args, out int workerExitCode))
+            return workerExitCode;
+
+        if (SandboxWorkerSmoke.TryRun(args, out int workerSmokeExitCode))
+            return workerSmokeExitCode;
+
         if (WorldGenerationCreateSmoke.TryRun(args, out int worldgenSmokeExitCode))
             return worldgenSmokeExitCode;
 
@@ -163,8 +169,7 @@ public static class StartupProgram
                     worldGenerators: startupWorldGenerators)
                 .GetAwaiter()
                 .GetResult();
-            if (exitCode != 0 && startupUi?.OwnsTerminal == true)
-                startupUi.FailAndRelease($"Server startup stopped with exit code {exitCode}.");
+            startupUi?.ReportServerExit(exitCode);
             return exitCode;
         }
         finally

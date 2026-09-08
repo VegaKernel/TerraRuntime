@@ -19,10 +19,13 @@ internal interface IRuntimeServerPlayerEventSink
     void ServerPlayerGodModeUpdated(PlayerHandle player, bool enabled);
 
     void ServerPlayerDied(PlayerHandle player, DamageSource source, ProjectileTypeId projectileType, int damage, int hitDirection);
+    void ServerPlayerBuffTypesUpdated(PlayerHandle player, ReadOnlySpan<BuffTypeId> buffs);
 
     void ServerPlayerItemUpdated(PlayerHandle player, in ServerPlayerItemState item);
 
     void ServerPlayerMoved(in PlayerStateSnapshot player);
+
+    void ServerPlayerItemUsePresented(PlayerHandle player, float rotation, short animationTicks);
 
     void ServerPlayerRecallPresented(in PlayerStateSnapshot player, short floorX, short floorY);
 

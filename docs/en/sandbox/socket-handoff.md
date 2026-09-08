@@ -104,6 +104,8 @@ There is no `BothOwned` state.
 
 ### Windows
 
+The existing async `NetworkStream`/`PipeReader` data plane cannot simply add `Socket.DuplicateAndClose` at a frame boundary. [.NET's documented limitation](https://learn.microsoft.com/en-us/dotnet/api/system.net.sockets.socket.duplicateandclose?view=net-11.0) prohibits prior asynchronous socket operations: they bind the socket to the source process's IOCP, and `UseOnlyOverlappedIO` is a no-op. A local two-process loopback probe on SDK `11.0.100-preview.7.26381.103`, repeated as Windows NativeAOT, transferred a synchronous socket successfully but failed destination async receive with `InvalidOperationException` after a forced pending source async receive. This is evidence against that candidate implementation, not a shipped handoff feature. A verified transferable I/O ownership design is required before player admission; the current data plane is preserved. Do not substitute a permanent proxy or mark S5 complete from the synchronous probe.
+
 Use verified Winsock socket duplication/handoff semantics, such as `WSADuplicateSocket` plus the supported .NET reconstruction path. The exact implementation must be validated on the shipping .NET 11/Windows target before the roadmap item can be checked.
 
 ### Unix/Linux

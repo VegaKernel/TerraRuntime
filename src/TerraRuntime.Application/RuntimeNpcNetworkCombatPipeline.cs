@@ -40,6 +40,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private readonly RuntimeNpcPlayerInteractionLedger interactions;
     private readonly RuntimeNpcDamageExecutor damage;
     private readonly RuntimeNpcReplicationRegistry? npcReplication;
+    private readonly RuntimeWorldItemReplicationRegistry? worldItemReplication;
     private readonly IRuntimePlayerSlotSnapshotLookup players;
     private readonly RuntimeCombatIntegrity combatIntegrity;
     private readonly Func<long> tickProvider;
@@ -49,6 +50,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private readonly RuntimeSkeletronLootDeliverySink skeletronLoot;
     private readonly RuntimeQueenBeeLootDeliverySink queenBeeLoot;
     private readonly RuntimeDeerclopsLootDeliverySink deerclopsLoot;
+    private readonly RuntimeQueenSlimeLootDeliverySink queenSlimeLoot;
+    private readonly RuntimeMechanicalBossLootDeliverySink mechanicalBossLoot;
+    private readonly RuntimeEyeOfCthulhuLootDeliverySink eyeOfCthulhuLoot;
     private readonly RuntimeWallOfFleshLootDeliverySink wallOfFleshLoot;
     private readonly VanillaNpcLootWorldItemMaterializer materializer = VanillaNpcLootWorldItemMaterializer.Instance;
     private readonly SystemNpcCombatRandom random = new();
@@ -75,6 +79,12 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         new VanillaQueenBeeLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly VanillaDeerclopsLootPlayer[] activeDeerclopsLootPlayers =
         new VanillaDeerclopsLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
+    private readonly VanillaQueenSlimeLootPlayer[] activeQueenSlimeLootPlayers =
+        new VanillaQueenSlimeLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
+    private readonly VanillaMechanicalBossLootPlayer[] activeMechanicalBossLootPlayers =
+        new VanillaMechanicalBossLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
+    private readonly VanillaEyeOfCthulhuLootPlayer[] activeEyeOfCthulhuLootPlayers =
+        new VanillaEyeOfCthulhuLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly VanillaWallOfFleshLootPlayer[] activeWallOfFleshLootPlayers =
         new VanillaWallOfFleshLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly NpcSnapshot[] npcFamilyBuffer;
@@ -113,6 +123,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
         combatIntegrity = new RuntimeCombatIntegrity(playerAuthority, npcs.Capacity);
         this.npcReplication = npcReplication;
+        this.worldItemReplication = worldItemReplication;
         this.worldClock = worldClock;
         this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
         this.worldTiles = worldTiles;
@@ -145,6 +156,18 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             instancedLeases,
             worldItemReplication);
         deerclopsLoot = new RuntimeDeerclopsLootDeliverySink(
+            worldItems,
+            instancedLeases,
+            worldItemReplication);
+        queenSlimeLoot = new RuntimeQueenSlimeLootDeliverySink(
+            worldItems,
+            instancedLeases,
+            worldItemReplication);
+        mechanicalBossLoot = new RuntimeMechanicalBossLootDeliverySink(
+            worldItems,
+            instancedLeases,
+            worldItemReplication);
+        eyeOfCthulhuLoot = new RuntimeEyeOfCthulhuLootDeliverySink(
             worldItems,
             instancedLeases,
             worldItemReplication);
@@ -224,6 +247,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         else if (IsDestroyerMember(current.TypeIdentity))
         {
             MarkDestroyerInteraction(in current, connection.Player);
+        }
+        else if (VanillaMechanicalBossLootEvaluator.IsTwin(current.TypeIdentity) || IsPrimeMember(current.TypeIdentity))
+        {
+            MarkMechanicalFamilyInteraction(current.TypeIdentity, connection.Player);
         }
         else
         {
@@ -325,6 +352,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
 
             if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
                 ApplyKingSlimeDeathEffects(in dead);
+            else if (dead.TypeIdentity == VanillaNpcIds.EyeOfCthulhu)
+                progression.MarkCompleted(VanillaWorldProgressionId.EyeOfCthulhu);
             else if (dead.TypeIdentity == VanillaNpcIds.SkeletronHead)
                 ApplySkeletronDeathEffects();
             else if (dead.TypeIdentity == VanillaNpcIds.QueenBee)
@@ -438,6 +467,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         {
             MarkDestroyerInteraction(in liveTarget, request.Source.Player);
         }
+        else if (VanillaMechanicalBossLootEvaluator.IsTwin(liveTarget.TypeIdentity) || IsPrimeMember(liveTarget.TypeIdentity))
+        {
+            MarkMechanicalFamilyInteraction(liveTarget.TypeIdentity, request.Source.Player);
+        }
 
         NpcSnapshot destroyerRoot = default;
         bool destroyerSharedLife = IsDestroyerMember(liveTarget.TypeIdentity) &&
@@ -496,6 +529,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
 
         if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
             ApplyKingSlimeDeathEffects(in dead);
+        else if (dead.TypeIdentity == VanillaNpcIds.EyeOfCthulhu)
+            progression.MarkCompleted(VanillaWorldProgressionId.EyeOfCthulhu);
         else if (dead.TypeIdentity == VanillaNpcIds.SkeletronHead)
             ApplySkeletronDeathEffects();
         else if (dead.TypeIdentity == VanillaNpcIds.QueenBee)
@@ -537,18 +572,32 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             return RuntimeTownNpcMeleeDamageResult1458.Rejected;
         }
 
+        return CommitNonPlayerDamage(liveTarget, DamageSource.FromNpcContact(liveAttacker.Handle),
+            baseDamage, knockBack, hitDirection);
+    }
+
+    internal RuntimeTownNpcMeleeDamageResult1458 TryStrikeEnvironment(NpcHandle target, int baseDamage, float knockBack = 0f, int hitDirection = 0)
+    {
+        if (baseDamage <= 0 || !npcs.TryGet(target, out NpcSnapshot liveTarget) || !liveTarget.IsActive)
+            return RuntimeTownNpcMeleeDamageResult1458.Rejected;
+        return CommitNonPlayerDamage(liveTarget, DamageSource.Environment, baseDamage, knockBack, hitDirection);
+    }
+
+    private RuntimeTownNpcMeleeDamageResult1458 CommitNonPlayerDamage(
+        NpcSnapshot liveTarget, DamageSource source, int baseDamage, float knockBack, int hitDirection)
+    {
         NpcSnapshot destroyerRoot = default;
         bool destroyerSharedLife = IsDestroyerMember(liveTarget.TypeIdentity) &&
             TryResolveDestroyerRoot(in liveTarget, out destroyerRoot);
         if (destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle && liveTarget.Simulation.Life != destroyerRoot.Simulation.Life)
         {
             if (!TrySetNpcLife(in liveTarget, destroyerRoot.Simulation.Life, out liveTarget))
-                throw new InvalidOperationException("Destroyer segment could not synchronize shared root life before Town NPC melee.");
+                throw new InvalidOperationException("Destroyer segment could not synchronize shared root life before a non-player strike.");
         }
 
         var request = new NpcDamageRequest(
             liveTarget.Handle,
-            DamageSource.FromNpcContact(liveAttacker.Handle),
+            source,
             baseDamage,
             KnockBack: knockBack,
             HitDirection: hitDirection);
@@ -598,6 +647,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
 
         if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
             ApplyKingSlimeDeathEffects(in dead);
+        else if (dead.TypeIdentity == VanillaNpcIds.EyeOfCthulhu)
+            progression.MarkCompleted(VanillaWorldProgressionId.EyeOfCthulhu);
         else if (dead.TypeIdentity == VanillaNpcIds.SkeletronHead)
             ApplySkeletronDeathEffects();
         else if (dead.TypeIdentity == VanillaNpcIds.QueenBee)

@@ -55,6 +55,10 @@ Known tile identities used by this slice include Thin Ice `162`, Explosives `141
 
 ## Parity boundary
 
+Rail correction (2026-09-08): `Minecart.Initialize/FrameTrack` indexes now encode connected straight sections, slopes and ends; the previous all-zero frames made each cell a disconnected rail. Back-track index is `-1` (no switch). Placement resets rail-cell liquid, paint and actuation while preserving wall identity and all four wires, as `TrackGenerator.PlacePath` does. Its clearance starts at $6\,\text{cells}$ and redraws $5..8\,\text{cells}$ on `Next(7)==0`; the old three-cell carve could obstruct a mounted player. The entire maximum-clearance envelope is preflighted for protected objects before mutation. Canonical Small/Medium/Large tests validate reciprocal connections after the complete generation pipeline, not just tile counts.
+
+This fixes newly generated rail framing and clearance, **not** full `TrackGenerator` pathfinding/RNG parity. Origin search, history rewriting, tunnel selection/smoothing, pressure-plate conversion and wall/slope finishing remain open. Existing saved worlds are not rewritten automatically.
+
 This is not a claim of byte-identical micro-biome geometry. The exact outer pass identity, source order, configuration keys/ranges, retry-budget intent and shared-RNG ownership are pinned to 1.4.5.8. The individual procedural geometry is a clean-room source-shaped implementation and remains replaceable biome by biome as deeper source ports are added.
 
 Special seeds and non-canonical dimensions still use the prior compatibility plan. The next ordinary source-backed boundary is `Settle Liquids Again`.

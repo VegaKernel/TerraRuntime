@@ -12,6 +12,18 @@ namespace TerraRuntime.Application;
 /// </summary>
 internal static class TerrariaPlayerReplicationFrameEncoder
 {
+    public static byte[] EncodeItemAnimation(PlayerSlotId player, float rotation, short animationTicks)
+    {
+        // TerrariaServer 1.4.5.8 NetMessage/MessageBuffer case 41: byte player, float rotation, short animation.
+        byte[] frame = new byte[10];
+        BinaryPrimitives.WriteUInt16LittleEndian(frame, 10);
+        frame[2] = 41;
+        frame[3] = player.Value;
+        BinaryPrimitives.WriteSingleLittleEndian(frame.AsSpan(4), rotation);
+        BinaryPrimitives.WriteInt16LittleEndian(frame.AsSpan(8), animationTicks);
+        return frame;
+    }
+
     public static byte[] EncodeAppearance(in PlayerAppearanceCommitRequest appearance)
     {
         var state = new TerrariaPlayerAppearanceState(
@@ -109,8 +121,9 @@ internal static class TerrariaPlayerReplicationFrameEncoder
     {
         const int payloadLength = 12;
         byte[] payload = new byte[payloadLength];
-        // Bits 0-1 select player/NPC mode; both clear means player. Bit 3 carries ExtraInfo, unused here.
-        payload[0] = 0;
+        // NetMessage65: bit2 (number6==1) tells the receiver to keep ITS current position on failure.
+        // Sending stale server coordinates with this bit clear can pull a moving client backwards.
+        payload[0] = failed ? (byte)4 : (byte)0;
         BinaryPrimitives.WriteInt16LittleEndian(payload.AsSpan(1), player.Value);
         BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(3), BitConverter.SingleToInt32Bits(positionX));
         BinaryPrimitives.WriteInt32LittleEndian(payload.AsSpan(7), BitConverter.SingleToInt32Bits(positionY));
@@ -119,7 +132,6 @@ internal static class TerrariaPlayerReplicationFrameEncoder
         byte[] frame = new byte[payloadLength + TerrariaFrameDecoderOptions.MinimumFrameLength];
         if (TerrariaFrameEncoder.TryWrite(frame, (byte)TerrariaMessageId.TeleportEntity, payload) != TerrariaFrameWriteResult.Written)
             throw new InvalidOperationException("Could not encode authoritative packet-65 player teleport frame.");
-        _ = failed; // failure is represented by unchanged coordinates, matching the vanilla request path.
         return frame;
     }
 

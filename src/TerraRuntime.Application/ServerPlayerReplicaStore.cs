@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
@@ -86,6 +87,19 @@ internal sealed class ServerPlayerReplicaStore
         return true;
     }
 
+    public bool TryUpdateBuffTypes(PlayerHandle player, ReadOnlySpan<BuffTypeId> buffs, out byte[] encoded)
+    {
+        encoded = [];
+        if (!TryGet(player, out ServerPlayerReplica replica) || buffs.Length > TerrariaPlayerBuffCodec1458.MaximumBuffs)
+            return false;
+        foreach (BuffTypeId buff in buffs)
+            if (buff.Value == 0 || !VanillaBuffIds.TryCreate(buff.Value, out _)) return false;
+        encoded = TerrariaPlayerBuffCodec1458.Encode(player.Slot.Value, buffs);
+        if (replica.Buffs is { } previous && previous.AsSpan().SequenceEqual(encoded)) return false;
+        replica.Buffs = encoded;
+        return true;
+    }
+
     public bool TryUpdateItem(PlayerHandle player, in ServerPlayerItemState item, out byte[] encoded)
     {
         if (!VanillaPlayerItemSlotCatalog.CanRelay(item.Slot) ||
@@ -161,6 +175,7 @@ internal sealed class ServerPlayerReplicaStore
         int health = 0;
         int mana = 0;
         int movement = 0;
+        int buffs = 0;
 
         for (int slot = 0; slot < replicas.Length; slot++)
         {
@@ -176,9 +191,10 @@ internal sealed class ServerPlayerReplicaStore
             health += TryEnqueue(recipient, replica.Health);
             mana += TryEnqueue(recipient, replica.Mana);
             movement += TryEnqueue(recipient, replica.Movement);
+            buffs += TryEnqueue(recipient, replica.Buffs);
         }
 
-        return new ServerPlayerBaselineEnqueueCounts(active, appearance, equipment, pvp, health, mana, movement);
+        return new ServerPlayerBaselineEnqueueCounts(active, appearance, equipment, pvp, health, mana, movement, buffs);
     }
 
     private bool TryGet(PlayerHandle player, out ServerPlayerReplica replica)
@@ -235,6 +251,7 @@ internal sealed class ServerPlayerReplicaStore
         public byte[]? Mana { get; set; }
 
         public byte[]? Movement { get; set; }
+        public byte[]? Buffs { get; set; }
     }
 }
 
@@ -245,4 +262,5 @@ internal readonly record struct ServerPlayerBaselineEnqueueCounts(
     int Pvp,
     int Health,
     int Mana,
-    int Movement);
+    int Movement,
+    int Buffs);

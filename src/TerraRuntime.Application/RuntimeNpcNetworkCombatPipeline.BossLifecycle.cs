@@ -186,6 +186,24 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         }
     }
 
+    private static bool IsPrimeMember(NpcTypeId type) =>
+        type == VanillaNpcIds.SkeletronPrime || type == VanillaNpcIds.PrimeCannon ||
+        type == VanillaNpcIds.PrimeSaw || type == VanillaNpcIds.PrimeVice || type == VanillaNpcIds.PrimeLaser;
+
+    private void MarkMechanicalFamilyInteraction(NpcTypeId type, PlayerHandle player)
+    {
+        // NPC.ApplyInteraction propagates between every active twin, or all active Prime127..131 parts,
+        // before the strike. Use the existing exact-generation ledger, not a second encounter credit store.
+        bool twins = VanillaMechanicalBossLootEvaluator.IsTwin(type);
+        int count = npcs.CopyActive(npcFamilyBuffer);
+        for (int index = 0; index < count; index++)
+        {
+            NpcSnapshot peer = npcFamilyBuffer[index];
+            if (twins ? VanillaMechanicalBossLootEvaluator.IsTwin(peer.TypeIdentity) : IsPrimeMember(peer.TypeIdentity))
+                interactions.TryMark(peer.Handle, player);
+        }
+    }
+
     private void ApplyHardmodeBossDeathEffects(in NpcSnapshot dead)
     {
         if (dead.TypeIdentity == VanillaNpcIds.QueenSlime)
@@ -396,7 +414,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     {
         intent = default;
         if (!VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.KingSlime, out VanillaNpcDefinition definition) ||
-            !definition.TryResolveHitbox(source.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             return false;
         }

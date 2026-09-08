@@ -21,7 +21,7 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
     {
         if (definition.AiStyle != VanillaNpcAiStyles.Bat ||
             !VanillaBatNpcCatalog1458.IsSupportedMotionType(definition.Type) ||
-            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             next = default;
             return false;

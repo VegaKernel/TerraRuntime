@@ -115,6 +115,10 @@ internal static class TreeFrameCatalog1458
 
     public static TreeFrame1458 LeftRoot(int variant) => Frame(column: 2, RootRow + variant);
 
+    // GrowTreeWithSettings uses independent left/right booleans, unlike GrowTree's legacy root-shape integer.
+    public static TreeFrame1458 SettingsTrunkBase(bool left, bool right, int variant) =>
+        Frame(left && right ? 4 : left ? 0 : 3, RootRow + variant);
+
     public static bool TryGetTrunkBase(
         TreeRootShape1458 shape,
         int variant,

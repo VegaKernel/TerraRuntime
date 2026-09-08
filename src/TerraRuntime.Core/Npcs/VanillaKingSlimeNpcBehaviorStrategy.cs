@@ -34,7 +34,7 @@ internal sealed class VanillaKingSlimeNpcBehaviorStrategy : IVanillaNpcBehaviorS
             definition.AiStyle != VanillaNpcAiStyles.KingSlime ||
             !definition.IsBoss ||
             environment is null ||
-            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             next = default;
             return false;

@@ -41,7 +41,7 @@ internal sealed class VanillaWallOfFleshNpcBehaviorStrategy : IVanillaNpcBehavio
         if (environment is null ||
             definition.AiStyle != VanillaNpcAiStyles.WallOfFlesh ||
             npc.TypeIdentity != VanillaNpcIds.WallOfFlesh ||
-            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             next = default;
             return false;
@@ -210,7 +210,7 @@ internal sealed class VanillaWallOfFleshEyeNpcBehaviorStrategy : IVanillaNpcBeha
     {
         _ = inner;
         if (environment is null || definition.AiStyle != VanillaNpcAiStyles.WallOfFleshEye || npc.TypeIdentity != VanillaNpcIds.WallOfFleshEye ||
-            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox) || !TryResolveRoot(in npc, context, out NpcSnapshot root))
+            !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox) || !TryResolveRoot(in npc, context, out NpcSnapshot root))
         {
             if (definition.AiStyle == VanillaNpcAiStyles.WallOfFleshEye && npc.TypeIdentity == VanillaNpcIds.WallOfFleshEye)
             {

@@ -750,7 +750,7 @@ public sealed class VanillaProjectileWorldStateStepperTests
         Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
 
         Assert.Equal(VanillaProjectileIds.Bullet, next.State.Type);
-        Assert.Equal(1f, next.State.Ai.Ai0, 5);
+        Assert.Equal(0f, next.State.Ai.Ai0, 5);
         Assert.Equal(4f, next.State.VelocityX, 5);
         Assert.Equal(2f, next.State.VelocityY, 5);
         Assert.Equal(102f, next.State.PositionX, 5);
@@ -801,7 +801,7 @@ public sealed class VanillaProjectileWorldStateStepperTests
         Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
 
         Assert.Equal(VanillaProjectileIds.GreenLaser, next.State.Type);
-        Assert.Equal(1f, next.State.Ai.Ai0, 5);
+        Assert.Equal(0f, next.State.Ai.Ai0, 5);
         Assert.Equal(4f, next.State.VelocityX, 5);
         Assert.Equal(2f, next.State.VelocityY, 5);
         Assert.Equal(102f, next.State.PositionX, 5);
@@ -874,7 +874,7 @@ public sealed class VanillaProjectileWorldStateStepperTests
         Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
 
         Assert.Equal(VanillaProjectileIds.JestersArrow, next.State.Type);
-        Assert.Equal(1f, next.State.Ai.Ai0, 5);
+        Assert.Equal(0f, next.State.Ai.Ai0, 5);
         Assert.Equal(4f, next.State.VelocityX, 5);
         Assert.Equal(2f, next.State.VelocityY, 5);
         Assert.Equal(104f, next.State.PositionX, 5);

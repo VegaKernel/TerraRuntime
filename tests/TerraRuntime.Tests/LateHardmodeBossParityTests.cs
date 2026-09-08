@@ -8,6 +8,272 @@ namespace TerraRuntime.Tests;
 public sealed class LateHardmodeBossParityTests
 {
     [Theory]
+    [InlineData(true, 14.854854f)]
+    [InlineData(false, .50765184f)]
+    public void Bubble_initializes_only_unassigned_target_and_consumes_source_motion_rng(bool unassigned, float expectedX)
+    {
+        var random = new ScriptedBubbleRandom(unassigned);
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: random);
+        stepper.SetWorldConditions(false, false, windSpeedCurrent: .5f);
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 500, 118, 0, true, false, false, false)]);
+        NpcSnapshot bubble = CreateNpc(VanillaNpcIds.DetonatingBubble,
+            new NpcAiState(0, 0, 0, unassigned ? 0 : 1.1f), life: 1)
+            with { Target = unassigned ? (ushort)255 : (ushort)0 };
+        Assert.True(stepper.TryStepState(in bubble, out var next));
+        Assert.Equal((ushort)0, next.Target);
+        Assert.Equal(1.1f, next.Ai.Ai3);
+        Assert.Equal(1.1f, next.Simulation.Scale);
+        Assert.Equal(expectedX, next.VelocityX, 5);
+        Assert.Equal(-.024509804f, next.VelocityY, 6);
+        Assert.Equal(new NpcHitboxDimensions(36, 36), next.Simulation.HitboxOverride);
+        Assert.Equal(unassigned ? 6 : 2, random.Draws);
+    }
+
+    private sealed class ScriptedBubbleRandom(bool initialize) : IVanillaNpcRandom
+    {
+        public int Draws { get; private set; }
+        public int NextInt32(int inclusiveMin, int exclusiveMax)
+        {
+            (int min, int max, int value)[] expected = initialize
+                ? [(80, 121, 110), (165, 265, 225), (-100, 101, 0), (-100, 101, 0), (-10, 11, 5), (-10, 11, -5)]
+                : [(-10, 11, 5), (-10, 11, -5)];
+            Assert.True(Draws < expected.Length);
+            var draw = expected[Draws++];
+            Assert.Equal(draw.min, inclusiveMin);
+            Assert.Equal(draw.max, exclusiveMax);
+            return draw.value;
+        }
+    }
+
+    [Theory]
+    [InlineData(167, 100, true, false, true)]
+    [InlineData(168, 100, true, false, false)]
+    [InlineData(32, 100, true, false, false)]
+    [InlineData(33, 100, true, false, true)]
+    [InlineData(100, 178, true, false, true)]
+    [InlineData(100, 179, true, false, false)]
+    [InlineData(100, 100, false, false, false)]
+    [InlineData(100, 100, true, true, false)]
+    public void Bubble_proximity_uses_source_asymmetric_integer_rectangle_and_any_living_player(
+        int centerX, int centerY, bool active, bool dead, bool detonates)
+    {
+        var stepper = CreateStepper(false);
+        stepper.SetCandidates([
+            new VanillaNpcTargetCandidate(0, 500, 300, 0, true, false, false, false),
+            new VanillaNpcTargetCandidate(1, centerX, centerY, 0, active, dead, false, false)
+        ]);
+        NpcSnapshot bubble = CreateNpc(VanillaNpcIds.DetonatingBubble, new NpcAiState(0, 0, 0, 1), life: 1);
+        Assert.True(stepper.TryStepState(in bubble, out NpcStateUpdate next));
+        Assert.Equal(detonates ? 1f : 0f, next.Ai.Ai0);
+        Assert.Equal(detonates ? 3f : 1f, next.Ai.Ai1);
+        Assert.Equal(detonates ? new NpcHitboxDimensions(100, 100) : new NpcHitboxDimensions(36, 36),
+            next.Simulation.HitboxOverride);
+        Assert.Equal(detonates ? 68f : 100f, next.PositionX);
+        Assert.Equal(detonates ? 68f : 100f, next.PositionY);
+    }
+
+    [Theory]
+    [InlineData(.8f)]
+    [InlineData(1.2f)]
+    public void Bubble_physical_expansion_preserves_center_across_ticks_independently_of_scale(float scale)
+    {
+        var stepper = CreateStepper(false);
+        NpcSnapshot bubble = CreateNpc(VanillaNpcIds.DetonatingBubble, new NpcAiState(1, 4, 0, scale), life: 1);
+        bubble = bubble with { Simulation = bubble.Simulation with { Scale = scale } };
+        for (int timer = 3; timer > 0; timer--)
+        {
+            Assert.True(stepper.TryStepState(in bubble, out NpcStateUpdate next));
+            Assert.Equal(68f, next.PositionX);
+            Assert.Equal(68f, next.PositionY);
+            Assert.Equal(new NpcHitboxDimensions(100, 100), next.Simulation.HitboxOverride);
+            Assert.Equal(scale, next.Simulation.Scale);
+            Assert.True(next.Simulation.DontTakeDamage);
+            Assert.True(VanillaNpcDefinitionCatalog.TryGet(bubble.TypeIdentity, out var definition));
+            Assert.True(definition.TryResolveHitbox(next.Simulation, out var body));
+            Assert.Equal(new VanillaNpcHitboxSize(100, 100), body);
+            bubble = bubble with { PositionX = next.PositionX, PositionY = next.PositionY,
+                Ai = next.Ai, Simulation = next.Simulation };
+        }
+    }
+
+    [Fact]
+    public void Bubble_lethal_shared_damage_prepares_detonation_and_expires_even_after_target_disconnect()
+    {
+        var store = new RuntimeNpcStore(4);
+        NpcSnapshot bubble = CreateNpc(VanillaNpcIds.DetonatingBubble, new NpcAiState(0, 20, 0, 1), life: 1);
+        NpcStateUpdate initial = Proposed(in bubble, bubble.Ai);
+        Assert.True(store.TrySpawn(1, in initial, out var spawned));
+        var damage = new RuntimeNpcDamageExecutor(store);
+        var request = new NpcDamageRequest(spawned.Handle, DamageSource.Server, BaseDamage: 100);
+        Assert.True(damage.TryApply(in request, out var result));
+        Assert.True(result.DeathIntercepted);
+        Assert.False(result.Lethal);
+        Assert.True(store.TryGet(spawned.Handle, out var prepared));
+        Assert.Equal(1, prepared.Simulation.Life);
+        Assert.True(prepared.Simulation.DontTakeDamage);
+        Assert.Equal(new NpcAiState(1, 4, 0, 1), prepared.Ai);
+        Assert.False(damage.TryApply(in request, out _));
+        var stepper = CreateStepper(false);
+        stepper.SetCandidates([]);
+        var executor = new RuntimeNpcAiStateExecutor(store);
+        for (int tick = 0; tick < 4; tick++)
+        {
+            Assert.Equal(1, executor.Tick(stepper).Applied);
+            Assert.Equal(tick == 3 ? 1 : 0, store.DespawnExpired());
+        }
+        Assert.False(store.TryGet(spawned.Handle, out _));
+    }
+
+    [Theory]
+    [InlineData(2, 0, 1)]
+    [InlineData(2, 3, 0)]
+    [InlineData(2, 4, 1)]
+    [InlineData(2, 76, 1)]
+    [InlineData(2, 79, 0)]
+    [InlineData(7, 0, 1)]
+    [InlineData(7, 3, 0)]
+    [InlineData(7, 4, 1)]
+    [InlineData(7, 116, 1)]
+    [InlineData(7, 119, 0)]
+    public void Duke_bubbles_use_incoming_not_outgoing_four_tick_spawn_clock(int state, int timer, int expected)
+    {
+        var stepper = CreateDukeStepper();
+        NpcSnapshot duke = CreateNpc(VanillaNpcIds.DukeFishron, new NpcAiState(state, 0, timer, 1),
+            life: 60_000, localAi: new NpcAiState(1, 0, 0, 0)) with { VelocityX = 20 };
+        duke = duke with { Simulation = duke.Simulation with { DirectionX = 1 } };
+        Assert.True(stepper.TryStepState(in duke, out NpcStateUpdate next));
+        Span<NpcAiSpawnIntent> intents = stackalloc NpcAiSpawnIntent[1];
+        Assert.Equal(expected, stepper.PlanNpcSpawns(in duke, in next, intents));
+    }
+
+    [Theory]
+    [InlineData(2, 1)]
+    [InlineData(7, 1)]
+    [InlineData(7, -1)]
+    public void Duke_bubble_spawn_uses_source_mouth_and_phase_specific_defaults(int state, int direction)
+    {
+        var random = new BubbleScaleRandom();
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: random);
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 500, 150, 0, true, false, false, false)]);
+        NpcSnapshot duke = CreateNpc(VanillaNpcIds.DukeFishron, new NpcAiState(state, 0, 0, 1), life: 60_000)
+            with { VelocityY = 20 };
+        duke = duke with { Simulation = duke.Simulation with { DirectionX = direction } };
+        NpcStateUpdate next = Proposed(in duke, new NpcAiState(state, 0, 1, 1))
+            with { PositionX = 999, PositionY = 999, VelocityX = 20, VelocityY = 0 };
+        Span<NpcAiSpawnIntent> intents = stackalloc NpcAiSpawnIntent[1];
+        Assert.Equal(1, stepper.PlanNpcSpawns(in duke, in next, intents));
+        NpcAiSpawnIntent bubble = intents[0];
+        Assert.Equal(VanillaNpcIds.DetonatingBubble, bubble.Type);
+        Assert.Equal(state == 2 ? 260 : 175, bubble.BottomX);
+        Assert.Equal(state == 2 ? 195 : 280, bubble.BottomY);
+        Assert.Equal(state == 2 ? 0f : -direction * 6f, bubble.VelocityX);
+        Assert.Equal(0f, bubble.VelocityY);
+        Assert.Equal(state == 2 ? (ushort)255 : (ushort)0, bubble.Target);
+        Assert.Equal(state == 2 ? default : new NpcAiState(0, 0, 0, 1), bubble.InitialAi);
+        Assert.Equal(state == 2 ? 0 : 1, random.Draws);
+    }
+
+    [Fact]
+    public void Bubble_detonation_countdown_retires_exact_npc_after_four_updates()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        var store = new RuntimeNpcStore(4);
+        NpcSnapshot bubble = CreateNpc(VanillaNpcIds.DetonatingBubble, new NpcAiState(0, 149, 0, 1), life: 1);
+        NpcStateUpdate initial = Proposed(in bubble, bubble.Ai);
+        Assert.True(store.TrySpawn(1, in initial, out NpcSnapshot spawned));
+        var executor = new RuntimeNpcAiStateExecutor(store);
+        for (int remaining = 3; remaining >= 0; remaining--)
+        {
+            Assert.Equal(1, executor.Tick(stepper).Applied);
+            Assert.True(store.TryGet(spawned.Handle, out NpcSnapshot current));
+            Assert.Equal(1f, current.Ai.Ai0);
+            Assert.Equal((float)remaining, current.Ai.Ai1);
+            Assert.Equal(remaining == 0 ? 0 : 1, current.Simulation.Life);
+            Assert.Equal(remaining == 0 ? 1 : 0, store.DespawnExpired());
+        }
+        Assert.False(store.TryGet(spawned.Handle, out _));
+        Assert.Equal(0, store.DespawnExpired());
+    }
+
+    private sealed class BubbleScaleRandom : IVanillaNpcRandom
+    {
+        public int Draws { get; private set; }
+        public int NextInt32(int inclusiveMin, int exclusiveMax)
+        {
+            Assert.Equal(80, inclusiveMin);
+            Assert.Equal(121, exclusiveMax);
+            Draws++;
+            return 100;
+        }
+    }
+
+    [Theory]
+    [InlineData(0, 10, 59, 2, 1)]
+    [InlineData(0, 11, 59, 3, 0)]
+    [InlineData(5, 5, 19, 6, 5)]
+    [InlineData(5, 6, 59, 7, 1)]
+    [InlineData(5, 7, 59, 8, 0)]
+    [InlineData(7, 1, 119, 5, 1)]
+    [InlineData(8, 0, 89, 5, 0)]
+    public void Duke_special_attacks_reset_cycle_only_at_source_selection_boundary(
+        int state, int cycle, int timer, int nextState, int nextCycle)
+    {
+        var stepper = CreateDukeStepper();
+        NpcSnapshot duke = CreateNpc(VanillaNpcIds.DukeFishron, new NpcAiState(state, 0, timer, cycle),
+            life: 60_000, localAi: new NpcAiState(1, 0, 0, 0));
+        Assert.True(stepper.TryStepState(in duke, out NpcStateUpdate next));
+        Assert.Equal(nextState, next.Ai.Ai0);
+        Assert.Equal(nextCycle, next.Ai.Ai3);
+        if (nextState == 7)
+            Assert.Equal(20f, MathF.Sqrt(next.VelocityX * next.VelocityX + next.VelocityY * next.VelocityY), 4);
+    }
+
+    [Theory]
+    [InlineData(0, 29, 4)]
+    [InlineData(5, 0, 5)]
+    [InlineData(5, 38, 5)]
+    [InlineData(5, 39, 9)]
+    public void Duke_low_health_does_not_skip_phase_two_or_its_remaining_hover(int state, int timer, int expectedState)
+    {
+        var stepper = CreateDukeStepper();
+        stepper.SetWorldConditions(false, false, expertMode: true);
+        NpcSnapshot duke = CreateNpc(VanillaNpcIds.DukeFishron, new NpcAiState(state, 0, timer, 0),
+            life: 60_000, localAi: new NpcAiState(1, 0, 0, 0));
+        duke = duke with { Simulation = duke.Simulation with { Life = 6_000 } };
+        Assert.True(stepper.TryStepState(in duke, out NpcStateUpdate next));
+        Assert.Equal(expectedState, next.Ai.Ai0);
+    }
+
+    [Theory]
+    [InlineData(7, -1)]
+    [InlineData(7, 1)]
+    [InlineData(13, -1)]
+    [InlineData(13, 1)]
+    public void Duke_circle_rotates_existing_velocity_and_preserves_speed(int state, int direction)
+    {
+        var stepper = CreateDukeStepper();
+        NpcSnapshot duke = CreateNpc(VanillaNpcIds.DukeFishron, new NpcAiState(state, 0, 1, 1),
+            life: 60_000, localAi: new NpcAiState(1, 0, 0, 0)) with { VelocityX = 20, VelocityY = 0 };
+        duke = duke with { Simulation = duke.Simulation with { DirectionX = direction } };
+        Assert.True(stepper.TryStepState(in duke, out NpcStateUpdate next));
+        Assert.Equal(19.890438f, next.VelocityX, 4);
+        Assert.Equal(-direction * 2.0905693f, next.VelocityY, 4);
+        Assert.Equal(20f, MathF.Sqrt(next.VelocityX * next.VelocityX + next.VelocityY * next.VelocityY), 4);
+    }
+
+    [Fact]
+    public void Duke_hover_applies_second_acceleration_while_reversing_and_faces_target()
+    {
+        var stepper = CreateDukeStepper();
+        NpcSnapshot duke = CreateNpc(VanillaNpcIds.DukeFishron, new NpcAiState(0, 300, 0, 0),
+            life: 60_000, localAi: new NpcAiState(1, 0, 0, 0)) with { VelocityX = -2 };
+        Assert.True(stepper.TryStepState(in duke, out NpcStateUpdate next));
+        Assert.Equal(-1.1f, next.VelocityX, 4);
+        Assert.Equal(1, next.Simulation.DirectionX);
+        Assert.Equal(-1, next.Simulation.SpriteDirection);
+    }
+
+    [Theory]
     [InlineData(0, 11)]
     [InlineData(1, 12)]
     [InlineData(2, 11)]
@@ -19,7 +285,7 @@ public sealed class LateHardmodeBossParityTests
     [InlineData(8, 12)]
     public void Duke_phase_three_repeats_one_two_three_dashes_between_teleports(int cycle, int expectedAttack)
     {
-        var stepper = CreateStepper(dayTime: false);
+        var stepper = CreateDukeStepper();
         NpcSnapshot duke = CreateNpc(VanillaNpcIds.DukeFishron, new NpcAiState(10, 0, 29, cycle),
             life: 60_000, localAi: new NpcAiState(1, 0, 0, 0));
         Assert.True(stepper.TryStepState(in duke, out NpcStateUpdate next));
@@ -35,12 +301,12 @@ public sealed class LateHardmodeBossParityTests
     [InlineData(16, false)]
     public void Duke_teleports_to_opposite_side_at_incoming_tick_15_only(int timer, bool teleported)
     {
-        var stepper = CreateStepper(dayTime: false);
+        var stepper = CreateDukeStepper();
         NpcSnapshot duke = CreateNpc(VanillaNpcIds.DukeFishron, new NpcAiState(12, 0, timer, 8),
             life: 60_000, localAi: new NpcAiState(1, 0, 0, 0)) with { VelocityX = 10, VelocityY = 5 };
         Assert.True(stepper.TryStepState(in duke, out NpcStateUpdate next));
         Assert.Equal(teleported ? 800f - 75f : duke.PositionX, next.PositionX);
-        Assert.Equal(teleported ? 100f - 50f : duke.PositionY, next.PositionY);
+        Assert.Equal(teleported ? 900f - 50f : duke.PositionY, next.PositionY);
         Assert.Equal(9.8f, next.VelocityX, 4);
         Assert.Equal(4.802f, next.VelocityY, 4);
         Assert.True(next.Simulation.DontTakeDamage);
@@ -55,7 +321,7 @@ public sealed class LateHardmodeBossParityTests
     [Fact]
     public void Duke_last_teleport_wraps_nine_step_cycle()
     {
-        var stepper = CreateStepper(dayTime: false);
+        var stepper = CreateDukeStepper();
         NpcSnapshot duke = CreateNpc(VanillaNpcIds.DukeFishron, new NpcAiState(12, -300, 29, 8),
             life: 60_000, localAi: new NpcAiState(1, 0, 0, 0));
         Assert.True(stepper.TryStepState(in duke, out NpcStateUpdate next));
@@ -88,7 +354,7 @@ public sealed class LateHardmodeBossParityTests
     public void Duke_chaseability_follows_executed_branch_not_next_ai_state(
         int state, int timer, bool previousChaseable, bool expectedChaseable, int nextState)
     {
-        var stepper = CreateStepper(dayTime: false);
+        var stepper = CreateDukeStepper();
         NpcSnapshot duke = CreateNpc(VanillaNpcIds.DukeFishron, new NpcAiState(state, 0, timer, 0),
             life: 60_000, localAi: new NpcAiState(1, 0, 0, 0));
         duke = duke with { Simulation = duke.Simulation with { Chaseable = previousChaseable } };
@@ -118,7 +384,7 @@ public sealed class LateHardmodeBossParityTests
     [Fact]
     public void Duke_state_three_plans_the_two_source_sharknado_bolts()
     {
-        var stepper = CreateStepper(dayTime: false);
+        var stepper = CreateDukeStepper();
         NpcSnapshot duke = CreateNpc(
             VanillaNpcIds.DukeFishron,
             new NpcAiState(3f, 0f, 60f, 0f),
@@ -401,6 +667,14 @@ public sealed class LateHardmodeBossParityTests
         Assert.True(stepper.TryStepState(in core, out NpcStateUpdate next));
         Assert.Equal(600f, next.Ai.Ai1);
         Assert.Equal(0, next.Simulation.Life);
+    }
+
+    private static VanillaNpcTargetingAiStepper CreateDukeStepper()
+    {
+        var stepper = CreateStepper(false);
+        stepper.SetWorldBounds(4200, 400d);
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 500f, 1100f, 0, true, false, false, false)]);
+        return stepper;
     }
 
     private static VanillaNpcTargetingAiStepper CreateStepper(bool dayTime)

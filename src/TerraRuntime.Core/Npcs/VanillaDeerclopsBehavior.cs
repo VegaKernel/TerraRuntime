@@ -48,7 +48,7 @@ internal sealed class VanillaDeerclopsNpcBehaviorStrategy : IVanillaNpcBehaviorS
         if (definition.AiStyle != VanillaNpcAiStyles.Deerclops ||
             npc.TypeIdentity != VanillaNpcIds.Deerclops ||
             environment is null ||
-            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             next = default;
             return false;

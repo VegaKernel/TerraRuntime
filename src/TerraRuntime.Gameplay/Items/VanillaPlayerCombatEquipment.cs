@@ -27,6 +27,11 @@ public readonly record struct VanillaPlayerCombatSnapshot(
     bool NoKnockback,
     bool MagicQuiver)
 {
+    /// <summary>Player.ApplyEquipFunctional: represented lava protection, separate from fireWalk.</summary>
+    public int LavaProtectionTicks { get; init; }
+    public bool LavaRose { get; init; }
+    public bool WaterWalk { get; init; }
+
     public static VanillaPlayerCombatSnapshot Baseline => new(
         Defense: 0,
         Endurance: 0f,
@@ -230,8 +235,10 @@ public static class VanillaPlayerCombatEquipmentCatalog
                 };
                 break;
             case 2609: // Fishron Wings: movement only for the represented combat slice.
-            case 5000: // Terraspark Boots: movement only.
             case 5107: // Magiluminescence: movement/light only here.
+                break;
+            case 5000: // Terraspark: Player.ApplyEquipFunctional's 908/5000 branch.
+                snapshot = snapshot with { LavaProtectionTicks = snapshot.LavaProtectionTicks + 420, LavaRose = true, WaterWalk = true };
                 break;
             default:
                 return false;

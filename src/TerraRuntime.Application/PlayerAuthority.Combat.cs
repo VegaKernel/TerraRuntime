@@ -113,6 +113,10 @@ internal sealed partial class PlayerAuthority
     {
         committed = default;
         PlayerHandle attackerHandle = attacker.Player;
+        if (!membership.TryGet(targetHandle, out _) && serverPlayers is not null)
+            return serverPlayers.TryCommitAuthoritativePvpDamage(
+                tick, in attacker, targetHandle, sourceDamage, damage, critical, hitDirection,
+                expertMode, masterMode, out committed);
         if (!attackerHandle.IsAssigned || !targetHandle.IsAssigned || attackerHandle == targetHandle ||
             !sourceDamage.IsValid || sourceDamage.Player != attackerHandle || damage <= 0 ||
             hitDirection is < -1 or > 1 ||

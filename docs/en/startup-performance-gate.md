@@ -25,6 +25,22 @@ The gate uses two complementary sources.
 
 The GitHub Actions `Startup Performance Gate` additionally launches the real TerraRuntime server twice against an official generated world. It measures the process boundary from launch until the listening message, once without runtime caches and once with warm caches. This is the executable `NetworkReady` proof.
 
+## Generated-world startup failures
+
+Successful generation, atomic `.wld` publication and `--worldgen-create-smoke` do not prove that TerraRuntime can start that world. Primary startup subsequently loads the canonical file and performs post-load liquid preparation before cache admission, player bootstrap and the listener. An official TerrariaServer load is independent world-file evidence, but does not exercise TerraRuntime's preparation boundary. Acceptance must also reach the real TerraRuntime `NetworkReady` boundary with the generated file.
+
+The 2026-09-07 investigation reproduced startup refusal after successful vanilla generation in both Windows shipping profiles. The retained logs reported `Post-load liquid preparation failed: result=UnsupportedLiquidDeathTile`, not a generation exception:
+
+| World / profile | Seed | First reported tile `(x,y,type)` | Local evidence log |
+| --- | --- | --- | --- |
+| `Worlds/t.wld`, NativeAOT, Small | `8364953747496893878` | `(220,883,28)` | `artifacts/native-aot/win-x64/logs/runtime-20260907-170322574-75952-0000.jsonl` |
+| `Worlds/test.wld`, CoreCLR, Small | `3679097605675226385` | `(359,924,61)` | `artifacts/coreclr/win-x64/logs/runtime-20260907-170408660-81872-0000.jsonl` |
+| Detached Large reproduction, NativeAOT | `8675309` | `(174,1944,12)` | `.cache/tz36-native-win/logs/runtime-20260907-170635386-53780-0000.jsonl` |
+
+These diagnostics establish an application-level fail-closed load refusal; they do not establish an out-of-memory failure or an OS/native process crash. The Large reproduction failed identically without the TUI. Unsupported liquid-death semantics must be implemented and verified at the existing load boundary, not bypassed to make startup appear successful. This evidence is a reproduction baseline, not a claim that every seed or world now loads.
+
+The startup TUI previously hid the useful error: terminal ownership buffered console delivery, progress text replaced the actual cause with a generic recovery message, and the final framebuffer could disappear before the user saw it. Startup telemetry now retains the last error independently of subsequent progress, bounded to 1024 characters with control characters sanitized. On unsuccessful startup, it prints that cause and the exit code exactly once after the terminal driver releases the terminal; a timed-out join defers printing until the UI thread actually releases it. Normal successful exit and successful checkpoint recovery do not replay old errors, and `--no-tui` keeps its existing single console diagnostic. No artificial display delay, automatic retry or alternate loading path is introduced.
+
 ## Metric contract
 
 The gate is comparative, not a fixed latency SLA. CI validates that every required stage is present, finite, non-negative and exercised on an official world. Absolute timings vary with GitHub runner hardware, filesystem cache state and CPU scheduling, so CI must not fail merely because a run is slower than an arbitrary millisecond threshold.

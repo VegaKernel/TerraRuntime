@@ -288,7 +288,12 @@ internal sealed class MidPass1458 : IWorldGenerationPass
                 ApplyWebs(context, grid, random);
                 break;
             case MidStage1458.Underworld:
-                ApplyUnderworld(context, grid, random);
+                ApplyUnderworld(context, grid, random, workspace.TileStore);
+                UnderworldVegetation1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
+                HellFortGenerator1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
+                HellFortLighting1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
+                HellFortFurniture1458.Generate(workspace, context.VanillaRandom!, context.CancellationToken);
+                HellFortDecoration1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
                 break;
             case MidStage1458.Corruption:
                 ApplyEvilBiome(context, grid, random);
@@ -944,7 +949,7 @@ internal sealed class MidPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, "Generating cave cobweb patches");
     }
 
-    private void ApplyUnderworld(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyUnderworld(IWorldGenerationContext context, RuntimeGrid grid, IRandom random, WorldTileStore store)
     {
         state.UnderworldTop = Math.Clamp(grid.Height - 200, (int)state.RockLayer + 120, grid.Height - 90);
         int roof = state.UnderworldTop + random.Next(20, 36);
@@ -997,6 +1002,8 @@ internal sealed class MidPass1458 : IWorldGenerationPass
                 }
             }
         }
+
+        UnderworldLava1458.RestoreSurface(store, context.CancellationToken);
 
         int hellstoneRuns = Math.Max(120, grid.Width / 15);
         for (int i = 0; i < hellstoneRuns; i++)

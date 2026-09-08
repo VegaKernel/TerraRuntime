@@ -145,7 +145,7 @@ internal sealed class RuntimeHostLog : IAsyncDisposable
                 : RuntimeLogDelivery.StandardOutput;
 
         TryPublish(level, source, message, eventId, category, MergeContext(context), delivery);
-        StartupProgressTelemetry.Observe(eventId, message);
+        StartupProgressTelemetry.Observe(MapLevel(level), eventId, message);
     }
 
     public async ValueTask DisposeAsync()

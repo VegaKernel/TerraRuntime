@@ -11,7 +11,8 @@ namespace TerraRuntime.Gameplay.Players;
 public enum VanillaPlayerImmunityChannel1458 : byte
 {
     General = 0,
-    BossNoCheese = 1
+    BossNoCheese = 1,
+    Lava = 4
 }
 
 public static class VanillaIncomingPlayerDamageFacts1458

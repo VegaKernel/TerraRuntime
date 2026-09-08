@@ -19,6 +19,10 @@ internal sealed partial class ServerRuntimeState
 
         _runtime.Npcs.CommitPending();
         _runtime.Bots?.Tick();
+        // Player.UpdateLifeRegen and lava collision precede movement. Vampire OnFire and unrepresented
+        // buff/mount effects are not inferred from a connected client's presentation packets.
+        if (_runtime.WorldTiles is { } environmentTiles && _runtime.EnvironmentWorldFacts is { VampireSeed: false } environment)
+            _runtime.ServerPlayers?.TickLava(Updates, environmentTiles, _runtime.ExpertMode, _runtime.MasterMode, environment.RemixWorld);
         _runtime.ServerPlayers?.TickPhysics(_runtime.PlayerSnapshots);
         _runtime.Npcs.TickSimulation();
         _runtime.NpcPlayerCombat.Tick(Updates);
@@ -30,6 +34,9 @@ internal sealed partial class ServerRuntimeState
             _runtime.WorldTileAuthority.TickProjectileTileExplosions(_runtime.Projectiles.PendingTileExplosions);
             _runtime.Projectiles.ApplyReflections();
         }
+        if (_runtime.WorldTiles is { } itemTiles && _runtime.EnvironmentWorldFacts is not null)
+            _runtime.WorldItems.TickGuideDolls(itemTiles, _runtime.Npcs);
+        _runtime.WorldItems.TickReservationTimers();
         _runtime.WorldItems.TickPlayerReservations(Updates);
         _runtime.WorldItems.TickInstancedLeases();
 

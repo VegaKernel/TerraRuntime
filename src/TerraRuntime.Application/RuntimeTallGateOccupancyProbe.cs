@@ -96,7 +96,7 @@ internal sealed class RuntimeTallGateOccupancyProbe : IVanillaTallGateOccupancyP
         {
             return Intersects(npc.PositionX, npc.PositionY, 16f, 16f, tileLeft, tileTop, tileRight, tileBottom);
         }
-        if (!definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+        if (!definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
             return false;
 
         return Intersects(

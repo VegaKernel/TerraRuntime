@@ -115,7 +115,7 @@ public sealed class Workspace :
         vanillaPyramidCandidates.ToArray();
 
     /// <summary>
-    /// Registers one generated chest after its 2x2 tile object has been written. Slot identity is assigned densely in
+    /// Registers one generated container after its tile object has been written, including 3x2 dressers. Slot identity is assigned densely in
     /// generation order because Terraria persists no chest slot id; file order becomes runtime/network slot identity.
     /// </summary>
     internal bool TryAddGeneratedChest(int x, int y, string name, ReadOnlySpan<WorldChestItem> items)
@@ -142,7 +142,7 @@ public sealed class Workspace :
         // Every vanilla world-generation chest is an ordinary 40-slot container.  Passing an empty
         // span from a placement pass means "no generated loot yet", not "create a zero-slot chest".
         // Packet 155 publishes this length to the client, so preserving a zero-length array here makes
-        // generated chests unusable even though their 2x2 tile object is structurally valid.
+        // generated containers unusable even though their tile object is structurally valid.
         var detachedItems = new WorldChestItem[VanillaChestItemSlots];
         items.CopyTo(detachedItems);
         foreach (WorldChestItem item in detachedItems)

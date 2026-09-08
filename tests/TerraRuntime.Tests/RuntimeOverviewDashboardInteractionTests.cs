@@ -816,6 +816,10 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         Assert.False(window.GodModeForSmoke);
         window.SetGodModeForSmoke(true);
         Assert.True(window.GodModeForSmoke);
+        window.RefreshLiveStatus(bot with { PvpEnabled = true });
+        Assert.Contains("PvP ON", window.StatusTextForSmoke, StringComparison.Ordinal);
+        window.RefreshLiveStatus(bot with { PvpEnabled = false });
+        Assert.Contains("PvP OFF", window.StatusTextForSmoke, StringComparison.Ordinal);
     }
 
     private sealed class RejectingBotCommandIngress : IGameCommandIngress<RuntimeCommand>

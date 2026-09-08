@@ -4,6 +4,18 @@
 
 Level 2 runs one sandbox world in a separate worker process for fault/resource isolation. The worker uses the same `WorldRuntime` model as Level 1 and the host-selected primary runtime.
 
+## Implemented runtime-only foundation
+
+`SandboxSupervisor` owns one hidden application child and one ephemeral `WorldRuntime` per lease. Private `--sandbox-worker <pipe-id>` startup never opens a public Terraria listener. It reuses the existing materializer and authoritative game-loop owner; IPC does not mutate simulation state. This is a tested lifecycle foundation, **not playable Level 2**: host/Vega admission, local game-mode logic, resource enforcement, player transfer and bidirectional socket handoff remain open. The diagrams below describe the target architecture, not implemented player admission.
+
+The asynchronous local pipe uses BCL `CurrentUserOnly` ([platform contract](https://learn.microsoft.com/en-us/dotnet/api/system.io.pipes.pipeoptions?view=net-10.0)). Mutual HMAC-SHA256 challenge/confirmation binds a per-child bootstrap secret, fresh challenge, exact launched PID and process-instance GUID. The secret enters through the child's environment, is removed there before startup, never enters command arguments/control payloads, and its owned byte buffer is zeroed. This does not protect against an attacker able to inspect the supervisor's memory/account.
+
+The existing versioned `TRPC` header bounds payloads to $8\,\mathrm{KiB}$ before allocation. Source-generated JSON rejects unknown/missing constructor fields. Only authentication, create, heartbeat/snapshot and stop are admitted, with one serialized in-flight request per lease. Unknown operations, flags, correlations, identities and module/source declarations fail closed. Startup is bounded by $180\,\mathrm{s}$, requests by $10\,\mathrm{s}$, heartbeat interval is $2\,\mathrm{s}$ and worker control inactivity by $15\,\mathrm{s}$. Early child exit interrupts startup; interrupted exchanges retire the pipe instead of reusing partial framing.
+
+Admitted sources: built-in `Generated`, and absolute `.wld` references with mandatory SHA-256. The shared Level1/worker file materializer caps input at $128\,\mathrm{MiB}$ before allocation and verifies the exact buffer subsequently decoded. Level1 does not acquire a mandatory digest. Generation/read/validation happen before runtime startup, off its game thread. `Running` requires validated bootstrap and the first tick at $60\,\mathrm{Hz}$. Stop does not save; failed/canceled control retires only the owned child. No automatic restart, socket recovery or permanent gameplay proxy exists.
+
+`TerraRuntime.Server --sandbox-worker-smoke` exercises two real application executables, authentication, tick progress, one-child crash isolation and graceful stop. It requires the application executable, not `dotnet <dll>`. Tests also cover repeated teardown, heartbeat, cancellation, invalid descriptors/framing, file integrity and materialization failure. `.trschem`, snapshots, dynamic modules and OS CPU/memory quotas remain unsupported by this slice.
+
 ## Worker composition
 
 ```mermaid

@@ -15,4 +15,6 @@ public interface IWorldItemIngress
     bool TryPostRemove(ConnectionHandle connection, short slot);
 
     bool TryPostOwner(ConnectionHandle connection, short slot, in WorldItemOwnerStateUpdate state);
+
+    bool TryPostRelease(ConnectionHandle connection, short slot, bool forceServer);
 }

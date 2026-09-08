@@ -57,7 +57,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         IRuntimeWorldClockObserver? observer = null,
         bool bloodMoonActive = false,
         bool getGoodWorld = false,
-        bool slimeBlueSpawnUnlocked = false)
+        bool slimeBlueSpawnUnlocked = false,
+        float windSpeedCurrent = 0f)
     {
         if (!double.IsFinite(time) || time < 0d)
             throw new ArgumentOutOfRangeException(nameof(time));
@@ -66,6 +67,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         if (!double.IsFinite(slimeRainTime))
             throw new ArgumentOutOfRangeException(nameof(slimeRainTime));
         ArgumentOutOfRangeException.ThrowIfNegative(dayRate);
+        if (!float.IsFinite(windSpeedCurrent))
+            throw new ArgumentOutOfRangeException(nameof(windSpeedCurrent));
 
         Time = time;
         DayTime = dayTime;
@@ -74,6 +77,7 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         BloodMoonActive = bloodMoonActive && !dayTime;
         GetGoodWorld = getGoodWorld;
         SlimeBlueSpawnUnlocked = slimeBlueSpawnUnlocked;
+        WindSpeedCurrent = windSpeedCurrent;
         _dayRate = dayRate;
         _observer = observer;
         PublishCommittedState();
@@ -94,6 +98,10 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     public bool GetGoodWorld { get; }
 
     public bool SlimeBlueSpawnUnlocked { get; private set; }
+
+    /// <summary>WorldFile.LoadWorld initializes current wind from the saved target. Weather target evolution
+    /// remains unimplemented; this exposes the persisted world-owned value rather than assuming calm NPC motion.</summary>
+    public float WindSpeedCurrent { get; }
 
     /// <summary>
     /// Runtime equivalent of TerrariaServer 1.4.5.8 WorldGen.spawnMeteor. The current world clock owns the pending
@@ -130,7 +138,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
             observer,
             metadata.BloodMoon,
             metadata.GetGoodWorld,
-            metadata.UnlockedSlimeBlueSpawn);
+            metadata.UnlockedSlimeBlueSpawn,
+            metadata.WindSpeed);
     }
 
     public void SetDayRate(int dayRate)

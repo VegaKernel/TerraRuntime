@@ -4,6 +4,16 @@ namespace TerraRuntime.Tests;
 
 public sealed class RuntimeWorldClockTests
 {
+    [Theory]
+    [InlineData(-.6f)]
+    [InlineData(.6f)]
+    public void World_load_initializes_current_wind_from_persisted_target(float wind)
+    {
+        var metadata = new WorldFileRuntimeMetadata { WindSpeed = wind };
+        var clock = RuntimeWorldClock.FromWorld(metadata, new WorldCreativePowersData(false, 0f, false, false, .5f, false));
+        Assert.Equal(wind, clock.WindSpeedCurrent);
+    }
+
     [Fact]
     public void Day_crosses_to_night_only_after_vanilla_threshold()
     {

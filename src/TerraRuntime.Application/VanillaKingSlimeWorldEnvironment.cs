@@ -80,7 +80,7 @@ internal sealed class VanillaKingSlimeWorldEnvironment :
     {
         if (!target.Active || target.Ghost || target.Dead ||
             !float.IsFinite(target.CenterX) || !float.IsFinite(target.CenterY) ||
-            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             destination = default;
             return false;

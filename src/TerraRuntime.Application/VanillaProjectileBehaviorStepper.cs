@@ -158,7 +158,8 @@ internal static partial class VanillaProjectileBehaviorStepper
 
             case VanillaProjectileBehaviorFamily.BasicArrow:
                 // TerrariaServer 1.4.5.8 Projectile.AI_001(), source-backed basic aiStyle-1 path.
-                ai0 += 1f;
+                if (!VanillaProjectileBehaviorProfileCatalog.SkipsBasicArrowGravity(current.Type))
+                    ai0 += 1f;
                 if (ai0 >= 15f)
                 {
                     ai0 = 15f;

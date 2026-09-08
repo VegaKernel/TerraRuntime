@@ -625,6 +625,65 @@ public sealed class Level1SandboxRuntimeTests
         Assert.Contains(".wld", executableError, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task Dedicated_worker_loads_the_hash_verified_same_world_file_source()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"worker-source-{Guid.NewGuid():N}.wld");
+        byte[] bytes = CreateFlatWorldBytes("Worker file", 42);
+        try
+        {
+            await File.WriteAllBytesAsync(path, bytes, TestContext.Current.CancellationToken);
+            var descriptor = new SandboxWorkerDescriptor(Guid.NewGuid(), Guid.NewGuid(), SandboxWorkerSourceKind.WorldFile,
+                path, null, 0, 0, 0, default, default, null, Convert.ToHexString(SHA256.HashData(bytes)), 4);
+            string executable = Path.Combine(AppContext.BaseDirectory,
+                OperatingSystem.IsWindows() ? "TerraRuntime.Server.exe" : "TerraRuntime.Server");
+            await using SandboxSupervisor worker = await SandboxSupervisor.StartAsync(executable, descriptor, TestContext.Current.CancellationToken);
+            Assert.True(await worker.StopAsync(TestContext.Current.CancellationToken));
+            Assert.Null(worker.Fault);
+            await Assert.ThrowsAnyAsync<IOException>(async () =>
+            {
+                await using SandboxSupervisor rejected = await SandboxSupervisor.StartAsync(executable,
+                    descriptor with { Sha256 = new string('0', 64) }, TestContext.Current.CancellationToken);
+            });
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void Shared_materializer_rejects_wrong_digest_before_world_decode()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"worker-hash-{Guid.NewGuid():N}.wld");
+        try
+        {
+            File.WriteAllBytes(path, [1, 2, 3]); // Deliberately not a valid world; integrity is checked first.
+            var materializer = new SandboxWorldMaterializer(BuiltInWorldGeneratorSource.Instance, ServerWorldLoadPolicy.CreateLimits());
+            SandboxWorldMaterializationResult result = materializer.Materialize(new SandboxWorldSource.WorldFile(path),
+                TestContext.Current.CancellationToken, new byte[32]);
+            Assert.Equal(SandboxWorldMaterializationStatus.ValidationFailed, result.Status);
+            Assert.Equal("World source SHA-256 mismatch.", result.Error);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void Shared_materializer_rejects_oversized_file_before_read_allocation()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"worker-limit-{Guid.NewGuid():N}.wld");
+        try
+        {
+            using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write))
+                stream.SetLength((long)SandboxWorldMaterializer.MaximumSourceBytes + 1);
+            var materializer = new SandboxWorldMaterializer(BuiltInWorldGeneratorSource.Instance, ServerWorldLoadPolicy.CreateLimits());
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            SandboxWorldMaterializationResult result = materializer.Materialize(new SandboxWorldSource.WorldFile(path),
+                TestContext.Current.CancellationToken);
+            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            Assert.Equal(SandboxWorldMaterializationStatus.SourceReadFailed, result.Status);
+            Assert.True(allocated < 1024 * 1024, $"Rejected file allocated {allocated} bytes.");
+        }
+        finally { File.Delete(path); }
+    }
+
     private static WorldRuntime CreateRuntime(string name, ulong seed)
     {
         SandboxWorldSource.Generated source = FlatSource(name, seed);

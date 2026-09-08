@@ -72,6 +72,13 @@ internal sealed class BotSettingsWindow : Window
     public event Action? CloseRequested;
 
     internal int BotId => bot.Id;
+    internal string StatusTextForSmoke => status.Text?.ToString() ?? string.Empty;
+
+    internal void RefreshLiveStatus(RuntimeBotSnapshot snapshot)
+    {
+        if (snapshot.Id == bot.Id)
+            RefreshStatus(snapshot);
+    }
     internal string FeedbackTextForSmoke => feedback.Text?.ToString() ?? string.Empty;
     internal bool NpcPresetVisibleForSmoke => false;
     internal bool PlayerFieldsVisibleForSmoke => weapon.Visible && flight.Visible && godMode.Visible;

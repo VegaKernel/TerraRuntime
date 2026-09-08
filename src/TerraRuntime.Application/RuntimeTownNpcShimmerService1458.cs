@@ -57,7 +57,7 @@ internal sealed class RuntimeTownNpcShimmerService1458
                 !townNpcs.TryGet(snapshot.Handle.Slot, out WorldTownNpc? town) ||
                 town.NetId != type.Value ||
                 !VanillaTownNpcFacts1458.TryGetDefinition(type, out VanillaNpcDefinition definition) ||
-                !definition.TryResolveHitbox(snapshot.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+                !definition.TryResolveHitbox(snapshot.Simulation, out VanillaNpcHitboxSize hitbox))
             {
                 continue;
             }

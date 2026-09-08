@@ -72,6 +72,10 @@ public readonly record struct NpcSimulationState(
     bool NoTileCollide,
     float Scale)
 {
+    /// <summary>Server-owned physical dimensions when AI changes NPC.width/height independently of visual scale.
+    /// Null leaves the definition/scale rule in control; an explicit size shares the simulation revision.</summary>
+    public NpcHitboxDimensions? HitboxOverride { get; init; }
+
     public NpcLiquidContactKind LiquidContact { get; init; }
 
     public float OldPositionX { get; init; }
@@ -171,6 +175,7 @@ public readonly record struct NpcSimulationState(
     };
 
     public bool IsValid =>
+        (HitboxOverride is null || HitboxOverride.Value.IsValid) &&
         DirectionX is >= -1 and <= 1 &&
         DirectionY is >= -1 and <= 1 &&
         SpriteDirection is >= -1 and <= 1 &&
@@ -186,6 +191,12 @@ public readonly record struct NpcSimulationState(
          (LifeMax > 0 && Life >= 0 && Life <= LifeMax)) &&
         TimeLeft >= -1 &&
         Enum.IsDefined(LiquidContact);
+}
+
+/// <summary>Bounded runtime body dimensions; the ceiling is a host safety limit, not a Terraria content fact.</summary>
+public readonly record struct NpcHitboxDimensions(int Width, int Height)
+{
+    public bool IsValid => Width is > 0 and <= 4096 && Height is > 0 and <= 4096;
 }
 
 public readonly record struct NpcSnapshot(

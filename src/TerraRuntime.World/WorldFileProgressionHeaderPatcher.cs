@@ -19,6 +19,7 @@ public static class WorldFileProgressionHeaderPatcher
     private const int MaximumStringBytes = 4 * 1024;
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private const ulong SupportedMutationMask =
+        (1UL << (int)VanillaWorldProgressionId.EyeOfCthulhu) |
         (1UL << (int)VanillaWorldProgressionId.KingSlime) |
         (1UL << (int)VanillaWorldProgressionId.EvilBoss) |
         (1UL << (int)VanillaWorldProgressionId.Skeletron) |
@@ -93,7 +94,10 @@ public static class WorldFileProgressionHeaderPatcher
         }
 
         // crimson; downedBoss1; downedBoss2; then boss3, Queen Bee, mech 1/2/3/any, Plantera and Golem.
-        if (!reader.TryReadBool(out _) || !reader.TryReadBool(out _))
+        if (!reader.TryReadBool(out _))
+            return WorldFileProgressionHeaderPatchResult.InvalidHeader;
+        int downedBoss1Offset = reader.Offset;
+        if (!reader.TryReadBool(out bool persistedDownedBoss1))
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
         int downedBoss2Offset = reader.Offset;
         if (!reader.TryReadBool(out bool persistedDownedBoss2))
@@ -143,6 +147,8 @@ public static class WorldFileProgressionHeaderPatcher
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
 
         patchedHeader = sourceHeader.ToArray();
+        if (mutations.IsCompleted(VanillaWorldProgressionId.EyeOfCthulhu) && !persistedDownedBoss1)
+            patchedHeader[downedBoss1Offset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.EvilBoss) && !persistedDownedBoss2)
             patchedHeader[downedBoss2Offset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.Skeletron) && !persistedDownedBoss3)

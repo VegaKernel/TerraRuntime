@@ -94,10 +94,23 @@ public static class VanillaItemPrefixCatalog
 
     /// <summary>
     /// Item-specific prefix validity after Terraria's stat-rounding guards. The current catalog only claims
-    /// exact knowledge for Slime Staff. Prefix zero is the valid no-prefix result of natural rolling.
+    /// exact knowledge for Slime Staff and Blade Staff. Prefix zero is a valid natural-roll result.
     /// </summary>
     public static bool IsValidForItem(ItemTypeId itemType, PrefixId prefix)
     {
+        // Blade Staff: damage 6, knockBack 0. Item.TryGetPrefixStatMultipliersForItem rejects
+        // unchanged rounded damage and every non-unit knockback modifier. PrefixLegacy's Summon
+        // family therefore leaves these seven prefixes (plus the no-prefix result), not Slime Staff's set.
+        if (itemType == VanillaQueenSlimeItemIds.BladeStaff)
+            return prefix == VanillaPrefixIds.None ||
+                   prefix == VanillaPrefixIds.Worthy ||
+                   prefix == VanillaPrefixIds.Focused ||
+                   prefix == VanillaPrefixIds.Petty ||
+                   prefix == VanillaPrefixIds.Eager ||
+                   prefix == VanillaPrefixIds.Ballistic ||
+                   prefix == VanillaPrefixIds.Hurtful ||
+                   prefix == VanillaPrefixIds.Damaged;
+
         if (itemType != VanillaItemIds.SlimeStaff)
             return false;
 

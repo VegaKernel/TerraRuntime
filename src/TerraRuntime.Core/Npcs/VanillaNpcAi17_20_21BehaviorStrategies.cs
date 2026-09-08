@@ -14,7 +14,7 @@ internal sealed class VanillaVultureNpcBehaviorStrategy : IVanillaNpcBehaviorStr
         out NpcStateUpdate next)
     {
         if (definition.AiStyle != VanillaNpcAiStyles.Vulture ||
-            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             next = default;
             return false;
@@ -104,7 +104,7 @@ internal sealed class VanillaSpikeBallNpcBehaviorStrategy : IVanillaNpcBehaviorS
         out NpcStateUpdate next)
     {
         if (definition.AiStyle != VanillaNpcAiStyles.SpikeBall ||
-            !definition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize hitbox))
+            !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             next = default;
             return false;

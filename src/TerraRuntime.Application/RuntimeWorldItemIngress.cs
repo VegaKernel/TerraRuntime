@@ -6,7 +6,7 @@ namespace TerraRuntime.Application;
 /// <summary>
 /// Connection-authenticated world-item ingress. Validation happens before bounded queue admission so malformed
 /// packet state never becomes an authoritative command. The exact connection/player generation is retained in the
-/// command. Explicit packet-21/22 slot operations additionally snapshot the exact active world-item generation so
+/// command. Explicit item-slot operations additionally snapshot the exact active world-item generation so
 /// delayed work cannot jump to a later logical item after Terraria reuses the same numeric slot.
 /// </summary>
 internal sealed class RuntimeWorldItemIngress : IWorldItemIngress
@@ -63,6 +63,10 @@ internal sealed class RuntimeWorldItemIngress : IWorldItemIngress
         _worldItems.TryGetActive(slot, out WorldItemSnapshot snapshot)
   ? snapshot.Handle
   : default;
+
+    public bool TryPostRelease(ConnectionHandle connection, short slot, bool forceServer) =>
+        connection.IsAssigned && IsValidSlot(slot) &&
+        _ingress.TryPost(connection.Source, new WorldItemReleaseRuntimeCommand(connection, CaptureActiveTarget(slot), forceServer));
 
     private static bool IsValidSlot(short slot) =>
         (ushort)slot < RuntimeWorldItemStore.VanillaCapacity;

@@ -47,7 +47,8 @@ internal sealed partial class ServerRuntimeState
         bool evilBossDownedBaseline = false,
         bool skeletronDownedBaseline = false,
         bool golemDownedBaseline = false,
-        Random? projectilePlayerCombatRandom = null)
+        Random? projectilePlayerCombatRandom = null,
+        IVanillaNpcRandom? naturalSpawnRandom = null)
     {
         _runtime = ServerRuntimeComposition.Create(
             playerEvents,
@@ -85,6 +86,7 @@ internal sealed partial class ServerRuntimeState
             evilBossDownedBaseline,
             skeletronDownedBaseline,
             golemDownedBaseline,
-            projectilePlayerCombatRandom);
+            projectilePlayerCombatRandom,
+            naturalSpawnRandom);
     }
 }

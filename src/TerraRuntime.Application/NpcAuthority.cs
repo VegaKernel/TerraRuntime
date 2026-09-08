@@ -13,9 +13,10 @@ namespace TerraRuntime.Application;
 /// Owns non-player NPC command application, AI execution, actor/archetype state, combat and town-NPC orchestration
 /// for one live world. It is driven exclusively by the authoritative world loop.
 /// </summary>
-internal sealed class NpcAuthority
+internal sealed partial class NpcAuthority
 {
     private readonly PlayerAuthority players;
+    private readonly RuntimePlayerSnapshotLookup playerSnapshots;
     private readonly RuntimeNpcStore npcs;
     private readonly RuntimeNpcAiStateExecutor aiExecutor;
     private readonly RuntimeNpcActorControlOwner actorControlOwner;
@@ -26,6 +27,7 @@ internal sealed class NpcAuthority
     private readonly VanillaNpcTargetingAiStepper? vanillaTargeting;
     private readonly VanillaNpcCheckActiveAiStepper? vanillaCheckActive;
     private readonly RuntimeNpcNetworkCombatPipeline combat;
+    private readonly RuntimeNpcLavaContactPass1458? lavaContact;
     private readonly RuntimeProjectileNpcCombatPass projectileNpcCombat;
     private readonly TownNpcAuthority townNpcAuthority;
     private readonly RuntimeMysticFrogCatchService1458? mysticFrogCatch;
@@ -34,7 +36,9 @@ internal sealed class NpcAuthority
     private readonly RuntimeWorldClock? worldClock;
     private readonly WorldTileStore? worldTiles;
     private readonly ServerPlayerAuthority? serverPlayers;
-    private readonly Random naturalSpawnRandom = new();
+    private readonly IVanillaNpcRandom naturalSpawnRandom;
+    private readonly RuntimeWorldProgressionMutations naturalSpawnProgression;
+    private readonly VanillaTownSpawnWorldFacts1458? naturalTownSpawnFacts;
     private readonly NpcSnapshot[] naturalSpawnNpcBuffer = new NpcSnapshot[RuntimeNpcStore.MaximumAddressableCapacity];
     private int naturalSpawnPlayerCursor;
     private readonly bool expertMode;
@@ -79,9 +83,11 @@ internal sealed class NpcAuthority
         bool skyblockLowTiles,
         bool isThereAWorldSurface,
         bool evilBossDownedBaseline,
-        RuntimeProjectileNpcLocalImmunityRegistry? projectileNpcLocalImmunity = null)
+        RuntimeProjectileNpcLocalImmunityRegistry? projectileNpcLocalImmunity = null,
+        IVanillaNpcRandom? naturalSpawnRandom = null)
     {
         ArgumentNullException.ThrowIfNull(playerSnapshots);
+        this.playerSnapshots = playerSnapshots;
         ArgumentNullException.ThrowIfNull(tickProvider);
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
@@ -94,12 +100,15 @@ internal sealed class NpcAuthority
         this.serverPlayers = serverPlayers;
         this.expertMode = expertMode;
         this.masterMode = masterMode;
+        this.naturalSpawnRandom = naturalSpawnRandom ?? new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom();
         if (worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 sceneWorldFacts)
         {
             naturalSpawnWorldFacts = sceneWorldFacts;
             npcSceneMetrics = new VanillaTownSceneMetricsScanner1458(worldTiles, in sceneWorldFacts);
         }
         ArgumentNullException.ThrowIfNull(progression);
+        naturalSpawnProgression = progression;
+        naturalTownSpawnFacts = townSpawnWorldFacts;
 
         aiExecutor = new RuntimeNpcAiStateExecutor(npcs, projectiles);
         var actorControls = new RuntimeNpcActorControlRegistry(npcs);
@@ -167,6 +176,8 @@ internal sealed class NpcAuthority
             serverPlayers: serverPlayers,
             localNpcImmunity: projectileNpcLocalImmunity);
         townNpcAuthority.SetMeleeDamageSink(combat);
+        if (worldTiles is not null && townCommerceWorldFacts is { RemixWorld: false, GoodWorld: false })
+            lavaContact = new RuntimeNpcLavaContactPass1458(npcs, worldTiles, combat, tickProvider);
 
         if (npcAiStepper is null)
         {
@@ -192,6 +203,8 @@ internal sealed class NpcAuthority
                     Math.Max(1d, worldTiles.Dimensions.HeightTiles / 3d);
                 vanillaTargeting.EnableBlueSlimeMotion(worldSurfaceTiles);
                 vanillaTargeting.EnableZombieMotion(worldSurfaceTiles);
+                if (worldTiles.WorldSurfaceTiles is double verifiedSurface)
+                    vanillaTargeting.SetWorldBounds(worldTiles.Dimensions.WidthTiles, verifiedSurface);
                 vanillaTargeting.SetFlyingEyeEnvironment(new VanillaFlyingEyeWorldEnvironment(worldTiles));
                 vanillaTargeting.SetQueenBeeEnvironment(new VanillaQueenBeeWorldEnvironment(
                     worldTiles,
@@ -309,12 +322,14 @@ internal sealed class NpcAuthority
                     worldClock.SlimeRainActive,
                     worldClock.GetGoodWorld,
                     expertMode,
-                    masterMode);
+                    masterMode,
+                    worldClock.WindSpeedCurrent);
             }
         }
 
         TickNaturalHostileSpawning();
         LastAiTick = aiExecutor.Tick(aiStepper, combat);
+        lavaContact?.Tick();
         townNpcAuthority.TickShimmer();
         townNpcAuthority.TickLifecycle(worldClock);
         AppliedDespawns += npcs.DespawnExpired();
@@ -615,7 +630,7 @@ internal sealed class NpcAuthority
         // natural hostile spawns.
         if (definition.NoTileCollideAtSpawn || worldTiles is null)
         {
-            float direction = naturalSpawnRandom.Next(2) == 0 ? -1f : 1f;
+            float direction = naturalSpawnRandom.NextInt32(0, 2) == 0 ? -1f : 1f;
             x = player.CenterX + direction * 720f - definition.Width * 0.5f;
             y = player.CenterY - 360f - definition.Height * 0.5f;
             return float.IsFinite(x) && float.IsFinite(y);
@@ -648,7 +663,7 @@ internal sealed class NpcAuthority
             return;
 
         GetNaturalSpawnBudget(in player, out int spawnRate, out int maxSpawns);
-        if (naturalSpawnRandom.Next(spawnRate) != 0 ||
+        if (naturalSpawnRandom.NextInt32(0, spawnRate) != 0 ||
             CountNearbyOrdinaryNpcs(player.CenterX, player.CenterY, 1600f) >= maxSpawns)
         {
             return;
@@ -693,7 +708,8 @@ internal sealed class NpcAuthority
         spawnRate = defaultSpawnRate;
         maxSpawns = defaultMaxSpawns;
 
-        bool hardMode = naturalSpawnWorldFacts?.HardMode ?? false;
+        bool hardMode = (naturalSpawnWorldFacts?.HardMode ?? false) ||
+            naturalSpawnProgression.IsCompleted(VanillaWorldProgressionId.Hardmode);
         if (hardMode)
         {
             spawnRate = (int)(defaultSpawnRate * 0.9d);
@@ -756,8 +772,8 @@ internal sealed class NpcAuthority
         const int safeRangeY = 39;
         for (int attempt = 0; attempt < 50; attempt++)
         {
-            int x = playerTileX + naturalSpawnRandom.Next(-spawnRangeX, spawnRangeX + 1);
-            int y = playerTileY + naturalSpawnRandom.Next(-spawnRangeY, spawnRangeY + 1);
+            int x = playerTileX + naturalSpawnRandom.NextInt32(-spawnRangeX, spawnRangeX + 1);
+            int y = playerTileY + naturalSpawnRandom.NextInt32(-spawnRangeY, spawnRangeY + 1);
             if (x < 10 || x >= width - 10 || y < 10 || y >= height - 12)
                 continue;
 
@@ -836,13 +852,13 @@ internal sealed class NpcAuthority
 
         for (int attempt = 0; attempt < 24; attempt++)
         {
-            int horizontal = naturalSpawnRandom.Next(minimumHorizontalTiles, maximumHorizontalTiles + 1);
-            if (naturalSpawnRandom.Next(2) == 0)
+            int horizontal = naturalSpawnRandom.NextInt32(minimumHorizontalTiles, maximumHorizontalTiles + 1);
+            if (naturalSpawnRandom.NextInt32(0, 2) == 0)
                 horizontal = -horizontal;
             int x = playerTileX + horizontal;
             if (x < 10 || x >= width - 10)
                 continue;
-            int y = Math.Clamp(playerTileY + naturalSpawnRandom.Next(-28, 29), 10, height - 12);
+            int y = Math.Clamp(playerTileY + naturalSpawnRandom.NextInt32(-28, 29), 10, height - 12);
             int bottom = Math.Min(height - 6, y + 48);
             for (; y <= bottom; y++)
             {
@@ -892,6 +908,35 @@ internal sealed class NpcAuthority
             Math.Clamp((int)(player.CenterX / 16f), 0, tiles.Dimensions.WidthTiles - 1),
             Math.Clamp((int)(player.CenterY / 16f), 0, tiles.Dimensions.HeightTiles - 1));
 
+        if (VanillaUnderworldSpawn1458.IsUnderworld(floorY, tiles.Dimensions.HeightTiles))
+        {
+            // This is the ordinary dry underworld branch, not a substitute for the source's
+            // earlier event/biome/secret-seed branches. Missing facts never become cave slimes.
+            if (naturalSpawnWorldFacts is not RuntimeTownCommerceWorldFacts1458 facts ||
+                naturalTownSpawnFacts is not VanillaTownSpawnWorldFacts1458 townFacts ||
+                facts.RemixWorld || facts.InfectedSeed || facts.SkyblockWorld ||
+                scene is not VanillaTownSceneMetrics1458 hellScene ||
+                hellScene.ZoneJungle || hellScene.ZoneCorrupt || hellScene.ZoneCrimson || hellScene.ZoneDungeon ||
+                hellScene.ZoneSnow || hellScene.ZoneHallow || hellScene.ZoneGlowshroom || hellScene.ZoneDesert)
+                return default;
+
+            int npcCount = npcs.CopyActive(naturalSpawnNpcBuffer);
+            bool soulPresent = false;
+            bool serpentPresent = false;
+            for (int i = 0; i < npcCount; i++)
+            {
+                soulPresent |= naturalSpawnNpcBuffer[i].Type == 534;
+                serpentPresent |= naturalSpawnNpcBuffer[i].Type == 39;
+            }
+            var spawnFacts = new VanillaUnderworldSpawnFacts1458(
+                facts.HardMode || naturalSpawnProgression.IsCompleted(VanillaWorldProgressionId.Hardmode),
+                facts.DownedMechBossAny || naturalSpawnProgression.IsCompleted(VanillaWorldProgressionId.AnyMechanicalBoss),
+                townFacts.SavedTaxCollector || (naturalSpawnProgression.CaptureSnapshot().RescuedTownNpcs & RuntimeTownRescueFacts1458.TaxCollector) != 0,
+                soulPresent, serpentPresent);
+            return VanillaUnderworldSpawn1458.TrySelect(in spawnFacts, naturalSpawnRandom, out NpcTypeId underworldType)
+                ? underworldType : default;
+        }
+
         if (scene is VanillaTownSceneMetrics1458 biome)
         {
             if (biome.ZoneJungle && !surface)
@@ -907,14 +952,14 @@ internal sealed class NpcAuthority
         }
 
         if (surface && !worldClock!.DayTime)
-            return naturalSpawnRandom.Next(3) == 0 ? VanillaNpcIds.DemonEye : VanillaNpcIds.Zombie;
+            return naturalSpawnRandom.NextInt32(0, 3) == 0 ? VanillaNpcIds.DemonEye : VanillaNpcIds.Zombie;
         if (surface)
             return VanillaNpcIds.BlueSlime;
 
         // The current ordinary underground AI catalog is intentionally conservative. Skeleton has the
         // server-owned ground-fighter motion slice; unsupported cave families stay out instead of spawning
         // entities that cannot simulate authoritatively.
-        return naturalSpawnRandom.Next(3) == 0 ? VanillaNpcIds.Skeleton : VanillaNpcIds.BlueSlime;
+        return naturalSpawnRandom.NextInt32(0, 3) == 0 ? VanillaNpcIds.Skeleton : VanillaNpcIds.BlueSlime;
     }
 
     private void ApplySpawn(NpcSpawnRuntimeCommand command)

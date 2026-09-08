@@ -104,6 +104,8 @@ stateDiagram-v2
 
 ### Windows
 
+В существующий async `NetworkStream`/`PipeReader` data plane нельзя просто добавить `Socket.DuplicateAndClose` на границе frame. [Ограничение .NET](https://learn.microsoft.com/en-us/dotnet/api/system.net.sockets.socket.duplicateandclose?view=net-11.0) запрещает предшествующие асинхронные socket operations: они привязывают сокет к IOCP исходного процесса, а `UseOnlyOverlappedIO` ничего не меняет. Локальный двухпроцессный loopback probe на SDK `11.0.100-preview.7.26381.103`, повторённый в Windows NativeAOT, успешно передал синхронный сокет, но получил `InvalidOperationException` при async receive в destination после принудительно pending async receive в source. Это отрицательное доказательство для такого варианта реализации, а не готовый handoff. До допуска игроков требуется проверенная схема передаваемого I/O ownership; текущий data plane сохранён. Нельзя заменять её постоянным proxy или закрывать S5 по одному синхронному probe.
+
 Используются проверенные Winsock socket duplication/handoff semantics, например `WSADuplicateSocket` плюс поддерживаемый .NET reconstruction path. Конкретная реализация должна быть проверена на shipping .NET 11/Windows target до закрытия roadmap item.
 
 ### Unix/Linux

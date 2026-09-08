@@ -347,6 +347,52 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         return committed;
     }
 
+    /// <summary>
+    /// Advances an exact generation's simulated motion without a network drop event. Vanilla peers
+    /// simulate ordinary item motion locally; owner changes and discrete item mutations still publish normally.
+    /// </summary>
+    public bool TryAdvanceMotion(WorldItemHandle target, float x, float y, float vx, float vy, out WorldItemSnapshot snapshot)
+    {
+        snapshot = default;
+        if (!target.IsAssigned || !IsValidSlot(target.Slot) || !float.IsFinite(x) || !float.IsFinite(y) ||
+            !float.IsFinite(vx) || !float.IsFinite(vy)) return false;
+        BeginWrite();
+        try
+        {
+            ref SlotState state = ref _slots[target.Slot];
+            if (!state.Active || state.Generation != target.Generation.Value || !TryAdvance(ref state.Revision)) return false;
+            state.Update = state.Update with
+            {
+                PositionX = x, PositionY = y, VelocityX = vx, VelocityY = vy
+            };
+            snapshot = Capture(target.Slot, in state);
+            return true;
+        }
+        finally { EndWrite(); }
+    }
+
+    /// <summary>WorldItem.UpdateItem's three countdowns; peers advance these locally without packet22 per tick.</summary>
+    public void TickReservationTimers()
+    {
+        BeginWrite();
+        try
+        {
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                ref SlotState state = ref _slots[i];
+                if (!state.Active || (state.Update.GrabDelayTime == 0 && state.Update.TimeToKeepReservation == 0 &&
+                    state.Update.EnemyGrabDelayTime == 0) || !TryAdvance(ref state.Revision)) continue;
+                state.Update = state.Update with
+                {
+                    GrabDelayTime = Math.Max(0, state.Update.GrabDelayTime - 1),
+                    TimeToKeepReservation = Math.Max(0, state.Update.TimeToKeepReservation - 1),
+                    EnemyGrabDelayTime = (byte)Math.Max(0, state.Update.EnemyGrabDelayTime - 1)
+                };
+            }
+        }
+        finally { EndWrite(); }
+    }
+
     public bool TryRemove(short slot, out WorldItemHandle removed)
     {
         if (!IsValidSlot(slot))

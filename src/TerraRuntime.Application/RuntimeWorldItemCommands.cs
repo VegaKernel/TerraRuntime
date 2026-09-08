@@ -4,7 +4,7 @@ using TerraRuntime.Core;
 namespace TerraRuntime.Application;
 
 /// <summary>
-/// Authoritative-loop commands for runtime-owned dropped items. Packet 21/22 wire state is mapped into
+/// Authoritative-loop commands for runtime-owned dropped items. Packet21 proposals and packet39 release requests map into
 /// packet-neutral Core updates before crossing this boundary. Every client-originated command retains both the exact
 /// connection/player generation and, for explicit item-slot operations, the exact active world-item generation that
 /// existed when ingress admitted the frame.
@@ -27,3 +27,8 @@ internal sealed record WorldItemOwnerRuntimeCommand(
     ConnectionHandle Connection,
     WorldItemHandle Target,
     WorldItemOwnerStateUpdate State) : RuntimeCommand;
+
+internal sealed record WorldItemReleaseRuntimeCommand(
+    ConnectionHandle Connection,
+    WorldItemHandle Target,
+    bool ForceServer) : RuntimeCommand;

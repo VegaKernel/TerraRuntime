@@ -29,6 +29,7 @@ internal sealed partial class ServerPlayerAuthority
     private readonly Dictionary<PlayerHandle, VanillaServerPlayerJumpState> jumpStates = [];
     private readonly Dictionary<PlayerHandle, ServerPlayerMovementIntent> movementIntents = [];
     private readonly RuntimePlayerDamageImmunityStore damageImmunity;
+    private readonly LavaState[] lavaStates;
 
     public ServerPlayerAuthority(
         ServerPlayerStateStore states,
@@ -44,6 +45,7 @@ internal sealed partial class ServerPlayerAuthority
         liquidOwners = new PlayerHandle[states.Capacity];
         liquidContacts = new VanillaLiquidContactState[states.Capacity];
         damageImmunity = new RuntimePlayerDamageImmunityStore(states.Capacity);
+        lavaStates = new LavaState[states.Capacity];
     }
 
     public bool TryApply(RuntimeCommand command)
@@ -424,6 +426,12 @@ internal sealed partial class ServerPlayerAuthority
         float y = floorY * 16 - PlayerAuthority.VanillaBasePlayerHeight;
         if (!TryTeleport(id, x, y) || !states.TryGet(player, out PlayerStateSnapshot committed))
             return false;
+        if (TryCaptureCombatSnapshot(player, out var recallEquipment))
+        {
+            // Player.Spawn, including recall, refills lavaTime but does not clear active buffs.
+            ref LavaState lava = ref lavaStates[player.Slot.Value];
+            if (lava.Owner == player) lava.Protection = recallEquipment.LavaProtectionTicks;
+        }
         events?.ServerPlayerRecallPresented(in committed, floorX, floorY);
         return true;
     }
@@ -467,11 +475,13 @@ internal sealed partial class ServerPlayerAuthority
     public bool SetVitals(ServerPlayerId id, in ServerPlayerVitalsState vitals)
     {
         if (!TryGetPlayer(id, out PlayerHandle player) ||
+            !states.TryGet(player, out PlayerStateSnapshot before) ||
             !states.TrySetVitals(player, in vitals, out PlayerStateSnapshot normalized))
         {
             return false;
         }
 
+        if (before.IsDead != normalized.IsDead) ResetLavaState(player);
         var committed = new ServerPlayerVitalsState(
             normalized.Life,
             normalized.MaxLife,
@@ -490,6 +500,21 @@ internal sealed partial class ServerPlayerAuthority
         }
 
         events?.ServerPlayerItemUpdated(player, in normalized);
+        return true;
+    }
+
+    internal bool PresentItemUse(ServerPlayerId id, float aimX, float aimY, int animationTicks)
+    {
+        if (!float.IsFinite(aimX) || !float.IsFinite(aimY) || animationTicks is <= 0 or > short.MaxValue ||
+            !TryGetPlayer(id, out PlayerHandle player) || !states.TryGet(player, out PlayerStateSnapshot before) || before.IsDead)
+            return false;
+        int direction = aimX < 0f ? -1 : 1;
+        byte flags = direction > 0 ? (byte)(before.ControlFlags | (1 << 6)) : (byte)(before.ControlFlags & ~(1 << 6));
+        if (!states.TrySetMotion(player, before.PositionX, before.PositionY, before.VelocityX, before.VelocityY, flags, out PlayerStateSnapshot after))
+            return false;
+        events?.ServerPlayerMoved(in after);
+        // Ordinary useStyle 5 launch presentation, Player.ItemCheck_Shoot (1.4.5.8).
+        events?.ServerPlayerItemUsePresented(player, MathF.Atan2(aimY * direction, aimX * direction), checked((short)animationTicks));
         return true;
     }
 

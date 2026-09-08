@@ -10,6 +10,17 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class RuntimeNpcNetworkCombatPipeline
 {
+    private bool TryGetActiveLootPlayer(PlayerSlotId slot, out PlayerStateSnapshot player)
+    {
+        if (!players.TryGetPlayer(slot, out player))
+            return false;
+        // Runtime-controlled players participate in combat but have no vanilla client-local item consumer.
+        // Until an explicit actor-owned instanced-loot adapter exists, their personalized difficulty rewards
+        // fail closed. Never send their copy to an observer, grant it directly to inventory, or abort human loot.
+        // Classic ordinary drops and normal bot pickup are unaffected.
+        return !expertMode || (worldItemReplication?.HasClientLocalItemReceiver(player.Player) ?? false);
+    }
+
     private bool TryExecuteImportedLoot(in NpcSnapshot npc, bool eaterBoss)
     {
         if (VanillaEaterOfWorldsLifecycle.IsSegment(npc.TypeIdentity))
@@ -24,6 +35,12 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             return TryExecuteDeerclopsLoot(in npc);
         if (npc.TypeIdentity == VanillaNpcIds.WallOfFlesh)
             return TryExecuteWallOfFleshLoot(in npc);
+        if (npc.TypeIdentity == VanillaNpcIds.QueenSlime)
+            return TryExecuteQueenSlimeLoot(in npc);
+        if (npc.TypeIdentity == VanillaNpcIds.EyeOfCthulhu)
+            return TryExecuteEyeOfCthulhuLoot(in npc);
+        if (VanillaMechanicalBossLootEvaluator.IsRoot(npc.TypeIdentity))
+            return TryExecuteMechanicalBossLoot(in npc);
 
         if (npc.TypeIdentity == VanillaNpcIds.KingSlime && expertMode)
             return TryExecuteKingSlimeDifficultyLoot(in npc);
@@ -137,7 +154,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         for (int index = 0; index < interactionCount; index++)
         {
             PlayerSlotId slot = interactionSlots[index];
-            if (!players.TryGetPlayer(slot, out PlayerStateSnapshot player))
+            if (!TryGetActiveLootPlayer(slot, out PlayerStateSnapshot player))
                 continue;
             activeEaterLootPlayers[activeCount++] = new VanillaEaterOfWorldsLootPlayer(
                 slot,
@@ -172,7 +189,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             for (int index = 0; index < interactionCount; index++)
             {
                 PlayerSlotId slot = interactionSlots[index];
-                if (!players.TryGetPlayer(slot, out PlayerStateSnapshot player))
+                if (!TryGetActiveLootPlayer(slot, out PlayerStateSnapshot player))
                     continue;
                 activeBrainLootPlayers[activeCount++] = new VanillaBrainOfCthulhuLootPlayer(
                     slot,
@@ -206,7 +223,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         for (int index = 0; index < interactionCount; index++)
         {
             PlayerSlotId slot = interactionSlots[index];
-            if (!players.TryGetPlayer(slot, out PlayerStateSnapshot player))
+            if (!TryGetActiveLootPlayer(slot, out PlayerStateSnapshot player))
                 continue;
             activeSkeletronLootPlayers[activeCount++] = new VanillaSkeletronLootPlayer(
                 slot,
@@ -240,7 +257,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         for (int index = 0; index < interactionCount; index++)
         {
             PlayerSlotId slot = interactionSlots[index];
-            if (!players.TryGetPlayer(slot, out PlayerStateSnapshot player))
+            if (!TryGetActiveLootPlayer(slot, out PlayerStateSnapshot player))
                 continue;
             activeQueenBeeLootPlayers[activeCount++] = new VanillaQueenBeeLootPlayer(
                 slot,
@@ -273,7 +290,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         for (int index = 0; index < interactionCount; index++)
         {
             PlayerSlotId slot = interactionSlots[index];
-            if (!players.TryGetPlayer(slot, out PlayerStateSnapshot player))
+            if (!TryGetActiveLootPlayer(slot, out PlayerStateSnapshot player))
                 continue;
 
             activeDeerclopsLootPlayers[activeCount++] = new VanillaDeerclopsLootPlayer(
@@ -295,6 +312,117 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             out _);
     }
 
+    private bool TryExecuteQueenSlimeLoot(in NpcSnapshot npc)
+    {
+        if (!interactions.TryCopyInteractingSlots(npc.Handle, interactionSlots, out int interactionCount) ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.QueenSlime, out VanillaNpcDefinition definition))
+        {
+            return false;
+        }
+
+        int activeCount = 0;
+        for (int index = 0; index < interactionCount; index++)
+        {
+            PlayerSlotId slot = interactionSlots[index];
+            if (!TryGetActiveLootPlayer(slot, out PlayerStateSnapshot player))
+                continue;
+
+            activeQueenSlimeLootPlayers[activeCount++] = new VanillaQueenSlimeLootPlayer(
+                slot,
+                player.PositionX + VanillaPlayerWidth * 0.5f,
+                player.PositionY + VanillaPlayerHeight * 0.5f);
+        }
+
+        var origin = new NpcLootWorldItemOrigin(
+            (int)npc.PositionX + definition.Width * 0.5f,
+            (int)npc.PositionY + definition.Height * 0.5f);
+        var context = new VanillaQueenSlimeLootContext(expertMode, masterMode);
+        return VanillaQueenSlimeLootEvaluator.TryExecute(
+            in context,
+            in origin,
+            activeQueenSlimeLootPlayers.AsSpan(0, activeCount),
+            random,
+            queenSlimeLoot,
+            out _);
+    }
+
+    private bool TryExecuteEyeOfCthulhuLoot(in NpcSnapshot npc)
+    {
+        if (!interactions.TryCopyInteractingSlots(npc.Handle, interactionSlots, out int interactionCount) ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.EyeOfCthulhu, out VanillaNpcDefinition definition))
+        {
+            return false;
+        }
+
+        int activeCount = 0;
+        for (int index = 0; index < interactionCount; index++)
+        {
+            PlayerSlotId slot = interactionSlots[index];
+            if (!TryGetActiveLootPlayer(slot, out PlayerStateSnapshot player))
+                continue;
+
+            activeEyeOfCthulhuLootPlayers[activeCount++] = new VanillaEyeOfCthulhuLootPlayer(
+                slot,
+                player.PositionX + VanillaPlayerWidth * 0.5f,
+                player.PositionY + VanillaPlayerHeight * 0.5f);
+        }
+
+        var origin = new NpcLootWorldItemOrigin(
+            (int)npc.PositionX + definition.Width * 0.5f,
+            (int)npc.PositionY + definition.Height * 0.5f);
+        var context = new VanillaEyeOfCthulhuLootContext(expertMode, masterMode, crimsonWorld);
+        return VanillaEyeOfCthulhuLootEvaluator.TryExecute(
+            in context,
+            in origin,
+            activeEyeOfCthulhuLootPlayers.AsSpan(0, activeCount),
+            random,
+            eyeOfCthulhuLoot,
+            out _);
+    }
+
+    private bool TryExecuteMechanicalBossLoot(in NpcSnapshot npc)
+    {
+        if (!interactions.TryCopyInteractingSlots(npc.Handle, interactionSlots, out int interactionCount) ||
+            !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, out VanillaNpcDefinition definition))
+        {
+            return false;
+        }
+
+        int activeCount = 0;
+        for (int index = 0; index < interactionCount; index++)
+        {
+            PlayerSlotId slot = interactionSlots[index];
+            if (!TryGetActiveLootPlayer(slot, out PlayerStateSnapshot player))
+                continue;
+
+            activeMechanicalBossLootPlayers[activeCount++] = new VanillaMechanicalBossLootPlayer(
+                slot,
+                player.PositionX + VanillaPlayerWidth * 0.5f,
+                player.PositionY + VanillaPlayerHeight * 0.5f);
+        }
+
+        var origin = new NpcLootWorldItemOrigin(
+            (int)npc.PositionX + definition.Width * 0.5f,
+            (int)npc.PositionY + definition.Height * 0.5f);
+        bool otherTwinActive = false;
+        if (VanillaMechanicalBossLootEvaluator.IsTwin(npc.TypeIdentity))
+        {
+            NpcTypeId otherType = npc.TypeIdentity == VanillaNpcIds.Retinazer ?
+                VanillaNpcIds.Spazmatism : VanillaNpcIds.Retinazer;
+            int count = npcs.CopyActive(npcFamilyBuffer);
+            for (int index = 0; index < count; index++)
+                otherTwinActive |= npcFamilyBuffer[index].TypeIdentity == otherType;
+        }
+        var context = new VanillaMechanicalBossLootContext(npc.TypeIdentity, expertMode, masterMode, otherTwinActive);
+        return VanillaMechanicalBossLootEvaluator.TryExecute(
+            in context,
+            in origin,
+            activeMechanicalBossLootPlayers.AsSpan(0, activeCount),
+            random,
+            mechanicalBossLoot,
+            out _);
+    }
+
     private bool TryExecuteWallOfFleshLoot(in NpcSnapshot npc)
     {
         if (!interactions.TryCopyInteractingSlots(npc.Handle, interactionSlots, out int interactionCount) ||
@@ -305,7 +433,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         for (int index = 0; index < interactionCount; index++)
         {
             PlayerSlotId slot = interactionSlots[index];
-            if (!players.TryGetPlayer(slot, out PlayerStateSnapshot player))
+            if (!TryGetActiveLootPlayer(slot, out PlayerStateSnapshot player))
                 continue;
             activeWallOfFleshLootPlayers[activeCount++] = new VanillaWallOfFleshLootPlayer(
                 slot,
@@ -339,7 +467,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         for (int index = 0; index < interactionCount; index++)
         {
             PlayerSlotId slot = interactionSlots[index];
-            if (!players.TryGetPlayer(slot, out PlayerStateSnapshot player))
+            if (!TryGetActiveLootPlayer(slot, out PlayerStateSnapshot player))
                 continue;
             activeLootPlayers[activeCount++] = new VanillaKingSlimeLootPlayer(
                 slot,

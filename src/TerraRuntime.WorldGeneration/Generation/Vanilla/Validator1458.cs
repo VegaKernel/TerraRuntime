@@ -135,7 +135,7 @@ public static class Validator1458
             if (!VanillaMultiTileObjectCatalog.MatchesChestAnchor(in anchor))
                 return new(WorldValidationStatus.InvalidChestAnchor,
                     $"Chest anchor mismatch at ({chest.X},{chest.Y}) type={anchor.Type} flags={anchor.Flags} frame=({anchor.FrameX},{anchor.FrameY}).");
-            // Verify 2x2 container footprint
+            // Verify the complete catalog-sized container footprint, including 3x2 dressers.
             if (!IsValidChestFootprint(store, chest.X, chest.Y, width, height))
                 return new(WorldValidationStatus.OrphanFrameImportantObject,
                     $"Chest footprint corrupted at ({chest.X},{chest.Y}).");
@@ -336,29 +336,7 @@ public static class Validator1458
     }
 
     private static bool IsValidChestFootprint(WorldTileStore store, int left, int top, int width, int height)
-    {
-        if ((uint)left >= (uint)(width - 1) || (uint)top >= (uint)(height - 1))
-            return false;
-        WorldTile a = store.Get(left, top);
-        WorldTile b = store.Get(left + 1, top);
-        WorldTile c = store.Get(left, top + 1);
-        WorldTile d = store.Get(left + 1, top + 1);
-        if (!a.IsActive || !b.IsActive || !c.IsActive || !d.IsActive)
-            return false;
-        ushort containerType = a.Type;
-        if (containerType is not (21 or 467) ||
-            b.Type != containerType || c.Type != containerType || d.Type != containerType)
-            return false;
-        // Chest style is encoded in base frame offset (multiples of 36). Validate modulo 36.
-        if (a.FrameX % 36 != 0 || a.FrameY % 36 != 0) return false;
-        if (b.FrameX % 36 != 18 || b.FrameY % 36 != 0) return false;
-        if (c.FrameX % 36 != 0 || c.FrameY % 36 != 18) return false;
-        if (d.FrameX % 36 != 18 || d.FrameY % 36 != 18) return false;
-        // Ensure style consistency: left tiles share same base style, right tiles same, top vs bottom etc
-        if ((a.FrameX / 36) != (c.FrameX / 36) || (b.FrameX / 36) != (d.FrameX / 36)) return false;
-        if ((a.FrameY / 36) != (b.FrameY / 36) || (c.FrameY / 36) != (d.FrameY / 36)) return false;
-        return true;
-    }
+        => GeneratedContainerFootprint.IsValid(store, left, top);
 
     private static bool IsValidFrameImportantFootprint(WorldTileStore store, int x, int y, int width, int height)
     {

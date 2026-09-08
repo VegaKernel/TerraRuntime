@@ -69,7 +69,7 @@ internal sealed class RuntimeNpcProjectileReflectionPass
                 if (!npc.IsActive ||
                     !reflectsProjectile ||
                     !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition npcDefinition) ||
-                    !npcDefinition.TryResolveHitbox(npc.Simulation.Scale, out VanillaNpcHitboxSize npcHitbox) ||
+                    !npcDefinition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize npcHitbox) ||
                     !Intersects(in npc, in npcHitbox, in projectile, in projectileDefinition))
                 {
                     continue;

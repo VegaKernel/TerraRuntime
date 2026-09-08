@@ -389,6 +389,13 @@ public static class VanillaDefinitionCatalog
 
     public static bool TryGet(ItemTypeId type, out VanillaItemDefinition definition)
     {
+        if (VanillaQueenSlimeItemCatalog1458.TryGet(type, out definition))
+            return true;
+        if (VanillaMechanicalBossItemCatalog1458.TryGet(type, out definition))
+            return true;
+        if (VanillaEyeOfCthulhuItemCatalog1458.TryGet(type, out definition))
+            return true;
+
         if (type == VanillaItemIds.DirtBlock)
         {
             definition = DirtBlockDefinition;

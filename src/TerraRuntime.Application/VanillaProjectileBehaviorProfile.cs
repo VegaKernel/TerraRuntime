@@ -568,6 +568,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         type == VanillaProjectileIds.RetinazerDeathLaser ||
         type == VanillaProjectileIds.GolemEyeBeam;
 
+    // AI_001's no-ai[0]-increment switch in TerrariaServer 1.4.5.8. These admitted player projectiles
+    // share aiStyle 1 with arrows but never acquire ordinary arrow gravity from their default AI state.
+    internal static bool SkipsBasicArrowGravity(ProjectileTypeId type) =>
+        type == VanillaProjectileIds.Bullet || type == VanillaProjectileIds.SilverBullet ||
+        type == VanillaProjectileIds.GreenLaser || type == VanillaProjectileIds.JestersArrow;
+
     private static bool IsBasicArrow(ProjectileTypeId type) =>
         type == VanillaProjectileIds.WoodenArrowFriendly ||
         type == VanillaProjectileIds.FireArrow ||

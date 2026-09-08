@@ -64,6 +64,12 @@ internal sealed partial class RuntimeConnectionRegistry
     public void ServerPlayerGodModeUpdated(PlayerHandle player, bool enabled) =>
         PlayerGodModeChanged(player, enabled);
 
+    public void ServerPlayerBuffTypesUpdated(PlayerHandle player, ReadOnlySpan<BuffTypeId> buffs)
+    {
+        if (_serverPlayers.TryUpdateBuffTypes(player, buffs, out byte[] encoded))
+            Interlocked.Add(ref _relayedBuffFrames, BroadcastToPlaying(encoded));
+    }
+
     public void ServerPlayerDied(
         PlayerHandle player,
         DamageSource source,
@@ -73,6 +79,11 @@ internal sealed partial class RuntimeConnectionRegistry
     {
         TerrariaPlayerDeathReasonState reason = source.Kind switch
         {
+            DamageSourceKind.Environment when source.EnvironmentCause is EnvironmentDamageCause.Lava or EnvironmentDamageCause.Burning =>
+                new TerrariaPlayerDeathReasonState(-1, -1, -1,
+                    (sbyte)(source.EnvironmentCause == EnvironmentDamageCause.Lava ? 2 : 8), 0, 0, 0, null),
+            DamageSourceKind.PlayerItem or DamageSourceKind.PlayerProjectile when source.Player.IsAssigned =>
+                new TerrariaPlayerDeathReasonState(source.Player.Slot.Value, -1, -1, -1, 0, 0, 0, null),
             DamageSourceKind.NpcContact when source.Npc.IsAssigned => new TerrariaPlayerDeathReasonState(
                 -1, checked((short)source.Npc.Slot), -1, -1, 0, 0, 0, null),
             // Projectile.Damage_EVP in TerrariaServer 1.4.5.8 uses PlayerDeathReason.ByProjectile(-1, whoAmI)
@@ -82,7 +93,9 @@ internal sealed partial class RuntimeConnectionRegistry
                     -1, -1, checked((short)source.Projectile.Slot), -1, checked((short)projectileType.Value), 0, 0, null),
             _ => default
         };
-        if (source.Kind is not (DamageSourceKind.NpcContact or DamageSourceKind.NpcProjectile) ||
+        bool knownEnvironment = source.Kind == DamageSourceKind.Environment &&
+            source.EnvironmentCause is EnvironmentDamageCause.Lava or EnvironmentDamageCause.Burning;
+        if (!source.IsValid || (!knownEnvironment && source.Kind is not (DamageSourceKind.NpcContact or DamageSourceKind.NpcProjectile or DamageSourceKind.PlayerItem or DamageSourceKind.PlayerProjectile)) ||
             damage is < 0 or > short.MaxValue || hitDirection is < -1 or > 1)
         {
             return;
@@ -93,7 +106,7 @@ internal sealed partial class RuntimeConnectionRegistry
             reason,
             checked((short)damage),
             checked((byte)(hitDirection + 1)),
-            Flags: 0);
+            Flags: (byte)(source.Kind is DamageSourceKind.PlayerItem or DamageSourceKind.PlayerProjectile ? 1 : 0));
         if (TerrariaPlayerCombatCodec.TryEncodeDeath(in death, out byte[] encoded) == TerrariaPlayerDeathEncodeResult.Encoded)
             BroadcastToPlaying(encoded);
     }
@@ -109,6 +122,9 @@ internal sealed partial class RuntimeConnectionRegistry
         if (_serverPlayers.TryUpdateMovement(in player, out byte[] encoded))
             Interlocked.Add(ref _relayedMovementFrames, BroadcastToPlaying(encoded));
     }
+
+    public void ServerPlayerItemUsePresented(PlayerHandle player, float rotation, short animationTicks) =>
+        BroadcastToPlaying(TerrariaPlayerReplicationFrameEncoder.EncodeItemAnimation(player.Slot, rotation, animationTicks));
 
     public void ServerPlayerRecallPresented(in PlayerStateSnapshot player, short floorX, short floorY)
     {
@@ -135,6 +151,7 @@ internal sealed partial class RuntimeConnectionRegistry
         Interlocked.Add(ref _serverPlayerHealthFrames, counts.Health);
         Interlocked.Add(ref _serverPlayerManaFrames, counts.Mana);
         Interlocked.Add(ref _movementResyncFrames, counts.Movement);
+        Interlocked.Add(ref _relayedBuffFrames, counts.Buffs);
     }
 
     private int BroadcastToPlaying(byte[] encoded)

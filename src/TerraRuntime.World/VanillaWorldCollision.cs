@@ -225,6 +225,30 @@ public static class VanillaWorldCollision
         return new VanillaTileCollisionResult(resultX, resultY, hitCeiling, hitFloor);
     }
 
+    /// <summary>1.4.5.8 Collision.LavaCollision: full physical rectangle, not the central WetCollision probe.</summary>
+    public static bool LavaCollision(WorldTileStore tiles, float positionX, float positionY, int width, int height)
+    {
+        ArgumentNullException.ThrowIfNull(tiles);
+        if (!float.IsFinite(positionX) || !float.IsFinite(positionY) || width <= 0 || height <= 0)
+            return false;
+        int worldWidth = tiles.Dimensions.WidthTiles;
+        int bottomLimit = Math.Max(0, tiles.Dimensions.HeightTiles - 40);
+        int left = Math.Clamp((int)(positionX / 16f) - 1, 0, worldWidth - 1);
+        int right = Math.Clamp((int)((positionX + width) / 16f) + 2, 0, worldWidth - 1);
+        int top = Math.Clamp((int)(positionY / 16f) - 1, 0, bottomLimit);
+        int bottom = Math.Clamp((int)((positionY + height) / 16f) + 2, 0, bottomLimit);
+        for (int x = left; x < right; x++)
+        for (int y = top; y < bottom; y++)
+        {
+            WorldTile tile = tiles.Get(x, y);
+            if (tile.LiquidAmount == 0 || tile.LiquidKind != WorldLiquidKind.Lava) continue;
+            float emptyHeight = (256 - tile.LiquidAmount) / 32f * 2f;
+            if (Intersects(positionX, positionY, width, height, x * 16f, y * 16f + emptyHeight,
+                16f, 16 - (int)emptyHeight)) return true;
+        }
+        return false;
+    }
+
     public static VanillaLiquidContactState GetLiquidContacts(
         WorldTileStore tiles,
         float positionX,

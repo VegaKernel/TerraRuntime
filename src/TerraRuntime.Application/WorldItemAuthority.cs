@@ -8,7 +8,7 @@ namespace TerraRuntime.Application;
 /// Owns authoritative world-item command application and instanced-item lease expiry for one live world.
 /// The authoritative world loop remains the only caller; this type does not introduce a second writer.
 /// </summary>
-internal sealed class WorldItemAuthority
+internal sealed partial class WorldItemAuthority
 {
     private readonly PlayerAuthority players;
     private readonly RuntimeWorldItemStore worldItems;
@@ -66,6 +66,9 @@ internal sealed class WorldItemAuthority
             case WorldItemOwnerRuntimeCommand owner:
                 ApplyOwner(owner);
                 return true;
+            case WorldItemReleaseRuntimeCommand release:
+                ApplyRelease(release);
+                return true;
             default:
                 return false;
         }
@@ -80,7 +83,8 @@ internal sealed class WorldItemAuthority
         for (int index = 0; index < count; index++)
         {
             WorldItemSnapshot item = reservationScan[index];
-            if (!item.Handle.IsAssigned || item.ShimmerTime > 0f)
+            if (!item.Handle.IsAssigned || item.ShimmerTime > 0f || item.TimeToKeepReservation > 0 ||
+                (item.GrabDelayTime > 0 && item.GrabDelayPlayer == byte.MaxValue))
                 continue;
 
             RuntimePlayerMember? currentOwner = null;
@@ -161,6 +165,8 @@ internal sealed class WorldItemAuthority
             replication.TryBroadcastInstancedSlotRelease(expiredInstancedItemSlots[index]);
     }
 
+    internal void TickReservationTimers() => worldItems.TickReservationTimers();
+
     public bool TryCapture(short slot, out WorldItemSnapshot snapshot) =>
         worldItems.TryGetActive(slot, out snapshot);
 
@@ -209,6 +215,17 @@ internal sealed class WorldItemAuthority
         WorldItemDropStateUpdate state = command.State;
         if (worldItems.TryAllocateDrop(in state, out WorldItemSnapshot snapshot))
         {
+            // MessageBuffer21 -> ApplySpawnOwnership: do not discard the spawning connection's grab delay.
+            // Packet22 remains a server-owned projection; the client supplies only the source ownership mode.
+            if (state.Ownership != WorldItemOwnershipMode.None)
+            {
+                bool reserve = state.Ownership == WorldItemOwnershipMode.ReserveForLocalPlayer;
+                byte local = command.Connection.Player.Slot.Value;
+                var owner = new WorldItemOwnerStateUpdate(reserve ? local : byte.MaxValue, reserve ? 100 : 0,
+                    state.Ownership == WorldItemOwnershipMode.GrabDelayForLocalPlayer ? local : byte.MaxValue,
+                    reserve ? 0 : 100, state.PositionX, state.PositionY);
+                _ = worldItems.TryApplyOwner(snapshot.Handle.Slot, in owner, out snapshot);
+            }
             AppliedAllocations++;
             command.Completion?.TrySetResult(snapshot);
             return;
@@ -276,5 +293,23 @@ internal sealed class WorldItemAuthority
         }
 
         RejectedOwners++;
+    }
+
+    private void ApplyRelease(WorldItemReleaseRuntimeCommand command)
+    {
+        if (!players.IsCurrent(command.Connection) || !IsCurrentReservedTarget(command.Connection, command.Target) ||
+            !worldItems.TryGetActive(command.Target.Slot, out WorldItemSnapshot item))
+        {
+            RejectedOwners++;
+            return;
+        }
+        // Source case39 relinquishes ownership; a client cannot choose the next recipient or position.
+        byte owner = command.ForceServer || item.TimeToKeepReservation > 0
+            ? byte.MaxValue : FindNearestEligibleOwner(in item)?.Slot.Value ?? byte.MaxValue;
+        var update = new WorldItemOwnerStateUpdate(owner,
+            command.ForceServer ? 0 : owner == byte.MaxValue ? item.TimeToKeepReservation : DefaultOwnerReservationTicks1458,
+            item.GrabDelayPlayer, item.GrabDelayTime, item.PositionX, item.PositionY);
+        if (worldItems.TryApplyOwner(item.Handle.Slot, in update, out _)) AppliedOwners++;
+        else RejectedOwners++;
     }
 }

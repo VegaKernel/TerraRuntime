@@ -270,6 +270,11 @@ internal sealed class RuntimeOverviewDashboard : View
         ReadOnlySpan<RuntimePlayerSnapshot> players = playersSnapshot.Players.Span;
         latestPrimaryPlayers = players.ToArray();
         RuntimeBotSnapshot[] bots = botOperations?.CaptureSnapshot() ?? [];
+        if (botSettingsWindow is not null)
+        {
+            foreach (RuntimeBotSnapshot bot in bots)
+                botSettingsWindow.RefreshLiveStatus(bot);
+        }
         latestLogs = logs;
         latestChat = chat;
         hasFeedSnapshot = true;

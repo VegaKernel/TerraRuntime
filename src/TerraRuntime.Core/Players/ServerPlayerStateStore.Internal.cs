@@ -34,9 +34,11 @@ public sealed partial class ServerPlayerStateStore
                 new PlayerStateRevision(Revision),
                 Team: 0,
                 ControlFlags,
-                MovementFlags: 0,
+                // MessageBuffer case 13 (1.4.5.8): bit 4 means normal gravity, not inverted gravity.
+                MovementFlags: 1 << 4,
                 MiscFlags1: 0,
-                MiscFlags2: 0,
+                // Remote ItemCheck gates animation on lastItemUseAttemptSuccess, independently of controlUseItem.
+                MiscFlags2: (byte)((ControlFlags & (1 << 5)) != 0 ? 1 << 6 : 0),
                 SelectedItem,
                 PositionX,
                 PositionY,

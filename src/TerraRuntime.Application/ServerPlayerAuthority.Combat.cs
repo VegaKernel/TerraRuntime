@@ -7,6 +7,22 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class ServerPlayerAuthority
 {
+    internal PlayerDamageCommitResult TryCommitAuthoritativePvpDamage(
+        long tick, in PlayerStateSnapshot attacker, PlayerHandle target, DamageSource source,
+        int damage, bool critical, int hitDirection, bool expertMode, bool masterMode,
+        out PlayerStateSnapshot committed)
+    {
+        committed = default;
+        if (!attacker.Player.IsAssigned || attacker.Player == target || attacker.IsDead || !attacker.Hostile ||
+            !source.IsValid || source.Player != attacker.Player ||
+            source.Kind is not (DamageSourceKind.PlayerItem or DamageSourceKind.PlayerProjectile) ||
+            !states.TryGet(target, out PlayerStateSnapshot victim) || !victim.Hostile ||
+            (attacker.Team != 0 && attacker.Team == victim.Team))
+            return PlayerDamageCommitResult.Rejected;
+        return TryCommitAuthoritativeDamage(tick, target, source, default, damage, hitDirection,
+            default, expertMode, masterMode, out committed, pvp: true, critical);
+    }
+
     internal bool TryCaptureCombatSnapshot(PlayerHandle player, out VanillaPlayerCombatSnapshot snapshot)
     {
         snapshot = default;
@@ -49,7 +65,7 @@ internal sealed partial class ServerPlayerAuthority
         bool expertMode,
         bool masterMode,
         out PlayerStateSnapshot committed) =>
-        TryCommitAuthoritativePveDamage(
+        TryCommitAuthoritativeDamage(
             tick,
             target,
             DamageSource.FromNpcContact(sourceNpc),
@@ -73,7 +89,7 @@ internal sealed partial class ServerPlayerAuthority
         bool expertMode,
         bool masterMode,
         out PlayerStateSnapshot committed) =>
-        TryCommitAuthoritativePveDamage(
+        TryCommitAuthoritativeDamage(
             tick,
             target,
             DamageSource.FromNpcProjectile(sourceNpc, projectile),
@@ -85,7 +101,7 @@ internal sealed partial class ServerPlayerAuthority
             masterMode,
             out committed);
 
-    private PlayerDamageCommitResult TryCommitAuthoritativePveDamage(
+    private PlayerDamageCommitResult TryCommitAuthoritativeDamage(
         long tick,
         PlayerHandle target,
         DamageSource source,
@@ -95,7 +111,9 @@ internal sealed partial class ServerPlayerAuthority
         VanillaPlayerImmunityChannel1458 immunityChannel,
         bool expertMode,
         bool masterMode,
-        out PlayerStateSnapshot committed)
+        out PlayerStateSnapshot committed,
+        bool pvp = false,
+        bool critical = false)
     {
         committed = default;
         if (!target.IsAssigned || !source.IsValid || damage <= 0 || damage > short.MaxValue ||
@@ -111,26 +129,35 @@ internal sealed partial class ServerPlayerAuthority
         if (!TryCaptureCombatSnapshot(target, out VanillaPlayerCombatSnapshot targetCombat))
             return PlayerDamageCommitResult.Rejected;
 
-        bool immune = damageImmunity.IsPveImmune(target, immunityChannel, tick);
+        bool immune = pvp ? damageImmunity.IsPvpImmune(target, tick) : damageImmunity.IsPveImmune(target, immunityChannel, tick);
         var attack = new AuthoritativeAttackDamage(
             source,
             damage,
             ArmorPenetration: 0,
-            Critical: false,
+            Critical: critical,
             KnockBack: 4.5f,
             hitDirection);
-        if (!VanillaCombatDamagePipeline.TryResolvePlayerDamage(
-                in attack,
-                in targetCombat,
-                immune,
-                out FinalDamageToHp final,
-                expertMode,
-                masterMode) ||
+        FinalDamageToHp final;
+        bool resolved = pvp
+            ? VanillaCombatDamagePipeline.TryResolvePvp(in attack, in targetCombat, immune, out final, expertMode, masterMode)
+            : VanillaCombatDamagePipeline.TryResolvePlayerDamage(in attack, in targetCombat, immune, out final, expertMode, masterMode);
+        if (!resolved ||
             final.Damage <= 0)
         {
             return PlayerDamageCommitResult.Rejected;
         }
 
+        return CommitResolvedDamage(tick, in current, source, projectileType, in final, hitDirection,
+            immunityChannel, pvp, damageOverTime: false, out committed);
+    }
+
+    private PlayerDamageCommitResult CommitResolvedDamage(
+        long tick, in PlayerStateSnapshot current, DamageSource source, ProjectileTypeId projectileType,
+        in FinalDamageToHp final, int hitDirection, VanillaPlayerImmunityChannel1458 immunityChannel,
+        bool pvp, bool damageOverTime, out PlayerStateSnapshot committed)
+    {
+        PlayerHandle target = current.Player;
+        committed = default;
         short nextLife = checked((short)Math.Max(0, current.Life - final.Damage));
         var vitals = new ServerPlayerVitalsState(nextLife, current.MaxLife, current.Mana, current.MaxMana);
         if (!states.TrySetVitals(target, in vitals, out PlayerStateSnapshot afterVitals))
@@ -151,8 +178,11 @@ internal sealed partial class ServerPlayerAuthority
             events?.ServerPlayerMoved(in afterMotion);
         }
 
-        long until = tick + VanillaIncomingPlayerDamageFacts1458.ResolvePveImmunityTicks(final.Damage);
-        damageImmunity.RecordPve(target, immunityChannel, until);
+        if (pvp)
+            damageImmunity.RecordPvp(target, tick + 8);
+        else if (!damageOverTime)
+            damageImmunity.RecordPve(target, immunityChannel,
+                tick + VanillaIncomingPlayerDamageFacts1458.ResolvePveImmunityTicks(final.Damage));
         var committedVitals = new ServerPlayerVitalsState(
             committed.Life,
             committed.MaxLife,
@@ -165,7 +195,9 @@ internal sealed partial class ServerPlayerAuthority
             jumpIntents.Remove(target);
             jumpStates.Remove(target);
             movementIntents.Remove(target);
-            events?.ServerPlayerDied(target, source, projectileType, final.Damage, hitDirection);
+            // Player.UpdateLifeRegen calls KillMe(ByOther(8), 10, 0), not Hurt's per-tick HP loss.
+            events?.ServerPlayerDied(target, source, projectileType, damageOverTime ? 10 : final.Damage, hitDirection);
+            ResetLavaState(target);
         }
         return PlayerDamageCommitResult.Committed;
     }

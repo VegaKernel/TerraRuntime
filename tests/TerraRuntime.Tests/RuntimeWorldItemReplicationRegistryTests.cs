@@ -11,6 +11,25 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimeWorldItemReplicationRegistryTests
 {
     [Fact]
+    public void Client_local_item_receiver_requires_playing_exact_generation_and_open_queue()
+    {
+        var replication = new RuntimeWorldItemReplicationRegistry();
+        var source = GameCommandSourceId.FromConnection(7101);
+        var player = Connection(source, slot: 4, generation: 1);
+        var queue = CreateOutbound();
+        Assert.False(replication.HasClientLocalItemReceiver(player.Player));
+        Assert.True(replication.TryRegister(source, queue));
+        Assert.False(replication.HasClientLocalItemReceiver(player.Player));
+        replication.PlayerSpawned(player, CreatePlayerSpawn(player.Player.Slot));
+        Assert.True(replication.HasClientLocalItemReceiver(player.Player));
+        Assert.False(replication.HasClientLocalItemReceiver(Connection(source, slot: 4, generation: 2).Player));
+        queue.Complete();
+        Assert.False(replication.HasClientLocalItemReceiver(player.Player));
+        Assert.True(replication.TryUnregister(source));
+        Assert.False(replication.HasClientLocalItemReceiver(player.Player));
+    }
+
+    [Fact]
     public void Playing_client_receives_actual_allocated_slot_owner_update_and_removal()
     {
         var replication = new RuntimeWorldItemReplicationRegistry();

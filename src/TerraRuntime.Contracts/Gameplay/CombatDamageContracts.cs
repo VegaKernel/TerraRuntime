@@ -17,6 +17,14 @@ public enum DamageSourceKind : byte
     Server = 6
 }
 
+/// <summary>Typed environmental causes; deliberately independent of Terraria death-message indices.</summary>
+public enum EnvironmentDamageCause : byte
+{
+    Unspecified = 0,
+    Lava = 1,
+    Burning = 2
+}
+
 /// <summary>
 /// Generation-safe provenance for a damage event. Only handles required by the selected source
 /// kind may be populated; mixed or stale-looking provenance is rejected by <see cref="IsValid"/>.
@@ -27,7 +35,12 @@ public readonly record struct DamageSource(
     NpcHandle Npc,
     ProjectileHandle Projectile)
 {
-    public bool IsValid => Kind switch
+    public EnvironmentDamageCause EnvironmentCause { get; init; }
+
+    public bool IsValid =>
+        (EnvironmentCause == EnvironmentDamageCause.Unspecified ||
+         (Kind == DamageSourceKind.Environment && EnvironmentCause is EnvironmentDamageCause.Lava or EnvironmentDamageCause.Burning)) &&
+        (Kind switch
     {
         DamageSourceKind.Environment or DamageSourceKind.Server =>
             !Player.IsAssigned && !Npc.IsAssigned && !Projectile.IsAssigned,
@@ -40,10 +53,13 @@ public readonly record struct DamageSource(
         DamageSourceKind.NpcProjectile =>
             !Player.IsAssigned && Npc.IsAssigned && Projectile.IsAssigned,
         _ => false
-    };
+    });
 
     public static DamageSource Environment =>
         new(DamageSourceKind.Environment, default, default, default);
+
+    public static DamageSource FromEnvironment(EnvironmentDamageCause cause) =>
+        Environment with { EnvironmentCause = cause };
 
     public static DamageSource Server =>
         new(DamageSourceKind.Server, default, default, default);

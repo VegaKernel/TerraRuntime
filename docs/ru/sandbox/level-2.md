@@ -4,6 +4,18 @@
 
 Level 2 запускает один sandbox-мир в отдельном worker process для fault/resource isolation. Внутри worker используется тот же `WorldRuntime`, что и в Level 1/primary-selected runtime.
 
+## Реализованная runtime-only основа
+
+`SandboxSupervisor` владеет одним скрытым дочерним процессом приложения и одним ephemeral `WorldRuntime` на lease. Закрытый startup `--sandbox-worker <pipe-id>` не открывает публичный Terraria listener. Повторно используются существующие materializer и authoritative game-loop owner; IPC не меняет simulation state. Это проверенная основа жизненного цикла, **не играбельный Level 2**: host/Vega admission, локальная game-mode logic, resource enforcement, перенос игроков и двусторонний socket handoff остаются открытыми. Схемы ниже описывают целевую архитектуру, а не готовый допуск игроков.
+
+Асинхронный локальный pipe использует BCL `CurrentUserOnly` ([контракт платформы](https://learn.microsoft.com/en-us/dotnet/api/system.io.pipes.pipeoptions?view=net-10.0)). Взаимные HMAC-SHA256 challenge/confirmation связывают отдельный bootstrap secret ребёнка, свежий challenge, точный PID запущенного процесса и process-instance GUID. Secret передаётся через environment ребёнка, удаляется там до startup, не попадает в аргументы команды/control payload; его owned byte buffer обнуляется. Это не защита от атакующего с доступом к памяти/учётной записи supervisor.
+
+Существующий versioned `TRPC` header ограничивает payload до $8\,\mathrm{KiB}$ перед allocation. Source-generated JSON отклоняет неизвестные/отсутствующие поля конструктора. Допущены только authentication, create, heartbeat/snapshot и stop, по одному сериализованному запросу на lease. Неизвестные операции, flags, correlations, identities и module/source declarations закрываются fail-closed. Startup ограничен $180\,\mathrm{s}$, запрос — $10\,\mathrm{s}$, heartbeat идёт каждые $2\,\mathrm{s}$, control inactivity worker ограничена $15\,\mathrm{s}$. Ранний выход ребёнка прерывает startup; прерванный exchange закрывает pipe вместо повторного использования частичного frame.
+
+Допущенные sources: встроенный `Generated` и абсолютный `.wld` reference с обязательным SHA-256. Общий Level1/worker file materializer ограничивает input до $128\,\mathrm{MiB}$ перед allocation и проверяет именно тот буфер, который затем декодируется. Для Level1 обязательный digest не вводится. Генерация/чтение/validation происходят до запуска runtime, вне его game thread. `Running` требует validated bootstrap и первый tick при $60\,\mathrm{Hz}$. Stop не сохраняет мир; ошибочный/отменённый control завершает только owned child. Нет automatic restart, восстановления socket или постоянного gameplay proxy.
+
+`TerraRuntime.Server --sandbox-worker-smoke` проверяет два настоящих executable приложения, authentication, tick progress, изоляцию падения одного ребёнка и graceful stop. Нужен executable приложения, не `dotnet <dll>`. Тесты также покрывают повторный teardown, heartbeat, cancellation, invalid descriptors/framing, целостность файла и materialization failure. `.trschem`, snapshots, dynamic modules и OS CPU/memory quotas этим срезом не поддерживаются.
+
 ## Состав worker
 
 ```mermaid
