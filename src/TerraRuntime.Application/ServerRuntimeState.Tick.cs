@@ -34,6 +34,7 @@ internal sealed partial class ServerRuntimeState
             _runtime.WorldTileAuthority.TickProjectileTileExplosions(_runtime.Projectiles.PendingTileExplosions);
             _runtime.Projectiles.ApplyReflections();
         }
+        _runtime.WorldTileAuthority.TickFallingBlocks(_runtime.Projectiles);
         if (_runtime.WorldTiles is { } itemTiles && _runtime.EnvironmentWorldFacts is not null)
             _runtime.WorldItems.TickGuideDolls(itemTiles, _runtime.Npcs);
         _runtime.WorldItems.TickReservationTimers();

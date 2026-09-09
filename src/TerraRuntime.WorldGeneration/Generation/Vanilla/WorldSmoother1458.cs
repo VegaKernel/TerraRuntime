@@ -404,7 +404,10 @@ internal static class WorldSmoother1458
         tile.IsActive && !tile.IsActuated && IsSolidIdentity(tile.TileType);
 
     private static bool IsSolidIdentity(TileTypeId type) =>
-        VanillaTileCollisionCatalog.IsSolid(type) || WorldSmoothingCatalog1458.IsTemporarilySolidCrackedBrick(type);
+        // WorldGen.SolidTile and SolidOrSlopedTile(default includePlatforms:false) exclude tileSolidTop.
+        !VanillaTileCollisionCatalog.IsSolidTop(type) &&
+        !WorldSmoothingCatalog1458.IsTemporarilyNonSolidDesertBoulder(type) &&
+        (VanillaTileCollisionCatalog.IsSolid(type) || WorldSmoothingCatalog1458.IsTemporarilySolidCrackedBrick(type));
 
     private readonly ref struct Grid
     {

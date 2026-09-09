@@ -254,6 +254,10 @@ internal sealed class TerrainPass1458 : IWorldGenerationPass
         double sixTileBand = (int)((rockLayer - worldSurface) / 6d) * 6d;
         rockLayer = (int)(worldSurface + sixTileBand);
 
+        // TerrainPass owns these draws. TerrainLayers is only a state bridge, not a vanilla pass;
+        // drawing there would use a freshly seeded stream instead of Terrain's advanced stream.
+        (int waterLine, int lavaLine) = ResolveLiquidLines(random, worldSurface, rockLayer, rock, height, isRemix);
+
         const int minimumLayerGap = 20;
         if (rockLow < surfaceHigh + minimumLayerGap)
         {
@@ -274,6 +278,7 @@ internal sealed class TerrainPass1458 : IWorldGenerationPass
         state.TerrainLayers = new WorldGenerationLayers(worldSurface, rockLayer);
         if (context.Workspace is Workspace runtimeWorkspace)
         {
+            runtimeWorkspace.SetVanillaLiquidLines(waterLine, lavaLine);
             runtimeWorkspace.SetVanillaTerrainState(new TerrainGenerationState1458(
                 worldSurface,
                 rockLayer,
@@ -284,6 +289,23 @@ internal sealed class TerrainPass1458 : IWorldGenerationPass
                 rockLow,
                 rockHigh));
         }
+    }
+
+    internal static (int WaterLine, int LavaLine) ResolveLiquidLines(
+        IWorldGenerationVanillaRandom random,
+        double worldSurface,
+        double rockLayer,
+        double currentRockLayer,
+        int height,
+        bool isRemix)
+    {
+        ArgumentNullException.ThrowIfNull(random);
+        int waterLine = (int)(rockLayer + height) / 2 + random.Next(-100, 20);
+        int ordinaryLavaLine = waterLine + random.Next(50, 80);
+        int lavaLine = isRemix
+            ? (int)(worldSurface * 4d + currentRockLayer) / 5
+            : ordinaryLavaLine;
+        return (waterLine, lavaLine);
     }
 
     internal static bool IsCanonicalWorldSize(int width, int height) =>

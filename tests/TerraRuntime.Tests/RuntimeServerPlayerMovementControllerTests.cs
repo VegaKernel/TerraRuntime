@@ -8,6 +8,26 @@ namespace TerraRuntime.Tests;
 
 public sealed class RuntimeServerPlayerMovementControllerTests
 {
+    [Theory]
+    [InlineData(62, true)]
+    [InlineData(72, false)]
+    [InlineData(0, false)]
+    public async Task Flight_authority_requires_functional_not_vanity_or_inventory_wings(short itemSlot, bool flies)
+    {
+        RuntimeFixture fixture = CreateFixture(1);
+        var id = new ServerPlayerId("test:equipped-flight");
+        ServerPlayerCreateResult created = await CreateAsync(fixture.Runtime, id, 96f, 600f);
+        Assert.True(created.IsCreated);
+        Assert.True(fixture.States.TrySetItem(created.Player,
+            new ServerPlayerItemState(itemSlot, TerraRuntime.Contracts.Gameplay.VanillaItemIds.FishronWings,
+                1, default, 0), out _));
+        Assert.True(await SetIntentAsync(fixture.Runtime, id,
+            ServerPlayerMovementIntent.MoveTo(106f, 0f, ServerPlayerMovementOptions.Default with { FlightEnabled = true })));
+        for (int i = 0; i < 40; i++) fixture.Runtime.Tick();
+        Assert.True(fixture.States.TryGet(created.Player, out var moved));
+        Assert.Equal(flies, moved.VelocityY < -5f);
+    }
+
     [Fact]
     public async Task MoveTo_produces_horizontal_intent_that_flows_through_player_physics()
     {
@@ -96,8 +116,12 @@ public sealed class RuntimeServerPlayerMovementControllerTests
     {
         RuntimeFixture fixture = CreateFixture(1);
         var id = new ServerPlayerId("test:flight");
-        ServerPlayerCreateResult created = await CreateAsync(fixture.Runtime, id, 96f, 160f);
+        ServerPlayerCreateResult created = await CreateAsync(fixture.Runtime, id, 96f, 600f);
         Assert.True(created.IsCreated);
+        // A movement option is policy, not permission to fly without functional wings.
+        Assert.True(fixture.States.TrySetItem(created.Player,
+            new ServerPlayerItemState(62, new TerraRuntime.Contracts.Gameplay.ItemTypeId(2609), 1,
+                TerraRuntime.Contracts.Gameplay.VanillaPrefixIds.None, 0), out _));
         ServerPlayerMovementOptions options = ServerPlayerMovementOptions.Default with { FlightEnabled = true };
 
         Assert.True(await SetIntentAsync(
@@ -109,8 +133,8 @@ public sealed class RuntimeServerPlayerMovementControllerTests
 
         Assert.True(fixture.States.TryGet(created.Player, out PlayerStateSnapshot flying));
         Assert.True((flying.ControlFlags & (1 << 4)) != 0);
-        Assert.True(flying.VelocityY < 0f);
-        Assert.True(flying.PositionY < 160f);
+        Assert.True(flying.VelocityY < -5f);
+        Assert.True(flying.PositionY < 480f);
     }
 
     private static RuntimeFixture CreateFixture(int capacity)

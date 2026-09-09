@@ -6,11 +6,11 @@
 
 `Reset → Terrain → TerrainLayers → Dunes → OceanSand → SandPatches → Tunnels → MountCaves → DirtWallBackgrounds → RocksInDirt → DirtInRocks → Clay → SmallHoles → DirtLayerCaves → RockLayerCaves → SurfaceCaves → WavyCaves → GenerateIceBiome → Grass → Jungle`.
 
-Проходы, участвующие в общем vanilla-потоке, используют один Terraria-compatible `UnifiedRandom`. Проходы с отдельной генерационной случайностью выполняются как `IsolatedDeterministic`, поэтому они не могут случайно сдвинуть общий vanilla RNG.
+Исходный `WorldGenerator.RunPass` заново создаёт `Main.rand` перед каждым enabled pass. `VanillaSharedRng` сохраняет общий порядок вызовов внутри прохода, а не переносит поток из предыдущего прохода. Локальные генерационные проходы используют `IsolatedDeterministic`.
 
 ## Завершение Terrain state
 
-Промежуточный проход после `Terrain` публикует уже рассчитанное состояние `WorldGen.Reset` для следующих проходов и завершает слой параметров глубины. В частности, для обычного пути 1.4.5.8 выполняются два post-terrain RNG-вызова для `waterLine` и `lavaLine`, вместо фиксированных приблизительных глубин.
+Сам Terrain выполняет оба финальных броска `waterLine`/`lavaLine` из уже продвинутого RNG и публикует результат. TerrainLayers переносит эти значения и сохранённый Reset без новых случайных вызовов; отсутствие liquid state вызывает ошибку. Броски в отдельно reseeded bridge были подтверждённым багом, исправленным2026-09-08. Девять независимых официальных Terrain fixtures закрепляют клетки, liquid lines и следующий RNG.
 
 ## Ранние изменения мира
 
@@ -22,9 +22,7 @@ Stage-one pipeline теперь содержит source-shaped реализац�
 
 ## Граница compatibility
 
-После source-backed Jungle старый `Biomes` остаётся только как residual-слой для ещё не перенесённых частей генерации. Он получает отдельный compatibility RNG и поэтому не портит source shared RNG. Его прежняя широкая перерисовка jungle типами 59/60 фильтруется и не может затереть новую source-backed джунглю.
-
-Caves, ores, dungeon, special/secret-seed логика и финальные проходы ещё остаются следующими этапами миграции. Special seeds и неканонические размеры продолжают использовать прежний compatibility-план без изменений.
+Этот документ описывает ранний overlay, а не весь shipping plan. `SourceBackedFinal1458` далее заменяет ordinary aggregate mutations вплоть до Final Cleanup; Biomes/Caves/Ores там являются немутирующими compatibility barriers. Наличие проходов не доказывает точную геометрию. [Полный аудит](vanilla-worldgen-pass-audit.md) перечисляет каждого владельца и оставшийся долг. Существующие special-seed/noncanonical paths остаются отдельными; ограниченный pure Remix slice не означает полную Remix parity.
 
 ## Проверка
 

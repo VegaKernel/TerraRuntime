@@ -816,6 +816,18 @@ public sealed class RuntimeOverviewDashboardInteractionTests
         Assert.False(window.GodModeForSmoke);
         window.SetGodModeForSmoke(true);
         Assert.True(window.GodModeForSmoke);
+        Assert.Contains("Mining", window.ModeNamesForSmoke);
+        Assert.Contains(window.SubViews.OfType<Label>(), label =>
+            label.Text?.ToString() == BotSettingsWindow.MiningHelpText);
+        Assert.Contains("Collect", window.ModeNamesForSmoke);
+        Assert.Contains("ReturnToPlayer", window.ModeNamesForSmoke);
+        window.RefreshLiveStatus(bot with
+        {
+            CurrentAction = RuntimeBotActionKind.Mining,
+            RecentActionResult = RuntimeBotActionResult.Failure(RuntimeBotActionFailureCode.PermissionDenied)
+        });
+        Assert.Contains("Action: Mining", window.StatusTextForSmoke, StringComparison.Ordinal);
+        Assert.Contains("Failure/PermissionDenied", window.StatusTextForSmoke, StringComparison.Ordinal);
         window.RefreshLiveStatus(bot with { PvpEnabled = true });
         Assert.Contains("PvP ON", window.StatusTextForSmoke, StringComparison.Ordinal);
         window.RefreshLiveStatus(bot with { PvpEnabled = false });

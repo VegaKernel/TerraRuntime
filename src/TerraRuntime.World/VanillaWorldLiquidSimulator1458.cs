@@ -11,6 +11,10 @@ namespace TerraRuntime.World;
 /// </summary>
 public sealed class VanillaWorldLiquidSimulator1458
 {
+    // Admitted CheckOrb/CheckPot/Check*Wall/CheckJunglePlant object cells use 16+2 atlas pixels.
+    private const int LoadingObjectFrameStepPixels = 18;
+    // CheckOnTable1x1 / PlaceTile: the admitted book row includes Water Bolt at frameX=90.
+    private const int LoadingBookMaximumFrameX = 90;
     // TerrariaServer 1.4.5.8 Liquid.UpdateLiquid defaults to maxLiquid=25,000 and cycles=10,
     // therefore an empty dedicated server processes 2,500 active liquid entries per update. Player count
     // lowers curMaxLiquid and raises cycles; Tick() derives that exact live slice and this constant is only the cap.
@@ -118,6 +122,43 @@ public sealed class VanillaWorldLiquidSimulator1458
     /// temporarily non-solid while Bubble (379) remains an explicit barrier, matching <c>tilesIgnoreWater</c>.
     /// </summary>
     public void QuickWater(int minY = -1, int maxY = -1)
+        => QuickWaterCore(minY, maxY, tiles.Dimensions.HeightTiles, default);
+
+    /// <summary>
+    /// The ordinary pre-Dungeon generation flow slice. The generation owner must surround this with
+    /// ShimmerRemoveWater and LiquidInteractionsCleanup and must not use it after Dungeon/Aether placement.
+    /// Unlike loading, a vertical fall below the retained generation water line converts water to lava.
+    /// </summary>
+    public void QuickWaterBeforeDungeonGeneration(int waterLine, CancellationToken cancellationToken)
+    {
+        if (waterLine < 0 || waterLine >= tiles.Dimensions.HeightTiles)
+            throw new ArgumentOutOfRangeException(nameof(waterLine));
+        QuickWaterCore(-1, -1, waterLine, cancellationToken);
+    }
+
+    /// <summary>
+    /// The solid-cell clearing slice of WorldGen.WaterCheck while worldGenTilesIgnoreWater(true) is active.
+    /// Generation's existing settling passes own its timing; this does not claim their remaining movement,
+    /// object death and repeated quick-settle orchestration is fully ported.
+    /// </summary>
+    public void ClearEmbeddedLiquidDuringGenerationSettle(CancellationToken cancellationToken)
+    {
+        for (int x = 1; x < tiles.Dimensions.WidthTiles - 1; x++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            for (int y = tiles.Dimensions.HeightTiles - 2; y > 0; y--)
+            {
+                WorldTile tile = tiles.Get(x, y);
+                if (tile.LiquidAmount == 0 || tile.TileType == VanillaTileIds.Bubble ||
+                    VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringWorldGenerationSettle(tile.TileType) ||
+                    !IsQuickWaterBarrier1458(in tile)) continue;
+                tile.LiquidAmount = 0;
+                tiles.SetInitialPopulationTile(x, y, in tile);
+            }
+        }
+    }
+
+    private void QuickWaterCore(int minY, int maxY, int waterLine, CancellationToken cancellationToken)
     {
         int width = tiles.Dimensions.WidthTiles;
         int height = tiles.Dimensions.HeightTiles;
@@ -131,15 +172,16 @@ public sealed class VanillaWorldLiquidSimulator1458
 
         for (int y = maxY; y >= minY; y--)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             for (int x = 4; x < width - 4; x++)
             {
                 if (tiles.Get(x, y).LiquidAmount != 0)
-                    SettleWaterAt1458(x, y);
+                    SettleWaterAt1458(x, y, waterLine);
             }
         }
     }
 
-    private void SettleWaterAt1458(int originX, int originY)
+    private void SettleWaterAt1458(int originX, int originY, int waterLine)
     {
         WorldTile origin = tiles.Get(originX, originY);
         if (origin.LiquidAmount == 0 || IsQuickWaterBubbleBarrier1458(in origin))
@@ -154,23 +196,27 @@ public sealed class VanillaWorldLiquidSimulator1458
         WorldLiquidKind kind = origin.LiquidKind;
 
         origin.LiquidAmount = 0;
-        origin.LiquidKind = WorldLiquidKind.Water;
         tiles.SetInitialPopulationTile(originX, originY, in origin);
 
         bool firstRow = true;
         while (true)
         {
+            bool fellVertically = false;
             WorldTile below = tiles.Get(x, y + 1);
             while (y < tiles.Dimensions.HeightTiles - 5 &&
                    below.LiquidAmount == 0 &&
                    IsQuickWaterPassable1458(in below))
             {
                 y++;
+                fellVertically = true;
                 firstRow = false;
                 below = tiles.Get(x, y + 1);
             }
 
-            // Loading (not generating) keeps the original liquid kind; the worldgen water-line conversion is inactive.
+            // Liquid.SettleWaterAt tests this iteration's vertical fall, not the preceding lateral descent.
+            // Loading passes height as its water line; ordinary pre-Dungeon generation retains the Terrain line.
+            if (fellVertically && !originWasHoney && !originWasShimmer && y > waterLine)
+                kind = WorldLiquidKind.Lava;
             int direction = -1;
             int offset = 0;
             int lastEmptyDirection = -1;
@@ -262,16 +308,19 @@ public sealed class VanillaWorldLiquidSimulator1458
         if (destination.LiquidAmount == 0)
             return;
 
-        AttemptQuickWaterLoadingReaction1458(x, y, WorldLiquidKind.Lava, originWasLava);
-        AttemptQuickWaterLoadingReaction1458(x, y, WorldLiquidKind.Honey, originWasHoney);
-        AttemptQuickWaterLoadingReaction1458(x, y, WorldLiquidKind.Shimmer, originWasShimmer);
+        // Only the admitted ordinary generation entry point supplies a line below world height.
+        bool beforeDungeonGeneration = waterLine < tiles.Dimensions.HeightTiles;
+        AttemptQuickWaterLoadingReaction1458(x, y, WorldLiquidKind.Lava, originWasLava, beforeDungeonGeneration);
+        AttemptQuickWaterLoadingReaction1458(x, y, WorldLiquidKind.Honey, originWasHoney, beforeDungeonGeneration);
+        AttemptQuickWaterLoadingReaction1458(x, y, WorldLiquidKind.Shimmer, originWasShimmer, beforeDungeonGeneration);
     }
 
     private void AttemptQuickWaterLoadingReaction1458(
         int x,
         int y,
         WorldLiquidKind testedKind,
-        bool originHadTestedKind)
+        bool originHadTestedKind,
+        bool beforeDungeonGeneration)
     {
         Span<(int X, int Y)> neighbours = stackalloc (int X, int Y)[4]
         {
@@ -293,8 +342,13 @@ public sealed class VanillaWorldLiquidSimulator1458
 
             int targetX = originHadTestedKind ? x : neighbourX;
             int targetY = originHadTestedKind ? y : neighbourY;
+            if (beforeDungeonGeneration && testedKind == WorldLiquidKind.Lava)
+                ApplyPreDungeonDesertLava1458(targetX, targetY);
             WorldTile source = tiles.Get(targetX, targetY);
-            if (source.LiquidAmount == 0 || source.LiquidKind != testedKind)
+            // AttemptToMove* dispatch uses the origin flags, not the destination's current kind.
+            // Earlier reactions may also have consumed this cell; LiquidCheck still examines neighbours.
+            // Its SolidTile guard observes QuickWater's temporary solidity, and excludes slopes/half bricks.
+            if (source.Shape == 0 && IsQuickWaterBarrier1458(in source))
                 return;
 
             WorldTile left = tiles.Get(targetX - 1, targetY);
@@ -305,6 +359,28 @@ public sealed class VanillaWorldLiquidSimulator1458
             ApplyGeneratingOrLoadingForeignLiquidReaction1458(
                 targetX, targetY, testedKind, in source, in left, in right, in above, scratch, ref ignoredChangeCount);
             return;
+        }
+    }
+
+    private void ApplyPreDungeonDesertLava1458(int x, int y)
+    {
+        // Ordinary generating-world LavaCheck precedes LiquidCheck with UndergroundDesertCheck.
+        // Remix/dual-dungeon generation is not admitted by QuickWaterBeforeDungeonGeneration.
+        const int radius = 3;
+        bool desertWall = false;
+        for (int dx = -radius; dx <= radius; dx++)
+        for (int dy = -radius; dy <= radius; dy++)
+            if (Contains(x + dx, y + dy) && tiles.Get(x + dx, y + dy).Wall is 187 or 216)
+                desertWall = true;
+        if (!desertWall) return;
+        if (!Contains(x - radius, y - radius) || !Contains(x + radius, y + radius))
+            throw new InvalidOperationException("Pre-Dungeon desert lava footprint escaped the world.");
+        for (int dx = -radius; dx <= radius; dx++)
+        for (int dy = -radius; dy <= radius; dy++)
+        {
+            WorldTile tile = tiles.Get(x + dx, y + dy);
+            tile.LiquidKind = WorldLiquidKind.Lava;
+            tiles.SetInitialPopulationTile(x + dx, y + dy, in tile);
         }
     }
 
@@ -453,35 +529,66 @@ public sealed class VanillaWorldLiquidSimulator1458
             return false;
         // TileID.Sets.Platforms: apply this before the generic single-cell catalog, which also
         // admits team platforms. Supports above/below can require unrepresented cascading kills.
-        if (tile.Type is 19 or 427 or >= 435 and <= 439)
+        if (VanillaTileIds.IsPlatform(tile.TileType))
         {
             WorldTile above = tiles.Get(x, y - 1);
-            return !above.IsActive && (!support.IsActive ||
-                (VanillaTileDefinitionCatalog.TryGet(support.TileType, out var floor) && floor.IsSolid && !floor.IsFrameImportant));
+            if (support.IsActive &&
+                (!VanillaTileDefinitionCatalog.TryGet(support.TileType, out var floor) || !floor.IsSolid || floor.IsFrameImportant))
+                return false;
+            if (!above.IsActive) return true;
+            // KillTile -> SquareTileFrame -> CheckOnTable1x1: an ordinary single-cell book loses
+            // its table anchor when the platform below dies. No items are created during loading.
+            // Admit only the independently verified book frames and a clear cell above it; chests,
+            // other furniture and unrepresented cascading dependencies remain fail-closed.
+            if (above.TileType != VanillaTileIds.Books || above.FrameY != 0 ||
+                above.FrameX < 0 || above.FrameX > LoadingBookMaximumFrameX || above.FrameX % LoadingObjectFrameStepPixels != 0 ||
+                x <= 5 || x >= tiles.Dimensions.WidthTiles - 5 || y - 1 <= 5 ||
+                y >= tiles.Dimensions.HeightTiles - 5 || tiles.Get(x, y - 2).IsActive)
+                return false;
+            region = new WorldTileRegion(x, y - 1, 1, 2);
+            return true;
         }
         if (VanillaTileDefinitionCatalog.TryGet(tile.TileType, out VanillaTileDefinition definition) &&
             definition.BreakPath is VanillaTileBreakPath.SimpleCell or VanillaTileBreakPath.FrameImportantSingleCell)
             return true;
 
+        // StyleDye occupies one cell despite its 32x38 artwork; no persistent metadata or secondary cells.
+        if (tile.TileType == VanillaTileIds.DyePlants)
+            return VanillaDyePlantFrame1458.IsSupported(tile.FrameX, tile.FrameY);
+
         // WorldFile.LoadWorld sets isGeneratingOrLoadingWorld: KillTile forces noItem and Item.NewItem
         // itself refuses creation. PlantCheck identities are single cells despite being frame-important.
         // This does NOT widen live mining/drop authority, whose contextual plant loot is a different boundary.
         // Torches and StyleAlch herbs likewise have no multi-cell or persistent metadata footprint.
-        if (tile.Type is 3 or 4 or 24 or 61 or 71 or 73 or 74 or 82 or 83 or 84 or 110 or 113 or 184 or 201 or 637 or 703)
+        if (tile.TileType == VanillaTileIds.Plants || tile.TileType == VanillaTileIds.Torches ||
+            tile.TileType == VanillaTileIds.CorruptPlants || tile.TileType == VanillaTileIds.JunglePlants ||
+            tile.TileType == VanillaTileIds.MushroomPlants || tile.TileType == VanillaTileIds.Plants2 ||
+            tile.TileType == VanillaTileIds.JunglePlants2 || tile.TileType == VanillaTileIds.ImmatureHerbs ||
+            tile.TileType == VanillaTileIds.MatureHerbs || tile.TileType == VanillaTileIds.BloomingHerbs ||
+            tile.TileType == VanillaTileIds.HallowedPlants || tile.TileType == VanillaTileIds.HallowedPlants2 ||
+            tile.TileType == VanillaTileIds.LongMoss || tile.TileType == VanillaTileIds.CrimsonPlants ||
+            tile.TileType == VanillaTileIds.AshPlants || tile.TileType == VanillaTileIds.JunglePlantsEcho)
             return true;
 
         // Source CheckOrb/CheckPot/Check3x2/Check1xX, Check1x2Top/CheckBanner and painting Check*Wall
         // remove the remaining coherent object after a cell is killed.
+        // Check2x2 also removes desert boulder484; its projectile branch explicitly excludes
+        // isGeneratingOrLoadingWorld. Only the verified unstyled 2x2 footprint is admitted here.
         // The metadata object catalog intentionally covers chests/signs/entities, not these objects; do not
         // invent a metadata identity or a runtime placement path just to admit their loading-time destruction.
-        if (tile.Type is not (12 or 28 or 42 or 91 or 93 or 215 or 233 or 240 or 242 or 245 or 246) || tile.FrameX < 0 || tile.FrameY < 0 ||
-            tile.FrameX % 18 != 0 || tile.FrameY % 18 != 0 ||
-            (tile.Type == 12 && (tile.FrameX > 54 || tile.FrameY > 18)) ||
-            (tile.Type == 233 && tile.FrameY > 54) ||
-            (tile.Type == 245 && tile.FrameY >= 54) || (tile.Type == 246 && tile.FrameX >= 54)) return false;
+        // Check1x2 chairs use a 40-pixel style stride with rows at 0/18, not a 36-pixel atlas.
+        bool chair = tile.Type == 15;
+        if (tile.Type is not (12 or 15 or 28 or 42 or 91 or 93 or 215 or 233 or 240 or 242 or 245 or 246 or 484 or 485) || tile.FrameX < 0 || tile.FrameY < 0 ||
+            tile.FrameX % LoadingObjectFrameStepPixels != 0 || (chair ? tile.FrameX is not (0 or 18) || tile.FrameY % 40 is not (0 or 18) : tile.FrameY % LoadingObjectFrameStepPixels != 0) ||
+            (tile.TileType == VanillaTileIds.Heart && (tile.FrameX > 54 || tile.FrameY > 18)) ||
+            (tile.TileType == VanillaTileIds.RollingCactus && (tile.FrameX > 18 || tile.FrameY > 18)) ||
+            (tile.TileType == VanillaTileIds.AntlionLarva && (tile.FrameX > 126 || tile.FrameY > 18)) ||
+            (tile.TileType == VanillaTileIds.PlantDetritus && tile.FrameY > 54) ||
+            (tile.TileType == VanillaTileIds.Painting2X3 && tile.FrameY >= 54) ||
+            (tile.TileType == VanillaTileIds.Painting3X2 && tile.FrameX >= 54)) return false;
         (int width, int height) = tile.Type switch
         {
-            42 => (1, 2),
+            15 or 42 => (1, 2),
             91 or 93 => (1, 3),
             215 or 246 => (3, 2),
             233 => (tile.FrameY >= 36 ? 2 : 3, 2),
@@ -490,15 +597,16 @@ public sealed class VanillaWorldLiquidSimulator1458
             245 => (2, 3),
             _ => (2, 2)
         };
-        int column = tile.FrameX / 18 % width, row = tile.FrameY / 18 % height;
+        int column = tile.FrameX / LoadingObjectFrameStepPixels % width;
+        int row = chair ? tile.FrameY % 40 / LoadingObjectFrameStepPixels : tile.FrameY / LoadingObjectFrameStepPixels % height;
         int left = x - column, top = y - row;
         // Source SquareTileFrame cannot propagate object removal inside the five-cell world border.
         if (left <= 5 || top <= 5 || left + width - 1 >= tiles.Dimensions.WidthTiles - 5 || top + height - 1 >= tiles.Dimensions.HeightTiles - 5)
             return false;
-        int frameX = tile.FrameX - column * 18, frameY = tile.FrameY - row * 18;
+        int frameX = tile.FrameX - column * LoadingObjectFrameStepPixels, frameY = tile.FrameY - row * LoadingObjectFrameStepPixels;
         // CheckJunglePlant's 3x2 branch also scans a third row for same-type remnants. Do not erase
         // an adjacent malformed object: ordinary grass support is unaffected, ambiguous remnants reject.
-        if (tile.Type == 233 && width == 3)
+        if (tile.TileType == VanillaTileIds.PlantDetritus && width == 3)
             for (int dx = 0; dx < width; dx++)
                 if (tiles.Get(left + dx, top + height) is { IsActive: true, Type: 233 }) return false;
         for (int dx = 0; dx < width; dx++)
@@ -506,7 +614,8 @@ public sealed class VanillaWorldLiquidSimulator1458
         {
             WorldTile cell = tiles.Get(left + dx, top + dy);
             // Incoherent/overlapping objects stay fail-closed; never erase a foreign neighbor or its metadata.
-            if (!cell.IsActive || cell.Type != tile.Type || cell.FrameX != frameX + dx * 18 || cell.FrameY != frameY + dy * 18)
+            if (!cell.IsActive || cell.Type != tile.Type ||
+                cell.FrameX != frameX + dx * LoadingObjectFrameStepPixels || cell.FrameY != frameY + dy * LoadingObjectFrameStepPixels)
                 return false;
             WorldTile below = tiles.Get(left + dx, top + dy + 1);
             if (below.IsActive && below.Type == 10 && below.FrameY is >= 594 and <= 646 && below.FrameX < 54)
@@ -1144,7 +1253,12 @@ public sealed class VanillaWorldLiquidSimulator1458
 
         if (source.LiquidAmount < 24)
         {
-            ClearLiquidCell(x, y, changes, ref changed);
+            // LiquidCheck's sub24 lower-contact branch explicitly clears kind as well as amount.
+            WorldTile cleared = tiles.Get(x, y);
+            cleared.LiquidAmount = 0;
+            cleared.LiquidKind = WorldLiquidKind.Water;
+            SetTile(x, y, in cleared);
+            Record(x, y, in cleared, changes, ref changed);
             return;
         }
 
@@ -1240,7 +1354,6 @@ public sealed class VanillaWorldLiquidSimulator1458
             return;
 
         tile.LiquidAmount = 0;
-        tile.LiquidKind = WorldLiquidKind.Water;
         SetTile(x, y, in tile);
         Record(x, y, in tile, changes, ref changed);
     }

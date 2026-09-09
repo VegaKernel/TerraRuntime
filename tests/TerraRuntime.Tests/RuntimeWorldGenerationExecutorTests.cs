@@ -116,8 +116,13 @@ public sealed class RuntimeWorldGenerationExecutorTests
         Assert.Equal(id, result.PassId);
     }
 
-    [Fact]
-    public void Executor_reseeds_verified_vanilla_rng_before_each_pass()
+    [Theory]
+    [InlineData("123456", 123456)]
+    [InlineData("-1458", 1458)]
+    [InlineData("-2147483648", 2147483647)]
+    [InlineData("пустыня", -297671210)]
+    [InlineData("seed🌵", 197197792)]
+    public void Executor_reseeds_verified_vanilla_rng_before_each_pass(string text, int seed)
     {
         var values = new List<int>();
         WorldGenerationPassId firstId = new("test:vanilla-rng-a");
@@ -143,7 +148,7 @@ public sealed class RuntimeWorldGenerationExecutorTests
             });
         var request = new WorldGenerationRequest(provider.Id, "Rng", 1, 16, 16)
         {
-            SeedText = "123456"
+            SeedText = text
         };
         var workspace = new Workspace(16, 16);
 
@@ -155,7 +160,7 @@ public sealed class RuntimeWorldGenerationExecutorTests
 
         Assert.Equal(WorldGenerationExecutionStatus.Completed, result.Status);
         Assert.Equal(2, values.Count);
-        var expected = new VanillaUnifiedRandom1458(123456);
+        var expected = new VanillaUnifiedRandom1458(seed);
         int firstValue = expected.Next();
         Assert.Equal(firstValue, values[0]);
         Assert.Equal(firstValue, values[1]);

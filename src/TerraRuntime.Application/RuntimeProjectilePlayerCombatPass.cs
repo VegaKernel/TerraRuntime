@@ -203,6 +203,14 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
         return false;
     }
 
+    private bool TryResolveHostileSource(in ProjectileSnapshot projectile, out NpcHandle sourceNpc)
+    {
+        if (projectiles.TryGetServerNpcSource(projectile.Handle, out sourceNpc)) return true;
+        // A trusted server tile projectile is an environmental hazard, not a fabricated NPC or player owner.
+        return VanillaProjectileOwnership.IsServerOwned(projectile.Spawner) && projectiles.IsCombatTrusted(projectile.Handle) &&
+            VanillaFallingBlock1458.TryGetTile(projectile.Type, out _);
+    }
+
     private void TickServerHostilePve(ReadOnlySpan<ProjectileSnapshot> activeProjectiles, long tick)
     {
         for (int i = 0; i < activeProjectiles.Length; i++)
@@ -210,7 +218,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
             ProjectileSnapshot projectile = activeProjectiles[i];
             if (!projectile.IsActive || projectile.Damage <= 0 ||
                 !VanillaProjectileFacts.IsHostile(projectile.Type) ||
-                !projectiles.TryGetServerNpcSource(projectile.Handle, out NpcHandle sourceNpc) ||
+                !TryResolveHostileSource(projectile, out NpcHandle sourceNpc) ||
                 !projectiles.TryGetLifecycle(projectile.Handle, out ProjectileLifecycleState lifecycle) ||
                 !CanDealHostileProjectileDamage(projectile.Type, in lifecycle) ||
                 !TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition) ||
@@ -242,7 +250,11 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 float targetCenterX = target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
                 int hitDirection = targetCenterX < projectileCenterX ? -1 : 1;
                 bool killedBefore = target.IsDead;
-                PlayerDamageCommitResult result = players.TryCommitAuthoritativeNpcProjectileDamage(
+                PlayerStateSnapshot committed;
+                PlayerDamageCommitResult result = !sourceNpc.IsAssigned
+                    ? players.TryCommitAuthoritativeEnvironmentProjectileDamage(tick, projectile.Handle, targetHandle,
+                        damage, hitDirection, immunityChannel, out committed)
+                    : players.TryCommitAuthoritativeNpcProjectileDamage(
                     tick,
                     sourceNpc,
                     projectile.Handle,
@@ -250,7 +262,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                     damage,
                     hitDirection,
                     immunityChannel,
-                    out PlayerStateSnapshot committed);
+                    out committed);
                 if (result == PlayerDamageCommitResult.Rejected)
                     continue;
 
@@ -295,7 +307,11 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 float targetCenterX = target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
                 int hitDirection = targetCenterX < projectileCenterX ? -1 : 1;
                 bool killedBefore = target.IsDead;
-                PlayerDamageCommitResult result = serverPlayers.TryCommitAuthoritativeNpcProjectileDamage(
+                PlayerStateSnapshot committed;
+                PlayerDamageCommitResult result = !sourceNpc.IsAssigned
+                    ? serverPlayers.TryCommitAuthoritativeEnvironmentProjectileDamage(tick, projectile.Handle, projectile.Type,
+                        targetHandle, damage, hitDirection, immunityChannel, expertMode, masterMode, out committed)
+                    : serverPlayers.TryCommitAuthoritativeNpcProjectileDamage(
                     tick,
                     sourceNpc,
                     projectile.Handle,
@@ -306,7 +322,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                     immunityChannel,
                     expertMode,
                     masterMode,
-                    out PlayerStateSnapshot committed);
+                    out committed);
                 if (result == PlayerDamageCommitResult.Rejected)
                     continue;
                 if (result == PlayerDamageCommitResult.AvoidedByGodMode)

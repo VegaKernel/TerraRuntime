@@ -12,13 +12,13 @@ public enum TerrariaWorldItemFrameEncodeResult : byte
 
 /// <summary>
 /// Encodes authoritative live world-item mutations. Packet 90 intentionally reuses the packet-21 payload shape in
-/// TerrariaServer 1.4.5.8; packet 151 carries only the leased item slot that becomes reusable again.
+/// TerrariaServer 1.4.5.8; packet 151 removes an ordinary item or releases an expired instanced item slot.
 /// </summary>
 public static class TerrariaWorldItemFrameEncoder
 {
     private const byte ItemDropMessageId = 21;
     private const byte InstancedItemMessageId = 90;
-    private const byte InstancedItemSlotReleaseMessageId = 151;
+    private const byte ItemRemoveMessageId = 151;
 
     public static TerrariaWorldItemFrameEncodeResult TryEncodeDrop(
         in TerrariaWorldItemDropState state,
@@ -74,8 +74,8 @@ public static class TerrariaWorldItemFrameEncoder
         return TerrariaWorldItemFrameEncodeResult.Encoded;
     }
 
-    /// <summary>Encodes server message 151 emitted exactly when an instanced item's slot lease reaches zero.</summary>
-    public static TerrariaWorldItemFrameEncodeResult TryEncodeInstancedSlotRelease(
+    /// <summary>NetMessage.SendData(21) changes empty items to message 151; lease expiry uses the same frame.</summary>
+    public static TerrariaWorldItemFrameEncodeResult TryEncodeRemoval(
         short itemIndex,
         out ReadOnlyMemory<byte> frame)
     {
@@ -85,7 +85,7 @@ public static class TerrariaWorldItemFrameEncoder
 
         byte[] encoded = new byte[5];
         BinaryPrimitives.WriteUInt16LittleEndian(encoded, checked((ushort)encoded.Length));
-        encoded[2] = InstancedItemSlotReleaseMessageId;
+        encoded[2] = ItemRemoveMessageId;
         BinaryPrimitives.WriteInt16LittleEndian(encoded.AsSpan(3), itemIndex);
         frame = encoded;
         return TerrariaWorldItemFrameEncodeResult.Encoded;
@@ -108,33 +108,6 @@ public static class TerrariaWorldItemFrameEncoder
             GrabDelayTime = state.GrabDelayTime,
             PositionX = state.PositionX,
             PositionY = state.PositionY
-        };
-
-        return TrySerialize(packet, out frame);
-    }
-
-    public static TerrariaWorldItemFrameEncodeResult TryEncodeRemoval(
-        short itemIndex,
-        out ReadOnlyMemory<byte> frame)
-    {
-        frame = default;
-        if (itemIndex < 0 || itemIndex >= 400)
-            return TerrariaWorldItemFrameEncodeResult.InvalidState;
-
-        var packet = new ItemDrop
-        {
-            ItemIndex = itemIndex,
-            PositionX = 0f,
-            PositionY = 0f,
-            VelocityX = 0f,
-            VelocityY = 0f,
-            Stack = 0,
-            Prefix = 0,
-            ItemNetId = 0,
-            Ownership = NewItemOwnership.None,
-            Shimmered = false,
-            ShimmerTime = 0f,
-            EnemyGrabDelayTime = 0
         };
 
         return TrySerialize(packet, out frame);

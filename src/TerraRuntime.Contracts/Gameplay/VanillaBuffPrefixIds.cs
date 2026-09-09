@@ -97,6 +97,7 @@ public static class VanillaPrefixIds
     public static readonly PrefixId Small = new(9);
     public static readonly PrefixId Dull = new(10);
     public static readonly PrefixId Unhappy = new(11);
+    public static readonly PrefixId Deadly = new(20);
     public static readonly PrefixId Awful = new(22);
     public static readonly PrefixId Lethargic = new(23);
     public static readonly PrefixId Awkward = new(24);
@@ -107,6 +108,7 @@ public static class VanillaPrefixIds
     public static readonly PrefixId Broken = new(39);
     public static readonly PrefixId Damaged = new(40);
     public static readonly PrefixId Shoddy = new(41);
+    public static readonly PrefixId Nimble = new(45);
     public static readonly PrefixId Slow = new(47);
     public static readonly PrefixId Sluggish = new(48);
     public static readonly PrefixId Lazy = new(49);

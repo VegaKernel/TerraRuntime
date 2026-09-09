@@ -10,6 +10,9 @@ namespace TerraRuntime.World;
 /// </summary>
 internal static class VanillaLiquidQuickWaterFacts1458
 {
+    // Liquid.worldGenTilesIgnoreWater(true), distinct from the boulder override shared with loading.
+    public static bool IgnoresSolidDuringWorldGenerationSettle(TileTypeId type) => type.Value is 10 or 190 or 191 or 192;
+
     private static ReadOnlySpan<ushort> IgnoredSolidTypes =>
     [
         138,

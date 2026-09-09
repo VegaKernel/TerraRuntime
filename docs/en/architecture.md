@@ -4,6 +4,8 @@
 
 ## 1. Architectural goal
 
+PlayerBot policy now has separate perception, brain, action executor, navigation and coordination boundaries. See [PlayerBot task/action architecture](runtime-bot-architecture.md); all execution still uses existing gameplay authorities, without LLM dependencies.
+
 TerraRuntime reproduces observable TerrariaServer 1.4.5.8 behavior without preserving the original internal architecture. The primary design constraints are:
 
 - mutable simulation state has one authoritative owner;
@@ -43,6 +45,8 @@ flowchart TB
 The game loop is the ownership center. Transport, UI and trusted-host code surround it through bounded contracts rather than sharing mutable runtime objects.
 
 ## 3. Dependency direction
+
+World generation also references the protocol-neutral `TerraRuntime.Gameplay` catalogs to reuse natural item-prefix selection for Dungeon chest loot. This is a one-way content-rule dependency, not a reference to live authorities; generation still mutates only its unpublished candidate workspace. `World` and `Gameplay` do not depend on `WorldGeneration`.
 
 The architecture must not collapse into circular dependencies between networking, gameplay, and host integration.
 

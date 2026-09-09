@@ -39,6 +39,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
         out ProjectileSimulationStepResult next)
     {
         ProjectileSnapshot current = projectile.Projectile;
+        bool fallingBlock = VanillaFallingBlock1458.TryGetTile(current.Type, out _);
         float velocityX = behavior.VelocityX;
         float velocityY = behavior.VelocityY;
         float behaviorPositionX = behavior.PositionXOverride ?? current.PositionX;
@@ -149,8 +150,8 @@ internal sealed class VanillaProjectileWorldMotionResolver
                 velocityY,
                 definition.CollisionWidth,
                 definition.CollisionHeight,
-                fallThrough: true,
-                fall2: true);
+                fallThrough: !fallingBlock,
+                fall2: !fallingBlock);
 
             collidedVelocityX = collision.VelocityX;
             collidedVelocityY = collision.VelocityY;
@@ -159,6 +160,20 @@ internal sealed class VanillaProjectileWorldMotionResolver
         }
 
         bool tileImpact = collideX || collideY;
+        if (fallingBlock && tileImpact)
+        {
+            if (VanillaWorldProjectileTileCut.HasCandidateAlongSweep(tiles, behaviorPositionX, behaviorPositionY,
+                behaviorPositionX + collidedVelocityX, behaviorPositionY + collidedVelocityY, definition.Width, definition.Height))
+            { next = default; return false; }
+            // Kill observes collision-clamped position BEFORE HandleMovement's common UpdatePosition tail.
+            next = new(new ProjectileStateUpdate(current.Type, current.Spawner,
+                behaviorPositionX + collidedVelocityX, behaviorPositionY + collidedVelocityY,
+                collidedVelocityX, collidedVelocityY, new(behavior.Ai0, current.Ai.Ai1, current.Ai.Ai2),
+                current.BannerIdToRespondTo, resolvedDamage, resolvedKnockBack, current.OriginalDamage),
+                TimeLeft: 0, Liquid: liquid, TerminationReason: ProjectileSimulationTerminationReason.TileCollision,
+                LocalAi: resolvedLocalAi);
+            return true;
+        }
         float collisionClampedVelocityX = collidedVelocityX;
         float collisionClampedVelocityY = collidedVelocityY;
         bool bombCollisionHandled = false;
@@ -254,7 +269,13 @@ internal sealed class VanillaProjectileWorldMotionResolver
 
         float movementX = collidedVelocityX;
         float movementY = collidedVelocityY;
-        if (!definition.IgnoreWater && liquid.Wet)
+        if (fallingBlock && liquid.Wet)
+        {
+            // aiStyle10 bypasses wet collision scaling; UpdatePosition uses the pre-AI wetVelocity capture.
+            movementX = current.VelocityX;
+            movementY = current.VelocityY;
+        }
+        else if (!definition.IgnoreWater && liquid.Wet)
         {
             float scale = liquid.ShimmerWet
                 ? ShimmerMovementScale

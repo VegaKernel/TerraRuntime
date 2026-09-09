@@ -21,7 +21,7 @@ Workflow `.github/workflows/vanilla-worldgen-reference-differential.yml` исп�
 
 Ключ `--enforce` превращает отчёт в regression gate. Среди обязательных условий: одинаковые размеры и формат, dungeon на той же стороне мира для одинакового seed, допустимые структурные ratios и histogram distances, ограниченные отклонения слоёв и anchors, наличие ключевых материалов биомов/структур, сохранённых сундуков и стартового town NPC. Нарушение бюджета возвращает ненулевой exit code и валит CI.
 
-Для того же seed есть быстрый unit-level checkpoint `WorldGen.Reset`. Для `8675309` source-backed bootstrap обязан выбрать правую сторону dungeon и reset-location `3364`; также зафиксировано первое RNG-значение, которое после Reset должен увидеть Terrain. Это ловит изменение порядка RNG-вызовов до дорогого полного прогона reference-world.
+Для того же seed есть быстрый unit-level checkpoint `WorldGen.Reset`. Для `8675309` source-backed bootstrap обязан выбрать правую сторону dungeon и reset-location `3364`; также зафиксировано следующее RNG-значение Reset. Это не первый бросок Terrain: `WorldGenerator.RunPass` выполняет reseed перед Terrain. `TerrainReference1458Tests` независимо закрепляет девять официальных Terrain-сеток, liquid lines и следующих RNG-значений на трёх канонических размерах. Точные границы evidence описаны в [полном аудите проходов](vanilla-worldgen-pass-audit.md).
 
 ## Уровни доказанности
 

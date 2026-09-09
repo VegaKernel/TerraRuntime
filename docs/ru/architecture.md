@@ -4,6 +4,8 @@
 
 ## 1. Архитектурная цель
 
+PlayerBot policy теперь разделена на perception, brain, action executor, navigation и coordination. См. [архитектуру задач и действий PlayerBot](runtime-bot-architecture.md); исполнение по-прежнему использует существующие gameplay authorities, без LLM-зависимостей.
+
 TerraRuntime воспроизводит наблюдаемое поведение TerrariaServer 1.4.5.8 без сохранения его внутренней архитектуры. Главные ограничения проектирования:
 
 - mutable simulation state имеет одного authoritative owner;
@@ -43,6 +45,8 @@ flowchart TB
 Game loop является центром ownership. Transport, UI и trusted-host code взаимодействуют с ним через bounded contracts, а не через общие mutable runtime objects.
 
 ## 3. Направление зависимостей
+
+Генерация мира также ссылается на независимые от протокола каталоги `TerraRuntime.Gameplay`, чтобы использовать общий алгоритм естественных зачарований для лута сундуков данжа. Это односторонняя зависимость от правил контента, а не от live authorities; генерация по-прежнему меняет только неопубликованный workspace кандидата. `World` и `Gameplay` не зависят от `WorldGeneration`.
 
 Архитектура не должна превращаться в круговую зависимость между networking, gameplay и host integration.
 

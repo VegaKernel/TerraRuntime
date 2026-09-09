@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../TerraRuntime.Contracts/TerraRuntime.Contracts.csproj" />
+    <ProjectReference Include="../TerraRuntime.Gameplay/TerraRuntime.Gameplay.csproj" />
     <ProjectReference Include="../TerraRuntime.World/TerraRuntime.World.csproj" />
   </ItemGroup>
 </Project>

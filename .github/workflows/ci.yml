@@ -24,6 +24,9 @@ jobs:
       - name: Test documentation checker
         run: python3 tools/ci/test_check_documentation.py
 
+      - name: Test gameplay acceptance tools
+        run: python3 -m unittest discover -s tools/ci -p test_gameplay_acceptance_tools.py
+
       - name: Validate bilingual documentation
         run: python3 tools/ci/check_documentation.py
 

@@ -6,6 +6,29 @@ namespace TerraRuntime.Tests;
 public sealed class VanillaTreeGrower1458Tests
 {
     [Fact]
+    public void Ignore_walls_is_explicit_and_successful_growth_clears_only_source_range_metadata()
+    {
+        var tiles = CreateTreeSite();
+        var empty = new WorldTile { Type = 1, Wall = 0, TileColor = 3, WallColor = 4, Shape = 5,
+            Flags = WorldTileFlags.WireRed | WorldTileFlags.FullbrightBlock | WorldTileFlags.InvisibleWall };
+        tiles.Set(7, 28, empty);
+        tiles.Set(6, 28, empty);
+        var blocked = tiles.Get(10, 29); blocked.Wall = 7; tiles.Set(10, 29, blocked);
+        var rejected = new DungeonSurfaceBuildings1458Tests.RandomAdapter(1458);
+        Assert.False(TreeGrower1458.TryGrow(tiles, 10, 30, rejected));
+        Assert.Equal(new DungeonSurfaceBuildings1458Tests.RandomAdapter(1458).Next(), rejected.Next());
+        var random = new DungeonSurfaceBuildings1458Tests.RandomAdapter(1458);
+        Assert.True(TreeGrower1458.TryGrow(tiles, 10, 30, random, ignoreWalls: true));
+        var framed = tiles.Get(7, 28);
+        Assert.Equal((byte)0, framed.TileColor);
+        Assert.Equal((byte)0, framed.WallColor);
+        Assert.Equal((byte)0, framed.Shape);
+        Assert.Equal(WorldTileFlags.WireRed, framed.Flags);
+        Assert.Equal(empty, tiles.Get(6, 28));
+        Assert.Equal((ushort)7, tiles.Get(10, 29).Wall);
+    }
+
+    [Fact]
     public void Scripted_source_path_pins_trunk_branches_roots_and_leafy_top_frames()
     {
         WorldTileStore store = CreateTreeSite();

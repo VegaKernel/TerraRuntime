@@ -5,6 +5,21 @@ namespace TerraRuntime.Tests;
 public sealed class PlayerTileEditBudgetTests
 {
     [Fact]
+    public void Verified_shovel_burst_is_bounded_and_cannot_reset_ordinary_edit_accounting()
+    {
+        var budget = new PlayerTileEditBudget(1);
+        var slot = new PlayerSlotId(0);
+        for (int i = 0; i < 18; i++) Assert.True(budget.TryConsume(slot, verifiedShovelTarget: true));
+        Assert.False(budget.TryConsume(slot, verifiedShovelTarget: true));
+        Assert.False(budget.TryConsume(slot));
+        budget.AdvanceTo(1);
+        for (int i = 0; i < 8; i++) Assert.True(budget.TryConsume(slot));
+        Assert.False(budget.TryConsume(slot));
+        Assert.True(budget.TryConsume(slot, verifiedShovelTarget: true));
+        Assert.False(budget.TryConsume(new PlayerSlotId(1), verifiedShovelTarget: true));
+    }
+
+    [Fact]
     public void Per_slot_budget_rejects_ninth_edit_in_same_tick()
     {
         var budget = new PlayerTileEditBudget(256);

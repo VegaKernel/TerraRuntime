@@ -3,28 +3,46 @@ using TerraRuntime.Core;
 using TerraRuntime.HostContracts;
 using TerraRuntime.World;
 using TerraRuntime.Core.Players;
+using System.Runtime.CompilerServices;
+using System.Diagnostics;
 
 namespace TerraRuntime.Tests;
 
+[Collection(SteadyStateAllocationCollection.Name)]
 public sealed class ServerRuntimeServerPlayerPerformanceTests
 {
     [Fact]
     public void Empty_actor_and_shop_tick_path_stays_below_four_bytes_per_tick_after_warmup()
     {
         var runtime = new ServerRuntimeState();
-        // The published CoreCLR hot path is allocation-free, but the test-host JIT can still promote Tick and its
-        // callees during the first few dozen invocations. Warm through tiering before measuring steady-state bytes.
-        for (int index = 0; index < 4_096; index++)
-            runtime.Tick();
+        // This is a steady-state gate, not a JIT-startup gate. A single short batch can finish before
+        // CoreCLR's delayed tier promotion. Exercise the same loop throughout a bounded warmup window;
+        // never retry/filter measured allocation samples or disable tiering for the suite.
+        TimeSpan warmupWindow = TimeSpan.FromMilliseconds(500);
+        long warmupStart = Stopwatch.GetTimestamp();
+        do
+        {
+            RunTicks(runtime, 4_096);
+        }
+        while (Stopwatch.GetElapsedTime(warmupStart) < warmupWindow);
 
+        int gen0Before = GC.CollectionCount(0), gen1Before = GC.CollectionCount(1), gen2Before = GC.CollectionCount(2);
         long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-        for (int index = 0; index < 1_024; index++)
-            runtime.Tick();
+        RunTicks(runtime, 1_024);
         long allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
 
         Assert.True(
             allocated <= 1_024L * 4L,
-            $"Empty actor/shop ticks allocated {allocated} bytes; the gate is 4 bytes per tick.");
+            $"Empty actor/shop ticks allocated {allocated} bytes; the gate is 4 bytes per tick. " +
+            $"Collections during measurement: {GC.CollectionCount(0) - gen0Before}/" +
+            $"{GC.CollectionCount(1) - gen1Before}/{GC.CollectionCount(2) - gen2Before}.");
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void RunTicks(ServerRuntimeState runtime, int count)
+    {
+        for (int index = 0; index < count; index++)
+            runtime.Tick();
     }
 
     [Fact]

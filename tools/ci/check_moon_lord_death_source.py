@@ -25,6 +25,21 @@ def require(block: str, expression: str, label: str) -> None:
         raise SystemExit(f"Moon Lord reference contract changed: {label}")
 
 
+def require_death_velocity(death: str) -> None:
+    # On Windows ILSpy resolves XNA from the GAC. Linux lacks XNA and renders the same
+    # verified constructor as a by-ref .ctor on a temporary. Pin the local identity,
+    # adjacent constructor, both Lerp operands and amount; do not accept any nearby 0.98.
+    patterns = (
+        r"velocity = Vector2\.Lerp\(velocity, new Vector2\(0f, -0\.5f\), 0\.98f\);",
+        r"velocity = Vector2\.Lerp\(value2: new Vector2\(0f, -0\.5f\), value1: velocity, amount: 0\.98f\);",
+        r"Vector2 (?P<target>\w+) = default\(Vector2\); "
+        r"\(\(Vector2\)\(ref (?P=target)\)\)\.\.ctor\(0f, -0\.5f\); "
+        r"velocity = Vector2\.Lerp\(velocity, (?P=target), 0\.98f\);",
+    )
+    if not any(re.search(pattern, death) for pattern in patterns):
+        raise SystemExit("Moon Lord reference contract changed: death velocity lerp")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--assembly", type=Path, required=True)
@@ -37,7 +52,7 @@ def main() -> None:
     source = raw.decode("utf-16" if raw.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig")
     core = method(source, "AI_077_MoonLordCore")
     death = core[core.index("else if (ai[0] == 2f)"):core.index("else if (ai[0] == 3f)")]
-    require(death, r"Vector2\.Lerp\([^;]*new Vector2\(0f, -0\.5f\)[^;]*0\.98f", "death velocity lerp")
+    require_death_velocity(death)
     require(death, r"ai\[1\](?: \+= 1f|\+\+)", "death clock advances")
     require(death, r"if \(ai\[1\] == 60f\)", "attack cleanup tick")
     cleanup = death[:death.index("if (ai[1] %")]

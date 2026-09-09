@@ -23,10 +23,13 @@ internal sealed class PlayerTileEditBudget
         editCounts = new int[playerCapacity];
     }
 
-    public bool TryConsume(PlayerSlotId slot)
+    public bool TryConsume(PlayerSlotId slot, bool verifiedShovelTarget = false)
     {
         int index = slot.Value;
-        if ((uint)index >= (uint)editCounts.Length || editCounts[index] >= MaxEditsPerTickPerPlayer)
+        // Player.UseShovel visits nine cells; grass can emit two PickTile events per cell.
+        // Only the authority-verified shovel/target pair receives this bounded burst, with shared accounting.
+        int limit = verifiedShovelTarget ? 18 : MaxEditsPerTickPerPlayer;
+        if ((uint)index >= (uint)editCounts.Length || editCounts[index] >= limit)
             return false;
 
         editCounts[index]++;

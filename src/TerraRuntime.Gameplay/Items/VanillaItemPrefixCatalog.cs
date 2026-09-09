@@ -7,7 +7,12 @@ namespace TerraRuntime.Gameplay.Items;
 public enum VanillaItemPrefixFamily : byte
 {
     None = 0,
-    Summon = 1
+    Summon = 1,
+    Sword = 2,
+    Ranged = 3,
+    Magic = 4,
+    Spear = 5,
+    Accessory = 6
 }
 
 public readonly record struct VanillaPrefixDefinition(
@@ -24,6 +29,26 @@ public readonly record struct VanillaPrefixDefinition(
 /// </summary>
 public static class VanillaItemPrefixCatalog
 {
+    // PrefixLegacy.Prefixes, in source selection order. Families do not by themselves admit item use.
+    private static readonly PrefixId[] SwordPrefixes = Prefixes(
+        [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,36,37,38,53,54,55,39,40,56,41,57,42,43,44,45,46,47,48,49,50,51,59,60,61,81]);
+    private static readonly PrefixId[] RangedPrefixes = Prefixes(
+        [16,17,18,19,20,21,22,23,24,25,58,36,37,38,53,54,55,39,40,56,41,57,42,44,45,46,47,48,49,50,51,59,60,61,82]);
+    private static readonly PrefixId[] MagicPrefixes = Prefixes(
+        [26,27,28,29,30,31,32,33,34,35,52,36,37,38,53,54,55,39,40,56,41,57,42,43,44,45,46,47,48,49,50,51,59,60,61,83]);
+    private static readonly PrefixId[] SpearPrefixes = Prefixes(
+        [36,37,38,53,54,55,39,40,56,41,57,59,60,61]);
+    private static readonly PrefixId[] AccessoryPrefixes = Prefixes(
+        [62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80]);
+
+    private static PrefixId[] Prefixes(ReadOnlySpan<byte> values)
+    {
+        var result = new PrefixId[values.Length];
+        for (int index = 0; index < values.Length; index++)
+            result[index] = new PrefixId(values[index]);
+        return result;
+    }
+
     private static readonly PrefixId[] SummonPrefixes =
     [
         VanillaPrefixIds.Fabled,
@@ -67,10 +92,16 @@ public static class VanillaItemPrefixCatalog
         return true;
     }
 
-    public static ReadOnlySpan<PrefixId> GetRollablePrefixes(VanillaItemPrefixFamily family) =>
-        family == VanillaItemPrefixFamily.Summon
-            ? SummonPrefixes
-            : ReadOnlySpan<PrefixId>.Empty;
+    public static ReadOnlySpan<PrefixId> GetRollablePrefixes(VanillaItemPrefixFamily family) => family switch
+    {
+        VanillaItemPrefixFamily.Summon => SummonPrefixes,
+        VanillaItemPrefixFamily.Sword => SwordPrefixes,
+        VanillaItemPrefixFamily.Ranged => RangedPrefixes,
+        VanillaItemPrefixFamily.Magic => MagicPrefixes,
+        VanillaItemPrefixFamily.Spear => SpearPrefixes,
+        VanillaItemPrefixFamily.Accessory => AccessoryPrefixes,
+        _ => ReadOnlySpan<PrefixId>.Empty
+    };
 
     public static bool HasReducedNaturalChance(PrefixId prefix) =>
         prefix == VanillaPrefixIds.Tiny ||
@@ -94,10 +125,37 @@ public static class VanillaItemPrefixCatalog
 
     /// <summary>
     /// Item-specific prefix validity after Terraria's stat-rounding guards. The current catalog only claims
-    /// exact knowledge for Slime Staff and Blade Staff. Prefix zero is a valid natural-roll result.
+    /// exact knowledge for Slime Staff, Blade Staff, Dungeon chests and Plantera/Golem death-loot items.
+    /// Prefix zero is a valid natural-roll result.
     /// </summary>
     public static bool IsValidForItem(ItemTypeId itemType, PrefixId prefix)
     {
+        if (VanillaDungeonChestItemCatalog1458.TryGet(itemType, out VanillaItemDefinition dungeon) &&
+            dungeon.WorldDrop is { PrefixFamily: not VanillaItemPrefixFamily.None } dungeonDrop)
+        {
+            // Independent Item.TryGetPrefixStatMultipliersForItem probe accepts every family member
+            // for these exact defaults; no rounding exclusion or guessed generic-item validity.
+            return prefix == VanillaPrefixIds.None || Contains(GetRollablePrefixes(dungeonDrop.PrefixFamily), prefix);
+        }
+        if (VanillaGolemItemCatalog1458.TryGet(itemType, out VanillaItemDefinition golem) &&
+            golem.WorldDrop is { PrefixFamily: not VanillaItemPrefixFamily.None } golemDrop)
+        {
+            // Official 1.4.5.8 stat-guard probe: only Heat Ray rejects Nimble (10 * .95 rounds to 10).
+            return prefix == VanillaPrefixIds.None ||
+                (Contains(GetRollablePrefixes(golemDrop.PrefixFamily), prefix) &&
+                 (itemType != VanillaGolemItemIds.HeatRay || prefix != VanillaPrefixIds.Nimble));
+        }
+        if (VanillaPlanteraItemCatalog1458.TryGet(itemType, out VanillaItemDefinition plantera) &&
+            plantera.WorldDrop is { PrefixFamily: not VanillaItemPrefixFamily.None } worldDrop)
+        {
+            // Item.SetDefaults + TryGetPrefixStatMultipliersForItem, independently checked against
+            // official 1.4.5.8 for every family member. Only Venus Magnum (useAnimation=9) rejects
+            // Deadly / Nimble: their 0.95 speed multiplier rounds the animation back to 9.
+            return prefix == VanillaPrefixIds.None ||
+                (Contains(GetRollablePrefixes(worldDrop.PrefixFamily), prefix) &&
+                 (itemType != VanillaPlanteraItemIds.VenusMagnum ||
+                  (prefix != VanillaPrefixIds.Deadly && prefix != VanillaPrefixIds.Nimble)));
+        }
         // Blade Staff: damage 6, knockBack 0. Item.TryGetPrefixStatMultipliersForItem rejects
         // unchanged rounded damage and every non-unit knockback modifier. PrefixLegacy's Summon
         // family therefore leaves these seven prefixes (plus the no-prefix result), not Slime Staff's set.
@@ -147,7 +205,9 @@ public static class VanillaNaturalItemPrefixRoller
 {
     public static bool CanRoll(ItemTypeId itemType) =>
         VanillaDefinitionCatalog.TryGetWorldDrop(itemType, out VanillaItemWorldDropDefinition definition) &&
-        definition.PrefixFamily is VanillaItemPrefixFamily.None or VanillaItemPrefixFamily.Summon;
+        (definition.PrefixFamily == VanillaItemPrefixFamily.None ||
+         (!VanillaItemPrefixCatalog.GetRollablePrefixes(definition.PrefixFamily).IsEmpty &&
+          VanillaItemPrefixCatalog.IsValidForItem(itemType, VanillaPrefixIds.None)));
 
     public static bool TryRoll(
         ItemTypeId itemType,
@@ -163,11 +223,11 @@ public static class VanillaNaturalItemPrefixRoller
         if (definition.PrefixFamily == VanillaItemPrefixFamily.None)
             return true;
 
-        if (definition.PrefixFamily != VanillaItemPrefixFamily.Summon)
+        if (!CanRoll(itemType))
             return false;
 
         ReadOnlySpan<PrefixId> rollable =
-            VanillaItemPrefixCatalog.GetRollablePrefixes(VanillaItemPrefixFamily.Summon);
+            VanillaItemPrefixCatalog.GetRollablePrefixes(definition.PrefixFamily);
         if (rollable.IsEmpty)
             return false;
 

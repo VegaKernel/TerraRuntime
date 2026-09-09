@@ -6,7 +6,8 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <summary>
 /// Source-backed ordinary chest loot for the default TerrariaServer 1.4.5.8 world profile. This helper is called at
 /// chest placement time, while the source family and depth branch are still known. It intentionally owns no geometry.
-/// Generation-time Prefix(-1) is omitted because Terraria routes that through its item-prefix RNG rather than genRand.
+/// Prefix coverage is incomplete: generation-time Item.Prefix(-1) uses the shared genRand/Main.rand stream in 1.4.5.8.
+/// Omission changes both the prefix and subsequent generation RNG; this is parity debt, not a separate RNG contract.
 /// </summary>
 internal static class ChestLoot1458
 {
@@ -29,6 +30,13 @@ internal static class ChestLoot1458
         var items = new List<WorldGenerationChestItem>(16);
 
         Add(items, SurfacePrimary[random.Next(SurfacePrimary.Length)], 1);
+        FillSurface(random, bootstrap, items);
+        return items.ToArray();
+    }
+
+    internal static void FillSurface(IWorldGenerationVanillaRandom random,
+        VanillaWorldGenerationBootstrapState1458 bootstrap, List<WorldGenerationChestItem> items)
+    {
         if (random.Next(6) == 0)
             Add(items, 282, random.Next(40, 76));
         if (random.Next(6) == 0)
@@ -71,8 +79,6 @@ internal static class ChestLoot1458
             Add(items, 72, random.Next(10, 30));
         if (random.Next(2) == 0)
             Add(items, 9, random.Next(50, 100));
-
-        return items.ToArray();
     }
 
     internal static WorldGenerationChestItem[] BuildBuried(
@@ -161,6 +167,14 @@ internal static class ChestLoot1458
             }
         }
 
+        FillUnderground(random, bootstrap, items);
+        AddJungleTail(random, items, jungle, state);
+        return items.ToArray();
+    }
+
+    internal static void FillUnderground(IWorldGenerationVanillaRandom random,
+        VanillaWorldGenerationBootstrapState1458 bootstrap, List<WorldGenerationChestItem> items)
+    {
         if (random.Next(3) == 0)
             Add(items, 166, random.Next(10, 20));
         if (random.Next(5) == 0)
@@ -181,9 +195,6 @@ internal static class ChestLoot1458
             Add(items, 8, random.Next(10, 21));
         if (random.Next(2) == 0)
             Add(items, 72, random.Next(50, 90));
-
-        AddJungleTail(random, items, jungle, state);
-        return items.ToArray();
     }
 
     private static WorldGenerationChestItem[] BuildCavern(
@@ -240,6 +251,14 @@ internal static class ChestLoot1458
             }
         }
 
+        FillCavern(random, bootstrap, items);
+        AddJungleTail(random, items, jungle, state);
+        return items.ToArray();
+    }
+
+    internal static void FillCavern(IWorldGenerationVanillaRandom random,
+        VanillaWorldGenerationBootstrapState1458 bootstrap, List<WorldGenerationChestItem> items)
+    {
         if (random.Next(5) == 0)
             Add(items, 43, 1);
         if (random.Next(3) == 0)
@@ -262,9 +281,6 @@ internal static class ChestLoot1458
             Add(items, random.Next(2) == 0 ? 8 : 282, random.Next(15, 31));
         if (random.Next(2) == 0)
             Add(items, 73, random.Next(1, 3));
-
-        AddJungleTail(random, items, jungle, state);
-        return items.ToArray();
     }
 
     private static WorldGenerationChestItem[] BuildUnderworld(
@@ -293,6 +309,14 @@ internal static class ChestLoot1458
             Add(items, UndergroundPrimary[random.Next(4)], 1);
         }
 
+        FillUnderworld(random, bootstrap, items);
+        AddJungleTail(random, items, jungle, state);
+        return items.ToArray();
+    }
+
+    internal static void FillUnderworld(IWorldGenerationVanillaRandom random,
+        VanillaWorldGenerationBootstrapState1458 bootstrap, List<WorldGenerationChestItem> items)
+    {
         if (random.Next(3) == 0)
             Add(items, 167, 1);
         if (random.Next(2) == 0)
@@ -306,14 +330,15 @@ internal static class ChestLoot1458
         if (random.Next(3) > 0)
             Add(items, UnderworldPotionsB[random.Next(UnderworldPotionsB.Length)], random.Next(1, 3));
         if (random.Next(3) == 0)
-            Add(items, random.Next(2) == 0 ? 2350 : 4870, random.Next(1, 3));
+        {
+            // AddBuriedChest draws the stack before choosing Recall/Return potion.
+            int stack = random.Next(1, 3);
+            Add(items, random.Next(2) == 0 ? 2350 : 4870, stack);
+        }
         if (random.Next(2) == 0)
             Add(items, random.Next(2) == 0 ? 8 : 282, random.Next(15, 30));
         if (random.Next(2) == 0)
             Add(items, 73, random.Next(2, 5));
-
-        AddJungleTail(random, items, jungle, state);
-        return items.ToArray();
     }
 
     private static void AddJungleTail(
@@ -331,7 +356,7 @@ internal static class ChestLoot1458
             Add(items, 753, 1);
     }
 
-    private static void Add(List<WorldGenerationChestItem> items, int itemType, int stack)
+    internal static void Add(List<WorldGenerationChestItem> items, int itemType, int stack)
     {
         if (items.Count >= WorldGenerationChestRules.VanillaItemSlotCount)
             throw new InvalidOperationException("Pinned Terraria AddBuriedChest branch exceeded the vanilla 40-slot chest capacity.");

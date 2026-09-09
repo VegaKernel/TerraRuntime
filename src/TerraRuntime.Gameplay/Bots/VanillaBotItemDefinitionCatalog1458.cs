@@ -12,7 +12,8 @@ public enum VanillaBotItemKind : byte
     RequiredAmmo = 1,
     HealingPotion = 2,
     UsefulBuffPotion = 3,
-    ManaPotion = 4
+    ManaPotion = 4,
+    MiningMaterial = 5
 }
 
 public readonly record struct VanillaBotItemDefinition1458(
@@ -137,6 +138,12 @@ public static class VanillaBotItemDefinitionCatalog1458
 
     public static bool TryGet(ItemTypeId itemType, out VanillaBotItemDefinition1458 definition)
     {
+        if (Items.VanillaBotMiningMaterials1458.IsOreItem(itemType) || itemType == VanillaItemIds.DirtBlock || itemType == VanillaItemIds.StoneBlock)
+        {
+            // Item.SetDefaults: admitted ordinary ore/block pickup bodies are 12x12, CommonMaxStack.
+            definition = new(itemType, VanillaBotItemKind.MiningMaterial, 12, 12, 0, VanillaBuffIds.None, 0);
+            return true;
+        }
         if (itemType == VanillaItemIds.WoodenArrow) definition = WoodenArrow;
         else if (itemType == VanillaItemIds.UnholyArrow) definition = UnholyArrow;
         else if (itemType == VanillaItemIds.MusketBall) definition = MusketBall;

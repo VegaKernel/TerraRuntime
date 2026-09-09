@@ -130,7 +130,8 @@ internal sealed class ServerRuntimeComposition
         bool skeletronDownedBaseline,
         bool golemDownedBaseline,
         Random? projectilePlayerCombatRandom,
-        IVanillaNpcRandom? naturalSpawnRandom = null)
+        IVanillaNpcRandom? naturalSpawnRandom = null,
+        WorldRuntimeIdentity worldIdentity = default)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -236,10 +237,12 @@ internal sealed class ServerRuntimeComposition
                 projectileAuthority,
                 worldItemAuthority,
                 worldTiles,
+                worldTileAuthority,
                 botTelemetry,
                 () => updates.Current,
                 botSpawnX,
-                botSpawnY)
+                botSpawnY,
+                world: worldIdentity)
             : null;
         var projectilePlayerCombat = new RuntimeProjectilePlayerCombatPass(
             projectileStore,

@@ -19,6 +19,34 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimeBotNetworkAcceptanceTests
 {
     [Theory]
+    [InlineData(false,true)] [InlineData(true,true)] [InlineData(false,false)]
+    public async Task Environmental_projectile_death_uses_packet118_projectile_reason(bool godMode,bool trusted)
+    {
+        using var fixture=new Fixture(botSpawnX:1000,botSpawnY:800);
+        fixture.SpawnPlayingConnection(50, 50);
+        var bot=Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        Assert.NotNull(await fixture.ConfigureAsync(bot.Id,bot.Configuration with {GodMode=godMode}));
+        for(short slot=0;slot<50;slot++)Assert.True(fixture.ServerPlayers.SetItem(bot.ServerPlayerId,new(slot,default,0,default,0)));
+        Assert.True(fixture.ServerPlayers.SetVitals(bot.ServerPlayerId,new(1,500,200,200)));
+        Assert.True(fixture.Projectiles.TrySpawnVanilla(new(new ProjectileTypeId(31),255,1000,800,0,.5f,default,0,10,0,10),out var projectile));
+        if(trusted)Assert.True(fixture.Projectiles.TryMarkCombatTrusted(projectile.Handle));
+        fixture.DrainFrames();fixture.State.Tick();
+        var frames=fixture.DrainFrames();
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player,out var self));
+        Assert.Equal(trusted&&!godMode,self.IsDead);
+        if(trusted&&!godMode)
+        {
+            byte[] death=Assert.Single(frames,f=>f.MessageId==118).Payload.ToArray();
+            Assert.Equal(bot.Player.Slot.Value,death[0]);
+            Assert.Equal(20,death[1]); // ByProjectile(-1,slot): source projectile index + projectile type, no player/NPC fields.
+            Assert.Equal((short)projectile.Handle.Slot,System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(death.AsSpan(2)));
+            Assert.Equal(31,System.Buffers.Binary.BinaryPrimitives.ReadInt16LittleEndian(death.AsSpan(4)));
+            Assert.Equal(0,death[^1]); // Not PvP.
+        }
+        else Assert.DoesNotContain(frames,f=>f.MessageId==118);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task Real_bot_survives_boot_protection_then_lava_death_obeys_godmode(bool godMode)
@@ -60,6 +88,9 @@ public sealed class RuntimeBotNetworkAcceptanceTests
         using var f = new Fixture(botSpawnX: 160, botSpawnY: 160, environmentKnown: true);
         f.SpawnPlayingConnection(2, 2);
         RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await f.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        for (short slot = VanillaPlayerItemSlotCatalog.ArmorStart; slot < VanillaPlayerItemSlotCatalog.BaselineFunctionalArmorEndExclusive; slot++)
+            if (f.ServerPlayers.TryGetItem(bot.ServerPlayerId, slot, out var equipment) && equipment.ItemType == VanillaItemIds.TerrasparkBoots)
+                Assert.True(f.ServerPlayers.SetItem(bot.ServerPlayerId, new ServerPlayerItemState(slot, default, 0, default, 0)));
         FillLavaPool(f.Tiles);
         f.DrainFrames();
         f.State.Tick();
@@ -468,9 +499,8 @@ public sealed class RuntimeBotNetworkAcceptanceTests
         TerrariaFrame[] frames = fixture.DrainFrames();
 
         Assert.Contains(frames, frame =>
-            TerrariaWorldItemDropDecoder.TryDecode(in frame, out TerrariaWorldItemDropState drop) ==
-                TerrariaWorldItemDropDecodeResult.Decoded &&
-            drop.ItemIndex == item.Handle.Slot && drop.Stack == 0 && drop.ItemNetId == 0);
+            TerrariaWorldItemRemovalDecoder1458.TryDecode(in frame, out short slot) &&
+            slot == item.Handle.Slot);
         Assert.Contains(frames, frame =>
             TerrariaPlayerEquipmentCodec.TryDecode(frame, out TerrariaPlayerEquipmentState equipment) ==
                 TerrariaPlayerEquipmentDecodeResult.Decoded &&

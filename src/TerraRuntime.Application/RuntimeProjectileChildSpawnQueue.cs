@@ -54,15 +54,17 @@ internal sealed class RuntimeProjectileTerminationEffectSink : IProjectileTermin
     private readonly RuntimeProjectileExplosionQueue explosions;
     private readonly RuntimeProjectileTileExplosionQueue tileExplosions;
     private readonly RuntimeProjectileChildSpawnQueue children;
+    private readonly IProjectileTerminationCommitSink? falling;
 
     public RuntimeProjectileTerminationEffectSink(
         RuntimeProjectileExplosionQueue explosions,
         RuntimeProjectileTileExplosionQueue tileExplosions,
-        RuntimeProjectileChildSpawnQueue children)
+        RuntimeProjectileChildSpawnQueue children, IProjectileTerminationCommitSink? falling = null)
     {
         this.explosions = explosions ?? throw new ArgumentNullException(nameof(explosions));
         this.tileExplosions = tileExplosions ?? throw new ArgumentNullException(nameof(tileExplosions));
         this.children = children ?? throw new ArgumentNullException(nameof(children));
+        this.falling = falling;
     }
 
     public void ProjectileTerminated(in ProjectileTerminationCommit termination)
@@ -70,6 +72,7 @@ internal sealed class RuntimeProjectileTerminationEffectSink : IProjectileTermin
         explosions.ProjectileTerminated(in termination);
         tileExplosions.ProjectileTerminated(in termination);
         children.ProjectileTerminated(in termination);
+        falling?.ProjectileTerminated(in termination);
     }
 }
 

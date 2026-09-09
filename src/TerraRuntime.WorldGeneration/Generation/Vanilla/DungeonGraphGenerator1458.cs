@@ -59,6 +59,9 @@ internal static class DungeonGenerationCatalog1458
     public const int BeachDistance = 380;
     public const int EntranceSearchCountdown = 3_000;
     public const int EntranceSearchRadius = 100;
+    // NPC.SetDefaults(37); generation passes NPC.NewNPC a bottom-center, .wld stores position.
+    public const int OldManWidth = 18;
+    public const int OldManHeight = 40;
 }
 
 internal readonly record struct DungeonDecorationProfile1458(
@@ -99,6 +102,13 @@ internal enum DungeonComponentKind1458 : byte
 
 internal readonly record struct DungeonPoint1458(int X, int Y);
 
+internal readonly record struct DungeonEntranceResult1458(
+    DungeonComponent1458 Component, DungeonPoint1458 OldManSpawn, DungeonPoint1458? Platform)
+{
+    public IReadOnlyList<DungeonBuildingPlatform1458> BuildingPlatforms { get; init; } = [];
+    public int? GenerationTopOverride { get; init; }
+}
+
 internal readonly record struct DungeonBounds1458(int Left, int Top, int Right, int Bottom)
 {
     public int Width => Right - Left + 1;
@@ -116,7 +126,17 @@ internal readonly record struct DungeonComponent1458(
     DungeonPoint1458 Start,
     DungeonPoint1458 End,
     DungeonBounds1458 Bounds,
-    int RandomSeed);
+    int RandomSeed)
+{
+    public DungeonBounds1458? InnerBounds { get; init; }
+    // Numeric DungeonData.dungeonBounds updates, distinct from the component's protected/painted footprint.
+    // Null means this component did not update global sampling bounds (ordinary Tower, for example).
+    public DungeonBounds1458? GenerationBounds { get; init; }
+    public int? RoomStrength { get; init; }
+    // LegacyHall retains an axis direction independently of its sloped/zigzag cursor displacement.
+    // Candidate discovery uses StartDirection.Y/EndDirection.Y, not the end-to-end slope.
+    public DungeonPoint1458? HallDirection { get; init; }
+}
 
 internal sealed class DungeonGraph1458
 {
@@ -125,20 +145,30 @@ internal sealed class DungeonGraph1458
         DungeonPoint1458 anchor,
         ushort brickTileType,
         ushort wallType,
-        DungeonDecorationProfile1458? decoration = null)
+        DungeonDecorationProfile1458? decoration = null,
+        DungeonPoint1458? entrancePlatform = null,
+        IReadOnlyList<DungeonHallPlatform1458>? entranceHallPlatforms = null,
+        IReadOnlyList<DungeonBuildingPlatform1458>? entranceBuildingPlatforms = null)
     {
         Components = components ?? throw new ArgumentNullException(nameof(components));
         Anchor = anchor;
         BrickTileType = brickTileType;
         WallType = wallType;
         Decoration = decoration ?? DungeonDecorationProfile1458.Default;
+        EntrancePlatform = entrancePlatform;
+        EntranceHallPlatforms = entranceHallPlatforms ?? [];
+        EntranceBuildingPlatforms = entranceBuildingPlatforms ?? [];
     }
 
     public IReadOnlyList<DungeonComponent1458> Components { get; }
+    public DungeonBounds1458? FeatureBounds { get; init; }
     public DungeonPoint1458 Anchor { get; }
     public ushort BrickTileType { get; }
     public ushort WallType { get; }
     public DungeonDecorationProfile1458 Decoration { get; }
+    public DungeonPoint1458? EntrancePlatform { get; }
+    public IReadOnlyList<DungeonHallPlatform1458> EntranceHallPlatforms { get; }
+    public IReadOnlyList<DungeonBuildingPlatform1458> EntranceBuildingPlatforms { get; }
     public int RoomCount => Components.Count(static component =>
         component.Kind is DungeonComponentKind1458.StartingRoom or DungeonComponentKind1458.Room);
     public int HallCount => Components.Count(static component => component.Kind == DungeonComponentKind1458.Hall);
@@ -161,14 +191,6 @@ internal sealed class DungeonGraph1458
 /// </summary>
 internal static class DungeonGraphGenerator1458
 {
-    private static readonly DungeonPoint1458[] CardinalDirections =
-    [
-        new(-1, 0),
-        new(1, 0),
-        new(0, -1),
-        new(0, 1),
-    ];
-
     public static DungeonGraph1458 Generate(
         Workspace workspace,
         IWorldGenerationVanillaRandom sharedRandom,
@@ -227,6 +249,7 @@ internal static class DungeonGraphGenerator1458
             setup.Palette.CrackedBrickTileType,
             setup.Palette.BrickWallType,
             worldSurface,
+            rockLayer,
             underworldTop,
             dungeonMinimumX,
             dungeonMaximumX,
@@ -237,63 +260,17 @@ internal static class DungeonGraphGenerator1458
             cancellationToken);
         DungeonPoint1458 cursor = new(dungeonLocation, startY);
         DungeonPoint1458 lastHall = default;
-        var components = new List<DungeonComponent1458>(steps + 24);
-
-        _ = sharedRandom.Next(); // initial hall-settings seed, retained by the source layout provider
-        _ = sharedRandom.Next(); // initial room-settings seed, retained by the source layout provider
-        int startingRoomSeed = sharedRandom.Next();
-        components.Add(renderer.RenderRoom(cursor, startingRoomSeed, startingRoom: true));
-
-        int roomDelay = DungeonGenerationCatalog1458.InitialRoomDelay;
-        for (int step = 0; step < steps; step++)
-        {
-            if ((step & 15) == 0)
-                cancellationToken.ThrowIfCancellationRequested();
-            if (roomDelay > 0)
-                roomDelay--;
-
-            int roomRoll = sharedRandom.Next(DungeonGenerationCatalog1458.RoomChance);
-            if (roomDelay == 0 && roomRoll == 0)
-            {
-                roomDelay = DungeonGenerationCatalog1458.InitialRoomDelay;
-                if (sharedRandom.Next(DungeonGenerationCatalog1458.BranchChance) == 0)
-                {
-                    DungeonPoint1458 saved = cursor;
-                    (DungeonComponent1458 hall, cursor, lastHall) = renderer.RenderHall(
-                        cursor, lastHall, sharedRandom.Next());
-                    components.Add(hall);
-                    if (sharedRandom.Next(DungeonGenerationCatalog1458.BranchChance) == 0)
-                    {
-                        (hall, cursor, lastHall) = renderer.RenderHall(cursor, lastHall, sharedRandom.Next());
-                        components.Add(hall);
-                    }
-                    components.Add(renderer.RenderRoom(cursor, sharedRandom.Next(), startingRoom: false));
-                    cursor = saved;
-                }
-                else
-                {
-                    components.Add(renderer.RenderRoom(cursor, sharedRandom.Next(), startingRoom: false));
-                }
-            }
-            else
-            {
-                (DungeonComponent1458 hall, cursor, lastHall) = renderer.RenderHall(
-                    cursor, lastHall, sharedRandom.Next());
-                components.Add(hall);
-            }
-        }
-
-        components.Add(renderer.RenderRoom(cursor, sharedRandom.Next(), startingRoom: false));
-        DungeonComponent1458 topRoom = components
-            .Where(static component => component.Kind is DungeonComponentKind1458.StartingRoom or DungeonComponentKind1458.Room)
-            .MinBy(static component => component.Bounds.Top);
-        DungeonPoint1458 entranceCursor = new((topRoom.Bounds.Left + topRoom.Bounds.Right) / 2, topRoom.Bounds.Top + 4);
-        DungeonPoint1458 entranceTarget = new(entranceX, Math.Max(10, entranceSurface - 2));
+        var components = GenerateLayout(renderer, sharedRandom, ref cursor, ref lastHall, steps,
+            setup.PrecalculatesEntrance ? new DungeonPoint1458(entranceX, entranceSurface) : null, cancellationToken);
+        DungeonPoint1458 entranceCursor = ResolveEntranceOrigin(components);
+        DungeonPoint1458 entranceTarget = new(entranceX, entranceSurface);
+        DungeonEntranceRoute1458? entranceRoute = setup.PrecalculatesEntrance
+            ? new(new(entranceCursor.X, entranceCursor.Y), new(entranceTarget.X, entranceTarget.Y)) : null;
+        var entranceHallPlatforms = new List<DungeonHallPlatform1458>();
         int generatingDungeonTopX = entranceCursor.X;
         int entranceRoomDelay = DungeonGenerationCatalog1458.InitialRoomDelay;
-        int entranceComponentStart = components.Count;
         bool reachedEntrance = false;
-        for (int attempt = 0; attempt < 100 && !reachedEntrance; attempt++)
+        for (int attempt = 0; attempt < 99 && !reachedEntrance; attempt++)
         {
             if (entranceRoomDelay > 0)
                 entranceRoomDelay--;
@@ -312,14 +289,12 @@ internal static class DungeonGraphGenerator1458
 
             if (setup.PrecalculatesEntrance)
             {
-                int segmentSteps = sharedRandom.Next(10, 30);
                 components.Add(renderer.RenderPrecalculatedEntranceSegment(
-                    entranceCursor,
-                    entranceTarget,
-                    segmentSteps,
-                    sharedRandom.Next(),
+                    entranceRoute!.TakeNext(sharedRandom),
+                    sharedRandom,
+                    entranceHallPlatforms,
                     out entranceCursor));
-                reachedEntrance = entranceCursor.Y <= entranceTarget.Y;
+                reachedEntrance = entranceRoute.Complete;
             }
             else
             {
@@ -328,29 +303,107 @@ internal static class DungeonGraphGenerator1458
                     generatingDungeonTopX,
                     sharedRandom.Next(),
                     useSkewedEntranceHalls,
+                    sharedRandom,
                     out entranceCursor,
                     out reachedEntrance));
             }
         }
-        if (setup.PrecalculatesEntrance &&
-            (entranceCursor.Y > entranceTarget.Y || components.Count == entranceComponentStart))
-        {
-            components.Add(renderer.RenderPrecalculatedEntranceSegment(
-                entranceCursor,
-                entranceTarget,
-                Math.Max(Math.Abs(entranceTarget.X - entranceCursor.X), Math.Abs(entranceTarget.Y - entranceCursor.Y)),
-                setup.EntranceRandomSeed,
-                out entranceCursor));
-        }
-        DungeonPoint1458 entranceEnd = entranceCursor;
-        components.Add(renderer.RenderEntrance(entranceEnd, setup.EntranceKind, setup.EntranceRandomSeed));
+        // MakeDungeon_GetEntranceSettings allocates a seed before its pre-generated-settings overload
+        // replaces that seed. The discarded draw still advances the shared stream before door framing.
+        _ = sharedRandom.Next();
+        DungeonEntranceResult1458 entrance = renderer.RenderEntrance(
+            entranceCursor, setup.EntranceKind, setup.EntranceRandomSeed, sharedRandom, dungeonSide < 0);
+        components.Add(entrance.Component);
 
         return new DungeonGraph1458(
             components,
-            entranceEnd,
+            entrance.OldManSpawn,
             setup.Palette.BrickTileType,
             setup.Palette.BrickWallType,
-            decoration);
+            decoration,
+            entrance.Platform,
+            entranceHallPlatforms,
+            entrance.BuildingPlatforms)
+        {
+            FeatureBounds = ResolveFeatureBounds(workspace.TileStore.Dimensions,
+                new(dungeonLocation, startY), components, entrance.GenerationTopOverride)
+        };
+    }
+
+    internal static DungeonBounds1458 ResolveFeatureBounds(WorldDimensions dimensions, DungeonPoint1458 initial,
+        IReadOnlyList<DungeonComponent1458> components, int? entranceTopOverride)
+    {
+        int left = X(initial.X), right = X(initial.X + 1), top = Y(initial.Y), bottom = Y(initial.Y + 1);
+        foreach (var component in components)
+        {
+            if (component.Kind == DungeonComponentKind1458.Entrance && entranceTopOverride is { } replacement) top = Y(replacement);
+            if (component.GenerationBounds is not { } area) continue;
+            left = Math.Min(left, X(area.Left)); right = Math.Max(right, X(area.Right));
+            top = Math.Min(top, Y(area.Top)); bottom = Math.Max(bottom, Y(area.Bottom));
+        }
+        return new(left, top, right, bottom);
+        int X(int value) => Math.Clamp(value, 10, dimensions.WidthTiles - 10);
+        int Y(int value) => Math.Clamp(value, 10, dimensions.HeightTiles - 10);
+    }
+
+    internal static List<DungeonComponent1458> GenerateLayout(Renderer renderer, IWorldGenerationVanillaRandom random,
+        ref DungeonPoint1458 cursor, ref DungeonPoint1458 lastHall, int steps, DungeonPoint1458? entrance,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentOutOfRangeException.ThrowIfNegative(steps);
+        // LegacyDungeonLayoutProvider runs this AFTER the crawler's strength/step draws, before settings seeds.
+        if (entrance is { } location) cursor = new(location.X - 10 + random.Next(20), location.Y + 30);
+        var components = new List<DungeonComponent1458>(steps + 24);
+        _ = random.Next(); // Initial hall-settings seed.
+        _ = random.Next(); // Initial room-settings seed.
+        components.Add(renderer.RenderRoom(cursor, random.Next(), startingRoom: true));
+        int roomDelay = DungeonGenerationCatalog1458.InitialRoomDelay;
+        for (int step = 0; step < steps; step++)
+        {
+            if ((step & 15) == 0) cancellationToken.ThrowIfCancellationRequested();
+            if (roomDelay > 0) roomDelay--;
+            int roomRoll = random.Next(DungeonGenerationCatalog1458.RoomChance);
+            if (roomDelay == 0 && roomRoll == 0)
+            {
+                roomDelay = DungeonGenerationCatalog1458.InitialRoomDelay;
+                if (random.Next(DungeonGenerationCatalog1458.BranchChance) == 0)
+                {
+                    DungeonPoint1458 saved = cursor;
+                    (DungeonComponent1458 hall, cursor, lastHall) = renderer.RenderHall(cursor, lastHall, random.Next());
+                    components.Add(hall);
+                    if (random.Next(DungeonGenerationCatalog1458.BranchChance) == 0)
+                    {
+                        (hall, cursor, lastHall) = renderer.RenderHall(cursor, lastHall, random.Next());
+                        components.Add(hall);
+                    }
+                    components.Add(renderer.RenderRoom(cursor, random.Next(), startingRoom: false));
+                    cursor = saved;
+                }
+                else components.Add(renderer.RenderRoom(cursor, random.Next(), startingRoom: false));
+            }
+            else
+            {
+                (DungeonComponent1458 hall, cursor, lastHall) = renderer.RenderHall(cursor, lastHall, random.Next());
+                components.Add(hall);
+            }
+        }
+        components.Add(renderer.RenderRoom(cursor, random.Next(), startingRoom: false));
+        return components;
+    }
+
+    internal static DungeonPoint1458 ResolveEntranceOrigin(IReadOnlyList<DungeonComponent1458> components)
+    {
+        DungeonBounds1458? highest = null;
+        foreach (var component in components)
+        {
+            if (component.Kind is not (DungeonComponentKind1458.StartingRoom or DungeonComponentKind1458.Room)) continue;
+            var inner = component.InnerBounds ?? throw new InvalidOperationException("Dungeon room lacks its source inner bounds.");
+            // DungeonCrawler retains the first room on a tie, not the highest exterior shell.
+            if (highest is null || inner.Top < highest.Value.Top) highest = inner;
+        }
+        var bounds = highest ?? throw new InvalidOperationException("Dungeon layout has no generated room.");
+        return new((bounds.Left + bounds.Right) / 2, bounds.Top);
     }
 
     private static DungeonDecorationProfile1458 CreateDecorationProfile(IWorldGenerationVanillaRandom random)
@@ -409,7 +462,18 @@ internal static class DungeonGraphGenerator1458
         return (minimum, maximumExclusive - 1);
     }
 
-    private static int ResolveStartY(
+    internal static DungeonBounds1458 ResolvePotentialBounds(WorldDimensions dimensions, double worldSurface, int dungeonSide)
+    {
+        var (left, right) = ResolveHorizontalBounds(dimensions.WidthTiles, dungeonSide);
+        int height = dimensions.HeightTiles;
+        // CreatePotentialDungeonBounds performs division then multiplication before truncation.
+        int top = (int)(height * ((worldSurface + 10d) / height));
+        int bottom = (int)(height * ((height - 210d) / height));
+        return new(Math.Clamp(left, 10, dimensions.WidthTiles - 10), Math.Clamp(top, 10, height - 10),
+            Math.Clamp(right + 1, 10, dimensions.WidthTiles - 10), Math.Clamp(bottom, 10, height - 10));
+    }
+
+    internal static int ResolveStartY(
         WorldTileStore store,
         int x,
         double worldSurface,
@@ -417,8 +481,8 @@ internal static class DungeonGraphGenerator1458
         IWorldGenerationVanillaRandom random)
     {
         int midpoint = (int)((worldSurface + rockLayer) / 2d);
-        int y = Math.Clamp(midpoint + random.Next(-200, 200), 70, store.Dimensions.HeightTiles - 200);
-        int lowerLimit = Math.Min(store.Dimensions.HeightTiles - 100, midpoint + 200);
+        int y = midpoint + random.Next(-200, 200);
+        int lowerLimit = midpoint + 200;
         bool solidAhead = false;
         for (int offset = 0; offset < 10; offset++)
             solidAhead |= IsSolid(store, x, y + offset);
@@ -507,19 +571,19 @@ internal static class DungeonGraphGenerator1458
     private static bool IsSolid(WorldTileStore store, int x, int y) =>
         (uint)x < (uint)store.Dimensions.WidthTiles &&
         (uint)y < (uint)store.Dimensions.HeightTiles &&
-        store.Get(x, y).IsActive;
+        HellFortGenerator1458.Solid(store.Get(x, y), noDoors: false);
 
-    private sealed class Renderer
+    internal sealed class Renderer
     {
         private readonly WorldTileStore store;
         private readonly ushort brick;
         private readonly ushort crackedBrick;
         private readonly ushort wall;
-        private readonly int surfaceFloor;
-        private readonly int lowerLimit;
         private readonly int minimumX;
         private readonly int maximumX;
         private readonly double worldSurface;
+        private readonly double rockLayer;
+        private readonly int underworldTop;
         private readonly int entranceStrengthX;
         private readonly int entranceStrengthY;
         private readonly int entranceStrengthX2;
@@ -532,6 +596,7 @@ internal static class DungeonGraphGenerator1458
             ushort crackedBrick,
             ushort wall,
             double worldSurface,
+            double rockLayer,
             int underworldTop,
             int minimumX,
             int maximumX,
@@ -546,8 +611,8 @@ internal static class DungeonGraphGenerator1458
             this.crackedBrick = crackedBrick;
             this.wall = wall;
             this.worldSurface = worldSurface;
-            surfaceFloor = (int)worldSurface + 80;
-            lowerLimit = underworldTop - DungeonGenerationCatalog1458.UnderworldClearance;
+            this.rockLayer = rockLayer;
+            this.underworldTop = underworldTop;
             this.minimumX = minimumX;
             this.maximumX = maximumX;
             this.entranceStrengthX = entranceStrengthX;
@@ -557,518 +622,65 @@ internal static class DungeonGraphGenerator1458
             this.cancellationToken = cancellationToken;
         }
 
-        public DungeonComponent1458 RenderRoom(DungeonPoint1458 origin, int seed, bool startingRoom)
-        {
-            var random = new DungeonUnifiedRandom1458(seed);
-            int strength = DungeonGenerationCatalog1458.RoomStrengthBase +
-                random.Next(DungeonGenerationCatalog1458.RoomStrengthVariation);
-            double velocityX = random.Next(-10, 11) * 0.1d;
-            double velocityY = random.Next(-10, 11) * 0.1d;
-            if (velocityX == 0d && velocityY == 0d)
-            {
-                if (random.Next(2) == 0)
-                    velocityX = random.Next(2) != 0 ? 1d : -1d;
-                else
-                    velocityY = random.Next(2) != 0 ? 1d : -1d;
-            }
-
-            double x = origin.X;
-            double y = origin.Y - strength / 2d;
-            DungeonPoint1458 start = new((int)x, (int)y);
-            int steps = DungeonGenerationCatalog1458.RoomStepBase +
-                random.Next(DungeonGenerationCatalog1458.RoomStepVariation);
-            int left = start.X;
-            int top = start.Y;
-            int right = start.X;
-            int bottom = start.Y;
-
-            for (int step = 0; step < steps; step++)
-            {
-                DungeonBounds1458 stepBounds = PaintLegacyRoomStep(
-                    x,
-                    y,
-                    strength,
-                    DungeonGenerationCatalog1458.RoomInnerRadiusRatio);
-                left = Math.Min(left, stepBounds.Left);
-                top = Math.Min(top, stepBounds.Top);
-                right = Math.Max(right, stepBounds.Right);
-                bottom = Math.Max(bottom, stepBounds.Bottom);
-
-                x = Math.Clamp(x + velocityX, minimumX, maximumX);
-                y += velocityY;
-                velocityX = Math.Clamp(velocityX + random.Next(-10, 11) * 0.05d, -1d, 1d);
-                velocityY = Math.Clamp(velocityY + random.Next(-10, 11) * 0.05d, -1d, 1d);
-            }
-
-            DungeonPoint1458 end = new((int)x, (int)y);
-            return new(
-                startingRoom ? DungeonComponentKind1458.StartingRoom : DungeonComponentKind1458.Room,
-                start,
-                end,
-                new(left, top, right, bottom),
-                seed);
-        }
+        public DungeonComponent1458 RenderRoom(DungeonPoint1458 origin, int seed, bool startingRoom) =>
+            DungeonLegacyRoom1458.Generate(store, brick, wall, origin, seed, startingRoom, cancellationToken);
 
         public (DungeonComponent1458 Component, DungeonPoint1458 Cursor, DungeonPoint1458 Direction)
-            RenderHall(DungeonPoint1458 origin, DungeonPoint1458 lastDirection, int seed)
-        {
-            var random = new DungeonUnifiedRandom1458(seed);
-            int strength = DungeonGenerationCatalog1458.HallStrengthBase +
-                random.Next(DungeonGenerationCatalog1458.HallStrengthVariation);
-            int steps = DungeonGenerationCatalog1458.HallStepBase +
-                random.Next(DungeonGenerationCatalog1458.HallStepVariation);
-            bool crackedInterior = random.NextDouble() <= DungeonGenerationCatalog1458.HallCrackedBrickChance;
-            if (random.Next(DungeonGenerationCatalog1458.LargeHallChance) == 0)
-            {
-                strength *= 2;
-                steps /= 2;
-            }
-
-            DungeonPoint1458 direction = ChooseDirection(origin, lastDirection, steps, random);
-            double velocityX;
-            double velocityY;
-            if (direction.X != 0)
-            {
-                velocityX = direction.X;
-                velocityY = 0d;
-                if (random.Next(3) == 0)
-                    velocityY = (random.Next(2) == 0 ? -0.2d : 0.2d);
-            }
-            else
-            {
-                strength++;
-                velocityX = 0d;
-                velocityY = direction.Y;
-                if (random.Next(2) == 0)
-                {
-                    double slant = random.Next(20, 40) * 0.01d;
-                    velocityX = random.Next(2) == 0 ? slant : -slant;
-                }
-                else
-                {
-                    steps /= 2;
-                }
-            }
-
-            int baseStrength = strength;
-            if (direction.X != 0 && random.Next(3) != 0)
-                strength = (int)(baseStrength * (random.Next(110, 150) * 0.01d));
-
-            double x = origin.X;
-            double y = origin.Y;
-            int left = origin.X;
-            int top = origin.Y;
-            int right = origin.X;
-            int bottom = origin.Y;
-            int executedSteps = 0;
-            while (executedSteps < steps)
-            {
-                if (direction.X > 0 && x > maximumX - 50 ||
-                    direction.X < 0 && x < minimumX + 50 ||
-                    direction.Y > 0 && y >= lowerLimit ||
-                    direction.Y < 0 && y < surfaceFloor)
-                    break;
-
-                DungeonBounds1458 stepBounds = PaintLegacyHallStep(
-                    x,
-                    y,
-                    strength,
-                    crackedInterior,
-                    random);
-                left = Math.Min(left, stepBounds.Left);
-                top = Math.Min(top, stepBounds.Top);
-                right = Math.Max(right, stepBounds.Right);
-                bottom = Math.Max(bottom, stepBounds.Bottom);
-
-                x = Math.Clamp(x + velocityX, minimumX, maximumX);
-                y += velocityY;
-                executedSteps++;
-            }
-
-            DungeonPoint1458 end = new((int)x, (int)y);
-            return (new(
-                DungeonComponentKind1458.Hall,
-                origin,
-                end,
-                new(left, top, right, bottom),
-                seed), end, direction);
-        }
+            RenderHall(DungeonPoint1458 origin, DungeonPoint1458 lastDirection, int seed) =>
+            new DungeonLegacyHall1458(store, brick, crackedBrick, wall, rockLayer, underworldTop, cancellationToken)
+                .Generate(origin, lastDirection, seed);
 
         public DungeonComponent1458 RenderLegacyEntranceSegment(
             DungeonPoint1458 start,
             int generatingDungeonTopX,
             int seed,
             bool useSkewedEntranceHalls,
+            IWorldGenerationVanillaRandom sharedRandom,
             out DungeonPoint1458 end,
             out bool reachedSurface)
         {
-            var random = new DungeonUnifiedRandom1458(seed);
-            int strength = random.Next(5, 9);
-            int steps = random.Next(10, 30);
-            int direction = start.X <= generatingDungeonTopX ? 1 : -1;
-            if (start.X > store.Dimensions.WidthTiles - 400)
-                direction = -1;
-            else if (start.X < 400)
-                direction = 1;
-            double velocityX = direction;
-            double velocityY = -1d;
-            if (random.Next(3) != 0)
-                velocityX *= 1d + random.Next(0, 200) * 0.01d;
-            else if (random.Next(3) == 0)
-                velocityX *= random.Next(50, 76) * 0.01d;
-            else if (random.Next(6) == 0)
-                velocityY *= 2d;
-            if (useSkewedEntranceHalls)
-            {
-                if (start.X < store.Dimensions.WidthTiles / 2 && velocityX < -0.5d)
-                    velocityX = 0.5d;
-                if (start.X > store.Dimensions.WidthTiles / 2 && velocityX > 0.5d)
-                    velocityX = -0.5d;
-            }
-            else
-            {
-                velocityX = Math.Clamp(velocityX, -0.5d, 0.5d);
-            }
-            double x = start.X;
-            double y = start.Y;
-            reachedSurface = false;
-            for (int step = 0; step <= steps; step++)
-            {
-                if (HasReachedLegacySurface(x, y, strength))
-                    reachedSurface = true;
-                PaintLegacyEntranceStep(x, y, strength, random);
-                x = Math.Clamp(x + velocityX, minimumX, maximumX);
-                y += velocityY;
-                if (reachedSurface)
-                    break;
-            }
-            end = new((int)x, (int)y);
-            return new(DungeonComponentKind1458.EntranceHall, start, end,
-                DungeonBounds1458.FromPoints(start, end, strength + 10), seed);
-        }
-
-        private bool HasReachedLegacySurface(double x, double y, int strength)
-        {
-            if (y >= worldSurface - 5d)
-                return false;
-
-            int outwardDirection = x > store.Dimensions.WidthTiles / 2 ? -1 : 1;
-            int probeX = (int)(x + entranceStrengthX * 0.6000000238418579d * outwardDirection +
-                entranceStrengthX2 * outwardDirection);
-            int probeY = (int)(y - strength - 6d + entranceStrengthY2 * 0.5d);
-            if ((uint)probeX >= (uint)store.Dimensions.WidthTiles || probeY < 2 ||
-                probeY >= store.Dimensions.HeightTiles)
-            {
-                return false;
-            }
-
-            return store.Get(probeX, probeY).Wall == 0 &&
-                store.Get(probeX, probeY - 1).Wall == 0 &&
-                store.Get(probeX, probeY - 2).Wall == 0;
+            var result = new DungeonLegacyEntranceHall1458(store, brick, crackedBrick, wall, worldSurface,
+                entranceStrengthX, entranceStrengthX2, entranceStrengthY2, sharedRandom, cancellationToken)
+                .Generate(start, generatingDungeonTopX, seed, useSkewedEntranceHalls);
+            end = result.Cursor;
+            reachedSurface = result.ReachedSurface;
+            return result.Component;
         }
 
         public DungeonComponent1458 RenderPrecalculatedEntranceSegment(
-            DungeonPoint1458 start,
-            DungeonPoint1458 target,
-            int requestedSteps,
-            int seed,
+            DungeonEntranceSegment1458 segment,
+            IWorldGenerationVanillaRandom sharedRandom,
+            List<DungeonHallPlatform1458> platforms,
             out DungeonPoint1458 end)
         {
-            int dx = target.X - start.X;
-            int dy = target.Y - start.Y;
-            double distance = Math.Sqrt((double)dx * dx + (double)dy * dy);
-            int steps = Math.Clamp(requestedSteps, 1, Math.Max(1, (int)Math.Ceiling(distance)));
-            double velocityX = distance == 0d ? 0d : dx / distance;
-            double velocityY = distance == 0d ? 0d : dy / distance;
-            var random = new DungeonUnifiedRandom1458(seed);
-            int strength = random.Next(5, 9);
-            double x = start.X;
-            double y = start.Y;
-            for (int step = 0; step < steps; step++)
-            {
-                PaintLegacyEntranceStep(x, y, strength, random);
-                x = Math.Clamp(x + velocityX, minimumX, maximumX);
-                y += velocityY;
-            }
-            end = new((int)x, (int)y);
-            return new(DungeonComponentKind1458.EntranceHall, start, end,
-                DungeonBounds1458.FromPoints(start, end, strength + 6), seed);
+            var result = new DungeonLegacyEntranceHall1458(store, brick, crackedBrick, wall, worldSurface,
+                entranceStrengthX, entranceStrengthX2, entranceStrengthY2, sharedRandom, cancellationToken)
+                .GeneratePrecalculated(segment, platforms);
+            end = result.Cursor;
+            return result.Component;
         }
 
-        public DungeonComponent1458 RenderEntrance(
+        public DungeonEntranceResult1458 RenderEntrance(
             DungeonPoint1458 anchor,
             DungeonEntranceKind1458 kind,
-            int seed)
+            int seed,
+            IWorldGenerationVanillaRandom sharedRandom,
+            bool leftDungeon)
         {
-            (int halfWidth, int height) = kind switch
+            if (kind == DungeonEntranceKind1458.Legacy)
+                return new DungeonLegacyEntrance1458(store, brick, crackedBrick, wall, worldSurface,
+                    entranceStrengthX, entranceStrengthY, entranceStrengthX2, entranceStrengthY2,
+                    sharedRandom, cancellationToken).Generate(anchor, seed);
+
+            var builder = new DungeonSurfaceBuildings1458(store, brick, crackedBrick, wall, worldSurface, sharedRandom, cancellationToken);
+            var result = kind switch
             {
-                DungeonEntranceKind1458.Dome => (18, 30),
-                DungeonEntranceKind1458.Tower => (13, 48),
-                _ => (10, entranceStrengthY),
+                DungeonEntranceKind1458.Dome => builder.GenerateDome(anchor, seed, leftDungeon),
+                DungeonEntranceKind1458.Tower => builder.GenerateTower(anchor, seed, leftDungeon),
+                _ => throw new InvalidOperationException("Unsupported dungeon entrance kind."),
             };
-            int top = Math.Max(5, anchor.Y - height);
-            for (int x = anchor.X - halfWidth; x <= anchor.X + halfWidth; x++)
-            {
-                for (int y = top; y <= anchor.Y + 7; y++)
-                {
-                    bool shell = x <= anchor.X - halfWidth + 2 || x >= anchor.X + halfWidth - 2 || y <= top + 2;
-                    WriteTile(x, y, shell);
-                }
-            }
-            return new(DungeonComponentKind1458.Entrance, new(anchor.X, top), anchor,
-                new(anchor.X - halfWidth, top, anchor.X + halfWidth, anchor.Y + 7), seed);
-        }
-
-        private DungeonPoint1458 ChooseDirection(
-            DungeonPoint1458 origin,
-            DungeonPoint1458 lastDirection,
-            int requestedSteps,
-            DungeonUnifiedRandom1458 random)
-        {
-            Span<DungeonPoint1458> candidates = stackalloc DungeonPoint1458[4];
-            int count = 0;
-            foreach (DungeonPoint1458 direction in CardinalDirections)
-            {
-                if (direction.X == -lastDirection.X && direction.Y == -lastDirection.Y)
-                    continue;
-                if (!CanExtendHall(origin, direction, requestedSteps))
-                    continue;
-                candidates[count++] = direction;
-            }
-
-            if (count == 0)
-            {
-                foreach (DungeonPoint1458 direction in CardinalDirections)
-                {
-                    if (direction.X == -lastDirection.X && direction.Y == -lastDirection.Y)
-                        continue;
-                    if (direction.X < 0 && origin.X <= minimumX + 50 ||
-                        direction.X > 0 && origin.X >= maximumX - 50 ||
-                        direction.Y < 0 && origin.Y <= surfaceFloor ||
-                        direction.Y > 0 && origin.Y >= lowerLimit)
-                        continue;
-                    candidates[count++] = direction;
-                }
-            }
-
-            if (count == 0)
-                return lastDirection == default ? new(1, 0) : lastDirection;
-
-            return candidates[random.Next(count)];
-        }
-
-        private bool CanExtendHall(DungeonPoint1458 origin, DungeonPoint1458 direction, int requestedSteps)
-        {
-            bool leftExistingDungeon = false;
-            int maxSteps = Math.Max(1, requestedSteps);
-            for (int offset = 0; offset < maxSteps; offset++)
-            {
-                int x = origin.X + direction.X * offset;
-                int y = origin.Y + direction.Y * offset;
-                if (x < minimumX + DungeonGenerationCatalog1458.WorldBorder ||
-                    x > maximumX - DungeonGenerationCatalog1458.WorldBorder ||
-                    y < surfaceFloor ||
-                    y >= lowerLimit)
-                    return false;
-
-                bool dungeonWall = store.Get(x, y).Wall == wall;
-                if (!dungeonWall)
-                {
-                    leftExistingDungeon = true;
-                    continue;
-                }
-
-                if (leftExistingDungeon)
-                    return false;
-            }
-
-            return true;
-        }
-
-        private DungeonBounds1458 PaintLegacyRoomStep(
-            double centerX,
-            double centerY,
-            int strength,
-            double interiorRatio)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            int left = ClampX((int)(centerX - strength * DungeonGenerationCatalog1458.RoomOuterRadiusRatio -
-                DungeonGenerationCatalog1458.RoomOuterPadding));
-            int rightExclusive = ClampXExclusive((int)(centerX + strength * DungeonGenerationCatalog1458.RoomOuterRadiusRatio +
-                DungeonGenerationCatalog1458.RoomOuterPadding));
-            int top = ClampY((int)(centerY - strength * DungeonGenerationCatalog1458.RoomOuterRadiusRatio -
-                DungeonGenerationCatalog1458.RoomOuterPadding));
-            int bottomExclusive = ClampYExclusive((int)(centerY + strength * DungeonGenerationCatalog1458.RoomOuterRadiusRatio +
-                DungeonGenerationCatalog1458.RoomOuterPadding));
-
-            FillDungeonRectangle(left, top, rightExclusive, bottomExclusive, brick);
-
-            int innerLeft = ClampX((int)(centerX - strength * interiorRatio));
-            int innerRightExclusive = ClampXExclusive((int)(centerX + strength * interiorRatio));
-            int innerTop = ClampY((int)(centerY - strength * interiorRatio));
-            int innerBottomExclusive = ClampYExclusive((int)(centerY + strength * interiorRatio));
-            ClearDungeonRectangle(innerLeft, innerTop, innerRightExclusive, innerBottomExclusive);
-
-            return new(left, top, Math.Max(left, rightExclusive - 1), Math.Max(top, bottomExclusive - 1));
-        }
-
-        private DungeonBounds1458 PaintLegacyEntranceStep(
-            double centerX,
-            double centerY,
-            int strength,
-            DungeonUnifiedRandom1458 random)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            int left = ClampX((int)(centerX - strength - 4d - random.Next(6)));
-            int rightExclusive = ClampXExclusive((int)(centerX + strength + 4d + random.Next(6)));
-            int top = ClampY((int)(centerY - strength - 4d));
-            int bottomExclusive = ClampYExclusive((int)(centerY + strength + 4d + random.Next(6)));
-            FillDungeonRectangle(left, top, rightExclusive, bottomExclusive, brick);
-
-            int irregularity = random.Next(Math.Max(1, strength)) == 0 ? random.Next(1, 3) : 0;
-            double ratio = DungeonGenerationCatalog1458.HallInteriorToExteriorRatio;
-            int innerLeft = ClampX((int)(centerX - strength * ratio - irregularity));
-            int innerRightExclusive = ClampXExclusive((int)(centerX + strength * ratio + irregularity));
-            int innerTop = ClampY((int)(centerY - strength * ratio - irregularity));
-            int innerBottomExclusive = ClampYExclusive((int)(centerY + strength * ratio + irregularity));
-            ClearDungeonRectangle(innerLeft, innerTop, innerRightExclusive, innerBottomExclusive);
-
-            return new(left, top, Math.Max(left, rightExclusive - 1), Math.Max(top, bottomExclusive - 1));
-        }
-
-        private DungeonBounds1458 PaintLegacyHallStep(
-            double centerX,
-            double centerY,
-            int strength,
-            bool crackedInterior,
-            DungeonUnifiedRandom1458 random)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            int left = ClampX((int)(centerX - strength - 4d - random.Next(6)));
-            int rightExclusive = ClampXExclusive((int)(centerX + strength + 4d + random.Next(6)));
-            int top = ClampY((int)(centerY - strength - 4d - random.Next(6)));
-            int bottomExclusive = ClampYExclusive((int)(centerY + strength + 4d + random.Next(6)));
-            FillDungeonRectangle(left, top, rightExclusive, bottomExclusive, brick);
-
-            int irregularity = 0;
-            if (random.Next(strength + 1) == 0)
-                irregularity = random.Next(1, 3);
-            else if (strength > 1 && random.Next(strength - 1) == 0)
-                irregularity = random.Next(1, 3);
-            else if (random.Next(strength * 3) == 0)
-                irregularity = random.Next(1, 3);
-
-            double ratio = DungeonGenerationCatalog1458.HallInteriorToExteriorRatio;
-            int innerLeft = ClampX((int)(centerX - strength * ratio - irregularity));
-            int innerRightExclusive = ClampXExclusive((int)(centerX + strength * ratio + irregularity));
-            int innerTop = ClampY((int)(centerY - strength * ratio - irregularity));
-            int innerBottomExclusive = ClampYExclusive((int)(centerY + strength * ratio + irregularity));
-            if (crackedInterior)
-                FillDungeonRectangle(innerLeft, innerTop, innerRightExclusive, innerBottomExclusive, crackedBrick);
-            else
-                ClearDungeonRectangle(innerLeft, innerTop, innerRightExclusive, innerBottomExclusive);
-
-            return new(left, top, Math.Max(left, rightExclusive - 1), Math.Max(top, bottomExclusive - 1));
-        }
-
-        private void FillDungeonRectangle(int left, int top, int rightExclusive, int bottomExclusive, ushort tileType)
-        {
-            for (int y = top; y < bottomExclusive; y++)
-            {
-                for (int x = left; x < rightExclusive; x++)
-                    WriteTile(x, y, active: true, tileType);
-            }
-        }
-
-        private void ClearDungeonRectangle(int left, int top, int rightExclusive, int bottomExclusive)
-        {
-            for (int y = top; y < bottomExclusive; y++)
-            {
-                for (int x = left; x < rightExclusive; x++)
-                    WriteTile(x, y, active: false, brick);
-            }
-        }
-
-        private int ClampX(int value) => Math.Clamp(value, Math.Max(1, minimumX), Math.Min(store.Dimensions.WidthTiles - 2, maximumX));
-        private int ClampXExclusive(int value) => Math.Clamp(value, Math.Max(2, minimumX + 1), Math.Min(store.Dimensions.WidthTiles - 1, maximumX + 1));
-        private int ClampY(int value) => Math.Clamp(value, 1, store.Dimensions.HeightTiles - 2);
-        private int ClampYExclusive(int value) => Math.Clamp(value, 2, store.Dimensions.HeightTiles - 1);
-
-        private void WriteTile(int x, int y, bool active, ushort? tileType = null)
-        {
-            ref WorldTile tile = ref store.Tiles[store.GetUncheckedIndex(x, y)];
-            tile.Wall = wall;
-            tile.LiquidAmount = 0;
-            tile.LiquidKind = WorldLiquidKind.Water;
-            tile.FrameX = -1;
-            tile.FrameY = -1;
-            tile.Shape = 0;
-            if (active)
-            {
-                tile.Type = tileType ?? brick;
-                tile.Flags |= WorldTileFlags.Active;
-            }
-            else
-            {
-                tile.Type = 0;
-                tile.Flags &= ~WorldTileFlags.Active;
-            }
+            return result.Entrance with { BuildingPlatforms = result.Platforms };
         }
     }
 
-    /// <summary>
-    /// Component-local Terraria 1.4.5.8 UnifiedRandom stream. It is deliberately not shared with the pass RNG: the
-    /// pinned room, hall, and entrance implementations construct a new stream from every graph component seed.
-    /// </summary>
-    private sealed class DungeonUnifiedRandom1458
-    {
-        private readonly int[] seedArray = new int[56];
-        private uint inext;
-
-        public DungeonUnifiedRandom1458(int seed)
-        {
-            int subtraction = seed == int.MinValue ? int.MaxValue : Math.Abs(seed);
-            int mj = 161803398 - subtraction;
-            seedArray[55] = mj;
-            int mk = 1;
-            for (int index = 1; index < 55; index++)
-            {
-                int destination = 21 * index % 55;
-                seedArray[destination] = mk;
-                mk = mj - mk;
-                if (mk < 0)
-                    mk += int.MaxValue;
-                mj = seedArray[destination];
-            }
-            for (int pass = 1; pass < 5; pass++)
-            {
-                for (int index = 1; index < 56; index++)
-                {
-                    seedArray[index] -= seedArray[1 + (index + 30) % 55];
-                    if (seedArray[index] < 0)
-                        seedArray[index] += int.MaxValue;
-                }
-            }
-        }
-
-        public int Next(int maximum) => (int)(Sample() * maximum);
-        public int Next(int minimum, int maximum) => (int)(Sample() * (maximum - (long)minimum)) + minimum;
-        public double NextDouble() => Sample();
-        private double Sample() => InternalSample() * 4.656612875245797E-10;
-        private int InternalSample()
-        {
-            uint next = inext + 1;
-            if (next > 55)
-                next = 1;
-            uint second = next + 21;
-            if (second > 55)
-                second -= 55;
-            int value = seedArray[next] - seedArray[second];
-            if (value == int.MaxValue)
-                value--;
-            value = seedArray[next] = value + ((value >> 31) & int.MaxValue);
-            inext = next;
-            return value;
-        }
-    }
 }

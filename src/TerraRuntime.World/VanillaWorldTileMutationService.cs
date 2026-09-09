@@ -15,7 +15,8 @@ public enum WorldTileMutationKind : byte
     PlaceWall = 3,
     KillWall = 4,
     SetShape = 5,
-    TransformTile = 6
+    TransformTile = 6,
+    ClearTile = 7
 }
 
 public enum WorldTileMutationStatus : byte
@@ -90,6 +91,7 @@ public sealed class VanillaWorldTileMutationService
             WorldTileMutationKind.KillWall => KillWall(in request, in before),
             WorldTileMutationKind.SetShape => SetShape(in request, in before),
             WorldTileMutationKind.TransformTile => TransformTile(in request, in before),
+            WorldTileMutationKind.ClearTile => ClearTile(in request, in before),
             _ => Rejected(WorldTileMutationStatus.UnsupportedState, in before)
         };
     }
@@ -113,6 +115,21 @@ public sealed class VanillaWorldTileMutationService
         after.Shape = 0;
         after.FrameX = 0;
         after.FrameY = 0;
+        return CommitAndFrame(request.X, request.Y, in before, in after, tileFrame: true, wallFrame: false);
+    }
+
+    private WorldTileMutationResult ClearTile(in WorldTileMutationRequest request, in WorldTile before)
+    {
+        if (!before.IsActive) return Rejected(WorldTileMutationStatus.Empty, in before);
+        if (!VanillaTileDefinitionCatalog.TryGet(before.TileType, out var definition))
+            return Rejected(WorldTileMutationStatus.InvalidContent, in before);
+        if (definition.BreakPath != VanillaTileBreakPath.SimpleCell)
+            return Rejected(WorldTileMutationStatus.FrameImportantUnsupported, in before);
+        // Terraria1.4.5.8 Tile.ClearTile (e.g. a falling-block detachment), NOT KillTile/ClearTileAndPaint.
+        // Shape/active/inActive change; paint, actuator, wire, wall and liquid remain in the source cell.
+        WorldTile after = before;
+        after.Shape = 0;
+        after.Flags &= ~(WorldTileFlags.Active | WorldTileFlags.Inactive);
         return CommitAndFrame(request.X, request.Y, in before, in after, tileFrame: true, wallFrame: false);
     }
 

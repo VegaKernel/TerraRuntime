@@ -15,7 +15,7 @@ namespace TerraRuntime.Application;
 /// sole caller; this owner keeps packet-17 budgets, tile mutation services, object metadata transactions and tile
 /// replication scoped to the same runtime as the tiles they mutate.
 /// </summary>
-internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
+internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
 {
     private const int MaxPlayerSlots = byte.MaxValue + 1;
     private const byte ControlUseItemFlag = 1 << 5;
@@ -49,6 +49,9 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
     private readonly RuntimeProjectileTileExplosionEchoTracker projectileExplosionEchoes = new();
     private LiquidMergePreparation liquidMergePreparation;
     private bool hasLiquidMergePreparation;
+    private readonly Dictionary<PlayerHandle, (long Tick, int X, int Y)> observedMining = [];
+    private readonly Dictionary<PlayerHandle, long> botMiningCooldowns = [];
+    private long currentTick;
 
     public WorldTileAuthority(
         PlayerAuthority players,
@@ -110,6 +113,12 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
 
     public void AdvanceTo(long tick)
     {
+        currentTick = tick;
+        // Bound lifetime and retain generation identity, never grant a reconnect the old player's permission.
+        foreach (var entry in observedMining)
+            if (tick - entry.Value.Tick > 120) observedMining.Remove(entry.Key);
+        foreach (var entry in botMiningCooldowns)
+            if (tick >= entry.Value) botMiningCooldowns.Remove(entry.Key);
         editBudget.AdvanceTo(tick);
         projectileExplosionEchoes.AdvanceTo(tick);
     }
@@ -390,6 +399,89 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
             checked((short)y),
             Data: 0,
             Style: 0);
+        replication?.TryPublishCommitted(GameCommandSourceId.System, in state);
+        return true;
+    }
+
+    internal bool TryAssistUndergroundMining(ServerPlayerAuthority serverPlayers, ServerPlayerId botId,
+        PlayerHandle followedPlayer, int x, int y)
+    {
+        if (tiles?.WorldSurfaceTiles is not double surface || mutations is null ||
+            !serverPlayers.TryGetPlayer(botId, out PlayerHandle bot) ||
+            !serverPlayers.TryGet(bot, out var actor) || actor.IsDead ||
+            !players.TryGet(followedPlayer, out RuntimePlayerMember? followed) || followed.IsDead ||
+            actor.PositionY <= surface * 16d || followed.PositionY <= surface * 16d || y <= surface ||
+            !observedMining.TryGetValue(followedPlayer, out var observed) || currentTick - observed.Tick > 120 ||
+            Math.Abs(x - observed.X) > 3 || Math.Abs(y - observed.Y) > 3 ||
+            Math.Abs(x * 16f + 8f - (actor.PositionX + 10f)) > 64f ||
+            Math.Abs(y * 16f + 8f - (actor.PositionY + 21f)) > 48f ||
+            Math.Abs(x * 16f + 8f - (followed.PositionX + 10f)) > 96f ||
+            Math.Abs(y * 16f + 8f - (followed.PositionY + 21f)) > 64f ||
+            botMiningCooldowns.ContainsKey(bot) || !ContainsTile(x, y) ||
+            !serverPlayers.TryGetItem(botId, 6, out var pick) || pick.ItemType != VanillaItemIds.VortexPickaxe ||
+            pick.Stack != 1 || pick.Prefix != VanillaPrefixIds.None ||
+            !VanillaPickToolCatalog1458.TryGetPickPower(pick.ItemType, out short power)) return false;
+
+        WorldTile before = tiles.Get(x, y);
+        // Deliberately narrow assistance: ordinary natural tunnel material, no structures, walls, traps or ores.
+        // Item 2776 has pick=225, useTime=6, useAnimation=12; these two tile types complete in one PickTile hit.
+        if (!before.IsActive || (before.TileType != VanillaTileIds.Dirt && before.TileType != VanillaTileIds.Stone) ||
+            before.Wall != 0 || before.Shape != 0 || before.LiquidAmount != 0 ||
+            !VanillaTileMiningRequirements1458.CanMine(tiles, x, y, before.TileType, power)) return false;
+        for (int nx = x - 1; nx <= x + 1; nx++)
+        for (int ny = y - 1; ny <= y + 1; ny++)
+        {
+            if (!ContainsTile(nx, ny)) return false;
+            WorldTile neighbour = tiles.Get(nx, ny);
+            if (neighbour.LiquidAmount != 0 || (neighbour.Flags & ~WorldTileFlags.Active) != 0 ||
+                (neighbour.IsActive && neighbour.TileType != VanillaTileIds.Dirt && neighbour.TileType != VanillaTileIds.Stone))
+                return false;
+        }
+        return CommitServerPlayerPick(serverPlayers, botId, bot, actor, x, y, in before);
+    }
+
+    internal bool TryMineServerPlayerOre(ServerPlayerAuthority serverPlayers, ServerPlayerId botId,
+        int x, int y, TileTypeId expectedType, long sectionVersion)
+    {
+        if (tiles?.WorldSurfaceTiles is not double surface || mutations is null || goodWorld || !ContainsTile(x, y) || y <= surface ||
+            tiles.GetSectionVersion(TerrariaSectionGeometry.FromTile(tiles.Dimensions, x, y)) != sectionVersion ||
+            !serverPlayers.TryGetPlayer(botId, out var bot) || !serverPlayers.TryGet(bot, out var actor) || actor.IsDead ||
+            actor.PositionY <= surface * 16d || botMiningCooldowns.ContainsKey(bot) ||
+            Math.Abs(x * 16f + 8 - actor.PositionX - 10) > 64 || Math.Abs(y * 16f + 8 - actor.PositionY - 21) > 48 ||
+            !serverPlayers.TryGetItem(botId, 6, out var pick) || pick.ItemType != VanillaItemIds.VortexPickaxe ||
+            pick.Stack != 1 || pick.Prefix != VanillaPrefixIds.None) return false;
+        WorldTile before = tiles.Get(x, y);
+        // Player.GetPickaxeDamage: these ordinary natural cells complete in one hit with pick225.
+        // Other mining profiles require their own verified hit accumulation, not guessed instant destruction.
+        if (!before.IsActive || before.TileType != expectedType || !VanillaBotMiningMaterials1458.IsSingleHitMaterial(expectedType) ||
+            before.Wall != 0 || before.LiquidAmount != 0 || before.Flags != WorldTileFlags.Active) return false;
+        for (int nx = x - 1; nx <= x + 1; nx++)
+        for (int ny = y - 1; ny <= y + 1; ny++)
+        {
+            if (!ContainsTile(nx, ny)) return false;
+            var neighbour = tiles.Get(nx, ny);
+            if (neighbour.LiquidAmount != 0 || neighbour.Wall != 0 || (neighbour.Flags & ~WorldTileFlags.Active) != 0 ||
+                neighbour.IsActive && !VanillaBotMiningMaterials1458.IsSingleHitMaterial(neighbour.TileType)) return false;
+        }
+        return CommitServerPlayerPick(serverPlayers, botId, bot, actor, x, y, in before);
+    }
+
+    private bool CommitServerPlayerPick(ServerPlayerAuthority serverPlayers, ServerPlayerId botId,
+        PlayerHandle bot, PlayerStateSnapshot actor, int x, int y, in WorldTile before)
+    {
+        if (mutations is null || !TryPrepareSimpleBreak(x, y, in before, out PreparedSimpleBreak prepared)) return false;
+        if (!serverPlayers.SetHeldItem(botId, 6, useItem: true) ||
+            !ApplyTileMutation(mutations, WorldTileMutationKind.KillTile, x, y))
+        {
+            ReleasePreparedBreak(in prepared);
+            return false;
+        }
+        CommitPreparedBreak(in prepared);
+        botMiningCooldowns[bot] = currentTick + 12; // Conservative full animation; no invented mining-speed bonuses.
+        _ = serverPlayers.PresentItemUse(botId, x * 16f + 8f - actor.PositionX - 10f,
+            y * 16f + 8f - actor.PositionY - 21f, 12);
+        var state = new TerrariaTileManipulationState((byte)TerrariaTileManipulationAction.KillTile,
+            checked((short)x), checked((short)y), Data: 0, Style: 0);
         replication?.TryPublishCommitted(GameCommandSourceId.System, in state);
         return true;
     }
@@ -889,7 +981,12 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
             return;
         }
 
-        if (!editBudget.TryConsume(command.Connection.Player.Slot))
+        bool shovelTarget = action == TerrariaTileManipulationAction.KillTile &&
+            tileState.Data is 0 or 1 &&
+            players.TryGetInventoryItem(command.Connection, player.SelectedItem, out var heldTool) &&
+            !heldTool.IsEmpty && VanillaPickToolCatalog1458.IsShovel(heldTool.ItemType) &&
+            VanillaPickToolCatalog1458.CanBeDugByShovel(tiles.Get(tileState.TileX, tileState.TileY).TileType);
+        if (!editBudget.TryConsume(command.Connection.Player.Slot, shovelTarget))
         {
             RejectWithCorrection(command, in tileState);
             return;
@@ -911,13 +1008,13 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
                 return;
             }
 
-            if (!TryResolveClientPickPower(command.Connection, player, out short pickPower))
+            WorldTile beforeKill = tiles.Get(tileState.TileX, tileState.TileY);
+            if (!TryResolveClientPickPower(command.Connection, player, beforeKill.TileType, out short pickPower))
             {
                 RejectWithCorrection(command, in tileState);
                 return;
             }
 
-            WorldTile beforeKill = tiles.Get(tileState.TileX, tileState.TileY);
             TileTypeId beforeType = beforeKill.TileType;
             if (!VanillaTileDefinitionCatalog.TryGet(beforeType, out VanillaTileDefinition tileDefinition) ||
                 !VanillaTileMiningRequirements1458.CanMine(
@@ -1084,6 +1181,11 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
 
             AppliedClientManipulations++;
             replication?.TryPublishCommitted(command.Connection.Source, in tileState);
+            if (beforeKill.IsActive && tiles.WorldSurfaceTiles is double surface &&
+                player.PositionY > surface * 16d && tileState.TileY > surface &&
+                Math.Abs(tileState.TileX * 16f + 8f - (player.PositionX + 10f)) <= 96f &&
+                Math.Abs(tileState.TileY * 16f + 8f - (player.PositionY + 21f)) <= 64f)
+                observedMining[command.Connection.Player] = (currentTick, tileState.TileX, tileState.TileY);
             return;
         }
 
@@ -1156,6 +1258,7 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
     private bool TryResolveClientPickPower(
         ConnectionHandle connection,
         RuntimePlayerMember player,
+        TileTypeId targetType,
         out short pickPower)
     {
         if (players.TryGetInventoryItem(
@@ -1163,7 +1266,7 @@ internal sealed class WorldTileAuthority : IVanillaLiquidTileSideEffectSink1458
                 player.SelectedItem,
                 out RuntimePlayerInventoryItem selected) &&
             !selected.IsEmpty &&
-            VanillaPickToolCatalog1458.TryGetPickPower(selected.ItemType, out pickPower))
+            VanillaPickToolCatalog1458.TryGetTilePickPower(selected.ItemType, targetType, out pickPower))
         {
             return true;
         }

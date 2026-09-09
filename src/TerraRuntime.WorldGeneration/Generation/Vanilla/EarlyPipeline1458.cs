@@ -207,6 +207,7 @@ internal sealed class EarlyState1458
 {
     public VanillaWorldGenerationBootstrapState1458? Bootstrap { get; set; }
     public double MainWorldSurface { get; set; }
+    public double CurrentWorldSurface { get; set; }
     public double MainRockLayer { get; set; }
     public double WorldSurfaceLow { get; set; }
     public double WorldSurfaceHigh { get; set; }
@@ -288,10 +289,10 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
                 ApplySandPatches(context, grid, RequireVanilla(context));
                 break;
             case EarlyStage1458.Tunnels:
-                ApplyTunnels(context, grid, RequireVanilla(context));
+                ApplyTunnels(context, workspace, grid, RequireVanilla(context));
                 break;
             case EarlyStage1458.MountCaves:
-                ApplyMountCaves(context, grid, RequireVanilla(context));
+                ApplyMountCaves(context, workspace, grid, RequireVanilla(context));
                 break;
             case EarlyStage1458.DirtWallBackgrounds:
                 ApplyDirtWallBackgrounds(context, grid, RequireVanilla(context));
@@ -321,7 +322,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
                 context.ReportProgress(1d, "Skipping ordinary-world Wavy Caves secret-seed branch");
                 break;
             case EarlyStage1458.IceBiome:
-                ApplyIceBiome(context, grid, RequireVanilla(context));
+                ApplyIceBiome(context, workspace, grid, RequireVanilla(context));
                 break;
             case EarlyStage1458.Grass:
                 ApplyGrass(context, grid, RequireVanilla(context));
@@ -353,43 +354,20 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         TerrainGenerationState1458 terrain = workspace.VanillaTerrainState ??
             throw new InvalidOperationException("Source-backed Terrain did not publish its exact end state.");
         state.MainWorldSurface = terrain.WorldSurface;
+        state.CurrentWorldSurface = terrain.CurrentWorldSurface;
         state.MainRockLayer = terrain.RockLayer;
         state.WorldSurfaceLow = terrain.WorldSurfaceLow;
         state.WorldSurfaceHigh = terrain.WorldSurfaceHigh;
         state.RockLayerLow = terrain.RockLayerLow;
         state.RockLayerHigh = terrain.RockLayerHigh;
 
-        IRandom random = RequireVanilla(context);
-        WorldGenerationRequest request = context.Request;
-        VanillaWorldSeedProfile1458 profile = WorldSeedResolver1458.Resolve(in request);
-        (state.WaterLine, state.LavaLine) = ResolveLiquidLines(
-            random,
-            state.MainWorldSurface,
-            state.MainRockLayer,
-            terrain.CurrentRockLayer,
-            grid.Height,
-            profile.Special == VanillaSpecialWorldSeed1458.Remix);
-        workspace.SetVanillaLiquidLines(state.WaterLine, state.LavaLine);
+        VanillaLiquidLines1458 liquidLines = workspace.VanillaLiquidLines ??
+            throw new InvalidOperationException("Source-backed Terrain did not publish its liquid lines.");
+        state.WaterLine = liquidLines.WaterLine;
+        state.LavaLine = liquidLines.LavaLine;
         state.SnowMinX = new int[grid.Height];
         state.SnowMaxX = new int[grid.Height];
         context.ReportProgress(1d, "Finalizing Terraria Terrain layer state");
-    }
-
-    internal static (int WaterLine, int LavaLine) ResolveLiquidLines(
-        IRandom random,
-        double worldSurface,
-        double rockLayer,
-        double currentRockLayer,
-        int height,
-        bool isRemix)
-    {
-        ArgumentNullException.ThrowIfNull(random);
-        int waterLine = (int)(rockLayer + height) / 2 + random.Next(-100, 20);
-        int ordinaryLavaLine = waterLine + random.Next(50, 80);
-        int lavaLine = isRemix
-            ? (int)(worldSurface * 4d + currentRockLayer) / 5
-            : ordinaryLavaLine;
-        return (waterLine, lavaLine);
     }
 
     private void ApplyDunes(
@@ -541,8 +519,10 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
 
     private static void PlaceDuneCurve(RuntimeGrid grid, int startX, int startY, int endX, int endY, int anchorOffsetY, DuneDescription d)
     {
-        double anchorX = (startX + endX) / 2d;
-        double anchorY = (startY + endY) / 2d + anchorOffsetY;
+        // DunesBiome constructs an integer Point before converting it to Vector2D.
+        // Keeping a half-cell here changes the sampled curve and downstream pyramid surface.
+        double anchorX = (startX + endX) / 2;
+        double anchorY = (startY + endY) / 2 + anchorOffsetY;
         double step = 0.5d / Math.Max(1, endX - startX);
         int lastX = -1, lastY = -1;
         for (double t = 0d; t <= 1d; t += step)
@@ -561,13 +541,15 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             {
                 if (!grid.Contains(x, yy)) continue;
                 ref WorldTile tile = ref grid.At(x, yy);
-                if (tile.IsActive && tile.Type != Sand) ClearTile(ref tile);
+                if (tile.IsActive && tile.Type != Sand)
+                    tile = default; // Tile.ClearEverything, including inactive type and walls/metadata.
             }
             for (int yy = y; yy < bottom && grid.Contains(x, yy); yy++)
             {
                 ref WorldTile tile = ref grid.At(x, yy);
-                ClearTile(ref tile);
-                SetType(ref tile, Sand, active: true);
+                // Tile.ResetToType preserves the wall identity, but resets frames and other metadata.
+                ushort wall = tile.Wall;
+                tile = new WorldTile { Type = Sand, Wall = wall, Flags = WorldTileFlags.Active };
             }
         }
     }
@@ -636,9 +618,10 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, "Generating Terraria sand patches");
     }
 
-    private void ApplyTunnels(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyTunnels(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
     {
         int count = (int)(grid.Width * 0.0015d);
+        var columns = new List<int>(count);
         for (int i = 0; i < count; i++)
         {
             int[] xs = new int[10];
@@ -662,6 +645,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
                 }
             } while (sandTouched);
 
+            columns.Add(xs[5]); // GenVars.tunnelX: exclusion anchor for the later Lakes pass.
             for (int k = 0; k < 10; k++)
             {
                 RunTileRunner(grid, random, xs[k], ys[k], random.Next(5, 8), random.Next(6, 9), Dirt, true, -2d, -0.3d);
@@ -669,11 +653,13 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             }
             context.ReportProgress((i + 1d) / Math.Max(1, count), "Generating Terraria tunnels");
         }
+        workspace.SetVanillaTunnelColumns(columns.ToArray());
     }
 
-    private void ApplyMountCaves(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyMountCaves(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
     {
         int count = (int)(grid.Width * 0.001d);
+        var anchors = new List<WorldGenerationPoint>(count);
         for (int i = 0; i < count; i++)
         {
             int retries = 0;
@@ -689,23 +675,26 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             }
             if (retries >= grid.Width / 5) continue;
 
-            int surface = grid.FindFirstActiveY(x, 0, Math.Min(grid.Height, (int)state.MainWorldSurface));
-            if (surface >= grid.Height) continue;
+            int surfaceLimit = Math.Min(grid.Height, (int)Math.Ceiling(state.MainWorldSurface));
+            int surface = grid.FindFirstActiveY(x, 0, surfaceLimit);
+            if (surface >= surfaceLimit) continue;
             bool blocked = false;
             for (int sx = x - 50; sx < x + 50 && !blocked; sx++)
             for (int sy = surface - 25; sy < surface + 25; sy++)
             {
                 if (!grid.Contains(sx, sy)) continue;
                 ref WorldTile tile = ref grid.At(sx, sy);
-                if (tile.IsActive && tile.Type is Sand or 45 or 397) { blocked = true; break; }
+                if (tile.IsActive && tile.Type is Sand or 151 or 274) { blocked = true; break; }
             }
             if (!blocked)
             {
                 Mountinater(grid, random, x, surface);
                 state.MountainCaveX.Add(x);
+                anchors.Add(new(x, surface));
             }
             context.ReportProgress((i + 1d) / Math.Max(1, count), "Generating Terraria mount caves");
         }
+        workspace.SetVanillaMountainCaves(anchors.ToArray());
     }
 
     private static void Mountinater(RuntimeGrid grid, IRandom random, int x0, int y0)
@@ -783,10 +772,12 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
 
     private void ApplyRocksInDirt(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
-        int count = (int)(grid.Width * grid.Height * 0.00015d);
+        // Source loops compare the integer index with a double bound. Casting to int first
+        // loses the final iteration (including floating-point tails) and shifts the whole pass RNG.
+        double count = grid.Width * grid.Height * 0.00015d;
         for (int i = 0; i < count; i++)
             RunTileRunner(grid, random, random.Next(grid.Width), random.Next(0, (int)state.WorldSurfaceLow + 1), random.Next(4, 15), random.Next(5, 40), Stone);
-        count = (int)(grid.Width * grid.Height * 0.0002d);
+        count = grid.Width * grid.Height * 0.0002d;
         for (int i = 0; i < count; i++)
         {
             int x = random.Next(grid.Width);
@@ -795,7 +786,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
                 y = random.Next((int)state.WorldSurfaceLow, (int)state.WorldSurfaceHigh + 1);
             RunTileRunner(grid, random, x, y, random.Next(4, 10), random.Next(5, 30), Stone);
         }
-        count = (int)(grid.Width * grid.Height * 0.0045d);
+        count = grid.Width * grid.Height * 0.0045d;
         for (int i = 0; i < count; i++)
             RunTileRunner(grid, random, random.Next(grid.Width), random.Next((int)state.WorldSurfaceHigh, (int)state.RockLayerHigh + 1), random.Next(2, 7), random.Next(2, 23), Stone);
         context.ReportProgress(1d, "Generating Terraria rocks in dirt");
@@ -803,7 +794,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
 
     private void ApplyDirtInRocks(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
-        int count = (int)(grid.Width * grid.Height * 0.005d);
+        double count = grid.Width * grid.Height * 0.005d;
         for (int i = 0; i < count; i++)
             RunTileRunner(grid, random, random.Next(grid.Width), random.Next((int)state.RockLayerLow, grid.Height), random.Next(2, 6), random.Next(2, 40), Dirt);
         context.ReportProgress(1d, "Generating Terraria dirt in rocks");
@@ -849,7 +840,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         int x = random.Next(grid.Width);
         int y = random.Next((int)state.WorldSurfaceHigh, grid.Height);
         while (((x < beachAvoidance || x > grid.Width - beachAvoidance) && y < state.WorldSurfaceHigh) ||
-               (x > grid.Width * 0.45d && x < grid.Width * 0.55d && y < state.MainWorldSurface))
+               (x > grid.Width * 0.45d && x < grid.Width * 0.55d && y < state.CurrentWorldSurface))
         {
             x = random.Next(grid.Width);
             y = random.Next((int)state.WorldSurfaceHigh, grid.Height);
@@ -883,7 +874,10 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         for (int i = 0; i < count; i++)
         {
             int type = random.Next(10) == 0 ? -2 : -1;
-            RunTileRunner(grid, random, random.Next(grid.Width), random.Next((int)state.RockLayerHigh, grid.Height), random.Next(6, 20), random.Next(50, 300), type);
+            // The registered source pass draws brush parameters BEFORE its position.
+            int strength = random.Next(6, 20);
+            int steps = random.Next(50, 300);
+            RunTileRunner(grid, random, random.Next(grid.Width), random.Next((int)state.RockLayerHigh, grid.Height), strength, steps, type);
         }
         context.ReportProgress(1d, "Generating Terraria rock-layer caves");
     }
@@ -891,13 +885,14 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
     private void ApplySurfaceCaves(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
         RunSurfaceCaveFamily(grid, random, (int)(grid.Width * 0.002d), 0.45d, 0.55d, 3, 6, 5, 50, 1d);
-        RunSurfaceCaveFamily(grid, random, (int)(grid.Width * 0.0007d), 0.43d, 0.57d, 10, 15, 50, 130, 2d);
+        RunSurfaceCaveFamily(grid, random, (int)(grid.Width * 0.0007d), 0.43d, 1d - 0.43d, 10, 15, 50, 130, 2d);
+        int surfaceLimit = Math.Min(grid.Height, (int)Math.Ceiling(state.WorldSurfaceHigh));
         int large = (int)(grid.Width * 0.0003d);
         for (int i = 0; i < large; i++)
         {
             int x = PickSurfaceCaveX(grid.Width, random, 0.4d, 0.6d);
-            int y = grid.FindFirstActiveY(x, 0, Math.Min(grid.Height, (int)state.WorldSurfaceHigh));
-            if (y >= grid.Height) continue;
+            int y = grid.FindFirstActiveY(x, 0, surfaceLimit);
+            if (y >= surfaceLimit) continue;
             RunTileRunner(grid, random, x, y, random.Next(12, 25), random.Next(150, 500), -1, false, random.Next(-10, 11) * 0.1d, 4d);
             RunTileRunner(grid, random, x, y, random.Next(8, 17), random.Next(60, 200), -1, false, random.Next(-10, 11) * 0.1d, 2d);
             RunTileRunner(grid, random, x, y, random.Next(5, 13), random.Next(40, 170), -1, false, random.Next(-10, 11) * 0.1d, 2d);
@@ -906,8 +901,8 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         for (int i = 0; i < vertical; i++)
         {
             int x = PickSurfaceCaveX(grid.Width, random, 0.4d, 0.6d);
-            int y = grid.FindFirstActiveY(x, 0, Math.Min(grid.Height, (int)state.WorldSurfaceHigh));
-            if (y < grid.Height)
+            int y = grid.FindFirstActiveY(x, 0, surfaceLimit);
+            if (y < surfaceLimit)
                 RunTileRunner(grid, random, x, y, random.Next(7, 12), random.Next(150, 250), -1, false, 0d, 1d, true);
         }
         int caverers = (int)(5d * (grid.Width / 4200d));
@@ -923,11 +918,12 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
 
     private void RunSurfaceCaveFamily(RuntimeGrid grid, IRandom random, int count, double centerLeft, double centerRight, int s0, int s1, int n0, int n1, double speedY)
     {
+        int surfaceLimit = Math.Min(grid.Height, (int)Math.Ceiling(state.WorldSurfaceHigh));
         for (int i = 0; i < count; i++)
         {
             int x = PickSurfaceCaveX(grid.Width, random, centerLeft, centerRight);
-            int y = grid.FindFirstActiveY(x, 0, Math.Min(grid.Height, (int)state.WorldSurfaceHigh));
-            if (y < grid.Height)
+            int y = grid.FindFirstActiveY(x, 0, surfaceLimit);
+            if (y < surfaceLimit)
                 RunTileRunner(grid, random, x, y, random.Next(s0, s1), random.Next(n0, n1), -1, false, random.Next(-10, 11) * 0.1d, speedY);
         }
     }
@@ -974,28 +970,33 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             double cx = x, cy = y;
             for (int i = 0; i < segments; i++)
             {
-                (cx, cy) = DigTunnel(grid, random, cx, cy, dx, dy, random.Next(5, 15), random.Next(2, 6));
+                (cx, cy) = DigTunnel(grid, random, cx, cy, dx, dy, random.Next(5, 15), random.Next(2, 6), wet: true);
                 dx = Math.Clamp(dx + random.Next(-20, 21) * 0.1d, -1.5d, 1.5d);
                 dy = Math.Clamp(dy + random.Next(-20, 21) * 0.1d, -1.5d, 1.5d);
             }
         }
     }
 
-    private static (double X, double Y) DigTunnel(RuntimeGrid grid, IRandom random, double x, double y, double directionX, double directionY, int steps, int size)
+    private static (double X, double Y) DigTunnel(RuntimeGrid grid, IRandom random, double x, double y, double directionX, double directionY, int steps, int size, bool wet = false)
     {
         double driftX = 0d, driftY = 0d, radius = size;
         x = Math.Clamp(x, radius + 1d, grid.Width - radius - 1d);
         y = Math.Clamp(y, radius + 1d, grid.Height - radius - 1d);
         for (int i = 0; i < steps; i++)
         {
-            int left = Math.Max(0, (int)(x - radius));
-            int right = Math.Min(grid.Width - 1, (int)(x + radius));
-            int top = Math.Max(0, (int)(y - radius));
-            int bottom = Math.Min(grid.Height - 1, (int)(y + radius));
-            for (int tx = left; tx <= right; tx++)
-            for (int ty = top; ty <= bottom; ty++)
-                if (Math.Abs(tx - x) + Math.Abs(ty - y) < radius * (1d + random.Next(-10, 11) * 0.005d))
-                    SetActive(ref grid.At(tx, ty), false);
+            // Out-of-world brush cells still consume the source random draw.
+            for (int tx = (int)(x - radius); tx <= x + radius; tx++)
+            for (int ty = (int)(y - radius); ty <= y + radius; ty++)
+                if (Math.Abs(tx - x) + Math.Abs(ty - y) < radius * (1d + random.Next(-10, 11) * 0.005d) && grid.Contains(tx, ty))
+                {
+                    ref WorldTile tile = ref grid.At(tx, ty);
+                    SetActive(ref tile, false);
+                    if (wet)
+                    {
+                        tile.LiquidAmount = byte.MaxValue;
+                        tile.LiquidKind = WorldLiquidKind.Water;
+                    }
+                }
             radius = Math.Clamp(radius + random.Next(-50, 51) * 0.03d, size * 0.6d, size * 2d);
             driftX = Math.Clamp(driftX + random.Next(-20, 21) * 0.01d, -1d, 1d);
             driftY = Math.Clamp(driftY + random.Next(-20, 21) * 0.01d, -1d, 1d);
@@ -1005,7 +1006,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         return (x, y);
     }
 
-    private void ApplyIceBiome(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyIceBiome(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 b = RequireBootstrap();
         state.SnowTop = (int)state.MainWorldSurface;
@@ -1049,6 +1050,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             state.SnowBottom = Math.Max(state.SnowBottom, row);
             if ((row & 31) == 0) context.CancellationToken.ThrowIfCancellationRequested();
         }
+        workspace.SetVanillaSnowBounds(state.SnowTop,state.SnowBottom,state.SnowMinX,state.SnowMaxX);
         context.ReportProgress(1d, "Generating Terraria ice biome");
     }
 
@@ -1061,35 +1063,31 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
 
     private void ApplyGrass(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
-        int iterations = (int)(grid.Width * grid.Height * 0.002d);
+        double iterations = grid.Width * grid.Height * 0.002d;
         for (int i = 0; i < iterations; i++)
         {
-            TryGrass(grid, random.Next(1, grid.Width - 1), Math.Clamp(random.Next((int)state.WorldSurfaceLow, (int)state.WorldSurfaceHigh), 1, grid.Height - 2));
-            TryGrass(grid, random.Next(1, grid.Width - 1), Math.Clamp(random.Next(5, (int)state.WorldSurfaceLow), 1, grid.Height - 2));
+            TryGrass(grid, random.Next(1, grid.Width - 1), random.Next((int)state.WorldSurfaceLow, (int)state.WorldSurfaceHigh));
+            TryGrass(grid, random.Next(1, grid.Width - 1), random.Next(5, (int)state.WorldSurfaceLow));
         }
         context.ReportProgress(1d, "Generating Terraria grass");
     }
 
     private static void TryGrass(RuntimeGrid grid, int x, int y)
     {
-        ref WorldTile target = ref grid.At(x, y);
-        if (!IsActiveType(target, Dirt))
+        if (y >= grid.Height)
+            y = grid.Height - 2;
+
+        // This early pass seeds grass inside four cardinal dirt neighbours. It is
+        // not the later exposed-surface spread, and does not reset tile metadata.
+        if (!IsActiveType(grid.At(x - 1, y), Dirt) ||
+            !IsActiveType(grid.At(x + 1, y), Dirt) ||
+            !IsActiveType(grid.At(x, y - 1), Dirt) ||
+            !IsActiveType(grid.At(x, y + 1), Dirt))
             return;
 
-        bool exposed = false;
-        for (int tx = x - 1; tx <= x + 1 && !exposed; tx++)
-        for (int ty = y - 1; ty <= y + 1; ty++)
-        {
-            ref WorldTile neighbor = ref grid.At(tx, ty);
-            if (!neighbor.IsActive)
-            {
-                exposed = true;
-                break;
-            }
-        }
-
-        if (exposed)
-            SetType(ref target, Grass, true);
+        ref WorldTile target = ref grid.At(x, y);
+        target.Flags |= WorldTileFlags.Active;
+        target.Type = Grass;
     }
 
     private void ApplyJungle(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
@@ -1120,9 +1118,9 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         x = Math.Clamp(x, b.LeftBeachEnd + strength / 2 + padding, b.RightBeachStart - strength / 2 - padding);
         state.MudWall = true;
         RunTileRunner(grid, random, x, y, strength, 10000, Mud, false, 0d, -20d, true);
-        GenerateJungleTunnel(grid, random, x, y);
+        GenerateJungleTunnel(grid, random, x, y, context);
         state.MudWall = false;
-        GenerateMudWallHoles(grid, random);
+        GenerateMudWallHoles(grid, random, context);
         GenerateJungleFinishing(grid, random, scale, oldX, oldY, context);
         context.ReportProgress(1d, "Generating source-backed Terraria Jungle");
     }
@@ -1150,7 +1148,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
                 random.Next(3, 7), random.Next(3, 8), random.Next(baseGem, baseGem + 2));
     }
 
-    private void GenerateJungleTunnel(RuntimeGrid grid, IRandom random, int startX, int startY)
+    private void GenerateJungleTunnel(RuntimeGrid grid, IRandom random, int startX, int startY, IWorldGenerationContext context)
     {
         double strength = random.Next(5, 11), x = startX, y = startY;
         double vx = random.Next(-10, 11) * 0.1d;
@@ -1158,11 +1156,13 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         int branch = 0;
         for (int guard = 0; guard < 6000; guard++)
         {
+            if ((guard & 63) == 0) context.CancellationToken.ThrowIfCancellationRequested();
+            bool reachedSurface = false;
             if (y < state.MainWorldSurface)
             {
                 int tx = Math.Clamp((int)x, 10, grid.Width - 10);
                 int ty = Math.Clamp((int)y, 10, grid.Height - 10);
-                if (IsOpenAirColumn(grid, tx, Math.Max(5, ty))) break;
+                reachedSurface = IsOpenAirColumn(grid, tx, Math.Max(5, ty));
             }
             state.JungleX = (int)x;
             strength = Math.Clamp(strength + random.Next(-20, 21) * 0.1d, 5d, 10d);
@@ -1173,7 +1173,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             for (int tx = left; tx < right; tx++)
             for (int ty = top; ty < bottom; ty++)
                 if (Math.Abs(tx - x) + Math.Abs(ty - y) < strength * 0.5d * (1d + random.Next(-10, 11) * 0.015d))
-                    SetActive(ref grid.At(tx, ty), false);
+                    KillJungleTunnelTile(grid, random, tx, ty);
             branch++;
             if (branch > 10 && random.Next(50) < branch)
             {
@@ -1187,7 +1187,10 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             if (x < startX - 200) vx += random.Next(5, 21) * 0.1d;
             if (x > startX + 200) vx -= random.Next(5, 21) * 0.1d;
             vx = Math.Clamp(vx, -1.5d, 1.5d);
+            // The source marks the loop complete but still executes its final iteration.
+            if (reachedSurface) return;
         }
+        throw new InvalidOperationException("Jungle surface tunnel exhausted its generation budget.");
     }
 
     private static bool IsOpenAirColumn(RuntimeGrid grid, int x, int y)
@@ -1200,21 +1203,66 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         return true;
     }
 
-    private void GenerateMudWallHoles(RuntimeGrid grid, IRandom random)
+    private static void KillJungleTunnelTile(RuntimeGrid grid, IRandom random, int x, int y)
+    {
+        if (!grid.At(x, y).IsActive) return;
+        // This pass precedes objects and vegetation. Do not turn this bounded
+        // generation-only KillTile slice into authority over unknown objects.
+        for (int tx = x - 1; tx <= x + 1; tx++)
+        for (int ty = y - 1; ty <= y + 1; ty++)
+            if (grid.At(tx, ty).IsActive && !IsJungleTunnelTerrain(grid.At(tx, ty).Type))
+                throw new InvalidOperationException("Jungle tunnel encountered unsupported tile semantics.");
+        ClearJungleTunnelTerrain(ref grid.At(x, y), random);
+        // During generation SquareTileFrame skips solid cosmetic framing, but
+        // still clears shape and block paint/coating from inactive neighbours.
+        for (int tx = x - 1; tx <= x + 1; tx++)
+        for (int ty = y - 1; ty <= y + 1; ty++)
+        {
+            ref WorldTile tile = ref grid.At(tx, ty);
+            if (tile.IsActive) continue;
+            tile.Shape = 0;
+            tile.TileColor = 0;
+            tile.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+        }
+    }
+
+    private static bool IsJungleTunnelTerrain(ushort type) =>
+        type is Dirt or Stone or Grass or Clay or Sand or Mud or >= 63 and <= 68 or Snow or Ice;
+
+    internal static void ClearJungleTunnelTerrain(ref WorldTile tile, IRandom random)
+    {
+        if (!tile.IsActive) return;
+        if (!IsJungleTunnelTerrain(tile.Type))
+            throw new InvalidOperationException("Jungle tunnel encountered unsupported tile semantics.");
+        // KillTile's ten grass dust selections consume RNG even though generation
+        // suppresses actual dust allocation and item drops.
+        if (tile.Type == Grass)
+            for (int i = 0; i < 10; i++) _ = random.Next(2);
+        tile.Type = Dirt;
+        tile.FrameX = tile.FrameY = -1;
+        tile.Shape = 0;
+        tile.TileColor = 0;
+        tile.Flags &= ~(WorldTileFlags.Active | WorldTileFlags.Inactive |
+            WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+    }
+
+    private void GenerateMudWallHoles(RuntimeGrid grid, IRandom random, IWorldGenerationContext context)
     {
         int underworld = grid.Height - 200;
         for (int i = 0; i < grid.Width / 4; i++)
         {
+            if ((i & 31) == 0) context.CancellationToken.ThrowIfCancellationRequested();
             int x = 0, y = 0;
             bool found = false;
             for (int attempt = 0; attempt < 10000; attempt++)
             {
                 x = random.Next(20, grid.Width - 20);
-                y = random.Next((int)state.WorldSurfaceLow + 10, underworld);
+                y = random.Next((int)state.CurrentWorldSurface + 10, underworld);
                 ushort wall = grid.At(x, y).Wall;
                 if (wall is JungleWall or MudWall) { found = true; break; }
             }
-            if (found) MudWallRunner(grid, random, x, y);
+            if (!found) throw new InvalidOperationException("Jungle mud-wall selection exhausted its generation budget.");
+            MudWallRunner(grid, random, x, y);
         }
     }
 
@@ -1242,7 +1290,10 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
             PickMudPoint(grid, random, scale, oldX, oldY, out x, out y);
             RunTileRunner(grid, random, x, y, random.Next(4, 10), random.Next(5, 30), Stone);
             if (random.Next(4) == 0)
-                RunTileRunner(grid, random, x + random.Next(-1, 2), y + random.Next(-1, 2), random.Next(3, 7), random.Next(4, 8), random.Next(63, 69));
+            {
+                int gem = random.Next(63, 69);
+                RunTileRunner(grid, random, x + random.Next(-1, 2), y + random.Next(-1, 2), random.Next(3, 7), random.Next(4, 8), gem);
+            }
             if ((i & 31) == 0) context.CancellationToken.ThrowIfCancellationRequested();
         }
     }
@@ -1253,8 +1304,8 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
         {
             x = originX + random.Next((int)(-600d * scale), (int)(600d * scale));
             y = originY + random.Next((int)(-200d * scale), (int)(200d * scale));
-            if (grid.Contains(x, y) && grid.At(x, y).Type == Mud) return;
-            if (attempt > 20000) { x = Math.Clamp(originX, 1, grid.Width - 2); y = Math.Clamp(originY, 1, grid.Height - 2); return; }
+            if (x >= 1 && x < grid.Width - 1 && y >= 1 && y < grid.Height - 1 && grid.At(x, y).Type == Mud) return;
+            if (attempt > 20000) throw new InvalidOperationException("Jungle mud selection exhausted its generation budget.");
         }
     }
 
@@ -1347,11 +1398,11 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
                     {
                         if (grid.At(tx, ty - 1).Wall != JungleWall && grid.At(tx, ty + 1).Wall != JungleWall &&
                             grid.At(tx - 1, ty).Wall != JungleWall && grid.At(tx + 1, ty).Wall != JungleWall)
-                            tile.Wall = MudWall;
+                            PlaceJungleRunnerWall(grid, random, tx, ty, MudWall);
                     }
                     else if (grid.At(tx, ty - 1).Wall != MudWall && grid.At(tx, ty + 1).Wall != MudWall &&
                              grid.At(tx - 1, ty).Wall != MudWall && grid.At(tx + 1, ty).Wall != MudWall)
-                        tile.Wall = JungleWall;
+                        PlaceJungleRunnerWall(grid, random, tx, ty, JungleWall);
                 }
                 if (type < 0)
                 {
@@ -1368,7 +1419,7 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
                 if (tile.IsActive)
                 {
                     if (type is >= 63 and <= 68 && tile.Type != Stone) skip = true;
-                    if (tile.Type == Sand && ty < state.MainWorldSurface && type != Mud) skip = true;
+                    if (tile.Type == Sand && (type == Clay || (ty < state.MainWorldSurface && type != Mud))) skip = true;
                     if (tile.Type == Stone && type == Mud && ty < state.MainWorldSurface + random.Next(-50, 50)) skip = true;
                     if (tile.Type is 147 or 189 or 190 or 196 or 460 or 717 or 718 or 719) skip = true;
                 }
@@ -1402,6 +1453,17 @@ internal sealed class EarlyPass1458 : IWorldGenerationPass
 
     private static IRandom RequireVanilla(IWorldGenerationContext context) => new VanillaRandom(
         context.VanillaRandom ?? throw new InvalidOperationException("Source-backed early pass requires shared UnifiedRandom semantics."));
+
+    private static void PlaceJungleRunnerWall(RuntimeGrid grid, IRandom random, int x, int y, ushort wall)
+    {
+        // WorldGen.PlaceWall refuses occupied walls and the outer two cells. Its
+        // SquareWallFrame resets only the center: walls15/64 consume one Next(3).
+        // Cosmetic wall frames are not retained in the normalized world tile ABI.
+        if (x <= 1 || y <= 1 || x >= grid.Width - 2 || y >= grid.Height - 2 || grid.At(x, y).Wall != 0)
+            return;
+        grid.At(x, y).Wall = wall;
+        _ = random.Next(3);
+    }
 
     private static bool IsActiveType(in WorldTile tile, ushort type) => tile.IsActive && tile.Type == type;
     private static void SetActive(ref WorldTile tile, bool active) => tile.Flags = active ? tile.Flags | WorldTileFlags.Active : tile.Flags & ~WorldTileFlags.Active;

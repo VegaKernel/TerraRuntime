@@ -4,6 +4,10 @@ TerraRuntime keeps `.wld` as the canonical world and treats `.runtime-world` as 
 
 ## Measurements
 
+The canonical diagnostic path must run `VanillaWorldLiquidLoadInitializer1458.TryPrepare` before cache creation, exactly as primary startup does. `wld_liquid_prepare_ms` measures this separately; `world_ready_cold_ms` includes it. Unsupported preparation fails with its tile diagnostic rather than forging the cache's prepared marker. `StartupGate` and `TileLocate` now participate in the normal solution build so API drift cannot hide until a separate workflow runs.
+
+Executable readiness checks explicitly set `TERRARUNTIME_LOG_CONSOLE_LEVEL=Information` and use `--no-tui`: the production console defaults to errors and otherwise does not print the informational listening marker. This changes diagnostic configuration only, not server logging defaults or readiness semantics.
+
 The gate uses two complementary sources.
 
 `TerraRuntime.StartupGate` performs a deterministic diagnostic pass over one real Terraria 1.4.5.8 world and emits a single machine-readable `startup_gate` line. It measures and the detailed stage breakdown is verified by CJ.
@@ -26,6 +30,8 @@ The gate uses two complementary sources.
 The GitHub Actions `Startup Performance Gate` additionally launches the real TerraRuntime server twice against an official generated world. It measures the process boundary from launch until the listening message, once without runtime caches and once with warm caches. This is the executable `NetworkReady` proof.
 
 ## Generated-world startup failures
+
+The 2026-09-08 Underworld continuation reproduced another refusal on fresh canonical Small seed `1458`: `UnsupportedLiquidDeathTile` at `(3125,951,227)`. The Dye Plants writer used an ordinary atlas stride instead of `PlaceDye`'s $34\,\text{pixels}$; loading also lacked the verified single-cell liquid-death path. The shared frame contract and bounded loading removal now cover valid styles `0..11`, with malformed frames still refused. New Small/Medium/Large regressions exercise generation, real `.wld` composition/loading and post-load liquid preparation, not just structural validation. The corrected Small file reached the real TerraRuntime CoreCLR listener and independently loaded in official Windows TerrariaServer `1.4.5.8`. This does not establish startup support for every seed.
 
 Successful generation, atomic `.wld` publication and `--worldgen-create-smoke` do not prove that TerraRuntime can start that world. Primary startup subsequently loads the canonical file and performs post-load liquid preparation before cache admission, player bootstrap and the listener. An official TerrariaServer load is independent world-file evidence, but does not exercise TerraRuntime's preparation boundary. Acceptance must also reach the real TerraRuntime `NetworkReady` boundary with the generated file.
 
@@ -50,6 +56,10 @@ The gate is comparative, not a fixed latency SLA. CI validates that every requir
 `index_construction_ms` currently covers the production `WorldSectionEncodingContext` plus `PlayerBootstrapPacketSet.Create` path. Those are startup structures used to encode and serve the initial player section synchronization. Future expensive indexes should extend this phase or gain their own named metric instead of disappearing into `NetworkReady`.
 
 ## Local usage
+
+The separate empty-runtime **steady-state** allocation test actively warms its measured dispatch loop for at least $500\,\mathrm{ms}$, then measures one uninterrupted $1024\,\text{tick}$ batch against the unchanged $4096\,\mathrm{byte}$ budget. It does not retry or select the lowest allocation sample. This is test warmup policy, not a runtime scheduling parameter or a startup-cost exemption. A short fixed call count alone can overlap delayed [CoreCLR tier promotion](https://github.com/dotnet/runtime/blob/main/docs/design/features/tiered-compilation.md). Diagnostic OSR/tiering switches are not retained in the project configuration; NativeAOT acceptance remains separate.
+
+`RuntimeWorldItemStore.CopyActive` avoids scanning all slots for an empty store only after validating the same seqlock version. Empty snapshots do not clear the caller's buffer, and subsequent allocations/removals remain visible. A local $200000\,\text{call}$ warmed microbenchmark decreased from about $98\,\mathrm{ms}$ to $3.5\,\mathrm{ms}$ with zero measured allocations in both versions; populated scans were approximately unchanged. This result is not evidence that the separate intermittent allocation failure is fixed.
 
 ```bash
 dotnet run --project tools/TerraRuntime.StartupGate/TerraRuntime.StartupGate.csproj -c Release -- /path/to/world.wld

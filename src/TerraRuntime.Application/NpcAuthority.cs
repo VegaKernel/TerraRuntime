@@ -166,7 +166,8 @@ internal sealed partial class NpcAuthority
             skyblockLowTiles,
             isThereAWorldSurface,
             evilBossDownedBaseline,
-            projectiles);
+            projectiles,
+            townCommerceWorldFacts?.DownedPlantera);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
             projectiles,
             npcs,

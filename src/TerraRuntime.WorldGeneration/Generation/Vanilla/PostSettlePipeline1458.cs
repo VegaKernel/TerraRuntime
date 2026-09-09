@@ -161,9 +161,12 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
     private const ushort Statue = 105;
     private const ushort Silt = 123;
     private const ushort Snow = 147;
+    private const ushort SandstoneBrick = 151;
     private const ushort Ice = 161;
     private const ushort Sandstone = 396;
     private const ushort HardenedSand = 397;
+    private const ushort DesertFossil = 404;
+    private const ushort FossilOre = 407;
     private const ushort ShellPile = 495;
 
     private const ushort DirtUnsafeWall = 2;
@@ -234,27 +237,37 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
         }
     }
 
-    private static void ApplyRemoveWaterFromSand(IWorldGenerationContext context, RuntimeGrid grid)
+    private void ApplyRemoveWaterFromSand(IWorldGenerationContext context, RuntimeGrid grid)
     {
         long drained = 0;
-        for (int x = 1; x < grid.Width - 1; x++)
+        // WorldGen.AddPasses / RemoveSurfaceWaterAboveSand: inspect only the first active
+        // surface tile, away from the oceans. This is not an embedded-liquid cleanup.
+        for (int x = 400; x < grid.Width - 400; x++)
         {
             if ((x & 63) == 0)
                 context.CancellationToken.ThrowIfCancellationRequested();
 
-            for (int y = 1; y < grid.Height - 1; y++)
+            for (int y = 100; y < state.WorldSurface - 1d; y++)
             {
                 ref WorldTile tile = ref grid.At(x, y);
-                if (!tile.IsActive || !IsSandFamily(tile.Type) || tile.LiquidAmount == 0)
+                if (!tile.IsActive)
                     continue;
-
-                drained += tile.LiquidAmount;
-                tile.LiquidAmount = 0;
-                tile.LiquidKind = WorldLiquidKind.Water;
+                if (tile.Type is Sand or Sandstone or HardenedSand or DesertFossil or FossilOre or SandstoneBrick)
+                {
+                    for (int aboveY = y - 1; aboveY >= 100; aboveY--)
+                    {
+                        ref WorldTile above = ref grid.At(x, aboveY);
+                        if (above.IsActive)
+                            break;
+                        drained += above.LiquidAmount;
+                        above.LiquidAmount = 0;
+                    }
+                }
+                break;
             }
         }
 
-        context.ReportProgress(1d, $"Removing trapped water from sand-family tiles ({drained} liquid units)");
+        context.ReportProgress(1d, $"Removing surface liquid above sand ({drained} liquid units)");
     }
 
     private void ApplyOasis(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)

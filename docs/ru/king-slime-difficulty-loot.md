@@ -28,7 +28,7 @@ Environment/server/NPC damage не выдаёт игроку interaction credit.
 
 `RuntimeKingSlimeDifficultyLootDeliverySink` теперь реализует эту transport boundary. Предмет materialize-ится тем же source-backed world-item materializer, затем резервируется неопубликованный точный slot, packet 90 кодируется с byte-for-byte payload формата packet 21 и отправляется только указанным playing player slots. `RuntimeWorldItemInstancedLeaseStore` удерживает reservation, поэтому обычный item allocator не может переиспользовать этот slot, пока существует instanced client copy.
 
-Когда lease достигает нуля, `TerrariaWorldItemFrameEncoder.TryEncodeInstancedSlotRelease` формирует пятибайтовый packet 151 с освобождённым item slot. Production теперь продвигает leases один раз за авторитетную item phase после NPC и projectile phases, поэтому Boss Bag, созданный при смерти NPC, расходует первый lease tick в том же world update, как в исходном item loop.
+Когда lease достигает нуля, `TerrariaWorldItemFrameEncoder.TryEncodeRemoval` формирует пятибайтовый packet 151 с освобождённым item slot; обычная синхронизация пустого предмета использует тот же исходный wire format. Production продвигает leases один раз за авторитетную item phase после NPC и projectile phases, поэтому Boss Bag, созданный при смерти NPC, расходует первый lease tick в том же world update, как в исходном item loop.
 
 ## Master relic
 

@@ -6,6 +6,7 @@
 
 ## С чего начать
 
+- [Архитектура задач и действий PlayerBot](runtime-bot-architecture.md) — perception, сменный brain, lifecycle, authoritative operations, режимы и leases.
 - [Руководство по проекту](project-guide.md) — назначение TerraRuntime, структура репозитория, сборка, запуск, жизненный цикл, сетевой и игровой поток, миры, сохранение и эксплуатация.
 - [Архитектура](architecture.md) — границы подсистем, владение состоянием, потоки данных, threading model, NativeAOT/CoreCLR profiles, persistence и extension boundaries.
 - [Интерфейсы host-интеграции](host-interfaces.md) — публичные контракты `TerraRuntime.HostContracts`, порядок жизни trusted host module и правила безопасного взаимодействия с runtime.
@@ -29,6 +30,7 @@
 - [Развёртывание и конфигурация](deployment-configuration.md) — NativeAOT/CoreCLR packaging, runtime directories, CLI configuration, trusted host-module loading и текущие deployment limitations.
 - [Observability и logging](observability-logging.md) — bounded runtime telemetry/log buffers, текущее host-log behavior и незавершённый async structured logging target.
 - [World generation](world-generation.md) — provider/pass/workspace/RNG contracts, trusted-host registration и текущий non-vanilla flat baseline.
+- [Постадийный аудит vanilla parity](vanilla-worldgen-pass-audit.md) — все 109 исходных регистраций, production owners, границы доказанности и оставшиеся долги геометрии/RNG.
 - [Security и trust boundaries](security.md) — admission limits, rate/size bounds, failure isolation, persistence safety и незавершённая hardening work.
 - [Testing, verification и evidence](testing-evidence.md) — политика roadmap checkbox, independent evidence, official-source/live-world probes, NativeAOT/CoreCLR gates и правила доказательства performance claims.
 

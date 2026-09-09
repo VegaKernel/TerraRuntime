@@ -464,6 +464,16 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         {
             int version = ReadStableVersion(ref spin);
             int activeCount = _activeCount;
+            // Empty reservation scans are common. The count is only a snapshot after the same seqlock
+            // validation as a populated scan; an overlapping writer must still force a retry.
+            if (activeCount == 0)
+            {
+                if (version == ReadVersion())
+                    return 0;
+
+                spin.SpinOnce();
+                continue;
+            }
             if (destination.Length < activeCount)
             {
                 if (version == ReadVersion())

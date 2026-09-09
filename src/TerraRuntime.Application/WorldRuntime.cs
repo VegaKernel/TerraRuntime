@@ -225,7 +225,8 @@ public sealed class WorldRuntime : IDisposable
             isThereAWorldSurface: world.RuntimeMetadata.WorldSurface > 50,
             evilBossDownedBaseline: world.RuntimeMetadata.DownedBoss2,
             skeletronDownedBaseline: world.RuntimeMetadata.DownedBoss3,
-            golemDownedBaseline: world.RuntimeMetadata.DownedGolemBoss);
+            golemDownedBaseline: world.RuntimeMetadata.DownedGolemBoss,
+            worldIdentity: Identity);
 
         sectionCacheRebuild = new SectionCacheRebuildPipeline(
             world,

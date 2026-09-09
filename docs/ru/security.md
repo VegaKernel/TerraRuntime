@@ -6,6 +6,8 @@
 
 Каждый client-controlled byte, length, rate, identity claim и gameplay request считается untrusted.
 
+Terrain authority сыпучего блока требует точного поколения projectile, зарегистрированного сервером, а не присланных клиентом projectile ID или owner byte. Урон projectile окружения использует существующий combat pipeline и требует серверного происхождения. Автономный Mining дополнительно проверяет world/bot/goal scope, revision секции, живой actor, инструмент, дальность и admission mutation/drop. Tile lease только координирует ботов и не даёт authority. Поиск, wakeups, активные падения и ожидающие места для предмета landing events ограничены; см. [gameplay](gameplay.md) и [bot actions](runtime-bot-architecture.md).
+
 ```mermaid
 flowchart LR
     Input["Untrusted input"] --> Parse["Bounded parse + accounting"]
@@ -78,7 +80,7 @@ Generation/revision-aware handles также защищают от stale command
 
 Client-originated world-item команды allocate/drop/remove/owner сохраняют точный `ConnectionHandle`, который допустил их в bounded authoritative queue. Непосредственно перед мутацией `RuntimeWorldItemStore` game-thread owner проверяет, что этому connection всё ещё принадлежат тот же player slot **и та же generation**. Работа, поставленная в очередь предыдущей disconnected generation, reject'ится даже если уже переиспользованы тот же connection source или numeric player slot.
 
-Explicit packet-21/22 операции по item slots `0..399` дополнительно захватывают на ingress точный активный `WorldItemHandle` (`slot + generation`). Перед drop/update, owner-state или remove mutation authoritative owner повторно проверяет этот handle. Если в момент ingress слот не содержал active item, команда получает unassigned target и reject'ится вместо скрытого восстановления слота; delayed command для generation A не может перескочить на последующую generation B, занявшую тот же numeric slot. Создание нового предмета остаётся отдельным packet-21 request с индексом `400`, а реальный slot выбирает runtime.
+Explicit packet-21/39/151 операции по item slots `0..399` захватывают на ingress точный активный `WorldItemHandle` (`slot + generation`). Перед update, release или removal authoritative owner повторно проверяет handle и принадлежность reservation отправителю. Packet 22 — outbound-only, не клиентская выдача прав. Если в момент ingress слот не содержал active item, команда получает unassigned target и reject'ится вместо восстановления предмета или освобождения instanced loot lease; delayed command для generation A не может перескочить на generation B в том же слоте. Создание нового предмета остаётся отдельным packet-21 request с индексом `400`, выделяемым runtime. Compact packet 151 содержит ровно один signed Int16 physical slot; неверные длины/sentinels отклоняются, queue pressure не создаёт item authority, общая сетевая flood protection сохраняется.
 
 ## 9. Bounded queues и authoritative work
 

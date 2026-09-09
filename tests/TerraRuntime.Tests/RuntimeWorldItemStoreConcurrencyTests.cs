@@ -6,6 +6,48 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimeWorldItemStoreConcurrencyTests
 {
     [Fact]
+    public async Task CopyActive_remains_consistent_across_empty_and_repopulated_generations()
+    {
+        var store = new RuntimeWorldItemStore();
+        using var start = new ManualResetEventSlim(false);
+        CancellationToken cancellation = TestContext.Current.CancellationToken;
+        Task writer = Task.Run(() =>
+        {
+            start.Wait(cancellation);
+            for (int index = 0; index < 10_000; index++)
+            {
+                cancellation.ThrowIfCancellationRequested();
+                WorldItemStateUpdate update = (index & 1) == 0 ? CreateFirst() : CreateSecond();
+                Assert.True(store.TryUpsert(7, update, out _));
+                Assert.True(store.TryRemove(7, out _));
+            }
+        }, cancellation);
+        Task reader = Task.Run(() =>
+        {
+            start.Wait(cancellation);
+            var destination = new WorldItemSnapshot[1];
+            for (int index = 0; index < 20_000; index++)
+            {
+                cancellation.ThrowIfCancellationRequested();
+                int count = store.CopyActive(destination);
+                Assert.InRange(count, 0, 1);
+                if (count == 1)
+                {
+                    Assert.Equal((short)7, destination[0].Handle.Slot);
+                    AssertConsistent(destination[0]);
+                }
+            }
+        }, cancellation);
+        start.Set();
+        await Task.WhenAll(writer, reader);
+        Assert.Equal(0, store.CopyActive(Span<WorldItemSnapshot>.Empty));
+        Assert.True(store.TryUpsert(7, CreateSecond(), out WorldItemSnapshot last));
+        var final = new WorldItemSnapshot[1];
+        Assert.Equal(1, store.CopyActive(final));
+        Assert.Equal(last, final[0]);
+    }
+
+    [Fact]
     public async Task Concurrent_readers_observe_only_complete_single_writer_snapshots()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

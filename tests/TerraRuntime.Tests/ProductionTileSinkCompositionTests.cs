@@ -53,6 +53,9 @@ public sealed class ProductionTileSinkCompositionTests
     [InlineData(2779, false)] // Nebula Drill
     [InlineData(2784, false)] // Solar Flare Drill
     [InlineData(3464, false)] // Stardust Drill
+    [InlineData(2781, false)] // Nebula Pickaxe
+    [InlineData(2786, false)] // Solar Flare Pickaxe
+    [InlineData(3466, false)] // Stardust Pickaxe
     [InlineData(2768, true)] // Drill Containment Unit / mount 8
     public void Production_vanilla_join_packet5_packet13_packet17_path_breaks_dirt(
         short miningItemType,

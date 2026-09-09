@@ -58,20 +58,16 @@ public sealed class TerrariaWorldItemFrameEncoderTests
     }
 
     [Fact]
-    public void Removal_encodes_canonical_zero_stack_packet21()
+    public void Removal_encodes_source_netmessage_empty_item_packet151()
     {
         Assert.Equal(
             TerrariaWorldItemFrameEncodeResult.Encoded,
             TerrariaWorldItemFrameEncoder.TryEncodeRemoval(17, out ReadOnlyMemory<byte> encoded));
         TerrariaFrame frame = ReadFrame(encoded);
 
-        Assert.Equal(
-            TerrariaWorldItemDropDecodeResult.Decoded,
-            TerrariaWorldItemDropDecoder.TryDecode(in frame, out TerrariaWorldItemDropState removal));
-        Assert.True(removal.IsRemoval);
-        Assert.Equal((short)17, removal.ItemIndex);
-        Assert.Equal((short)0, removal.Stack);
-        Assert.Equal((short)0, removal.ItemNetId);
+        Assert.Equal(new byte[] { 5, 0, 151, 17, 0 }, encoded.ToArray());
+        Assert.True(TerrariaWorldItemRemovalDecoder1458.TryDecode(in frame, out short slot));
+        Assert.Equal((short)17, slot);
     }
 
     [Fact]

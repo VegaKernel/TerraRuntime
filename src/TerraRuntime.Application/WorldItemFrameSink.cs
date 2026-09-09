@@ -14,10 +14,11 @@ public enum WorldItemFrameStopReason : byte
     MalformedOwner = 3,
     PlayerOwnershipMismatch = 4,
     MalformedRelease = 5,
+    MalformedRemoval = 6,
 }
 
 /// <summary>
-/// Connection-owned packet-21/39 ingress for client-originated world-item proposals. Mutation is accepted
+/// Connection-owned packet-21/39/151 ingress for client-originated world-item proposals. Mutation is accepted
 /// only for a fully playing session; packet identities are decoded by the protocol adapter and converted into
 /// packet-neutral Core updates before bounded authoritative queue admission. TerrariaServer 1.4.5.8 handles packet
 /// 22 only when <c>Main.netMode != 2</c>, so inbound packet 22 is deliberately a server-side no-op. Runtime packet-22
@@ -62,7 +63,8 @@ public sealed class WorldItemFrameSink :
     public TerrariaFrameRejectionCategory RejectionCategory => StopReason switch
     {
         WorldItemFrameStopReason.InvalidJoinState => TerrariaFrameRejectionCategory.InvalidState,
-        WorldItemFrameStopReason.MalformedDrop or WorldItemFrameStopReason.MalformedOwner or WorldItemFrameStopReason.MalformedRelease => TerrariaFrameRejectionCategory.MalformedProtocol,
+        WorldItemFrameStopReason.MalformedDrop or WorldItemFrameStopReason.MalformedOwner or
+            WorldItemFrameStopReason.MalformedRelease or WorldItemFrameStopReason.MalformedRemoval => TerrariaFrameRejectionCategory.MalformedProtocol,
         WorldItemFrameStopReason.PlayerOwnershipMismatch => TerrariaFrameRejectionCategory.GameplayRejected,
         _ => _inner is ITerrariaFrameRejectionSource source
             ? source.RejectionCategory
@@ -77,6 +79,7 @@ public sealed class WorldItemFrameSink :
         return (TerrariaMessageId)frame.MessageId switch
         {
             TerrariaMessageId.WorldItemDrop => HandleDrop(frame),
+            TerrariaMessageId.WorldItemRemove => HandleRemoval(frame),
             TerrariaMessageId.ReleaseWorldItem => HandleRelease(frame),
             // TerrariaServer 1.4.5.8 MessageBuffer case 22 is guarded by Main.netMode != 2. The server therefore
             // neither decodes nor applies client packet 22. Mirroring that no-op also removes a client-authoritative
@@ -127,6 +130,18 @@ public sealed class WorldItemFrameSink :
         // Allocation/update is fail-closed on mailbox saturation: no authoritative item mutation occurs, but
         // internal queue pressure is not grounds to disconnect a valid playing client.
         _ = posted;
+        return TerrariaFrameSinkResult.Continue;
+    }
+
+    private TerrariaFrameSinkResult HandleRemoval(in TerrariaFrame frame)
+    {
+        if (!TryGetPlayingConnection(out ConnectionHandle connection))
+            return Stop(WorldItemFrameStopReason.InvalidJoinState);
+        if (!TerrariaWorldItemRemovalDecoder1458.TryDecode(in frame, out short slot))
+            return Stop(WorldItemFrameStopReason.MalformedRemoval);
+        // Same exact-generation / reservation-owner commit as packet 21. An instanced lease has no active
+        // world-item generation, so this route cannot release somebody else's addressed loot reservation.
+        _ = _ingress.TryPostRemove(connection, slot);
         return TerrariaFrameSinkResult.Continue;
     }
 

@@ -21,7 +21,7 @@ The report records dimensions and format version, spawn and dungeon anchors, wor
 
 `--enforce` turns the report into a regression gate. It requires, among other checks, identical world dimensions and format, the dungeon on the same side for the same seed, bounded structural ratios and histogram distances, reasonable layer/anchor deltas, required biome/structure materials, persisted chests, and a starting town NPC. A failed budget exits non-zero and fails CI.
 
-The seed also has a unit-level `WorldGen.Reset` checkpoint. For `8675309`, the source-backed bootstrap must select the right dungeon side with reset dungeon location `3364`; the first RNG value visible to Terrain after Reset is pinned as well. This catches call-order drift before an expensive reference-world run.
+The seed also has a unit-level `WorldGen.Reset` checkpoint. For `8675309`, the source-backed bootstrap must select the right dungeon side with reset dungeon location `3364`; Reset's next RNG value is pinned as well. It is not Terrain's first draw: `WorldGenerator.RunPass` reseeds before Terrain. `TerrainReference1458Tests` independently pins nine official Terrain grids, liquid lines and next RNG values across all three canonical sizes. See the [complete pass audit](vanilla-worldgen-pass-audit.md) for exact evidence boundaries.
 
 ## Evidence levels
 

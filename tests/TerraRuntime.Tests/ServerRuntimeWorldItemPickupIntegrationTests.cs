@@ -11,7 +11,7 @@ namespace TerraRuntime.Tests;
 public sealed class ServerRuntimeWorldItemPickupIntegrationTests
 {
     [Fact]
-    public async Task Server_reserves_nearby_item_and_only_reserved_client_can_complete_packet21_pickup()
+    public async Task Server_reserves_nearby_item_and_reserved_client_completes_packet151_pickup()
     {
         var replication = new RuntimeWorldItemReplicationRegistry();
         var items = new RuntimeWorldItemStore(replication);
@@ -93,11 +93,8 @@ public sealed class ServerRuntimeWorldItemPickupIntegrationTests
         Assert.Equal(1, state.AppliedWorldItemRemovals);
 
         TerrariaFrame replicatedRemoval = DequeueFrame(outbound);
-        Assert.Equal(
-            TerrariaWorldItemDropDecodeResult.Decoded,
-            TerrariaWorldItemDropDecoder.TryDecode(in replicatedRemoval, out TerrariaWorldItemDropState relayedRemoval));
-        Assert.True(relayedRemoval.IsRemoval);
-        Assert.Equal(allocated.Handle.Slot, relayedRemoval.ItemIndex);
+        Assert.True(TerrariaWorldItemRemovalDecoder1458.TryDecode(in replicatedRemoval, out short removedSlot));
+        Assert.Equal(allocated.Handle.Slot, removedSlot);
     }
 
     private sealed class ApplyingCommandIngress(ServerRuntimeState state) : IGameCommandIngress<RuntimeCommand>

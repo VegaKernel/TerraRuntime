@@ -103,6 +103,10 @@ public sealed class UnderworldLava1458Tests
                 observed++;
             }
             Assert.True(observed > 0);
+            // Source clears through the last row; all subsequent small runners exclude that row.
+            // The former solid Ash floor left every one of these cells active.
+            for (int x = 0; x < store.Dimensions.WidthTiles; x++)
+                Assert.False(store.Get(x, store.Dimensions.HeightTiles - 1).IsActive);
             owner.Checked = true;
         }
     }

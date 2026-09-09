@@ -1,6 +1,6 @@
 # Sandbox runtime roadmap
 
-2026-09-07 continuation decision: the user deferred Level2 after the Windows async-socket handoff probe and requested continued gameplay/worldgen work. Preserve the internal worker foundation; no production transport I/O redesign or player handoff is authorized for this pass.
+2026-09-08 continuation decision: the user resumed sandbox alongside gameplay/worldgen. Preserve the existing Transport and worker foundation; S5 still requires a verified bidirectional socket/I/O design, not a permanent gameplay proxy. The previous 2026-09-07 deferral is historical.
 
 This directory is the normative delivery roadmap for TerraRuntime sandbox worlds. User-facing architecture is documented in [`../../en/sandbox/README.md`](../../en/sandbox/README.md) and [`../../ru/sandbox/README.md`](../../ru/sandbox/README.md).
 

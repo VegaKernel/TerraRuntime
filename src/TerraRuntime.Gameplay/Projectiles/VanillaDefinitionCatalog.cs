@@ -12,6 +12,7 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId FallingStar = new(5);
     public static readonly ProjectileAiStyleId Fireball = new(8);
     public static readonly ProjectileAiStyleId MagicMissile = new(9);
+    public static readonly ProjectileAiStyleId FallingBlock = new(10);
     public static readonly ProjectileAiStyleId BouncyBall = new(14);
     public static readonly ProjectileAiStyleId Bomb = new(16);
     public static readonly ProjectileAiStyleId EyeFire = new(23);
@@ -692,6 +693,11 @@ public static class VanillaDefinitionCatalog
 
     public static bool TryGet(ProjectileTypeId type, out VanillaProjectileDefinition definition)
     {
+        if (VanillaFallingBlock1458.TryGetTile(type, out _))
+        {
+            definition = new(10, 10, VanillaProjectileAiStyles.FallingBlock, true, false, true, 10, 10);
+            return true;
+        }
         if (type == VanillaProjectileIds.WoodenArrowFriendly)
         {
             definition = WoodenArrowDefinition;

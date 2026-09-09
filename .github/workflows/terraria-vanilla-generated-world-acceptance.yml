@@ -7,42 +7,30 @@ on:
       - 'src/TerraRuntime.Contracts/Gameplay/WorldGenerationContracts.cs'
       - 'src/TerraRuntime.Contracts/Gameplay/WorldGenerationPassContracts.cs'
       - 'src/TerraRuntime.Core/Worlds/Generation/RuntimeWorldGenerationExecutor.cs'
-      - 'src/TerraRuntime.World/RuntimeWorldGenerationWorkspace.cs'
-      - 'src/TerraRuntime.World/WorldFileFreshComposer326.cs'
-      - 'src/TerraRuntime.World/VanillaWorldGenerationBootstrap1458.cs'
-      - 'src/TerraRuntime.World/SourceBackedVanillaWorldGenerationProvider1458.cs'
-      - 'src/TerraRuntime.World/VanillaEarlyWorldGenerationPipeline1458.cs'
-      - 'src/TerraRuntime.World/VanillaMidWorldGenerationPipeline1458.cs'
-      - 'src/TerraRuntime.World/VanillaDungeonWorldGenerationPipeline1458.cs'
-      - 'src/TerraRuntime.World/VanillaJungleStructureWorldGenerationPipeline1458.cs'
-      - 'src/TerraRuntime.World/VanillaPostSettleWorldGenerationPipeline1458.cs'
-      - 'src/TerraRuntime.World/VanillaChestPlacementWorldGenerationPipeline1458.cs'
-      - 'src/TerraRuntime.World/VanillaLateStructureWorldGenerationPipeline1458.cs'
-      - 'src/TerraRuntime.World/VanillaSurfaceFinishWorldGenerationPipeline1458.cs'
-      - 'src/TerraRuntime.World/VanillaStartingNpcWorldGenerationPipeline1458.cs'
-      - 'src/TerraRuntime.World/VanillaVegetationWorldGenerationPipeline1458.cs'
-      - 'src/TerraRuntime.World/VanillaUndergroundFinishWorldGenerationPipeline1458.cs'
-      - 'src/TerraRuntime.World/VanillaMicroBiomesWorldGenerationPipeline1458.cs'
-      - 'src/TerraRuntime.World/VanillaFinalWorldGenerationPipeline1458.cs'
-      - 'src/TerraRuntime/RuntimeWorldCreationPersistencePipeline.cs'
-      - 'src/TerraRuntime/BuiltInWorldGeneratorSource.cs'
-      - 'src/TerraRuntime/WorldGenerationCreateSmoke.cs'
+      - 'src/TerraRuntime.WorldGeneration/**'
+      - 'src/TerraRuntime.World/**'
+      - 'src/TerraRuntime.Application/RuntimeWorldCreationPersistencePipeline.cs'
+      - 'src/TerraRuntime.Application/BuiltInWorldGeneratorSource.cs'
+      - 'src/TerraRuntime.Application/WorldGenerationCreateSmoke.cs'
       - 'tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj'
+      - 'tests/TerraRuntime.Tests/Underworld*Tests.cs'
+      - 'tests/TerraRuntime.Tests/VanillaWorldGenerationFullIntegrationTests.cs'
+      - 'tests/TerraRuntime.Tests/LoadingLiquidObjectDestruction1458Tests.cs'
       - 'tests/TerraRuntime.Tests/RuntimeWorldGenerationExecutorTests.cs'
-      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationProvider1458Tests.cs'
-      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationPipeline1458Tests.cs'
-      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationMidPipeline1458Tests.cs'
-      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationDungeonPipeline1458Tests.cs'
-      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationJungleStructures1458Tests.cs'
-      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationPostSettle1458Tests.cs'
-      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationChestPlacement1458Tests.cs'
-      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationLateStructures1458Tests.cs'
-      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationSurfaceFinish1458Tests.cs'
-      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationStartingNpc1458Tests.cs'
-      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationVegetation1458Tests.cs'
-      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationUndergroundFinish1458Tests.cs'
-      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationMicroBiomes1458Tests.cs'
-      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationFinal1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedProvider1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedPipeline1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedMidPipeline1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedDungeonPipeline1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedJungleStructures1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedPostSettle1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedChestPlacement1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedLateStructures1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedSurfaceFinish1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedStartingNpc1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedVegetation1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedUndergroundFinish1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedMicroBiomes1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedFinal1458Tests.cs'
       - 'tests/TerraRuntime.Tests/NpcAiProductionCompositionTests.cs'
       - '.github/workflows/terraria-vanilla-generated-world-acceptance.yml'
   workflow_dispatch:
@@ -77,21 +65,26 @@ jobs:
           --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
           -c Release
           --
+          -class TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests
+          -class TerraRuntime.Tests.UnderworldTerrain1458Tests
+          -class TerraRuntime.Tests.UnderworldLiquidPreparation1458Tests
+          -class TerraRuntime.Tests.UnderworldLava1458Tests
+          -class TerraRuntime.Tests.LoadingLiquidObjectDestruction1458Tests
           -class TerraRuntime.Tests.RuntimeWorldGenerationExecutorTests
-          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationProvider1458Tests
-          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationPipeline1458Tests
-          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationMidPipeline1458Tests
-          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationDungeonPipeline1458Tests
-          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationJungleStructures1458Tests
-          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationPostSettle1458Tests
-          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationChestPlacement1458Tests
-          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationLateStructures1458Tests
-          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationSurfaceFinish1458Tests
-          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationStartingNpc1458Tests
-          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationVegetation1458Tests
-          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationUndergroundFinish1458Tests
-          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationMicroBiomes1458Tests
-          -class TerraRuntime.Tests.SourceBackedVanillaWorldGenerationFinal1458Tests
+          -class TerraRuntime.Tests.SourceBackedProvider1458Tests
+          -class TerraRuntime.Tests.SourceBackedPipeline1458Tests
+          -class TerraRuntime.Tests.SourceBackedMidPipeline1458Tests
+          -class TerraRuntime.Tests.SourceBackedDungeonPipeline1458Tests
+          -class TerraRuntime.Tests.SourceBackedJungleStructures1458Tests
+          -class TerraRuntime.Tests.SourceBackedPostSettle1458Tests
+          -class TerraRuntime.Tests.SourceBackedChestPlacement1458Tests
+          -class TerraRuntime.Tests.SourceBackedLateStructures1458Tests
+          -class TerraRuntime.Tests.SourceBackedSurfaceFinish1458Tests
+          -class TerraRuntime.Tests.SourceBackedStartingNpc1458Tests
+          -class TerraRuntime.Tests.SourceBackedVegetation1458Tests
+          -class TerraRuntime.Tests.SourceBackedUndergroundFinish1458Tests
+          -class TerraRuntime.Tests.SourceBackedMicroBiomes1458Tests
+          -class TerraRuntime.Tests.SourceBackedFinal1458Tests
 
       - name: Generate TerraRuntime vanilla world
         shell: bash

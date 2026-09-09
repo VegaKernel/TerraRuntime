@@ -1,3 +1,5 @@
+using TerraRuntime.Contracts.Gameplay;
+
 namespace TerraRuntime.World;
 
 /// <summary>
@@ -89,14 +91,27 @@ public static class VanillaOceanLanding1458
 
     private static bool IsGround(WorldTile tile) => tile.IsActive && !tile.IsActuated &&
         VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
-        (!VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) || tile.Type is 19 or 427 or >= 435 and <= 439);
+        (!VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) || VanillaTileIds.IsPlatform(tile.TileType));
 
     private static bool IsOccupied(WorldTile tile) => IsGround(tile) || tile.LiquidAmount > 0;
 
     private static bool Dangerous(WorldTile tile, int y, double surface) =>
         (tile.LiquidAmount > 0 && tile.LiquidKind == WorldLiquidKind.Lava) ||
-        (y > surface && tile.Wall is 87 or 7 or 8 or 9 or 94 or 95 or 96 or 97 or 98 or 99) ||
+        (y > surface && IsUnsafeLandingWall(tile.WallType)) ||
         (tile.IsActive && Hurts(tile.Type));
+
+    private static bool IsUnsafeLandingWall(WallTypeId wall) =>
+        wall == VanillaWallIds.LihzahrdBrickUnsafe ||
+        wall == VanillaWallIds.BlueDungeonUnsafe || wall == VanillaWallIds.GreenDungeonUnsafe ||
+        wall == VanillaWallIds.PinkDungeonUnsafe || wall == VanillaWallIds.BlueDungeonSlabUnsafe ||
+        wall == VanillaWallIds.BlueDungeonTileUnsafe || wall == VanillaWallIds.PinkDungeonSlabUnsafe ||
+        wall == VanillaWallIds.PinkDungeonTileUnsafe || wall == VanillaWallIds.GreenDungeonSlabUnsafe ||
+        wall == VanillaWallIds.GreenDungeonTileUnsafe;
+
+    // TileID.Sets.Suffocate, not all falling blocks (TerrariaServer 1.4.5.8).
+    private static bool Suffocates(TileTypeId type) => type == VanillaTileIds.Sand ||
+        type == VanillaTileIds.Ebonsand || type == VanillaTileIds.Pearlsand ||
+        type == VanillaTileIds.Silt || type == VanillaTileIds.Slush || type == VanillaTileIds.Crimsand;
 
     // Collision.CanTileHurt + TileID.Sets: unknown types and conditional immunity/secret-seed hazards reject.
     private static bool Hurts(ushort type) => type >= VanillaTileCollisionCatalog.TileTypeCount ||
@@ -114,7 +129,7 @@ public static class VanillaOceanLanding1458
         {
             WorldTile tile = tiles.Get(tx, ty);
             if (!tile.IsActive || tile.IsActuated || !Hurts(tile.Type)) continue;
-            int inset = tile.Type is 53 or 112 or 116 or 123 or 224 or 234 ? 2 : 0;
+            int inset = Suffocates(tile.TileType) ? 2 : 0;
             float top = ty * 16 + (tile.Shape == 1 ? 8 : 0);
             if (px + 20 - inset >= tx * 16 && px + inset <= tx * 16 + 16 &&
                 py + 42 - inset >= top - .5f && py + inset <= ty * 16 + 16.5f)

@@ -14,6 +14,15 @@ namespace TerraRuntime.Tests;
 public sealed class TrustedHostModuleLoaderTests
 {
     [Fact]
+    public void Shared_contract_initialization_cannot_be_deferred_into_assembly_resolution()
+    {
+        // The Terminal.Gui module initializer scans loaded assemblies. Initializing the shared-contract table
+        // from Load, after collectible assemblies are published, can cycle with their concurrent type loading.
+        Assert.False((typeof(HostModuleLoadContext).Attributes & System.Reflection.TypeAttributes.BeforeFieldInit) != 0);
+        Assert.NotNull(typeof(HostModuleLoadContext).TypeInitializer);
+    }
+
+    [Fact]
     public async Task Runtime_scope_retires_actor_controllers_and_shop_registrations()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;

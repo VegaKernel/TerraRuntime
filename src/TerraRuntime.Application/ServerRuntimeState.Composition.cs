@@ -11,6 +11,8 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class ServerRuntimeState
 {
+    internal WorldRuntimeIdentity WorldIdentity { get; }
+
     public ServerRuntimeState(
         IRuntimePlayerEventSink? playerEvents = null,
         RuntimeNpcStore? npcs = null,
@@ -48,8 +50,10 @@ internal sealed partial class ServerRuntimeState
         bool skeletronDownedBaseline = false,
         bool golemDownedBaseline = false,
         Random? projectilePlayerCombatRandom = null,
-        IVanillaNpcRandom? naturalSpawnRandom = null)
+        IVanillaNpcRandom? naturalSpawnRandom = null,
+        WorldRuntimeIdentity worldIdentity = default)
     {
+        WorldIdentity = worldIdentity.IsAssigned ? worldIdentity : new(WorldRuntimeId.CreateNew(), WorldSessionId.CreateNew());
         _runtime = ServerRuntimeComposition.Create(
             playerEvents,
             npcs,
@@ -87,6 +91,7 @@ internal sealed partial class ServerRuntimeState
             skeletronDownedBaseline,
             golemDownedBaseline,
             projectilePlayerCombatRandom,
-            naturalSpawnRandom);
+            naturalSpawnRandom,
+            WorldIdentity);
     }
 }

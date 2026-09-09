@@ -14,7 +14,8 @@ public enum DamageSourceKind : byte
     PlayerProjectile = 3,
     NpcContact = 4,
     NpcProjectile = 5,
-    Server = 6
+    Server = 6,
+    EnvironmentProjectile = 7
 }
 
 /// <summary>Typed environmental causes; deliberately independent of Terraria death-message indices.</summary>
@@ -52,11 +53,16 @@ public readonly record struct DamageSource(
             !Player.IsAssigned && Npc.IsAssigned && !Projectile.IsAssigned,
         DamageSourceKind.NpcProjectile =>
             !Player.IsAssigned && Npc.IsAssigned && Projectile.IsAssigned,
+        DamageSourceKind.EnvironmentProjectile =>
+            !Player.IsAssigned && !Npc.IsAssigned && Projectile.IsAssigned,
         _ => false
     });
 
     public static DamageSource Environment =>
         new(DamageSourceKind.Environment, default, default, default);
+
+    public static DamageSource FromEnvironmentProjectile(ProjectileHandle projectile) =>
+        new(DamageSourceKind.EnvironmentProjectile, default, default, projectile);
 
     public static DamageSource FromEnvironment(EnvironmentDamageCause cause) =>
         Environment with { EnvironmentCause = cause };

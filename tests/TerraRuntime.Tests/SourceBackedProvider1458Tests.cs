@@ -72,7 +72,7 @@ public sealed class SourceBackedProvider1458Tests
         Assert.Equal(6, bootstrap.MoonType);
         Assert.False(bootstrap.EffectiveCrimson);
 
-        // This is the first value Terrain must observe after the ordinary WorldGen.Reset bootstrap for seed 1458.
+        // Reset's post-pass checkpoint; WorldGenerator.RunPass reseeds again before Terrain.
         Assert.Equal(289143048, sourceRandom.Next());
     }
 

@@ -12,7 +12,7 @@ internal static class VanillaTileObjectLiquidDeath1458
     public static bool TryGet(in WorldTile tile, out bool waterDeath, out bool lavaDeath)
     {
         waterDeath = lavaDeath = false;
-        if (tile.Type >= 754) return false; // TileID.Count in 1.4.5.8; unknown versions stay fail-closed.
+        if (tile.Type >= VanillaTileIds.Count) return false;
         waterDeath = tile.Type is not (372 or 405 or 646) &&
             VanillaLiquidInteractionFacts1458.IsWaterDeath(tile.TileType);
         lavaDeath = tile.Type switch
@@ -87,8 +87,8 @@ internal static class VanillaTileObjectLiquidDeath1458
             _ => false
         };
         if (immune) lavaDeath = false;
-        if ((tile.Type == 4 && immune) || (tile.Type == 93 && style == 40) ||
-            (tile.Type == 215 && style is 1 or 4 or 9 or 17 or 20 or 25)) waterDeath = false;
+        if ((tile.TileType == VanillaTileIds.Torches && immune) || (tile.TileType == VanillaTileIds.Lamps && style == 40) ||
+            (tile.TileType == VanillaTileIds.Campfire && style is 1 or 4 or 9 or 17 or 20 or 25)) waterDeath = false;
         return true;
     }
 }

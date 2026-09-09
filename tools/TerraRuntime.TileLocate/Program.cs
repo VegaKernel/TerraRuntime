@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
 
 if (args.Length != 1)
@@ -16,8 +17,11 @@ if (!diagnostic.IsLoaded || world is null)
     return 1;
 }
 
-const int margin = 4;
+// Player.BordersMovement keeps ordinary players at least 640 pixels from the world edges.
+// Keep the candidate and the probe player's 20x42 body strictly inside that band.
+const int margin = 45;
 WorldTileStore tiles = world.Tiles;
+var mutations = new VanillaWorldTileMutationService(tiles);
 for (int y = margin; y < tiles.Dimensions.HeightTiles - margin; y++)
 {
     for (int x = margin; x < tiles.Dimensions.WidthTiles - margin; x++)
@@ -38,10 +42,11 @@ for (int y = margin; y < tiles.Dimensions.HeightTiles - margin; y++)
             }
         }
 
-        if (!inactiveRing || !VanillaDirtRules1458.TryPlaceOnEmpty(tiles, x, y))
+        if (!inactiveRing || !VanillaDirtRules1458.CanPlaceOnEmpty(tiles, x, y))
             continue;
 
-        if (!VanillaDirtRules1458.TryKillIsolatedWithoutDrop(tiles, x, y))
+        if (!mutations.Apply(new WorldTileMutationRequest(WorldTileMutationKind.PlaceTile, x, y, VanillaTileIds.Dirt)).Applied ||
+            !mutations.Apply(new WorldTileMutationRequest(WorldTileMutationKind.KillTile, x, y)).Applied)
         {
             Console.Error.WriteLine(
                 $"Dirt locator invariant failed after placing an isolated canonical Dirt tile at ({x},{y}).");

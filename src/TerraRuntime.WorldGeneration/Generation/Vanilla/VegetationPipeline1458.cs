@@ -369,7 +369,7 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
             if (style < 0 || grid.HasNearbyType(x, floor - 1, DyePlants, 12, 8))
                 continue;
 
-            SetPlant(ref grid.At(x, floor - 1), DyePlants, style * 18, 0);
+            SetPlant(ref grid.At(x, floor - 1), DyePlants, VanillaDyePlantFrame1458.ForStyle(style), 0);
             placed++;
         }
 

@@ -6,6 +6,8 @@ This guide describes the deployment shapes and configuration surface that exist 
 
 ## Deployment profiles
 
+The CoreCLR host initializes its shared contract assemblies before constructing the first host-module load context. Initialization must not be deferred into an assembly-resolution callback: Terminal.Gui configuration discovery scans loaded assemblies and can otherwise cycle with concurrent module type loading. The shared assembly identities, dependency resolution and collectible-module lifecycle are unchanged.
+
 TerraRuntime has two deliberately different executable profiles.
 
 | Profile | Executable | Runtime model | Dynamic trusted host modules |

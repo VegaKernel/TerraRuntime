@@ -88,7 +88,8 @@ internal readonly record struct VanillaServerPlayerHorizontalProfile1458(
     float AcceleratedRunSpeed,
     float RunAcceleration,
     float RunSlowdown,
-    bool WingHorizontalAcceleration)
+    bool WingHorizontalAcceleration,
+    bool SoaringInsignia = false)
 {
     public static VanillaServerPlayerHorizontalProfile1458 Baseline => new(
         VanillaServerPlayerHorizontalControl.MaximumRunSpeed,
@@ -101,18 +102,27 @@ internal readonly record struct VanillaServerPlayerHorizontalProfile1458(
         bool terrasparkBoots,
         bool magiluminescence,
         bool fishronWings,
-        bool grounded)
+        bool grounded,
+        bool soaringInsignia = false)
     {
-        if (!terrasparkBoots && (!magiluminescence || !grounded))
+        if (!terrasparkBoots && (!magiluminescence || !grounded) && !fishronWings && !soaringInsignia)
             return Baseline;
 
-        float moveSpeed = terrasparkBoots ? 1.08f : 1f;
+        float moveSpeed = 1f + (terrasparkBoots ? 0.08f : 0f) + (soaringInsignia ? 0.075f : 0f);
         float maximumRunSpeed = VanillaServerPlayerHorizontalControl.MaximumRunSpeed * moveSpeed;
         float acceleratedRunSpeed = terrasparkBoots
             ? 6.75f
             : VanillaServerPlayerHorizontalControl.MaximumRunSpeed;
         float runAcceleration = VanillaServerPlayerHorizontalControl.RunAcceleration * moveSpeed;
         float runSlowdown = VanillaServerPlayerHorizontalControl.RunSlowdown;
+        // WingStatsInitializer[26], then Player.Update's WingAirLogicTweaks / empressBrooch order.
+        if (fishronWings && !grounded)
+        {
+            acceleratedRunSpeed = Math.Max(acceleratedRunSpeed, 8f);
+            runAcceleration *= 2f;
+        }
+        if (soaringInsignia)
+            runAcceleration *= 1.75f;
         if (magiluminescence && grounded)
         {
             maximumRunSpeed *= 1.15f;
@@ -126,12 +136,14 @@ internal readonly record struct VanillaServerPlayerHorizontalProfile1458(
             acceleratedRunSpeed,
             runAcceleration,
             runSlowdown,
-            WingHorizontalAcceleration: fishronWings);
+            WingHorizontalAcceleration: fishronWings,
+            SoaringInsignia: soaringInsignia);
     }
 
     public bool IsValid =>
         float.IsFinite(MaximumRunSpeed) && MaximumRunSpeed > 0f &&
-        float.IsFinite(AcceleratedRunSpeed) && AcceleratedRunSpeed >= MaximumRunSpeed &&
+        // Move-speed equipment can raise maxRunSpeed above the unchanged ordinary accRunSpeed=3.
+        float.IsFinite(AcceleratedRunSpeed) && AcceleratedRunSpeed > 0f &&
         float.IsFinite(RunAcceleration) && RunAcceleration > 0f &&
         float.IsFinite(RunSlowdown) && RunSlowdown > 0f;
 }

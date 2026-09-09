@@ -193,7 +193,7 @@ public sealed class SourceBackedPipeline1458Tests
     {
         var random = new RecordingRandom(10, 20);
 
-        (int waterLine, int lavaLine) = EarlyPass1458.ResolveLiquidLines(
+        (int waterLine, int lavaLine) = TerrainPass1458.ResolveLiquidLines(
             random,
             worldSurface: 250d,
             rockLayer: 700d,

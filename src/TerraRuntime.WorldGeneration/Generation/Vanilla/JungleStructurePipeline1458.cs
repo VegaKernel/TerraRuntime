@@ -191,7 +191,6 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
     private const ushort Dirt = 0;
     private const ushort Stone = 1;
     private const ushort Grass = 2;
-    private const ushort DemonAltar = 26;
     private const ushort Sand = 53;
     private const ushort Ash = 57;
     private const ushort Mud = 59;
@@ -251,7 +250,7 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
                 ApplyWoodTreeWalls(context, grid);
                 break;
             case JungleStructureStage1458.Altars:
-                ApplyAltars(context, grid, random);
+                ApplyAltars(context, workspace);
                 break;
             case JungleStructureStage1458.WetJungle:
                 ApplyWetJungle(context, grid, random);
@@ -477,43 +476,13 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Filling living-tree background walls ({walls} cells)");
     }
 
-    private void ApplyAltars(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyAltars(IWorldGenerationContext context, Workspace workspace)
     {
-        int target = grid.Width switch
-        {
-            <= 4200 => 3,
-            <= 6400 => 4,
-            _ => 5
-        };
-        int placed = 0;
-        int minY = Math.Clamp((int)state.RockLayer + 30, 10, state.UnderworldTop - 100);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 70);
-        int styleX = context.Request.Options.Evil == WorldGenerationEvil.Crimson ? 54 : 0;
-
-        for (int attempt = 0; attempt < target * 120 && placed < target; attempt++)
-        {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(80, grid.Width - 84);
-            int startY = random.Next(minY, maxY);
-            int floorY = grid.FindFirstActiveY(x + 1, startY, state.UnderworldTop);
-            if (floorY <= 3 || floorY >= state.UnderworldTop)
-                continue;
-            int top = floorY - 2;
-            if (!CanPlaceObject(grid, x, top, 3, 2, requireFloor: true))
-                continue;
-
-            for (int dx = 0; dx < 3; dx++)
-            for (int dy = 0; dy < 2; dy++)
-            {
-                ref WorldTile tile = ref grid.At(x + dx, top + dy);
-                SetType(ref tile, DemonAltar);
-                tile.FrameX = checked((short)(styleX + dx * 18));
-                tile.FrameY = checked((short)(dy * 18));
-            }
-            placed++;
-        }
-
-        context.ReportProgress(1d, $"Placing evil altars ({placed}/{target})");
+        WorldGenerationPoint shimmer = workspace.VanillaShimmerPosition ??
+            throw new InvalidOperationException("Evil altars require the preceding Shimmer generation position.");
+        int placed = new EvilAltarPlacement1458(workspace.TileStore, context.VanillaRandom!, state.WorldSurface,
+            state.RockLayer, context.CancellationToken).Generate(shimmer, context.Request.Options.Evil == WorldGenerationEvil.Crimson);
+        context.ReportProgress(1d, $"Placing evil altars ({placed})");
     }
 
     private void ApplyWetJungle(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
@@ -723,6 +692,7 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
 
     private void ApplySettleLiquids(IWorldGenerationContext context, RuntimeGrid grid)
     {
+        new VanillaWorldLiquidSimulator1458(grid.Store).ClearEmbeddedLiquidDuringGenerationSettle(context.CancellationToken);
         int top = Math.Clamp((int)state.WorldSurface - 20, 1, grid.Height - 2);
         const int sweeps = 6;
         long moved = 0;
@@ -988,6 +958,8 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         private readonly WorldTileStore store;
 
         public RuntimeGrid(Workspace workspace) => store = workspace.TileStore;
+
+        public WorldTileStore Store => store;
 
         public int Width => store.Dimensions.WidthTiles;
         public int Height => store.Dimensions.HeightTiles;

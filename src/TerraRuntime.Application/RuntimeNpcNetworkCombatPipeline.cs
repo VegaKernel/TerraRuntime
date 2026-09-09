@@ -51,6 +51,13 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private readonly RuntimeQueenBeeLootDeliverySink queenBeeLoot;
     private readonly RuntimeDeerclopsLootDeliverySink deerclopsLoot;
     private readonly RuntimeQueenSlimeLootDeliverySink queenSlimeLoot;
+    private readonly RuntimePlanteraLootDeliverySink planteraLoot;
+    private readonly RuntimeGolemLootDeliverySink golemLoot;
+    private readonly VanillaGolemLootPlayer[] activeGolemLootPlayers =
+        new VanillaGolemLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
+    private readonly bool? planteraDownedBaseline;
+    private readonly VanillaPlanteraLootPlayer[] activePlanteraLootPlayers =
+        new VanillaPlanteraLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly RuntimeMechanicalBossLootDeliverySink mechanicalBossLoot;
     private readonly RuntimeEyeOfCthulhuLootDeliverySink eyeOfCthulhuLoot;
     private readonly RuntimeWallOfFleshLootDeliverySink wallOfFleshLoot;
@@ -112,7 +119,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         bool skyblockLowTiles = false,
         bool isThereAWorldSurface = true,
         bool evilBossDownedBaseline = false,
-        RuntimeProjectileStore? projectiles = null)
+        RuntimeProjectileStore? projectiles = null,
+        bool? planteraDownedBaseline = null)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         moonLordProjectiles = projectiles;
@@ -131,6 +139,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         this.skyblockLowTiles = skyblockLowTiles;
         this.isThereAWorldSurface = isThereAWorldSurface;
         this.evilBossDownedBaseline = evilBossDownedBaseline;
+        this.planteraDownedBaseline = planteraDownedBaseline;
+        planteraLoot = new RuntimePlanteraLootDeliverySink(worldItems, instancedLeases, worldItemReplication);
+        golemLoot = new RuntimeGolemLootDeliverySink(worldItems, instancedLeases, worldItemReplication);
         this.expertMode = expertMode;
         this.masterMode = masterMode;
         if (masterMode && !expertMode)
@@ -581,6 +592,16 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         if (baseDamage <= 0 || !npcs.TryGet(target, out NpcSnapshot liveTarget) || !liveTarget.IsActive)
             return RuntimeTownNpcMeleeDamageResult1458.Rejected;
         return CommitNonPlayerDamage(liveTarget, DamageSource.Environment, baseDamage, knockBack, hitDirection);
+    }
+
+    internal RuntimeTownNpcMeleeDamageResult1458 TryStrikeEnvironmentProjectile(
+        in ProjectileSnapshot projectile, NpcHandle target, int damage, int hitDirection)
+    {
+        if (!projectile.IsActive || !projectile.Handle.IsAssigned || damage <= 0 ||
+            !npcs.TryGet(target, out NpcSnapshot liveTarget) || !liveTarget.IsActive)
+            return RuntimeTownNpcMeleeDamageResult1458.Rejected;
+        return CommitNonPlayerDamage(liveTarget, DamageSource.FromEnvironmentProjectile(projectile.Handle),
+            damage, projectile.KnockBack, hitDirection);
     }
 
     private RuntimeTownNpcMeleeDamageResult1458 CommitNonPlayerDamage(

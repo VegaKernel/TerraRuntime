@@ -228,9 +228,6 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
     private const ushort Sandstone = 396;
     private const ushort HardenedSand = 397;
 
-    private static readonly ushort[] GemTypes =
-        [Sapphire, Ruby, Emerald, Topaz, Amethyst, Diamond];
-
     private readonly DungeonStage1458 stage;
     private readonly DungeonState1458 state;
 
@@ -270,7 +267,7 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                 ApplyBeaches(context, grid, random);
                 break;
             case DungeonStage1458.Gems:
-                ApplyGems(context, grid, random);
+                ApplyGems(context, workspace, grid);
                 break;
             case DungeonStage1458.GravitatingSand:
                 ApplyGravitatingSand(context, grid);
@@ -282,7 +279,7 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                 ApplyShimmer(context, grid, random);
                 break;
             case DungeonStage1458.CleanUpDirt:
-                ApplyCleanUpDirt(context, grid);
+                ApplyCleanUpDirt(context, grid, random);
                 break;
             case DungeonStage1458.Pyramids:
                 ApplyPyramids(context, workspace, grid, random);
@@ -330,8 +327,8 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
         if (!workspace.TryAddGeneratedTownNpc(
                 VanillaNpcIds.OldMan.Value,
                 string.Empty,
-                checked(graph.Anchor.X * 16f + 8f),
-                checked(graph.Anchor.Y * 16f),
+                checked(graph.Anchor.X * 16f + 8f - DungeonGenerationCatalog1458.OldManWidth * .5f),
+                checked(graph.Anchor.Y * 16f - DungeonGenerationCatalog1458.OldManHeight),
                 homeless: false,
                 homeTileX: graph.Anchor.X,
                 homeTileY: graph.Anchor.Y,
@@ -554,96 +551,114 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
         }
     }
 
-    private void ApplyGems(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyGems(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid)
     {
-        long area = (long)grid.Width * grid.Height;
-        int count = Math.Max(90, (int)(area * 0.000030d));
-        int minY = Math.Clamp((int)state.RockLayer + 20, 20, state.UnderworldTop - 80);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 40);
+        context.CancellationToken.ThrowIfCancellationRequested();
+        VanillaUndergroundDesertRegion1458 desert = workspace.VanillaUndergroundDesertRegion ??
+            throw new InvalidOperationException("Gems requires retained underground desert bounds.");
+        VanillaLiquidLines1458 lines = workspace.VanillaLiquidLines ??
+            throw new InvalidOperationException("Gems requires retained vanilla liquid lines.");
+        IWorldGenerationVanillaRandom random = context.VanillaRandom!;
+        var runner = new SmallTerrainRunner1458(workspace.TileStore, random, state.WorldSurface, lines,
+            context.CancellationToken);
 
-        for (int i = 0; i < count; i++)
+        // WorldGen's ordinary Gems delegate: six ordered series, three substrate attempts per deposit.
+        // Keep the two multiplications and integer-versus-double comparison (fractional counts round up).
+        for (int gem = Sapphire; gem <= Diamond; gem++)
         {
-            if ((i & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            int x = random.Next(20, grid.Width - 20);
-            int y = random.Next(minY, maxY);
-            ushort gem = GemTypes[random.Next(GemTypes.Length)];
-            int radius = random.Next(1, 4);
-            PlaceGemCluster(grid, random, x, y, radius, gem);
-        }
-
-        context.ReportProgress(1d, "Placing underground gem clusters");
-    }
-
-    private static void PlaceGemCluster(
-        RuntimeGrid grid,
-        IRandom random,
-        int centerX,
-        int centerY,
-        int radius,
-        ushort gem)
-    {
-        for (int dx = -radius; dx <= radius; dx++)
-        {
-            for (int dy = -radius; dy <= radius; dy++)
+            double factor = gem switch
             {
-                if (dx * dx + dy * dy > radius * radius + random.Next(2))
-                    continue;
-                int x = centerX + dx;
-                int y = centerY + dy;
-                if (!grid.Contains(x, y))
-                    continue;
-                ref WorldTile tile = ref grid.At(x, y);
-                if (!tile.IsActive || !IsGemReplaceable(tile.Type))
-                    continue;
-                SetType(ref tile, gem);
+                Sapphire => 0.3, Ruby => 0.1, Emerald => 0.25,
+                Topaz => 0.45, Amethyst => 0.5, Diamond => 0.05,
+                _ => throw new InvalidOperationException()
+            };
+            double count = grid.Width * factor;
+            count *= 0.2;
+            for (int index = 0; index < count; index++)
+            {
+                context.CancellationToken.ThrowIfCancellationRequested();
+                int x = 0, y = 0;
+                bool found = false;
+                for (int attempt = 0; attempt < 3; attempt++)
+                {
+                    x = random.Next(0, grid.Width);
+                    y = random.Next((int)state.WorldSurface, grid.Height);
+                    if (grid.At(x, y) is { IsActive: true, Type: Stone })
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) runner.Run(x, y, random.Next(2, 6), random.Next(3, 7), gem);
             }
         }
+
+        // This belongs to Gems, not live falling-block physics. Only activity/type move; metadata and
+        // liquids remain on their original cells. Both scans include the desert's boundary columns.
+        const int edge = 10;
+        for (int direction = 1; direction >= -1; direction -= 2)
+        {
+            int first = direction > 0 ? 5 : grid.Width - 5;
+            int end = direction > 0 ? grid.Width - 5 : 5;
+            for (int x = first; x != end; x += direction)
+            {
+                context.CancellationToken.ThrowIfCancellationRequested();
+                if (x > desert.X && x < desert.Right) continue;
+                for (int y = edge; y < grid.Height - edge; y++)
+                {
+                    ref WorldTile source = ref grid.At(x, y);
+                    ref WorldTile below = ref grid.At(x, y + 1);
+                    if (!source.IsActive || !below.IsActive ||
+                        !WorldSmoothingCatalog1458.IsSandConversion(source.TileType) ||
+                        !WorldSmoothingCatalog1458.IsSandConversion(below.TileType)) continue;
+                    int destinationX = x + direction, destinationY = y + 1;
+                    if (grid.At(destinationX, y).IsActive || grid.At(destinationX, destinationY).IsActive) continue;
+                    while (!grid.At(destinationX, destinationY).IsActive &&
+                        destinationX >= edge && destinationX < grid.Width - edge &&
+                        destinationY >= edge && destinationY < grid.Height - edge)
+                        destinationY++;
+                    destinationY--;
+                    source.Flags &= ~WorldTileFlags.Active;
+                    ref WorldTile destination = ref grid.At(destinationX, destinationY);
+                    destination.Type = source.Type;
+                    destination.Flags |= WorldTileFlags.Active;
+                }
+            }
+        }
+        context.ReportProgress(1d, "Placing source-ordered gem deposits and settling sand edges");
     }
 
     private void ApplyGravitatingSand(IWorldGenerationContext context, RuntimeGrid grid)
     {
-        long moved = 0;
-        int top = Math.Max(1, (int)state.WorldSurface - 20);
-        int bottom = Math.Min(grid.Height - 2, state.UnderworldTop);
-
-        for (int x = 1; x < grid.Width - 1; x++)
+        context.CancellationToken.ThrowIfCancellationRequested();
+        for (int x = 0; x < grid.Width; x++)
         {
-            if ((x & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            for (int y = bottom; y >= top; y--)
+            context.CancellationToken.ThrowIfCancellationRequested();
+            int lastSolidY = -1;
+            for (int y = grid.Height - 1; y > 0; y--)
             {
-                ref WorldTile source = ref grid.At(x, y);
-                if (!source.IsActive || !IsGravityTile(source.Type))
-                    continue;
-
-                int destinationY = y;
-                while (destinationY + 1 < grid.Height - 1 &&
-                       !grid.At(x, destinationY + 1).IsActive &&
-                       grid.At(x, destinationY + 1).LiquidAmount == 0)
+                ref WorldTile tile = ref grid.At(x, y);
+                if (tile.IsActive && tile.Type >= VanillaTileIds.Count)
+                    throw new InvalidOperationException("Unknown active tile in Gravitating Sand.");
+                // Dungeon has made cracked bricks non-solid; Gems made rolling cactus non-solid.
+                // SolidOrSlopedTile excludes actuated cells and tileSolidTop, but accepts slopes.
+                if (!tile.IsActive || tile.IsActuated || tile.Type is 481 or 482 or 483 or 484 ||
+                    !VanillaTileCollisionCatalog.IsSolid(tile.TileType) ||
+                    VanillaTileCollisionCatalog.IsSolidTop(tile.TileType)) continue;
+                if (lastSolidY >= 0 && y < (int)state.WorldSurface && y != lastSolidY - 1 && IsGravityTile(tile.Type))
                 {
-                    destinationY++;
-                    if (destinationY - y >= 96)
-                        break;
+                    ushort type = tile.Type;
+                    for (int fillY = y; fillY < lastSolidY; fillY++)
+                    {
+                        ref WorldTile fill = ref grid.At(x, fillY);
+                        // Tile.ResetToType resets headers/frames/liquid, but preserves the wall identity.
+                        fill = new WorldTile { Type = type, Wall = fill.Wall, Flags = WorldTileFlags.Active };
+                    }
                 }
-
-                if (destinationY == y)
-                    continue;
-
-                WorldTile falling = source;
-                ClearActive(ref source);
-                ref WorldTile destination = ref grid.At(x, destinationY);
-                ushort preservedWall = destination.Wall;
-                destination = falling;
-                if (destination.Wall == 0)
-                    destination.Wall = preservedWall;
-                moved++;
+                lastSolidY = y;
             }
         }
-
-        context.ReportProgress(1d, $"Settling gravity-affected sand, silt, and slush ({moved} tiles)");
+        context.ReportProgress(1d, "Filling gaps below surface falling materials");
     }
 
     private void ApplyOceanCaves(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
@@ -958,6 +973,7 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
 
         state.ShimmerX = centerX;
         state.ShimmerY = centerY;
+        ((Workspace)context.Workspace).VanillaShimmerPosition = new(centerX, centerY);
         context.ReportProgress(1d, $"Generating Aether shimmer pool at ({centerX},{centerY})");
     }
 
@@ -990,42 +1006,57 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
         }
     }
 
-    private void ApplyCleanUpDirt(IWorldGenerationContext context, RuntimeGrid grid)
+    private void ApplyCleanUpDirt(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
-        long cleaned = 0;
-        int minY = Math.Max(2, (int)state.WorldSurface - 20);
-        int maxY = Math.Min(state.UnderworldTop, grid.Height - 2);
-
-        for (int x = 2; x < grid.Width - 2; x++)
+        context.CancellationToken.ThrowIfCancellationRequested();
+        if (!double.IsFinite(state.WorldSurface) || state.WorldSurface < 0 ||
+            Math.Ceiling(state.WorldSurface) + 4 > grid.Height)
+            throw new InvalidOperationException("Dirt wall cleanup requires bounded surface metadata.");
+        for (int phase = 0; phase < 2; phase++)
         {
-            if ((x & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            for (int y = minY; y < maxY; y++)
+            bool forward = phase == 0;
+            int direction = forward ? 1 : -1;
+            int first = forward ? 3 : grid.Width - 5;
+            int end = forward ? grid.Width - 3 : 4;
+            for (int x = first; x != end; x += direction)
             {
-                ref WorldTile tile = ref grid.At(x, y);
-                if (!tile.IsActive || tile.Type != Dirt)
-                    continue;
-
-                int solidNeighbors = grid.CountSolidCardinalNeighbors(x, y);
-                if (solidNeighbors <= 1)
+                context.CancellationToken.ThrowIfCancellationRequested();
+                bool exposed = true;
+                for (int y = 0; y < state.WorldSurface; y++)
                 {
-                    ClearActive(ref tile);
-                    cleaned++;
-                    continue;
-                }
-
-                if (y > state.RockLayer + 40 && solidNeighbors == 4)
-                {
-                    tile.Type = Stone;
-                    tile.FrameX = -1;
-                    tile.FrameY = -1;
-                    cleaned++;
+                    ref WorldTile tile = ref grid.At(x, y);
+                    if (!exposed)
+                    {
+                        exposed = CanReopenSurfaceWallScan(grid, x, y);
+                        continue; // Reopening only affects the next row.
+                    }
+                    // The source's reverse scan intentionally excludes wall 86 and permits evil sand.
+                    if (tile.Wall is 2 or 40 or 64 || (forward && tile.Wall == 86)) tile.Wall = 0;
+                    if (tile.IsActive && (tile.Type == Sand || (forward && tile.Type is Ebonsand or Crimsand)))
+                        continue;
+                    for (int side = -1; side <= 1; side += 2)
+                    for (int distance = 1; distance <= 3; distance++)
+                    {
+                        ref WorldTile neighbor = ref grid.At(x + side * distance, y);
+                        if (neighbor.Wall is 2 or 40 && (distance == 1 || random.Next(2) == 0))
+                            neighbor.Wall = 0;
+                    }
+                    if (tile.IsActive) exposed = false;
                 }
             }
         }
+        context.ReportProgress(1d, "Cleaning source-ordered exposed dirt walls");
+    }
 
-        context.ReportProgress(1d, $"Cleaning isolated dirt remnants ({cleaned} tiles)");
+    private static bool CanReopenSurfaceWallScan(RuntimeGrid grid, int x, int y)
+    {
+        for (int offset = 0; offset <= 4; offset++)
+        {
+            ref WorldTile tile = ref grid.At(x, y + offset);
+            if (tile.Wall != 0 || (offset < 4 && tile.IsActive)) return false;
+        }
+        return grid.At(x - 1, y).Wall == 0 && grid.At(x + 1, y).Wall == 0 &&
+            grid.At(x - 2, y).Wall == 0 && grid.At(x + 2, y).Wall == 0;
     }
 
     private void ApplyPyramids(
@@ -1237,11 +1268,9 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
         type is Dirt or Stone or Sand or Ash or Mud or Snow or Ice or
             HardenedSand or Sandstone or Marble or Granite;
 
-    private static bool IsGemReplaceable(ushort type) =>
-        type is Stone or Marble or Granite or Ice;
-
+    // TileID.Sets.Falling, TerrariaServer 1.4.5.8 (also includes the four coin piles and Shell Pile).
     private static bool IsGravityTile(ushort type) =>
-        type is Sand or Ebonsand or Pearlsand or Crimsand or Silt or Slush;
+        type is Sand or Ebonsand or Pearlsand or Crimsand or Silt or Slush or 330 or 331 or 332 or 333 or 495;
 
     private static void SetType(ref WorldTile tile, ushort type)
     {

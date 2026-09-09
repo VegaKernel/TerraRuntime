@@ -97,63 +97,15 @@ internal static class HellFortFurniture1458
         }
     }
 
-    // Exact type/style/atlas facts from AddHellHouses and Place1x2/1xX/2x1/2xX/2x2/3x2/3x4/4x2/OnTable1x1.
-    // The caller's cleared room admits only solid floors and its own table/workbench candle supports.
     internal static bool Place(Workspace workspace, int x, int bottom, ushort type, bool faceRight = false)
     {
-        (int offset, int width, int height, int frameX, int frameY) = type switch
+        int style = type switch
         {
-            14 => (-1, 3, 2, 13 * 54, 0),
-            15 => (0, 1, 2, 0, 16 * 40),
-            18 => (0, 2, 1, 14 * 36, 0),
-            33 => (0, 1, 1, 0, 25 * 22),
-            79 => (-1, 4, 2, faceRight ? 72 : 0, 8 * 36),
-            87 => (-1, 3, 2, 15 * 54, 0),
-            88 => (-1, 3, 2, 9 * 54, 0),
-            89 => (-1, 3, 2, 10 * 54, 0),
-            90 => (-1, 4, 2, faceRight ? 72 : 0, 25 * 36),
-            93 => (0, 1, 3, 0, 23 * 54),
-            100 => (-1, 2, 2, 0, 25 * 36),
-            101 => (-1, 3, 4, 4 * 54, 0),
-            104 => (0, 2, 5, 17 * 36, 0),
-            105 => (0, 2, 3, 49 * 36, 0),
+            14 => 13, 15 => 16, 18 => 14, 33 => 25, 79 => 8, 87 => 15, 88 => 9,
+            89 => 10, 90 => 25, 93 => 23, 100 => 25, 101 => 4, 104 => 17, 105 => 49,
             _ => throw new ArgumentOutOfRangeException(nameof(type))
         };
-        WorldTileStore store = workspace.TileStore;
-        if (x < 5 || x > store.Dimensions.WidthTiles - 5 || bottom < 6 || bottom > store.Dimensions.HeightTiles - 5) return false;
-        // Beds/sofas call Place4x2 directly; all other choices go through PlaceTile's inactive-anchor cleanup.
-        if (type is not (79 or 90) && !At(store, x, bottom).IsActive)
-            HellFortGenerator1458.ClearPlacementAnchor(ref At(store, x, bottom));
-        int left = x + offset, top = bottom - height + 1;
-        for (int column = left; column < left + width; column++)
-        {
-            WorldTile support = At(store, column, bottom + 1);
-            bool supported = type == 33
-                ? support.IsActive && !support.IsActuated && support.Shape == 0 && support.Type is 14 or 18
-                : SolidSupport(support);
-            if (!supported) return false;
-            for (int row = top; row <= bottom; row++)
-                if (At(store, column, row).IsActive || (type == 93 && At(store, column, row).LiquidAmount > 0)) return false;
-        }
-        // Preserve the footprint if the shared chest registry refuses a dresser (capacity/duplicate).
-        Span<WorldTile> dresserBefore = stackalloc WorldTile[6];
-        if (type == 88)
-            for (int dy = 0; dy < 2; dy++)
-            for (int dx = 0; dx < 3; dx++) dresserBefore[dy * 3 + dx] = At(store, left + dx, top + dy);
-        for (int dy = 0; dy < height; dy++)
-        for (int dx = 0; dx < width; dx++)
-        {
-            ref WorldTile tile = ref At(store, left + dx, top + dy);
-            tile.Flags |= WorldTileFlags.Active; tile.Type = type;
-            tile.FrameX = (short)(frameX + dx * 18); tile.FrameY = (short)(frameY + dy * 18);
-        }
-        if (type == 88 && !workspace.TryAddGeneratedChest(left, top, string.Empty, []))
-        {
-            for (int dy = 0; dy < 2; dy++)
-            for (int dx = 0; dx < 3; dx++) At(store, left + dx, top + dy) = dresserBefore[dy * 3 + dx];
-            return false;
-        }
-        return true;
+        return GenerationFurniturePlacement1458.Place(workspace, x, bottom, type, style, faceRight);
     }
 
     private static void Chair(Workspace workspace, int x, int y, bool faceRight)

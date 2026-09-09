@@ -1,5 +1,9 @@
 # Vanilla-определения тайлов и стен
 
+Сыпучие блоки используют общую операцию `VanillaWorldTileMutationService.ClearTile`, отличную от добычи через `KillTile`: Terraria `Tile.ClearTile` очищает active/inActive/slope, но сохраняет краску, покрытия, актуатор, провода, стенку, жидкость и неактивные type/frame поля исходной клетки. Допуск происходит после резервирования provenance/capacity падающего projectile, не в обход клиентских разрешений. Оседание использует обычные PlaceTile/SetShape либо резервирование world item. См. [границы и лимиты сыпучих блоков](gameplay.md#сыпучие-блоки-в-работающем-мире-2026-09-09) и [автономный Mining](runtime-bot-architecture.md#режимы-оператора). Абзац о лопате ниже описывает прежнее отдельное исправление инструмента.
+
+Лопата могильщика (`4711`) — специальный инструмент, не обычная кирка: `Item.SetDefaults` оставляет `pick=0`; `Player.UseShovel` обрабатывает область 3×3, а `DamageTileWithShovel` применяет силу `30` только к `TileID.Sets.CanBeDugByShovel`. Допуск packet 17 теперь проверяет именно этот исходный набор, затем использует существующие пути failed-pick transformation, mutation, drop и replication. Обычный лимит игрока остаётся $8\,\text{events/tick}$; подтверждённая пара лопата/тайл допускает до $18\,\text{events/tick}$ для девяти клеток с двумя событиями снятия травы/удара. Счётчик общий: смена инструмента его не сбрасывает. Неизвестные определения тайлов, структуры и неподдерживаемые пути разрушения остаются закрыты. Это не реализация сыпучих блоков и не расширение добычи ботами.
+
 TerraRuntime представляет content тайлов и стен Terraria `1.4.5.8` через типизированные version-pinned catalogs. Упакованные поля `ushort` остаются ABI world snapshot, а gameplay получает их семантику через `TileTypeId`, `WallTypeId`, `VanillaTileDefinitionCatalog` и `VanillaWallDefinitionCatalog`.
 
 ## Поток определений

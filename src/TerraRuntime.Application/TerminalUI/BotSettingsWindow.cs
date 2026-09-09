@@ -18,6 +18,7 @@ internal sealed class BotSettingsWindow : Window
     private readonly CyclingDropDownList godMode;
     private readonly CyclingDropDownList target;
     private readonly CyclingDropDownList mode;
+    private readonly CyclingDropDownList ore;
     private readonly Label status;
     private readonly Label feedback;
 
@@ -32,7 +33,7 @@ internal sealed class BotSettingsWindow : Window
 
         Title = $"Bot #{bot.Id} · {bot.Name}";
         Width = 72;
-        Height = 19;
+        Height = 23;
         X = Pos.Center();
         Y = Pos.Center();
         SchemeName = "Base";
@@ -42,8 +43,10 @@ internal sealed class BotSettingsWindow : Window
         godMode = CreateDropDown(24, 5, 28, ["Off", "On"]);
         target = CreateDropDown(24, 7, 38, BuildTargetLabels(players));
         mode = CreateDropDown(24, 9, 28, Enum.GetNames<RuntimeBotMode>());
-        status = new Label { X = 1, Y = 11, Width = Dim.Fill(1), SchemeName = "Base" };
-        feedback = new Label { X = 1, Y = 15, Width = Dim.Fill(1), Height = 2, SchemeName = "Base" };
+        ore = CreateDropDown(24, 11, 28, Enum.GetNames<RuntimeBotOre>());
+        SelectText(ore, bot.Configuration.MiningOre.ToString());
+        status = new Label { X = 1, Y = 13, Width = Dim.Fill(1), Height = 2, SchemeName = "Base" };
+        feedback = new Label { X = 1, Y = 17, Width = Dim.Fill(1), Height = 2, SchemeName = "Base" };
 
         SelectText(weapon, bot.Configuration.WeaponPolicy.ToString());
         SelectText(flight, bot.Configuration.FlightEnabled ? "On" : "Off");
@@ -52,8 +55,8 @@ internal sealed class BotSettingsWindow : Window
         SelectTarget(bot.Configuration.Target);
         RefreshStatus(bot);
 
-        var apply = new Button { X = 24, Y = 13, Text = "Apply", SchemeName = "Base" };
-        var close = new Button { X = 36, Y = 13, Text = "Close", SchemeName = "Base" };
+        var apply = new Button { X = 24, Y = 15, Text = "Apply", SchemeName = "Base" };
+        var close = new Button { X = 36, Y = 15, Text = "Close", SchemeName = "Base" };
         apply.Accepted += (_, _) => Apply();
         close.Accepted += (_, _) => CloseRequested?.Invoke();
 
@@ -63,16 +66,24 @@ internal sealed class BotSettingsWindow : Window
             LabelAt("God mode", 5), godMode,
             LabelAt("Follow target", 7), target,
             LabelAt("Mode", 9), mode,
+            LabelAt("Mining ore", 11), ore,
             status,
             apply,
             close,
-            feedback);
+            feedback,
+            new Label
+            {
+                X = 1, Y = 19, Width = Dim.Fill(1), Height = 2, SchemeName = "Base",
+                Text = MiningHelpText
+            });
     }
 
     public event Action? CloseRequested;
 
     internal int BotId => bot.Id;
+    internal const string MiningHelpText = "Mining: searches selected ore nearby, underground only.\nNo player target needed; surface and structures are protected.";
     internal string StatusTextForSmoke => status.Text?.ToString() ?? string.Empty;
+    internal string[] ModeNamesForSmoke => Enum.GetNames<RuntimeBotMode>();
 
     internal void RefreshLiveStatus(RuntimeBotSnapshot snapshot)
     {
@@ -91,6 +102,7 @@ internal sealed class BotSettingsWindow : Window
     {
         if (!Enum.TryParse(weapon.Text?.ToString(), ignoreCase: false, out RuntimeBotWeaponPolicy weaponValue) ||
             !Enum.TryParse(mode.Text?.ToString(), ignoreCase: false, out RuntimeBotMode modeValue) ||
+            !Enum.TryParse(ore.Text?.ToString(), ignoreCase: false, out RuntimeBotOre oreValue) ||
             !TryParseToggle(flight, out bool flightValue) ||
             !TryParseToggle(godMode, out bool godModeValue))
         {
@@ -99,9 +111,9 @@ internal sealed class BotSettingsWindow : Window
         }
 
         RuntimeBotTarget targetValue = ResolveTarget();
-        if (modeValue is RuntimeBotMode.Follow or RuntimeBotMode.Guard && !targetValue.IsAssigned)
+        if (RuntimeBotAuthority.RequiresTarget(modeValue) && !targetValue.IsAssigned)
         {
-            feedback.Text = "bot: Follow/Guard requires a live primary-world target";
+            feedback.Text = "bot: this mode requires a live primary-world target";
             return;
         }
 
@@ -110,7 +122,8 @@ internal sealed class BotSettingsWindow : Window
             targetValue,
             WeaponPolicy: weaponValue,
             FlightEnabled: flightValue,
-            GodMode: godModeValue);
+            GodMode: godModeValue,
+            MiningOre: oreValue);
         try
         {
             RuntimeBotSnapshot? updated = operations.ConfigureAsync(bot.Id, configuration)
@@ -176,6 +189,7 @@ internal sealed class BotSettingsWindow : Window
             : "none";
         string lifeState = snapshot.IsDead ? "DEAD" : "alive";
         status.Text = $"PlayerBot · {lifeState} · Target: {targetState} · PvP {(snapshot.PvpEnabled ? "ON" : "OFF")} · God {(snapshot.Configuration.GodMode ? "ON" : "OFF")} · teleports {snapshot.TeleportCount}";
+        status.Text += $"\nAction: {snapshot.CurrentAction?.ToString() ?? "none"} · Result: {snapshot.RecentActionResult?.Status.ToString() ?? "none"}/{snapshot.RecentActionResult?.FailureCode.ToString() ?? "None"}";
     }
 
     private static CyclingDropDownList CreateDropDown(int x, int y, int width, IEnumerable<string> values) => new()

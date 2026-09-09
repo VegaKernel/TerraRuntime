@@ -10,12 +10,6 @@ internal static class HellFortLighting1458
     internal const ushort Torch = 4;
     internal const short HellTorchFrameY = 7 * 22;
 
-    // Main.Initialize_TileAndNPCData2: all tileNoAttach assignments, including the 435..439 loop.
-    private static ReadOnlySpan<ushort> NoAttach =>
-    [3,4,10,13,14,15,16,17,18,19,20,21,27,50,86,87,88,89,90,91,92,93,94,95,96,97,98,99,
-     101,102,110,114,134,387,388,390,427,435,436,437,438,439,441,467,468,469,486,487,488,
-     489,490,497,564,565,568,569,570,572,580,590,593,594,595,615,620,704,707];
-
     internal static int AttemptCount(int width) => 200 * (width / 4200);
 
     public static int Generate(WorldTileStore store, IWorldGenerationVanillaRandom random, CancellationToken cancellationToken)
@@ -76,7 +70,7 @@ internal static class HellFortLighting1458
         WorldTile tile = At(store, x, y);
         int slope = tile.Shape >= 2 ? tile.Shape - 1 : 0;
         if (!tile.IsActive || (slope > 0 && slope % 2 == (leftSide ? 1 : 0))) return false;
-        return (VanillaTileCollisionCatalog.IsSolid(tile.TileType) && !NoAttach.Contains(tile.Type)) ||
+        return (VanillaTileCollisionCatalog.IsSolid(tile.TileType) && !GenerationObjectSupport1458.DisallowsAttachment(tile.Type)) ||
             tile.Type is 124 or 561 or 574 or 575 or 576 or 577 or 578 ||
             (IsTree(tile.Type) && At(store, x, y - 1).IsActive && IsTree(At(store, x, y - 1).Type) &&
              At(store, x, y + 1).IsActive && IsTree(At(store, x, y + 1).Type));

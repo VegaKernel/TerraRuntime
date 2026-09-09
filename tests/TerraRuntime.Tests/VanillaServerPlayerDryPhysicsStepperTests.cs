@@ -7,6 +7,52 @@ namespace TerraRuntime.Tests;
 
 public sealed class VanillaServerPlayerDryPhysicsStepperTests
 {
+    [Theory]
+    [InlineData(-1f, -1.275f)]
+    [InlineData(2f, 1.125f)]
+    [InlineData(-5.01f, -5.135f)]
+    [InlineData(-12.5f, -12.525f)]
+    public void Active_fishron_wing_step_skips_gravity(float incoming, float expected)
+    {
+        using var player = Spawn(400f, 600f, velocityY: incoming);
+        var stepper = new VanillaServerPlayerDryPhysicsStepper(CreateWorld());
+        var jump = new VanillaServerPlayerJumpState(0, false);
+        VanillaLiquidContactState contacts = default;
+        Assert.True(stepper.TryStep(player.Snapshot, ServerPlayerHorizontalIntent.Stop,
+            ServerPlayerJumpIntent.Held, true, in jump, in contacts, out var next, out var nextJump));
+        Assert.Equal(expected, next.VelocityY, 4);
+        Assert.Equal(600f + expected, next.PositionY, 4);
+        Assert.Equal(179, nextJump.WingTime);
+    }
+
+    [Theory]
+    [InlineData(false, 1, 0)]
+    [InlineData(true, 1, 0)] // Source refresh checks the POST-decrement value, not incoming flight time.
+    [InlineData(true, 2, 180)]
+    public void Flight_consumes_owned_time_and_insignia_preserves_source_refresh_boundary(bool insignia, int time, int expected)
+    {
+        using var player = Spawn(400f, 600f, velocityY: -1f);
+        var stepper = new VanillaServerPlayerDryPhysicsStepper(CreateWorld());
+        var jump = new VanillaServerPlayerJumpState(0, false, time);
+        var profile = VanillaServerPlayerHorizontalProfile1458.Baseline with { SoaringInsignia = insignia };
+        VanillaLiquidContactState contacts = default;
+        Assert.True(stepper.TryStep(player.Snapshot, ServerPlayerHorizontalIntent.Stop,
+            ServerPlayerJumpIntent.Held, true, in profile, in jump, in contacts, out _, out var nextJump));
+        Assert.Equal(expected, nextJump.WingTime);
+    }
+
+    [Fact]
+    public void Releasing_jump_in_midair_does_not_refill_flight()
+    {
+        var state = new VanillaServerPlayerJumpState(0, false, 3);
+        Assert.True(VanillaServerPlayerJumpControl.TryApply(-1f, ServerPlayerJumpIntent.Released,
+            in state, out _, out var airborne));
+        Assert.Equal(3, airborne.WingTime);
+        Assert.True(VanillaServerPlayerJumpControl.TryApply(0f, ServerPlayerJumpIntent.Released,
+            in airborne, out _, out var grounded));
+        Assert.Equal(180, grounded.WingTime);
+    }
+
     [Fact]
     public void Empty_air_applies_source_backed_gravity_and_advances_position()
     {

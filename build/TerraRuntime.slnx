@@ -17,4 +17,6 @@
   <Project Path="../tests/TerraRuntime.HostModuleFixture/TerraRuntime.HostModuleFixture.csproj" />
   <Project Path="../tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj" />
   <Project Path="../tools/TerraRuntime.ProtocolBench/TerraRuntime.ProtocolBench.csproj" />
+  <Project Path="../tools/TerraRuntime.StartupGate/TerraRuntime.StartupGate.csproj" />
+  <Project Path="../tools/TerraRuntime.TileLocate/TerraRuntime.TileLocate.csproj" />
 </Solution>

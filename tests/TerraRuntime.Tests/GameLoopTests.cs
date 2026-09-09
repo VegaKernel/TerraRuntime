@@ -435,8 +435,19 @@ public sealed class GameLoopTests
         {
             _ = command;
             long started = Stopwatch.GetTimestamp();
-            while (Stopwatch.GetElapsedTime(started).TotalMilliseconds < commandCpuMilliseconds)
-                Thread.SpinWait(64);
+            // This fixture exercises a CPU budget, not elapsed time. Under parallel worldgen a
+            // descheduled thread can spend 40ms on the wall clock without advancing GetThreadTimes.
+            if (ThreadCpuClock.TryGetTimestampNanoseconds(out long cpuStarted))
+            {
+                while (true)
+                {
+                    Thread.SpinWait(64);
+                    Assert.True(ThreadCpuClock.TryGetTimestampNanoseconds(out long cpuNow));
+                    if ((cpuNow - cpuStarted) / 1_000_000d >= commandCpuMilliseconds) break;
+                    Assert.True(Stopwatch.GetElapsedTime(started) < TimeSpan.FromSeconds(2),
+                        "CPU workload did not advance within the fixture deadline.");
+                }
+            }
 
             if (Interlocked.Increment(ref applied) == 1)
                 firstApplied.Set();

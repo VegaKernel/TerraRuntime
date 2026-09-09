@@ -4,6 +4,7 @@ using TerraRuntime.Core;
 
 namespace TerraRuntime.Tests;
 
+[Collection(SteadyStateAllocationCollection.Name)]
 public sealed class RuntimeNpcBehaviorPerformanceTests
 {
     private const int WarmupIterations = 65_536;

@@ -140,6 +140,13 @@ internal static partial class VanillaProjectileBehaviorStepper
 
         switch (profile.Family)
         {
+            case VanillaProjectileBehaviorFamily.FallingBlock:
+                // Only server-owned gravity blocks; sandgun/magic channel variants are not this admission.
+                if (!VanillaProjectileOwnership.IsServerOwned(current.Spawner) || current.Ai.Ai1 != 0 || ai0 is not (0f or 1f))
+                { next = default; return false; }
+                next = new(velocityX, Math.Min(10f, velocityY + .41f), 1f,
+                    TileCollideOverride: ai0 != 0); // AI_010 changes ai0 after disabling first-update collision.
+                return true;
             case VanillaProjectileBehaviorFamily.Thrown:
                 // TerrariaServer 1.4.5.8 AI(), aiStyle == 2.
                 if (context.WindPhysics)

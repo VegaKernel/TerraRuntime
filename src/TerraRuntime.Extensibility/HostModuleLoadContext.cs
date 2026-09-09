@@ -11,6 +11,12 @@ internal sealed class HostModuleLoadContext : AssemblyLoadContext
     private static readonly IReadOnlyDictionary<string, Assembly> SharedContractAssemblies =
         CreateSharedContractAssemblies();
 
+    // Do not let beforefieldinit defer this table until the Load callback. Resolving Terminal.Gui starts its
+    // module initializer, which scans loaded assemblies; doing that after collectible modules are published
+    // can deadlock against another module's type loading waiting for this same class initializer.
+    // An explicit initializer completes before the first context constructor can publish such an assembly.
+    static HostModuleLoadContext() { }
+
     private readonly AssemblyDependencyResolver resolver;
     private readonly string dependencyDirectory;
 

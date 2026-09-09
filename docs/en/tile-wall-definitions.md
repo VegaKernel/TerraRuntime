@@ -1,5 +1,9 @@
 # Vanilla tile and wall definitions
 
+Live falling blocks use the shared `VanillaWorldTileMutationService.ClearTile` operation, distinct from mining `KillTile`: Terraria `Tile.ClearTile` clears active/inActive/slope but preserves source-cell paint, coatings, actuator, wire, wall, liquid and dormant type/frame fields. It is admitted only after falling-projectile provenance/capacity has been reserved, never as a client permission shortcut. Landing uses normal PlaceTile/SetShape or reserved world-item materialization. See [falling-block scope and limits](gameplay.md#live-falling-blocks-2026-09-09) and [autonomous Mining](runtime-bot-architecture.md#operator-modes). The shovel paragraph below describes the earlier, separate tool fix.
+
+Gravedigger's Shovel (`4711`) is a special mining tool, not an ordinary pick: `Item.SetDefaults` leaves `pick=0`; `Player.UseShovel` visits a 3-by-3 area and `DamageTileWithShovel` uses power `30` only for `TileID.Sets.CanBeDugByShovel`. Packet-17 admission now checks that exact source set before using the existing failed-pick transformation, mutation, drop and replication paths. The ordinary per-player edit ceiling remains $8\,\text{events/tick}$; a verified shovel/target pair can use up to $18\,\text{events/tick}$ for nine cells with two grass-stripping/pick events each. Both share the same counter: switching tools cannot reset it. Unknown tile definitions, structures and unsupported break paths remain closed. This does not implement falling-block physics or broaden bot mining.
+
 TerraRuntime exposes Terraria `1.4.5.8` tile and wall content through typed, version-pinned definition catalogs. Packed `ushort` fields remain the world snapshot ABI, while gameplay resolves their meaning through `TileTypeId`, `WallTypeId`, `VanillaTileDefinitionCatalog` and `VanillaWallDefinitionCatalog`.
 
 ## Definition flow

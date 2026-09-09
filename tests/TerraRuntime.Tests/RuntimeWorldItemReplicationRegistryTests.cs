@@ -74,11 +74,8 @@ public sealed class RuntimeWorldItemReplicationRegistryTests
 
         Assert.True(store.TryRemove(allocated.Handle.Slot, out _));
         TerrariaFrame removalFrame = DequeueFrame(outbound);
-        Assert.Equal(
-            TerrariaWorldItemDropDecodeResult.Decoded,
-            TerrariaWorldItemDropDecoder.TryDecode(in removalFrame, out TerrariaWorldItemDropState relayedRemoval));
-        Assert.Equal((short)1, relayedRemoval.ItemIndex);
-        Assert.True(relayedRemoval.IsRemoval);
+        Assert.True(TerrariaWorldItemRemovalDecoder1458.TryDecode(in removalFrame, out short removedSlot));
+        Assert.Equal((short)1, removedSlot);
 
         Assert.Equal(3, replication.RelayedFrames);
         Assert.Equal(0, replication.RejectedFrames);

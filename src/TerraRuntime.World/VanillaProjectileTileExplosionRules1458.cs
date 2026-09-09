@@ -9,6 +9,8 @@ namespace TerraRuntime.World;
 /// </summary>
 public static class VanillaProjectileTileExplosionRules1458
 {
+    // Projectile.CanExplodeTile indexes trap styles in 18-pixel frame rows (1.4.5.8).
+    private const int TrapFrameRowPixels = 18;
     public static bool CanExplodeTile(
         WorldTileStore tiles,
         int x,
@@ -83,7 +85,7 @@ public static class VanillaProjectileTileExplosionRules1458
             case 137:
                 if (!golemDowned)
                 {
-                    int frameRow = tile.FrameY / 18;
+                    int frameRow = tile.FrameY / TrapFrameRowPixels;
                     if ((uint)(frameRow - 1) <= 3u)
                         return false;
                 }

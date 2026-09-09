@@ -96,6 +96,29 @@ public sealed class VanillaServerPlayerHorizontalControlTests
     }
 
     [Fact]
+    public void Fishron_air_and_insignia_parameters_follow_equipment_order()
+    {
+        var air = VanillaServerPlayerHorizontalProfile1458.ResolveBotMobility(true, true, true, false, true);
+        Assert.Equal(8f, air.AcceleratedRunSpeed);
+        Assert.Equal(0.3234f, air.RunAcceleration, 5);
+        Assert.Equal(3.465f, air.MaximumRunSpeed, 5);
+        var ground = VanillaServerPlayerHorizontalProfile1458.ResolveBotMobility(true, true, true, true, true);
+        Assert.Equal(7.7625f, ground.AcceleratedRunSpeed, 5);
+        Assert.Equal(0.282975f, ground.RunAcceleration, 4);
+    }
+
+    [Fact]
+    public void Insignia_without_boots_does_not_freeze_horizontal_movement()
+    {
+        var profile = VanillaServerPlayerHorizontalProfile1458.ResolveBotMobility(false, false, false, true, true);
+        Assert.Equal(3f, profile.AcceleratedRunSpeed);
+        Assert.Equal(3.225f, profile.MaximumRunSpeed, 5);
+        Assert.True(profile.IsValid);
+        Assert.Equal(0.1505f, VanillaServerPlayerHorizontalControl.Apply(0f, 0f,
+            ServerPlayerHorizontalIntent.Right, in profile), 5);
+    }
+
+    [Fact]
     public void Magiluminescence_ground_effect_is_independent_and_air_effect_stays_absent()
     {
         VanillaServerPlayerHorizontalProfile1458 grounded =

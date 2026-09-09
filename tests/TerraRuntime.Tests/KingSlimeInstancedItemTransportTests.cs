@@ -43,7 +43,7 @@ public sealed class KingSlimeInstancedItemTransportTests
     public void Packet151_is_canonical_length_message_and_item_slot()
     {
         Assert.Equal(TerrariaWorldItemFrameEncodeResult.Encoded,
-            TerrariaWorldItemFrameEncoder.TryEncodeInstancedSlotRelease(321, out ReadOnlyMemory<byte> frame));
+            TerrariaWorldItemFrameEncoder.TryEncodeRemoval(321, out ReadOnlyMemory<byte> frame));
 
         byte[] bytes = frame.ToArray();
         Assert.Equal(5, bytes.Length);

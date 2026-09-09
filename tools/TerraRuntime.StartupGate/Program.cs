@@ -46,6 +46,16 @@ try
         return 10;
     }
 
+    // Match WorldStartupPreparation: a decoded .wld is not yet a cache-admissible runtime world.
+    stageStart = Stopwatch.GetTimestamp();
+    VanillaWorldLiquidLoadPreparationDiagnostic1458 liquidPreparation =
+        VanillaWorldLiquidLoadInitializer1458.TryPrepare(canonicalWorld);
+    TimeSpan canonicalLiquidPreparation = Stopwatch.GetElapsedTime(stageStart);
+    if (!liquidPreparation.IsPrepared)
+    {
+        Console.Error.WriteLine($"Post-load liquid preparation failed: result={liquidPreparation.Result}, x={liquidPreparation.X}, y={liquidPreparation.Y}, tile={liquidPreparation.TileType.Value}.");
+        return 16;
+    }
     TimeSpan coldWorldReady = Stopwatch.GetElapsedTime(coldStart);
 
     stageStart = Stopwatch.GetTimestamp();
@@ -123,7 +133,7 @@ try
         cacheProfile.LiquidDecode + cacheProfile.LiquidRestore;
     TimeSpan cachePreparedState = cacheProfile.PreparedIo + cacheProfile.PreparedHash + cacheProfile.PreparedDecode;
 
-    Console.WriteLine(FormattableString.Invariant($"startup_gate world={Path.GetFileName(worldPath)} file_read_ms={fileRead.TotalMilliseconds:F3} wld_total_ms={canonicalProfile.Total.TotalMilliseconds:F3} wld_tile_reconstruction_ms={canonicalTileReconstruction.TotalMilliseconds:F3} wld_non_tile_ms={canonicalProfile.NonTileSections.TotalMilliseconds:F3} cache_write_ms={cacheWriteDuration.TotalMilliseconds:F3} cache_validated_load_ms={cacheValidatedLoad.TotalMilliseconds:F3} cache_validation_ms={cacheStructuralValidation.TotalMilliseconds:F3} cache_parallel_wall_ms={cacheProfile.ParallelWall.TotalMilliseconds:F3} cache_tile_reconstruction_ms={cacheTileReconstruction.TotalMilliseconds:F3} cache_liquid_postload_ms={cacheLiquidPostLoad.TotalMilliseconds:F3} cache_prepared_state_ms={cachePreparedState.TotalMilliseconds:F3} index_construction_ms={indexConstruction.TotalMilliseconds:F3} world_ready_cold_ms={coldWorldReady.TotalMilliseconds:F3} world_ready_warm_ms={cacheValidatedLoad.TotalMilliseconds:F3} allocated_mib={allocatedBytes / (1024d * 1024d):F3} gen0_collections={gen0Collections} gen1_collections={gen1Collections} gen2_collections={gen2Collections} cache_shards={cacheProfile.ShardCount} cache_tile_bytes={cacheProfile.TilePayloadBytes} cache_prepared_bytes={cacheProfile.PreparedPayloadBytes} cache_liquid_bytes={cacheProfile.LiquidPayloadBytes}"));
+    Console.WriteLine(FormattableString.Invariant($"startup_gate world={Path.GetFileName(worldPath)} file_read_ms={fileRead.TotalMilliseconds:F3} wld_total_ms={canonicalProfile.Total.TotalMilliseconds:F3} wld_tile_reconstruction_ms={canonicalTileReconstruction.TotalMilliseconds:F3} wld_non_tile_ms={canonicalProfile.NonTileSections.TotalMilliseconds:F3} wld_liquid_prepare_ms={canonicalLiquidPreparation.TotalMilliseconds:F3} cache_write_ms={cacheWriteDuration.TotalMilliseconds:F3} cache_validated_load_ms={cacheValidatedLoad.TotalMilliseconds:F3} cache_validation_ms={cacheStructuralValidation.TotalMilliseconds:F3} cache_parallel_wall_ms={cacheProfile.ParallelWall.TotalMilliseconds:F3} cache_tile_reconstruction_ms={cacheTileReconstruction.TotalMilliseconds:F3} cache_liquid_postload_ms={cacheLiquidPostLoad.TotalMilliseconds:F3} cache_prepared_state_ms={cachePreparedState.TotalMilliseconds:F3} index_construction_ms={indexConstruction.TotalMilliseconds:F3} world_ready_cold_ms={coldWorldReady.TotalMilliseconds:F3} world_ready_warm_ms={cacheValidatedLoad.TotalMilliseconds:F3} allocated_mib={allocatedBytes / (1024d * 1024d):F3} gen0_collections={gen0Collections} gen1_collections={gen1Collections} gen2_collections={gen2Collections} cache_shards={cacheProfile.ShardCount} cache_tile_bytes={cacheProfile.TilePayloadBytes} cache_prepared_bytes={cacheProfile.PreparedPayloadBytes} cache_liquid_bytes={cacheProfile.LiquidPayloadBytes}"));
 
     return 0;
 }

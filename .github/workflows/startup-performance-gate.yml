@@ -4,9 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime/TerrariaServerHost.cs'
-      - 'src/TerraRuntime/PlayerBootstrapPacketSet*.cs'
-      - 'src/TerraRuntime.World/RuntimeWorldSnapshotCache.cs'
+      - 'src/TerraRuntime.Application/TerrariaServerHost.cs'
+      - 'src/TerraRuntime.Application/PlayerBootstrapPacketSet*.cs'
+      - 'src/TerraRuntime.Application/WorldStartupPreparation.cs'
+      - 'src/TerraRuntime.World/VanillaWorldLiquid*.cs'
+      - 'src/TerraRuntime.World/RuntimeWorldSnapshotCache*.cs'
       - 'src/TerraRuntime.World/RuntimeWorldSnapshotProfiler.cs'
       - 'src/TerraRuntime.World/WorldFileLoadProfile.cs'
       - 'src/TerraRuntime.World/WorldFileLoader*.cs'
@@ -117,6 +119,7 @@ jobs:
 
           required_float = [
               'file_read_ms', 'wld_total_ms', 'wld_tile_reconstruction_ms', 'wld_non_tile_ms',
+              'wld_liquid_prepare_ms',
               'cache_write_ms', 'cache_validated_load_ms', 'cache_validation_ms', 'cache_parallel_wall_ms',
               'cache_tile_reconstruction_ms', 'cache_liquid_postload_ms', 'cache_prepared_state_ms',
               'index_construction_ms', 'world_ready_cold_ms', 'world_ready_warm_ms', 'allocated_mib',
@@ -142,6 +145,7 @@ jobs:
 
           for key in [
               'file_read_ms', 'wld_total_ms', 'wld_tile_reconstruction_ms',
+              'wld_liquid_prepare_ms',
               'cache_write_ms', 'cache_validated_load_ms', 'cache_validation_ms',
               'cache_parallel_wall_ms', 'cache_tile_reconstruction_ms',
               'index_construction_ms', 'world_ready_cold_ms', 'world_ready_warm_ms'
@@ -156,6 +160,8 @@ jobs:
 
       - name: Prove cold and warm NetworkReady on the real host
         shell: bash
+        env:
+          TERRARUNTIME_LOG_CONSOLE_LEVEL: Information
         run: |
           set -euo pipefail
           world="$GITHUB_WORKSPACE/artifacts/startup-world.wld"

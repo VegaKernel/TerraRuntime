@@ -20,6 +20,30 @@ public sealed class SourceBackedFinal1458Tests
     ];
 
     [Fact]
+    public void Complete_ordinary_plan_matches_every_applicable_source_registration_in_order()
+    {
+        var request = new WorldGenerationRequest(Provider1458.GeneratorId, "AllPasses", 1458, 4200, 1200);
+        var builder = new CaptureBuilder();
+        new SourceBackedFinal1458().BuildPlan(in request, builder);
+
+        string[] catalog = PassCatalog1458.SourceOrderBeforeSpecialSeedFiltering.ToArray();
+        Assert.Equal(109, catalog.Length);
+        // AddPasses registers this first Jungle and Skyblock only inside skyblockWorldGen.
+        Assert.Equal("Jungle", catalog[1]);
+        Assert.Equal("Skyblock", catalog[2]);
+        string[] expected = catalog.Where((_, index) => index is not (1 or 2))
+            .Select(static name => new string(name.Where(char.IsLetterOrDigit).ToArray())).ToArray();
+        string[] bridges = ["Reset", "TerrainLayers", "Biomes", "Caves", "Ores", "SecretSeeds", "Metadata"];
+        string[] actual = builder.Entries.Select(static entry => entry.Descriptor.Id.Value.Split('/')[1])
+            .Where(name => !bridges.Contains(name)).ToArray();
+
+        Assert.Equal(114, builder.Entries.Count);
+        Assert.Equal(107, actual.Length);
+        Assert.Equal(expected, actual, StringComparer.OrdinalIgnoreCase);
+        // This proves registration/ordering only, not pass geometry or complete-world equality.
+    }
+
+    [Fact]
     public void Canonical_ordinary_world_registers_final_eight_passes_in_pinned_order()
     {
         var provider = new SourceBackedFinal1458();

@@ -11,6 +11,7 @@ on:
       - 'tests/TerraRuntime.Tests/MoonLordDeathSequenceTests.cs'
       - 'src/TerraRuntime.Core/**'
       - 'src/TerraRuntime.Gameplay/**'
+      - 'src/TerraRuntime.World/**'
       - 'src/TerraRuntime.Contracts/Gameplay/**'
       - 'tests/TerraRuntime.Tests/*Projectile*.cs'
       - 'tests/TerraRuntime.Tests/*Npc*.cs'

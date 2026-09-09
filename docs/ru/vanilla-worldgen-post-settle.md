@@ -24,7 +24,7 @@ graph LR
 
 ## Реализованный срез
 
-- `Remove Water From Sand` очищает liquid, оставшийся внутри active Sand, Hardened Sand и Sandstone cells после первого settling stage.
+- `Remove Water From Sand` сканирует x400..width-401 и y100..<worldSurface-1 до первого active tile. Для Sand, Sandstone, Hardened Sand, Desert Fossil, Fossil Ore или Sandstone Brick очищает liquid в inactive cells над этой поверхностью до y100 включительно. Океанская/подземная жидкость, liquid внутри solid cells и биты liquid kind сохраняются. Это заменяет неверную очистку embedded-песка по всей карте; независимый официальный pass fixture совпал по amount/kind всех клеток. Предыдущий settling stage этим не доказан.
 - `Oasis` ищет подходящую inland sand surface вне exclusion bands spawn, jungle, snow и dungeon, вырезает water basin и формирует его берега.
 - `Shell Piles` размещает vanilla Shell Pile tile `495` на сухом beach sand около обоих океанов.
 - `Smooth World` применяет ограниченное slope/half-block shaping только к exposed natural terrain.

@@ -4,6 +4,26 @@ namespace TerraRuntime.Tests;
 
 public sealed class VanillaWorldCanHitTests
 {
+    [Theory]
+    [InlineData(481, false)]
+    [InlineData(482, false)]
+    [InlineData(483, false)]
+    [InlineData(481, true)]
+    [InlineData(482, true)]
+    [InlineData(483, true)]
+    public void Dungeon_generation_cracked_solidity_is_query_local(int type, bool neighborPair)
+    {
+        WorldTileStore tiles = CreateWorld();
+        var brick = new WorldTile { Type = (ushort)type, Flags = WorldTileFlags.Active };
+        if (neighborPair) { tiles.Set(6, 4, brick); tiles.Set(6, 6, brick); }
+        else tiles.Set(6, 5, brick);
+        WorldTile[] before = tiles.Tiles.ToArray();
+        Assert.False(VanillaWorldCanHit.HasLineOfSight(tiles, 32, 64, 18, 40, 160, 64, 20, 42));
+        Assert.True(VanillaWorldCanHit.HasLineOfSight(tiles, 32, 64, 18, 40, 160, 64, 20, 42, crackedBricksSolid: false));
+        Assert.False(VanillaWorldCanHit.HasLineOfSight(tiles, 32, 64, 18, 40, 160, 64, 20, 42));
+        Assert.Equal(before, tiles.Tiles.ToArray());
+    }
+
     [Fact]
     public void Empty_world_allows_hit_path()
     {

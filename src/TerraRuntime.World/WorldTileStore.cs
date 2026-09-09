@@ -45,6 +45,8 @@ public sealed class WorldTileStore
     public WorldDimensions Dimensions { get; }
 
     public WorldLiquidUpdateQueue LiquidUpdates { get; }
+    public WorldFallingBlockUpdates? FallingBlockUpdates { get; private set; }
+    public WorldFallingBlockUpdates EnableFallingBlockUpdates() => FallingBlockUpdates ??= new();
 
     /// <summary>
     /// Network-section backlog dirtied through the authoritative tile mutation API. Packet-section rebuild consumers
@@ -82,6 +84,7 @@ public sealed class WorldTileStore
     public void Set(int x, int y, in WorldTile tile)
     {
         int index = GetIndex(x, y);
+        WorldTile before = _tiles[index];
         WorldSectionId section = TerrariaSectionGeometry.FromTile(Dimensions, x, y);
         int sectionIndex = TerrariaSectionGeometry.ToLinearIndex(Dimensions, section);
 
@@ -92,6 +95,12 @@ public sealed class WorldTileStore
         Interlocked.Increment(ref _sectionVersions[sectionIndex]);
         DirtySections.MarkDirty(section);
         PersistenceDirtySections.MarkDirty(section);
+        if (FallingBlockUpdates is { } falling && (before.Flags != tile.Flags || before.Type != tile.Type || before.Shape != tile.Shape))
+        {
+            // Current placement, support removal and the second cell read by BlockBelowMakesSandFall.
+            for (int dy = -2; dy <= 1; dy++)
+                if (y + dy >= 0 && y + dy < Dimensions.HeightTiles) falling.Wake(index + dy);
+        }
     }
 
     /// <summary>

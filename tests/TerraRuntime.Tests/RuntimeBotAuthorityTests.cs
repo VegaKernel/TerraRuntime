@@ -9,11 +9,428 @@ using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Gameplay.Players;
 using TerraRuntime.World;
+using TerraRuntime.Protocol.Multiplicity;
 
 namespace TerraRuntime.Tests;
 
 public sealed class RuntimeBotAuthorityTests
 {
+    [Fact]
+    public async Task Autonomous_mining_rejects_changed_section_and_reconfiguration_selects_a_new_ore()
+    {
+        using var fixture = new Fixture(480, 806);
+        Assert.True(fixture.Tiles.TryAttachWorldSurface(30));
+        for (int x = 20; x < 70; x++) fixture.Tiles.Set(x, 53, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+        fixture.Tiles.Set(58, 51, new WorldTile { Type = 7, Flags = WorldTileFlags.Active });
+        var bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        Assert.NotNull(await fixture.ConfigureAsync(bot.Id, bot.Configuration with { Mode = RuntimeBotMode.Mining }));
+        fixture.Tick(19);
+        Assert.NotNull(Assert.Single(fixture.Telemetry.Capture()).Observation!.Value.MiningTarget);
+        // ABA at the same coordinate is still a new section revision, not permission from the old observation.
+        fixture.Tiles.Set(58, 51, default);
+        fixture.Tiles.Set(58, 51, new WorldTile { Type = 7, Flags = WorldTileFlags.Active });
+        fixture.Tick(7);
+        Assert.Equal(RuntimeBotActionFailureCode.TargetChanged, Assert.Single(fixture.Telemetry.Capture()).RecentActionResult!.Value.FailureCode);
+        Assert.True(fixture.Tiles.Get(58, 51).IsActive);
+        Assert.True(fixture.ServerPlayers.TryTeleport(bot.ServerPlayerId, 480, 806));
+        fixture.Tiles.Set(32, 51, new WorldTile { Type = 8, Flags = WorldTileFlags.Active });
+        Assert.NotNull(await fixture.ConfigureAsync(bot.Id, bot.Configuration with { Mode = RuntimeBotMode.Mining, MiningOre = RuntimeBotOre.Gold }));
+        fixture.Tick(90);
+        Assert.False(fixture.Tiles.Get(32, 51).IsActive);
+        Assert.True(fixture.Tiles.Get(58, 51).IsActive);
+    }
+
+    [Fact]
+    public async Task Autonomous_mining_excavates_a_body_sized_stone_corridor_and_picks_up_the_ore()
+    {
+        using var fixture = new Fixture(480, 806);
+        Assert.True(fixture.Tiles.TryAttachWorldSurface(30));
+        for (int x = 20; x < 50; x++)
+        {
+            fixture.Tiles.Set(x, 49, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+            fixture.Tiles.Set(x, 53, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+        }
+        for (int x = 32; x < 39; x++)
+        for (int y = 50; y <= 52; y++)
+            fixture.Tiles.Set(x, y, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+        fixture.Tiles.Set(38, 51, new WorldTile { Type = 7, Flags = WorldTileFlags.Active });
+        var bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        Assert.NotNull(await fixture.ConfigureAsync(bot.Id, bot.Configuration with { Mode = RuntimeBotMode.Mining }));
+        fixture.Tick(900);
+        Assert.False(fixture.Tiles.Get(38, 51).IsActive);
+        int ore = 0;
+        for (short slot = 0; slot < 50; slot++)
+            if (fixture.ServerPlayers.TryGetItem(bot.ServerPlayerId, slot, out var item) && item.ItemType.Value == 12) ore += item.Stack;
+        Assert.True(ore == 1, $"Stored={ore}; status={Assert.Single(fixture.Telemetry.Capture())}");
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out var self));
+        Assert.True(self.PositionX > 520);
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task Autonomous_mining_cancel_or_despawn_releases_the_ore_for_another_bot(bool despawn)
+    {
+        using var fixture = new Fixture(480, 806);
+        Assert.True(fixture.Tiles.TryAttachWorldSurface(30));
+        for (int x = 20; x < 70; x++) fixture.Tiles.Set(x, 53, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+        fixture.Tiles.Set(58, 51, new WorldTile { Type = 7, Flags = WorldTileFlags.Active });
+        var first = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        var second = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        Assert.NotNull(await fixture.ConfigureAsync(first.Id, first.Configuration with { Mode = RuntimeBotMode.Mining }));
+        Assert.NotNull(await fixture.ConfigureAsync(second.Id, second.Configuration with { Mode = RuntimeBotMode.Mining }));
+        fixture.Tick(19);
+        var observed = fixture.Telemetry.Capture();
+        Assert.NotNull(observed.Single(b => b.Id == first.Id).Observation!.Value.MiningTarget);
+        Assert.Null(observed.Single(b => b.Id == second.Id).Observation!.Value.MiningTarget);
+        if (despawn)
+        {
+            var completion = new TaskCompletionSource<bool>();
+            fixture.State.Apply(new RuntimeBotDespawnCommand(first.Id, completion));
+            Assert.True(await completion.Task);
+        }
+        else Assert.NotNull(await fixture.ConfigureAsync(first.Id, first.Configuration with { Mode = RuntimeBotMode.Idle }));
+        fixture.Tick(900);
+        Assert.False(fixture.Tiles.Get(58, 51).IsActive);
+        Assert.Equal(1, fixture.State.AppliedWorldItemAllocations);
+    }
+
+    [Theory]
+    [InlineData(true)] [InlineData(false)]
+    public void Falling_material_hits_npc_only_with_server_trust(bool trusted)
+    {
+        using var fixture=new Fixture(simulateProjectiles:true);
+        fixture.SpawnConnectionPlayer(30, 40);
+        var npc=fixture.SpawnNpc(VanillaNpcIds.Zombie,480,600);
+        Assert.True(fixture.Projectiles.TrySpawnVanilla(new(new ProjectileTypeId(31),255,485,605,0,.5f,default,0,10,0,10),out var p));
+        if(trusted)Assert.True(fixture.Projectiles.TryMarkCombatTrusted(p.Handle));
+        fixture.Tick(1);
+        Assert.True(fixture.State.TryCaptureNpcSnapshot(npc.Handle,out var after));
+        Assert.Equal(trusted,after.Simulation.Life<npc.Simulation.Life);
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task Falling_sand_uses_normal_server_player_damage_and_respects_godmode(bool godMode)
+    {
+        using var fixture=new Fixture(480,600,simulateProjectiles:true);
+        var bot=Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        Assert.NotNull(await fixture.ConfigureAsync(bot.Id,bot.Configuration with {GodMode=godMode}));
+        fixture.Tiles.EnableFallingBlockUpdates();
+        fixture.Tiles.Set(30,20,new WorldTile{Type=53,Flags=WorldTileFlags.Active});
+        for(int n=0;n<65;n++)
+        {
+            Assert.True(fixture.ServerPlayers.TryTeleport(bot.ServerPlayerId,480,600));
+            fixture.Tick(1);
+        }
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player,out var self));
+        if(godMode)Assert.Equal(500,self.Life);else Assert.True(self.Life<500);
+    }
+    [Theory]
+    [InlineData(7, 12)] [InlineData(166, 699)] [InlineData(6, 11)] [InlineData(167, 700)]
+    [InlineData(9, 14)] [InlineData(168, 701)] [InlineData(8, 13)] [InlineData(169, 702)]
+    public async Task Autonomous_mining_selects_ore_without_human_digging_and_materializes_one_drop(int tile, int item)
+    {
+        using var fixture = new Fixture(480, 800);
+        Assert.True(fixture.Tiles.TryAttachWorldSurface(30));
+        var bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        fixture.Tiles.Set(32, 51, new WorldTile { Type = (ushort)tile, Flags = WorldTileFlags.Active });
+        fixture.Tiles.Set(34, 51, new WorldTile { Type = 22, Flags = WorldTileFlags.Active });
+        for (int x = 20; x < 40; x++) fixture.Tiles.Set(x, 53, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+        Assert.NotNull(await fixture.ConfigureAsync(bot.Id, bot.Configuration with { Mode = RuntimeBotMode.Mining, MiningOre = (RuntimeBotOre)tile }));
+        for (int tick = 0; tick < 30 && fixture.Tiles.Get(32, 51).IsActive; tick++) fixture.Tick(1);
+        Assert.False(fixture.Tiles.Get(32, 51).IsActive);
+        Assert.True(fixture.Tiles.Get(34, 51).IsActive);
+        Assert.Equal(1, fixture.State.AppliedWorldItemAllocations);
+        var drops = new WorldItemSnapshot[400];
+        int count = fixture.WorldItems.CopyActive(drops);
+        Assert.Equal(1, count);
+        Assert.True(drops[0].TryGetItemType(out var actual));
+        Assert.Equal(item, actual.Value);
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out var self));
+        Assert.Equal(6, self.SelectedItem);
+        // Normal intersection pickup, not a direct mining-to-inventory shortcut.
+        Assert.True(fixture.ServerPlayers.TryTeleport(bot.ServerPlayerId, drops[0].PositionX, drops[0].PositionY));
+        fixture.Tick(1);
+        Assert.Equal(0, fixture.WorldItems.CopyActive(drops));
+        int stored = 0;
+        for (short slot = 0; slot < 50; slot++)
+            if (fixture.ServerPlayers.TryGetItem(bot.ServerPlayerId, slot, out var state) && state.ItemType.Value == item) stored += state.Stack;
+        Assert.Equal(1, stored);
+    }
+
+    [Theory]
+    [InlineData(true, false)] [InlineData(false, true)]
+    public async Task Autonomous_mining_refuses_surface_and_full_inventory(bool surface, bool full)
+    {
+        using var fixture = new Fixture(480, 800);
+        Assert.True(fixture.Tiles.TryAttachWorldSurface(surface ? 60 : 30));
+        var bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        fixture.Tiles.Set(32, 51, new WorldTile { Type = 7, Flags = WorldTileFlags.Active });
+        if (full)
+            for (short slot = 1; slot < 50; slot++)
+                if (slot != 6) Assert.True(fixture.ServerPlayers.SetItem(bot.ServerPlayerId,
+                    new(slot, VanillaItemIds.StoneBlock, 9999, VanillaPrefixIds.None, 0)));
+        Assert.NotNull(await fixture.ConfigureAsync(bot.Id, bot.Configuration with { Mode = RuntimeBotMode.Mining }));
+        fixture.Tick(40);
+        Assert.True(fixture.Tiles.Get(32, 51).IsActive);
+        Assert.Equal(0, fixture.State.AppliedWorldItemAllocations);
+    }
+
+    [Fact]
+    public async Task Addressed_pickup_action_takes_only_observed_item_and_rejects_reused_generation()
+    {
+        using var fixture = new Fixture(160f, 160f);
+        var created = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        var bot = new BotState(created.Id, created.ServerPlayerId, created.Name, created.Configuration,
+            RuntimePlayerBotLoadoutCatalog1458.Pick(new Random(42)), default, default, 0)
+        {
+            Player = created.Player, ObservationRevision = 1
+        };
+        var items = new WorldItemAuthority(new PlayerAuthority(null, fixture.Tiles), fixture.WorldItems,
+            new TerraRuntime.Core.Worlds.SystemWorldItemSpawnRandom(42), null);
+        var inventory = new RuntimeBotInventory(bot, fixture.ServerPlayers, items, new(), fixture.State.WorldIdentity);
+        Assert.True(fixture.ServerPlayers.TryGet(created.Player, out var self));
+        Assert.True(fixture.WorldItems.TryAllocate(CreateWorldItem(VanillaItemIds.SuperHealingPotion, 160f, 160f, 1), out var first));
+        Assert.True(fixture.WorldItems.TryAllocate(CreateWorldItem(VanillaItemIds.SuperHealingPotion, 161f, 160f, 1), out var requested));
+        var observation = new RuntimeBotObservationSnapshot(bot.Id, fixture.State.WorldIdentity, 1, 1, 0,
+            self, bot.Configuration, null, null, requested, false, null, null);
+        Assert.Equal(RuntimeBotActionStatus.Failure, inventory.Pickup(observation,
+            new(requested.Handle.Slot, new WorldItemGeneration(requested.Handle.Generation.Value + 1))).Status);
+        var context = new RuntimeBotActionContext(observation, null!, null!, inventory, null!);
+        Assert.Equal(RuntimeBotActionStatus.Success, new RuntimeBotPickupUsefulItemAction().Tick(context).Status);
+        Assert.True(fixture.WorldItems.TryGetActive(first.Handle.Slot, out _));
+        Assert.False(fixture.WorldItems.TryGetActive(requested.Handle.Slot, out _));
+        Assert.True(fixture.ServerPlayers.TryGetItem(created.ServerPlayerId, 3, out var stack));
+        Assert.Equal(31, stack.Stack);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Old_bot_lifecycle_cannot_modify_a_replacement_server_player_generation(bool recovering)
+    {
+        using var fixture = new Fixture(160f, 160f);
+        var target = fixture.SpawnConnectionPlayer(recovering ? (short)150 : (short)20, 10);
+        var bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        Assert.NotNull(await fixture.ConfigureAsync(bot.Id, bot.Configuration with { Mode = RuntimeBotMode.Follow, Target = new(target.Player, "target") }));
+        fixture.Tick(1);
+        Assert.True(fixture.ServerPlayers.Despawn(bot.ServerPlayerId));
+        var replacement = fixture.ServerPlayers.Create(bot.ServerPlayerId, 400f, 160f);
+        Assert.Equal(ServerPlayerCreateStatus.Created, replacement.Status);
+        Assert.NotEqual(bot.Player, replacement.Player);
+        Assert.True(fixture.ServerPlayers.SetHeldItem(bot.ServerPlayerId, 2, useItem: false));
+        Assert.True(fixture.ServerPlayers.SetMovementIntent(bot.ServerPlayerId, ServerPlayerMovementIntent.MoveTo(800f, 160f)));
+        fixture.Tick(1);
+        Assert.Equal(ServerPlayerMovementIntentKind.MoveTo, fixture.ServerPlayers.GetMovementIntent(replacement.Player).Kind);
+        Assert.True(fixture.ServerPlayers.TryGet(replacement.Player, out var after));
+        Assert.Equal(2, after.SelectedItem);
+        Assert.Null(await fixture.ConfigureAsync(bot.Id, bot.Configuration with { GodMode = true }));
+        var completion = new TaskCompletionSource<bool>();
+        fixture.State.Apply(new RuntimeBotDespawnCommand(bot.Id, completion));
+        Assert.False(await completion.Task);
+        Assert.True(fixture.ServerPlayers.TryGet(replacement.Player, out _));
+    }
+
+    [Theory]
+    [InlineData(30, true)]
+    [InlineData(60, false)]
+    public async Task Follow_assistance_uses_existing_tile_authority_and_never_mines_surface(int surface, bool allowed)
+    {
+        using var fixture = new Fixture(botSpawnX: 480f, botSpawnY: 800f);
+        Assert.True(fixture.Tiles.TryAttachWorldSurface(surface));
+        ConnectionHandle target = fixture.SpawnConnectionPlayer(34, 53);
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        fixture.Tiles.Set(33, 51, new WorldTile { Type = 0, Flags = WorldTileFlags.Active });
+        for (int y = 50; y <= 52; y++) fixture.Tiles.Set(32, y, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+        fixture.State.Apply(new PlayerEquipmentRuntimeCommand(target, new PlayerEquipmentCommitRequest(
+            target.Player.Slot, SlotId: 0, Stack: 1, Prefix: 0, ItemNetId: checked((short)VanillaItemIds.CopperPickaxe.Value), ItemFlags: 0)));
+        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(target,
+            new TerrariaTileManipulationState((byte)TerrariaTileManipulationAction.KillTile, 33, 51, Data: 0, Style: 0)));
+        Assert.NotNull(await fixture.ConfigureAsync(bot.Id, bot.Configuration with
+        {
+            Mode = RuntimeBotMode.Follow, Target = new(target.Player, "miner")
+        }));
+        fixture.State.Tick();
+        Assert.Equal(!allowed, fixture.Tiles.Get(32, 50).IsActive);
+        Assert.Equal(allowed ? 2 : 1, fixture.State.AppliedWorldItemAllocations);
+        if (allowed)
+        {
+            Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out var actor));
+            Assert.Equal(6, actor.SelectedItem);
+            Assert.NotEqual(0, actor.ControlFlags & (1 << 5));
+            // Exercise action cadence at the same obstruction. Random loadouts/formation can otherwise
+            // move the actor around it between swings; navigation is covered by separate traversal tests.
+            for (int tick = 0; tick < 11; tick++)
+            {
+                Assert.True(fixture.ServerPlayers.TryTeleport(bot.ServerPlayerId, 480f, 800f));
+                fixture.Tick(1);
+            }
+            Assert.Equal(2, fixture.State.AppliedWorldItemAllocations); // No accelerated excavation between swings.
+            Assert.True(fixture.ServerPlayers.TryTeleport(bot.ServerPlayerId, 480f, 800f));
+            fixture.Tick(1);
+            Assert.False(fixture.Tiles.Get(32, 51).IsActive);
+            Assert.Equal(3, fixture.State.AppliedWorldItemAllocations); // The next action actually executes.
+        }
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
+    public async Task Targeted_modes_reject_missing_target(int mode)
+    {
+        using var fixture = new Fixture();
+        var bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        Assert.Null(await fixture.ConfigureAsync(bot.Id, bot.Configuration with { Mode = (RuntimeBotMode)mode }));
+    }
+
+    [Fact]
+    public async Task Collect_mode_moves_then_uses_the_existing_exact_item_pickup()
+    {
+        using var fixture = new Fixture(160f, 160f);
+        for (int x = 0; x < 80; x++) fixture.Tiles.Set(x, 13, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+        var bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        Assert.NotNull(await fixture.ConfigureAsync(bot.Id, bot.Configuration with { Mode = RuntimeBotMode.Collect }));
+        Assert.True(fixture.WorldItems.TryAllocate(CreateWorldItem(VanillaItemIds.SuperHealingPotion, 300f, 184f, stack: 2), out var item));
+        fixture.State.Tick();
+        Assert.Equal(ServerPlayerMovementIntentKind.MoveTo, fixture.ServerPlayers.GetMovementIntent(bot.Player).Kind);
+        fixture.Tick(100);
+        Assert.False(fixture.WorldItems.TryGetActive(item.Handle.Slot, out _));
+        var status = Assert.Single(fixture.Telemetry.Capture());
+        Assert.Equal(RuntimeBotMode.Collect, status.Configuration.Mode);
+        Assert.NotNull(status.Observation);
+        Assert.Equal(fixture.State.WorldIdentity, status.Observation.Value.World);
+        Assert.Equal(32, status.Observation.Value.Inventory.HealingPotions);
+    }
+
+    [Fact]
+    public async Task Observations_are_detached_and_reconfigure_invalidates_previous_decision()
+    {
+        using var fixture = new Fixture();
+        var target = fixture.SpawnConnectionPlayer(10, 10);
+        var bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        Assert.NotNull(await fixture.ConfigureAsync(bot.Id, bot.Configuration with { Mode = RuntimeBotMode.Follow, Target = new(target.Player, "target") }));
+        fixture.Tick(7);
+        var before = Assert.Single(fixture.Telemetry.Capture()).Observation!.Value;
+        Assert.Equal(RuntimeBotMode.Follow, before.Configuration.Mode);
+        Assert.NotNull(await fixture.ConfigureAsync(bot.Id, bot.Configuration with { Mode = RuntimeBotMode.Idle }));
+        fixture.Tick(7);
+        var after = Assert.Single(fixture.Telemetry.Capture()).Observation!.Value;
+        Assert.Equal(RuntimeBotMode.Follow, before.Configuration.Mode);
+        Assert.Equal(RuntimeBotMode.Idle, after.Configuration.Mode);
+        Assert.True(after.GoalGeneration > before.GoalGeneration);
+        Assert.True(after.ObservationRevision > before.ObservationRevision);
+        var envelope = new RuntimeBotDecisionEnvelope(before.BotId, before.Self.Player, before.World,
+            before.ObservationRevision, before.GoalGeneration, new(new(RuntimeBotActionKind.Follow, target.Player)));
+        Assert.Equal(RuntimeBotActionFailureCode.StaleDecision, envelope.Validate(after));
+    }
+
+    [Fact]
+    public async Task Return_mode_stops_with_space_around_target_instead_of_overlapping()
+    {
+        using var fixture = new Fixture(150f, 120f);
+        var target = fixture.SpawnConnectionPlayer(10, 10);
+        var bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        Assert.NotNull(await fixture.ConfigureAsync(bot.Id, bot.Configuration with { Mode = RuntimeBotMode.ReturnToPlayer, Target = new(target.Player, "target") }));
+        fixture.Tick(7);
+        Assert.Equal(ServerPlayerMovementIntentKind.Stop, fixture.ServerPlayers.GetMovementIntent(bot.Player).Kind);
+        Assert.Equal(RuntimeBotActionStatus.Success, Assert.Single(fixture.Telemetry.Capture()).RecentActionResult!.Value.Status);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Collect_lease_is_released_on_real_despawn_or_reconfigure(bool despawn)
+    {
+        using var fixture = new Fixture(160f, 160f);
+        var first = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        var second = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        Assert.True(fixture.WorldItems.TryAllocate(CreateWorldItem(VanillaItemIds.SuperHealingPotion, 400f, 184f, stack: 1), out _));
+        Assert.NotNull(await fixture.ConfigureAsync(first.Id, first.Configuration with { Mode = RuntimeBotMode.Collect }));
+        Assert.NotNull(await fixture.ConfigureAsync(second.Id, second.Configuration with { Mode = RuntimeBotMode.Collect }));
+        fixture.State.Tick();
+        Assert.Equal(ServerPlayerMovementIntentKind.MoveTo, fixture.ServerPlayers.GetMovementIntent(first.Player).Kind);
+        Assert.Equal(ServerPlayerMovementIntentKind.Stop, fixture.ServerPlayers.GetMovementIntent(second.Player).Kind);
+        if (despawn)
+        {
+            var completion = new TaskCompletionSource<bool>();
+            fixture.State.Apply(new RuntimeBotDespawnCommand(first.Id, completion));
+            Assert.True(await completion.Task);
+        }
+        else Assert.NotNull(await fixture.ConfigureAsync(first.Id, first.Configuration with { Mode = RuntimeBotMode.Idle }));
+        fixture.State.Tick();
+        Assert.Equal(ServerPlayerMovementIntentKind.MoveTo, fixture.ServerPlayers.GetMovementIntent(second.Player).Kind);
+    }
+
+    [Theory]
+    [InlineData(30, 0, true)]
+    [InlineData(60, 0, false)]
+    [InlineData(0, 0, false)]
+    [InlineData(30, 1, false)]
+    [InlineData(30, -1, false)]
+    [InlineData(30, 2, false)]
+    [InlineData(30, 3, false)]
+    [InlineData(30, 4, false)]
+    [InlineData(30, 5, false)]
+    public async Task Mining_assistance_requires_recent_completed_underground_mining(int surface, int observation, bool shouldMine)
+    {
+        using var fixture = new Fixture(botSpawnX: 480f, botSpawnY: 800f);
+        if (surface > 0) Assert.True(fixture.Tiles.TryAttachWorldSurface(surface));
+        ConnectionHandle target = fixture.SpawnConnectionPlayer(34, 53);
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        fixture.Tiles.Set(33, 51, new WorldTile { Type = 0, Flags = WorldTileFlags.Active });
+        for (int y = 50; y <= 52; y++) fixture.Tiles.Set(32, y, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+        fixture.State.Apply(new PlayerEquipmentRuntimeCommand(target, new PlayerEquipmentCommitRequest(
+            target.Player.Slot, SlotId: 0, Stack: 1, Prefix: 0, ItemNetId: checked((short)VanillaItemIds.CopperPickaxe.Value), ItemFlags: 0)));
+        if (observation >= 0)
+            fixture.State.Apply(new ClientTileManipulationRuntimeCommand(target,
+                new TerrariaTileManipulationState((byte)TerrariaTileManipulationAction.KillTile, 33, 51,
+                    Data: observation == 1 ? (short)1 : (short)0, Style: 0)));
+        if (observation == 2)
+        {
+            fixture.Tick(121);
+            Assert.True(fixture.ServerPlayers.TryTeleport(bot.ServerPlayerId, 480f, 800f));
+        }
+        if (observation == 3) target = fixture.SpawnConnectionPlayer(34, 53); // another player did the mining
+        if (observation == 4) fixture.Tiles.Set(32, 50, new WorldTile { Type = 1, Wall = 1, Flags = WorldTileFlags.Active });
+        if (observation == 5) fixture.Tiles.Set(32, 50, new WorldTile { Type = 226, Flags = WorldTileFlags.Active });
+        _ = await fixture.ConfigureAsync(bot.Id, bot.Configuration with
+        {
+            Mode = RuntimeBotMode.Follow, Target = new RuntimeBotTarget(target.Player, "miner")
+        });
+        fixture.State.Tick();
+        Assert.Equal(!shouldMine, fixture.Tiles.Get(32, 50).IsActive);
+        Assert.True(fixture.ServerPlayers.TryGetItem(bot.ServerPlayerId, 6, out var pick));
+        Assert.Equal(VanillaItemIds.VortexPickaxe, pick.ItemType);
+        if (shouldMine)
+        {
+            Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out var self));
+            Assert.Equal(6, self.SelectedItem);
+            Assert.NotEqual(0, self.ControlFlags & (1 << 5));
+            Assert.Equal(2, fixture.State.AppliedWorldItemAllocations); // human dirt + bot stone, exactly once each
+            fixture.State.Tick();
+            Assert.True(fixture.Tiles.Get(32, 51).IsActive); // full animation cadence, no burst excavation
+        }
+    }
+
+    [Fact]
+    public async Task Mirror_does_not_commit_when_the_entire_landing_neighbourhood_is_solid()
+    {
+        using var fixture = new Fixture(botSpawnX: 32f, botSpawnY: 32f);
+        ConnectionHandle target = fixture.SpawnConnectionPlayer(150, 50);
+        for (int x = 110; x <= 190; x++)
+        for (int y = 15; y <= 80; y++)
+            fixture.Tiles.Set(x, y, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        _ = await fixture.ConfigureAsync(bot.Id, bot.Configuration with
+        {
+            Mode = RuntimeBotMode.Follow, Target = new RuntimeBotTarget(target.Player, "solid destination")
+        });
+        fixture.Tick(60);
+        Assert.Equal(0, Assert.Single(fixture.Telemetry.Capture()).TeleportCount);
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out var self));
+        Assert.False(VanillaWorldSolidCollision.Intersects(fixture.Tiles, self.PositionX, self.PositionY, 20, 42));
+    }
+
     [Fact]
     public async Task Create_request_materializes_powerful_player_bot_with_vanilla_caps_and_consumables()
     {
@@ -51,6 +468,54 @@ public sealed class RuntimeBotAuthorityTests
         Assert.True(fixture.ServerPlayers.TryGetItem(player.ServerPlayerId, VanillaPlayerItemSlotCatalog.AmmoSlotStart + 1, out ServerPlayerItemState bulletAmmo));
         Assert.Equal(VanillaItemIds.SilverBullet, bulletAmmo.ItemType);
         Assert.Equal(999, bulletAmmo.Stack);
+        ItemTypeId[] mobility = [VanillaItemIds.FishronWings, VanillaItemIds.SoaringInsignia,
+            VanillaItemIds.TerrasparkBoots, VanillaItemIds.Magiluminescence];
+        for (int index = 0; index < mobility.Length; index++)
+        {
+            Assert.True(fixture.ServerPlayers.TryGetItem(player.ServerPlayerId,
+                checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 3 + index)), out var accessory));
+            Assert.Equal(mobility[index], accessory.ItemType);
+        }
+    }
+
+    [Fact]
+    public async Task Follow_climbs_hundreds_of_pixels_with_wings_without_mirror_recovery()
+    {
+        using var fixture = new Fixture(botSpawnX: 470f, botSpawnY: 950f);
+        ConnectionHandle target = fixture.SpawnConnectionPlayer(30, 30);
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        _ = await fixture.ConfigureAsync(bot.Id, bot.Configuration with
+        {
+            Mode = RuntimeBotMode.Follow, Target = new RuntimeBotTarget(target.Player, "high target")
+        });
+        fixture.Tick(100);
+        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out var climbed));
+        Assert.True(climbed.PositionY < 500f, $"Bot only reached Y={climbed.PositionY} from 950.");
+        Assert.True(climbed.VelocityY < 0f || climbed.PositionY < 450f);
+    }
+
+    [Fact]
+    public async Task Follow_exits_from_under_a_roof_before_climbing_to_the_player()
+    {
+        using var fixture = new Fixture(botSpawnX: 470f, botSpawnY: 800f);
+        ConnectionHandle target = fixture.SpawnConnectionPlayer(30, 30);
+        RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+        for (int x = 10; x <= 50; x++)
+            fixture.Tiles.Set(x, 44, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+        _ = await fixture.ConfigureAsync(bot.Id, bot.Configuration with
+        {
+            Mode = RuntimeBotMode.Follow, Target = new RuntimeBotTarget(target.Player, "above roof")
+        });
+        bool reachedAbove = false;
+        for (int tick = 0; tick < 160; tick++)
+        {
+            fixture.State.Tick();
+            Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out var self));
+            Assert.False(VanillaWorldSolidCollision.Intersects(fixture.Tiles, self.PositionX, self.PositionY, 20, 42));
+            if (self.PositionY < 620f) { reachedAbove = true; break; }
+        }
+        Assert.True(reachedAbove, "Bot kept pushing against the underside of the roof.");
+        Assert.Equal(0, Assert.Single(fixture.Telemetry.Capture()).TeleportCount);
     }
 
     [Fact]
@@ -135,11 +600,12 @@ public sealed class RuntimeBotAuthorityTests
     }
 
     [Fact]
-    public async Task Player_bot_raises_its_flight_target_when_solid_terrain_blocks_the_escort_route()
+    public async Task Player_bot_navigates_past_solid_terrain_blocking_the_escort_route()
     {
         using var fixture = new Fixture(botSpawnX: 160f, botSpawnY: 160f);
-        ConnectionHandle target = fixture.SpawnConnectionPlayer(spawnTileX: 30, spawnTileY: 13);
-        Assert.True(fixture.State.TryCapturePlayerSnapshot(target.Player, out PlayerStateSnapshot targetState));
+        // All allowed random escort offsets must lie BEYOND the wall. At tile30 some left-side formations
+        // ended before it, so a grounded destination was correct and this assertion failed intermittently.
+        ConnectionHandle target = fixture.SpawnConnectionPlayer(spawnTileX: 40, spawnTileY: 13);
         RuntimeBotSnapshot bot = Assert.IsType<RuntimeBotSnapshot>(
             await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
         _ = Assert.IsType<RuntimeBotSnapshot>(await fixture.ConfigureAsync(
@@ -158,21 +624,17 @@ public sealed class RuntimeBotAuthorityTests
             });
         }
 
-        fixture.State.Tick();
-
-        ServerPlayerMovementIntent intent = fixture.ServerPlayers.GetMovementIntent(bot.Player);
-        float targetCenterY = targetState.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
-        Assert.True(intent.TargetY <= targetCenterY - 64f,
-            $"Obstacle-aware flight target {intent.TargetY} did not rise above target center {targetCenterY}.");
-        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out PlayerStateSnapshot self));
-        float selfCenterY = self.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
-        Assert.True(intent.TargetY < selfCenterY - intent.Options.JumpVerticalThreshold);
-
-        fixture.Tick(30);
-        Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out PlayerStateSnapshot ascending));
-        Assert.NotEqual(0, ascending.ControlFlags & (1 << 4));
-        Assert.True(ascending.PositionY < 120f,
-            $"Obstacle-aware bot remained at low height {ascending.PositionY} instead of ascending above the route.");
+        bool crossed = false;
+        // A valid detour may first move sideways; verify traversal, not one particular first intent.
+        for (int tick = 0; tick < 100; tick++)
+        {
+            fixture.State.Tick();
+            Assert.True(fixture.ServerPlayers.TryGet(bot.Player, out PlayerStateSnapshot self));
+            Assert.False(VanillaWorldSolidCollision.Intersects(fixture.Tiles, self.PositionX, self.PositionY, 20, 42));
+            if (self.PositionX > 304f) { crossed = true; break; }
+        }
+        Assert.True(crossed, "Bot failed to traverse the obstructed escort route.");
+        Assert.Equal(0, Assert.Single(fixture.Telemetry.Capture()).TeleportCount);
     }
 
     [Fact]
@@ -453,6 +915,55 @@ public sealed class RuntimeBotAuthorityTests
         Assert.Equal(reposition.TargetY, heldReposition.TargetY);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Guards_coordinate_only_when_protecting_the_same_player(bool sameProtectedPlayer)
+    {
+        using var fixture = new Fixture(botSpawnX: 160f, botSpawnY: 160f);
+        ConnectionHandle target = fixture.SpawnConnectionPlayer(10, 10);
+        ConnectionHandle secondTarget = sameProtectedPlayer ? target : fixture.SpawnConnectionPlayer(10, 10);
+        var squad = new RuntimeBotSnapshot[2];
+        for (int i = 0; i < squad.Length; i++)
+        {
+            squad[i] = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+            _ = await fixture.ConfigureAsync(squad[i].Id, squad[i].Configuration with
+            {
+                Mode = RuntimeBotMode.Guard, Target = new RuntimeBotTarget(i == 0 ? target.Player : secondTarget.Player, "target"),
+                WeaponPolicy = RuntimeBotWeaponPolicy.Bow
+            });
+        }
+        _ = fixture.SpawnNpc(VanillaNpcIds.Zombie, 40f, 160f);
+        _ = fixture.SpawnNpc(VanillaNpcIds.Zombie, 400f, 160f);
+        fixture.State.Tick();
+        var shots = new ProjectileSnapshot[fixture.Projectiles.Capacity];
+        Assert.Equal(2, fixture.Projectiles.CopyActive(shots));
+        Assert.Equal(sameProtectedPlayer, shots[0].VelocityX * shots[1].VelocityX < 0f);
+    }
+
+    [Fact]
+    public async Task Melee_squad_approaches_a_shared_enemy_from_distinct_positions()
+    {
+        using var fixture = new Fixture(botSpawnX: 160f, botSpawnY: 160f);
+        ConnectionHandle target = fixture.SpawnConnectionPlayer(10, 10);
+        var squad = new RuntimeBotSnapshot[2];
+        for (int i = 0; i < squad.Length; i++)
+        {
+            squad[i] = Assert.IsType<RuntimeBotSnapshot>(await fixture.CreateBotAsync(RuntimeBotCreateRequest.Player));
+            _ = await fixture.ConfigureAsync(squad[i].Id, squad[i].Configuration with
+            {
+                Mode = RuntimeBotMode.Guard, Target = new RuntimeBotTarget(target.Player, "shared target"),
+                WeaponPolicy = RuntimeBotWeaponPolicy.Melee
+            });
+        }
+        _ = fixture.SpawnNpc(VanillaNpcIds.Zombie, 500f, 160f);
+        fixture.State.Tick();
+        var first = fixture.ServerPlayers.GetMovementIntent(squad[0].Player);
+        var second = fixture.ServerPlayers.GetMovementIntent(squad[1].Player);
+        Assert.Equal(48f, second.TargetX - first.TargetX);
+        Assert.Equal(first.TargetY, second.TargetY);
+    }
+
     [Fact]
     public async Task Guard_holds_clear_firing_position_and_lock_when_another_npc_moves_closer()
     {
@@ -724,7 +1235,7 @@ public sealed class RuntimeBotAuthorityTests
         private readonly List<PlayerJoinSession> sessions = [];
         private long nextConnectionId = 1;
 
-        public Fixture(float botSpawnX = 32f, float botSpawnY = 32f)
+        public Fixture(float botSpawnX = 32f, float botSpawnY = 32f, bool simulateProjectiles = false)
         {
             var identities = new ServerPlayerSlotRegistry(slots);
             var states = new ServerPlayerStateStore(identities, slots.Capacity);
@@ -734,6 +1245,7 @@ public sealed class RuntimeBotAuthorityTests
             Projectiles = new RuntimeProjectileStore();
             Telemetry = new RuntimeBotTelemetry();
             State = new ServerRuntimeState(
+                projectileStepper: simulateProjectiles ? new VanillaProjectileWorldStateStepper(Tiles) : null,
                 worldTiles: Tiles,
                 worldItems: WorldItems,
                 projectiles: Projectiles,

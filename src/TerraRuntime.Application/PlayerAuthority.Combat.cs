@@ -223,6 +223,12 @@ internal sealed partial class PlayerAuthority
             immunityChannel,
             out committed);
 
+    internal PlayerDamageCommitResult TryCommitAuthoritativeEnvironmentProjectileDamage(
+        long tick, ProjectileHandle projectile, PlayerHandle target, int damage, int hitDirection,
+        VanillaPlayerImmunityChannel1458 immunityChannel, out PlayerStateSnapshot committed) =>
+        TryCommitAuthoritativePveDamage(tick, target, DamageSource.FromEnvironmentProjectile(projectile),
+            damage, hitDirection, immunityChannel, out committed);
+
     private PlayerDamageCommitResult TryCommitAuthoritativePveDamage(
         long tick,
         PlayerHandle targetHandle,

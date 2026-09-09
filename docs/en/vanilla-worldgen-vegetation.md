@@ -4,6 +4,8 @@ This note describes the late vegetation slice of the Terraria 1.4.5.8-compatible
 
 ## Scope
 
+The earlier Underworld ash-tree grower also performs the verified fresh-root post-growth framing from `GrowTreeWithSettings` / `CheckTreeWithSettings`. Initial root admission remains generic; final support must be ash grass633. Removing a rejected root preserves source dust RNG and inactive frame writes. Final single-root base frames differ from initial placement frames. This is not a general tree-destruction implementation.54 independent official full-cell/RNG cases cover pure ash and mixed grass support;12 separate fort cases retain incoming brick frames and flat platform endpoints. The complete ordinary Underworld prefix now matches all9 canonical seed/size cases, including liquids and ordered dresser metadata; special seeds and whole-world parity remain unverified.
+
 For ordinary canonical worlds the production plan advances from the persisted starting `Guide` through eleven pinned passes:
 
 1. `Sunflowers`
@@ -29,6 +31,8 @@ Placement is constrained by the existing generated terrain instead of inventing 
 All eleven passes use the single shared Terraria-compatible `UnifiedRandom` stream supplied by `VanillaSharedRng`. They remain enabled only for ordinary worlds using the three canonical Terraria dimensions; noncanonical and special-seed requests retain the compatibility plan until their branches are ported explicitly.
 
 ## Frame-important safety
+
+Dye Plants `227` occupy one tile but use `PlaceDye`'s $34\,\text{pixel}$ horizontal atlas stride, with frameY `0`, not the ordinary $18\,\text{pixel}$ stride. Generation and loading share the bounded styles `0..11` frame contract. Valid plants can die in loading lava without granting live mining/drop authority; malformed frames remain fail-closed. Existing placement density/style-selection approximations are not made source-exact by this framing fix.
 
 Ordinary cactus growth now uses source-backed `PlantCactus`/`GrowCactus` instead of fixed short columns. The initial root attempt is followed by all 150 randomized candidate pairs, even after rejection. Growth owns the four conversion sands, nearby sand/cactus scan order, integer liquid-volume gate, slope-flattening roll, root/branch discovery, population cap, trunk-height rolls, raised arms and paint/coatings. The liquid scan covers $100\times50\,\text{tiles}$ and rejects only when integer liquid units exceed 25 full tiles. Cosmetic `CactusFrame` is intentionally not run: source `TileFrame` skips it during `generatingWorld`, so zero cosmetic frames are not themselves a generation defect. Scripted tests pin growth/RNG/limits; canonical Small seed `42` now requires raised cactus arms. Disabling arms fails both the scripted shape test and full-map assertion. Mixed-pass candidate density/oasis scheduling and special-seed/runtime growth remain open.
 

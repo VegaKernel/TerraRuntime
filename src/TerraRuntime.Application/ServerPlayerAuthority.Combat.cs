@@ -101,6 +101,13 @@ internal sealed partial class ServerPlayerAuthority
             masterMode,
             out committed);
 
+    internal PlayerDamageCommitResult TryCommitAuthoritativeEnvironmentProjectileDamage(
+        long tick, ProjectileHandle projectile, ProjectileTypeId projectileType, PlayerHandle target,
+        int damage, int hitDirection, VanillaPlayerImmunityChannel1458 immunityChannel, bool expertMode, bool masterMode,
+        out PlayerStateSnapshot committed) =>
+        TryCommitAuthoritativeDamage(tick, target, DamageSource.FromEnvironmentProjectile(projectile), projectileType,
+            damage, hitDirection, immunityChannel, expertMode, masterMode, out committed);
+
     private PlayerDamageCommitResult TryCommitAuthoritativeDamage(
         long tick,
         PlayerHandle target,

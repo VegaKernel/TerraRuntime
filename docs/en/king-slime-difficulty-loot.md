@@ -28,7 +28,7 @@ The pinned King Slime rule is `BossBag(3318)`. On the server it resolves to `Dro
 
 `RuntimeKingSlimeDifficultyLootDeliverySink` now implements that transport boundary. It materializes the item through the same source-backed world-item materializer, reserves an unpublished exact slot, encodes packet 90 with the byte-for-byte packet-21 payload shape, and sends it only to the requested playing player slots. The reservation is represented by `RuntimeWorldItemInstancedLeaseStore`, so ordinary item allocation cannot reuse the slot while the instanced client copy exists.
 
-When a lease reaches zero, `TerrariaWorldItemFrameEncoder.TryEncodeInstancedSlotRelease` emits the five-byte packet 151 contract carrying the released item slot. Production advances these leases once per authoritative item phase, after NPC and projectile phases, so a Boss Bag created during NPC death consumes its first lease tick in the same world update just like the source item loop.
+When a lease reaches zero, `TerrariaWorldItemFrameEncoder.TryEncodeRemoval` emits the five-byte packet 151 contract carrying the released item slot; ordinary empty-item sync uses the same source wire format. Production advances these leases once per authoritative item phase, after NPC and projectile phases, so a Boss Bag created during NPC death consumes its first lease tick in the same world update just like the source item loop.
 
 ## Master relic
 

@@ -28,7 +28,8 @@ internal static class TreeGrower1458
         WorldTileStore store,
         int x,
         int checkedY,
-        IWorldGenerationVanillaRandom random)
+        IWorldGenerationVanillaRandom random,
+        bool ignoreWalls = false)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(random);
@@ -57,7 +58,7 @@ internal static class TreeGrower1458
 
         ref WorldTile ground = ref tiles[Index(stride, x, groundY)];
         if (!IsFlatActiveTreeGround(in ground) ||
-            !TreeGrowthCatalog1458.AllowsPlantGrowth(tiles[Index(stride, x, groundY - 1)].WallType) ||
+            !ignoreWalls && !TreeGrowthCatalog1458.AllowsPlantGrowth(tiles[Index(stride, x, groundY - 1)].WallType) ||
             (!IsTreeGround(tiles[Index(stride, x - 1, groundY)]) &&
              !IsTreeGround(tiles[Index(stride, x + 1, groundY)])))
         {
@@ -165,6 +166,23 @@ internal static class TreeGrower1458
         int topVariant = random.Next(SegmentVariantCount);
         ref WorldTile top = ref tiles[Index(stride, x, groundY - treeHeight)];
         SetTreeFrame(ref top, TreeFrameCatalog1458.Top(leafyTop, topVariant));
+        // GrowTree ends with RangeFrame. During generation ordinary solid tiles keep their frames,
+        // but inactive block paint/coatings/slopes and absent-wall paint/coatings are still cleared.
+        for (int tx = Math.Max(0, x - 3); tx <= Math.Min(width - 1, x + 3); tx++)
+        for (int ty = Math.Max(0, groundY - treeHeight - 2); ty <= Math.Min(height - 1, groundY + 2); ty++)
+        {
+            ref WorldTile cell = ref tiles[Index(stride, tx, ty)];
+            if (tx > 5 && ty > 5 && tx < width - 5 && ty < height - 5 && !cell.IsActive)
+            {
+                cell.Shape = cell.TileColor = 0;
+                cell.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+            }
+            if (tx > 0 && ty > 0 && tx < width - 1 && ty < height - 1 && cell.Wall == 0)
+            {
+                cell.WallColor = 0;
+                cell.Flags &= ~(WorldTileFlags.InvisibleWall | WorldTileFlags.FullbrightWall);
+            }
+        }
         return true;
     }
 

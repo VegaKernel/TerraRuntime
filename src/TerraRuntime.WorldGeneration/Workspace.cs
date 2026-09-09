@@ -5,6 +5,12 @@ namespace TerraRuntime.WorldGeneration.Runtime;
 
 internal readonly record struct VanillaPyramidCandidate1458(int X, int Y);
 internal readonly record struct VanillaLiquidLines1458(int WaterLine, int LavaLine);
+internal readonly record struct VanillaSkyIsland1458(int X, int Y, int Style, bool IsLake);
+internal readonly record struct VanillaSnowRow1458(int Left, int Right);
+internal readonly record struct VanillaDesertGenerationState1458(WorldTileRegion Hive, WorldTileRegion DensityBounds, WorldTileRegion StructureArea)
+{
+    public int StructurePadding => 10;
+}
 internal readonly record struct VanillaCaveHouseCounts1458(int Ordinary, int AdditionalDesert)
 {
     public int Total => Ordinary + AdditionalDesert;
@@ -49,8 +55,17 @@ public sealed class Workspace :
     private VanillaWorldGenerationBootstrapState1458? vanillaBootstrapState;
     private TerrainGenerationState1458? vanillaTerrainState;
     private VanillaLiquidLines1458? vanillaLiquidLines;
+    private WorldGenerationPoint[] vanillaMushroomCenters = [];
+    private WorldTileRegion[] vanillaMarbleRegions = [];
+    private WorldTileRegion[] vanillaGraniteRegions = [];
+    private VanillaSkyIsland1458[] vanillaSkyIslands = [];
+    private WorldGenerationPoint[] vanillaMountainCaves = [];
+    private int[]? vanillaTunnelColumns;
+    private int[] vanillaLakeColumns = [];
+    private VanillaSnowRow1458[]? vanillaSnowRows;
     private VanillaCaveHouseCounts1458? vanillaCaveHouseCounts;
     private VanillaUndergroundDesertRegion1458? vanillaUndergroundDesertRegion;
+    private VanillaDesertGenerationState1458? vanillaDesertGenerationState;
     private DungeonSetupProfile1458? vanillaDungeonSetupProfile;
     private DungeonGraph1458? vanillaDungeonGraph;
     private readonly List<VanillaPyramidCandidate1458> vanillaPyramidCandidates = [];
@@ -72,8 +87,72 @@ public sealed class Workspace :
     internal VanillaWorldGenerationBootstrapState1458? VanillaBootstrapState => vanillaBootstrapState;
     internal TerrainGenerationState1458? VanillaTerrainState => vanillaTerrainState;
     internal VanillaLiquidLines1458? VanillaLiquidLines => vanillaLiquidLines;
+    internal WorldGenerationPoint? VanillaShimmerPosition { get; set; }
+    internal ReadOnlySpan<WorldGenerationPoint> VanillaMushroomCenters => vanillaMushroomCenters;
+    // GenVars.structures retains these unpadded Marble rectangles with padding 8.
+    internal ReadOnlySpan<WorldTileRegion> VanillaMarbleRegions => vanillaMarbleRegions;
+    internal ReadOnlySpan<WorldTileRegion> VanillaGraniteRegions => vanillaGraniteRegions;
+    internal ReadOnlySpan<VanillaSkyIsland1458> VanillaSkyIslands => vanillaSkyIslands;
+    internal ReadOnlySpan<WorldGenerationPoint> VanillaMountainCaves => vanillaMountainCaves;
+    internal ReadOnlySpan<int> VanillaTunnelColumns => vanillaTunnelColumns ??
+        throw new InvalidOperationException("Surface tunnel metadata has not been generated.");
+    internal ReadOnlySpan<int> VanillaLakeColumns => vanillaLakeColumns;
+    internal ReadOnlySpan<VanillaSnowRow1458> VanillaSnowRows => vanillaSnowRows ??
+        throw new InvalidOperationException("Snow biome bounds have not been generated.");
+    internal int VanillaSnowTop { get; private set; }
+    internal int VanillaSnowBottom { get; private set; }
+    internal void SetVanillaSnowBounds(int top, int bottom, ReadOnlySpan<int> left, ReadOnlySpan<int> right)
+    {
+        if (top < 0 || bottom < top || bottom > HeightTiles || left.Length != HeightTiles || right.Length != HeightTiles)
+            throw new ArgumentOutOfRangeException(nameof(top));
+        var rows = new VanillaSnowRow1458[HeightTiles];
+        for (int y = 0; y < rows.Length; y++)
+        {
+            if (left[y] < 0 || right[y] < left[y] || right[y] > WidthTiles) throw new ArgumentOutOfRangeException(nameof(left));
+            rows[y] = new(left[y],right[y]);
+        }
+        vanillaSnowRows = rows; VanillaSnowTop = top; VanillaSnowBottom = bottom;
+    }
+    internal void SetVanillaTunnelColumns(ReadOnlySpan<int> columns)
+    {
+        if (columns.Length >= 50) throw new ArgumentOutOfRangeException(nameof(columns));
+        vanillaTunnelColumns = columns.ToArray();
+    }
+    internal void SetVanillaLakeColumns(ReadOnlySpan<int> columns)
+    {
+        if (columns.Length >= 50) throw new ArgumentOutOfRangeException(nameof(columns));
+        vanillaLakeColumns = columns.ToArray();
+    }
+    internal void SetVanillaMountainCaves(ReadOnlySpan<WorldGenerationPoint> caves)
+    {
+        if (caves.Length > 8) throw new ArgumentOutOfRangeException(nameof(caves));
+        vanillaMountainCaves = caves.ToArray();
+    }
+    internal void SetVanillaSkyIslands(ReadOnlySpan<VanillaSkyIsland1458> islands)
+    {
+        // Ordinary canonical worlds have at most six islands plus three lakes.
+        if (islands.Length > 9) throw new ArgumentOutOfRangeException(nameof(islands));
+        vanillaSkyIslands = islands.ToArray();
+    }
+    internal void SetVanillaGraniteRegions(ReadOnlySpan<WorldTileRegion> regions)
+    {
+        if (regions.Length > 16) throw new ArgumentOutOfRangeException(nameof(regions));
+        vanillaGraniteRegions = regions.ToArray();
+    }
+    internal void SetVanillaMarbleRegions(ReadOnlySpan<WorldTileRegion> regions)
+    {
+        if (regions.Length > 32) throw new ArgumentOutOfRangeException(nameof(regions));
+        vanillaMarbleRegions = regions.ToArray();
+    }
+    internal void SetVanillaMushroomCenters(ReadOnlySpan<WorldGenerationPoint> centers)
+    {
+        if (centers.Length > 50) throw new ArgumentOutOfRangeException(nameof(centers));
+        vanillaMushroomCenters = centers.ToArray();
+    }
     internal VanillaCaveHouseCounts1458? VanillaCaveHouseCounts => vanillaCaveHouseCounts;
     internal VanillaUndergroundDesertRegion1458? VanillaUndergroundDesertRegion => vanillaUndergroundDesertRegion;
+    internal VanillaDesertGenerationState1458? VanillaDesertGenerationState => vanillaDesertGenerationState;
+    internal void SetVanillaDesertGenerationState(VanillaDesertGenerationState1458 value) => vanillaDesertGenerationState = value;
     internal DungeonSetupProfile1458? VanillaDungeonSetupProfile => vanillaDungeonSetupProfile;
     internal DungeonGraph1458? VanillaDungeonGraph => vanillaDungeonGraph;
 
@@ -121,7 +200,7 @@ public sealed class Workspace :
     internal bool TryAddGeneratedChest(int x, int y, string name, ReadOnlySpan<WorldChestItem> items)
     {
         ArgumentNullException.ThrowIfNull(name);
-        if (generatedChests.Count >= VanillaWorldFormat326.MaximumChestSlots ||
+        if (!CanRegisterGeneratedChest(x, y) ||
             items.Length > VanillaChestItemSlots ||
             (uint)x >= (uint)(WidthTiles - 1) ||
             (uint)y >= (uint)(HeightTiles - 1))
@@ -132,12 +211,6 @@ public sealed class Workspace :
         WorldTile anchor = TileStore.Get(x, y);
         if (!VanillaMultiTileObjectCatalog.MatchesChestAnchor(in anchor))
             return false;
-
-        foreach (WorldChest chest in generatedChests)
-        {
-            if (chest.X == x && chest.Y == y)
-                return false;
-        }
 
         // Every vanilla world-generation chest is an ordinary 40-slot container.  Passing an empty
         // span from a placement pass means "no generated loot yet", not "create a zero-slot chest".
@@ -206,6 +279,15 @@ public sealed class Workspace :
         }
 
         return TryAddGeneratedChest(x, y, name, persistedItems);
+    }
+
+    /// <summary>Generation's FindEmptyChest gate, without capturing or exposing the side table.</summary>
+    internal bool CanRegisterGeneratedChest(int x, int y)
+    {
+        if (generatedChests.Count >= VanillaWorldFormat326.MaximumChestSlots) return false;
+        foreach (WorldChest chest in generatedChests)
+            if (chest.X == x && chest.Y == y) return false;
+        return true;
     }
 
     /// <summary>Returns a detached dense chest snapshot suitable for persistence.</summary>

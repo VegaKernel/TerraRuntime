@@ -68,6 +68,12 @@ internal sealed class RuntimeProjectileNpcCombatPass
         for (int projectileIndex = 0; projectileIndex < projectileCount; projectileIndex++)
         {
             ProjectileSnapshot projectile = projectileBuffer[projectileIndex];
+            if (projectiles.IsCombatTrusted(projectile.Handle) && VanillaProjectileOwnership.IsServerOwned(projectile.Spawner) &&
+                VanillaFallingBlock1458.TryGetTile(projectile.Type, out _))
+            {
+                TickFallingBlock(in projectile, npcCount, tick);
+                continue;
+            }
             if (!projectiles.IsCombatTrusted(projectile.Handle) ||
                 !IsEligible(in projectile, out VanillaProjectileDefinition projectileDefinition, out _))
             {
@@ -136,6 +142,28 @@ internal sealed class RuntimeProjectileNpcCombatPass
 
             if (projectileEnded)
                 continue;
+        }
+    }
+
+    private void TickFallingBlock(in ProjectileSnapshot projectile, int npcCount, long tick)
+    {
+        if (projectile.Damage <= 0 || !TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(projectile.Type, out var definition)) return;
+        int ownerRow = byte.MaxValue * npcs.Capacity; // NPC.immune[255], source infinite penetration and shared10-tick immunity.
+        for (int i = 0; i < npcCount; i++)
+        {
+            var target = npcBuffer[i];
+            if (!IsEligibleTarget(target, out var hitbox) || !Intersects(projectile, definition, target, hitbox) ||
+                IsOwnerNpcOnCooldown(ownerRow, target.Handle, tick) ||
+                projectile.Type.Value == 31 && target.TypeIdentity.Value == 69) continue; // Antlion sand immunity.
+            // Unowned AI010 blocks have no player crit/armor modifiers. Reuse non-player damage/loot finalization.
+            int damage = TerraRuntime.Gameplay.Players.VanillaIncomingPlayerDamageFacts1458.ResolveHostileProjectileDamage(
+                projectile.Damage, random.Next(-15, 16));
+            int direction = target.PositionX + hitbox.Width * .5f < projectile.PositionX + 5 ? -1 : 1;
+            var result = combat.TryStrikeEnvironmentProjectile(projectile, target.Handle, damage, direction);
+            if (result == RuntimeTownNpcMeleeDamageResult1458.Rejected) continue;
+            MarkOwnerNpcCooldown(ownerRow, target.Handle, tick);
+            CommittedHits++;
+            if (result == RuntimeTownNpcMeleeDamageResult1458.Killed) Kills++;
         }
     }
 

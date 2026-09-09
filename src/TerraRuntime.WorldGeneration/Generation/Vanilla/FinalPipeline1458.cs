@@ -6,7 +6,9 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// <summary>
 /// Final ordinary-world TerrariaServer 1.4.5.8 world-generation overlay. It replaces the eight native passes after
 /// Micro Biomes and before the compatibility SecretSeeds barrier, completing source-pinned pass identity coverage for
-/// the ordinary canonical 109-pass pipeline without changing the fallback used by secret seeds or synthetic sizes.
+/// the ordinary canonical pipeline without changing the fallback used by secret seeds or synthetic sizes.
+/// The source catalog has 109 registrations, including two conditional Skyblock entries; ordinary coverage is 107.
+/// Registration coverage is not proof of pass geometry or complete-world equality.
 /// </summary>
 public sealed class SourceBackedFinal1458 : IWorldGenerationProvider
 {
@@ -205,6 +207,7 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
 
     private static void ApplySettleLiquidsAgain(IWorldGenerationContext context, RuntimeGrid grid)
     {
+        new VanillaWorldLiquidSimulator1458(grid.Store).ClearEmbeddedLiquidDuringGenerationSettle(context.CancellationToken);
         long moved = 0;
         for (int x = 0; x < grid.Width; x++)
         {
@@ -529,6 +532,11 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                     throw new InvalidOperationException($"Final Cleanup found unsupported wall id {tile.Wall} at ({x}, {y}).");
                 if (!tile.HasOnlyKnownFlags)
                     throw new InvalidOperationException($"Final Cleanup found unknown tile flags at ({x}, {y}).");
+
+                if (GenerationObsidianDoorFraming1458.Check(grid.Store, x, y))
+                    normalized++;
+                if (GenerationDesertObjectFraming1458.Check(grid.Store, x, y))
+                    normalized++;
 
                 if (tile.IsActive && y + 1 < grid.Height && IsUnsupportedSingleTilePlant(in tile, in grid.At(x, y + 1)))
                 {

@@ -4,9 +4,105 @@ namespace TerraRuntime.Tests;
 
 public sealed class LoadingLiquidObjectDestruction1458Tests
 {
+    // Official 1.4.5.8 KillTile + CheckOnTable1x1: all seven platform types x six book frames.
+    public static IEnumerable<object[]> PlatformBooks()
+    {
+        foreach (int platform in new[] { 19, 427, 435, 436, 437, 438, 439 })
+        foreach (int frame in new[] { 0, 18, 36, 54, 72, 90 })
+            yield return [platform, frame];
+    }
+
+    [Theory]
+    [MemberData(nameof(PlatformBooks))]
+    public void Loading_lava_removes_platform_and_book_that_loses_its_anchor(int platform, int frame)
+    {
+        var tiles = CreateObject(platform, 1, 1);
+        var book = new WorldTile { Type = 50, FrameX = (short)frame, FrameY = 0,
+            Wall = 13, TileColor = 3, LiquidKind = WorldLiquidKind.Lava,
+            Flags = WorldTileFlags.Active | WorldTileFlags.WireRed };
+        tiles.SetInitialPopulationTile(10, 9, in book);
+        WorldTile wet = tiles.Get(10, 10);
+        wet.LiquidAmount = 100; wet.LiquidKind = WorldLiquidKind.Lava;
+        tiles.SetInitialPopulationTile(10, 10, in wet);
+
+        Assert.True(new VanillaWorldLiquidSimulator1458(tiles).WaterCheckLoading().IsApplied);
+
+        for (int y = 9; y <= 10; y++)
+        {
+            WorldTile dead = tiles.Get(10, y);
+            Assert.False(dead.IsActive);
+            Assert.Equal(0, dead.Type);
+            Assert.Equal(-1, dead.FrameX);
+            Assert.Equal(-1, dead.FrameY);
+            Assert.Equal(0, dead.TileColor);
+            Assert.Equal(13, dead.Wall);
+        }
+        Assert.True((tiles.Get(10, 9).Flags & WorldTileFlags.WireRed) != 0);
+        Assert.Equal(100, tiles.Get(10, 10).LiquidAmount);
+    }
+
+    [Theory]
+    [InlineData(-1, 0, false)] [InlineData(108, 0, false)]
+    [InlineData(0, 18, false)] [InlineData(0, 0, true)]
+    public void Unknown_book_or_further_dependency_keeps_platform_death_fail_closed(int frameX, int frameY, bool occupiedAbove)
+    {
+        var tiles = CreateObject(19, 1, 1);
+        var book = new WorldTile { Type = 50, FrameX = (short)frameX, FrameY = (short)frameY, Flags = WorldTileFlags.Active };
+        tiles.SetInitialPopulationTile(10, 9, in book);
+        if (occupiedAbove)
+        {
+            var other = new WorldTile { Type = 21, Flags = WorldTileFlags.Active };
+            tiles.SetInitialPopulationTile(10, 8, in other);
+        }
+        WorldTile wet = tiles.Get(10, 10);
+        wet.LiquidAmount = 100; wet.LiquidKind = WorldLiquidKind.Lava;
+        tiles.SetInitialPopulationTile(10, 10, in wet);
+        Assert.False(new VanillaWorldLiquidSimulator1458(tiles).WaterCheckLoading().IsApplied);
+        Assert.Equal(wet, tiles.Get(10, 10));
+        Assert.Equal(book, tiles.Get(10, 9));
+    }
+
+    [Theory]
+    [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(3)] [InlineData(4)] [InlineData(5)]
+    [InlineData(6)] [InlineData(7)] [InlineData(8)] [InlineData(9)] [InlineData(10)] [InlineData(11)]
+    public void Dye_plant_is_one_cell_with_a_34_pixel_style_stride(int style)
+    {
+        var tiles = CreateObject(227, 1, 1, style * 34, 0);
+        WorldTile wet = tiles.Get(10, 10); wet.LiquidAmount = 100; wet.LiquidKind = WorldLiquidKind.Lava;
+        tiles.SetInitialPopulationTile(10, 10, in wet);
+        Assert.Equal(style * 34, VanillaDyePlantFrame1458.ForStyle(style));
+        Assert.True(new VanillaWorldLiquidSimulator1458(tiles).WaterCheckLoading().IsApplied);
+        Assert.False(tiles.Get(10, 10).IsActive);
+        Assert.Equal(100, tiles.Get(10, 10).LiquidAmount);
+        Assert.Equal(13, tiles.Get(10, 10).Wall);
+    }
+
+    [Theory]
+    [InlineData(-1,0)] [InlineData(18,0)] [InlineData(408,0)] [InlineData(34,18)]
+    public void Unknown_dye_plant_frames_stay_fail_closed(int frameX, int frameY)
+    {
+        var tiles = CreateObject(227, 1, 1, frameX, frameY);
+        WorldTile wet = tiles.Get(10, 10); wet.LiquidAmount = 100; wet.LiquidKind = WorldLiquidKind.Lava;
+        tiles.SetInitialPopulationTile(10, 10, in wet);
+        Assert.False(new VanillaWorldLiquidSimulator1458(tiles).WaterCheckLoading().IsApplied);
+        Assert.Equal(wet, tiles.Get(10, 10));
+    }
+
     [Theory]
     [InlineData(12, 2, 2, 0, 0)]
     [InlineData(12, 2, 2, 36, 0)]
+    [InlineData(15, 1, 2, 0, 520)]
+    [InlineData(15, 1, 2, 18, 520)]
+    [InlineData(15, 1, 2, 0, 560)]
+    [InlineData(15, 1, 2, 18, 560)]
+    [InlineData(15, 1, 2, 0, 600)]
+    [InlineData(15, 1, 2, 18, 600)]
+    [InlineData(15, 1, 2, 0, 680)]
+    [InlineData(15, 1, 2, 18, 680)]
+    [InlineData(15, 1, 2, 0, 720)]
+    [InlineData(15, 1, 2, 18, 720)]
+    [InlineData(15, 1, 2, 0, 760)]
+    [InlineData(15, 1, 2, 18, 760)]
     [InlineData(28, 2, 2, 36, 720)]
     [InlineData(93, 1, 3, 18, 0)]
     [InlineData(215, 3, 2, 0, 36)]
@@ -18,6 +114,11 @@ public sealed class LoadingLiquidObjectDestruction1458Tests
     [InlineData(246, 3, 2, 0, 576)]
     [InlineData(233, 3, 2, 54, 0)]
     [InlineData(233, 2, 2, 36, 36)]
+    [InlineData(484, 2, 2, 0, 0)]
+    [InlineData(485, 2, 2, 0, 0)]
+    [InlineData(485, 2, 2, 36, 0)]
+    [InlineData(485, 2, 2, 72, 0)]
+    [InlineData(485, 2, 2, 108, 0)]
     public void Lava_death_removes_whole_coherent_object_and_preserves_liquid_wall_and_wires(
         int type, int width, int height, int frameX, int frameY)
     {
@@ -81,11 +182,15 @@ public sealed class LoadingLiquidObjectDestruction1458Tests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void Foreign_or_incoherent_object_cell_rejects_before_any_mutation(bool foreign)
+    [InlineData(28, false)]
+    [InlineData(28, true)]
+    [InlineData(484, false)]
+    [InlineData(484, true)]
+    [InlineData(485, false)]
+    [InlineData(485, true)]
+    public void Foreign_or_incoherent_object_cell_rejects_before_any_mutation(int type, bool foreign)
     {
-        var tiles = CreateObject(28, 2, 2);
+        var tiles = CreateObject(type, 2, 2);
         WorldTile wrong = tiles.Get(11, 10);
         if (foreign) wrong.Type = 21; // must not clear someone else's container
         else wrong.FrameX = 36;
@@ -99,6 +204,31 @@ public sealed class LoadingLiquidObjectDestruction1458Tests
         Assert.Equal(wrong, tiles.Get(11, 10));
         Assert.Equal(wet, tiles.Get(10, 11));
         Assert.True(tiles.Get(10, 10).IsActive);
+        Assert.False(tiles.LiquidUpdates.HasPendingWork);
+    }
+
+    [Theory]
+    [InlineData(0, 556, false)]
+    [InlineData(18, 538, false)]
+    [InlineData(0, 538, true)]
+    [InlineData(36, 538, false)]
+    public void Incoherent_chair_rejects_lava_death_without_clearing_either_cell(int frameX, int frameY, bool foreign)
+    {
+        var tiles = CreateObject(15, 1, 2, 0, 520);
+        WorldTile wrong = tiles.Get(10, 11);
+        wrong.FrameX = (short)frameX;
+        wrong.FrameY = (short)frameY;
+        if (foreign) wrong.Type = 21;
+        tiles.SetInitialPopulationTile(10, 11, in wrong);
+        WorldTile wet = tiles.Get(10, 10);
+        wet.LiquidAmount = 100;
+        wet.LiquidKind = WorldLiquidKind.Lava;
+        tiles.SetInitialPopulationTile(10, 10, in wet);
+        WorldTile[] before = tiles.Tiles.ToArray();
+
+        Assert.Equal(VanillaWaterCheckResult1458.UnsupportedLiquidDeathTile,
+            new VanillaWorldLiquidSimulator1458(tiles).WaterCheckLoading().Result);
+        Assert.Equal(before, tiles.Tiles.ToArray());
         Assert.False(tiles.LiquidUpdates.HasPendingWork);
     }
 

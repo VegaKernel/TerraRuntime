@@ -10,6 +10,65 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
     private static readonly WorldGeneratorId VanillaId = new("terraruntime:vanilla");
 
     [Theory]
+    [InlineData(4200,1200)] [InlineData(6400,1800)] [InlineData(8400,2400)]
+    public void Ordinary_crimson_runs_placement_and_downstream_passes_without_coordinate_fallback(int width, int height)
+    {
+        var request = new WorldGenerationRequest(VanillaId, "Crimson placement", 1458, width, height)
+        {
+            SeedText = "1458",
+            Options = new(WorldGenerationGameMode.Classic, WorldGenerationEvil.Crimson)
+        };
+        var created = new RuntimeWorldCreationPipeline(BuiltInWorldGeneratorSource.Instance)
+            .CreateCandidate(in request, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.True(created.Succeeded, created.Finalization?.Validation?.Detail ?? created.Generation.Execution?.Error?.ToString());
+        Assert.NotNull(created.Candidate);
+        bool crimstone = false;
+        int hearts = 0, caveWalls = 0, altars = 0;
+        foreach (WorldTile tile in created.Candidate.TileStore.Tiles)
+        {
+            if (tile.IsActive && tile.Type == 203) crimstone = true;
+            if (tile.Wall == 83) caveWalls++;
+            if (tile.IsActive && tile.Type == 31 && tile.FrameX == 36 && tile.FrameY == 0) hearts++;
+            if (tile.IsActive && tile.Type == 26 && tile.FrameX == 54 && tile.FrameY == 0) altars++;
+        }
+        Assert.True(crimstone); // Execution/validation acceptance, not geometric equality.
+        Assert.True(hearts >= 5, "Source Crimson cave branches must leave real heart objects after finalization.");
+        Assert.True(caveWalls > 0);
+        Assert.True(altars > 0, "Crimson altar objects must survive the production pass and finalization order.");
+    }
+
+    [Theory]
+    [InlineData(4200,1200)] [InlineData(6400,1800)] [InlineData(8400,2400)]
+    public void Canonical_seed1458_world_survives_real_post_load_liquid_preparation(int width, int height)
+    {
+        var request = new WorldGenerationRequest(VanillaId, "Load acceptance", 1458, width, height) { SeedText = "1458" };
+        var created = new RuntimeWorldCreationPipeline(BuiltInWorldGeneratorSource.Instance)
+            .CreateCandidate(in request, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.True(created.Succeeded, created.Finalization?.Validation?.Detail ?? created.Generation.Execution?.Error?.ToString());
+        Assert.NotNull(created.Candidate);
+        int dyePlants = 0;
+        foreach (WorldTile tile in created.Candidate.TileStore.Tiles)
+        {
+            if (!tile.IsActive || tile.Type != 227) continue;
+            dyePlants++;
+            Assert.Equal(0, tile.FrameY);
+            Assert.Equal(0, tile.FrameX % 34); // PlaceDye's independent source stride, not ordinary18.
+        }
+        Assert.True(dyePlants > 0);
+        var header = VanillaFreshWorldHeader326.Create(request.WorldName, "1458", width, height, Guid.NewGuid(), 1458);
+        var compose = WorldFileFreshComposer326.TryCompose(header, created.Metadata!, created.Candidate.TileStore,
+            created.Candidate.CaptureGeneratedChests(), created.Candidate.CaptureGeneratedNpcs(),
+            0, false, 0, 0, out byte[] file);
+        Assert.True(compose.Succeeded, compose.ToString());
+        var load = WorldFileLoader.TryLoad(file, ServerWorldLoadPolicy.CreateLimits(), out WorldFileData? world);
+        Assert.True(load.IsLoaded, load.ToString());
+        Assert.NotNull(world);
+        var prepared = VanillaWorldLiquidLoadInitializer1458.TryPrepare(world);
+        Assert.True(prepared.IsPrepared, prepared.ToString());
+        Assert.True(world.Tiles.IsPostLoadLiquidPrepared);
+    }
+
+    [Theory]
     [InlineData(4200, 1200)]
     [InlineData(6400, 1800)]
     [InlineData(8400, 2400)]
@@ -100,7 +159,9 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
         Assert.True(furniture > 0, "Missing Underworld furniture");
         Assert.True(paintings > 0 && banners > 0 && chandeliers > 0 && lanterns > 0,
             $"Missing Underworld decorations: paintings={paintings}, banners={banners}, chandeliers={chandeliers}, lanterns={lanterns}");
-        WorldChest[] dressers = result.Candidate.CaptureGeneratedChests().Where(chest => store.Get(chest.X, chest.Y).Type == 88).ToArray();
+        // Dungeon now also places real dressers. This assertion concerns HellFort-owned furniture.
+        WorldChest[] dressers = result.Candidate.CaptureGeneratedChests()
+            .Where(chest => store.Get(chest.X, chest.Y) is { Type: 88, Wall: 13 or 14 }).ToArray();
         Assert.NotEmpty(dressers);
         Assert.All(dressers, chest =>
         {
@@ -245,8 +306,9 @@ public sealed class VanillaWorldGenerationFullIntegrationTests
         Assert.False(oldMan.Homeless);
         Assert.Equal(graph.Anchor.X, oldMan.HomeTileX);
         Assert.Equal(graph.Anchor.Y, oldMan.HomeTileY);
-        Assert.Equal(graph.Anchor.X * 16f + 8f, oldMan.X);
-        Assert.Equal(graph.Anchor.Y * 16f, oldMan.Y);
+        // Official NPC.NewNPC assigns Bottom; WorldFile persists position, not Bottom (NPC37: 18x40).
+        Assert.Equal(graph.Anchor.X * 16f - 1f, oldMan.X);
+        Assert.Equal(graph.Anchor.Y * 16f - 40f, oldMan.Y);
         VanillaCaveHouseCounts1458 caveHouses = Assert.IsType<VanillaCaveHouseCounts1458>(
             result.Candidate.VanillaCaveHouseCounts);
         Assert.InRange(caveHouses.Ordinary, 35, 40);

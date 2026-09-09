@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace TerraRuntime.Contracts.Gameplay;
 
 /// <summary>Stable, namespaced identity for one selectable world-generation profile.</summary>
@@ -76,6 +78,26 @@ public readonly record struct WorldGenerationRequest(
     /// Null means the canonical invariant decimal representation of <see cref="Seed"/> may be used.
     /// </summary>
     public string? SeedText { get; init; }
+
+    /// <summary>
+    /// Resolves the Terraria 1.4.5.8 numeric world identity, shared by pass-local UnifiedRandom
+    /// and coordinate/material FastRandom streams. Does not alter custom-provider <see cref="Seed"/>.
+    /// </summary>
+    public int ResolveVanillaSeed1458()
+    {
+        string text = SeedText ?? Seed.ToString(CultureInfo.InvariantCulture);
+        if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int numeric))
+            return numeric == int.MinValue ? int.MaxValue : Math.Abs(numeric);
+        uint crc = uint.MaxValue;
+        // ReLogic.Utilities.Crc32.Calculate(string) indexes its table with each
+        // UTF-16 code unit's low byte; it does not hash an UTF-8 encoding.
+        foreach (char value in text)
+        {
+            crc ^= unchecked((byte)value);
+            for (int bit = 0; bit < 8; bit++) crc = (crc >> 1) ^ ((crc & 1u) != 0 ? 0xEDB88320u : 0u);
+        }
+        return unchecked((int)(crc ^ uint.MaxValue));
+    }
 
     /// <summary>
     /// Supported world options visible to every pass. The default value is Classic + Corruption, preserving the

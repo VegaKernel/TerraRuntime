@@ -4,17 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime/ClientTileManipulationConsistency.cs'
-      - 'src/TerraRuntime/*Tile*.cs'
-      - 'src/TerraRuntime/*WorldItem*.cs'
-      - 'src/TerraRuntime/*PlayerEquipment*.cs'
-      - 'src/TerraRuntime/*PlayerMovement*.cs'
-      - 'src/TerraRuntime/ProjectileLifecycleFrameSink.cs'
-      - 'src/TerraRuntime/RuntimeProjectileNetworkIngress.cs'
-      - 'src/TerraRuntime/RuntimePlayerEventFanout.cs'
-      - 'src/TerraRuntime/PlayerBootstrapFrameSink.cs'
-      - 'src/TerraRuntime/ServerRuntimeState.cs'
-      - 'src/TerraRuntime/TerrariaServerHost.cs'
+      - 'src/TerraRuntime.Application/**'
       - 'src/TerraRuntime/TerraRuntime.csproj'
       - 'src/TerraRuntime.Network/TerrariaSocket*.cs'
       - 'src/TerraRuntime.Network/*Outbound*.cs'
@@ -126,6 +116,8 @@ jobs:
 
       - name: Probe live Dirt placement and action0 drop
         shell: bash
+        env:
+          TERRARUNTIME_LOG_CONSOLE_LEVEL: Information
         run: |
           set -euo pipefail
           world="$GITHUB_WORKSPACE/artifacts/live-dirt.wld"
@@ -146,6 +138,7 @@ jobs:
             --world "$world" \
             --port 17784 \
             --max-players 2 \
+            --no-tui \
             > "$host_log" 2>&1 &
           host_pid=$!
 

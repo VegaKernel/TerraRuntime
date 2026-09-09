@@ -91,11 +91,15 @@ internal sealed partial class RuntimeConnectionRegistry
             DamageSourceKind.NpcProjectile when source.Npc.IsAssigned && source.Projectile.IsAssigned && projectileType != default =>
                 new TerrariaPlayerDeathReasonState(
                     -1, -1, checked((short)source.Projectile.Slot), -1, checked((short)projectileType.Value), 0, 0, null),
+            DamageSourceKind.EnvironmentProjectile when source.Projectile.IsAssigned && projectileType != default =>
+                new TerrariaPlayerDeathReasonState(
+                    -1, -1, checked((short)source.Projectile.Slot), -1, checked((short)projectileType.Value), 0, 0, null),
             _ => default
         };
         bool knownEnvironment = source.Kind == DamageSourceKind.Environment &&
             source.EnvironmentCause is EnvironmentDamageCause.Lava or EnvironmentDamageCause.Burning;
-        if (!source.IsValid || (!knownEnvironment && source.Kind is not (DamageSourceKind.NpcContact or DamageSourceKind.NpcProjectile or DamageSourceKind.PlayerItem or DamageSourceKind.PlayerProjectile)) ||
+        if (!source.IsValid || (!knownEnvironment && source.Kind is not (DamageSourceKind.NpcContact or DamageSourceKind.NpcProjectile or DamageSourceKind.EnvironmentProjectile or DamageSourceKind.PlayerItem or DamageSourceKind.PlayerProjectile)) ||
+            source.Kind == DamageSourceKind.EnvironmentProjectile && projectileType == default ||
             damage is < 0 or > short.MaxValue || hitDirection is < -1 or > 1)
         {
             return;

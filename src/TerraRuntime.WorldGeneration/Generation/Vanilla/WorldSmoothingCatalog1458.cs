@@ -64,6 +64,10 @@ internal static class WorldSmoothingCatalog1458
 
     public static bool IsTemporarilySolidCrackedBrick(TileTypeId type) => type.Value is 481 or 482 or 483;
 
+    // Ordinary Settle Liquids ends by setting Main.tileSolid[484]=false; Smooth World
+    // inherits that state. It must neither erode boulder cells nor clone them into gaps.
+    public static bool IsTemporarilyNonSolidDesertBoulder(TileTypeId type) => type.Value == 484;
+
     public static bool CanRemoveTileBelow(in WorldTile above, TileTypeId belowType)
     {
         if (!above.IsActive)

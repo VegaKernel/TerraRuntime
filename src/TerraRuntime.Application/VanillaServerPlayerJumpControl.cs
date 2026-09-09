@@ -6,13 +6,13 @@ namespace TerraRuntime.Application;
 /// Runtime-owned state for the ordinary dry, unmounted TerrariaServer 1.4.5.8 jump path. RemainingTicks mirrors the
 /// vanilla jump counter; ReleaseReady mirrors releaseJump. It is deliberately not exposed through HostContracts.
 /// </summary>
-internal readonly record struct VanillaServerPlayerJumpState(int RemainingTicks, bool ReleaseReady)
+internal readonly record struct VanillaServerPlayerJumpState(int RemainingTicks, bool ReleaseReady, int WingTime = 180)
 {
     public static VanillaServerPlayerJumpState Initial => new(0, true);
 
     public bool IsValid =>
         RemainingTicks is >= 0 and <= VanillaServerPlayerJumpControl.MaximumSupportedJumpHeight &&
-        (RemainingTicks == 0 || !ReleaseReady);
+        (RemainingTicks == 0 || !ReleaseReady) && WingTime is >= 0 and <= 180;
 }
 
 /// <summary>
@@ -65,7 +65,7 @@ internal static class VanillaServerPlayerJumpControl
         nextVelocityY = velocityY;
         if (intent == ServerPlayerJumpIntent.Released)
         {
-            nextState = VanillaServerPlayerJumpState.Initial;
+            nextState = state with { RemainingTicks = 0, ReleaseReady = true, WingTime = velocityY == 0f ? 180 : state.WingTime };
             return true;
         }
 
@@ -73,19 +73,19 @@ internal static class VanillaServerPlayerJumpControl
         {
             if (velocityY == 0f)
             {
-                nextState = new VanillaServerPlayerJumpState(0, false);
+                nextState = state with { RemainingTicks = 0, ReleaseReady = false };
                 return true;
             }
 
             nextVelocityY = -jumpSpeed;
-            nextState = new VanillaServerPlayerJumpState(state.RemainingTicks - 1, false);
+            nextState = state with { RemainingTicks = state.RemainingTicks - 1, ReleaseReady = false };
             return true;
         }
 
         if (velocityY == 0f && state.ReleaseReady)
         {
             nextVelocityY = -jumpSpeed;
-            nextState = new VanillaServerPlayerJumpState(jumpHeight, false);
+            nextState = state with { RemainingTicks = jumpHeight, ReleaseReady = false };
             return true;
         }
 

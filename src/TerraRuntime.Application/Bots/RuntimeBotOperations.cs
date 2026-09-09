@@ -7,7 +7,10 @@ internal enum RuntimeBotMode : byte
 {
     Idle = 0,
     Follow = 1,
-    Guard = 2
+    Guard = 2,
+    Mining = 3,
+    Collect = 4,
+    ReturnToPlayer = 5
 }
 
 internal enum RuntimeBotWeaponPolicy : byte
@@ -35,7 +38,11 @@ internal readonly record struct RuntimeBotConfiguration(
     RuntimeBotTarget Target,
     RuntimeBotWeaponPolicy WeaponPolicy = RuntimeBotWeaponPolicy.Automatic,
     bool FlightEnabled = true,
-    bool GodMode = false);
+    bool GodMode = false,
+    RuntimeBotOre MiningOre = RuntimeBotOre.Copper);
+
+// Explicit supported selection, never an arbitrary client-supplied TileID.
+internal enum RuntimeBotOre : ushort { Copper = 7, Tin = 166, Iron = 6, Lead = 167, Silver = 9, Tungsten = 168, Gold = 8, Platinum = 169 }
 
 internal readonly record struct RuntimeBotCreateRequest
 {
@@ -55,7 +62,12 @@ internal readonly record struct RuntimeBotSnapshot(
     bool IsStuck,
     bool IsDead,
     long TeleportCount,
-    DateTimeOffset UpdatedAtUtc);
+    DateTimeOffset UpdatedAtUtc)
+{
+    public RuntimeBotActionKind? CurrentAction { get; init; }
+    public RuntimeBotActionResult? RecentActionResult { get; init; }
+    public RuntimeBotObservationSnapshot? Observation { get; init; }
+}
 
 internal sealed record RuntimeBotCreateCommand(
     RuntimeBotCreateRequest Request,

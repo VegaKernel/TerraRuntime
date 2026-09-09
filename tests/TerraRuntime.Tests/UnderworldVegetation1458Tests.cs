@@ -7,8 +7,8 @@ public sealed class UnderworldVegetation1458Tests
 {
     [Theory]
     [InlineData(false, false, 0)]
-    [InlineData(true, false, 0)]
-    [InlineData(false, true, 66)]
+    [InlineData(true, false, 66)]
+    [InlineData(false, true, 0)]
     [InlineData(true, true, 88)]
     public void Ash_profile_uses_independent_roots_and_source_base_frames(bool left, bool right, int baseX)
     {
@@ -86,14 +86,19 @@ public sealed class UnderworldVegetation1458Tests
     }
 
     [Fact]
-    public void Root_ground_uses_generic_tree_set_after_ash_profile_admission()
+    public void Generic_root_ground_consumes_growth_draws_then_strict_ash_framing_removes_root()
     {
         WorldTileStore store = TreeSite();
         At(store, 49, 70).Type = 2;
-        var random = new ScriptedRandom(TreeScript(7, true, true));
+        var script = TreeScript(7, true, true).ToList();
+        for (int dust = 0; dust < 10; dust++) script.AddRange([(0,10,0),(0,12,0)]);
+        var random = new ScriptedRandom(script.ToArray());
         Assert.True(AshTreeGrower1458.TryGrow(store, 50, 70, random));
         random.AssertConsumed();
-        Assert.Equal(634, store.Get(49, 69).Type);
+        Assert.False(store.Get(49,69).IsActive);
+        Assert.Equal(0, store.Get(49,69).Type);
+        Assert.Equal((154,65), ((int)store.Get(49,69).FrameX, (int)store.Get(49,69).FrameY));
+        Assert.Equal(0, store.Get(50,69).FrameX);
     }
 
     [Fact]

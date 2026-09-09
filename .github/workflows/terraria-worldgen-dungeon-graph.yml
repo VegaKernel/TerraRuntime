@@ -4,13 +4,49 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime.World/Generation/Vanilla/VanillaDungeonGraphGenerator1458.cs'
-      - 'src/TerraRuntime.World/Generation/Vanilla/VanillaDungeonWorldGenerationPipeline1458.cs'
-      - 'src/TerraRuntime.World/Generation/Vanilla/VanillaEarlyWorldGenerationPipeline1458.cs'
-      - 'src/TerraRuntime.World/Generation/Vanilla/VanillaWorldGenerationValidator1458.cs'
-      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationPipeline1458Tests.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonGraphGenerator1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/Dungeon*.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationObjectSupport1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationFurniturePlacement1458.cs'
+      - 'src/TerraRuntime.World/VanillaWorldCanHit.cs'
+      - 'src/TerraRuntime.World/VanillaWorldLiquidSimulator1458.cs'
+      - 'src/TerraRuntime.Gameplay/Items/VanillaDungeonChestItemCatalog1458.cs'
+      - 'tests/TerraRuntime.Tests/Dungeon*.cs'
+      - 'tests/TerraRuntime.Tests/LoadingLiquidObjectDestruction1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/VanillaWorldCanHitTests.cs'
+      - 'tools/ci/test_gameplay_acceptance_tools.py'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonSurfaceBuildings1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonPlatforms1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonDoors1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonFeatureCandidates1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonFeaturePipeline1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonSpikes1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonWallVariants1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonPillars1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonWindows1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonMosaicWindows1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonGenerationTiles1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/TreeGrower1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonLegacyRoom1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonLegacyHall1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonPipeline1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/EarlyPipeline1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/Validator1458.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedDungeonPipeline1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/DungeonLayout1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/DungeonLegacyRoom1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/DungeonSurfaceBuildings1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/DungeonPlatforms1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/DungeonDoors1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/DungeonDoorFixture1458.cs'
+      - 'tests/TerraRuntime.Tests/DungeonFeatureCandidates1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/DungeonSurfaceFeatures1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/DungeonSurfaceFeatureFixture1458.cs'
+      - 'tests/TerraRuntime.Tests/DungeonStructurePlacement1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/TreeGrower1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/DungeonLegacyHall1458Tests.cs'
       - 'tests/TerraRuntime.Tests/VanillaWorldGenerationFullIntegrationTests.cs'
-      - 'tests/TerraRuntime.Tests/VanillaWorldGenerationValidator1458Tests.cs'
+      - 'tests/TerraRuntime.Tests/Validator1458Tests.cs'
       - 'tools/ci/probe_worldgen_dungeon_graph.py'
       - '.github/workflows/terraria-worldgen-dungeon-graph.yml'
   workflow_dispatch:
@@ -62,11 +98,20 @@ jobs:
             --layout artifacts/source-contract/layout.cs \
             --room artifacts/source-contract/room.cs \
             --hall artifacts/source-contract/hall.cs \
-            --runtime src/TerraRuntime.World/Generation/Vanilla/VanillaDungeonGraphGenerator1458.cs \
+            --runtime src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonGraphGenerator1458.cs \
+            --runtime-room src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonLegacyRoom1458.cs \
+            --runtime-hall src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonLegacyHall1458.cs \
+            --runtime-features src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonFeaturePipeline1458.cs \
             --output artifacts/source-contract/dungeon-graph-contract.txt
 
       - name: Focused Dungeon graph tests
-        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --filter FullyQualifiedName~VanillaWorldGeneration
+        run: >-
+          dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --
+          -class '*Dungeon*'
+          -class TerraRuntime.Tests.LoadingLiquidObjectDestruction1458Tests
+          -class TerraRuntime.Tests.VanillaWorldCanHitTests
+          -class TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests
+          -class TerraRuntime.Tests.Validator1458Tests
 
       - uses: actions/upload-artifact@v4
         with:

@@ -166,9 +166,8 @@ public static class Validator1458
                     return new(WorldValidationStatus.InvalidLiquid, $"Liquid 0 but kind {tile.LiquidKind} at ({x},{y}).");
                 if (tile.LiquidAmount > 0 && tile.IsActive && IsSolidBlockingLiquid(tile.Type))
                 {
-                    // Solid tile with liquid is unusual but can occur in some generation edge cases (e.g., actuated or
-                    // half-brick liquids). For non-actuated full solids, treat as validation warning only when inside
-                    // canonical pipeline where strict parity is expected; otherwise don't fail the whole world.
+                    // Canonical settled worlds must not retain liquid inside ordinary solid terrain.
+                    // Source settling overrides are handled by IsSolidBlockingLiquid, not erased here.
                     if (!tile.IsActuated && isCanonical)
                     {
                         return new(WorldValidationStatus.InvalidLiquid, $"Solid tile type {tile.Type} with liquid {tile.LiquidAmount} at ({x},{y}).");
@@ -390,6 +389,13 @@ public static class Validator1458
 
     private static bool IsSolidBlockingLiquid(ushort type)
     {
+        TileTypeId id = new(type);
+        // Liquid.tilesIgnoreWater / worldGenTilesIgnoreWater (1.4.5.8) deliberately
+        // allow settled liquid inside these tiles. Reuse the simulator's exact facts;
+        // ordinary collision solidity alone would reject valid desert boulders.
+        if (VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringSettle(id) ||
+            VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringWorldGenerationSettle(id))
+            return false;
         // Quick solid check via collision catalog; fallback to known solid types
         if (VanillaTileCollisionCatalog.IsSolid(new TileTypeId(type)))
             return true;

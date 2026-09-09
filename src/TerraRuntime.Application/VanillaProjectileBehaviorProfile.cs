@@ -44,7 +44,8 @@ internal enum VanillaProjectileBehaviorFamily : byte
     CultistIceMist = 31,
     CultistLightningOrb = 32,
     CultistLightningArc = 33,
-    CelebrationRocket = 34
+    CelebrationRocket = 34,
+    FallingBlock = 35
 }
 
 /// <summary>
@@ -346,6 +347,11 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         ProjectileTypeId type,
         out VanillaProjectileBehaviorProfile profile)
     {
+        if (VanillaFallingBlock1458.TryGetTile(type, out _))
+        {
+            profile = new(VanillaProjectileBehaviorFamily.FallingBlock, VanillaProjectileAiStyles.FallingBlock, true, true, false, false);
+            return true;
+        }
         if (type == VanillaProjectileIds.GreenLaser)
         {
             profile = GreenLaserProfile;

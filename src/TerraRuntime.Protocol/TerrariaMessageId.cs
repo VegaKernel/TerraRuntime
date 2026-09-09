@@ -58,7 +58,7 @@ public enum TerrariaMessageId : byte
     PlayerHurt = 117,
     PlayerDeathV2 = 118,
     FinishedConnectingToServer = 129,
-    InstancedItemSlotRelease = 151,
+    WorldItemRemove = 151,
     SyncChestSize = 155,
     NpcDamageAck = 162
 }

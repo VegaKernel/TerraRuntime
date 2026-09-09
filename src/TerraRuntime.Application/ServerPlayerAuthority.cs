@@ -146,6 +146,8 @@ internal sealed partial class ServerPlayerAuthority
             }
 
             VanillaServerPlayerJumpState jumpState = GetJumpState(player.Player);
+            bool hasFishronWings = HasFunctionalAccessory(player.Player, VanillaItemIds.FishronWings);
+            if (!hasFishronWings) jumpState = jumpState with { WingTime = 0 };
             int slot = player.Player.Slot.Value;
             VanillaLiquidContactState previousLiquidContacts = liquidOwners[slot] == player.Player
                 ? liquidContacts[slot]
@@ -158,7 +160,7 @@ internal sealed partial class ServerPlayerAuthority
                     in player,
                     horizontalIntent,
                     jumpIntent,
-                    movementIntent.Options.FlightEnabled,
+                    movementIntent.Options.FlightEnabled && hasFishronWings,
                     in horizontalProfile,
                     in jumpState,
                     in previousLiquidContacts,
@@ -168,6 +170,7 @@ internal sealed partial class ServerPlayerAuthority
                 continue;
             }
 
+            if (!hasFishronWings) nextJumpState = nextJumpState with { WingTime = 0 };
             CommitJumpState(player.Player, in nextJumpState);
             liquidOwners[slot] = player.Player;
             liquidContacts[slot] = next.LiquidContacts;
@@ -201,9 +204,6 @@ internal sealed partial class ServerPlayerAuthority
         in PlayerStateSnapshot snapshot,
         bool flightEnabled)
     {
-        if (!flightEnabled)
-            return VanillaServerPlayerHorizontalProfile1458.Baseline;
-
         bool terraspark = HasFunctionalAccessory(player, VanillaItemIds.TerrasparkBoots);
         bool magiluminescence = HasFunctionalAccessory(player, VanillaItemIds.Magiluminescence);
         bool fishronWings = flightEnabled && HasFunctionalAccessory(player, VanillaItemIds.FishronWings);
@@ -211,7 +211,8 @@ internal sealed partial class ServerPlayerAuthority
             terraspark,
             magiluminescence,
             fishronWings,
-            grounded: snapshot.VelocityY == 0f);
+            grounded: snapshot.VelocityY == 0f,
+            soaringInsignia: HasFunctionalAccessory(player, VanillaItemIds.SoaringInsignia));
     }
 
     private bool HasFunctionalAccessory(PlayerHandle player, ItemTypeId itemType)
@@ -584,7 +585,7 @@ internal sealed partial class ServerPlayerAuthority
         return true;
     }
 
-    private bool TryGetPlayer(ServerPlayerId id, out PlayerHandle player)
+    internal bool TryGetPlayer(ServerPlayerId id, out PlayerHandle player)
     {
         if (id.IsAssigned &&
             leases.TryGetValue(id, out ServerPlayerSlotRegistry.ServerPlayerSlotLease? lease) &&

@@ -37,6 +37,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             return TryExecuteWallOfFleshLoot(in npc);
         if (npc.TypeIdentity == VanillaNpcIds.QueenSlime)
             return TryExecuteQueenSlimeLoot(in npc);
+        if (npc.TypeIdentity == VanillaNpcIds.Plantera)
+            return TryExecutePlanteraLoot(in npc);
+        if (npc.TypeIdentity == VanillaNpcIds.Golem)
+            return TryExecuteGolemLoot(in npc);
         if (npc.TypeIdentity == VanillaNpcIds.EyeOfCthulhu)
             return TryExecuteEyeOfCthulhuLoot(in npc);
         if (VanillaMechanicalBossLootEvaluator.IsRoot(npc.TypeIdentity))
@@ -309,6 +313,69 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             activeDeerclopsLootPlayers.AsSpan(0, activeCount),
             random,
             deerclopsLoot,
+            out _);
+    }
+
+    private bool TryExecutePlanteraLoot(in NpcSnapshot npc)
+    {
+        bool downed = planteraDownedBaseline == true || progression.IsCompleted(VanillaWorldProgressionId.Plantera);
+        // Missing loaded-world facts cannot be interpreted as a first kill. Do not invent rewards or
+        // turn an otherwise valid death into a fatal error in runtimes without a canonical world baseline.
+        if (!expertMode && !downed && !planteraDownedBaseline.HasValue)
+            return true;
+        if (!interactions.TryCopyInteractingSlots(npc.Handle, interactionSlots, out int interactionCount) ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Plantera, out VanillaNpcDefinition definition))
+            return false;
+
+        int activeCount = 0;
+        for (int index = 0; index < interactionCount; index++)
+        {
+            PlayerSlotId slot = interactionSlots[index];
+            if (!TryGetActiveLootPlayer(slot, out PlayerStateSnapshot player))
+                continue;
+            activePlanteraLootPlayers[activeCount++] = new VanillaPlanteraLootPlayer(slot,
+                player.PositionX + VanillaPlayerWidth * 0.5f,
+                player.PositionY + VanillaPlayerHeight * 0.5f);
+        }
+        var origin = new NpcLootWorldItemOrigin(
+            (int)npc.PositionX + definition.Width * 0.5f,
+            (int)npc.PositionY + definition.Height * 0.5f);
+        var context = new VanillaPlanteraLootContext(expertMode, masterMode, downed);
+        return VanillaPlanteraLootEvaluator.TryExecute(in context, in origin,
+            activePlanteraLootPlayers.AsSpan(0, activeCount), random, planteraLoot, out _);
+    }
+
+    private bool TryExecuteGolemLoot(in NpcSnapshot npc)
+    {
+        if (!interactions.TryCopyInteractingSlots(npc.Handle, interactionSlots, out int interactionCount) ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Golem, out VanillaNpcDefinition definition))
+        {
+            return false;
+        }
+
+        int activeCount = 0;
+        for (int index = 0; index < interactionCount; index++)
+        {
+            PlayerSlotId slot = interactionSlots[index];
+            if (!TryGetActiveLootPlayer(slot, out PlayerStateSnapshot player))
+                continue;
+
+            activeGolemLootPlayers[activeCount++] = new VanillaGolemLootPlayer(
+                slot,
+                player.PositionX + VanillaPlayerWidth * 0.5f,
+                player.PositionY + VanillaPlayerHeight * 0.5f);
+        }
+
+        var origin = new NpcLootWorldItemOrigin(
+            (int)npc.PositionX + definition.Width * 0.5f,
+            (int)npc.PositionY + definition.Height * 0.5f);
+        var context = new VanillaGolemLootContext(expertMode, masterMode);
+        return VanillaGolemLootEvaluator.TryExecute(
+            in context,
+            in origin,
+            activeGolemLootPlayers.AsSpan(0, activeCount),
+            random,
+            golemLoot,
             out _);
     }
 

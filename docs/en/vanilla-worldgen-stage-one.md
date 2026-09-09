@@ -6,11 +6,11 @@ For ordinary canonical Terraria worlds the runtime executes the early pass graph
 
 `Reset → Terrain → TerrainLayers → Dunes → OceanSand → SandPatches → Tunnels → MountCaves → DirtWallBackgrounds → RocksInDirt → DirtInRocks → Clay → SmallHoles → DirtLayerCaves → RockLayerCaves → SurfaceCaves → WavyCaves → GenerateIceBiome → Grass → Jungle`.
 
-The shared Terraria `UnifiedRandom` stream is used by the passes that participate in the source shared stream. Generation-local passes use `IsolatedDeterministic` and therefore cannot accidentally advance the shared vanilla RNG.
+Pinned `WorldGenerator.RunPass` reseeds `Main.rand` before each enabled pass. `VanillaSharedRng` preserves the shared call order inside that pass, not a stream carried from the previous pass. Generation-local passes use `IsolatedDeterministic`.
 
 ## Terrain completion
 
-The bridge after `Terrain` publishes the already computed `WorldGen.Reset` state for the early passes and completes the layer state used by later world generation. In particular, ordinary 1.4.5.8 semantics consume the two post-terrain RNG calls for `waterLine` and `lavaLine` instead of inventing fixed depth thresholds.
+Terrain itself consumes both final `waterLine`/`lavaLine` rolls from its already advanced RNG and publishes the result. TerrainLayers transfers that state and the retained Reset state without drawing random values; missing liquid state throws. Drawing in the separately reseeded bridge was a confirmed bug, corrected on2026-09-08. Nine independent official Terrain fixtures now pin cells, liquid lines and next RNG.
 
 ## Early terrain mutation
 
@@ -20,9 +20,7 @@ The ordinary `Wavy Caves` branch is an explicit no-op because its mutations belo
 
 ## Compatibility boundary
 
-After source-backed Jungle, the old `Biomes` implementation remains only as a residual compatibility layer for world features not yet migrated. It receives a private compatibility RNG so it cannot corrupt the source shared stream, and its broad tile-59/tile-60 jungle repaint is filtered out so it cannot overwrite the source-backed Jungle.
-
-Caves, ores, dungeon, secret-seed compatibility and final metadata remain downstream migration work. Special seeds and non-canonical dimensions continue to use the previous compatibility plan unchanged.
+This document describes the early overlay, not the whole shipping plan. `SourceBackedFinal1458` subsequently replaces the ordinary aggregate mutations through Final Cleanup; Biomes/Caves/Ores are non-mutating compatibility barriers there. Registered pass coverage does not prove exact geometry. The [complete audit](vanilla-worldgen-pass-audit.md) lists every owner and remaining debt. Existing special-seed/noncanonical paths remain separate; the bounded pure Remix slice is not full Remix parity.
 
 ## Verification
 

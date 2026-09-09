@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Text;
 using TerraRuntime.Contracts.Gameplay;
 
 namespace TerraRuntime.Core.Worlds;
@@ -146,7 +144,7 @@ public static class RuntimeWorldGenerationExecutor
                 IWorldGenerationVanillaRandom? vanillaRandom = null;
                 if (descriptor.RngMode == WorldGenerationRngMode.VanillaSharedRng)
                 {
-                    vanillaSeed ??= VanillaSeedText1458.Resolve(in request);
+                    vanillaSeed ??= request.ResolveVanillaSeed1458();
                     // TerrariaServer 1.4.5.8 WorldGenerator.RunPass reassigns Main.rand to
                     // new UnifiedRandom(_seed) before each enabled pass. GenBase._random/WorldGen.genRand
                     // are shared by code within that pass, not as one continuous stream across passes.
@@ -282,29 +280,6 @@ public static class RuntimeWorldGenerationExecutor
         public int Next(int minValue, int maxValue) => random.Next(minValue, maxValue);
         public double NextDouble() => random.NextDouble();
         public void NextBytes(byte[] buffer) => random.NextBytes(buffer);
-    }
-
-    private static class VanillaSeedText1458
-    {
-        private const uint Polynomial = 0xEDB88320u;
-
-        public static int Resolve(in WorldGenerationRequest request)
-        {
-            string text = request.SeedText ?? request.Seed.ToString(CultureInfo.InvariantCulture);
-            if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int numeric))
-                return numeric;
-
-            byte[] bytes = Encoding.UTF8.GetBytes(text);
-            uint crc = uint.MaxValue;
-            foreach (byte value in bytes)
-            {
-                crc ^= value;
-                for (int bit = 0; bit < 8; bit++)
-                    crc = (crc >> 1) ^ ((crc & 1u) != 0 ? Polynomial : 0u);
-            }
-
-            return unchecked((int)(crc ^ uint.MaxValue));
-        }
     }
 
     private sealed class InvalidWorldGenerationPlanException : InvalidOperationException

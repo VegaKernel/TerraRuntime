@@ -125,6 +125,8 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
 
         VanillaServerPlayerPhysicsParameters profile =
             VanillaServerPlayerPhysicsProfile.Resolve(in previousContacts);
+        if (horizontalProfile.SoaringInsignia)
+            profile = profile with { JumpSpeed = profile.JumpSpeed + 1.8f };
         float velocityX = VanillaServerPlayerHorizontalControl.Apply(
             player.VelocityX,
             player.VelocityY,
@@ -143,12 +145,26 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             return false;
         }
 
+        bool poweredFlight = false;
         if (flightEnabled &&
             jumpIntent == ServerPlayerJumpIntent.Held &&
+            nextJumpState.WingTime > 0 &&
             nextJumpState.RemainingTicks == 0 &&
             velocityY != 0f)
         {
             velocityY = ApplyFishronWingFlight(velocityY, profile.JumpSpeed);
+            int remainingFlight = nextJumpState.WingTime - 1;
+            nextJumpState = nextJumpState with
+            {
+                WingTime = horizontalProfile.SoaringInsignia && remainingFlight != 0 ? 180 : remainingFlight
+            };
+            // Player.Update's !flag19 branch owns gravity. Active WingMovement never executes it.
+            poweredFlight = true;
+        }
+        else if (flightEnabled && jumpIntent == ServerPlayerJumpIntent.Held && velocityY > 0f)
+        {
+            // Exhausted wings can glide while jump is held; release restores ordinary falling.
+            profile = profile with { Gravity = profile.Gravity / 3f, MaximumFallSpeed = profile.MaximumFallSpeed / 3f };
         }
 
         return TryStepCore(
@@ -158,7 +174,8 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             in previousContacts,
             in profile,
             ref nextJumpState,
-            out next);
+            out next,
+            poweredFlight);
     }
 
     public bool ShouldAutoJumpObstacle(
@@ -263,7 +280,8 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
         in VanillaLiquidContactState previousContacts,
         in VanillaServerPlayerPhysicsParameters profile,
         ref VanillaServerPlayerJumpState jumpState,
-        out ServerPlayerDryPhysicsStepResult next)
+        out ServerPlayerDryPhysicsStepResult next,
+        bool poweredFlight = false)
     {
         if (!player.Player.IsAssigned ||
             player.IsDead ||
@@ -287,7 +305,7 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
 
         float positionX = player.PositionX;
         float positionY = player.PositionY;
-        float velocityY = Math.Min(controlledVelocityY + profile.Gravity, profile.MaximumFallSpeed);
+        float velocityY = Math.Min(controlledVelocityY + (poweredFlight ? 0f : profile.Gravity), profile.MaximumFallSpeed);
 
         velocityY = VanillaWorldWalkDownSlope.ResolveVelocityY(
             tiles,
@@ -338,7 +356,7 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             fall2: false);
 
         if (collision.HitCeiling && jumpState.RemainingTicks > 0)
-            jumpState = new VanillaServerPlayerJumpState(0, jumpState.ReleaseReady);
+            jumpState = jumpState with { RemainingTicks = 0 };
 
         VanillaServerPlayerLiquidDisplacement displacement =
             VanillaServerPlayerLiquidMovement.ResolveDisplacement(
@@ -363,7 +381,7 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             !liquidContacts.Wet &&
             jumpState.RemainingTicks > profile.JumpHeight / 5)
         {
-            jumpState = new VanillaServerPlayerJumpState(profile.JumpHeight / 5, jumpState.ReleaseReady);
+            jumpState = jumpState with { RemainingTicks = profile.JumpHeight / 5 };
         }
 
         next = new ServerPlayerDryPhysicsStepResult(

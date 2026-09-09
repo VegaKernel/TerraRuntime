@@ -6,6 +6,8 @@
 
 Every client-controlled byte, length, rate, identity claim and gameplay request is untrusted.
 
+Falling-block terrain authority requires an exact server-registered projectile generation, not a projectile ID or owner byte supplied by a client. Environmental projectile damage uses the existing combat pipeline and requires server provenance. Autonomous bot Mining additionally validates world/bot/goal scope, tile section revision, live actor, tool, reach and mutation/drop admission. A tile lease only coordinates bots; it grants no authority. Search, wakeups, active falls and pending item-pressure landings are bounded; see [gameplay](gameplay.md) and [bot actions](runtime-bot-architecture.md).
+
 ```mermaid
 flowchart LR
     Input["Untrusted input"] --> Parse["Bounded parse + accounting"]
@@ -78,7 +80,7 @@ Generation/revision-aware handles also prevent stale commands from mutating a di
 
 Client-originated world-item allocate/drop/remove/owner commands retain the exact `ConnectionHandle` that admitted them through the bounded authoritative queue. Immediately before mutating `RuntimeWorldItemStore`, the game-thread owner verifies that the same player slot **and generation** still belong to that connection. Work queued by a disconnected generation is rejected even if the same connection source or numeric player slot has already been reused.
 
-Explicit packet-21/22 operations addressing item slots `0..399` also capture the exact active `WorldItemHandle` (`slot + generation`) at ingress. The authoritative owner rechecks that handle before drop/update, owner-state or remove mutation. A command admitted while the slot has no active item carries no assigned target and is rejected rather than reviving that slot; a delayed command for generation A cannot jump to a later generation B that reused the same numeric slot. New-item creation remains the separate packet-21 index `400` request path and is allocated by the runtime.
+Explicit packet-21/39/151 operations addressing item slots `0..399` capture the exact active `WorldItemHandle` (`slot + generation`) at ingress. The authoritative owner rechecks that handle and the sender's reservation ownership before update, release or removal. Packet 22 is outbound-only, not a client grant. A command admitted while the slot has no active item carries no assigned target and is rejected rather than reviving it or releasing an instanced loot lease; a delayed command for generation A cannot jump to generation B in the same slot. New-item creation remains the separate packet-21 index `400` request allocated by the runtime. Compact packet 151 is exactly one signed Int16 physical slot; malformed lengths/sentinels reject, queue pressure cannot manufacture item authority, and aggregate network flood protection still applies.
 
 ## 9. Bounded queues and authoritative work
 

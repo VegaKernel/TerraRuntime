@@ -24,7 +24,7 @@ The nine names and their order are pinned by `PassCatalog1458` from the verified
 
 ## Implemented slice
 
-- `Remove Water From Sand` clears liquid embedded in active Sand, Hardened Sand and Sandstone cells after the first settling stage.
+- `Remove Water From Sand` scans x400..width-401 and y100..<worldSurface-1, stopping at the first active tile. For Sand, Sandstone, Hardened Sand, Desert Fossil, Fossil Ore or Sandstone Brick it clears liquid in inactive cells above that surface through y100. It preserves ocean/underground liquid, solid-cell liquid and liquid-kind bits. This replaces the incorrect whole-map embedded-sand draining; an independent official pass fixture matches every amount/kind cell. It does not prove the preceding settling stage.
 - `Oasis` searches valid inland sand surfaces outside spawn, jungle, snow and dungeon exclusion bands, carves a water basin and reshapes its banks.
 - `Shell Piles` places vanilla Shell Pile tile `495` on dry beach sand near both oceans.
 - `Smooth World` applies bounded slope/half-block shaping only to exposed natural terrain.

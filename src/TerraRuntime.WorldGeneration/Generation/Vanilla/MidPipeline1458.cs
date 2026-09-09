@@ -202,35 +202,18 @@ internal sealed class MidPass1458 : IWorldGenerationPass
     private const ushort Dirt = 0;
     private const ushort Stone = 1;
     private const ushort Grass = 2;
-    private const ushort CorruptGrass = 23;
-    private const ushort Ebonstone = 25;
     private const ushort Cobweb = 51;
     private const ushort Sand = 53;
     private const ushort Ash = 57;
-    private const ushort Hellstone = 58;
     private const ushort Mud = 59;
     private const ushort JungleGrass = 60;
     private const ushort MushroomGrass = 70;
-    private const ushort Ebonsand = 112;
-    private const ushort Silt = 123;
     private const ushort Snow = 147;
     private const ushort Ice = 161;
-    private const ushort CorruptIce = 163;
     private const ushort Cloud = 189;
     private const ushort RainCloud = 196;
-    private const ushort CrimsonGrass = 199;
-    private const ushort FleshIce = 200;
-    private const ushort Crimstone = 203;
-    private const ushort Slush = 224;
-    private const ushort Crimsand = 234;
-    private const ushort Marble = 367;
-    private const ushort Granite = 368;
     private const ushort Sandstone = 396;
     private const ushort HardenedSand = 397;
-    private const ushort CorruptHardenedSand = 398;
-    private const ushort CrimsonHardenedSand = 399;
-    private const ushort CorruptSandstone = 400;
-    private const ushort CrimsonSandstone = 401;
     private const ushort CloudWall = 73;
 
     private readonly MidStage1458 stage;
@@ -258,207 +241,126 @@ internal sealed class MidPass1458 : IWorldGenerationPass
         switch (stage)
         {
             case MidStage1458.MudCavesToGrass:
-                ApplyMudCavesToGrass(context, grid, random);
+                ApplyMudCavesToGrass(context, workspace);
                 break;
             case MidStage1458.FullDesert:
                 ApplyFullDesert(context, workspace, grid, random);
                 break;
             case MidStage1458.MushroomPatches:
-                ApplyMushroomPatches(context, grid, random);
+                ApplyMushroomPatches(context, workspace);
                 break;
             case MidStage1458.Marble:
-                ApplyStoneMicroBiome(context, grid, random, Marble, "marble");
+                MarbleBiome1458.Apply(workspace, context.VanillaRandom ??
+                    throw new InvalidOperationException("Marble generation requires the shared vanilla RNG."),
+                    workspace.VanillaTerrainState?.CurrentRockLayer ??
+                    throw new InvalidOperationException("Marble generation requires retained GenVars terrain state."),
+                    context.CancellationToken);
                 break;
             case MidStage1458.Granite:
-                ApplyStoneMicroBiome(context, grid, random, Granite, "granite");
+                GraniteBiome1458.Apply(workspace, context.VanillaRandom ??
+                    throw new InvalidOperationException("Granite generation requires the shared vanilla RNG."),
+                    context.Request.ResolveVanillaSeed1458(), context.CancellationToken);
                 break;
             case MidStage1458.FloatingIslands:
-                ApplyFloatingIslands(context, grid, random);
+                ApplyFloatingIslands(context, workspace, grid, random);
                 break;
             case MidStage1458.DirtToMud:
-                ApplyDirtToMud(context, grid, random);
-                break;
             case MidStage1458.Silt:
-                ApplySilt(context, grid, random);
-                break;
             case MidStage1458.Shinies:
-                ApplyShinies(context, grid, random);
+                MineralDeposits1458.Apply(stage, context, workspace);
                 break;
             case MidStage1458.Webs:
-                ApplyWebs(context, grid, random);
+                ApplyWebs(context, workspace);
                 break;
             case MidStage1458.Underworld:
-                ApplyUnderworld(context, grid, random, workspace.TileStore);
+                UnderworldTerrain1458.Generate(workspace.TileStore, context.VanillaRandom!, state.WorldSurface,
+                    workspace.VanillaLiquidLines ?? throw new InvalidOperationException("Underworld requires exact Early-pass liquid lines."),
+                    context.CancellationToken);
                 UnderworldVegetation1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
                 HellFortGenerator1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
                 HellFortLighting1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
                 HellFortFurniture1458.Generate(workspace, context.VanillaRandom!, context.CancellationToken);
                 HellFortDecoration1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
+                context.ReportProgress(1d, "Generating underworld terrain, lava, hellstone and forts");
                 break;
             case MidStage1458.Corruption:
-                ApplyEvilBiome(context, grid, random);
+                ApplyEvilBiome(context, workspace, grid);
                 break;
             case MidStage1458.Lakes:
-                ApplyLakes(context, grid, random);
+                ApplyLakes(context, workspace);
                 break;
             case MidStage1458.Slush:
-                ApplySlush(context, grid, random);
+                ApplySlush(context, workspace);
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
         }
     }
 
-    private void ApplyMudCavesToGrass(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private static void ApplyMudCavesToGrass(IWorldGenerationContext context, Workspace workspace)
     {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int halfWidth = Math.Max(180, grid.Width / 9);
-        int left = Math.Max(1, bootstrap.JungleOriginX - halfWidth);
-        int right = Math.Min(grid.Width - 1, bootstrap.JungleOriginX + halfWidth);
-        int top = Math.Clamp((int)state.WorldSurface, 2, grid.Height - 2);
-        int bottom = Math.Min(state.UnderworldTop, grid.Height - 2);
-        long converted = 0;
-
-        for (int x = left; x < right; x++)
-        {
-            if ((x & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            for (int y = top; y < bottom; y++)
-            {
-                ref WorldTile tile = ref grid.At(x, y);
-                if (!tile.IsActive || tile.Type != Mud || !grid.HasOpenNeighbor(x, y))
-                    continue;
-                if (random.Next(6) != 0)
-                    continue;
-
-                tile.Type = JungleGrass;
-                tile.FrameX = -1;
-                tile.FrameY = -1;
-                converted++;
-            }
-        }
-
-        context.ReportProgress(1d, $"Spreading jungle grass across mud cave surfaces ({converted} tiles)");
+        JungleMudSurface1458.Apply(workspace.TileStore, context.CancellationToken);
+        context.ReportProgress(1d, "Spreading jungle grass and removing small terrain clumps");
     }
 
     private void ApplyFullDesert(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int width = Math.Clamp((int)Math.Round(grid.Width * 0.12d), 360, 920);
-        int left = PickDesertLeft(grid, random, bootstrap, width);
-        int right = Math.Min(grid.Width - 1, left + width);
-        state.DesertLeft = left;
-        state.DesertRight = right;
-
-        int maxDepth = Math.Min(state.UnderworldTop - 80, (int)state.RockLayer + Math.Max(180, grid.Height / 7));
-        int undergroundTop = Math.Clamp((int)state.WorldSurface + 26, 1, maxDepth - 1);
-        workspace.SetVanillaUndergroundDesertRegion(left, undergroundTop, right - left, maxDepth - undergroundTop);
-        for (int x = left; x < right; x++)
-        {
-            if ((x & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            int surface = grid.FindFirstActiveY(x, 40, Math.Min(grid.Height, (int)state.RockLayer + 60));
-            if (surface >= grid.Height)
-                continue;
-
-            double t = (x - left) / (double)Math.Max(1, right - left - 1);
-            double envelope = Math.Sin(t * Math.PI);
-            int depth = Math.Clamp(
-                55 + (int)Math.Round(envelope * 150d) + random.Next(-8, 9),
-                35,
-                Math.Max(36, maxDepth - surface));
-
-            int end = Math.Min(maxDepth, surface + depth);
-            for (int y = surface; y < end; y++)
-            {
-                ref WorldTile tile = ref grid.At(x, y);
-                if (!tile.IsActive && y > surface + 10)
-                    continue;
-
-                ushort type = y < surface + 35
-                    ? Sand
-                    : y < surface + depth * 2 / 3
-                        ? HardenedSand
-                        : Sandstone;
-                SetType(ref tile, type);
-                tile.LiquidAmount = 0;
-                tile.LiquidKind = WorldLiquidKind.Water;
-            }
-        }
-
-        int chambers = Math.Max(5, width / 80);
-        for (int i = 0; i < chambers; i++)
-        {
-            int cx = random.Next(left + 30, Math.Max(left + 31, right - 30));
-            int cy = random.Next(
-                Math.Min(state.UnderworldTop - 90, (int)state.RockLayer + 35),
-                Math.Max(Math.Min(state.UnderworldTop - 89, (int)state.RockLayer + 36), state.UnderworldTop - 70));
-            int rx = random.Next(18, 42);
-            int ry = random.Next(7, 16);
-            CarveEllipse(grid, cx, cy, rx, ry);
-            if ((i & 3) == 0)
-                CarveTunnel(grid, random, cx, cy, random.Next(35, 80), radius: random.Next(3, 7), downwardBias: 0.25d);
-        }
-
-        context.ReportProgress(1d, "Generating Terraria full desert shell and underground chambers");
-    }
-
-    private void ApplyMushroomPatches(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
-    {
-        int count = Math.Max(4, grid.Width / 700);
-        int top = Math.Clamp((int)state.RockLayer + 40, 10, state.UnderworldTop - 90);
-        int bottom = Math.Max(top + 1, state.UnderworldTop - 50);
-
-        for (int i = 0; i < count; i++)
+        IWorldGenerationVanillaRandom vanilla = context.VanillaRandom ??
+            throw new InvalidOperationException("Full Desert requires the pass-local vanilla RNG.");
+        int half = grid.Width / 2, side = bootstrap.DungeonSide;
+        int center = half + (vanilla.Next(half) / 8 + half / 8) * -side;
+        int attemptsOnSide = 0, flips = 0;
+        DesertSurface1458? desert = null;
+        for (int attempt = 0; attempt < 100000; attempt++)
         {
             context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(120, grid.Width - 120);
-            if (state.DesertLeft >= 0 && x >= state.DesertLeft - 80 && x <= state.DesertRight + 80)
-            {
-                i--;
-                continue;
-            }
-
-            int y = random.Next(top, bottom);
-            int radiusX = random.Next(24, 48);
-            int radiusY = random.Next(12, 26);
-            FillEllipse(grid, x, y, radiusX, radiusY, Mud, overwriteAir: false);
-            CarveEllipse(grid, x, y - 1, Math.Max(5, radiusX - 8), Math.Max(4, radiusY - 7));
-            ConvertExposedSurface(grid, x - radiusX - 2, x + radiusX + 2, y - radiusY - 3, y + radiusY + 3, Mud, MushroomGrass, random, 2);
+            desert = DesertSurface1458.TryDescribe(workspace.TileStore, vanilla, center,
+                state.WorldSurface, flips >= 2, context.CancellationToken);
+            if (desert is not null) break;
+            int offset = vanilla.Next(half) / 2 + half / 8 + vanilla.Next(attemptsOnSide / 12);
+            center = half + offset * -side;
+            if (++attemptsOnSide > grid.Width / 4) { side = -side; attemptsOnSide = 0; flips++; }
         }
+        if (desert is null) throw new InvalidOperationException("Desert placement exhausted its bounded search.");
+        state.DesertLeft = desert.Combined.X;
+        state.DesertRight = desert.Combined.ExclusiveRight;
+        workspace.SetVanillaUndergroundDesertRegion(desert.Combined.X - 10, desert.Combined.Y - 10,
+            desert.Combined.Width + 20, desert.Combined.Height + 20);
+        desert.PlaceMound(workspace.TileStore, vanilla, state.WorldSurface, context.CancellationToken);
+        // WorldBuilding.Configuration.json overrides the class field default with 0.5.
+        if (vanilla.NextDouble() <= .5)
+            new DesertEntrances1458(workspace.TileStore, desert, vanilla, context.CancellationToken).Place(vanilla.Next(4));
+        WorldTileRegion bounds = DesertHive1458.PlaceClusters(workspace.TileStore, desert, vanilla,
+            context.Request.ResolveVanillaSeed1458(), state.WorldSurface, context.CancellationToken);
+        var decoration = new DesertDecoration1458(workspace.TileStore, vanilla);
+        decoration.Apply(desert, context.CancellationToken);
+        for (int x = desert.Hive.X - 20; x < desert.Hive.ExclusiveRight + 20; x++)
+        {
+            context.CancellationToken.ThrowIfCancellationRequested();
+            for (int y = desert.Hive.Y - 20; y < desert.Hive.ExclusiveBottom + 20; y++)
+            {
+                if (x <= 0 || y <= 0 || x >= grid.Width - 1 || y >= grid.Height - 1) continue;
+                DesertSurface1458.FrameWalls(workspace.TileStore, vanilla, x, y);
+                // All admitted decoration footprints are complete and this phase makes
+                // no new active-tile edits. Generation TileFrame still clears inactive metadata.
+                decoration.FrameNeighbours(x, y);
+            }
+        }
+        workspace.SetVanillaDesertGenerationState(new(desert.Hive, bounds,
+            new WorldTileRegion(desert.Combined.X, 50, desert.Combined.Width, desert.Combined.ExclusiveBottom - 20)));
+        context.ReportProgress(1d, "Generating vanilla desert surface, entrances and hive");
+    }
 
+    private void ApplyMushroomPatches(IWorldGenerationContext context, Workspace workspace)
+    {
+        MushroomBiome1458.Apply(workspace, context.VanillaRandom ??
+            throw new InvalidOperationException("Mushroom generation requires the shared vanilla RNG."),
+            state.WorldSurface, state.RockLayer, context.CancellationToken);
         context.ReportProgress(1d, "Generating glowing mushroom patches");
     }
 
-    private void ApplyStoneMicroBiome(
-        IWorldGenerationContext context,
-        RuntimeGrid grid,
-        IRandom random,
-        ushort type,
-        string name)
-    {
-        int count = Math.Max(5, grid.Width / 560);
-        int top = Math.Clamp((int)state.RockLayer + 40, 20, state.UnderworldTop - 100);
-        int bottom = Math.Max(top + 1, state.UnderworldTop - 70);
-
-        for (int i = 0; i < count; i++)
-        {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(100, grid.Width - 100);
-            int y = random.Next(top, bottom);
-            int radiusX = random.Next(18, 38);
-            int radiusY = random.Next(12, 28);
-            FillEllipse(grid, x, y, radiusX, radiusY, type, overwriteAir: false);
-            CarveEllipse(grid, x + random.Next(-4, 5), y + random.Next(-2, 3),
-                Math.Max(4, radiusX / 2), Math.Max(3, radiusY / 2));
-        }
-
-        context.ReportProgress(1d, $"Generating Terraria {name} micro-biomes");
-    }
-
-    private void ApplyFloatingIslands(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyFloatingIslands(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
         // 1.4.5.8 creates floor(width * 0.0008) ordinary islands *plus* GenVars.skyLakes.
@@ -468,784 +370,114 @@ internal sealed class MidPass1458 : IWorldGenerationPass
         int lakeBudget = Math.Max(0, bootstrap.SkyLakes);
         int count = islandCount + lakeBudget;
         var used = new List<int>(count);
+        var anchors = new List<VanillaSkyIsland1458>(count);
+        var islands = new SkyIsland1458(workspace.TileStore,
+            context.VanillaRandom ?? throw new InvalidOperationException("Sky islands require the shared vanilla RNG."));
 
         for (int i = 0; i < count; i++)
         {
             context.CancellationToken.ThrowIfCancellationRequested();
-            int x = PickFloatingIslandX(grid, random, used);
+            if (!islands.TryFindAnchor(state.WorldSurface, state.WorldSurfaceLow, used, out int x, out int y))
+                continue;
+            bool lake = used.Count >= islandCount;
             used.Add(x);
-            int ground = grid.FindFirstActiveY(x, 200, Math.Min(grid.Height, Math.Max(201, (int)state.WorldSurface + 1)));
-            if (ground <= 200)
-                ground = Math.Max(201, (int)state.WorldSurface);
-            int maxYExclusive = Math.Max(91, ground - 100);
-            int y = random.Next(90, maxYExclusive);
-            y = Math.Min(y, Math.Max(90, (int)state.WorldSurfaceLow - 50));
-            // Terraria's CloudIsland/CloudLake are not ellipses. They are long, drifting,
-            // anisotropic cloud bodies followed by a second material pass. Recreate that topology
-            // clean-room so islands have the vanilla horizontal, irregular silhouette instead of
-            // the old compact oval "potato" shape.
-            if (i >= islandCount)
-                GenerateSkyLake(grid, random, x, y);
-            else
-                GenerateFloatingIsland(grid, random, x, y);
+            islands.Generate(x, y, lake);
+            anchors.Add(new(x, y, 0, lake));
         }
 
+        workspace.SetVanillaSkyIslands(anchors.ToArray());
         context.ReportProgress(1d, "Generating floating islands and sky lakes");
     }
 
-    private static void GenerateFloatingIsland(RuntimeGrid grid, IRandom random, int startX, int startY)
+
+
+    private void ApplyWebs(IWorldGenerationContext context, Workspace workspace)
     {
-        CloudBounds bounds = GenerateCloudBody(grid, random, startX, startY);
-        AddCloudBulges(grid, random, bounds);
-        ReplaceCloudCoreWithDirt(grid, random, startX, bounds);
-        ApplyCloudInteriorWalls(grid, bounds);
-        ConvertExposedSurface(
-            grid,
-            bounds.MinX - 8,
-            bounds.MaxX + 9,
-            bounds.MinY - 4,
-            bounds.MaxY + 5,
-            Dirt,
-            Grass,
-            random,
-            1);
-        AddCloudPockets(grid, random, bounds);
-    }
-
-    private static void GenerateSkyLake(RuntimeGrid grid, IRandom random, int startX, int startY)
-    {
-        CloudBounds bounds = GenerateCloudBody(grid, random, startX, startY);
-        AddCloudBulges(grid, random, bounds);
-        ApplyCloudInteriorWalls(grid, bounds);
-
-        // The lake uses the same drifting second pass as an island core, but opens a basin in the
-        // cloud body. Water is seeded only into cells with supporting cloud below; the authoritative
-        // liquid runtime performs the subsequent settling instead of baking a static ellipse.
-        double width = random.Next(80, 95);
-        int steps = random.Next(10, 15);
-        double x = startX;
-        double y = bounds.MinY;
-        double vx = PickCloudDrift(random);
-        double vy = random.Next(-20, -10) * 0.02d;
-
-        while (width > 0d && steps-- > 0)
-        {
-            width -= random.Next(4);
-            double effective = width * random.Next(80, 120) * 0.01d;
-            int left = Math.Max(2, (int)(x - width * 0.5d));
-            int right = Math.Min(grid.Width - 2, (int)(x + width * 0.5d));
-            int top = Math.Max(2, bounds.MinY - 1);
-            int bottom = Math.Min(grid.Height - 2, (int)(y + width * 0.5d));
-            double surface = y + 1d;
-
-            for (int tx = left; tx < right; tx++)
-            {
-                if (random.Next(2) == 0)
-                    surface += random.Next(-1, 2);
-                surface = Math.Clamp(surface, y, y + 2d);
-
-                for (int ty = top; ty < bottom; ty++)
-                {
-                    if (ty <= surface)
-                        continue;
-                    double dx = Math.Abs(tx - x);
-                    double dy = Math.Abs(ty - y) * 3d;
-                    if (Math.Sqrt(dx * dx + dy * dy) >= effective * 0.34d)
-                        continue;
-
-                    ref WorldTile tile = ref grid.At(tx, ty);
-                    if (!tile.IsActive || (tile.Type != Cloud && tile.Type != RainCloud))
-                        continue;
-
-                    ClearTile(ref tile);
-                    if (ty + 1 < grid.Height && grid.At(tx, ty + 1).IsActive)
-                    {
-                        tile.LiquidAmount = byte.MaxValue;
-                        tile.LiquidKind = WorldLiquidKind.Water;
-                    }
-                }
-            }
-
-            AdvanceCloudTrail(random, ref x, ref y, ref vx, ref vy);
-        }
-
-        // Seed a continuous shallow waterline so generated lakes never start as a few disconnected
-        // droplets when the random basin pass happens to be sparse.
-        for (int tx = Math.Max(2, bounds.MinX + 6); tx <= Math.Min(grid.Width - 3, bounds.MaxX - 6); tx++)
-        {
-            int top = Math.Max(2, bounds.MinY - 4);
-            int bottom = Math.Min(grid.Height - 3, bounds.MaxY);
-            for (int ty = top; ty <= bottom; ty++)
-            {
-                ref WorldTile tile = ref grid.At(tx, ty);
-                if (tile.IsActive)
-                    continue;
-                if (!grid.At(tx, ty + 1).IsActive)
-                    continue;
-                tile.LiquidAmount = byte.MaxValue;
-                tile.LiquidKind = WorldLiquidKind.Water;
-                break;
-            }
-        }
-    }
-
-    private static CloudBounds GenerateCloudBody(RuntimeGrid grid, IRandom random, int startX, int startY)
-    {
-        double width = random.Next(100, 150);
-        int steps = random.Next(20, 30);
-        double x = startX;
-        double y = startY;
-        double vx = PickCloudDrift(random);
-        double vy = random.Next(-20, -10) * 0.02d;
-        var bounds = new CloudBounds(startX, startX, startY, startY);
-
-        while (width > 0d && steps-- > 0)
-        {
-            width -= random.Next(4);
-            double effective = width * random.Next(80, 120) * 0.01d;
-            int left = Math.Max(2, (int)(x - width * 0.5d));
-            int right = Math.Min(grid.Width - 2, (int)(x + width * 0.5d));
-            int top = Math.Max(2, (int)(y - width * 0.5d));
-            int bottom = Math.Min(grid.Height - 2, (int)(y + width * 0.5d));
-            double surface = y + 1d;
-
-            for (int tx = left; tx < right; tx++)
-            {
-                if (random.Next(2) == 0)
-                    surface += random.Next(-1, 2);
-                surface = Math.Clamp(surface, y, y + 2d);
-
-                for (int ty = top; ty < bottom; ty++)
-                {
-                    if (ty <= surface)
-                        continue;
-                    double dx = Math.Abs(tx - x);
-                    double dy = Math.Abs(ty - y) * 3d;
-                    if (Math.Sqrt(dx * dx + dy * dy) >= effective * 0.4d)
-                        continue;
-
-                    ref WorldTile tile = ref grid.At(tx, ty);
-                    SetType(ref tile, Cloud);
-                    tile.LiquidAmount = 0;
-                    tile.LiquidKind = WorldLiquidKind.Water;
-                    bounds = bounds.Include(tx, ty);
-                }
-            }
-
-            AdvanceCloudTrail(random, ref x, ref y, ref vx, ref vy);
-        }
-
-        return bounds;
-    }
-
-    private static void AddCloudBulges(RuntimeGrid grid, IRandom random, CloudBounds bounds)
-    {
-        int x = bounds.MinX + random.Next(5);
-        while (x < bounds.MaxX)
-        {
-            int bottom = Math.Min(grid.Height - 3, bounds.MaxY + 8);
-            while (bottom > bounds.MinY && !grid.At(x, bottom).IsActive)
-                bottom--;
-            bottom += random.Next(-3, 4);
-            int radius = random.Next(4, 8);
-            ushort type = random.Next(4) == 0 ? RainCloud : Cloud;
-            PaintAnisotropicCloudBlob(grid, random, x, bottom, radius, type, bounds.MinY);
-            int maxStep = Math.Max(radius + 1, (int)(radius * 1.5d));
-            x += random.Next(radius, maxStep);
-        }
-    }
-
-    private static void ReplaceCloudCoreWithDirt(RuntimeGrid grid, IRandom random, int startX, CloudBounds bounds)
-    {
-        double width = random.Next(80, 95);
-        int steps = random.Next(10, 15);
-        double x = startX;
-        double y = bounds.MinY;
-        double vx = PickCloudDrift(random);
-        double vy = random.Next(-20, -10) * 0.02d;
-
-        while (width > 0d && steps-- > 0)
-        {
-            width -= random.Next(4);
-            double effective = width * random.Next(80, 120) * 0.01d;
-            int left = Math.Max(2, (int)(x - width * 0.5d));
-            int right = Math.Min(grid.Width - 2, (int)(x + width * 0.5d));
-            int top = Math.Max(2, bounds.MinY - 1);
-            int bottom = Math.Min(grid.Height - 2, (int)(y + width * 0.5d));
-            double surface = y + 1d;
-
-            for (int tx = left; tx < right; tx++)
-            {
-                if (random.Next(2) == 0)
-                    surface += random.Next(-1, 2);
-                surface = Math.Clamp(surface, y, y + 2d);
-
-                for (int ty = top; ty < bottom; ty++)
-                {
-                    if (ty <= surface)
-                        continue;
-                    double dx = Math.Abs(tx - x);
-                    double dy = Math.Abs(ty - y) * 3d;
-                    if (Math.Sqrt(dx * dx + dy * dy) >= effective * 0.4d)
-                        continue;
-                    ref WorldTile tile = ref grid.At(tx, ty);
-                    if (tile.IsActive && (tile.Type == Cloud || tile.Type == RainCloud))
-                    {
-                        tile.Type = Dirt;
-                        tile.FrameX = -1;
-                        tile.FrameY = -1;
-                    }
-                }
-            }
-
-            AdvanceCloudTrail(random, ref x, ref y, ref vx, ref vy);
-        }
-    }
-
-    private static void ApplyCloudInteriorWalls(RuntimeGrid grid, CloudBounds bounds)
-    {
-        int left = Math.Max(2, bounds.MinX - 20);
-        int right = Math.Min(grid.Width - 2, bounds.MaxX + 20);
-        int top = Math.Max(2, bounds.MinY - 20);
-        int bottom = Math.Min(grid.Height - 2, bounds.MaxY + 20);
-        for (int x = left; x <= right; x++)
-        {
-            for (int y = top; y <= bottom; y++)
-            {
-                bool enclosed = true;
-                for (int dx = -1; dx <= 1 && enclosed; dx++)
-                {
-                    for (int dy = -1; dy <= 1; dy++)
-                    {
-                        ref WorldTile neighbor = ref grid.At(x + dx, y + dy);
-                        if (!neighbor.IsActive || (neighbor.Wall != 0 && neighbor.Wall != CloudWall))
-                        {
-                            enclosed = false;
-                            break;
-                        }
-                    }
-                }
-
-                if (enclosed)
-                    grid.At(x, y).Wall = CloudWall;
-            }
-        }
-    }
-
-    private static void AddCloudPockets(RuntimeGrid grid, IRandom random, CloudBounds bounds)
-    {
-        int count = random.Next(4);
-        for (int i = 0; i <= count; i++)
-        {
-            int x = random.Next(Math.Max(2, bounds.MinX - 5), Math.Min(grid.Width - 2, bounds.MaxX + 6));
-            int y = Math.Max(3, bounds.MinY - random.Next(20, 40));
-            int radius = random.Next(4, 8);
-            ushort type = random.Next(2) == 0 ? RainCloud : Cloud;
-            PaintAnisotropicCloudBlob(grid, random, x, y, radius, type, 0);
-        }
-    }
-
-    private static void PaintAnisotropicCloudBlob(
-        RuntimeGrid grid,
-        IRandom random,
-        int centerX,
-        int centerY,
-        int radius,
-        ushort type,
-        int minYExclusive)
-    {
-        for (int x = centerX - radius; x <= centerX + radius; x++)
-        {
-            for (int y = centerY - radius; y <= centerY + radius; y++)
-            {
-                if (!grid.Contains(x, y) || y <= minYExclusive)
-                    continue;
-                double dx = Math.Abs(x - centerX);
-                double dy = Math.Abs(y - centerY) * 2d;
-                if (Math.Sqrt(dx * dx + dy * dy) >= radius + random.Next(2))
-                    continue;
-                ref WorldTile tile = ref grid.At(x, y);
-                SetType(ref tile, type);
-                tile.LiquidAmount = 0;
-                tile.LiquidKind = WorldLiquidKind.Water;
-            }
-        }
-    }
-
-    private static double PickCloudDrift(IRandom random)
-    {
-        double drift;
-        do
-        {
-            drift = random.Next(-20, 21) * 0.2d;
-        }
-        while (drift > -2d && drift < 2d);
-        return drift;
-    }
-
-    private static void AdvanceCloudTrail(IRandom random, ref double x, ref double y, ref double vx, ref double vy)
-    {
-        x += vx;
-        y += vy;
-        vx = Math.Clamp(vx + random.Next(-20, 21) * 0.05d, -1d, 1d);
-        // 1.4.5.8 keeps the cloud pass gently rising after the initial velocity is chosen.
-        if (vy > 0.2d || vy < -0.2d)
-            vy = -0.2d;
-    }
-
-    private readonly record struct CloudBounds(int MinX, int MaxX, int MinY, int MaxY)
-    {
-        public CloudBounds Include(int x, int y) => new(
-            Math.Min(MinX, x),
-            Math.Max(MaxX, x),
-            Math.Min(MinY, y),
-            Math.Max(MaxY, y));
-    }
-
-    private void ApplyDirtToMud(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
-    {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int halfWidth = Math.Max(220, grid.Width / 8);
-        int left = Math.Max(1, bootstrap.JungleOriginX - halfWidth);
-        int right = Math.Min(grid.Width - 1, bootstrap.JungleOriginX + halfWidth);
-        int top = Math.Clamp((int)state.RockLayer - 30, 1, state.UnderworldTop - 1);
-
-        for (int x = left; x < right; x++)
-        {
-            if ((x & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            for (int y = top; y < state.UnderworldTop; y++)
-            {
-                ref WorldTile tile = ref grid.At(x, y);
-                if (tile.IsActive && tile.Type == Dirt && random.Next(5) == 0)
-                {
-                    tile.Type = Mud;
-                    tile.FrameX = -1;
-                    tile.FrameY = -1;
-                }
-            }
-        }
-
-        context.ReportProgress(1d, "Converting deep jungle dirt to mud");
-    }
-
-    private void ApplySilt(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
-    {
-        long area = (long)grid.Width * grid.Height;
-        int count = Math.Max(40, (int)(area * 0.000045d));
-        int top = Math.Clamp((int)state.RockLayer, 10, state.UnderworldTop - 40);
-
+        var terrain = workspace.VanillaTerrainState ?? throw new InvalidOperationException("Webs require Terrain state.");
+        var lines = workspace.VanillaLiquidLines ?? throw new InvalidOperationException("Webs require liquid lines.");
+        var random = context.VanillaRandom ?? throw new InvalidOperationException("Webs require shared vanilla RNG.");
+        var runner = new SmallTerrainRunner1458(workspace.TileStore, random, state.WorldSurface, lines, context.CancellationToken);
+        int width = workspace.WidthTiles, height = workspace.HeightTiles;
+        int count = (int)((double)(width * height) * .0006);
+        ReadOnlySpan<WorldGenerationPoint> caves = workspace.VanillaMountainCaves;
         for (int i = 0; i < count; i++)
         {
-            if ((i & 31) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            RunMaterialBlob(
-                grid,
-                random,
-                random.Next(30, grid.Width - 30),
-                random.Next(top, state.UnderworldTop),
-                random.Next(3, 8),
-                random.Next(4, 12),
-                Silt);
+            context.CancellationToken.ThrowIfCancellationRequested();
+            // Source consumes both samples even for retained mountain-cave locations.
+            int x = random.Next(20, width - 20), y = random.Next((int)terrain.WorldSurfaceHigh, height - 20);
+            if (i < caves.Length) { x = caves[i].X; y = caves[i].Y; }
+            if (workspace.TileStore.Get(x,y).IsActive ||
+                (y <= state.WorldSurface && workspace.TileStore.Get(x,y).Wall == 0)) continue;
+            while (!workspace.TileStore.Get(x,y).IsActive && y > (int)terrain.WorldSurfaceLow) y--;
+            y++;
+            int direction = random.Next(2) == 0 ? -1 : 1;
+            while (!workspace.TileStore.Get(x,y).IsActive && x > 10 && x < width - 10) x += direction;
+            x -= direction;
+            if (y > state.WorldSurface || workspace.TileStore.Get(x,y).Wall > 0)
+                runner.Run(x, y, random.Next(4,11), random.Next(2,4), Cobweb, addTile: true,
+                    speedX: direction, speedY: -1, overRide: false);
         }
-
-        context.ReportProgress(1d, "Generating silt deposits");
-    }
-
-    private void ApplyShinies(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
-    {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        long area = (long)grid.Width * grid.Height;
-        int surface = Math.Clamp((int)state.WorldSurface, 10, grid.Height - 10);
-        int rock = Math.Clamp((int)state.RockLayer, surface + 1, state.UnderworldTop - 2);
-        int deep = Math.Clamp((rock + state.UnderworldTop) / 2, rock + 1, state.UnderworldTop - 1);
-
-        PlaceOreBand(context, grid, random, checked((ushort)bootstrap.CopperOre), area, 0.000060d, surface, rock);
-        PlaceOreBand(context, grid, random, checked((ushort)bootstrap.CopperOre), area, 0.000080d, rock, deep);
-        PlaceOreBand(context, grid, random, checked((ushort)bootstrap.CopperOre), area, 0.000020d, deep, state.UnderworldTop);
-
-        PlaceOreBand(context, grid, random, checked((ushort)bootstrap.IronOre), area, 0.000030d, surface, rock);
-        PlaceOreBand(context, grid, random, checked((ushort)bootstrap.IronOre), area, 0.000080d, rock, deep);
-        PlaceOreBand(context, grid, random, checked((ushort)bootstrap.IronOre), area, 0.000200d, deep, state.UnderworldTop);
-
-        PlaceOreBand(context, grid, random, checked((ushort)bootstrap.SilverOre), area, 0.000026d, surface, rock);
-        PlaceOreBand(context, grid, random, checked((ushort)bootstrap.SilverOre), area, 0.000150d, rock, deep);
-        PlaceOreBand(context, grid, random, checked((ushort)bootstrap.SilverOre), area, 0.000170d, deep, state.UnderworldTop);
-
-        PlaceOreBand(context, grid, random, checked((ushort)bootstrap.GoldOre), area, 0.000120d, rock, deep);
-        PlaceOreBand(context, grid, random, checked((ushort)bootstrap.GoldOre), area, 0.000120d, deep, state.UnderworldTop);
-
-        ushort evilOre = context.Request.Options.Evil == WorldGenerationEvil.Crimson ? (ushort)204 : (ushort)22;
-        PlaceOreBand(context, grid, random, evilOre, area, 0.0000225d, rock, state.UnderworldTop);
-
-        context.ReportProgress(1d, "Generating source-shaped pre-hardmode ore tiers");
-    }
-
-    private static void PlaceOreBand(
-        IWorldGenerationContext context,
-        RuntimeGrid grid,
-        IRandom random,
-        ushort type,
-        long area,
-        double density,
-        int minY,
-        int maxY)
-    {
-        if (maxY <= minY + 1)
-            return;
-
-        int count = Math.Max(1, (int)(area * density));
-        for (int i = 0; i < count; i++)
-        {
-            if ((i & 255) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            RunOreBlob(
-                grid,
-                random,
-                random.Next(10, grid.Width - 10),
-                random.Next(minY, maxY),
-                random.Next(3, 7),
-                random.Next(3, 9),
-                type);
-        }
-    }
-
-    private void ApplyWebs(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
-    {
-        int count = Math.Max(300, grid.Width / 2);
-        int minY = Math.Clamp((int)state.WorldSurface + 45, 10, state.UnderworldTop - 70);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 40);
-
-        for (int i = 0; i < count; i++)
-        {
-            if ((i & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            int x = random.Next(5, grid.Width - 5);
-            int y = random.Next(minY, maxY);
-            if (grid.At(x, y).IsActive || !grid.HasSolidNeighbor(x, y))
-                continue;
-
-            int radius = random.Next(2, 5);
-            for (int dx = -radius; dx <= radius; dx++)
-            {
-                for (int dy = -radius; dy <= radius; dy++)
-                {
-                    int tx = x + dx;
-                    int ty = y + dy;
-                    if (!grid.Contains(tx, ty) || dx * dx + dy * dy > radius * radius + random.Next(3))
-                        continue;
-                    ref WorldTile tile = ref grid.At(tx, ty);
-                    if (tile.IsActive)
-                        continue;
-                    SetType(ref tile, Cobweb);
-                }
-            }
-        }
-
         context.ReportProgress(1d, "Generating cave cobweb patches");
     }
 
-    private void ApplyUnderworld(IWorldGenerationContext context, RuntimeGrid grid, IRandom random, WorldTileStore store)
-    {
-        state.UnderworldTop = Math.Clamp(grid.Height - 200, (int)state.RockLayer + 120, grid.Height - 90);
-        int roof = state.UnderworldTop + random.Next(20, 36);
-        int floor = grid.Height - random.Next(42, 58);
-        int roofVelocity = 0;
-        int floorVelocity = 0;
 
-        for (int x = 0; x < grid.Width; x++)
-        {
-            if ((x & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            if (random.Next(3) == 0)
-                roofVelocity = Math.Clamp(roofVelocity + random.Next(-1, 2), -2, 2);
-            if (random.Next(3) == 0)
-                floorVelocity = Math.Clamp(floorVelocity + random.Next(-1, 2), -2, 2);
-
-            roof = Math.Clamp(roof + roofVelocity, state.UnderworldTop + 10, state.UnderworldTop + 65);
-            floor = Math.Clamp(floor + floorVelocity, grid.Height - 72, grid.Height - 28);
-            if (floor - roof < 60)
-                floor = Math.Min(grid.Height - 28, roof + 60);
-
-            for (int y = state.UnderworldTop - 10; y < roof; y++)
-            {
-                ref WorldTile tile = ref grid.At(x, y);
-                if (tile.IsActive && (tile.Type == Dirt || tile.Type == Stone || tile.Type == Mud))
-                    tile.Type = Ash;
-            }
-
-            for (int y = roof; y < floor; y++)
-                ClearTile(ref grid.At(x, y));
-
-            for (int y = floor; y < grid.Height; y++)
-            {
-                ref WorldTile tile = ref grid.At(x, y);
-                SetType(ref tile, Ash);
-                tile.LiquidAmount = 0;
-                tile.LiquidKind = WorldLiquidKind.Water;
-            }
-
-            if ((x % 19) < 8)
-            {
-                int lavaTop = Math.Max(roof + 20, floor - random.Next(7, 15));
-                for (int y = lavaTop; y < floor; y++)
-                {
-                    ref WorldTile tile = ref grid.At(x, y);
-                    ClearTile(ref tile);
-                    tile.LiquidAmount = byte.MaxValue;
-                    tile.LiquidKind = WorldLiquidKind.Lava;
-                }
-            }
-        }
-
-        UnderworldLava1458.RestoreSurface(store, context.CancellationToken);
-
-        int hellstoneRuns = Math.Max(120, grid.Width / 15);
-        for (int i = 0; i < hellstoneRuns; i++)
-        {
-            RunOreBlob(
-                grid,
-                random,
-                random.Next(15, grid.Width - 15),
-                random.Next(state.UnderworldTop + 15, grid.Height - 18),
-                random.Next(3, 8),
-                random.Next(4, 10),
-                Hellstone);
-        }
-
-        context.ReportProgress(1d, "Generating underworld ash caverns, lava and hellstone");
-    }
-
-    private void ApplyEvilBiome(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyEvilBiome(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int biomeCount = Math.Max(1, (int)Math.Round(grid.Width * 0.00045d));
+        var bounds = EvilBiomePlacement1458.Scan(workspace.TileStore, state.WorldSurface, context.CancellationToken);
+        var desert = workspace.VanillaUndergroundDesertRegion ??
+            throw new InvalidOperationException("Evil-biome placement requires the generated desert bounds.");
         bool crimson = context.Request.Options.Evil == WorldGenerationEvil.Crimson;
-        ushort evilGrass = crimson ? CrimsonGrass : CorruptGrass;
-        ushort evilStone = crimson ? Crimstone : Ebonstone;
-        ushort evilSand = crimson ? Crimsand : Ebonsand;
-        ushort evilHardenedSand = crimson ? CrimsonHardenedSand : CorruptHardenedSand;
-        ushort evilSandstone = crimson ? CrimsonSandstone : CorruptSandstone;
-        ushort evilIce = crimson ? FleshIce : CorruptIce;
+        var crimsonCaves = crimson ? new CrimsonCaves1458(workspace.TileStore, context.VanillaRandom!,
+            state.WorldSurface, context.CancellationToken) : null;
+        var corruptionCaves = crimson ? null : new CorruptionCaves1458(workspace.TileStore, context.VanillaRandom!,
+            state.WorldSurface, state.RockLayer, workspace.VanillaLiquidLines ??
+                throw new InvalidOperationException("Corruption requires exact Early-pass liquid lines."), context.CancellationToken);
 
-        for (int biome = 0; biome < biomeCount; biome++)
+        for (int biome = 0; biome < grid.Width * 0.00045d; biome++)
         {
             context.CancellationToken.ThrowIfCancellationRequested();
-            int center = PickEvilCenter(grid, random, bootstrap);
-            int halfWidth = random.Next(85, 145);
-            int left = Math.Max(5, center - halfWidth);
-            int right = Math.Min(grid.Width - 5, center + halfWidth);
+            var region = EvilBiomePlacement1458.Select(grid.Width, bounds, bootstrap.DungeonLocation,
+                bootstrap.DungeonSide, desert.X, desert.Right, crimson, context.VanillaRandom!, context.CancellationToken);
+            int left = region.Left, right = region.Right;
 
-            for (int x = left; x < right; x++)
+            // Ordinary Crimson has one CrimStart per selected region, before surface conversion.
+            crimsonCaves?.Start(region.Center, (int)state.WorldSurfaceLow - 10);
+
+            if (crimson)
             {
-                int surface = grid.FindFirstActiveY(x, 30, Math.Min(grid.Height, (int)state.RockLayer + 100));
-                int bottom = Math.Min(state.UnderworldTop - 30, (int)state.RockLayer + 260);
-                for (int y = surface; y < bottom; y++)
-                {
-                    ref WorldTile tile = ref grid.At(x, y);
-                    if (!tile.IsActive)
-                        continue;
-
-                    tile.Type = tile.Type switch
-                    {
-                        Grass => evilGrass,
-                        Stone => evilStone,
-                        Sand => evilSand,
-                        HardenedSand => evilHardenedSand,
-                        Sandstone => evilSandstone,
-                        Ice => evilIce,
-                        _ => tile.Type
-                    };
-                }
+                var surface = new EvilBiomeSurface1458(workspace.TileStore, context.VanillaRandom!, state.WorldSurfaceLow,
+                    state.WorldSurface, context.CancellationToken);
+                for (int x = left; x < right; x++) surface.ConvertJungleColumn(x,left,right,true);
+                surface.ConvertRegion(left,right,true);
+                new EvilAltarPlacement1458(workspace.TileStore, context.VanillaRandom!, state.WorldSurface,
+                    state.RockLayer, context.CancellationToken).GenerateCrimsonRegion(left,right);
+                continue;
             }
 
-            int chasms = crimson ? random.Next(3, 6) : random.Next(2, 5);
-            for (int i = 0; i < chasms; i++)
-            {
-                int x = random.Next(left + 8, Math.Max(left + 9, right - 8));
-                int y = grid.FindFirstActiveY(x, 20, Math.Min(grid.Height, (int)state.RockLayer));
-                CarveEvilChasm(grid, random, x, Math.Max(10, y - 2), evilStone);
-            }
+            corruptionCaves!.GenerateRegion(left, right, region.Center, state.WorldSurfaceLow);
         }
 
+        crimsonCaves?.PlaceHearts();
         context.ReportProgress(1d, crimson
             ? "Generating crimson surface conversion and chasms"
             : "Generating corruption surface conversion and chasms");
     }
 
-    private void ApplyLakes(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyLakes(IWorldGenerationContext context, Workspace workspace)
     {
-        int count = Math.Max(4, grid.Width / 700 + 2);
-        int minY = Math.Clamp((int)state.WorldSurface + 25, 20, state.UnderworldTop - 100);
-        int maxY = Math.Clamp((int)state.RockLayer + 120, minY + 1, state.UnderworldTop - 60);
-
-        for (int i = 0; i < count; i++)
-        {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(120, grid.Width - 120);
-            if (state.DesertLeft >= 0 && x >= state.DesertLeft - 40 && x <= state.DesertRight + 40)
-            {
-                i--;
-                continue;
-            }
-
-            int y = random.Next(minY, maxY);
-            int rx = random.Next(14, 30);
-            int ry = random.Next(5, 12);
-            CarveEllipse(grid, x, y, rx, ry);
-            FillLiquidEllipse(grid, x, y + Math.Max(1, ry / 3), rx - 2, Math.Max(2, ry - 2), WorldLiquidKind.Water);
-        }
-
-        context.ReportProgress(1d, "Generating underground lakes");
+        new SurfaceLakes1458(workspace.TileStore, context.VanillaRandom!, state.WorldSurface,
+            state.WorldSurfaceLow, context.CancellationToken).Generate(workspace);
+        context.ReportProgress(1d, "Generating ordinary surface lakes");
     }
 
-    private void ApplySlush(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private static void ApplySlush(IWorldGenerationContext context, Workspace workspace)
     {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int left = Math.Max(10, bootstrap.SnowOriginLeft - 80);
-        int right = Math.Min(grid.Width - 10, bootstrap.SnowOriginRight + 80);
-        int minY = Math.Clamp((int)state.RockLayer, 20, state.UnderworldTop - 80);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 50);
-        int count = Math.Max(50, (right - left) / 2);
-
-        for (int i = 0; i < count; i++)
-        {
-            if ((i & 31) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            RunSlushBlob(
-                grid,
-                random,
-                random.Next(left, right),
-                random.Next(minY, maxY),
-                random.Next(3, 7),
-                random.Next(4, 10));
-        }
-
-        context.ReportProgress(1d, "Generating slush deposits in the ice biome");
+        SnowMaterialConversion1458.Apply(workspace, context.CancellationToken);
+        context.ReportProgress(1d, "Converting stored materials inside the snow biome");
     }
 
-    private int PickDesertLeft(
-        RuntimeGrid grid,
-        IRandom random,
-        VanillaWorldGenerationBootstrapState1458 bootstrap,
-        int width)
-    {
-        int min = Math.Max(bootstrap.LeftBeachEnd + 180, 280);
-        int max = Math.Min(bootstrap.RightBeachStart - width - 180, grid.Width - width - 280);
-        if (max <= min)
-            return Math.Clamp(grid.Width / 2 - width / 2, 20, grid.Width - width - 20);
 
-        for (int attempt = 0; attempt < 4000; attempt++)
-        {
-            int left = random.Next(min, max + 1);
-            int right = left + width;
-            int center = left + width / 2;
-            if (Math.Abs(center - grid.Width / 2) < 360)
-                continue;
-            if (Math.Abs(center - bootstrap.JungleOriginX) < width / 2 + 420)
-                continue;
-            if (right >= bootstrap.SnowOriginLeft - 220 && left <= bootstrap.SnowOriginRight + 220)
-                continue;
-            if (Math.Abs(center - bootstrap.DungeonLocation) < width / 2 + 220)
-                continue;
-            return left;
-        }
-
-        int fallbackCenter = bootstrap.JungleOriginX < grid.Width / 2
-            ? (int)(grid.Width * 0.72d)
-            : (int)(grid.Width * 0.28d);
-        return Math.Clamp(fallbackCenter - width / 2, min, max);
-    }
-
-    private static int PickFloatingIslandX(RuntimeGrid grid, IRandom random, List<int> used)
-    {
-        for (int attempt = 0; attempt < 2000; attempt++)
-        {
-            int x = random.Next((int)(grid.Width * 0.1d), (int)(grid.Width * 0.9d));
-            if (Math.Abs(x - grid.Width / 2) < 150)
-                continue;
-            bool close = false;
-            foreach (int previous in used)
-            {
-                if (Math.Abs(previous - x) < 180)
-                {
-                    close = true;
-                    break;
-                }
-            }
-            if (!close)
-                return x;
-        }
-
-        int margin = Math.Max(1, (int)(grid.Width * 0.1d));
-        return Math.Clamp((used.Count + 1) * grid.Width / (used.Count + 2), margin, grid.Width - margin);
-    }
-
-    private int PickEvilCenter(RuntimeGrid grid, IRandom random, VanillaWorldGenerationBootstrapState1458 bootstrap)
-    {
-        for (int attempt = 0; attempt < 8000; attempt++)
-        {
-            int x = random.Next(bootstrap.LeftBeachEnd + 180, bootstrap.RightBeachStart - 180);
-            if (Math.Abs(x - grid.Width / 2) < 240)
-                continue;
-            if (Math.Abs(x - bootstrap.JungleOriginX) < 480)
-                continue;
-            if (x >= bootstrap.SnowOriginLeft - 220 && x <= bootstrap.SnowOriginRight + 220)
-                continue;
-            if (Math.Abs(x - bootstrap.DungeonLocation) < 260)
-                continue;
-            if (state.DesertLeft >= 0 && x >= state.DesertLeft - 180 && x <= state.DesertRight + 180)
-                continue;
-            return x;
-        }
-
-        return bootstrap.JungleOriginX < grid.Width / 2
-            ? Math.Clamp((int)(grid.Width * 0.68d), bootstrap.LeftBeachEnd + 180, bootstrap.RightBeachStart - 180)
-            : Math.Clamp((int)(grid.Width * 0.32d), bootstrap.LeftBeachEnd + 180, bootstrap.RightBeachStart - 180);
-    }
-
-    private void CarveEvilChasm(RuntimeGrid grid, IRandom random, int startX, int startY, ushort evilStone)
-    {
-        double x = startX;
-        double y = startY;
-        double vx = random.Next(-10, 11) * 0.04d;
-        int bottom = Math.Min(state.UnderworldTop - 50, (int)state.RockLayer + random.Next(150, 300));
-
-        while (y < bottom)
-        {
-            int radius = random.Next(3, 7);
-            int cx = (int)x;
-            int cy = (int)y;
-            for (int dx = -radius - 2; dx <= radius + 2; dx++)
-            {
-                for (int dy = -radius - 2; dy <= radius + 2; dy++)
-                {
-                    int tx = cx + dx;
-                    int ty = cy + dy;
-                    if (!grid.Contains(tx, ty))
-                        continue;
-                    int distance = dx * dx + dy * dy;
-                    ref WorldTile tile = ref grid.At(tx, ty);
-                    if (distance <= radius * radius)
-                        ClearTile(ref tile);
-                    else if (distance <= (radius + 2) * (radius + 2) && tile.IsActive &&
-                             tile.Type is Dirt or Stone or Grass or Sand)
-                        tile.Type = evilStone;
-                }
-            }
-
-            x += vx;
-            y += 1d;
-            vx = Math.Clamp(vx + random.Next(-10, 11) * 0.015d, -0.7d, 0.7d);
-            x = Math.Clamp(x, 8d, grid.Width - 9d);
-        }
-    }
 
     private static void CarveTunnel(
         RuntimeGrid grid,
@@ -1271,111 +503,7 @@ internal sealed class MidPass1458 : IWorldGenerationPass
         }
     }
 
-    private static void RunMaterialBlob(
-        RuntimeGrid grid,
-        IRandom random,
-        int startX,
-        int startY,
-        int strength,
-        int steps,
-        ushort type)
-    {
-        double x = startX;
-        double y = startY;
-        double vx = random.Next(-10, 11) * 0.08d;
-        double vy = random.Next(-10, 11) * 0.08d;
 
-        for (int step = 0; step < steps; step++)
-        {
-            double scale = 1d - step / (double)Math.Max(1, steps);
-            int radius = Math.Max(1, (int)Math.Round(strength * scale));
-            PaintCircle(grid, (int)x, (int)y, radius, type, onlyReplaceNatural: true);
-            x = Math.Clamp(x + vx, 2d, grid.Width - 3d);
-            y = Math.Clamp(y + vy, 2d, grid.Height - 3d);
-            vx = Math.Clamp(vx + random.Next(-10, 11) * 0.02d, -1d, 1d);
-            vy = Math.Clamp(vy + random.Next(-10, 11) * 0.02d, -1d, 1d);
-        }
-    }
-
-    private static void RunOreBlob(
-        RuntimeGrid grid,
-        IRandom random,
-        int startX,
-        int startY,
-        int strength,
-        int steps,
-        ushort type)
-    {
-        double x = startX;
-        double y = startY;
-        double vx = random.Next(-10, 11) * 0.06d;
-        double vy = random.Next(-10, 11) * 0.06d;
-
-        for (int step = 0; step < steps; step++)
-        {
-            double scale = 1d - step / (double)Math.Max(1, steps);
-            int radius = Math.Max(1, (int)Math.Round(strength * scale));
-            for (int dx = -radius; dx <= radius; dx++)
-            {
-                for (int dy = -radius; dy <= radius; dy++)
-                {
-                    if (dx * dx + dy * dy > radius * radius + random.Next(3))
-                        continue;
-                    int tx = (int)x + dx;
-                    int ty = (int)y + dy;
-                    if (!grid.Contains(tx, ty))
-                        continue;
-                    ref WorldTile tile = ref grid.At(tx, ty);
-                    if (!tile.IsActive || !IsOreReplaceable(tile.Type))
-                        continue;
-                    tile.Type = type;
-                    tile.FrameX = -1;
-                    tile.FrameY = -1;
-                }
-            }
-
-            x = Math.Clamp(x + vx, 2d, grid.Width - 3d);
-            y = Math.Clamp(y + vy, 2d, grid.Height - 3d);
-            vx = Math.Clamp(vx + random.Next(-10, 11) * 0.02d, -1d, 1d);
-            vy = Math.Clamp(vy + random.Next(-10, 11) * 0.02d, -1d, 1d);
-        }
-    }
-
-    private static void RunSlushBlob(
-        RuntimeGrid grid,
-        IRandom random,
-        int startX,
-        int startY,
-        int strength,
-        int steps)
-    {
-        double x = startX;
-        double y = startY;
-        for (int step = 0; step < steps; step++)
-        {
-            int radius = Math.Max(1, strength - step / 2);
-            for (int dx = -radius; dx <= radius; dx++)
-            {
-                for (int dy = -radius; dy <= radius; dy++)
-                {
-                    int tx = (int)x + dx;
-                    int ty = (int)y + dy;
-                    if (!grid.Contains(tx, ty) || dx * dx + dy * dy > radius * radius + random.Next(3))
-                        continue;
-                    ref WorldTile tile = ref grid.At(tx, ty);
-                    if (tile.IsActive && tile.Type is Snow or Ice or Dirt or Stone)
-                    {
-                        tile.Type = Slush;
-                        tile.FrameX = -1;
-                        tile.FrameY = -1;
-                    }
-                }
-            }
-
-            x = Math.Clamp(x + random.Next(-1, 2), 2d, grid.Width - 3d);
-            y = Math.Clamp(y + random.Next(-1, 2), 2d, grid.Height - 3d);
-        }
-    }
 
     private static void FillEllipse(
         RuntimeGrid grid,
@@ -1430,36 +558,6 @@ internal sealed class MidPass1458 : IWorldGenerationPass
         }
     }
 
-    private static void FillLiquidEllipse(
-        RuntimeGrid grid,
-        int centerX,
-        int centerY,
-        int radiusX,
-        int radiusY,
-        WorldLiquidKind liquid)
-    {
-        radiusX = Math.Max(1, radiusX);
-        radiusY = Math.Max(1, radiusY);
-        for (int dx = -radiusX; dx <= radiusX; dx++)
-        {
-            double nx = dx / (double)radiusX;
-            for (int dy = 0; dy <= radiusY; dy++)
-            {
-                double ny = dy / (double)radiusY;
-                if (nx * nx + ny * ny > 1d)
-                    continue;
-                int x = centerX + dx;
-                int y = centerY + dy;
-                if (!grid.Contains(x, y))
-                    continue;
-                ref WorldTile tile = ref grid.At(x, y);
-                if (tile.IsActive)
-                    continue;
-                tile.LiquidAmount = byte.MaxValue;
-                tile.LiquidKind = liquid;
-            }
-        }
-    }
 
     private static void ConvertExposedSurface(
         RuntimeGrid grid,
@@ -1540,9 +638,6 @@ internal sealed class MidPass1458 : IWorldGenerationPass
 
     private static bool IsNaturalReplaceable(ushort type) =>
         type is Dirt or Stone or Sand or Mud or Snow or Ice or HardenedSand or Sandstone or Ash;
-
-    private static bool IsOreReplaceable(ushort type) =>
-        IsNaturalReplaceable(type) || type is Marble or Granite or Silt;
 
     private VanillaWorldGenerationBootstrapState1458 RequireBootstrap() =>
         state.Bootstrap ?? throw new InvalidOperationException("Mid vanilla pass executed before bootstrap state initialization.");

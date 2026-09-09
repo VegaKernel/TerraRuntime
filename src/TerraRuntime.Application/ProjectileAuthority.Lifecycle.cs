@@ -23,6 +23,7 @@ internal sealed partial class ProjectileAuthority
         liveChildSpawns.Reset();
         SynchronizeControlledProjectileReleaseInputs();
         LastTick = executor.Tick(stepper);
+        FallingBlocks.ForgetDisplaced(projectiles);
         ApplyPendingLiveChildSpawns();
         ApplyPendingChildSpawns();
         return true;

@@ -36,32 +36,32 @@ internal static class RuntimePlayerBotLoadoutCatalog1458
             VanillaItemIds.UnholyArrow, VanillaItemIds.SilverBullet,
             VanillaItemIds.SolarFlareHelmet, VanillaItemIds.BeetleShell, VanillaItemIds.SolarFlareLeggings,
             VanillaItemIds.SolarFlareHelmet, VanillaItemIds.SolarFlareBreastplate, VanillaItemIds.SolarFlareLeggings,
-            VanillaItemIds.FishronWings, VanillaItemIds.CelestialShell, VanillaItemIds.DestroyerEmblem,
-            VanillaItemIds.AnkhShield, VanillaItemIds.WarriorEmblem),
+            VanillaItemIds.FishronWings, VanillaItemIds.SoaringInsignia, VanillaItemIds.TerrasparkBoots,
+            VanillaItemIds.Magiluminescence, VanillaItemIds.AnkhShield),
         new(
             "Vortex Ranger",
             VanillaItemIds.Muramasa, VanillaItemIds.PlatinumBow, VanillaItemIds.Minishark,
             VanillaItemIds.UnholyArrow, VanillaItemIds.SilverBullet,
             VanillaItemIds.VortexHelmet, VanillaItemIds.ShroomiteBreastplate, VanillaItemIds.VortexLeggings,
             VanillaItemIds.VortexHelmet, VanillaItemIds.VortexBreastplate, VanillaItemIds.VortexLeggings,
-            VanillaItemIds.FishronWings, VanillaItemIds.CelestialShell, VanillaItemIds.DestroyerEmblem,
-            VanillaItemIds.RangerEmblem, VanillaItemIds.SniperScope),
+            VanillaItemIds.FishronWings, VanillaItemIds.SoaringInsignia, VanillaItemIds.TerrasparkBoots,
+            VanillaItemIds.Magiluminescence, VanillaItemIds.SniperScope),
         new(
             "Shroomite Scout",
             VanillaItemIds.Muramasa, VanillaItemIds.PlatinumBow, VanillaItemIds.Revolver,
             VanillaItemIds.UnholyArrow, VanillaItemIds.SilverBullet,
             VanillaItemIds.ShroomiteMask, VanillaItemIds.VortexBreastplate, VanillaItemIds.ShroomiteLeggings,
             VanillaItemIds.ShroomiteMask, VanillaItemIds.ShroomiteBreastplate, VanillaItemIds.ShroomiteLeggings,
-            VanillaItemIds.FishronWings, VanillaItemIds.CelestialShell, VanillaItemIds.DestroyerEmblem,
-            VanillaItemIds.RangerEmblem, VanillaItemIds.MagicQuiver),
+            VanillaItemIds.FishronWings, VanillaItemIds.SoaringInsignia, VanillaItemIds.TerrasparkBoots,
+            VanillaItemIds.Magiluminescence, VanillaItemIds.MagicQuiver),
         new(
             "Beetle Bruiser",
             VanillaItemIds.Muramasa, VanillaItemIds.PlatinumBow, VanillaItemIds.Musket,
             VanillaItemIds.UnholyArrow, VanillaItemIds.SilverBullet,
             VanillaItemIds.BeetleHelmet, VanillaItemIds.SolarFlareBreastplate, VanillaItemIds.BeetleLeggings,
             VanillaItemIds.BeetleHelmet, VanillaItemIds.BeetleShell, VanillaItemIds.BeetleLeggings,
-            VanillaItemIds.FishronWings, VanillaItemIds.CelestialShell, VanillaItemIds.DestroyerEmblem,
-            VanillaItemIds.AnkhShield, VanillaItemIds.WarriorEmblem)
+            VanillaItemIds.FishronWings, VanillaItemIds.SoaringInsignia, VanillaItemIds.TerrasparkBoots,
+            VanillaItemIds.Magiluminescence, VanillaItemIds.WarriorEmblem)
     ];
 
     public static RuntimePlayerBotLoadout1458 Pick(Random random)

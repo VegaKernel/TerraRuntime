@@ -235,6 +235,7 @@ public static class VanillaPlayerCombatEquipmentCatalog
                 };
                 break;
             case 2609: // Fishron Wings: movement only for the represented combat slice.
+            case 4989: // Soaring Insignia: movement/jump/flight only, no combat modifier.
             case 5107: // Magiluminescence: movement/light only here.
                 break;
             case 5000: // Terraspark: Player.ApplyEquipFunctional's 908/5000 branch.

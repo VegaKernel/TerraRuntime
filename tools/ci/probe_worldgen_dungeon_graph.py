@@ -16,6 +16,66 @@ def digest(source: str) -> str:
     return hashlib.sha256(source.encode("utf-8")).hexdigest()
 
 
+def read_source(path: str) -> str:
+    raw = Path(path).read_bytes()
+    return raw.decode("utf-16" if raw.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig")
+
+
+def require_runtime_graph(runtime: str, room: str, hall: str) -> None:
+    # Check the actual graph and isolated geometry owners, not their former colocated bodies.
+    for marker in (
+        "DungeonGenerationCatalog1458",
+        "var components = GenerateLayout(renderer, sharedRandom",
+        "int roomRoll = random.Next(DungeonGenerationCatalog1458.RoomChance)",
+        "renderer.RenderRoom(cursor, random.Next(), startingRoom: true)",
+        "renderer.RenderHall(cursor, lastHall, random.Next())",
+        "location.X - 10 + random.Next(20), location.Y + 30",
+        "ResolveEntranceOrigin(components)",
+        "component.InnerBounds ?? throw",
+        "inner.Top < highest.Value.Top",
+        "RenderLegacyEntranceSegment",
+        "RenderPrecalculatedEntranceSegment",
+        "new DungeonSurfaceBuildings1458(store, brick, crackedBrick, wall, worldSurface, sharedRandom, cancellationToken)",
+        "_ = sharedRandom.Next();",
+        "DungeonEntranceKind1458.Dome => builder.GenerateDome(anchor, seed, leftDungeon)",
+        "DungeonEntranceKind1458.Tower => builder.GenerateTower(anchor, seed, leftDungeon)",
+        "entrance.BuildingPlatforms",
+    ):
+        if marker not in runtime:
+            raise SystemExit(f"Runtime dungeon graph no longer contains marker: {marker}")
+    for owner, source in (("room", room), ("hall", hall)):
+        if "new DungeonUnifiedRandom1458(seed)" not in source:
+            raise SystemExit(f"Runtime dungeon {owner} lacks isolated component RNG")
+
+
+def require_runtime_features(source: str) -> None:
+    markers = (
+        "DungeonFeatureCandidates1458.Collect(workspace.TileStore, graph)",
+        "earlyBounds = ClampBounds(samplingBounds, grid.Width, grid.Height, padding: 0)",
+        "new DungeonPitTraps1458(workspace.TileStore, random, cancellationToken)",
+        "new DungeonSpikes1458(workspace.TileStore, random, cancellationToken, pits)",
+        "new DungeonDoors1458(workspace.TileStore, random, cancellationToken)",
+        "new DungeonWallVariants1458(workspace.TileStore, random, cancellationToken)",
+        "new DungeonPlatforms1458(workspace.TileStore, random, worldSurface, rockLayer, cancellationToken)",
+        "new DungeonChests1458(workspace, random, bootstrap, worldSurface, rockLayer, cancellationToken, pits)",
+        "chests.PlaceBiome(earlyBounds",
+        "new DungeonBookshelves1458(workspace.TileStore, random, worldSurface, rockLayer, cancellationToken, pits)",
+        "chests.PlaceBasic(graph.Components)",
+        "new DungeonLights1458(workspace.TileStore, random, cancellationToken, pits).Place(bounds",
+        "new DungeonTraps1458(workspace.TileStore, random, new(0, 0), cancellationToken).Place(bounds",
+        "new DungeonFurniture1458(workspace, random, cancellationToken, pits).Place(bounds",
+        "new DungeonPaintings1458(workspace.TileStore, random, cancellationToken)",
+        "new DungeonBanners1458(workspace.TileStore, random, cancellationToken, pits).Place(bounds",
+        "new DungeonLateDoors1458(workspace.TileStore, random, cancellationToken).Apply(bounds)",
+    )
+    previous = -1
+    for marker in markers:
+        position = source.find(marker)
+        if position <= previous:
+            raise SystemExit(f"Missing or reordered dungeon feature handoff: {marker}")
+        previous = position
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--crawler", required=True)
@@ -23,14 +83,19 @@ def main() -> int:
     parser.add_argument("--room", required=True)
     parser.add_argument("--hall", required=True)
     parser.add_argument("--runtime", required=True)
+    parser.add_argument("--runtime-room", required=True)
+    parser.add_argument("--runtime-hall", required=True)
+    parser.add_argument("--runtime-features", required=True)
     parser.add_argument("--output")
     args = parser.parse_args()
 
-    crawler = Path(args.crawler).read_text(encoding="utf-8")
-    layout = Path(args.layout).read_text(encoding="utf-8")
-    room = Path(args.room).read_text(encoding="utf-8")
-    hall = Path(args.hall).read_text(encoding="utf-8")
-    runtime = Path(args.runtime).read_text(encoding="utf-8")
+    crawler = read_source(args.crawler)
+    layout = read_source(args.layout)
+    room = read_source(args.room)
+    hall = read_source(args.hall)
+    runtime = read_source(args.runtime)
+    runtime_room = read_source(args.runtime_room)
+    runtime_hall = read_source(args.runtime_hall)
 
     source_contracts = [
         (crawler, r"shelfStyles\[0\]\s*=\s*genRand\.Next\(9,\s*13\)", "shelf style range"),
@@ -51,18 +116,8 @@ def main() -> int:
     for source, pattern, label in source_contracts:
         require(source, pattern, label)
 
-    runtime_markers = [
-        "VanillaDungeonGenerationCatalog1458",
-        "int roomRoll = sharedRandom.Next(VanillaDungeonGenerationCatalog1458.RoomChance)",
-        "new DungeonUnifiedRandom1458(seed)",
-        "renderer.RenderRoom(cursor, startingRoomSeed, startingRoom: true)",
-        "renderer.RenderHall(cursor, lastHall, sharedRandom.Next())",
-        "RenderLegacyEntranceSegment",
-        "RenderPrecalculatedEntranceSegment",
-    ]
-    for marker in runtime_markers:
-        if marker not in runtime:
-            raise SystemExit(f"Runtime dungeon graph no longer contains marker: {marker}")
+    require_runtime_graph(runtime, runtime_room, runtime_hall)
+    require_runtime_features(read_source(args.runtime_features))
 
     lines = [
         "source=TerrariaServer 1.4.5.8",

@@ -34,35 +34,44 @@ def send_equipment(client, player_id, slot_id, item_net_id):
     )
 
 
-def send_selected_movement(client, player_id, selected_item):
+def send_selected_movement(client, player_id, selected_item, tile_x, tile_y):
     client.sendall(
         struct.pack(
             "<HBBBBBBBff",
             17,
             13,
             player_id,
-            0,
-            0,
+            0x20,  # controlUseItem
+            0x10,  # normal gravDir
             0,
             0,
             selected_item,
-            160.0,
-            160.0,
+            tile_x * 16.0,
+            tile_y * 16.0,
         )
     )
 
 
-def select_item(origin, peer, player_id, item_net_id):
-    send_equipment(origin, player_id, 0, item_net_id)
-    send_selected_movement(origin, player_id, 0)
+def select_item(origin, peer, player_id, item_net_id, tile_x, tile_y):
+    slot = 1 if item_net_id == COPPER_PICKAXE_ITEM else 0
+    send_equipment(origin, player_id, slot, item_net_id)
+    # First observe the actual inventory relay: an old join movement cannot acknowledge a tool change.
+    inventory, _ = recv_until_packet(peer, 5, 5)
+    if (len(inventory) != 9 or inventory[0] != player_id or
+            struct.unpack_from("<h", inventory, 1)[0] != slot or
+            struct.unpack_from("<h", inventory, 6)[0] != item_net_id):
+        fail("selected-item inventory relay mismatch")
+    send_selected_movement(origin, player_id, slot, tile_x, tile_y)
     payload, skipped = recv_until_packet(peer, 13, 5)
     if len(payload) != 14:
         fail(f"selected-item synchronization got packet13 payload bytes={len(payload)}, skipped={skipped[:64]}")
-    if payload[0] != player_id or payload[5] != 0:
+    if payload[0] != player_id or payload[5] != slot:
         fail(
-            f"selected-item synchronization mismatch: expected player={player_id} selected=0, "
+            f"selected-item synchronization mismatch: expected player={player_id} selected={slot}, "
             f"got player={payload[0]} selected={payload[5]}"
         )
+    if struct.unpack_from("<ff", payload, 6) != (tile_x * 16.0, tile_y * 16.0):
+        fail("selected-item position was not admitted near the target tile")
 
 
 def send_tile(client, action, tile_x, tile_y, data, style=0):
@@ -138,6 +147,19 @@ def assert_no_messages(client, forbidden, duration, label):
         client.settimeout(previous_timeout)
 
 
+def complete_pickup(origin, peer, item_index):
+    # Official 1.4.5.8 PickupItem -> SyncItem -> SendData(21) substitutes packet 151 for an empty item.
+    # Sending a synthetic zero-stack packet 21 alone previously concealed the missing production ingress.
+    owner, _ = recv_until_packet(origin, 22, 5)
+    if len(owner) < 3 or struct.unpack_from("<hB", owner) != (item_index, 0):
+        fail("mined item did not receive the origin's server reservation")
+    origin.sendall(struct.pack("<HBh", 5, 151, item_index))
+    for client in (origin, peer):
+        removed, _ = recv_until_packet(client, 151, 5)
+        if removed != struct.pack("<h", item_index):
+            fail("compact pickup removal did not converge to both observers")
+
+
 def run(host, port, tile_x, tile_y):
     origin = None
     peer = None
@@ -146,11 +168,11 @@ def run(host, port, tile_x, tile_y):
         peer, peer_sections, peer_bootstrap = join_client(host, port, 1)
         time.sleep(0.25)
 
-        select_item(origin, peer, 0, DIRT_BLOCK_ITEM)
+        select_item(origin, peer, 0, DIRT_BLOCK_ITEM, tile_x, tile_y)
         send_tile(origin, PLACE_TILE, tile_x, tile_y, 0)
         receive_tile(peer, PLACE_TILE, tile_x, tile_y, 0)
 
-        select_item(origin, peer, 0, COPPER_PICKAXE_ITEM)
+        select_item(origin, peer, 0, COPPER_PICKAXE_ITEM, tile_x, tile_y)
 
         send_tile(origin, KILL_TILE, tile_x, tile_y, 1)
         failed_hit_skipped = receive_tile(peer, KILL_TILE, tile_x, tile_y, 1)
@@ -181,6 +203,7 @@ def run(host, port, tile_x, tile_y):
 
         assert_dirt_drop(origin_drop, tile_x, tile_y)
         receive_tile(peer, KILL_TILE, tile_x, tile_y, 0)
+        complete_pickup(origin, peer, origin_drop["item_index"])
         assert_no_messages(origin, {17}, 0.5, "successful-kill origin")
 
         print(
@@ -190,6 +213,7 @@ def run(host, port, tile_x, tile_y):
             f"velocity=({origin_drop['vel_x']},{origin_drop['vel_y']}) "
             "failedHit=peer-packet17-no-drop "
             "origin=packet21-only peer=packet21-then-packet17 "
+            "pickup=server-packet22-client-packet151-replicated151 "
             f"originSections={origin_sections} originBootstrapFrames={origin_bootstrap} "
             f"peerSections={peer_sections} peerBootstrapFrames={peer_bootstrap}"
         )

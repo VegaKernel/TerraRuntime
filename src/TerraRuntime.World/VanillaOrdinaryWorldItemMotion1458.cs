@@ -1,3 +1,5 @@
+using TerraRuntime.Contracts.Gameplay;
+
 namespace TerraRuntime.World;
 
 /// <summary>
@@ -27,7 +29,8 @@ public static class VanillaOrdinaryWorldItemMotion1458
             WorldTile tile = tiles.Get(tx, ty);
             if (tile.LiquidAmount > 0 && tile.LiquidKind == WorldLiquidKind.Shimmer) return false;
             // Until item-specific ignored platforms and conveyor/slope motion are represented, refuse them.
-            if (tile.IsActive && !tile.IsActuated && (tile.Shape != 0 || tile.Type is 421 or 422 ||
+            if (tile.IsActive && !tile.IsActuated && (tile.Shape != 0 ||
+                tile.TileType == VanillaTileIds.ConveyorBeltLeft || tile.TileType == VanillaTileIds.ConveyorBeltRight ||
                 VanillaTileCollisionCatalog.IsSolidTop(tile.TileType))) return false;
         }
         float wetMultiplier = wasHoney ? .25f : .5f;

@@ -104,7 +104,11 @@ internal static class HellFortGenerator1458
                 ref WorldTile tile = ref At(store, x, y);
                 tile.LiquidAmount = 0;
                 if (x == left[col] || x == right[col] || y == top[row] || y == bottom[row])
-                    SetTile(ref tile, brick, 0, 0);
+                {
+                    // HellFort writes material/activity/slope directly, preserving old frame bytes.
+                    // In particular, earlier cave kills leave -1 rather than a fresh placement's0.
+                    tile.Flags |= WorldTileFlags.Active; tile.Type = brick; tile.Shape = 0;
+                }
                 else { tile.Flags &= ~WorldTileFlags.Active; tile.Wall = wall; }
             }
         }
@@ -224,6 +228,31 @@ internal static class HellFortGenerator1458
             SetTile(ref tile, 19, 0, 13 * 18);
             if (wall.HasValue) tile.Wall = wall.Value;
         }
+        // PlaceTile's SquareTileFrame also reframes the adjacent platform after each placement.
+        // These generated spans are flat; frame all changed cells and their two side neighbours.
+        for (int x = start - 1; x <= end + 1; x++)
+        {
+            ref WorldTile tile = ref At(store, x, y);
+            if (!tile.IsActive || tile.Type != 19) continue;
+            if (tile.Shape != 0 || tile.IsActuated)
+                throw new InvalidOperationException("Unverified sloped/actuated HellFort platform framing.");
+            int left = FlatPlatformNeighbour(At(store, x - 1, y));
+            int right = FlatPlatformNeighbour(At(store, x + 1, y));
+            tile.FrameX = (short)((left, right) switch
+            {
+                (1,1) => 0, (1,0) => 18, (0,1) => 36, (2,1) => 54,
+                (1,2) => 72, (2,0) => 108, (0,2) => 126, _ => 90
+            });
+        }
+    }
+
+    private static int FlatPlatformNeighbour(in WorldTile tile)
+    {
+        if (!tile.IsActive) return 0;
+        if (tile.Shape != 0 || tile.IsActuated)
+            throw new InvalidOperationException("Unverified shaped HellFort platform neighbour.");
+        if (!VanillaTileCollisionCatalog.IsSolid(tile.TileType)) return 0;
+        return tile.Type == 19 ? 1 : 2;
     }
 
     private static void Crumble(WorldTileStore store, int x, int top, int bottom, int direction, IWorldGenerationVanillaRandom random)

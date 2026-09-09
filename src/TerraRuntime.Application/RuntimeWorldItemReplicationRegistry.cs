@@ -92,7 +92,7 @@ internal sealed class RuntimeWorldItemReplicationRegistry : IWorldItemStateCommi
     /// <summary>Broadcasts source packet 151 when a leased instanced slot becomes reusable.</summary>
     public bool TryBroadcastInstancedSlotRelease(short itemSlot)
     {
-        if (TerrariaWorldItemFrameEncoder.TryEncodeInstancedSlotRelease(itemSlot, out ReadOnlyMemory<byte> encoded) !=
+        if (TerrariaWorldItemFrameEncoder.TryEncodeRemoval(itemSlot, out ReadOnlyMemory<byte> encoded) !=
             TerrariaWorldItemFrameEncodeResult.Encoded)
         {
             Interlocked.Increment(ref unsupportedCommits);

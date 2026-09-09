@@ -53,6 +53,7 @@ internal sealed partial class ProjectileAuthority
     private readonly RuntimeCelebrationMk2VolleyTracker celebrationMk2Volleys = new();
     private readonly ProjectileSnapshot[] controlledProjectileBuffer;
     private const byte ControlUseItemFlag = 1 << 5;
+    internal RuntimeFallingBlockProjectiles FallingBlocks { get; } = new();
 
     public ProjectileAuthority(
         RuntimeProjectileStore projectiles,
@@ -76,7 +77,7 @@ internal sealed partial class ProjectileAuthority
         childSpawns = new RuntimeProjectileChildSpawnQueue(projectiles.Capacity);
         liveChildSpawns = new RuntimeProjectileLiveChildSpawnQueue(projectiles.Capacity);
         cultistLightningArcTrails = new RuntimeCultistLightningArcTrailRegistry(projectiles.Capacity);
-        var terminationEffects = new RuntimeProjectileTerminationEffectSink(explosions, tileExplosions, childSpawns);
+        var terminationEffects = new RuntimeProjectileTerminationEffectSink(explosions, tileExplosions, childSpawns, FallingBlocks);
         var simulationEffects = new RuntimeProjectileSimulationCommitSink(liveChildSpawns, cultistLightningArcTrails);
         executor = new RuntimeProjectileStateExecutor(projectiles, simulationEffects, terminationEffects);
         this.stepper = stepper;
@@ -125,6 +126,26 @@ internal sealed partial class ProjectileAuthority
 
     public bool TryCapture(ProjectileHandle projectile, out ProjectileSnapshot snapshot) =>
         projectiles.TryGet(projectile, out snapshot);
+
+    internal bool TrySpawnFallingBlock(TerraRuntime.Contracts.Gameplay.TileTypeId tile, int x, int y, out ProjectileSnapshot spawned)
+    {
+        spawned = default;
+        if (stepper is null || !FallingBlocks.CanSpawn || projectiles.ActiveCount >= Math.Min(1000, projectiles.Capacity) ||
+            !VanillaFallingBlock1458.TryGetProjectile(tile, out var type)) return false;
+        // WorldGen.SpawnFallingBlockProjectile dedicated branch: center(8,10), 10x10 body, Y velocity .5.
+        var state = new ProjectileStateUpdate(type, byte.MaxValue, x * 16f + 3, y * 16f + 5, 0, .5f, default, 0, 10, 0, 10);
+        if (!projectiles.TrySpawnVanilla(state, out spawned)) return false;
+        if (!projectiles.TryMarkCombatTrusted(spawned.Handle)) { projectiles.TryDespawn(spawned.Handle, out _); return false; }
+        FallingBlocks.Register(spawned.Handle);
+        AppliedSpawns++;
+        return true;
+    }
+
+    internal void CancelFallingSpawn(ProjectileHandle handle)
+    {
+        FallingBlocks.Forget(handle);
+        projectiles.TryDespawn(handle, out _);
+    }
 
     internal bool TrySpawnTrustedServerPlayerProjectile(
         PlayerHandle owner,

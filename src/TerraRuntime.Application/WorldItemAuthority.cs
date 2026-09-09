@@ -125,7 +125,7 @@ internal sealed partial class WorldItemAuthority
         float bestDistance = OwnerSearchManhattanRange1458;
         foreach (RuntimePlayerMember player in players.Members)
         {
-            if (player.IsDead || !HasConservativeOrdinaryItemSpace(player.Connection))
+            if (player.IsDead || !HasOrdinaryItemSpace(player.Connection, in item))
                 continue;
             if (item.GrabDelayTime > 0 && (item.GrabDelayPlayer == player.Slot.Value || item.GrabDelayPlayer == byte.MaxValue))
                 continue;
@@ -142,14 +142,28 @@ internal sealed partial class WorldItemAuthority
         return selected;
     }
 
-    private bool HasConservativeOrdinaryItemSpace(ConnectionHandle connection)
+    private bool HasOrdinaryItemSpace(ConnectionHandle connection, in WorldItemSnapshot drop)
     {
-        // Player.ItemSpace checks stacking, ammo slots, void bag and special pickups. We do not have complete
-        // max-stack/special-pickup facts for every item yet, so reserve only when an ordinary 0..49 slot is empty.
-        // This is a safe subset: the vanilla client performs the real GetItem/PickupItem mutation after packet 22.
-        for (short slot = 0; slot < 50; slot++)
+        // Terraria 1.4.5.8 Player.ItemSpace / CanItemSlotAcceptPickup accept an existing matching stack,
+        // even when all main slots are occupied. Requiring an empty slot stranded ordinary mining drops
+        // until the bounded world-item pool filled and every subsequent drop-producing break was refused.
+        // Item.CanStack compares type AND prefix. Unknown maxima/favorited non-placement items stay closed;
+        // do not infer OnlyNeedOneInInventory, empty ammo-slot routing or Void Bag semantics here.
+        for (short slot = 0; slot < VanillaPlayerItemSlotCatalog.InventoryMouseItem; slot++)
         {
-            if (players.TryGetInventoryItem(connection, slot, out RuntimePlayerInventoryItem item) && item.IsEmpty)
+            if (!players.TryGetInventoryItem(connection, slot, out RuntimePlayerInventoryItem item))
+                continue;
+            bool mainSlot = slot < VanillaPlayerItemSlotCatalog.MainInventoryEndExclusive;
+            if (mainSlot && item.IsEmpty)
+                return true;
+            // ItemSpace also tests already occupied ammo slots 54..57, but not coin slots for ordinary items.
+            if ((!mainSlot && slot < VanillaPlayerItemSlotCatalog.AmmoSlotStart) || item.IsEmpty ||
+                item.ItemType.Value != drop.ItemNetId || item.Prefix.Value != drop.Prefix ||
+                !VanillaDefinitionCatalog.TryGet(item.ItemType, out VanillaItemDefinition definition) ||
+                !definition.RuntimeDefaults.IsValid || item.Stack >= definition.RuntimeDefaults.MaximumStack)
+                continue;
+            if ((item.ItemFlags & PlayerEquipmentCommitRequest.FavoriteItemFlag) == 0 ||
+                definition.Placement is { Consumable: true })
                 return true;
         }
         return false;
@@ -259,7 +273,8 @@ internal sealed partial class WorldItemAuthority
 
     private void ApplyRemove(WorldItemRemoveRuntimeCommand command)
     {
-        // A pickup completion is just packet 21 with an air/zero-stack state. Vanilla accepts that mutation only
+        // A complete pickup uses packet 151 (NetMessage rewrites empty packet 21). Both decoded forms share this
+        // boundary; vanilla accepts the mutation only
         // from the player for whom the item is reserved; applying the same rule here closes both pickup theft and
         // arbitrary remote item deletion while preserving the normal server-reservation -> client-pickup flow.
         if (!players.IsCurrent(command.Connection) || !IsCurrentReservedTarget(command.Connection, command.Target))

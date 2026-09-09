@@ -19,7 +19,8 @@ public static class VanillaWorldCanHit
         float targetX,
         float targetY,
         int targetWidth,
-        int targetHeight)
+        int targetHeight,
+        bool crackedBricksSolid = true)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sourceWidth);
@@ -61,7 +62,7 @@ public static class VanillaWorldCanHit
                 if (!InWorld(tiles, x, y - 1) || !InWorld(tiles, x, y + 1))
                     return false;
 
-                if (BlocksFully(tiles.Get(x, y - 1)) && BlocksFully(tiles.Get(x, y + 1)))
+                if (BlocksFully(tiles.Get(x, y - 1), crackedBricksSolid) && BlocksFully(tiles.Get(x, y + 1), crackedBricksSolid))
                     return false;
             }
             else
@@ -70,7 +71,7 @@ public static class VanillaWorldCanHit
                 if (!InWorld(tiles, x - 1, y) || !InWorld(tiles, x + 1, y))
                     return false;
 
-                if (BlocksFully(tiles.Get(x - 1, y)) && BlocksFully(tiles.Get(x + 1, y)))
+                if (BlocksFully(tiles.Get(x - 1, y), crackedBricksSolid) && BlocksFully(tiles.Get(x + 1, y), crackedBricksSolid))
                     return false;
             }
 
@@ -80,6 +81,7 @@ public static class VanillaWorldCanHit
             WorldTile current = tiles.Get(x, y);
             if (!IsInactive(in current) &&
                 current.IsActive &&
+                (crackedBricksSolid || current.Type is not (481 or 482 or 483)) &&
                 VanillaTileCollisionCatalog.IsSolid(current.TileType) &&
                 !VanillaTileCollisionCatalog.IsSolidTop(current.TileType))
             {
@@ -97,9 +99,10 @@ public static class VanillaWorldCanHit
         return value;
     }
 
-    private static bool BlocksFully(WorldTile tile) =>
+    private static bool BlocksFully(WorldTile tile, bool crackedBricksSolid) =>
         !IsInactive(in tile) &&
         tile.IsActive &&
+        (crackedBricksSolid || tile.Type is not (481 or 482 or 483)) &&
         VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
         !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType) &&
         tile.Shape == 0;

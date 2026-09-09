@@ -59,6 +59,25 @@ public sealed class RuntimeWorldItemStoreTests
     }
 
     [Fact]
+    public void Empty_copy_preserves_destination_and_observes_repopulation_after_last_removal()
+    {
+        var store = new RuntimeWorldItemStore();
+        WorldItemStateUpdate update = CreateUpdate(itemNetId: 50, stack: 1);
+        Assert.Equal(0, store.CopyActive(Span<WorldItemSnapshot>.Empty));
+        Assert.True(store.TryUpsert(399, update, out WorldItemSnapshot first));
+        var destination = new[] { first };
+        Assert.Equal(1, store.CopyActive(destination));
+        Assert.True(store.TryRemove(399, out _));
+        Assert.Equal(0, store.CopyActive(destination));
+        Assert.Equal(first, destination[0]);
+        Assert.Equal(0, store.CopyActive(Span<WorldItemSnapshot>.Empty));
+        Assert.True(store.TryUpsert(0, update, out WorldItemSnapshot replacement));
+        Assert.Throws<ArgumentException>(() => store.CopyActive(Span<WorldItemSnapshot>.Empty));
+        Assert.Equal(1, store.CopyActive(destination));
+        Assert.Equal(replacement, destination[0]);
+    }
+
+    [Fact]
     public void Invalid_or_non_finite_item_state_is_rejected_without_occupying_slot()
     {
         var store = new RuntimeWorldItemStore();

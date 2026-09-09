@@ -5,6 +5,22 @@ namespace TerraRuntime.Tests;
 
 public sealed class VanillaWorldTileMutationServiceTests
 {
+    [Theory]
+    [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(3)]
+    public void ClearTile_preserves_independent_liquid_and_metadata_unlike_mining_kill(byte liquidKind)
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var before = new WorldTile { Type = 53, TileColor = 4, WallColor = 3, Wall = 1, Shape = 3,
+            LiquidAmount = 127, LiquidKind = (WorldLiquidKind)liquidKind, Flags = WorldTileFlagMasks.Known };
+        tiles.Set(10, 10, before);
+        var result = new VanillaWorldTileMutationService(tiles).Apply(new(WorldTileMutationKind.ClearTile, 10, 10));
+        Assert.True(result.Applied);
+        var expected = before;
+        expected.Shape = 0;
+        expected.Flags &= ~(WorldTileFlags.Active | WorldTileFlags.Inactive);
+        Assert.Equal(expected, tiles.Get(10, 10));
+    }
+
     [Fact]
     public void Place_and_kill_simple_tile_preserve_independent_wall_wire_and_liquid_state()
     {

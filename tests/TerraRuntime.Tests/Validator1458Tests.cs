@@ -6,6 +6,51 @@ namespace TerraRuntime.Tests;
 
 public sealed class VanillaWorldGenerationValidator1458Tests
 {
+    [Theory]
+    [InlineData(138, false)]
+    [InlineData(484, false)]
+    [InlineData(546, false)]
+    [InlineData(664, false)]
+    [InlineData(711, false)]
+    [InlineData(712, false)]
+    [InlineData(713, false)]
+    [InlineData(714, false)]
+    [InlineData(715, false)]
+    [InlineData(716, false)]
+    [InlineData(10, false)]
+    [InlineData(190, false)]
+    [InlineData(191, false)]
+    [InlineData(192, false)]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    [InlineData(53, true)]
+    [InlineData(396, true)]
+    [InlineData(397, true)]
+    public void Canonical_liquid_validation_uses_source_settling_solidity(int type, bool blocks)
+    {
+        // Source Liquid.tilesIgnoreWater/worldGenTilesIgnoreWater permit embedded liquid
+        // in boulders and these generation overrides; ordinary full solids still reject.
+        var workspace = new Workspace(4200, 1200);
+        for (int x = 20; x < 22; x++)
+            for (int y = 20; y < 22; y++)
+            {
+                ref WorldTile tile = ref workspace.TileStore.Tiles[workspace.TileStore.GetUncheckedIndex(x, y)];
+                tile.Type = checked((ushort)type);
+                tile.Flags = WorldTileFlags.Active;
+                tile.FrameX = (short)((x - 20) * 18);
+                tile.FrameY = (short)((y - 20) * 18);
+                tile.LiquidAmount = 255;
+            }
+        var metadata = new RuntimeWorldGenerationMetadataSnapshot(new(32, 10), new(10, 10), new(300d, 600d));
+
+        WorldValidationResult result = Validator1458.Validate(workspace, metadata);
+
+        // Passing liquid validation reaches the deliberately absent biome check, not a
+        // claim that this minimal fixture is a valid complete world.
+        Assert.Equal(blocks ? WorldValidationStatus.InvalidLiquid : WorldValidationStatus.BiomeMissing, result.Status);
+        Assert.Contains(blocks ? "Solid tile" : "too sparse", result.Detail, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Dungeon_graph_validator_rejects_the_retired_single_room_shaft_shape()
     {

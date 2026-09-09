@@ -10,6 +10,40 @@ namespace TerraRuntime.Tests;
 public sealed class WorldItemFrameSinkTests
 {
     [Theory]
+    [InlineData(0)]
+    [InlineData(399)]
+    public void Compact_removal_routes_the_authenticated_player_and_physical_slot(short slot)
+    {
+        var source = GameCommandSourceId.FromConnection(915);
+        using var bootstrap = CreatePlayingBootstrap(source);
+        var ingress = new CapturingWorldItemIngress();
+        var sink = new WorldItemFrameSink(source, bootstrap, new PassthroughSink(), ingress);
+        byte[] payload = [(byte)(slot & 255), (byte)(slot >> 8)];
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Frame(TerrariaMessageId.WorldItemRemove, payload)));
+        Assert.Equal(1, ingress.RemoveCount);
+        Assert.Equal(slot, ingress.Slot);
+        Assert.Equal(source, ingress.Connection.Source);
+        Assert.Equal(bootstrap.AssignedPlayerHandle, ingress.Connection.Player);
+    }
+
+    [Fact]
+    public void Compact_removal_before_spawn_rejects_and_queue_pressure_does_not_disconnect()
+    {
+        var source = GameCommandSourceId.FromConnection(916);
+        using var joining = CreateBootstrap(source, new CommittingSpawnIngress());
+        var ingress = new CapturingWorldItemIngress();
+        var sink = new WorldItemFrameSink(source, joining, new PassthroughSink(), ingress);
+        var frame = Frame(TerrariaMessageId.WorldItemRemove, [0, 0]);
+        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(frame));
+        Assert.Equal(WorldItemFrameStopReason.InvalidJoinState, sink.StopReason);
+        Assert.Equal(0, ingress.TotalCount);
+        using var playing = CreatePlayingBootstrap(source);
+        var pressured = new WorldItemFrameSink(source, playing, new PassthroughSink(), new RejectingWorldItemIngress());
+        Assert.Equal(TerrariaFrameSinkResult.Continue, pressured.OnFrame(frame));
+        Assert.Equal(WorldItemFrameStopReason.None, pressured.StopReason);
+    }
+
+    [Theory]
     [InlineData(0, false)]
     [InlineData(1, true)]
     [InlineData(255, true)]

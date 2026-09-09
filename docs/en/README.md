@@ -6,6 +6,7 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 
 ## Start here
 
+- [PlayerBot task/action architecture](runtime-bot-architecture.md) — perception, replaceable brain, lifecycle, authoritative operations, modes and leases.
 - [Project guide](project-guide.md) — TerraRuntime purpose, repository map, build, startup, lifecycle, networking/gameplay flow, worlds, persistence, and operations.
 - [Architecture](architecture.md) — subsystem boundaries, state ownership, data flow, threading model, NativeAOT/CoreCLR profiles, persistence, and extension boundaries.
 - [Host integration interfaces](host-interfaces.md) — public `TerraRuntime.HostContracts`, trusted host module lifecycle, and safe runtime interaction rules.
@@ -29,6 +30,7 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 - [Deployment and configuration](deployment-configuration.md) — NativeAOT/CoreCLR packaging, runtime directories, CLI configuration, trusted host-module loading and current deployment limitations.
 - [Observability and logging](observability-logging.md) — bounded runtime telemetry/log buffers, current host-log behavior and the incomplete async structured logging target.
 - [World generation](world-generation.md) — provider/pass/workspace/RNG contracts, trusted-host registration and current non-vanilla flat baseline.
+- [Vanilla pass-by-pass parity audit](vanilla-worldgen-pass-audit.md) — all 109 source registrations, production owners, exact evidence boundaries and remaining geometry/RNG debt.
 - [Security and trust boundaries](security.md) — admission limits, rate/size bounds, failure isolation, persistence safety and incomplete hardening work.
 - [Testing, verification and evidence](testing-evidence.md) — roadmap checkbox policy, independent evidence, official-source/live-world probes, NativeAOT/CoreCLR gates and performance proof rules.
 
