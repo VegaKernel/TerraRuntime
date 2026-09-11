@@ -100,6 +100,20 @@ public sealed class TerrariaProjectileEncoderTests
         Assert.False(TerrariaProjectileEncoder.TryEncodeUpdate(in oversizedType, out _));
     }
 
+    [Fact]
+    public void Destroy_preserves_unresolved_key_for_vanilla_server_relay()
+    {
+        var state = new TerrariaProjectileDestroyState(
+            new TerrariaProjectileKeyState(Spawner: 3, ProjectileIndex: 1, Generation: 0),
+            PositionX: 100f,
+            PositionY: 200f);
+
+        Assert.True(TerrariaProjectileEncoder.TryEncodeDestroy(in state, out byte[] encoded));
+        ProjectileDestroy packet = Assert.IsType<ProjectileDestroy>(
+            TerrariaPacket.Deserialize((ReadOnlyMemory<byte>)encoded));
+        Assert.Equal((ushort)0, packet.Key.Generation);
+    }
+
     private static TerrariaProjectileUpdateState CreateUpdateState() =>
         new(
             Key: new TerrariaProjectileKeyState(3, 1000, 16383),

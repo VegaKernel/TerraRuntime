@@ -67,6 +67,24 @@ public sealed class ProjectileLifecycleFrameSinkTests
     }
 
     [Fact]
+    public void Packet29_with_unresolved_key_is_forwarded_without_ending_a_playing_connection()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(7031);
+        using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
+        var ingress = new CapturingIngress();
+        var sink = new ProjectileLifecycleFrameSink(source, bootstrap, new PassthroughSink(), ingress);
+        var state = new TerrariaProjectileDestroyState(
+            new TerrariaProjectileKeyState(Spawner: 0, ProjectileIndex: 7, Generation: 0),
+            PositionX: 100f,
+            PositionY: 200f);
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(DestroyFrame(in state)));
+        Assert.Equal(1, ingress.DestroyCount);
+        Assert.Equal(state, ingress.Destroy);
+        Assert.Equal(ProjectileLifecycleFrameStopReason.None, sink.StopReason);
+    }
+
+    [Fact]
     public void Projectile_packets_before_playing_stop_connection()
     {
         GameCommandSourceId source = GameCommandSourceId.FromConnection(704);

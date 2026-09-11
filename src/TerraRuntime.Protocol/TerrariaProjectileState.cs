@@ -51,7 +51,10 @@ public readonly record struct TerrariaProjectileUpdateState(
 
 /// <summary>
 /// Protocol-library-neutral authoritative projection for Terraria packet 29 / ProjectileDestroy.
-/// The final authoritative position is retained because the vanilla packet carries it with the key.
+/// The final authoritative position is retained because the vanilla packet carries it with the key. The key stays
+/// deliberately raw at this boundary: TerrariaServer 1.4.5.8 <c>MessageBuffer.GetData</c>, case 29, treats an
+/// unresolved key as a no-op locally but still forwards its destroy notification. Local projectile lookup remains
+/// addressable-only above this transport representation.
 /// </summary>
 public readonly record struct TerrariaProjectileDestroyState(
     TerrariaProjectileKeyState Key,
@@ -59,7 +62,6 @@ public readonly record struct TerrariaProjectileDestroyState(
     float PositionY)
 {
     public bool IsValid =>
-        Key.IsValid &&
         float.IsFinite(PositionX) &&
         float.IsFinite(PositionY);
 }

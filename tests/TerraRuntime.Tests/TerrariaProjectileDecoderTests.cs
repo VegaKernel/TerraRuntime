@@ -97,15 +97,17 @@ public sealed class TerrariaProjectileDecoderTests
     }
 
     [Fact]
-    public void Structurally_parseable_but_illegal_key_is_reported_as_invalid_state()
+    public void Packet29_keeps_an_unresolved_but_structurally_valid_key_for_vanilla_relay()
     {
         TerrariaFrame update = Frame((byte)TerrariaMessageId.ProjectileNew, new byte[23]);
         TerrariaFrame destroy = Frame((byte)TerrariaMessageId.ProjectileDestroy, new byte[12]);
 
         Assert.Equal(TerrariaProjectileDecodeResult.InvalidState,
             TerrariaProjectileDecoder.TryDecodeUpdate(in update, out _));
-        Assert.Equal(TerrariaProjectileDecodeResult.InvalidState,
-            TerrariaProjectileDecoder.TryDecodeDestroy(in destroy, out _));
+        Assert.Equal(TerrariaProjectileDecodeResult.Decoded,
+            TerrariaProjectileDecoder.TryDecodeDestroy(in destroy, out TerrariaProjectileDestroyState decoded));
+        Assert.False(decoded.Key.IsValid);
+        Assert.True(decoded.IsValid);
     }
 
     [Fact]
