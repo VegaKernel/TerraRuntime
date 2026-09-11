@@ -24,6 +24,18 @@ public sealed class NpcTalkFrameSinkTests
         Assert.Equal(TerrariaFrameRejectionCategory.None, sink.RejectionCategory);
     }
 
+    [Fact]
+    public void Delegated_terminal_stop_preserves_nested_connection_reason()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(4702);
+        using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
+        var sink = new NpcTalkFrameSink(source, bootstrap, new StoppingSink(), new RejectingIngress());
+        TerrariaFrame frame = Frame(TerrariaMessageId.PlayerControls, []);
+
+        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(in frame));
+        Assert.Equal(TerrariaConnectionStopReason.UnsupportedProtocol, sink.ConnectionStopReason);
+    }
+
     private static PlayerBootstrapFrameSink CreatePlayingBootstrap(GameCommandSourceId source)
     {
         PlayerBootstrapFrameSink bootstrap = new(
@@ -85,6 +97,13 @@ public sealed class NpcTalkFrameSinkTests
     private sealed class ContinuingSink : ITerrariaFrameSink
     {
         public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame) => TerrariaFrameSinkResult.Continue;
+    }
+
+    private sealed class StoppingSink : ITerrariaFrameSink, ITerrariaConnectionStopReasonSource
+    {
+        public TerrariaConnectionStopReason ConnectionStopReason => TerrariaConnectionStopReason.UnsupportedProtocol;
+
+        public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame) => TerrariaFrameSinkResult.Stop;
     }
 
     private sealed class RejectingIngress : INpcTalkNetworkIngress

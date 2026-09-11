@@ -17,7 +17,7 @@ public enum NpcHomeFrameStopReason : byte
 /// Connection-owned packet-60 ingress. Wire decoding stays on the socket thread; room validation and mutation are
 /// posted to the authoritative game loop. A decoded packet never directly changes NPC/world persistence state.
 /// </summary>
-public sealed class NpcHomeFrameSink : ITerrariaFrameSink, ITerrariaFrameRejectionSource
+public sealed class NpcHomeFrameSink : ITerrariaFrameSink, ITerrariaFrameRejectionSource, ITerrariaConnectionStopReasonSource
 {
     private readonly GameCommandSourceId source;
     private readonly PlayerBootstrapFrameSink bootstrap;
@@ -39,6 +39,11 @@ public sealed class NpcHomeFrameSink : ITerrariaFrameSink, ITerrariaFrameRejecti
     }
 
     public NpcHomeFrameStopReason StopReason { get; private set; }
+
+    public TerrariaConnectionStopReason ConnectionStopReason =>
+        StopReason == NpcHomeFrameStopReason.None && inner is ITerrariaConnectionStopReasonSource source
+            ? source.ConnectionStopReason
+            : TerrariaConnectionStopReason.None;
 
     public TerrariaFrameRejectionCategory RejectionCategory => StopReason switch
     {

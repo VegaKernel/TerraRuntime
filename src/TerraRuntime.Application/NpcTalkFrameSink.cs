@@ -18,7 +18,7 @@ public enum NpcTalkFrameStopReason : byte
 /// Connection-owned packet-40 ingress. The client-provided player byte is deliberately not trusted; authoritative
 /// application rewrites it from the authenticated <see cref="ConnectionHandle"/> before replication.
 /// </summary>
-public sealed class NpcTalkFrameSink : ITerrariaFrameSink, ITerrariaFrameRejectionSource
+public sealed class NpcTalkFrameSink : ITerrariaFrameSink, ITerrariaFrameRejectionSource, ITerrariaConnectionStopReasonSource
 {
     private readonly GameCommandSourceId source;
     private readonly PlayerBootstrapFrameSink bootstrap;
@@ -40,6 +40,11 @@ public sealed class NpcTalkFrameSink : ITerrariaFrameSink, ITerrariaFrameRejecti
     }
 
     public NpcTalkFrameStopReason StopReason { get; private set; }
+
+    public TerrariaConnectionStopReason ConnectionStopReason =>
+        StopReason == NpcTalkFrameStopReason.None && inner is ITerrariaConnectionStopReasonSource source
+            ? source.ConnectionStopReason
+            : TerrariaConnectionStopReason.None;
 
     public TerrariaFrameRejectionCategory RejectionCategory => StopReason switch
     {

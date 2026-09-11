@@ -15,7 +15,7 @@ public enum NpcCatchFrameStopReason : byte
 }
 
 /// <summary>Connection-owned packet-70 ingress; authoritative catch state is applied only by the game-loop owner.</summary>
-public sealed class NpcCatchFrameSink : ITerrariaFrameSink, ITerrariaFrameRejectionSource
+public sealed class NpcCatchFrameSink : ITerrariaFrameSink, ITerrariaFrameRejectionSource, ITerrariaConnectionStopReasonSource
 {
     private readonly GameCommandSourceId source;
     private readonly PlayerBootstrapFrameSink bootstrap;
@@ -37,6 +37,11 @@ public sealed class NpcCatchFrameSink : ITerrariaFrameSink, ITerrariaFrameReject
     }
 
     public NpcCatchFrameStopReason StopReason { get; private set; }
+
+    public TerrariaConnectionStopReason ConnectionStopReason =>
+        StopReason == NpcCatchFrameStopReason.None && inner is ITerrariaConnectionStopReasonSource source
+            ? source.ConnectionStopReason
+            : TerrariaConnectionStopReason.None;
 
     public TerrariaFrameRejectionCategory RejectionCategory => StopReason switch
     {

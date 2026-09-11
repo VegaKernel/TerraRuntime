@@ -20,7 +20,10 @@ internal sealed class RuntimeBossSummonIngress
         connection.IsAssigned && ingress.TryPost(connection.Source, new ClientBossSummonRuntimeCommand(connection, npcType));
 }
 
-internal sealed class BossSummonFrameSink : ITerrariaFrameSink
+internal sealed class BossSummonFrameSink :
+    ITerrariaFrameSink,
+    ITerrariaFrameRejectionSource,
+    ITerrariaConnectionStopReasonSource
 {
     private readonly GameCommandSourceId source;
     private readonly PlayerBootstrapFrameSink bootstrap;
@@ -38,6 +41,16 @@ internal sealed class BossSummonFrameSink : ITerrariaFrameSink
         this.inner = inner ?? throw new ArgumentNullException(nameof(inner));
         this.ingress = ingress ?? throw new ArgumentNullException(nameof(ingress));
     }
+
+    public TerrariaFrameRejectionCategory RejectionCategory =>
+        inner is ITerrariaFrameRejectionSource source
+            ? source.RejectionCategory
+            : TerrariaFrameRejectionCategory.None;
+
+    public TerrariaConnectionStopReason ConnectionStopReason =>
+        inner is ITerrariaConnectionStopReasonSource source
+            ? source.ConnectionStopReason
+            : TerrariaConnectionStopReason.None;
 
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
     {

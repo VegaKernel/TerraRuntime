@@ -193,7 +193,7 @@ internal sealed class ServerConnectionAcceptor : IDisposable
                     WorldRuntime activeRuntime = route.ActiveRuntime;
                     string message =
                         $"Connection {connectionId} ({remote}) stopped: {result.StopReason}; " +
-                        $"runtime={activeRuntime.Identity}, bootstrap={route.ActiveBootstrapStopReason}, state={route.ActiveJoinState}; " +
+                        $"runtime={activeRuntime.Identity}, bootstrap={route.ActiveBootstrapStopReason}, state={route.ActiveJoinState}, {route.TerminalFrameDescription}; " +
                         $"inbound={result.Inbound}; rate={result.Rate}; outbound={result.Outbound.Reason}.";
                     hostLog.Log(
                         OperationsLogLevel.Information,

@@ -34,7 +34,10 @@ internal sealed class RuntimePlayerTeleportIngress
     }
 }
 
-internal sealed class PlayerTeleportRequestFrameSink : ITerrariaFrameSink
+internal sealed class PlayerTeleportRequestFrameSink :
+    ITerrariaFrameSink,
+    ITerrariaFrameRejectionSource,
+    ITerrariaConnectionStopReasonSource
 {
     private readonly GameCommandSourceId source;
     private readonly PlayerBootstrapFrameSink bootstrap;
@@ -52,6 +55,16 @@ internal sealed class PlayerTeleportRequestFrameSink : ITerrariaFrameSink
         this.inner = inner ?? throw new ArgumentNullException(nameof(inner));
         this.ingress = ingress ?? throw new ArgumentNullException(nameof(ingress));
     }
+
+    public TerrariaFrameRejectionCategory RejectionCategory =>
+        inner is ITerrariaFrameRejectionSource source
+            ? source.RejectionCategory
+            : TerrariaFrameRejectionCategory.None;
+
+    public TerrariaConnectionStopReason ConnectionStopReason =>
+        inner is ITerrariaConnectionStopReasonSource source
+            ? source.ConnectionStopReason
+            : TerrariaConnectionStopReason.None;
 
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
     {

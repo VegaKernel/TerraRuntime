@@ -11,7 +11,11 @@ namespace TerraRuntime.Application;
 /// gameplay frames at a time; the primary binding is retained so the connection's client-visible player slot remains
 /// reserved while the player visits Level 1 sandboxes.
 /// </summary>
-internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
+internal sealed class RuntimeConnectionRoute :
+    ITerrariaFrameSink,
+    ITerrariaFrameRejectionSource,
+    ITerrariaConnectionStopReasonSource,
+    IDisposable
 {
     private static readonly TimeSpan DefaultTransferTimeout = TimeSpan.FromSeconds(3);
 
@@ -20,6 +24,8 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
     private readonly TerrariaConnectionOutboundQueue outbound;
     private readonly RuntimeConnectionWorldBinding primary;
     private RuntimeConnectionWorldBinding active;
+    private byte? terminalMessageId;
+    private int terminalPacketLength;
     private int disposed;
 
     public RuntimeConnectionRoute(
@@ -60,6 +66,45 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
         get { lock (gate) return active.Bootstrap.JoinState; }
     }
 
+    public TerrariaFrameRejectionCategory RejectionCategory
+    {
+        get
+        {
+            lock (gate)
+            {
+                return active.Root is ITerrariaFrameRejectionSource source
+                    ? source.RejectionCategory
+                    : TerrariaFrameRejectionCategory.None;
+            }
+        }
+    }
+
+    public TerrariaConnectionStopReason ConnectionStopReason
+    {
+        get
+        {
+            lock (gate)
+            {
+                return active.Root is ITerrariaConnectionStopReasonSource source
+                    ? source.ConnectionStopReason
+                    : TerrariaConnectionStopReason.None;
+            }
+        }
+    }
+
+    public string TerminalFrameDescription
+    {
+        get
+        {
+            lock (gate)
+            {
+                return terminalMessageId is byte messageId
+                    ? $"packet={(TerrariaMessageId)messageId} ({messageId}), length={terminalPacketLength}"
+                    : "packet=unknown";
+            }
+        }
+    }
+
     internal RuntimeConnectionRouteSnapshot CaptureSnapshot()
     {
         lock (gate)
@@ -79,7 +124,15 @@ internal sealed class RuntimeConnectionRoute : ITerrariaFrameSink, IDisposable
         {
             if (Volatile.Read(ref disposed) != 0)
                 return TerrariaFrameSinkResult.Stop;
-            return active.Root.OnFrame(in frame);
+
+            TerrariaFrameSinkResult result = active.Root.OnFrame(in frame);
+            if (result == TerrariaFrameSinkResult.Stop)
+            {
+                terminalMessageId = frame.MessageId;
+                terminalPacketLength = frame.PacketLength;
+            }
+
+            return result;
         }
     }
 
