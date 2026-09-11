@@ -95,7 +95,7 @@ Network uses a bounded custom block-column view over inbound/outbound **packet-r
 
 The Network detail screen also renders the heaviest Terraria message IDs from the rolling message-traffic window: direction, numeric ID, known enum name, frames/s, KiB/s and lifetime frame count. This makes it possible to distinguish normal entity replication from a specific packet family producing abnormal outbound traffic without enabling a global packet dump.
 
-The same detail view reports exact duplicate updates suppressed before peer fanout for movement, appearance, equipment, health packet 16, NPC packet 23 and projectile packet 27. It reports NPC packet-23 cadence suppression separately, so an operator can distinguish the default $30\ \text{tick}$ motion sampling from byte-identical commits. Vitals counters also expose relayed health plus health/mana spawn baselines. These counters are process-lifetime diagnostics; the rolling message table remains the source for actual on-wire packet rates.
+The same detail view reports exact duplicate updates suppressed before peer fanout for movement, appearance, equipment, health packet 16, NPC packet 23 and projectile packet 27. It reports NPC packet-23 cadence suppression separately, so an operator can distinguish the default $30\ \text{tick}$ motion sampling from byte-identical commits. Liquid diagnostics report emitted packet-48 coordinate states, bounded pending states, coalesced repeat coordinates and overflow evictions. Vitals counters also expose relayed health plus health/mana spawn baselines. These counters are process-lifetime diagnostics; the rolling message table remains the source for actual on-wire packet rates.
 
 ## Console command line
 

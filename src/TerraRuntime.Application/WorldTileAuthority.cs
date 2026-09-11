@@ -190,6 +190,8 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
                     (byte)change.Kind);
                 replication?.TryPublishLiquidToAll(in state);
             }
+
+            replication?.FlushPendingLiquids();
         }
         finally
         {

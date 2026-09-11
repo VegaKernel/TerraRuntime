@@ -17,6 +17,7 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
     private readonly RuntimeWorldItemReplicationRegistry? worldItemReplication;
     private readonly RuntimeConnectionStopTelemetry? stopTelemetry;
     private readonly RuntimePlayerVitalsReplicator? vitalsReplication;
+    private readonly RuntimeTileManipulationReplicationRegistry? tileManipulationReplication;
 
     public LocalRuntimeNetworkOperations(
         TerrariaConnectionAdmissionGate admission,
@@ -27,7 +28,8 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
         RuntimeProjectileReplicationRegistry? projectileReplication = null,
         RuntimeWorldItemReplicationRegistry? worldItemReplication = null,
         RuntimeConnectionStopTelemetry? stopTelemetry = null,
-        RuntimePlayerVitalsReplicator? vitalsReplication = null)
+        RuntimePlayerVitalsReplicator? vitalsReplication = null,
+        RuntimeTileManipulationReplicationRegistry? tileManipulationReplication = null)
     {
         this.admission = admission ?? throw new ArgumentNullException(nameof(admission));
         this.connections = connections ?? throw new ArgumentNullException(nameof(connections));
@@ -38,6 +40,7 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
         this.worldItemReplication = worldItemReplication;
         this.stopTelemetry = stopTelemetry;
         this.vitalsReplication = vitalsReplication;
+        this.tileManipulationReplication = tileManipulationReplication;
     }
 
     public RuntimeNetworkSnapshot CaptureSnapshot()
@@ -139,6 +142,10 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             SuppressedDuplicateMovementFrames: connections.SuppressedDuplicateMovementFrames,
             NpcSuppressedDuplicateFrames: npcReplication?.SuppressedDuplicateFrames ?? 0,
             NpcSuppressedCadenceFrames: npcReplication?.SuppressedCadenceFrames ?? 0,
+            PendingLiquidUpdates: tileManipulationReplication?.PendingLiquidUpdates ?? 0,
+            EmittedLiquidUpdates: tileManipulationReplication?.EmittedLiquidUpdates ?? 0,
+            CoalescedLiquidUpdates: tileManipulationReplication?.CoalescedLiquidUpdates ?? 0,
+            DroppedLiquidUpdates: tileManipulationReplication?.DroppedLiquidUpdates ?? 0,
             ProjectileSuppressedDuplicateFrames: projectileReplication?.SuppressedDuplicateFrames ?? 0,
             HealthRelayedFrames: vitalsReplication?.RelayedHealthFrames ?? 0,
             HealthBaselineFrames: vitalsReplication?.HealthBaselineFrames ?? 0,

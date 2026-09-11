@@ -647,6 +647,7 @@ Preserve observable results, not inefficient vanilla broadcast mechanics.
 - [ ] Section-aware player visibility/interest sets.
 - [ ] Dirty-state-driven NPC/projectile/item synchronization.
   - NPC packet `23` now has a source-backed $30\ \text{tick}$ ordinary-motion containment cadence (`TerrariaServer 1.4.5.8` `Main.npcStreamSpeed`), while spawn/despawn and HP changes remain immediate. This is not completion: per-AI `NPC.netUpdate`/`netSpam` intent and entity-specific delta/full policy remain open.
+  - Liquid packet `48` now has a bounded latest-state transport queue ($16$ frames/tick, $16\,384$ pending coordinates). This is protective containment only; a source-verified recipient/section resync policy is still required before it can be considered complete liquid synchronization.
 - [ ] Skip updates for clients that cannot observe an entity, with a bounded forced-resync interval so distant entities never freeze forever.
 - [ ] Apply the same visibility logic to movement relay where compatible instead of unconditional O(players²) broadcast.
 - [ ] Encode one immutable frame once and share it among recipient queues when the bytes are identical.

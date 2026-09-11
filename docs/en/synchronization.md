@@ -88,6 +88,12 @@ When identical bytes are genuinely recipient-independent, one immutable encoded 
 
 This is deliberately a pressure-containment rule, not a claim that TerraRuntime has recreated every source `NPC.netUpdate`/`netSpam` branch. Supported AI paths still need explicit source-backed urgent-sync intents before the generic cadence can become a complete vanilla replication policy. The Network detail view exposes distinct packet-23 duplicate and cadence suppression counters; its rolling message table remains the on-wire rate authority.
 
+### Liquid transport containment
+
+The source-shaped liquid simulator may process up to $2\,500$ active cells in one server tick. That is a simulation-work bound, not permission to enqueue one packet `48` per changed cell immediately. `RuntimeTileManipulationReplicationRegistry` keeps the latest liquid state for each pending coordinate, coalesces repeated coordinates, and drains at most $16$ packet-48 frames per authoritative tick. Its pending set is hard-bounded at $16\,384$ coordinates; under sustained overload, the oldest unsent coordinate is evicted rather than allowing unbounded queue growth or starving control traffic.
+
+The authoritative liquid state and its update ordering are unchanged. This is a temporary transport containment policy until a source-verified liquid recipient/section-resync policy can provide complete high-backlog visual convergence. Network detail exposes emitted, pending, coalesced and evicted liquid updates; the rolling message table remains the on-wire rate authority.
+
 ## 7. Interest-management ownership
 
 Interest management belongs to TerraRuntime. External hosts receive only `IInterestManagementControl` with enable/disable control. Spatial layout, radii, hysteresis, transitions, forced resync and entity-specific policy remain internal.

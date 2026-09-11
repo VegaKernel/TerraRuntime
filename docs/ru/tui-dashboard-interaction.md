@@ -95,7 +95,7 @@ Network использует bounded custom block-column view для истор�
 
 Detail screen Network дополнительно показывает самые тяжёлые Terraria message IDs из rolling message-traffic window: направление, numeric ID, известное enum-имя, frames/s, KiB/s и lifetime frame count. Это позволяет отличить нормальный entity replication от конкретного packet family, которое создаёт аномальный outbound поток, не включая глобальный packet dump.
 
-Тот же detail view показывает количество точных duplicate updates, подавленных до peer fanout отдельно для movement, appearance, equipment, health packet 16, NPC packet 23 и projectile packet 27. Отдельно показано cadence-подавление packet `23`, чтобы оператор отличал default-семплирование движения в $30\ \text{ticks}$ от byte-identical commits. Vitals counters дополнительно показывают relayed health и health/mana spawn baselines. Эти counters считаются за lifetime процесса; реальную on-wire частоту пакетов по-прежнему показывает rolling message table.
+Тот же detail view показывает количество точных duplicate updates, подавленных до peer fanout отдельно для movement, appearance, equipment, health packet 16, NPC packet 23 и projectile packet 27. Отдельно показано cadence-подавление packet `23`, чтобы оператор отличал default-семплирование движения в $30\ \text{ticks}$ от byte-identical commits. Liquid diagnostics показывают emitted packet-48 coordinate states, bounded pending states, coalesced повторные coordinates и overflow evictions. Vitals counters дополнительно показывают relayed health и health/mana spawn baselines. Эти counters считаются за lifetime процесса; реальную on-wire частоту пакетов по-прежнему показывает rolling message table.
 
 ## Строка команд Console
 

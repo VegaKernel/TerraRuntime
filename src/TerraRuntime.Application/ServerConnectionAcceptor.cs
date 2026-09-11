@@ -47,7 +47,8 @@ internal sealed class ServerConnectionAcceptor : IDisposable
             primaryRuntime.ProjectileReplication,
             primaryRuntime.WorldItemReplication,
             stopTelemetry,
-            primaryRuntime.VitalsReplication);
+            primaryRuntime.VitalsReplication,
+            primaryRuntime.TileManipulationReplication);
     }
 
     public TerrariaConnectionAdmissionGate Admission => admission;

@@ -17,14 +17,33 @@ namespace TerraRuntime.Application;
 /// </summary>
 internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlayerEventSink
 {
+    // A liquid simulation slice may touch 2,500 cells. Never turn that implementation budget directly
+    // into a client-controlled outbound burst: retain the latest state per cell and drain a small, fixed
+    // transport budget on the authoritative world loop. Section resends remain the eventual full-state path.
+    internal const int MaxLiquidFramesPerAuthoritativeTick = 16;
+    internal const int MaxPendingLiquidUpdates = 16 * 1024;
+
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> endpoints = new();
+    private readonly Dictionary<int, TerrariaLiquidState> pendingLiquids = [];
+    private readonly Queue<int> pendingLiquidOrder = new();
     private long relayedFrames;
     private long rejectedFrames;
     private long encodeFailures;
+    private long emittedLiquidUpdates;
+    private long coalescedLiquidUpdates;
+    private long droppedLiquidUpdates;
 
     public long RelayedFrames => Interlocked.Read(ref relayedFrames);
     public long RejectedFrames => Interlocked.Read(ref rejectedFrames);
     public long EncodeFailures => Interlocked.Read(ref encodeFailures);
+
+    public int PendingLiquidUpdates => pendingLiquids.Count;
+
+    public long EmittedLiquidUpdates => Interlocked.Read(ref emittedLiquidUpdates);
+
+    public long CoalescedLiquidUpdates => Interlocked.Read(ref coalescedLiquidUpdates);
+
+    public long DroppedLiquidUpdates => Interlocked.Read(ref droppedLiquidUpdates);
 
     public bool TryRegister(GameCommandSourceId source, TerrariaConnectionOutboundQueue outbound)
     {
@@ -127,16 +146,49 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
         return TryPublishFrame(excludedSource, encoded);
     }
 
-
     public bool TryPublishLiquidToAll(in TerrariaLiquidState state)
     {
-        if (!TerrariaLiquidCodec.TryEncode(in state, out byte[] encoded))
+        int key = ((ushort)state.TileX << 16) | (ushort)state.TileY;
+        if (pendingLiquids.TryGetValue(key, out TerrariaLiquidState existing))
         {
-            Interlocked.Increment(ref encodeFailures);
-            return false;
+            pendingLiquids[key] = state;
+            if (existing != state)
+                Interlocked.Increment(ref coalescedLiquidUpdates);
+            return true;
         }
 
-        return TryPublishFrameToAll(encoded);
+        if (pendingLiquids.Count == MaxPendingLiquidUpdates)
+        {
+            int evictedKey = pendingLiquidOrder.Dequeue();
+            _ = pendingLiquids.Remove(evictedKey);
+            Interlocked.Increment(ref droppedLiquidUpdates);
+        }
+
+        pendingLiquids.Add(key, state);
+        pendingLiquidOrder.Enqueue(key);
+        return true;
+    }
+
+    /// <summary>
+    /// Drains the fixed packet-48 transport budget. The sole caller is the authoritative world loop, after its
+    /// liquid simulation slice has committed; no socket callback can advance, clear or reorder this queue.
+    /// </summary>
+    public void FlushPendingLiquids()
+    {
+        int budget = MaxLiquidFramesPerAuthoritativeTick;
+        while (budget-- > 0 && pendingLiquidOrder.TryDequeue(out int key))
+        {
+            TerrariaLiquidState state = pendingLiquids[key];
+            _ = pendingLiquids.Remove(key);
+            if (!TerrariaLiquidCodec.TryEncode(in state, out byte[] encoded))
+            {
+                Interlocked.Increment(ref encodeFailures);
+                continue;
+            }
+
+            _ = TryPublishFrameToAll(encoded);
+            Interlocked.Increment(ref emittedLiquidUpdates);
+        }
     }
 
     public bool TryPublishDoorToggle(in TerrariaDoorToggleState state)

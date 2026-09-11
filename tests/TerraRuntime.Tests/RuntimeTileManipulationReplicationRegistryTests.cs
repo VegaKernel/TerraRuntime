@@ -139,8 +139,53 @@ public sealed class RuntimeTileManipulationReplicationRegistryTests
         Assert.Equal(0, replication.RelayedFrames);
     }
 
+    [Fact]
+    public void Liquid_updates_are_coalesced_and_drain_through_the_fixed_authoritative_tick_budget()
+    {
+        var replication = new RuntimeTileManipulationReplicationRegistry();
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(809);
+        TerrariaConnectionOutboundQueue outbound = CreateOutbound();
+        Assert.True(replication.TryRegister(source, outbound));
+        ConnectionHandle player = Connection(source, slot: 8, generation: 1);
+        PlayerSpawnCommitRequest spawn = Spawn(player.Player.Slot);
+        replication.PlayerSpawned(player, in spawn);
+
+        for (short index = 0; index < 20; index++)
+        {
+            var state = new TerrariaLiquidState((short)(20 + index), 30, (byte)(10 + index), 0);
+            Assert.True(replication.TryPublishLiquidToAll(in state));
+        }
+        var replacement = new TerrariaLiquidState(20, 30, 250, 0);
+        Assert.True(replication.TryPublishLiquidToAll(in replacement));
+
+        replication.FlushPendingLiquids();
+
+        Assert.Equal(RuntimeTileManipulationReplicationRegistry.MaxLiquidFramesPerAuthoritativeTick, outbound.QueuedFrames);
+        Assert.Equal(4, replication.PendingLiquidUpdates);
+        Assert.Equal(1, replication.CoalescedLiquidUpdates);
+        Assert.Equal(RuntimeTileManipulationReplicationRegistry.MaxLiquidFramesPerAuthoritativeTick, replication.EmittedLiquidUpdates);
+        Assert.Equal(
+            TerrariaLiquidDecodeResult.Decoded,
+            TerrariaLiquidCodec.TryDecode(DequeueFrame(outbound), out TerrariaLiquidState first));
+        Assert.Equal(replacement, first);
+    }
+
+    [Fact]
+    public void Liquid_backlog_has_a_hard_bound_and_evicts_the_oldest_pending_coordinate()
+    {
+        var replication = new RuntimeTileManipulationReplicationRegistry();
+        for (int index = 0; index <= RuntimeTileManipulationReplicationRegistry.MaxPendingLiquidUpdates; index++)
+        {
+            var state = new TerrariaLiquidState((short)(index & short.MaxValue), (short)(index >> 15), 1, 0);
+            Assert.True(replication.TryPublishLiquidToAll(in state));
+        }
+
+        Assert.Equal(RuntimeTileManipulationReplicationRegistry.MaxPendingLiquidUpdates, replication.PendingLiquidUpdates);
+        Assert.Equal(1, replication.DroppedLiquidUpdates);
+    }
+
     private static TerrariaConnectionOutboundQueue CreateOutbound() =>
-        new(new OutboundQueueOptions(maxFrames: 8, maxQueuedBytes: 8_192, maxFrameBytes: 1_024));
+        new(new OutboundQueueOptions(maxFrames: 64, maxQueuedBytes: 8_192, maxFrameBytes: 1_024));
 
     private static ConnectionHandle Connection(GameCommandSourceId source, byte slot, ulong generation) =>
         new(source, new PlayerHandle(new PlayerSlotId(slot), new PlayerSessionGeneration(generation)));

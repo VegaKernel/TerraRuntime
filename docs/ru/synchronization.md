@@ -88,6 +88,12 @@ TerraRuntime отделяет authoritative storage от transport projection. D
 
 Это намеренно правило сдерживания давления, а не утверждение, что TerraRuntime уже воспроизвёл все source-ветви `NPC.netUpdate`/`netSpam`. Для полного vanilla replication policy поддерживаемым AI-path всё ещё нужны явные source-backed intents срочной синхронизации. Network detail view отдельно показывает counters подавленных duplicate и cadence packet-23; rolling message table остаётся источником реальной on-wire частоты.
 
+### Сдерживание liquid transport
+
+Source-shaped liquid simulator может обработать до $2\,500$ active cells за один server tick. Это граница simulation work, а не разрешение немедленно ставить в очередь по одному packet `48` на каждую изменённую ячейку. `RuntimeTileManipulationReplicationRegistry` хранит последнее liquid state для каждой pending coordinate, coalesce'ит повторные координаты и за один authoritative tick дренирует не более $16$ packet-48 frames. Pending set жёстко ограничен $16\,384$ coordinates; при устойчивой перегрузке вытесняется самая старая неотправленная coordinate, вместо неограниченного роста очереди или starvation control traffic.
+
+Authoritative liquid state и порядок его update не меняются. Это временная transport-containment policy до source-verified liquid recipient/section-resync policy, которая сможет дать полную visual convergence при большом backlog. Network detail показывает emitted, pending, coalesced и evicted liquid updates; rolling message table остаётся источником реальной on-wire частоты.
+
 ## 7. Владение interest management
 
 Interest management принадлежит TerraRuntime. External hosts получают только `IInterestManagementControl` enable/disable. Spatial layout, radii, hysteresis, transitions, forced resync и entity-specific policy остаются internal.
