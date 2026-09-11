@@ -86,7 +86,7 @@ internal static class RuntimeProjectilePacketProjection
             Key: key,
             PositionX: projectile.PositionX,
             PositionY: projectile.PositionY);
-        return state.IsValid;
+        return state.HasFinitePosition;
     }
 
     internal static bool TryCreateCanonicalKey(
