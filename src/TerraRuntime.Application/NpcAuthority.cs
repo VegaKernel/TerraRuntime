@@ -27,6 +27,7 @@ internal sealed partial class NpcAuthority
     private readonly VanillaNpcTargetingAiStepper? vanillaTargeting;
     private readonly VanillaNpcCheckActiveAiStepper? vanillaCheckActive;
     private readonly RuntimeNpcNetworkCombatPipeline combat;
+    private readonly RuntimeNpcReplicationRegistry? npcReplication;
     private readonly RuntimeNpcLavaContactPass1458? lavaContact;
     private readonly RuntimeProjectileNpcCombatPass projectileNpcCombat;
     private readonly TownNpcAuthority townNpcAuthority;
@@ -49,6 +50,11 @@ internal sealed partial class NpcAuthority
         new VanillaNpcTargetCandidate[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
     private readonly PlayerStateSnapshot[] serverPlayerSnapshots =
         new PlayerStateSnapshot[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
+
+    /// <summary>
+    /// Advances the NPC transport projection from the sole authoritative world-loop owner.
+    /// </summary>
+    public void AdvanceReplicationTick() => npcReplication?.AdvanceAuthoritativeTick();
 
     public NpcAuthority(
         RuntimePlayerSnapshotLookup playerSnapshots,
@@ -109,6 +115,7 @@ internal sealed partial class NpcAuthority
         ArgumentNullException.ThrowIfNull(progression);
         naturalSpawnProgression = progression;
         naturalTownSpawnFacts = townSpawnWorldFacts;
+        this.npcReplication = npcReplication;
 
         aiExecutor = new RuntimeNpcAiStateExecutor(npcs, projectiles);
         var actorControls = new RuntimeNpcActorControlRegistry(npcs);

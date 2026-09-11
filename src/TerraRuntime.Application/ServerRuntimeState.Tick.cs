@@ -13,6 +13,7 @@ internal sealed partial class ServerRuntimeState
 {
     public void Tick()
     {
+        _runtime.Npcs.AdvanceReplicationTick();
         _runtime.Players.AdvanceCombatTick(Updates);
         _runtime.WorldTileAuthority.AdvanceTo(Updates);
         _runtime.WorldTileAuthority.TickLiquids();

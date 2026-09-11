@@ -85,6 +85,7 @@ internal readonly record struct RuntimeNetworkSnapshot(
     long SuppressedDuplicateEquipmentFrames = 0,
     long SuppressedDuplicateMovementFrames = 0,
     long NpcSuppressedDuplicateFrames = 0,
+    long NpcSuppressedCadenceFrames = 0,
     long ProjectileSuppressedDuplicateFrames = 0,
     long HealthRelayedFrames = 0,
     long HealthBaselineFrames = 0,

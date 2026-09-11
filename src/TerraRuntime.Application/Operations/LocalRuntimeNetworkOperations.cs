@@ -138,6 +138,7 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             SuppressedDuplicateEquipmentFrames: connections.SuppressedDuplicateEquipmentFrames,
             SuppressedDuplicateMovementFrames: connections.SuppressedDuplicateMovementFrames,
             NpcSuppressedDuplicateFrames: npcReplication?.SuppressedDuplicateFrames ?? 0,
+            NpcSuppressedCadenceFrames: npcReplication?.SuppressedCadenceFrames ?? 0,
             ProjectileSuppressedDuplicateFrames: projectileReplication?.SuppressedDuplicateFrames ?? 0,
             HealthRelayedFrames: vitalsReplication?.RelayedHealthFrames ?? 0,
             HealthBaselineFrames: vitalsReplication?.HealthBaselineFrames ?? 0,

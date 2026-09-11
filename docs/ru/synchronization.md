@@ -82,6 +82,12 @@ TerraRuntime отделяет authoritative storage от transport projection. D
 
 Если identical bytes действительно recipient-independent, preferred path — один immutable encoded frame shared между queues. Recipient-specific identity/slot/visibility требует separate projection.
 
+### Steady-state cadence NPC
+
+`RuntimeNpcReplicationRegistry` — transport projection, которую питает только authoritative game loop. Она немедленно отправляет packet `23` для spawn, despawn и commit-изменения HP/max-HP. Обычные меняющиеся motion/AI snapshots семплируются с default-интервалом TerrariaServer `1.4.5.8` `Main.npcStreamSpeed`, равным $30\ \text{ticks}$, а не отправляются на каждую simulation revision. Последний snapshot всё равно сохраняется как spawn baseline для поздно вошедшего клиента.
+
+Это намеренно правило сдерживания давления, а не утверждение, что TerraRuntime уже воспроизвёл все source-ветви `NPC.netUpdate`/`netSpam`. Для полного vanilla replication policy поддерживаемым AI-path всё ещё нужны явные source-backed intents срочной синхронизации. Network detail view отдельно показывает counters подавленных duplicate и cadence packet-23; rolling message table остаётся источником реальной on-wire частоты.
+
 ## 7. Владение interest management
 
 Interest management принадлежит TerraRuntime. External hosts получают только `IInterestManagementControl` enable/disable. Spatial layout, radii, hysteresis, transitions, forced resync и entity-specific policy остаются internal.

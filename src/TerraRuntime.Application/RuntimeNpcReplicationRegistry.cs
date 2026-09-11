@@ -13,10 +13,15 @@ namespace TerraRuntime.Application;
 /// spawn form so a joining client always resets the slot even when its wrapped byte generation happens
 /// to match. Live commits are broadcast only to connections that completed the player spawn transition.
 /// Exact packet-23 update duplicates are coalesced per full runtime generation before peer fanout.
+/// Ordinary motion commits are additionally sampled on vanilla's default <c>Main.npcStreamSpeed</c>
+/// cadence; spawn, despawn and committed life changes remain immediate.
 /// </summary>
 internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRuntimePlayerEventSink
 {
     private const int MaxNpcSlots = RuntimeNpcStore.MaximumAddressableCapacity;
+    // TerrariaServer 1.4.5.8 Main.npcStreamSpeed defaults to 30. This is a containment boundary
+    // until each supported AI path can express the source NPC.netUpdate intent explicitly.
+    private const long MotionResyncTicks = 30;
 
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> endpoints = new();
     private readonly byte[]?[] baselineFrames = new byte[MaxNpcSlots][];
@@ -24,6 +29,8 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
     private readonly object liveFrameGate = new();
     private readonly NpcHandle[] liveFrameOwners = new NpcHandle[MaxNpcSlots];
     private readonly byte[]?[] liveFrames = new byte[MaxNpcSlots][];
+    private readonly NpcSnapshot[] liveSnapshots = new NpcSnapshot[MaxNpcSlots];
+    private readonly long[] liveFrameTicks = new long[MaxNpcSlots];
     private readonly byte[]?[] townHomeBaselineFrames = new byte[RuntimeTownNpcStateStore.MaximumTownNpcs][];
     private readonly byte[]?[] townIdentityBaselineFrames = new byte[RuntimeTownNpcStateStore.MaximumTownNpcs][];
     private long relayedFrames;
@@ -31,6 +38,8 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
     private long rejectedFrames;
     private long unsupportedCommits;
     private long suppressedDuplicateFrames;
+    private long suppressedCadenceFrames;
+    private long authoritativeTick;
     private NpcHandle suppressedClientDamageNpc;
 
     public long RelayedFrames => Interlocked.Read(ref relayedFrames);
@@ -42,6 +51,13 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
     public long UnsupportedCommits => Interlocked.Read(ref unsupportedCommits);
 
     public long SuppressedDuplicateFrames => Interlocked.Read(ref suppressedDuplicateFrames);
+
+    public long SuppressedCadenceFrames => Interlocked.Read(ref suppressedCadenceFrames);
+
+    /// <summary>
+    /// Advances the replication clock from the authoritative game loop. Socket callbacks never invoke this.
+    /// </summary>
+    public void AdvanceAuthoritativeTick() => authoritativeTick++;
 
     public bool TryRegister(GameCommandSourceId source, TerrariaConnectionOutboundQueue outbound)
     {
@@ -243,18 +259,27 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
             Volatile.Write(ref despawnFrames[snapshot.Handle.Slot], despawn);
         }
 
-        bool duplicate = UpdateLiveFrame(snapshot.Handle, encoded);
-        if (!suppressBroadcast && kind == NpcStateCommitKind.Update && duplicate)
+        if (suppressBroadcast)
+            return;
+
+        bool duplicate = IsDuplicateLiveFrame(snapshot.Handle, encoded);
+        if (kind == NpcStateCommitKind.Update && duplicate)
         {
             Interlocked.Increment(ref suppressedDuplicateFrames);
             return;
         }
 
-        if (!suppressBroadcast)
-            Broadcast(encoded);
+        if (kind == NpcStateCommitKind.Update && ShouldSuppressForCadence(in snapshot))
+        {
+            Interlocked.Increment(ref suppressedCadenceFrames);
+            return;
+        }
+
+        Broadcast(encoded);
+        RecordLiveFrame(in snapshot, encoded);
     }
 
-    private bool UpdateLiveFrame(NpcHandle owner, byte[] encoded)
+    private bool IsDuplicateLiveFrame(NpcHandle owner, byte[] encoded)
     {
         int slot = owner.Slot;
         lock (liveFrameGate)
@@ -263,9 +288,42 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
             bool duplicate = liveFrameOwners[slot] == owner &&
                 previous is not null &&
                 previous.AsSpan().SequenceEqual(encoded);
-            liveFrameOwners[slot] = owner;
-            liveFrames[slot] = encoded;
             return duplicate;
+        }
+    }
+
+    private bool ShouldSuppressForCadence(in NpcSnapshot snapshot)
+    {
+        long currentTick = authoritativeTick;
+        if (currentTick == 0)
+            return false;
+
+        int slot = snapshot.Handle.Slot;
+        lock (liveFrameGate)
+        {
+            if (liveFrameOwners[slot] != snapshot.Handle)
+                return false;
+
+            NpcSnapshot previous = liveSnapshots[slot];
+            if (previous.Simulation.Life != snapshot.Simulation.Life ||
+                previous.Simulation.LifeMax != snapshot.Simulation.LifeMax)
+            {
+                return false;
+            }
+
+            return currentTick - liveFrameTicks[slot] < MotionResyncTicks;
+        }
+    }
+
+    private void RecordLiveFrame(in NpcSnapshot snapshot, byte[] encoded)
+    {
+        int slot = snapshot.Handle.Slot;
+        lock (liveFrameGate)
+        {
+            liveFrameOwners[slot] = snapshot.Handle;
+            liveFrames[slot] = encoded;
+            liveSnapshots[slot] = snapshot;
+            liveFrameTicks[slot] = authoritativeTick;
         }
     }
 
@@ -278,6 +336,8 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
                 return;
             liveFrameOwners[slot] = default;
             liveFrames[slot] = null;
+            liveSnapshots[slot] = default;
+            liveFrameTicks[slot] = 0;
         }
     }
 

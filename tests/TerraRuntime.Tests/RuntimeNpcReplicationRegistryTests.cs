@@ -129,6 +129,42 @@ public sealed class RuntimeNpcReplicationRegistryTests
     }
 
     [Fact]
+    public void Ordinary_npc_motion_is_sampled_at_the_vanilla_stream_cadence_but_life_changes_are_immediate()
+    {
+        var replication = new RuntimeNpcReplicationRegistry();
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(1);
+        TerrariaConnectionOutboundQueue outbound = CreateOutbound();
+        Assert.True(replication.TryRegister(source, outbound));
+        ConnectionHandle player = Connection(source, slot: 1, generation: 1);
+        PlayerSpawnCommitRequest spawn = CreatePlayerSpawn(player.Player.Slot);
+        replication.PlayerSpawned(player, in spawn);
+
+        replication.AdvanceAuthoritativeTick();
+        NpcSnapshot first = CreateNpc(revision: 1, positionX: 100f);
+        replication.NpcStateCommitted(NpcStateCommitKind.Update, in first);
+
+        replication.AdvanceAuthoritativeTick();
+        NpcSnapshot moved = first with { Revision = new NpcRevision(2), PositionX = 110f };
+        replication.NpcStateCommitted(NpcStateCommitKind.Update, in moved);
+
+        NpcSnapshot damaged = moved with
+        {
+            Revision = new NpcRevision(3),
+            Simulation = moved.Simulation with { Life = 10, LifeMax = 20 }
+        };
+        replication.NpcStateCommitted(NpcStateCommitKind.Update, in damaged);
+
+        for (int index = 0; index < 30; index++)
+            replication.AdvanceAuthoritativeTick();
+        NpcSnapshot resync = damaged with { Revision = new NpcRevision(4), PositionX = 120f };
+        replication.NpcStateCommitted(NpcStateCommitKind.Update, in resync);
+
+        Assert.Equal(3, outbound.QueuedFrames);
+        Assert.Equal(3, replication.RelayedFrames);
+        Assert.Equal(1, replication.SuppressedCadenceFrames);
+    }
+
+    [Fact]
     public void Unsupported_npc_type_is_not_put_on_the_wire()
     {
         var replication = new RuntimeNpcReplicationRegistry();
@@ -207,6 +243,7 @@ public sealed class RuntimeNpcReplicationRegistryTests
         Assert.Equal(1, snapshot.NpcRejectedFrames);
         Assert.Equal(1, snapshot.NpcUnsupportedCommits);
         Assert.Equal(1, snapshot.NpcSuppressedDuplicateFrames);
+        Assert.Equal(0, snapshot.NpcSuppressedCadenceFrames);
     }
 
     private static TerrariaConnectionOutboundQueue CreateOutbound() =>
