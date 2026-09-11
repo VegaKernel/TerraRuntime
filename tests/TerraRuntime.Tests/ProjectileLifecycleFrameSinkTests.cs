@@ -85,6 +85,25 @@ public sealed class ProjectileLifecycleFrameSinkTests
     }
 
     [Fact]
+    public void Packet29_with_nonfinite_position_is_forwarded_without_ending_a_playing_connection()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(7032);
+        using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
+        var ingress = new CapturingIngress();
+        var sink = new ProjectileLifecycleFrameSink(source, bootstrap, new PassthroughSink(), ingress);
+        var state = new TerrariaProjectileDestroyState(
+            new TerrariaProjectileKeyState(Spawner: 0, ProjectileIndex: 7, Generation: 0),
+            PositionX: float.NaN,
+            PositionY: float.PositiveInfinity);
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(DestroyFrame(in state)));
+        Assert.Equal(1, ingress.DestroyCount);
+        Assert.True(float.IsNaN(ingress.Destroy.PositionX));
+        Assert.True(float.IsPositiveInfinity(ingress.Destroy.PositionY));
+        Assert.Equal(ProjectileLifecycleFrameStopReason.None, sink.StopReason);
+    }
+
+    [Fact]
     public void Projectile_packets_before_playing_stop_connection()
     {
         GameCommandSourceId source = GameCommandSourceId.FromConnection(704);

@@ -111,6 +111,24 @@ public sealed class TerrariaProjectileDecoderTests
     }
 
     [Fact]
+    public void Packet29_keeps_nonfinite_position_bits_for_vanilla_relay()
+    {
+        var expected = new TerrariaProjectileDestroyState(
+            new TerrariaProjectileKeyState(Spawner: 0, ProjectileIndex: 7, Generation: 0),
+            PositionX: float.NaN,
+            PositionY: float.PositiveInfinity);
+        Assert.True(TerrariaProjectileEncoder.TryEncodeDestroy(in expected, out byte[] encoded));
+        TerrariaFrame frame = ReadSingleFrame(encoded);
+
+        Assert.Equal(TerrariaProjectileDecodeResult.Decoded,
+            TerrariaProjectileDecoder.TryDecodeDestroy(in frame, out TerrariaProjectileDestroyState decoded));
+        Assert.True(decoded.IsValid);
+        Assert.False(decoded.HasFinitePosition);
+        Assert.True(float.IsNaN(decoded.PositionX));
+        Assert.True(float.IsPositiveInfinity(decoded.PositionY));
+    }
+
+    [Fact]
     public void Extra_bytes_not_described_by_projectile_flags_are_malformed()
     {
         TerrariaFrame frame = Frame((byte)TerrariaMessageId.ProjectileNew, new byte[24]);
