@@ -8,6 +8,7 @@ on:
       - 'src/TerraRuntime.Application/NpcAuthority.cs'
       - 'src/TerraRuntime.Application/RuntimeNpcNetworkCombatPipeline*.cs'
       - 'tests/TerraRuntime.Tests/MoonLordDeathSequenceTests.cs'
+      - 'tests/TerraRuntime.Tests/MoonLordCoreMotionTests.cs'
       - 'tests/TerraRuntime.Tests/LateHardmodeBossParityTests.cs'
       - 'tools/ci/check_moon_lord*source.py'
       - 'src/TerraRuntime.Gameplay/Npcs/Loot/VanillaMoonLordLoot.cs'
@@ -38,6 +39,7 @@ jobs:
           -class TerraRuntime.Tests.MoonLordLootPipelineTests
           -class TerraRuntime.Tests.VanillaMoonLordLootTests
           -class TerraRuntime.Tests.MoonLordDeathSequenceTests
+          -class TerraRuntime.Tests.MoonLordCoreMotionTests
           -class TerraRuntime.Tests.LateHardmodeBossParityTests
       - name: Download reference and install pinned decompiler
         shell: bash

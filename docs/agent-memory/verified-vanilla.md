@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Moon Lord pursuit differential — 2026-09-14
+
+Unmodified official Linux1458 assembly AI_077 invoked in .NET on Windows for2000 exposed-core cases: one/two live players, deterministic Random seeds0..9 x200, initial velocity components Next(-100,101)/8. Compare exact float velocity bits, selected player and ai0. All agree after runtime correction; SHA256 golden groups retained in MoonLordCoreMotionTests. Original calls TargetClosest(false) each state0/1 tick; target offsetY130, movement only beyond20pixels, Normalize(displacement-velocity)*8, SimpleFlyMovement0.5 then Lerp(new,old,0.5). SimpleFlyMovement doubles acceleration on reversal without clamping to desired. Runtime preserves finite velocity for zero steering; this degenerate case and broader intro/teleport/flee/RNG are outside the2000-case claim. Probe source/log ignored at .cache/moonlord-core-probe and .cache/moonlord-core-official.log, no game bodies copied.
+
 ## Moon Lord shell slots — 2026-09-14
 
 Pinned official AI_077 stores actual NewNPC slots for two397hands and396head in localAI0/1/2 at initial tick60. Protected state0 checks negative slots, active and exact type; missing shell sets life0/HitEffect/activefalse directly without checkDead. Its vulnerability condition reads ai0==-2 from those three slots, not all parts with matching ai3. State1 exposed core does not repeat shell-presence validation. check_moon_lord_death_source.py now verifies these statements against the pinned Windows1458 assembly. Runtime negative-sentinel on allocation failure is the safe bounded counterpart to vanilla's array allocation assumption; no copied game method bodies committed.

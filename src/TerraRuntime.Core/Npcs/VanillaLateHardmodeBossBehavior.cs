@@ -535,6 +535,9 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
             return RetireOrphan(in npc, out next);
 
         ushort target = npc.Target;
+        // AI_077 calls TargetClosest(false) every protected/exposed pursuit tick.
+        if (npc.Ai.Ai0 is 0f or 1f && context.TrySelectClosestTarget(in npc, in definition, out var closest) && closest.HasTarget)
+            target = closest.Target;
         if (!LateBossMath.TryTarget(in npc, in definition, context, ref target, out VanillaNpcTargetCandidate player))
         { next = default; return false; }
         NpcAiState ai = npc.Ai;
@@ -552,7 +555,7 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         else if (ai.Ai0 == 0f || ai.Ai0 == 1f)
         {
             float cx = npc.PositionX + definition.Width * .5f, cy = npc.PositionY + definition.Height * .5f;
-            LateBossMath.FlyToward(cx, cy, player.CenterX, player.CenterY + 130f, 8f, .25f, ref vx, ref vy);
+            MoveCoreToward(cx, cy, player.CenterX, player.CenterY + 130f, ref vx, ref vy);
             if (ai.Ai0 == 0f && TryShell(context, local, out bool retired) && retired)
                 ai = ai with { Ai0 = 1f };
             invulnerable = ai.Ai0 != 1f;
@@ -560,6 +563,33 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         sim = sim with { NoGravity = true, NoTileCollide = true, LocalAi = local, DontTakeDamage = invulnerable, JustHit = false };
         next = LateBossMath.Build(in npc, vx, vy, target, in ai, in sim);
         return true;
+    }
+
+    private static void MoveCoreToward(float x, float y, float targetX, float targetY, ref float vx, ref float vy)
+    {
+        // AI_077 steers toward (displacement - velocity), runs SimpleFlyMovement at 0.5,
+        // then blends equally with the previous velocity. Reversal accelerates twice; there is no clamp.
+        float dx = targetX - x, dy = targetY - y;
+        if (MathF.Sqrt(dx * dx + dy * dy) <= 20f)
+            return;
+        float steeringX = dx - vx, steeringY = dy - vy;
+        float length = MathF.Sqrt(steeringX * steeringX + steeringY * steeringY);
+        if (length == 0f)
+            return; // Preserve the finite simulation invariant for a degenerate steering vector.
+        float inverseLength = 1f / length;
+        float desiredX = steeringX * inverseLength * 8f;
+        float desiredY = steeringY * inverseLength * 8f;
+        vx = BlendCoreAxis(vx, desiredX);
+        vy = BlendCoreAxis(vy, desiredY);
+    }
+
+    private static float BlendCoreAxis(float velocity, float desired)
+    {
+        float delta = desired > velocity ? .5f : desired < velocity ? -.5f : 0f;
+        float accelerated = velocity + delta;
+        if ((accelerated < 0f && desired > 0f) || (accelerated > 0f && desired < 0f))
+            accelerated += delta;
+        return accelerated + (velocity - accelerated) * .5f;
     }
 
     private static bool TryPart(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, bool isHead, out NpcStateUpdate next)
