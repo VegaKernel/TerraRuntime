@@ -4,6 +4,12 @@ TerraRuntime exposes a trusted-host NPC behavior boundary without transferring s
 
 This document describes the TerraRuntime boundary only. Host-framework adapters, plugin discovery, permissions and Vega-specific APIs are intentionally outside this layer.
 
+## Live slot order
+
+The authoritative NPC executor visits physical slots in ascending order and reads each live state immediately before its AI step, matching `Main.Update` / `NPC.UpdateNPC` in TerrariaServer `1.4.5.8`. Earlier peer movements, removals and replacements are visible to later slots. A newly spawned higher slot runs during this tick; a lower slot already passed waits until the next tick. Replacement during the current proposal still rejects that proposal by exact generation, including its planned effects.
+
+Peer consumers receive a fresh bounded snapshot before each step. The implementation reuses allocated buffers but copies at most `Capacity` squared snapshots per tick (`Capacity <= 256`); admitting larger tables requires replacing this copy boundary with an authoritative read-only live lookup. This establishes NPC traversal semantics, not full vanilla AI or projectile traversal parity. Moon Lord distance-triggered relocation remains separate unfinished work.
+
 ## Identity, presentation and behavior are separate
 
 A server-defined NPC uses three independent identities:

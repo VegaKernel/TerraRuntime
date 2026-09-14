@@ -10,7 +10,8 @@ public sealed class RuntimeNpcAiSpawnIntentTests
     [Fact]
     public void Eye_servant_is_spawned_only_after_source_state_commit()
     {
-        var store = new RuntimeNpcStore(capacity: 4);
+        var spawns = new NpcSpawnRecorder();
+        var store = new RuntimeNpcStore(capacity: 4, commitSink: spawns);
         NpcStateUpdate eye = CreateEye(ai3: 109f);
         Assert.True(store.TrySpawnVanilla(in eye, out NpcSnapshot source));
 
@@ -19,11 +20,13 @@ public sealed class RuntimeNpcAiSpawnIntentTests
 
         NpcAiStateTickSummary summary = executor.Tick(stepper);
 
-        Assert.Equal(new NpcAiStateTickSummary(1, 1, 1, 0), summary);
+        Assert.Equal(new NpcAiStateTickSummary(2, 2, 2, 0), summary);
         Assert.Equal(2, store.ActiveCount);
         Assert.True(store.TryGet(source.Handle, out NpcSnapshot committedEye));
         Assert.Equal(0f, committedEye.Ai.Ai3);
-        Assert.True(store.TryGetActive(1, out NpcSnapshot servant));
+        Assert.True(store.TryGetActive(1, out NpcSnapshot liveServant));
+        Assert.Equal(new NpcRevision(2), liveServant.Revision);
+        NpcSnapshot servant = Assert.Single(spawns.Spawned, n => n.TypeIdentity == VanillaNpcIds.ServantOfCthulhu);
         Assert.Equal(VanillaNpcIds.ServantOfCthulhu.Value, servant.Type);
         Assert.Equal((short)VanillaNpcIds.ServantOfCthulhu.Value, servant.NetId);
         Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTarget, servant.Target);
@@ -49,7 +52,8 @@ public sealed class RuntimeNpcAiSpawnIntentTests
     [Fact]
     public void Expert_eye_uses_forty_four_tick_cadence_and_six_pixel_servant_speed()
     {
-        var store = new RuntimeNpcStore(capacity: 4);
+        var spawns = new NpcSpawnRecorder();
+        var store = new RuntimeNpcStore(capacity: 4, commitSink: spawns);
         NpcStateUpdate eye = CreateEye(ai3: 43f);
         Assert.True(store.TrySpawnVanilla(in eye, out _));
 
@@ -58,8 +62,10 @@ public sealed class RuntimeNpcAiSpawnIntentTests
 
         NpcAiStateTickSummary summary = executor.Tick(stepper);
 
-        Assert.Equal(new NpcAiStateTickSummary(1, 1, 1, 0), summary);
-        Assert.True(store.TryGetActive(1, out NpcSnapshot servant));
+        Assert.Equal(new NpcAiStateTickSummary(2, 2, 2, 0), summary);
+        Assert.True(store.TryGetActive(1, out NpcSnapshot liveServant));
+        Assert.Equal(new NpcRevision(2), liveServant.Revision);
+        NpcSnapshot servant = Assert.Single(spawns.Spawned, n => n.TypeIdentity == VanillaNpcIds.ServantOfCthulhu);
         float speed = MathF.Sqrt(
             servant.VelocityX * servant.VelocityX +
             servant.VelocityY * servant.VelocityY);
@@ -76,14 +82,14 @@ public sealed class RuntimeNpcAiSpawnIntentTests
 
         NpcAiStateTickSummary summary = executor.Tick(new OrderedBatchPlanner(spawnCount: 2));
 
-        Assert.Equal(new NpcAiStateTickSummary(1, 1, 1, 0), summary);
+        Assert.Equal(new NpcAiStateTickSummary(4, 4, 4, 0), summary);
         Assert.True(store.TryGet(source.Handle, out NpcSnapshot committed));
         Assert.Equal(new NpcRevision(2), committed.Revision);
         Assert.True(store.TryGetActive(1, out NpcSnapshot first));
         Assert.True(store.TryGetActive(2, out NpcSnapshot second));
-        Assert.Equal(90f, first.PositionX);
+        Assert.Equal(91f, first.PositionX);
         Assert.Equal(80f, first.PositionY);
-        Assert.Equal(190f, second.PositionX);
+        Assert.Equal(191f, second.PositionX);
         Assert.Equal(180f, second.PositionY);
     }
 
@@ -97,12 +103,12 @@ public sealed class RuntimeNpcAiSpawnIntentTests
 
         NpcAiStateTickSummary summary = executor.Tick(new OrderedBatchPlanner(spawnCount: 3));
 
-        Assert.Equal(new NpcAiStateTickSummary(1, 1, 1, 0), summary);
+        Assert.Equal(new NpcAiStateTickSummary(3, 3, 3, 0), summary);
         Assert.Equal(3, store.ActiveCount);
         Assert.True(store.TryGetActive(1, out NpcSnapshot first));
         Assert.True(store.TryGetActive(2, out NpcSnapshot second));
-        Assert.Equal(90f, first.PositionX);
-        Assert.Equal(190f, second.PositionX);
+        Assert.Equal(91f, first.PositionX);
+        Assert.Equal(191f, second.PositionX);
     }
 
     [Fact]

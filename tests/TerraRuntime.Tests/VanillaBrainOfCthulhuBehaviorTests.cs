@@ -42,7 +42,7 @@ public sealed class VanillaBrainOfCthulhuBehaviorTests
         var executor = new RuntimeNpcAiStateExecutor(store);
         NpcAiStateTickSummary summary = executor.Tick(stepper);
 
-        Assert.Equal(1, summary.Applied);
+        Assert.Equal(expected + 1, summary.Applied);
         Assert.True(store.TryGet(brain.Handle, out NpcSnapshot committed));
         Assert.Equal(1f, committed.Simulation.LocalAi.Ai0);
         Assert.True(committed.Simulation.DontTakeDamage);

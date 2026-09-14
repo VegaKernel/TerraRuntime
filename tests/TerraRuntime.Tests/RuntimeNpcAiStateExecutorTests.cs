@@ -3,10 +3,10 @@ using TerraRuntime.Core;
 
 namespace TerraRuntime.Tests;
 
-public sealed class RuntimeNpcAiStateExecutorTests
+public sealed partial class RuntimeNpcAiStateExecutorTests
 {
     [Fact]
-    public void Tick_applies_one_state_transition_to_each_prepass_npc()
+    public void Tick_applies_one_state_transition_to_each_live_npc()
     {
         var store = new RuntimeNpcStore(capacity: 4);
         NpcStateUpdate first = CreateUpdate(type: 1, netId: 1, positionX: 10f, ai0: 0f);

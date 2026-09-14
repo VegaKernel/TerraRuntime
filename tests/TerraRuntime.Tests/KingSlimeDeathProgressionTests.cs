@@ -128,7 +128,8 @@ public sealed class KingSlimeDeathProgressionTests
     public void Dead_king_slime_stops_slime_rain_unlocks_and_spawns_nerdy_slime_then_marks_progression()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));
-        var store = new RuntimeNpcStore(capacity: 4);
+        var spawns = new NpcSpawnRecorder();
+        var store = new RuntimeNpcStore(capacity: 4, commitSink: spawns);
         var worldClock = new RuntimeWorldClock(
             time: 100d,
             dayTime: true,
@@ -150,7 +151,7 @@ public sealed class KingSlimeDeathProgressionTests
         Assert.True(store.TrySpawn(0, in deadKingSlime, out NpcSnapshot spawned));
         NpcAiStateTickSummary summary = new RuntimeNpcAiStateExecutor(store).Tick(stepper);
 
-        Assert.Equal(1, summary.Applied);
+        Assert.Equal(2, summary.Applied);
         Assert.Equal(-400000d, worldClock.SlimeRainTime);
         Assert.False(worldClock.SlimeRainActive);
         Assert.True(worldClock.SlimeBlueSpawnUnlocked);
@@ -163,12 +164,19 @@ public sealed class KingSlimeDeathProgressionTests
 
         NpcSnapshot[] active = new NpcSnapshot[store.Capacity];
         int activeCount = store.CopyActive(active);
-        NpcSnapshot nerdy = Assert.Single(active.AsSpan(0, activeCount).ToArray(),
+        NpcSnapshot liveNerdy = Assert.Single(active.AsSpan(0, activeCount).ToArray(),
             npc => npc.TypeIdentity == VanillaNpcIds.TownSlimeBlue);
+        Assert.Equal(new NpcRevision(3), liveNerdy.Revision);
+        NpcSnapshot nerdy = Assert.Single(spawns.Spawned, npc => npc.TypeIdentity == VanillaNpcIds.TownSlimeBlue);
         Assert.Equal(142f, nerdy.PositionX);
         Assert.Equal(137f, nerdy.PositionY);
-        Assert.Equal(0.75f, nerdy.VelocityX, 5);
-        Assert.Equal(-10f, nerdy.VelocityY);
+        NpcSnapshot launched = Assert.Single(spawns.Updated,
+            npc => npc.TypeIdentity == VanillaNpcIds.TownSlimeBlue && npc.Revision == new NpcRevision(2));
+        Assert.Equal(0.75f, launched.VelocityX, 5);
+        Assert.Equal(-10f, launched.VelocityY);
+        Assert.Equal(142.75f, liveNerdy.PositionX);
+        // UpdateNPC_UpdateGravity clamps this high-altitude fixture to 0.3 * 0.25.
+        Assert.Equal(137f - 10f + 0.075f, liveNerdy.PositionY, 4);
         Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTarget, nerdy.Target);
     }
 

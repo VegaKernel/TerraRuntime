@@ -1,5 +1,9 @@
 # Production graph
 
+## Live NPC traversal - 2026-09-14
+
+RuntimeNpcAiStateExecutor now traverses capacity in ascending slots with TryGetActive immediately before each step. It refreshes the existing INpcAiPeerSnapshotConsumer view at that boundary using its reusable scratch buffer. Earlier movement/replacement/removal is visible; new higher slots participate and already-passed slots wait. Current-step generation still guards commits and planned effects. Full copy cost is bounded by Capacity squared (<=256 slots); larger tables require a live read-only lookup boundary. No new production abstraction. INpcAiPeerSnapshotConsumer now means per-step rather than prepass. Commit/effect/spawn ordering within each step is unchanged; teleport's after-allocation peer relocation still needs implementation.
+
 ## Moon Lord introduction ownership - 2026-09-14
 
 VanillaNpcTargetingAiStepper supplies its existing IVanillaNpcRandom to the Moon Lord strategy. Initialization normalizes state/local3 before death or departure handling while retaining the incoming timer. Intro and teleport-return complete only when the incremented timer equals60, then pursue in the same AI call. The existing spawn planner allocates the shell from the source core center before outer world motion, truncating before offsets and preserving NewNPC target255. Exact allocated slots remain linked through the executor. Distance-triggered peer relocation and source live-slot update ordering remain open.

@@ -66,7 +66,7 @@ public sealed class NpcAiProductionCompositionTests
         var executor = new RuntimeNpcAiStateExecutor(store);
         NpcAiStateTickSummary summary = executor.Tick(checkActive);
 
-        Assert.Equal(new NpcAiStateTickSummary(1, 1, 1, 0), summary);
+        Assert.Equal(new NpcAiStateTickSummary(3, 3, 3, 0), summary);
         Assert.True(store.TryGet(king.Handle, out NpcSnapshot committedKing));
         Assert.Equal(1899f, committedKing.Ai.Ai3);
         Assert.Equal(3, store.ActiveCount);

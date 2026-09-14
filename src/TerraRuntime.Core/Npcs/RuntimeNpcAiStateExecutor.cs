@@ -12,7 +12,7 @@ public interface INpcAiStateStepper
     bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next);
 }
 
-/// <summary>Receives the immutable active-NPC pre-pass used by one authoritative AI tick.</summary>
+/// <summary>Receives an immutable active-NPC view immediately before each authoritative AI step.</summary>
 public interface INpcAiPeerSnapshotConsumer
 {
     void SetNpcPeers(ReadOnlySpan<NpcSnapshot> peers);
@@ -28,14 +28,12 @@ public readonly record struct NpcAiStateTickSummary(
     int Rejected);
 
 /// <summary>
-/// Runs allocation-stable NPC AI state transitions against a pre-pass snapshot of the live NPC table.
-/// The executor and store are authoritative-thread components. A proposed transition is committed only
-/// if the exact generation captured at the start of the pass is still current, so reentrant lifecycle
-/// changes cannot let stale AI work mutate a replacement NPC in the same slot. Optional NPC and projectile
-/// spawn intents are planned speculatively into executor-owned bounded scratch storage and are applied in order
-/// only after that source-state commit succeeds; spawned entities therefore cannot enter the same pre-pass or escape
-/// from a rejected/stale transition. Irreversible effects that require exact source ordering use a post-commit
-/// mutation surface and therefore cannot consume RNG or mutate the world for a rejected source generation.
+/// Runs allocation-stable NPC AI state transitions in ascending live slot order.
+/// Each slot is read when its turn arrives, so earlier peer mutations and newly spawned higher slots
+/// participate in the same tick (TerrariaServer 1.4.5.8 Main.Update / NPC.UpdateNPC).
+/// A proposal still commits only against the generation captured immediately before that step:
+/// reentrant replacement during planning cannot inherit stale state or effects.
+/// Optional intents are planned into bounded scratch storage and applied only after a successful commit.
 /// </summary>
 public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
 {
@@ -70,7 +68,7 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
     {
         ArgumentNullException.ThrowIfNull(stepper);
 
-        int examined = _npcs.CopyActive(_snapshotBuffer);
+        int examined = 0;
         int proposed = 0;
         int applied = 0;
         int rejected = 0;
@@ -88,11 +86,20 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
             NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitEffect>(stepper);
         INpcAiPeerSnapshotConsumer? peerConsumer =
             NpcAiStateStepperComposition.FindCapability<INpcAiPeerSnapshotConsumer>(stepper);
-        peerConsumer?.SetNpcPeers(_snapshotBuffer.AsSpan(0, examined));
 
-        for (int index = 0; index < examined; index++)
+        for (int slot = 0; slot < _npcs.Capacity; slot++)
         {
-            NpcSnapshot npc = _snapshotBuffer[index];
+            if (!_npcs.TryGetActive(checked((byte)slot), out NpcSnapshot npc))
+                continue;
+            examined++;
+            if (peerConsumer is not null)
+            {
+                // A bounded full view keeps existing peer consumers coherent with earlier slot effects.
+                // At most Capacity squared snapshots are copied (Capacity <= 256). If larger NPC tables
+                // are admitted, replace this copy boundary with an authoritative read-only live lookup.
+                int peerCount = _npcs.CopyActive(_snapshotBuffer);
+                peerConsumer.SetNpcPeers(_snapshotBuffer.AsSpan(0, peerCount));
+            }
             if (!stepper.TryStepState(in npc, out NpcStateUpdate next))
                 continue;
 
