@@ -1,5 +1,10 @@
 # Production graph
 
+## Moon Lord head AI - 2026-09-15
+
+Internal VanillaMoonLordHeadBehavior owns source attached-position/phase/pupil/eyelid/projectile planning, invoked by existing MoonLordstrategy with sharedrandom. Hand pupil ellipse nowacceptshead27x59parameters; angle interpolationreused. Removed oldgenericheadflight/retiredheadbranch anddeadpartclockhelpers/projectilebranch. SpawnheadlocalAIstarts0; ai3alreadyownscoreslot. Existing postcommit afterspawncallback force23forheadphase/target/boltacquisition/deathraylaunch. SourceMoonLeech16x16ai85definitionadded; AI85behavior/buffinteraction stillopen. No newauthority/IPC/schema dependency.
+
+
 ## Retained Moon Lord targets and release - 2026-09-15
 
 Hand AI uses retained raw player candidate or reset geometry without living targets. Context FindClosestPlayer layers original Player.FindClosest fallback on living Manhattan selector. Sphere mutation intent keeps existing exact NPC provenance and ai1 ownership checks; source float normalization now reciprocal-times-components. Existing RuntimeProjectileReplicationRegistry immediately sends changed27 (no new forcedprojectilecontract). Hand afterspawncallback also synchronizes phase3elapsed0 even unchanged incomingstate. Network/serverplayer motion already enriches candidates through snapshot lookup; no authorityprojection change. Sourcechecker now recognizes strict original temporary NPC aliases with absentXNA.

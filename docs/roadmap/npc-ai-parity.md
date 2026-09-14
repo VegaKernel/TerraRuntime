@@ -1,5 +1,10 @@
 # Vanilla NPC and AI parity roadmap
 
+## Moon Lord head authoritative AI slice - 2026-09-15
+
+Headattachment,1200tickclock,pupil/eyelid/mouthstate,damagegateandDeathray/Bolt/addressedLeechcreation now independentlycovered3600+36originalcalls and3integrationcases. CoreheadspawnlocalAIownershipcollisionremoved. Immediatehead23sync,telegraphRNGand16x16MoonLeechdefinitionadded. Fullgoalstillopen: continuousbattle,GoodWorldboulders,AI85leechbuffs/healing401,TrueEyeandbroaderplayers. See pairedmoon-lord-death-sequence docs andwork-state acceptance.
+
+
 ## Moon Lord targeting and release verification - 2026-09-15
 
 Retained-target aiming and local292 sphere release now match another128 original calls across alive/moving/dead/absent inputs. Tests include immediatepacket27 and repeated-state retargetpacket23, plus actual world-loop velocity projection for network/serverplayers. Fullhand/head/TrueEye continuousbattle and broaderplayerarrangements remainopen. Sourcegate repaired for original NPC temporary aliases whenXNAunresolved; no source semantic relaxation. Full12746tests andnative/CIstatus recordedinwork-state.

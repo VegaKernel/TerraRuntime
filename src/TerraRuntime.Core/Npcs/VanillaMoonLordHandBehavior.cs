@@ -192,12 +192,12 @@ internal static class VanillaMoonLordHandBehavior
         return 1;
     }
 
-    private static void EyeOffset(NpcAiState local, out float x, out float y)
+    internal static void EyeOffset(NpcAiState local, out float x, out float y, float pupilWidth = 30f, float pupilHeight = 66f)
     {
         x = (float)Math.Cos(local.Ai0); y = (float)Math.Sin(local.Ai0);
         float inverse = 1f / Length(x, y);
         x *= inverse; y *= inverse;
-        float width = 30f * local.Ai1, height = 66f * local.Ai1;
+        float width = pupilWidth * local.Ai1, height = pupilHeight * local.Ai1;
         if (width == 0f && height == 0f) { x = y = 0f; return; }
         float sizeInverse = 1f / Length(width, height);
         x *= 1f / (width * sizeInverse); y *= 1f / (height * sizeInverse);
@@ -234,7 +234,7 @@ internal static class VanillaMoonLordHandBehavior
         return (float)((2d * start - 2d * end) * (t * t * t) + (3d * end - 3d * start) * (t * t) + start);
     }
 
-    private static float AngleLerp(float current, float target)
+    internal static float AngleLerp(float current, float target)
     {
         float other = target < current ? target + MathF.PI * 2f : target - MathF.PI * 2f;
         if (MathF.Abs(other - current) < MathF.Abs(target - current)) target = other;

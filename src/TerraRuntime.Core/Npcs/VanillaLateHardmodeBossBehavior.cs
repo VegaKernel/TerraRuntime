@@ -701,75 +701,12 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         return accelerated + (velocity - accelerated) * .5f;
     }
 
-    private static bool TryPart(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, bool isHead, out NpcStateUpdate next)
+    private bool TryPart(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, bool isHead, out NpcStateUpdate next)
     {
-        if (!TryRoot(in npc, context, out NpcSnapshot root))
-            return RetireOrphan(in npc, out next);
-        if (!isHead)
-            return VanillaMoonLordHandBehavior.TryStep(in npc, in definition, in root, context, out next);
-        if (npc.Ai.Ai0 is -2f or -3f)
-            return TryRetiredPart(in npc, in definition, in root, out next);
-
-        float rootCx = root.PositionX + 23f, rootCy = root.PositionY + 33f;
-        float offsetX = 0f;
-        float offsetY = -400f;
-        float cx = npc.PositionX + definition.Width * .5f, cy = npc.PositionY + definition.Height * .5f;
-        float vx = npc.VelocityX, vy = npc.VelocityY;
-        LateBossMath.FlyToward(cx, cy, rootCx + offsetX, rootCy + offsetY, 18f, 1.2f, ref vx, ref vy);
-        NpcAiState ai = AdvancePartAttackClock(npc.Ai, isHead: true);
-        NpcSimulationState sim = npc.Simulation with
-        {
-            NoGravity = true,
-            NoTileCollide = true,
-            DontTakeDamage = false,
-            JustHit = false
-        };
-        next = LateBossMath.Build(in npc, vx, vy, root.Target, in ai, in sim);
-        return true;
-    }
-
-    private static bool TryRetiredPart(
-        in NpcSnapshot npc,
-        in VanillaNpcDefinition definition,
-        in NpcSnapshot root,
-        out NpcStateUpdate next)
-    {
-        float rootCx = root.PositionX + 23f;
-        float rootCy = root.PositionY + 33f;
-        NpcAiState ai = npc.Ai;
-        NpcSimulationState sim = npc.Simulation with
-        {
-            NoGravity = true,
-            NoTileCollide = true,
-            DontTakeDamage = true,
-            DamageOverride = 0,
-            JustHit = false
-        };
-
-        float headX = rootCx - definition.Width * .5f;
-        float headY = rootCy - 400f - definition.Height * .5f;
-        float timer = ai.Ai1 + 1f;
-        if (!float.IsFinite(timer) || timer >= 1200f || timer < 0f)
-            timer = 0f;
-        ai = ai with { Ai1 = timer };
-
-        if (ai.Ai0 == -2f && root.Ai.Ai0 == 2f)
-        {
-            ai = ai with { Ai0 = -3f };
-        }
-        else
-        {
-            float deathFrame = ai.Ai2 + 1f;
-            if (!float.IsFinite(deathFrame) || deathFrame >= 32f || deathFrame < 0f)
-                deathFrame = 0f;
-            ai = ai with { Ai2 = deathFrame };
-            if (ai.Ai0 == -3f && sim.LocalAi.Ai2 < 14f)
-                sim = sim with { LocalAi = sim.LocalAi with { Ai2 = sim.LocalAi.Ai2 + 1f } };
-        }
-
-        next = new NpcStateUpdate(
-            npc.Type, npc.NetId, headX, headY, 0f, 0f, root.Target, ai, sim);
-        return true;
+        if (!TryRoot(in npc, context, out NpcSnapshot root)) return RetireOrphan(in npc, out next);
+        return isHead
+            ? VanillaMoonLordHeadBehavior.TryStep(in npc, in definition, in root, context, random, out next)
+            : VanillaMoonLordHandBehavior.TryStep(in npc, in definition, in root, context, out next);
     }
 
     private static bool TryShell(VanillaNpcBehaviorContext context, NpcAiState slots, out bool retired)
@@ -807,42 +744,6 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         NpcSimulationState sim = npc.Simulation with { NoGravity = true, NoTileCollide = true, DontTakeDamage = true, JustHit = false };
         next = LateBossMath.Build(in npc, vx, vy, target, in ai, in sim);
         return true;
-    }
-
-    private static NpcAiState AdvancePartAttackClock(in NpcAiState before, bool isHead)
-    {
-        int row = isHead ? 2 : before.Ai2 <= 0f ? 0 : 1;
-        float timer = before.Ai1 + 1f;
-        int total = row == 2 ? 1200 : 600;
-        if (!float.IsFinite(timer) || timer >= total || timer < 0f)
-            timer = 0f;
-
-        int state = ResolvePartAttackState((int)timer, row);
-        return before with { Ai0 = state, Ai1 = timer };
-    }
-
-    private static int ResolvePartAttackState(int timer, int row)
-    {
-        ReadOnlySpan<int> states = row switch
-        {
-            0 => [0, 1, 2, 0, 3],
-            1 => [1, 0, 3, 0, 2],
-            _ => [3, 0, 2, 3, 1]
-        };
-        ReadOnlySpan<int> durations = row switch
-        {
-            0 => [50, 70, 330, 60, 90],
-            1 => [70, 50, 90, 60, 330],
-            _ => [180, 30, 435, 180, 375]
-        };
-        int cursor = 0;
-        for (int i = 0; i < states.Length; i++)
-        {
-            cursor += durations[i];
-            if (timer < cursor)
-                return states[i];
-        }
-        return states[0];
     }
 
     private static NpcAiState AdvanceEyeAttackClock(in NpcAiState before)

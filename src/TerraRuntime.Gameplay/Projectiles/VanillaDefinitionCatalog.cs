@@ -22,6 +22,7 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId PhantasmalEye = new(82);
     public static readonly ProjectileAiStyleId PhantasmalSphere = new(83);
     public static readonly ProjectileAiStyleId PhantasmalDeathray = new(84);
+    public static readonly ProjectileAiStyleId MoonLeech = new(85);
     public static readonly ProjectileAiStyleId CultistIceMist = new(86);
     public static readonly ProjectileAiStyleId CultistLightning = new(88);
     public static readonly ProjectileAiStyleId HallowBossRainbowStreak = new(171);
@@ -340,6 +341,16 @@ public static class VanillaDefinitionCatalog
         CanCutTiles: true,
         CollisionWidth: 36,
         CollisionHeight: 36);
+
+    private static readonly VanillaProjectileDefinition MoonLeechDefinition = new(
+        Width: 16,
+        Height: 16,
+        AiStyle: VanillaProjectileAiStyles.MoonLeech,
+        TileCollide: false,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 16,
+        CollisionHeight: 16);
 
     private static readonly VanillaProjectileDefinition HallowBossRainbowStreakDefinition = new(
         Width: 30,
@@ -879,6 +890,12 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.PhantasmalDeathray)
         {
             definition = PhantasmalDeathrayDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.MoonLeech)
+        {
+            definition = MoonLeechDefinition;
             return true;
         }
 

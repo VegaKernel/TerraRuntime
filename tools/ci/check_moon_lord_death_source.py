@@ -116,6 +116,15 @@ def main() -> None:
         body = method(source, name)
         require(body, r"Main\.npc\[\(int\)ai\[3\]\]\.type != 398", name + " exact owner slot")
         require(body, r"life = 0;.*?active = false", name + " orphan removal")
+    head = method(source, "AI_079_MoonLordHead")
+    require(head, r"dontTakeDamage = localAI\[3\] >= 15f", "head incoming eyelid damage gate")
+    require(head, r"velocity = Vector2.Zero", "head anchored velocity")
+    require(head, r"ai\[0\] = -3f; return;", "head death transition early return")
+    require(head, r"Main.rand.NextDouble\(\)", "head telegraph shared random draw")
+    require(head, r"(?:new Vector2\(|\.ctor\()0f, 216f\)", "head leech mouth offset")
+    require(head, r"456, 0, 0f, Main.myPlayer, whoAmI \+ 1,", "head addressed leech spawn")
+    require(head, r"localAI\[2\] > 14f", "head mouth animation bound")
+
     print(json.dumps({"reference": "TerrariaServer 1.4.5.8", "sha256": digest,
                       "cleanup_tick": 60, "terminal_tick": 600, "orphan_families": [78, 79, 81]}))
 

@@ -604,8 +604,9 @@ public sealed class LateHardmodeBossParityTests
         Assert.True(stepper.TryStepState(in head, out NpcStateUpdate next));
         Assert.Equal(-3f, next.Ai.Ai0);
         Assert.Equal(701f, next.Ai.Ai1);
-        Assert.True(next.Simulation.DontTakeDamage);
-        Assert.Equal(0, next.Simulation.DamageOverride);
+        // AI_079 returns before retired damage setup; incoming eyelid6 is still open.
+        Assert.False(next.Simulation.DontTakeDamage);
+        Assert.Equal(head.Simulation.DamageOverride, next.Simulation.DamageOverride);
         Assert.Equal(0f, next.VelocityX);
         Assert.Equal(0f, next.VelocityY);
     }

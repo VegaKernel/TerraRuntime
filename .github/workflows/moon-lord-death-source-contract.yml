@@ -17,6 +17,9 @@ on:
       - 'tests/TerraRuntime.Tests/MoonLordIntroductionTests.cs'
       - 'tests/TerraRuntime.Tests/MoonLordTeleportTests.cs'
       - 'tests/TerraRuntime.Tests/MoonLordHandTests.cs'
+      - 'tests/TerraRuntime.Tests/MoonLordHeadTests.cs'
+      - 'tests/TerraRuntime.Tests/Fixtures/moon-lord-head*.json.gz'
+      - 'src/TerraRuntime.Gameplay/Projectiles/VanillaDefinitionCatalog.cs'
       - 'tests/TerraRuntime.Tests/Fixtures/moon-lord-hands-1458.json.gz'
       - 'tests/TerraRuntime.Tests/Fixtures/moon-lord-hand-targets-1458.json.gz'
       - 'tests/TerraRuntime.Tests/Fixtures/moon-lord-sphere-release-1458.json.gz'
@@ -61,6 +64,7 @@ jobs:
           -class TerraRuntime.Tests.MoonLordIntroductionTests
           -class TerraRuntime.Tests.MoonLordTeleportTests
           -class TerraRuntime.Tests.MoonLordHandTests
+          -class TerraRuntime.Tests.MoonLordHeadTests
           -class TerraRuntime.Tests.MoonLordCoreMotionTests
           -class TerraRuntime.Tests.LateHardmodeBossParityTests
       - name: Download reference and install pinned decompiler

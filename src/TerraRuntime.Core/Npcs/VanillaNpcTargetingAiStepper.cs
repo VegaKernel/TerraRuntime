@@ -1888,6 +1888,13 @@ public sealed class VanillaNpcTargetingAiStepper :
                  committed.Ai.Ai1, committed.Ai.Ai2 == 0f, out _, out _) == 0)))
             mutations.TryTranslate(committed.Handle, 0f, 0f, out _);
         VanillaMoonLordNpcBehaviorStrategy.ApplyTeleportToParts(in before, in committed, _context, mutations);
+        if (committed.TypeIdentity == VanillaNpcIds.MoonLordHead && before.Ai.Ai0 >= 0f)
+        {
+            int elapsed = VanillaMoonLordHeadBehavior.Phase(committed.Ai.Ai1, out int phase, out _);
+            if (before.Ai.Ai0 != committed.Ai.Ai0 || before.Target != committed.Target ||
+                (phase == 1 && elapsed == 180) || (phase == 3 && elapsed == 1))
+                mutations.TryTranslate(committed.Handle, 0f, 0f, out _);
+        }
     }
 
     private int PlanMoonLordParts(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
@@ -1907,7 +1914,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             destination[1] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordHand, cx + 400, cy - 100, 0f, 0f, byte.MaxValue)
             { InitialAi = new NpcAiState(0f, 0f, 1f, source.Handle.Slot), InitialLocalAi = owned, LinkSourceLocalAiSlot = 1 };
             destination[2] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordHead, cx, cy - 400, 0f, 0f, byte.MaxValue)
-            { InitialAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot), InitialLocalAi = owned, LinkSourceLocalAiSlot = 2 };
+            { InitialAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot), LinkSourceLocalAiSlot = 2 };
             return 3;
         }
 
@@ -2222,46 +2229,13 @@ public sealed class VanillaNpcTargetingAiStepper :
             return 0;
         if (source.TypeIdentity == VanillaNpcIds.MoonLordHand)
             return VanillaMoonLordHandBehavior.PlanProjectiles(in source, in proposed, destination, _random);
+        if (source.TypeIdentity == VanillaNpcIds.MoonLordHead)
+            return VanillaMoonLordHeadBehavior.PlanProjectiles(in source, in proposed, _context, destination);
         if (proposed.Target >= byte.MaxValue || !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || !target.Active || target.Dead)
             return 0;
-        float cx, cy;
-        if (source.Type == VanillaNpcIds.MoonLordHead.Value) { cx = source.PositionX + 19f; cy = source.PositionY + 28f; }
-        else if (source.Type == VanillaNpcIds.MoonLordHand.Value) { cx = source.PositionX + 23f; cy = source.PositionY + 33f; }
-        else { cx = source.PositionX + 30f; cy = source.PositionY + 30f; }
+        float cx = source.PositionX + 30f, cy = source.PositionY + 30f;
 
-        if (source.Type == VanillaNpcIds.MoonLordHead.Value)
-        {
-            int elapsed = MoonPartAttackElapsed(source.Ai.Ai1, 2, out int state, out int duration);
-            if (state == 1 && elapsed == 180)
-            {
-                if (destination.IsEmpty) return 1;
-                float dx = target.CenterX - cx, dy = target.CenterY - cy;
-                float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
-                float sign = dx < 0f ? 1f : -1f;
-                float baseAngle = MathF.Atan2(dy / d, dx / d) - sign * MathF.PI * 2f / 6f;
-                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalDeathray, cx, cy, MathF.Cos(baseAngle), MathF.Sin(baseAngle), 75, 0f)
-                { InitialAi = new ProjectileAiState(sign * MathF.PI * 2f / 540f, source.Handle.Slot, 0f) };
-                return 1;
-            }
-            if (state == 2 && elapsed == 0)
-            {
-                if (destination.IsEmpty) return 1;
-                float dx = target.CenterX - cx, dy = target.CenterY - cy;
-                float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
-                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.MoonLeech, cx, cy, dx / d * 7f, dy / d * 7f, 0, 0f)
-                { InitialAi = new ProjectileAiState(source.Handle.Slot + 1f, proposed.Target, 0f) };
-                return 1;
-            }
-            if (state == 3 && (elapsed == duration - 14 || elapsed == duration - 7 || elapsed == duration))
-            {
-                if (destination.IsEmpty) return 1;
-                float dx = target.CenterX - cx, dy = target.CenterY - cy;
-                float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
-                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalBolt, cx, cy, dx / d * 8f, dy / d * 8f, 30, 0f);
-                return 1;
-            }
-        }
-        else if (source.Type == VanillaNpcIds.MoonLordFreeEye.Value)
+        if (source.Type == VanillaNpcIds.MoonLordFreeEye.Value)
         {
             int elapsed = MoonEyeAttackElapsed(source.Ai.Ai1, out int state, out int duration);
             if (state == 1 && (elapsed == duration - 14 || elapsed == duration - 7 || elapsed == duration))

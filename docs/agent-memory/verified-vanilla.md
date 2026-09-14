@@ -1,5 +1,10 @@
 # Verified vanilla facts
 
+## Head AI independent evidence - 2026-09-15
+
+OriginalAI0793600calls head38x56life45000 (NPC.SetDefaults396verified14110), incomingtimer0..1199 andeyelidlocalAI3 0/13/15, rootcenter1023,1033, player1510,821, rng1458. Correctedearliermanual78x80probe; doNOTuseoldhashd3ffca93. ResetoldTarget0andolddirectionstocurrent/clearnetUpdatebeforeeachAI asouterNPCupdate; finalexpandedSHAb53358c6945b688feaca399e9a24327e72e667acdf3e084d57c1137b33f3a770,3510synced90nonsynced. 36retiredcalls(-2/-3,root0/2,timer0/700/1199,eyelid0/6/15) SHA55c486f5d618095e952f21e97b81ad31218d55f4563543c5ae6aa894986963ac. Exactposition/velocity/ai/local/gate/projectilecreation/nextRNG,actualpacket23. Sourceheadlocal3eyelidgate15,local2mouth; retired-2->-3root2 returnsbeforeDamageOverride/invulnretiredassignment. Oldtest wronglyexpectedinvulnforeyelid6; correctedwithoriginal36rows. MoonLeech sourceSetDefaults45616x16ai85 andCanCutTilestrue; shapeabsentcatalog caused8pxspawnerror,nowfixed. Headfixturesonlycreation,notAI85orfullfights.
+
+
 ## Moon Lord retained targets / sphere release - 2026-09-15
 
 80originalAI_078 calls coverstatic/moving(3.25,-1.75)/dead/absentplayer, bothhands andphase3clocks;expandedSHA6bd1013cf7860a9b035e01d8f61a533b1048fad989f42839f90e9769eced23e3. 48actualcalls mutatefouralreadyexisting454s nearleft411/right561incomingrelease;expandedSHA3e6440a9b0292eabeab9db6738f80b07dc8096ca63a2a85009609548cdc03aef. OriginalLinuxexe onWindowsCoreCLR, pinnedhashunchanged. Player.FindClosest fallbackfirstactiveincludingdead then0, evenwithoutlivingtarget; FNA Normalize reciprocal multiplication changesexactfloat. NetMessage27 writes4byteProjectileKey+position+velocity; retainedintegrationassertsrawvx15/vy19. No continuousfight or allmultiplayertargetarrangements claim.
