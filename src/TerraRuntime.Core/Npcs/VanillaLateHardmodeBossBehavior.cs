@@ -628,7 +628,50 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
             ai = ai with { Ai0 = 3f, Ai1 = 0f };
         sim = sim with { NoGravity = true, NoTileCollide = true, LocalAi = local, DontTakeDamage = invulnerable, JustHit = false };
         next = LateBossMath.Build(in npc, vx, vy, target, in ai, in sim);
+        if (ai.Ai0 is 0f or 1f)
+        {
+            float dx = player.CenterX - (npc.PositionX + 23f);
+            float dy = player.CenterY - (npc.PositionY + 33f);
+            if (MathF.Sqrt(dx * dx + dy * dy) > 2400f)
+                next = next with
+                {
+                    PositionX = npc.PositionX + dx,
+                    PositionY = npc.PositionY + ((player.CenterY - 150f) - (npc.PositionY + 33f)),
+                    Ai = ai with { Ai0 = -2f }
+                };
+        }
         return true;
+    }
+
+    internal static void ApplyTeleportToParts(in NpcSnapshot before, in NpcSnapshot committed,
+        VanillaNpcBehaviorContext context, INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaNpcIds.MoonLordCore || committed.Ai.Ai0 != -2f ||
+            (before.Ai.Ai0 == -2f && before.Ai.Ai1 + 1f != 60f) ||
+            committed.Target >= byte.MaxValue ||
+            !context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate player))
+            return;
+        // AI_077 translates after NewNPC, but before the core's outer world motion.
+        // Derive the source-space delta rather than including that subsequent motion in peer offsets.
+        float dx = player.CenterX - (before.PositionX + 23f);
+        float dy = (player.CenterY - 150f) - (before.PositionY + 33f);
+        // The source marks core and moved parts netUpdate, bypassing ordinary motion cadence.
+        mutations.TryTranslate(committed.Handle, 0f, 0f, out _);
+        NpcAiState slots = committed.Simulation.LocalAi;
+        TranslateSlot(slots.Ai0, dx, dy, mutations);
+        TranslateSlot(slots.Ai1, dx, dy, mutations);
+        TranslateSlot(slots.Ai2, dx, dy, mutations);
+        for (int slot = 0; slot < RuntimeNpcStore.MaximumAddressableCapacity; slot++)
+            if (mutations.TryGetActive((byte)slot, out NpcSnapshot peer) && peer.TypeIdentity == VanillaNpcIds.MoonLordFreeEye)
+                mutations.TryTranslate(peer.Handle, dx, dy, out _);
+    }
+
+    private static void TranslateSlot(float slot, float dx, float dy, INpcAiCommittedNpcMutationSink mutations)
+    {
+        // Runtime rejects invalid internal links; valid repeated slots retain the source's repeated translation.
+        if (float.IsFinite(slot) && slot >= 0f && slot < RuntimeNpcStore.MaximumAddressableCapacity &&
+            mutations.TryGetActive((byte)slot, out NpcSnapshot peer))
+            mutations.TryTranslate(peer.Handle, dx, dy, out _);
     }
 
     private static void MoveCoreToward(float x, float y, float targetX, float targetY, ref float vx, ref float vy)

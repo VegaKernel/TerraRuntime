@@ -29,6 +29,7 @@ internal sealed class RuntimeNpcOperationsTelemetry : INpcOperations, INpcStateC
                 break;
 
             case NpcStateCommitKind.Update:
+            case NpcStateCommitKind.ForcedUpdate:
                 WriteSnapshot(slot, in snapshot);
                 Interlocked.Increment(ref committedUpdates);
                 break;

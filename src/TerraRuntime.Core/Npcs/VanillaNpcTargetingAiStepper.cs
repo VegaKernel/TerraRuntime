@@ -16,7 +16,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     INpcAiSpawnIntentPlanner,
     INpcAiProjectileIntentPlanner,
     INpcAiProjectileMutationIntentPlanner,
-    INpcAiPeerSnapshotConsumer
+    INpcAiPeerSnapshotConsumer,
+    INpcAiStatePostCommitEffect
 {
     public const int MaximumPlayerCandidates = VanillaNpcBehaviorContext.MaximumPlayerCandidates;
 
@@ -1873,10 +1874,17 @@ public sealed class VanillaNpcTargetingAiStepper :
         return requested;
     }
 
+    public void ApplyCommittedEffect(
+        in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations) { }
+
+    public void ApplyCommittedEffectAfterSpawns(
+        in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations) =>
+        VanillaMoonLordNpcBehaviorStrategy.ApplyTeleportToParts(in before, in committed, _context, mutations);
+
     private int PlanMoonLordParts(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
     {
         bool initialShell = (source.Simulation.LocalAi.Ai3 == 0f || source.Ai.Ai0 == -1f) &&
-            source.Ai.Ai1 + 1f == 60f && proposed.Ai.Ai0 is 0f or 3f;
+            source.Ai.Ai1 + 1f == 60f && proposed.Ai.Ai0 is 0f or 3f or -2f;
         if (initialShell)
         {
             if (destination.Length < 3) return destination.Length + 1;

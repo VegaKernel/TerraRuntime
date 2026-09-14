@@ -38,4 +38,7 @@
     <EmbeddedResource Include="Fixtures/late-boss-headers-1458.bin.gz" LogicalName="LateBossHeaders1458" />
   </ItemGroup>
   <ItemGroup><ProjectReference Include="../../tools/TerraRuntime.WorkerPoolProbe/TerraRuntime.WorkerPoolProbe.csproj" /></ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/moon-lord-teleport-1458.json.gz" LogicalName="MoonLordTeleport1458" />
+  </ItemGroup>
 </Project>

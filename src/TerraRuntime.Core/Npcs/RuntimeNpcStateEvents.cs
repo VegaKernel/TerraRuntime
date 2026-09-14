@@ -6,7 +6,8 @@ public enum NpcStateCommitKind : byte
 {
     Spawn = 0,
     Update = 1,
-    Despawn = 2
+    Despawn = 2,
+    ForcedUpdate = 3
 }
 
 /// <summary>

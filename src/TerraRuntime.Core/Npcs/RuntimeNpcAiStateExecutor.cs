@@ -204,6 +204,8 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                         _npcs.TryDespawn(spawned.Handle);
                     }
                 }
+                if (_npcs.TryGet(committed.Handle, out NpcSnapshot current) && current.Revision == committed.Revision)
+                    postCommitEffect?.ApplyCommittedEffectAfterSpawns(in npc, in committed, this);
             }
             else
             {
@@ -212,6 +214,21 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
         }
 
         return new NpcAiStateTickSummary(examined, proposed, applied, rejected);
+    }
+
+    bool INpcAiCommittedNpcMutationSink.TryGetActive(byte slot, out NpcSnapshot npc) =>
+        _npcs.TryGetActive(slot, out npc);
+
+    bool INpcAiCommittedNpcMutationSink.TryTranslate(
+        NpcHandle npc, float deltaX, float deltaY, out NpcSnapshot committed)
+    {
+        committed = default;
+        if (!float.IsFinite(deltaX) || !float.IsFinite(deltaY) || !_npcs.TryGet(npc, out NpcSnapshot current))
+            return false;
+        var update = new NpcStateUpdate(current.Type, current.NetId,
+            current.PositionX + deltaX, current.PositionY + deltaY,
+            current.VelocityX, current.VelocityY, current.Target, current.Ai, current.Simulation);
+        return _npcs.TryUpdate(npc, in update, out committed, forceSync: true);
     }
 
     bool INpcAiCommittedNpcMutationSink.TrySpawn(

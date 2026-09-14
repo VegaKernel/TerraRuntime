@@ -91,6 +91,14 @@ def main() -> None:
         require(departure, rf"\.type == {type_id}\b", f"departure global part {type_id}")
     require(departure, r"active = false;.*?NetMessage.SendData\(23,.*?LunarApocalypseIsUp = false;.*?NetMessage.SendData\(7\)",
             "departure NPC removal and event notification")
+    teleport = core[core.index("Distance(Main.player[target].Center) > 2400f") :]
+    require(teleport, r"ai\[0\] = -2f", "distance teleport state")
+    if re.search(r"ai\[1\]\s*=", teleport):
+        raise AssertionError("distance teleport must retain its timer")
+    require(teleport, r"Main.player\[target\].Center - Vector2.UnitY \* 150f - base.Center", "teleport delta")
+    for slot in range(3):
+        require(teleport, rf"Main.npc\[\(int\)localAI\[{slot}\]\].position \+=", f"translate shell slot {slot}")
+    require(teleport, r"active && .*?type == 400.*?position \+=.*?netUpdate = true", "global True Eye teleport sync")
     for name in ("AI_078_MoonLordHands", "AI_079_MoonLordHead", "AI_081_TrueEyeOfCthulhu"):
         body = method(source, name)
         require(body, r"Main\.npc\[\(int\)ai\[3\]\]\.type != 398", name + " exact owner slot")

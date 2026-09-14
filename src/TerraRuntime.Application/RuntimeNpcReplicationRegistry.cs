@@ -217,7 +217,7 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
         RuntimeNpcSyncKind syncKind = kind switch
         {
             NpcStateCommitKind.Spawn => RuntimeNpcSyncKind.Spawn,
-            NpcStateCommitKind.Update => RuntimeNpcSyncKind.Update,
+            NpcStateCommitKind.Update or NpcStateCommitKind.ForcedUpdate => RuntimeNpcSyncKind.Update,
             NpcStateCommitKind.Despawn => RuntimeNpcSyncKind.Despawn,
             _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };

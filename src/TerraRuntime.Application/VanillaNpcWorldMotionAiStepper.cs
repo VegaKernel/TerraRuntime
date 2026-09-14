@@ -388,6 +388,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         INpcAiCommittedNpcMutationSink mutations)
     {
         ArgumentNullException.ThrowIfNull(mutations);
+        NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitEffect>(inner)?
+            .ApplyCommittedEffect(in before, in committed, mutations);
         if (!IsCommittedKingSlimeDeathShape(in before, in committed))
             return;
 
@@ -413,6 +415,11 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
 
         progressionMutations.MarkCompleted(VanillaWorldProgressionId.KingSlime);
     }
+
+    public void ApplyCommittedEffectAfterSpawns(
+        in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations) =>
+        NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitEffect>(inner)?
+            .ApplyCommittedEffectAfterSpawns(in before, in committed, mutations);
 
     private static bool TryCreateKingSlimeTerminalTransition(
         in NpcSnapshot npc,

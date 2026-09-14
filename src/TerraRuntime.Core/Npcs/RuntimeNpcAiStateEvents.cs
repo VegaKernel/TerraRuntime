@@ -14,7 +14,7 @@ public interface INpcAiStateCommitSink
 
 /// <summary>
 /// Optional capability owned by an AI composition layer that must react to its own proposed transition only after
-/// the exact NPC generation has committed. Unlike the external commit sink this receives both the pre-pass snapshot
+/// the exact NPC generation has committed. Unlike the external commit sink this receives both the pre-step snapshot
 /// and committed revision, allowing gameplay side effects to prove they correspond to the accepted transition.
 /// </summary>
 public interface INpcAiStatePostCommitObserver
@@ -32,6 +32,10 @@ public interface INpcAiCommittedNpcMutationSink
     bool TrySpawn(in NpcAiSpawnIntent intent, out NpcSnapshot spawned);
 
     bool TryUpdateVelocity(NpcHandle npc, float velocityX, float velocityY, out NpcSnapshot committed);
+
+    bool TryGetActive(byte slot, out NpcSnapshot npc);
+
+    bool TryTranslate(NpcHandle npc, float deltaX, float deltaY, out NpcSnapshot committed);
 }
 
 /// <summary>
@@ -45,4 +49,10 @@ public interface INpcAiStatePostCommitEffect
         in NpcSnapshot before,
         in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations);
+
+    /// <summary>Runs after planned NPC allocations and source-slot links have committed.</summary>
+    void ApplyCommittedEffectAfterSpawns(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        INpcAiCommittedNpcMutationSink mutations) { }
 }

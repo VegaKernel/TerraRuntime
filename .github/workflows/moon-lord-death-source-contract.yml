@@ -10,9 +10,13 @@ on:
       - 'tests/TerraRuntime.Tests/Fixtures/*headers-1458.bin.gz'
       - 'src/TerraRuntime.Core/Npcs/**'
       - 'src/TerraRuntime.Application/NpcAuthority.cs'
+      - 'src/TerraRuntime.Application/VanillaNpcWorldMotionAiStepper.cs'
+      - 'src/TerraRuntime.Application/RuntimeNpcReplicationRegistry.cs'
       - 'src/TerraRuntime.Application/RuntimeNpcNetworkCombatPipeline*.cs'
       - 'tests/TerraRuntime.Tests/MoonLordDeathSequenceTests*.cs'
       - 'tests/TerraRuntime.Tests/MoonLordIntroductionTests.cs'
+      - 'tests/TerraRuntime.Tests/MoonLordTeleportTests.cs'
+      - 'tests/TerraRuntime.Tests/Fixtures/moon-lord-teleport-1458.json.gz'
       - 'tests/TerraRuntime.Tests/Fixtures/moon-lord-intro-1458.json.gz'
       - 'tests/TerraRuntime.Tests/MoonLordCoreMotionTests.cs'
       - 'tests/TerraRuntime.Tests/LateHardmodeBossParityTests.cs'
@@ -49,6 +53,7 @@ jobs:
           -class TerraRuntime.Tests.VanillaMoonLordLootTests
           -class TerraRuntime.Tests.MoonLordDeathSequenceTests
           -class TerraRuntime.Tests.MoonLordIntroductionTests
+          -class TerraRuntime.Tests.MoonLordTeleportTests
           -class TerraRuntime.Tests.MoonLordCoreMotionTests
           -class TerraRuntime.Tests.LateHardmodeBossParityTests
       - name: Download reference and install pinned decompiler

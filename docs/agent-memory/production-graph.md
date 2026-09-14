@@ -1,5 +1,9 @@
 # Production graph
 
+## Moon Lord teleport / forced NPC synchronization - 2026-09-15
+
+Core strategy computes source-space distance/offset and commits state-2 without timer reset. Existing postcommit-effect contract now has optional ApplyCommittedEffectAfterSpawns; executor validates current source generation/revision after allocation/link updates, worldmotion delegates to inner capability. MoonLord callback translates linkedactive slots in order and allglobalTrueEyes using exactgeneration TryTranslate; sourcecorezero translation requests immediate sync after its alreadycommittedmovement. Store TryUpdate(forceSync:true) emits ForcedUpdate; registry maps it to normalpacket23 while bypassing cadence/dedup and retainingbaseline, telemetry counts it asupdate. No newentitystatebit or wireformat. Live-slot traversal makes laterAI observe moved peers. Hand/head/TrueEye attack fidelity remains separate.
+
 ## Dedicated worker wakeup / cancellation - 2026-09-14
 
 BoundedWorkerPool private work-channel notifications permit synchronous completion, eliminating a ThreadPool continuation dependency before waking dedicated readers. Work delegates still execute only on dedicated threads; externally read completion-channel continuations remain asynchronous. Constructor captures shutdownToken before owner disposal; workers use it for waits/writes/cancellationchecks even if execute outlives the boundedDispose wait. Work/completion bounds and five-second disposal ceiling are unchanged. WorkerPoolProbe owns process isolation for pool-saturation and late-disposal regressions; no production plugin/dynamic-loading dependency introduced.

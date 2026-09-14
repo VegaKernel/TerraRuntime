@@ -4,7 +4,7 @@ namespace TerraRuntime.Core.Npcs;
 
 public sealed partial class RuntimeNpcStore
 {
-    public bool TryUpdate(NpcHandle handle, in NpcStateUpdate update, out NpcSnapshot snapshot)
+    public bool TryUpdate(NpcHandle handle, in NpcStateUpdate update, out NpcSnapshot snapshot, bool forceSync = false)
     {
         if (!IsCurrentHandleCandidate(handle) || !IsValid(in update))
         {
@@ -28,7 +28,7 @@ public sealed partial class RuntimeNpcStore
 
         state.Update = normalized;
         snapshot = Capture(handle.Slot, in state);
-        _commitSink?.NpcStateCommitted(NpcStateCommitKind.Update, in snapshot);
+        _commitSink?.NpcStateCommitted(forceSync ? NpcStateCommitKind.ForcedUpdate : NpcStateCommitKind.Update, in snapshot);
         return true;
     }
 
