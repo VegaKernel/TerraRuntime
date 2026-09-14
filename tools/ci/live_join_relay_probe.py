@@ -252,8 +252,10 @@ def run(host, port):
 
         time.sleep(0.25)
 
-        movement_x = 123.5
-        movement_y = 456.25
+        # Terraria 1.4.5.8 Player.BordersMovement keeps ordinary players outside the
+        # 640-pixel edge bands. Exercise relay with a valid location near our packet-12 spawn.
+        movement_x = 1600.5
+        movement_y = 3200.25
         movement = struct.pack(
             "<HBBBBBBBff",
             17,
