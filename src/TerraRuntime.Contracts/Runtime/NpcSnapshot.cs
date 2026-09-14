@@ -105,6 +105,9 @@ public readonly record struct NpcSimulationState(
     /// </summary>
     public NpcAiState LocalAi { get; init; }
 
+    /// <summary>Vanilla NPC.frameCounter; some boss AI uses this state for authoritative damage gates.</summary>
+    public double FrameCounter { get; init; }
+
     /// <summary>Vanilla NPC.hide-style presentation state owned by authoritative boss transitions.</summary>
     public bool Hidden { get; init; }
 
@@ -186,6 +189,7 @@ public readonly record struct NpcSimulationState(
         float.IsFinite(Scale) &&
         Scale > 0f &&
         LocalAi.IsFinite &&
+        double.IsFinite(FrameCounter) &&
         Alpha is >= 0 and <= 255 &&
         ((LifeMax == 0 && Life == 0) ||
          (LifeMax > 0 && Life >= 0 && Life <= LifeMax)) &&

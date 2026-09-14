@@ -1,5 +1,10 @@
 # Verified vanilla facts
 
+## Moon Lord hand numeric reference - 2026-09-15
+
+Unmodified original Linux 1.4.5.8 assembly, pinned SHA4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034, invoked AI_078 on Windows CoreCLR, netMode0 with real NewProjectile. Expanded3600 rows: two sides x600 clocks xframes0/19/21, stationary player, seed1458. Fixture expanded SHA d3a5ecf7d781ab4b548372eaf621a3f606db9de347d1905cac0bed9607898fc1 supersedes preliminary174 rows. Exact position/velocity/AI/local/frame/damagegate/target/projectile creation/RNG assertions pass. FNA SmoothStep uses double Hermite intermediates. Incoming frame>=21 owns damage gate; phase changes set netUpdate. These isolated calls do not establish complete moving fights, head/eye, retired-state or sphere-release/attached-explosive parity.
+
+
 ## Moon Lord distance transition - 2026-09-15
 
 OriginalLinuxAI_077 netMode0 fixture48cases, expanded JSONSHA2567428a2723ef5be3760291cfca2c08bc4641a88199a15024bd75cd7c16cb26852, retained Fixtures/moon-lord-teleport-1458.json.gz. Core0/1/introduction59, fourdirections,2399.75/2400/2400.25/3000 pixel centers; includes realNewNPCallocation, linkedparts,2globalTrueEyes,unrelatedSlime. Source strictdistance>2400,state-2 preservingtimer,delta=player.Center-UnitY150-core.Center,three orderedslottranslations thenallactive400,netUpdate true. Exactpositions/AI/locals/velocity/nextRNG match48cases. Twoouterworldmotion tests preservepartoffsets; allfarcase actualpacket23coordinates are read independently by offsets while30tickcadenceactive. Original NetMessage23 writes Byteslot+Bytegeneration thenpositionSingles at5/9 (not oldInt16slot). One source-replacementguard test. Negativedisabledteleport26fail,disabledforcedsync26fail,removedafterallocationgenerationguard1fail. Sourcechecker expanded. Full9012/9012,182.343s; WindowsNativeAOT5smokespass.

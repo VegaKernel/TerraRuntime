@@ -1,5 +1,10 @@
 # Production graph
 
+## Moon Lord hand AI draft - 2026-09-15
+
+Hand strategy now delegates phase/motion/frame/projectile planning to internal VanillaMoonLordHandBehavior. Runtime retains finite double FrameCounter in NpcSimulationState (not persisted/wire), and existing damage executor reads DontTakeDamage computed from incoming frame. IVanillaNpcRandom gains compatible NextDouble adapter, production uses real underlying draw. Existing generation-checked after-spawn callback requests forced packet23 on hand phase change. Removed dead former hand branches from shared head path. Full acceptance pending; see work-state.
+
+
 ## Moon Lord teleport / forced NPC synchronization - 2026-09-15
 
 Core strategy computes source-space distance/offset and commits state-2 without timer reset. Existing postcommit-effect contract now has optional ApplyCommittedEffectAfterSpawns; executor validates current source generation/revision after allocation/link updates, worldmotion delegates to inner capability. MoonLord callback translates linkedactive slots in order and allglobalTrueEyes using exactgeneration TryTranslate; sourcecorezero translation requests immediate sync after its alreadycommittedmovement. Store TryUpdate(forceSync:true) emits ForcedUpdate; registry maps it to normalpacket23 while bypassing cadence/dedup and retainingbaseline, telemetry counts it asupdate. No newentitystatebit or wireformat. Live-slot traversal makes laterAI observe moved peers. Hand/head/TrueEye attack fidelity remains separate.

@@ -74,3 +74,13 @@ Accepted hits on the head or hands credit the active core in the exact `ai[3]` s
 The eighteen drop definitions and natural prefixes were checked against the unmodified official Linux dedicated-server assembly loaded by a local .NET probe on Windows. The retained tests pin the prefix and next RNG value for 100 seeds per item (1,800 comparisons); this is assembly differential evidence, not a Linux NativeAOT execution claim. `VanillaMoonLordLootTests` covers all 90 ordered distinct weapon choices, delivery/RNG interleaving and difficulty tables. `MoonLordLootPipelineTests` exercises real death ticks, both damage paths, participant routing and stale callbacks. Removing the loot dispatch makes the new pipeline regressions fail.
 
 These are drop definitions only: opening bags, using or placing the new items, global coin/heart rules and full weapon gameplay remain separate work.
+
+## Hand attack clock and combat frames
+
+`VanillaMoonLordHandBehavior` implements the two 600-tick hand schedules, phase movement, pupil aiming, bounds before outer motion, and creation of Phantasmal Eye, Sphere and Bolt projectiles. `NpcSimulationState.FrameCounter` retains the authoritative frame clock: incoming frame 21 rejects damage even on the tick that starts reopening the hand. Phase transitions request immediate packet 23 through the existing generation-checked commit boundary.
+
+`MoonLordHandTests` compares 3,600 independent original `AI_078` calls: both sides, every incoming clock from 0 through 599, and frames 0/19/21. It checks exact positions, velocities, AI/local state, vulnerability, frame, target, actual projectile creation and next RNG draw. The expanded numeric fixture SHA256 is `d3a5ecf7d781ab4b548372eaf621a3f606db9de347d1905cac0bed9607898fc1`. The unmodified Linux server assembly ran on Windows CoreCLR; this is not Linux native evidence. Three additional integration cases cover actual damage rejection and immediate packet delivery. Disabling the hand strategy fails 3,601 checks.
+
+`IVanillaNpcRandom.NextDouble()` supplies a unit-interval draw. Production uses the underlying seeded `Random.NextDouble`; integer-only implementations retain a default adapter, while streams requiring identical seeded consumption should override the method. Projectile spawn centers are converted to runtime top-left coordinates before submission.
+
+This verifies synthetic single AI calls with one stationary target. Full continuous fights, moving or absent targets, retired-hand differentials, attached explosive interactions, sphere release synchronization, head and True Eye attack fidelity remain separate parity work.

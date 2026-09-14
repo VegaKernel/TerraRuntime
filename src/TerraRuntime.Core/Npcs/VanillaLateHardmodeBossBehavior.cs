@@ -705,16 +705,18 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
     {
         if (!TryRoot(in npc, context, out NpcSnapshot root))
             return RetireOrphan(in npc, out next);
+        if (!isHead)
+            return VanillaMoonLordHandBehavior.TryStep(in npc, in definition, in root, context, out next);
         if (npc.Ai.Ai0 is -2f or -3f)
-            return TryRetiredPart(in npc, in definition, in root, isHead, out next);
+            return TryRetiredPart(in npc, in definition, in root, out next);
 
         float rootCx = root.PositionX + 23f, rootCy = root.PositionY + 33f;
-        float offsetX = isHead ? 0f : (npc.Ai.Ai2 <= 0f ? -400f : 400f);
-        float offsetY = isHead ? -400f : -100f;
+        float offsetX = 0f;
+        float offsetY = -400f;
         float cx = npc.PositionX + definition.Width * .5f, cy = npc.PositionY + definition.Height * .5f;
         float vx = npc.VelocityX, vy = npc.VelocityY;
         LateBossMath.FlyToward(cx, cy, rootCx + offsetX, rootCy + offsetY, 18f, 1.2f, ref vx, ref vy);
-        NpcAiState ai = AdvancePartAttackClock(npc.Ai, isHead);
+        NpcAiState ai = AdvancePartAttackClock(npc.Ai, isHead: true);
         NpcSimulationState sim = npc.Simulation with
         {
             NoGravity = true,
@@ -730,7 +732,6 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         in NpcSnapshot npc,
         in VanillaNpcDefinition definition,
         in NpcSnapshot root,
-        bool isHead,
         out NpcStateUpdate next)
     {
         float rootCx = root.PositionX + 23f;
@@ -745,57 +746,29 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
             JustHit = false
         };
 
-        if (isHead)
+        float headX = rootCx - definition.Width * .5f;
+        float headY = rootCy - 400f - definition.Height * .5f;
+        float timer = ai.Ai1 + 1f;
+        if (!float.IsFinite(timer) || timer >= 1200f || timer < 0f)
+            timer = 0f;
+        ai = ai with { Ai1 = timer };
+
+        if (ai.Ai0 == -2f && root.Ai.Ai0 == 2f)
         {
-            float headX = rootCx - definition.Width * .5f;
-            float headY = rootCy - 400f - definition.Height * .5f;
-            float timer = ai.Ai1 + 1f;
-            if (!float.IsFinite(timer) || timer >= 1200f || timer < 0f)
-                timer = 0f;
-            ai = ai with { Ai1 = timer };
-
-            if (ai.Ai0 == -2f && root.Ai.Ai0 == 2f)
-            {
-                ai = ai with { Ai0 = -3f };
-            }
-            else
-            {
-                float deathFrame = ai.Ai2 + 1f;
-                if (!float.IsFinite(deathFrame) || deathFrame >= 32f || deathFrame < 0f)
-                    deathFrame = 0f;
-                ai = ai with { Ai2 = deathFrame };
-                if (ai.Ai0 == -3f && sim.LocalAi.Ai2 < 14f)
-                    sim = sim with { LocalAi = sim.LocalAi with { Ai2 = sim.LocalAi.Ai2 + 1f } };
-            }
-
-            next = new NpcStateUpdate(
-                npc.Type, npc.NetId, headX, headY, 0f, 0f, root.Target, ai, sim);
-            return true;
+            ai = ai with { Ai0 = -3f };
+        }
+        else
+        {
+            float deathFrame = ai.Ai2 + 1f;
+            if (!float.IsFinite(deathFrame) || deathFrame >= 32f || deathFrame < 0f)
+                deathFrame = 0f;
+            ai = ai with { Ai2 = deathFrame };
+            if (ai.Ai0 == -3f && sim.LocalAi.Ai2 < 14f)
+                sim = sim with { LocalAi = sim.LocalAi with { Ai2 = sim.LocalAi.Ai2 + 1f } };
         }
 
-        float side = ai.Ai2 == 0f ? -1f : 1f;
-        float handCx = npc.PositionX + definition.Width * .5f;
-        float handCy = npc.PositionY + definition.Height * .5f;
-        float vx = npc.VelocityX;
-        float vy = npc.VelocityY;
-        float desiredX = rootCx + 350f * side;
-        float desiredY = rootCy - 100f;
-        float dx = desiredX - handCx;
-        float dy = desiredY - handCy;
-        if (MathF.Sqrt(dx * dx + dy * dy) > 20f)
-        {
-            float beforeX = vx;
-            float beforeY = vy;
-            LateBossMath.FlyToward(handCx, handCy, desiredX, desiredY, 6f, .3f, ref vx, ref vy);
-            vx = (beforeX + vx) * .5f;
-            vy = (beforeY + vy) * .5f;
-        }
-
-        float handTimer = ai.Ai1 + 1f;
-        if (!float.IsFinite(handTimer) || handTimer >= 32f || handTimer < 0f)
-            handTimer = 0f;
-        ai = ai with { Ai1 = handTimer };
-        next = LateBossMath.Build(in npc, vx, vy, root.Target, in ai, in sim);
+        next = new NpcStateUpdate(
+            npc.Type, npc.NetId, headX, headY, 0f, 0f, root.Target, ai, sim);
         return true;
     }
 

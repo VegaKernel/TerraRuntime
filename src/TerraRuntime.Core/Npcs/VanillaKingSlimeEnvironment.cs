@@ -50,6 +50,8 @@ public sealed class SystemVanillaNpcRandom : IVanillaNpcRandom
 
     private SystemVanillaNpcRandom(Random random) => _random = random;
 
+    public double NextDouble() => _random.NextDouble();
+
     public int NextInt32(int inclusiveMin, int exclusiveMax)
     {
         if (exclusiveMax <= inclusiveMin)
