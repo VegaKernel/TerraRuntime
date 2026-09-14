@@ -131,7 +131,8 @@ internal sealed class ServerRuntimeComposition
         bool golemDownedBaseline,
         Random? projectilePlayerCombatRandom,
         IVanillaNpcRandom? naturalSpawnRandom = null,
-        WorldRuntimeIdentity worldIdentity = default)
+        WorldRuntimeIdentity worldIdentity = default,
+        RuntimeChestCommandProcessor? chestCommands = null)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -140,7 +141,8 @@ internal sealed class ServerRuntimeComposition
         var updates = new RuntimeTickCounter();
         var commands = new RuntimeCommandCounter();
         var playersAuthority = new PlayerAuthority(playerEvents, worldTiles, expertMode, masterMode, serverPlayers,
-            oceanTeleportSurface: townCommerceWorldFacts is { SkyblockWorld: false } oceanFacts ? oceanFacts.WorldSurface : null);
+            oceanTeleportSurface: townCommerceWorldFacts is { SkyblockWorld: false } oceanFacts ? oceanFacts.WorldSurface : null,
+            chestCommands: chestCommands);
         var playerSnapshots = new RuntimePlayerSnapshotLookup(playersAuthority, serverPlayers);
 
         RuntimeWorldItemStore worldItemStore = worldItems ?? new RuntimeWorldItemStore();

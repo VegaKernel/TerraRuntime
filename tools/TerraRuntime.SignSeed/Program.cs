@@ -37,6 +37,14 @@ if (!TryChooseCoordinate(world, out int x, out int y))
 // Keep the fixture valid under the live resolver instead of creating an orphan sign entry.
 for (int column = 0; column < 2; column++)
 {
+    WorldTile floor = world.Tiles.Get(x + column, y + 2);
+    if (!floor.IsActive)
+    {
+        floor.Type = checked((ushort)VanillaTileIds.Stone.Value);
+        floor.Flags |= WorldTileFlags.Active;
+        floor.Shape = default;
+        world.Tiles.Set(x + column, y + 2, in floor);
+    }
     for (int row = 0; row < 2; row++)
     {
         WorldTile tile = world.Tiles.Get(x + column, y + row);
@@ -148,8 +156,11 @@ static bool TryChooseCoordinate(WorldFileData world, out int x, out int y)
                 for (int column = 0; column < 2; column++)
                 {
                     WorldTile floor = world.Tiles.Get(candidateX + column, candidateY + 2);
-                    supported &= floor.IsActive && VanillaTileCollisionCatalog.IsSolid(floor.TileType) &&
-                        !VanillaTileCollisionCatalog.IsSolidTop(floor.TileType) && floor.Shape == default;
+                    // World generation need not leave a flat two-tile floor near spawn. Add supports
+                    // only in empty dry cells; never replace an existing object or sloped floor.
+                    supported &= floor.LiquidAmount == 0 && (!floor.IsActive ||
+                        (VanillaTileCollisionCatalog.IsSolid(floor.TileType) &&
+                         !VanillaTileCollisionCatalog.IsSolidTop(floor.TileType) && floor.Shape == default));
                     for (int row = 0; row < 2; row++)
                     {
                         WorldTile cell = world.Tiles.Get(candidateX + column, candidateY + row);

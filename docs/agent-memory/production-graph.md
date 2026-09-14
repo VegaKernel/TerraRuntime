@@ -1,5 +1,9 @@
 # Production graph
 
+## Chest ownership on live world exit - 2026-09-14
+
+RuntimeConnectionRoute.DisconnectActive uses RuntimePlayerTransferTransaction.Detach, not RuntimePlayerDisconnectIngress. PlayerAuthority receives the existing world-owned RuntimeChestCommandProcessor through ServerRuntimeComposition and releases exact-generation chest ownership after successful membership removal and before transfer completion/event publication. Normal disconnect uses the same release method; stale callbacks cannot clear a replacement owner. No state mutation was added to transport threads or IRuntimePlayerEventSink (projection-only contract retained). The legacy processor disconnect fallthrough remains idempotent.
+
 ## Shared interrupted-save startup boundary - 2026-09-14
 
 WorldStartupPreparation now owns marker recovery admission before canonical existence validation, for canonical and backup targets. Product/host/direct/standalone all pass through it; duplicate StandaloneServerProgram recovery removed. Same AtomicSaveFileWriter remains the single transaction authority. LiveWrites, suppressed conflicts and I/O failures stop startup26; completed and discarded recovery get structured logs. No new recovery algorithm or file publication path.

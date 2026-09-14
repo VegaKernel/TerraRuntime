@@ -8,6 +8,56 @@ namespace TerraRuntime.Tests;
 
 public sealed class RuntimeChestCommandProcessorTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Player_exit_releases_chest_before_detach_completion_and_preserves_new_owner(bool transfer)
+    {
+        var store = new RuntimeChestStore([Chest()]);
+        var replication = new RuntimeChestReplicationRegistry();
+        var processor = new RuntimeChestCommandProcessor(store, replication);
+        var state = new ServerRuntimeState(playerEvents: replication, chestCommands: processor);
+        var slots = new PlayerSlotPool(1);
+        Assert.True(slots.TryAcquireConnection(out var lease));
+        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        session.ObserveWorldRequest();
+        session.ObserveSectionRequest();
+        var owner = new ConnectionHandle(GameCommandSourceId.FromConnection(90), session.Handle);
+        ConnectionHandle observer = Connection(91, playerSlot: 1, generation: 1);
+        var observerOutbound = Outbound();
+        Assert.True(replication.TryRegister(owner.Source, Outbound()));
+        Assert.True(replication.TryRegister(observer.Source, observerOutbound));
+        MarkPlaying(replication, observer);
+        state.Apply(new PlayerSpawnRuntimeCommand(owner, session,
+            new PlayerSpawnCommitRequest(owner.Player.Slot, 10, 20, 0, 0, 0, 0, 0)));
+        Assert.True(processor.TryApply(new ClientChestOpenRuntimeCommand(owner, new TerrariaChestOpenRequest(10, 20))));
+        Assert.True(store.TryGetOpenChest(owner, out _));
+        int before = observerOutbound.QueuedFrames;
+        var completion = new TaskCompletionSource<RuntimePlayerTransferState?>();
+        RuntimeCommand exit = transfer
+            ? new PlayerTransferDetachRuntimeCommand(owner, completion)
+            : new PlayerDisconnectRuntimeCommand(owner);
+        // Apply directly through the player authority: live shutdown uses transfer detach,
+        // so testing only the chest processor's legacy disconnect case misses this path.
+        state.Apply(exit);
+        if (transfer)
+        {
+            Assert.True(completion.Task.IsCompletedSuccessfully);
+            Assert.NotNull(await completion.Task);
+        }
+        Assert.False(store.TryGetOpenChest(owner, out _));
+        Assert.Equal(before + 1, observerOutbound.QueuedFrames);
+        ConnectionHandle replacement = Connection(92, playerSlot: 0, generation: 2);
+        Assert.True(store.TryOpen(replacement, 10, 20, out _));
+        state.Apply(new PlayerDisconnectRuntimeCommand(owner));
+        processor.ReleasePlayer(owner);
+        var staleCompletion = new TaskCompletionSource<RuntimePlayerTransferState?>();
+        state.Apply(new PlayerTransferDetachRuntimeCommand(owner, staleCompletion));
+        Assert.Null(await staleCompletion.Task);
+        Assert.True(store.TryGetOpenChest(replacement, out _));
+        Assert.Equal(before + 1, observerOutbound.QueuedFrames);
+    }
+
     [Fact]
     public void Open_item_and_close_are_committed_before_replication()
     {

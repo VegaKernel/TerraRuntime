@@ -40,6 +40,7 @@ internal sealed partial class PlayerAuthority
     private readonly bool masterMode;
     private readonly ServerPlayerAuthority? serverPlayers;
     private readonly double? oceanTeleportSurface;
+    private readonly RuntimeChestCommandProcessor? chestCommands;
 
     public PlayerAuthority(
         IRuntimePlayerEventSink? events,
@@ -47,7 +48,8 @@ internal sealed partial class PlayerAuthority
         bool expertMode = false,
         bool masterMode = false,
         ServerPlayerAuthority? serverPlayers = null,
-        double? oceanTeleportSurface = null)
+        double? oceanTeleportSurface = null,
+        RuntimeChestCommandProcessor? chestCommands = null)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -57,6 +59,7 @@ internal sealed partial class PlayerAuthority
         this.masterMode = masterMode;
         this.serverPlayers = serverPlayers;
         this.oceanTeleportSurface = oceanTeleportSurface;
+        this.chestCommands = chestCommands;
         pvpCombat = new RuntimePvpCombatIntegrity(this);
     }
 

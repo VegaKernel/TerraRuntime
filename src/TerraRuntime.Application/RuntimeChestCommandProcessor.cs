@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
@@ -67,7 +68,7 @@ internal sealed class RuntimeChestCommandProcessor
                 return true;
 
             case PlayerDisconnectRuntimeCommand disconnect:
-                ApplyDisconnect(disconnect);
+                ReleasePlayer(disconnect.Connection);
                 return false;
 
             default:
@@ -147,9 +148,9 @@ internal sealed class RuntimeChestCommandProcessor
         AppliedNameLookups++;
     }
 
-    private void ApplyDisconnect(PlayerDisconnectRuntimeCommand command)
+    internal void ReleasePlayer(ConnectionHandle connection)
     {
-        if (store.TryClose(command.Connection, out short closedChestId) && closedChestId >= 0)
-            replication.PublishClosed(command.Connection);
+        if (store.TryClose(connection, out short closedChestId) && closedChestId >= 0)
+            replication.PublishClosed(connection);
     }
 }

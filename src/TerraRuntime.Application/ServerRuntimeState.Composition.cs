@@ -51,7 +51,8 @@ internal sealed partial class ServerRuntimeState
         bool golemDownedBaseline = false,
         Random? projectilePlayerCombatRandom = null,
         IVanillaNpcRandom? naturalSpawnRandom = null,
-        WorldRuntimeIdentity worldIdentity = default)
+        WorldRuntimeIdentity worldIdentity = default,
+        RuntimeChestCommandProcessor? chestCommands = null)
     {
         WorldIdentity = worldIdentity.IsAssigned ? worldIdentity : new(WorldRuntimeId.CreateNew(), WorldSessionId.CreateNew());
         _runtime = ServerRuntimeComposition.Create(
@@ -92,6 +93,7 @@ internal sealed partial class ServerRuntimeState
             golemDownedBaseline,
             projectilePlayerCombatRandom,
             naturalSpawnRandom,
-            WorldIdentity);
+            WorldIdentity,
+            chestCommands);
     }
 }

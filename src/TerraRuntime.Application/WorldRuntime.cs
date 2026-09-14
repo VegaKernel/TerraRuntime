@@ -226,7 +226,8 @@ public sealed class WorldRuntime : IDisposable
             evilBossDownedBaseline: world.RuntimeMetadata.DownedBoss2,
             skeletronDownedBaseline: world.RuntimeMetadata.DownedBoss3,
             golemDownedBaseline: world.RuntimeMetadata.DownedGolemBoss,
-            worldIdentity: Identity);
+            worldIdentity: Identity,
+            chestCommands: ChestCommands);
 
         sectionCacheRebuild = new SectionCacheRebuildPipeline(
             world,

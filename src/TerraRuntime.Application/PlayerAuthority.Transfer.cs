@@ -23,6 +23,7 @@ internal sealed partial class PlayerAuthority
             return;
 
         DisconnectedPlayers++;
+        chestCommands?.ReleasePlayer(connection);
         events?.PlayerDisconnected(connection);
     }
 
@@ -62,6 +63,9 @@ internal sealed partial class PlayerAuthority
         transferProfiles.Clear(connection);
         if (!membership.TryRemove(connection, out _))
             throw new InvalidOperationException("Player membership changed during authoritative transfer detach.");
+        // Live transport shutdown uses this same detach transaction as world transfer.
+        // Release world-owned interactions before completion can admit a replacement session.
+        chestCommands?.ReleasePlayer(connection);
         events?.PlayerDisconnected(connection);
         command.Completion.TrySetResult(transfer);
     }
