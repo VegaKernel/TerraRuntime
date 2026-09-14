@@ -324,6 +324,10 @@ The UI toolkit must not become a gameplay-core dependency.
 
 A worker receives a snapshot or isolated buffer and returns a result. A worker must not receive a mutable world object and modify it concurrently with the game loop.
 
+`BoundedWorkerPool` wakes its dedicated threads without requiring an available .NET thread-pool worker. Only the private work-channel notification can complete synchronously; the work delegate still runs on its dedicated thread, and externally consumed completion notifications remain asynchronous. Cancellation tokens are captured while their source is alive, so a task finishing after the bounded disposal wait cannot crash by reading a disposed token source. Disposal still cannot forcibly stop a non-cooperative work delegate.
+
+Isolated process regressions occupy the sole .NET pool thread before submitting work and deliberately release a work delegate after the disposal deadline. Both fail on the former implementation. Section-cache coordination tests use dedicated threads for blocking lookups and observe lookup failures during cleanup; the production lookup deadline remains unchanged.
+
 Parallel gameplay/worldgen work is allowed only after independence is proven and deterministic equivalence is verified where vanilla RNG/order matters.
 
 ## 20. Failure containment

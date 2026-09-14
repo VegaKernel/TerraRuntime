@@ -1,5 +1,9 @@
 # Production graph
 
+## Dedicated worker wakeup / cancellation - 2026-09-14
+
+BoundedWorkerPool private work-channel notifications permit synchronous completion, eliminating a ThreadPool continuation dependency before waking dedicated readers. Work delegates still execute only on dedicated threads; externally read completion-channel continuations remain asynchronous. Constructor captures shutdownToken before owner disposal; workers use it for waits/writes/cancellationchecks even if execute outlives the boundedDispose wait. Work/completion bounds and five-second disposal ceiling are unchanged. WorkerPoolProbe owns process isolation for pool-saturation and late-disposal regressions; no production plugin/dynamic-loading dependency introduced.
+
 ## Live NPC traversal - 2026-09-14
 
 RuntimeNpcAiStateExecutor now traverses capacity in ascending slots with TryGetActive immediately before each step. It refreshes the existing INpcAiPeerSnapshotConsumer view at that boundary using its reusable scratch buffer. Earlier movement/replacement/removal is visible; new higher slots participate and already-passed slots wait. Current-step generation still guards commits and planned effects. Full copy cost is bounded by Capacity squared (<=256 slots); larger tables require a live read-only lookup boundary. No new production abstraction. INpcAiPeerSnapshotConsumer now means per-step rather than prepass. Commit/effect/spawn ordering within each step is unchanged; teleport's after-allocation peer relocation still needs implementation.

@@ -14,6 +14,7 @@ public sealed class BoundedWorkerPool<TWork, TResult> : IDisposable
     private readonly Channel<WorkerCompletion<TResult>> completions;
     private readonly Thread[] workers;
     private readonly CancellationTokenSource shutdown = new();
+    private readonly CancellationToken shutdownToken;
     private readonly int workCapacity;
     private int activeWorkers;
     private int pendingWork;
@@ -39,13 +40,16 @@ public sealed class BoundedWorkerPool<TWork, TResult> : IDisposable
 
         this.execute = execute ?? throw new ArgumentNullException(nameof(execute));
         this.workCapacity = workCapacity;
+        shutdownToken = shutdown.Token;
 
         work = Channel.CreateBounded<TWork>(new BoundedChannelOptions(workCapacity)
         {
             FullMode = BoundedChannelFullMode.Wait,
             SingleReader = workerCount == 1,
             SingleWriter = false,
-            AllowSynchronousContinuations = false
+            // Only our dedicated workers read this channel. Their ValueTask-to-Task wakeup
+            // must not queue behind unrelated thread-pool work; execution stays on those workers.
+            AllowSynchronousContinuations = true
         });
         completions = Channel.CreateBounded<WorkerCompletion<TResult>>(new BoundedChannelOptions(completionCapacity)
         {
@@ -140,14 +144,14 @@ public sealed class BoundedWorkerPool<TWork, TResult> : IDisposable
     {
         try
         {
-            while (!shutdown.IsCancellationRequested)
+            while (!shutdownToken.IsCancellationRequested)
             {
                 bool canRead;
                 try
                 {
-                    canRead = work.Reader.WaitToReadAsync(shutdown.Token).AsTask().GetAwaiter().GetResult();
+                    canRead = work.Reader.WaitToReadAsync(shutdownToken).AsTask().GetAwaiter().GetResult();
                 }
-                catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
+                catch (OperationCanceledException) when (shutdownToken.IsCancellationRequested)
                 {
                     return;
                 }
@@ -180,9 +184,9 @@ public sealed class BoundedWorkerPool<TWork, TResult> : IDisposable
 
                     try
                     {
-                        completions.Writer.WriteAsync(completion, shutdown.Token).AsTask().GetAwaiter().GetResult();
+                        completions.Writer.WriteAsync(completion, shutdownToken).AsTask().GetAwaiter().GetResult();
                     }
-                    catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
+                    catch (OperationCanceledException) when (shutdownToken.IsCancellationRequested)
                     {
                         return;
                     }

@@ -125,6 +125,7 @@ public sealed class SectionCacheRebuildPipelineTests
         finally
         {
             releaseEncode.Set();
+            await Task.WhenAll(first, second);
         }
     }
 
@@ -248,6 +249,7 @@ public sealed class SectionCacheRebuildPipelineTests
         finally
         {
             releaseEncode.Set();
+            await lookup;
         }
     }
 
@@ -388,13 +390,17 @@ public sealed class SectionCacheRebuildPipelineTests
     private static Task<ReadOnlyMemory<byte>> StartLookupAsync(
         PlayerBootstrapPacketSet packets,
         WorldSectionId section) =>
-        Task.Run(
+        // This lookup blocks while the test coordinator pumps the authoritative publication.
+        // Keep it off the pool used by that coordinator's async continuations under parallel CI load.
+        Task.Factory.StartNew(
             () =>
             {
                 Assert.True(packets.TryGetOrRequestSectionFrame(section, out ReadOnlyMemory<byte> frame));
                 return frame;
             },
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken,
+            TaskCreationOptions.LongRunning,
+            TaskScheduler.Default);
 
     private static async Task<SectionCacheRebuildPipelineSnapshot> WaitForObservedAsync(
         SectionCacheRebuildPipeline pipeline,
