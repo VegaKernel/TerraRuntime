@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'src/TerraRuntime.Application/**'
       - 'src/TerraRuntime/*Chest*.cs'
       - 'src/TerraRuntime/RuntimeWorld*.cs'
       - 'src/TerraRuntime/TerrariaServerHost.cs'
@@ -31,6 +32,9 @@ concurrency:
 jobs:
   restart-proof:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TERRARUNTIME_LOG_CONSOLE_LEVEL: Information
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -221,7 +225,7 @@ jobs:
           trap - EXIT
           test "$host_status" -eq 0
           grep -q "Canonical tile/chest/clock world checkpoint committed:" "$host_log"
-          test ! -e "$cache"
+          test -s "$cache"
           test ! -e "$bootstrap_cache"
           cat "$host_log"
 
@@ -271,7 +275,7 @@ jobs:
             fi
             sleep 0.5
           done
-          grep -q "startup_profile source=canonical-wld" "$restart_log"
+          grep -q "startup_profile source=runtime-cache" "$restart_log"
           grep -q "TerraRuntime listening on 0.0.0.0:17788" "$restart_log"
 
           python3 tools/ci/live_chest_read_probe.py \
