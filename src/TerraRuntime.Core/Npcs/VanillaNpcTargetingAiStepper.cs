@@ -1882,11 +1882,11 @@ public sealed class VanillaNpcTargetingAiStepper :
             float cy = proposed.PositionY + 33f;
             NpcAiState owned = new(0f, 0f, 0f, source.Handle.Slot + 1f);
             destination[0] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordHand, (int)(cx - 400f), (int)(cy - 100f), 0f, 0f, proposed.Target)
-            { InitialAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot), InitialLocalAi = owned };
+            { InitialAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot), InitialLocalAi = owned, LinkSourceLocalAiSlot = 0 };
             destination[1] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordHand, (int)(cx + 400f), (int)(cy - 100f), 0f, 0f, proposed.Target)
-            { InitialAi = new NpcAiState(0f, 0f, 1f, source.Handle.Slot), InitialLocalAi = owned };
+            { InitialAi = new NpcAiState(0f, 0f, 1f, source.Handle.Slot), InitialLocalAi = owned, LinkSourceLocalAiSlot = 1 };
             destination[2] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordHead, (int)cx, (int)(cy - 400f), 0f, 0f, proposed.Target)
-            { InitialAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot), InitialLocalAi = owned };
+            { InitialAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot), InitialLocalAi = owned, LinkSourceLocalAiSlot = 2 };
             return 3;
         }
 

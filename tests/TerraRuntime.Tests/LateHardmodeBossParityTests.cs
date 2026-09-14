@@ -526,7 +526,7 @@ public sealed class LateHardmodeBossParityTests
             new NpcAiState(0f, 0f, 0f, 0f),
             life: 50_000,
             slot: 5,
-            localAi: new NpcAiState(0f, 0f, 0f, 1f));
+            localAi: new NpcAiState(6f, 7f, 8f, 1f));
         NpcSnapshot left = CreateNpc(
             VanillaNpcIds.MoonLordHand,
             new NpcAiState(-2f, 0f, 0f, 5f),
@@ -561,7 +561,7 @@ public sealed class LateHardmodeBossParityTests
             new NpcAiState(0f, 0f, 0f, 0f),
             life: 50_000,
             slot: 5,
-            localAi: new NpcAiState(0f, 0f, 0f, 1f));
+            localAi: new NpcAiState(6f, 7f, 8f, 1f));
         NpcSnapshot left = CreateNpc(
             VanillaNpcIds.MoonLordHand,
             new NpcAiState(-2f, 0f, 0f, 5f),
@@ -578,6 +578,8 @@ public sealed class LateHardmodeBossParityTests
 
         Assert.True(stepper.TryStepState(in root, out NpcStateUpdate next));
         Assert.Equal(0f, next.Ai.Ai0);
+        Assert.Equal(0, next.Simulation.Life);
+        Assert.Equal(0, next.Simulation.TimeLeft);
         Assert.True(next.Simulation.DontTakeDamage);
     }
 

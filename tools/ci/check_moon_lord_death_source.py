@@ -51,6 +51,13 @@ def main() -> None:
     raw = args.npc.read_bytes()
     source = raw.decode("utf-16" if raw.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig")
     core = method(source, "AI_077_MoonLordCore")
+    require(core, r"localAI\[k\] = array\[k\]", "retain allocated shell slots")
+    shell = core[core.index("if (ai[0] == 0f)"):core.index("else if (ai[0] == 1f)")]
+    for slot, type_id in ((0, 397), (1, 397), (2, 396)):
+        require(shell, rf"localAI\[{slot}\] < 0f", f"missing shell slot {slot}")
+        require(shell, rf"!Main.npc\[\(int\)localAI\[{slot}\]\].active", f"inactive shell slot {slot}")
+        require(shell, rf"Main.npc\[\(int\)localAI\[{slot}\]\].type != {type_id}", f"shell type {slot}")
+    require(shell, r"if \(flag\).*?life = 0;.*?HitEffect\(\);.*?active = false", "broken shell direct removal")
     death = core[core.index("else if (ai[0] == 2f)"):core.index("else if (ai[0] == 3f)")]
     require_death_velocity(death)
     require(death, r"ai\[1\](?: \+= 1f|\+\+)", "death clock advances")

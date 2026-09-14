@@ -1,5 +1,11 @@
 # Work state
 
+## ACTIVE full parity goal — 2026-09-14
+
+User explicitly requested continuing until full parity. Goal is active; do not mark it complete for a bounded slice. Base565443fa is clean/pushed and its CI/Documentation green. First continuation closes Moon Lord protected-core shell-slot loss: spawn intents retain exact allocated hands/head in source localAI0..2, initialization leaves negative slots for failed allocations, state0 directly expires broken cores without loot/progression. Source-selected slots determine retirement/vulnerability, not an owned-peer scan. Exposed/death states unchanged. Owner generations and broader core target-loss/teleport/movement/global event parity remain open.
+
+Focused101/101 pass, including7 new production-executor shell cases (each lost slot with/without players, wrong-type slot plus unrelated matching part, and partial allocation). Removing terminal shell guard makes7/12 lifecycle tests fail; restored. Pinned official AI_077 source check now verifies stored slot identities, type/active checks and direct removal. Windows NativeAOT all5 smokes pass; full suite and remote gates pending at this checkpoint. RU/EN and NPC roadmap updated. Next investigate target-loss state3 cleanup and exact core movement against official source; no full NPC parity claim.
+
 ## Moon Lord death loot — 2026-09-14
 
 User requested progress on NPC/boss/gameplay/packet roadmap. Added the bounded Moon Lord death table at committed tick600, not initial lethal strike: Classic two distinct weapons from the official ten-option pool; Expert/Master addressed participant bags; Master relic/pet; ordered trophy/mask/minecart/PortalGun/Luminite. Head/hand hits propagate participation to their exact active core for inbound packet28 and server-owned damage. Added eighteen drop-only item definitions, Terrarian prefix family and item-specific rounding exclusions. Opening bags, using/placing these items, global coins/hearts, global terminal effects and owner generation across core-slot reuse remain open. RU/EN lifecycle contract and NPC roadmap updated.

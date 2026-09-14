@@ -156,17 +156,27 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 for (int spawnIndex = 0; spawnIndex < spawnCount; spawnIndex++)
                 {
                     NpcAiSpawnIntent intent = _spawnIntentBuffer[spawnIndex];
-                    if (!_npcs.TrySpawnIntent(in intent, out NpcSnapshot spawned) ||
-                        !intent.LinkSourceFollowerSlot)
+                    if (intent.LinkSourceLocalAiSlot is > 3 ||
+                        !_npcs.TrySpawnIntent(in intent, out NpcSnapshot spawned) ||
+                        (!intent.LinkSourceFollowerSlot && intent.LinkSourceLocalAiSlot is null))
                     {
                         continue;
                     }
 
-                    NpcAiState linkedAi = new(
+                    NpcAiState linkedAi = intent.LinkSourceFollowerSlot ? new(
                         spawned.Handle.Slot,
                         committed.Ai.Ai1,
                         committed.Ai.Ai2,
-                        committed.Ai.Ai3);
+                        committed.Ai.Ai3) : committed.Ai;
+                    NpcAiState local = committed.Simulation.LocalAi;
+                    local = intent.LinkSourceLocalAiSlot switch
+                    {
+                        0 => local with { Ai0 = spawned.Handle.Slot },
+                        1 => local with { Ai1 = spawned.Handle.Slot },
+                        2 => local with { Ai2 = spawned.Handle.Slot },
+                        3 => local with { Ai3 = spawned.Handle.Slot },
+                        _ => local
+                    };
                     var linkedUpdate = new NpcStateUpdate(
                         committed.Type,
                         committed.NetId,
@@ -176,7 +186,7 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                         committed.VelocityY,
                         committed.Target,
                         linkedAi,
-                        committed.Simulation);
+                        committed.Simulation with { LocalAi = local });
                     if (_npcs.TryUpdate(committed.Handle, in linkedUpdate, out NpcSnapshot linked))
                     {
                         committed = linked;

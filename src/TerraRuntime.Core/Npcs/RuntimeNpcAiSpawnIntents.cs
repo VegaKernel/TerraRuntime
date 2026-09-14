@@ -27,6 +27,9 @@ public readonly record struct NpcAiSpawnIntent(
     /// Used by vanilla linked chains whose follower identity cannot be known speculatively.
     /// </summary>
     public bool LinkSourceFollowerSlot { get; init; }
+
+    /// <summary>After allocation, retain the child slot in this source localAI element (0..3).</summary>
+    public byte? LinkSourceLocalAiSlot { get; init; }
 }
 
 /// <summary>
@@ -45,4 +48,3 @@ public interface INpcAiSpawnIntentPlanner
         in NpcStateUpdate proposed,
         Span<NpcAiSpawnIntent> destination);
 }
-

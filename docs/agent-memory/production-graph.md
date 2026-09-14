@@ -1,5 +1,9 @@
 # Production graph
 
+## Moon Lord shell identity — 2026-09-14
+
+NpcAiSpawnIntent.LinkSourceLocalAiSlot lets the existing authoritative spawn executor store an allocated child slot in a specific source localAI element after the exact source generation commits. Moon Lord maps left/right/head into0/1/2; missing allocation keeps-1. Core protected state0 resolves these exact slots for presence and retired state; missing/wrong-type parts expire the core via TimeLeft0/Life0 without imported-loot/progression callbacks. This does not add generation identity to vanilla float slot links; that wider lifecycle task remains open.
+
 ## Moon Lord terminal loot — 2026-09-14
 
 Committed MoonLord core death tick600 invokes VanillaMoonLordLootEvaluator through RuntimeNpcNetworkCombatPipeline and RuntimeMoonLordLootDeliverySink. Existing world-item materialization/packet21 and addressed instanced packet90/slot-lease ownership remain unchanged. Both admitted client strike and server-owned damage mark head/hand participation on the exact active ai3 core before part death. A bounded255entry scratch buffer carries active participants in source slot order. Eighteen drop-only definitions do not admit item-use or bag-opening behavior. Owner-generation tracking across core-slot reuse remains open.

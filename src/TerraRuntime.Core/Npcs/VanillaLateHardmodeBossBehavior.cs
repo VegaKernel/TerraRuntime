@@ -528,13 +528,19 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
             return true;
         }
 
+        // The protected core checks the three slots retained at shell allocation, not a scan for
+        // replacement parts. AI_077 removes a broken shell directly, without checkDead/loot/progression.
+        if (npc.Ai.Ai0 == 0f && npc.Simulation.LocalAi.Ai3 != 0f &&
+            !TryShell(context, npc.Simulation.LocalAi, out _))
+            return RetireOrphan(in npc, out next);
+
         ushort target = npc.Target;
         if (!LateBossMath.TryTarget(in npc, in definition, context, ref target, out VanillaNpcTargetCandidate player))
         { next = default; return false; }
         NpcAiState ai = npc.Ai;
         NpcSimulationState sim = npc.Simulation;
         NpcAiState local = sim.LocalAi;
-        if (local.Ai3 == 0f) { local = local with { Ai3 = 1f }; ai = ai with { Ai0 = -1f, Ai1 = 0f }; }
+        if (local.Ai3 == 0f) { local = new NpcAiState(-1f, -1f, -1f, 1f); ai = ai with { Ai0 = -1f, Ai1 = 0f }; }
         float vx = npc.VelocityX, vy = npc.VelocityY;
         bool invulnerable = true;
         if (ai.Ai0 is -1f or -2f)
@@ -547,7 +553,7 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         {
             float cx = npc.PositionX + definition.Width * .5f, cy = npc.PositionY + definition.Height * .5f;
             LateBossMath.FlyToward(cx, cy, player.CenterX, player.CenterY + 130f, 8f, .25f, ref vx, ref vy);
-            if (ai.Ai0 == 0f && HasRetiredShell(context, npc.Handle.Slot))
+            if (ai.Ai0 == 0f && TryShell(context, local, out bool retired) && retired)
                 ai = ai with { Ai0 = 1f };
             invulnerable = ai.Ai0 != 1f;
         }
@@ -654,14 +660,23 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         return true;
     }
 
-    private static bool HasRetiredShell(VanillaNpcBehaviorContext context, byte rootSlot)
+    private static bool TryShell(VanillaNpcBehaviorContext context, NpcAiState slots, out bool retired)
     {
-        Span<NpcSnapshot> hands = stackalloc NpcSnapshot[2];
-        Span<NpcSnapshot> heads = stackalloc NpcSnapshot[1];
-        int handCount = context.CopyOwnedNpcPeers(VanillaNpcIds.MoonLordHand, rootSlot, hands);
-        int headCount = context.CopyOwnedNpcPeers(VanillaNpcIds.MoonLordHead, rootSlot, heads);
-        return handCount == 2 && headCount == 1 &&
-               hands[0].Ai.Ai0 == -2f && hands[1].Ai.Ai0 == -2f && heads[0].Ai.Ai0 == -2f;
+        retired = false;
+        if (!TryShellPart(context, slots.Ai0, VanillaNpcIds.MoonLordHand, out NpcSnapshot left) ||
+            !TryShellPart(context, slots.Ai1, VanillaNpcIds.MoonLordHand, out NpcSnapshot right) ||
+            !TryShellPart(context, slots.Ai2, VanillaNpcIds.MoonLordHead, out NpcSnapshot head))
+            return false;
+        retired = left.Ai.Ai0 == -2f && right.Ai.Ai0 == -2f && head.Ai.Ai0 == -2f;
+        return true;
+    }
+
+    private static bool TryShellPart(VanillaNpcBehaviorContext context, float slot, NpcTypeId type,
+        out NpcSnapshot part)
+    {
+        part = default;
+        return float.IsFinite(slot) && slot >= 0f && slot <= byte.MaxValue && slot == MathF.Truncate(slot) &&
+            context.TryFindNpcPeer((byte)slot, out part) && part.TypeIdentity == type;
     }
 
     private static bool TryEye(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, out NpcStateUpdate next)

@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Moon Lord shell slots — 2026-09-14
+
+Pinned official AI_077 stores actual NewNPC slots for two397hands and396head in localAI0/1/2 at initial tick60. Protected state0 checks negative slots, active and exact type; missing shell sets life0/HitEffect/activefalse directly without checkDead. Its vulnerability condition reads ai0==-2 from those three slots, not all parts with matching ai3. State1 exposed core does not repeat shell-presence validation. check_moon_lord_death_source.py now verifies these statements against the pinned Windows1458 assembly. Runtime negative-sentinel on allocation failure is the safe bounded counterpart to vanilla's array allocation assumption; no copied game method bodies committed.
+
 ## Moon Lord loot — 2026-09-14
 
 Official1.4.5.8 ItemDropDatabase.Populate registers boss trophies before bosses. RegisterBoss_MoonLord: core398, trophy3595(1/10), Expert bag3332, Master relic4938/pet4810(1/4 each participant), NotExpert mask3373(1/7), minecart4469(1/10), PortalGun3384, LunarOre3460(70..90), two WITHOUT repeats from3063/3389/3065/1553/3930/3541/3570/3571/3569/5480. Selection consumes raw Next(count), immediately materializes, then removes selected entry; do not draw both indices before materialization. NPC.ApplyInteraction propagates396/397 to active398 at exact ai3, not FreeEye400. Pinned Windows assembly SHA256 d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e; checker tools/ci/check_moon_lord_loot_source.py.

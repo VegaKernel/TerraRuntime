@@ -8,6 +8,73 @@ namespace TerraRuntime.Tests;
 
 public sealed class MoonLordDeathSequenceTests
 {
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    [InlineData(2, false)]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    [InlineData(2, true)]
+    public void Missing_exact_shell_slot_removes_core_without_loot_or_progression(int missingPart, bool withPlayer)
+    {
+        var npcs = new RuntimeNpcStore();
+        var items = new RuntimeWorldItemStore();
+        var projectiles = new RuntimeProjectileStore();
+        var progression = new RuntimeWorldProgressionMutations();
+        var pipeline = CreatePipeline(npcs, projectiles, progression, items);
+        NpcSnapshot core = SpawnNpc(npcs, VanillaNpcIds.MoonLordCore, new NpcAiState(-1f, 59f, 0f, 0f));
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper());
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 500f, 300f, 0, true, false, false, false)]);
+        var executor = new RuntimeNpcAiStateExecutor(npcs, projectiles);
+        executor.Tick(stepper, pipeline);
+        Assert.True(npcs.TryGet(core.Handle, out core));
+        Assert.Equal(0f, core.Ai.Ai0);
+        float[] slots = [core.Simulation.LocalAi.Ai0, core.Simulation.LocalAi.Ai1, core.Simulation.LocalAi.Ai2];
+        Assert.Equal(3, slots.Distinct().Count());
+        NpcSnapshot removed = default;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            Assert.True(npcs.TryGetActive((byte)slots[i], out NpcSnapshot part));
+            Assert.Equal(i == 2 ? VanillaNpcIds.MoonLordHead : VanillaNpcIds.MoonLordHand, part.TypeIdentity);
+            Assert.Equal(core.Handle.Slot, part.Ai.Ai3);
+            if (i == missingPart) removed = part;
+        }
+
+        Assert.True(npcs.TryDespawn(removed.Handle));
+        NpcSnapshot blocker = SpawnNpc(npcs, VanillaNpcIds.BlueSlime, default);
+        Assert.Equal(removed.Handle.Slot, blocker.Handle.Slot);
+        // An otherwise matching owned part elsewhere must not replace the original shell slot.
+        SpawnNpc(npcs, removed.TypeIdentity, removed.Ai);
+        if (!withPlayer) stepper.SetCandidates([]);
+        executor.Tick(stepper, pipeline);
+        npcs.DespawnExpired();
+        Assert.False(npcs.TryGet(core.Handle, out _));
+        Assert.True(npcs.TryGet(blocker.Handle, out _));
+        Assert.Equal(0, items.ActiveCount);
+        Assert.False(progression.IsCompleted(VanillaWorldProgressionId.MoonLord));
+    }
+
+    [Fact]
+    public void Partial_shell_allocation_retains_missing_slot_and_expires_core()
+    {
+        var npcs = new RuntimeNpcStore(4);
+        SpawnNpc(npcs, VanillaNpcIds.BlueSlime, default);
+        NpcSnapshot core = SpawnNpc(npcs, VanillaNpcIds.MoonLordCore, default);
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper());
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 500f, 300f, 0, true, false, false, false)]);
+        // A real new core must initialize missing links before best-effort shell allocation.
+        var initial = new NpcStateUpdate(core.Type, core.NetId, core.PositionX, core.PositionY,
+            0f, 0f, core.Target, default, core.Simulation with { LocalAi = default });
+        Assert.True(npcs.TryUpdate(core.Handle, in initial, out core));
+        var executor = new RuntimeNpcAiStateExecutor(npcs);
+        for (int tick = 0; tick < 60; tick++) executor.Tick(stepper);
+        Assert.True(npcs.TryGet(core.Handle, out core));
+        Assert.Equal(-1f, core.Simulation.LocalAi.Ai2);
+        executor.Tick(stepper);
+        npcs.DespawnExpired();
+        Assert.False(npcs.TryGet(core.Handle, out _));
+    }
+
     [Fact]
     public void Committed_death_clears_attacks_at_60_and_records_progression_only_at_600_without_players()
     {
@@ -87,9 +154,10 @@ public sealed class MoonLordDeathSequenceTests
     }
 
     private static RuntimeNpcNetworkCombatPipeline CreatePipeline(
-        RuntimeNpcStore npcs, RuntimeProjectileStore projectiles, RuntimeWorldProgressionMutations progression)
+        RuntimeNpcStore npcs, RuntimeProjectileStore projectiles, RuntimeWorldProgressionMutations progression,
+        RuntimeWorldItemStore? items = null)
     {
-        var items = new RuntimeWorldItemStore();
+        items ??= new RuntimeWorldItemStore();
         return new RuntimeNpcNetworkCombatPipeline(
             npcs, items, new EmptyPlayers(), new PlayerAuthority(events: null, worldTiles: null),
             tickProvider: static () => 0, npcReplication: null,
