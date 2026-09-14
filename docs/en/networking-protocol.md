@@ -290,7 +290,7 @@ A networking/protocol change is incomplete unless, where relevant:
 
 ## Shared inbound packet limits
 
-Vega and trusted host modules configure `IRuntime.PacketRateLimits` (`IPacketRateLimitControl`). One configuration table applies to **every existing and future connection** accepted by this server process; each connection keeps its own counters for each packet ID. These are inbound limits (player to server), not outbound liquid transport settings. There are no per-player overrides.
+Vega and trusted host modules configure `IRuntime.PacketRateLimits` (`IPacketRateLimitControl`). One table of packet-ID limits applies to **every existing and future connection** accepted by this server process; each connection keeps its own counters for each packet ID. These are inbound limits (player to server), not outbound liquid transport settings. There are no per-player overrides.
 
 ```csharp
 runtime.PacketRateLimits.SetLimit(12, 50); // each connection: packet 12, 50 frames/s

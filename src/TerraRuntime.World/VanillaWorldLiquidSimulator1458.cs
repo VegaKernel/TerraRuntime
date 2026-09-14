@@ -13,6 +13,8 @@ public sealed class VanillaWorldLiquidSimulator1458
 {
     // Admitted CheckOrb/CheckPot/Check*Wall/CheckJunglePlant object cells use 16+2 atlas pixels.
     private const int LoadingObjectFrameStepPixels = 18;
+    // Terraria 1.4.5.8 WorldGen.Check1x2: chair styles contain two rows plus atlas padding.
+    private const int LoadingChairStyleStridePixels = 40;
     // CheckOnTable1x1 / PlaceTile: the admitted book row includes Water Bolt at frameX=90.
     private const int LoadingBookMaximumFrameX = 90;
     // TerrariaServer 1.4.5.8 Liquid.UpdateLiquid defaults to maxLiquid=25,000 and cycles=10,
@@ -577,9 +579,9 @@ public sealed class VanillaWorldLiquidSimulator1458
         // The metadata object catalog intentionally covers chests/signs/entities, not these objects; do not
         // invent a metadata identity or a runtime placement path just to admit their loading-time destruction.
         // Check1x2 chairs use a 40-pixel style stride with rows at 0/18, not a 36-pixel atlas.
-        bool chair = tile.Type == 15;
+        bool chair = tile.TileType == VanillaTileIds.Chairs;
         if (tile.Type is not (12 or 15 or 28 or 42 or 91 or 93 or 215 or 233 or 240 or 242 or 245 or 246 or 484 or 485) || tile.FrameX < 0 || tile.FrameY < 0 ||
-            tile.FrameX % LoadingObjectFrameStepPixels != 0 || (chair ? tile.FrameX is not (0 or 18) || tile.FrameY % 40 is not (0 or 18) : tile.FrameY % LoadingObjectFrameStepPixels != 0) ||
+            tile.FrameX % LoadingObjectFrameStepPixels != 0 || (chair ? tile.FrameX is not (0 or LoadingObjectFrameStepPixels) || tile.FrameY % LoadingChairStyleStridePixels is not (0 or LoadingObjectFrameStepPixels) : tile.FrameY % LoadingObjectFrameStepPixels != 0) ||
             (tile.TileType == VanillaTileIds.Heart && (tile.FrameX > 54 || tile.FrameY > 18)) ||
             (tile.TileType == VanillaTileIds.RollingCactus && (tile.FrameX > 18 || tile.FrameY > 18)) ||
             (tile.TileType == VanillaTileIds.AntlionLarva && (tile.FrameX > 126 || tile.FrameY > 18)) ||
@@ -598,7 +600,7 @@ public sealed class VanillaWorldLiquidSimulator1458
             _ => (2, 2)
         };
         int column = tile.FrameX / LoadingObjectFrameStepPixels % width;
-        int row = chair ? tile.FrameY % 40 / LoadingObjectFrameStepPixels : tile.FrameY / LoadingObjectFrameStepPixels % height;
+        int row = chair ? tile.FrameY % LoadingChairStyleStridePixels / LoadingObjectFrameStepPixels : tile.FrameY / LoadingObjectFrameStepPixels % height;
         int left = x - column, top = y - row;
         // Source SquareTileFrame cannot propagate object removal inside the five-cell world border.
         if (left <= 5 || top <= 5 || left + width - 1 >= tiles.Dimensions.WidthTiles - 5 || top + height - 1 >= tiles.Dimensions.HeightTiles - 5)

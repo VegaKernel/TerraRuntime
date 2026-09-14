@@ -210,6 +210,11 @@ jobs:
             )"
             printf 'network_ready_%s_ms=%s\n' "$label" "$elapsed_ms" | tee "$timing"
 
+            # The live host has prepared both caches. A successful shutdown checkpoint deliberately
+            # invalidates the bootstrap image; it must not survive as stale pre-save join state.
+            test -s "$runtime_cache"
+            test -s "$bootstrap_cache"
+
             kill -TERM "$pid"
             for _ in $(seq 1 120); do
               if ! kill -0 "$pid" 2>/dev/null; then
@@ -232,8 +237,10 @@ jobs:
           rm -f "$runtime_cache" "$bootstrap_cache"
           run_host cold 17831
           test -s "$runtime_cache"
-          test -s "$bootstrap_cache"
+          test ! -e "$bootstrap_cache"
           run_host warm 17832
+          grep -q "Runtime world cache hit:" artifacts/startup-warm.log
+          test ! -e "$bootstrap_cache"
 
           python3 - artifacts/startup-cold-timing.txt artifacts/startup-warm-timing.txt <<'PY'
           import math

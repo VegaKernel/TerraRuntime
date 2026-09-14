@@ -1,6 +1,6 @@
 # Production graph
 
-## Shared inbound packet policy ? 2026-09-14
+## Shared inbound packet policy — 2026-09-14
 
 `ServerConnectionAcceptor.PacketRateLimits` owns one process-session `PacketRateLimitControl`. Host `IRuntime.PacketRateLimits` and `ScopedHostRuntime` expose that same instance. Each accepted socket receives it through `TerrariaConnectionPolicyOptions.PacketRateLimits`; its `TerrariaConnectionPolicySink` owns a separate `SessionPacketRateBudget`. Configuration is thread-safe, counting is receive-path-only, world transfers preserve socket usage. Existing hard-abuse checks, telemetry and rejection semantics remain in the same boundary. No simulation or outgoing/liquid owner changed.
 

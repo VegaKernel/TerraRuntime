@@ -27,7 +27,7 @@ The gate uses two complementary sources.
 
 `RuntimeWorldSnapshotProfiler` is deliberately a second diagnostic pass. Production cache loading remains uninstrumented on its hot path; the profiler first times the real loader, then repeats the cache stages in isolation. Aggregate worker timings can therefore exceed wall time when shard reads run concurrently.
 
-The GitHub Actions `Startup Performance Gate` additionally launches the real TerraRuntime server twice against an official generated world. It measures the process boundary from launch until the listening message, once without runtime caches and once with warm caches. This is the executable `NetworkReady` proof.
+The GitHub Actions `Startup Performance Gate` additionally launches the real TerraRuntime server twice against an official generated world. It measures the process boundary from launch until the listening message, once without runtime caches and once with a warm `.runtime-world` image. Both caches must exist while the host is ready. A successful shutdown checkpoint deliberately invalidates `.runtime-bootstrap`; the second launch must rebuild that join image while loading `.runtime-world`. The gate checks both lifecycle transitions rather than requiring stale bootstrap state to survive saving. This is the executable `NetworkReady` proof.
 
 ## Generated-world startup failures
 
