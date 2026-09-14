@@ -25,7 +25,7 @@ public sealed class ListenerManagerTests
         manager.Start(IPAddress.Loopback.ToString(), firstPort, shutdown.Token);
         using var firstClient = new TcpClient(AddressFamily.InterNetwork);
         await firstClient.ConnectAsync(IPAddress.Loopback, firstPort, TestContext.Current.CancellationToken);
-        Assert.True(SpinWait.SpinUntil(() => accepted.Count == 1, TimeSpan.FromSeconds(2)));
+        Assert.True(await WaitForAcceptAsync(() => accepted.Count == 1));
         Assert.True(accepted.TryPeek(out Socket? firstServerSocket));
         Assert.NotNull(firstServerSocket);
 
@@ -47,7 +47,7 @@ public sealed class ListenerManagerTests
 
         using var secondClient = new TcpClient(AddressFamily.InterNetwork);
         await secondClient.ConnectAsync(IPAddress.Loopback, secondPort, TestContext.Current.CancellationToken);
-        Assert.True(SpinWait.SpinUntil(() => accepted.Count == 2, TimeSpan.FromSeconds(2)));
+        Assert.True(await WaitForAcceptAsync(() => accepted.Count == 2));
 
         await manager.CloseAsync();
         Assert.Equal(ListenerLifecycleState.Closed, manager.CaptureSnapshot().State);
@@ -72,7 +72,7 @@ public sealed class ListenerManagerTests
         manager.Start(IPAddress.Loopback.ToString(), port, shutdown.Token);
         using var firstClient = new TcpClient(AddressFamily.InterNetwork);
         await firstClient.ConnectAsync(IPAddress.Loopback, port, TestContext.Current.CancellationToken);
-        Assert.True(SpinWait.SpinUntil(() => accepted.Count == 1, TimeSpan.FromSeconds(2)));
+        Assert.True(await WaitForAcceptAsync(() => accepted.Count == 1));
         Assert.True(accepted.TryPeek(out Socket? firstServerSocket));
         Assert.NotNull(firstServerSocket);
 
@@ -93,7 +93,7 @@ public sealed class ListenerManagerTests
 
         using var secondClient = new TcpClient(AddressFamily.InterNetwork);
         await secondClient.ConnectAsync(IPAddress.Loopback, port, TestContext.Current.CancellationToken);
-        Assert.True(SpinWait.SpinUntil(() => accepted.Count == 2, TimeSpan.FromSeconds(2)));
+        Assert.True(await WaitForAcceptAsync(() => accepted.Count == 2));
 
         await manager.CloseAsync();
         while (accepted.TryDequeue(out Socket? socket))
@@ -130,11 +130,25 @@ public sealed class ListenerManagerTests
 
         using var client = new TcpClient(AddressFamily.InterNetwork);
         await client.ConnectAsync(IPAddress.Loopback, activePort, TestContext.Current.CancellationToken);
-        Assert.True(SpinWait.SpinUntil(() => accepted.Count == 1, TimeSpan.FromSeconds(2)));
+        Assert.True(await WaitForAcceptAsync(() => accepted.Count == 1));
 
         await manager.CloseAsync();
         while (accepted.TryDequeue(out Socket? socket))
             socket.Dispose();
+    }
+
+    private static async Task<bool> WaitForAcceptAsync(Func<bool> accepted)
+    {
+        // Do not occupy an xUnit worker while the socket's accept continuation needs the thread pool.
+        // Keep the original deadline; yield between observations instead of starving that continuation.
+        long started = System.Diagnostics.Stopwatch.GetTimestamp();
+        while (!accepted())
+        {
+            if (System.Diagnostics.Stopwatch.GetElapsedTime(started) >= TimeSpan.FromSeconds(2))
+                return false;
+            await Task.Delay(10,TestContext.Current.CancellationToken);
+        }
+        return true;
     }
 
     private static RuntimeHostLog CreateSilentHostLog(RuntimeLogBuffer logs) =>
