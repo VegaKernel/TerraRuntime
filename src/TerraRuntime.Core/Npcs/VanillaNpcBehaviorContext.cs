@@ -304,6 +304,16 @@ internal sealed class VanillaNpcBehaviorContext
         return false;
     }
 
+    public bool HasLivingPlayer
+    {
+        get
+        {
+            for (int i = 0; i < _candidateCount; i++)
+                if (_candidates[i].Active && !_candidates[i].Dead) return true;
+            return false;
+        }
+    }
+
     public bool TrySelectClosestTarget(
         in NpcSnapshot npc,
         in VanillaNpcDefinition definition,

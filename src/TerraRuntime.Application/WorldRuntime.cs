@@ -98,7 +98,7 @@ public sealed class WorldRuntime : IDisposable
             world.RuntimeMetadata,
             world.CreativePowers,
             WorldClockTelemetry);
-        WorldProgression = new RuntimeWorldProgressionMutations();
+        WorldProgression = new RuntimeWorldProgressionMutations(world.RuntimeMetadata.LunarApocalypseIsUp);
         RuntimeConnections = new RuntimeConnectionRegistry(interestManagement, world.Header.Dimensions);
 
         NpcReplication = new RuntimeNpcReplicationRegistry();
@@ -256,7 +256,7 @@ public sealed class WorldRuntime : IDisposable
                 bool timeBoundaryChanged =
                     WorldClock.DayTime != lastWorldInfoDayTime ||
                     liveMoonPhase != lastWorldInfoMoonPhase;
-                if (timeBoundaryChanged || worldInfoSyncTicks >= worldInfoSyncPeriodTicks)
+                if (WorldClock.ConsumeWorldInfoSyncRequest() || timeBoundaryChanged || worldInfoSyncTicks >= worldInfoSyncPeriodTicks)
                 {
                     var liveClock = new WorldInfoRuntimeState(
                         checked((int)Math.Clamp(WorldClock.Time, 0d, int.MaxValue)),

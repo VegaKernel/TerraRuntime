@@ -206,6 +206,8 @@ On a genuine warm hit, canonical `.wld` file-read time remains zero because file
 
 ## 18. Evidence and tests
 
+`RuntimeWorldProgressionMutations` retains the loaded `LunarApocalypseIsUp` baseline. Its authoritative-thread `SetLunarApocalypseIsUp` records explicit true/false changes; captured snapshots remain unchanged by later updates. The save patcher writes only that event byte when an override is present, preserving all four tower-active flags. Moon Lord departure clears the event without marking a victory. This uses the existing checkpoint path and requires no cache-layout change.
+
 World-chest ownership is released on the authoritative thread when player membership is removed, before a world-transfer detach completes. Live transport shutdown uses that same detach transaction. A replacement session can reopen the chest; stale disconnects cannot release its ownership. This follows official `RemoteClient.Reset` replacing the departed player with a fresh `Player` whose chest index is `-1`. The live chest lifecycle probe exercises abrupt disconnect and replacement, in addition to item/name restoration and observer routing.
 
 The sign fixture may add two stone supports in empty dry cells near spawn when generated terrain has no suitable flat floor. It preserves existing active objects and places the physical sign and text together.

@@ -184,6 +184,21 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
         Broadcast(updateFrame, clientCommit, excludedSource);
     }
 
+    // AI_077 departure sends packet 27 immediately before a silent authoritative removal.
+    // Bypass duplicate coalescing; the following Remove commit clears identity and baselines.
+    internal bool TryPublishRemovalSnapshot(in ProjectileSnapshot snapshot)
+    {
+        if (!TryResolveOrCreateWireKey(in snapshot, out var key) ||
+            !RuntimeProjectilePacketProjection.TryCreateUpdate(in snapshot, in key, out var state) ||
+            !TerrariaProjectileEncoder.TryEncodeUpdate(in state, out byte[] frame))
+        {
+            Interlocked.Increment(ref unsupportedCommits);
+            return false;
+        }
+        Broadcast(frame, excludeSource: false, GameCommandSourceId.System);
+        return true;
+    }
+
     private bool UpdateLiveFrame(ProjectileHandle owner, byte[] encoded)
     {
         int slot = owner.Slot;

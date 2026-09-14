@@ -147,6 +147,7 @@ public static class WorldFileProgressionHeaderPatcher
             mutations.IsCompleted(VanillaWorldProgressionId.LunaticCultist) ||
             mutations.IsCompleted(VanillaWorldProgressionId.MoonLord) ||
             mutations.IsCompleted(VanillaWorldProgressionId.EmpressOfLight) ||
+            mutations.LunarApocalypseIsUp.HasValue ||
             mutations.UnlockSlimeBlueSpawn ||
             mutations.UnlockTruffleSpawn ||
             mutations.UnlockSlimeYellowSpawn ||
@@ -191,6 +192,8 @@ public static class WorldFileProgressionHeaderPatcher
             patchedHeader[townState.MoonLordOffset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.EmpressOfLight))
             patchedHeader[townState.EmpressOfLightOffset] = 1;
+        if (mutations.LunarApocalypseIsUp is bool lunarApocalypseIsUp)
+            patchedHeader[townState.LunarApocalypseOffset] = lunarApocalypseIsUp ? (byte)1 : (byte)0;
         if (mutations.UnlockSlimeBlueSpawn && !townState.PersistedSlimeBlue)
             patchedHeader[townState.SlimeBlueOffset] = 1;
         if (mutations.UnlockTruffleSpawn && !townState.PersistedTruffle)
@@ -210,6 +213,7 @@ public static class WorldFileProgressionHeaderPatcher
     }
 
     private readonly record struct TownStateOffsets1458(
+        int LunarApocalypseOffset,
         int DukeFishronOffset,
         int LunaticCultistOffset,
         int MoonLordOffset,
@@ -356,6 +360,7 @@ public static class WorldFileProgressionHeaderPatcher
         if (!reader.TryReadBool(out bool slimeYellow)) return false;
 
         state = new TownStateOffsets1458(
+            lateBossFlagsOffset + 17,
             lateBossFlagsOffset, lateBossFlagsOffset + 2, lateBossFlagsOffset + 3, empressOfLightOffset,
             savedGoblinOffset, savedGoblin,
             savedWizardOffset, savedWizard,

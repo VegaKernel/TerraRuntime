@@ -11,7 +11,7 @@ on:
       - 'src/TerraRuntime.Core/Npcs/**'
       - 'src/TerraRuntime.Application/NpcAuthority.cs'
       - 'src/TerraRuntime.Application/RuntimeNpcNetworkCombatPipeline*.cs'
-      - 'tests/TerraRuntime.Tests/MoonLordDeathSequenceTests.cs'
+      - 'tests/TerraRuntime.Tests/MoonLordDeathSequenceTests*.cs'
       - 'tests/TerraRuntime.Tests/MoonLordCoreMotionTests.cs'
       - 'tests/TerraRuntime.Tests/LateHardmodeBossParityTests.cs'
       - 'tools/ci/check_moon_lord*source.py'

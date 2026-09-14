@@ -123,10 +123,12 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         bool isThereAWorldSurface = true,
         bool evilBossDownedBaseline = false,
         RuntimeProjectileStore? projectiles = null,
-        bool? planteraDownedBaseline = null)
+        bool? planteraDownedBaseline = null,
+        RuntimeProjectileReplicationRegistry? projectileReplication = null)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         moonLordProjectiles = projectiles;
+        moonLordProjectileReplication = projectileReplication;
         moonLordProjectileBuffer = projectiles is null ? [] : new ProjectileSnapshot[projectiles.Capacity];
         this.worldItems = worldItems ?? throw new ArgumentNullException(nameof(worldItems));
         this.players = players ?? throw new ArgumentNullException(nameof(players));

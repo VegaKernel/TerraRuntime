@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Gameplay.Npcs;
+using TerraRuntime.Gameplay.Players;
 
 namespace TerraRuntime.Core.Npcs;
 
@@ -528,6 +529,22 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
             return true;
         }
 
+        // AI_077 state 3 is departure, not combat death. It must progress without a target,
+        // preserve life, and leave cleanup/event effects to the exact-generation commit boundary.
+        if (npc.Ai.Ai0 == 3f)
+        {
+            NpcAiState fleeAi = npc.Ai with { Ai1 = npc.Ai.Ai1 + 1f };
+            NpcSimulationState flee = npc.Simulation with
+            {
+                NoGravity = true, NoTileCollide = true, DontTakeDamage = true, JustHit = false,
+                TimeLeft = fleeAi.Ai1 >= 60f ? 0 : npc.Simulation.TimeLeft
+            };
+            float fleeVx = npc.VelocityX + (npc.Simulation.DirectionX - npc.VelocityX) * .98f;
+            float fleeVy = npc.VelocityY + (-.5f - npc.VelocityY) * .98f;
+            next = LateBossMath.Build(in npc, fleeVx, fleeVy, npc.Target, in fleeAi, in flee);
+            return true;
+        }
+
         // The protected core checks the three slots retained at shell allocation, not a scan for
         // replacement parts. AI_077 removes a broken shell directly, without checkDead/loot/progression.
         if (npc.Ai.Ai0 == 0f && npc.Simulation.LocalAi.Ai3 != 0f &&
@@ -539,7 +556,24 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         if (npc.Ai.Ai0 is 0f or 1f && context.TrySelectClosestTarget(in npc, in definition, out var closest) && closest.HasTarget)
             target = closest.Target;
         if (!LateBossMath.TryTarget(in npc, in definition, context, ref target, out VanillaNpcTargetCandidate player))
-        { next = default; return false; }
+        {
+            if (npc.Ai.Ai0 is 0f or 1f)
+            {
+                // TargetClosest retains its previous slot when no living target exists. AI_077
+                // still performs the final pursuit step before deciding to depart. A disconnected
+                // slot has the fresh Player geometry installed by RemoteClient.Reset.
+                target = npc.Target < byte.MaxValue ? npc.Target : (ushort)0;
+                if (!context.TryFindCandidate((byte)target, out player))
+                    player = new VanillaNpcTargetCandidate((byte)target,
+                        VanillaPlayerHitboxFacts.BaseWidth * .5f, VanillaPlayerHitboxFacts.BaseHeight * .5f,
+                        0, false, false, false, false);
+            }
+            else
+            {
+                next = default;
+                return false;
+            }
+        }
         NpcAiState ai = npc.Ai;
         NpcSimulationState sim = npc.Simulation;
         NpcAiState local = sim.LocalAi;
@@ -560,6 +594,8 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
                 ai = ai with { Ai0 = 1f };
             invulnerable = ai.Ai0 != 1f;
         }
+        if (ai.Ai0 is 0f or 1f && !context.HasLivingPlayer)
+            ai = ai with { Ai0 = 3f, Ai1 = 0f };
         sim = sim with { NoGravity = true, NoTileCollide = true, LocalAi = local, DontTakeDamage = invulnerable, JustHit = false };
         next = LateBossMath.Build(in npc, vx, vy, target, in ai, in sim);
         return true;

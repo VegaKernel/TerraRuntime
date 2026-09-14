@@ -29,8 +29,11 @@ public readonly record struct RuntimeWorldProgressionMutationSnapshot(ulong Comp
 
     public RuntimeTownRescueFacts1458 RescuedTownNpcs { get; init; }
 
+    public bool? LunarApocalypseIsUp { get; init; }
+
     public bool HasAny =>
         CompletedMask != 0 ||
+        LunarApocalypseIsUp.HasValue ||
         UnlockSlimeBlueSpawn ||
         UnlockTruffleSpawn ||
         UnlockSlimeYellowSpawn ||
@@ -47,10 +50,25 @@ public readonly record struct RuntimeWorldProgressionMutationSnapshot(ulong Comp
 /// <summary>
 /// Single-writer progression journal for mutations produced by authoritative gameplay after world load. Persisted
 /// baseline facts are tracked separately from newly produced mutations so save patching changes only facts that this
-/// runtime actually made true.
+/// runtime actually changed. Lunar-event state is mutable; milestone/unlock facts remain monotonic.
 /// </summary>
 public sealed class RuntimeWorldProgressionMutations
 {
+    private readonly bool baselineLunarApocalypseIsUp;
+    private bool? lunarApocalypseIsUp;
+
+    public RuntimeWorldProgressionMutations(bool lunarApocalypseIsUp = false) =>
+        baselineLunarApocalypseIsUp = lunarApocalypseIsUp;
+
+    public bool LunarApocalypseIsUp => lunarApocalypseIsUp ?? baselineLunarApocalypseIsUp;
+
+    public bool SetLunarApocalypseIsUp(bool active)
+    {
+        if (LunarApocalypseIsUp == active) return false;
+        lunarApocalypseIsUp = active;
+        return true;
+    }
+
     private ulong completedMask;
     private bool baselineSlimeBlueSpawnUnlocked;
     private bool unlockSlimeBlueSpawn;
@@ -148,6 +166,7 @@ public sealed class RuntimeWorldProgressionMutations
     public RuntimeWorldProgressionMutationSnapshot CaptureSnapshot() =>
         new(completedMask)
         {
+            LunarApocalypseIsUp = lunarApocalypseIsUp,
             UnlockSlimeBlueSpawn = unlockSlimeBlueSpawn,
             UnlockTruffleSpawn = unlockTruffleSpawn,
             UnlockSlimeYellowSpawn = unlockSlimeYellowSpawn,

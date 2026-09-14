@@ -215,7 +215,8 @@ internal sealed class ServerRuntimeComposition
             isThereAWorldSurface,
             evilBossDownedBaseline,
             projectileNpcLocalImmunity,
-            naturalSpawnRandom);
+            naturalSpawnRandom,
+            projectileReplication);
         var worldTileAuthority = new WorldTileAuthority(
             playersAuthority,
             commands,

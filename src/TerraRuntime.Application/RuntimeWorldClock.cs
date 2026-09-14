@@ -142,6 +142,17 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
             metadata.WindSpeed);
     }
 
+    private bool worldInfoSyncRequested;
+
+    public void RequestWorldInfoSync() => worldInfoSyncRequested = true;
+
+    public bool ConsumeWorldInfoSyncRequest()
+    {
+        bool requested = worldInfoSyncRequested;
+        worldInfoSyncRequested = false;
+        return requested;
+    }
+
     public void SetDayRate(int dayRate)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(dayRate);

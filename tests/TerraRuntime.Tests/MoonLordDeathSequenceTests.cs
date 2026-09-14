@@ -6,7 +6,7 @@ using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
-public sealed class MoonLordDeathSequenceTests
+public sealed partial class MoonLordDeathSequenceTests
 {
     [Theory]
     [InlineData(0, false)]
@@ -155,14 +155,16 @@ public sealed class MoonLordDeathSequenceTests
 
     private static RuntimeNpcNetworkCombatPipeline CreatePipeline(
         RuntimeNpcStore npcs, RuntimeProjectileStore projectiles, RuntimeWorldProgressionMutations progression,
-        RuntimeWorldItemStore? items = null)
+        RuntimeWorldItemStore? items = null, RuntimeWorldClock? clock = null,
+        RuntimeProjectileReplicationRegistry? projectileReplication = null)
     {
         items ??= new RuntimeWorldItemStore();
         return new RuntimeNpcNetworkCombatPipeline(
             npcs, items, new EmptyPlayers(), new PlayerAuthority(events: null, worldTiles: null),
             tickProvider: static () => 0, npcReplication: null,
             instancedLeases: new RuntimeWorldItemInstancedLeaseStore(items), worldItemReplication: null,
-            worldClock: null, progression, expertMode: false, masterMode: false, projectiles: projectiles);
+            worldClock: clock, progression, expertMode: false, masterMode: false, projectiles: projectiles,
+            projectileReplication: projectileReplication);
     }
 
     private static NpcSnapshot SpawnNpc(RuntimeNpcStore store, NpcTypeId type, NpcAiState ai)

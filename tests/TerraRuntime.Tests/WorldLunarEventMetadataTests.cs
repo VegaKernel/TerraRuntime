@@ -10,6 +10,43 @@ public sealed class WorldLunarEventMetadataTests
 
     [Theory]
     [MemberData(nameof(FlagMasks))]
+    public void Live_event_toggle_matches_original_header_and_preserves_captured_save_image(int mask)
+    {
+        byte[] source = OfficialHeader(mask);
+        int[] pointers = new int[VanillaWorldFormat326.SectionCount];
+        for (int i = 1; i < pointers.Length; i++) pointers[i] = source.Length + i - 1;
+        var envelope = new WorldFileEnvelope(WorldFileFormatPolicy.CurrentVersion, 1, 0, pointers,
+            VanillaWorldFrameImportance326.Count, VanillaWorldFrameImportance326.CopyPackedBits());
+        Assert.Equal(WorldFileHeaderParseResult.Parsed, WorldFileHeaderParser.TryParse(source, envelope, out var header));
+        Assert.NotNull(header);
+        bool baseline = (mask & 16) != 0;
+        var journal = new RuntimeWorldProgressionMutations(baseline);
+        Assert.False(journal.CaptureSnapshot().HasAny);
+        Assert.False(journal.SetLunarApocalypseIsUp(baseline));
+        Assert.True(journal.SetLunarApocalypseIsUp(!baseline));
+        var captured = journal.CaptureSnapshot();
+        Assert.True(captured.HasAny);
+        Assert.True(journal.SetLunarApocalypseIsUp(baseline));
+        Assert.Equal(!baseline, captured.LunarApocalypseIsUp);
+        Assert.Equal(WorldFileProgressionHeaderPatchResult.Patched,
+            WorldFileProgressionHeaderPatcher.TryPatch(source, header, captured, out byte[] patched));
+        byte[] expected = OfficialHeader(mask ^ 16);
+        // Original SaveWorldFlags writes UtcNow on each call. Align only the two timestamp
+        // fields in the independent expected header; the actual patch must preserve the source.
+        using var timestampReader = new BinaryReader(new MemoryStream(source));
+        timestampReader.ReadString();
+        timestampReader.ReadString();
+        int timestampOffset = checked((int)timestampReader.BaseStream.Position + 8 + 16 + 7 * 4 + 4 + 9);
+        source.AsSpan(timestampOffset, 16).CopyTo(expected.AsSpan(timestampOffset, 16));
+        Assert.Equal(expected, patched);
+        Assert.Equal(1, source.Zip(patched).Count(pair => pair.First != pair.Second));
+        Assert.Equal(WorldFileProgressionHeaderPatchResult.Patched,
+            WorldFileProgressionHeaderPatcher.TryPatch(patched, header, journal.CaptureSnapshot(), out byte[] restored));
+        Assert.Equal(source, restored);
+    }
+
+    [Theory]
+    [MemberData(nameof(FlagMasks))]
     public void Official_saved_lunar_flags_survive_metadata_and_prepared_cache(int mask)
     {
         byte[] file = OfficialHeader(mask);

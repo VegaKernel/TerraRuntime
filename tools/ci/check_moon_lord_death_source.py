@@ -69,6 +69,16 @@ def main() -> None:
     require(cleanup, r"type == 400\b.*?active = false", "True Eye removal")
     require(death, r"if \(ai\[1\] >= 600f\).*?life = 0;.*?checkDead\(\)", "terminal death tick")
     require(core, r"ai\[0\] == 2f \|\| ai\[0\] == 3f", "death survives missing player target")
+    departure = core[core.index("else if (ai[0] == 3f)"):]
+    require(departure, r"if \(ai\[1\] == 40f\)", "departure attack cleanup tick")
+    for type_id in (456, 462, 455, 452, 454):
+        require(departure, rf"projectile\w*\.type == {type_id}\b", f"departure projectile {type_id}")
+    require(departure, r"projectile\w*\.active = false;.*?NetMessage.SendData\(27,", "departure silent removal with packet27")
+    require(departure, r"if \(ai\[1\] >= 60f\)", "departure terminal tick")
+    for type_id in (400, 397, 396):
+        require(departure, rf"\.type == {type_id}\b", f"departure global part {type_id}")
+    require(departure, r"active = false;.*?NetMessage.SendData\(23,.*?LunarApocalypseIsUp = false;.*?NetMessage.SendData\(7\)",
+            "departure NPC removal and event notification")
     for name in ("AI_078_MoonLordHands", "AI_079_MoonLordHead", "AI_081_TrueEyeOfCthulhu"):
         body = method(source, name)
         require(body, r"Main\.npc\[\(int\)ai\[3\]\]\.type != 398", name + " exact owner slot")

@@ -90,7 +90,8 @@ internal sealed partial class NpcAuthority
         bool isThereAWorldSurface,
         bool evilBossDownedBaseline,
         RuntimeProjectileNpcLocalImmunityRegistry? projectileNpcLocalImmunity = null,
-        IVanillaNpcRandom? naturalSpawnRandom = null)
+        IVanillaNpcRandom? naturalSpawnRandom = null,
+        RuntimeProjectileReplicationRegistry? projectileReplication = null)
     {
         ArgumentNullException.ThrowIfNull(playerSnapshots);
         this.playerSnapshots = playerSnapshots;
@@ -174,7 +175,8 @@ internal sealed partial class NpcAuthority
             isThereAWorldSurface,
             evilBossDownedBaseline,
             projectiles,
-            townCommerceWorldFacts?.DownedPlantera);
+            townCommerceWorldFacts?.DownedPlantera,
+            projectileReplication);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
             projectiles,
             npcs,
@@ -1115,9 +1117,6 @@ internal sealed partial class NpcAuthority
         {
             if (players.TryGet(checked((byte)slot), out RuntimePlayerMember? player))
             {
-                if (player.MountType != 0)
-                    continue;
-
                 destination[written++] = WithPlayerWorldFacts(new VanillaNpcTargetCandidate(
                     Slot: checked((byte)slot),
                     CenterX: player.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
@@ -1143,9 +1142,6 @@ internal sealed partial class NpcAuthority
             }
 
             PlayerStateSnapshot serverPlayer = serverPlayerSnapshots[serverPlayerIndex++];
-            if (serverPlayer.MountType != 0)
-                continue;
-
             destination[written++] = WithPlayerWorldFacts(new VanillaNpcTargetCandidate(
                 Slot: checked((byte)slot),
                 CenterX: serverPlayer.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f,

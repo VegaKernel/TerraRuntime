@@ -1,5 +1,11 @@
 # Verified vanilla facts
 
+## Moon Lord departure evidence - 2026-09-14
+
+Independent originalAI_077 state3 capture .cache/moonlord-flee-probe/official.json:120calls,Random1458 vx/vy in eighths,60 incoming timers per direction. SHA256 of BinaryWriter nextVx,nextVy,timer +7NPCbool+6projectilebool+Lunarbool is147d1d16f78622d0d82c090ceb84f61275ecf9bdb41d77940b359b395ceb1671(direction-1),91660a4eb725480d068156d9221ce2c49d187a288032069fbee95f5e732002a3(direction+1). Original body invoked unmodified, netMode1 suppresses sends only. Source verifies40 projectile27/directactivefalse +TrueEyes23;60 global400/397/396 andcurrentcore23, Lunarfalse,packet7. Twelve further original0/1calls confirm final pursuit before3timer0 fordead/inactive target (.cache/moonlord-loss-probe/official.json). Golden/realexecutor/wire/worldloop/stalegeneration tests cover this slice; broaderRNG/intro/teleport remainopen.
+
+Existing32 original lunar header fixtures have varying UtcNow. Mutationcomparison aligns only expectedtimestampfields, then requires exactly1changedsourcebyte; bothdirections andsnapshotisolation verified. Full original2,943,723byteworld patches true thenfalse with1byte each and reloads allsections (.cache/lunar-event-roundtrip); originalWindowsserver reaches Server started onendedworld. WorldRuntime frozenclocktest proves one immediate7, negativeomittedrequestfails. Disabledcleanup4fail; omittedheaderwrite32fail; reinstatedmountedplayerexclusion2fail. NPC.TargetClosest filtersactive/dead/ghost,notmount; packet13 mount.Type sourceconfirmed. Mount-specific playerhitbox remainsopen.
+
 ## Chest disconnect lifecycle - 2026-09-14
 
 Official1458 RemoteClient.Reset replaces Main.player[Id] with new Player; Player.chest initializes to-1. TerraRuntime live disconnect instead retains chest ownership in RuntimeChestStore, so player membership detach must explicitly release it. Windows NativeAOT full live chest probe failed at replacement-session packet155 before the fix, passes afterward including exact original item/name restoration. Observer probe retains exclusive-open, packet80 close, no sender echo and targeted name lookup checks. Two retained player-authority regressions fail on the omitted release calls; replacement-generation ownership survives stale disconnect/detach. This does not close client inventory conservation or full chest gameplay parity.
