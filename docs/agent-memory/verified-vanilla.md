@@ -1,5 +1,12 @@
 # Verified vanilla facts
 
+## Continuous head and Moon Leech buff ownership — 2026-09-15
+
+Two original AI079 cycles (2400 calls, same head/local/projectiles/shared RNG) match the runtime exactly; retained fixture SHA256 405a45608d1796c0b3e8be07d9d04433399dcd0ec102893967bbd12a57cd6062. The new regression detects missing telegraph RNG draws; restored head class 3640/3640, full suite16386/16386. This does not run projectile AI or outer NPC physics.
+
+Moon Leech AI85 original 160-call local probe includes contact distance19.75/20/zero, age0/328/329/330, returning sign, inactive head/player, dead player, GodMode and buff immunity, Classic/Expert. Buff145 is applied for840/960 ticks and is not Main.pvpBuff. Player.UpdateBuffs only decrements timers for Main.myPlayer; remote dedicated-server players rely on packet50 snapshots. MessageBuffer case50 replaces incoming buff durations with60, clears trailing state and relays to other clients. Therefore a server-wide timer decrement for remote Moon Leech buffs would diverge from the original. Runtime effect/buff authority is not implemented by this evidence-only checkpoint.
+
+
 ## Head AI independent evidence - 2026-09-15
 
 OriginalAI0793600calls head38x56life45000 (NPC.SetDefaults396verified14110), incomingtimer0..1199 andeyelidlocalAI3 0/13/15, rootcenter1023,1033, player1510,821, rng1458. Correctedearliermanual78x80probe; doNOTuseoldhashd3ffca93. ResetoldTarget0andolddirectionstocurrent/clearnetUpdatebeforeeachAI asouterNPCupdate; finalexpandedSHAb53358c6945b688feaca399e9a24327e72e667acdf3e084d57c1137b33f3a770,3510synced90nonsynced. 36retiredcalls(-2/-3,root0/2,timer0/700/1199,eyelid0/6/15) SHA55c486f5d618095e952f21e97b81ad31218d55f4563543c5ae6aa894986963ac. Exactposition/velocity/ai/local/gate/projectilecreation/nextRNG,actualpacket23. Sourceheadlocal3eyelidgate15,local2mouth; retired-2->-3root2 returnsbeforeDamageOverride/invulnretiredassignment. Oldtest wronglyexpectedinvulnforeyelid6; correctedwithoriginal36rows. MoonLeech sourceSetDefaults45616x16ai85 andCanCutTilestrue; shapeabsentcatalog caused8pxspawnerror,nowfixed. Headfixturesonlycreation,notAI85orfullfights.

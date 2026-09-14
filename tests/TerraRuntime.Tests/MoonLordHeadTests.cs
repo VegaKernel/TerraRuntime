@@ -133,6 +133,49 @@ public sealed class MoonLordHeadTests
         }
     }
 
+    [Fact]
+    public void Two_continuous_head_cycles_match_original_state_projectiles_and_random_stream()
+    {
+        JsonElement[] rows = ReadCases("MoonLordHeadContinuous1458", "405a45608d1796c0b3e8be07d9d04433399dcd0ec102893967bbd12a57cd6062");
+        var npcs = new RuntimeNpcStore();
+        Spawn(npcs, VanillaNpcIds.MoonLordCore, 1000, 1000, 0, 0, default, new NpcAiState(0, 0, 0, 1), 0);
+        var head = Spawn(npcs, VanillaNpcIds.MoonLordHead, 900, 900, 2, -3, default, new NpcAiState(.2f, .3f, 0, 0), 0);
+        var random = new ReferenceRandom(1458);
+        var vanilla = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: random);
+        vanilla.SetCandidates([new VanillaNpcTargetCandidate(0, 1510, 821, 0, true, false, false, false)]);
+        var projectiles = new RuntimeProjectileStore();
+        var executor = new RuntimeNpcAiStateExecutor(npcs, projectiles);
+        var stepper = new HeadOnly(vanilla);
+        var shots = new ProjectileSnapshot[projectiles.Capacity];
+        foreach (JsonElement row in rows)
+        {
+            executor.Tick(stepper);
+            Assert.True(npcs.TryGet(head.Handle, out var actual));
+            Assert.Equal(row.GetProperty("x").GetSingle(), actual.PositionX);
+            Assert.Equal(row.GetProperty("y").GetSingle(), actual.PositionY);
+            Assert.Equal(row.GetProperty("vx").GetSingle(), actual.VelocityX);
+            Assert.Equal(row.GetProperty("vy").GetSingle(), actual.VelocityY);
+            AssertAi(row.GetProperty("ai"), actual.Ai);
+            AssertAi(row.GetProperty("local"), actual.Simulation.LocalAi);
+            Assert.Equal(row.GetProperty("invulnerable").GetBoolean(), actual.Simulation.DontTakeDamage);
+            int count = projectiles.CopyActive(shots);
+            var expectedShots = row.GetProperty("shots");
+            Assert.Equal(expectedShots.GetArrayLength(), count);
+            for (int j = 0; j < count; j++)
+            {
+                var expected = expectedShots[j]; var shot = shots[j];
+                Assert.Equal(expected.GetProperty("type").GetInt32(), shot.Type.Value);
+                Assert.Equal(expected.GetProperty("x").GetSingle(), shot.PositionX);
+                Assert.Equal(expected.GetProperty("y").GetSingle(), shot.PositionY);
+                Assert.Equal(expected.GetProperty("vx").GetSingle(), shot.VelocityX);
+                Assert.Equal(expected.GetProperty("vy").GetSingle(), shot.VelocityY);
+                Assert.Equal(expected.GetProperty("ai").EnumerateArray().Select(value => value.GetSingle()),
+                    new[] { shot.Ai.Ai0, shot.Ai.Ai1, shot.Ai.Ai2 });
+            }
+        }
+        Assert.Equal(rows[^1].GetProperty("nextRandom").GetInt32(), random.Next());
+    }
+
     private static NpcSnapshot Spawn(RuntimeNpcStore npcs, NpcTypeId type, float x, float y,
         float vx, float vy, NpcAiState ai, NpcAiState local, ushort target, byte? slot = null)
     {
