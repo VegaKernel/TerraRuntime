@@ -1,5 +1,10 @@
 # Vanilla NPC and AI parity roadmap
 
+## Moon Lord targeting and release verification - 2026-09-15
+
+Retained-target aiming and local292 sphere release now match another128 original calls across alive/moving/dead/absent inputs. Tests include immediatepacket27 and repeated-state retargetpacket23, plus actual world-loop velocity projection for network/serverplayers. Fullhand/head/TrueEye continuousbattle and broaderplayerarrangements remainopen. Sourcegate repaired for original NPC temporary aliases whenXNAunresolved; no source semantic relaxation. Full12746tests andnative/CIstatus recordedinwork-state.
+
+
 ## Moon Lord hands: 2026-09-15 verification slice
 
 Both hand attack schedules, motion, pupil state, combat frame gate and three projectile creation families now match 3,600 original single-call fixtures. Actual damage and immediate phase packet23 tests accompany the fixture. Full Moon Lord parity remains open: continuous battles, broader targets, retired hands, sphere release and attached explosive interactions, head and True Eye AI. This slice does not promote the full NPC/boss roadmap to complete. Acceptance details: agent-memory/work-state.md and paired moon-lord-death-sequence pages.

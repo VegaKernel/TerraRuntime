@@ -388,8 +388,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (state != 2 || elapsed != 292)
             return 0;
 
-        if (!_context.TrySelectClosestActivePlayer(source.PositionX, source.PositionY, 46f, 66f, out VanillaNpcTargetCandidate target))
-            return 0;
+        VanillaNpcTargetCandidate target = _context.FindClosestPlayer(source.PositionX, source.PositionY, 46f, 66f);
         if (destination.IsEmpty)
             return 1;
 
@@ -402,8 +401,10 @@ public sealed class VanillaNpcTargetingAiStepper :
         float velocityY;
         if (distance > 0f && float.IsFinite(distance))
         {
-            velocityX = dx / distance * 12f;
-            velocityY = dy / distance * 12f;
+            // FNA Vector2.Normalize multiplies by a shared reciprocal before scaling.
+            float inverse = 1f / distance;
+            velocityX = dx * inverse * 12f;
+            velocityY = dy * inverse * 12f;
         }
         else
         {
@@ -1881,7 +1882,10 @@ public sealed class VanillaNpcTargetingAiStepper :
         in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)
     {
         // AI_078 sets netUpdate when changing attacks and when acquiring the bolt target.
-        if (committed.TypeIdentity == VanillaNpcIds.MoonLordHand && before.Ai.Ai0 != committed.Ai.Ai0)
+        if (committed.TypeIdentity == VanillaNpcIds.MoonLordHand &&
+            (before.Ai.Ai0 != committed.Ai.Ai0 ||
+             (committed.Ai.Ai0 == 3f && VanillaMoonLordHandBehavior.Phase(
+                 committed.Ai.Ai1, committed.Ai.Ai2 == 0f, out _, out _) == 0)))
             mutations.TryTranslate(committed.Handle, 0f, 0f, out _);
         VanillaMoonLordNpcBehaviorStrategy.ApplyTeleportToParts(in before, in committed, _context, mutations);
     }

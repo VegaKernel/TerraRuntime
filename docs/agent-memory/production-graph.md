@@ -1,5 +1,10 @@
 # Production graph
 
+## Retained Moon Lord targets and release - 2026-09-15
+
+Hand AI uses retained raw player candidate or reset geometry without living targets. Context FindClosestPlayer layers original Player.FindClosest fallback on living Manhattan selector. Sphere mutation intent keeps existing exact NPC provenance and ai1 ownership checks; source float normalization now reciprocal-times-components. Existing RuntimeProjectileReplicationRegistry immediately sends changed27 (no new forcedprojectilecontract). Hand afterspawncallback also synchronizes phase3elapsed0 even unchanged incomingstate. Network/serverplayer motion already enriches candidates through snapshot lookup; no authorityprojection change. Sourcechecker now recognizes strict original temporary NPC aliases with absentXNA.
+
+
 ## Moon Lord hand AI draft - 2026-09-15
 
 Hand strategy now delegates phase/motion/frame/projectile planning to internal VanillaMoonLordHandBehavior. Runtime retains finite double FrameCounter in NpcSimulationState (not persisted/wire), and existing damage executor reads DontTakeDamage computed from incoming frame. IVanillaNpcRandom gains compatible NextDouble adapter, production uses real underlying draw. Existing generation-checked after-spawn callback requests forced packet23 on hand phase change. Removed dead former hand branches from shared head path. Full acceptance pending; see work-state.

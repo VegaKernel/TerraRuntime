@@ -84,3 +84,10 @@ These are drop definitions only: opening bags, using or placing the new items, g
 `IVanillaNpcRandom.NextDouble()` supplies a unit-interval draw. Production uses the underlying seeded `Random.NextDouble`; integer-only implementations retain a default adapter, while streams requiring identical seeded consumption should override the method. Projectile spawn centers are converted to runtime top-left coordinates before submission.
 
 This verifies synthetic single AI calls with one stationary target. Full continuous fights, moving or absent targets, retired-hand differentials, attached explosive interactions, sphere release synchronization, head and True Eye attack fidelity remain separate parity work.
+## Retained targets and sphere release
+
+Hand bolt aiming continues against the retained player slot without a living target; an absent slot supplies the fresh Player center `(10, 21)`. Sphere release at local tick 292 follows `Player.FindClosest`: closest living active player, otherwise the first active slot even if dead, otherwise slot zero. Normalization preserves FNA reciprocal multiplication before the speed-12 scale. Bolt target acquisition requests packet 23 even when the incoming attack state is already 3.
+
+An additional 80 original AI calls cover stationary, moving, dead and absent targets; 48 calls cover existing spheres immediately before, at and after release for both hands. Tests verify exact state and immediate packet-27 position/velocity, excluding already released and differently owned spheres. Two world-runtime cases verify moving network and server players through the existing snapshot velocity lookup. The production velocity path needed no change. Negative controls fail eight absent-target cases, eight release cases, the repeated-state packet-23 case and both velocity-lookup cases.
+
+The two expanded fixture hashes are `6bd1013cf7860a9b035e01d8f61a533b1048fad989f42839f90e9769eced23e3` (targets) and `3e6440a9b0292eabeab9db6738f80b07dc8096ca63a2a85009609548cdc03aef` (release). These remain independent single-call evidence, not a complete encounter or validation of every multiplayer target arrangement.

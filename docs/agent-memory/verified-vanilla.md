@@ -1,5 +1,10 @@
 # Verified vanilla facts
 
+## Moon Lord retained targets / sphere release - 2026-09-15
+
+80originalAI_078 calls coverstatic/moving(3.25,-1.75)/dead/absentplayer, bothhands andphase3clocks;expandedSHA6bd1013cf7860a9b035e01d8f61a533b1048fad989f42839f90e9769eced23e3. 48actualcalls mutatefouralreadyexisting454s nearleft411/right561incomingrelease;expandedSHA3e6440a9b0292eabeab9db6738f80b07dc8096ca63a2a85009609548cdc03aef. OriginalLinuxexe onWindowsCoreCLR, pinnedhashunchanged. Player.FindClosest fallbackfirstactiveincludingdead then0, evenwithoutlivingtarget; FNA Normalize reciprocal multiplication changesexactfloat. NetMessage27 writes4byteProjectileKey+position+velocity; retainedintegrationassertsrawvx15/vy19. No continuousfight or allmultiplayertargetarrangements claim.
+
+
 ## Moon Lord hand numeric reference - 2026-09-15
 
 Unmodified original Linux 1.4.5.8 assembly, pinned SHA4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034, invoked AI_078 on Windows CoreCLR, netMode0 with real NewProjectile. Expanded3600 rows: two sides x600 clocks xframes0/19/21, stationary player, seed1458. Fixture expanded SHA d3a5ecf7d781ab4b548372eaf621a3f606db9de347d1905cac0bed9607898fc1 supersedes preliminary174 rows. Exact position/velocity/AI/local/frame/damagegate/target/projectile creation/RNG assertions pass. FNA SmoothStep uses double Hermite intermediates. Incoming frame>=21 owns damage gate; phase changes set netUpdate. These isolated calls do not establish complete moving fights, head/eye, retired-state or sphere-release/attached-explosive parity.

@@ -503,6 +503,23 @@ internal sealed class VanillaNpcBehaviorContext
         return found;
     }
 
+    /// <summary>Player.FindClosest fallback: first active slot, even dead; otherwise raw slot zero.</summary>
+    public VanillaNpcTargetCandidate FindClosestPlayer(float x, float y, float width, float height)
+    {
+        if (TrySelectClosestActivePlayer(x, y, width, height, out var closest))
+            return closest;
+
+        byte slot = byte.MaxValue;
+        for (int i = 0; i < _candidateCount; i++)
+            if (_candidates[i].Active && _candidates[i].Slot < slot)
+                slot = _candidates[i].Slot;
+        if (slot == byte.MaxValue) slot = 0;
+        if (TryFindCandidate(slot, out var fallback)) return fallback;
+        return new VanillaNpcTargetCandidate(slot,
+            VanillaPlayerHitboxFacts.BaseWidth * .5f, VanillaPlayerHitboxFacts.BaseHeight * .5f,
+            0, false, false, false, false);
+    }
+
     private static void ValidateWorldSurface(double worldSurfaceTiles)
     {
         if (double.IsNaN(worldSurfaceTiles) ||

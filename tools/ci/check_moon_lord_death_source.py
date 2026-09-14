@@ -40,6 +40,19 @@ def require_death_velocity(death: str) -> None:
         raise SystemExit("Moon Lord reference contract changed: death velocity lerp")
 
 
+def require_shell_translation(teleport: str, slot: int) -> None:
+    delta = re.search(r"Vector2 (\w+) = Main.player\[target\].Center - Vector2.UnitY \* 150f - base.Center;", teleport)
+    if delta is None:
+        raise SystemExit("Moon Lord reference contract changed: teleport delta identity")
+    node = rf"Main.npc\[\(int\)localAI\[{slot}\]\]"
+    displacement = re.escape(delta.group(1))
+    # Missing XNA metadata causes ILSpy to retain an NPC alias around the compound
+    # assignment. Accept either spelling while pinning slot, alias, delta and sync.
+    move = rf"(?:{node}\.position \+= {displacement};|NPC (?P<part>\w+) = {node}; (?P=part)\.position \+= {displacement};)"
+    expression = rf"if \({node}\.active\) \{{ {move} {node}\.netUpdate = true; \}}"
+    require(teleport, expression, f"translate shell slot {slot}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--assembly", type=Path, required=True)
@@ -97,7 +110,7 @@ def main() -> None:
         raise AssertionError("distance teleport must retain its timer")
     require(teleport, r"Main.player\[target\].Center - Vector2.UnitY \* 150f - base.Center", "teleport delta")
     for slot in range(3):
-        require(teleport, rf"Main.npc\[\(int\)localAI\[{slot}\]\].position \+=", f"translate shell slot {slot}")
+        require_shell_translation(teleport, slot)
     require(teleport, r"active && .*?type == 400.*?position \+=.*?netUpdate = true", "global True Eye teleport sync")
     for name in ("AI_078_MoonLordHands", "AI_079_MoonLordHead", "AI_081_TrueEyeOfCthulhu"):
         body = method(source, name)

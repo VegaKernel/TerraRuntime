@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from check_moon_lord_death_source import require_death_velocity
+from check_moon_lord_death_source import require_death_velocity, require_shell_translation
 from live_dirt_kill_probe import send_selected_movement, select_item, complete_pickup, COPPER_PICKAXE_ITEM
 from probe_worldgen_dungeon_graph import read_source, require_runtime_graph, require_runtime_features
 
@@ -40,6 +40,33 @@ class MoonLordDecompilationTests(unittest.TestCase):
         ):
             with self.subTest(expression=expression), self.assertRaises(SystemExit):
                 require_death_velocity(expression)
+
+
+class MoonLordTeleportDecompilationTests(unittest.TestCase):
+    def forms(self, slot):
+        node = f"Main.npc[(int)localAI[{slot}]]"
+        delta = "Vector2 offset = Main.player[target].Center - Vector2.UnitY * 150f - base.Center; "
+        for move in (f"{node}.position += offset;", f"NPC part = {node}; part.position += offset;"):
+            yield delta + f"if ({node}.active) {{ {move} {node}.netUpdate = true; }}"
+
+    def test_resolved_and_missing_xna_shell_aliases(self):
+        for slot in range(3):
+            for form in self.forms(slot):
+                require_shell_translation(form, slot)
+
+    def test_wrong_slot_delta_alias_or_missing_sync_is_rejected(self):
+        for slot in range(3):
+            for form in self.forms(slot):
+                for old, new in ((f"localAI[{slot}]", "localAI[9]"), ("+= offset", "+= unrelated"),
+                                 ("netUpdate = true", "netUpdate = false"), (".active)", ".inactive)"),
+                                 ("150f", "160f")):
+                    with self.subTest(slot=slot, mutation=(old, new)), self.assertRaises(SystemExit):
+                        require_shell_translation(form.replace(old, new), slot)
+            lowered = list(self.forms(slot))[1]
+            for changed in (lowered.replace("part.position", "other.position"),
+                            lowered.replace("part.position", "part = unrelated; part.position")):
+                with self.assertRaises(SystemExit):
+                    require_shell_translation(changed, slot)
 
 
 class LiveMiningProbeTests(unittest.TestCase):

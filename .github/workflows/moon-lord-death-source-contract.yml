@@ -18,6 +18,8 @@ on:
       - 'tests/TerraRuntime.Tests/MoonLordTeleportTests.cs'
       - 'tests/TerraRuntime.Tests/MoonLordHandTests.cs'
       - 'tests/TerraRuntime.Tests/Fixtures/moon-lord-hands-1458.json.gz'
+      - 'tests/TerraRuntime.Tests/Fixtures/moon-lord-hand-targets-1458.json.gz'
+      - 'tests/TerraRuntime.Tests/Fixtures/moon-lord-sphere-release-1458.json.gz'
       - 'src/TerraRuntime.Contracts/Runtime/NpcSnapshot.cs'
       - 'src/TerraRuntime.Gameplay/Npcs/Simulation/IVanillaNpcRandom.cs'
       - 'tests/TerraRuntime.Tests/Fixtures/moon-lord-teleport-1458.json.gz'

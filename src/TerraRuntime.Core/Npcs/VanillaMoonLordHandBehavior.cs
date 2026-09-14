@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Gameplay.Npcs;
+using TerraRuntime.Gameplay.Players;
 
 namespace TerraRuntime.Core.Npcs;
 
@@ -100,8 +101,14 @@ internal static class VanillaMoonLordHandBehavior
         {
             if (elapsed == 0 && context.TrySelectClosestTarget(in npc, in definition, out var chosen) && chosen.HasTarget)
                 target = chosen.Target;
-            if (target < byte.MaxValue && context.TryFindCandidate((byte)target, out var player) && elapsed < duration - 19)
+            if (elapsed < duration - 19)
             {
+                // AI_078 reads the retained player slot even when no living target exists.
+                // Disconnected slots have the fresh Player geometry installed by RemoteClient.Reset.
+                if (!context.TryFindCandidate((byte)target, out var player))
+                    player = new VanillaNpcTargetCandidate((byte)target,
+                        VanillaPlayerHitboxFacts.BaseWidth * .5f, VanillaPlayerHitboxFacts.BaseHeight * .5f,
+                        0, false, false, false, false);
                 float angle = (float)Math.Atan2(player.CenterY + player.VelocityY * 20f - cy,
                     player.CenterX + player.VelocityX * 20f - cx);
                 local = local with { Ai0 = AngleLerp(local.Ai0, angle), Ai1 = local.Ai1 + .05f };
