@@ -75,6 +75,8 @@ First-save candidate может roll-forward только пока canonical tar
 
 ## Единый recovery authority и writer exclusion
 
+Проверка выполняется в общем `WorldStartupPreparation` до проверки наличия файла, для canonical и backup путей. Обычный запуск продукта, прямой вызов host и standalone entry point одинаково отклоняют живые lease, ошибки I/O и конфликтные транзакции в карантине с кодом `26`. Раньше проверка находилась только в standalone-ветке, которую обычный запуск обходил. Три регрессии покрывают lease canonical и backup, а также конфликтную транзакцию при отсутствующем canonical-файле; все падают на прежнем общем пути запуска.
+
 В runtime больше нет второго recovery path, который выбирает orphan по `LastWriteTimeUtc`. Executable startup вызывает ту же marker-aware границу `AtomicSaveFileWriter.RecoverAbandonedWrites`, что используется save cleanup. Поэтому unsealed managed `.tmp` является только cleanup input и не может стать canonical лишь потому, что его bytes случайно проходят parser.
 
 Та же граница проверяется перед стартом нового atomic write. Если другой process всё ещё держит same-target lease, recovery I/O остаётся неопределённым или transaction уже quarantine'нут как `.recovery-conflict`, новый writer отказывает ещё до создания собственного temporary. Для canonical target остаётся один cross-process owner вместо гонки двух save transactions за publication.

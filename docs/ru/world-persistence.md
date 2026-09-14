@@ -206,6 +206,8 @@ Runtime emits machine-readable startup profile для source metadata/stat, cano
 
 ## 18. Evidence и tests
 
+Fixtures живого сохранения табличек содержат физическую табличку размером два на два над твёрдой опорой и запись её текста. Одинокая текстовая запись не является допустимой целью чтения пакетом 46. Проверки загрузки явно отключают TUI и включают debug-профили в консоли; проверка тёплого кеша оставляет canonical-файл доступным для fingerprint и доказывает повторное использование bootstrap до инвалидации этого поколения новым checkpoint.
+
 Persistence evidence включает world loader/parser tests, runtime snapshot/cache tests, liquid snapshots, preserved-section tests, save coordinator/coalescing tests, authoritative tile/chest/sign/clock save-service tests, sign persistence round trips, world patch checks, official-world load workflows, live chest/sign persistence probes, atomic writer tests и process-level crash/recovery probes.
 
 Live persistence proof использует world, созданный official TerrariaServer 1.4.5.8, выполняет live `packet 32` chest mutation, gracefully terminates TerraRuntime, проверяет exact `.wld`, restart'ит TerraRuntime, reload/save через official server и проверяет снова.

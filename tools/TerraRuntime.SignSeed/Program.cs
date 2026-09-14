@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
 
 if (args.Length != 2)
@@ -30,6 +31,21 @@ if (!TryChooseCoordinate(world, out int x, out int y))
 {
     Console.Error.WriteLine("Could not choose a unique in-bounds sign coordinate.");
     return 4;
+}
+
+// Sign.ReadSign resolves a physical 2x2 object before looking up the text record.
+// Keep the fixture valid under the live resolver instead of creating an orphan sign entry.
+for (int column = 0; column < 2; column++)
+{
+    for (int row = 0; row < 2; row++)
+    {
+        WorldTile tile = world.Tiles.Get(x + column, y + row);
+        tile.Type = checked((ushort)VanillaTileIds.Signs.Value);
+        tile.Flags |= WorldTileFlags.Active;
+        tile.FrameX = checked((short)(column * 18));
+        tile.FrameY = checked((short)(row * 18));
+        world.Tiles.Set(x + column, y + row, in tile);
+    }
 }
 
 WorldSign[] signs = new WorldSign[world.Signs.Length + 1];
@@ -126,9 +142,22 @@ static bool TryChooseCoordinate(WorldFileData world, out int x, out int y)
 
                 int candidateX = originX + deltaX;
                 int candidateY = originY + deltaY;
-                if ((uint)candidateX >= (uint)width || (uint)candidateY >= (uint)height)
+                if (candidateX < 0 || candidateX + 1 >= width || candidateY < 0 || candidateY + 2 >= height)
                     continue;
-                if (!occupied.Contains(CoordinateKey(candidateX, candidateY)))
+                bool supported = true;
+                for (int column = 0; column < 2; column++)
+                {
+                    WorldTile floor = world.Tiles.Get(candidateX + column, candidateY + 2);
+                    supported &= floor.IsActive && VanillaTileCollisionCatalog.IsSolid(floor.TileType) &&
+                        !VanillaTileCollisionCatalog.IsSolidTop(floor.TileType) && floor.Shape == default;
+                    for (int row = 0; row < 2; row++)
+                    {
+                        WorldTile cell = world.Tiles.Get(candidateX + column, candidateY + row);
+                        supported &= !cell.IsActive && cell.LiquidAmount == 0 &&
+                            !occupied.Contains(CoordinateKey(candidateX + column, candidateY + row));
+                    }
+                }
+                if (supported)
                 {
                     x = candidateX;
                     y = candidateY;

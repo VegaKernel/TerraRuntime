@@ -204,6 +204,7 @@ jobs:
             --world "$GITHUB_WORKSPACE/artifacts/vanilla-smoke.wld" \
             --port 17780 \
             --max-players 2 \
+            --no-tui \
             > "$host_log" 2>&1 &
           host_pid=$!
 
@@ -273,6 +274,7 @@ jobs:
             --world "$world" \
             --port 17782 \
             --max-players 2 \
+            --no-tui \
             > "$host_log" 2>&1 &
           host_pid=$!
 
@@ -320,7 +322,7 @@ jobs:
             2>&1 | tee "$observer_log"
           cat "$host_log"
 
-      - name: Prove warm world and bootstrap snapshot startup without reading source world
+      - name: Prove warm world and bootstrap reuse against verified canonical bytes
         shell: bash
         run: |
           set -euo pipefail
@@ -331,21 +333,33 @@ jobs:
           server_dll="$GITHUB_WORKSPACE/src/TerraRuntime/bin/Release/net11.0/TerraRuntime.Server.dll"
 
           test -s "$cache"
+          # Final save rebuilds the world cache and invalidates bootstrap data. Prime bootstrap
+          # for this canonical generation, then prove reuse before either host writes a new checkpoint.
+          prime_log="$GITHUB_WORKSPACE/artifacts/terraruntime-bootstrap-prime.log"
+          dotnet "$server_dll" --world "$world" --port 17783 --max-players 2 --no-tui > "$prime_log" 2>&1 &
+          prime_pid=$!
+          trap 'kill "$prime_pid" 2>/dev/null || true; wait "$prime_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 120); do
+            if ! kill -0 "$prime_pid" 2>/dev/null; then cat "$prime_log" >&2; exit 1; fi
+            grep -q "TerraRuntime listening on 0.0.0.0:17783" "$prime_log" && break
+            sleep 0.5
+          done
+          grep -q "TerraRuntime listening on 0.0.0.0:17783" "$prime_log"
           test -s "$bootstrap_cache"
-          original_mode="$(stat -c '%a' "$world")"
-          chmod 000 "$world"
 
           dotnet "$server_dll" \
             --world "$world" \
             --port 17781 \
             --max-players 2 \
+            --no-tui \
             > "$warm_log" 2>&1 &
           warm_pid=$!
 
           cleanup_warm() {
             kill "$warm_pid" 2>/dev/null || true
             wait "$warm_pid" 2>/dev/null || true
-            chmod "$original_mode" "$world" 2>/dev/null || true
+            kill "$prime_pid" 2>/dev/null || true
+            wait "$prime_pid" 2>/dev/null || true
           }
           trap cleanup_warm EXIT
 

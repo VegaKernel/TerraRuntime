@@ -75,6 +75,8 @@ This closes the dangerous interrupted-publication gap without turning arbitrary 
 
 ## Single recovery authority and writer exclusion
 
+The gate runs inside shared `WorldStartupPreparation` before the missing-file check, for both canonical and backup paths. Product startup, direct host calls and the standalone entry point therefore reject live leases, I/O failures and quarantined conflicts consistently with exit code `26`. The former standalone-only gate was bypassed by normal product startup. Three regression cases cover canonical and backup leases and a quarantined transaction while the canonical file is absent; all fail with the previous shared-host implementation.
+
 There is no second `LastWriteTimeUtc`-ordered orphan recovery path. Executable startup calls the same marker-aware `AtomicSaveFileWriter.RecoverAbandonedWrites` boundary used by save cleanup. An unsealed managed `.tmp` is therefore cleanup input only and can never become canonical merely because its bytes happen to parse as a world.
 
 The same boundary is enforced when a new atomic write starts. If another process still owns a same-target lease, recovery I/O is uncertain, or a transaction has been quarantined as `.recovery-conflict`, the new writer fails before creating its own temporary. This gives one cross-process owner for a canonical target instead of allowing two save transactions to race publication.

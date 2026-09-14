@@ -69,7 +69,8 @@ internal static class WorldStartupPreparation
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(hostLog);
 
-        CleanupAbandonedWrites(options.WorldPath, hostLog);
+        if (!CleanupAbandonedWrites(options.WorldPath, hostLog))
+            return WorldStartupPreparationResult.Failed(26);
 
         if (!File.Exists(options.WorldPath))
         {
@@ -410,30 +411,41 @@ internal static class WorldStartupPreparation
                 metrics));
     }
 
-    private static void CleanupAbandonedWrites(string worldPath, RuntimeHostLog hostLog)
+    private static bool CleanupAbandonedWrites(string worldPath, RuntimeHostLog hostLog)
     {
-        if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(worldPath))
+        // All entry points prepare through this boundary, including the product/managed host.
+        // Do not reduce recovery to a cleanup bool: live leases and conflicts must block startup.
+        foreach (string target in new[] { worldPath, RuntimeWorldCheckpointRecovery.GetBackupPath(worldPath) })
         {
-            hostLog.Log(
-                OperationsLogLevel.Warning,
-                StructuredLogEventIds.PersistenceCanonicalCleanupFailed,
-                StructuredLogCategory.Persistence,
-                "WorldSave",
-                $"Failed to clean abandoned save transactions for canonical world: {worldPath}.",
-                useStandardError: true);
-        }
+            AtomicSaveFileRecoveryDiagnostic recovery = AtomicSaveFileWriter.RecoverAbandonedWrites(target);
+            string? failure = recovery.IoFailed
+                ? $"Interrupted world-save recovery could not inspect managed transactions safely: '{target}'."
+                : recovery.LiveWrites != 0
+                    ? $"Refusing world startup while another managed save writer still owns a live lease: '{target}', live={recovery.LiveWrites}."
+                    : recovery.SuppressedWrites != 0
+                        ? $"Interrupted world-save recovery found a durable transaction whose publication preconditions no longer match; the candidate was quarantined and startup is blocked: '{target}', suppressed={recovery.SuppressedWrites}."
+                        : null;
+            if (failure is not null)
+            {
+                hostLog.Log(OperationsLogLevel.Error, StructuredLogEventIds.WorldRecoverySuppressed,
+                    StructuredLogCategory.Persistence, "WorldSave", failure, useStandardError: true);
+                return false;
+            }
 
-        string checkpointBackupPath = RuntimeWorldCheckpointRecovery.GetBackupPath(worldPath);
-        if (!AtomicSaveFileWriter.TryCleanupAbandonedWrites(checkpointBackupPath))
-        {
-            hostLog.Log(
-                OperationsLogLevel.Warning,
-                StructuredLogEventIds.PersistenceBackupCleanupFailed,
-                StructuredLogCategory.Persistence,
-                "WorldSave",
-                $"Failed to clean abandoned save transactions for checkpoint backup: {checkpointBackupPath}.",
-                useStandardError: true);
+            if (recovery.RecoveredWrites != 0)
+            {
+                hostLog.Log(OperationsLogLevel.Information, StructuredLogEventIds.WorldCheckpointRecovered,
+                    StructuredLogCategory.Persistence, "WorldSave",
+                    $"Interrupted world save recovered from durable marker: '{target}', recovered={recovery.RecoveredWrites}, removed={recovery.RemovedWrites}.");
+            }
+            else if (recovery.RemovedWrites != 0)
+            {
+                hostLog.Log(OperationsLogLevel.Information, StructuredLogEventIds.PersistenceAbandonedWritesDiscarded,
+                    StructuredLogCategory.Persistence, "WorldSave",
+                    $"Discarded unsealed or invalid interrupted world-save transactions before startup: '{target}', removed={recovery.RemovedWrites}.");
+            }
         }
+        return true;
     }
 
     private static async Task<StableWorldReadResult> ReadStableWorldAsync(

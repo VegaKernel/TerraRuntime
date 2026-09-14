@@ -1,5 +1,9 @@
 # Production graph
 
+## Shared interrupted-save startup boundary - 2026-09-14
+
+WorldStartupPreparation now owns marker recovery admission before canonical existence validation, for canonical and backup targets. Product/host/direct/standalone all pass through it; duplicate StandaloneServerProgram recovery removed. Same AtomicSaveFileWriter remains the single transaction authority. LiveWrites, suppressed conflicts and I/O failures stop startup26; completed and discarded recovery get structured logs. No new recovery algorithm or file publication path.
+
 ## Late-boss persistence and lunar metadata - 2026-09-14
 
 Existing boss lifecycle journal -> WorldFileProgressionHeaderPatcher now accepts and monotonically writes DukeFishron/LunaticCultist/EmpressOfLight/MoonLord, using the existing bounded variable-header scanner. Previously these admitted wins made checkpoints unsupported. WorldFileRuntimeMetadataParser retains five lunar-event booleans; RuntimeWorldPreparedStateCodec appends them without reordering old indices. Cache layout3 forces old2 rebuild. No new production dependency, mutable authority or event transition introduced.

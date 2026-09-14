@@ -8,6 +8,8 @@ on:
       - 'src/TerraRuntime.Core/Worlds/Persistence/AtomicSaveFileWriter.Cleanup.cs'
       - 'src/TerraRuntime.Core/Worlds/Persistence/AtomicSaveFileWriter.Recovery.cs'
       - 'src/TerraRuntime.Core/TerraRuntime.Core.csproj'
+      - 'src/TerraRuntime.Application/WorldStartupPreparation.cs'
+      - 'src/TerraRuntime.Application/StandaloneServerProgram.cs'
       - 'src/TerraRuntime/Program.cs'
       - 'src/TerraRuntime/RuntimeWorldCheckpointRecovery.cs'
       - 'tools/TerraRuntime.AtomicSaveCrashProbe/Program.cs'

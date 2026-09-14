@@ -64,6 +64,7 @@ public static class RuntimeLogEventIds
     public static readonly RuntimeLogEventId PersistenceWorldCheckpointSaveFailed = new(PersistenceBase + 9);
     public static readonly RuntimeLogEventId PersistenceWorldCheckpointSuppressedByLoopFault = new(PersistenceBase + 10);
     public static readonly RuntimeLogEventId PersistenceRuntimeCacheInvalidationFailed = new(PersistenceBase + 11);
+    public static readonly RuntimeLogEventId PersistenceAbandonedWritesDiscarded = new(PersistenceBase + 12);
 
     // Trusted host-module lifecycle is a plugin/host integration concern rather than generic runtime lifecycle.
     public static readonly RuntimeLogEventId PluginHostRuntimeAttachFailed = new(PluginBase);
