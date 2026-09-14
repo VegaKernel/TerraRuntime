@@ -51,6 +51,18 @@ def main() -> None:
     raw = args.npc.read_bytes()
     source = raw.decode("utf-16" if raw.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig")
     core = method(source, "AI_077_MoonLordCore")
+    initialization = core[core.index("if (localAI[3] == 0f)"):core.index("if (ai[0] == -2f)")]
+    require(initialization, r"localAI\[3\] = 1f;.*?ai\[0\] = -1f;", "initialize core before state branches")
+    if "ai[1]" in initialization:
+        raise SystemExit("Moon Lord reference contract changed: initialization preserves timer")
+    intro = core[core.index("if (ai[0] == -1f)"):core.index("if (ai[0] == 0f)")]
+    require(intro, r"if \(ai\[1\] == 60f\)", "exact introduction completion tick")
+    if re.search(r"velocity\s*(?:=|\*=)", intro):
+        raise SystemExit("Moon Lord reference contract changed: intro preserves velocity")
+    require(core, r"ai\[0\] != -1f && ai\[0\] != 2f && Main.rand.Next\(200\) == 0", "sound RNG state gate")
+    require(core, r"Main.rand.Next\(93, 100\)", "sound RNG continuation")
+    returning = core[core.index("if (ai[0] == -2f)"):core.index("if (ai[0] == -1f)")]
+    require(returning, r"ai\[2\] = Main.rand.Next\(3\); ai\[2\] = 0f;", "return RNG draw before forced zero")
     require(core, r"localAI\[k\] = array\[k\]", "retain allocated shell slots")
     shell = core[core.index("if (ai[0] == 0f)"):core.index("else if (ai[0] == 1f)")]
     for slot, type_id in ((0, 397), (1, 397), (2, 396)):

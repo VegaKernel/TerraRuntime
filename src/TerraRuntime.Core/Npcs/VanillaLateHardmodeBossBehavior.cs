@@ -497,6 +497,10 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
 /// </summary>
 internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
+    private readonly IVanillaNpcRandom random;
+
+    public VanillaMoonLordNpcBehaviorStrategy(IVanillaNpcRandom random) => this.random = random;
+
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
         INpcAiStateStepper inner, out NpcStateUpdate next)
     {
@@ -508,7 +512,23 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         next = default; return false;
     }
 
-    private static bool TryCore(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, out NpcStateUpdate next)
+    private bool TryCore(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, out NpcStateUpdate next)
+    {
+        // Even on a dedicated server, the original sound decision advances the shared RNG.
+        // It precedes initialization and excludes only incoming intro/death states.
+        if (npc.Ai.Ai0 is not (-1f or 2f) && random.NextInt32(0, 200) == 0)
+            _ = random.NextInt32(93, 100);
+        NpcSnapshot initialized = npc;
+        if (npc.Simulation.LocalAi.Ai3 == 0f)
+            initialized = npc with
+            {
+                Ai = npc.Ai with { Ai0 = -1f },
+                Simulation = npc.Simulation with { LocalAi = npc.Simulation.LocalAi with { Ai3 = 1f } }
+            };
+        return TryInitializedCore(in initialized, in definition, context, out next);
+    }
+
+    private bool TryInitializedCore(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, out NpcStateUpdate next)
     {
         // NPC.AI_077_MoonLordCore (1.4.5.8): death drama is independent of target availability.
         // The first lethal strike was intercepted by checkDead; only tick 600 makes the core terminal.
@@ -545,19 +565,39 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
             return true;
         }
 
+        NpcAiState ai = npc.Ai;
+        NpcSimulationState sim = npc.Simulation;
+        NpcAiState local = sim.LocalAi;
+        bool allocateShell = false;
+        if (ai.Ai0 is -1f or -2f)
+        {
+            bool introduction = ai.Ai0 == -1f;
+            ai = ai with { Ai1 = ai.Ai1 + 1f };
+            sim = sim with { NoGravity = true, NoTileCollide = true, DontTakeDamage = true, JustHit = false };
+            if (ai.Ai1 != 60f)
+            {
+                next = LateBossMath.Build(in npc, npc.VelocityX, npc.VelocityY, npc.Target, in ai, in sim);
+                return true;
+            }
+            if (!introduction) _ = random.NextInt32(0, 3); // Original immediately overwrites the roll with zero.
+            ai = ai with { Ai0 = 0f, Ai1 = 0f, Ai2 = 0f };
+            allocateShell = introduction;
+            if (allocateShell)
+                local = local with { Ai0 = -1f, Ai1 = -1f, Ai2 = -1f };
+        }
+
         // The protected core checks the three slots retained at shell allocation, not a scan for
         // replacement parts. AI_077 removes a broken shell directly, without checkDead/loot/progression.
-        if (npc.Ai.Ai0 == 0f && npc.Simulation.LocalAi.Ai3 != 0f &&
-            !TryShell(context, npc.Simulation.LocalAi, out _))
+        if (ai.Ai0 == 0f && !allocateShell && !TryShell(context, local, out _))
             return RetireOrphan(in npc, out next);
 
         ushort target = npc.Target;
         // AI_077 calls TargetClosest(false) every protected/exposed pursuit tick.
-        if (npc.Ai.Ai0 is 0f or 1f && context.TrySelectClosestTarget(in npc, in definition, out var closest) && closest.HasTarget)
+        if (ai.Ai0 is 0f or 1f && context.TrySelectClosestTarget(in npc, in definition, out var closest) && closest.HasTarget)
             target = closest.Target;
         if (!LateBossMath.TryTarget(in npc, in definition, context, ref target, out VanillaNpcTargetCandidate player))
         {
-            if (npc.Ai.Ai0 is 0f or 1f)
+            if (ai.Ai0 is 0f or 1f)
             {
                 // TargetClosest retains its previous slot when no living target exists. AI_077
                 // still performs the final pursuit step before deciding to depart. A disconnected
@@ -574,23 +614,13 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
                 return false;
             }
         }
-        NpcAiState ai = npc.Ai;
-        NpcSimulationState sim = npc.Simulation;
-        NpcAiState local = sim.LocalAi;
-        if (local.Ai3 == 0f) { local = new NpcAiState(-1f, -1f, -1f, 1f); ai = ai with { Ai0 = -1f, Ai1 = 0f }; }
         float vx = npc.VelocityX, vy = npc.VelocityY;
         bool invulnerable = true;
-        if (ai.Ai0 is -1f or -2f)
-        {
-            ai = ai with { Ai1 = ai.Ai1 + 1f };
-            vx *= .98f; vy *= .98f;
-            if (ai.Ai1 >= 60f) ai = ai with { Ai0 = 0f, Ai1 = 0f };
-        }
-        else if (ai.Ai0 == 0f || ai.Ai0 == 1f)
+        if (ai.Ai0 == 0f || ai.Ai0 == 1f)
         {
             float cx = npc.PositionX + definition.Width * .5f, cy = npc.PositionY + definition.Height * .5f;
             MoveCoreToward(cx, cy, player.CenterX, player.CenterY + 130f, ref vx, ref vy);
-            if (ai.Ai0 == 0f && TryShell(context, local, out bool retired) && retired)
+            if (ai.Ai0 == 0f && !allocateShell && TryShell(context, local, out bool retired) && retired)
                 ai = ai with { Ai0 = 1f };
             invulnerable = ai.Ai0 != 1f;
         }

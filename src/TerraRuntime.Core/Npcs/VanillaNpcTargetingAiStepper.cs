@@ -67,7 +67,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaDukeFishronNpcBehaviorStrategy _dukeFishron;
     private readonly VanillaLunaticCultistNpcBehaviorStrategy _lunaticCultist = new();
     private readonly VanillaEmpressOfLightNpcBehaviorStrategy _empressOfLight = new();
-    private readonly VanillaMoonLordNpcBehaviorStrategy _moonLord = new();
+    private readonly VanillaMoonLordNpcBehaviorStrategy _moonLord;
     private readonly IVanillaNpcRandom _random;
     private IVanillaNpcProjectileEnvironment? _projectileEnvironment;
     private IVanillaQueenBeeEnvironment? _queenBeeEnvironment;
@@ -94,6 +94,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         _queenSlime = new VanillaQueenSlimeNpcBehaviorStrategy(_random, kingSlimeEnvironment);
         _destroyer = new VanillaDestroyerNpcBehaviorStrategy(_random);
         _dukeFishron = new VanillaDukeFishronNpcBehaviorStrategy(_random);
+        _moonLord = new VanillaMoonLordNpcBehaviorStrategy(_random);
         if (kingSlimeEnvironment is IVanillaEyeOfCthulhuEnvironment eyeEnvironment)
             _eyeOfCthulhu.SetEnvironment(eyeEnvironment);
         if (kingSlimeEnvironment is IVanillaBrainOfCthulhuEnvironment brainEnvironment)
@@ -1874,18 +1875,21 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     private int PlanMoonLordParts(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
     {
-        bool initialShell = source.Ai.Ai0 == -1f && proposed.Ai.Ai0 == 0f;
+        bool initialShell = (source.Simulation.LocalAi.Ai3 == 0f || source.Ai.Ai0 == -1f) &&
+            source.Ai.Ai1 + 1f == 60f && proposed.Ai.Ai0 is 0f or 3f;
         if (initialShell)
         {
             if (destination.Length < 3) return destination.Length + 1;
-            float cx = proposed.PositionX + 23f;
-            float cy = proposed.PositionY + 33f;
+            // NewNPC runs before the core's world-motion step, and the source truncates
+            // its center before adding the hand offsets (relevant across coordinate zero).
+            int cx = (int)(source.PositionX + 23f);
+            int cy = (int)(source.PositionY + 33f);
             NpcAiState owned = new(0f, 0f, 0f, source.Handle.Slot + 1f);
-            destination[0] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordHand, (int)(cx - 400f), (int)(cy - 100f), 0f, 0f, proposed.Target)
+            destination[0] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordHand, cx - 400, cy - 100, 0f, 0f, byte.MaxValue)
             { InitialAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot), InitialLocalAi = owned, LinkSourceLocalAiSlot = 0 };
-            destination[1] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordHand, (int)(cx + 400f), (int)(cy - 100f), 0f, 0f, proposed.Target)
+            destination[1] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordHand, cx + 400, cy - 100, 0f, 0f, byte.MaxValue)
             { InitialAi = new NpcAiState(0f, 0f, 1f, source.Handle.Slot), InitialLocalAi = owned, LinkSourceLocalAiSlot = 1 };
-            destination[2] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordHead, (int)cx, (int)(cy - 400f), 0f, 0f, proposed.Target)
+            destination[2] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordHead, cx, cy - 400, 0f, 0f, byte.MaxValue)
             { InitialAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot), InitialLocalAi = owned, LinkSourceLocalAiSlot = 2 };
             return 3;
         }

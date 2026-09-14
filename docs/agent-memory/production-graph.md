@@ -1,5 +1,9 @@
 # Production graph
 
+## Moon Lord introduction ownership - 2026-09-14
+
+VanillaNpcTargetingAiStepper supplies its existing IVanillaNpcRandom to the Moon Lord strategy. Initialization normalizes state/local3 before death or departure handling while retaining the incoming timer. Intro and teleport-return complete only when the incremented timer equals60, then pursue in the same AI call. The existing spawn planner allocates the shell from the source core center before outer world motion, truncating before offsets and preserving NewNPC target255. Exact allocated slots remain linked through the executor. Distance-triggered peer relocation and source live-slot update ordering remain open.
+
 ## Moon Lord departure ownership - 2026-09-14
 
 NPC state3 advances without a target through the existing AI stepper. RuntimeNpcNetworkCombatPipeline validates committed core generation/revision before global attack/part cleanup at40/60. Departure repeats projectile27 through the existing registry then uses silent Remove (clears join baseline/identity), and sends inactive NPC projections. At60 it clears the world-owned LunarApocalypseIsUp journal value and requests an immediate existing WorldClock/world-info broadcast. WorldRuntime seeds journal baseline from loaded metadata; checkpoint snapshots carry nullable explicit true/false to the validated header patcher. No new world/cache format. NpcAuthority's shared candidate projection now includes mounted connection-owned and server-owned players; source TargetClosest has no mount exclusion.
