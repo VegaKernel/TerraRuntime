@@ -78,7 +78,7 @@ internal sealed partial class ProjectileAuthority
         liveChildSpawns = new RuntimeProjectileLiveChildSpawnQueue(projectiles.Capacity);
         cultistLightningArcTrails = new RuntimeCultistLightningArcTrailRegistry(projectiles.Capacity);
         var terminationEffects = new RuntimeProjectileTerminationEffectSink(explosions, tileExplosions, childSpawns, FallingBlocks);
-        var simulationEffects = new RuntimeProjectileSimulationCommitSink(liveChildSpawns, cultistLightningArcTrails);
+        var simulationEffects = new RuntimeProjectileSimulationCommitSink(liveChildSpawns, cultistLightningArcTrails, players);
         executor = new RuntimeProjectileStateExecutor(projectiles, simulationEffects, terminationEffects);
         this.stepper = stepper;
         reflections = new RuntimeNpcProjectileReflectionPass(npcs, projectiles, playerSnapshots, goodWorld: goodWorld);

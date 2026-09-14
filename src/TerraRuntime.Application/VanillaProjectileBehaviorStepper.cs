@@ -80,7 +80,8 @@ internal readonly record struct VanillaProjectileBehaviorResult(
     int? MinimumTimeLeftOverride = null,
     ProjectileLocalAiState? LocalAiOverride = null,
     short? DamageOverride = null,
-    float? KnockBackOverride = null);
+    float? KnockBackOverride = null,
+    ProjectilePlayerBuffApplication? PlayerBuff = null);
 
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 projectile behavior that is independent of tile/world queries.
@@ -641,6 +642,8 @@ internal static partial class VanillaProjectileBehaviorStepper
 
             case VanillaProjectileBehaviorFamily.PhantasmalDeathray:
                 return TryStepPhantasmalDeathray(in current, in definition, in context, out next);
+            case VanillaProjectileBehaviorFamily.MoonLeech:
+                return TryStepMoonLeech(in current, in definition, in context, out next);
 
             case VanillaProjectileBehaviorFamily.HallowBossRainbowStreak:
                 return TryStepHallowBossRainbowStreak(in current, in definition, in context, out next);

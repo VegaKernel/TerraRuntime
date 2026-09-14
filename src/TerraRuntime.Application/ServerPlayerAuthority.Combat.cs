@@ -204,7 +204,7 @@ internal sealed partial class ServerPlayerAuthority
             movementIntents.Remove(target);
             // Player.UpdateLifeRegen calls KillMe(ByOther(8), 10, 0), not Hurt's per-tick HP loss.
             events?.ServerPlayerDied(target, source, projectileType, damageOverTime ? 10 : final.Damage, hitDirection);
-            ResetLavaState(target);
+            ResetPlayerBuffs(target);
         }
         return PlayerDamageCommitResult.Committed;
     }

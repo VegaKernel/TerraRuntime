@@ -117,12 +117,14 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
             return false;
         }
 
-        return worldMotion.TryResolve(
+        bool resolved = worldMotion.TryResolve(
             in projectile,
             in definition,
             in behavior,
             in behaviorContext,
             out next);
+        if (resolved) next = next with { PlayerBuff = behavior.PlayerBuff };
+        return resolved;
     }
 
     private bool IsOutsideWorld(

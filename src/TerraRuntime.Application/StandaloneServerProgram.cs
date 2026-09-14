@@ -1,4 +1,7 @@
 using System.Buffers;
+using System.Buffers.Binary;
+using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Protocol.Multiplicity;
 using System.IO.Pipelines;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -197,7 +200,48 @@ internal static class StandaloneServerProgram
             return 5;
         }
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}.");
+        var npcs = new RuntimeNpcStore();
+        // Original ProjectileKey bit carriers: finite, infinities, NaNs, and omitted negative zero.
+        ReadOnlySpan<uint> anchorKeys = [0x000400ff, 0x7f800000, 0x7fc000ff, 0xff800000, 0xffc3e8ff, 0x80000000];
+        foreach (uint bits in anchorKeys)
+        {
+            float anchor = BitConverter.UInt32BitsToSingle(bits);
+            int type = VanillaNpcIds.MoonLordLeechBlob.Value;
+            var npc = new NpcStateUpdate(type, (short)type, 100, 200, 0, 0, 0, new NpcAiState(0, anchor, 0, 0),
+                NpcSimulationState.Initial with { Life = 400, LifeMax = 400 });
+            var wire = new TerrariaNpcUpdateState(0, 1, type, 100, 200, 0, 0, 0, 1, 1, 1,
+                0, anchor, 0, 0, (short)type, 400, 400, true);
+            if (!npcs.TrySpawn(0, in npc, out var stored) ||
+                BitConverter.SingleToUInt32Bits(stored.Ai.Ai1) != bits ||
+                !TerrariaNpcUpdateEncoder.TryEncode(in wire, out byte[] encoded) ||
+                (bits == 0x80000000 ? encoded.Length != 27 :
+                    encoded.Length < 29 || BinaryPrimitives.ReadUInt32LittleEndian(encoded.AsSpan(25, 4)) != bits))
+            {
+                Console.Error.WriteLine("Protocol smoke failed while preserving the NPC projectile anchor.");
+                return 5;
+            }
+            npcs.TryDespawn(stored.Handle);
+        }
+
+        ushort wrappedGeneration = RuntimeProjectilePacketProjection.ToProtocolGeneration(new ProjectileGeneration(16384));
+        var wrappedKey = new TerrariaProjectileKeyState(255, 0, wrappedGeneration);
+        var projectile = new TerrariaProjectileUpdateState(wrappedKey, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        if (wrappedGeneration != 0 || !TerrariaProjectileEncoder.TryEncodeUpdate(in projectile, out var wrappedPacket) ||
+            BinaryPrimitives.ReadUInt32LittleEndian(wrappedPacket.AsSpan(3)) != 255)
+        {
+            Console.Error.WriteLine("Protocol smoke failed while wrapping the projectile generation through zero.");
+            return 5;
+        }
+        var wrappedInput = new ReadOnlySequence<byte>(wrappedPacket);
+        if (TerrariaFrameDecoder.TryRead(ref wrappedInput, out var wrappedFrame) != TerrariaFrameReadResult.Frame ||
+            TerrariaProjectileDecoder.TryDecodeUpdate(in wrappedFrame, out var decodedProjectile) != TerrariaProjectileDecodeResult.Decoded ||
+            decodedProjectile.Key != wrappedKey)
+        {
+            Console.Error.WriteLine("Protocol smoke failed while decoding the zero-generation projectile key.");
+            return 5;
+        }
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok.");
         return 0;
     }
 

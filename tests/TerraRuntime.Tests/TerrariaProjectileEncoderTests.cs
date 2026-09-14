@@ -86,9 +86,9 @@ public sealed class TerrariaProjectileEncoderTests
         {
             Key = new TerrariaProjectileKeyState(3, 1001, 1)
         };
-        TerrariaProjectileUpdateState zeroGeneration = CreateUpdateState() with
+        TerrariaProjectileUpdateState oversizedGeneration = CreateUpdateState() with
         {
-            Key = new TerrariaProjectileKeyState(3, 1, 0)
+            Key = new TerrariaProjectileKeyState(3, 1, 16384)
         };
         TerrariaProjectileUpdateState oversizedType = CreateUpdateState() with
         {
@@ -96,7 +96,7 @@ public sealed class TerrariaProjectileEncoderTests
         };
 
         Assert.False(TerrariaProjectileEncoder.TryEncodeUpdate(in oversizedIndex, out _));
-        Assert.False(TerrariaProjectileEncoder.TryEncodeUpdate(in zeroGeneration, out _));
+        Assert.False(TerrariaProjectileEncoder.TryEncodeUpdate(in oversizedGeneration, out _));
         Assert.False(TerrariaProjectileEncoder.TryEncodeUpdate(in oversizedType, out _));
     }
 

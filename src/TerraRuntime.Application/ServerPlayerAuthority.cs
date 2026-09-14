@@ -46,6 +46,9 @@ internal sealed partial class ServerPlayerAuthority
         liquidContacts = new VanillaLiquidContactState[states.Capacity];
         damageImmunity = new RuntimePlayerDamageImmunityStore(states.Capacity);
         lavaStates = new LavaState[states.Capacity];
+        moonLeechOwners = new PlayerHandle[states.Capacity];
+        moonLeechTicks = new int[states.Capacity];
+        moonLeechBeforeBurning = new bool[states.Capacity];
     }
 
     public bool TryApply(RuntimeCommand command)
@@ -482,7 +485,7 @@ internal sealed partial class ServerPlayerAuthority
             return false;
         }
 
-        if (before.IsDead != normalized.IsDead) ResetLavaState(player);
+        if (before.IsDead != normalized.IsDead) ResetPlayerBuffs(player);
         var committed = new ServerPlayerVitalsState(
             normalized.Life,
             normalized.MaxLife,
@@ -580,6 +583,8 @@ internal sealed partial class ServerPlayerAuthority
         jumpStates.Remove(lease.Player);
         movementIntents.Remove(lease.Player);
         leases.Remove(id);
+        moonLeechOwners[lease.Player.Slot.Value] = default;
+        moonLeechTicks[lease.Player.Slot.Value] = 0;
         events?.ServerPlayerDespawned(lease.Player);
         lease.Dispose();
         return true;

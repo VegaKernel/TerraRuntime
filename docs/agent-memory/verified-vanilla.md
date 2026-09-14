@@ -1,5 +1,11 @@
 # Verified vanilla facts
 
+## Projectile key wrap and inactive lookup — 2026-09-15
+
+Actual original NewProjectileSetup calls (Linux original assembly on Windows CoreCLR) with slot counters 16382/16383/16384/32767 and spawners 0/1/255 yield wire generations 16383/0/1/0. Retained 12-row fixture ProjectileKeyWrap1458 SHA256 7e5ce31590f4a1950c28c3e5bfc0f3c15b9f419c7b0fb8f0e099959dc4c7c885. ProjectileKey.Pack masks the incremented counter to 14 bits, without skipping zero. Packet27 has no zero-generation rejection. This does not make runtime generation zero assigned.
+
+Original Projectile.TryLookup uses keyToIndex and full key equality WITHOUT checking active. Case27 can reuse an inactive matching projectile. If an entirely zero key misses lookup, NewProjectileSetup treats it as the default request and generates a server key using Main.myPlayer and the physical slot counter; MessageBuffer subsequently sets owner from the incoming key. Thus key.Spawner and owner may differ for this exceptional case. The existing runtime clears mappings on despawn and normally couples projected key.Spawner to snapshot.Spawner. Those are separate, unimplemented ingress gaps; do not silently claim their parity from zero-generation codec tests. Supporting the exception requires source-backed lifecycle/owner separation, not weakening exact runtime-handle guards.
+
 ## Continuous head and Moon Leech buff ownership — 2026-09-15
 
 Two original AI079 cycles (2400 calls, same head/local/projectiles/shared RNG) match the runtime exactly; retained fixture SHA256 405a45608d1796c0b3e8be07d9d04433399dcd0ec102893967bbd12a57cd6062. The new regression detects missing telegraph RNG draws; restored head class 3640/3640, full suite16386/16386. This does not run projectile AI or outer NPC physics.

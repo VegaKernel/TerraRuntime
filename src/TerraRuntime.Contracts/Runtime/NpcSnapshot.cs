@@ -36,6 +36,15 @@ public readonly record struct NpcHandle(byte Slot, NpcGeneration Generation)
 
 public readonly record struct NpcAiState(float Ai0, float Ai1, float Ai2, float Ai3)
 {
+    /// <summary>Validates arithmetic AI fields, with the source-defined opaque projectile anchor for NPC 401.</summary>
+    public bool IsValidFor(NpcTypeId type) =>
+        float.IsFinite(Ai0) && float.IsFinite(Ai2) && float.IsFinite(Ai3) &&
+        (type == VanillaNpcIds.MoonLordLeechBlob
+            // ProjectileKey is bit-reinterpreted into ai[1], including NaN/infinity encodings.
+            // Its 10-bit index addresses the original keyToIndex array's 0..1000 entries.
+            ? ((BitConverter.SingleToUInt32Bits(Ai1) >> 8) & 0x3ff) <= 1000
+            : float.IsFinite(Ai1));
+
     public bool IsFinite =>
         float.IsFinite(Ai0) &&
         float.IsFinite(Ai1) &&

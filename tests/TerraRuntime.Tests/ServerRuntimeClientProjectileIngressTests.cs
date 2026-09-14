@@ -11,12 +11,14 @@ namespace TerraRuntime.Tests;
 
 public sealed class ServerRuntimeClientProjectileIngressTests
 {
-    [Fact]
-    public void Unknown_packet27_allocates_first_physical_slot_and_exact_key_updates_same_handle()
+    [Theory]
+    [InlineData((ushort)9)]
+    [InlineData((ushort)0)]
+    public void Unknown_packet27_allocates_first_physical_slot_and_exact_key_updates_same_handle(ushort generation)
     {
         using var fixture = new Fixture(playerCount: 1);
         ConnectionHandle source = fixture.SpawnPlayer(connectionId: 1);
-        TerrariaProjectileUpdateState first = CreateUpdate(source.Player.Slot.Value, index: 777, generation: 9, type: 1, positionX: 100f);
+        TerrariaProjectileUpdateState first = CreateUpdate(source.Player.Slot.Value, index: 777, generation: generation, type: 1, positionX: 100f);
         TerrariaProjectileKeyState firstKey = first.Key;
 
         fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(source, first));

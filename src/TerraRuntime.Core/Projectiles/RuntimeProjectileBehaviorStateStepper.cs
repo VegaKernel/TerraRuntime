@@ -301,7 +301,8 @@ public sealed class RuntimeProjectileBehaviorStateStepper : IProjectileStateStep
             lifecycle,
             current.SubupdateIndex,
             current.SubupdatesPerWorldTick,
-            normalized.TerminationReason);
+            normalized.TerminationReason,
+            normalized.PlayerBuff ?? current.PlayerBuff);
         return true;
     }
 
@@ -372,5 +373,6 @@ public sealed class RuntimeProjectileBehaviorStateStepper : IProjectileStateStep
             current.Lifecycle.TimeLeft,
             current.Lifecycle.Liquid,
             current.TerminationReason,
-            current.Lifecycle.LocalAi);
+            current.Lifecycle.LocalAi,
+            current.PlayerBuff);
 }

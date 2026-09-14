@@ -99,8 +99,13 @@ public sealed class TerrariaProjectileDecoderTests
     [Fact]
     public void Packet29_keeps_an_unresolved_but_structurally_valid_key_for_vanilla_relay()
     {
-        TerrariaFrame update = Frame((byte)TerrariaMessageId.ProjectileNew, new byte[23]);
-        TerrariaFrame destroy = Frame((byte)TerrariaMessageId.ProjectileDestroy, new byte[12]);
+        // Index 1001 is outside the original addressable key range; generation zero itself is valid.
+        byte[] updatePayload = new byte[23];
+        byte[] destroyPayload = new byte[12];
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(updatePayload, 1001u << 8);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(destroyPayload, 1001u << 8);
+        TerrariaFrame update = Frame((byte)TerrariaMessageId.ProjectileNew, updatePayload);
+        TerrariaFrame destroy = Frame((byte)TerrariaMessageId.ProjectileDestroy, destroyPayload);
 
         Assert.Equal(TerrariaProjectileDecodeResult.InvalidState,
             TerrariaProjectileDecoder.TryDecodeUpdate(in update, out _));

@@ -36,7 +36,7 @@ public sealed partial class RuntimeNpcStore
         if (!VanillaNpcDefinitionCatalog.TryGet(intent.Type, out VanillaNpcDefinition definition) ||
             !float.IsFinite(intent.VelocityX) ||
             !float.IsFinite(intent.VelocityY) ||
-            !intent.InitialAi.IsFinite ||
+            !intent.InitialAi.IsValidFor(intent.Type) ||
             !intent.InitialLocalAi.IsFinite)
         {
             snapshot = default;

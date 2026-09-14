@@ -16,7 +16,7 @@ public sealed partial class RuntimeNpcStore
         float.IsFinite(update.PositionY) &&
         float.IsFinite(update.VelocityX) &&
         float.IsFinite(update.VelocityY) &&
-        update.Ai.IsFinite &&
+        update.Ai.IsValidFor(new NpcTypeId(update.Type)) &&
         update.Simulation.IsValid;
 
     private void DespawnSlot(byte slot, ref SlotState state)

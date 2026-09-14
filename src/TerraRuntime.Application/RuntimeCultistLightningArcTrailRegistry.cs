@@ -123,7 +123,8 @@ internal sealed class RuntimeCultistLightningArcTrailRegistry : IProjectileSimul
 /// <summary>Fixed world-owned commit fanout for live-child staging and exceptional projectile trail state.</summary>
 internal sealed class RuntimeProjectileSimulationCommitSink(
     RuntimeProjectileLiveChildSpawnQueue liveChildren,
-    RuntimeCultistLightningArcTrailRegistry lightningTrails) : IProjectileSimulationCommitSink
+    RuntimeCultistLightningArcTrailRegistry lightningTrails,
+    PlayerAuthority? players = null) : IProjectileSimulationCommitSink
 {
     public void ProjectileSimulationCommitted(
         in ProjectileSnapshot initialProjectile,
@@ -136,5 +137,8 @@ internal sealed class RuntimeProjectileSimulationCommitSink(
             in initialProjectile, in initialLifecycle, subupdates, in finalProjectile, expired);
         liveChildren.ProjectileSimulationCommitted(
             in initialProjectile, in initialLifecycle, subupdates, in finalProjectile, expired);
+        if (players is not null)
+            foreach (ref readonly ProjectileSimulationStepResult step in subupdates)
+                if (step.PlayerBuff is { } application) players.TryApplyProjectileBuff(in application);
     }
 }

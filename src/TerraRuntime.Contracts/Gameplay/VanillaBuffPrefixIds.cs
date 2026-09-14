@@ -64,6 +64,7 @@ public static class VanillaBuffIds
     public static readonly BuffTypeId Hunger = new(333);
     public static readonly BuffTypeId Starving = new(334);
     public static readonly BuffTypeId Endurance = new(114);
+    public static readonly BuffTypeId MoonLeech = new(145);
     public static readonly BuffTypeId Rage = new(115);
     public static readonly BuffTypeId Wrath = new(117);
     public static readonly BuffTypeId Shimmer = new(353);

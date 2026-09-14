@@ -8,6 +8,56 @@ namespace TerraRuntime.Application;
 
 internal static partial class VanillaProjectileBehaviorStepper
 {
+    private static bool TryStepMoonLeech(
+        in ProjectileSnapshot current,
+        in VanillaProjectileDefinition definition,
+        in VanillaProjectileBehaviorContext context,
+        out VanillaProjectileBehaviorResult next)
+    {
+        // TerrariaServer 1.4.5.8 Projectile.AI, style 85. The signed head slot is one-based;
+        // returning begins before movement on the 330th update or when the addressed player is gone.
+        int headSlot = (int)MathF.Abs(current.Ai.Ai0) - 1;
+        if (context.NpcTargets is null ||
+            !context.NpcTargets.TryGetActiveNpc(headSlot, out NpcSnapshot head) ||
+            head.TypeIdentity != VanillaNpcIds.MoonLordHead ||
+            !TryResolveNpcCenter(in head, out float headX, out float headY))
+        {
+            next = new(current.VelocityX, current.VelocityY, current.Ai.Ai0,
+                Kill: true, LocalAiOverride: context.LocalAi);
+            return true;
+        }
+
+        int playerSlot = (int)current.Ai.Ai1;
+        PlayerStateSnapshot player = default;
+        bool hasPlayer = (uint)playerSlot < byte.MaxValue && context.PlayerSnapshots is not null &&
+            context.PlayerSnapshots.TryGetPlayer(new PlayerSlotId((byte)playerSlot), out player);
+        var local = context.LocalAi with { Ai0 = context.LocalAi.Ai0 + 1f };
+        float owner = current.Ai.Ai0;
+        if (owner > 0f && (local.Ai0 >= 330f || !hasPlayer || player.IsDead)) owner = -owner;
+        float centerX = current.PositionX + definition.Width * .5f;
+        float centerY = current.PositionY + definition.Height * .5f;
+        float dx = owner > 0f ? player.PositionX + 10f - centerX : headX - centerX;
+        float dy = owner > 0f ? player.PositionY + 21f - centerY : headY - centerY + 216f;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        float vx = 0f, vy = 0f;
+        if (distance > 0f)
+        {
+            float reciprocal = 1f / distance;
+            float speed = MathF.Min(16f, distance);
+            vx = dx * reciprocal * speed;
+            vy = dy * reciprocal * speed;
+        }
+        ProjectilePlayerBuffApplication? buff = null;
+        if (owner > 0f && distance < 20f && local.Ai1 == 0f)
+        {
+            local = local with { Ai1 = 1f };
+            if (!player.GodMode)
+                buff = new(player.Player, VanillaBuffIds.MoonLeech, context.ExpertMode ? 960 : 840);
+        }
+        next = new(vx, vy, owner, Kill: owner < 0f && distance < 20f, LocalAiOverride: local, PlayerBuff: buff);
+        return true;
+    }
+
     private static bool TryStepHallowBossRainbowStreak(
         in ProjectileSnapshot current,
         in VanillaProjectileDefinition definition,

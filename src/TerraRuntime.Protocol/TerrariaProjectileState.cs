@@ -14,7 +14,7 @@ public readonly record struct TerrariaProjectileKeyState(
 
     public bool IsValid =>
         ProjectileIndex <= MaximumProjectileIndex &&
-        Generation is > 0 and <= MaximumGeneration;
+        Generation <= MaximumGeneration;
 }
 
 /// <summary>

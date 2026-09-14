@@ -6,6 +6,47 @@ namespace TerraRuntime.Tests;
 
 public sealed class RuntimeProjectileBehaviorStateStepperTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Player_buff_survives_post_decorator_but_only_escapes_a_valid_commit(bool invalid)
+    {
+        var registry = new RuntimeGameplayBehaviorRegistry<ProjectileTypeId, IProjectileStateStepper>();
+        Register(registry, "test:buff-post", GameplayBehaviorStage.Post, 0, new RecordingStepper("post", 1, 0, []));
+        registry.CommitPending();
+        var store = new RuntimeProjectileStore(capacity: 4);
+        var state = CreateUpdate(5);
+        Assert.True(store.TrySpawn(0, in state, out _));
+        var buff = new ProjectilePlayerBuffApplication(
+            new PlayerHandle(new PlayerSlotId(0), new PlayerSessionGeneration(1)), VanillaBuffIds.MoonLeech, 840);
+        var sink = new BuffSink();
+        var executor = new RuntimeProjectileStateExecutor(store, sink);
+        executor.Tick(new RuntimeProjectileBehaviorStateStepper(new BuffStepper(buff, invalid), registry));
+        if (invalid) Assert.Empty(sink.Applications);
+        else Assert.Equal(new[] { buff }, sink.Applications);
+    }
+
+    private sealed class BuffStepper(ProjectilePlayerBuffApplication buff, bool invalid) : IProjectileStateStepper
+    {
+        public bool TryStepState(in ProjectileSimulationStepContext projectile, out ProjectileSimulationStepResult next)
+        {
+            next = new(CreateUpdate(invalid ? float.NaN : projectile.Projectile.PositionX + 1),
+                projectile.Lifecycle.TimeLeft - 1, PlayerBuff: buff);
+            return true;
+        }
+    }
+
+    private sealed class BuffSink : IProjectileSimulationCommitSink
+    {
+        public List<ProjectilePlayerBuffApplication> Applications { get; } = [];
+        public void ProjectileSimulationCommitted(in ProjectileSnapshot initial, in ProjectileLifecycleState lifecycle,
+            ReadOnlySpan<ProjectileSimulationStepResult> subupdates, in ProjectileSnapshot final, bool expired)
+        {
+            foreach (var step in subupdates)
+                if (step.PlayerBuff is { } buff) Applications.Add(buff);
+        }
+    }
+
     [Fact]
     public void Registered_pipeline_executes_pre_replacement_post_and_commits_once()
     {

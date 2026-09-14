@@ -123,7 +123,7 @@ public sealed class RuntimeProjectileReplicationRegistryTests
         replication.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in first);
         ProjectileSnapshot replacement = first with
         {
-            Handle = new ProjectileHandle(first.Handle.Slot, new ProjectileGeneration(16384)),
+            Handle = new ProjectileHandle(first.Handle.Slot, new ProjectileGeneration(16385)),
             Revision = new ProjectileRevision(1)
         };
         replication.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in replacement);

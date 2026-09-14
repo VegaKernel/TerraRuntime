@@ -54,7 +54,7 @@ internal sealed class RuntimePlayerTransferProfileStore
             return false;
 
         Entry entry = GetOrReplace(connection);
-        entry.BuffTypes = source.ToArray();
+        (entry.Buffs ??= new PlayerBuffState()).ReplaceNetworkSnapshot(source);
         return true;
     }
 
@@ -76,6 +76,15 @@ internal sealed class RuntimePlayerTransferProfileStore
         return true;
     }
 
+    public bool TryApplyMoonLeech(ConnectionHandle connection, int duration)
+    {
+        if (!connection.IsAssigned) return false;
+        return (GetOrReplace(connection).Buffs ??= new PlayerBuffState()).TryApplyMoonLeech(duration);
+    }
+
+    public int GetBuffDuration(ConnectionHandle connection, BuffTypeId type) =>
+        Get(connection)?.Buffs?.GetDuration(type) ?? 0;
+
     public bool TryCapture(
         ConnectionHandle connection,
         out PlayerAppearanceCommitRequest? appearance,
@@ -95,7 +104,7 @@ internal sealed class RuntimePlayerTransferProfileStore
         equipment = entry.Equipment.Count == 0
             ? []
             : entry.Equipment.Values.OrderBy(static item => item.SlotId).ToArray();
-        buffTypes = entry.BuffTypes is null ? null : entry.BuffTypes.ToArray();
+        buffTypes = entry.Buffs?.CaptureTypes();
         return true;
     }
 
@@ -136,9 +145,13 @@ internal sealed class RuntimePlayerTransferProfileStore
 
         var entry = new Entry(connection)
         {
-            Appearance = appearance,
-            BuffTypes = buffTypes is null ? null : buffTypes.ToArray()
+            Appearance = appearance
         };
+        if (buffTypes is not null)
+        {
+            entry.Buffs = new PlayerBuffState();
+            entry.Buffs.ReplaceNetworkSnapshot(buffTypes);
+        }
         for (int i = 0; i < equipment.Length; i++)
         {
             PlayerEquipmentCommitRequest request = equipment[i];
@@ -199,7 +212,7 @@ internal sealed class RuntimePlayerTransferProfileStore
     {
         public ConnectionHandle Connection { get; } = connection;
         public PlayerAppearanceCommitRequest? Appearance { get; set; }
-        public BuffTypeId[]? BuffTypes { get; set; }
+        public PlayerBuffState? Buffs { get; set; }
         public Dictionary<short, PlayerEquipmentCommitRequest> Equipment { get; } = [];
     }
 }

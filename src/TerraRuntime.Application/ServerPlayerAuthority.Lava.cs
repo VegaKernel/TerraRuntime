@@ -95,10 +95,9 @@ internal sealed partial class ServerPlayerAuthority
     {
         bool burning = lava.BurningTicks > 0;
         if (burning == lava.PublishedBurning) return;
+        if (burning) moonLeechBeforeBurning[lava.Owner.Slot.Value] = GetMoonLeechDuration(lava.Owner) > 0;
         lava.PublishedBurning = burning;
-        Span<BuffTypeId> buffs = stackalloc BuffTypeId[1];
-        if (burning) buffs[0] = new BuffTypeId(24);
-        events?.ServerPlayerBuffTypesUpdated(lava.Owner, buffs[..(burning ? 1 : 0)]);
+        PublishBuffTypes(lava.Owner);
     }
 
     private void ResetLavaState(PlayerHandle player)

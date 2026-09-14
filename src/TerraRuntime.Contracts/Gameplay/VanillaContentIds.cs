@@ -180,6 +180,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId MoonLordHand = new(397);
     public static readonly NpcTypeId MoonLordCore = new(398);
     public static readonly NpcTypeId MoonLordFreeEye = new(400);
+    public static readonly NpcTypeId MoonLordLeechBlob = new(401);
     public static readonly NpcTypeId StardustWormHead = new(402);
     public static readonly NpcTypeId SolarCrawltipedeHead = new(412);
     public static readonly NpcTypeId SolarCrawltipedeBody = new(413);
@@ -302,6 +303,7 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId MoonLordHand = new(78);
     public static readonly NpcAiStyleId MoonLordHead = new(79);
     public static readonly NpcAiStyleId MoonLordFreeEye = new(81);
+    public static readonly NpcAiStyleId MoonLordLeechBlob = new(82);
     public static readonly NpcAiStyleId LunaticCultist = new(84);
     public static readonly NpcAiStyleId AncientVision = new(86);
     public static readonly NpcAiStyleId AncientLight = new(100);

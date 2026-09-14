@@ -45,7 +45,8 @@ internal enum VanillaProjectileBehaviorFamily : byte
     CultistLightningOrb = 32,
     CultistLightningArc = 33,
     CelebrationRocket = 34,
-    FallingBlock = 35
+    FallingBlock = 35,
+    MoonLeech = 36
 }
 
 /// <summary>
@@ -263,6 +264,14 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         RejectServerOwned: false,
         ExemptFromPreAiWorldBounds: false);
 
+    private static readonly VanillaProjectileBehaviorProfile MoonLeechProfile = new(
+        VanillaProjectileBehaviorFamily.MoonLeech,
+        VanillaProjectileAiStyles.MoonLeech,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
     private static readonly VanillaProjectileBehaviorProfile HallowBossRainbowStreakProfile = new(
         VanillaProjectileBehaviorFamily.HallowBossRainbowStreak,
         VanillaProjectileAiStyles.HallowBossRainbowStreak,
@@ -409,6 +418,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.PhantasmalDeathray)
         {
             profile = PhantasmalDeathrayProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.MoonLeech)
+        {
+            profile = MoonLeechProfile;
             return true;
         }
 

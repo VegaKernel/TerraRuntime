@@ -1,5 +1,22 @@
 # Production graph
 
+## Opaque NPC projectile anchors — 2026-09-15
+
+NpcAiState.IsValidFor(NpcTypeId) admits the source opaque ai1 field only for named NPC401, checking the key index<=1000 and finite other fields; generic IsFinite unchanged. Store input, spawn intents and behavior composition use it. Protocol remains dependency-free and independently enforces the matching packet23 rule (do not add a Contracts reference there); its adapter still verifies NetId/type consistency. Named401/style82 identities added, but no definition/AI82 behavior yet. Native protocol smoke now exercises these bit carriers. No new project edge. Wire-generation-zero admission and canonical mapping now use the original 14-bit mask, with an independent 12-row fixture, raw packet-27 checks, exact runtime-generation binding regressions and a native protocol smoke. Runtime handles remain nonzero. Entirely-zero incoming key allocation and inactive-key reuse are separate open ingress semantics; the current replication identity registry owns live mappings only.
+
+
+## Server-player Moon Leech draft — 2026-09-15
+
+ServerPlayerAuthority now owns bounded per-slot MoonLeech owner/duration/order arrays alongside the existing lava owner, with exact PlayerHandle validation. ServerRuntimeState.Tick calls TickBuffs before lava and physics even when dryPhysics is absent. PlayerAuthority projectile application and duration query fall back to this server-player owner. Death/vitals transitions reset both effects in one snapshot; despawn clears MoonLeech owner/duration. Existing ServerPlayerBuffTypesUpdated already encodes packet50 and retains late-join baselines; PublishBurning now calls a combined publisher preserving the insertion order of OnFire and MoonLeech. No new event contract or packet55 path was needed. Bot potion state remains separate and general buff unification remains open.
+
+
+## Moon Leech buff draft — 2026-09-15
+
+Projectile behavior proposes optional ProjectilePlayerBuffApplication (exact PlayerHandle, BuffTypeId, duration). World stepper forwards it into ProjectileSimulationStepResult; composition carries it in the local context across decorators (last non-null wins), executor validates it and exposes it to the existing commit sink only after successful generation-safe projectile commit. The fixed application commit fanout calls PlayerAuthority.TryApplyProjectileBuff. Currently only MoonLeech and network membership are admitted; server-player ownership remains to implement. No effect is carried into the next subupdate.
+
+RuntimePlayerTransferProfileStore Entry now owns optional PlayerBuffState instead of bare BuffTypes; same entry/generation/lifecycle remains authoritative. Packet50 replaces presence/durations60; transfer capture projects types. Bounded44-slot state implements the source MoonLeech refresh/eviction path, consulting new source-backed VanillaBuffDefinitionCatalog.IsDebuff. It does not decrement remote timers or emit packet55. Broader buff rules, server players and NPC401 healing remain open. Work is uncommitted; see work-state for exact verification.
+
+
 ## Moon Lord head AI - 2026-09-15
 
 Internal VanillaMoonLordHeadBehavior owns source attached-position/phase/pupil/eyelid/projectile planning, invoked by existing MoonLordstrategy with sharedrandom. Hand pupil ellipse nowacceptshead27x59parameters; angle interpolationreused. Removed oldgenericheadflight/retiredheadbranch anddeadpartclockhelpers/projectilebranch. SpawnheadlocalAIstarts0; ai3alreadyownscoreslot. Existing postcommit afterspawncallback force23forheadphase/target/boltacquisition/deathraylaunch. SourceMoonLeech16x16ai85definitionadded; AI85behavior/buffinteraction stillopen. No newauthority/IPC/schema dependency.

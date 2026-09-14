@@ -89,9 +89,9 @@ public sealed class RuntimeProjectilePacketProjectionTests
             RuntimeProjectilePacketProjection.ToProtocolGeneration(new ProjectileGeneration(1)));
         Assert.Equal((ushort)16383,
             RuntimeProjectilePacketProjection.ToProtocolGeneration(new ProjectileGeneration(16383)));
-        Assert.Equal((ushort)1,
+        Assert.Equal((ushort)0,
             RuntimeProjectilePacketProjection.ToProtocolGeneration(new ProjectileGeneration(16384)));
-        Assert.Equal((ushort)2,
+        Assert.Equal((ushort)1,
             RuntimeProjectilePacketProjection.ToProtocolGeneration(new ProjectileGeneration(16385)));
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             RuntimeProjectilePacketProjection.ToProtocolGeneration(default));
@@ -108,7 +108,7 @@ public sealed class RuntimeProjectilePacketProjectionTests
 
         Assert.Equal((byte)4, state.Key.Spawner);
         Assert.Equal((ushort)1000, state.Key.ProjectileIndex);
-        Assert.Equal((ushort)1, state.Key.Generation);
+        Assert.Equal((ushort)0, state.Key.Generation);
         Assert.Equal(100f, state.PositionX);
         Assert.Equal(200f, state.PositionY);
     }

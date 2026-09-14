@@ -112,8 +112,7 @@ internal static class RuntimeProjectilePacketProjection
         if (!generation.IsAssigned)
             throw new ArgumentOutOfRangeException(nameof(generation));
 
-        ulong zeroBased =
-            (generation.Value - 1UL) % TerrariaProjectileKeyState.MaximumGeneration;
-        return checked((ushort)(zeroBased + 1UL));
+        // Terraria 1.4.5.8 ProjectileKey.Pack masks the incremented slot generation, including zero.
+        return (ushort)(generation.Value & TerrariaProjectileKeyState.MaximumGeneration);
     }
 }

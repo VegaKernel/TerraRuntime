@@ -54,8 +54,10 @@ public sealed class RuntimeProjectileClientCommitRoutingTests
         Assert.Equal(1001, RuntimeProjectileStore.MaximumProtocolAddressableCapacity);
     }
 
-    [Fact]
-    public void Client_spawn_update_and_despawn_preserve_exact_key_and_never_echo_to_source()
+    [Theory]
+    [InlineData((ushort)1234)]
+    [InlineData((ushort)0)]
+    public void Client_spawn_update_and_despawn_preserve_exact_key_and_never_echo_to_source(ushort generation)
     {
         var identities = new RuntimeProjectileWireIdentityRegistry(runtimeCapacity: 8);
         var clientCommits = new RuntimeProjectileClientCommitContext();
@@ -67,7 +69,7 @@ public sealed class RuntimeProjectileClientCommitRoutingTests
         RegisterPlaying(replication, source, sourceOutbound, playerSlot: 4);
         RegisterPlaying(replication, peer, peerOutbound, playerSlot: 5);
         var store = new RuntimeProjectileStore(capacity: 8, commitSink: replication);
-        var key = new TerrariaProjectileKeyState(Spawner: 4, ProjectileIndex: 777, Generation: 1234);
+        var key = new TerrariaProjectileKeyState(Spawner: 4, ProjectileIndex: 777, Generation: generation);
         ProjectileStateUpdate state = CreateState(spawner: 4, positionX: 10f);
 
         using (clientCommits.Enter(source, in key))

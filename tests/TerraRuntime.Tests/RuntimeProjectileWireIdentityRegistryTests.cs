@@ -121,7 +121,7 @@ public sealed class RuntimeProjectileWireIdentityRegistryTests
     public void Invalid_wire_key_and_unassigned_or_out_of_capacity_handle_are_rejected()
     {
         var identities = new RuntimeProjectileWireIdentityRegistry(runtimeCapacity: 4);
-        TerrariaProjectileKeyState invalidGeneration = Key(spawner: 1, index: 1, generation: 0);
+        TerrariaProjectileKeyState invalidGeneration = Key(spawner: 1, index: 1, generation: 16384);
         TerrariaProjectileKeyState valid = Key(spawner: 1, index: 1, generation: 1);
         ProjectileHandle unassigned = default;
         ProjectileHandle outsideCapacity = Handle(slot: 4, generation: 1);

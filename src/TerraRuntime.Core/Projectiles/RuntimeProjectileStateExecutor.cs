@@ -23,7 +23,8 @@ public readonly record struct ProjectileSimulationStepContext(
     ProjectileLifecycleState Lifecycle,
     int SubupdateIndex,
     int SubupdatesPerWorldTick,
-    ProjectileSimulationTerminationReason TerminationReason = ProjectileSimulationTerminationReason.None)
+    ProjectileSimulationTerminationReason TerminationReason = ProjectileSimulationTerminationReason.None,
+    ProjectilePlayerBuffApplication? PlayerBuff = null)
 {
     public int VanillaNumUpdates => SubupdatesPerWorldTick - SubupdateIndex - 2;
 
@@ -42,10 +43,14 @@ public readonly record struct ProjectileSimulationStepResult(
     int TimeLeft,
     ProjectileLiquidState? Liquid = null,
     ProjectileSimulationTerminationReason TerminationReason = ProjectileSimulationTerminationReason.None,
-    ProjectileLocalAiState? LocalAi = null);
+    ProjectileLocalAiState? LocalAi = null,
+    ProjectilePlayerBuffApplication? PlayerBuff = null);
+
+/// <summary>One player buff proposed during a local subupdate, applied only after its projectile commit.</summary>
+public readonly record struct ProjectilePlayerBuffApplication(PlayerHandle Target, BuffTypeId Type, int DurationTicks);
 
 /// <summary>
-/// State-only projectile simulation stepper. Returning false on the first subupdate means the stepper does
+/// Projectile state and deferred-effect proposal stepper. Returning false on the first subupdate means the stepper does
 /// not own/support that projectile. Once it returns true for a projectile it must return true for every
 /// remaining subupdate in that world tick; an inconsistent later false is rejected without a partial commit.
 /// </summary>
@@ -269,6 +274,13 @@ public sealed class RuntimeProjectileStateExecutor
         in ProjectileSimulationStepResult proposed,
         out ProjectileSimulationStepResult normalized)
     {
+        if (proposed.PlayerBuff is { } buff &&
+            (!buff.Target.IsAssigned || buff.Type == VanillaBuffIds.None ||
+             !VanillaBuffIds.TryCreate(buff.Type.Value, out _) || buff.DurationTicks <= 0))
+        {
+            normalized = default;
+            return false;
+        }
         ProjectileSimulationTerminationReason reason = proposed.TerminationReason;
         if (reason is not ProjectileSimulationTerminationReason.None and
             not ProjectileSimulationTerminationReason.LifetimeExpired and
