@@ -322,6 +322,23 @@ internal static class StandaloneServerProgram
             return 12;
         }
 
+        IPacketRateLimitControl packetLimits = new PacketRateLimitControl();
+        var firstSession = new SessionPacketRateBudget(packetLimits);
+        var secondSession = new SessionPacketRateBudget(packetLimits);
+        packetLimits.SetLimit(12, 1);
+        if (!firstSession.TryAcquire(12, out _) || !secondSession.TryAcquire(12, out _) ||
+            firstSession.TryAcquire(12, out _) || secondSession.TryAcquire(12, out _))
+        {
+            Console.Error.WriteLine("Network smoke failed: shared packet policy did not retain independent session budgets.");
+            return 15;
+        }
+        packetLimits.SetLimit(12, null);
+        if (!firstSession.TryAcquire(12, out _) || !secondSession.TryAcquire(12, out _))
+        {
+            Console.Error.WriteLine("Network smoke failed: live packet policy removal did not reach existing sessions.");
+            return 15;
+        }
+
         var commandInput = new ReadOnlySequence<byte>(packet);
         if (TerrariaFrameDecoder.TryRead(ref commandInput, out TerrariaFrame commandFrame) != TerrariaFrameReadResult.Frame)
         {
@@ -342,7 +359,7 @@ internal static class StandaloneServerProgram
             return 14;
         }
 
-        Console.WriteLine("Network smoke passed: fragmented ingress, bounded outbound queues, slow-client policy, admission gate, rate accounting and typed command ingress executed successfully.");
+        Console.WriteLine("Network smoke passed: fragmented ingress, bounded outbound queues, slow-client policy, admission gate, rate accounting, shared live packet limits and typed command ingress executed successfully.");
         return 0;
     }
 

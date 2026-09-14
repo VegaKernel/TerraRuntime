@@ -51,6 +51,8 @@ internal sealed class ServerConnectionAcceptor : IDisposable
             primaryRuntime.TileManipulationReplication);
     }
 
+    public PacketRateLimitControl PacketRateLimits { get; } = new();
+
     public TerrariaConnectionAdmissionGate Admission => admission;
     public RuntimeConnectionDirectory Directory => connectionDirectory;
     public RuntimeConnectionSessionDirectory Sessions => sessionDirectory;
@@ -141,7 +143,10 @@ internal sealed class ServerConnectionAcceptor : IDisposable
         {
             var outbound = new TerrariaConnectionOutboundQueue(
                 ConnectionOutboundQueueSizing.Create(primaryRuntime.Slots.Capacity));
-            TerrariaConnectionPolicyOptions policyOptions = TerrariaConnectionPolicyOptions.Default;
+            TerrariaConnectionPolicyOptions policyOptions = TerrariaConnectionPolicyOptions.Default with
+            {
+                PacketRateLimits = PacketRateLimits
+            };
             var rateAccountant = new TerrariaConnectionRateAccountant(policyOptions.RateBudget);
 
             if (!RuntimeConnectionWorldBinding.TryCreateInitial(

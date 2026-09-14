@@ -14,7 +14,7 @@ namespace TerraRuntime.Tests;
 public sealed class ServerRuntimeTileReplicationIntegrationTests
 {
     [Fact]
-    public void Nearby_packet48_commits_and_relays_authoritative_water_before_settling()
+    public void Nearby_packet48_commits_water_and_defers_replication_until_transport_drain()
     {
         using var fixture = new Fixture();
         ConnectionHandle origin = fixture.SpawnPlayer(899);
@@ -27,6 +27,10 @@ public sealed class ServerRuntimeTileReplicationIntegrationTests
         Assert.Equal(byte.MaxValue, committed.LiquidAmount);
         Assert.Equal(WorldLiquidKind.Water, committed.LiquidKind);
         Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
+        Assert.Equal(0, fixture.Outbound(origin).QueuedFrames);
+        Assert.Equal(0, fixture.Outbound(peer).QueuedFrames);
+        Assert.Equal(1, fixture.Replication.PendingLiquidUpdates);
+        fixture.Replication.FlushPendingLiquids();
         Assert.Equal(1, fixture.Outbound(origin).QueuedFrames);
         Assert.Equal(1, fixture.Outbound(peer).QueuedFrames);
         TerrariaFrame frame = DequeueFrame(fixture.Outbound(origin));

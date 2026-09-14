@@ -7,6 +7,73 @@ namespace TerraRuntime.Tests;
 public sealed class TerrariaConnectionPolicyRateLimitTests
 {
     [Fact]
+    public void Shared_live_packet12_limit_is_enforced_independently_before_inner_dispatch()
+    {
+        var control = new PacketRateLimitControl();
+        var options = TerrariaConnectionPolicyOptions.Default with { PacketRateLimits = control };
+        var firstState = new TerrariaConnectionPolicyState(options);
+        var secondState = new TerrariaConnectionPolicyState(options);
+        var firstInner = new CountingSink();
+        var secondInner = new CountingSink();
+        var aggregate = new TerrariaConnectionRateAccountant(options.RateBudget);
+        var first = new TerrariaConnectionPolicySink(firstInner, firstState, aggregate);
+        var second = new TerrariaConnectionPolicySink(secondInner, secondState);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, first.OnFrame(Decode(CurrentHelloPacket())));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, second.OnFrame(Decode(CurrentHelloPacket())));
+        // Configure after both connections exist. Literal frame isolates policy from gameplay decoding.
+        control.SetLimit(12, 50);
+        TerrariaFrame frame = Decode([3, 0, 12]);
+        for (int i = 0; i < 50; i++)
+        {
+            Assert.Equal(TerrariaFrameSinkResult.Continue, first.OnFrame(frame));
+            Assert.Equal(TerrariaFrameSinkResult.Continue, second.OnFrame(frame));
+        }
+        Assert.Equal(TerrariaFrameSinkResult.Stop, first.OnFrame(frame));
+        Assert.Equal(TerrariaFrameSinkResult.Stop, second.OnFrame(frame));
+        Assert.Equal(51, firstInner.Count);
+        Assert.Equal(51, secondInner.Count);
+        Assert.Equal(TerrariaConnectionStopReason.RateLimited, firstState.StopReason);
+        Assert.Equal(TerrariaConnectionStopReason.RateLimited, secondState.StopReason);
+        Assert.Equal(1, aggregate.Snapshot.RejectedFrames);
+    }
+
+    [Fact]
+    public void Configured_controls_limit_retains_existing_drop_policy_and_removal_is_live()
+    {
+        var control = new PacketRateLimitControl();
+        control.SetLimit((byte)TerrariaMessageId.PlayerControls, 1);
+        var options = TerrariaConnectionPolicyOptions.Default with { PacketRateLimits = control };
+        var state = new TerrariaConnectionPolicyState(options);
+        var inner = new CountingSink();
+        var sink = new TerrariaConnectionPolicySink(inner, state);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Decode(CurrentHelloPacket())));
+        TerrariaFrame frame = Decode([3, 0, (byte)TerrariaMessageId.PlayerControls]);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(frame));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(frame));
+        Assert.Equal(2, inner.Count);
+        Assert.Equal(TerrariaConnectionStopReason.None, state.StopReason);
+        control.SetLimit((byte)TerrariaMessageId.PlayerControls, null);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(frame));
+        Assert.Equal(3, inner.Count);
+    }
+
+    [Fact]
+    public void Configurable_policy_cannot_weaken_existing_message_abuse_ceiling()
+    {
+        var control = new PacketRateLimitControl();
+        control.SetLimit((byte)TerrariaMessageId.RequestWorldData, int.MaxValue);
+        var options = TerrariaConnectionPolicyOptions.Default with { PacketRateLimits = control };
+        var state = new TerrariaConnectionPolicyState(options);
+        var sink = new TerrariaConnectionPolicySink(new CountingSink(), state);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(Decode(CurrentHelloPacket())));
+        TerrariaFrame frame = Decode([3, 0, (byte)TerrariaMessageId.RequestWorldData]);
+        for (int i = 0; i < 16; i++)
+            Assert.Equal(TerrariaFrameSinkResult.Continue, sink.OnFrame(frame));
+        Assert.Equal(TerrariaFrameSinkResult.Stop, sink.OnFrame(frame));
+        Assert.Equal(TerrariaConnectionStopReason.RateLimited, state.StopReason);
+    }
+
+    [Fact]
     public void Compact_pickup_burst_fits_existing_policy_but_still_hits_aggregate_flood_ceiling()
     {
         var options = TerrariaConnectionPolicyOptions.Default;

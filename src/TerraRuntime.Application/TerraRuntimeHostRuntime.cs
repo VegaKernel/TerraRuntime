@@ -9,6 +9,7 @@ internal sealed class TerraRuntimeHostRuntime : IRuntime
     public TerraRuntimeHostRuntime(
         RuntimeInfo info,
         IInterestManagementControl interestManagement,
+        IPacketRateLimitControl packetRateLimits,
         IPlayerStateSnapshotReader playerStates,
         IPlayerAdministrativeOperations playerAdministration,
         RuntimeNpcShopCatalogRegistry npcShops,
@@ -16,6 +17,7 @@ internal sealed class TerraRuntimeHostRuntime : IRuntime
     {
         Info = info ?? throw new ArgumentNullException(nameof(info));
         InterestManagement = interestManagement ?? throw new ArgumentNullException(nameof(interestManagement));
+        PacketRateLimits = packetRateLimits ?? throw new ArgumentNullException(nameof(packetRateLimits));
         PlayerStates = playerStates ?? throw new ArgumentNullException(nameof(playerStates));
         if (playerStates is not RuntimePlayerStateSnapshotReader runtimePlayerStates)
         {
@@ -34,6 +36,7 @@ internal sealed class TerraRuntimeHostRuntime : IRuntime
 
     public RuntimeInfo Info { get; }
     public IInterestManagementControl InterestManagement { get; }
+    public IPacketRateLimitControl PacketRateLimits { get; }
     public IPlayerStateSnapshotReader PlayerStates { get; }
     public IPlayerAdministrativeOperations PlayerAdministration { get; }
     public INpcActorOperations NpcActors { get; }

@@ -361,7 +361,10 @@ public sealed class TrustedHostModuleFaultContainmentTests
         IPlayerStateSnapshotReader PlayerStates,
         INpcActorOperations NpcActors,
         INpcShopOperations NpcShops,
-        IServerPlayerOperations ServerPlayers) : IRuntime;
+        IServerPlayerOperations ServerPlayers) : IRuntime
+    {
+        public IPacketRateLimitControl PacketRateLimits { get; } = new TerraRuntime.Network.PacketRateLimitControl();
+    }
 
     private sealed class InterestControl : IInterestManagementControl
     {

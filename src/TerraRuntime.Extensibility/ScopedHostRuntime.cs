@@ -20,6 +20,7 @@ internal sealed class ScopedHostRuntime : IRuntime
 
     public RuntimeInfo Info => source.Info;
     public IInterestManagementControl InterestManagement => source.InterestManagement;
+    public IPacketRateLimitControl PacketRateLimits => source.PacketRateLimits;
     public IPlayerStateSnapshotReader PlayerStates => source.PlayerStates;
     public IPlayerAdministrativeOperations PlayerAdministration => source.PlayerAdministration;
     public INpcActorOperations NpcActors => npcActors;

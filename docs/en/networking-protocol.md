@@ -287,3 +287,23 @@ A networking/protocol change is incomplete unless, where relevant:
 - diagrams use Mermaid rather than pseudographics;
 - dimensional quantities/formulas use LaTeX with units;
 - this page and `docs/ru/networking-protocol.md` change together.
+
+## Shared inbound packet limits
+
+Vega and trusted host modules configure `IRuntime.PacketRateLimits` (`IPacketRateLimitControl`). One configuration table applies to **every existing and future connection** accepted by this server process; each connection keeps its own counters for each packet ID. These are inbound limits (player to server), not outbound liquid transport settings. There are no per-player overrides.
+
+```csharp
+runtime.PacketRateLimits.SetLimit(12, 50); // each connection: packet 12, 50 frames/s
+int? configured = runtime.PacketRateLimits.GetLimit(12);
+runtime.PacketRateLimits.SetLimit(12, null); // remove this configurable limit
+```
+
+`SetLimit` accepts any byte packet ID and a positive number of frames per second; zero and negative values throw `ArgumentOutOfRangeException`. `GetLimit` returns `null` when no configurable limit is set. Initially all configurable limits are absent. The existing aggregate and per-message `HardAbuse` guards remain independently active: setting a larger value or removing a configured limit does not disable those guards.
+
+Accounting uses fixed $1\,\mathrm{s}$ windows local to each connection. A limit of $50\,\text{frames/s}$ gives each session its own allowance of $50\,\text{frames/window}$ for that ID. Different IDs have separate counters. This is a fixed-window ceiling, not a sliding-window or smoothly paced rate: bursts on either side of a window boundary can be adjacent.
+
+Updates are thread-safe and are read by existing connections on subsequent frames. Changing or removing/reinstalling a limit never resets the current window's usage; unrestricted frames are counted too. New connections start fresh counters. In-process world transfers keep the socket's counters and the same server-wide policy. Configuration owns exactly 256 entries and each connection owns exactly 256 counters; no player-keyed configuration dictionary grows with churn.
+
+The shared check runs at `TerrariaConnectionPolicySink` before gameplay dispatch and preserves the existing rejection behavior. Above-limit frames increment rate-rejection telemetry; normally the connection stops with `RateLimited`. Excess `PlayerControls` frames retain the existing drop-without-disconnect behavior, while the aggregate abuse ceiling remains fatal. A live reduction below current usage takes effect on the next frame of that ID. These operations change policy only, never authoritative simulation state.
+
+Vega owns plugin permissions, configuration UI and persistence/reapplication after restart. The runtime API is available to the trusted host; this change does not create a Vega plugin or a terminal settings page. Outbound packet queues, packet-48 coalescing and liquid simulation budgets are unchanged.

@@ -8,6 +8,7 @@ public sealed class TerrariaConnectionPolicySink : ITerrariaFrameSink
     private readonly TerrariaConnectionPolicyState _state;
     private readonly TerrariaConnectionRateAccountant _rateAccountant;
     private readonly TerrariaMessageRateAccountant _messageRateAccountant;
+    private readonly SessionPacketRateBudget? _configuredPacketBudget;
 
     public TerrariaConnectionPolicySink(
         ITerrariaFrameSink inner,
@@ -23,6 +24,9 @@ public sealed class TerrariaConnectionPolicySink : ITerrariaFrameSink
         _messageRateAccountant = new TerrariaMessageRateAccountant(
             state.Options.MessageRateLimits,
             state.TimeProvider);
+        _configuredPacketBudget = state.Options.PacketRateLimits is { } control
+            ? new SessionPacketRateBudget(control, state.TimeProvider)
+            : null;
     }
 
     public TerrariaConnectionPolicySink(
@@ -39,6 +43,9 @@ public sealed class TerrariaConnectionPolicySink : ITerrariaFrameSink
         _messageRateAccountant = new TerrariaMessageRateAccountant(
             state.Options.MessageRateLimits,
             state.TimeProvider);
+        _configuredPacketBudget = state.Options.PacketRateLimits is { } control
+            ? new SessionPacketRateBudget(control, state.TimeProvider)
+            : null;
     }
 
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)
@@ -56,7 +63,11 @@ public sealed class TerrariaConnectionPolicySink : ITerrariaFrameSink
             return TerrariaFrameSinkResult.Stop;
         }
 
-        if (_messageRateAccountant.Observe(frame.MessageId, frame.PacketLength) != ConnectionRateDecision.Allowed)
+        // Evaluate both counters on every admitted aggregate frame. Changing configuration cannot
+        // reset usage, and configurable limits never weaken the existing hard-abuse guardrails.
+        bool configuredAllowed = _configuredPacketBudget?.TryAcquire(frame.MessageId, out _) ?? true;
+        if (_messageRateAccountant.Observe(frame.MessageId, frame.PacketLength) != ConnectionRateDecision.Allowed ||
+            !configuredAllowed)
         {
             _rateAccountant.RecordSecondaryRateRejection();
             TerrariaFrameRejectionTelemetry.Record(TerrariaFrameRejectionCategory.RateLimited);

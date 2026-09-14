@@ -173,6 +173,7 @@ internal sealed class ServerProcessSession : IDisposable
                 PersistenceMode = primaryRuntime.PersistenceMode
             },
             interestManagement,
+            connections.PacketRateLimits,
             primaryRuntime.PlayerStateSnapshots,
             new RuntimePlayerRouteAdministrativeOperations(connections.Directory),
             primaryRuntime.State.NpcShops,

@@ -1,3 +1,5 @@
+using TerraRuntime.Contracts.Runtime;
+
 namespace TerraRuntime.Network;
 
 public readonly record struct TerrariaConnectionPolicyOptions
@@ -92,4 +94,7 @@ public readonly record struct TerrariaConnectionPolicyOptions
     public ConnectionMessageRateLimits MessageRateLimits { get; }
 
     public TimeSpan JoinTimeout { get; }
+
+    /// <summary>Shared live inbound policy; each connection owns independent counters.</summary>
+    public IPacketRateLimitControl? PacketRateLimits { get; init; }
 }
