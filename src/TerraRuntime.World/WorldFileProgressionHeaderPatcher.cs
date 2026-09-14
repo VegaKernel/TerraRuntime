@@ -30,6 +30,10 @@ public static class WorldFileProgressionHeaderPatcher
         (1UL << (int)VanillaWorldProgressionId.AnyMechanicalBoss) |
         (1UL << (int)VanillaWorldProgressionId.Plantera) |
         (1UL << (int)VanillaWorldProgressionId.Golem) |
+        (1UL << (int)VanillaWorldProgressionId.DukeFishron) |
+        (1UL << (int)VanillaWorldProgressionId.LunaticCultist) |
+        (1UL << (int)VanillaWorldProgressionId.MoonLord) |
+        (1UL << (int)VanillaWorldProgressionId.EmpressOfLight) |
         (1UL << (int)VanillaWorldProgressionId.Hardmode) |
         (1UL << (int)VanillaWorldProgressionId.QueenSlime) |
         (1UL << (int)VanillaWorldProgressionId.Deerclops);
@@ -139,6 +143,10 @@ public static class WorldFileProgressionHeaderPatcher
         TownStateOffsets1458 townState = default;
         bool needsTownState = mutations.IsCompleted(VanillaWorldProgressionId.QueenSlime) ||
             mutations.IsCompleted(VanillaWorldProgressionId.Deerclops) ||
+            mutations.IsCompleted(VanillaWorldProgressionId.DukeFishron) ||
+            mutations.IsCompleted(VanillaWorldProgressionId.LunaticCultist) ||
+            mutations.IsCompleted(VanillaWorldProgressionId.MoonLord) ||
+            mutations.IsCompleted(VanillaWorldProgressionId.EmpressOfLight) ||
             mutations.UnlockSlimeBlueSpawn ||
             mutations.UnlockTruffleSpawn ||
             mutations.UnlockSlimeYellowSpawn ||
@@ -175,6 +183,14 @@ public static class WorldFileProgressionHeaderPatcher
             patchedHeader[townState.QueenSlimeOffset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.Deerclops) && !townState.PersistedDeerclops)
             patchedHeader[townState.DeerclopsOffset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.DukeFishron))
+            patchedHeader[townState.DukeFishronOffset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.LunaticCultist))
+            patchedHeader[townState.LunaticCultistOffset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.MoonLord))
+            patchedHeader[townState.MoonLordOffset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.EmpressOfLight))
+            patchedHeader[townState.EmpressOfLightOffset] = 1;
         if (mutations.UnlockSlimeBlueSpawn && !townState.PersistedSlimeBlue)
             patchedHeader[townState.SlimeBlueOffset] = 1;
         if (mutations.UnlockTruffleSpawn && !townState.PersistedTruffle)
@@ -194,6 +210,10 @@ public static class WorldFileProgressionHeaderPatcher
     }
 
     private readonly record struct TownStateOffsets1458(
+        int DukeFishronOffset,
+        int LunaticCultistOffset,
+        int MoonLordOffset,
+        int EmpressOfLightOffset,
         int SavedGoblinOffset,
         bool PersistedSavedGoblin,
         int SavedWizardOffset,
@@ -283,8 +303,14 @@ public static class WorldFileProgressionHeaderPatcher
             !reader.TrySkip(checked(killCount * sizeof(int))) ||
             !reader.TryReadInt16(out short claimableCount) || claimableCount < 0 ||
             !reader.TrySkip(checked(claimableCount * sizeof(ushort))) ||
-            !reader.TryReadBool(out _) ||
-            !reader.TrySkipBools(18) ||
+            !reader.TryReadBool(out _))
+        {
+            return false;
+        }
+
+        // SaveWorldFlags: Fishron, Martians, Cultist, Moon Lord, then seasonal/lunar flags.
+        int lateBossFlagsOffset = reader.Offset;
+        if (!reader.TrySkipBools(18) ||
             !reader.TrySkipBools(2) ||
             !reader.TryReadInt32(out _) ||
             !reader.TryReadInt32(out int partyCount) || partyCount < 0 || partyCount > 255 ||
@@ -313,6 +339,8 @@ public static class WorldFileProgressionHeaderPatcher
             return false;
         }
 
+        // The fourth flag after the three purchased town pets is downedEmpressOfLight.
+        int empressOfLightOffset = reader.Offset - 1;
         int queenSlimeOffset = reader.Offset;
         if (!reader.TryReadBool(out bool queenSlime)) return false;
         int deerclopsOffset = reader.Offset;
@@ -328,6 +356,7 @@ public static class WorldFileProgressionHeaderPatcher
         if (!reader.TryReadBool(out bool slimeYellow)) return false;
 
         state = new TownStateOffsets1458(
+            lateBossFlagsOffset, lateBossFlagsOffset + 2, lateBossFlagsOffset + 3, empressOfLightOffset,
             savedGoblinOffset, savedGoblin,
             savedWizardOffset, savedWizard,
             savedMechanicOffset, savedMechanic,

@@ -24,7 +24,9 @@
 
 ## Инвариант post-load preparation
 
-Layout `2` означает не только бинарный layout записей. Он гарантирует, что cached tile image и liquid scheduler уже прошли canonical post-load liquid sequence TerrariaServer 1.4.5.8: `QuickWater -> WaterCheck -> quickSettle drain -> WaterCheck`. `RuntimeWorldSnapshotCache.TryWriteAtomic` отказывается записывать неподготовленный `WorldTileStore`, поэтому ни один production caller не может выдать raw canonical state за layout-2 image. Prepared-marker является runtime-only; application code не может выставлять его вручную, а cache decoder восстанавливает его только после успешной проверки schema/layout, payload hashes, world format и dimensions.
+Layout `3` сохраняет четыре флага `TowerActive*` и `LunarApocalypseIsUp` в подготовленных метаданных. Образы layout `2` не содержат этих полей, поэтому отклоняются и пересоздаются из канонического `.wld`. Все 32 сочетания проверяются на заголовках, записанных неизменённым официальным сервером 1.4.5.8, и регрессиях подготовленного кеша. Это сохраняет загруженные метаданные события; симуляция боя со столпами и изменение события во время игры остаются отдельной работой.
+
+Layout `3` означает не только бинарный layout записей. Он гарантирует, что cached tile image и liquid scheduler уже прошли canonical post-load liquid sequence TerrariaServer 1.4.5.8: `QuickWater -> WaterCheck -> quickSettle drain -> WaterCheck`. `RuntimeWorldSnapshotCache.TryWriteAtomic` отказывается записывать неподготовленный `WorldTileStore`, поэтому ни один production caller не может выдать raw canonical state за layout-3 image. Prepared-marker является runtime-only; application code не может выставлять его вручную, а cache decoder восстанавливает его только после успешной проверки schema/layout, payload hashes, world format и dimensions.
 
 Пересборка после canonical save следует тому же правилу. `RuntimeWorldSnapshotRebuilder` валидирует новый `.wld`, повторяет post-load liquid preparation и только после этого публикует derived cache. Поэтому startup cache hit и post-save rebuild имеют одинаковую семантику.
 
@@ -64,4 +66,4 @@ Schema mismatch, layout mismatch, ошибка/несовпадение source f
 
 ## Проверка
 
-Регрессионные тесты доказывают приём совпадающего canonical source, отказ после изменения `.wld` той же длины с восстановленным старым timestamp, машиночитаемые schema/layout/world-format mismatches, обнаружение повреждения tile shard после успешной проверки fingerprint canonical source, отказ layout-2 writer для неподготовленного мира и восстановление post-load-prepared invariant после успешного cache decode.
+Регрессионные тесты доказывают приём совпадающего canonical source, отказ после изменения `.wld` той же длины с восстановленным старым timestamp, машиночитаемые schema/layout/world-format mismatches, обнаружение повреждения tile shard после успешной проверки fingerprint canonical source, отказ layout-3 writer для неподготовленного мира и восстановление post-load-prepared invariant после успешного cache decode.

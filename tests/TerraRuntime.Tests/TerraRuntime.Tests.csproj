@@ -32,4 +32,8 @@
     <ProjectReference Include="../../src/TerraRuntime.WorldGeneration/TerraRuntime.WorldGeneration.csproj" />
     <ProjectReference Include="../TerraRuntime.HostModuleFixture/TerraRuntime.HostModuleFixture.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/lunar-event-headers-1458.bin.gz" LogicalName="LunarEventHeaders1458" />
+    <EmbeddedResource Include="Fixtures/late-boss-headers-1458.bin.gz" LogicalName="LateBossHeaders1458" />
+  </ItemGroup>
 </Project>

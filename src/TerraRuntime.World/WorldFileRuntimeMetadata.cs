@@ -117,6 +117,12 @@ public sealed class WorldFileRuntimeMetadata
     public bool DownedTowerVortex { get; init; }
     public bool DownedTowerNebula { get; init; }
     public bool DownedTowerStardust { get; init; }
+    public bool TowerActiveSolar { get; init; }
+    public bool TowerActiveVortex { get; init; }
+    public bool TowerActiveNebula { get; init; }
+    public bool TowerActiveStardust { get; init; }
+    public bool LunarApocalypseIsUp { get; init; }
+
 
     public bool PartyManual { get; init; }
     public bool PartyGenuine { get; init; }

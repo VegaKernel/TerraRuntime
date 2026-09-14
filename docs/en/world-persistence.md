@@ -39,11 +39,11 @@ If a source changes while a derived snapshot is being validated, the derived sna
 
 ## 4. Runtime world snapshot
 
-A valid warm startup can run from `world.runtime-world` without reading the source `.wld` contents. The runtime still reads cheap filesystem metadata for the source so an externally newer canonical checkpoint invalidates the snapshot.
+A warm startup restores prepared state from `world.runtime-world` after verifying the current `.wld` content fingerprint. File metadata alone cannot authorize a cache hit.
 
 ```mermaid
 flowchart LR
-    Meta["Source .wld metadata"] --> Validate["Validate source stamp + snapshot integrity"]
+    Meta["Source .wld fingerprint"] --> Validate["Validate source identity + snapshot integrity"]
     Snapshot[".runtime-world"] --> Validate
     Validate -->|valid| Warm["Restore prepared runtime state"]
     Validate -->|stale / corrupt / incompatible| Cold["Fallback to canonical .wld"]
@@ -52,7 +52,7 @@ flowchart LR
 
 The current snapshot is self-contained for startup and stores an embedded validated canonical `.wld` checkpoint, normalized runtime tiles split into integrity-checked shards, dimensions/version metadata, tile liquid contents, pending liquid scheduler state, source file length/`LastWriteTimeUtc`, and integrity metadata for embedded payloads.
 
-Runtime layout `2` additionally means the tile image and liquid scheduler have already passed the supported TerrariaServer 1.4.5.8 post-load liquid preparation. The writer refuses raw canonical state; canonical fallback and post-save rebuild both run that initializer before cache publication. A warm-cache decode restores the prepared marker only after full cache validation.
+Runtime layout `3` additionally means the tile image and liquid scheduler have already passed the supported TerrariaServer 1.4.5.8 post-load liquid preparation. The writer refuses raw canonical state; canonical fallback and post-save rebuild both run that initializer before cache publication. A warm-cache decode restores the prepared marker only after full cache validation.
 
 The snapshot is not a migration format. An incompatible header/layout is a normal cache miss and triggers canonical `.wld` fallback.
 
@@ -68,7 +68,7 @@ The remaining on-disk sections include the embedded canonical checkpoint, shard-
 
 A cheap source stamp currently includes source `.wld` byte length and `LastWriteTimeUtc`.
 
-A runtime snapshot is accepted only when its source stamp remains compatible and all internal integrity/layout checks pass. The original `.wld` SHA-256 is intentionally not recomputed on every warm start because that would force a complete source-file read and defeat the fast-start design. Integrity hashes protect the data embedded inside `.runtime-world`.
+A runtime snapshot is accepted only when its source fingerprint matches and all internal integrity/layout checks pass. Warm startup reads the canonical `.wld` to compute its SHA-256-derived fingerprint, without repeating canonical parsing and preparation. Integrity hashes separately protect the embedded cache data.
 
 The source is re-statted after snapshot loading to catch concurrent external replacement during validation.
 
@@ -116,6 +116,8 @@ The default synchronization budget is `$4\,\text{sections/tick}$`.
 The save state distinguishes initial shadow bootstrap, dirty sections awaiting synchronization, a save request waiting for shadow consistency, and a detached snapshot queued to the background writer. Failed section snapshots are requeued. Readiness is based on actual pending dirty work.
 
 ## 11. What the live save currently rewrites
+
+Late-boss progression now writes the official `downedFishron`, `downedAncientCultist`, `downedEmpressOfLight` and `downedMoonlord` header flags. Previously these runtime milestones caused an unsupported-mutation save rejection. Updates are monotonic and preserve every unrelated byte, including the five lunar-event flags. All 256 baseline/mutation combinations match independently emitted official 1.4.5.8 headers; repeated saves are idempotent and truncated headers are rejected. The fixture writer fixes only signed 64-bit timestamps for reproducible comparisons. Reverting support makes 241 of 257 regressions fail.
 
 The authoritative production save path explicitly supports runtime-owned tile state, chest state, sign state and world-clock fields handled by the header patcher.
 

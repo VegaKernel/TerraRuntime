@@ -37,4 +37,4 @@ A rebuild may report source unavailable, source changed during rebuild, invalid 
 
 ## Verification
 
-Tests cover the post-commit callback boundary, stable canonical-to-runtime-image rebuild, refusal to overwrite an existing cache from an invalid canonical file, the prepared-only layout-2 writer boundary, and the complete final-save path where shutdown completion leaves a loadable post-load-prepared runtime image matching the newly committed canonical checkpoint.
+Tests cover the post-commit callback boundary, stable canonical-to-runtime-image rebuild, refusal to overwrite an existing cache from an invalid canonical file, the prepared-only layout-3 writer boundary, and the complete final-save path where shutdown completion leaves a loadable post-load-prepared runtime image matching the newly committed canonical checkpoint.

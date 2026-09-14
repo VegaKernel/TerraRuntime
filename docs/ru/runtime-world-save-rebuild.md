@@ -37,4 +37,4 @@ Worker читает canonical только после публикации. Он
 
 ## Проверка
 
-Тесты покрывают post-commit границу callback, стабильную пересборку canonical в runtime-image, запрет замены существующего кеша из невалидного canonical-файла, prepared-only boundary layout-2 writer и полный final-save сценарий, где после shutdown остаётся загружаемый post-load-prepared runtime image, соответствующий только что сохранённому canonical checkpoint.
+Тесты покрывают post-commit границу callback, стабильную пересборку canonical в runtime-image, запрет замены существующего кеша из невалидного canonical-файла, prepared-only boundary layout-3 writer и полный final-save сценарий, где после shutdown остаётся загружаемый post-load-prepared runtime image, соответствующий только что сохранённому canonical checkpoint.

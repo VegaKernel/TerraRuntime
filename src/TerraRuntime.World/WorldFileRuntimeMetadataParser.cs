@@ -267,11 +267,11 @@ public static class WorldFileRuntimeMetadataParser
             !ReadBool(ref reader, out bool downedTowerVortex) ||
             !ReadBool(ref reader, out bool downedTowerNebula) ||
             !ReadBool(ref reader, out bool downedTowerStardust) ||
-            !ReadBool(ref reader, out _) ||
-            !ReadBool(ref reader, out _) ||
-            !ReadBool(ref reader, out _) ||
-            !ReadBool(ref reader, out _) ||
-            !ReadBool(ref reader, out _) ||
+            !ReadBool(ref reader, out bool towerActiveSolar) ||
+            !ReadBool(ref reader, out bool towerActiveVortex) ||
+            !ReadBool(ref reader, out bool towerActiveNebula) ||
+            !ReadBool(ref reader, out bool towerActiveStardust) ||
+            !ReadBool(ref reader, out bool lunarApocalypseIsUp) ||
             !ReadBool(ref reader, out bool partyManual) ||
             !ReadBool(ref reader, out bool partyGenuine) ||
             !reader.TryReadInt32(out _) ||
@@ -492,6 +492,12 @@ public static class WorldFileRuntimeMetadataParser
             DownedTowerVortex = downedTowerVortex,
             DownedTowerNebula = downedTowerNebula,
             DownedTowerStardust = downedTowerStardust,
+            TowerActiveSolar = towerActiveSolar,
+            TowerActiveVortex = towerActiveVortex,
+            TowerActiveNebula = towerActiveNebula,
+            TowerActiveStardust = towerActiveStardust,
+            LunarApocalypseIsUp = lunarApocalypseIsUp,
+
             PartyManual = partyManual,
             PartyGenuine = partyGenuine,
             SandstormHappening = sandstormHappening,

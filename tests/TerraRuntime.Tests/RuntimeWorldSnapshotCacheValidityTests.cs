@@ -7,13 +7,13 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimeWorldSnapshotCacheValidityTests
 {
     [Fact]
-    public void Runtime_cache_layout_revision_tracks_post_load_liquid_preparation()
+    public void Runtime_cache_layout_revision_tracks_lunar_event_metadata()
     {
-        Assert.Equal(2, RuntimeWorldSnapshotCache.CurrentLayoutVersion);
+        Assert.Equal(3, RuntimeWorldSnapshotCache.CurrentLayoutVersion);
     }
 
     [Fact]
-    public void Layout_v2_writer_rejects_raw_canonical_world_without_post_load_preparation()
+    public void Current_layout_writer_rejects_raw_canonical_world_without_post_load_preparation()
     {
         byte[] sourceFile = LoaderFixture<byte[]>("CreateCompleteCurrentWorld");
         WorldFileLoadLimits limits = LoaderFixture<WorldFileLoadLimits>("CreateLimits");
@@ -93,16 +93,18 @@ public sealed class RuntimeWorldSnapshotCacheValidityTests
     }
 
     [Theory]
-    [InlineData(48, RuntimeWorldSnapshotLoadResult.SchemaVersionMismatch)]
-    [InlineData(52, RuntimeWorldSnapshotLoadResult.LayoutVersionMismatch)]
+    [InlineData(48, RuntimeWorldSnapshotLoadResult.SchemaVersionMismatch, int.MaxValue)]
+    [InlineData(52, RuntimeWorldSnapshotLoadResult.LayoutVersionMismatch, int.MaxValue)]
+    [InlineData(52, RuntimeWorldSnapshotLoadResult.LayoutVersionMismatch, 2)]
     public async Task Runtime_contract_version_mismatch_is_machine_readable(
         int offset,
-        RuntimeWorldSnapshotLoadResult expected)
+        RuntimeWorldSnapshotLoadResult expected,
+        int version)
     {
         CacheFixture fixture = await CacheFixture.CreateAsync(TestContext.Current.CancellationToken);
         try
         {
-            PatchInt32(fixture.CachePath, offset, int.MaxValue);
+            PatchInt32(fixture.CachePath, offset, version);
 
             RuntimeWorldSnapshotLoadDiagnostic load = RuntimeWorldSnapshotCache.TryLoadValidatedSource(
                 fixture.CachePath,

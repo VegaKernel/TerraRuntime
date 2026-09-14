@@ -1,5 +1,9 @@
 # Production graph
 
+## Late-boss persistence and lunar metadata - 2026-09-14
+
+Existing boss lifecycle journal -> WorldFileProgressionHeaderPatcher now accepts and monotonically writes DukeFishron/LunaticCultist/EmpressOfLight/MoonLord, using the existing bounded variable-header scanner. Previously these admitted wins made checkpoints unsupported. WorldFileRuntimeMetadataParser retains five lunar-event booleans; RuntimeWorldPreparedStateCodec appends them without reordering old indices. Cache layout3 forces old2 rebuild. No new production dependency, mutable authority or event transition introduced.
+
 ## Moon Lord core pursuit — 2026-09-14
 
 The existing MoonLord strategy now refreshes the shared authoritative target selector for protected/exposed core ticks, preserving faceTargetfalse direction state. Its movement rule uses source relative velocity, reversal acceleration and dead zone; other boss families' LateBossMath.FlyToward remains unchanged. Retained official AI goldens verify the real targeting stepper, not a stand-alone duplicate of its formula. No new authority or mutable store introduced.

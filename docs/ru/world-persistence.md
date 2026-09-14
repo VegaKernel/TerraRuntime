@@ -39,11 +39,11 @@ World loading считает external file replacement реальной возм
 
 ## 4. Runtime world snapshot
 
-Valid warm startup может работать из `world.runtime-world`, не читая contents source `.wld`. Runtime всё равно читает cheap filesystem metadata, чтобы externally newer canonical checkpoint invalidated snapshot.
+Тёплый запуск восстанавливает подготовленное состояние из `world.runtime-world` после проверки fingerprint содержимого текущего `.wld`. Одних файловых метаданных недостаточно для принятия кеша.
 
 ```mermaid
 flowchart LR
-    Meta["Source .wld metadata"] --> Validate["Validate source stamp + snapshot integrity"]
+    Meta["Source .wld fingerprint"] --> Validate["Validate source identity + snapshot integrity"]
     Snapshot[".runtime-world"] --> Validate
     Validate -->|valid| Warm["Restore prepared runtime state"]
     Validate -->|stale / corrupt / incompatible| Cold["Fallback to canonical .wld"]
@@ -52,7 +52,7 @@ flowchart LR
 
 Current snapshot self-contained для startup и хранит embedded validated canonical `.wld`, normalized runtime tiles в integrity-checked shards, dimensions/version metadata, tile liquids, pending liquid scheduler state, source file length/`LastWriteTimeUtc` и integrity metadata embedded payloads.
 
-Runtime layout `2` дополнительно означает, что tile image и liquid scheduler уже прошли поддержанный post-load liquid preparation TerrariaServer 1.4.5.8. Writer отказывается от raw canonical state; canonical fallback и post-save rebuild запускают initializer до публикации cache. Warm-cache decoder восстанавливает prepared-marker только после полной проверки кеша.
+Runtime layout `3` дополнительно означает, что tile image и liquid scheduler уже прошли поддержанный post-load liquid preparation TerrariaServer 1.4.5.8. Writer отказывается от raw canonical state; canonical fallback и post-save rebuild запускают initializer до публикации cache. Warm-cache decoder восстанавливает prepared-marker только после полной проверки кеша.
 
 Snapshot не migration format. Incompatible header/layout является normal cache miss и ведёт к canonical `.wld` fallback.
 
@@ -68,7 +68,7 @@ Shard reads используют bounded positional `RandomAccess` I/O. Conserva
 
 Cheap source stamp включает source `.wld` byte length и `LastWriteTimeUtc`.
 
-Runtime snapshot принимается только при compatible source stamp и успешных internal integrity/layout checks. SHA-256 original `.wld` намеренно не пересчитывается при каждом warm start, иначе потребуется complete source-file read и fast-start потеряет смысл. Integrity hashes защищают embedded data `.runtime-world`.
+Runtime snapshot принимается только при совпадении fingerprint источника и успешных проверках целостности и layout. Тёплый запуск читает канонический `.wld` для вычисления fingerprint на основе SHA-256, но не повторяет его разбор и подготовку. Отдельные хеши целостности защищают данные внутри кеша.
 
 После snapshot loading source re-stat'ится для detection concurrent external replacement.
 
@@ -116,6 +116,8 @@ Default synchronization budget: `$4\,\text{sections/tick}$`.
 Save state различает initial shadow bootstrap, dirty sections waiting synchronization, save request waiting shadow consistency и detached snapshot queued background writer. Failed section snapshots requeue'ятся; readiness основана на actual pending dirty work.
 
 ## 11. Что live save сейчас переписывает
+
+Прогресс поздних боссов теперь записывает официальные флаги заголовка `downedFishron`, `downedAncientCultist`, `downedEmpressOfLight` и `downedMoonlord`. Раньше эти отметки в памяти приводили к отказу сохранения как неподдержанным изменениям. Обновления монотонны и сохраняют каждый посторонний байт, включая пять флагов лунного события. Все 256 сочетаний исходного прогресса и изменений совпадают с независимо записанными заголовками официального сервера 1.4.5.8; повторное сохранение идемпотентно, усечённые заголовки отклоняются. Для воспроизводимого сравнения fixture writer фиксирует только знаковые 64-битные временные метки. Возврат старого поведения ломает 241 из 257 регрессий.
 
 Authoritative production save path явно поддерживает runtime-owned tile state, chest state, sign state и world-clock fields header patcher.
 

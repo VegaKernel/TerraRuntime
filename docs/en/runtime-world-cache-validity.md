@@ -24,7 +24,9 @@ Older images whose previously reserved header bytes contain no current schema/la
 
 ## Post-load preparation invariant
 
-Layout `2` means more than a binary record layout. It guarantees that the cached tile image and liquid scheduler have already passed the TerrariaServer 1.4.5.8 canonical post-load liquid sequence `QuickWater -> WaterCheck -> quickSettle drain -> WaterCheck`. `RuntimeWorldSnapshotCache.TryWriteAtomic` refuses an unprepared `WorldTileStore`, so no production caller can mint a layout-2 image from raw canonical state. The prepared marker is runtime-only and cannot be forged by application code; cache decode restores it only after schema/layout, payload hashes, world format and dimensions have all validated.
+Layout `3` retains the four `TowerActive*` flags and `LunarApocalypseIsUp` in prepared metadata. Layout `2` images lack these fields and are rejected and rebuilt from canonical `.wld`. All 32 flag combinations are covered by headers emitted by the unmodified official 1.4.5.8 server and prepared-cache regressions. This preserves loaded event metadata; pillar encounter simulation and runtime event transitions remain separate work.
+
+Layout `3` means more than a binary record layout. It guarantees that the cached tile image and liquid scheduler have already passed the TerrariaServer 1.4.5.8 canonical post-load liquid sequence `QuickWater -> WaterCheck -> quickSettle drain -> WaterCheck`. `RuntimeWorldSnapshotCache.TryWriteAtomic` refuses an unprepared `WorldTileStore`, so no production caller can mint a layout-3 image from raw canonical state. The prepared marker is runtime-only and cannot be forged by application code; cache decode restores it only after schema/layout, payload hashes, world format and dimensions have all validated.
 
 A canonical save rebuild follows the same rule. `RuntimeWorldSnapshotRebuilder` validates the new `.wld`, replays post-load liquid preparation, and only then publishes the derived cache. This keeps startup cache hits and post-save rebuilds semantically equivalent.
 
@@ -64,4 +66,4 @@ Schema mismatch, layout mismatch, source fingerprint failure/mismatch, Terraria 
 
 ## Verification
 
-Regression tests prove that a matching canonical source is accepted, a same-length `.wld` mutation with its original timestamp restored is rejected, schema/layout/world-format mismatches remain machine-readable, tile-shard corruption is detected after the canonical fingerprint itself has passed, an unprepared world is refused by the layout-2 writer, and a successfully decoded cache restores the post-load-prepared invariant.
+Regression tests prove that a matching canonical source is accepted, a same-length `.wld` mutation with its original timestamp restored is rejected, schema/layout/world-format mismatches remain machine-readable, tile-shard corruption is detected after the canonical fingerprint itself has passed, an unprepared world is refused by the layout-3 writer, and a successfully decoded cache restores the post-load-prepared invariant.

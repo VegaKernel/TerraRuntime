@@ -238,7 +238,8 @@ internal static class RuntimeWorldPreparedStateCodec
             m.DownedChristmasIceQueen, m.DownedChristmasSantank, m.DownedChristmasTree,
             m.DownedTowerSolar, m.DownedTowerVortex, m.DownedTowerNebula, m.DownedTowerStardust,
             m.PartyManual, m.PartyGenuine, m.SandstormHappening,
-            m.SavedAngler, m.SavedStylist, m.SavedTaxCollector, m.SavedGolfer, m.SavedBartender);
+            m.SavedAngler, m.SavedStylist, m.SavedTaxCollector, m.SavedGolfer, m.SavedBartender,
+            m.TowerActiveSolar, m.TowerActiveVortex, m.TowerActiveNebula, m.TowerActiveStardust, m.LunarApocalypseIsUp);
         writer.Write(m.SandstormIntendedSeverity);
         WriteBools(writer, m.DownedDd2InvasionT1, m.DownedDd2InvasionT2, m.DownedDd2InvasionT3,
             m.CombatBookWasUsed, m.LanternNightGenuine, m.LanternNightManual);
@@ -315,7 +316,7 @@ internal static class RuntimeWorldPreparedStateCodec
         byte cloudCount = reader.ReadByte();
         float windSpeed = reader.ReadSingle();
 
-        bool[] eventFlags = ReadBools(reader, 22);
+        bool[] eventFlags = ReadBools(reader, 27);
         float sandstormIntendedSeverity = reader.ReadSingle();
         bool[] dd2AndLantern = ReadBools(reader, 6);
         byte[] treeTopVariations = ReadBytes(reader, 13, exact: true);
@@ -429,6 +430,12 @@ internal static class RuntimeWorldPreparedStateCodec
             SavedTaxCollector = eventFlags[19],
             SavedGolfer = eventFlags[20],
             SavedBartender = eventFlags[21],
+            TowerActiveSolar = eventFlags[22],
+            TowerActiveVortex = eventFlags[23],
+            TowerActiveNebula = eventFlags[24],
+            TowerActiveStardust = eventFlags[25],
+            LunarApocalypseIsUp = eventFlags[26],
+
             SandstormIntendedSeverity = sandstormIntendedSeverity,
             DownedDd2InvasionT1 = dd2AndLantern[0],
             DownedDd2InvasionT2 = dd2AndLantern[1],

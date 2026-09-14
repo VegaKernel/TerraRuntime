@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
     paths:
+      - 'src/TerraRuntime.World/**'
+      - 'tests/TerraRuntime.Tests/WorldLunarEventMetadataTests.cs'
+      - 'tests/TerraRuntime.Tests/WorldLateBossProgressionPersistenceTests.cs'
+      - 'tests/TerraRuntime.Tests/Fixtures/*headers-1458.bin.gz'
       - 'src/TerraRuntime.Core/Npcs/**'
       - 'src/TerraRuntime.Application/NpcAuthority.cs'
       - 'src/TerraRuntime.Application/RuntimeNpcNetworkCombatPipeline*.cs'
@@ -36,6 +40,9 @@ jobs:
       - name: Exercise death lifecycle and late boss transitions
         run: >-
           dotnet tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll
+          -class TerraRuntime.Tests.WorldLunarEventMetadataTests
+          -class TerraRuntime.Tests.WorldLateBossProgressionPersistenceTests
+          -class TerraRuntime.Tests.RuntimeWorldSnapshotCacheValidityTests
           -class TerraRuntime.Tests.MoonLordLootPipelineTests
           -class TerraRuntime.Tests.VanillaMoonLordLootTests
           -class TerraRuntime.Tests.MoonLordDeathSequenceTests
@@ -60,3 +67,5 @@ jobs:
           .tools/ilspycmd --disable-updatecheck -r "$(dirname "$assembly")" -t Terraria.GameContent.ItemDropRules.ItemDropDatabase "$assembly" > .cache/terraria-1458/ItemDropDatabase.cs
           .tools/ilspycmd --disable-updatecheck -r "$(dirname "$assembly")" -t Terraria.GameContent.ItemDropRules.FromOptionsWithoutRepeatsDropRule "$assembly" > .cache/terraria-1458/FromOptionsWithoutRepeatsDropRule.cs
           python3 tools/ci/check_moon_lord_loot_source.py --assembly "$assembly" --npc .cache/terraria-1458/NPC.cs --database .cache/terraria-1458/ItemDropDatabase.cs --selection .cache/terraria-1458/FromOptionsWithoutRepeatsDropRule.cs
+          .tools/ilspycmd --disable-updatecheck -r "$(dirname "$assembly")" -t Terraria.IO.WorldFile "$assembly" > .cache/terraria-1458/WorldFile.cs
+          python3 tools/ci/check_moon_lord_world_source.py --assembly "$assembly" --world .cache/terraria-1458/WorldFile.cs
