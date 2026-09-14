@@ -435,6 +435,21 @@ internal sealed class ListenerManager : IDisposable
                 return false;
             }
 
+            // An outstanding native accept can retain the listening handle past Dispose on Unix.
+            // Stop kernel listening before rebinding an overlapping endpoint; otherwise new connections
+            // can still reach the retired listener and reset when its final handle reference is released.
+            try
+            {
+                socket.Shutdown(SocketShutdown.Both);
+            }
+            catch (SocketException)
+            {
+                // Some platforms reject Shutdown on an unconnected listening socket; Dispose still closes it.
+            }
+            catch (ObjectDisposedException)
+            {
+                // The accept loop may already have closed after process shutdown.
+            }
             acceptCancellation.Cancel();
             socket.Dispose();
             if (acceptLoop is null)

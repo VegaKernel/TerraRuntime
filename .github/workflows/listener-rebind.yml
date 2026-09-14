@@ -1,0 +1,29 @@
+name: Listener Rebind Regression
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/TerraRuntime.Application/ListenerManager.cs'
+      - 'tests/TerraRuntime.Tests/ListenerManagerTests.cs'
+      - 'tools/ci/check_listener_rebind_negative.py'
+      - '.github/workflows/listener-rebind.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+      - run: dotnet build tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release -warnaserror
+      - name: Repeated immediate connections across address changes
+        run: dotnet tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll -class TerraRuntime.Tests.ListenerManagerTests
+      - name: Old drain behavior must reproduce a connection failure
+        run: python3 tools/ci/check_listener_rebind_negative.py

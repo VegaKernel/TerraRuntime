@@ -56,8 +56,12 @@ public sealed class ListenerManagerTests
             socket.Dispose();
     }
 
-    [Fact]
-    public async Task Same_port_bind_address_change_preserves_existing_client()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task Same_port_bind_address_change_preserves_existing_client(int iteration)
     {
         int port = GetFreeTcpPort();
         var accepted = new ConcurrentQueue<Socket>();
@@ -76,24 +80,31 @@ public sealed class ListenerManagerTests
         Assert.True(accepted.TryPeek(out Socket? firstServerSocket));
         Assert.NotNull(firstServerSocket);
 
-        ListenerChangeResult changed = manager.TryChangeEndpoint(IPAddress.Any.ToString(), port);
+        // Repeatedly retire a listener with an outstanding AcceptAsync. Each immediate connection
+        // must reach the new generation while the first accepted socket remains usable.
+        for (int rebind = 0; rebind < 32; rebind++)
+        {
+            IPAddress address = rebind % 2 == 0 ? IPAddress.Any : IPAddress.Loopback;
+            ListenerChangeResult changed = manager.TryChangeEndpoint(address.ToString(), port);
 
-        Assert.True(changed.Success, changed.Message);
-        ListenerManagerSnapshot rebound = manager.CaptureSnapshot();
-        Assert.Equal(ListenerLifecycleState.Active, rebound.State);
-        Assert.Equal(IPAddress.Any.ToString(), rebound.BindAddress);
-        Assert.Equal(port, rebound.Port);
-        Assert.Equal(1, rebound.SuccessfulRebinds);
+            Assert.True(changed.Success, changed.Message);
+            ListenerManagerSnapshot rebound = manager.CaptureSnapshot();
+            Assert.Equal(ListenerLifecycleState.Active, rebound.State);
+            Assert.Equal(address.ToString(), rebound.BindAddress);
+            Assert.Equal(port, rebound.Port);
+            Assert.Equal(rebind + 1, rebound.SuccessfulRebinds);
 
-        await firstClient.GetStream().WriteAsync(new byte[] { 0x66 }, TestContext.Current.CancellationToken);
-        var received = new byte[1];
-        int read = await firstServerSocket!.ReceiveAsync(received, SocketFlags.None, TestContext.Current.CancellationToken);
-        Assert.Equal(1, read);
-        Assert.Equal(0x66, received[0]);
+            byte payload = (byte)(iteration + rebind);
+            await firstClient.GetStream().WriteAsync(new byte[] { payload }, TestContext.Current.CancellationToken);
+            var received = new byte[1];
+            int read = await firstServerSocket!.ReceiveAsync(received, SocketFlags.None, TestContext.Current.CancellationToken);
+            Assert.Equal(1, read);
+            Assert.Equal(payload, received[0]);
 
-        using var secondClient = new TcpClient(AddressFamily.InterNetwork);
-        await secondClient.ConnectAsync(IPAddress.Loopback, port, TestContext.Current.CancellationToken);
-        Assert.True(await WaitForAcceptAsync(() => accepted.Count == 2));
+            using var secondClient = new TcpClient(AddressFamily.InterNetwork);
+            await secondClient.ConnectAsync(IPAddress.Loopback, port, TestContext.Current.CancellationToken);
+            Assert.True(await WaitForAcceptAsync(() => accepted.Count == rebind + 2));
+        }
 
         await manager.CloseAsync();
         while (accepted.TryDequeue(out Socket? socket))
@@ -146,7 +157,7 @@ public sealed class ListenerManagerTests
         {
             if (System.Diagnostics.Stopwatch.GetElapsedTime(started) >= TimeSpan.FromSeconds(2))
                 return false;
-            await Task.Delay(10,TestContext.Current.CancellationToken);
+            await Task.Delay(10, TestContext.Current.CancellationToken);
         }
         return true;
     }

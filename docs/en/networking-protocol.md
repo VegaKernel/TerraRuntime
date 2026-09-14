@@ -4,6 +4,8 @@
 
 ## 1. Scope
 
+Changing the public listener endpoint preserves already accepted clients. Before rebinding an overlapping address on the same port, draining explicitly stops kernel listening and then cancels the pending accept and disposes the socket. This prevents an outstanding Unix accept from retaining a retired listening endpoint through handle release. The regression exercises 128 immediate reconnects across loopback/wildcard changes while checking the original client's data path.
+
 This guide describes the networking and Terraria protocol path that exists in TerraRuntime today. The protocol baseline is Terraria `1.4.5.8`, protocol `326`, with Multiplicity 3.0.x behind the TerraRuntime protocol boundary.
 
 Official TerrariaServer 1.4.5.8 behavior and independent real-client traffic remain the final reference when implementation and self-round-trip evidence disagree.

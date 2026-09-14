@@ -40,6 +40,8 @@ jobs:
   custom-generator:
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    env:
+      TERRARUNTIME_LOG_CONSOLE_LEVEL: Information
 
     steps:
       - name: Checkout
@@ -54,12 +56,12 @@ jobs:
         run: |
           dotnet build src/TerraRuntime.ExtensibleHost/TerraRuntime.ExtensibleHost.csproj -c Release
           dotnet build tests/TerraRuntime.HostModuleFixture/TerraRuntime.HostModuleFixture.csproj -c Release
+          dotnet build tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release -warnaserror
 
       - name: Prove trusted host generator in-process
         run: >-
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
-          -c Release
-          --filter FullyQualifiedName~TrustedHostWorldGenerationIntegrationTests
+          dotnet tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll
+          -class TerraRuntime.Tests.TrustedHostWorldGenerationIntegrationTests
 
       - name: Install fixture as trusted host module
         shell: bash

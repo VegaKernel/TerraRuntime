@@ -4,6 +4,8 @@
 
 ## 1. Область документа
 
+Изменение публичного адреса слушателя сохраняет уже принятые соединения. Перед повторной привязкой перекрывающегося адреса на том же порту остановка явно прекращает прослушивание в ядре ОС, затем отменяет ожидающий accept и освобождает сокет. Это предотвращает удержание старого listening endpoint незавершённым Unix accept при освобождении дескриптора. Регрессия проверяет 128 немедленных переподключений при смене loopback/wildcard, одновременно проверяя передачу данных первоначального клиента.
+
 Здесь описан фактически существующий networking/Terraria protocol path TerraRuntime. Protocol baseline: Terraria `1.4.5.8`, protocol `326`, Multiplicity 3.0.x за protocol boundary TerraRuntime.
 
 Official TerrariaServer 1.4.5.8 behavior и independent real-client traffic остаются final reference, если implementation и self-round-trip evidence расходятся.
