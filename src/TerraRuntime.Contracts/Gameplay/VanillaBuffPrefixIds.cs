@@ -109,6 +109,8 @@ public static class VanillaPrefixIds
     public static readonly PrefixId Damaged = new(40);
     public static readonly PrefixId Shoddy = new(41);
     public static readonly PrefixId Nimble = new(45);
+    public static readonly PrefixId Murderous = new(46);
+    public static readonly PrefixId Legendary2 = new(84);
     public static readonly PrefixId Slow = new(47);
     public static readonly PrefixId Sluggish = new(48);
     public static readonly PrefixId Lazy = new(49);

@@ -1,5 +1,11 @@
 # Verified vanilla facts
 
+## Moon Lord loot — 2026-09-14
+
+Official1.4.5.8 ItemDropDatabase.Populate registers boss trophies before bosses. RegisterBoss_MoonLord: core398, trophy3595(1/10), Expert bag3332, Master relic4938/pet4810(1/4 each participant), NotExpert mask3373(1/7), minecart4469(1/10), PortalGun3384, LunarOre3460(70..90), two WITHOUT repeats from3063/3389/3065/1553/3930/3541/3570/3571/3569/5480. Selection consumes raw Next(count), immediately materializes, then removes selected entry; do not draw both indices before materialization. NPC.ApplyInteraction propagates396/397 to active398 at exact ai3, not FreeEye400. Pinned Windows assembly SHA256 d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e; checker tools/ci/check_moon_lord_loot_source.py.
+
+Independent Item.SetDefaults/Prefix(-1) probe loads unmodified official Linux assembly in .NET on Windows; no copied game methods committed. Eighteen drop defaults plus1800 prefix/followingRNG cases agree with runtime. Terrarian uses spear pool plus Legendary2(84). SDMG/Celeb2 exclude20/45/46/49 by rounding; LastPrism/LunarFlareBook exclude45. Golden hashes retained in VanillaMoonLordLootTests; local probe/log under ignored .cache/moonlord-probe and .cache/moonlord-official-prefix.log. This verifies dropped item identity/prefixes, not weapon use or full encounter parity.
+
 2026-09-09 whole ordinary Dungeon: original executable comparisons24 independent flat+16 identical-real-prefix+14 extraSmallseeds match all16-byte cells, ordered chest items/stacks/prefixes, OldMan anchor and sharedRNG. CheckChand framing/destruction144 matches; each destroyed cell consumes10Next2 dust draws despite suppressed dust. MakeDungeon_GetEntranceSettings consumes a shared seed before overwriting it. Ordinary DungeonEntranceHasStairs=true; Legacy/Dome/Tower invoke clean-room stairs. MakeDungeon crackedSolidityfalse reaches wall propagation, CanHit and both chest supports. PlaceTile137 reframes neighbors AFTER installation. Legacy layout aliases outerProgressionBounds0 to mutable dungeonBounds (entrance updates/postchest inflation retained). Named retained regressions and negative counts in work-state. Bounded R16, not preceding-prefix/all-GenVars/special-seed/final-world equality.
 
 ## Whole Dungeon completion WIP — 2026-09-09

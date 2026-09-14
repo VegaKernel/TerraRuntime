@@ -9,7 +9,12 @@ on:
       - 'src/TerraRuntime.Application/RuntimeNpcNetworkCombatPipeline*.cs'
       - 'tests/TerraRuntime.Tests/MoonLordDeathSequenceTests.cs'
       - 'tests/TerraRuntime.Tests/LateHardmodeBossParityTests.cs'
-      - 'tools/ci/check_moon_lord_death_source.py'
+      - 'tools/ci/check_moon_lord*source.py'
+      - 'src/TerraRuntime.Gameplay/Npcs/Loot/VanillaMoonLordLoot.cs'
+      - 'src/TerraRuntime.Gameplay/Items/**'
+      - 'src/TerraRuntime.Contracts/Gameplay/VanillaMoonLordItemIds.cs'
+      - 'src/TerraRuntime.Application/RuntimeMoonLordLootDeliverySink.cs'
+      - 'tests/TerraRuntime.Tests/*MoonLordLoot*Tests.cs'
       - '.github/workflows/moon-lord-death-source-contract.yml'
   workflow_dispatch:
 
@@ -30,6 +35,8 @@ jobs:
       - name: Exercise death lifecycle and late boss transitions
         run: >-
           dotnet tests/TerraRuntime.Tests/bin/Release/net11.0/TerraRuntime.Tests.dll
+          -class TerraRuntime.Tests.MoonLordLootPipelineTests
+          -class TerraRuntime.Tests.VanillaMoonLordLootTests
           -class TerraRuntime.Tests.MoonLordDeathSequenceTests
           -class TerraRuntime.Tests.LateHardmodeBossParityTests
       - name: Download reference and install pinned decompiler
@@ -48,3 +55,6 @@ jobs:
           echo "d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e  $assembly" | sha256sum --check
           .tools/ilspycmd --disable-updatecheck -r "$(dirname "$assembly")" -t Terraria.NPC "$assembly" > .cache/terraria-1458/NPC.cs
           python3 tools/ci/check_moon_lord_death_source.py --assembly "$assembly" --npc .cache/terraria-1458/NPC.cs
+          .tools/ilspycmd --disable-updatecheck -r "$(dirname "$assembly")" -t Terraria.GameContent.ItemDropRules.ItemDropDatabase "$assembly" > .cache/terraria-1458/ItemDropDatabase.cs
+          .tools/ilspycmd --disable-updatecheck -r "$(dirname "$assembly")" -t Terraria.GameContent.ItemDropRules.FromOptionsWithoutRepeatsDropRule "$assembly" > .cache/terraria-1458/FromOptionsWithoutRepeatsDropRule.cs
+          python3 tools/ci/check_moon_lord_loot_source.py --assembly "$assembly" --npc .cache/terraria-1458/NPC.cs --database .cache/terraria-1458/ItemDropDatabase.cs --selection .cache/terraria-1458/FromOptionsWithoutRepeatsDropRule.cs

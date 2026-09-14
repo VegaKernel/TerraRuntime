@@ -39,6 +39,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             return TryExecuteQueenSlimeLoot(in npc);
         if (npc.TypeIdentity == VanillaNpcIds.Plantera)
             return TryExecutePlanteraLoot(in npc);
+        if (npc.TypeIdentity == VanillaNpcIds.MoonLordCore)
+            return TryExecuteMoonLordLoot(in npc);
         if (npc.TypeIdentity == VanillaNpcIds.Golem)
             return TryExecuteGolemLoot(in npc);
         if (npc.TypeIdentity == VanillaNpcIds.EyeOfCthulhu)
@@ -376,6 +378,40 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             activeGolemLootPlayers.AsSpan(0, activeCount),
             random,
             golemLoot,
+            out _);
+    }
+
+    private bool TryExecuteMoonLordLoot(in NpcSnapshot npc)
+    {
+        if (!interactions.TryCopyInteractingSlots(npc.Handle, interactionSlots, out int interactionCount) ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.MoonLordCore, out VanillaNpcDefinition definition))
+        {
+            return false;
+        }
+
+        int activeCount = 0;
+        for (int index = 0; index < interactionCount; index++)
+        {
+            PlayerSlotId slot = interactionSlots[index];
+            if (!TryGetActiveLootPlayer(slot, out PlayerStateSnapshot player))
+                continue;
+
+            activeMoonLordLootPlayers[activeCount++] = new VanillaMoonLordLootPlayer(
+                slot,
+                player.PositionX + VanillaPlayerWidth * 0.5f,
+                player.PositionY + VanillaPlayerHeight * 0.5f);
+        }
+
+        var origin = new NpcLootWorldItemOrigin(
+            (int)npc.PositionX + definition.Width * 0.5f,
+            (int)npc.PositionY + definition.Height * 0.5f);
+        var context = new VanillaMoonLordLootContext(expertMode, masterMode);
+        return VanillaMoonLordLootEvaluator.TryExecute(
+            in context,
+            in origin,
+            activeMoonLordLootPlayers.AsSpan(0, activeCount),
+            random,
+            moonLordLoot,
             out _);
     }
 

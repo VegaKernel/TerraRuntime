@@ -65,7 +65,8 @@ public readonly record struct VanillaItemWorldDropDefinition(
         Height > 0 &&
         PrefixFamily is VanillaItemPrefixFamily.None or VanillaItemPrefixFamily.Summon or
             VanillaItemPrefixFamily.Sword or VanillaItemPrefixFamily.Ranged or
-            VanillaItemPrefixFamily.Magic or VanillaItemPrefixFamily.Spear or VanillaItemPrefixFamily.Accessory;
+            VanillaItemPrefixFamily.Magic or VanillaItemPrefixFamily.Spear or VanillaItemPrefixFamily.Accessory or
+            VanillaItemPrefixFamily.Terrarian;
 }
 
 /// <summary>
@@ -392,6 +393,8 @@ public static class VanillaDefinitionCatalog
     public static bool TryGet(ItemTypeId type, out VanillaItemDefinition definition)
     {
         if (VanillaDungeonChestItemCatalog1458.TryGet(type, out definition))
+            return true;
+        if (VanillaMoonLordItemCatalog1458.TryGet(type, out definition))
             return true;
         if (VanillaGolemItemCatalog1458.TryGet(type, out definition))
             return true;

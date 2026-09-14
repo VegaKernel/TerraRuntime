@@ -10,6 +10,17 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private readonly RuntimeProjectileStore? moonLordProjectiles;
     private readonly ProjectileSnapshot[] moonLordProjectileBuffer;
 
+    private void MarkMoonLordCoreInteraction(in NpcSnapshot member, PlayerHandle player)
+    {
+        // Terraria 1.4.5.8 NPC.ApplyInteraction propagates head/hand participation to their core.
+        // Validate the server-owned slot reference before reading the bounded NPC table.
+        if ((member.TypeIdentity != VanillaNpcIds.MoonLordHead && member.TypeIdentity != VanillaNpcIds.MoonLordHand) ||
+            !float.IsFinite(member.Ai.Ai3) || member.Ai.Ai3 < 0 || member.Ai.Ai3 >= npcs.Capacity)
+            return;
+        if (npcs.TryGetActive((byte)member.Ai.Ai3, out NpcSnapshot core) && core.TypeIdentity == VanillaNpcIds.MoonLordCore)
+            interactions.TryMark(core.Handle, player);
+    }
+
     public void NpcAiStateCommitted(in NpcSnapshot snapshot)
     {
         if (snapshot.TypeIdentity != VanillaNpcIds.MoonLordCore || snapshot.Ai.Ai0 != 2f ||
@@ -50,8 +61,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         }
 
         // AI-triggered checkDead must reach the same progression/loot boundary as combat-triggered death.
-        // No packet-28 strike is invented for a timer expiry. Unsupported difficulty loot remains explicit
-        // in TryExecuteImportedLoot and the coverage ledger; this lifecycle does not claim a new loot table.
+        // No packet-28 strike is invented for a timer expiry. Loot and progression commit at tick 600.
         if (current.Ai.Ai1 < 600f || current.Simulation.Life != 0 ||
             !TryExecuteImportedLoot(in current, eaterBoss: false))
         {

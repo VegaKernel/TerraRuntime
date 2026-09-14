@@ -53,6 +53,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private readonly RuntimeQueenSlimeLootDeliverySink queenSlimeLoot;
     private readonly RuntimePlanteraLootDeliverySink planteraLoot;
     private readonly RuntimeGolemLootDeliverySink golemLoot;
+    private readonly RuntimeMoonLordLootDeliverySink moonLordLoot;
+    private readonly VanillaMoonLordLootPlayer[] activeMoonLordLootPlayers =
+        new VanillaMoonLordLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly VanillaGolemLootPlayer[] activeGolemLootPlayers =
         new VanillaGolemLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly bool? planteraDownedBaseline;
@@ -142,6 +145,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         this.planteraDownedBaseline = planteraDownedBaseline;
         planteraLoot = new RuntimePlanteraLootDeliverySink(worldItems, instancedLeases, worldItemReplication);
         golemLoot = new RuntimeGolemLootDeliverySink(worldItems, instancedLeases, worldItemReplication);
+        moonLordLoot = new RuntimeMoonLordLootDeliverySink(worldItems, instancedLeases, worldItemReplication);
         this.expertMode = expertMode;
         this.masterMode = masterMode;
         if (masterMode && !expertMode)
@@ -236,6 +240,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             integrity == CombatIntegrityResolveResult.Accepted
                 ? (authoritativeRequest.Critical ? (byte)1 : (byte)0)
                 : (wireState.Critical ? (byte)1 : (byte)0));
+
+        MarkMoonLordCoreInteraction(in current, connection.Player);
 
         // PlayerInteraction occurs before StrikeNPC in MessageBuffer case 28. Keep credit even when the strike itself
         // is rejected by invulnerability or another authoritative combat guard.
@@ -461,6 +467,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     {
         NpcSnapshot liveTarget = target;
         NpcDamageRequest request = sourceRequest;
+        MarkMoonLordCoreInteraction(in liveTarget, request.Source.Player);
         if (VanillaEaterOfWorldsLifecycle.IsSegment(liveTarget.TypeIdentity))
         {
             VanillaEaterOfWorldsLifecycle.MarkPlayerInteractionAcrossActiveSegments(

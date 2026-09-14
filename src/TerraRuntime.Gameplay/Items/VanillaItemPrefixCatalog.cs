@@ -12,7 +12,8 @@ public enum VanillaItemPrefixFamily : byte
     Ranged = 3,
     Magic = 4,
     Spear = 5,
-    Accessory = 6
+    Accessory = 6,
+    Terrarian = 7
 }
 
 public readonly record struct VanillaPrefixDefinition(
@@ -38,6 +39,7 @@ public static class VanillaItemPrefixCatalog
         [26,27,28,29,30,31,32,33,34,35,52,36,37,38,53,54,55,39,40,56,41,57,42,43,44,45,46,47,48,49,50,51,59,60,61,83]);
     private static readonly PrefixId[] SpearPrefixes = Prefixes(
         [36,37,38,53,54,55,39,40,56,41,57,59,60,61]);
+    private static readonly PrefixId[] TerrarianPrefixes = [.. SpearPrefixes, VanillaPrefixIds.Legendary2];
     private static readonly PrefixId[] AccessoryPrefixes = Prefixes(
         [62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80]);
 
@@ -100,6 +102,7 @@ public static class VanillaItemPrefixCatalog
         VanillaItemPrefixFamily.Magic => MagicPrefixes,
         VanillaItemPrefixFamily.Spear => SpearPrefixes,
         VanillaItemPrefixFamily.Accessory => AccessoryPrefixes,
+        VanillaItemPrefixFamily.Terrarian => TerrarianPrefixes,
         _ => ReadOnlySpan<PrefixId>.Empty
     };
 
@@ -125,7 +128,7 @@ public static class VanillaItemPrefixCatalog
 
     /// <summary>
     /// Item-specific prefix validity after Terraria's stat-rounding guards. The current catalog only claims
-    /// exact knowledge for Slime Staff, Blade Staff, Dungeon chests and Plantera/Golem death-loot items.
+    /// exact knowledge for Slime Staff, Blade Staff, Dungeon chests and Plantera/Golem/Moon Lord death-loot items.
     /// Prefix zero is a valid natural-roll result.
     /// </summary>
     public static bool IsValidForItem(ItemTypeId itemType, PrefixId prefix)
@@ -136,6 +139,20 @@ public static class VanillaItemPrefixCatalog
             // Independent Item.TryGetPrefixStatMultipliersForItem probe accepts every family member
             // for these exact defaults; no rounding exclusion or guessed generic-item validity.
             return prefix == VanillaPrefixIds.None || Contains(GetRollablePrefixes(dungeonDrop.PrefixFamily), prefix);
+        }
+        if (VanillaMoonLordItemCatalog1458.TryGet(itemType, out VanillaItemDefinition moonLord) &&
+            moonLord.WorldDrop is { PrefixFamily: not VanillaItemPrefixFamily.None } moonLordDrop)
+        {
+            if (prefix == VanillaPrefixIds.None)
+                return true;
+            if (!Contains(GetRollablePrefixes(moonLordDrop.PrefixFamily), prefix))
+                return false;
+            // Official SetDefaults + TryGetPrefixStatMultipliersForItem rounding exclusions.
+            if (itemType == VanillaMoonLordItemIds.SDMG || itemType == VanillaMoonLordItemIds.Celeb2)
+                return prefix != VanillaPrefixIds.Deadly && prefix != VanillaPrefixIds.Nimble &&
+                       prefix != VanillaPrefixIds.Murderous && prefix != VanillaPrefixIds.Lazy;
+            return (itemType != VanillaMoonLordItemIds.LastPrism && itemType != VanillaMoonLordItemIds.LunarFlareBook) ||
+                   prefix != VanillaPrefixIds.Nimble;
         }
         if (VanillaGolemItemCatalog1458.TryGet(itemType, out VanillaItemDefinition golem) &&
             golem.WorldDrop is { PrefixFamily: not VanillaItemPrefixFamily.None } golemDrop)

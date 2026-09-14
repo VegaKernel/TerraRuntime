@@ -1,5 +1,9 @@
 # Production graph
 
+## Moon Lord terminal loot — 2026-09-14
+
+Committed MoonLord core death tick600 invokes VanillaMoonLordLootEvaluator through RuntimeNpcNetworkCombatPipeline and RuntimeMoonLordLootDeliverySink. Existing world-item materialization/packet21 and addressed instanced packet90/slot-lease ownership remain unchanged. Both admitted client strike and server-owned damage mark head/hand participation on the exact active ai3 core before part death. A bounded255entry scratch buffer carries active participants in source slot order. Eighteen drop-only definitions do not admit item-use or bag-opening behavior. Owner-generation tracking across core-slot reuse remains open.
+
 ## Shared inbound packet policy — 2026-09-14
 
 `ServerConnectionAcceptor.PacketRateLimits` owns one process-session `PacketRateLimitControl`. Host `IRuntime.PacketRateLimits` and `ScopedHostRuntime` expose that same instance. Each accepted socket receives it through `TerrariaConnectionPolicyOptions.PacketRateLimits`; its `TerrariaConnectionPolicySink` owns a separate `SessionPacketRateBudget`. Configuration is thread-safe, counting is receive-path-only, world transfers preserve socket usage. Existing hard-abuse checks, telemetry and rejection semantics remain in the same boundary. No simulation or outgoing/liquid owner changed.
