@@ -16,6 +16,7 @@ public readonly record struct VanillaNpcSpawnDefaults(
     VanillaNpcHitboxSize Hitbox, float Scale, int LifeMax, int Damage, int Defense)
 {
     public float? KnockBackResist { get; init; }
+    public float? Difficulty { get; init; }
     /// <summary>
     /// NPC.SetDefaults -> getGoodAdjustments -> ScaleStats for Destroyer, Probe, Prime and Skeletron (1.4.5.8).
     /// Other families keep their existing definition defaults until their type-specific scaling is verified.
@@ -24,9 +25,17 @@ public readonly record struct VanillaNpcSpawnDefaults(
         out VanillaNpcSpawnDefaults defaults)
     {
         defaults = default;
-        if (context.IsValid && (definition.Type == VanillaNpcIds.DarkCaster || definition.Type == VanillaNpcIds.WaterSphere))
+        if (context.IsValid && (definition.Type == VanillaNpcIds.Bunny || definition.Type == VanillaNpcIds.ExplosiveBunny))
         {
-            defaults = ResolveCaster(in definition, in context);
+            // ScaleStats does not enter its scaling block for these five-life, zero-damage critters.
+            defaults = new(new(definition.Width, definition.Height), definition.Scale, definition.LifeMax, definition.Damage, definition.Defense)
+                { KnockBackResist = definition.KnockBackResist, Difficulty = 1f };
+            return true;
+        }
+        if (context.IsValid && (definition.Type == VanillaNpcIds.DarkCaster || definition.Type == VanillaNpcIds.WaterSphere ||
+            definition.Type == VanillaNpcIds.Demon || definition.Type == VanillaNpcIds.VoodooDemon))
+        {
+            defaults = ResolveOrdinary(in definition, in context);
             return true;
         }
         bool probe = definition.Type == VanillaNpcIds.Probe;
@@ -67,10 +76,10 @@ public readonly record struct VanillaNpcSpawnDefaults(
         return true;
     }
 
-    private static VanillaNpcSpawnDefaults ResolveCaster(in VanillaNpcDefinition definition, in VanillaNpcSpawnContext context)
+    private static VanillaNpcSpawnDefaults ResolveOrdinary(in VanillaNpcDefinition definition, in VanillaNpcSpawnContext context)
     {
         bool sphere = definition.Type == VanillaNpcIds.WaterSphere;
-        bool skeletron = context.GoodWorld && context.SkeletronActive;
+        bool skeletron = (sphere || definition.Type == VanillaNpcIds.DarkCaster) && context.GoodWorld && context.SkeletronActive;
         float difficulty = context.Difficulty;
         int life = definition.LifeMax, damage = definition.Damage, defense = definition.Defense;
         // ScaleStats_ForExpertHardmode uses integer division before converting the budget ratio to float.

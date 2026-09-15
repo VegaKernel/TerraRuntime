@@ -113,6 +113,7 @@ internal sealed partial class NpcAuthority
         this.masterMode = masterMode;
         npcs.SetVanillaSpawnContextSource(CaptureSpawnContext);
         this.naturalSpawnRandom = naturalSpawnRandom ?? new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom();
+        npcs.SetVanillaSpawnRandomSource(this.naturalSpawnRandom);
         naturalSpawnWorldFacts = townCommerceWorldFacts;
         if (worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 sceneWorldFacts)
         {
@@ -196,7 +197,7 @@ internal sealed partial class NpcAuthority
 
         if (npcAiStepper is null)
         {
-            vanillaTargeting = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+            vanillaTargeting = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper(), random: this.naturalSpawnRandom);
             vanillaTargeting.SetPlayerInteractions(combat.Interactions);
             if (projectileReplication is not null)
                 vanillaTargeting.SetProjectileAnchors(new RuntimeNpcProjectileAnchors(projectiles, projectileReplication.WireIdentities, players));

@@ -455,7 +455,18 @@ internal static class StandaloneServerProgram
             sphereAfter.Simulation.Rotation != .65f || sphereAfter.Simulation.TimeLeft != 100 ||
             !sphereAfter.Simulation.JustHit) return 5;
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok, casterSpawn=ok, sphereAI=ok.");
+        var substitutedNpcs = new RuntimeNpcStore();
+        substitutedNpcs.SetVanillaSpawnContextSource(() => new(2, 1, true));
+        substitutedNpcs.SetVanillaSpawnRandomSource(new SystemVanillaNpcRandom(0));
+        if (!substitutedNpcs.TrySpawnIntent(new(VanillaNpcIds.Demon, 1000, 1000, 0, 0, 255), out var demon) ||
+            demon.TypeIdentity != VanillaNpcIds.VoodooDemon || demon.Simulation.LifeMax != 280 ||
+            demon.Simulation.BaseDamage != 64 || demon.Simulation.NoGravity) return 5;
+        substitutedNpcs.SetVanillaSpawnRandomSource(new SystemVanillaNpcRandom(3));
+        if (!substitutedNpcs.TrySpawnIntent(new(VanillaNpcIds.Bunny, 1000, 1000, 0, 0, 255), out var bunny) ||
+            bunny.TypeIdentity != VanillaNpcIds.Bunny || bunny.Simulation.LifeMax != 5 ||
+            bunny.Simulation.SpawnDifficulty != 1f || bunny.Simulation.Friendly != true) return 5;
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok, casterSpawn=ok, sphereAI=ok, npcSpawnRandom=ok.");
         return 0;
     }
 

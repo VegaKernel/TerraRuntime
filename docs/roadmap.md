@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-15 NewNPC RNG: Good World draws before allocation even on failure, applies rabbit/demon substitutions and selected creation profiles. Built-in NPC AI, natural spawning and creation share the pinned UnifiedRandom stream. Original2880 creations through both APIs plus6 coupled sequences pass5767 tests; draw/substitution/full-table/shared-AI negatives fail2883/288/1443/6. Complete game RNG, caster/head AI and gameplay/packet parity remain open. See [NPC ownership](en/npc-runtime-ownership.md).
+
 2026-09-15 sphere AI: shared25/33 launch, latched protection, lifetime cap, rotation and committed water-sphere RNG match5760originalcalls+144five-calltraces. Same-generation stale AI proposals are now rejected before overwriting newer state. Focused6708pass; oldbody/RNG/latch/revision negatives5906/2952/1980/1. Fullcaster/headencounter, creationRNG and advancedtargeting/outerlifecycle remainopen. See [NPC ownership](en/npc-runtime-ownership.md).
 
 2026-09-15 caster/sphere creation: source profiles32/33 now include per-creation Hardmode/Plantera/active-Skeletron facts, fractional difficulty resistance and sphere alpha/physical flags. Retained784 original cases, focused1114pass; negative controls691/1/1. AI8/9, spawn-pressure weights, creation RNG and full RedHat head encounter remain open. See [NPC ownership](en/npc-runtime-ownership.md).

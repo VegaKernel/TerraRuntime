@@ -7,6 +7,11 @@ namespace TerraRuntime.Core.Npcs;
 public sealed partial class RuntimeNpcStore
 {
     private Func<VanillaNpcSpawnContext>? _spawnContext;
+    private IVanillaNpcRandom _spawnRandom = new SystemVanillaNpcRandom();
+
+    /// <summary>Shares the world-owned NPC random stream with creation, AI and natural spawn selection.</summary>
+    public void SetVanillaSpawnRandomSource(IVanillaNpcRandom source) =>
+        _spawnRandom = source ?? throw new ArgumentNullException(nameof(source));
 
     /// <summary>Sets the world-owned input source, sampled synchronously for each vanilla creation.</summary>
     public void SetVanillaSpawnContextSource(Func<VanillaNpcSpawnContext> source) =>
@@ -56,15 +61,18 @@ public sealed partial class RuntimeNpcStore
             return false;
         }
 
-        if (!TryCaptureSpawnDefaults(intent.Type.Value, checked((short)intent.Type.Value), out var spawnDefaults, out float difficulty))
+        int type = intent.Type.Value;
+        short netId = checked((short)type);
+        if (!TryCaptureSpawnDefaults(ref type, ref netId, out var spawnDefaults, out float difficulty) ||
+            !VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(type), new NpcNetId(netId), out definition))
         {
             snapshot = default;
             return false;
         }
         var hitbox = spawnDefaults?.Hitbox ?? new VanillaNpcHitboxSize(definition.Width, definition.Height);
         var update = new NpcStateUpdate(
-            Type: intent.Type.Value,
-            NetId: checked((short)intent.Type.Value),
+            Type: type,
+            NetId: netId,
             PositionX: intent.BottomX - hitbox.Width * 0.5f,
             PositionY: intent.BottomY - hitbox.Height,
             VelocityX: intent.VelocityX,
@@ -85,25 +93,42 @@ public sealed partial class RuntimeNpcStore
     /// <summary>Allocates in vanilla search order, observing protection and replacement eligibility.</summary>
     public bool TrySpawnVanilla(in NpcStateUpdate update, out NpcSnapshot snapshot, int startSlot = 0)
     {
-        if (!IsValid(in update) || !TryCaptureSpawnDefaults(update.Type, update.NetId, out var spawnDefaults, out float difficulty))
+        int type = update.Type;
+        short netId = update.NetId;
+        if (!IsValid(in update) || !TryCaptureSpawnDefaults(ref type, ref netId, out var spawnDefaults, out float difficulty))
         {
             snapshot = default;
             return false;
         }
-        var owned = update with { Simulation = update.Simulation with { SpawnDifficulty = update.Simulation.SpawnDifficulty ?? difficulty } };
+        var owned = update with { Type = type, NetId = netId,
+            Simulation = update.Simulation with { SpawnDifficulty = update.Simulation.SpawnDifficulty ?? difficulty } };
         return TrySpawnVanillaCore(in owned, out snapshot, startSlot, spawnDefaults);
     }
 
-    private bool TryCaptureSpawnDefaults(int type, short netId, out VanillaNpcSpawnDefaults? defaults, out float difficulty)
+    private bool TryCaptureSpawnDefaults(ref int type, ref short netId, out VanillaNpcSpawnDefaults? defaults, out float difficulty)
     {
         defaults = null;
         difficulty = 1f;
         if (_spawnContext is null) return true;
         var context = _spawnContext();
         if (!context.IsValid) return false;
+        if (context.GoodWorld)
+        {
+            // Original NewNPC consumes this draw before allocation, including a full/protected table.
+            var selected = VanillaNpcSpawnRules.ApplyGoodWorldRoll(new NpcTypeId(type), _spawnRandom.NextInt32(0, 3));
+            if (selected.Value != type)
+            {
+                type = selected.Value;
+                netId = checked((short)type);
+            }
+        }
         difficulty = context.Difficulty;
         if (VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(type), new NpcNetId(netId), out var definition) &&
-            VanillaNpcSpawnDefaults.TryResolve(in definition, in context, out var resolved)) defaults = resolved;
+            VanillaNpcSpawnDefaults.TryResolve(in definition, in context, out var resolved))
+        {
+            defaults = resolved;
+            difficulty = resolved.Difficulty ?? difficulty;
+        }
         return true;
     }
 

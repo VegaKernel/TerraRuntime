@@ -7,6 +7,10 @@ namespace TerraRuntime.Contracts.Gameplay;
 public static class VanillaNpcIds
 {
     public static readonly NpcTypeId BlueSlime = new(1);
+    public static readonly NpcTypeId Bunny = new(46);
+    public static readonly NpcTypeId ExplosiveBunny = new(614);
+    public static readonly NpcTypeId Demon = new(62);
+    public static readonly NpcTypeId VoodooDemon = new(66);
     public static readonly NpcTypeId DemonEye = new(2);
     public static readonly NpcTypeId Zombie = new(3);
     public static readonly NpcTypeId EyeOfCthulhu = new(4);

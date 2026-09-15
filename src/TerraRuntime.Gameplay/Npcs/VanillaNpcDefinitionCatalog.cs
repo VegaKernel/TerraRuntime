@@ -443,6 +443,19 @@ public static class VanillaNpcDefinitionCatalog
             return true;
         }
 
+        // SetDefaults for the two Good World NewNPC substitutions. AI admission remains separate.
+        if (type == VanillaNpcIds.Bunny || type == VanillaNpcIds.ExplosiveBunny ||
+            type == VanillaNpcIds.Demon || type == VanillaNpcIds.VoodooDemon)
+        {
+            bool bunny = type == VanillaNpcIds.Bunny || type == VanillaNpcIds.ExplosiveBunny;
+            definition = new(type, bunny ? VanillaNpcAiStyles.Town : VanillaNpcAiStyles.Bat,
+                VanillaNpcBehaviorFamily.None, VanillaNpcPhysicsFamily.GenericGround, NpcArchetypeRole.Ordinary,
+                bunny ? 18 : 28, bunny ? 20 : 48, bunny ? 0 : 32, bunny ? 0 : 8,
+                bunny ? 5 : type == VanillaNpcIds.Demon ? 120 : 140, bunny ? 1f : .8f,
+                1f, false, false, VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
         // NPC.SetDefaults(32/33), 1.4.5.8. Caster AI_008 remains separate from creation defaults.
         if (type == VanillaNpcIds.DarkCaster || type == VanillaNpcIds.WaterSphere)
         {

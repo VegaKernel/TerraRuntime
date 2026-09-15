@@ -31,24 +31,24 @@ public interface IVanillaKingSlimeEnvironment
 }
 
 /// <summary>
-/// Process-local vanilla NPC random stream. Terraria's Main.rand sequence is not a wire or persistence identity;
-/// the compatibility contract pins call ordering and requested ranges while tests can inject a deterministic source.
+/// World-owned NPC random stream using the pinned Terraria 1.4.5.8 UnifiedRandom algorithm.
+/// The default seed follows UnifiedRandom's Environment.TickCount constructor; hosts may supply a seed explicitly.
 /// </summary>
 public sealed class SystemVanillaNpcRandom : IVanillaNpcRandom
 {
-    private readonly Random _random;
+    private readonly VanillaUnifiedRandom1458 _random;
 
     public SystemVanillaNpcRandom()
-        : this(new Random())
+        : this(new VanillaUnifiedRandom1458(Environment.TickCount))
     {
     }
 
     public SystemVanillaNpcRandom(int seed)
-        : this(new Random(seed))
+        : this(new VanillaUnifiedRandom1458(seed))
     {
     }
 
-    private SystemVanillaNpcRandom(Random random) => _random = random;
+    private SystemVanillaNpcRandom(VanillaUnifiedRandom1458 random) => _random = random;
 
     public double NextDouble() => _random.NextDouble();
 
