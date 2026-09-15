@@ -1,10 +1,7 @@
 name: One-shot Skeletron vertical launcher
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/one-shot-skeletron-vertical-launch.yml'
+  # Historical migration rewrites a feature branch; editing this file must not rerun the port.
   workflow_dispatch:
 
 permissions:

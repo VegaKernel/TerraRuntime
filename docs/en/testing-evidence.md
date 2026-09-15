@@ -28,6 +28,8 @@ dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Relea
 
 The NPC source-contract workflow previously ran the full suite despite its VSTest filter and failed on an unrelated dashboard timing assertion. All twelve filtered workflows now use the native runner; their selectors were compared with complete discovery to verify both nonempty results and the intended substring scope. Stale source paths and renamed test selectors were updated as part of that repair. The main CI job still runs the complete suite.
 
+The historical one-shot Skeletron migration runs only through `workflow_dispatch`. It reapplies an old port and rewrites a feature branch, so editing its workflow file does not start that migration automatically.
+
 Tests of asynchronous UI commands await the actual pending operation before publishing its completion. Scheduler availability is not a two-second gameplay contract. A controlled delayed-ingress check reproduces the former bot-button test failure and passes with completion-based synchronization.
 
 ## 2. Source hierarchy

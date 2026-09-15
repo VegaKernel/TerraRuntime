@@ -1,5 +1,11 @@
 # Work state
 
+## CURRENT main56470758 pushed; CI running, legacy launcher contained ? 2026-09-15
+
+Committed/pushed56470758e6b5bab3fcec6a4fe17b22a7099b4a1d includesStartsupport/Skeletron+Primeheadslotwiring/25056fixture/12nativefilteredworkflows/UIawaitrepair/pairedNPCandtestingdocs. Localfinal16833andWinNative5acceptedbelow. NewCI34916674427stillinprogress; NPCsource34916674604queuedlastseen; eightnewTown/Worldgenflowsalsorun, inspectall. Docs34916674419SUCCESS. No localprocessremaining.
+
+IMPORTANT discoveredlegacyone-shot-skeletron-vertical-launch hadpush-on-own-file plus historicalport andforcepushwork/skeletron-vertical-1458. Nativefiltermigrationtriggeredit34916674595. CancelledWHILEQUEUED: jobsteps[]empty; finalstatuscompleted/cancelled, no portorforcepushran. Currenttinyfollow-up removesitsautomaticpushtrigger, leavesworkflow_dispatchonly, pairedtestingdocsupdated. Thiscontainmentmustbepublished; don'treenableorinvokehistoricalmigration. OtherCIjobsareordinarychecksandcontinue. Do not call564allgreenuntilchecking. No fullparityclaim, activegoalno blockers. Nextrealworkstilloriginalworm/Destroyerwhole-chaincreation/Startwiring, aftercurrentCIaccepted.
+
 ## CURRENT Start + CI scope repair accepted locally; ready to push ? 2026-09-15
 
 Base main560e1537d0a5e7d700520bbcc63034b069e35c83 is pushed. MainCI34914905749SUCCESSandallnative/coreclrjobsSUCCESS, butextraNPCsourceworkflow34914905908FAILED: sourcecontractitselfpassed, focusedVSTest --filterranall16818testsandUIbot2secondSpinWaittimedout. DoNOTcallallbaseworkflowsgreen. Thisdraftfixesthatfailureandits12same-shapedsiblingsalongsidealreadytestedStartwork. No fullparityclaim; goalactive,noblockers.
