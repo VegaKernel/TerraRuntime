@@ -146,6 +146,42 @@ public sealed class MechanicalBossLootPipelineTests
         Assert.Empty(Drain(f.FirstQueue));
     }
 
+    public static TheoryData<int, bool, bool> SkeletronCases
+    {
+        get
+        {
+            var result = new TheoryData<int, bool, bool>();
+            foreach (int marker in new[] { 0, 1, 2 })
+                foreach (int mode in new[] { 0, 1, 2 }) result.Add(marker, mode >= 1, mode >= 2);
+            return result;
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(SkeletronCases))]
+    public void Skeletron_death_uses_head_marker_for_vanity_drops_in_every_mode(int marker, bool expert, bool master)
+    {
+        var f = new Fixture(expert, master);
+        var head = f.Spawn(35);
+        var state = new NpcStateUpdate(head.Type, head.NetId, head.PositionX, head.PositionY, 0, 0, head.Target,
+            head.Ai with { Ai3 = marker }, head.Simulation with { LocalAi = new(0, 0, 0, 1) });
+        Assert.True(f.Npcs.TryUpdate(head.Handle, in state, out head));
+        Assert.Equal(RuntimeProjectileNpcDamageResult.Killed, f.Hit(f.First, head, 100_000));
+        Assert.False(f.Npcs.TryGet(head.Handle, out _));
+        Assert.True(f.Progression.IsCompleted(VanillaWorldProgressionId.Skeletron));
+        // RegisterBoss_Skeletron / Conditions.RedHatSkeletron, original 1.4.5.8: five guaranteed world drops.
+        int[] vanity = [5624, 5625, 5626, 5737, 5628];
+        foreach (var queue in new[] { f.FirstQueue, f.SecondQueue, f.SpectatorQueue })
+        {
+            var drops = Drain(queue).Where(x => vanity.Contains(x.Drop.ItemNetId)).ToArray();
+            Assert.Equal(marker == 1 ? vanity : [], drops.Select(x => (int)x.Drop.ItemNetId).ToArray());
+            Assert.All(drops, x => { Assert.Equal(21, x.Message); Assert.Equal(1, x.Drop.Stack); });
+        }
+        long relayed = f.Replication.RelayedFrames;
+        Assert.Equal(RuntimeProjectileNpcDamageResult.Rejected, f.Hit(f.First, head, 100_000));
+        Assert.Equal(relayed, f.Replication.RelayedFrames);
+    }
+
     private static TerrariaConnectionOutboundQueue Register(
         RuntimeWorldItemReplicationRegistry replication, PlayerHandle player, long connectionId)
     {

@@ -423,7 +423,17 @@ internal static class StandaloneServerProgram
             new RuntimeNpcAiStateExecutor(orphanNpcs).Tick(primeMotion).Applied != 1 ||
             orphanNpcs.TryGet(orphanHand.Handle, out _)) return 5;
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok.");
+        var redHatNpcs = new RuntimeNpcStore();
+        if (!redHatNpcs.TrySpawnIntent(new NpcAiSpawnIntent(VanillaNpcIds.SkeletronHand, 1000, 1000, 0, 0, 0)
+            { InitialLocalAi = new(0, 0, 0, 1) }, out var redHatHand)) return 5;
+        var redHatHit = new NpcDamageRequest(redHatHand.Handle, DamageSource.Server, 100, Critical: true);
+        if (!new RuntimeNpcDamageExecutor(redHatNpcs).TryApply(in redHatHit, out var redHatDamage) ||
+            redHatDamage.ResolvedDamage != 130 || redHatDamage.LifeAfter != 470) return 5;
+        redHatHit = redHatHit with { BaseDamage = 16_777_217, Critical = false };
+        if (!new RuntimeNpcDamageExecutor(redHatNpcs).TryApply(in redHatHit, out redHatDamage) ||
+            redHatDamage.ResolvedDamage != 11_744_047) return 5;
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok.");
         return 0;
     }
 

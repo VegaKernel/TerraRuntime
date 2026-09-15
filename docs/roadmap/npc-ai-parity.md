@@ -1,5 +1,11 @@
 # Vanilla NPC and AI parity roadmap
 
+2026-09-15 combat precision extension: shared defense/critical calculation now uses source double beforeintegerrounding; RedHatthenfloat*.7. Added960largeoriginalstrikes, oldfloat450fails. Expandedmitigationnegative306/2774; loot3/39. Focused6638passincluding15existingdamageguards. PublicAPIhighvalues do not expand packetdamagebounds. Complete combat modifiers remainopen.
+
+## RedHat damage and death reward condition - 2026-09-15
+
+Shared marker rule covers source types32/33/35/36 with exact AI/local-AI field ownership. Admitted Skeletron damage paths now apply float0.7 after ordinary defense/critical integer rounding and before HP/knockback; committed head marker enables five source-registered vanity drops in all modes. Independent1760strikes/54predicates, nine actual pipeline cases; isolated mitigation/loot negatives186/3 fail. This closes the previously noted incoming-damage and disconnected loot-condition gaps. Complete headAI/minions, DarkCaster/WaterSphere definitions+AI, other combat multipliers, loot geometry and encounter parity remain unfinished.
+
 ## Skeletron hand variants and parent lifecycle - 2026-09-15
 
 RedHat hand damage uses retained baseDamage; marker inheritance, marker clearing/live-damage retention, orphan local retention, phase timers, acceleration/caps and dash speeds are implemented. Parent validation uses active aiStyle11, with DungeonGuardian base definition/geometry admitted without its AI or difficulty profile. Orphan ai2 advances10 and removes above50 through the existing unpublished terminal commit, preserving TimeLeft and final world movement; no combat kill/loot. Retained1296 original RedHat calls and288 parent traces/1248 calls;3810 focused checks. Isolated parent/deactivation/RedHat controls fail48/193/1300 and restore cleanly. Native protocol covers both variants. Remaining: Guardian AI/profile, head RedHat, dead/missing/ghost target semantics, rotations, full encounters, packets and RNG. Earlier hand-specific gaps below are historical.

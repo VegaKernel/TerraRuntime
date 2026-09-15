@@ -1,5 +1,7 @@
 # Source-backed NPC loot rules
 
+Skeletron's actual death pipeline now passes the committed head's RedHat marker into the existing loot evaluator. When `ai[3] == 1`, the five source-registered vanity items (`5624`, `5625`, `5626`, `5737`, `5628`) are world drops in Classic, Expert and Master; the hand-style local marker does not enable head rewards. Nine pipeline regressions verify packet-21 delivery to all registered players and no duplicate rewards after a stale repeat kill. This closes the previously disconnected condition, without claiming full encounter or all loot-position/modifier parity.
+
 TerraRuntime's first NPC-loot slice implements the NPC-specific standard-slime rules for Blue Slime from the pinned TerrariaServer 1.4.5.8 source. It does **not** claim that every global, world-condition, event, bestiary or chained vanilla drop layer is implemented yet.
 
 ## Source contract

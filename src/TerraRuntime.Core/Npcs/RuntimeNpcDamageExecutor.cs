@@ -62,9 +62,10 @@ public static class VanillaNpcDamageResolver
             Immune: false,
             Dodged: false,
             NoKnockback: false);
-        float damage = Math.Max(
-            attack.Damage - effectiveDefense * DefenseEffectiveness,
-            1f);
+        // Main.CalculateDamageNPCsTake uses double, preserving integer damage and half-defense above 2^24.
+        double damage = Math.Max(
+            (double)attack.Damage - effectiveDefense * (double)DefenseEffectiveness,
+            1d);
 
         if (attack.Critical)
             damage *= CriticalDamageMultiplier;
@@ -146,6 +147,10 @@ public sealed class RuntimeNpcDamageExecutor
             result = default;
             return false;
         }
+
+        // StrikeNPC_Inner applies RedHat mitigation after defense/critical rounding, before HP and knockback.
+        if (VanillaSkeletronCombat.HasRedHatAdjustments(current.TypeIdentity, current.Ai, current.Simulation.LocalAi))
+            damage = Math.Max(1, (int)(damage * 0.7f));
 
         int lifeBefore = current.Simulation.Life;
         int lifeAfter = Math.Max(0, lifeBefore - damage);

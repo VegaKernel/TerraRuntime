@@ -1,5 +1,9 @@
 # Combat damage foundation
 
+Ordinary NPC defense subtraction and critical multiplication use the original `double` precision. This preserves integer damage and half-defense values above `2^24` before conversion to HP damage; the existing `int.MaxValue` saturation remains an explicit overflow guard. Another 960 original strikes cover large public-API inputs up to `100000000`, including RedHat reduction after integer rounding. The previous float calculation fails 450 of those comparisons. These values exercise the authoritative API, not the wire packet's narrower damage range.
+
+The shared NPC damage executor now applies RedHat Skeletron mitigation after the ordinary defense/critical result is rounded: `max(1, (int)(damage * 0.7f))`. It reads the current authoritative AI/local-AI marker, rather than inferring the variant from world difficulty. Reduced damage feeds both HP and knockback; raw request damage and provenance remain available in the result. Independent evidence covers 1,760 original strikes, including zero/small damage, negative/odd/large defense, critical hits, wrong marker fields and non-variant NPCs. Other vanilla damage multipliers remain separately tracked.
+
 [Русский](../ru/combat-damage.md) · [Gameplay](gameplay.md) · [Gameplay decomposition roadmap](../roadmap/gameplay-decomposition-and-catalogs.md)
 
 ## 1. Purpose

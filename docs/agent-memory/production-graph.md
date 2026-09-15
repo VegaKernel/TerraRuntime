@@ -1,5 +1,11 @@
 # Production graph
 
+SharedVanillaNpcDamageResolver nowusesdouble forordinarydefensesubtraction/criticalmultiplybeforeintegerHPconversion, matchingMain.CalculateDamageNPCsTake. ExistingDefenseEffectiveness/CriticalDamageMultiplier publicconstanttypesandintMaxsaturation unchanged. This affects all NPC damage callers; RedHatpost-roundingfloat*.7 remainsinRuntimeNpcDamageExecutor.960additionaloriginalhighinputcallsvalidateprecision, nativehandhighdamagecaseadded.
+
+## RedHat marker shared by AI, damage and loot - 2026-09-15
+
+Gameplay.VanillaSkeletronCombat.HasRedHatAdjustments owns original marker predicate, reused by handAI, RuntimeNpcDamageExecutor and RuntimeNpcNetworkCombatPipeline.Loot. Contracts adds named32DarkCaster/33WaterSphere IDs only, no definitions/AI admission. Damage executor appliesfloat*.7/min1 afterordinaryresolver andbeforelife/knockback. Loot readscommittedheadAI insteadfalse. Nativeprotocol skeletronRedHatCombat checksactualhandcritical100=>130/life470. No newinterfaces/projects/dependencies; fixturetest-only reflection remainsoutsideproduction.
+
 ## Skeletron hand variants and removal - 2026-09-15
 
 Existing hand strategy now applies inherited RedHat marker (including retained orphan local marker) to base contact damage and source phase motion. Parent rule checks catalog aiStyle11; Contracts.DungeonGuardian68 and Gameplay base definition/geometry added with BehaviorFamily.None, no Guardian AI/profile claim. Existing VanillaTargeting.DeactivatesAfterStep forwards hand orphan terminal Life0/ai2>50/+10 to executor unpublished update/removal, retaining TimeLeft; world-motion forwarding already supports final integration. No new interface/project/dependency. Protocol smoke skeletronHandVariants checks RedHat dash and actual executor orphan removal.

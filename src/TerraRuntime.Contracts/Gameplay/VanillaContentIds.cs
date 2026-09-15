@@ -78,6 +78,8 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId GoblinThief = new(27);
     public static readonly NpcTypeId GoblinWarrior = new(28);
     public static readonly NpcTypeId AngryBones = new(31);
+    public static readonly NpcTypeId DarkCaster = new(32);
+    public static readonly NpcTypeId WaterSphere = new(33);
     public static readonly NpcTypeId DoctorBones = new(52);
     public static readonly NpcTypeId TheGroom = new(53);
     public static readonly NpcTypeId GoblinScout = new(73);

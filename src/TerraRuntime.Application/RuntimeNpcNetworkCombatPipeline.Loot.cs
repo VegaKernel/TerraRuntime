@@ -243,7 +243,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         var context = new VanillaSkeletronLootContext(
             expertMode,
             masterMode,
-            RedHatAdjustmentsEnabled: false);
+            RedHatAdjustmentsEnabled: VanillaSkeletronCombat.HasRedHatAdjustments(npc.TypeIdentity, npc.Ai, npc.Simulation.LocalAi));
         return VanillaSkeletronLootEvaluator.TryExecute(
             in context,
             in origin,

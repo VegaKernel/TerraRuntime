@@ -312,7 +312,7 @@ internal sealed class VanillaSkeletronHandNpcBehaviorStrategy : IVanillaNpcBehav
             if (orphanTimer > 50f)
                 simulation = simulation with { Life = 0 };
             // Invalid parents leave localAI intact; the retained RedHat marker still owns contact damage.
-            if (simulation.LocalAi.Ai3 == 1f)
+            if (VanillaSkeletronCombat.HasRedHatAdjustments(npc.TypeIdentity, ai, simulation.LocalAi))
                 simulation = simulation with { DamageOverride = (int)((simulation.BaseDamage ?? definition.Damage) * 1.3f) };
             next = Build(in npc, velocityX, velocityY, targetSlot, in ai, in simulation);
             return true;
@@ -321,7 +321,7 @@ internal sealed class VanillaSkeletronHandNpcBehaviorStrategy : IVanillaNpcBehav
         simulation = simulation with { LocalAi = simulation.LocalAi with { Ai3 = parent.Ai.Ai3 } };
 
         // AI_012 inherits the RedHat marker from the parent; this is independent of world difficulty.
-        bool redHat = simulation.LocalAi.Ai3 == 1f;
+        bool redHat = VanillaSkeletronCombat.HasRedHatAdjustments(npc.TypeIdentity, ai, simulation.LocalAi);
         if (redHat)
             simulation = simulation with { DamageOverride = (int)((simulation.BaseDamage ?? definition.Damage) * 1.3f) };
 
