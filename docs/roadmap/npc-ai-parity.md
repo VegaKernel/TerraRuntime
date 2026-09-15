@@ -1,5 +1,9 @@
 # Vanilla NPC and AI parity roadmap
 
+## Skeletron hand variants and parent lifecycle - 2026-09-15
+
+RedHat hand damage uses retained baseDamage; marker inheritance, marker clearing/live-damage retention, orphan local retention, phase timers, acceleration/caps and dash speeds are implemented. Parent validation uses active aiStyle11, with DungeonGuardian base definition/geometry admitted without its AI or difficulty profile. Orphan ai2 advances10 and removes above50 through the existing unpublished terminal commit, preserving TimeLeft and final world movement; no combat kill/loot. Retained1296 original RedHat calls and288 parent traces/1248 calls;3810 focused checks. Isolated parent/deactivation/RedHat controls fail48/193/1300 and restore cleanly. Native protocol covers both variants. Remaining: Guardian AI/profile, head RedHat, dead/missing/ghost target semantics, rotations, full encounters, packets and RNG. Earlier hand-specific gaps below are historical.
+
 ## Ordinary Skeletron hand phases - 2026-09-15
 
 2220 original hand calls cover1944phase/position cases,264target/alignment/distance edges and12localAI-copy cases. Matched physical integer parent alignment, float dash centers/source.01floor, target refresh/facing, state0/3-only flee cap, parentai3copy and source player-corner distance exits. VanillaNewNPC nowinitializesdirectionY1; explicitstorage/updatesunchanged.2221focusedchecks includeownershipboundary; oldcode1482fails, direction1933/distance24/local12/playercorner48negativecontrols restored. Orphan lifecycle, parentstylesotherthan35, RedHat, rotation/fullencounters/packetRNGstillopen.

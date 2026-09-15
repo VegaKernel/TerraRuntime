@@ -1901,8 +1901,11 @@ public sealed class VanillaNpcTargetingAiStepper :
     }
 
     public bool DeactivatesAfterStep(in NpcSnapshot before, in NpcStateUpdate proposed) =>
-        before.TypeIdentity == VanillaNpcIds.MoonLordLeechBlob && proposed.Type == before.Type &&
-        proposed.Simulation.Life == 0 && proposed.Simulation.TimeLeft == 0;
+        proposed.Type == before.Type && proposed.Simulation.Life == 0 &&
+        ((before.TypeIdentity == VanillaNpcIds.MoonLordLeechBlob && proposed.Simulation.TimeLeft == 0) ||
+         // AI_012 removes the orphan immediately; its internal negative-life sentinel never enters the store.
+         (before.TypeIdentity == VanillaNpcIds.SkeletronHand && proposed.Ai.Ai2 > 50f &&
+          proposed.Ai.Ai2 == before.Ai.Ai2 + 10f));
 
     public void ApplyCommittedEffect(
         in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)

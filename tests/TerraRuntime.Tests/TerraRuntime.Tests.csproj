@@ -60,6 +60,8 @@
     <EmbeddedResource Include="Fixtures/skeletron-spawn-1458.json.gz" LogicalName="SkeletronSpawn1458" />
     <EmbeddedResource Include="Fixtures/skeletron-hands-spawn-1458.json.gz" LogicalName="SkeletronHandsSpawn1458" />
     <EmbeddedResource Include="Fixtures/skeletron-phase-1458.json.gz" LogicalName="SkeletronPhase1458" />
+    <EmbeddedResource Include="Fixtures/skeletron-hand-parent-1458.json.gz" LogicalName="SkeletronHandParent1458" />
+    <EmbeddedResource Include="Fixtures/skeletron-hand-redhat-1458.json.gz" LogicalName="SkeletronHandRedHat1458" />
     <EmbeddedResource Include="Fixtures/skeletron-hand-phase-1458.json.gz" LogicalName="SkeletronHandPhase1458" />
     <EmbeddedResource Include="Fixtures/moon-lord-clot-spawn-1458.json" LogicalName="MoonLordClotSpawn1458" />
     <EmbeddedResource Include="Fixtures/moon-leech-clot-1458.json" LogicalName="MoonLeechClot1458" />

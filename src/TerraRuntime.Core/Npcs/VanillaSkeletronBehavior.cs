@@ -303,19 +303,27 @@ internal sealed class VanillaSkeletronHandNpcBehaviorStrategy : IVanillaNpcBehav
 
         if (ai.Ai1 < 0f || ai.Ai1 > byte.MaxValue ||
             !context.TryFindNpcPeer((byte)ai.Ai1, out NpcSnapshot parent) ||
-            parent.TypeIdentity != VanillaNpcIds.SkeletronHead ||
             !VanillaNpcDefinitionCatalog.TryGet(parent.TypeIdentity, out var parentDefinition) ||
+            parentDefinition.AiStyle != VanillaNpcAiStyles.SkeletronHead ||
             !parentDefinition.TryResolveHitbox(parent.Simulation, out var parentHitbox))
         {
             float orphanTimer = ai.Ai2 + 10f;
             ai = ai with { Ai2 = orphanTimer };
             if (orphanTimer > 50f)
-                simulation = simulation with { Life = 0, TimeLeft = 0 };
+                simulation = simulation with { Life = 0 };
+            // Invalid parents leave localAI intact; the retained RedHat marker still owns contact damage.
+            if (simulation.LocalAi.Ai3 == 1f)
+                simulation = simulation with { DamageOverride = (int)((simulation.BaseDamage ?? definition.Damage) * 1.3f) };
             next = Build(in npc, velocityX, velocityY, targetSlot, in ai, in simulation);
             return true;
         }
 
         simulation = simulation with { LocalAi = simulation.LocalAi with { Ai3 = parent.Ai.Ai3 } };
+
+        // AI_012 inherits the RedHat marker from the parent; this is independent of world difficulty.
+        bool redHat = simulation.LocalAi.Ai3 == 1f;
+        if (redHat)
+            simulation = simulation with { DamageOverride = (int)((simulation.BaseDamage ?? definition.Damage) * 1.3f) };
 
         if (!VanillaSkeletronHeadNpcBehaviorStrategy.TryGetTarget(in npc, context, ref targetSlot, out VanillaNpcTargetCandidate target))
             target = default;
@@ -327,13 +335,15 @@ internal sealed class VanillaSkeletronHandNpcBehaviorStrategy : IVanillaNpcBehav
         {
             if (parent.Ai.Ai1 == 3f && (timeLeft < 0 || timeLeft > 10))
                 timeLeft = 10;
-            if (parent.Ai.Ai1 != 0f)
+            if (parent.Ai.Ai1 != 0f && !redHat)
             {
                 StepHoverToParent(in npc, in parent, hitbox, parentHitbox, ai.Ai0, -100f, -120f, 0.07f, 6f, 0.1f, 8f, ref velocityX, ref velocityY);
             }
             else
             {
-                float timer = ai.Ai3 + 1f + (context.ExpertMode ? 0.5f : 0f);
+                float timer = ai.Ai3 + 1f;
+                if (redHat) timer += 1f;
+                if (context.ExpertMode) timer += 0.5f;
                 if (timer >= 300f)
                 {
                     state++;
@@ -352,7 +362,12 @@ internal sealed class VanillaSkeletronHandNpcBehaviorStrategy : IVanillaNpcBehav
         {
             velocityX *= 0.95f;
             velocityY -= 0.1f;
-            if (context.ExpertMode)
+            if (redHat)
+            {
+                velocityY -= 0.09f;
+                velocityY = MathF.Max(velocityY, -15f);
+            }
+            else if (context.ExpertMode)
             {
                 velocityY -= 0.06f;
                 velocityY = MathF.Max(velocityY, -13f);
@@ -366,7 +381,7 @@ internal sealed class VanillaSkeletronHandNpcBehaviorStrategy : IVanillaNpcBehav
             {
                 RefreshDashTarget(in npc, in definition, context, ref targetSlot, ref target, ref simulation);
                 ai = ai with { Ai2 = 2f };
-                SetVelocityToward(in npc, in target, hitbox, context.ExpertMode ? 21f : 18f, ref velocityX, ref velocityY);
+                SetVelocityToward(in npc, in target, hitbox, redHat ? 24f : context.ExpertMode ? 21f : 18f, ref velocityX, ref velocityY);
             }
         }
         else if (state == 2)
@@ -384,7 +399,12 @@ internal sealed class VanillaSkeletronHandNpcBehaviorStrategy : IVanillaNpcBehav
         {
             velocityY *= 0.95f;
             velocityX += 0.1f * -ai.Ai0;
-            if (context.ExpertMode)
+            if (redHat)
+            {
+                velocityX += 0.1f * -ai.Ai0;
+                velocityX = Math.Clamp(velocityX, -15f, 15f);
+            }
+            else if (context.ExpertMode)
             {
                 velocityX += 0.07f * -ai.Ai0;
                 velocityX = Math.Clamp(velocityX, -12f, 12f);
@@ -401,7 +421,7 @@ internal sealed class VanillaSkeletronHandNpcBehaviorStrategy : IVanillaNpcBehav
             {
                 RefreshDashTarget(in npc, in definition, context, ref targetSlot, ref target, ref simulation);
                 ai = ai with { Ai2 = 5f };
-                SetVelocityToward(in npc, in target, hitbox, context.ExpertMode ? 22f : 17f, ref velocityX, ref velocityY);
+                SetVelocityToward(in npc, in target, hitbox, redHat ? 25f : context.ExpertMode ? 22f : 17f, ref velocityX, ref velocityY);
             }
         }
         else if (state == 5 &&

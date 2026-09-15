@@ -1,5 +1,9 @@
 # Production graph
 
+## Skeletron hand variants and removal - 2026-09-15
+
+Existing hand strategy now applies inherited RedHat marker (including retained orphan local marker) to base contact damage and source phase motion. Parent rule checks catalog aiStyle11; Contracts.DungeonGuardian68 and Gameplay base definition/geometry added with BehaviorFamily.None, no Guardian AI/profile claim. Existing VanillaTargeting.DeactivatesAfterStep forwards hand orphan terminal Life0/ai2>50/+10 to executor unpublished update/removal, retaining TimeLeft; world-motion forwarding already supports final integration. No new interface/project/dependency. Protocol smoke skeletronHandVariants checks RedHat dash and actual executor orphan removal.
+
 ## Ordinary hand motion and vertical spawn direction - 2026-09-15
 
 VanillaSkeletronHandNpcBehaviorStrategy resolvesphysicalhand/parenthitboxes; integerhalfwidthparentalignment andfloatcenter dash/dot/distance; source.01dashfloor andspeed/distance multiplicationorder; forceddashTargetClosest updatesDirectionX/Y;SpriteDirection=-ai0; localAi3fromparentai3; Encourage10onlystates0/3. Shared RuntimeNpcStore.TrySpawnVanillaCore initializeszeroDirectionYto1 forbothvanillaentrypoints; nonzerooverridepreserved; exactTrySpawn/updatesunchanged. No newcontract/project/dependency. NativeprotocolfrozenGoodWorldhanddashadded. Orphan/parentstyle/RedHat/fullfightsemanticsremainopen.

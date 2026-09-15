@@ -104,6 +104,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId LavaSlime = new(59);
     public static readonly NpcTypeId Hellbat = new(60);
     public static readonly NpcTypeId Shark = new(65);
+    public static readonly NpcTypeId DungeonGuardian = new(68);
     public static readonly NpcTypeId DungeonSlime = new(71);
     public static readonly NpcTypeId CorruptSlime = new(81);
     public static readonly NpcTypeId WyvernHead = new(87);

@@ -412,7 +412,18 @@ internal static class StandaloneServerProgram
             handDash.VelocityX != 17.410515f || handDash.VelocityY != 11.741975f ||
             handDash.Simulation.SpriteDirection != 1 || handDash.Simulation.DirectionY != 1) return 5;
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok.");
+        frozenParent = frozenParent with { Ai = frozenParent.Ai with { Ai3 = 1 } };
+        primeAi.SetNpcPeers([frozenParent, frozenHand]);
+        if (!primeAi.TryStepState(in frozenHand, out var redHatDash) || redHatDash.Ai.Ai2 != 2f ||
+            redHatDash.VelocityX != 19.897732f || redHatDash.VelocityY != 13.4194f ||
+            redHatDash.Simulation.DamageOverride != 85) return 5;
+        var orphanNpcs = new RuntimeNpcStore();
+        if (!orphanNpcs.TrySpawnIntent(new NpcAiSpawnIntent(VanillaNpcIds.SkeletronHand, 1000, 1000, 0, 0, 0)
+            { StartSlot = 11, InitialAi = new(-1, 10, 50, 0) }, out var orphanHand) ||
+            new RuntimeNpcAiStateExecutor(orphanNpcs).Tick(primeMotion).Applied != 1 ||
+            orphanNpcs.TryGet(orphanHand.Handle, out _)) return 5;
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok.");
         return 0;
     }
 

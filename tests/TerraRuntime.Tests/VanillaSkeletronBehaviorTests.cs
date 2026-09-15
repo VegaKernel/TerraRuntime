@@ -97,7 +97,7 @@ public sealed class VanillaSkeletronBehaviorTests
     }
 
     [Fact]
-    public void Hand_parent_loss_uses_source_50_tick_teardown_and_attack_timer_advances_0_to_1()
+    public void Hand_parent_loss_preserves_lifetime_and_attack_timer_advances_0_to_1()
     {
         var store = new RuntimeNpcStore(capacity: 6);
         NpcSnapshot head = Spawn(store, 0, VanillaNpcIds.SkeletronHead, new NpcAiState(1f, 0f, 0f, 0f));
@@ -115,7 +115,9 @@ public sealed class VanillaSkeletronBehaviorTests
         stepper.SetNpcPeers([orphan]);
         Assert.True(stepper.TryStepState(in orphan, out NpcStateUpdate dead));
         Assert.Equal(0, dead.Simulation.Life);
-        Assert.Equal(0, dead.Simulation.TimeLeft);
+        Assert.Equal(orphan.Simulation.TimeLeft, dead.Simulation.TimeLeft);
+        Assert.Equal(60f, dead.Ai.Ai2);
+        Assert.True(stepper.DeactivatesAfterStep(in orphan, in dead));
     }
 
     private static VanillaNpcTargetingAiStepper CreateStepper() =>

@@ -462,6 +462,28 @@ public static class VanillaNpcDefinitionCatalog
             return true;
         }
 
+        // NPC.SetDefaults(68), 1.4.5.8: valid AI_012 parent geometry. Guardian AI is not admitted here.
+        if (type == VanillaNpcIds.DungeonGuardian)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.DungeonGuardian,
+                AiStyle: VanillaNpcAiStyles.SkeletronHead,
+                BehaviorFamily: VanillaNpcBehaviorFamily.None,
+                PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
+                Role: NpcArchetypeRole.Ordinary,
+                BaseWidth: 80,
+                BaseHeight: 102,
+                Damage: 9999,
+                Defense: 9999,
+                LifeMax: 9999,
+                KnockBackResist: 0f,
+                Scale: 1f,
+                NoGravityAtSpawn: true,
+                NoTileCollideAtSpawn: true,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
         if (type == VanillaNpcIds.SkeletronHand)
         {
             definition = new VanillaNpcDefinition(
