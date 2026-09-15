@@ -230,7 +230,7 @@ public static class VanillaNpcAiCoverageCatalog
         entries[index++] = Partial(VanillaNpcIds.PrimeVice, hardmodePart);
         entries[index++] = Partial(VanillaNpcIds.PrimeLaser, hardmodePart | VanillaNpcAiCapability.HardmodeBossProjectileSlice);
         entries[index++] = Partial(VanillaNpcIds.Destroyer, hardmodeRoot | VanillaNpcAiCapability.ChildSpawnSlice);
-        entries[index++] = Partial(VanillaNpcIds.DestroyerBody, hardmodePart | VanillaNpcAiCapability.ChildSpawnSlice | VanillaNpcAiCapability.HardmodeBossProjectileSlice);
+        entries[index++] = Partial(VanillaNpcIds.DestroyerBody, hardmodePart | VanillaNpcAiCapability.HardmodeBossProjectileSlice);
         entries[index++] = Partial(VanillaNpcIds.DestroyerTail, hardmodePart);
         entries[index++] = Partial(VanillaNpcIds.Golem, hardmodeRoot | VanillaNpcAiCapability.ChildSpawnSlice);
         entries[index++] = Partial(VanillaNpcIds.GolemHead, hardmodePart | VanillaNpcAiCapability.HardmodeBossProjectileSlice);

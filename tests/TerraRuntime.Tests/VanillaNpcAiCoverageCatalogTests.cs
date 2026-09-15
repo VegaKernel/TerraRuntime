@@ -34,6 +34,9 @@ public sealed class VanillaNpcAiCoverageCatalogTests
     [Fact]
     public void Specialized_capabilities_are_claimed_only_for_their_tested_slices()
     {
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(VanillaNpcIds.DestroyerBody, out var destroyerBody));
+        Assert.False(destroyerBody.Has(VanillaNpcAiCapability.ChildSpawnSlice));
+
         Assert.True(VanillaNpcAiCoverageCatalog.TryGet(
             VanillaNpcIds.KingSlime,
             out VanillaNpcAiCoverage kingSlime));

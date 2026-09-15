@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Gameplay.Npcs;
 
 namespace TerraRuntime.Core.Npcs;
 
@@ -241,6 +242,16 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
 
     bool INpcAiCommittedNpcMutationSink.TryGetActive(byte slot, out NpcSnapshot npc) =>
         _npcs.TryGetActive(slot, out npc);
+
+    bool INpcAiCommittedNpcMutationSink.TryLinkFollower(NpcHandle npc, byte followerSlot)
+    {
+        if (followerSlot > VanillaNpcSpawnRules.PhysicalSlotCount || !_npcs.TryGet(npc, out var current))
+            return false;
+        var update = new NpcStateUpdate(current.Type, current.NetId,
+            current.PositionX, current.PositionY, current.VelocityX, current.VelocityY,
+            current.Target, current.Ai with { Ai0 = followerSlot }, current.Simulation);
+        return _npcs.TryUpdate(npc, in update, out _);
+    }
 
     bool INpcAiCommittedNpcMutationSink.TryTranslate(
         NpcHandle npc, float deltaX, float deltaY, out NpcSnapshot committed)

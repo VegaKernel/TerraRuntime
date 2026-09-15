@@ -1,5 +1,9 @@
 # Vanilla NPC and AI parity roadmap
 
+## Destroyer chain creation - 2026-09-15
+
+Head AI now creates the full80/100-body batch plus tail, preserves source Start/link/failure-sentinel rules and allows same-pass body updates. The body no longer claims independent child creation in the executable coverage catalog. Thirty-two original head-call fixtures, a full world-pass ordering test and a root/generation boundary test cover this slice. Ordinary spawn fields match; good-world spawn scaling/health/RNG, Mechdusa, full combat/motion and packet23 publication cadence remain open. See [NPC ownership](../en/npc-runtime-ownership.md) and agent memory for current acceptance.
+
 ## Moon Lord head authoritative AI slice - 2026-09-15
 
 Headattachment,1200tickclock,pupil/eyelid/mouthstate,damagegateandDeathray/Bolt/addressedLeechcreation now independentlycovered3600+36originalcalls and3integrationcases. CoreheadspawnlocalAIownershipcollisionremoved. Immediatehead23sync,telegraphRNGand16x16MoonLeechdefinitionadded. Fullgoalstillopen: continuousbattle,GoodWorldboulders,AI85leechbuffs/healing401,TrueEyeandbroaderplayers. See pairedmoon-lord-death-sequence docs andwork-state acceptance.

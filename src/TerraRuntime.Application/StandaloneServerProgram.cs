@@ -312,7 +312,22 @@ internal static class StandaloneServerProgram
         if (!allocation.TrySpawnVanilla(in worm, out var offsetWorm, startSlot: 197) || offsetWorm.Handle.Slot != 197 ||
             allocation.TrySpawnVanilla(in queen, out _, startSlot: int.MaxValue)) return 5;
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok.");
+        var destroyerNpcs = new RuntimeNpcStore();
+        if (!destroyerNpcs.TrySpawnIntent(new NpcAiSpawnIntent(VanillaNpcIds.Destroyer, 1000, 1000, 0, 0, 0)
+            { StartSlot = 10 }, out _)) return 5;
+        var destroyerAi = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        destroyerAi.SetWorldConditions(false, false);
+        destroyerAi.SetCandidates([new VanillaNpcTargetCandidate(0, 1510, 1021, 0, true, false, false, false)]);
+        var destroyerMotion = new VanillaNpcWorldMotionAiStepper(destroyerAi, new WorldTileStore(new WorldDimensions(400, 400)));
+        var destroyerTick = new RuntimeNpcAiStateExecutor(destroyerNpcs).Tick(destroyerMotion);
+        if (destroyerTick.Applied != 82 || !destroyerNpcs.TryGetActive(91, out var tail) ||
+            tail.TypeIdentity != VanillaNpcIds.DestroyerTail || tail.Ai != new NpcAiState(0, 90, 0, 10))
+        {
+            Console.Error.WriteLine("Protocol smoke failed while creating the Destroyer chain in source slot order.");
+            return 5;
+        }
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok.");
         return 0;
     }
 

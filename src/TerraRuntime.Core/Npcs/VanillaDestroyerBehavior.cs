@@ -8,7 +8,7 @@ namespace TerraRuntime.Core.Npcs;
 /// Server-authoritative TerrariaServer 1.4.5.8 AI_037 Destroyer slice. Head movement uses the
 /// source worm steering law and the runtime worm collision query; body/tail slots are linked by ai[1],
 /// share root identity in ai[3], and terminate when their predecessor disappears. Chain allocation and
-/// body Death Laser side effects are planned after a successful source commit.
+/// body Death Laser side effects occur after a successful source commit.
 /// </summary>
 internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
@@ -20,6 +20,40 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
 
     public void SetEnvironment(IVanillaWormEnvironment environment) =>
         _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+
+    public static void SpawnChain(in NpcSnapshot before, in NpcSnapshot committed, bool goodWorld,
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaNpcIds.Destroyer || committed.Type != before.Type ||
+            before.Ai.Ai0 != 0f || committed.Ai.Ai0 != 0f ||
+            !VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, out var definition) ||
+            !definition.TryResolveHitbox(before.Simulation, out var hitbox)) return;
+
+        // AI_037 creates every body and the tail in the head call, before later slots run AI.
+        // Its NewNPC X uses integer width / 2 and the pre-motion head position.
+        int bottomX = (int)(before.PositionX + hitbox.Width / 2);
+        int bottomY = (int)(before.PositionY + hitbox.Height);
+        int bodies = goodWorld ? 100 : 80;
+        NpcHandle previous = committed.Handle;
+        for (int index = 0; index <= bodies; index++)
+        {
+            var intent = new NpcAiSpawnIntent(index == bodies ? VanillaNpcIds.DestroyerTail : VanillaNpcIds.DestroyerBody,
+                bottomX, bottomY, 0f, 0f, byte.MaxValue)
+            {
+                StartSlot = before.Handle.Slot,
+                InitialAi = new NpcAiState(0f, previous.Slot, 0f, before.Handle.Slot)
+            };
+            if (!mutations.TrySpawn(in intent, out var child))
+            {
+                // Original subsequent failed allocations only rewrite npc[200], an inactive scratch sentinel.
+                // Retain the visible predecessor link without allocating or exposing that sentinel as an NPC.
+                mutations.TryLinkFollower(previous, VanillaNpcSpawnRules.PhysicalSlotCount);
+                break;
+            }
+            if (!mutations.TryLinkFollower(previous, child.Handle.Slot)) break;
+            previous = child.Handle;
+        }
+    }
 
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
         INpcAiStateStepper inner, out NpcStateUpdate next)
@@ -73,7 +107,7 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
             return true;
         }
 
-        if (ai.Ai0 == 0f && ai.Ai3 == 0f)
+        if (ai.Ai0 == 0f)
             ai = ai with { Ai3 = npc.Handle.Slot };
 
         if (!TryGetTarget(targetSlot, context, out VanillaNpcTargetCandidate target))

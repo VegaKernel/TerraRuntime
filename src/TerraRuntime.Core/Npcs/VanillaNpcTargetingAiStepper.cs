@@ -318,8 +318,6 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (source.Type == VanillaNpcIds.QueenSlime.Value && proposed.Type == source.Type)
             return PlanQueenSlimeMinions(in source, in proposed, destination);
 
-        if ((source.Type == VanillaNpcIds.Destroyer.Value || source.Type == VanillaNpcIds.DestroyerBody.Value) && proposed.Type == source.Type)
-            return PlanDestroyerFollower(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.Plantera.Value && proposed.Type == source.Type)
             return PlanPlanteraSpawns(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.Golem.Value && proposed.Type == source.Type)
@@ -1891,6 +1889,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     {
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);
         VanillaMoonLordLeechBehavior.SpawnFromHead(in before, in committed, _context, mutations);
+        VanillaDestroyerNpcBehaviorStrategy.SpawnChain(in before, in committed, _context.GoodWorld, mutations);
     }
 
     public void ApplyCommittedEffectAfterSpawns(
@@ -2366,34 +2365,6 @@ public sealed class VanillaNpcTargetingAiStepper :
             }
         }
         return index;
-    }
-
-    private int PlanDestroyerFollower(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
-    {
-        if (destination.IsEmpty || source.Ai.Ai0 != 0f || proposed.Ai.Ai0 != 0f)
-            return 0;
-        int remaining;
-        float root;
-        if (source.Type == VanillaNpcIds.Destroyer.Value)
-        {
-            remaining = (_context.GoodWorld ? 100 : 80) - 1;
-            root = source.Handle.Slot;
-        }
-        else
-        {
-            if (!float.IsFinite(source.Ai.Ai2) || source.Ai.Ai2 < 0f || source.Ai.Ai2 != MathF.Truncate(source.Ai.Ai2)) return 0;
-            remaining = (int)source.Ai.Ai2 - 1;
-            root = source.Ai.Ai3;
-        }
-        NpcTypeId child = remaining >= 0 ? VanillaNpcIds.DestroyerBody : VanillaNpcIds.DestroyerTail;
-        if (!VanillaNpcDefinitionCatalog.TryGet(NpcTypeId.TryCreate(source.Type, out var st) ? st : VanillaNpcIds.Destroyer, out VanillaNpcDefinition def) ||
-            !def.TryResolveHitbox(proposed.Simulation, out VanillaNpcHitboxSize hb)) return 0;
-        destination[0] = new NpcAiSpawnIntent(child, (int)(proposed.PositionX + hb.Width*.5f), (int)(proposed.PositionY + hb.Height), 0f, 0f, proposed.Target)
-        {
-            InitialAi = new NpcAiState(0f, source.Handle.Slot, Math.Max(remaining,0), root),
-            LinkSourceFollowerSlot = true
-        };
-        return 1;
     }
 
     private int PlanDestroyerLaser(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)

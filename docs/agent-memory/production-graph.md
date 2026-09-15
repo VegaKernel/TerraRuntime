@@ -1,5 +1,9 @@
 # Production graph
 
+## Destroyer chain draft — 2026-09-15
+
+VanillaDestroyerNpcBehaviorStrategy now owns bounded head-driven chain allocation via existing committed-effect dispatch. No speculative per-segment Destroyer planner remains. RuntimeNpcAiStateExecutor implements generation-safe TryLinkFollower on existing INpcAiCommittedNpcMutationSink; slot200 can be retained as failure reference but never spawned as a sentinel NPC. Spawn intent/shared vanilla allocator own physical selection and normal initial defaults. Ascending executor sees all created peers before next slot AI. Native protocol smoke uses actual world-motion composition. Generic worms unchanged. Good-world spawn defaults and exact network publication timing remain open; source fixture tests explicitly separate those fields. No new project/dependency.
+
 ## CI scope repair accompanying Start work ? 2026-09-15
 
 560e1537 main CI34914905749green, but sourceworkflow34914905908FAILEDafteritsSourceContractpassed: VSTest --filter wasignored and it ranall16818 tests, failingUIbot2secondSpinWait. Corrected12filteredworkflows to dotnetrun testproject -cRelease [--no-build] -- -noLogo -method "*substring*" repeatedOR; fullmainCIremainsfullsuite. Native-methodscope matches VSTest intendedFullyQualifiedName substring includingclassANDmethodname (notclass-only approximation). CorrectedstaleSourceBackedProvider1458Tests/ItemVanillaDefinitionCatalogTests selectors andallmissingliteralsrc/testpaths amongchangedworkflows. Resetworkflow nowbuildssolutionbefore--no-buildtests; movementlogguardchecksnonzeroTotal+Errors0+Failed0. No packageupgrade. Twelve scopes audited againstall3238discoveredmethods via-listmethods/json, everyselector matches, exactscopeequalPythoncasefoldsubstring: .cache/native-ci-filter-audit.json. Eight affectedWorldgen/Skyblock/Townsourceprobespassedlocally againstofficialdecompile; scriptsunchanged.

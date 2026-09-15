@@ -38,6 +38,9 @@ public interface INpcAiCommittedNpcMutationSink
     bool TryGetActive(byte slot, out NpcSnapshot npc);
 
     bool TryTranslate(NpcHandle npc, float deltaX, float deltaY, out NpcSnapshot committed);
+
+    /// <summary>Links a committed chain member to a physical follower slot, including vanilla's full-table sentinel 200.</summary>
+    bool TryLinkFollower(NpcHandle npc, byte followerSlot);
 }
 
 /// <summary>
