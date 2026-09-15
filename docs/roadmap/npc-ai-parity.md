@@ -1,5 +1,9 @@
 # Vanilla NPC and AI parity roadmap
 
+## Prime creation and head phases - 2026-09-15
+
+Prime127..131 uses world-context spawn scaling; head AI restores retained combat baselines and uses source physical-center/distance/float rules.395 original creations,408 head calls and real runtime/negative cases verify this bounded slice. Full arms/Mechdusa/rotations/encounter/network behavior remains open; see [NPC ownership](../en/npc-runtime-ownership.md) and current acceptance in agent memory.
+
 ## World-owned NPC spawn context - 2026-09-15
 
 Destroyer134/135/136 andProbe139 now materialize source physical/visual dimensions, difficulty damage/health and current-player health scaling at allocation. The authority also projects effective good-world difficulty to AI flags. Independent ordinary/fractional creation fixtures and real runtime/negative tests cover this slice; other NPC types, Journey/ghost controls, original RNG continuation and full battle parity remain open. See [NPC ownership](../en/npc-runtime-ownership.md) and current agent-memory acceptance.

@@ -13,7 +13,7 @@ public readonly record struct VanillaNpcSpawnDefaults(
     VanillaNpcHitboxSize Hitbox, float Scale, int LifeMax, int Damage, int Defense)
 {
     /// <summary>
-    /// NPC.SetDefaults -> getGoodAdjustments -> ScaleStats for the Destroyer family and Probe (1.4.5.8).
+    /// NPC.SetDefaults -> getGoodAdjustments -> ScaleStats for Destroyer, Probe and Prime's family (1.4.5.8).
     /// Other families keep their existing definition defaults until their type-specific scaling is verified.
     /// </summary>
     public static bool TryResolve(in VanillaNpcDefinition definition, in VanillaNpcSpawnContext context,
@@ -21,14 +21,16 @@ public readonly record struct VanillaNpcSpawnDefaults(
     {
         defaults = default;
         bool probe = definition.Type == VanillaNpcIds.Probe;
-        if (!context.IsValid || (!probe && definition.Type != VanillaNpcIds.Destroyer &&
+        bool prime = definition.Type == VanillaNpcIds.SkeletronPrime || definition.Type == VanillaNpcIds.PrimeCannon ||
+            definition.Type == VanillaNpcIds.PrimeSaw || definition.Type == VanillaNpcIds.PrimeVice || definition.Type == VanillaNpcIds.PrimeLaser;
+        if (!context.IsValid || (!probe && !prime && definition.Type != VanillaNpcIds.Destroyer &&
             definition.Type != VanillaNpcIds.DestroyerBody && definition.Type != VanillaNpcIds.DestroyerTail)) return false;
 
         int width = definition.Width, height = definition.Height;
         float scale = definition.Scale;
         if (context.GoodWorld)
         {
-            scale *= probe ? 1.6f : 1.3f;
+            scale *= probe ? 1.6f : prime ? 1.1f : 1.3f;
             // getGoodAdjustments multiplies the already-scaled dimensions by the new visual scale.
             width = (int)(width * scale);
             height = (int)(height * scale);
@@ -43,7 +45,7 @@ public readonly record struct VanillaNpcSpawnDefaults(
         damage = (int)Math.Round(damage * Ramp(difficulty, 1f, 2f, expertDamageTweak));
         if (difficulty >= 2f)
         {
-            scale *= 1.05f;
+            if (!prime) scale *= 1.05f;
             float balance = PlayerBalance(context.ActivePlayers);
             double multiplier = probe ? 1d + (balance - 1d) * (2d / 3d) : balance;
             life = (int)Math.Round(life * multiplier);

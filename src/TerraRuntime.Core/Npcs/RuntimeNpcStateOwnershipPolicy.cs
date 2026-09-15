@@ -28,6 +28,8 @@ internal static class RuntimeNpcStateOwnershipPolicy
             simulation = simulation with
             {
                 Scale = spawnDefaults?.Scale ?? definition.Scale,
+                BaseDamage = simulation.BaseDamage ?? spawnDefaults?.Damage ?? definition.Damage,
+                BaseDefense = simulation.BaseDefense ?? spawnDefaults?.Defense ?? definition.Defense,
                 Friendly = simulation.Friendly ?? VanillaNpcChaseability1458.FriendlyAtSpawn(update.Type),
                 Chaseable = simulation.Chaseable ?? VanillaNpcChaseability1458.ChaseableAtSpawn(update.Type),
                 Immortal = simulation.Immortal ?? VanillaNpcChaseability1458.ImmortalAtSpawn(update.Type)
@@ -84,6 +86,10 @@ internal static class RuntimeNpcStateOwnershipPolicy
 
         simulation = simulation with
         {
+            BaseDamage = sameDefinition ? simulation.BaseDamage ?? previous.Simulation.BaseDamage ??
+                (hasDefinition ? definition.Damage : null) : hasDefinition ? definition.Damage : null,
+            BaseDefense = sameDefinition ? simulation.BaseDefense ?? previous.Simulation.BaseDefense ??
+                (hasDefinition ? definition.Defense : null) : hasDefinition ? definition.Defense : null,
             HitboxOverride = sameDefinition ? simulation.HitboxOverride ?? previous.Simulation.HitboxOverride : simulation.HitboxOverride,
             Friendly = simulation.Friendly ?? (sameDefinition ? previous.Simulation.Friendly : null) ??
                 (hasDefinition ? VanillaNpcChaseability1458.FriendlyAtSpawn(update.Type) : null),

@@ -26,7 +26,7 @@ public sealed class NpcSpawnContextTests
     public void Fractional_difficulty_matches_original_interpolation_and_rounding(int index)
         => AssertSpawn(FractionalRows[index], FractionalRows[index].GetProperty("requestedDifficulty").GetSingle());
 
-    private static void AssertSpawn(JsonElement row, float? requestedDifficulty = null)
+    internal static void AssertSpawn(JsonElement row, float? requestedDifficulty = null)
     {
         int mode = row.GetProperty("mode").GetInt32(), players = row.GetProperty("players").GetInt32();
         bool good = row.GetProperty("good").GetBoolean();

@@ -11,7 +11,8 @@ internal sealed class VanillaSkeletronPrimeNpcBehaviorStrategy : IVanillaNpcBeha
         INpcAiStateStepper inner, out NpcStateUpdate next)
     {
         _ = inner;
-        if (definition.AiStyle != VanillaNpcAiStyles.SkeletronPrime || npc.TypeIdentity != VanillaNpcIds.SkeletronPrime)
+        if (definition.AiStyle != VanillaNpcAiStyles.SkeletronPrime || npc.TypeIdentity != VanillaNpcIds.SkeletronPrime ||
+            !definition.TryResolveHitbox(npc.Simulation, out var hitbox))
         { next = default; return false; }
 
         NpcAiState ai = npc.Ai;
@@ -29,25 +30,25 @@ internal sealed class VanillaSkeletronPrimeNpcBehaviorStrategy : IVanillaNpcBeha
         }
         if (context.DayTime && ai.Ai1 is not 2f and not 3f) ai = ai with { Ai1 = 2f };
 
-        int defense = definition.Defense;
-        int damage = definition.Damage;
+        int defense = simulation.BaseDefense ?? definition.Defense;
+        int damage = simulation.BaseDamage ?? definition.Damage;
         int timeLeft = simulation.TimeLeft;
         switch ((int)ai.Ai1)
         {
             case 0:
                 ai = ai with { Ai2 = ai.Ai2 + 1f };
                 if (ai.Ai2 >= 600f) { ai = ai with { Ai2 = 0f, Ai1 = 1f }; TryRefresh(in npc, in definition, context, ref targetSlot, out target); hasTarget = TryGetTarget(targetSlot, context, out target); }
-                if (hasTarget) Hover(in npc, in target, context.ExpertMode, ref vx, ref vy);
+                if (hasTarget) Hover(in npc, in target, hitbox, context.ExpertMode, ref vx, ref vy);
                 break;
             case 1:
                 defense *= 2; damage *= 2;
                 ai = ai with { Ai2 = ai.Ai2 + 1f };
                 if (ai.Ai2 >= 400f) ai = ai with { Ai2 = 0f, Ai1 = 0f };
-                if (hasTarget) Charge(in npc, in target, context.ExpertMode, ref vx, ref vy);
+                if (hasTarget) Charge(in npc, in target, hitbox, context.ExpertMode, ref vx, ref vy);
                 break;
             case 2:
                 defense = 9999; damage = 9999;
-                if (hasTarget) Rage(in npc, in target, ref vx, ref vy);
+                if (hasTarget) Rage(in npc, in target, hitbox, ref vx, ref vy);
                 break;
             case 3:
                 if (timeLeft < 0 || timeLeft > 500) timeLeft = 500;
@@ -59,27 +60,36 @@ internal sealed class VanillaSkeletronPrimeNpcBehaviorStrategy : IVanillaNpcBeha
         return true;
     }
 
-    private static void Hover(in NpcSnapshot npc, in VanillaNpcTargetCandidate target, bool expert, ref float vx, ref float vy)
+    private static void Hover(in NpcSnapshot npc, in VanillaNpcTargetCandidate target, VanillaNpcHitboxSize hitbox, bool expert, ref float vx, ref float vy)
     {
         float va = expert ? 0.03f : 0.1f, vm = expert ? 4f : 2f, ha = expert ? 0.07f : 0.1f, hm = expert ? 9.5f : 8f;
         float targetTop = target.CenterY - 21f;
         if (npc.PositionY > targetTop - 200f) { if (vy > 0f) vy *= 0.98f; vy -= va; if (vy > vm) vy = vm; }
         else if (npc.PositionY < targetTop - 500f) { if (vy < 0f) vy *= 0.98f; vy += va; if (vy < -vm) vy = -vm; }
-        float cx = npc.PositionX + 40f;
+        float cx = npc.PositionX + hitbox.Width * .5f;
         if (cx > target.CenterX + 100f) { if (vx > 0f) vx *= 0.98f; vx -= ha; if (vx > hm) vx = hm; }
         if (cx < target.CenterX - 100f) { if (vx < 0f) vx *= 0.98f; vx += ha; if (vx < -hm) vx = -hm; }
     }
 
-    private static void Charge(in NpcSnapshot npc, in VanillaNpcTargetCandidate target, bool expert, ref float vx, ref float vy)
+    private static void Charge(in NpcSnapshot npc, in VanillaNpcTargetCandidate target, VanillaNpcHitboxSize hitbox, bool expert, ref float vx, ref float vy)
     {
-        float dx = target.CenterX - (npc.PositionX + 40f), dy = target.CenterY - (npc.PositionY + 51f);
-        float d = MathF.Max(0.001f, MathF.Sqrt(dx * dx + dy * dy)); float speed = expert ? 6f : 2f;
+        float dx = target.CenterX - (npc.PositionX + hitbox.Width * .5f), dy = target.CenterY - (npc.PositionY + hitbox.Height * .5f);
+        float d = MathF.Sqrt(dx * dx + dy * dy); if (d <= 0f) d = 1f;
+        float speed = expert ? 6f : 2f;
         if (expert) { if (d > 150f) speed *= 1.05f; for (float t = 200f; t <= 600f; t += 50f) if (d > t) speed *= 1.1f; }
-        vx = dx / d * speed; vy = dy / d * speed;
+        float multiplier = speed / d;
+        vx = dx * multiplier; vy = dy * multiplier;
     }
 
-    private static void Rage(in NpcSnapshot npc, in VanillaNpcTargetCandidate target, ref float vx, ref float vy)
-    { float dx = target.CenterX-(npc.PositionX+40f), dy=target.CenterY-(npc.PositionY+51f); float d=MathF.Max(0.001f,MathF.Sqrt(dx*dx+dy*dy)); float s=Math.Clamp(10f+d/100f,8f,32f); vx=dx/d*s; vy=dy/d*s; }
+    private static void Rage(in NpcSnapshot npc, in VanillaNpcTargetCandidate target, VanillaNpcHitboxSize hitbox, ref float vx, ref float vy)
+    {
+        float dx = target.CenterX - (npc.PositionX + hitbox.Width * .5f);
+        float dy = target.CenterY - (npc.PositionY + hitbox.Height * .5f);
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        if (distance <= 0f) distance = 1f;
+        float multiplier = Math.Clamp(10f + distance / 100f, 8f, 32f) / distance;
+        vx = dx * multiplier; vy = dy * multiplier;
+    }
 
     internal static bool TryGetTarget(ushort slot, VanillaNpcBehaviorContext context, out VanillaNpcTargetCandidate target)
     { if (slot<byte.MaxValue && context.TryFindCandidate((byte)slot,out target)&&target.Active&&!target.Dead&&!target.Ghost) return true; target=default; return false; }

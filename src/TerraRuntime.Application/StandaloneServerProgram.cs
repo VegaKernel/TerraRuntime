@@ -339,7 +339,21 @@ internal static class StandaloneServerProgram
         if (!scaledNpcs.TryGetActive(11, out var scaledBody) || scaledBody.Simulation.LifeMax != 153000 ||
             scaledBody.Simulation.HitboxOverride != new NpcHitboxDimensions(76, 76)) return 5;
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok.");
+        var primeNpcs = new RuntimeNpcStore();
+        primeNpcs.SetVanillaSpawnContextSource(() => new(2, 1, false));
+        if (!primeNpcs.TrySpawnIntent(new NpcAiSpawnIntent(VanillaNpcIds.SkeletronPrime, 1000, 1000, 0, 0, 0)
+            { InitialAi = new NpcAiState(1, 1, 399, 0) }, out var prime)) return 5;
+        var primeAi = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        primeAi.SetWorldConditions(false, false, expertMode: true);
+        primeAi.SetCandidates([new VanillaNpcTargetCandidate(0, 1510, 1021, 0, true, false, false, false)]);
+        var primeExecutor = new RuntimeNpcAiStateExecutor(primeNpcs);
+        primeExecutor.Tick(primeAi);
+        if (!primeNpcs.TryGet(prime.Handle, out var spinningPrime) || spinningPrime.Simulation.DamageOverride != 160 ||
+            spinningPrime.Simulation.BaseDamage != 80) return 5;
+        primeExecutor.Tick(primeAi);
+        if (!primeNpcs.TryGet(prime.Handle, out var hoveringPrime) || hoveringPrime.Simulation.DamageOverride != 80) return 5;
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok.");
         return 0;
     }
 

@@ -149,6 +149,10 @@ public readonly record struct NpcSimulationState(
     /// </summary>
     public int? DamageOverride { get; init; }
 
+    /// <summary>NPC.defDamage and defDefense: spawn baselines retained independently of live AI overrides.</summary>
+    public int? BaseDamage { get; init; }
+    public int? BaseDefense { get; init; }
+
     /// <summary>
     /// Server-owned vanilla NPC.reflectsProjectiles state for the current committed AI revision. Projectile
     /// collision/reflection consumes this fact separately; keeping it here prevents AI and combat from racing.

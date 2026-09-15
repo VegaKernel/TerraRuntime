@@ -54,6 +54,8 @@
     <EmbeddedResource Include="Fixtures/destroyer-chain-spawn-1458.json.gz" LogicalName="DestroyerChainSpawn1458" />
     <EmbeddedResource Include="Fixtures/npc-spawn-context-1458.json.gz" LogicalName="NpcSpawnContext1458" />
     <EmbeddedResource Include="Fixtures/npc-spawn-fractional-1458.json.gz" LogicalName="NpcSpawnFractional1458" />
+    <EmbeddedResource Include="Fixtures/prime-spawn-1458.json.gz" LogicalName="PrimeSpawn1458" />
+    <EmbeddedResource Include="Fixtures/prime-phase-1458.json.gz" LogicalName="PrimePhase1458" />
     <EmbeddedResource Include="Fixtures/moon-lord-clot-spawn-1458.json" LogicalName="MoonLordClotSpawn1458" />
     <EmbeddedResource Include="Fixtures/moon-leech-clot-1458.json" LogicalName="MoonLeechClot1458" />
     <EmbeddedResource Include="Fixtures/npc-heal-packet-1458.json" LogicalName="NpcHealPacket1458" />
