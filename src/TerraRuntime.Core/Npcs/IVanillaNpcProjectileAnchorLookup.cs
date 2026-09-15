@@ -6,4 +6,7 @@ namespace TerraRuntime.Core.Npcs;
 public interface IVanillaNpcProjectileAnchorLookup
 {
     bool TryGetProjectile(float keyBits, out ProjectileSnapshot projectile);
+
+    /// <summary>Returns an active Moon Leech's retained key when its addressed player has the leech effect.</summary>
+    bool TryGetHealingAnchor(ushort physicalSlot, out float keyBits) { keyBits = default; return false; }
 }

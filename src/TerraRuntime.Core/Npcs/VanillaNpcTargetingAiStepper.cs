@@ -1884,8 +1884,11 @@ public sealed class VanillaNpcTargetingAiStepper :
         proposed.Simulation.Life == 0 && proposed.Simulation.TimeLeft == 0;
 
     public void ApplyCommittedEffect(
-        in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations) =>
+        in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)
+    {
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);
+        VanillaMoonLordLeechBehavior.SpawnFromHead(in before, in committed, _context, mutations);
+    }
 
     public void ApplyCommittedEffectAfterSpawns(
         in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)

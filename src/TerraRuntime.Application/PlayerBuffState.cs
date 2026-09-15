@@ -27,6 +27,14 @@ internal sealed class PlayerBuffState
         count = snapshot.Length;
     }
 
+    public bool Contains(BuffTypeId type, bool immune = false)
+    {
+        if (immune) return false;
+        for (int i = 0; i < count; i++)
+            if (types[i] == type && durations[i] >= 1) return true;
+        return false;
+    }
+
     public int GetDuration(BuffTypeId type)
     {
         int index = Array.IndexOf(types, type, 0, count);

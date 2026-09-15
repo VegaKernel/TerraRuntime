@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-15 Moon Lord healing-chain extension: head AI79 now creates NPC401 at phase-2 elapsed updates120/180/240 by source-ordered physical projectile scan and retained buff145. Real application tests cover pending packet50 snapshots, reverse projectile keys and capacity exhaustion; forty original creation cases and a coupled400-step head/tongue/buff/clot/healing trace provide independent evidence. The coupled trace freezes player/core/hand movement and does not prove a full fight. General immunity, spawn-slot protection, full network cadence and remaining combat/loot behavior stay open. See the paired Moon Lord death-sequence documentation and agent memory for acceptance evidence.
+
 Shared inbound packet limits (2026-09-14): host `IRuntime.PacketRateLimits` configures a packet-ID table for all existing/future connections with separate per-connection fixed-second counters. Includes live updates, independent hard-abuse protection and existing rejection semantics. See [EN contract](en/networking-protocol.md#shared-inbound-packet-limits) / [RU contract](ru/networking-protocol.md#общие-лимиты-входящих-пакетов). Vega-side permissions, UI and persistence remain host responsibilities. Validation is tracked in agent-memory/work-state.md.
 
 

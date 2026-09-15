@@ -1,5 +1,9 @@
 # Production graph
 
+## Head-created Moon Leech clots ? 2026-09-15
+
+After c383526f, VanillaMoonLordLeechBehavior.SpawnFromHead runs at accepted AI79 phase2 elapsed120/180/240. It uses the existing post-commit NPC mutation sink and scans bounded physical slots0..999, allocating each eligible401 best effort rather than overflowing the256 intent buffer. New higher-slot children participate in the existing live NPC pass. IVanillaNpcProjectileAnchorLookup adds default TryGetHealingAnchor; Application.RuntimeNpcProjectileAnchors reads live type456, addressed player buff145 and reverse exact-handle wire identity. No source-head ownership/returning-sign/player-active filter. PlayerBuffState.Contains checks positive duration; transfer profiles retain prejoin packet50 state, disconnect clears it. PlayerAuthority combines remote snapshot and server-player MoonLeech state. General equipment immunity remains unrepresented. Production NpcAuthority passes PlayerAuthority into this adapter. Native protocol smoke now exercises this path as npcClotSpawn=ok. No project/dependency changes.
+
 ## NPC401 committed healing and terminal AI steps — 2026-09-15
 
 Draft after ecf2306d: VanillaMoonLordLeechBehavior in Core owns AI82 motion and source-order heal allocation, reading current step peers and IVanillaNpcProjectileAnchorLookup. Application RuntimeNpcProjectileAnchors resolves opaque floatbits through existing exact wire identities and RuntimeProjectileStore; NpcAuthority wires it when projectile replication exists. Gameplay definition401/style82/family50 has30x30/400/noGravity/noTileCollide/HiddenAtSpawn; core spawn ownership applies HiddenAtSpawn. Coverage remains Partial; definition count incremented to194.

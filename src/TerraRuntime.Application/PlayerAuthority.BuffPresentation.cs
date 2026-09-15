@@ -21,6 +21,11 @@ internal sealed partial class PlayerAuthority
             ? transferProfiles.GetBuffDuration(member.Connection, type)
             : type == VanillaBuffIds.MoonLeech ? serverPlayers?.GetMoonLeechDuration(player) ?? 0 : 0;
 
+    internal bool HasMoonLeech(byte slot) =>
+        transferProfiles.HasBuff(slot, VanillaBuffIds.MoonLeech) ||
+        (serverPlayers is not null && serverPlayers.TryGet(new PlayerSlotId(slot), out var player) &&
+         serverPlayers.GetMoonLeechDuration(player.Player) > 0);
+
     private void ApplyPlayerBuffTypes(PlayerBuffTypesRuntimeCommand command)
     {
         PlayerBuffTypesCommitRequest request = command.Request;

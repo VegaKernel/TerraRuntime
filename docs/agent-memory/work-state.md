@@ -1,5 +1,13 @@
 # Work state
 
+## CURRENT head-driven healing chain accepted locally ? 2026-09-15
+
+Base main c383526f349f4377b495d711b8a8cfd14e1b3c7b is pushed, all exact-head workflows green including CI34911839429/source34911839388/docs34911839401. Current draft adds head-driven401creation, real application anchor/buff lookup, forty original cases and400-step coupled trace. Details in newest production-graph/verified-vanilla sections and paired Moon Lord docs. No full-parity claim; active goal, no blockers.
+
+Validation: threshold120->121 negative fails8/42cases including coupled chain, restored. Release build0warnings/errors. Full16805/16805,0failed/errors/skips,179.681s, .cache/moonleech-head-full.xml/log; session89366terminal0. Windows NativeAOT publish.cache/moonleech-head-native-win-x64, session31158terminal0; five correctsmokes all0 .cache/moonleech-head-native-smokes.log. Nativeprotocol nowincludes actual application-backed headcreation andsamepass401step npcClotSpawn=ok. Docs94mirrored/227files,domain285,graph15projects29edges,source15Pythonunitspass. No localprocessremaining. Ready commit/push coherentdraft then inspect exact-head Linux CI; do not stack unrelated changes before green.
+
+Next investigated gap: original NPC.UpdateProtectedSpawnSlots in Main.Update near17135 sets active slots2, inactive max(previous-1,0) before gameplay. NPC.NewNPC sets2; GetAvailableNPCSlot first scans !active&&!protected, then CanBeReplacedByOtherNPCs fallback. NPCID.Sets.SearchSpawnSlotsInReverse true222,245; CannotSpawnInSlot0 has explicit51? identities (count from source, not guess). Current TrySpawnVanilla simply scans0up and ignoresprotection/reverse/type-slot0/fallback. Need bounded original probe and shared allocator/world-tick ownership design, not ad-hoc clot exception. No implementation yet. Read original NPC81620+/NPCID4811+; application NpcAuthority.TickSimulation322+, worldtick ordering before commands still to inspect. Decompiled source remains ignored localreference.
+
 ## CURRENT AI82 healing accepted locally; ready to publish — 2026-09-15
 
 main remains ecf2306d9f6350103ec31401b58dc46fdac94822, fullygreen CI34909523293 andsource34909523239. CurrentUNCOMMITTED ~30paths addsNPC401AI82, terminalcommitmechanism, numeric81andtests/docs. Goalactive; previous turn+this turn are concrete progress, no blockers. Do not finalize fullparity.

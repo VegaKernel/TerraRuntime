@@ -181,6 +181,10 @@ internal sealed class RuntimePlayerTransferProfileStore
         return true;
     }
 
+    // Vanilla AI queries physical player slots, including snapshots received before the player becomes active.
+    // Disconnect clears the entry, matching RemoteClient.Reset replacing Main.player[Id].
+    internal bool HasBuff(byte slot, BuffTypeId type) => entries[slot]?.Buffs?.Contains(type) ?? false;
+
     public void Clear(ConnectionHandle connection)
     {
         Entry? entry = Get(connection);

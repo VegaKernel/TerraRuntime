@@ -194,7 +194,7 @@ internal sealed partial class NpcAuthority
             vanillaTargeting = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
             vanillaTargeting.SetPlayerInteractions(combat.Interactions);
             if (projectileReplication is not null)
-                vanillaTargeting.SetProjectileAnchors(new RuntimeNpcProjectileAnchors(projectiles, projectileReplication.WireIdentities));
+                vanillaTargeting.SetProjectileAnchors(new RuntimeNpcProjectileAnchors(projectiles, projectileReplication.WireIdentities, players));
             var behaviorDispatch = new RuntimeNpcBehaviorStateStepper(
                 vanillaTargeting,
                 presentationBehaviors,

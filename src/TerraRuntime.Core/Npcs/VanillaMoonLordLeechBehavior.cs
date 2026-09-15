@@ -42,6 +42,28 @@ internal static class VanillaMoonLordLeechBehavior
         return true;
     }
 
+    public static void SpawnFromHead(in NpcSnapshot before, in NpcSnapshot committed,
+        VanillaNpcBehaviorContext context, INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaNpcIds.MoonLordHead || committed.Type != before.Type ||
+            before.Ai.Ai0 < 0f || committed.Ai.Ai0 != 2f || context.ProjectileAnchors is null ||
+            committed.Target >= byte.MaxValue || !context.TryFindCandidate((byte)committed.Target, out var target)) return;
+        int elapsed = VanillaMoonLordHeadBehavior.Phase(committed.Ai.Ai1, out int phase, out _);
+        if (phase != 2 || elapsed is not (120 or 180 or 240)) return;
+        // Original AI079 visits all physical projectile slots, without a head-owner or returning-sign filter.
+        // Allocate after commit, in source order; a full NPC table does not reject earlier successful children.
+        for (ushort slot = 0; slot < RuntimeProjectileStore.VanillaPhysicalSlotCount; slot++)
+        {
+            if (!context.ProjectileAnchors.TryGetHealingAnchor(slot, out float key)) continue;
+            var intent = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordLeechBlob,
+                (int)target.CenterX, (int)target.CenterY, 0, 0, byte.MaxValue)
+            {
+                InitialAi = new NpcAiState(committed.Handle.Slot + 1, key, 0, 0)
+            };
+            mutations.TrySpawn(in intent, out _);
+        }
+    }
+
     public static void ApplyHealing(in NpcSnapshot before, in NpcSnapshot committed,
         VanillaNpcBehaviorContext context, INpcAiCommittedNpcMutationSink mutations)
     {
