@@ -6,9 +6,9 @@ on:
     paths:
       - 'src/TerraRuntime.Gameplay/Npcs/Town/VanillaTownNpcIdentity1458.cs'
       - 'src/TerraRuntime.Protocol.Multiplicity/TerrariaTownNpcArrivalCodec1458.cs'
-      - 'src/TerraRuntime/RuntimeTownNpcStateStore.cs'
-      - 'src/TerraRuntime/RuntimeTownNpcMoveInCoordinator1458.cs'
-      - 'src/TerraRuntime/RuntimeNpcReplicationRegistry.cs'
+      - 'src/TerraRuntime.Application/RuntimeTownNpcStateStore.cs'
+      - 'src/TerraRuntime.Application/RuntimeTownNpcMoveInCoordinator1458.cs'
+      - 'src/TerraRuntime.Application/RuntimeNpcReplicationRegistry.cs'
       - 'tests/TerraRuntime.Tests/RuntimeTownNpcArrivalIdentity1458Tests.cs'
       - 'tools/ci/check_town_arrival_identity_source.py'
       - '.github/workflows/town-arrival-identity-source-contract.yml'
@@ -44,5 +44,5 @@ jobs:
         run: dotnet build build/TerraRuntime.slnx -c Release
       - name: Focused regressions
         run: >-
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
-          --filter 'FullyQualifiedName~RuntimeTownNpcArrivalIdentity1458Tests|FullyQualifiedName~RuntimeTownNpcPhysicalSpawn1458Tests|FullyQualifiedName~RuntimeTownNpcRoomAwareSelection1458Tests'
+          dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
+          -- -noLogo -method "*RuntimeTownNpcArrivalIdentity1458Tests*" -method "*RuntimeTownNpcPhysicalSpawn1458Tests*" -method "*RuntimeTownNpcRoomAwareSelection1458Tests*"

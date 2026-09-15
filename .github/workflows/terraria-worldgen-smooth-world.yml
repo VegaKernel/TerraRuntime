@@ -4,10 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime.World/Generation/Vanilla/VanillaWorldSmoother1458.cs'
-      - 'src/TerraRuntime.World/Generation/Vanilla/VanillaWorldSmoothingCatalog1458.cs'
-      - 'src/TerraRuntime.World/Generation/Vanilla/VanillaPostSettleWorldGenerationPipeline1458.cs'
-      - 'tests/TerraRuntime.Tests/VanillaWorldSmoother1458Tests.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/WorldSmoother1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/WorldSmoothingCatalog1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/PostSettlePipeline1458.cs'
+      - 'tests/TerraRuntime.Tests/WorldSmoother1458Tests.cs'
       - 'tools/ci/probe_worldgen_smooth_world.py'
       - '.github/workflows/terraria-worldgen-smooth-world.yml'
   workflow_dispatch:
@@ -55,12 +55,12 @@ jobs:
           python3 tools/ci/probe_worldgen_smooth_world.py \
             --world-gen artifacts/source-contract/world-gen.cs \
             --tile-id artifacts/source-contract/tile-id.cs \
-            --runtime-catalog src/TerraRuntime.World/Generation/Vanilla/VanillaWorldSmoothingCatalog1458.cs \
-            --runtime-smoother src/TerraRuntime.World/Generation/Vanilla/VanillaWorldSmoother1458.cs \
+            --runtime-catalog src/TerraRuntime.WorldGeneration/Generation/Vanilla/WorldSmoothingCatalog1458.cs \
+            --runtime-smoother src/TerraRuntime.WorldGeneration/Generation/Vanilla/WorldSmoother1458.cs \
             --output artifacts/source-contract/smooth-world-contract.txt
 
       - name: Focused smoothing tests
-        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --filter FullyQualifiedName~VanillaWorldSmoother1458Tests
+        run: dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release -- -noLogo -method "*VanillaWorldSmoother1458Tests*"
 
       - uses: actions/upload-artifact@v4
         with:

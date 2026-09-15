@@ -74,7 +74,7 @@ jobs:
       - name: Build
         run: dotnet build build/TerraRuntime.slnx -c Release --nologo
       - name: Focused tests
-        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build --filter FullyQualifiedName~VanillaSkeletronBehaviorTests --nologo
+        run: dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build -- -noLogo -method "*VanillaSkeletronBehaviorTests*"
       - name: Full tests
         run: dotnet test build/TerraRuntime.slnx -c Release --no-build --nologo
       - name: Commit validated feature branch

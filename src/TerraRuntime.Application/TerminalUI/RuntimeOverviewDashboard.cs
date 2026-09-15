@@ -437,7 +437,7 @@ internal sealed class RuntimeOverviewDashboard : View
 
     internal bool? InvokeBotAddForSmoke() => botAddButton.InvokeCommand(Command.Accept);
 
-    internal bool HasPendingBotCommandForSmoke => pendingBotCommand is not null;
+    internal Task? PendingBotCommandForSmoke => pendingBotCommand;
 
     internal void PublishBotCommandCompletionForSmoke() => PublishBotCommandCompletion();
 

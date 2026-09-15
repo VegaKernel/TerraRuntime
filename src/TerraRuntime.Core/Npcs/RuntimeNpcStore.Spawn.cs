@@ -65,11 +65,11 @@ public sealed partial class RuntimeNpcStore
                 CanBeReplacedByOtherNpcs = intent.CanBeReplacedByOtherNpcs
             });
 
-        return TrySpawnVanilla(in update, out snapshot);
+        return TrySpawnVanilla(in update, out snapshot, intent.StartSlot);
     }
 
     /// <summary>Allocates in vanilla search order, observing protection and replacement eligibility.</summary>
-    public bool TrySpawnVanilla(in NpcStateUpdate update, out NpcSnapshot snapshot)
+    public bool TrySpawnVanilla(in NpcStateUpdate update, out NpcSnapshot snapshot, int startSlot = 0)
     {
         if (!IsValid(in update))
         {
@@ -79,7 +79,12 @@ public sealed partial class RuntimeNpcStore
 
         var type = new NpcTypeId(update.Type);
         int capacity = Math.Min(_slots.Length, VanillaNpcSpawnRules.PhysicalSlotCount);
-        int minimum = VanillaNpcSpawnRules.CannotSpawnInSlotZero(type) ? 1 : 0;
+        if ((uint)startSlot >= (uint)capacity)
+        {
+            snapshot = default;
+            return false;
+        }
+        int minimum = startSlot == 0 && VanillaNpcSpawnRules.CannotSpawnInSlotZero(type) ? 1 : startSlot;
         bool reverse = VanillaNpcSpawnRules.SearchesInReverse(type);
         // Original reverse traversal stops before the start index; even an otherwise eligible slot zero is excluded.
         if (reverse) minimum++;

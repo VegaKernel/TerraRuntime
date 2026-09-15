@@ -115,7 +115,7 @@ public sealed class RuntimeOverviewDashboardInteractionTests
     }
 
     [Fact]
-    public void Bot_add_button_accept_command_reaches_runtime_bot_operations()
+    public async Task Bot_add_button_accept_command_reaches_runtime_bot_operations()
     {
         var ingress = new CompletingBotCommandIngress();
         var operations = new RuntimeBotOperations(ingress, new RuntimeBotTelemetry());
@@ -123,15 +123,12 @@ public sealed class RuntimeOverviewDashboardInteractionTests
 
         Assert.True(dashboard.BotAddEnabledForSmoke);
         Assert.NotNull(dashboard.InvokeBotAddForSmoke());
-        Assert.True(SpinWait.SpinUntil(() => Volatile.Read(ref ingress.CreateCount) == 1, TimeSpan.FromSeconds(2)));
-        Assert.True(dashboard.HasPendingBotCommandForSmoke);
-        Assert.True(SpinWait.SpinUntil(
-            () =>
-            {
-                dashboard.PublishBotCommandCompletionForSmoke();
-                return dashboard.CommandFeedbackForSmoke.Contains("created ", StringComparison.Ordinal);
-            },
-            TimeSpan.FromSeconds(2)));
+        Task pending = Assert.IsAssignableFrom<Task>(dashboard.PendingBotCommandForSmoke);
+        await pending.WaitAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(1, Volatile.Read(ref ingress.CreateCount));
+        dashboard.PublishBotCommandCompletionForSmoke();
+        Assert.Null(dashboard.PendingBotCommandForSmoke);
+        Assert.Contains("created ", dashboard.CommandFeedbackForSmoke, StringComparison.Ordinal);
     }
 
     [Fact]

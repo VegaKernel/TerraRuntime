@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime/RuntimeTownNpcMoveInCoordinator1458.cs'
+      - 'src/TerraRuntime.Application/RuntimeTownNpcMoveInCoordinator1458.cs'
       - 'tests/TerraRuntime.Tests/RuntimeTownNpcRoomAwareSelection1458Tests.cs'
       - 'tools/ci/check_town_spawn_preselection_source.py'
       - '.github/workflows/town-spawn-preselection-source-contract.yml'
@@ -23,7 +23,7 @@ jobs:
         with:
           dotnet-version: 11.0.100-preview.7.26381.103
       - name: Focused Town NPC room-preselection regressions
-        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --filter 'FullyQualifiedName~RuntimeTownNpcRoomAwareSelection1458Tests'
+        run: dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release -- -noLogo -method "*RuntimeTownNpcRoomAwareSelection1458Tests*"
       - name: Download pinned TerrariaServer 1.4.5.8
         shell: bash
         run: |

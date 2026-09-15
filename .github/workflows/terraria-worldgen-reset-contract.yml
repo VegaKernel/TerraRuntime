@@ -5,9 +5,9 @@ on:
     branches: [main]
     paths:
       - 'src/TerraRuntime.Contracts/Gameplay/WorldGenerationPassContracts.cs'
-      - 'src/TerraRuntime.World/VanillaWorldGenerationBootstrap1458.cs'
-      - 'src/TerraRuntime.World/SourceBackedVanillaWorldGenerationProvider1458.cs'
-      - 'tests/TerraRuntime.Tests/SourceBackedVanillaWorldGenerationProvider1458Tests.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/Bootstrap1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/SourceBackedProvider1458.cs'
+      - 'tests/TerraRuntime.Tests/SourceBackedProvider1458Tests.cs'
       - 'tools/ci/probe_worldgen_reset.py'
       - '.github/workflows/terraria-worldgen-reset-contract.yml'
   workflow_dispatch:
@@ -61,18 +61,18 @@ jobs:
         run: >-
           python3 tools/ci/probe_worldgen_reset.py
           --world-gen artifacts/source-contract/world-gen.cs
-          --runtime-bootstrap src/TerraRuntime.World/VanillaWorldGenerationBootstrap1458.cs
+          --runtime-bootstrap src/TerraRuntime.WorldGeneration/Generation/Vanilla/Bootstrap1458.cs
           --output artifacts/source-contract/worldgen-reset-contract.txt
 
       - name: Build worldgen implementation
-        run: dotnet build src/TerraRuntime/TerraRuntime.csproj -c Release
+        run: dotnet build build/TerraRuntime.slnx -c Release
 
       - name: Run Reset and Terrain parity tests
         run: >-
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
+          dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
           -c Release
-          --no-restore
-          --filter FullyQualifiedName~SourceBackedVanillaWorldGenerationProvider1458Tests
+          --no-build
+          -- -noLogo -method "*SourceBackedProvider1458Tests*"
 
       - name: Upload Reset source evidence
         uses: actions/upload-artifact@v4

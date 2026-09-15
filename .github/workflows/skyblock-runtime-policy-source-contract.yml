@@ -3,7 +3,7 @@ name: Skyblock Runtime Policy Source Contract
 on:
   pull_request:
     paths:
-      - 'src/TerraRuntime/RuntimeWorldCreationPipeline.cs'
+      - 'src/TerraRuntime.Application/RuntimeWorldCreationPipeline.cs'
       - 'src/TerraRuntime.World/VanillaSkyblockRuntimePolicy1458.cs'
       - 'tests/TerraRuntime.Tests/VanillaSkyblockRuntimePolicy1458Tests.cs'
       - 'tools/ci/probe_skyblock_runtime_policy.py'
@@ -14,7 +14,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime/RuntimeWorldCreationPipeline.cs'
+      - 'src/TerraRuntime.Application/RuntimeWorldCreationPipeline.cs'
       - 'src/TerraRuntime.World/VanillaSkyblockRuntimePolicy1458.cs'
       - 'tests/TerraRuntime.Tests/VanillaSkyblockRuntimePolicy1458Tests.cs'
       - 'tools/ci/probe_skyblock_runtime_policy.py'
@@ -97,6 +97,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj \
+          dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj \
             --configuration Release \
-            --filter FullyQualifiedName~VanillaSkyblockRuntimePolicy1458Tests
+            -- -noLogo -method "*VanillaSkyblockRuntimePolicy1458Tests*"

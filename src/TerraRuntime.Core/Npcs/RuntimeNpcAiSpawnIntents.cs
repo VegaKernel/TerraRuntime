@@ -19,6 +19,9 @@ public readonly record struct NpcAiSpawnIntent(
 {
     public NpcAiState InitialAi { get; init; }
 
+    /// <summary>Vanilla NewNPC.Start: ascending search includes this slot; reverse search excludes it.</summary>
+    public byte StartSlot { get; init; }
+
     /// <summary>Source-owned initial localAI state applied atomically with allocation.</summary>
     public NpcAiState InitialLocalAi { get; init; }
 

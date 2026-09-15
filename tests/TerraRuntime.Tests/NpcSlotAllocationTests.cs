@@ -8,7 +8,7 @@ namespace TerraRuntime.Tests;
 
 public sealed class NpcSlotAllocationTests
 {
-    private static readonly JsonElement Reference = ReadReference();
+    private static readonly JsonElement Reference = ReadReference("NpcSlotAllocation1458", "3066507d07e01edb34f8812ffede7c9671e135d930783efca982496268b60bd6");
 
     [Theory]
     [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(3)]
@@ -18,29 +18,7 @@ public sealed class NpcSlotAllocationTests
         foreach (var row in Reference.GetProperty("rows").EnumerateArray())
         {
             if (row.GetProperty("mode").GetInt32() != mode) continue;
-            var store = new RuntimeNpcStore();
-            if (mode == 2)
-            {
-                foreach (byte slot in new byte[] { 0, 199 }) Assert.True(store.TrySpawn(slot, State(1), out _));
-                store.UpdateProtectedSpawnSlots();
-                foreach (byte slot in new byte[] { 0, 199 })
-                { Assert.True(store.TryGetActive(slot, out var npc)); Assert.True(store.TryDespawn(npc.Handle)); }
-                store.UpdateProtectedSpawnSlots();
-            }
-            for (byte slot = 0; slot < 200; slot++)
-            {
-                bool active = mode is 1 or 3 or 4 or 5 or 8 || mode == 7 && slot != 0 || mode == 6 && slot != 100 ||
-                    mode == 2 && slot is not (0 or 2 or 197 or 199);
-                if (!active) continue;
-                var occupied = State(1, mode == 8 && slot == 0 || mode is 3 or 5 or 6 && slot is 4 or 195);
-                Assert.True(store.TrySpawn(slot, in occupied, out _));
-            }
-            if (mode is 4 or 5)
-            {
-                store.UpdateProtectedSpawnSlots();
-                for (byte slot = 0; slot < 200; slot++)
-                { Assert.True(store.TryGetActive(slot, out var npc)); Assert.True(store.TryDespawn(npc.Handle)); }
-            }
+            var store = CreateArrangement(mode);
             int type = row.GetProperty("type").GetInt32(), expected = row.GetProperty("slot").GetInt32();
             bool created = store.TrySpawnVanilla(State(type), out var result);
             int actual = created ? result.Handle.Slot : -1;
@@ -63,6 +41,55 @@ public sealed class NpcSlotAllocationTests
             Assert.True(store.TrySpawnVanilla(State(401), out var created));
             Assert.Equal(row.GetProperty("slot").GetInt32(), created.Handle.Slot);
         }
+    }
+
+    [Theory]
+    [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(3)] [InlineData(4)]
+    [InlineData(5)] [InlineData(6)] [InlineData(7)] [InlineData(8)]
+    public void Nonzero_start_matches_original_for_every_type_and_slot_arrangement(int mode)
+    {
+        var reference = ReadReference("NpcSlotStart1458", "55ad9275bbc2e8fa15e7d15d97e9767067dbe366c0b96339bcb7a1e09f37526a");
+        foreach (var row in reference.GetProperty("rows").EnumerateArray())
+        {
+            if (row.GetProperty("mode").GetInt32() != mode) continue;
+            var store = CreateArrangement(mode);
+            int type = row.GetProperty("type").GetInt32(), start = row.GetProperty("start").GetInt32();
+            int expected = row.GetProperty("slot").GetInt32();
+            bool created = store.TrySpawnVanilla(State(type), out var result, start);
+            int actual = created ? result.Handle.Slot : -1;
+            Assert.True(expected == actual, $"mode={mode}, type={type}, start={start}, expected={expected}, actual={actual}");
+        }
+    }
+
+    [Theory]
+    [InlineData(-1)] [InlineData(200)] [InlineData(255)] [InlineData(int.MaxValue)]
+    public void Invalid_start_is_bounded_without_mutation(int start)
+    {
+        var store = new RuntimeNpcStore();
+        Assert.False(store.TrySpawnVanilla(State(222), out _, start));
+        Assert.Equal(0, store.ActiveCount);
+        var small = new RuntimeNpcStore(4);
+        Assert.False(small.TrySpawnVanilla(State(1), out _, 4));
+    }
+
+    [Theory]
+    [InlineData(35, 2)] [InlineData(127, 4)]
+    public void Skeleton_limbs_start_search_at_parent_even_when_lower_slots_are_free(int type, int count)
+    {
+        var store = new RuntimeNpcStore(20);
+        var state = State(type) with { Ai = default };
+        Assert.True(store.TrySpawn(10, in state, out var parent));
+        var stepper = new VanillaNpcTargetingAiStepper(new Idle());
+        var proposed = state with { Ai = new NpcAiState(1, 0, 0, 0) };
+        Span<NpcAiSpawnIntent> intents = stackalloc NpcAiSpawnIntent[4];
+        Assert.Equal(count, stepper.PlanNpcSpawns(in parent, in proposed, intents));
+        for (int index = 0; index < count; index++)
+        {
+            Assert.Equal(parent.Handle.Slot, intents[index].StartSlot);
+            Assert.True(store.TrySpawnIntent(in intents[index], out var child));
+            Assert.Equal(11 + index, child.Handle.Slot);
+        }
+        Assert.False(store.TryGetActive(0, out _));
     }
 
     [Fact]
@@ -112,16 +139,44 @@ public sealed class NpcSlotAllocationTests
         Assert.True(store.TrySpawnVanilla(State(1), out _));
     }
 
+    private static RuntimeNpcStore CreateArrangement(int mode)
+    {
+        var store = new RuntimeNpcStore();
+        if (mode == 2)
+        {
+            foreach (byte slot in new byte[] { 0, 199 }) Assert.True(store.TrySpawn(slot, State(1), out _));
+            store.UpdateProtectedSpawnSlots();
+            foreach (byte slot in new byte[] { 0, 199 })
+            { Assert.True(store.TryGetActive(slot, out var npc)); Assert.True(store.TryDespawn(npc.Handle)); }
+            store.UpdateProtectedSpawnSlots();
+        }
+        for (byte slot = 0; slot < 200; slot++)
+        {
+            bool active = mode is 1 or 3 or 4 or 5 or 8 || mode == 7 && slot != 0 || mode == 6 && slot != 100 ||
+                mode == 2 && slot is not (0 or 2 or 197 or 199);
+            if (!active) continue;
+            var occupied = State(1, mode == 8 && slot == 0 || mode is 3 or 5 or 6 && slot is 4 or 195);
+            Assert.True(store.TrySpawn(slot, in occupied, out _));
+        }
+        if (mode is 4 or 5)
+        {
+            store.UpdateProtectedSpawnSlots();
+            for (byte slot = 0; slot < 200; slot++)
+            { Assert.True(store.TryGetActive(slot, out var npc)); Assert.True(store.TryDespawn(npc.Handle)); }
+        }
+        return store;
+    }
+
     private static NpcStateUpdate State(int type, bool replaceable = false) =>
         new(type, (short)type, 100, 100, 0, 0, 255, default,
             NpcSimulationState.Initial with { CanBeReplacedByOtherNpcs = replaceable });
 
-    private static JsonElement ReadReference()
+    private static JsonElement ReadReference(string resourceName, string hash)
     {
-        using var resource = typeof(NpcSlotAllocationTests).Assembly.GetManifestResourceStream("NpcSlotAllocation1458")!;
+        using var resource = typeof(NpcSlotAllocationTests).Assembly.GetManifestResourceStream(resourceName)!;
         using var gzip = new GZipStream(resource, CompressionMode.Decompress);
         using var bytes = new MemoryStream(); gzip.CopyTo(bytes);
-        Assert.Equal("3066507d07e01edb34f8812ffede7c9671e135d930783efca982496268b60bd6",
+        Assert.Equal(hash,
             Convert.ToHexStringLower(SHA256.HashData(bytes.ToArray())));
         using var json = JsonDocument.Parse(bytes.ToArray()); return json.RootElement.Clone();
     }

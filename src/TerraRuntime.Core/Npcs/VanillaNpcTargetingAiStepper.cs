@@ -833,7 +833,8 @@ public sealed class VanillaNpcTargetingAiStepper :
             0f,
             proposed.Target)
         {
-            InitialAi = new NpcAiState(-1f, source.Handle.Slot, 0f, 0f)
+            InitialAi = new NpcAiState(-1f, source.Handle.Slot, 0f, 0f),
+            StartSlot = source.Handle.Slot
         };
         destination[1] = new NpcAiSpawnIntent(
             VanillaNpcIds.SkeletronHand,
@@ -843,7 +844,8 @@ public sealed class VanillaNpcTargetingAiStepper :
             0f,
             proposed.Target)
         {
-            InitialAi = new NpcAiState(1f, source.Handle.Slot, 0f, 150f)
+            InitialAi = new NpcAiState(1f, source.Handle.Slot, 0f, 150f),
+            StartSlot = source.Handle.Slot
         };
         return 2;
     }
@@ -1567,10 +1569,10 @@ public sealed class VanillaNpcTargetingAiStepper :
         int x = (int)(proposed.PositionX + 40f);
         int y = (int)(proposed.PositionY + 51f);
         byte parent = source.Handle.Slot;
-        destination[0] = new NpcAiSpawnIntent(VanillaNpcIds.PrimeCannon, x, y, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(-1f, parent, 0f, 0f) };
-        destination[1] = new NpcAiSpawnIntent(VanillaNpcIds.PrimeSaw, x, y, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(1f, parent, 0f, 0f) };
-        destination[2] = new NpcAiSpawnIntent(VanillaNpcIds.PrimeVice, x, y, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(-1f, parent, 0f, 150f) };
-        destination[3] = new NpcAiSpawnIntent(VanillaNpcIds.PrimeLaser, x, y, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(1f, parent, 0f, 150f) };
+        destination[0] = new NpcAiSpawnIntent(VanillaNpcIds.PrimeCannon, x, y, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(-1f, parent, 0f, 0f), StartSlot = parent };
+        destination[1] = new NpcAiSpawnIntent(VanillaNpcIds.PrimeSaw, x, y, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(1f, parent, 0f, 0f), StartSlot = parent };
+        destination[2] = new NpcAiSpawnIntent(VanillaNpcIds.PrimeVice, x, y, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(-1f, parent, 0f, 150f), StartSlot = parent };
+        destination[3] = new NpcAiSpawnIntent(VanillaNpcIds.PrimeLaser, x, y, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(1f, parent, 0f, 150f), StartSlot = parent };
         return 4;
     }
 

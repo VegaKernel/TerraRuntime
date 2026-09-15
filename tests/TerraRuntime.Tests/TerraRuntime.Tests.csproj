@@ -50,6 +50,7 @@
     <EmbeddedResource Include="Fixtures/debuffs-1458.json" LogicalName="Debuffs1458" />
     <EmbeddedResource Include="Fixtures/moon-leech-chain-1458.json.gz" LogicalName="MoonLeechChain1458" />
     <EmbeddedResource Include="Fixtures/npc-slot-allocation-1458.json.gz" LogicalName="NpcSlotAllocation1458" />
+    <EmbeddedResource Include="Fixtures/npc-slot-start-1458.json.gz" LogicalName="NpcSlotStart1458" />
     <EmbeddedResource Include="Fixtures/moon-lord-clot-spawn-1458.json" LogicalName="MoonLordClotSpawn1458" />
     <EmbeddedResource Include="Fixtures/moon-leech-clot-1458.json" LogicalName="MoonLeechClot1458" />
     <EmbeddedResource Include="Fixtures/npc-heal-packet-1458.json" LogicalName="NpcHealPacket1458" />

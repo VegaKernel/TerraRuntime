@@ -63,9 +63,9 @@ jobs:
 
       - name: Gameplay decomposition tests
         run: >-
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
+          dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj
           -c Release --no-build
-          --filter "FullyQualifiedName~Boss|FullyQualifiedName~MoonLord|FullyQualifiedName~Projectile|FullyQualifiedName~Npc|FullyQualifiedName~ItemUse|FullyQualifiedName~ItemSlot|FullyQualifiedName~VanillaItemDefinition|FullyQualifiedName~NpcLoot"
+          -- -noLogo -method "*Boss*" -method "*MoonLord*" -method "*Projectile*" -method "*Npc*" -method "*ItemUse*" -method "*ItemSlot*" -method "*ItemVanillaDefinitionCatalogTests*" -method "*NpcLoot*"
 
       - name: Authoritative loop smoke
         run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- --loop-smoke

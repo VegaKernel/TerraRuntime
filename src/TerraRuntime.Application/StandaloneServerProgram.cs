@@ -309,6 +309,8 @@ internal static class StandaloneServerProgram
         allocation.UpdateProtectedSpawnSlots();
         if (!allocation.TrySpawnVanilla(in worm, out var reusedWorm) || reusedWorm.Handle.Slot != 1 ||
             reusedWorm.Handle.Generation == allocatedWorm.Handle.Generation) return 5;
+        if (!allocation.TrySpawnVanilla(in worm, out var offsetWorm, startSlot: 197) || offsetWorm.Handle.Slot != 197 ||
+            allocation.TrySpawnVanilla(in queen, out _, startSlot: int.MaxValue)) return 5;
 
         Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok.");
         return 0;

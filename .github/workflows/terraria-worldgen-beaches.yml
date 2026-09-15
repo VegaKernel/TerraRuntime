@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime.World/Generation/Vanilla/VanillaFinalWorldGenerationPipeline1458.cs'
-      - 'src/TerraRuntime.World/Generation/Vanilla/VanillaDungeonWorldGenerationPipeline1458.cs'
-      - 'src/TerraRuntime.World/Generation/Vanilla/VanillaOceanGenerationCatalog1458.cs'
-      - 'src/TerraRuntime.World/Generation/Vanilla/VanillaOceanIntegrity1458.cs'
-      - 'src/TerraRuntime.World/Generation/Vanilla/VanillaWorldGenerationValidator1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/FinalPipeline1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonPipeline1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/OceanGenerationCatalog1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/OceanIntegrity1458.cs'
+      - 'src/TerraRuntime.WorldGeneration/Generation/Vanilla/Validator1458.cs'
       - 'tests/TerraRuntime.Tests/VanillaOceanGeneration1458Tests.cs'
       - 'tools/ci/probe_worldgen_beaches.py'
       - '.github/workflows/terraria-worldgen-beaches.yml'
@@ -55,13 +55,13 @@ jobs:
           .tools/ilspycmd --disable-updatecheck -r "$assembly_dir" -t Terraria.WorldGen "$assembly" > artifacts/source-contract/world-gen.cs
           python3 tools/ci/probe_worldgen_beaches.py \
             --world-gen artifacts/source-contract/world-gen.cs \
-            --runtime-catalog src/TerraRuntime.World/Generation/Vanilla/VanillaOceanGenerationCatalog1458.cs \
-            --runtime-pass src/TerraRuntime.World/Generation/Vanilla/VanillaDungeonWorldGenerationPipeline1458.cs \
-            --canonical-provider src/TerraRuntime.World/Generation/Vanilla/VanillaFinalWorldGenerationPipeline1458.cs \
+            --runtime-catalog src/TerraRuntime.WorldGeneration/Generation/Vanilla/OceanGenerationCatalog1458.cs \
+            --runtime-pass src/TerraRuntime.WorldGeneration/Generation/Vanilla/DungeonPipeline1458.cs \
+            --canonical-provider src/TerraRuntime.WorldGeneration/Generation/Vanilla/FinalPipeline1458.cs \
             --output artifacts/source-contract/beaches-contract.txt
 
       - name: Focused ocean tests
-        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --filter FullyQualifiedName~VanillaOceanGeneration1458Tests
+        run: dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release -- -noLogo -method "*VanillaOceanGeneration1458Tests*"
 
       - uses: actions/upload-artifact@v4
         with:

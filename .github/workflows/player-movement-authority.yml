@@ -4,10 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/TerraRuntime/RuntimePlayerMovementAuthority.cs'
-      - 'src/TerraRuntime/RuntimePlayerMovementIngress.cs'
-      - 'src/TerraRuntime.Core/Players/PlayerMovementCommitRequest.cs'
-      - 'src/TerraRuntime.Core/Players/VanillaPlayerMovementNormalizer.cs'
+      - 'src/TerraRuntime.Application/RuntimePlayerMovementAuthority.cs'
+      - 'src/TerraRuntime.Application/RuntimePlayerMovementIngress.cs'
+      - 'src/TerraRuntime.Contracts/Runtime/PlayerCommitContracts.cs'
+      - 'src/TerraRuntime.Gameplay/Players/VanillaPlayerMovementNormalizer.cs'
       - 'src/TerraRuntime.Contracts/Runtime/PlayerHandle.cs'
       - 'tests/TerraRuntime.Tests/RuntimePlayerMovementIngressTests.cs'
       - 'tests/TerraRuntime.Tests/RuntimePlayerMovementAuthorityTests.cs'
@@ -43,12 +43,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj \
+          dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj \
             -c Release --no-build \
-            --filter 'FullyQualifiedName~RuntimePlayerMovementIngressTests|FullyQualifiedName~RuntimePlayerMovementAuthorityTests' \
-            --logger 'console;verbosity=normal' | tee movement-authority.log
-          grep -q 'Passed!' movement-authority.log
-          grep -q 'Failed:     0' movement-authority.log
+            -- -noLogo -method "*RuntimePlayerMovementIngressTests*" -method "*RuntimePlayerMovementAuthorityTests*" \
+            | tee movement-authority.log
+          grep -Eq 'Total: [1-9][0-9]*, Errors: 0, Failed: 0' movement-authority.log
 
       - name: Upload evidence
         if: always()
