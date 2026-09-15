@@ -5,12 +5,13 @@ using TerraRuntime.Contracts.Runtime;
 namespace TerraRuntime.Core.Npcs;
 
 /// <summary>
-/// TerrariaServer 1.4.5.8 AI_011 gameplay state for Skeletron Head. Presentation-only rotation, dust, sounds and
-/// RedHat/dual-seed extras are intentionally outside this slice; ordinary/Expert hover-spin timing, daytime enrage,
-/// target-loss flee, hand-count defense and source-owned hand lifecycle are authoritative.
+/// TerrariaServer 1.4.5.8 AI_011 state and accepted RedHat effects for Skeletron Head.
+/// The executor owns irreversible effects; this strategy retains source phase and pre-motion anchors.
 /// </summary>
 internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
+    public IVanillaSkeletronEnvironment? Environment { get; set; }
+
     private const float PlayerWidth = VanillaPlayerHitboxFacts.BaseWidth;
     private const float PlayerHeight = VanillaPlayerHitboxFacts.BaseHeight;
 
@@ -35,16 +36,17 @@ internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehav
         float velocityY = npc.VelocityY;
         ushort targetSlot = npc.Target;
 
-        if (ai.Ai0 == 0f)
+        bool initialized = ai.Ai0 == 0f;
+        if (initialized)
         {
             if (context.TrySelectClosestTarget(in npc, in definition, out var refresh) && refresh.HasTarget)
                 targetSlot = refresh.Target;
             ai = ai with { Ai0 = 1f };
         }
 
-        if (!TryGetTarget(in npc, context, ref targetSlot, out VanillaNpcTargetCandidate target) ||
-            MathF.Abs(npc.PositionX - (target.CenterX - PlayerWidth * 0.5f)) > 2000f ||
-            MathF.Abs(npc.PositionY - (target.CenterY - PlayerHeight * 0.5f)) > 2000f)
+        bool targetValid = TryGetHeadTarget(in npc, context, ref targetSlot, out var target, out bool refreshed);
+        if (initialized || refreshed) FaceTarget(in npc, hitbox, in target, ref simulation);
+        if (!targetValid)
         {
             ai = ai with { Ai1 = 3f };
         }
@@ -53,32 +55,44 @@ internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehav
             ai = ai with { Ai1 = 2f };
         }
 
-        int handCount = context.CountNpcPeers(VanillaNpcIds.SkeletronHand);
+        bool redHat = VanillaSkeletronCombat.HasRedHatAdjustments(npc.TypeIdentity, ai, simulation.LocalAi);
+        int handCount = context.ExpertMode ? context.CountNpcPeers(VanillaNpcIds.SkeletronHand) : 0;
         int defense = (simulation.BaseDefense ?? definition.Defense) + (context.ExpertMode ? handCount * 25 : 0);
         int baseDamage = simulation.BaseDamage ?? definition.Damage;
         int? damageOverride = simulation.DamageOverride ?? baseDamage;
         bool reflectsProjectiles = false;
         int timeLeft = simulation.TimeLeft;
+        float? rotation = simulation.Rotation;
 
         switch ((int)ai.Ai1)
         {
             case 0:
-                damageOverride = baseDamage;
-                StepHover(in npc, in target, hitbox, context.ExpertMode, context.GoodWorld, ref ai, ref velocityX, ref velocityY);
+                damageOverride = redHat ? (int)(baseDamage * 1.3d) : baseDamage;
+                rotation = velocityX / 15f;
+                StepHover(in npc, in target, hitbox, context.ExpertMode, context.GoodWorld, redHat, ref ai, ref velocityX, ref velocityY);
+                if (ai.Ai1 == 1f && context.TrySelectClosestTarget(in npc, in definition, out var hoverTarget) &&
+                    hoverTarget.HasTarget && context.TryFindCandidate((byte)hoverTarget.Target, out var facedTarget))
+                {
+                    targetSlot = hoverTarget.Target;
+                    FaceTarget(in npc, hitbox, in facedTarget, ref simulation);
+                }
                 break;
 
             case 1:
                 defense -= 10;
-                StepSpin(in npc, in target, hitbox, context.ExpertMode, context.GoodWorld, handCount, ref ai, ref velocityX, ref velocityY);
+                StepSpin(in npc, in target, hitbox, context.ExpertMode, context.GoodWorld, redHat, handCount, ref ai, ref velocityX, ref velocityY);
                 // NPC.GetAttackDamage_LerpBetweenFinalValues reads the NPC's retained spawn difficulty.
                 float blend = Math.Clamp((simulation.SpawnDifficulty ?? 1f) - 1f, 0f, 1f);
                 damageOverride = (int)(baseDamage + (baseDamage * 1.3f - baseDamage) * blend);
-                reflectsProjectiles = context.GoodWorld && context.ExpertMode && handCount > 0;
+                if (redHat) damageOverride = (int)(damageOverride.Value * 1.3d);
+                reflectsProjectiles = (context.GoodWorld || redHat) && handCount > 0;
+                rotation = (rotation ?? 0f) + simulation.DirectionX * .3f;
                 break;
 
             case 2:
                 defense = 9999;
                 damageOverride = 9999;
+                rotation = (rotation ?? 0f) + simulation.DirectionX * .3f;
                 SetVelocityToward(in npc, in target, hitbox, 8f, ref velocityX, ref velocityY);
                 break;
 
@@ -94,13 +108,11 @@ internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehav
 
         simulation = simulation with
         {
-            NoGravity = true,
-            NoTileCollide = true,
             DefenseOverride = defense,
             DamageOverride = damageOverride,
             ReflectsProjectiles = reflectsProjectiles,
             TimeLeft = timeLeft,
-            JustHit = false
+            Rotation = rotation
         };
         next = new NpcStateUpdate(
             npc.Type,
@@ -121,11 +133,13 @@ internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehav
         VanillaNpcHitboxSize hitbox,
         bool expertMode,
         bool goodWorld,
+        bool redHat,
         ref NpcAiState ai,
         ref float velocityX,
         ref float velocityY)
     {
         float timer = ai.Ai2 + 1f;
+        if (redHat) timer += .5f;
         if (timer >= 800f)
         {
             timer = 0f;
@@ -137,7 +151,14 @@ internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehav
         float verticalMaximum = expertMode ? 4f : 2f;
         float horizontalAcceleration = expertMode ? 0.07f : 0.05f;
         float horizontalMaximum = expertMode ? 9.5f : 8f;
-        if (goodWorld)
+        if (redHat)
+        {
+            verticalAcceleration *= 1.35f;
+            verticalMaximum *= 1.35f;
+            horizontalAcceleration *= 1.35f;
+            horizontalMaximum *= 1.35f;
+        }
+        else if (goodWorld)
         {
             verticalAcceleration += 0.01f;
             verticalMaximum += 1f;
@@ -188,6 +209,7 @@ internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehav
         VanillaNpcHitboxSize hitbox,
         bool expertMode,
         bool goodWorld,
+        bool redHat,
         int handCount,
         ref NpcAiState ai,
         ref float velocityX,
@@ -221,7 +243,9 @@ internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehav
             else if (handCount == 1)
                 speed *= 1.05f;
         }
-        if (goodWorld)
+        if (redHat)
+            speed *= 1.4f;
+        else if (goodWorld)
             speed *= 1.3f;
 
         float multiplier = speed / distance;
@@ -244,6 +268,65 @@ internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehav
         float multiplier = speed / distance;
         velocityX = dx * multiplier;
         velocityY = dy * multiplier;
+    }
+
+    internal static bool TryGetHeadTarget(in NpcSnapshot npc, VanillaNpcBehaviorContext context,
+        ref ushort targetSlot, out VanillaNpcTargetCandidate target, out bool refreshed)
+    {
+        refreshed = false;
+        if (targetSlot < byte.MaxValue && context.TryFindCandidate((byte)targetSlot, out target) &&
+            target.Active && !target.Dead && !target.Ghost && !Far(in npc, in target)) return true;
+        refreshed = true;
+        if (VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, out var definition) &&
+            context.TrySelectClosestTarget(in npc, in definition, out var selected) && selected.HasTarget &&
+            context.TryFindCandidate((byte)selected.Target, out target))
+        {
+            targetSlot = selected.Target;
+            return target.Active && !target.Dead && !target.Ghost && !Far(in npc, in target);
+        }
+        target = default;
+        return false;
+    }
+
+    private static bool Far(in NpcSnapshot npc, in VanillaNpcTargetCandidate target) =>
+        MathF.Abs(npc.PositionX - (target.CenterX - PlayerWidth * .5f)) > 2000f ||
+        MathF.Abs(npc.PositionY - (target.CenterY - PlayerHeight * .5f)) > 2000f;
+
+    private static void FaceTarget(in NpcSnapshot npc, VanillaNpcHitboxSize hitbox,
+        in VanillaNpcTargetCandidate target, ref NpcSimulationState simulation)
+    {
+        if (target.Dead || (target.NoAggro && simulation.DirectionX != 0)) return;
+        int x = (int)(target.CenterX - PlayerWidth * .5f) + (int)PlayerWidth / 2;
+        int y = (int)(target.CenterY - PlayerHeight * .5f) + (int)PlayerHeight / 2;
+        simulation = simulation with
+        {
+            DirectionX = x < npc.PositionX + hitbox.Width / 2 ? -1 : 1,
+            DirectionY = y < npc.PositionY + hitbox.Height / 2 ? -1 : 1
+        };
+    }
+
+    public void ApplyEffects(in NpcSnapshot before, in NpcSnapshot committed, VanillaNpcBehaviorContext context,
+        IVanillaNpcRandom random, INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (context.DayTime || committed.Ai.Ai1 == 3f) return;
+        bool redHat = VanillaSkeletronCombat.HasRedHatAdjustments(before.TypeIdentity, before.Ai, before.Simulation.LocalAi);
+        if (before.Ai.Ai1 == 0f && redHat && committed.Ai.Ai1 == 1f && committed.Ai.Ai2 == 0f)
+        {
+            int taunt = random.NextInt32(2, 6);
+            mutations.TryAnnounceSkeletronTaunt(in committed, taunt);
+        }
+        if (before.Ai.Ai1 != 1f || !(context.GoodWorld || redHat) || Environment is null ||
+            before.Ai.Ai2 % 200f != 0f ||
+            (!redHat && context.ExpertMode && context.CountNpcPeers(VanillaNpcIds.SkeletronHand) != 0) ||
+            context.CountNpcPeers(VanillaNpcIds.DarkCaster) >= (redHat ? 4 : 6) ||
+            !VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, out var definition) ||
+            !definition.TryResolveHitbox(before.Simulation, out var hitbox)) return;
+        if (!Environment.TryFindCasterSpawn(before.PositionX + hitbox.Width * .5f,
+                before.PositionY + hitbox.Height * .5f, random, out int x, out int y)) return;
+        if (!mutations.TryGetActive(committed.Handle.Slot, out var current) ||
+            current.Handle != committed.Handle || current.Revision != committed.Revision) return;
+        // NewNPC's own Good World draw remains part of allocation, including a full table.
+        mutations.TrySpawn(in committed, new(VanillaNpcIds.DarkCaster, x, y, 0, 0, byte.MaxValue), out _);
     }
 
     internal static bool TryGetTarget(

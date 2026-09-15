@@ -42,6 +42,7 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
 
     private readonly RuntimeNpcStore _npcs;
     private readonly INpcAiHealingCommitSink? _healing;
+    private readonly INpcAiTauntCommitSink? _taunts;
     private readonly RuntimeProjectileStore? _projectiles;
     private readonly NpcSnapshot[] _snapshotBuffer;
     private readonly NpcAiSpawnIntent[] _spawnIntentBuffer;
@@ -49,11 +50,13 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
     private readonly NpcAiProjectileMutationIntent[] _projectileMutationIntentBuffer;
     private readonly ProjectileSnapshot[] _projectileMutationScratch;
 
-    public RuntimeNpcAiStateExecutor(RuntimeNpcStore npcs, RuntimeProjectileStore? projectiles = null, INpcAiHealingCommitSink? healing = null)
+    public RuntimeNpcAiStateExecutor(RuntimeNpcStore npcs, RuntimeProjectileStore? projectiles = null,
+        INpcAiHealingCommitSink? healing = null, INpcAiTauntCommitSink? taunts = null)
     {
         ArgumentNullException.ThrowIfNull(npcs);
         _npcs = npcs;
         _healing = healing;
+        _taunts = taunts;
         _projectiles = projectiles;
         _snapshotBuffer = new NpcSnapshot[npcs.Capacity];
         _spawnIntentBuffer = new NpcAiSpawnIntent[npcs.Capacity];
@@ -304,6 +307,15 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
             RuntimeNpcProjectileIntentApplier.TryApply(_projectiles, source.Handle, in intent, out spawned);
     }
 
+    bool INpcAiCommittedNpcMutationSink.TryAnnounceSkeletronTaunt(in NpcSnapshot source, int variant)
+    {
+        if (_taunts is null || variant is < 2 or > 5 ||
+            source.TypeIdentity != TerraRuntime.Contracts.Gameplay.VanillaNpcIds.SkeletronHead ||
+            !_npcs.TryGet(source.Handle, out var current) || current.Revision != source.Revision) return false;
+        _taunts.SkeletronTaunt(in current, variant);
+        return true;
+    }
+
     int INpcAiCommittedNpcMutationSink.TryHeal(NpcHandle npc, int maximumAmount)
     {
         if (maximumAmount <= 0 || !_npcs.TryGet(npc, out NpcSnapshot current)) return 0;
@@ -346,6 +358,10 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
         in NpcAiSpawnIntent intent,
         out NpcSnapshot spawned) =>
         _npcs.TrySpawnIntent(in intent, out spawned);
+
+    bool INpcAiCommittedNpcMutationSink.TrySpawn(in NpcSnapshot source,
+        in NpcAiSpawnIntent intent, out NpcSnapshot spawned) =>
+        _npcs.TrySpawnIntent(in source, in intent, out spawned);
 
     bool INpcAiCommittedNpcMutationSink.TryUpdateVelocity(
         NpcHandle npc,

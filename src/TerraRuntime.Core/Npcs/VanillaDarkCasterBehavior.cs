@@ -71,7 +71,7 @@ internal sealed class VanillaDarkCasterBehavior : IVanillaNpcBehaviorStrategy
         if (committed.Ai.Ai1 != 25f || !VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, out var definition) ||
             !definition.TryResolveHitbox(before.Simulation, out var hitbox)) return;
         PositionBeforeMotion(in before, in hitbox, out float x, out float y);
-        mutations.TrySpawn(new(VanillaNpcIds.WaterSphere, (int)x + hitbox.Width / 2, (int)y - 8, 0, 0, 255)
+        mutations.TrySpawn(in committed, new(VanillaNpcIds.WaterSphere, (int)x + hitbox.Width / 2, (int)y - 8, 0, 0, 255)
             { InitialAi = new(0, 0, 0, committed.Simulation.LocalAi.Ai3 == 1f ? 1 : 0) }, out _);
     }
 

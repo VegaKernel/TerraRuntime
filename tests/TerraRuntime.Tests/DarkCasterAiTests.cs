@@ -13,6 +13,30 @@ namespace TerraRuntime.Tests;
 
 public sealed class DarkCasterAiTests
 {
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public void Creation_prefix_reentry_cannot_publish_a_sphere_for_a_newer_caster(bool replace)
+    {
+        var row = Rows.First(x => x.GetProperty("good").GetBoolean() && x.GetProperty("children").GetArrayLength() == 1 &&
+            x.GetProperty("before").GetProperty("ai")[0].GetSingle() == 98);
+        var (store, ai, npc, random) = Setup(row, row.GetProperty("before"), row.GetProperty("randomBefore"));
+        random.BeforeDraw = () =>
+        {
+            Assert.True(store.TryGet(npc.Handle, out var current));
+            var update = new NpcStateUpdate(current.Type, current.NetId, 777, current.PositionY, 0, 0, current.Target, current.Ai, current.Simulation);
+            if (replace)
+            {
+                Assert.True(store.TryDespawn(current.Handle));
+                Assert.True(store.TrySpawn(current.Handle.Slot, in update, out _));
+            }
+            else Assert.True(store.TryUpdate(current.Handle, in update, out _));
+        };
+        new RuntimeNpcAiStateExecutor(store).Tick(new CasterOnly(ai));
+        Assert.False(store.TryGetActive(row.GetProperty("children")[0].GetProperty("slot").GetByte(), out _));
+        var expected = new CapturedRandom(row.GetProperty("randomBefore")); expected.NextInt32(0, 3);
+        random.AssertSame(expected); Assert.Equal(1, random.Calls);
+    }
+
     private static readonly JsonElement[] Edges = Read("CasterTeleportEdge1458", "a785b8a748e753940f56a955f1888e3a469a8de664768f37de45f4c1e6319e75");
     public static TheoryData<int> EdgeCases => new(Enumerable.Range(0, Edges.Length));
 
@@ -371,6 +395,7 @@ public sealed class DarkCasterAiTests
         private static readonly FieldInfo Index = typeof(VanillaUnifiedRandom1458).GetField("inext", BindingFlags.Instance | BindingFlags.NonPublic)!;
         private static readonly FieldInfo Seeds = typeof(VanillaUnifiedRandom1458).GetField("seedArray", BindingFlags.Instance | BindingFlags.NonPublic)!;
         public int Calls { get; private set; }
+        public Action? BeforeDraw { get; set; }
         public CapturedRandom(JsonElement state)
         {
             Index.SetValue(random, state.GetProperty("index").GetUInt32());
@@ -380,9 +405,15 @@ public sealed class DarkCasterAiTests
         {
             Assert.True(exclusiveMax > inclusiveMin);
             Calls++;
+            var callback = BeforeDraw; BeforeDraw = null; callback?.Invoke();
             return random.Next(inclusiveMin, exclusiveMax);
         }
         public double NextDouble() => throw new InvalidOperationException("AI9 does not request doubles.");
+        public void AssertSame(CapturedRandom other)
+        {
+            Assert.Equal(Index.GetValue(other.random), Index.GetValue(random));
+            Assert.Equal((int[])Seeds.GetValue(other.random)!, (int[])Seeds.GetValue(random)!);
+        }
         public void AssertState(JsonElement state)
         {
             Assert.Equal(state.GetProperty("index").GetUInt32(), (uint)Index.GetValue(random)!);

@@ -36,8 +36,14 @@ public interface INpcAiCommittedNpcMutationSink
 
     bool TrySpawn(in NpcAiSpawnIntent intent, out NpcSnapshot spawned);
 
+    /// <summary>Checks source ownership both before creation callbacks and immediately before allocation.</summary>
+    bool TrySpawn(in NpcSnapshot source, in NpcAiSpawnIntent intent, out NpcSnapshot spawned);
+
     /// <summary>Allocates a projectile only while its source still owns the expected generation and revision.</summary>
     bool TrySpawnProjectile(in NpcSnapshot source, in NpcAiProjectileIntent intent, out ProjectileSnapshot spawned);
+
+    /// <summary>Publishes one source-ordered Skeletron taunt only at the expected source revision.</summary>
+    bool TryAnnounceSkeletronTaunt(in NpcSnapshot source, int variant);
 
     bool TryUpdateVelocity(NpcHandle npc, float velocityX, float velocityY, out NpcSnapshot committed);
 
@@ -85,4 +91,10 @@ public interface INpcAiStatePostCommitEffect
 public interface INpcAiHealingCommitSink
 {
     void NpcHealed(in NpcSnapshot npc, int amount);
+}
+
+/// <summary>Presentation of AI_011's accepted localized taunt; variant is in the original range 2 through 5.</summary>
+public interface INpcAiTauntCommitSink
+{
+    void SkeletronTaunt(in NpcSnapshot source, int variant);
 }

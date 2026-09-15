@@ -506,7 +506,34 @@ internal static class StandaloneServerProgram
             !skullProjectiles.TryGetLifecycle(skull.Handle, out var skullLife) || skullLife.TimeLeft != 300 ||
             !skullProjectiles.TryGetServerNpcSource(skull.Handle, out var skullSource) || skullSource != skullHead.Handle) return 5;
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok, casterSpawn=ok, sphereAI=ok, npcSpawnRandom=ok, darkCasterAI=ok, skeletronSkull=ok.");
+        var redHatAiNpcs = new RuntimeNpcStore();
+        var redHatRandom = new SystemVanillaNpcRandom(123);
+        redHatAiNpcs.SetVanillaSpawnContextSource(() => new(1, 1, false) { SkeletronActive = true });
+        redHatAiNpcs.SetVanillaSpawnRandomSource(redHatRandom);
+        if (!redHatAiNpcs.TrySpawnIntent(new(VanillaNpcIds.SkeletronHead, 1000, 1000, 0, 0, 0)
+            { StartSlot = 10, InitialAi = new(1, 0, 799, 1) }, out var redHatHead)) return 5;
+        var redHatAi = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper(), random: redHatRandom);
+        redHatAi.SetWorldConditions(false, false);
+        redHatAi.SetCandidates([new(0, 1510, 1021, 0, true, false, false, false)]);
+        redHatAi.SetSkeletronEnvironment(new VanillaSkeletronWorldEnvironment(new WorldTileStore(new WorldDimensions(400, 400))));
+        var redHatTaunts = new RuntimeNpcReplicationRegistry();
+        var redHatOutbound = new TerrariaConnectionOutboundQueue(new(16, 16384, 1024));
+        var redHatSource = GameCommandSourceId.FromConnection(811);
+        if (!redHatTaunts.TryRegister(redHatSource, redHatOutbound)) return 5;
+        var redHatPlayer = new ConnectionHandle(redHatSource, new(new PlayerSlotId(0), new PlayerSessionGeneration(1)));
+        var redHatSpawn = new PlayerSpawnCommitRequest(redHatPlayer.Player.Slot, 100, 200, 0, 0, 0, 0, 0);
+        redHatTaunts.PlayerSpawned(redHatPlayer, in redHatSpawn);
+        var redHatExecutor = new RuntimeNpcAiStateExecutor(redHatAiNpcs, taunts: redHatTaunts);
+        if (redHatExecutor.Tick(redHatAi).Applied != 1 || !redHatAiNpcs.TryGet(redHatHead.Handle, out var redHatAfter) ||
+            redHatAfter.Ai != new NpcAiState(1, 1, 0, 1) || redHatAfter.Simulation.DamageOverride != 41 ||
+            !redHatOutbound.InnerQueue.TryRead(out var tauntFrame) ||
+            Convert.ToHexString(tauntFrame.Bytes.Span) != "2000520100FF0214536B656C6574726F6E546578742E5461756E743500FF0000") return 5;
+        if (redHatExecutor.Tick(redHatAi).Applied != 1 || !redHatAiNpcs.TryGetActive(0, out var summonedCaster) ||
+            summonedCaster.TypeIdentity != VanillaNpcIds.DarkCaster || summonedCaster.PositionX != 1647 ||
+            summonedCaster.PositionY != 6184 || summonedCaster.Target != 255 || summonedCaster.Ai != default ||
+            summonedCaster.Simulation.LocalAi != default || redHatOutbound.QueuedFrames != 0) return 5;
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok, casterSpawn=ok, sphereAI=ok, npcSpawnRandom=ok, darkCasterAI=ok, skeletronSkull=ok, skeletronRedHatAI=ok.");
         return 0;
     }
 

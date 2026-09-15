@@ -77,6 +77,17 @@
     <EmbeddedResource Include="Fixtures/skeletron-hands-spawn-1458.json.gz" LogicalName="SkeletronHandsSpawn1458" />
     <EmbeddedResource Include="Fixtures/skeletron-skull-1458.json.gz" LogicalName="SkeletronSkullLinux1458" />
     <EmbeddedResource Include="Fixtures/skeletron-skull-windows-1458.json.gz" LogicalName="SkeletronSkullWindows1458" />
+    <EmbeddedResource Include="Fixtures/skeletron-head-effects-1458.json.gz" LogicalName="SkeletronHeadEffects1458" />
+    <EmbeddedResource Include="Fixtures/skeletron-head-effects-windows-1458.json.gz" LogicalName="SkeletronHeadEffectsWindows1458" />
+    <EmbeddedResource Include="Fixtures/skeletron-caster-terrain-1458.json.gz" LogicalName="SkeletronCasterTerrain1458" />
+    <EmbeddedResource Include="Fixtures/skeletron-head-transition-1458.json.gz" LogicalName="SkeletronHeadTransition1458" />
+    <EmbeddedResource Include="Fixtures/skeletron-head-transition-windows-1458.json.gz" LogicalName="SkeletronHeadTransitionWindows1458" />
+    <EmbeddedResource Include="Fixtures/skeletron-taunt-packet-1458.json.gz" LogicalName="SkeletronTauntPacket1458" />
+    <EmbeddedResource Include="Fixtures/skeletron-head-caster-coupled-1458.json.gz" LogicalName="SkeletronHeadCasterCoupled1458" />
+    <EmbeddedResource Include="Fixtures/skeletron-head-target-handoff-1458.json.gz" LogicalName="SkeletronHeadTargetHandoff1458" />
+    <EmbeddedResource Include="Fixtures/skeletron-head-target-handoff-windows-1458.json.gz" LogicalName="SkeletronHeadTargetHandoffWindows1458" />
+    <EmbeddedResource Include="Fixtures/skeletron-caster-edge-1458.json.gz" LogicalName="SkeletronCasterEdge1458" />
+    <EmbeddedResource Include="Fixtures/skeletron-head-flags-1458.json.gz" LogicalName="SkeletronHeadFlags1458" />
     <EmbeddedResource Include="Fixtures/skeletron-phase-1458.json.gz" LogicalName="SkeletronPhase1458" />
     <EmbeddedResource Include="Fixtures/skeletron-redhat-marker-1458.json.gz" LogicalName="SkeletronRedHatMarker1458" />
     <EmbeddedResource Include="Fixtures/skeletron-high-strike-1458.json.gz" LogicalName="SkeletronHighStrike1458" />

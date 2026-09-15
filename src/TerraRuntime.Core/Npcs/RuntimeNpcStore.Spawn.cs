@@ -50,6 +50,18 @@ public sealed partial class RuntimeNpcStore
 
     /// <summary>Materializes and allocates one committed AI spawn intent using source-backed vanilla defaults.</summary>
     public bool TrySpawnIntent(in NpcAiSpawnIntent intent, out NpcSnapshot snapshot)
+        => TrySpawnIntentCore(in intent, null, out snapshot);
+
+    internal bool TrySpawnIntent(in NpcSnapshot source, in NpcAiSpawnIntent intent, out NpcSnapshot snapshot)
+    {
+        snapshot = default;
+        return MatchesSource(in source) && TrySpawnIntentCore(in intent, source, out snapshot);
+    }
+
+    private bool MatchesSource(in NpcSnapshot source) =>
+        TryGet(source.Handle, out var current) && current.Revision == source.Revision;
+
+    private bool TrySpawnIntentCore(in NpcAiSpawnIntent intent, NpcSnapshot? source, out NpcSnapshot snapshot)
     {
         if (!VanillaNpcDefinitionCatalog.TryGet(intent.Type, out VanillaNpcDefinition definition) ||
             !float.IsFinite(intent.VelocityX) ||
@@ -64,7 +76,9 @@ public sealed partial class RuntimeNpcStore
         int type = intent.Type.Value;
         short netId = checked((short)type);
         if (!TryCaptureSpawnDefaults(ref type, ref netId, out var spawnDefaults, out float difficulty) ||
-            !VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(type), new NpcNetId(netId), out definition))
+            !VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(type), new NpcNetId(netId), out definition) ||
+            // Context/RNG callbacks may reenter. Retain accepted draws, but stop before allocating or publishing.
+            (source is NpcSnapshot expected && !MatchesSource(in expected)))
         {
             snapshot = default;
             return false;

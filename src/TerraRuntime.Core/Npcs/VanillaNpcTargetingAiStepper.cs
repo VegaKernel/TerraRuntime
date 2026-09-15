@@ -110,6 +110,9 @@ public sealed class VanillaNpcTargetingAiStepper :
     public void EnableZombieMotion(double worldSurfaceTiles) =>
         _context.EnableGroundFighter(worldSurfaceTiles);
 
+    public void SetSkeletronEnvironment(IVanillaSkeletronEnvironment environment) =>
+        _skeletronHead.Environment = environment ?? throw new ArgumentNullException(nameof(environment));
+
     public void SetCasterEnvironment(IVanillaCasterEnvironment environment) =>
         _darkCaster.Environment = environment ?? throw new ArgumentNullException(nameof(environment));
 
@@ -643,13 +646,13 @@ public sealed class VanillaNpcTargetingAiStepper :
         in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations)
     {
+        ushort attackTarget = source.Target;
         if (_context.DayTime || committed.Ai.Ai1 == 3f || !_context.ExpertMode || _projectileEnvironment is null ||
             !VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.SkeletronSkull, out var skull) ||
             !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.SkeletronHead, out VanillaNpcDefinition definition) ||
             !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox) ||
-            committed.Target >= byte.MaxValue ||
-            !_context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate target) ||
-            !target.Active || target.Dead || target.Ghost)
+            !VanillaSkeletronHeadNpcBehaviorStrategy.TryGetHeadTarget(in source, _context,
+                ref attackTarget, out var target, out _))
         {
             return;
         }
@@ -1931,7 +1934,12 @@ public sealed class VanillaNpcTargetingAiStepper :
         in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)
     {
         if (before.TypeIdentity == VanillaNpcIds.SkeletronHead && committed.TypeIdentity == VanillaNpcIds.SkeletronHead)
+        {
             SpawnSkeletronSkull(in before, in committed, mutations);
+            if (mutations.TryGetActive(committed.Handle.Slot, out var head) &&
+                head.Handle == committed.Handle && head.Revision == committed.Revision)
+                _skeletronHead.ApplyEffects(in before, in committed, _context, _random, mutations);
+        }
         if (before.TypeIdentity == VanillaNpcIds.DarkCaster && committed.TypeIdentity == VanillaNpcIds.DarkCaster)
             VanillaDarkCasterBehavior.SpawnSphere(in before, in committed, mutations);
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);

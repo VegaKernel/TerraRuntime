@@ -124,7 +124,7 @@ internal sealed partial class NpcAuthority
         naturalTownSpawnFacts = townSpawnWorldFacts;
         this.npcReplication = npcReplication;
 
-        aiExecutor = new RuntimeNpcAiStateExecutor(npcs, projectiles, npcReplication);
+        aiExecutor = new RuntimeNpcAiStateExecutor(npcs, projectiles, npcReplication, npcReplication);
         var actorControls = new RuntimeNpcActorControlRegistry(npcs);
         archetypes = npcArchetypes ?? new RuntimeNpcArchetypeRegistry();
         RuntimeNpcArchetypeIdentityStore archetypeIdentities =
@@ -232,6 +232,7 @@ internal sealed partial class NpcAuthority
                     worldTiles,
                     skyblockLowTiles));
                 vanillaTargeting.SetWallOfFleshEnvironment(new VanillaWallOfFleshWorldEnvironment(worldTiles));
+                vanillaTargeting.SetSkeletronEnvironment(new VanillaSkeletronWorldEnvironment(worldTiles));
                 vanillaTargeting.SetCasterEnvironment(new VanillaCasterWorldEnvironment(worldTiles));
                 vanillaTargeting.SetProjectileEnvironment(new VanillaNpcProjectileWorldEnvironment(worldTiles));
                 var worldMotion = new VanillaNpcWorldMotionAiStepper(

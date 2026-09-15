@@ -17,7 +17,7 @@ namespace TerraRuntime.Application;
 /// Ordinary motion commits are additionally sampled on vanilla's default <c>Main.npcStreamSpeed</c>
 /// cadence; spawn, despawn and committed life changes remain immediate.
 /// </summary>
-internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRuntimePlayerEventSink, INpcAiHealingCommitSink
+internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRuntimePlayerEventSink, INpcAiHealingCommitSink, INpcAiTauntCommitSink
 {
     private const int MaxNpcSlots = RuntimeNpcStore.MaximumAddressableCapacity;
     // TerrariaServer 1.4.5.8 Main.npcStreamSpeed defaults to 30. This is a containment boundary
@@ -224,6 +224,11 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
             TerrariaNpcUpdateEncoder.TryEncode(in baseline, out var encoded))
             Volatile.Write(ref baselineFrames[npc.Handle.Slot], encoded);
         Broadcast(TerrariaCombatTextCodec.EncodeNumber(x, y, amount, new TerrariaRgbColor(100, 255, 100)));
+    }
+
+    public void SkeletronTaunt(in NpcSnapshot source, int variant)
+    {
+        if (TerrariaSkeletronTauntCodec1458.TryEncode(variant, out var encoded)) Broadcast(encoded);
     }
 
     public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot)
