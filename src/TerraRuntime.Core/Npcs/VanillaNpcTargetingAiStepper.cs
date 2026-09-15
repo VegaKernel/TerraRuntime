@@ -821,8 +821,9 @@ public sealed class VanillaNpcTargetingAiStepper :
             return 0;
         }
 
-        int spawnX = (int)(source.PositionX + hitbox.Width * 0.5f);
-        int spawnY = (int)(source.PositionY + hitbox.Height * 0.5f);
+        // NPC.AI style 11 truncates Y before adding integer half-height, including odd Good World dimensions.
+        int spawnX = (int)(source.PositionX + hitbox.Width / 2);
+        int spawnY = (int)source.PositionY + hitbox.Height / 2;
         destination[0] = new NpcAiSpawnIntent(
             VanillaNpcIds.SkeletronHand,
             spawnX,

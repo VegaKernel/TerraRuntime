@@ -1,5 +1,9 @@
 # Vanilla NPC and AI parity roadmap
 
+## Skeletron creation profile and hand batch - 2026-09-15
+
+Types35/36 now resolve shared spawn difficulty/player/Good World defaults.158 original creations (120 modes/player/seed/hard cases,38 fractional difficulty cases) and48 original head batches pass254 tests through vanilla allocation and AI/world motion. Negative profile removal202 and old cast36 failures restored. Native protocol exercises scaled head/hand stats and fractional placement. This supersedes the sibling hand-creation gap below; head combat baselines/spin damage, hand AI, RedHat/dual-seed extras, encounter-wide packet/RNG behavior and full NPC parity remain open.
+
 ## Prime initial arm coordinates - 2026-09-15
 
 The initial batch uses the head's pre-motion physical center with original integer cast order. PrimeArmsSpawn1458 retains48 original head calls (modes0/1/2, Good World, roots1/10/198/199, normal/fractional positions);96 tests cover AI-only/world-motion composition, ordered child defaults and partial/exhausted allocation without retry. Old coordinates fail63, post-motion coordinates18, wrong vertical cast36. Full child AI, rotations, Mechdusa, packet/RNG continuation and complete encounters remain open. Adjacent Skeletron hands also need their own fractional-coordinate comparison: source has the same vertical cast order, while the current planner still casts the summed center.

@@ -368,7 +368,21 @@ internal static class StandaloneServerProgram
                 arm.PositionX != 14.5f || arm.PositionY != -1f || arm.Ai.Ai1 != 10f) return 5;
         }
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok.");
+        var handNpcs = new RuntimeNpcStore();
+        handNpcs.SetVanillaSpawnContextSource(() => new(3, 1, true));
+        var handHeadState = armHeadState with { Type = 35, NetId = 35 };
+        if (!handNpcs.TrySpawnVanilla(in handHeadState, out var handHead, startSlot: 10) ||
+            handHead.Simulation.LifeMax != 11220 || handHead.Simulation.BaseDamage != 106 ||
+            !primeMotion.TryStepState(in handHead, out var handHeadNext) ||
+            primeAi.PlanNpcSpawns(in handHead, in handHeadNext, armIntents) != 2) return 5;
+        for (int i = 0; i < 2; i++)
+        {
+            if (!handNpcs.TrySpawnIntent(in armIntents[i], out var hand) || hand.Handle.Slot != 11 + i ||
+                hand.PositionX != 19.5f || hand.PositionY != 4f || hand.Simulation.LifeMax != 1989 ||
+                hand.Simulation.BaseDamage != 66) return 5;
+        }
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok.");
         return 0;
     }
 

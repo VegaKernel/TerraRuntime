@@ -1,5 +1,9 @@
 # Production graph
 
+## Skeletron spawn profile and hand anchors - 2026-09-15
+
+Existing Gameplay.VanillaNpcSpawnDefaults now admits35/36: head/hand good scales1.25/1.15, expert life1/1.3, damage1.1, masterlife.85, fullplayerbalance, noExpertvisual1.05. Existing Core hand planner usesintegerphysicalhalfsize andcastYbeforeaddition. No new abstraction/contracts/projects/dependencies. Skeletron head AI live damage currentlystilldefinitionbased; creation support doesnotclosephasebehavior. Native smoke covers original scaled spawn andfractionalhandplacement.
+
 ## Prime initial arm anchors - 2026-09-15
 
 Existing VanillaNpcTargetingAiStepper planner now resolves source physical hitbox and uses pre-motion head position with original integer cast order. No new production abstraction, project, contract or dependency. PrimeArmsSpawnTests uses existing executor/wrapper capability composition to inspect arms before their first AI. Protocol smoke exercises Good World fractional creation through world motion and vanilla allocation. Acceptance in work-state.

@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Skeletron spawn and hands - 2026-09-15
+
+Retained SkeletronSpawn1458 expandedSHAab73933ca07f98061c01f3fedd4255fec4457cde6fcb91ceaa32ed56aa1e1e1d158originalNewNPC rows from .cache/skeletron-{spawn,fractional}-probe; SkeletronHandsSpawn1458 expandedSHA7de204c2c06b32db0372201d5bf213dbc3dc16cd030ccd24b57574067095b96d48originalheadAIcalls from .cache/skeletron-hands-spawn-probe. SameoriginalLinuxassemblyWindowsCoreCLR bootstrap asPrime, noLinuxnativeclaim. NPC getGoodAdjustments18004 headscale1.25/hand1.15 rescalesalreadyphysicaldims; ExpertTweak18336 life1/1.3,damage1.1,Masterlife.85; allplayerbalance18637/18641. Source18495 usesfloatRemap products beforeMath.Round, current evaluator matchesall158. HeadAI22026/22031 positions useintegerwidth/2 andcastYbeforeheight/2. Headgood100x127,hand59x59; fractional-.75children19.5/4.254 runtimecasespass, profile202/cast36 negativefailuresrestored. Fullhead/handAI notasserted, originalrows onlyheadAiandinitialchildren. Baselinehead/spin/RedHat/net/RNGremainopen.
+
 ## Prime initial arms - 2026-09-15
 
 PrimeArmsSpawn1458 expanded SHA5a83dede93c216af3ed34bd60280b7f87b3aa0ef0a976dca53ca294e7b031c74 retains48 original NPC.AI head calls from .cache/prime-arms-spawn-probe. Source NPC27810..27826: X=(int)(position.X+width/2), Y=(int)position.Y+height/2 before motion. Roots198/199 produce one/zero arms and still set head.ai0=1. Modes0/1/2,goodfalse/true,root1/10/198/199,normal/fractional positions. Linux original assembly on Windows CoreCLR, head AI only; child AI/rotation/network/RNG not captured.96 runtime comparisons pass with and without world motion; old center63, post-motion18, wrong cast36 negative failures restored. Sibling Skeletron source22026/22031 has same cast rule; its planner remains a separately tracked gap.
