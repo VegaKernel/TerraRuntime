@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-15 Skeletron first-call ordering: optional committed initialization creates hands before defense/skull planning, then refreshes peers and advances AI/world motion once.48 expanded original calls includeheadcombat/motion/projectilecounts;262focused tests pass, disablingstage65fails andthree revisionguardcontrols eachfail1. This supersedes the initial hand-count ordering gap below. Full handAI/encounters, other initializers, rotations and exact projectile/network/RNG continuation remain open.
+
 2026-09-15 initialized Skeletron phases:715 original head calls now cover retained spawn difficulty/baselines, spin interpolation, flee live-damage retention, physical-center motion and Good World reflection.722 focused checks including ownership boundaries pass; baseline/current-difficulty/center/tiny-distance/reflection negatives fail308/9/247/12/106. Initial hand creation versus head-defense ordering, full hands, RedHat, transformations and complete encounter/network/RNG parity stay open. See paired [NPC ownership](en/npc-runtime-ownership.md).
 
 2026-09-15 Skeletron creation: shared spawn context now covers35/36, and hands use source pre-motion integer anchors.158 original NewNPC cases plus48 head batches pass254 comparisons; profile/cast negatives fail202/36. Skeletron combat-baseline restoration/spin damage, complete hands, RedHat and full encounters remain open. See paired [NPC ownership](en/npc-runtime-ownership.md).

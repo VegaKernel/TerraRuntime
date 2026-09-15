@@ -47,7 +47,7 @@ public sealed class SkeletronHandsSpawnTests
         using var resource = typeof(SkeletronHandsSpawnTests).Assembly.GetManifestResourceStream("SkeletronHandsSpawn1458")!;
         using var gzip = new GZipStream(resource, CompressionMode.Decompress);
         using var bytes = new MemoryStream(); gzip.CopyTo(bytes);
-        Assert.Equal("7de204c2c06b32db0372201d5bf213dbc3dc16cd030ccd24b57574067095b96d",
+        Assert.Equal("1e23a50698e96e548d4cd2c4bc4fe69e92f83cd351f668ca5b1bd680b903eabc",
             Convert.ToHexStringLower(SHA256.HashData(bytes.ToArray())));
         using var json = JsonDocument.Parse(bytes.ToArray());
         var row = json.RootElement[index];
@@ -68,14 +68,22 @@ public sealed class SkeletronHandsSpawnTests
         vanilla.SetWorldConditions(false, false, goodWorld: good,
             expertMode: mode >= 1 || good, masterMode: mode == 2 || (mode == 1 && good));
         vanilla.SetCandidates([new VanillaNpcTargetCandidate(0, 1510, 1021, 0, true, false, false, false)]);
+        var tiles = new WorldTileStore(new WorldDimensions(400, 400));
+        vanilla.SetProjectileEnvironment(new VanillaNpcProjectileWorldEnvironment(tiles));
         INpcAiStateStepper stepper = worldMotion
-            ? new VanillaNpcWorldMotionAiStepper(vanilla, new WorldTileStore(new WorldDimensions(400, 400)))
+            ? new VanillaNpcWorldMotionAiStepper(vanilla, tiles)
             : vanilla;
-        var executor = new RuntimeNpcAiStateExecutor(store);
+        var projectiles = new RuntimeProjectileStore();
+        var executor = new RuntimeNpcAiStateExecutor(store, projectiles);
         var headOnly = new HeadOnly(stepper);
         Assert.Equal(1, executor.Tick(headOnly).Applied);
         Assert.True(store.TryGet(head.Handle, out var after));
         Assert.Equal(Ai(row.GetProperty("headAi")), after.Ai);
+        Assert.Equal(row.GetProperty("headDamage").GetInt32(), after.Simulation.DamageOverride);
+        Assert.Equal(row.GetProperty("headDefense").GetInt32(), after.Simulation.DefenseOverride);
+        Assert.Equal(row.GetProperty("headVx").GetSingle(), after.VelocityX);
+        Assert.Equal(row.GetProperty("headVy").GetSingle(), after.VelocityY);
+        Assert.Equal(row.GetProperty("projectileCount").GetInt32(), projectiles.ActiveCount);
         var expected = row.GetProperty("children");
         Assert.Equal(expected.GetArrayLength() + 1, store.ActiveCount);
         foreach (var child in expected.EnumerateArray())

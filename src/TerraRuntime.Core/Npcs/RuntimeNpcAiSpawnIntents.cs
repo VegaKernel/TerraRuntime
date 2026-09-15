@@ -49,6 +49,20 @@ public readonly record struct NpcAiSpawnIntent(
 /// </summary>
 public interface INpcAiSpawnIntentPlanner
 {
+    /// <summary>
+    /// Optional source-ordered initialization before the remaining AI. The accepted first state proposal must
+    /// be side-effect-free: it is discarded, initialization commits without publication, unlinked children are
+    /// allocated, and the state step runs once more with fresh peers. Only the final AI revision is published.
+    /// Returning false keeps ordinary post-step spawn semantics. Scratch counts remain bounded by destination.
+    /// </summary>
+    bool TryPlanInitialization(in NpcSnapshot source, in NpcStateUpdate proposed,
+        Span<NpcAiSpawnIntent> destination, out NpcStateUpdate initialization, out int count)
+    {
+        initialization = default;
+        count = 0;
+        return false;
+    }
+
     int PlanNpcSpawns(
         in NpcSnapshot source,
         in NpcStateUpdate proposed,

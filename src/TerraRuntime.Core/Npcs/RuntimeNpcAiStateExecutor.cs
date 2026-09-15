@@ -107,6 +107,42 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 continue;
 
             proposed++;
+            if (spawnPlanner is not null && spawnPlanner.TryPlanInitialization(in npc, in next,
+                _spawnIntentBuffer, out NpcStateUpdate initialization, out int initializationCount))
+            {
+                bool valid = RuntimeNpcStore.IsValid(in next) &&
+                    (uint)initializationCount <= (uint)_spawnIntentBuffer.Length;
+                for (int i = 0; valid && i < initializationCount; i++)
+                    valid = !_spawnIntentBuffer[i].LinkSourceFollowerSlot && _spawnIntentBuffer[i].LinkSourceLocalAiSlot is null;
+                if (!valid || !_npcs.TryGet(npc.Handle, out var initialSource) || initialSource.Revision != npc.Revision ||
+                    !_npcs.TryUpdateUnpublished(npc.Handle, in initialization, out NpcSnapshot initialized))
+                {
+                    rejected++;
+                    continue;
+                }
+                for (int i = 0; i < initializationCount; i++)
+                {
+                    // Spawn publication can reenter the store. A replacement or intervening revision ends this stage.
+                    if (!_npcs.TryGet(initialized.Handle, out var live) || live.Revision != initialized.Revision)
+                        break;
+                    _npcs.TrySpawnIntent(in _spawnIntentBuffer[i], out _);
+                }
+                if (!_npcs.TryGet(initialized.Handle, out var currentInitialization) ||
+                    currentInitialization.Revision != initialized.Revision)
+                    continue;
+                npc = initialized;
+                if (peerConsumer is not null)
+                {
+                    int peerCount = _npcs.CopyActive(_snapshotBuffer);
+                    peerConsumer.SetNpcPeers(_snapshotBuffer.AsSpan(0, peerCount));
+                }
+                if (!stepper.TryStepState(in npc, out next) ||
+                    !_npcs.TryGet(npc.Handle, out var continuedSource) || continuedSource.Revision != npc.Revision)
+                {
+                    rejected++;
+                    continue;
+                }
+            }
             int spawnCount = spawnPlanner?.PlanNpcSpawns(
                 in npc,
                 in next,

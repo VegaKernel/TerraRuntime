@@ -392,7 +392,18 @@ internal static class StandaloneServerProgram
         if (!handNpcs.TryGet(handHead.Handle, out var restingHead) || restingHead.Simulation.DamageOverride != 106 ||
             restingHead.Simulation.ReflectsProjectiles) return 5;
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok.");
+        var initialNpcs = new RuntimeNpcStore();
+        initialNpcs.SetVanillaSpawnContextSource(() => new(2, 1, false));
+        if (!initialNpcs.TrySpawnIntent(new NpcAiSpawnIntent(VanillaNpcIds.SkeletronHead, 1000, 1000, 0, 0, 0)
+            { StartSlot = 10 }, out var initialHead)) return 5;
+        var initialProjectiles = new RuntimeProjectileStore();
+        primeAi.SetWorldConditions(false, false, expertMode: true);
+        primeAi.SetProjectileEnvironment(new VanillaNpcProjectileWorldEnvironment(new WorldTileStore(new WorldDimensions(400, 400))));
+        if (new RuntimeNpcAiStateExecutor(initialNpcs, initialProjectiles).Tick(primeMotion).Applied != 3 ||
+            !initialNpcs.TryGet(initialHead.Handle, out var initializedHead) || initializedHead.Simulation.DefenseOverride != 60 ||
+            initializedHead.Ai.Ai2 != 1f || initialProjectiles.ActiveCount != 0) return 5;
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok.");
         return 0;
     }
 

@@ -1,5 +1,9 @@
 # Vanilla NPC and AI parity roadmap
 
+## Skeletron first head call - 2026-09-15
+
+The executor now admits an optional initialization stage for Skeletron: source initialization commits, hands allocate, peers refresh, then the final head AI runs. Defense and initial skull gating use actual created hand count; world motion/timers run once.48 expanded original rows plus8 runtime boundary checks pass alongside158creationcases (262focused). Disableinitialization65fails; first/child/continuation revision guards eachhave1negativefailure. This closes the first-call hand-count ordering gap in the preceding phase notes, without claiming complete handAI, other family initializers, projectile bytes/RNG or full encounter/network parity.
+
 ## Initialized Skeletron head phases - 2026-09-15
 
 715 original head calls cover modes0/1/2, Good World, players1/2, phases0..3, timers1/399/799, hands0..2, fractional difficulty and zero/tiny/threshold distances. Runtime retains NPC.difficulty, restores baseline defense/hover damage, interpolates spin damage, preserves fleeing live damage and matches physical-center float motion/Good World reflection.722 focused regressions pass; baseline/difficulty/center/distance/reflection negatives308/9/247/12/106 fail and are restored. Native smoke checks spin exit. This supersedes ordinary initialized baseline/spin-damage gaps below; first-call hand creation/defense ordering, RedHat, full hand AI, rotation/network/RNG and whole encounters remain unverified.

@@ -36,7 +36,11 @@ internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehav
         ushort targetSlot = npc.Target;
 
         if (ai.Ai0 == 0f)
+        {
+            if (context.TrySelectClosestTarget(in npc, in definition, out var refresh) && refresh.HasTarget)
+                targetSlot = refresh.Target;
             ai = ai with { Ai0 = 1f };
+        }
 
         if (!TryGetTarget(in npc, context, ref targetSlot, out VanillaNpcTargetCandidate target) ||
             MathF.Abs(npc.PositionX - (target.CenterX - PlayerWidth * 0.5f)) > 2000f ||

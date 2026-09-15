@@ -10,7 +10,7 @@ public sealed partial class RuntimeNpcStore
     private bool IsCurrentHandleCandidate(NpcHandle handle) =>
         handle.IsAssigned && IsAddressableSlot(handle.Slot);
 
-    private static bool IsValid(in NpcStateUpdate update) =>
+    internal static bool IsValid(in NpcStateUpdate update) =>
         NpcTypeId.TryCreate(update.Type, out _) &&
         float.IsFinite(update.PositionX) &&
         float.IsFinite(update.PositionY) &&

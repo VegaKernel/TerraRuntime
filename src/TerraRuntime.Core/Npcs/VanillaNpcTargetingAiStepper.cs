@@ -271,6 +271,21 @@ public sealed class VanillaNpcTargetingAiStepper :
             : strategy.TryStep(in npc, in definition, _context, _inner, out next);
     }
 
+    public bool TryPlanInitialization(in NpcSnapshot source, in NpcStateUpdate proposed,
+        Span<NpcAiSpawnIntent> destination, out NpcStateUpdate initialization, out int count)
+    {
+        initialization = default;
+        count = 0;
+        if (source.TypeIdentity != VanillaNpcIds.SkeletronHead || proposed.Type != source.Type ||
+            source.Ai.Ai0 != 0f || proposed.Ai.Ai0 != 1f)
+            return false;
+        // AI_011 creates hands before counting them for defense and skull attacks. Do not advance motion/timers here.
+        initialization = new(source.Type, source.NetId, source.PositionX, source.PositionY,
+            source.VelocityX, source.VelocityY, proposed.Target, source.Ai with { Ai0 = 1f }, source.Simulation);
+        count = PlanSkeletronHands(in source, in initialization, destination);
+        return true;
+    }
+
     public int PlanNpcSpawns(
         in NpcSnapshot source,
         in NpcStateUpdate proposed,
