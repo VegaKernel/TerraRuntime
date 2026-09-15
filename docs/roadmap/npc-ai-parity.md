@@ -1,5 +1,9 @@
 # Vanilla NPC and AI parity roadmap
 
+## Initialized Skeletron head phases - 2026-09-15
+
+715 original head calls cover modes0/1/2, Good World, players1/2, phases0..3, timers1/399/799, hands0..2, fractional difficulty and zero/tiny/threshold distances. Runtime retains NPC.difficulty, restores baseline defense/hover damage, interpolates spin damage, preserves fleeing live damage and matches physical-center float motion/Good World reflection.722 focused regressions pass; baseline/difficulty/center/distance/reflection negatives308/9/247/12/106 fail and are restored. Native smoke checks spin exit. This supersedes ordinary initialized baseline/spin-damage gaps below; first-call hand creation/defense ordering, RedHat, full hand AI, rotation/network/RNG and whole encounters remain unverified.
+
 ## Skeletron creation profile and hand batch - 2026-09-15
 
 Types35/36 now resolve shared spawn difficulty/player/Good World defaults.158 original creations (120 modes/player/seed/hard cases,38 fractional difficulty cases) and48 original head batches pass254 tests through vanilla allocation and AI/world motion. Negative profile removal202 and old cast36 failures restored. Native protocol exercises scaled head/hand stats and fractional placement. This supersedes the sibling hand-creation gap below; head combat baselines/spin damage, hand AI, RedHat/dual-seed extras, encounter-wide packet/RNG behavior and full NPC parity remain open.

@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-15 initialized Skeletron phases:715 original head calls now cover retained spawn difficulty/baselines, spin interpolation, flee live-damage retention, physical-center motion and Good World reflection.722 focused checks including ownership boundaries pass; baseline/current-difficulty/center/tiny-distance/reflection negatives fail308/9/247/12/106. Initial hand creation versus head-defense ordering, full hands, RedHat, transformations and complete encounter/network/RNG parity stay open. See paired [NPC ownership](en/npc-runtime-ownership.md).
+
 2026-09-15 Skeletron creation: shared spawn context now covers35/36, and hands use source pre-motion integer anchors.158 original NewNPC cases plus48 head batches pass254 comparisons; profile/cast negatives fail202/36. Skeletron combat-baseline restoration/spin damage, complete hands, RedHat and full encounters remain open. See paired [NPC ownership](en/npc-runtime-ownership.md).
 
 2026-09-15 Prime arm creation: head batch anchors now use pre-motion physical dimensions and source integer cast order. Retained48 original calls pass96 AI/world-wrapper comparisons, including partial/full slot exhaustion; old-coordinate/motion/cast controls fail63/18/36. Full arm AI, Mechdusa and encounter/network parity remain open. See [NPC ownership](en/npc-runtime-ownership.md).

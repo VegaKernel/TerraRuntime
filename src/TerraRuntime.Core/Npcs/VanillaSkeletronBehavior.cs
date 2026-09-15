@@ -22,7 +22,8 @@ internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehav
         out NpcStateUpdate next)
     {
         _ = inner;
-        if (definition.AiStyle != VanillaNpcAiStyles.SkeletronHead || npc.TypeIdentity != VanillaNpcIds.SkeletronHead)
+        if (definition.AiStyle != VanillaNpcAiStyles.SkeletronHead || npc.TypeIdentity != VanillaNpcIds.SkeletronHead ||
+            !definition.TryResolveHitbox(npc.Simulation, out var hitbox))
         {
             next = default;
             return false;
@@ -49,29 +50,32 @@ internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehav
         }
 
         int handCount = context.CountNpcPeers(VanillaNpcIds.SkeletronHand);
-        int defense = definition.Defense + (context.ExpertMode ? handCount * 25 : 0);
-        int? damageOverride = definition.Damage;
+        int defense = (simulation.BaseDefense ?? definition.Defense) + (context.ExpertMode ? handCount * 25 : 0);
+        int baseDamage = simulation.BaseDamage ?? definition.Damage;
+        int? damageOverride = simulation.DamageOverride ?? baseDamage;
         bool reflectsProjectiles = false;
         int timeLeft = simulation.TimeLeft;
 
         switch ((int)ai.Ai1)
         {
             case 0:
-                StepHover(in npc, in target, context.ExpertMode, context.GoodWorld, ref ai, ref velocityX, ref velocityY);
+                damageOverride = baseDamage;
+                StepHover(in npc, in target, hitbox, context.ExpertMode, context.GoodWorld, ref ai, ref velocityX, ref velocityY);
                 break;
 
             case 1:
                 defense -= 10;
-                StepSpin(in npc, in target, context.ExpertMode, context.GoodWorld, handCount, ref ai, ref velocityX, ref velocityY);
-                // GetAttackDamage_LerpBetweenFinalValues remains a separate difficulty-scaling contract; keep the
-                // definition contact damage rather than guessing that helper's world-strength projection.
-                damageOverride = definition.Damage;
+                StepSpin(in npc, in target, hitbox, context.ExpertMode, context.GoodWorld, handCount, ref ai, ref velocityX, ref velocityY);
+                // NPC.GetAttackDamage_LerpBetweenFinalValues reads the NPC's retained spawn difficulty.
+                float blend = Math.Clamp((simulation.SpawnDifficulty ?? 1f) - 1f, 0f, 1f);
+                damageOverride = (int)(baseDamage + (baseDamage * 1.3f - baseDamage) * blend);
+                reflectsProjectiles = context.GoodWorld && context.ExpertMode && handCount > 0;
                 break;
 
             case 2:
                 defense = 9999;
                 damageOverride = 9999;
-                SetVelocityToward(in npc, in target, 8f, ref velocityX, ref velocityY);
+                SetVelocityToward(in npc, in target, hitbox, 8f, ref velocityX, ref velocityY);
                 break;
 
             case 3:
@@ -110,6 +114,7 @@ internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehav
     private static void StepHover(
         in NpcSnapshot npc,
         in VanillaNpcTargetCandidate target,
+        VanillaNpcHitboxSize hitbox,
         bool expertMode,
         bool goodWorld,
         ref NpcAiState ai,
@@ -154,7 +159,7 @@ internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehav
                 velocityY = -verticalMaximum;
         }
 
-        float centerX = npc.PositionX + 40f;
+        float centerX = npc.PositionX + hitbox.Width * 0.5f;
         if (centerX > target.CenterX)
         {
             if (velocityX > 0f)
@@ -176,6 +181,7 @@ internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehav
     private static void StepSpin(
         in NpcSnapshot npc,
         in VanillaNpcTargetCandidate target,
+        VanillaNpcHitboxSize hitbox,
         bool expertMode,
         bool goodWorld,
         int handCount,
@@ -191,9 +197,10 @@ internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehav
         }
         ai = ai with { Ai2 = timer };
 
-        float dx = target.CenterX - (npc.PositionX + 40f);
-        float dy = target.CenterY - (npc.PositionY + 51f);
-        float distance = MathF.Max(0.01f, MathF.Sqrt(dx * dx + dy * dy));
+        float dx = target.CenterX - (npc.PositionX + hitbox.Width * 0.5f);
+        float dy = target.CenterY - (npc.PositionY + hitbox.Height * 0.5f);
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        if (distance <= 0f) distance = 1f;
         float speed = 1.5f;
         if (expertMode)
         {
@@ -213,22 +220,26 @@ internal sealed class VanillaSkeletronHeadNpcBehaviorStrategy : IVanillaNpcBehav
         if (goodWorld)
             speed *= 1.3f;
 
-        velocityX = dx / distance * speed;
-        velocityY = dy / distance * speed;
+        float multiplier = speed / distance;
+        velocityX = dx * multiplier;
+        velocityY = dy * multiplier;
     }
 
     private static void SetVelocityToward(
         in NpcSnapshot npc,
         in VanillaNpcTargetCandidate target,
+        VanillaNpcHitboxSize hitbox,
         float speed,
         ref float velocityX,
         ref float velocityY)
     {
-        float dx = target.CenterX - (npc.PositionX + 40f);
-        float dy = target.CenterY - (npc.PositionY + 51f);
-        float distance = MathF.Max(0.01f, MathF.Sqrt(dx * dx + dy * dy));
-        velocityX = dx / distance * speed;
-        velocityY = dy / distance * speed;
+        float dx = target.CenterX - (npc.PositionX + hitbox.Width * 0.5f);
+        float dy = target.CenterY - (npc.PositionY + hitbox.Height * 0.5f);
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        if (distance <= 0f) distance = 1f;
+        float multiplier = speed / distance;
+        velocityX = dx * multiplier;
+        velocityY = dy * multiplier;
     }
 
     internal static bool TryGetTarget(

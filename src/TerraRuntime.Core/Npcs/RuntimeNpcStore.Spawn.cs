@@ -56,7 +56,7 @@ public sealed partial class RuntimeNpcStore
             return false;
         }
 
-        if (!TryCaptureSpawnDefaults(intent.Type.Value, checked((short)intent.Type.Value), out var spawnDefaults))
+        if (!TryCaptureSpawnDefaults(intent.Type.Value, checked((short)intent.Type.Value), out var spawnDefaults, out float difficulty))
         {
             snapshot = default;
             return false;
@@ -74,6 +74,7 @@ public sealed partial class RuntimeNpcStore
             Simulation: NpcSimulationState.Initial with
             {
                 TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft,
+                SpawnDifficulty = difficulty,
                 LocalAi = intent.InitialLocalAi,
                 CanBeReplacedByOtherNpcs = intent.CanBeReplacedByOtherNpcs
             });
@@ -84,20 +85,23 @@ public sealed partial class RuntimeNpcStore
     /// <summary>Allocates in vanilla search order, observing protection and replacement eligibility.</summary>
     public bool TrySpawnVanilla(in NpcStateUpdate update, out NpcSnapshot snapshot, int startSlot = 0)
     {
-        if (!IsValid(in update) || !TryCaptureSpawnDefaults(update.Type, update.NetId, out var spawnDefaults))
+        if (!IsValid(in update) || !TryCaptureSpawnDefaults(update.Type, update.NetId, out var spawnDefaults, out float difficulty))
         {
             snapshot = default;
             return false;
         }
-        return TrySpawnVanillaCore(in update, out snapshot, startSlot, spawnDefaults);
+        var owned = update with { Simulation = update.Simulation with { SpawnDifficulty = update.Simulation.SpawnDifficulty ?? difficulty } };
+        return TrySpawnVanillaCore(in owned, out snapshot, startSlot, spawnDefaults);
     }
 
-    private bool TryCaptureSpawnDefaults(int type, short netId, out VanillaNpcSpawnDefaults? defaults)
+    private bool TryCaptureSpawnDefaults(int type, short netId, out VanillaNpcSpawnDefaults? defaults, out float difficulty)
     {
         defaults = null;
+        difficulty = 1f;
         if (_spawnContext is null) return true;
         var context = _spawnContext();
         if (!context.IsValid) return false;
+        difficulty = context.Difficulty;
         if (VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(type), new NpcNetId(netId), out var definition) &&
             VanillaNpcSpawnDefaults.TryResolve(in definition, in context, out var resolved)) defaults = resolved;
         return true;

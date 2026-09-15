@@ -1,5 +1,9 @@
 # Production graph
 
+## Retained NPC difficulty and Skeletron phases - 2026-09-15
+
+Contracts.NpcSimulationState.SpawnDifficulty nullablefloat validatedfinite.5..4. RuntimeNpcStore capturesitoncewith existingVanillaSpawnContext forbothvanillaentrypoints, evenunimplementedstatprofiles; explicitTrySpawn stayscontextfree. Ownershippolicy defaultsknownNPCto1,preservesomittedsame-definitionupdates,resetsdefinitionchangeto1; arbitraryTransformparamsstillopen. Skeletronheadstrategyusesretaineddifficulty/basecombat andphysicalhitbox, preservesfleedamage,sourcefloatmotion andGoodWorldspinreflection. Nativeprotocolactualexecutor spinexitwithhands added. No newprojects/dependencies. Phasefixturesinitializedheads; initialspawn/headdefenseorderingstillopen.
+
 ## Skeletron spawn profile and hand anchors - 2026-09-15
 
 Existing Gameplay.VanillaNpcSpawnDefaults now admits35/36: head/hand good scales1.25/1.15, expert life1/1.3, damage1.1, masterlife.85, fullplayerbalance, noExpertvisual1.05. Existing Core hand planner usesintegerphysicalhalfsize andcastYbeforeaddition. No new abstraction/contracts/projects/dependencies. Skeletron head AI live damage currentlystilldefinitionbased; creation support doesnotclosephasebehavior. Native smoke covers original scaled spawn andfractionalhandplacement.

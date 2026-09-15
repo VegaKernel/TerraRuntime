@@ -153,6 +153,9 @@ public readonly record struct NpcSimulationState(
     public int? BaseDamage { get; init; }
     public int? BaseDefense { get; init; }
 
+    /// <summary>NPC.difficulty sampled at creation; attack interpolation retains it across world changes.</summary>
+    public float? SpawnDifficulty { get; init; }
+
     /// <summary>
     /// Server-owned vanilla NPC.reflectsProjectiles state for the current committed AI revision. Projectile
     /// collision/reflection consumes this fact separately; keeping it here prevents AI and combat from racing.
@@ -194,6 +197,7 @@ public readonly record struct NpcSimulationState(
     };
 
     public bool IsValid =>
+        (SpawnDifficulty is null || float.IsFinite(SpawnDifficulty.Value) && SpawnDifficulty.Value is >= .5f and <= 4f) &&
         (HitboxOverride is null || HitboxOverride.Value.IsValid) &&
         DirectionX is >= -1 and <= 1 &&
         DirectionY is >= -1 and <= 1 &&

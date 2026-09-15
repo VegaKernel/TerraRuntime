@@ -382,7 +382,17 @@ internal static class StandaloneServerProgram
                 hand.Simulation.BaseDamage != 66) return 5;
         }
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok.");
+        var spinState = handHeadState with { Ai = new NpcAiState(1, 1, 399, 0), Simulation = handHead.Simulation };
+        if (!handNpcs.TryUpdate(handHead.Handle, in spinState, out _)) return 5;
+        var handExecutor = new RuntimeNpcAiStateExecutor(handNpcs);
+        handExecutor.Tick(primeMotion);
+        if (!handNpcs.TryGet(handHead.Handle, out var spinningHead) || spinningHead.Simulation.DamageOverride != 137 ||
+            spinningHead.Simulation.SpawnDifficulty != 3f || !spinningHead.Simulation.ReflectsProjectiles) return 5;
+        handExecutor.Tick(primeMotion);
+        if (!handNpcs.TryGet(handHead.Handle, out var restingHead) || restingHead.Simulation.DamageOverride != 106 ||
+            restingHead.Simulation.ReflectsProjectiles) return 5;
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok.");
         return 0;
     }
 
