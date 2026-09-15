@@ -36,6 +36,9 @@ public interface INpcAiCommittedNpcMutationSink
 
     bool TrySpawn(in NpcAiSpawnIntent intent, out NpcSnapshot spawned);
 
+    /// <summary>Allocates a projectile only while its source still owns the expected generation and revision.</summary>
+    bool TrySpawnProjectile(in NpcSnapshot source, in NpcAiProjectileIntent intent, out ProjectileSnapshot spawned);
+
     bool TryUpdateVelocity(NpcHandle npc, float velocityX, float velocityY, out NpcSnapshot committed);
 
     bool TryGetActive(byte slot, out NpcSnapshot npc);

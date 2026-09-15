@@ -75,6 +75,8 @@
     <EmbeddedResource Include="Fixtures/burning-sphere-trace-1458.json.gz" LogicalName="BurningSphereTrace1458" />
     <EmbeddedResource Include="Fixtures/burning-sphere-target-1458.json.gz" LogicalName="BurningSphereTarget1458" />
     <EmbeddedResource Include="Fixtures/skeletron-hands-spawn-1458.json.gz" LogicalName="SkeletronHandsSpawn1458" />
+    <EmbeddedResource Include="Fixtures/skeletron-skull-1458.json.gz" LogicalName="SkeletronSkullLinux1458" />
+    <EmbeddedResource Include="Fixtures/skeletron-skull-windows-1458.json.gz" LogicalName="SkeletronSkullWindows1458" />
     <EmbeddedResource Include="Fixtures/skeletron-phase-1458.json.gz" LogicalName="SkeletronPhase1458" />
     <EmbeddedResource Include="Fixtures/skeletron-redhat-marker-1458.json.gz" LogicalName="SkeletronRedHatMarker1458" />
     <EmbeddedResource Include="Fixtures/skeletron-high-strike-1458.json.gz" LogicalName="SkeletronHighStrike1458" />

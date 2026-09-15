@@ -8,7 +8,7 @@ namespace TerraRuntime.Tests;
 public sealed class VanillaSkeletronSkullProjectileTests
 {
     [Fact]
-    public void Expert_head_plans_source_owned_skull_with_300_tick_lifetime()
+    public void Expert_head_commits_source_owned_skull_with_300_tick_lifetime()
     {
         var npcs = new RuntimeNpcStore(capacity: 8);
         NpcSnapshot head = SpawnHead(npcs, new NpcAiState(1f, 0f, 40f, 0f));
@@ -19,15 +19,15 @@ public sealed class VanillaSkeletronSkullProjectileTests
         stepper.SetProjectileEnvironment(new AlwaysHitEnvironment());
         Assert.True(stepper.TryStepState(in head, out NpcStateUpdate proposed));
 
-        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
-        Assert.Equal(1, stepper.PlanProjectileSpawns(in head, in proposed, intents));
-
-        NpcAiProjectileIntent skull = intents[0];
+        var projectiles = new RuntimeProjectileStore();
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(stepper).Applied);
+        Assert.True(projectiles.TryGetActive(0, out var skull));
         Assert.Equal(VanillaProjectileIds.SkeletronSkull, skull.Type);
         Assert.Equal(17, skull.Damage);
         Assert.Equal(0f, skull.KnockBack);
-        Assert.Equal(-1f, skull.InitialAi.Ai0);
-        Assert.Equal(300, skull.TimeLeftOverride);
+        Assert.Equal(-1f, skull.Ai.Ai0);
+        Assert.True(projectiles.TryGetLifecycle(skull.Handle, out var lifecycle));
+        Assert.Equal(300, lifecycle.TimeLeft);
         Assert.True(float.IsFinite(skull.VelocityX));
         Assert.True(float.IsFinite(skull.VelocityY));
     }

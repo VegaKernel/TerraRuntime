@@ -489,7 +489,24 @@ internal static class StandaloneServerProgram
         if (!teleportNpcs.TryGet(teleportCaster.Handle, out var movedCaster) ||
             movedCaster.PositionX != 1823 || movedCaster.PositionY != 1240 || movedCaster.Ai != new NpcAiState(2, 18, 0, 0)) return 5;
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok, casterSpawn=ok, sphereAI=ok, npcSpawnRandom=ok, darkCasterAI=ok.");
+        var skullNpcs = new RuntimeNpcStore();
+        skullNpcs.SetVanillaSpawnContextSource(() => new(2, 1, false));
+        if (!skullNpcs.TrySpawnIntent(new(VanillaNpcIds.SkeletronHead, 1000, 1000, 1.125f, -2.625f, 0)
+            { InitialAi = new(1, 0, 0, 0) }, out var skullHead)) return 5;
+        var skullProjectiles = new RuntimeProjectileStore();
+        var skullAi = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper(), random: new SystemVanillaNpcRandom(0));
+        skullAi.SetWorldConditions(false, false, expertMode: true);
+        skullAi.SetCandidates([new(0, 1011.00024f, 951.99976f, 0, true, false, false, false)]);
+        skullAi.SetProjectileEnvironment(new VanillaNpcProjectileWorldEnvironment(new WorldTileStore(new WorldDimensions(400, 400))));
+        if (new RuntimeNpcAiStateExecutor(skullNpcs, skullProjectiles).Tick(skullAi).Applied != 1 ||
+            !skullProjectiles.TryGetActive(0, out var skull) || skull.Type != VanillaProjectileIds.SkeletronSkull ||
+            skull.PositionX != 1012.504f || skull.PositionY != 938.0349f || skull.VelocityX != 5.100809f ||
+            skull.VelocityY != (OperatingSystem.IsWindows() ? .406986237f : .406986f) ||
+            skull.Ai != new ProjectileAiState(-1, 0, 0) || skull.Damage != 17 ||
+            !skullProjectiles.TryGetLifecycle(skull.Handle, out var skullLife) || skullLife.TimeLeft != 300 ||
+            !skullProjectiles.TryGetServerNpcSource(skull.Handle, out var skullSource) || skullSource != skullHead.Handle) return 5;
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok, casterSpawn=ok, sphereAI=ok, npcSpawnRandom=ok, darkCasterAI=ok, skeletronSkull=ok.");
         return 0;
     }
 

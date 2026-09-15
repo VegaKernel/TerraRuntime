@@ -1,3 +1,4 @@
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
@@ -364,7 +365,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         Span<NpcAiProjectileIntent> destination)
     {
         if (source.Type == VanillaNpcIds.SkeletronHead.Value && proposed.Type == source.Type)
-            return PlanSkeletronSkull(in source, in proposed, destination);
+            return 0; // AI_011 draws and allocates only in the accepted effect phase.
         if (source.Type == VanillaNpcIds.QueenBee.Value && proposed.Type == source.Type)
             return PlanQueenBeeStinger(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.Deerclops.Value && proposed.Type == source.Type)
@@ -637,30 +638,31 @@ public sealed class VanillaNpcTargetingAiStepper :
         return count;
     }
 
-    private int PlanSkeletronSkull(
+    private void SpawnSkeletronSkull(
         in NpcSnapshot source,
-        in NpcStateUpdate proposed,
-        Span<NpcAiProjectileIntent> destination)
+        in NpcSnapshot committed,
+        INpcAiCommittedNpcMutationSink mutations)
     {
-        if (destination.IsEmpty || !_context.ExpertMode || _projectileEnvironment is null ||
+        if (_context.DayTime || committed.Ai.Ai1 == 3f || !_context.ExpertMode || _projectileEnvironment is null ||
+            !VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.SkeletronSkull, out var skull) ||
             !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.SkeletronHead, out VanillaNpcDefinition definition) ||
             !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox) ||
-            source.Target >= byte.MaxValue ||
-            !_context.TryFindCandidate((byte)source.Target, out VanillaNpcTargetCandidate target) ||
+            committed.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate target) ||
             !target.Active || target.Dead || target.Ghost)
         {
-            return 0;
+            return;
         }
 
         int handCount = _context.CountNpcPeers(VanillaNpcIds.SkeletronHand);
-        if (handCount >= 2 && source.Simulation.Life >= source.Simulation.LifeMax * 0.75f)
-            return 0;
+        if (handCount >= 2 && source.Simulation.Life >= source.Simulation.LifeMax * 0.75d)
+            return;
 
         float cadence = handCount == 0 ? 40f : 80f;
         if (_context.GoodWorld)
             cadence *= 0.8f;
         if (source.Ai.Ai1 != 0f || source.Ai.Ai2 % cadence != 0f)
-            return 0;
+            return;
 
         float centerX = source.PositionX + hitbox.Width * 0.5f;
         float centerY = source.PositionY + hitbox.Height * 0.5f;
@@ -672,23 +674,28 @@ public sealed class VanillaNpcTargetingAiStepper :
                 (int)VanillaPlayerHitboxFacts.BaseWidth,
                 (int)VanillaPlayerHitboxFacts.BaseHeight))
         {
-            return 0;
+            return;
         }
+
+        // A host collision query can reenter ownership. Do not draw for a superseded source.
+        if (!mutations.TryGetActive(committed.Handle.Slot, out var current) ||
+            current.Handle != committed.Handle || current.Revision != committed.Revision)
+            return;
 
         float speed = handCount == 0 ? 5f : 3f;
         float dx = target.CenterX - centerX + _random.NextInt32(-20, 21);
         float dy = target.CenterY - centerY + _random.NextInt32(-20, 21);
-        NormalizeTo(ref dx, ref dy, speed);
-        dx += _random.NextInt32(-50, 51) * 0.01f;
-        dy += _random.NextInt32(-50, 51) * 0.01f;
-        NormalizeTo(ref dx, ref dy, speed);
+        int jitterX = _random.NextInt32(-50, 51);
+        int jitterY = _random.NextInt32(-50, 51);
+        VanillaSkeletronSkull.Aim(ref dx, ref dy, speed, jitterX, jitterY, OperatingSystem.IsWindows());
         dx += source.VelocityX;
         dy += source.VelocityY;
 
-        destination[0] = new NpcAiProjectileIntent(
+        // NewProjectile accepts a center; the owned intent/store retains physical top-left coordinates.
+        var intent = new NpcAiProjectileIntent(
             VanillaProjectileIds.SkeletronSkull,
-            centerX + dx * 5f,
-            centerY + dy * 5f,
+            centerX + dx * 5f - skull.Width * 0.5f,
+            centerY + dy * 5f - skull.Height * 0.5f,
             dx,
             dy,
             Damage: 17,
@@ -697,7 +704,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             InitialAi = new ProjectileAiState(-1f, 0f, 0f),
             TimeLeftOverride = 300
         };
-        return 1;
+        mutations.TrySpawnProjectile(in committed, in intent, out _);
     }
 
     private int PlanQueenBeeMinion(
@@ -1923,6 +1930,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     public void ApplyCommittedEffect(
         in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)
     {
+        if (before.TypeIdentity == VanillaNpcIds.SkeletronHead && committed.TypeIdentity == VanillaNpcIds.SkeletronHead)
+            SpawnSkeletronSkull(in before, in committed, mutations);
         if (before.TypeIdentity == VanillaNpcIds.DarkCaster && committed.TypeIdentity == VanillaNpcIds.DarkCaster)
             VanillaDarkCasterBehavior.SpawnSphere(in before, in committed, mutations);
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);

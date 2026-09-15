@@ -295,6 +295,15 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
         return _npcs.TryUpdateUnpublished(current.Handle, in update, out committed);
     }
 
+    bool INpcAiCommittedNpcMutationSink.TrySpawnProjectile(in NpcSnapshot source,
+        in NpcAiProjectileIntent intent, out ProjectileSnapshot spawned)
+    {
+        spawned = default;
+        return _projectiles is not null && _npcs.TryGet(source.Handle, out var current) &&
+            current.Revision == source.Revision &&
+            RuntimeNpcProjectileIntentApplier.TryApply(_projectiles, source.Handle, in intent, out spawned);
+    }
+
     int INpcAiCommittedNpcMutationSink.TryHeal(NpcHandle npc, int maximumAmount)
     {
         if (maximumAmount <= 0 || !_npcs.TryGet(npc, out NpcSnapshot current)) return 0;
