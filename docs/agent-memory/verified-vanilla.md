@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Prime initial arms - 2026-09-15
+
+PrimeArmsSpawn1458 expanded SHA5a83dede93c216af3ed34bd60280b7f87b3aa0ef0a976dca53ca294e7b031c74 retains48 original NPC.AI head calls from .cache/prime-arms-spawn-probe. Source NPC27810..27826: X=(int)(position.X+width/2), Y=(int)position.Y+height/2 before motion. Roots198/199 produce one/zero arms and still set head.ai0=1. Modes0/1/2,goodfalse/true,root1/10/198/199,normal/fractional positions. Linux original assembly on Windows CoreCLR, head AI only; child AI/rotation/network/RNG not captured.96 runtime comparisons pass with and without world motion; old center63, post-motion18, wrong cast36 negative failures restored. Sibling Skeletron source22026/22031 has same cast rule; its planner remains a separately tracked gap.
+
 ## Prime source phases and creation — 2026-09-15
 
 PrimeSpawn1458 expandedSHAcbd0b18a90dab38e7f201ef0c5f9590a6011c007cdc6772226f08f0cad15e398 retains395originalcreations (300mode/player/seed/hardcases+95fractionals),127..131. PrimePhase1458 expandedSHA835461e0dffe725b1630230f655c118b73ab1a9040357ad9a6aee8b3e3474680 retains408actualAIheadcalls, supersedes144dd37665f. SourceAI32startsdamage=defDamage/defense=defDefense (NPC27799); spin doubleslivevaluesbeforephasewrap, nexttickrestoresbaseline. Physicalcenteruseswidth/height, zero/nonpositive distancebecomes1, everypositive tiny distancepreserved; speed/distance thencomponentmultiply, notcomponent/distance thenspeed. Probe144matrix+264zero/tiny/thresholdedges confirmsallfieldsinPrimePhaseTests. HeadAIonlynoMechQueen/limbs, fullouterphysics/rotation/net/RNGnotasserted.807focusedpass,201/168/12negativefailuresrestored; normalize-ordernegativealsofails41/807andrestored; acceptanceinwork-state.

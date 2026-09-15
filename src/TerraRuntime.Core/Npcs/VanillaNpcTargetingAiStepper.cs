@@ -1564,8 +1564,12 @@ public sealed class VanillaNpcTargetingAiStepper :
             return 0;
         if (destination.Length < 4)
             return destination.Length + 1;
-        int x = (int)(proposed.PositionX + 40f);
-        int y = (int)(proposed.PositionY + 51f);
+        if (!VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.SkeletronPrime, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox))
+            return 0;
+        // NPC.AI (1.4.5.8, style 32) creates arms before movement; Y truncates before adding half-height.
+        int x = (int)(source.PositionX + hitbox.Width / 2);
+        int y = (int)source.PositionY + hitbox.Height / 2;
         byte parent = source.Handle.Slot;
         destination[0] = new NpcAiSpawnIntent(VanillaNpcIds.PrimeCannon, x, y, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(-1f, parent, 0f, 0f), StartSlot = parent };
         destination[1] = new NpcAiSpawnIntent(VanillaNpcIds.PrimeSaw, x, y, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(1f, parent, 0f, 0f), StartSlot = parent };

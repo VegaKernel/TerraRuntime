@@ -353,7 +353,22 @@ internal static class StandaloneServerProgram
         primeExecutor.Tick(primeAi);
         if (!primeNpcs.TryGet(prime.Handle, out var hoveringPrime) || hoveringPrime.Simulation.DamageOverride != 80) return 5;
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok.");
+        var armNpcs = new RuntimeNpcStore();
+        armNpcs.SetVanillaSpawnContextSource(() => new(3, 1, true));
+        var armHeadState = new NpcStateUpdate(127, 127, -0.75f, -0.75f, 0, 0, 0, default, NpcSimulationState.Initial);
+        if (!armNpcs.TrySpawnVanilla(in armHeadState, out var armHead, startSlot: 10)) return 5;
+        primeAi.SetWorldConditions(false, false, goodWorld: true, expertMode: true, masterMode: true);
+        var primeMotion = new VanillaNpcWorldMotionAiStepper(primeAi, new WorldTileStore(new WorldDimensions(400, 400)));
+        if (!primeMotion.TryStepState(in armHead, out var armHeadNext)) return 5;
+        Span<NpcAiSpawnIntent> armIntents = stackalloc NpcAiSpawnIntent[4];
+        if (primeAi.PlanNpcSpawns(in armHead, in armHeadNext, armIntents) != 4) return 5;
+        for (int i = 0; i < armIntents.Length; i++)
+        {
+            if (!armNpcs.TrySpawnIntent(in armIntents[i], out var arm) || arm.Handle.Slot != 11 + i ||
+                arm.PositionX != 14.5f || arm.PositionY != -1f || arm.Ai.Ai1 != 10f) return 5;
+        }
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok.");
         return 0;
     }
 

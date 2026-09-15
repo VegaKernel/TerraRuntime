@@ -1,5 +1,9 @@
 # Production graph
 
+## Prime initial arm anchors - 2026-09-15
+
+Existing VanillaNpcTargetingAiStepper planner now resolves source physical hitbox and uses pre-motion head position with original integer cast order. No new production abstraction, project, contract or dependency. PrimeArmsSpawnTests uses existing executor/wrapper capability composition to inspect arms before their first AI. Protocol smoke exercises Good World fractional creation through world motion and vanilla allocation. Acceptance in work-state.
+
 ## Prime baseline/phase draft — 2026-09-15
 
 Contracts.NpcSimulationState nowretainsBaseDamage/BaseDefense separatelyfromliveoverrides. CoreRuntimeNpcStateOwnershipPolicy initializesfromexplicit/profile/definition, preservesomittedsame-definitionvalues, resetschangeddefinitionsandgenerationreuse. No wire-layoutchange. Gameplay.VanillaNpcSpawnDefaults supportsPrime127..131 inexistingworldcontext; headAIrestoresbasevaluesandusesphysicalhitboxcenters/sourcefloatdistancearithmetic. Realruntimeheadinitialization testsfourarms inheritcurrentcontext; nativeprotocolPrimephaseexit added. No newprojects/dependencies. Fulltransformationcontext/remainingbossAIstillopen; acceptanceinwork-state.
