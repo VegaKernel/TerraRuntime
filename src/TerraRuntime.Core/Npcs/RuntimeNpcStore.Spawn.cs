@@ -6,10 +6,17 @@ namespace TerraRuntime.Core.Npcs;
 
 public sealed partial class RuntimeNpcStore
 {
+    private Func<VanillaNpcSpawnContext>? _spawnContext;
+
+    /// <summary>Sets the world-owned input source, sampled synchronously for each vanilla creation.</summary>
+    public void SetVanillaSpawnContextSource(Func<VanillaNpcSpawnContext> source) =>
+        _spawnContext = source ?? throw new ArgumentNullException(nameof(source));
+
     public bool TrySpawn(byte slot, in NpcStateUpdate update, out NpcSnapshot snapshot) =>
         TrySpawnCore(slot, in update, out snapshot, replaceActive: false, protect: false);
 
-    private bool TrySpawnCore(byte slot, in NpcStateUpdate update, out NpcSnapshot snapshot, bool replaceActive, bool protect)
+    private bool TrySpawnCore(byte slot, in NpcStateUpdate update, out NpcSnapshot snapshot, bool replaceActive, bool protect,
+        VanillaNpcSpawnDefaults? spawnDefaults = null)
     {
         if (!IsAddressableSlot(slot) || !IsValid(in update))
         {
@@ -24,7 +31,7 @@ public sealed partial class RuntimeNpcStore
             return false;
         }
 
-        NpcStateUpdate normalized = RuntimeNpcStateOwnershipPolicy.MaterializeSpawnDefaults(in update);
+        NpcStateUpdate normalized = RuntimeNpcStateOwnershipPolicy.MaterializeSpawnDefaults(in update, spawnDefaults);
         bool wasActive = state.Active;
         state.Active = true;
         if (protect) state.SpawnProtection = VanillaNpcSpawnRules.SpawnProtectionUpdates;
@@ -49,11 +56,17 @@ public sealed partial class RuntimeNpcStore
             return false;
         }
 
+        if (!TryCaptureSpawnDefaults(intent.Type.Value, checked((short)intent.Type.Value), out var spawnDefaults))
+        {
+            snapshot = default;
+            return false;
+        }
+        var hitbox = spawnDefaults?.Hitbox ?? new VanillaNpcHitboxSize(definition.Width, definition.Height);
         var update = new NpcStateUpdate(
             Type: intent.Type.Value,
             NetId: checked((short)intent.Type.Value),
-            PositionX: intent.BottomX - definition.Width * 0.5f,
-            PositionY: intent.BottomY - definition.Height,
+            PositionX: intent.BottomX - hitbox.Width * 0.5f,
+            PositionY: intent.BottomY - hitbox.Height,
             VelocityX: intent.VelocityX,
             VelocityY: intent.VelocityY,
             Target: intent.Target,
@@ -65,11 +78,33 @@ public sealed partial class RuntimeNpcStore
                 CanBeReplacedByOtherNpcs = intent.CanBeReplacedByOtherNpcs
             });
 
-        return TrySpawnVanilla(in update, out snapshot, intent.StartSlot);
+        return TrySpawnVanillaCore(in update, out snapshot, intent.StartSlot, spawnDefaults);
     }
 
     /// <summary>Allocates in vanilla search order, observing protection and replacement eligibility.</summary>
     public bool TrySpawnVanilla(in NpcStateUpdate update, out NpcSnapshot snapshot, int startSlot = 0)
+    {
+        if (!IsValid(in update) || !TryCaptureSpawnDefaults(update.Type, update.NetId, out var spawnDefaults))
+        {
+            snapshot = default;
+            return false;
+        }
+        return TrySpawnVanillaCore(in update, out snapshot, startSlot, spawnDefaults);
+    }
+
+    private bool TryCaptureSpawnDefaults(int type, short netId, out VanillaNpcSpawnDefaults? defaults)
+    {
+        defaults = null;
+        if (_spawnContext is null) return true;
+        var context = _spawnContext();
+        if (!context.IsValid) return false;
+        if (VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(type), new NpcNetId(netId), out var definition) &&
+            VanillaNpcSpawnDefaults.TryResolve(in definition, in context, out var resolved)) defaults = resolved;
+        return true;
+    }
+
+    private bool TrySpawnVanillaCore(in NpcStateUpdate update, out NpcSnapshot snapshot, int startSlot,
+        VanillaNpcSpawnDefaults? spawnDefaults)
     {
         if (!IsValid(in update))
         {
@@ -95,13 +130,13 @@ public sealed partial class RuntimeNpcStore
             ref readonly SlotState state = ref _slots[slot];
             if (state.Generation == ulong.MaxValue) continue;
             if (!state.Active && state.SpawnProtection == 0)
-                return TrySpawnCore((byte)slot, in update, out snapshot, replaceActive: false, protect: true);
+                return TrySpawnCore((byte)slot, in update, out snapshot, replaceActive: false, protect: true, spawnDefaults);
             if (replacement < 0 && state.Update.Simulation.CanBeReplacedByOtherNpcs)
                 replacement = slot;
         }
 
         if (replacement >= 0)
-            return TrySpawnCore((byte)replacement, in update, out snapshot, replaceActive: true, protect: true);
+            return TrySpawnCore((byte)replacement, in update, out snapshot, replaceActive: true, protect: true, spawnDefaults);
         snapshot = default;
         return false;
     }

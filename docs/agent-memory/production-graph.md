@@ -1,5 +1,9 @@
 # Production graph
 
+## NPC creation context draft — 2026-09-15
+
+Gameplay.VanillaNpcSpawnContext/VanillaNpcSpawnDefaults own effective-difficulty/playercount/seed inputs and verified134/135/136/139 stat evaluation. NpcAuthority suppliescurrentcontext throughone Func callback registeredonRuntimeNpcStore; storecapturesonce pervanillarequest, usesphysicalsizeforintentbottomplacement andpassesresolveddefaults toatomicspawnnormalization. ExistingexactslotTrySpawn bypassescontext. Profilehealthfillsunspecifiedlife, initialdamage/defenseoverridesmaterializeonlywhendifferentfromdefinition; HitboxOverride retainsphysicalsize independentlyofvisualscale. NpcAuthority alsofeedsAIeffectiveExpert/Master flags withGoodWorldincrement. Realplayerlookupincludesdead/disconnectstate; ghost/Journeyprojectionstillopen. Noproject/dependencychange. Nativeprotocolactualruntimecontext andsamepasschildexerciseadded; acceptanceinwork-state.
+
 ## Destroyer chain draft — 2026-09-15
 
 VanillaDestroyerNpcBehaviorStrategy now owns bounded head-driven chain allocation via existing committed-effect dispatch. No speculative per-segment Destroyer planner remains. RuntimeNpcAiStateExecutor implements generation-safe TryLinkFollower on existing INpcAiCommittedNpcMutationSink; slot200 can be retained as failure reference but never spawned as a sentinel NPC. Spawn intent/shared vanilla allocator own physical selection and normal initial defaults. Ascending executor sees all created peers before next slot AI. Native protocol smoke uses actual world-motion composition. Generic worms unchanged. Good-world spawn defaults and exact network publication timing remain open; source fixture tests explicitly separate those fields. No new project/dependency.

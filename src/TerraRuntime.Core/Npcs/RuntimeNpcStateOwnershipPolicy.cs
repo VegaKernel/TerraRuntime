@@ -11,7 +11,7 @@ namespace TerraRuntime.Core.Npcs;
 /// </summary>
 internal static class RuntimeNpcStateOwnershipPolicy
 {
-    public static NpcStateUpdate MaterializeSpawnDefaults(in NpcStateUpdate update)
+    public static NpcStateUpdate MaterializeSpawnDefaults(in NpcStateUpdate update, VanillaNpcSpawnDefaults? spawnDefaults = null)
     {
         NpcSimulationState simulation = update.Simulation;
         if (TryGetDefinition(update.Type, update.NetId, out VanillaNpcDefinition definition))
@@ -20,18 +20,32 @@ internal static class RuntimeNpcStateOwnershipPolicy
             {
                 simulation = simulation with
                 {
-                    Life = definition.LifeMax,
-                    LifeMax = definition.LifeMax
+                    Life = spawnDefaults?.LifeMax ?? definition.LifeMax,
+                    LifeMax = spawnDefaults?.LifeMax ?? definition.LifeMax
                 };
             }
 
             simulation = simulation with
             {
-                Scale = definition.Scale,
+                Scale = spawnDefaults?.Scale ?? definition.Scale,
                 Friendly = simulation.Friendly ?? VanillaNpcChaseability1458.FriendlyAtSpawn(update.Type),
                 Chaseable = simulation.Chaseable ?? VanillaNpcChaseability1458.ChaseableAtSpawn(update.Type),
                 Immortal = simulation.Immortal ?? VanillaNpcChaseability1458.ImmortalAtSpawn(update.Type)
             };
+
+            if (spawnDefaults is { } scaled)
+            {
+                // Difficulty can change visual scale after physical dimensions have already been assigned.
+                NpcHitboxDimensions? physical = scaled.Scale != definition.Scale ||
+                    scaled.Hitbox.Width != definition.Width || scaled.Hitbox.Height != definition.Height
+                    ? new(scaled.Hitbox.Width, scaled.Hitbox.Height) : null;
+                simulation = simulation with
+                {
+                    HitboxOverride = simulation.HitboxOverride ?? physical,
+                    DamageOverride = simulation.DamageOverride ?? (scaled.Damage != definition.Damage ? scaled.Damage : null),
+                    DefenseOverride = simulation.DefenseOverride ?? (scaled.Defense != definition.Defense ? scaled.Defense : null)
+                };
+            }
 
             if (definition.HiddenAtSpawn)
                 simulation = simulation with { Hidden = true };

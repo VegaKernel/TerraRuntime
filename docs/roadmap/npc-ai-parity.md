@@ -1,5 +1,9 @@
 # Vanilla NPC and AI parity roadmap
 
+## World-owned NPC spawn context - 2026-09-15
+
+Destroyer134/135/136 andProbe139 now materialize source physical/visual dimensions, difficulty damage/health and current-player health scaling at allocation. The authority also projects effective good-world difficulty to AI flags. Independent ordinary/fractional creation fixtures and real runtime/negative tests cover this slice; other NPC types, Journey/ghost controls, original RNG continuation and full battle parity remain open. See [NPC ownership](../en/npc-runtime-ownership.md) and current agent-memory acceptance.
+
 ## Destroyer chain creation - 2026-09-15
 
 Head AI now creates the full80/100-body batch plus tail, preserves source Start/link/failure-sentinel rules and allows same-pass body updates. The body no longer claims independent child creation in the executable coverage catalog. Thirty-two original head-call fixtures, a full world-pass ordering test and a root/generation boundary test cover this slice. Ordinary spawn fields match; good-world spawn scaling/health/RNG, Mechdusa, full combat/motion and packet23 publication cadence remain open. See [NPC ownership](../en/npc-runtime-ownership.md) and agent memory for current acceptance.

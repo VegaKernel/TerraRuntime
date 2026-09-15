@@ -111,6 +111,7 @@ internal sealed partial class NpcAuthority
         this.serverPlayers = serverPlayers;
         this.expertMode = expertMode;
         this.masterMode = masterMode;
+        npcs.SetVanillaSpawnContextSource(CaptureSpawnContext);
         this.naturalSpawnRandom = naturalSpawnRandom ?? new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom();
         if (worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 sceneWorldFacts)
         {
@@ -337,8 +338,8 @@ internal sealed partial class NpcAuthority
                     worldClock.DayTime,
                     worldClock.SlimeRainActive,
                     worldClock.GetGoodWorld,
-                    expertMode,
-                    masterMode,
+                    CaptureDifficulty() >= 2f,
+                    CaptureDifficulty() >= 3f,
                     worldClock.WindSpeedCurrent);
             }
         }
@@ -1110,6 +1111,19 @@ internal sealed partial class NpcAuthority
             PositionY: item.PositionY);
         if (!worldItems.TryApplyOwner(item.Handle.Slot, in owner, out _))
             throw new InvalidOperationException("Caught NPC item could not be reserved for the authenticated player.");
+    }
+
+    private float CaptureDifficulty() => (masterMode ? 3f : expertMode ? 2f : 1f) +
+        (worldClock?.GetGoodWorld == true ? 1f : 0f);
+
+    private VanillaNpcSpawnContext CaptureSpawnContext()
+    {
+        int activePlayers = 0;
+        // Match the physical player range, including dead actors. Snapshot ownership excludes disconnected actors.
+        // Hardcore ghost state and Journey difficulty control still need their own authoritative projection.
+        for (int slot = 0; slot < byte.MaxValue; slot++)
+            if (playerSnapshots.TryGetPlayer(new PlayerSlotId((byte)slot), out _)) activePlayers++;
+        return new(CaptureDifficulty(), activePlayers, worldClock?.GetGoodWorld == true);
     }
 
     private int CopyTargetCandidates(Span<VanillaNpcTargetCandidate> destination)

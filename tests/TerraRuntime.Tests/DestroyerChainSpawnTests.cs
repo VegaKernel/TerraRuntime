@@ -25,6 +25,7 @@ public sealed class DestroyerChainSpawnTests
         bool good = row.GetProperty("good").GetBoolean();
         int root = row.GetProperty("root").GetInt32(), mode = row.GetProperty("mode").GetInt32();
         var store = new RuntimeNpcStore();
+        store.SetVanillaSpawnContextSource(() => new(good ? 2f : 1f, 1, good));
         Assert.True(store.TrySpawnIntent(new NpcAiSpawnIntent(VanillaNpcIds.Destroyer, 1000, 1000, 0, 0, 0)
             { StartSlot = (byte)root }, out var head));
         for (int slot = root + 1; slot < 200; slot++)
@@ -59,8 +60,6 @@ public sealed class DestroyerChainSpawnTests
             Assert.Equal(Ai(reference.GetProperty("local")), actual.Simulation.LocalAi);
             Assert.Equal(255, actual.Target);
             Assert.Equal(reference.GetProperty("timeLeft").GetInt32(), actual.Simulation.TimeLeft);
-            // Good-world SetDefaults scaling/difficulty is a separate, still-open spawn-defaults contract.
-            if (good) continue;
             Assert.Equal(reference.GetProperty("x").GetSingle(), actual.PositionX);
             Assert.Equal(reference.GetProperty("y").GetSingle(), actual.PositionY);
             Assert.Equal(reference.GetProperty("vx").GetSingle(), actual.VelocityX);

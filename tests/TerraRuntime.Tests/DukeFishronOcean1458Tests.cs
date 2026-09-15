@@ -159,9 +159,11 @@ public sealed class DukeFishronOcean1458Tests
     }
 
     [Theory]
-    [InlineData(4200, false)]
-    [InlineData(8400, true)]
-    public async Task Production_authority_uses_own_world_dimensions_and_server_player_position(int width, bool enraged)
+    [InlineData(4200, false, false)]
+    [InlineData(8400, true, false)]
+    [InlineData(4200, false, true)]
+    [InlineData(8400, true, true)]
+    public async Task Production_authority_uses_own_world_dimensions_and_server_player_position(int width, bool enraged, bool goodWorld)
     {
         var tiles = new WorldTileStore(new WorldDimensions(width, 200));
         Assert.True(tiles.TryAttachWorldSurface(150));
@@ -173,7 +175,8 @@ public sealed class DukeFishronOcean1458Tests
         using var lease = Assert.IsType<ServerPlayerSlotRegistry.ServerPlayerSlotLease>(acquired);
         Assert.True(players.TrySpawn(id, 61000, 1000, out _));
         var runtime = new ServerRuntimeState(worldTiles: tiles,
-            serverPlayers: new ServerPlayerAuthority(players, worldTiles: tiles));
+            serverPlayers: new ServerPlayerAuthority(players, worldTiles: tiles),
+            worldClock: new RuntimeWorldClock(0, false, default, 0, 1, getGoodWorld: goodWorld));
         NpcSnapshot template = Duke(0, 9, 0, 60500, 900);
         var state = new NpcStateUpdate(template.Type, template.NetId, template.PositionX, template.PositionY,
             0, 0, lease.Player.Slot.Value, template.Ai, template.Simulation);
@@ -182,7 +185,9 @@ public sealed class DukeFishronOcean1458Tests
         NpcSnapshot created = Assert.IsType<NpcSnapshot>(await completion.Task);
         runtime.Tick();
         Assert.True(runtime.TryCaptureNpcSnapshot(created.Handle, out var after));
-        Assert.Equal(enraged ? 200 : 100, after.Simulation.DamageOverride);
+        // Main.Difficulty adds one for getGoodWorld; NPC370 uses the Expert damage tweak .7.
+        int damage = goodWorld ? 140 : 100;
+        Assert.Equal(enraged ? damage * 2 : damage, after.Simulation.DamageOverride);
         Assert.Equal(enraged ? 100 : 50, after.Simulation.DefenseOverride);
         Assert.Equal(enraged ? 1f : 0f, after.Ai.Ai0);
     }

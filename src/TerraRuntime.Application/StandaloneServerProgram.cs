@@ -327,7 +327,19 @@ internal static class StandaloneServerProgram
             return 5;
         }
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok.");
+        var scaledNpcs = new RuntimeNpcStore();
+        var scaledClock = new RuntimeWorldClock(0, false, default, 0, 1, getGoodWorld: true);
+        var scaledRuntime = new ServerRuntimeState(npcs: scaledNpcs, expertMode: true, worldClock: scaledClock,
+            worldTiles: new WorldTileStore(new WorldDimensions(400, 400)));
+        if (!scaledNpcs.TrySpawnIntent(new NpcAiSpawnIntent(VanillaNpcIds.Destroyer, 1000, 1000, 0, 0, 255)
+            { StartSlot = 10 }, out var scaledHead) || scaledHead.Simulation.LifeMax != 153000 ||
+            scaledHead.Simulation.Scale != 1.70625f || scaledHead.Simulation.HitboxOverride != new NpcHitboxDimensions(76, 76) ||
+            scaledHead.Simulation.DamageOverride != 420) return 5;
+        scaledRuntime.Tick();
+        if (!scaledNpcs.TryGetActive(11, out var scaledBody) || scaledBody.Simulation.LifeMax != 153000 ||
+            scaledBody.Simulation.HitboxOverride != new NpcHitboxDimensions(76, 76)) return 5;
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok.");
         return 0;
     }
 
