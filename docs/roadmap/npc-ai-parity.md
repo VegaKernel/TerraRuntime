@@ -1,5 +1,9 @@
 # Vanilla NPC and AI parity roadmap
 
+## Ordinary Skeletron hand phases - 2026-09-15
+
+2220 original hand calls cover1944phase/position cases,264target/alignment/distance edges and12localAI-copy cases. Matched physical integer parent alignment, float dash centers/source.01floor, target refresh/facing, state0/3-only flee cap, parentai3copy and source player-corner distance exits. VanillaNewNPC nowinitializesdirectionY1; explicitstorage/updatesunchanged.2221focusedchecks includeownershipboundary; oldcode1482fails, direction1933/distance24/local12/playercorner48negativecontrols restored. Orphan lifecycle, parentstylesotherthan35, RedHat, rotation/fullencounters/packetRNGstillopen.
+
 ## Skeletron first head call - 2026-09-15
 
 The executor now admits an optional initialization stage for Skeletron: source initialization commits, hands allocate, peers refresh, then the final head AI runs. Defense and initial skull gating use actual created hand count; world motion/timers run once.48 expanded original rows plus8 runtime boundary checks pass alongside158creationcases (262focused). Disableinitialization65fails; first/child/continuation revision guards eachhave1negativefailure. This closes the first-call hand-count ordering gap in the preceding phase notes, without claiming complete handAI, other family initializers, projectile bytes/RNG or full encounter/network parity.

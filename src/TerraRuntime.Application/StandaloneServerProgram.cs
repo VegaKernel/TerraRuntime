@@ -403,7 +403,16 @@ internal static class StandaloneServerProgram
             !initialNpcs.TryGet(initialHead.Handle, out var initializedHead) || initializedHead.Simulation.DefenseOverride != 60 ||
             initializedHead.Ai.Ai2 != 1f || initialProjectiles.ActiveCount != 0) return 5;
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok.");
+        if (!handNpcs.TryGetActive(11, out var handProbe)) return 5;
+        var frozenHand = handProbe with { PositionX = 900, PositionY = 600, VelocityX = 0, VelocityY = 0, Ai = new(-1, 10, 1, 0) };
+        var frozenParent = restingHead with { PositionX = 950, PositionY = 873, Ai = new(1, 0, 0, 0) };
+        primeAi.SetWorldConditions(false, false, goodWorld: true, expertMode: true, masterMode: true);
+        primeAi.SetNpcPeers([frozenParent, frozenHand]);
+        if (!primeAi.TryStepState(in frozenHand, out var handDash) || handDash.Ai.Ai2 != 2f ||
+            handDash.VelocityX != 17.410515f || handDash.VelocityY != 11.741975f ||
+            handDash.Simulation.SpriteDirection != 1 || handDash.Simulation.DirectionY != 1) return 5;
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok.");
         return 0;
     }
 

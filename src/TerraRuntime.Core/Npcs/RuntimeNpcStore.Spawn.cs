@@ -124,6 +124,9 @@ public sealed partial class RuntimeNpcStore
             return false;
         }
         int minimum = startSlot == 0 && VanillaNpcSpawnRules.CannotSpawnInSlotZero(type) ? 1 : startSlot;
+        // NewNPCInstanceInSlot constructs a fresh NPC; its directionY initializer is 1 (1.4.5.8).
+        // Explicit storage TrySpawn remains exact, and a supplied nonzero direction stays owned by the caller.
+        var spawnedState = update with { Simulation = update.Simulation with { DirectionY = update.Simulation.DirectionY == 0 ? 1 : update.Simulation.DirectionY } };
         bool reverse = VanillaNpcSpawnRules.SearchesInReverse(type);
         // Original reverse traversal stops before the start index; even an otherwise eligible slot zero is excluded.
         if (reverse) minimum++;
@@ -134,13 +137,13 @@ public sealed partial class RuntimeNpcStore
             ref readonly SlotState state = ref _slots[slot];
             if (state.Generation == ulong.MaxValue) continue;
             if (!state.Active && state.SpawnProtection == 0)
-                return TrySpawnCore((byte)slot, in update, out snapshot, replaceActive: false, protect: true, spawnDefaults);
+                return TrySpawnCore((byte)slot, in spawnedState, out snapshot, replaceActive: false, protect: true, spawnDefaults);
             if (replacement < 0 && state.Update.Simulation.CanBeReplacedByOtherNpcs)
                 replacement = slot;
         }
 
         if (replacement >= 0)
-            return TrySpawnCore((byte)replacement, in update, out snapshot, replaceActive: true, protect: true, spawnDefaults);
+            return TrySpawnCore((byte)replacement, in spawnedState, out snapshot, replaceActive: true, protect: true, spawnDefaults);
         snapshot = default;
         return false;
     }

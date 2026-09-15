@@ -1,5 +1,9 @@
 # Production graph
 
+## Ordinary hand motion and vertical spawn direction - 2026-09-15
+
+VanillaSkeletronHandNpcBehaviorStrategy resolvesphysicalhand/parenthitboxes; integerhalfwidthparentalignment andfloatcenter dash/dot/distance; source.01dashfloor andspeed/distance multiplicationorder; forceddashTargetClosest updatesDirectionX/Y;SpriteDirection=-ai0; localAi3fromparentai3; Encourage10onlystates0/3. Shared RuntimeNpcStore.TrySpawnVanillaCore initializeszeroDirectionYto1 forbothvanillaentrypoints; nonzerooverridepreserved; exactTrySpawn/updatesunchanged. No newcontract/project/dependency. NativeprotocolfrozenGoodWorldhanddashadded. Orphan/parentstyle/RedHat/fullfightsemanticsremainopen.
+
 ## Optional NPC initialization stage - 2026-09-15
 
 ExistingINpcAiSpawnIntentPlanner addsdefaultfalseTryPlanInitialization(source,proposed,Span,outinitialization,outcount). VanillaTargetingoptsinonlySkeletron35ai0=0->1; retainsbeforeposition/velocity/timers andinitialtarget. FirstTryStepState mustbeside-effect-free (verifiedSkeletronAI/worldmotion); executorvalidatesfirstproposal/count/unlinkedintents/exactsource, commitsinitializationunpublished, allocateschildrenwithperchildheadrevisionguards, refreshespeers, rerunsstateonce andguardscontinuationrevision. Ordinaryplannersunchanged. Onlyfinalheadpublished, childrenmaypublishandchangeheadinbetween; acceptedprefixisnotrolledbackaftercontinuationrejection. RuntimeNpcStore.IsValid nowinternalforadmissionreuse. SkeletroninitialTargetClosestnowrunswithvalidprevioustargettoo. No newproject/dependency. Fullinitializationfamilies/childAI/networkRNGremainopen.

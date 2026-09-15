@@ -288,21 +288,24 @@ internal sealed class VanillaSkeletronHandNpcBehaviorStrategy : IVanillaNpcBehav
         out NpcStateUpdate next)
     {
         _ = inner;
-        if (definition.AiStyle != VanillaNpcAiStyles.SkeletronHand || npc.TypeIdentity != VanillaNpcIds.SkeletronHand)
+        if (definition.AiStyle != VanillaNpcAiStyles.SkeletronHand || npc.TypeIdentity != VanillaNpcIds.SkeletronHand ||
+            !definition.TryResolveHitbox(npc.Simulation, out var hitbox))
         {
             next = default;
             return false;
         }
 
         NpcAiState ai = npc.Ai;
-        NpcSimulationState simulation = npc.Simulation;
+        NpcSimulationState simulation = npc.Simulation with { SpriteDirection = -(int)npc.Ai.Ai0 };
         float velocityX = npc.VelocityX;
         float velocityY = npc.VelocityY;
         ushort targetSlot = npc.Target;
 
         if (ai.Ai1 < 0f || ai.Ai1 > byte.MaxValue ||
             !context.TryFindNpcPeer((byte)ai.Ai1, out NpcSnapshot parent) ||
-            parent.TypeIdentity != VanillaNpcIds.SkeletronHead)
+            parent.TypeIdentity != VanillaNpcIds.SkeletronHead ||
+            !VanillaNpcDefinitionCatalog.TryGet(parent.TypeIdentity, out var parentDefinition) ||
+            !parentDefinition.TryResolveHitbox(parent.Simulation, out var parentHitbox))
         {
             float orphanTimer = ai.Ai2 + 10f;
             ai = ai with { Ai2 = orphanTimer };
@@ -312,19 +315,21 @@ internal sealed class VanillaSkeletronHandNpcBehaviorStrategy : IVanillaNpcBehav
             return true;
         }
 
+        simulation = simulation with { LocalAi = simulation.LocalAi with { Ai3 = parent.Ai.Ai3 } };
+
         if (!VanillaSkeletronHeadNpcBehaviorStrategy.TryGetTarget(in npc, context, ref targetSlot, out VanillaNpcTargetCandidate target))
             target = default;
 
         int timeLeft = simulation.TimeLeft;
-        if (parent.Ai.Ai1 == 3f && (timeLeft < 0 || timeLeft > 10))
-            timeLeft = 10;
 
         int state = (int)ai.Ai2;
         if (state is 0 or 3)
         {
+            if (parent.Ai.Ai1 == 3f && (timeLeft < 0 || timeLeft > 10))
+                timeLeft = 10;
             if (parent.Ai.Ai1 != 0f)
             {
-                StepHoverToParent(in npc, in parent, ai.Ai0, -100f, -120f, 0.07f, 6f, 0.1f, 8f, ref velocityX, ref velocityY);
+                StepHoverToParent(in npc, in parent, hitbox, parentHitbox, ai.Ai0, -100f, -120f, 0.07f, 6f, 0.1f, 8f, ref velocityX, ref velocityY);
             }
             else
             {
@@ -339,8 +344,8 @@ internal sealed class VanillaSkeletronHandNpcBehaviorStrategy : IVanillaNpcBehav
                 // Expert source executes the same positioning block once in its Expert branch and once again in the
                 // shared branch below it. Apply the same duplicate acceleration instead of collapsing it.
                 if (context.ExpertMode)
-                    StepHoverToParent(in npc, in parent, ai.Ai0, 230f, -200f, 0.04f, 3f, 0.07f, 8f, ref velocityX, ref velocityY);
-                StepHoverToParent(in npc, in parent, ai.Ai0, 230f, -200f, 0.04f, 3f, 0.07f, 8f, ref velocityX, ref velocityY);
+                    StepHoverToParent(in npc, in parent, hitbox, parentHitbox, ai.Ai0, 230f, -200f, 0.04f, 3f, 0.07f, 8f, ref velocityX, ref velocityY);
+                StepHoverToParent(in npc, in parent, hitbox, parentHitbox, ai.Ai0, 230f, -200f, 0.04f, 3f, 0.07f, 8f, ref velocityX, ref velocityY);
             }
         }
         else if (state == 1)
@@ -359,16 +364,17 @@ internal sealed class VanillaSkeletronHandNpcBehaviorStrategy : IVanillaNpcBehav
 
             if (npc.PositionY < parent.PositionY - 200f && target.Active && !target.Dead && !target.Ghost)
             {
+                RefreshDashTarget(in npc, in definition, context, ref targetSlot, ref target, ref simulation);
                 ai = ai with { Ai2 = 2f };
-                SetVelocityToward(in npc, in target, context.ExpertMode ? 21f : 18f, ref velocityX, ref velocityY);
+                SetVelocityToward(in npc, in target, hitbox, context.ExpertMode ? 21f : 18f, ref velocityX, ref velocityY);
             }
         }
         else if (state == 2)
         {
             if (!target.Active || target.Dead || target.Ghost ||
                 npc.PositionY > target.CenterY - VanillaPlayerHitboxFacts.BaseHeight * 0.5f ||
-                DotPastTarget(in npc, in target, velocityX, velocityY) ||
-                DistanceToTarget(in npc, in target) > 2000f ||
+                DotPastTarget(in npc, in target, hitbox, velocityX, velocityY) ||
+                DistanceToTarget(in npc, in target, hitbox) > 2000f ||
                 velocityY < 0f)
             {
                 ai = ai with { Ai2 = 3f };
@@ -388,21 +394,22 @@ internal sealed class VanillaSkeletronHandNpcBehaviorStrategy : IVanillaNpcBehav
                 velocityX = Math.Clamp(velocityX, -8f, 8f);
             }
 
-            float centerX = npc.PositionX + definition.Width * 0.5f;
-            float parentCenterX = parent.PositionX + 40f;
+            float centerX = npc.PositionX + hitbox.Width / 2;
+            float parentCenterX = parent.PositionX + parentHitbox.Width / 2;
             if ((centerX < parentCenterX - 500f || centerX > parentCenterX + 500f) &&
                 target.Active && !target.Dead && !target.Ghost)
             {
+                RefreshDashTarget(in npc, in definition, context, ref targetSlot, ref target, ref simulation);
                 ai = ai with { Ai2 = 5f };
-                SetVelocityToward(in npc, in target, context.ExpertMode ? 22f : 17f, ref velocityX, ref velocityY);
+                SetVelocityToward(in npc, in target, hitbox, context.ExpertMode ? 22f : 17f, ref velocityX, ref velocityY);
             }
         }
         else if (state == 5 &&
                  (!target.Active || target.Dead || target.Ghost ||
-                  (velocityX > 0f && npc.PositionX + definition.Width * 0.5f > target.CenterX) ||
-                  (velocityX < 0f && npc.PositionX + definition.Width * 0.5f < target.CenterX) ||
-                  DotPastTarget(in npc, in target, velocityX, velocityY) ||
-                  DistanceToTarget(in npc, in target) > 2000f))
+                  (velocityX > 0f && npc.PositionX + hitbox.Width / 2 > target.CenterX) ||
+                  (velocityX < 0f && npc.PositionX + hitbox.Width / 2 < target.CenterX) ||
+                  DotPastTarget(in npc, in target, hitbox, velocityX, velocityY) ||
+                  DistanceToTarget(in npc, in target, hitbox) > 2000f))
         {
             ai = ai with { Ai2 = 0f };
         }
@@ -418,9 +425,25 @@ internal sealed class VanillaSkeletronHandNpcBehaviorStrategy : IVanillaNpcBehav
         return true;
     }
 
+    private static void RefreshDashTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        VanillaNpcBehaviorContext context, ref ushort targetSlot, ref VanillaNpcTargetCandidate target,
+        ref NpcSimulationState simulation)
+    {
+        // AI_012 calls TargetClosest when a wind-up turns into a dash, even if the old target is valid.
+        if (context.TrySelectClosestTarget(in npc, in definition, out var refresh) && refresh.HasTarget &&
+            refresh.Target < byte.MaxValue && context.TryFindCandidate((byte)refresh.Target, out var selected))
+        {
+            targetSlot = refresh.Target;
+            target = selected;
+            simulation = simulation with { DirectionX = refresh.DirectionX, DirectionY = refresh.DirectionY };
+        }
+    }
+
     private static void StepHoverToParent(
         in NpcSnapshot npc,
         in NpcSnapshot parent,
+        VanillaNpcHitboxSize hitbox,
+        VanillaNpcHitboxSize parentHitbox,
         float side,
         float offsetY,
         float offsetXMultiplier,
@@ -449,8 +472,8 @@ internal sealed class VanillaSkeletronHandNpcBehaviorStrategy : IVanillaNpcBehav
                 velocityY = -verticalMaximum;
         }
 
-        float targetX = parent.PositionX + 40f + offsetXMultiplier * side;
-        float centerX = npc.PositionX + 26f;
+        float targetX = parent.PositionX + parentHitbox.Width / 2 + offsetXMultiplier * side;
+        float centerX = npc.PositionX + hitbox.Width / 2;
         if (centerX > targetX)
         {
             if (velocityX > 0f)
@@ -472,28 +495,30 @@ internal sealed class VanillaSkeletronHandNpcBehaviorStrategy : IVanillaNpcBehav
     private static void SetVelocityToward(
         in NpcSnapshot npc,
         in VanillaNpcTargetCandidate target,
+        VanillaNpcHitboxSize hitbox,
         float speed,
         ref float velocityX,
         ref float velocityY)
     {
-        float dx = target.CenterX - (npc.PositionX + 26f);
-        float dy = target.CenterY - (npc.PositionY + 26f);
+        float dx = target.CenterX - (npc.PositionX + hitbox.Width * 0.5f);
+        float dy = target.CenterY - (npc.PositionY + hitbox.Height * 0.5f);
         float distance = MathF.Max(0.01f, MathF.Sqrt(dx * dx + dy * dy));
-        velocityX = dx / distance * speed;
-        velocityY = dy / distance * speed;
+        float multiplier = speed / distance;
+        velocityX = dx * multiplier;
+        velocityY = dy * multiplier;
     }
 
-    private static bool DotPastTarget(in NpcSnapshot npc, in VanillaNpcTargetCandidate target, float velocityX, float velocityY)
+    private static bool DotPastTarget(in NpcSnapshot npc, in VanillaNpcTargetCandidate target, VanillaNpcHitboxSize hitbox, float velocityX, float velocityY)
     {
-        float dx = target.CenterX - (npc.PositionX + 26f);
-        float dy = target.CenterY - (npc.PositionY + 26f);
+        float dx = target.CenterX - (npc.PositionX + hitbox.Width * 0.5f);
+        float dy = target.CenterY - (npc.PositionY + hitbox.Height * 0.5f);
         return velocityX * dx + velocityY * dy <= 0f;
     }
 
-    private static float DistanceToTarget(in NpcSnapshot npc, in VanillaNpcTargetCandidate target)
+    private static float DistanceToTarget(in NpcSnapshot npc, in VanillaNpcTargetCandidate target, VanillaNpcHitboxSize hitbox)
     {
-        float dx = target.CenterX - (npc.PositionX + 26f);
-        float dy = target.CenterY - (npc.PositionY + 26f);
+        float dx = target.CenterX - VanillaPlayerHitboxFacts.BaseWidth * 0.5f - (npc.PositionX + hitbox.Width * 0.5f);
+        float dy = target.CenterY - VanillaPlayerHitboxFacts.BaseHeight * 0.5f - (npc.PositionY + hitbox.Height * 0.5f);
         return MathF.Sqrt(dx * dx + dy * dy);
     }
 
