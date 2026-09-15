@@ -232,6 +232,7 @@ internal sealed partial class NpcAuthority
                     worldTiles,
                     skyblockLowTiles));
                 vanillaTargeting.SetWallOfFleshEnvironment(new VanillaWallOfFleshWorldEnvironment(worldTiles));
+                vanillaTargeting.SetCasterEnvironment(new VanillaCasterWorldEnvironment(worldTiles));
                 vanillaTargeting.SetProjectileEnvironment(new VanillaNpcProjectileWorldEnvironment(worldTiles));
                 var worldMotion = new VanillaNpcWorldMotionAiStepper(
                     actorIntent,

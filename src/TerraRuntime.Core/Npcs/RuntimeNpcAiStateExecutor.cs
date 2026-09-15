@@ -181,12 +181,28 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 continue;
             }
             bool deactivate = postCommitEffect?.DeactivatesAfterStep(in npc, in next) ?? false;
-            bool updated = deactivate
+            bool deferPublication = postCommitEffect?.DefersStatePublication(in npc, in next) ?? false;
+            if (!_npcs.TryGet(npc.Handle, out currentSource) || currentSource.Revision != npc.Revision)
+            {
+                rejected++;
+                continue;
+            }
+            bool updated = deactivate || deferPublication
                 ? _npcs.TryUpdateUnpublished(npc.Handle, in next, out NpcSnapshot committed)
                 : _npcs.TryUpdate(npc.Handle, in next, out committed);
             if (updated)
             {
                 applied++;
+                if (deferPublication)
+                {
+                    var completed = postCommitEffect!.CompleteCommittedState(in npc, in committed, this);
+                    if (completed.Handle != committed.Handle || !_npcs.TryGet(completed.Handle, out var finalized) ||
+                        finalized.Revision != completed.Revision || !_npcs.TryPublishUpdate(in finalized))
+                        continue;
+                    committed = finalized;
+                    if (!_npcs.TryGet(committed.Handle, out var published) || published.Revision != committed.Revision)
+                        continue;
+                }
                 postCommitObserver?.NpcAiStateCommitted(in npc, in committed);
                 if (!_npcs.TryGet(committed.Handle, out NpcSnapshot observed) || observed.Revision != committed.Revision)
                     continue;
@@ -268,6 +284,15 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
         }
 
         return new NpcAiStateTickSummary(examined, proposed, applied, rejected);
+    }
+
+    bool INpcAiCommittedNpcMutationSink.TryUpdateAi(in NpcSnapshot expected, NpcAiState ai, out NpcSnapshot committed)
+    {
+        committed = default;
+        if (!_npcs.TryGet(expected.Handle, out var current) || current.Revision != expected.Revision) return false;
+        var update = new NpcStateUpdate(current.Type, current.NetId, current.PositionX, current.PositionY,
+            current.VelocityX, current.VelocityY, current.Target, ai, current.Simulation);
+        return _npcs.TryUpdateUnpublished(current.Handle, in update, out committed);
     }
 
     int INpcAiCommittedNpcMutationSink.TryHeal(NpcHandle npc, int maximumAmount)

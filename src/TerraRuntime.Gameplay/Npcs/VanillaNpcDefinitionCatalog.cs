@@ -61,7 +61,8 @@ public enum VanillaNpcBehaviorFamily : byte
     MoonLordFreeEye = 47,
     Bat = 48,
     Fish = 49,
-    MoonLordLeechBlob = 50
+    MoonLordLeechBlob = 50,
+    DarkCaster = 51
 }
 
 /// <summary>
@@ -456,13 +457,13 @@ public static class VanillaNpcDefinitionCatalog
             return true;
         }
 
-        // NPC.SetDefaults(32/33), 1.4.5.8. Caster AI_008 remains separate from creation defaults.
+        // NPC.SetDefaults(32/33), 1.4.5.8; each type opts into its independently verified AI family.
         if (type == VanillaNpcIds.DarkCaster || type == VanillaNpcIds.WaterSphere)
         {
             bool sphere = type == VanillaNpcIds.WaterSphere;
             definition = new VanillaNpcDefinition(type,
                 sphere ? VanillaNpcAiStyles.BurningSphere : VanillaNpcAiStyles.Caster,
-                sphere ? VanillaNpcBehaviorFamily.BurningSphere : VanillaNpcBehaviorFamily.None,
+                sphere ? VanillaNpcBehaviorFamily.BurningSphere : VanillaNpcBehaviorFamily.DarkCaster,
                 sphere ? VanillaNpcPhysicsFamily.NoClipFlight : VanillaNpcPhysicsFamily.GenericGround,
                 NpcArchetypeRole.Ordinary, sphere ? 16 : 18, sphere ? 16 : 40,
                 20, sphere ? 0 : 2, sphere ? 1 : 50, sphere ? 0f : .6f, 1f,

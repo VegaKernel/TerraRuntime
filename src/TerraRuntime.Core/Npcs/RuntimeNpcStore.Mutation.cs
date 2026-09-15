@@ -12,6 +12,13 @@ public sealed partial class RuntimeNpcStore
     internal bool TryUpdateUnpublished(NpcHandle handle, in NpcStateUpdate update, out NpcSnapshot snapshot) =>
         TryUpdateCore(handle, in update, out snapshot, forceSync: false, publish: false);
 
+    internal bool TryPublishUpdate(in NpcSnapshot expected)
+    {
+        if (!TryGet(expected.Handle, out var current) || current.Revision != expected.Revision) return false;
+        _commitSink?.NpcStateCommitted(NpcStateCommitKind.Update, in current);
+        return true;
+    }
+
     private bool TryUpdateCore(NpcHandle handle, in NpcStateUpdate update, out NpcSnapshot snapshot, bool forceSync, bool publish)
     {
         if (!IsCurrentHandleCandidate(handle) || !IsValid(in update))

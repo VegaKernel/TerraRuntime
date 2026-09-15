@@ -59,6 +59,13 @@
     <EmbeddedResource Include="Fixtures/prime-arms-spawn-1458.json.gz" LogicalName="PrimeArmsSpawn1458" />
     <EmbeddedResource Include="Fixtures/skeletron-spawn-1458.json.gz" LogicalName="SkeletronSpawn1458" />
     <EmbeddedResource Include="Fixtures/caster-spawn-1458.json.gz" LogicalName="CasterSpawn1458" />
+    <EmbeddedResource Include="Fixtures/caster-sphere-coupled-1458.json.gz" LogicalName="CasterSphereCoupled1458" />
+    <EmbeddedResource Include="Fixtures/dark-caster-ai-1458.json.gz" LogicalName="DarkCasterAi1458" />
+    <EmbeddedResource Include="Fixtures/dark-caster-trace-1458.json.gz" LogicalName="DarkCasterTrace1458" />
+    <EmbeddedResource Include="Fixtures/caster-teleport-windows-1458.json.gz" LogicalName="CasterTeleportWindows1458" />
+    <EmbeddedResource Include="Fixtures/caster-teleport-edge-1458.json.gz" LogicalName="CasterTeleportEdge1458" />
+    <EmbeddedResource Include="Fixtures/caster-teleport-query-1458.json.gz" LogicalName="CasterTeleportQuery1458" />
+    <EmbeddedResource Include="Fixtures/npc-firing-distance-1458.json.gz" LogicalName="NpcFiringDistance1458" />
     <EmbeddedResource Include="Fixtures/new-npc-rng-1458.json.gz" LogicalName="NewNpcRng1458" />
     <EmbeddedResource Include="Fixtures/new-npc-coupled-rng-1458.json.gz" LogicalName="NewNpcCoupledRng1458" />
     <EmbeddedResource Include="Fixtures/water-sphere-ai-1458.json.gz" LogicalName="WaterSphereAi1458" />

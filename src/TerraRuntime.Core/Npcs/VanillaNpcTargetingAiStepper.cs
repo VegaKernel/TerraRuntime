@@ -56,6 +56,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaWallOfFleshEyeNpcBehaviorStrategy _wallOfFleshEye = new();
     private readonly VanillaWallOfFleshHungryNpcBehaviorStrategy _wallOfFleshHungry = new();
     private readonly VanillaFireImpNpcBehaviorStrategy _fireImp = new();
+    private readonly VanillaDarkCasterBehavior _darkCaster = new();
     private readonly VanillaSphereNpcBehaviorStrategy _burningSphere = new();
     private readonly VanillaQueenSlimeNpcBehaviorStrategy _queenSlime;
     private readonly VanillaSkeletronPrimeNpcBehaviorStrategy _skeletronPrime = new();
@@ -107,6 +108,9 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public void EnableZombieMotion(double worldSurfaceTiles) =>
         _context.EnableGroundFighter(worldSurfaceTiles);
+
+    public void SetCasterEnvironment(IVanillaCasterEnvironment environment) =>
+        _darkCaster.Environment = environment ?? throw new ArgumentNullException(nameof(environment));
 
     public void SetWorldBounds(int widthTiles, double worldSurfaceTiles) =>
         _context.SetWorldBounds(widthTiles, worldSurfaceTiles);
@@ -235,6 +239,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.WallOfFleshEye => _wallOfFleshEye,
             VanillaNpcBehaviorFamily.WallOfFleshHungry => _wallOfFleshHungry,
             VanillaNpcBehaviorFamily.FireImp => _fireImp,
+            VanillaNpcBehaviorFamily.DarkCaster => _darkCaster,
             VanillaNpcBehaviorFamily.BurningSphere => _burningSphere,
             VanillaNpcBehaviorFamily.QueenSlime => _queenSlime,
             VanillaNpcBehaviorFamily.SkeletronPrime => _skeletronPrime,
@@ -1900,6 +1905,14 @@ public sealed class VanillaNpcTargetingAiStepper :
         return requested;
     }
 
+    public bool DefersStatePublication(in NpcSnapshot before, in NpcStateUpdate proposed) =>
+        before.TypeIdentity == VanillaNpcIds.DarkCaster && proposed.Type == before.Type;
+
+    public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
+        INpcAiCommittedNpcMutationSink mutations) =>
+        before.TypeIdentity == VanillaNpcIds.DarkCaster && committed.TypeIdentity == VanillaNpcIds.DarkCaster
+            ? _darkCaster.Complete(in before, in committed, _context, _random, mutations) : committed;
+
     public bool DeactivatesAfterStep(in NpcSnapshot before, in NpcStateUpdate proposed) =>
         proposed.Type == before.Type && proposed.Simulation.Life == 0 &&
         ((before.TypeIdentity == VanillaNpcIds.MoonLordLeechBlob && proposed.Simulation.TimeLeft == 0) ||
@@ -1910,6 +1923,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     public void ApplyCommittedEffect(
         in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)
     {
+        if (before.TypeIdentity == VanillaNpcIds.DarkCaster && committed.TypeIdentity == VanillaNpcIds.DarkCaster)
+            VanillaDarkCasterBehavior.SpawnSphere(in before, in committed, mutations);
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);
         VanillaMoonLordLeechBehavior.SpawnFromHead(in before, in committed, _context, mutations);
         VanillaDestroyerNpcBehaviorStrategy.SpawnChain(in before, in committed, _context.GoodWorld, mutations);
@@ -1918,6 +1933,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     public void ApplyCommittedEffectAfterSpawns(
         in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)
     {
+        if (before.TypeIdentity == VanillaNpcIds.DarkCaster && committed.TypeIdentity == VanillaNpcIds.DarkCaster)
+            _random.NextInt32(0, 3);
         // AI_009 still makes its two dust-chance draws on a dedicated server; Dust.NewDust itself does not.
         if (before.TypeIdentity == VanillaNpcIds.WaterSphere && committed.TypeIdentity == VanillaNpcIds.WaterSphere)
         {

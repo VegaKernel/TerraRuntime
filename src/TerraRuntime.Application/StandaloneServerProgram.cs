@@ -466,7 +466,30 @@ internal static class StandaloneServerProgram
             bunny.TypeIdentity != VanillaNpcIds.Bunny || bunny.Simulation.LifeMax != 5 ||
             bunny.Simulation.SpawnDifficulty != 1f || bunny.Simulation.Friendly != true) return 5;
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok, casterSpawn=ok, sphereAI=ok, npcSpawnRandom=ok.");
+        var casterTiles = new WorldTileStore(new WorldDimensions(400, 400));
+        for (int x = 0; x < 400; x++)
+        {
+            casterTiles.Set(x, 80, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+            casterTiles.Set(x, 79, new WorldTile { Wall = 7 });
+        }
+        var casterRandom = new SystemVanillaNpcRandom(123);
+        var teleportNpcs = new RuntimeNpcStore();
+        teleportNpcs.SetVanillaSpawnContextSource(() => new(1, 1, false));
+        teleportNpcs.SetVanillaSpawnRandomSource(casterRandom);
+        if (!teleportNpcs.TrySpawnIntent(new(VanillaNpcIds.DarkCaster, 1000, 1000, 0, 0, 0)
+            { InitialAi = new(649, 26, 0, 0) }, out var teleportCaster)) return 5;
+        var casterAi = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper(), random: casterRandom);
+        casterAi.SetCandidates([new(0, 1510, 1021, 0, true, false, false, false)]);
+        casterAi.SetCasterEnvironment(new VanillaCasterWorldEnvironment(casterTiles));
+        var casterExecutor = new RuntimeNpcAiStateExecutor(teleportNpcs);
+        casterExecutor.Tick(casterAi);
+        if (!teleportNpcs.TryGet(teleportCaster.Handle, out var queuedCaster) ||
+            queuedCaster.Ai != new NpcAiState(1, 19, 114, 80) || teleportNpcs.ActiveCount != 1) return 5;
+        casterExecutor.Tick(casterAi);
+        if (!teleportNpcs.TryGet(teleportCaster.Handle, out var movedCaster) ||
+            movedCaster.PositionX != 1823 || movedCaster.PositionY != 1240 || movedCaster.Ai != new NpcAiState(2, 18, 0, 0)) return 5;
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok, casterSpawn=ok, sphereAI=ok, npcSpawnRandom=ok, darkCasterAI=ok.");
         return 0;
     }
 

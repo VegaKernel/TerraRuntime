@@ -29,6 +29,9 @@ public interface INpcAiStatePostCommitObserver
 /// </summary>
 public interface INpcAiCommittedNpcMutationSink
 {
+    /// <summary>Updates AI only at the expected revision, withholding publication until finalization completes.</summary>
+    bool TryUpdateAi(in NpcSnapshot expected, NpcAiState ai, out NpcSnapshot committed);
+
     int TryHeal(NpcHandle npc, int maximumAmount);
 
     bool TrySpawn(in NpcAiSpawnIntent intent, out NpcSnapshot spawned);
@@ -55,6 +58,13 @@ public interface INpcAiStatePostCommitEffect
     /// withholds the intermediate update notification and publishes the final despawn before the next NPC slot.
     /// </summary>
     bool DeactivatesAfterStep(in NpcSnapshot before, in NpcStateUpdate proposed) => false;
+
+    /// <summary>Defers notification until accepted random-dependent AI fields have been resolved.</summary>
+    bool DefersStatePublication(in NpcSnapshot before, in NpcStateUpdate proposed) => false;
+
+    /// <summary>Completes the unpublished accepted state; never runs for rejected speculative proposals.</summary>
+    NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
+        INpcAiCommittedNpcMutationSink mutations) => committed;
 
     void ApplyCommittedEffect(
         in NpcSnapshot before,

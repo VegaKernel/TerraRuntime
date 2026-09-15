@@ -149,6 +149,8 @@ internal sealed class VanillaNpcBehaviorContext
         return count;
     }
 
+    public ReadOnlySpan<VanillaNpcTargetCandidate> Candidates => _candidates.AsSpan(0, _candidateCount);
+
     public int CandidateCount => _candidateCount;
 
     public VanillaNpcTargetCandidate GetCandidateAt(int index)
