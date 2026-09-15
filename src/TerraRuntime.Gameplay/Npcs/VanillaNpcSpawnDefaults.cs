@@ -22,7 +22,11 @@ public readonly record struct VanillaNpcSpawnDefaults(
     /// Other families keep their existing definition defaults until their type-specific scaling is verified.
     /// </summary>
     public static bool TryResolve(in VanillaNpcDefinition definition, in VanillaNpcSpawnContext context,
-        out VanillaNpcSpawnDefaults defaults)
+        out VanillaNpcSpawnDefaults defaults) => TryResolve(in definition, in context, OperatingSystem.IsWindows(), out defaults);
+
+    /// <summary>Resolves the pinned original platform arithmetic, also used for cross-platform differential verification.</summary>
+    public static bool TryResolve(in VanillaNpcDefinition definition, in VanillaNpcSpawnContext context,
+        bool windowsArithmetic, out VanillaNpcSpawnDefaults defaults)
     {
         defaults = default;
         if (context.IsValid && (definition.Type == VanillaNpcIds.Bunny || definition.Type == VanillaNpcIds.ExplosiveBunny))
@@ -35,7 +39,7 @@ public readonly record struct VanillaNpcSpawnDefaults(
         if (context.IsValid && (definition.Type == VanillaNpcIds.DarkCaster || definition.Type == VanillaNpcIds.WaterSphere ||
             definition.Type == VanillaNpcIds.Demon || definition.Type == VanillaNpcIds.VoodooDemon))
         {
-            defaults = ResolveOrdinary(in definition, in context);
+            defaults = ResolveOrdinary(in definition, in context, windowsArithmetic);
             return true;
         }
         bool probe = definition.Type == VanillaNpcIds.Probe;
@@ -57,18 +61,19 @@ public readonly record struct VanillaNpcSpawnDefaults(
             height = (int)(height * scale);
         }
         float difficulty = context.Difficulty;
-        int life = (int)(definition.LifeMax * difficulty);
-        float damageMultiplier = difficulty <= 3f ? difficulty : 3f + (difficulty - 3f) * (5.3333335f - 3f);
-        int damage = (int)(definition.Damage * damageMultiplier);
+        int life = windowsArithmetic ? (int)(definition.LifeMax * (double)difficulty) : (int)(definition.LifeMax * difficulty);
+        double damageMultiplier = DamageMultiplier(difficulty, windowsArithmetic);
+        int damage = windowsArithmetic ? (int)(definition.Damage * damageMultiplier) : (int)(definition.Damage * (float)damageMultiplier);
         float expertLifeTweak = skeletronHead ? 1f : skeletronHand ? 1.3f : .75f;
-        float lifeTweak = Ramp(difficulty, 1f, 2f, expertLifeTweak) * Ramp(difficulty, 2f, 3f, probe ? 1f : .85f);
-        life = (int)Math.Round(life * lifeTweak);
+        float lifeTweak = (float)(Ramp(difficulty, 1f, 2f, expertLifeTweak, windowsArithmetic) * Ramp(difficulty, 2f, 3f, probe ? 1f : .85f, windowsArithmetic));
+        life = (int)Math.Round(windowsArithmetic ? life * (double)lifeTweak : life * lifeTweak);
         float expertDamageTweak = probe ? .8f : skeletron ? 1.1f : definition.Type == VanillaNpcIds.Destroyer ? 2f : .85f;
-        damage = (int)Math.Round(damage * Ramp(difficulty, 1f, 2f, expertDamageTweak));
+        double damageTweak = Ramp(difficulty, 1f, 2f, expertDamageTweak, windowsArithmetic);
+        damage = (int)Math.Round(windowsArithmetic ? damage * damageTweak : damage * (float)damageTweak);
         if (difficulty >= 2f)
         {
             if (!prime && !skeletron) scale *= 1.05f;
-            float balance = PlayerBalance(context.ActivePlayers);
+            float balance = PlayerBalance(context.ActivePlayers, windowsArithmetic);
             double multiplier = probe ? 1d + (balance - 1d) * (2d / 3d) : balance;
             life = (int)Math.Round(life * multiplier);
         }
@@ -76,7 +81,7 @@ public readonly record struct VanillaNpcSpawnDefaults(
         return true;
     }
 
-    private static VanillaNpcSpawnDefaults ResolveOrdinary(in VanillaNpcDefinition definition, in VanillaNpcSpawnContext context)
+    private static VanillaNpcSpawnDefaults ResolveOrdinary(in VanillaNpcDefinition definition, in VanillaNpcSpawnContext context, bool windowsArithmetic)
     {
         bool sphere = definition.Type == VanillaNpcIds.WaterSphere;
         bool skeletron = (sphere || definition.Type == VanillaNpcIds.DarkCaster) && context.GoodWorld && context.SkeletronActive;
@@ -90,7 +95,7 @@ public readonly record struct VanillaNpcSpawnDefaults(
             if (budget < threshold)
             {
                 float factor = threshold / budget;
-                damage = (int)(damage * factor * .9f);
+                damage = windowsArithmetic ? (int)(damage * (double)factor * .9f) : (int)(damage * factor * .9f);
                 if (!sphere)
                 {
                     defense = (int)(defense * factor);
@@ -98,33 +103,45 @@ public readonly record struct VanillaNpcSpawnDefaults(
                 }
             }
         }
-        if (!sphere) life = (int)(life * difficulty);
-        float damageMultiplier = difficulty <= 3f ? difficulty : 3f + (difficulty - 3f) * (5.3333335f - 3f);
-        damage = (int)(damage * damageMultiplier);
+        if (!sphere) life = windowsArithmetic ? (int)(life * (double)difficulty) : (int)(life * difficulty);
+        double damageMultiplier = DamageMultiplier(difficulty, windowsArithmetic);
+        damage = windowsArithmetic ? (int)(damage * damageMultiplier) : (int)(damage * (float)damageMultiplier);
         if (!sphere && skeletron)
         {
-            life = (int)Math.Round(life * (Ramp(difficulty, 1f, 2f, 1.5f) * Ramp(difficulty, 2f, 3f, .85f)));
+            float tweak = (float)(Ramp(difficulty, 1f, 2f, 1.5f, windowsArithmetic) * Ramp(difficulty, 2f, 3f, .85f, windowsArithmetic));
+            life = (int)Math.Round(windowsArithmetic ? life * (double)tweak : life * tweak);
             if (difficulty >= 2f) defense += 6;
         }
         if (!sphere) life = Math.Max(6, life);
         return new(new(definition.Width, definition.Height), definition.Scale, life, damage, defense)
         {
-            KnockBackResist = definition.KnockBackResist * Ramp(difficulty, 1f, 3f, .8f)
+            KnockBackResist = windowsArithmetic
+                ? (float)(definition.KnockBackResist * Ramp(difficulty, 1f, 3f, .8f, true))
+                : definition.KnockBackResist * (float)Ramp(difficulty, 1f, 3f, .8f, false)
         };
     }
 
-    private static float Ramp(float difficulty, float lower, float upper, float end) =>
-        1f + (end - 1f) * Math.Clamp((difficulty - lower) / (upper - lower), 0f, 1f);
+    // The original Windows x86 CLR carries wider expression results into integer conversions
+    // and Math.Round. The two life ramps are stored as Single before the final product;
+    // the single damage ramp is retained wider. These are source boundaries, not a global precision policy.
+    private static double Ramp(float difficulty, float lower, float upper, float end, bool windowsArithmetic) =>
+        windowsArithmetic
+            ? 1d + ((double)end - 1d) * Math.Clamp(((double)difficulty - lower) / ((double)upper - lower), 0d, 1d)
+            : 1f + (end - 1f) * Math.Clamp((difficulty - lower) / (upper - lower), 0f, 1f);
 
-    private static float PlayerBalance(int players)
+    private static double DamageMultiplier(float difficulty, bool windowsArithmetic) => difficulty <= 3f ? difficulty :
+        windowsArithmetic ? 3d + ((double)difficulty - 3d) * ((double)5.3333335f - 3d) :
+        3f + (difficulty - 3f) * (5.3333335f - 3f);
+
+    private static float PlayerBalance(int players, bool windowsArithmetic)
     {
         float balance = 1f, increment = .35f;
         for (int player = 1; player < players; player++)
         {
             balance += increment;
-            increment += (1f - increment) / 3f;
+            increment = windowsArithmetic ? (float)(increment + (1d - increment) / 3d) : increment + (1f - increment) / 3f;
         }
-        if (balance > 8f) balance = (balance * 2f + 8f) / 3f;
+        if (balance > 8f) balance = windowsArithmetic ? (float)((balance * 2d + 8d) / 3d) : (balance * 2f + 8f) / 3f;
         return Math.Min(balance, 1000f);
     }
 }

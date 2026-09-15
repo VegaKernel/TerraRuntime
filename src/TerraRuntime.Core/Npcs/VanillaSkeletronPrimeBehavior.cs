@@ -74,7 +74,7 @@ internal sealed class VanillaSkeletronPrimeNpcBehaviorStrategy : IVanillaNpcBeha
     private static void Charge(in NpcSnapshot npc, in VanillaNpcTargetCandidate target, VanillaNpcHitboxSize hitbox, bool expert, ref float vx, ref float vy)
     {
         float dx = target.CenterX - (npc.PositionX + hitbox.Width * .5f), dy = target.CenterY - (npc.PositionY + hitbox.Height * .5f);
-        float d = MathF.Sqrt(dx * dx + dy * dy); if (d <= 0f) d = 1f;
+        float d = (float)Math.Sqrt(OperatingSystem.IsWindows() ? (double)dx * dx + (double)dy * dy : dx * dx + dy * dy); if (d <= 0f) d = 1f;
         float speed = expert ? 6f : 2f;
         if (expert) { if (d > 150f) speed *= 1.05f; for (float t = 200f; t <= 600f; t += 50f) if (d > t) speed *= 1.1f; }
         float multiplier = speed / d;
@@ -85,9 +85,11 @@ internal sealed class VanillaSkeletronPrimeNpcBehaviorStrategy : IVanillaNpcBeha
     {
         float dx = target.CenterX - (npc.PositionX + hitbox.Width * .5f);
         float dy = target.CenterY - (npc.PositionY + hitbox.Height * .5f);
-        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        float distance = (float)Math.Sqrt(OperatingSystem.IsWindows() ? (double)dx * dx + (double)dy * dy : dx * dx + dy * dy);
         if (distance <= 0f) distance = 1f;
-        float multiplier = Math.Clamp(10f + distance / 100f, 8f, 32f) / distance;
+        // AI_032 stores the Windows wider sum as Single before clamping and normalizing.
+        float speed = OperatingSystem.IsWindows() ? (float)(10d + distance / 100d) : 10f + distance / 100f;
+        float multiplier = Math.Clamp(speed, 8f, 32f) / distance;
         vx = dx * multiplier; vy = dy * multiplier;
     }
 

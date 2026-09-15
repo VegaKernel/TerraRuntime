@@ -16,10 +16,10 @@ public sealed class SkeletronHandsSpawnTests
     [MemberData(nameof(SpawnCases))]
     public void Head_and_hand_spawns_match_original_context(int index)
     {
-        using var resource = typeof(SkeletronHandsSpawnTests).Assembly.GetManifestResourceStream("SkeletronSpawn1458")!;
+        using var resource = typeof(SkeletronHandsSpawnTests).Assembly.GetManifestResourceStream(OperatingSystem.IsWindows() ? "SkeletronSpawnWindows1458" : "SkeletronSpawn1458")!;
         using var gzip = new GZipStream(resource, CompressionMode.Decompress);
         using var bytes = new MemoryStream(); gzip.CopyTo(bytes);
-        Assert.Equal("ab73933ca07f98061c01f3fedd4255fec4457cde6fcb91ceaa32ed56aa1e1e1d",
+        Assert.Equal(OperatingSystem.IsWindows() ? "a8f880e367de0fcfcb6ee567e4414ffaad105a8c903be43806274f3834c02cc4" : "ab73933ca07f98061c01f3fedd4255fec4457cde6fcb91ceaa32ed56aa1e1e1d",
             Convert.ToHexStringLower(SHA256.HashData(bytes.ToArray())));
         using var json = JsonDocument.Parse(bytes.ToArray());
         var row = json.RootElement[index];

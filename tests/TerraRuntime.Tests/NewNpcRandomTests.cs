@@ -158,6 +158,14 @@ public sealed class NewNpcRandomTests
 
     private static JsonElement[] Read(string name, string hash)
     {
+        if (OperatingSystem.IsWindows())
+        {
+            (name, hash) = name switch
+            {
+                "NewNpcRng1458" => ("NewNpcRngWindows1458", "11d0ee3132d0101523d121aa2a144ff339924e45989d9b00b2504a86787358bb"),
+                _ => (name, hash)
+            };
+        }
         using var resource = typeof(NewNpcRandomTests).Assembly.GetManifestResourceStream(name)!;
         using var gzip = new GZipStream(resource, CompressionMode.Decompress);
         using var bytes = new MemoryStream(); gzip.CopyTo(bytes);

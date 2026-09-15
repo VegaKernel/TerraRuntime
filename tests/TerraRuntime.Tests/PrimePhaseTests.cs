@@ -64,6 +64,15 @@ public sealed class PrimePhaseTests
 
     private static JsonElement[] Read(string name, string hash)
     {
+        if (OperatingSystem.IsWindows())
+        {
+            (name, hash) = name switch
+            {
+                "PrimeSpawn1458" => ("PrimeSpawnWindows1458", "22e71fbde1769e1d897bd44288d0f47f53211d36e97b613da8c5cf677b43acae"),
+                "PrimePhase1458" => ("PrimePhaseWindows1458", "ab97024444a0eb5080ced00888ee5d06a2ecbf25c87035618295624c23f4f6cc"),
+                _ => (name, hash)
+            };
+        }
         using var resource = typeof(PrimePhaseTests).Assembly.GetManifestResourceStream(name)!;
         using var gzip = new GZipStream(resource, CompressionMode.Decompress);
         using var bytes = new MemoryStream(); gzip.CopyTo(bytes);

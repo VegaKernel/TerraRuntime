@@ -533,7 +533,24 @@ internal static class StandaloneServerProgram
             summonedCaster.PositionY != 6184 || summonedCaster.Target != 255 || summonedCaster.Ai != default ||
             summonedCaster.Simulation.LocalAi != default || redHatOutbound.QueuedFrames != 0) return 5;
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok, casterSpawn=ok, sphereAI=ok, npcSpawnRandom=ok, darkCasterAI=ok, skeletronSkull=ok, skeletronRedHatAI=ok.");
+        var arithmeticNpcs = new RuntimeNpcStore();
+        foreach (var check in new (NpcTypeId Type, float Difficulty, int Players, bool Hard, bool Plant,
+            int LinuxLife, int WindowsLife, int LinuxDamage, int WindowsDamage)[]
+        {
+            (Type: VanillaNpcIds.SkeletronHead, Difficulty: 1.01f, Players: 1, Hard: false, Plant: false, LinuxLife: 4444, WindowsLife: 4443, LinuxDamage: 32, WindowsDamage: 32),
+            (VanillaNpcIds.SkeletronHand, 3.5f, 1, false, false, 2320, 2321, 91, 91),
+            (VanillaNpcIds.SkeletronPrime, 2f, 255, false, false, 7197399, 7197400, 80, 80),
+            (VanillaNpcIds.WaterSphere, 3f, 1, true, true, 1, 1, 270, 267)
+        })
+        {
+            arithmeticNpcs.SetVanillaSpawnContextSource(() => new(check.Difficulty, check.Players, false)
+                { HardMode = check.Hard, DownedPlantera = check.Plant });
+            if (!arithmeticNpcs.TrySpawnIntent(new(check.Type, 1000, 1000, 0, 0, 255), out var scaledNpc) ||
+                scaledNpc.Simulation.LifeMax != (OperatingSystem.IsWindows() ? check.WindowsLife : check.LinuxLife) ||
+                scaledNpc.Simulation.BaseDamage != (OperatingSystem.IsWindows() ? check.WindowsDamage : check.LinuxDamage))
+                throw new InvalidOperationException("Original platform NPC scaling arithmetic smoke failed.");
+        }
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok, casterSpawn=ok, sphereAI=ok, npcSpawnRandom=ok, darkCasterAI=ok, skeletronSkull=ok, skeletronRedHatAI=ok, npcScalingArithmetic=ok.");
         return 0;
     }
 

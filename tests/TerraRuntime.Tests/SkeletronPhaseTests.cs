@@ -58,6 +58,14 @@ public sealed class SkeletronPhaseTests
 
     private static JsonElement[] Read(string name, string hash)
     {
+        if (OperatingSystem.IsWindows())
+        {
+            (name, hash) = name switch
+            {
+                "SkeletronPhase1458" => ("SkeletronPhaseWindows1458", "dee610cb05f74ae64906ff1d9260252058fd6e2babe1a049c4bdbb9b279e6353"),
+                _ => (name, hash)
+            };
+        }
         using var resource = typeof(SkeletronPhaseTests).Assembly.GetManifestResourceStream(name)!;
         using var gzip = new GZipStream(resource, CompressionMode.Decompress);
         using var bytes = new MemoryStream(); gzip.CopyTo(bytes);

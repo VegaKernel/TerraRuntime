@@ -73,10 +73,10 @@ public sealed class CasterSpawnTests
         Assert.Equal(60, ordinary.Simulation.BaseDamage);
         Assert.True(progression.MarkCompleted(VanillaWorldProgressionId.Hardmode));
         Assert.True(store.TrySpawnIntent(in intent, out var hard));
-        Assert.Equal(216, hard.Simulation.BaseDamage);
+        Assert.Equal(OperatingSystem.IsWindows() ? 213 : 216, hard.Simulation.BaseDamage);
         Assert.True(progression.MarkCompleted(VanillaWorldProgressionId.Plantera));
         Assert.True(store.TrySpawnIntent(in intent, out var plant));
-        Assert.Equal(270, plant.Simulation.BaseDamage);
+        Assert.Equal(OperatingSystem.IsWindows() ? 267 : 270, plant.Simulation.BaseDamage);
         Assert.True(store.TrySpawnIntent(new(VanillaNpcIds.SkeletronHead, 1000, 1000, 0, 0, 255) { StartSlot = 5 }, out var head));
         Assert.True(store.TrySpawnIntent(in intent, out var duringHead));
         Assert.Equal(60, duringHead.Simulation.BaseDamage);
@@ -86,7 +86,7 @@ public sealed class CasterSpawnTests
         Assert.Equal(60, pendingRemoval.Simulation.BaseDamage);
         Assert.True(store.TryDespawn(head.Handle));
         Assert.True(store.TrySpawnIntent(in intent, out var afterHead));
-        Assert.Equal(270, afterHead.Simulation.BaseDamage);
+        Assert.Equal(OperatingSystem.IsWindows() ? 267 : 270, afterHead.Simulation.BaseDamage);
         Assert.True(store.TryGet(duringHead.Handle, out var unchanged));
         Assert.Equal(duringHead, unchanged);
     }
@@ -98,7 +98,7 @@ public sealed class CasterSpawnTests
         var facts = default(RuntimeTownCommerceWorldFacts1458) with { HardMode = true, DownedPlantera = true };
         _ = new ServerRuntimeState(npcs: store, townCommerceWorldFacts: facts, expertMode: true);
         Assert.True(store.TrySpawnIntent(new(VanillaNpcIds.WaterSphere, 1000, 1000, 0, 0, 255), out var sphere));
-        Assert.Equal(180, sphere.Simulation.BaseDamage);
+        Assert.Equal(OperatingSystem.IsWindows() ? 178 : 180, sphere.Simulation.BaseDamage);
         Assert.Equal(1, sphere.Simulation.LifeMax);
     }
 
@@ -145,10 +145,10 @@ public sealed class CasterSpawnTests
 
     private static JsonElement[] Read()
     {
-        using var resource = typeof(CasterSpawnTests).Assembly.GetManifestResourceStream("CasterSpawn1458")!;
+        using var resource = typeof(CasterSpawnTests).Assembly.GetManifestResourceStream(OperatingSystem.IsWindows() ? "CasterSpawnWindows1458" : "CasterSpawn1458")!;
         using var gzip = new GZipStream(resource, CompressionMode.Decompress);
         using var bytes = new MemoryStream(); gzip.CopyTo(bytes);
-        Assert.Equal("312c0fd9130430fca01c6c191025e52146635f72755fa7bfd86f54bf5ecceba0", Convert.ToHexStringLower(SHA256.HashData(bytes.ToArray())));
+        Assert.Equal(OperatingSystem.IsWindows() ? "5ff161e70e03961c5a2fe37c23058656862de96da88e3d9eca2fb07d1042f531" : "312c0fd9130430fca01c6c191025e52146635f72755fa7bfd86f54bf5ecceba0", Convert.ToHexStringLower(SHA256.HashData(bytes.ToArray())));
         using var json = JsonDocument.Parse(bytes.ToArray());
         return json.RootElement.EnumerateArray().Select(row => row.Clone()).ToArray();
     }

@@ -138,6 +138,15 @@ public sealed class NpcSpawnContextTests
 
     private static JsonElement[] ReadCases(string name, string hash)
     {
+        if (OperatingSystem.IsWindows())
+        {
+            (name, hash) = name switch
+            {
+                "NpcSpawnContext1458" => ("NpcSpawnContextWindows1458", "32d7822b81d9e8c55d8b6b08fe9c6c64665295e36859628387ca893af37f4d8e"),
+                "NpcSpawnFractional1458" => ("NpcSpawnFractionalWindows1458", "e4c93ae40f450b10fa55d40a96fad11e03ad003caed1c0816da915733a62eb0c"),
+                _ => (name, hash)
+            };
+        }
         using var resource = typeof(NpcSpawnContextTests).Assembly.GetManifestResourceStream(name)!;
         using var gzip = new GZipStream(resource, CompressionMode.Decompress);
         using var bytes = new MemoryStream(); gzip.CopyTo(bytes);
