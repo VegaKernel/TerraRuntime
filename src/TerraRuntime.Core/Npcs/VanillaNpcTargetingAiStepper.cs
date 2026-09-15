@@ -62,6 +62,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaQueenSlimeNpcBehaviorStrategy _queenSlime;
     private readonly VanillaSkeletronPrimeNpcBehaviorStrategy _skeletronPrime = new();
     private readonly VanillaSkeletronPrimeLimbNpcBehaviorStrategy _skeletronPrimeLimb = new();
+    private readonly VanillaPrimeRangedBehavior _primeRanged = new();
     private readonly VanillaTwinNpcBehaviorStrategy _retinazer = new(false);
     private readonly VanillaTwinNpcBehaviorStrategy _spazmatism = new(true);
     private readonly VanillaDestroyerNpcBehaviorStrategy _destroyer;
@@ -249,8 +250,8 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.SkeletronPrime => _skeletronPrime,
             VanillaNpcBehaviorFamily.PrimeSaw => _skeletronPrimeLimb,
             VanillaNpcBehaviorFamily.PrimeVice => _skeletronPrimeLimb,
-            VanillaNpcBehaviorFamily.PrimeCannon => _skeletronPrimeLimb,
-            VanillaNpcBehaviorFamily.PrimeLaser => _skeletronPrimeLimb,
+            VanillaNpcBehaviorFamily.PrimeCannon => _primeRanged,
+            VanillaNpcBehaviorFamily.PrimeLaser => _primeRanged,
             VanillaNpcBehaviorFamily.Retinazer => _retinazer,
             VanillaNpcBehaviorFamily.Spazmatism => _spazmatism,
             VanillaNpcBehaviorFamily.Destroyer => _destroyer,
@@ -378,7 +379,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (source.Type == VanillaNpcIds.QueenSlime.Value && proposed.Type == source.Type)
             return PlanQueenSlimeProjectiles(in source, in proposed, destination);
         if ((source.Type == VanillaNpcIds.PrimeCannon.Value || source.Type == VanillaNpcIds.PrimeLaser.Value) && proposed.Type == source.Type)
-            return PlanPrimeLimbProjectile(in source, in proposed, destination);
+            return 0; // AI_035/036 shots consume RNG only after the source state commits.
         if ((source.Type == VanillaNpcIds.Retinazer.Value || source.Type == VanillaNpcIds.Spazmatism.Value) && proposed.Type == source.Type)
             return PlanTwinProjectile(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.DestroyerBody.Value && proposed.Type == source.Type)
@@ -1662,39 +1663,6 @@ public sealed class VanillaNpcTargetingAiStepper :
         return 0;
     }
 
-    private int PlanPrimeLimbProjectile(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
-    {
-        if (destination.IsEmpty) return 0;
-        float previous = source.Simulation.LocalAi.Ai0;
-        float current = proposed.Simulation.LocalAi.Ai0;
-        float threshold = source.Type == VanillaNpcIds.PrimeCannon.Value
-            ? (source.Ai.Ai2 == 1f ? 40f : 140f)
-            : (source.Ai.Ai2 == 1f ? 80f : 200f);
-        if (!(previous <= threshold && current > threshold) || proposed.Target >= byte.MaxValue ||
-            !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || target.Dead || !target.Active)
-            return 0;
-        float cx = proposed.PositionX + 26f, cy = proposed.PositionY + 26f;
-        float dx, dy, speed;
-        ProjectileTypeId type;
-        int damage;
-        if (source.Type == VanillaNpcIds.PrimeCannon.Value)
-        {
-            type = VanillaProjectileIds.SkeletronPrimeBomb; damage = 0;
-            if (source.Ai.Ai2 == 1f) { dx = target.CenterX - cx; dy = target.CenterY - cy; speed = 10f; }
-            else { dx = cx - (target.CenterX); dy = cy - target.CenterY; speed = 12f; }
-        }
-        else
-        {
-            type = VanillaProjectileIds.RetinazerDeathLaser; damage = 25;
-            dx = target.CenterX - cx; dy = target.CenterY - cy; speed = source.Ai.Ai2 == 1f ? 10f : 8f;
-        }
-        float d = MathF.Max(0.001f, MathF.Sqrt(dx * dx + dy * dy));
-        float vx = dx / d * speed + _random.NextInt32(-40, 41) * (source.Type == VanillaNpcIds.PrimeCannon.Value ? 0.01f : 0.05f);
-        float vy = dy / d * speed + _random.NextInt32(-40, 41) * (source.Type == VanillaNpcIds.PrimeCannon.Value ? 0.01f : 0.05f);
-        destination[0] = new NpcAiProjectileIntent(type, cx + vx * (source.Type == VanillaNpcIds.PrimeCannon.Value ? 4f : 8f), cy + vy * (source.Type == VanillaNpcIds.PrimeCannon.Value ? 4f : 8f), vx, vy, damage, 0f);
-        return 1;
-    }
-
     private int PlanTwinProjectile(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
     {
         if (destination.IsEmpty || proposed.Target >= byte.MaxValue || !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || !target.Active || target.Dead)
@@ -1927,7 +1895,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         proposed.Type == before.Type && proposed.Simulation.Life == 0 &&
         ((before.TypeIdentity == VanillaNpcIds.MoonLordLeechBlob && proposed.Simulation.TimeLeft == 0) ||
          // AI_012 removes the orphan immediately; its internal negative-life sentinel never enters the store.
-         (before.TypeIdentity == VanillaNpcIds.SkeletronHand && proposed.Ai.Ai2 > 50f &&
+         ((before.TypeIdentity == VanillaNpcIds.SkeletronHand || before.TypeIdentity == VanillaNpcIds.PrimeCannon ||
+           before.TypeIdentity == VanillaNpcIds.PrimeLaser) && proposed.Ai.Ai2 > 50f &&
           proposed.Ai.Ai2 == before.Ai.Ai2 + 10f));
 
     public void ApplyCommittedEffect(
@@ -1940,6 +1909,9 @@ public sealed class VanillaNpcTargetingAiStepper :
                 head.Handle == committed.Handle && head.Revision == committed.Revision)
                 _skeletronHead.ApplyEffects(in before, in committed, _context, _random, mutations);
         }
+        if ((before.TypeIdentity == VanillaNpcIds.PrimeCannon || before.TypeIdentity == VanillaNpcIds.PrimeLaser) &&
+            before.TypeIdentity == committed.TypeIdentity)
+            _primeRanged.ApplyEffects(in before, in committed, _context, _random, mutations);
         if (before.TypeIdentity == VanillaNpcIds.DarkCaster && committed.TypeIdentity == VanillaNpcIds.DarkCaster)
             VanillaDarkCasterBehavior.SpawnSphere(in before, in committed, mutations);
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);

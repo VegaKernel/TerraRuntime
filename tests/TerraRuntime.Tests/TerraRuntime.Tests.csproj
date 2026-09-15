@@ -33,6 +33,14 @@
     <ProjectReference Include="../TerraRuntime.HostModuleFixture/TerraRuntime.HostModuleFixture.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/prime-ranged-parent-linux-1458.json.gz" LogicalName="PrimeRangedParentLinux1458" />
+    <EmbeddedResource Include="Fixtures/prime-ranged-parent-windows-1458.json.gz" LogicalName="PrimeRangedParentWindows1458" />
+    <EmbeddedResource Include="Fixtures/prime-ranged-trace-linux-1458.json.gz" LogicalName="PrimeRangedTraceLinux1458" />
+    <EmbeddedResource Include="Fixtures/prime-ranged-trace-windows-1458.json.gz" LogicalName="PrimeRangedTraceWindows1458" />
+    <EmbeddedResource Include="Fixtures/prime-ranged-geometry-linux-1458.json.gz" LogicalName="PrimeRangedGeometryLinux1458" />
+    <EmbeddedResource Include="Fixtures/prime-ranged-geometry-windows-1458.json.gz" LogicalName="PrimeRangedGeometryWindows1458" />
+    <EmbeddedResource Include="Fixtures/prime-ranged-ai-linux-1458.json.gz" LogicalName="PrimeRangedAiLinux1458" />
+    <EmbeddedResource Include="Fixtures/prime-ranged-ai-windows-1458.json.gz" LogicalName="PrimeRangedAiWindows1458" />
     <EmbeddedResource Include="Fixtures/npcspawncontext-windows-1458.json.gz" LogicalName="NpcSpawnContextWindows1458" />
     <EmbeddedResource Include="Fixtures/npcspawnfractional-windows-1458.json.gz" LogicalName="NpcSpawnFractionalWindows1458" />
     <EmbeddedResource Include="Fixtures/primespawn-windows-1458.json.gz" LogicalName="PrimeSpawnWindows1458" />

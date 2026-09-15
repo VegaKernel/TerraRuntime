@@ -232,15 +232,16 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 4,
         CollisionHeight: 4);
 
+    // Projectile.SetDefaults scales the initial 4x4 by 1.8 before NewProjectile anchors it.
     private static readonly VanillaProjectileDefinition RetinazerDeathLaserDefinition = new(
-        Width: 4,
-        Height: 4,
+        Width: 7,
+        Height: 7,
         AiStyle: VanillaProjectileAiStyles.Arrow,
         TileCollide: true,
         IgnoreWater: false,
         CanCutTiles: true,
-        CollisionWidth: 4,
-        CollisionHeight: 4);
+        CollisionWidth: 7,
+        CollisionHeight: 7);
 
     private static readonly VanillaProjectileDefinition GolemFireballDefinition = new(
         Width: 16,

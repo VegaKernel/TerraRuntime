@@ -105,7 +105,7 @@ internal sealed class VanillaSkeletronPrimeLimbNpcBehaviorStrategy : IVanillaNpc
     public bool TryStep(in NpcSnapshot npc,in VanillaNpcDefinition definition,VanillaNpcBehaviorContext context,INpcAiStateStepper inner,out NpcStateUpdate next)
     {
         _=inner;
-        bool supported=npc.TypeIdentity==VanillaNpcIds.PrimeSaw||npc.TypeIdentity==VanillaNpcIds.PrimeVice||npc.TypeIdentity==VanillaNpcIds.PrimeCannon||npc.TypeIdentity==VanillaNpcIds.PrimeLaser;
+        bool supported=npc.TypeIdentity==VanillaNpcIds.PrimeSaw||npc.TypeIdentity==VanillaNpcIds.PrimeVice;
         if(!supported){next=default;return false;}
         NpcAiState ai=npc.Ai; NpcSimulationState sim=npc.Simulation; float vx=npc.VelocityX,vy=npc.VelocityY; ushort targetSlot=npc.Target;
         if(ai.Ai1<0f||ai.Ai1>byte.MaxValue||!context.TryFindNpcPeer((byte)ai.Ai1,out NpcSnapshot parent)||parent.TypeIdentity!=VanillaNpcIds.SkeletronPrime)
@@ -113,9 +113,7 @@ internal sealed class VanillaSkeletronPrimeLimbNpcBehaviorStrategy : IVanillaNpc
         if(parent.Ai.Ai1==3f && (sim.TimeLeft<0||sim.TimeLeft>10)) sim=sim with{TimeLeft=10};
         VanillaSkeletronPrimeNpcBehaviorStrategy.TryGetTarget(targetSlot,context,out VanillaNpcTargetCandidate target);
         if(!target.Active||target.Dead||target.Ghost) VanillaSkeletronPrimeNpcBehaviorStrategy.TryRefresh(in npc,in definition,context,ref targetSlot,out target);
-        if(npc.TypeIdentity==VanillaNpcIds.PrimeCannon) StepRanged(in npc,in parent,in target,ref ai,ref sim,ref vx,ref vy,cannon:true);
-        else if(npc.TypeIdentity==VanillaNpcIds.PrimeLaser) StepRanged(in npc,in parent,in target,ref ai,ref sim,ref vx,ref vy,cannon:false);
-        else StepMelee(in npc,in parent,in target,ref ai,ref vx,ref vy,vice:npc.TypeIdentity==VanillaNpcIds.PrimeVice);
+        StepMelee(in npc,in parent,in target,ref ai,ref vx,ref vy,vice:npc.TypeIdentity==VanillaNpcIds.PrimeVice);
         sim=sim with{NoGravity=true,NoTileCollide=true,JustHit=false}; next=Build(in npc,vx,vy,targetSlot,in ai,in sim); return true;
     }
 
@@ -140,22 +138,6 @@ internal sealed class VanillaSkeletronPrimeLimbNpcBehaviorStrategy : IVanillaNpc
         else if(state==4)
         { vx += 0.1f * -ai.Ai0; vx=Math.Clamp(vx,-8f,8f); if(target.Active&&!target.Dead&&!target.Ghost&&MathF.Abs((npc.PositionX+26f)-(parent.PositionX+40f))>500f){ai=ai with{Ai2=5f};SetToward(in npc,in target,17f,ref vx,ref vy);} }
         else if(state==5 && target.Active && ((vx>0f&&npc.PositionX+26f>target.CenterX)||(vx<0f&&npc.PositionX+26f<target.CenterX))) ai=ai with{Ai2=0f};
-    }
-
-    private static void StepRanged(in NpcSnapshot npc,in NpcSnapshot parent,in VanillaNpcTargetCandidate target,ref NpcAiState ai,ref NpcSimulationState sim,ref float vx,ref float vy,bool cannon)
-    {
-        NpcAiState local=sim.LocalAi;
-        if((int)ai.Ai2==0)
-        {
-            if(parent.Ai.Ai1!=0f){local=local with{Ai0=local.Ai0+(cannon?2f:3f)};Hover(in npc,in parent,ai.Ai0,-100f,200f,ref vx,ref vy);}
-            else {float timer=ai.Ai3+1f; float threshold=cannon?1100f:800f; if(timer>=threshold){timer=0f;ai=ai with{Ai2=1f};local=local with{Ai0=0f};} ai=ai with{Ai3=timer};Hover(in npc,in parent,ai.Ai0,cannon?230f:-100f,200f,ref vx,ref vy);}
-        }
-        else
-        {
-            float timer=ai.Ai3+1f; float duration=cannon?300f:200f; if(timer>=duration){timer=0f;ai=ai with{Ai2=0f};local=local with{Ai0=0f};} ai=ai with{Ai3=timer};
-            if(target.Active&&!target.Dead&&!target.Ghost){float tx=target.CenterX,ty=target.CenterY-(cannon?350f:300f);ApproachPosition(in npc,tx,ty,cannon?6f:7f,0.05f,ref vx,ref vy);}
-        }
-        local=local with{Ai0=local.Ai0+1f}; sim=sim with{LocalAi=local};
     }
 
     private static void Hover(in NpcSnapshot npc,in NpcSnapshot parent,float side,float oy,float ox,ref float vx,ref float vy)

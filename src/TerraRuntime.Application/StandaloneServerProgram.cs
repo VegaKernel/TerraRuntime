@@ -550,7 +550,30 @@ internal static class StandaloneServerProgram
                 scaledNpc.Simulation.BaseDamage != (OperatingSystem.IsWindows() ? check.WindowsDamage : check.LinuxDamage))
                 throw new InvalidOperationException("Original platform NPC scaling arithmetic smoke failed.");
         }
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok, casterSpawn=ok, sphereAI=ok, npcSpawnRandom=ok, darkCasterAI=ok, skeletronSkull=ok, skeletronRedHatAI=ok, npcScalingArithmetic=ok.");
+        foreach (var check in new (NpcTypeId Type, int Clock, float X, float Y, float Vx, float Vy)[]
+        {
+            (VanillaNpcIds.PrimeCannon, 140, 844.367859f, 998.317932f, -11.1580343f, -3.67051888f),
+            (VanillaNpcIds.PrimeLaser, 200, 967.6992f, 1030.58521f, 8.899903f, 1.26065624f)
+        })
+        {
+            var rangedNpcs = new RuntimeNpcStore(); var rangedProjectiles = new RuntimeProjectileStore();
+            rangedNpcs.SetVanillaSpawnContextSource(() => new(1, 1, false));
+            if (!rangedNpcs.TrySpawnIntent(new(VanillaNpcIds.SkeletronPrime, 1000, 1000, 0, 0, 0)
+                { InitialAi = new(1, 0, 0, 0) }, out _) ||
+                !rangedNpcs.TrySpawnIntent(new(check.Type, 900, 1050, 1.25f, -2.5f, 0)
+                { StartSlot = 10, InitialAi = new(check.Type == VanillaNpcIds.PrimeCannon ? -1 : 1, 0, 0, 0),
+                    InitialLocalAi = new(check.Clock, 0, 0, 0) }, out var rangedArm))
+                throw new InvalidOperationException("Prime ranged smoke setup failed.");
+            var rangedAi = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper(), random: new SystemVanillaNpcRandom(0));
+            rangedAi.SetCandidates([new(0, 1510, 1021, 0, true, false, false, false)]);
+            if (new RuntimeNpcAiStateExecutor(rangedNpcs, rangedProjectiles).Tick(rangedAi).Applied != 2 ||
+                !rangedProjectiles.TryGetActive(0, out var shot) || shot.PositionX != check.X || shot.PositionY != check.Y ||
+                shot.VelocityX != check.Vx || shot.VelocityY != check.Vy ||
+                !rangedProjectiles.TryGetServerNpcSource(shot.Handle, out var sourceArm) || sourceArm != rangedArm.Handle ||
+                !rangedNpcs.TryGet(rangedArm.Handle, out var afterShot) || afterShot.Simulation.LocalAi.Ai0 != 0)
+                throw new InvalidOperationException("Original Prime ranged state/projectile/RNG smoke failed.");
+        }
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok, casterSpawn=ok, sphereAI=ok, npcSpawnRandom=ok, darkCasterAI=ok, skeletronSkull=ok, skeletronRedHatAI=ok, npcScalingArithmetic=ok, primeRangedAI=ok.");
         return 0;
     }
 

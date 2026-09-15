@@ -203,7 +203,7 @@ public sealed class ProjectileVanillaDefinitionCatalogTests
     [Theory]
     [InlineData(83, 4, 4, true, false)]
     [InlineData(84, 4, 4, true, false)]
-    [InlineData(100, 4, 4, true, false)]
+    [InlineData(100, 7, 7, true, false)] // SetDefaults applies scale 1.8 after the initial 4x4 dimensions.
     [InlineData(259, 8, 8, false, true)]
     public void Terraria_1458_hostile_straight_laser_definitions_match_source(
         int type, int width, int height, bool tileCollide, bool ignoreWater)
