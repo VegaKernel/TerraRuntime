@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
@@ -16,7 +17,7 @@ namespace TerraRuntime.Application;
 /// Ordinary motion commits are additionally sampled on vanilla's default <c>Main.npcStreamSpeed</c>
 /// cadence; spawn, despawn and committed life changes remain immediate.
 /// </summary>
-internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRuntimePlayerEventSink
+internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRuntimePlayerEventSink, INpcAiHealingCommitSink
 {
     private const int MaxNpcSlots = RuntimeNpcStore.MaximumAddressableCapacity;
     // TerrariaServer 1.4.5.8 Main.npcStreamSpeed defaults to 30. This is a containment boundary
@@ -210,6 +211,19 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
         Volatile.Write(ref townHomeBaselineFrames[home.NpcSlot], encoded);
         Broadcast(encoded);
         return true;
+    }
+
+    public void NpcHealed(in NpcSnapshot npc, int amount)
+    {
+        if (amount <= 0 || !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var definition) ||
+            !definition.TryResolveHitbox(npc.Simulation, out var hitbox)) return;
+        // AI82 passes Utils.CenteredRectangle(Center, new Vector2(50)) to NPC.HealEffect.
+        float x = (int)(npc.PositionX + hitbox.Width * .5f - 25f) + 25;
+        float y = (int)(npc.PositionY + hitbox.Height * .5f - 25f) + 25;
+        if (RuntimeNpcPacketProjection.TryCreate(in npc, RuntimeNpcSyncKind.Spawn, out var baseline) &&
+            TerrariaNpcUpdateEncoder.TryEncode(in baseline, out var encoded))
+            Volatile.Write(ref baselineFrames[npc.Handle.Slot], encoded);
+        Broadcast(TerrariaCombatTextCodec.EncodeNumber(x, y, amount, new TerrariaRgbColor(100, 255, 100)));
     }
 
     public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot)

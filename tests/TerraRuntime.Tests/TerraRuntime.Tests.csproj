@@ -48,6 +48,8 @@
   <ItemGroup>
     <EmbeddedResource Include="Fixtures/player-buff-1458.json" LogicalName="PlayerBuff1458" />
     <EmbeddedResource Include="Fixtures/debuffs-1458.json" LogicalName="Debuffs1458" />
+    <EmbeddedResource Include="Fixtures/moon-leech-clot-1458.json" LogicalName="MoonLeechClot1458" />
+    <EmbeddedResource Include="Fixtures/npc-heal-packet-1458.json" LogicalName="NpcHealPacket1458" />
     <EmbeddedResource Include="Fixtures/projectile-key-wrap-1458.json" LogicalName="ProjectileKeyWrap1458" />
     <EmbeddedResource Include="Fixtures/moon-leech-anchor-key-1458.json" LogicalName="MoonLeechAnchorKey1458" />
   </ItemGroup>

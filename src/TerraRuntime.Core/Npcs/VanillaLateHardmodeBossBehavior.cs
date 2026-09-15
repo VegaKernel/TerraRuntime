@@ -505,6 +505,7 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         INpcAiStateStepper inner, out NpcStateUpdate next)
     {
         _ = inner;
+        if (npc.TypeIdentity == VanillaNpcIds.MoonLordLeechBlob) return VanillaMoonLordLeechBehavior.TryStep(in npc, in definition, context, out next);
         if (npc.TypeIdentity == VanillaNpcIds.MoonLordCore) return TryCore(in npc, in definition, context, out next);
         if (npc.TypeIdentity == VanillaNpcIds.MoonLordHand) return TryPart(in npc, in definition, context, isHead: false, out next);
         if (npc.TypeIdentity == VanillaNpcIds.MoonLordHead) return TryPart(in npc, in definition, context, isHead: true, out next);

@@ -9,7 +9,7 @@ public sealed class VanillaNpcAiCoverageCatalogTests
     [Fact]
     public void Every_coverage_entry_has_an_explicit_definition_and_behavior_family()
     {
-        int expected = 16 + 35 +
+        int expected = 16 + 36 +
             VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount +
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +

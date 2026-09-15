@@ -241,8 +241,46 @@ internal static class StandaloneServerProgram
             return 5;
         }
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok.");
+        byte[] healPacket = TerrariaCombatTextCodec.EncodeNumber(1019f, 1028f, 1000, new TerrariaRgbColor(100, 255, 100));
+        ReadOnlySpan<byte> originalHealPacket = [0x12, 0, 0x51, 0, 0xc0, 0x7e, 0x44, 0, 0x80, 0x80, 0x44, 0x64, 0xff, 0x64, 0xe8, 3, 0, 0];
+        var leechNpcs = new RuntimeNpcStore(5);
+        var headState = new NpcStateUpdate(396, 396, 1000, 1000, 0, 0, 0, new NpcAiState(0, 0, 0, 1),
+            NpcSimulationState.Initial with { Life = 44000, LifeMax = 45000 });
+        var clotState = new NpcStateUpdate(401, 401, 300, 400, 0, 0, 0, new NpcAiState(1, 0, 89, 0),
+            NpcSimulationState.Initial with { Life = 400, LifeMax = 400 });
+        leechNpcs.TrySpawn(0, in headState, out var leechHead);
+        var coreState = headState with { Type = 398, NetId = 398,
+            Simulation = NpcSimulationState.Initial with { Life = 50000, LifeMax = 50000 } };
+        var handState = headState with { Type = 397, NetId = 397,
+            Simulation = NpcSimulationState.Initial with { Life = 25000, LifeMax = 25000 } };
+        leechNpcs.TrySpawn(1, in coreState, out _);
+        leechNpcs.TrySpawn(2, in handState, out _);
+        handState = handState with { Ai = handState.Ai with { Ai2 = 1 } };
+        leechNpcs.TrySpawn(3, in handState, out _);
+        leechNpcs.TrySpawn(4, in clotState, out var leechClot);
+        var leechAi = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        var leechMotion = new VanillaNpcWorldMotionAiStepper(leechAi, new WorldTileStore(new WorldDimensions(100, 100)));
+        new RuntimeNpcAiStateExecutor(leechNpcs).Tick(new MoonLeechSmokeStepper(leechMotion));
+        if (!healPacket.AsSpan().SequenceEqual(originalHealPacket) ||
+            !leechNpcs.TryGet(leechHead.Handle, out var healedHead) || healedHead.Simulation.Life != 45000 ||
+            leechNpcs.TryGet(leechClot.Handle, out _))
+        {
+            Console.Error.WriteLine("Protocol smoke failed while committing Moon Leech healing and deactivation.");
+            return 5;
+        }
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok.");
         return 0;
+    }
+
+    private sealed class MoonLeechSmokeStepper(INpcAiStateStepper inner) : INpcAiStateStepper, INpcAiStateStepperWrapper
+    {
+        public INpcAiStateStepper InnerStepper => inner;
+        public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
+        {
+            next = default;
+            return npc.TypeIdentity == VanillaNpcIds.MoonLordLeechBlob && inner.TryStepState(in npc, out next);
+        }
     }
 
     private static async ValueTask<int> RunNetworkSmokeAsync()

@@ -40,6 +40,7 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
     private const int MaximumProjectileIntentsPerNpcStep = VanillaNpcBehaviorContext.MaximumPlayerCandidates;
 
     private readonly RuntimeNpcStore _npcs;
+    private readonly INpcAiHealingCommitSink? _healing;
     private readonly RuntimeProjectileStore? _projectiles;
     private readonly NpcSnapshot[] _snapshotBuffer;
     private readonly NpcAiSpawnIntent[] _spawnIntentBuffer;
@@ -47,10 +48,11 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
     private readonly NpcAiProjectileMutationIntent[] _projectileMutationIntentBuffer;
     private readonly ProjectileSnapshot[] _projectileMutationScratch;
 
-    public RuntimeNpcAiStateExecutor(RuntimeNpcStore npcs, RuntimeProjectileStore? projectiles = null)
+    public RuntimeNpcAiStateExecutor(RuntimeNpcStore npcs, RuntimeProjectileStore? projectiles = null, INpcAiHealingCommitSink? healing = null)
     {
         ArgumentNullException.ThrowIfNull(npcs);
         _npcs = npcs;
+        _healing = healing;
         _projectiles = projectiles;
         _snapshotBuffer = new NpcSnapshot[npcs.Capacity];
         _spawnIntentBuffer = new NpcAiSpawnIntent[npcs.Capacity];
@@ -134,10 +136,16 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 continue;
             }
 
-            if (_npcs.TryUpdate(npc.Handle, in next, out NpcSnapshot committed))
+            bool deactivate = postCommitEffect?.DeactivatesAfterStep(in npc, in next) ?? false;
+            bool updated = deactivate
+                ? _npcs.TryUpdateUnpublished(npc.Handle, in next, out NpcSnapshot committed)
+                : _npcs.TryUpdate(npc.Handle, in next, out committed);
+            if (updated)
             {
                 applied++;
                 postCommitObserver?.NpcAiStateCommitted(in npc, in committed);
+                if (!_npcs.TryGet(committed.Handle, out NpcSnapshot observed) || observed.Revision != committed.Revision)
+                    continue;
                 postCommitEffect?.ApplyCommittedEffect(in npc, in committed, this);
                 commitSink?.NpcAiStateCommitted(in committed);
 
@@ -206,6 +214,8 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 }
                 if (_npcs.TryGet(committed.Handle, out NpcSnapshot current) && current.Revision == committed.Revision)
                     postCommitEffect?.ApplyCommittedEffectAfterSpawns(in npc, in committed, this);
+                if (deactivate && _npcs.TryGet(committed.Handle, out current) && current.Revision == committed.Revision)
+                    _npcs.TryDespawn(committed.Handle);
             }
             else
             {
@@ -214,6 +224,19 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
         }
 
         return new NpcAiStateTickSummary(examined, proposed, applied, rejected);
+    }
+
+    int INpcAiCommittedNpcMutationSink.TryHeal(NpcHandle npc, int maximumAmount)
+    {
+        if (maximumAmount <= 0 || !_npcs.TryGet(npc, out NpcSnapshot current)) return 0;
+        int amount = Math.Min(maximumAmount, current.Simulation.LifeMax - current.Simulation.Life);
+        if (amount <= 0) return 0;
+        var update = new NpcStateUpdate(current.Type, current.NetId, current.PositionX, current.PositionY,
+            current.VelocityX, current.VelocityY, current.Target, current.Ai,
+            current.Simulation with { Life = current.Simulation.Life + amount });
+        if (!_npcs.TryUpdateUnpublished(npc, in update, out NpcSnapshot healed)) return 0;
+        _healing?.NpcHealed(in healed, amount);
+        return amount;
     }
 
     bool INpcAiCommittedNpcMutationSink.TryGetActive(byte slot, out NpcSnapshot npc) =>

@@ -29,6 +29,8 @@ public interface INpcAiStatePostCommitObserver
 /// </summary>
 public interface INpcAiCommittedNpcMutationSink
 {
+    int TryHeal(NpcHandle npc, int maximumAmount);
+
     bool TrySpawn(in NpcAiSpawnIntent intent, out NpcSnapshot spawned);
 
     bool TryUpdateVelocity(NpcHandle npc, float velocityX, float velocityY, out NpcSnapshot committed);
@@ -45,6 +47,12 @@ public interface INpcAiCommittedNpcMutationSink
 /// </summary>
 public interface INpcAiStatePostCommitEffect
 {
+    /// <summary>
+    /// Requests source-ordered deactivation after this step's committed effects and allocations. The executor
+    /// withholds the intermediate update notification and publishes the final despawn before the next NPC slot.
+    /// </summary>
+    bool DeactivatesAfterStep(in NpcSnapshot before, in NpcStateUpdate proposed) => false;
+
     void ApplyCommittedEffect(
         in NpcSnapshot before,
         in NpcSnapshot committed,
@@ -55,4 +63,10 @@ public interface INpcAiStatePostCommitEffect
         in NpcSnapshot before,
         in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations) { }
+}
+
+/// <summary>Publishes presentation after a generation-safe AI healing mutation, without manufacturing damage events.</summary>
+public interface INpcAiHealingCommitSink
+{
+    void NpcHealed(in NpcSnapshot npc, int amount);
 }

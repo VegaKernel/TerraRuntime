@@ -4,7 +4,15 @@ namespace TerraRuntime.Core.Npcs;
 
 public sealed partial class RuntimeNpcStore
 {
-    public bool TryUpdate(NpcHandle handle, in NpcStateUpdate update, out NpcSnapshot snapshot, bool forceSync = false)
+    public bool TryUpdate(NpcHandle handle, in NpcStateUpdate update, out NpcSnapshot snapshot, bool forceSync = false) =>
+        TryUpdateCore(handle, in update, out snapshot, forceSync, publish: true);
+
+    // Terminal AI effects must commit against the exact generation before healing other entities, but their
+    // intermediate state must not emit a packet ahead of those effects. Despawn publishes the final state.
+    internal bool TryUpdateUnpublished(NpcHandle handle, in NpcStateUpdate update, out NpcSnapshot snapshot) =>
+        TryUpdateCore(handle, in update, out snapshot, forceSync: false, publish: false);
+
+    private bool TryUpdateCore(NpcHandle handle, in NpcStateUpdate update, out NpcSnapshot snapshot, bool forceSync, bool publish)
     {
         if (!IsCurrentHandleCandidate(handle) || !IsValid(in update))
         {
@@ -28,7 +36,7 @@ public sealed partial class RuntimeNpcStore
 
         state.Update = normalized;
         snapshot = Capture(handle.Slot, in state);
-        _commitSink?.NpcStateCommitted(forceSync ? NpcStateCommitKind.ForcedUpdate : NpcStateCommitKind.Update, in snapshot);
+        if (publish) _commitSink?.NpcStateCommitted(forceSync ? NpcStateCommitKind.ForcedUpdate : NpcStateCommitKind.Update, in snapshot);
         return true;
     }
 

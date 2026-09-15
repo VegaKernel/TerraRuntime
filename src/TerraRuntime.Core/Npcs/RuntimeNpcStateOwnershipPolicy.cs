@@ -33,6 +33,9 @@ internal static class RuntimeNpcStateOwnershipPolicy
                 Immortal = simulation.Immortal ?? VanillaNpcChaseability1458.ImmortalAtSpawn(update.Type)
             };
 
+            if (definition.HiddenAtSpawn)
+                simulation = simulation with { Hidden = true };
+
             if (definition.DontTakeDamageAtSpawn)
                 simulation = simulation with { DontTakeDamage = true };
 

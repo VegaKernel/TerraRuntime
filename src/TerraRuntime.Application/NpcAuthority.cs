@@ -118,7 +118,7 @@ internal sealed partial class NpcAuthority
         naturalTownSpawnFacts = townSpawnWorldFacts;
         this.npcReplication = npcReplication;
 
-        aiExecutor = new RuntimeNpcAiStateExecutor(npcs, projectiles);
+        aiExecutor = new RuntimeNpcAiStateExecutor(npcs, projectiles, npcReplication);
         var actorControls = new RuntimeNpcActorControlRegistry(npcs);
         archetypes = npcArchetypes ?? new RuntimeNpcArchetypeRegistry();
         RuntimeNpcArchetypeIdentityStore archetypeIdentities =
@@ -193,6 +193,8 @@ internal sealed partial class NpcAuthority
         {
             vanillaTargeting = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
             vanillaTargeting.SetPlayerInteractions(combat.Interactions);
+            if (projectileReplication is not null)
+                vanillaTargeting.SetProjectileAnchors(new RuntimeNpcProjectileAnchors(projectiles, projectileReplication.WireIdentities));
             var behaviorDispatch = new RuntimeNpcBehaviorStateStepper(
                 vanillaTargeting,
                 presentationBehaviors,

@@ -60,7 +60,8 @@ public enum VanillaNpcBehaviorFamily : byte
     MoonLordHead = 46,
     MoonLordFreeEye = 47,
     Bat = 48,
-    Fish = 49
+    Fish = 49,
+    MoonLordLeechBlob = 50
 }
 
 /// <summary>
@@ -126,6 +127,8 @@ public readonly record struct VanillaNpcDefinition(
 {
     /// <summary>SetDefaults-owned invulnerability that must exist before the first AI tick.</summary>
     public bool DontTakeDamageAtSpawn { get; init; }
+
+    public bool HiddenAtSpawn { get; init; }
 
     public bool IsBoss => Role == NpcArchetypeRole.Boss;
 

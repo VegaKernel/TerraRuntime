@@ -5,7 +5,7 @@ using TerraRuntime.Protocol;
 namespace TerraRuntime.Protocol;
 
 /// <summary>
-/// Protocol-326 packet 119 encoder for a literal client combat-text string. Terraria 1.4.5.8 handles this as
+/// Protocol-326 encoders for numeric (81) and literal string (119) client combat text. Terraria 1.4.5.8 handles this as
 /// <c>CombatText.NewText</c> on the client (initial Y velocity -7, then 0.92 velocity damping each update), so the
 /// text rises and slows/fades as ordinary world combat text without using the chat channel.
 /// </summary>
@@ -13,6 +13,24 @@ public static class TerrariaCombatTextCodec
 {
     public const int MaximumTextLength = 64;
     private const byte CombatTextStringMessageId = 119;
+
+    /// <summary>Encodes original NetMessage.SendData(81), used by NPC.HealEffect on the dedicated server.</summary>
+    public static byte[] EncodeNumber(float x, float y, int amount, TerrariaRgbColor color)
+    {
+        if (!float.IsFinite(x) || !float.IsFinite(y))
+            throw new ArgumentOutOfRangeException(nameof(x));
+
+        var frame = new byte[18];
+        BinaryPrimitives.WriteUInt16LittleEndian(frame, 18);
+        frame[2] = 81;
+        BinaryPrimitives.WriteSingleLittleEndian(frame.AsSpan(3), x);
+        BinaryPrimitives.WriteSingleLittleEndian(frame.AsSpan(7), y);
+        frame[11] = color.R;
+        frame[12] = color.G;
+        frame[13] = color.B;
+        BinaryPrimitives.WriteInt32LittleEndian(frame.AsSpan(14), amount);
+        return frame;
+    }
 
     public static byte[] EncodeString(float x, float y, string text, TerrariaRgbColor color)
     {

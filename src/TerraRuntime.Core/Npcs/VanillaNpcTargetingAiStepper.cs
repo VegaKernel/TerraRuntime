@@ -163,6 +163,9 @@ public sealed class VanillaNpcTargetingAiStepper :
     public void SetFlyingEyeEnvironment(IVanillaFlyingEyeEnvironment environment) =>
         _flyingEye.SetEnvironment(environment);
 
+    public void SetProjectileAnchors(IVanillaNpcProjectileAnchorLookup anchors) =>
+        _context.ProjectileAnchors = anchors ?? throw new ArgumentNullException(nameof(anchors));
+
     public void SetProjectileEnvironment(IVanillaNpcProjectileEnvironment environment)
     {
         ArgumentNullException.ThrowIfNull(environment);
@@ -259,6 +262,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.MoonLordHand => _moonLord,
             VanillaNpcBehaviorFamily.MoonLordHead => _moonLord,
             VanillaNpcBehaviorFamily.MoonLordFreeEye => _moonLord,
+            VanillaNpcBehaviorFamily.MoonLordLeechBlob => _moonLord,
             _ => null
         };
 
@@ -1875,8 +1879,13 @@ public sealed class VanillaNpcTargetingAiStepper :
         return requested;
     }
 
+    public bool DeactivatesAfterStep(in NpcSnapshot before, in NpcStateUpdate proposed) =>
+        before.TypeIdentity == VanillaNpcIds.MoonLordLeechBlob && proposed.Type == before.Type &&
+        proposed.Simulation.Life == 0 && proposed.Simulation.TimeLeft == 0;
+
     public void ApplyCommittedEffect(
-        in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations) { }
+        in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations) =>
+        VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);
 
     public void ApplyCommittedEffectAfterSpawns(
         in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)

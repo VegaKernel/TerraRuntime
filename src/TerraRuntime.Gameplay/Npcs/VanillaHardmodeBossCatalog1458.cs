@@ -77,6 +77,8 @@ public static class VanillaHardmodeBossCatalog1458
             noGravity: true, noTileCollide: true, dontTakeDamage: true, behavior: VanillaNpcBehaviorFamily.MoonLordCore),
         Part(VanillaNpcIds.MoonLordFreeEye, VanillaNpcAiStyles.MoonLordFreeEye, 60, 60, 60, 0, 100,
             noGravity: true, noTileCollide: true, dontTakeDamage: true, behavior: VanillaNpcBehaviorFamily.MoonLordFreeEye),
+        Part(VanillaNpcIds.MoonLordLeechBlob, VanillaNpcAiStyles.MoonLordLeechBlob, 30, 30, 0, 0, 400,
+            noGravity: true, noTileCollide: true, behavior: VanillaNpcBehaviorFamily.MoonLordLeechBlob) with { HiddenAtSpawn = true },
         Boss(VanillaNpcIds.EmpressOfLight, VanillaNpcAiStyles.EmpressOfLight, 100, 100, 80, 50, 70_000,
             noGravity: true, noTileCollide: true, dontTakeDamage: true, behavior: VanillaNpcBehaviorFamily.EmpressOfLight),
         Boss(VanillaNpcIds.QueenSlime, VanillaNpcAiStyles.QueenSlime, 114, 100, 60, 26, 18_000,

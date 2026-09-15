@@ -12,6 +12,8 @@ namespace TerraRuntime.Core.Npcs;
 /// </summary>
 internal sealed class VanillaNpcBehaviorContext
 {
+    public IVanillaNpcProjectileAnchorLookup? ProjectileAnchors { get; set; }
+
     public const int MaximumPlayerCandidates = byte.MaxValue;
 
     private readonly VanillaNpcTargetCandidate[] _candidates = new VanillaNpcTargetCandidate[MaximumPlayerCandidates];

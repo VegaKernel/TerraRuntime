@@ -113,7 +113,7 @@ public static class VanillaNpcAiCoverageCatalog
 
     private static VanillaNpcAiCoverage[] CreateEntries()
     {
-        const int hardmodeBossBehaviorCount = 34;
+        const int hardmodeBossBehaviorCount = 35;
         var entries = new VanillaNpcAiCoverage[
             16 + hardmodeBossBehaviorCount +
             VanillaSlimeNpcCatalog.DefinitionCount +
@@ -253,6 +253,7 @@ public static class VanillaNpcAiCoverageCatalog
         entries[index++] = Partial(VanillaNpcIds.MoonLordHead, hardmodePart | VanillaNpcAiCapability.HardmodeBossProjectileSlice);
         entries[index++] = Partial(VanillaNpcIds.MoonLordHand, hardmodePart | VanillaNpcAiCapability.HardmodeBossProjectileSlice);
         entries[index++] = Partial(VanillaNpcIds.MoonLordCore, hardmodeRoot | VanillaNpcAiCapability.ChildSpawnSlice);
+        entries[index++] = Partial(VanillaNpcIds.MoonLordLeechBlob, hardmodePart);
         entries[index++] = Partial(VanillaNpcIds.MoonLordFreeEye, hardmodePart | VanillaNpcAiCapability.HardmodeBossProjectileSlice);
         entries[index++] = Partial(VanillaNpcIds.EmpressOfLight, hardmodeProjectileRoot);
         entries[index++] = Partial(VanillaNpcIds.QueenSlime, hardmodeProjectileRoot | VanillaNpcAiCapability.ChildSpawnSlice);
