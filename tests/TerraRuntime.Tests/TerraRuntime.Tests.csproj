@@ -59,6 +59,12 @@
     <EmbeddedResource Include="Fixtures/prime-arms-spawn-1458.json.gz" LogicalName="PrimeArmsSpawn1458" />
     <EmbeddedResource Include="Fixtures/skeletron-spawn-1458.json.gz" LogicalName="SkeletronSpawn1458" />
     <EmbeddedResource Include="Fixtures/caster-spawn-1458.json.gz" LogicalName="CasterSpawn1458" />
+    <EmbeddedResource Include="Fixtures/water-sphere-ai-1458.json.gz" LogicalName="WaterSphereAi1458" />
+    <EmbeddedResource Include="Fixtures/water-sphere-trace-1458.json.gz" LogicalName="WaterSphereTrace1458" />
+    <EmbeddedResource Include="Fixtures/water-sphere-target-1458.json.gz" LogicalName="WaterSphereTarget1458" />
+    <EmbeddedResource Include="Fixtures/burning-sphere-ai-1458.json.gz" LogicalName="BurningSphereAi1458" />
+    <EmbeddedResource Include="Fixtures/burning-sphere-trace-1458.json.gz" LogicalName="BurningSphereTrace1458" />
+    <EmbeddedResource Include="Fixtures/burning-sphere-target-1458.json.gz" LogicalName="BurningSphereTarget1458" />
     <EmbeddedResource Include="Fixtures/skeletron-hands-spawn-1458.json.gz" LogicalName="SkeletronHandsSpawn1458" />
     <EmbeddedResource Include="Fixtures/skeletron-phase-1458.json.gz" LogicalName="SkeletronPhase1458" />
     <EmbeddedResource Include="Fixtures/skeletron-redhat-marker-1458.json.gz" LogicalName="SkeletronRedHatMarker1458" />

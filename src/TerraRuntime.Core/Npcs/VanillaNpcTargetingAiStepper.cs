@@ -56,7 +56,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaWallOfFleshEyeNpcBehaviorStrategy _wallOfFleshEye = new();
     private readonly VanillaWallOfFleshHungryNpcBehaviorStrategy _wallOfFleshHungry = new();
     private readonly VanillaFireImpNpcBehaviorStrategy _fireImp = new();
-    private readonly VanillaBurningSphereNpcBehaviorStrategy _burningSphere = new();
+    private readonly VanillaSphereNpcBehaviorStrategy _burningSphere = new();
     private readonly VanillaQueenSlimeNpcBehaviorStrategy _queenSlime;
     private readonly VanillaSkeletronPrimeNpcBehaviorStrategy _skeletronPrime = new();
     private readonly VanillaSkeletronPrimeLimbNpcBehaviorStrategy _skeletronPrimeLimb = new();
@@ -1918,6 +1918,12 @@ public sealed class VanillaNpcTargetingAiStepper :
     public void ApplyCommittedEffectAfterSpawns(
         in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)
     {
+        // AI_009 still makes its two dust-chance draws on a dedicated server; Dust.NewDust itself does not.
+        if (before.TypeIdentity == VanillaNpcIds.WaterSphere && committed.TypeIdentity == VanillaNpcIds.WaterSphere)
+        {
+            _random.NextInt32(0, 5);
+            _random.NextInt32(0, 5);
+        }
         // AI_078 sets netUpdate when changing attacks and when acquiring the bolt target.
         if (committed.TypeIdentity == VanillaNpcIds.MoonLordHand &&
             (before.Ai.Ai0 != committed.Ai.Ai0 ||

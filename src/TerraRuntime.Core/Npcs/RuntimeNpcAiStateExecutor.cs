@@ -173,6 +173,13 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 continue;
             }
 
+            // Planning can reenter the store through extensions. The proposal belongs to this exact revision,
+            // not merely the same generation; a newer owned update must not be overwritten or consume effects.
+            if (!_npcs.TryGet(npc.Handle, out var currentSource) || currentSource.Revision != npc.Revision)
+            {
+                rejected++;
+                continue;
+            }
             bool deactivate = postCommitEffect?.DeactivatesAfterStep(in npc, in next) ?? false;
             bool updated = deactivate
                 ? _npcs.TryUpdateUnpublished(npc.Handle, in next, out NpcSnapshot committed)

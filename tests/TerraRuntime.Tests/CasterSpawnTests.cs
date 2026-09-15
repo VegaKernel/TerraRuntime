@@ -57,7 +57,8 @@ public sealed class CasterSpawnTests
         Assert.Equal(row.GetProperty("aiStyle").GetInt32(), definition.AiStyle.Value);
         Assert.Equal(row.GetProperty("noGravity").GetBoolean(), npc.Simulation.NoGravity);
         Assert.Equal(row.GetProperty("noTileCollide").GetBoolean(), npc.Simulation.NoTileCollide);
-        Assert.Equal(VanillaNpcBehaviorFamily.None, definition.BehaviorFamily);
+        Assert.Equal(type == VanillaNpcIds.WaterSphere ? VanillaNpcBehaviorFamily.BurningSphere : VanillaNpcBehaviorFamily.None,
+            definition.BehaviorFamily);
     }
 
     [Fact]

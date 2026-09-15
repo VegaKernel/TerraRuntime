@@ -159,6 +159,9 @@ public readonly record struct NpcSimulationState(
     /// <summary>Live NPC.knockBackResist, materialized at spawn and retained by state-only updates.</summary>
     public float? KnockBackResist { get; init; }
 
+    /// <summary>Live NPC.rotation in radians; null leaves the committed angle owned by the store.</summary>
+    public float? Rotation { get; init; }
+
     /// <summary>
     /// Server-owned vanilla NPC.reflectsProjectiles state for the current committed AI revision. Projectile
     /// collision/reflection consumes this fact separately; keeping it here prevents AI and combat from racing.
@@ -200,6 +203,7 @@ public readonly record struct NpcSimulationState(
     };
 
     public bool IsValid =>
+        (Rotation is null || float.IsFinite(Rotation.Value)) &&
         (KnockBackResist is null || float.IsFinite(KnockBackResist.Value) && KnockBackResist.Value >= 0f) &&
         (SpawnDifficulty is null || float.IsFinite(SpawnDifficulty.Value) && SpawnDifficulty.Value is >= .5f and <= 4f) &&
         (HitboxOverride is null || HitboxOverride.Value.IsValid) &&

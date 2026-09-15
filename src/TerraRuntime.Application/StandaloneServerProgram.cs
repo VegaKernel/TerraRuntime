@@ -443,7 +443,19 @@ internal static class StandaloneServerProgram
             sphere.Simulation.LifeMax != 1 || sphere.Simulation.Alpha != 255 ||
             sphere.Simulation.BaseDamage != 60 || !sphere.Simulation.NoTileCollide) return 5;
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok, casterSpawn=ok.");
+        var sphereNpcs = new RuntimeNpcStore();
+        var sphereState = new NpcStateUpdate(33, 33, 992, 984, 1.25f, -2.5f, 255, default,
+            NpcSimulationState.Initial with { Rotation = .25f, JustHit = true });
+        if (!sphereNpcs.TrySpawnVanilla(in sphereState, out var movingSphere)) return 5;
+        var sphereAi = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        sphereAi.SetCandidates([new(0, 1500, 1042, 0, true, false, false, false)]);
+        if (new RuntimeNpcAiStateExecutor(sphereNpcs).Tick(sphereAi).Applied != 1 ||
+            !sphereNpcs.TryGet(movingSphere.Handle, out var sphereAfter) || sphereAfter.Target != 0 ||
+            sphereAfter.VelocityX != 5.9702234f || sphereAfter.VelocityY != .59702235f ||
+            sphereAfter.Simulation.Rotation != .65f || sphereAfter.Simulation.TimeLeft != 100 ||
+            !sphereAfter.Simulation.JustHit) return 5;
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok, casterSpawn=ok, sphereAI=ok.");
         return 0;
     }
 
