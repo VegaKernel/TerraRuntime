@@ -120,6 +120,9 @@ public readonly record struct NpcSimulationState(
     /// <summary>Vanilla NPC.hide-style presentation state owned by authoritative boss transitions.</summary>
     public bool Hidden { get; init; }
 
+    /// <summary>Allows vanilla allocation to replace this NPC only after no free unprotected slot remains.</summary>
+    public bool CanBeReplacedByOtherNpcs { get; init; }
+
     /// <summary>Authoritative damage gate for vanilla transitions such as King Slime teleport disappearance.</summary>
     public bool DontTakeDamage { get; init; }
 

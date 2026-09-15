@@ -726,7 +726,8 @@ public sealed class VanillaNpcTargetingAiStepper :
             VelocityY: vy,
             Target: proposed.Target)
         {
-            InitialLocalAi = new NpcAiState(60f, 0f, 0f, 0f)
+            InitialLocalAi = new NpcAiState(60f, 0f, 0f, 0f),
+            CanBeReplacedByOtherNpcs = true
         };
         return 1;
     }

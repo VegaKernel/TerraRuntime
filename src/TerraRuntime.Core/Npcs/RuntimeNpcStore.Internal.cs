@@ -24,7 +24,8 @@ public sealed partial class RuntimeNpcStore
         NpcSnapshot finalSnapshot = Capture(slot, in state);
         state.Active = false;
         state.Revision = 0;
-        state.Update = default;
+        // Original allocation's second pass may reuse a replaceable inactive NPC even while protected.
+        // Queries still hide inactive snapshots; retain the bounded value state until the next spawn.
         _activeCount--;
         _commitSink?.NpcStateCommitted(NpcStateCommitKind.Despawn, in finalSnapshot);
     }
@@ -58,6 +59,7 @@ public sealed partial class RuntimeNpcStore
     private struct SlotState
     {
         public bool Active;
+        public int SpawnProtection;
         public ulong Generation;
         public ulong Revision;
         public NpcStateUpdate Update;

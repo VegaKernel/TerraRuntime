@@ -41,7 +41,7 @@ public sealed partial class MoonLordDeathSequenceTests
         }
 
         Assert.True(npcs.TryDespawn(removed.Handle));
-        NpcSnapshot blocker = SpawnNpc(npcs, VanillaNpcIds.BlueSlime, default);
+        NpcSnapshot blocker = SpawnNpc(npcs, VanillaNpcIds.BlueSlime, default, removed.Handle.Slot);
         Assert.Equal(removed.Handle.Slot, blocker.Handle.Slot);
         // An otherwise matching owned part elsewhere must not replace the original shell slot.
         SpawnNpc(npcs, removed.TypeIdentity, removed.Ai);
@@ -144,7 +144,7 @@ public sealed partial class MoonLordDeathSequenceTests
         NpcSnapshot core = SpawnNpc(npcs, VanillaNpcIds.MoonLordCore, new NpcAiState(2f, 600f, 0f, 0f));
         NpcSnapshot terminal = core with { Simulation = core.Simulation with { Life = 0 } };
         Assert.True(npcs.TryDespawn(core.Handle));
-        NpcSnapshot replacement = SpawnNpc(npcs, VanillaNpcIds.BlueSlime, default);
+        NpcSnapshot replacement = SpawnNpc(npcs, VanillaNpcIds.BlueSlime, default, core.Handle.Slot);
         Assert.Equal(core.Handle.Slot, replacement.Handle.Slot);
 
         pipeline.NpcAiStateCommitted(in terminal);
@@ -167,7 +167,7 @@ public sealed partial class MoonLordDeathSequenceTests
             projectileReplication: projectileReplication);
     }
 
-    private static NpcSnapshot SpawnNpc(RuntimeNpcStore store, NpcTypeId type, NpcAiState ai)
+    private static NpcSnapshot SpawnNpc(RuntimeNpcStore store, NpcTypeId type, NpcAiState ai, byte? forceSlot = null)
     {
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition));
         var update = new NpcStateUpdate(type.Value, checked((short)type.Value), 100f, 100f, 0f, 0f, 0, ai,
@@ -176,7 +176,10 @@ public sealed partial class MoonLordDeathSequenceTests
                 Life = definition.LifeMax, LifeMax = definition.LifeMax,
                 LocalAi = new NpcAiState(0f, 0f, 0f, 1f)
             });
-        Assert.True(store.TrySpawnVanilla(in update, out NpcSnapshot spawned));
+        // Adversarial stale-handle tests explicitly replace a slot; ordinary vanilla allocation observes protection.
+        bool created = forceSlot is byte slot ? store.TrySpawn(slot, in update, out NpcSnapshot spawned) :
+            store.TrySpawnVanilla(in update, out spawned);
+        Assert.True(created);
         return spawned;
     }
 

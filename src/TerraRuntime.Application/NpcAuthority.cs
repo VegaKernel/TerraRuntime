@@ -54,7 +54,11 @@ internal sealed partial class NpcAuthority
     /// <summary>
     /// Advances the NPC transport projection from the sole authoritative world-loop owner.
     /// </summary>
-    public void AdvanceReplicationTick() => npcReplication?.AdvanceAuthoritativeTick();
+    public void AdvanceWorldTick()
+    {
+        npcs.UpdateProtectedSpawnSlots();
+        npcReplication?.AdvanceAuthoritativeTick();
+    }
 
     public NpcAuthority(
         RuntimePlayerSnapshotLookup playerSnapshots,

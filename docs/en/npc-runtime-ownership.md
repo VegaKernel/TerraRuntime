@@ -102,6 +102,16 @@ Both classification results expose mutually exclusive policy gates for town inte
 
 These are ownership boundaries, not complete vanilla town/boss parity. Housing, boss progression, boss bars, remaining boss-specific death effects and broad boss AI still require separate source-backed implementation. The actor-commerce smoke continues to mark its custom merchant archetype as `Town` explicitly.
 
+## Vanilla slot allocation
+
+`RuntimeNpcStore.TrySpawnVanilla` searches only the original $200\,\text{slots}$, even when storage has greater byte-addressable capacity. Ordinary types search upwards; the source `CannotSpawnInSlot0` set starts at slot 1. Queen Bee and Golem search downwards from slot 199 and exclude slot 0. `VanillaNpcSpawnRules` owns these content rules. Smaller host/test stores retain their capacity. Arbitrary `NewNPC.Start` offsets remain unsupported.
+
+Vanilla creation protects the chosen slot for $2\,\text{updates}$. At the start of each authoritative world tick, active slots refresh protection and inactive slots decrement it to zero. An AI pass alone does not advance this timer. Explicit-slot `TrySpawn` remains a trusted storage operation and can construct a replacement after despawning without using the vanilla allocator.
+
+Free, unprotected slots always take priority. If none remains, allocation chooses the first `CanBeReplacedByOtherNpcs` entry in the same order, including protected inactive entries. Replacement advances the exact generation, emits a spawn commit and preserves the active count when replacing a live NPC; it does not run death or loot effects. Inactive slot state stays private and bounded so its replacement flag survives deactivation. Queen Bee's minion intent carries the original replacement flag with its local-AI seed. Other flag producers, including Hive Slime and released explosive rabbits, and full pending-spawn network flush ordering remain open.
+
+A retained original-server fixture compares $6264\,\text{allocation decisions}$ across all positive vanilla types and nine slot arrangements, plus protection decay and five actual `NPC.NewNPC` calls (expanded SHA256 `3066507d07e01edb34f8812ffede7c9671e135d930783efca982496268b60bd6`). Regressions cover stale handles, replacement publication and real world-tick ownership. Negative controls fail when protection is removed, capacity becomes 256, or reverse search includes slot 0. Native protocol smoke exercises reverse search, excluded slot zero, protection and generation advancement.
+
 ## D4 completion boundary
 
 The roadmap item `spawn/physics/combat/loot separation` is considered complete for the currently admitted authoritative NPC slice because:

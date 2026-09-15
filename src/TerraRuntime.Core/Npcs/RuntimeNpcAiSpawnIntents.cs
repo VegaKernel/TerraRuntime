@@ -22,6 +22,9 @@ public readonly record struct NpcAiSpawnIntent(
     /// <summary>Source-owned initial localAI state applied atomically with allocation.</summary>
     public NpcAiState InitialLocalAi { get; init; }
 
+    /// <summary>Source-owned eligibility for replacement when vanilla has no free spawn slot.</summary>
+    public bool CanBeReplacedByOtherNpcs { get; init; }
+
     /// <summary>
     /// After the child slot is allocated, write that slot into the committed source's ai[0].
     /// Used by vanilla linked chains whose follower identity cannot be known speculatively.

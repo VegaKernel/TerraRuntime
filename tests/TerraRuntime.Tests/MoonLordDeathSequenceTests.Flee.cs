@@ -144,7 +144,7 @@ public sealed partial class MoonLordDeathSequenceTests
         var pipeline = CreatePipeline(npcs, projectiles, progression, clock: clock);
         NpcSnapshot oldCore = SpawnNpc(npcs, VanillaNpcIds.MoonLordCore, new NpcAiState(3f, 60f, 0f, 0f));
         Assert.True(npcs.TryDespawn(oldCore.Handle));
-        NpcSnapshot replacement = SpawnNpc(npcs, VanillaNpcIds.MoonLordCore, default);
+        NpcSnapshot replacement = SpawnNpc(npcs, VanillaNpcIds.MoonLordCore, default, oldCore.Handle.Slot);
         NpcSnapshot hand = SpawnNpc(npcs, VanillaNpcIds.MoonLordHand, default);
         Assert.Equal(oldCore.Handle.Slot, replacement.Handle.Slot);
         pipeline.NpcAiStateCommitted(in oldCore);

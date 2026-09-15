@@ -294,7 +294,23 @@ internal static class StandaloneServerProgram
             return 5;
         }
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok.");
+        var allocation = new RuntimeNpcStore();
+        var queen = headState with { Type = VanillaNpcIds.QueenBee.Value, NetId = (short)VanillaNpcIds.QueenBee.Value };
+        var worm = headState with { Type = 7, NetId = 7 };
+        if (!allocation.TrySpawnVanilla(in queen, out var allocatedQueen) || allocatedQueen.Handle.Slot != 199 ||
+            !allocation.TrySpawnVanilla(in worm, out var allocatedWorm) || allocatedWorm.Handle.Slot != 1 ||
+            !allocation.TryDespawn(allocatedWorm.Handle) ||
+            !allocation.TrySpawnVanilla(in worm, out var nextWorm) || nextWorm.Handle.Slot != 2)
+        {
+            Console.Error.WriteLine("Protocol smoke failed while selecting vanilla NPC slots.");
+            return 5;
+        }
+        allocation.UpdateProtectedSpawnSlots();
+        allocation.UpdateProtectedSpawnSlots();
+        if (!allocation.TrySpawnVanilla(in worm, out var reusedWorm) || reusedWorm.Handle.Slot != 1 ||
+            reusedWorm.Handle.Generation == allocatedWorm.Handle.Generation) return 5;
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok.");
         return 0;
     }
 

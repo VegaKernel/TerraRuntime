@@ -61,6 +61,7 @@ public sealed class MoonLeechChainTests
         var projectileBuffer = new ProjectileSnapshot[16];
         foreach (var row in json.RootElement.EnumerateArray())
         {
+            npcs.UpdateProtectedSpawnSlots();
             npcExecutor.Tick(npcStepper);
             projectileExecutor.Tick(projectileStepper);
             Assert.True(npcs.TryGetActive(0, out var core));

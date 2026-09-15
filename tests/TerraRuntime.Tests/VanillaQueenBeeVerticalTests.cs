@@ -58,6 +58,14 @@ public sealed class VanillaQueenBeeVerticalTests
         Assert.Equal(1, stepper.PlanNpcSpawns(in source, in proposed, intents));
         Assert.True(intents[0].Type == VanillaNpcIds.Bee || intents[0].Type == VanillaNpcIds.SmallBee);
         Assert.Equal(60f, intents[0].InitialLocalAi.Ai0);
+        Assert.True(intents[0].CanBeReplacedByOtherNpcs);
+        var store = new RuntimeNpcStore(1);
+        Assert.True(store.TrySpawnIntent(in intents[0], out var bee));
+        Assert.True(bee.Simulation.CanBeReplacedByOtherNpcs);
+        var nextSpawn = new NpcAiSpawnIntent(VanillaNpcIds.BlueSlime, 100, 100, 0, 0, 255);
+        Assert.True(store.TrySpawnIntent(in nextSpawn, out var replacement));
+        Assert.Equal(bee.Handle.Slot, replacement.Handle.Slot);
+        Assert.NotEqual(bee.Handle.Generation, replacement.Handle.Generation);
     }
 
     [Fact]
