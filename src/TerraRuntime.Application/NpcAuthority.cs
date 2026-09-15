@@ -113,9 +113,9 @@ internal sealed partial class NpcAuthority
         this.masterMode = masterMode;
         npcs.SetVanillaSpawnContextSource(CaptureSpawnContext);
         this.naturalSpawnRandom = naturalSpawnRandom ?? new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom();
+        naturalSpawnWorldFacts = townCommerceWorldFacts;
         if (worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 sceneWorldFacts)
         {
-            naturalSpawnWorldFacts = sceneWorldFacts;
             npcSceneMetrics = new VanillaTownSceneMetricsScanner1458(worldTiles, in sceneWorldFacts);
         }
         ArgumentNullException.ThrowIfNull(progression);
@@ -1123,7 +1123,19 @@ internal sealed partial class NpcAuthority
         // Hardcore ghost state and Journey difficulty control still need their own authoritative projection.
         for (int slot = 0; slot < byte.MaxValue; slot++)
             if (playerSnapshots.TryGetPlayer(new PlayerSlotId((byte)slot), out _)) activePlayers++;
-        return new(CaptureDifficulty(), activePlayers, worldClock?.GetGoodWorld == true);
+        bool skeletronActive = false;
+        for (int slot = 0; slot < npcs.Capacity && slot < VanillaNpcSpawnRules.PhysicalSlotCount; slot++)
+            if (npcs.TryGetActive((byte)slot, out var npc) && npc.TypeIdentity == VanillaNpcIds.SkeletronHead)
+            {
+                skeletronActive = true;
+                break;
+            }
+        return new(CaptureDifficulty(), activePlayers, worldClock?.GetGoodWorld == true)
+        {
+            HardMode = (naturalSpawnWorldFacts?.HardMode ?? false) || naturalSpawnProgression.IsCompleted(VanillaWorldProgressionId.Hardmode),
+            DownedPlantera = (naturalSpawnWorldFacts?.DownedPlantera ?? false) || naturalSpawnProgression.IsCompleted(VanillaWorldProgressionId.Plantera),
+            SkeletronActive = skeletronActive
+        };
     }
 
     private int CopyTargetCandidates(Span<VanillaNpcTargetCandidate> destination)

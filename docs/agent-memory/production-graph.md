@@ -1,5 +1,10 @@
 # Production graph
 
+## Dark Caster and Water Sphere creation implemented - 2026-09-15
+
+Shared creation now admits definitions/profiles32/33 and samples Hardmode, Plantera and active35 per creation. Loaded facts survive composition without tiles; active Life0 head still counts until removal. Source integer Hardmode quotient, ProjectileNPC life exclusion, GoodWorld head tweaks and fractional knockback curve match retained CasterSpawn1458:784 original rows SHA312c0fd9130430fca01c6c191025e52146635f72755fa7bfd86f54bf5ecceba0. Contracts owns nullable live KnockBackResist with validation/preservation/type-reset; shared damage consumes it. AlphaAtSpawn supplies sphere255. Focused1114pass; isolated profile/combat/head-presence negatives691/1/1, restored. No AI8/9 admission: teleport/attacks, sphere motion, npcSlots pressure, creation RNG and head RedHat715 remain open. This supersedes only creation-support gaps in older entries below.
+
+
 SharedVanillaNpcDamageResolver nowusesdouble forordinarydefensesubtraction/criticalmultiplybeforeintegerHPconversion, matchingMain.CalculateDamageNPCsTake. ExistingDefenseEffectiveness/CriticalDamageMultiplier publicconstanttypesandintMaxsaturation unchanged. This affects all NPC damage callers; RedHatpost-roundingfloat*.7 remainsinRuntimeNpcDamageExecutor.960additionaloriginalhighinputcallsvalidateprecision, nativehandhighdamagecaseadded.
 
 ## RedHat marker shared by AI, damage and loot - 2026-09-15

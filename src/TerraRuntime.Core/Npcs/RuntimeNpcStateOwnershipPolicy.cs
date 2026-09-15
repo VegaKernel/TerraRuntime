@@ -31,6 +31,8 @@ internal static class RuntimeNpcStateOwnershipPolicy
                 BaseDamage = simulation.BaseDamage ?? spawnDefaults?.Damage ?? definition.Damage,
                 BaseDefense = simulation.BaseDefense ?? spawnDefaults?.Defense ?? definition.Defense,
                 SpawnDifficulty = simulation.SpawnDifficulty ?? 1f,
+                KnockBackResist = simulation.KnockBackResist ?? spawnDefaults?.KnockBackResist ?? definition.KnockBackResist,
+                Alpha = simulation.Alpha == 0 ? definition.AlphaAtSpawn : simulation.Alpha,
                 Friendly = simulation.Friendly ?? VanillaNpcChaseability1458.FriendlyAtSpawn(update.Type),
                 Chaseable = simulation.Chaseable ?? VanillaNpcChaseability1458.ChaseableAtSpawn(update.Type),
                 Immortal = simulation.Immortal ?? VanillaNpcChaseability1458.ImmortalAtSpawn(update.Type)
@@ -88,6 +90,8 @@ internal static class RuntimeNpcStateOwnershipPolicy
         simulation = simulation with
         {
             SpawnDifficulty = sameDefinition ? simulation.SpawnDifficulty ?? previous.Simulation.SpawnDifficulty ?? 1f : 1f,
+            KnockBackResist = sameDefinition ? simulation.KnockBackResist ?? previous.Simulation.KnockBackResist ??
+                (hasDefinition ? definition.KnockBackResist : null) : hasDefinition ? definition.KnockBackResist : null,
             BaseDamage = sameDefinition ? simulation.BaseDamage ?? previous.Simulation.BaseDamage ??
                 (hasDefinition ? definition.Damage : null) : hasDefinition ? definition.Damage : null,
             BaseDefense = sameDefinition ? simulation.BaseDefense ?? previous.Simulation.BaseDefense ??

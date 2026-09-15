@@ -130,6 +130,8 @@ public readonly record struct VanillaNpcDefinition(
 
     public bool HiddenAtSpawn { get; init; }
 
+    public int AlphaAtSpawn { get; init; }
+
     public bool IsBoss => Role == NpcArchetypeRole.Boss;
 
     public int Width => TryResolveHitbox(Scale, out VanillaNpcHitboxSize hitbox) ? hitbox.Width : BaseWidth;
@@ -438,6 +440,23 @@ public static class VanillaNpcDefinitionCatalog
                 NoGravityAtSpawn: true,
                 NoTileCollideAtSpawn: true,
                 SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        // NPC.SetDefaults(32/33), 1.4.5.8. AI_008/009 admission is separate from creation defaults.
+        if (type == VanillaNpcIds.DarkCaster || type == VanillaNpcIds.WaterSphere)
+        {
+            bool sphere = type == VanillaNpcIds.WaterSphere;
+            definition = new VanillaNpcDefinition(type,
+                sphere ? VanillaNpcAiStyles.BurningSphere : VanillaNpcAiStyles.Caster,
+                VanillaNpcBehaviorFamily.None,
+                sphere ? VanillaNpcPhysicsFamily.NoClipFlight : VanillaNpcPhysicsFamily.GenericGround,
+                NpcArchetypeRole.Ordinary, sphere ? 16 : 18, sphere ? 16 : 40,
+                20, sphere ? 0 : 2, sphere ? 1 : 50, sphere ? 0f : .6f, 1f,
+                sphere, sphere, VanillaNpcSyncAnchor.TopLeft)
+            {
+                AlphaAtSpawn = sphere ? 255 : 0
+            };
             return true;
         }
 

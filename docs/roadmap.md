@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-15 caster/sphere creation: source profiles32/33 now include per-creation Hardmode/Plantera/active-Skeletron facts, fractional difficulty resistance and sphere alpha/physical flags. Retained784 original cases, focused1114pass; negative controls691/1/1. AI8/9, spawn-pressure weights, creation RNG and full RedHat head encounter remain open. See [NPC ownership](en/npc-runtime-ownership.md).
+
 2026-09-15 damage precision follow-up:960 additional original strikes expose float loss in the shared ordinary defense/critical calculation above2^24. Restored source double precision with existing overflow saturation retained; oldfloat450fails. Final RedHat mitigation negative now306/2774 with the expanded strike/predicate set; lootnegative3. Focused6638pass. This expands the combat entry below without closing remaining multipliers or full encounter parity.
 
 2026-09-15 RedHat combat/loot: shared source marker now drives hand AI, authoritative post-defense/critical damage mitigation and the committed Skeletron death reward condition.1760 original strikes and54 original predicate calls retained; nine death-pipeline cases verify five vanity drops across modes and stale-kill rejection. Damage/loot negatives fail186/3. Head RedHat AI/minions, caster/sphere definitions, other damage/loot modifiers and full encounter/network parity remain open.

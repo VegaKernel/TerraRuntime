@@ -5,6 +5,9 @@ namespace TerraRuntime.Gameplay.Npcs;
 /// <summary>Authoritative inputs sampled at NewNPC time. Difficulty is the effective value after seed adjustment.</summary>
 public readonly record struct VanillaNpcSpawnContext(float Difficulty, int ActivePlayers, bool GoodWorld)
 {
+    public bool HardMode { get; init; }
+    public bool DownedPlantera { get; init; }
+    public bool SkeletronActive { get; init; }
     public bool IsValid => float.IsFinite(Difficulty) && Difficulty is >= .5f and <= 4f &&
         ActivePlayers is >= 0 and <= 255;
 }
@@ -12,6 +15,7 @@ public readonly record struct VanillaNpcSpawnContext(float Difficulty, int Activ
 public readonly record struct VanillaNpcSpawnDefaults(
     VanillaNpcHitboxSize Hitbox, float Scale, int LifeMax, int Damage, int Defense)
 {
+    public float? KnockBackResist { get; init; }
     /// <summary>
     /// NPC.SetDefaults -> getGoodAdjustments -> ScaleStats for Destroyer, Probe, Prime and Skeletron (1.4.5.8).
     /// Other families keep their existing definition defaults until their type-specific scaling is verified.
@@ -20,6 +24,11 @@ public readonly record struct VanillaNpcSpawnDefaults(
         out VanillaNpcSpawnDefaults defaults)
     {
         defaults = default;
+        if (context.IsValid && (definition.Type == VanillaNpcIds.DarkCaster || definition.Type == VanillaNpcIds.WaterSphere))
+        {
+            defaults = ResolveCaster(in definition, in context);
+            return true;
+        }
         bool probe = definition.Type == VanillaNpcIds.Probe;
         bool skeletronHead = definition.Type == VanillaNpcIds.SkeletronHead;
         bool skeletronHand = definition.Type == VanillaNpcIds.SkeletronHand;
@@ -56,6 +65,43 @@ public readonly record struct VanillaNpcSpawnDefaults(
         }
         defaults = new(new(width, height), scale, life, damage, definition.Defense);
         return true;
+    }
+
+    private static VanillaNpcSpawnDefaults ResolveCaster(in VanillaNpcDefinition definition, in VanillaNpcSpawnContext context)
+    {
+        bool sphere = definition.Type == VanillaNpcIds.WaterSphere;
+        bool skeletron = context.GoodWorld && context.SkeletronActive;
+        float difficulty = context.Difficulty;
+        int life = definition.LifeMax, damage = definition.Damage, defense = definition.Defense;
+        // ScaleStats_ForExpertHardmode uses integer division before converting the budget ratio to float.
+        if (difficulty >= 2f && context.HardMode && !skeletron)
+        {
+            int budget = Math.Max(1, damage + defense + life / 4);
+            int threshold = context.DownedPlantera ? 100 : 80;
+            if (budget < threshold)
+            {
+                float factor = threshold / budget;
+                damage = (int)(damage * factor * .9f);
+                if (!sphere)
+                {
+                    defense = (int)(defense * factor);
+                    life = (int)((double)(life * factor) * 1.1d);
+                }
+            }
+        }
+        if (!sphere) life = (int)(life * difficulty);
+        float damageMultiplier = difficulty <= 3f ? difficulty : 3f + (difficulty - 3f) * (5.3333335f - 3f);
+        damage = (int)(damage * damageMultiplier);
+        if (!sphere && skeletron)
+        {
+            life = (int)Math.Round(life * (Ramp(difficulty, 1f, 2f, 1.5f) * Ramp(difficulty, 2f, 3f, .85f)));
+            if (difficulty >= 2f) defense += 6;
+        }
+        if (!sphere) life = Math.Max(6, life);
+        return new(new(definition.Width, definition.Height), definition.Scale, life, damage, defense)
+        {
+            KnockBackResist = definition.KnockBackResist * Ramp(difficulty, 1f, 3f, .8f)
+        };
     }
 
     private static float Ramp(float difficulty, float lower, float upper, float end) =>

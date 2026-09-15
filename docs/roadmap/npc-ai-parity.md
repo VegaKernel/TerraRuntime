@@ -1,5 +1,21 @@
 # Vanilla NPC and AI parity roadmap
 
+## Dark Caster and Water Sphere creation implemented - 2026-09-15
+
+Shared creation now admits definitions/profiles32/33 and samples Hardmode, Plantera and active35 per creation. Loaded facts survive composition without tiles; active Life0 head still counts until removal. Source integer Hardmode quotient, ProjectileNPC life exclusion, GoodWorld head tweaks and fractional knockback curve match retained CasterSpawn1458:784 original rows SHA312c0fd9130430fca01c6c191025e52146635f72755fa7bfd86f54bf5ecceba0. Contracts owns nullable live KnockBackResist with validation/preservation/type-reset; shared damage consumes it. AlphaAtSpawn supplies sphere255. Focused1114pass; isolated profile/combat/head-presence negatives691/1/1, restored. No AI8/9 admission: teleport/attacks, sphere motion, npcSlots pressure, creation RNG and head RedHat715 remain open. This supersedes only creation-support gaps in older entries below.
+
+
+## RedHat encounter prerequisites verified but not implemented - 2026-09-15
+
+The expanded original head probe now records newborn minions and exact before/after RNG state, rather than only a count. An additional784 original creation cases show that caster/sphere stats depend on Hardmode, Plantera and an active Skeletron, with different source ordering for each rule. These remain open requirements:
+
+- [ ] Carry source creation facts and owned knockback/appearance fields needed by NPC32/33, including the GoodWorld active-head exception to Hardmode scaling and the separate caster health/defense tweak.
+- [ ] Implement and independently compare Dark Caster AI8 and Water Sphere AI9; these are NPC entities, not projectile-store replacements.
+- [ ] Compare complete RedHat head state, newborn minion state, ground-search semantics and RNG continuation; preserve source taunt ordering through typed chat publication.
+- [ ] Extend evidence from isolated calls to coupled encounters and remaining combat/loot/network behavior.
+
+No additional AI parity checkbox is closed by this research. Probe hashes and reproduction paths are recorded in agent memory; runtime acceptance is still required.
+
 2026-09-15 combat precision extension: shared defense/critical calculation now uses source double beforeintegerrounding; RedHatthenfloat*.7. Added960largeoriginalstrikes, oldfloat450fails. Expandedmitigationnegative306/2774; loot3/39. Focused6638passincluding15existingdamageguards. PublicAPIhighvalues do not expand packetdamagebounds. Complete combat modifiers remainopen.
 
 ## RedHat damage and death reward condition - 2026-09-15

@@ -58,6 +58,7 @@
     <EmbeddedResource Include="Fixtures/prime-phase-1458.json.gz" LogicalName="PrimePhase1458" />
     <EmbeddedResource Include="Fixtures/prime-arms-spawn-1458.json.gz" LogicalName="PrimeArmsSpawn1458" />
     <EmbeddedResource Include="Fixtures/skeletron-spawn-1458.json.gz" LogicalName="SkeletronSpawn1458" />
+    <EmbeddedResource Include="Fixtures/caster-spawn-1458.json.gz" LogicalName="CasterSpawn1458" />
     <EmbeddedResource Include="Fixtures/skeletron-hands-spawn-1458.json.gz" LogicalName="SkeletronHandsSpawn1458" />
     <EmbeddedResource Include="Fixtures/skeletron-phase-1458.json.gz" LogicalName="SkeletronPhase1458" />
     <EmbeddedResource Include="Fixtures/skeletron-redhat-marker-1458.json.gz" LogicalName="SkeletronRedHatMarker1458" />

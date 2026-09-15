@@ -433,7 +433,17 @@ internal static class StandaloneServerProgram
         if (!new RuntimeNpcDamageExecutor(redHatNpcs).TryApply(in redHatHit, out redHatDamage) ||
             redHatDamage.ResolvedDamage != 11_744_047) return 5;
 
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok.");
+        var casterNpcs = new RuntimeNpcStore();
+        casterNpcs.SetVanillaSpawnContextSource(() => new(3, 1, true)
+            { HardMode = true, DownedPlantera = true, SkeletronActive = true });
+        if (!casterNpcs.TrySpawnIntent(new(VanillaNpcIds.DarkCaster, 1000, 1000, 0, 0, 255), out var caster) ||
+            caster.Simulation.LifeMax != 191 || caster.Simulation.BaseDamage != 60 ||
+            caster.Simulation.BaseDefense != 8 || caster.Simulation.KnockBackResist != .48000002f ||
+            !casterNpcs.TrySpawnIntent(new(VanillaNpcIds.WaterSphere, 1000, 1000, 0, 0, 255), out var sphere) ||
+            sphere.Simulation.LifeMax != 1 || sphere.Simulation.Alpha != 255 ||
+            sphere.Simulation.BaseDamage != 60 || !sphere.Simulation.NoTileCollide) return 5;
+
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok, casterSpawn=ok.");
         return 0;
     }
 

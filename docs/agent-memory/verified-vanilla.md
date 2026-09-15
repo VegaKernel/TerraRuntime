@@ -1,5 +1,16 @@
 # Verified vanilla facts
 
+## Dark Caster and Water Sphere creation implemented - 2026-09-15
+
+Shared creation now admits definitions/profiles32/33 and samples Hardmode, Plantera and active35 per creation. Loaded facts survive composition without tiles; active Life0 head still counts until removal. Source integer Hardmode quotient, ProjectileNPC life exclusion, GoodWorld head tweaks and fractional knockback curve match retained CasterSpawn1458:784 original rows SHA312c0fd9130430fca01c6c191025e52146635f72755fa7bfd86f54bf5ecceba0. Contracts owns nullable live KnockBackResist with validation/preservation/type-reset; shared damage consumes it. AlphaAtSpawn supplies sphere255. Focused1114pass; isolated profile/combat/head-presence negatives691/1/1, restored. No AI8/9 admission: teleport/attacks, sphere motion, npcSlots pressure, creation RNG and head RedHat715 remain open. This supersedes only creation-support gaps in older entries below.
+
+
+## RedHat minion creation and RNG audit - 2026-09-15
+
+Expanded ignored head probe715 SHA0529aa08b856e53ea0667eaff50d97a9e5c2c38e7984fef7d5712afbca98e1b2 now records full before/after original UnifiedRandom state and newborn caster snapshots.132 summon rows;168 RNG-changing rows include36 phase0->1 taunts. GoodWorld summons consume coordinate draws plus NewNPC.Next(3). New ignored caster creation oracle784 SHA312c0fd9130430fca01c6c191025e52146635f72755fa7bfd86f54bf5ecceba0 covers32/33, Hardmode, active35, Plantera, players, modes and fractional difficulty. Full provenance and component hashes are in work-state. None is retained as a passing runtime fixture yet.
+
+NPC18545 Hardmode scaling uses an INTEGER budget quotient, and GoodWorld+AnyNPCs35 bypasses it for32/33. NPC18230 then applies a separate GoodWorld+active35 life/defense tweak only to32. Type33 is ProjectileNPC: life1 is not difficulty-scaled or raised to6. Knockback curve (NPC7058/GameDifficultyData69) multiplies base resistance by the clamped linear Classic1=>1/Master3=>.8 curve. These facts are missing from current minion creation support. Source32 defaults18x40/AI8/20damage/2defense/50life/.6resistance/2npcSlots;33 defaults16x16/AI9/20damage/0defense/1life/0resistance/alpha255/noGravity/noTileCollide. This audit does not claim their AI or full Skeletron encounter is implemented.
+
 ## NPC damage double precision - 2026-09-15
 
 Main.CalculateDamageNPCsTake67175 performs(double)Damage-(double)Defense*.5,clamp1; NPC.StrikeNPC_Inner82063 multipliescritthenint,thenRedHatfloat*.7/min1. SkeletronHighStrike1458 SHA4a228423de50068fcb154536c861fcb5321bc4997452a05c3046db268a30f5aa retains960originalstrikes .cache/skeletron-high-strike-probe: same4types/4markers/5defense/crit asordinary1760, damages100000/16777215/16777216/16777217/20000000/100000000,lifeMax/life500000000 toavoidkills,fromNettrue/owner0. Oldfloatdefense450/960fails .cache/skeletron-combat-precision-before.xml/log. Sharedresolvernowdoublewithpublicfloatconstantscasttodouble(exact.5/2), existingintMaxoverflowguard preserved. Finalall2774strike/predicatecasespass;isolatedRedhatremoval306/2774 .cache/skeletron-combat-damage-final-negative.xml/log restored. Nativeextra handlocalmarker1damage16777217/def14=>11744047. No high-damage wireclaim; rawserver/APIrange distinct.

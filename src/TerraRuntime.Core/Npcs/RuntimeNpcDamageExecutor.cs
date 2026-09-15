@@ -159,7 +159,7 @@ public sealed class RuntimeNpcDamageExecutor
             current.VelocityY,
             current.Simulation.NoGravity,
             current.Simulation.LifeMax,
-            definition.KnockBackResist,
+            current.Simulation.KnockBackResist ?? definition.KnockBackResist,
             request.KnockBack,
             request.HitDirection,
             damage,
