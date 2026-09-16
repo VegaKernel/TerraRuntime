@@ -69,6 +69,7 @@ public sealed class Workspace :
     private VanillaShellAnchor1458? vanillaLeftShellAnchor;
     private VanillaShellAnchor1458? vanillaRightShellAnchor;
     private WorldGenerationPoint[] vanillaOceanCaveTreasure = [];
+    private WorldTileRegion? vanillaShimmerStructure;
     private int[]? vanillaTunnelColumns;
     private int[] vanillaLakeColumns = [];
     private VanillaSnowRow1458[]? vanillaSnowRows;
@@ -109,6 +110,8 @@ public sealed class Workspace :
         throw new InvalidOperationException("Ocean shell anchors have not been generated.");
     /// <summary>GenVars.oceanCaveTreasure in slot order; the later Water Chests pass reads these anchors.</summary>
     internal ReadOnlySpan<WorldGenerationPoint> VanillaOceanCaveTreasure => vanillaOceanCaveTreasure;
+    /// <summary>The 200x200 GenVars.structures rectangle the Shimmer pass protects around its pool.</summary>
+    internal WorldTileRegion? VanillaShimmerStructure => vanillaShimmerStructure;
     internal ReadOnlySpan<int> VanillaTunnelColumns => vanillaTunnelColumns ??
         throw new InvalidOperationException("Surface tunnel metadata has not been generated.");
     internal ReadOnlySpan<int> VanillaLakeColumns => vanillaLakeColumns;
@@ -148,6 +151,12 @@ public sealed class Workspace :
 
         vanillaLeftShellAnchor = left;
         vanillaRightShellAnchor = right;
+    }
+    internal void SetVanillaShimmerStructure(WorldTileRegion region)
+    {
+        if (region.Width <= 0 || region.Height <= 0)
+            throw new ArgumentOutOfRangeException(nameof(region));
+        vanillaShimmerStructure = region;
     }
     internal void SetVanillaOceanCaveTreasure(IReadOnlyList<WorldGenerationPoint> anchors)
     {

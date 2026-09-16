@@ -1,5 +1,14 @@
 # Verified vanilla facts
 
+## Shimmer stage42 and GrowTreeWithSettings gem profiles - 2026-09-16
+
+Shimmer pass: minY = (int)(worldSurface + rockLayer) / 2 + 50; maxY = (int)((maxTilesY - 250) * 2 + rockLayer) / 3, capped at maxTilesY - 460 and forced to minY + 50 when it would not exceed minY. y = Next(minY, maxY); x = dungeonSide < Right ? Next((int)(maxTilesX * .89), maxTilesX - 200) : Next(200, (int)(maxTilesX * .11)). While ShimmerMakeBiome refuses, the ordinary branch redraws y = Next((int)(worldSurface + rockLayer) / 2 + 20, maxY) with the same column band, and after refusal 20000 it uses y = Next((int)worldSurface + 120, maxY) with the wider .8 / .2 bands. On success GenVars.shimmerPosition is set and a 200x200 rectangle centred on the pool is added to GenVars.structures.
+
+ShimmerMakeBiome(X, Y): shape = Next(2); verticalScale .6 and poolScale 1.3 become .55 and 2.0 when shape is zero; each of verticalScale, poolScale and columnSpan .3 is then scaled by 1.05 - NextDouble() * .1 (columnSpan uses 1.0 - NextDouble() * .1). radius = Next(105, 125); poolRadius = (int)(radius * columnSpan); cavityRadius = (int)(radius * verticalScale); openingSize = Next(9, 13). The square X +/- radius, Y +/- radius is refused when any cell leaves InWorld(..., 50) or holds type 203 or 25; that scan draws nothing. Then floorRow and ceilingRow each get an optional Next(4)==0 jitter, and the square is rewritten row-major. Per cell: liquid is zeroed, both jitters are re-rolled, an ellipse distance with per-axis 2 percent noise (horizontal draw first) decides the stone fill, the second margin roll is short-circuited behind the first, a second ellipse with poolScale opens the cavity, and a third ellipse with a doubled vertical term carves the pool and writes shimmer liquid 127 on the centre row and 255 below it. Shape zero then builds tapering ceiling columns finished by PlaceTight. Two openings walk outward until three consecutive columns are clear, drifting vertically on a Next(2) roll. Finally 500 attempts draw x, y and a tree type and call GrowTreeWithSettings when both horizontal neighbours are solid.
+
+GemTree_* profiles: sapling 590, height Next(7, 13), top padding 4, ground test is TileID.Sets.Conversion.Stone (1, 25, 117, 203) or .Moss (182, 180, 179, 381, 183, 181, 534, 536, 539, 625, 627), wall test is the default plant-growth set plus walls 2, 54..59, 61, 185, 196..199 and 208..215. Everything else matches Tree_Ash, so one settings-driven grower serves both. Tile.shimmer(true) is liquid type three. Windows and Linux 1.4.5.8 agree on all of this.
+
+
 ## OceanCaves stage41 - 2026-09-16
 
 Pass body: for side 0 then side 1, require (side != 0 || dungeonSide < Right) and (side != 1 || dungeonSide > Left) and then Next(3) == 0. The start column is Next(55,95) ALWAYS, re-drawn as Next(maxTilesX-95, maxTilesX-55) when side == 1, so the right cave consumes two values. The start row is the first active cell in that column.

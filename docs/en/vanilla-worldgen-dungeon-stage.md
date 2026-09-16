@@ -125,15 +125,29 @@ The older aggregate `Biomes` identity remains only as a no-write compatibility b
 
 `Create Ocean Caves` attempts one cave per side, never on the dungeon side, and only when a one-in-three roll drawn after the side test succeeds. The start column is drawn twice for the right-hand cave: the source always draws the left-hand column first and only then re-draws for the right side, so the right cave consumes two shared values. A cave descends until it passes both $rac{2\,\mathrm{worldSurface} + \mathrm{rockLayer}}{3}$ and $30$ tiles below its own start, then levels out; it carves an inner cave shell, sand and hardened-sand walls, one side shelf and one $100$-tile water shaft per step. Water is written into every cell within range whether or not that cell ended up solid, because the later settling pass is what resolves it. The pass retains both ocean-cave treasure anchors, wrapping at the source maximum of $2$, for the later Water Chests pass.
 
-## Gems, gravity, Shimmer, and pyramids
+## Shimmer
+
+The pool never shares a side with the dungeon. Its column comes from $[0.89\,W,\;W-200)$ when the dungeon is not on
+the right and from $[200,\;0.11\,W)$ otherwise, and its row from a band derived from `worldSurface`, `rockLayer` and
+the world height. A candidate is refused outright when its $(2r+1)^2$ square leaves the fifty-tile world border or
+contains Lihzahrd brick or Ebonstone, and the pass simply redraws and tries again; after the source's
+twenty-thousandth refusal the column band widens toward the middle of the world. The source retries without a
+ceiling, so the runtime bounds the loop and fails closed rather than hanging generation.
+
+An accepted candidate rewrites its square to stone, opens the cavity, fills the pool with shimmer liquid at half
+depth on the centre row and full depth below it, and clears paint, slopes and half-bricks as it goes. One shape in
+two also grows a row of tapering stone columns hanging from the ceiling, each finished with a speleothem. Two
+corridors then walk outward until three consecutive columns are clear. Finally five hundred attempts try to plant a
+gem tree on the new stone floor, using the same settings-driven grower as Ash trees with the seven `GemTree_*`
+profiles. The pass publishes the pool position and the $200 	imes 200$ protected structure rectangle around it.
+
+## Gems, gravity and pyramids
 
 `Gems` runs six ordered gem series (`63` through `68`) on the existing shared `SmallTerrainRunner1458`. Each candidate gets three attempts to find active stone; active non-stone cannot be replaced by gems. Its two subsequent sand-edge scans preserve metadata/liquids, skip columns strictly inside the retained underground desert, and move only activity/type. Missing desert bounds fail before mutation or RNG use.
 
 `Gravitating Sand` is a generation-only bottom-up **gap fill**, not downward block movement. Below a surface falling-material cell it fills up to the previously encountered solid/sloped cell, using the complete eleven-type `TileID.Sets.Falling` set. It excludes actuated cells, platforms, cracked dungeon bricks and rolling cactus under inherited generation solidity. `Tile.ResetToType` clears headers, paint, slopes, frames and liquid but preserves wall identity. It consumes no RNG and does **not** implement live falling-block physics.
 
 `Clean Up Dirt` changes background walls only. Its forward/reverse scans preserve the source's asymmetric wall/sand gates, neighbor order and conditional RNG draws; reopening requires a verified empty corridor. Ground tiles are never converted or deleted.
-
-`Shimmer` creates an Aether-style underground cavity on the same side of the world as the Reset-selected Jungle and fills its pool using runtime liquid kind `Shimmer`. This is source-shaped placement; exact Aether geometry and all decorative blocks are still pending.
 
 `Pyramids` first discovers an actual generated desert band from tile state. It may then place zero, one, or two sandstone-brick structures depending on world width and the shared RNG stream. Pyramid furniture and loot are intentionally not fabricated before the corresponding world-object/chest passes are ported.
 

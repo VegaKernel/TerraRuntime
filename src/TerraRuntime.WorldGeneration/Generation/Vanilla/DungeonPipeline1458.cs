@@ -204,6 +204,7 @@ internal sealed class DungeonState1458
 
 internal sealed class DungeonPass1458 : IWorldGenerationPass
 {
+    private const int MaximumShimmerRefusals = 200000;
     private const ushort Dirt = 0;
     private const ushort Stone = 1;
     private const ushort Sand = 53;
@@ -276,7 +277,9 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                 ApplyOceanCaves(context, workspace, grid, random);
                 break;
             case DungeonStage1458.Shimmer:
-                ApplyShimmer(context, grid, random);
+                ApplyShimmer(context, workspace, grid,
+                    context.VanillaRandom ?? throw new InvalidOperationException(
+                        "Source-backed Shimmer requires shared UnifiedRandom semantics."));
                 break;
             case DungeonStage1458.CleanUpDirt:
                 ApplyCleanUpDirt(context, grid, random);
@@ -908,70 +911,55 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
         tile.Wall is 83 or 3 or 7 or 8 or 9 or 94 or 95 or 96 or 97 or 98 or 99 ||
         tile.Type is 203 or 25 or 26 or 31 or 41 or 43 or 44 or 677 or 678 or 679;
 
-    private void ApplyShimmer(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyShimmer(
+        IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IWorldGenerationVanillaRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        bool jungleLeft = bootstrap.JungleOriginX < grid.Width / 2;
-        int innerBeach = jungleLeft ? bootstrap.LeftBeachEnd : bootstrap.RightBeachStart;
-        int jungle = bootstrap.JungleOriginX;
+        const int depthMargin = 50;
+        int minimumY = (int)(state.WorldSurface + state.RockLayer) / 2 + depthMargin;
+        int maximumY = (int)((grid.Height - 250) * 2 + state.RockLayer) / 3;
+        if (maximumY > grid.Height - 330 - 100 - 30) maximumY = grid.Height - 330 - 100 - 30;
+        if (maximumY <= minimumY) maximumY = minimumY + 50;
 
-        int minX;
-        int maxX;
-        if (jungleLeft)
+        int y = random.Next(minimumY, maximumY);
+        int x = DrawColumn(random, grid.Width, bootstrap.DungeonSide, near: true);
+
+        var biome = new ShimmerBiome1458(workspace.TileStore, random, context.CancellationToken);
+        int refusals = 0;
+        while (!biome.TryMake(x, y))
         {
-            minX = Math.Clamp(innerBeach + 140, 140, grid.Width / 2 - 160);
-            maxX = Math.Clamp(jungle - 80, minX + 1, grid.Width / 2 - 80);
-        }
-        else
-        {
-            minX = Math.Clamp(jungle + 80, grid.Width / 2 + 80, grid.Width - 141);
-            maxX = Math.Clamp(innerBeach - 140, minX + 1, grid.Width - 140);
-        }
-
-        int centerX = random.Next(minX, maxX);
-        int minY = Math.Clamp((int)state.RockLayer + 80, 80, state.UnderworldTop - 180);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 100);
-        int centerY = random.Next(minY, maxY);
-        int radiusX = random.Next(30, 46);
-        int radiusY = random.Next(13, 20);
-
-        CarveEllipse(grid, centerX, centerY, radiusX, radiusY);
-        FillShimmerPool(grid, centerX, centerY + radiusY / 4, radiusX - 4, Math.Max(5, radiusY / 2));
-
-        state.ShimmerX = centerX;
-        state.ShimmerY = centerY;
-        ((Workspace)context.Workspace).VanillaShimmerPosition = new(centerX, centerY);
-        context.ReportProgress(1d, $"Generating Aether shimmer pool at ({centerX},{centerY})");
-    }
-
-    private static void FillShimmerPool(
-        RuntimeGrid grid,
-        int centerX,
-        int centerY,
-        int radiusX,
-        int radiusY)
-    {
-        for (int dx = -radiusX; dx <= radiusX; dx++)
-        {
-            double nx = dx / (double)Math.Max(1, radiusX);
-            for (int dy = 0; dy <= radiusY; dy++)
+            refusals++;
+            // The source retries without a ceiling; a bounded budget keeps a hostile layout from hanging the pass.
+            if (refusals > MaximumShimmerRefusals)
+                throw new InvalidOperationException("Shimmer biome placement exhausted its safety budget.");
+            if (refusals > 20000)
             {
-                double ny = dy / (double)Math.Max(1, radiusY);
-                if (nx * nx + ny * ny > 1d)
-                    continue;
-
-                int x = centerX + dx;
-                int y = centerY + dy;
-                if (!grid.Contains(x, y))
-                    continue;
-
-                ref WorldTile tile = ref grid.At(x, y);
-                ClearActive(ref tile);
-                tile.LiquidAmount = byte.MaxValue;
-                tile.LiquidKind = WorldLiquidKind.Shimmer;
+                y = random.Next((int)state.WorldSurface + 100 + 20, maximumY);
+                x = DrawColumn(random, grid.Width, bootstrap.DungeonSide, near: false);
+            }
+            else
+            {
+                y = random.Next((int)(state.WorldSurface + state.RockLayer) / 2 + 20, maximumY);
+                x = DrawColumn(random, grid.Width, bootstrap.DungeonSide, near: true);
             }
         }
+
+        state.ShimmerX = x;
+        state.ShimmerY = y;
+        workspace.VanillaShimmerPosition = new WorldGenerationPoint(x, y);
+        // GenVars.structures.AddProtectedStructure keeps a 200x200 square around the pool off-limits.
+        workspace.SetVanillaShimmerStructure(new WorldTileRegion(x - 100, y - 100, 200, 200));
+        context.ReportProgress(1d, $"Generating Aether shimmer pool at ({x},{y}) after {refusals} refusals");
     }
+
+    /// <summary>
+    /// The pool always lands on the side opposite the dungeon. The wider "near" band is used until the source's
+    /// twenty-thousandth refusal, after which it widens the search toward the middle of the world.
+    /// </summary>
+    private static int DrawColumn(IWorldGenerationVanillaRandom random, int width, int dungeonSide, bool near) =>
+        dungeonSide < 1
+            ? random.Next((int)(width * (near ? 0.89d : 0.8d)), width - 200)
+            : random.Next(200, (int)(width * (near ? 0.11d : 0.2d)));
 
     private void ApplyCleanUpDirt(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
@@ -1146,79 +1134,6 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                     SetType(ref tile, SandstoneBrick);
                 else
                     ClearActive(ref tile);
-            }
-        }
-    }
-
-    private static void CarveTunnel(
-        RuntimeGrid grid,
-        IRandom random,
-        int startX,
-        int startY,
-        int length,
-        double angle,
-        double radius,
-        double downwardBias)
-    {
-        double x = startX;
-        double y = startY;
-        double velocity = 1.6d + random.NextDouble() * 1.4d;
-
-        for (int step = 0; step < length; step++)
-        {
-            ClearCircle(grid, (int)Math.Round(x), (int)Math.Round(y), Math.Max(2, (int)Math.Round(radius)));
-            angle += (random.NextDouble() - 0.5d) * 0.18d;
-            x += Math.Cos(angle) * velocity;
-            y += Math.Sin(angle) * velocity + downwardBias;
-            radius = Math.Clamp(radius + (random.NextDouble() - 0.5d) * 0.35d, 2.5d, 9d);
-
-            if (x < 8 || x >= grid.Width - 8 || y < 8 || y >= grid.Height - 8)
-                break;
-        }
-    }
-
-    private static void CarveEllipse(
-        RuntimeGrid grid,
-        int centerX,
-        int centerY,
-        int radiusX,
-        int radiusY)
-    {
-        for (int dx = -radiusX; dx <= radiusX; dx++)
-        {
-            double nx = dx / (double)Math.Max(1, radiusX);
-            for (int dy = -radiusY; dy <= radiusY; dy++)
-            {
-                double ny = dy / (double)Math.Max(1, radiusY);
-                if (nx * nx + ny * ny > 1d)
-                    continue;
-
-                int x = centerX + dx;
-                int y = centerY + dy;
-                if (!grid.Contains(x, y))
-                    continue;
-                ClearActive(ref grid.At(x, y));
-            }
-        }
-    }
-
-    private static void ClearCircle(
-        RuntimeGrid grid,
-        int centerX,
-        int centerY,
-        int radius)
-    {
-        int square = radius * radius;
-        for (int dx = -radius; dx <= radius; dx++)
-        {
-            for (int dy = -radius; dy <= radius; dy++)
-            {
-                if (dx * dx + dy * dy > square)
-                    continue;
-                int x = centerX + dx;
-                int y = centerY + dy;
-                if (grid.Contains(x, y))
-                    ClearActive(ref grid.At(x, y));
             }
         }
     }

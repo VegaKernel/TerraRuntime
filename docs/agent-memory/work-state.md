@@ -1,5 +1,22 @@
 # Work state
 
+## Vanilla worldgen stage42 Shimmer ported - 2026-09-16
+
+Local gates for this slice, all green: Release build of build/TerraRuntime.slnx with 0 warnings and 0 errors; full suite 90,320 tests with the single known Level1Sandbox 30 s load-timeout flake, which passes in isolation and also failed on a stashed baseline earlier in the session; five CoreCLR smoke paths and five Windows NativeAOT smoke paths all exit 0; documentation, project-reference, domain-literal and tools/ci pytest gates pass. A fresh terraruntime:vanilla world again passed WorldVerify and was loaded by the official Windows 1.4.5.8 dedicated server to "Server started". Linux NativeAOT, remote CI and the ilspycmd-version-sensitive probe_worldgen_beaches gate remain unrun locally.
+
+Same session as the stage37/38/41 notes below, on top of local commit 4941e0ca. The runtime used to carve an ellipse between the beach and the jungle; that had nothing to do with the source. The pass places the pool on the side OPPOSITE the dungeon and retries until ShimmerMakeBiome accepts a candidate.
+
+New src/TerraRuntime.WorldGeneration/Generation/Vanilla/ShimmerBiome1458.cs ports ShimmerMakeBiome, both ShimmerMakeBiomeOpening corridors, the shape-zero column builder (which finishes each column with the existing StoneBiomeTiles1458.PlaceTight speleothem) and the five hundred gem-tree attempts. DungeonPass1458.ApplyShimmer ports the delegate: the depth band, the dungeon-opposite column band, the wider post-20000-refusal band, the retained pool position and the 200x200 protected structure rectangle. The refusal loop is bounded at MaximumShimmerRefusals and fails closed; the source has no ceiling.
+
+AshTreeGrower1458 was a complete GrowTreeWithSettings port with the Tree_Ash profile baked in. It is now a profile over the new SettingsTreeGrower1458, which the seven GemTree_* profiles reuse. Gem trees differ from ash only in sapling type 590, GemTreeGroundTest (TileID.Sets.Conversion.Stone plus Moss), GemTreeWallTest (the plant-growth wall set plus 21 extra walls) and the trunk identity; height Next(7,13) and top padding 4 are identical. The Ash tests stayed green through the refactor.
+
+Evidence, all identical on both pinned builds: 36 ShimmerMakeBiome cases (.cache/shimmer-*.txt), 63 GrowTreeWithSettings gem cases (.cache/gemtree-*.txt) and 18 registered-delegate cases (.cache/shimmerpass-*.txt). Six negative controls fail 42/42/39/42/63/12 of 171 shimmer/gem/ash cases.
+
+Probe lessons worth keeping: any pass that reaches RangeFrame needs WorldGen.generatingWorld = true (otherwise MapUpdateQueue dereferences Main.Map), Main.dedServ = true and Framing.Initialize(). GenVars.structures must be assigned a new StructureMap or AddProtectedStructure throws. Do not poison a probe fixture in a way the candidate square can never avoid - the official retry loop then spins forever with no output, because the source has no refusal ceiling.
+
+Stage42 moved P -> C, so the ledger is 38P + 34C = 72 unfinished rows (counted from the audit table), 31 E9 / 279 checkpoints unchanged.
+
+
 ## Vanilla worldgen stages 37/38/41 accepted locally, uncommitted - 2026-09-16
 
 Three ordinary Dungeon-owner passes were corrected in one session on top of 2419b562: 37 MountainCaveOpenings (rewritten from an invented mountain builder), 38 BeachesAndOceanCleanup (clear semantics, waterline liquid identity, retained shell anchors) and 41 CreateOceanCaves (missing right-side RNG draw plus four write-semantics corrections and retained treasure anchors). Details in the three notes below.
