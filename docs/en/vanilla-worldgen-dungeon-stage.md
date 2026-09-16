@@ -149,7 +149,18 @@ profiles. The pass publishes the pool position and the $200 	imes 200$ protected
 
 `Clean Up Dirt` changes background walls only. Its forward/reverse scans preserve the source's asymmetric wall/sand gates, neighbor order and conditional RNG draws; reopening requires a verified empty corridor. Ground tiles are never converted or deleted.
 
-`Pyramids` first discovers an actual generated desert band from tile state. It may then place zero, one, or two sandstone-brick structures depending on world width and the shared RNG stream. Pyramid furniture and loot are intentionally not fabricated before the corresponding world-object/chest passes are ported.
+`Pyramids` walks the candidates the Dunes pass retained, in their retained order. A candidate is skipped when it
+sits within $300$ tiles of either map edge, when it falls inside the $0.15\,W$ exclusion band on the dungeon's side
+of the generating dungeon column, or when it comes within $220$ tiles of any earlier candidate — including earlier
+candidates this pass itself refused. A surviving candidate then probes downward from its own recorded row until it
+meets ground or reaches `worldSurface`; only Sand is accepted, and the anchor handed to the builder is one row
+above that ground. Accepted anchors are retained.
+
+The pyramid interior is still TerraRuntime-owned and is deliberately not presented as vanilla. Source
+`WorldGen.Pyramid` builds its shell, entrance, descending corridor, burial chamber and escape tunnel around
+`WorldGen.AddBuriedChest`, which is not ported; one ordinary vanilla pyramid consumes tens of thousands of shared
+RNG values where the placeholder builder consumes two. Pyramid furniture and loot are therefore not fabricated
+before the corresponding chest passes are ported.
 
 ## Compatibility barriers
 

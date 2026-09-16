@@ -1,5 +1,20 @@
 # Work state
 
+## Vanilla worldgen stage44 Pyramids: selection closed, interior blocked - 2026-09-16
+
+Local gates for this slice, all green: Release build of build/TerraRuntime.slnx with 0 warnings and 0 errors; full suite 90,352 tests with only the known Level1Sandbox 30 s load-timeout flake, which passes in isolation; five CoreCLR and five Windows NativeAOT smoke paths exit 0; documentation, project-reference, domain-literal and tools/ci pytest gates pass; a fresh terraruntime:vanilla world passed WorldVerify and reached "Server started" in the official Windows 1.4.5.8 dedicated server. Linux NativeAOT, remote CI and the ilspycmd-version-sensitive probe_worldgen_beaches gate remain unrun locally.
+
+Same session as the stage37/38/41/42 notes below, on top of local commit 4d48d817. Stage44 STAYS `P` and that is deliberate.
+
+Closed: the pass's own candidate selection, verified against the registered official delegate with 32 comparisons identical on both pinned builds. It covers retained PyrX/PyrY order, the exclusive 300-tile map margins, the 0.15*width dungeon-side exclusion band, the 220-tile spacing measured against EVERY earlier candidate including refused ones, the downward surface probe bounded by worldSurface, the Sand gate and the one-row lift. The runtime already matched all of it; the test pins it. Accepted anchors are now retained through Workspace.SetVanillaPyramidAnchors. Six negative controls fail 4/4/4/18/4/2; the dungeon-band control only fires when the candidates sit exactly on the boundary (1099/1100 for side -1 with dungeonX 800 and width 2000, 500/501 for side 1), so keep those values.
+
+Probe technique worth reusing: WorldGen.Pyramid cannot be made to refuse cheaply for an ordinary seed, so acceptance is recovered from the official world instead of hooked. The builder lays its shell from column i-1 downward in Sandstone Brick 151, so "column i-1 contains 151" is an exact per-candidate acceptance signal even when neighbouring pyramids overlap, and the topmost such cell is j - genRand.Next(0,7) where that draw is the pass's first shared-RNG use. Cluster counting by column gaps does NOT work here: two candidates 220 apart produce overlapping shells.
+
+BLOCKED and why: source WorldGen.Pyramid depends on WorldGen.AddBuriedChest, which is 1691 lines of decompiled source (36258..37949) dominated by per-chest-style loot tables, and is itself the unported core of rows 63..66. Measured on the official build, one ordinary pyramid consumes 11860..33120 shared RNG values against the placeholder builder's two, so the runtime's shared stream already diverges at stage44 in any world that places a pyramid. Two source details found while measuring: the final descending tunnel re-evaluates genRand.Next(0,2) inside its `for` CONDITION, so it draws once per column per step rather than once per step, and that tunnel alone is roughly two thirds of a pyramid's RNG cost. Probe: .cache/pyramid-probe measures draw counts by replaying a fresh UnifiedRandom until its SeedArray/inext match, which works because every UnifiedRandom entry point costs exactly one InternalSample.
+
+RECOMMENDED NEXT SLICE: port WorldGen.AddBuriedChest. It is public static, so it probes directly with many fixtures, and it unblocks stage44's interior plus rows 63, 64, 65 and 66 at once. Do not attempt the pyramid interior before it.
+
+
 ## Vanilla worldgen stage42 Shimmer ported - 2026-09-16
 
 Local gates for this slice, all green: Release build of build/TerraRuntime.slnx with 0 warnings and 0 errors; full suite 90,320 tests with the single known Level1Sandbox 30 s load-timeout flake, which passes in isolation and also failed on a stashed baseline earlier in the session; five CoreCLR smoke paths and five Windows NativeAOT smoke paths all exit 0; documentation, project-reference, domain-literal and tools/ci pytest gates pass. A fresh terraruntime:vanilla world again passed WorldVerify and was loaded by the official Windows 1.4.5.8 dedicated server to "Server started". Linux NativeAOT, remote CI and the ilspycmd-version-sensitive probe_worldgen_beaches gate remain unrun locally.

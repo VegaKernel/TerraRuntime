@@ -70,6 +70,7 @@ public sealed class Workspace :
     private VanillaShellAnchor1458? vanillaRightShellAnchor;
     private WorldGenerationPoint[] vanillaOceanCaveTreasure = [];
     private WorldTileRegion? vanillaShimmerStructure;
+    private WorldGenerationPoint[] vanillaPyramidAnchors = [];
     private int[]? vanillaTunnelColumns;
     private int[] vanillaLakeColumns = [];
     private VanillaSnowRow1458[]? vanillaSnowRows;
@@ -112,6 +113,8 @@ public sealed class Workspace :
     internal ReadOnlySpan<WorldGenerationPoint> VanillaOceanCaveTreasure => vanillaOceanCaveTreasure;
     /// <summary>The 200x200 GenVars.structures rectangle the Shimmer pass protects around its pool.</summary>
     internal WorldTileRegion? VanillaShimmerStructure => vanillaShimmerStructure;
+    /// <summary>Anchors the Pyramids pass accepted, in retained candidate order.</summary>
+    internal ReadOnlySpan<WorldGenerationPoint> VanillaPyramidAnchors => vanillaPyramidAnchors;
     internal ReadOnlySpan<int> VanillaTunnelColumns => vanillaTunnelColumns ??
         throw new InvalidOperationException("Surface tunnel metadata has not been generated.");
     internal ReadOnlySpan<int> VanillaLakeColumns => vanillaLakeColumns;
@@ -151,6 +154,19 @@ public sealed class Workspace :
 
         vanillaLeftShellAnchor = left;
         vanillaRightShellAnchor = right;
+    }
+    internal void SetVanillaPyramidAnchors(IReadOnlyList<WorldGenerationPoint> anchors)
+    {
+        ArgumentNullException.ThrowIfNull(anchors);
+        var copy = new WorldGenerationPoint[anchors.Count];
+        for (int i = 0; i < copy.Length; i++)
+        {
+            copy[i] = anchors[i];
+            if ((uint)copy[i].X >= (uint)WidthTiles || (uint)copy[i].Y >= (uint)HeightTiles)
+                throw new ArgumentOutOfRangeException(nameof(anchors));
+        }
+
+        vanillaPyramidAnchors = copy;
     }
     internal void SetVanillaShimmerStructure(WorldTileRegion region)
     {

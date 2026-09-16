@@ -1,5 +1,12 @@
 # Verified vanilla facts
 
+## Pyramids stage44 candidate selection - 2026-09-16
+
+Ordinary pass body: for each retained candidate index in order, require x > 300 and x < maxTilesX - 300; for dungeonSide == Left require NOT (x < generatingDungeonPositionX + maxTilesX * 0.15); for dungeonSide == Right require NOT (x > generatingDungeonPositionX - maxTilesX * 0.15). Then probe downward from the candidate's own recorded row while the cell is inactive and the row is below Main.worldSurface; refuse when the probe reached worldSurface or the found tile is not type 53. Then compute the minimum absolute column distance to EVERY earlier candidate - PyrX, not the built ones - and require at least 220. Finally decrement the row by one and call Pyramid(x, row, 75, 125, false). The whole selection draws no shared RNG.
+
+WorldGen.Pyramid itself: the first shell row writes exactly one cell at (i - 1, j - genRand.Next(0, 7)) in Sandstone Brick 151, which makes that column an exact acceptance signal. Its three opening draws are Next(0, 7), Next(9, 13) and Next(pyramidMinDepth, pyramidMaxDepth). Its escape tunnel re-evaluates genRand.Next(0, 2) inside the `for` condition, drawing once per visited column per step. One ordinary pyramid costs 11860..33120 shared values in total, of which the tunnel is about two thirds. WorldGen.AddBuriedChest is 1691 decompiled lines and returns with zero draws when it cannot place. Windows and Linux 1.4.5.8 agree on the selection results.
+
+
 ## Shimmer stage42 and GrowTreeWithSettings gem profiles - 2026-09-16
 
 Shimmer pass: minY = (int)(worldSurface + rockLayer) / 2 + 50; maxY = (int)((maxTilesY - 250) * 2 + rockLayer) / 3, capped at maxTilesY - 460 and forced to minY + 50 when it would not exceed minY. y = Next(minY, maxY); x = dungeonSide < Right ? Next((int)(maxTilesX * .89), maxTilesX - 200) : Next(200, (int)(maxTilesX * .11)). While ShimmerMakeBiome refuses, the ordinary branch redraws y = Next((int)(worldSurface + rockLayer) / 2 + 20, maxY) with the same column band, and after refusal 20000 it uses y = Next((int)worldSurface + 120, maxY) with the wider .8 / .2 bands. On success GenVars.shimmerPosition is set and a 200x200 rectangle centred on the pool is added to GenVars.structures.

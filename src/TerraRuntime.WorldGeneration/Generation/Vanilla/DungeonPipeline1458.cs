@@ -1021,7 +1021,10 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
         IRandom random)
     {
         VanillaPyramidCandidate1458[] candidates = workspace.CaptureVanillaPyramidCandidates();
-        int placed = 0;
+        // GenVars.PyrX/PyrY order is the source's candidate order, and the spacing rule below counts every
+        // earlier candidate, including ones this pass refused. The accepted anchors are retained so the
+        // selection stays checkable independently of the builder that consumes them.
+        var anchors = new List<WorldGenerationPoint>();
         int worldSurface = Math.Clamp((int)Math.Ceiling(state.WorldSurface), 1, grid.Height - 1);
         int dungeonSide = RequireBootstrap().DungeonSide;
 
@@ -1047,16 +1050,19 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                 continue;
 
             surface--;
+            anchors.Add(new WorldGenerationPoint(candidate.X, surface));
+            // The interior builder is still TerraRuntime-owned: source WorldGen.Pyramid depends on
+            // AddBuriedChest, whose loot tables are not ported yet, so its shared-RNG cost differs.
             int halfWidth = random.Next(30, 47);
             int height = random.Next(24, 38);
             BuildPyramid(grid, candidate.X, surface, halfWidth, height);
-            placed++;
         }
 
-        state.PyramidCount = placed;
+        workspace.SetVanillaPyramidAnchors(anchors);
+        state.PyramidCount = anchors.Count;
         context.ReportProgress(
             1d,
-            $"Generating desert pyramids from source candidates ({placed}/{candidates.Length})");
+            $"Generating desert pyramids from source candidates ({anchors.Count}/{candidates.Length})");
     }
 
     internal static bool IsOrdinaryPyramidCandidatePositionEligible(
