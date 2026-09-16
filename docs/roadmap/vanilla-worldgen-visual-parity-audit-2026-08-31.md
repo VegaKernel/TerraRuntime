@@ -53,7 +53,10 @@ The obsolete fixed-height water/sand census was removed in favor of the existing
 changing generation or relaxing its water-continuity, sand-floor and beach-rise limits. See the
 [ocean validation contract](../en/vanilla-worldgen-oceans.md).
 
-The Small seed `42` chest-corruption regression is fixed at `MountainCaves`: ordinary mountains now fill inactive
-cells according to the pinned `WorldGen.Mountinater` rules instead of carving through the existing dungeon.
-The per-pass chest-anchor regression fails on the former implementation. This does not close reference-seed terrain
-identity or secret-seed mountain parity; see the [mountain behavior boundary](../en/vanilla-worldgen-dungeon-stage.md#mountain-caves-and-existing-world-objects).
+The Small seed `42` chest-corruption regression was fixed by giving the mound builder its pinned
+`WorldGen.Mountinater` rules in the earlier `MountCaves` pass, so it fills inactive cells instead of carving through
+the existing dungeon. Source position 37 is `MountainCaveOpenings`, which now runs the pinned
+`WorldGen.CaveOpenater` and `WorldGen.Cavinator` walks; their own dungeon-masonry abort is what keeps the dungeon
+intact there. The per-pass chest-anchor regression still guards both. This does not close reference-seed terrain
+identity or secret-seed mountain parity; see the
+[mountain behavior boundary](../en/vanilla-worldgen-dungeon-stage.md#mountain-cave-openings-and-existing-world-objects).

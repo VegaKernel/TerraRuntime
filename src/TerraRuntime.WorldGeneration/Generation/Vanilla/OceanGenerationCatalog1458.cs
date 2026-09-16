@@ -9,6 +9,7 @@ internal static class OceanGenerationCatalog1458
 {
     internal const ushort SandTileType = 53;
     internal const int BeachBoundaryPadding = 50;
+    internal const int MaxOceanCaveTreasure = 2;
     internal const int WaterStartRandomMin = 220;
     internal const int WaterStartRandomMax = 260;
     internal const int ForcedJungleOceanLength = 275;

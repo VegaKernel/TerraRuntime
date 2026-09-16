@@ -7,6 +7,12 @@ internal readonly record struct VanillaPyramidCandidate1458(int X, int Y);
 internal readonly record struct VanillaLiquidLines1458(int WaterLine, int LavaLine);
 internal readonly record struct VanillaSkyIsland1458(int X, int Y, int Style, bool IsLake);
 internal readonly record struct VanillaSnowRow1458(int Left, int Right);
+
+/// <summary>
+/// One ocean shell anchor retained by the Beaches pass as <c>GenVars.shellStartXLeft/YLeft</c> and
+/// <c>GenVars.shellStartXRight/YRight</c>. <c>X</c> is zero when no waterline column claimed the anchor.
+/// </summary>
+internal readonly record struct VanillaShellAnchor1458(int X, int Y);
 internal readonly record struct VanillaDesertGenerationState1458(WorldTileRegion Hive, WorldTileRegion DensityBounds, WorldTileRegion StructureArea)
 {
     public int StructurePadding => 10;
@@ -60,6 +66,9 @@ public sealed class Workspace :
     private WorldTileRegion[] vanillaGraniteRegions = [];
     private VanillaSkyIsland1458[] vanillaSkyIslands = [];
     private WorldGenerationPoint[] vanillaMountainCaves = [];
+    private VanillaShellAnchor1458? vanillaLeftShellAnchor;
+    private VanillaShellAnchor1458? vanillaRightShellAnchor;
+    private WorldGenerationPoint[] vanillaOceanCaveTreasure = [];
     private int[]? vanillaTunnelColumns;
     private int[] vanillaLakeColumns = [];
     private VanillaSnowRow1458[]? vanillaSnowRows;
@@ -94,6 +103,12 @@ public sealed class Workspace :
     internal ReadOnlySpan<WorldTileRegion> VanillaGraniteRegions => vanillaGraniteRegions;
     internal ReadOnlySpan<VanillaSkyIsland1458> VanillaSkyIslands => vanillaSkyIslands;
     internal ReadOnlySpan<WorldGenerationPoint> VanillaMountainCaves => vanillaMountainCaves;
+    internal VanillaShellAnchor1458 VanillaLeftShellAnchor => vanillaLeftShellAnchor ??
+        throw new InvalidOperationException("Ocean shell anchors have not been generated.");
+    internal VanillaShellAnchor1458 VanillaRightShellAnchor => vanillaRightShellAnchor ??
+        throw new InvalidOperationException("Ocean shell anchors have not been generated.");
+    /// <summary>GenVars.oceanCaveTreasure in slot order; the later Water Chests pass reads these anchors.</summary>
+    internal ReadOnlySpan<WorldGenerationPoint> VanillaOceanCaveTreasure => vanillaOceanCaveTreasure;
     internal ReadOnlySpan<int> VanillaTunnelColumns => vanillaTunnelColumns ??
         throw new InvalidOperationException("Surface tunnel metadata has not been generated.");
     internal ReadOnlySpan<int> VanillaLakeColumns => vanillaLakeColumns;
@@ -122,6 +137,31 @@ public sealed class Workspace :
     {
         if (columns.Length >= 50) throw new ArgumentOutOfRangeException(nameof(columns));
         vanillaLakeColumns = columns.ToArray();
+    }
+    internal void SetVanillaShellAnchors(VanillaShellAnchor1458 left, VanillaShellAnchor1458 right)
+    {
+        if ((uint)left.X >= (uint)WidthTiles || (uint)right.X >= (uint)WidthTiles ||
+            (uint)left.Y >= (uint)HeightTiles || (uint)right.Y >= (uint)HeightTiles)
+        {
+            throw new ArgumentOutOfRangeException(nameof(left));
+        }
+
+        vanillaLeftShellAnchor = left;
+        vanillaRightShellAnchor = right;
+    }
+    internal void SetVanillaOceanCaveTreasure(IReadOnlyList<WorldGenerationPoint> anchors)
+    {
+        ArgumentNullException.ThrowIfNull(anchors);
+        if (anchors.Count > 2) throw new ArgumentOutOfRangeException(nameof(anchors));
+        var copy = new WorldGenerationPoint[anchors.Count];
+        for (int i = 0; i < copy.Length; i++)
+        {
+            copy[i] = anchors[i];
+            if ((uint)copy[i].X >= (uint)WidthTiles || (uint)copy[i].Y >= (uint)HeightTiles)
+                throw new ArgumentOutOfRangeException(nameof(anchors));
+        }
+
+        vanillaOceanCaveTreasure = copy;
     }
     internal void SetVanillaMountainCaves(ReadOnlySpan<WorldGenerationPoint> caves)
     {

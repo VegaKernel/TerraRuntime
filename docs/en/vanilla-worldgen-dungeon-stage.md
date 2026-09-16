@@ -101,11 +101,15 @@ of byte-for-byte dungeon equality. Exact collision/protection interactions betwe
 distribution, doors/platforms, furniture, locked and biome chests, traps, paintings, banners, and every global dungeon
 feature remain future parity work.
 
-## Mountain Caves and existing world objects
+## Mountain cave openings and existing world objects
 
-For ordinary seeds, `MountainCaves` now follows the pinned `WorldGen.Mountinater` behavior: it raises dirt mounds in inactive cells, preserving every existing active tile. The previous downward tunnel approximation could erase dungeon chests and made Small seed `42` fail finalization. Candidate selection now uses the central half of the world, the source spawn and mountain spacing exclusions, and the source sand-family exclusion. Brush strength, step count and movement consume the shared RNG in the source order.
+The pass registered at source position 37 is `MountainCaveOpenings`, not a second mountain builder. `WorldGen.Mountinater` belongs to the earlier `MountCaves` pass, which raises the mounds and retains their anchors. Position 37 revisits each retained anchor and runs `WorldGen.CaveOpenater` followed by `WorldGen.Cavinator(genRand.Next(40, 50))`, so the mound gets a walk-out to the surface and a branching descent toward the rock layer.
 
-Solid placement immediately clears displaced liquid through the existing tile placement helper; the runtime liquid compactor does not process liquid trapped in solid cells. This is a representation normalization, not a claim of identical intermediate liquid states. A regression checks registered chest anchors after every generation pass and fails on the old carving implementation. Exact terrain equality and secret-seed mountain variants remain outside this verified scope.
+The opening walk faces the nearest map edge for nine of ten anchors, rises with a vertical velocity clamped into $[-0.5, 0]$, and ends after one final brush stamp as soon as its head cell has no wall or holds a block outside `TileID.Sets.CanBeClearedDuringGeneration`. The descent walk draws its step budget before its initial downward velocity, falls with a velocity clamped into $[0, 2]$, refuses to clear natural Sand, abandons the whole descent the moment its brush touches dungeon masonry, and recurses from the truncated end position while that position is still above $\mathrm{rockLayer} + 50$.
+
+Both helpers clear only the vanilla active bit. Type, frames, walls, liquid, colors and shape survive untouched, so this pass deliberately does not use the normalizing clear helper that other dungeon-stage passes share. An out-of-range tile identity fails closed instead of silently answering "not clearable", because the source indexes the clear set directly.
+
+Exact terrain equality for the real generated prefix and secret-seed variants remain outside this verified scope.
 
 Local Windows NativeAOT verification covers generation and reload for Small, Medium and Large with seeds `1`, `42` and `8675309`. The pinned official server also loads all three sizes for `8675309`. Small passes the existing reference-world structural budgets, but contains `104` chests versus the reference's `178`; this evidence does not establish full vanilla parity. Linux NativeAOT execution remains a CI check and was not exercised in this Windows workspace.
 
@@ -113,7 +117,13 @@ Local Windows NativeAOT verification covers generation and reload for Small, Med
 
 `Beaches` uses the Reset-owned `LeftBeachEnd` and `RightBeachStart` boundaries instead of inventing new edge widths. It shapes sand and the waterline at both world edges. `Create Ocean Caves` then carves cave entrances from those same beach regions.
 
+Each side walks inland from its own water start, deepening the basin through the source depth-increment bands. One side in four is chosen for the steeper Florida-style profile, and the last $30$ columns before the map edge deepen by a flat $1$ per column instead of rolling. Drowned cells lose only the vanilla active bit, so their material identity, frames and shape stay readable by later passes; the half-filled waterline row writes only the liquid amount and leaves the existing liquid identity alone. Every visited cell loses its wall.
+
+The pass also retains the two ocean shell anchors that the later Shell Piles pass consumes. An anchor's row is the probed ocean surface before the random waterline offset, and its column is the first waterline column on that side. A side whose waterline never claims a column keeps the source's zero sentinel rather than inventing a position.
+
 The older aggregate `Biomes` identity remains only as a no-write compatibility barrier. `Beaches` owns the ocean body at the pinned pass position; the barrier cannot advance shared vanilla RNG or repaint any biome.
+
+`Create Ocean Caves` attempts one cave per side, never on the dungeon side, and only when a one-in-three roll drawn after the side test succeeds. The start column is drawn twice for the right-hand cave: the source always draws the left-hand column first and only then re-draws for the right side, so the right cave consumes two shared values. A cave descends until it passes both $rac{2\,\mathrm{worldSurface} + \mathrm{rockLayer}}{3}$ and $30$ tiles below its own start, then levels out; it carves an inner cave shell, sand and hardened-sand walls, one side shelf and one $100$-tile water shaft per step. Water is written into every cell within range whether or not that cell ended up solid, because the later settling pass is what resolves it. The pass retains both ocean-cave treasure anchors, wrapping at the source maximum of $2$, for the later Water Chests pass.
 
 ## Gems, gravity, Shimmer, and pyramids
 

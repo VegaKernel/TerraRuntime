@@ -1,5 +1,30 @@
 # Verified vanilla facts
 
+## OceanCaves stage41 - 2026-09-16
+
+Pass body: for side 0 then side 1, require (side != 0 || dungeonSide < Right) and (side != 1 || dungeonSide > Left) and then Next(3) == 0. The start column is Next(55,95) ALWAYS, re-drawn as Next(maxTilesX-95, maxTilesX-55) when side == 1, so the right cave consumes two values. The start row is the first active cell in that column.
+
+oceanCave(i, j): wraps numOceanCaveTreasure at 2, then vx = (i < maxTilesX/2 ? .25 + NextDouble()*.25 : -.35 - NextDouble()*.5), vy = .4 + NextDouble()*.25, radius = Next(17,25), remaining = Next(600,800). Per step: inside x in (beachDistance-50, maxTilesX-beachDistance+50) both radius and remaining scale by .96; treasure is off when radius < 6 or remaining < 20; descending subtracts .01+NextDouble()*.01 from radius and .5 from remaining, otherwise .02+NextDouble()*.02 and 1. A treasure step overwrites oceanCaveTreasure[slot] with the truncated centre, so the last treasure step wins. Brush rect is centre +/- radius*3 clamped to [1, maxTiles-1]. badOceanCaveTiles skips wall 83/3, wallDungeon, and types 203/25/26/31 plus tileDungeon. Inside radius*.5+1 on a treasure step the cell becomes type 264 inactive; within radius*1.5+1 the above-centre side becomes 397 inside radius*1.1+1 else 53, and the below-centre side becomes active 53 and may place one shelf per step. Only identity and activity change - frames, shape and liquid are never normalized. Within radius*1.3+1 and below startY-10 the cell gets water 255 whether or not it is solid, and one 5-wide 100-tall water shaft per step does the same. numOceanCaveTreasure increments once per cave. Windows and Linux 1.4.5.8 agree.
+
+
+## BeachesAndOceanCleanup stage38 - 2026-09-16
+
+Per side the source probes the first active row at x = waterStart-1 (left) or x = waterStart (right), records it as shellStartY, then adds Next(1,5) to get the waterline row. Depth starts at 1.0. While the column is more than 30 tiles from the map edge the inland counter advances and TuneOceanDepth adds Next(10,20) scaled by its band; inside those last 30 columns depth simply increases by 1.0 and draws nothing. When the counter passes every band no draw happens at all. Each column then draws Next(15,20) of floor padding and writes rows y in [0, surface + depth + padding): rows above surface + depth*0.75 - 3 lose ONLY the active bit (type, frames and shape are preserved), rows strictly below the waterline row get liquid 255 with liquid type water, the waterline row itself gets liquid 127 and no liquid-type write, and everything else below the surface becomes active Sand 53. Every visited row loses its wall. shellStartX is assigned once per side at the first waterline row and stays at the zero sentinel otherwise; shellStartXRight is explicitly zeroed by the pass while shellStartXLeft relies on Reset having zeroed it.
+
+The florida-style flag is chosen once for the whole pass: Next(4)==0 then Next(2)==0 picks the LEFT beach, otherwise the right. Windows and Linux 1.4.5.8 produce identical results for this pass.
+
+
+## MountainCaveOpenings stage37 - 2026-09-16
+
+Source position8 MountainCaves calls Mountinater and retains mCaveX/mCaveY; source position37 MountainCaveOpenings calls CaveOpenater then Cavinator(genRand.Next(40,50)) per retained anchor. Both helpers mutate only Tile.active(false) (sTileHeader &= 65503), so type, frames, wall, liquid, colors and shape survive; do not route them through a normalizing clear helper.
+
+CaveOpenater: size=Next(7,12); dir=1, Next(2)==0 => -1, then Next(10)!=0 => dir = (i < maxTilesX/2 ? 1 : -1); start (i,j), remaining=100, v=(dir,0). Each step reads the head cell FIRST and sets remaining=0 when wall==0 or (active && !CanBeClearedDuringGeneration), then decrements, so one final brush is always stamped. Brush rect is (int)(center +/- size*.5) clamped to [0,maxTiles]; radius = size*Next(80,120)*.01, cleared where euclidean distance < radius*.4 AND CanBeClearedDuringGeneration(type) - the type test applies to inactive cells too. Then position += v, vx += Next(-10,11)*.05, vy += Next(-10,11)*.05, vx clamped to dir +/- .5 and vy clamped into [-.5, 0], so openings only rise.
+
+Cavinator(i,j,steps): size=Next(7,15); dir=1, Next(2)==0 => -1; remaining=Next(20,40) is drawn BEFORE vy=Next(10,20)*.01; vx=dir. Per step remaining is decremented first, then the same brush rect/radius rule applies but the cell test is: dungeon tile (tileDungeon, 6 entries 41/43/44/677/678/679) while active, or dungeon wall (wallDungeon, 9 entries 7/8/9/94..99) regardless of activity, sets remaining=0 and breaks out of both loops; an active cell that is unclearable or type53 Sand is skipped; anything else loses its active bit. Velocity update matches CaveOpenater except vy is clamped into [0,2], so descents only fall. After the loop, recurse from ((int)x,(int)y) with steps-1 while (int)y < Main.rockLayer + 50.
+
+TileID.Sets.CanBeClearedDuringGeneration is CreateBoolSet(true, 396,400,401,397,398,399,404,368,367,41,43,44,481,482,483,226,237); WorldSmoothingCatalog1458 already pins exactly that set. Windows and Linux 1.4.5.8 produce identical results for this pass.
+
+
 ## Checkpoint requested by user - 2026-09-15
 
 Prime Cannon/Laser implementation is committed as a checkpoint; full parity remains open. Restored Release warnings-as-errors build, Windows NativeAOT publish and all five smoke paths passed, including primeRangedAI=ok. The full test runner reported 90,031 tests, zero errors/failures/skips, in 190.968 seconds, then exited 4 because disk space ran out while writing .cache/prime-ranged-full.xml. That XML is truncated; this is not a clean full-run process acceptance. Evidence: .cache/prime-ranged-final-full.log. Focused 10,590 tests and seven negative controls passed their expected checks. Remote acceptance remains pending. User requested commit, push and stop; do not automatically continue parity work.

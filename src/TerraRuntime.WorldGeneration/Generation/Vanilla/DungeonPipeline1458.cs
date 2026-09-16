@@ -261,10 +261,10 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                 ApplyDungeon(context, workspace);
                 break;
             case DungeonStage1458.MountainCaves:
-                ApplyMountainCaves(context, grid, random);
+                ApplyMountainCaveOpenings(context, workspace);
                 break;
             case DungeonStage1458.Beaches:
-                ApplyBeaches(context, grid, random);
+                ApplyBeaches(context, workspace, grid, random);
                 break;
             case DungeonStage1458.Gems:
                 ApplyGems(context, workspace, grid);
@@ -273,7 +273,7 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                 ApplyGravitatingSand(context, grid);
                 break;
             case DungeonStage1458.CreateOceanCaves:
-                ApplyOceanCaves(context, grid, random);
+                ApplyOceanCaves(context, workspace, grid, random);
                 break;
             case DungeonStage1458.Shimmer:
                 ApplyShimmer(context, grid, random);
@@ -346,100 +346,26 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
             $"lights={features.Lights}, traps={features.Traps}, furniture={features.Furniture}, banners={features.Banners}");
     }
 
-    private void ApplyMountainCaves(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyMountainCaveOpenings(IWorldGenerationContext context, Workspace workspace)
     {
-        // Terraria 1.4.5.8 MountainCaves calls Mountinater: it fills empty
-        // cells with dirt. Carving here destroys previously placed dungeon chests.
-        int count = (int)(grid.Width * 0.001d);
-        var mountainColumns = new List<int>(count);
-        int minX = grid.Width / 4;
-        int maxX = grid.Width * 3 / 4;
-
-        for (int i = 0; i < count; i++)
+        ReadOnlySpan<WorldGenerationPoint> anchors = workspace.VanillaMountainCaves;
+        var openings = new MountainCaveOpenings1458(
+            workspace.TileStore,
+            context.VanillaRandom ?? throw new InvalidOperationException(
+                "Source-backed Mountain Cave Openings require shared UnifiedRandom semantics."),
+            state.RockLayer,
+            context.CancellationToken);
+        for (int i = 0; i < anchors.Length; i++)
         {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(minX, maxX);
-            while (x > grid.Width / 2 - 90 && x < grid.Width / 2 + 90)
-            {
-                context.CancellationToken.ThrowIfCancellationRequested();
-                x = random.Next(minX, maxX);
-            }
-
-            // The source's spacing retry does not draw another column; it
-            // eventually abandons this attempt without consuming more random values.
-            if (mountainColumns.Exists(previous => Math.Abs(x - previous) < 100))
-                continue;
-
-            int surfaceLimit = Math.Min(grid.Height, (int)Math.Ceiling(state.WorldSurface));
-            int surface = grid.FindFirstActiveY(x, 0, surfaceLimit);
-            if (surface >= surfaceLimit || HasMountainSurfaceExclusion(grid, x, surface))
-                continue;
-
-            RaiseMountain(context, grid, random, x, surface);
-            mountainColumns.Add(x);
+            openings.Open(anchors[i].X, anchors[i].Y);
+            context.ReportProgress((i + 1d) / anchors.Length, "Opening Terraria mountain caves");
         }
 
-        context.ReportProgress(1d, "Raising post-dungeon mountains");
+        context.ReportProgress(1d, $"Opened {anchors.Length} Terraria mountain caves");
     }
 
-    private static bool HasMountainSurfaceExclusion(RuntimeGrid grid, int x, int y)
-    {
-        // Mountinater's caller excludes sand, sandstone brick and sandstone slab.
-        const ushort sandstoneSlab = 274;
-        for (int scanX = Math.Max(0, x - 50); scanX < Math.Min(grid.Width, x + 50); scanX++)
-        for (int scanY = Math.Max(0, y - 25); scanY < Math.Min(grid.Height, y + 25); scanY++)
-        {
-            ref WorldTile tile = ref grid.At(scanX, scanY);
-            if (tile.IsActive && tile.Type is Sand or SandstoneBrick or sandstoneSlab)
-                return true;
-        }
-
-        return false;
-    }
-
-    private static void RaiseMountain(
-        IWorldGenerationContext context, RuntimeGrid grid, IRandom random, int x, int surface)
-    {
-        double strength = random.Next(80, 120);
-        int remainingSteps = random.Next(40, 55);
-        double centerX = x;
-        double centerY = surface + remainingSteps / 2d;
-        double velocityX = random.Next(-10, 11) * 0.1d;
-        double velocityY = random.Next(-20, -10) * 0.1d;
-
-        while (strength > 0d && remainingSteps-- > 0)
-        {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            strength -= random.Next(4);
-            int left = Math.Max(0, (int)(centerX - strength * 0.5d));
-            int right = Math.Min(grid.Width, (int)(centerX + strength * 0.5d));
-            int top = Math.Max(0, (int)(centerY - strength * 0.5d));
-            int bottom = Math.Min(grid.Height, (int)(centerY + strength * 0.5d));
-            double radius = strength * random.Next(80, 120) * 0.01d * 0.4d;
-
-            for (int fillX = left; fillX < right; fillX++)
-            for (int fillY = top; fillY < bottom; fillY++)
-            {
-                ref WorldTile tile = ref grid.At(fillX, fillY);
-                if (tile.IsActive)
-                    continue;
-                double dx = fillX - centerX;
-                double dy = fillY - centerY;
-                if (Math.Sqrt(dx * dx + dy * dy) >= radius)
-                    continue;
-                // Normalize displaced liquid at placement, as other solid fills do:
-                // our liquid compactor does not visit liquid trapped inside solids.
-                SetType(ref tile, Dirt);
-            }
-
-            centerX += velocityX;
-            centerY += velocityY;
-            velocityX = Math.Clamp(velocityX + random.Next(-10, 11) * 0.05d, -0.5d, 0.5d);
-            velocityY = Math.Clamp(velocityY + random.Next(-10, 11) * 0.05d, -1.5d, -0.5d);
-        }
-    }
-
-    private void ApplyBeaches(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyBeaches(
+        IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
         bool floridaStyleLeft = false;
@@ -452,12 +378,17 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                 floridaStyleRight = true;
         }
 
-        ShapeBeach(context, grid, random, left: true, bootstrap, floridaStyleLeft);
-        ShapeBeach(context, grid, random, left: false, bootstrap, floridaStyleRight);
+        // GenVars.shellStartXLeft/XRight start at zero and are only assigned once per side; the source treats zero
+        // as "not chosen yet", which also means a left beach whose first waterline column is x=0 keeps zero.
+        VanillaShellAnchor1458 leftAnchor =
+            ShapeBeach(context, grid, random, left: true, bootstrap, floridaStyleLeft);
+        VanillaShellAnchor1458 rightAnchor =
+            ShapeBeach(context, grid, random, left: false, bootstrap, floridaStyleRight);
+        workspace.SetVanillaShellAnchors(leftAnchor, rightAnchor);
         context.ReportProgress(1d, "Shaping Terraria beaches and ocean waterline");
     }
 
-    private static void ShapeBeach(
+    private static VanillaShellAnchor1458 ShapeBeach(
         IWorldGenerationContext context,
         RuntimeGrid grid,
         IRandom random,
@@ -487,6 +418,9 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
         int surface = grid.FindFirstActiveY(anchorX, 0, grid.Height);
         if (surface >= grid.Height)
             throw new InvalidOperationException($"Terraria Beaches found no solid {(left ? "left" : "right")} ocean anchor at x={anchorX}.");
+        // The shell anchor row is the probed surface itself, before the random waterline offset below.
+        int shellStartY = surface;
+        int shellStartX = 0;
         surface += random.Next(
             OceanGenerationCatalog1458.SurfaceOffsetRandomMin,
             OceanGenerationCatalog1458.SurfaceOffsetRandomMax);
@@ -528,7 +462,9 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                 ref WorldTile tile = ref grid.At(x, y);
                 if (y < waterBottom)
                 {
-                    ClearActive(ref tile);
+                    // The source only clears the vanilla active bit here; the drowned column keeps its material
+                    // identity, frames and shape for every later pass that inspects inactive cells.
+                    tile.Flags &= ~WorldTileFlags.Active;
                     if (y > surface)
                     {
                         tile.LiquidAmount = byte.MaxValue;
@@ -536,8 +472,11 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                     }
                     else if (y == surface)
                     {
+                        // The source writes only the half amount on the waterline row; the existing liquid identity
+                        // is deliberately left alone here, unlike the fully submerged rows above.
                         tile.LiquidAmount = OceanGenerationCatalog1458.HalfLiquidAmount;
-                        tile.LiquidKind = WorldLiquidKind.Water;
+                        if (shellStartX == 0)
+                            shellStartX = x;
                     }
                 }
                 else if (y > surface)
@@ -549,6 +488,8 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                 tile.Wall = 0;
             }
         }
+
+        return new VanillaShellAnchor1458(shellStartX, shellStartY);
     }
 
     private void ApplyGems(IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid)
@@ -661,13 +602,14 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, "Filling gaps below surface falling materials");
     }
 
-    private void ApplyOceanCaves(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyOceanCaves(
+        IWorldGenerationContext context, Workspace workspace, RuntimeGrid grid, IRandom random)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
 
         // TerrariaServer 1.4.5.8 GenPassNameID.OceanCaves: ordinary worlds attempt at most one cave per side,
-        // never on the dungeon side, with a 1-in-3 roll. The previous compatibility implementation carved 2..4
-        // tunnels on both sides and could therefore erase freshly generated dungeon chests.
+        // never on the dungeon side, with a 1-in-3 roll drawn only after the side test passes.
+        var treasure = new List<WorldGenerationPoint>(OceanGenerationCatalog1458.MaxOceanCaveTreasure);
         for (int side = 0; side < 2; side++)
         {
             bool left = side == 0;
@@ -676,9 +618,11 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
             if (random.Next(3) != 0)
                 continue;
 
-            int x = left
-                ? random.Next(55, 95)
-                : random.Next(grid.Width - 95, grid.Width - 55);
+            // The source draws the left-hand column unconditionally and only then re-draws for the right side,
+            // so the right cave consumes two values rather than one.
+            int x = random.Next(55, 95);
+            if (!left)
+                x = random.Next(grid.Width - 95, grid.Width - 55);
             int surface = grid.FindFirstActiveY(x, 0, grid.Height);
             if (surface >= grid.Height)
                 continue;
@@ -690,9 +634,11 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                 x,
                 surface,
                 state.WorldSurface,
-                state.RockLayer);
+                state.RockLayer,
+                treasure);
         }
 
+        workspace.SetVanillaOceanCaveTreasure(treasure);
         context.ReportProgress(1d, "Carving Terraria ocean caves");
     }
 
@@ -703,13 +649,20 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
         int startX,
         int startY,
         double worldSurface,
-        double rockLayer)
+        double rockLayer,
+        List<WorldGenerationPoint> treasureAnchors)
     {
         const int beachDistance = 380;
         const ushort innerCaveType = 264;
         const ushort sandType = 53;
         const ushort hardenedSandType = 397;
         const double minimumRadius = 4d;
+
+        // GenVars.numOceanCaveTreasure wraps at GenVars.maxOceanCaveTreasure before this cave starts recording.
+        if (treasureAnchors.Count >= OceanGenerationCatalog1458.MaxOceanCaveTreasure)
+            treasureAnchors.Clear();
+        int anchorSlot = treasureAnchors.Count;
+        treasureAnchors.Add(default);
 
         double centerX = startX;
         double centerY = startY;
@@ -750,6 +703,10 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                 remaining -= 1d;
             }
 
+            // The anchor is rewritten on every treasure-bearing step, so the last one wins.
+            if (treasureSection)
+                treasureAnchors[anchorSlot] = new WorldGenerationPoint((int)centerX, (int)centerY);
+
             int left = Math.Max(1, (int)(centerX - radius * 3d));
             int right = Math.Min(grid.Width - 1, (int)(centerX + radius * 3d));
             int top = Math.Max(1, (int)(centerY - radius * 3d));
@@ -769,11 +726,9 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
 
                     if (treasureSection && distance < radius * 0.5d + 1d)
                     {
+                        // Only identity and activity change here; frames, shape, wall and liquid are left alone.
                         tile.Type = innerCaveType;
                         tile.Flags &= ~WorldTileFlags.Active;
-                        tile.FrameX = -1;
-                        tile.FrameY = -1;
-                        tile.Shape = 0;
                     }
                     else if (distance < radius * 1.5d + 1d && tile.Type != innerCaveType)
                     {
@@ -797,7 +752,8 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                         {
                             if (tile.LiquidAmount == byte.MaxValue)
                                 tile.Wall = 0;
-                            SetType(ref tile, sandType);
+                            tile.Type = sandType;
+                            tile.Flags |= WorldTileFlags.Active;
 
                             if (x == (int)centerX && !placedSideShelf)
                             {
@@ -828,8 +784,10 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
 
                                 for (int sx = shelfLeft; sx <= shelfRight; sx++)
                                 {
-                                    if ((uint)sx >= (uint)grid.Width)
-                                        continue;
+                                    // The source writes the shelf column and both neighbours without a bounds test.
+                                    // An ocean cave that reaches a map edge is a generation fault, not a clamp.
+                                    if (sx - 1 < 0 || sx + 1 >= grid.Width)
+                                        throw new InvalidOperationException("Ocean cave shelf left the world.");
                                     for (int sy = y; sy < y + shelfHeight && sy < grid.Height; sy++)
                                     {
                                         if (IsBadOceanCaveTile1458(grid.At(sx, sy)))
@@ -837,30 +795,39 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                                         ref WorldTile shelf = ref grid.At(sx, sy);
                                         if (sy > y + hardHeight)
                                         {
-                                            if (shelf.IsActive && shelf.Type != sandType)
+                                            if (DungeonGenerationTiles1458.SolidTile(shelf) && shelf.Type != sandType)
                                                 break;
-                                            SetType(ref shelf, hardenedSandType);
+                                            shelf.Type = hardenedSandType;
                                         }
                                         else
                                         {
-                                            SetType(ref shelf, sandType);
+                                            shelf.Type = sandType;
                                         }
 
-                                        if (random.Next(3) == 0 && sx > 0)
-                                            SetType(ref grid.At(sx - 1, sy), sandType);
-                                        if (random.Next(3) == 0 && sx + 1 < grid.Width)
-                                            SetType(ref grid.At(sx + 1, sy), sandType);
+                                        shelf.Flags |= WorldTileFlags.Active;
+                                        if (random.Next(3) == 0)
+                                        {
+                                            ref WorldTile previous = ref grid.At(sx - 1, sy);
+                                            previous.Type = sandType;
+                                            previous.Flags |= WorldTileFlags.Active;
+                                        }
+
+                                        if (random.Next(3) == 0)
+                                        {
+                                            ref WorldTile following = ref grid.At(sx + 1, sy);
+                                            following.Type = sandType;
+                                            following.Flags |= WorldTileFlags.Active;
+                                        }
                                     }
                                 }
                             }
                         }
                     }
 
-                    if (distance < radius * 1.3d + 1d && y > startY - 10 && !tile.IsActive)
+                    if (distance < radius * 1.3d + 1d && y > startY - 10)
                     {
-                        // Terraria temporarily permits liquid bytes inside solids and relies on its later liquid
-                        // settling implementation to normalize them. TerraRuntime's compacting settle pass never
-                        // visits liquid trapped inside active solids, so store the post-settle semantic state here.
+                        // Terraria fills these cells whether or not they ended up solid and relies on its later
+                        // liquid settling to normalize them.
                         tile.LiquidAmount = byte.MaxValue;
                         tile.LiquidKind = WorldLiquidKind.Water;
                     }
@@ -873,11 +840,11 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
                         for (int sx = x - shaftHalfWidth; sx <= x + shaftHalfWidth; sx++)
                         {
                             if ((uint)sx >= (uint)grid.Width)
-                                continue;
+                                throw new InvalidOperationException("Ocean cave water shaft left the world.");
                             for (int sy = y; sy < y + shaftHeight && sy < grid.Height; sy++)
                             {
                                 ref WorldTile shaft = ref grid.At(sx, sy);
-                                if (IsBadOceanCaveTile1458(shaft) || shaft.IsActive)
+                                if (IsBadOceanCaveTile1458(shaft))
                                     continue;
                                 shaft.LiquidAmount = byte.MaxValue;
                                 shaft.LiquidKind = WorldLiquidKind.Water;
