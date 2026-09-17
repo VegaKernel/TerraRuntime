@@ -71,6 +71,7 @@ public sealed class Workspace :
     private WorldGenerationPoint[] vanillaOceanCaveTreasure = [];
     private WorldTileRegion? vanillaShimmerStructure;
     private WorldGenerationPoint[] vanillaPyramidAnchors = [];
+    private Vanilla.VanillaOasisAnchor1458[] vanillaOasisAnchors = [];
     private int[]? vanillaTunnelColumns;
     private int[] vanillaLakeColumns = [];
     private VanillaSnowRow1458[]? vanillaSnowRows;
@@ -115,6 +116,9 @@ public sealed class Workspace :
     internal WorldTileRegion? VanillaShimmerStructure => vanillaShimmerStructure;
     /// <summary>Anchors the Pyramids pass accepted, in retained candidate order.</summary>
     internal ReadOnlySpan<WorldGenerationPoint> VanillaPyramidAnchors => vanillaPyramidAnchors;
+
+    /// <summary>Source-retained <c>GenVars.oasisPosition/oasisWidth</c> entries in placement order.</summary>
+    internal ReadOnlySpan<Vanilla.VanillaOasisAnchor1458> VanillaOasisAnchors => vanillaOasisAnchors;
     internal ReadOnlySpan<int> VanillaTunnelColumns => vanillaTunnelColumns ??
         throw new InvalidOperationException("Surface tunnel metadata has not been generated.");
     internal ReadOnlySpan<int> VanillaLakeColumns => vanillaLakeColumns;
@@ -167,6 +171,21 @@ public sealed class Workspace :
         }
 
         vanillaPyramidAnchors = copy;
+    }
+    internal void SetVanillaOasisAnchors(IReadOnlyList<Vanilla.VanillaOasisAnchor1458> anchors)
+    {
+        ArgumentNullException.ThrowIfNull(anchors);
+        if (anchors.Count > Vanilla.OasisBasin1458.MaximumRetainedOasis1458)
+            throw new ArgumentOutOfRangeException(nameof(anchors));
+        var copy = new Vanilla.VanillaOasisAnchor1458[anchors.Count];
+        for (int i = 0; i < copy.Length; i++)
+        {
+            copy[i] = anchors[i];
+            if ((uint)copy[i].X >= (uint)WidthTiles || (uint)copy[i].Y >= (uint)HeightTiles || copy[i].Width <= 0)
+                throw new ArgumentOutOfRangeException(nameof(anchors));
+        }
+
+        vanillaOasisAnchors = copy;
     }
     internal void SetVanillaShimmerStructure(WorldTileRegion region)
     {

@@ -131,7 +131,11 @@ internal sealed class PostSettleState1458
     public double WorldSurface { get; private set; }
     public double RockLayer { get; private set; }
     public int UnderworldTop { get; private set; }
-    public List<WorldGenerationPoint> OasisCenters { get; } = [];
+    /// <summary>
+    /// Source-retained <c>GenVars.oasisPosition/oasisWidth</c> entries in placement order. Later desert passes
+    /// read the centre and half-width, so this is the pass's published output and not a diagnostic.
+    /// </summary>
+    public List<VanillaOasisAnchor1458> OasisAnchors { get; } = [];
 
     public void EnsureInitialized(IWorldGenerationContext context, Workspace workspace)
     {
@@ -209,7 +213,7 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
                 ApplyRemoveWaterFromSand(context, grid);
                 break;
             case PostSettleStage1458.Oasis:
-                ApplyOasis(context, grid, random);
+                ApplyOasis(context, workspace);
                 break;
             case PostSettleStage1458.ShellPiles:
                 ApplyShellPiles(context, grid, random);
@@ -270,81 +274,55 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Removing surface liquid above sand ({drained} liquid units)");
     }
 
-    private void ApplyOasis(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    /// <summary>
+    /// The registered TerrariaServer 1.4.5.8 <c>GenPassNameID.Oasis</c> pass. It draws
+    /// <c>maxTilesX / 2100 + genRand.Next(2)</c> basins and, for each, retries up to <c>maxTilesX * 2</c> times
+    /// with a column in <c>[beachDistance + 300, maxTilesX - (beachDistance + 300))</c> and a row in
+    /// <c>[100, worldSurface)</c> until <c>WorldGen.PlaceOasis</c> accepts one.
+    /// </summary>
+    /// <remarks>
+    /// Each basin gets its own fresh attempt budget, and an exhausted budget simply produces one fewer oasis -
+    /// the source does not widen the search or fall back to a forced placement. Retention stops at the source's
+    /// twenty entries while placement continues, so the count of shaped basins and the count of retained anchors
+    /// are not necessarily the same number.
+    /// </remarks>
+    private void ApplyOasis(IWorldGenerationContext context, Workspace workspace)
     {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        state.OasisCenters.Clear();
-        int target = grid.Width switch
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Oasis requires shared UnifiedRandom semantics.");
+        int width = workspace.WidthTiles;
+        var basin = new OasisBasin1458(
+            workspace.TileStore,
+            random,
+            state.WorldSurface,
+            context.CancellationToken);
+
+        state.OasisAnchors.Clear();
+        int count = width / 2100;
+        count += random.Next(2);
+        int margin = DungeonGenerationCatalog1458.BeachDistance + 300;
+        int placed = 0;
+        for (int index = 0; index < count; index++)
         {
-            <= 4200 => 1,
-            <= 6400 => 2,
-            _ => 2
-        };
-        int attempts = target * 180;
-
-        for (int attempt = 0; attempt < attempts && state.OasisCenters.Count < target; attempt++)
-        {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(bootstrap.LeftBeachEnd + 260, bootstrap.RightBeachStart - 260);
-            if (Math.Abs(x - grid.Width / 2) < 360 || Math.Abs(x - bootstrap.JungleOriginX) < Math.Max(420, grid.Width / 10))
-                continue;
-            if (x > bootstrap.SnowOriginLeft - 180 && x < bootstrap.SnowOriginRight + 180)
-                continue;
-            if (Math.Abs(x - bootstrap.DungeonLocation) < 280)
-                continue;
-
-            int surface = grid.FindFirstActiveY(x, 25, Math.Min(grid.Height, (int)state.RockLayer));
-            if (surface <= 25 || surface >= grid.Height - 20)
-                continue;
-            if (!IsSandFamily(grid.At(x, surface).Type))
-                continue;
-
-            int rx = random.Next(22, 38);
-            int ry = random.Next(5, 9);
-            if (!HasSandSurfaceSpan(grid, x, surface, rx + 5))
-                continue;
-
-            CarveEllipse(grid, x, surface + 2, rx, ry);
-            FillLiquidEllipse(grid, x, surface + 4, Math.Max(6, rx - 3), Math.Max(2, ry - 2), WorldLiquidKind.Water);
-            ShapeOasisBanks(grid, x, surface, rx + 6, ry + 5);
-            state.OasisCenters.Add(new WorldGenerationPoint(x, surface));
-        }
-
-        context.ReportProgress(1d, $"Generating oasis basins ({state.OasisCenters.Count}/{target})");
-    }
-
-    private static bool HasSandSurfaceSpan(RuntimeGrid grid, int centerX, int surface, int radius)
-    {
-        int matches = 0;
-        int samples = 0;
-        for (int x = Math.Max(1, centerX - radius); x <= Math.Min(grid.Width - 2, centerX + radius); x += 3)
-        {
-            int y = grid.FindFirstActiveY(x, Math.Max(1, surface - 12), Math.Min(grid.Height, surface + 18));
-            if (y >= grid.Height)
-                continue;
-            samples++;
-            if (IsSandFamily(grid.At(x, y).Type))
-                matches++;
-        }
-        return samples > 0 && matches * 100 / samples >= 70;
-    }
-
-    private static void ShapeOasisBanks(RuntimeGrid grid, int centerX, int surface, int radiusX, int radiusY)
-    {
-        for (int dx = -radiusX; dx <= radiusX; dx++)
-        {
-            int x = centerX + dx;
-            if (!grid.Contains(x, surface))
-                continue;
-            double t = Math.Abs(dx) / (double)Math.Max(1, radiusX);
-            int bankY = surface + (int)Math.Round((1d - t) * Math.Max(2, radiusY / 2d));
-            for (int y = bankY; y < bankY + 3 && grid.Contains(x, y); y++)
+            int remaining = width * 2;
+            while (remaining > 0)
             {
-                ref WorldTile tile = ref grid.At(x, y);
-                if (!tile.IsActive)
-                    SetType(ref tile, Sand);
+                context.CancellationToken.ThrowIfCancellationRequested();
+                remaining--;
+                int x = random.Next(margin, width - margin);
+                int y = random.Next(100, (int)state.WorldSurface);
+                if (basin.TryPlace(x, y, state.OasisAnchors) is not VanillaOasisAnchor1458 anchor)
+                    continue;
+
+                placed++;
+                if (state.OasisAnchors.Count < OasisBasin1458.MaximumRetainedOasis1458)
+                    state.OasisAnchors.Add(anchor);
+                remaining = -1;
             }
         }
+
+        workspace.SetVanillaOasisAnchors(state.OasisAnchors);
+        context.ReportProgress(1d, $"Generating oasis basins ({placed}/{count})");
     }
 
     private void ApplyShellPiles(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)

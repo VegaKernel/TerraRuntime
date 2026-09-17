@@ -1,5 +1,25 @@
 # Work state
 
+## Vanilla worldgen stage55 Oasis: closed against the source method - 2026-09-18
+
+The runtime's oasis builder was invented end to end: a hardcoded one-or-two basin target, its own distance gates against jungle/snow/dungeon, a Next(22,38) by Next(5,9) ellipse and a "70 percent of sampled surface columns are sand" heuristic. Replaced with WorldGen.PlaceOasis and the registered pass's own draw shape (count = maxTilesX / 2100 + Next(2); per basin up to maxTilesX * 2 attempts at x in [beachDistance + 300, maxTilesX - (beachDistance + 300)) and y in [100, worldSurface)).
+
+New files: src/TerraRuntime.WorldGeneration/Generation/Vanilla/OasisBasin1458.cs (VanillaOasisAnchor1458 + OasisBasin1458), tests/TerraRuntime.Tests/OasisBasin1458Tests.cs, .cache/oasis-probe. Workspace publishes SetVanillaOasisAnchors / VanillaOasisAnchors; PostSettleState1458.OasisCenters became OasisAnchors and now carries the source half-width too. Nothing consumes the anchors yet - later desert vegetation is the intended consumer.
+
+Non-obvious source details that cost time, do not "fix" any of them:
+- The acceptance scan has TWO reaches. Any solid cell in the whole halfWidth+50 box must be Sand; liquid, walls, Sandstone (397) and Sandstone Brick (151) only reject inside the tighter halfWidth by oasisHeight/2 box. Liquid on an ACTIVE cell is not checked at all.
+- Two branches are dead in 1.4.5.8 and must stay dead. The per-column ceiling/floor test is guarded by `i > X - num2/2 && i < X - num2/2`, which no column satisfies. The shelf pass's Sand-edge flag is assigned true immediately before it is tested. Fixtures 11 and 12 exist specifically to pin both as dead; without them a negative control that makes the per-column branch live passes.
+- The rim jitter `Next(45,61)/2 * (0.53 + NextDouble() * 0.04)` is drawn for EVERY cell of the bounding box, inside the basin or not, so the RNG position depends on the box size, not on the basin area.
+- Tile.lava(false) is `bTileHeader &= 223`, a single-bit clear: lava becomes water but shimmer becomes HONEY. Not a reset to water. Fixture 13 pins this.
+- The post-acceptance descent keeps whatever row it reached after at most twenty steps, so a cavity under one flank shifts the whole basin down rather than refusing the site (fixture 9, retained Y 254 instead of 250).
+
+Evidence: 30 official PlaceOasis comparisons (acceptance, retained entry, next shared RNG, and a SHA-256 over every field of every cell in a 401x351 rectangle). Four negative controls fail 6/2/4/2 of the 30. Aggregate cross-check: an official-server Large seed-1458 world has 17 sand-floored surface pools totalling 31,445 water cells; TerraRuntime now produces 18 totalling 31,568. The official reference world is at scratchpad/official-worlds/ref1458.wld - generate it with `sleep 1200 | TerrariaServer.exe -config <cfg>`, because the server quits mid-generation when stdin is at EOF.
+
+Separate finding from that same comparison, NOT investigated: gem trees (types 583..589) in the official world are spread across the whole map, x 27..8347 and y 603..2189, 1185 tiles. TerraRuntime has only 70, all inside the shimmer area. So something other than the Shimmer pass plants gem trees in vanilla and the runtime has no owner for it.
+
+Test-quality fix in the same change: TerrariaSocketConnectionTests.Keeps_connection_alive_after_handshake_when_idle_timeout_is_infinite asserted a 150 ms wall-clock window against a 50 ms handshake deadline, so under full-suite parallel load the handshake legitimately expired before the Hello was decoded and the test failed for the wrong reason. It now waits for the sink to observe the Hello and uses a handshake deadline that does not race the scheduler. The deadline itself still has its own dedicated test.
+
+
 ## FIXED: live liquid simulation never settled on Large worlds - 2026-09-18
 
 User reported the client's displayed ping climbing without bound (reached 280000 ms), Shellphone teleport failing, and a rejoin refused with "Lost connection"; client packet stats showed packet 48 LiquidUpdate received 48,576 times. Two independent defects, both now closed. Do not re-open either from the old notes - several of those conclusions were wrong and are corrected below.

@@ -75,8 +75,11 @@ public sealed class TerrariaSocketConnectionTests
 
         var outbound = new TerrariaConnectionOutboundQueue(new OutboundQueueOptions(4, 64, 32));
         var sink = new HelloCountingSink();
+        // The subject here is the infinite idle timeout, not the handshake deadline, which has its own test. A
+        // deadline tight enough to race the scheduler under parallel load would expire before the Hello frame is
+        // even decoded and stop the connection for the wrong reason.
         var policy = new TerrariaConnectionPolicyOptions(
-            handshakeTimeout: TimeSpan.FromMilliseconds(50),
+            handshakeTimeout: TimeSpan.FromSeconds(30),
             idleTimeout: Timeout.InfiniteTimeSpan);
 
         Task<TerrariaSocketRunResult> run = TerrariaSocketConnection.RunAsync(
@@ -90,9 +93,13 @@ public sealed class TerrariaSocketConnectionTests
         byte[] hello = CurrentHelloPacket();
         Assert.Equal(hello.Length, await client.SendAsync(hello, SocketFlags.None, cancellationToken));
 
+        // Wait for the handshake to actually be observed rather than assuming a wall-clock budget for it.
+        while (sink.HelloCount == 0 && !run.IsCompleted)
+            await Task.Delay(TimeSpan.FromMilliseconds(10), cancellationToken);
+
+        Assert.Equal(1, sink.HelloCount);
         await Task.Delay(TimeSpan.FromMilliseconds(150), cancellationToken);
         Assert.False(run.IsCompleted);
-        Assert.Equal(1, sink.HelloCount);
 
         client.Shutdown(SocketShutdown.Send);
         TerrariaSocketRunResult result = await run;
