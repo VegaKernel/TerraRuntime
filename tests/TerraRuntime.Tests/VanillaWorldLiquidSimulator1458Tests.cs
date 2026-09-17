@@ -982,6 +982,142 @@ public sealed class VanillaWorldLiquidSimulator1458Tests
         return tiles;
     }
 
+    [Fact]
+    public void Three_cell_level_of_exactly_254_is_promoted_to_full_on_the_source_random_draw()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(24, 24));
+        // A sealed three-wide pocket whose water averages to exactly 254.
+        SetSolid(tiles, 9, 10);
+        SetSolid(tiles, 13, 10);
+        SetWater(tiles, 10, 10, 254);
+        SetWater(tiles, 11, 10, 254);
+        SetWater(tiles, 12, 10, 254);
+        for (int x = 9; x <= 13; x++)
+            SetSolid(tiles, x, 11);
+        tiles.LiquidUpdates.Clear();
+        Assert.True(tiles.LiquidUpdates.TryEnqueue(11, 10));
+
+        var simulator = new VanillaWorldLiquidSimulator1458(
+            tiles,
+            workBudgetPerTick: 1,
+            discoveryBudgetPerTick: 1,
+            sideEffects: null,
+            random: new FixedLiquidRandom1458(promote: true));
+        Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[
+            VanillaWorldLiquidSimulator1458.MaximumChangesPerProcessedCell];
+
+        _ = simulator.Tick(activeServerPlayersInLiquidWindow: 0, changes);
+
+        // Liquid.Update: if (num == 254f && WorldGen.genRand.Next(30) == 0) num = 255f.
+        for (int x = 10; x <= 12; x++)
+            Assert.Equal(byte.MaxValue, tiles.Get(x, 10).LiquidAmount);
+    }
+
+    [Fact]
+    public void Three_cell_level_of_exactly_254_stays_when_the_source_random_draw_declines()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(24, 24));
+        SetSolid(tiles, 9, 10);
+        SetSolid(tiles, 13, 10);
+        SetWater(tiles, 10, 10, 254);
+        SetWater(tiles, 11, 10, 254);
+        SetWater(tiles, 12, 10, byte.MaxValue);
+        for (int x = 9; x <= 13; x++)
+            SetSolid(tiles, x, 11);
+        tiles.LiquidUpdates.Clear();
+        Assert.True(tiles.LiquidUpdates.TryEnqueue(11, 10));
+
+        var simulator = new VanillaWorldLiquidSimulator1458(
+            tiles,
+            workBudgetPerTick: 1,
+            discoveryBudgetPerTick: 1,
+            sideEffects: null,
+            random: new FixedLiquidRandom1458(promote: false));
+        Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[
+            VanillaWorldLiquidSimulator1458.MaximumChangesPerProcessedCell];
+
+        _ = simulator.Tick(activeServerPlayersInLiquidWindow: 0, changes);
+
+        // (254 + 254 + 255) / 3 rounds to 254, and the declined draw leaves it there.
+        for (int x = 10; x <= 12; x++)
+            Assert.Equal((byte)254, tiles.Get(x, 10).LiquidAmount);
+    }
+
+    [Fact]
+    public void Two_cell_leveling_writes_a_settled_neighbour_without_waking_it()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(24, 24));
+        // A sealed pair: the left cell has already been retired at a full 255, the right one holds 254.
+        SetSolid(tiles, 10, 10);
+        SetSolid(tiles, 13, 10);
+        SetWater(tiles, 11, 10, byte.MaxValue);
+        SetWater(tiles, 12, 10, 254);
+        for (int x = 10; x <= 13; x++)
+            SetSolid(tiles, x, 11);
+        tiles.LiquidUpdates.Clear();
+        Assert.True(tiles.LiquidUpdates.TryEnqueue(12, 10));
+
+        var simulator = new VanillaWorldLiquidSimulator1458(
+            tiles,
+            workBudgetPerTick: 1,
+            discoveryBudgetPerTick: 1);
+        Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[
+            VanillaWorldLiquidSimulator1458.MaximumChangesPerProcessedCell];
+
+        _ = simulator.Tick(activeServerPlayersInLiquidWindow: 0, changes);
+
+        // Liquid.Update's two-cell branch writes the neighbour on its own difference but wakes it only when the
+        // source's pre-update amount differs from the new level. Here the source already holds that level, so the
+        // neighbour is corrected to 254 and stays out of the work set - otherwise the pair oscillates forever.
+        Assert.Equal((byte)254, tiles.Get(11, 10).LiquidAmount);
+        Assert.Equal((byte)254, tiles.Get(12, 10).LiquidAmount);
+        Assert.False(tiles.LiquidUpdates.IsQueued(11, 10));
+        Assert.False(tiles.LiquidUpdates.IsBuffered(11, 10));
+    }
+
+    [Fact]
+    public void Horizontal_leveling_never_wakes_the_rows_above_or_below()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(24, 24));
+        SetWater(tiles, 12, 10, byte.MaxValue);
+        SetSolid(tiles, 12, 11);
+        SetSolid(tiles, 11, 11);
+        SetSolid(tiles, 13, 11);
+        tiles.LiquidUpdates.Clear();
+        Assert.True(tiles.LiquidUpdates.TryEnqueue(12, 10));
+
+        var simulator = new VanillaWorldLiquidSimulator1458(
+            tiles,
+            workBudgetPerTick: 1,
+            discoveryBudgetPerTick: 1);
+        Span<WorldLiquidSimulationChange> changes = stackalloc WorldLiquidSimulationChange[
+            VanillaWorldLiquidSimulator1458.MaximumChangesPerProcessedCell];
+
+        _ = simulator.Tick(activeServerPlayersInLiquidWindow: 0, changes);
+
+        // Both neighbours took liquid, so horizontal averaging happened.
+        Assert.Equal((byte)85, tiles.Get(11, 10).LiquidAmount);
+        Assert.Equal((byte)85, tiles.Get(13, 10).LiquidAmount);
+
+        // The only vertical wake-ups in Liquid.Update belong to the downward-flow step and to the kill tail's
+        // own AddWater(x, y - 1), never to horizontal averaging. The source column above is therefore woken and
+        // the levelled neighbours' columns are not. Waking a cross around every written cell instead makes work
+        // faster than the kill lifecycle retires it.
+        Assert.True(tiles.LiquidUpdates.IsBuffered(12, 9));
+        foreach (int x in new[] { 11, 13 })
+        {
+            Assert.False(tiles.LiquidUpdates.IsQueued(x, 9));
+            Assert.False(tiles.LiquidUpdates.IsBuffered(x, 9));
+            Assert.False(tiles.LiquidUpdates.IsQueued(x, 11));
+            Assert.False(tiles.LiquidUpdates.IsBuffered(x, 11));
+        }
+    }
+
+    private sealed class FixedLiquidRandom1458(bool promote) : IVanillaLiquidRandom1458
+    {
+        public bool NextFullFromNearlyFullLevel() => promote;
+    }
+
     private static void SetWater(WorldTileStore tiles, int x, int y, byte amount) =>
         SetLiquid(tiles, x, y, amount, WorldLiquidKind.Water);
 

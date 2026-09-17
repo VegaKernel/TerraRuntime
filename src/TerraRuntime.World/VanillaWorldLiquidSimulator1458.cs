@@ -42,6 +42,7 @@ public sealed class VanillaWorldLiquidSimulator1458
     private readonly WorldTileStore tiles;
     private readonly VanillaWorldTileMutationService tileMutations;
     private readonly IVanillaLiquidTileSideEffectSink1458 sideEffects;
+    private readonly IVanillaLiquidRandom1458 random;
     private readonly int workBudget;
     private readonly int discoveryBudget;
     private int discoveryCursor;
@@ -52,11 +53,13 @@ public sealed class VanillaWorldLiquidSimulator1458
         WorldTileStore tiles,
         int workBudgetPerTick = DefaultWorkBudgetPerTick,
         int discoveryBudgetPerTick = DefaultDiscoveryBudgetPerTick,
-        IVanillaLiquidTileSideEffectSink1458? sideEffects = null)
+        IVanillaLiquidTileSideEffectSink1458? sideEffects = null,
+        IVanillaLiquidRandom1458? random = null)
     {
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
         tileMutations = new VanillaWorldTileMutationService(tiles);
         this.sideEffects = sideEffects ?? new LocalLiquidTileSideEffectSink1458(tileMutations, tiles);
+        this.random = random ?? VanillaSharedLiquidRandom1458.Instance;
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(workBudgetPerTick);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(discoveryBudgetPerTick);
         workBudget = workBudgetPerTick;
@@ -667,7 +670,8 @@ public sealed class VanillaWorldLiquidSimulator1458
             return;
         }
 
-        _ = tiles.LiquidUpdates.TryEnqueue(x, y);
+        if (tiles.LiquidUpdates.TryEnqueue(x, y))
+            tiles.LiquidUpdates.ClearSkipNextUpdate(x, y);
     }
 
     private bool IsQueuedForLoading1458(int x, int y) =>
@@ -706,10 +710,30 @@ public sealed class VanillaWorldLiquidSimulator1458
         while (processed < processCount && tiles.LiquidUpdates.TryDequeue(out WorldLiquidUpdate update))
         {
             processed++;
-            WorldLiquidUpdate effectiveUpdate = mode == VanillaLiquidUpdateMode1458.QuickSettle
-                ? update with { Delay = HoneyFlowDelayUpdates1458 }
-                : update;
-            RelaxCell(in effectiveUpdate, stableKillUpdates, mode, changes, ref changed);
+            if (mode == VanillaLiquidUpdateMode1458.QuickSettle)
+            {
+                // Liquid.UpdateLiquid's quick-fall loop forces the delay, always updates, and clears the skip
+                // flag afterwards, so a settling world never passes over a cell.
+                WorldLiquidUpdate forced = update with { Delay = HoneyFlowDelayUpdates1458 };
+                RelaxCell(in forced, stableKillUpdates, mode, changes, ref changed);
+                tiles.LiquidUpdates.ClearSkipNextUpdate(update.X, update.Y);
+                continue;
+            }
+
+            // The ordinary loop passes over a cell marked by a downward transfer and unmarks it instead of
+            // updating it. The array entry itself is untouched, so the delay and kill state carry over intact.
+            if (tiles.LiquidUpdates.ConsumeSkipNextUpdate(update.X, update.Y))
+            {
+                if (!tiles.LiquidUpdates.TryEnqueue(update.X, update.Y, update.Delay, update.Kill))
+                {
+                    throw new InvalidOperationException(
+                        "A skipped liquid cell could not be returned to its verified vanilla work state.");
+                }
+
+                continue;
+            }
+
+            RelaxCell(in update, stableKillUpdates, mode, changes, ref changed);
         }
 
         return changed;
@@ -742,7 +766,10 @@ public sealed class VanillaWorldLiquidSimulator1458
         while (promoted < processBudget && PendingCount < MaximumPendingCells &&
                tiles.LiquidUpdates.TryDequeueBuffered(out int x, out int y))
         {
-            _ = tiles.LiquidUpdates.TryEnqueue(x, y);
+            // A successful Liquid.AddWater takes a fresh array slot with kill and delay at zero and clears the
+            // cell's skip flag; the buffer promotion in Liquid.UpdateLiquid goes through exactly that path.
+            if (tiles.LiquidUpdates.TryEnqueue(x, y))
+                tiles.LiquidUpdates.ClearSkipNextUpdate(x, y);
             promoted++;
         }
     }
@@ -769,13 +796,12 @@ public sealed class VanillaWorldLiquidSimulator1458
             return;
 
         // TerrariaServer 1.4.5.8 Liquid.Update runs LavaCheck/HoneyCheck/ShimmerCheck on the
-        // corresponding source cell before the lava/honey delay gates. Water instead wakes adjacent
-        // foreign liquid cells so their own LiquidCheck owns the merge location and material.
-        if (source.LiquidKind == WorldLiquidKind.Water)
-        {
-            WakeForeignLiquidNeighbours1458(x, y);
-        }
-        else
+        // corresponding source cell before the lava/honey delay gates. A cell that is not of that material
+        // instead wakes adjacent cells that are, so their own LiquidCheck owns the merge location and material.
+        // The source nests those tests - lava, then honey, then shimmer - so a honey cell still wakes adjacent
+        // lava first, and a shimmer cell wakes adjacent lava and honey, before running its own check.
+        WakeForeignLiquidNeighbours1458(x, y, source.LiquidKind);
+        if (source.LiquidKind != WorldLiquidKind.Water)
         {
             ApplyForeignLiquidReaction1458(x, y, source.LiquidKind, mode, changes, ref changed);
             source = tiles.Get(x, y);
@@ -902,14 +928,25 @@ public sealed class VanillaWorldLiquidSimulator1458
     }
 
     /// <summary>
-    /// Mirrors the water-side scheduling portion of TerrariaServer 1.4.5.8 <c>Liquid.Update</c>.
-    /// Water does not run <c>LiquidCheck</c> on itself; it schedules adjacent lava, honey and shimmer
-    /// cells in that source order and lets the foreign-liquid update choose the merge cell.
+    /// Mirrors the nested material dispatch of TerrariaServer 1.4.5.8 <c>Liquid.Update</c>. A cell only runs its
+    /// own <c>LiquidCheck</c>; for each material it is not, and in the source's lava/honey/shimmer order, it
+    /// instead schedules the adjacent cells that are and lets their update choose the merge cell. The nesting
+    /// stops at the cell's own material, so lava wakes nothing, honey wakes adjacent lava, shimmer wakes
+    /// adjacent lava and honey, and water wakes all three.
     /// </summary>
-    private void WakeForeignLiquidNeighbours1458(int x, int y)
+    private void WakeForeignLiquidNeighbours1458(int x, int y, WorldLiquidKind sourceKind)
     {
+        if (sourceKind == WorldLiquidKind.Lava)
+            return;
+
         WakeForeignKind(x, y, WorldLiquidKind.Lava);
+        if (sourceKind == WorldLiquidKind.Honey)
+            return;
+
         WakeForeignKind(x, y, WorldLiquidKind.Honey);
+        if (sourceKind == WorldLiquidKind.Shimmer)
+            return;
+
         WakeForeignKind(x, y, WorldLiquidKind.Shimmer);
     }
 
@@ -1416,6 +1453,10 @@ public sealed class VanillaWorldLiquidSimulator1458
         SetTile(x, y + 1, in below);
         Record(x, y + 1, in below, changes, ref changed);
 
+        // Vanilla marks both ends of the transfer so the ordinary update loop passes over each of them once.
+        tiles.LiquidUpdates.SetSkipNextUpdate(x, y + 1);
+        tiles.LiquidUpdates.SetSkipNextUpdate(x, y);
+
         // Vanilla always schedules the lower cell. It additionally wakes the horizontal neighbours
         // when the source actually lost liquid; the 255->254 exception deliberately skips that wake-up.
         TryBuffer(x, y + 1);
@@ -1557,27 +1598,58 @@ public sealed class VanillaWorldLiquidSimulator1458
             total += tiles.Get(xs[i], y).LiquidAmount;
 
         byte level = checked((byte)Math.Round(total / (double)count));
-        bool preserveSourceColumn = false;
-        if (count is 5 or 7 && y > 0 && tiles.Get(x, y - 1).LiquidAmount > 0)
-        {
-            preserveSourceColumn = true;
-            for (int i = 0; i < count; i++)
-            {
-                if (xs[i] == x)
-                    continue;
-                if (tiles.Get(xs[i], y).LiquidAmount != level)
-                {
-                    preserveSourceColumn = false;
-                    break;
-                }
-            }
-        }
 
+        // Liquid.Update promotes a three-cell level of exactly 254 to a full 255 once in thirty draws. It is the
+        // only exit from a sealed pocket that averages to 254, so the branch is reproduced exactly, including
+        // its restriction to the three-cell window.
+        if (count == 3 && level == 254 && random.NextFullFromNearlyFullLevel())
+            level = byte.MaxValue;
+
+        // Each averaging width in Liquid.Update carries its own write and wake-up conditions, and the widths do
+        // not agree. The seven- and five-cell branches write a neighbour that differs and wake it, then wake
+        // every neighbour a second time when the source's own pre-update amount differs from the new level. The
+        // four-cell branches fold both terms into a single condition that also gates the write. The three-cell
+        // branch writes and wakes strictly on the neighbour's own difference, with no source term at all. The
+        // two-cell branches write on the neighbour's difference but wake only on the source's, which is what
+        // lets a settled pair stay settled: a retired 255 pushed back down to a 254 average is written without
+        // being revived. Waking unconditionally instead turns that pair into a permanent limit cycle.
+        bool sourceDiffers = source.LiquidAmount != level;
+        int stableNeighbours = 0;
         for (int i = 0; i < count; i++)
         {
-            if (preserveSourceColumn && xs[i] == x)
+            int cellX = xs[i];
+            if (cellX == x)
                 continue;
-            SetLeveledCell(xs[i], y, level, source.LiquidKind, changes, ref changed);
+
+            bool neighbourDiffers = tiles.Get(cellX, y).LiquidAmount != level;
+            if (!neighbourDiffers)
+                stableNeighbours++;
+
+            bool write = count == 4 ? neighbourDiffers || sourceDiffers : neighbourDiffers;
+            if (write)
+                WriteLeveledCell(cellX, y, level, source.LiquidKind, changes, ref changed);
+
+            bool wake = count switch
+            {
+                2 => sourceDiffers,
+                3 => neighbourDiffers,
+                _ => neighbourDiffers || sourceDiffers
+            };
+            if (wake)
+                TryBuffer(cellX, y);
+        }
+
+        // The wide branches leave the source alone when every neighbour was already level and the cell above
+        // still holds liquid, so a column being fed from above is not flattened by its own averaging step.
+        bool preserveSourceColumn = count is 5 or 7 &&
+            stableNeighbours == count - 1 &&
+            y > 0 &&
+            tiles.Get(x, y - 1).LiquidAmount > 0;
+        if (!preserveSourceColumn)
+        {
+            // Vanilla assigns the source directly. The cell is the one currently being updated, so its own
+            // re-scheduling belongs to the kill tail and never to a wake-up from here.
+            WriteLeveledCell(x, y, level, source.LiquidKind, changes, ref changed);
         }
     }
 
@@ -1594,7 +1666,11 @@ public sealed class VanillaWorldLiquidSimulator1458
         return !requireExistingLiquid || tile.LiquidAmount > 0;
     }
 
-    private void SetLeveledCell(
+    /// <summary>
+    /// Commits one horizontally levelled cell. Scheduling is deliberately not part of this step: each averaging
+    /// width in <c>Liquid.Update</c> decides separately whether the cell it wrote is also woken.
+    /// </summary>
+    private void WriteLeveledCell(
         int x,
         int y,
         byte amount,
@@ -1611,19 +1687,6 @@ public sealed class VanillaWorldLiquidSimulator1458
         tile.LiquidKind = normalizedKind;
         SetTile(x, y, in tile);
         Record(x, y, in tile, changes, ref changed);
-        BufferAffected(x, y);
-    }
-
-    private void BufferAffected(int x, int y)
-    {
-        if (PendingCount >= MaximumPendingCells)
-            return;
-
-        TryBuffer(x, y);
-        TryBuffer(x - 1, y);
-        TryBuffer(x + 1, y);
-        TryBuffer(x, y - 1);
-        TryBuffer(x, y + 1);
     }
 
     private void TryBuffer(int x, int y)

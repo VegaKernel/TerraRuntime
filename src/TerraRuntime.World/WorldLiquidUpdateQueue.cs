@@ -15,6 +15,7 @@ public sealed class WorldLiquidUpdateQueue
     private Queue<int> _buffered = new();
     private BitArray? _activeMembership;
     private BitArray? _bufferMembership;
+    private BitArray? _skipNextUpdate;
 
     public WorldLiquidUpdateQueue(WorldDimensions dimensions)
     {
@@ -68,6 +69,48 @@ public sealed class WorldLiquidUpdateQueue
         return true;
     }
 
+    /// <summary>
+    /// Sets vanilla's per-cell <c>Tile.skipLiquid</c>. <c>Liquid.Update</c> marks both ends of a downward
+    /// transfer, and <c>Liquid.UpdateLiquid</c>'s ordinary loop then passes over the marked cell once instead of
+    /// updating it, which is what keeps falling water from advancing twice as fast as the source. The flag is
+    /// transient simulation state that never reaches the saved world, so it lives with the delay/kill work state
+    /// rather than on the tile.
+    /// </summary>
+    public void SetSkipNextUpdate(int x, int y)
+    {
+        if (!TryGetIndex(x, y, out int index))
+            return;
+
+        _skipNextUpdate ??= new BitArray(_tileCount);
+        _skipNextUpdate[index] = true;
+    }
+
+    /// <summary>
+    /// Reads and clears the skip flag, mirroring the <c>else</c> arm of <c>Liquid.UpdateLiquid</c>'s ordinary
+    /// loop: a marked cell is passed over and unmarked in the same step.
+    /// </summary>
+    public bool ConsumeSkipNextUpdate(int x, int y)
+    {
+        if (_skipNextUpdate is null || !TryGetIndex(x, y, out int index) || !_skipNextUpdate[index])
+            return false;
+
+        _skipNextUpdate[index] = false;
+        return true;
+    }
+
+    /// <summary>
+    /// Clears the skip flag without consuming a pass. <c>Liquid.UpdateLiquid</c>'s quick-fall loop clears it
+    /// after every update, and a successful <c>Liquid.AddWater</c> clears it as it takes a fresh array slot.
+    /// </summary>
+    public void ClearSkipNextUpdate(int x, int y)
+    {
+        if (_skipNextUpdate is not null && TryGetIndex(x, y, out int index))
+            _skipNextUpdate[index] = false;
+    }
+
+    public bool IsSkipNextUpdate(int x, int y) =>
+        _skipNextUpdate is not null && TryGetIndex(x, y, out int index) && _skipNextUpdate[index];
+
     public bool IsQueued(int x, int y)
     {
         if (!TryGetIndex(x, y, out int index) || _activeMembership is null)
@@ -118,6 +161,7 @@ public sealed class WorldLiquidUpdateQueue
         _buffered.Clear();
         _activeMembership?.SetAll(false);
         _bufferMembership?.SetAll(false);
+        _skipNextUpdate?.SetAll(false);
     }
 
     internal WorldLiquidUpdateEntry[] CaptureActiveSnapshot() => _active.ToArray();
