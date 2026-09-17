@@ -58,10 +58,18 @@ The current default connection policy uses:
 
 - handshake deadline `$10\,\mathrm{s}$`;
 - post-`Hello` join deadline `$2\,\mathrm{min}$` until readiness reaches `Playing`;
-- no normal post-join idle timeout (`Timeout.InfiniteTimeSpan`);
+- post-join inactivity deadline `$2\,\mathrm{min}$`;
 - `HardAbuse` connection-wide and configured per-message rate limits.
 
 The `$2\,\mathrm{min}$` join deadline is an abuse ceiling, not a vanilla gameplay timing rule. It prevents a peer from completing cheap protocol `Hello` and retaining an admitted player slot indefinitely.
+
+The post-join inactivity deadline is the source value. TerrariaServer 1.4.5.8 increments `Netplay.Clients[i].TimeOutTimer` once per server update and terminates the client past `7200`, which is `$120\,\mathrm{s}$` at the dedicated server's 60 updates per second; any received message resets it in `MessageBuffer.GetData`. A playing vanilla client sends player controls several times per second, so two minutes of complete inbound silence means the peer is gone.
+
+### Releasing a departed peer
+
+Terraria releases a client's slot, name and section table in `RemoteClient.Reset` the moment its connection ends, and never makes that release wait on delivery. TerraRuntime holds the same rule through a bounded teardown: when the peer closes its side, the outbound writer is given `$2\,\mathrm{s}$` to flush what it already holds and is then cancelled, and if a platform write does not observe cancellation within a further `$2\,\mathrm{s}$` the socket is disposed underneath it.
+
+Both bounds exist because the connection object owns the player slot and the reserved player name, and neither is released until the connection task returns. A peer that has stopped reading leaves the send window closed indefinitely, so an unbounded graceful drain kept a departed player's slot and name alive for as long as the operating system kept retransmitting - and the same player's rejoin was refused as a duplicate name. Anything still queued at that point is being written to nobody.
 
 ```mermaid
 stateDiagram-v2

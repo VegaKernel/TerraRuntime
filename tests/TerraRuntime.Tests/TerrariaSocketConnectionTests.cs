@@ -288,6 +288,65 @@ public sealed class TerrariaSocketConnectionTests
         }
     }
 
+    [Fact]
+    public async Task A_departed_peer_cannot_hold_the_connection_open_by_never_draining_its_backlog()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        using var listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        listener.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+        listener.Listen(1);
+        var endpoint = (IPEndPoint)listener.LocalEndPoint!;
+
+        using var client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        // Tiny windows on both sides so the pending backlog cannot simply disappear into kernel buffers.
+        client.ReceiveBufferSize = 512;
+        ValueTask connectTask = client.ConnectAsync(endpoint, cancellationToken);
+        Socket serverSocket = await listener.AcceptAsync(cancellationToken);
+        await connectTask;
+        serverSocket.SendBufferSize = 512;
+
+        const int frameBytes = 8 * 1024;
+        const int frameCount = 2048;
+        var outbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(frameCount, (long)frameCount * frameBytes, frameBytes));
+        byte[] payload = new byte[frameBytes];
+        payload[0] = unchecked((byte)(frameBytes - 2));
+        payload[1] = (byte)((frameBytes - 2) >> 8);
+        payload[2] = (byte)TerrariaMessageId.Kick;
+        for (int i = 0; i < frameCount; i++)
+        {
+            // Every enqueue must succeed: a rejected frame would classify the peer as slow and take a
+            // different teardown branch, which is not what this test is about.
+            Assert.Equal(OutboundEnqueueResult.Enqueued, outbound.TryEnqueue(new OutboundFrame(payload)));
+        }
+
+        var sink = new HelloCountingSink();
+        ValueTask<TerrariaSocketRunResult> run = TerrariaSocketConnection.RunAsync(
+            serverSocket,
+            sink,
+            outbound,
+            TerrariaFrameDecoderOptions.Default,
+            cancellationToken);
+
+        byte[] hello = CurrentHelloPacket();
+        Assert.Equal(hello.Length, await client.SendAsync(hello, SocketFlags.None, cancellationToken));
+        // The peer closes its send side and then never reads another byte, exactly like a client whose process
+        // is gone while the server still holds a large outbound backlog for it.
+        client.Shutdown(SocketShutdown.Send);
+
+        Task<TerrariaSocketRunResult> runTask = run.AsTask();
+        Task completed = await Task.WhenAny(runTask, Task.Delay(TimeSpan.FromSeconds(20), cancellationToken));
+        Assert.True(
+            ReferenceEquals(completed, runTask),
+            "A peer that stopped reading must not keep the connection - and with it the player slot and the " +
+            "reserved player name - alive by refusing to drain its outbound backlog.");
+
+        TerrariaSocketRunResult result = await runTask;
+        Assert.Equal(TerrariaConnectionStopReason.PeerClosed, result.StopReason);
+        Assert.Equal(TerrariaPipePumpResult.Completed, result.Inbound);
+        Assert.True(result.Outbound.BytesWritten < (long)frameCount * frameBytes);
+    }
+
     private static byte[] CurrentHelloPacket() =>
     [
         15, 0,

@@ -8,6 +8,23 @@ public static class TerrariaSocketConnection
 {
     private static readonly TimeSpan ReadinessPollInterval = TimeSpan.FromMilliseconds(250);
 
+    /// <summary>
+    /// How long a peer that has already closed its side may keep the outbound writer flushing. Terraria releases
+    /// a client's slot, name and section table in <c>RemoteClient.Reset</c> the moment the connection ends; it
+    /// never makes that release wait on delivery. A departed peer can leave the send window closed indefinitely,
+    /// so an unbounded graceful drain keeps the whole connection object - and with it the player slot and the
+    /// reserved player name - alive long after the player is gone, and the player cannot rejoin under their own
+    /// name. Anything still queued at this point is being written to nobody.
+    /// </summary>
+    private static readonly TimeSpan PeerClosedDrainTimeout = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// Grace period for the writer to observe cancellation before the socket is torn down underneath it. A
+    /// cancelled socket write normally completes at once; this bound exists so no platform-specific write that
+    /// ignores the token can hold the connection open.
+    /// </summary>
+    private static readonly TimeSpan OutboundCancellationGrace = TimeSpan.FromSeconds(2);
+
     public static ValueTask<TerrariaSocketRunResult> RunAsync(
         Socket socket,
         ITerrariaFrameSink sink,
@@ -104,9 +121,17 @@ public static class TerrariaSocketConnection
             {
                 inboundResult = await inboundTask.ConfigureAwait(false);
                 if (inboundResult is TerrariaPipePumpResult.Completed or TerrariaPipePumpResult.SinkStopped)
+                {
+                    // Let the writer deliver what it already holds, but on a deadline: see
+                    // PeerClosedDrainTimeout for why this must never wait for a departed peer.
                     outboundQueue.Complete();
+                    if (!await WaitBoundedAsync(outboundTask, PeerClosedDrainTimeout).ConfigureAwait(false))
+                        linkedCancellation.Cancel();
+                }
                 else
+                {
                     linkedCancellation.Cancel();
+                }
             }
             else
             {
@@ -115,7 +140,7 @@ public static class TerrariaSocketConnection
             }
 
             inboundResult = await inboundTask.ConfigureAwait(false);
-            outboundResult = await outboundTask.ConfigureAwait(false);
+            outboundResult = await AwaitCancelledOutboundAsync(outboundTask, socket).ConfigureAwait(false);
             linkedCancellation.Cancel();
             await watchdogTask.ConfigureAwait(false);
 
@@ -147,6 +172,46 @@ public static class TerrariaSocketConnection
 
             socket.Dispose();
         }
+    }
+
+    /// <summary>
+    /// Awaits a task for at most <paramref name="timeout"/>. Returns whether it completed; the task itself is
+    /// left running and is always awaited later by the caller.
+    /// </summary>
+    private static async Task<bool> WaitBoundedAsync(Task task, TimeSpan timeout)
+    {
+        if (task.IsCompleted)
+            return true;
+
+        using var timer = new CancellationTokenSource();
+        Task delay = Task.Delay(timeout, timer.Token);
+        Task first = await Task.WhenAny(task, delay).ConfigureAwait(false);
+        timer.Cancel();
+        return ReferenceEquals(first, task);
+    }
+
+    /// <summary>
+    /// Completes the outbound writer once it has been asked to stop. If it does not observe cancellation within
+    /// <see cref="OutboundCancellationGrace"/> the socket is disposed underneath it, which fails the pending
+    /// write and lets the connection be released. The teardown in the caller's <c>finally</c> tolerates an
+    /// already-disposed socket.
+    /// </summary>
+    private static async Task<OutboundWriterResult> AwaitCancelledOutboundAsync(
+        Task<OutboundWriterResult> outboundTask,
+        Socket socket)
+    {
+        if (!await WaitBoundedAsync(outboundTask, OutboundCancellationGrace).ConfigureAwait(false))
+        {
+            try
+            {
+                socket.Dispose();
+            }
+            catch (SocketException)
+            {
+            }
+        }
+
+        return await outboundTask.ConfigureAwait(false);
     }
 
     private static async Task<TerrariaConnectionStopReason> RunWatchdogAsync(

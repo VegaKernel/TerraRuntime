@@ -115,7 +115,8 @@ public sealed class TerrariaConnectionPolicyTests
         TerrariaFrame hello = Decode(CurrentHelloPacket());
         Assert.Equal(TerrariaFrameSinkResult.Continue, policy.OnFrame(in hello));
 
-        Assert.Equal(TimeSpan.FromMinutes(10), TerrariaConnectionPolicyOptions.DefaultIdleTimeout);
+        // TerrariaServer 1.4.5.8 terminates a client whose TimeOutTimer passes 7200 server updates.
+        Assert.Equal(TimeSpan.FromMinutes(2), TerrariaConnectionPolicyOptions.DefaultIdleTimeout);
         Assert.Equal(TerrariaConnectionPolicyOptions.DefaultIdleTimeout, state.GetRemainingTimeout());
 
         time.Advance(TerrariaConnectionPolicyOptions.DefaultIdleTimeout - TimeSpan.FromTicks(1));

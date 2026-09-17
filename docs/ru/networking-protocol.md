@@ -58,10 +58,18 @@ Current default policy использует:
 
 - handshake deadline `$10\,\mathrm{s}$`;
 - post-`Hello` join deadline `$2\,\mathrm{min}$` до readiness `Playing`;
-- отсутствие normal post-join idle timeout (`Timeout.InfiniteTimeSpan`);
+- post-join inactivity deadline `$2\,\mathrm{min}$`;
 - `HardAbuse` connection-wide и configured per-message rate limits.
 
 `$2\,\mathrm{min}$` join deadline является abuse ceiling, а не vanilla gameplay timing rule. Он не даёт peer завершить cheap protocol `Hello` и удерживать admitted player slot бесконечно.
+
+Post-join inactivity deadline — это source-значение. TerrariaServer 1.4.5.8 инкрементирует `Netplay.Clients[i].TimeOutTimer` один раз за server update и завершает клиента после `7200`, то есть через `$120\,\mathrm{s}$` при 60 updates в секунду у dedicated server; любое принятое сообщение сбрасывает счётчик в `MessageBuffer.GetData`. Играющий vanilla-клиент отправляет player controls несколько раз в секунду, поэтому две минуты полной входящей тишины означают, что peer ушёл.
+
+### Освобождение ушедшего peer
+
+Terraria освобождает slot, name и section table клиента в `RemoteClient.Reset` в момент завершения соединения и никогда не заставляет это освобождение ждать доставки. TerraRuntime держит то же правило через ограниченный teardown: когда peer закрывает свою сторону, outbound writer получает `$2\,\mathrm{s}$` на сброс того, что уже держит, после чего отменяется, а если platform-специфичная запись не замечает отмену за ещё `$2\,\mathrm{s}$`, socket закрывается под ней.
+
+Оба предела существуют потому, что объект соединения владеет player slot и зарезервированным player name, и ни то, ни другое не освобождается, пока не вернётся задача соединения. Peer, прекративший читать, оставляет send window закрытым бесконечно, поэтому неограниченный graceful drain держал slot и name ушедшего игрока живыми столько, сколько операционная система продолжала retransmit — и повторный вход того же игрока отбивался как duplicate name. Всё, что ещё стоит в очереди на этот момент, пишется в никуда.
 
 ```mermaid
 stateDiagram-v2

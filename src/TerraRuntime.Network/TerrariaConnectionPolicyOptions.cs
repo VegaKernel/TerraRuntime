@@ -11,11 +11,15 @@ public readonly record struct TerrariaConnectionPolicyOptions
     public static TimeSpan DefaultJoinTimeout { get; } = TimeSpan.FromMinutes(2);
 
     /// <summary>
-    /// Established connections are expected to keep producing normal Terraria traffic. Ten minutes is deliberately
-    /// conservative: it bounds abandoned half-open sessions without turning short pauses, stalls or AFK play into
-    /// disconnects merely because the server wanted a prettier timeout number.
+    /// The source-backed inactivity ceiling for an established connection. TerrariaServer 1.4.5.8 increments
+    /// <c>Netplay.Clients[i].TimeOutTimer</c> once per server update and terminates the client past
+    /// <c>7200</c>, which is <c>$120\,\mathrm{s}$</c> at the dedicated server's 60 updates per second; any
+    /// received message resets the counter in <c>MessageBuffer.GetData</c>. A playing vanilla client sends
+    /// player controls several times per second, so two minutes of complete inbound silence means the peer is
+    /// gone - and until it is released it still holds its player slot and its reserved player name, which is
+    /// what refuses the same player's rejoin.
     /// </summary>
-    public static TimeSpan DefaultIdleTimeout { get; } = TimeSpan.FromMinutes(10);
+    public static TimeSpan DefaultIdleTimeout { get; } = TimeSpan.FromMinutes(2);
 
     public static TerrariaConnectionPolicyOptions Default { get; } = new(
         handshakeTimeout: TimeSpan.FromSeconds(10),
