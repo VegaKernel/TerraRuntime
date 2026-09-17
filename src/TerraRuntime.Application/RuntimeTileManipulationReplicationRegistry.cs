@@ -32,6 +32,7 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
     private long emittedLiquidUpdates;
     private long coalescedLiquidUpdates;
     private long droppedLiquidUpdates;
+    private long sectionFilteredLiquidUpdates;
 
     public long RelayedFrames => Interlocked.Read(ref relayedFrames);
     public long RejectedFrames => Interlocked.Read(ref rejectedFrames);
@@ -45,10 +46,23 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
 
     public long DroppedLiquidUpdates => Interlocked.Read(ref droppedLiquidUpdates);
 
-    public bool TryRegister(GameCommandSourceId source, TerrariaConnectionOutboundQueue outbound)
+    /// <summary>
+    /// Liquid frames that were encoded but reached no client because no playing connection owned the containing
+    /// network section. Vanilla discards these the same way inside
+    /// <c>NetLiquidModule.ChunkChanges.BroadcastingCondition</c>.
+    /// </summary>
+    public long SectionFilteredLiquidUpdates => Interlocked.Read(ref sectionFilteredLiquidUpdates);
+
+    public bool TryRegister(GameCommandSourceId source, TerrariaConnectionOutboundQueue outbound) =>
+        TryRegister(source, outbound, sections: null);
+
+    public bool TryRegister(
+        GameCommandSourceId source,
+        TerrariaConnectionOutboundQueue outbound,
+        IPlayerSectionVisibility? sections)
     {
         ArgumentNullException.ThrowIfNull(outbound);
-        return !source.IsSystem && endpoints.TryAdd(source, new Endpoint(outbound));
+        return !source.IsSystem && endpoints.TryAdd(source, new Endpoint(outbound, sections));
     }
 
     public bool TryUnregister(GameCommandSourceId source) => endpoints.TryRemove(source, out _);
@@ -146,8 +160,20 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
         return TryPublishFrame(excludedSource, encoded);
     }
 
+    /// <summary>
+    /// Admits one simulated liquid cell into the packet-48 retention map. A cell that no playing connection could
+    /// receive is discarded here rather than at drain time: vanilla's chunked broadcast never spends transport on
+    /// an unowned section, so neither may the fixed authoritative-tick budget - otherwise world-wide simulation
+    /// noise would starve the cells a client can actually see.
+    /// </summary>
     public bool TryPublishLiquidToAll(in TerrariaLiquidState state)
     {
+        if (!AnyEndpointMayReceiveLiquid(state.TileX, state.TileY))
+        {
+            Interlocked.Increment(ref sectionFilteredLiquidUpdates);
+            return false;
+        }
+
         int key = ((ushort)state.TileX << 16) | (ushort)state.TileY;
         if (pendingLiquids.TryGetValue(key, out TerrariaLiquidState existing))
         {
@@ -186,8 +212,10 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
                 continue;
             }
 
-            _ = TryPublishFrameToAll(encoded);
-            Interlocked.Increment(ref emittedLiquidUpdates);
+            if (PublishLiquidToOwningSections(state.TileX, state.TileY, encoded))
+                Interlocked.Increment(ref emittedLiquidUpdates);
+            else
+                Interlocked.Increment(ref sectionFilteredLiquidUpdates);
         }
     }
 
@@ -238,6 +266,56 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
         return true;
     }
 
+    /// <summary>
+    /// Whether any playing connection is currently eligible for a liquid change at this cell. An endpoint without
+    /// a section table - the bootstrap-only endpoints used by tests and the terminal harness - stays
+    /// unconditional, and a registry with no playing endpoint retains cells exactly as before so the backlog
+    /// bound keeps its meaning while a world runs unattended.
+    /// </summary>
+    private bool AnyEndpointMayReceiveLiquid(int tileX, int tileY)
+    {
+        bool anyPlaying = false;
+        foreach (Endpoint endpoint in endpoints.Values)
+        {
+            if (!endpoint.IsPlaying)
+                continue;
+
+            anyPlaying = true;
+            IPlayerSectionVisibility? sections = endpoint.Sections;
+            if (sections is null || sections.OwnsSectionAtTile(tileX, tileY))
+                return true;
+        }
+
+        return !anyPlaying;
+    }
+
+    /// <summary>
+    /// Relays one packet-48 frame under vanilla's section-ownership condition. Terraria distributes the tick's
+    /// liquid change set into 200x150 network chunks and broadcasts each chunk only to clients whose
+    /// <c>TileSections</c> entry for that chunk is set (<c>NetLiquidModule.ChunkChanges.BroadcastingCondition</c>,
+    /// and identically the legacy <c>NetMessage.sendWater</c>). A connection without a section table - the
+    /// system/bootstrap-only endpoints used in tests - keeps the unconditional behaviour.
+    /// </summary>
+    private bool PublishLiquidToOwningSections(int tileX, int tileY, byte[] encoded)
+    {
+        var frame = new OutboundFrame(encoded);
+        bool relayed = false;
+        foreach (Endpoint endpoint in endpoints.Values)
+        {
+            if (!endpoint.IsPlaying)
+                continue;
+
+            IPlayerSectionVisibility? sections = endpoint.Sections;
+            if (sections is not null && !sections.OwnsSectionAtTile(tileX, tileY))
+                continue;
+
+            Publish(endpoint, frame);
+            relayed = true;
+        }
+
+        return relayed;
+    }
+
     private bool TryPublishFrameToAll(byte[] encoded)
     {
         var frame = new OutboundFrame(encoded);
@@ -260,13 +338,15 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
             Interlocked.Increment(ref rejectedFrames);
     }
 
-    private sealed class Endpoint(TerrariaConnectionOutboundQueue outbound)
+    private sealed class Endpoint(TerrariaConnectionOutboundQueue outbound, IPlayerSectionVisibility? sections)
     {
         private int playingSlot = -1;
         private ulong playingGeneration;
 
         public TerrariaConnectionOutboundQueue Outbound { get; } =
             outbound ?? throw new ArgumentNullException(nameof(outbound));
+
+        public IPlayerSectionVisibility? Sections { get; } = sections;
 
         public bool IsPlaying =>
             Volatile.Read(ref playingSlot) >= 0 && Volatile.Read(ref playingGeneration) != 0;

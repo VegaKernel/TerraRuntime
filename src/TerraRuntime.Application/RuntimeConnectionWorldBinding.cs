@@ -150,7 +150,7 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
             Runtime.RuntimeConnections.TryUnregister(source, out _);
             return FailRegistration();
         }
-        if (!Runtime.TileManipulationReplication.TryRegister(source, outbound))
+        if (!Runtime.TileManipulationReplication.TryRegister(source, outbound, Bootstrap.SectionVisibility))
         {
             Runtime.ChestReplication.TryUnregister(source);
             Runtime.VitalsReplication.TryUnregister(source);

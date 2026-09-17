@@ -168,6 +168,13 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         : _session.Slot.Value;
     public PlayerHandle? AssignedPlayerHandle => _assignedPlayerHandle;
     internal string? PlayerName => _playerName;
+
+    /// <summary>
+    /// This connection's network-section ownership table, the runtime equivalent of
+    /// <c>Netplay.Clients[i].TileSections</c>. Replication registries consult it before relaying a world-cell
+    /// change, so a client is never sent liquid for terrain it has not received.
+    /// </summary>
+    internal IPlayerSectionVisibility? SectionVisibility => _sectionStreaming;
     internal void SetPlayerNameAdmission(Func<string, bool>? admission) => _playerNameAdmission = admission;
 
     public TerrariaFrameSinkResult OnFrame(in TerrariaFrame frame)

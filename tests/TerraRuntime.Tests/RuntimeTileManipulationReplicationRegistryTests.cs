@@ -184,6 +184,69 @@ public sealed class RuntimeTileManipulationReplicationRegistryTests
         Assert.Equal(1, replication.DroppedLiquidUpdates);
     }
 
+    [Fact]
+    public void Liquid_only_reaches_connections_that_own_the_containing_network_section()
+    {
+        var replication = new RuntimeTileManipulationReplicationRegistry();
+        GameCommandSourceId nearSource = GameCommandSourceId.FromConnection(811);
+        GameCommandSourceId farSource = GameCommandSourceId.FromConnection(812);
+        TerrariaConnectionOutboundQueue nearOutbound = CreateOutbound();
+        TerrariaConnectionOutboundQueue farOutbound = CreateOutbound();
+        // Vanilla's gate is Netplay.Clients[i].TileSections[x / 200, y / 150]: the near client holds the section
+        // containing the change, the far client holds a different one.
+        Assert.True(replication.TryRegister(nearSource, nearOutbound, new SectionOwner(sectionX: 0, sectionY: 0)));
+        Assert.True(replication.TryRegister(farSource, farOutbound, new SectionOwner(sectionX: 9, sectionY: 9)));
+
+        ConnectionHandle near = Connection(nearSource, slot: 4, generation: 1);
+        ConnectionHandle far = Connection(farSource, slot: 5, generation: 1);
+        PlayerSpawnCommitRequest nearSpawn = Spawn(near.Player.Slot);
+        PlayerSpawnCommitRequest farSpawn = Spawn(far.Player.Slot);
+        replication.PlayerSpawned(near, in nearSpawn);
+        replication.PlayerSpawned(far, in farSpawn);
+
+        var state = new TerrariaLiquidState(30, 40, 128, 0);
+        Assert.True(replication.TryPublishLiquidToAll(in state));
+        replication.FlushPendingLiquids();
+
+        Assert.Equal(1, nearOutbound.QueuedFrames);
+        Assert.Equal(0, farOutbound.QueuedFrames);
+        Assert.Equal(1, replication.EmittedLiquidUpdates);
+        Assert.Equal(0, replication.SectionFilteredLiquidUpdates);
+    }
+
+    [Fact]
+    public void Liquid_nobody_can_see_never_enters_the_transport_budget()
+    {
+        var replication = new RuntimeTileManipulationReplicationRegistry();
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(813);
+        TerrariaConnectionOutboundQueue outbound = CreateOutbound();
+        Assert.True(replication.TryRegister(source, outbound, new SectionOwner(sectionX: 0, sectionY: 0)));
+        ConnectionHandle player = Connection(source, slot: 6, generation: 1);
+        PlayerSpawnCommitRequest spawn = Spawn(player.Player.Slot);
+        replication.PlayerSpawned(player, in spawn);
+
+        // World-wide simulation noise: the cell sits in section (5, 6), which no client has been handed. Vanilla
+        // discards the chunk at broadcast time, so it must not consume a retention slot here either.
+        var unseen = new TerrariaLiquidState(1_100, 950, 200, 0);
+        Assert.False(replication.TryPublishLiquidToAll(in unseen));
+        Assert.Equal(0, replication.PendingLiquidUpdates);
+        Assert.Equal(1, replication.SectionFilteredLiquidUpdates);
+
+        var visible = new TerrariaLiquidState(10, 10, 60, 0);
+        Assert.True(replication.TryPublishLiquidToAll(in visible));
+        replication.FlushPendingLiquids();
+
+        Assert.Equal(1, outbound.QueuedFrames);
+        Assert.Equal(1, replication.EmittedLiquidUpdates);
+    }
+
+    private sealed class SectionOwner(int sectionX, int sectionY) : IPlayerSectionVisibility
+    {
+        public bool OwnsSectionAtTile(int tileX, int tileY) =>
+            tileX / TerrariaSectionGeometry.WidthTiles == sectionX &&
+            tileY / TerrariaSectionGeometry.HeightTiles == sectionY;
+    }
+
     private static TerrariaConnectionOutboundQueue CreateOutbound() =>
         new(new OutboundQueueOptions(maxFrames: 64, maxQueuedBytes: 8_192, maxFrameBytes: 1_024));
 

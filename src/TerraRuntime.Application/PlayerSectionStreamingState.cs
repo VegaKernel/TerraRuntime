@@ -7,7 +7,7 @@ namespace TerraRuntime.Application;
 /// connection must continue receiving unseen tile sections as its authoritative movement crosses network-section
 /// boundaries. This tracker owns only which immutable sections have already been transferred to one client.
 /// </summary>
-internal sealed class PlayerSectionStreamingState
+internal sealed class PlayerSectionStreamingState : IPlayerSectionVisibility
 {
     private const float TileSizePixels = 16f;
     private const int HorizontalRadiusSections = 2;
@@ -95,6 +95,23 @@ internal sealed class PlayerSectionStreamingState
         return count;
     }
 
+    /// <summary>
+    /// Vanilla's per-client broadcast gate, expressed over tile coordinates:
+    /// <c>Netplay.Clients[i].TileSections[x / 200, y / 150]</c>. Out-of-world cells are never owned.
+    /// </summary>
+    public bool OwnsSectionAtTile(int tileX, int tileY)
+    {
+        if ((uint)tileX >= (uint)dimensions.WidthTiles ||
+            (uint)tileY >= (uint)dimensions.HeightTiles)
+        {
+            return false;
+        }
+
+        int index = ((tileY / TerrariaSectionGeometry.HeightTiles) * dimensions.SectionColumns) +
+            (tileX / TerrariaSectionGeometry.WidthTiles);
+        return Volatile.Read(ref sent[index]);
+    }
+
     public void MarkSent(WorldSectionId section)
     {
         TerrariaSectionGeometry.ValidateSection(dimensions, section);
@@ -102,8 +119,8 @@ internal sealed class PlayerSectionStreamingState
         if (sent[index])
             return;
 
-        sent[index] = true;
         sentCount++;
+        Volatile.Write(ref sent[index], true);
     }
 
     private void MarkSent(ReadOnlySpan<WorldSectionId> sections)

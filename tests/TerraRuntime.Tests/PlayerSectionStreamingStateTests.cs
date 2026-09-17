@@ -77,6 +77,27 @@ public sealed class PlayerSectionStreamingStateTests
     }
 
     [Fact]
+    public void Section_ownership_only_covers_transferred_sections_and_never_leaves_the_world()
+    {
+        var dimensions = new WorldDimensions(4200, 1200);
+        var state = new PlayerSectionStreamingState(dimensions);
+        Span<WorldSectionId> bootstrap = stackalloc WorldSectionId[InitialSectionBootstrapPlanner.MaximumBaseSectionCount];
+        int bootstrapCount = InitialSectionBootstrapPlanner.PlanBaseSpawnSections(dimensions, 2100, 300, bootstrap);
+        state.ObserveBootstrap(bootstrap[..bootstrapCount], 2100, 300);
+
+        // Vanilla gates every world-cell relay on TileSections[x / 200, y / 150]; a spawn-window client owns its
+        // own section and nothing on the far side of the world.
+        Assert.True(state.OwnsSectionAtTile(2100, 300));
+        Assert.False(state.OwnsSectionAtTile(10, 1100));
+        Assert.False(state.OwnsSectionAtTile(-1, 300));
+        Assert.False(state.OwnsSectionAtTile(2100, 1200));
+
+        WorldSectionId far = TerrariaSectionGeometry.FromTile(dimensions, 10, 1100);
+        state.MarkSent(far);
+        Assert.True(state.OwnsSectionAtTile(10, 1100));
+    }
+
+    [Fact]
     public void Invalid_world_positions_do_not_request_sections()
     {
         var state = new PlayerSectionStreamingState(new WorldDimensions(4200, 1200));

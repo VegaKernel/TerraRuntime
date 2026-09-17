@@ -146,6 +146,7 @@ internal sealed class LocalRuntimeNetworkOperations : INetworkOperations
             EmittedLiquidUpdates: tileManipulationReplication?.EmittedLiquidUpdates ?? 0,
             CoalescedLiquidUpdates: tileManipulationReplication?.CoalescedLiquidUpdates ?? 0,
             DroppedLiquidUpdates: tileManipulationReplication?.DroppedLiquidUpdates ?? 0,
+            SectionFilteredLiquidUpdates: tileManipulationReplication?.SectionFilteredLiquidUpdates ?? 0,
             ProjectileSuppressedDuplicateFrames: projectileReplication?.SuppressedDuplicateFrames ?? 0,
             HealthRelayedFrames: vitalsReplication?.RelayedHealthFrames ?? 0,
             HealthBaselineFrames: vitalsReplication?.HealthBaselineFrames ?? 0,

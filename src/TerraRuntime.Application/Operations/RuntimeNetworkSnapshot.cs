@@ -90,6 +90,7 @@ internal readonly record struct RuntimeNetworkSnapshot(
     long EmittedLiquidUpdates = 0,
     long CoalescedLiquidUpdates = 0,
     long DroppedLiquidUpdates = 0,
+    long SectionFilteredLiquidUpdates = 0,
     long ProjectileSuppressedDuplicateFrames = 0,
     long HealthRelayedFrames = 0,
     long HealthBaselineFrames = 0,
