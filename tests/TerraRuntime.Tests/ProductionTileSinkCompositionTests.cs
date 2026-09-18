@@ -196,6 +196,114 @@ public sealed class ProductionTileSinkCompositionTests
         Assert.Equal(ChestInteractionFrameStopReason.None, chestSink.StopReason);
     }
 
+    /// <summary>
+    /// The building path end to end: a joined player with a wall item in hand places a wall, and a player with
+    /// an ordinary Wood stack places a tile the hand-written catalog never carried. Both were answered with a
+    /// correction before the source-derived placement table existed.
+    /// </summary>
+    [Theory]
+    // item, packet-17 action, wire Data, expected tile, expected wall
+    [InlineData(26, (byte)TerrariaTileManipulationAction.PlaceWall, (short)1, -1, 1)]   // Stone Wall
+    [InlineData(93, (byte)TerrariaTileManipulationAction.PlaceWall, (short)4, -1, 4)]   // Wood Wall
+    [InlineData(9, (byte)TerrariaTileManipulationAction.PlaceTile, (short)30, 30, -1)]  // Wood -> tile 30
+    [InlineData(129, (byte)TerrariaTileManipulationAction.PlaceTile, (short)38, 38, -1)] // Gray Brick -> tile 38
+    public void Production_join_places_the_item_the_source_says_it_places(
+        short heldItemType,
+        byte action,
+        short wireData,
+        int expectedTile,
+        int expectedWall)
+    {
+        var tiles = new TerraRuntime.World.WorldTileStore(new TerraRuntime.World.WorldDimensions(200, 150));
+        var state = new ServerRuntimeState(worldTiles: tiles);
+        var slots = new PlayerSlotPool(1);
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(913);
+        var immediate = new ApplyingCommandIngress(state);
+        var outbound = new TerrariaConnectionOutboundQueue(
+            new OutboundQueueOptions(maxFrames: 32, maxQueuedBytes: 8_192, maxFrameBytes: 2_048));
+        using var bootstrap = new PlayerBootstrapFrameSink(
+            slots,
+            outbound,
+            PlayerBootstrapPacketSet.CreateForTesting(
+                new byte[] { 3, 0, (byte)TerrariaMessageId.WorldData },
+                Array.Empty<ReadOnlyMemory<byte>>(),
+                new byte[] { 3, 0, (byte)TerrariaMessageId.PlayerSpawnSelf }),
+            source,
+            new RuntimePlayerSpawnCommitIngress(immediate),
+            appearanceIngress: null,
+            new RuntimePlayerEquipmentIngress(immediate),
+            new RuntimePlayerMovementIngress(immediate));
+        var gameplayIngress = new RuntimeProjectileNetworkIngress(immediate);
+        var projectileSink = new ProjectileLifecycleFrameSink(
+            source,
+            bootstrap,
+            new PassthroughSink(),
+            gameplayIngress);
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Hello()));
+
+        const short heldSlot = 3;
+        for (short slot = 0; slot < TerraRuntime.Gameplay.Items.VanillaPlayerItemSlotCatalog.InventoryCount; slot++)
+        {
+            bool held = slot == heldSlot;
+            var equipment = new TerrariaPlayerEquipmentState(
+                PlayerId: 0,
+                SlotId: slot,
+                Stack: held ? (short)99 : (short)0,
+                Prefix: 0,
+                ItemNetId: held ? heldItemType : (short)0,
+                ItemFlags: 0);
+            Assert.Equal(
+                TerrariaFrameSinkResult.Continue,
+                bootstrap.OnFrame(Decode(TerrariaPlayerEquipmentCodec.Encode(in equipment))));
+        }
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Frame(TerrariaMessageId.RequestWorldData, [])));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Frame(TerrariaMessageId.SpawnTileData, new byte[9])));
+        Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(PlayerSpawn()));
+        Assert.Equal(PlayerJoinState.Playing, bootstrap.JoinState);
+
+        var movement = new TerrariaPlayerMovementState(
+            PlayerId: 0,
+            ControlFlags: 1 << 5,
+            MovementFlags: 0,
+            MiscFlags1: 0,
+            MiscFlags2: 0,
+            SelectedItem: (byte)heldSlot,
+            PositionX: 800f,
+            PositionY: 800f,
+            HasVelocity: false,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            HasMount: false,
+            MountType: 0,
+            HasPotionOfReturnPositions: false,
+            PotionOfReturnOriginalPositionX: 0f,
+            PotionOfReturnOriginalPositionY: 0f,
+            PotionOfReturnHomePositionX: 0f,
+            PotionOfReturnHomePositionY: 0f,
+            HasCameraTarget: false,
+            CameraTargetX: 0f,
+            CameraTargetY: 0f);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Decode(TerrariaPlayerMovementEncoder.Encode(in movement))));
+
+        var request = new TerrariaTileManipulationState(action, TileX: 50, TileY: 52, Data: wireData, Style: 0);
+        Assert.Equal(TerrariaFrameSinkResult.Continue, projectileSink.OnFrame(Packet17(in request)));
+
+        TerraRuntime.World.WorldTile placed = tiles.Get(50, 52);
+        if (expectedTile >= 0)
+        {
+            Assert.True(placed.IsActive);
+            Assert.Equal(expectedTile, placed.Type);
+        }
+
+        if (expectedWall >= 0)
+            Assert.Equal(expectedWall, placed.Wall);
+
+        Assert.Equal(1, state.AppliedClientTileManipulations);
+        Assert.Equal(0, state.RejectedClientTileManipulations);
+    }
+
     private static TerrariaFrame Packet17(in TerrariaTileManipulationState state)
     {
         Assert.Equal(
