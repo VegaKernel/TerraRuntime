@@ -256,7 +256,7 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
                 ApplyWetJungle(context, grid, random);
                 break;
             case JungleStructureStage1458.JungleTemple:
-                ApplyJungleTemple(context, grid, random);
+                ApplyJungleTemple(context, workspace);
                 break;
             case JungleStructureStage1458.Hives:
                 ApplyHives(context, grid, random);
@@ -553,90 +553,87 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Adding wet-jungle water and honey pockets ({pools} basins)");
     }
 
-    private void ApplyJungleTemple(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    /// <summary>
+    /// Source <c>GenPassNameID.LihzahrdTemple</c>: its site search, then <see cref="JungleTempleBuilder1458"/>
+    /// for the temple itself.
+    /// </summary>
+    /// <remarks>
+    /// The runtime built a hollow rectangle with a few floors and a staircase - about five percent of the
+    /// source's brick, which is why a generated temple read as a shell rather than a maze. The source's search
+    /// draws a row between the rock layer and six hundred above the bottom and a column biased away from the
+    /// dungeon's side, and accepts the first one that lands on jungle grass; the fallback when a million tries
+    /// find nothing is the mirror of the dungeon's own column. The fallback's row differs from the source's,
+    /// which reads <c>generatingDungeonPositionX</c> mirrored; this runtime uses the dungeon location it
+    /// already carries.
+    /// </remarks>
+    private void ApplyJungleTemple(IWorldGenerationContext context, Workspace workspace)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int width = grid.Width switch
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("The jungle temple requires shared UnifiedRandom semantics.");
+
+        WorldTileStore store = workspace.TileStore;
+        int width = workspace.WidthTiles;
+        int height = workspace.HeightTiles;
+        int dungeonSide = bootstrap.DungeonLocation < width / 2 ? -1 : 1;
+
+        double spread = 0.25;
+        long attempts = 0;
+        int widenings = 0;
+        int entryX = -1;
+        int entryY = -1;
+
+        while (entryX < 0)
         {
-            <= 4200 => random.Next(88, 112),
-            <= 6400 => random.Next(112, 142),
-            _ => random.Next(138, 174)
-        };
-        int height = grid.Height switch
-        {
-            <= 1200 => random.Next(58, 74),
-            <= 1800 => random.Next(72, 92),
-            _ => random.Next(88, 112)
-        };
+            context.CancellationToken.ThrowIfCancellationRequested();
+            int top = (int)state.RockLayer;
+            int bottom = height - 600;
+            if (top > bottom - 1)
+                top = bottom - 1;
 
-        int centerX = Math.Clamp(
-            bootstrap.JungleOriginX + random.Next(-Math.Max(90, grid.Width / 28), Math.Max(91, grid.Width / 28)),
-            width / 2 + 30,
-            grid.Width - width / 2 - 31);
-        int top = Math.Clamp(
-            (int)state.RockLayer + random.Next(130, 210),
-            (int)state.RockLayer + 80,
-            state.UnderworldTop - height - 45);
-        int left = centerX - width / 2;
-        int right = left + width;
-        int bottom = top + height;
+            int row = random.Next(top, bottom);
+            int column = (int)(((random.NextDouble() * spread + 0.1) * -dungeonSide + 0.5) * width);
 
-        state.TempleLeft = left;
-        state.TempleRight = right;
-        state.TempleTop = top;
-        state.TempleBottom = bottom;
-
-        for (int x = left; x <= right; x++)
-        {
-            if ((x & 31) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            for (int y = top; y <= bottom; y++)
+            if ((uint)column < (uint)width && (uint)row < (uint)height)
             {
-                ref WorldTile tile = ref grid.At(x, y);
-                bool shell = x <= left + 2 || x >= right - 2 || y <= top + 2 || y >= bottom - 2;
-                if (shell)
+                WorldTile candidate = store.Get(column, row);
+                if (candidate.IsActive && candidate.Type == JungleGrass)
                 {
-                    SetType(ref tile, LihzahrdBrick);
-                    tile.Wall = LihzahrdBrickUnsafeWall;
-                }
-                else
-                {
-                    ClearTile(ref tile, preserveWall: false);
-                    tile.Wall = LihzahrdBrickUnsafeWall;
+                    entryX = column;
+                    entryY = row;
+                    break;
                 }
             }
+
+            if (attempts++ <= 1000000)
+                continue;
+
+            if (spread == 0.35 && ++widenings > 10)
+                break;
+
+            spread = Math.Min(0.35, spread + 0.05);
+            attempts = 0;
         }
 
-        int roomCount = Math.Max(3, height / 18);
-        for (int room = 1; room < roomCount; room++)
+        if (entryX < 0)
         {
-            int y = top + room * height / roomCount;
-            int openingCenter = random.Next(left + 15, right - 15);
-            for (int x = left + 4; x < right - 4; x++)
-            {
-                if (Math.Abs(x - openingCenter) < 5)
-                    continue;
-                ref WorldTile tile = ref grid.At(x, y);
-                SetType(ref tile, LihzahrdBrick);
-                tile.Wall = LihzahrdBrickUnsafeWall;
-            }
+            entryX = Math.Clamp(width - bootstrap.DungeonLocation, 20, width - 20);
+            entryY = Math.Clamp((int)state.RockLayer + 100, 20, height - 20);
         }
 
-        int stairX = centerX;
-        for (int y = top + 5; y < bottom - 5; y++)
-        {
-            if ((y - top) % 14 == 0)
-                stairX = Math.Clamp(stairX + random.Next(-12, 13), left + 9, right - 9);
-            for (int dx = -2; dx <= 2; dx++)
-            {
-                ref WorldTile tile = ref grid.At(stairX + dx, y);
-                ClearTile(ref tile, preserveWall: true);
-                tile.Wall = LihzahrdBrickUnsafeWall;
-            }
-        }
+        var builder = new JungleTempleBuilder1458(
+            store, random, state.UnderworldTop, context.CancellationToken);
+        builder.Build(entryX, entryY);
 
-        context.ReportProgress(1d, $"Building jungle temple shell ({width}x{height})");
+        state.TempleLeft = builder.Left;
+        state.TempleRight = builder.Right;
+        state.TempleTop = builder.Top;
+        state.TempleBottom = builder.Bottom;
+
+        context.ReportProgress(
+            1d,
+            $"Building the jungle temple ({builder.Rooms} rooms, " +
+            $"{builder.Right - builder.Left}x{builder.Bottom - builder.Top})");
     }
 
     private void ApplyHives(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
