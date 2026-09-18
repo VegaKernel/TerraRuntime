@@ -65,6 +65,12 @@ The `$2\,\mathrm{min}$` join deadline is an abuse ceiling, not a vanilla gamepla
 
 The post-join inactivity deadline is the source value. TerrariaServer 1.4.5.8 increments `Netplay.Clients[i].TimeOutTimer` once per server update and terminates the client past `7200`, which is `$120\,\mathrm{s}$` at the dedicated server's 60 updates per second; any received message resets it in `MessageBuffer.GetData`. A playing vanilla client sends player controls several times per second, so two minutes of complete inbound silence means the peer is gone.
 
+### The client's latency probe
+
+Packet `154` is the client's own latency measurement, and the server must answer it. `Terraria.Net.Ping.Update` sends one probe, sets a waiting flag, and while that flag is set it raises `CurrentPing` to the elapsed time on every frame and sends nothing further. The server's reply clears the flag: TerrariaServer 1.4.5.8 does that in `MessageBuffer.GetData` with `NetMessage.TrySendData(154, whoAmI)`, an empty packet `154` straight back.
+
+A server that does not answer therefore does not look fast - it looks like a connection whose latency climbs without bound, off a single unanswered frame and with no traffic at all to explain it. The client's own packet counters show the signature plainly: `154` sent once, received zero times. TerraRuntime now echoes the packet. The reply is opportunistic, because it is pure diagnostics and must never take a queue slot from real traffic; a dropped reply only means the client reads a higher number and asks again.
+
 ### Releasing a departed peer
 
 Terraria releases a client's slot, name and section table in `RemoteClient.Reset` the moment its connection ends, and never makes that release wait on delivery. TerraRuntime holds the same rule through a bounded teardown: when the peer closes its side, the outbound writer is given `$2\,\mathrm{s}$` to flush what it already holds and is then cancelled, and if a platform write does not observe cancellation within a further `$2\,\mathrm{s}$` the socket is disposed underneath it.

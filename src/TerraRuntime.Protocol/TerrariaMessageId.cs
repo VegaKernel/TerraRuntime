@@ -59,6 +59,15 @@ public enum TerrariaMessageId : byte
     PlayerDeathV2 = 118,
     FinishedConnectingToServer = 129,
     WorldItemRemove = 151,
+
+    /// <summary>
+    /// The client's latency probe. TerrariaServer 1.4.5.8 echoes it straight back
+    /// (<c>NetMessage.TrySendData(154, whoAmI)</c>) and the client turns the round trip into the number it
+    /// displays. A server that never replies does not look fast - the client's own
+    /// <c>Terraria.Net.Ping.Update</c> keeps raising its reading while it waits, and never sends a second
+    /// probe, so the displayed latency climbs forever off one unanswered packet.
+    /// </summary>
+    Ping = 154,
     SyncChestSize = 155,
     NpcDamageAck = 162
 }

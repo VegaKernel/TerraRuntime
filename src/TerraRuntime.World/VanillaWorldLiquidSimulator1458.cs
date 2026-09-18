@@ -575,6 +575,14 @@ public sealed class VanillaWorldLiquidSimulator1458
             tile.TileType == VanillaTileIds.AshPlants || tile.TileType == VanillaTileIds.JunglePlantsEcho)
             return true;
 
+        // WorldGen.WaterCheck kills a lava-soaked cell with a plain KillTile(i, j), and for a tree trunk that
+        // is a single-cell removal: KillTile has no tree cascade, so the cells above simply lose their support
+        // and are reframed later. This is why a generated tree standing where lava reaches it comes out broken
+        // rather than whole in vanilla too, and why admitting the single cell here is the source behaviour and
+        // not a widening of destruction authority. Trees are lava-death only; they survive water.
+        if (VanillaTileIds.IsTree(tile.TileType))
+            return true;
+
         // Source CheckOrb/CheckPot/Check3x2/Check1xX, Check1x2Top/CheckBanner and painting Check*Wall
         // remove the remaining coherent object after a cell is killed.
         // Check2x2 also removes desert boulder484; its projectile branch explicitly excludes

@@ -1,5 +1,33 @@
 # Work state
 
+## FIXED: the client's growing ping was an unanswered packet 154 - 2026-09-18
+
+Do not look for a latency or throughput cause. Terraria.Net.Ping.Update sends ONE packet 154, sets _waitingForResponse, and while that flag is set it does `CurrentPing = Max(CurrentPing, elapsed)` every frame and never sends another probe. Only the server's reply clears the flag. TerrariaServer 1.4.5.8 answers in MessageBuffer.GetData case 154 with NetMessage.TrySendData(154, whoAmI) - an empty packet 154 straight back. TerraRuntime had no 154 in TerrariaMessageId at all, so it never replied and the client's displayed ping grew forever off that single frame.
+
+The user's packet-stats screenshot is the proof and the diagnostic to reuse: row 154 shows tx:1, rx:0. One sent, none received. Traffic was ~0.1 kB/s at the time and the number still climbed, which is what rules out any bandwidth explanation.
+
+Fixed by adding TerrariaMessageId.Ping = 154 and echoing it from PlayerBootstrapFrameSink through TryQueueOpportunistic - opportunistic on purpose, since a diagnostic reply must never take a queue slot from real traffic and a dropped reply just makes the client ask again. Test: PlayerBootstrapPingTests.
+
+Separately observed in that same screenshot and NOT investigated: packet 27 (SyncProjectile) had rx:10679 / 739556 bytes, a large burst that then went quiet. Worth checking whether the runtime broadcasts a projectile snapshot far more often than the source, or whether that was a one-time catch-up on join.
+
+
+## Vanilla worldgen stage91 Glowing Mushrooms and Jungle Plants: closed - 2026-09-18
+
+The runtime sampled random columns; the source scans every cell from (5,5) to (maxTilesX-5, maxTilesY-5) and offers a plant to every active cell with an open cell above. That shape difference, not a constant, is why the jungle read as bare: 1,425 plants against the official 43,307 on the same seed. After the port, 54,332 - the remaining excess tracks this runtime's jungle grass surplus, itself 107 percent of the reference.
+
+New files: GenerationPlantPlacement1458.cs (PlaceTile slices for 61 and 71 plus TooManyJunglePlantsNearby), CatTail1458.cs (PlaceCatTail + GrowCatTail), tests/JunglePlantsPass1458Tests.cs, .cache/jplants-probe.
+
+Non-obvious details, do not "simplify" any of them:
+- The probability gates in PlaceTile draw IN ORDER until one fires, so the number of values consumed depends on which one fires. Next(16) thorn, then Next(60) frame 144, then Next(230) frame 162, then Next(15) decorative, then Next(6) ordinary.
+- The thorn needs j > worldSurface AND not Lihzahrd; frames 144/162 need j > rockLayer AND not Lihzahrd. A Lihzahrd cell can only ever get the ordinary six frames.
+- The decorative branch splits again: Next(3) != 0 gives Next(2)*18+108, else Next(13)*18+180. Inverting that comparison fails 10 of 16 cases.
+- The target cell is always inactive, so PlaceTile's `tile.Clear(Tile|TilePaint|Slope)` runs and the plant never inherits paint, coating or shape. A generated thorn (type 69) comes out at frame 0/0.
+- Mushroom grass gets THREE TryGrowingTreeByType(5) attempts, each re-checked between attempts. One attempt instead of three fails 2 of 16.
+- GrowCatTail's frameX==90 branch has THREE outcomes, not one: water above gives stem 108 + head 90 with no draw; out of water it climbs on Next(3)==0 only when the cell two above is clear and water is within two below; otherwise it flowers with a second Next(3) picking stem 126+n*18 and flower 180+n*18. The first draw is short-circuited away when the clearance/water tests fail.
+
+Integration consequence that cost time: growing trees in mushroom biomes made load-time liquid preparation refuse worlds with UnsupportedLiquidDeathTile on TileType 5. Trees are lava-death; when lava reaches a trunk cell the preflight could not resolve a tree footprint and failed closed. WorldGen.WaterCheck kills such a cell with a plain KillTile(i, j), and KillTile has no tree cascade - it is a single-cell removal and the cells above simply lose support. VanillaContentIds.IsTree now names the eleven growable tree identities and the loading resolver admits them as single-cell deaths.
+
+
 ## Vanilla worldgen stage55 Oasis: closed against the source method - 2026-09-18
 
 The runtime's oasis builder was invented end to end: a hardcoded one-or-two basin target, its own distance gates against jungle/snow/dungeon, a Next(22,38) by Next(5,9) ellipse and a "70 percent of sampled surface columns are sand" heuristic. Replaced with WorldGen.PlaceOasis and the registered pass's own draw shape (count = maxTilesX / 2100 + Next(2); per basin up to maxTilesX * 2 attempts at x in [beachDistance + 300, maxTilesX - (beachDistance + 300)) and y in [100, worldSurface)).

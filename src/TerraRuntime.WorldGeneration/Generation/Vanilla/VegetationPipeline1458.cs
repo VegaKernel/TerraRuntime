@@ -173,6 +173,7 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
     private const ushort Herbs = 82;
     private const ushort SnowBlock = 147;
     private const ushort DyePlants = 227;
+    private const ushort LihzahrdBrick = 226;
 
     private static readonly int[] FlowerStyles = [6, 7, 9, 10, 12, 14, 19];
 
@@ -219,7 +220,7 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
                 ApplyWeeds(context, grid, random);
                 break;
             case VegetationStage1458.GlowingMushroomsAndJunglePlants:
-                ApplyGlowingMushroomsAndJunglePlants(context, grid, random);
+                ApplyGlowingMushroomsAndJunglePlants(context, workspace);
                 break;
             case VegetationStage1458.JunglePlants:
                 ApplyJunglePlants(context, grid, random);
@@ -454,34 +455,79 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Planting surface weeds ({placed}/{target})");
     }
 
-    private void ApplyGlowingMushroomsAndJunglePlants(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    /// <summary>
+    /// The registered TerrariaServer 1.4.5.8 <c>GenPassNameID.GlowingMushroomPlantsUndergroundAndJunglePlants</c>
+    /// pass. It is a deterministic whole-map scan, not a sampling loop: every active cell whose neighbour above
+    /// is open gets a plant offered to it, and the only probability in the jungle half is which plant.
+    /// </summary>
+    /// <remarks>
+    /// The scan shape is the reason this matters. The previous owner sampled a bounded number of random columns
+    /// and produced roughly three percent of the source's jungle plant count, which is what made a generated
+    /// jungle read as bare. Mushroom grass below <c>worldSurface</c> is offered up to three tree attempts before
+    /// falling back to a plant, and Lihzahrd Brick is planted only on a one-in-five draw and only where the
+    /// source's crowding rule allows it. A cell is never both, so the two halves interleave in the shared RNG
+    /// stream exactly as the scan visits them.
+    /// </remarks>
+    private void ApplyGlowingMushroomsAndJunglePlants(IWorldGenerationContext context, Workspace workspace)
     {
-        int attempts = Math.Max(1000, grid.Width * 2);
-        int minY = Math.Clamp((int)state.WorldSurface + 20, 20, state.UnderworldTop - 80);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 20);
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Jungle plants require shared UnifiedRandom semantics.");
+        WorldTileStore store = workspace.TileStore;
+        CancellationToken cancellation = context.CancellationToken;
+        int width = workspace.WidthTiles;
+        int height = workspace.HeightTiles;
+        double worldSurface = state.WorldSurface;
+        double rockLayer = state.RockLayer;
         int mushrooms = 0;
         int jungle = 0;
 
-        for (int i = 0; i < attempts; i++)
+        for (int x = 5; x < width - 5; x++)
         {
-            if ((i & 1023) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(4, grid.Width - 4);
-            int probe = random.Next(minY, maxY);
-            int floor = grid.FindFirstActiveY(x, probe, Math.Min(grid.Height - 2, probe + 70));
-            if (floor >= grid.Height - 2 || !CanPlaceSinglePlant(grid, x, floor - 1))
-                continue;
+            cancellation.ThrowIfCancellationRequested();
+            for (int y = 5; y < height - 5; y++)
+            {
+                if (!store.Get(x, y).IsActive)
+                    continue;
 
-            ushort ground = grid.At(x, floor).Type;
-            if (ground == MushroomGrass)
-            {
-                SetPlant(ref grid.At(x, floor - 1), MushroomPlants, random.Next(5) * 18, 0);
-                mushrooms++;
-            }
-            else if (ground == JungleGrass)
-            {
-                SetPlant(ref grid.At(x, floor - 1), JunglePlants, random.Next(6) * 18, 0);
-                jungle++;
+                ushort ground = store.Get(x, y).Type;
+                if (y >= (int)worldSurface && ground == MushroomGrass && !store.Get(x, y - 1).IsActive)
+                {
+                    // Three tree attempts, each re-checked, then the plant. The source nests the checks so a
+                    // tree that grew on the first attempt costs exactly one attempt's worth of shared RNG.
+                    TreeGrower1458.TryGrow(store, x, y, random);
+                    if (!store.Get(x, y - 1).IsActive)
+                    {
+                        TreeGrower1458.TryGrow(store, x, y, random);
+                        if (!store.Get(x, y - 1).IsActive)
+                        {
+                            TreeGrower1458.TryGrow(store, x, y, random);
+                            if (!store.Get(x, y - 1).IsActive)
+                            {
+                                GenerationPlantPlacement1458.PlaceMushroomPlants(
+                                    store, random, x, y - 1, worldSurface, cancellation);
+                                mushrooms++;
+                            }
+                        }
+                    }
+                }
+
+                if (store.Get(x, y - 1).IsActive)
+                    continue;
+
+                if (ground == JungleGrass)
+                {
+                    GenerationPlantPlacement1458.PlaceJunglePlants(
+                        store, random, x, y - 1, worldSurface, rockLayer);
+                    jungle++;
+                }
+                else if (ground == LihzahrdBrick &&
+                         random.Next(5) == 0 &&
+                         !GenerationPlantPlacement1458.TooManyJunglePlantsNearby(store, x, y - 1))
+                {
+                    GenerationPlantPlacement1458.PlaceJunglePlants(
+                        store, random, x, y - 1, worldSurface, rockLayer);
+                    jungle++;
+                }
             }
         }
 

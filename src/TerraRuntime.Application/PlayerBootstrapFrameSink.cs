@@ -35,6 +35,17 @@ public enum PlayerBootstrapStopReason : byte
 /// </summary>
 public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 {
+    /// <summary>
+    /// The server's reply to the client's latency probe: the same empty packet 154 sent straight back, exactly
+    /// as <c>MessageBuffer.GetData</c> does for <c>netMode == 2</c>.
+    /// </summary>
+    private static readonly byte[] PingReplyFrame =
+    [
+        3,
+        0,
+        (byte)TerrariaMessageId.Ping
+    ];
+
     private static readonly byte[] FinishedConnectingFrame =
     [
         3,
@@ -210,6 +221,9 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
             case TerrariaMessageId.LoadNetModule:
                 return HandleNetModule(frame);
+
+            case TerrariaMessageId.Ping:
+                return HandlePing();
 
             default:
                 return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;
@@ -727,6 +741,17 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             text,
             new TerrariaRgbColor(255, 255, 255));
         _chatRelay?.Broadcast(_source, session.Handle, encoded);
+        return TerrariaFrameSinkResult.Continue;
+    }
+
+    /// <summary>
+    /// Echoes the client's latency probe. The reply is opportunistic on purpose: it is pure diagnostics, so a
+    /// momentarily full outbound queue must never cost the connection its place in line for real traffic. The
+    /// client simply reads a higher number and asks again.
+    /// </summary>
+    private TerrariaFrameSinkResult HandlePing()
+    {
+        _ = TryQueueOpportunistic(PingReplyFrame);
         return TerrariaFrameSinkResult.Continue;
     }
 

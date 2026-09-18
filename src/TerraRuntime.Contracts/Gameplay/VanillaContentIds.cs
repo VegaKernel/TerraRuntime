@@ -798,6 +798,15 @@ public static class VanillaTileIds
         type == ClosedDoor ||
         type == TallGateClosed;
 
+    /// <summary>
+    /// The tile identities <c>WorldGen.TryGrowingTreeByType</c> can grow: ordinary and palm trees, the seven gem
+    /// trees, the two vanity trees and the ash tree. All of them are lava-death and none is water-death.
+    /// </summary>
+    public static bool IsTree(TileTypeId type) =>
+        type == Trees ||
+        type == MushroomTrees ||
+        type.Value is 323 or 583 or 584 or 585 or 586 or 587 or 588 or 589 or 596 or 616 or 634;
+
     public static bool IsNpcChair(TileTypeId type) =>
         type == Chairs ||
         type == Toilets;
