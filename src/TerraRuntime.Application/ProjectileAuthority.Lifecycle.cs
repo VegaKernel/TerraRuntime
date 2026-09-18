@@ -23,6 +23,9 @@ internal sealed partial class ProjectileAuthority
         liveChildSpawns.Reset();
         SynchronizeControlledProjectileReleaseInputs();
         LastTick = executor.Tick(stepper);
+        // Source Projectile.UpdateProjectiles refunds one unit of each projectile's packet-27 budget per world
+        // tick, after the updates for that tick have been offered.
+        replication?.AdvanceNetSpamBudget();
         FallingBlocks.ForgetDisplaced(projectiles);
         ApplyPendingLiveChildSpawns();
         ApplyPendingChildSpawns();

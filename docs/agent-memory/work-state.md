@@ -1,5 +1,21 @@
 # Work state
 
+## Packet 27 flood: source netSpam budget ported, trigger model still open - 2026-09-18
+
+The user's packet stats showed packet 27 (SyncProjectile) at rx:10679 / 739556 bytes in a burst. Cause: RuntimeProjectileReplicationRegistry.ProjectileStateCommitted broadcasts on every committed Update whose encoded frame differs from the last one, which for a moving projectile is every tick.
+
+Source model, Projectile.UpdateProjectiles around line 17315 of the decompile:
+  if (!active || owner != Main.myPlayer) continue;   // server myPlayer is 255, so only server-owned
+  if (netUpdate2) netUpdate = true;
+  if (!active) netSpam = 0;
+  if (netUpdate) { if (netSpam < 60) { netSpam += 5; SendData(27,...); netUpdate2 = false; } else netUpdate2 = true; }
+  if (netSpam > 0) netSpam--;
+
+Two divergences, only the first is fixed:
+1. DONE - no per-projectile budget at all. netSpam is now ported: +5 per sent update, -1 per world tick from ProjectileAuthority.TryTickState, refuse at 60, reset to 0 on Remove/Despawn. Spawn is never charged (NewProjectile sends unconditionally) and relayed client updates are not charged (one in, one out). Withheld frames are dropped, not queued - the next tick carries newer state. Counter: ThrottledUpdateFrames. Test: ProjectileNetSpamThrottleTests.
+2. OPEN - the trigger. The source sends only when an AI path has raised netUpdate; TerraRuntime still offers an update whenever committed state differs. Porting netUpdate through every AI path is its own work item. Until then the budget is a containment bound, not parity - say so, do not claim the packet rate matches the source.
+
+
 ## FIXED: the client's growing ping was an unanswered packet 154 - 2026-09-18
 
 Do not look for a latency or throughput cause. Terraria.Net.Ping.Update sends ONE packet 154, sets _waitingForResponse, and while that flag is set it does `CurrentPing = Max(CurrentPing, elapsed)` every frame and never sends another probe. Only the server's reply clears the flag. TerrariaServer 1.4.5.8 answers in MessageBuffer.GetData case 154 with NetMessage.TrySendData(154, whoAmI) - an empty packet 154 straight back. TerraRuntime had no 154 in TerrariaMessageId at all, so it never replied and the client's displayed ping grew forever off that single frame.

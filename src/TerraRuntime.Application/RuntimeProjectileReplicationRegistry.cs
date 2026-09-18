@@ -32,6 +32,18 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
     private long rejectedFrames;
     private long unsupportedCommits;
     private long suppressedDuplicateFrames;
+    private long throttledUpdateFrames;
+
+    /// <summary>
+    /// Per-projectile packet-27 budget, the source's <c>Projectile.netSpam</c>. TerrariaServer 1.4.5.8 spends
+    /// <see cref="NetSpamCostPerUpdate1458"/> on every update it sends, refunds one per world tick and refuses
+    /// to send at all once the budget reaches <see cref="NetSpamCeiling1458"/>, which bounds one projectile to
+    /// roughly one update every five ticks when it is moving continuously.
+    /// </summary>
+    private readonly int[] netSpam = new int[MaxProjectileSlots];
+
+    internal const int NetSpamCostPerUpdate1458 = 5;
+    internal const int NetSpamCeiling1458 = 60;
 
     public RuntimeProjectileReplicationRegistry()
         : this(new RuntimeProjectileWireIdentityRegistry(), new RuntimeProjectileClientCommitContext())
@@ -60,6 +72,13 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
     public long UnsupportedCommits => Interlocked.Read(ref unsupportedCommits);
 
     public long SuppressedDuplicateFrames => Interlocked.Read(ref suppressedDuplicateFrames);
+
+    /// <summary>
+    /// Update frames withheld because the projectile had spent its source-backed packet-27 budget. These are
+    /// dropped rather than queued: the projectile keeps moving and the next tick's commit carries newer state,
+    /// so holding a stale frame would only delay a better one.
+    /// </summary>
+    public long ThrottledUpdateFrames => Interlocked.Read(ref throttledUpdateFrames);
 
     internal RuntimeProjectileWireIdentityRegistry WireIdentities => identities;
 
@@ -90,6 +109,8 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
 
         if (kind == ProjectileStateCommitKind.Remove)
         {
+            // Source: an inactive projectile resets netSpam, so a reused slot starts with a full budget.
+            Volatile.Write(ref netSpam[snapshot.Handle.Slot], 0);
             Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
             ClearLiveFrame(snapshot.Handle);
             identities.TryUnbind(snapshot.Handle, out _);
@@ -129,6 +150,7 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
             }
             finally
             {
+                Volatile.Write(ref netSpam[snapshot.Handle.Slot], 0);
                 Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], null);
                 ClearLiveFrame(snapshot.Handle);
                 identities.TryUnbind(snapshot.Handle, out _);
@@ -181,7 +203,43 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
             return;
         }
 
+        // A spawn always goes out, exactly as WorldGen's NewProjectile sends packet 27 unconditionally, and a
+        // relayed client update is one packet in for one packet out. Only the server's own per-tick updates are
+        // charged against the projectile's budget.
+        if (kind == ProjectileStateCommitKind.Update && !clientCommit && !TrySpendNetSpam(snapshot.Handle.Slot))
+        {
+            Interlocked.Increment(ref throttledUpdateFrames);
+            return;
+        }
+
         Broadcast(updateFrame, clientCommit, excludedSource);
+    }
+
+    /// <summary>
+    /// Refunds one unit of every projectile's packet-27 budget, which is the source's per-world-tick
+    /// <c>if (netSpam &gt; 0) netSpam--</c>. The authoritative world loop is the only caller.
+    /// </summary>
+    internal void AdvanceNetSpamBudget()
+    {
+        for (int slot = 0; slot < netSpam.Length; slot++)
+        {
+            int spent = Volatile.Read(ref netSpam[slot]);
+            if (spent > 0)
+                Volatile.Write(ref netSpam[slot], spent - 1);
+        }
+    }
+
+    private bool TrySpendNetSpam(int slot)
+    {
+        if ((uint)slot >= (uint)netSpam.Length)
+            return true;
+
+        int spent = Volatile.Read(ref netSpam[slot]);
+        if (spent >= NetSpamCeiling1458)
+            return false;
+
+        Volatile.Write(ref netSpam[slot], spent + NetSpamCostPerUpdate1458);
+        return true;
     }
 
     // AI_077 departure sends packet 27 immediately before a silent authoritative removal.

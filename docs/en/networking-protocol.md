@@ -65,6 +65,14 @@ The `$2\,\mathrm{min}$` join deadline is an abuse ceiling, not a vanilla gamepla
 
 The post-join inactivity deadline is the source value. TerrariaServer 1.4.5.8 increments `Netplay.Clients[i].TimeOutTimer` once per server update and terminates the client past `7200`, which is `$120\,\mathrm{s}$` at the dedicated server's 60 updates per second; any received message resets it in `MessageBuffer.GetData`. A playing vanilla client sends player controls several times per second, so two minutes of complete inbound silence means the peer is gone.
 
+### Projectile update budget
+
+TerrariaServer 1.4.5.8 does not send a packet `27` for every projectile every tick. `Projectile.UpdateProjectiles` charges each projectile's own `netSpam` counter five units per update it sends, refunds one unit per world tick, and refuses to send at all once the counter reaches sixty. A projectile that is moving continuously therefore settles at roughly one update every five ticks, and an inactive projectile resets the counter so a reused slot starts with a full budget.
+
+TerraRuntime charges the same budget, for the same reason and with the same constants. A spawn is never charged, matching the unconditional send in `NewProjectile`, and a relayed client update is one packet in for one packet out. Withheld frames are dropped rather than queued: the projectile keeps moving, so the next tick's commit carries newer state and holding a stale frame would only delay a better one. Network detail counts them as throttled update frames.
+
+This is a containment bound taken from the source, not full parity for the trigger. The source only sends when a projectile's `netUpdate` flag has been raised by an event in its AI - a bounce, a state change, a target switch - while TerraRuntime still offers an update whenever committed state differs from the last frame it sent. Porting that flag through every AI path is separate work; until then the budget is what keeps a busy world from spending its bandwidth on projectile updates.
+
 ### The client's latency probe
 
 Packet `154` is the client's own latency measurement, and the server must answer it. `Terraria.Net.Ping.Update` sends one probe, sets a waiting flag, and while that flag is set it raises `CurrentPing` to the elapsed time on every frame and sends nothing further. The server's reply clears the flag: TerrariaServer 1.4.5.8 does that in `MessageBuffer.GetData` with `NetMessage.TrySendData(154, whoAmI)`, an empty packet `154` straight back.
