@@ -217,7 +217,7 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
                 ApplyWebsAndHoney(context, grid, random);
                 break;
             case VegetationStage1458.Weeds:
-                ApplyWeeds(context, grid, random);
+                ApplyWeeds(context, workspace);
                 break;
             case VegetationStage1458.GlowingMushroomsAndJunglePlants:
                 ApplyGlowingMushroomsAndJunglePlants(context, workspace);
@@ -226,7 +226,7 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
                 ApplyJunglePlants(context, grid, random);
                 break;
             case VegetationStage1458.Vines:
-                ApplyVines(context, grid, random);
+                ApplyVines(context, workspace);
                 break;
             case VegetationStage1458.Flowers:
                 ApplyFlowers(context, grid, random);
@@ -431,28 +431,23 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Adding webs and honey ({webs} webs, {honeyCells} honey cells)");
     }
 
-    private void ApplyWeeds(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    /// <summary>
+    /// Source <c>GenPassNameID.GrassPlantsEvilPlantsAndPumpkinsOnSurface</c>, delegated to
+    /// <see cref="SurfacePlantPass1458"/>. The runtime previously sampled a few thousand columns and offered
+    /// plants to ordinary grass alone, so a generated Corruption or Crimson had no plants and no thorny bushes
+    /// at all.
+    /// </summary>
+    private void ApplyWeeds(IWorldGenerationContext context, Workspace workspace)
     {
-        int target = Math.Max(180, grid.Width / 9);
-        int minY = Math.Max(8, (int)state.WorldSurface - 170);
-        int maxY = Math.Min(grid.Height - 3, (int)state.WorldSurface + 180);
-        int placed = 0;
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Surface plants require shared UnifiedRandom semantics.");
 
-        for (int attempt = 0; attempt < target * 30 && placed < target; attempt++)
-        {
-            if ((attempt & 511) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(4, grid.Width - 4);
-            int floor = grid.FindFirstActiveY(x, minY, maxY);
-            if (floor >= maxY || grid.At(x, floor).Type != Grass || !CanPlaceSinglePlant(grid, x, floor - 1))
-                continue;
+        long planted = SurfacePlantPass1458.Apply(
+            workspace.TileStore,
+            random,
+            context.CancellationToken);
 
-            int style = random.Next(6);
-            SetPlant(ref grid.At(x, floor - 1), Plants, style * 18, 0);
-            placed++;
-        }
-
-        context.ReportProgress(1d, $"Planting surface weeds ({placed}/{target})");
+        context.ReportProgress(1d, $"Planting surface and evil plants ({planted} cells)");
     }
 
     /// <summary>
@@ -581,62 +576,21 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Decorating underground jungle plants ({placed}/{target})");
     }
 
-    private void ApplyVines(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    /// <summary>
+    /// Source <c>GenPassNameID.Vines</c>, delegated to <see cref="VinePass1458"/>. The runtime previously sampled
+    /// a few thousand random columns and grew about half a percent of the source's vines, which is why both the
+    /// jungle and the evil biomes read as bare.
+    /// </summary>
+    private void ApplyVines(IWorldGenerationContext context, Workspace workspace)
     {
-        int attempts = Math.Max(700, grid.Width);
-        int maxSurfaceY = Math.Min(grid.Height - 12, (int)state.WorldSurface + 100);
-        int maxJungleY = Math.Min(state.UnderworldTop - 10, grid.Height - 12);
-        int grown = 0;
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Vines require shared UnifiedRandom semantics.");
 
-        for (int attempt = 0; attempt < attempts; attempt++)
-        {
-            if ((attempt & 511) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(3, grid.Width - 3);
-            int upperBound = random.Next(3) == 0 ? maxJungleY : maxSurfaceY;
-            int floor = grid.FindFirstActiveY(x, 8, upperBound);
-            if (floor >= upperBound)
-                continue;
-
-            ushort ground = grid.At(x, floor).Type;
-            ushort vine = ground switch
-            {
-                Grass => Vines,
-                JungleGrass => JungleVines,
-                _ => 0
-            };
-            if (vine == 0)
-                continue;
-
-            int y = floor + 1;
-            if (y >= grid.Height - 2 || grid.At(x, y).IsActive)
-            {
-                // For exposed ceilings, the supporting grass is above an air cell rather than below it.
-                int ceilingY = grid.FindLastActiveYBeforeAir(x, 8, upperBound);
-                if (ceilingY < 1 || ceilingY + 1 >= grid.Height - 2)
-                    continue;
-                ground = grid.At(x, ceilingY).Type;
-                vine = ground switch
-                {
-                    Grass => Vines,
-                    JungleGrass => JungleVines,
-                    _ => 0
-                };
-                if (vine == 0 || grid.At(x, ceilingY + 1).IsActive)
-                    continue;
-                y = ceilingY + 1;
-            }
-
-            int length = random.Next(2, 9);
-            for (int step = 0; step < length && y + step < grid.Height - 2; step++)
-            {
-                ref WorldTile tile = ref grid.At(x, y + step);
-                if (tile.IsActive || tile.LiquidAmount > 0)
-                    break;
-                SetPlant(ref tile, vine, 0, 0);
-                grown++;
-            }
-        }
+        long grown = VinePass1458.Apply(
+            workspace.TileStore,
+            random,
+            (int)state.WorldSurface,
+            context.CancellationToken);
 
         context.ReportProgress(1d, $"Growing vines ({grown} cells)");
     }
