@@ -25,7 +25,8 @@ internal static class ClientTileManipulationAdmissionPolicy
 
         return action is TerrariaTileManipulationAction.KillTile or
             TerrariaTileManipulationAction.PlaceTile or
-            TerrariaTileManipulationAction.KillWall
+            TerrariaTileManipulationAction.KillWall or
+            TerrariaTileManipulationAction.PlaceWall
             ? ClientTileManipulationAdmissionResult.Admitted
             : ClientTileManipulationAdmissionResult.AuthorityUnavailable;
     }

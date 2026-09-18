@@ -884,6 +884,71 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         replication?.TryPublishCommitted(command.Connection.Source, in tileState);
     }
 
+    /// <summary>
+    /// Source <c>WorldGen.PlaceWall</c>, reached from packet 17 action 3. The source refuses the two-cell world
+    /// border and any cell that already carries a wall, and does not consume the item - the client owns its own
+    /// inventory and resyncs it separately, exactly as it does for tile placement.
+    /// </summary>
+    private void ApplyClientWallPlacement(
+        ClientTileManipulationRuntimeCommand command,
+        RuntimePlayerMember player,
+        in TerrariaTileManipulationState tileState)
+    {
+        if (tiles is null || mutations is null)
+            throw new InvalidOperationException("Wall authority requires an authoritative tile store.");
+
+        if (!players.TryGetInventoryItem(
+                command.Connection,
+                player.SelectedItem,
+                out RuntimePlayerInventoryItem selectedItem))
+        {
+            RejectWithCorrection(command, in tileState);
+            return;
+        }
+
+        switch (ClientTileManipulationConsistency.Evaluate(in tileState, in selectedItem))
+        {
+            case ClientTileManipulationConsistencyResult.Mismatch:
+                RejectWithCorrection(command, in tileState);
+                return;
+
+            case ClientTileManipulationConsistencyResult.Unsupported:
+                UnsupportedWithCorrection(command, in tileState);
+                return;
+        }
+
+        if (!VanillaWallIds.TryCreate(tileState.Data, out WallTypeId requestedWall) ||
+            requestedWall == VanillaWallIds.None)
+        {
+            RejectWithCorrection(command, in tileState);
+            return;
+        }
+
+        // The source's own border guard: PlaceWall returns without touching anything inside two cells of the
+        // world edge, so a request there is refused rather than silently ignored.
+        if (tileState.TileX <= 1 || tileState.TileY <= 1 ||
+            tileState.TileX >= tiles.Dimensions.WidthTiles - 2 ||
+            tileState.TileY >= tiles.Dimensions.HeightTiles - 2)
+        {
+            RejectWithCorrection(command, in tileState);
+            return;
+        }
+
+        if (!ApplyTileMutation(
+                mutations,
+                WorldTileMutationKind.PlaceWall,
+                tileState.TileX,
+                tileState.TileY,
+                wallType: requestedWall))
+        {
+            RejectWithCorrection(command, in tileState);
+            return;
+        }
+
+        AppliedClientManipulations++;
+        replication?.TryPublishCommitted(command.Connection.Source, in tileState);
+    }
+
     private void ApplyClientLiquidWakeup(ClientLiquidRuntimeCommand command)
     {
         ClientManipulationRequests++;
@@ -999,6 +1064,12 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         if (action == TerrariaTileManipulationAction.KillWall)
         {
             ApplyClientWallBreak(command, player, in tileState);
+            return;
+        }
+
+        if (action == TerrariaTileManipulationAction.PlaceWall)
+        {
+            ApplyClientWallPlacement(command, player, in tileState);
             return;
         }
 

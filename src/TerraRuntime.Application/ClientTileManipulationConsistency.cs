@@ -24,15 +24,30 @@ internal static class ClientTileManipulationConsistency
         in TerrariaTileManipulationState state,
         in RuntimePlayerInventoryItem selectedItem)
     {
-        if (!state.TryGetWireAction(out TerrariaTileManipulationAction action) ||
-            action != TerrariaTileManipulationAction.PlaceTile)
+        if (!state.TryGetWireAction(out TerrariaTileManipulationAction action))
             return ClientTileManipulationConsistencyResult.Unsupported;
 
-        if (selectedItem.IsEmpty ||
-            !VanillaTileIds.TryCreate(state.Data, out TileTypeId requestedTile))
-        {
+        if (selectedItem.IsEmpty)
             return ClientTileManipulationConsistencyResult.Mismatch;
+
+        if (action == TerrariaTileManipulationAction.PlaceWall)
+        {
+            if (!VanillaWallIds.TryCreate(state.Data, out WallTypeId requestedWall))
+                return ClientTileManipulationConsistencyResult.Mismatch;
+
+            if (!VanillaDefinitionCatalog.TryGetWallPlacement(selectedItem.ItemType, out WallTypeId itemWall, out _))
+                return ClientTileManipulationConsistencyResult.Unsupported;
+
+            return requestedWall == itemWall
+                ? ClientTileManipulationConsistencyResult.Consistent
+                : ClientTileManipulationConsistencyResult.Mismatch;
         }
+
+        if (action != TerrariaTileManipulationAction.PlaceTile)
+            return ClientTileManipulationConsistencyResult.Unsupported;
+
+        if (!VanillaTileIds.TryCreate(state.Data, out TileTypeId requestedTile))
+            return ClientTileManipulationConsistencyResult.Mismatch;
 
         if (!VanillaDefinitionCatalog.TryGetPlacement(
                 selectedItem.ItemType,

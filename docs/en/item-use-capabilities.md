@@ -36,10 +36,29 @@ not merely `slot`.
 - the detached `PlayerItemUseRequest` is valid;
 - the selected `ItemTypeId` has a verified `VanillaItemPlacementDefinition`.
 
-For the current source-backed slice, Dirt Block resolves to:
+`VanillaItemPlacementDefinition` no longer means "one of the three items written out by hand". Three items were
+all this catalog ever carried - Dirt Block, Stone Block, Sand Block - and every other placement a client
+attempted was answered with a correction, which is why a connected player could not build. The catalog now falls
+back to `VanillaItemPlacementTable1458`, generated from the pinned dedicated server by running
+`Item.SetDefaults` over every id: **3,231 items that place a tile and 292 that place a wall**, with each item's
+`createTile`, `createWall`, `placeStyle` and `consumable` exactly as the source sets them.
+
+The hand-written definitions still win where they exist, because they carry use timing and tool facts the table
+does not. A test pins the two against each other so a hand-written entry can never drift from the source's own
+defaults, and the table's own totals are asserted so a truncated regeneration fails the build rather than a live
+world.
+
+The table is regenerated with `tools/ci/generate_item_placement_table.py` from the probe under
+`.cache/itemdefs-probe`; it is committed as generated code and audited by regenerating and diffing.
+
+For Dirt Block that resolves to:
 
 - `TileTypeId = Dirt (0)`;
 - `Consumable = true`.
+
+Wall placement had no representation at all before this table. `TryGetWallPlacement` answers it, and packet-17
+action 3 (`PlaceWall`) is now admitted and applied through `WorldGen.PlaceWall`'s own rules: the two-cell world
+border is refused, and a cell that already carries a wall is refused rather than overwritten.
 
 The returned `PlayerItemPlacementUse` contains those facts and the original player/item snapshot. Downstream placement gameplay therefore does not need to compare raw item ids.
 

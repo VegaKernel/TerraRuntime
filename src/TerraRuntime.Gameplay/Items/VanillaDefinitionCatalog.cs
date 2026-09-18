@@ -612,6 +612,12 @@ public static class VanillaDefinitionCatalog
         return false;
     }
 
+    /// <summary>
+    /// Resolves what tile an item places. The hand-written definitions above win where they exist, because they
+    /// carry facts this catalog verified individually; everything else falls back to the source-derived
+    /// <see cref="VanillaItemPlacementTable1458"/>, which covers all 3,231 tile-placing items. A test pins the
+    /// two against each other so the hand-written entries can never drift from the source's own defaults.
+    /// </summary>
     public static bool TryGetPlacement(
         ItemTypeId type,
         out VanillaItemPlacementDefinition placement)
@@ -622,7 +628,34 @@ public static class VanillaDefinitionCatalog
             return true;
         }
 
+        if (VanillaItemPlacementTable1458.TryGet(type, out VanillaItemPlacementRecord1458 record) &&
+            record.PlacesTile &&
+            VanillaTileIds.TryCreate(record.CreateTile, out TileTypeId tile))
+        {
+            placement = new VanillaItemPlacementDefinition(tile, record.Consumable);
+            return true;
+        }
+
         placement = default;
+        return false;
+    }
+
+    /// <summary>
+    /// Resolves what wall an item places. There is no hand-written counterpart: wall placement was never
+    /// represented at all before the source-derived table existed.
+    /// </summary>
+    public static bool TryGetWallPlacement(ItemTypeId type, out WallTypeId wall, out bool consumable)
+    {
+        if (VanillaItemPlacementTable1458.TryGet(type, out VanillaItemPlacementRecord1458 record) &&
+            record.PlacesWall &&
+            VanillaWallIds.TryCreate(record.CreateWall, out wall))
+        {
+            consumable = record.Consumable;
+            return true;
+        }
+
+        wall = default;
+        consumable = false;
         return false;
     }
 
