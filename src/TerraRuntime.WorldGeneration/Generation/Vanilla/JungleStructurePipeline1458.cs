@@ -244,7 +244,7 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
                 ApplyDirtRockWallRunner(context, grid, random);
                 break;
             case JungleStructureStage1458.LivingTrees:
-                ApplyLivingTrees(context, grid, random);
+                ApplyLivingTrees(context, workspace);
                 break;
             case JungleStructureStage1458.WoodTreeWalls:
                 ApplyWoodTreeWalls(context, grid);
@@ -303,143 +303,184 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Running dirt/rock cave wall background pass ({placed} wall cells)");
     }
 
-    private void ApplyLivingTrees(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    /// <summary>
+    /// Source <c>GenPassNameID.LivingTrees</c>. The pass draws its own count from the world width, then for
+    /// each one retries a column until a tree takes or it has tried half the world's width. A candidate column
+    /// is scanned down to the first active cell, must be dirt above <c>worldSurface</c> and below row 150, must
+    /// have no living wood or leaves within ten tiles, and must have no dungeon brick, cloud or aether in the
+    /// hundred-by-hundred box around it. Every accepted tree then grows up to three companions either side, in
+    /// patch mode, each re-tested against the same box.
+    /// </summary>
+    /// <remarks>
+    /// One exclusion of the source's is absent: it also refuses a column within fifty tiles of a recorded
+    /// mountain-cave entrance (<c>GenVars.mCaveX</c>), which this runtime's Mountain Caves pass does not
+    /// record. Everything else, including the retry loop's draw pattern, is the source's.
+    /// </remarks>
+    private void ApplyLivingTrees(IWorldGenerationContext context, Workspace workspace)
     {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        // Default 1.4.5.8 worlds choose 0..floor(2 * width/4200) living-tree seeds, with a
-        // 50% rescue when zero was selected.  Fixed 3/4/5 targets made forests of giant trees.
-        double scale = grid.Width / 4200d;
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Living trees require shared UnifiedRandom semantics.");
+        WorldTileStore store = workspace.TileStore;
+        CancellationToken cancellation = context.CancellationToken;
+        int width = workspace.WidthTiles;
+        double worldSurface = state.WorldSurface;
+        var grower = new LivingTreeGrower1458(store, random, cancellation);
+
+        const int spawnHalfWidth = 200;
+        const int beachDistance = 380;
+        double scale = width / 4200d;
         int target = random.Next(0, (int)(2d * scale) + 1);
         if (target == 0 && random.Next(2) == 0)
-            target = 1;
-        int placed = 0;
-        int attempts = Math.Max(1, target) * Math.Max(80, grid.Width / 2);
+            target++;
 
-        for (int attempt = 0; attempt < attempts && placed < target; attempt++)
+        int grown = 0;
+        for (int tree = 0; tree < target; tree++)
         {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(bootstrap.LeftBeachEnd + 140, bootstrap.RightBeachStart - 140);
-            int surface = grid.FindFirstActiveY(
-                x,
-                25,
-                Math.Min(grid.Height, Math.Max((int)state.WorldSurface + 100, (int)state.RockLayer)));
-            // Vanilla GrowLivingTree candidates are discarded when the ground scan lands too high.
-            // In ordinary worlds this is effectively j > 150 before the source decrements onto the
-            // placement cell.  The old <50 guard admitted sky-adjacent candidates and produced the
-            // "giant trees in absurd places" failure reported by live testing.
-            if (surface >= grid.Height - 20 || surface <= 151)
-                continue;
-            if (!IsLivingTreeSiteAllowed(grid, bootstrap, x, surface))
-                continue;
+            bool done = false;
+            int attempts = 0;
+            while (!done)
+            {
+                cancellation.ThrowIfCancellationRequested();
+                attempts++;
+                if (attempts > width / 2)
+                    done = true;
 
-            ref WorldTile ground = ref grid.At(x, surface);
-            if (!ground.IsActive || ground.Type != Dirt)
-                continue;
+                int x = random.Next(beachDistance, width - beachDistance);
+                if (x > width / 2 - spawnHalfWidth && x < width / 2 + spawnHalfWidth)
+                    continue;
 
-            // GrowLivingTree is substantially taller than an ordinary tree, but its footprint varies.
-            // Keep the clean-room renderer bounded and tapered instead of emitting the old uniform columns.
-            int trunkHeight = random.Next(30, 46);
-            int trunkHalfWidth = random.Next(2, 4);
-            if (surface - trunkHeight - 18 < 4)
-                continue;
+                int y = 0;
+                while (!store.Get(x, y).IsActive && y < worldSurface)
+                    y++;
+                if (y >= worldSurface)
+                    continue;
+                if (store.Get(x, y).Type != Dirt)
+                    continue;
 
-            BuildLivingTree(grid, random, x, surface, trunkHeight, trunkHalfWidth);
-            placed++;
+                y--;
+                if (y <= 150)
+                    continue;
+                if (!IsLivingTreeSiteAllowed(store, x, y))
+                    continue;
+
+                done = grower.TryGrow(x, y);
+                if (!done)
+                    continue;
+
+                grown++;
+                GrowLivingTreeCompanions(store, random, grower, x, y, width, spawnHalfWidth, cancellation);
+            }
         }
 
-        context.ReportProgress(1d, $"Growing source-shaped living trees ({placed}/{target})");
+        context.ReportProgress(1d, $"Growing living trees ({grown}/{target})");
     }
 
-    private bool IsLivingTreeSiteAllowed(RuntimeGrid grid, VanillaWorldGenerationBootstrapState1458 bootstrap, int x, int surface)
+    /// <summary>
+    /// The companion half of the pass. Each side gets <c>Next(4)</c> patch trees, walked outward by
+    /// <c>Next(13, 31)</c> at a time; each lands on the surface of its own column, which is found by walking up
+    /// out of ground or down out of air, and is re-tested against the box around the PARENT tree, not its own.
+    /// </summary>
+    private void GrowLivingTreeCompanions(
+        WorldTileStore store,
+        IWorldGenerationVanillaRandom random,
+        LivingTreeGrower1458 grower,
+        int parentX,
+        int parentY,
+        int width,
+        int spawnHalfWidth,
+        CancellationToken cancellation)
     {
-        int spawn = grid.Width / 2;
-        if (Math.Abs(x - spawn) < 200)
-            return false;
-        if (Math.Abs(x - bootstrap.DungeonLocation) < 100)
+        int height = store.Dimensions.HeightTiles;
+        for (int side = -1; side <= 1; side++)
+        {
+            if (side == 0)
+                continue;
+
+            int x = parentX;
+            int companions = random.Next(4);
+            for (int companion = 0; companion < companions; companion++)
+            {
+                cancellation.ThrowIfCancellationRequested();
+                x += random.Next(13, 31) * side;
+                if (x > width / 2 - spawnHalfWidth && x < width / 2 + spawnHalfWidth)
+                    continue;
+                if ((uint)x >= (uint)width)
+                    continue;
+
+                int y = parentY;
+                if (store.Get(x, y).IsActive)
+                {
+                    while (y > 0 && store.Get(x, y).IsActive)
+                        y--;
+                }
+                else
+                {
+                    while (y < height - 1 && !store.Get(x, y).IsActive)
+                        y++;
+                    y--;
+                }
+
+                if (IsLivingTreeSiteAllowed(store, parentX, parentY))
+                    grower.TryGrow(x, y, patch: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The source's two site tests: no living wood or leaves within ten tiles, and no dungeon brick, cloud or
+    /// aether identity anywhere in the hundred-by-hundred box whose top-left corner is fifty tiles up and left.
+    /// </summary>
+    private static bool IsLivingTreeSiteAllowed(WorldTileStore store, int x, int y)
+    {
+        if (IsTileNearby(store, x, y, LivingWood, 10) || IsTileNearby(store, x, y, LeafBlock, 10))
             return false;
 
-        // 1.4.5.8 rejects living-tree sites overlapping dungeon bricks or cloud-family tiles.
-        // Do the same bounded neighbourhood test so trees do not consume floating islands or the
-        // dungeon shell merely because those passes happened to leave dirt at the probe column.
-        int minX = Math.Max(1, x - 50);
-        int maxX = Math.Min(grid.Width - 2, x + 50);
-        int minY = Math.Max(1, surface - 50);
-        int maxY = Math.Min(grid.Height - 2, surface + 50);
-        for (int yy = minY; yy <= maxY; yy++)
+        int width = store.Dimensions.WidthTiles;
+        int height = store.Dimensions.HeightTiles;
+        for (int column = x - 50; column < x + 50; column++)
         {
-            for (int xx = minX; xx <= maxX; xx++)
+            if ((uint)column >= (uint)width)
+                continue;
+            for (int row = y - 50; row < y + 50; row++)
             {
-                ref WorldTile tile = ref grid.At(xx, yy);
+                if ((uint)row >= (uint)height)
+                    continue;
+
+                WorldTile tile = store.Get(column, row);
                 if (!tile.IsActive)
                     continue;
-                ushort type = tile.Type;
-                if (type is 41 or 43 or 44 or 481 or 482 or 483 or 189 or 196 or 460)
+                if (tile.Type is 41 or 43 or 44 or 481 or 482 or 483 or
+                    189 or 196 or 460 or 717 or 718 or 719)
+                {
                     return false;
+                }
             }
         }
 
         return true;
     }
 
-    private static void BuildLivingTree(
-        RuntimeGrid grid,
-        IRandom random,
-        int centerX,
-        int surface,
-        int height,
-        int halfWidth)
+    /// <summary>Source <c>WorldGen.IsTileNearby</c> for the identities this pass asks about.</summary>
+    private static bool IsTileNearby(WorldTileStore store, int x, int y, ushort type, int distance)
     {
-        int top = surface - height;
-        for (int y = top; y <= surface + 3; y++)
+        int width = store.Dimensions.WidthTiles;
+        int height = store.Dimensions.HeightTiles;
+        for (int column = x - distance; column <= x + distance; column++)
         {
-            int taper = y < top + height / 3 ? 1 : 0;
-            int left = centerX - Math.Max(1, halfWidth - taper);
-            int right = centerX + Math.Max(1, halfWidth - taper);
-            for (int x = left; x <= right; x++)
+            if ((uint)column >= (uint)width)
+                continue;
+            for (int row = y - distance; row <= y + distance; row++)
             {
-                if (!grid.Contains(x, y))
+                if ((uint)row >= (uint)height)
                     continue;
-                ref WorldTile tile = ref grid.At(x, y);
-                SetType(ref tile, LivingWood);
-                tile.Wall = LivingWoodUnsafeWall;
+
+                WorldTile tile = store.Get(column, row);
+                if (tile.IsActive && tile.Type == type)
+                    return true;
             }
         }
 
-        for (int branch = -1; branch <= 1; branch += 2)
-        {
-            int branchY = top + random.Next(height / 4, Math.Max(height / 4 + 1, height / 2));
-            int branchLength = random.Next(9, 16);
-            for (int step = 0; step < branchLength; step++)
-            {
-                int x = centerX + branch * (halfWidth + step);
-                int y = branchY - step / 3;
-                if (!grid.Contains(x, y))
-                    break;
-                SetType(ref grid.At(x, y), LivingWood);
-            }
-        }
-
-        int canopyY = top - 4;
-        int canopyRx = random.Next(13, 19);
-        int canopyRy = random.Next(8, 12);
-        FillEllipse(grid, centerX, canopyY, canopyRx, canopyRy, LeafBlock, overwriteAir: true, wall: 0);
-        FillEllipse(grid, centerX, canopyY + 4, Math.Max(4, canopyRx / 3), Math.Max(3, canopyRy / 2),
-            LivingWood, overwriteAir: true, wall: LivingWoodUnsafeWall);
-
-        for (int direction = -1; direction <= 1; direction += 2)
-        {
-            int rootLength = random.Next(7, 13);
-            for (int step = 0; step < rootLength; step++)
-            {
-                int x = centerX + direction * (halfWidth + step / 2);
-                int y = surface + step / 2;
-                if (!grid.Contains(x, y))
-                    break;
-                ref WorldTile tile = ref grid.At(x, y);
-                if (!tile.IsActive || IsNatural(tile.Type))
-                    SetType(ref tile, LivingWood);
-            }
-        }
+        return false;
     }
 
     private static void ApplyWoodTreeWalls(IWorldGenerationContext context, RuntimeGrid grid)

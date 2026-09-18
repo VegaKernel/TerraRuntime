@@ -16,31 +16,110 @@ internal static class GenerationDecorationPlacement1458
 {
     private const ushort SmallPiles = 185;
     private const ushort Pots = 28;
+    private const ushort PlantDetritus = 187;
 
     /// <summary>
-    /// Source <c>WorldGen.PlaceSmallPile</c> for the one-tall two-wide case the pyramid uses. The floor must be
-    /// solid, unsloped, unactuated and not a boulder, and the two cells above it must be clear. Lava in the
-    /// left cell refuses the pile outright.
+    /// Source <c>WorldGen.PlaceSmallPile</c>. Size one is the two-wide pile, whose style is indexed by 36
+    /// pixels and which additionally refuses a boulder floor; any other size is the single cell, indexed by 18.
+    /// Lava in the target cell refuses either outright.
     /// </summary>
-    public static bool TryPlaceSmallPile(WorldTileStore store, int x, int y, int style)
+    public static bool TryPlaceSmallPile(WorldTileStore store, int x, int y, int style, int size = 1)
     {
         if (!Contains(store, x, y) || !Contains(store, x + 1, y + 1))
             return false;
         if (store.Get(x, y).LiquidAmount > 0 && store.Get(x, y).LiquidKind == WorldLiquidKind.Lava)
             return false;
 
-        if (!IsFlatSolidFloor(store, x, y + 1) || !IsFlatSolidFloor(store, x + 1, y + 1))
-            return false;
-        if (store.Get(x, y).IsActive || store.Get(x + 1, y).IsActive)
-            return false;
-        if (IsBoulder(store, x, y + 1) || IsBoulder(store, x + 1, y + 1))
+        short frameY = checked((short)(size * 18));
+        if (size == 1)
+        {
+            if (!IsFlatSolidFloor(store, x, y + 1) || !IsFlatSolidFloor(store, x + 1, y + 1))
+                return false;
+            if (store.Get(x, y).IsActive || store.Get(x + 1, y).IsActive)
+                return false;
+            if (IsBoulder(store, x, y + 1) || IsBoulder(store, x + 1, y + 1))
+                return false;
+
+            short wideFrameX = checked((short)(style * 36));
+            Write(store, x, y, SmallPiles, wideFrameX, frameY);
+            Write(store, x + 1, y, SmallPiles, checked((short)(wideFrameX + 18)), frameY);
+            return true;
+        }
+
+        if (!IsFlatSolidFloor(store, x, y + 1) || store.Get(x, y).IsActive)
             return false;
 
-        // A one-tall pile indexes its style by 36 pixels and its size row by 18.
-        short frameX = checked((short)(style * 36));
-        short frameY = 18;
-        Write(store, x, y, SmallPiles, frameX, frameY);
-        Write(store, x + 1, y, SmallPiles, checked((short)(frameX + 18)), frameY);
+        Write(store, x, y, SmallPiles, checked((short)(style * 18)), frameY);
+        return true;
+    }
+
+    /// <summary>
+    /// Reaches <see cref="TryPlace3x2"/> the way <c>WorldGen.PlaceTile</c> does, with both of the steps the
+    /// placement itself does not contain. Its prologue clears an inactive anchor cell of identity, frames,
+    /// block paint and shape BEFORE the object decides whether it fits, so a refused placement still zeroes
+    /// that cell's frames; and its epilogue runs <c>SquareTileFrame</c> on the anchor whether the placement was
+    /// taken or refused, which is what deletes an older object this one overlapped.
+    /// </summary>
+    public static bool TryPlaceTile3x2(WorldTileStore store, int x, int y, ushort type, int style)
+    {
+        if (!Contains(store, x, y))
+            return false;
+
+        ref WorldTile anchor = ref At(store, x, y);
+        if (!anchor.IsActive)
+        {
+            anchor.Type = 0;
+            anchor.FrameX = 0;
+            anchor.FrameY = 0;
+            anchor.Shape = 0;
+            anchor.TileColor = 0;
+            anchor.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+        }
+
+        bool placed = TryPlace3x2(store, x, y, type, style);
+        new GenerationTileFraming1458(store).SquareTileFrame(x, y);
+        return placed;
+    }
+
+    /// <summary>
+    /// Source <c>WorldGen.Place3x2</c> for the plain three-wide two-tall objects, which is how
+    /// <c>PlaceTile</c> reaches Plant Detritus. The footprint's six cells must be clear, every column must
+    /// stand on flat solid ground, and for detritus no column may stand on a boulder.
+    /// </summary>
+    public static bool TryPlace3x2(WorldTileStore store, int x, int y, ushort type, int style)
+    {
+        int width = store.Dimensions.WidthTiles;
+        int height = store.Dimensions.HeightTiles;
+        if (x < 5 || x > width - 5 || y < 5 || y > height - 5)
+            return false;
+
+        for (int column = x - 1; column < x + 2; column++)
+        {
+            for (int row = y - 1; row < y + 1; row++)
+            {
+                if (!Contains(store, column, row) || store.Get(column, row).IsActive)
+                    return false;
+            }
+
+            if (type is PlantDetritus or 186 && IsBoulder(store, column, y + 1))
+                return false;
+            if (!IsFlatSolidFloor(store, column, y + 1))
+                return false;
+        }
+
+        short frameX = checked((short)(54 * style));
+        for (int dx = 0; dx < 3; dx++)
+        {
+            for (int dy = 0; dy < 2; dy++)
+            {
+                ref WorldTile cell = ref At(store, x - 1 + dx, y - 1 + dy);
+                cell.Flags |= WorldTileFlags.Active;
+                cell.Type = type;
+                cell.FrameX = checked((short)(frameX + dx * 18));
+                cell.FrameY = checked((short)(dy * 18));
+            }
+        }
+
         return true;
     }
 
