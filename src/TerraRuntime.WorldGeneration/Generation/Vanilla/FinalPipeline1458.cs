@@ -192,7 +192,7 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 ApplyWaterPlants(context, grid, random);
                 break;
             case FinalStage1458.Stalac:
-                ApplyStalac(context, grid, random);
+                ApplyStalac(context, workspace, random);
                 break;
             case FinalStage1458.RemoveBrokenTraps:
                 ApplyRemoveBrokenTraps(context, grid);
@@ -460,38 +460,31 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Water Plants complete; placed={placed}");
     }
 
-    private void ApplyStalac(
-        IWorldGenerationContext context,
-        RuntimeGrid grid,
-        IWorldGenerationVanillaRandom random)
+    /// <summary>
+    /// Source <c>GenPassNameID.SpeleothemsAndGemTrees</c>, delegated to <see cref="SpeleothemPass1458"/>.
+    /// </summary>
+    /// <remarks>
+    /// The runtime sampled a bounded number of random cells - <c>max(20, width / 7)</c> attempts - and grew no
+    /// gem trees at all, which is why an official Large world had 1,185 gem-tree cells against this runtime's
+    /// 70, all of those from the Shimmer pass. The source scans every column instead, offers a gem tree of a
+    /// randomly chosen identity on a one-in-five draw and a speleothem on another, and runs a second pass above
+    /// the surface for ice and the two evil stones.
+    /// </remarks>
+    private void ApplyStalac(IWorldGenerationContext context, Workspace workspace, IWorldGenerationVanillaRandom random)
     {
-        int minY = Math.Clamp((int)state.Layers.WorldSurface + 30, 3, grid.Height - 4);
-        int maxY = Math.Clamp(grid.Height - 220, minY + 1, grid.Height - 3);
-        int target = Math.Max(20, grid.Width / 7);
-        int placed = 0;
-        int attempts = target * 12;
+        const int beachDistance = 380;
+        var pass = new SpeleothemPass1458(
+            workspace.TileStore,
+            random,
+            state.Layers.WorldSurface,
+            state.Layers.RockLayer,
+            beachDistance,
+            context.CancellationToken);
 
-        for (int attempt = 0; attempt < attempts && placed < target; attempt++)
-        {
-            if ((attempt & 127) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(3, grid.Width - 3);
-            int y = random.Next(minY, maxY);
-            ref WorldTile tile = ref grid.At(x, y);
-            if (tile.IsActive || tile.LiquidAmount > 64)
-                continue;
-
-            bool ceiling = IsNaturalSolid(in grid.At(x, y - 1));
-            bool floor = IsNaturalSolid(in grid.At(x, y + 1));
-            if (!ceiling && !floor)
-                continue;
-
-            short frameX = checked((short)(random.Next(3) * 18));
-            short frameY = checked((short)(floor && !ceiling ? 54 : 0));
-            SetObjectTile(ref tile, Stalactite, frameX, frameY, preserveLiquid: true);
-            placed++;
-        }
-        context.ReportProgress(1d, $"Stalac complete; placed={placed}");
+        pass.Apply();
+        context.ReportProgress(
+            1d,
+            $"Speleothems and gem trees complete; speleothems={pass.Speleothems} gemTrees={pass.GemTrees}");
     }
 
     private static void ApplyRemoveBrokenTraps(IWorldGenerationContext context, RuntimeGrid grid)
