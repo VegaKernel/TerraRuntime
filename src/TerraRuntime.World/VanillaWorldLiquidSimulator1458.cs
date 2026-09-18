@@ -590,19 +590,28 @@ public sealed class VanillaWorldLiquidSimulator1458
         // The metadata object catalog intentionally covers chests/signs/entities, not these objects; do not
         // invent a metadata identity or a runtime placement path just to admit their loading-time destruction.
         // Check1x2 chairs use a 40-pixel style stride with rows at 0/18, not a 36-pixel atlas.
+        // Bee Hive444 frames out through CheckSuper, whose type-444 arm sets the destroy flag as soon as ANY
+        // cell of the object holds liquid - which is precisely the loading case - and Grandfather Clock104
+        // frames out through Check2xX, which removes the whole two-by-five column once one of its cells stops
+        // matching. Neither carries persistent metadata, so the coherent-footprint rule below resolves both.
         bool chair = tile.TileType == VanillaTileIds.Chairs;
-        if (tile.Type is not (12 or 15 or 28 or 42 or 91 or 93 or 215 or 233 or 240 or 242 or 245 or 246 or 484 or 485) || tile.FrameX < 0 || tile.FrameY < 0 ||
+        if (tile.Type is not (12 or 15 or 28 or 42 or 91 or 93 or 104 or 215 or 233 or 240 or 242 or 245 or 246 or 444 or 484 or 485) || tile.FrameX < 0 || tile.FrameY < 0 ||
             tile.FrameX % LoadingObjectFrameStepPixels != 0 || (chair ? tile.FrameX is not (0 or LoadingObjectFrameStepPixels) || tile.FrameY % LoadingChairStyleStridePixels is not (0 or LoadingObjectFrameStepPixels) : tile.FrameY % LoadingObjectFrameStepPixels != 0) ||
             (tile.TileType == VanillaTileIds.Heart && (tile.FrameX > 54 || tile.FrameY > 18)) ||
             (tile.TileType == VanillaTileIds.RollingCactus && (tile.FrameX > 18 || tile.FrameY > 18)) ||
             (tile.TileType == VanillaTileIds.AntlionLarva && (tile.FrameX > 126 || tile.FrameY > 18)) ||
             (tile.TileType == VanillaTileIds.PlantDetritus && tile.FrameY > 54) ||
             (tile.TileType == VanillaTileIds.Painting2X3 && tile.FrameY >= 54) ||
-            (tile.TileType == VanillaTileIds.Painting3X2 && tile.FrameX >= 54)) return false;
+            (tile.TileType == VanillaTileIds.Painting3X2 && tile.FrameX >= 54) ||
+            // Bee Hive has a single style, so anything past its own two-by-two atlas is malformed. The clock
+            // needs no such bound: Check2xX indexes its styles by 36 in frameX and by five rows in frameY, and
+            // the coherent-footprint rule below re-derives both from the cell's own frame.
+            (tile.Type == 444 && (tile.FrameX > 18 || tile.FrameY > 18))) return false;
         (int width, int height) = tile.Type switch
         {
             15 or 42 => (1, 2),
             91 or 93 => (1, 3),
+            104 => (2, 5),
             215 or 246 => (3, 2),
             233 => (tile.FrameY >= 36 ? 2 : 3, 2),
             240 => (3, 3),

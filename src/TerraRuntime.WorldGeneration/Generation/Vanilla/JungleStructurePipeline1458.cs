@@ -259,7 +259,7 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
                 ApplyJungleTemple(context, workspace);
                 break;
             case JungleStructureStage1458.Hives:
-                ApplyHives(context, grid, random);
+                ApplyHives(context, workspace);
                 break;
             case JungleStructureStage1458.JungleChests:
                 ApplyJungleChests(context, grid, random);
@@ -636,40 +636,26 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
             $"{builder.Right - builder.Left}x{builder.Bottom - builder.Top})");
     }
 
-    private void ApplyHives(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    /// <summary>
+    /// Source <c>GenPassNameID.Beehives</c>, delegated to <see cref="HiveBiome1458"/>. The runtime carved a
+    /// fixed number of ellipses and produced about a fifth of the source's Hive block; the source drifts two to
+    /// four tunnels per lobe through the mud, writing a honey core inside a hive shell at every step.
+    /// </summary>
+    private void ApplyHives(IWorldGenerationContext context, Workspace workspace)
     {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int count = grid.Width switch
-        {
-            <= 4200 => 4,
-            <= 6400 => 6,
-            _ => 8
-        };
-        int halfWidth = Math.Max(280, grid.Width / 9);
-        int left = Math.Max(40, bootstrap.JungleOriginX - halfWidth);
-        int right = Math.Min(grid.Width - 40, bootstrap.JungleOriginX + halfWidth);
-        int top = Math.Clamp((int)state.RockLayer + 90, 30, state.UnderworldTop - 120);
-        int bottom = Math.Max(top + 1, state.UnderworldTop - 70);
-        int placed = 0;
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Hives require shared UnifiedRandom semantics.");
 
-        for (int attempt = 0; attempt < count * 40 && placed < count; attempt++)
-        {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(left, right);
-            int y = random.Next(top, bottom);
-            int rx = random.Next(12, 22);
-            int ry = random.Next(9, 16);
-            if (IntersectsTemple(x - rx - 8, x + rx + 8, y - ry - 8, y + ry + 8))
-                continue;
+        var biome = new HiveBiome1458(
+            workspace.TileStore,
+            random,
+            state.WorldSurface,
+            state.RockLayer,
+            context.CancellationToken);
 
-            FillEllipse(grid, x, y, rx, ry, Hive, overwriteAir: true, wall: HiveUnsafeWall);
-            CarveEllipse(grid, x, y, Math.Max(5, rx - 4), Math.Max(4, ry - 4), HiveUnsafeWall);
-            FillLiquidEllipse(grid, x, y + Math.Max(1, ry / 3), Math.Max(4, rx - 6), Math.Max(2, ry / 3),
-                WorldLiquidKind.Honey);
-            placed++;
-        }
+        int placed = biome.Apply();
 
-        context.ReportProgress(1d, $"Generating jungle hives ({placed}/{count})");
+        context.ReportProgress(1d, $"Growing bee hives ({placed})");
     }
 
     private void ApplyJungleChests(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
