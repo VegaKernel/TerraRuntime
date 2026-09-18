@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
 
 namespace TerraRuntime.WorldGeneration.Vanilla;
@@ -80,7 +81,74 @@ internal sealed class GenerationTileFraming1458(WorldTileStore store)
         }
 
         if (tile.Type is SmallPiles or PlantDetritus)
+        {
             Check3x2(i, j, tile.Type);
+            return;
+        }
+
+        if (VanillaTileIds.IsPlatform(tile.TileType))
+            FramePlatform(i, j);
+    }
+
+    /// <summary>
+    /// The platform arm of <c>TileFrameImportant</c>, reduced to unsloped, unhammered platforms. A platform
+    /// takes its horizontal frame from what stands either side of it, so a run of them only looks like a run
+    /// once each one has been re-framed - which is why <c>PlaceTile</c> frames the square around every platform
+    /// it lays rather than the platform alone.
+    /// </summary>
+    /// <remarks>
+    /// The source's sloped and half-brick branches are not ported and this refuses them outright, because their
+    /// frame table folds in rope ends, merge culling and bottom-corner probes that nothing in generation
+    /// reaches. The source's <c>tileStone</c> remap is also absent: it only ever rewrites a neighbour's
+    /// identity to Stone, and the frame table compares identities for equality with the platform's own, so the
+    /// remap cannot change the outcome for any neighbour that is solid in the first place.
+    /// </remarks>
+    private void FramePlatform(int i, int j)
+    {
+        ref WorldTile cell = ref At(i, j);
+        if (cell.Shape != 0)
+        {
+            throw new NotSupportedException(
+                "WorldGen.TileFrameImportant frames a sloped or hammered platform from a table that is not " +
+                "ported. Extend GenerationTileFraming1458 before sloping a generated platform.");
+        }
+
+        ushort type = cell.Type;
+        int left = NeighbourIdentity(i - 1, j, type);
+        int right = NeighbourIdentity(i + 1, j, type);
+
+        cell.FrameX = (left, right) switch
+        {
+            _ when left == type && right == type => 0,
+            _ when left == type && right == -1 => 18,
+            _ when left == -1 && right == type => 36,
+            _ when left != type && right == type => 54,
+            _ when left == type && right != type => 72,
+            _ when left != type && left != -1 && right == -1 => 108,
+            _ when left != -1 || right == type || right == -1 => 90,
+            _ => 126,
+        };
+    }
+
+    /// <summary>What the platform frame table sees to one side: its own identity, a solid neighbour, or nothing.</summary>
+    private int NeighbourIdentity(int x, int y, ushort platform)
+    {
+        if (!Contains(x, y))
+            return -1;
+
+        WorldTile neighbour = At(x, y);
+        if (!neighbour.IsActive)
+            return -1;
+
+        int identity = VanillaTileIds.IsPlatform(neighbour.TileType) ? platform : neighbour.Type;
+        if (!VanillaTileCollisionCatalog.IsSolid(new TileTypeId(identity)))
+            return -1;
+
+        // The framed platform is unhammered here, so a hammered neighbour of any identity does not merge.
+        if (neighbour.Shape == 1)
+            return -1;
+
+        return identity;
     }
 
     /// <summary>

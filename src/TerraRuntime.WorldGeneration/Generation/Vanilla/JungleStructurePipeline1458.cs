@@ -324,7 +324,8 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         CancellationToken cancellation = context.CancellationToken;
         int width = workspace.WidthTiles;
         double worldSurface = state.WorldSurface;
-        var grower = new LivingTreeGrower1458(store, random, cancellation);
+        var grower = new LivingTreeGrower1458(
+            store, random, worldSurface, state.UnderworldTop, cancellation);
 
         const int spawnHalfWidth = 200;
         const int beachDistance = 380;

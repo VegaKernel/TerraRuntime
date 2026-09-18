@@ -18,6 +18,8 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 internal sealed class LivingTreeGrower1458(
     WorldTileStore store,
     IWorldGenerationVanillaRandom random,
+    double worldSurface,
+    int underworldTop,
     CancellationToken cancellation)
 {
     private const ushort LivingWood = 191;
@@ -125,9 +127,40 @@ internal sealed class LivingTreeGrower1458(
         GrowCrown((left + right) / 2, trunkTop, trunkWidth, canopyX, canopyY, canopyRound, ref canopies);
         GrowRoots(baseLeft, baseRight, j, trunkWidth);
         GrowCanopy(canopyX, canopyY, canopyRound, canopies, trunkWidth);
-        _ = wantsPassage;
+
+        // A wide trunk drives a shaft into the ground, but only when the twenty rows below it are solid and
+        // unwalled: the source abandons the passage the moment it sees open or already-claimed ground there.
+        if (wantsPassage)
+        {
+            bool obstructed = false;
+            for (int row = j; row < j + 20 && !(row >= worldSurface - 2.0) && !obstructed; row++)
+            {
+                for (int column = baseLeft; column <= baseRight; column++)
+                {
+                    if (Contains(column, row) && At(column, row).Wall == 0 && !IsSolid(column, row))
+                    {
+                        obstructed = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!obstructed)
+            {
+                var passage = new LivingTreePassage1458(
+                    store, random, worldSurface, underworldTop, cancellation);
+                int shaftLeft = baseLeft;
+                int shaftRight = baseRight;
+                passage.MakePassage(j, trunkWidth, ref shaftLeft, ref shaftRight, patch);
+                ChestRequest = passage.ChestRequest;
+            }
+        }
+
         return true;
     }
+
+    /// <summary>The secret room's chest, when the last grown tree opened one. The caller owns the loot.</summary>
+    public (int X, int Y, int SignatureItem)? ChestRequest { get; private set; }
 
     /// <summary>
     /// Grows the trunk upward. Every few rows one side steps inward, and that step is recorded as a branch

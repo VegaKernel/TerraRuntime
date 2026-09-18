@@ -396,8 +396,11 @@ public static class Validator1458
         if (VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringSettle(id) ||
             VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringWorldGenerationSettle(id))
             return false;
-        // Quick solid check via collision catalog; fallback to known solid types
-        if (VanillaTileCollisionCatalog.IsSolid(new TileTypeId(type)))
+        // Solid-top tiles are not barriers: the source's own liquid code, and this runtime's
+        // IsWaterCheckSolidBarrier1458 with it, tests tileSolid AND NOT tileSolidTop. Water standing in a
+        // platform's cell is ordinary in vanilla - it is how water sits on a platform at all - so counting
+        // one as corruption would reject a world the source is happy with.
+        if (VanillaTileCollisionCatalog.IsSolid(id) && !VanillaTileCollisionCatalog.IsSolidTop(id))
             return true;
         // Additional conservative: types that are always solid: dirt/stone etc
         return type is 0 or 1 or 25 or 203 or 226 or 41 or 53;
