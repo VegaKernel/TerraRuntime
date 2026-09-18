@@ -120,6 +120,12 @@ public sealed class PyramidSelection1458Tests
             ForestBackgroundStyles = [],
             DungeonSide = dungeonSide,
             DungeonLocation = dungeonX,
+            // The pass now fills the chamber's chest, and buried-chest loot reads the world's ore variants.
+            // Reset chooses these for real; the fixture only has to supply a valid pair.
+            IronBar = 22,
+            SilverBar = 21,
+            GoldBar = 19,
+            CopperBar = 20,
         });
         Assert.True(workspace.TrySetLayers(400, 520));
         foreach (int x in xs)

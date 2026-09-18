@@ -1027,6 +1027,9 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
         var anchors = new List<WorldGenerationPoint>();
         int worldSurface = Math.Clamp((int)Math.Ceiling(state.WorldSurface), 1, grid.Height - 1);
         int dungeonSide = RequireBootstrap().DungeonSide;
+        IWorldGenerationVanillaRandom vanillaRandom = context.VanillaRandom ??
+            throw new InvalidOperationException("Source-backed Pyramids require shared UnifiedRandom semantics.");
+        var builder = new PyramidBuilder1458(workspace.TileStore, vanillaRandom, context.CancellationToken);
 
         for (int i = 0; i < candidates.Length; i++)
         {
@@ -1051,11 +1054,9 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
 
             surface--;
             anchors.Add(new WorldGenerationPoint(candidate.X, surface));
-            // The interior builder is still TerraRuntime-owned: source WorldGen.Pyramid depends on
-            // AddBuriedChest, whose loot tables are not ported yet, so its shared-RNG cost differs.
-            int halfWidth = random.Next(30, 47);
-            int height = random.Next(24, 38);
-            BuildPyramid(grid, candidate.X, surface, halfWidth, height);
+            VanillaPyramidChamber1458? chamber = builder.TryBuild(candidate.X, surface);
+            if (chamber is VanillaPyramidChamber1458 treasure)
+                PlacePyramidChest(workspace, grid, vanillaRandom, treasure);
         }
 
         workspace.SetVanillaPyramidAnchors(anchors);
@@ -1063,6 +1064,78 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
         context.ReportProgress(
             1d,
             $"Generating desert pyramids from source candidates ({anchors.Count}/{candidates.Length})");
+    }
+
+    /// <summary>
+    /// Fills the chamber's gold chest. The signature item the source rolled is carried through, and the
+    /// remaining slots come from the runtime's buried-chest loot for that depth.
+    /// </summary>
+    /// <remarks>
+    /// This is the one part of the pyramid that is not yet differentially verified against the source. The
+    /// source reaches it through <c>WorldGen.AddBuriedChest</c>, whose site scan and loot cascade are not ported,
+    /// so the shared RNG position after a pyramid still differs from the source's. The geometry either side of
+    /// this call is exact; do not read the chest as proof that the pass is.
+    /// </remarks>
+    private void PlacePyramidChest(
+        Workspace workspace,
+        RuntimeGrid grid,
+        IWorldGenerationVanillaRandom random,
+        VanillaPyramidChamber1458 chamber)
+    {
+        int left = chamber.ChestX;
+        int top = FindChamberFloor(grid, left, chamber.ChestY);
+        if (top < 1)
+            return;
+
+        int lavaLine = workspace.VanillaLiquidLines?.LavaLine ?? checked((int)Math.Round(state.RockLayer));
+        WorldGenerationChestItem[] loot = ChestLoot1458.BuildBuried(
+            random,
+            RequireBootstrap(),
+            top,
+            state.RockLayer,
+            lavaLine,
+            grid.Height,
+            chamber.PrimaryItemType);
+        _ = PlaceGeneratedPyramidChest(workspace, grid, left, top, loot);
+    }
+
+    /// <summary>Finds the two-wide clear pair standing on the chamber floor, or -1 when there is none.</summary>
+    private static int FindChamberFloor(RuntimeGrid grid, int left, int fromY)
+    {
+        int limit = Math.Min(grid.Height - 3, fromY + 40);
+        for (int y = Math.Max(1, fromY); y <= limit; y++)
+        {
+            if (grid.At(left, y).IsActive || grid.At(left + 1, y).IsActive)
+                continue;
+            if (grid.At(left, y + 1).IsActive || grid.At(left + 1, y + 1).IsActive)
+                continue;
+            if (grid.At(left, y + 2).IsActive && grid.At(left + 1, y + 2).IsActive)
+                return y;
+        }
+
+        return -1;
+    }
+
+    private static bool PlaceGeneratedPyramidChest(
+        Workspace workspace,
+        RuntimeGrid grid,
+        int left,
+        int top,
+        ReadOnlySpan<WorldGenerationChestItem> loot)
+    {
+        for (int dx = 0; dx < 2; dx++)
+        for (int dy = 0; dy < 2; dy++)
+        {
+            ref WorldTile tile = ref grid.At(left + dx, top + dy);
+            tile.Type = 21;
+            tile.Flags |= WorldTileFlags.Active;
+            // Gold chest is style 1: each style is 36 pixels wide in the container atlas.
+            tile.FrameX = checked((short)(36 + dx * 18));
+            tile.FrameY = checked((short)(dy * 18));
+            tile.Shape = 0;
+        }
+
+        return workspace.TryAddChest(left, top, string.Empty, loot);
     }
 
     internal static bool IsOrdinaryPyramidCandidatePositionEligible(
@@ -1092,56 +1165,6 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
             nearestEarlierCandidate = Math.Min(nearestEarlierCandidate, Math.Abs(x - candidates[i].X));
 
         return nearestEarlierCandidate >= 220;
-    }
-
-    private static void BuildPyramid(
-        RuntimeGrid grid,
-        int centerX,
-        int surface,
-        int halfWidth,
-        int height)
-    {
-        int top = Math.Max(5, surface - height);
-        for (int y = top; y <= surface + height / 2; y++)
-        {
-            double progress = (y - top) / (double)Math.Max(1, surface - top);
-            int rowHalfWidth = Math.Clamp(
-                (int)Math.Round(2 + halfWidth * progress),
-                2,
-                halfWidth);
-
-            for (int x = centerX - rowHalfWidth; x <= centerX + rowHalfWidth; x++)
-            {
-                if (!grid.Contains(x, y))
-                    continue;
-
-                int edgeDistance = Math.Min(
-                    x - (centerX - rowHalfWidth),
-                    centerX + rowHalfWidth - x);
-                ref WorldTile tile = ref grid.At(x, y);
-                bool shell = edgeDistance <= 2 || y >= surface + height / 2 - 2;
-                if (shell)
-                    SetType(ref tile, SandstoneBrick);
-                else
-                    ClearActive(ref tile);
-            }
-        }
-
-        int shaftTop = Math.Max(top + 8, surface - height / 3);
-        int shaftBottom = Math.Min(grid.Height - 5, surface + height);
-        for (int y = shaftTop; y <= shaftBottom; y++)
-        {
-            for (int x = centerX - 3; x <= centerX + 3; x++)
-            {
-                if (!grid.Contains(x, y))
-                    continue;
-                ref WorldTile tile = ref grid.At(x, y);
-                if (x == centerX - 3 || x == centerX + 3)
-                    SetType(ref tile, SandstoneBrick);
-                else
-                    ClearActive(ref tile);
-            }
-        }
     }
 
     private VanillaWorldGenerationBootstrapState1458 RequireBootstrap() =>

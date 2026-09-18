@@ -81,21 +81,26 @@ internal static class ChestLoot1458
             Add(items, 9, random.Next(50, 100));
     }
 
+    /// <summary>
+    /// Buried-chest loot for a depth. <paramref name="primary"/> forces the chest's signature item, which is how
+    /// the source's <c>mainItemInChest</c> argument reaches the loot tables; zero lets the depth choose.
+    /// </summary>
     internal static WorldGenerationChestItem[] BuildBuried(
         IWorldGenerationVanillaRandom random,
         VanillaWorldGenerationBootstrapState1458 bootstrap,
         int floorY,
         double rockLayer,
         int lavaLine,
-        int worldHeight)
+        int worldHeight,
+        int primary = 0)
     {
         ArgumentNullException.ThrowIfNull(random);
         ArgumentNullException.ThrowIfNull(bootstrap);
         if (floorY < rockLayer)
-            return BuildUnderground(random, bootstrap, primary: 0, water: false, jungle: false, state: null);
+            return BuildUnderground(random, bootstrap, primary, water: false, jungle: false, state: null);
         if (floorY < worldHeight - 250)
-            return BuildCavern(random, bootstrap, primary: 0, floorY, lavaLine, water: false, jungle: false, state: null);
-        return BuildUnderworld(random, bootstrap, primary: 0, shadow: false);
+            return BuildCavern(random, bootstrap, primary, floorY, lavaLine, water: false, jungle: false, state: null);
+        return BuildUnderworld(random, bootstrap, primary, shadow: false);
     }
 
     internal static WorldGenerationChestItem[] BuildShadow(
