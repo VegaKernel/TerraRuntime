@@ -126,8 +126,17 @@ internal static class MushroomBiome1458
         for (int ty = y - 1; ty <= y + 1; ty++)
         {
             WorldTile tile = At(store, tx, ty);
-            if (tile.IsActive && tile.Type is not (0 or 1 or 2 or 40 or 53 or 59 or 60 or 70 or >= 63 and <= 68 or 147 or 161))
+            // The whole sand family belongs here, not just the two members an early world happened to put
+            // beside a mushroom patch. TileID.Sets.Conversion.Sand, .HardenedSand and .Sandstone are ordinary
+            // generated terrain with exactly the semantics of the sandstone already admitted, and a mushroom
+            // patch that reaches a desert - or an evil desert - meets them for the same reason.
+            if (tile.IsActive && tile.Type is not (
+                0 or 1 or 2 or 40 or 53 or 59 or 60 or 70 or >= 63 and <= 68 or 147 or 161 or
+                112 or 116 or 234 or
+                396 or 397 or 398 or 399 or 400 or 401 or 402 or 403))
+            {
                 throw new InvalidOperationException($"Unverified mushroom cleanup neighbour {tile.Type} at {tx},{ty}.");
+            }
         }
     }
 

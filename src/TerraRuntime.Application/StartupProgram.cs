@@ -271,7 +271,9 @@ public static class StartupProgram
 
             case RuntimeWorldCreationPersistenceStatus.GenerationFailed when result.Creation is { } creation:
                 Console.Error.WriteLine(
-                    $"Generation execution failed: {creation.Generation.Execution?.Status}.");
+                    $"Generation execution failed: {creation.Generation.Execution?.Status} " +
+                    $"in pass '{creation.Generation.Execution?.PassId}': " +
+                    $"{creation.Generation.Execution?.Error}");
                 break;
 
             case RuntimeWorldCreationPersistenceStatus.FinalizationFailed when result.Creation is { } creation:
