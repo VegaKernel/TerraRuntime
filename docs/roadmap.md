@@ -2,6 +2,8 @@
 
 ## Prime melee implementation - 2026-09-16
 
+2026-09-20 Mechdusa spawn boundary: packet-61 action `-16` now follows the source server route in Zenith worlds. It rejects any active mechanical root, creates Prime with the regular player-directed placement, then initializes Retinazer, Spazmatism, Destroyer and two Probes in the source order at Prime's truncated center; Probe `ai[2]/ai[3]` links to the just-created Destroyer. Runtime regressions cover the six members, anchors, defaults and seed/root rejection. Coupled Mechdusa AI/global state, loot and full encounter parity remain open.
+
 Prime Saw/Vice AI33/34 now use source hover, pursuit, vertical/repeated charge and return phase ordering. The runtime additionally supplies a bounded retained-slot snapshot for source reads of inactive parents; active peer consumers remain unchanged. Retained regression fixtures contain 6,048 baseline + 3,360 edge + 112 parent calls, independently matched against original Windows/Linux after-state and RNG. SHA256 of parent Linux JSON: b39f407f06ece6977646de4c3e08ab4b5a61c54e320b3bf8bc59e1c5b78661f5. All 9,408 initial cases failed on the old strategy. The focused 9,528 cases and merged full suite of 100,113 tests pass, as do Windows NativeAOT publication and all five smokes. Dedicated-server death consumes four gore RNG draws after revision acceptance; only despawn is published. Full encounters, alternate player hitbox/raw inactive targets, outer movement and full parity remain open. Next: continuous encounter traces before claiming encounter parity.
 
 

@@ -582,8 +582,18 @@ internal sealed partial class NpcAuthority
 
     private void ApplyClientBossSummon(ClientBossSummonRuntimeCommand command)
     {
-        if (!command.Connection.IsAssigned || !players.IsCurrent(command.Connection) ||
-            !IsVanillaMultiplayerAllowedSummon(command.NpcType))
+        if (!command.Connection.IsAssigned || !players.IsCurrent(command.Connection))
+            return;
+
+        // MessageBuffer case 61 routes -16 to NPC.SpawnMechQueen before the ordinary MPAllowedEnemies
+        // gate. The special-seed predicate lives with the loaded world facts, not with a client packet.
+        if (command.NpcType == -16)
+        {
+            TrySpawnMechdusa(command.Connection.Player.Slot.Value);
+            return;
+        }
+
+        if (!IsVanillaMultiplayerAllowedSummon(command.NpcType))
             return;
 
         var type = new NpcTypeId(command.NpcType);
@@ -618,6 +628,97 @@ internal sealed partial class NpcAuthority
             AppliedSpawns++;
         else
             RejectedSpawns++;
+    }
+
+    /// <summary>
+    /// The server half of NPC.SpawnMechQueen for packet-61's -16 action in TerrariaServer 1.4.5.8. It creates
+    /// the Prime anchor through the usual SpawnOnPlayer placement, then creates the two Twins, Destroyer and
+    /// two Probes at that anchor's center in source order. Mechdusa's coupled combat AI is intentionally owned
+    /// by the individual boss steppers and remains outside this spawn boundary.
+    /// </summary>
+    private void TrySpawnMechdusa(byte playerSlot)
+    {
+        if (naturalSpawnWorldFacts is not { ZenithWorld: true } ||
+            HasActiveMechanicalBossRoot() ||
+            !TryGetPlayerTarget(playerSlot, out VanillaNpcTargetCandidate player) ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.SkeletronPrime, out VanillaNpcDefinition primeDefinition) ||
+            !TryFindBossSpawnPosition(in player, primeDefinition, out float primeX, out float primeY))
+        {
+            return;
+        }
+
+        var primeState = new NpcStateUpdate(
+            Type: VanillaNpcIds.SkeletronPrime.Value,
+            NetId: checked((short)VanillaNpcIds.SkeletronPrime.Value),
+            PositionX: primeX,
+            PositionY: primeY,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: player.Slot,
+            Ai: default,
+            Simulation: NpcSimulationState.Initial with { TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft });
+        if (!npcs.TrySpawnVanilla(in primeState, out NpcSnapshot prime))
+        {
+            RejectedSpawns++;
+            return;
+        }
+
+        AppliedSpawns++;
+        if (!VanillaNpcDefinitionCatalog.TryGet(prime.TypeIdentity, prime.NetIdentity, out primeDefinition) ||
+            !primeDefinition.TryResolveHitbox(prime.Simulation, out VanillaNpcHitboxSize hitbox))
+        {
+            return;
+        }
+
+        // NewNPC receives these as top-left coordinates. Center uses float halves, then source truncates.
+        int x = (int)(prime.PositionX + hitbox.Width * 0.5f);
+        int y = (int)(prime.PositionY + hitbox.Height * 0.5f);
+        TrySpawnMechdusaPart(VanillaNpcIds.Retinazer, x, y, default, out _);
+        TrySpawnMechdusaPart(VanillaNpcIds.Spazmatism, x, y, default, out _);
+        if (!TrySpawnMechdusaPart(VanillaNpcIds.Destroyer, x, y, default, out NpcSnapshot destroyer))
+            return;
+
+        TrySpawnMechdusaPart(VanillaNpcIds.Probe, x, y,
+            new NpcAiState(0f, 0f, destroyer.Handle.Slot, -1f), out _);
+        TrySpawnMechdusaPart(VanillaNpcIds.Probe, x, y,
+            new NpcAiState(0f, 0f, destroyer.Handle.Slot, 1f), out _);
+    }
+
+    private bool HasActiveMechanicalBossRoot()
+    {
+        int count = npcs.CopyActive(naturalSpawnNpcBuffer);
+        for (int index = 0; index < count; index++)
+        {
+            NpcTypeId type = naturalSpawnNpcBuffer[index].TypeIdentity;
+            if (type == VanillaNpcIds.SkeletronPrime || type == VanillaNpcIds.Destroyer ||
+                type == VanillaNpcIds.Retinazer || type == VanillaNpcIds.Spazmatism)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private bool TrySpawnMechdusaPart(NpcTypeId type, int x, int y, NpcAiState ai, out NpcSnapshot snapshot)
+    {
+        var state = new NpcStateUpdate(
+            Type: type.Value,
+            NetId: checked((short)type.Value),
+            PositionX: x,
+            PositionY: y,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: VanillaNpcDefinitionCatalog.DefaultTarget,
+            Ai: ai,
+            Simulation: NpcSimulationState.Initial with { TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft });
+        if (!npcs.TrySpawnVanilla(in state, out snapshot, startSlot: 1))
+        {
+            RejectedSpawns++;
+            return false;
+        }
+
+        AppliedSpawns++;
+        return true;
     }
 
     private static bool IsVanillaMultiplayerAllowedSummon(short npcType) => npcType is

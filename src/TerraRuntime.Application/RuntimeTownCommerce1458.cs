@@ -70,7 +70,8 @@ internal readonly record struct RuntimeTownCommerceWorldFacts1458(
     int SavedSilverOreType,
     double WorldSurface,
     double RockLayer,
-    int DungeonY)
+    int DungeonY,
+    bool ZenithWorld = false)
 {
     public static RuntimeTownCommerceWorldFacts1458 FromMetadata(WorldFileRuntimeMetadata metadata)
     {
@@ -116,7 +117,8 @@ internal readonly record struct RuntimeTownCommerceWorldFacts1458(
             metadata.OreTiers.Silver,
             metadata.WorldSurface,
             metadata.RockLayer,
-            metadata.DungeonY);
+            metadata.DungeonY,
+            metadata.ZenithWorld);
     }
 }
 
