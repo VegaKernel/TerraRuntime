@@ -657,13 +657,28 @@ internal sealed partial class NpcAuthority
             Target: player.Slot,
             Ai: default,
             Simulation: NpcSimulationState.Initial with { TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft });
-        if (!npcs.TrySpawnVanilla(in primeState, out NpcSnapshot prime))
+        // SpawnMechQueen assigns mechQueen = -2 before SpawnOnPlayer. SpawnBoss therefore uses Start=100,
+        // stores the allocated Prime slot in ai[3], and multiplies only that SpawnBoss anchor's lifetime by 20.
+        if (!npcs.TrySpawnVanilla(in primeState, out NpcSnapshot prime, startSlot: 100))
         {
             RejectedSpawns++;
             return;
         }
 
         AppliedSpawns++;
+        var linkedPrime = new NpcStateUpdate(
+            prime.Type,
+            prime.NetId,
+            prime.PositionX,
+            prime.PositionY,
+            prime.VelocityX,
+            prime.VelocityY,
+            prime.Target,
+            prime.Ai with { Ai3 = prime.Handle.Slot },
+            prime.Simulation with { TimeLeft = checked(prime.Simulation.TimeLeft * 20) });
+        if (!npcs.TryUpdate(prime.Handle, in linkedPrime, out prime))
+            return;
+
         if (!VanillaNpcDefinitionCatalog.TryGet(prime.TypeIdentity, prime.NetIdentity, out primeDefinition) ||
             !primeDefinition.TryResolveHitbox(prime.Simulation, out VanillaNpcHitboxSize hitbox))
         {

@@ -32,6 +32,10 @@ public sealed class MechdusaBossSummonTests
         NpcSnapshot[] probes = batch.Where(static npc => npc.TypeIdentity == VanillaNpcIds.Probe).ToArray();
         Assert.Equal(2, probes.Length);
 
+        Assert.Equal(100, prime.Handle.Slot);
+        Assert.Equal(prime.Handle.Slot, prime.Ai.Ai3);
+        Assert.Equal(VanillaNpcDefinitionCatalog.NewNpcTimeLeft * 20, prime.Simulation.TimeLeft);
+
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(prime.TypeIdentity, prime.NetIdentity, out VanillaNpcDefinition definition));
         Assert.True(definition.TryResolveHitbox(prime.Simulation, out VanillaNpcHitboxSize hitbox));
         float x = (int)(prime.PositionX + hitbox.Width * 0.5f);
