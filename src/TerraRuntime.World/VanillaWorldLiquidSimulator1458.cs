@@ -629,7 +629,7 @@ public sealed class VanillaWorldLiquidSimulator1458
             // Bee Hive has a single style, so anything past its own two-by-two atlas is malformed. The clock
             // needs no such bound: Check2xX indexes its styles by 36 in frameX and by five rows in frameY, and
             // the coherent-footprint rule below re-derives both from the cell's own frame.
-            (tile.Type == 444 && (tile.FrameX > 18 || tile.FrameY > 18))) return false;
+            (tile.TileType == VanillaTileIds.BeeHive && (tile.FrameX > 18 || tile.FrameY > 18))) return false;
         int column = tile.FrameX % strideX / LoadingObjectFrameStepPixels;
         int row = tile.FrameY % strideY / LoadingObjectFrameStepPixels;
         int left = x - column, top = y - row;

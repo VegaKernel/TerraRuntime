@@ -750,6 +750,7 @@ public static class VanillaTileIds
     public static readonly TileTypeId TeamBlockYellowPlatform = new(437);
     public static readonly TileTypeId TeamBlockPinkPlatform = new(438);
     public static readonly TileTypeId TeamBlockWhitePlatform = new(439);
+    public static readonly TileTypeId BeeHive = new(444);
     public static readonly TileTypeId Containers2 = new(467);
     public static readonly TileTypeId DisplayDoll = new(470);
     public static readonly TileTypeId WeaponsRack2 = new(471);
