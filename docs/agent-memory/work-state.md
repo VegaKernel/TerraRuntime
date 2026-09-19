@@ -50,20 +50,28 @@ Evidence for all three: `.cache/framing-probe`, 25 comparisons of `WorldGen.Squa
 flower fixtures that stand plant detritus and corrupt plants on ordinary grass.
 
 
-## OPEN: a generated world that load-time liquid preparation refuses - 2026-09-19
+## CLOSED: generated worlds that load-time liquid preparation refused - 2026-09-19
 
 Reproducible: `--create-world --world-generator terraruntime:vanilla --world-seed 42 --world-width 8400
 --world-height 2400 --world-evil corruption`. The world generates and validates, but starting a server on it
 fails with `Post-load liquid preparation failed: result=UnsupportedLiquidDeathTile, x=1689, y=1984, tile=19`.
 
-The cell is a platform (style 28) standing on a Granite Column (576) with lava in the cells below either side.
-`VanillaWorldLiquidSimulator1458.TryResolveLoadingDeath1458` refuses a platform whose support below is
-frame-important, because a cascade it cannot represent might follow. That is a fail-closed policy, not a
-corruption, and it predates this change - but it means some generated worlds cannot be loaded, and each
-occurrence has had to be admitted individually (444 and 104 were the last two). The right fix is to work out
-what the source's `SquareTileFrame` actually does to the column below a platform it removes, rather than to
-widen the refusal by guessing. Two other worlds generated and loaded cleanly in the same run: 8400x2400 crimson
-seed 1458, and 4200x1200 corruption seed 42.
+Two causes, both measured and both now fixed; see `docs/en/world-persistence.md` section 8.1.
+
+The identity list was hand-written and had simply never been extended. It is now a measured table:
+`.cache/watercheck-probe` stands one object of every identity with a rectangular `TileObjectData` footprint
+inside the pinned build and runs the real `WorldGen.WaterCheck` dry and then flooded, and every death case
+clears exactly the object's own cells. `tools/ci/generate_loading_object_footprints.py` turns that into
+`VanillaLoadingObjectFootprint1458` - 237 identities with width, height and the frame strides their styles use.
+The strides matter: a chair steps 40 pixels per style and a workbench 20, so a cell's place inside its object is
+its frame modulo the stride, not modulo the object's size.
+
+The platform refusal was simply wrong. What stands UNDER a platform never depends on it - measured against
+stone, a granite column, another platform, a chest, a table and a bookcase - so the source removes the platform
+and leaves the support untouched. Only what sits ON one can lose its anchor, and that case is unchanged.
+
+Sixteen Large worlds across eight seeds and both evils now generate and start. Do not re-add identities to the
+loader by hand: re-run the probe and regenerate.
 
 
 ## Sandbox world-creation budgets were calibrated for a generator that no longer exists - 2026-09-19

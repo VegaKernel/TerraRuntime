@@ -537,9 +537,10 @@ public sealed class VanillaWorldLiquidSimulator1458
         if (VanillaTileIds.IsPlatform(tile.TileType))
         {
             WorldTile above = tiles.Get(x, y - 1);
-            if (support.IsActive &&
-                (!VanillaTileDefinitionCatalog.TryGet(support.TileType, out var floor) || !floor.IsSolid || floor.IsFrameImportant))
-                return false;
+            // What stands UNDER a platform never depends on it, and the source proves it: a platform taken by
+            // lava leaves its support exactly as it found it - measured against stone, a granite column,
+            // another platform, a chest, a table and a bookcase, each built at its own footprint. Only what
+            // sits ON the platform can lose its anchor, which is the case below.
             if (!above.IsActive) return true;
             // KillTile -> SquareTileFrame -> CheckOnTable1x1: an ordinary single-cell book loses
             // its table anchor when the platform below dies. No items are created during loading.
@@ -584,7 +585,8 @@ public sealed class VanillaWorldLiquidSimulator1458
             return true;
 
         // Source CheckOrb/CheckPot/Check3x2/Check1xX, Check1x2Top/CheckBanner and painting Check*Wall
-        // remove the remaining coherent object after a cell is killed.
+        // remove the remaining coherent object after a cell is killed, and which rectangle each of them
+        // removes is measured rather than listed by hand: see VanillaLoadingObjectFootprint1458.
         // Check2x2 also removes desert boulder484; its projectile branch explicitly excludes
         // isGeneratingOrLoadingWorld. Only the verified unstyled 2x2 footprint is admitted here.
         // The metadata object catalog intentionally covers chests/signs/entities, not these objects; do not
@@ -594,9 +596,30 @@ public sealed class VanillaWorldLiquidSimulator1458
         // cell of the object holds liquid - which is precisely the loading case - and Grandfather Clock104
         // frames out through Check2xX, which removes the whole two-by-five column once one of its cells stops
         // matching. Neither carries persistent metadata, so the coherent-footprint rule below resolves both.
-        bool chair = tile.TileType == VanillaTileIds.Chairs;
-        if (tile.Type is not (12 or 15 or 28 or 42 or 91 or 93 or 104 or 215 or 233 or 240 or 242 or 245 or 246 or 444 or 484 or 485) || tile.FrameX < 0 || tile.FrameY < 0 ||
-            tile.FrameX % LoadingObjectFrameStepPixels != 0 || (chair ? tile.FrameX is not (0 or LoadingObjectFrameStepPixels) || tile.FrameY % LoadingChairStyleStridePixels is not (0 or LoadingObjectFrameStepPixels) : tile.FrameY % LoadingObjectFrameStepPixels != 0) ||
+        // Never take an object apart that carries persistent metadata with it: a chest, a sign or a tile
+        // entity is a second object this path has no authority over.
+        if (VanillaMultiTileObjectCatalog.TryGet(tile.TileType, out _)) return false;
+        int width, height, strideX, strideY;
+        if (tile.TileType == VanillaTileIds.PlantDetritus)
+        {
+            // Two footprints, told apart by the frame row, so no single rectangle stands for this identity.
+            (width, height) = (tile.FrameY >= 36 ? 2 : 3, 2);
+            (strideX, strideY) = (width * LoadingObjectFrameStepPixels, height * LoadingObjectFrameStepPixels);
+        }
+        else if (!VanillaLoadingObjectFootprint1458.TryGet(tile.TileType, out width, out height, out strideX, out strideY))
+        {
+            return false;
+        }
+
+        // A cell's place inside its object is its frame modulo the STYLE stride, which is not always the
+        // object's own size: a chair is one cell wide and two tall but steps 40 pixels down per style, and a
+        // workbench is two wide and one tall but steps 20. A remainder that lands outside the object's own
+        // rectangle is a frame no style produces, so it rejects.
+        if (tile.FrameX < 0 || tile.FrameY < 0 ||
+            tile.FrameX % strideX % LoadingObjectFrameStepPixels != 0 ||
+            tile.FrameY % strideY % LoadingObjectFrameStepPixels != 0 ||
+            tile.FrameX % strideX / LoadingObjectFrameStepPixels >= width ||
+            tile.FrameY % strideY / LoadingObjectFrameStepPixels >= height ||
             (tile.TileType == VanillaTileIds.Heart && (tile.FrameX > 54 || tile.FrameY > 18)) ||
             (tile.TileType == VanillaTileIds.RollingCactus && (tile.FrameX > 18 || tile.FrameY > 18)) ||
             (tile.TileType == VanillaTileIds.AntlionLarva && (tile.FrameX > 126 || tile.FrameY > 18)) ||
@@ -607,20 +630,8 @@ public sealed class VanillaWorldLiquidSimulator1458
             // needs no such bound: Check2xX indexes its styles by 36 in frameX and by five rows in frameY, and
             // the coherent-footprint rule below re-derives both from the cell's own frame.
             (tile.Type == 444 && (tile.FrameX > 18 || tile.FrameY > 18))) return false;
-        (int width, int height) = tile.Type switch
-        {
-            15 or 42 => (1, 2),
-            91 or 93 => (1, 3),
-            104 => (2, 5),
-            215 or 246 => (3, 2),
-            233 => (tile.FrameY >= 36 ? 2 : 3, 2),
-            240 => (3, 3),
-            242 => (6, 4),
-            245 => (2, 3),
-            _ => (2, 2)
-        };
-        int column = tile.FrameX / LoadingObjectFrameStepPixels % width;
-        int row = chair ? tile.FrameY % LoadingChairStyleStridePixels / LoadingObjectFrameStepPixels : tile.FrameY / LoadingObjectFrameStepPixels % height;
+        int column = tile.FrameX % strideX / LoadingObjectFrameStepPixels;
+        int row = tile.FrameY % strideY / LoadingObjectFrameStepPixels;
         int left = x - column, top = y - row;
         // Source SquareTileFrame cannot propagate object removal inside the five-cell world border.
         if (left <= 5 || top <= 5 || left + width - 1 >= tiles.Dimensions.WidthTiles - 5 || top + height - 1 >= tiles.Dimensions.HeightTiles - 5)

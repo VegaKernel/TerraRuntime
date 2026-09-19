@@ -84,6 +84,42 @@ Tile liquid state and pending liquid work are separate concepts. `WorldTile.Liqu
 
 The runtime snapshot preserves active liquid cells in FIFO order, active-entry `delay`/`kill` state, buffered/deferred cells and deduplicated membership. Warm startup can therefore restore scheduler state directly rather than scan the full map merely to rediscover pending liquid work.
 
+### 8.1 Objects a liquid destroys as a world loads
+
+A world that generates cleanly can still hold an object standing in lava, because generation places objects and
+floods caves in separate passes. The source resolves that as it loads: `WorldGen.WaterCheck` calls a plain
+`KillTile` on the one cell it found, and the object's own validator removes the rest through the
+`SquareTileFrame` that follows. The cells that disappear are exactly the object's own.
+
+Which rectangle each identity loses is measured rather than listed by hand. The probe at `.cache/watercheck-probe`
+stands one object of every identity that has a rectangular `TileObjectData` footprint inside the pinned official
+build, runs the real pass dry - to prove the object survives on its own - and then flooded, and compares the whole
+world. Every death case clears the object's own cells and leaves every other cell's identity untouched, and none
+of them throws. `tools/ci/generate_loading_object_footprints.py` turns that sweep into
+`VanillaLoadingObjectFootprint1458`: 237 identities with a width, a height and the frame strides their styles are
+laid out with.
+
+The strides are why the table is not simply a width and a height. A style does not always advance the frame by
+the object's own size: a chair is one cell wide and two tall but its styles step 40 pixels down, and a workbench
+is two wide and one tall but its styles step 20. A cell's place inside its object is its frame modulo the stride,
+and a remainder that lands outside the object's own rectangle is a frame no style produces, so it rejects.
+
+Three things stay refused. An identity whose footprint changes with the style, because no single rectangle
+describes it - plant detritus is the one the loader still names itself, reading the frame row to tell its
+three-wide form from its two-wide one. An identity that carries a chest, a sign or a tile entity, because
+removing one means removing a second object this path has no authority over. And an incoherent footprint: every
+cell must carry exactly the frame the derived origin implies, or nothing is touched at all.
+
+One refusal was removed rather than kept. A platform whose support below was frame-important used to reject, on
+the theory that a cascade might follow. It does not: what stands UNDER a platform never depends on it, measured
+against stone, a granite column, another platform, a chest, a table and a bookcase, each built at its own
+footprint. In all six the source removes the platform and leaves the support exactly as it found it. Only what
+sits ON a platform can lose its anchor, and that case is unchanged.
+
+Result: sixteen Large worlds - eight seeds across both evils - now generate and start. Before the table, two of
+every nine or so refused to load with `UnsupportedLiquidDeathTile`, on identities the hand-written list had never
+been extended to cover.
+
 ## 9. Runtime save architecture
 
 Live world persistence is owned by the runtime. Mutable state is captured only at the authoritative boundary; serialization and disk I/O are detached from the game loop.

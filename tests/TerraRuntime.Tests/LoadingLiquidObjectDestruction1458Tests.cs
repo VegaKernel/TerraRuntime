@@ -294,6 +294,103 @@ public sealed class LoadingLiquidObjectDestruction1458Tests
         Assert.Equal(chest, tiles.Get(10, 9));
     }
 
+    /// <summary>
+    /// A platform taken by lava, over every kind of support. What stands UNDER a platform never depends on it,
+    /// and the source proves it: the probe measured stone, a granite column, another platform, a chest, a
+    /// table and a bookcase - each built at its own footprint - and in all six the platform is removed and the
+    /// support is left exactly as it was found.
+    /// </summary>
+    [Theory]
+    [InlineData(1)]     // stone
+    [InlineData(576)]   // granite column, frame-important and not solid
+    [InlineData(19)]    // another platform
+    [InlineData(0)]     // nothing at all
+    public void Platform_dies_in_lava_whatever_stands_under_it(int support)
+    {
+        WorldTileStore tiles = CreateObject(19, 1, 1, 0, 504);
+        if (support != 0)
+        {
+            var floor = new WorldTile { Type = (ushort)support, Flags = WorldTileFlags.Active };
+            tiles.SetInitialPopulationTile(10, 11, in floor);
+        }
+
+        WorldTile wet = tiles.Get(10, 10);
+        wet.LiquidAmount = 100;
+        wet.LiquidKind = WorldLiquidKind.Lava;
+        tiles.SetInitialPopulationTile(10, 10, in wet);
+
+        Assert.True(new VanillaWorldLiquidSimulator1458(tiles).WaterCheckLoading().IsApplied);
+        Assert.False(tiles.Get(10, 10).IsActive);
+        if (support != 0)
+        {
+            Assert.True(tiles.Get(10, 11).IsActive);
+            Assert.Equal(support, tiles.Get(10, 11).Type);
+        }
+    }
+
+    /// <summary>
+    /// Identities the measured footprint table admits that the hand-written list never named, and the frame
+    /// strides they are laid out with. The style offsets are the ones the probe measured: a chair steps 40
+    /// pixels down per style and a workbench 20, neither of which is the object's own size.
+    /// </summary>
+    [Theory]
+    // type, width, height, frameX, frameY
+    [InlineData(751, 2, 2, 0, 0)]
+    [InlineData(751, 2, 2, 108, 0)]
+    [InlineData(18, 2, 1, 0, 0)]
+    [InlineData(18, 2, 1, 0, 60)]
+    [InlineData(101, 3, 4, 0, 0)]
+    [InlineData(101, 3, 4, 54, 0)]
+    [InlineData(15, 1, 2, 18, 560)]
+    [InlineData(733, 3, 3, 0, 0)]
+    public void Measured_footprint_removes_a_whole_object_the_hand_written_list_never_named(
+        int type, int width, int height, int frameX, int frameY)
+    {
+        WorldTileStore tiles = CreateObject(type, width, height, frameX, frameY);
+        WorldTile wet = tiles.Get(10, 10);
+        wet.LiquidAmount = 100;
+        wet.LiquidKind = WorldLiquidKind.Lava;
+        tiles.SetInitialPopulationTile(10, 10, in wet);
+
+        Assert.True(new VanillaWorldLiquidSimulator1458(tiles).WaterCheckLoading().IsApplied);
+
+        for (int dx = 0; dx < width; dx++)
+        for (int dy = 0; dy < height; dy++)
+        {
+            WorldTile dead = tiles.Get(10 + dx, 10 + dy);
+            Assert.False(dead.IsActive);
+            Assert.Equal(0, dead.Type);
+            Assert.Equal(-1, dead.FrameX);
+            Assert.Equal(-1, dead.FrameY);
+            // The wall, its paint and the wiring under an object are not the object's to take.
+            Assert.Equal(13, dead.Wall);
+            Assert.Equal(7, dead.WallColor);
+            Assert.True((dead.Flags & WorldTileFlags.WireRed) != 0);
+        }
+    }
+
+    /// <summary>
+    /// An object that carries a sign or a tile entity stays refused however plain its rectangle is: removing
+    /// one means removing a second object this path has no authority over. A chest is not here because no
+    /// liquid destroys one in the first place, so it never reaches this decision.
+    /// </summary>
+    [Theory]
+    [InlineData(55, 2, 2)]   // sign
+    [InlineData(395, 2, 2)]  // item frame
+    [InlineData(425, 2, 2)]  // announcement box
+    public void Object_carrying_metadata_stays_refused(int type, int width, int height)
+    {
+        WorldTileStore tiles = CreateObject(type, width, height);
+        WorldTile wet = tiles.Get(10, 10);
+        wet.LiquidAmount = 100;
+        wet.LiquidKind = WorldLiquidKind.Lava;
+        tiles.SetInitialPopulationTile(10, 10, in wet);
+        WorldTile[] before = tiles.Tiles.ToArray();
+
+        Assert.False(new VanillaWorldLiquidSimulator1458(tiles).WaterCheckLoading().IsApplied);
+        Assert.Equal(before, tiles.Tiles.ToArray());
+    }
+
     private static WorldTileStore CreateObject(int type, int width, int height, int frameX = 0, int frameY = 0)
     {
         var tiles = new WorldTileStore(new WorldDimensions(32, 32));
