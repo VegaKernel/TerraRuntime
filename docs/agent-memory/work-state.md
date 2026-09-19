@@ -1,5 +1,34 @@
 # Work state
 
+## Resume point for the vanilla generation work - 2026-09-19
+
+Closed this stretch, each against the registered delegate with negative controls: rows 92, 94, 95 (Flowers,
+Mushrooms, JunglePlantsPart2), 79 (Place Fallen Log, which also closed the Flowers relocation divergence) and
+89 (Webs And Honey). Plus the two findings that reach further than any single row - `KillTile` spending RNG on
+dust, and the loading liquid death footprints - both written up above.
+
+Next, in the order they are worth doing:
+
+1. **Rows 77 and 83 together** (Spreading Grass, Grass Wall). They are coupled: the Grass Wall pass ends by
+   calling `SpreadGrass` with the ordinary dirt-to-grass identities, which `GenerationGrass1458` does NOT yet
+   admit - it covers dirt-to-evil and mud-to-jungle only. Read `WorldGen.SpreadGrass` at line 75750 of the
+   decompile: its two guard branches are keyed on the GRASS identity, not on the dirt, and the runtime's helper
+   currently keys the beach/middle refusal on `dirt == 0`, which only coincides for the evil grasses. The pass
+   also needs `Spread.Wall2` (a flood fill with its own `maxWallOut2` budget) and `countDirtTiles` /
+   `nextDirtCount` (a recursive counter capped at 3500). Bigger and more delicate than the rows above, because
+   `SpreadGrass` is shared and its existing callers are pinned by fixtures.
+
+2. **`WorldGen.AddBuriedChest`** (line 36258, 1691 lines). Unblocks row 44 - its selection and geometry are
+   already closed and only the chamber's chest remains - and turns rows 63 to 66 from placeholder `C` into
+   evidenced ones. The geometry is only the first ~330 lines; the rest is per-style loot tables, and most of
+   the branch cascade is guarded by secret-seed and world flags that an ordinary world never sets. It is a
+   public static method, so a probe can call it directly and compare the return, the retained chest location,
+   the next shared RNG, the tiles and the chest's contents.
+
+3. The world-hash helpers in the older differential tests carry the liquid AMOUNT but not its KIND. The webs
+   and honey work showed what that hides: a pass that only changes water into honey is invisible to them. The
+   newer tests carry the kind; the older ones would need their expectations re-derived.
+
 ## Breaking a tile costs shared RNG: WorldGen.KillTile spends it on dust - 2026-09-19
 
 This is the load-bearing finding of the vegetation batch and it reaches every pass that breaks a tile, not just
