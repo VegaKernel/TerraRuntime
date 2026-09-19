@@ -526,7 +526,7 @@ internal sealed class LivingTreeGrower1458(
                         if (Contains(x, row + 1) && At(x, row + 1).Type == LeafBlock)
                         {
                             GenerationDecorationPlacement1458.TryPlaceTile3x2(
-                                store, x, row, PlantDetritus, random.Next(50, 52));
+                                store, random, x, row, PlantDetritus, random.Next(50, 52));
                         }
                     }
                 }
@@ -548,7 +548,7 @@ internal sealed class LivingTreeGrower1458(
                 if (random.Next(2) == 0)
                 {
                     GenerationDecorationPlacement1458.TryPlaceTile3x2(
-                        store, x, floor, PlantDetritus, random.Next(47, 50));
+                        store, random, x, floor, PlantDetritus, random.Next(47, 50));
                     continue;
                 }
 

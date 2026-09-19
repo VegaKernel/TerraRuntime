@@ -703,7 +703,7 @@ internal sealed class LivingTreePassage1458(
         cell.FrameY = checked((short)(18 * style));
         cell.Flags |= WorldTileFlags.Active;
         cell.Type = Platform;
-        new GenerationTileFraming1458(store).SquareTileFrame(x, y);
+        new GenerationTileFraming1458(store, random).SquareTileFrame(x, y);
     }
 
     /// <summary>Source <c>PlaceTile</c> plus <c>PlaceDoor</c>, whose three frame draws happen only on success.</summary>

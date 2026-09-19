@@ -60,7 +60,13 @@ internal static class GenerationDecorationPlacement1458
     /// that cell's frames; and its epilogue runs <c>SquareTileFrame</c> on the anchor whether the placement was
     /// taken or refused, which is what deletes an older object this one overlapped.
     /// </summary>
-    public static bool TryPlaceTile3x2(WorldTileStore store, int x, int y, ushort type, int style)
+    public static bool TryPlaceTile3x2(
+        WorldTileStore store,
+        IWorldGenerationVanillaRandom random,
+        int x,
+        int y,
+        ushort type,
+        int style)
     {
         if (!Contains(store, x, y))
             return false;
@@ -77,7 +83,7 @@ internal static class GenerationDecorationPlacement1458
         }
 
         bool placed = TryPlace3x2(store, x, y, type, style);
-        new GenerationTileFraming1458(store).SquareTileFrame(x, y);
+        new GenerationTileFraming1458(store, random).SquareTileFrame(x, y);
         return placed;
     }
 

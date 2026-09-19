@@ -165,7 +165,7 @@ internal static class VinePass1458
                 At(store, x + 1, y).IsActive && At(store, x + 1, y).Type == JungleGrass &&
                 !IsBottomSlope(At(store, x + 1, y)) && random.Next(40) == 0)
             {
-                if (TryPlaceBeeHive(store, x, y))
+                if (TryPlaceBeeHive(store, random, x, y))
                     continue;
             }
 
@@ -304,7 +304,11 @@ internal static class VinePass1458
     /// house wall, and no other hive may stand within twenty tiles. The cells are killed before they are
     /// written, which is what clears whatever cuttable growth stood there.
     /// </summary>
-    private static bool TryPlaceBeeHive(WorldTileStore store, int x, int y)
+    private static bool TryPlaceBeeHive(
+        WorldTileStore store,
+        IWorldGenerationVanillaRandom random,
+        int x,
+        int y)
     {
         for (int column = x; column < x + 2; column++)
         {
@@ -325,7 +329,7 @@ internal static class VinePass1458
         if (CountNearBeeHives(store, x, y, 20) > 0)
             return false;
 
-        var framer = new GenerationTileFraming1458(store);
+        var framer = new GenerationTileFraming1458(store, random);
         for (int column = x; column < x + 2; column++)
         {
             for (int row = y + 1; row < y + 3; row++)

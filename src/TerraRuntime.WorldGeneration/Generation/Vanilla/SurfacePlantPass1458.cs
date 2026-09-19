@@ -98,10 +98,10 @@ internal static class SurfacePlantPass1458
 
     /// <summary>
     /// The <c>WorldGen.PlaceTile</c> slice for types <c>3</c>, <c>24</c>, <c>110</c>, <c>201</c> and <c>637</c>,
-    /// including its prologue: the target cell is inactive here, so the source clears its identity, frames,
-    /// block paint and shape before deciding anything.
+    /// including its prologue: a wet cell is refused outright, and an empty one is stripped of its identity,
+    /// frames, block paint and shape before anything is decided.
     /// </summary>
-    private static bool TryPlacePlant(
+    internal static bool TryPlacePlant(
         WorldTileStore store,
         IWorldGenerationVanillaRandom random,
         int x,
@@ -115,15 +115,21 @@ internal static class SurfacePlantPass1458
         if (cell.LiquidAmount > 0)
             return false;
 
-        cell.Type = 0;
-        cell.FrameX = 0;
-        cell.FrameY = 0;
-        cell.Shape = 0;
-        cell.TileColor = 0;
-        cell.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+        // The clear is guarded on the cell being inactive, which is always true for the whole-map scan but not
+        // for the flower patch that also calls this. Type 3 is not in ResetsHalfBrickPlacementAttempt either,
+        // so an occupied cell keeps its frames, paint and shape and the placement writes straight over them.
+        if (!cell.IsActive)
+        {
+            cell.Type = 0;
+            cell.FrameX = 0;
+            cell.FrameY = 0;
+            cell.Shape = 0;
+            cell.TileColor = 0;
+            cell.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+        }
 
         if (!IsFitToPlaceFlowerIn(store, x, y, plant))
-            return false;
+            return Frame(store, random, x, y);
 
         WorldTile floor = At(store, x, y + 1);
 
@@ -131,16 +137,16 @@ internal static class SurfacePlantPass1458
         {
             cell.Flags |= WorldTileFlags.Active;
             cell.Type = CorruptThornyBush;
-            new GenerationTileFraming1458(store).SquareTileFrame(x, y);
-            return true;
+            new GenerationTileFraming1458(store, random).SquareTileFrame(x, y);
+            return Frame(store, random, x, y);
         }
 
         if (plant == CrimsonPlants && random.Next(13) == 0)
         {
             cell.Flags |= WorldTileFlags.Active;
             cell.Type = CrimsonThornyBush;
-            new GenerationTileFraming1458(store).SquareTileFrame(x, y);
-            return true;
+            new GenerationTileFraming1458(store, random).SquareTileFrame(x, y);
+            return Frame(store, random, x, y);
         }
 
         if (IsSpecialPlantFloor(floor.Type))
@@ -153,13 +159,13 @@ internal static class SurfacePlantPass1458
             if (frame is 21 or 24 or 27 or 30 or 33 or 36 or 39 or 42)
                 frame += random.Next(3);
             cell.FrameX = checked((short)(frame * 18));
-            return true;
+            return Frame(store, random, x, y);
         }
 
         if (!TreeGrowthCatalog1458.AllowsPlantGrowth(new WallTypeId(cell.Wall)) ||
             !TreeGrowthCatalog1458.AllowsPlantGrowth(new WallTypeId(floor.Wall)))
         {
-            return false;
+            return Frame(store, random, x, y);
         }
 
         if (random.Next(50) == 0 ||
@@ -168,7 +174,7 @@ internal static class SurfacePlantPass1458
             cell.Flags |= WorldTileFlags.Active;
             cell.Type = plant;
             cell.FrameX = plant == CrimsonPlants ? (short)270 : (short)144;
-            return true;
+            return Frame(store, random, x, y);
         }
 
         if (random.Next(35) == 0 || cell.Wall is >= 63 and <= 70)
@@ -183,12 +189,28 @@ internal static class SurfacePlantPass1458
                 _ => NextFromList(random, [6, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
             };
             cell.FrameX = checked((short)(frame * 18));
-            return true;
+            return Frame(store, random, x, y);
         }
 
         cell.Flags |= WorldTileFlags.Active;
         cell.Type = plant;
         cell.FrameX = checked((short)(random.Next(6) * 18));
+        return Frame(store, random, x, y);
+    }
+
+    /// <summary>
+    /// Source <c>WorldGen.PlaceTile</c>'s epilogue: <c>if (tile.active()) { SquareTileFrame(i, j); result =
+    /// true; }</c>. It is keyed off the cell being active, not off the placement having taken, so a cell that
+    /// was already occupied is framed and reported as placed even when this slice refused it. The framing is
+    /// not cosmetic - it is what runs <c>PlantCheck</c> and <c>CheckJunglePlant</c> over the square, and a
+    /// plant put down beside a multi-cell plant on the wrong ground destroys it.
+    /// </summary>
+    private static bool Frame(WorldTileStore store, IWorldGenerationVanillaRandom random, int x, int y)
+    {
+        if (!At(store, x, y).IsActive)
+            return false;
+
+        new GenerationTileFraming1458(store, random).SquareTileFrame(x, y);
         return true;
     }
 
@@ -198,7 +220,7 @@ internal static class SurfacePlantPass1458
     /// mushroom grass, marble, lava moss and hallowed grass, and each evil plant accepts its own grass and the
     /// shimmered variant of it.
     /// </summary>
-    private static bool IsFitToPlaceFlowerIn(WorldTileStore store, int x, int y, ushort plant)
+    internal static bool IsFitToPlaceFlowerIn(WorldTileStore store, int x, int y, ushort plant)
     {
         int height = store.Dimensions.HeightTiles;
         if (y < 1 || y > height - 1)

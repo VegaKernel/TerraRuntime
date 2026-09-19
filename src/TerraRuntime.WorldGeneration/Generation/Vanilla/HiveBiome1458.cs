@@ -281,7 +281,7 @@ internal sealed class HiveBiome1458(
                 {
                     // Hive is not frame-important, so the source's SquareTileFrame does nothing during
                     // generation beyond the inactive-cell cleanup the framing slice already carries.
-                    new GenerationTileFraming1458(store).SquareTileFrame(column, row);
+                    new GenerationTileFraming1458(store, random).SquareTileFrame(column, row);
                 }
 
                 if (tile.Wall == HiveWall)
