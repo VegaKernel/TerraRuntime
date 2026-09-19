@@ -529,6 +529,26 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
             };
         }
 
+        if (definition.Type == VanillaNpcIds.Probe && npc.Ai.Ai3 != 0f)
+        {
+            NpcSnapshot attachedProbe = npc;
+            if (context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh attachedClosest))
+            {
+                attachedProbe = npc with
+                {
+                    Target = attachedClosest.Target,
+                    Simulation = npc.Simulation with
+                    {
+                        DirectionX = attachedClosest.DirectionX,
+                        DirectionY = attachedClosest.DirectionY
+                    }
+                };
+            }
+
+            if (TryStepMechdusaProbe(in attachedProbe, in definition, in hitbox, context, out next))
+                return true;
+        }
+
         if (!context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) ||
             !context.TryFindCandidate(checked((byte)closest.Target), out VanillaNpcTargetCandidate candidate))
         {
@@ -593,6 +613,7 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
                 result.VelocityX,
                 result.VelocityY,
                 projectileEnvironment,
+                IsMechQueenUp(context),
                 out VanillaFlyerProjectileAttackResult attack))
         {
             finalVelocityX = attack.VelocityX;
@@ -647,6 +668,7 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
                 proposed.VelocityX,
                 proposed.VelocityY,
                 projectileEnvironment,
+                IsMechQueenUp(context),
                 out VanillaFlyerProjectileAttackResult attack) ||
             !attack.ProjectileReady ||
             !attack.LocalAi.Equals(proposed.Simulation.LocalAi))
@@ -658,20 +680,35 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
         float sourceCenterY = source.PositionY + hitbox.Height * 0.5f;
         if (type == VanillaNpcIds.Probe)
         {
-            if (!VanillaFlyerNpcCatalog.TryGetMotionProfile(type, out VanillaFlyerMotionProfile profile))
-                return 0;
-
+            bool mechdusaProbe = source.Ai.Ai3 != 0f && IsMechQueenUp(context);
             float velocityX = target.CenterX - sourceCenterX;
             float velocityY = target.CenterY - sourceCenterY;
-            float distanceSquared = velocityX * velocityX + velocityY * velocityY;
-            if (distanceSquared < profile.MaximumSpeed * profile.MaximumSpeed)
+            if (mechdusaProbe)
             {
-                velocityX = source.VelocityX;
-                velocityY = source.VelocityY;
+                // AI_005 snapshots and snaps `vector` before moving the attached Probe, then fires from that
+                // old vector while aiming from the new physical center. Keep those two source positions distinct.
+                sourceCenterX = (int)(sourceCenterX / 8f) * 8f;
+                sourceCenterY = (int)(sourceCenterY / 8f) * 8f;
+                float attachedCenterX = proposed.PositionX + hitbox.Width * .5f;
+                float attachedCenterY = proposed.PositionY + hitbox.Height * .5f;
+                velocityX = target.CenterX - attachedCenterX - target.VelocityX * 20f;
+                velocityY = target.CenterY - attachedCenterY - target.VelocityY * 20f;
+                VanillaFlyerProjectileAttack.Normalize(ref velocityX, ref velocityY, 8f);
             }
             else
             {
-                VanillaFlyerProjectileAttack.Normalize(ref velocityX, ref velocityY, profile.MaximumSpeed);
+                if (!VanillaFlyerNpcCatalog.TryGetMotionProfile(type, out VanillaFlyerMotionProfile profile))
+                    return 0;
+                float distanceSquared = velocityX * velocityX + velocityY * velocityY;
+                if (distanceSquared < profile.MaximumSpeed * profile.MaximumSpeed)
+                {
+                    velocityX = source.VelocityX;
+                    velocityY = source.VelocityY;
+                }
+                else
+                {
+                    VanillaFlyerProjectileAttack.Normalize(ref velocityX, ref velocityY, profile.MaximumSpeed);
+                }
             }
 
             destination[0] = new NpcAiProjectileIntent(
@@ -703,6 +740,59 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
             BloodSquidDamage,
             BloodSquidKnockBack);
         return 1;
+    }
+
+    private static bool IsMechQueenUp(VanillaNpcBehaviorContext context)
+    {
+        Span<NpcSnapshot> primes = stackalloc NpcSnapshot[1];
+        return context.CopyNpcPeers(VanillaNpcIds.SkeletronPrime, primes) == 1 &&
+            primes[0].Ai.Ai3 == primes[0].Handle.Slot;
+    }
+
+    private bool TryStepMechdusaProbe(
+        in NpcSnapshot npc,
+        in VanillaNpcDefinition definition,
+        in VanillaNpcHitboxSize hitbox,
+        VanillaNpcBehaviorContext context,
+        out NpcStateUpdate next)
+    {
+        if (!IsMechQueenUp(context) || npc.Ai.Ai2 is < 0f or > byte.MaxValue ||
+            npc.Ai.Ai2 != MathF.Truncate(npc.Ai.Ai2) ||
+            !context.TryFindNpcPeer((byte)npc.Ai.Ai2, out NpcSnapshot destroyer) ||
+            destroyer.TypeIdentity != VanillaNpcIds.Destroyer ||
+            !VanillaNpcDefinitionCatalog.TryGet(destroyer.TypeIdentity, destroyer.NetIdentity, out VanillaNpcDefinition destroyerDefinition) ||
+            !destroyerDefinition.TryResolveHitbox(destroyer.Simulation, out VanillaNpcHitboxSize destroyerHitbox))
+        {
+            next = default;
+            return false;
+        }
+
+        float angle = destroyer.Simulation.Rotation ?? 0f;
+        float offsetX = MathF.Cos(angle) * (26f * npc.Ai.Ai3);
+        float offsetY = MathF.Sin(angle) * (26f * npc.Ai.Ai3);
+        float centerX = destroyer.PositionX + destroyerHitbox.Width * .5f + offsetX;
+        float centerY = destroyer.PositionY + destroyerHitbox.Height * .5f + offsetY;
+        NpcAiState local = npc.Simulation.LocalAi;
+        if (npc.Simulation.JustHit)
+            local = local with { Ai0 = 0f };
+        else
+            local = local with { Ai0 = local.Ai0 + 3f };
+        if (local.Ai0 >= 360f)
+            local = local with { Ai0 = 0f };
+
+        next = new NpcStateUpdate(
+            definition.Type.Value, npc.NetId,
+            centerX - hitbox.Width * .5f, centerY - hitbox.Height * .5f,
+            destroyer.VelocityX, destroyer.VelocityY, npc.Target, npc.Ai,
+            npc.Simulation with
+            {
+                NoGravity = true,
+                NoTileCollide = definition.NoTileCollideAtSpawn,
+                DontTakeDamage = true,
+                LocalAi = local,
+                Rotation = angle
+            });
+        return true;
     }
 }
 

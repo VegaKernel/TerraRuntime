@@ -85,6 +85,76 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Mechdusa_probe_uses_three_tick_counter_and_360_tick_shot_boundary()
+    {
+        NpcSnapshot npc = CreateNpc(VanillaNpcIds.Probe, localAi0: 357f) with
+        {
+            Ai = new NpcAiState(0f, 0f, 3f, 1f)
+        };
+        VanillaNpcHitboxSize hitbox = new(30, 30);
+        VanillaNpcTargetCandidate target = Target(200f, 100f) with { VelocityX = 2f, VelocityY = -1f };
+
+        Assert.True(VanillaFlyerProjectileAttack.TryStep(
+            VanillaNpcIds.Probe, in npc, in hitbox, in target, 0f, 0f, new FixedEnvironment(true),
+            mechQueenUp: true, out VanillaFlyerProjectileAttackResult result));
+
+        Assert.Equal(0f, result.LocalAi.Ai0);
+        Assert.True(result.ProjectileReady);
+    }
+
+    [Fact]
+    public void Targeting_stepper_attaches_mechdusa_probe_and_leads_its_shot()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new SequenceRandom());
+        stepper.SetProjectileEnvironment(new FixedEnvironment(true));
+        VanillaNpcTargetCandidate target = Target(300f, 100f) with { VelocityX = 2f, VelocityY = -1f };
+        stepper.SetCandidates([target]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+
+        NpcSnapshot prime = CreateNpc(VanillaNpcIds.SkeletronPrime, 0f) with
+        {
+            Handle = new NpcHandle(100, new NpcGeneration(1)),
+            Ai = new NpcAiState(0f, 0f, 0f, 100f)
+        };
+        NpcSnapshot destroyer = CreateNpc(VanillaNpcIds.Destroyer, 0f) with
+        {
+            Handle = new NpcHandle(3, new NpcGeneration(1)),
+            PositionX = 100f,
+            PositionY = 200f,
+            VelocityX = 3f,
+            VelocityY = 4f,
+            Simulation = CreateNpc(VanillaNpcIds.Destroyer, 0f).Simulation with { Rotation = MathF.PI * .5f }
+        };
+        NpcSnapshot probe = CreateNpc(VanillaNpcIds.Probe, 357f) with
+        {
+            Handle = new NpcHandle(4, new NpcGeneration(1)),
+            Target = byte.MaxValue,
+            Ai = new NpcAiState(0f, 0f, 3f, 1f)
+        };
+        stepper.SetNpcPeers([prime, destroyer, probe]);
+
+        Assert.True(stepper.TryStepState(in probe, out NpcStateUpdate next));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(destroyer.TypeIdentity, destroyer.NetIdentity, out VanillaNpcDefinition destroyerDefinition));
+        Assert.True(destroyerDefinition.TryResolveHitbox(destroyer.Simulation, out VanillaNpcHitboxSize destroyerHitbox));
+        Assert.Equal(destroyer.PositionX + destroyerHitbox.Width * .5f - 15f, next.PositionX, 4);
+        Assert.Equal(destroyer.PositionY + destroyerHitbox.Height * .5f + 26f - 15f, next.PositionY, 4);
+        Assert.Equal(3f, next.VelocityX);
+        Assert.Equal(4f, next.VelocityY);
+        Assert.Equal(0, next.Target);
+        Assert.True(next.Simulation.DontTakeDamage);
+        Assert.Equal(0f, next.Simulation.LocalAi.Ai0);
+
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
+        Assert.Equal(1, stepper.PlanProjectileSpawns(in probe, in next, intents));
+        Assert.Equal(VanillaProjectileIds.ProbePinkLaser, intents[0].Type);
+        Assert.Equal(8f, intents[0].PositionX);
+        Assert.Equal(8f, intents[0].PositionY);
+        Assert.InRange(MathF.Sqrt(intents[0].VelocityX * intents[0].VelocityX + intents[0].VelocityY * intents[0].VelocityY), 7.999f, 8.001f);
+        Assert.True(intents[0].VelocityX > 0f);
+        Assert.True(intents[0].VelocityY < 0f);
+    }
+
+    [Fact]
     public void Blood_squid_threshold_applies_recoil_and_resets_timer()
     {
         NpcSnapshot npc = CreateNpc(VanillaNpcIds.BloodSquid, localAi0: 119f);

@@ -1,5 +1,20 @@
 # Work state
 
+## Mechdusa Probe attachment slice - 2026-09-20
+
+Zenith-world Mechdusa's two Probes (NPC `139`) now retain the source AI005 attachment
+to the Destroyer head (NPC `134`): their offset is $26\,\mathrm{px}$ times `ai[3]`,
+rotated with the head; they inherit its velocity and rotation; they are invulnerable; and
+their firing counter advances by three to the $360$-tick boundary. The shot leads the
+player by twenty ticks and retains the source's quantized pre-attachment spawn origin.
+The attached path also refreshes the closest player target. The focused tests cover the
+timer, target refresh, attachment coordinates, inherited motion and projectile intent.
+
+This is only the Probe slice. Missing-anchor recovery, the Destroyer head's Mechdusa
+orbit and the rest of the shared mechanical encounter remain open. Resume with the
+source-backed Destroyer `AI_037_Destroyer` Mechdusa head orbit before broadening the
+encounter claim.
+
 ## Prime head direction and rotation slice - 2026-09-20
 
 The first continuous original Prime trace is now captured from `NPC.UpdateNPC`: 32 Linux ticks across hover `599` to spin and spin `399` to hover, with head and all four arms executing in ascending slots. It found the head-specific AI32 gap: `TargetClosest` owns `direction`, and phase rotation is committed before velocity steering. `VanillaSkeletronPrimeNpcBehaviorStrategy` now retains that ordering for hover, spin, rage and despawn; a focused runtime regression checks the initial charge boundary. The source fixture is still ignored while the full cross-platform encounter comparator is built. Release warnings-as-errors build, 808 focused Prime phase tests and the complete 100,115-test suite pass with no errors, failures or skips in 169.865 seconds. Next: retain the encounter fixture and compare runtime world-motion traces before claiming full encounter parity.

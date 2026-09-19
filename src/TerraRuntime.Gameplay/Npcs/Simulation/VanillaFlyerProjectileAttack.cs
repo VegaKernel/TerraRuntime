@@ -85,6 +85,20 @@ public static class VanillaFlyerProjectileAttack
         float postMotionVelocityY,
         IVanillaNpcProjectileEnvironment? environment,
         out VanillaFlyerProjectileAttackResult result)
+        => TryStep(type, in npc, in hitbox, in target, postMotionVelocityX, postMotionVelocityY,
+            environment, mechQueenUp: false, out result);
+
+    /// <summary>AI_005 attack timer including the verified Mechdusa Probe cadence when its Prime anchor is live.</summary>
+    public static bool TryStep(
+        NpcTypeId type,
+        in NpcSnapshot npc,
+        in VanillaNpcHitboxSize hitbox,
+        in VanillaNpcTargetCandidate target,
+        float postMotionVelocityX,
+        float postMotionVelocityY,
+        IVanillaNpcProjectileEnvironment? environment,
+        bool mechQueenUp,
+        out VanillaFlyerProjectileAttackResult result)
     {
         if (!IsSupportedShooter(type) ||
             !float.IsFinite(postMotionVelocityX) ||
@@ -106,18 +120,7 @@ public static class VanillaFlyerProjectileAttack
 
         if (type == VanillaNpcIds.Probe)
         {
-            // ai[3] != 0 belongs to the Mech Queen attachment path. TerraRuntime does not claim that composite
-            // encounter yet, so ordinary Probe attack state remains fail-closed instead of applying its different
-            // 360-tick cadence with incomplete parent state.
-            if (npc.Ai.Ai3 != 0f)
-            {
-                result = new(
-                    npc.Simulation.LocalAi,
-                    postMotionVelocityX,
-                    postMotionVelocityY,
-                    ProjectileReady: false);
-                return true;
-            }
+            bool mechdusaProbe = npc.Ai.Ai3 != 0f && mechQueenUp;
 
             if (npc.Simulation.JustHit)
             {
@@ -125,11 +128,12 @@ public static class VanillaFlyerProjectileAttack
             }
             else
             {
-                localAi0 += 1f;
+                // NPC.AI_005 increments the attached Probe's counter once in the ordinary tail and twice more.
+                localAi0 += mechdusaProbe ? 3f : 1f;
             }
 
             bool ready = false;
-            if (localAi0 >= ProbeAttackThreshold)
+            if (localAi0 >= (mechdusaProbe ? 360f : ProbeAttackThreshold))
             {
                 localAi0 = 0f;
                 ready = targetUsable &&
