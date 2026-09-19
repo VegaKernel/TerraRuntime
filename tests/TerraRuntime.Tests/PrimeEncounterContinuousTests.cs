@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
 using TerraRuntime.Application;
@@ -15,26 +16,32 @@ public sealed class PrimeEncounterContinuousTests
     private static readonly JsonElement[] Rows = Read();
 
     [Fact]
-    public void Head_and_arms_match_the_first_eighty_continuous_encounter_ticks()
+    public void Head_arms_and_projectiles_match_the_first_eighty_continuous_encounter_ticks()
     {
         RuntimeNpcStore? npcs = null;
+        RuntimeProjectileStore? projectiles = null;
         RuntimeNpcAiStateExecutor? executor = null;
         INpcAiStateStepper? motion = null;
+        CapturedRandom? random = null;
         foreach (JsonElement row in Rows)
         {
             if (row.GetProperty("tick").GetInt32() == 0)
-                (npcs, executor, motion) = Create(row);
+                (npcs, projectiles, executor, motion, random) = Create(row, projectiles);
 
-            Assert.NotNull(npcs); Assert.NotNull(executor); Assert.NotNull(motion);
+            Assert.NotNull(npcs); Assert.NotNull(projectiles); Assert.NotNull(executor); Assert.NotNull(motion); Assert.NotNull(random);
             Assert.Equal(5, executor.Tick(motion).Applied);
             foreach (JsonElement expected in row.GetProperty("after").EnumerateArray())
                 AssertNpc(npcs, expected);
+            AssertProjectiles(projectiles, row.GetProperty("projectiles"));
+            random.AssertState(row.GetProperty("randomAfter"));
         }
     }
 
-    private static (RuntimeNpcStore Npcs, RuntimeNpcAiStateExecutor Executor, INpcAiStateStepper Motion) Create(JsonElement row)
+    private static (RuntimeNpcStore Npcs, RuntimeProjectileStore Projectiles, RuntimeNpcAiStateExecutor Executor, INpcAiStateStepper Motion, CapturedRandom Random) Create(
+        JsonElement row, RuntimeProjectileStore? existingProjectiles)
     {
         var npcs = new RuntimeNpcStore();
+        var projectiles = existingProjectiles ?? new RuntimeProjectileStore();
         npcs.SetVanillaSpawnContextSource(() => new VanillaNpcSpawnContext(1, 1, false));
         Assert.True(npcs.TrySpawnIntent(new NpcAiSpawnIntent(
             VanillaNpcIds.SkeletronPrime, 1000, 1000, 0f, 0f, 0)
@@ -43,12 +50,13 @@ public sealed class PrimeEncounterContinuousTests
             InitialAi = new NpcAiState(0f, row.GetProperty("phase").GetSingle(), row.GetProperty("timer").GetSingle(), 0f)
         }, out _));
 
-        var targeting = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        var random = new CapturedRandom(row.GetProperty("randomBefore"));
+        var targeting = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper(), random: random);
         targeting.SetWorldConditions(dayTime: false, slimeRainActive: false);
         targeting.SetCandidates([new VanillaNpcTargetCandidate(0, 1510f, 1021f, 0, true, false, false, false)]);
         var motion = new VanillaNpcWorldMotionAiStepper(
             targeting, new WorldTileStore(new WorldDimensions(400, 400)));
-        return (npcs, new RuntimeNpcAiStateExecutor(npcs), motion);
+        return (npcs, projectiles, new RuntimeNpcAiStateExecutor(npcs, projectiles), motion, random);
     }
 
     private static void AssertNpc(RuntimeNpcStore npcs, JsonElement expected)
@@ -72,15 +80,52 @@ public sealed class PrimeEncounterContinuousTests
         Assert.Equal(ReadAi(expected.GetProperty("localAi")), actual.Simulation.LocalAi);
     }
 
+    private static void AssertProjectiles(RuntimeProjectileStore projectiles, JsonElement expected)
+    {
+        Assert.Equal(expected.GetArrayLength(), projectiles.ActiveCount);
+        foreach (JsonElement projectile in expected.EnumerateArray())
+        {
+            Assert.True(projectiles.TryGetActive(projectile.GetProperty("slot").GetUInt16(), out var actual));
+            Assert.Equal(projectile.GetProperty("type").GetInt32(), actual.Type.Value);
+            Assert.Equal(projectile.GetProperty("x").GetSingle(), actual.PositionX); Assert.Equal(projectile.GetProperty("y").GetSingle(), actual.PositionY);
+            Assert.Equal(projectile.GetProperty("vx").GetSingle(), actual.VelocityX); Assert.Equal(projectile.GetProperty("vy").GetSingle(), actual.VelocityY);
+            Assert.Equal(projectile.GetProperty("damage").GetInt32(), actual.Damage); Assert.Equal(projectile.GetProperty("knockBack").GetSingle(), actual.KnockBack);
+            Assert.Equal(new ProjectileAiState(projectile.GetProperty("ai")[0].GetSingle(), projectile.GetProperty("ai")[1].GetSingle(), projectile.GetProperty("ai")[2].GetSingle()), actual.Ai);
+            Assert.True(projectiles.TryGetLifecycle(actual.Handle, out var lifecycle));
+            Assert.Equal(projectile.GetProperty("timeLeft").GetInt32(), lifecycle.TimeLeft);
+        }
+    }
+
     private static NpcAiState ReadAi(JsonElement values) => new(
         values[0].GetSingle(), values[1].GetSingle(), values[2].GetSingle(), values[3].GetSingle());
+
+    private sealed class CapturedRandom : IVanillaNpcRandom
+    {
+        private readonly VanillaUnifiedRandom1458 _random = new(0);
+        private static readonly FieldInfo Index = typeof(VanillaUnifiedRandom1458).GetField("inext", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        private static readonly FieldInfo Seeds = typeof(VanillaUnifiedRandom1458).GetField("seedArray", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        public CapturedRandom(JsonElement state)
+        {
+            Index.SetValue(_random, state.GetProperty("index").GetUInt32());
+            state.GetProperty("seed").EnumerateArray().Select(value => value.GetInt32()).ToArray().CopyTo((int[])Seeds.GetValue(_random)!, 0);
+        }
+
+        public int NextInt32(int min, int max) => _random.Next(min, max);
+
+        public void AssertState(JsonElement state)
+        {
+            Assert.Equal(state.GetProperty("index").GetUInt32(), (uint)Index.GetValue(_random)!);
+            Assert.Equal(state.GetProperty("seed").EnumerateArray().Select(value => value.GetInt32()), (int[])Seeds.GetValue(_random)!);
+        }
+    }
 
     private static JsonElement[] Read()
     {
         string name = OperatingSystem.IsWindows() ? "PrimeEncounterWindows1458" : "PrimeEncounterLinux1458";
         string hash = OperatingSystem.IsWindows()
-            ? "eb6c22e73cb53b27d2a1f2fb92f7d9bab8cbe7f1bf6fcc350beeef6606edcc02"
-            : "2784e6fb8d528ef85e6b4b5dd4bf534c98b264dd106f03722514846bbfdd0deb";
+            ? "4164e4d9cf6f51dbbc21a32f98e3220d939951ef1d741b31088958c0e837d597"
+            : "e830ac73149e22ce55ffc2ad3f42c34ac87eb04d73ca5698160c0190ccb28131";
         using var resource = typeof(PrimeEncounterContinuousTests).Assembly.GetManifestResourceStream(name)!;
         using var gzip = new GZipStream(resource, CompressionMode.Decompress);
         using var bytes = new MemoryStream(); gzip.CopyTo(bytes);
