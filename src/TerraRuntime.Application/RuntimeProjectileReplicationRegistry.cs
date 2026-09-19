@@ -4,6 +4,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
+using TerraRuntime.Gameplay.Projectiles;
 
 namespace TerraRuntime.Application;
 
@@ -32,6 +33,7 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
     private long rejectedFrames;
     private long unsupportedCommits;
     private long suppressedDuplicateFrames;
+    private long suppressedOrdinaryServerUpdateFrames;
     private long throttledUpdateFrames;
 
     /// <summary>
@@ -72,6 +74,12 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
     public long UnsupportedCommits => Interlocked.Read(ref unsupportedCommits);
 
     public long SuppressedDuplicateFrames => Interlocked.Read(ref suppressedDuplicateFrames);
+
+    /// <summary>
+    /// Server simulation commits withheld because the verified projectile's ordinary source update does not set
+    /// <c>netUpdate</c>. The authoritative baseline still advances for future local consumers.
+    /// </summary>
+    public long SuppressedOrdinaryServerUpdateFrames => Interlocked.Read(ref suppressedOrdinaryServerUpdateFrames);
 
     /// <summary>
     /// Update frames withheld because the projectile had spent its source-backed packet-27 budget. These are
@@ -200,6 +208,13 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
         if (kind == ProjectileStateCommitKind.Update && duplicate)
         {
             Interlocked.Increment(ref suppressedDuplicateFrames);
+            return;
+        }
+
+        if (kind == ProjectileStateCommitKind.Update && !clientCommit &&
+            !VanillaProjectileReplicationFacts.PublishesOrdinaryServerUpdate(snapshot.Type))
+        {
+            Interlocked.Increment(ref suppressedOrdinaryServerUpdateFrames);
             return;
         }
 

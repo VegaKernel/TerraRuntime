@@ -889,6 +889,8 @@ Primary evidence: TerrariaServer 1.4.5.8 `Projectile.StatusPvP`, the PvP branch 
 
 TerrariaServer 1.4.5.8 `Main.DoUpdateInWorld_Inner` calls `UpdateWorld_NPCs` before `UpdateWorld_Projectiles`; each phase is wrapped in a distinct persistent `Main.SwapRandom` stream. The verified Prime trace therefore runs the five NPC actors first, then each active projectile slot. Prime bomb `102` receives one normal update on its creation tick. Prime laser `100` has `extraUpdates = 2`, so it receives three updates and loses three lifetime ticks in that same world tick. Across the captured ordinary flight window both projectiles leave `netUpdate`, `netUpdate2`, and `netSpam` at zero after update; their spawn publication is separate from an urgent state update.
 
+The runtime therefore keeps authoritative state and the late-join baseline current for `100`/`102`, but does not broadcast their ordinary server simulation commits as packet `27`. Their creation, destruction, client relay, and any later source-verified urgent intent remain separate paths.
+
 When adding a fact:
 
 1. name the official type/method or table used as evidence;

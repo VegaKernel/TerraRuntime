@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Network;
 
 namespace TerraRuntime.Tests;
@@ -64,11 +65,34 @@ public sealed class ProjectileNetSpamThrottleTests
         Assert.Equal(40, replication.RelayedFrames);
     }
 
-    private static ProjectileSnapshot Moving(int tick) =>
+    [Theory]
+    [InlineData(100)]
+    [InlineData(102)]
+    public void Prime_ordinary_flight_does_not_publish_packet27_updates(int projectileType)
+    {
+        var replication = new RuntimeProjectileReplicationRegistry();
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(4203);
+        TerrariaConnectionOutboundQueue outbound = CreateOutbound();
+        Assert.True(replication.TryRegister(source, outbound));
+        ConnectionHandle player = Connection(source, slot: 4, generation: 1);
+        PlayerSpawnCommitRequest spawn = Spawn(player.Player.Slot);
+        replication.PlayerSpawned(player, in spawn);
+
+        ProjectileSnapshot initial = Moving(0, new ProjectileTypeId(projectileType));
+        replication.ProjectileStateCommitted(ProjectileStateCommitKind.Spawn, initial);
+        for (int tick = 1; tick <= 80; tick++)
+            replication.ProjectileStateCommitted(ProjectileStateCommitKind.Update, Moving(tick, new ProjectileTypeId(projectileType)));
+
+        Assert.Equal(1, replication.RelayedFrames);
+        Assert.Equal(80, replication.SuppressedOrdinaryServerUpdateFrames);
+        Assert.Equal(0, replication.ThrottledUpdateFrames);
+    }
+
+    private static ProjectileSnapshot Moving(int tick, ProjectileTypeId? type = null) =>
         new(
             new ProjectileHandle(7, new ProjectileGeneration(1)),
             new ProjectileRevision((ulong)(tick + 1)),
-            new ProjectileTypeId(1),
+            type ?? new ProjectileTypeId(1),
             Spawner: 2,
             PositionX: 100f + tick,
             PositionY: 200f,
