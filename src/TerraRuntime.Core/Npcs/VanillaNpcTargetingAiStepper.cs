@@ -18,6 +18,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     INpcAiProjectileIntentPlanner,
     INpcAiProjectileMutationIntentPlanner,
     INpcAiPeerSnapshotConsumer,
+    INpcAiRetainedSlotSnapshotConsumer,
     INpcAiStatePostCommitEffect
 {
     public const int MaximumPlayerCandidates = VanillaNpcBehaviorContext.MaximumPlayerCandidates;
@@ -198,6 +199,9 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public void SetNpcPeers(ReadOnlySpan<NpcSnapshot> peers) =>
         _context.SetNpcPeers(peers);
+
+    void INpcAiRetainedSlotSnapshotConsumer.SetRetainedNpcSlots(ReadOnlySpan<VanillaNpcRetainedSlot> slots) =>
+        _context.SetRetainedNpcSlots(slots);
 
     public bool TryGetCandidate(byte slot, out VanillaNpcTargetCandidate candidate) =>
         _context.TryFindCandidate(slot, out candidate);
@@ -1893,7 +1897,8 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public bool DeactivatesAfterStep(in NpcSnapshot before, in NpcStateUpdate proposed) =>
         proposed.Type == before.Type && proposed.Simulation.Life == 0 &&
-        ((before.TypeIdentity == VanillaNpcIds.MoonLordLeechBlob && proposed.Simulation.TimeLeft == 0) ||
+        (VanillaSkeletronPrimeLimbNpcBehaviorStrategy.Deactivates(in before, in proposed) ||
+         (before.TypeIdentity == VanillaNpcIds.MoonLordLeechBlob && proposed.Simulation.TimeLeft == 0) ||
          // AI_012 removes the orphan immediately; its internal negative-life sentinel never enters the store.
          ((before.TypeIdentity == VanillaNpcIds.SkeletronHand || before.TypeIdentity == VanillaNpcIds.PrimeCannon ||
            before.TypeIdentity == VanillaNpcIds.PrimeLaser) && proposed.Ai.Ai2 > 50f &&
@@ -1912,6 +1917,9 @@ public sealed class VanillaNpcTargetingAiStepper :
         if ((before.TypeIdentity == VanillaNpcIds.PrimeCannon || before.TypeIdentity == VanillaNpcIds.PrimeLaser) &&
             before.TypeIdentity == committed.TypeIdentity)
             _primeRanged.ApplyEffects(in before, in committed, _context, _random, mutations);
+        if ((before.TypeIdentity == VanillaNpcIds.PrimeSaw || before.TypeIdentity == VanillaNpcIds.PrimeVice) &&
+            before.TypeIdentity == committed.TypeIdentity)
+            VanillaSkeletronPrimeLimbNpcBehaviorStrategy.ApplyEffects(in before, in committed, _random, mutations);
         if (before.TypeIdentity == VanillaNpcIds.DarkCaster && committed.TypeIdentity == VanillaNpcIds.DarkCaster)
             VanillaDarkCasterBehavior.SpawnSphere(in before, in committed, mutations);
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);

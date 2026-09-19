@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Prime melee parent slots - 2026-09-20
+
+In TerrariaServer 1.4.5.8 AI `33`/`34`, the arm reads `Main.npc[(int)ai[1]]` position and dimensions before it checks the parent's `active` flag or AI style. An inactive physical head therefore still affects the distance-return transition. On a dedicated server, invalid-parent `ai[2] += 10` leaves the arm active through `50`; only a value above `50` writes the negative-life sentinel, invokes `HitEffect`, and deactivates it. Active and inactive head cases agree between the pinned Windows and Linux binaries in 112 parent cases/platform, including near/far arm geometries. The retained runtime-slot view is internal and bounded to the physical NPC table; ordinary peer queries continue to return only active NPCs.
+
 ## Pyramids stage44 candidate selection - 2026-09-16
 
 Ordinary pass body: for each retained candidate index in order, require x > 300 and x < maxTilesX - 300; for dungeonSide == Left require NOT (x < generatingDungeonPositionX + maxTilesX * 0.15); for dungeonSide == Right require NOT (x > generatingDungeonPositionX - maxTilesX * 0.15). Then probe downward from the candidate's own recorded row while the cell is inactive and the row is below Main.worldSurface; refuse when the probe reached worldSurface or the found tile is not type 53. Then compute the minimum absolute column distance to EVERY earlier candidate - PyrX, not the built ones - and require at least 220. Finally decrement the row by one and call Pyramid(x, row, 75, 125, false). The whole selection draws no shared RNG.

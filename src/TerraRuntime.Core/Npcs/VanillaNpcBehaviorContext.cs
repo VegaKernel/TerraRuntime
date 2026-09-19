@@ -18,9 +18,11 @@ internal sealed class VanillaNpcBehaviorContext
 
     private readonly VanillaNpcTargetCandidate[] _candidates = new VanillaNpcTargetCandidate[MaximumPlayerCandidates];
     private readonly NpcSnapshot[] _npcPeers = new NpcSnapshot[RuntimeNpcStore.MaximumAddressableCapacity];
+    private readonly VanillaNpcRetainedSlot[] _retainedNpcSlots = new VanillaNpcRetainedSlot[RuntimeNpcStore.MaximumAddressableCapacity];
     private IRuntimePlayerSlotSnapshotLookup? _playerSnapshots;
     private int _candidateCount;
     private int _npcPeerCount;
+    private int _retainedNpcSlotCount;
 
     public bool SlimeGroundEnabled { get; private set; }
 
@@ -123,6 +125,15 @@ internal sealed class VanillaNpcBehaviorContext
 
         peers.CopyTo(_npcPeers);
         _npcPeerCount = peers.Length;
+    }
+
+    public void SetRetainedNpcSlots(ReadOnlySpan<VanillaNpcRetainedSlot> slots)
+    {
+        if (slots.Length > _retainedNpcSlots.Length)
+            throw new ArgumentException("Too many retained vanilla NPC slots.", nameof(slots));
+
+        slots.CopyTo(_retainedNpcSlots);
+        _retainedNpcSlotCount = slots.Length;
     }
 
     public int CopyNpcPeers(NpcTypeId type, Span<NpcSnapshot> destination)
@@ -302,6 +313,27 @@ internal sealed class VanillaNpcBehaviorContext
                 peer = candidate;
                 return true;
             }
+        }
+
+        peer = default;
+        return false;
+    }
+
+    /// <summary>Returns a retained physical slot, including an inactive NPC whose source fields remain readable.</summary>
+    public bool TryFindNpcSlot(byte slot, out VanillaNpcRetainedSlot peer)
+    {
+        if (slot < _retainedNpcSlotCount)
+        {
+            peer = _retainedNpcSlots[slot];
+            return true;
+        }
+
+        if (TryFindNpcPeer(slot, out NpcSnapshot active))
+        {
+            peer = new VanillaNpcRetainedSlot(slot, true, new NpcStateUpdate(
+                active.Type, active.NetId, active.PositionX, active.PositionY, active.VelocityX, active.VelocityY,
+                active.Target, active.Ai, active.Simulation));
+            return true;
         }
 
         peer = default;

@@ -573,7 +573,29 @@ internal static class StandaloneServerProgram
                 !rangedNpcs.TryGet(rangedArm.Handle, out var afterShot) || afterShot.Simulation.LocalAi.Ai0 != 0)
                 throw new InvalidOperationException("Original Prime ranged state/projectile/RNG smoke failed.");
         }
-        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok, casterSpawn=ok, sphereAI=ok, npcSpawnRandom=ok, darkCasterAI=ok, skeletronSkull=ok, skeletronRedHatAI=ok, npcScalingArithmetic=ok, primeRangedAI=ok.");
+        foreach (var check in new (NpcTypeId Type, float Side, float Vx, float Vy, float Rotation)[]
+        {
+            (VanillaNpcIds.PrimeSaw, -1, 1.1875f, -2.6f, 2.542532f),
+            (VanillaNpcIds.PrimeVice, 1, 1.5416666f, -3f, 3.6143446f)
+        })
+        {
+            var meleeNpcs = new RuntimeNpcStore();
+            meleeNpcs.SetVanillaSpawnContextSource(() => new(1, 1, false));
+            if (!meleeNpcs.TrySpawnIntent(new(VanillaNpcIds.SkeletronPrime, 1000, 1000, 0, 0, 0)
+                { InitialAi = new(1, 0, 0, 0) }, out var meleeHead) ||
+                !meleeNpcs.TrySpawnIntent(new(check.Type, 900, 1050, 1.25f, -2.5f, 0)
+                { StartSlot = 10, InitialAi = new(check.Side, 0, 1, 0) }, out var meleeArm) ||
+                !meleeNpcs.TryUpdate(meleeArm.Handle, new(meleeArm.Type, meleeArm.NetId, 900, 700,
+                    1.25f, -2.5f, 0, meleeArm.Ai, meleeArm.Simulation), out meleeArm)) return 5;
+            var meleeAi = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+            meleeAi.SetNpcPeers([meleeHead, meleeArm]);
+            meleeAi.SetCandidates([new(0, 1510, 1021, 0, true, false, false, false)]);
+            if (!meleeAi.TryStepState(in meleeArm, out var meleeNext) ||
+                meleeNext.VelocityX != check.Vx || meleeNext.VelocityY != check.Vy ||
+                meleeNext.Simulation.Rotation != check.Rotation || meleeNext.Ai.Ai2 != 1)
+                throw new InvalidOperationException("Original Prime melee state smoke failed.");
+        }
+        Console.WriteLine($"Protocol smoke passed: release={request.ProtocolRelease}, frameLength={frame.PacketLength}, npcAnchors=ok, projectileWrap=ok, npcHealing=ok, npcClotSpawn=ok, npcAllocation=ok, destroyerChain=ok, npcSpawnContext=ok, primeBaseline=ok, primeArms=ok, skeletronHands=ok, skeletronPhase=ok, skeletronInitialization=ok, skeletronHandDash=ok, skeletronHandVariants=ok, skeletronRedHatCombat=ok, casterSpawn=ok, sphereAI=ok, npcSpawnRandom=ok, darkCasterAI=ok, skeletronSkull=ok, skeletronRedHatAI=ok, npcScalingArithmetic=ok, primeRangedAI=ok, primeMeleeAI=ok.");
         return 0;
     }
 

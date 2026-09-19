@@ -1,5 +1,18 @@
 # Vanilla NPC and AI parity roadmap
 
+## Prime melee implementation - 2026-09-16
+
+Prime Saw/Vice AI33/34 now use source hover, pursuit, vertical/repeated charge and return phase ordering. The runtime additionally supplies a bounded retained-slot snapshot for source reads of inactive parents; active peer consumers remain unchanged. Retained regression fixtures contain 6,048 baseline + 3,360 edge + 112 parent calls, independently matched against original Windows/Linux after-state and RNG. SHA256 of parent Linux JSON: b39f407f06ece6977646de4c3e08ab4b5a61c54e320b3bf8bc59e1c5b78661f5. All 9,408 initial cases failed on the old strategy. The focused 9,528 cases and merged full suite of 100,113 tests pass, as do Windows NativeAOT publication and all five smokes. Dedicated-server death consumes four gore RNG draws after revision acceptance; only despawn is published. Full encounters, alternate player hitbox/raw inactive targets, outer movement and full parity remain open. Next: continuous encounter traces before claiming encounter parity.
+
+
+## Resumed parity work - 2026-09-16
+
+The user explicitly resumed work. Commit `2419b56229176401cdafc2bc253d8f23a7e24c47` has all 14 exact-commit workflows green, including CI `34954800396` (Windows/Linux NativeAOT publish and all five smoke paths, both extensible CoreCLR hosts, build/tests), Documentation `34954800296`, Generated World `34954800402`, and downstream World Item `34955209404`. Evidence: `.cache/prime-ranged-ci.json`.
+
+The resumed local full suite passed all 90,031 tests with zero errors/failures/skips in 192.028 seconds; runner exited 0 and the complete XML parsed successfully. Evidence: `.cache/prime-ranged-resumed-full.xml` and `.log`. This closes the previous disk-full report-writing acceptance gap. No production/test source changed during the run.
+
+Next: replace approximate Prime Saw/Vice AI33/34. Independent original Windows/Linux captures now contain 6,048 baseline calls plus 3,360 velocity/flags/counter cases per platform. After-state fields match across platforms at float32 precision within these matrices; this is not general platform-equivalence proof. Probes and JSON are ignored reference evidence under `.cache/prime-melee-{ai,edge}-{linux,windows}-probe`; hashes, matrix details, source locations and concrete implementation gaps are in `.cache/prime-melee-next-step.md`, `.cache/prime-melee-evidence.json` and `.cache/prime-melee-edge-evidence.json`. These captures are not yet retained runtime regression fixtures. Production melee implementation is still approximate; full encounters, gameplay/items and packet parity remain open.
+
 ## Checkpoint requested by user - 2026-09-15
 
 Prime Cannon/Laser implementation is committed as a checkpoint; full parity remains open. Restored Release warnings-as-errors build, Windows NativeAOT publish and all five smoke paths passed, including primeRangedAI=ok. The full test runner reported 90,031 tests, zero errors/failures/skips, in 190.968 seconds, then exited 4 because disk space ran out while writing .cache/prime-ranged-full.xml. That XML is truncated; this is not a clean full-run process acceptance. Evidence: .cache/prime-ranged-final-full.log. Focused 10,590 tests and seven negative controls passed their expected checks. Remote acceptance remains pending. User requested commit, push and stop; do not automatically continue parity work.

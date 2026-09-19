@@ -19,6 +19,12 @@ public interface INpcAiPeerSnapshotConsumer
     void SetNpcPeers(ReadOnlySpan<NpcSnapshot> peers);
 }
 
+/// <summary>Receives retained physical slots, including inactive state that vanilla AI may still read.</summary>
+internal interface INpcAiRetainedSlotSnapshotConsumer
+{
+    void SetRetainedNpcSlots(ReadOnlySpan<VanillaNpcRetainedSlot> slots);
+}
+
 /// <summary>
 /// Bounded accounting for one state-transition pass over the live NPC table.
 /// </summary>
@@ -45,6 +51,7 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
     private readonly INpcAiTauntCommitSink? _taunts;
     private readonly RuntimeProjectileStore? _projectiles;
     private readonly NpcSnapshot[] _snapshotBuffer;
+    private readonly VanillaNpcRetainedSlot[] _retainedSlotBuffer;
     private readonly NpcAiSpawnIntent[] _spawnIntentBuffer;
     private readonly NpcAiProjectileIntent[] _projectileIntentBuffer;
     private readonly NpcAiProjectileMutationIntent[] _projectileMutationIntentBuffer;
@@ -59,6 +66,7 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
         _taunts = taunts;
         _projectiles = projectiles;
         _snapshotBuffer = new NpcSnapshot[npcs.Capacity];
+        _retainedSlotBuffer = new VanillaNpcRetainedSlot[npcs.Capacity];
         _spawnIntentBuffer = new NpcAiSpawnIntent[npcs.Capacity];
         _projectileIntentBuffer = new NpcAiProjectileIntent[MaximumProjectileIntentsPerNpcStep];
         _projectileMutationIntentBuffer = new NpcAiProjectileMutationIntent[MaximumProjectileIntentsPerNpcStep];
@@ -92,6 +100,8 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
             NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitEffect>(stepper);
         INpcAiPeerSnapshotConsumer? peerConsumer =
             NpcAiStateStepperComposition.FindCapability<INpcAiPeerSnapshotConsumer>(stepper);
+        INpcAiRetainedSlotSnapshotConsumer? retainedSlotConsumer =
+            NpcAiStateStepperComposition.FindCapability<INpcAiRetainedSlotSnapshotConsumer>(stepper);
 
         for (int slot = 0; slot < _npcs.Capacity; slot++)
         {
@@ -105,6 +115,11 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 // are admitted, replace this copy boundary with an authoritative read-only live lookup.
                 int peerCount = _npcs.CopyActive(_snapshotBuffer);
                 peerConsumer.SetNpcPeers(_snapshotBuffer.AsSpan(0, peerCount));
+            }
+            if (retainedSlotConsumer is not null)
+            {
+                int slotCount = _npcs.CopyRetainedSlots(_retainedSlotBuffer);
+                retainedSlotConsumer.SetRetainedNpcSlots(_retainedSlotBuffer.AsSpan(0, slotCount));
             }
             if (!stepper.TryStepState(in npc, out NpcStateUpdate next))
                 continue;
@@ -138,6 +153,11 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 {
                     int peerCount = _npcs.CopyActive(_snapshotBuffer);
                     peerConsumer.SetNpcPeers(_snapshotBuffer.AsSpan(0, peerCount));
+                }
+                if (retainedSlotConsumer is not null)
+                {
+                    int slotCount = _npcs.CopyRetainedSlots(_retainedSlotBuffer);
+                    retainedSlotConsumer.SetRetainedNpcSlots(_retainedSlotBuffer.AsSpan(0, slotCount));
                 }
                 if (!stepper.TryStepState(in npc, out next) ||
                     !_npcs.TryGet(npc.Handle, out var continuedSource) || continuedSource.Revision != npc.Revision)

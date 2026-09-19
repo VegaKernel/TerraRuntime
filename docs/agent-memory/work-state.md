@@ -1,5 +1,11 @@
 # Work state
 
+## Prime melee retained-parent correction - 2026-09-20
+
+Prime Saw/Vice AI33/34 now receive a bounded, read-only view of retained NPC slots in addition to the existing active-peer view. This preserves the geometry of an inactive Prime head until its slot is reused, as TerrariaServer 1.4.5.8 does before the arm advances its invalid-parent clock. The active-peer API and its consumers remain unchanged. The new original matrix contains 112 parent calls/platform, including inactive heads and both near/far geometries; Windows and Linux retained after-state and RNG agree. Linux parent JSON SHA256: `b39f407f06ece6977646de4c3e08ab4b5a61c54e320b3bf8bc59e1c5b78661f5`.
+
+On merged base `843bd1a3`, Release warnings-as-errors build passed; the focused matrix passed all 9,528 cases; the complete suite passed all 100,113 tests with zero errors, failures or skips in 170.393 seconds; Windows NativeAOT publication and loop, protocol, network, world and TUI smokes all passed. Documentation validation passed 94 mirrored RU/EN pages and 227 Markdown files. Full encounter cadence, alternative player body geometry, raw inactive/ghost player targeting, outer motion, further NPC families, gameplay/items and packet parity remain open.
+
 ## Resume point for the vanilla generation work - 2026-09-19
 
 Closed this stretch, each against the registered delegate with negative controls: rows 92, 94, 95 (Flowers,

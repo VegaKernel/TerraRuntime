@@ -63,4 +63,23 @@ public sealed partial class RuntimeNpcStore
 
         return written;
     }
+
+    /// <summary>
+    /// Copies the retained state of every physical slot. Inactive slots deliberately retain their final update:
+    /// Terraria AI can read an inactive parent's geometry before deciding that its own NPC must despawn.
+    /// </summary>
+    internal int CopyRetainedSlots(Span<VanillaNpcRetainedSlot> destination)
+    {
+        if (destination.Length < _slots.Length)
+            throw new ArgumentException(
+                $"Destination length {destination.Length} is smaller than NPC capacity {_slots.Length}.",
+                nameof(destination));
+
+        for (int slot = 0; slot < _slots.Length; slot++)
+        {
+            ref readonly SlotState state = ref _slots[slot];
+            destination[slot] = new VanillaNpcRetainedSlot(checked((byte)slot), state.Active, state.Update);
+        }
+        return _slots.Length;
+    }
 }
