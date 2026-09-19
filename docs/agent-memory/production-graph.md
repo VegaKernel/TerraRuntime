@@ -1,5 +1,9 @@
 # Production graph
 
+## Prime encounter arm-slot order - 2026-09-20
+
+The retained Linux `NPC.UpdateNPC` encounter trace confirms `PlanSkeletronPrimeArms` follows the source call order exactly: Cannon `128`, Saw `129`, Vice `130`, Laser `131`, with source `ai[0]`/`ai[3]` values. `PrimeEncounterContinuousTests` preserves that independently captured first full encounter tick through runtime world motion, including same-pass ascending execution of all four newborn arms. The focused continuous test, 96 arm-spawn tests, and 808 Prime phase tests pass. Longer cross-platform encounter fixtures, Mech Queen and projectile/network cadence remain open.
+
 ## Prime head direction and rotation - 2026-09-20
 
 AI32 now updates Skeletron Prime's `DirectionX` when `TargetClosest` selects a candidate and commits phase rotation in source order: hover uses pre-steering `vx / 15`, while spin, daytime rage and despawn add `direction * .3` before velocity changes. The focused regression checks initial target acquisition at the spin-to-hover boundary. An independent 32-tick Linux `NPC.UpdateNPC` trace includes head plus all four arms in ascending-slot order across the hover-599 and spin-399 transitions; SHA256 `23dac3d4de2271a9085fc6763a16c7a36f227246a4fd5bd6ff147165615f385b`. This closes those head-state fields only. The retained cross-platform encounter fixture, Mech Queen, remaining head behavior, continuous projectiles and network cadence remain open. Local Release build, focused 808 tests and the full 100,115 suite pass.

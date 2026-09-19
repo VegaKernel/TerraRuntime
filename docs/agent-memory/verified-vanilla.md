@@ -49,6 +49,10 @@ Cavinator(i,j,steps): size=Next(7,15); dir=1, Next(2)==0 => -1; remaining=Next(2
 TileID.Sets.CanBeClearedDuringGeneration is CreateBoolSet(true, 396,400,401,397,398,399,404,368,367,41,43,44,481,482,483,226,237); WorldSmoothingCatalog1458 already pins exactly that set. Windows and Linux 1.4.5.8 produce identical results for this pass.
 
 
+## Prime encounter arm creation order - 2026-09-20
+
+`Terraria.NPC.AI`, AI `32` in the pinned TerrariaServer `1.4.5.8` decompile, calls `NewNPC` in this order after target selection: `128` Cannon with `ai=(-1,parent,0,0)`, `129` Saw with `ai=(1,parent,0,0)`, `130` Vice with `ai=(-1,parent,0,150)`, and `131` Laser with `ai=(1,parent,0,150)`. The ignored Linux continuous probe invokes official `NPC.UpdateNPC` in ascending slots and captured the first encounter tick: the head creates those children, then all four children run during that same tick. Its 32-row JSON SHA256 is `23dac3d4de2271a9085fc6763a16c7a36f227246a4fd5bd6ff147165615f385b`. This establishes creation order and first-tick state only; Windows capture and wider full-encounter parity remain open.
+
 ## Checkpoint requested by user - 2026-09-15
 
 Prime Cannon/Laser implementation is committed as a checkpoint; full parity remains open. Restored Release warnings-as-errors build, Windows NativeAOT publish and all five smoke paths passed, including primeRangedAI=ok. The full test runner reported 90,031 tests, zero errors/failures/skips, in 190.968 seconds, then exited 4 because disk space ran out while writing .cache/prime-ranged-full.xml. That XML is truncated; this is not a clean full-run process acceptance. Evidence: .cache/prime-ranged-final-full.log. Focused 10,590 tests and seven negative controls passed their expected checks. Remote acceptance remains pending. User requested commit, push and stop; do not automatically continue parity work.
