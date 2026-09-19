@@ -15,7 +15,7 @@ public sealed class PrimeEncounterContinuousTests
     private static readonly JsonElement[] Rows = Read();
 
     [Fact]
-    public void Head_and_arms_match_the_first_sixteen_continuous_encounter_ticks()
+    public void Head_and_arms_match_the_first_eighty_continuous_encounter_ticks()
     {
         RuntimeNpcStore? npcs = null;
         RuntimeNpcAiStateExecutor? executor = null;
@@ -79,8 +79,8 @@ public sealed class PrimeEncounterContinuousTests
     {
         string name = OperatingSystem.IsWindows() ? "PrimeEncounterWindows1458" : "PrimeEncounterLinux1458";
         string hash = OperatingSystem.IsWindows()
-            ? "f82ce034105fe491786737d47c82fa17fcbd3efa20f7834c42f3ccf9811c6587"
-            : "6c39987475e3c515d6a2177fb49b4532ba40bc2aaf984c8221b4eb84d2ce4800";
+            ? "eb6c22e73cb53b27d2a1f2fb92f7d9bab8cbe7f1bf6fcc350beeef6606edcc02"
+            : "2784e6fb8d528ef85e6b4b5dd4bf534c98b264dd106f03722514846bbfdd0deb";
         using var resource = typeof(PrimeEncounterContinuousTests).Assembly.GetManifestResourceStream(name)!;
         using var gzip = new GZipStream(resource, CompressionMode.Decompress);
         using var bytes = new MemoryStream(); gzip.CopyTo(bytes);
