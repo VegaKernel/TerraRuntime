@@ -468,6 +468,27 @@ public sealed class Level1SandboxRuntimeTests
         Assert.Equal("form_inprocess", sandbox.Name.Value);
     }
 
+    /// <summary>
+    /// How long a sandbox job may take to generate a world through the real vanilla generator. Measured on
+    /// 2026-09-19 on this repository's generator: a 4200x1200 world costs 49 s in a Debug build and 8 s in
+    /// Release, a 8400x2400 world 180 s and 30 s. The budgets are those costs with margin, per configuration,
+    /// because the suite runs in both. They are a liveness bound on the request path, not a performance
+    /// assertion - a generator regression that merely made a world slower should not be reported here.
+    /// </summary>
+    private static readonly TimeSpan MediumWorldGenerationBudget =
+#if DEBUG
+        TimeSpan.FromMinutes(4);
+#else
+        TimeSpan.FromMinutes(1);
+#endif
+
+    private static readonly TimeSpan LargeWorldGenerationBudget =
+#if DEBUG
+        TimeSpan.FromMinutes(10);
+#else
+        TimeSpan.FromMinutes(3);
+#endif
+
     [Fact]
     public async Task Sandbox_operations_create_vanilla_small_world_through_the_same_request_path_as_ui()
     {
@@ -502,7 +523,7 @@ public sealed class Level1SandboxRuntimeTests
         SandboxJobSnapshot queued = Assert.Single(sandboxes.CaptureJobs());
         SandboxJobSnapshot completed = await sandboxes.WaitForJobAsync(
             queued.Id,
-            TimeSpan.FromSeconds(30),
+            MediumWorldGenerationBudget,
             TestContext.Current.CancellationToken);
 
         Assert.Equal(SandboxJobStatus.Completed, completed.Status);
@@ -547,7 +568,7 @@ public sealed class Level1SandboxRuntimeTests
         SandboxJobSnapshot queued = Assert.Single(sandboxes.CaptureJobs());
         SandboxJobSnapshot completed = await sandboxes.WaitForJobAsync(
             queued.Id,
-            TimeSpan.FromSeconds(120),
+            LargeWorldGenerationBudget,
             TestContext.Current.CancellationToken);
 
         Assert.Equal(SandboxJobStatus.Completed, completed.Status);

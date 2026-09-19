@@ -42,6 +42,11 @@ public sealed class WorldStartupPreparationTests
         finally { Directory.Delete(directory, recursive: true); }
     }
 
+    /// <summary>
+    /// Source <c>WorldGen.PlaceJunglePlant</c> gives tile 233 two footprints, and the frame row tells them
+    /// apart: the three-wide form frames from row zero with a 54-pixel style stride, the two-wide form from
+    /// row 36 with a 36-pixel one. A finished world must carry only whole objects of either shape.
+    /// </summary>
     private static void AssertCompleteJungleDetritus(WorldTileStore tiles)
     {
         for (int x = 0; x < tiles.Dimensions.WidthTiles; x++)
@@ -49,14 +54,16 @@ public sealed class WorldStartupPreparationTests
         {
             WorldTile tile = tiles.Get(x, y);
             if (!tile.IsActive || tile.Type != 233) continue;
-            int left = x - tile.FrameX / 18 % 3, top = y - tile.FrameY / 18;
-            for (int dx = 0; dx < 3; dx++)
+            bool twoWide = tile.FrameY >= 36;
+            int width = twoWide ? 2 : 3, stride = width * 18, topRow = twoWide ? 36 : 0;
+            int left = x - tile.FrameX / 18 % width, top = y - (tile.FrameY - topRow) / 18;
+            for (int dx = 0; dx < width; dx++)
             for (int dy = 0; dy < 2; dy++)
             {
                 WorldTile cell = tiles.Get(left + dx, top + dy);
                 Assert.True(cell.IsActive && cell.Type == 233, $"Incomplete detritus at {x},{y}");
-                Assert.Equal(tile.FrameX / 54 * 54 + dx * 18, cell.FrameX);
-                Assert.Equal(dy * 18, cell.FrameY);
+                Assert.Equal(tile.FrameX / stride * stride + dx * 18, cell.FrameX);
+                Assert.Equal(topRow + dy * 18, cell.FrameY);
             }
         }
     }

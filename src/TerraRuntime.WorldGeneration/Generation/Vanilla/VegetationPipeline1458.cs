@@ -223,16 +223,16 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
                 ApplyGlowingMushroomsAndJunglePlants(context, workspace);
                 break;
             case VegetationStage1458.JunglePlants:
-                ApplyJunglePlants(context, grid, random);
+                ApplyJunglePlants(context, workspace);
                 break;
             case VegetationStage1458.Vines:
                 ApplyVines(context, workspace);
                 break;
             case VegetationStage1458.Flowers:
-                ApplyFlowers(context, grid, random);
+                ApplyFlowers(context, workspace);
                 break;
             case VegetationStage1458.Mushrooms:
-                ApplyMushrooms(context, grid, random);
+                ApplyMushrooms(context, workspace);
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
@@ -529,57 +529,27 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Growing glowing mushrooms and jungle plants ({mushrooms}/{jungle})");
     }
 
-    private void ApplyJunglePlants(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    /// <summary>
+    /// Source <c>GenPassNameID.JunglePlantsPart2</c>, delegated to <see cref="JunglePlantPart2Pass1458"/>.
+    /// </summary>
+    private void ApplyJunglePlants(IWorldGenerationContext context, Workspace workspace)
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int target = Math.Max(100, grid.Width / 20);
-        int halfWidth = Math.Max(260, grid.Width / 9);
-        int left = Math.Max(5, bootstrap.JungleOriginX - halfWidth);
-        int right = Math.Min(grid.Width - 5, bootstrap.JungleOriginX + halfWidth);
-        int minY = Math.Clamp((int)state.WorldSurface + 10, 15, state.UnderworldTop - 60);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 20);
-        int placed = 0;
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Jungle plants require shared UnifiedRandom semantics.");
 
-        for (int attempt = 0; attempt < target * 80 && placed < target; attempt++)
-        {
-            if ((attempt & 255) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(left, right);
-            int probe = random.Next(minY, maxY);
-            int floor = grid.FindFirstActiveY(x, probe, Math.Min(grid.Height - 2, probe + 80));
-            if (floor >= grid.Height - 2 || grid.At(x, floor).Type != JungleGrass || !CanPlaceSinglePlant(grid, x, floor - 1))
-                continue;
-
-            int roll = random.Next(12);
-            ushort type;
-            int style;
-            if (roll == 0)
-            {
-                if (JungleDetritusPlacement1458.TryPlace(grid.Store, x, floor - 1, random.Next(8))) placed++;
-                continue;
-            }
-            else if (roll < 4)
-            {
-                type = JunglePlants2;
-                style = random.Next(8);
-            }
-            else
-            {
-                type = JunglePlants;
-                style = random.Next(10, 23);
-            }
-
-            SetPlant(ref grid.At(x, floor - 1), type, style * 18, 0);
-            placed++;
-        }
-
-        context.ReportProgress(1d, $"Decorating underground jungle plants ({placed}/{target})");
+        var pass = new JunglePlantPart2Pass1458(
+            workspace.TileStore,
+            random,
+            bootstrap.DungeonLocation < workspace.WidthTiles / 2,
+            context.CancellationToken);
+        pass.Apply();
+        context.ReportProgress(1d, $"Jungle plants complete; placed={pass.Planted}");
     }
 
     /// <summary>
-    /// Source <c>GenPassNameID.Vines</c>, delegated to <see cref="VinePass1458"/>. The runtime previously sampled
-    /// a few thousand random columns and grew about half a percent of the source's vines, which is why both the
-    /// jungle and the evil biomes read as bare.
+    /// Source <c>GenPassNameID.Vines</c>, delegated to <see cref="VinePass1458"/>: six per-column family scans
+    /// plus the bee hive the pass grows where a jungle vine reaches honey.
     /// </summary>
     private void ApplyVines(IWorldGenerationContext context, Workspace workspace)
     {
@@ -595,49 +565,33 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Growing vines ({grown} cells)");
     }
 
-    private void ApplyFlowers(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    /// <summary>
+    /// Source <c>GenPassNameID.Flowers</c>, delegated to <see cref="FlowerAndMushroomPatchPass1458"/>.
+    /// </summary>
+    private void ApplyFlowers(IWorldGenerationContext context, Workspace workspace)
     {
-        int target = Math.Max(120, grid.Width / 16);
-        int minY = Math.Max(8, (int)state.WorldSurface - 170);
-        int maxY = Math.Min(grid.Height - 3, (int)state.WorldSurface + 170);
-        int placed = 0;
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Flowers require shared UnifiedRandom semantics.");
 
-        for (int attempt = 0; attempt < target * 40 && placed < target; attempt++)
-        {
-            if ((attempt & 255) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(4, grid.Width - 4);
-            int floor = grid.FindFirstActiveY(x, minY, maxY);
-            if (floor >= maxY || grid.At(x, floor).Type != Grass || !CanPlaceSinglePlant(grid, x, floor - 1))
-                continue;
-            int style = FlowerStyles[random.Next(FlowerStyles.Length)];
-            SetPlant(ref grid.At(x, floor - 1), Plants, style * 18, 0);
-            placed++;
-        }
-
-        context.ReportProgress(1d, $"Planting surface flowers ({placed}/{target})");
+        var pass = new FlowerAndMushroomPatchPass1458(
+            workspace.TileStore, random, state.WorldSurface, context.CancellationToken);
+        pass.ApplyFlowers();
+        context.ReportProgress(1d, $"Flowers complete; patches={pass.FlowerPatches}");
     }
 
-    private void ApplyMushrooms(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    /// <summary>
+    /// Source <c>GenPassNameID.Mushrooms</c>, delegated to the same type. It places nothing: it restamps the
+    /// frames of plants Flowers has already put down, which is why it must run after it.
+    /// </summary>
+    private void ApplyMushrooms(IWorldGenerationContext context, Workspace workspace)
     {
-        int target = Math.Max(60, grid.Width / 35);
-        int minY = Math.Max(8, (int)state.WorldSurface - 170);
-        int maxY = Math.Min(grid.Height - 3, (int)state.WorldSurface + 170);
-        int placed = 0;
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Mushrooms require shared UnifiedRandom semantics.");
 
-        for (int attempt = 0; attempt < target * 80 && placed < target; attempt++)
-        {
-            if ((attempt & 255) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(4, grid.Width - 4);
-            int floor = grid.FindFirstActiveY(x, minY, maxY);
-            if (floor >= maxY || grid.At(x, floor).Type != Grass || !CanPlaceSinglePlant(grid, x, floor - 1))
-                continue;
-            SetPlant(ref grid.At(x, floor - 1), Plants, 8 * 18, 0);
-            placed++;
-        }
-
-        context.ReportProgress(1d, $"Planting surface mushrooms ({placed}/{target})");
+        var pass = new FlowerAndMushroomPatchPass1458(
+            workspace.TileStore, random, state.WorldSurface, context.CancellationToken);
+        pass.ApplyMushrooms();
+        context.ReportProgress(1d, $"Mushrooms complete; patches={pass.MushroomPatches}");
     }
 
     private static int SelectHerbStyle(ushort ground, IRandom random) =>

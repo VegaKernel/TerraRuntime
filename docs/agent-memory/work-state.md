@@ -1,5 +1,80 @@
 # Work state
 
+## Breaking a tile costs shared RNG: WorldGen.KillTile spends it on dust - 2026-09-19
+
+This is the load-bearing finding of the vegetation batch and it reaches every pass that breaks a tile, not just
+the three that were being closed.
+
+`WorldGen.KillTile` does not skip dust on a dedicated server. It asks `KillTile_GetTileDustAmount` for a particle
+count - ten for almost every identity - and calls `KillTile_MakeTileDust` that many times. Several dust
+identities are chosen with a draw, and the corruption dust that every corrupt tile makes is one of them, so
+breaking a single corrupt plant moves the shared stream by ten. Nothing about it shows in the tiles the kill
+leaves behind. That is why it stayed invisible: a flower patch over a field of corrupt plants read as a style
+difference forty cells away rather than as a missing draw at the first one.
+
+Do not try to derive the cost from the decompile - it is spread over a thousand lines of dust-identity tables.
+It is measured. `.cache/killdust-probe` breaks one tile of every identity inside the pinned build and counts the
+draws; `tools/ci/generate_kill_tile_dust_table.py` turns that TSV into
+`src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationKillTileDust1458.cs`. Of 754 identities, 134 cost
+something, 231 costs six rather than ten, 634 costs twenty, and 30 could not be measured because the official
+method threw before the count could be read. Those thirty throw a `NotSupportedException` rather than guess, so
+a pass that breaks one will fail loudly and can then be measured.
+
+The cost is spent BEFORE the source decides whether the tile survives - `CheckTileBreakability2_ShouldTileSurvive`
+runs after the dust - so a cell this runtime declines to remove still has to pay for it.
+
+Wired in so far: `GenerationTileFraming1458.KillTile` (which is what `Check3x2`, `CheckJunglePlant` and
+`PlantCheck` destroy through), `FlowerAndMushroomPatchPass1458.KillCell` and `JunglePlantPart2Pass1458.Clear`.
+**Every other pass with its own hand-rolled cell clear is still unpaid.** They pass their fixtures today only
+because what they break costs nothing; that is luck, not correctness, and it is the next thing to sweep.
+
+
+## Placing a tile is not a local act, and three validators had to come with it - 2026-09-19
+
+Found while closing rows 92, 94 and 95. Each of these was already missing and each one changed worlds:
+
+- `WorldGen.PlaceTile` ends EVERY placement with `SquareTileFrame(i, j)`, keyed off the cell being active rather
+  than off the placement having taken. A plant put down beside a multi-cell plant standing on the wrong ground
+  destroys it. `SurfacePlantPass1458.Frame` is that epilogue.
+- `WorldGen.TileFrame` sends the jungle plant family (233/236/238/702) to `CheckJunglePlant` and eleven plant
+  identities to `PlantCheck`. `CheckJunglePlant` reads the frame ROW to know which footprint it is looking at -
+  the three-wide form frames from row zero, the two-wide from row 36 - and its three-wide destroy loop reaches
+  one row FURTHER DOWN than the footprint it validated. `PlantCheck` RETYPES a plant whose support changed
+  rather than destroying it, and only destroys when no identity fits.
+- `WorldGen.Check3x2` constrains the ground under a pile by the style it was cut for, and downgrades the three
+  grass-pile styles (frames 756..900) to ordinary dirt piles when no column stands on grass. The downgrade runs
+  before the destruction and changes the object's identity, so the destruction no longer matches it and the
+  object survives - but the re-framing that follows still validates it under its new identity.
+
+Evidence for all three: `.cache/framing-probe`, 25 comparisons of `WorldGen.SquareTileFrame` itself, plus the
+flower fixtures that stand plant detritus and corrupt plants on ordinary grass.
+
+
+## OPEN: a generated world that load-time liquid preparation refuses - 2026-09-19
+
+Reproducible: `--create-world --world-generator terraruntime:vanilla --world-seed 42 --world-width 8400
+--world-height 2400 --world-evil corruption`. The world generates and validates, but starting a server on it
+fails with `Post-load liquid preparation failed: result=UnsupportedLiquidDeathTile, x=1689, y=1984, tile=19`.
+
+The cell is a platform (style 28) standing on a Granite Column (576) with lava in the cells below either side.
+`VanillaWorldLiquidSimulator1458.TryResolveLoadingDeath1458` refuses a platform whose support below is
+frame-important, because a cascade it cannot represent might follow. That is a fail-closed policy, not a
+corruption, and it predates this change - but it means some generated worlds cannot be loaded, and each
+occurrence has had to be admitted individually (444 and 104 were the last two). The right fix is to work out
+what the source's `SquareTileFrame` actually does to the column below a platform it removes, rather than to
+widen the refusal by guessing. Two other worlds generated and loaded cleanly in the same run: 8400x2400 crimson
+seed 1458, and 4200x1200 corruption seed 42.
+
+
+## Sandbox world-creation budgets were calibrated for a generator that no longer exists - 2026-09-19
+
+`Level1SandboxRuntimeTests`' two vanilla world-creation tests were bounded at 30 s and 120 s and had been
+failing as "flaky timeouts". They were not flaky. Measured on 2026-09-19: a 4200x1200 world costs 49 s in a
+Debug build and 8 s in Release; 8400x2400 costs 180 s and 30 s. The whole pass pipeline is only about 7 s of
+that in Release - the rest is finalization, validation and the world file - so do not go looking for a slow
+pass. Budgets are now per configuration with margin. They are a liveness bound on the request path, not a
+performance assertion.
+
 ## Packet 27 flood: source netSpam budget ported, trigger model still open - 2026-09-18
 
 The user's packet stats showed packet 27 (SyncProjectile) at rx:10679 / 739556 bytes in a burst. Cause: RuntimeProjectileReplicationRegistry.ProjectileStateCommitted broadcasts on every committed Update whose encoded frame differs from the last one, which for a moving projectile is every tick.
