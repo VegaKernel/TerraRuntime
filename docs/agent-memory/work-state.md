@@ -16,9 +16,15 @@ Prime's positional velocity, clears its own velocity and retains the source rota
 The focused runtime regression covers final hitbox geometry, target refresh and all
 kinematic fields.
 
-This is still bounded encounter work. Segment-specific Mechdusa attachment, missing-
-anchor recovery and the rest of the shared mechanical encounter remain open. Resume
-with the source-backed Destroyer segment geometry before broadening the encounter claim.
+The first nine linked Destroyer segments now use the AI_037 Mechdusa geometry: they
+count backwards to the head, aim below their predecessor by the integer-scaled base gap,
+then compress the radial separation by their index. Their target refresh and final
+rotation are retained. The focused test begins with no usable target and pins the first
+link's position, velocity and rotation.
+
+This is still bounded encounter work. Missing-anchor recovery and the rest of the
+shared mechanical encounter remain open. Resume with its source-backed failure branches
+before broadening the encounter claim.
 
 ## Prime head direction and rotation slice - 2026-09-20
 

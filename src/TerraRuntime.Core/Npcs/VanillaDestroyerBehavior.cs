@@ -72,6 +72,9 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
 
         if (npc.TypeIdentity != VanillaNpcIds.Destroyer)
         {
+            if (!TryGetTarget(targetSlot, context, out _))
+                TryRefresh(in npc, in definition, context, ref targetSlot, out _);
+
             if (!TryResolveParent(in npc, context, out NpcSnapshot parent))
             {
                 sim = sim with { Life = 0, TimeLeft = 0 };
@@ -90,11 +93,27 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
 
             float cx = x + hitbox.Width * .5f, cy = y + hitbox.Height * .5f;
             float px = parent.PositionX + parentHitbox.Width * .5f, py = parent.PositionY + parentHitbox.Height * .5f;
+            int mechdusaSegmentIndex = TryGetMechQueen(context, out _) ?
+                GetMechdusaSegmentIndex(in npc, context) : 0;
+            float gap = 44f * npc.Simulation.Scale;
+            if (mechdusaSegmentIndex > 0)
+            {
+                // AI_037_Destroyer counts up to nine ancestor links from this segment to the
+                // Mechdusa head. It first aims below the predecessor and then compresses the
+                // radial separation, making the Destroyer curl around Prime rather than using
+                // the ordinary fixed 44-pixel worm spacing.
+                float baseGap = (int)(44f * npc.Simulation.Scale);
+                float verticalOffset = Math.Clamp(baseGap - baseGap * ((mechdusaSegmentIndex - 1) * .1f), 0f, baseGap);
+                py += verticalOffset;
+                gap = baseGap / 10f * mechdusaSegmentIndex;
+            }
+
             float dx = px - cx, dy = py - cy;
             float distance = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
-            float gap = 44f * npc.Simulation.Scale;
             float ratio = (distance - gap) / distance;
             x += dx * ratio; y += dy * ratio; vx = 0f; vy = 0f;
+
+            float rotation = MathF.Atan2(py - (y + hitbox.Height * .5f), px - (x + hitbox.Width * .5f)) + MathF.PI * .5f;
 
             if (npc.TypeIdentity == VanillaNpcIds.DestroyerBody)
             {
@@ -102,7 +121,7 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
                 if (laserCounter >= _random.NextInt32(1400, 26000)) laserCounter = 0f;
                 local = local with { Ai0 = laserCounter };
             }
-            sim = sim with { NoGravity = true, NoTileCollide = true, LocalAi = local, JustHit = false };
+            sim = sim with { NoGravity = true, NoTileCollide = true, LocalAi = local, Rotation = rotation, JustHit = false };
             next = new NpcStateUpdate(npc.Type, npc.NetId, x, y, vx, vy, targetSlot, ai, sim);
             return true;
         }
@@ -209,6 +228,32 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
 
         prime = default;
         return false;
+    }
+
+    private static int GetMechdusaSegmentIndex(in NpcSnapshot npc, VanillaNpcBehaviorContext context)
+    {
+        float rawParentSlot = npc.Ai.Ai1;
+        int index = 0;
+        while (float.IsFinite(rawParentSlot) && rawParentSlot > 0f &&
+               rawParentSlot < VanillaNpcSpawnRules.PhysicalSlotCount)
+        {
+            if (!context.TryFindNpcPeer((byte)rawParentSlot, out NpcSnapshot parent) ||
+                (parent.TypeIdentity != VanillaNpcIds.Destroyer &&
+                 parent.TypeIdentity != VanillaNpcIds.DestroyerBody &&
+                 parent.TypeIdentity != VanillaNpcIds.DestroyerTail))
+            {
+                return 0;
+            }
+
+            index++;
+            if (parent.TypeIdentity == VanillaNpcIds.Destroyer)
+                return index;
+            if (index >= 10)
+                return 0;
+            rawParentSlot = parent.Ai.Ai1;
+        }
+
+        return 0;
     }
 
     private static bool TryResolveParent(in NpcSnapshot npc, VanillaNpcBehaviorContext context, out NpcSnapshot parent)

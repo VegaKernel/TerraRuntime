@@ -105,7 +105,7 @@ public sealed class VanillaFlyerProjectileAttackTests
     [Fact]
     public void Targeting_stepper_attaches_mechdusa_probe_and_leads_its_shot()
     {
-        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new SequenceRandom());
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
         stepper.SetProjectileEnvironment(new FixedEnvironment(true));
         VanillaNpcTargetCandidate target = Target(300f, 100f) with { VelocityX = 2f, VelocityY = -1f };
         stepper.SetCandidates([target]);
@@ -195,6 +195,62 @@ public sealed class VanillaFlyerProjectileAttackTests
         Assert.Equal(0f, next.VelocityX);
         Assert.Equal(0f, next.VelocityY);
         Assert.Equal(orbit * .75f + MathF.PI, next.Simulation.Rotation.GetValueOrDefault(), 4);
+        Assert.Equal(0, next.Target);
+    }
+
+    [Fact]
+    public void Targeting_stepper_compresses_first_mechdusa_destroyer_segment()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetCandidates([Target(700f, 400f)]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        stepper.SetWormEnvironment(new EmptyWormEnvironment());
+
+        NpcSnapshot prime = CreateNpc(VanillaNpcIds.SkeletronPrime, 0f) with
+        {
+            Handle = new NpcHandle(100, new NpcGeneration(1)),
+            Ai = new NpcAiState(0f, 0f, 0f, 100f)
+        };
+        NpcSnapshot head = CreateNpc(VanillaNpcIds.Destroyer, 0f) with
+        {
+            Handle = new NpcHandle(3, new NpcGeneration(1)),
+            PositionX = 250f,
+            PositionY = 300f,
+            Ai = new NpcAiState(4f, 0f, 0f, 3f)
+        };
+        NpcSnapshot body = CreateNpc(VanillaNpcIds.DestroyerBody, 0f) with
+        {
+            Handle = new NpcHandle(4, new NpcGeneration(1)),
+            PositionX = 100f,
+            PositionY = 110f,
+            Target = byte.MaxValue,
+            Ai = new NpcAiState(0f, 3f, 0f, 3f)
+        };
+        stepper.SetNpcPeers([prime, head, body]);
+
+        Assert.True(stepper.TryStepState(in body, out NpcStateUpdate next));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(head.TypeIdentity, head.NetIdentity, out VanillaNpcDefinition headDefinition));
+        Assert.True(headDefinition.TryResolveHitbox(head.Simulation, out VanillaNpcHitboxSize headHitbox));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(body.TypeIdentity, body.NetIdentity, out VanillaNpcDefinition bodyDefinition));
+        Assert.True(bodyDefinition.TryResolveHitbox(body.Simulation, out VanillaNpcHitboxSize bodyHitbox));
+        float centerX = body.PositionX + bodyHitbox.Width * .5f;
+        float centerY = body.PositionY + bodyHitbox.Height * .5f;
+        float parentX = head.PositionX + headHitbox.Width * .5f;
+        float parentY = head.PositionY + headHitbox.Height * .5f;
+        float baseGap = (int)(44f * body.Simulation.Scale);
+        float aimY = parentY + baseGap;
+        float dx = parentX - centerX;
+        float dy = aimY - centerY;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        float ratio = (distance - baseGap / 10f) / distance;
+        float expectedX = body.PositionX + dx * ratio;
+        float expectedY = body.PositionY + dy * ratio;
+        Assert.Equal(expectedX, next.PositionX, 4);
+        Assert.Equal(expectedY, next.PositionY, 4);
+        Assert.Equal(0f, next.VelocityX);
+        Assert.Equal(0f, next.VelocityY);
+        float rotation = MathF.Atan2(aimY - (expectedY + bodyHitbox.Height * .5f), parentX - (expectedX + bodyHitbox.Width * .5f)) + MathF.PI * .5f;
+        Assert.Equal(rotation, next.Simulation.Rotation.GetValueOrDefault(), 4);
         Assert.Equal(0, next.Target);
     }
 
@@ -369,6 +425,11 @@ public sealed class VanillaFlyerProjectileAttackTests
             index++;
             return value;
         }
+    }
+
+    private sealed class AnyRandom : IVanillaNpcRandom
+    {
+        public int NextInt32(int inclusiveMin, int exclusiveMax) => inclusiveMin;
     }
 
     private sealed class PassthroughStepper : INpcAiStateStepper
