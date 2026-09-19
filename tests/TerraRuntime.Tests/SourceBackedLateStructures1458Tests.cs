@@ -169,6 +169,31 @@ public sealed class SourceBackedLateStructures1458Tests
         Assert.Equal(1500, shimmer.Count);
     }
 
+    [Fact]
+    public void Floating_island_house_rejects_a_registered_container_on_its_sunplate_perimeter()
+    {
+        var workspace = new Workspace(48, 32);
+        const int left = 10;
+        const int floorY = 20;
+
+        for (int x = left; x <= left + 12; x++)
+        {
+            var floor = new WorldTile { Type = 189, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, floorY, in floor);
+        }
+
+        var chestAnchor = new WorldTile
+        {
+            Type = 21,
+            Flags = WorldTileFlags.Active,
+            FrameX = 0,
+            FrameY = 0
+        };
+        workspace.TileStore.Set(left + 3, floorY, in chestAnchor);
+
+        Assert.False(LateStructurePass1458.CanBuildSkyHouseForTesting(workspace, left, floorY));
+    }
+
     private static void FillStoneBox(Workspace workspace, int left, int top, int right, int bottom)
     {
         for (int x = left; x <= right; x++)

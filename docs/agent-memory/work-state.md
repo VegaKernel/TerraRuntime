@@ -1,5 +1,9 @@
 # Work state
 
+## Floating-island chest perimeter correction - 2026-09-20
+
+On the merged main base, the canonical large-world seed sweep exposed a stale generated-chest record: the floating-island house pass accepted a chest on its floor/perimeter, overwrote its tile with Sunplate `202`, and final validation then rejected the `WorldChest` at `(6729,289)`. `CanBuildSkyHouse` now rejects any candidate with a frame-important tile anywhere in its complete Sunplate rectangle, including the floor and outer walls. The focused regression places a `Containers` anchor on that floor and proves the candidate is rejected. Release warnings-as-errors build and a full `8400 x 2400`, seed `1` `--worldgen-create-smoke` pass succeeded; `WorldVerify` reloaded the produced world with 432 chests. Paired late-structure documentation records the persistence boundary. Resume NPC work with continuous Prime encounter traces after this correction is committed and its CI is green.
+
 ## Prime melee retained-parent correction - 2026-09-20
 
 Prime Saw/Vice AI33/34 now receive a bounded, read-only view of retained NPC slots in addition to the existing active-peer view. This preserves the geometry of an inactive Prime head until its slot is reused, as TerrariaServer 1.4.5.8 does before the arm advances its invalid-parent clock. The active-peer API and its consumers remain unchanged. The new original matrix contains 112 parent calls/platform, including inactive heads and both near/far geometries; Windows and Linux retained after-state and RNG agree. Linux parent JSON SHA256: `b39f407f06ece6977646de4c3e08ab4b5a61c54e320b3bf8bc59e1c5b78661f5`.

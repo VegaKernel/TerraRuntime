@@ -35,6 +35,8 @@ The source identities above were cross-checked against the official Terraria Wik
 
 `Floating Island Houses` is the first pass in this stage that creates frame-important object metadata. A Skyware Chest is written only through the same generation-owned chest registry introduced by the previous block. The 2 × 2 `Containers` footprint and its `WorldChest` record are therefore persisted together rather than leaving an orphan tile object.
 
+Before building a house, the pass rejects a candidate whose full Sunplate perimeter already contains a frame-important object. This keeps an earlier generated chest from being overwritten at the floor or outer wall while its persistent `WorldChest` entry remains.
+
 Loot remains deliberately separate. Unique Floating Island item ordering, secondary loot rolls, prefixes, and exact vanilla RNG consumption are not fabricated here.
 
 ## Pass responsibilities

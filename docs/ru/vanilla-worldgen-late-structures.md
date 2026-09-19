@@ -35,6 +35,8 @@ Production-план canonical мира вырастает с 71 до 78 entries.
 
 `Floating Island Houses` создаёт frame-important объект, поэтому Skyware Chest нельзя просто нарисовать четырьмя тайлами. Он проходит через generation-owned chest registry из предыдущего этапа: 2 × 2 footprint `Containers` и соответствующий `WorldChest` record сохраняются одной candidate transaction.
 
+Перед постройкой дома pass отклоняет candidate, если во всём периметре из Sunplate уже есть frame-important объект. Это не даёт перезаписать ранее сгенерированный сундук на полу или внешней стене, когда его постоянная запись `WorldChest` ещё сохранена.
+
 Loot остаётся отдельной задачей. Unique-item ordering Floating Islands, secondary loot rolls, prefixes и точное RNG consumption здесь не подделываются случайными предметами ради галочки.
 
 ## Что делают passes

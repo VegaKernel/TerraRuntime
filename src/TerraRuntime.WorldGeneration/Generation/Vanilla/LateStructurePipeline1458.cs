@@ -824,11 +824,15 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
     {
         if (floorY < 10 || floorY + 1 >= grid.Height || left < 2 || left + 13 >= grid.Width - 2)
             return false;
+
+        // A house owns both its interior and its Sunplate perimeter.  Checking only the interior let a
+        // pre-existing registered chest on the floor or an outer wall be overwritten, leaving a stale
+        // chest side-table entry for validation and serialization.
         for (int x = left; x <= left + 12; x++)
         {
             if (!grid.At(x, floorY).IsActive)
                 return false;
-            for (int y = floorY - 7; y < floorY; y++)
+            for (int y = floorY - 7; y <= floorY; y++)
             {
                 WorldTile tile = grid.At(x, y);
                 if (tile.IsActive && VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
@@ -836,6 +840,12 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
             }
         }
         return true;
+    }
+
+    internal static bool CanBuildSkyHouseForTesting(Workspace workspace, int left, int floorY)
+    {
+        ArgumentNullException.ThrowIfNull(workspace);
+        return CanBuildSkyHouse(new RuntimeGrid(workspace), left, floorY);
     }
 
     private static void BuildSkyHouse(RuntimeGrid grid, int left, int floorY)
