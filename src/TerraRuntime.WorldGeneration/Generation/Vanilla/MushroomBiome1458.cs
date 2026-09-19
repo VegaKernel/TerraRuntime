@@ -129,10 +129,16 @@ internal static class MushroomBiome1458
             // The whole sand family belongs here, not just the two members an early world happened to put
             // beside a mushroom patch. TileID.Sets.Conversion.Sand, .HardenedSand and .Sandstone are ordinary
             // generated terrain with exactly the semantics of the sandstone already admitted, and a mushroom
-            // patch that reaches a desert - or an evil desert - meets them for the same reason.
+            // patch that reaches a desert - or an evil desert - meets them for the same reason. The three pile
+            // families are here for the same reason again: they are decoration an earlier pass stood on the
+            // ground, and the source reads a neighbour only to ask whether it is solid - which a pile is not,
+            // exactly like the open air already admitted. Expect this list to keep growing as more passes put
+            // things on the ground near a mushroom patch; it is a tripwire on unfamiliar identities, not a
+            // rule the source has.
             if (tile.IsActive && tile.Type is not (
                 0 or 1 or 2 or 40 or 53 or 59 or 60 or 70 or >= 63 and <= 68 or 147 or 161 or
                 112 or 116 or 234 or
+                185 or 186 or 187 or
                 396 or 397 or 398 or 399 or 400 or 401 or 402 or 403))
             {
                 throw new InvalidOperationException($"Unverified mushroom cleanup neighbour {tile.Type} at {tx},{ty}.");
