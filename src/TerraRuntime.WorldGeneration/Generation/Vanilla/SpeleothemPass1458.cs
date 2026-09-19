@@ -460,6 +460,9 @@ internal sealed class SpeleothemPass1458(
         if (!Contains(x, y) || !IsActive(x, y) || TypeAt(x, y) != Speleothem)
             return;
 
+        // The dust a broken tile makes is paid for out of the shared stream. A speleothem's costs nothing -
+        // its dust identity is not one of the randomised ones - but the cost is asked for rather than assumed.
+        GenerationKillTileDust1458.Consume(random, At(x, y).Type);
         ref WorldTile cell = ref At(x, y);
         cell.Flags &= ~WorldTileFlags.Active;
         cell.Shape = 0;

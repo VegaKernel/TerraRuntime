@@ -6,8 +6,11 @@ WorldGen.KillTile consumed. Usage:
 
     python tools/ci/generate_kill_tile_dust_table.py <killdust.tsv>
 
-The TSV carries one row per (type, frameX, frameY) with the measured draw count, or a negative value
-when the official method threw before it could be measured (-100 - draws).
+The TSV carries one row per (type, frameX, frameY) with two measurements: the draws the whole of
+WorldGen.KillTile consumed, and the draws its dust helpers consumed on their own. A negative value means
+the official method threw before the count could be read. The two agree everywhere both succeed, and the
+dust-only measurement reaches identities whose KillTile throws on something else entirely, so the table is
+built from it with the other as its check - a disagreement is an error, not a merge.
 """
 
 import collections
@@ -36,7 +39,9 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// </para>
 /// <para>
 /// The table is measured, not derived: the probe breaks one tile of every identity in the pinned official
-/// assembly and counts the draws. It measures the unfailed break, which is the only one generation makes:
+/// assembly and counts the draws, twice over - once through the whole of <c>KillTile</c> and once through its
+/// dust helpers alone. The two agree for every identity where both can be read, which is what says the cost is
+/// the dust and nothing else. It measures the unfailed break, which is the only one generation makes:
 /// <c>KillTile</c> raises <c>fail</c> only for the locked doors <c>CheckTileBreakability</c> answers with one,
 /// and a failed break asks for three particles instead of ten. Identities whose measurement the official method
 /// cut short by throwing are recorded as unknown, and this refuses them rather than guessing - a pass that
@@ -98,8 +103,12 @@ def main() -> int:
             line = line.strip()
             if not line:
                 continue
-            type_id, frame_x, frame_y, draws = (int(part) for part in line.split("\t"))
-            rows[type_id][(frame_x, frame_y)] = draws
+            parts = [int(part) for part in line.split("	")]
+            type_id, frame_x, frame_y, whole = parts[0], parts[1], parts[2], parts[3]
+            dust = parts[4] if len(parts) > 4 else -1
+            if whole >= 0 and dust >= 0 and whole != dust:
+                raise SystemExit(f"tile {type_id}: KillTile spent {whole} draws, its dust {dust}")
+            rows[type_id][(frame_x, frame_y)] = dust if dust >= 0 else whole
 
     count = max(rows) + 1
     table = []

@@ -18,7 +18,9 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// </para>
 /// <para>
 /// The table is measured, not derived: the probe breaks one tile of every identity in the pinned official
-/// assembly and counts the draws. It measures the unfailed break, which is the only one generation makes:
+/// assembly and counts the draws, twice over - once through the whole of <c>KillTile</c> and once through its
+/// dust helpers alone. The two agree for every identity where both can be read, which is what says the cost is
+/// the dust and nothing else. It measures the unfailed break, which is the only one generation makes:
 /// <c>KillTile</c> raises <c>fail</c> only for the locked doors <c>CheckTileBreakability</c> answers with one,
 /// and a failed break asks for three particles instead of ten. Identities whose measurement the official method
 /// cut short by throwing are recorded as unknown, and this refuses them rather than guessing - a pass that
@@ -49,10 +51,10 @@ internal static class GenerationKillTileDust1458
         0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 0, 0, 0, 0, 0, 10, 10,
         10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 10, 0, 0, 0, 0, 0, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 10, 10, 0, 0, 0, 0, 255, 0, 0, 0, 0, 0, 0, 255, 255, 0, 0, 255, 255,
+        0, 0, 0, 0, 0, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 0, 0, 255, 255,
         255, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 0,
-        0, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10,
         0, 0, 0, 0, 10, 10, 0, 0, 0, 0, 10, 0, 0, 0, 10, 10, 10, 0, 0, 0, 0, 0, 10, 10,
         0, 10, 10, 10, 10, 0, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 0, 0, 0, 0, 0,

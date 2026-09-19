@@ -13,20 +13,26 @@ leaves behind. That is why it stayed invisible: a flower patch over a field of c
 difference forty cells away rather than as a missing draw at the first one.
 
 Do not try to derive the cost from the decompile - it is spread over a thousand lines of dust-identity tables.
-It is measured. `.cache/killdust-probe` breaks one tile of every identity inside the pinned build and counts the
-draws; `tools/ci/generate_kill_tile_dust_table.py` turns that TSV into
+It is measured, twice over. `.cache/killdust-probe` breaks one tile of every identity inside the pinned build,
+once through the whole of `KillTile` and once through its dust helpers alone, and counts the draws both ways.
+The two agree for every identity where both can be read, which is what says the cost is the dust and nothing
+else; the generator treats a disagreement as an error rather than merging them.
+`tools/ci/generate_kill_tile_dust_table.py` turns that TSV into
 `src/TerraRuntime.WorldGeneration/Generation/Vanilla/GenerationKillTileDust1458.cs`. Of 754 identities, 134 cost
-something, 231 costs six rather than ten, 634 costs twenty, and 30 could not be measured because the official
-method threw before the count could be read. Those thirty throw a `NotSupportedException` rather than guess, so
-a pass that breaks one will fail loudly and can then be measured.
+something, 231 costs six rather than ten, 634 costs twenty, and 26 could not be measured at all because the
+official helper itself throws under probe conditions. Those twenty-six throw a `NotSupportedException` rather
+than guess, so a pass that breaks one will fail loudly and can then be measured.
 
 The cost is spent BEFORE the source decides whether the tile survives - `CheckTileBreakability2_ShouldTileSurvive`
 runs after the dust - so a cell this runtime declines to remove still has to pay for it.
 
-Wired in so far: `GenerationTileFraming1458.KillTile` (which is what `Check3x2`, `CheckJunglePlant` and
-`PlantCheck` destroy through), `FlowerAndMushroomPatchPass1458.KillCell` and `JunglePlantPart2Pass1458.Clear`.
-**Every other pass with its own hand-rolled cell clear is still unpaid.** They pass their fixtures today only
-because what they break costs nothing; that is luck, not correctness, and it is the next thing to sweep.
+Wired in: `GenerationTileFraming1458.KillTile` (which is what `Check3x2`, `CheckJunglePlant` and `PlantCheck`
+destroy through), `FlowerAndMushroomPatchPass1458.KillCell`, `JunglePlantPart2Pass1458.Clear`,
+`VinePass1458.KillCuttable` and `SpeleothemPass1458.KillSpeleothem`. That is every generation path that mirrors
+`WorldGen.KillTile`; the rest of the hand-rolled clears in the vanilla generation folder carve terrain, which
+the source does with `tile.active(false)` and not through `KillTile`, so they correctly spend nothing. The vine
+pass's clear is the one with no official fixture behind it - row 93 has none yet - so it is a faithful
+application of a measured rule rather than a pinned comparison.
 
 
 ## Placing a tile is not a local act, and three validators had to come with it - 2026-09-19

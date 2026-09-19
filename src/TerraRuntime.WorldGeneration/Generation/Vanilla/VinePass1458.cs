@@ -333,7 +333,7 @@ internal static class VinePass1458
         for (int column = x; column < x + 2; column++)
         {
             for (int row = y + 1; row < y + 3; row++)
-                KillCuttable(store, framer, column, row);
+                KillCuttable(store, random, framer, column, row);
         }
 
         for (int column = x; column < x + 2; column++)
@@ -381,6 +381,7 @@ internal static class VinePass1458
     /// </summary>
     private static void KillCuttable(
         WorldTileStore store,
+        IWorldGenerationVanillaRandom random,
         GenerationTileFraming1458 framer,
         int x,
         int y)
@@ -389,6 +390,9 @@ internal static class VinePass1458
         if (!cell.IsActive)
             return;
 
+        // Breaking a tile is not free: the dust it makes is paid for out of the shared stream, and the corrupt
+        // and crimson growth a hive can stand on costs ten draws a cell.
+        GenerationKillTileDust1458.Consume(random, cell.Type);
         cell.Flags &= ~WorldTileFlags.Active;
         cell.Shape = 0;
         cell.FrameX = -1;
