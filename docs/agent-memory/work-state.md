@@ -10,10 +10,15 @@ player by twenty ticks and retains the source's quantized pre-attachment spawn o
 The attached path also refreshes the closest player target. The focused tests cover the
 timer, target refresh, attachment coordinates, inherited motion and projectile intent.
 
-This is only the Probe slice. Missing-anchor recovery, the Destroyer head's Mechdusa
-orbit and the rest of the shared mechanical encounter remain open. Resume with the
-source-backed Destroyer `AI_037_Destroyer` Mechdusa head orbit before broadening the
-encounter claim.
+The Destroyer head also now performs its AI_037 post-motion Mechdusa orbit: it follows
+Prime's center minus 14 pixels around the rotated 100-pixel lower anchor, carries
+Prime's positional velocity, clears its own velocity and retains the source rotation.
+The focused runtime regression covers final hitbox geometry, target refresh and all
+kinematic fields.
+
+This is still bounded encounter work. Segment-specific Mechdusa attachment, missing-
+anchor recovery and the rest of the shared mechanical encounter remain open. Resume
+with the source-backed Destroyer segment geometry before broadening the encounter claim.
 
 ## Prime head direction and rotation slice - 2026-09-20
 

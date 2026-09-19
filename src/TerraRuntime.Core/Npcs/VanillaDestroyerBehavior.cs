@@ -170,9 +170,45 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
             { Approach(ref vy, desiredY, turn*1.1f); if (MathF.Abs(vx)+MathF.Abs(vy)<maxSpeed*.5f) vx += vx>0f?turn:-turn; }
         }
 
+        if (TryGetMechQueen(context, out NpcSnapshot prime) &&
+            VanillaNpcDefinitionCatalog.TryGet(prime.TypeIdentity, prime.NetIdentity, out VanillaNpcDefinition primeDefinition) &&
+            primeDefinition.TryResolveHitbox(prime.Simulation, out VanillaNpcHitboxSize primeHitbox))
+        {
+            // TerrariaServer 1.4.5.8 NPC.AI_037_Destroyer overrides the finished head motion
+            // for Mechdusa. GetMechQueenCenter is Prime.Center shifted up by 14 pixels.
+            float queenCenterX = prime.PositionX + primeHitbox.Width * .5f;
+            float queenCenterY = prime.PositionY + primeHitbox.Height * .5f - 14f;
+            float orbit = prime.VelocityX * .025f;
+            float anchorX = queenCenterX - 100f * MathF.Sin(orbit);
+            float anchorY = queenCenterY + 100f * MathF.Cos(orbit);
+            x = anchorX - hitbox.Width * .5f + prime.VelocityX;
+            y = anchorY - hitbox.Height * .5f + prime.VelocityY;
+            vx = 0f;
+            vy = 0f;
+            sim = sim with { Rotation = orbit * .75f + MathF.PI };
+        }
+
         sim = sim with { NoGravity = true, NoTileCollide = true, LocalAi = local, JustHit = false };
         next = new NpcStateUpdate(npc.Type, npc.NetId, x, y, vx, vy, targetSlot, ai, sim);
         return true;
+    }
+
+    private static bool TryGetMechQueen(VanillaNpcBehaviorContext context, out NpcSnapshot prime)
+    {
+        Span<NpcSnapshot> primes = stackalloc NpcSnapshot[VanillaNpcSpawnRules.PhysicalSlotCount];
+        int count = context.CopyNpcPeers(VanillaNpcIds.SkeletronPrime, primes);
+        for (int index = 0; index < count; index++)
+        {
+            NpcSnapshot candidate = primes[index];
+            if (candidate.Ai.Ai3 == candidate.Handle.Slot)
+            {
+                prime = candidate;
+                return true;
+            }
+        }
+
+        prime = default;
+        return false;
     }
 
     private static bool TryResolveParent(in NpcSnapshot npc, VanillaNpcBehaviorContext context, out NpcSnapshot parent)

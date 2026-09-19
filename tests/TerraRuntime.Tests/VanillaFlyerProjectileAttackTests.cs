@@ -155,6 +155,50 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Targeting_stepper_orbits_mechdusa_destroyer_head_below_prime()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new SequenceRandom());
+        stepper.SetCandidates([Target(700f, 400f)]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        stepper.SetWormEnvironment(new EmptyWormEnvironment());
+
+        NpcSnapshot prime = CreateNpc(VanillaNpcIds.SkeletronPrime, 0f) with
+        {
+            Handle = new NpcHandle(100, new NpcGeneration(1)),
+            PositionX = 200f,
+            PositionY = 300f,
+            VelocityX = 4f,
+            VelocityY = -3f,
+            Ai = new NpcAiState(0f, 0f, 0f, 100f)
+        };
+        NpcSnapshot destroyer = CreateNpc(VanillaNpcIds.Destroyer, 0f) with
+        {
+            Handle = new NpcHandle(3, new NpcGeneration(1)),
+            PositionX = 10f,
+            PositionY = 20f,
+            VelocityX = 8f,
+            VelocityY = 9f,
+            Target = byte.MaxValue
+        };
+        stepper.SetNpcPeers([prime, destroyer]);
+
+        Assert.True(stepper.TryStepState(in destroyer, out NpcStateUpdate next));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(prime.TypeIdentity, prime.NetIdentity, out VanillaNpcDefinition primeDefinition));
+        Assert.True(primeDefinition.TryResolveHitbox(prime.Simulation, out VanillaNpcHitboxSize primeHitbox));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(destroyer.TypeIdentity, destroyer.NetIdentity, out VanillaNpcDefinition destroyerDefinition));
+        Assert.True(destroyerDefinition.TryResolveHitbox(destroyer.Simulation, out VanillaNpcHitboxSize destroyerHitbox));
+        float orbit = prime.VelocityX * .025f;
+        float centerX = prime.PositionX + primeHitbox.Width * .5f - 100f * MathF.Sin(orbit);
+        float centerY = prime.PositionY + primeHitbox.Height * .5f - 14f + 100f * MathF.Cos(orbit);
+        Assert.Equal(centerX - destroyerHitbox.Width * .5f + prime.VelocityX, next.PositionX, 4);
+        Assert.Equal(centerY - destroyerHitbox.Height * .5f + prime.VelocityY, next.PositionY, 4);
+        Assert.Equal(0f, next.VelocityX);
+        Assert.Equal(0f, next.VelocityY);
+        Assert.Equal(orbit * .75f + MathF.PI, next.Simulation.Rotation.GetValueOrDefault(), 4);
+        Assert.Equal(0, next.Target);
+    }
+
+    [Fact]
     public void Blood_squid_threshold_applies_recoil_and_resets_timer()
     {
         NpcSnapshot npc = CreateNpc(VanillaNpcIds.BloodSquid, localAi0: 119f);
@@ -305,6 +349,11 @@ public sealed class VanillaFlyerProjectileAttackTests
             float targetPositionY,
             int targetWidth,
             int targetHeight) => canHit;
+    }
+
+    private sealed class EmptyWormEnvironment : IVanillaWormEnvironment
+    {
+        public bool IsDigging(float x, float y, int width, int height) => false;
     }
 
     private sealed class SequenceRandom(params int[] values) : IVanillaNpcRandom
