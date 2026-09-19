@@ -3,9 +3,12 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
 using TerraRuntime.Application;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Core.Projectiles;
 using TerraRuntime.Gameplay.Npcs;
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
@@ -22,14 +25,17 @@ public sealed class PrimeEncounterContinuousTests
         RuntimeProjectileStore? projectiles = null;
         RuntimeNpcAiStateExecutor? executor = null;
         INpcAiStateStepper? motion = null;
+        RuntimeProjectileStateExecutor? projectileExecutor = null;
+        IProjectileStateStepper? projectileMotion = null;
         CapturedRandom? random = null;
         foreach (JsonElement row in Rows)
         {
             if (row.GetProperty("tick").GetInt32() == 0)
-                (npcs, projectiles, executor, motion, random) = Create(row, projectiles);
+                (npcs, projectiles, executor, motion, projectileExecutor, projectileMotion, random) = Create(row, projectiles);
 
-            Assert.NotNull(npcs); Assert.NotNull(projectiles); Assert.NotNull(executor); Assert.NotNull(motion); Assert.NotNull(random);
+            Assert.NotNull(npcs); Assert.NotNull(projectiles); Assert.NotNull(executor); Assert.NotNull(motion); Assert.NotNull(projectileExecutor); Assert.NotNull(projectileMotion); Assert.NotNull(random);
             Assert.Equal(5, executor.Tick(motion).Applied);
+            Assert.Equal(projectiles.ActiveCount, projectileExecutor.Tick(projectileMotion).Applied);
             foreach (JsonElement expected in row.GetProperty("after").EnumerateArray())
                 AssertNpc(npcs, expected);
             AssertProjectiles(projectiles, row.GetProperty("projectiles"));
@@ -37,7 +43,7 @@ public sealed class PrimeEncounterContinuousTests
         }
     }
 
-    private static (RuntimeNpcStore Npcs, RuntimeProjectileStore Projectiles, RuntimeNpcAiStateExecutor Executor, INpcAiStateStepper Motion, CapturedRandom Random) Create(
+    private static (RuntimeNpcStore Npcs, RuntimeProjectileStore Projectiles, RuntimeNpcAiStateExecutor Executor, INpcAiStateStepper Motion, RuntimeProjectileStateExecutor ProjectileExecutor, IProjectileStateStepper ProjectileMotion, CapturedRandom Random) Create(
         JsonElement row, RuntimeProjectileStore? existingProjectiles)
     {
         var npcs = new RuntimeNpcStore();
@@ -54,26 +60,33 @@ public sealed class PrimeEncounterContinuousTests
         var targeting = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper(), random: random);
         targeting.SetWorldConditions(dayTime: false, slimeRainActive: false);
         targeting.SetCandidates([new VanillaNpcTargetCandidate(0, 1510f, 1021f, 0, true, false, false, false)]);
-        var motion = new VanillaNpcWorldMotionAiStepper(
-            targeting, new WorldTileStore(new WorldDimensions(400, 400)));
-        return (npcs, projectiles, new RuntimeNpcAiStateExecutor(npcs, projectiles), motion, random);
+        var tiles = new WorldTileStore(new WorldDimensions(400, 400));
+        var motion = new VanillaNpcWorldMotionAiStepper(targeting, tiles);
+        IProjectileStateStepper projectileMotion = new RuntimeProjectileBehaviorStateStepper(
+            new VanillaProjectileWorldStateStepper(tiles),
+            new RuntimeGameplayBehaviorRegistry<ProjectileTypeId, IProjectileStateStepper>());
+        return (
+            npcs,
+            projectiles,
+            new RuntimeNpcAiStateExecutor(npcs, projectiles),
+            motion,
+            new RuntimeProjectileStateExecutor(projectiles),
+            projectileMotion,
+            random);
     }
 
     private static void AssertNpc(RuntimeNpcStore npcs, JsonElement expected)
     {
         Assert.True(npcs.TryGetActive(expected.GetProperty("slot").GetByte(), out var actual));
         Assert.Equal(expected.GetProperty("type").GetInt32(), actual.Type);
-        Assert.Equal(expected.GetProperty("x").GetSingle(), actual.PositionX); Assert.Equal(expected.GetProperty("y").GetSingle(), actual.PositionY);
-        Assert.Equal(expected.GetProperty("vx").GetSingle(), actual.VelocityX); Assert.Equal(expected.GetProperty("vy").GetSingle(), actual.VelocityY);
+        AssertFloat(expected.GetProperty("x").GetSingle(), actual.PositionX); AssertFloat(expected.GetProperty("y").GetSingle(), actual.PositionY);
+        AssertFloat(expected.GetProperty("vx").GetSingle(), actual.VelocityX); AssertFloat(expected.GetProperty("vy").GetSingle(), actual.VelocityY);
         Assert.Equal(expected.GetProperty("target").GetInt32(), actual.Target);
         Assert.Equal(expected.GetProperty("direction").GetInt32(), actual.Simulation.DirectionX);
         Assert.Equal(expected.GetProperty("directionY").GetInt32(), actual.Simulation.DirectionY);
         Assert.Equal(expected.GetProperty("spriteDirection").GetInt32(), actual.Simulation.SpriteDirection);
         float expectedRotation = expected.GetProperty("rotation").GetSingle();
-        if (OperatingSystem.IsWindows())
-            Assert.InRange(actual.Simulation.Rotation ?? 0f, expectedRotation - .000001f, expectedRotation + .000001f);
-        else
-            Assert.Equal(expectedRotation, actual.Simulation.Rotation);
+        AssertFloat(expectedRotation, actual.Simulation.Rotation ?? 0f);
         Assert.Equal(expected.GetProperty("damage").GetInt32(), actual.Simulation.DamageOverride ?? actual.Simulation.BaseDamage);
         Assert.Equal(expected.GetProperty("defense").GetInt32(), actual.Simulation.DefenseOverride ?? actual.Simulation.BaseDefense);
         Assert.Equal(ReadAi(expected.GetProperty("ai")), actual.Ai);
@@ -87,9 +100,9 @@ public sealed class PrimeEncounterContinuousTests
         {
             Assert.True(projectiles.TryGetActive(projectile.GetProperty("slot").GetUInt16(), out var actual));
             Assert.Equal(projectile.GetProperty("type").GetInt32(), actual.Type.Value);
-            Assert.Equal(projectile.GetProperty("x").GetSingle(), actual.PositionX); Assert.Equal(projectile.GetProperty("y").GetSingle(), actual.PositionY);
-            Assert.Equal(projectile.GetProperty("vx").GetSingle(), actual.VelocityX); Assert.Equal(projectile.GetProperty("vy").GetSingle(), actual.VelocityY);
-            Assert.Equal(projectile.GetProperty("damage").GetInt32(), actual.Damage); Assert.Equal(projectile.GetProperty("knockBack").GetSingle(), actual.KnockBack);
+            AssertFloat(projectile.GetProperty("x").GetSingle(), actual.PositionX); AssertFloat(projectile.GetProperty("y").GetSingle(), actual.PositionY);
+            AssertFloat(projectile.GetProperty("vx").GetSingle(), actual.VelocityX); AssertFloat(projectile.GetProperty("vy").GetSingle(), actual.VelocityY);
+            Assert.Equal(projectile.GetProperty("damage").GetInt32(), actual.Damage); AssertFloat(projectile.GetProperty("knockBack").GetSingle(), actual.KnockBack);
             Assert.Equal(new ProjectileAiState(projectile.GetProperty("ai")[0].GetSingle(), projectile.GetProperty("ai")[1].GetSingle(), projectile.GetProperty("ai")[2].GetSingle()), actual.Ai);
             Assert.True(projectiles.TryGetLifecycle(actual.Handle, out var lifecycle));
             Assert.Equal(projectile.GetProperty("timeLeft").GetInt32(), lifecycle.TimeLeft);
@@ -98,6 +111,14 @@ public sealed class PrimeEncounterContinuousTests
 
     private static NpcAiState ReadAi(JsonElement values) => new(
         values[0].GetSingle(), values[1].GetSingle(), values[2].GetSingle(), values[3].GetSingle());
+
+    private static void AssertFloat(float expected, float actual)
+    {
+        if (OperatingSystem.IsWindows())
+            Assert.InRange(actual, expected - .000001f, expected + .000001f);
+        else
+            Assert.Equal(expected, actual);
+    }
 
     private sealed class CapturedRandom : IVanillaNpcRandom
     {
@@ -124,8 +145,8 @@ public sealed class PrimeEncounterContinuousTests
     {
         string name = OperatingSystem.IsWindows() ? "PrimeEncounterWindows1458" : "PrimeEncounterLinux1458";
         string hash = OperatingSystem.IsWindows()
-            ? "4164e4d9cf6f51dbbc21a32f98e3220d939951ef1d741b31088958c0e837d597"
-            : "e830ac73149e22ce55ffc2ad3f42c34ac87eb04d73ca5698160c0190ccb28131";
+            ? "02583063a2f3d9b2b63a32ef19c7279e95c92425c3b80adb0f96736c6b8764a8"
+            : "02583063a2f3d9b2b63a32ef19c7279e95c92425c3b80adb0f96736c6b8764a8";
         using var resource = typeof(PrimeEncounterContinuousTests).Assembly.GetManifestResourceStream(name)!;
         using var gzip = new GZipStream(resource, CompressionMode.Decompress);
         using var bytes = new MemoryStream(); gzip.CopyTo(bytes);
