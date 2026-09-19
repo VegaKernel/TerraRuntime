@@ -133,7 +133,11 @@ internal sealed class SpeleothemPass1458(
     /// the small/tall choice and the three-way variation before the site is even examined, so those two values
     /// leave the stream whether or not a speleothem appears.
     /// </summary>
-    private void PlaceTight(int x, int y)
+    /// <summary>
+    /// Source <c>WorldGen.PlaceTight</c>. Exposed because it is a free function in the source and the Webs And
+    /// Honey pass calls the same one for the speleothems it grows inside a hive.
+    /// </summary>
+    internal void PlaceTight(int x, int y)
     {
         if (!Contains(x, y - 1) || !Contains(x, y + 1))
             return;

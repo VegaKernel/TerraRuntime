@@ -214,7 +214,7 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
                 ApplyDyePlants(context, grid, random);
                 break;
             case VegetationStage1458.WebsAndHoney:
-                ApplyWebsAndHoney(context, grid, random);
+                ApplyWebsAndHoney(context, workspace);
                 break;
             case VegetationStage1458.Weeds:
                 ApplyWeeds(context, workspace);
@@ -377,66 +377,26 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Placing dye plants ({placed}/{target})");
     }
 
-    private void ApplyWebsAndHoney(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    /// <summary>
+    /// Source <c>GenPassNameID.WebsInSpiderCavesAndHoneyPlusSpeleothemsInBeehives</c>, delegated to
+    /// <see cref="WebsAndHoneyPass1458"/>.
+    /// </summary>
+    private void ApplyWebsAndHoney(IWorldGenerationContext context, Workspace workspace)
     {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int webAttempts = Math.Max(300, grid.Width / 3);
-        int minY = Math.Clamp((int)state.RockLayer + 20, 20, state.UnderworldTop - 80);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 25);
-        int webs = 0;
-        int honeyCells = 0;
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Webs and honey require shared UnifiedRandom semantics.");
 
-        for (int i = 0; i < webAttempts; i++)
-        {
-            if ((i & 511) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(3, grid.Width - 3);
-            int y = random.Next(minY, maxY);
-            ref WorldTile tile = ref grid.At(x, y);
-            if (tile.IsActive || tile.LiquidAmount != 0 || !grid.HasSolidNeighbor(x, y))
-                continue;
-            SetPlant(ref tile, Cobweb, 0, 0);
-            webs++;
-        }
-
-        int jungleHalfWidth = Math.Max(250, grid.Width / 10);
-        int left = Math.Max(15, bootstrap.JungleOriginX - jungleHalfWidth);
-        int right = Math.Min(grid.Width - 15, bootstrap.JungleOriginX + jungleHalfWidth);
-        int pools = grid.Width switch
-        {
-            <= 4200 => 14,
-            <= 6400 => 20,
-            _ => 28
-        };
-        for (int pool = 0; pool < pools; pool++)
-        {
-            int cx = random.Next(left, right);
-            int cy = random.Next(minY, maxY);
-            int rx = random.Next(3, 7);
-            int ry = random.Next(2, 5);
-            for (int x = cx - rx; x <= cx + rx; x++)
-                for (int y = cy - ry; y <= cy + ry; y++)
-                {
-                    if (!grid.Contains(x, y) || (x - cx) * (x - cx) * ry * ry + (y - cy) * (y - cy) * rx * rx > rx * rx * ry * ry)
-                        continue;
-                    ref WorldTile tile = ref grid.At(x, y);
-                    if (tile.IsActive || tile.LiquidAmount != 0)
-                        continue;
-                    tile.LiquidAmount = 255;
-                    tile.LiquidKind = WorldLiquidKind.Honey;
-                    honeyCells++;
-                }
-        }
-
-        context.ReportProgress(1d, $"Adding webs and honey ({webs} webs, {honeyCells} honey cells)");
+        var pass = new WebsAndHoneyPass1458(
+            workspace.TileStore,
+            random,
+            state.WorldSurface,
+            state.RockLayer,
+            DungeonGenerationCatalog1458.BeachDistance,
+            context.CancellationToken);
+        pass.Apply();
+        context.ReportProgress(1d, $"Webs and honey ({pass.Webs} webs, {pass.Speleothems} speleothems)");
     }
 
-    /// <summary>
-    /// Source <c>GenPassNameID.GrassPlantsEvilPlantsAndPumpkinsOnSurface</c>, delegated to
-    /// <see cref="SurfacePlantPass1458"/>. The runtime previously sampled a few thousand columns and offered
-    /// plants to ordinary grass alone, so a generated Corruption or Crimson had no plants and no thorny bushes
-    /// at all.
-    /// </summary>
     private void ApplyWeeds(IWorldGenerationContext context, Workspace workspace)
     {
         IWorldGenerationVanillaRandom random = context.VanillaRandom ??

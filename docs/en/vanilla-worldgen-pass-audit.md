@@ -12,6 +12,16 @@ and worth keeping for that work: the final descending tunnel re-evaluates `genRa
 condition, so it draws once per column per step rather than once per step, and that tunnel alone accounts for
 roughly two thirds of a pyramid's RNG cost.
 
+Webs and honey (2026-09-19): stage89 was `P` with "web / honey scans / RNG". It is one whole-map scan doing three unrelated things to two background walls, and none of the three was modelled.
+
+Behind a hive wall every liquid becomes honey and one cell in three is offered a speleothem - the same `WorldGen.PlaceTight` the speleothem pass uses, which is why a hive grows only the small form. Behind a spider wall every liquid is emptied instead, and nine cells in ten are offered a cobweb, which needs a solid tile somewhere inside a square whose radius is drawn fresh for each cell. The two walls are tested independently, so a cell papered with neither spends nothing at all, and a scan over a cave of the wrong wall leaves the shared stream untouched.
+
+One thing this closed that was not in the pass: the comparison itself. A world hash that carries the liquid's AMOUNT but not its KIND cannot see the honey half of this pass at all - turning water into honey changes no amount, no identity and no frame - and the first control that disabled it passed cleanly. The hash now carries the kind, and the control fails four of the ten fixtures.
+
+Evidence: 10 official comparisons of the registered delegate through `GenPass.Apply`, each checking the next shared RNG and a SHA-256 over every field of every cell including the liquid kind. The fixture is a papered cavern with a stone pillar every ninth column, so speleothems have something to hang from and cobwebs something to anchor to; the wall is varied one fixture at a time because the halves are independent, a wet pair adds standing liquid, and a mixed fixture papers each half of the world differently so both halves run in one scan. Seven negative controls fail 6, 6, 6, 6, 4, 4 and 4 of the ten: the speleothem offer inverted, the web offer inverted, the web radius fixed instead of drawn, the support scan dropped, the hive's liquid left unhoneyed, the spider cave's liquid left in place, and a cobweb allowed into standing liquid.
+
+The ledger becomes **27P + 45C = 72 unfinished rows**; **31 E9 / 279 checkpoints** is unchanged.
+
 The fallen log, and the flower patch that lands on it (2026-09-19): stage79 was `C` with "PlaceFallenLog / placement / RNG" - the same placeholder the open rows carry - and its owner was invented: six, nine or twelve logs by world width, sampled from a per-pass RNG rather than the shared one, with none of the source's refusals. It is now closed against the registered delegate, and closing it also closes the one divergence the Flowers row was carrying.
 
 `GenPassNameID.FallenLogsAndWaterFeatures` is one log per 2100 tiles of width, jittered by `Next(-1, 2)`, and each log gets up to thirty thousand attempts of its own. An attempt draws a column inside the beaches and a row above the surface, drops down the column to the first cell that is either active or walled, and offers the log to the cell above when all three columns of its footprint stand on grass. The attempt counter is not a budget, it is the difficulty: while more than half of it is left the column is redrawn until it falls outside the middle fifth of the world, which is what keeps logs away from the spawn; once fewer than five thousand attempts remain the fifty-tile scan for evil, dungeon, cloud and sand and the ten-by-ten headroom scan are skipped entirely; and below a thousand even standing water stops being a refusal.
@@ -310,7 +320,7 @@ Full Desert integration also exposed later-stage boundary defects. Ordinary Sett
 | 86 | Planting Trees | Vegetation | C | tree grower / planting attempts / RNG |
 | 87 | Herbs | Vegetation | C | biome selection / styles / RNG |
 | 88 | Dye Plants | Vegetation | C | styles / substrate / placement / RNG |
-| 89 | Webs And Honey | Vegetation | P | web / honey scans / RNG |
+| 89 | Webs And Honey | Vegetation | C | `WebsInSpiderCavesAndHoneyPlusSpeleothemsInBeehives`: the hive's honey and `PlaceTight`, the spider cave's emptied liquid and its cobwebs: 10 official complete-delegate fixtures |
 | 90 | Weeds | Vegetation | C | whole-map scan plus the `PlaceTile` slice for `3`/`24`/`201`/`637`, including thorny bushes / no official fixtures yet |
 | 91 | Glowing Mushrooms and Jungle Plants | Vegetation | C | whole-map scan plus `PlaceTile` slices for `61`/`71` and both cat-tail helpers: 16 official complete-delegate fixtures / remaining prefix proof |
 | 92 | Jungle Plants | Vegetation | C | `JunglePlantsPart2`: the sampling loop and both `PlaceJunglePlant` footprints: 4 official complete-delegate fixtures |
