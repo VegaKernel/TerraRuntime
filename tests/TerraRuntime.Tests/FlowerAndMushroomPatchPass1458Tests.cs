@@ -69,6 +69,10 @@ public sealed class FlowerAndMushroomPatchPass1458Tests
     // thing that can convert them is the framing.
     [InlineData("flowers-mismatched-left", 42, 841207, "9a0d716c42b5439a791f5d7858291c75089658f1fb7e8b44e8b15bf8a9d55370")]
     [InlineData("flowers-mismatched-left", 1458, 548400, "17e40899c6fb5167a0be6e108db8b08a8b2dcde1e60dde8ebdebac50b97401ce")]
+    // A fallen log left behind by the earlier pass. The FIRST patch to find any ground at all is moved onto it,
+    // column and row both, before its style is drawn - and the anchor is consumed, so only one patch moves.
+    [InlineData("flowers-onlog", 42, 44392, "5ed02fb20611d451ee388a1a2a46e81007e351799aa637c2851d592943020810")]
+    [InlineData("flowers-onlog", 1458, 712346, "1f6c578e5cba0392adfc7b67d6fdb293fd4e7043e30ae56282160c837e413b90")]
     public void Passes_match_official(string fixture, int seed, int nextDraw, string worldHash)
     {
         (ushort substrate, bool prePlanted, int mode) = Fixture(fixture);
@@ -82,7 +86,11 @@ public sealed class FlowerAndMushroomPatchPass1458Tests
         var random = new RandomAdapter(seed);
 
         var pass = new FlowerAndMushroomPatchPass1458(
-            store, random, WorldSurface, TestContext.Current.CancellationToken);
+            store,
+            random,
+            WorldSurface,
+            TestContext.Current.CancellationToken,
+            fixture == "flowers-onlog" ? (900, 149) : null);
 
         switch (mode)
         {
@@ -123,6 +131,7 @@ public sealed class FlowerAndMushroomPatchPass1458Tests
         "flowers-detritus" => (2, false, 0),
         "flowers-mismatched" => (2, true, 0),
         "flowers-mismatched-left" => (2, true, 0),
+        "flowers-onlog" => (2, false, 0),
         _ => throw new ArgumentOutOfRangeException(nameof(name))
     };
 

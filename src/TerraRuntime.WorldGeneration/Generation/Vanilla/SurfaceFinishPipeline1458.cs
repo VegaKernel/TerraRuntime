@@ -241,7 +241,7 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
                 ApplySurfaceOreAndStone(context, grid, random);
                 break;
             case SurfaceFinishStage1458.PlaceFallenLog:
-                ApplyFallenLog(context, grid, random);
+                ApplyFallenLog(context, workspace);
                 break;
             case SurfaceFinishStage1458.Traps:
                 ApplyTraps(context, grid, random);
@@ -410,38 +410,26 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Adding surface ore and stone ({changed} blocks)");
     }
 
-    private void ApplyFallenLog(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    /// <summary>
+    /// Source <c>GenPassNameID.FallenLogsAndWaterFeatures</c>, delegated to <see cref="FallenLogPass1458"/>.
+    /// The anchor it may leave behind is retained: the Flowers pass moves its first patch onto it.
+    /// </summary>
+    private void ApplyFallenLog(IWorldGenerationContext context, Workspace workspace)
     {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int target = grid.Width switch
-        {
-            <= 4200 => 6,
-            <= 6400 => 9,
-            _ => 12
-        };
-        int placed = 0;
-        int minX = Math.Max(bootstrap.LeftBeachEnd + 40, 20);
-        int maxX = Math.Min(bootstrap.RightBeachStart - 40, grid.Width - 20);
-        int minY = Math.Max(20, (int)state.WorldSurface - 140);
-        int maxY = Math.Min(grid.Height - 5, (int)state.WorldSurface + 130);
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Fallen logs require shared UnifiedRandom semantics.");
 
-        for (int attempt = 0; attempt < target * 180 && placed < target; attempt++)
-        {
-            if ((attempt & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            int left = random.Next(minX, maxX - 3);
-            int floor = grid.FindFirstActiveY(left + 1, minY, maxY);
-            int top = floor - 2;
-            if (floor >= maxY || !CanPlaceObject(grid, left, top, width: 3, height: 2))
-                continue;
-            if (grid.At(left + 1, floor).Type != Grass)
-                continue;
+        var pass = new FallenLogPass1458(
+            workspace.TileStore,
+            random,
+            state.WorldSurface,
+            DungeonGenerationCatalog1458.BeachDistance,
+            context.CancellationToken);
+        pass.Apply();
+        if (pass.Anchor is { } anchor)
+            workspace.SetVanillaFallenLogAnchor(anchor.X, anchor.Y);
 
-            PlaceFramedObject(grid, left, top, width: 3, height: 2, FallenLog, styleWidthPixels: 54, style: 0);
-            placed++;
-        }
-
-        context.ReportProgress(1d, $"Placing Fallen Logs ({placed}/{target})");
+        context.ReportProgress(1d, $"Placing Fallen Logs ({pass.Placed})");
     }
 
     private void ApplyTraps(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)

@@ -28,7 +28,8 @@ internal sealed class FlowerAndMushroomPatchPass1458(
     WorldTileStore store,
     IWorldGenerationVanillaRandom random,
     double worldSurface,
-    CancellationToken cancellation)
+    CancellationToken cancellation,
+    (int X, int Y)? fallenLogAnchor = null)
 {
     private const ushort Grass = 2;
     private const ushort Plants = 3;
@@ -50,6 +51,8 @@ internal sealed class FlowerAndMushroomPatchPass1458(
     private readonly int width = store.Dimensions.WidthTiles;
     private readonly int height = store.Dimensions.HeightTiles;
 
+    private (int X, int Y)? logAnchor = fallenLogAnchor;
+
     public long FlowerPatches { get; private set; }
 
     public long MushroomPatches { get; private set; }
@@ -69,6 +72,16 @@ internal sealed class FlowerAndMushroomPatchPass1458(
             {
                 if (!IsActive(column, row))
                     continue;
+
+                // The fallen log pass may have left an anchor behind, and the first patch to find any ground
+                // at all is moved onto it - column and row both - before its style is even drawn. The anchor
+                // is consumed, so only one patch is ever relocated.
+                if (logAnchor is { } anchor)
+                {
+                    column = anchor.X;
+                    row = anchor.Y;
+                    logAnchor = null;
+                }
 
                 int style = NextFromList(random, [21, 24, 27, 30, 33, 36, 39, 42]);
                 for (int x = column - halfWidth; x < column + halfWidth; x++)

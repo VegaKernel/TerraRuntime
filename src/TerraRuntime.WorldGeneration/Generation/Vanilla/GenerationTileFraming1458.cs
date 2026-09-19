@@ -50,6 +50,7 @@ internal sealed class GenerationTileFraming1458(
     private const ushort LifeFruit = 238;
     private const ushort JungleBulb702 = 702;
     private const ushort JungleGrass = 60;
+    private const ushort FallenLog = 488;
 
     private readonly int width = store.Dimensions.WidthTiles;
     private readonly int height = store.Dimensions.HeightTiles;
@@ -95,7 +96,7 @@ internal sealed class GenerationTileFraming1458(
             return;
         }
 
-        if (tile.Type is LargePiles or LargePiles2)
+        if (tile.Type is LargePiles or LargePiles2 or FallenLog)
         {
             Check3x2(i, j, tile.Type);
             return;
@@ -225,6 +226,15 @@ internal sealed class GenerationTileFraming1458(
                 }
             }
 
+            // The fallen log has its own ground list and no boulder rule at all: it grows on the grasses, on
+            // snow, on sand, on jungle grass and on mud, and on nothing else.
+            if (type == FallenLog)
+            {
+                if (TypeAt(x, floor) is not (2 or 477 or 109 or 492 or 147 or 53 or 60 or 70))
+                    broken = true;
+                continue;
+            }
+
             if (!SolidTileAllowBottomSlope(x, floor) || IsBoulder(x, floor))
             {
                 broken = true;
@@ -259,6 +269,31 @@ internal sealed class GenerationTileFraming1458(
                     cell.Type = LargePiles;
                 }
             }
+        }
+
+        // A fallen log is never destroyed while a world is being generated. The source puts it back - every
+        // cell of its own footprint - and forces grass under all three columns, which is why a log placed on
+        // stone ends up standing on a strip of grass it made itself.
+        if (broken && type == FallenLog)
+        {
+            for (int x = left; x < left + 3; x++)
+            {
+                for (int y = top; y < floor; y++)
+                {
+                    ref WorldTile cell = ref At(x, y);
+                    cell.Flags |= WorldTileFlags.Active;
+                    cell.Type = FallenLog;
+                    cell.FrameX = checked((short)((x - left) * 18));
+                    cell.FrameY = checked((short)((y - top) * 18));
+                }
+
+                ref WorldTile ground = ref At(x, floor);
+                ground.Flags |= WorldTileFlags.Active;
+                ground.Type = 2;
+                ground.Shape = 0;
+            }
+
+            return;
         }
 
         if (!broken)

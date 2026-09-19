@@ -16,6 +16,7 @@ internal static class GenerationDecorationPlacement1458
 {
     private const ushort SmallPiles = 185;
     private const ushort Pots = 28;
+    private const ushort FallenLog = 488;
     private const ushort PlantDetritus = 187;
 
     /// <summary>
@@ -71,7 +72,12 @@ internal static class GenerationDecorationPlacement1458
         if (!Contains(store, x, y))
             return false;
 
+        // PlaceTile's very first line while a world is being generated: nothing is ever placed onto a cell
+        // that already holds a fallen log.
         ref WorldTile anchor = ref At(store, x, y);
+        if (anchor.IsActive && anchor.Type == FallenLog)
+            return false;
+
         if (!anchor.IsActive)
         {
             anchor.Type = 0;

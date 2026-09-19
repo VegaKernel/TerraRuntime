@@ -84,6 +84,19 @@ public sealed class GenerationTileFraming1458Tests
         "2ad6119316693c4195d37549a922efcc6a48be67e4d4f188285e43593f3ed507")]
     [InlineData("pile187-grass-on-hallowed", 477, 187, 15, false, -1, 0,
         "30930e4a0743a12b13ff2d6c052f9204d252ffd770f49757010f857f3b1f7b5a")]
+    // The fallen log is the one identity this validator never destroys while a world is being generated: it
+    // puts the object back and forces grass under all three columns, so a log on stone ends up standing on a
+    // strip of grass it made itself.
+    [InlineData("log488-on-grass", 2, 488, 0, false, -1, 0,
+        "ac6dbaeb234a8b109aff756c97b7a9c4c363989cf68af1ac49744f00d13d1d97")]
+    [InlineData("log488-on-stone", 1, 488, 0, false, -1, 0,
+        "8fd6dfca51ac50b6c31d427b69e7b3f57a715c045ef20724b34dd48d38822a6e")]
+    [InlineData("log488-on-snow", 147, 488, 0, false, -1, 0,
+        "dcabcb2b54cc3d71a6a791f8f199b59d5a2e73960403011b360c74beddf1afdb")]
+    [InlineData("log488-on-stone-broken", 1, 488, 0, false, 1, 0,
+        "8fd6dfca51ac50b6c31d427b69e7b3f57a715c045ef20724b34dd48d38822a6e")]
+    [InlineData("log488-on-grass-broken", 2, 488, 0, false, 1, 0,
+        "ac6dbaeb234a8b109aff756c97b7a9c4c363989cf68af1ac49744f00d13d1d97")]
     public void Validators_match_official(
         string fixture,
         int substrate,

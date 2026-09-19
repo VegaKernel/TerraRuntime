@@ -574,7 +574,11 @@ internal sealed class VegetationPass1458 : IWorldGenerationPass
             throw new InvalidOperationException("Flowers require shared UnifiedRandom semantics.");
 
         var pass = new FlowerAndMushroomPatchPass1458(
-            workspace.TileStore, random, state.WorldSurface, context.CancellationToken);
+            workspace.TileStore,
+            random,
+            state.WorldSurface,
+            context.CancellationToken,
+            workspace.VanillaFallenLogAnchor is { } anchor ? (anchor.X, anchor.Y) : null);
         pass.ApplyFlowers();
         context.ReportProgress(1d, $"Flowers complete; patches={pass.FlowerPatches}");
     }

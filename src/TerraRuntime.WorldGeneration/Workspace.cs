@@ -5,6 +5,9 @@ namespace TerraRuntime.WorldGeneration.Runtime;
 
 internal readonly record struct VanillaPyramidCandidate1458(int X, int Y);
 internal readonly record struct VanillaLiquidLines1458(int WaterLine, int LavaLine);
+
+/// <summary>Source <c>GenVars.logX</c>/<c>logY</c>: the fallen log the Flowers pass moves onto.</summary>
+internal readonly record struct VanillaFallenLogAnchor1458(int X, int Y);
 internal readonly record struct VanillaSkyIsland1458(int X, int Y, int Style, bool IsLake);
 internal readonly record struct VanillaSnowRow1458(int Left, int Right);
 
@@ -61,6 +64,7 @@ public sealed class Workspace :
     private VanillaWorldGenerationBootstrapState1458? vanillaBootstrapState;
     private TerrainGenerationState1458? vanillaTerrainState;
     private VanillaLiquidLines1458? vanillaLiquidLines;
+    private VanillaFallenLogAnchor1458? vanillaFallenLogAnchor;
     private WorldGenerationPoint[] vanillaMushroomCenters = [];
     private WorldTileRegion[] vanillaMarbleRegions = [];
     private WorldTileRegion[] vanillaGraniteRegions = [];
@@ -99,6 +103,7 @@ public sealed class Workspace :
     internal VanillaWorldGenerationBootstrapState1458? VanillaBootstrapState => vanillaBootstrapState;
     internal TerrainGenerationState1458? VanillaTerrainState => vanillaTerrainState;
     internal VanillaLiquidLines1458? VanillaLiquidLines => vanillaLiquidLines;
+    internal VanillaFallenLogAnchor1458? VanillaFallenLogAnchor => vanillaFallenLogAnchor;
     internal WorldGenerationPoint? VanillaShimmerPosition { get; set; }
     internal ReadOnlySpan<WorldGenerationPoint> VanillaMushroomCenters => vanillaMushroomCenters;
     // GenVars.structures retains these unpadded Marble rectangles with padding 8.
@@ -247,6 +252,8 @@ public sealed class Workspace :
         vanillaTerrainState = value;
     internal void SetVanillaLiquidLines(int waterLine, int lavaLine) =>
         vanillaLiquidLines = new VanillaLiquidLines1458(waterLine, lavaLine);
+    internal void SetVanillaFallenLogAnchor(int x, int y) =>
+        vanillaFallenLogAnchor = new VanillaFallenLogAnchor1458(x, y);
     internal void SetVanillaCaveHouseCounts(int ordinary, int additionalDesert)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(ordinary);
