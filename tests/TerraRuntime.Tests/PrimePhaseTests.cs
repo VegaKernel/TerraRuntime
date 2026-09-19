@@ -108,6 +108,26 @@ public sealed class PrimePhaseTests
     }
 
     [Fact]
+    public void Initial_targeting_sets_charge_direction_and_rotation_before_velocity_changes()
+    {
+        var store = new RuntimeNpcStore();
+        store.SetVanillaSpawnContextSource(() => new(1, 1, false));
+        Assert.True(store.TrySpawnIntent(new NpcAiSpawnIntent(VanillaNpcIds.SkeletronPrime, 1000, 1000, 0, 0, 0)
+        {
+            InitialAi = new NpcAiState(0f, 1f, 399f, 0f)
+        }, out var head));
+        var ai = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        ai.SetWorldConditions(dayTime: false, slimeRainActive: false);
+        ai.SetCandidates([new VanillaNpcTargetCandidate(0, 1510, 1021, 0, true, false, false, false)]);
+
+        Assert.Equal(5, new RuntimeNpcAiStateExecutor(store).Tick(ai).Applied);
+        Assert.True(store.TryGet(head.Handle, out var after));
+        Assert.Equal(1, after.Simulation.DirectionX);
+        Assert.Equal(0.3f, after.Simulation.Rotation);
+        Assert.Equal(new NpcAiState(1f, 0f, 0f, 0f), after.Ai);
+    }
+
+    [Fact]
     public void Unspecified_updates_preserve_baselines_and_type_or_generation_changes_reset_them()
     {
         var store = new RuntimeNpcStore();

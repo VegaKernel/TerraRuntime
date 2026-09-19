@@ -1,5 +1,9 @@
 # Work state
 
+## Prime head direction and rotation slice - 2026-09-20
+
+The first continuous original Prime trace is now captured from `NPC.UpdateNPC`: 32 Linux ticks across hover `599` to spin and spin `399` to hover, with head and all four arms executing in ascending slots. It found the head-specific AI32 gap: `TargetClosest` owns `direction`, and phase rotation is committed before velocity steering. `VanillaSkeletronPrimeNpcBehaviorStrategy` now retains that ordering for hover, spin, rage and despawn; a focused runtime regression checks the initial charge boundary. The source fixture is still ignored while the full cross-platform encounter comparator is built. Release warnings-as-errors build, 808 focused Prime phase tests and the complete 100,115-test suite pass with no errors, failures or skips in 169.865 seconds. Next: retain the encounter fixture and compare runtime world-motion traces before claiming full encounter parity.
+
 ## Floating-island chest perimeter correction - 2026-09-20
 
 On the merged main base, the canonical large-world seed sweep exposed a stale generated-chest record: the floating-island house pass accepted a chest on its floor/perimeter, overwrote its tile with Sunplate `202`, and final validation then rejected the `WorldChest` at `(6729,289)`. `CanBuildSkyHouse` now rejects any candidate with a frame-important tile anywhere in its complete Sunplate rectangle, including the floor and outer walls. The focused regression places a `Containers` anchor on that floor and proves the candidate is rejected. Release warnings-as-errors build and a full `8400 x 2400`, seed `1` `--worldgen-create-smoke` pass succeeded; `WorldVerify` reloaded the produced world with 432 chests. Paired late-structure documentation records the persistence boundary. Resume NPC work with continuous Prime encounter traces after this correction is committed and its CI is green.

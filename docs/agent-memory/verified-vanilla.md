@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Prime continuous encounter trace - 2026-09-20
+
+`NPC.UpdateNPC` against the pinned Linux TerrariaServer 1.4.5.8 binary, with a real Prime head and all four source-created arms, confirms ascending-slot same-tick child execution. The recorded 32 ticks cover the head transitions from hover counter `599` into spin and spin counter `399` back into hover. `TargetClosest` sets the head `direction` before the phase body. AI `32` stores hover rotation from pre-steering horizontal velocity; spin, rage and despawn add `direction * 0.3f` before they set their next velocity. The capture is `.cache/prime-encounter-linux-probe/official.json`, SHA256 `23dac3d4de2271a9085fc6763a16c7a36f227246a4fd5bd6ff147165615f385b`. It is initial continuous evidence, not a complete encounter-parity claim.
+
 ## Prime melee parent slots - 2026-09-20
 
 In TerrariaServer 1.4.5.8 AI `33`/`34`, the arm reads `Main.npc[(int)ai[1]]` position and dimensions before it checks the parent's `active` flag or AI style. An inactive physical head therefore still affects the distance-return transition. On a dedicated server, invalid-parent `ai[2] += 10` leaves the arm active through `50`; only a value above `50` writes the negative-life sentinel, invokes `HitEffect`, and deactivates it. Active and inactive head cases agree between the pinned Windows and Linux binaries in 112 parent cases/platform, including near/far arm geometries. The retained runtime-slot view is internal and bounded to the physical NPC table; ordinary peer queries continue to return only active NPCs.
