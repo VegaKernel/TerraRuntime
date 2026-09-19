@@ -126,5 +126,7 @@
     <EmbeddedResource Include="Fixtures/prime-melee-ai-1458.json.gz" LogicalName="PrimeMeleeAi1458" />
     <EmbeddedResource Include="Fixtures/prime-melee-parent-1458.json.gz" LogicalName="PrimeMeleeParent1458" />
     <EmbeddedResource Include="Fixtures/prime-melee-edge-1458.json.gz" LogicalName="PrimeMeleeEdge1458" />
+    <EmbeddedResource Include="Fixtures/prime-encounter-linux-1458.json.gz" LogicalName="PrimeEncounterLinux1458" />
+    <EmbeddedResource Include="Fixtures/prime-encounter-windows-1458.json.gz" LogicalName="PrimeEncounterWindows1458" />
   </ItemGroup>
 </Project>
