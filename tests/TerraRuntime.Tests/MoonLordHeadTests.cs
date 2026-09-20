@@ -177,6 +177,50 @@ public sealed class MoonLordHeadTests
     }
 
     [Fact]
+    public void Two_continuous_head_cycles_with_a_moving_player_match_original_state_projectiles_and_random_stream()
+    {
+        JsonElement[] rows = ReadCases("MoonLordHeadMoving1458", "92e40bc2e5cc69f9333debb2975c29c5277b4d5ef09f832efaa6d4d3ad7c6ffa");
+        var npcs = new RuntimeNpcStore();
+        Spawn(npcs, VanillaNpcIds.MoonLordCore, 1000, 1000, 0, 0, default, new NpcAiState(0, 0, 0, 1), 0);
+        NpcSnapshot head = Spawn(npcs, VanillaNpcIds.MoonLordHead, 900, 900, 2, -3, default, new NpcAiState(.2f, .3f, 0, 0), 0);
+        var random = new ReferenceRandom(1458);
+        var vanilla = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: random);
+        var projectiles = new RuntimeProjectileStore();
+        var executor = new RuntimeNpcAiStateExecutor(npcs, projectiles);
+        var shots = new ProjectileSnapshot[projectiles.Capacity];
+        for (int tick = 0; tick < rows.Length; tick++)
+        {
+            vanilla.SetCandidates([new VanillaNpcTargetCandidate(0, 1510f + tick * 3.25f, 821f - tick * 1.75f, 0,
+                true, false, false, false) { VelocityX = 3.25f, VelocityY = -1.75f }]);
+            Assert.Equal(1, executor.Tick(new HeadOnly(vanilla)).Applied);
+            JsonElement row = rows[tick];
+            Assert.True(npcs.TryGet(head.Handle, out var actual));
+            Assert.Equal(row.GetProperty("x").GetSingle(), actual.PositionX);
+            Assert.Equal(row.GetProperty("y").GetSingle(), actual.PositionY);
+            Assert.Equal(row.GetProperty("vx").GetSingle(), actual.VelocityX);
+            Assert.Equal(row.GetProperty("vy").GetSingle(), actual.VelocityY);
+            AssertAi(row.GetProperty("ai"), actual.Ai);
+            AssertAi(row.GetProperty("local"), actual.Simulation.LocalAi);
+            Assert.Equal(row.GetProperty("invulnerable").GetBoolean(), actual.Simulation.DontTakeDamage);
+            int count = projectiles.CopyActive(shots);
+            JsonElement expectedShots = row.GetProperty("shots");
+            Assert.Equal(expectedShots.GetArrayLength(), count);
+            for (int j = 0; j < count; j++)
+            {
+                JsonElement expected = expectedShots[j]; ProjectileSnapshot shot = shots[j];
+                Assert.Equal(expected.GetProperty("type").GetInt32(), shot.Type.Value);
+                Assert.Equal(expected.GetProperty("x").GetSingle(), shot.PositionX);
+                Assert.Equal(expected.GetProperty("y").GetSingle(), shot.PositionY);
+                Assert.Equal(expected.GetProperty("vx").GetSingle(), shot.VelocityX);
+                Assert.Equal(expected.GetProperty("vy").GetSingle(), shot.VelocityY);
+                Assert.Equal(expected.GetProperty("ai").EnumerateArray().Select(value => value.GetSingle()),
+                    new[] { shot.Ai.Ai0, shot.Ai.Ai1, shot.Ai.Ai2 });
+            }
+        }
+        Assert.Equal(rows[^1].GetProperty("nextRandom").GetInt32(), random.Next());
+    }
+
+    [Fact]
     public void Good_world_deathray_wind_down_spawns_source_boulders_without_random_on_solid_head_tile()
     {
         var clearRandom = new BoulderRandom();
