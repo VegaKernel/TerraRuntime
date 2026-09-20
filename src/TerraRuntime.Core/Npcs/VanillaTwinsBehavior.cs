@@ -82,9 +82,9 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         else
         {
             if (_spazmatism)
-                StepSpazPhaseTwo(in npc, in target, context, life, lifeMax, ref ai, ref local, ref vx, ref vy);
+                StepSpazPhaseTwo(in npc, in definition, in target, context, life, lifeMax, mechQueenUp, queenCenterX, queenCenterY, queenVelocityX, ref ai, ref local, ref vx, ref vy);
             else
-                StepRetPhaseTwo(in npc, in target, context, life, lifeMax, ref ai, ref local, ref vx, ref vy);
+                StepRetPhaseTwo(in npc, in definition, in target, context, life, lifeMax, mechQueenUp, queenCenterX, queenCenterY, queenVelocityX, ref ai, ref local, ref vx, ref vy);
         }
 
         int damage = ai.Ai0 >= 3f ? (int)(definition.Damage * 1.5) : definition.Damage;
@@ -256,19 +256,26 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         _ = local;
     }
 
-    private static void StepRetPhaseTwo(in NpcSnapshot npc, in VanillaNpcTargetCandidate target, VanillaNpcBehaviorContext context,
-        int life, int lifeMax, ref NpcAiState ai, ref NpcAiState local, ref float vx, ref float vy)
+    private static void StepRetPhaseTwo(in NpcSnapshot npc, in VanillaNpcDefinition definition, in VanillaNpcTargetCandidate target, VanillaNpcBehaviorContext context,
+        int life, int lifeMax, bool mechQueenUp, float queenCenterX, float queenCenterY, float queenVelocityX, ref NpcAiState ai, ref NpcAiState local, ref float vx, ref float vy)
     {
         float cx = npc.PositionX + 50f, cy = npc.PositionY + 55f;
         if (ai.Ai1 == 0f)
         {
-            float speed = context.ExpertMode ? 9.5f : 8f;
-            float accel = context.ExpertMode ? .175f : .15f;
-            if (context.GoodWorld) { speed *= 1.15f; accel *= 1.15f; }
-            ApproachVector(target.CenterX - cx, target.CenterY - 300f - cy, speed, accel, ref vx, ref vy);
-            float timer = ai.Ai2 + 1f;
-            if (timer >= 300f) { timer = 0f; ai = ai with { Ai1 = 1f, Ai3 = 0f }; }
-            ai = ai with { Ai2 = timer };
+            if (mechQueenUp)
+            {
+                StepMechdusaPhaseTwoHover(in npc, in definition, queenCenterX, queenCenterY, queenVelocityX, spazmatism: false, ref ai, ref vx, ref vy);
+            }
+            else
+            {
+                float speed = context.ExpertMode ? 9.5f : 8f;
+                float accel = context.ExpertMode ? .175f : .15f;
+                if (context.GoodWorld) { speed *= 1.15f; accel *= 1.15f; }
+                ApproachVector(target.CenterX - cx, target.CenterY - 300f - cy, speed, accel, ref vx, ref vy);
+                float timer = ai.Ai2 + 1f;
+                if (timer >= 300f) { timer = 0f; ai = ai with { Ai1 = 1f, Ai3 = 0f }; }
+                ai = ai with { Ai2 = timer };
+            }
             float shots = local.Ai1 + 1f + (life < lifeMax*.75f?1f:0f)+(life<lifeMax*.5f?1f:0f)+(life<lifeMax*.25f?1f:0f)+(life<lifeMax*.1f?2f:0f);
             if (shots > 180f) shots = 0f;
             local = local with { Ai1 = shots };
@@ -316,22 +323,67 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         _=local;
     }
 
-    private static void StepSpazPhaseTwo(in NpcSnapshot npc, in VanillaNpcTargetCandidate target, VanillaNpcBehaviorContext context,
-        int life, int lifeMax, ref NpcAiState ai, ref NpcAiState local, ref float vx, ref float vy)
+    private static void StepSpazPhaseTwo(in NpcSnapshot npc, in VanillaNpcDefinition definition, in VanillaNpcTargetCandidate target, VanillaNpcBehaviorContext context,
+        int life, int lifeMax, bool mechQueenUp, float queenCenterX, float queenCenterY, float queenVelocityX, ref NpcAiState ai, ref NpcAiState local, ref float vx, ref float vy)
     {
         float cx=npc.PositionX+50f,cy=npc.PositionY+55f;
         if(ai.Ai1==0f)
         {
-            int side=cx<target.CenterX+10f?-1:1; float dx=target.CenterX+side*180f-cx,dy=target.CenterY-cy;float dist=MathF.Sqrt(dx*dx+dy*dy);float speed=4f,acc=.1f;
-            if(context.ExpertMode){if(dist>300)speed+=.5f;if(dist>400)speed+=.5f;if(dist>500)speed+=.55f;if(dist>600)speed+=.55f;if(dist>700)speed+=.6f;if(dist>800)speed+=.6f;}
-            if(context.GoodWorld){speed*=1.15f;acc*=1.15f;} ApproachVector(dx,dy,speed,acc,ref vx,ref vy);
-            float timer=ai.Ai2+1f;if(timer>=400f){timer=0f;ai=ai with{Ai1=1f,Ai3=0f};}ai=ai with{Ai2=timer};
+            if (mechQueenUp)
+            {
+                StepMechdusaPhaseTwoHover(in npc, in definition, queenCenterX, queenCenterY, queenVelocityX, spazmatism: true, ref ai, ref vx, ref vy);
+            }
+            else
+            {
+                int side=cx<target.CenterX+10f?-1:1; float dx=target.CenterX+side*180f-cx,dy=target.CenterY-cy;float dist=MathF.Sqrt(dx*dx+dy*dy);float speed=4f,acc=.1f;
+                if(context.ExpertMode){if(dist>300)speed+=.5f;if(dist>400)speed+=.5f;if(dist>500)speed+=.55f;if(dist>600)speed+=.55f;if(dist>700)speed+=.6f;if(dist>800)speed+=.6f;}
+                if(context.GoodWorld){speed*=1.15f;acc*=1.15f;} ApproachVector(dx,dy,speed,acc,ref vx,ref vy);
+                float timer=ai.Ai2+1f;if(timer>=400f){timer=0f;ai=ai with{Ai1=1f,Ai3=0f};}ai=ai with{Ai2=timer};
+            }
             float shots=local.Ai1+1f+(life<lifeMax*.75f?1f:0f)+(life<lifeMax*.5f?1f:0f)+(life<lifeMax*.25f?1f:0f)+(life<lifeMax*.1f?2f:0f);if(shots>8f)shots=0f;local=local with{Ai1=shots};
         }
         else if(ai.Ai1==1f)
         {float speed=context.ExpertMode?16.5f:14f;SetToward(cx,cy,target.CenterX,target.CenterY,speed,ref vx,ref vy);ai=ai with{Ai1=2f};}
         else if(ai.Ai1==2f)
         {float timer=ai.Ai2+(context.ExpertMode?1.5f:1f);if(timer>=50f){vx*=.93f;vy*=.93f;if(MathF.Abs(vx)<.1f)vx=0f;if(MathF.Abs(vy)<.1f)vy=0f;}if(timer>=80f){float cycle=ai.Ai3+1f;ai=ai with{Ai1=cycle>=6f?0f:1f,Ai2=0f,Ai3=cycle>=6f?0f:cycle};}else ai=ai with{Ai2=timer};}
+    }
+
+    private static void StepMechdusaPhaseTwoHover(
+        in NpcSnapshot npc,
+        in VanillaNpcDefinition definition,
+        float queenCenterX,
+        float queenCenterY,
+        float queenVelocityX,
+        bool spazmatism,
+        ref NpcAiState ai,
+        ref float velocityX,
+        ref float velocityY)
+    {
+        if (!definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
+            return;
+
+        float offsetX = spazmatism ? 112.5f : -112.5f;
+        const float offsetY = -187.5f;
+        float orbit = queenVelocityX * .025f;
+        float targetX = queenCenterX + offsetX * MathF.Cos(orbit) - offsetY * MathF.Sin(orbit);
+        float targetY = queenCenterY + offsetX * MathF.Sin(orbit) + offsetY * MathF.Cos(orbit);
+        float deltaX = targetX - (npc.PositionX + hitbox.Width * .5f);
+        float deltaY = targetY - (npc.PositionY + hitbox.Height * .5f);
+        float distance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
+        if (distance > 14f)
+        {
+            float scale = 14f / distance;
+            deltaX *= scale;
+            deltaY *= scale;
+        }
+
+        float denominator = spazmatism ? 60f : 5f;
+        velocityX = (velocityX * (denominator - 1f) + deltaX) / denominator;
+        velocityY = (velocityY * (denominator - 1f) + deltaY) / denominator;
+        float timer = ai.Ai2 + 1f;
+        ai = timer >= 1200f
+            ? ai with { Ai1 = 1f, Ai2 = 0f, Ai3 = 0f }
+            : ai with { Ai2 = timer };
     }
 
     private static void ApproachVector(float dx,float dy,float speed,float accel,ref float vx,ref float vy)
