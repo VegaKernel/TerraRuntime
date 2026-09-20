@@ -193,7 +193,7 @@ internal sealed class TownNpcAuthority
         {
             var scheduleConditions = new RuntimeTownNpcScheduleConditions1458(
                 DayTime: worldClock?.DayTime ?? true,
-                Raining: initialRaining,
+                Raining: worldClock?.Raining ?? initialRaining,
                 Eclipse: initialEclipse,
                 SlimeRain: worldClock?.SlimeRainActive ?? false,
                 StormingAboveSurface: false);

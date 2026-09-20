@@ -29,6 +29,9 @@ public sealed class WorldFileClockHeaderPatcherTests
                 moonPhase: 6,
                 slimeRainTime: -1_234d,
                 windSpeedTarget: .4f,
+                raining: true,
+                rainTime: 12_345,
+                maxRain: .6f,
                 out byte[] patchedHeader));
         Assert.Equal(originalHeader.Length, patchedHeader.Length);
         Assert.Equal(originalHeader, preserved.Header.ToArray());
@@ -51,7 +54,9 @@ public sealed class WorldFileClockHeaderPatcherTests
         Assert.Equal((byte)6, loaded.RuntimeMetadata.MoonPhase);
         Assert.Equal(-1_234d, loaded.RuntimeMetadata.SlimeRainTime);
         Assert.Equal(.4f, loaded.RuntimeMetadata.WindSpeed);
-        Assert.Equal(source.RuntimeMetadata.MaxRain, loaded.RuntimeMetadata.MaxRain);
+        Assert.True(loaded.RuntimeMetadata.Raining);
+        Assert.Equal(12_345, loaded.RuntimeMetadata.RainTime);
+        Assert.Equal(.6f, loaded.RuntimeMetadata.MaxRain);
 
         Assert.Equal(source.RuntimeMetadata.GameMode, loaded.RuntimeMetadata.GameMode);
         Assert.Equal(source.RuntimeMetadata.SpawnX, loaded.RuntimeMetadata.SpawnX);
@@ -107,6 +112,9 @@ public sealed class WorldFileClockHeaderPatcherTests
                 moonPhase,
                 slimeRainTime,
                 windSpeedTarget,
+                raining: false,
+                rainTime: 0,
+                maxRain: 0f,
                 out byte[] patchedHeader));
         Assert.Empty(patchedHeader);
     }

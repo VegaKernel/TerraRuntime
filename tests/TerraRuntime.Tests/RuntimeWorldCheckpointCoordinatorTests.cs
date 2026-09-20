@@ -186,7 +186,10 @@ public sealed class RuntimeWorldCheckpointCoordinatorTests
             dayTime: false,
             moonPhase: VanillaMoonPhase.QuarterAtRight,
             slimeRainTime: -321d,
-            dayRate: 0);
+            dayRate: 0,
+            maxRain: .45f,
+            raining: true,
+            rainTime: 12_345);
 
         string directory = Path.Combine(Path.GetTempPath(), $"terraruntime-clock-save-{Guid.NewGuid():N}");
         string destinationPath = Path.Combine(directory, "world.wld");
@@ -215,6 +218,9 @@ public sealed class RuntimeWorldCheckpointCoordinatorTests
             Assert.False(loaded.RuntimeMetadata.DayTime);
             Assert.Equal((byte)5, loaded.RuntimeMetadata.MoonPhase);
             Assert.Equal(-321d, loaded.RuntimeMetadata.SlimeRainTime);
+            Assert.True(loaded.RuntimeMetadata.Raining);
+            Assert.Equal(12_345, loaded.RuntimeMetadata.RainTime);
+            Assert.Equal(.45f, loaded.RuntimeMetadata.MaxRain);
         }
         finally
         {

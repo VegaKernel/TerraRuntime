@@ -206,6 +206,7 @@ internal static class RuntimeWorldPreparedStateCodec
         writer.Write(m.SlimeRainTime);
         writer.Write(m.SundialCooldown);
         writer.Write(m.Raining);
+        writer.Write(m.RainTime);
         writer.Write(m.MaxRain);
         writer.Write(m.OreTiers.Copper);
         writer.Write(m.OreTiers.Iron);
@@ -294,6 +295,7 @@ internal static class RuntimeWorldPreparedStateCodec
         double slimeRainTime = reader.ReadDouble();
         byte sundialCooldown = reader.ReadByte();
         bool raining = reader.ReadBoolean();
+        int rainTime = reader.ReadInt32();
         float maxRain = reader.ReadSingle();
         var oreTiers = new WorldOreTiers(
             reader.ReadInt16(), reader.ReadInt16(), reader.ReadInt16(), reader.ReadInt16(),
@@ -390,6 +392,7 @@ internal static class RuntimeWorldPreparedStateCodec
             SlimeRainTime = slimeRainTime,
             SundialCooldown = sundialCooldown,
             Raining = raining,
+            RainTime = rainTime,
             MaxRain = maxRain,
             OreTiers = oreTiers,
             TreeBackground = treeBackground,

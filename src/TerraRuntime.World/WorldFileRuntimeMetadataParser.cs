@@ -202,7 +202,7 @@ public static class WorldFileRuntimeMetadataParser
             !reader.TryReadDouble(out double slimeRainTime) || !double.IsFinite(slimeRainTime) ||
             !reader.TryReadByte(out byte sundialCooldown) ||
             !ReadBool(ref reader, out bool raining) ||
-            !reader.TryReadInt32(out _) ||
+            !reader.TryReadInt32(out int rainTime) || rainTime < 0 ||
             !reader.TryReadSingle(out float maxRain) || !float.IsFinite(maxRain) ||
             !TryReadInt16CompatibleInt32(ref reader, out short oreCobalt, out result) ||
             !TryReadInt16CompatibleInt32(ref reader, out short oreMythril, out result) ||
@@ -455,6 +455,7 @@ public static class WorldFileRuntimeMetadataParser
             SlimeRainTime = slimeRainTime,
             SundialCooldown = sundialCooldown,
             Raining = raining,
+            RainTime = rainTime,
             MaxRain = maxRain,
             OreTiers = new WorldOreTiers(oreCopper, oreIron, oreSilver, oreGold, oreCobalt, oreMythril, oreAdamantite),
             TreeBackground = treeBackground,

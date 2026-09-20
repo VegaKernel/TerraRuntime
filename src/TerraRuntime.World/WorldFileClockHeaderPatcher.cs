@@ -29,6 +29,9 @@ public static class WorldFileClockHeaderPatcher
         byte moonPhase,
         double slimeRainTime,
         float windSpeedTarget,
+        bool raining,
+        int rainTime,
+        float maxRain,
         out byte[] patchedHeader)
     {
         ArgumentNullException.ThrowIfNull(header);
@@ -41,7 +44,11 @@ public static class WorldFileClockHeaderPatcher
             moonPhase >= 8 ||
             !double.IsFinite(slimeRainTime) ||
             !float.IsFinite(windSpeedTarget) ||
-            windSpeedTarget is < -.8f or > .8f)
+            windSpeedTarget is < -.8f or > .8f ||
+            rainTime < 0 ||
+            !float.IsFinite(maxRain) ||
+            maxRain is < 0f or > 1f ||
+            (!raining && maxRain != 0f))
         {
             return WorldFileClockHeaderPatchResult.InvalidClockState;
         }
@@ -126,13 +133,22 @@ public static class WorldFileClockHeaderPatcher
         if (!reader.TrySkip(sizeof(double)))
             return WorldFileClockHeaderPatchResult.InvalidHeader;
 
-        // Sundial/rain state, three hardmode ore tiers, eight primary background bytes,
-        // cloud state and count precede Main.windSpeedTarget in WorldFile.SaveWorld.
+        // Sundial is followed by Main.raining, Main.rainTime and Main.maxRaining.
+        if (!reader.TrySkip(sizeof(byte)))
+            return WorldFileClockHeaderPatchResult.InvalidHeader;
+        int rainingOffset = reader.Offset;
+        if (!reader.TrySkip(sizeof(byte)))
+            return WorldFileClockHeaderPatchResult.InvalidHeader;
+        int rainTimeOffset = reader.Offset;
+        if (!reader.TrySkip(sizeof(int)))
+            return WorldFileClockHeaderPatchResult.InvalidHeader;
+        int maxRainOffset = reader.Offset;
+        if (!reader.TrySkip(sizeof(float)))
+            return WorldFileClockHeaderPatchResult.InvalidHeader;
+
+        // Three hardmode ore tiers, eight primary background bytes, cloud state and count
+        // precede Main.windSpeedTarget in WorldFile.SaveWorld.
         const int bytesBeforeWindTarget =
-            sizeof(byte) +
-            sizeof(byte) +
-            sizeof(int) +
-            sizeof(float) +
             (sizeof(int) * 3) +
             8 +
             sizeof(int) +
@@ -155,6 +171,11 @@ public static class WorldFileClockHeaderPatcher
         BinaryPrimitives.WriteInt64LittleEndian(
             patchedHeader.AsSpan(slimeRainOffset, sizeof(long)),
             BitConverter.DoubleToInt64Bits(slimeRainTime));
+        patchedHeader[rainingOffset] = raining ? (byte)1 : (byte)0;
+        BinaryPrimitives.WriteInt32LittleEndian(patchedHeader.AsSpan(rainTimeOffset, sizeof(int)), rainTime);
+        BinaryPrimitives.WriteInt32LittleEndian(
+            patchedHeader.AsSpan(maxRainOffset, sizeof(int)),
+            BitConverter.SingleToInt32Bits(maxRain));
         BinaryPrimitives.WriteInt32LittleEndian(
             patchedHeader.AsSpan(windSpeedTargetOffset, sizeof(int)),
             BitConverter.SingleToInt32Bits(windSpeedTarget));

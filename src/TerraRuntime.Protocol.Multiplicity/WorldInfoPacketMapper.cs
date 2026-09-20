@@ -26,6 +26,9 @@ public readonly record struct WorldInfoRuntimeState(
 {
     /// <summary>Live <c>Main.windSpeedTarget</c>; absent callers retain the persisted header value.</summary>
     public float? WindSpeedTarget { get; init; }
+
+    /// <summary>Live packet-7 rain intensity; absent callers retain the persisted header value.</summary>
+    public float? Rain { get; init; }
 }
 
 /// <summary>
@@ -119,7 +122,7 @@ public static class WorldInfoPacketMapper
             CaveBackStyle3 = state.CaveBackStyles[2],
             CaveBackStyle4 = state.CaveBackStyles[3],
             TreeTopVariations = (byte[])state.TreeTopVariations.Clone(),
-            Rain = state.NetworkRain,
+            Rain = live.Rain ?? state.NetworkRain,
             EventInfo = Bits(
                 state.ShadowOrbSmashed,
                 state.DownedBoss1,

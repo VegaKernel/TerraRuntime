@@ -228,7 +228,7 @@ public sealed class WorldRuntime : IDisposable
             golemDownedBaseline: world.RuntimeMetadata.DownedGolemBoss,
             worldIdentity: Identity,
             chestCommands: ChestCommands);
-        WorldClock.SetWindEligiblePlayerProvider(State.HasWindEligiblePlayer);
+        WorldClock.SetWeatherEligiblePlayerProvider(State.HasWindEligiblePlayer);
 
         sectionCacheRebuild = new SectionCacheRebuildPipeline(
             world,
@@ -265,7 +265,10 @@ public sealed class WorldRuntime : IDisposable
                         liveMoonPhase,
                         WorldClock.BloodMoonActive,
                         WorldClock.SlimeRainActive)
-                    { WindSpeedTarget = WorldClock.WindSpeedTarget };
+                    {
+                        WindSpeedTarget = WorldClock.WindSpeedTarget,
+                        Rain = WorldClock.NetworkRain
+                    };
                     byte[] worldInfoFrame = PlayerJoinFrameEncoder.EncodeWorldInfo(
                         world,
                         new WorldInfoTransientState(
@@ -340,7 +343,10 @@ public sealed class WorldRuntime : IDisposable
             checked((byte)WorldClock.MoonPhase),
             WorldClock.BloodMoonActive,
             WorldClock.SlimeRainActive)
-        { WindSpeedTarget = WorldClock.WindSpeedTarget };
+        {
+            WindSpeedTarget = WorldClock.WindSpeedTarget,
+            Rain = WorldClock.NetworkRain
+        };
         var transient = new WorldInfoTransientState(
             PumpkinMoon: false,
             SnowMoon: false,

@@ -78,7 +78,10 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     private int windCounter;
     private int extremeWindCounter;
     private bool freezeWind;
-    private Func<bool>? hasWindEligiblePlayer;
+    private readonly bool freezeRain;
+    private readonly bool cloudBackgroundActive;
+    private readonly byte cloudCount;
+    private Func<bool>? hasWeatherEligiblePlayer;
 
     public RuntimeWorldClock(
         double time,
@@ -96,7 +99,12 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         IRuntimeWeatherRandom1458? weatherRandom = null,
         IRuntimeWindCounterRandom1458? windCounterRandom = null,
         int windCounter = -1,
-        int extremeWindCounter = -1)
+        int extremeWindCounter = -1,
+        bool freezeRain = false,
+        bool raining = false,
+        int rainTime = 0,
+        bool cloudBackgroundActive = false,
+        byte cloudCount = 0)
     {
         if (!double.IsFinite(time) || time < 0d)
             throw new ArgumentOutOfRangeException(nameof(time));
@@ -113,6 +121,7 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
             throw new ArgumentOutOfRangeException(nameof(windCounter));
         if (extremeWindCounter < -1)
             throw new ArgumentOutOfRangeException(nameof(extremeWindCounter));
+        ArgumentOutOfRangeException.ThrowIfNegative(rainTime);
 
         Time = time;
         DayTime = dayTime;
@@ -125,6 +134,11 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         WindSpeedTarget = windSpeedCurrent;
         MaxRain = maxRain;
         this.freezeWind = freezeWind;
+        this.freezeRain = freezeRain;
+        this.cloudBackgroundActive = cloudBackgroundActive;
+        this.cloudCount = cloudCount;
+        Raining = raining;
+        RainTime = rainTime;
         _weatherRandom = weatherRandom ?? new SystemRuntimeWeatherRandom1458();
         _windCounterRandom = windCounterRandom ?? new SystemRuntimeWindCounterRandom1458();
         this.windCounter = windCounter;
@@ -163,7 +177,15 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     public float WindSpeedTarget { get; private set; }
 
     /// <summary>Source <c>Main.maxRaining</c>, which scales the current-wind easing target.</summary>
-    public float MaxRain { get; }
+    public float MaxRain { get; private set; }
+
+    /// <summary>Source <c>Main.raining</c>; packet 7 transmits its strength as zero while false.</summary>
+    public bool Raining { get; private set; }
+
+    /// <summary>Source <c>Main.rainTime</c>, in ordinary world-time units.</summary>
+    public int RainTime { get; private set; }
+
+    public float NetworkRain => Raining ? MaxRain : 0f;
 
     /// <summary>Applies a source-owned weather target before the per-tick current-wind easing.</summary>
     public void SetWindSpeedTarget(float target)
@@ -212,7 +234,12 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
             metadata.UnlockedSlimeBlueSpawn,
             metadata.WindSpeed,
             metadata.MaxRain,
-            creativePowers.FreezeWind);
+            creativePowers.FreezeWind,
+            freezeRain: creativePowers.FreezeRain,
+            raining: metadata.Raining,
+            rainTime: metadata.RainTime,
+            cloudBackgroundActive: metadata.CloudBackgroundActive,
+            cloudCount: metadata.CloudCount);
     }
 
     private bool worldInfoSyncRequested;
@@ -240,8 +267,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
     public void MarkSlimeBlueSpawnUnlocked() => SlimeBlueSpawnUnlocked = true;
 
-    /// <summary>Supplies the live <c>player.active &amp;&amp; statLifeMax &gt;= 120</c> source predicate.</summary>
-    internal void SetWindEligiblePlayerProvider(Func<bool>? provider) => hasWindEligiblePlayer = provider;
+    /// <summary>Supplies the live <c>player.active &amp;&amp; statLifeMax &gt;= 120</c> source weather predicate.</summary>
+    internal void SetWeatherEligiblePlayerProvider(Func<bool>? provider) => hasWeatherEligiblePlayer = provider;
 
     public void ScheduleMeteor() => MeteorSpawnPending = true;
 
@@ -280,6 +307,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
                 SlimeRainTime = 0d;
         }
 
+        TickRain(dayRate);
+
         Time += dayRate;
 
         if (!DayTime)
@@ -315,7 +344,7 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
         if (--windCounter <= 0)
         {
-            bool hasEligiblePlayer = hasWindEligiblePlayer?.Invoke() ?? false;
+            bool hasEligiblePlayer = hasWeatherEligiblePlayer?.Invoke() ?? false;
             float priorDirection = WindSpeedTarget < 0f ? -1f : 1f;
             if (_weatherRandom.NextInt32(0, 4) == 0)
                 WindSpeedTarget += _weatherRandom.NextInt32(-25, 26) * .001f;
@@ -381,6 +410,96 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         windCounter = _windCounterRandom.NextInt32(900, 2_701);
         if (resetExtreme)
             extremeWindCounter = _windCounterRandom.NextInt32(10, 31);
+    }
+
+    private void TickRain(int dayRate)
+    {
+        if (freezeRain)
+            return;
+
+        float priorMaxRain = MaxRain;
+        if (Raining)
+        {
+            RainTime = Math.Max(0, RainTime - dayRate);
+            if (RainTime == 0)
+                StopRain();
+            else if (dayRate > 0 && _weatherRandom.NextInt32(0, 2 * (86_400 / dayRate / 24)) == 0)
+                ChangeRain();
+        }
+        else if (!SlimeRainActive && dayRate > 0 && (hasWeatherEligiblePlayer?.Invoke() ?? false))
+        {
+            int normalizedDayLength = 86_400 / dayRate;
+            if (_weatherRandom.NextInt32(0, checked((int)(normalizedDayLength * 5.75d))) == 0 ||
+                (cloudBackgroundActive && _weatherRandom.NextInt32(0, checked((int)(normalizedDayLength * 4.25d))) == 0))
+            {
+                StartRain();
+            }
+        }
+
+        if (MaxRain != priorMaxRain)
+            RequestWorldInfoSync();
+    }
+
+    private void StartRain()
+    {
+        int dayLength = 86_400;
+        int hourLength = dayLength / 24;
+        int duration = _weatherRandom.NextInt32(hourLength * 8, dayLength);
+        if (_weatherRandom.NextInt32(0, 3) == 0)
+            duration += _weatherRandom.NextInt32(0, hourLength);
+        if (_weatherRandom.NextInt32(0, 4) == 0)
+            duration += _weatherRandom.NextInt32(0, hourLength * 2);
+        if (_weatherRandom.NextInt32(0, 5) == 0)
+            duration += _weatherRandom.NextInt32(0, hourLength * 2);
+        if (_weatherRandom.NextInt32(0, 6) == 0)
+            duration += _weatherRandom.NextInt32(0, hourLength * 3);
+        if (_weatherRandom.NextInt32(0, 7) == 0)
+            duration += _weatherRandom.NextInt32(0, hourLength * 4);
+        if (_weatherRandom.NextInt32(0, 8) == 0)
+            duration += _weatherRandom.NextInt32(0, hourLength * 5);
+
+        float multiplier = 1f;
+        if (_weatherRandom.NextInt32(0, 2) == 0)
+            multiplier += .05f;
+        if (_weatherRandom.NextInt32(0, 3) == 0)
+            multiplier += .1f;
+        if (_weatherRandom.NextInt32(0, 4) == 0)
+            multiplier += .15f;
+        if (_weatherRandom.NextInt32(0, 5) == 0)
+            multiplier += .2f;
+
+        RainTime = checked((int)(duration * multiplier));
+        ChangeRain();
+        Raining = true;
+    }
+
+    private void StopRain()
+    {
+        RainTime = 0;
+        Raining = false;
+        MaxRain = 0f;
+    }
+
+    private void ChangeRain()
+    {
+        if (cloudBackgroundActive || cloudCount > 150)
+        {
+            MaxRain = (_weatherRandom.NextInt32(0, 3) != 0
+                ? _weatherRandom.NextInt32(40, 91)
+                : _weatherRandom.NextInt32(20, 91)) * .01f;
+        }
+        else if (cloudCount > 100)
+        {
+            MaxRain = (_weatherRandom.NextInt32(0, 3) != 0
+                ? _weatherRandom.NextInt32(20, 61)
+                : _weatherRandom.NextInt32(10, 71)) * .01f;
+        }
+        else
+        {
+            MaxRain = (_weatherRandom.NextInt32(0, 3) != 0
+                ? _weatherRandom.NextInt32(5, 31)
+                : _weatherRandom.NextInt32(5, 41)) * .01f;
+        }
     }
 
     private void PublishCommittedState() =>

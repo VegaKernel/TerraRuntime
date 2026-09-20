@@ -22,6 +22,24 @@ public sealed class RuntimeWorldCheckpointSnapshotSourceTests
     }
 
     [Fact]
+    public void Snapshot_retains_live_rain_for_the_world_header()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(20, 20));
+        var clock = new RuntimeWorldClock(0d, true, VanillaMoonPhase.Full, 0d, 1,
+            maxRain: .35f, raining: true, rainTime: 9_000);
+        var source = new RuntimeWorldCheckpointSnapshotSource(tiles, new RuntimeChestStore([]), 4, worldClock: clock);
+
+        while (!source.IsTileShadowReady)
+            source.CaptureTileBootstrap(4);
+
+        Assert.True(source.TryCapture(out RuntimeWorldCheckpointSnapshot? snapshot));
+        RuntimeWorldClockSaveState saved = Assert.IsType<RuntimeWorldClockSaveState>(snapshot!.Clock);
+        Assert.True(saved.Raining);
+        Assert.Equal(9_000, saved.RainTime);
+        Assert.Equal(.35f, saved.MaxRain);
+    }
+
+    [Fact]
     public void Snapshot_waits_for_tile_bootstrap_and_detaches_tiles_and_chests_from_later_mutation()
     {
         var dimensions = new WorldDimensions(201, 150);

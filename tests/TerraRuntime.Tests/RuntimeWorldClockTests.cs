@@ -71,7 +71,7 @@ public sealed class RuntimeWorldClockTests
         var counter = new SequenceWindCounterRandom(900);
         var clock = new RuntimeWorldClock(0d, true, default, 0d, dayRate: 1,
             windSpeedCurrent: .34f, windCounter: 1, extremeWindCounter: 2,
-            weatherRandom: weather, windCounterRandom: counter);
+            weatherRandom: weather, windCounterRandom: counter, freezeRain: true);
         clock.SetWindSpeedTarget(.34f);
 
         clock.Tick();
@@ -82,8 +82,8 @@ public sealed class RuntimeWorldClockTests
         var eligible = new RuntimeWorldClock(0d, true, default, 0d, dayRate: 1,
             windSpeedCurrent: .34f, windCounter: 1, extremeWindCounter: 2,
             weatherRandom: new SequenceWeatherRandom(3, 1, 100, 0),
-            windCounterRandom: new SequenceWindCounterRandom(900));
-        eligible.SetWindEligiblePlayerProvider(static () => true);
+            windCounterRandom: new SequenceWindCounterRandom(900), freezeRain: true);
+        eligible.SetWeatherEligiblePlayerProvider(static () => true);
         eligible.SetWindSpeedTarget(.34f);
         eligible.Tick();
 
@@ -105,14 +105,68 @@ public sealed class RuntimeWorldClockTests
     }
 
     [Fact]
+    public void Eligible_players_start_source_timed_rain_and_publish_its_packet_strength()
+    {
+        var clock = new RuntimeWorldClock(0d, true, default, 0d, dayRate: 1,
+            windCounter: 100, extremeWindCounter: 100,
+            weatherRandom: new SequenceWeatherRandom(
+                0, 28_800,
+                1, 1, 1, 1, 1, 1,
+                1, 1, 1, 1,
+                1, 20));
+        clock.SetWeatherEligiblePlayerProvider(static () => true);
+
+        clock.Tick();
+
+        Assert.True(clock.Raining);
+        Assert.Equal(28_800, clock.RainTime);
+        Assert.Equal(.2f, clock.MaxRain, 6);
+        Assert.Equal(.2f, clock.NetworkRain, 6);
+        Assert.True(clock.ConsumeWorldInfoSyncRequest());
+    }
+
+    [Fact]
+    public void Source_rain_countdown_stops_and_clears_packet_strength_at_zero()
+    {
+        var clock = new RuntimeWorldClock(0d, true, default, 0d, dayRate: 1,
+            maxRain: .4f, raining: true, rainTime: 1,
+            windCounter: 100, extremeWindCounter: 100,
+            weatherRandom: new ThrowingWeatherRandom());
+
+        clock.Tick();
+
+        Assert.False(clock.Raining);
+        Assert.Equal(0, clock.RainTime);
+        Assert.Equal(0f, clock.MaxRain);
+        Assert.Equal(0f, clock.NetworkRain);
+        Assert.True(clock.ConsumeWorldInfoSyncRequest());
+    }
+
+    [Fact]
+    public void Freeze_rain_preserves_the_active_interval_without_consuming_weather_randomness()
+    {
+        var clock = new RuntimeWorldClock(0d, true, default, 0d, dayRate: 2,
+            maxRain: .4f, raining: true, rainTime: 20, freezeRain: true,
+            windCounter: 100, extremeWindCounter: 100,
+            weatherRandom: new ThrowingWeatherRandom());
+
+        clock.Tick();
+
+        Assert.True(clock.Raining);
+        Assert.Equal(20, clock.RainTime);
+        Assert.Equal(.4f, clock.MaxRain);
+        Assert.False(clock.ConsumeWorldInfoSyncRequest());
+    }
+
+    [Fact]
     public void Extreme_wind_branch_uses_source_target_ranges_and_counter_bonuses()
     {
         var counters = new SequenceWindCounterRandom(900, 10);
         var clock = new RuntimeWorldClock(0d, true, default, 0d, dayRate: 1,
             windSpeedCurrent: .1f, windCounter: 1, extremeWindCounter: 1,
             weatherRandom: new SequenceWeatherRandom(0, 0, 14, 14, 800, 5, 10, 15, 0),
-            windCounterRandom: counters);
-        clock.SetWindEligiblePlayerProvider(static () => true);
+            windCounterRandom: counters, freezeRain: true);
+        clock.SetWeatherEligiblePlayerProvider(static () => true);
         clock.SetWindSpeedTarget(.1f);
 
         clock.Tick();

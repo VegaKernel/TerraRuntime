@@ -77,6 +77,8 @@ public sealed class WorldFileRuntimeMetadata
     public double SlimeRainTime { get; init; }
     public byte SundialCooldown { get; init; }
     public bool Raining { get; init; }
+    /// <summary>Source <c>Main.rainTime</c>, retained so an in-progress weather interval survives reload.</summary>
+    public int RainTime { get; init; }
     public float MaxRain { get; init; }
     public WorldOreTiers OreTiers { get; init; }
 

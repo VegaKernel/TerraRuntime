@@ -328,6 +328,9 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
                 (byte)clock.MoonPhase,
                 clock.SlimeRainTime,
                 clock.WindSpeedTarget,
+                clock.Raining,
+                clock.RainTime,
+                clock.MaxRain,
                 out patchedHeader);
             if (patchResult != WorldFileClockHeaderPatchResult.Patched)
                 throw new InvalidDataException($"Authoritative world clock header patch failed: {patchResult}.");
