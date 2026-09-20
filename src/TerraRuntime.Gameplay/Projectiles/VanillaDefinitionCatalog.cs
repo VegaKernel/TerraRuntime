@@ -16,6 +16,7 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId BouncyBall = new(14);
     public static readonly ProjectileAiStyleId Bomb = new(16);
     public static readonly ProjectileAiStyleId EyeFire = new(23);
+    public static readonly ProjectileAiStyleId RollingBoulder = new(25);
     public static readonly ProjectileAiStyleId HeldProjectile = new(75);
     public static readonly ProjectileAiStyleId Sharknado = new(64);
     public static readonly ProjectileAiStyleId SharknadoBolt = new(65);
@@ -352,6 +353,18 @@ public static class VanillaDefinitionCatalog
         CanCutTiles: true,
         CollisionWidth: 16,
         CollisionHeight: 16);
+
+    // Projectile.SetDefaults type 1021: the Good World Moon Lord boulder is an aiStyle-25, 31x31 hostile body.
+    // Its rolling/collision and SwitchTiles behavior remains outside this definition-only spawn slice.
+    private static readonly VanillaProjectileDefinition MoonBoulderDefinition = new(
+        Width: 31,
+        Height: 31,
+        AiStyle: VanillaProjectileAiStyles.RollingBoulder,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: false,
+        CollisionWidth: 31,
+        CollisionHeight: 31);
 
     private static readonly VanillaProjectileDefinition HallowBossRainbowStreakDefinition = new(
         Width: 30,
@@ -897,6 +910,12 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.MoonLeech)
         {
             definition = MoonLeechDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.MoonBoulder)
+        {
+            definition = MoonBoulderDefinition;
             return true;
         }
 

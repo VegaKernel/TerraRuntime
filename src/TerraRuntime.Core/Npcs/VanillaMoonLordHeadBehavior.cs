@@ -130,12 +130,38 @@ internal static class VanillaMoonLordHeadBehavior
     }
 
     internal static int PlanProjectiles(in NpcSnapshot source, in NpcStateUpdate proposed,
-        VanillaNpcBehaviorContext context, Span<NpcAiProjectileIntent> destination)
+        VanillaNpcBehaviorContext context, IVanillaNpcSolidTileEnvironment? solidTiles,
+        IVanillaNpcRandom random, Span<NpcAiProjectileIntent> destination)
     {
         if (proposed.Ai.Ai0 < 0f) return 0;
         int elapsed = Phase(proposed.Ai.Ai1, out int state, out int duration);
         float cx = proposed.PositionX + 19f, cy = proposed.PositionY + 28f;
         var player = Player(context, proposed.Target);
+        // AI_079's final Deathray wind-down emits a boulder burst only in getGoodWorld. The local scale
+        // crosses below zero once per attack cycle; testing the incoming value preserves that strict source gate.
+        if (state == 1 && elapsed >= duration - 15 && source.Simulation.LocalAi.Ai1 < .07f &&
+            context.GoodWorld && solidTiles is not null)
+        {
+            const int burstCount = 30;
+            if (destination.Length < burstCount)
+                return destination.Length + 1;
+
+            int tileX = (int)(cx / 16f);
+            int tileY = (int)(cy / 16f);
+            int count = 0;
+            for (int i = 0; i < burstCount; i++)
+            {
+                // Source asks WorldGen.SolidTile inside the loop. Keep that order so no RNG draw occurs for
+                // any solid observation, including a world mutation performed by an intervening extension.
+                if (solidTiles.IsSolidTile(tileX, tileY))
+                    continue;
+                destination[count++] = Projectile(VanillaProjectileIds.MoonBoulder, cx, cy,
+                    random.NextInt32(-1599, 1600) * .01f,
+                    random.NextInt32(-1599, 1) * .01f,
+                    70, default) with { KnockBack = 10f };
+            }
+            return count;
+        }
         if (state == 1 && elapsed == 180)
         {
             if (destination.IsEmpty) return 1;

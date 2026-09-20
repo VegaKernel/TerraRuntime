@@ -151,6 +151,11 @@ def main() -> None:
     require(head, r"(?:new Vector2\(|\.ctor\()0f, 216f\)", "head leech mouth offset")
     require(head, r"456, 0, 0f, Main.myPlayer, whoAmI \+ 1,", "head addressed leech spawn")
     require(head, r"localAI\[2\] > 14f", "head mouth animation bound")
+    boulders = head[head.index("localAI[1] -= 0.07f;"):head.index("else if (ai[0] == 2f)")]
+    require(boulders, r"Main\.netMode != 1 && Main\.getGoodWorld", "head Good World boulder gate")
+    require(boulders, r"for \(int k = 0; k < 30; k\+\+\)", "head Good World boulder count")
+    require(boulders, r"!WorldGen\.SolidTile\(\(int\)\(base\.Center\.X / 16f\), \(int\)\(base\.Center\.Y / 16f\)\)", "head boulder solid-tile gate")
+    require(boulders, r"Main\.rand\.Next\(-1599, 1600\).*?Main\.rand\.Next\(-1599, 1\).*?1021, 70, 10f", "head boulder velocity and combat values")
 
     print(json.dumps({"reference": "TerrariaServer 1.4.5.8", "sha256": digest,
                       "cleanup_tick": 60, "terminal_tick": 600, "orphan_families": [78, 79, 81], "leech_style": 82}))

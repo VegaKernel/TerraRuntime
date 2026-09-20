@@ -2587,7 +2587,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (source.TypeIdentity == VanillaNpcIds.MoonLordHand)
             return VanillaMoonLordHandBehavior.PlanProjectiles(in source, in proposed, destination, _random);
         if (source.TypeIdentity == VanillaNpcIds.MoonLordHead)
-            return VanillaMoonLordHeadBehavior.PlanProjectiles(in source, in proposed, _context, destination);
+            return VanillaMoonLordHeadBehavior.PlanProjectiles(in source, in proposed, _context,
+                _projectileEnvironment as IVanillaNpcSolidTileEnvironment, _random, destination);
         if (proposed.Target >= byte.MaxValue || !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || !target.Active || target.Dead)
             return 0;
         float cx = source.PositionX + 30f, cy = source.PositionY + 30f;

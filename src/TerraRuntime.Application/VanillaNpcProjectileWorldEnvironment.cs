@@ -4,7 +4,7 @@ using TerraRuntime.World;
 namespace TerraRuntime.Application;
 
 /// <summary>Production tile LOS adapter for source-backed ordinary NPC projectile attacks.</summary>
-internal sealed class VanillaNpcProjectileWorldEnvironment : IVanillaNpcProjectileEnvironment
+internal sealed class VanillaNpcProjectileWorldEnvironment : IVanillaNpcProjectileEnvironment, IVanillaNpcSolidTileEnvironment
 {
     private readonly WorldTileStore tiles;
 
@@ -30,4 +30,19 @@ internal sealed class VanillaNpcProjectileWorldEnvironment : IVanillaNpcProjecti
             targetPositionY,
             targetWidth,
             targetHeight);
+    public bool IsSolidTile(int tileX, int tileY)
+    {
+        if ((uint)tileX >= (uint)tiles.Dimensions.WidthTiles ||
+            (uint)tileY >= (uint)tiles.Dimensions.HeightTiles)
+        {
+            return false;
+        }
+
+        WorldTile tile = tiles.Get(tileX, tileY);
+        return tile.IsActive &&
+               !tile.IsActuated &&
+               tile.Shape == 0 &&
+               VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+               !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
+    }
 }

@@ -19,6 +19,12 @@ public interface IVanillaNpcProjectileEnvironment
         int targetHeight);
 }
 
+/// <summary>WorldGen.SolidTile-compatible tile fact required by Moon Lord's Good World boulder burst.</summary>
+public interface IVanillaNpcSolidTileEnvironment
+{
+    bool IsSolidTile(int tileX, int tileY);
+}
+
 /// <summary>
 /// TerrariaServer 1.4.5.8 NPC.AI_GlobalFiringDistanceCheck. The source uses Main.MaxWorldViewSize 1920x1200,
 /// centers that rectangle on the target Point, then inflates it by -50 pixels on both axes. Rectangle right and

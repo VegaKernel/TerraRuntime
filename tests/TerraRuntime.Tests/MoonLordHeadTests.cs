@@ -176,6 +176,50 @@ public sealed class MoonLordHeadTests
         Assert.Equal(rows[^1].GetProperty("nextRandom").GetInt32(), random.Next());
     }
 
+    [Fact]
+    public void Good_world_deathray_wind_down_spawns_source_boulders_without_random_on_solid_head_tile()
+    {
+        var clearRandom = new BoulderRandom();
+        var clear = RunGoodWorldBoulderBurst(solid: false, clearRandom, out int clearTileQueries);
+        Assert.Equal(30, clear.Length);
+        Assert.Equal(60, clearRandom.Draws);
+        Assert.Equal(30, clearTileQueries);
+        foreach (ProjectileSnapshot boulder in clear)
+        {
+            Assert.Equal(VanillaProjectileIds.MoonBoulder, boulder.Type);
+            Assert.Equal(1007.5f, boulder.PositionX);
+            Assert.Equal(617.5f, boulder.PositionY);
+            Assert.Equal(-15.99f, boulder.VelocityX, 2);
+            Assert.Equal(-15.99f, boulder.VelocityY, 2);
+            Assert.Equal(70, boulder.Damage);
+            Assert.Equal(10f, boulder.KnockBack);
+        }
+
+        var solidRandom = new BoulderRandom();
+        var solid = RunGoodWorldBoulderBurst(solid: true, solidRandom, out int solidTileQueries);
+        Assert.Empty(solid);
+        Assert.Equal(0, solidRandom.Draws);
+        Assert.Equal(30, solidTileQueries);
+    }
+
+    private static ProjectileSnapshot[] RunGoodWorldBoulderBurst(bool solid, BoulderRandom random, out int tileQueries)
+    {
+        var npcs = new RuntimeNpcStore();
+        Spawn(npcs, VanillaNpcIds.MoonLordCore, 1000, 1000, 0, 0, default, new NpcAiState(0, 0, 0, 1), 0);
+        Spawn(npcs, VanillaNpcIds.MoonLordHead, 900, 900, 0, 0,
+            new NpcAiState(0, 1198, 0, 0), new NpcAiState(0, .06f, 0, 0), 0);
+        var environment = new BoulderWorldEnvironment(solid);
+        var vanilla = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: random);
+        vanilla.SetWorldConditions(dayTime: false, slimeRainActive: false, goodWorld: true);
+        vanilla.SetProjectileEnvironment(environment);
+        var projectiles = new RuntimeProjectileStore();
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new HeadOnly(vanilla)).Applied);
+        tileQueries = environment.TileQueries;
+        var result = new ProjectileSnapshot[projectiles.ActiveCount];
+        Assert.Equal(result.Length, projectiles.CopyActive(result));
+        return result;
+    }
+
     private static NpcSnapshot Spawn(RuntimeNpcStore npcs, NpcTypeId type, float x, float y,
         float vx, float vy, NpcAiState ai, NpcAiState local, ushort target, byte? slot = null)
     {
@@ -203,6 +247,34 @@ public sealed class MoonLordHeadTests
             Convert.ToHexStringLower(SHA256.HashData(bytes.ToArray())));
         using JsonDocument json = JsonDocument.Parse(bytes.ToArray());
         return json.RootElement.EnumerateArray().Select(row => row.Clone()).ToArray();
+    }
+
+    private sealed class BoulderRandom : IVanillaNpcRandom
+    {
+        public int Draws { get; private set; }
+
+        public int NextInt32(int inclusiveMin, int exclusiveMax)
+        {
+            Assert.True((inclusiveMin, exclusiveMax) is (-1599, 1600) or (-1599, 1));
+            Draws++;
+            return inclusiveMin;
+        }
+    }
+
+    private sealed class BoulderWorldEnvironment(bool solid) : IVanillaNpcProjectileEnvironment, IVanillaNpcSolidTileEnvironment
+    {
+        public int TileQueries { get; private set; }
+
+        public bool IsSolidTile(int tileX, int tileY)
+        {
+            Assert.Equal(63, tileX);
+            Assert.Equal(39, tileY);
+            TileQueries++;
+            return solid;
+        }
+
+        public bool CanHit(float sourcePositionX, float sourcePositionY, int sourceWidth, int sourceHeight,
+            float targetPositionX, float targetPositionY, int targetWidth, int targetHeight) => true;
     }
 
     private sealed class ReferenceRandom(int seed) : IVanillaNpcRandom

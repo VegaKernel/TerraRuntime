@@ -101,7 +101,11 @@ The head now creates Deathray, Bolt and individually addressed Moon Leech projec
 
 An additional regression retains the same head, local state, shared random stream and created projectiles over two full attack cycles ($2400\,\text{ticks}$). Every update matches an independent original-server trace, including exact projectile state and the final random draw. The expanded fixture SHA256 is `405a45608d1796c0b3e8be07d9d04433399dcd0ec102893967bbd12a57cd6062`. The trace runs head AI with a stationary core and player; it does not advance projectile AI or outer NPC physics.
 
-Full continuous encounter behavior, Good World boulders, Moon Leech AI/buff/healing-blob interactions, all multiplayer targeting arrangements, retired visual rotation and True Eye attacks remain open.
+Full continuous encounter behavior, Moon Leech AI/buff/healing-blob interactions, all multiplayer targeting arrangements, retired visual rotation and broader True Eye traces remain open.
+
+## Good World head boulder burst
+
+AI_079 now creates 30 type-`1021` boulders at the final Deathray close when the head-center tile is not solid. Each starts at the exact 31x31-centered head position with damage 70 and knockback 10. The solid-tile query remains inside all 30 source iterations, so a solid tile consumes no RNG. MoonLordHeadTests covers clear and solid tile paths. Later aiStyle-25 rolling, collision and SwitchTiles behavior remain open.
 
 ## True Eye hover, Bolt and sphere correction
 
