@@ -531,8 +531,8 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
             }
             float accel = state is 8 or 9 ? 1f : .5f;
             float speed = state is 8 or 9 ? 20f : 12f;
-            float offsetX = state == 8 ? 550f : state == 9 ? -550f : state == 4 ? 150f : state == 2 ? -150f : 0f;
-            float offsetY = state is 4 or 2 ? -250f : state is 5 or 6 or 7 or 11 ? -350f : -250f;
+            float offsetX = state == 8 ? 550f : state == 9 ? -550f : state == 6 ? -80f : state == 2 ? -150f : 0f;
+            float offsetY = state == 2 ? -250f : state == 6 ? -500f : state is 4 or 5 or 7 or 11 ? -350f : -250f;
             if (state is not 10 and not 13)
                 LateBossMath.FlyToward(cx, cy, player.CenterX + offsetX, player.CenterY + offsetY, speed, accel, ref vx, ref vy);
             if (state == 10) { vx *= .95f; vy *= .95f; }

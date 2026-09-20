@@ -281,6 +281,8 @@ State 11 direct lances reject a primary target beyond $2400\,\text{pixels}$. Sta
 
 Empress states 4, 5, 6 and 7 retain their source total durations: $120$, $72$, $300$ and Classic/Expert $260/280$ ticks before phase/Expert reductions.
 
+Empress movement state 4 uses the source $(0,-350)$ target offset; state 6 uses $(-80,-500)$.
+
 ## 16. Trusted-host NPC actors
 
 `INpcActorOperations` lets a trusted host acquire a lease over an existing runtime NPC and submit semantic `NpcActorIntent`.
