@@ -708,6 +708,18 @@ public sealed class LateHardmodeBossParityTests
     }
 
     [Fact]
+    public void Empress_attack_prep_uses_source_dash_to_smoothing()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(1f, 0f, 0f, 0f), life: 70_000);
+
+        Assert.True(stepper.TryStepState(in empress, out NpcStateUpdate next));
+        Assert.Equal(24.026f, next.VelocityX, precision: 3);
+        Assert.Equal(-10.297f, next.VelocityY, precision: 3);
+        Assert.Equal(1f, next.Ai.Ai1);
+    }
+
+    [Fact]
     public void Empress_rainbow_streak_uses_source_random_direction()
     {
         var stepper = CreateStepper(dayTime: false);

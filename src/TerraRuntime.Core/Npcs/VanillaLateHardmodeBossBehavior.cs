@@ -425,8 +425,15 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
         {
             float prep = phaseTwo ? 20f : 45f;
             if (context.GoodWorld) prep *= .5f;
-            if (timer <= 10f) LateBossMath.DashToward(cx, cy, player.CenterX, player.CenterY, 24f, ref vx, ref vy);
-            else { vx *= .92f; vy *= .92f; }
+            if (timer <= 10f)
+                DashToSourcePosition(cx, cy, player.CenterX, player.CenterY, ref vx, ref vy);
+            if (timer > 10f && MathF.Sqrt(vx * vx + vy * vy) > 16f)
+            {
+                vx *= .5f;
+                vy *= .5f;
+            }
+            vx *= .92f;
+            vy *= .92f;
             timer += 1f;
             if (timer >= prep)
             {
@@ -542,6 +549,31 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
         };
         next = LateBossMath.Build(in npc, vx, vy, target, in ai, in sim);
         return true;
+    }
+
+    private static void DashToSourcePosition(float centerX, float centerY, float targetX, float targetY, ref float velocityX, ref float velocityY)
+    {
+        float dx = targetX - centerX;
+        float dy = targetY - 300f - centerY;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        if (distance > 200f)
+        {
+            float scale = (distance - 100f) / distance;
+            dx *= scale;
+            dy *= scale;
+            distance -= 100f;
+        }
+        if (distance <= .001f)
+        {
+            velocityX = 0f;
+            velocityY = 0f;
+            return;
+        }
+        float baseSpeed = MathF.Min(distance, 18f);
+        float lerp = Math.Clamp((distance - 100f) / 500f, 0f, 1f);
+        float speed = baseSpeed + (distance / 6f - baseSpeed) * lerp;
+        velocityX = dx / distance * speed;
+        velocityY = dy / distance * speed;
     }
 
     private static int SelectEmpressAttack(int cycle, bool phaseTwo, bool expert)
