@@ -38,6 +38,26 @@ public sealed partial class PrimeRangedAiTests
         Assert.False(stepper.RequiresForcedUpdate(in before, in proposed));
     }
 
+    [Theory]
+    [InlineData(128, 1f)]
+    [InlineData(131, 0f)]
+    public void TargetClosest_delta_forces_ranged_arm_update_unless_colliding(int type, float phase)
+    {
+        var (_, _, stepper, arm, _) = Setup(BaseRows.First(row => row.GetProperty("type").GetInt32() == type));
+        var before = arm with
+        {
+            VelocityX = 5f, VelocityY = 0f, Target = 0,
+            Ai = arm.Ai with { Ai2 = phase, Ai3 = 0f },
+            Simulation = arm.Simulation with { DirectionX = 1, DirectionY = 1, CollideX = false, CollideY = false }
+        };
+        var proposed = new NpcStateUpdate(before.Type, before.NetId, before.PositionX, before.PositionY, before.VelocityX,
+            before.VelocityY, 1, before.Ai, before.Simulation with { DirectionX = -1, DirectionY = -1 });
+
+        Assert.True(stepper.RequiresForcedUpdate(in before, in proposed));
+        before = before with { Simulation = before.Simulation with { CollideX = true } };
+        Assert.False(stepper.RequiresForcedUpdate(in before, in proposed));
+    }
+
     [Fact]
     public void Accepted_cannon_and_laser_hover_boundaries_publish_forced_updates()
     {

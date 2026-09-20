@@ -150,6 +150,30 @@ public sealed class PrimePhaseTests
     }
 
     [Fact]
+    public void TargetClosest_predicate_forces_head_update_unless_colliding()
+    {
+        var store = new RuntimeNpcStore();
+        store.SetVanillaSpawnContextSource(() => new VanillaNpcSpawnContext(1, 1, false));
+        Assert.True(store.TrySpawnIntent(new NpcAiSpawnIntent(VanillaNpcIds.SkeletronPrime, 1000, 1000, 0, 0, 0)
+        {
+            InitialAi = new NpcAiState(1f, 0f, 0f, 0f)
+        }, out var head));
+        Assert.True(store.TryGet(head.Handle, out var before));
+        before = before with
+        {
+            Target = 0,
+            Ai = new NpcAiState(1f, 0f, 0f, 0f),
+            Simulation = before.Simulation with { DirectionX = 1, DirectionY = 1, CollideX = false, CollideY = false }
+        };
+        var proposed = new NpcStateUpdate(before.Type, before.NetId, before.PositionX, before.PositionY, before.VelocityX,
+            before.VelocityY, 1, before.Ai, before.Simulation with { DirectionX = -1, DirectionY = -1 });
+        var ai = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        Assert.True(ai.RequiresForcedUpdate(in before, in proposed));
+        before = before with { Simulation = before.Simulation with { CollideX = true } };
+        Assert.False(ai.RequiresForcedUpdate(in before, in proposed));
+    }
+
+    [Fact]
     public void Initial_targeting_sets_charge_direction_and_rotation_before_velocity_changes()
     {
         var store = new RuntimeNpcStore();

@@ -15,19 +15,22 @@ internal sealed class VanillaPrimeRangedBehavior : IVanillaNpcBehaviorStrategy
     internal static bool RequiresImmediateSync(in NpcSnapshot before, in NpcStateUpdate proposed)
     {
         if (proposed.Type != before.Type) return false;
+        if (before.TypeIdentity != VanillaNpcIds.PrimeCannon && before.TypeIdentity != VanillaNpcIds.PrimeLaser) return false;
         bool cannon = before.TypeIdentity == VanillaNpcIds.PrimeCannon;
-        if (!cannon && before.TypeIdentity != VanillaNpcIds.PrimeLaser) return false;
 
         float phase = before.Ai.Ai2;
         if (cannon)
         {
             return (phase == 0f && before.Ai.Ai3 >= 1099f && proposed.Ai.Ai2 == 1f && proposed.Ai.Ai3 == 0f) ||
-                (phase == 1f && before.Ai.Ai3 >= 299f && proposed.Ai.Ai2 == 0f && proposed.Ai.Ai3 == 0f);
+                (phase == 1f && before.Ai.Ai3 >= 299f && proposed.Ai.Ai2 == 0f && proposed.Ai.Ai3 == 0f) ||
+                (phase == 1f && VanillaSkeletronPrimeNpcBehaviorStrategy.RequiresTargetTrackingSync(in before, in proposed));
         }
 
         return ((phase == 0f || phase == 3f) && before.Ai.Ai3 >= 799f &&
                 proposed.Ai.Ai2 == phase + 1f && proposed.Ai.Ai3 == 0f) ||
-            (phase == 1f && before.Ai.Ai3 >= 199f && proposed.Ai.Ai2 == 0f && proposed.Ai.Ai3 == 0f);
+            (phase == 1f && before.Ai.Ai3 >= 199f && proposed.Ai.Ai2 == 0f && proposed.Ai.Ai3 == 0f) ||
+            ((phase == 0f || phase == 3f || phase == 1f) &&
+             VanillaSkeletronPrimeNpcBehaviorStrategy.RequiresTargetTrackingSync(in before, in proposed));
     }
 
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,

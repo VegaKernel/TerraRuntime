@@ -41,6 +41,26 @@ public sealed partial class PrimeMeleeAiTests
         Assert.False(stepper.RequiresForcedUpdate(in before, in proposed));
     }
 
+    [Theory]
+    [InlineData(129)]
+    [InlineData(130)]
+    public void TargetClosest_delta_forces_melee_arm_update_unless_colliding(int type)
+    {
+        var (_, _, stepper, arm, _) = Setup(Rows.First(row => row.GetProperty("type").GetInt32() == type));
+        var before = arm with
+        {
+            VelocityX = 5f, VelocityY = 0f, Target = 0,
+            Ai = arm.Ai with { Ai2 = 0f, Ai3 = 0f },
+            Simulation = arm.Simulation with { DirectionX = 1, DirectionY = 1, CollideX = false, CollideY = false }
+        };
+        var proposed = new NpcStateUpdate(before.Type, before.NetId, before.PositionX, before.PositionY, before.VelocityX,
+            before.VelocityY, 1, before.Ai, before.Simulation with { DirectionX = -1, DirectionY = -1 });
+
+        Assert.True(stepper.RequiresForcedUpdate(in before, in proposed));
+        before = before with { Simulation = before.Simulation with { CollideY = true } };
+        Assert.False(stepper.RequiresForcedUpdate(in before, in proposed));
+    }
+
     [Fact]
     public void Accepted_saw_and_vice_hover_boundaries_publish_forced_updates()
     {

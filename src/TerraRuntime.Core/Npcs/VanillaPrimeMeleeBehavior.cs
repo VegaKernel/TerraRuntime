@@ -26,14 +26,18 @@ internal sealed class VanillaSkeletronPrimeLimbNpcBehaviorStrategy : IVanillaNpc
                     ((before.Ai.Ai3 >= 599f && proposed.Ai.Ai2 == 0f && proposed.Ai.Ai3 == 0f) ||
                      (before.Ai.Ai3 >= 299f && proposed.Ai.Ai2 == phase + 1f && proposed.Ai.Ai3 == 0f))) ||
                 (phase == 1f && proposed.Ai.Ai2 == 2f) ||
-                (phase == 4f && before.Ai.Ai3 >= 599f && proposed.Ai.Ai2 == 0f && proposed.Ai.Ai3 == 0f);
+                (phase == 4f && before.Ai.Ai3 >= 599f && proposed.Ai.Ai2 == 0f && proposed.Ai.Ai3 == 0f) ||
+                ((phase == 0f || phase == 3f || phase == 1f || phase == 4f) &&
+                 VanillaSkeletronPrimeNpcBehaviorStrategy.RequiresTargetTrackingSync(in before, in proposed));
         }
 
         return ((phase == 0f || phase == 3f) && before.Ai.Ai3 >= 599f && proposed.Ai.Ai3 == 0f &&
                 (proposed.Ai.Ai2 == 0f || proposed.Ai.Ai2 == phase + 1f)) ||
             (phase == 1f && proposed.Ai.Ai2 == 2f) ||
             (phase == 4f && proposed.Ai.Ai2 == 5f) ||
-            RequiresSlowViceRefresh(in before, in proposed, context);
+            RequiresSlowViceRefresh(in before, in proposed, context) ||
+            ((phase == 0f || phase == 3f || phase == 1f || phase == 4f) &&
+             VanillaSkeletronPrimeNpcBehaviorStrategy.RequiresTargetTrackingSync(in before, in proposed));
     }
 
     private static bool RequiresSlowViceRefresh(in NpcSnapshot before, in NpcStateUpdate proposed,

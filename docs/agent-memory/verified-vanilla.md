@@ -1,5 +1,9 @@
 # Verified vanilla facts
 
+## Prime `TargetClosest` replication predicate - 2026-09-21
+
+TerrariaServer `1.4.5.8` `NPC.TargetClosest` saves the old target and facing directions, applies its selected target/direction values, then writes `netUpdate` only when a target or direction changed and both `collideX` and `collideY` are false. Skeletron Prime AI `32` calls it on initialization and retained-target reacquisition; Cannon AI `35` calls it in phase one; Laser AI `36` calls it in phases zero, one and three; Saw/Vice AI `33`/`34` call it in phases zero, one, three and four. This fact scopes only those already admitted callers and does not establish generic NPC proximity streaming parity.
+
 ## Prime continuous encounter trace - 2026-09-20
 
 `NPC.UpdateNPC` against the pinned Linux and Windows x86 TerrariaServer 1.4.5.8 binaries, with a real Prime head and all four source-created arms, confirms ascending-slot same-tick child execution. The recorded 160 ticks cover the head transitions from hover counter `599` into spin and spin counter `399` back into hover. Cannon first allocates projectile `102` at phase-`0` tick `46`; Laser first allocates projectile `100` at tick `50`. The second scenario resets NPCs and `Main.rand`, while its two active projectiles remain in the world. `TargetClosest` sets the head `direction` before the phase body. AI `32` stores hover rotation from pre-steering horizontal velocity; spin, rage and despawn add `direction * 0.3f` before they set their next velocity. The captures are `.cache/prime-encounter-{linux,windows}-probe/shot-window.json`; retained expanded SHA256 values are Linux `e830ac73149e22ce55ffc2ad3f42c34ac87eb04d73ca5698160c0190ccb28131` and Windows `4164e4d9cf6f51dbbc21a32f98e3220d939951ef1d741b31088958c0e837d597`. This is continuous evidence of state, projectile creation and RNG order, not a complete encounter-parity claim.

@@ -12,10 +12,16 @@ internal sealed class VanillaSkeletronPrimeNpcBehaviorStrategy : IVanillaNpcBeha
     /// The spin exit is deliberately absent: it resumes ordinary replication cadence in the source.
     /// </summary>
     internal static bool RequiresImmediateSync(in NpcSnapshot before, in NpcStateUpdate proposed) =>
-        before.TypeIdentity == VanillaNpcIds.SkeletronPrime &&
-        proposed.Type == before.Type &&
-        before.Ai.Ai1 == 0f && proposed.Ai.Ai1 == 1f &&
-        before.Ai.Ai2 >= 599f && proposed.Ai.Ai2 == 0f;
+        before.TypeIdentity == VanillaNpcIds.SkeletronPrime && proposed.Type == before.Type &&
+        ((before.Ai.Ai1 == 0f && proposed.Ai.Ai1 == 1f && before.Ai.Ai2 >= 599f && proposed.Ai.Ai2 == 0f) ||
+         RequiresTargetTrackingSync(in before, in proposed));
+
+    /// <summary>Matches <c>TargetClosest</c>'s final <c>netUpdate</c> predicate for admitted callers.</summary>
+    internal static bool RequiresTargetTrackingSync(in NpcSnapshot before, in NpcStateUpdate proposed) =>
+        !before.Simulation.CollideX && !before.Simulation.CollideY &&
+        (before.Target != proposed.Target ||
+         before.Simulation.DirectionX != proposed.Simulation.DirectionX ||
+         before.Simulation.DirectionY != proposed.Simulation.DirectionY);
 
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
         INpcAiStateStepper inner, out NpcStateUpdate next)
