@@ -42,6 +42,52 @@ public sealed class MoonLordHandTests
     [MemberData(nameof(Retired))]
     public void Retired_state_matches_original_hand_AI(int index) => Verify(RetiredCases[index], retired: true);
 
+    [Fact]
+    public void Continuous_hand_attack_cycles_match_original_state_projectiles_and_random_stream()
+    {
+        JsonElement[] rows = ReadCases("MoonLordHandsContinuous1458", "01138e8d1c53167047314125733ad2df65e449200ba557bd90880eb69d9e1cb2");
+        var npcs = new RuntimeNpcStore();
+        Spawn(npcs, VanillaNpcIds.MoonLordCore, 1000, 1000, 0, 0, default, new NpcAiState(0, 0, 0, 1), 0);
+        NpcSnapshot hand = Spawn(npcs, VanillaNpcIds.MoonLordHand, 900, 900, 2, -3,
+            new NpcAiState(0, 0, 0, 0), new NpcAiState(.2f, .3f, 0, 0), 0);
+        var random = new ReferenceRandom(1458);
+        var vanilla = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: random);
+        vanilla.SetCandidates([new VanillaNpcTargetCandidate(0, 1510, 821, 0, true, false, false, false)]);
+        var projectiles = new RuntimeProjectileStore();
+        var executor = new RuntimeNpcAiStateExecutor(npcs, projectiles);
+        var shots = new ProjectileSnapshot[projectiles.Capacity];
+        foreach (JsonElement row in rows)
+        {
+            Assert.Equal(1, executor.Tick(new HandOnly(vanilla)).Applied);
+            Assert.True(npcs.TryGet(hand.Handle, out var actual));
+            Assert.Equal(row.GetProperty("x").GetSingle(), actual.PositionX);
+            Assert.Equal(row.GetProperty("y").GetSingle(), actual.PositionY);
+            Assert.Equal(row.GetProperty("vx").GetSingle(), actual.VelocityX);
+            Assert.Equal(row.GetProperty("vy").GetSingle(), actual.VelocityY);
+            Assert.Equal(row.GetProperty("invulnerable").GetBoolean(), actual.Simulation.DontTakeDamage);
+            Assert.Equal(row.GetProperty("nextFrame").GetDouble(), actual.Simulation.FrameCounter);
+            AssertAi(row.GetProperty("ai"), actual.Ai);
+            AssertAi(row.GetProperty("local"), actual.Simulation.LocalAi);
+            Assert.Equal(row.GetProperty("target").GetInt32(), actual.Target);
+            int count = projectiles.CopyActive(shots);
+            JsonElement expectedShots = row.GetProperty("shots");
+            Assert.Equal(expectedShots.GetArrayLength(), count);
+            for (int j = 0; j < count; j++)
+            {
+                JsonElement expected = expectedShots[j]; ProjectileSnapshot shot = shots[j];
+                Assert.Equal(expected.GetProperty("type").GetInt32(), shot.Type.Value);
+                Assert.Equal(expected.GetProperty("x").GetSingle(), shot.PositionX);
+                Assert.Equal(expected.GetProperty("y").GetSingle(), shot.PositionY);
+                Assert.Equal(expected.GetProperty("vx").GetSingle(), shot.VelocityX);
+                Assert.Equal(expected.GetProperty("vy").GetSingle(), shot.VelocityY);
+                Assert.Equal(expected.GetProperty("damage").GetInt32(), shot.Damage);
+                Assert.Equal(expected.GetProperty("ai").EnumerateArray().Select(value => value.GetSingle()),
+                    new[] { shot.Ai.Ai0, shot.Ai.Ai1, shot.Ai.Ai2 });
+            }
+        }
+        Assert.Equal(rows[^1].GetProperty("nextRandom").GetInt32(), random.Next());
+    }
+
     private static void Verify(JsonElement expected, bool release = false, bool retired = false)
     {
         var npcs = new RuntimeNpcStore();

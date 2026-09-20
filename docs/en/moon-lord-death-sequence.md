@@ -77,7 +77,7 @@ These are drop definitions only: opening bags, using or placing the new items, g
 
 ## Good World Moon Boulder
 
-The Good World head burst now enters an explicit type-1021 `aiStyle 25` runtime family. Each world tick runs the source two subupdates: it marks `ai[0] = 1`, caps incoming fall speed at 16, accelerates a low vertical-speed roll by `0.025`, then adds gravity `0.06`. A stopped upward-or-level boulder probes the source's three adjacent solid-tile distances before selecting a direction, falling back to its center-tile parity. Tile collision retains fast vertical rebounds at 90%, gentle-landed state and four horizontal rebounds before the fifth kills it. `SwitchTiles` remains intentionally outside the authoritative world-mutation boundary.
+The Good World head burst now enters an explicit type-1021 `aiStyle 25` runtime family. Each world tick runs the source two subupdates: it marks `ai[0] = 1`, caps incoming fall speed at 16, accelerates a low vertical-speed roll by `0.025`, then adds gravity `0.06`. A stopped upward-or-level boulder probes the source's three adjacent solid-tile distances before selecting a direction, falling back to its center-tile parity. Tile collision retains fast vertical rebounds at 90%, gentle-landed state and four horizontal rebounds before the fifth kills it. `Collision.SwitchTiles` pressure-switch and wiring trigger path remains outside the authoritative world-mutation boundary.
 
 `VanillaProjectileWorldStateStepperTests` covers the two-subupdate trajectory, local update counter, adjacent-solid direction selection and vertical rebound. The profile-catalog regression requires type 1021 to remain in the explicit rolling-boulder family.
 
@@ -89,7 +89,7 @@ The Good World head burst now enters an explicit type-1021 `aiStyle 25` runtime 
 
 `IVanillaNpcRandom.NextDouble()` supplies a unit-interval draw. Production uses the underlying seeded `Random.NextDouble`; integer-only implementations retain a default adapter, while streams requiring identical seeded consumption should override the method. Projectile spawn centers are converted to runtime top-left coordinates before submission.
 
-This verifies synthetic single AI calls with one stationary target. Full continuous fights, attached explosive interactions, broader multiplayer targeting and outer NPC/projectile motion remain separate parity work.
+The retained 2,400-tick hand trace now covers all four attack states over consecutive calls with the same stationary core and player. Every hand state, active projectile and final shared RNG draw matches the independent original-server trace; its expanded fixture SHA256 is `01138e8d1c53167047314125733ad2df65e449200ba557bd90880eb69d9e1cb2`. The trace runs hand AI only, so attached explosive interactions, broader multiplayer targeting, outer NPC physics and projectile AI remain separate parity work.
 ## Retained targets and sphere release
 
 Hand bolt aiming continues against the retained player slot without a living target; an absent slot supplies the fresh Player center `(10, 21)`. Sphere release at local tick 292 follows `Player.FindClosest`: closest living active player, otherwise the first active slot even if dead, otherwise slot zero. Normalization preserves FNA reciprocal multiplication before the speed-12 scale. Bolt target acquisition requests packet 23 even when the incoming attack state is already 3.
