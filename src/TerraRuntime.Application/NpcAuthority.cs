@@ -349,7 +349,8 @@ internal sealed partial class NpcAuthority
                     CaptureDifficulty() >= 2f,
                     CaptureDifficulty() >= 3f,
                     worldClock.WindSpeedCurrent,
-                    naturalSpawnWorldFacts?.RemixWorld ?? false);
+                    naturalSpawnWorldFacts?.RemixWorld ?? false,
+                    worldClock.Time);
             }
         }
 

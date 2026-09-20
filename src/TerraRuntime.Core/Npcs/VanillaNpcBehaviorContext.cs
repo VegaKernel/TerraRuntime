@@ -62,6 +62,9 @@ internal sealed class VanillaNpcBehaviorContext
 
     public bool RemixWorld { get; private set; }
 
+    /// <summary>Vanilla Main.time sampled before NPC AI for the current game tick.</summary>
+    public double WorldTime { get; private set; }
+
     public float WindSpeedCurrent { get; private set; }
 
     private bool empressRemixRageMode;
@@ -90,12 +93,15 @@ internal sealed class VanillaNpcBehaviorContext
         bool expertMode = false,
         bool masterMode = false,
         float windSpeedCurrent = 0f,
-        bool remixWorld = false)
+        bool remixWorld = false,
+        double worldTime = 0d)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
         if (!float.IsFinite(windSpeedCurrent))
             throw new ArgumentOutOfRangeException(nameof(windSpeedCurrent));
+        if (!double.IsFinite(worldTime) || worldTime < 0d)
+            throw new ArgumentOutOfRangeException(nameof(worldTime));
 
         DayTime = dayTime;
         SlimeRainActive = slimeRainActive;
@@ -104,6 +110,7 @@ internal sealed class VanillaNpcBehaviorContext
         MasterMode = masterMode;
         WindSpeedCurrent = windSpeedCurrent;
         RemixWorld = remixWorld;
+        WorldTime = worldTime;
         if (!remixWorld)
             empressRemixRageMode = false;
     }
@@ -153,6 +160,14 @@ internal sealed class VanillaNpcBehaviorContext
             return true;
         }
         return false;
+    }
+
+    /// <summary>Mirrors AI_120_HallowBoss_IsGenuinelyEnraged and its dusk/night retreat predicate.</summary>
+    public bool ShouldEmpressRetreat(in NpcAiState ai)
+    {
+        if (ai.Ai3 is not 2f and not 3f)
+            return false;
+        return !DayTime || WorldTime >= 53_400d;
     }
 
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates)

@@ -382,7 +382,10 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
         if (npc.TypeIdentity != VanillaNpcIds.EmpressOfLight || definition.AiStyle != VanillaNpcAiStyles.EmpressOfLight)
         { next = default; return false; }
         ushort target = npc.Target;
-        if (!LateBossMath.TryTarget(in npc, in definition, context, ref target, out VanillaNpcTargetCandidate player))
+        bool hasTarget = LateBossMath.TryTarget(in npc, in definition, context, ref target, out VanillaNpcTargetCandidate player);
+        // Source AI_120 lets its retreat state fade over its normal 20+ ticks even after TargetClosest finds no player.
+        // Other states retain the existing authoritative target-loss handoff until their source branches are modeled.
+        if (!hasTarget && npc.Ai.Ai0 != 13f)
         {
             NpcAiState despawnAi = npc.Ai with { Ai0 = 13f, Ai1 = 0f };
             NpcSimulationState despawn = npc.Simulation with { TimeLeft = npc.Simulation.TimeLeft is < 0 or > 10 ? 10 : npc.Simulation.TimeLeft };
@@ -411,6 +414,8 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
         if (state == 0)
         {
             if (timer == 0f) { vx = 0f; vy = 5f; }
+            // AI_120 exposes Opacity = ai[1] / 180 before advancing this timer.
+            sim = sim with { Alpha = Math.Clamp(255 - (int)(timer / 180f * 255f), 0, 255) };
             vx *= .95f; vy *= .95f; timer += 1f;
             if (timer >= 180f) { state = 1; timer = 0f; }
         }
@@ -423,9 +428,42 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
             timer += 1f;
             if (timer >= prep)
             {
-                state = SelectEmpressAttack((int)ai.Ai2, phaseTwo, expertCadence);
+                float dx = player.CenterX - cx;
+                float dy = player.CenterY - cy;
+                bool targetTooFar = dx * dx + dy * dy > 6_400f * 6_400f;
+                // Source selects state 13 when a genuinely enraged Empress reaches night or 53,400 daytime ticks.
+                state = targetTooFar || context.ShouldEmpressRetreat(in ai)
+                    ? 13
+                    : SelectEmpressAttack((int)ai.Ai2, phaseTwo, expertCadence);
                 timer = 0f;
                 ai = ai with { Ai2 = ai.Ai2 + 1f };
+            }
+        }
+        else if (state == 13)
+        {
+            if (timer == 0f) { vx = 0f; vy = -7f; }
+            vx *= .95f;
+            vy *= .95f;
+            bool targetTooFar = !hasTarget;
+            if (hasTarget)
+            {
+                float dx = player.CenterX - cx;
+                float dy = player.CenterY - cy;
+                targetTooFar = dx * dx + dy * dy > 6_400f * 6_400f;
+            }
+            bool retreat = targetTooFar || context.ShouldEmpressRetreat(in ai);
+            int alpha = Math.Clamp(sim.Alpha + (retreat ? 5 : -5), 0, 255);
+            sim = sim with { Alpha = alpha };
+            timer += 1f;
+            if (timer >= 20f && (alpha == 0 || alpha == 255))
+            {
+                if (alpha == 255)
+                    sim = sim with { TimeLeft = 0 };
+                else
+                {
+                    state = 1;
+                    timer = 0f;
+                }
             }
         }
         else

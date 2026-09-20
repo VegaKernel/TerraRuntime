@@ -623,6 +623,63 @@ public sealed class LateHardmodeBossParityTests
     }
 
     [Fact]
+    public void Genuinely_enraged_empress_retires_only_at_the_source_dusk_cutoff()
+    {
+        NpcSnapshot empress = CreateNpc(
+            VanillaNpcIds.EmpressOfLight,
+            new NpcAiState(1f, 44f, 3f, 2f),
+            life: 70_000);
+
+        var beforeDusk = CreateStepper(dayTime: true);
+        beforeDusk.SetWorldConditions(dayTime: true, slimeRainActive: false, worldTime: 53_399d);
+        Assert.True(beforeDusk.TryStepState(in empress, out NpcStateUpdate attack));
+        Assert.Equal(8f, attack.Ai.Ai0);
+        Assert.Equal(4f, attack.Ai.Ai2);
+
+        var atDusk = CreateStepper(dayTime: true);
+        atDusk.SetWorldConditions(dayTime: true, slimeRainActive: false, worldTime: 53_400d);
+        Assert.True(atDusk.TryStepState(in empress, out NpcStateUpdate retreat));
+        Assert.Equal(13f, retreat.Ai.Ai0);
+        Assert.Equal(0f, retreat.Ai.Ai1);
+        Assert.Equal(4f, retreat.Ai.Ai2);
+    }
+
+    [Fact]
+    public void Empress_retreat_fades_back_in_or_despawns_using_source_alpha_timing()
+    {
+        NpcSnapshot retreat = CreateNpc(
+            VanillaNpcIds.EmpressOfLight,
+            new NpcAiState(13f, 19f, 0f, 2f),
+            life: 70_000) with { Simulation = NpcSimulationState.Initial with { Life = 70_000, LifeMax = 70_000, TimeLeft = 750, Scale = 1f, Alpha = 250 } };
+
+        var night = CreateStepper(dayTime: false);
+        night.SetWorldConditions(dayTime: false, slimeRainActive: false, worldTime: 1d);
+        Assert.True(night.TryStepState(in retreat, out NpcStateUpdate despawned));
+        Assert.Equal(255, despawned.Simulation.Alpha);
+        Assert.Equal(0, despawned.Simulation.TimeLeft);
+
+        var day = CreateStepper(dayTime: true);
+        day.SetWorldConditions(dayTime: true, slimeRainActive: false, worldTime: 0d);
+        NpcSnapshot safeRetreat = retreat with { Simulation = retreat.Simulation with { Alpha = 5 } };
+        Assert.True(day.TryStepState(in safeRetreat, out NpcStateUpdate resumed));
+        Assert.Equal(0, resumed.Simulation.Alpha);
+        Assert.Equal(1f, resumed.Ai.Ai0);
+        Assert.Equal(0f, resumed.Ai.Ai1);
+    }
+
+    [Fact]
+    public void Empress_intro_uses_source_opacity_before_advancing_its_timer()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(0f, 0f, 0f, 0f), life: 70_000);
+
+        Assert.True(stepper.TryStepState(in empress, out NpcStateUpdate next));
+        Assert.Equal(255, next.Simulation.Alpha);
+        Assert.Equal(1f, next.Ai.Ai1);
+        Assert.Equal(4.75f, next.VelocityY, precision: 3);
+    }
+
+    [Fact]
     public void Moon_lord_hand_advances_into_the_source_attack_sequence()
     {
         var stepper = CreateStepper(dayTime: false);
