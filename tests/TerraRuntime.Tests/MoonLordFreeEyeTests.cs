@@ -293,6 +293,51 @@ public sealed class MoonLordFreeEyeTests
         Assert.Equal(rows[^1].GetProperty("nextRandom").GetInt32(), random.Next());
     }
 
+    [Fact]
+    public void Full_attack_cycle_with_a_moving_player_matches_original_state_projectiles_and_random_stream()
+    {
+        JsonElement[] rows = ReadCases("MoonLordFreeEyeMoving1458", "98fb1acdd8bf04546f3a07a572ab79b7dda643cfcddfdf555d6d88e7b091500e");
+        var npcs = new RuntimeNpcStore();
+        Spawn(npcs, 0, VanillaNpcIds.MoonLordCore, 1000f, 1000f, 0f, 0f, default, new NpcAiState(0f, 0f, 0f, 1f), 0);
+        NpcSnapshot eye = Spawn(npcs, 1, VanillaNpcIds.MoonLordFreeEye, 900f, 900f, 2f, -3f,
+            default, new NpcAiState(.2f, .3f, .4f, 0f), 0);
+        var random = new ReferenceRandom(1458);
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: random);
+        var projectiles = new RuntimeProjectileStore();
+        var executor = new RuntimeNpcAiStateExecutor(npcs, projectiles);
+        var shots = new ProjectileSnapshot[projectiles.Capacity];
+        for (int tick = 0; tick < rows.Length; tick++)
+        {
+            stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 1510f + tick * 3.25f, 821f - tick * 1.75f, 0,
+                true, false, false, false) { VelocityX = 3.25f, VelocityY = -1.75f }]);
+            Assert.Equal(1, executor.Tick(new EyeOnly(stepper)).Applied);
+            JsonElement row = rows[tick];
+            Assert.True(npcs.TryGet(eye.Handle, out NpcSnapshot actual));
+            AssertNear(row.GetProperty("x").GetSingle(), actual.PositionX);
+            AssertNear(row.GetProperty("y").GetSingle(), actual.PositionY);
+            AssertNear(row.GetProperty("vx").GetSingle(), actual.VelocityX);
+            AssertNear(row.GetProperty("vy").GetSingle(), actual.VelocityY);
+            AssertAiNear(row.GetProperty("ai"), actual.Ai);
+            AssertAiNear(row.GetProperty("local"), actual.Simulation.LocalAi);
+            Assert.Equal(row.GetProperty("invulnerable").GetBoolean(), actual.Simulation.DontTakeDamage);
+            Assert.Equal((ushort)row.GetProperty("target").GetInt32(), actual.Target);
+            int count = projectiles.CopyActive(shots);
+            JsonElement expectedShots = row.GetProperty("shots");
+            Assert.Equal(expectedShots.GetArrayLength(), count);
+            for (int index = 0; index < count; index++)
+            {
+                JsonElement expected = expectedShots[index]; ProjectileSnapshot shot = shots[index];
+                Assert.Equal(expected.GetProperty("type").GetInt32(), shot.Type.Value);
+                AssertNear(expected.GetProperty("x").GetSingle(), shot.PositionX);
+                AssertNear(expected.GetProperty("y").GetSingle(), shot.PositionY);
+                AssertNear(expected.GetProperty("vx").GetSingle(), shot.VelocityX);
+                AssertNear(expected.GetProperty("vy").GetSingle(), shot.VelocityY);
+                AssertAiNear(expected.GetProperty("ai"), shot.Ai);
+            }
+        }
+        Assert.Equal(rows[^1].GetProperty("nextRandom").GetInt32(), random.Next());
+    }
+
     private static JsonElement[] ReadContinuousCases()
     {
         using Stream stream = typeof(MoonLordFreeEyeTests).Assembly
@@ -302,6 +347,17 @@ public sealed class MoonLordFreeEyeTests
         gzip.CopyTo(bytes);
         Assert.Equal("51adc7a88fc15afbcacb7194a1ee530c0cd96219143f412d05aa80a69d315074",
             Convert.ToHexStringLower(SHA256.HashData(bytes.ToArray())));
+        using JsonDocument json = JsonDocument.Parse(bytes.ToArray());
+        return json.RootElement.EnumerateArray().Select(static row => row.Clone()).ToArray();
+    }
+
+    private static JsonElement[] ReadCases(string resource, string hash)
+    {
+        using Stream stream = typeof(MoonLordFreeEyeTests).Assembly.GetManifestResourceStream(resource)!;
+        using var gzip = new GZipStream(stream, CompressionMode.Decompress);
+        using var bytes = new MemoryStream();
+        gzip.CopyTo(bytes);
+        Assert.Equal(hash, Convert.ToHexStringLower(SHA256.HashData(bytes.ToArray())));
         using JsonDocument json = JsonDocument.Parse(bytes.ToArray());
         return json.RootElement.EnumerateArray().Select(static row => row.Clone()).ToArray();
     }

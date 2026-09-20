@@ -64,6 +64,7 @@
   <ItemGroup><EmbeddedResource Include="Fixtures/moon-lord-head-1458.json.gz" LogicalName="MoonLordHead1458" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/moon-lord-head-continuous-1458.json.gz" LogicalName="MoonLordHeadContinuous1458" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/moon-lord-free-eye-continuous-1458.json.gz" LogicalName="MoonLordFreeEyeContinuous1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/moon-lord-free-eye-moving-1458.json.gz" LogicalName="MoonLordFreeEyeMoving1458" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/moon-leech-1458.json.gz" LogicalName="MoonLeech1458" /></ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Fixtures/player-buff-1458.json" LogicalName="PlayerBuff1458" />
