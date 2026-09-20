@@ -55,18 +55,20 @@ public readonly record struct VanillaNpcSpawnDefaults(
 
         int width = definition.Width, height = definition.Height;
         float scale = definition.Scale;
-        if (duke && context.TenthAnniversaryWorld)
-        {
-            // NPC.getTenthAnniversaryAdjustments halves type 370's visual scale, then materializes the same
-            // half-scale physical dimensions before ScaleStats runs.
-            scale *= .5f;
-            width = (int)(width * scale);
-            height = (int)(height * scale);
-        }
+        // NPC.SetDefaults calls getGoodAdjustments first and only calls getTenthAnniversaryAdjustments in
+        // the alternative branch. A composite test context must retain that source precedence too.
         if (context.GoodWorld)
         {
             scale *= probe ? 1.6f : prime ? 1.1f : skeletronHead ? 1.25f : skeletronHand ? 1.15f : 1.3f;
             // getGoodAdjustments multiplies the already-scaled dimensions by the new visual scale.
+            width = (int)(width * scale);
+            height = (int)(height * scale);
+        }
+        else if (duke && context.TenthAnniversaryWorld)
+        {
+            // NPC.getTenthAnniversaryAdjustments halves type 370's visual scale, then materializes the same
+            // half-scale physical dimensions before ScaleStats runs.
+            scale *= .5f;
             width = (int)(width * scale);
             height = (int)(height * scale);
         }

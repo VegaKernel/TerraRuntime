@@ -34,16 +34,18 @@ public sealed class VanillaBossSpawnDefaultsTests
     }
 
     [Theory]
-    [InlineData(1f, 1, false, 60_000, 100, 150, 100, 1f)]
-    [InlineData(2f, 1, false, 78_000, 140, 150, 100, 1f)]
-    [InlineData(3f, 1, false, 99_450, 210, 150, 100, 1f)]
-    [InlineData(2f, 2, false, 105_300, 140, 150, 100, 1f)]
-    [InlineData(1f, 1, true, 60_000, 100, 75, 50, .5f)]
-    public void Duke_spawn_defaults_follow_source_difficulty_player_balance_and_celebration_scale(
-        float difficulty, int players, bool tenthAnniversary, int life, int damage, int width, int height, float scale)
+    [InlineData(1f, 1, false, false, 60_000, 100, 150, 100, 1f)]
+    [InlineData(2f, 1, false, false, 78_000, 140, 150, 100, 1f)]
+    [InlineData(3f, 1, false, false, 99_450, 210, 150, 100, 1f)]
+    [InlineData(2f, 2, false, false, 105_300, 140, 150, 100, 1f)]
+    [InlineData(1f, 1, false, true, 60_000, 100, 75, 50, .5f)]
+    [InlineData(2f, 1, true, false, 78_000, 140, 195, 130, 1.3f)]
+    [InlineData(2f, 1, true, true, 78_000, 140, 195, 130, 1.3f)]
+    public void Duke_spawn_defaults_follow_source_difficulty_player_balance_and_seed_precedence(
+        float difficulty, int players, bool goodWorld, bool tenthAnniversary, int life, int damage, int width, int height, float scale)
     {
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.DukeFishron, out VanillaNpcDefinition duke));
-        var context = new VanillaNpcSpawnContext(difficulty, players, GoodWorld: false)
+        var context = new VanillaNpcSpawnContext(difficulty, players, GoodWorld: goodWorld)
         {
             TenthAnniversaryWorld = tenthAnniversary
         };
