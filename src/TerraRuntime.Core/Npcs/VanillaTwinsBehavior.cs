@@ -142,15 +142,33 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         }
         else
         {
+            float lateState = ai.Ai1;
+            float lateTimer = ai.Ai2;
             if (_spazmatism)
                 StepSpazPhaseTwo(in npc, in definition, in target, context, life, lifeMax, mechQueenUp, queenCenterX, queenCenterY, queenVelocityX, CanHit(in npc, in definition, in target), ref ai, ref local, ref vx, ref vy);
             else
                 StepRetPhaseTwo(in npc, in definition, in target, context, life, lifeMax, mechQueenUp, queenCenterX, queenCenterY, queenVelocityX, CanHit(in npc, in definition, in target), ref ai, ref local, ref vx, ref vy);
 
-            // AI_030 assigns the late laser-facing angle directly after movement. AI_031 keeps its
-            // target-stepped orientation while hovering, which its Mechdusa flame uses as its bearing.
+            if (!_spazmatism && ((lateState == 0f && ai.Ai1 == 1f) || (lateState != 0f && ai.Ai1 == 0f)))
+                TryRefresh(in npc, in definition, context, ref targetSlot, out _);
+            else if (_spazmatism && ((lateState == 0f && ai.Ai1 == 1f) || (lateState == 2f && ai.Ai2 == 0f)))
+                targetSlot = byte.MaxValue;
+
+            // AI_030 assigns the late laser-facing angle directly after movement.
             if (!_spazmatism)
                 rotation = MathF.Atan2(target.CenterY - (npc.PositionY + 55f), target.CenterX - (npc.PositionX + 50f)) - 1.57f;
+            else if (hasTargetRotation && lateState == 1f)
+            {
+                rotation = targetRotation;
+            }
+            else if (hasTargetRotation && lateState == 2f)
+            {
+                float timerAfterIncrement = lateTimer + (context.ExpertMode ? 1.5f : 1f);
+                if (timerAfterIncrement >= 80f)
+                    rotation = targetRotation;
+                else if (timerAfterIncrement < 50f)
+                    rotation = MathF.Atan2(vy, vx) - 1.57f;
+            }
         }
 
         int damage = ai.Ai0 >= 3f ? (int)(definition.Damage * 1.5) : definition.Damage;

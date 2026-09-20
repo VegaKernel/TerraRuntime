@@ -490,6 +490,42 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Targeting_stepper_preserves_late_twin_target_handoffs_and_spazmatism_charge_rotation()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        VanillaNpcTargetCandidate near = Target(140f, 80f);
+        VanillaNpcTargetCandidate far = Target(900f, 800f) with { Slot = 1 };
+        stepper.SetCandidates([near, far]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot retinazer = CreateNpc(VanillaNpcIds.Retinazer, 0f) with
+        {
+            Target = 1,
+            Ai = new NpcAiState(3f, 0f, 299f, 0f)
+        };
+        NpcSnapshot spazmatism = CreateNpc(VanillaNpcIds.Spazmatism, 0f) with
+        {
+            Target = 1,
+            Ai = new NpcAiState(3f, 0f, 399f, 0f)
+        };
+        NpcSnapshot charge = CreateNpc(VanillaNpcIds.Spazmatism, 0f) with
+        {
+            PositionX = 100f,
+            PositionY = 150f,
+            VelocityX = 3f,
+            VelocityY = 4f,
+            Target = 0,
+            Ai = new NpcAiState(3f, 2f, 0f, 0f)
+        };
+
+        Assert.True(stepper.TryStepState(in retinazer, out NpcStateUpdate retNext));
+        Assert.True(stepper.TryStepState(in spazmatism, out NpcStateUpdate spazNext));
+        Assert.True(stepper.TryStepState(in charge, out NpcStateUpdate chargeNext));
+        Assert.Equal(0, retNext.Target);
+        Assert.Equal(byte.MaxValue, spazNext.Target);
+        Assert.Equal(MathF.Atan2(4f, 3f) - 1.57f, chargeNext.Simulation.Rotation!.Value, 5);
+    }
+
+    [Fact]
     public void Targeting_stepper_keeps_late_twin_attack_counters_while_line_of_fire_is_blocked()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
