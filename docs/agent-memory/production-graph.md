@@ -8,6 +8,8 @@ The retained Windows and Linux `NPC.UpdateNPC` encounter traces confirm `PlanSke
 
 Prime Cannon AI_035 and Laser AI_036 now also force packet 23 at their source timer phase changes: `1099`→attack and `299`→hover for Cannon, `799`→attack and `199`→hover for Laser. The direct source does not set `netUpdate` for the accompanying projectile emissions, so those remain on ordinary cadence. Other arm transitions and projectile/network cadence remain open.
 
+Prime Saw AI_033 and Vice AI_034 now force packet 23 at the admitted source timer and charge handoffs: Saw's `299`/`599` timer paths, launch and phase-four return; Vice's `599` timer paths, launch and phase-four out-of-range charge. Their ordinary movement returns and Vice's low-speed velocity refresh remain open.
+
 ## Prime head direction and rotation - 2026-09-20
 
 AI32 now updates Skeletron Prime's `DirectionX` when `TargetClosest` selects a candidate and commits phase rotation in source order: hover uses pre-steering `vx / 15`, while spin, daytime rage and despawn add `direction * .3` before velocity changes. The focused regression checks initial target acquisition at the spin-to-hover boundary. An independent 32-tick Linux `NPC.UpdateNPC` trace includes head plus all four arms in ascending-slot order across the hover-599 and spin-399 transitions; SHA256 `23dac3d4de2271a9085fc6763a16c7a36f227246a4fd5bd6ff147165615f385b`. This closes those head-state fields only. The retained cross-platform encounter fixture, Mech Queen, remaining head behavior, continuous projectiles and network cadence remain open. Local Release build, focused 808 tests and the full 100,115 suite pass.

@@ -8,6 +8,32 @@ namespace TerraRuntime.Core.Npcs;
 /// <summary>Terraria 1.4.5.8 AI33/34 movement and attack cycles for Prime's melee arms.</summary>
 internal sealed class VanillaSkeletronPrimeLimbNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
+    /// <summary>
+    /// AI_033/034 write <c>NPC.netUpdate</c> for their timer and charge phase handoffs.
+    /// Movement-only phase returns intentionally remain on the ordinary cadence.
+    /// </summary>
+    internal static bool RequiresImmediateSync(in NpcSnapshot before, in NpcStateUpdate proposed)
+    {
+        if (proposed.Type != before.Type) return false;
+        bool saw = before.TypeIdentity == VanillaNpcIds.PrimeSaw;
+        if (!saw && before.TypeIdentity != VanillaNpcIds.PrimeVice) return false;
+
+        float phase = before.Ai.Ai2;
+        if (saw)
+        {
+            return ((phase == 0f || phase == 3f) &&
+                    ((before.Ai.Ai3 >= 599f && proposed.Ai.Ai2 == 0f && proposed.Ai.Ai3 == 0f) ||
+                     (before.Ai.Ai3 >= 299f && proposed.Ai.Ai2 == phase + 1f && proposed.Ai.Ai3 == 0f))) ||
+                (phase == 1f && proposed.Ai.Ai2 == 2f) ||
+                (phase == 4f && before.Ai.Ai3 >= 599f && proposed.Ai.Ai2 == 0f && proposed.Ai.Ai3 == 0f);
+        }
+
+        return ((phase == 0f || phase == 3f) && before.Ai.Ai3 >= 599f && proposed.Ai.Ai3 == 0f &&
+                (proposed.Ai.Ai2 == 0f || proposed.Ai.Ai2 == phase + 1f)) ||
+            (phase == 1f && proposed.Ai.Ai2 == 2f) ||
+            (phase == 4f && proposed.Ai.Ai2 == 5f);
+    }
+
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
         INpcAiStateStepper inner, out NpcStateUpdate next)
     {

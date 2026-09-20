@@ -7,6 +7,63 @@ namespace TerraRuntime.Tests;
 
 public sealed partial class PrimeMeleeAiTests
 {
+    [Theory]
+    [InlineData(129, 0f, 299f, 1f)]
+    [InlineData(129, 0f, 599f, 0f)]
+    [InlineData(129, 1f, 0f, 2f)]
+    [InlineData(129, 4f, 599f, 0f)]
+    [InlineData(130, 0f, 599f, 1f)]
+    [InlineData(130, 0f, 599f, 0f)]
+    [InlineData(130, 1f, 0f, 2f)]
+    [InlineData(130, 4f, 0f, 5f)]
+    public void Source_phase_handoffs_request_an_immediate_update(int type, float phase, float timer, float nextPhase)
+    {
+        var (_, _, stepper, arm, _) = Setup(Rows.First(row => row.GetProperty("type").GetInt32() == type));
+        var before = arm with { Ai = arm.Ai with { Ai2 = phase, Ai3 = timer } };
+        var proposed = new NpcStateUpdate(before.Type, before.NetId, before.PositionX, before.PositionY,
+            before.VelocityX, before.VelocityY, before.Target, before.Ai with { Ai2 = nextPhase, Ai3 = nextPhase == 2f || nextPhase == 5f ? timer : 0f }, before.Simulation);
+
+        Assert.True(VanillaSkeletronPrimeLimbNpcBehaviorStrategy.RequiresImmediateSync(in before, in proposed));
+        Assert.True(stepper.RequiresForcedUpdate(in before, in proposed));
+    }
+
+    [Theory]
+    [InlineData(129, 0f, 298f, 1f)]
+    [InlineData(129, 4f, 598f, 0f)]
+    [InlineData(130, 0f, 598f, 1f)]
+    [InlineData(130, 4f, 0f, 4f)]
+    public void Ordinary_melee_motion_stays_cadenced(int type, float phase, float timer, float nextPhase)
+    {
+        var (_, _, stepper, arm, _) = Setup(Rows.First(row => row.GetProperty("type").GetInt32() == type));
+        var before = arm with { Ai = arm.Ai with { Ai2 = phase, Ai3 = timer } };
+        var proposed = new NpcStateUpdate(before.Type, before.NetId, before.PositionX, before.PositionY,
+            before.VelocityX, before.VelocityY, before.Target, before.Ai with { Ai2 = nextPhase, Ai3 = timer + 1f }, before.Simulation);
+
+        Assert.False(VanillaSkeletronPrimeLimbNpcBehaviorStrategy.RequiresImmediateSync(in before, in proposed));
+        Assert.False(stepper.RequiresForcedUpdate(in before, in proposed));
+    }
+
+    [Fact]
+    public void Accepted_saw_and_vice_hover_boundaries_publish_forced_updates()
+    {
+        foreach ((int type, float timer) in new[] { (129, 299f), (130, 599f) })
+        {
+            var row = Rows.First(candidate => candidate.GetProperty("type").GetInt32() == type &&
+                candidate.GetProperty("before").GetProperty("ai")[2].GetSingle() == 0f &&
+                candidate.GetProperty("parent").GetProperty("ai")[1].GetSingle() == 0f);
+            var sink = new Capture();
+            var (npcs, projectiles, ai, arm, _) = Setup(row, sink);
+            var update = new NpcStateUpdate(arm.Type, arm.NetId, arm.PositionX, arm.PositionY, arm.VelocityX, arm.VelocityY,
+                arm.Target, arm.Ai with { Ai2 = 0f, Ai3 = timer }, arm.Simulation);
+            Assert.True(npcs.TryUpdate(arm.Handle, in update, out arm));
+            sink.Commits.Clear();
+
+            Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new ArmsOnly(ai)).Applied);
+            Assert.Equal(NpcStateCommitKind.ForcedUpdate, Assert.Single(sink.Commits).Kind);
+            Assert.Equal(arm.Handle, sink.Commits[0].Npc.Handle);
+        }
+    }
+
     [Fact]
     public void Charge_transition_uses_the_target_live_hitbox_top_edge()
     {
