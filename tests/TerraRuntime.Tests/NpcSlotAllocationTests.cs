@@ -116,6 +116,38 @@ public sealed class NpcSlotAllocationTests
     }
 
     [Fact]
+    public void Plantera_hooks_and_free_Golem_head_start_search_at_the_parent_slot()
+    {
+        var store = new RuntimeNpcStore(32);
+        var stepper = new VanillaNpcTargetingAiStepper(new Idle());
+        Assert.True(store.TrySpawn(10, State(VanillaNpcIds.Plantera.Value), out var plantera));
+        var planteraUpdate = State(VanillaNpcIds.Plantera.Value) with
+        {
+            Simulation = NpcSimulationState.Initial with { LocalAi = new NpcAiState(1f, 0f, 0f, 0f) }
+        };
+        Span<NpcAiSpawnIntent> intents = stackalloc NpcAiSpawnIntent[3];
+        Assert.Equal(3, stepper.PlanNpcSpawns(in plantera, in planteraUpdate, intents));
+        for (int index = 0; index < intents.Length; index++)
+        {
+            Assert.Equal(plantera.Handle.Slot, intents[index].StartSlot);
+            Assert.True(store.TrySpawnIntent(in intents[index], out var hook));
+            Assert.Equal(11 + index, hook.Handle.Slot);
+        }
+
+        var golemStore = new RuntimeNpcStore(32);
+        Assert.True(golemStore.TrySpawn(10, State(VanillaNpcIds.Golem.Value), out var golem));
+        var golemUpdate = State(VanillaNpcIds.Golem.Value) with
+        {
+            Simulation = NpcSimulationState.Initial with { LocalAi = new NpcAiState(0f, 0f, 1f, 0f) }
+        };
+        Span<NpcAiSpawnIntent> freeHead = stackalloc NpcAiSpawnIntent[1];
+        Assert.Equal(1, stepper.PlanNpcSpawns(in golem, in golemUpdate, freeHead));
+        Assert.Equal(golem.Handle.Slot, freeHead[0].StartSlot);
+        Assert.True(golemStore.TrySpawnIntent(in freeHead[0], out var head));
+        Assert.Equal(11, head.Handle.Slot);
+    }
+
+    [Fact]
     public void Repeated_creation_and_deactivation_match_original_NewNPC_slots_and_generations()
     {
         var store = new RuntimeNpcStore();

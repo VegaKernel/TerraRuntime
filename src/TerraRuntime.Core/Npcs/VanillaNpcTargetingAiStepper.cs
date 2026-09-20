@@ -1829,7 +1829,8 @@ public sealed class VanillaNpcTargetingAiStepper :
                     VanillaNpcIds.PlanteraHook, (int)cx, (int)cy, 0f, 0f, proposed.Target)
                 {
                     InitialAi = new NpcAiState(MathF.Max(1f, MathF.Round((ax + 8f) / 16f)), MathF.Max(1f, MathF.Round((ay + 8f) / 16f)), 0f, 0f),
-                    InitialLocalAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot + 1f)
+                    InitialLocalAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot + 1f),
+                    StartSlot = source.Handle.Slot
                 };
             }
             return 3;
@@ -2725,7 +2726,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         {
             if (destination.IsEmpty) return 1;
             destination[0] = new NpcAiSpawnIntent(VanillaNpcIds.GolemHeadFree, (int)cx, (int)(proposed.PositionY + 70f), 0f, 0f, proposed.Target)
-            { InitialLocalAi = new NpcAiState(0f, 0f, 0f, owner) };
+            { InitialLocalAi = new NpcAiState(0f, 0f, 0f, owner), StartSlot = source.Handle.Slot };
             return 1;
         }
         return 0;
