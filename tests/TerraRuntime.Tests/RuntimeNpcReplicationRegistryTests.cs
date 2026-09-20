@@ -165,6 +165,84 @@ public sealed class RuntimeNpcReplicationRegistryTests
     }
 
     [Fact]
+    public void Moving_moon_lord_parts_stream_packet_23_to_each_playing_client_on_the_source_clock()
+    {
+        var replication = new RuntimeNpcReplicationRegistry();
+        GameCommandSourceId firstSource = GameCommandSourceId.FromConnection(51);
+        GameCommandSourceId secondSource = GameCommandSourceId.FromConnection(52);
+        TerrariaConnectionOutboundQueue firstOutbound = CreateOutbound();
+        TerrariaConnectionOutboundQueue secondOutbound = CreateOutbound();
+        Assert.True(replication.TryRegister(firstSource, firstOutbound));
+        Assert.True(replication.TryRegister(secondSource, secondOutbound));
+
+        ConnectionHandle first = Connection(firstSource, slot: 1, generation: 1);
+        ConnectionHandle second = Connection(secondSource, slot: 2, generation: 1);
+        PlayerSpawnCommitRequest firstSpawn = CreatePlayerSpawn(first.Player.Slot);
+        PlayerSpawnCommitRequest secondSpawn = CreatePlayerSpawn(second.Player.Slot);
+        replication.PlayerSpawned(first, in firstSpawn);
+        replication.PlayerSpawned(second, in secondSpawn);
+
+        PlayerMovementCommitRequest firstMovement = CreateMovement(first.Player.Slot, 200f, 300f);
+        PlayerMovementCommitRequest secondMovement = CreateMovement(second.Player.Slot, 12_000f, 8_000f);
+        replication.PlayerMoved(first, in firstMovement);
+        replication.PlayerMoved(second, in secondMovement);
+
+        for (ulong tick = 1; tick <= 29; tick++)
+        {
+            replication.AdvanceAuthoritativeTick();
+            NpcSnapshot update = CreateMoonLordPart(tick, positionX: 200f + tick);
+            replication.NpcStateCommitted(NpcStateCommitKind.Update, in update);
+        }
+
+        // The ordinary fallback published only tick 1; StreamUpdatesToNearbyPlayers reaches its own
+        // 30-tick clock independently, and Moon Lord's source boss flag gives both players gain 8.
+        Assert.Equal(1, firstOutbound.QueuedFrames);
+        Assert.Equal(1, secondOutbound.QueuedFrames);
+
+        replication.AdvanceAuthoritativeTick();
+        NpcSnapshot streamed = CreateMoonLordPart(30, positionX: 230f);
+        replication.NpcStateCommitted(NpcStateCommitKind.Update, in streamed);
+
+        Assert.Equal(2, firstOutbound.QueuedFrames);
+        Assert.Equal(2, secondOutbound.QueuedFrames);
+        Assert.Equal(4, replication.RelayedFrames);
+    }
+
+    [Fact]
+    public void Proximity_streaming_remains_limited_to_moving_moon_lord_parts()
+    {
+        var replication = new RuntimeNpcReplicationRegistry();
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(53);
+        TerrariaConnectionOutboundQueue outbound = CreateOutbound();
+        Assert.True(replication.TryRegister(source, outbound));
+        ConnectionHandle player = Connection(source, slot: 1, generation: 1);
+        PlayerSpawnCommitRequest spawn = CreatePlayerSpawn(player.Player.Slot);
+        replication.PlayerSpawned(player, in spawn);
+
+        for (ulong tick = 1; tick <= 30; tick++)
+        {
+            replication.AdvanceAuthoritativeTick();
+            NpcSnapshot update = CreateNpc(tick, positionX: 100f + tick);
+            replication.NpcStateCommitted(NpcStateCommitKind.Update, in update);
+        }
+
+        Assert.Equal(1, outbound.QueuedFrames);
+
+        var stationary = new RuntimeNpcReplicationRegistry();
+        TerrariaConnectionOutboundQueue stationaryOutbound = CreateOutbound();
+        Assert.True(stationary.TryRegister(source, stationaryOutbound));
+        stationary.PlayerSpawned(player, in spawn);
+        for (ulong tick = 1; tick <= 30; tick++)
+        {
+            stationary.AdvanceAuthoritativeTick();
+            NpcSnapshot update = CreateMoonLordPart(tick, positionX: 100f + tick) with { VelocityX = .25f, VelocityY = .25f };
+            stationary.NpcStateCommitted(NpcStateCommitKind.Update, in update);
+        }
+
+        Assert.Equal(1, stationaryOutbound.QueuedFrames);
+    }
+
+    [Fact]
     public void Source_requested_forced_npc_update_bypasses_the_ordinary_motion_cadence()
     {
         var replication = new RuntimeNpcReplicationRegistry();
@@ -285,6 +363,17 @@ public sealed class RuntimeNpcReplicationRegistryTests
 
     private static PlayerSpawnCommitRequest CreatePlayerSpawn(PlayerSlotId slot) =>
         new(slot, 100, 200, 0, 0, 0, 0, 0);
+
+    private static PlayerMovementCommitRequest CreateMovement(PlayerSlotId slot, float x, float y) =>
+        new(slot, 0, 0, 0, 0, 0, x, y, false, 0f, 0f, false, 0,
+            false, 0f, 0f, 0f, 0f, false, 0f, 0f);
+
+    private static NpcSnapshot CreateMoonLordPart(ulong revision, float positionX) =>
+        CreateNpc(revision, positionX) with
+        {
+            Type = VanillaNpcIds.MoonLordHead.Value,
+            NetId = checked((short)VanillaNpcIds.MoonLordHead.Value)
+        };
 
     private static NpcSnapshot CreateNpc(ulong revision, float positionX) =>
         new(

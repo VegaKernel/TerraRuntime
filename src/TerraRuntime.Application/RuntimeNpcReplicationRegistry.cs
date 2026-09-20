@@ -23,6 +23,9 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
     // TerrariaServer 1.4.5.8 Main.npcStreamSpeed defaults to 30. This is a containment boundary
     // until each supported AI path can express the source NPC.netUpdate intent explicitly.
     private const long MotionResyncTicks = 30;
+    // TerrariaServer 1.4.5.8 Main.npcStreamSpeed and NPC.StreamUpdatesToNearbyPlayers().
+    private const int MultiplayerProximityStreamTicks = 30;
+    private const byte MultiplayerProximityStreamThreshold = 8;
 
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> endpoints = new();
     private readonly byte[]?[] baselineFrames = new byte[MaxNpcSlots][];
@@ -32,6 +35,9 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
     private readonly byte[]?[] liveFrames = new byte[MaxNpcSlots][];
     private readonly NpcSnapshot[] liveSnapshots = new NpcSnapshot[MaxNpcSlots];
     private readonly long[] liveFrameTicks = new long[MaxNpcSlots];
+    private readonly object proximityStreamGate = new();
+    private readonly NpcHandle[] proximityStreamOwners = new NpcHandle[MaxNpcSlots];
+    private readonly int[] proximityStreamTicks = new int[MaxNpcSlots];
     private readonly byte[]?[] townHomeBaselineFrames = new byte[RuntimeTownNpcStateStore.MaximumTownNpcs][];
     private readonly byte[]?[] townIdentityBaselineFrames = new byte[RuntimeTownNpcStateStore.MaximumTownNpcs][];
     private long relayedFrames;
@@ -282,6 +288,8 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
             return;
 
         bool duplicate = IsDuplicateLiveFrame(snapshot.Handle, encoded);
+        if (kind == NpcStateCommitKind.Update)
+            StreamMoonLordUpdateToNearbyPlayers(in snapshot, encoded);
         if (kind == NpcStateCommitKind.Update && duplicate)
         {
             Interlocked.Increment(ref suppressedDuplicateFrames);
@@ -359,6 +367,74 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
             liveFrameTicks[slot] = 0;
         }
     }
+
+    /// <summary>
+    /// Mirrors NPC.StreamUpdatesToNearbyPlayers for the complete 1.4.5.8 catalog entry
+    /// NPCID.Sets.UsesMultiplayerProximitySyncing: Moon Lord head, hands and core (396-398).
+    /// The regular packet-23 fallback remains separate because it models an older bounded transport
+    /// policy rather than source NPC.netUpdate ownership.
+    /// </summary>
+    private void StreamMoonLordUpdateToNearbyPlayers(in NpcSnapshot snapshot, byte[] encoded)
+    {
+        if (!UsesMultiplayerProximitySyncing(snapshot.TypeIdentity) ||
+            Math.Abs(snapshot.VelocityX) + Math.Abs(snapshot.VelocityY) <= .5f ||
+            !TryAdvanceProximityStream(snapshot.Handle))
+        {
+            return;
+        }
+
+        if (!VanillaNpcDefinitionCatalog.TryGet(snapshot.TypeIdentity, snapshot.NetIdentity, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(snapshot.Simulation, out VanillaNpcHitboxSize hitbox))
+        {
+            return;
+        }
+
+        float centerX = snapshot.PositionX + hitbox.Width * .5f;
+        float centerY = snapshot.PositionY + hitbox.Height * .5f;
+        var frame = new OutboundFrame(encoded);
+        foreach (Endpoint endpoint in endpoints.Values)
+        {
+            if (!endpoint.TryAccumulateProximityStream(
+                    snapshot.Handle,
+                    centerX,
+                    centerY,
+                    definition.IsBoss,
+                    MultiplayerProximityStreamThreshold))
+            {
+                continue;
+            }
+
+            if (endpoint.Outbound.TryEnqueue(frame) == OutboundEnqueueResult.Enqueued)
+                Interlocked.Increment(ref relayedFrames);
+            else
+                Interlocked.Increment(ref rejectedFrames);
+        }
+    }
+
+    private bool TryAdvanceProximityStream(NpcHandle owner)
+    {
+        int slot = owner.Slot;
+        lock (proximityStreamGate)
+        {
+            if (proximityStreamOwners[slot] != owner)
+            {
+                proximityStreamOwners[slot] = owner;
+                proximityStreamTicks[slot] = 0;
+            }
+
+            proximityStreamTicks[slot]++;
+            if (proximityStreamTicks[slot] < MultiplayerProximityStreamTicks)
+                return false;
+
+            proximityStreamTicks[slot] = 0;
+            return true;
+        }
+    }
+
+    private static bool UsesMultiplayerProximitySyncing(NpcTypeId type) =>
+        type == VanillaNpcIds.MoonLordHead ||
+        type == VanillaNpcIds.MoonLordHand ||
+        type == VanillaNpcIds.MoonLordCore;
 
     internal ReadOnlyMemory<byte>[] CaptureWorldTransferDespawnFrames()
     {
@@ -442,6 +518,13 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
 
     public void PlayerMoved(ConnectionHandle connection, in PlayerMovementCommitRequest request)
     {
+        if (connection.Player.Slot != request.PlayerSlot ||
+            !endpoints.TryGetValue(connection.Source, out Endpoint? endpoint))
+        {
+            return;
+        }
+
+        endpoint.UpdateReportedCameraPosition(connection.Player, request);
     }
 
     private void Broadcast(byte[] encoded)
@@ -476,8 +559,12 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
 
     private sealed class Endpoint(TerrariaConnectionOutboundQueue outbound)
     {
+        private readonly object proximityStreamGate = new();
+        private readonly Dictionary<NpcHandle, byte> proximityStreamCounters = new();
         private int playingSlot = -1;
         private ulong playingGeneration;
+        private float reportedCameraX;
+        private float reportedCameraY;
 
         public TerrariaConnectionOutboundQueue Outbound { get; } =
             outbound ?? throw new ArgumentNullException(nameof(outbound));
@@ -487,6 +574,12 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
 
         public void MarkPlaying(PlayerHandle player)
         {
+            lock (proximityStreamGate)
+            {
+                proximityStreamCounters.Clear();
+                reportedCameraX = 0f;
+                reportedCameraY = 0f;
+            }
             Volatile.Write(ref playingGeneration, player.Generation.Value);
             Volatile.Write(ref playingSlot, player.Slot.Value);
         }
@@ -500,6 +593,52 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
             }
 
             Volatile.Write(ref playingGeneration, 0);
+            lock (proximityStreamGate)
+                proximityStreamCounters.Clear();
+        }
+
+        public void UpdateReportedCameraPosition(PlayerHandle player, in PlayerMovementCommitRequest request)
+        {
+            if (!IsPlaying ||
+                Volatile.Read(ref playingSlot) != player.Slot.Value ||
+                Volatile.Read(ref playingGeneration) != player.Generation.Value)
+            {
+                return;
+            }
+
+            lock (proximityStreamGate)
+            {
+                reportedCameraX = request.HasCameraTarget ? request.CameraTargetX : request.PositionX;
+                reportedCameraY = request.HasCameraTarget ? request.CameraTargetY : request.PositionY;
+            }
+        }
+
+        public bool TryAccumulateProximityStream(
+            NpcHandle npc,
+            float npcCenterX,
+            float npcCenterY,
+            bool boss,
+            byte threshold)
+        {
+            if (!IsPlaying)
+                return false;
+
+            lock (proximityStreamGate)
+            {
+                float dx = npcCenterX - reportedCameraX;
+                float dy = npcCenterY - reportedCameraY;
+                float distance = MathF.Sqrt(dx * dx + dy * dy);
+                byte gain = boss
+                    ? threshold
+                    : distance < 250f ? threshold
+                    : distance < 500f ? (byte)4
+                    : distance < 1_000f ? (byte)2
+                    : distance < 1_500f ? (byte)1
+                    : (byte)0;
+                byte counter = (byte)(proximityStreamCounters.GetValueOrDefault(npc) + gain);
+                proximityStreamCounters[npc] = counter;
+                return counter >= threshold;
+            }
         }
     }
 }
