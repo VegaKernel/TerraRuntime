@@ -92,7 +92,9 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
                 sim = sim with { Life = root.Simulation.Life };
 
             float cx = x + hitbox.Width * .5f, cy = y + hitbox.Height * .5f;
-            float px = parent.PositionX + parentHitbox.Width * .5f, py = parent.PositionY + parentHitbox.Height * .5f;
+            float parentCenterX = parent.PositionX + parentHitbox.Width * .5f;
+            float parentCenterY = parent.PositionY + parentHitbox.Height * .5f;
+            float px = parentCenterX, py = parentCenterY;
             int mechdusaSegmentIndex = TryGetMechQueen(context, out _) ?
                 GetMechdusaSegmentIndex(in npc, context) : 0;
             float gap = 44f * npc.Simulation.Scale;
@@ -113,7 +115,10 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
             float ratio = (distance - gap) / distance;
             x += dx * ratio; y += dy * ratio; vx = 0f; vy = 0f;
 
-            float rotation = MathF.Atan2(py - (y + hitbox.Height * .5f), px - (x + hitbox.Width * .5f)) + MathF.PI * .5f;
+            // AI_037 recomputes its final attachment facing from the unshifted parent vector
+            // measured before it translates this segment. Mechdusa's temporary vertical curl
+            // offset participates in spacing only, not in the retained rotation.
+            float rotation = MathF.Atan2(parentCenterY - cy, parentCenterX - cx) + MathF.PI * .5f;
 
             if (npc.TypeIdentity == VanillaNpcIds.DestroyerBody)
             {

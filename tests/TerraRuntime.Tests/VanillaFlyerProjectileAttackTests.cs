@@ -993,7 +993,7 @@ public sealed class VanillaFlyerProjectileAttackTests
         Assert.Equal(expectedY, next.PositionY, 4);
         Assert.Equal(0f, next.VelocityX);
         Assert.Equal(0f, next.VelocityY);
-        float rotation = MathF.Atan2(aimY - (expectedY + bodyHitbox.Height * .5f), parentX - (expectedX + bodyHitbox.Width * .5f)) + MathF.PI * .5f;
+        float rotation = MathF.Atan2(parentY - centerY, parentX - centerX) + MathF.PI * .5f;
         Assert.Equal(rotation, next.Simulation.Rotation.GetValueOrDefault(), 4);
         Assert.Equal(0, next.Target);
     }
