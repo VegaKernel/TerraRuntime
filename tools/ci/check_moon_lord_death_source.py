@@ -20,6 +20,17 @@ def method(source: str, name: str) -> str:
     return re.sub(r"\s+", " ", source[start:end]).replace("this.", "")
 
 
+def ai_style_branch(source: str, style: int, next_style: int) -> str:
+    body = method(source, "AI")
+    start = re.search(r"else if \(aiStyle == " + str(style) + r"\)", body)
+    if start is None:
+        raise SystemExit(f"Missing reference AI style: {style}")
+    end = re.search(r"else if \(aiStyle == " + str(next_style) + r"\)", body[start.end():])
+    if end is None:
+        raise SystemExit(f"Missing following reference AI style: {next_style}")
+    return body[start.start():start.end() + end.start()]
+
+
 def require(block: str, expression: str, label: str) -> None:
     if re.search(expression, block) is None:
         raise SystemExit(f"Moon Lord reference contract changed: {label}")
@@ -116,6 +127,22 @@ def main() -> None:
         body = method(source, name)
         require(body, r"Main\.npc\[\(int\)ai\[3\]\]\.type != 398", name + " exact owner slot")
         require(body, r"life = 0;.*?active = false", name + " orphan removal")
+    leech = ai_style_branch(source, 82, 83)
+    require(leech, r"float num1212 = 90f", "AI82 ninety-tick return clock")
+    require(leech, r"Vector2 vector150 = new Vector2\(0f, 216f\)", "AI82 head-mouth offset")
+    require(leech, r"int num1213 = \(int\)Math\.Abs\(ai\[0\]\) - 1", "AI82 signed one-based head slot")
+    require(leech, r"ProjectileKey projectileKey = \(ProjectileKey\)ai\[1\]", "AI82 projectile-key anchor")
+    require(leech, r"Main\.npc\[num1213\]\.type != 396", "AI82 exact head type")
+    require(leech, r"ai\[2\]\+\+", "AI82 age increment")
+    require(leech, r"if \(ai\[2\] >= num1212\)", "AI82 exact terminal age")
+    require(leech, r"int num1219 = 1000", "AI82 healing budget")
+    require(leech, r"int num1217 = num1213", "AI82 head first in healing order")
+    require(leech, r"num1223.*?Main\.npc\[num1217\].*?num1220.*?Main\.npc\[num1214\].*?num1221.*?Main\.npc\[num1215\].*?num1222.*?Main\.npc\[num1216\]", "AI82 head/core/left/right healing order")
+    require(leech, r"velocity = Vector2\.Zero", "AI82 stationary clot")
+    require(leech, r"projectileKey\.TryGetActive\(456, out var proj\)", "AI82 Moon Leech anchor type")
+    require(leech, r"base\.Center = Vector2\.Lerp\(proj\.Center, Main\.npc\[num1213\]\.Center \+ vector150, ai\[2\] / num1212\)", "AI82 anchor-to-mouth interpolation")
+    require(leech, r"life = 0;.*?HitEffect\(\);.*?active = false", "AI82 terminal removal")
+
     head = method(source, "AI_079_MoonLordHead")
     require(head, r"dontTakeDamage = localAI\[3\] >= 15f", "head incoming eyelid damage gate")
     require(head, r"velocity = Vector2.Zero", "head anchored velocity")
@@ -126,7 +153,7 @@ def main() -> None:
     require(head, r"localAI\[2\] > 14f", "head mouth animation bound")
 
     print(json.dumps({"reference": "TerrariaServer 1.4.5.8", "sha256": digest,
-                      "cleanup_tick": 60, "terminal_tick": 600, "orphan_families": [78, 79, 81]}))
+                      "cleanup_tick": 60, "terminal_tick": 600, "orphan_families": [78, 79, 81], "leech_style": 82}))
 
 
 if __name__ == "__main__":

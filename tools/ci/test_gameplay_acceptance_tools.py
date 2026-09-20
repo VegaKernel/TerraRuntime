@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from check_moon_lord_death_source import require_death_velocity, require_shell_translation
+from check_moon_lord_death_source import ai_style_branch, require_death_velocity, require_shell_translation
 from live_dirt_kill_probe import send_selected_movement, select_item, complete_pickup, COPPER_PICKAXE_ITEM
 from probe_worldgen_dungeon_graph import read_source, require_runtime_graph, require_runtime_features
 
@@ -40,6 +40,17 @@ class MoonLordDecompilationTests(unittest.TestCase):
         ):
             with self.subTest(expression=expression), self.assertRaises(SystemExit):
                 require_death_velocity(expression)
+
+
+class MoonLordLeechDecompilationTests(unittest.TestCase):
+    def test_ai_style_branch_extracts_only_the_requested_style(self):
+        source = "void AI() { else if (aiStyle == 81) { ignored; } else if (aiStyle == 82) { expected; } else if (aiStyle == 83) { following; } }"
+        self.assertIn("expected", ai_style_branch(source, 82, 83))
+        self.assertNotIn("following", ai_style_branch(source, 82, 83))
+
+    def test_ai_style_branch_rejects_missing_boundaries(self):
+        with self.assertRaises(SystemExit):
+            ai_style_branch("void AI() { else if (aiStyle == 82) { expected; } }", 82, 83)
 
 
 class MoonLordTeleportDecompilationTests(unittest.TestCase):
