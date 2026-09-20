@@ -569,6 +569,40 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Targeting_stepper_uses_live_twin_centers_for_charge_movement_and_late_aim()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        VanillaNpcTargetCandidate target = Target(700f, 900f);
+        stepper.SetCandidates([target]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSimulationState state = CreateNpc(VanillaNpcIds.Retinazer, 0f).Simulation with
+        {
+            HitboxOverride = new NpcHitboxDimensions(200, 300)
+        };
+        NpcSnapshot retinazer = CreateNpc(VanillaNpcIds.Retinazer, 0f) with
+        {
+            PositionX = 100f, PositionY = 200f, Ai = new NpcAiState(0f, 1f, 0f, 0f), Simulation = state
+        };
+        NpcSnapshot spazmatism = CreateNpc(VanillaNpcIds.Spazmatism, 0f) with
+        {
+            PositionX = 100f, PositionY = 200f, Ai = new NpcAiState(3f, 1f, 0f, 0f), Simulation = state
+        };
+        NpcSnapshot lateRetinazer = retinazer with { Ai = new NpcAiState(3f, 0f, 0f, 0f) };
+        float dx = target.CenterX - 200f;
+        float dy = target.CenterY - 350f;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+
+        Assert.True(stepper.TryStepState(in retinazer, out NpcStateUpdate retNext));
+        Assert.True(stepper.TryStepState(in spazmatism, out NpcStateUpdate spazNext));
+        Assert.True(stepper.TryStepState(in lateRetinazer, out NpcStateUpdate lateRetNext));
+        Assert.Equal(dx / distance * 12f, retNext.VelocityX, 5);
+        Assert.Equal(dy / distance * 12f, retNext.VelocityY, 5);
+        Assert.Equal(dx / distance * 14f, spazNext.VelocityX, 5);
+        Assert.Equal(dy / distance * 14f, spazNext.VelocityY, 5);
+        Assert.Equal(MathF.Atan2(dy, dx) - 1.57f, lateRetNext.Simulation.Rotation!.Value, 5);
+    }
+
+    [Fact]
     public void Targeting_stepper_uses_live_twin_hitbox_for_late_line_of_fire()
     {
         var environment = new RecordingEnvironment(canHit: false);

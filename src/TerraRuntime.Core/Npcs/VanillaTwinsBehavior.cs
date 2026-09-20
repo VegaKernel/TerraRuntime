@@ -80,7 +80,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             if (ai.Ai1 == 0f && mechQueenUp)
                 StepMechdusaPhaseOne(in npc, in definition, in target, context, life, lifeMax, queenCenterX, queenCenterY, queenVelocityX, ref ai, ref vx, ref vy);
             else if (_spazmatism)
-                StepSpazPhaseOne(in npc, in target, context, life, lifeMax, ref ai, ref local, ref vx, ref vy);
+                StepSpazPhaseOne(in npc, in definition, in target, context, life, lifeMax, ref ai, ref local, ref vx, ref vy);
             else
                 StepRetPhaseOne(in npc, in definition, in target, context, life, lifeMax, ref ai, ref local, ref vx, ref vy);
 
@@ -156,7 +156,10 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
 
             // AI_030 assigns the late laser-facing angle directly after movement.
             if (!_spazmatism)
-                rotation = MathF.Atan2(target.CenterY - (npc.PositionY + 55f), target.CenterX - (npc.PositionX + 50f)) - 1.57f;
+            {
+                VanillaNpcHitboxSize lateHitbox = ResolveHitbox(in npc, in definition);
+                rotation = MathF.Atan2(target.CenterY - (npc.PositionY + lateHitbox.Height * .5f), target.CenterX - (npc.PositionX + lateHitbox.Width * .5f)) - 1.57f;
+            }
             else if (hasTargetRotation && lateState == 1f)
             {
                 rotation = targetRotation;
@@ -301,12 +304,14 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
     private static void StepRetPhaseOne(in NpcSnapshot npc, in VanillaNpcDefinition definition, in VanillaNpcTargetCandidate target, VanillaNpcBehaviorContext context,
         int life, int lifeMax, ref NpcAiState ai, ref NpcAiState local, ref float vx, ref float vy)
     {
+        VanillaNpcHitboxSize hitbox = ResolveHitbox(in npc, in definition);
+        float cx = npc.PositionX + hitbox.Width * .5f;
+        float cy = npc.PositionY + hitbox.Height * .5f;
         if (ai.Ai1 == 0f)
         {
             float speed = context.ExpertMode ? 8.25f : 7f;
             float accel = context.ExpertMode ? 0.115f : 0.1f;
             if (context.GoodWorld) { speed *= 1.15f; accel *= 1.15f; }
-            float cx = npc.PositionX + 50f, cy = npc.PositionY + 55f;
             int side = cx < target.CenterX + 10f ? -1 : 1;
             float dx = target.CenterX + side * 300f - cx;
             float dy = target.CenterY - 300f - cy;
@@ -315,10 +320,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             float timer = ai.Ai2 + 1f;
             float shot = ai.Ai3;
             if (timer >= 600f) { ai = ai with { Ai1 = 1f, Ai2 = 0f, Ai3 = 0f }; return; }
-            int physicalHeight = definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox)
-                ? hitbox.Height
-                : definition.Height;
-            if (npc.PositionY + physicalHeight < target.CenterY - VanillaPlayerHitboxFacts.BaseHeight * .5f && distance < 400f)
+            if (npc.PositionY + hitbox.Height < target.CenterY - VanillaPlayerHitboxFacts.BaseHeight * .5f && distance < 400f)
             {
                 shot += 1f;
                 if (context.ExpertMode && life < lifeMax * .9f) shot += .3f;
@@ -334,7 +336,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         {
             float speed = context.ExpertMode ? 15f : 12f;
             if (context.GoodWorld) speed += 2f;
-            SetToward(npc.PositionX + 50f, npc.PositionY + 55f, target.CenterX, target.CenterY, speed, ref vx, ref vy);
+            SetToward(cx, cy, target.CenterX, target.CenterY, speed, ref vx, ref vy);
             ai = ai with { Ai1 = 2f };
         }
         else if (ai.Ai1 == 2f)
@@ -355,7 +357,8 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
     private static void StepRetPhaseTwo(in NpcSnapshot npc, in VanillaNpcDefinition definition, in VanillaNpcTargetCandidate target, VanillaNpcBehaviorContext context,
         int life, int lifeMax, bool mechQueenUp, float queenCenterX, float queenCenterY, float queenVelocityX, bool canHit, ref NpcAiState ai, ref NpcAiState local, ref float vx, ref float vy)
     {
-        float cx = npc.PositionX + 50f, cy = npc.PositionY + 55f;
+        VanillaNpcHitboxSize hitbox = ResolveHitbox(in npc, in definition);
+        float cx = npc.PositionX + hitbox.Width * .5f, cy = npc.PositionY + hitbox.Height * .5f;
         if (ai.Ai1 == 0f)
         {
             if (mechQueenUp)
@@ -392,14 +395,15 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         }
     }
 
-    private static void StepSpazPhaseOne(in NpcSnapshot npc, in VanillaNpcTargetCandidate target, VanillaNpcBehaviorContext context,
+    private static void StepSpazPhaseOne(in NpcSnapshot npc, in VanillaNpcDefinition definition, in VanillaNpcTargetCandidate target, VanillaNpcBehaviorContext context,
         int life, int lifeMax, ref NpcAiState ai, ref NpcAiState local, ref float vx, ref float vy)
     {
+        VanillaNpcHitboxSize hitbox = ResolveHitbox(in npc, in definition);
         if (ai.Ai1 == 0f)
         {
             float speed = 12f, accel = .4f;
             if (context.GoodWorld) { speed *= 1.15f; accel *= 1.15f; }
-            float cx=npc.PositionX+50f, cy=npc.PositionY+55f; int side=cx<target.CenterX+10f?-1:1;
+            float cx=npc.PositionX+hitbox.Width*.5f, cy=npc.PositionY+hitbox.Height*.5f; int side=cx<target.CenterX+10f?-1:1;
             ApproachVector(target.CenterX+side*400f-cx,target.CenterY-cy,speed,accel,ref vx,ref vy);
             float timer=ai.Ai2+1f,shot=ai.Ai3+1f+(context.ExpertMode&&life<lifeMax*.8f?.6f:0f)+(context.GoodWorld?.4f:0f);
             if(timer>=600f){ai=ai with{Ai1=1f,Ai2=0f,Ai3=0f};return;}
@@ -409,7 +413,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         {
             float speed=13f;
             if(context.ExpertMode){if(life<lifeMax*.9f)speed+=.5f;if(life<lifeMax*.8f)speed+=.5f;if(life<lifeMax*.7f)speed+=.55f;if(life<lifeMax*.6f)speed+=.6f;if(life<lifeMax*.5f)speed+=.65f;}
-            if(context.GoodWorld)speed*=1.2f; SetToward(npc.PositionX+50f,npc.PositionY+55f,target.CenterX,target.CenterY,speed,ref vx,ref vy); ai=ai with{Ai1=2f};
+            if(context.GoodWorld)speed*=1.2f; SetToward(npc.PositionX+hitbox.Width*.5f,npc.PositionY+hitbox.Height*.5f,target.CenterX,target.CenterY,speed,ref vx,ref vy); ai=ai with{Ai1=2f};
         }
         else if(ai.Ai1==2f)
         {
@@ -422,7 +426,8 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
     private static void StepSpazPhaseTwo(in NpcSnapshot npc, in VanillaNpcDefinition definition, in VanillaNpcTargetCandidate target, VanillaNpcBehaviorContext context,
         int life, int lifeMax, bool mechQueenUp, float queenCenterX, float queenCenterY, float queenVelocityX, bool canHit, ref NpcAiState ai, ref NpcAiState local, ref float vx, ref float vy)
     {
-        float cx=npc.PositionX+50f,cy=npc.PositionY+55f;
+        VanillaNpcHitboxSize hitbox = ResolveHitbox(in npc, in definition);
+        float cx=npc.PositionX+hitbox.Width*.5f,cy=npc.PositionY+hitbox.Height*.5f;
         if(ai.Ai1==0f)
         {
             if (mechQueenUp)
@@ -486,6 +491,11 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             ? ai with { Ai1 = 1f, Ai2 = 0f, Ai3 = 0f }
             : ai with { Ai2 = timer };
     }
+
+    private static VanillaNpcHitboxSize ResolveHitbox(in NpcSnapshot npc, in VanillaNpcDefinition definition) =>
+        definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox)
+            ? hitbox
+            : new VanillaNpcHitboxSize(definition.Width, definition.Height);
 
     private static void ApproachVector(float dx,float dy,float speed,float accel,ref float vx,ref float vy)
     {float d=MathF.Max(.001f,MathF.Sqrt(dx*dx+dy*dy));float tx=dx/d*speed,ty=dy/d*speed;Approach(ref vx,tx,accel);Approach(ref vy,ty,accel);if(vx<0&&tx>0)Approach(ref vx,tx,accel);else if(vx>0&&tx<0)Approach(ref vx,tx,accel);if(vy<0&&ty>0)Approach(ref vy,ty,accel);else if(vy>0&&ty<0)Approach(ref vy,ty,accel);}
