@@ -568,6 +568,22 @@ public sealed class VanillaFlyerProjectileAttackTests
         Assert.Equal(119f, next.Ai.Ai3);
     }
 
+    [Fact]
+    public void Targeting_stepper_refreshes_destroyer_head_target_on_each_non_digging_step()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetCandidates([Target(900f, 800f), Target(120f, 120f) with { Slot = 1 }]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        stepper.SetWormEnvironment(new EmptyWormEnvironment());
+        NpcSnapshot head = CreateNpc(VanillaNpcIds.Destroyer, 0f) with
+        {
+            PositionX = 100f, PositionY = 100f, Target = 0, Ai = new NpcAiState(1f, 0f, 0f, 0f)
+        };
+
+        Assert.True(stepper.TryStepState(in head, out NpcStateUpdate next));
+        Assert.Equal(1, next.Target);
+    }
+
     [Theory]
     [InlineData(false, 22)]
     [InlineData(true, 18)]

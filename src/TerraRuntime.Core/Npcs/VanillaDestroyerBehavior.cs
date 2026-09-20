@@ -153,6 +153,10 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
             return true;
         }
 
+        // In the non-digging head branch, AI_037 invokes TargetClosest before every movement update.
+        if (!digging)
+            hasTarget = TryRefresh(in npc, in definition, context, ref targetSlot, out target);
+
         float maxSpeed = 16f;
         float turn = context.GoodWorld ? .12f : .1f;
         float align = context.GoodWorld ? .18f : .15f;
