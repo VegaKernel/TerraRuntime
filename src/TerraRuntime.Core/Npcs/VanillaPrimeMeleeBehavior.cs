@@ -102,8 +102,9 @@ internal sealed class VanillaSkeletronPrimeLimbNpcBehaviorStrategy : IVanillaNpc
         }
         else if (phase == 2f)
         {
-            // Candidate centers currently project the ordinary 42-pixel player body.
-            if ((TryTarget(context, target, out var player) && npc.PositionY > player.CenterY - VanillaPlayerHitboxFacts.BaseHeight * .5f) || vy < 0f)
+            // AI33/34 compare the arm top edge against Player.position.Y, whose live dimensions may be
+            // altered by a mount. Target candidates carry that physical height alongside their center.
+            if ((TryTarget(context, target, out var player) && npc.PositionY > player.CenterY - player.Height * .5f) || vy < 0f)
             {
                 if (!vice) ai = ai with { Ai2 = 3f };
                 else ai = ai.Ai3 >= 4f ? ai with { Ai2 = 3f, Ai3 = 0f } : ai with { Ai2 = 1f, Ai3 = ai.Ai3 + 1f };

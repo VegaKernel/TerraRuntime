@@ -1,3 +1,4 @@
+using System.Text.Json;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -6,6 +7,32 @@ namespace TerraRuntime.Tests;
 
 public sealed partial class PrimeMeleeAiTests
 {
+    [Fact]
+    public void Charge_transition_uses_the_target_live_hitbox_top_edge()
+    {
+        JsonElement row = Rows.First(x => x.GetProperty("type").GetInt32() == VanillaNpcIds.PrimeSaw.Value &&
+            x.GetProperty("phase").GetInt32() == 2 && x.GetProperty("geometry").GetInt32() == 0);
+
+        Assert.Equal(2f, StepCharge(row, hitboxHeight: 0f));
+        Assert.Equal(3f, StepCharge(row, hitboxHeight: 76f));
+    }
+
+    private static float StepCharge(JsonElement row, float hitboxHeight)
+    {
+        var (npcs, projectiles, ai, arm, _) = Setup(row);
+        var update = new NpcStateUpdate(arm.Type, arm.NetId, arm.PositionX, 1015f, arm.VelocityX, 1f,
+            arm.Target, arm.Ai with { Ai2 = 2f }, arm.Simulation);
+        Assert.True(npcs.TryUpdate(arm.Handle, in update, out _));
+        ai.SetCandidates([new VanillaNpcTargetCandidate(0, 1510f, 1050f, 0, true, false, false, false)
+        {
+            HitboxHeight = hitboxHeight
+        }]);
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new ArmsOnly(ai)).Applied);
+        Assert.True(npcs.TryGet(arm.Handle, out var after));
+        return after.Ai.Ai2;
+    }
+
     [Theory]
     [InlineData(129, false)] [InlineData(129, true)] [InlineData(130, false)] [InlineData(130, true)]
     public void Rejected_proposal_cannot_spend_rng(int type, bool replacement)
