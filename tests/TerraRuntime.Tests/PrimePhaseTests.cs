@@ -108,6 +108,48 @@ public sealed class PrimePhaseTests
     }
 
     [Fact]
+    public void Hover_to_spin_publishes_the_source_requested_immediate_update()
+    {
+        var commits = new CommitRecorder();
+        var store = new RuntimeNpcStore(commitSink: commits);
+        store.SetVanillaSpawnContextSource(() => new VanillaNpcSpawnContext(1, 1, false));
+        Assert.True(store.TrySpawnIntent(new NpcAiSpawnIntent(VanillaNpcIds.SkeletronPrime, 1000, 1000, 0, 0, 0)
+        {
+            InitialAi = new NpcAiState(1f, 0f, 599f, 0f)
+        }, out var head));
+        commits.Kinds.Clear();
+
+        var ai = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        ai.SetWorldConditions(dayTime: false, slimeRainActive: false);
+        ai.SetCandidates([new VanillaNpcTargetCandidate(0, 1510, 1021, 0, true, false, false, false)]);
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(store).Tick(ai).Applied);
+        Assert.True(store.TryGet(head.Handle, out var after));
+        Assert.Equal(new NpcAiState(1f, 1f, 0f, 0f), after.Ai);
+        Assert.Equal([NpcStateCommitKind.ForcedUpdate], commits.Kinds);
+    }
+
+    [Fact]
+    public void Spin_to_hover_keeps_the_source_cadenced_update()
+    {
+        var commits = new CommitRecorder();
+        var store = new RuntimeNpcStore(commitSink: commits);
+        store.SetVanillaSpawnContextSource(() => new VanillaNpcSpawnContext(1, 1, false));
+        Assert.True(store.TrySpawnIntent(new NpcAiSpawnIntent(VanillaNpcIds.SkeletronPrime, 1000, 1000, 0, 0, 0)
+        {
+            InitialAi = new NpcAiState(1f, 1f, 399f, 0f)
+        }, out _));
+        commits.Kinds.Clear();
+
+        var ai = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        ai.SetWorldConditions(dayTime: false, slimeRainActive: false);
+        ai.SetCandidates([new VanillaNpcTargetCandidate(0, 1510, 1021, 0, true, false, false, false)]);
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(store).Tick(ai).Applied);
+        Assert.Equal([NpcStateCommitKind.Update], commits.Kinds);
+    }
+
+    [Fact]
     public void Initial_targeting_sets_charge_direction_and_rotation_before_velocity_changes()
     {
         var store = new RuntimeNpcStore();
@@ -178,5 +220,11 @@ public sealed class PrimePhaseTests
             Assert.Equal(row.GetProperty("defDefense").GetInt32(), npc.Simulation.BaseDefense);
         }
         Assert.True(players.Despawn(first)); Assert.True(players.Despawn(second));
+    }
+
+    private sealed class CommitRecorder : INpcStateCommitSink
+    {
+        public List<NpcStateCommitKind> Kinds { get; } = [];
+        public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot) => Kinds.Add(kind);
     }
 }

@@ -7,6 +7,16 @@ namespace TerraRuntime.Core.Npcs;
 /// <summary>TerrariaServer 1.4.5.8 aiStyle 32 gameplay state for Skeletron Prime.</summary>
 internal sealed class VanillaSkeletronPrimeNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
+    /// <summary>
+    /// AI_032 writes <c>NPC.netUpdate</c> exactly when the 600-tick hover timer enters the spin phase.
+    /// The spin exit is deliberately absent: it resumes ordinary replication cadence in the source.
+    /// </summary>
+    internal static bool RequiresImmediateSync(in NpcSnapshot before, in NpcStateUpdate proposed) =>
+        before.TypeIdentity == VanillaNpcIds.SkeletronPrime &&
+        proposed.Type == before.Type &&
+        before.Ai.Ai1 == 0f && proposed.Ai.Ai1 == 1f &&
+        before.Ai.Ai2 >= 599f && proposed.Ai.Ai2 == 0f;
+
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
         INpcAiStateStepper inner, out NpcStateUpdate next)
     {
