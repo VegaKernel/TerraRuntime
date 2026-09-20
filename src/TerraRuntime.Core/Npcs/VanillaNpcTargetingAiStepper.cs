@@ -1987,7 +1987,8 @@ public sealed class VanillaNpcTargetingAiStepper :
                 0f, 0f, proposed.Target)
             {
                 InitialAi = new NpcAiState(5f, proposed.Ai.Ai1, 0f, source.Handle.Slot),
-                InitialLocalAi = new NpcAiState(0f, proposed.Simulation.LocalAi.Ai1, 0f, source.Handle.Slot + 1f)
+                InitialLocalAi = new NpcAiState(0f, proposed.Simulation.LocalAi.Ai1, 0f, source.Handle.Slot + 1f),
+                StartSlot = source.Handle.Slot
             };
         }
         return requested;

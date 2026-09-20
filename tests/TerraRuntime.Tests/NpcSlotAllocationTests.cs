@@ -165,6 +165,25 @@ public sealed class NpcSlotAllocationTests
     }
 
     [Fact]
+    public void Lunatic_Cultist_ritual_clones_start_search_at_the_parent_slot()
+    {
+        var store = new RuntimeNpcStore(32);
+        var state = State(VanillaNpcIds.LunaticCultist.Value) with { Ai = new NpcAiState(5f, 29f, 0f, 0f) };
+        Assert.True(store.TrySpawn(10, in state, out var cultist));
+        var proposed = state with { Ai = new NpcAiState(5f, 30f, 0f, 0f) };
+        var stepper = new VanillaNpcTargetingAiStepper(new Idle());
+        Span<NpcAiSpawnIntent> intents = stackalloc NpcAiSpawnIntent[2];
+        Assert.Equal(2, stepper.PlanNpcSpawns(in cultist, in proposed, intents));
+        for (int index = 0; index < intents.Length; index++)
+        {
+            Assert.Equal(cultist.Handle.Slot, intents[index].StartSlot);
+            Assert.True(store.TrySpawnIntent(in intents[index], out var clone));
+            Assert.Equal(11 + index, clone.Handle.Slot);
+        }
+        Assert.False(store.TryGetActive(0, out _));
+    }
+
+    [Fact]
     public void Repeated_creation_and_deactivation_match_original_NewNPC_slots_and_generations()
     {
         var store = new RuntimeNpcStore();
