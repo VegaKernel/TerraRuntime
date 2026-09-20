@@ -1150,9 +1150,23 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
             command.State.Action is not (byte)TerrariaDoorToggleAction.OpenTrapdoor and not (byte)TerrariaDoorToggleAction.CloseTrapdoor ||
             !command.State.IsValid || !command.Connection.IsAssigned || !players.TryGet(command.Connection, out _) ||
             command.State.TileX < 3 || command.State.TileY < 3 ||
-            command.State.TileX >= tiles.Dimensions.WidthTiles - 3 || command.State.TileY >= tiles.Dimensions.HeightTiles - 3 ||
-            !playerDoorOpenings.TryShiftTrapdoor(command.State.TileX, command.State.TileY,
-                playerAbove: command.State.DirectionX == 1, opening: opening, out _))
+            command.State.TileX >= tiles.Dimensions.WidthTiles - 3 || command.State.TileY >= tiles.Dimensions.HeightTiles - 3)
+        {
+            RejectedClientManipulations++;
+            return;
+        }
+
+        bool playerAbove = command.State.DirectionX == 1;
+        if (opening)
+        {
+            if (!TryOpenTrapdoorWithDestinationCuts(command.State.TileX, command.State.TileY, playerAbove))
+            {
+                RejectedClientManipulations++;
+                return;
+            }
+        }
+        else if (!playerDoorOpenings.TryShiftTrapdoor(command.State.TileX, command.State.TileY,
+                     playerAbove, opening: false, out _))
         {
             RejectedClientManipulations++;
             return;
@@ -1162,6 +1176,65 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         TerrariaDoorToggleState state = command.State;
         replication?.TryPublishDoorToggle(command.Connection.Source, in state);
     }
+
+    /// <summary>
+    /// Executes the type-387 branch of <c>WorldGen.ShiftTrapdoor</c>. The source resolves both destination cells
+    /// before it calls <c>KillTile</c>; reserve both supported simple-cell drops before changing either cell so a
+    /// full item table cannot leave the door half-open. The writer is single-threaded, hence a prepared KillTile is
+    /// deterministic until this method commits it.
+    /// </summary>
+    private bool TryOpenTrapdoorWithDestinationCuts(int tileX, int tileY, bool playerAbove)
+    {
+        if (tiles is null || mutations is null || playerDoorOpenings is null ||
+            !playerDoorOpenings.TryGetTrapdoorOpenCutTargets(tileX, tileY, playerAbove, out int leftX, out int targetY))
+        {
+            return false;
+        }
+
+        WorldTile firstBefore = tiles.Get(leftX, targetY);
+        WorldTile secondBefore = tiles.Get(leftX + 1, targetY);
+        if (!TryPrepareTrapdoorOpenCutTarget(leftX, targetY, in firstBefore, out PreparedSimpleBreak firstPrepared))
+        {
+            ReleasePreparedBreak(in firstPrepared);
+            return false;
+        }
+        if (!TryPrepareTrapdoorOpenCutTarget(leftX + 1, targetY, in secondBefore, out PreparedSimpleBreak secondPrepared))
+        {
+            ReleasePreparedBreak(in firstPrepared);
+            ReleasePreparedBreak(in secondPrepared);
+            return false;
+        }
+
+        if (!TryApplyPreparedTrapdoorOpenCut(leftX, targetY, firstBefore.IsActive) ||
+            !TryApplyPreparedTrapdoorOpenCut(leftX + 1, targetY, secondBefore.IsActive))
+        {
+            // Mutation preparation runs on the sole writer and validates the same stable simple-cell state. A
+            // failure here would otherwise leave a partially applied source operation, so make it a hard invariant.
+            throw new InvalidOperationException("Prepared trapdoor destination cut changed before commit.");
+        }
+
+        CommitPreparedBreak(in firstPrepared);
+        CommitPreparedBreak(in secondPrepared);
+        if (!playerDoorOpenings.TryShiftTrapdoor(tileX, tileY, playerAbove, opening: true, out _))
+            throw new InvalidOperationException("Prepared trapdoor source changed before its type shift.");
+        return true;
+    }
+
+    private bool TryPrepareTrapdoorOpenCutTarget(int x, int y, in WorldTile before, out PreparedSimpleBreak prepared)
+    {
+        prepared = default;
+        if (!before.IsActive)
+            return true;
+
+        // This is the exact destination admission predicate in WorldGen.ShiftTrapdoor: Main.tileCut plus the five
+        // drip identities. Stalactites are door-only and deliberately do not enter this packet-19 path.
+        if (!VanillaProjectileTileCutFacts.IsCuttable(before.TileType) && before.Type is not (373 or 374 or 375 or 461 or 709))
+            return false;
+        return TryPrepareSimpleBreak(x, y, in before, out prepared);
+    }
+
+    private bool TryApplyPreparedTrapdoorOpenCut(int x, int y, bool active) =>
+        !active || mutations!.Apply(new WorldTileMutationRequest(WorldTileMutationKind.KillTile, x, y)).Applied;
 
     private sealed class WorldItemDoorCloseRandom(IWorldItemSpawnRandom random) : IVanillaDoorCloseRandom1458
     {

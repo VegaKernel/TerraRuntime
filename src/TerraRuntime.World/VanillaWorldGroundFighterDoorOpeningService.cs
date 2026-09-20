@@ -261,29 +261,22 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
             : TryCloseTrapdoor(tileX, tileY, out mutation);
     }
 
+    public bool TryGetTrapdoorOpenCutTargets(int tileX, int tileY, bool playerAbove, out int leftX, out int targetY)
+    {
+        leftX = 0;
+        targetY = 0;
+        if (!TryResolveOpenTrapdoor(tileX, tileY, playerAbove, out leftX, out targetY))
+            return false;
+        return true;
+    }
+
     private bool TryOpenTrapdoor(int tileX, int tileY, bool playerAbove, out VanillaGroundFighterDoorOpeningMutation mutation)
     {
         mutation = default;
-        WorldTile touched = tiles.Get(tileX, tileY);
-        if (!touched.IsActive || touched.TileType != VanillaTileIds.TrapdoorClosed || touched.FrameX < 0)
+        if (!TryResolveOpenTrapdoor(tileX, tileY, playerAbove, out int leftX, out int destinationY))
             return false;
-
-        int leftX = tileX - (touched.FrameX / FrameUnit % 2);
-        int destinationY = tileY + (playerAbove ? 1 : -1);
-        if (!Contains(leftX, tileY) || !Contains(leftX + 1, tileY) ||
-            !Contains(leftX, destinationY) || !Contains(leftX + 1, destinationY))
-        {
-            return false;
-        }
         for (int column = 0; column < 2; column++)
-        {
-            WorldTile source = tiles.Get(leftX + column, tileY);
-            if (!source.IsActive || source.TileType != VanillaTileIds.TrapdoorClosed ||
-                !CanKillTrapdoorTile(leftX + column, tileY, in source))
-                return false;
-            if (tiles.Get(leftX + column, destinationY).IsActive && destinationY != tileY)
-                return false;
-        }
+            if (tiles.Get(leftX + column, destinationY).IsActive) return false;
 
         for (int column = 0; column < 2; column++)
         {
@@ -303,6 +296,19 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
 
         mutation = new VanillaGroundFighterDoorOpeningMutation(
             VanillaGroundFighterDoorOpeningKind.Door, tileX, tileY, 0, ChangedTiles: 4);
+        return true;
+    }
+
+    private bool TryResolveOpenTrapdoor(int tileX, int tileY, bool playerAbove, out int leftX, out int destinationY)
+    {
+        leftX = 0; destinationY = 0;
+        if (!Contains(tileX, tileY)) return false;
+        WorldTile touched = tiles.Get(tileX, tileY);
+        if (!touched.IsActive || touched.TileType != VanillaTileIds.TrapdoorClosed || touched.FrameX < 0) return false;
+        leftX = tileX - (touched.FrameX / FrameUnit % 2);
+        destinationY = tileY + (playerAbove ? 1 : -1);
+        if (!Contains(leftX, tileY) || !Contains(leftX + 1, tileY) || !Contains(leftX, destinationY) || !Contains(leftX + 1, destinationY)) return false;
+        for (int column = 0; column < 2; column++) { WorldTile source = tiles.Get(leftX + column, tileY); if (!source.IsActive || source.TileType != VanillaTileIds.TrapdoorClosed || !CanKillTrapdoorTile(leftX + column, tileY, in source)) return false; }
         return true;
     }
 

@@ -243,7 +243,7 @@ public sealed class VanillaNpcTargetingAiStepper :
 
         // AI_069's ocean/enrage guard requires both loaded world dimensions. Do not let an unavailable
         // world context fall through to a generic AI stepper and manufacture an unverified Duke transition.
-        if (definition.BehaviorFamily == VanillaNpcBehaviorFamily.DukeFishron &&
+        if (npcType == VanillaNpcIds.DukeFishron &&
             (_context.WorldWidthPixels <= 0d || !double.IsFinite(_context.WorldSurfacePixels)))
         {
             next = default;

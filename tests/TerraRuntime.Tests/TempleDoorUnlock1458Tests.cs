@@ -235,6 +235,69 @@ public sealed class TempleDoorUnlock1458Tests
         Assert.Equal(2, state.AppliedClientTileManipulations);
     }
 
+    [Fact]
+    public void Packet19_action2_cuts_destination_tilecut_content_before_opening_trapdoor()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        PlaceClosedTrapdoor(tiles, 40, 50);
+        var cuttable = new WorldTile { Type = 32, Flags = WorldTileFlags.Active };
+        tiles.Set(40, 51, in cuttable);
+        var replication = new RuntimeTileManipulationReplicationRegistry();
+        var state = new ServerRuntimeState(worldTiles: tiles, tileManipulationReplication: replication);
+        var slots = new PlayerSlotPool(1);
+        using PlayerJoinSession session = CreatePlayingSession(slots);
+        ConnectionHandle owner = new(GameCommandSourceId.FromConnection(145810), session.Handle);
+        ConnectionHandle observer = new(GameCommandSourceId.FromConnection(145811),
+            new PlayerHandle(new PlayerSlotId(1), new PlayerSessionGeneration(1)));
+        TerrariaConnectionOutboundQueue ownerOutbound = Outbound();
+        TerrariaConnectionOutboundQueue observerOutbound = Outbound();
+        Assert.True(replication.TryRegister(owner.Source, ownerOutbound));
+        Assert.True(replication.TryRegister(observer.Source, observerOutbound));
+        PlayerSpawnCommitRequest ownerSpawn = Spawn(owner.Player.Slot);
+        state.Apply(new PlayerSpawnRuntimeCommand(owner, session, ownerSpawn));
+        replication.PlayerSpawned(owner, in ownerSpawn);
+        PlayerSpawnCommitRequest observerSpawn = Spawn(observer.Player.Slot);
+        state.Apply(new PlayerSpawnRuntimeCommand(observer, session, observerSpawn));
+        replication.PlayerSpawned(observer, in observerSpawn);
+
+        var open = new TerrariaDoorToggleState((byte)TerrariaDoorToggleAction.OpenTrapdoor, 40, 50, 1);
+        state.Apply(new ClientTrapdoorToggleRuntimeCommand(owner, open));
+
+        for (int column = 0; column < 2; column++)
+        for (int row = 0; row < 2; row++)
+            Assert.Equal(VanillaTileIds.TrapdoorOpen, tiles.Get(40 + column, 50 + row).TileType);
+        Assert.Equal(0, ownerOutbound.QueuedFrames);
+        Assert.Equal(1, observerOutbound.QueuedFrames);
+        Assert.Equal(open, DecodeDoorToggle(Dequeue(observerOutbound)));
+        Assert.Equal(1, state.AppliedClientTileManipulations);
+    }
+
+    [Fact]
+    public void Packet19_action2_rejects_unmodelled_destination_killtile_before_changing_trapdoor()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        PlaceClosedTrapdoor(tiles, 40, 50);
+        // Plants are tileCut but frame-important. Until their complete KillTile drop path is implemented, this
+        // packet must reject as a transaction rather than clear either the plant or the source trapdoor.
+        var unsupportedCut = new WorldTile { Type = 3, Flags = WorldTileFlags.Active };
+        tiles.Set(40, 51, in unsupportedCut);
+        var state = new ServerRuntimeState(worldTiles: tiles);
+        var slots = new PlayerSlotPool(1);
+        using PlayerJoinSession session = CreatePlayingSession(slots);
+        ConnectionHandle owner = new(GameCommandSourceId.FromConnection(145812), session.Handle);
+        PlayerSpawnCommitRequest spawn = Spawn(owner.Player.Slot);
+        state.Apply(new PlayerSpawnRuntimeCommand(owner, session, spawn));
+
+        state.Apply(new ClientTrapdoorToggleRuntimeCommand(owner,
+            new TerrariaDoorToggleState((byte)TerrariaDoorToggleAction.OpenTrapdoor, 40, 50, 1)));
+
+        Assert.Equal(VanillaTileIds.TrapdoorClosed, tiles.Get(40, 50).TileType);
+        Assert.Equal(new TileTypeId(3), tiles.Get(40, 51).TileType);
+        Assert.True(tiles.Get(40, 51).IsActive);
+        Assert.Equal(1, state.RejectedClientTileManipulations);
+        Assert.Equal(0, state.AppliedClientTileManipulations);
+    }
+
     private static void SetItem(ServerRuntimeState state, ConnectionHandle connection, short slot, short stack)
     {
         state.Apply(new PlayerEquipmentRuntimeCommand(connection, new PlayerEquipmentCommitRequest(
@@ -257,6 +320,21 @@ public sealed class TempleDoorUnlock1458Tests
                 Flags = WorldTileFlags.Active
             };
             tiles.Set(x, topY + offset, in tile);
+        }
+    }
+
+    private static void PlaceClosedTrapdoor(WorldTileStore tiles, int x, int y)
+    {
+        for (int column = 0; column < 2; column++)
+        {
+            var tile = new WorldTile
+            {
+                Type = checked((ushort)VanillaTileIds.TrapdoorClosed.Value),
+                FrameX = checked((short)(column * 18)),
+                FrameY = 0,
+                Flags = WorldTileFlags.Active
+            };
+            tiles.Set(x + column, y, in tile);
         }
     }
 
