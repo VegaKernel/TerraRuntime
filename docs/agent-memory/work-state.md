@@ -1,6 +1,8 @@
 # Work state
 
-2026-09-21: Prime Saw AI_033 and Vice AI_034 now force packet 23 at their source timer and charge phase handoffs only. Saw covers `299`/`599` hover thresholds, launch and phase-four timer return; Vice covers both `599` hover paths, launch and the out-of-range phase-four charge. Direct regressions and real executor commits pass; removing the composed planner yields `Update` instead of `ForcedUpdate`. Movement-only returns and the Vice low-speed velocity refresh remain open source `netUpdate` work.
+2026-09-21: Prime Vice AI_034 now retains the source `netUpdate` when a live target refreshes a slow arm (`|vx| + |vy| < 2`) while its Prime parent is outside hover. The same slow idle-parent motion remains an ordinary update. Focused executor regressions cover both branches; all earlier timer/charge boundaries remain forced. Remaining Prime limb `netUpdate` work is limited to unadmitted source paths.
+
+2026-09-21: Prime Saw AI_033 and Vice AI_034 now force packet 23 at their source timer and charge phase handoffs only. Saw covers `299`/`599` hover thresholds, launch and phase-four timer return; Vice covers both `599` hover paths, launch and the out-of-range phase-four charge. Direct regressions and real executor commits pass; removing the composed planner yields `Update` instead of `ForcedUpdate`. Movement-only returns remain open source `netUpdate` work.
 
 2026-09-21: Prime Cannon AI_035 and Laser AI_036 now force packet 23 at their direct-source timer phase boundaries only: Cannon hover `1099`→attack and attack `299`→hover; Laser hover `799`→attack and attack `199`→hover. Their projectile emissions remain ordinary cadence because those source branches do not set `netUpdate`. Focused positive and cadence regressions pass; removing the composed planner makes the urgent cases fail. Release warnings-as-errors build passes. Remaining Prime limb `netUpdate` paths stay open.
 

@@ -12,7 +12,8 @@ internal sealed class VanillaSkeletronPrimeLimbNpcBehaviorStrategy : IVanillaNpc
     /// AI_033/034 write <c>NPC.netUpdate</c> for their timer and charge phase handoffs.
     /// Movement-only phase returns intentionally remain on the ordinary cadence.
     /// </summary>
-    internal static bool RequiresImmediateSync(in NpcSnapshot before, in NpcStateUpdate proposed)
+    internal static bool RequiresImmediateSync(in NpcSnapshot before, in NpcStateUpdate proposed,
+        VanillaNpcBehaviorContext context)
     {
         if (proposed.Type != before.Type) return false;
         bool saw = before.TypeIdentity == VanillaNpcIds.PrimeSaw;
@@ -31,8 +32,17 @@ internal sealed class VanillaSkeletronPrimeLimbNpcBehaviorStrategy : IVanillaNpc
         return ((phase == 0f || phase == 3f) && before.Ai.Ai3 >= 599f && proposed.Ai.Ai3 == 0f &&
                 (proposed.Ai.Ai2 == 0f || proposed.Ai.Ai2 == phase + 1f)) ||
             (phase == 1f && proposed.Ai.Ai2 == 2f) ||
-            (phase == 4f && proposed.Ai.Ai2 == 5f);
+            (phase == 4f && proposed.Ai.Ai2 == 5f) ||
+            RequiresSlowViceRefresh(in before, in proposed, context);
     }
+
+    private static bool RequiresSlowViceRefresh(in NpcSnapshot before, in NpcStateUpdate proposed,
+        VanillaNpcBehaviorContext context) =>
+        (before.Ai.Ai2 == 0f || before.Ai.Ai2 == 3f) &&
+        MathF.Abs(before.VelocityX) + MathF.Abs(before.VelocityY) < 2f &&
+        before.Ai.Ai1 is > -1f and < 200f &&
+        context.TryFindNpcPeer((byte)(int)before.Ai.Ai1, out var parent) && parent.Ai.Ai1 != 0f &&
+        proposed.Target < byte.MaxValue && context.TryFindCandidate((byte)proposed.Target, out var target) && !target.Dead;
 
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
         INpcAiStateStepper inner, out NpcStateUpdate next)

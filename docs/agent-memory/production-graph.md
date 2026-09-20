@@ -8,7 +8,7 @@ The retained Windows and Linux `NPC.UpdateNPC` encounter traces confirm `PlanSke
 
 Prime Cannon AI_035 and Laser AI_036 now also force packet 23 at their source timer phase changes: `1099`→attack and `299`→hover for Cannon, `799`→attack and `199`→hover for Laser. The direct source does not set `netUpdate` for the accompanying projectile emissions, so those remain on ordinary cadence. Other arm transitions and projectile/network cadence remain open.
 
-Prime Saw AI_033 and Vice AI_034 now force packet 23 at the admitted source timer and charge handoffs: Saw's `299`/`599` timer paths, launch and phase-four return; Vice's `599` timer paths, launch and phase-four out-of-range charge. Their ordinary movement returns and Vice's low-speed velocity refresh remain open.
+Prime Saw AI_033 and Vice AI_034 now force packet 23 at the admitted source timer and charge handoffs: Saw's `299`/`599` timer paths, launch and phase-four return; Vice's `599` timer paths, launch and phase-four out-of-range charge. Vice's source slow live-target refresh is also forced only while its Prime parent is outside hover; slow idle-parent motion remains cadenced. Other ordinary movement returns remain open.
 
 ## Prime head direction and rotation - 2026-09-20
 

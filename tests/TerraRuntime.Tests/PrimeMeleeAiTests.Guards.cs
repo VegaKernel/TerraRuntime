@@ -23,7 +23,6 @@ public sealed partial class PrimeMeleeAiTests
         var proposed = new NpcStateUpdate(before.Type, before.NetId, before.PositionX, before.PositionY,
             before.VelocityX, before.VelocityY, before.Target, before.Ai with { Ai2 = nextPhase, Ai3 = nextPhase == 2f || nextPhase == 5f ? timer : 0f }, before.Simulation);
 
-        Assert.True(VanillaSkeletronPrimeLimbNpcBehaviorStrategy.RequiresImmediateSync(in before, in proposed));
         Assert.True(stepper.RequiresForcedUpdate(in before, in proposed));
     }
 
@@ -39,7 +38,6 @@ public sealed partial class PrimeMeleeAiTests
         var proposed = new NpcStateUpdate(before.Type, before.NetId, before.PositionX, before.PositionY,
             before.VelocityX, before.VelocityY, before.Target, before.Ai with { Ai2 = nextPhase, Ai3 = timer + 1f }, before.Simulation);
 
-        Assert.False(VanillaSkeletronPrimeLimbNpcBehaviorStrategy.RequiresImmediateSync(in before, in proposed));
         Assert.False(stepper.RequiresForcedUpdate(in before, in proposed));
     }
 
@@ -62,6 +60,40 @@ public sealed partial class PrimeMeleeAiTests
             Assert.Equal(NpcStateCommitKind.ForcedUpdate, Assert.Single(sink.Commits).Kind);
             Assert.Equal(arm.Handle, sink.Commits[0].Npc.Handle);
         }
+    }
+
+    [Fact]
+    public void Vice_slow_live_target_refresh_publishes_the_source_requested_immediate_update()
+    {
+        var row = Rows.First(candidate => candidate.GetProperty("type").GetInt32() == VanillaNpcIds.PrimeVice.Value &&
+            candidate.GetProperty("before").GetProperty("ai")[2].GetSingle() == 0f &&
+            candidate.GetProperty("parent").GetProperty("ai")[1].GetSingle() != 0f);
+        var sink = new Capture();
+        var (npcs, projectiles, ai, arm, _) = Setup(row, sink);
+        var update = new NpcStateUpdate(arm.Type, arm.NetId, arm.PositionX, arm.PositionY, 0f, 0f,
+            arm.Target, arm.Ai with { Ai2 = 0f }, arm.Simulation);
+        Assert.True(npcs.TryUpdate(arm.Handle, in update, out arm));
+        sink.Commits.Clear();
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new ArmsOnly(ai)).Applied);
+        Assert.Equal(NpcStateCommitKind.ForcedUpdate, Assert.Single(sink.Commits).Kind);
+    }
+
+    [Fact]
+    public void Vice_slow_idle_parent_motion_stays_cadenced()
+    {
+        var row = Rows.First(candidate => candidate.GetProperty("type").GetInt32() == VanillaNpcIds.PrimeVice.Value &&
+            candidate.GetProperty("before").GetProperty("ai")[2].GetSingle() == 0f &&
+            candidate.GetProperty("parent").GetProperty("ai")[1].GetSingle() == 0f);
+        var sink = new Capture();
+        var (npcs, projectiles, ai, arm, _) = Setup(row, sink);
+        var update = new NpcStateUpdate(arm.Type, arm.NetId, arm.PositionX, arm.PositionY, 0f, 0f,
+            arm.Target, arm.Ai with { Ai2 = 0f, Ai3 = 0f }, arm.Simulation);
+        Assert.True(npcs.TryUpdate(arm.Handle, in update, out _));
+        sink.Commits.Clear();
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new ArmsOnly(ai)).Applied);
+        Assert.Equal(NpcStateCommitKind.Update, Assert.Single(sink.Commits).Kind);
     }
 
     [Fact]
