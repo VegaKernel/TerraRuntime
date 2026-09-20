@@ -252,7 +252,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             if (context.ExpertMode && life < lifeMax * .7f) fireTimer += .3f;
             if (context.ExpertMode && life < lifeMax * .6f) fireTimer += .3f;
             if (context.GoodWorld) fireTimer += .5f;
-            int threshold = context.CountNpcPeers(VanillaNpcIds.Spazmatism) == 0 ? 90 : 120;
+            int threshold = context.CountNpcPeers(VanillaNpcIds.DestroyerBody) == 0 ? 90 : 120;
             if (fireTimer >= threshold)
                 fireTimer = 0f;
         }

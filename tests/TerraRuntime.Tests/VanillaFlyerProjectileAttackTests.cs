@@ -526,6 +526,31 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Targeting_stepper_uses_destroyer_body_presence_for_mechdusa_retinazer_laser_threshold()
+    {
+        var noBody = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        var withBody = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        noBody.SetCandidates([Target(200f, 200f)]);
+        withBody.SetCandidates([Target(200f, 200f)]);
+        noBody.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        withBody.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot prime = CreateNpc(VanillaNpcIds.SkeletronPrime, 0f) with
+        {
+            Handle = new NpcHandle(100, new NpcGeneration(1)),
+            Ai = new NpcAiState(0f, 0f, 0f, 100f)
+        };
+        NpcSnapshot retinazer = CreateNpc(VanillaNpcIds.Retinazer, 0f) with { Ai = new NpcAiState(0f, 0f, 0f, 89f) };
+        NpcSnapshot destroyerBody = CreateNpc(VanillaNpcIds.DestroyerBody, 0f) with { Handle = new NpcHandle(7, new NpcGeneration(1)) };
+        noBody.SetNpcPeers([prime, retinazer]);
+        withBody.SetNpcPeers([prime, retinazer, destroyerBody]);
+
+        Assert.True(noBody.TryStepState(in retinazer, out NpcStateUpdate withoutBody));
+        Assert.True(withBody.TryStepState(in retinazer, out NpcStateUpdate withBodyNext));
+        Assert.Equal(0f, withoutBody.Ai.Ai3);
+        Assert.Equal(90f, withBodyNext.Ai.Ai3);
+    }
+
+    [Fact]
     public void Targeting_stepper_keeps_late_twin_attack_counters_while_line_of_fire_is_blocked()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
