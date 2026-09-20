@@ -355,7 +355,7 @@ public static class VanillaDefinitionCatalog
         CollisionHeight: 16);
 
     // Projectile.SetDefaults type 1021: the Good World Moon Lord boulder is an aiStyle-25, 31x31 hostile body.
-    // Its rolling/collision and SwitchTiles behavior remains outside this definition-only spawn slice.
+    // Its rolling motion and collision rebounds are simulated; SwitchTiles world mutation remains separate.
     private static readonly VanillaProjectileDefinition MoonBoulderDefinition = new(
         Width: 31,
         Height: 31,

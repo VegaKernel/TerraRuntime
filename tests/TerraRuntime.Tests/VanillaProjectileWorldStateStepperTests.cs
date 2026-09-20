@@ -1097,6 +1097,75 @@ public sealed class VanillaProjectileWorldStateStepperTests
     }
 
     [Fact]
+    public void Moon_boulder_uses_two_source_subupdates_with_rolling_gravity()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        var store = new RuntimeProjectileStore(capacity: 1);
+        ProjectileStateUpdate state = new(
+            VanillaProjectileIds.MoonBoulder, VanillaProjectileOwnership.ServerOwner,
+            100f, 100f, 2f, 0f, default, 0, 70, 10f, 70);
+        Assert.True(store.TrySpawn(0, in state, out ProjectileSnapshot spawned));
+
+        ProjectileStateTickSummary summary = new RuntimeProjectileStateExecutor(store)
+            .Tick(new VanillaProjectileWorldStateStepper(tiles));
+
+        Assert.Equal(new ProjectileStateTickSummary(1, 1, 1, 0), summary);
+        Assert.True(store.TryGet(spawned.Handle, out ProjectileSnapshot updated));
+        Assert.Equal(104.075f, updated.PositionX, 4);
+        Assert.Equal(100.18f, updated.PositionY, 4);
+        Assert.Equal(2.05f, updated.VelocityX, 4);
+        Assert.Equal(.12f, updated.VelocityY, 4);
+        Assert.Equal(1f, updated.Ai.Ai0);
+        Assert.True(store.TryGetLifecycle(spawned.Handle, out ProjectileLifecycleState lifecycle));
+        Assert.Equal(10798, lifecycle.TimeLeft);
+        Assert.Equal(2f, lifecycle.LocalAi.Ai2);
+    }
+
+    [Fact]
+    public void Moon_boulder_chooses_resting_roll_from_adjacent_solid_tiles()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        // The left 8px probe is tile 5 at y 6/7. A resting boulder rolls right, then AI_025 accelerates it.
+        tiles.Set(5, 6, SolidTile(1));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot boulder = CreateSnapshot(100f, 100f, 0f, -.2f, ai0: 1f) with
+        {
+            Type = VanillaProjectileIds.MoonBoulder,
+            Spawner = VanillaProjectileOwnership.ServerOwner
+        };
+
+        ProjectileSimulationStepContext context = CreateContext(boulder, 10800);
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(.525f, next.State.VelocityX, 4);
+        Assert.Equal(-.14f, next.State.VelocityY, 4);
+        Assert.Equal(100.525f, next.State.PositionX, 4);
+        Assert.Equal(99.86f, next.State.PositionY, 4);
+        Assert.Equal(1f, next.State.Ai.Ai0);
+        Assert.Equal(1f, next.LocalAi.GetValueOrDefault().Ai2);
+    }
+
+    [Fact]
+    public void Moon_boulder_vertical_impact_rebounds_without_expiring()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        tiles.Set(6, 10, SolidTile(1));
+        var stepper = new VanillaProjectileWorldStateStepper(tiles);
+        ProjectileSnapshot boulder = CreateSnapshot(100f, 120f, 0f, 10f, ai0: 1f) with
+        {
+            Type = VanillaProjectileIds.MoonBoulder,
+            Spawner = VanillaProjectileOwnership.ServerOwner
+        };
+
+        ProjectileSimulationStepContext context = CreateContext(boulder, 10800);
+        Assert.True(stepper.TryStepState(in context, out ProjectileSimulationStepResult next));
+
+        Assert.Equal(-9.054f, next.State.VelocityY, 4);
+        Assert.Equal(10799, next.TimeLeft);
+        Assert.Equal(ProjectileSimulationTerminationReason.None, next.TerminationReason);
+    }
+
+    [Fact]
     public void Uncatalogued_projectile_type_is_left_for_another_behavior_slice()
     {
         var tiles = new WorldTileStore(new WorldDimensions(100, 100));

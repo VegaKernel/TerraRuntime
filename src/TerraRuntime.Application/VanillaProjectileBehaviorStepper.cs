@@ -645,6 +645,11 @@ internal static partial class VanillaProjectileBehaviorStepper
             case VanillaProjectileBehaviorFamily.MoonLeech:
                 return TryStepMoonLeech(in current, in definition, in context, out next);
 
+            case VanillaProjectileBehaviorFamily.MoonBoulder:
+                // AI_025 needs WorldGen.SolidTile probes to select a resting roll direction. The motion
+                // resolver owns those probes and applies the complete source order before tile collision.
+                break;
+
             case VanillaProjectileBehaviorFamily.HallowBossRainbowStreak:
                 return TryStepHallowBossRainbowStreak(in current, in definition, in context, out next);
 

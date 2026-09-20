@@ -46,7 +46,8 @@ internal enum VanillaProjectileBehaviorFamily : byte
     CultistLightningArc = 33,
     CelebrationRocket = 34,
     FallingBlock = 35,
-    MoonLeech = 36
+    MoonLeech = 36,
+    MoonBoulder = 37
 }
 
 /// <summary>
@@ -272,6 +273,14 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         RejectServerOwned: false,
         ExemptFromPreAiWorldBounds: false);
 
+    private static readonly VanillaProjectileBehaviorProfile MoonBoulderProfile = new(
+        VanillaProjectileBehaviorFamily.MoonBoulder,
+        VanillaProjectileAiStyles.RollingBoulder,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
     private static readonly VanillaProjectileBehaviorProfile HallowBossRainbowStreakProfile = new(
         VanillaProjectileBehaviorFamily.HallowBossRainbowStreak,
         VanillaProjectileAiStyles.HallowBossRainbowStreak,
@@ -424,6 +433,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.MoonLeech)
         {
             profile = MoonLeechProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.MoonBoulder)
+        {
+            profile = MoonBoulderProfile;
             return true;
         }
 

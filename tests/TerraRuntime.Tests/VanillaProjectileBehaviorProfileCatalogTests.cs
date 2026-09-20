@@ -134,6 +134,17 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
     }
 
     [Fact]
+    public void Moon_boulder_uses_explicit_rolling_boulder_runtime_family()
+    {
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(
+            VanillaProjectileIds.MoonBoulder, out VanillaProjectileBehaviorProfile profile));
+        Assert.Equal(VanillaProjectileBehaviorFamily.MoonBoulder, profile.Family);
+        Assert.Equal(VanillaProjectileAiStyles.RollingBoulder, profile.ExpectedAiStyle);
+        Assert.True(profile.BehaviorImplemented);
+        Assert.False(profile.RequiresDefaultAi2);
+    }
+
+    [Fact]
     public void Green_laser_keeps_its_owner_gated_exception_in_profile_metadata()
     {
         Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(
@@ -214,7 +225,8 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
             VanillaProjectileIds.Waffle,
             VanillaProjectileIds.SoundGun,
             VanillaProjectileIds.MeleeBone,
-            VanillaProjectileIds.BoneShard
+            VanillaProjectileIds.BoneShard,
+            VanillaProjectileIds.MoonBoulder
         ];
 
         foreach (ProjectileTypeId type in types)

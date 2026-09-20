@@ -75,6 +75,12 @@ The eighteen drop definitions and natural prefixes were checked against the unmo
 
 These are drop definitions only: opening bags, using or placing the new items, global coin/heart rules and full weapon gameplay remain separate work.
 
+## Good World Moon Boulder
+
+The Good World head burst now enters an explicit type-1021 `aiStyle 25` runtime family. Each world tick runs the source two subupdates: it marks `ai[0] = 1`, caps incoming fall speed at 16, accelerates a low vertical-speed roll by `0.025`, then adds gravity `0.06`. A stopped upward-or-level boulder probes the source's three adjacent solid-tile distances before selecting a direction, falling back to its center-tile parity. Tile collision retains fast vertical rebounds at 90%, gentle-landed state and four horizontal rebounds before the fifth kills it. `SwitchTiles` remains intentionally outside the authoritative world-mutation boundary.
+
+`VanillaProjectileWorldStateStepperTests` covers the two-subupdate trajectory, local update counter, adjacent-solid direction selection and vertical rebound. The profile-catalog regression requires type 1021 to remain in the explicit rolling-boulder family.
+
 ## Hand attack clock and combat frames
 
 `VanillaMoonLordHandBehavior` implements the two 600-tick hand schedules, phase movement, pupil aiming, bounds before outer motion, and creation of Phantasmal Eye, Sphere and Bolt projectiles. A retired hand remains at `ai[0] = -2`, sets damage to zero and invulnerability, resets its clock at 32 (or from a negative input), and keeps flying toward its side's core attachment. `NpcSimulationState.FrameCounter` retains the authoritative frame clock: incoming frame 21 rejects damage even on the tick that starts reopening the hand. Phase transitions request immediate packet 23 through the existing generation-checked commit boundary.

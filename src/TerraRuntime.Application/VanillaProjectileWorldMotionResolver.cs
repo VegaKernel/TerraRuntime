@@ -47,6 +47,26 @@ internal sealed class VanillaProjectileWorldMotionResolver
         ProjectileLocalAiState resolvedLocalAi = behavior.LocalAiOverride ?? projectile.Lifecycle.LocalAi;
         short resolvedDamage = behavior.DamageOverride ?? current.Damage;
         float resolvedKnockBack = behavior.KnockBackOverride ?? current.KnockBack;
+        bool moonBoulder = current.Type == VanillaProjectileIds.MoonBoulder;
+        if (moonBoulder)
+        {
+            // Projectile.AI aiStyle 25, type 1021. This family has extraUpdates=1, so this block runs
+            // once per subupdate through RuntimeProjectileStateExecutor. localAI[2] is the source update
+            // counter; the server's associated sync cadence is presentation/network work outside this slice.
+            resolvedLocalAi = resolvedLocalAi with { Ai2 = resolvedLocalAi.Ai2 + 1f };
+            if (behavior.Ai0 != 0f && velocityY <= 0f && velocityX == 0f)
+                velocityX = ResolveMoonBoulderRestingRoll(behaviorPositionX, behaviorPositionY, definition.Width);
+            if (velocityY > 16f)
+                velocityY = 16f;
+            if (MathF.Abs(velocityY) <= 1f)
+            {
+                if (velocityX is > 0f and < 3.5f)
+                    velocityX += .025f;
+                if (velocityX is < 0f and > -3.5f)
+                    velocityX -= .025f;
+            }
+            velocityY += .06f;
+        }
 
         if (current.Type == VanillaProjectileIds.SkeletronPrimeBomb && IsPrimeBombPlatformContact(in current, in definition))
         {
@@ -134,7 +154,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
                 ShimmerWet: shimmerWet);
         }
 
-        float resolvedAi0 = behavior.Ai0;
+        float resolvedAi0 = moonBoulder ? 1f : behavior.Ai0;
         float collidedVelocityX = velocityX;
         float collidedVelocityY = velocityY;
         bool collideX = false;
@@ -267,6 +287,34 @@ internal sealed class VanillaProjectileWorldMotionResolver
             cultistLightningArcCollisionHandled = true;
         }
 
+        bool moonBoulderCollisionHandled = false;
+        bool moonBoulderKilledByImpact = false;
+        if (tileImpact && moonBoulder)
+        {
+            // Projectile.OnTileCollide type 1021: a fast vertical impact rebounds at 90%, a gentle
+            // landing marks localAI[1], and only the fifth horizontal rebound kills the boulder.
+            if (collideY)
+            {
+                if (velocityY > 4f)
+                    collidedVelocityY = -velocityY * .9f;
+                else if (velocityY > 0f)
+                    resolvedLocalAi = resolvedLocalAi with { Ai1 = 999f };
+            }
+            if (collideX)
+            {
+                if (resolvedLocalAi.Ai1 <= 3f)
+                {
+                    collidedVelocityX = -velocityX * .75f;
+                    resolvedLocalAi = resolvedLocalAi with { Ai1 = resolvedLocalAi.Ai1 + 1f };
+                }
+                else
+                {
+                    moonBoulderKilledByImpact = true;
+                }
+            }
+            moonBoulderCollisionHandled = true;
+        }
+
         float movementX = collidedVelocityX;
         float movementY = collidedVelocityY;
         if (fallingBlock && liquid.Wet)
@@ -291,7 +339,8 @@ internal sealed class VanillaProjectileWorldMotionResolver
         float positionY = behaviorPositionY;
         bool skipUpdatePosition = definition.AiStyle == VanillaProjectileAiStyles.PhantasmalDeathray;
         if (!skipUpdatePosition && tileImpact && !bombCollisionHandled && !golemFireballCollisionHandled &&
-            !thornBallCollisionHandled && !rainbowRodControlledCollisionHandled && !cultistLightningArcCollisionHandled)
+            !thornBallCollisionHandled && !rainbowRodControlledCollisionHandled && !cultistLightningArcCollisionHandled &&
+            !moonBoulderCollisionHandled)
         {
             // Supported aiStyle-1/2 families use the generic impact fallback: movement first advances by the
             // collision-clamped velocity, Kill() expires the projectile, then UpdatePosition reaches its common tail.
@@ -373,6 +422,15 @@ internal sealed class VanillaProjectileWorldMotionResolver
                     ? ProjectileSimulationTerminationReason.LifetimeExpired
                     : ProjectileSimulationTerminationReason.None;
         }
+        else if (moonBoulderCollisionHandled)
+        {
+            timeLeft = moonBoulderKilledByImpact ? 0 : sourceTimeLeft - 1;
+            terminationReason = moonBoulderKilledByImpact
+                ? ProjectileSimulationTerminationReason.TileCollision
+                : timeLeft <= 0
+                    ? ProjectileSimulationTerminationReason.LifetimeExpired
+                    : ProjectileSimulationTerminationReason.None;
+        }
         else if (rainbowRodControlledCollisionHandled || thornBallCollisionHandled || cultistLightningArcCollisionHandled)
         {
             timeLeft = sourceTimeLeft - 1;
@@ -396,6 +454,35 @@ internal sealed class VanillaProjectileWorldMotionResolver
             terminationReason,
             resolvedLocalAi);
         return true;
+    }
+
+    private float ResolveMoonBoulderRestingRoll(float positionX, float positionY, int width)
+    {
+        // Projectile.AI aiStyle 25 probes adjacent solids at 8, 24 and 40 pixels before falling back to
+        // the parity of its center tile. WorldGen.SolidTile uses the same active/non-actuated/full-solid
+        // terrain predicate already used by VanillaWorldCollision's solid-tile query.
+        int tileY = (int)(positionY / 16f);
+        for (int distance = 8; distance <= 40; distance += 16)
+        {
+            int left = (int)((positionX - distance) / 16f);
+            int right = (int)((positionX + width + distance) / 16f);
+            bool leftSolid = IsSolidTile(left, tileY) || IsSolidTile(left, tileY + 1);
+            bool rightSolid = IsSolidTile(right, tileY) || IsSolidTile(right, tileY + 1);
+            if (leftSolid)
+                return .5f;
+            if (rightSolid)
+                return -.5f;
+        }
+        return (int)((positionX + width * .5f) / 16f) % 2 == 0 ? .5f : -.5f;
+    }
+
+    private bool IsSolidTile(int tileX, int tileY)
+    {
+        if ((uint)tileX >= (uint)tiles.Dimensions.WidthTiles || (uint)tileY >= (uint)tiles.Dimensions.HeightTiles)
+            return false;
+        WorldTile tile = tiles.Get(tileX, tileY);
+        return tile.IsActive && !tile.IsActuated && tile.Shape == 0 &&
+            VanillaTileCollisionCatalog.IsSolid(tile.TileType) && !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
     }
 
     private bool TryResolvePhantasmalDeathrayBeam(
