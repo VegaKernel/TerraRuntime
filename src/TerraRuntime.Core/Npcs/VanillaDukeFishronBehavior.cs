@@ -8,7 +8,8 @@ namespace TerraRuntime.Core.Npcs;
 /// <summary>
 /// Server-authoritative clean-room state slice for TerrariaServer 1.4.5.8 AI 69/70/71.
 /// The root owns intro, phase transitions, hover and dash cadence; Detonating Bubbles own the source homing/lifetime state.
-/// Visual dust/rotation branches stay out of NPC authority; Sharkron emergence/charge state is authoritative.
+/// Visual dust and sound stay out of NPC authority; Sharkron's position, alpha, rotation and vulnerability state
+/// are server-owned AI71 data and therefore commit with the same revision as its emergence/charge transition.
 /// </summary>
 internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
@@ -19,18 +20,28 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
     public static bool RequiresImmediateSync(in NpcSnapshot before, in NpcStateUpdate proposed,
         VanillaNpcBehaviorContext context)
     {
-        if (before.TypeIdentity != VanillaNpcIds.DukeFishron || proposed.Type != before.Type ||
+        bool isRoot = before.TypeIdentity == VanillaNpcIds.DukeFishron;
+        bool isSharkron = before.TypeIdentity == VanillaNpcIds.Sharkron ||
+            before.TypeIdentity == VanillaNpcIds.Sharkron2;
+        if ((!isRoot && !isSharkron) || proposed.Type != before.Type ||
             !VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, before.NetIdentity, out VanillaNpcDefinition definition))
         {
             return false;
         }
 
-        // AI_069 calls TargetClosest and sets netUpdate before its retreat branch whenever the retained player
-        // is no longer valid or lies beyond 5600 pixels.
+        // AI_069 and AI_071 call TargetClosest and set netUpdate whenever the retained player is no longer valid.
+        // AI_069 additionally refreshes before its retreat branch when the player lies beyond 5600 pixels.
         if (before.Target >= byte.MaxValue || !context.TryFindCandidate((byte)before.Target, out VanillaNpcTargetCandidate target) ||
-            !target.Active || target.Dead || target.Ghost || IsBeyondTargetRange(in before, in definition, in target))
+            !target.Active || target.Dead || target.Ghost ||
+            (isRoot && IsBeyondTargetRange(in before, in definition, in target)))
         {
             return true;
+        }
+
+        if (isSharkron)
+        {
+            // AI_071 writes netUpdate only when its 90-tick emergence becomes the charge state.
+            return before.Ai.Ai0 == 0f && proposed.Ai.Ai0 == 1f;
         }
 
         // Each source-owned phase boundary writes netUpdate. Do not infer urgency from ai[2]/ai[3] counters.
@@ -346,15 +357,24 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
         { next = default; return false; }
 
         ushort targetSlot = npc.Target;
+        bool refreshedTarget = targetSlot >= byte.MaxValue ||
+            !context.TryFindCandidate((byte)targetSlot, out VanillaNpcTargetCandidate retainedTarget) ||
+            !retainedTarget.Active || retainedTarget.Dead || retainedTarget.Ghost;
         if (!TryTarget(in npc, in definition, context, ref targetSlot, out VanillaNpcTargetCandidate target))
         { next = default; return false; }
 
         NpcAiState ai = npc.Ai;
         NpcAiState local = npc.Simulation.LocalAi;
         NpcSimulationState sim = npc.Simulation;
+        float positionX = npc.PositionX;
+        float positionY = npc.PositionY;
         float vx = npc.VelocityX, vy = npc.VelocityY;
         bool vulnerable = false;
         bool noGravity = true;
+
+        // AI71 uses TargetClosest(faceTarget: false), then explicitly resets direction before state dispatch.
+        if (refreshedTarget)
+            sim = sim with { DirectionX = 1 };
 
         if (ai.Ai0 == 0f)
         {
@@ -362,31 +382,72 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
             vy = ai.Ai3;
             if (npc.TypeIdentity == VanillaNpcIds.Sharkron2)
             {
-                // Source AI71 stores the horizontal emergence amplitude in ai[2] and advances a 60-tick cosine phase in localAI[1].
-                vx = (MathF.Cos(MathF.PI / 30f * local.Ai1) - .5f) * ai.Ai2;
+                // AI71 moves type 373 by the difference between two consecutive cosine offsets. This is a
+                // position correction, not a horizontal velocity; applying the latter drifts during the outer
+                // world-motion pass and diverges from the source's 60-tick emergence wave.
+                int direction = sim.DirectionX == 0 ? 1 : sim.DirectionX;
+                float previousOffset = (MathF.Cos(MathF.PI / 30f * local.Ai1) - .5f) * ai.Ai2;
+                positionX += previousOffset * direction;
                 local = local with { Ai1 = local.Ai1 + 1f };
+                float currentWave = MathF.Cos(MathF.PI / 30f * local.Ai1) - .5f;
+                float currentOffset = currentWave * ai.Ai2;
+                positionX -= currentOffset * direction;
+
+                int spriteDirection = sim.SpriteDirection;
+                if (MathF.Abs(currentWave) > .25f)
+                    spriteDirection = currentWave < 0f ? 1 : -1;
+                float rotation = Math.Clamp(vy * spriteDirection * .1f, -.2f, .2f);
+                sim = sim with
+                {
+                    SpriteDirection = spriteDirection,
+                    Rotation = rotation,
+                    Alpha = Math.Max(0, sim.Alpha - 6)
+                };
             }
             if (ai.Ai1 >= 90f)
             {
                 ai = ai with { Ai0 = 1f, Ai1 = sim.SolidCollision ? 0f : 1f };
-                SetToward(npc.PositionX + definition.Width * .5f, npc.PositionY + definition.Height * .5f,
+                int direction = Math.Sign(target.CenterX - (positionX + definition.Width * .5f));
+                if (direction != 0)
+                    sim = sim with { DirectionX = direction };
+                int spriteDirection = sim.DirectionX == 0 ? sim.SpriteDirection : sim.DirectionX;
+                SetToward(positionX + definition.Width * .5f, positionY + definition.Height * .5f,
                     target.CenterX, target.CenterY, 16f, ref vx, ref vy);
+                float rotation = MathF.Atan2(vy, vx);
+                if (sim.DirectionX == -1)
+                    rotation += MathF.PI;
+                sim = sim with { SpriteDirection = spriteDirection, Rotation = rotation };
             }
         }
-        else
+        else if (ai.Ai0 == 1f)
         {
             if (!sim.SolidCollision && ai.Ai1 < 1f)
                 ai = ai with { Ai1 = 1f };
+            else if (sim.SolidCollision)
+                sim = sim with { Alpha = Math.Max(150, sim.Alpha - 15) };
 
             if (ai.Ai1 >= 1f)
             {
                 vulnerable = true;
+                sim = sim with { Alpha = Math.Max(0, sim.Alpha - 60) };
                 ai = ai with { Ai1 = ai.Ai1 + 1f };
                 if (sim.SolidCollision)
                     sim = sim with { Life = 0, TimeLeft = 0 };
                 if (ai.Ai1 >= 60f)
                     noGravity = false;
             }
+
+            float rotation = MathF.Atan2(vy, vx);
+            if (sim.DirectionX == -1)
+                rotation += MathF.PI;
+            sim = sim with { Rotation = rotation };
+        }
+        else
+        {
+            // Source AI71 returns before mutating an unexpected ai[0] value. Do not manufacture a chaseable
+            // Sharkron from corrupt or unimplemented state.
+            next = default;
+            return false;
         }
 
         sim = sim with
@@ -398,6 +459,7 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
             JustHit = false
         };
         next = Build(in npc, vx, vy, targetSlot, in ai, in sim);
+        next = next with { PositionX = positionX, PositionY = positionY };
         return true;
     }
 

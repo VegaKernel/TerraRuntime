@@ -398,6 +398,106 @@ public sealed class LateHardmodeBossParityTests
     }
 
     [Fact]
+    public void Sharkron_ai71_forces_sync_for_source_target_refresh_and_charge_transition_only()
+    {
+        var stepper = CreateStepper(dayTime: false);
+
+        NpcSnapshot ordinary = CreateNpc(VanillaNpcIds.Sharkron, new NpcAiState(0f, 1f, 0f, 3f));
+        Assert.True(stepper.TryStepState(in ordinary, out NpcStateUpdate ordinaryNext));
+        Assert.False(stepper.RequiresForcedUpdate(in ordinary, in ordinaryNext));
+
+        NpcSnapshot emergenceEnd = ordinary with { Ai = new NpcAiState(0f, 89f, 0f, 3f) };
+        Assert.True(stepper.TryStepState(in emergenceEnd, out NpcStateUpdate charge));
+        Assert.True(stepper.RequiresForcedUpdate(in emergenceEnd, in charge));
+
+        NpcSnapshot staleTarget = ordinary with
+        {
+            Target = byte.MaxValue,
+            Simulation = ordinary.Simulation with { DirectionX = -1 }
+        };
+        Assert.True(stepper.TryStepState(in staleTarget, out NpcStateUpdate refreshed));
+        Assert.Equal(0, refreshed.Target);
+        Assert.Equal(1, refreshed.Simulation.DirectionX);
+        Assert.True(stepper.RequiresForcedUpdate(in staleTarget, in refreshed));
+
+        NpcSnapshot chargeTick = ordinary with { Ai = new NpcAiState(1f, 1f, 0f, 0f) };
+        Assert.True(stepper.TryStepState(in chargeTick, out NpcStateUpdate chargeNext));
+        Assert.False(stepper.RequiresForcedUpdate(in chargeTick, in chargeNext));
+    }
+
+    [Fact]
+    public void Sharkron2_ai71_uses_position_wave_alpha_and_rotation_during_emergence()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot sharkron = CreateNpc(
+            VanillaNpcIds.Sharkron2,
+            new NpcAiState(0f, 0f, 12f, 2f));
+        sharkron = sharkron with
+        {
+            Simulation = sharkron.Simulation with
+            {
+                DirectionX = 1,
+                SpriteDirection = 1,
+                Alpha = 20,
+                LocalAi = new NpcAiState(0f, 0f, 0f, 0f)
+            }
+        };
+
+        Assert.True(stepper.TryStepState(in sharkron, out NpcStateUpdate next));
+
+        float expectedPositionX = 100f + (.5f * 12f) - ((MathF.Cos(MathF.PI / 30f) - .5f) * 12f);
+        Assert.Equal(expectedPositionX, next.PositionX, 5);
+        Assert.Equal(0f, next.VelocityX);
+        Assert.Equal(2f, next.VelocityY);
+        Assert.Equal(1f, next.Simulation.LocalAi.Ai1);
+        Assert.Equal(14, next.Simulation.Alpha);
+        Assert.Equal(-1, next.Simulation.SpriteDirection);
+        Assert.Equal(-.2f, next.Simulation.Rotation!.Value, 5);
+    }
+
+    [Fact]
+    public void Sharkron_ai71_charge_collision_fades_then_retires_source_body()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot sharkron = CreateNpc(
+            VanillaNpcIds.Sharkron,
+            new NpcAiState(1f, 1f, 0f, 0f));
+        sharkron = sharkron with
+        {
+            Simulation = sharkron.Simulation with
+            {
+                DirectionX = -1,
+                SolidCollision = true,
+                Alpha = 170,
+                Life = 100,
+                LifeMax = 100,
+                TimeLeft = 50
+            }
+        };
+
+        Assert.True(stepper.TryStepState(in sharkron, out NpcStateUpdate next));
+
+        Assert.Equal(2f, next.Ai.Ai1);
+        Assert.Equal(95, next.Simulation.Alpha);
+        Assert.Equal(0, next.Simulation.Life);
+        Assert.Equal(0, next.Simulation.TimeLeft);
+        Assert.True(next.Simulation.NoGravity);
+        Assert.False(next.Simulation.DontTakeDamage);
+        Assert.Equal(MathF.PI, next.Simulation.Rotation!.Value, 5);
+    }
+
+    [Fact]
+    public void Sharkron_ai71_rejects_unknown_state_without_mutation()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot sharkron = CreateNpc(
+            VanillaNpcIds.Sharkron,
+            new NpcAiState(2f, 0f, 0f, 0f));
+
+        Assert.False(stepper.TryStepState(in sharkron, out _));
+    }
+
+    [Fact]
     public void Duke_state_three_plans_the_two_source_sharknado_bolts()
     {
         var stepper = CreateDukeStepper();
