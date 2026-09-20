@@ -47,6 +47,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         }
 
         bool mechQueenUp = TryGetMechQueenCenter(context, out float queenCenterX, out float queenCenterY, out float queenVelocityX);
+        bool reflectsProjectiles = false;
         if (ai.Ai0 == 0f)
         {
             // TerrariaServer 1.4.5.8 AI_030/AI_031 replace only the ordinary phase-one
@@ -63,6 +64,9 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         }
         else if (ai.Ai0 is 1f or 2f)
         {
+            // AI_030/AI_031 sets this before advancing ai[0].  The final transformation tick therefore
+            // still reflects even though the committed state has just become phase three.
+            reflectsProjectiles = mechQueenUp;
             float spin = ai.Ai2;
             spin += ai.Ai0 == 1f ? 0.005f : -0.005f;
             spin = Math.Clamp(spin, 0f, 0.5f);
@@ -96,7 +100,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             LocalAi = local,
             DamageOverride = damage,
             DefenseOverride = defense,
-            ReflectsProjectiles = mechQueenUp && (ai.Ai0 == 1f || ai.Ai0 == 2f),
+            ReflectsProjectiles = reflectsProjectiles,
             JustHit = false
         };
         next = Build(in npc, vx, vy, targetSlot, in ai, in sim);

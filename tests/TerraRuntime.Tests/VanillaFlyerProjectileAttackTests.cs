@@ -282,6 +282,29 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Targeting_stepper_keeps_mechdusa_reflection_for_the_final_transformation_tick()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetCandidates([Target(900f, 800f)]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot prime = CreateNpc(VanillaNpcIds.SkeletronPrime, 0f) with
+        {
+            Handle = new NpcHandle(100, new NpcGeneration(1)),
+            Ai = new NpcAiState(0f, 0f, 0f, 100f)
+        };
+        NpcSnapshot retinazer = CreateNpc(VanillaNpcIds.Retinazer, 0f) with
+        {
+            Handle = new NpcHandle(3, new NpcGeneration(1)),
+            Ai = new NpcAiState(2f, 99f, .25f, 0f)
+        };
+        stepper.SetNpcPeers([prime, retinazer]);
+
+        Assert.True(stepper.TryStepState(in retinazer, out NpcStateUpdate next));
+        Assert.Equal(3f, next.Ai.Ai0);
+        Assert.True(next.Simulation.ReflectsProjectiles);
+    }
+
+    [Fact]
     public void Targeting_stepper_plans_mechdusa_spazmatism_flame_on_source_counter_wrap()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
