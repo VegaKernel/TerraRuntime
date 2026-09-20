@@ -2265,10 +2265,13 @@ public sealed class VanillaNpcTargetingAiStepper :
             int cadence = phaseTwo && expertCadence ? 2 : 3;
             if (timer >= 60f || ((int)timer % cadence) != 0) return 0;
             if (destination.IsEmpty) return 1;
-            float dx = target.CenterX - (cx - 55f), dy = target.CenterY - (cy - 30f);
-            float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+            float randomAngle = phaseTwo && expertCadence
+                ? NextUnitFloat() * MathF.PI * 2f
+                : MathF.PI * .5f * NextFloatDirection();
             float speed = phaseTwo && expertCadence ? 10f : 6f;
-            destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.HallowBossRainbowStreak, cx - 55f, cy - 30f, dx / d * speed, dy / d * speed, Damage(45, 50, 30, 35), 0f)
+            float vx = MathF.Sin(randomAngle) * speed;
+            float vy = -MathF.Cos(randomAngle) * speed;
+            destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.HallowBossRainbowStreak, cx - 55f, cy - 30f, vx, vy, Damage(45, 50, 30, 35), 0f)
             { InitialAi = new ProjectileAiState(proposed.Target, timer / 60f, 0f) };
             return 1;
         }
