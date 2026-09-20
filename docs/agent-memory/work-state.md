@@ -14,6 +14,8 @@ player by twenty ticks and retains the source's quantized pre-attachment spawn o
 The attached path also refreshes the closest player target. The focused tests cover the
 timer, target refresh, attachment coordinates, inherited motion and projectile intent.
 
+Twins now retain source target-facing rotation from their physical dimensions and lower 59-pixel aim point. Retinazer advances by 0.1 and Spazmatism by 0.15, reduced to 0.0375 for its late live-Prime hover.
+
 Mechdusa Twin transformation now retains the source reflection flag through the final `ai[0]=2` update that commits phase three. The source writes the flag before advancing `ai[0]`; a focused regression retains this one-tick boundary.
 
 Mechdusa Retinazer and Spazmatism now use their source phase-one Prime orbit. They derive Prime's physical center minus 14 pixels, rotate left/right 112.5-by-187.5-pixel anchors by `Prime.velocity.X × 0.025`, cap the desired vector at 14, then apply Retinazer's `59/60` or Spazmatism's `4/5` smoothing. Their shared phase-one timer changes state at 1200. The focused regression pins both live hitboxes, Prime rotation, both smoothing rules and timer increment. The existing projectile planner now receives the phase-one `ai[3]` wraps, including Spazmatism Cursed Flame at 60. The live Prime anchor also enables projectile reflection during Twin transformation states `ai[0]=1/2`. The later hover retains the same anchors with inverse Retinazer/Spazmatism smoothing and the 1200 boundary. Projectile ordering and later Twin states remain open.

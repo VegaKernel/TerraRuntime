@@ -7,7 +7,7 @@ namespace TerraRuntime.Core.Npcs;
 /// <summary>
 /// Server-authoritative TerrariaServer 1.4.5.8 aiStyle 30/31 slice for The Twins.
 /// The source phase threshold, transformation timers, hover/charge cadence, phase-two movement and
-/// projectile cadence counters are retained. Cosmetic rotation, dust, gore and sound are omitted.
+/// projectile cadence counters and source target-facing rotation are retained. Dust, gore and sound are omitted.
 /// </summary>
 internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
@@ -35,18 +35,30 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         if (!TryGetTarget(targetSlot, context, out VanillaNpcTargetCandidate target))
             TryRefresh(in npc, in definition, context, ref targetSlot, out target);
         bool hasTarget = TryGetTarget(targetSlot, context, out target);
+        bool mechQueenUp = TryGetMechQueenCenter(context, out float queenCenterX, out float queenCenterY, out float queenVelocityX);
+        float rotation = sim.Rotation ?? 0f;
+        if (hasTarget && definition.TryResolveHitbox(sim, out VanillaNpcHitboxSize hitbox))
+        {
+            float targetRotation = MathF.Atan2(
+                npc.PositionY + hitbox.Height - 59f - target.CenterY,
+                npc.PositionX + hitbox.Width / 2 - target.CenterX) + MathF.PI * .5f;
+            targetRotation = NormalizeRotation(targetRotation);
+            float rotationStep = _spazmatism ? .15f : .1f;
+            if (_spazmatism && mechQueenUp && ai.Ai0 == 3f && ai.Ai1 == 0f)
+                rotationStep *= .25f;
+            rotation = RotateToward(rotation, targetRotation, rotationStep);
+        }
 
         if (context.DayTime || !hasTarget)
         {
             vy -= 0.04f;
             int tl = sim.TimeLeft;
             if (tl < 0 || tl > 10) tl = 10;
-            sim = sim with { TimeLeft = tl, NoGravity = true, NoTileCollide = true, ReflectsProjectiles = false };
+            sim = sim with { TimeLeft = tl, NoGravity = true, NoTileCollide = true, ReflectsProjectiles = false, Rotation = rotation };
             next = Build(in npc, vx, vy, targetSlot, in ai, in sim);
             return true;
         }
 
-        bool mechQueenUp = TryGetMechQueenCenter(context, out float queenCenterX, out float queenCenterY, out float queenVelocityX);
         bool reflectsProjectiles = false;
         if (ai.Ai0 == 0f)
         {
@@ -70,6 +82,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             float spin = ai.Ai2;
             spin += ai.Ai0 == 1f ? 0.005f : -0.005f;
             spin = Math.Clamp(spin, 0f, 0.5f);
+            rotation += spin;
             float timer = ai.Ai1 + 1f;
             vx *= 0.98f; vy *= 0.98f;
             if (MathF.Abs(vx) < 0.1f) vx = 0f;
@@ -101,6 +114,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             DamageOverride = damage,
             DefenseOverride = defense,
             ReflectsProjectiles = reflectsProjectiles,
+            Rotation = rotation,
             JustHit = false
         };
         next = Build(in npc, vx, vy, targetSlot, in ai, in sim);
@@ -393,6 +407,19 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
     private static void ApproachVector(float dx,float dy,float speed,float accel,ref float vx,ref float vy)
     {float d=MathF.Max(.001f,MathF.Sqrt(dx*dx+dy*dy));float tx=dx/d*speed,ty=dy/d*speed;Approach(ref vx,tx,accel);Approach(ref vy,ty,accel);if(vx<0&&tx>0)Approach(ref vx,tx,accel);else if(vx>0&&tx<0)Approach(ref vx,tx,accel);if(vy<0&&ty>0)Approach(ref vy,ty,accel);else if(vy>0&&ty<0)Approach(ref vy,ty,accel);}
     private static void Approach(ref float v,float d,float a){if(v<d)v=MathF.Min(v+a,d);else if(v>d)v=MathF.Max(v-a,d);}
+    private static float NormalizeRotation(float value)
+    {
+        if (value < 0f) return value + 6.283f;
+        return value > 6.283f ? value - 6.283f : value;
+    }
+    private static float RotateToward(float current, float target, float step)
+    {
+        if (current < target) current += target - current > 3.1415f ? -step : step;
+        else if (current > target) current += current - target > 3.1415f ? step : -step;
+        if (current > target - step && current < target + step) current = target;
+        current = NormalizeRotation(current);
+        return current > target - step && current < target + step ? target : current;
+    }
     private static void SetToward(float x,float y,float tx,float ty,float speed,ref float vx,ref float vy){float dx=tx-x,dy=ty-y,d=MathF.Max(.001f,MathF.Sqrt(dx*dx+dy*dy));vx=dx/d*speed;vy=dy/d*speed;}
     private static bool TryGetTarget(ushort slot,VanillaNpcBehaviorContext c,out VanillaNpcTargetCandidate t){if(slot<byte.MaxValue&&c.TryFindCandidate((byte)slot,out t)&&t.Active&&!t.Dead&&!t.Ghost)return true;t=default;return false;}
     private static bool TryRefresh(in NpcSnapshot npc,in VanillaNpcDefinition def,VanillaNpcBehaviorContext c,ref ushort slot,out VanillaNpcTargetCandidate t){if(c.TrySelectClosestTarget(in npc,in def,out VanillaBlueSlimeTargetRefresh r)&&r.HasTarget&&r.Target<byte.MaxValue&&c.TryFindCandidate((byte)r.Target,out t)&&t.Active&&!t.Dead&&!t.Ghost){slot=r.Target;return true;}t=default;return false;}

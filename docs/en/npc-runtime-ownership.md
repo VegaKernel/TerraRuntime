@@ -86,6 +86,8 @@ Mechdusa Retinazer and Spazmatism now replace their ordinary phase-one hover ste
 
 The final tick that advances a Mechdusa Twin from transformation `ai[0]=2` to phase three still retains projectile reflection, because AI_030/AI_031 sets the flag before it increments the phase.
 
+Mechdusa Twins now retain the source target-facing rotation before their phase branches. Retinazer turns by `0.1`, Spazmatism by `0.15`, and the latter uses the source quarter-step `0.0375` in its live-Prime phase-three hover. The rotation derives from physical width/height with the original lower `59 px` aim point and circular wrap rules.
+
 The Mechdusa Destroyer head now completes the AI_037 orbit override after its normal head step. It takes Prime's physical center minus $14\,\mathrm{px}$, rotates the downward $100\,\mathrm{px}$ anchor by `Prime.velocity.X × 0.025`, applies Prime's velocity to the resulting top-left position, clears its own velocity, and uses the source rotation `orbit × 0.75 + π`. A focused runtime regression covers the physical hitboxes, target refresh, position, zero velocity and rotation. Segment attachment, missing-anchor recovery and the other combined encounter states remain open.
 
 Mechdusa Destroyer segments now count their linked predecessors back to the head. For indices one through nine, AI_037 first aims below the preceding segment by its integer-scaled $44\,\mathrm{px}$ gap, then compresses the radial separation to one tenth of that gap per index and retains the resulting rotation. The normal chain keeps its ordinary spacing. The regression begins with an invalid target and verifies target refresh, first-segment geometry, zero velocity and rotation. Missing-parent recovery and the remaining encounter states stay open.

@@ -2,6 +2,8 @@
 
 ## Prime melee implementation - 2026-09-16
 
+2026-09-20 Mechdusa Twin rotation: both Twin AI styles now retain their source target-facing rotation using physical hitboxes and the lower 59-pixel aim point. Retinazer uses step `0.1`; Spazmatism uses `0.15`, reduced to `0.0375` in the live-Prime phase-three hover. The focused regression covers circular wrap and the reduced step.
+
 2026-09-20 Mechdusa Twin transformation boundary: projectile reflection now retains the source final `ai[0]=2` tick that commits phase three, because the source writes its flag before phase advancement. A focused regression pins phase `3` with reflection still live.
 
 2026-09-20 Mechdusa Waffle Iron loot: the mechanical-boss death path now passes the loaded Zenith-world flag into the source `MechdusaKill` predicate. Waffle Iron `5382` is a guaranteed 30-by-30 world drop only when the dying Prime, Destroyer or Twin has no active root of each other source type; same-type duplicates retain source semantics. The independent trophy rule now runs in its registered `RegisterBossTrophies` position before the boss table, preserving RNG order. Table and authoritative-pipeline regressions cover all roots, all earlier-kill blockers and the final release. Global loot, bags and remaining encounter AI remain open.

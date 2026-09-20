@@ -305,6 +305,35 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Targeting_stepper_uses_source_twin_rotation_and_mechdusa_spazmatism_slow_step()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        VanillaNpcTargetCandidate target = Target(900f, 800f);
+        stepper.SetCandidates([target]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot prime = CreateNpc(VanillaNpcIds.SkeletronPrime, 0f) with
+        {
+            Handle = new NpcHandle(100, new NpcGeneration(1)), Ai = new NpcAiState(0f, 0f, 0f, 100f)
+        };
+        NpcSnapshot spazmatism = CreateNpc(VanillaNpcIds.Spazmatism, 0f) with
+        {
+            Handle = new NpcHandle(4, new NpcGeneration(1)), PositionX = 100f, PositionY = 150f,
+            Ai = new NpcAiState(3f, 0f, 0f, 0f), Simulation = NpcSimulationState.Initial with { Rotation = 0f }
+        };
+        stepper.SetNpcPeers([prime, spazmatism]);
+
+        Assert.True(stepper.TryStepState(in spazmatism, out NpcStateUpdate next));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(spazmatism.TypeIdentity, spazmatism.NetIdentity, out VanillaNpcDefinition definition));
+        Assert.True(definition.TryResolveHitbox(spazmatism.Simulation, out VanillaNpcHitboxSize hitbox));
+        float targetRotation = MathF.Atan2(spazmatism.PositionY + hitbox.Height - 59f - target.CenterY,
+            spazmatism.PositionX + hitbox.Width / 2 - target.CenterX) + MathF.PI * .5f;
+        if (targetRotation < 0f) targetRotation += 6.283f;
+        else if (targetRotation > 6.283f) targetRotation -= 6.283f;
+        float expected = targetRotation > 3.1415f ? 6.283f - .0375f : .0375f;
+        Assert.Equal(expected, next.Simulation.Rotation!.Value, 5);
+    }
+
+    [Fact]
     public void Targeting_stepper_plans_mechdusa_spazmatism_flame_on_source_counter_wrap()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
