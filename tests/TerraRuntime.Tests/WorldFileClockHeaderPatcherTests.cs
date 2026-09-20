@@ -28,6 +28,7 @@ public sealed class WorldFileClockHeaderPatcherTests
                 dayTime: false,
                 moonPhase: 6,
                 slimeRainTime: -1_234d,
+                windSpeedTarget: .4f,
                 out byte[] patchedHeader));
         Assert.Equal(originalHeader.Length, patchedHeader.Length);
         Assert.Equal(originalHeader, preserved.Header.ToArray());
@@ -49,6 +50,7 @@ public sealed class WorldFileClockHeaderPatcherTests
         Assert.False(loaded.RuntimeMetadata.DayTime);
         Assert.Equal((byte)6, loaded.RuntimeMetadata.MoonPhase);
         Assert.Equal(-1_234d, loaded.RuntimeMetadata.SlimeRainTime);
+        Assert.Equal(.4f, loaded.RuntimeMetadata.WindSpeed);
 
         Assert.Equal(source.RuntimeMetadata.GameMode, loaded.RuntimeMetadata.GameMode);
         Assert.Equal(source.RuntimeMetadata.SpawnX, loaded.RuntimeMetadata.SpawnX);
@@ -71,16 +73,19 @@ public sealed class WorldFileClockHeaderPatcherTests
     }
 
     [Theory]
-    [InlineData(double.NaN, false, 0, 0d)]
-    [InlineData(-1d, false, 0, 0d)]
-    [InlineData(1.5d, false, 0, 0d)]
-    [InlineData(0d, false, 8, 0d)]
-    [InlineData(0d, false, 0, double.PositiveInfinity)]
+    [InlineData(double.NaN, false, 0, 0d, 0f)]
+    [InlineData(-1d, false, 0, 0d, 0f)]
+    [InlineData(1.5d, false, 0, 0d, 0f)]
+    [InlineData(0d, false, 8, 0d, 0f)]
+    [InlineData(0d, false, 0, double.PositiveInfinity, 0f)]
+    [InlineData(0d, false, 0, 0d, float.NaN)]
+    [InlineData(0d, false, 0, 0d, .81f)]
     public void Rejects_invalid_clock_state_without_returning_partial_header(
         double time,
         bool dayTime,
         byte moonPhase,
-        double slimeRainTime)
+        double slimeRainTime,
+        float windSpeedTarget)
     {
         byte[] sourceFile = LoaderFixture<byte[]>("CreateCompleteCurrentWorld");
         WorldFileLoadLimits limits = LoaderFixture<WorldFileLoadLimits>("CreateLimits");
@@ -100,6 +105,7 @@ public sealed class WorldFileClockHeaderPatcherTests
                 dayTime,
                 moonPhase,
                 slimeRainTime,
+                windSpeedTarget,
                 out byte[] patchedHeader));
         Assert.Empty(patchedHeader);
     }

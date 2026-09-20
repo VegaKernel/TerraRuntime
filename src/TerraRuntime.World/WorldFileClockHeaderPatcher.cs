@@ -28,6 +28,7 @@ public static class WorldFileClockHeaderPatcher
         bool dayTime,
         byte moonPhase,
         double slimeRainTime,
+        float windSpeedTarget,
         out byte[] patchedHeader)
     {
         ArgumentNullException.ThrowIfNull(header);
@@ -38,7 +39,9 @@ public static class WorldFileClockHeaderPatcher
             time > int.MaxValue ||
             time != Math.Truncate(time) ||
             moonPhase >= 8 ||
-            !double.IsFinite(slimeRainTime))
+            !double.IsFinite(slimeRainTime) ||
+            !float.IsFinite(windSpeedTarget) ||
+            windSpeedTarget is < -.8f or > .8f)
         {
             return WorldFileClockHeaderPatchResult.InvalidClockState;
         }
@@ -123,6 +126,24 @@ public static class WorldFileClockHeaderPatcher
         if (!reader.TrySkip(sizeof(double)))
             return WorldFileClockHeaderPatchResult.InvalidHeader;
 
+        // Sundial/rain state, three hardmode ore tiers, eight primary background bytes,
+        // cloud state and count precede Main.windSpeedTarget in WorldFile.SaveWorld.
+        const int bytesBeforeWindTarget =
+            sizeof(byte) +
+            sizeof(byte) +
+            sizeof(int) +
+            sizeof(float) +
+            (sizeof(int) * 3) +
+            8 +
+            sizeof(int) +
+            sizeof(short);
+        if (!reader.TrySkip(bytesBeforeWindTarget))
+            return WorldFileClockHeaderPatchResult.InvalidHeader;
+
+        int windSpeedTargetOffset = reader.Offset;
+        if (!reader.TrySkip(sizeof(float)))
+            return WorldFileClockHeaderPatchResult.InvalidHeader;
+
         patchedHeader = sourceHeader.ToArray();
         BinaryPrimitives.WriteInt64LittleEndian(
             patchedHeader.AsSpan(timeOffset, sizeof(long)),
@@ -134,6 +155,9 @@ public static class WorldFileClockHeaderPatcher
         BinaryPrimitives.WriteInt64LittleEndian(
             patchedHeader.AsSpan(slimeRainOffset, sizeof(long)),
             BitConverter.DoubleToInt64Bits(slimeRainTime));
+        BinaryPrimitives.WriteInt32LittleEndian(
+            patchedHeader.AsSpan(windSpeedTargetOffset, sizeof(int)),
+            BitConverter.SingleToInt32Bits(windSpeedTarget));
         return WorldFileClockHeaderPatchResult.Patched;
     }
 

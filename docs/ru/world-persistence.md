@@ -156,7 +156,7 @@ Save state различает initial shadow bootstrap, dirty sections waiting s
 
 Прогресс поздних боссов теперь записывает официальные флаги заголовка `downedFishron`, `downedAncientCultist`, `downedEmpressOfLight` и `downedMoonlord`. Раньше эти отметки в памяти приводили к отказу сохранения как неподдержанным изменениям. Обновления монотонны и сохраняют каждый посторонний байт, включая пять флагов лунного события. Все 256 сочетаний исходного прогресса и изменений совпадают с независимо записанными заголовками официального сервера 1.4.5.8; повторное сохранение идемпотентно, усечённые заголовки отклоняются. Для воспроизводимого сравнения fixture writer фиксирует только знаковые 64-битные временные метки. Возврат старого поведения ломает 241 из 257 регрессий.
 
-Authoritative production save path явно поддерживает runtime-owned tile state, chest state, sign state и world-clock fields header patcher.
+Authoritative production save path явно поддерживает runtime-owned tile state, chest state, sign state и world-clock fields header patcher. Снимок часов записывает время, day state, фазу луны, время Slime Rain и source `windSpeedTarget`; при загрузке patched world восстанавливает этот target как начальный current wind, как TerrariaServer 1.4.5.8.
 
 Authoritative sign persistence переписывает sign section из `RuntimeSignStore`. Current encoder ограничивает текст одного sign `$64\,\mathrm{KiB}$` UTF-8 data, а total sign text одного save snapshot — `$64\,\mathrm{MiB}$`. Выход за accepted contract fail'ит save вместо silent truncation/corruption unrelated world data.
 

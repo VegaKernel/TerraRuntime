@@ -155,7 +155,7 @@ The save state distinguishes initial shadow bootstrap, dirty sections awaiting s
 
 Late-boss progression now writes the official `downedFishron`, `downedAncientCultist`, `downedEmpressOfLight` and `downedMoonlord` header flags. Previously these runtime milestones caused an unsupported-mutation save rejection. Updates are monotonic and preserve every unrelated byte, including the five lunar-event flags. All 256 baseline/mutation combinations match independently emitted official 1.4.5.8 headers; repeated saves are idempotent and truncated headers are rejected. The fixture writer fixes only signed 64-bit timestamps for reproducible comparisons. Reverting support makes 241 of 257 regressions fail.
 
-The authoritative production save path explicitly supports runtime-owned tile state, chest state, sign state and world-clock fields handled by the header patcher.
+The authoritative production save path explicitly supports runtime-owned tile state, chest state, sign state and world-clock fields handled by the header patcher. The clock snapshot writes time, day state, moon phase, Slime Rain time and the source `windSpeedTarget`; loading the patched world restores that target as the initial current wind, as TerrariaServer 1.4.5.8 does.
 
 Authoritative sign persistence rewrites the sign section from `RuntimeSignStore`. The current encoder bounds one sign text at `$64\,\mathrm{KiB}$` of UTF-8 data and total sign text in one save snapshot at `$64\,\mathrm{MiB}$`. Exceeding the accepted contract fails the save instead of silently truncating or corrupting unrelated world data.
 
