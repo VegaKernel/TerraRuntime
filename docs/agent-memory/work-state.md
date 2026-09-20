@@ -22,9 +22,13 @@ then compress the radial separation by their index. Their target refresh and fin
 rotation are retained. The focused test begins with no usable target and pins the first
 link's position, velocity and rotation.
 
-This is still bounded encounter work. Missing-anchor recovery and the rest of the
-shared mechanical encounter remain open. Resume with its source-backed failure branches
-before broadening the encounter claim.
+Probe anchor recovery now follows AI_005: an out-of-table `ai[2]` reacquires the first
+Destroyer; loss of Prime or an in-range reused/missing Destroyer clears `ai[3]` and
+invulnerability, then resumes the ordinary one-step timer. Focused tests cover both
+branches.
+
+This is still bounded encounter work. The remaining shared mechanical encounter states
+remain open. Resume with coupled source traces before broadening the encounter claim.
 
 ## Prime head direction and rotation slice - 2026-09-20
 

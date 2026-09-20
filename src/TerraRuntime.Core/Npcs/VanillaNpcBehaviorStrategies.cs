@@ -660,9 +660,10 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
             return 0;
         }
 
+        NpcSnapshot attackSource = source with { Ai = proposed.Ai };
         if (!VanillaFlyerProjectileAttack.TryStep(
                 type,
-                in source,
+                in attackSource,
                 in hitbox,
                 in target,
                 proposed.VelocityX,
@@ -680,7 +681,7 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
         float sourceCenterY = source.PositionY + hitbox.Height * 0.5f;
         if (type == VanillaNpcIds.Probe)
         {
-            bool mechdusaProbe = source.Ai.Ai3 != 0f && IsMechQueenUp(context);
+            bool mechdusaProbe = proposed.Ai.Ai3 != 0f && IsMechQueenUp(context);
             float velocityX = target.CenterX - sourceCenterX;
             float velocityY = target.CenterY - sourceCenterY;
             if (mechdusaProbe)
@@ -756,15 +757,31 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
         VanillaNpcBehaviorContext context,
         out NpcStateUpdate next)
     {
-        if (!IsMechQueenUp(context) || npc.Ai.Ai2 is < 0f or > byte.MaxValue ||
-            npc.Ai.Ai2 != MathF.Truncate(npc.Ai.Ai2) ||
-            !context.TryFindNpcPeer((byte)npc.Ai.Ai2, out NpcSnapshot destroyer) ||
-            destroyer.TypeIdentity != VanillaNpcIds.Destroyer ||
-            !VanillaNpcDefinitionCatalog.TryGet(destroyer.TypeIdentity, destroyer.NetIdentity, out VanillaNpcDefinition destroyerDefinition) ||
+        bool mechQueenUp = IsMechQueenUp(context);
+        if (!mechQueenUp || !float.IsFinite(npc.Ai.Ai2))
+            return RecoverMechdusaProbe(in npc, in definition, mechQueenUp, out next);
+
+        NpcAiState ai = npc.Ai;
+        NpcSnapshot destroyer;
+        int destroyerSlot = (int)ai.Ai2;
+        if (destroyerSlot < 0 || destroyerSlot >= VanillaNpcSpawnRules.PhysicalSlotCount)
+        {
+            // NPC.AI_005 retries FindFirstNPC(134) only when the stored slot lies outside
+            // Main.maxNPCs. An in-range reused slot is a distinct source recovery branch.
+            if (!TryFindFirstDestroyer(context, out destroyer))
+                return RecoverMechdusaProbe(in npc, in definition, mechQueenUp, out next);
+            ai = ai with { Ai2 = destroyer.Handle.Slot };
+        }
+        else if (!context.TryFindNpcPeer((byte)destroyerSlot, out destroyer) ||
+                 destroyer.TypeIdentity != VanillaNpcIds.Destroyer)
+        {
+            return RecoverMechdusaProbe(in npc, in definition, mechQueenUp, out next);
+        }
+
+        if (!VanillaNpcDefinitionCatalog.TryGet(destroyer.TypeIdentity, destroyer.NetIdentity, out VanillaNpcDefinition destroyerDefinition) ||
             !destroyerDefinition.TryResolveHitbox(destroyer.Simulation, out VanillaNpcHitboxSize destroyerHitbox))
         {
-            next = default;
-            return false;
+            return RecoverMechdusaProbe(in npc, in definition, mechQueenUp, out next);
         }
 
         float angle = destroyer.Simulation.Rotation ?? 0f;
@@ -783,7 +800,7 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
         next = new NpcStateUpdate(
             definition.Type.Value, npc.NetId,
             centerX - hitbox.Width * .5f, centerY - hitbox.Height * .5f,
-            destroyer.VelocityX, destroyer.VelocityY, npc.Target, npc.Ai,
+            destroyer.VelocityX, destroyer.VelocityY, npc.Target, ai,
             npc.Simulation with
             {
                 NoGravity = true,
@@ -791,6 +808,47 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
                 DontTakeDamage = true,
                 LocalAi = local,
                 Rotation = angle
+            });
+        return true;
+    }
+
+    private static bool TryFindFirstDestroyer(VanillaNpcBehaviorContext context, out NpcSnapshot destroyer)
+    {
+        Span<NpcSnapshot> candidates = stackalloc NpcSnapshot[VanillaNpcSpawnRules.PhysicalSlotCount];
+        int count = context.CopyNpcPeers(VanillaNpcIds.Destroyer, candidates);
+        if (count > 0)
+        {
+            destroyer = candidates[0];
+            return true;
+        }
+
+        destroyer = default;
+        return false;
+    }
+
+    private static bool RecoverMechdusaProbe(
+        in NpcSnapshot npc,
+        in VanillaNpcDefinition definition,
+        bool mechQueenUp,
+        out NpcStateUpdate next)
+    {
+        float localAi0 = npc.Simulation.JustHit ? 0f : npc.Simulation.LocalAi.Ai0 + 1f;
+        float threshold = mechQueenUp ? 360f : VanillaFlyerProjectileAttack.ProbeAttackThreshold;
+        if (localAi0 >= threshold)
+            localAi0 = 0f;
+        next = new NpcStateUpdate(
+            definition.Type.Value,
+            npc.NetId,
+            npc.PositionX,
+            npc.PositionY,
+            npc.VelocityX,
+            npc.VelocityY,
+            npc.Target,
+            npc.Ai with { Ai3 = 0f },
+            npc.Simulation with
+            {
+                DontTakeDamage = false,
+                LocalAi = npc.Simulation.LocalAi with { Ai0 = localAi0 }
             });
         return true;
     }

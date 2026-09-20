@@ -155,6 +155,54 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Targeting_stepper_clears_probe_mechdusa_marker_when_prime_disappears()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetCandidates([Target(300f, 100f)]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot probe = CreateNpc(VanillaNpcIds.Probe, 7f) with
+        {
+            Ai = new NpcAiState(0f, 0f, 3f, 1f),
+            Simulation = CreateNpc(VanillaNpcIds.Probe, 7f).Simulation with { DontTakeDamage = true }
+        };
+
+        Assert.True(stepper.TryStepState(in probe, out NpcStateUpdate next));
+        Assert.Equal(0f, next.Ai.Ai3);
+        Assert.False(next.Simulation.DontTakeDamage);
+        Assert.Equal(8f, next.Simulation.LocalAi.Ai0);
+    }
+
+    [Fact]
+    public void Targeting_stepper_recovers_out_of_range_probe_destroyer_slot()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetCandidates([Target(300f, 100f)]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot prime = CreateNpc(VanillaNpcIds.SkeletronPrime, 0f) with
+        {
+            Handle = new NpcHandle(100, new NpcGeneration(1)),
+            Ai = new NpcAiState(0f, 0f, 0f, 100f)
+        };
+        NpcSnapshot destroyer = CreateNpc(VanillaNpcIds.Destroyer, 0f) with
+        {
+            Handle = new NpcHandle(3, new NpcGeneration(1)),
+            PositionX = 100f,
+            PositionY = 200f
+        };
+        NpcSnapshot probe = CreateNpc(VanillaNpcIds.Probe, 0f) with
+        {
+            Handle = new NpcHandle(4, new NpcGeneration(1)),
+            Ai = new NpcAiState(0f, 0f, 255f, 1f)
+        };
+        stepper.SetNpcPeers([prime, destroyer, probe]);
+
+        Assert.True(stepper.TryStepState(in probe, out NpcStateUpdate next));
+        Assert.Equal(3f, next.Ai.Ai2);
+        Assert.Equal(1f, next.Ai.Ai3);
+        Assert.True(next.Simulation.DontTakeDamage);
+    }
+
+    [Fact]
     public void Targeting_stepper_orbits_mechdusa_destroyer_head_below_prime()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new SequenceRandom());
