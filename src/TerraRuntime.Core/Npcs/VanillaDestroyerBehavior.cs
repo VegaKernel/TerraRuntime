@@ -118,7 +118,12 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
             if (npc.TypeIdentity == VanillaNpcIds.DestroyerBody)
             {
                 float laserCounter = local.Ai0 + _random.NextInt32(0, 4);
-                if (laserCounter >= _random.NextInt32(1400, 26000)) laserCounter = 0f;
+                if (laserCounter >= _random.NextInt32(1400, 26000))
+                {
+                    laserCounter = 0f;
+                    // AI_037 refreshes closest target immediately before its line-of-fire check.
+                    TryRefresh(in npc, in definition, context, ref targetSlot, out _);
+                }
                 local = local with { Ai0 = laserCounter };
             }
             sim = sim with { NoGravity = true, NoTileCollide = true, LocalAi = local, Rotation = rotation, JustHit = false };

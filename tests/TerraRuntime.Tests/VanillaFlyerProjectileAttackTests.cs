@@ -568,6 +568,88 @@ public sealed class VanillaFlyerProjectileAttackTests
         Assert.Equal(119f, next.Ai.Ai3);
     }
 
+    [Theory]
+    [InlineData(false, 22)]
+    [InlineData(true, 18)]
+    public void Targeting_stepper_plans_destroyer_laser_from_pre_attachment_center(bool expertMode, int expectedDamage)
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetProjectileEnvironment(new FixedEnvironment(true));
+        stepper.SetWormEnvironment(new EmptyWormEnvironment());
+        VanillaNpcTargetCandidate target = Target(900f, 800f);
+        stepper.SetCandidates([target]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: expertMode);
+        NpcSnapshot head = CreateNpc(VanillaNpcIds.Destroyer, 0f) with
+        {
+            Handle = new NpcHandle(3, new NpcGeneration(1)), PositionX = 500f, PositionY = 300f
+        };
+        NpcSnapshot body = CreateNpc(VanillaNpcIds.DestroyerBody, 0f) with
+        {
+            Handle = new NpcHandle(4, new NpcGeneration(1)), PositionX = 100f, PositionY = 100f,
+            Ai = new NpcAiState(0f, 3f, 0f, 3f),
+            Simulation = CreateNpc(VanillaNpcIds.DestroyerBody, 0f).Simulation with
+            {
+                LocalAi = new NpcAiState(1400f, 0f, 0f, 0f)
+            }
+        };
+        stepper.SetNpcPeers([head, body]);
+
+        Assert.True(stepper.TryStepState(in body, out NpcStateUpdate next));
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
+        Assert.Equal(1, stepper.PlanProjectileSpawns(in body, in next, intents));
+        float centerX = body.PositionX + 19f;
+        float centerY = body.PositionY + 19f;
+        float dx = target.CenterX - centerX - 20f;
+        float dy = target.CenterY - centerY - 20f;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        float velocityX = dx / distance * 8f - 1f;
+        float velocityY = dy / distance * 8f - 1f;
+        Assert.NotEqual(body.PositionX, next.PositionX);
+        Assert.Equal(VanillaProjectileIds.RetinazerDeathLaser, intents[0].Type);
+        Assert.Equal(expectedDamage, intents[0].Damage);
+        Assert.Equal(velocityX, intents[0].VelocityX, 5);
+        Assert.Equal(velocityY, intents[0].VelocityY, 5);
+        Assert.Equal(centerX + velocityX * 5f, intents[0].PositionX, 5);
+        Assert.Equal(centerY + velocityY * 5f, intents[0].PositionY, 5);
+        Assert.Equal(300, intents[0].TimeLeftOverride);
+    }
+
+    [Fact]
+    public void Targeting_stepper_refreshes_destroyer_body_target_and_blocks_laser_before_shot_rng()
+    {
+        var environment = new RecordingEnvironment(canHit: false);
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetProjectileEnvironment(environment);
+        stepper.SetWormEnvironment(new EmptyWormEnvironment());
+        stepper.SetCandidates([Target(900f, 800f), Target(120f, 120f) with { Slot = 1 }]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot head = CreateNpc(VanillaNpcIds.Destroyer, 0f) with
+        {
+            Handle = new NpcHandle(3, new NpcGeneration(1))
+        };
+        NpcSnapshot body = CreateNpc(VanillaNpcIds.DestroyerBody, 0f) with
+        {
+            Handle = new NpcHandle(4, new NpcGeneration(1)),
+            PositionX = 100f,
+            PositionY = 100f,
+            Target = 0,
+            Ai = new NpcAiState(0f, 3f, 0f, 3f),
+            Simulation = CreateNpc(VanillaNpcIds.DestroyerBody, 0f).Simulation with
+            {
+                LocalAi = new NpcAiState(1400f, 0f, 0f, 0f)
+            }
+        };
+        stepper.SetNpcPeers([head, body]);
+
+        Assert.True(stepper.TryStepState(in body, out NpcStateUpdate next));
+        Assert.Equal(0f, next.Simulation.LocalAi.Ai0);
+        Assert.Equal(1, next.Target);
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
+        Assert.Equal(0, stepper.PlanProjectileSpawns(in body, in next, intents));
+        Assert.Equal(38, environment.SourceWidth);
+        Assert.Equal(38, environment.SourceHeight);
+    }
+
     [Fact]
     public void Targeting_stepper_uses_live_twin_centers_for_charge_movement_and_late_aim()
     {

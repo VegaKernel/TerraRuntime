@@ -2459,14 +2459,33 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     private int PlanDestroyerLaser(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
     {
-        if (destination.IsEmpty || source.Simulation.LocalAi.Ai0 <= 0f || proposed.Simulation.LocalAi.Ai0 != 0f ||
-            proposed.Target >= byte.MaxValue || !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || !target.Active || target.Dead)
+        if (destination.IsEmpty || _projectileEnvironment is null || source.Simulation.LocalAi.Ai0 <= 0f ||
+            proposed.Simulation.LocalAi.Ai0 != 0f || proposed.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || !target.Active || target.Dead ||
+            !VanillaNpcDefinitionCatalog.TryGet(source.TypeIdentity, source.NetIdentity, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox))
+        {
             return 0;
-        float cx=proposed.PositionX+23.75f,cy=proposed.PositionY+23.75f;
-        float dx=target.CenterX-cx+_random.NextInt32(-20,21),dy=target.CenterY-cy+_random.NextInt32(-20,21);
-        float d=MathF.Max(.001f,MathF.Sqrt(dx*dx+dy*dy));
-        float vx=dx/d*8f+_random.NextInt32(-20,21)*.05f,vy=dy/d*8f+_random.NextInt32(-20,21)*.05f;
-        destination[0]=new NpcAiProjectileIntent(VanillaProjectileIds.RetinazerDeathLaser,cx+vx*5f,cy+vy*5f,vx,vy,22,0f){TimeLeftOverride=300};
+        }
+
+        float targetX = target.CenterX - VanillaPlayerHitboxFacts.BaseWidth * .5f;
+        float targetY = target.CenterY - VanillaPlayerHitboxFacts.BaseHeight * .5f;
+        if (!_projectileEnvironment.CanHit(source.PositionX, source.PositionY, hitbox.Width, hitbox.Height,
+                targetX, targetY, (int)VanillaPlayerHitboxFacts.BaseWidth, (int)VanillaPlayerHitboxFacts.BaseHeight))
+        {
+            return 0;
+        }
+
+        float cx = source.PositionX + hitbox.Width * .5f;
+        float cy = source.PositionY + hitbox.Height * .5f;
+        float dx = target.CenterX - cx + _random.NextInt32(-20, 21);
+        float dy = target.CenterY - cy + _random.NextInt32(-20, 21);
+        float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+        float vx = dx / d * 8f + _random.NextInt32(-20, 21) * .05f;
+        float vy = dy / d * 8f + _random.NextInt32(-20, 21) * .05f;
+        int damage = _context.ExpertMode ? 18 : 22;
+        destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.RetinazerDeathLaser,
+            cx + vx * 5f, cy + vy * 5f, vx, vy, damage, 0f) { TimeLeftOverride = 300 };
         return 1;
     }
 
