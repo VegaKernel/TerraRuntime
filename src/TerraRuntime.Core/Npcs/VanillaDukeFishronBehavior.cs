@@ -91,25 +91,15 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
             // AI_069 refreshes before checking the selected target for its retreat branch.
             targetSlot = byte.MaxValue;
         }
-        if (!TryTarget(in npc, in definition, context, ref targetSlot, out VanillaNpcTargetCandidate target))
-        {
-            // No target coordinate is available to complete source AI69's post-retreat work. Preserve the
-            // established bounded retreat rather than manufacture a player position from an absent session.
-            NpcAiState retreatAi = npc.Ai with { Ai0 = npc.Ai.Ai0 > 4f ? 5f : 0f, Ai2 = 0f };
-            NpcSimulationState retreatSim = npc.Simulation with
-            {
-                NoGravity = true,
-                NoTileCollide = true,
-                TimeLeft = npc.Simulation.TimeLeft is < 0 or > 10 ? 10 : npc.Simulation.TimeLeft
-            };
-            next = Build(in npc, npc.VelocityX, npc.VelocityY - .4f, targetSlot, in retreatAi, in retreatSim);
-            return true;
-        }
+        // TargetClosest can leave a retained dead/ghost slot selected when no living player exists. AI69 still
+        // reads that Player's geometry and continues after the retreat transition; do not turn that source path
+        // into an early return merely because the slot is not a legal combat target.
+        ResolveDukeTarget(in npc, in definition, context, ref targetSlot, out VanillaNpcTargetCandidate target);
 
         NpcAiState ai = npc.Ai;
         NpcSimulationState sim = npc.Simulation;
         float initialVelocityY = npc.VelocityY;
-        if (IsBeyondTargetRange(in npc, in definition, in target))
+        if (target.Dead || IsBeyondTargetRange(in npc, in definition, in target))
         {
             // AI_069 does not return here. It encourages despawn, resets the phase clock, then continues through
             // initialization, rotation and the resulting phase's state handler using the refreshed target.
@@ -359,6 +349,23 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
         return true;
     }
 
+
+    private static void ResolveDukeTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        VanillaNpcBehaviorContext context, ref ushort targetSlot, out VanillaNpcTargetCandidate target)
+    {
+        if (TryTarget(in npc, in definition, context, ref targetSlot, out target))
+            return;
+
+        // NPC.TargetClosest only overwrites an invalid source slot with zero when its living-player scan is empty.
+        // A retained dead/ghost player remains readable by AI69 and supplies its actual last known geometry.
+        if (targetSlot < byte.MaxValue && context.TryFindCandidate((byte)targetSlot, out target))
+            return;
+        targetSlot = 0;
+        if (context.TryFindCandidate(0, out target))
+            return;
+        target = new VanillaNpcTargetCandidate(0, VanillaPlayerHitboxFacts.BaseWidth * .5f,
+            VanillaPlayerHitboxFacts.BaseHeight * .5f, 0, false, false, false, false);
+    }
 
     private static float RotateRootTowardTarget(float rotation, int spriteDirection, float phase,
         in VanillaNpcTargetCandidate target, float centerX, float centerY)

@@ -54,6 +54,31 @@ public sealed class DukeFishronOcean1458Tests
     }
 
     [Fact]
+    public void Dead_retained_target_still_runs_the_source_retreat_continuation()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        stepper.SetWorldBounds(4200, 150);
+        stepper.SetWorldConditions(false, false);
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 6700, 1021, 0, true, true, false, false)]);
+        NpcSnapshot npc = Duke(7, 24, 3) with
+        {
+            Simulation = Duke(7, 24, 3).Simulation with
+            {
+                TimeLeft = 900,
+                LocalAi = new NpcAiState(1, 0, 0, 0),
+                Rotation = 0f
+            }
+        };
+
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+
+        Assert.Equal(0, next.Target);
+        Assert.Equal(5f, next.Ai.Ai0);
+        Assert.Equal(1f, next.Ai.Ai2);
+        Assert.Equal(10, next.Simulation.TimeLeft);
+    }
+
+    [Fact]
     public void Distant_target_retreat_still_runs_source_initialization_before_phase_dispatch()
     {
         var stepper = CreateStepper(4200, 6690, 8000);
