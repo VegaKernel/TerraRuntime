@@ -45,12 +45,15 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             hasTarget = TryRefresh(in npc, in definition, context, ref targetSlot, out target);
         bool mechQueenUp = TryGetMechQueenCenter(context, out float queenCenterX, out float queenCenterY, out float queenVelocityX);
         float rotation = sim.Rotation ?? 0f;
+        float targetRotation = rotation;
+        bool hasTargetRotation = false;
         if (hasTarget && definition.TryResolveHitbox(sim, out VanillaNpcHitboxSize hitbox))
         {
-            float targetRotation = MathF.Atan2(
+            targetRotation = MathF.Atan2(
                 npc.PositionY + hitbox.Height - 59f - target.CenterY,
                 npc.PositionX + hitbox.Width / 2 - target.CenterX) + MathF.PI * .5f;
             targetRotation = NormalizeRotation(targetRotation);
+            hasTargetRotation = true;
             float rotationStep = _spazmatism ? .15f : .1f;
             if (_spazmatism && mechQueenUp && ai.Ai0 == 3f && ai.Ai1 == 0f)
                 rotationStep *= .25f;
@@ -71,6 +74,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         if (ai.Ai0 == 0f)
         {
             float phaseOneState = ai.Ai1;
+            float phaseOneTimer = ai.Ai2;
             // TerrariaServer 1.4.5.8 AI_030/AI_031 replace only the ordinary phase-one
             // hover movement when the source's global Mech Queen Prime anchor is live.
             if (ai.Ai1 == 0f && mechQueenUp)
@@ -93,6 +97,22 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             {
                 // Both source AI styles ClearTarget at the end of a completed charge.
                 targetSlot = byte.MaxValue;
+            }
+
+            if (hasTargetRotation && phaseOneState == 1f)
+            {
+                // AI_030/AI_031 snap their facing angle to the target before calculating charge velocity.
+                rotation = targetRotation;
+            }
+            else if (hasTargetRotation && phaseOneState == 2f)
+            {
+                float timerAfterIncrement = phaseOneTimer + 1f;
+                float dampingThreshold = _spazmatism ? 8f : 25f;
+                float cycleThreshold = _spazmatism ? 42f : 70f;
+                if (timerAfterIncrement >= cycleThreshold)
+                    rotation = targetRotation;
+                else if (timerAfterIncrement < dampingThreshold)
+                    rotation = MathF.Atan2(vy, vx) - 1.57f;
             }
 
             if (life < lifeMax * 0.4f)

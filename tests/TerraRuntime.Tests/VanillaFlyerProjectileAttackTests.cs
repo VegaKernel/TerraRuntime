@@ -446,6 +446,49 @@ public sealed class VanillaFlyerProjectileAttackTests
         Assert.Equal(byte.MaxValue, spazChargeNext.Target);
     }
 
+    [Theory]
+    [InlineData(125, 25f, 70f)]
+    [InlineData(126, 8f, 42f)]
+    public void Targeting_stepper_uses_source_twin_charge_rotation(int typeValue, float dampingThreshold, float cycleThreshold)
+    {
+        Assert.True(NpcTypeId.TryCreate(typeValue, out NpcTypeId type));
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        VanillaNpcTargetCandidate target = Target(900f, 800f);
+        stepper.SetCandidates([target]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot chargeStart = CreateNpc(type, 0f) with
+        {
+            PositionX = 100f,
+            PositionY = 150f,
+            Ai = new NpcAiState(0f, 1f, 0f, 0f),
+            Simulation = CreateNpc(type, 0f).Simulation with { Rotation = 0f }
+        };
+        NpcSnapshot chargeMotion = chargeStart with
+        {
+            VelocityX = 3f,
+            VelocityY = 4f,
+            Ai = new NpcAiState(0f, 2f, 0f, 0f)
+        };
+        NpcSnapshot chargeEnd = chargeStart with { Ai = new NpcAiState(0f, 2f, cycleThreshold - 1f, 0f) };
+
+        Assert.True(stepper.TryStepState(in chargeStart, out NpcStateUpdate startNext));
+        Assert.True(stepper.TryStepState(in chargeMotion, out NpcStateUpdate motionNext));
+        Assert.True(stepper.TryStepState(in chargeEnd, out NpcStateUpdate endNext));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(chargeStart.TypeIdentity, chargeStart.NetIdentity, out VanillaNpcDefinition definition));
+        Assert.True(definition.TryResolveHitbox(chargeStart.Simulation, out VanillaNpcHitboxSize hitbox));
+        float targetRotation = MathF.Atan2(chargeStart.PositionY + hitbox.Height - 59f - target.CenterY,
+            chargeStart.PositionX + hitbox.Width / 2 - target.CenterX) + MathF.PI * .5f;
+        if (targetRotation < 0f) targetRotation += 6.283f;
+        else if (targetRotation > 6.283f) targetRotation -= 6.283f;
+        Assert.Equal(targetRotation, startNext.Simulation.Rotation!.Value, 5);
+        Assert.Equal(MathF.Atan2(4f, 3f) - 1.57f, motionNext.Simulation.Rotation!.Value, 5);
+        Assert.Equal(targetRotation, endNext.Simulation.Rotation!.Value, 5);
+        Assert.Equal(2f, startNext.Ai.Ai1);
+        Assert.Equal(1f, motionNext.Ai.Ai2);
+        Assert.Equal(0f, endNext.Ai.Ai2);
+        Assert.True(dampingThreshold > 1f);
+    }
+
     [Fact]
     public void Targeting_stepper_keeps_late_twin_attack_counters_while_line_of_fire_is_blocked()
     {
