@@ -728,6 +728,21 @@ public sealed class LateHardmodeBossParityTests
         Assert.Equal(6f, MathF.Sqrt(intents[0].VelocityX * intents[0].VelocityX + intents[0].VelocityY * intents[0].VelocityY), precision: 3);
     }
 
+    [Theory]
+    [InlineData(5f, true, 80)]
+    [InlineData(6f, false, 80)]
+    [InlineData(41f, true, 120)]
+    [InlineData(90f, true, 120)]
+    public void Empress_dash_states_use_source_vulnerability_and_contact_damage_windows(float timer, bool dontTakeDamage, int damage)
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(8f, timer, 0f, 0f), life: 70_000);
+
+        Assert.True(stepper.TryStepState(in empress, out NpcStateUpdate next));
+        Assert.Equal(dontTakeDamage, next.Simulation.DontTakeDamage);
+        Assert.Equal(damage, next.Simulation.DamageOverride);
+    }
+
     [Fact]
     public void Moon_lord_hand_advances_into_the_source_attack_sequence()
     {

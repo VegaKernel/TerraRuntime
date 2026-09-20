@@ -410,6 +410,7 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
         int state = (int)ai.Ai0;
         float timer = ai.Ai1;
         bool vulnerable = state != 0 && state != 10;
+        float contactDamageMultiplier = 1f;
 
         if (state == 0)
         {
@@ -502,6 +503,13 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
         }
         else
         {
+            // AI_120 states 8/9 expose the dash body only for ticks 6..40, then apply num16 = 1.5 through tick 90.
+            if (state is 8 or 9)
+            {
+                vulnerable = timer is >= 6f and <= 40f;
+                if (timer is > 40f and <= 90f)
+                    contactDamageMultiplier = 1.5f;
+            }
             float accel = state is 8 or 9 ? 1f : .5f;
             float speed = state is 8 or 9 ? 20f : 12f;
             float offsetX = state == 8 ? 550f : state == 9 ? -550f : state == 4 ? 150f : state == 2 ? -150f : 0f;
@@ -521,7 +529,7 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
             NoGravity = true,
             NoTileCollide = true,
             DontTakeDamage = !vulnerable,
-            DamageOverride = enraged ? 9999 : definition.Damage,
+            DamageOverride = enraged ? 9999 : (int)(definition.Damage * contactDamageMultiplier),
             DefenseOverride = phaseTwo ? (int)(definition.Defense * 1.2f) : definition.Defense,
             JustHit = false
         };
