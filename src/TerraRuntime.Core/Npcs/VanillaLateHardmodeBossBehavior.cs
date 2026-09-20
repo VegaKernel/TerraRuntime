@@ -1047,6 +1047,25 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
                 vx = (vx * 29f + desiredX) / 30f;
                 vy = (vy * 29f + desiredY) / 30f;
             }
+
+            // AI_081 scans physical NPC slots, rather than just eyes linked to this core, and
+            // separates every nearby active True Eye after the player-steering blend.
+            for (int slot = 0; slot < RuntimeNpcStore.MaximumAddressableCapacity; slot++)
+            {
+                if (slot == npc.Handle.Slot || !context.TryFindNpcPeer((byte)slot, out NpcSnapshot peer) ||
+                    peer.TypeIdentity != VanillaNpcIds.MoonLordFreeEye)
+                {
+                    continue;
+                }
+                float peerX = peer.PositionX + 30f;
+                float peerY = peer.PositionY + 30f;
+                float deltaX = centerX - peerX;
+                float deltaY = centerY - peerY;
+                if (deltaX * deltaX + deltaY * deltaY >= 10000f)
+                    continue;
+                vx += npc.PositionX < peer.PositionX ? -1.25f : 1.25f;
+                vy += npc.PositionY < peer.PositionY ? -1.25f : 1.25f;
+            }
         }
         else if (ai.Ai0 == 1f)
         {

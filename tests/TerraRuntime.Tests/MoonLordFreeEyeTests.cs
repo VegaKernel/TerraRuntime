@@ -38,6 +38,27 @@ public sealed class MoonLordFreeEyeTests
     }
 
     [Fact]
+    public void Hover_separates_every_nearby_true_eye_in_physical_slot_order()
+    {
+        var npcs = new RuntimeNpcStore(4);
+        Spawn(npcs, 0, VanillaNpcIds.MoonLordCore, 1000f, 1000f, 0f, 0f, default, default, 255);
+        NpcSnapshot eye = Spawn(npcs, 1, VanillaNpcIds.MoonLordFreeEye, 900f, 900f, 2f, -3f,
+            new NpcAiState(0f, 0f, 0f, 0f), new NpcAiState(.2f, .3f, .4f, 0f), 255);
+        Spawn(npcs, 2, VanillaNpcIds.MoonLordFreeEye, 950f, 940f, 0f, 0f,
+            new NpcAiState(0f, 0f, 0f, 0f), default, 255);
+        var random = new CountingRandom(1);
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: random);
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 1500f, 820f, 0, true, false, false, false)]);
+
+        new RuntimeNpcAiStateExecutor(npcs).Tick(new EyeOnly(stepper));
+
+        Assert.True(npcs.TryGet(eye.Handle, out NpcSnapshot next));
+        Assert.Equal(1.386120f, next.VelocityX, 5);
+        Assert.Equal(-4.532218f, next.VelocityY, 5);
+        Assert.Equal(2, random.Draws);
+    }
+
+    [Fact]
     public void Retired_eye_keeps_its_marker_until_the_attack_table_reaches_hover()
     {
         var npcs = new RuntimeNpcStore(4);
