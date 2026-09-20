@@ -741,6 +741,21 @@ public sealed class LateHardmodeBossParityTests
     }
 
     [Fact]
+    public void Empress_lance_ring_uses_source_classic_direction_normalization()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(4f, 0f, 0f, 0f), life: 70_000);
+        NpcStateUpdate proposed = Proposed(in empress, empress.Ai);
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
+
+        Assert.Equal(1, stepper.PlanProjectileSpawns(in empress, in proposed, intents));
+        Assert.Equal(789.719f, intents[0].PositionX, precision: 3);
+        Assert.Equal(377.865f, intents[0].PositionY, precision: 3);
+        Assert.Equal(-2.8790f, intents[0].InitialAi.Ai0, precision: 3);
+        Assert.Equal(50, intents[0].Damage);
+    }
+
+    [Fact]
     public void Empress_rainbow_streak_uses_source_random_direction()
     {
         var stepper = CreateStepper(dayTime: false);

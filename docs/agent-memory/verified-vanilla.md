@@ -898,3 +898,7 @@ When adding a fact:
 3. put literal IDs/constants here only after they are source-pinned and represented by typed production constants where appropriate;
 4. add a regression test that fails under the previous/broken behavior;
 5. update/remove the corresponding "known gap" entry.
+
+## Empress of Light AI_120 lance ring, 2026-09-20
+
+- TerrariaServer 1.4.5.8 `NPC.AI_120_HallowBoss` state 4 fires only at `ai[1] % 4 == 0` before tick 100. It uses four segments and a 300-pixel radius in Classic; Expert or the active daytime-rage branch uses five and 450. Classic adds `+/-0.5f` to the X component before normalization. The source rejects a target farther than 2400 pixels, reverses the ring vector when its dot product with normalized target velocity is positive, aims from `target.Center + velocity * 90`, and spawns at `target.Center + ring * radius - velocity * 30`. If that result is inside the radius, source projects to the opposite radial boundary. The projectile records aim rotation and `ai[1] / 100f`. The retained regression covers the exact Classic normalized anchor, aim and damage; extra-player fanout is not admitted because the runtime does not yet model the source multiplayer target loop.

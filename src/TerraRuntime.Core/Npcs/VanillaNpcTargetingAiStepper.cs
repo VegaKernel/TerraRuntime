@@ -2277,12 +2277,45 @@ public sealed class VanillaNpcTargetingAiStepper :
         }
         if (state == 4 && timer < 100f && ((int)timer % 4) == 0)
         {
+            // AI_120 state 4 uses Expert/rage mode, not phase, for its five-lance ring and 450-pixel radius.
+            float sourceDistanceX = target.CenterX - cx;
+            float sourceDistanceY = target.CenterY - cy;
+            if (sourceDistanceX * sourceDistanceX + sourceDistanceY * sourceDistanceY > 2_400f * 2_400f)
+                return 0;
             if (destination.IsEmpty) return 1;
-            float angle = MathF.PI / ((phaseTwo ? 5f : 4f) * 2f) + (timer / 4f) * (MathF.PI / (phaseTwo ? 5f : 4f));
-            float radius = phaseTwo ? 450f : 300f;
-            float px = target.CenterX + MathF.Cos(angle) * radius;
-            float py = target.CenterY + MathF.Sin(angle) * radius;
-            float aim = MathF.Atan2(target.CenterY - py, target.CenterX - px);
+            float segmentCount = expertCadence ? 5f : 4f;
+            float angle = MathF.PI / (segmentCount * 2f) + (timer / 4f) * (MathF.PI / segmentCount);
+            float directionX = MathF.Cos(angle);
+            float directionY = MathF.Sin(angle);
+            if (!expertCadence)
+            {
+                directionX += directionX > 0f ? .5f : -.5f;
+                float directionLength = MathF.Sqrt(directionX * directionX + directionY * directionY);
+                directionX /= directionLength;
+                directionY /= directionLength;
+            }
+            float velocityLength = MathF.Sqrt(target.VelocityX * target.VelocityX + target.VelocityY * target.VelocityY);
+            if (velocityLength > .001f && (target.VelocityX / velocityLength * directionX + target.VelocityY / velocityLength * directionY) > 0f)
+            {
+                directionX = -directionX;
+                directionY = -directionY;
+            }
+            float radius = expertCadence ? 450f : 300f;
+            float predictedX = target.CenterX + target.VelocityX * 90f;
+            float predictedY = target.CenterY + target.VelocityY * 90f;
+            float px = target.CenterX + directionX * radius - target.VelocityX * 30f;
+            float py = target.CenterY + directionY * radius - target.VelocityY * 30f;
+            float fromTargetX = px - target.CenterX;
+            float fromTargetY = py - target.CenterY;
+            float radialDistance = MathF.Sqrt(fromTargetX * fromTargetX + fromTargetY * fromTargetY);
+            if (radialDistance < radius)
+            {
+                float fallbackX = radialDistance <= .001f ? -directionX : -fromTargetX / radialDistance;
+                float fallbackY = radialDistance <= .001f ? -directionY : -fromTargetY / radialDistance;
+                px = target.CenterX + fallbackX * radius;
+                py = target.CenterY + fallbackY * radius;
+            }
+            float aim = MathF.Atan2(predictedY - py, predictedX - px);
             destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.FairyQueenLance, px, py, 0f, 0f, Damage(50, 60, 30, 35), 0f)
             { InitialAi = new ProjectileAiState(aim, timer / 100f, 0f) };
             return 1;

@@ -269,6 +269,8 @@ Boss orchestration не нужно запихивать в abstractions, при�
 
 Обычный AI69 Duke Fishron теперь получает подтверждённые ширину мира и surface через существующую NPC authority. Ocean gates используют левый верхний угол игрока и строгие сравнения800/6400/surface/правого края. Enrage сокращает hover до10 ticks, добавляет6 к скорости рывка, заменяет bubble-specials, меняет damage/defense и передаёт признак Cthulhunado bolt; возвращение к океану восстанавливает обычную фазу. Обычный Classic/Expert/Master defDamage равен100/140/210 до phase/enrage. Без границ мира root step/projectile plan отклоняется. Эти source-backed части не закрывают difficulty-dependent spawn life, distant-target/despawn ordering, special seeds и официальный client encounter acceptance.
 
+Empress of Light: planner `AI_120` в state 4 создаёт кольцо Fairy Queen Lance. Classic: 4 якоря на $300\,\text{пикселей}$ с горизонтальной поправкой `0.5f`; Expert/дневная ярость: 5 якорей на $450\,\text{пикселей}$. План проверяет лимит $2400\,\text{пикселей}$, скорость цели, прогноз на $90\,\text{тиков}$ и смещение spawn на $30\,\text{тиков}$. Дополнительные multiplayer-цели, presentation, все ветки сложности и полный parity encounter остаются открыты.
+
 ## 16. Trusted-host NPC actors
 
 `INpcActorOperations` позволяет trusted host получить lease existing runtime NPC и отправлять semantic `NpcActorIntent`.
