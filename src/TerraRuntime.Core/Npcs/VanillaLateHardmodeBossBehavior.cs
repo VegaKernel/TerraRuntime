@@ -464,6 +464,7 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
                         DamageOverride = enraged ? 9999 : definition.Damage,
                         DefenseOverride = definition.Defense,
                         Alpha = Math.Max(0, sim.Alpha - 5),
+                        LocalAi = sim.LocalAi with { Ai0 = sim.LocalAi.Ai0 + 1f >= 44f ? 0f : sim.LocalAi.Ai0 + 1f },
                         JustHit = false
                     });
                 return true;
@@ -528,6 +529,8 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
         ai = ai with { Ai0 = state, Ai1 = timer };
         if (sourceState is not 0 and not 13)
             sim = sim with { Alpha = Math.Max(0, sim.Alpha - 5) };
+        float syncCounter = sim.LocalAi.Ai0 + 1f;
+        sim = sim with { LocalAi = sim.LocalAi with { Ai0 = syncCounter >= 44f ? 0f : syncCounter } };
         sim = sim with
         {
             NoGravity = true,

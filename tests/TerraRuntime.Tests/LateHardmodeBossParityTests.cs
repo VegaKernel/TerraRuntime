@@ -729,6 +729,20 @@ public sealed class LateHardmodeBossParityTests
     }
 
     [Fact]
+    public void Empress_advances_and_wraps_source_local_sync_counter()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(2f, 0f, 0f, 0f), life: 70_000, localAi: new NpcAiState(43f, 0f, 0f, 0f));
+
+        Assert.True(stepper.TryStepState(in empress, out NpcStateUpdate wrapped));
+        Assert.Equal(0f, wrapped.Simulation.LocalAi.Ai0);
+
+        empress = empress with { Simulation = empress.Simulation with { LocalAi = new NpcAiState(7f, 0f, 0f, 0f) } };
+        Assert.True(stepper.TryStepState(in empress, out NpcStateUpdate advanced));
+        Assert.Equal(8f, advanced.Simulation.LocalAi.Ai0);
+    }
+
+    [Fact]
     public void Empress_non_intro_non_retreat_states_apply_source_alpha_tail()
     {
         var stepper = CreateStepper(dayTime: false);
