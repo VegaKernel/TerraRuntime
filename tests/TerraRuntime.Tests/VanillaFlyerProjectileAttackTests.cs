@@ -1065,10 +1065,15 @@ public sealed class VanillaFlyerProjectileAttackTests
         stepper.SetCandidates([targetAbove]);
         Assert.True(stepper.TryStepState(in head, out NpcStateUpdate remoteNext));
         Assert.Equal(0f, remoteNext.Simulation.LocalAi.Ai1);
+        Assert.Equal(1f, remoteNext.Simulation.LocalAi.Ai0);
+        Assert.True(stepper.RequiresForcedUpdate(in head, in remoteNext));
 
+        NpcSnapshot diggingHead = head with { Simulation = head.Simulation with { LocalAi = new NpcAiState(1f, 0f, 0f, 0f) } };
         stepper.SetCandidates([targetAbove, Target(3020f, 3020f) with { Slot = 1 }]);
-        Assert.True(stepper.TryStepState(in head, out NpcStateUpdate nearbyNext));
+        Assert.True(stepper.TryStepState(in diggingHead, out NpcStateUpdate nearbyNext));
         Assert.Equal(1f, nearbyNext.Simulation.LocalAi.Ai1);
+        Assert.Equal(0f, nearbyNext.Simulation.LocalAi.Ai0);
+        Assert.True(stepper.RequiresForcedUpdate(in diggingHead, in nearbyNext));
 
         stepper.SetCandidates([targetAbove, Target(3020f, 3020f) with { Slot = 1, Dead = true, Ghost = true }]);
         Assert.True(stepper.TryStepState(in head, out NpcStateUpdate retainedSlotNext));

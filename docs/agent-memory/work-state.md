@@ -1,5 +1,7 @@
 # Work state
 
+2026-09-20: AI_037 now retains the Destroyer `localAI[0]` digging marker and requests a forced packet-23 update only when it changes. `RuntimeNpcAiStateExecutor` discovers the optional source-scoped forced-update capability and emits `NpcStateCommitKind.ForcedUpdate`; unrelated NPC updates remain on the 30-tick cadence. Focused `DestroyerChainSpawnTests` (36) and `VanillaFlyerProjectileAttackTests` (42) pass, as does the Release warnings-as-errors build. Other `NPC.netUpdate` paths remain open.
+
 ## Mechdusa Probe attachment slice - 2026-09-20
 
 ## Mechdusa Waffle Iron loot slice - 2026-09-20

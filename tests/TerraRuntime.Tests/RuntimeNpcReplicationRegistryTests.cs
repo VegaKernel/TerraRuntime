@@ -165,6 +165,30 @@ public sealed class RuntimeNpcReplicationRegistryTests
     }
 
     [Fact]
+    public void Source_requested_forced_npc_update_bypasses_the_ordinary_motion_cadence()
+    {
+        var replication = new RuntimeNpcReplicationRegistry();
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(91);
+        TerrariaConnectionOutboundQueue outbound = CreateOutbound();
+        Assert.True(replication.TryRegister(source, outbound));
+        ConnectionHandle player = Connection(source, slot: 1, generation: 1);
+        PlayerSpawnCommitRequest spawn = CreatePlayerSpawn(player.Player.Slot);
+        replication.PlayerSpawned(player, in spawn);
+
+        replication.AdvanceAuthoritativeTick();
+        NpcSnapshot first = CreateNpc(revision: 1, positionX: 100f);
+        replication.NpcStateCommitted(NpcStateCommitKind.Update, in first);
+
+        replication.AdvanceAuthoritativeTick();
+        NpcSnapshot urgent = first with { Revision = new NpcRevision(2), PositionX = 110f };
+        replication.NpcStateCommitted(NpcStateCommitKind.ForcedUpdate, in urgent);
+
+        Assert.Equal(2, outbound.QueuedFrames);
+        Assert.Equal(2, replication.RelayedFrames);
+        Assert.Equal(0, replication.SuppressedCadenceFrames);
+    }
+
+    [Fact]
     public void Unsupported_npc_type_is_not_put_on_the_wire()
     {
         var replication = new RuntimeNpcReplicationRegistry();

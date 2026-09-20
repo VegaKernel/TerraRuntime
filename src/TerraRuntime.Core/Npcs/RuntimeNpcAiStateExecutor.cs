@@ -98,6 +98,8 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
             NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitObserver>(stepper);
         INpcAiStatePostCommitEffect? postCommitEffect =
             NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitEffect>(stepper);
+        INpcAiForcedUpdateIntentPlanner? forcedUpdatePlanner =
+            NpcAiStateStepperComposition.FindCapability<INpcAiForcedUpdateIntentPlanner>(stepper);
         INpcAiPeerSnapshotConsumer? peerConsumer =
             NpcAiStateStepperComposition.FindCapability<INpcAiPeerSnapshotConsumer>(stepper);
         INpcAiRetainedSlotSnapshotConsumer? retainedSlotConsumer =
@@ -205,6 +207,7 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
             }
             bool deactivate = postCommitEffect?.DeactivatesAfterStep(in npc, in next) ?? false;
             bool deferPublication = postCommitEffect?.DefersStatePublication(in npc, in next) ?? false;
+            bool forceUpdate = forcedUpdatePlanner?.RequiresForcedUpdate(in npc, in next) ?? false;
             if (!_npcs.TryGet(npc.Handle, out currentSource) || currentSource.Revision != npc.Revision)
             {
                 rejected++;
@@ -212,7 +215,7 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
             }
             bool updated = deactivate || deferPublication
                 ? _npcs.TryUpdateUnpublished(npc.Handle, in next, out NpcSnapshot committed)
-                : _npcs.TryUpdate(npc.Handle, in next, out committed);
+                : _npcs.TryUpdate(npc.Handle, in next, out committed, forceSync: forceUpdate);
             if (updated)
             {
                 applied++;

@@ -19,9 +19,13 @@ public sealed class VanillaNpcTargetingAiStepper :
     INpcAiProjectileMutationIntentPlanner,
     INpcAiPeerSnapshotConsumer,
     INpcAiRetainedSlotSnapshotConsumer,
+    INpcAiForcedUpdateIntentPlanner,
     INpcAiStatePostCommitEffect
 {
     public const int MaximumPlayerCandidates = VanillaNpcBehaviorContext.MaximumPlayerCandidates;
+
+    public bool RequiresForcedUpdate(in NpcSnapshot before, in NpcStateUpdate proposed) =>
+        VanillaDestroyerNpcBehaviorStrategy.RequiresDiggingStateSync(in before, in proposed);
 
     private const float EyeOfCthulhuClassicServantCadenceThreshold = 110f;
     private const float EyeOfCthulhuExpertServantCadenceThreshold = 44f;

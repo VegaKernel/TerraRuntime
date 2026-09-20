@@ -140,6 +140,26 @@ public sealed class DestroyerChainSpawnTests
         Assert.Equal(0, store.ActiveCount);
     }
 
+    [Fact]
+    public void Digging_marker_transition_publishes_an_immediate_source_requested_update()
+    {
+        var commits = new CommitRecorder();
+        var store = new RuntimeNpcStore(capacity: 4, commitSink: commits);
+        Assert.True(store.TrySpawnIntent(new NpcAiSpawnIntent(VanillaNpcIds.Destroyer, 3000, 3000, 0, 0, 0)
+            { InitialAi = new NpcAiState(1, 0, 0, 0) }, out NpcSnapshot head));
+        commits.Kinds.Clear();
+
+        var vanilla = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        vanilla.SetWorldConditions(dayTime: false, slimeRainActive: false);
+        vanilla.SetCandidates([new VanillaNpcTargetCandidate(0, 100, 100, 0, true, false, false, false)]);
+        vanilla.SetWormEnvironment(new EmptyTerrain());
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(store).Tick(vanilla).Applied);
+        Assert.True(store.TryGet(head.Handle, out NpcSnapshot committed));
+        Assert.Equal(1f, committed.Simulation.LocalAi.Ai0);
+        Assert.Equal([NpcStateCommitKind.ForcedUpdate], commits.Kinds);
+    }
+
     private sealed class ChainObserver(INpcAiStateStepper inner, RuntimeNpcStore store) : INpcAiStateStepper, INpcAiStateStepperWrapper
     {
         public INpcAiStateStepper InnerStepper => inner;
@@ -170,5 +190,11 @@ public sealed class DestroyerChainSpawnTests
     private sealed class EmptyTerrain : IVanillaWormEnvironment
     {
         public bool IsDigging(float x, float y, int width, int height) => false;
+    }
+
+    private sealed class CommitRecorder : INpcStateCommitSink
+    {
+        public List<NpcStateCommitKind> Kinds { get; } = [];
+        public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot) => Kinds.Add(kind);
     }
 }

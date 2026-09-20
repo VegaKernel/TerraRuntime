@@ -60,6 +60,10 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
         before.TypeIdentity == VanillaNpcIds.Destroyer && proposed.Type == before.Type && context.DayTime &&
         before.PositionY > context.RockLayerPixels;
 
+    public static bool RequiresDiggingStateSync(in NpcSnapshot before, in NpcStateUpdate proposed) =>
+        before.TypeIdentity == VanillaNpcIds.Destroyer && proposed.Type == before.Type &&
+        before.Simulation.LocalAi.Ai0 != proposed.Simulation.LocalAi.Ai0;
+
     public static void DespawnDaytimeChain(in NpcSnapshot before, in NpcSnapshot committed,
         VanillaNpcBehaviorContext context, INpcAiCommittedNpcMutationSink mutations)
     {
@@ -277,6 +281,10 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
             vy = 0f;
             sim = sim with { Rotation = orbit * .75f + MathF.PI };
         }
+
+        // AI_037 uses localAI[0] as the replicated digging marker. A transition in either direction sets
+        // netUpdate immediately; the executor turns that source intent into a forced packet-23 commit.
+        local = local with { Ai0 = digging ? 1f : 0f };
 
         sim = sim with { NoGravity = true, NoTileCollide = true, LocalAi = local, JustHit = false };
         next = new NpcStateUpdate(npc.Type, npc.NetId, x, y, vx, vy, targetSlot, ai, sim);

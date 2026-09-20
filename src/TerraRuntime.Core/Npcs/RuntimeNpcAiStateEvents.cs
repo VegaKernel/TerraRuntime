@@ -23,6 +23,15 @@ public interface INpcAiStatePostCommitObserver
 }
 
 /// <summary>
+/// Optional source-scoped packet-23 intent. The ordinary replication cadence remains the default; an admitted
+/// AI transition can request an immediate update only where TerrariaServer sets <c>NPC.netUpdate</c> itself.
+/// </summary>
+public interface INpcAiForcedUpdateIntentPlanner
+{
+    bool RequiresForcedUpdate(in NpcSnapshot before, in NpcStateUpdate proposed);
+}
+
+/// <summary>
 /// Narrow authoritative mutation surface for irreversible NPC side effects that must occur only after the source
 /// NPC generation has committed. It deliberately exposes spawn and exact-generation update only, rather than the
 /// mutable NPC store, so side-effect implementations cannot bypass lifecycle validation accidentally.
