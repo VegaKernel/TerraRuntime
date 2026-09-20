@@ -740,6 +740,7 @@ public static class VanillaTileIds
     public static readonly TileTypeId Bubble = new(379);
     public static readonly TileTypeId VineFlowers = new(382);
     public static readonly TileTypeId TrapdoorOpen = new(386);
+    public static readonly TileTypeId TrapdoorClosed = new(387);
     public static readonly TileTypeId TallGateClosed = new(388);
     public static readonly TileTypeId TallGateOpen = new(389);
     public static readonly TileTypeId ItemFrame = new(395);

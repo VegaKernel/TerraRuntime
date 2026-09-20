@@ -244,6 +244,116 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
         return true;
     }
 
+    /// <summary>
+    /// Bounded source-shaped <c>WorldGen.ShiftTrapdoor</c> path for an otherwise empty destination strip. Source
+    /// cuts eligible destination tiles through <c>KillTile</c>; callers without that full drop/metadata transaction
+    /// must reject such a request before mutation rather than silently deleting it.
+    /// </summary>
+    public bool TryShiftTrapdoor(int tileX, int tileY, bool playerAbove, bool opening, out VanillaGroundFighterDoorOpeningMutation mutation)
+    {
+        mutation = default;
+        if (!Contains(tileX, tileY))
+            return false;
+
+        return opening
+            ? TryOpenTrapdoor(tileX, tileY, playerAbove, out mutation)
+            : TryCloseTrapdoor(tileX, tileY, out mutation);
+    }
+
+    private bool TryOpenTrapdoor(int tileX, int tileY, bool playerAbove, out VanillaGroundFighterDoorOpeningMutation mutation)
+    {
+        mutation = default;
+        WorldTile touched = tiles.Get(tileX, tileY);
+        if (!touched.IsActive || touched.TileType != VanillaTileIds.TrapdoorClosed || touched.FrameX < 0)
+            return false;
+
+        int leftX = tileX - (touched.FrameX / FrameUnit % 2);
+        int destinationY = tileY + (playerAbove ? 1 : -1);
+        if (!Contains(leftX, tileY) || !Contains(leftX + 1, tileY) ||
+            !Contains(leftX, destinationY) || !Contains(leftX + 1, destinationY))
+        {
+            return false;
+        }
+        for (int column = 0; column < 2; column++)
+        {
+            WorldTile source = tiles.Get(leftX + column, tileY);
+            if (!source.IsActive || source.TileType != VanillaTileIds.TrapdoorClosed)
+                return false;
+            if (tiles.Get(leftX + column, destinationY).IsActive && destinationY != tileY)
+                return false;
+        }
+
+        for (int column = 0; column < 2; column++)
+        {
+            WorldTile source = tiles.Get(leftX + column, tileY);
+            for (int row = 0; row < 2; row++)
+            {
+                int y = tileY + row - (playerAbove ? 0 : 1);
+                WorldTile target = tiles.Get(leftX + column, y);
+                target.Type = checked((ushort)VanillaTileIds.TrapdoorOpen.Value);
+                target.Flags |= WorldTileFlags.Active;
+                target.FrameX = checked((short)(column * FrameUnit + (playerAbove ? 36 : 0)));
+                target.FrameY = checked((short)(row * FrameUnit));
+                CopyBlockColorAndCoating(in source, ref target);
+                tiles.Set(leftX + column, y, in target);
+            }
+        }
+
+        mutation = new VanillaGroundFighterDoorOpeningMutation(
+            VanillaGroundFighterDoorOpeningKind.Door, tileX, tileY, 0, ChangedTiles: 4);
+        return true;
+    }
+
+    private bool TryCloseTrapdoor(int tileX, int tileY, out VanillaGroundFighterDoorOpeningMutation mutation)
+    {
+        mutation = default;
+        if (tallGateOccupancy is null)
+            return false;
+        WorldTile touched = tiles.Get(tileX, tileY);
+        if (!touched.IsActive || touched.TileType != VanillaTileIds.TrapdoorOpen || touched.FrameX < 0 || touched.FrameY < 0)
+            return false;
+
+        int leftX = tileX - (touched.FrameX / FrameUnit % 2);
+        int topY = tileY - (touched.FrameY / FrameUnit % 2);
+        int directionStyle = touched.FrameX / 36;
+        if (directionStyle is not 0 and not 1 || !Contains(leftX, topY) || !Contains(leftX + 1, topY + 1))
+            return false;
+
+        int retainedY = directionStyle == 0 ? topY + 1 : topY;
+        int clearedY = directionStyle == 0 ? topY : topY + 1;
+        for (int column = 0; column < 2; column++)
+        {
+            for (int row = 0; row < 2; row++)
+            {
+                WorldTile source = tiles.Get(leftX + column, topY + row);
+                if (!source.IsActive || source.TileType != VanillaTileIds.TrapdoorOpen)
+                    return false;
+            }
+            if (!tallGateOccupancy.IsActorFree(leftX + column, retainedY))
+                return false;
+        }
+
+        int styleY = touched.FrameY / 36;
+        for (int column = 0; column < 2; column++)
+        {
+            WorldTile source = tiles.Get(leftX + column, topY);
+            WorldTile cleared = tiles.Get(leftX + column, clearedY);
+            ClearCutTile(ref cleared);
+            tiles.Set(leftX + column, clearedY, in cleared);
+            WorldTile retained = tiles.Get(leftX + column, retainedY);
+            retained.Type = checked((ushort)VanillaTileIds.TrapdoorClosed.Value);
+            retained.Flags |= WorldTileFlags.Active;
+            retained.FrameX = checked((short)(column * FrameUnit));
+            retained.FrameY = checked((short)(styleY * FrameUnit));
+            CopyBlockColorAndCoating(in source, ref retained);
+            tiles.Set(leftX + column, retainedY, in retained);
+        }
+
+        mutation = new VanillaGroundFighterDoorOpeningMutation(
+            VanillaGroundFighterDoorOpeningKind.Door, tileX, tileY, 0, ChangedTiles: 4);
+        return true;
+    }
+
     private bool TryDestroy(
         in VanillaGroundFighterDoorOpeningIntent intent,
         in WorldTile touched,

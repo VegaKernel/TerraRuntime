@@ -38,3 +38,8 @@ internal sealed record ClientDoorCloseRuntimeCommand(
 internal sealed record ClientTallGateToggleRuntimeCommand(
     ConnectionHandle Connection,
     TerrariaDoorToggleState State) : RuntimeCommand;
+
+/// <summary>Connection-authenticated packet-19 bounded trapdoor toggle proposal for the authoritative world thread.</summary>
+internal sealed record ClientTrapdoorToggleRuntimeCommand(
+    ConnectionHandle Connection,
+    TerrariaDoorToggleState State) : RuntimeCommand;

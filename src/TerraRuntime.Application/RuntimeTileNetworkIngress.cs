@@ -20,6 +20,7 @@ internal interface IPlayerDoorToggleNetworkIngress
     bool TryPostDoorOpen(ConnectionHandle connection, in TerrariaDoorToggleState state);
     bool TryPostDoorClose(ConnectionHandle connection, in TerrariaDoorToggleState state);
     bool TryPostTallGateToggle(ConnectionHandle connection, in TerrariaDoorToggleState state);
+    bool TryPostTrapdoorToggle(ConnectionHandle connection, in TerrariaDoorToggleState state);
 }
 
 /// <summary>
@@ -99,5 +100,17 @@ internal class RuntimeTileNetworkIngress : ITileNetworkIngress, ITempleDoorUnloc
         return Ingress.TryPost(
             connection.Source,
             new ClientTallGateToggleRuntimeCommand(connection, state));
+    }
+
+    public bool TryPostTrapdoorToggle(ConnectionHandle connection, in TerrariaDoorToggleState state)
+    {
+        if (!connection.IsAssigned ||
+            state.Action is not (byte)TerrariaDoorToggleAction.OpenTrapdoor and not (byte)TerrariaDoorToggleAction.CloseTrapdoor ||
+            !state.IsValid)
+        {
+            return false;
+        }
+
+        return Ingress.TryPost(connection.Source, new ClientTrapdoorToggleRuntimeCommand(connection, state));
     }
 }

@@ -85,6 +85,7 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         mutations = tiles is null ? null : new VanillaWorldTileMutationService(tiles);
         playerDoorOpenings = tiles is null ? null : new VanillaWorldGroundFighterDoorOpeningService(
             tiles,
+            tallGateOccupancy: new RuntimeTallGateOccupancyProbe(players, serverPlayers: null, npcs),
             doorCloseRandom: new WorldItemDoorCloseRandom(worldItemSpawnRandom));
         liquidMutations = tiles is null ? null : new VanillaWorldLiquidMutationService(tiles);
         liquidSimulator = tiles is null ? null : new VanillaWorldLiquidSimulator1458(tiles, sideEffects: this);
@@ -156,6 +157,11 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         if (command is ClientTallGateToggleRuntimeCommand tallGateToggle)
         {
             ApplyClientTallGateToggle(tallGateToggle);
+            return true;
+        }
+        if (command is ClientTrapdoorToggleRuntimeCommand trapdoorToggle)
+        {
+            ApplyClientTrapdoorToggle(trapdoorToggle);
             return true;
         }
         if (command is not ClientTileManipulationRuntimeCommand tile)
@@ -1126,6 +1132,27 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
             command.State.TileX >= tiles.Dimensions.WidthTiles - 3 ||
             command.State.TileY >= tiles.Dimensions.HeightTiles - 3 ||
             !playerDoorOpenings.TryShiftTallGate(command.State.TileX, command.State.TileY, closing, out _))
+        {
+            RejectedClientManipulations++;
+            return;
+        }
+
+        AppliedClientManipulations++;
+        TerrariaDoorToggleState state = command.State;
+        replication?.TryPublishDoorToggle(command.Connection.Source, in state);
+    }
+
+    private void ApplyClientTrapdoorToggle(ClientTrapdoorToggleRuntimeCommand command)
+    {
+        ClientManipulationRequests++;
+        bool opening = command.State.Action == (byte)TerrariaDoorToggleAction.OpenTrapdoor;
+        if (tiles is null || playerDoorOpenings is null ||
+            command.State.Action is not (byte)TerrariaDoorToggleAction.OpenTrapdoor and not (byte)TerrariaDoorToggleAction.CloseTrapdoor ||
+            !command.State.IsValid || !command.Connection.IsAssigned || !players.TryGet(command.Connection, out _) ||
+            command.State.TileX < 3 || command.State.TileY < 3 ||
+            command.State.TileX >= tiles.Dimensions.WidthTiles - 3 || command.State.TileY >= tiles.Dimensions.HeightTiles - 3 ||
+            !playerDoorOpenings.TryShiftTrapdoor(command.State.TileX, command.State.TileY,
+                playerAbove: command.State.DirectionX == 1, opening: opening, out _))
         {
             RejectedClientManipulations++;
             return;

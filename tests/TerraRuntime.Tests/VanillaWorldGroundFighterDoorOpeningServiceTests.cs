@@ -266,6 +266,31 @@ public sealed class VanillaWorldGroundFighterDoorOpeningServiceTests
     }
 
     [Fact]
+    public void Trapdoor_round_trip_uses_empty_destination_strip_and_live_actor_probe()
+    {
+        WorldTileStore tiles = CreateWorld();
+        for (int column = 0; column < 2; column++)
+        {
+            WorldTile tile = ActiveTile(checked((ushort)VanillaTileIds.TrapdoorClosed.Value));
+            tile.FrameX = checked((short)(column * 18));
+            tiles.Set(10 + column, 10, in tile);
+        }
+        var service = new VanillaWorldGroundFighterDoorOpeningService(tiles, new FixedOccupancyProbe(actorFree: true));
+
+        Assert.True(service.TryShiftTrapdoor(10, 10, playerAbove: true, opening: true, out _));
+        for (int column = 0; column < 2; column++)
+        for (int row = 0; row < 2; row++)
+            Assert.Equal(VanillaTileIds.TrapdoorOpen, tiles.Get(10 + column, 10 + row).TileType);
+
+        Assert.True(service.TryShiftTrapdoor(10, 10, playerAbove: true, opening: false, out _));
+        for (int column = 0; column < 2; column++)
+        {
+            Assert.Equal(VanillaTileIds.TrapdoorClosed, tiles.Get(10 + column, 10).TileType);
+            Assert.False(tiles.Get(10 + column, 11).IsActive);
+        }
+    }
+
+    [Fact]
     public void Tall_gate_actor_collision_rejects_entire_object_atomically()
     {
         WorldTileStore tiles = CreateWorld();
