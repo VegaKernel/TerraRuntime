@@ -2354,24 +2354,93 @@ public sealed class VanillaNpcTargetingAiStepper :
         }
         if (state == 7)
         {
-            int cadence = phaseTwo ? 40 : 60;
-            int waves = phaseTwo ? 6 : 4;
+            // AI_120 state 7 takes cadence, line count and geometry from Expert/rage mode, not phase two.
+            int cadence = expertCadence ? 40 : 60;
+            int waves = expertCadence ? 6 : 4;
             if (timer >= cadence * waves || ((int)timer % cadence) != 0) return 0;
-            int requested = phaseTwo ? 19 : 14;
+            int rayCount = expertCadence ? 18 : 13;
+            // Source float accumulation includes the Classic endpoint but overshoots it in the Expert 1/18 loop.
+            int requested = expertCadence ? 18 : 14;
             if (destination.Length < requested) return destination.Length + 1;
-            float span = (phaseTwo ? 18f : 13f) * (phaseTwo ? 200f : 150f);
+            _ = NextUnitFloat(); // AI_120 consumes this presentation phase before its distance gate.
+            float lineSpacing = expertCadence ? 200f : 150f;
+            float lineLength = 13f * 150f;
+            if (expertCadence)
+                lineLength *= .5f;
             int wave = (int)timer / cadence;
-            bool vertical = wave < 2;
-            for (int i = 0; i < requested; i++)
+            float centerX = target.CenterX;
+            float centerY = target.CenterY;
+            float lineX = 0f;
+            float lineY = 0f;
+            float baseAimX = 0f;
+            float baseAimY = 1f;
+            switch (wave)
             {
-                float t = requested == 1 ? .5f : i / (float)(requested - 1);
-                float px = target.CenterX + (vertical ? (wave == 0 ? -span * .5f : span * .5f) : (t - .5f) * span);
-                float py = target.CenterY + (vertical ? (t - .5f) * span : (wave % 2 == 0 ? -span * .4f : span * .4f));
-                float aim = MathF.Atan2(target.CenterY - py, target.CenterX - px);
-                destination[i] = new NpcAiProjectileIntent(VanillaProjectileIds.FairyQueenLance, px, py, 0f, 0f, Damage(70, 65, 65, 30), 0f)
-                { InitialAi = new ProjectileAiState(aim, t, 0f) };
+                case 0:
+                    centerX -= lineLength * .5f;
+                    lineY = lineLength;
+                    baseAimX = 1f;
+                    baseAimY = 0f;
+                    break;
+                case 1:
+                    centerX += lineLength * .5f;
+                    centerY += lineSpacing * .5f;
+                    lineY = lineLength;
+                    baseAimX = -1f;
+                    baseAimY = 0f;
+                    break;
+                case 2:
+                    centerX -= lineLength * .4f;
+                    centerY -= lineLength * .4f;
+                    lineX = lineLength * 1.4f;
+                    baseAimX = 1f;
+                    baseAimY = 1f;
+                    break;
+                case 3:
+                    centerX += lineLength * .4f + lineSpacing * .5f;
+                    centerY -= lineLength * .4f;
+                    lineX = -lineLength * 1.4f;
+                    baseAimX = -1f;
+                    baseAimY = 1f;
+                    break;
+                case 4:
+                    centerX -= lineLength * .4f;
+                    centerY += lineLength * .4f;
+                    lineX = lineLength * 1.4f;
+                    baseAimX = target.CenterX - centerX;
+                    baseAimY = target.CenterY - centerY;
+                    NormalizeTo(ref baseAimX, ref baseAimY, 1f);
+                    break;
+                case 5:
+                    centerX += lineLength * .4f + lineSpacing * .5f;
+                    centerY += lineLength * .4f;
+                    lineX = -lineLength * 1.4f;
+                    baseAimX = target.CenterX - centerX;
+                    baseAimY = target.CenterY - centerY;
+                    NormalizeTo(ref baseAimX, ref baseAimY, 1f);
+                    break;
             }
-            return requested;
+            float step = 1f / rayCount;
+            int index = 0;
+            for (float fraction = 0f; fraction <= 1f && index < requested; fraction += step)
+            {
+                float px = centerX + lineX * (fraction - .5f);
+                float py = centerY + lineY * (fraction - .5f);
+                float aimX = baseAimX;
+                float aimY = baseAimY;
+                if (expertCadence)
+                {
+                    float targetAimX = target.CenterX + target.VelocityX * 20f * fraction - px;
+                    float targetAimY = target.CenterY + target.VelocityY * 20f * fraction - py;
+                    NormalizeTo(ref targetAimX, ref targetAimY, 1f);
+                    aimX = baseAimX * .25f + targetAimX * .75f;
+                    aimY = baseAimY * .25f + targetAimY * .75f;
+                    NormalizeTo(ref aimX, ref aimY, 1f);
+                }
+                destination[index++] = new NpcAiProjectileIntent(VanillaProjectileIds.FairyQueenLance, px, py, 0f, 0f, Damage(70, 65, 65, 30), 0f)
+                { InitialAi = new ProjectileAiState(MathF.Atan2(aimY, aimX), fraction, 0f) };
+            }
+            return index;
         }
         if (state == 11 && timer < 100f && ((int)timer % 3) == 0)
         {

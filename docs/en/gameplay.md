@@ -275,6 +275,8 @@ State 5 Lasting Rainbow also follows the source $13$-projectile fan: its random 
 
 State 6 Sun Dance emits six rays in Classic and eight in Expert or daytime rage; this count is independent of phase two.
 
+State 7 now retains its six source lance-wall geometries, the $3200\,\text{pixel}$ target gate, the Expert/rage cadence and the source $75\%$ predictive aim blend. The Classic $1/13$ float loop emits 14 lances; the Expert $1/18$ loop overshoots its inclusive endpoint and emits 18.
+
 ## 16. Trusted-host NPC actors
 
 `INpcActorOperations` lets a trusted host acquire a lease over an existing runtime NPC and submit semantic `NpcActorIntent`.
