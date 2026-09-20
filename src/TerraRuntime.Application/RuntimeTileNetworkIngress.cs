@@ -15,12 +15,17 @@ internal interface ITempleDoorUnlockNetworkIngress
     bool TryPostTempleDoorUnlock(ConnectionHandle connection, in TerrariaLockAndUnlockState state);
 }
 
+internal interface IPlayerDoorToggleNetworkIngress
+{
+    bool TryPostDoorOpen(ConnectionHandle connection, in TerrariaDoorToggleState state);
+}
+
 /// <summary>
 /// Connection-authenticated packet-17 ingress. The socket thread only carries immutable decoded state across the
 /// bounded command queue; all current-session, world-bounds and gameplay-authority decisions remain on the single
 /// authoritative writer thread.
 /// </summary>
-internal class RuntimeTileNetworkIngress : ITileNetworkIngress, ITempleDoorUnlockNetworkIngress
+internal class RuntimeTileNetworkIngress : ITileNetworkIngress, ITempleDoorUnlockNetworkIngress, IPlayerDoorToggleNetworkIngress
 {
     protected IGameCommandIngress<RuntimeCommand> Ingress { get; }
 
@@ -58,5 +63,15 @@ internal class RuntimeTileNetworkIngress : ITileNetworkIngress, ITempleDoorUnloc
         return Ingress.TryPost(
             connection.Source,
             new ClientTempleDoorUnlockRuntimeCommand(connection, state));
+    }
+
+    public bool TryPostDoorOpen(ConnectionHandle connection, in TerrariaDoorToggleState state)
+    {
+        if (!connection.IsAssigned || state.Action != (byte)TerrariaDoorToggleAction.OpenDoor || !state.IsValid)
+            return false;
+
+        return Ingress.TryPost(
+            connection.Source,
+            new ClientDoorOpenRuntimeCommand(connection, state));
     }
 }

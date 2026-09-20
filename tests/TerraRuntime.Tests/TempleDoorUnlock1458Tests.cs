@@ -110,6 +110,44 @@ public sealed class TempleDoorUnlock1458Tests
         Assert.Equal(1, state.RejectedClientTileManipulations);
     }
 
+    [Fact]
+    public void Packet19_action0_uses_closed_door_transform_and_relays_only_to_other_peers()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        PlaceClosedDoor(tiles, 40, 50);
+        var replication = new RuntimeTileManipulationReplicationRegistry();
+        var state = new ServerRuntimeState(worldTiles: tiles, tileManipulationReplication: replication);
+        var slots = new PlayerSlotPool(1);
+        using PlayerJoinSession session = CreatePlayingSession(slots);
+        ConnectionHandle owner = new(GameCommandSourceId.FromConnection(145804), session.Handle);
+        ConnectionHandle observer = new(GameCommandSourceId.FromConnection(145805),
+            new PlayerHandle(new PlayerSlotId(1), new PlayerSessionGeneration(1)));
+        TerrariaConnectionOutboundQueue ownerOutbound = Outbound();
+        TerrariaConnectionOutboundQueue observerOutbound = Outbound();
+        Assert.True(replication.TryRegister(owner.Source, ownerOutbound));
+        Assert.True(replication.TryRegister(observer.Source, observerOutbound));
+        PlayerSpawnCommitRequest ownerSpawn = Spawn(owner.Player.Slot);
+        state.Apply(new PlayerSpawnRuntimeCommand(owner, session, ownerSpawn));
+        replication.PlayerSpawned(owner, in ownerSpawn);
+        PlayerSpawnCommitRequest observerSpawn = Spawn(observer.Player.Slot);
+        replication.PlayerSpawned(observer, in observerSpawn);
+
+        var open = new TerrariaDoorToggleState((byte)TerrariaDoorToggleAction.OpenDoor, 40, 51, 1);
+        state.Apply(new ClientDoorOpenRuntimeCommand(owner, open));
+
+        for (int row = 0; row < 3; row++)
+        {
+            Assert.Equal(VanillaTileIds.OpenDoor, tiles.Get(40, 50 + row).TileType);
+            Assert.Equal(VanillaTileIds.OpenDoor, tiles.Get(41, 50 + row).TileType);
+        }
+        Assert.Equal(0, ownerOutbound.QueuedFrames);
+        Assert.Equal(1, observerOutbound.QueuedFrames);
+        TerrariaFrame echoed = Dequeue(observerOutbound);
+        Assert.Equal(TerrariaDoorToggleDecodeResult.Decoded,
+            TerrariaDoorToggleCodec.TryDecode(in echoed, out TerrariaDoorToggleState echoedState));
+        Assert.Equal(open, echoedState);
+    }
+
     private static void SetItem(ServerRuntimeState state, ConnectionHandle connection, short slot, short stack)
     {
         state.Apply(new PlayerEquipmentRuntimeCommand(connection, new PlayerEquipmentCommitRequest(
@@ -129,6 +167,20 @@ public sealed class TempleDoorUnlock1458Tests
             {
                 Type = checked((ushort)VanillaTileIds.ClosedDoor.Value),
                 FrameY = checked((short)(594 + offset * 18)),
+                Flags = WorldTileFlags.Active
+            };
+            tiles.Set(x, topY + offset, in tile);
+        }
+    }
+
+    private static void PlaceClosedDoor(WorldTileStore tiles, int x, int topY)
+    {
+        for (int offset = 0; offset < 3; offset++)
+        {
+            var tile = new WorldTile
+            {
+                Type = checked((ushort)VanillaTileIds.ClosedDoor.Value),
+                FrameY = checked((short)(offset * 18)),
                 Flags = WorldTileFlags.Active
             };
             tiles.Set(x, topY + offset, in tile);

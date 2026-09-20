@@ -231,6 +231,19 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
         return TryPublishFrameToAll(encoded);
     }
 
+    /// <summary>Source MessageBuffer case 19 relays a client door action to peers other than its origin.</summary>
+    public bool TryPublishDoorToggle(GameCommandSourceId excludedSource, in TerrariaDoorToggleState state)
+    {
+        if (TerrariaDoorToggleCodec.TryEncode(in state, out byte[] encoded) !=
+            TerrariaDoorToggleEncodeResult.Encoded)
+        {
+            Interlocked.Increment(ref encodeFailures);
+            return false;
+        }
+
+        return TryPublishFrame(excludedSource, encoded);
+    }
+
     /// <summary>
     /// Source MessageBuffer case 52 echoes a successful lock/unlock packet to every peer except the requester.
     /// The requester already performed the same local action before sending its proposal.

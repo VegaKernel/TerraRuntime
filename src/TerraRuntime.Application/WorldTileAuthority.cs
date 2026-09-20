@@ -29,6 +29,7 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
     private readonly RuntimeCommandCounter commands;
     private readonly WorldTileStore? tiles;
     private readonly VanillaWorldTileMutationService? mutations;
+    private readonly VanillaWorldGroundFighterDoorOpeningService? playerDoorOpenings;
     private readonly VanillaWorldLiquidSimulator1458? liquidSimulator;
     private readonly RuntimeTileManipulationReplicationRegistry? replication;
     private readonly RuntimeWorldProgressionMutations progression;
@@ -82,6 +83,7 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         this.goodWorld = goodWorld;
         this.replication = replication;
         mutations = tiles is null ? null : new VanillaWorldTileMutationService(tiles);
+        playerDoorOpenings = tiles is null ? null : new VanillaWorldGroundFighterDoorOpeningService(tiles);
         liquidMutations = tiles is null ? null : new VanillaWorldLiquidMutationService(tiles);
         liquidSimulator = tiles is null ? null : new VanillaWorldLiquidSimulator1458(tiles, sideEffects: this);
         larvaMutations = tiles is null ? null : new VanillaLarvaObjectMutationService1458(tiles);
@@ -137,6 +139,11 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         if (command is ClientTempleDoorUnlockRuntimeCommand templeDoorUnlock)
         {
             ApplyClientTempleDoorUnlock(templeDoorUnlock);
+            return true;
+        }
+        if (command is ClientDoorOpenRuntimeCommand doorOpen)
+        {
+            ApplyClientDoorOpen(doorOpen);
             return true;
         }
         if (command is not ClientTileManipulationRuntimeCommand tile)
@@ -1018,6 +1025,45 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         float playerTileX = (player.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f) / 16f;
         float playerTileY = (player.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f) / 16f;
         return Math.Abs(playerTileX - tileX) <= 12f && Math.Abs(playerTileY - tileY) <= 12f;
+    }
+
+    /// <summary>
+    /// Packet-19 action 0 follows MessageBuffer's source world-margin gate and delegates the exact closed-door to
+    /// open-door transform to the established WorldGen-shaped service. The initiating client already applied the
+    /// same local action, so the source relay excludes it.
+    /// </summary>
+    private void ApplyClientDoorOpen(ClientDoorOpenRuntimeCommand command)
+    {
+        ClientManipulationRequests++;
+        if (tiles is null ||
+            playerDoorOpenings is null ||
+            command.State.Action != (byte)TerrariaDoorToggleAction.OpenDoor ||
+            !command.State.IsValid ||
+            !command.Connection.IsAssigned ||
+            !players.TryGet(command.Connection, out _) ||
+            command.State.TileX < 3 ||
+            command.State.TileY < 3 ||
+            command.State.TileX >= tiles.Dimensions.WidthTiles - 3 ||
+            command.State.TileY >= tiles.Dimensions.HeightTiles - 3)
+        {
+            RejectedClientManipulations++;
+            return;
+        }
+
+        var intent = new VanillaGroundFighterDoorOpeningIntent(
+            command.State.TileX,
+            command.State.TileY,
+            command.State.DirectionX,
+            VanillaTileIds.ClosedDoor);
+        if (!playerDoorOpenings.TryOpen(in intent, out _))
+        {
+            RejectedClientManipulations++;
+            return;
+        }
+
+        AppliedClientManipulations++;
+        TerrariaDoorToggleState state = command.State;
+        replication?.TryPublishDoorToggle(command.Connection.Source, in state);
     }
 
     /// <summary>

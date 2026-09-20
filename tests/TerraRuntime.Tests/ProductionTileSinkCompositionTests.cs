@@ -78,6 +78,30 @@ public sealed class ProductionTileSinkCompositionTests
         Assert.Equal(ChestInteractionFrameStopReason.None, chestSink.StopReason);
     }
 
+    [Fact]
+    public void Production_chest_outer_sink_routes_packet19_open_door_through_projectile_tile_composition()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(9019);
+        using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
+        var commands = new RecordingCommandIngress();
+        var gameplayIngress = new RuntimeProjectileNetworkIngress(commands);
+        var projectileSink = new ProjectileLifecycleFrameSink(source, bootstrap, new PassthroughSink(), gameplayIngress);
+        var chestSink = new ChestInteractionFrameSink(source, bootstrap, projectileSink, new AcceptingChestIngress());
+        var packet = new TerrariaDoorToggleState(
+            (byte)TerrariaDoorToggleAction.OpenDoor,
+            TileX: 40,
+            TileY: 50,
+            DirectionX: 1);
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, chestSink.OnFrame(Packet19(in packet)));
+
+        ClientDoorOpenRuntimeCommand command = Assert.IsType<ClientDoorOpenRuntimeCommand>(commands.Command);
+        Assert.Equal(source, commands.Source);
+        Assert.Equal(bootstrap.AssignedPlayerHandle, command.Connection.Player);
+        Assert.Equal(packet, command.State);
+        Assert.Equal(PlayerDoorToggleFrameStopReason.None, projectileSink.PlayerDoorToggleStopReason);
+    }
+
 
     [Theory]
     [InlineData(3509, false)] // Copper Pickaxe
@@ -347,6 +371,12 @@ public sealed class ProductionTileSinkCompositionTests
     private static TerrariaFrame Packet52(in TerrariaLockAndUnlockState state)
     {
         Assert.True(TerrariaLockAndUnlockCodec.TryEncode(in state, out byte[] encoded));
+        return Decode(encoded);
+    }
+
+    private static TerrariaFrame Packet19(in TerrariaDoorToggleState state)
+    {
+        Assert.Equal(TerrariaDoorToggleEncodeResult.Encoded, TerrariaDoorToggleCodec.TryEncode(in state, out byte[] encoded));
         return Decode(encoded);
     }
 

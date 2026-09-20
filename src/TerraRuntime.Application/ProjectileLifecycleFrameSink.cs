@@ -35,6 +35,7 @@ public sealed class ProjectileLifecycleFrameSink :
     private readonly INpcDamageNetworkIngress? npcDamageIngress;
     private readonly TileManipulationFrameSink? tileManipulation;
     private readonly TempleDoorUnlockFrameSink? templeDoorUnlock;
+    private readonly PlayerDoorToggleFrameSink? playerDoorToggle;
     private readonly ObjectPlacementFrameSink? objectPlacement;
     private long droppedAuthorityUpdates;
 
@@ -62,7 +63,11 @@ public sealed class ProjectileLifecycleFrameSink :
         templeDoorUnlock = ingress is ITempleDoorUnlockNetworkIngress templeDoorIngress
             ? new TempleDoorUnlockFrameSink(source, bootstrap, templeDoorInner, templeDoorIngress)
             : null;
-        ITerrariaFrameSink objectInner = templeDoorUnlock ?? templeDoorInner;
+        ITerrariaFrameSink playerDoorInner = templeDoorUnlock ?? templeDoorInner;
+        playerDoorToggle = ingress is IPlayerDoorToggleNetworkIngress playerDoorIngress
+            ? new PlayerDoorToggleFrameSink(source, bootstrap, playerDoorInner, playerDoorIngress)
+            : null;
+        ITerrariaFrameSink objectInner = playerDoorToggle ?? playerDoorInner;
         objectPlacement = ingress is IObjectPlacementNetworkIngress objectIngress
             ? new ObjectPlacementFrameSink(source, bootstrap, objectInner, objectIngress)
             : null;
@@ -79,10 +84,14 @@ public sealed class ProjectileLifecycleFrameSink :
     public TempleDoorUnlockFrameStopReason TempleDoorUnlockStopReason =>
         templeDoorUnlock?.StopReason ?? TempleDoorUnlockFrameStopReason.None;
 
+    public PlayerDoorToggleFrameStopReason PlayerDoorToggleStopReason =>
+        playerDoorToggle?.StopReason ?? PlayerDoorToggleFrameStopReason.None;
+
     public TerrariaConnectionStopReason ConnectionStopReason =>
         StopReason == ProjectileLifecycleFrameStopReason.None &&
         TileStopReason == TileManipulationFrameStopReason.None &&
         TempleDoorUnlockStopReason == TempleDoorUnlockFrameStopReason.None &&
+        PlayerDoorToggleStopReason == PlayerDoorToggleFrameStopReason.None &&
         ObjectPlacementStopReason == ObjectPlacementFrameStopReason.None &&
         inner is ITerrariaConnectionStopReasonSource source
             ? source.ConnectionStopReason
@@ -121,6 +130,12 @@ public sealed class ProjectileLifecycleFrameSink :
                 return templeDoorSource.RejectionCategory;
             }
 
+            if (PlayerDoorToggleStopReason != PlayerDoorToggleFrameStopReason.None &&
+                playerDoorToggle is ITerrariaFrameRejectionSource playerDoorSource)
+            {
+                return playerDoorSource.RejectionCategory;
+            }
+
             return inner is ITerrariaFrameRejectionSource source
                 ? source.RejectionCategory
                 : TerrariaFrameRejectionCategory.None;
@@ -134,6 +149,7 @@ public sealed class ProjectileLifecycleFrameSink :
         if (StopReason != ProjectileLifecycleFrameStopReason.None ||
             TileStopReason != TileManipulationFrameStopReason.None ||
             TempleDoorUnlockStopReason != TempleDoorUnlockFrameStopReason.None ||
+            PlayerDoorToggleStopReason != PlayerDoorToggleFrameStopReason.None ||
             ObjectPlacementStopReason != ObjectPlacementFrameStopReason.None)
         {
             return TerrariaFrameSinkResult.Stop;
@@ -145,6 +161,7 @@ public sealed class ProjectileLifecycleFrameSink :
             TerrariaMessageId.NpcDamage when npcDamageIngress is not null => HandleNpcDamage(in frame),
             TerrariaMessageId.ProjectileDestroy => HandleDestroy(in frame),
             _ => objectPlacement?.OnFrame(in frame) ??
+                 playerDoorToggle?.OnFrame(in frame) ??
                  templeDoorUnlock?.OnFrame(in frame) ??
                  tileManipulation?.OnFrame(in frame) ??
                  inner.OnFrame(in frame)

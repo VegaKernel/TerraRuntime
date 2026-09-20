@@ -23,3 +23,8 @@ internal sealed record ClientLiquidRuntimeCommand(
 internal sealed record ClientTempleDoorUnlockRuntimeCommand(
     ConnectionHandle Connection,
     TerrariaLockAndUnlockState State) : RuntimeCommand;
+
+/// <summary>Connection-authenticated packet-19 normal-door open proposal for the authoritative world thread.</summary>
+internal sealed record ClientDoorOpenRuntimeCommand(
+    ConnectionHandle Connection,
+    TerrariaDoorToggleState State) : RuntimeCommand;
