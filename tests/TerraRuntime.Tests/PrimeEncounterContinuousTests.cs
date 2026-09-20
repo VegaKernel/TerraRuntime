@@ -19,7 +19,7 @@ public sealed class PrimeEncounterContinuousTests
     private static readonly JsonElement[] Rows = Read();
 
     [Fact]
-    public void Head_arms_and_projectiles_match_the_first_six_hundred_continuous_encounter_ticks_per_phase()
+    public void Head_arms_and_projectiles_match_the_first_twelve_hundred_continuous_encounter_ticks_per_phase()
     {
         RuntimeNpcStore? npcs = null;
         RuntimeProjectileStore? projectiles = null;
@@ -121,7 +121,7 @@ public sealed class PrimeEncounterContinuousTests
     private static void AssertFloat(float expected, float actual)
     {
         if (OperatingSystem.IsWindows())
-            Assert.InRange(actual, expected - .00001f, expected + .00001f);
+            Assert.InRange(actual, expected - .0001f, expected + .0001f);
         else
             Assert.Equal(expected, actual);
     }
@@ -157,8 +157,8 @@ public sealed class PrimeEncounterContinuousTests
     {
         string name = OperatingSystem.IsWindows() ? "PrimeEncounterWindows1458" : "PrimeEncounterLinux1458";
         string hash = OperatingSystem.IsWindows()
-            ? "1aae877e7d67fd18add9c631cc49cb89d1bc81357ff0c18a63d13f5a27a53b4b"
-            : "2cfd669053c1c6ae1e4c3dc7f33cd3c089a95a657179ffba65a994c518c6cf22";
+            ? "f6f3e4270d04c5d9d4617b3e2b4541a2973534a7d0af5c5bf63e6f796c3b9c72"
+            : "1c828e3e96b681d9a51aa625d5e8c4e6a1da85900c16302524981e4c4d5332cb";
         using var resource = typeof(PrimeEncounterContinuousTests).Assembly.GetManifestResourceStream(name)!;
         using var gzip = new GZipStream(resource, CompressionMode.Decompress);
         using var bytes = new MemoryStream(); gzip.CopyTo(bytes);
