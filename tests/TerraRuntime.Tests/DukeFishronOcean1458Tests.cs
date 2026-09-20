@@ -149,6 +149,25 @@ public sealed class DukeFishronOcean1458Tests
         Assert.Equal(50, next.Simulation.DefenseOverride);
     }
 
+    [Fact]
+    public void Duke_target_range_uses_the_seed_scaled_physical_body()
+    {
+        var stepper = CreateStepper(4200, 5628, 1000);
+        NpcSnapshot normal = Duke(0, 0, 0, 0, 900);
+        NpcSnapshot celebration = normal with
+        {
+            Simulation = normal.Simulation with { Scale = .5f, HitboxOverride = new NpcHitboxDimensions(75, 50) }
+        };
+
+        Assert.True(stepper.TryStepState(in normal, out NpcStateUpdate ordinary));
+        Assert.True(stepper.TryStepState(in celebration, out NpcStateUpdate scaled));
+
+        // Source AI_069 measures from the physical type-370 body. At this boundary the 150x100 body remains
+        // in range, while Celebration Mk10's 75x50 body crosses the strict 5600-pixel retreat threshold.
+        Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTimeLeft, ordinary.Simulation.TimeLeft);
+        Assert.Equal(10, scaled.Simulation.TimeLeft);
+    }
+
     // Pinned AI_069: position.Y < 800 / > surface*16; 6400 < position.X < width*16-6400.
     [Theory]
     [InlineData(4200, 500, 799, true)]

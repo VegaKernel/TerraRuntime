@@ -128,10 +128,11 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
             sim = sim with { Alpha = 255, Rotation = 0f };
         }
 
+        NpcHitboxDimensions body = ResolveRootBody(in npc, in definition);
         sim = sim with
         {
             Rotation = RotateRootTowardTarget(sim.Rotation ?? 0f, sim.SpriteDirection, ai.Ai0, in target,
-            npc.PositionX + definition.Width * .5f, npc.PositionY + definition.Height * .5f)
+            npc.PositionX + body.Width * .5f, npc.PositionY + body.Height * .5f)
         };
 
         bool phaseTwo = ai.Ai0 > 4f;
@@ -162,8 +163,8 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
 
         float vx = npc.VelocityX;
         float vy = initialVelocityY;
-        float cx = npc.PositionX + definition.Width * .5f;
-        float cy = npc.PositionY + definition.Height * .5f;
+        float cx = npc.PositionX + body.Width * .5f;
+        float cy = npc.PositionY + body.Height * .5f;
         float positionX = npc.PositionX;
         float positionY = npc.PositionY;
         bool vulnerable = true;
@@ -307,8 +308,8 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
                         ai = ai with { Ai1 = 300f * MathF.Sign(cx - target.CenterX) };
                     cx = target.CenterX - ai.Ai1;
                     cy = target.CenterY - 200f;
-                    positionX = cx - definition.Width * .5f;
-                    positionY = cy - definition.Height * .5f;
+                    positionX = cx - body.Width * .5f;
+                    positionY = cy - body.Height * .5f;
                     int direction = Math.Sign(target.CenterX - cx);
                     if (direction != 0)
                         sim = sim with { DirectionX = direction, SpriteDirection = -direction };
@@ -609,9 +610,16 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
     private static bool IsBeyondTargetRange(in NpcSnapshot npc, in VanillaNpcDefinition definition,
         in VanillaNpcTargetCandidate target)
     {
-        float dx = target.CenterX - (npc.PositionX + definition.Width * .5f);
-        float dy = target.CenterY - (npc.PositionY + definition.Height * .5f);
+        NpcHitboxDimensions body = ResolveRootBody(in npc, in definition);
+        float dx = target.CenterX - (npc.PositionX + body.Width * .5f);
+        float dy = target.CenterY - (npc.PositionY + body.Height * .5f);
         return MathF.Sqrt(dx * dx + dy * dy) > 5600f;
+    }
+
+    private static NpcHitboxDimensions ResolveRootBody(in NpcSnapshot npc, in VanillaNpcDefinition definition)
+    {
+        NpcHitboxDimensions body = npc.Simulation.HitboxOverride ?? new NpcHitboxDimensions(definition.Width, definition.Height);
+        return body.IsValid ? body : new NpcHitboxDimensions(definition.Width, definition.Height);
     }
 
     private static bool IsKnownRootPhase(float value) =>
