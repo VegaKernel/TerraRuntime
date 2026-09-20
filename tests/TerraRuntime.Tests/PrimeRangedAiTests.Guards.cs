@@ -6,6 +6,59 @@ namespace TerraRuntime.Tests;
 
 public sealed partial class PrimeRangedAiTests
 {
+    [Theory]
+    [InlineData(128, 0f, 1099f, 1f)]
+    [InlineData(128, 1f, 299f, 0f)]
+    [InlineData(131, 0f, 799f, 1f)]
+    [InlineData(131, 3f, 799f, 4f)]
+    [InlineData(131, 1f, 199f, 0f)]
+    public void Source_clock_phase_boundaries_request_an_immediate_update(int type, float phase, float timer, float nextPhase)
+    {
+        var (_, _, stepper, arm, _) = Setup(BaseRows.First(row => row.GetProperty("type").GetInt32() == type));
+        var before = arm with { Ai = arm.Ai with { Ai2 = phase, Ai3 = timer } };
+        var proposed = new NpcStateUpdate(before.Type, before.NetId, before.PositionX, before.PositionY,
+            before.VelocityX, before.VelocityY, before.Target, before.Ai with { Ai2 = nextPhase, Ai3 = 0f }, before.Simulation);
+
+        Assert.True(VanillaPrimeRangedBehavior.RequiresImmediateSync(in before, in proposed));
+        Assert.True(stepper.RequiresForcedUpdate(in before, in proposed));
+    }
+
+    [Theory]
+    [InlineData(128, 0f, 1098f, 1f)]
+    [InlineData(131, 0f, 798f, 1f)]
+    [InlineData(131, 1f, 198f, 0f)]
+    public void Ordinary_ranged_clock_updates_stay_cadenced(int type, float phase, float timer, float nextPhase)
+    {
+        var (_, _, stepper, arm, _) = Setup(BaseRows.First(row => row.GetProperty("type").GetInt32() == type));
+        var before = arm with { Ai = arm.Ai with { Ai2 = phase, Ai3 = timer } };
+        var proposed = new NpcStateUpdate(before.Type, before.NetId, before.PositionX, before.PositionY,
+            before.VelocityX, before.VelocityY, before.Target, before.Ai with { Ai2 = nextPhase, Ai3 = timer + 1f }, before.Simulation);
+
+        Assert.False(VanillaPrimeRangedBehavior.RequiresImmediateSync(in before, in proposed));
+        Assert.False(stepper.RequiresForcedUpdate(in before, in proposed));
+    }
+
+    [Fact]
+    public void Accepted_cannon_and_laser_hover_boundaries_publish_forced_updates()
+    {
+        foreach ((int type, float timer) in new[] { (128, 1099f), (131, 799f) })
+        {
+            var row = BaseRows.First(candidate => candidate.GetProperty("type").GetInt32() == type &&
+                candidate.GetProperty("before").GetProperty("ai")[2].GetSingle() == 0f &&
+                candidate.GetProperty("parent").GetProperty("ai")[1].GetSingle() == 0f);
+            var sink = new Capture();
+            var (npcs, projectiles, ai, arm, _) = Setup(row, sink);
+            var update = new NpcStateUpdate(arm.Type, arm.NetId, arm.PositionX, arm.PositionY, arm.VelocityX, arm.VelocityY,
+                arm.Target, arm.Ai with { Ai2 = 0f, Ai3 = timer }, arm.Simulation);
+            Assert.True(npcs.TryUpdate(arm.Handle, in update, out arm));
+            sink.Commits.Clear();
+
+            Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new ArmsOnly(ai)).Applied);
+            Assert.Equal(NpcStateCommitKind.ForcedUpdate, Assert.Single(sink.Commits).Kind);
+            Assert.Equal(arm.Handle, sink.Commits[0].Npc.Handle);
+        }
+    }
+
     public static TheoryData<int> TraceCases => new(Enumerable.Range(0, Traces.Length / 8));
 
     [Theory]

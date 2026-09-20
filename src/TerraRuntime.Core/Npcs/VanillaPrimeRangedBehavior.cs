@@ -8,6 +8,28 @@ namespace TerraRuntime.Core.Npcs;
 /// <summary>Source-ordered AI_035/036 state and accepted projectile effects for Terraria 1.4.5.8.</summary>
 internal sealed class VanillaPrimeRangedBehavior : IVanillaNpcBehaviorStrategy
 {
+    /// <summary>
+    /// AI_035/036 explicitly writes <c>NPC.netUpdate</c> when their source-owned hover/attack clocks
+    /// change phase. Projectile emission itself does not set that flag.
+    /// </summary>
+    internal static bool RequiresImmediateSync(in NpcSnapshot before, in NpcStateUpdate proposed)
+    {
+        if (proposed.Type != before.Type) return false;
+        bool cannon = before.TypeIdentity == VanillaNpcIds.PrimeCannon;
+        if (!cannon && before.TypeIdentity != VanillaNpcIds.PrimeLaser) return false;
+
+        float phase = before.Ai.Ai2;
+        if (cannon)
+        {
+            return (phase == 0f && before.Ai.Ai3 >= 1099f && proposed.Ai.Ai2 == 1f && proposed.Ai.Ai3 == 0f) ||
+                (phase == 1f && before.Ai.Ai3 >= 299f && proposed.Ai.Ai2 == 0f && proposed.Ai.Ai3 == 0f);
+        }
+
+        return ((phase == 0f || phase == 3f) && before.Ai.Ai3 >= 799f &&
+                proposed.Ai.Ai2 == phase + 1f && proposed.Ai.Ai3 == 0f) ||
+            (phase == 1f && before.Ai.Ai3 >= 199f && proposed.Ai.Ai2 == 0f && proposed.Ai.Ai3 == 0f);
+    }
+
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
         INpcAiStateStepper inner, out NpcStateUpdate next)
     {

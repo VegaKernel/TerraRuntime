@@ -27,7 +27,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     public bool RequiresForcedUpdate(in NpcSnapshot before, in NpcStateUpdate proposed) =>
         VanillaDestroyerNpcBehaviorStrategy.RequiresDiggingStateSync(in before, in proposed) ||
         VanillaDukeFishronNpcBehaviorStrategy.RequiresImmediateSync(in before, in proposed, _context) ||
-        VanillaSkeletronPrimeNpcBehaviorStrategy.RequiresImmediateSync(in before, in proposed);
+        VanillaSkeletronPrimeNpcBehaviorStrategy.RequiresImmediateSync(in before, in proposed) ||
+        VanillaPrimeRangedBehavior.RequiresImmediateSync(in before, in proposed);
 
     public bool RequiresForcedUpdateAfterPlanning(
         in NpcSnapshot before,
