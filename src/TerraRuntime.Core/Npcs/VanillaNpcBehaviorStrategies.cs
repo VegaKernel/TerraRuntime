@@ -743,11 +743,25 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
         return 1;
     }
 
-    private static bool IsMechQueenUp(VanillaNpcBehaviorContext context)
+    private static bool IsMechQueenUp(VanillaNpcBehaviorContext context) =>
+        TryGetMechQueen(context, out _);
+
+    private static bool TryGetMechQueen(VanillaNpcBehaviorContext context, out NpcSnapshot mechQueen)
     {
-        Span<NpcSnapshot> primes = stackalloc NpcSnapshot[1];
-        return context.CopyNpcPeers(VanillaNpcIds.SkeletronPrime, primes) == 1 &&
-            primes[0].Ai.Ai3 == primes[0].Handle.Slot;
+        Span<NpcSnapshot> primes = stackalloc NpcSnapshot[VanillaNpcSpawnRules.PhysicalSlotCount];
+        int count = context.CopyNpcPeers(VanillaNpcIds.SkeletronPrime, primes);
+        for (int index = 0; index < count; index++)
+        {
+            NpcSnapshot prime = primes[index];
+            if (prime.Ai.Ai3 == prime.Handle.Slot)
+            {
+                mechQueen = prime;
+                return true;
+            }
+        }
+
+        mechQueen = default;
+        return false;
     }
 
     private bool TryStepMechdusaProbe(
@@ -757,7 +771,7 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
         VanillaNpcBehaviorContext context,
         out NpcStateUpdate next)
     {
-        bool mechQueenUp = IsMechQueenUp(context);
+        bool mechQueenUp = TryGetMechQueen(context, out NpcSnapshot mechQueen);
         if (!mechQueenUp || !float.IsFinite(npc.Ai.Ai2))
             return RecoverMechdusaProbe(in npc, in definition, mechQueenUp, out next);
 
@@ -800,7 +814,7 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
         next = new NpcStateUpdate(
             definition.Type.Value, npc.NetId,
             centerX - hitbox.Width * .5f, centerY - hitbox.Height * .5f,
-            destroyer.VelocityX, destroyer.VelocityY, npc.Target, ai,
+            mechQueen.VelocityX, mechQueen.VelocityY, npc.Target, ai,
             npc.Simulation with
             {
                 NoGravity = true,

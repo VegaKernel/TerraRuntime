@@ -4,7 +4,7 @@
 
 Zenith-world Mechdusa's two Probes (NPC `139`) now retain the source AI005 attachment
 to the Destroyer head (NPC `134`): their offset is $26\,\mathrm{px}$ times `ai[3]`,
-rotated with the head; they inherit its velocity and rotation; they are invulnerable; and
+rotated with the head; they inherit Prime's velocity and the Destroyer's rotation; they are invulnerable; and
 their firing counter advances by three to the $360$-tick boundary. The shot leads the
 player by twenty ticks and retains the source's quantized pre-attachment spawn origin.
 The attached path also refreshes the closest player target. The focused tests cover the

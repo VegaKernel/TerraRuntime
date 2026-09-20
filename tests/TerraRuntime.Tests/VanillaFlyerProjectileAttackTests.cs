@@ -114,6 +114,8 @@ public sealed class VanillaFlyerProjectileAttackTests
         NpcSnapshot prime = CreateNpc(VanillaNpcIds.SkeletronPrime, 0f) with
         {
             Handle = new NpcHandle(100, new NpcGeneration(1)),
+            VelocityX = -5f,
+            VelocityY = 6f,
             Ai = new NpcAiState(0f, 0f, 0f, 100f)
         };
         NpcSnapshot destroyer = CreateNpc(VanillaNpcIds.Destroyer, 0f) with
@@ -138,8 +140,8 @@ public sealed class VanillaFlyerProjectileAttackTests
         Assert.True(destroyerDefinition.TryResolveHitbox(destroyer.Simulation, out VanillaNpcHitboxSize destroyerHitbox));
         Assert.Equal(destroyer.PositionX + destroyerHitbox.Width * .5f - 15f, next.PositionX, 4);
         Assert.Equal(destroyer.PositionY + destroyerHitbox.Height * .5f + 26f - 15f, next.PositionY, 4);
-        Assert.Equal(3f, next.VelocityX);
-        Assert.Equal(4f, next.VelocityY);
+        Assert.Equal(-5f, next.VelocityX);
+        Assert.Equal(6f, next.VelocityY);
         Assert.Equal(0, next.Target);
         Assert.True(next.Simulation.DontTakeDamage);
         Assert.Equal(0f, next.Simulation.LocalAi.Ai0);
