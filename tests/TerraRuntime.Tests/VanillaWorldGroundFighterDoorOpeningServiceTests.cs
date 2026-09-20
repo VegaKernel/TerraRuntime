@@ -291,6 +291,25 @@ public sealed class VanillaWorldGroundFighterDoorOpeningServiceTests
     }
 
     [Fact]
+    public void Trapdoor_open_rejects_source_cells_blocked_by_dungeon_wall_or_special_support()
+    {
+        WorldTileStore tiles = CreateWorld();
+        for (int column = 0; column < 2; column++)
+        {
+            WorldTile tile = ActiveTile(checked((ushort)VanillaTileIds.TrapdoorClosed.Value));
+            tile.FrameX = checked((short)(column * 18));
+            if (column == 0)
+                tile.Wall = 350;
+            tiles.Set(10 + column, 10, in tile);
+        }
+        var service = new VanillaWorldGroundFighterDoorOpeningService(tiles, new FixedOccupancyProbe(actorFree: true));
+
+        Assert.False(service.TryShiftTrapdoor(10, 10, playerAbove: true, opening: true, out _));
+        Assert.Equal(VanillaTileIds.TrapdoorClosed, tiles.Get(10, 10).TileType);
+        Assert.False(tiles.Get(10, 11).IsActive);
+    }
+
+    [Fact]
     public void Tall_gate_actor_collision_rejects_entire_object_atomically()
     {
         WorldTileStore tiles = CreateWorld();

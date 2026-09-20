@@ -47,6 +47,7 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
     private const int LockedDoorMaximumFrameXExclusive = 54;
 
     private static readonly ushort[] DripTileTypes = [373, 374, 375, 461, 709];
+    private static readonly ushort[] TreeTrunkTileTypes = [5, 72, 583, 584, 585, 586, 587, 588, 589, 596, 616, 634];
     private const WorldTileFlags BlockCoatingFlags =
         WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock;
 
@@ -277,7 +278,8 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
         for (int column = 0; column < 2; column++)
         {
             WorldTile source = tiles.Get(leftX + column, tileY);
-            if (!source.IsActive || source.TileType != VanillaTileIds.TrapdoorClosed)
+            if (!source.IsActive || source.TileType != VanillaTileIds.TrapdoorClosed ||
+                !CanKillTrapdoorTile(leftX + column, tileY, in source))
                 return false;
             if (tiles.Get(leftX + column, destinationY).IsActive && destinationY != tileY)
                 return false;
@@ -615,6 +617,38 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
         return VanillaProjectileTileCutFacts.IsCuttable(tile.TileType) ||
                type == StalactiteTileType ||
                Array.BinarySearch(DripTileTypes, type) >= 0;
+    }
+
+    // WorldGen.CanKillTile has no type-387-specific object branch. This is its complete reachable prefix for a
+    // trapdoor source cell: bounds/wall, the tile above and the special support identities. Boulder, chest and
+    // locked-door branches are unreachable because the candidate type is already verified as 387.
+    private bool CanKillTrapdoorTile(int x, int y, in WorldTile tile)
+    {
+        if (!tile.IsActive || tile.Wall == 350 || y == 0)
+            return false;
+
+        WorldTile above = tiles.Get(x, y - 1);
+        if (!above.IsActive)
+            return true;
+
+        ushort aboveType = above.Type;
+        if (Array.BinarySearch(TreeTrunkTileTypes, aboveType) >= 0 &&
+            aboveType != tile.Type &&
+            (above.FrameX != 66 || above.FrameY is < 0 or > 44) &&
+            (above.FrameX != 88 || above.FrameY is < 66 or > 110) &&
+            above.FrameY < 198)
+        {
+            return false;
+        }
+
+        return aboveType switch
+        {
+            323 when aboveType != tile.Type && (above.FrameX == 66 || above.FrameX == 220) => false,
+            21 or 26 or 72 or 77 or 88 or 467 or 488 when aboveType != tile.Type => false,
+            80 when aboveType != tile.Type &&
+                (above.FrameX / FrameUnit is <= 1 or >= 4 and <= 5) => false,
+            _ => true
+        };
     }
 
     private static void ClearCutTile(ref WorldTile tile)
