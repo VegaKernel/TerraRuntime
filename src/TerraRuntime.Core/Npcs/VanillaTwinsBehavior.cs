@@ -73,7 +73,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             else if (_spazmatism)
                 StepSpazPhaseOne(in npc, in target, context, life, lifeMax, ref ai, ref local, ref vx, ref vy);
             else
-                StepRetPhaseOne(in npc, in target, context, life, lifeMax, ref ai, ref local, ref vx, ref vy);
+                StepRetPhaseOne(in npc, in definition, in target, context, life, lifeMax, ref ai, ref local, ref vx, ref vy);
 
             if (life < lifeMax * 0.4f)
                 ai = new NpcAiState(1f, 0f, 0f, 0f);
@@ -232,7 +232,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         return false;
     }
 
-    private static void StepRetPhaseOne(in NpcSnapshot npc, in VanillaNpcTargetCandidate target, VanillaNpcBehaviorContext context,
+    private static void StepRetPhaseOne(in NpcSnapshot npc, in VanillaNpcDefinition definition, in VanillaNpcTargetCandidate target, VanillaNpcBehaviorContext context,
         int life, int lifeMax, ref NpcAiState ai, ref NpcAiState local, ref float vx, ref float vy)
     {
         if (ai.Ai1 == 0f)
@@ -249,7 +249,10 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             float timer = ai.Ai2 + 1f;
             float shot = ai.Ai3;
             if (timer >= 600f) { ai = ai with { Ai1 = 1f, Ai2 = 0f, Ai3 = 0f }; return; }
-            if (npc.PositionY + 110f < target.CenterY - 21f && distance < 400f)
+            int physicalHeight = definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox)
+                ? hitbox.Height
+                : definition.Height;
+            if (npc.PositionY + physicalHeight < target.CenterY - VanillaPlayerHitboxFacts.BaseHeight * .5f && distance < 400f)
             {
                 shot += 1f;
                 if (context.ExpertMode && life < lifeMax * .9f) shot += .3f;

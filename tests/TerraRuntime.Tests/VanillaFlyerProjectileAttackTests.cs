@@ -361,6 +361,28 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Targeting_stepper_uses_retinazers_physical_bottom_edge_for_phase_one_laser_gate()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetCandidates([Target(200f, 126f)]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot retinazer = CreateNpc(VanillaNpcIds.Retinazer, 0f) with
+        {
+            Ai = new NpcAiState(0f, 0f, 0f, 59f),
+            Simulation = CreateNpc(VanillaNpcIds.Retinazer, 0f).Simulation with { HitboxOverride = new NpcHitboxDimensions(100, 100) }
+        };
+
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(retinazer.TypeIdentity, retinazer.NetIdentity, out VanillaNpcDefinition definition));
+        Assert.Equal(110, definition.Height);
+        Assert.True(stepper.TryStepState(in retinazer, out NpcStateUpdate next));
+        Assert.Equal(0f, next.Ai.Ai3);
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
+        Assert.Equal(1, stepper.PlanProjectileSpawns(in retinazer, in next, intents));
+        Assert.Equal(VanillaProjectileIds.WallOfFleshEyeLaser, intents[0].Type);
+        Assert.Equal(20, intents[0].Damage);
+    }
+
+    [Fact]
     public void Targeting_stepper_keeps_late_twin_attack_counters_while_line_of_fire_is_blocked()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
