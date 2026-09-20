@@ -2623,6 +2623,28 @@ public sealed class VanillaNpcTargetingAiStepper :
                 { InitialAi = new ProjectileAiState(30f, source.Handle.Slot, 0f) };
                 return 1;
             }
+            if (state == 3 && elapsed >= 45 && elapsed < 185 && (elapsed - 45) % 10 == 0)
+            {
+                if (destination.IsEmpty) return 1;
+                NpcAiState pupil = proposed.Simulation.LocalAi;
+                float rawX = MathF.Cos(pupil.Ai0) * 30f * pupil.Ai1;
+                float rawY = MathF.Sin(pupil.Ai0) * 30f * pupil.Ai1;
+                float length = MathF.Sqrt(rawX * rawX + rawY * rawY);
+                if (!(length > 0f) || !float.IsFinite(length) ||
+                    !VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.PhantasmalEye, out var definition))
+                {
+                    return 0;
+                }
+                float vx = rawX / length * 8f;
+                float vy = rawY / length * 8f;
+                float angularVelocity = (MathF.PI * 2f * (float)_random.NextDouble() - MathF.PI) / 30f +
+                    MathF.PI / 180f * proposed.Ai.Ai2;
+                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalEye,
+                    cx + rawX / length * 12f - definition.Width * .5f,
+                    cy + rawY / length * 12f - definition.Height * .5f, vx, vy, 35, 0f)
+                { InitialAi = new ProjectileAiState(0f, angularVelocity, 0f) };
+                return 1;
+            }
             if (state == 4 && elapsed >= 0 && elapsed < 140 && elapsed % 20 == 0)
             {
                 if (destination.IsEmpty) return 1;

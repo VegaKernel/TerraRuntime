@@ -1129,6 +1129,59 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
                 vy *= .92f;
             }
         }
+        else if (ai.Ai0 == 3f)
+        {
+            if (elapsed < 15)
+            {
+                local = local with
+                {
+                    Ai1 = MathF.Max(0f, local.Ai1 - .07f),
+                    Ai2 = local.Ai2 + (.4f - local.Ai2) * .2f
+                };
+                vx *= .9f;
+                vy *= .9f;
+                if (MathF.Sqrt(vx * vx + vy * vy) < 1f)
+                {
+                    vx = 0f;
+                    vy = 0f;
+                }
+            }
+            else if (elapsed < 45)
+            {
+                float pupil = MathF.Sin((elapsed - 15f) * MathF.PI * 2f / 15f) * .5f;
+                local = local with { Ai0 = pupil < 0f ? MathF.PI : 0f, Ai1 = pupil };
+            }
+            else if (elapsed < 185)
+            {
+                if (elapsed == 45)
+                    ai = ai with { Ai2 = (random.NextInt32(0, 2) == 0 ? 1f : -1f) * MathF.PI * 2f / 40f };
+                if ((elapsed - 45) % 40 == 0)
+                    ai = ai with { Ai2 = ai.Ai2 * .95f };
+
+                float pupil = MathF.Min(1f, local.Ai1 + .05f);
+                float angle = local.Ai0 + ai.Ai2;
+                local = local with { Ai0 = angle, Ai1 = pupil };
+                float ellipseX = MathF.Cos(angle) * 30f * pupil;
+                float ellipseY = MathF.Sin(angle) * 30f * pupil;
+                float length = MathF.Sqrt(ellipseX * ellipseX + ellipseY * ellipseY);
+                float speed = 8f + (20f - 8f) * ((elapsed - 45f) / 140f);
+                if (length > 0f && float.IsFinite(length))
+                {
+                    vx = ellipseX / length * speed;
+                    vy = ellipseY / length * speed;
+                }
+            }
+            else
+            {
+                vx *= .88f;
+                vy *= .88f;
+                local = local with
+                {
+                    Ai1 = MathF.Max(0f, local.Ai1 - .07f),
+                    Ai2 = local.Ai2 + (1f - local.Ai2) * .2f
+                };
+            }
+        }
 
         NpcSimulationState sim = npc.Simulation with
         {

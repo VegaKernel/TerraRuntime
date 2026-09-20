@@ -159,6 +159,39 @@ public sealed class MoonLordFreeEyeTests
         Assert.Equal(-1f, shots[0].Ai.Ai0);
     }
 
+    [Fact]
+    public void Rotating_eye_window_consumes_source_rng_and_fires_from_its_ellipse()
+    {
+        var npcs = new RuntimeNpcStore(4);
+        Spawn(npcs, 0, VanillaNpcIds.MoonLordCore, 1000f, 1000f, 0f, 0f, default, default, 255);
+        NpcSnapshot eye = Spawn(npcs, 1, VanillaNpcIds.MoonLordFreeEye, 900f, 900f, 2f, -3f,
+            new NpcAiState(3f, 428f, 0f, 0f), new NpcAiState(0f, .3f, .4f, 0f), 0);
+        var random = new EyeAttackRandom();
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: random);
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 1500f, 820f, 0, true, false, false, false)]);
+        var projectiles = new RuntimeProjectileStore(4);
+
+        new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new EyeOnly(stepper));
+
+        float turn = MathF.PI * 2f / 40f * .95f;
+        Assert.True(npcs.TryGet(eye.Handle, out NpcSnapshot next));
+        Assert.Equal(429f, next.Ai.Ai1);
+        Assert.Equal(turn, next.Ai.Ai2, 5);
+        Assert.Equal(turn, next.Simulation.LocalAi.Ai0, 5);
+        Assert.Equal(.35f, next.Simulation.LocalAi.Ai1, 5);
+        Assert.Equal(turn, MathF.Atan2(next.VelocityY, next.VelocityX), 5);
+        Assert.Equal(8f, MathF.Sqrt(next.VelocityX * next.VelocityX + next.VelocityY * next.VelocityY), 5);
+
+        var shots = new ProjectileSnapshot[4];
+        Assert.Equal(1, projectiles.CopyActive(shots));
+        Assert.Equal(VanillaProjectileIds.PhantasmalEye, shots[0].Type);
+        Assert.Equal(35, shots[0].Damage);
+        Assert.Equal(turn, MathF.Atan2(shots[0].VelocityY, shots[0].VelocityX), 5);
+        Assert.Equal(8f, MathF.Sqrt(shots[0].VelocityX * shots[0].VelocityX + shots[0].VelocityY * shots[0].VelocityY), 5);
+        Assert.Equal((-MathF.PI / 60f) + MathF.PI / 180f * turn, shots[0].Ai.Ai1, 5);
+        Assert.Equal(3, random.Draws);
+    }
+
     private static void SpawnSphere(RuntimeProjectileStore store, NpcHandle source, float ai0, float ai1, float vx, float vy)
     {
         var intent = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalSphere, 900f, 900f, vx, vy, 40, 0f)
@@ -186,6 +219,27 @@ public sealed class MoonLordFreeEyeTests
             Assert.Equal(420, exclusiveMax);
             Draws++;
             return value;
+        }
+    }
+
+    private sealed class EyeAttackRandom : IVanillaNpcRandom
+    {
+        public int Draws { get; private set; }
+        public int NextInt32(int inclusiveMin, int exclusiveMax)
+        {
+            Draws++;
+            return (inclusiveMin, exclusiveMax) switch
+            {
+                (0, 420) => 1,
+                (0, 2) => 0,
+                _ => throw new Xunit.Sdk.XunitException($"Unexpected random range {inclusiveMin}..{exclusiveMax}.")
+            };
+        }
+
+        public double NextDouble()
+        {
+            Draws++;
+            return .25d;
         }
     }
 
