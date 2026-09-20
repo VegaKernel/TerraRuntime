@@ -418,6 +418,32 @@ internal sealed class VanillaNpcBehaviorContext
         return false;
     }
 
+    /// <summary>
+    /// AI_037's head uses this exact active-player rectangle scan before deciding that it must dig
+    /// toward a target above it. Unlike combat targeting, the source scan intentionally includes
+    /// dead and ghost player slots as long as the slot is active.
+    /// </summary>
+    public bool AnyActivePlayerIntersectsExpanded(int left, int top, int width, int height, int padding)
+    {
+        if (width < 0 || height < 0 || padding < 0)
+            return false;
+
+        for (int index = 0; index < _candidateCount; index++)
+        {
+            VanillaNpcTargetCandidate player = _candidates[index];
+            if (!player.Active)
+                continue;
+            int playerLeft = (int)(player.CenterX - VanillaPlayerHitboxFacts.BaseWidth * .5f) - padding;
+            int playerTop = (int)(player.CenterY - VanillaPlayerHitboxFacts.BaseHeight * .5f) - padding;
+            int playerSize = padding * 2;
+            if (left < playerLeft + playerSize && left + width > playerLeft &&
+                top < playerTop + playerSize && top + height > playerTop)
+                return true;
+        }
+
+        return false;
+    }
+
     public bool ShadowSpawnIntersectsOtherPlayer(
         byte targetSlot,
         float spawnCenterX,

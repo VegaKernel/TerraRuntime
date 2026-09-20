@@ -146,6 +146,13 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
             TryRefresh(in npc, in definition, context, ref targetSlot, out target);
         bool hasTarget = TryGetTarget(targetSlot, context, out target);
         bool digging = _environment.IsDigging(x, y, hitbox.Width, hitbox.Height);
+        if (!digging && y > target.CenterY - VanillaPlayerHitboxFacts.BaseHeight * .5f &&
+            !context.AnyActivePlayerIntersectsExpanded((int)x, (int)y, hitbox.Width, hitbox.Height, padding: 1000))
+        {
+            // AI_037 forces tile-seeking when the head is below its target and no active player
+            // occupies the source 2000-by-2000 proximity rectangle around the head.
+            digging = true;
+        }
         local = local with { Ai1 = digging ? 0f : 1f };
 
         if (!hasTarget)

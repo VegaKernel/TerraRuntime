@@ -1049,6 +1049,33 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Targeting_stepper_forces_destroyer_digging_only_when_no_active_player_is_nearby()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        stepper.SetWormEnvironment(new EmptyWormEnvironment());
+        NpcSnapshot head = CreateNpc(VanillaNpcIds.Destroyer, 0f) with
+        {
+            PositionX = 3000f,
+            PositionY = 3000f,
+            Target = 0
+        };
+        VanillaNpcTargetCandidate targetAbove = Target(100f, 100f);
+
+        stepper.SetCandidates([targetAbove]);
+        Assert.True(stepper.TryStepState(in head, out NpcStateUpdate remoteNext));
+        Assert.Equal(0f, remoteNext.Simulation.LocalAi.Ai1);
+
+        stepper.SetCandidates([targetAbove, Target(3020f, 3020f) with { Slot = 1 }]);
+        Assert.True(stepper.TryStepState(in head, out NpcStateUpdate nearbyNext));
+        Assert.Equal(1f, nearbyNext.Simulation.LocalAi.Ai1);
+
+        stepper.SetCandidates([targetAbove, Target(3020f, 3020f) with { Slot = 1, Dead = true, Ghost = true }]);
+        Assert.True(stepper.TryStepState(in head, out NpcStateUpdate retainedSlotNext));
+        Assert.Equal(1f, retainedSlotNext.Simulation.LocalAi.Ai1);
+    }
+
+    [Fact]
     public void Blood_squid_threshold_applies_recoil_and_resets_timer()
     {
         NpcSnapshot npc = CreateNpc(VanillaNpcIds.BloodSquid, localAi0: 119f);
