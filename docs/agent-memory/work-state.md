@@ -2,6 +2,10 @@
 
 ## Mechdusa Probe attachment slice - 2026-09-20
 
+## Mechdusa Waffle Iron loot slice - 2026-09-20
+
+Mechanical-boss loot now carries the loaded Zenith-world fact into the exact `Conditions.MechdusaKill` projection. Waffle Iron (`5382`) is guaranteed for the final Prime, Destroyer or Twin only after every other source root type is gone; same-type duplicate handling intentionally follows the original predicate. Its 30-by-30 world-drop materialization is admitted with no natural prefix. `RegisterBossTrophies` precedes `RegisterBosses` in the source, so the evaluator now rolls the independent trophy first and preserves the resulting RNG sequence. Focused evaluator and authoritative pipeline regressions cover the four root types, all blockers and the final kill.
+
 Zenith-world Mechdusa's two Probes (NPC `139`) now retain the source AI005 attachment
 to the Destroyer head (NPC `134`): their offset is $26\,\mathrm{px}$ times `ai[3]`,
 rotated with the head; they inherit Prime's velocity and the Destroyer's rotation; they are invulnerable; and

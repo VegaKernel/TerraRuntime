@@ -182,7 +182,8 @@ internal sealed partial class NpcAuthority
             evilBossDownedBaseline,
             projectiles,
             townCommerceWorldFacts?.DownedPlantera,
-            projectileReplication);
+            projectileReplication,
+            townCommerceWorldFacts?.ZenithWorld ?? false);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
             projectiles,
             npcs,

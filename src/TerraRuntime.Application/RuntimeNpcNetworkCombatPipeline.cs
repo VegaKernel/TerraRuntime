@@ -75,6 +75,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private readonly bool skyblockLowTiles;
     private readonly bool isThereAWorldSurface;
     private readonly bool evilBossDownedBaseline;
+    private readonly bool zenithWorld;
     private readonly PlayerSlotId[] interactionSlots =
         new PlayerSlotId[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly VanillaKingSlimeLootPlayer[] activeLootPlayers =
@@ -124,7 +125,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         bool evilBossDownedBaseline = false,
         RuntimeProjectileStore? projectiles = null,
         bool? planteraDownedBaseline = null,
-        RuntimeProjectileReplicationRegistry? projectileReplication = null)
+        RuntimeProjectileReplicationRegistry? projectileReplication = null,
+        bool zenithWorld = false)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         moonLordProjectiles = projectiles;
@@ -144,6 +146,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         this.skyblockLowTiles = skyblockLowTiles;
         this.isThereAWorldSurface = isThereAWorldSurface;
         this.evilBossDownedBaseline = evilBossDownedBaseline;
+        this.zenithWorld = zenithWorld;
         this.planteraDownedBaseline = planteraDownedBaseline;
         planteraLoot = new RuntimePlanteraLootDeliverySink(worldItems, instancedLeases, worldItemReplication);
         golemLoot = new RuntimeGolemLootDeliverySink(worldItems, instancedLeases, worldItemReplication);

@@ -23,4 +23,5 @@ public static class VanillaMechanicalBossItemIds
     public static readonly ItemTypeId TwinsMasterTrophy = new(4931);
     public static readonly ItemTypeId DestroyerMasterTrophy = new(4932);
     public static readonly ItemTypeId SkeletronPrimeMasterTrophy = new(4933);
+    public static readonly ItemTypeId WaffleIron = new(5382);
 }

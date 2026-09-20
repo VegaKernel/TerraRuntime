@@ -4,10 +4,12 @@ using TerraRuntime.Contracts.Runtime;
 namespace TerraRuntime.Gameplay.Npcs;
 
 public readonly record struct VanillaMechanicalBossLootContext(
-    NpcTypeId Type, bool IsExpertMode, bool IsMasterMode, bool OtherTwinActive = false)
+    NpcTypeId Type, bool IsExpertMode, bool IsMasterMode, bool OtherTwinActive = false,
+    bool IsMechdusaKill = false)
 {
     public bool IsValid => (!IsMasterMode || IsExpertMode) &&
-        (!OtherTwinActive || VanillaMechanicalBossLootEvaluator.IsTwin(Type));
+        (!OtherTwinActive || VanillaMechanicalBossLootEvaluator.IsTwin(Type)) &&
+        (!IsMechdusaKill || !OtherTwinActive);
 }
 
 public readonly record struct VanillaMechanicalBossLootPlayer(PlayerSlotId Slot, float CenterX, float CenterY)
@@ -30,9 +32,9 @@ public readonly record struct MechanicalBossLootExecutionResult(
     int WorldItemCount, int InstancedItemCount, int InstancedRecipientCount, int MasterPetDropCount);
 
 /// <summary>
-/// ItemDropDatabase.RegisterBoss_SkeletronPrime/TheDestroyer/Twins plus later trophies, TerrariaServer 1.4.5.8.
-/// MissingTwin gates encounter rewards, never each eye's independent trophy. Mechdusa's conditional Waffle
-/// Iron rule remains unadmitted until its world-owned feature condition and item prefix semantics are verified.
+/// ItemDropDatabase.RegisterBossTrophies/RegisterBoss_SkeletronPrime/TheDestroyer/Twins, TerrariaServer 1.4.5.8.
+/// The independent trophy rule is registered before each boss table. MissingTwin gates encounter rewards, never
+/// each eye's trophy. MechdusaKill is the source world-and-live-root predicate for its guaranteed Waffle Iron.
 /// Global coins/hearts and bag opening are outside this ordinary NPC-specific slice.
 /// </summary>
 public static class VanillaMechanicalBossLootEvaluator
@@ -59,6 +61,8 @@ public static class VanillaMechanicalBossLootEvaluator
             return false;
 
         int world = 0, instanced = 0, recipients = 0, pets = 0;
+        // RegisterBossTrophies runs before RegisterBosses, so this luck-scaled independent rule consumes first.
+        RollCommon(profile.Trophy, 10, 1, 1, in origin, rolls, sink, ref world);
         if (!context.OtherTwinActive)
         {
             if (context.IsExpertMode)
@@ -91,7 +95,8 @@ public static class VanillaMechanicalBossLootEvaluator
                 }
             }
         }
-        RollCommon(profile.Trophy, 10, 1, 1, in origin, rolls, sink, ref world);
+        if (context.IsMechdusaKill)
+            Deliver(VanillaMechanicalBossItemIds.WaffleIron, 1, in origin, rolls, sink, ref world);
         result = new MechanicalBossLootExecutionResult(world, instanced, recipients, pets);
         return true;
     }
@@ -125,7 +130,8 @@ public static class VanillaMechanicalBossLootEvaluator
     private static bool CanDeliverAll(in VanillaMechanicalBossLootContext context, in Profile profile,
         IMechanicalBossLootDeliverySink sink)
     {
-        if (!sink.CanDeliverWorldItem(profile.Trophy))
+        if (!sink.CanDeliverWorldItem(profile.Trophy) ||
+            (context.IsMechdusaKill && !sink.CanDeliverWorldItem(VanillaMechanicalBossItemIds.WaffleIron)))
             return false;
         if (context.OtherTwinActive)
             return true;

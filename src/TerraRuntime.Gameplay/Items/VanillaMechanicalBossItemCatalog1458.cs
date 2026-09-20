@@ -29,7 +29,8 @@ internal static class VanillaMechanicalBossItemCatalog1458
         Drop(VanillaMechanicalBossItemIds.SkeletronPrimePetItem, 16, 30),
         Drop(VanillaMechanicalBossItemIds.TwinsMasterTrophy, 14, 14),
         Drop(VanillaMechanicalBossItemIds.DestroyerMasterTrophy, 14, 14),
-        Drop(VanillaMechanicalBossItemIds.SkeletronPrimeMasterTrophy, 14, 14)
+        Drop(VanillaMechanicalBossItemIds.SkeletronPrimeMasterTrophy, 14, 14),
+        Drop(VanillaMechanicalBossItemIds.WaffleIron, 30, 30)
     ];
 
     public static bool TryGet(ItemTypeId type, out VanillaItemDefinition definition)

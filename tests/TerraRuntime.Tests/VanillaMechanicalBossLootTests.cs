@@ -14,13 +14,12 @@ public sealed class VanillaMechanicalBossLootTests
     [InlineData(134, 2113, 548, 1366)]
     public void Classic_exact_source_order_and_material_stack_bounds(int type, int mask, int soul, int trophy)
     {
-        var rolls = new ScriptedRolls("L7=0", "N1:2=1", "L1=0", "N15:31=30", "L1=0", "N25:41=40",
-            "L10=0", "N1:2=1");
+        var rolls = new ScriptedRolls("L10=0", "N1:2=1", "L7=0", "N1:2=1", "L1=0", "N15:31=30", "L1=0", "N25:41=40");
         var sink = new Sink();
         Assert.True(VanillaMechanicalBossLootEvaluator.TryExecute(new(new(type), false, false),
             new(100, 200), [], rolls, sink, out MechanicalBossLootExecutionResult result));
-        Assert.Equal([mask, 1225, soul, trophy], sink.World.Select(static x => x.Drop.ItemType.Value));
-        Assert.Equal([1, 30, 40, 1], sink.World.Select(static x => (int)x.Drop.Stack));
+        Assert.Equal([trophy, mask, 1225, soul], sink.World.Select(static x => x.Drop.ItemType.Value));
+        Assert.Equal([1, 1, 30, 40], sink.World.Select(static x => (int)x.Drop.Stack));
         Assert.Equal(new MechanicalBossLootExecutionResult(4, 0, 0, 0), result);
         rolls.AssertConsumed();
     }
@@ -32,7 +31,7 @@ public sealed class VanillaMechanicalBossLootTests
     [InlineData(134, 3325)]
     public void Expert_bag_is_raw_not_luck_and_classic_is_excluded(int type, int bag)
     {
-        var rolls = new ScriptedRolls("N0:1=0", "N1:2=1", "L10=9");
+        var rolls = new ScriptedRolls("L10=9", "N0:1=0", "N1:2=1");
         var sink = new Sink();
         Assert.True(VanillaMechanicalBossLootEvaluator.TryExecute(new(new(type), true, false),
             new(100, 200), [new(new(3), 10, 20)], rolls, sink, out var result));
@@ -49,13 +48,13 @@ public sealed class VanillaMechanicalBossLootTests
     [InlineData(134, 4932, 4803, 1366)]
     public void Master_relic_luck_then_per_player_raw_pet_and_trophy(int type, int relic, int pet, int trophy)
     {
-        var rolls = new ScriptedRolls("N0:1=0", "N1:2=1", "L1=0", "N1:2=1", "N1:2=1",
-            "N0:4=3", "N0:4=0", "L10=0", "N1:2=1");
+        var rolls = new ScriptedRolls("L10=0", "N1:2=1", "N0:1=0", "N1:2=1", "L1=0", "N1:2=1",
+            "N1:2=1", "N0:4=3", "N0:4=0");
         var sink = new Sink();
         Assert.True(VanillaMechanicalBossLootEvaluator.TryExecute(new(new(type), true, true),
             new(100, 200), [new(new(1), 10, 20), new(new(4), 30, 40)], rolls, sink, out var result));
-        Assert.Equal([relic, pet, trophy], sink.World.Select(static x => x.Drop.ItemType.Value));
-        Assert.Equal(new NpcLootWorldItemOrigin(30, 40), sink.World[1].Origin);
+        Assert.Equal([trophy, relic, pet], sink.World.Select(static x => x.Drop.ItemType.Value));
+        Assert.Equal(new NpcLootWorldItemOrigin(30, 40), sink.World[2].Origin);
         Assert.Equal(new MechanicalBossLootExecutionResult(3, 1, 2, 1), result);
         rolls.AssertConsumed();
     }
@@ -117,6 +116,7 @@ public sealed class VanillaMechanicalBossLootTests
     [InlineData(4931, 14, 14, false)]
     [InlineData(4932, 14, 14, false)]
     [InlineData(4933, 14, 14, false)]
+    [InlineData(5382, 30, 30, false)]
     public void Item_defaults_and_no_gravity_are_source_pinned_without_use_admission(int id, int width, int height, bool noGravity)
     {
         Assert.True(VanillaDefinitionCatalog.TryGet(new(id), out var item));
@@ -155,6 +155,23 @@ public sealed class VanillaMechanicalBossLootTests
         Assert.Empty(sink.World);
         Assert.Empty(supported.World);
         Assert.Empty(supported.Bags);
+        rolls.AssertConsumed();
+    }
+
+    [Theory]
+    [InlineData(125)]
+    [InlineData(126)]
+    [InlineData(127)]
+    [InlineData(134)]
+    public void Mechdusa_kill_adds_guaranteed_waffle_iron_after_the_regular_table(int type)
+    {
+        var rolls = new ScriptedRolls("L10=9", "L7=6", "L1=0", "N15:31=15", "L1=0", "N25:41=25");
+        var sink = new Sink();
+        Assert.True(VanillaMechanicalBossLootEvaluator.TryExecute(
+            new(new(type), false, false, IsMechdusaKill: true), new(100, 200), [], rolls, sink, out var result));
+        Assert.Equal(5382, sink.World[^1].Drop.ItemType.Value);
+        Assert.Equal((short)1, sink.World[^1].Drop.Stack);
+        Assert.Equal(3, result.WorldItemCount);
         rolls.AssertConsumed();
     }
 

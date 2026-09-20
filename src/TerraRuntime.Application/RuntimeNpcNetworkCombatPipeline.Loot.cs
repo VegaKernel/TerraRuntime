@@ -508,6 +508,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             (int)npc.PositionX + definition.Width * 0.5f,
             (int)npc.PositionY + definition.Height * 0.5f);
         bool otherTwinActive = false;
+        bool mechdusaKill = IsMechdusaKill(in npc);
         if (VanillaMechanicalBossLootEvaluator.IsTwin(npc.TypeIdentity))
         {
             NpcTypeId otherType = npc.TypeIdentity == VanillaNpcIds.Retinazer ?
@@ -516,7 +517,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             for (int index = 0; index < count; index++)
                 otherTwinActive |= npcFamilyBuffer[index].TypeIdentity == otherType;
         }
-        var context = new VanillaMechanicalBossLootContext(npc.TypeIdentity, expertMode, masterMode, otherTwinActive);
+        var context = new VanillaMechanicalBossLootContext(
+            npc.TypeIdentity, expertMode, masterMode, otherTwinActive, mechdusaKill);
         return VanillaMechanicalBossLootEvaluator.TryExecute(
             in context,
             in origin,
@@ -524,6 +526,21 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             random,
             mechanicalBossLoot,
             out _);
+    }
+
+    private bool IsMechdusaKill(in NpcSnapshot dying)
+    {
+        if (!zenithWorld)
+            return false;
+
+        int count = npcs.CopyActive(npcFamilyBuffer);
+        for (int index = 0; index < count; index++)
+        {
+            NpcTypeId type = npcFamilyBuffer[index].TypeIdentity;
+            if (VanillaMechanicalBossLootEvaluator.IsRoot(type) && type != dying.TypeIdentity)
+                return false;
+        }
+        return true;
     }
 
     private bool TryExecuteWallOfFleshLoot(in NpcSnapshot npc)

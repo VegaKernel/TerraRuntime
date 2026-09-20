@@ -66,6 +66,22 @@ public sealed class MechanicalBossLootPipelineTests
         Assert.Equal(relayed, f.Replication.RelayedFrames);
     }
 
+    [Fact]
+    public void Zenith_mechdusa_waffle_iron_waits_for_the_last_other_mechanical_root()
+    {
+        var f = new Fixture(expert: false, master: false, zenith: true);
+        NpcSnapshot[] roots = [f.Spawn(125), f.Spawn(126), f.Spawn(134), f.Spawn(127)];
+        foreach (NpcSnapshot root in roots[..^1])
+        {
+            Assert.Equal(RuntimeProjectileNpcDamageResult.Killed, f.Hit(f.First, root, 100_000));
+            Assert.DoesNotContain(Drain(f.FirstQueue), static x => x.Drop.ItemNetId == 5382);
+        }
+
+        NpcSnapshot last = roots[^1];
+        Assert.Equal(RuntimeProjectileNpcDamageResult.Killed, f.Hit(f.First, last, 100_000));
+        Assert.Equal(1, Drain(f.FirstQueue).Count(static x => x.Drop.ItemNetId == 5382));
+    }
+
     [Theory]
     [InlineData(125, 126)]
     [InlineData(126, 125)]
@@ -228,7 +244,7 @@ public sealed class MechanicalBossLootPipelineTests
         public readonly TerrariaConnectionOutboundQueue SpectatorQueue;
         private readonly RuntimeNpcNetworkCombatPipeline pipeline;
 
-        public Fixture(bool expert, bool master, bool firstHasClient = true)
+        public Fixture(bool expert, bool master, bool firstHasClient = true, bool zenith = false)
         {
             Items = new(Replication);
             Leases = new(Items);
@@ -237,7 +253,7 @@ public sealed class MechanicalBossLootPipelineTests
             SecondQueue = Register(Replication, Second, 8102);
             SpectatorQueue = Register(Replication, Spectator, 8103);
             pipeline = new(Npcs, Items, this, new PlayerAuthority(null, null), static () => 0,
-                null, Leases, Replication, null, Progression, expert, master);
+                null, Leases, Replication, null, Progression, expert, master, zenithWorld: zenith);
         }
 
         public RuntimeProjectileNpcDamageResult Hit(PlayerHandle player, in NpcSnapshot npc, int damage) =>
