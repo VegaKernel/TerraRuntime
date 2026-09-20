@@ -532,19 +532,22 @@ public sealed class VanillaNpcTargetingAiStepper :
             destination[index++] = new NpcAiSpawnIntent(
                 VanillaNpcIds.WallOfFleshEye, (int)proposed.PositionX, (int)upperEyeY, 0f, 0f, proposed.Target)
             {
-                InitialAi = new NpcAiState(1f, 0f, 0f, source.Handle.Slot)
+                InitialAi = new NpcAiState(1f, 0f, 0f, source.Handle.Slot),
+                StartSlot = source.Handle.Slot
             };
             destination[index++] = new NpcAiSpawnIntent(
                 VanillaNpcIds.WallOfFleshEye, (int)proposed.PositionX, (int)lowerEyeY, 0f, 0f, proposed.Target)
             {
-                InitialAi = new NpcAiState(-1f, 0f, 0f, source.Handle.Slot)
+                InitialAi = new NpcAiState(-1f, 0f, 0f, source.Handle.Slot),
+                StartSlot = source.Handle.Slot
             };
             for (int hungry = 0; hungry < 11; hungry++)
             {
                 destination[index++] = new NpcAiSpawnIntent(
                     VanillaNpcIds.TheHungry, (int)proposed.PositionX, (int)lowerEyeY, 0f, 0f, proposed.Target)
                 {
-                    InitialAi = new NpcAiState(hungry * 0.1f - 0.05f, 0f, 0f, source.Handle.Slot)
+                    InitialAi = new NpcAiState(hungry * 0.1f - 0.05f, 0f, 0f, source.Handle.Slot),
+                    StartSlot = source.Handle.Slot
                 };
             }
             return index;
@@ -616,7 +619,8 @@ public sealed class VanillaNpcTargetingAiStepper :
                             0f,
                             proposed.Target)
                         {
-                            InitialAi = new NpcAiState(selected * 0.1f - 0.05f, 0f, 0f, source.Handle.Slot)
+                            InitialAi = new NpcAiState(selected * 0.1f - 0.05f, 0f, 0f, source.Handle.Slot),
+                            StartSlot = source.Handle.Slot
                         };
                     }
                 }

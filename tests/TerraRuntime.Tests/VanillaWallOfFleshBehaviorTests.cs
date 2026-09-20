@@ -25,13 +25,16 @@ public sealed class VanillaWallOfFleshBehaviorTests
         Assert.Equal(VanillaNpcIds.WallOfFleshEye, intents[0].Type);
         Assert.Equal(1f, intents[0].InitialAi.Ai0);
         Assert.Equal(wall.Handle.Slot, intents[0].InitialAi.Ai3);
+        Assert.Equal(wall.Handle.Slot, intents[0].StartSlot);
         Assert.Equal(VanillaNpcIds.WallOfFleshEye, intents[1].Type);
         Assert.Equal(-1f, intents[1].InitialAi.Ai0);
         Assert.Equal(wall.Handle.Slot, intents[1].InitialAi.Ai3);
+        Assert.Equal(wall.Handle.Slot, intents[1].StartSlot);
         for (int index = 2; index < count; index++)
         {
             Assert.Equal(VanillaNpcIds.TheHungry, intents[index].Type);
             Assert.Equal(wall.Handle.Slot, intents[index].InitialAi.Ai3);
+            Assert.Equal(wall.Handle.Slot, intents[index].StartSlot);
             Assert.Equal((index - 2) * 0.1f - 0.05f, intents[index].InitialAi.Ai0, 5);
         }
         Assert.Equal(2f, proposed.Simulation.LocalAi.Ai0);

@@ -93,6 +93,29 @@ public sealed class NpcSlotAllocationTests
     }
 
     [Fact]
+    public void Wall_of_Flesh_children_start_search_at_the_parent_slot()
+    {
+        var store = new RuntimeNpcStore(32);
+        var parentState = State(VanillaNpcIds.WallOfFlesh.Value) with { Ai = default };
+        Assert.True(store.TrySpawn(10, in parentState, out var parent));
+        var stepper = new VanillaNpcTargetingAiStepper(new Idle());
+        stepper.SetWallOfFleshEnvironment(new WallEnvironment());
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 1400f, 35_800f, 0, true, false, false, false)]);
+        stepper.SetNpcPeers([parent]);
+        Assert.True(stepper.TryStepState(in parent, out var proposed));
+
+        Span<NpcAiSpawnIntent> intents = stackalloc NpcAiSpawnIntent[13];
+        Assert.Equal(13, stepper.PlanNpcSpawns(in parent, in proposed, intents));
+        for (int index = 0; index < intents.Length; index++)
+        {
+            Assert.Equal(parent.Handle.Slot, intents[index].StartSlot);
+            Assert.True(store.TrySpawnIntent(in intents[index], out var child));
+            Assert.Equal(11 + index, child.Handle.Slot);
+        }
+        Assert.False(store.TryGetActive(0, out _));
+    }
+
+    [Fact]
     public void Repeated_creation_and_deactivation_match_original_NewNPC_slots_and_generations()
     {
         var store = new RuntimeNpcStore();
@@ -190,5 +213,23 @@ public sealed class NpcSlotAllocationTests
     private sealed class Idle : INpcAiStateStepper
     {
         public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next) { next = default; return false; }
+    }
+
+    private sealed class WallEnvironment : IVanillaWallOfFleshEnvironment
+    {
+        public int WorldWidthTiles => 8400;
+        public int WorldHeightTiles => 2400;
+        public int UnderworldLayerTiles => 2200;
+
+        public bool TryResolveCorridor(float positionX, float positionY, int width, int height, out float topPixels, out float bottomPixels)
+        {
+            topPixels = 35_400f;
+            bottomPixels = 36_200f;
+            return true;
+        }
+
+        public bool CanHit(float sourceX, float sourceY, int sourceWidth, int sourceHeight, float targetX, float targetY, int targetWidth, int targetHeight) => true;
+        public bool TryFindGroundSpawn(int tileX, int startTileY, out int bottomX, out int bottomY) { bottomX = 0; bottomY = 0; return false; }
+        public bool TryFindTeleportSpot(int targetTileX, int targetTileY, int npcWidth, int npcHeight, out int tileX, out int tileY) { tileX = 0; tileY = 0; return false; }
     }
 }
