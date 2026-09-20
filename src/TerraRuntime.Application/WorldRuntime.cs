@@ -263,7 +263,8 @@ public sealed class WorldRuntime : IDisposable
                         WorldClock.DayTime,
                         liveMoonPhase,
                         WorldClock.BloodMoonActive,
-                        WorldClock.SlimeRainActive);
+                        WorldClock.SlimeRainActive)
+                    { WindSpeedTarget = WorldClock.WindSpeedTarget };
                     byte[] worldInfoFrame = PlayerJoinFrameEncoder.EncodeWorldInfo(
                         world,
                         new WorldInfoTransientState(
@@ -337,7 +338,8 @@ public sealed class WorldRuntime : IDisposable
             WorldClock.DayTime,
             checked((byte)WorldClock.MoonPhase),
             WorldClock.BloodMoonActive,
-            WorldClock.SlimeRainActive);
+            WorldClock.SlimeRainActive)
+        { WindSpeedTarget = WorldClock.WindSpeedTarget };
         var transient = new WorldInfoTransientState(
             PumpkinMoon: false,
             SnowMoon: false,

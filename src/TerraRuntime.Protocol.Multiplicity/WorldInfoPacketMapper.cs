@@ -22,7 +22,11 @@ public readonly record struct WorldInfoRuntimeState(
     bool DayTime,
     byte MoonPhase,
     bool BloodMoon,
-    bool SlimeRainActive);
+    bool SlimeRainActive)
+{
+    /// <summary>Live <c>Main.windSpeedTarget</c>; absent callers retain the persisted header value.</summary>
+    public float? WindSpeedTarget { get; init; }
+}
 
 /// <summary>
 /// Maps validated Terraria 1.4.5.8 world state plus live runtime flags to protocol 326 packet 7.
@@ -98,7 +102,7 @@ public static class WorldInfoPacketMapper
             IceBackStyle = state.IceBackStyle,
             JungleBackStyle = state.JungleBackStyle,
             HellBackStyle = state.HellBackStyle,
-            WindSpeedSet = state.WindSpeed,
+            WindSpeedSet = live.WindSpeedTarget ?? state.WindSpeed,
             CloudNumber = state.CloudCount,
             Tree1 = state.TreeX[0],
             Tree2 = state.TreeX[1],

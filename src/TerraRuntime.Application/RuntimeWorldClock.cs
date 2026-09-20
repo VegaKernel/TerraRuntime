@@ -78,6 +78,7 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         GetGoodWorld = getGoodWorld;
         SlimeBlueSpawnUnlocked = slimeBlueSpawnUnlocked;
         WindSpeedCurrent = windSpeedCurrent;
+        WindSpeedTarget = windSpeedCurrent;
         _dayRate = dayRate;
         _observer = observer;
         PublishCommittedState();
@@ -99,9 +100,20 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
     public bool SlimeBlueSpawnUnlocked { get; private set; }
 
-    /// <summary>WorldFile.LoadWorld initializes current wind from the saved target. Weather target evolution
-    /// remains unimplemented; this exposes the persisted world-owned value rather than assuming calm NPC motion.</summary>
-    public float WindSpeedCurrent { get; }
+    /// <summary>WorldFile.LoadWorld initializes both source wind values from the persisted target.</summary>
+    public float WindSpeedCurrent { get; private set; }
+
+    /// <summary>Source <c>Main.windSpeedTarget</c>, used by the world header and packet 7.</summary>
+    public float WindSpeedTarget { get; private set; }
+
+    /// <summary>Applies a source-owned weather target before the per-tick current-wind easing.</summary>
+    public void SetWindSpeedTarget(float target)
+    {
+        if (!float.IsFinite(target) || target is < -.8f or > .8f)
+            throw new ArgumentOutOfRangeException(nameof(target));
+        WindSpeedTarget = target;
+        RequestWorldInfoSync();
+    }
 
     /// <summary>
     /// Runtime equivalent of TerrariaServer 1.4.5.8 WorldGen.spawnMeteor. The current world clock owns the pending
@@ -185,6 +197,14 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
     public void Tick()
     {
+        // Main.UpdateWeather: with no active rain multiplier in this admitted clock slice, the current wind
+        // approaches its source target by .0003 + abs(target-current)*.0015 each world tick.
+        float windStep = .0003f + MathF.Abs(WindSpeedTarget - WindSpeedCurrent) * .0015f;
+        if (WindSpeedCurrent < WindSpeedTarget)
+            WindSpeedCurrent = MathF.Min(WindSpeedTarget, WindSpeedCurrent + windStep);
+        else if (WindSpeedCurrent > WindSpeedTarget)
+            WindSpeedCurrent = MathF.Max(WindSpeedTarget, WindSpeedCurrent - windStep);
+
         int dayRate = _dayRate;
 
         if (SlimeRainTime > 0d)

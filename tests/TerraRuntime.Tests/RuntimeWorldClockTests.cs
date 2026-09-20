@@ -12,6 +12,20 @@ public sealed class RuntimeWorldClockTests
         var metadata = new WorldFileRuntimeMetadata { WindSpeed = wind };
         var clock = RuntimeWorldClock.FromWorld(metadata, new WorldCreativePowersData(false, 0f, false, false, .5f, false));
         Assert.Equal(wind, clock.WindSpeedCurrent);
+        Assert.Equal(wind, clock.WindSpeedTarget);
+    }
+
+    [Fact]
+    public void Current_wind_eases_toward_the_source_target_before_time_advances()
+    {
+        var clock = new RuntimeWorldClock(0d, true, default, 0d, 1);
+        clock.SetWindSpeedTarget(.1f);
+
+        clock.Tick();
+
+        Assert.Equal(.00045f, clock.WindSpeedCurrent, 7);
+        Assert.Equal(.1f, clock.WindSpeedTarget);
+        Assert.Equal(1d, clock.Time);
     }
 
     [Fact]

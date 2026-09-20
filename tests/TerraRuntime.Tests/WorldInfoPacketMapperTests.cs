@@ -8,6 +8,18 @@ namespace TerraRuntime.Tests;
 public sealed class WorldInfoPacketMapperTests
 {
     [Fact]
+    public void Live_runtime_wind_target_overrides_stale_persisted_world_info()
+    {
+        var header = new WorldFileHeader("wind", "seed", 1, Guid.Empty, 1, 0, 67_200, 0, 19_200, new(4200, 1200));
+        var state = new WorldFileRuntimeMetadata { WindSpeed = -.15f };
+        var runtime = new WorldInfoRuntimeState(0, true, 0, false, false) { WindSpeedTarget = .4f };
+
+        WorldInfo packet = WorldInfoPacketMapper.Create(header, state, runtime: runtime);
+
+        Assert.Equal(.4f, packet.WindSpeedSet);
+    }
+
+    [Fact]
     public void Maps_saved_and_transient_world_state_to_verified_protocol_326_bits()
     {
         Guid uniqueId = Guid.Parse("00112233-4455-6677-8899-aabbccddeeff");
