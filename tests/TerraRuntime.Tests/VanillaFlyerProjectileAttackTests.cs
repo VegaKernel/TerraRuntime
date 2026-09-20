@@ -808,7 +808,11 @@ public sealed class VanillaFlyerProjectileAttackTests
             PositionX = 100f,
             PositionY = 150f,
             Ai = new NpcAiState(3f, 0f, 0f, 0f),
-            Simulation = CreateNpc(VanillaNpcIds.Retinazer, 0f).Simulation with { LocalAi = new NpcAiState(0f, 180f, 0f, 0f) }
+            Simulation = CreateNpc(VanillaNpcIds.Retinazer, 0f).Simulation with
+            {
+                LocalAi = new NpcAiState(0f, 180f, 0f, 0f),
+                HitboxOverride = new NpcHitboxDimensions(200, 300)
+            }
         };
 
         Assert.True(stepper.TryStepState(in retinazer, out NpcStateUpdate next));
@@ -816,15 +820,15 @@ public sealed class VanillaFlyerProjectileAttackTests
         Assert.Equal(1, stepper.PlanProjectileSpawns(in retinazer, in next, intents));
         Assert.Equal(VanillaProjectileIds.RetinazerDeathLaser, intents[0].Type);
         Assert.Equal(25, intents[0].Damage);
-        float dx = target.CenterX - 150f;
-        float dy = target.CenterY - 205f;
+        float dx = target.CenterX - 200f;
+        float dy = target.CenterY - 300f;
         float distance = MathF.Sqrt(dx * dx + dy * dy);
         float velocityX = dx / distance * 8.5f;
         float velocityY = dy / distance * 8.5f;
         Assert.Equal(velocityX, intents[0].VelocityX, 5);
         Assert.Equal(velocityY, intents[0].VelocityY, 5);
-        Assert.Equal(150f + velocityX * 15f, intents[0].PositionX, 5);
-        Assert.Equal(205f + velocityY * 15f, intents[0].PositionY, 5);
+        Assert.Equal(200f + velocityX * 15f, intents[0].PositionX, 5);
+        Assert.Equal(300f + velocityY * 15f, intents[0].PositionY, 5);
     }
 
     [Fact]

@@ -1698,7 +1698,10 @@ public sealed class VanillaNpcTargetingAiStepper :
         }
         else return 0;
         if (!fire) return 0;
-        float cx = proposed.PositionX + 50f, cy = proposed.PositionY + 55f;
+        if (!VanillaNpcDefinitionCatalog.TryGet(source.TypeIdentity, source.NetIdentity, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox))
+            return 0;
+        float cx = source.PositionX + hitbox.Width * .5f, cy = source.PositionY + hitbox.Height * .5f;
         float dx = target.CenterX - cx, dy = target.CenterY - cy;
         float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
         float vx = dx / d * speed;
