@@ -2339,7 +2339,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         }
         if (state == 6 && timer < 180f && ((int)timer % 60) == 0)
         {
-            int requested = phaseTwo ? 8 : 6;
+            // AI_120 state 6 takes its Sun Dance count from Expert/rage mode, independently of phase two.
+            int requested = expertCadence ? 8 : 6;
             if (destination.Length < requested) return destination.Length + 1;
             int wave = (int)timer / 60;
             for (int i = 0; i < requested; i++)

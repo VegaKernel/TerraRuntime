@@ -273,6 +273,8 @@ Empress of Light's admitted `AI_120` planner retains the source preparation retr
 
 State 5 Lasting Rainbow also follows the source $13$-projectile fan: its random phase uses the shared NPC random stream, each bearing starts from `UnitY` rotated by $+90^\circ$, and each spawn origin is offset by $30\,\text{pixels}$ along the corresponding perpendicular.
 
+State 6 Sun Dance emits six rays in Classic and eight in Expert or daytime rage; this count is independent of phase two.
+
 ## 16. Trusted-host NPC actors
 
 `INpcActorOperations` lets a trusted host acquire a lease over an existing runtime NPC and submit semantic `NpcActorIntent`.

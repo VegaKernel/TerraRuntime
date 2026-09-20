@@ -755,6 +755,20 @@ public sealed class LateHardmodeBossParityTests
         Assert.Equal(50, intents[0].Damage);
     }
 
+    [Theory]
+    [InlineData(false, 1f, 6)]
+    [InlineData(true, 0f, 8)]
+    public void Empress_sun_dance_count_uses_expert_or_rage_not_phase_two(bool expertMode, float phase, int expectedCount)
+    {
+        var stepper = CreateStepper(dayTime: false);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: expertMode);
+        NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(6f, 0f, 0f, phase), life: 70_000);
+        NpcStateUpdate proposed = Proposed(in empress, empress.Ai);
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[8];
+
+        Assert.Equal(expectedCount, stepper.PlanProjectileSpawns(in empress, in proposed, intents));
+    }
+
     [Fact]
     public void Empress_lasting_rainbow_uses_source_counterclockwise_origin_and_bearing()
     {
