@@ -989,20 +989,70 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
             context.TryFindNpcPeer((byte)slot, out part) && part.TypeIdentity == type;
     }
 
-    private static bool TryEye(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, out NpcStateUpdate next)
+    private bool TryEye(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, out NpcStateUpdate next)
     {
+        // AI_081 performs this sound roll before validating its core link. Dedicated servers
+        // suppress the sound itself, not the shared-random consumption.
+        if (random.NextInt32(0, 420) == 0)
+            _ = random.NextInt32(100, 101);
         if (!TryRoot(in npc, context, out NpcSnapshot root))
             return RetireOrphan(in npc, out next);
-        ushort target = root.Target;
-        if (target >= byte.MaxValue || !context.TryFindCandidate((byte)target, out VanillaNpcTargetCandidate player))
-        { next = default; return false; }
         NpcAiState ai = AdvanceEyeAttackClock(npc.Ai);
-        float angle = (npc.Handle.Slot % 3) * 2.0943952f + ai.Ai1 * .012f;
-        float desiredX = player.CenterX + MathF.Cos(angle) * 320f;
-        float desiredY = player.CenterY - 180f + MathF.Sin(angle) * 180f;
-        float vx = npc.VelocityX, vy = npc.VelocityY;
-        LateBossMath.FlyToward(npc.PositionX + 30f, npc.PositionY + 30f, desiredX, desiredY, 12f, .45f, ref vx, ref vy);
-        NpcSimulationState sim = npc.Simulation with { NoGravity = true, NoTileCollide = true, DontTakeDamage = true, JustHit = false };
+        ushort target = npc.Target;
+        if (ai.Ai0 is 0f or -2f &&
+            context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh selected) &&
+            selected.HasTarget)
+        {
+            target = selected.Target;
+        }
+
+        if (target >= byte.MaxValue || !context.TryFindCandidate((byte)target, out VanillaNpcTargetCandidate player))
+        {
+            next = default;
+            return false;
+        }
+
+        float vx = npc.VelocityX;
+        float vy = npc.VelocityY;
+        NpcAiState local = npc.Simulation.LocalAi;
+        if (ai.Ai0 is 0f or -2f)
+        {
+            // AI_081 state 0 (and a newly retired eye while its attack table has not reached
+            // its next zero entry) follows the player 200 pixels above their centre. This is
+            // not the core-orbit motion used by the old approximation.
+            const float centerOffset = 30f;
+            float centerX = npc.PositionX + centerOffset;
+            float centerY = npc.PositionY + centerOffset;
+            float aimX = player.CenterX + player.VelocityX * 20f - centerX;
+            float aimY = player.CenterY + player.VelocityY * 20f - centerY;
+            local = local with
+            {
+                Ai0 = VanillaMoonLordHandBehavior.AngleLerp(local.Ai0, MathF.Atan2(aimY, aimX)),
+                Ai1 = MathF.Min(.7f, local.Ai1 + .05f),
+                Ai2 = local.Ai2 + (1f - local.Ai2) * .2f
+            };
+
+            float desiredX = player.CenterX - centerX;
+            float desiredY = player.CenterY - centerY - 200f;
+            float length = MathF.Sqrt(desiredX * desiredX + desiredY * desiredY);
+            if (length > 0f && float.IsFinite(length))
+            {
+                float inverse = 1f / length;
+                desiredX *= inverse * 24f;
+                desiredY *= inverse * 24f;
+                vx = (vx * 29f + desiredX) / 30f;
+                vy = (vy * 29f + desiredY) / 30f;
+            }
+        }
+
+        NpcSimulationState sim = npc.Simulation with
+        {
+            LocalAi = local,
+            NoGravity = true,
+            NoTileCollide = true,
+            DontTakeDamage = true,
+            JustHit = false
+        };
         next = LateBossMath.Build(in npc, vx, vy, target, in ai, in sim);
         return true;
     }
@@ -1013,7 +1063,10 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         if (!float.IsFinite(timer) || timer >= 1200f || timer < 0f)
             timer = 0f;
         int state = ResolveEyeAttackState((int)timer);
-        return before with { Ai0 = state, Ai1 = timer };
+        // AI_081 preserves the retired marker through non-zero attack-table entries. The
+        // marker becomes state 0 only when the table naturally reaches its next hover window.
+        float nextState = before.Ai0 == -2f && state != 0 ? -2f : state;
+        return before with { Ai0 = nextState, Ai1 = timer };
     }
 
     private static int ResolveEyeAttackState(int timer)

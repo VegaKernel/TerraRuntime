@@ -103,6 +103,10 @@ An additional regression retains the same head, local state, shared random strea
 
 Full continuous encounter behavior, Good World boulders, Moon Leech AI/buff/healing-blob interactions, all multiplayer targeting arrangements, retired visual rotation and True Eye attacks remain open.
 
+## True Eye hover correction
+
+The ordinary `AI_081` hover window now reacquires the closest living player every tick. It turns the pupil toward that player's 20-tick velocity prediction, opens it toward `0.7`, and blends velocity one thirtieth of the way toward the point 200 pixels above the player at speed 24. This replaces the former synthetic orbit around the core. A retired True Eye preserves `ai[0] = -2` through non-zero attack-table entries and returns to state `0` only at the next hover entry. The shared NPC random stream also consumes AI_081's leading sound roll before validating the core link. `MoonLordFreeEyeTests` covers the steering, target handoff, random draw and retired-marker boundary. Remaining True Eye attack states, projectile releases, neighbouring-eye separation and complete encounter traces remain open.
+
 ## Moon Leech implementation in progress
 
 The working implementation includes style-85 movement, the return transition on update 330 or loss of the addressed player, head validation, contact tracking and destruction near the returning mouth. A retained 160-case original-server fixture verifies exact AI/local state, velocities and destruction decisions; delaying the return by one update fails 14 cases. Its expanded SHA256 is `460000cef7d10aa92dcd7491e7baaee790c5a3b7ec358419b4dbd23f55fd148b`.

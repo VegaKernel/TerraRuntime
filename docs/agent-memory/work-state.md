@@ -1918,3 +1918,7 @@ At the source state-1 boundary, AI_120 now turns an attack-table state 8 into st
 ### Empress intro opacity order - 2026-09-20
 
 AI_120 state 0 now advances its timer before assigning the source opacity. The first post-step alpha is 253 after the initial `.95` velocity damping, matching `NPC.Opacity`'s integer conversion. Release warnings-as-errors build and 121 focused `LateHardmodeBossParityTests` pass. Presentation effects, complete encounter trace parity and unmodeled projectile/network edge cases remain open.
+
+### True Eye hover correction - 2026-09-20
+
+AI_081 state 0 now reacquires the closest player and retains the source pupil, predicted aim and one-thirtieth velocity blend toward the point 200 pixels above that player. A retired True Eye remains in `ai[0] = -2` until the attack table next reaches state 0; its leading sound RNG roll also precedes core-link validation. Focused `MoonLordFreeEyeTests` cover target handoff, movement, RNG and the state boundary. Other True Eye attacks, projectile releases, peer separation and complete encounter traces remain open.

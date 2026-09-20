@@ -188,6 +188,8 @@ Head AI now creates the full80/100-body batch plus tail, preserves source Start/
 
 Headattachment,1200tickclock,pupil/eyelid/mouthstate,damagegateandDeathray/Bolt/addressedLeechcreation now independentlycovered3600+36originalcalls and3integrationcases. CoreheadspawnlocalAIownershipcollisionremoved. Immediatehead23sync,telegraphRNGand16x16MoonLeechdefinitionadded. Fullgoalstillopen: continuousbattle,GoodWorldboulders,AI85leechbuffs/healing401,TrueEyeandbroaderplayers. See pairedmoon-lord-death-sequence docs andwork-state acceptance.
 
+2026-09-20 True Eye hover: AI_081 state0 now reacquires the closest target, uses source pupil opening/20-tick aim prediction and one-thirtieth speed-24 steering to the point 200 pixels above that player. Retired eyes retain `ai[0]=-2` until the table next reaches zero, and the initial sound RNG draw is consumed before root validation. Focused `MoonLordFreeEyeTests` cover movement, target handoff, RNG and the retired-state boundary. Other True Eye attacks, projectile releases, peer separation and encounter traces remain open.
+
 
 ## Moon Lord targeting and release verification - 2026-09-15
 
