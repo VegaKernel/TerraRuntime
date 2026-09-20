@@ -755,6 +755,69 @@ public sealed class LateHardmodeBossParityTests
         Assert.Equal(50, intents[0].Damage);
     }
 
+    [Fact]
+    public void Empress_preparation_states_use_source_component_flight_and_reversal_impulse()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot ring = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(4f, 0f, 0f, 0f), life: 70_000) with
+        {
+            VelocityX = -4f,
+            VelocityY = 5f
+        };
+
+        Assert.True(stepper.TryStepState(in ring, out NpcStateUpdate ringNext));
+        // NPC.SimpleFlyMovement applies a second 0.5 impulse while reversing either component.
+        Assert.Equal(-3f, ringNext.VelocityX);
+        Assert.Equal(4f, ringNext.VelocityY);
+
+        NpcSnapshot sunDance = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(6f, 0f, 0f, 0f), life: 70_000);
+        Assert.True(stepper.TryStepState(in sunDance, out NpcStateUpdate sunDanceNext));
+        Assert.Equal(.35f, sunDanceNext.VelocityX, precision: 3);
+        Assert.Equal(-.35f, sunDanceNext.VelocityY, precision: 3);
+    }
+
+    [Fact]
+    public void Empress_preparation_flight_stops_inside_source_forty_pixel_radius()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 150f, 500f, 0, true, false, false, false)]);
+        NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(4f, 0f, 0f, 0f), life: 70_000) with
+        {
+            VelocityX = 3f,
+            VelocityY = -2f
+        };
+
+        Assert.True(stepper.TryStepState(in empress, out NpcStateUpdate next));
+        Assert.Equal(3f, next.VelocityX);
+        Assert.Equal(-2f, next.VelocityY);
+    }
+
+    [Fact]
+    public void Empress_spinning_rainbow_uses_source_upward_launch_and_damping()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(12f, 0f, 0f, 0f), life: 70_000) with
+        {
+            VelocityX = 7f,
+            VelocityY = 4f
+        };
+
+        Assert.True(stepper.TryStepState(in empress, out NpcStateUpdate next));
+        Assert.Equal(0f, next.VelocityX);
+        Assert.Equal(-11.4f, next.VelocityY, precision: 3);
+    }
+
+    [Fact]
+    public void Empress_dash_recovery_uses_source_lerp_toward_horizontal_exit()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(8f, 41f, 0f, 0f), life: 70_000);
+
+        Assert.True(stepper.TryStepState(in empress, out NpcStateUpdate next));
+        Assert.Equal(-2.5f, next.VelocityX, precision: 3);
+        Assert.Equal(0f, next.VelocityY);
+    }
+
     [Theory]
     [InlineData(4f, 0f, false, 120f)]
     [InlineData(5f, 0f, false, 72f)]

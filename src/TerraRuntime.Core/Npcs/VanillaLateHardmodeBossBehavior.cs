@@ -528,16 +528,75 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
                 vulnerable = timer is >= 6f and <= 40f;
                 if (timer is > 40f and <= 90f)
                     contactDamageMultiplier = 1.5f;
+                int direction = state == 8 ? -1 : 1;
+                if (timer <= 40f)
+                {
+                    // AI_120 uses the component-wise SimpleFlyMovement, not the generic steering helper.
+                    SimpleFlyTo(cx, cy, player.CenterX - direction * 550f, player.CenterY, 12f, 1f, ref vx, ref vy);
+                    if (timer == 40f)
+                    {
+                        vx *= .3f;
+                        vy *= .3f;
+                    }
+                }
+                else if (timer <= 90f)
+                {
+                    vx = vx * .95f + direction * 50f * .05f;
+                    vy *= .95f;
+                    if (timer == 90f)
+                    {
+                        vx *= .7f;
+                        vy *= .7f;
+                    }
+                }
+                else
+                {
+                    vx *= .92f;
+                    vy *= .92f;
+                }
+                timer += 1f;
             }
-            float accel = state is 8 or 9 ? 1f : .5f;
-            float speed = state is 8 or 9 ? 20f : 12f;
-            float offsetX = state == 8 ? 550f : state == 9 ? -550f : state == 6 ? -80f : state == 2 ? -150f : 0f;
-            float offsetY = state == 2 ? -250f : state == 6 ? -500f : state is 4 or 5 or 7 or 11 ? -350f : -250f;
-            if (state is not 10 and not 13)
-                LateBossMath.FlyToward(cx, cy, player.CenterX + offsetX, player.CenterY + offsetY, speed, accel, ref vx, ref vy);
-            if (state == 10) { vx *= .95f; vy *= .95f; }
-            if (state == 13) { vx *= .95f; vy -= .05f; }
-            timer += 1f;
+            else if (state == 12)
+            {
+                // The spinning-rainbow state begins with an upward launch then only damps it.
+                if (timer == 0f)
+                {
+                    vx = 0f;
+                    vy = -12f;
+                }
+                vx *= .95f;
+                vy *= .95f;
+                timer += 1f;
+            }
+            else
+            {
+                // These states all use NPC.SimpleFlyMovement if their source position is more than 40 pixels away.
+                // State 3 advances ai[1] before its movement, but it has no timer-dependent steering values.
+                if (state == 3)
+                    timer += 1f;
+
+                switch (state)
+                {
+                    case 2:
+                        SimpleFlyTo(cx, cy, player.CenterX - 150f, player.CenterY - 250f, 12f, .5f, ref vx, ref vy);
+                        break;
+                    case 3:
+                        SimpleFlyTo(cx, cy, player.CenterX + 150f, player.CenterY - 250f, 12f, .5f, ref vx, ref vy);
+                        break;
+                    case 4 or 5 or 11:
+                        SimpleFlyTo(cx, cy, player.CenterX, player.CenterY - 350f, 12f, .5f, ref vx, ref vy);
+                        break;
+                    case 6:
+                        SimpleFlyTo(cx, cy, player.CenterX - 80f, player.CenterY - 500f, 3.6f, .35f, ref vx, ref vy);
+                        break;
+                    case 7:
+                        SimpleFlyTo(cx, cy, player.CenterX, player.CenterY - 350f, 4.8f, .5f, ref vx, ref vy);
+                        break;
+                }
+
+                if (state != 3)
+                    timer += 1f;
+            }
             float duration = StateDuration(state, phaseTwo, expertCadence);
             if (timer >= duration) { state = state == 13 ? 13 : 1; timer = 0f; }
         }
@@ -583,6 +642,50 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
         float speed = baseSpeed + (distance / 6f - baseSpeed) * lerp;
         velocityX = dx / distance * speed;
         velocityY = dy / distance * speed;
+    }
+
+    private static void SimpleFlyTo(float centerX, float centerY, float targetX, float targetY, float desiredSpeed,
+        float moveSpeed, ref float velocityX, ref float velocityY)
+    {
+        float dx = targetX - centerX;
+        float dy = targetY - centerY;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        if (distance <= 40f)
+            return;
+
+        float scale = desiredSpeed / distance;
+        SimpleFlyMovement(dx * scale, dy * scale, moveSpeed, ref velocityX, ref velocityY);
+    }
+
+    // Exact NPC.SimpleFlyMovement from TerrariaServer 1.4.5.8: each component gets an extra impulse while reversing.
+    private static void SimpleFlyMovement(float desiredVelocityX, float desiredVelocityY, float moveSpeed,
+        ref float velocityX, ref float velocityY)
+    {
+        if (velocityX < desiredVelocityX)
+        {
+            velocityX += moveSpeed;
+            if (velocityX < 0f && desiredVelocityX > 0f)
+                velocityX += moveSpeed;
+        }
+        else if (velocityX > desiredVelocityX)
+        {
+            velocityX -= moveSpeed;
+            if (velocityX > 0f && desiredVelocityX < 0f)
+                velocityX -= moveSpeed;
+        }
+
+        if (velocityY < desiredVelocityY)
+        {
+            velocityY += moveSpeed;
+            if (velocityY < 0f && desiredVelocityY > 0f)
+                velocityY += moveSpeed;
+        }
+        else if (velocityY > desiredVelocityY)
+        {
+            velocityY -= moveSpeed;
+            if (velocityY > 0f && desiredVelocityY < 0f)
+                velocityY -= moveSpeed;
+        }
     }
 
     private static int SelectEmpressAttack(int cycle, bool phaseTwo, bool expert)

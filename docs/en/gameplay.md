@@ -281,7 +281,7 @@ State 11 direct lances reject a primary target beyond $2400\,\text{pixels}$. Sta
 
 Empress states 4, 5, 6 and 7 retain their source total durations: $120$, $72$, $300$ and Classic/Expert $260/280$ ticks before phase/Expert reductions.
 
-Empress movement state 4 uses the source $(0,-350)$ target offset; state 6 uses $(-80,-500)$.
+Empress movement now follows `NPC.SimpleFlyMovement`: its components receive the source second impulse while reversing, and the boss does not steer inside the source $40\,\text{pixel}$ radius. States 2 and 3 use $(-150,-250)$ and $(150,-250)$ target offsets; states 4, 5, 7 and 11 use $(0,-350)$. State 6 uses $(-80,-500)$ with $3.6$ desired speed and $0.35$ acceleration, while state 7 uses $4.8$ and $0.5$. Dash states 8/9 use the source 40-tick component flight, exit lerp toward $+/-50$ horizontal velocity, and their tick-40/tick-90 damping. State 12 launches upward at $(0,-12)$ and damps by $0.95$ per tick.
 
 ## 16. Trusted-host NPC actors
 
