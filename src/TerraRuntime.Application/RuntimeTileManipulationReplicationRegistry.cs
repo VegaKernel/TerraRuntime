@@ -231,6 +231,23 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
         return TryPublishFrameToAll(encoded);
     }
 
+    /// <summary>
+    /// Source MessageBuffer case 52 echoes a successful lock/unlock packet to every peer except the requester.
+    /// The requester already performed the same local action before sending its proposal.
+    /// </summary>
+    public bool TryPublishLockAndUnlock(
+        GameCommandSourceId excludedSource,
+        in TerrariaLockAndUnlockState state)
+    {
+        if (!TerrariaLockAndUnlockCodec.TryEncode(in state, out byte[] encoded))
+        {
+            Interlocked.Increment(ref encodeFailures);
+            return false;
+        }
+
+        return TryPublishFrame(excludedSource, encoded);
+    }
+
     public void PlayerSpawned(ConnectionHandle connection, in PlayerSpawnCommitRequest request)
     {
         if (connection.Player.Slot == request.ClaimedSlot &&

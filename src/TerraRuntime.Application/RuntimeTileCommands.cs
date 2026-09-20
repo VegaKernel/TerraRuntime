@@ -18,3 +18,8 @@ internal sealed record ClientTileManipulationRuntimeCommand(
 internal sealed record ClientLiquidRuntimeCommand(
     ConnectionHandle Connection,
     TerrariaLiquidState State) : RuntimeCommand;
+
+/// <summary>Connection-authenticated packet-52 action-2 proposal for the authoritative world thread.</summary>
+internal sealed record ClientTempleDoorUnlockRuntimeCommand(
+    ConnectionHandle Connection,
+    TerrariaLockAndUnlockState State) : RuntimeCommand;

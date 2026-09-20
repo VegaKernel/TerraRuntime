@@ -134,6 +134,11 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
             ApplyClientLiquidWakeup(liquid);
             return true;
         }
+        if (command is ClientTempleDoorUnlockRuntimeCommand templeDoorUnlock)
+        {
+            ApplyClientTempleDoorUnlock(templeDoorUnlock);
+            return true;
+        }
         if (command is not ClientTileManipulationRuntimeCommand tile)
             return false;
 
@@ -1013,6 +1018,125 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         float playerTileX = (player.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f) / 16f;
         float playerTileY = (player.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f) / 16f;
         return Math.Abs(playerTileX - tileX) <= 12f && Math.Abs(playerTileY - tileY) <= 12f;
+    }
+
+    /// <summary>
+    /// Server-owned counterpart to the Player.cs Temple Key branch. The client scans the ordinary inventory slots
+    /// in ascending order, consumes one key, calls WorldGen.UnlockDoor, then emits packet 52 action 2. We retain
+    /// that order under the authoritative writer after validating the full three-cell locked-door footprint, so a
+    /// raw packet cannot turn unrelated frame data into an unlocked temple door.
+    /// </summary>
+    private void ApplyClientTempleDoorUnlock(ClientTempleDoorUnlockRuntimeCommand command)
+    {
+        ClientManipulationRequests++;
+        if (tiles is null ||
+            command.State.Action != 2 ||
+            !command.Connection.IsAssigned ||
+            !players.TryGet(command.Connection, out _) ||
+            (uint)command.State.TileX >= (uint)tiles.Dimensions.WidthTiles ||
+            (uint)command.State.TileY >= (uint)tiles.Dimensions.HeightTiles ||
+            !TryResolveLockedTempleDoorTop(tiles, command.State.TileX, command.State.TileY, out int topY))
+        {
+            RejectedClientManipulations++;
+            return;
+        }
+
+        Span<RuntimePlayerInventoryItem> inventory =
+            stackalloc RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
+        if (!players.TryCopyInventory(command.Connection, inventory) ||
+            !TryFindTempleKey(
+                inventory[..VanillaPlayerItemSlotCatalog.OrdinaryInventoryCount],
+                out short keySlot,
+                out RuntimePlayerInventoryItem key))
+        {
+            RejectedClientManipulations++;
+            return;
+        }
+
+        RuntimePlayerInventoryItem remaining = key.Stack == 1
+            ? default
+            : key with { Stack = checked((short)(key.Stack - 1)) };
+        var inventoryMutation = new RuntimePlayerInventoryMutation(keySlot, remaining);
+        if (!players.TryCommitInventoryMutation(command.Connection, in inventoryMutation))
+        {
+            RejectedClientManipulations++;
+            return;
+        }
+
+        // WorldGen.UnlockDoor finds the row whose frameY is exactly 594, then adds 54 to all three rows.
+        // The footprint check above makes the post-commit mutation infallible and avoids a partial item/tile state.
+        for (int offset = 0; offset < 3; offset++)
+        {
+            WorldTile door = tiles.Get(command.State.TileX, topY + offset);
+            door.FrameY = checked((short)(door.FrameY + 54));
+            tiles.Set(command.State.TileX, topY + offset, in door);
+        }
+
+        AppliedClientManipulations++;
+        TerrariaLockAndUnlockState state = command.State;
+        replication?.TryPublishLockAndUnlock(command.Connection.Source, in state);
+        // NetMessage.SendTileSquare(-1, x, y, 2) treats x/y as the 2x2 square start because the centered
+        // overload subtracts (2 - 1) / 2, which is zero. Preserve the packet coordinate even when it names a
+        // lower door row, as the source does.
+        replication?.TryPublishTileSquareToAll(
+            tiles,
+            command.State.TileX,
+            command.State.TileY,
+            width: 2,
+            height: 2,
+            VanillaTileChangeType1458.None);
+    }
+
+    private static bool TryFindTempleKey(
+        ReadOnlySpan<RuntimePlayerInventoryItem> inventory,
+        out short slot,
+        out RuntimePlayerInventoryItem item)
+    {
+        for (short index = 0; index < inventory.Length; index++)
+        {
+            RuntimePlayerInventoryItem candidate = inventory[index];
+            if (candidate.ItemType != VanillaPlanteraItemIds.TempleKey || candidate.Stack <= 0)
+                continue;
+
+            slot = index;
+            item = candidate;
+            return true;
+        }
+
+        slot = default;
+        item = default;
+        return false;
+    }
+
+    private static bool TryResolveLockedTempleDoorTop(WorldTileStore tiles, int x, int y, out int topY)
+    {
+        topY = y;
+        WorldTile touched = tiles.Get(x, topY);
+        if (!touched.IsActive || touched.TileType != VanillaTileIds.ClosedDoor || touched.FrameY < 594)
+            return false;
+
+        while (touched.FrameY != 594)
+        {
+            topY--;
+            if (topY <= 0)
+                return false;
+
+            touched = tiles.Get(x, topY);
+            if (touched.FrameY < 594)
+                return false;
+        }
+
+        if (topY + 2 >= tiles.Dimensions.HeightTiles)
+            return false;
+
+        for (int offset = 0; offset < 3; offset++)
+        {
+            WorldTile row = tiles.Get(x, topY + offset);
+            if (!row.IsActive || row.TileType != VanillaTileIds.ClosedDoor || row.FrameY != 594 + offset * 18)
+                return false;
+        }
+
+        return true;
     }
 
     private void ApplyClientTileManipulation(ClientTileManipulationRuntimeCommand command)

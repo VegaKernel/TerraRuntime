@@ -46,6 +46,38 @@ public sealed class ProductionTileSinkCompositionTests
         Assert.Equal(ChestInteractionFrameStopReason.None, chestSink.StopReason);
     }
 
+    [Fact]
+    public void Production_chest_outer_sink_routes_packet52_action2_through_projectile_tile_composition()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(9052);
+        using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
+        var commands = new RecordingCommandIngress();
+        var gameplayIngress = new RuntimeProjectileNetworkIngress(commands);
+        var projectileSink = new ProjectileLifecycleFrameSink(
+            source,
+            bootstrap,
+            new PassthroughSink(),
+            gameplayIngress);
+        var chestSink = new ChestInteractionFrameSink(
+            source,
+            bootstrap,
+            projectileSink,
+            new AcceptingChestIngress());
+        var packet = new TerrariaLockAndUnlockState(Action: 2, TileX: 40, TileY: 50);
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, chestSink.OnFrame(Packet52(in packet)));
+
+        ClientTempleDoorUnlockRuntimeCommand command =
+            Assert.IsType<ClientTempleDoorUnlockRuntimeCommand>(commands.Command);
+        Assert.Equal(source, commands.Source);
+        Assert.Equal(source, command.Connection.Source);
+        Assert.Equal(bootstrap.AssignedPlayerHandle, command.Connection.Player);
+        Assert.Equal(packet, command.State);
+        Assert.Equal(TempleDoorUnlockFrameStopReason.None, projectileSink.TempleDoorUnlockStopReason);
+        Assert.Equal(ProjectileLifecycleFrameStopReason.None, projectileSink.StopReason);
+        Assert.Equal(ChestInteractionFrameStopReason.None, chestSink.StopReason);
+    }
+
 
     [Theory]
     [InlineData(3509, false)] // Copper Pickaxe
@@ -309,6 +341,12 @@ public sealed class ProductionTileSinkCompositionTests
         Assert.Equal(
             TerrariaTileManipulationEncodeResult.Encoded,
             TerrariaTileManipulationCodec.TryEncode(in state, out byte[] encoded));
+        return Decode(encoded);
+    }
+
+    private static TerrariaFrame Packet52(in TerrariaLockAndUnlockState state)
+    {
+        Assert.True(TerrariaLockAndUnlockCodec.TryEncode(in state, out byte[] encoded));
         return Decode(encoded);
     }
 
