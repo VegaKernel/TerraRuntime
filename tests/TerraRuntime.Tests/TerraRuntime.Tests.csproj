@@ -123,6 +123,7 @@
   <ItemGroup><EmbeddedResource Include="Fixtures/moon-lord-head-retired-1458.json.gz" LogicalName="MoonLordHeadRetired1458" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/moon-lord-sphere-release-1458.json.gz" LogicalName="MoonLordSphereRelease1458" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/moon-lord-hand-targets-1458.json.gz" LogicalName="MoonLordHandTargets1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/moon-lord-hand-retired-1458.json.gz" LogicalName="MoonLordHandRetired1458" /></ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Fixtures/prime-melee-ai-1458.json.gz" LogicalName="PrimeMeleeAi1458" />
     <EmbeddedResource Include="Fixtures/prime-melee-parent-1458.json.gz" LogicalName="PrimeMeleeParent1458" />

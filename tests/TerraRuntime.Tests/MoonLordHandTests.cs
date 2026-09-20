@@ -17,6 +17,7 @@ public sealed class MoonLordHandTests
     private static readonly JsonElement[] ReferenceCases = ReadCases("MoonLordHands1458", "d3a5ecf7d781ab4b548372eaf621a3f606db9de347d1905cac0bed9607898fc1");
     private static readonly JsonElement[] TargetCases = ReadCases("MoonLordHandTargets1458", "6bd1013cf7860a9b035e01d8f61a533b1048fad989f42839f90e9769eced23e3");
     private static readonly JsonElement[] ReleaseCases = ReadCases("MoonLordSphereRelease1458", "3e6440a9b0292eabeab9db6738f80b07dc8096ca63a2a85009609548cdc03aef");
+    private static readonly JsonElement[] RetiredCases = ReadCases("MoonLordHandRetired1458", "e3d85bf8fe4387551d40cb0b79c9a1d71977f1b2ff7aeefcd41c3768466d8e94");
     public static TheoryData<int> Releases => new(Enumerable.Range(0, 48));
 
     [Theory]
@@ -35,12 +36,18 @@ public sealed class MoonLordHandTests
     [MemberData(nameof(Cases))]
     public void State_and_projectiles_match_original_hand_AI(int index) => Verify(ReferenceCases[index]);
 
-    private static void Verify(JsonElement expected, bool release = false)
+    public static TheoryData<int> Retired => new(Enumerable.Range(0, 64));
+
+    [Theory]
+    [MemberData(nameof(Retired))]
+    public void Retired_state_matches_original_hand_AI(int index) => Verify(RetiredCases[index], retired: true);
+
+    private static void Verify(JsonElement expected, bool release = false, bool retired = false)
     {
         var npcs = new RuntimeNpcStore();
         Spawn(npcs, VanillaNpcIds.MoonLordCore, 1000, 1000, 0, 0, default, new NpcAiState(0, 0, 0, 1), 0);
         NpcSnapshot hand = Spawn(npcs, VanillaNpcIds.MoonLordHand, 900, 900, 2, -3,
-            new NpcAiState(0, expected.GetProperty("tick").GetSingle(), expected.GetProperty("side").GetSingle(), 0),
+            new NpcAiState(retired ? -2f : 0f, expected.GetProperty("tick").GetSingle(), expected.GetProperty("side").GetSingle(), 0),
             new NpcAiState(.2f, .3f, 0, 0), 0);
         var start = new NpcStateUpdate(hand.Type, hand.NetId, 900, 900, 2, -3, 0, hand.Ai,
             hand.Simulation with { FrameCounter = expected.GetProperty("frame").GetDouble(), DamageOverride = 0 });

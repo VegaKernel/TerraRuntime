@@ -127,6 +127,13 @@ def main() -> None:
         body = method(source, name)
         require(body, r"Main\.npc\[\(int\)ai\[3\]\]\.type != 398", name + " exact owner slot")
         require(body, r"life = 0;.*?active = false", name + " orphan removal")
+    hands = method(source, "AI_078_MoonLordHands")
+    retired_hand = hands[hands.index("if (ai[0] == -2f)"):hands.index("else if (ai[0] == 0f)")]
+    require(retired_hand, r"damage = 0;.*?dontTakeDamage = true", "AI78 retired combat gate")
+    require(retired_hand, r"ai\[1\](?: \+= 1f|\+\+)", "AI78 retired clock advances")
+    require(retired_hand, r"if \(ai\[1\] >= 32f\).*?ai\[1\] = 0f", "AI78 retired clock wraps at 32")
+    require(retired_hand, r"if \(ai\[1\] < 0f\).*?ai\[1\] = 0f", "AI78 retired negative clock resets")
+    require(retired_hand, r"new Vector2\(350f \* num, -100f\).*?SimpleFlyMovement\(vector2, 0\.3f\).*?Vector2\.Lerp", "AI78 retired core attachment")
     leech = ai_style_branch(source, 82, 83)
     require(leech, r"float num1212 = 90f", "AI82 ninety-tick return clock")
     require(leech, r"Vector2 vector150 = new Vector2\(0f, 216f\)", "AI82 head-mouth offset")
