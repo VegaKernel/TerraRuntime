@@ -337,6 +337,7 @@ public sealed class VanillaFlyerProjectileAttackTests
     public void Targeting_stepper_plans_mechdusa_spazmatism_flame_on_source_counter_wrap()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetProjectileEnvironment(new FixedEnvironment(true));
         stepper.SetCandidates([Target(900f, 800f)]);
         stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
         NpcSnapshot prime = CreateNpc(VanillaNpcIds.SkeletronPrime, 0f) with
@@ -357,6 +358,97 @@ public sealed class VanillaFlyerProjectileAttackTests
         Assert.Equal(1, stepper.PlanProjectileSpawns(in spazmatism, in next, intents));
         Assert.Equal(VanillaProjectileIds.SpazmatismCursedFlame, intents[0].Type);
         Assert.Equal(25, intents[0].Damage);
+    }
+
+    [Fact]
+    public void Targeting_stepper_keeps_late_twin_attack_counters_while_line_of_fire_is_blocked()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetProjectileEnvironment(new FixedEnvironment(false));
+        stepper.SetCandidates([Target(900f, 800f)]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot retinazer = CreateNpc(VanillaNpcIds.Retinazer, 0f) with
+        {
+            Ai = new NpcAiState(3f, 0f, 0f, 0f),
+            Simulation = CreateNpc(VanillaNpcIds.Retinazer, 0f).Simulation with { LocalAi = new NpcAiState(0f, 180f, 0f, 0f) }
+        };
+        NpcSnapshot spazmatism = CreateNpc(VanillaNpcIds.Spazmatism, 0f) with
+        {
+            Ai = new NpcAiState(3f, 0f, 0f, 0f),
+            Simulation = CreateNpc(VanillaNpcIds.Spazmatism, 0f).Simulation with { LocalAi = new NpcAiState(0f, 8f, 0f, 0f) }
+        };
+
+        Assert.True(stepper.TryStepState(in retinazer, out NpcStateUpdate retNext));
+        Assert.True(stepper.TryStepState(in spazmatism, out NpcStateUpdate spazNext));
+        Assert.Equal(181f, retNext.Simulation.LocalAi.Ai1);
+        Assert.Equal(8f, spazNext.Simulation.LocalAi.Ai1);
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
+        Assert.Equal(0, stepper.PlanProjectileSpawns(in retinazer, in retNext, intents));
+        Assert.Equal(0, stepper.PlanProjectileSpawns(in spazmatism, in spazNext, intents));
+    }
+
+    [Fact]
+    public void Targeting_stepper_plans_late_retinazer_laser_without_random_perturbation()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetProjectileEnvironment(new FixedEnvironment(true));
+        VanillaNpcTargetCandidate target = Target(900f, 800f);
+        stepper.SetCandidates([target]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot retinazer = CreateNpc(VanillaNpcIds.Retinazer, 0f) with
+        {
+            PositionX = 100f,
+            PositionY = 150f,
+            Ai = new NpcAiState(3f, 0f, 0f, 0f),
+            Simulation = CreateNpc(VanillaNpcIds.Retinazer, 0f).Simulation with { LocalAi = new NpcAiState(0f, 180f, 0f, 0f) }
+        };
+
+        Assert.True(stepper.TryStepState(in retinazer, out NpcStateUpdate next));
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
+        Assert.Equal(1, stepper.PlanProjectileSpawns(in retinazer, in next, intents));
+        Assert.Equal(VanillaProjectileIds.RetinazerDeathLaser, intents[0].Type);
+        Assert.Equal(25, intents[0].Damage);
+        float dx = target.CenterX - 150f;
+        float dy = target.CenterY - 205f;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        float velocityX = dx / distance * 8.5f;
+        float velocityY = dy / distance * 8.5f;
+        Assert.Equal(velocityX, intents[0].VelocityX, 5);
+        Assert.Equal(velocityY, intents[0].VelocityY, 5);
+        Assert.Equal(150f + velocityX * 15f, intents[0].PositionX, 5);
+        Assert.Equal(205f + velocityY * 15f, intents[0].PositionY, 5);
+    }
+
+    [Fact]
+    public void Targeting_stepper_plans_mechdusa_late_spazmatism_flame_from_rotation()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetProjectileEnvironment(new FixedEnvironment(true));
+        stepper.SetCandidates([Target(900f, 800f)]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot prime = CreateNpc(VanillaNpcIds.SkeletronPrime, 0f) with
+        {
+            Handle = new NpcHandle(100, new NpcGeneration(1)),
+            Ai = new NpcAiState(0f, 0f, 0f, 100f)
+        };
+        NpcSnapshot spazmatism = CreateNpc(VanillaNpcIds.Spazmatism, 0f) with
+        {
+            Handle = new NpcHandle(4, new NpcGeneration(1)),
+            Ai = new NpcAiState(3f, 0f, 0f, 0f),
+            Simulation = CreateNpc(VanillaNpcIds.Spazmatism, 0f).Simulation with { LocalAi = new NpcAiState(0f, 8f, 0f, 0f) }
+        };
+        stepper.SetNpcPeers([prime, spazmatism]);
+
+        Assert.True(stepper.TryStepState(in spazmatism, out NpcStateUpdate next));
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
+        Assert.Equal(1, stepper.PlanProjectileSpawns(in spazmatism, in next, intents));
+        Assert.Equal(VanillaProjectileIds.SpazmatismEyeFire, intents[0].Type);
+        float expectedVelocityX = MathF.Cos(next.Simulation.Rotation!.Value + MathF.PI * .5f) * 6f + next.VelocityX * .5f;
+        float expectedVelocityY = MathF.Sin(next.Simulation.Rotation!.Value + MathF.PI * .5f) * 6f + next.VelocityY * .5f;
+        Assert.Equal(expectedVelocityX, intents[0].VelocityX, 5);
+        Assert.Equal(expectedVelocityY, intents[0].VelocityY, 5);
+        Assert.Equal(50f - expectedVelocityX * 3f, intents[0].PositionX, 5);
+        Assert.Equal(55f - expectedVelocityY * 3f, intents[0].PositionY, 5);
     }
 
     [Fact]

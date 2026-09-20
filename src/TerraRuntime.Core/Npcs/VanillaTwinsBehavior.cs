@@ -12,8 +12,12 @@ namespace TerraRuntime.Core.Npcs;
 internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
     private readonly bool _spazmatism;
+    private IVanillaNpcProjectileEnvironment? _projectileEnvironment;
 
     public VanillaTwinNpcBehaviorStrategy(bool spazmatism) => _spazmatism = spazmatism;
+
+    public void SetProjectileEnvironment(IVanillaNpcProjectileEnvironment environment) =>
+        _projectileEnvironment = environment ?? throw new ArgumentNullException(nameof(environment));
 
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
         INpcAiStateStepper inner, out NpcStateUpdate next)
@@ -99,9 +103,14 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         else
         {
             if (_spazmatism)
-                StepSpazPhaseTwo(in npc, in definition, in target, context, life, lifeMax, mechQueenUp, queenCenterX, queenCenterY, queenVelocityX, ref ai, ref local, ref vx, ref vy);
+                StepSpazPhaseTwo(in npc, in definition, in target, context, life, lifeMax, mechQueenUp, queenCenterX, queenCenterY, queenVelocityX, CanHit(in npc, in definition, in target), ref ai, ref local, ref vx, ref vy);
             else
-                StepRetPhaseTwo(in npc, in definition, in target, context, life, lifeMax, mechQueenUp, queenCenterX, queenCenterY, queenVelocityX, ref ai, ref local, ref vx, ref vy);
+                StepRetPhaseTwo(in npc, in definition, in target, context, life, lifeMax, mechQueenUp, queenCenterX, queenCenterY, queenVelocityX, CanHit(in npc, in definition, in target), ref ai, ref local, ref vx, ref vy);
+
+            // AI_030 assigns the late laser-facing angle directly after movement. AI_031 keeps its
+            // target-stepped orientation while hovering, which its Mechdusa flame uses as its bearing.
+            if (!_spazmatism)
+                rotation = MathF.Atan2(target.CenterY - (npc.PositionY + 55f), target.CenterX - (npc.PositionX + 50f)) - 1.57f;
         }
 
         int damage = ai.Ai0 >= 3f ? (int)(definition.Damage * 1.5) : definition.Damage;
@@ -275,7 +284,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
     }
 
     private static void StepRetPhaseTwo(in NpcSnapshot npc, in VanillaNpcDefinition definition, in VanillaNpcTargetCandidate target, VanillaNpcBehaviorContext context,
-        int life, int lifeMax, bool mechQueenUp, float queenCenterX, float queenCenterY, float queenVelocityX, ref NpcAiState ai, ref NpcAiState local, ref float vx, ref float vy)
+        int life, int lifeMax, bool mechQueenUp, float queenCenterX, float queenCenterY, float queenVelocityX, bool canHit, ref NpcAiState ai, ref NpcAiState local, ref float vx, ref float vy)
     {
         float cx = npc.PositionX + 50f, cy = npc.PositionY + 55f;
         if (ai.Ai1 == 0f)
@@ -295,7 +304,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
                 ai = ai with { Ai2 = timer };
             }
             float shots = local.Ai1 + 1f + (life < lifeMax*.75f?1f:0f)+(life<lifeMax*.5f?1f:0f)+(life<lifeMax*.25f?1f:0f)+(life<lifeMax*.1f?2f:0f);
-            if (shots > 180f) shots = 0f;
+            if (shots > 180f && canHit) shots = 0f;
             local = local with { Ai1 = shots };
         }
         else
@@ -306,7 +315,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             if (context.GoodWorld) { speed *= 1.15f; accel *= 1.15f; }
             ApproachVector(target.CenterX + side * 340f - cx, target.CenterY - cy, speed, accel, ref vx, ref vy);
             float shots = local.Ai1 + 1f + (life<lifeMax*.75f?.5f:0f)+(life<lifeMax*.5f?.75f:0f)+(life<lifeMax*.25f?1f:0f)+(life<lifeMax*.1f?1.5f:0f)+(context.ExpertMode?1.5f:0f);
-            if (shots > 60f) shots = 0f;
+            if (shots > 60f && canHit) shots = 0f;
             local = local with { Ai1 = shots };
             float timer = ai.Ai2 + 1f;
             if (timer >= 180f) ai = ai with { Ai1 = 0f, Ai2 = 0f, Ai3 = 0f };
@@ -342,7 +351,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
     }
 
     private static void StepSpazPhaseTwo(in NpcSnapshot npc, in VanillaNpcDefinition definition, in VanillaNpcTargetCandidate target, VanillaNpcBehaviorContext context,
-        int life, int lifeMax, bool mechQueenUp, float queenCenterX, float queenCenterY, float queenVelocityX, ref NpcAiState ai, ref NpcAiState local, ref float vx, ref float vy)
+        int life, int lifeMax, bool mechQueenUp, float queenCenterX, float queenCenterY, float queenVelocityX, bool canHit, ref NpcAiState ai, ref NpcAiState local, ref float vx, ref float vy)
     {
         float cx=npc.PositionX+50f,cy=npc.PositionY+55f;
         if(ai.Ai1==0f)
@@ -358,7 +367,12 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
                 if(context.GoodWorld){speed*=1.15f;acc*=1.15f;} ApproachVector(dx,dy,speed,acc,ref vx,ref vy);
                 float timer=ai.Ai2+1f;if(timer>=400f){timer=0f;ai=ai with{Ai1=1f,Ai3=0f};}ai=ai with{Ai2=timer};
             }
-            float shots=local.Ai1+1f+(life<lifeMax*.75f?1f:0f)+(life<lifeMax*.5f?1f:0f)+(life<lifeMax*.25f?1f:0f)+(life<lifeMax*.1f?2f:0f);if(shots>8f)shots=0f;local=local with{Ai1=shots};
+            if (canHit)
+            {
+                float shots=local.Ai1+1f+(life<lifeMax*.75f?1f:0f)+(life<lifeMax*.5f?1f:0f)+(life<lifeMax*.25f?1f:0f)+(life<lifeMax*.1f?2f:0f);
+                if(shots>8f)shots=0f;
+                local=local with{Ai1=shots};
+            }
         }
         else if(ai.Ai1==1f)
         {float speed=context.ExpertMode?16.5f:14f;SetToward(cx,cy,target.CenterX,target.CenterY,speed,ref vx,ref vy);ai=ai with{Ai1=2f};}
@@ -407,6 +421,16 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
     private static void ApproachVector(float dx,float dy,float speed,float accel,ref float vx,ref float vy)
     {float d=MathF.Max(.001f,MathF.Sqrt(dx*dx+dy*dy));float tx=dx/d*speed,ty=dy/d*speed;Approach(ref vx,tx,accel);Approach(ref vy,ty,accel);if(vx<0&&tx>0)Approach(ref vx,tx,accel);else if(vx>0&&tx<0)Approach(ref vx,tx,accel);if(vy<0&&ty>0)Approach(ref vy,ty,accel);else if(vy>0&&ty<0)Approach(ref vy,ty,accel);}
     private static void Approach(ref float v,float d,float a){if(v<d)v=MathF.Min(v+a,d);else if(v>d)v=MathF.Max(v-a,d);}
+    private bool CanHit(in NpcSnapshot npc, in VanillaNpcDefinition definition, in VanillaNpcTargetCandidate target) =>
+        _projectileEnvironment?.CanHit(
+            npc.PositionX,
+            npc.PositionY,
+            definition.Width,
+            definition.Height,
+            target.CenterX - VanillaPlayerHitboxFacts.BaseWidth * .5f,
+            target.CenterY - VanillaPlayerHitboxFacts.BaseHeight * .5f,
+            (int)VanillaPlayerHitboxFacts.BaseWidth,
+            (int)VanillaPlayerHitboxFacts.BaseHeight) == true;
     private static float NormalizeRotation(float value)
     {
         if (value < 0f) return value + 6.283f;

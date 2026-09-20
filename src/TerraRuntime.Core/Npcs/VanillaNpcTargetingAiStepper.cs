@@ -183,6 +183,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         _flyer.SetProjectileEnvironment(environment);
         _bat.SetEnvironment(environment);
         _queenBee.SetProjectileEnvironment(environment);
+        _retinazer.SetProjectileEnvironment(environment);
+        _spazmatism.SetProjectileEnvironment(environment);
     }
 
     public void SetWorldConditions(
@@ -1686,8 +1688,12 @@ public sealed class VanillaNpcTargetingAiStepper :
         else if (source.Ai.Ai0 >= 3f && proposed.Ai.Ai0 >= 3f && source.Simulation.LocalAi.Ai1 > 0f && proposed.Simulation.LocalAi.Ai1 == 0f)
         {
             type = spaz ? VanillaProjectileIds.SpazmatismEyeFire : VanillaProjectileIds.RetinazerDeathLaser;
-            if (spaz) { speed = 6f; damage = 30; }
-            else { speed = source.Ai.Ai1 == 0f ? (_context.ExpertMode ? 10f : 8.5f) : 9f; damage = source.Ai.Ai1 == 0f ? 25 : 18; }
+            if (spaz) { speed = 6f; damage = _context.ExpertMode ? 27 : 30; }
+            else
+            {
+                speed = source.Ai.Ai1 == 0f ? (_context.ExpertMode ? 10f : 8.5f) : 9f;
+                damage = source.Ai.Ai1 == 0f ? (_context.ExpertMode ? 23 : 25) : (_context.ExpertMode ? 17 : 18);
+            }
             fire = true;
         }
         else return 0;
@@ -1695,13 +1701,54 @@ public sealed class VanillaNpcTargetingAiStepper :
         float cx = proposed.PositionX + 50f, cy = proposed.PositionY + 55f;
         float dx = target.CenterX - cx, dy = target.CenterY - cy;
         float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
-        float jitter = type == VanillaProjectileIds.WallOfFleshEyeLaser ? .08f : type == VanillaProjectileIds.SpazmatismEyeFire ? .01f : .05f;
-        float vx = dx/d*speed + _random.NextInt32(-40,41)*jitter;
-        float vy = dy/d*speed + _random.NextInt32(-40,41)*jitter;
-        if (spaz && type == VanillaProjectileIds.SpazmatismEyeFire) { vx += proposed.VelocityX*.5f; vy += proposed.VelocityY*.5f; }
-        float lead = type == VanillaProjectileIds.WallOfFleshEyeLaser || type == VanillaProjectileIds.RetinazerDeathLaser ? 15f : type == VanillaProjectileIds.SpazmatismCursedFlame ? 4f : -1f;
+        float vx = dx / d * speed;
+        float vy = dy / d * speed;
+        float lead;
+        if (type == VanillaProjectileIds.RetinazerDeathLaser)
+        {
+            // AI_030 late lasers have no random perturbation and start fifteen velocity units ahead.
+            lead = 15f;
+        }
+        else if (type == VanillaProjectileIds.SpazmatismEyeFire)
+        {
+            // AI_031 draws Y then X before applying its own velocity.  Keep the draw order even when
+            // Mechdusa replaces the result below, because Terraria consumes those random values first.
+            vy += _random.NextInt32(-40, 41) * .01f;
+            vx += _random.NextInt32(-40, 41) * .01f;
+            vx += proposed.VelocityX * .5f;
+            vy += proposed.VelocityY * .5f;
+            if (IsMechQueenUp())
+            {
+                float rotation = proposed.Simulation.Rotation ?? 0f;
+                vx = MathF.Cos(rotation + MathF.PI * .5f) * speed + proposed.VelocityX * .5f;
+                vy = MathF.Sin(rotation + MathF.PI * .5f) * speed + proposed.VelocityY * .5f;
+                lead = -3f;
+            }
+            else lead = -1f;
+        }
+        else
+        {
+            float jitter = type == VanillaProjectileIds.WallOfFleshEyeLaser ? .08f : .05f;
+            vx += _random.NextInt32(-40, 41) * jitter;
+            vy += _random.NextInt32(-40, 41) * jitter;
+            lead = type == VanillaProjectileIds.WallOfFleshEyeLaser ? 15f : 4f;
+        }
         destination[0] = new NpcAiProjectileIntent(type, cx + vx*lead, cy + vy*lead, vx, vy, damage, 0f);
         return 1;
+    }
+
+    private bool IsMechQueenUp()
+    {
+        Span<NpcSnapshot> primes = stackalloc NpcSnapshot[VanillaNpcSpawnRules.PhysicalSlotCount];
+        int count = _context.CopyNpcPeers(VanillaNpcIds.SkeletronPrime, primes);
+        for (int index = 0; index < count; index++)
+        {
+            NpcSnapshot prime = primes[index];
+            if (prime.Ai.Ai3 == prime.Handle.Slot)
+                return true;
+        }
+
+        return false;
     }
 
     private int PlanPlanteraSpawns(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
