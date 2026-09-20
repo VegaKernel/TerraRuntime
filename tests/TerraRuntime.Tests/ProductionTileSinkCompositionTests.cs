@@ -102,6 +102,30 @@ public sealed class ProductionTileSinkCompositionTests
         Assert.Equal(PlayerDoorToggleFrameStopReason.None, projectileSink.PlayerDoorToggleStopReason);
     }
 
+    [Fact]
+    public void Production_chest_outer_sink_routes_packet19_close_door_through_projectile_tile_composition()
+    {
+        GameCommandSourceId source = GameCommandSourceId.FromConnection(9020);
+        using PlayerBootstrapFrameSink bootstrap = CreatePlayingBootstrap(source);
+        var commands = new RecordingCommandIngress();
+        var gameplayIngress = new RuntimeProjectileNetworkIngress(commands);
+        var projectileSink = new ProjectileLifecycleFrameSink(source, bootstrap, new PassthroughSink(), gameplayIngress);
+        var chestSink = new ChestInteractionFrameSink(source, bootstrap, projectileSink, new AcceptingChestIngress());
+        var packet = new TerrariaDoorToggleState(
+            (byte)TerrariaDoorToggleAction.CloseDoor,
+            TileX: 40,
+            TileY: 50,
+            DirectionX: -1);
+
+        Assert.Equal(TerrariaFrameSinkResult.Continue, chestSink.OnFrame(Packet19(in packet)));
+
+        ClientDoorCloseRuntimeCommand command = Assert.IsType<ClientDoorCloseRuntimeCommand>(commands.Command);
+        Assert.Equal(source, commands.Source);
+        Assert.Equal(bootstrap.AssignedPlayerHandle, command.Connection.Player);
+        Assert.Equal(packet, command.State);
+        Assert.Equal(PlayerDoorToggleFrameStopReason.None, projectileSink.PlayerDoorToggleStopReason);
+    }
+
 
     [Theory]
     [InlineData(3509, false)] // Copper Pickaxe

@@ -71,6 +71,34 @@ public sealed class VanillaWorldGroundFighterDoorOpeningServiceTests
     }
 
     [Fact]
+    public void Forced_close_restores_source_column_with_one_random_draw_per_row()
+    {
+        WorldTileStore tiles = CreateWorld();
+        PlaceClosedDoor(tiles, 10, 10, frameX: 54, frameYBase: 108);
+        var random = new SequenceDoorCloseRandom(2, 1, 0);
+        var service = new VanillaWorldGroundFighterDoorOpeningService(tiles, doorCloseRandom: random);
+        var open = new VanillaGroundFighterDoorOpeningIntent(10, 11, 1, VanillaTileIds.ClosedDoor);
+
+        Assert.True(service.TryOpen(in open, out _));
+        Assert.True(service.TryCloseDoor(10, 11, out VanillaGroundFighterDoorOpeningMutation mutation));
+
+        Assert.Equal(VanillaGroundFighterDoorOpeningKind.Door, mutation.Kind);
+        Assert.Equal(6, mutation.ChangedTiles);
+        Assert.Equal(3, random.Calls);
+        Assert.Equal(new[] { 2, 1, 0 }, random.RequestedValues);
+        for (int row = 0; row < 3; row++)
+        {
+            WorldTile retained = tiles.Get(10, 10 + row);
+            WorldTile cleared = tiles.Get(11, 10 + row);
+            Assert.Equal(VanillaTileIds.ClosedDoor, retained.TileType);
+            Assert.Equal((short)(90 - row * 18), retained.FrameX);
+            Assert.Equal((short)(108 + row * 18), retained.FrameY);
+            Assert.False(cleared.IsActive);
+            Assert.Equal(VanillaTileIds.OpenDoor, cleared.TileType);
+        }
+    }
+
+    [Fact]
     public void Locked_dungeon_door_is_rejected_without_mutation()
     {
         WorldTileStore tiles = CreateWorld();
@@ -311,5 +339,21 @@ public sealed class VanillaWorldGroundFighterDoorOpeningServiceTests
     private sealed class SelectiveOccupancyProbe(int blockedY) : IVanillaTallGateOccupancyProbe
     {
         public bool IsActorFree(int tileX, int tileY) => tileY != blockedY;
+    }
+
+    private sealed class SequenceDoorCloseRandom(params int[] values) : IVanillaDoorCloseRandom1458
+    {
+        private readonly Queue<int> values = new(values);
+
+        public int Calls { get; private set; }
+        public List<int> RequestedValues { get; } = [];
+
+        public int NextClosedDoorFrameColumn()
+        {
+            Calls++;
+            int value = values.Dequeue();
+            RequestedValues.Add(value);
+            return value;
+        }
     }
 }

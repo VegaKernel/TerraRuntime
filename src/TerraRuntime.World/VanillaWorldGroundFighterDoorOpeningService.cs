@@ -52,13 +52,16 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
 
     private readonly WorldTileStore tiles;
     private readonly IVanillaTallGateOccupancyProbe? tallGateOccupancy;
+    private readonly IVanillaDoorCloseRandom1458? doorCloseRandom;
 
     public VanillaWorldGroundFighterDoorOpeningService(
         WorldTileStore tiles,
-        IVanillaTallGateOccupancyProbe? tallGateOccupancy = null)
+        IVanillaTallGateOccupancyProbe? tallGateOccupancy = null,
+        IVanillaDoorCloseRandom1458? doorCloseRandom = null)
     {
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
         this.tallGateOccupancy = tallGateOccupancy;
+        this.doorCloseRandom = doorCloseRandom;
     }
 
     public bool TryOpen(in VanillaGroundFighterDoorOpeningIntent intent) =>
@@ -85,6 +88,109 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
             return TryOpenTallGate(in intent, in touched, out mutation);
 
         return false;
+    }
+
+    /// <summary>
+    /// Source-shaped <c>WorldGen.CloseDoor(i, j, forced: true)</c> used by packet 19 action 1. The forced packet
+    /// path deliberately skips Collision.EmptyTile, but retains the exact 2x3 open-door validation and one
+    /// <c>genRand.Next(3)</c> draw for every row restored to the one-cell closed door.
+    /// </summary>
+    public bool TryCloseDoor(int tileX, int tileY, out VanillaGroundFighterDoorOpeningMutation mutation)
+    {
+        mutation = default;
+        if (doorCloseRandom is null || !Contains(tileX, tileY))
+            return false;
+
+        WorldTile touched = tiles.Get(tileX, tileY);
+        if (!touched.IsActive || touched.TileType != VanillaTileIds.OpenDoor ||
+            touched.FrameX < 0 || touched.FrameY < 0)
+        {
+            return false;
+        }
+
+        int residualFrameY = touched.FrameY;
+        int style = 0;
+        while (residualFrameY >= ClosedDoorStyleHeight)
+        {
+            residualFrameY -= ClosedDoorStyleHeight;
+            style++;
+        }
+
+        int closedFrameXOffset = 0;
+        if (touched.FrameX >= OpenDoorHorizontalStyleWidth)
+        {
+            int horizontalStyle = touched.FrameX / OpenDoorHorizontalStyleWidth;
+            style += DoorStyleCountPerHorizontalBand * horizontalStyle;
+            closedFrameXOffset = ClosedDoorHorizontalStyleWidth * horizontalStyle;
+        }
+
+        int topY = tileY - residualFrameY / FrameUnit;
+        int retainedX;
+        int clearedLeftX;
+        switch (touched.FrameX % OpenDoorHorizontalStyleWidth)
+        {
+            case 0:
+                retainedX = tileX;
+                clearedLeftX = tileX;
+                break;
+            case 18:
+                retainedX = tileX - 1;
+                clearedLeftX = tileX - 1;
+                break;
+            case 36:
+                retainedX = tileX + 1;
+                clearedLeftX = tileX;
+                break;
+            case 54:
+                retainedX = tileX;
+                clearedLeftX = tileX - 1;
+                break;
+            default:
+                return false;
+        }
+
+        if (!Contains(clearedLeftX, topY) || !Contains(clearedLeftX + 1, topY + 2))
+            return false;
+
+        for (int column = 0; column < 2; column++)
+        {
+            for (int row = 0; row < 3; row++)
+            {
+                WorldTile door = tiles.Get(clearedLeftX + column, topY + row);
+                if (!door.IsActive || door.TileType != VanillaTileIds.OpenDoor)
+                    return false;
+            }
+        }
+
+        for (int column = 0; column < 2; column++)
+        {
+            int x = clearedLeftX + column;
+            for (int row = 0; row < 3; row++)
+            {
+                WorldTile door = tiles.Get(x, topY + row);
+                if (x == retainedX)
+                {
+                    int frameColumn = doorCloseRandom.NextClosedDoorFrameColumn();
+                    if ((uint)frameColumn >= 3u)
+                        throw new InvalidOperationException("The door-close random source returned a frame column outside [0, 3).");
+                    door.Type = checked((ushort)VanillaTileIds.ClosedDoor.Value);
+                    door.FrameX = checked((short)(frameColumn * FrameUnit + closedFrameXOffset));
+                }
+                else
+                {
+                    door.Flags &= ~WorldTileFlags.Active;
+                }
+                tiles.Set(x, topY + row, in door);
+            }
+        }
+
+        mutation = new VanillaGroundFighterDoorOpeningMutation(
+            VanillaGroundFighterDoorOpeningKind.Door,
+            tileX,
+            tileY,
+            DirectionX: 0,
+            ChangedTiles: 6);
+        return true;
     }
 
     private bool TryDestroy(

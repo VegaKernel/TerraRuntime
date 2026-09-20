@@ -83,7 +83,9 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         this.goodWorld = goodWorld;
         this.replication = replication;
         mutations = tiles is null ? null : new VanillaWorldTileMutationService(tiles);
-        playerDoorOpenings = tiles is null ? null : new VanillaWorldGroundFighterDoorOpeningService(tiles);
+        playerDoorOpenings = tiles is null ? null : new VanillaWorldGroundFighterDoorOpeningService(
+            tiles,
+            doorCloseRandom: new WorldItemDoorCloseRandom(worldItemSpawnRandom));
         liquidMutations = tiles is null ? null : new VanillaWorldLiquidMutationService(tiles);
         liquidSimulator = tiles is null ? null : new VanillaWorldLiquidSimulator1458(tiles, sideEffects: this);
         larvaMutations = tiles is null ? null : new VanillaLarvaObjectMutationService1458(tiles);
@@ -144,6 +146,11 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         if (command is ClientDoorOpenRuntimeCommand doorOpen)
         {
             ApplyClientDoorOpen(doorOpen);
+            return true;
+        }
+        if (command is ClientDoorCloseRuntimeCommand doorClose)
+        {
+            ApplyClientDoorClose(doorClose);
             return true;
         }
         if (command is not ClientTileManipulationRuntimeCommand tile)
@@ -1064,6 +1071,42 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         AppliedClientManipulations++;
         TerrariaDoorToggleState state = command.State;
         replication?.TryPublishDoorToggle(command.Connection.Source, in state);
+    }
+
+    /// <summary>
+    /// Packet-19 action 1 calls <c>WorldGen.CloseDoor(..., forced: true)</c> in MessageBuffer. Unlike a local
+    /// collision-checked close, the server accepts the source forced path after validating the 2x3 open-door frame.
+    /// The initiator already applied its local close, so packet 19 relays only to the other playing peers.
+    /// </summary>
+    private void ApplyClientDoorClose(ClientDoorCloseRuntimeCommand command)
+    {
+        ClientManipulationRequests++;
+        if (tiles is null ||
+            playerDoorOpenings is null ||
+            command.State.Action != (byte)TerrariaDoorToggleAction.CloseDoor ||
+            !command.State.IsValid ||
+            !command.Connection.IsAssigned ||
+            !players.TryGet(command.Connection, out _) ||
+            command.State.TileX < 3 ||
+            command.State.TileY < 3 ||
+            command.State.TileX >= tiles.Dimensions.WidthTiles - 3 ||
+            command.State.TileY >= tiles.Dimensions.HeightTiles - 3 ||
+            !playerDoorOpenings.TryCloseDoor(command.State.TileX, command.State.TileY, out _))
+        {
+            RejectedClientManipulations++;
+            return;
+        }
+
+        AppliedClientManipulations++;
+        TerrariaDoorToggleState state = command.State;
+        replication?.TryPublishDoorToggle(command.Connection.Source, in state);
+    }
+
+    private sealed class WorldItemDoorCloseRandom(IWorldItemSpawnRandom random) : IVanillaDoorCloseRandom1458
+    {
+        private readonly IWorldItemSpawnRandom random = random ?? throw new ArgumentNullException(nameof(random));
+
+        public int NextClosedDoorFrameColumn() => random.NextInt32(0, 3);
     }
 
     /// <summary>
