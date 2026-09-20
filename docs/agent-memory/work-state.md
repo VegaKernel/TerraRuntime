@@ -10,7 +10,7 @@ player by twenty ticks and retains the source's quantized pre-attachment spawn o
 The attached path also refreshes the closest player target. The focused tests cover the
 timer, target refresh, attachment coordinates, inherited motion and projectile intent.
 
-Mechdusa Retinazer and Spazmatism now use their source phase-one Prime orbit. They derive Prime's physical center minus 14 pixels, rotate left/right 112.5-by-187.5-pixel anchors by `Prime.velocity.X × 0.025`, cap the desired vector at 14, then apply Retinazer's `59/60` or Spazmatism's `4/5` smoothing. Their shared phase-one timer changes state at 1200. The focused regression pins both live hitboxes, Prime rotation, both smoothing rules and timer increment. The existing projectile planner now receives the phase-one `ai[3]` wraps, including Spazmatism Cursed Flame at 60. Transformations and later Twin states remain open.
+Mechdusa Retinazer and Spazmatism now use their source phase-one Prime orbit. They derive Prime's physical center minus 14 pixels, rotate left/right 112.5-by-187.5-pixel anchors by `Prime.velocity.X × 0.025`, cap the desired vector at 14, then apply Retinazer's `59/60` or Spazmatism's `4/5` smoothing. Their shared phase-one timer changes state at 1200. The focused regression pins both live hitboxes, Prime rotation, both smoothing rules and timer increment. The existing projectile planner now receives the phase-one `ai[3]` wraps, including Spazmatism Cursed Flame at 60. The live Prime anchor also enables projectile reflection during Twin transformation states `ai[0]=1/2`. Later Twin states remain open.
 
 The Destroyer head also now performs its AI_037 post-motion Mechdusa orbit: it follows
 Prime's center minus 14 pixels around the rotated 100-pixel lower anchor, carries

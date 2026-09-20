@@ -46,11 +46,12 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             return true;
         }
 
+        bool mechQueenUp = TryGetMechQueenCenter(context, out float queenCenterX, out float queenCenterY, out float queenVelocityX);
         if (ai.Ai0 == 0f)
         {
             // TerrariaServer 1.4.5.8 AI_030/AI_031 replace only the ordinary phase-one
             // hover movement when the source's global Mech Queen Prime anchor is live.
-            if (ai.Ai1 == 0f && TryGetMechQueenCenter(context, out float queenCenterX, out float queenCenterY, out float queenVelocityX))
+            if (ai.Ai1 == 0f && mechQueenUp)
                 StepMechdusaPhaseOne(in npc, in definition, in target, context, life, lifeMax, queenCenterX, queenCenterY, queenVelocityX, ref ai, ref vx, ref vy);
             else if (_spazmatism)
                 StepSpazPhaseOne(in npc, in target, context, life, lifeMax, ref ai, ref local, ref vx, ref vy);
@@ -95,7 +96,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             LocalAi = local,
             DamageOverride = damage,
             DefenseOverride = defense,
-            ReflectsProjectiles = false,
+            ReflectsProjectiles = mechQueenUp && (ai.Ai0 == 1f || ai.Ai0 == 2f),
             JustHit = false
         };
         next = Build(in npc, vx, vy, targetSlot, in ai, in sim);
