@@ -795,6 +795,21 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
             return before.Ai.Ai0 != -2f && before.Ai.Ai0 != proposed.Ai.Ai0;
         }
 
+        if (before.TypeIdentity == VanillaNpcIds.MoonLordFreeEye)
+        {
+            // AI_081 changes attack-table state unless its retired marker is held until state 0.
+            if (before.Ai.Ai0 != proposed.Ai.Ai0 &&
+                (before.Ai.Ai0 != -2f || proposed.Ai.Ai0 == 0f))
+            {
+                return true;
+            }
+
+            int eyeElapsed = ResolveEyeAttackElapsed(proposed.Ai.Ai1, out _);
+            return (proposed.Ai.Ai0 == 2f && (eyeElapsed == 75 || eyeElapsed == 105)) ||
+                (proposed.Ai.Ai0 == 3f && eyeElapsed == 45) ||
+                (proposed.Ai.Ai0 == 4f && eyeElapsed == 180);
+        }
+
         if (before.TypeIdentity != VanillaNpcIds.MoonLordHead || before.Ai.Ai0 < 0f || proposed.Ai.Ai0 < 0f)
             return false;
 

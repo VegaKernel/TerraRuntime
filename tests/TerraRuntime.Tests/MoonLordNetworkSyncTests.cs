@@ -33,6 +33,15 @@ public sealed class MoonLordNetworkSyncTests
         AssertCadenced(stepper, in ordinary, ordinary.Ai with { Ai1 = 1_004f });
         NpcSnapshot retiredHand = hand with { Ai = hand.Ai with { Ai0 = -2f } };
         AssertCadenced(stepper, in retiredHand, retiredHand.Ai with { Ai1 = 11f });
+
+        NpcSnapshot eye = Create(VanillaNpcIds.MoonLordFreeEye, new NpcAiState(0f, 53f, 0f, 0f));
+        AssertForced(stepper, in eye, eye.Ai with { Ai0 = 1f, Ai1 = 54f });
+        NpcSnapshot sphereRelease = eye with { Ai = eye.Ai with { Ai0 = 2f, Ai1 = 270f } };
+        AssertForced(stepper, in sphereRelease, sphereRelease.Ai with { Ai1 = 271f });
+        NpcSnapshot eyeDeathray = eye with { Ai = eye.Ai with { Ai0 = 4f, Ai1 = 816f } };
+        AssertForced(stepper, in eyeDeathray, eyeDeathray.Ai with { Ai1 = 817f });
+        NpcSnapshot ordinaryEye = sphereRelease with { Ai = sphereRelease.Ai with { Ai1 = 269f } };
+        AssertCadenced(stepper, in ordinaryEye, ordinaryEye.Ai with { Ai1 = 270f });
     }
 
     private static void AssertForced(VanillaNpcTargetingAiStepper stepper, in NpcSnapshot npc, in NpcAiState ai)
