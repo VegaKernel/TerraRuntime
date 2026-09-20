@@ -2264,16 +2264,24 @@ public sealed class VanillaNpcTargetingAiStepper :
         {
             int cadence = phaseTwo && expertCadence ? 2 : 3;
             if (timer >= 60f || ((int)timer % cadence) != 0) return 0;
-            if (destination.IsEmpty) return 1;
+            int rotationIndex = ((int)(timer / cadence)) % 3;
+            int requested = 1 + CountEmpressExtraTargets(in source, rotationIndex, 2_400f);
+            if (destination.Length < requested) return destination.Length + 1;
             float randomAngle = phaseTwo && expertCadence
                 ? NextUnitFloat() * MathF.PI * 2f
                 : MathF.PI * .5f * NextFloatDirection();
             float speed = phaseTwo && expertCadence ? 10f : 6f;
             float vx = MathF.Sin(randomAngle) * speed;
             float vy = -MathF.Cos(randomAngle) * speed;
-            destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.HallowBossRainbowStreak, cx - 55f, cy - 30f, vx, vy, Damage(45, 50, 30, 35), 0f)
-            { InitialAi = new ProjectileAiState(proposed.Target, timer / 60f, 0f) };
-            return 1;
+            int written = 0;
+            destination[written++] = EmpressRainbowStreak(cx, cy, vx, vy, Damage(45, 50, 30, 35), proposed.Target, timer / 60f);
+            for (int index = 0; index < _context.CandidateCount; index++)
+            {
+                VanillaNpcTargetCandidate extra = _context.GetCandidateAt(index);
+                if (CanEmpressShootExtraAt(in source, in extra, rotationIndex, 2_400f, cx, cy))
+                    destination[written++] = EmpressRainbowStreak(cx, cy, vx, vy, Damage(45, 50, 30, 35), extra.Slot, timer / 60f);
+            }
+            return written;
         }
         if (state == 4 && timer < 100f && ((int)timer % 4) == 0)
         {
@@ -2282,7 +2290,9 @@ public sealed class VanillaNpcTargetingAiStepper :
             float sourceDistanceY = target.CenterY - cy;
             if (sourceDistanceX * sourceDistanceX + sourceDistanceY * sourceDistanceY > 2_400f * 2_400f)
                 return 0;
-            if (destination.IsEmpty) return 1;
+            int rotationIndex = ((int)(timer / 4f)) % 3;
+            int requested = 1 + CountEmpressExtraTargets(in source, rotationIndex, 2_400f);
+            if (destination.Length < requested) return destination.Length + 1;
             float segmentCount = expertCadence ? 5f : 4f;
             float angle = MathF.PI / (segmentCount * 2f) + (timer / 4f) * (MathF.PI / segmentCount);
             float directionX = MathF.Cos(angle);
@@ -2294,31 +2304,19 @@ public sealed class VanillaNpcTargetingAiStepper :
                 directionX /= directionLength;
                 directionY /= directionLength;
             }
-            float velocityLength = MathF.Sqrt(target.VelocityX * target.VelocityX + target.VelocityY * target.VelocityY);
-            if (velocityLength > .001f && (target.VelocityX / velocityLength * directionX + target.VelocityY / velocityLength * directionY) > 0f)
-            {
-                directionX = -directionX;
-                directionY = -directionY;
-            }
             float radius = expertCadence ? 450f : 300f;
-            float predictedX = target.CenterX + target.VelocityX * 90f;
-            float predictedY = target.CenterY + target.VelocityY * 90f;
-            float px = target.CenterX + directionX * radius - target.VelocityX * 30f;
-            float py = target.CenterY + directionY * radius - target.VelocityY * 30f;
-            float fromTargetX = px - target.CenterX;
-            float fromTargetY = py - target.CenterY;
-            float radialDistance = MathF.Sqrt(fromTargetX * fromTargetX + fromTargetY * fromTargetY);
-            if (radialDistance < radius)
+            int written = 0;
+            destination[written++] = EmpressRingLance(in target, ref directionX, ref directionY, radius, timer, Damage(50, 60, 30, 35));
+            for (int index = 0; index < _context.CandidateCount; index++)
             {
-                float fallbackX = radialDistance <= .001f ? -directionX : -fromTargetX / radialDistance;
-                float fallbackY = radialDistance <= .001f ? -directionY : -fromTargetY / radialDistance;
-                px = target.CenterX + fallbackX * radius;
-                py = target.CenterY + fallbackY * radius;
+                VanillaNpcTargetCandidate extra = _context.GetCandidateAt(index);
+                if (!CanEmpressShootExtraAt(in source, in extra, rotationIndex, 2_400f, cx, cy))
+                    continue;
+
+                // Source reuses vector29, so a velocity-dot reversal for one extra player affects the following one.
+                destination[written++] = EmpressRingLance(in extra, ref directionX, ref directionY, radius, timer, Damage(50, 60, 30, 35));
             }
-            float aim = MathF.Atan2(predictedY - py, predictedX - px);
-            destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.FairyQueenLance, px, py, 0f, 0f, Damage(50, 60, 30, 35), 0f)
-            { InitialAi = new ProjectileAiState(aim, timer / 100f, 0f) };
-            return 1;
+            return written;
         }
         if (state == 5 && timer == 0f)
         {
@@ -2448,30 +2446,113 @@ public sealed class VanillaNpcTargetingAiStepper :
             float sourceDistanceY = target.CenterY - cy;
             if (sourceDistanceX * sourceDistanceX + sourceDistanceY * sourceDistanceY > 2_400f * 2_400f)
                 return 0;
-            if (destination.IsEmpty) return 1;
-            float pvx = target.VelocityX, pvy = target.VelocityY;
-            float pd = MathF.Sqrt(pvx * pvx + pvy * pvy);
-            float nx = pd > .001f ? -pvx / pd : 0f, ny = pd > .001f ? -pvy / pd : -1f;
-            float px = target.CenterX + nx * 100f, py = target.CenterY + ny * 100f;
-            float aim = MathF.Atan2(target.CenterY + pvy * 90f - py, target.CenterX + pvx * 90f - px);
-            destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.FairyQueenLance, px, py, 0f, 0f, Damage(50, 60, 30, 35), 0f)
-            { InitialAi = new ProjectileAiState(aim, timer / 100f, 0f) };
-            return 1;
+            int rotationIndex = ((int)(timer / 3f)) % 3;
+            int requested = 1 + CountEmpressExtraTargets(in source, rotationIndex, 2_400f);
+            if (destination.Length < requested) return destination.Length + 1;
+            int written = 0;
+            destination[written++] = EmpressDirectLance(in target, timer, Damage(50, 60, 30, 35));
+            for (int index = 0; index < _context.CandidateCount; index++)
+            {
+                VanillaNpcTargetCandidate extra = _context.GetCandidateAt(index);
+                if (CanEmpressShootExtraAt(in source, in extra, rotationIndex, 2_400f, cx, cy))
+                    destination[written++] = EmpressDirectLance(in extra, timer, Damage(50, 60, 30, 35));
+            }
+            return written;
         }
         if (state == 12 && timer >= 10f && timer < 60f)
         {
             int cadence = expertCadence ? 4 : 6;
             if (((int)timer % cadence) != 0) return 0;
-            if (destination.IsEmpty) return 1;
+            int rotationIndex = ((int)(timer % cadence)) % 3;
+            int requested = 1 + CountEmpressExtraTargets(in source, rotationIndex, 2_400f);
+            if (destination.Length < requested) return destination.Length + 1;
             float progress = (timer - 10f) / 50f;
             float angle = MathF.PI * 2f * progress;
             // AI_120 state 12 rotates (0, -20), rather than a positive X-axis vector.
             float vx = -MathF.Sin(angle) * 20f, vy = -MathF.Cos(angle) * 20f;
-            destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.HallowBossRainbowStreak, cx - 55f, cy - 30f, vx, vy, Damage(45, 50, 30, 35), 0f)
-            { InitialAi = new ProjectileAiState(proposed.Target, progress, 0f) };
-            return 1;
+            int written = 0;
+            destination[written++] = EmpressRainbowStreak(cx, cy, vx, vy, Damage(45, 50, 30, 35), proposed.Target, progress);
+            for (int index = 0; index < _context.CandidateCount; index++)
+            {
+                VanillaNpcTargetCandidate extra = _context.GetCandidateAt(index);
+                if (CanEmpressShootExtraAt(in source, in extra, rotationIndex, 2_400f, cx, cy))
+                    destination[written++] = EmpressRainbowStreak(cx, cy, vx, vy, Damage(45, 50, 30, 35), extra.Slot, progress);
+            }
+            return written;
         }
         return 0;
+    }
+
+    private int CountEmpressExtraTargets(in NpcSnapshot source, int rotationIndex, float range)
+    {
+        float centerX = source.PositionX + 50f;
+        float centerY = source.PositionY + 50f;
+        int count = 0;
+        for (int index = 0; index < _context.CandidateCount; index++)
+        {
+            VanillaNpcTargetCandidate candidate = _context.GetCandidateAt(index);
+            if (CanEmpressShootExtraAt(in source, in candidate, rotationIndex, range, centerX, centerY))
+                count++;
+        }
+        return count;
+    }
+
+    private bool CanEmpressShootExtraAt(in NpcSnapshot source, in VanillaNpcTargetCandidate candidate,
+        int rotationIndex, float range, float sourceCenterX, float sourceCenterY) =>
+        _playerInteractions is not null &&
+        candidate.Slot != source.Target &&
+        candidate.Slot % 3 == rotationIndex &&
+        candidate.Active && !candidate.Dead &&
+        _playerInteractions.HasInteraction(source.Handle, new PlayerSlotId(candidate.Slot)) &&
+        (candidate.CenterX - sourceCenterX) * (candidate.CenterX - sourceCenterX) +
+        (candidate.CenterY - sourceCenterY) * (candidate.CenterY - sourceCenterY) <= range * range;
+
+    private static NpcAiProjectileIntent EmpressRainbowStreak(float centerX, float centerY, float velocityX, float velocityY,
+        int damage, ushort target, float progress) =>
+        new(VanillaProjectileIds.HallowBossRainbowStreak, centerX - 55f, centerY - 30f, velocityX, velocityY, damage, 0f)
+        { InitialAi = new ProjectileAiState(target, progress, 0f) };
+
+    private static NpcAiProjectileIntent EmpressRingLance(in VanillaNpcTargetCandidate target,
+        ref float directionX, ref float directionY, float radius, float timer, int damage)
+    {
+        float velocityLength = MathF.Sqrt(target.VelocityX * target.VelocityX + target.VelocityY * target.VelocityY);
+        float normalizedVelocityX = velocityLength > .001f ? target.VelocityX / velocityLength : 0f;
+        float normalizedVelocityY = velocityLength > .001f ? target.VelocityY / velocityLength : 1f;
+        if (normalizedVelocityX * directionX + normalizedVelocityY * directionY > 0f)
+        {
+            directionX = -directionX;
+            directionY = -directionY;
+        }
+        float predictedX = target.CenterX + target.VelocityX * 90f;
+        float predictedY = target.CenterY + target.VelocityY * 90f;
+        float positionX = target.CenterX + directionX * radius - target.VelocityX * 30f;
+        float positionY = target.CenterY + directionY * radius - target.VelocityY * 30f;
+        float radialX = positionX - target.CenterX;
+        float radialY = positionY - target.CenterY;
+        float radialDistance = MathF.Sqrt(radialX * radialX + radialY * radialY);
+        if (radialDistance < radius)
+        {
+            float fallbackX = radialDistance <= .001f ? -directionX : -radialX / radialDistance;
+            float fallbackY = radialDistance <= .001f ? -directionY : -radialY / radialDistance;
+            positionX = target.CenterX + fallbackX * radius;
+            positionY = target.CenterY + fallbackY * radius;
+        }
+        float aim = MathF.Atan2(predictedY - positionY, predictedX - positionX);
+        return new NpcAiProjectileIntent(VanillaProjectileIds.FairyQueenLance, positionX, positionY, 0f, 0f, damage, 0f)
+        { InitialAi = new ProjectileAiState(aim, timer / 100f, 0f) };
+    }
+
+    private static NpcAiProjectileIntent EmpressDirectLance(in VanillaNpcTargetCandidate target, float timer, int damage)
+    {
+        float velocityLength = MathF.Sqrt(target.VelocityX * target.VelocityX + target.VelocityY * target.VelocityY);
+        float directionX = velocityLength > .001f ? -target.VelocityX / velocityLength : 0f;
+        float directionY = velocityLength > .001f ? -target.VelocityY / velocityLength : -1f;
+        float positionX = target.CenterX + directionX * 100f;
+        float positionY = target.CenterY + directionY * 100f;
+        float aim = MathF.Atan2(target.CenterY + target.VelocityY * 90f - positionY,
+            target.CenterX + target.VelocityX * 90f - positionX);
+        return new NpcAiProjectileIntent(VanillaProjectileIds.FairyQueenLance, positionX, positionY, 0f, 0f, damage, 0f)
+        { InitialAi = new ProjectileAiState(aim, timer / 100f, 0f) };
     }
 
     private int PlanMoonLordProjectiles(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)

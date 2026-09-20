@@ -749,9 +749,11 @@ public sealed class LateHardmodeBossParityTests
         Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
 
         Assert.Equal(1, stepper.PlanProjectileSpawns(in empress, in proposed, intents));
-        Assert.Equal(789.719f, intents[0].PositionX, precision: 3);
-        Assert.Equal(377.865f, intents[0].PositionY, precision: 3);
-        Assert.Equal(-2.8790f, intents[0].InitialAi.Ai0, precision: 3);
+        // Vector2.SafeNormalize(Vector2.UnitY) makes a stationary target use the source UnitY fallback,
+        // which reverses this first upward-facing Classic anchor.
+        Assert.Equal(210.281f, intents[0].PositionX, precision: 3);
+        Assert.Equal(222.135f, intents[0].PositionY, precision: 3);
+        Assert.Equal(.2626f, intents[0].InitialAi.Ai0, precision: 3);
         Assert.Equal(50, intents[0].Damage);
     }
 
@@ -844,6 +846,45 @@ public sealed class LateHardmodeBossParityTests
         Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
 
         Assert.Equal(0, stepper.PlanProjectileSpawns(in empress, in proposed, intents));
+    }
+
+    [Fact]
+    public void Empress_extra_player_volley_requires_source_interaction_and_rotation_slot()
+    {
+        var store = new RuntimeNpcStore(capacity: 4);
+        NpcSnapshot requested = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(2f, 0f, 0f, 0f), life: 70_000);
+        NpcStateUpdate spawn = Proposed(in requested, requested.Ai);
+        Assert.True(store.TrySpawnVanilla(in spawn, out NpcSnapshot empress));
+        var interactions = new RuntimeNpcPlayerInteractionLedger(store);
+        Assert.True(interactions.TryMark(empress.Handle, new PlayerHandle(new PlayerSlotId(3), new PlayerSessionGeneration(1))));
+
+        var stepper = CreateStepper(dayTime: false);
+        stepper.SetPlayerInteractions(interactions);
+        stepper.SetCandidates([
+            new VanillaNpcTargetCandidate(0, 500f, 300f, 0, true, false, false, false),
+            new VanillaNpcTargetCandidate(3, 700f, 300f, 0, true, false, false, false),
+            new VanillaNpcTargetCandidate(6, 900f, 300f, 0, true, false, false, false)
+        ]);
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[3];
+
+        NpcStateUpdate proposed = Proposed(in empress, empress.Ai);
+        Assert.Equal(2, stepper.PlanProjectileSpawns(in empress, in proposed, intents));
+        Assert.Equal(0f, intents[0].InitialAi.Ai0);
+        Assert.Equal(3f, intents[1].InitialAi.Ai0);
+
+        NpcSnapshot ring = empress with { Ai = new NpcAiState(4f, 0f, 0f, 0f) };
+        proposed = Proposed(in ring, ring.Ai);
+        Assert.Equal(2, stepper.PlanProjectileSpawns(in ring, in proposed, intents));
+        Assert.Equal(VanillaProjectileIds.FairyQueenLance, intents[1].Type);
+
+        NpcSnapshot direct = empress with { Ai = new NpcAiState(11f, 0f, 0f, 0f) };
+        proposed = Proposed(in direct, direct.Ai);
+        Assert.Equal(2, stepper.PlanProjectileSpawns(in direct, in proposed, intents));
+
+        NpcSnapshot spinning = empress with { Ai = new NpcAiState(12f, 12f, 0f, 0f) };
+        proposed = Proposed(in spinning, spinning.Ai);
+        Assert.Equal(2, stepper.PlanProjectileSpawns(in spinning, in proposed, intents));
+        Assert.Equal(3f, intents[1].InitialAi.Ai0);
     }
 
     [Theory]

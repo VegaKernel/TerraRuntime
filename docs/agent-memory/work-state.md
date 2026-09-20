@@ -1906,3 +1906,7 @@ The packet-27 replication registry now preserves the current late-join baseline 
 ### Empress source flight correction - 2026-09-20
 
 `VanillaEmpressOfLightNpcBehaviorStrategy` now uses the exact component-wise `NPC.SimpleFlyMovement` for AI_120 preparation states 2--7 and 11, including source offsets, the 40-pixel no-steer boundary, reversal double impulses and state-specific desired speeds. Dash states 8/9 now retain their source 40-tick flight, recovery lerp and tick-40/tick-90 damping; state 12 retains its upward launch and damping. Release warnings-as-errors build and 117 focused `LateHardmodeBossParityTests` pass. This is a movement slice only: multiplayer extra-target projectile fanout, presentation effects, projectile runtime behavior and complete Empress encounter-trace parity remain open.
+
+### Empress extra-player volleys - 2026-09-20
+
+The AI_120 projectile planner now implements `Boss_CanShootExtraAt` for states 2, 4, 11 and 12. It uses the established generation-safe NPC/player interaction ledger, skips the primary target, retains the source modulo-three rotation and 2400-pixel range checks, and emits the target-specific geometry/`ai[0]` selection in physical candidate order. A non-interacting eligible-slot candidate is rejected. Release warnings-as-errors build and 118 focused `LateHardmodeBossParityTests` pass. Presentation effects, complete encounter trace parity and unmodeled projectile/network edge cases remain open.
