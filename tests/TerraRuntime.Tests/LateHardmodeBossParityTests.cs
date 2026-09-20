@@ -708,6 +708,27 @@ public sealed class LateHardmodeBossParityTests
     }
 
     [Fact]
+    public void Empress_prep_invalid_target_uses_source_retreat_transition()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: new ZeroRandom());
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false);
+        NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(1f, 10f, 4f, 0f), life: 70_000) with
+        {
+            VelocityX = 12f,
+            VelocityY = -8f,
+            Target = byte.MaxValue
+        };
+
+        Assert.True(stepper.TryStepState(in empress, out NpcStateUpdate next));
+        Assert.Equal(13f, next.Ai.Ai0);
+        Assert.Equal(0f, next.Ai.Ai1);
+        Assert.Equal(5f, next.Ai.Ai2);
+        Assert.Equal(3f, next.VelocityX);
+        Assert.Equal(-2f, next.VelocityY);
+        Assert.Equal(empress.Simulation.TimeLeft, next.Simulation.TimeLeft);
+    }
+
+    [Fact]
     public void Empress_attack_prep_uses_source_dash_to_smoothing()
     {
         var stepper = CreateStepper(dayTime: false);

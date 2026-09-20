@@ -385,6 +385,15 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
         bool hasTarget = LateBossMath.TryTarget(in npc, in definition, context, ref target, out VanillaNpcTargetCandidate player);
         // Source AI_120 lets its retreat state fade over its normal 20+ ticks even after TargetClosest finds no player.
         // Other states retain the existing authoritative target-loss handoff until their source branches are modeled.
+        if (!hasTarget && npc.Ai.Ai0 == 1f && npc.Ai.Ai1 <= 10f)
+        {
+            // AI_120's preparation branch validates TargetClosest only in its first 11 ticks.
+            // An invalid result begins state 13, increments ai[2], and preserves the source velocity quartering.
+            NpcAiState retreatAi = npc.Ai with { Ai0 = 13f, Ai1 = 0f, Ai2 = npc.Ai.Ai2 + 1f };
+            NpcSimulationState retreatSimulation = npc.Simulation;
+            next = LateBossMath.Build(in npc, npc.VelocityX * .25f, npc.VelocityY * .25f, target, in retreatAi, in retreatSimulation);
+            return true;
+        }
         if (!hasTarget && npc.Ai.Ai0 != 13f)
         {
             NpcAiState despawnAi = npc.Ai with { Ai0 = 13f, Ai1 = 0f };
