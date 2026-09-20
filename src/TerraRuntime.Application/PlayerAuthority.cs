@@ -144,6 +144,25 @@ internal sealed partial class PlayerAuthority
         return count + (serverPlayers?.CopySnapshots(destination[count..]) ?? 0);
     }
 
+    /// <summary>Source <c>player.active &amp;&amp; player.statLifeMax &gt;= 120</c> predicate for weather scheduling.</summary>
+    internal bool HasWindEligiblePlayer()
+    {
+        foreach (RuntimePlayerMember member in membership.Members)
+            if (member.CaptureSnapshot().MaxLife >= 120)
+                return true;
+
+        if (serverPlayers is null)
+            return false;
+
+        Span<PlayerStateSnapshot> snapshots = stackalloc PlayerStateSnapshot[byte.MaxValue];
+        int count = serverPlayers.CopySnapshots(snapshots);
+        for (int index = 0; index < count; index++)
+            if (snapshots[index].MaxLife >= 120)
+                return true;
+
+        return false;
+    }
+
     public void AdvanceCombatTick(long tick) => currentCombatTick = tick;
 
     public bool IsCurrent(ConnectionHandle connection) => membership.IsCurrent(connection);

@@ -1,6 +1,6 @@
 # Production graph
 
-`RuntimeWorldClock` owns the persisted `maxRaining` projection needed by the admitted `Main.UpdateWeather` current-wind step. It leaves `windSpeedTarget` unscaled for checkpoint/header and packet-7 use, and eases `windSpeedCurrent` toward `windSpeedTarget * (1 + 5 / 9 * maxRaining)`. Source weather target scheduling, rain scheduling and creative/lantern gates are still outside this bounded slice.
+`RuntimeWorldClock` owns the persisted `maxRaining` projection needed by the admitted `Main.UpdateWeather` current-wind step. It leaves `windSpeedTarget` unscaled for checkpoint/header and packet-7 use, and eases `windSpeedCurrent` toward `windSpeedTarget * (1 + 5 / 9 * maxRaining)`. The target scheduler now advances once for each day-rate unit, uses source `windCounter`/`extremeWindCounter` intervals, preserves the independent reset source, applies the pre-120-life-player `.35` cap, and applies Freeze Wind only after easing. Rain/cloud scheduling, Lantern Night and shared-RNG integration remain outside this bounded slice.
 
 ## Prime encounter arm-slot order - 2026-09-20
 

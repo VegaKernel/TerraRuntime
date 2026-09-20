@@ -228,6 +228,7 @@ public sealed class WorldRuntime : IDisposable
             golemDownedBaseline: world.RuntimeMetadata.DownedGolemBoss,
             worldIdentity: Identity,
             chestCommands: ChestCommands);
+        WorldClock.SetWindEligiblePlayerProvider(State.HasWindEligiblePlayer);
 
         sectionCacheRebuild = new SectionCacheRebuildPipeline(
             world,

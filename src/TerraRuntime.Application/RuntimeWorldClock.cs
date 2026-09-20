@@ -35,6 +35,32 @@ internal sealed class SystemKingSlimeDeathRandom : IKingSlimeDeathRandom
     public float NextFloatDirection() => random.NextSingle() * 2f - 1f;
 }
 
+/// <summary>Random draws made by the server-owned target-selection branch of <c>Main.UpdateWeather</c>.</summary>
+internal interface IRuntimeWeatherRandom1458
+{
+    int NextInt32(int inclusiveMin, int exclusiveMax);
+}
+
+/// <summary>Source-compatible independent counter source used by <c>Main.ResetWindCounter</c>.</summary>
+internal interface IRuntimeWindCounterRandom1458
+{
+    int NextInt32(int inclusiveMin, int exclusiveMax);
+}
+
+internal sealed class SystemRuntimeWeatherRandom1458 : IRuntimeWeatherRandom1458
+{
+    private readonly Random random = new();
+
+    public int NextInt32(int inclusiveMin, int exclusiveMax) => random.Next(inclusiveMin, exclusiveMax);
+}
+
+internal sealed class SystemRuntimeWindCounterRandom1458 : IRuntimeWindCounterRandom1458
+{
+    private readonly Random random = new();
+
+    public int NextInt32(int inclusiveMin, int exclusiveMax) => random.Next(inclusiveMin, exclusiveMax);
+}
+
 /// <summary>
 /// Authoritative ordinary-world time slice backed by TerrariaServer 1.4.5.8 Main.UpdateTime.
 /// NPCs consume the current state before this clock advances each game tick, matching vanilla's
@@ -46,7 +72,13 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     public const double NightLength = 32_400d;
 
     private readonly IRuntimeWorldClockObserver? _observer;
+    private readonly IRuntimeWeatherRandom1458 _weatherRandom;
+    private readonly IRuntimeWindCounterRandom1458 _windCounterRandom;
     private int _dayRate;
+    private int windCounter;
+    private int extremeWindCounter;
+    private bool freezeWind;
+    private Func<bool>? hasWindEligiblePlayer;
 
     public RuntimeWorldClock(
         double time,
@@ -59,7 +91,12 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         bool getGoodWorld = false,
         bool slimeBlueSpawnUnlocked = false,
         float windSpeedCurrent = 0f,
-        float maxRain = 0f)
+        float maxRain = 0f,
+        bool freezeWind = false,
+        IRuntimeWeatherRandom1458? weatherRandom = null,
+        IRuntimeWindCounterRandom1458? windCounterRandom = null,
+        int windCounter = -1,
+        int extremeWindCounter = -1)
     {
         if (!double.IsFinite(time) || time < 0d)
             throw new ArgumentOutOfRangeException(nameof(time));
@@ -72,6 +109,10 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
             throw new ArgumentOutOfRangeException(nameof(windSpeedCurrent));
         if (!float.IsFinite(maxRain))
             throw new ArgumentOutOfRangeException(nameof(maxRain));
+        if (windCounter < -1)
+            throw new ArgumentOutOfRangeException(nameof(windCounter));
+        if (extremeWindCounter < -1)
+            throw new ArgumentOutOfRangeException(nameof(extremeWindCounter));
 
         Time = time;
         DayTime = dayTime;
@@ -83,6 +124,17 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         WindSpeedCurrent = windSpeedCurrent;
         WindSpeedTarget = windSpeedCurrent;
         MaxRain = maxRain;
+        this.freezeWind = freezeWind;
+        _weatherRandom = weatherRandom ?? new SystemRuntimeWeatherRandom1458();
+        _windCounterRandom = windCounterRandom ?? new SystemRuntimeWindCounterRandom1458();
+        this.windCounter = windCounter;
+        this.extremeWindCounter = extremeWindCounter;
+        // Weather counters are transient, rather than world-file fields. A fresh runtime starts from the same
+        // independently seeded intervals as Main.ResetWindCounter instead of immediately perturbing its loaded target.
+        if (this.windCounter < 0)
+            this.windCounter = _windCounterRandom.NextInt32(900, 2_701);
+        if (this.extremeWindCounter < 0)
+            this.extremeWindCounter = _windCounterRandom.NextInt32(10, 31);
         _dayRate = dayRate;
         _observer = observer;
         PublishCommittedState();
@@ -159,7 +211,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
             metadata.GetGoodWorld,
             metadata.UnlockedSlimeBlueSpawn,
             metadata.WindSpeed,
-            metadata.MaxRain);
+            metadata.MaxRain,
+            creativePowers.FreezeWind);
     }
 
     private bool worldInfoSyncRequested;
@@ -187,6 +240,9 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
     public void MarkSlimeBlueSpawnUnlocked() => SlimeBlueSpawnUnlocked = true;
 
+    /// <summary>Supplies the live <c>player.active &amp;&amp; statLifeMax &gt;= 120</c> source predicate.</summary>
+    internal void SetWindEligiblePlayerProvider(Func<bool>? provider) => hasWindEligiblePlayer = provider;
+
     public void ScheduleMeteor() => MeteorSpawnPending = true;
 
     public void ClearMeteorSchedule() => MeteorSpawnPending = false;
@@ -205,16 +261,11 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
     public void Tick()
     {
-        // Main.UpdateWeather: rain scales the target followed by the current wind, rather than the
-        // persisted/networked windSpeedTarget itself.
-        float effectiveWindTarget = WindSpeedTarget * (1f + 5f / 9f * MaxRain);
-        float windStep = .0003f + MathF.Abs(effectiveWindTarget - WindSpeedCurrent) * .0015f;
-        if (WindSpeedCurrent < effectiveWindTarget)
-            WindSpeedCurrent = MathF.Min(effectiveWindTarget, WindSpeedCurrent + windStep);
-        else if (WindSpeedCurrent > effectiveWindTarget)
-            WindSpeedCurrent = MathF.Max(effectiveWindTarget, WindSpeedCurrent - windStep);
-
         int dayRate = _dayRate;
+        // Main.DoUpdate advances UpdateWeather once per day-rate unit. Frozen time consequently freezes both
+        // easing and target selection; the persisted/networked target itself remains unscaled.
+        for (int iteration = 0; iteration < dayRate; iteration++)
+            TickWeatherWind();
 
         if (SlimeRainTime > 0d)
         {
@@ -248,6 +299,88 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         }
 
         PublishCommittedState();
+    }
+
+    private void TickWeatherWind()
+    {
+        float effectiveWindTarget = WindSpeedTarget * (1f + 5f / 9f * MaxRain);
+        float windStep = .0003f + MathF.Abs(effectiveWindTarget - WindSpeedCurrent) * .0015f;
+        if (WindSpeedCurrent < effectiveWindTarget)
+            WindSpeedCurrent = MathF.Min(effectiveWindTarget, WindSpeedCurrent + windStep);
+        else if (WindSpeedCurrent > effectiveWindTarget)
+            WindSpeedCurrent = MathF.Max(effectiveWindTarget, WindSpeedCurrent - windStep);
+
+        if (freezeWind)
+            return;
+
+        if (--windCounter <= 0)
+        {
+            bool hasEligiblePlayer = hasWindEligiblePlayer?.Invoke() ?? false;
+            float priorDirection = WindSpeedTarget < 0f ? -1f : 1f;
+            if (_weatherRandom.NextInt32(0, 4) == 0)
+                WindSpeedTarget += _weatherRandom.NextInt32(-25, 26) * .001f;
+            else if (_weatherRandom.NextInt32(0, 2) == 0)
+                WindSpeedTarget += _weatherRandom.NextInt32(-50, 51) * .001f;
+            else
+                WindSpeedTarget += _weatherRandom.NextInt32(-100, 101) * .001f;
+
+            ClampTargetForEarlyWorldPlayer(in hasEligiblePlayer);
+            if (--extremeWindCounter <= 0)
+            {
+                ResetWindCounters(resetExtreme: true);
+                if (_weatherRandom.NextInt32(0, 30) < 13)
+                {
+                    if (_weatherRandom.NextInt32(0, 2) == 0)
+                    {
+                        WindSpeedTarget = 0f;
+                        windCounter = _weatherRandom.NextInt32(7_200, 28_801);
+                    }
+                    else
+                    {
+                        WindSpeedTarget = _weatherRandom.NextInt32(-200, 201) * .001f;
+                    }
+                }
+                else if (_weatherRandom.NextInt32(0, 20) < 13)
+                {
+                    WindSpeedTarget = _weatherRandom.NextInt32(-400, 401) * .001f;
+                }
+                else
+                {
+                    WindSpeedTarget = _weatherRandom.NextInt32(-850, 851) * .001f;
+                }
+
+                ClampTargetForEarlyWorldPlayer(in hasEligiblePlayer);
+                float magnitude = MathF.Abs(WindSpeedTarget);
+                if (magnitude > .3f) extremeWindCounter += _weatherRandom.NextInt32(5, 11);
+                if (magnitude > .5f) extremeWindCounter += _weatherRandom.NextInt32(10, 21);
+                if (magnitude > .7f) extremeWindCounter += _weatherRandom.NextInt32(15, 31);
+            }
+            else
+            {
+                ResetWindCounters(resetExtreme: false);
+            }
+
+            if (_weatherRandom.NextInt32(0, 3) != 0 &&
+                ((priorDirection < 0f && WindSpeedTarget > 0f) || (priorDirection > 0f && WindSpeedTarget < 0f)))
+            {
+                WindSpeedTarget *= -1f;
+            }
+        }
+
+        WindSpeedTarget = Math.Clamp(WindSpeedTarget, -.8f, .8f);
+    }
+
+    private void ClampTargetForEarlyWorldPlayer(in bool hasEligiblePlayer)
+    {
+        if (!hasEligiblePlayer && MathF.Abs(WindSpeedTarget) > .35f)
+            WindSpeedTarget = .35f * MathF.Sign(WindSpeedTarget);
+    }
+
+    private void ResetWindCounters(bool resetExtreme)
+    {
+        windCounter = _windCounterRandom.NextInt32(900, 2_701);
+        if (resetExtreme)
+            extremeWindCounter = _windCounterRandom.NextInt32(10, 31);
     }
 
     private void PublishCommittedState() =>

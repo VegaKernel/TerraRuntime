@@ -17,6 +17,8 @@ internal sealed partial class ServerRuntimeState
     private bool TryCaptureRuntimePlayerSnapshot(PlayerHandle player, out PlayerStateSnapshot snapshot) =>
         _runtime.PlayerSnapshots.TryGetPlayer(player, out snapshot);
 
+    internal bool HasWindEligiblePlayer() => _runtime.Players.HasWindEligiblePlayer();
+
     internal bool TryCapturePlayerInventoryItem(
         PlayerHandle player,
         int inventorySlot,
