@@ -569,6 +569,28 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Targeting_stepper_uses_live_twin_hitbox_for_late_line_of_fire()
+    {
+        var environment = new RecordingEnvironment(canHit: false);
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetProjectileEnvironment(environment);
+        stepper.SetCandidates([Target(900f, 800f)]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot retinazer = CreateNpc(VanillaNpcIds.Retinazer, 0f) with
+        {
+            Ai = new NpcAiState(3f, 0f, 0f, 0f),
+            Simulation = CreateNpc(VanillaNpcIds.Retinazer, 0f).Simulation with
+            {
+                HitboxOverride = new NpcHitboxDimensions(137, 149)
+            }
+        };
+
+        Assert.True(stepper.TryStepState(in retinazer, out _));
+        Assert.Equal(137, environment.SourceWidth);
+        Assert.Equal(149, environment.SourceHeight);
+    }
+
+    [Fact]
     public void Targeting_stepper_keeps_late_twin_attack_counters_while_line_of_fire_is_blocked()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
@@ -995,6 +1017,27 @@ public sealed class VanillaFlyerProjectileAttackTests
             float targetPositionY,
             int targetWidth,
             int targetHeight) => canHit;
+    }
+
+    private sealed class RecordingEnvironment(bool canHit) : IVanillaNpcProjectileEnvironment
+    {
+        public int SourceWidth { get; private set; }
+        public int SourceHeight { get; private set; }
+
+        public bool CanHit(
+            float sourcePositionX,
+            float sourcePositionY,
+            int sourceWidth,
+            int sourceHeight,
+            float targetPositionX,
+            float targetPositionY,
+            int targetWidth,
+            int targetHeight)
+        {
+            SourceWidth = sourceWidth;
+            SourceHeight = sourceHeight;
+            return canHit;
+        }
     }
 
     private sealed class EmptyWormEnvironment : IVanillaWormEnvironment

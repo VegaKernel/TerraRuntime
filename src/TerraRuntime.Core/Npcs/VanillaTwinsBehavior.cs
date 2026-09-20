@@ -490,16 +490,24 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
     private static void ApproachVector(float dx,float dy,float speed,float accel,ref float vx,ref float vy)
     {float d=MathF.Max(.001f,MathF.Sqrt(dx*dx+dy*dy));float tx=dx/d*speed,ty=dy/d*speed;Approach(ref vx,tx,accel);Approach(ref vy,ty,accel);if(vx<0&&tx>0)Approach(ref vx,tx,accel);else if(vx>0&&tx<0)Approach(ref vx,tx,accel);if(vy<0&&ty>0)Approach(ref vy,ty,accel);else if(vy>0&&ty<0)Approach(ref vy,ty,accel);}
     private static void Approach(ref float v,float d,float a){if(v<d)v=MathF.Min(v+a,d);else if(v>d)v=MathF.Max(v-a,d);}
-    private bool CanHit(in NpcSnapshot npc, in VanillaNpcDefinition definition, in VanillaNpcTargetCandidate target) =>
-        _projectileEnvironment?.CanHit(
+    private bool CanHit(in NpcSnapshot npc, in VanillaNpcDefinition definition, in VanillaNpcTargetCandidate target)
+    {
+        if (_projectileEnvironment is null)
+            return false;
+
+        VanillaNpcHitboxSize hitbox = definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize physicalHitbox)
+            ? physicalHitbox
+            : new VanillaNpcHitboxSize(definition.Width, definition.Height);
+        return _projectileEnvironment.CanHit(
             npc.PositionX,
             npc.PositionY,
-            definition.Width,
-            definition.Height,
+            hitbox.Width,
+            hitbox.Height,
             target.CenterX - VanillaPlayerHitboxFacts.BaseWidth * .5f,
             target.CenterY - VanillaPlayerHitboxFacts.BaseHeight * .5f,
             (int)VanillaPlayerHitboxFacts.BaseWidth,
-            (int)VanillaPlayerHitboxFacts.BaseHeight) == true;
+            (int)VanillaPlayerHitboxFacts.BaseHeight);
+    }
     private static float NormalizeRotation(float value)
     {
         if (value < 0f) return value + 6.283f;
