@@ -2075,11 +2075,11 @@ public sealed class VanillaNpcTargetingAiStepper :
             int cy = (int)(source.PositionY + 33f);
             NpcAiState owned = new(0f, 0f, 0f, source.Handle.Slot + 1f);
             destination[0] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordHand, cx - 400, cy - 100, 0f, 0f, byte.MaxValue)
-            { InitialAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot), InitialLocalAi = owned, LinkSourceLocalAiSlot = 0 };
+            { InitialAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot), InitialLocalAi = owned, LinkSourceLocalAiSlot = 0, StartSlot = source.Handle.Slot };
             destination[1] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordHand, cx + 400, cy - 100, 0f, 0f, byte.MaxValue)
-            { InitialAi = new NpcAiState(0f, 0f, 1f, source.Handle.Slot), InitialLocalAi = owned, LinkSourceLocalAiSlot = 1 };
+            { InitialAi = new NpcAiState(0f, 0f, 1f, source.Handle.Slot), InitialLocalAi = owned, LinkSourceLocalAiSlot = 1, StartSlot = source.Handle.Slot };
             destination[2] = new NpcAiSpawnIntent(VanillaNpcIds.MoonLordHead, cx, cy - 400, 0f, 0f, byte.MaxValue)
-            { InitialAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot), LinkSourceLocalAiSlot = 2 };
+            { InitialAi = new NpcAiState(0f, 0f, 0f, source.Handle.Slot), LinkSourceLocalAiSlot = 2, StartSlot = source.Handle.Slot };
             return 3;
         }
 

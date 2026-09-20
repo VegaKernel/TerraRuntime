@@ -148,6 +148,23 @@ public sealed class NpcSlotAllocationTests
     }
 
     [Fact]
+    public void Moon_Lord_shell_parts_start_search_at_the_core_slot()
+    {
+        var store = new RuntimeNpcStore(32);
+        var coreState = State(VanillaNpcIds.MoonLordCore.Value) with { Ai = new NpcAiState(-1f, 59f, 0f, 0f) };
+        Assert.True(store.TrySpawn(10, in coreState, out var core));
+        var stepper = new VanillaNpcTargetingAiStepper(new Idle());
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 500f, 300f, 0, true, false, false, false)]);
+        var executor = new RuntimeNpcAiStateExecutor(store);
+        executor.Tick(stepper);
+
+        Assert.True(store.TryGet(core.Handle, out core));
+        float[] slots = [core.Simulation.LocalAi.Ai0, core.Simulation.LocalAi.Ai1, core.Simulation.LocalAi.Ai2];
+        Assert.Equal([11f, 12f, 13f], slots);
+        Assert.False(store.TryGetActive(0, out _));
+    }
+
+    [Fact]
     public void Repeated_creation_and_deactivation_match_original_NewNPC_slots_and_generations()
     {
         var store = new RuntimeNpcStore();
