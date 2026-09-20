@@ -70,6 +70,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         bool reflectsProjectiles = false;
         if (ai.Ai0 == 0f)
         {
+            float phaseOneState = ai.Ai1;
             // TerrariaServer 1.4.5.8 AI_030/AI_031 replace only the ordinary phase-one
             // hover movement when the source's global Mech Queen Prime anchor is live.
             if (ai.Ai1 == 0f && mechQueenUp)
@@ -78,6 +79,21 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
                 StepSpazPhaseOne(in npc, in target, context, life, lifeMax, ref ai, ref local, ref vx, ref vy);
             else
                 StepRetPhaseOne(in npc, in definition, in target, context, life, lifeMax, ref ai, ref local, ref vx, ref vy);
+
+            if (phaseOneState == 0f && ai.Ai1 == 1f)
+            {
+                // AI_030 chooses a new closest player as it enters its charge; AI_031 clears its
+                // target and resolves it on the next update.
+                if (_spazmatism)
+                    targetSlot = byte.MaxValue;
+                else
+                    TryRefresh(in npc, in definition, context, ref targetSlot, out _);
+            }
+            else if (phaseOneState == 2f && ai.Ai2 == 0f)
+            {
+                // Both source AI styles ClearTarget at the end of a completed charge.
+                targetSlot = byte.MaxValue;
+            }
 
             if (life < lifeMax * 0.4f)
                 ai = new NpcAiState(1f, 0f, 0f, 0f);

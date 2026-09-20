@@ -406,6 +406,47 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Targeting_stepper_hands_off_phase_one_twin_targets_at_source_cycle_boundaries()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        VanillaNpcTargetCandidate near = Target(140f, 80f);
+        VanillaNpcTargetCandidate far = Target(900f, 800f) with { Slot = 1 };
+        stepper.SetCandidates([near, far]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot retinazer = CreateNpc(VanillaNpcIds.Retinazer, 0f) with
+        {
+            Target = 1,
+            Ai = new NpcAiState(0f, 0f, 599f, 0f)
+        };
+        NpcSnapshot spazmatism = CreateNpc(VanillaNpcIds.Spazmatism, 0f) with
+        {
+            Target = 1,
+            Ai = new NpcAiState(0f, 0f, 599f, 0f)
+        };
+        NpcSnapshot retinazerCharge = CreateNpc(VanillaNpcIds.Retinazer, 0f) with
+        {
+            Target = 0,
+            Ai = new NpcAiState(0f, 2f, 69f, 0f)
+        };
+        NpcSnapshot spazmatismCharge = CreateNpc(VanillaNpcIds.Spazmatism, 0f) with
+        {
+            Target = 0,
+            Ai = new NpcAiState(0f, 2f, 41f, 0f)
+        };
+
+        Assert.True(stepper.TryStepState(in retinazer, out NpcStateUpdate retNext));
+        Assert.True(stepper.TryStepState(in spazmatism, out NpcStateUpdate spazNext));
+        Assert.True(stepper.TryStepState(in retinazerCharge, out NpcStateUpdate retChargeNext));
+        Assert.True(stepper.TryStepState(in spazmatismCharge, out NpcStateUpdate spazChargeNext));
+        Assert.Equal(1f, retNext.Ai.Ai1);
+        Assert.Equal(0, retNext.Target);
+        Assert.Equal(1f, spazNext.Ai.Ai1);
+        Assert.Equal(byte.MaxValue, spazNext.Target);
+        Assert.Equal(byte.MaxValue, retChargeNext.Target);
+        Assert.Equal(byte.MaxValue, spazChargeNext.Target);
+    }
+
+    [Fact]
     public void Targeting_stepper_keeps_late_twin_attack_counters_while_line_of_fire_is_blocked()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
