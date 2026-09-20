@@ -708,6 +708,27 @@ public sealed class LateHardmodeBossParityTests
     }
 
     [Fact]
+    public void Empress_projectile_planner_waits_for_state_ten_before_using_phase_two_values()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot beforeTransition = CreateNpc(
+            VanillaNpcIds.EmpressOfLight,
+            new NpcAiState(2f, 0f, 0f, 0f),
+            life: 70_000) with { Simulation = NpcSimulationState.Initial with { Life = 35_000, LifeMax = 70_000, TimeLeft = 750, Scale = 1f } };
+        NpcStateUpdate proposed = Proposed(in beforeTransition, beforeTransition.Ai);
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
+
+        Assert.Equal(1, stepper.PlanProjectileSpawns(in beforeTransition, in proposed, intents));
+        Assert.Equal(45, intents[0].Damage);
+        Assert.Equal(6f, MathF.Sqrt(intents[0].VelocityX * intents[0].VelocityX + intents[0].VelocityY * intents[0].VelocityY), precision: 3);
+
+        NpcSnapshot afterTransition = beforeTransition with { Ai = beforeTransition.Ai with { Ai3 = 1f } };
+        Assert.Equal(1, stepper.PlanProjectileSpawns(in afterTransition, in proposed, intents));
+        Assert.Equal(50, intents[0].Damage);
+        Assert.Equal(6f, MathF.Sqrt(intents[0].VelocityX * intents[0].VelocityX + intents[0].VelocityY * intents[0].VelocityY), precision: 3);
+    }
+
+    [Fact]
     public void Moon_lord_hand_advances_into_the_source_attack_sequence()
     {
         var stepper = CreateStepper(dayTime: false);

@@ -2243,10 +2243,12 @@ public sealed class VanillaNpcTargetingAiStepper :
     {
         int state = (int)source.Ai.Ai0;
         float timer = source.Ai.Ai1;
-        int lifeMax = Math.Max(1, source.Simulation.LifeMax);
-        bool phaseTwo = source.Simulation.Life <= lifeMax / 2;
-        bool enraged = _context.DayTime || source.Ai.Ai3 is 2f or 3f;
-        bool expertCadence = _context.ExpertMode || _context.DayTime;
+        // AI-120 enters phase two only after state 10 changes ai[3] at its source tick 90.
+        // Health alone merely requests that transition, so projectile cadence and damage stay phase one beforehand.
+        bool phaseTwo = source.Ai.Ai3 is 1f or 3f;
+        bool rageCondition = _context.ShouldEmpressBeEnraged(in source);
+        bool enraged = rageCondition || source.Ai.Ai3 is 2f or 3f;
+        bool expertCadence = _context.ExpertMode || rageCondition;
         if (proposed.Target >= byte.MaxValue || !_context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target) || !target.Active || target.Dead)
             return 0;
 
