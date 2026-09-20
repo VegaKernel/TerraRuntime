@@ -1,3 +1,6 @@
+using System.IO.Compression;
+using System.Security.Cryptography;
+using System.Text.Json;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -105,6 +108,8 @@ public sealed class MoonLordFreeEyeTests
         Assert.Equal(0f, shots[0].Ai.Ai0);
         Assert.Equal(0f, shots[0].Ai.Ai1);
         Assert.Equal(0f, shots[0].Ai.Ai2);
+        Assert.Equal(930.4103f, shots[0].PositionX, 4);
+        Assert.Equal(926.894f, shots[0].PositionY, 3);
         Assert.Equal(0.2f, MathF.Atan2(shots[0].VelocityY, shots[0].VelocityX), 5);
     }
 
@@ -241,6 +246,84 @@ public sealed class MoonLordFreeEyeTests
         Assert.Equal(1f, MathF.Sqrt(shots[0].VelocityX * shots[0].VelocityX + shots[0].VelocityY * shots[0].VelocityY), 5);
     }
 
+    [Fact]
+    public void Full_attack_cycle_matches_original_state_projectiles_and_random_stream()
+    {
+        JsonElement[] rows = ReadContinuousCases();
+        var npcs = new RuntimeNpcStore();
+        Spawn(npcs, 0, VanillaNpcIds.MoonLordCore, 1000f, 1000f, 0f, 0f, default, new NpcAiState(0f, 0f, 0f, 1f), 0);
+        NpcSnapshot eye = Spawn(npcs, 1, VanillaNpcIds.MoonLordFreeEye, 900f, 900f, 2f, -3f,
+            default, new NpcAiState(.2f, .3f, .4f, 0f), 0);
+        var random = new ReferenceRandom(1458);
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: random);
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 1510f, 821f, 0, true, false, false, false)]);
+        var projectiles = new RuntimeProjectileStore();
+        var executor = new RuntimeNpcAiStateExecutor(npcs, projectiles);
+        var shots = new ProjectileSnapshot[projectiles.Capacity];
+
+        foreach (JsonElement row in rows)
+        {
+            executor.Tick(new EyeOnly(stepper));
+            Assert.True(npcs.TryGet(eye.Handle, out NpcSnapshot actual));
+            AssertNear(row.GetProperty("x").GetSingle(), actual.PositionX);
+            AssertNear(row.GetProperty("y").GetSingle(), actual.PositionY);
+            AssertNear(row.GetProperty("vx").GetSingle(), actual.VelocityX);
+            AssertNear(row.GetProperty("vy").GetSingle(), actual.VelocityY);
+            AssertAiNear(row.GetProperty("ai"), actual.Ai);
+            AssertAiNear(row.GetProperty("local"), actual.Simulation.LocalAi);
+            Assert.Equal(row.GetProperty("invulnerable").GetBoolean(), actual.Simulation.DontTakeDamage);
+            Assert.Equal((ushort)row.GetProperty("target").GetInt32(), actual.Target);
+
+            int count = projectiles.CopyActive(shots);
+            JsonElement expectedShots = row.GetProperty("shots");
+            Assert.Equal(expectedShots.GetArrayLength(), count);
+            for (int index = 0; index < count; index++)
+            {
+                JsonElement expected = expectedShots[index];
+                ProjectileSnapshot shot = shots[index];
+                Assert.Equal(expected.GetProperty("type").GetInt32(), shot.Type.Value);
+                AssertNear(expected.GetProperty("x").GetSingle(), shot.PositionX);
+                AssertNear(expected.GetProperty("y").GetSingle(), shot.PositionY);
+                AssertNear(expected.GetProperty("vx").GetSingle(), shot.VelocityX);
+                AssertNear(expected.GetProperty("vy").GetSingle(), shot.VelocityY);
+                AssertAiNear(expected.GetProperty("ai"), shot.Ai);
+            }
+        }
+
+        Assert.Equal(rows[^1].GetProperty("nextRandom").GetInt32(), random.Next());
+    }
+
+    private static JsonElement[] ReadContinuousCases()
+    {
+        using Stream stream = typeof(MoonLordFreeEyeTests).Assembly
+            .GetManifestResourceStream("MoonLordFreeEyeContinuous1458")!;
+        using var gzip = new GZipStream(stream, CompressionMode.Decompress);
+        using var bytes = new MemoryStream();
+        gzip.CopyTo(bytes);
+        Assert.Equal("51adc7a88fc15afbcacb7194a1ee530c0cd96219143f412d05aa80a69d315074",
+            Convert.ToHexStringLower(SHA256.HashData(bytes.ToArray())));
+        using JsonDocument json = JsonDocument.Parse(bytes.ToArray());
+        return json.RootElement.EnumerateArray().Select(static row => row.Clone()).ToArray();
+    }
+
+    private static void AssertNear(float expected, float actual) =>
+        Assert.InRange(MathF.Abs(expected - actual), 0f, .0001f);
+
+    private static void AssertAiNear(JsonElement expected, NpcAiState actual)
+    {
+        AssertNear(expected[0].GetSingle(), actual.Ai0);
+        AssertNear(expected[1].GetSingle(), actual.Ai1);
+        AssertNear(expected[2].GetSingle(), actual.Ai2);
+        AssertNear(expected[3].GetSingle(), actual.Ai3);
+    }
+
+    private static void AssertAiNear(JsonElement expected, ProjectileAiState actual)
+    {
+        AssertNear(expected[0].GetSingle(), actual.Ai0);
+        AssertNear(expected[1].GetSingle(), actual.Ai1);
+        AssertNear(expected[2].GetSingle(), actual.Ai2);
+    }
+
     private static void SpawnSphere(RuntimeProjectileStore store, NpcHandle source, float ai0, float ai1, float vx, float vy)
     {
         var intent = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalSphere, 900f, 900f, vx, vy, 40, 0f)
@@ -290,6 +373,14 @@ public sealed class MoonLordFreeEyeTests
             Draws++;
             return .25d;
         }
+    }
+
+    private sealed class ReferenceRandom(int seed) : IVanillaNpcRandom
+    {
+        private readonly Random random = new(seed);
+        public int NextInt32(int inclusiveMin, int exclusiveMax) => random.Next(inclusiveMin, exclusiveMax);
+        public double NextDouble() => random.NextDouble();
+        public int Next() => random.Next();
     }
 
     private sealed class RejectingStepper : INpcAiStateStepper

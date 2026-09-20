@@ -1126,7 +1126,9 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
             {
                 local = local with
                 {
-                    Ai0 = VanillaMoonLordHandBehavior.AngleLerp(local.Ai0, ai.Ai2 - MathF.PI / 2f),
+                    // AI_081 winds the pupil toward the sphere-release heading at 0.2, whereas
+                    // the normal hand-style pupil tracking uses AngleLerp's 0.5 factor.
+                    Ai0 = LerpAngle(local.Ai0, ai.Ai2 - MathF.PI / 2f, .2f),
                     Ai2 = local.Ai2 + (.75f - local.Ai2) * .2f
                 };
                 if (elapsed == 75)

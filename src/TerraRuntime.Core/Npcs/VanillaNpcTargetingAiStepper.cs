@@ -2599,7 +2599,10 @@ public sealed class VanillaNpcTargetingAiStepper :
             {
                 if (destination.IsEmpty) return 1;
                 NpcAiState pupil = proposed.Simulation.LocalAi;
-                VanillaMoonLordHandBehavior.EyeOffset(pupil, out float offsetX, out float offsetY);
+                // AI_081 uses its own circular 30-pixel pupil vector. The 30x66 ellipse belongs
+                // to the hand/head attack families and shifts the True Eye Bolt origin.
+                VanillaMoonLordHandBehavior.EyeOffset(pupil, out float offsetX, out float offsetY,
+                    pupilWidth: 30f, pupilHeight: 30f);
                 float vx = (float)Math.Cos(pupil.Ai0) * 8f;
                 float vy = (float)Math.Sin(pupil.Ai0) * 8f;
                 if (!VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.PhantasmalBolt, out var definition))
@@ -2640,8 +2643,11 @@ public sealed class VanillaNpcTargetingAiStepper :
                 float angularVelocity = (MathF.PI * 2f * (float)_random.NextDouble() - MathF.PI) / 30f +
                     MathF.PI / 180f * proposed.Ai.Ai2;
                 destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalEye,
-                    cx + rawX / length * 12f - definition.Width * .5f,
-                    cy + rawY / length * 12f - definition.Height * .5f, vx, vy, 35, 0f)
+                    // AI_081 takes 40 percent of `vector.Length()`, where vector is (30, 30),
+                    // after normalizing the signed pupil vector. That is a constant 12*sqrt(2)
+                    // offset and deliberately retains the reversed direction while the pupil is negative.
+                    cx + rawX / length * (12f * MathF.Sqrt(2f)) - definition.Width * .5f,
+                    cy + rawY / length * (12f * MathF.Sqrt(2f)) - definition.Height * .5f, vx, vy, 35, 0f)
                 { InitialAi = new ProjectileAiState(0f, angularVelocity, 0f) };
                 return 1;
             }
