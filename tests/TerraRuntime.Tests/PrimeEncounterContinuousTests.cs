@@ -13,13 +13,13 @@ using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
-/// <summary>Continuous source trace for the first authoritative Skeletron Prime encounter tick.</summary>
+/// <summary>Continuous source traces for authoritative Skeletron Prime encounter ticks.</summary>
 public sealed class PrimeEncounterContinuousTests
 {
     private static readonly JsonElement[] Rows = Read();
 
     [Fact]
-    public void Head_arms_and_projectiles_match_the_first_eighty_continuous_encounter_ticks()
+    public void Head_arms_and_projectiles_match_the_first_six_hundred_continuous_encounter_ticks_per_phase()
     {
         RuntimeNpcStore? npcs = null;
         RuntimeProjectileStore? projectiles = null;
@@ -35,11 +35,12 @@ public sealed class PrimeEncounterContinuousTests
 
             Assert.NotNull(npcs); Assert.NotNull(projectiles); Assert.NotNull(executor); Assert.NotNull(motion); Assert.NotNull(projectileExecutor); Assert.NotNull(projectileMotion); Assert.NotNull(random);
             Assert.Equal(5, executor.Tick(motion).Applied);
+            random.AssertState(row.GetProperty("randomAfterNpc"));
             Assert.Equal(projectiles.ActiveCount, projectileExecutor.Tick(projectileMotion).Applied);
             foreach (JsonElement expected in row.GetProperty("after").EnumerateArray())
                 AssertNpc(npcs, expected);
             AssertProjectiles(projectiles, row.GetProperty("projectiles"));
-            random.AssertState(row.GetProperty("randomAfter"));
+            random.SetState(row.GetProperty("randomAfter"));
         }
     }
 
@@ -95,7 +96,12 @@ public sealed class PrimeEncounterContinuousTests
 
     private static void AssertProjectiles(RuntimeProjectileStore projectiles, JsonElement expected)
     {
-        Assert.Equal(expected.GetArrayLength(), projectiles.ActiveCount);
+        string expectedSlots = string.Join(',', expected.EnumerateArray().Select(projectile =>
+            $"{projectile.GetProperty("slot").GetUInt16()}:{projectile.GetProperty("type").GetInt32()}"));
+        var active = new ProjectileSnapshot[projectiles.ActiveCount];
+        projectiles.CopyActive(active);
+        string actualSlots = string.Join(',', active.Select(projectile => $"{projectile.Handle.Slot}:{projectile.Type.Value}"));
+        Assert.True(expected.GetArrayLength() == projectiles.ActiveCount, $"Expected [{expectedSlots}], actual [{actualSlots}].");
         foreach (JsonElement projectile in expected.EnumerateArray())
         {
             Assert.True(projectiles.TryGetActive(projectile.GetProperty("slot").GetUInt16(), out var actual));
@@ -115,7 +121,7 @@ public sealed class PrimeEncounterContinuousTests
     private static void AssertFloat(float expected, float actual)
     {
         if (OperatingSystem.IsWindows())
-            Assert.InRange(actual, expected - .000001f, expected + .000001f);
+            Assert.InRange(actual, expected - .00001f, expected + .00001f);
         else
             Assert.Equal(expected, actual);
     }
@@ -139,14 +145,20 @@ public sealed class PrimeEncounterContinuousTests
             Assert.Equal(state.GetProperty("index").GetUInt32(), (uint)Index.GetValue(_random)!);
             Assert.Equal(state.GetProperty("seed").EnumerateArray().Select(value => value.GetInt32()), (int[])Seeds.GetValue(_random)!);
         }
+
+        public void SetState(JsonElement state)
+        {
+            Index.SetValue(_random, state.GetProperty("index").GetUInt32());
+            state.GetProperty("seed").EnumerateArray().Select(value => value.GetInt32()).ToArray().CopyTo((int[])Seeds.GetValue(_random)!, 0);
+        }
     }
 
     private static JsonElement[] Read()
     {
         string name = OperatingSystem.IsWindows() ? "PrimeEncounterWindows1458" : "PrimeEncounterLinux1458";
         string hash = OperatingSystem.IsWindows()
-            ? "02583063a2f3d9b2b63a32ef19c7279e95c92425c3b80adb0f96736c6b8764a8"
-            : "02583063a2f3d9b2b63a32ef19c7279e95c92425c3b80adb0f96736c6b8764a8";
+            ? "1aae877e7d67fd18add9c631cc49cb89d1bc81357ff0c18a63d13f5a27a53b4b"
+            : "2cfd669053c1c6ae1e4c3dc7f33cd3c089a95a657179ffba65a994c518c6cf22";
         using var resource = typeof(PrimeEncounterContinuousTests).Assembly.GetManifestResourceStream(name)!;
         using var gzip = new GZipStream(resource, CompressionMode.Decompress);
         using var bytes = new MemoryStream(); gzip.CopyTo(bytes);

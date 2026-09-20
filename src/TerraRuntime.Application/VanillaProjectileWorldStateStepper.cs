@@ -74,7 +74,8 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         // Exceptional families opt out explicitly in runtime behavior metadata instead of leaking aiStyle checks
         // into world orchestration. WorldTileStore dimensions map to Main.rightWorld/bottomWorld through the
         // verified 16 px tile scale.
-        if (!profile.ExemptFromPreAiWorldBounds && IsOutsideWorld(in current, in definition))
+        if ((!profile.ExemptFromPreAiWorldBounds && IsOutsideWorld(in current, in definition)) ||
+            (profile.UsesNegativeOnlyPreAiWorldBounds && IsOutsideNegativeWorld(in current)))
         {
             next = new ProjectileSimulationStepResult(
                 new ProjectileStateUpdate(
@@ -134,4 +135,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         projectile.PositionX + definition.Width >= worldMotion.WorldWidthPixels ||
         projectile.PositionY <= 0f ||
         projectile.PositionY + definition.Height >= worldMotion.WorldHeightPixels;
+
+    private static bool IsOutsideNegativeWorld(in ProjectileSnapshot projectile) =>
+        projectile.PositionX <= 0f || projectile.PositionY <= 0f;
 }

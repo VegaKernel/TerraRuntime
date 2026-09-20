@@ -1,6 +1,6 @@
 # Projectile behavior profiles
 
-Death Laser (`100`) uses a physical and tile-collision size of $7\times7\,\text{pixels}$: original `Projectile.SetDefaults` scales the initial $4\times4\,\text{pixels}$ by `1.8` before creation. Prime Laser shots subtract half of that physical size from the emitted center, preserving the half-pixel offset. Independent original AI captures verify the resulting position, velocity, projectile key and `timeLeft=2700`; this does not establish complete projectile update or encounter parity.
+Death Laser (`100`) uses a physical and tile-collision size of $7\times7\,\text{pixels}$: original `Projectile.SetDefaults` scales the initial $4\times4\,\text{pixels}$ by `1.8` before creation. Prime Laser shots subtract half of that physical size from the emitted center, preserving the half-pixel offset. Independent original AI captures verify the resulting position, velocity, projectile key and `timeLeft=2700`; the 600-tick Prime encounter trace also verifies that Death Laser and Prime Bomb remain active beyond right/bottom edges but still end at the left/top edge. This does not establish complete projectile update or encounter parity.
 
 TerraRuntime does not treat a Terraria projectile `aiStyle` as sufficient evidence that every projectile carrying that numeric style can safely reuse the same authoritative implementation.
 

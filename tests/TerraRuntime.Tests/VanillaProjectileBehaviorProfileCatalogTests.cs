@@ -110,6 +110,16 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
             Assert.False(profile.RejectServerOwned);
         }
 
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(
+            VanillaProjectileIds.RetinazerDeathLaser, out VanillaProjectileBehaviorProfile deathLaser));
+        Assert.True(deathLaser.ExemptFromPreAiWorldBounds);
+        Assert.True(deathLaser.UsesNegativeOnlyPreAiWorldBounds);
+
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(
+            VanillaProjectileIds.SkeletronPrimeBomb, out VanillaProjectileBehaviorProfile primeBomb));
+        Assert.True(primeBomb.ExemptFromPreAiWorldBounds);
+        Assert.True(primeBomb.UsesNegativeOnlyPreAiWorldBounds);
+
         foreach (ProjectileTypeId type in new[] { VanillaProjectileIds.PlanteraSeed, VanillaProjectileIds.PlanteraPoisonSeed })
         {
             Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(type, out VanillaProjectileBehaviorProfile profile));

@@ -60,7 +60,8 @@ internal readonly record struct VanillaProjectileBehaviorProfile(
     bool BehaviorImplemented,
     bool RequiresDefaultAi2,
     bool RejectServerOwned,
-    bool ExemptFromPreAiWorldBounds);
+    bool ExemptFromPreAiWorldBounds,
+    bool UsesNegativeOnlyPreAiWorldBounds = false);
 
 /// <summary>
 /// Runtime-owned opt-in catalog for projectile behavior reuse. Every mapping is explicit: adding a new
@@ -96,6 +97,14 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         RequiresDefaultAi2: true,
         RejectServerOwned: false,
         ExemptFromPreAiWorldBounds: false);
+
+    // Projectile.Update leaves type 100 active after it crosses Main.rightWorld. The other AI_001 hostile
+    // beams need their own capture before receiving this exception.
+    private static readonly VanillaProjectileBehaviorProfile RetinazerDeathLaserProfile = HostileStraightArrowProfile with
+    {
+        ExemptFromPreAiWorldBounds = true,
+        UsesNegativeOnlyPreAiWorldBounds = true
+    };
 
     private static readonly VanillaProjectileBehaviorProfile PlanteraSeedProfile = new(
         VanillaProjectileBehaviorFamily.PlanteraSeed,
@@ -215,7 +224,10 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         BehaviorImplemented: true,
         RequiresDefaultAi2: true,
         RejectServerOwned: false,
-        ExemptFromPreAiWorldBounds: false);
+        // Projectile.Update keeps Prime bombs active beyond right/bottom world edges, but still removes one
+        // after it crosses the left/top edge. AI_016's fuse otherwise owns termination.
+        ExemptFromPreAiWorldBounds: true,
+        UsesNegativeOnlyPreAiWorldBounds: true);
 
     private static readonly VanillaProjectileBehaviorProfile PlanteraThornBallProfile = new(
         VanillaProjectileBehaviorFamily.PlanteraThornBall,
@@ -379,6 +391,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.SkeletronSkull)
         {
             profile = SkeletronSkullProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.RetinazerDeathLaser)
+        {
+            profile = RetinazerDeathLaserProfile;
             return true;
         }
 
