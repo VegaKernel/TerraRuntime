@@ -397,12 +397,12 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
         NpcSimulationState sim = npc.Simulation;
         int lifeMax = sim.LifeMax > 0 ? sim.LifeMax : definition.LifeMax;
         int life = sim.LifeMax > 0 ? sim.Life : lifeMax;
-        bool phaseTwo = life <= lifeMax / 2;
+        // AI_120's phase is owned by ai[3], and only state 10 promotes it at its tick 90 relocation.
+        // Health at or below half requests that transition from the phase-one attack selector; it is not phase two itself.
+        bool phaseTwo = ai.Ai3 is 1f or 3f;
         bool rageCondition = context.ShouldEmpressBeEnraged(in npc);
         if (life == lifeMax && rageCondition && ai.Ai3 is not 2f and not 3f)
             ai = ai with { Ai3 = ai.Ai3 + 2f };
-        if (phaseTwo && ai.Ai3 == 0f) ai = ai with { Ai3 = 1f };
-        if (phaseTwo && ai.Ai3 == 2f) ai = ai with { Ai3 = 3f };
         bool enraged = rageCondition || ai.Ai3 is 2f or 3f;
         bool expertCadence = context.ExpertMode || rageCondition;
         float vx = npc.VelocityX, vy = npc.VelocityY;
@@ -432,11 +432,45 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
                 float dy = player.CenterY - cy;
                 bool targetTooFar = dx * dx + dy * dy > 6_400f * 6_400f;
                 // Source selects state 13 when a genuinely enraged Empress reaches night or 53,400 daytime ticks.
+                // The phase-one selector requests state 10 at half health; state 10 alone changes ai[3] at tick 90.
                 state = targetTooFar || context.ShouldEmpressRetreat(in ai)
                     ? 13
-                    : SelectEmpressAttack((int)ai.Ai2, phaseTwo, expertCadence);
+                    : !phaseTwo && (float)life / lifeMax <= .5f
+                        ? 10
+                        : SelectEmpressAttack((int)ai.Ai2, phaseTwo, expertCadence);
                 timer = 0f;
                 ai = ai with { Ai2 = ai.Ai2 + 1f };
+            }
+        }
+        else if (state == 10)
+        {
+            float transitionTail = 20f - (expertCadence ? 5f : 0f);
+            vulnerable = timer < 30f || timer > 170f;
+            vx *= .95f;
+            vy *= .95f;
+            if (timer == 90f)
+            {
+                if (ai.Ai3 == 0f) ai = ai with { Ai3 = 1f };
+                else if (ai.Ai3 == 2f) ai = ai with { Ai3 = 3f };
+                // NPC.Center is set after the state flip in the source, so convert its 100x100 body center to position.
+                next = new NpcStateUpdate(npc.Type, npc.NetId, player.CenterX - 50f, player.CenterY - 300f, vx, vy, target,
+                    ai with { Ai0 = 10f, Ai1 = timer + 1f }, sim with
+                    {
+                        NoGravity = true,
+                        NoTileCollide = true,
+                        DontTakeDamage = !vulnerable,
+                        DamageOverride = enraged ? 9999 : definition.Damage,
+                        DefenseOverride = definition.Defense,
+                        JustHit = false
+                    });
+                return true;
+            }
+            timer += 1f;
+            if (timer >= 180f + transitionTail)
+            {
+                state = 1;
+                timer = 0f;
+                ai = ai with { Ai2 = 0f };
             }
         }
         else if (state == 13)
@@ -488,7 +522,7 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
             NoTileCollide = true,
             DontTakeDamage = !vulnerable,
             DamageOverride = enraged ? 9999 : definition.Damage,
-            DefenseOverride = definition.Defense,
+            DefenseOverride = phaseTwo ? (int)(definition.Defense * 1.2f) : definition.Defense,
             JustHit = false
         };
         next = LateBossMath.Build(in npc, vx, vy, target, in ai, in sim);

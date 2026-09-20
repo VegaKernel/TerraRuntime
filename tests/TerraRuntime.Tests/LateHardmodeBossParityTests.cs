@@ -680,6 +680,34 @@ public sealed class LateHardmodeBossParityTests
     }
 
     [Fact]
+    public void Empress_half_health_uses_source_transition_before_phase_two_defense()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot selector = CreateNpc(
+            VanillaNpcIds.EmpressOfLight,
+            new NpcAiState(1f, 44f, 9f, 0f),
+            life: 70_000) with { Simulation = NpcSimulationState.Initial with { Life = 35_000, LifeMax = 70_000, TimeLeft = 750, Scale = 1f } };
+
+        Assert.True(stepper.TryStepState(in selector, out NpcStateUpdate transition));
+        Assert.Equal(10f, transition.Ai.Ai0);
+        Assert.Equal(0f, transition.Ai.Ai1);
+        Assert.Equal(10f, transition.Ai.Ai2);
+        Assert.Equal(50, transition.Simulation.DefenseOverride);
+
+        NpcSnapshot atRelocation = selector with { Ai = new NpcAiState(10f, 90f, 10f, 0f) };
+        Assert.True(stepper.TryStepState(in atRelocation, out NpcStateUpdate relocated));
+        Assert.Equal(1f, relocated.Ai.Ai3);
+        Assert.Equal(91f, relocated.Ai.Ai1);
+        Assert.Equal(450f, relocated.PositionX);
+        Assert.Equal(0f, relocated.PositionY);
+        Assert.Equal(50, relocated.Simulation.DefenseOverride);
+
+        NpcSnapshot phaseTwo = selector with { Ai = new NpcAiState(5f, 0f, 0f, 1f) };
+        Assert.True(stepper.TryStepState(in phaseTwo, out NpcStateUpdate secondPhase));
+        Assert.Equal(60, secondPhase.Simulation.DefenseOverride);
+    }
+
+    [Fact]
     public void Moon_lord_hand_advances_into_the_source_attack_sequence()
     {
         var stepper = CreateStepper(dayTime: false);
