@@ -1260,7 +1260,8 @@ internal sealed partial class NpcAuthority
         {
             HardMode = (naturalSpawnWorldFacts?.HardMode ?? false) || naturalSpawnProgression.IsCompleted(VanillaWorldProgressionId.Hardmode),
             DownedPlantera = (naturalSpawnWorldFacts?.DownedPlantera ?? false) || naturalSpawnProgression.IsCompleted(VanillaWorldProgressionId.Plantera),
-            SkeletronActive = skeletronActive
+            SkeletronActive = skeletronActive,
+            TenthAnniversaryWorld = naturalSpawnWorldFacts?.TenthAnniversaryWorld ?? false
         };
     }
 

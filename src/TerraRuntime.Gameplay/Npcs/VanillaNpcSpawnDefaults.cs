@@ -8,6 +8,7 @@ public readonly record struct VanillaNpcSpawnContext(float Difficulty, int Activ
     public bool HardMode { get; init; }
     public bool DownedPlantera { get; init; }
     public bool SkeletronActive { get; init; }
+    public bool TenthAnniversaryWorld { get; init; }
     public bool IsValid => float.IsFinite(Difficulty) && Difficulty is >= .5f and <= 4f &&
         ActivePlayers is >= 0 and <= 255;
 }
@@ -18,7 +19,7 @@ public readonly record struct VanillaNpcSpawnDefaults(
     public float? KnockBackResist { get; init; }
     public float? Difficulty { get; init; }
     /// <summary>
-    /// NPC.SetDefaults -> getGoodAdjustments -> ScaleStats for Destroyer, Probe, Prime and Skeletron (1.4.5.8).
+    /// NPC.SetDefaults -> special-seed adjustments -> ScaleStats for Destroyer, Probe, Prime, Skeletron and Duke Fishron (1.4.5.8).
     /// Other families keep their existing definition defaults until their type-specific scaling is verified.
     /// </summary>
     public static bool TryResolve(in VanillaNpcDefinition definition, in VanillaNpcSpawnContext context,
@@ -33,7 +34,7 @@ public readonly record struct VanillaNpcSpawnDefaults(
         {
             // ScaleStats does not enter its scaling block for these five-life, zero-damage critters.
             defaults = new(new(definition.Width, definition.Height), definition.Scale, definition.LifeMax, definition.Damage, definition.Defense)
-                { KnockBackResist = definition.KnockBackResist, Difficulty = 1f };
+            { KnockBackResist = definition.KnockBackResist, Difficulty = 1f };
             return true;
         }
         if (context.IsValid && (definition.Type == VanillaNpcIds.DarkCaster || definition.Type == VanillaNpcIds.WaterSphere ||
@@ -46,13 +47,22 @@ public readonly record struct VanillaNpcSpawnDefaults(
         bool skeletronHead = definition.Type == VanillaNpcIds.SkeletronHead;
         bool skeletronHand = definition.Type == VanillaNpcIds.SkeletronHand;
         bool skeletron = skeletronHead || skeletronHand;
+        bool duke = definition.Type == VanillaNpcIds.DukeFishron;
         bool prime = definition.Type == VanillaNpcIds.SkeletronPrime || definition.Type == VanillaNpcIds.PrimeCannon ||
             definition.Type == VanillaNpcIds.PrimeSaw || definition.Type == VanillaNpcIds.PrimeVice || definition.Type == VanillaNpcIds.PrimeLaser;
-        if (!context.IsValid || (!probe && !prime && !skeletron && definition.Type != VanillaNpcIds.Destroyer &&
+        if (!context.IsValid || (!probe && !prime && !skeletron && !duke && definition.Type != VanillaNpcIds.Destroyer &&
             definition.Type != VanillaNpcIds.DestroyerBody && definition.Type != VanillaNpcIds.DestroyerTail)) return false;
 
         int width = definition.Width, height = definition.Height;
         float scale = definition.Scale;
+        if (duke && context.TenthAnniversaryWorld)
+        {
+            // NPC.getTenthAnniversaryAdjustments halves type 370's visual scale, then materializes the same
+            // half-scale physical dimensions before ScaleStats runs.
+            scale *= .5f;
+            width = (int)(width * scale);
+            height = (int)(height * scale);
+        }
         if (context.GoodWorld)
         {
             scale *= probe ? 1.6f : prime ? 1.1f : skeletronHead ? 1.25f : skeletronHand ? 1.15f : 1.3f;
@@ -64,15 +74,16 @@ public readonly record struct VanillaNpcSpawnDefaults(
         int life = windowsArithmetic ? (int)(definition.LifeMax * (double)difficulty) : (int)(definition.LifeMax * difficulty);
         double damageMultiplier = DamageMultiplier(difficulty, windowsArithmetic);
         int damage = windowsArithmetic ? (int)(definition.Damage * damageMultiplier) : (int)(definition.Damage * (float)damageMultiplier);
-        float expertLifeTweak = skeletronHead ? 1f : skeletronHand ? 1.3f : .75f;
-        float lifeTweak = (float)(Ramp(difficulty, 1f, 2f, expertLifeTweak, windowsArithmetic) * Ramp(difficulty, 2f, 3f, probe ? 1f : .85f, windowsArithmetic));
+        float expertLifeTweak = duke ? .65f : skeletronHead ? 1f : skeletronHand ? 1.3f : .75f;
+        float masterLifeTweak = duke ? .85f : probe ? 1f : .85f;
+        float lifeTweak = (float)(Ramp(difficulty, 1f, 2f, expertLifeTweak, windowsArithmetic) * Ramp(difficulty, 2f, 3f, masterLifeTweak, windowsArithmetic));
         life = (int)Math.Round(windowsArithmetic ? life * (double)lifeTweak : life * lifeTweak);
-        float expertDamageTweak = probe ? .8f : skeletron ? 1.1f : definition.Type == VanillaNpcIds.Destroyer ? 2f : .85f;
+        float expertDamageTweak = duke ? .7f : probe ? .8f : skeletron ? 1.1f : definition.Type == VanillaNpcIds.Destroyer ? 2f : .85f;
         double damageTweak = Ramp(difficulty, 1f, 2f, expertDamageTweak, windowsArithmetic);
         damage = (int)Math.Round(windowsArithmetic ? damage * damageTweak : damage * (float)damageTweak);
         if (difficulty >= 2f)
         {
-            if (!prime && !skeletron) scale *= 1.05f;
+            if (!prime && !skeletron && !duke) scale *= 1.05f;
             float balance = PlayerBalance(context.ActivePlayers, windowsArithmetic);
             double multiplier = probe ? 1d + (balance - 1d) * (2d / 3d) : balance;
             life = (int)Math.Round(life * multiplier);
