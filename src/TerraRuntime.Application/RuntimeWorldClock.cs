@@ -58,7 +58,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         bool bloodMoonActive = false,
         bool getGoodWorld = false,
         bool slimeBlueSpawnUnlocked = false,
-        float windSpeedCurrent = 0f)
+        float windSpeedCurrent = 0f,
+        float maxRain = 0f)
     {
         if (!double.IsFinite(time) || time < 0d)
             throw new ArgumentOutOfRangeException(nameof(time));
@@ -69,6 +70,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         ArgumentOutOfRangeException.ThrowIfNegative(dayRate);
         if (!float.IsFinite(windSpeedCurrent))
             throw new ArgumentOutOfRangeException(nameof(windSpeedCurrent));
+        if (!float.IsFinite(maxRain))
+            throw new ArgumentOutOfRangeException(nameof(maxRain));
 
         Time = time;
         DayTime = dayTime;
@@ -79,6 +82,7 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         SlimeBlueSpawnUnlocked = slimeBlueSpawnUnlocked;
         WindSpeedCurrent = windSpeedCurrent;
         WindSpeedTarget = windSpeedCurrent;
+        MaxRain = maxRain;
         _dayRate = dayRate;
         _observer = observer;
         PublishCommittedState();
@@ -105,6 +109,9 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
     /// <summary>Source <c>Main.windSpeedTarget</c>, used by the world header and packet 7.</summary>
     public float WindSpeedTarget { get; private set; }
+
+    /// <summary>Source <c>Main.maxRaining</c>, which scales the current-wind easing target.</summary>
+    public float MaxRain { get; }
 
     /// <summary>Applies a source-owned weather target before the per-tick current-wind easing.</summary>
     public void SetWindSpeedTarget(float target)
@@ -151,7 +158,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
             metadata.BloodMoon,
             metadata.GetGoodWorld,
             metadata.UnlockedSlimeBlueSpawn,
-            metadata.WindSpeed);
+            metadata.WindSpeed,
+            metadata.MaxRain);
     }
 
     private bool worldInfoSyncRequested;
@@ -197,13 +205,14 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
     public void Tick()
     {
-        // Main.UpdateWeather: with no active rain multiplier in this admitted clock slice, the current wind
-        // approaches its source target by .0003 + abs(target-current)*.0015 each world tick.
-        float windStep = .0003f + MathF.Abs(WindSpeedTarget - WindSpeedCurrent) * .0015f;
-        if (WindSpeedCurrent < WindSpeedTarget)
-            WindSpeedCurrent = MathF.Min(WindSpeedTarget, WindSpeedCurrent + windStep);
-        else if (WindSpeedCurrent > WindSpeedTarget)
-            WindSpeedCurrent = MathF.Max(WindSpeedTarget, WindSpeedCurrent - windStep);
+        // Main.UpdateWeather: rain scales the target followed by the current wind, rather than the
+        // persisted/networked windSpeedTarget itself.
+        float effectiveWindTarget = WindSpeedTarget * (1f + 5f / 9f * MaxRain);
+        float windStep = .0003f + MathF.Abs(effectiveWindTarget - WindSpeedCurrent) * .0015f;
+        if (WindSpeedCurrent < effectiveWindTarget)
+            WindSpeedCurrent = MathF.Min(effectiveWindTarget, WindSpeedCurrent + windStep);
+        else if (WindSpeedCurrent > effectiveWindTarget)
+            WindSpeedCurrent = MathF.Max(effectiveWindTarget, WindSpeedCurrent - windStep);
 
         int dayRate = _dayRate;
 

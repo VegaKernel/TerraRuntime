@@ -1,5 +1,7 @@
 # Production graph
 
+`RuntimeWorldClock` owns the persisted `maxRaining` projection needed by the admitted `Main.UpdateWeather` current-wind step. It leaves `windSpeedTarget` unscaled for checkpoint/header and packet-7 use, and eases `windSpeedCurrent` toward `windSpeedTarget * (1 + 5 / 9 * maxRaining)`. Source weather target scheduling, rain scheduling and creative/lantern gates are still outside this bounded slice.
+
 ## Prime encounter arm-slot order - 2026-09-20
 
 The retained Windows and Linux `NPC.UpdateNPC` encounter traces confirm `PlanSkeletronPrimeArms` follows the source call order exactly: Cannon `128`, Saw `129`, Vice `130`, Laser `131`, with source `ai[0]`/`ai[3]` values. `PrimeEncounterContinuousTests` preserves 160 captured steps through runtime world motion across the `599`→spin and `399`→hover transitions, including same-pass ascending execution of all four newborn arms, Cannon bomb and Laser projectile allocation, retained projectile slots across the phase reset, and the complete shared RNG state. It compares retained actor and projectile state exactly except Windows `rotation`, where the original x86 and current x64 `Math.Atan2` differ by at most $10^{-6}$. Projectile update/network cadence and Mech Queen remain open.

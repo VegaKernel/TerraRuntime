@@ -29,6 +29,21 @@ public sealed class RuntimeWorldClockTests
     }
 
     [Fact]
+    public void Current_wind_uses_the_source_rain_scaled_target()
+    {
+        var metadata = new WorldFileRuntimeMetadata { WindSpeed = .1f, MaxRain = .5f };
+        var clock = RuntimeWorldClock.FromWorld(metadata, new WorldCreativePowersData(false, 0f, false, false, .5f, false));
+
+        clock.Tick();
+
+        float effectiveTarget = .1f * (1f + 5f / 9f * .5f);
+        float expectedCurrent = .1f + .0003f + (effectiveTarget - .1f) * .0015f;
+        Assert.Equal(.1f, clock.WindSpeedTarget);
+        Assert.Equal(.5f, clock.MaxRain);
+        Assert.Equal(expectedCurrent, clock.WindSpeedCurrent, 7);
+    }
+
+    [Fact]
     public void Day_crosses_to_night_only_after_vanilla_threshold()
     {
         var clock = new RuntimeWorldClock(
