@@ -131,11 +131,14 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
                 }
                 local = local with { Ai0 = laserCounter };
             }
-            sim = sim with { NoGravity = true, NoTileCollide = true, LocalAi = local, Rotation = rotation, JustHit = false };
+            int alpha = parent.Simulation.Alpha < 128 ? Math.Max(0, sim.Alpha - 42) : sim.Alpha;
+            sim = sim with { NoGravity = true, NoTileCollide = true, LocalAi = local, Rotation = rotation, Alpha = alpha, JustHit = false };
             next = new NpcStateUpdate(npc.Type, npc.NetId, x, y, vx, vy, targetSlot, ai, sim);
             return true;
         }
 
+        // AI_037 fades the head every update and only fades a segment after its predecessor passes alpha 128.
+        sim = sim with { Alpha = Math.Max(0, sim.Alpha - 42) };
         if (ai.Ai0 == 0f)
             ai = ai with { Ai3 = npc.Handle.Slot };
 

@@ -569,6 +569,34 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Targeting_stepper_fades_destroyer_head_and_only_uncovered_segments()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetCandidates([Target(900f, 800f)]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        stepper.SetWormEnvironment(new EmptyWormEnvironment());
+        NpcSnapshot head = CreateNpc(VanillaNpcIds.Destroyer, 0f) with
+        {
+            Handle = new NpcHandle(3, new NpcGeneration(1)), Simulation = CreateNpc(VanillaNpcIds.Destroyer, 0f).Simulation with { Alpha = 100 }
+        };
+        NpcSnapshot body = CreateNpc(VanillaNpcIds.DestroyerBody, 0f) with
+        {
+            Handle = new NpcHandle(4, new NpcGeneration(1)), Ai = new NpcAiState(0f, 3f, 0f, 3f),
+            Simulation = CreateNpc(VanillaNpcIds.DestroyerBody, 0f).Simulation with { Alpha = 100 }
+        };
+        stepper.SetNpcPeers([head, body]);
+
+        Assert.True(stepper.TryStepState(in head, out NpcStateUpdate headNext));
+        Assert.True(stepper.TryStepState(in body, out NpcStateUpdate bodyNext));
+        Assert.Equal(58, headNext.Simulation.Alpha);
+        Assert.Equal(58, bodyNext.Simulation.Alpha);
+        head = head with { Simulation = head.Simulation with { Alpha = 128 } };
+        stepper.SetNpcPeers([head, body]);
+        Assert.True(stepper.TryStepState(in body, out NpcStateUpdate coveredBody));
+        Assert.Equal(100, coveredBody.Simulation.Alpha);
+    }
+
+    [Fact]
     public void Targeting_stepper_keeps_destroyer_daytime_steering_and_surface_speed_cap()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
