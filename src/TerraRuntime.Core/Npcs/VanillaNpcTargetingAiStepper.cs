@@ -2324,12 +2324,15 @@ public sealed class VanillaNpcTargetingAiStepper :
         {
             const int requested = 13;
             if (destination.Length < requested) return destination.Length + 1;
-            float offset = _random.NextInt32(0, 10_000) / 10_000f * MathF.PI * 2f;
+            float offset = NextUnitFloat() * MathF.PI * 2f;
             for (int i = 0; i < requested; i++)
             {
                 float angle = offset + i * MathF.PI * 2f / requested;
-                float vx = MathF.Cos(angle) * 8f, vy = MathF.Sin(angle) * 8f;
-                destination[i] = new NpcAiProjectileIntent(VanillaProjectileIds.HallowBossLastingRainbow, cx + 55f - vy / 8f * 30f, cy - 30f + vx / 8f * 30f, vx, vy, Damage(45, 50, 30, 35), 0f)
+                // AI_120 state 5 starts from UnitY rotated by +Pi/2, hence the negative cosine/sine direction.
+                float vx = -MathF.Cos(angle) * 8f, vy = -MathF.Sin(angle) * 8f;
+                float px = cx + 55f + vy / 8f * 30f;
+                float py = cy - 30f - vx / 8f * 30f;
+                destination[i] = new NpcAiProjectileIntent(VanillaProjectileIds.HallowBossLastingRainbow, px, py, vx, vy, Damage(45, 50, 30, 35), 0f)
                 { InitialAi = new ProjectileAiState(0f, i / (float)requested, 0f) };
             }
             return requested;

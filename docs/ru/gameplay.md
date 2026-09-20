@@ -271,6 +271,8 @@ Boss orchestration не нужно запихивать в abstractions, при�
 
 Empress of Light: planner `AI_120` в state 4 создаёт кольцо Fairy Queen Lance. Classic: 4 якоря на $300\,\text{пикселей}$ с горизонтальной поправкой `0.5f`; Expert/дневная ярость: 5 якорей на $450\,\text{пикселей}$. План проверяет лимит $2400\,\text{пикселей}$, скорость цели, прогноз на $90\,\text{тиков}$ и смещение spawn на $30\,\text{тиков}$. Дополнительные multiplayer-цели, presentation, все ветки сложности и полный parity encounter остаются открыты.
 
+State 5 Lasting Rainbow теперь сохраняет исходный fan из 13 projectile: общий NPC random phase, `UnitY` с поворотом $+90^\circ$ и origin на перпендикуляре. Полный parity encounter остаётся открытым.
+
 ## 16. Trusted-host NPC actors
 
 `INpcActorOperations` позволяет trusted host получить lease existing runtime NPC и отправлять semantic `NpcActorIntent`.

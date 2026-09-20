@@ -271,6 +271,8 @@ Duke Fishron's ordinary AI69 now consumes verified world width/surface through t
 
 Empress of Light's admitted `AI_120` planner retains the source preparation retreat on target loss, half-life phase transition, dash preparation/window, alpha and local synchronization counters, and the Rainbow Streak random bearing. Its state-4 Fairy Queen Lance ring is source-shaped: Classic uses four $300\,\text{pixel}$ anchors with the horizontal `0.5f` direction correction; Expert or daytime rage uses five $450\,\text{pixel}$ anchors. The plan refuses targets beyond $2400\,\text{pixels}$, reverses an anchor when the target is travelling toward it, predicts target motion for $90\,\text{ticks}$, offsets the spawn by $30\,\text{ticks}$ of motion, and stores the resulting aim/phase state in the projectile intent. This remains a bounded server simulation slice: multiplayer extra-target lances, presentation, complete difficulty branches and full encounter parity are open.
 
+State 5 Lasting Rainbow also follows the source $13$-projectile fan: its random phase uses the shared NPC random stream, each bearing starts from `UnitY` rotated by $+90^\circ$, and each spawn origin is offset by $30\,\text{pixels}$ along the corresponding perpendicular.
+
 ## 16. Trusted-host NPC actors
 
 `INpcActorOperations` lets a trusted host acquire a lease over an existing runtime NPC and submit semantic `NpcActorIntent`.
