@@ -51,6 +51,7 @@ public sealed class WorldFileClockHeaderPatcherTests
         Assert.Equal((byte)6, loaded.RuntimeMetadata.MoonPhase);
         Assert.Equal(-1_234d, loaded.RuntimeMetadata.SlimeRainTime);
         Assert.Equal(.4f, loaded.RuntimeMetadata.WindSpeed);
+        Assert.Equal(source.RuntimeMetadata.MaxRain, loaded.RuntimeMetadata.MaxRain);
 
         Assert.Equal(source.RuntimeMetadata.GameMode, loaded.RuntimeMetadata.GameMode);
         Assert.Equal(source.RuntimeMetadata.SpawnX, loaded.RuntimeMetadata.SpawnX);
