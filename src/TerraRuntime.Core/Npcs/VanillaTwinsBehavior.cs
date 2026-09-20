@@ -51,7 +51,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             // TerrariaServer 1.4.5.8 AI_030/AI_031 replace only the ordinary phase-one
             // hover movement when the source's global Mech Queen Prime anchor is live.
             if (ai.Ai1 == 0f && TryGetMechQueenCenter(context, out float queenCenterX, out float queenCenterY, out float queenVelocityX))
-                StepMechdusaPhaseOne(in npc, in definition, queenCenterX, queenCenterY, queenVelocityX, ref ai, ref vx, ref vy);
+                StepMechdusaPhaseOne(in npc, in definition, in target, context, life, lifeMax, queenCenterX, queenCenterY, queenVelocityX, ref ai, ref vx, ref vy);
             else if (_spazmatism)
                 StepSpazPhaseOne(in npc, in target, context, life, lifeMax, ref ai, ref local, ref vx, ref vy);
             else
@@ -105,6 +105,10 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
     private void StepMechdusaPhaseOne(
         in NpcSnapshot npc,
         in VanillaNpcDefinition definition,
+        in VanillaNpcTargetCandidate target,
+        VanillaNpcBehaviorContext context,
+        int life,
+        int lifeMax,
         float queenCenterX,
         float queenCenterY,
         float queenVelocityX,
@@ -137,9 +141,37 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         velocityX = (velocityX * (denominator - 1f) + deltaX) / denominator;
         velocityY = (velocityY * (denominator - 1f) + deltaY) / denominator;
         float timer = ai.Ai2 + 1f;
-        ai = timer >= 1200f
-            ? ai with { Ai1 = 1f, Ai2 = 0f, Ai3 = 0f }
-            : ai with { Ai2 = timer };
+        if (timer >= 1200f)
+        {
+            ai = ai with { Ai1 = 1f, Ai2 = 0f, Ai3 = 0f };
+            return;
+        }
+
+        float fireTimer = ai.Ai3;
+        if (_spazmatism)
+        {
+            fireTimer += 1f;
+            if (context.ExpertMode && life < lifeMax * .8f)
+                fireTimer += .6f;
+            if (context.GoodWorld)
+                fireTimer += .4f;
+            if (fireTimer >= 60f)
+                fireTimer = 0f;
+        }
+        else if (npc.PositionY + hitbox.Height < target.CenterY - 21f && distance < 400f)
+        {
+            fireTimer += 1f;
+            if (context.ExpertMode && life < lifeMax * .9f) fireTimer += .3f;
+            if (context.ExpertMode && life < lifeMax * .8f) fireTimer += .3f;
+            if (context.ExpertMode && life < lifeMax * .7f) fireTimer += .3f;
+            if (context.ExpertMode && life < lifeMax * .6f) fireTimer += .3f;
+            if (context.GoodWorld) fireTimer += .5f;
+            int threshold = context.CountNpcPeers(VanillaNpcIds.Spazmatism) == 0 ? 90 : 120;
+            if (fireTimer >= threshold)
+                fireTimer = 0f;
+        }
+
+        ai = ai with { Ai2 = timer, Ai3 = fireTimer };
     }
 
     private static bool TryGetMechQueenCenter(

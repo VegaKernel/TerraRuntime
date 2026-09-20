@@ -216,6 +216,32 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Targeting_stepper_plans_mechdusa_spazmatism_flame_on_source_counter_wrap()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetCandidates([Target(900f, 800f)]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot prime = CreateNpc(VanillaNpcIds.SkeletronPrime, 0f) with
+        {
+            Handle = new NpcHandle(100, new NpcGeneration(1)),
+            Ai = new NpcAiState(0f, 0f, 0f, 100f)
+        };
+        NpcSnapshot spazmatism = CreateNpc(VanillaNpcIds.Spazmatism, 0f) with
+        {
+            Handle = new NpcHandle(4, new NpcGeneration(1)),
+            Ai = new NpcAiState(0f, 0f, 0f, 59f)
+        };
+        stepper.SetNpcPeers([prime, spazmatism]);
+
+        Assert.True(stepper.TryStepState(in spazmatism, out NpcStateUpdate next));
+        Assert.Equal(0f, next.Ai.Ai3);
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
+        Assert.Equal(1, stepper.PlanProjectileSpawns(in spazmatism, in next, intents));
+        Assert.Equal(VanillaProjectileIds.SpazmatismCursedFlame, intents[0].Type);
+        Assert.Equal(25, intents[0].Damage);
+    }
+
+    [Fact]
     public void Targeting_stepper_advances_mechdusa_twin_to_phase_one_boundary()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
