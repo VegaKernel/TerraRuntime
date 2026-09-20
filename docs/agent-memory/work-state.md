@@ -1914,3 +1914,7 @@ The AI_120 projectile planner now implements `Boss_CanShootExtraAt` for states 2
 ### Empress preparation launch - 2026-09-20
 
 At the source state-1 boundary, AI_120 now turns an attack-table state 8 into state 9 when the target is right of the boss. Expert/rage emits the source perpendicular 20-speed launch for every selected state except 5/12. The stationary-target Fairy Queen Lance ring now also applies the source `SafeNormalize(UnitY)` fallback before its velocity-dot reversal. Release warnings-as-errors build and 121 focused `LateHardmodeBossParityTests` pass. Presentation effects, complete encounter trace parity and unmodeled projectile/network edge cases remain open.
+
+### Empress intro opacity order - 2026-09-20
+
+AI_120 state 0 now advances its timer before assigning the source opacity. The first post-step alpha is 253 after the initial `.95` velocity damping, matching `NPC.Opacity`'s integer conversion. Release warnings-as-errors build and 121 focused `LateHardmodeBossParityTests` pass. Presentation effects, complete encounter trace parity and unmodeled projectile/network edge cases remain open.

@@ -285,6 +285,8 @@ Empress movement now follows `NPC.SimpleFlyMovement`: its components receive the
 
 At the end of preparation, an attack-table dash state 8 becomes state 9 when the player is right of the Empress. Expert or daytime rage then launches states other than 5/12 at the source perpendicular $20$-pixel-per-tick velocity.
 
+The intro increments its timer before assigning `Opacity = ai[1] / 180`; the first active AI tick therefore stores alpha $253$ after the initial velocity damping.
+
 ## 16. Trusted-host NPC actors
 
 `INpcActorOperations` lets a trusted host acquire a lease over an existing runtime NPC and submit semantic `NpcActorIntent`.

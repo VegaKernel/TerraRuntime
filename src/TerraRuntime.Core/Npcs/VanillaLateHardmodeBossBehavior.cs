@@ -425,9 +425,11 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
         if (state == 0)
         {
             if (timer == 0f) { vx = 0f; vy = 5f; }
-            // AI_120 exposes Opacity = ai[1] / 180 before advancing this timer.
-            sim = sim with { Alpha = Math.Clamp(255 - (int)(timer / 180f * 255f), 0, 255) };
-            vx *= .95f; vy *= .95f; timer += 1f;
+            // AI_120 increments ai[1] before assigning Opacity = Clamp(ai[1] / 180).
+            vx *= .95f;
+            vy *= .95f;
+            timer += 1f;
+            sim = sim with { Alpha = Math.Clamp((int)((1f - timer / 180f) * 255f), 0, 255) };
             if (timer >= 180f) { state = 1; timer = 0f; }
         }
         else if (state == 1)

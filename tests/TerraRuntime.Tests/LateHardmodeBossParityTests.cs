@@ -668,13 +668,13 @@ public sealed class LateHardmodeBossParityTests
     }
 
     [Fact]
-    public void Empress_intro_uses_source_opacity_before_advancing_its_timer()
+    public void Empress_intro_uses_source_opacity_after_advancing_its_timer()
     {
         var stepper = CreateStepper(dayTime: false);
         NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(0f, 0f, 0f, 0f), life: 70_000);
 
         Assert.True(stepper.TryStepState(in empress, out NpcStateUpdate next));
-        Assert.Equal(255, next.Simulation.Alpha);
+        Assert.Equal(253, next.Simulation.Alpha);
         Assert.Equal(1f, next.Ai.Ai1);
         Assert.Equal(4.75f, next.VelocityY, precision: 3);
     }

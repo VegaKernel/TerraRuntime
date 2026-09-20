@@ -285,6 +285,8 @@ State 11 direct lance отклоняет первичную цель дальш�
 
 В конце подготовки state 8 из attack table становится state 9, когда игрок правее центра Empress. В Expert или дневной ярости состояния, кроме 5/12, получают исходную перпендикулярную скорость $20$ пикселей в тик ещё до первого тика атаки.
 
+В intro timer увеличивается до записи `Opacity = ai[1] / 180`; после первого AI-тика alpha равен $253$ уже после исходного затухания скорости.
+
 ## 16. Trusted-host NPC actors
 
 `INpcActorOperations` позволяет trusted host получить lease existing runtime NPC и отправлять semantic `NpcActorIntent`.
