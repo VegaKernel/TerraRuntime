@@ -439,6 +439,9 @@ public sealed class VanillaNpcTargetingAiStepper :
         in NpcStateUpdate proposed,
         Span<NpcAiProjectileMutationIntent> destination)
     {
+        if (source.Type == VanillaNpcIds.MoonLordFreeEye.Value && proposed.Type == source.Type)
+            return PlanMoonLordFreeEyeSphereMutations(in source, in proposed, destination);
+
         if (source.Type != VanillaNpcIds.MoonLordHand.Value || proposed.Type != source.Type)
             return 0;
 
@@ -478,6 +481,28 @@ public sealed class VanillaNpcTargetingAiStepper :
             velocityY,
             Ai0: -1f);
         return 1;
+    }
+
+    private static int PlanMoonLordFreeEyeSphereMutations(in NpcSnapshot source, in NpcStateUpdate proposed,
+        Span<NpcAiProjectileMutationIntent> destination)
+    {
+        int elapsed = MoonEyeAttackElapsed(proposed.Ai.Ai1, out int state, out _);
+        if (state != 2 || destination.IsEmpty)
+            return 0;
+        if (elapsed == 75)
+        {
+            destination[0] = new NpcAiProjectileMutationIntent(VanillaProjectileIds.PhantasmalSphere,
+                0f, -7f, Ai0: 0f, NpcAiProjectileVelocityMutation.AddWhileUnreleased);
+            return 1;
+        }
+        if (elapsed is >= 105 and < 120)
+        {
+            float angle = proposed.Ai.Ai2 - MathF.PI / 2f;
+            destination[0] = new NpcAiProjectileMutationIntent(VanillaProjectileIds.PhantasmalSphere,
+                MathF.Cos(angle) * 12f, MathF.Sin(angle) * 12f, Ai0: -1f);
+            return 1;
+        }
+        return 0;
     }
 
     private int PlanWallOfFleshSpawns(
@@ -2569,21 +2594,32 @@ public sealed class VanillaNpcTargetingAiStepper :
 
         if (source.Type == VanillaNpcIds.MoonLordFreeEye.Value)
         {
-            int elapsed = MoonEyeAttackElapsed(source.Ai.Ai1, out int state, out int duration);
-            if (state == 1 && (elapsed == duration - 14 || elapsed == duration - 7 || elapsed == duration))
+            int elapsed = MoonEyeAttackElapsed(proposed.Ai.Ai1, out int state, out int duration);
+            if (state == 1 && (elapsed == duration - 14 || elapsed == duration - 7))
             {
                 if (destination.IsEmpty) return 1;
-                float dx = target.CenterX - cx, dy = target.CenterY - cy;
-                float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
-                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalBolt, cx, cy, dx / d * 8f, dy / d * 8f, 35, 0f);
+                NpcAiState pupil = proposed.Simulation.LocalAi;
+                VanillaMoonLordHandBehavior.EyeOffset(pupil, out float offsetX, out float offsetY);
+                float vx = (float)Math.Cos(pupil.Ai0) * 8f;
+                float vy = (float)Math.Sin(pupil.Ai0) * 8f;
+                if (!VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.PhantasmalBolt, out var definition))
+                    return 0;
+                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalBolt,
+                    cx + offsetX - definition.Width * .5f, cy + offsetY - definition.Height * .5f,
+                    vx, vy, 35, 0f);
                 return 1;
             }
-            if (state == 2 && elapsed >= 15 && elapsed < 105 && (elapsed - 15) % 30 == 0)
+            if (state == 2 && elapsed >= 15 && elapsed < 75 && (elapsed - 15) % 10 == 0)
             {
                 if (destination.IsEmpty) return 1;
-                float dx = target.CenterX - cx, dy = target.CenterY - cy;
-                float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
-                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalSphere, cx, cy, dx / d * 7f, dy / d * 7f, 40, 0f)
+                VanillaMoonLordNpcBehaviorStrategy.EyeSphereSpoke(elapsed, out float spokeX, out float spokeY);
+                float length = MathF.Sqrt(spokeX * spokeX + spokeY * spokeY);
+                float vx = length > 0f ? spokeX / length * 4f : 0f;
+                float vy = length > 0f ? spokeY / length * 4f : -4f;
+                if (!VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.PhantasmalSphere, out var definition))
+                    return 0;
+                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalSphere,
+                    cx + spokeX - definition.Width * .5f, cy + spokeY - definition.Height * .5f, vx, vy, 40, 0f)
                 { InitialAi = new ProjectileAiState(30f, source.Handle.Slot, 0f) };
                 return 1;
             }

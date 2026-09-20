@@ -55,6 +55,119 @@ public sealed class MoonLordFreeEyeTests
         Assert.Equal((ushort)0, next.Target);
     }
 
+    [Fact]
+    public void Bolt_window_damps_then_fires_from_the_source_pupil_ellipse()
+    {
+        var npcs = new RuntimeNpcStore(4);
+        Spawn(npcs, 0, VanillaNpcIds.MoonLordCore, 1000f, 1000f, 0f, 0f, default, default, 255);
+        NpcSnapshot eye = Spawn(npcs, 1, VanillaNpcIds.MoonLordFreeEye, 900f, 900f, 2f, -3f,
+            new NpcAiState(1f, 128f, 0f, 0f), new NpcAiState(.2f, .3f, .4f, 0f), 0);
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: new CountingRandom(1));
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 1500f, 820f, 0, true, false, false, false)]);
+        var projectiles = new RuntimeProjectileStore(4);
+
+        new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new EyeOnly(stepper));
+
+        Assert.True(npcs.TryGet(eye.Handle, out NpcSnapshot next));
+        Assert.Equal(1f, next.Ai.Ai0);
+        Assert.Equal(129f, next.Ai.Ai1);
+        Assert.Equal(1.9f, next.VelocityX, 5);
+        Assert.Equal(-2.85f, next.VelocityY, 5);
+        Assert.Equal(.2f, next.Simulation.LocalAi.Ai0, 5);
+        Assert.Equal(.3f, next.Simulation.LocalAi.Ai1, 5);
+        Assert.Equal(.4f, next.Simulation.LocalAi.Ai2, 5);
+
+        var shots = new ProjectileSnapshot[4];
+        Assert.Equal(1, projectiles.CopyActive(shots));
+        Assert.Equal(VanillaProjectileIds.PhantasmalBolt, shots[0].Type);
+        Assert.Equal(35, shots[0].Damage);
+        Assert.Equal(0f, shots[0].Ai.Ai0);
+        Assert.Equal(0f, shots[0].Ai.Ai1);
+        Assert.Equal(0f, shots[0].Ai.Ai2);
+        Assert.Equal(0.2f, MathF.Atan2(shots[0].VelocityY, shots[0].VelocityX), 5);
+    }
+
+    [Fact]
+    public void Sphere_spoke_uses_the_source_six_segment_geometry()
+    {
+        var npcs = new RuntimeNpcStore(4);
+        Spawn(npcs, 0, VanillaNpcIds.MoonLordCore, 1000f, 1000f, 0f, 0f, default, default, 255);
+        NpcSnapshot eye = Spawn(npcs, 1, VanillaNpcIds.MoonLordFreeEye, 900f, 900f, 2f, -3f,
+            new NpcAiState(2f, 210f, 0f, 0f), new NpcAiState(.2f, .3f, .4f, 0f), 0);
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: new CountingRandom(1));
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 1500f, 820f, 0, true, false, false, false)]);
+        var projectiles = new RuntimeProjectileStore(4);
+
+        new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new EyeOnly(stepper));
+
+        Assert.True(npcs.TryGet(eye.Handle, out NpcSnapshot next));
+        Assert.Equal(211f, next.Ai.Ai1);
+        Assert.Equal(-MathF.PI / 2f, next.Simulation.LocalAi.Ai0, 5);
+        Assert.Equal(.65f, next.Simulation.LocalAi.Ai1, 5);
+        var shots = new ProjectileSnapshot[4];
+        Assert.Equal(1, projectiles.CopyActive(shots));
+        Assert.Equal(VanillaProjectileIds.PhantasmalSphere, shots[0].Type);
+        Assert.Equal(40, shots[0].Damage);
+        Assert.Equal(30f, shots[0].Ai.Ai0);
+        Assert.Equal(eye.Handle.Slot, shots[0].Ai.Ai1);
+        Assert.Equal(910f, shots[0].PositionX, 5);
+        Assert.Equal(880f, shots[0].PositionY, 5);
+        Assert.Equal(0f, shots[0].VelocityX, 5);
+        Assert.Equal(-4f, shots[0].VelocityY, 5);
+    }
+
+    [Fact]
+    public void Sphere_release_windup_adds_then_releases_only_unreleased_owned_spheres()
+    {
+        var npcs = new RuntimeNpcStore(4);
+        Spawn(npcs, 0, VanillaNpcIds.MoonLordCore, 1000f, 1000f, 0f, 0f, default, default, 255);
+        NpcSnapshot eye = Spawn(npcs, 1, VanillaNpcIds.MoonLordFreeEye, 900f, 900f, 2f, -3f,
+            new NpcAiState(2f, 270f, MathF.PI / 2f, 0f), new NpcAiState(.2f, .3f, .4f, 0f), 0);
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: new CountingRandom(1));
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 1500f, 820f, 0, true, false, false, false)]);
+        var projectiles = new RuntimeProjectileStore(4);
+        SpawnSphere(projectiles, eye.Handle, 30f, eye.Handle.Slot, 1f, -2f);
+        SpawnSphere(projectiles, eye.Handle, -1f, eye.Handle.Slot, 3f, 4f);
+        SpawnSphere(projectiles, eye.Handle, 30f, 2f, 5f, 6f);
+
+        var planned = new NpcStateUpdate(eye.Type, eye.NetId, eye.PositionX, eye.PositionY, eye.VelocityX, eye.VelocityY,
+            eye.Target, eye.Ai with { Ai1 = 271f }, eye.Simulation);
+        Span<NpcAiProjectileMutationIntent> mutations = stackalloc NpcAiProjectileMutationIntent[1];
+        Assert.Equal(1, stepper.PlanProjectileMutations(in eye, in planned, mutations));
+        Assert.Equal(NpcAiProjectileVelocityMutation.AddWhileUnreleased, mutations[0].VelocityMutation);
+
+        new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new EyeOnly(stepper));
+
+        var shots = new ProjectileSnapshot[4];
+        Assert.Equal(3, projectiles.CopyActive(shots));
+        Assert.Equal(1f, shots[0].VelocityX, 5);
+        Assert.Equal(-9f, shots[0].VelocityY, 5);
+        Assert.Equal(30f, shots[0].Ai.Ai0);
+        Assert.Equal(3f, shots[1].VelocityX, 5);
+        Assert.Equal(4f, shots[1].VelocityY, 5);
+        Assert.Equal(-1f, shots[1].Ai.Ai0);
+        Assert.Equal(5f, shots[2].VelocityX, 5);
+        Assert.Equal(6f, shots[2].VelocityY, 5);
+
+        var release = new NpcStateUpdate(eye.Type, eye.NetId, eye.PositionX, eye.PositionY, eye.VelocityX, eye.VelocityY,
+            eye.Target, eye.Ai with { Ai1 = 300f, Ai2 = MathF.PI / 2f }, eye.Simulation);
+        Assert.True(npcs.TryUpdate(eye.Handle, in release, out _));
+        new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new EyeOnly(stepper));
+        Assert.Equal(3, projectiles.CopyActive(shots));
+        Assert.Equal(12f, shots[0].VelocityX, 5);
+        Assert.Equal(0f, shots[0].VelocityY, 5);
+        Assert.Equal(-1f, shots[0].Ai.Ai0);
+    }
+
+    private static void SpawnSphere(RuntimeProjectileStore store, NpcHandle source, float ai0, float ai1, float vx, float vy)
+    {
+        var intent = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalSphere, 900f, 900f, vx, vy, 40, 0f)
+        {
+            InitialAi = new ProjectileAiState(ai0, ai1, 0f)
+        };
+        Assert.True(RuntimeNpcProjectileIntentApplier.TryApply(store, source, in intent, out _));
+    }
+
     private static NpcSnapshot Spawn(RuntimeNpcStore store, byte slot, NpcTypeId type, float x, float y,
         float vx, float vy, NpcAiState ai, NpcAiState local, ushort target)
     {

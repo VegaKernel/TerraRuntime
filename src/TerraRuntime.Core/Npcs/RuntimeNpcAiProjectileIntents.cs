@@ -43,11 +43,18 @@ public interface INpcAiProjectileIntentPlanner
 /// generation. This covers vanilla cross-entity transitions where NPC AI releases projectiles that were spawned
 /// on earlier ticks without allowing a reused NPC slot to mutate another generation's projectiles.
 /// </summary>
+public enum NpcAiProjectileVelocityMutation : byte
+{
+    SetAndRelease = 0,
+    AddWhileUnreleased = 1
+}
+
 public readonly record struct NpcAiProjectileMutationIntent(
     ProjectileTypeId Type,
     float VelocityX,
     float VelocityY,
-    float Ai0);
+    float Ai0,
+    NpcAiProjectileVelocityMutation VelocityMutation = NpcAiProjectileVelocityMutation.SetAndRelease);
 
 /// <summary>
 /// Optional capability for NPC AI that mutates already-live projectiles. Intents are planned before the NPC state
@@ -139,6 +146,7 @@ public static class RuntimeNpcProjectileMutationIntentApplier
             !float.IsFinite(intent.VelocityX) ||
             !float.IsFinite(intent.VelocityY) ||
             !float.IsFinite(intent.Ai0) ||
+            !Enum.IsDefined(intent.VelocityMutation) ||
             scratch.Length < projectiles.ActiveCount)
         {
             return 0;
@@ -150,7 +158,7 @@ public static class RuntimeNpcProjectileMutationIntentApplier
         {
             ProjectileSnapshot projectile = scratch[index];
             if (projectile.Type != intent.Type ||
-                projectile.Ai.Ai0 == intent.Ai0 ||
+                projectile.Ai.Ai0 == -1f ||
                 projectile.Ai.Ai1 != sourceNpc.Slot ||
                 !projectiles.TryGetServerNpcSource(projectile.Handle, out NpcHandle actualSource) ||
                 actualSource != sourceNpc)
@@ -163,9 +171,15 @@ public static class RuntimeNpcProjectileMutationIntentApplier
                 projectile.Spawner,
                 projectile.PositionX,
                 projectile.PositionY,
-                intent.VelocityX,
-                intent.VelocityY,
-                projectile.Ai with { Ai0 = intent.Ai0 },
+                intent.VelocityMutation == NpcAiProjectileVelocityMutation.AddWhileUnreleased
+                    ? projectile.VelocityX + intent.VelocityX
+                    : intent.VelocityX,
+                intent.VelocityMutation == NpcAiProjectileVelocityMutation.AddWhileUnreleased
+                    ? projectile.VelocityY + intent.VelocityY
+                    : intent.VelocityY,
+                intent.VelocityMutation == NpcAiProjectileVelocityMutation.AddWhileUnreleased
+                    ? projectile.Ai
+                    : projectile.Ai with { Ai0 = intent.Ai0 },
                 projectile.BannerIdToRespondTo,
                 projectile.Damage,
                 projectile.KnockBack,

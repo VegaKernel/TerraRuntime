@@ -998,8 +998,12 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         if (!TryRoot(in npc, context, out NpcSnapshot root))
             return RetireOrphan(in npc, out next);
         NpcAiState ai = AdvanceEyeAttackClock(npc.Ai);
+        int elapsed = ResolveEyeAttackElapsed(ai.Ai1, out int duration);
         ushort target = npc.Target;
-        if (ai.Ai0 is 0f or -2f &&
+        bool reacquire = ai.Ai0 is 0f or -2f ||
+            ai.Ai0 is 1f or 4f && elapsed == 0 ||
+            ai.Ai0 == 2f && elapsed == 75;
+        if (reacquire &&
             context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh selected) &&
             selected.HasTarget)
         {
@@ -1044,6 +1048,87 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
                 vy = (vy * 29f + desiredY) / 30f;
             }
         }
+        else if (ai.Ai0 == 1f)
+        {
+            vx *= .95f;
+            vy *= .95f;
+            if (MathF.Sqrt(vx * vx + vy * vy) < 1f)
+            {
+                vx = 0f;
+                vy = 0f;
+            }
+
+            float centerX = npc.PositionX + 30f;
+            float centerY = npc.PositionY + 30f;
+            if (elapsed < duration - 19)
+            {
+                float aimX = player.CenterX + player.VelocityX * 20f - centerX;
+                float aimY = player.CenterY + player.VelocityY * 20f - centerY;
+                local = local with
+                {
+                    Ai0 = VanillaMoonLordHandBehavior.AngleLerp(local.Ai0, MathF.Atan2(aimY, aimX)),
+                    Ai1 = MathF.Min(1f, local.Ai1 + .05f)
+                };
+            }
+            local = local with
+            {
+                Ai2 = local.Ai2 + ((elapsed < 20 ? 1.1f : .4f) - local.Ai2) * .2f
+            };
+        }
+        else if (ai.Ai0 == 2f)
+        {
+            if (elapsed < 15)
+            {
+                local = local with
+                {
+                    Ai1 = MathF.Max(0f, local.Ai1 - .07f),
+                    Ai2 = local.Ai2 + (.4f - local.Ai2) * .2f
+                };
+                vx *= .8f;
+                vy *= .8f;
+                if (MathF.Sqrt(vx * vx + vy * vy) < 1f)
+                {
+                    vx = 0f;
+                    vy = 0f;
+                }
+            }
+            else if (elapsed < 75)
+            {
+                EyeSphereSpoke(elapsed, out float spokeX, out float spokeY);
+                float length = MathF.Sqrt(spokeX * spokeX + spokeY * spokeY);
+                local = local with
+                {
+                    Ai0 = MathF.Atan2(spokeY, spokeX),
+                    Ai1 = local.Ai1 + (length / 30f - local.Ai1) * .5f
+                };
+            }
+            else if (elapsed < 105)
+            {
+                local = local with
+                {
+                    Ai0 = VanillaMoonLordHandBehavior.AngleLerp(local.Ai0, ai.Ai2 - MathF.PI / 2f),
+                    Ai2 = local.Ai2 + (.75f - local.Ai2) * .2f
+                };
+                if (elapsed == 75)
+                {
+                    vx = 0f;
+                    vy = -7f;
+                }
+                vy *= .96f;
+                ai = ai with { Ai2 = MathF.Atan2(player.CenterY - (npc.PositionY + 30f), player.CenterX - (npc.PositionX + 30f)) + MathF.PI / 2f };
+            }
+            else if (elapsed < 120)
+            {
+                float angle = ai.Ai2 - MathF.PI / 2f;
+                vx = MathF.Cos(angle) * 24f;
+                vy = MathF.Sin(angle) * 24f;
+            }
+            else
+            {
+                vx *= .92f;
+                vy *= .92f;
+            }
+        }
 
         NpcSimulationState sim = npc.Simulation with
         {
@@ -1081,6 +1166,44 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
                 return states[i];
         }
         return 0;
+    }
+
+    private static int ResolveEyeAttackElapsed(float timer, out int duration)
+    {
+        ReadOnlySpan<int> durations = [53, 90, 53, 135, 53, 200, 53, 375, 53, 135];
+        int t = (int)timer;
+        int start = 0;
+        for (int index = 0; index < durations.Length; index++)
+        {
+            if (t < start + durations[index])
+            {
+                duration = durations[index];
+                return t - start;
+            }
+            start += durations[index];
+        }
+        duration = durations[0];
+        return 0;
+    }
+
+    internal static void EyeSphereSpoke(int elapsed, out float x, out float y)
+    {
+        int segment = (elapsed - 15) / 10;
+        ReadOnlySpan<int> start = [0, 2, 5, 3, 1, 4];
+        ReadOnlySpan<int> end = [2, 5, 3, 1, 4, 0];
+        segment = Math.Clamp(segment, 0, start.Length - 1);
+        float amount = (elapsed - 15) / 10f - segment;
+        RotateUpwardSpoke(start[segment], out float fromX, out float fromY);
+        RotateUpwardSpoke(end[segment], out float toX, out float toY);
+        x = fromX + (toX - fromX) * amount;
+        y = fromY + (toY - fromY) * amount;
+    }
+
+    private static void RotateUpwardSpoke(int step, out float x, out float y)
+    {
+        float angle = step * MathF.PI * 2f / 6f;
+        x = MathF.Sin(angle) * 30f;
+        y = -MathF.Cos(angle) * 30f;
     }
 
     private static bool RetireOrphan(in NpcSnapshot npc, out NpcStateUpdate next)
