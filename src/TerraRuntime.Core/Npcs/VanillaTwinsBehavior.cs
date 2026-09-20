@@ -212,6 +212,14 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         float targetY = queenCenterY + offsetX * MathF.Sin(orbit) + offsetY * MathF.Cos(orbit);
         float centerX = npc.PositionX + hitbox.Width * .5f;
         float centerY = npc.PositionY + hitbox.Height * .5f;
+        float sourceFiringDistance = 0f;
+        if (!_spazmatism)
+        {
+            int side = centerX < target.CenterX + VanillaPlayerHitboxFacts.BaseWidth * .5f ? -1 : 1;
+            float ordinaryX = target.CenterX + side * 300f - centerX;
+            float ordinaryY = target.CenterY - 300f - centerY;
+            sourceFiringDistance = MathF.Sqrt(ordinaryX * ordinaryX + ordinaryY * ordinaryY);
+        }
         float deltaX = targetX - centerX;
         float deltaY = targetY - centerY;
         float distance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
@@ -244,7 +252,7 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
             if (fireTimer >= 60f)
                 fireTimer = 0f;
         }
-        else if (npc.PositionY + hitbox.Height < target.CenterY - 21f && distance < 400f)
+        else if (npc.PositionY + hitbox.Height < target.CenterY - VanillaPlayerHitboxFacts.BaseHeight * .5f && sourceFiringDistance < 400f)
         {
             fireTimer += 1f;
             if (context.ExpertMode && life < lifeMax * .9f) fireTimer += .3f;

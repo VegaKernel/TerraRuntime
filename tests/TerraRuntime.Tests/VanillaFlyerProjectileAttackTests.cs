@@ -551,6 +551,24 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Targeting_stepper_uses_retinazers_ordinary_hover_distance_for_mechdusa_laser_gate()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetCandidates([Target(1000f, 400f)]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot prime = CreateNpc(VanillaNpcIds.SkeletronPrime, 0f) with
+        {
+            Handle = new NpcHandle(100, new NpcGeneration(1)),
+            Ai = new NpcAiState(0f, 0f, 0f, 100f)
+        };
+        NpcSnapshot retinazer = CreateNpc(VanillaNpcIds.Retinazer, 0f) with { Ai = new NpcAiState(0f, 0f, 0f, 119f) };
+        stepper.SetNpcPeers([prime, retinazer]);
+
+        Assert.True(stepper.TryStepState(in retinazer, out NpcStateUpdate next));
+        Assert.Equal(119f, next.Ai.Ai3);
+    }
+
+    [Fact]
     public void Targeting_stepper_keeps_late_twin_attack_counters_while_line_of_fire_is_blocked()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
