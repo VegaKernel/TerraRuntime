@@ -2645,12 +2645,20 @@ public sealed class VanillaNpcTargetingAiStepper :
                 { InitialAi = new ProjectileAiState(0f, angularVelocity, 0f) };
                 return 1;
             }
-            if (state == 4 && elapsed >= 0 && elapsed < 140 && elapsed % 20 == 0)
+            if (state == 4 && elapsed == 180)
             {
                 if (destination.IsEmpty) return 1;
                 float dx = target.CenterX - cx, dy = target.CenterY - cy;
-                float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
-                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalEye, cx, cy, dx / d * 7f, dy / d * 7f, 35, 0f);
+                float length = MathF.Sqrt(dx * dx + dy * dy);
+                if (!(length > 0f) || !float.IsFinite(length) ||
+                    !VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.PhantasmalDeathray, out var definition))
+                    return 0;
+                float sign = dx < 0f ? 1f : -1f;
+                float angle = MathF.Atan2(dy, dx) - sign * MathF.PI * 2f / 6f;
+                destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalDeathray,
+                    cx - definition.Width * .5f, cy - definition.Height * .5f,
+                    MathF.Cos(angle), MathF.Sin(angle), 50, 0f)
+                { InitialAi = new ProjectileAiState(sign * MathF.PI * 2f / 540f, source.Handle.Slot, 0f) };
                 return 1;
             }
         }

@@ -192,6 +192,33 @@ public sealed class MoonLordFreeEyeTests
         Assert.Equal(3, random.Draws);
     }
 
+    [Fact]
+    public void Deathray_window_launches_the_source_beam_at_tick_180()
+    {
+        var npcs = new RuntimeNpcStore(4);
+        Spawn(npcs, 0, VanillaNpcIds.MoonLordCore, 1000f, 1000f, 0f, 0f, default, default, 255);
+        NpcSnapshot eye = Spawn(npcs, 1, VanillaNpcIds.MoonLordFreeEye, 900f, 900f, 2f, -3f,
+            new NpcAiState(4f, 816f, 0f, 0f), new NpcAiState(.2f, .3f, .4f, 0f), 0);
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: new CountingRandom(1));
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 1500f, 820f, 0, true, false, false, false)]);
+        var projectiles = new RuntimeProjectileStore(4);
+
+        new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new EyeOnly(stepper));
+
+        Assert.True(npcs.TryGet(eye.Handle, out NpcSnapshot next));
+        Assert.Equal(817f, next.Ai.Ai1);
+        float angle = MathF.Atan2(820f - 930f, 1500f - 930f) + MathF.PI * 2f / 6f;
+        Assert.Equal(angle - MathF.PI * 2f / 540f, next.Simulation.LocalAi.Ai0, 5);
+        var shots = new ProjectileSnapshot[4];
+        Assert.Equal(1, projectiles.CopyActive(shots));
+        Assert.Equal(VanillaProjectileIds.PhantasmalDeathray, shots[0].Type);
+        Assert.Equal(50, shots[0].Damage);
+        Assert.Equal(eye.Handle.Slot, shots[0].Ai.Ai1);
+        Assert.Equal(-MathF.PI * 2f / 540f, shots[0].Ai.Ai0, 5);
+        Assert.Equal(angle, MathF.Atan2(shots[0].VelocityY, shots[0].VelocityX), 5);
+        Assert.Equal(1f, MathF.Sqrt(shots[0].VelocityX * shots[0].VelocityX + shots[0].VelocityY * shots[0].VelocityY), 5);
+    }
+
     private static void SpawnSphere(RuntimeProjectileStore store, NpcHandle source, float ai0, float ai1, float vx, float vy)
     {
         var intent = new NpcAiProjectileIntent(VanillaProjectileIds.PhantasmalSphere, 900f, 900f, vx, vy, 40, 0f)

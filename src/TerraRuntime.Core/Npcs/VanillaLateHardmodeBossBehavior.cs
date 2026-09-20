@@ -1182,6 +1182,44 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
                 };
             }
         }
+        else if (ai.Ai0 == 4f)
+        {
+            if (elapsed < 180)
+            {
+                local = local with
+                {
+                    Ai2 = local.Ai2 + (1f - local.Ai2) * .2f,
+                    Ai1 = MathF.Max(0f, local.Ai1 - .05f)
+                };
+                vx *= .95f;
+                vy *= .95f;
+                if (MathF.Sqrt(vx * vx + vy * vy) < 1f) vx = vy = 0f;
+                if (elapsed >= 60)
+                    for (int draw = 0; draw < (elapsed >= 120 ? 2 : 1); draw++) _ = random.NextDouble();
+            }
+            else if (elapsed < duration - 15)
+            {
+                vx *= .93f;
+                vy *= .93f;
+                if (elapsed == 180)
+                {
+                    float dx = player.CenterX - (npc.PositionX + 30f);
+                    float dy = player.CenterY - (npc.PositionY + 30f);
+                    float length = MathF.Sqrt(dx * dx + dy * dy);
+                    if (length > 0f && float.IsFinite(length))
+                    {
+                        float sign = dx < 0f ? 1f : -1f;
+                        float angle = MathF.Atan2(dy, dx) - sign * MathF.PI * 2f / 6f;
+                        ai = ai with { Ai2 = (angle + MathF.PI * 3f) * sign };
+                    }
+                }
+                float turn = ai.Ai2 >= 0f ? 1f : -1f;
+                float angle2 = MathF.Abs(ai.Ai2) - MathF.PI * 3f + turn * MathF.PI * 2f / 540f;
+                local = local with { Ai0 = angle2, Ai1 = MathF.Min(1f, local.Ai1 + .05f) };
+                ai = ai with { Ai2 = (angle2 + MathF.PI * 3f) * turn };
+            }
+            else local = local with { Ai1 = MathF.Max(0f, local.Ai1 - .07f) };
+        }
 
         NpcSimulationState sim = npc.Simulation with
         {
