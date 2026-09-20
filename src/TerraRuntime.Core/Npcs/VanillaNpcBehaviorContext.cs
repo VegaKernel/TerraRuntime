@@ -472,11 +472,11 @@ internal sealed class VanillaNpcBehaviorContext
             return false;
         }
 
-        float playerLeft = candidate.CenterX - VanillaPlayerHitboxFacts.BaseWidth * 0.5f;
-        float playerTop = candidate.CenterY - VanillaPlayerHitboxFacts.BaseHeight * 0.5f;
-        return npc.PositionX < playerLeft + VanillaPlayerHitboxFacts.BaseWidth &&
+        float playerLeft = candidate.CenterX - candidate.Width * 0.5f;
+        float playerTop = candidate.CenterY - candidate.Height * 0.5f;
+        return npc.PositionX < playerLeft + candidate.Width &&
                npc.PositionX + hitbox.Width > playerLeft &&
-               npc.PositionY < playerTop + VanillaPlayerHitboxFacts.BaseHeight &&
+               npc.PositionY < playerTop + candidate.Height &&
                npc.PositionY + hitbox.Height > playerTop;
     }
 
@@ -487,10 +487,10 @@ internal sealed class VanillaNpcBehaviorContext
             VanillaNpcTargetCandidate player = _candidates[index];
             if (!player.Active || player.Dead)
                 continue;
-            int playerLeft = (int)(player.CenterX - VanillaPlayerHitboxFacts.BaseWidth * .5f);
-            int playerTop = (int)(player.CenterY - VanillaPlayerHitboxFacts.BaseHeight * .5f);
-            if (left < playerLeft + VanillaPlayerHitboxFacts.BaseWidth && left + width > playerLeft &&
-                top < playerTop + VanillaPlayerHitboxFacts.BaseHeight && top + height > playerTop)
+            int playerLeft = (int)(player.CenterX - player.Width * .5f);
+            int playerTop = (int)(player.CenterY - player.Height * .5f);
+            if (left < playerLeft + player.Width && left + width > playerLeft &&
+                top < playerTop + player.Height && top + height > playerTop)
                 return true;
         }
         return false;
@@ -540,12 +540,11 @@ internal sealed class VanillaNpcBehaviorContext
             VanillaNpcTargetCandidate candidate = _candidates[index];
             if (candidate.Slot == targetSlot || !candidate.Active || candidate.Dead || candidate.Ghost)
                 continue;
-            float playerLeft = candidate.CenterX - VanillaPlayerHitboxFacts.BaseWidth * 0.5f;
-            float playerTop = candidate.CenterY - VanillaPlayerHitboxFacts.BaseHeight * 0.5f;
-            if (left < playerLeft + VanillaPlayerHitboxFacts.BaseWidth &&
+            float playerLeft = candidate.CenterX - candidate.Width * 0.5f;
+            float playerTop = candidate.CenterY - candidate.Height * 0.5f;
+            if (left < playerLeft + candidate.Width &&
                 left + width > playerLeft &&
-                top < playerTop + VanillaPlayerHitboxFacts.BaseHeight &&
-                top + height > playerTop)
+                top < playerTop + candidate.Height && top + height > playerTop)
             {
                 return true;
             }
