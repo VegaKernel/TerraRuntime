@@ -157,6 +157,102 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Targeting_stepper_orbits_mechdusa_twins_around_prime_with_source_smoothing()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetCandidates([Target(900f, 800f)]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot prime = CreateNpc(VanillaNpcIds.SkeletronPrime, 0f) with
+        {
+            Handle = new NpcHandle(100, new NpcGeneration(1)),
+            PositionX = 500f,
+            PositionY = 700f,
+            VelocityX = 4f,
+            Ai = new NpcAiState(0f, 0f, 0f, 100f)
+        };
+        NpcSnapshot retinazer = CreateNpc(VanillaNpcIds.Retinazer, 0f) with
+        {
+            Handle = new NpcHandle(3, new NpcGeneration(1)),
+            PositionX = 100f,
+            PositionY = 150f,
+            VelocityX = 6f,
+            VelocityY = -7f
+        };
+        NpcSnapshot spazmatism = CreateNpc(VanillaNpcIds.Spazmatism, 0f) with
+        {
+            Handle = new NpcHandle(4, new NpcGeneration(1)),
+            PositionX = 100f,
+            PositionY = 150f,
+            VelocityX = 6f,
+            VelocityY = -7f
+        };
+        stepper.SetNpcPeers([prime, retinazer, spazmatism]);
+
+        Assert.True(stepper.TryStepState(in retinazer, out NpcStateUpdate retNext));
+        Assert.True(stepper.TryStepState(in spazmatism, out NpcStateUpdate spazNext));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(prime.TypeIdentity, prime.NetIdentity, out VanillaNpcDefinition primeDefinition));
+        Assert.True(primeDefinition.TryResolveHitbox(prime.Simulation, out VanillaNpcHitboxSize primeHitbox));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(retinazer.TypeIdentity, retinazer.NetIdentity, out VanillaNpcDefinition twinDefinition));
+        Assert.True(twinDefinition.TryResolveHitbox(retinazer.Simulation, out VanillaNpcHitboxSize twinHitbox));
+        float queenCenterX = prime.PositionX + primeHitbox.Width * .5f;
+        float queenCenterY = prime.PositionY + primeHitbox.Height * .5f - 14f;
+        float twinCenterX = retinazer.PositionX + twinHitbox.Width * .5f;
+        float twinCenterY = retinazer.PositionY + twinHitbox.Height * .5f;
+        float orbit = prime.VelocityX * .025f;
+        (float retX, float retY) = MechdusaVelocity(
+            queenCenterX + (-112.5f * MathF.Cos(orbit) + 187.5f * MathF.Sin(orbit)) - twinCenterX,
+            queenCenterY + (-112.5f * MathF.Sin(orbit) - 187.5f * MathF.Cos(orbit)) - twinCenterY,
+            6f, -7f, 60f);
+        (float spazX, float spazY) = MechdusaVelocity(
+            queenCenterX + (112.5f * MathF.Cos(orbit) + 187.5f * MathF.Sin(orbit)) - twinCenterX,
+            queenCenterY + (112.5f * MathF.Sin(orbit) - 187.5f * MathF.Cos(orbit)) - twinCenterY,
+            6f, -7f, 5f);
+        Assert.Equal(retX, retNext.VelocityX, 5);
+        Assert.Equal(retY, retNext.VelocityY, 5);
+        Assert.Equal(spazX, spazNext.VelocityX, 5);
+        Assert.Equal(spazY, spazNext.VelocityY, 5);
+        Assert.Equal(1f, retNext.Ai.Ai2);
+        Assert.Equal(1f, spazNext.Ai.Ai2);
+    }
+
+    [Fact]
+    public void Targeting_stepper_advances_mechdusa_twin_to_phase_one_boundary()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetCandidates([Target(900f, 800f)]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: false);
+        NpcSnapshot prime = CreateNpc(VanillaNpcIds.SkeletronPrime, 0f) with
+        {
+            Handle = new NpcHandle(100, new NpcGeneration(1)),
+            Ai = new NpcAiState(0f, 0f, 0f, 100f)
+        };
+        NpcSnapshot retinazer = CreateNpc(VanillaNpcIds.Retinazer, 0f) with
+        {
+            Handle = new NpcHandle(3, new NpcGeneration(1)),
+            Ai = new NpcAiState(0f, 0f, 1199f, 17f)
+        };
+        stepper.SetNpcPeers([prime, retinazer]);
+
+        Assert.True(stepper.TryStepState(in retinazer, out NpcStateUpdate next));
+        Assert.Equal(1f, next.Ai.Ai1);
+        Assert.Equal(0f, next.Ai.Ai2);
+        Assert.Equal(0f, next.Ai.Ai3);
+    }
+
+    private static (float X, float Y) MechdusaVelocity(float deltaX, float deltaY, float velocityX, float velocityY, float denominator)
+    {
+        float distance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
+        if (distance > 14f)
+        {
+            float scale = 14f / distance;
+            deltaX *= scale;
+            deltaY *= scale;
+        }
+        return ((velocityX * (denominator - 1f) + deltaX) / denominator,
+            (velocityY * (denominator - 1f) + deltaY) / denominator);
+    }
+
+    [Fact]
     public void Targeting_stepper_clears_probe_mechdusa_marker_when_prime_disappears()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());

@@ -48,7 +48,11 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
 
         if (ai.Ai0 == 0f)
         {
-            if (_spazmatism)
+            // TerrariaServer 1.4.5.8 AI_030/AI_031 replace only the ordinary phase-one
+            // hover movement when the source's global Mech Queen Prime anchor is live.
+            if (ai.Ai1 == 0f && TryGetMechQueenCenter(context, out float queenCenterX, out float queenCenterY, out float queenVelocityX))
+                StepMechdusaPhaseOne(in npc, in definition, queenCenterX, queenCenterY, queenVelocityX, ref ai, ref vx, ref vy);
+            else if (_spazmatism)
                 StepSpazPhaseOne(in npc, in target, context, life, lifeMax, ref ai, ref local, ref vx, ref vy);
             else
                 StepRetPhaseOne(in npc, in target, context, life, lifeMax, ref ai, ref local, ref vx, ref vy);
@@ -96,6 +100,76 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         };
         next = Build(in npc, vx, vy, targetSlot, in ai, in sim);
         return true;
+    }
+
+    private void StepMechdusaPhaseOne(
+        in NpcSnapshot npc,
+        in VanillaNpcDefinition definition,
+        float queenCenterX,
+        float queenCenterY,
+        float queenVelocityX,
+        ref NpcAiState ai,
+        ref float velocityX,
+        ref float velocityY)
+    {
+        if (!definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
+            return;
+
+        float offsetX = _spazmatism ? 112.5f : -112.5f;
+        const float offsetY = -187.5f;
+        float orbit = queenVelocityX * .025f;
+        float targetX = queenCenterX + offsetX * MathF.Cos(orbit) - offsetY * MathF.Sin(orbit);
+        float targetY = queenCenterY + offsetX * MathF.Sin(orbit) + offsetY * MathF.Cos(orbit);
+        float centerX = npc.PositionX + hitbox.Width * .5f;
+        float centerY = npc.PositionY + hitbox.Height * .5f;
+        float deltaX = targetX - centerX;
+        float deltaY = targetY - centerY;
+        float distance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
+        const float speed = 14f;
+        if (distance > speed)
+        {
+            float scale = speed / distance;
+            deltaX *= scale;
+            deltaY *= scale;
+        }
+
+        float denominator = _spazmatism ? 5f : 60f;
+        velocityX = (velocityX * (denominator - 1f) + deltaX) / denominator;
+        velocityY = (velocityY * (denominator - 1f) + deltaY) / denominator;
+        float timer = ai.Ai2 + 1f;
+        ai = timer >= 1200f
+            ? ai with { Ai1 = 1f, Ai2 = 0f, Ai3 = 0f }
+            : ai with { Ai2 = timer };
+    }
+
+    private static bool TryGetMechQueenCenter(
+        VanillaNpcBehaviorContext context,
+        out float centerX,
+        out float centerY,
+        out float velocityX)
+    {
+        Span<NpcSnapshot> primes = stackalloc NpcSnapshot[VanillaNpcSpawnRules.PhysicalSlotCount];
+        int count = context.CopyNpcPeers(VanillaNpcIds.SkeletronPrime, primes);
+        for (int index = 0; index < count; index++)
+        {
+            NpcSnapshot prime = primes[index];
+            if (prime.Ai.Ai3 != prime.Handle.Slot ||
+                !VanillaNpcDefinitionCatalog.TryGet(prime.TypeIdentity, prime.NetIdentity, out VanillaNpcDefinition definition) ||
+                !definition.TryResolveHitbox(prime.Simulation, out VanillaNpcHitboxSize hitbox))
+            {
+                continue;
+            }
+
+            centerX = prime.PositionX + hitbox.Width * .5f;
+            centerY = prime.PositionY + hitbox.Height * .5f - 14f;
+            velocityX = prime.VelocityX;
+            return true;
+        }
+
+        centerX = 0f;
+        centerY = 0f;
+        velocityX = 0f;
+        return false;
     }
 
     private static void StepRetPhaseOne(in NpcSnapshot npc, in VanillaNpcTargetCandidate target, VanillaNpcBehaviorContext context,
