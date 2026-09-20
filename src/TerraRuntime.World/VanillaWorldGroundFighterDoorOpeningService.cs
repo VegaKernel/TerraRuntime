@@ -193,6 +193,57 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
         return true;
     }
 
+    /// <summary>
+    /// Source-shaped <c>WorldGen.ShiftTallGate(..., forced: true)</c> used by packet 19 actions 4 and 5. The
+    /// network path deliberately bypasses the non-forced Collision.EmptyTile branch after validating the complete
+    /// active 1x5 object, and preserves all source frames while changing only the tile type.
+    /// </summary>
+    public bool TryShiftTallGate(int tileX, int tileY, bool closing, out VanillaGroundFighterDoorOpeningMutation mutation)
+    {
+        mutation = default;
+        if (!Contains(tileX, tileY))
+            return false;
+
+        TileTypeId expectedType = closing ? VanillaTileIds.TallGateOpen : VanillaTileIds.TallGateClosed;
+        TileTypeId targetType = closing ? VanillaTileIds.TallGateClosed : VanillaTileIds.TallGateOpen;
+        WorldTile touched = tiles.Get(tileX, tileY);
+        if (!touched.IsActive || touched.TileType != expectedType || touched.FrameY < 0)
+            return false;
+
+        int frameWithinStyle = touched.FrameY % TallGateCoordinateFullHeight;
+        if (frameWithinStyle % FrameUnit != 0)
+            return false;
+        int row = frameWithinStyle / FrameUnit;
+        if ((uint)row >= TallGateHeight)
+            return false;
+
+        int topY = tileY - row;
+        if (!Contains(tileX, topY) || !Contains(tileX, topY + TallGateHeight - 1))
+            return false;
+
+        for (int offset = 0; offset < TallGateHeight; offset++)
+        {
+            WorldTile gate = tiles.Get(tileX, topY + offset);
+            if (!gate.IsActive || gate.TileType != expectedType)
+                return false;
+        }
+
+        for (int offset = 0; offset < TallGateHeight; offset++)
+        {
+            WorldTile gate = tiles.Get(tileX, topY + offset);
+            gate.Type = checked((ushort)targetType.Value);
+            tiles.Set(tileX, topY + offset, in gate);
+        }
+
+        mutation = new VanillaGroundFighterDoorOpeningMutation(
+            VanillaGroundFighterDoorOpeningKind.TallGate,
+            tileX,
+            tileY,
+            DirectionX: 0,
+            ChangedTiles: TallGateHeight);
+        return true;
+    }
+
     private bool TryDestroy(
         in VanillaGroundFighterDoorOpeningIntent intent,
         in WorldTile touched,

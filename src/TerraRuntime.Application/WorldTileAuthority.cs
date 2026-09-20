@@ -153,6 +153,11 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
             ApplyClientDoorClose(doorClose);
             return true;
         }
+        if (command is ClientTallGateToggleRuntimeCommand tallGateToggle)
+        {
+            ApplyClientTallGateToggle(tallGateToggle);
+            return true;
+        }
         if (command is not ClientTileManipulationRuntimeCommand tile)
             return false;
 
@@ -1092,6 +1097,35 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
             command.State.TileX >= tiles.Dimensions.WidthTiles - 3 ||
             command.State.TileY >= tiles.Dimensions.HeightTiles - 3 ||
             !playerDoorOpenings.TryCloseDoor(command.State.TileX, command.State.TileY, out _))
+        {
+            RejectedClientManipulations++;
+            return;
+        }
+
+        AppliedClientManipulations++;
+        TerrariaDoorToggleState state = command.State;
+        replication?.TryPublishDoorToggle(command.Connection.Source, in state);
+    }
+
+    /// <summary>
+    /// Packet-19 actions 4 and 5 call <c>WorldGen.ShiftTallGate(..., forced: true)</c> in MessageBuffer. The
+    /// forced source path validates the complete 1x5 object and switches its type without Collision.EmptyTile.
+    /// </summary>
+    private void ApplyClientTallGateToggle(ClientTallGateToggleRuntimeCommand command)
+    {
+        ClientManipulationRequests++;
+        bool closing = command.State.Action == (byte)TerrariaDoorToggleAction.CloseTallGate;
+        if (tiles is null ||
+            playerDoorOpenings is null ||
+            command.State.Action is not (byte)TerrariaDoorToggleAction.OpenTallGate and not (byte)TerrariaDoorToggleAction.CloseTallGate ||
+            !command.State.IsValid ||
+            !command.Connection.IsAssigned ||
+            !players.TryGet(command.Connection, out _) ||
+            command.State.TileX < 3 ||
+            command.State.TileY < 3 ||
+            command.State.TileX >= tiles.Dimensions.WidthTiles - 3 ||
+            command.State.TileY >= tiles.Dimensions.HeightTiles - 3 ||
+            !playerDoorOpenings.TryShiftTallGate(command.State.TileX, command.State.TileY, closing, out _))
         {
             RejectedClientManipulations++;
             return;

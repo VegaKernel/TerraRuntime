@@ -33,3 +33,8 @@ internal sealed record ClientDoorOpenRuntimeCommand(
 internal sealed record ClientDoorCloseRuntimeCommand(
     ConnectionHandle Connection,
     TerrariaDoorToggleState State) : RuntimeCommand;
+
+/// <summary>Connection-authenticated packet-19 forced tall-gate toggle proposal for the authoritative world thread.</summary>
+internal sealed record ClientTallGateToggleRuntimeCommand(
+    ConnectionHandle Connection,
+    TerrariaDoorToggleState State) : RuntimeCommand;

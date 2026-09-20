@@ -14,8 +14,8 @@ public enum PlayerDoorToggleFrameStopReason : byte
 }
 
 /// <summary>
-/// Connection-owned packet-19 ingress for the verified normal-door actions. Trapdoor and tall-gate source actions
-/// continue through the chain until their distinct authorities are implemented.
+/// Connection-owned packet-19 ingress for the verified normal-door and forced tall-gate actions. Trapdoor source
+/// actions continue through the chain until their distinct authority is implemented.
 /// </summary>
 public sealed class PlayerDoorToggleFrameSink : ITerrariaFrameSink, ITerrariaFrameRejectionSource
 {
@@ -62,15 +62,20 @@ public sealed class PlayerDoorToggleFrameSink : ITerrariaFrameSink, ITerrariaFra
         TerrariaDoorToggleDecodeResult decode = TerrariaDoorToggleCodec.TryDecode(in frame, out TerrariaDoorToggleState state);
         if (decode != TerrariaDoorToggleDecodeResult.Decoded)
             return Stop(PlayerDoorToggleFrameStopReason.MalformedDoorToggle);
-        if (state.Action is not (byte)TerrariaDoorToggleAction.OpenDoor and not (byte)TerrariaDoorToggleAction.CloseDoor)
+        if (state.Action is not (byte)TerrariaDoorToggleAction.OpenDoor and
+            not (byte)TerrariaDoorToggleAction.CloseDoor and
+            not (byte)TerrariaDoorToggleAction.OpenTallGate and
+            not (byte)TerrariaDoorToggleAction.CloseTallGate)
             return inner.OnFrame(in frame);
         if (!TryGetPlayingConnection(out ConnectionHandle connection))
             return Stop(PlayerDoorToggleFrameStopReason.InvalidJoinState);
 
         if (state.Action == (byte)TerrariaDoorToggleAction.OpenDoor)
             _ = ingress.TryPostDoorOpen(connection, in state);
-        else
+        else if (state.Action == (byte)TerrariaDoorToggleAction.CloseDoor)
             _ = ingress.TryPostDoorClose(connection, in state);
+        else
+            _ = ingress.TryPostTallGateToggle(connection, in state);
         return TerrariaFrameSinkResult.Continue;
     }
 

@@ -196,6 +196,45 @@ public sealed class TempleDoorUnlock1458Tests
         Assert.Equal(2, state.AppliedClientTileManipulations);
     }
 
+    [Fact]
+    public void Packet19_actions4_and5_force_tall_gate_type_shifts_and_relay_only_to_other_peers()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+        PlaceClosedTallGate(tiles, 40, 50);
+        var replication = new RuntimeTileManipulationReplicationRegistry();
+        var state = new ServerRuntimeState(worldTiles: tiles, tileManipulationReplication: replication);
+        var slots = new PlayerSlotPool(1);
+        using PlayerJoinSession session = CreatePlayingSession(slots);
+        ConnectionHandle owner = new(GameCommandSourceId.FromConnection(145808), session.Handle);
+        ConnectionHandle observer = new(GameCommandSourceId.FromConnection(145809),
+            new PlayerHandle(new PlayerSlotId(1), new PlayerSessionGeneration(1)));
+        TerrariaConnectionOutboundQueue ownerOutbound = Outbound();
+        TerrariaConnectionOutboundQueue observerOutbound = Outbound();
+        Assert.True(replication.TryRegister(owner.Source, ownerOutbound));
+        Assert.True(replication.TryRegister(observer.Source, observerOutbound));
+        PlayerSpawnCommitRequest ownerSpawn = Spawn(owner.Player.Slot);
+        state.Apply(new PlayerSpawnRuntimeCommand(owner, session, ownerSpawn));
+        replication.PlayerSpawned(owner, in ownerSpawn);
+        PlayerSpawnCommitRequest observerSpawn = Spawn(observer.Player.Slot);
+        replication.PlayerSpawned(observer, in observerSpawn);
+
+        var open = new TerrariaDoorToggleState((byte)TerrariaDoorToggleAction.OpenTallGate, 40, 52, 1);
+        state.Apply(new ClientTallGateToggleRuntimeCommand(owner, open));
+        for (int row = 0; row < 5; row++)
+            Assert.Equal(VanillaTileIds.TallGateOpen, tiles.Get(40, 50 + row).TileType);
+        Assert.Equal(1, observerOutbound.QueuedFrames);
+        Assert.Equal(open, DecodeDoorToggle(Dequeue(observerOutbound)));
+
+        var close = new TerrariaDoorToggleState((byte)TerrariaDoorToggleAction.CloseTallGate, 40, 52, -1);
+        state.Apply(new ClientTallGateToggleRuntimeCommand(owner, close));
+        for (int row = 0; row < 5; row++)
+            Assert.Equal(VanillaTileIds.TallGateClosed, tiles.Get(40, 50 + row).TileType);
+        Assert.Equal(0, ownerOutbound.QueuedFrames);
+        Assert.Equal(1, observerOutbound.QueuedFrames);
+        Assert.Equal(close, DecodeDoorToggle(Dequeue(observerOutbound)));
+        Assert.Equal(2, state.AppliedClientTileManipulations);
+    }
+
     private static void SetItem(ServerRuntimeState state, ConnectionHandle connection, short slot, short stack)
     {
         state.Apply(new PlayerEquipmentRuntimeCommand(connection, new PlayerEquipmentCommitRequest(
@@ -235,6 +274,20 @@ public sealed class TempleDoorUnlock1458Tests
         }
     }
 
+    private static void PlaceClosedTallGate(WorldTileStore tiles, int x, int topY)
+    {
+        for (int offset = 0; offset < 5; offset++)
+        {
+            var tile = new WorldTile
+            {
+                Type = checked((ushort)VanillaTileIds.TallGateClosed.Value),
+                FrameY = checked((short)(offset * 18)),
+                Flags = WorldTileFlags.Active
+            };
+            tiles.Set(x, topY + offset, in tile);
+        }
+    }
+
     private static PlayerJoinSession CreatePlayingSession(PlayerSlotPool slots)
     {
         Assert.True(slots.TryAcquireConnection(out PlayerSlotPool.PlayerSlotLease? lease));
@@ -266,5 +319,12 @@ public sealed class TempleDoorUnlock1458Tests
         var queue = Assert.IsType<BoundedOutboundQueue>(property.GetValue(outbound));
         Assert.True(queue.TryRead(out OutboundFrame frame));
         return Decode(frame.Bytes.ToArray());
+    }
+
+    private static TerrariaDoorToggleState DecodeDoorToggle(TerrariaFrame frame)
+    {
+        Assert.Equal(TerrariaDoorToggleDecodeResult.Decoded,
+            TerrariaDoorToggleCodec.TryDecode(in frame, out TerrariaDoorToggleState state));
+        return state;
     }
 }

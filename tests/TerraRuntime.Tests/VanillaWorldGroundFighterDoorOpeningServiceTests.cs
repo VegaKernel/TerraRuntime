@@ -246,6 +246,26 @@ public sealed class VanillaWorldGroundFighterDoorOpeningServiceTests
     }
 
     [Fact]
+    public void Forced_tall_gate_shift_validates_full_object_and_ignores_actor_probe()
+    {
+        WorldTileStore tiles = CreateWorld();
+        PlaceClosedTallGate(tiles, 15, 10);
+        var service = new VanillaWorldGroundFighterDoorOpeningService(
+            tiles,
+            new FixedOccupancyProbe(actorFree: false));
+
+        Assert.True(service.TryShiftTallGate(15, 12, closing: false, out VanillaGroundFighterDoorOpeningMutation opened));
+        Assert.Equal(VanillaGroundFighterDoorOpeningKind.TallGate, opened.Kind);
+        Assert.Equal(5, opened.ChangedTiles);
+        for (int row = 0; row < 5; row++)
+            Assert.Equal(VanillaTileIds.TallGateOpen, tiles.Get(15, 10 + row).TileType);
+
+        Assert.True(service.TryShiftTallGate(15, 12, closing: true, out _));
+        for (int row = 0; row < 5; row++)
+            Assert.Equal(VanillaTileIds.TallGateClosed, tiles.Get(15, 10 + row).TileType);
+    }
+
+    [Fact]
     public void Tall_gate_actor_collision_rejects_entire_object_atomically()
     {
         WorldTileStore tiles = CreateWorld();
