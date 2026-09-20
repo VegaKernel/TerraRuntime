@@ -1,6 +1,6 @@
 # TerraRuntime roadmap
 
-2026-09-20 Destroyer urgent replication: AI_037 retains its source `localAI[0]` digging marker and issues a forced packet-23 update exactly when that marker changes. The same opt-in path now preserves AI_037's body-laser `netUpdate`: it forces packet 23 only after a Death Laser passes `Collision.CanHit` and is planned, never for a counter reset behind a wall. Ordinary NPC commits retain their 30-tick cadence. Focused regressions cover marker entry, exit, both laser visibility branches and the committed forced-update kind. Other source `NPC.netUpdate` paths remain open.
+2026-09-20 NPC urgent replication: AI_037 retains Destroyer's source `localAI[0]` digging marker and issues a forced packet-23 update exactly when that marker changes. The same opt-in path preserves AI_037's body-laser `netUpdate` only after a Death Laser passes `Collision.CanHit` and is planned, never for a counter reset behind a wall. AI_069 now forces packet 23 for Duke Fishron's retained-target refresh past the source 5600-pixel guard and for known root-phase transitions; ordinary counters retain the 30-tick cadence. Focused regressions cover all admitted boundaries and the committed forced-update kind. Other source `NPC.netUpdate` paths remain open.
 
 ## Prime melee implementation - 2026-09-16
 

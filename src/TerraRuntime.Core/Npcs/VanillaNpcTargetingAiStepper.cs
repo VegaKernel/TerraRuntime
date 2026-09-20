@@ -25,7 +25,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     public const int MaximumPlayerCandidates = VanillaNpcBehaviorContext.MaximumPlayerCandidates;
 
     public bool RequiresForcedUpdate(in NpcSnapshot before, in NpcStateUpdate proposed) =>
-        VanillaDestroyerNpcBehaviorStrategy.RequiresDiggingStateSync(in before, in proposed);
+        VanillaDestroyerNpcBehaviorStrategy.RequiresDiggingStateSync(in before, in proposed) ||
+        VanillaDukeFishronNpcBehaviorStrategy.RequiresImmediateSync(in before, in proposed, _context);
 
     public bool RequiresForcedUpdateAfterPlanning(
         in NpcSnapshot before,
@@ -235,6 +236,15 @@ public sealed class VanillaNpcTargetingAiStepper :
 
         if (definition.Role == NpcArchetypeRole.Boss &&
             definition.BehaviorFamily == VanillaNpcBehaviorFamily.None)
+        {
+            next = default;
+            return false;
+        }
+
+        // AI_069's ocean/enrage guard requires both loaded world dimensions. Do not let an unavailable
+        // world context fall through to a generic AI stepper and manufacture an unverified Duke transition.
+        if (definition.BehaviorFamily == VanillaNpcBehaviorFamily.DukeFishron &&
+            (_context.WorldWidthPixels <= 0d || !double.IsFinite(_context.WorldSurfacePixels)))
         {
             next = default;
             return false;

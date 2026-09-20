@@ -16,6 +16,28 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
 
     public VanillaDukeFishronNpcBehaviorStrategy(IVanillaNpcRandom random) => this.random = random;
 
+    public static bool RequiresImmediateSync(in NpcSnapshot before, in NpcStateUpdate proposed,
+        VanillaNpcBehaviorContext context)
+    {
+        if (before.TypeIdentity != VanillaNpcIds.DukeFishron || proposed.Type != before.Type ||
+            !VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, before.NetIdentity, out VanillaNpcDefinition definition))
+        {
+            return false;
+        }
+
+        // AI_069 calls TargetClosest and sets netUpdate before its retreat branch whenever the retained player
+        // is no longer valid or lies beyond 5600 pixels.
+        if (before.Target >= byte.MaxValue || !context.TryFindCandidate((byte)before.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.Ghost || IsBeyondTargetRange(in before, in definition, in target))
+        {
+            return true;
+        }
+
+        // Each source-owned phase boundary writes netUpdate. Do not infer urgency from ai[2]/ai[3] counters.
+        return IsKnownRootPhase(before.Ai.Ai0) && IsKnownRootPhase(proposed.Ai.Ai0) &&
+            before.Ai.Ai0 != proposed.Ai.Ai0;
+    }
+
     internal static bool TryResolveEnrage(VanillaNpcBehaviorContext context,
         in VanillaNpcTargetCandidate target, out bool enraged)
     {
@@ -482,6 +504,9 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
         float dy = target.CenterY - (npc.PositionY + definition.Height * .5f);
         return MathF.Sqrt(dx * dx + dy * dy) > 5600f;
     }
+
+    private static bool IsKnownRootPhase(float value) =>
+        value == -1f || (value >= 0f && value <= 13f && value == MathF.Truncate(value));
 
     private static void Approach(ref float value, float target, float amount)
     {

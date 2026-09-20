@@ -8,6 +8,26 @@ namespace TerraRuntime.Tests;
 
 public sealed class DukeFishronOcean1458Tests
 {
+    [Fact]
+    public void Source_update_boundaries_force_sync_for_target_refresh_and_phase_transition_only()
+    {
+        var stepper = CreateStepper(4200, 6400, 1000);
+        NpcSnapshot intro = Duke(-1, 74, 0);
+        Assert.True(stepper.TryStepState(in intro, out NpcStateUpdate phaseTransition));
+        Assert.Equal(0f, phaseTransition.Ai.Ai0);
+        Assert.True(stepper.RequiresForcedUpdate(in intro, in phaseTransition));
+
+        NpcSnapshot ordinaryTick = Duke(0, 1, 0);
+        Assert.True(stepper.TryStepState(in ordinaryTick, out NpcStateUpdate ordinaryNext));
+        Assert.Equal(0f, ordinaryNext.Ai.Ai0);
+        Assert.False(stepper.RequiresForcedUpdate(in ordinaryTick, in ordinaryNext));
+
+        NpcSnapshot distantTarget = Duke(7, 0, 0, 0, 900);
+        stepper.SetCandidates([Player(7000, 1000)]);
+        Assert.True(stepper.TryStepState(in distantTarget, out NpcStateUpdate retreat));
+        Assert.True(stepper.RequiresForcedUpdate(in distantTarget, in retreat));
+    }
+
     // Pinned AI_069: position.Y < 800 / > surface*16; 6400 < position.X < width*16-6400.
     [Theory]
     [InlineData(4200, 500, 799, true)]
