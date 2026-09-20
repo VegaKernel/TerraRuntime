@@ -39,6 +39,10 @@ internal sealed class VanillaTwinNpcBehaviorStrategy : IVanillaNpcBehaviorStrate
         if (!TryGetTarget(targetSlot, context, out VanillaNpcTargetCandidate target))
             TryRefresh(in npc, in definition, context, ref targetSlot, out target);
         bool hasTarget = TryGetTarget(targetSlot, context, out target);
+        // AI_031 invokes TargetClosest on every ordinary phase-one hover update, even while its
+        // currently selected player remains valid.
+        if (_spazmatism && ai.Ai0 == 0f && ai.Ai1 == 0f)
+            hasTarget = TryRefresh(in npc, in definition, context, ref targetSlot, out target);
         bool mechQueenUp = TryGetMechQueenCenter(context, out float queenCenterX, out float queenCenterY, out float queenVelocityX);
         float rotation = sim.Rotation ?? 0f;
         if (hasTarget && definition.TryResolveHitbox(sim, out VanillaNpcHitboxSize hitbox))

@@ -1682,7 +1682,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         {
             type = spaz ? VanillaProjectileIds.SpazmatismCursedFlame : VanillaProjectileIds.WallOfFleshEyeLaser;
             speed = spaz ? (_context.ExpertMode ? 14f : 12f) : (_context.ExpertMode ? 10.5f : 9f);
-            damage = spaz ? 25 : (_context.ExpertMode ? 19 : 20);
+            damage = spaz ? (_context.ExpertMode ? 22 : 25) : (_context.ExpertMode ? 19 : 20);
             fire = true;
         }
         else if (source.Ai.Ai0 >= 3f && proposed.Ai.Ai0 >= 3f && source.Simulation.LocalAi.Ai1 > 0f && proposed.Simulation.LocalAi.Ai1 == 0f)

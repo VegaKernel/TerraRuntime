@@ -383,6 +383,29 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Targeting_stepper_refreshes_spazmatisms_phase_one_target_and_uses_expert_flame_damage()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        VanillaNpcTargetCandidate near = Target(140f, 80f);
+        VanillaNpcTargetCandidate far = Target(900f, 800f) with { Slot = 1 };
+        stepper.SetCandidates([near, far]);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: true);
+        NpcSnapshot spazmatism = CreateNpc(VanillaNpcIds.Spazmatism, 0f) with
+        {
+            Target = 1,
+            Ai = new NpcAiState(0f, 0f, 0f, 59f)
+        };
+
+        Assert.True(stepper.TryStepState(in spazmatism, out NpcStateUpdate next));
+        Assert.Equal(0, next.Target);
+        Assert.Equal(0f, next.Ai.Ai3);
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
+        Assert.Equal(1, stepper.PlanProjectileSpawns(in spazmatism, in next, intents));
+        Assert.Equal(VanillaProjectileIds.SpazmatismCursedFlame, intents[0].Type);
+        Assert.Equal(22, intents[0].Damage);
+    }
+
+    [Fact]
     public void Targeting_stepper_keeps_late_twin_attack_counters_while_line_of_fire_is_blocked()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
