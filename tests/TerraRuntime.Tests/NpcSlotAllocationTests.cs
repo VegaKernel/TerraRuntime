@@ -96,7 +96,12 @@ public sealed class NpcSlotAllocationTests
     public void Wall_of_Flesh_children_start_search_at_the_parent_slot()
     {
         var store = new RuntimeNpcStore(32);
-        var parentState = State(VanillaNpcIds.WallOfFlesh.Value) with { Ai = default };
+        var parentState = State(VanillaNpcIds.WallOfFlesh.Value) with
+        {
+            PositionX = 1000f,
+            PositionY = 35_700f,
+            Ai = default
+        };
         Assert.True(store.TrySpawn(10, in parentState, out var parent));
         var stepper = new VanillaNpcTargetingAiStepper(new Idle());
         stepper.SetWallOfFleshEnvironment(new WallEnvironment());
