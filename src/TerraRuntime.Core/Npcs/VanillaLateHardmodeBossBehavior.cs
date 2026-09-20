@@ -408,6 +408,7 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
         float vx = npc.VelocityX, vy = npc.VelocityY;
         float cx = npc.PositionX + 50f, cy = npc.PositionY + 50f;
         int state = (int)ai.Ai0;
+        int sourceState = state;
         float timer = ai.Ai1;
         bool vulnerable = state != 0 && state != 10;
         float contactDamageMultiplier = 1f;
@@ -462,6 +463,7 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
                         DontTakeDamage = !vulnerable,
                         DamageOverride = enraged ? 9999 : definition.Damage,
                         DefenseOverride = definition.Defense,
+                        Alpha = Math.Max(0, sim.Alpha - 5),
                         JustHit = false
                     });
                 return true;
@@ -524,6 +526,8 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
         }
 
         ai = ai with { Ai0 = state, Ai1 = timer };
+        if (sourceState is not 0 and not 13)
+            sim = sim with { Alpha = Math.Max(0, sim.Alpha - 5) };
         sim = sim with
         {
             NoGravity = true,

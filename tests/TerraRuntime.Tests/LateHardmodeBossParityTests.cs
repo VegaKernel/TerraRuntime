@@ -728,6 +728,19 @@ public sealed class LateHardmodeBossParityTests
         Assert.Equal(6f, MathF.Sqrt(intents[0].VelocityX * intents[0].VelocityX + intents[0].VelocityY * intents[0].VelocityY), precision: 3);
     }
 
+    [Fact]
+    public void Empress_non_intro_non_retreat_states_apply_source_alpha_tail()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(2f, 0f, 0f, 0f), life: 70_000) with
+        {
+            Simulation = NpcSimulationState.Initial with { Life = 70_000, LifeMax = 70_000, TimeLeft = 750, Scale = 1f, Alpha = 10 }
+        };
+
+        Assert.True(stepper.TryStepState(in empress, out NpcStateUpdate next));
+        Assert.Equal(5, next.Simulation.Alpha);
+    }
+
     [Theory]
     [InlineData(5f, true, 80)]
     [InlineData(6f, false, 80)]
