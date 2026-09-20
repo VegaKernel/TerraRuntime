@@ -223,7 +223,11 @@ internal sealed partial class NpcAuthority
                 vanillaTargeting.EnableBlueSlimeMotion(worldSurfaceTiles);
                 vanillaTargeting.EnableZombieMotion(worldSurfaceTiles);
                 if (worldTiles.WorldSurfaceTiles is double verifiedSurface)
-                    vanillaTargeting.SetWorldBounds(worldTiles.Dimensions.WidthTiles, verifiedSurface);
+                {
+                    double rockLayer = townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 facts &&
+                        facts.RockLayer > verifiedSurface ? facts.RockLayer : double.PositiveInfinity;
+                    vanillaTargeting.SetWorldBounds(worldTiles.Dimensions.WidthTiles, verifiedSurface, rockLayer);
+                }
                 vanillaTargeting.SetFlyingEyeEnvironment(new VanillaFlyingEyeWorldEnvironment(worldTiles));
                 vanillaTargeting.SetQueenBeeEnvironment(new VanillaQueenBeeWorldEnvironment(
                     worldTiles,

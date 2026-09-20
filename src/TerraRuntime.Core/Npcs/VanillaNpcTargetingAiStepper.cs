@@ -118,8 +118,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     public void SetCasterEnvironment(IVanillaCasterEnvironment environment) =>
         _darkCaster.Environment = environment ?? throw new ArgumentNullException(nameof(environment));
 
-    public void SetWorldBounds(int widthTiles, double worldSurfaceTiles) =>
-        _context.SetWorldBounds(widthTiles, worldSurfaceTiles);
+    public void SetWorldBounds(int widthTiles, double worldSurfaceTiles, double rockLayerTiles = double.PositiveInfinity) =>
+        _context.SetWorldBounds(widthTiles, worldSurfaceTiles, rockLayerTiles);
 
     public void SetPlayerSnapshotLookup(IRuntimePlayerSlotSnapshotLookup playerSnapshots) =>
         _context.SetPlayerSnapshotLookup(playerSnapshots);
@@ -1946,13 +1946,14 @@ public sealed class VanillaNpcTargetingAiStepper :
             ? _darkCaster.Complete(in before, in committed, _context, _random, mutations) : committed;
 
     public bool DeactivatesAfterStep(in NpcSnapshot before, in NpcStateUpdate proposed) =>
-        proposed.Type == before.Type && proposed.Simulation.Life == 0 &&
-        (VanillaSkeletronPrimeLimbNpcBehaviorStrategy.Deactivates(in before, in proposed) ||
-         (before.TypeIdentity == VanillaNpcIds.MoonLordLeechBlob && proposed.Simulation.TimeLeft == 0) ||
-         // AI_012 removes the orphan immediately; its internal negative-life sentinel never enters the store.
-         ((before.TypeIdentity == VanillaNpcIds.SkeletronHand || before.TypeIdentity == VanillaNpcIds.PrimeCannon ||
-           before.TypeIdentity == VanillaNpcIds.PrimeLaser) && proposed.Ai.Ai2 > 50f &&
-          proposed.Ai.Ai2 == before.Ai.Ai2 + 10f));
+        (proposed.Type == before.Type && proposed.Simulation.Life == 0 &&
+         (VanillaSkeletronPrimeLimbNpcBehaviorStrategy.Deactivates(in before, in proposed) ||
+          (before.TypeIdentity == VanillaNpcIds.MoonLordLeechBlob && proposed.Simulation.TimeLeft == 0) ||
+          // AI_012 removes the orphan immediately; its internal negative-life sentinel never enters the store.
+          ((before.TypeIdentity == VanillaNpcIds.SkeletronHand || before.TypeIdentity == VanillaNpcIds.PrimeCannon ||
+            before.TypeIdentity == VanillaNpcIds.PrimeLaser) && proposed.Ai.Ai2 > 50f &&
+           proposed.Ai.Ai2 == before.Ai.Ai2 + 10f))) ||
+        VanillaDestroyerNpcBehaviorStrategy.DespawnsAtDaytimeRockLayer(in before, in proposed, _context);
 
     public void ApplyCommittedEffect(
         in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)
@@ -1975,6 +1976,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);
         VanillaMoonLordLeechBehavior.SpawnFromHead(in before, in committed, _context, mutations);
         VanillaDestroyerNpcBehaviorStrategy.SpawnChain(in before, in committed, _context.GoodWorld, mutations);
+        VanillaDestroyerNpcBehaviorStrategy.DespawnDaytimeChain(in before, in committed, _context, mutations);
     }
 
     public void ApplyCommittedEffectAfterSpawns(

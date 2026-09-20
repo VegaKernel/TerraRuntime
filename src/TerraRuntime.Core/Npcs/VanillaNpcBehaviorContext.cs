@@ -30,16 +30,24 @@ internal sealed class VanillaNpcBehaviorContext
 
     public double WorldSurfacePixels { get; private set; } = double.PositiveInfinity;
 
+    public double RockLayerPixels { get; private set; } = double.PositiveInfinity;
+
     public double WorldWidthPixels { get; private set; }
 
-    public void SetWorldBounds(int widthTiles, double worldSurfaceTiles)
+    public void SetWorldBounds(int widthTiles, double worldSurfaceTiles, double rockLayerTiles = double.PositiveInfinity)
     {
         if (widthTiles <= 0)
             throw new ArgumentOutOfRangeException(nameof(widthTiles));
         if (!double.IsFinite(worldSurfaceTiles) || worldSurfaceTiles <= 0d)
             throw new ArgumentOutOfRangeException(nameof(worldSurfaceTiles));
+        if (!double.IsPositiveInfinity(rockLayerTiles) &&
+            (!double.IsFinite(rockLayerTiles) || rockLayerTiles <= worldSurfaceTiles))
+        {
+            throw new ArgumentOutOfRangeException(nameof(rockLayerTiles));
+        }
         WorldWidthPixels = widthTiles * 16d;
         WorldSurfacePixels = worldSurfaceTiles * 16d;
+        RockLayerPixels = rockLayerTiles * 16d;
     }
 
     public bool DayTime { get; private set; } = true;

@@ -352,6 +352,9 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
     bool INpcAiCommittedNpcMutationSink.TryGetActive(byte slot, out NpcSnapshot npc) =>
         _npcs.TryGetActive(slot, out npc);
 
+    bool INpcAiCommittedNpcMutationSink.TryDespawn(NpcHandle npc) =>
+        _npcs.TryDespawn(npc);
+
     bool INpcAiCommittedNpcMutationSink.TryLinkFollower(NpcHandle npc, byte followerSlot)
     {
         if (followerSlot > VanillaNpcSpawnRules.PhysicalSlotCount || !_npcs.TryGet(npc, out var current))

@@ -55,6 +55,36 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
         }
     }
 
+    public static bool DespawnsAtDaytimeRockLayer(in NpcSnapshot before, in NpcStateUpdate proposed,
+        VanillaNpcBehaviorContext context) =>
+        before.TypeIdentity == VanillaNpcIds.Destroyer && proposed.Type == before.Type && context.DayTime &&
+        before.PositionY > context.RockLayerPixels;
+
+    public static void DespawnDaytimeChain(in NpcSnapshot before, in NpcSnapshot committed,
+        VanillaNpcBehaviorContext context, INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (!DespawnsAtDaytimeRockLayer(in before, new NpcStateUpdate(
+                committed.Type, committed.NetId, committed.PositionX, committed.PositionY,
+                committed.VelocityX, committed.VelocityY, committed.Target, committed.Ai, committed.Simulation), context))
+        {
+            return;
+        }
+
+        // AI_037 deactivates every NPC with its Destroyer aiStyle during the head's daytime rock-layer branch.
+        for (int slot = 0; slot < VanillaNpcSpawnRules.PhysicalSlotCount; slot++)
+        {
+            if (!mutations.TryGetActive((byte)slot, out NpcSnapshot candidate) ||
+                (candidate.TypeIdentity != VanillaNpcIds.Destroyer &&
+                 candidate.TypeIdentity != VanillaNpcIds.DestroyerBody &&
+                 candidate.TypeIdentity != VanillaNpcIds.DestroyerTail))
+            {
+                continue;
+            }
+
+            mutations.TryDespawn(candidate.Handle);
+        }
+    }
+
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
         INpcAiStateStepper inner, out NpcStateUpdate next)
     {

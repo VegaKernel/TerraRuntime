@@ -116,6 +116,30 @@ public sealed class DestroyerChainSpawnTests
         Assert.Equal(81, observation.Children);
     }
 
+    [Fact]
+    public void Daytime_rock_layer_boundary_despawns_the_entire_destroyer_chain_in_the_head_step()
+    {
+        var store = new RuntimeNpcStore(capacity: 4);
+        Assert.True(store.TrySpawnIntent(new NpcAiSpawnIntent(VanillaNpcIds.Destroyer, 1000, 4000, 0, 0, 0)
+            { InitialAi = new NpcAiState(1, 0, 0, 0) }, out NpcSnapshot head));
+        Assert.True(store.TrySpawnIntent(new NpcAiSpawnIntent(VanillaNpcIds.DestroyerBody, 1000, 3240, 0, 0, 0), out _));
+        Assert.True(store.TrySpawnIntent(new NpcAiSpawnIntent(VanillaNpcIds.DestroyerTail, 1000, 3280, 0, 0, 0), out _));
+        var vanilla = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        vanilla.SetWorldBounds(400, 150, 200);
+        vanilla.SetWorldConditions(dayTime: true, slimeRainActive: false);
+        vanilla.SetCandidates([new VanillaNpcTargetCandidate(0, 100, 100, 0, true, false, false, false)]);
+        vanilla.SetWormEnvironment(new EmptyTerrain());
+        Assert.Equal(VanillaNpcIds.Destroyer, head.TypeIdentity);
+        Assert.True(head.PositionY > 3200f);
+        Assert.True(vanilla.TryStepState(in head, out NpcStateUpdate planned));
+        Assert.True(vanilla.DeactivatesAfterStep(in head, in planned));
+
+        NpcAiStateTickSummary result = new RuntimeNpcAiStateExecutor(store).Tick(vanilla);
+
+        Assert.Equal(1, result.Applied);
+        Assert.Equal(0, store.ActiveCount);
+    }
+
     private sealed class ChainObserver(INpcAiStateStepper inner, RuntimeNpcStore store) : INpcAiStateStepper, INpcAiStateStepperWrapper
     {
         public INpcAiStateStepper InnerStepper => inner;

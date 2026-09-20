@@ -49,6 +49,9 @@ public interface INpcAiCommittedNpcMutationSink
 
     bool TryGetActive(byte slot, out NpcSnapshot npc);
 
+    /// <summary>Deactivates one exact live generation through the authoritative store lifecycle.</summary>
+    bool TryDespawn(NpcHandle npc);
+
     bool TryTranslate(NpcHandle npc, float deltaX, float deltaY, out NpcSnapshot committed);
 
     /// <summary>Links a committed chain member to a physical follower slot, including vanilla's full-table sentinel 200.</summary>
