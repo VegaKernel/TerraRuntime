@@ -755,6 +755,22 @@ public sealed class LateHardmodeBossParityTests
         Assert.Equal(50, intents[0].Damage);
     }
 
+    [Theory]
+    [InlineData(4f, 0f, false, 120f)]
+    [InlineData(5f, 0f, false, 72f)]
+    [InlineData(6f, 1f, false, 285f)]
+    [InlineData(7f, 0f, true, 275f)]
+    public void Empress_attack_states_keep_their_source_duration(float state, float phase, bool expertMode, float duration)
+    {
+        var stepper = CreateStepper(dayTime: false);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: expertMode);
+        NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(state, duration - 1f, 0f, phase), life: 70_000);
+
+        Assert.True(stepper.TryStepState(in empress, out NpcStateUpdate next));
+        Assert.Equal(1f, next.Ai.Ai0);
+        Assert.Equal(0f, next.Ai.Ai1);
+    }
+
     [Fact]
     public void Empress_direct_lance_refuses_source_distant_target()
     {

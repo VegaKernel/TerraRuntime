@@ -279,6 +279,8 @@ State 7 now retains its six source lance-wall geometries, the $3200\,\text{pixel
 
 State 11 direct lances reject a primary target beyond $2400\,\text{pixels}$. State 12 starts from the upward $(0,-20)$ vector and rotates that vector across its $50$-tick firing window; Expert/rage uses a $4$-tick cadence and Classic uses $6$, independent of phase.
 
+Empress states 4, 5, 6 and 7 retain their source total durations: $120$, $72$, $300$ and Classic/Expert $260/280$ ticks before phase/Expert reductions.
+
 ## 16. Trusted-host NPC actors
 
 `INpcActorOperations` lets a trusted host acquire a lease over an existing runtime NPC and submit semantic `NpcActorIntent`.
