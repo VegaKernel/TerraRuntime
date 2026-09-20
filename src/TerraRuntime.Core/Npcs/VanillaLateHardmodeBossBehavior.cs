@@ -773,6 +773,39 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         next = default; return false;
     }
 
+    /// <summary>
+    /// Exact AI_077/078/079 writes to NPC.netUpdate that are represented by this runtime state slice.
+    /// Ordinary Moon Lord movement stays on the registry cadence; this only carries source-owned state handoffs.
+    /// </summary>
+    internal static bool RequiresImmediateSync(in NpcSnapshot before, in NpcStateUpdate proposed)
+    {
+        if (proposed.Type != before.Type)
+            return false;
+
+        if (before.TypeIdentity == VanillaNpcIds.MoonLordCore)
+        {
+            return (before.Simulation.LocalAi.Ai3 == 0f && proposed.Ai.Ai0 == -1f) ||
+                (before.Ai.Ai0 is -1f or -2f && proposed.Ai.Ai0 == 0f) ||
+                (before.Ai.Ai0 == 0f && proposed.Ai.Ai0 == 1f);
+        }
+
+        if (before.TypeIdentity == VanillaNpcIds.MoonLordHand)
+        {
+            // AI_078 sets netUpdate whenever its non-retired attack-table state changes.
+            return before.Ai.Ai0 != -2f && before.Ai.Ai0 != proposed.Ai.Ai0;
+        }
+
+        if (before.TypeIdentity != VanillaNpcIds.MoonLordHead || before.Ai.Ai0 < 0f || proposed.Ai.Ai0 < 0f)
+            return false;
+
+        if (before.Ai.Ai0 != proposed.Ai.Ai0)
+            return true; // AI_079 attack-table state change.
+
+        int elapsed = VanillaMoonLordHeadBehavior.Phase(proposed.Ai.Ai1, out int state, out _);
+        // At elapsed 180 of the Deathray state, AI_079 stores its rotation, creates the ray and sets netUpdate.
+        return proposed.Ai.Ai0 == 1f && state == 1 && elapsed == 180;
+    }
+
     private bool TryCore(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, out NpcStateUpdate next)
     {
         // Even on a dedicated server, the original sound decision advances the shared RNG.
