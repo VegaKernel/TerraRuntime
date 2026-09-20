@@ -633,7 +633,7 @@ public sealed class LateHardmodeBossParityTests
         var beforeDusk = CreateStepper(dayTime: true);
         beforeDusk.SetWorldConditions(dayTime: true, slimeRainActive: false, worldTime: 53_399d);
         Assert.True(beforeDusk.TryStepState(in empress, out NpcStateUpdate attack));
-        Assert.Equal(8f, attack.Ai.Ai0);
+        Assert.Equal(9f, attack.Ai.Ai0);
         Assert.Equal(4f, attack.Ai.Ai2);
 
         var atDusk = CreateStepper(dayTime: true);
@@ -738,6 +738,32 @@ public sealed class LateHardmodeBossParityTests
         Assert.Equal(24.026f, next.VelocityX, precision: 3);
         Assert.Equal(-10.297f, next.VelocityY, precision: 3);
         Assert.Equal(1f, next.Ai.Ai1);
+    }
+
+    [Theory]
+    [InlineData(0f, false, 2f)]
+    [InlineData(1f, false, 9f)]
+    public void Empress_attack_selection_mirrors_right_dash_and_uses_expert_source_launch(float cycle, bool expertMode, float expectedState)
+    {
+        var stepper = CreateStepper(dayTime: false);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: expertMode);
+        NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(1f, 44f, cycle, 0f), life: 70_000);
+
+        Assert.True(stepper.TryStepState(in empress, out NpcStateUpdate next));
+        Assert.Equal(expectedState, next.Ai.Ai0);
+    }
+
+    [Fact]
+    public void Expert_empress_attack_selection_uses_source_perpendicular_launch()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: true);
+        NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(1f, 44f, 0f, 0f), life: 70_000);
+
+        Assert.True(stepper.TryStepState(in empress, out NpcStateUpdate next));
+        Assert.Equal(2f, next.Ai.Ai0);
+        Assert.Equal(7.878f, next.VelocityX, precision: 3);
+        Assert.Equal(-18.383f, next.VelocityY, precision: 3);
     }
 
     [Fact]

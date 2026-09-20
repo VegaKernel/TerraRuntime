@@ -1910,3 +1910,7 @@ The packet-27 replication registry now preserves the current late-join baseline 
 ### Empress extra-player volleys - 2026-09-20
 
 The AI_120 projectile planner now implements `Boss_CanShootExtraAt` for states 2, 4, 11 and 12. It uses the established generation-safe NPC/player interaction ledger, skips the primary target, retains the source modulo-three rotation and 2400-pixel range checks, and emits the target-specific geometry/`ai[0]` selection in physical candidate order. A non-interacting eligible-slot candidate is rejected. Release warnings-as-errors build and 118 focused `LateHardmodeBossParityTests` pass. Presentation effects, complete encounter trace parity and unmodeled projectile/network edge cases remain open.
+
+### Empress preparation launch - 2026-09-20
+
+At the source state-1 boundary, AI_120 now turns an attack-table state 8 into state 9 when the target is right of the boss. Expert/rage emits the source perpendicular 20-speed launch for every selected state except 5/12. The stationary-target Fairy Queen Lance ring now also applies the source `SafeNormalize(UnitY)` fallback before its velocity-dot reversal. Release warnings-as-errors build and 121 focused `LateHardmodeBossParityTests` pass. Presentation effects, complete encounter trace parity and unmodeled projectile/network edge cases remain open.

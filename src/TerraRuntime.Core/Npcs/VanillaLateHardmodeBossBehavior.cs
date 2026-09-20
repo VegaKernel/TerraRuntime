@@ -451,11 +451,18 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
                 bool targetTooFar = dx * dx + dy * dy > 6_400f * 6_400f;
                 // Source selects state 13 when a genuinely enraged Empress reaches night or 53,400 daytime ticks.
                 // The phase-one selector requests state 10 at half health; state 10 alone changes ai[3] at tick 90.
-                state = targetTooFar || context.ShouldEmpressRetreat(in ai)
+                int selectedState = targetTooFar || context.ShouldEmpressRetreat(in ai)
                     ? 13
                     : !phaseTwo && (float)life / lifeMax <= .5f
                         ? 10
                         : SelectEmpressAttack((int)ai.Ai2, phaseTwo, expertCadence);
+                // AI_120 chooses the mirrored dash state after its attack table, based on the player side.
+                if (selectedState == 8 && player.CenterX > cx)
+                    selectedState = 9;
+                // Expert and daytime-rage preparations launch sideways into every attack except rainbow states 5/12.
+                if (expertCadence && selectedState is not 5 and not 12)
+                    SetEmpressSourcePreparationVelocity(cx, cy, player.CenterX, player.CenterY, ref vx, ref vy);
+                state = selectedState;
                 timer = 0f;
                 ai = ai with { Ai2 = ai.Ai2 + 1f };
             }
@@ -642,6 +649,26 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
         float speed = baseSpeed + (distance / 6f - baseSpeed) * lerp;
         velocityX = dx / distance * speed;
         velocityY = dy / distance * speed;
+    }
+
+    private static void SetEmpressSourcePreparationVelocity(float centerX, float centerY, float targetX, float targetY,
+        ref float velocityX, ref float velocityY)
+    {
+        float dx = centerX - targetX;
+        float dy = centerY - targetY;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        if (distance <= .001f)
+        {
+            velocityX = 0f;
+            velocityY = 0f;
+            return;
+        }
+
+        float sign = targetX > centerX ? 1f : -1f;
+        float directionX = dx / distance;
+        float directionY = dy / distance;
+        velocityX = -directionY * sign * 20f;
+        velocityY = directionX * sign * 20f;
     }
 
     private static void SimpleFlyTo(float centerX, float centerY, float targetX, float targetY, float desiredSpeed,
