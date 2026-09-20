@@ -1,4 +1,4 @@
-using TerraRuntime.Contracts.Gameplay;
+﻿using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Npcs;
@@ -118,6 +118,35 @@ public sealed class DukeFishronOcean1458Tests
         Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
 
         Assert.Equal(.04f, next.Simulation.Rotation);
+    }
+
+    [Theory]
+    [InlineData((ushort)0, 20, 62)]
+    [InlineData((ushort)10, 20, 76)]
+    [InlineData((ushort)55, 14, 14)]
+    [InlineData((ushort)56, 20, 18)]
+    [InlineData((ushort)61, 8, 14)]
+    public void Mount_target_hitboxes_match_source_set_mount(ushort mount, float width, float height)
+    {
+        Assert.Equal((width, height), VanillaPlayerMountHitbox1458.Resolve(mount));
+    }
+
+    [Fact]
+    public void Duke_ocean_gate_uses_mounted_player_top_left()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        stepper.SetWorldBounds(4200, 150);
+        stepper.SetWorldConditions(false, false);
+        // Mount 10 gives height 76: center Y 838 means source player.position.Y == 800, not enraged.
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 6300, 838, 0, true, false, false, false)
+        {
+            HitboxWidth = 20, HitboxHeight = 76
+        }]);
+        NpcSnapshot npc = Duke(0, 0, 0, 6400, 900);
+
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+        Assert.Equal(100, next.Simulation.DamageOverride);
+        Assert.Equal(50, next.Simulation.DefenseOverride);
     }
 
     // Pinned AI_069: position.Y < 800 / > surface*16; 6400 < position.X < width*16-6400.
@@ -327,3 +356,4 @@ public sealed class DukeFishronOcean1458Tests
                 LocalAi = new NpcAiState(1, 0, 0, 0)
             });
 }
+

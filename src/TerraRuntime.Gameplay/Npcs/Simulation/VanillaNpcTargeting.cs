@@ -1,3 +1,5 @@
+using TerraRuntime.Gameplay.Players;
+
 namespace TerraRuntime.Gameplay.Npcs;
 
 /// <summary>
@@ -19,6 +21,15 @@ public readonly record struct VanillaNpcTargetCandidate(
     public float VelocityX { get; init; }
 
     public float VelocityY { get; init; }
+
+    /// <summary>Live source Player hitbox; defaults preserve the 20x42 unmounted shape for synthetic callers.</summary>
+    public float HitboxWidth { get; init; }
+
+    public float HitboxHeight { get; init; }
+
+    public float Width => HitboxWidth > 0f ? HitboxWidth : VanillaPlayerHitboxFacts.BaseWidth;
+
+    public float Height => HitboxHeight > 0f ? HitboxHeight : VanillaPlayerHitboxFacts.BaseHeight;
 
     /// <summary>Terraria player.buffImmune[BuffID.Slow] projected for Deerclops attack selection.</summary>
     public bool SlowBuffImmune { get; init; }

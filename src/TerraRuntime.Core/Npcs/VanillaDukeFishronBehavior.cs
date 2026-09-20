@@ -56,8 +56,8 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
         if (context.WorldWidthPixels <= 0d || !double.IsFinite(context.WorldSurfacePixels))
             return false;
         // AI69 tests player.position (not Center) and uses strict inequalities at all four boundaries.
-        float left = target.CenterX - VanillaPlayerHitboxFacts.BaseWidth * .5f;
-        float top = target.CenterY - VanillaPlayerHitboxFacts.BaseHeight * .5f;
+        float left = target.CenterX - target.Width * .5f;
+        float top = target.CenterY - target.Height * .5f;
         enraged = top < 800f || top > context.WorldSurfacePixels ||
             (left > 6400f && left < context.WorldWidthPixels - 6400d);
         return true;

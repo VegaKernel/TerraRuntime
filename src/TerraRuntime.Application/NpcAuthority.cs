@@ -1276,15 +1276,17 @@ internal sealed partial class NpcAuthority
         {
             if (players.TryGet(checked((byte)slot), out RuntimePlayerMember? player))
             {
+                (float memberWidth, float memberHeight) = VanillaPlayerMountHitbox1458.Resolve(player.MountType);
                 destination[written++] = WithPlayerWorldFacts(new VanillaNpcTargetCandidate(
                     Slot: checked((byte)slot),
-                    CenterX: player.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
-                    CenterY: player.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f,
+                    CenterX: player.PositionX + memberWidth * 0.5f,
+                    CenterY: player.PositionY + memberHeight * 0.5f,
                     Aggro: 0,
                     Active: true,
                     Dead: player.IsDead,
                     Ghost: false,
-                    NoAggro: false), includeBiomeZoneFacts);
+                    NoAggro: false)
+                { HitboxWidth = memberWidth, HitboxHeight = memberHeight }, includeBiomeZoneFacts);
                 continue;
             }
 
@@ -1301,15 +1303,17 @@ internal sealed partial class NpcAuthority
             }
 
             PlayerStateSnapshot serverPlayer = serverPlayerSnapshots[serverPlayerIndex++];
+            (float mountWidth, float mountHeight) = VanillaPlayerMountHitbox1458.Resolve(serverPlayer.MountType);
             destination[written++] = WithPlayerWorldFacts(new VanillaNpcTargetCandidate(
                 Slot: checked((byte)slot),
-                CenterX: serverPlayer.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f,
-                CenterY: serverPlayer.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f,
+                CenterX: serverPlayer.PositionX + mountWidth * 0.5f,
+                CenterY: serverPlayer.PositionY + mountHeight * 0.5f,
                 Aggro: 0,
                 Active: true,
                 Dead: serverPlayer.IsDead,
                 Ghost: false,
-                NoAggro: false), includeBiomeZoneFacts);
+                NoAggro: false)
+            { HitboxWidth = mountWidth, HitboxHeight = mountHeight }, includeBiomeZoneFacts);
         }
 
         return written;
@@ -1357,16 +1361,16 @@ internal sealed partial class NpcAuthority
         if (worldTiles is null)
             return candidate;
 
-        float playerX = candidate.CenterX - PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
-        float playerY = candidate.CenterY - PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
+        float playerX = candidate.CenterX - candidate.Width * 0.5f;
+        float playerY = candidate.CenterY - candidate.Height * 0.5f;
         return candidate with
         {
             Wet = VanillaWorldCollision.TryGetWetContact(
                 worldTiles,
                 playerX,
                 playerY,
-                (int)PlayerAuthority.VanillaBasePlayerWidth,
-                (int)PlayerAuthority.VanillaBasePlayerHeight,
+                (int)candidate.Width,
+                (int)candidate.Height,
                 out _)
         };
     }
