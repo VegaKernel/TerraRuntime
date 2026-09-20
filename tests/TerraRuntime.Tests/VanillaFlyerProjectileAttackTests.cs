@@ -569,6 +569,24 @@ public sealed class VanillaFlyerProjectileAttackTests
     }
 
     [Fact]
+    public void Targeting_stepper_keeps_destroyer_daytime_steering_and_surface_speed_cap()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());
+        stepper.SetCandidates([Target(900f, 800f)]);
+        stepper.SetWorldConditions(dayTime: true, slimeRainActive: false, expertMode: false);
+        stepper.SetWormEnvironment(new EmptyWormEnvironment());
+        NpcSnapshot head = CreateNpc(VanillaNpcIds.Destroyer, 0f) with
+        {
+            PositionX = 100f, PositionY = 100f, VelocityY = 20f, Ai = new NpcAiState(1f, 0f, 0f, 0f)
+        };
+
+        Assert.True(stepper.TryStepState(in head, out NpcStateUpdate next));
+        Assert.Equal(16f, next.VelocityY);
+        Assert.Equal(10, next.Simulation.TimeLeft);
+        Assert.True(next.VelocityX > 0f);
+    }
+
+    [Fact]
     public void Targeting_stepper_refreshes_destroyer_head_target_on_each_non_digging_step()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new PassthroughStepper(), random: new AnyRandom());

@@ -145,7 +145,7 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
         bool digging = _environment.IsDigging(x, y, hitbox.Width, hitbox.Height);
         local = local with { Ai1 = digging ? 0f : 1f };
 
-        if (context.DayTime || !hasTarget)
+        if (!hasTarget)
         {
             digging = false;
             vy += 1f;
@@ -158,11 +158,28 @@ internal sealed class VanillaDestroyerNpcBehaviorStrategy : IVanillaNpcBehaviorS
             return true;
         }
 
+        float maxSpeed = 16f;
+        if (context.DayTime)
+        {
+            // AI_037 falls through to its ordinary non-digging steering while retreating by day.
+            // It adds one vertical unit above the surface (two below), then applies the same .15f
+            // steering increment and its source 16/32 speed cap.
+            digging = false;
+            vy += 1f;
+            if (y > (float)context.WorldSurfacePixels)
+            {
+                vy += 1f;
+                maxSpeed = 32f;
+            }
+            int tl = sim.TimeLeft;
+            if (tl < 0 || tl > 10) tl = 10;
+            sim = sim with { TimeLeft = tl };
+        }
+
         // In the non-digging head branch, AI_037 invokes TargetClosest before every movement update.
         if (!digging)
             hasTarget = TryRefresh(in npc, in definition, context, ref targetSlot, out target);
 
-        float maxSpeed = 16f;
         float turn = context.GoodWorld ? .12f : .1f;
         float align = context.GoodWorld ? .18f : .15f;
         float cxh = MathF.Truncate((x + hitbox.Width * .5f) / 16f) * 16f;
