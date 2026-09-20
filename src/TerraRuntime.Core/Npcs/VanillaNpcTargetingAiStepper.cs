@@ -2444,6 +2444,10 @@ public sealed class VanillaNpcTargetingAiStepper :
         }
         if (state == 11 && timer < 100f && ((int)timer % 3) == 0)
         {
+            float sourceDistanceX = target.CenterX - cx;
+            float sourceDistanceY = target.CenterY - cy;
+            if (sourceDistanceX * sourceDistanceX + sourceDistanceY * sourceDistanceY > 2_400f * 2_400f)
+                return 0;
             if (destination.IsEmpty) return 1;
             float pvx = target.VelocityX, pvy = target.VelocityY;
             float pd = MathF.Sqrt(pvx * pvx + pvy * pvy);
@@ -2456,12 +2460,13 @@ public sealed class VanillaNpcTargetingAiStepper :
         }
         if (state == 12 && timer >= 10f && timer < 60f)
         {
-            int cadence = phaseTwo && expertCadence ? 4 : 6;
+            int cadence = expertCadence ? 4 : 6;
             if (((int)timer % cadence) != 0) return 0;
             if (destination.IsEmpty) return 1;
             float progress = (timer - 10f) / 50f;
             float angle = MathF.PI * 2f * progress;
-            float vx = MathF.Cos(angle) * 20f, vy = MathF.Sin(angle) * 20f;
+            // AI_120 state 12 rotates (0, -20), rather than a positive X-axis vector.
+            float vx = -MathF.Sin(angle) * 20f, vy = -MathF.Cos(angle) * 20f;
             destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.HallowBossRainbowStreak, cx - 55f, cy - 30f, vx, vy, Damage(45, 50, 30, 35), 0f)
             { InitialAi = new ProjectileAiState(proposed.Target, progress, 0f) };
             return 1;

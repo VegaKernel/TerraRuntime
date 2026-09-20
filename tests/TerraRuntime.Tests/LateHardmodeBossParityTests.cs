@@ -755,6 +755,37 @@ public sealed class LateHardmodeBossParityTests
         Assert.Equal(50, intents[0].Damage);
     }
 
+    [Fact]
+    public void Empress_direct_lance_refuses_source_distant_target()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 3_000f, 300f, 0, true, false, false, false)]);
+        NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(11f, 0f, 0f, 0f), life: 70_000);
+        NpcStateUpdate proposed = Proposed(in empress, empress.Ai);
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
+
+        Assert.Equal(0, stepper.PlanProjectileSpawns(in empress, in proposed, intents));
+    }
+
+    [Theory]
+    [InlineData(false, 1f, 12f, true)]
+    [InlineData(true, 0f, 12f, true)]
+    public void Empress_spinning_rainbow_uses_source_upward_bearing_and_expert_cadence(bool expertMode, float phase, float timer, bool expected)
+    {
+        var stepper = CreateStepper(dayTime: false);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, expertMode: expertMode);
+        NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(12f, timer, 0f, phase), life: 70_000);
+        NpcStateUpdate proposed = Proposed(in empress, empress.Ai);
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
+
+        Assert.Equal(expected ? 1 : 0, stepper.PlanProjectileSpawns(in empress, in proposed, intents));
+        if (timer == 12f)
+        {
+            Assert.Equal(-4.974f, intents[0].VelocityX, precision: 3);
+            Assert.Equal(-19.372f, intents[0].VelocityY, precision: 3);
+        }
+    }
+
     [Theory]
     [InlineData(false, 1f, 14)]
     [InlineData(true, 0f, 18)]
