@@ -28,6 +28,73 @@ public sealed class DukeFishronOcean1458Tests
         Assert.True(stepper.RequiresForcedUpdate(in distantTarget, in retreat));
     }
 
+    [Fact]
+    public void Distant_refreshed_target_continues_into_the_resulting_phase_instead_of_returning_early()
+    {
+        var stepper = CreateStepper(4200, 6690, 8000);
+        NpcSnapshot npc = Duke(7, 24, 3) with
+        {
+            VelocityX = 3f,
+            VelocityY = 2f,
+            Simulation = Duke(7, 24, 3).Simulation with
+            {
+                TimeLeft = 900,
+                LocalAi = new NpcAiState(1, 0, 0, 0),
+                Rotation = 0f
+            }
+        };
+
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+
+        // AI_069 resets 7 -> 5 and ai[2] -> 0 for retreat, then state 5 increments the clock in this same call.
+        Assert.Equal(5f, next.Ai.Ai0);
+        Assert.Equal(1f, next.Ai.Ai2);
+        Assert.Equal(10, next.Simulation.TimeLeft);
+        Assert.Equal(.04f, next.Simulation.Rotation);
+    }
+
+    [Fact]
+    public void Distant_target_retreat_still_runs_source_initialization_before_phase_dispatch()
+    {
+        var stepper = CreateStepper(4200, 6690, 8000);
+        NpcSnapshot npc = Duke(7, 24, 3) with
+        {
+            Simulation = Duke(7, 24, 3).Simulation with
+            {
+                TimeLeft = 900,
+                Rotation = 1f,
+                LocalAi = new NpcAiState(0, 0, 0, 0)
+            }
+        };
+
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+
+        Assert.Equal(-1f, next.Ai.Ai0);
+        Assert.Equal(1f, next.Ai.Ai2);
+        Assert.Equal(1f, next.Simulation.LocalAi.Ai0);
+        Assert.Equal(255, next.Simulation.Alpha);
+        Assert.Equal(0f, next.Simulation.Rotation);
+        Assert.Equal(10, next.Simulation.TimeLeft);
+    }
+
+    [Fact]
+    public void Root_rotation_moves_toward_the_target_before_normal_phase_dispatch()
+    {
+        var stepper = CreateStepper(4200, 6690, 2000);
+        NpcSnapshot npc = Duke(0, 1, 0) with
+        {
+            Simulation = Duke(0, 1, 0).Simulation with
+            {
+                LocalAi = new NpcAiState(1, 0, 0, 0),
+                Rotation = 0f
+            }
+        };
+
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+
+        Assert.Equal(.04f, next.Simulation.Rotation);
+    }
+
     // Pinned AI_069: position.Y < 800 / > surface*16; 6400 < position.X < width*16-6400.
     [Theory]
     [InlineData(4200, 500, 799, true)]
@@ -228,7 +295,9 @@ public sealed class DukeFishronOcean1458Tests
         new(new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1), 370, 370, x, y, 0, 0, 0,
             new NpcAiState(state, 0, timer, cycle), NpcSimulationState.Initial with
             {
-                Life = 60000, LifeMax = 60000, Scale = 1f,
+                Life = 60000,
+                LifeMax = 60000,
+                Scale = 1f,
                 TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft,
                 LocalAi = new NpcAiState(1, 0, 0, 0)
             });

@@ -88,11 +88,13 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
             currentTarget.Active && !currentTarget.Dead && !currentTarget.Ghost &&
             IsBeyondTargetRange(in npc, in definition, in currentTarget))
         {
-            // AI_069 calls TargetClosest before its retreat branch when the retained player is over 5600 px away.
+            // AI_069 refreshes before checking the selected target for its retreat branch.
             targetSlot = byte.MaxValue;
         }
         if (!TryTarget(in npc, in definition, context, ref targetSlot, out VanillaNpcTargetCandidate target))
         {
+            // No target coordinate is available to complete source AI69's post-retreat work. Preserve the
+            // established bounded retreat rather than manufacture a player position from an absent session.
             NpcAiState retreatAi = npc.Ai with { Ai0 = npc.Ai.Ai0 > 4f ? 5f : 0f, Ai2 = 0f };
             NpcSimulationState retreatSim = npc.Simulation with
             {
@@ -103,24 +105,26 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
             next = Build(in npc, npc.VelocityX, npc.VelocityY - .4f, targetSlot, in retreatAi, in retreatSim);
             return true;
         }
+
+        NpcAiState ai = npc.Ai;
+        NpcSimulationState sim = npc.Simulation;
+        float initialVelocityY = npc.VelocityY;
         if (IsBeyondTargetRange(in npc, in definition, in target))
         {
-            NpcAiState retreatAi = npc.Ai with { Ai0 = npc.Ai.Ai0 > 4f ? 5f : 0f, Ai2 = 0f };
-            NpcSimulationState retreatSim = npc.Simulation with
+            // AI_069 does not return here. It encourages despawn, resets the phase clock, then continues through
+            // initialization, rotation and the resulting phase's state handler using the refreshed target.
+            initialVelocityY -= .4f;
+            ai = ai with { Ai0 = ai.Ai0 > 4f ? 5f : 0f, Ai2 = 0f };
+            sim = sim with
             {
                 NoGravity = true,
                 NoTileCollide = true,
-                TimeLeft = npc.Simulation.TimeLeft is < 0 or > 10 ? 10 : npc.Simulation.TimeLeft
+                TimeLeft = sim.TimeLeft is < 0 or > 10 ? 10 : sim.TimeLeft
             };
-            next = Build(in npc, npc.VelocityX, npc.VelocityY - .4f, targetSlot, in retreatAi, in retreatSim);
-            return true;
         }
 
         if (!TryResolveEnrage(context, in target, out bool enraged))
         { next = default; return false; }
-
-        NpcAiState ai = npc.Ai;
-        NpcSimulationState sim = npc.Simulation;
         NpcAiState local = sim.LocalAi;
         int lifeMax = sim.LifeMax > 0 ? sim.LifeMax : definition.LifeMax;
         int life = sim.LifeMax > 0 ? sim.Life : lifeMax;
@@ -131,8 +135,14 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
         {
             local = local with { Ai0 = 1f };
             ai = ai with { Ai0 = -1f, Ai1 = 0f, Ai2 = 0f, Ai3 = 0f };
-            sim = sim with { Alpha = 255 };
+            sim = sim with { Alpha = 255, Rotation = 0f };
         }
+
+        sim = sim with
+        {
+            Rotation = RotateRootTowardTarget(sim.Rotation ?? 0f, sim.SpriteDirection, ai.Ai0, in target,
+            npc.PositionX + definition.Width * .5f, npc.PositionY + definition.Height * .5f)
+        };
 
         bool phaseTwo = ai.Ai0 > 4f;
         bool phaseThree = ai.Ai0 > 9f;
@@ -161,7 +171,7 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
         float dashBonus = enraged ? 6f : 0f;
 
         float vx = npc.VelocityX;
-        float vy = npc.VelocityY;
+        float vy = initialVelocityY;
         float cx = npc.PositionX + definition.Width * .5f;
         float cy = npc.PositionY + definition.Height * .5f;
         float positionX = npc.PositionX;
@@ -349,6 +359,36 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
         return true;
     }
 
+
+    private static float RotateRootTowardTarget(float rotation, int spriteDirection, float phase,
+        in VanillaNpcTargetCandidate target, float centerX, float centerY)
+    {
+        // AI_069 rotates before phase dispatch, including after its distant-target retreat transition.
+        float targetRotation = MathF.Atan2(target.CenterY - centerY, target.CenterX - centerX);
+        if (spriteDirection == 1)
+            targetRotation += MathF.PI;
+        if (targetRotation < 0f)
+            targetRotation += MathF.Tau;
+        if (targetRotation > MathF.Tau)
+            targetRotation -= MathF.Tau;
+        if (phase is -1f or 3f or 4f or 8f)
+            targetRotation = 0f;
+
+        float step = phase is 1f or 6f or 7f ? 0f : phase is 3f or 4f or 8f ? .01f : .04f;
+        if (rotation < targetRotation)
+            rotation += targetRotation - rotation > MathF.PI ? -step : step;
+        if (rotation > targetRotation)
+            rotation += rotation - targetRotation > MathF.PI ? step : -step;
+        if (rotation > targetRotation - step && rotation < targetRotation + step)
+            rotation = targetRotation;
+        if (rotation < 0f)
+            rotation += MathF.Tau;
+        if (rotation > MathF.Tau)
+            rotation -= MathF.Tau;
+        if (rotation > targetRotation - step && rotation < targetRotation + step)
+            rotation = targetRotation;
+        return rotation;
+    }
 
     private static bool TryStepSharkron(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
         out NpcStateUpdate next)
