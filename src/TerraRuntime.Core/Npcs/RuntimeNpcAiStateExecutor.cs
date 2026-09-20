@@ -207,7 +207,10 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
             }
             bool deactivate = postCommitEffect?.DeactivatesAfterStep(in npc, in next) ?? false;
             bool deferPublication = postCommitEffect?.DefersStatePublication(in npc, in next) ?? false;
-            bool forceUpdate = forcedUpdatePlanner?.RequiresForcedUpdate(in npc, in next) ?? false;
+            bool forceUpdate = forcedUpdatePlanner?.RequiresForcedUpdateAfterPlanning(
+                in npc,
+                in next,
+                _projectileIntentBuffer.AsSpan(0, projectileCount)) ?? false;
             if (!_npcs.TryGet(npc.Handle, out currentSource) || currentSource.Revision != npc.Revision)
             {
                 rejected++;

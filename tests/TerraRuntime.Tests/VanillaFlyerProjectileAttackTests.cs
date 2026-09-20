@@ -668,6 +668,7 @@ public sealed class VanillaFlyerProjectileAttackTests
         float velocityY = dy / distance * 8f - 1f;
         Assert.NotEqual(body.PositionX, next.PositionX);
         Assert.Equal(VanillaProjectileIds.RetinazerDeathLaser, intents[0].Type);
+        Assert.True(stepper.RequiresForcedUpdateAfterPlanning(in body, in next, intents));
         Assert.Equal(expectedDamage, intents[0].Damage);
         Assert.Equal(velocityX, intents[0].VelocityX, 5);
         Assert.Equal(velocityY, intents[0].VelocityY, 5);
@@ -708,6 +709,7 @@ public sealed class VanillaFlyerProjectileAttackTests
         Assert.Equal(1, next.Target);
         Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
         Assert.Equal(0, stepper.PlanProjectileSpawns(in body, in next, intents));
+        Assert.False(stepper.RequiresForcedUpdateAfterPlanning(in body, in next, intents[..0]));
         Assert.Equal(38, environment.SourceWidth);
         Assert.Equal(38, environment.SourceHeight);
     }

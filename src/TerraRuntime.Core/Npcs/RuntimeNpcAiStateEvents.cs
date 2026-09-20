@@ -29,6 +29,15 @@ public interface INpcAiStatePostCommitObserver
 public interface INpcAiForcedUpdateIntentPlanner
 {
     bool RequiresForcedUpdate(in NpcSnapshot before, in NpcStateUpdate proposed);
+
+    /// <summary>
+    /// Evaluates a source-scoped immediate packet-23 request after projectile planning. Implementations use this
+    /// only where the matching Terraria AI sets <c>NPC.netUpdate</c> as part of an accepted projectile transition.
+    /// </summary>
+    bool RequiresForcedUpdateAfterPlanning(
+        in NpcSnapshot before,
+        in NpcStateUpdate proposed,
+        ReadOnlySpan<NpcAiProjectileIntent> plannedProjectiles) => RequiresForcedUpdate(in before, in proposed);
 }
 
 /// <summary>

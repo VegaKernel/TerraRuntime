@@ -27,6 +27,16 @@ public sealed class VanillaNpcTargetingAiStepper :
     public bool RequiresForcedUpdate(in NpcSnapshot before, in NpcStateUpdate proposed) =>
         VanillaDestroyerNpcBehaviorStrategy.RequiresDiggingStateSync(in before, in proposed);
 
+    public bool RequiresForcedUpdateAfterPlanning(
+        in NpcSnapshot before,
+        in NpcStateUpdate proposed,
+        ReadOnlySpan<NpcAiProjectileIntent> plannedProjectiles) =>
+        RequiresForcedUpdate(in before, in proposed) ||
+        (before.TypeIdentity == VanillaNpcIds.DestroyerBody &&
+         proposed.Type == before.Type &&
+         plannedProjectiles.Length == 1 &&
+         plannedProjectiles[0].Type == VanillaProjectileIds.RetinazerDeathLaser);
+
     private const float EyeOfCthulhuClassicServantCadenceThreshold = 110f;
     private const float EyeOfCthulhuExpertServantCadenceThreshold = 44f;
     private const float EyeOfCthulhuClassicServantSpeed = 5f;
