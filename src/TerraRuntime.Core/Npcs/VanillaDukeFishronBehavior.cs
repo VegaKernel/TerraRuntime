@@ -51,7 +51,26 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
         { next = default; return false; }
 
         ushort targetSlot = npc.Target;
+        if (targetSlot < byte.MaxValue && context.TryFindCandidate((byte)targetSlot, out VanillaNpcTargetCandidate currentTarget) &&
+            currentTarget.Active && !currentTarget.Dead && !currentTarget.Ghost &&
+            IsBeyondTargetRange(in npc, in definition, in currentTarget))
+        {
+            // AI_069 calls TargetClosest before its retreat branch when the retained player is over 5600 px away.
+            targetSlot = byte.MaxValue;
+        }
         if (!TryTarget(in npc, in definition, context, ref targetSlot, out VanillaNpcTargetCandidate target))
+        {
+            NpcAiState retreatAi = npc.Ai with { Ai0 = npc.Ai.Ai0 > 4f ? 5f : 0f, Ai2 = 0f };
+            NpcSimulationState retreatSim = npc.Simulation with
+            {
+                NoGravity = true,
+                NoTileCollide = true,
+                TimeLeft = npc.Simulation.TimeLeft is < 0 or > 10 ? 10 : npc.Simulation.TimeLeft
+            };
+            next = Build(in npc, npc.VelocityX, npc.VelocityY - .4f, targetSlot, in retreatAi, in retreatSim);
+            return true;
+        }
+        if (IsBeyondTargetRange(in npc, in definition, in target))
         {
             NpcAiState retreatAi = npc.Ai with { Ai0 = npc.Ai.Ai0 > 4f ? 5f : 0f, Ai2 = 0f };
             NpcSimulationState retreatSim = npc.Simulation with
@@ -454,6 +473,14 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
             refresh.Target < byte.MaxValue && context.TryFindCandidate((byte)refresh.Target, out target) && target.Active && !target.Dead && !target.Ghost)
         { targetSlot = refresh.Target; return true; }
         target = default; return false;
+    }
+
+    private static bool IsBeyondTargetRange(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        in VanillaNpcTargetCandidate target)
+    {
+        float dx = target.CenterX - (npc.PositionX + definition.Width * .5f);
+        float dy = target.CenterY - (npc.PositionY + definition.Height * .5f);
+        return MathF.Sqrt(dx * dx + dy * dy) > 5600f;
     }
 
     private static void Approach(ref float value, float target, float amount)

@@ -273,6 +273,22 @@ public sealed class LateHardmodeBossParityTests
         Assert.Equal(-1, next.Simulation.SpriteDirection);
     }
 
+    [Fact]
+    public void Duke_reacquires_a_nearby_player_before_applying_the_distant_target_retreat()
+    {
+        var stepper = CreateDukeStepper();
+        stepper.SetCandidates([
+            new VanillaNpcTargetCandidate(0, 7000f, 1100f, 0, true, false, false, false),
+            new VanillaNpcTargetCandidate(1, 500f, 1100f, 0, true, false, false, false)
+        ]);
+        NpcSnapshot duke = CreateNpc(VanillaNpcIds.DukeFishron, new NpcAiState(0, 0, 0, 0),
+            life: 60_000, localAi: new NpcAiState(1, 0, 0, 0));
+
+        Assert.True(stepper.TryStepState(in duke, out NpcStateUpdate next));
+        Assert.Equal(1, next.Target);
+        Assert.NotEqual(10, next.Simulation.TimeLeft);
+    }
+
     [Theory]
     [InlineData(0, 11)]
     [InlineData(1, 12)]
