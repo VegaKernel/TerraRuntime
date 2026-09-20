@@ -1018,6 +1018,7 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
 
         float vx = npc.VelocityX;
         float vy = npc.VelocityY;
+        float rotation = npc.Simulation.Rotation ?? 0f;
         NpcAiState local = npc.Simulation.LocalAi;
         if (ai.Ai0 is 0f or -2f)
         {
@@ -1135,6 +1136,7 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
                 }
                 vy *= .96f;
                 ai = ai with { Ai2 = MathF.Atan2(player.CenterY - (npc.PositionY + 30f), player.CenterX - (npc.PositionX + 30f)) + MathF.PI / 2f };
+                rotation = AngleToward(rotation, ai.Ai2, MathF.PI / 30f);
             }
             else if (elapsed < 120)
             {
@@ -1146,6 +1148,7 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
             {
                 vx *= .92f;
                 vy *= .92f;
+                rotation = LerpAngle(rotation, 0f, .2f);
             }
         }
         else if (ai.Ai0 == 3f)
@@ -1188,12 +1191,14 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
                 {
                     vx = ellipseX / length * speed;
                     vy = ellipseY / length * speed;
+                    rotation = LerpAngle(rotation, MathF.Atan2(vy, vx) + MathF.PI / 2f, .2f);
                 }
             }
             else
             {
                 vx *= .88f;
                 vy *= .88f;
+                rotation = LerpAngle(rotation, 0f, .2f);
                 local = local with
                 {
                     Ai1 = MathF.Max(0f, local.Ai1 - .07f),
@@ -1243,6 +1248,7 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         NpcSimulationState sim = npc.Simulation with
         {
             LocalAi = local,
+            Rotation = rotation,
             NoGravity = true,
             NoTileCollide = true,
             DontTakeDamage = true,
@@ -1314,6 +1320,23 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         float angle = step * MathF.PI * 2f / 6f;
         x = MathF.Sin(angle) * 30f;
         y = -MathF.Cos(angle) * 30f;
+    }
+
+    private static float LerpAngle(float current, float target, float amount)
+    {
+        float difference = (target - current + MathF.PI) % (MathF.PI * 2f);
+        if (difference < 0f) difference += MathF.PI * 2f;
+        difference -= MathF.PI;
+        return current + difference * amount;
+    }
+
+    private static float AngleToward(float current, float target, float step)
+    {
+        float difference = (target - current + MathF.PI) % (MathF.PI * 2f);
+        if (difference < 0f) difference += MathF.PI * 2f;
+        difference -= MathF.PI;
+        if (MathF.Abs(difference) <= step) return target;
+        return current + MathF.Sign(difference) * step;
     }
 
     private static bool RetireOrphan(in NpcSnapshot npc, out NpcStateUpdate next)

@@ -202,6 +202,7 @@ public sealed class MoonLordFreeEyeTests
         Assert.Equal(.35f, next.Simulation.LocalAi.Ai1, 5);
         Assert.Equal(turn, MathF.Atan2(next.VelocityY, next.VelocityX), 5);
         Assert.Equal(8f, MathF.Sqrt(next.VelocityX * next.VelocityX + next.VelocityY * next.VelocityY), 5);
+        Assert.Equal((turn + MathF.PI / 2f) * .2f, next.Simulation.Rotation!.Value, 5);
 
         var shots = new ProjectileSnapshot[4];
         Assert.Equal(1, projectiles.CopyActive(shots));
