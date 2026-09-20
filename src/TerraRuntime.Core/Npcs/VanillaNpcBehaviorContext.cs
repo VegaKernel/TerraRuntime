@@ -60,7 +60,11 @@ internal sealed class VanillaNpcBehaviorContext
 
     public bool MasterMode { get; private set; }
 
+    public bool RemixWorld { get; private set; }
+
     public float WindSpeedCurrent { get; private set; }
+
+    private bool empressRemixRageMode;
 
     public void SetPlayerSnapshotLookup(IRuntimePlayerSlotSnapshotLookup playerSnapshots) =>
         _playerSnapshots = playerSnapshots ?? throw new ArgumentNullException(nameof(playerSnapshots));
@@ -85,7 +89,8 @@ internal sealed class VanillaNpcBehaviorContext
         bool goodWorld = false,
         bool expertMode = false,
         bool masterMode = false,
-        float windSpeedCurrent = 0f)
+        float windSpeedCurrent = 0f,
+        bool remixWorld = false)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -98,6 +103,56 @@ internal sealed class VanillaNpcBehaviorContext
         ExpertMode = expertMode;
         MasterMode = masterMode;
         WindSpeedCurrent = windSpeedCurrent;
+        RemixWorld = remixWorld;
+        if (!remixWorld)
+            empressRemixRageMode = false;
+    }
+
+    /// <summary>
+    /// Mirrors <c>NPC.ShouldEmpressBeEnraged</c>. In a Remix world, TerrariaServer latches rage when the
+    /// first physical Empress slot rises above the surface; otherwise rage is the normal daytime condition.
+    /// </summary>
+    public bool ShouldEmpressBeEnraged(in NpcSnapshot current)
+    {
+        if (!RemixWorld)
+            return DayTime;
+        if (empressRemixRageMode)
+            return true;
+
+        // The source scans Main.npc by physical slot and checks type without an active guard. Retained slots
+        // preserve that observable state after despawn, so prefer them whenever the executor supplies them.
+        if (_retainedNpcSlotCount > 0)
+        {
+            for (int index = 0; index < _retainedNpcSlotCount; index++)
+            {
+                VanillaNpcRetainedSlot slot = _retainedNpcSlots[index];
+                if (slot.TypeIdentity != VanillaNpcIds.EmpressOfLight)
+                    continue;
+                if (slot.PositionY + 50f < WorldSurfacePixels)
+                {
+                    empressRemixRageMode = true;
+                    return true;
+                }
+                return false;
+            }
+            return false;
+        }
+
+        NpcSnapshot first = current;
+        for (int index = 0; index < _npcPeerCount; index++)
+        {
+            NpcSnapshot peer = _npcPeers[index];
+            if (peer.TypeIdentity == VanillaNpcIds.EmpressOfLight && peer.Handle.Slot < first.Handle.Slot)
+                first = peer;
+        }
+
+        // Type 636 has the source 100-pixel body. AI_120 compares its physical center with the strict surface edge.
+        if (first.PositionY + 50f < WorldSurfacePixels)
+        {
+            empressRemixRageMode = true;
+            return true;
+        }
+        return false;
     }
 
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates)

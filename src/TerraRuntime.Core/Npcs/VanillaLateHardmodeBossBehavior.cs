@@ -395,7 +395,7 @@ internal sealed class VanillaEmpressOfLightNpcBehaviorStrategy : IVanillaNpcBeha
         int lifeMax = sim.LifeMax > 0 ? sim.LifeMax : definition.LifeMax;
         int life = sim.LifeMax > 0 ? sim.Life : lifeMax;
         bool phaseTwo = life <= lifeMax / 2;
-        bool rageCondition = context.DayTime;
+        bool rageCondition = context.ShouldEmpressBeEnraged(in npc);
         if (life == lifeMax && rageCondition && ai.Ai3 is not 2f and not 3f)
             ai = ai with { Ai3 = ai.Ai3 + 2f };
         if (phaseTwo && ai.Ai3 == 0f) ai = ai with { Ai3 = 1f };

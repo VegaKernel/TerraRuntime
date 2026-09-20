@@ -586,6 +586,43 @@ public sealed class LateHardmodeBossParityTests
     }
 
     [Fact]
+    public void Remix_empress_latches_source_rage_above_surface_from_the_first_physical_slot()
+    {
+        var stepper = CreateStepper(dayTime: false);
+        stepper.SetWorldBounds(400, 100d);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, remixWorld: true);
+
+        NpcSnapshot empress = CreateNpc(VanillaNpcIds.EmpressOfLight, new NpcAiState(5f, 0f, 0f, 0f), life: 70_000) with
+        {
+            Handle = new NpcHandle(2, new NpcGeneration(1)),
+            PositionY = 100f
+        };
+        Assert.True(stepper.TryStepState(in empress, out NpcStateUpdate enraged));
+        Assert.Equal(2f, enraged.Ai.Ai3);
+        Assert.Equal(9999, enraged.Simulation.DamageOverride);
+
+        NpcSnapshot laterBelowSurface = empress with
+        {
+            PositionY = 3_000f,
+            Ai = new NpcAiState(5f, 0f, 0f, 0f)
+        };
+        Assert.True(stepper.TryStepState(in laterBelowSurface, out NpcStateUpdate latched));
+        Assert.Equal(2f, latched.Ai.Ai3);
+        Assert.Equal(9999, latched.Simulation.DamageOverride);
+
+        var firstSlotStepper = CreateStepper(dayTime: false);
+        firstSlotStepper.SetWorldBounds(400, 100d);
+        firstSlotStepper.SetWorldConditions(dayTime: false, slimeRainActive: false, remixWorld: true);
+        NpcSnapshot earlierBelowSurface = empress with { Handle = new NpcHandle(1, new NpcGeneration(1)), PositionY = 3_000f };
+        ((INpcAiRetainedSlotSnapshotConsumer)firstSlotStepper).SetRetainedNpcSlots([
+            new VanillaNpcRetainedSlot(1, false, Proposed(in earlierBelowSurface, earlierBelowSurface.Ai))
+        ]);
+        Assert.True(firstSlotStepper.TryStepState(in empress, out NpcStateUpdate notYetEnraged));
+        Assert.Equal(0f, notYetEnraged.Ai.Ai3);
+        Assert.Equal(80, notYetEnraged.Simulation.DamageOverride);
+    }
+
+    [Fact]
     public void Moon_lord_hand_advances_into_the_source_attack_sequence()
     {
         var stepper = CreateStepper(dayTime: false);

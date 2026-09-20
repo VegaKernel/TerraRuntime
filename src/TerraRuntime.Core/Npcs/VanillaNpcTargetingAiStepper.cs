@@ -208,8 +208,9 @@ public sealed class VanillaNpcTargetingAiStepper :
         bool goodWorld = false,
         bool expertMode = false,
         bool masterMode = false,
-        float windSpeedCurrent = 0f) =>
-        _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld, expertMode, masterMode, windSpeedCurrent);
+        float windSpeedCurrent = 0f,
+        bool remixWorld = false) =>
+        _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld, expertMode, masterMode, windSpeedCurrent, remixWorld);
 
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates) =>
         _context.SetCandidates(candidates);
