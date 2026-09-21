@@ -23,7 +23,10 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         [VanillaNpcIds.SwampZombie, 18, 40, 13, 8, 45, 0.45f, 1f, 1.2f, true, false],
         [VanillaNpcIds.TwiggyZombie, 18, 40, 16, 4, 45, 0.55f, 1f, 0.8f, true, false],
         [VanillaNpcIds.FemaleZombie, 18, 40, 12, 4, 38, 0.6f, 1f, 0.87f, true, false],
+        [new NpcTypeId(254), 18, 40, 40, 10, 180, .4f, 1f, 1.5f, false, false],
+        [new NpcTypeId(255), 18, 40, 38, 16, 220, .3f, 1f, 1f, false, false],
         [new NpcTypeId(257), 44, 34, 38, 24, 230, .3f, 1f, 2f, false, false],
+        [new NpcTypeId(258), 30, 24, 60, 16, 220, .3f, 1f, 3f, false, false],
         [VanillaNpcIds.VampireHumanoid, 18, 40, 80, 24, 750, 0.4f, 1f, 6f, false, false],
     ];
 
@@ -73,12 +76,25 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(39, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(37, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(42, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(40, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
         Assert.Equal(.95f, vampire.ReversingVelocityDamping, 5);
+    }
+
+    [Theory]
+    [InlineData(254, 1.5f)]
+    [InlineData(255, 1f)]
+    [InlineData(257, 2f)]
+    [InlineData(258, 3f)]
+    public void Source_day_surface_exempt_fighters_keep_their_distinct_profiles(int type, float speed)
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(new NpcTypeId(type), out var behavior));
+
+        Assert.False(behavior.DaySurfaceEncouragesDespawn);
+        Assert.Equal(speed, behavior.BaseMaximumHorizontalSpeed, 5);
     }
 
     [Fact]

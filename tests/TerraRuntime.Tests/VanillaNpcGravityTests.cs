@@ -69,10 +69,22 @@ public sealed class VanillaNpcGravityTests
     }
 
     [Fact]
-    public void Unsupported_type_has_no_source_backed_gravity_definition()
+    public void Type_258_uses_its_source_gravity_and_pre_gravity_fall_speed_cap()
     {
-        Assert.True(NpcTypeId.TryCreate(258, out NpcTypeId unsupported));
-        Assert.False(VanillaNpcDefinitionCatalog.TryGet(unsupported, out _));
+        VanillaNpcDefinition definition = GetDefinition(new NpcTypeId(258));
+
+        Assert.True(VanillaNpcGravity.TryApply(
+            in definition,
+            positionY: 1600f,
+            velocityY: 6f,
+            wet: false,
+            liquidContact: NpcLiquidContactKind.None,
+            worldWidthTiles: 4200,
+            worldSurfaceTiles: 250d,
+            out VanillaNpcGravityResult result));
+
+        Assert.Equal(.072f, result.Parameters.Gravity, 5);
+        Assert.Equal(3.072f, result.VelocityY, 5);
     }
 
     private static VanillaNpcDefinition GetDefinition(NpcTypeId npcType)

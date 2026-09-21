@@ -233,6 +233,29 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                 velocityX = lungedVelocityX;
                 velocityY = lungedVelocityY;
             }
+
+            if (definition.Type.Value == 258 &&
+                doorEnvironment.HasTarget &&
+                aiState.Target < byte.MaxValue &&
+                targeting is not null &&
+                targeting.TryGetCandidate(checked((byte)aiState.Target), out VanillaNpcTargetCandidate target))
+            {
+                bool canHit = VanillaWorldCanHit.HasLineOfSight(
+                    tiles,
+                    aiState.PositionX,
+                    aiState.PositionY,
+                    hitboxWidth,
+                    hitboxHeight,
+                    target.CenterX - target.Width * .5f,
+                    target.CenterY - target.Height * .5f,
+                    (int)target.Width,
+                    (int)target.Height);
+                if (VanillaGroundFighter258Motion.TryResolveGroundLeap(
+                        aiState.PositionY, velocityY, target.CenterY, canHit, out float leapingVelocityY))
+                {
+                    velocityY = leapingVelocityY;
+                }
+            }
         }
         else if (definition.PhysicsFamily == VanillaNpcPhysicsFamily.UnicornGround)
         {

@@ -44,6 +44,11 @@ public static class VanillaNpcGravity
 
         float gravity = BaseGravity;
         float maxFallSpeed = BaseMaxFallSpeed;
+        if (definition.Type.Value == 258)
+        {
+            gravity = .1f;
+            velocityY = Math.Min(velocityY, 3f);
+        }
 
         float widthScale = worldWidthTiles / 4200f;
         widthScale *= widthScale;
