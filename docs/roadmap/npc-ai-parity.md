@@ -350,7 +350,7 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] complete AI_016 for Goldfish/Corrupt Goldfish/Piranha/Shark/Angler Fish/Arapaima/Blood Feeder/Crimson Goldfish/Gold Goldfish/Pupfish/Dolphin/Pufferfish/Orca: source defaults, passive/hostile targeting, slope/collision/depth steering, wet pursuit profiles, dry flop RNG, Dolphin breach/surface states and Pufferfish inflation/water-line state;
 - [ ] remaining bat special branches, mimics, remaining critters and event enemy families; the AI_003 Moon-event fighter pairs `305..314` now use their source `2/1.25/2.25/1.5/1` speed bands, and `305..309` retain their grounded relaunch and airborne steering branch. AI_003 types `78/79/80/630` now use their strict half-life `1→2` / `1.5→3` speed profile, and `287` its `5` speed profile.
 - [x] AI_003 types `243` and `251`: accepted-state lost-health cadence, hit/confusion/frozen gates, LOS/global-distance checks and source projectile `257`/`83` allocation.
-- [x] Snow Moon AI_003 type `348`: inclusive `life <= lifeMax * .55` `NPC.Transform(349)` transition before common fighter motion, including source life scaling and reset state; transformed type `349` carries its source `6`-pixel reversal profile.
+- [x] Snow Moon AI_003 type `348`: inclusive `life <= lifeMax * .55` `NPC.Transform(349)` transition before common fighter motion, including source life scaling and reset state; `326/343/348/351` retain their `2`-pixel branch, `342` its scale-adjusted `1.5` branch, and transformed `349` its `6`-pixel reversal profile.
 - [ ] spawn pool, biome, time, weather and progression eligibility.
 
 ## N3 — Bosses
