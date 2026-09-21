@@ -46,7 +46,16 @@ internal sealed class VanillaGoblinSorcererBehavior(IVanillaNpcRandom random) : 
 
         float timer = ai.Ai0 == 0f ? 501f : ai.Ai0 + 1f;
         float attack = ai.Ai1;
-        if (timer is 100f or 200f or 300f) attack = 30f;
+        if (timer is 100f or 200f or 300f &&
+            (npc.TypeIdentity == VanillaNpcIds.GoblinSorcerer ||
+             VanillaNpcGlobalFiringDistance.Contains(
+                 x + definition.Width * .5f,
+                 y + definition.Height * .5f,
+                 target.CenterX,
+                 target.CenterY)))
+        {
+            attack = 30f;
+        }
         if (timer >= 650f) timer = 1f;
         if (attack > 0f) attack--;
         next = new(npc.Type, npc.NetId, x, y, vx, vy, targetSlot, ai with { Ai0 = timer, Ai1 = attack },

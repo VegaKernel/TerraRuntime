@@ -43,6 +43,22 @@ public sealed class GoblinSorcererAiTests
         Assert.Equal(92, intents[0].BottomY);
     }
 
+    [Fact]
+    public void Tim_ai008_keeps_the_global_firing_distance_while_goblin_sorcerer_bypasses_it()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: new ZeroRandom());
+        stepper.SetWallOfFleshEnvironment(new Environment());
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 3_000f, 120f, 0, true, false, false, false)]);
+        var tim = new NpcSnapshot(new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1), 45, 45,
+            100f, 100f, 0f, 0f, 0, new NpcAiState(99f, 0f, 0f, 0f), NpcSimulationState.Initial);
+        var goblin = tim with { Type = 29, NetId = 29 };
+
+        Assert.True(stepper.TryStepState(in tim, out NpcStateUpdate timNext));
+        Assert.True(stepper.TryStepState(in goblin, out NpcStateUpdate goblinNext));
+        Assert.Equal(0f, timNext.Ai.Ai1);
+        Assert.Equal(29f, goblinNext.Ai.Ai1);
+    }
+
     private sealed class RejectingStepper : INpcAiStateStepper
     { public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next) { next = default; return false; } }
     private sealed class ZeroRandom : IVanillaNpcRandom
