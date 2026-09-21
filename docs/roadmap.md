@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Natural spawn Jungle: active persisted town residents are now counted from live runtime centers in the source 3840-by-2400-pixel `SceneMetrics.TownNPCRectSize`, then select the four Jungle rate/cap bands before evil zones. Ticks pin zero-resident rate 144 and one remote-home Merchant rate 198. Meteor, temple, moon events, player buffs/candles/Journey and source npcSlots remain open.
+
 2026-09-21 Natural spawn Underground Desert: the source Desert scene count, below-surface center and Sandstone/Hardened Sand/Desert Fossil wall predicate now apply the `0.2` rate and `3.0` cap transforms before Jungle and evil branches. A real tick with wall 187 pins final empty-population rate 72. Jungle town count, meteor, temple, moon events, player buffs/candles/Journey and source npcSlots remain open.
 
 2026-09-21 Natural spawn sandstorm: the loaded `SandstormHappening` world fact now enters the source `ZoneSandstorm` rate branch before Underground Desert, Jungle and evil zones. The runtime uses the source `ZoneDesert && SurfaceAtmospherics && Sandstorm.Happening` predicate and `Player.Center` for the `SetSpawnFlags` scene/wall inputs; a real pre-Hardmode surface-Desert tick pins its final empty-population rate at 324. Underground Desert, Jungle town count, meteor, temple, moon events, player buffs/candles/Journey and source npcSlots remain open.

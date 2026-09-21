@@ -45,6 +45,7 @@ internal sealed partial class NpcAuthority
     private readonly bool masterMode;
     private readonly VanillaTownSceneMetricsScanner1458? npcSceneMetrics;
     private readonly RuntimeTownCommerceWorldFacts1458? naturalSpawnWorldFacts;
+    private readonly RuntimeTownNpcStateStore? naturalSpawnTownNpcs;
     private readonly VanillaNpcTargetCandidate[] targetCandidates =
         new VanillaNpcTargetCandidate[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
     private readonly PlayerStateSnapshot[] serverPlayerSnapshots =
@@ -114,6 +115,7 @@ internal sealed partial class NpcAuthority
         this.naturalSpawnRandom = naturalSpawnRandom ?? new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom();
         npcs.SetVanillaSpawnRandomSource(this.naturalSpawnRandom);
         naturalSpawnWorldFacts = townCommerceWorldFacts;
+        naturalSpawnTownNpcs = townNpcs;
         if (worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 sceneWorldFacts)
         {
             npcSceneMetrics = new VanillaTownSceneMetricsScanner1458(worldTiles, in sceneWorldFacts);
@@ -985,6 +987,30 @@ internal sealed partial class NpcAuthority
                 spawnRate = (int)(spawnRate * .2f);
                 maxSpawns = (int)(maxSpawns * 3f);
             }
+            else if (biome.ZoneJungle)
+            {
+                // SceneMetrics.ScanNPCPositions counts active town NPC centers in the 3840x2400-pixel
+                // TownNPCRectSize around Player.Center. The persisted town roster owns those runtime slots.
+                switch (CountNearbyTownNpcs(player.CenterX, player.CenterY))
+                {
+                    case 0:
+                        spawnRate = (int)(spawnRate * .4d);
+                        maxSpawns = (int)(maxSpawns * 1.5f);
+                        break;
+                    case 1:
+                        spawnRate = (int)(spawnRate * .55d);
+                        maxSpawns = (int)(maxSpawns * 1.4d);
+                        break;
+                    case 2:
+                        spawnRate = (int)(spawnRate * .7d);
+                        maxSpawns = (int)(maxSpawns * 1.3f);
+                        break;
+                    default:
+                        spawnRate = (int)(spawnRate * .85d);
+                        maxSpawns = (int)(maxSpawns * 1.2f);
+                        break;
+                }
+            }
             else if (biome.ZoneCorrupt || biome.ZoneCrimson)
             {
                 spawnRate = (int)(spawnRate * .65d);
@@ -1110,6 +1136,35 @@ internal sealed partial class NpcAuthority
                 nearby++;
         }
         return nearby;
+    }
+
+    private int CountNearbyTownNpcs(float centerX, float centerY)
+    {
+        if (naturalSpawnTownNpcs is null)
+            return 0;
+
+        const float halfWidth = 1920f;
+        const float halfHeight = 1200f;
+        int count = 0;
+        for (short slot = 0; slot < RuntimeTownNpcStateStore.MaximumTownNpcs; slot++)
+        {
+            if (!naturalSpawnTownNpcs.TryGet(slot, out _) ||
+                !npcs.TryGetActive(checked((byte)slot), out NpcSnapshot npc) ||
+                !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, out VanillaNpcDefinition definition) ||
+                !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
+            {
+                continue;
+            }
+
+            float npcCenterX = npc.PositionX + hitbox.Width * .5f;
+            float npcCenterY = npc.PositionY + hitbox.Height * .5f;
+            if (npcCenterX >= centerX - halfWidth && npcCenterX < centerX + halfWidth &&
+                npcCenterY >= centerY - halfHeight && npcCenterY < centerY + halfHeight)
+            {
+                count++;
+            }
+        }
+        return count;
     }
 
     private bool TryFindNaturalSpawnFloor(
