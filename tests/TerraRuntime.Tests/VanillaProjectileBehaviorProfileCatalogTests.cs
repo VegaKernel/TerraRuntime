@@ -46,6 +46,14 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
         Assert.False(demonScythe.RequiresDefaultAi2);
         Assert.False(demonScythe.RejectServerOwned);
 
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(
+            VanillaProjectileIds.RedDevilSickle, out VanillaProjectileBehaviorProfile redDevilSickle));
+        Assert.Equal(VanillaProjectileBehaviorFamily.RedDevilSickle, redDevilSickle.Family);
+        Assert.Equal(VanillaProjectileAiStyles.RedDevilSickle, redDevilSickle.ExpectedAiStyle);
+        Assert.True(redDevilSickle.BehaviorImplemented);
+        Assert.False(redDevilSickle.RequiresDefaultAi2);
+        Assert.False(redDevilSickle.RejectServerOwned);
+
         ProjectileTypeId[] thrown =
         [
             VanillaProjectileIds.Bone,
@@ -200,6 +208,7 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
             VanillaProjectileIds.WoodenArrowFriendly,
             VanillaProjectileIds.HarpyFeather,
             VanillaProjectileIds.DemonScythe,
+            VanillaProjectileIds.RedDevilSickle,
             VanillaProjectileIds.FireArrow,
             VanillaProjectileIds.UnholyArrow,
             VanillaProjectileIds.JestersArrow,

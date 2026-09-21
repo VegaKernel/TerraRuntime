@@ -100,6 +100,28 @@ public sealed class VanillaProjectileBehaviorStepperTests
     }
 
     [Fact]
+    public void Red_devil_sickle_ai027_accelerates_through_tick_twenty_nine_only()
+    {
+        ProjectileSnapshot accelerating = CreateProjectile(
+            VanillaProjectileIds.RedDevilSickle,
+            velocityX: 2f,
+            velocityY: -1f,
+            ai0: 28f,
+            spawner: VanillaProjectileOwnership.ServerOwner);
+        Assert.True(VanillaDefinitionCatalog.TryGet(accelerating.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(in accelerating, in definition, default, out VanillaProjectileBehaviorResult faster));
+        Assert.Equal(29f, faster.Ai0);
+        Assert.Equal(2.25f, faster.VelocityX, 5);
+        Assert.Equal(-1.125f, faster.VelocityY, 5);
+
+        ProjectileSnapshot stopped = accelerating with { Ai = accelerating.Ai with { Ai0 = 29f } };
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(in stopped, in definition, default, out VanillaProjectileBehaviorResult steady));
+        Assert.Equal(30f, steady.Ai0);
+        Assert.Equal(2f, steady.VelocityX, 5);
+        Assert.Equal(-1f, steady.VelocityY, 5);
+    }
+
+    [Fact]
     public void Flaming_scythe_ai056_accelerates_by_five_percent_only_below_source_manhattan_cap()
     {
         ProjectileSnapshot accelerating = CreateProjectile(VanillaProjectileIds.FlamingScythe, 10f, -5f, ai0: .25f, ai1: -1f);

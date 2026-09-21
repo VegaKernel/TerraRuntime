@@ -67,8 +67,8 @@ public readonly record struct VanillaBatPursuitResult1458(
 /// <summary>
 /// Server-relevant TerrariaServer 1.4.5.8 aiStyle 14 collision rebound, pursuit, wet escape and wander clock for
 /// the admitted ordinary bat/Slimer/Queen Slime minion roster. Harpy, Demon and Voodoo Demon's source-specific wet
-/// escape and low-speed wander profile are included here; their server-only projectile cadence remains an accepted
-/// post-commit effect.
+/// escape and low-speed wander profile are included here. Red Devil keeps the ordinary flight profile; all four
+/// server-only projectile cadences remain accepted post-commit effects.
 /// </summary>
 public static class VanillaBatMotion1458
 {

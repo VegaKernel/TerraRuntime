@@ -68,7 +68,7 @@ public sealed class VanillaBatAi1458Tests
     [Fact]
     public void Catalog_admits_source_defaults_for_ordinary_bats_slimer_and_vampire()
     {
-        Assert.Equal(14, VanillaBatNpcCatalog1458.DefinitionCount);
+        Assert.Equal(15, VanillaBatNpcCatalog1458.DefinitionCount);
         foreach (VanillaNpcDefinition definition in VanillaBatNpcCatalog1458.AllDefinitions)
         {
             Assert.Equal(VanillaNpcAiStyles.Bat, definition.AiStyle);
@@ -112,6 +112,16 @@ public sealed class VanillaBatAi1458Tests
         Assert.True(scythe.TileCollide);
         Assert.True(scythe.CanCutTiles);
         Assert.True(VanillaProjectileFacts.IsHostile(VanillaProjectileIds.DemonScythe));
+
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.RedDevil, out VanillaNpcDefinition redDevil));
+        Assert.Equal((28, 48, 50, 40, 600),
+            (redDevil.BaseWidth, redDevil.BaseHeight, redDevil.Damage, redDevil.Defense, redDevil.LifeMax));
+        Assert.Equal(.5f, redDevil.KnockBackResist);
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.RedDevilSickle, out VanillaProjectileDefinition sickle));
+        Assert.Equal((16, 16, VanillaProjectileAiStyles.RedDevilSickle), (sickle.Width, sickle.Height, sickle.AiStyle));
+        Assert.Equal((16, 16), (sickle.CollisionWidth, sickle.CollisionHeight));
+        Assert.True(sickle.TileCollide);
+        Assert.True(VanillaProjectileFacts.IsHostile(VanillaProjectileIds.RedDevilSickle));
     }
 
     [Fact]
@@ -238,6 +248,20 @@ public sealed class VanillaBatAi1458Tests
     }
 
     [Fact]
+    public void Red_devil_keeps_the_source_ordinary_bat_motion_profile()
+    {
+        VanillaBatMotionResult1458 result = Step(
+            VanillaNpcIds.RedDevil,
+            velocityY: 3f,
+            directionX: 1,
+            directionY: 1,
+            wet: true);
+
+        Assert.Equal(.1f, result.VelocityX, 5);
+        Assert.Equal(3.04f, result.VelocityY, 5);
+    }
+
+    [Fact]
     public void Harpy_feather_and_timer_reset_run_only_after_the_source_state_commits()
     {
         var shotNpcs = new RuntimeNpcStore(2);
@@ -322,6 +346,44 @@ public sealed class VanillaBatAi1458Tests
     }
 
     [Fact]
+    public void Red_devil_sickle_uses_its_leading_center_offset_and_committed_timer()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, BatShooterUpdate(VanillaNpcIds.RedDevil, 99f, 600), out NpcSnapshot source));
+        var projectiles = new RuntimeProjectileStore(2);
+        var random = new SequenceRandom();
+        VanillaNpcTargetingAiStepper stepper = CreateHarpyStepper(random);
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new HarpyOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot committed));
+        Assert.Equal(100f, committed.Ai.Ai0);
+        Assert.Equal(.1f, committed.VelocityX, 5);
+        Assert.Equal(-.04f, committed.VelocityY, 5);
+        Assert.True(projectiles.TryGetActive(0, out ProjectileSnapshot sickle));
+        Assert.Equal(VanillaProjectileIds.RedDevilSickle, sickle.Type);
+        Assert.Equal((short)80, sickle.Damage);
+        Assert.Equal(committed.PositionX + 14f + committed.VelocityX * 5f + sickle.VelocityX * 100f, sickle.PositionX, 5);
+        Assert.Equal(committed.PositionY + 24f + committed.VelocityY * 5f + sickle.VelocityY * 100f, sickle.PositionY, 5);
+        Assert.Equal(.2f, MathF.Sqrt(sickle.VelocityX * sickle.VelocityX + sickle.VelocityY * sickle.VelocityY), 5);
+        Assert.Equal(2, random.Draws);
+        Assert.True(projectiles.TryGetServerNpcSource(sickle.Handle, out NpcHandle provenance));
+        Assert.Equal(source.Handle, provenance);
+    }
+
+    [Fact]
+    public void Red_devil_timer_reset_uses_the_source_250_tick_random_threshold_after_commit()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, BatShooterUpdate(VanillaNpcIds.RedDevil, 249f, 600), out NpcSnapshot source));
+        var random = new SequenceRandom();
+        VanillaNpcTargetingAiStepper stepper = CreateHarpyStepper(random);
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs).Tick(new HarpyOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot committed));
+        Assert.Equal(0f, committed.Ai.Ai0);
+        Assert.Equal(1, random.Draws);
+    }
+
+    [Fact]
     public void Dry_visible_target_resets_pursuit_clock_but_still_advances_wander_phase()
     {
         VanillaBatMotionResult1458 result = Step(
@@ -374,6 +436,10 @@ public sealed class VanillaBatAi1458Tests
             out _));
         Assert.False(VanillaBatMotion1458.TryStepPursuit(
             VanillaNpcIds.VoodooDemon,
+            in input,
+            out _));
+        Assert.False(VanillaBatMotion1458.TryStepPursuit(
+            VanillaNpcIds.RedDevil,
             in input,
             out _));
     }
