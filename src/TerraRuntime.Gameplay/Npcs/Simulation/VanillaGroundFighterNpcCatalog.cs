@@ -32,7 +32,9 @@ public static class VanillaGroundFighterNpcCatalog
         Fighter(VanillaNpcIds.SlimedZombie, 18, 40, 13, 6, 40, 0.55f, 1f, 0.9f, scaleAdjustsSpeed: true),
         Fighter(VanillaNpcIds.SwampZombie, 18, 40, 13, 8, 45, 0.45f, 1f, 1.2f, scaleAdjustsSpeed: true),
         Fighter(VanillaNpcIds.TwiggyZombie, 18, 40, 16, 4, 45, 0.55f, 1f, 0.8f, scaleAdjustsSpeed: true),
-        Fighter(VanillaNpcIds.FemaleZombie, 18, 40, 12, 4, 38, 0.6f, 1f, 0.87f, scaleAdjustsSpeed: true)
+        Fighter(VanillaNpcIds.FemaleZombie, 18, 40, 12, 4, 38, 0.6f, 1f, 0.87f, scaleAdjustsSpeed: true),
+        Fighter(VanillaNpcIds.VampireHumanoid, 18, 40, 80, 24, 750, 0.4f, 1f, 6f,
+            reversingVelocityDamping: 0.95f)
     ];
 
     private static readonly NpcTypeId[] AdditionalTypes =
@@ -52,7 +54,8 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.SlimedZombie,
         VanillaNpcIds.SwampZombie,
         VanillaNpcIds.TwiggyZombie,
-        VanillaNpcIds.FemaleZombie
+        VanillaNpcIds.FemaleZombie,
+        VanillaNpcIds.VampireHumanoid
     ];
 
     public static int DefinitionCount => Entries.Length;
@@ -100,7 +103,8 @@ public static class VanillaGroundFighterNpcCatalog
         float scale,
         float maximumHorizontalSpeed,
         bool scaleAdjustsSpeed = false,
-        bool closeRangeLunge = false) =>
+        bool closeRangeLunge = false,
+        float reversingVelocityDamping = 1f) =>
         new(
             new VanillaNpcDefinition(
                 type,
@@ -132,5 +136,6 @@ public static class VanillaGroundFighterNpcCatalog
                 PursuitGapJumpVelocity: -8f,
                 PursuitGapSpeedMultiplier: 1.5f,
                 ScaleAdjustsMaximumHorizontalSpeed: scaleAdjustsSpeed,
-                CloseRangeLunge: closeRangeLunge));
+                CloseRangeLunge: closeRangeLunge,
+                ReversingVelocityDamping: reversingVelocityDamping));
 }

@@ -343,7 +343,7 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] source-backed ordinary AI_014 bat family: Cave/Jungle/Hell/Giant/Illuminant/Ice/Lava Bat, Giant Flying Fox and Spore Bat defaults, collision rebound, closest-target steering, wet escape and wander clock;
 - [x] extend deterministic AI_014 motion to Slimer and Queen Slime's Purple Slime minion, including their single-pass/default and dedicated high-acceleration profiles;
 - [x] complete AI_016 for Goldfish/Corrupt Goldfish/Piranha/Shark/Angler Fish/Arapaima/Blood Feeder/Crimson Goldfish/Gold Goldfish/Pupfish/Dolphin/Pufferfish/Orca: source defaults, passive/hostile targeting, slope/collision/depth steering, wet pursuit profiles, dry flop RNG, Dolphin breach/surface states and Pufferfish inflation/water-line state;
-- [ ] remaining bat special branches (shooters and Vampire Bat transformation), casters, mimics, remaining critters and event enemy families;
+- [ ] remaining bat special branches (shooters), casters, mimics, remaining critters and event enemy families;
 - [ ] spawn pool, biome, time, weather and progression eligibility.
 
 ## N3 — Bosses

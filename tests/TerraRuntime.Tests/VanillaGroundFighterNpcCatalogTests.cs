@@ -23,6 +23,7 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         [VanillaNpcIds.SwampZombie, 18, 40, 13, 8, 45, 0.45f, 1f, 1.2f, true, false],
         [VanillaNpcIds.TwiggyZombie, 18, 40, 16, 4, 45, 0.55f, 1f, 0.8f, true, false],
         [VanillaNpcIds.FemaleZombie, 18, 40, 12, 4, 38, 0.6f, 1f, 0.87f, true, false],
+        [VanillaNpcIds.VampireHumanoid, 18, 40, 80, 24, 750, 0.4f, 1f, 6f, false, false],
     ];
 
     [Theory]
@@ -71,7 +72,11 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(18, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(16, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(19, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(17, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
+        Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.95f, vampire.ReversingVelocityDamping, 5);
     }
 }

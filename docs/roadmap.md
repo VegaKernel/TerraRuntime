@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Vampire forms: AI_014 type 158 and AI_003 type 159 now use pinned source defaults and the bidirectional source transform. Flying Vampire converts only below a visible player inside 200 pixels; humanoid Vampire returns to flight beyond 300 pixels. The transition preserves the lower edge, scales life through `NPC.Transform`, resets AI-local state and retargets. Humanoid reversal damping and its six-pixel speed cap are source-backed; projectile-shooting AI_014 variants remain open.
+
 2026-09-21 Queen Slime blocked flight: AI_121 now follows the source's two live line-of-sight height branches. A clear path steers 250 pixels above the player; a blocked path steers at the player height through the authoritative world line query. The source's finer vertical-solid landing probe remains open.
 
 2026-09-21 Queen Slime fly targeting: AI_121 now refreshes the closest player on every phase-two fly step, covering both idle flight and gel-burst preparation/release. This matches the helper's server target acquisition rather than carrying its prior tick's target.

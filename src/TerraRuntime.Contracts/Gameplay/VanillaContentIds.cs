@@ -153,6 +153,8 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId IlluminantBat = new(137);
     public static readonly NpcTypeId IlluminantSlime = new(138);
     public static readonly NpcTypeId Slimer = new(121);
+    public static readonly NpcTypeId Vampire = new(158);
+    public static readonly NpcTypeId VampireHumanoid = new(159);
     public static readonly NpcTypeId ToxicSludge = new(141);
     public static readonly NpcTypeId IceSlime = new(147);
     public static readonly NpcTypeId IceBat = new(150);

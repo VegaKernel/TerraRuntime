@@ -9,7 +9,7 @@ public sealed class VanillaNpcAiCoverageCatalogTests
     [Fact]
     public void Every_coverage_entry_has_an_explicit_definition_and_behavior_family()
     {
-        int expected = 16 + 36 +
+        int expected = 16 + 35 +
             VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount +
             VanillaSlimeNpcCatalog.DefinitionCount +
             VanillaFlyingEyeNpcCatalog.DefinitionCount +
@@ -18,6 +18,7 @@ public sealed class VanillaNpcAiCoverageCatalogTests
             VanillaFishNpcCatalog1458.DefinitionCount +
             VanillaWormNpcCatalog.Count +
             VanillaNpcAi17_20_21Catalog1458.DefinitionCount;
+        expected += VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 13;
         Assert.Equal(expected, VanillaNpcAiCoverageCatalog.Count);
 
         foreach (VanillaNpcAiCoverage coverage in VanillaNpcAiCoverageCatalog.All)

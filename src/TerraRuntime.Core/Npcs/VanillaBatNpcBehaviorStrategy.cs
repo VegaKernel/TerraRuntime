@@ -69,6 +69,32 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
             return false;
         }
 
+        if (definition.Type == VanillaNpcIds.Vampire && closest.HasTarget &&
+            context.TryFindCandidate((byte)closest.Target, out target) && environment is not null)
+        {
+            float dx = target.CenterX - (npc.PositionX + hitbox.Width * .5f);
+            float dy = target.CenterY - (npc.PositionY + hitbox.Height * .5f);
+            if (dx * dx + dy * dy < 40_000f &&
+                npc.PositionY + hitbox.Height < target.CenterY + target.Height * .5f &&
+                environment.CanHit(npc.PositionX, npc.PositionY, hitbox.Width, hitbox.Height,
+                    target.CenterX - target.Width * .5f, target.CenterY - target.Height * .5f, (int)target.Width, (int)target.Height))
+            {
+                int transformedLife = ScaleTransformLife(simulation.Life, simulation.LifeMax, 750);
+                next = new NpcStateUpdate(VanillaNpcIds.VampireHumanoid.Value, (short)VanillaNpcIds.VampireHumanoid.Value,
+                    npc.PositionX, npc.PositionY - 18f, result.VelocityX, result.VelocityY, closest.Target, default,
+                    simulation with { Life = transformedLife, LifeMax = 750, HitboxOverride = null, BaseDamage = null, BaseDefense = null,
+                        DefenseOverride = null, DamageOverride = null, KnockBackResist = null, NoGravity = false, NoTileCollide = false,
+                        DirectionX = target.CenterX < npc.PositionX + 9f ? -1 : 1,
+                        DirectionY = target.CenterY < npc.PositionY + 2f ? -1 : 1,
+                        LocalAi = default, FrameCounter = 0d, TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft,
+                        Alpha = 0, Hidden = false, DontTakeDamage = false, ReflectsProjectiles = false, JustHit = false,
+                        CanBeReplacedByOtherNpcs = false, Wet = false, LiquidContact = NpcLiquidContactKind.None,
+                        CollideX = false, CollideY = false, SpriteDirection = VanillaNpcDefinitionCatalog.DefaultSpriteDirection,
+                        Rotation = null, Friendly = null, Chaseable = null, Immortal = null });
+                return true;
+            }
+        }
+
         next = new NpcStateUpdate(
             definition.Type.Value,
             npc.NetId,
@@ -87,4 +113,7 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
             });
         return true;
     }
+
+    private static int ScaleTransformLife(int life, int lifeMax, int transformedLifeMax) =>
+        lifeMax > 0 ? Math.Max(1, (int)((long)life * transformedLifeMax / lifeMax)) : transformedLifeMax;
 }

@@ -344,13 +344,37 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             JustHit = simulation.JustHit,
             TimeLeft = simulation.TimeLeft,
             SpriteDirection = simulation.SpriteDirection,
-            ScaleAdjustsMaximumHorizontalSpeed = parameters.ScaleAdjustsMaximumHorizontalSpeed
+            ScaleAdjustsMaximumHorizontalSpeed = parameters.ScaleAdjustsMaximumHorizontalSpeed,
+            ReversingVelocityDamping = parameters.ReversingVelocityDamping
         };
 
         if (!VanillaZombieMotion.TryStep(in input, out VanillaZombieMotionResult result))
         {
             next = default;
             return false;
+        }
+
+        if (definition.Type == VanillaNpcIds.VampireHumanoid && result.Target < byte.MaxValue &&
+            context.TryFindCandidate((byte)result.Target, out VanillaNpcTargetCandidate vampireTarget))
+        {
+            float dx = vampireTarget.CenterX - (npc.PositionX + definition.Width * .5f);
+            float dy = vampireTarget.CenterY - (npc.PositionY + definition.Height * .5f);
+            if (dx * dx + dy * dy > 90_000f)
+            {
+                int transformedLife = ScaleTransformLife(simulation.Life, simulation.LifeMax, 750);
+                next = new NpcStateUpdate(VanillaNpcIds.Vampire.Value, (short)VanillaNpcIds.Vampire.Value,
+                    npc.PositionX, npc.PositionY + 18f, result.VelocityX, result.VelocityY, result.Target, default,
+                    simulation with { Life = transformedLife, LifeMax = 750, HitboxOverride = null, BaseDamage = null, BaseDefense = null,
+                        DefenseOverride = null, DamageOverride = null, KnockBackResist = null, NoGravity = true, NoTileCollide = false,
+                        DirectionX = vampireTarget.CenterX < npc.PositionX + 11f ? -1 : 1,
+                        DirectionY = vampireTarget.CenterY < npc.PositionY + 29f ? -1 : 1,
+                        LocalAi = default, FrameCounter = 0d, TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft,
+                        Alpha = 0, Hidden = false, DontTakeDamage = false, ReflectsProjectiles = false, JustHit = false,
+                        CanBeReplacedByOtherNpcs = false, Wet = false, LiquidContact = NpcLiquidContactKind.None,
+                        CollideX = false, CollideY = false, SpriteDirection = VanillaNpcDefinitionCatalog.DefaultSpriteDirection,
+                        Rotation = null, Friendly = null, Chaseable = null, Immortal = null });
+                return true;
+            }
         }
 
         next = new NpcStateUpdate(
@@ -373,6 +397,9 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             });
         return true;
     }
+
+    private static int ScaleTransformLife(int life, int lifeMax, int transformedLifeMax) =>
+        lifeMax > 0 ? Math.Max(1, (int)((long)life * transformedLifeMax / lifeMax)) : transformedLifeMax;
 }
 
 /// <summary>State portion of Pumpkin Moon AI_026 for types 315 and 329.</summary>

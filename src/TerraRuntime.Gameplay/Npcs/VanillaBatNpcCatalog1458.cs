@@ -16,7 +16,8 @@ public static class VanillaBatNpcCatalog1458
         Bat(VanillaNpcIds.LavaBat, 22, 22, 50, 16, 160, 0.6f, 1.15f),
         Bat(VanillaNpcIds.GiantFlyingFox, 38, 34, 80, 24, 220, 0.65f),
         Bat(VanillaNpcIds.SporeBat, 22, 18, 13, 2, 16, 0.8f),
-        Bat(VanillaNpcIds.Slimer, 40, 30, 45, 20, 60, 0.8f, 1.1f)
+        Bat(VanillaNpcIds.Slimer, 40, 30, 45, 20, 60, 0.8f, 1.1f),
+        Bat(VanillaNpcIds.Vampire, 22, 22, 60, 32, 750, 0.75f)
     ];
 
     public static int DefinitionCount => Definitions.Length;

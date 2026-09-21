@@ -8,9 +8,65 @@ namespace TerraRuntime.Tests;
 public sealed class VanillaBatAi1458Tests
 {
     [Fact]
-    public void Catalog_admits_source_defaults_for_nine_ordinary_bats_and_slimer()
+    public void Vampire_forms_keep_bottom_anchor_life_and_reset_ai_across_source_distance_transforms()
     {
-        Assert.Equal(10, VanillaBatNpcCatalog1458.DefinitionCount);
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper());
+        stepper.SetProjectileEnvironment(new VisibleEnvironment());
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(7, 30f, 100f, 0, true, false, false, false)]);
+        NpcSnapshot flying = Snapshot(VanillaNpcIds.Vampire) with
+        {
+            Target = 7,
+            Ai = new NpcAiState(1f, 2f, 3f, 4f),
+            Simulation = Snapshot(VanillaNpcIds.Vampire).Simulation with
+            { Life = 333, LifeMax = 750, TimeLeft = 9, LocalAi = new NpcAiState(5f, 6f, 7f, 8f) }
+        };
+
+        Assert.True(stepper.TryStepState(in flying, out NpcStateUpdate grounded));
+        Assert.Equal(VanillaNpcIds.VampireHumanoid.Value, grounded.Type);
+        Assert.Equal(2f, grounded.PositionY);
+        Assert.Equal(333, grounded.Simulation.Life);
+        Assert.Equal(750, grounded.Simulation.LifeMax);
+        Assert.Equal(default, grounded.Ai);
+        Assert.Equal(default, grounded.Simulation.LocalAi);
+        Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTimeLeft, grounded.Simulation.TimeLeft);
+
+        stepper.EnableZombieMotion(double.PositiveInfinity);
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(7, 1_000f, 1_000f, 0, true, false, false, false)]);
+        NpcSnapshot humanoid = new(flying.Handle, flying.Revision, VanillaNpcIds.VampireHumanoid.Value,
+            (short)VanillaNpcIds.VampireHumanoid.Value, 10f, 2f, 0f, 0f, 7, new NpcAiState(1f, 2f, 3f, 4f),
+            flying.Simulation with { Life = 333, LifeMax = 750, TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft });
+
+        Assert.True(stepper.TryStepState(in humanoid, out NpcStateUpdate returned));
+        Assert.Equal(VanillaNpcIds.Vampire.Value, returned.Type);
+        Assert.Equal(20f, returned.PositionY);
+        Assert.Equal(333, returned.Simulation.Life);
+        Assert.Equal(default, returned.Ai);
+        Assert.Equal(default, returned.Simulation.LocalAi);
+        Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTimeLeft, returned.Simulation.TimeLeft);
+    }
+
+    [Fact]
+    public void Vampire_humanoid_uses_its_source_six_pixel_speed_and_reversal_damping()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper());
+        stepper.EnableZombieMotion(double.PositiveInfinity);
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(7, 0f, 10f, 0, true, false, false, false)]);
+        NpcSnapshot humanoid = Snapshot(VanillaNpcIds.VampireHumanoid) with
+        {
+            Target = 7,
+            VelocityX = 1f,
+            Simulation = Snapshot(VanillaNpcIds.VampireHumanoid).Simulation with
+            { DirectionX = -1, Life = 750, LifeMax = 750, TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft }
+        };
+
+        Assert.True(stepper.TryStepState(in humanoid, out NpcStateUpdate next));
+        Assert.Equal(.88f, next.VelocityX, 5);
+    }
+
+    [Fact]
+    public void Catalog_admits_source_defaults_for_ordinary_bats_slimer_and_vampire()
+    {
+        Assert.Equal(11, VanillaBatNpcCatalog1458.DefinitionCount);
         foreach (VanillaNpcDefinition definition in VanillaBatNpcCatalog1458.AllDefinitions)
         {
             Assert.Equal(VanillaNpcAiStyles.Bat, definition.AiStyle);
