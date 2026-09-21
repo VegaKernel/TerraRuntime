@@ -404,8 +404,7 @@ internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanil
                 ai0 = 1f;
             else if (target < byte.MaxValue && context.TryFindCandidate((byte)target, out VanillaNpcTargetCandidate player) &&
                      player.Active && !player.Dead && !player.Ghost &&
-                     MathF.Abs(player.CenterX - (npc.PositionX + 12f)) <= 112f &&
-                     MathF.Abs(player.CenterY - (npc.PositionY + 12f)) <= 112f)
+                     IntersectsActivationRectangle(in npc, in definition, in player))
                 ai0 = 1f;
         }
         else if (npc.VelocityY == 0f)
@@ -472,6 +471,21 @@ internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanil
                 NoGravity = false,
                 JustHit = false
             });
+    }
+
+    private static bool IntersectsActivationRectangle(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        in VanillaNpcTargetCandidate player)
+    {
+        // NPC.AI_025 uses integer Rectangle.Intersects with an NPC-sized rectangle expanded by 100 pixels.
+        int npcLeft = (int)npc.PositionX - 100;
+        int npcTop = (int)npc.PositionY - 100;
+        int npcRight = npcLeft + definition.Width + 200;
+        int npcBottom = npcTop + definition.Height + 200;
+        int playerLeft = (int)(player.CenterX - player.Width * .5f);
+        int playerTop = (int)(player.CenterY - player.Height * .5f);
+        int playerRight = playerLeft + (int)player.Width;
+        int playerBottom = playerTop + (int)player.Height;
+        return npcLeft < playerRight && npcRight > playerLeft && npcTop < playerBottom && npcBottom > playerTop;
     }
 }
 
