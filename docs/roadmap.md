@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Moon-event AI_026 type 315: Pumpkin Moon now admits Mourning Wood with its source defaults, six-pixel AI_026 charge and 480-tick post-commit fireball branch. The projectile preserves pre-motion center/velocity, retained NPC difficulty damage and its pre-refresh target; rejected state transitions consume no random draws. Remaining special-AI types and later waves remain open.
+
 2026-09-21 Moon-event AI_022 type 330: Pumpkin Moon now admits the source no-clip ghost defaults and authoritative flight slice, including target tracking, acceleration bands, alpha transition and event-gated despawn. Remaining special-AI types and later waves remain open.
 
 2026-09-21 Moon-event AI_026 type 329: Pumpkin Moon now admits the source unicorn defaults and an authoritative state/traversal slice: target pursuit to 3 px/tick, close-range -4 lunge, event-gated despawn, stuck fallback, source step-up, and the distinct -6/-7/-7.5/-8.5/-8 obstacle jumps. Remaining special-AI types and later waves remain open.

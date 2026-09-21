@@ -60,7 +60,8 @@ public enum VanillaNpcAiCapability : ulong
     GroundFighterCloseRangeLungeSlice = 1ul << 50,
     BatMotionSlice = 1ul << 51,
     FishMotionSlice = 1ul << 52,
-    UnicornTraversalSlice = 1ul << 53
+    UnicornTraversalSlice = 1ul << 53,
+    MoonEventProjectileSlice = 1ul << 54
 }
 
 /// <summary>
@@ -125,7 +126,7 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaBatNpcCatalog1458.DefinitionCount +
             VanillaFishNpcCatalog1458.DefinitionCount +
             VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount +
-            VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 4];
+            VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 5];
         entries[0] = Partial(
             VanillaNpcIds.BlueSlime,
             OrdinaryCore |
@@ -292,6 +293,11 @@ public static class VanillaNpcAiCoverageCatalog
         entries[index++] = Partial(
             VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi26,
             OrdinaryCore | VanillaNpcAiCapability.UnicornTraversalSlice);
+        entries[index++] = Partial(
+            VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi26MourningWood,
+            OrdinaryCore |
+            VanillaNpcAiCapability.UnicornTraversalSlice |
+            VanillaNpcAiCapability.MoonEventProjectileSlice);
         entries[index++] = Partial(
             VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi22,
             OrdinaryCore);

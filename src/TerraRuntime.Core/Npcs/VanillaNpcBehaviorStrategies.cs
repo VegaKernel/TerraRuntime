@@ -375,8 +375,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
     }
 }
 
-/// <summary>State portion of AI_025 for Snow Moon type 341; gravity and collision stay in the world-motion layer.</summary>
-/// <summary>State portion of Pumpkin Moon type 329's AI_026 unicorn branch.</summary>
+/// <summary>State portion of Pumpkin Moon AI_026 for types 315 and 329.</summary>
 internal sealed class VanillaMoonEventUnicornNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
     private const int StuckThreshold = 30;
@@ -385,7 +384,9 @@ internal sealed class VanillaMoonEventUnicornNpcBehaviorStrategy : IVanillaNpcBe
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
         INpcAiStateStepper inner, out NpcStateUpdate next)
     {
-        if (definition.Type != VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi26 || definition.AiStyle.Value != 26)
+        bool mourningWood = definition.Type == VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi26MourningWood;
+        bool unicorn = definition.Type == VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi26;
+        if ((!mourningWood && !unicorn) || definition.AiStyle.Value != 26)
         {
             next = default;
             return false;
@@ -400,6 +401,11 @@ internal sealed class VanillaMoonEventUnicornNpcBehaviorStrategy : IVanillaNpcBe
         float ai3 = npc.Ai.Ai3;
         float velocityX = npc.VelocityX;
         float velocityY = npc.VelocityY;
+        NpcAiState localAi = simulation.LocalAi;
+
+        // AI_026 increments Mourning Wood's server-owned localAI timer before the common stuck/target logic.
+        if (mourningWood)
+            localAi = localAi with { Ai0 = localAi.Ai0 >= 480f ? 0f : localAi.Ai0 + 1f };
 
         bool reversingOnGround = velocityY == 0f &&
             ((velocityX > 0f && directionX < 0) || (velocityX < 0f && directionX > 0));
@@ -437,7 +443,7 @@ internal sealed class VanillaMoonEventUnicornNpcBehaviorStrategy : IVanillaNpcBe
         if (distance < 200f && !stuck)
             ai3 = 0f;
 
-        if (velocityY == 0f && distance < 100f && MathF.Abs(velocityX) > 3f &&
+        if (unicorn && velocityY == 0f && distance < 100f && MathF.Abs(velocityX) > 3f &&
             ((centerX < player.CenterX && velocityX > 0f) || (centerX > player.CenterX && velocityX < 0f)))
         {
             velocityY -= 4f;
@@ -473,8 +479,17 @@ internal sealed class VanillaMoonEventUnicornNpcBehaviorStrategy : IVanillaNpcBe
                 directionX = 1;
         }
 
-        if (velocityY == 0f || simulation.Wet ||
-            (velocityX <= 0f && directionX < 0) || (velocityX >= 0f && directionX > 0))
+        if (mourningWood)
+        {
+            if ((velocityX > 6f || velocityX < -6f) && velocityY == 0f)
+                velocityX *= .8f;
+            else if (velocityX < 6f && directionX == 1)
+                velocityX = MathF.Min(6f, velocityX + .07f);
+            else if (velocityX > -6f && directionX == -1)
+                velocityX = MathF.Max(-6f, velocityX - .07f);
+        }
+        else if (velocityY == 0f || simulation.Wet ||
+                 (velocityX <= 0f && directionX < 0) || (velocityX >= 0f && directionX > 0))
         {
             if (velocityX > 0f && directionX < 0)
                 velocityX *= .9f;
@@ -494,6 +509,7 @@ internal sealed class VanillaMoonEventUnicornNpcBehaviorStrategy : IVanillaNpcBe
                 DirectionY = directionY,
                 SpriteDirection = spriteDirection,
                 NoGravity = false,
+                LocalAi = localAi,
                 JustHit = false,
                 TimeLeft = timeLeft
             });

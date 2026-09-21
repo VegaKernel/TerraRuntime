@@ -23,6 +23,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     INpcAiStatePostCommitEffect
 {
     public const int MaximumPlayerCandidates = VanillaNpcBehaviorContext.MaximumPlayerCandidates;
+    private const float MourningWoodFireballHalfSize = 13f;
 
     public bool RequiresForcedUpdate(in NpcSnapshot before, in NpcStateUpdate proposed) =>
         VanillaDestroyerNpcBehaviorStrategy.RequiresDiggingStateSync(in before, in proposed) ||
@@ -2042,10 +2043,55 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaSkeletronPrimeLimbNpcBehaviorStrategy.ApplyEffects(in before, in committed, _random, mutations);
         if (before.TypeIdentity == VanillaNpcIds.DarkCaster && committed.TypeIdentity == VanillaNpcIds.DarkCaster)
             VanillaDarkCasterBehavior.SpawnSphere(in before, in committed, mutations);
+        SpawnMourningWoodFireball(in before, in committed, mutations);
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);
         VanillaMoonLordLeechBehavior.SpawnFromHead(in before, in committed, _context, mutations);
         VanillaDestroyerNpcBehaviorStrategy.SpawnChain(in before, in committed, _context.GoodWorld, mutations);
         VanillaDestroyerNpcBehaviorStrategy.DespawnDaytimeChain(in before, in committed, _context, mutations);
+    }
+
+    private void SpawnMourningWoodFireball(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi26MourningWood ||
+            committed.TypeIdentity != before.TypeIdentity ||
+            before.Simulation.LocalAi.Ai0 < 480f || committed.Simulation.LocalAi.Ai0 != 0f ||
+            before.Target >= byte.MaxValue)
+        {
+            return;
+        }
+
+        // UnifiedRandom.NextVector2Circular(40, 40) consumes an angle then a radius. These draws happen only
+        // after the exact source transition commits, matching the server-only AI_026 projectile branch.
+        float angle = (float)(_random.NextDouble() * Math.PI * 2d);
+        float radius = (float)_random.NextDouble();
+        float offsetX = MathF.Cos(angle) * radius * 40f;
+        float offsetY = MathF.Sin(angle) * radius * 40f;
+        float verticalVelocity = ((float)_random.NextDouble() * 2f - 1f) * 3f;
+        var intent = new NpcAiProjectileIntent(
+            VanillaProjectileIds.MourningWoodFireball,
+            // Projectile.NewProjectile receives a center. RuntimeProjectileStore owns top-left positions, and
+            // projectile 1001 has the source 26-by-26 SetDefaults hitbox.
+            before.PositionX + 37f + offsetX - MourningWoodFireballHalfSize,
+            before.PositionY + 35f + offsetY - MourningWoodFireballHalfSize,
+            before.VelocityX,
+            verticalVelocity,
+            PumpkinMoonProjectileDamage(before.Simulation.SpawnDifficulty),
+            0f)
+        {
+            InitialAi = new ProjectileAiState(before.Target, 0f, 0f)
+        };
+        mutations.TrySpawnProjectile(in committed, in intent, out _);
+    }
+
+    private static int PumpkinMoonProjectileDamage(float? difficulty)
+    {
+        // NPC.GetAttackDamage_ForProjectiles remaps the retained NPC difficulty from Classic (1) to Expert (2);
+        // Master stays at the Expert endpoint for this two-value source overload.
+        float blend = Math.Clamp((difficulty ?? 1f) - 1f, 0f, 1f);
+        return (int)(40f + (30f - 40f) * blend);
     }
 
     public void ApplyCommittedEffectAfterSpawns(

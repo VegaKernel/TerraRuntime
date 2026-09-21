@@ -1,5 +1,7 @@
 # Work state
 
+2026-09-21: Pumpkin Moon type 315 (Mourning Wood) now has its AI_026 SetDefaults, source six-pixel horizontal charge and server-only localAI 480-tick fireball branch. The projectile is created only after the exact transition commits, uses the pre-motion center/velocity and pre-refresh target, interpolates retained NPC difficulty from 40 to 30 damage, and does not draw RNG on rejection. Direct regressions pin defaults, movement, spawn facts and rejection behavior. Release rebuild, focused harness, documentation checks and Windows NativeAOT `.cache/moon-event-ai26-315-final-win-aot-20260921` pass all five smokes.
+
 2026-09-21: Pumpkin Moon type 330 now has the AI_022 SetDefaults and server-owned no-clip flight motion: tracking, source horizontal/vertical acceleration bands, alpha transition and event-gated despawn. Direct regressions pin defaults, movement and despawn. Release rebuild, focused harness, documentation checks and Windows NativeAOT `.cache/moon-event-ai22-final-win-aot-20260921` pass all five smokes.
 
 2026-09-21: Pumpkin Moon type 329 now has source AI_026 defaults plus authoritative pursuit and traversal: the world clock gates pursuit/despawn, its 3 px/tick acceleration and close -4 lunge are preserved, and a dedicated collision probe handles the source -6/-7/-7.5/-8.5/-8 obstacle jumps. Direct regressions pin defaults, state branches and tile heights. Release rebuild, focused harness, documentation checks and Windows NativeAOT `.cache/moon-event-ai26-final-win-aot-20260921` pass all five smokes.
