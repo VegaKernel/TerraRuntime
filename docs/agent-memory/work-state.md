@@ -1,5 +1,7 @@
 # Work state
 
+2026-09-21: Added source `SetDefaults` definitions for the AI_003 Moon-event ground fighters: Pumpkin 305–314/326 and Snow 342/343/348–351. Each is admitted to the existing authoritative ground-fighter movement/physics path; regression assertions pin geometry, combat defaults, scale, knockback, coverage and behavior resolution. Release rebuild, focused harness, documentation checks and Windows NativeAOT `.cache/moon-event-ai3-final-win-aot-20260921` pass all five smokes.
+
 2026-09-21: Packet 78 now has the exact protocol-326 encoder (`Int32 progress`, `Int32 maximum`, `SByte icon`, `SByte wave`) and an authoritative-loop fanout after each accepted Moon-event death. A progress revision prevents idle-tick traffic and preserves source truncation and the zero-progress state after a wave transition. Release rebuild, focused harness, documentation checks and Windows NativeAOT `.cache/moon-event-packet78-final-win-aot-20260921` pass all five smokes.
 
 2026-09-21: Packet-61 actions `-4` and `-5` now start Pumpkin/Snow Moon through the live `RuntimeWorldClock` after the connected-player check. The clock accepts only night/no-event state, initializes wave one and requests packet-7 WorldInfo; its dawn transition clears both flags and all transient Moon progress before requesting the final sync. Focused command and clock regressions pass; Release rebuild, focused harness, documentation checks and Windows NativeAOT `.cache/moon-event-start-final-win-aot-20260921` pass all five smokes.

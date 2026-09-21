@@ -245,6 +245,9 @@ public static class VanillaNpcDefinitionCatalog
         if (VanillaGroundFighterNpcCatalog.TryGetDefinition(type, out definition))
             return true;
 
+        if (VanillaMoonEventGroundFighterCatalog1458.TryGetDefinition(type, out definition))
+            return true;
+
         if (type == VanillaNpcIds.EyeOfCthulhu)
         {
             definition = new VanillaNpcDefinition(

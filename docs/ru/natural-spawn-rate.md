@@ -40,3 +40,4 @@ Pumpkin Moon и Snow Moon используют исходные ночные и 
 
 Действия packet 61 `-4` и `-5` теперь запускают Pumpkin и Snow Moon через world clock только ночью и при отсутствии активного Moon event. На рассвете clock сбрасывает состояние волны и запрашивает репликацию WorldInfo при запуске и завершении.
 Репликация Moon event: после каждой учитываемой смерти сервер рассылает всем playing-клиентам исходный payload packet 78: `Int32` текущих очков, `Int32` лимита текущей волны, icon Frost/Pumpkin и номер волны. Это заменяет прежнюю пометку о незавершённой репликации packet 78.
+AI_003 ground fighters Moon event теперь имеют исходные geometry, combat values, scale и knockback resistance из `SetDefaults`, а также уже поддержанный серверный путь ground-fighter movement. Это покрывает Pumpkin types 305–314 и 326, Snow types 342, 343 и 348–351; выбор волн и event NPC со special AI остаются открытыми.

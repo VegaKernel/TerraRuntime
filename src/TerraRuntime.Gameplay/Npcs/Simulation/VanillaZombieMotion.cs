@@ -248,5 +248,6 @@ public readonly record struct VanillaGroundFighterBehaviorParameters(
 public static class VanillaGroundFighterBehaviorCatalog
 {
     public static bool TryGet(NpcTypeId type, out VanillaGroundFighterBehaviorParameters parameters) =>
-        VanillaGroundFighterNpcCatalog.TryGetBehavior(type, out parameters);
+        VanillaGroundFighterNpcCatalog.TryGetBehavior(type, out parameters) ||
+        VanillaMoonEventGroundFighterCatalog1458.TryGetBehavior(type, out parameters);
 }

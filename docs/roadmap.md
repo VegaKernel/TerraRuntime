@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Moon-event AI_003 fighters: source `NPC.SetDefaults` defaults and the admitted ground-fighter runtime path now cover Pumpkin 305–314/326 and Snow 342/343/348–351. Source wave selection and special-AI event NPCs remain open.
+
 2026-09-21 Moon-event packet-78 replication: protocol-326 now encodes the source ten-byte payload and the authoritative world loop broadcasts it to every playing client after a qualifying Moon-event death. It preserves source truncation of fractional Master points, current-wave maximum, icon and post-transition wave number. Event definitions and source wave selection remain open.
 
 2026-09-21 Moon event start and dawn boundary: authenticated packet-61 actions `-4` (Pumpkin) and `-5` (Snow) now enter the authoritative world clock. The clock accepts them only at night without another Moon event, initializes wave one, requests WorldInfo, and clears flags/progress at dawn. Event definitions and source wave selection remain open.

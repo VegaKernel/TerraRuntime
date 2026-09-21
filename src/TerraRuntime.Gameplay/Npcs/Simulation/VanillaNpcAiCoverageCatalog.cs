@@ -123,7 +123,8 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcAi17_20_21Catalog1458.DefinitionCount +
             VanillaBatNpcCatalog1458.DefinitionCount +
             VanillaFishNpcCatalog1458.DefinitionCount +
-            VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount + 1];
+            VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount +
+            VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 1];
         entries[0] = Partial(
             VanillaNpcIds.BlueSlime,
             OrdinaryCore |
@@ -272,6 +273,16 @@ public static class VanillaNpcAiCoverageCatalog
                 capabilities |= VanillaNpcAiCapability.GroundFighterCloseRangeLungeSlice;
 
             entries[index++] = Partial(type, capabilities);
+        }
+
+        foreach (VanillaNpcDefinition definition in VanillaMoonEventGroundFighterCatalog1458.AllDefinitions)
+        {
+            entries[index++] = Partial(
+                definition.Type,
+                OrdinaryCore |
+                VanillaNpcAiCapability.CheckActiveSlice |
+                VanillaNpcAiCapability.GroundFighterTraversalSlice |
+                VanillaNpcAiCapability.GroundFighterDoorPressureSlice);
         }
 
         foreach (VanillaNpcDefinition definition in VanillaSlimeNpcCatalog.AllDefinitions)
