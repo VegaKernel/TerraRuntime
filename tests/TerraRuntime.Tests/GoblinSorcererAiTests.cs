@@ -144,6 +144,25 @@ public sealed class GoblinSorcererAiTests
         Assert.Equal(17f, explicitTimer.Ai.Ai0);
     }
 
+    [Fact]
+    public void Hardmode_dungeon_caster_uses_its_dedicated_teleport_world_query()
+    {
+        var environment = new DungeonCasterEnvironment();
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: new ZeroRandom());
+        stepper.SetWallOfFleshEnvironment(environment);
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 300f, 120f, 0, true, false, false, false)]);
+        var source = new NpcSnapshot(new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1), 281, 281,
+            100f, 100f, 0f, 0f, 0, new NpcAiState(539f, 0f, 0f, 0f), NpcSimulationState.Initial);
+        var committed = source with { Revision = new NpcRevision(2), Ai = new NpcAiState(1f, 0f, 0f, 0f) };
+        var mutations = new CapturingMutationSink();
+
+        stepper.CompleteCommittedState(in source, in committed, mutations);
+
+        Assert.True(environment.DungeonQueryCalled);
+        Assert.False(environment.SkeletronActive);
+        Assert.Equal(new NpcAiState(1f, 19f, 31f, 42f), mutations.LastAiUpdate);
+    }
+
     private sealed class RejectingStepper : INpcAiStateStepper
     { public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next) { next = default; return false; } }
     private sealed class ZeroRandom : IVanillaNpcRandom
@@ -157,11 +176,28 @@ public sealed class GoblinSorcererAiTests
         public bool TryFindTeleportSpot(float a,float b,int c,int d,ReadOnlySpan<VanillaNpcTargetCandidate> e,IVanillaNpcRandom f,out int x,out int y) { x=y=0; return false; }
     }
 
+    private sealed class DungeonCasterEnvironment : IVanillaWallOfFleshEnvironment, IVanillaDungeonCasterEnvironment
+    {
+        public bool DungeonQueryCalled { get; private set; }
+        public bool SkeletronActive { get; private set; }
+        public int WorldWidthTiles => 400; public int WorldHeightTiles => 400; public int UnderworldLayerTiles => 200;
+        public bool TryResolveCorridor(float a, float b, int c, int d, out float e, out float f) { e = f = 0; return false; }
+        public bool CanHit(float a, float b, int c, int d, float e, float f, int g, int h) => true;
+        public bool TryFindGroundSpawn(int a, int b, out int c, out int d) { c = d = 0; return false; }
+        public bool TryFindTeleportSpot(float a, float b, int c, int d, ReadOnlySpan<VanillaNpcTargetCandidate> e, IVanillaNpcRandom f, out int x, out int y) { x = y = 0; return false; }
+        public bool TryFindDungeonCasterTeleportSpot(float a, float b, int c, int d, bool skeletronActive,
+            ReadOnlySpan<VanillaNpcTargetCandidate> e, IVanillaNpcRandom f, out int x, out int y)
+        {
+            DungeonQueryCalled = true; SkeletronActive = skeletronActive; x = 31; y = 42; return true;
+        }
+    }
+
     private sealed class CapturingMutationSink : INpcAiCommittedNpcMutationSink
     {
         public bool ProjectileSpawned { get; private set; }
+        public NpcAiState LastAiUpdate { get; private set; }
         public NpcAiProjectileIntent Projectile { get; private set; }
-        public bool TryUpdateAi(in NpcSnapshot expected, NpcAiState ai, out NpcSnapshot committed) { committed = expected with { Ai = ai }; return true; }
+        public bool TryUpdateAi(in NpcSnapshot expected, NpcAiState ai, out NpcSnapshot committed) { LastAiUpdate = ai; committed = expected with { Ai = ai }; return true; }
         public int TryHeal(NpcHandle npc, int maximumAmount) => 0;
         public bool TrySpawn(in NpcAiSpawnIntent intent, out NpcSnapshot spawned) { spawned = default; return false; }
         public bool TrySpawn(in NpcSnapshot source, in NpcAiSpawnIntent intent, out NpcSnapshot spawned) { spawned = default; return false; }

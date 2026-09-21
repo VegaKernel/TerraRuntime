@@ -84,9 +84,14 @@ internal sealed class VanillaGoblinSorcererBehavior(IVanillaNpcRandom random) : 
             return CompleteProjectile(in before, in committed, context, mutations);
 
         NpcSnapshot current = committed;
-        if (!environment.TryFindTeleportSpot(current.PositionX + definition.Width * .5f,
-                current.PositionY + definition.Height * .5f, (int)target.CenterX / 16, (int)target.CenterY / 16,
-                context.Candidates, random, out int x, out int y) ||
+        float centerX = current.PositionX + definition.Width * .5f;
+        float centerY = current.PositionY + definition.Height * .5f;
+        bool found = before.TypeIdentity.Value is >= 281 and <= 286 && environment is IVanillaDungeonCasterEnvironment dungeon
+            ? dungeon.TryFindDungeonCasterTeleportSpot(centerX, centerY, (int)target.CenterX / 16, (int)target.CenterY / 16,
+                context.CountNpcPeers(VanillaNpcIds.SkeletronHead) > 0, context.Candidates, random, out int x, out int y)
+            : environment.TryFindTeleportSpot(centerX, centerY, (int)target.CenterX / 16, (int)target.CenterY / 16,
+                context.Candidates, random, out x, out y);
+        if (!found ||
             !mutations.TryUpdateAi(in current, current.Ai with { Ai1 = 19f, Ai2 = x, Ai3 = y }, out current))
         {
             return committed;
