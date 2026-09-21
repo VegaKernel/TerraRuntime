@@ -1729,6 +1729,13 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     private int PlanQueenSlimeMinions(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
     {
+        if (!VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.QueenSlime, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(proposed.Simulation, out VanillaNpcHitboxSize hitbox) ||
+            hitbox.Width <= 32 || hitbox.Height <= 32)
+        {
+            return 0;
+        }
+
         int lifeMax = Math.Max(1, proposed.Simulation.LifeMax);
         int life = proposed.Simulation.Life;
         bool phaseTwo = life <= lifeMax / 2;
@@ -1743,10 +1750,13 @@ public sealed class VanillaNpcTargetingAiStepper :
         NpcTypeId[] types = [VanillaNpcIds.QueenSlimeMinionBlue, VanillaNpcIds.QueenSlimeMinionPink, VanillaNpcIds.QueenSlimeMinionPurple];
         for (int i = 0; i < count; i++)
         {
+            // NPC.AI (1.4.5.8, style 121) draws spawn position before its minion type and velocity.
+            int bottomX = (int)(proposed.PositionX + _random.NextInt32(0, hitbox.Width - 32));
+            int bottomY = (int)(proposed.PositionY + _random.NextInt32(0, hitbox.Height - 32));
             NpcTypeId type = types[_random.NextInt32(0, types.Length)];
-            float vx = _random.NextInt32(-20, 21) * 0.1f;
+            float vx = _random.NextInt32(-15, 16) * 0.1f;
             float vy = _random.NextInt32(-20, 1) * 0.1f;
-            destination[i] = new NpcAiSpawnIntent(type, (int)(proposed.PositionX + 57f), (int)(proposed.PositionY + 100f), vx, vy, proposed.Target)
+            destination[i] = new NpcAiSpawnIntent(type, bottomX, bottomY, vx, vy, proposed.Target)
             { InitialAi = new NpcAiState(-500f * _random.NextInt32(0, 3), 0f, 0f, 0f) };
         }
         return count;
