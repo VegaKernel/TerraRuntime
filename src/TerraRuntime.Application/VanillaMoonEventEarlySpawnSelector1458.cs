@@ -150,15 +150,60 @@ internal static class VanillaMoonEventEarlySpawnSelector1458
         };
     }
 
-    private static NpcTypeId SelectPumpkin(int wave, IVanillaNpcRandom random, Func<short, int> count) => wave switch
+    private static NpcTypeId SelectPumpkin(int wave, IVanillaNpcRandom random, Func<short, int> count)
     {
-        2 => random.NextInt32(0, 3) == 0 ? new NpcTypeId(326) : PumpkinBase(random),
-        3 => random.NextInt32(0, 3) == 0 ? new NpcTypeId(329) : new NpcTypeId(326),
-        4 => random.NextInt32(0, 8) == 0 && count(325) == 0 ? new NpcTypeId(330) :
-             random.NextInt32(0, 2) == 0 ? new NpcTypeId(326) : PumpkinBase(random),
-        5 => random.NextInt32(0, 10) == 0 && count(315) == 0 ? new NpcTypeId(315) : new NpcTypeId(329),
-        _ => PumpkinBase(random)
-    };
+        if (wave == 6)
+        {
+            if (random.NextInt32(0, 7) == 0 && count(325) < 2) return new NpcTypeId(325);
+            return random.NextInt32(0, 2) == 0 ? new NpcTypeId(326) : PumpkinBase(random);
+        }
+        if (wave == 7)
+        {
+            if (random.NextInt32(0, 7) == 0 && count(325) < 2) return new NpcTypeId(325);
+            return random.NextInt32(0, 4) == 0 ? new NpcTypeId(330) : new NpcTypeId(329);
+        }
+        if (wave == 8)
+        {
+            if (random.NextInt32(0, 8) == 0 && count(315) < 2) return new NpcTypeId(315);
+            return random.NextInt32(0, 4) == 0 ? new NpcTypeId(330) : new NpcTypeId(329);
+        }
+        if (wave == 9)
+        {
+            if (random.NextInt32(0, 10) == 0 && count(325) < 2) return new NpcTypeId(325);
+            if (random.NextInt32(0, 8) == 0) return new NpcTypeId(330);
+            if (random.NextInt32(0, 5) == 0) return new NpcTypeId(329);
+            return random.NextInt32(0, 2) == 0 ? new NpcTypeId(326) : PumpkinBase(random);
+        }
+        if (wave == 10)
+        {
+            if (random.NextInt32(0, 10) == 0 && count(327) == 0) return new NpcTypeId(327);
+            return random.NextInt32(0, 3) == 0 ? new NpcTypeId(329) : PumpkinBase(random);
+        }
+        if (wave == 11)
+        {
+            if (random.NextInt32(0, 7) == 0 && count(325) < 2) return new NpcTypeId(325);
+            return random.NextInt32(0, 3) == 0 ? new NpcTypeId(330) : new NpcTypeId(326);
+        }
+        if (wave == 12)
+            return random.NextInt32(0, 5) == 0 && count(327) == 0 ? new NpcTypeId(327) : new NpcTypeId(330);
+        if (wave == 13)
+        {
+            if (random.NextInt32(0, 7) == 0 && count(325) < 2) return new NpcTypeId(325);
+            if (random.NextInt32(0, 10) == 0 && count(315) < 2) return new NpcTypeId(315);
+            if (random.NextInt32(0, 6) == 0) return new NpcTypeId(330);
+            return random.NextInt32(0, 3) == 0 ? new NpcTypeId(329) : new NpcTypeId(326);
+        }
+
+        return wave switch
+        {
+            2 => random.NextInt32(0, 3) == 0 ? new NpcTypeId(326) : PumpkinBase(random),
+            3 => random.NextInt32(0, 3) == 0 ? new NpcTypeId(329) : new NpcTypeId(326),
+            4 => random.NextInt32(0, 8) == 0 && count(325) == 0 ? new NpcTypeId(330) :
+                 random.NextInt32(0, 2) == 0 ? new NpcTypeId(326) : PumpkinBase(random),
+            5 => random.NextInt32(0, 10) == 0 && count(315) == 0 ? new NpcTypeId(315) : new NpcTypeId(329),
+            _ => PumpkinBase(random)
+        };
+    }
     private static NpcTypeId FrostBase(IVanillaNpcRandom random) => new((short)random.NextInt32(338, 341));
 
     private static NpcTypeId PumpkinBase(IVanillaNpcRandom random) => new((short)random.NextInt32(305, 315));

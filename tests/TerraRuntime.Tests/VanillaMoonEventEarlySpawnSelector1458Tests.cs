@@ -32,6 +32,14 @@ public sealed class VanillaMoonEventEarlySpawnSelector1458Tests
     [InlineData(false, 2, new[] { 0 }, 326)]
     [InlineData(false, 4, new[] { 0 }, 330)]
     [InlineData(false, 5, new[] { 0 }, 315)]
+    [InlineData(false, 6, new[] { 1, 0 }, 326)]
+    [InlineData(false, 7, new[] { 1, 0 }, 330)]
+    [InlineData(false, 8, new[] { 1, 0 }, 330)]
+    [InlineData(false, 9, new[] { 1, 1, 1, 0 }, 326)]
+    [InlineData(false, 10, new[] { 1, 0 }, 329)]
+    [InlineData(false, 11, new[] { 1, 0 }, 330)]
+    [InlineData(false, 12, new[] { 0 }, 327)]
+    [InlineData(false, 13, new[] { 1, 1, 0 }, 330)]
     public void Early_wave_selection_preserves_source_random_order(bool snow, int wave, int[] rolls, short expected)
     {
         var random = new SequenceRandom(rolls);

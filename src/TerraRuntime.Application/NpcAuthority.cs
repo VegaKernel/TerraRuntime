@@ -1599,7 +1599,7 @@ internal sealed partial class NpcAuthority
         if (worldClock!.MoonEventActive && !worldClock.DayTime &&
             (surface || naturalSpawnWorldFacts?.RemixWorld == true) &&
             scene is not { ZoneDungeon: true } and not { ZoneMeteor: true } &&
-            worldClock.MoonEventWaveNumber <= 13)
+            (worldClock.SnowMoonActive || worldClock.MoonEventWaveNumber <= 13))
         {
             return VanillaMoonEventEarlySpawnSelector1458.Select(
                 worldClock.SnowMoonActive,
