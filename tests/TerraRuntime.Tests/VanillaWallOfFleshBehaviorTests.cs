@@ -121,6 +121,35 @@ public sealed class VanillaWallOfFleshBehaviorTests
         Assert.Equal(WorldLiquidKind.Water, drained.LiquidKind);
     }
 
+    [Fact]
+    public void Fire_imp_ai008_requires_global_firing_distance_before_arming_its_burning_sphere()
+    {
+        var stepper = CreateStepper();
+        stepper.SetCandidates([Target(0, 3_000f, 120f)]);
+        NpcSnapshot imp = FireImp(ai0: 99f, ai1: 0f);
+
+        Assert.True(stepper.TryStepState(in imp, out NpcStateUpdate next));
+        Assert.Equal(100f, next.Ai.Ai0);
+        Assert.Equal(0f, next.Ai.Ai1);
+    }
+
+    [Fact]
+    public void Fire_imp_ai008_refreshes_direction_before_the_committed_burning_sphere_spawn()
+    {
+        var stepper = CreateStepper();
+        stepper.SetCandidates([Target(0, 300f, 40f)]);
+        NpcSnapshot imp = FireImp(ai0: 10f, ai1: 11f);
+
+        Assert.True(stepper.TryStepState(in imp, out NpcStateUpdate next));
+        Assert.Equal(1, next.Simulation.DirectionX);
+        Assert.Equal(-1, next.Simulation.DirectionY);
+        Span<NpcAiSpawnIntent> intents = stackalloc NpcAiSpawnIntent[1];
+        Assert.Equal(1, stepper.PlanNpcSpawns(in imp, in next, intents));
+        Assert.Equal(VanillaNpcIds.BurningSphere, intents[0].Type);
+        Assert.Equal(117, intents[0].BottomX);
+        Assert.Equal(120, intents[0].BottomY);
+    }
+
     private static VanillaNpcTargetingAiStepper CreateStepper()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: new ZeroRandom());
@@ -144,6 +173,19 @@ public sealed class VanillaWallOfFleshBehaviorTests
         Assert.True(store.TrySpawnVanilla(in update, out NpcSnapshot wall));
         return wall;
     }
+
+    private static NpcSnapshot FireImp(float ai0, float ai1) => new(
+        new NpcHandle(1, new NpcGeneration(1)),
+        new NpcRevision(1),
+        VanillaNpcIds.FireImp.Value,
+        checked((short)VanillaNpcIds.FireImp.Value),
+        PositionX: 100f,
+        PositionY: 100f,
+        VelocityX: 0f,
+        VelocityY: 0f,
+        Target: 0,
+        Ai: new NpcAiState(ai0, ai1, 0f, 0f),
+        Simulation: NpcSimulationState.Initial with { DirectionX = -1, DirectionY = 1, Life = 70, LifeMax = 70 });
 
     private static VanillaNpcTargetCandidate Target(byte slot, float x, float y) =>
         new(slot, x, y, Aggro: 0, Active: true, Dead: false, Ghost: false, NoAggro: false);

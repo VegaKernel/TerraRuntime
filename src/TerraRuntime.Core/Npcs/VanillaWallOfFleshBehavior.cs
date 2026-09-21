@@ -453,6 +453,16 @@ internal sealed class VanillaFireImpNpcBehaviorStrategy : IVanillaNpcBehaviorStr
             hasTarget = true;
         }
 
+        int directionX = npc.Simulation.DirectionX;
+        int directionY = npc.Simulation.DirectionY;
+        if (hasTarget)
+        {
+            float centerX = npc.PositionX + definition.Width * .5f;
+            float centerY = npc.PositionY + definition.Height * .5f;
+            directionX = target.CenterX < centerX ? -1 : 1;
+            directionY = target.CenterY < centerY ? -1 : 1;
+        }
+
         float positionX = npc.PositionX;
         float positionY = npc.PositionY;
         float velocityX = npc.VelocityX * .93f;
@@ -476,7 +486,12 @@ internal sealed class VanillaFireImpNpcBehaviorStrategy : IVanillaNpcBehaviorStr
             if (timer % 2f == 1f) timer -= 1f;
         }
         float attackTimer = ai.Ai1;
-        if (timer is 100f or 200f or 300f)
+        if (hasTarget && timer is (100f or 200f or 300f) &&
+            VanillaNpcGlobalFiringDistance.Contains(
+                positionX + definition.Width * .5f,
+                positionY + definition.Height * .5f,
+                target.CenterX,
+                target.CenterY))
             attackTimer = 30f;
         if (timer >= 650f && hasTarget)
         {
@@ -493,7 +508,12 @@ internal sealed class VanillaFireImpNpcBehaviorStrategy : IVanillaNpcBehaviorStr
             attackTimer -= 1f;
         ai = ai with { Ai0 = timer, Ai1 = attackTimer };
 
-        NpcSimulationState simulation = npc.Simulation with { JustHit = false };
+        NpcSimulationState simulation = npc.Simulation with
+        {
+            DirectionX = directionX,
+            DirectionY = directionY,
+            JustHit = false
+        };
         next = new NpcStateUpdate(npc.Type, npc.NetId, positionX, positionY, velocityX, velocityY, targetSlot, ai, simulation);
         return true;
     }
