@@ -109,6 +109,20 @@ public sealed class VanillaMoonEventEverscreamAiTests
     }
 
     [Fact]
+    public void Snow_moon_ai63_defaults_and_close_range_orbit_match_source()
+    {
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(352), out VanillaNpcDefinition definition));
+        Assert.Equal((63, 54, 54, 75, 8, 450), (definition.AiStyle.Value, definition.BaseWidth, definition.BaseHeight,
+            definition.Damage, definition.Defense, definition.LifeMax));
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(new SequenceRandom(), solid: false);
+        var npc = new NpcSnapshot(new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1), 352, 352, 100f, 200f, 0f, 0f,
+            3, default, NpcSimulationState.Initial with { DirectionX = 1, SpriteDirection = 1, Life = 450, LifeMax = 450 });
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+        Assert.Equal(20f, next.Ai.Ai0); Assert.Equal(.3f, next.Simulation.Rotation!.Value, 5);
+        Assert.True(next.Simulation.NoGravity); Assert.True(next.Simulation.NoTileCollide);
+    }
+
+    [Fact]
     public void Pine_needles_and_ornaments_spawn_only_after_the_exact_committed_attack_tick()
     {
         AssertProjectile(new NpcAiState(1f, 4f, 0f, 0f), VanillaProjectileIds.EverscreamPineNeedle, 43, expectedDraws: 11);

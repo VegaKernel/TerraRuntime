@@ -16,6 +16,8 @@
 
 2026-09-21 Snow Moon AI_062: source NPC 347 `SetDefaults` is admitted with its target pursuit, daylight retreat, line-of-sight gate and stationary 15-tick Frost Bolt clock. The server creates projectile 180 after the matching committed local-AI transition with source aim, damage and six random draws. Remaining Snow Moon special-AI NPCs remain open.
 
+2026-09-21 Snow Moon AI_063: source NPC 352 `SetDefaults` and its no-clip target motion are admitted. The runtime keeps the source close-range orbit timer, daylight vector reversal, two near-distance pursuit gains and rotation/direction handoff. Remaining Snow Moon special-AI NPCs remain open.
+
 2026-09-21 Moon-event AI_026 type 315: Pumpkin Moon now admits Mourning Wood with its source defaults, six-pixel AI_026 charge and 480-tick post-commit fireball branch. The projectile preserves pre-motion center/velocity, retained NPC difficulty damage and its pre-refresh target; rejected state transitions consume no random draws. Remaining special-AI types and later waves remain open.
 
 2026-09-21 Moon-event AI_022 type 330: Pumpkin Moon now admits the source no-clip ghost defaults and authoritative flight slice, including target tracking, acceleration bands, alpha transition and event-gated despawn. Remaining special-AI types and later waves remain open.

@@ -70,7 +70,8 @@ public enum VanillaNpcBehaviorFamily : byte
     PumpkinMoonPumpking = 56,
     SnowMoonSantank = 57,
     SnowMoonIceQueen = 58,
-    SnowMoonAi62 = 59
+    SnowMoonAi62 = 59,
+    SnowMoonAi63 = 60
 }
 
 /// <summary>

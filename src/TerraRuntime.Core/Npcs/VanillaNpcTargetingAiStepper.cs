@@ -67,6 +67,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaSnowMoonSantankNpcBehaviorStrategy _santank;
     private readonly VanillaSnowMoonIceQueenNpcBehaviorStrategy _iceQueen;
     private readonly VanillaSnowMoonAi62NpcBehaviorStrategy _snowMoonAi62;
+    private readonly VanillaSnowMoonAi63NpcBehaviorStrategy _snowMoonAi63 = new();
     private readonly VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy _eyeOfCthulhu;
     private readonly VanillaServantOfCthulhuNpcBehaviorStrategy _flyer;
     private readonly VanillaWormNpcBehaviorStrategy _worm = new();
@@ -296,6 +297,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.SnowMoonSantank when _context.GroundFighterEnabled => _santank,
             VanillaNpcBehaviorFamily.SnowMoonIceQueen when _context.GroundFighterEnabled => _iceQueen,
             VanillaNpcBehaviorFamily.SnowMoonAi62 when _context.GroundFighterEnabled => _snowMoonAi62,
+            VanillaNpcBehaviorFamily.SnowMoonAi63 when _context.GroundFighterEnabled => _snowMoonAi63,
             VanillaNpcBehaviorFamily.EyeOfCthulhu => _eyeOfCthulhu,
             VanillaNpcBehaviorFamily.Flyer => _flyer,
             VanillaNpcBehaviorFamily.Worm => _worm,

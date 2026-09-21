@@ -1311,6 +1311,54 @@ internal sealed class VanillaSnowMoonAi62NpcBehaviorStrategy : IVanillaNpcBehavi
     private static void Normalize(ref float x, ref float y, float speed) { float d = MathF.Max(1f, MathF.Sqrt(x * x + y * y)); x = x / d * speed; y = y / d * speed; }
 }
 
+/// <summary>TerrariaServer 1.4.5.8 AI_063 close-range orbit and pursuit motion.</summary>
+internal sealed class VanillaSnowMoonAi63NpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
+{
+    public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        INpcAiStateStepper inner, out NpcStateUpdate next)
+    {
+        if (definition.Type != VanillaMoonEventSpecialCatalog1458.SnowMoonAi63 || definition.AiStyle.Value != 63 ||
+            !TryTarget(in npc, in definition, context, out ushort target, out VanillaNpcTargetCandidate player, out int direction))
+        { next = default; return false; }
+        float sourceX = npc.PositionX + 27f + direction * 20f, sourceY = npc.PositionY + 33f;
+        float dx = player.CenterX - sourceX, dy = player.CenterY - sourceY;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        Normalize(ref dx, ref dy, 11f);
+        if (context.DayTime) { dx = -dx; dy = -dy; }
+        NpcAiState ai = npc.Ai with { Ai0 = npc.Ai.Ai0 - 1f };
+        float velocityX = npc.VelocityX, velocityY = npc.VelocityY;
+        NpcSimulationState simulation = npc.Simulation;
+        if (distance < 200f || ai.Ai0 > 0f)
+        {
+            if (distance < 200f) ai = ai with { Ai0 = 20f };
+            direction = velocityX < 0f ? -1 : 1;
+            simulation = simulation with { Rotation = (simulation.Rotation ?? 0f) + direction * .3f };
+        }
+        else
+        {
+            velocityX = (velocityX * 50f + dx) / 51f;
+            velocityY = (velocityY * 50f + dy) / 51f;
+            if (distance < 350f) { velocityX = (velocityX * 10f + dx) / 11f; velocityY = (velocityY * 10f + dy) / 11f; }
+            if (distance < 300f) { velocityX = (velocityX * 7f + dx) / 8f; velocityY = (velocityY * 7f + dy) / 8f; }
+            simulation = simulation with { Rotation = velocityX * .15f };
+        }
+        next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, velocityX, velocityY, target, ai,
+            simulation with { NoGravity = true, NoTileCollide = true, DirectionX = direction, SpriteDirection = direction, JustHit = false });
+        return true;
+    }
+
+    private static bool TryTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        out ushort target, out VanillaNpcTargetCandidate player, out int direction)
+    {
+        if (context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) && closest.HasTarget &&
+            closest.Target < byte.MaxValue && context.TryFindCandidate((byte)closest.Target, out player))
+        { target = closest.Target; direction = closest.DirectionX; return true; }
+        target = VanillaNpcDefinitionCatalog.DefaultTarget; player = default; direction = 0; return false;
+    }
+
+    private static void Normalize(ref float x, ref float y, float speed) { float d = MathF.Max(1f, MathF.Sqrt(x * x + y * y)); x = x / d * speed; y = y / d * speed; }
+}
+
 /// <summary>TerrariaServer 1.4.5.8 AI_061 flight and phase clock for Snow Moon Ice Queen.</summary>
 internal sealed class VanillaSnowMoonIceQueenNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
