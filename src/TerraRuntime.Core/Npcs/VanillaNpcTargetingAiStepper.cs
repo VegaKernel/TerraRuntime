@@ -835,7 +835,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         float centerX = source.PositionX + definition.Width * 0.5f;
         float centerY = source.PositionY + definition.Height * 0.5f;
         int direction = target.CenterX < centerX ? -1 : 1;
-        float spawnX = source.PositionX + definition.Width * 0.5f + _random.NextInt32(0, 20) * direction;
+        float spawnX = source.PositionX + definition.Width * 0.5f + proposed.Simulation.LocalAi.Ai1 * direction;
         float spawnY = source.PositionY + definition.Height * 0.8f;
         if (!_projectileEnvironment.CanHit(
                 spawnX, spawnY, 1, 1,
@@ -890,7 +890,7 @@ public sealed class VanillaNpcTargetingAiStepper :
 
         float centerX = source.PositionX + definition.Width * 0.5f;
         int direction = target.CenterX < centerX ? -1 : 1;
-        float spawnX = source.PositionX + definition.Width * 0.5f + _random.NextInt32(0, 20) * direction;
+        float spawnX = source.PositionX + definition.Width * 0.5f + proposed.Simulation.LocalAi.Ai1 * direction;
         float spawnY = source.PositionY + definition.Height * 0.8f;
         if (!_projectileEnvironment.CanHit(
                 spawnX, spawnY, 1, 1,

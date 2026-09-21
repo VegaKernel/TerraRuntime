@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Queen Bee committed effects: AI_043 retains its one `Next(20)` attack-origin offset for every state-1/state-3 tick in server-owned `localAI[1]`. The committed Bee and Stinger planners reuse that same offset for their collision gate and spawn position, preserving source RNG order before the child-type or aim-jitter draws.
+
 2026-09-21 Snow Moon wave selection: `NPC.Spawner.SpawnAnNPC` now owns the source table through wave 20, including its explicit wave-14 no-spawn path and the late shared invasion-boss slot cap over active player count. Every active-type cap and RNG draw is retained after the wave-wide 1-in-30 special check. Unsupported special selections fail closed instead of falling back to an ordinary hostile. Santa-NK1 is admitted with its AI_060 body; other special-AI NPCs remain open.
 
 2026-09-21 Pumpkin Moon wave selection: source `NPC.Spawner.SpawnAnNPC` now covers waves 1-20, including the independent first/second selections that can create two NPCs in waves 14, 15, 17 and 18, source no-spawn paths, active-type caps and the shared invasion-boss cap. Unsupported special selections remain fail-closed; their AI implementations remain open.
