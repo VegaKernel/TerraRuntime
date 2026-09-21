@@ -105,18 +105,36 @@ public sealed class RuntimeNpcDeathLifecycleFinalizerTests
         Assert.False(finalizer.TryFinalizeWhenLootUnsupported(eye.Handle, out _));
     }
 
-    private static NpcSnapshot Spawn(RuntimeNpcStore store, byte slot, NpcTypeId type)
+    [Fact]
+    public void Dead_mother_slime_spawns_source_baby_slime_net_variants_before_finalizing()
+    {
+        var store = new RuntimeNpcStore(capacity: 5);
+        NpcSnapshot mother = Spawn(store, 0, VanillaNpcIds.MotherSlime, velocityX: 2f, velocityY: 3f, directionX: -1);
+        Kill(store, mother.Handle);
+        var finalizer = new RuntimeNpcDeathLifecycleFinalizer(store, new MinimumRandom());
+
+        Assert.True(finalizer.TryFinalizeWhenLootUnsupported(mother.Handle, out _));
+        Assert.False(store.TryGet(mother.Handle, out _));
+        Assert.True(store.TryGetActive(1, out NpcSnapshot first));
+        Assert.True(store.TryGetActive(2, out NpcSnapshot second));
+        Assert.Equal((VanillaNpcIds.BlueSlime.Value, VanillaNpcNetVariantCatalog.BabySlime.Value), (first.Type, first.NetId));
+        Assert.Equal((2f, 3f, 0f), (first.VelocityX, first.VelocityY, first.Ai.Ai0));
+        Assert.Equal((1.7f, 2f, 0f), (second.VelocityX, second.VelocityY, second.Ai.Ai0));
+    }
+
+    private static NpcSnapshot Spawn(RuntimeNpcStore store, byte slot, NpcTypeId type,
+        float velocityX = 0f, float velocityY = 0f, int directionX = 1)
     {
         var update = new NpcStateUpdate(
             Type: type.Value,
             NetId: checked((short)type.Value),
             PositionX: 48f,
             PositionY: 64f,
-            VelocityX: 0f,
-            VelocityY: 0f,
+            VelocityX: velocityX,
+            VelocityY: velocityY,
             Target: VanillaNpcDefinitionCatalog.DefaultTarget,
             Ai: default,
-            Simulation: NpcSimulationState.Initial);
+            Simulation: NpcSimulationState.Initial with { DirectionX = directionX });
         Assert.True(store.TrySpawn(slot, in update, out NpcSnapshot npc));
         return npc;
     }
@@ -130,5 +148,10 @@ public sealed class RuntimeNpcDeathLifecycleFinalizerTests
             BaseDamage: int.MaxValue);
         Assert.True(executor.TryApply(in request, out NpcDamageResult result));
         Assert.True(result.Lethal);
+    }
+
+    private sealed class MinimumRandom : IVanillaNpcRandom
+    {
+        public int NextInt32(int inclusiveMin, int exclusiveMax) => inclusiveMin;
     }
 }

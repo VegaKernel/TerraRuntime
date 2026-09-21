@@ -49,6 +49,12 @@ public sealed class VanillaNpcAiCoverageCatalogTests
         Assert.False(kingSlime.FullVanillaAiParity);
 
         Assert.True(VanillaNpcAiCoverageCatalog.TryGet(
+            VanillaNpcIds.MotherSlime,
+            out VanillaNpcAiCoverage motherSlime));
+        Assert.True(motherSlime.Has(VanillaNpcAiCapability.ChildSpawnSlice));
+        Assert.False(motherSlime.FullVanillaAiParity);
+
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(
             VanillaNpcIds.BrainOfCthulhu,
             out VanillaNpcAiCoverage brain));
         Assert.True(brain.Has(VanillaNpcAiCapability.ChildSpawnSlice));

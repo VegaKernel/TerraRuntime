@@ -28,11 +28,13 @@ public sealed class RuntimeNpcDeathLifecycleFinalizer
 {
     private readonly RuntimeNpcStore _store;
     private readonly RuntimeVanillaNpcRoleBoundary _roles;
+    private readonly IVanillaNpcRandom _random;
 
-    public RuntimeNpcDeathLifecycleFinalizer(RuntimeNpcStore store)
+    public RuntimeNpcDeathLifecycleFinalizer(RuntimeNpcStore store, IVanillaNpcRandom? random = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _roles = new RuntimeVanillaNpcRoleBoundary(store);
+        _random = random ?? new SystemVanillaNpcRandom();
     }
 
     public bool TryFinalizeWhenLootUnsupported(NpcHandle target, out NpcDeathLifecycleResult result)
@@ -53,11 +55,15 @@ public sealed class RuntimeNpcDeathLifecycleFinalizer
             !NpcTypeId.TryCreate(snapshot.Type, out NpcTypeId type) ||
             !VanillaNpcDefinitionCatalog.TryGet(type, out _) ||
             HasImportedLootForContext(type, in lootContext) ||
-            !_roles.TryClassify(snapshot.Handle, out VanillaNpcRoleClassification classification) ||
-            !_store.TryDespawn(snapshot.Handle))
+            !_roles.TryClassify(snapshot.Handle, out VanillaNpcRoleClassification classification))
         {
             return false;
         }
+
+        if (type == VanillaNpcIds.MotherSlime)
+            SpawnMotherSlimeChildren(in snapshot);
+        if (!_store.TryDespawn(snapshot.Handle))
+            return false;
 
         result = new NpcDeathLifecycleResult(
             snapshot.Handle,
@@ -75,5 +81,28 @@ public sealed class RuntimeNpcDeathLifecycleFinalizer
             return true;
         return type == VanillaNpcIds.Deerclops ||
                (type == VanillaNpcIds.KingSlime && !lootContext.IsExpertMode);
+    }
+
+    private void SpawnMotherSlimeChildren(in NpcSnapshot parent)
+    {
+        // NPC.HitEffect (1.4.5.8): a dead Mother Slime creates two or three Baby Slimes after hit effects,
+        // preserving parent velocity and then applying each source-ordered random offset.
+        int count = _random.NextInt32(0, 2) + 2;
+        if (!VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.MotherSlime, out VanillaNpcDefinition definition))
+            return;
+        int bottomX = (int)(parent.PositionX + definition.Width * .5f);
+        int bottomY = (int)(parent.PositionY + definition.Height);
+        for (int index = 0; index < count; index++)
+        {
+            var intent = new NpcAiSpawnIntent(VanillaNpcIds.BlueSlime, bottomX, bottomY,
+                parent.VelocityX * 2f + _random.NextInt32(-20, 20) * .1f + index * parent.Simulation.DirectionX * .3f,
+                parent.VelocityY - _random.NextInt32(0, 10) * .1f - index,
+                parent.Target)
+            {
+                NetIdOverride = VanillaNpcNetVariantCatalog.BabySlime,
+                InitialAi = new NpcAiState(-1000f * _random.NextInt32(0, 3), 0f, 0f, 0f)
+            };
+            _store.TrySpawnIntent(in intent, out _);
+        }
     }
 }

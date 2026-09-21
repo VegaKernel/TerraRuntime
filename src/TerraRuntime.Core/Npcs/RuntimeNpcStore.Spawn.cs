@@ -74,7 +74,7 @@ public sealed partial class RuntimeNpcStore
         }
 
         int type = intent.Type.Value;
-        short netId = checked((short)type);
+        short netId = checked((short)(intent.NetIdOverride?.Value ?? type));
         if (!TryCaptureSpawnDefaults(ref type, ref netId, out var spawnDefaults, out float difficulty) ||
             !VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(type), new NpcNetId(netId), out definition) ||
             // Context/RNG callbacks may reenter. Retain accepted draws, but stop before allocating or publishing.

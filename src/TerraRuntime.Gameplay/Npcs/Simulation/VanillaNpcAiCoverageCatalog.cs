@@ -362,6 +362,8 @@ public static class VanillaNpcAiCoverageCatalog
             if (definition.Type == VanillaNpcIds.LavaSlime || definition.Type == VanillaNpcIds.IceSlime ||
                 definition.Type == VanillaNpcIds.SpikedIceSlime || definition.Type == VanillaNpcIds.SandSlime)
                 capabilities |= VanillaNpcAiCapability.SlimeContainedItemSlice;
+            if (definition.Type == VanillaNpcIds.MotherSlime)
+                capabilities |= VanillaNpcAiCapability.ChildSpawnSlice;
 
             entries[index++] = Partial(definition.Type, capabilities);
         }
