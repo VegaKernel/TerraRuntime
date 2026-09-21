@@ -65,7 +65,8 @@ public enum VanillaNpcAiCapability : ulong
     MoonEventEverscreamSlice = 1ul << 55,
     JellyfishMotionSlice = 1ul << 56,
     AntlionMotionSlice = 1ul << 57,
-    SlimeProjectileSideEffectSlice = 1ul << 58
+    SlimeProjectileSideEffectSlice = 1ul << 58,
+    SlimeContainedItemSlice = 1ul << 59
 }
 
 /// <summary>
@@ -142,7 +143,8 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcIds.BlueSlime,
             OrdinaryCore |
             VanillaNpcAiCapability.SlimeTimerProfileSlice |
-            VanillaNpcAiCapability.NegativeNetVariantDefaults);
+            VanillaNpcAiCapability.NegativeNetVariantDefaults |
+            VanillaNpcAiCapability.SlimeContainedItemSlice);
         entries[1] = Partial(
             VanillaNpcIds.DemonEye,
             OrdinaryCore |

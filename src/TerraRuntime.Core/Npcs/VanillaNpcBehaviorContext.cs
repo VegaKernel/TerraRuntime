@@ -66,6 +66,8 @@ internal sealed class VanillaNpcBehaviorContext
 
     public bool RemixWorld { get; private set; }
 
+    public bool NoTrapsWorld { get; private set; }
+
     /// <summary>Vanilla Main.time sampled before NPC AI for the current game tick.</summary>
     public double WorldTime { get; private set; }
 
@@ -100,7 +102,8 @@ internal sealed class VanillaNpcBehaviorContext
         bool masterMode = false,
         float windSpeedCurrent = 0f,
         bool remixWorld = false,
-        double worldTime = 0d)
+        double worldTime = 0d,
+        bool noTrapsWorld = false)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -117,6 +120,7 @@ internal sealed class VanillaNpcBehaviorContext
         WindSpeedCurrent = windSpeedCurrent;
         RemixWorld = remixWorld;
         WorldTime = worldTime;
+        NoTrapsWorld = noTrapsWorld;
         if (!remixWorld)
             empressRemixRageMode = false;
     }

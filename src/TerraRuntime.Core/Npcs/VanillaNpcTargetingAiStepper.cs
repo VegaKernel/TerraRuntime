@@ -253,8 +253,9 @@ public sealed class VanillaNpcTargetingAiStepper :
         bool masterMode = false,
         float windSpeedCurrent = 0f,
         bool remixWorld = false,
-        double worldTime = 0d) =>
-        _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld, expertMode, masterMode, windSpeedCurrent, remixWorld, worldTime);
+        double worldTime = 0d,
+        bool noTrapsWorld = false) =>
+        _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld, expertMode, masterMode, windSpeedCurrent, remixWorld, worldTime, noTrapsWorld);
 
     public void SetMoonEventState(bool pumpkinMoonActive) => _context.SetMoonEventState(pumpkinMoonActive);
 
@@ -472,6 +473,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         if ((source.Type == VanillaNpcIds.QueenSlimeMinionBlue.Value || source.Type == VanillaNpcIds.QueenSlimeMinionPink.Value) &&
             proposed.Type == source.Type)
             return PlanQueenSlimeMinionShards(in source, in proposed, destination);
+        if (source.Type == VanillaNpcIds.BlueSlime.Value && proposed.Type == source.Type)
+            return PlanContainedSlimeTrap(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.Antlion.Value && proposed.Type == source.Type)
             return PlanAntlionSand(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.SkeletronHead.Value && proposed.Type == source.Type)
@@ -704,6 +707,42 @@ public sealed class VanillaNpcTargetingAiStepper :
                 velocityX, velocityY, damage, 0f);
         }
         return burstCount;
+    }
+
+    private int PlanContainedSlimeTrap(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiProjectileIntent> destination)
+    {
+        // NPC.AI_001: the item id 539 carries the server-owned dart trap. Its roll is evaluated after
+        // movement, while the source keeps the contained item in ai[1].
+        if (source.Ai.Ai1 != 539f || proposed.Ai.Ai1 != 539f || source.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)source.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.NoAggro || _context.ProjectileEnvironment is null ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.BlueSlime, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox) ||
+            !VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.ContainedSlimeTrap, out VanillaProjectileDefinition trap))
+        {
+            return 0;
+        }
+
+        int chance = 300 - (_context.NoTrapsWorld ? 120 : 0) - (_context.GoodWorld ? 120 : 0);
+        if (_random.NextInt32(0, chance) != 0 ||
+            !_context.ProjectileEnvironment.CanHit(source.PositionX, source.PositionY, hitbox.Width, hitbox.Height,
+                target.CenterX - target.Width * .5f, target.CenterY - target.Height * .5f,
+                (int)target.Width, (int)target.Height))
+        {
+            return 0;
+        }
+        if (destination.IsEmpty)
+            return 1;
+
+        float centerX = source.PositionX + hitbox.Width * .5f;
+        float centerY = source.PositionY + hitbox.Height * .5f;
+        destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.ContainedSlimeTrap,
+            centerX - trap.Width * .5f, centerY - trap.Height * .5f,
+            source.Simulation.DirectionX * 12f, 0f, 20, 2f);
+        return 1;
     }
 
     public int PlanProjectileMutations(

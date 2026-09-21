@@ -550,6 +550,8 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId QueenSlimeBlueMinionShard = new(920);
     /// <summary>AI_001 Queen Slime pink-minion hostile shard.</summary>
     public static readonly ProjectileTypeId QueenSlimePinkMinionShard = new(921);
+    /// <summary>AI_001 item-containing Slime trap projectile.</summary>
+    public static readonly ProjectileTypeId ContainedSlimeTrap = new(1073);
     public static readonly ProjectileTypeId Flamelash = new(34);
     public static readonly ProjectileTypeId ThrowingKnife = new(48);
     public static readonly ProjectileTypeId Seed = new(51);
