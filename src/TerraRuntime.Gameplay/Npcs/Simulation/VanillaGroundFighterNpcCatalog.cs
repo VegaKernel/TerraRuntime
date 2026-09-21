@@ -35,6 +35,10 @@ public static class VanillaGroundFighterNpcCatalog
         Fighter(VanillaNpcIds.FemaleZombie, 18, 40, 12, 4, 38, 0.6f, 1f, 0.87f, scaleAdjustsSpeed: true),
         Fighter(VanillaNpcIds.VampireHumanoid, 18, 40, 80, 24, 750, 0.4f, 1f, 6f,
             reversingVelocityDamping: 0.95f)
+        // TerrariaServer 1.4.5.8 NPC.SetDefaults (338..340) and AI_003_Fighters num84 bands.
+        ,Fighter(VanillaNpcIds.ZombieElf, 18, 40, 65, 18, 600, .4f, 1f, 1.75f)
+        ,Fighter(VanillaNpcIds.ZombieElfBeard, 18, 40, 52, 24, 700, .2f, 1.05f, 1.25f)
+        ,Fighter(VanillaNpcIds.ZombieElfGirl, 18, 40, 78, 14, 500, .25f, .9f, 2f)
         ,Fighter(new NpcTypeId(78), 18, 40, 50, 16, 130, .6f, 1f, 1f,
             acceleration: .05f, motionProfile: VanillaGroundFighterMotionProfile.HalfHealthBerserker, overspeedGroundDamping: .7f)
         ,Fighter(new NpcTypeId(79), 18, 40, 60, 18, 180, .5f, 1f, 1f,
@@ -89,6 +93,9 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.TwiggyZombie,
         VanillaNpcIds.FemaleZombie,
         VanillaNpcIds.VampireHumanoid,
+        VanillaNpcIds.ZombieElf,
+        VanillaNpcIds.ZombieElfBeard,
+        VanillaNpcIds.ZombieElfGirl,
         new(78), new(79), new(80), new(243), new(251), new(254), new(255), new(257), new(258), new(287), new(630),
         new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280)
     ];

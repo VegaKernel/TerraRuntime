@@ -200,6 +200,9 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId HoppinJack = new(304);
     public static readonly NpcTypeId DemonEyeOwl = new(317);
     public static readonly NpcTypeId DemonEyeSpaceship = new(318);
+    public static readonly NpcTypeId ZombieElf = new(338);
+    public static readonly NpcTypeId ZombieElfBeard = new(339);
+    public static readonly NpcTypeId ZombieElfGirl = new(340);
     public static readonly NpcTypeId SlimeRibbonWhite = new(333);
     public static readonly NpcTypeId SlimeRibbonYellow = new(334);
     public static readonly NpcTypeId SlimeRibbonGreen = new(335);
