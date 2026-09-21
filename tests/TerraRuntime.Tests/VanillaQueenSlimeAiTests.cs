@@ -24,6 +24,18 @@ public sealed class VanillaQueenSlimeAiTests
     }
 
     [Fact]
+    public void Phase_two_idle_flight_uses_the_blocked_line_target_height()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper());
+        stepper.SetKingSlimeEnvironment(new BlockedEnvironment());
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(7, 600f, 700f, 0, true, false, false, false)]);
+        NpcSnapshot queen = Queen(life: 8_999, localAi0: 8_999f);
+
+        Assert.True(stepper.TryStepState(in queen, out NpcStateUpdate next));
+        Assert.True(next.VelocityY > 0f);
+    }
+
+    [Fact]
     public void Phase_two_gel_burst_refreshes_target_and_keeps_source_fly_motion_before_release()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper());
@@ -117,17 +129,22 @@ public sealed class VanillaQueenSlimeAiTests
             400f, 500f, 0f, 0f, 7, default,
             NpcSimulationState.Initial with { Life = life, LifeMax = 18_000, TimeLeft = 750, LocalAi = new NpcAiState(localAi0, 0f, 0f, 0f) });
 
-    private sealed class FixedEnvironment : IVanillaKingSlimeEnvironment
+    private class FixedEnvironment : IVanillaKingSlimeEnvironment
     {
         public float WorldPixelWidth => 16_000f;
         public float WorldPixelHeight => 8_000f;
-        public bool CanHitLine(float fromX, float fromY, float toX, float toY) => true;
+        public virtual bool CanHitLine(float fromX, float fromY, float toX, float toY) => true;
         public bool TryResolveTeleport(in NpcSnapshot npc, in TerraRuntime.Gameplay.Npcs.VanillaNpcDefinition definition,
             in VanillaNpcTargetCandidate target, bool antiCheese, out VanillaKingSlimeTeleportDestination destination)
         {
             destination = default;
             return false;
         }
+    }
+
+    private sealed class BlockedEnvironment : FixedEnvironment
+    {
+        public override bool CanHitLine(float fromX, float fromY, float toX, float toY) => false;
     }
 
     private sealed class RejectingStepper : INpcAiStateStepper

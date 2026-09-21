@@ -120,7 +120,8 @@ internal sealed class VanillaQueenSlimeNpcBehaviorStrategy : IVanillaNpcBehavior
                         hasTarget = TryGetTarget(targetSlot, context, out target);
                     }
                     if (hasTarget)
-                        SimpleFly(centerX, centerY, in target, simulation.TimeLeft, simulation.DirectionX, ref vx, ref vy);
+                        SimpleFly(centerX, centerY, in target, simulation.TimeLeft, simulation.DirectionX,
+                            _environment.CanHitLine(centerX, centerY, target.CenterX, target.CenterY), ref vx, ref vy);
                 }
                 else if (vy == 0f)
                 {
@@ -284,7 +285,8 @@ internal sealed class VanillaQueenSlimeNpcBehaviorStrategy : IVanillaNpcBehavior
                         hasTarget = TryGetTarget(targetSlot, context, out target);
                     }
                     if (phaseTwo && hasTarget)
-                        SimpleFly(centerX, centerY, in target, simulation.TimeLeft, simulation.DirectionX, ref vx, ref vy);
+                        SimpleFly(centerX, centerY, in target, simulation.TimeLeft, simulation.DirectionX,
+                            _environment.CanHitLine(centerX, centerY, target.CenterX, target.CenterY), ref vx, ref vy);
                 }
                 break;
         }
@@ -347,10 +349,10 @@ internal sealed class VanillaQueenSlimeNpcBehaviorStrategy : IVanillaNpcBehavior
     }
 
     private static void SimpleFly(float centerX, float centerY, in VanillaNpcTargetCandidate target, int timeLeft, int direction,
-        ref float vx, ref float vy)
+        bool canHitTarget, ref float vx, ref float vy)
     {
         float dx = timeLeft > 10 ? target.CenterX - centerX : 500f * (direction == 0 ? 1 : direction);
-        float dy = timeLeft > 10 ? target.CenterY - 250f - centerY : -250f;
+        float dy = timeLeft > 10 ? target.CenterY - (canHitTarget ? 250f : 0f) - centerY : -250f;
         if (MathF.Abs(dx) < 40f) dx = vx;
         float distance = MathF.Sqrt(dx * dx + dy * dy);
         float accel = distance > 100f && ((vx < -10f && dx > 0f) || (vx > 10f && dx < 0f)) ? 0.17f : 0.085f;

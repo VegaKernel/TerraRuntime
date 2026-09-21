@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Queen Slime blocked flight: AI_121 now follows the source's two live line-of-sight height branches. A clear path steers 250 pixels above the player; a blocked path steers at the player height through the authoritative world line query. The source's finer vertical-solid landing probe remains open.
+
 2026-09-21 Queen Slime fly targeting: AI_121 now refreshes the closest player on every phase-two fly step, covering both idle flight and gel-burst preparation/release. This matches the helper's server target acquisition rather than carrying its prior tick's target.
 
 2026-09-21 Queen Slime target refresh: AI_121 refreshes `TargetClosest` on the first preparation tick of both slam and gel-burst. Phase-two gel-burst continues its source fly steering through the tick that enters its release substate, so it follows the refreshed player rather than a stale target slot.
