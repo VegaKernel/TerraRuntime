@@ -57,6 +57,21 @@ public sealed class VanillaFlyingEyeLifecycleTests
     }
 
     [Fact]
+    public void Pigron_phasing_clears_wet_state_at_the_source_transition()
+    {
+        var input = Input() with
+        {
+            Ai = new NpcAiState(299f, 0f, 0f, 0f),
+            HasLineOfSight = false,
+            Wet = true
+        };
+
+        Assert.True(VanillaFlyingEyeLifecycle.TryStep(VanillaNpcIds.PigronCorruption, in input, out var result));
+        Assert.True(result.NoTileCollide);
+        Assert.False(result.Wet);
+    }
+
+    [Fact]
     public void Pigron_stays_phased_while_line_of_sight_returns_inside_solid_tiles()
     {
         var input = Input() with
@@ -103,10 +118,15 @@ public sealed class VanillaFlyingEyeLifecycleTests
         stepper.SetCandidates([Candidate(0, 500f, 100f)]);
         stepper.SetWorldConditions(dayTime: false, slimeRainActive: false);
 
-        NpcSnapshot npc = Snapshot(VanillaNpcIds.PigronCorruption, ai: new NpcAiState(299f, 0f, 0f, 0f));
+        NpcSnapshot npc = Snapshot(
+            VanillaNpcIds.PigronCorruption,
+            ai: new NpcAiState(299f, 0f, 0f, 0f),
+            wet: true);
         Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
         Assert.False(inner.Last.Simulation.NoTileCollide);
+        Assert.True(inner.Last.Simulation.Wet);
         Assert.True(next.Simulation.NoTileCollide);
+        Assert.False(next.Simulation.Wet);
         Assert.Equal(1f, next.Ai.Ai1);
     }
 
@@ -134,6 +154,7 @@ public sealed class VanillaFlyingEyeLifecycleTests
         Ai: default,
         TimeLeft: 750,
         NoTileCollide: false,
+        Wet: false,
         DayTime: false,
         WorldSurfacePixels: double.PositiveInfinity,
         TargetInGraveyard: false,
@@ -147,7 +168,8 @@ public sealed class VanillaFlyingEyeLifecycleTests
         NpcTypeId type,
         ushort target = 0,
         float velocityY = 0f,
-        NpcAiState ai = default)
+        NpcAiState ai = default,
+        bool wet = false)
     {
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition));
         return new NpcSnapshot(
@@ -168,7 +190,8 @@ public sealed class VanillaFlyingEyeLifecycleTests
                 Scale = definition.Scale,
                 Life = definition.LifeMax,
                 LifeMax = definition.LifeMax,
-                TimeLeft = 750
+                TimeLeft = 750,
+                Wet = wet
             });
     }
 

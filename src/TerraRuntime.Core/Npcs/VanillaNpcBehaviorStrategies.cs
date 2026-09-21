@@ -88,6 +88,7 @@ internal sealed class VanillaFlyingEyeNpcBehaviorStrategy : IVanillaNpcBehaviorS
             Ai: staged.Ai,
             TimeLeft: staged.Simulation.TimeLeft,
             NoTileCollide: staged.Simulation.NoTileCollide,
+            Wet: staged.Simulation.Wet,
             DayTime: context.DayTime,
             WorldSurfacePixels: context.WorldSurfacePixels,
             TargetInGraveyard: targetInGraveyard,
@@ -129,6 +130,7 @@ internal sealed class VanillaFlyingEyeNpcBehaviorStrategy : IVanillaNpcBehaviorS
             Simulation = next.Simulation with
             {
                 NoTileCollide = lifecycle.NoTileCollide,
+                Wet = lifecycle.Wet,
                 TimeLeft = lifecycle.TimeLeft
             }
         };
