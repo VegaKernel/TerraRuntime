@@ -261,6 +261,15 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
                 }
             }
         }
+        // Existing contained-item variants are re-applied by AI_001 on every server tick before
+        // the shared slime movement state machine. These effects are independent of the branch
+        // that originally selected the item into ai[1].
+        if (ai.Ai1 == 2f && npc.VelocityY == 0f)
+            ai = ai with { Ai0 = ai.Ai0 + 9f };
+        if (ai.Ai1 == 9f)
+            simulation = simulation with { DefenseOverride = (simulation.BaseDefense ?? definition.Defense) + 16 };
+        if (ai.Ai1 == 147f)
+            simulation = simulation with { DamageOverride = (simulation.BaseDamage ?? definition.Damage) * 2 };
         // The source applies this before the shared ground-motion timer, so Fossil Slime advances
         // ai[0] twice per grounded tick: once here and once in VanillaBlueSlimeMotion.
         if (definition.Type == VanillaNpcIds.SandSlime && ai.Ai1 == 3347f)

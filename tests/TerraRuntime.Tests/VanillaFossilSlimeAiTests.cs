@@ -79,6 +79,33 @@ public sealed class VanillaFossilSlimeAiTests
         Assert.Equal(174f, next.Ai.Ai1);
     }
 
+    [Theory]
+    [InlineData(9f, 18, null)]
+    [InlineData(147f, null, 14)]
+    public void Existing_slime_contents_reapply_source_combat_overrides(float item, int? defense, int? damage)
+    {
+        var stepper = CreateStepper(skyblockNoFossils: false, new ThrowingRandom());
+        NpcSnapshot slime = Snapshot(VanillaNpcIds.BlueSlime, positionY: 1601f, ai1: item);
+
+        Assert.True(stepper.TryStepState(in slime, out NpcStateUpdate next));
+        Assert.Equal(defense, next.Simulation.DefenseOverride);
+        Assert.Equal(damage, next.Simulation.DamageOverride);
+    }
+
+    [Fact]
+    public void Grounded_dirt_slime_adds_its_source_clock_bonus_before_motion()
+    {
+        var stepper = CreateStepper(skyblockNoFossils: false, new ThrowingRandom());
+        NpcSnapshot dirt = Snapshot(VanillaNpcIds.BlueSlime, positionY: 1601f, ai1: 2f) with
+        {
+            VelocityY = 0f,
+            Ai = new NpcAiState(-200f, 2f, 0f, 0f)
+        };
+
+        Assert.True(stepper.TryStepState(in dirt, out NpcStateUpdate next));
+        Assert.Equal(-98f, next.Ai.Ai0);
+    }
+
     private static VanillaNpcTargetingAiStepper CreateStepper(bool skyblockNoFossils, IVanillaNpcRandom random,
         bool skyblockLowTiles = false, bool skyblockNoHellstone = false, bool downedSkeletron = false,
         bool slimeRainActive = false)
