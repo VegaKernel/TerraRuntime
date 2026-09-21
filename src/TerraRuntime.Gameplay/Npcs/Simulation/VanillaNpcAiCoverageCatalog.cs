@@ -309,7 +309,9 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcAiCapability.MoonEventEverscreamSlice);
         entries[index++] = Partial(
             VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi57MourningWood,
-            OrdinaryCore | VanillaNpcAiCapability.MoonEventEverscreamSlice);
+            OrdinaryCore |
+            VanillaNpcAiCapability.MoonEventProjectileSlice |
+            VanillaNpcAiCapability.MoonEventEverscreamSlice);
 
         foreach (VanillaNpcDefinition definition in VanillaSlimeNpcCatalog.AllDefinitions)
         {

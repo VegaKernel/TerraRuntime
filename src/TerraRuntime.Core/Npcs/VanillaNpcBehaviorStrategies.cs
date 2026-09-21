@@ -769,7 +769,9 @@ internal sealed class VanillaMoonEventEverscreamNpcBehaviorStrategy : IVanillaNp
         }
 
         float centerX = npc.PositionX + definition.Width * .5f;
-        bool stopHorizontal = MathF.Abs(centerX - player.CenterX) < 50f;
+        // AI_057 sets flag62 for both sustained attack branches before the common pursuit tail.
+        // The low-life 3/4 branches retain pursuit until they reach the usual 50-pixel dead zone.
+        bool stopHorizontal = ai0 is 1f or 2f || MathF.Abs(centerX - player.CenterX) < 50f;
         float velocityX = npc.VelocityX;
         if (stopHorizontal)
             velocityX *= .9f;

@@ -203,6 +203,47 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 26,
         CollisionHeight: 26);
 
+    // Projectile.SetDefaults 325..328: Pumpkin Moon AI_057 projectile family.
+    private static readonly VanillaProjectileDefinition PumpkingScytheDefinition = new(
+        Width: 14,
+        Height: 14,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: false,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 14,
+        CollisionHeight: 14);
+
+    private static readonly VanillaProjectileDefinition PumpkinMoonAttack326Definition = new(
+        Width: 14,
+        Height: 16,
+        AiStyle: VanillaProjectileAiStyles.BouncyBall,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 14,
+        CollisionHeight: 16);
+
+    private static readonly VanillaProjectileDefinition PumpkinMoonAttack327Definition = new(
+        Width: 12,
+        Height: 14,
+        AiStyle: VanillaProjectileAiStyles.BouncyBall,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 12,
+        CollisionHeight: 14);
+
+    private static readonly VanillaProjectileDefinition PumpkinMoonAttack328Definition = new(
+        Width: 6,
+        Height: 12,
+        AiStyle: VanillaProjectileAiStyles.BouncyBall,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 6,
+        CollisionHeight: 12);
+
     private static readonly VanillaProjectileDefinition QueenBeeStingerDefinition = new(
         Width: 10,
         Height: 10,
@@ -820,6 +861,30 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.SkeletronSkull)
         {
             definition = SkeletronSkullDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PumpkingScythe)
+        {
+            definition = PumpkingScytheDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PumpkinMoonAttack326)
+        {
+            definition = PumpkinMoonAttack326Definition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PumpkinMoonAttack327)
+        {
+            definition = PumpkinMoonAttack327Definition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PumpkinMoonAttack328)
+        {
+            definition = PumpkinMoonAttack328Definition;
             return true;
         }
 

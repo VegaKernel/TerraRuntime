@@ -2051,6 +2051,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaDarkCasterBehavior.SpawnSphere(in before, in committed, mutations);
         SpawnMourningWoodFireball(in before, in committed, mutations);
         SpawnEverscreamProjectiles(in before, in committed, mutations);
+        SpawnPumpkingProjectiles(in before, in committed, mutations);
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);
         VanillaMoonLordLeechBehavior.SpawnFromHead(in before, in committed, _context, mutations);
         VanillaDestroyerNpcBehaviorStrategy.SpawnChain(in before, in committed, _context.GoodWorld, mutations);
@@ -2150,6 +2151,98 @@ public sealed class VanillaNpcTargetingAiStepper :
             };
             mutations.TrySpawnProjectile(in committed, in intent, out _);
         }
+    }
+
+    private void SpawnPumpkingProjectiles(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi57MourningWood ||
+            committed.TypeIdentity != before.TypeIdentity || before.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)before.Target, out VanillaNpcTargetCandidate player))
+        {
+            return;
+        }
+
+        float elapsed = before.Ai.Ai1 + 1f;
+        float x = before.PositionX + 82f;
+        float y = before.PositionY + 107f;
+        if (before.Ai.Ai0 == 1f && elapsed % 15f == 0f)
+        {
+            float dx = player.CenterX - x;
+            float dy = player.CenterY - player.Height * .5f - y;
+            NormalizeTo(ref dx, ref dy, 10f);
+            dx *= 1f + _random.NextInt32(-20, 21) * .01f;
+            dy *= 1f + _random.NextInt32(-20, 21) * .01f;
+            SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.PumpkingScythe,
+                x, y, dx, dy, 50);
+        }
+        else if (before.Ai.Ai0 == 2f && elapsed > 60f && elapsed < 240f && elapsed % 8f == 0f)
+        {
+            float dx = player.CenterX - x;
+            float dy = player.CenterY - player.Height * .5f - y;
+            dy -= MathF.Abs(dx) * .3f;
+            float speed = MathF.Min(14f, 10f + MathF.Abs(dx) * .004f);
+            dx += _random.NextInt32(-50, 51);
+            dy -= _random.NextInt32(50, 201);
+            NormalizeTo(ref dx, ref dy, speed);
+            dx *= 1f + _random.NextInt32(-30, 31) * .01f;
+            dy *= 1f + _random.NextInt32(-30, 31) * .01f;
+            SpawnPumpkingProjectile(in committed, mutations, RandomPumpkingAttack(), x, y, dx, dy, 40);
+        }
+        else if (before.Ai.Ai0 == 3f && elapsed % 30f == 0f)
+        {
+            float dx = player.CenterX - x;
+            float dy = player.CenterY - player.Height * .5f - y;
+            NormalizeTo(ref dx, ref dy, 16f);
+            dx *= 1f + _random.NextInt32(-20, 21) * .001f;
+            dy *= 1f + _random.NextInt32(-20, 21) * .001f;
+            SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.PumpkingScythe,
+                x, y, dx, dy, 75);
+        }
+        else if (before.Ai.Ai0 == 4f && elapsed % 10f == 0f)
+        {
+            float dx = player.CenterX - x;
+            float dy = player.CenterY - player.Height * .5f - y;
+            dy -= MathF.Abs(dx) * .2f;
+            float speed = MathF.Min(16f, 12f + MathF.Abs(dx) * .002f);
+            dx += _random.NextInt32(-50, 51);
+            dy -= _random.NextInt32(50, 201);
+            NormalizeTo(ref dx, ref dy, speed);
+            dx *= 1f + _random.NextInt32(-30, 31) * .005f;
+            dy *= 1f + _random.NextInt32(-30, 31) * .005f;
+            SpawnPumpkingProjectile(in committed, mutations, RandomPumpkingAttack(), x, y, dx, dy, 50);
+        }
+    }
+
+    private ProjectileTypeId RandomPumpkingAttack() => _random.NextInt32(326, 329) switch
+    {
+        326 => VanillaProjectileIds.PumpkinMoonAttack326,
+        327 => VanillaProjectileIds.PumpkinMoonAttack327,
+        _ => VanillaProjectileIds.PumpkinMoonAttack328
+    };
+
+    private static void SpawnPumpkingProjectile(
+        in NpcSnapshot committed,
+        INpcAiCommittedNpcMutationSink mutations,
+        ProjectileTypeId type,
+        float centerX,
+        float centerY,
+        float velocityX,
+        float velocityY,
+        int damage)
+    {
+        if (!VanillaDefinitionCatalog.TryGet(type, out VanillaProjectileDefinition definition))
+            return;
+        var intent = new NpcAiProjectileIntent(type,
+            centerX - definition.Width * .5f,
+            centerY - definition.Height * .5f,
+            velocityX,
+            velocityY,
+            damage,
+            0f);
+        mutations.TrySpawnProjectile(in committed, in intent, out _);
     }
 
     private static int PumpkinMoonProjectileDamage(float? difficulty)

@@ -2,6 +2,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core.Npcs;
 using TerraRuntime.Gameplay.Npcs;
+using TerraRuntime.Gameplay.Projectiles;
 
 namespace TerraRuntime.Tests;
 
@@ -17,6 +18,7 @@ public sealed class VanillaMoonEventEverscreamAiTests
         Assert.Equal((172, 130, 110, 38, 13000), (definition.BaseWidth, definition.BaseHeight, definition.Damage, definition.Defense, definition.LifeMax));
         Assert.True(definition.NoGravityAtSpawn); Assert.True(definition.NoTileCollideAtSpawn);
         Assert.True(coverage.Has(VanillaNpcAiCapability.MoonEventEverscreamSlice));
+        Assert.True(coverage.Has(VanillaNpcAiCapability.MoonEventProjectileSlice));
         Assert.True(coverage.Has(VanillaNpcAiCapability.MoonEventProjectileSlice));
 
         VanillaNpcTargetingAiStepper stepper = CreateStepper(new SequenceRandom(), solid: true);
@@ -62,6 +64,28 @@ public sealed class VanillaMoonEventEverscreamAiTests
     }
 
     [Fact]
+    public void Pumpking_projectile_branches_and_source_rng_order_match_ai57()
+    {
+        AssertPumpkingProjectile(new NpcAiState(1f, 14f, 0f, 0f), VanillaProjectileIds.PumpkingScythe, 50, expectedDraws: 2);
+        AssertPumpkingProjectile(new NpcAiState(2f, 71f, 0f, 0f), VanillaProjectileIds.PumpkinMoonAttack326, 40, expectedDraws: 5);
+        AssertPumpkingProjectile(new NpcAiState(3f, 29f, 0f, 0f), VanillaProjectileIds.PumpkingScythe, 75, expectedDraws: 2);
+        AssertPumpkingProjectile(new NpcAiState(4f, 9f, 0f, 0f), VanillaProjectileIds.PumpkinMoonAttack326, 50, expectedDraws: 5);
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.PumpkingScythe, out VanillaProjectileDefinition scythe));
+        Assert.Equal((14, 14), (scythe.Width, scythe.Height));
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.PumpkinMoonAttack328, out VanillaProjectileDefinition attack328));
+        Assert.Equal((6, 12), (attack328.Width, attack328.Height));
+    }
+
+    [Fact]
+    public void Ai57_sustained_attack_halts_horizontal_pursuit_before_common_hover_tail()
+    {
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(new SequenceRandom(), solid: false);
+        NpcSnapshot pumpking = CreatePumpking(new NpcAiState(1f, 0f, 0f, 0f)) with { VelocityX = 3f };
+        Assert.True(stepper.TryStepState(in pumpking, out NpcStateUpdate next));
+        Assert.Equal(2.7f, next.VelocityX, 5);
+    }
+
+    [Fact]
     public void Rejected_attack_transition_does_not_consume_rng_or_create_a_projectile()
     {
         var npcs = new RuntimeNpcStore();
@@ -88,6 +112,20 @@ public sealed class VanillaMoonEventEverscreamAiTests
         Assert.Equal(expectedDraws, random.Draws);
     }
 
+    private static void AssertPumpkingProjectile(NpcAiState ai, ProjectileTypeId expectedType, int expectedDamage, int expectedDraws)
+    {
+        var npcs = new RuntimeNpcStore();
+        Assert.True(npcs.TrySpawn(1, PumpkingUpdate(ai), out NpcSnapshot source));
+        var projectiles = new RuntimeProjectileStore();
+        var random = new SequenceRandom();
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, solid: false);
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new EverscreamOnly(stepper)).Applied);
+        Assert.True(projectiles.TryGetActive(0, out ProjectileSnapshot projectile));
+        Assert.Equal(expectedType, projectile.Type); Assert.Equal((short)expectedDamage, projectile.Damage);
+        Assert.True(projectiles.TryGetServerNpcSource(projectile.Handle, out NpcHandle provenance)); Assert.Equal(source.Handle, provenance);
+        Assert.Equal(expectedDraws, random.Draws);
+    }
+
     private static VanillaNpcTargetingAiStepper CreateStepper(IVanillaNpcRandom random, bool solid)
     {
         var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: random);
@@ -104,6 +142,13 @@ public sealed class VanillaMoonEventEverscreamAiTests
 
     private static NpcStateUpdate Update(NpcAiState ai) => new(344, 344, 100f, 200f, 0f, 0f, 3, ai,
         NpcSimulationState.Initial with { DirectionX = 1, SpriteDirection = 1, Life = 13000, LifeMax = 13000, TimeLeft = 750 });
+
+    private static NpcSnapshot CreatePumpking(NpcAiState ai) => new(new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1),
+        325, 325, 100f, 200f, 0f, 0f, 3, ai,
+        NpcSimulationState.Initial with { DirectionX = 1, SpriteDirection = 1, Life = 14000, LifeMax = 14000, TimeLeft = 750 });
+
+    private static NpcStateUpdate PumpkingUpdate(NpcAiState ai) => new(325, 325, 100f, 200f, 0f, 0f, 3, ai,
+        NpcSimulationState.Initial with { DirectionX = 1, SpriteDirection = 1, Life = 14000, LifeMax = 14000, TimeLeft = 750 });
 
     private sealed class Environment(bool solid) : IVanillaEverscreamEnvironment
     {
