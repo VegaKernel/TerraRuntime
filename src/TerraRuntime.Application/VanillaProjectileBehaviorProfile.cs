@@ -51,7 +51,8 @@ internal enum VanillaProjectileBehaviorFamily : byte
     FlamingScythe = 38,
     SantankBomb = 39,
     IceQueenFrostWave = 40,
-    IceQueenIceSpike = 41
+    IceQueenIceSpike = 41,
+    DemonScythe = 42
 }
 
 /// <summary>
@@ -85,6 +86,14 @@ internal static class VanillaProjectileBehaviorProfileCatalog
     {
         RejectServerOwned = true
     };
+
+    private static readonly VanillaProjectileBehaviorProfile DemonScytheProfile = new(
+        VanillaProjectileBehaviorFamily.DemonScythe,
+        VanillaProjectileAiStyles.DemonScythe,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
 
     private static readonly VanillaProjectileBehaviorProfile SkeletronSkullProfile = new(
         VanillaProjectileBehaviorFamily.SkeletronSkull,
@@ -410,6 +419,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.GreenLaser)
         {
             profile = GreenLaserProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.DemonScythe)
+        {
+            profile = DemonScytheProfile;
             return true;
         }
 

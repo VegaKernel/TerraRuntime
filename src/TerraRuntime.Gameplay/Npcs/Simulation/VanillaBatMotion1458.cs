@@ -66,8 +66,9 @@ public readonly record struct VanillaBatPursuitResult1458(
 
 /// <summary>
 /// Server-relevant TerrariaServer 1.4.5.8 aiStyle 14 collision rebound, pursuit, wet escape and wander clock for
-/// the admitted ordinary bat/Slimer/Queen Slime minion roster. Harpy's source-specific wet escape and low-speed
-/// wander profile are included here; its server-only projectile cadence remains an accepted post-commit effect.
+/// the admitted ordinary bat/Slimer/Queen Slime minion roster. Harpy, Demon and Voodoo Demon's source-specific wet
+/// escape and low-speed wander profile are included here; their server-only projectile cadence remains an accepted
+/// post-commit effect.
 /// </summary>
 public static class VanillaBatMotion1458
 {
@@ -78,7 +79,7 @@ public static class VanillaBatMotion1458
     {
         // Exclude Queen Slime's minion special case: it shares aiStyle 14 motion machinery but is not an ordinary
         // standalone bat preset and its lifecycle belongs to a boss-owned child path.
-        if (!input.IsValid || type == VanillaNpcIds.Harpy || !VanillaBatNpcCatalog1458.TryGetDefinition(type, out _))
+        if (!input.IsValid || IsBatShooter(type) || !VanillaBatNpcCatalog1458.TryGetDefinition(type, out _))
         {
             result = default;
             return false;
@@ -193,10 +194,11 @@ public static class VanillaBatMotion1458
             if (ai1 > 1000f)
                 ai1 = 0f;
 
-            float wanderAcceleration = type == VanillaNpcIds.Harpy ? 0.12f : 0.2f;
-            float wanderVerticalAcceleration = type == VanillaNpcIds.Harpy ? 0.07f : 0.1f;
-            float wanderMaximumHorizontalSpeed = type == VanillaNpcIds.Harpy ? 3f : 4f;
-            float wanderMaximumVerticalSpeed = type == VanillaNpcIds.Harpy ? 1.25f : 1.5f;
+            bool shooterWanderProfile = type == VanillaNpcIds.Harpy || type == VanillaNpcIds.Demon || type == VanillaNpcIds.VoodooDemon;
+            float wanderAcceleration = shooterWanderProfile ? 0.12f : 0.2f;
+            float wanderVerticalAcceleration = shooterWanderProfile ? 0.07f : 0.1f;
+            float wanderMaximumHorizontalSpeed = shooterWanderProfile ? 3f : 4f;
+            float wanderMaximumVerticalSpeed = shooterWanderProfile ? 1.25f : 1.5f;
             ai2++;
             if (ai2 > 0f)
             {
@@ -295,4 +297,7 @@ public static class VanillaBatMotion1458
         directionX = closest.DirectionX;
         directionY = closest.DirectionY;
     }
+
+    private static bool IsBatShooter(NpcTypeId type) =>
+        type == VanillaNpcIds.Harpy || type == VanillaNpcIds.Demon || type == VanillaNpcIds.VoodooDemon;
 }

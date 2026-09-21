@@ -38,6 +38,14 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
         }
         Assert.True(VanillaProjectileBehaviorProfileCatalog.SkipsBasicArrowGravity(VanillaProjectileIds.HarpyFeather));
 
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(
+            VanillaProjectileIds.DemonScythe, out VanillaProjectileBehaviorProfile demonScythe));
+        Assert.Equal(VanillaProjectileBehaviorFamily.DemonScythe, demonScythe.Family);
+        Assert.Equal(VanillaProjectileAiStyles.DemonScythe, demonScythe.ExpectedAiStyle);
+        Assert.True(demonScythe.BehaviorImplemented);
+        Assert.False(demonScythe.RequiresDefaultAi2);
+        Assert.False(demonScythe.RejectServerOwned);
+
         ProjectileTypeId[] thrown =
         [
             VanillaProjectileIds.Bone,
@@ -191,6 +199,7 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
         [
             VanillaProjectileIds.WoodenArrowFriendly,
             VanillaProjectileIds.HarpyFeather,
+            VanillaProjectileIds.DemonScythe,
             VanillaProjectileIds.FireArrow,
             VanillaProjectileIds.UnholyArrow,
             VanillaProjectileIds.JestersArrow,

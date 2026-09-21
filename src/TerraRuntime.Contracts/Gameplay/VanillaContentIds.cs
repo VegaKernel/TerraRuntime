@@ -518,6 +518,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId Dynamite = new(29);
     public static readonly ProjectileTypeId StickyBomb = new(37);
     public static readonly ProjectileTypeId HarpyFeather = new(38);
+    public static readonly ProjectileTypeId DemonScythe = new(44);
     public static readonly ProjectileTypeId Flamelash = new(34);
     public static readonly ProjectileTypeId ThrowingKnife = new(48);
     public static readonly ProjectileTypeId Seed = new(51);

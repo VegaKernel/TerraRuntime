@@ -68,7 +68,7 @@ public sealed class VanillaBatAi1458Tests
     [Fact]
     public void Catalog_admits_source_defaults_for_ordinary_bats_slimer_and_vampire()
     {
-        Assert.Equal(12, VanillaBatNpcCatalog1458.DefinitionCount);
+        Assert.Equal(14, VanillaBatNpcCatalog1458.DefinitionCount);
         foreach (VanillaNpcDefinition definition in VanillaBatNpcCatalog1458.AllDefinitions)
         {
             Assert.Equal(VanillaNpcAiStyles.Bat, definition.AiStyle);
@@ -97,6 +97,21 @@ public sealed class VanillaBatAi1458Tests
         Assert.Equal((14, 14, VanillaProjectileAiStyles.Arrow), (feather.Width, feather.Height, feather.AiStyle));
         Assert.True(feather.TileCollide);
         Assert.True(VanillaProjectileFacts.IsHostile(VanillaProjectileIds.HarpyFeather));
+
+        foreach (NpcTypeId type in new[] { VanillaNpcIds.Demon, VanillaNpcIds.VoodooDemon })
+        {
+            Assert.True(VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition demon));
+            Assert.Equal((28, 48, 32, 8), (demon.BaseWidth, demon.BaseHeight, demon.Damage, demon.Defense));
+            Assert.Equal(type == VanillaNpcIds.Demon ? 120 : 140, demon.LifeMax);
+            Assert.Equal(.8f, demon.KnockBackResist);
+        }
+
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.DemonScythe, out VanillaProjectileDefinition scythe));
+        Assert.Equal((48, 48, VanillaProjectileAiStyles.DemonScythe), (scythe.Width, scythe.Height, scythe.AiStyle));
+        Assert.Equal((12, 12), (scythe.CollisionWidth, scythe.CollisionHeight));
+        Assert.True(scythe.TileCollide);
+        Assert.True(scythe.CanCutTiles);
+        Assert.True(VanillaProjectileFacts.IsHostile(VanillaProjectileIds.DemonScythe));
     }
 
     [Fact]
@@ -202,6 +217,26 @@ public sealed class VanillaBatAi1458Tests
         Assert.Equal(2.35f, result.VelocityY, 5);
     }
 
+    [Theory]
+    [InlineData(62)]
+    [InlineData(66)]
+    public void Demon_shooters_use_double_acceleration_wet_escape_and_low_speed_wander(int rawType)
+    {
+        var type = new NpcTypeId(rawType);
+        VanillaBatMotionResult1458 result = Step(
+            type,
+            velocityY: 3f,
+            directionX: 1,
+            directionY: 1,
+            ai: new NpcAiState(0f, 200f, 150f, 0f),
+            wet: true);
+
+        Assert.Equal(.22f, result.VelocityX, 5);
+        Assert.Equal(2.35f, result.VelocityY, 5);
+        Assert.Equal(201f, result.Ai.Ai1);
+        Assert.Equal(151f, result.Ai.Ai2);
+    }
+
     [Fact]
     public void Harpy_feather_and_timer_reset_run_only_after_the_source_state_commits()
     {
@@ -238,6 +273,52 @@ public sealed class VanillaBatAi1458Tests
         VanillaNpcTargetingAiStepper rejectedStepper = CreateHarpyStepper(rejectedRandom);
         Assert.Equal(1, new RuntimeNpcAiStateExecutor(rejectedNpcs).Tick(new StaleHarpyOnly(rejectedStepper, rejectedNpcs)).Rejected);
         Assert.Equal(0, rejectedRandom.Draws);
+    }
+
+    [Theory]
+    [InlineData(62, 19f, 120)]
+    [InlineData(66, 79f, 140)]
+    public void Demon_shooters_emit_source_scythes_only_after_committing_their_timer(int rawType, float ai0, int life)
+    {
+        var type = new NpcTypeId(rawType);
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, BatShooterUpdate(type, ai0, life), out NpcSnapshot source));
+        var projectiles = new RuntimeProjectileStore(2);
+        var random = new SequenceRandom();
+        VanillaNpcTargetingAiStepper stepper = CreateHarpyStepper(random);
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new HarpyOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot committed));
+        Assert.Equal(ai0 + 1f, committed.Ai.Ai0);
+        Assert.True(projectiles.TryGetActive(0, out ProjectileSnapshot scythe));
+        Assert.Equal(VanillaProjectileIds.DemonScythe, scythe.Type);
+        Assert.Equal((short)21, scythe.Damage);
+        Assert.Equal(90f, scythe.PositionX, 5);
+        Assert.Equal(100f, scythe.PositionY, 5);
+        Assert.Equal(.2f, MathF.Sqrt(scythe.VelocityX * scythe.VelocityX + scythe.VelocityY * scythe.VelocityY), 5);
+        Assert.Equal(2, random.Draws);
+        Assert.True(projectiles.TryGetServerNpcSource(scythe.Handle, out NpcHandle provenance));
+        Assert.Equal(source.Handle, provenance);
+    }
+
+    [Fact]
+    public void Demon_timer_reset_draws_only_after_the_proposed_state_commits()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, BatShooterUpdate(VanillaNpcIds.Demon, 299f, 120), out NpcSnapshot source));
+        var random = new SequenceRandom();
+        VanillaNpcTargetingAiStepper stepper = CreateHarpyStepper(random);
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs).Tick(new HarpyOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot committed));
+        Assert.Equal(0f, committed.Ai.Ai0);
+        Assert.Equal(1, random.Draws);
+
+        var staleNpcs = new RuntimeNpcStore(2);
+        Assert.True(staleNpcs.TrySpawn(1, BatShooterUpdate(VanillaNpcIds.Demon, 299f, 120), out _));
+        var staleRandom = new SequenceRandom();
+        VanillaNpcTargetingAiStepper staleStepper = CreateHarpyStepper(staleRandom);
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(staleNpcs).Tick(new StaleHarpyOnly(staleStepper, staleNpcs)).Rejected);
+        Assert.Equal(0, staleRandom.Draws);
     }
 
     [Fact]
@@ -285,6 +366,14 @@ public sealed class VanillaBatAi1458Tests
             out _));
         Assert.False(VanillaBatMotion1458.TryStepPursuit(
             VanillaNpcIds.Harpy,
+            in input,
+            out _));
+        Assert.False(VanillaBatMotion1458.TryStepPursuit(
+            VanillaNpcIds.Demon,
+            in input,
+            out _));
+        Assert.False(VanillaBatMotion1458.TryStepPursuit(
+            VanillaNpcIds.VoodooDemon,
             in input,
             out _));
     }
@@ -382,6 +471,17 @@ public sealed class VanillaBatAi1458Tests
         Target: 7,
         Ai: new NpcAiState(ai0, 0f, 0f, 0f),
         Simulation: NpcSimulationState.Initial with { Life = 100, LifeMax = 100, DirectionX = 1, DirectionY = 1, TimeLeft = 750 });
+
+    private static NpcStateUpdate BatShooterUpdate(NpcTypeId type, float ai0, int life) => new(
+        type.Value,
+        checked((short)type.Value),
+        PositionX: 100f,
+        PositionY: 100f,
+        VelocityX: 0f,
+        VelocityY: 0f,
+        Target: 7,
+        Ai: new NpcAiState(ai0, 0f, 0f, 0f),
+        Simulation: NpcSimulationState.Initial with { Life = life, LifeMax = life, DirectionX = 1, DirectionY = 1, TimeLeft = 750 });
 
     private sealed class VisibleEnvironment : IVanillaNpcProjectileEnvironment
     {

@@ -75,6 +75,31 @@ public sealed class VanillaProjectileBehaviorStepperTests
     }
 
     [Fact]
+    public void Demon_scythe_ai018_marks_ai1_accelerates_for_its_source_window_and_uses_the_terminal_sentinel()
+    {
+        ProjectileSnapshot first = CreateProjectile(
+            VanillaProjectileIds.DemonScythe,
+            velocityX: 2f,
+            velocityY: -1f,
+            ai0: 29f,
+            ai1: 0f,
+            spawner: VanillaProjectileOwnership.ServerOwner);
+        Assert.True(VanillaDefinitionCatalog.TryGet(first.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(in first, in definition, default, out VanillaProjectileBehaviorResult accelerated));
+        Assert.Equal(30f, accelerated.Ai0);
+        Assert.Equal(1f, accelerated.Ai1Override);
+        Assert.Equal(2.12f, accelerated.VelocityX, 5);
+        Assert.Equal(-1.06f, accelerated.VelocityY, 5);
+
+        ProjectileSnapshot terminal = first with { Ai = first.Ai with { Ai0 = 99f, Ai1 = 1f } };
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(in terminal, in definition, default, out VanillaProjectileBehaviorResult stopped));
+        Assert.Equal(200f, stopped.Ai0);
+        Assert.Null(stopped.Ai1Override);
+        Assert.Equal(2f, stopped.VelocityX, 5);
+        Assert.Equal(-1f, stopped.VelocityY, 5);
+    }
+
+    [Fact]
     public void Flaming_scythe_ai056_accelerates_by_five_percent_only_below_source_manhattan_cap()
     {
         ProjectileSnapshot accelerating = CreateProjectile(VanillaProjectileIds.FlamingScythe, 10f, -5f, ai0: .25f, ai1: -1f);

@@ -71,7 +71,7 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
 
         // AI_014 advances Harpy's server-only firing timer after its flight and wander work. The timer reset
         // needs RNG, so it is completed only after this proposed state is accepted by the NPC store.
-        if (definition.Type == VanillaNpcIds.Harpy)
+        if (IsBatShooter(definition.Type))
             result = result with { Ai = result.Ai with { Ai0 = result.Ai.Ai0 + 1f } };
 
         if (definition.Type == VanillaNpcIds.Vampire && closest.HasTarget &&
@@ -119,18 +119,18 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
         return true;
     }
 
-    public NpcSnapshot CompleteHarpyAttackTimer(
+    public NpcSnapshot CompleteBatShooterAttackTimer(
         in NpcSnapshot before,
         in NpcSnapshot committed,
         VanillaNpcBehaviorContext context,
         IVanillaNpcRandom random,
         INpcAiCommittedNpcMutationSink mutations)
     {
-        if (before.TypeIdentity != VanillaNpcIds.Harpy || committed.TypeIdentity != VanillaNpcIds.Harpy ||
-            IsHarpyShotTick(committed.Ai.Ai0) || committed.Target >= byte.MaxValue ||
+        if (!IsBatShooter(before.TypeIdentity) || committed.TypeIdentity != before.TypeIdentity ||
+            IsBatShooterShotTick(before.TypeIdentity, committed.Ai.Ai0) || committed.Target >= byte.MaxValue ||
             !context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate target) ||
             !target.Active || target.Dead || target.Ghost ||
-            !VanillaBatNpcCatalog1458.TryGetDefinition(VanillaNpcIds.Harpy, out VanillaNpcDefinition definition) ||
+            !VanillaBatNpcCatalog1458.TryGetDefinition(before.TypeIdentity, out VanillaNpcDefinition definition) ||
             !definition.TryResolveHitbox(committed.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             return committed;
@@ -141,8 +141,10 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
         if (!VanillaNpcGlobalFiringDistance.Contains(centerX, centerY, target.CenterX, target.CenterY))
             return committed;
 
-        // Source evaluates Main.rand.Next(400) on every non-shot tick within the global firing rectangle.
-        if (committed.Ai.Ai0 < 400f + random.NextInt32(0, 400))
+        int resetBase = before.TypeIdentity == VanillaNpcIds.Harpy ? 400 : 300;
+        int resetRange = before.TypeIdentity == VanillaNpcIds.Harpy ? 400 : 300;
+        // Source evaluates the random reset threshold on every non-shot tick within the global firing rectangle.
+        if (committed.Ai.Ai0 < resetBase + random.NextInt32(0, resetRange))
             return committed;
 
         return mutations.TryUpdateAi(in committed, committed.Ai with { Ai0 = 0f }, out NpcSnapshot completed)
@@ -150,19 +152,19 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
             : committed;
     }
 
-    public void SpawnHarpyFeather(
+    public void SpawnBatShooterProjectile(
         in NpcSnapshot before,
         in NpcSnapshot committed,
         VanillaNpcBehaviorContext context,
         IVanillaNpcRandom random,
         INpcAiCommittedNpcMutationSink mutations)
     {
-        if (before.TypeIdentity != VanillaNpcIds.Harpy || committed.TypeIdentity != VanillaNpcIds.Harpy ||
-            !IsHarpyShotTick(committed.Ai.Ai0) || committed.Target >= byte.MaxValue ||
+        if (!IsBatShooter(before.TypeIdentity) || committed.TypeIdentity != before.TypeIdentity ||
+            !IsBatShooterShotTick(before.TypeIdentity, committed.Ai.Ai0) || committed.Target >= byte.MaxValue ||
             environment is null ||
             !context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate target) ||
             !target.Active || target.Dead || target.Ghost ||
-            !VanillaBatNpcCatalog1458.TryGetDefinition(VanillaNpcIds.Harpy, out VanillaNpcDefinition definition) ||
+            !VanillaBatNpcCatalog1458.TryGetDefinition(before.TypeIdentity, out VanillaNpcDefinition definition) ||
             !definition.TryResolveHitbox(committed.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             return;
@@ -185,22 +187,28 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
 
         float centerX = committed.PositionX + hitbox.Width * .5f;
         float centerY = committed.PositionY + hitbox.Height * .5f;
-        float velocityX = target.CenterX - centerX + random.NextInt32(-100, 101);
-        float velocityY = target.CenterY - centerY + random.NextInt32(-100, 101);
+        const int jitter = 100;
+        float velocityX = target.CenterX - centerX + random.NextInt32(-jitter, jitter + 1);
+        float velocityY = target.CenterY - centerY + random.NextInt32(-jitter, jitter + 1);
         float length = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
         if (!(length > 0f) || !float.IsFinite(length))
             return;
 
-        const float projectileSpeed = 6f;
+        float projectileSpeed = before.TypeIdentity == VanillaNpcIds.Harpy ? 6f : .2f;
         velocityX = velocityX / length * projectileSpeed;
         velocityY = velocityY / length * projectileSpeed;
+        ProjectileTypeId projectileType = before.TypeIdentity == VanillaNpcIds.Harpy
+            ? VanillaProjectileIds.HarpyFeather
+            : VanillaProjectileIds.DemonScythe;
+        float projectileHalfSize = before.TypeIdentity == VanillaNpcIds.Harpy ? 7f : 24f;
+        int damage = before.TypeIdentity == VanillaNpcIds.Harpy ? 15 : 21;
         var intent = new NpcAiProjectileIntent(
-            VanillaProjectileIds.HarpyFeather,
-            centerX - 7f,
-            centerY - 7f,
+            projectileType,
+            centerX - projectileHalfSize,
+            centerY - projectileHalfSize,
             velocityX,
             velocityY,
-            Damage: 15,
+            Damage: damage,
             KnockBack: 0f)
         {
             TimeLeftOverride = 300
@@ -208,7 +216,13 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
         mutations.TrySpawnProjectile(in committed, in intent, out _);
     }
 
-    private static bool IsHarpyShotTick(float timer) => timer is 30f or 60f or 90f;
+    private static bool IsBatShooter(NpcTypeId type) =>
+        type == VanillaNpcIds.Harpy || type == VanillaNpcIds.Demon || type == VanillaNpcIds.VoodooDemon;
+
+    private static bool IsBatShooterShotTick(NpcTypeId type, float timer) =>
+        type == VanillaNpcIds.Harpy
+            ? timer is 30f or 60f or 90f
+            : timer is 20f or 40f or 60f or 80f;
 
     private static int ScaleTransformLife(int life, int lifeMax, int transformedLifeMax) =>
         lifeMax > 0 ? Math.Max(1, (int)((long)life * transformedLifeMax / lifeMax)) : transformedLifeMax;
