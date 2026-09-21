@@ -73,11 +73,13 @@ public static class VanillaSlimeNpcCatalog
         }
 
         float timerBonus = 0f;
-        if (type == VanillaNpcIds.LavaSlime ||
-            type == VanillaNpcIds.IlluminantSlime ||
-            type == VanillaNpcIds.Crimslime)
+        if (type == VanillaNpcIds.LavaSlime || type == VanillaNpcIds.IlluminantSlime)
         {
             timerBonus = 2f;
+        }
+        else if (type == VanillaNpcIds.Crimslime)
+        {
+            timerBonus = 1f;
         }
         else if (type == VanillaNpcIds.DungeonSlime || type == VanillaNpcIds.GoldenSlime)
         {

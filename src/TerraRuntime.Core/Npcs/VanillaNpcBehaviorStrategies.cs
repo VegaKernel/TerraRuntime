@@ -214,6 +214,10 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
         NpcSimulationState simulation = npc.Simulation;
         NpcAiState ai = npc.Ai;
         float velocityX = npc.VelocityX;
+        // AI_001 increments Rainbow Slime's synchronized timer before its generic movement branch,
+        // including while airborne. The balloon sentinel returns before this source branch.
+        if (definition.Type == VanillaNpcIds.RainbowSlime && ai.Ai0 != -999f)
+            ai = ai with { Ai0 = ai.Ai0 + 2f };
         if (definition.Type == VanillaNpcIds.SpikedIceSlime)
         {
             NpcAiState localAi = simulation.LocalAi;
@@ -291,7 +295,10 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
             simulation = simulation with { LocalAi = localAi };
         }
         bool damaged = simulation.LifeMax > 0 && simulation.Life != simulation.LifeMax;
-        bool engaged = definition.Type == VanillaNpcIds.SpikedIceSlime ||
+        bool engaged = definition.Type == VanillaNpcIds.CorruptSlime ||
+                       definition.Type == VanillaNpcIds.Crimslime ||
+                       definition.Type == VanillaNpcIds.RainbowSlime ||
+                       definition.Type == VanillaNpcIds.SpikedIceSlime ||
                        definition.Type == VanillaNpcIds.SpikedJungleSlime ||
                        !context.DayTime ||
                        damaged ||
@@ -305,6 +312,9 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
             next = default;
             return false;
         }
+        float timerBonus = definition.Type == VanillaNpcIds.LavaSlime && context.RemixWorld
+            ? 0f
+            : profile.TimerBonus;
         var input = new VanillaBlueSlimeMotionInput(
             PositionX: npc.PositionX,
             VelocityX: velocityX,
@@ -320,7 +330,7 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
             Engaged: engaged,
             SolidCollision: simulation.SolidCollision,
             ClosestTarget: closest,
-            TimerBonus: profile.TimerBonus,
+            TimerBonus: timerBonus,
             JumpTimerBand: profile.JumpTimerBand,
             UsesLavaSlimeMotion: definition.Type == VanillaNpcIds.LavaSlime,
             RemixWorld: context.RemixWorld);

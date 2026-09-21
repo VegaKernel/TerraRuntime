@@ -65,8 +65,39 @@ public sealed class VanillaNpcEngagementFactsTests
 
         Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
 
-        Assert.Equal(-1f, next.Ai.Ai0);
+        Assert.Equal(-3f, next.Ai.Ai0);
         Assert.Equal(0f, next.VelocityY);
+    }
+
+    [Fact]
+    public void Corrupt_and_crimson_slimes_use_their_source_combat_timer_rules()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        stepper.EnableBlueSlimeMotion(worldSurfaceTiles: 100d);
+        stepper.SetWorldConditions(dayTime: true, slimeRainActive: false);
+        NpcSnapshot crimson = Slime(VanillaNpcIds.Crimslime, new NpcAiState(-3f, 0f, 1f, 0f));
+
+        Assert.True(stepper.TryStepState(in crimson, out NpcStateUpdate crimsonNext));
+
+        Assert.Equal(-1120f, crimsonNext.Ai.Ai0);
+        Assert.Equal(-6f, crimsonNext.VelocityY);
+    }
+
+    [Fact]
+    public void Rainbow_slime_advances_its_source_timer_while_airborne()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        stepper.EnableBlueSlimeMotion(worldSurfaceTiles: 100d);
+        stepper.SetWorldConditions(dayTime: true, slimeRainActive: false);
+        NpcSnapshot rainbow = Slime(VanillaNpcIds.RainbowSlime, new NpcAiState(5f, 0f, 1f, 0f)) with
+        {
+            VelocityY = -1f
+        };
+
+        Assert.True(stepper.TryStepState(in rainbow, out NpcStateUpdate next));
+
+        Assert.Equal(7f, next.Ai.Ai0);
+        Assert.Equal(-1f, next.VelocityY);
     }
 
     [Fact]
@@ -113,4 +144,23 @@ public sealed class VanillaNpcEngagementFactsTests
         Assert.Equal((ushort)4, next.Target);
         Assert.Equal(-1, next.Simulation.DirectionY);
     }
+
+    private static NpcSnapshot Slime(NpcTypeId type, NpcAiState ai) => new(
+        Handle: new NpcHandle(1, new NpcGeneration(1)),
+        Revision: new NpcRevision(1),
+        Type: type.Value,
+        NetId: checked((short)type.Value),
+        PositionX: 100f,
+        PositionY: 80f,
+        VelocityX: 0f,
+        VelocityY: 0f,
+        Target: VanillaNpcDefinitionCatalog.DefaultTarget,
+        Ai: ai,
+        Simulation: NpcSimulationState.Initial with
+        {
+            DirectionX = 1,
+            DirectionY = 1,
+            Life = 100,
+            LifeMax = 100
+        });
 }
