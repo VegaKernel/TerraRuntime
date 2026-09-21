@@ -1093,6 +1093,163 @@ internal sealed class VanillaPumpkingNpcBehaviorStrategy(IVanillaNpcRandom rando
     }
 }
 
+/// <summary>TerrariaServer 1.4.5.8 AI_060 state and flight motion for Snow Moon Santank.</summary>
+internal sealed class VanillaSnowMoonSantankNpcBehaviorStrategy(IVanillaNpcRandom random) : IVanillaNpcBehaviorStrategy
+{
+    public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        INpcAiStateStepper inner, out NpcStateUpdate next)
+    {
+        if (definition.Type != VanillaMoonEventSpecialCatalog1458.SnowMoonAi60Santank || definition.AiStyle.Value != 60)
+        {
+            next = default;
+            return false;
+        }
+
+        NpcAiState ai = npc.Ai;
+        NpcSimulationState simulation = npc.Simulation;
+        float velocityX = npc.VelocityX;
+        float velocityY = npc.VelocityY;
+        float rotation = npc.Simulation.Rotation ?? 0f;
+        ushort target = npc.Target;
+        VanillaNpcTargetCandidate player = default;
+        if (context.DayTime)
+        {
+            velocityX += velocityX > 0f ? .25f : -.25f;
+            velocityY -= .1f;
+            rotation = velocityX * .05f;
+        }
+        else
+        {
+            if (!TrySelectClosest(in npc, in definition, context, out target, out player))
+            {
+                next = default;
+                return false;
+            }
+
+            float playerTop = player.CenterY - player.Height * .5f;
+            float playerLeft = player.CenterX - player.Width * .5f;
+            float npcCenterX = npc.PositionX + definition.Width * .5f;
+            float life = simulation.Life > 0 ? simulation.Life : definition.LifeMax;
+            if (ai.Ai0 == 0f)
+            {
+                if (ai.Ai2 == 0f)
+                    ai = ai with { Ai2 = npcCenterX < player.CenterX ? 1f : -1f };
+                if ((ai.Ai2 == 1f && npcCenterX > player.CenterX + 800f) ||
+                    (ai.Ai2 == -1f && npcCenterX < player.CenterX - 800f))
+                    ai = ai with { Ai2 = 0f };
+
+                float acceleration = .45f, maximumSpeed = 7f;
+                if (life < definition.LifeMax * .75f) { acceleration = .55f; maximumSpeed = 8f; }
+                if (life < definition.LifeMax * .5f) { acceleration = .7f; maximumSpeed = 10f; }
+                if (life < definition.LifeMax * .25f) { acceleration = .8f; maximumSpeed = 11f; }
+                velocityX = Math.Clamp(velocityX + ai.Ai2 * acceleration, -maximumSpeed, maximumSpeed);
+                float verticalDifference = playerTop - (npc.PositionY + definition.Height);
+                if (verticalDifference < 150f) velocityY -= .2f;
+                else if (verticalDifference > 200f) velocityY += .2f;
+                velocityY = Math.Clamp(velocityY, -8f, 8f);
+                rotation = velocityX * .05f;
+
+                if ((MathF.Abs(npcCenterX - player.CenterX) < 500f || ai.Ai3 < 0f) && npc.PositionY < playerTop)
+                {
+                    int cadence = life < definition.LifeMax * .25f ? 10 : life < definition.LifeMax * .5f ? 11 :
+                        life < definition.LifeMax * .75f ? 12 : 13;
+                    cadence++;
+                    ai = ai with { Ai3 = ai.Ai3 + 1f };
+                    if (ai.Ai3 > cadence)
+                        ai = ai with { Ai3 = -cadence };
+                }
+                else if (ai.Ai3 < 0f)
+                    ai = ai with { Ai3 = ai.Ai3 + 1f };
+
+                ai = ai with { Ai1 = ai.Ai1 + random.NextInt32(1, 4) };
+                if (ai.Ai1 > 800f && MathF.Abs(npcCenterX - player.CenterX) < 600f)
+                    ai = ai with { Ai0 = -1f };
+            }
+            else if (ai.Ai0 == 1f)
+            {
+                float acceleration = .15f, maximumSpeed = 7f;
+                if (life < definition.LifeMax * .75f) { acceleration = .17f; maximumSpeed = 8f; }
+                if (life < definition.LifeMax * .5f) { acceleration = .2f; maximumSpeed = 9f; }
+                if (life < definition.LifeMax * .25f) { acceleration = .25f; maximumSpeed = 10f; }
+                acceleration -= .05f;
+                maximumSpeed--;
+                if (npcCenterX < player.CenterX) velocityX += acceleration;
+                else velocityX -= acceleration;
+                if ((velocityX > 0f && npcCenterX > player.CenterX) || (velocityX < 0f && npcCenterX < player.CenterX)) velocityX *= .98f;
+                if (velocityX > maximumSpeed) velocityX *= .95f;
+                if (velocityX < -maximumSpeed) velocityX *= .95f;
+                float verticalDifference = playerTop - (npc.PositionY + definition.Height);
+                if (verticalDifference < 180f) velocityY -= .1f;
+                else if (verticalDifference > 200f) velocityY += .1f;
+                velocityY = Math.Clamp(velocityY, -6f, 6f);
+                rotation = velocityX * .01f;
+
+                int cadence = life < definition.LifeMax * .1f ? 8 : life < definition.LifeMax * .25f ? 10 :
+                    life < definition.LifeMax * .5f ? 12 : life < definition.LifeMax * .75f ? 14 : 15;
+                cadence += 3;
+                ai = ai with { Ai3 = ai.Ai3 + 1f };
+                if (ai.Ai3 >= cadence)
+                    ai = ai with { Ai3 = 0f };
+                ai = ai with { Ai1 = ai.Ai1 + random.NextInt32(1, 4) };
+                if (ai.Ai1 > 600f) ai = ai with { Ai0 = -1f };
+            }
+            else if (ai.Ai0 == 2f)
+            {
+                float shotX = random.NextInt32(-1000, 1001);
+                float shotY = random.NextInt32(-1000, 1001);
+                Normalize(ref shotX, ref shotY, 15f);
+                simulation = simulation with { LocalAi = simulation.LocalAi with { Ai0 = shotX, Ai1 = shotY } };
+                velocityX *= .95f;
+                velocityY *= .95f;
+                rotation += .2f;
+                ai = ai with { Ai3 = ai.Ai3 + 1f };
+                int cadence = life < definition.LifeMax * .1f ? 4 : life < definition.LifeMax * .25f ? 3 :
+                    life < definition.LifeMax * .5f ? 2 : life < definition.LifeMax * .75f ? 1 : 7;
+                if (ai.Ai3 > cadence) ai = ai with { Ai3 = 0f };
+                ai = ai with { Ai1 = ai.Ai1 + random.NextInt32(1, 4) };
+                if (ai.Ai1 > 500f) ai = ai with { Ai0 = -1f };
+            }
+
+            if (ai.Ai0 == -1f)
+            {
+                int state = random.NextInt32(0, 3);
+                if (MathF.Abs(npcCenterX - player.CenterX) > 1000f) state = 0;
+                ai = new NpcAiState(state, 0f, 0f, 0f);
+            }
+        }
+
+        next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, velocityX, velocityY,
+            target, ai, simulation with
+            {
+                NoGravity = true, NoTileCollide = true, DirectionX = velocityX < 0f ? -1 : 1,
+                SpriteDirection = velocityX < 0f ? -1 : 1, Rotation = rotation, JustHit = false
+            });
+        return true;
+    }
+
+    private static bool TrySelectClosest(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        out ushort target, out VanillaNpcTargetCandidate player)
+    {
+        if (context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) && closest.HasTarget &&
+            closest.Target < byte.MaxValue && context.TryFindCandidate((byte)closest.Target, out player) &&
+            player.Active && !player.Dead && !player.Ghost)
+        {
+            target = closest.Target;
+            return true;
+        }
+        target = VanillaNpcDefinitionCatalog.DefaultTarget;
+        player = default;
+        return false;
+    }
+
+    private static void Normalize(ref float x, ref float y, float speed)
+    {
+        float distance = MathF.Max(1f, MathF.Sqrt(x * x + y * y));
+        x = x / distance * speed;
+        y = y / distance * speed;
+    }
+}
+
 internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,

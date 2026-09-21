@@ -48,7 +48,8 @@ internal enum VanillaProjectileBehaviorFamily : byte
     FallingBlock = 35,
     MoonLeech = 36,
     MoonBoulder = 37,
-    FlamingScythe = 38
+    FlamingScythe = 38,
+    SantankBomb = 39
 }
 
 /// <summary>
@@ -302,6 +303,14 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         RejectServerOwned: false,
         ExemptFromPreAiWorldBounds: false);
 
+    private static readonly VanillaProjectileBehaviorProfile SantankBombProfile = new(
+        VanillaProjectileBehaviorFamily.SantankBomb,
+        VanillaProjectileAiStyles.Arrow,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: true,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
     private static readonly VanillaProjectileBehaviorProfile HallowBossRainbowStreakProfile = new(
         VanillaProjectileBehaviorFamily.HallowBossRainbowStreak,
         VanillaProjectileAiStyles.HallowBossRainbowStreak,
@@ -430,6 +439,18 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.FlamingScythe)
         {
             profile = FlamingScytheProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SantankRocket)
+        {
+            profile = HostileStraightNoGravityProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SantankBomb)
+        {
+            profile = SantankBombProfile;
             return true;
         }
 

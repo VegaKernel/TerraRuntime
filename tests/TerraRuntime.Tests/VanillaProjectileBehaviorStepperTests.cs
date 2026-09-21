@@ -90,6 +90,20 @@ public sealed class VanillaProjectileBehaviorStepperTests
     }
 
     [Fact]
+    public void Santank_ai060_projectiles_keep_rocket_velocity_and_apply_bomb_gravity()
+    {
+        ProjectileSnapshot rocket = CreateProjectile(VanillaProjectileIds.SantankRocket, 7f, -2f, ai0: 0f, spawner: VanillaProjectileOwnership.ServerOwner);
+        Assert.True(VanillaDefinitionCatalog.TryGet(rocket.Type, out VanillaProjectileDefinition rocketDefinition));
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(in rocket, in rocketDefinition, default, out VanillaProjectileBehaviorResult rocketNext));
+        Assert.Equal(7f, rocketNext.VelocityX, 5); Assert.Equal(-2f, rocketNext.VelocityY, 5);
+
+        ProjectileSnapshot bomb = CreateProjectile(VanillaProjectileIds.SantankBomb, 3f, 4f, ai0: 2f, spawner: VanillaProjectileOwnership.ServerOwner);
+        Assert.True(VanillaDefinitionCatalog.TryGet(bomb.Type, out VanillaProjectileDefinition bombDefinition));
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(in bomb, in bombDefinition, default, out VanillaProjectileBehaviorResult bombNext));
+        Assert.Equal(3f, bombNext.VelocityX, 5); Assert.Equal(4.2f, bombNext.VelocityY, 5);
+    }
+
+    [Fact]
     public void Basic_arrow_nondefault_feature_selector_remains_unsupported()
     {
         ProjectileSnapshot projectile = CreateProjectile(

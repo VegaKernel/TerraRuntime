@@ -1,6 +1,6 @@
 # TerraRuntime roadmap
 
-2026-09-21 Snow Moon wave selection: `NPC.Spawner.SpawnAnNPC` now owns the source table through wave 20, including its explicit wave-14 no-spawn path and the late shared invasion-boss slot cap over active player count. Every active-type cap and RNG draw is retained after the wave-wide 1-in-30 special check. Unsupported special selections fail closed instead of falling back to an ordinary hostile. Remaining special-AI NPCs remain open.
+2026-09-21 Snow Moon wave selection: `NPC.Spawner.SpawnAnNPC` now owns the source table through wave 20, including its explicit wave-14 no-spawn path and the late shared invasion-boss slot cap over active player count. Every active-type cap and RNG draw is retained after the wave-wide 1-in-30 special check. Unsupported special selections fail closed instead of falling back to an ordinary hostile. Santa-NK1 is admitted with its AI_060 body; other special-AI NPCs remain open.
 
 2026-09-21 Pumpkin Moon wave selection: source `NPC.Spawner.SpawnAnNPC` now covers waves 1-20, including the independent first/second selections that can create two NPCs in waves 14, 15, 17 and 18, source no-spawn paths, active-type caps and the shared invasion-boss cap. Unsupported special selections remain fail-closed; their AI implementations remain open.
 
@@ -9,6 +9,8 @@
 2026-09-21 Pumpkin Moon Pumpking: types 327/328 have source defaults; AI_058 initializes the two linked Blades in source slot/AI order, follows its hover/dash/despawn state machine, and emits tile-gated Greek Fire on the retained local clock. AI_059 covers its orbit, climb/dive and side-pass states, parent loss, and the committed Flaming Scythe release including its source rotation/sprite AI. Projectile 329 retains that initial AI and implements its aiStyle-56 speed growth.
 
 2026-09-21 Snow Moon Everscream: source NPC 344 `SetDefaults` and AI_057 are now admitted through the existing wave-4/5 selector. The server owns life-scaled horizontal pursuit, the 80-by-20 hover collision probe, both 180/300-tick attack clocks, and post-commit Pine Needle/Ornament projectile creation with source random order and provenance. Snow Moon later waves and the remaining special-AI NPCs remain open.
+
+2026-09-21 Snow Moon Santa-NK1: source NPC 345 `SetDefaults` and AI_060 are admitted through the wave selector. The runtime retains all three night states, life-based movement/attack clocks, target refresh and day escape. Rockets and bombs are created only after their matching committed clock transition, retain source damage and hitboxes, and bombs preserve their solid-tile gate and gravity. Remaining Snow Moon special-AI NPCs remain open.
 
 2026-09-21 Moon-event AI_026 type 315: Pumpkin Moon now admits Mourning Wood with its source defaults, six-pixel AI_026 charge and 480-tick post-commit fireball branch. The projectile preserves pre-motion center/velocity, retained NPC difficulty damage and its pre-refresh target; rejected state transitions consume no random draws. Remaining special-AI types and later waves remain open.
 

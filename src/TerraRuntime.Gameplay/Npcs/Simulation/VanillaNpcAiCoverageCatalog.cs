@@ -127,7 +127,7 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaBatNpcCatalog1458.DefinitionCount +
             VanillaFishNpcCatalog1458.DefinitionCount +
             VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount +
-            VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 9];
+            VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 10];
         entries[0] = Partial(
             VanillaNpcIds.BlueSlime,
             OrdinaryCore |
@@ -307,6 +307,9 @@ public static class VanillaNpcAiCoverageCatalog
             OrdinaryCore |
             VanillaNpcAiCapability.MoonEventProjectileSlice |
             VanillaNpcAiCapability.MoonEventEverscreamSlice);
+        entries[index++] = Partial(
+            VanillaMoonEventSpecialCatalog1458.SnowMoonAi60Santank,
+            OrdinaryCore | VanillaNpcAiCapability.MoonEventProjectileSlice);
         entries[index++] = Partial(
             VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi57MourningWood,
             OrdinaryCore |

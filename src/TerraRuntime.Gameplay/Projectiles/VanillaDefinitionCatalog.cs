@@ -249,6 +249,14 @@ public static class VanillaDefinitionCatalog
         Width: 80, Height: 80, AiStyle: VanillaProjectileAiStyles.FlamingScythe, TileCollide: false,
         IgnoreWater: false, CanCutTiles: true, CollisionWidth: 80, CollisionHeight: 80);
 
+    private static readonly VanillaProjectileDefinition SantankRocketDefinition = new(
+        Width: 48, Height: 48, AiStyle: VanillaProjectileAiStyles.Arrow, TileCollide: false,
+        IgnoreWater: false, CanCutTiles: true, CollisionWidth: 48, CollisionHeight: 48);
+
+    private static readonly VanillaProjectileDefinition SantankBombDefinition = new(
+        Width: 12, Height: 12, AiStyle: VanillaProjectileAiStyles.Arrow, TileCollide: true,
+        IgnoreWater: false, CanCutTiles: true, CollisionWidth: 12, CollisionHeight: 12);
+
     private static readonly VanillaProjectileDefinition QueenBeeStingerDefinition = new(
         Width: 10,
         Height: 10,
@@ -896,6 +904,18 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.FlamingScythe)
         {
             definition = FlamingScytheDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SantankRocket)
+        {
+            definition = SantankRocketDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SantankBomb)
+        {
+            definition = SantankBombDefinition;
             return true;
         }
 

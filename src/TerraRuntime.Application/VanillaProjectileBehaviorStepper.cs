@@ -857,6 +857,12 @@ internal static partial class VanillaProjectileBehaviorStepper
                 }
                 break;
 
+            case VanillaProjectileBehaviorFamily.SantankBomb:
+                // Santank's projectile 349 is an AI_001 no-counter exception; its only authoritative
+                // motion mutation is the pre-translation 0.2 px/update downward acceleration.
+                velocityY += .2f;
+                break;
+
             default:
                 next = default;
                 return false;

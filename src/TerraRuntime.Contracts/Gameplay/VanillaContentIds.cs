@@ -545,6 +545,9 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId GreekFire2 = new(327);
     public static readonly ProjectileTypeId GreekFire3 = new(328);
     public static readonly ProjectileTypeId FlamingScythe = new(329);
+    // Snow Moon AI_060 Santank projectiles.
+    public static readonly ProjectileTypeId SantankRocket = new(348);
+    public static readonly ProjectileTypeId SantankBomb = new(349);
     public static readonly ProjectileTypeId Sharknado = new(384);
     public static readonly ProjectileTypeId SharknadoBolt = new(385);
     public static readonly ProjectileTypeId Cthulunado = new(386);
