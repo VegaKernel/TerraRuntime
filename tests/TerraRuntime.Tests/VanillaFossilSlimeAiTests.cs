@@ -117,6 +117,70 @@ public sealed class VanillaFossilSlimeAiTests
         Assert.Equal(13, next.Simulation.DamageOverride);
     }
 
+    [Theory]
+    [InlineData(25, 50)]
+    [InlineData(9, 9)]
+    public void Heart_slime_uses_the_spawn_life_baseline_only_once(int life, int expectedLife)
+    {
+        var stepper = CreateStepper(skyblockNoFossils: false, new ThrowingRandom());
+        NpcSnapshot heart = Snapshot(VanillaNpcIds.BlueSlime, positionY: 1601f, ai1: 29f) with
+        {
+            Simulation = NpcSimulationState.Initial with
+            {
+                Life = life, LifeMax = 25, BaseLifeMax = 25, Scale = 1f, DirectionX = 1, DirectionY = 1
+            }
+        };
+
+        Assert.True(stepper.TryStepState(in heart, out NpcStateUpdate next));
+        Assert.Equal(expectedLife, next.Simulation.Life);
+        Assert.Equal(50, next.Simulation.LifeMax);
+        Assert.Equal(6, next.Simulation.DefenseOverride);
+    }
+
+    [Fact]
+    public void Hell_slime_expands_once_while_preserving_its_bottom_center()
+    {
+        var stepper = CreateStepper(skyblockNoFossils: false, new ThrowingRandom());
+        NpcSnapshot hell = Snapshot(VanillaNpcIds.LavaSlime, positionY: 1601f, ai1: 174f) with
+        {
+            Simulation = NpcSimulationState.Initial with
+            {
+                Life = 50, LifeMax = 50, BaseLifeMax = 50, Scale = 1f, DirectionX = 1, DirectionY = 1,
+                KnockBackResist = .9f
+            }
+        };
+
+        Assert.True(stepper.TryStepState(in hell, out NpcStateUpdate next));
+        Assert.Equal(100, next.Simulation.Life);
+        Assert.Equal(100, next.Simulation.LifeMax);
+        Assert.NotNull(next.Simulation.KnockBackResist);
+        Assert.Equal(.3f, next.Simulation.KnockBackResist.Value, 5);
+        Assert.Equal(1.2f, next.Simulation.Scale);
+        Assert.Equal(new NpcHitboxDimensions(28, 21), next.Simulation.HitboxOverride);
+        Assert.Equal(98f, next.PositionX);
+        Assert.Equal(1598f, next.PositionY);
+        Assert.Equal(24, next.Simulation.DefenseOverride);
+        Assert.Equal(35, next.Simulation.DamageOverride);
+
+        NpcSnapshot committed = hell with
+        {
+            PositionX = next.PositionX,
+            PositionY = next.PositionY,
+            VelocityX = next.VelocityX,
+            VelocityY = next.VelocityY,
+            Target = next.Target,
+            Ai = next.Ai,
+            Simulation = next.Simulation
+        };
+        Assert.True(stepper.TryStepState(in committed, out NpcStateUpdate afterRepeat));
+        Assert.Equal(100, afterRepeat.Simulation.Life);
+        Assert.Equal(100, afterRepeat.Simulation.LifeMax);
+        Assert.NotNull(afterRepeat.Simulation.KnockBackResist);
+        Assert.Equal(.3f, afterRepeat.Simulation.KnockBackResist.Value, 5);
+        Assert.Equal(1.2f, afterRepeat.Simulation.Scale);
+        Assert.Equal(new NpcHitboxDimensions(28, 21), afterRepeat.Simulation.HitboxOverride);
+    }
+
     private static VanillaNpcTargetingAiStepper CreateStepper(bool skyblockNoFossils, IVanillaNpcRandom random,
         bool skyblockLowTiles = false, bool skyblockNoHellstone = false, bool downedSkeletron = false,
         bool slimeRainActive = false)

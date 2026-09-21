@@ -30,6 +30,7 @@ internal static class RuntimeNpcStateOwnershipPolicy
                 Scale = spawnDefaults?.Scale ?? definition.Scale,
                 BaseDamage = simulation.BaseDamage ?? spawnDefaults?.Damage ?? definition.Damage,
                 BaseDefense = simulation.BaseDefense ?? spawnDefaults?.Defense ?? definition.Defense,
+                BaseLifeMax = simulation.BaseLifeMax ?? spawnDefaults?.LifeMax ?? definition.LifeMax,
                 SpawnDifficulty = simulation.SpawnDifficulty ?? 1f,
                 KnockBackResist = simulation.KnockBackResist ?? spawnDefaults?.KnockBackResist ?? definition.KnockBackResist,
                 Rotation = simulation.Rotation ?? 0f,
@@ -98,6 +99,8 @@ internal static class RuntimeNpcStateOwnershipPolicy
                 (hasDefinition ? definition.Damage : null) : hasDefinition ? definition.Damage : null,
             BaseDefense = sameDefinition ? simulation.BaseDefense ?? previous.Simulation.BaseDefense ??
                 (hasDefinition ? definition.Defense : null) : hasDefinition ? definition.Defense : null,
+            BaseLifeMax = sameDefinition ? simulation.BaseLifeMax ?? previous.Simulation.BaseLifeMax ??
+                (hasDefinition ? definition.LifeMax : null) : hasDefinition ? definition.LifeMax : null,
             HitboxOverride = sameDefinition ? simulation.HitboxOverride ?? previous.Simulation.HitboxOverride : simulation.HitboxOverride,
             Friendly = simulation.Friendly ?? (sameDefinition ? previous.Simulation.Friendly : null) ??
                 (hasDefinition ? VanillaNpcChaseability1458.FriendlyAtSpawn(update.Type) : null),

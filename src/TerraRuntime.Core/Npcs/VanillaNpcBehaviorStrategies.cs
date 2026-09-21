@@ -218,6 +218,8 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
                 : default;
         NpcSimulationState simulation = npc.Simulation;
         NpcAiState ai = npc.Ai;
+        float positionX = npc.PositionX;
+        float positionY = npc.PositionY;
         float velocityX = npc.VelocityX;
         // NPC.AI_001 initializes a contained Sand Slime item only once. In a Skyblock world
         // whose generation scan found no Fossil blocks, it has a one-in-five Fossil Slime roll.
@@ -277,6 +279,46 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
                 DefenseOverride = (simulation.BaseDefense ?? definition.Defense) + 8,
                 DamageOverride = (simulation.BaseDamage ?? definition.Damage) + 6
             };
+        }
+        // Heart and Hell Slime compare against NPC.defLifeMax, which is the spawn-time value after
+        // SetDefaults/scaling. The runtime retains that baseline independently so their initialization
+        // does not repeat after a state-only update.
+        int baseLifeMax = simulation.BaseLifeMax ?? definition.LifeMax;
+        if (ai.Ai1 == 29f)
+        {
+            simulation = simulation with { DefenseOverride = (simulation.BaseDefense ?? definition.Defense) + 4 };
+            if (simulation.LifeMax == baseLifeMax)
+            {
+                simulation = simulation with
+                {
+                    Life = simulation.Life == simulation.LifeMax ? baseLifeMax * 2 : simulation.Life,
+                    LifeMax = baseLifeMax * 2
+                };
+            }
+        }
+        if (ai.Ai1 == 174f)
+        {
+            simulation = simulation with
+            {
+                DefenseOverride = (simulation.BaseDefense ?? definition.Defense) + 14,
+                DamageOverride = (simulation.BaseDamage ?? definition.Damage) + 20
+            };
+            if (simulation.LifeMax == baseLifeMax && definition.TryResolveHitbox(simulation, out VanillaNpcHitboxSize body))
+            {
+                const float expansion = 1.2f;
+                int width = (int)(body.Width * expansion);
+                int height = (int)(body.Height * expansion);
+                simulation = simulation with
+                {
+                    KnockBackResist = (simulation.KnockBackResist ?? definition.KnockBackResist) / 3f,
+                    Life = simulation.Life * 2,
+                    LifeMax = simulation.LifeMax * 2,
+                    Scale = simulation.Scale * expansion,
+                    HitboxOverride = new NpcHitboxDimensions(width, height)
+                };
+                positionX += body.Width / 2 - width / 2;
+                positionY += body.Height - height;
+            }
         }
         // The source applies this before the shared ground-motion timer, so Fossil Slime advances
         // ai[0] twice per grounded tick: once here and once in VanillaBlueSlimeMotion.
@@ -450,7 +492,7 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
             timerBonus += 10f;
         }
         var input = new VanillaBlueSlimeMotionInput(
-            PositionX: npc.PositionX,
+            PositionX: positionX,
             VelocityX: velocityX,
             VelocityY: npc.VelocityY,
             OldVelocityY: simulation.OldVelocityY,
@@ -490,7 +532,7 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
             definition.Type.Value,
             npc.NetId,
             result.PositionX,
-            npc.PositionY,
+            positionY,
             result.VelocityX,
             result.VelocityY,
             result.Target,
@@ -546,6 +588,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
                     HitboxOverride = null,
                     BaseDamage = null,
                     BaseDefense = null,
+                    BaseLifeMax = null,
                     DefenseOverride = null,
                     DamageOverride = null,
                     KnockBackResist = null,
@@ -685,7 +728,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
                 int transformedLife = ScaleTransformLife(simulation.Life, simulation.LifeMax, 750);
                 next = new NpcStateUpdate(VanillaNpcIds.Vampire.Value, (short)VanillaNpcIds.Vampire.Value,
                     npc.PositionX, npc.PositionY + 18f, result.VelocityX, result.VelocityY, result.Target, default,
-                    simulation with { Life = transformedLife, LifeMax = 750, HitboxOverride = null, BaseDamage = null, BaseDefense = null,
+                    simulation with { Life = transformedLife, LifeMax = 750, HitboxOverride = null, BaseDamage = null, BaseDefense = null, BaseLifeMax = null,
                         DefenseOverride = null, DamageOverride = null, KnockBackResist = null, NoGravity = true, NoTileCollide = false,
                         DirectionX = vampireTarget.CenterX < npc.PositionX + 11f ? -1 : 1,
                         DirectionY = vampireTarget.CenterY < npc.PositionY + 29f ? -1 : 1,

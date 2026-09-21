@@ -152,9 +152,10 @@ public readonly record struct NpcSimulationState(
     /// </summary>
     public int? DamageOverride { get; init; }
 
-    /// <summary>NPC.defDamage and defDefense: spawn baselines retained independently of live AI overrides.</summary>
+    /// <summary>NPC.defDamage, defDefense and defLifeMax: spawn baselines retained independently of live AI overrides.</summary>
     public int? BaseDamage { get; init; }
     public int? BaseDefense { get; init; }
+    public int? BaseLifeMax { get; init; }
 
     /// <summary>NPC.difficulty sampled at creation; attack interpolation retains it across world changes.</summary>
     public float? SpawnDifficulty { get; init; }
@@ -209,6 +210,7 @@ public readonly record struct NpcSimulationState(
         (Rotation is null || float.IsFinite(Rotation.Value)) &&
         (KnockBackResist is null || float.IsFinite(KnockBackResist.Value) && KnockBackResist.Value >= 0f) &&
         (SpawnDifficulty is null || float.IsFinite(SpawnDifficulty.Value) && SpawnDifficulty.Value is >= .5f and <= 4f) &&
+        (BaseLifeMax is null || BaseLifeMax.Value > 0) &&
         (HitboxOverride is null || HitboxOverride.Value.IsValid) &&
         DirectionX is >= -1 and <= 1 &&
         DirectionY is >= -1 and <= 1 &&

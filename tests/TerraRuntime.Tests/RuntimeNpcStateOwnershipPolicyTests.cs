@@ -15,6 +15,7 @@ public sealed class RuntimeNpcStateOwnershipPolicyTests
 
         Assert.Equal(25, materialized.Simulation.Life);
         Assert.Equal(25, materialized.Simulation.LifeMax);
+        Assert.Equal(25, materialized.Simulation.BaseLifeMax);
         Assert.Equal(1f, materialized.Simulation.Scale);
         Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTimeLeft, materialized.Simulation.TimeLeft);
         Assert.Equal(VanillaNpcDefinitionCatalog.DefaultSpriteDirection, materialized.Simulation.SpriteDirection);
@@ -29,6 +30,7 @@ public sealed class RuntimeNpcStateOwnershipPolicyTests
 
         Assert.Equal(2000, materialized.Simulation.Life);
         Assert.Equal(2000, materialized.Simulation.LifeMax);
+        Assert.Equal(2000, materialized.Simulation.BaseLifeMax);
         Assert.Equal(1.25f, materialized.Simulation.Scale);
         Assert.False(materialized.Simulation.NoGravity);
         Assert.False(materialized.Simulation.NoTileCollide);
@@ -43,6 +45,7 @@ public sealed class RuntimeNpcStateOwnershipPolicyTests
             {
                 Life = 31,
                 LifeMax = 45,
+                BaseLifeMax = 45,
                 TimeLeft = 123,
                 SpriteDirection = 1
             });
@@ -56,6 +59,7 @@ public sealed class RuntimeNpcStateOwnershipPolicyTests
 
         Assert.Equal(31, preserved.Simulation.Life);
         Assert.Equal(45, preserved.Simulation.LifeMax);
+        Assert.Equal(45, preserved.Simulation.BaseLifeMax);
         Assert.Equal(123, preserved.Simulation.TimeLeft);
         Assert.Equal(1, preserved.Simulation.SpriteDirection);
     }
@@ -82,6 +86,7 @@ public sealed class RuntimeNpcStateOwnershipPolicyTests
 
         Assert.Equal(2000, materialized.Simulation.Life);
         Assert.Equal(2000, materialized.Simulation.LifeMax);
+        Assert.Equal(2000, materialized.Simulation.BaseLifeMax);
         Assert.Equal(1.25f, materialized.Simulation.Scale);
         Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTimeLeft, materialized.Simulation.TimeLeft);
         Assert.Equal(VanillaNpcDefinitionCatalog.DefaultSpriteDirection, materialized.Simulation.SpriteDirection);
