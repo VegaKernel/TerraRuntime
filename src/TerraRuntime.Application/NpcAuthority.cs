@@ -813,7 +813,7 @@ internal sealed partial class NpcAuthority
 
             // The server refreshes Player.nearbyActiveNPCs before NPC.Spawner asks for its rate. Retain one
             // authoritative snapshot for both source checks so a spawn attempt cannot observe two different caps.
-            int nearbyNpcCount = CountNearbyOrdinaryNpcs(in player);
+            float nearbyNpcCount = CountNearbyOrdinaryNpcs(in player);
             GetNaturalSpawnBudget(in player, nearbyNpcCount, out int spawnRate, out int maxSpawns);
             if (nearbyNpcCount >= maxSpawns || naturalSpawnRandom.NextInt32(0, spawnRate) != 0)
                 continue;
@@ -848,7 +848,7 @@ internal sealed partial class NpcAuthority
 
     private void GetNaturalSpawnBudget(
         in VanillaNpcTargetCandidate player,
-        int nearbyNpcCount,
+        float nearbyNpcCount,
         out int spawnRate,
         out int maxSpawns)
     {
@@ -1231,7 +1231,7 @@ internal sealed partial class NpcAuthority
         187 or 220 or 222 or 221 or 275 or 308 or 310 or 309 or
         216 or 217 or 219 or 218 or 304 or 305 or 307 or 306 or 223;
 
-    private int CountNearbyOrdinaryNpcs(in VanillaNpcTargetCandidate player)
+    private float CountNearbyOrdinaryNpcs(in VanillaNpcTargetCandidate player)
     {
         // NPC.CheckActive in TerrariaServer 1.4.5.8 adds an NPC to Player.nearbyActiveNPCs when the
         // player's physical body intersects the NPC-centered active rectangle. It is 2.1 NPC screens in
@@ -1239,7 +1239,7 @@ internal sealed partial class NpcAuthority
         const int activeRangeX = 4032;
         const int activeRangeY = 2520;
         int count = npcs.CopyActive(naturalSpawnNpcBuffer);
-        int nearby = 0;
+        float nearby = 0f;
         int playerLeft = (int)(player.CenterX - player.HitboxWidth * .5f);
         int playerTop = (int)(player.CenterY - player.HitboxHeight * .5f);
         int playerRight = playerLeft + (int)player.HitboxWidth;
@@ -1261,10 +1261,21 @@ internal sealed partial class NpcAuthority
             int npcRight = npcLeft + activeRangeX * 2;
             int npcBottom = npcTop + activeRangeY * 2;
             if (npcLeft < playerRight && playerLeft < npcRight && npcTop < playerBottom && playerTop < npcBottom)
-                nearby++;
+                nearby += GetNaturalSpawnSlots(npc.TypeIdentity);
         }
         return nearby;
     }
+
+    private static float GetNaturalSpawnSlots(NpcTypeId type) => type switch
+    {
+        // TerrariaServer 1.4.5.8 NPC.SetDefaults source weights for the currently admitted natural types.
+        // Other admitted base definitions retain the SetDefaults default of one slot.
+        var value when value == VanillaNpcIds.FireImp => 3f,
+        var value when value == VanillaNpcIds.BoneSerpentHead => 6f,
+        var value when value == VanillaNpcIds.CaveBat || value == VanillaNpcIds.Hellbat || value == VanillaNpcIds.LavaBat => .5f,
+        var value when value == VanillaNpcIds.Demon || value == VanillaNpcIds.VoodooDemon => 2f,
+        _ => 1f
+    };
 
     private int CountNearbyTownNpcs(float centerX, float centerY)
     {

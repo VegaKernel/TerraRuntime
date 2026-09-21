@@ -132,13 +132,15 @@ public sealed class RuntimeUnderworldSpawn1458Tests
         for (int x = 415; x < 466; x++)
             for (int y = 450; y < 480; y++)
                 tiles.Tiles[tiles.GetUncheckedIndex(x, y)] = new WorldTile { Type = 53, Flags = WorldTileFlags.Active };
-        // Player.Center is at tile 498 for floor tile 500, which is a valid Sandstone wall position.
-        tiles.Tiles[tiles.GetUncheckedIndex(500, 498)] = new WorldTile { Wall = 187 };
+        // Player.Center is at tile 499 for floor tile 500, which is a valid Sandstone wall position.
+        tiles.Tiles[tiles.GetUncheckedIndex(500, 499)] = new WorldTile { Wall = 187 };
 
-        // 600 * .2 (underground desert) = 120, then empty-population .6 = 72.
-        var random = new RateRejectingRandom(72);
+        // The cavern band (.5), underground desert (.2) and both empty-population bands (.6, .7)
+        // fall below TerrariaServer's final 60-tick floor.
+        var random = new RateRejectingRandom(60);
         RuntimeTownCommerceWorldFacts1458 world = default;
         world = world with { WorldSurface = 350, RockLayer = 600 };
+        Assert.True(new VanillaTownSceneMetricsScanner1458(tiles, in world).Scan(500, 499).ZoneDesert);
         var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
             worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
             townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
@@ -229,7 +231,8 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     {
         var npcs = new RuntimeNpcStore();
         var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
-        for (int x = 115; x < 120; x++)
+        // The 169-tile window begins at 116 for a center of 200, so include five full columns.
+        for (int x = 115; x < 121; x++)
             for (int y = 250; y < 265; y++)
                 tiles.Tiles[tiles.GetUncheckedIndex(x, y)] = new WorldTile { Type = 37, Flags = WorldTileFlags.Active };
 
@@ -256,17 +259,17 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     }
 
     [Theory]
-    [InlineData(false, 288)]
-    [InlineData(true, 115)]
+    [InlineData(false, 100)]
+    [InlineData(true, 60)]
     public void Temple_wall_uses_source_rate_band_before_empty_population(bool remixWorld, int expectedRate)
     {
         var npcs = new RuntimeNpcStore();
         var tiles = new WorldTileStore(new WorldDimensions(1000, 1200));
-        // Player.Center is tile 498 for a floor tile of 500, which matches SceneMetrics' wall sample.
-        tiles.Tiles[tiles.GetUncheckedIndex(500, 498)] = new WorldTile { Wall = 87 };
+        // Player.Center is tile 499 for a floor tile of 500, which matches SceneMetrics' wall sample.
+        tiles.Tiles[tiles.GetUncheckedIndex(500, 499)] = new WorldTile { Wall = 87 };
 
-        // Normal: 600 * .8 (Temple) * .6 (empty population) = 288.
-        // Remix adds the source Temple .4 multiplier: 600 * .8 * .4 * .6 = 115.
+        // Normal: 600 * .5 (cavern) * .8 (Temple) * .6 * .7 (empty population) = 100.
+        // Remix applies the .4 cavern and Temple multipliers and reaches the final 60-tick floor.
         var random = new RateRejectingRandom(expectedRate);
         RuntimeTownCommerceWorldFacts1458 world = default;
         world = world with { RemixWorld = remixWorld, WorldSurface = 350, RockLayer = 600 };
@@ -293,7 +296,8 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     {
         var npcs = new RuntimeNpcStore();
         var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
-        for (int x = 115; x < 135; x++)
+        // The centered window starts at 116; retain 20 complete columns for the 300-tile evil threshold.
+        for (int x = 115; x < 136; x++)
             for (int y = 250; y < 265; y++)
                 tiles.Tiles[tiles.GetUncheckedIndex(x, y)] = new WorldTile { Type = 23, Flags = WorldTileFlags.Active };
 
@@ -329,9 +333,9 @@ public sealed class RuntimeUnderworldSpawn1458Tests
         Assert.True(npcs.TrySpawnVanilla(in wall, out _));
         var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
 
-        // Underworld starts with cap 10. Wall of Flesh changes it to 3 and rate to 180;
-        // empty and deep source bands then produce 180 * .6 * .7 = 75.
-        var random = new RateRejectingRandom(75);
+        // Underworld starts with cap 10. Wall of Flesh changes it to 3 and triples the rate;
+        // empty and deep source bands then produce 600 * 3 * .6 * .7 = 756.
+        var random = new RateRejectingRandom(756);
         RuntimeTownCommerceWorldFacts1458 world = default;
         world = world with { WorldSurface = 350, RockLayer = 600 };
         var state = new ServerRuntimeState(npcs: npcs, npcAiStepper: new IdleNpcStepper(), worldTiles: tiles,
@@ -417,10 +421,11 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     {
         var npcs = new RuntimeNpcStore();
         var tiles = new WorldTileStore(new WorldDimensions(1000, 1200));
-        for (int x = 415; x < 440; x++)
+        // The window begins at x=416 for the player center, so retain 25 complete dungeon columns.
+        for (int x = 415; x < 441; x++)
             for (int y = 450; y < 460; y++)
                 tiles.Tiles[tiles.GetUncheckedIndex(x, y)] = new WorldTile { Type = 41, Flags = WorldTileFlags.Active };
-        tiles.Tiles[tiles.GetUncheckedIndex(500, 498)] = new WorldTile { Wall = 7 };
+        tiles.Tiles[tiles.GetUncheckedIndex(500, 499)] = new WorldTile { Wall = 7 };
         var random = new RateRejectingRandom(10);
         RuntimeTownCommerceWorldFacts1458 world = default;
         world = world with { WorldSurface = 350, RockLayer = 600 };
@@ -470,7 +475,7 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     {
         var npcs = new RuntimeNpcStore();
         var fairy = new NpcStateUpdate(VanillaNpcIds.BlueFairy.Value, (short)VanillaNpcIds.BlueFairy.Value,
-            200, 300, 0, 0, 0, default, NpcSimulationState.Initial);
+            3_200, 4_800, 0, 0, 0, default, NpcSimulationState.Initial);
         Assert.True(npcs.TrySpawnVanilla(in fairy, out _));
         var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
         // Empty occupancy produces 600 * .6 = 360. Player.isNearFairy then applies .1.2, yielding 432.
@@ -500,7 +505,7 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     {
         var npcs = new RuntimeNpcStore();
         var demonEye = new NpcStateUpdate(VanillaNpcIds.DemonEye.Value, (short)VanillaNpcIds.DemonEye.Value,
-            3_500, 300, 0, 0, 0, default, NpcSimulationState.Initial);
+            6_500, 4_800, 0, 0, 0, default, NpcSimulationState.Initial);
         Assert.True(npcs.TrySpawnVanilla(in demonEye, out _));
         var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
         // The Demon Eye is 3,300 px away: outside the former 1,600-px approximation but inside the
@@ -524,6 +529,36 @@ public sealed class RuntimeUnderworldSpawn1458Tests
 
         random.AssertConsumed();
         Assert.Equal(1, npcs.ActiveCount);
+    }
+
+    [Fact]
+    public void Natural_population_uses_source_fire_imp_slot_weight()
+    {
+        var npcs = new RuntimeNpcStore();
+        var fireImp = new NpcStateUpdate(VanillaNpcIds.FireImp.Value, (short)VanillaNpcIds.FireImp.Value,
+            3_200, 4_800, 0, 0, 0, default, NpcSimulationState.Initial);
+        Assert.True(npcs.TrySpawnVanilla(in fireImp, out _));
+        NpcStateUpdate secondFireImp = fireImp with { PositionX = 3_250 };
+        Assert.True(npcs.TrySpawnVanilla(in secondFireImp, out _));
+        var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
+        RuntimeTownCommerceWorldFacts1458 world = default;
+        world = world with { WorldSurface = 350, RockLayer = 600 };
+        var random = new NeverCalledRandom();
+        var state = new ServerRuntimeState(npcs: npcs, npcAiStepper: new IdleNpcStepper(), worldTiles: tiles,
+            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+            townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+            naturalSpawnRandom: random, worldProgression: new RuntimeWorldProgressionMutations());
+        var slots = new PlayerSlotPool(1);
+        Assert.True(slots.TryAcquireConnection(out var lease));
+        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        session.ObserveWorldRequest(); session.ObserveSectionRequest();
+        var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(832), session.Handle);
+        state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
+            new PlayerSpawnCommitRequest(session.Handle.Slot, 200, 300, 0, 0, 0, 0, 0)));
+
+        state.Tick();
+
+        Assert.Equal(2, npcs.ActiveCount);
     }
 
     [Fact]
@@ -728,6 +763,12 @@ public sealed class RuntimeUnderworldSpawn1458Tests
         }
 
         public void AssertConsumed() => Assert.Equal(1, call);
+    }
+
+    private sealed class NeverCalledRandom : IVanillaNpcRandom
+    {
+        public int NextInt32(int inclusiveMin, int exclusiveMax) => throw new Xunit.Sdk.XunitException(
+            $"Unexpected random call [{inclusiveMin}, {exclusiveMax}).");
     }
 
     private sealed class IdleNpcStepper : INpcAiStateStepper

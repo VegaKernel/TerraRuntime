@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Natural spawn npcSlots: ordinary supported NPC population now carries the source per-NPC slot weights before cap and rate bands: Fire Imp 3, Bone Serpent 6, Cave/Hell/Lava Bat .5, Demon/Voodoo Demon 2, and default 1 for the other admitted base types. Two nearby Imps fill six slots and stop before the daytime cap-five rate roll. Slime Rain weights, release-owner state, net-variant slot scaling, moon events and player buffs/Journey remain open.
+
 2026-09-21 Natural spawn active rectangle: nearby population now follows `NPC.CheckActive`'s 4032-by-2520-pixel body-intersection rectangle rather than a 1600-pixel radial approximation; a tick pins the one-NPC rate at 420. Source `npcSlots` weighting, moon events and player buffs/Journey remain open.
 
 2026-09-21 Natural spawn fairy proximity: source Blue, Green and Pink Fairies are now read from the authoritative NPC store and apply their post-candle modifier within `NPC.sWidth`. Moon events, player buffs/Journey and source npcSlots remain open.
@@ -12,17 +14,17 @@
 
 2026-09-21 Natural spawn invasions: known persisted invasion identities 1..4 now trigger the source final override (rate 20 and a cap based on authoritative active-player count). A one-player tick pins rate 20. Moon events, player buffs/candles/Journey and source npcSlots remain open.
 
-2026-09-21 Natural spawn Wall of Flesh: the Underworld rate now observes the active root from authoritative NPC slots and applies source cap `x.3` then rate `x3` before occupancy. A real empty-underworld tick pins rate 75. Moon events, player buffs/candles/Journey and source npcSlots remain open.
+2026-09-21 Natural spawn Wall of Flesh: the Underworld rate now observes the active root from authoritative NPC slots and applies source cap `x.3` then rate `x3` before occupancy. A real empty-underworld tick pins rate 756. Moon events, player buffs/candles/Journey and remaining npcSlots cases remain open.
 
 2026-09-21 Natural spawn Remix evil surface: Corruption/Crimson now receives both source transforms around the occupancy bands (`0.5` / `x2`, then `0.8` / `x2`). A source-order tick at the surface pins rate 64. Moon events, player buffs/candles/Journey and source npcSlots remain open.
 
-2026-09-21 Natural spawn Lihzahrd Temple: the scene scanner now samples the exact center wall `87` and applies the source `0.8` rate / `1.2` cap transform after Meteor. Remix worlds additionally apply `0.4` / `1.5`; real ticks pin final empty-population rates 288 and 115. Moon events, player buffs/candles/Journey and source npcSlots remain open.
+2026-09-21 Natural spawn Lihzahrd Temple: the scene scanner now samples the exact center wall `87` and applies the source `0.8` rate / `1.2` cap transform after Meteor. Remix worlds additionally apply `0.4` / `1.5`; real cavern ticks pin final empty-population rates 100 and 60. Moon events, player buffs/candles/Journey and remaining npcSlots cases remain open.
 
 2026-09-21 Natural spawn Meteor: the SceneMetrics projection now counts active tile `37` and admits the source threshold 75. The source `0.4` rate and `1.1` cap transform runs after Jungle/evil alternatives; a tick at the exact threshold pins final empty-population rate 144. Temple, moon events, player buffs/candles/Journey and source npcSlots remain open.
 
 2026-09-21 Natural spawn Jungle: active persisted town residents are now counted from live runtime centers in the source 3840-by-2400-pixel `SceneMetrics.TownNPCRectSize`, then select the four Jungle rate/cap bands before evil zones. Ticks pin zero-resident rate 144 and one remote-home Merchant rate 198. Meteor, temple, moon events, player buffs/candles/Journey and source npcSlots remain open.
 
-2026-09-21 Natural spawn Underground Desert: the source Desert scene count, below-surface center and Sandstone/Hardened Sand/Desert Fossil wall predicate now apply the `0.2` rate and `3.0` cap transforms before Jungle and evil branches. A real tick with wall 187 pins final empty-population rate 72. Jungle town count, meteor, temple, moon events, player buffs/candles/Journey and source npcSlots remain open.
+2026-09-21 Natural spawn Underground Desert: the source Desert scene count, below-surface center and Sandstone/Hardened Sand/Desert Fossil wall predicate now apply the `0.2` rate and `3.0` cap transforms before Jungle and evil branches. A real cavern tick with wall 187 reaches the final 60-tick minimum. Jungle town count, meteor, temple, moon events, player buffs/candles/Journey and remaining npcSlots cases remain open.
 
 2026-09-21 Natural spawn sandstorm: the loaded `SandstormHappening` world fact now enters the source `ZoneSandstorm` rate branch before Underground Desert, Jungle and evil zones. The runtime uses the source `ZoneDesert && SurfaceAtmospherics && Sandstorm.Happening` predicate and `Player.Center` for the `SetSpawnFlags` scene/wall inputs; a real pre-Hardmode surface-Desert tick pins its final empty-population rate at 324. Underground Desert, Jungle town count, meteor, temple, moon events, player buffs/candles/Journey and source npcSlots remain open.
 
