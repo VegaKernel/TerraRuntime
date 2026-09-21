@@ -194,6 +194,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId GolemFistRight = new(248);
     public static readonly NpcTypeId GolemHeadFree = new(249);
     public static readonly NpcTypeId SlimeMasked = new(302);
+    public static readonly NpcTypeId HoppinJack = new(304);
     public static readonly NpcTypeId DemonEyeOwl = new(317);
     public static readonly NpcTypeId DemonEyeSpaceship = new(318);
     public static readonly NpcTypeId SlimeRibbonWhite = new(333);

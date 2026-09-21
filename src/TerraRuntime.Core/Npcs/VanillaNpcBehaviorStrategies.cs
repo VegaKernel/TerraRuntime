@@ -363,6 +363,13 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
         float timerBonus = definition.Type == VanillaNpcIds.LavaSlime && context.RemixWorld
             ? 0f
             : profile.TimerBonus;
+        // AI_001 Hoppin' Jack: `(1 - life / lifeMax) * 10` uses integer division in the source,
+        // so every damaged state receives the full ten-tick grounded cadence bonus.
+        if (definition.Type == VanillaNpcIds.HoppinJack &&
+            simulation.LifeMax > 0 && simulation.Life < simulation.LifeMax)
+        {
+            timerBonus += 10f;
+        }
         var input = new VanillaBlueSlimeMotionInput(
             PositionX: npc.PositionX,
             VelocityX: velocityX,

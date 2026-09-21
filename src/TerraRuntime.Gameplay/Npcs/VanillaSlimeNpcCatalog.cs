@@ -33,6 +33,7 @@ public static class VanillaSlimeNpcCatalog
         Slime(VanillaNpcIds.UmbrellaSlime, 38, 26, 10, 5, 35, 0.75f, 1f),
         Slime(VanillaNpcIds.RainbowSlime, 60, 42, 85, 26, 400, 0.3f, 1f),
         Slime(VanillaNpcIds.SlimeMasked, 24, 18, 7, 2, 25, 1f, 1f),
+        Slime(VanillaNpcIds.HoppinJack, 34, 28, 80, 20, 175, 0.5f, 1.1f),
         Slime(VanillaNpcIds.SlimeRibbonWhite, 24, 18, 7, 2, 25, 1f, 1f),
         Slime(VanillaNpcIds.SlimeRibbonYellow, 24, 18, 6, 2, 23, 1f, 0.9f),
         Slime(VanillaNpcIds.SlimeRibbonGreen, 24, 18, 8, 3, 29, 1f, 1.05f),
