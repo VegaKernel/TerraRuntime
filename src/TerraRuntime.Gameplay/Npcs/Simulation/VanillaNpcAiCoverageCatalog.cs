@@ -64,7 +64,8 @@ public enum VanillaNpcAiCapability : ulong
     MoonEventProjectileSlice = 1ul << 54,
     MoonEventEverscreamSlice = 1ul << 55,
     JellyfishMotionSlice = 1ul << 56,
-    AntlionMotionSlice = 1ul << 57
+    AntlionMotionSlice = 1ul << 57,
+    SlimeProjectileSideEffectSlice = 1ul << 58
 }
 
 /// <summary>
@@ -352,6 +353,8 @@ public static class VanillaNpcAiCoverageCatalog
                 OrdinaryCore | VanillaNpcAiCapability.SlimeTimerProfileSlice;
             if (definition.Type == VanillaNpcIds.CorruptSlime)
                 capabilities |= VanillaNpcAiCapability.NegativeNetVariantDefaults;
+            if (definition.Type == VanillaNpcIds.SpikedIceSlime)
+                capabilities |= VanillaNpcAiCapability.SlimeProjectileSideEffectSlice;
 
             entries[index++] = Partial(definition.Type, capabilities);
         }

@@ -212,8 +212,45 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
                 ? selected
                 : default;
         NpcSimulationState simulation = npc.Simulation;
+        NpcAiState ai = npc.Ai;
+        float velocityX = npc.VelocityX;
+        if (definition.Type == VanillaNpcIds.SpikedIceSlime)
+        {
+            NpcAiState localAi = simulation.LocalAi;
+            if (localAi.Ai0 > 0f)
+                localAi = localAi with { Ai0 = localAi.Ai0 - 1f };
+
+            if (!simulation.Wet && simulation.LocalAi.Ai0 == 0f && npc.VelocityY == 0f &&
+                npc.Target < byte.MaxValue &&
+                context.TryFindCandidate((byte)npc.Target, out VanillaNpcTargetCandidate target) &&
+                target.Active && !target.Dead && !target.NoAggro &&
+                definition.TryResolveHitbox(simulation, out VanillaNpcHitboxSize hitbox) &&
+                context.ProjectileEnvironment is not null)
+            {
+                float centerX = npc.PositionX + hitbox.Width * .5f;
+                float centerY = npc.PositionY + hitbox.Height * .5f;
+                float targetTopY = target.CenterY - target.Height * .5f;
+                float dx = target.CenterX - centerX;
+                float dy = targetTopY - centerY;
+                float distanceSquared = dx * dx + dy * dy;
+                bool canHit = context.ProjectileEnvironment.CanHit(
+                    npc.PositionX, npc.PositionY, hitbox.Width, hitbox.Height,
+                    target.CenterX - target.Width * .5f, targetTopY,
+                    (int)target.Width, (int)target.Height);
+                bool expertBurst = context.ExpertMode && distanceSquared < 120f * 120f;
+                if (canHit && (expertBurst || distanceSquared < 200f * 200f))
+                {
+                    ai = ai with { Ai0 = -40f };
+                    velocityX *= .9f;
+                    localAi = localAi with { Ai0 = expertBurst ? 30f : 50f };
+                }
+            }
+
+            simulation = simulation with { LocalAi = localAi };
+        }
         bool damaged = simulation.LifeMax > 0 && simulation.Life != simulation.LifeMax;
-        bool engaged = !context.DayTime ||
+        bool engaged = definition.Type == VanillaNpcIds.SpikedIceSlime ||
+                       !context.DayTime ||
                        damaged ||
                        context.SlimeRainActive ||
                        npc.PositionY > context.WorldSurfacePixels;
@@ -225,13 +262,13 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
         }
         var input = new VanillaBlueSlimeMotionInput(
             PositionX: npc.PositionX,
-            VelocityX: npc.VelocityX,
+            VelocityX: velocityX,
             VelocityY: npc.VelocityY,
             OldVelocityY: simulation.OldVelocityY,
             DirectionX: simulation.DirectionX,
             DirectionY: simulation.DirectionY,
             Target: npc.Target,
-            Ai: npc.Ai,
+            Ai: ai,
             Wet: simulation.Wet,
             CollideX: simulation.CollideX,
             CollideY: simulation.CollideY,

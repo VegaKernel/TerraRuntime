@@ -540,6 +540,8 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId DemonScythe = new(44);
     public static readonly ProjectileTypeId HornetStinger = new(55);
     public static readonly ProjectileTypeId RedDevilSickle = new(115);
+    /// <summary>AI_001 Spiked Ice Slime hostile ice spike.</summary>
+    public static readonly ProjectileTypeId SpikedIceSlimeSpike = new(174);
     public static readonly ProjectileTypeId Flamelash = new(34);
     public static readonly ProjectileTypeId ThrowingKnife = new(48);
     public static readonly ProjectileTypeId Seed = new(51);

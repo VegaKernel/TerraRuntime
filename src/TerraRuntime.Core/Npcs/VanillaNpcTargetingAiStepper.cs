@@ -236,6 +236,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     {
         ArgumentNullException.ThrowIfNull(environment);
         _projectileEnvironment = environment;
+        _context.ProjectileEnvironment = environment;
         _flyer.SetProjectileEnvironment(environment);
         _bat.SetEnvironment(environment);
         _queenBee.SetProjectileEnvironment(environment);
@@ -464,6 +465,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         in NpcStateUpdate proposed,
         Span<NpcAiProjectileIntent> destination)
     {
+        if (source.Type == VanillaNpcIds.SpikedIceSlime.Value && proposed.Type == source.Type)
+            return PlanSpikedIceSlimeSpikes(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.Antlion.Value && proposed.Type == source.Type)
             return PlanAntlionSand(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.SkeletronHead.Value && proposed.Type == source.Type)
@@ -498,6 +501,63 @@ public sealed class VanillaNpcTargetingAiStepper :
             return PlanMoonLordProjectiles(in source, in proposed, destination);
 
         return _flyer.PlanProjectileSpawns(in source, in proposed, _context, destination);
+    }
+
+    private int PlanSpikedIceSlimeSpikes(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiProjectileIntent> destination)
+    {
+        if (source.Simulation.LocalAi.Ai0 != 0f ||
+            proposed.Simulation.LocalAi.Ai0 is not 30f and not 50f ||
+            source.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)source.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.NoAggro ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.SpikedIceSlime, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox) ||
+            !VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.SpikedIceSlimeSpike, out VanillaProjectileDefinition spike))
+        {
+            return 0;
+        }
+
+        float centerX = source.PositionX + hitbox.Width * .5f;
+        float centerY = source.PositionY + hitbox.Height * .5f;
+        if (proposed.Simulation.LocalAi.Ai0 == 50f)
+        {
+            if (destination.IsEmpty)
+                return 1;
+            float velocityX = target.CenterX - centerX;
+            float velocityY = target.CenterY - target.Height * .5f - centerY - _random.NextInt32(0, 200);
+            NormalizeTo(ref velocityX, ref velocityY, 4.5f);
+            destination[0] = new NpcAiProjectileIntent(
+                VanillaProjectileIds.SpikedIceSlimeSpike,
+                centerX - spike.Width * .5f,
+                centerY - spike.Height * .5f,
+                velocityX,
+                velocityY,
+                Damage: 9,
+                KnockBack: 0f);
+            return 1;
+        }
+
+        const int burstCount = 5;
+        if (destination.Length < burstCount)
+            return destination.Length + 1;
+        for (int index = 0; index < burstCount; index++)
+        {
+            float velocityX = (index - 2) * (1f + _random.NextInt32(-50, 51) * .005f);
+            float velocityY = -4f * (1f + _random.NextInt32(-50, 51) * .005f);
+            NormalizeTo(ref velocityX, ref velocityY, 4f + _random.NextInt32(-50, 51) * .01f);
+            destination[index] = new NpcAiProjectileIntent(
+                VanillaProjectileIds.SpikedIceSlimeSpike,
+                centerX - spike.Width * .5f,
+                centerY - spike.Height * .5f,
+                velocityX,
+                velocityY,
+                Damage: 9,
+                KnockBack: 0f);
+        }
+        return burstCount;
     }
 
     public int PlanProjectileMutations(
