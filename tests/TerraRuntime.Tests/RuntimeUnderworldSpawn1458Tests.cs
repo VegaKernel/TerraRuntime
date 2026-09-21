@@ -59,6 +59,41 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     }
 
     [Fact]
+    public void Source_surface_flag_includes_the_ground_row_at_world_surface()
+    {
+        var npcs = new RuntimeNpcStore();
+        var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
+        for (int x = 0; x < 500; x++)
+            tiles.Tiles[tiles.GetUncheckedIndex(x, 352)] = new WorldTile { Type = 57, Flags = WorldTileFlags.Active };
+
+        // FindSpawnTile starts on row 351 and descends to the solid row 352. Source retains that
+        // row as spawnTileY and classifies it as surface with the inclusive <= worldSurface check.
+        // At night the first surface selector roll therefore yields Demon Eye; the old strict check
+        // incorrectly chose the underground Skeleton branch.
+        var random = new SpawnRandom([0], 216);
+        RuntimeTownCommerceWorldFacts1458 world = default;
+        world = world with { WorldSurface = 352, RockLayer = 500 };
+        var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
+            worldClock: new RuntimeWorldClock(1000, false, default, 0, 0),
+            townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+            naturalSpawnRandom: random, worldProgression: new RuntimeWorldProgressionMutations());
+        var slots = new PlayerSlotPool(1);
+        Assert.True(slots.TryAcquireConnection(out var lease));
+        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        session.ObserveWorldRequest(); session.ObserveSectionRequest();
+        var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(815), session.Handle);
+        state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
+            new PlayerSpawnCommitRequest(session.Handle.Slot, 200, 351, 0, 0, 0, 0, 0)));
+
+        state.Tick();
+
+        random.AssertConsumed();
+        var snapshots = new NpcSnapshot[npcs.Capacity];
+        Assert.Equal(1, npcs.CopyActive(snapshots));
+        Assert.Equal(VanillaNpcIds.DemonEye.Value, snapshots[0].Type);
+    }
+
+    [Fact]
     public void Source_slot_order_tries_the_next_player_when_the_first_rate_roll_rejects()
     {
         var npcs = new RuntimeNpcStore();

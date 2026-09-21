@@ -1144,7 +1144,8 @@ internal sealed partial class NpcAuthority
             tiles.WorldSurfaceTiles ?? naturalSpawnWorldFacts?.WorldSurface ?? tiles.Dimensions.HeightTiles / 3d,
             1d,
             tiles.Dimensions.HeightTiles - 1d);
-        bool surface = floorY < surfaceThreshold;
+        // NPC.Spawner.SetSpawnFlagsForChosenTile defines surfaceSpawn inclusively.
+        bool surface = floorY <= surfaceThreshold;
 
         VanillaTownSceneMetrics1458? scene = npcSceneMetrics?.Scan(
             Math.Clamp((int)(player.CenterX / 16f), 0, tiles.Dimensions.WidthTiles - 1),
