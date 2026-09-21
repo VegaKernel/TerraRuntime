@@ -1,5 +1,7 @@
 # Work state
 
+2026-09-21: Natural spawning now counts source `SceneMetrics.MeteorTileCount` from active Meteorite tile 37 and applies its threshold 75 before the Meteor rate/cap transform. A real tick at that exact threshold reaches final empty-population rate 144. Release rebuild, focused harness and documentation checks pass; Windows NativeAOT `.cache/natural-spawn-meteor-final-win-aot-20260921` passes loop, protocol, network, world and TUI smokes.
+
 2026-09-21: Natural spawning now applies the source Jungle rate/cap bands for zero, one, two and three-or-more active town NPCs. It counts the persisted-town runtime slots by their live centers inside `SceneMetrics.TownNPCRectSize` (3840 by 2400 pixels), not their home coordinates. Real ticks pin 144 with no residents and 198 with one Merchant whose home is remote. Release rebuild, focused harness and documentation checks pass; Windows NativeAOT `.cache/natural-spawn-jungle-final-win-aot-20260921` passes loop/protocol/network/world/TUI smokes.
 
 2026-09-21: Natural spawning now applies the source Underground Desert rate transform before Jungle and evil zones. `SceneMetrics` equivalence requires the non-ocean Desert tile count, `Player.Center` below surface and the full `WallID.Sets.Conversion.Sandstone`/`HardenedSand` plus Desert Fossil wall set; a real tick with wall 187 reaches final empty-population rate 72. Release rebuild, focused harness and documentation checks pass; Windows NativeAOT `.cache/natural-spawn-underground-desert-final-win-aot-20260921` passes loop/protocol/network/world/TUI smokes.

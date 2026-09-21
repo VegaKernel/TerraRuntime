@@ -1016,6 +1016,11 @@ internal sealed partial class NpcAuthority
                 spawnRate = (int)(spawnRate * .65d);
                 maxSpawns = (int)(maxSpawns * 1.3f);
             }
+            else if (biome.ZoneMeteor)
+            {
+                spawnRate = (int)(spawnRate * .4d);
+                maxSpawns = (int)(maxSpawns * 1.1f);
+            }
 
             if (biome.ZoneHallow && playerTileY > rockLayer + sourceScreenHeightTiles)
             {

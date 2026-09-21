@@ -127,6 +127,7 @@ internal readonly record struct RuntimeTownCommerceWorldFacts1458(
 internal readonly record struct VanillaTownSceneMetrics1458(
     bool ZoneSnow,
     bool ZoneJungle,
+    bool ZoneMeteor,
     bool ZoneGraveyard,
     bool ZoneUnderworld,
     bool ZoneGlowshroom,
@@ -173,6 +174,7 @@ internal sealed class VanillaTownSceneMetricsScanner1458
         int holy = 0;
         int snow = 0;
         int jungle = 0;
+        int meteor = 0;
         int evil = 0;
         int blood = 0;
         int mushroom = 0;
@@ -194,6 +196,7 @@ internal sealed class VanillaTownSceneMetricsScanner1458
                 if (type is 109 or 492 or 110 or 113 or 117 or 116 or 164 or 403 or 402) holy++;
                 if (type is 147 or 148 or 161 or 162 or 164 or 163 or 200) snow++;
                 if (type is 60 or 61 or 62 or 74 or 225 || (!world.RemixWorld && type == 226)) jungle++;
+                if (type == 37) meteor++;
                 if (type is 23 or 661 or 24 or 25 or 32 or 112 or 163 or 400 or 398 || (world.RemixWorld && type == 474)) evil++;
                 if (type is 199 or 662 or 201 or 203 or 200 or 401 or 399 or 234 or 352 || (world.RemixWorld && type == 195)) blood++;
                 if (type is 70 or 71 or 72 or 528) mushroom++;
@@ -226,6 +229,7 @@ internal sealed class VanillaTownSceneMetricsScanner1458
         bool crimson = blood >= 300;
         bool hallow = holy >= 125;
         bool zoneJungle = jungle >= 140 && !underworld;
+        bool zoneMeteor = meteor >= 75;
         bool zoneSnow = snow >= (world.SkyblockWorld ? 300 : 1500);
         bool zoneDesert = desertSand >= (world.SkyblockWorld ? 300 : 1500);
         bool glowshroom = mushroom >= 100;
@@ -243,6 +247,7 @@ internal sealed class VanillaTownSceneMetricsScanner1458
         return new VanillaTownSceneMetrics1458(
             zoneSnow,
             zoneJungle,
+            zoneMeteor,
             graveyard,
             underworld,
             glowshroom,

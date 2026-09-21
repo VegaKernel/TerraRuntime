@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Natural spawn Meteor: the SceneMetrics projection now counts active tile `37` and admits the source threshold 75. The source `0.4` rate and `1.1` cap transform runs after Jungle/evil alternatives; a tick at the exact threshold pins final empty-population rate 144. Temple, moon events, player buffs/candles/Journey and source npcSlots remain open.
+
 2026-09-21 Natural spawn Jungle: active persisted town residents are now counted from live runtime centers in the source 3840-by-2400-pixel `SceneMetrics.TownNPCRectSize`, then select the four Jungle rate/cap bands before evil zones. Ticks pin zero-resident rate 144 and one remote-home Merchant rate 198. Meteor, temple, moon events, player buffs/candles/Journey and source npcSlots remain open.
 
 2026-09-21 Natural spawn Underground Desert: the source Desert scene count, below-surface center and Sandstone/Hardened Sand/Desert Fossil wall predicate now apply the `0.2` rate and `3.0` cap transforms before Jungle and evil branches. A real tick with wall 187 pins final empty-population rate 72. Jungle town count, meteor, temple, moon events, player buffs/candles/Journey and source npcSlots remain open.
