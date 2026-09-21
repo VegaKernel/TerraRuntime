@@ -239,6 +239,7 @@ public sealed class WorldRuntime : IDisposable
         long worldInfoSyncTicks = 0;
         bool lastWorldInfoDayTime = WorldClock.DayTime;
         byte lastWorldInfoMoonPhase = (byte)WorldClock.MoonPhase;
+        long lastMoonEventProgressRevision = WorldClock.MoonEventProgressRevision;
         int worldInfoSyncPeriodTicks = checked(Math.Max(1, options.TargetTicksPerSecond * 60));
 
         GameLoop = new AuthoritativeGameLoop<ServerRuntimeState, RuntimeCommand>(
@@ -251,6 +252,23 @@ public sealed class WorldRuntime : IDisposable
             runtime =>
             {
                 runtime.Tick();
+
+                long liveMoonEventProgressRevision = WorldClock.MoonEventProgressRevision;
+                if (liveMoonEventProgressRevision != lastMoonEventProgressRevision)
+                {
+                    if (WorldClock.MoonEventActive)
+                    {
+                        var progress = new TerrariaInvasionProgressState(
+                            checked((int)WorldClock.MoonEventWaveKills),
+                            WorldClock.MoonEventWaveRequirement,
+                            WorldClock.SnowMoonActive ? (sbyte)1 : (sbyte)2,
+                            checked((sbyte)WorldClock.MoonEventWaveNumber));
+                        if (TerrariaInvasionProgressCodec.TryEncode(in progress, out byte[] progressFrame))
+                            RuntimeConnections.BroadcastToPlaying(progressFrame);
+                    }
+
+                    lastMoonEventProgressRevision = liveMoonEventProgressRevision;
+                }
 
                 worldInfoSyncTicks++;
                 byte liveMoonPhase = (byte)WorldClock.MoonPhase;

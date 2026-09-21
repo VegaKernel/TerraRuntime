@@ -53,6 +53,7 @@ public enum TerrariaMessageId : byte
     ChestName = 69,
     CatchNpc = 70,
     TeleportRequest = 73,
+    ReportInvasionProgress = 78,
     PlaceObject = 79,
     SyncPlayerChestIndex = 80,
     LoadNetModule = 82,

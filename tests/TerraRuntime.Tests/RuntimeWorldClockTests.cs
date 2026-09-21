@@ -298,10 +298,14 @@ public sealed class RuntimeWorldClockTests
             Assert.True(clock.TryAdvanceMoonEventDeath(new NpcTypeId(338), expertMode: false, masterMode: false));
 
         Assert.Equal(24f, clock.MoonEventWaveKills);
+        Assert.Equal(25, clock.MoonEventWaveRequirement);
+        Assert.Equal(24, clock.MoonEventProgressRevision);
         Assert.True(clock.TryAdvanceMoonEventDeath(new NpcTypeId(338), expertMode: false, masterMode: false));
 
         Assert.Equal(2, clock.MoonEventWaveNumber);
         Assert.Equal(0f, clock.MoonEventWaveKills);
+        Assert.Equal(40, clock.MoonEventWaveRequirement);
+        Assert.Equal(25, clock.MoonEventProgressRevision);
         Assert.Equal(25f, clock.MoonEventTotalInvasionPoints);
     }
 

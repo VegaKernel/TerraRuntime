@@ -1,8 +1,10 @@
 # TerraRuntime roadmap
 
-2026-09-21 Moon event start and dawn boundary: authenticated packet-61 actions `-4` (Pumpkin) and `-5` (Snow) now enter the authoritative world clock. The clock accepts them only at night without another Moon event, initializes wave one, requests WorldInfo, and clears flags/progress at dawn. Event definitions, source wave selection and packet-78 progress replication remain open.
+2026-09-21 Moon-event packet-78 replication: protocol-326 now encodes the source ten-byte payload and the authoritative world loop broadcasts it to every playing client after a qualifying Moon-event death. It preserves source truncation of fractional Master points, current-wave maximum, icon and post-transition wave number. Event definitions and source wave selection remain open.
 
-2026-09-21 Moon event death progress: the authoritative world clock now owns transient wave number, current-wave points and total points for Pumpkin/Snow Moon. Every server lethal-damage route invokes the source post-loot table: 21 thresholds, exact NPC point values, 1/2/2.5 difficulty scalar and zero carry-over on an advance. Event definitions, source wave selection and packet-78 progress replication remain open.
+2026-09-21 Moon event start and dawn boundary: authenticated packet-61 actions `-4` (Pumpkin) and `-5` (Snow) now enter the authoritative world clock. The clock accepts them only at night without another Moon event, initializes wave one, requests WorldInfo, and clears flags/progress at dawn. Event definitions and source wave selection remain open.
+
+2026-09-21 Moon event death progress: the authoritative world clock now owns transient wave number, current-wave points and total points for Pumpkin/Snow Moon. Every server lethal-damage route invokes the source post-loot table: 21 thresholds, exact NPC point values, 1/2/2.5 difficulty scalar and zero carry-over on an advance. Event definitions and source wave selection remain open.
 
 2026-09-21 Slime Rain King Slime progression: eligible canonical Blue-Slime-type deaths now run the source post-loot counter in all server damage paths. The event calls the player-targeted King Slime spawn boundary at 150 kills, or 75 after the first King Slime kill, then resets to negative half of its threshold; an existing King Slime blocks progress. Slime Rain population weights, player buffs/Journey and Moon event NPC waves remain open.
 

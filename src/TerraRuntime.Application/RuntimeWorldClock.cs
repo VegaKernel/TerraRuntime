@@ -197,6 +197,18 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     public float MoonEventTotalInvasionPoints { get; private set; }
 
     /// <summary>
+    /// Monotonically advances after a source-eligible Moon-event death changes the visible wave progress. The
+    /// authoritative loop uses this to emit packet 78 once per committed progress change rather than sampling the
+    /// state every tick.
+    /// </summary>
+    public long MoonEventProgressRevision { get; private set; }
+
+    /// <summary>Current source <c>NPC.MoonEventRequiredPointsPerWaveLookup[NPC.waveNumber]</c> value.</summary>
+    public int MoonEventWaveRequirement => MoonEventActive
+        ? MoonEventRequiredPointsPerWave[MoonEventWaveNumber]
+        : 0;
+
+    /// <summary>
     /// The required point totals indexed by source <c>NPC.waveNumber</c>. Index zero is deliberately unused and
     /// wave twenty is endless, with a zero requirement, exactly as TerrariaServer 1.4.5.8 declares it.
     /// </summary>
@@ -409,11 +421,15 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
         int required = MoonEventRequiredPointsPerWave[MoonEventWaveNumber];
         if (required == 0 || MoonEventWaveKills < required)
+        {
+            MoonEventProgressRevision++;
             return true;
+        }
 
         // NPC.CheckProgress* discards surplus points when a wave advances rather than carrying them forward.
         MoonEventWaveKills = 0f;
         MoonEventWaveNumber++;
+        MoonEventProgressRevision++;
         return true;
     }
 
