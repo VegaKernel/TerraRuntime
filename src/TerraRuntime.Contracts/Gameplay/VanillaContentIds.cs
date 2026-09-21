@@ -533,6 +533,9 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId RainbowRodBullet = new(79);
     public static readonly ProjectileTypeId ProbePinkLaser = new(84);
     public static readonly ProjectileTypeId RuneBlast = new(129);
+    public static readonly ProjectileTypeId DungeonBeam = new(290);
+    public static readonly ProjectileTypeId DungeonFlame = new(291);
+    public static readonly ProjectileTypeId DungeonSkull = new(293);
     public static readonly ProjectileTypeId GrenadeI = new(133);
     public static readonly ProjectileTypeId RocketI = new(134);
     public static readonly ProjectileTypeId ProximityMineI = new(135);
