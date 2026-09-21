@@ -87,6 +87,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaWallOfFleshEyeNpcBehaviorStrategy _wallOfFleshEye = new();
     private readonly VanillaWallOfFleshHungryNpcBehaviorStrategy _wallOfFleshHungry = new();
     private readonly VanillaFireImpNpcBehaviorStrategy _fireImp;
+    private readonly VanillaGoblinSorcererBehavior _goblinSorcerer;
     private readonly VanillaDarkCasterBehavior _darkCaster = new();
     private readonly VanillaSphereNpcBehaviorStrategy _burningSphere = new();
     private readonly VanillaQueenSlimeNpcBehaviorStrategy _queenSlime;
@@ -118,6 +119,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         _inner = inner;
         _random = random ?? new SystemVanillaNpcRandom();
         _fireImp = new VanillaFireImpNpcBehaviorStrategy(_random);
+        _goblinSorcerer = new VanillaGoblinSorcererBehavior(_random);
         _flyer = new VanillaServantOfCthulhuNpcBehaviorStrategy(_random);
         _eyeOfCthulhu = new VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy(_random);
         _kingSlime = new VanillaKingSlimeNpcBehaviorStrategy(kingSlimeEnvironment);
@@ -194,6 +196,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         _wallOfFlesh.SetEnvironment(environment);
         _wallOfFleshEye.SetEnvironment(environment);
         _fireImp.SetEnvironment(environment);
+        _goblinSorcerer.SetEnvironment(environment);
     }
 
     public void SetWormEnvironment(IVanillaWormEnvironment environment)
@@ -318,6 +321,8 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.WallOfFleshEye => _wallOfFleshEye,
             VanillaNpcBehaviorFamily.WallOfFleshHungry => _wallOfFleshHungry,
             VanillaNpcBehaviorFamily.FireImp => _fireImp,
+            VanillaNpcBehaviorFamily.GoblinSorcerer => _goblinSorcerer,
+            VanillaNpcBehaviorFamily.ChaosBall => _burningSphere,
             VanillaNpcBehaviorFamily.DarkCaster => _darkCaster,
             VanillaNpcBehaviorFamily.BurningSphere => _burningSphere,
             VanillaNpcBehaviorFamily.QueenSlime => _queenSlime,
@@ -410,6 +415,9 @@ public sealed class VanillaNpcTargetingAiStepper :
 
         if (source.Type == VanillaNpcIds.FireImp.Value && proposed.Type == source.Type)
             return PlanFireImpSphere(in source, in proposed, destination);
+
+        if (source.Type == VanillaNpcIds.GoblinSorcerer.Value && proposed.Type == source.Type)
+            return PlanGoblinSorcererChaosBall(in source, in proposed, destination);
 
         if (source.Type == VanillaNpcIds.SkeletronPrime.Value && proposed.Type == source.Type)
             return PlanSkeletronPrimeArms(in source, in proposed, destination);
@@ -686,6 +694,15 @@ public sealed class VanillaNpcTargetingAiStepper :
             0f,
             0f,
             byte.MaxValue);
+        return 1;
+    }
+
+    private static int PlanGoblinSorcererChaosBall(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
+    {
+        if (destination.IsEmpty || source.Ai.Ai1 != 26f || proposed.Ai.Ai1 != 25f)
+            return 0;
+        destination[0] = new NpcAiSpawnIntent(VanillaNpcIds.ChaosBall,
+            (int)proposed.PositionX + 9, (int)proposed.PositionY - 8, 0f, 0f, byte.MaxValue);
         return 1;
     }
 
@@ -2063,7 +2080,7 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public bool DefersStatePublication(in NpcSnapshot before, in NpcStateUpdate proposed) =>
         proposed.Type == before.Type &&
-        (before.TypeIdentity == VanillaNpcIds.DarkCaster || before.TypeIdentity == VanillaNpcIds.FireImp || before.TypeIdentity == VanillaNpcIds.Harpy ||
+        (before.TypeIdentity == VanillaNpcIds.DarkCaster || before.TypeIdentity == VanillaNpcIds.FireImp || before.TypeIdentity == VanillaNpcIds.GoblinSorcerer || before.TypeIdentity == VanillaNpcIds.Harpy ||
          before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon ||
          before.TypeIdentity == VanillaNpcIds.RedDevil);
 
@@ -2074,6 +2091,8 @@ public sealed class VanillaNpcTargetingAiStepper :
             return _darkCaster.Complete(in before, in committed, _context, _random, mutations);
         if (before.TypeIdentity == VanillaNpcIds.FireImp && committed.TypeIdentity == VanillaNpcIds.FireImp)
             return _fireImp.Complete(in before, in committed, _context, mutations);
+        if (before.TypeIdentity == VanillaNpcIds.GoblinSorcerer && committed.TypeIdentity == VanillaNpcIds.GoblinSorcerer)
+            return _goblinSorcerer.Complete(in before, in committed, _context, mutations);
         if ((before.TypeIdentity == VanillaNpcIds.Harpy || before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon || before.TypeIdentity == VanillaNpcIds.RedDevil) &&
             committed.TypeIdentity == before.TypeIdentity)
             return _bat.CompleteBatShooterAttackTimer(in before, in committed, _context, _random, mutations);

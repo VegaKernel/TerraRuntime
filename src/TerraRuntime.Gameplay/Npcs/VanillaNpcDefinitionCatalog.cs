@@ -71,7 +71,9 @@ public enum VanillaNpcBehaviorFamily : byte
     SnowMoonSantank = 57,
     SnowMoonIceQueen = 58,
     SnowMoonAi62 = 59,
-    SnowMoonAi63 = 60
+    SnowMoonAi63 = 60,
+    GoblinSorcerer = 61,
+    ChaosBall = 62
 }
 
 /// <summary>
@@ -379,6 +381,29 @@ public static class VanillaNpcDefinitionCatalog
                 Role: NpcArchetypeRole.Ordinary, BaseWidth: 16, BaseHeight: 16, Damage: 30, Defense: 0, LifeMax: 1,
                 KnockBackResist: 0f, Scale: 1f, NoGravityAtSpawn: true, NoTileCollideAtSpawn: true,
                 SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.GoblinSorcerer)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.GoblinSorcerer, AiStyle: VanillaNpcAiStyles.Caster,
+                BehaviorFamily: VanillaNpcBehaviorFamily.GoblinSorcerer, PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
+                Role: NpcArchetypeRole.Ordinary, BaseWidth: 18, BaseHeight: 38, Damage: 20, Defense: 2, LifeMax: 40,
+                KnockBackResist: .6f, Scale: 1f, NoGravityAtSpawn: false, NoTileCollideAtSpawn: false,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.ChaosBall)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.ChaosBall, AiStyle: VanillaNpcAiStyles.BurningSphere,
+                BehaviorFamily: VanillaNpcBehaviorFamily.ChaosBall, PhysicsFamily: VanillaNpcPhysicsFamily.NoClipFlight,
+                Role: NpcArchetypeRole.Ordinary, BaseWidth: 16, BaseHeight: 16, Damage: 20, Defense: 0, LifeMax: 1,
+                KnockBackResist: 0f, Scale: 1f, NoGravityAtSpawn: true, NoTileCollideAtSpawn: true,
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft)
+            { AlphaAtSpawn = 100 };
             return true;
         }
 

@@ -13,7 +13,8 @@ internal sealed class VanillaSphereNpcBehaviorStrategy : IVanillaNpcBehaviorStra
     {
         _ = inner;
         bool water = npc.TypeIdentity == VanillaNpcIds.WaterSphere;
-        if ((!water && npc.TypeIdentity != VanillaNpcIds.BurningSphere) ||
+        bool chaos = npc.TypeIdentity == VanillaNpcIds.ChaosBall;
+        if ((!water && !chaos && npc.TypeIdentity != VanillaNpcIds.BurningSphere) ||
             definition.AiStyle != VanillaNpcAiStyles.BurningSphere ||
             !definition.TryResolveHitbox(npc.Simulation, out var hitbox))
         {
@@ -21,7 +22,7 @@ internal sealed class VanillaSphereNpcBehaviorStrategy : IVanillaNpcBehaviorStra
             return false;
         }
 
-        bool protectedByBoss = context.GoodWorld &&
+        bool protectedByBoss = !chaos && context.GoodWorld &&
             context.CountNpcPeers(water ? VanillaNpcIds.SkeletronHead : VanillaNpcIds.WallOfFlesh) > 0;
         ushort targetSlot = npc.Target;
         float velocityX = npc.VelocityX, velocityY = npc.VelocityY;

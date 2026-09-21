@@ -35,6 +35,8 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId OldMan = new(37);
     public static readonly NpcTypeId FireImp = new(24);
     public static readonly NpcTypeId BurningSphere = new(25);
+    public static readonly NpcTypeId GoblinSorcerer = new(29);
+    public static readonly NpcTypeId ChaosBall = new(30);
     public static readonly NpcTypeId SkeletronHead = new(35);
     public static readonly NpcTypeId SkeletronHand = new(36);
     public static readonly NpcTypeId Demolitionist = new(38);
