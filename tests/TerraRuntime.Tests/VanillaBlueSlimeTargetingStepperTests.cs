@@ -123,4 +123,23 @@ public sealed class VanillaBlueSlimeTargetingStepperTests
         Assert.Equal(-6f, next.VelocityY, 5);
         Assert.Equal(-1120f, next.Ai.Ai0);
     }
+
+    [Fact]
+    public void Negative_scale_corrupt_slime_uses_its_source_reduced_timer_bonus()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        stepper.EnableBlueSlimeMotion(worldSurfaceTiles: 100d);
+        stepper.SetWorldConditions(dayTime: true, slimeRainActive: false);
+        var slime = new NpcSnapshot(
+            new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1),
+            VanillaNpcIds.CorruptSlime.Value, checked((short)VanillaNpcIds.CorruptSlime.Value),
+            100f, 100f, 0f, 0f, VanillaNpcDefinitionCatalog.DefaultTarget,
+            new NpcAiState(-5f, 0f, 1f, 0f),
+            NpcSimulationState.Initial with { Life = 170, LifeMax = 170, Scale = -1f, DirectionX = 1, DirectionY = 1 });
+
+        Assert.True(stepper.TryStepState(in slime, out NpcStateUpdate next));
+        Assert.Equal(0f, next.VelocityX, 5);
+        Assert.Equal(0f, next.VelocityY, 5);
+        Assert.Equal(-2f, next.Ai.Ai0);
+    }
 }

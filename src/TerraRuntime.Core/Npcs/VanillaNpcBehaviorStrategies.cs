@@ -363,6 +363,10 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
         float timerBonus = definition.Type == VanillaNpcIds.LavaSlime && context.RemixWorld
             ? 0f
             : profile.TimerBonus;
+        // Corrupt Slime (AI_001 type 81) takes its ordinary +4 cadence only for a nonnegative scale;
+        // the source's negative-scale branch instead contributes +1.
+        if (definition.Type == VanillaNpcIds.CorruptSlime && simulation.Scale < 0f)
+            timerBonus = 1f;
         // AI_001 Hoppin' Jack: `(1 - life / lifeMax) * 10` uses integer division in the source,
         // so every damaged state receives the full ten-tick grounded cadence bonus.
         if (definition.Type == VanillaNpcIds.HoppinJack &&
