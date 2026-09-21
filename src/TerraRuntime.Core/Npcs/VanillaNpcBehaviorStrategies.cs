@@ -279,12 +279,20 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
                 attempts += 2;
             for (int attempt = 0; attempt < attempts && ai.Ai1 == -1f; attempt++)
             {
-                if (context.IsInRockLayer(positionY) &&
+                bool selectedHeart = context.IsInRockLayer(positionY) &&
                     (context.SkyblockNoLifeCrystals || context.SkyblockLowTiles) &&
                     !context.HasNpcPeerWithAi1(VanillaNpcIds.BlueSlime, 29f) &&
-                    random.NextInt32(0, 200) == 0)
+                    random.NextInt32(0, 200) == 0;
+                if (selectedHeart)
                 {
                     ai = ai with { Ai1 = 29f };
+                }
+                // Source evaluates this after a failed Heart Slime roll, once per generic
+                // item-loop attempt. The item identity draw is Item.GetRandomVoiceItem().
+                else if (context.SkyblockLowTiles && positionY > context.WorldSurfacePixels &&
+                         random.NextInt32(0, 1000) == 0)
+                {
+                    ai = ai with { Ai1 = GetRandomVoiceChangeItem(random.NextInt32(0, 14)) };
                 }
             }
         }
@@ -605,6 +613,24 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
         item > 0f && item < VanillaItemIds.Count && (int)item is
             215 or 5484 or 5485 or 5499 or 5500 or 5501 or 5502 or 5503 or 5504 or 5505 or
             5506 or 5507 or 5508 or 5509 or 5534;
+
+    private static float GetRandomVoiceChangeItem(int choice) => choice switch
+    {
+        1 => 5500f,
+        2 => 5501f,
+        3 => 5502f,
+        4 => 5503f,
+        5 => 5504f,
+        6 => 5505f,
+        7 => 5506f,
+        8 => 5507f,
+        9 => 5508f,
+        10 => 5509f,
+        11 => 5484f,
+        12 => 5485f,
+        13 => 5534f,
+        _ => 5499f
+    };
 }
 
 internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy

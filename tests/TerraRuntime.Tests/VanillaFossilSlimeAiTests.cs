@@ -261,6 +261,31 @@ public sealed class VanillaFossilSlimeAiTests
     }
 
     [Theory]
+    [InlineData(0, 5499f)]
+    [InlineData(10, 5509f)]
+    [InlineData(11, 5484f)]
+    [InlineData(12, 5485f)]
+    [InlineData(13, 5534f)]
+    public void Low_tiles_blue_slime_selects_voice_item_after_a_failed_heart_roll(int voiceChoice, float expectedItem)
+    {
+        var stepper = CreateStepper(skyblockNoFossils: false, new SequenceRandom([1, 0, voiceChoice]),
+            skyblockLowTiles: true);
+        stepper.SetWorldBounds(widthTiles: 400, worldSurfaceTiles: 50d, rockLayerTiles: 99d);
+        NpcSnapshot blue = Snapshot(VanillaNpcIds.BlueSlime, positionY: 1601f, ai1: 0f) with
+        {
+            Simulation = NpcSimulationState.Initial with
+            {
+                Life = 25, LifeMax = 25, BaseLifeMax = 25, Scale = 1f, DirectionX = 1, DirectionY = 1
+            }
+        };
+
+        Assert.True(stepper.TryStepState(in blue, out NpcStateUpdate next));
+        Assert.Equal(expectedItem, next.Ai.Ai1);
+        Assert.Equal(75, next.Simulation.Life);
+        Assert.Equal(75, next.Simulation.LifeMax);
+    }
+
+    [Theory]
     [InlineData(215f)]
     [InlineData(5484f)]
     [InlineData(5485f)]
