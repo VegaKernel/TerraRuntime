@@ -1,6 +1,8 @@
 # TerraRuntime roadmap
 
-2026-09-21 Natural spawn npcSlots: ordinary supported NPC population now carries the source per-NPC slot weights before cap and rate bands: Fire Imp 3, Bone Serpent 6, Cave/Hell/Lava Bat .5, Demon/Voodoo Demon 2, and default 1 for the other admitted base types. Two nearby Imps fill six slots and stop before the daytime cap-five rate roll. Slime Rain weights, release-owner state, net-variant slot scaling, moon events and player buffs/Journey remain open.
+2026-09-21 Natural spawn net-variant slots: admitted source net variants `-11…-23`, `-38…-43` and `-56…-65` now scale their base `npcSlots`; `-1…-10` deliberately retain unscaled slime slots. The Remix 1.3 Eater/Crimera factor is included. A Little Eater occupies .85 slots and retains rate 360. Slime Rain spawning, release-owner state, moon events and player buffs/Journey remain open.
+
+2026-09-21 Natural spawn npcSlots: ordinary supported NPC population now carries the source per-NPC slot weights before cap and rate bands: Fire Imp 3, Bone Serpent 6, Cave/Hell/Lava Bat .5, Demon/Voodoo Demon 2, and default 1 for the other admitted base types. Two nearby Imps fill six slots and stop before the daytime cap-five rate roll. Slime Rain weights, release-owner state, moon events and player buffs/Journey remain open.
 
 2026-09-21 Natural spawn active rectangle: nearby population now follows `NPC.CheckActive`'s 4032-by-2520-pixel body-intersection rectangle rather than a 1600-pixel radial approximation; a tick pins the one-NPC rate at 420. Source `npcSlots` weighting, moon events and player buffs/Journey remain open.
 

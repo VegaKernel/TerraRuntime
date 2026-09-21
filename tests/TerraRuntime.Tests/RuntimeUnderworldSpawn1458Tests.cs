@@ -562,6 +562,38 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     }
 
     [Fact]
+    public void Natural_population_uses_source_net_variant_slot_scale()
+    {
+        var npcs = new RuntimeNpcStore();
+        var littleEater = new NpcStateUpdate(VanillaNpcIds.EaterOfSouls.Value,
+            (short)VanillaNpcNetVariantCatalog.LittleEater.Value, 3_200, 4_800, 0, 0, 0, default,
+            NpcSimulationState.Initial);
+        Assert.True(npcs.TrySpawnVanilla(in littleEater, out _));
+        var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
+        RuntimeTownCommerceWorldFacts1458 world = default;
+        world = world with { WorldSurface = 350, RockLayer = 600 };
+        // Little Eater's SetDefaultsFromNetId branch contributes .85 slots, which stays in the
+        // empty-population band below one slot. The unscaled base count would select 420 instead.
+        var random = new RateRejectingRandom(360);
+        var state = new ServerRuntimeState(npcs: npcs, npcAiStepper: new IdleNpcStepper(), worldTiles: tiles,
+            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+            townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+            naturalSpawnRandom: random, worldProgression: new RuntimeWorldProgressionMutations());
+        var slots = new PlayerSlotPool(1);
+        Assert.True(slots.TryAcquireConnection(out var lease));
+        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        session.ObserveWorldRequest(); session.ObserveSectionRequest();
+        var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(833), session.Handle);
+        state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
+            new PlayerSpawnCommitRequest(session.Handle.Slot, 200, 300, 0, 0, 0, 0, 0)));
+
+        state.Tick();
+
+        random.AssertConsumed();
+        Assert.Equal(1, npcs.ActiveCount);
+    }
+
+    [Fact]
     public void Source_surface_flag_includes_the_ground_row_at_world_surface()
     {
         var npcs = new RuntimeNpcStore();

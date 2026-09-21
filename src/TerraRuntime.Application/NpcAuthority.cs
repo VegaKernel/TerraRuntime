@@ -1261,21 +1261,38 @@ internal sealed partial class NpcAuthority
             int npcRight = npcLeft + activeRangeX * 2;
             int npcBottom = npcTop + activeRangeY * 2;
             if (npcLeft < playerRight && playerLeft < npcRight && npcTop < playerBottom && playerTop < npcBottom)
-                nearby += GetNaturalSpawnSlots(npc.TypeIdentity);
+                nearby += GetNaturalSpawnSlots(in npc);
         }
         return nearby;
     }
 
-    private static float GetNaturalSpawnSlots(NpcTypeId type) => type switch
+    private float GetNaturalSpawnSlots(in NpcSnapshot npc)
     {
+        float slots = npc.TypeIdentity switch
+        {
         // TerrariaServer 1.4.5.8 NPC.SetDefaults source weights for the currently admitted natural types.
         // Other admitted base definitions retain the SetDefaults default of one slot.
-        var value when value == VanillaNpcIds.FireImp => 3f,
-        var value when value == VanillaNpcIds.BoneSerpentHead => 6f,
-        var value when value == VanillaNpcIds.CaveBat || value == VanillaNpcIds.Hellbat || value == VanillaNpcIds.LavaBat => .5f,
-        var value when value == VanillaNpcIds.Demon || value == VanillaNpcIds.VoodooDemon => 2f,
-        _ => 1f
-    };
+            var value when value == VanillaNpcIds.FireImp => 3f,
+            var value when value == VanillaNpcIds.BoneSerpentHead => 6f,
+            var value when value == VanillaNpcIds.CaveBat || value == VanillaNpcIds.Hellbat || value == VanillaNpcIds.LavaBat => .5f,
+            var value when value == VanillaNpcIds.Demon || value == VanillaNpcIds.VoodooDemon => 2f,
+            _ => 1f
+        };
+
+        // SetDefaultsFromNetId only scales npcSlots for these admitted families. The first slime-like
+        // variants (-1 through -10) use visual/stat scale but deliberately retain their base slot count.
+        if ((npc.NetIdentity.Value is >= -23 and <= -11 or >= -43 and <= -38 or >= -65 and <= -56) &&
+            VanillaNpcNetVariantCatalog.TryGet(npc.NetIdentity, out VanillaNpcNetVariantDefinition variant))
+        {
+            float scale = variant.Scale;
+            if (naturalSpawnWorldFacts?.RemixWorld == true &&
+                npc.NetIdentity.Value is -11 or -12 or -22 or -23)
+                scale *= 1.3f;
+            slots *= scale;
+        }
+
+        return slots;
+    }
 
     private int CountNearbyTownNpcs(float centerX, float centerY)
     {
