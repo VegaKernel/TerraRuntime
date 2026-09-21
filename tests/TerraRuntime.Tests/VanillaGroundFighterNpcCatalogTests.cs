@@ -37,6 +37,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         [VanillaNpcIds.SkeletonTopHat, 18, 40, 23, 0, 115, 0.65f, 1f, 1f, false, false],
         [VanillaNpcIds.SkeletonAstronaut, 18, 40, 18, 10, 65, 0.5f, 1f, 1f, false, false],
         [VanillaNpcIds.SkeletonAlien, 18, 40, 22, 10, 70, 0.4f, 1.05f, 1f, false, false],
+        [VanillaNpcIds.ZombieXmas, 18, 40, 14, 6, 45, 0.5f, 1f, 1f, true, false],
+        [VanillaNpcIds.ZombieSweater, 18, 40, 14, 6, 45, 0.5f, 1f, 1f, true, false],
     ];
 
     [Theory]
@@ -85,8 +87,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(51, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(49, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(53, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(51, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
@@ -150,6 +152,19 @@ public sealed class VanillaGroundFighterNpcCatalogTests
             Assert.Equal(1f, behavior.BaseMaximumHorizontalSpeed, 5);
             Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
             Assert.False(behavior.ScaleAdjustsMaximumHorizontalSpeed);
+            Assert.Equal(VanillaGroundFighterMotionProfile.Standard, behavior.MotionProfile);
+        }
+    }
+
+    [Fact]
+    public void Christmas_zombies_keep_the_source_scale_adjusted_ai003_profile()
+    {
+        foreach (NpcTypeId type in new[] { VanillaNpcIds.ZombieXmas, VanillaNpcIds.ZombieSweater })
+        {
+            Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(type, out var behavior));
+            Assert.Equal(1f, behavior.BaseMaximumHorizontalSpeed, 5);
+            Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
+            Assert.True(behavior.ScaleAdjustsMaximumHorizontalSpeed);
             Assert.Equal(VanillaGroundFighterMotionProfile.Standard, behavior.MotionProfile);
         }
     }

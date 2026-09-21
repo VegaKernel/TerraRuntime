@@ -46,6 +46,9 @@ public static class VanillaGroundFighterNpcCatalog
         ,Fighter(VanillaNpcIds.SkeletonTopHat, 18, 40, 23, 0, 115, .65f, 1f, 1f)
         ,Fighter(VanillaNpcIds.SkeletonAstronaut, 18, 40, 18, 10, 65, .5f, 1f, 1f)
         ,Fighter(VanillaNpcIds.SkeletonAlien, 18, 40, 22, 10, 70, .4f, 1.05f, 1f)
+        // TerrariaServer 1.4.5.8 NPC.SetDefaults (331/332) and AI_003_Fighters num108 scaling.
+        ,Fighter(VanillaNpcIds.ZombieXmas, 18, 40, 14, 6, 45, .5f, 1f, 1f, scaleAdjustsSpeed: true)
+        ,Fighter(VanillaNpcIds.ZombieSweater, 18, 40, 14, 6, 45, .5f, 1f, 1f, scaleAdjustsSpeed: true)
         ,Fighter(new NpcTypeId(78), 18, 40, 50, 16, 130, .6f, 1f, 1f,
             acceleration: .05f, motionProfile: VanillaGroundFighterMotionProfile.HalfHealthBerserker, overspeedGroundDamping: .7f)
         ,Fighter(new NpcTypeId(79), 18, 40, 60, 18, 180, .5f, 1f, 1f,
@@ -109,6 +112,8 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.SkeletonTopHat,
         VanillaNpcIds.SkeletonAstronaut,
         VanillaNpcIds.SkeletonAlien,
+        VanillaNpcIds.ZombieXmas,
+        VanillaNpcIds.ZombieSweater,
         new(78), new(79), new(80), new(243), new(251), new(254), new(255), new(257), new(258), new(287), new(630),
         new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280)
     ];
