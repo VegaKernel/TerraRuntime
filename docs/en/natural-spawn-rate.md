@@ -28,4 +28,6 @@ Population also uses the source `NPC.SetDefaults` `npcSlots` weights for each cu
 
 Admitted negative net variants `-11…-23`, `-38…-43`, and `-56…-65` additionally multiply their source slots by their `SetDefaultsFromNetId` scale; slime-like variants `-1…-10` retain unscaled slots.
 
+While Slime Rain is active, each eligible player receives the separate source `NPC.SlimeRainSpawns` pass before the ordinary natural-spawn attempt. It preserves the 15-slot surface gate, the 45-to-495 interval, a 1920-by-1200 screen sample, solid and housing rejection, and the Pinky/Purple/Green selection order. The ordinary attempt still follows even when the event pass spawns a slime.
+
 Pumpkin Moon and Snow Moon use their source night and Remix spawn-rate transforms, then apply the final surface-or-Remix rate 20 override before later invasion handling.

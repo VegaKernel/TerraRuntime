@@ -497,6 +497,40 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     }
 
     [Fact]
+    public void Slime_rain_runs_its_source_spawn_pass_before_the_ordinary_rate_roll()
+    {
+        var npcs = new RuntimeNpcStore();
+        var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
+        // SlimeRainSpawns: 1/45, a 1920-by-1200 screen sample above the player, then Pinky / Purple /
+        // Green selection. NPC.Spawner still makes the ordinary empty-population 1/360 attempt after it.
+        var random = new SlimeRainSpawnRandom();
+        RuntimeTownCommerceWorldFacts1458 world = default;
+        world = world with { WorldSurface = 350, RockLayer = 600 };
+        var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
+            worldClock: new RuntimeWorldClock(1000, true, default, slimeRainTime: 1, dayRate: 0),
+            townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+            naturalSpawnRandom: random, worldProgression: new RuntimeWorldProgressionMutations());
+        var slots = new PlayerSlotPool(1);
+        Assert.True(slots.TryAcquireConnection(out var lease));
+        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        session.ObserveWorldRequest(); session.ObserveSectionRequest();
+        var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(835), session.Handle);
+        state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
+            new PlayerSpawnCommitRequest(session.Handle.Slot, 200, 300, 0, 0, 0, 0, 0)));
+
+        state.Tick();
+
+        random.AssertConsumed();
+        var snapshots = new NpcSnapshot[npcs.Capacity];
+        Assert.Equal(1, npcs.CopyActive(snapshots));
+        Assert.Equal(VanillaNpcIds.BlueSlime, snapshots[0].TypeIdentity);
+        Assert.Equal(VanillaNpcNetVariantCatalog.GreenSlime, snapshots[0].NetIdentity);
+        Assert.Equal(session.Handle.Slot.Value, snapshots[0].Target);
+        Assert.Equal(3197.5f, snapshots[0].PositionX);
+        Assert.Equal(3200.30005f, snapshots[0].PositionY);
+    }
+
+    [Fact]
     public void Nearby_server_owned_fairy_uses_the_source_post_candle_spawn_modifier()
     {
         var npcs = new RuntimeNpcStore();
@@ -821,6 +855,28 @@ public sealed class RuntimeUnderworldSpawn1458Tests
         }
 
         public void AssertConsumed() => Assert.Equal(1, call);
+    }
+
+    private sealed class SlimeRainSpawnRandom : IVanillaNpcRandom
+    {
+        private int call;
+
+        public int NextInt32(int inclusiveMin, int exclusiveMax)
+        {
+            switch (call++)
+            {
+                case 0: Assert.Equal((0, 45), (inclusiveMin, exclusiveMax)); return 0;
+                case 1: Assert.Equal((1288, 5128), (inclusiveMin, exclusiveMax)); return 3200;
+                case 2: Assert.Equal((2989, 3889), (inclusiveMin, exclusiveMax)); return 3200;
+                case 3: Assert.Equal((0, 200), (inclusiveMin, exclusiveMax)); return 1;
+                case 4: Assert.Equal((0, 10), (inclusiveMin, exclusiveMax)); return 1;
+                case 5: Assert.Equal((0, 5), (inclusiveMin, exclusiveMax)); return 0;
+                case 6: Assert.Equal((0, 360), (inclusiveMin, exclusiveMax)); return 1;
+                default: throw new Xunit.Sdk.XunitException("Unexpected Slime Rain random draw.");
+            }
+        }
+
+        public void AssertConsumed() => Assert.Equal(7, call);
     }
 
     private sealed class NeverCalledRandom : IVanillaNpcRandom

@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Natural Slime Rain: active server-owned Slime Rain now executes `NPC.SlimeRainSpawns` before each eligible player's regular spawn attempt. The source 15-slot/surface gate, rate curve, 1920-by-1200 sample, collision and housing rejection, and Pinky/Purple/Green random order are implemented. A tick pins all seven RNG calls, Green Slime net-id `-3`, and the ordinary rate-360 attempt that follows. Slime Rain population weights, King Slime kill progression, player buffs/Journey and Moon event NPC waves remain open.
+
 2026-09-21 Natural spawn Moon events: authoritative runtime Pumpkin/Snow Moon flags now reach WorldInfo and the source `GetSpawnRate` transforms, including the final surface/Remix rate-20 override and active-player cap. Event wave NPC selection remains open.
 
 2026-09-21 Natural spawn net-variant slots: admitted source net variants `-11…-23`, `-38…-43` and `-56…-65` now scale their base `npcSlots`; `-1…-10` deliberately retain unscaled slime slots. The Remix 1.3 Eater/Crimera factor is included. A Little Eater occupies .85 slots and retains rate 360. Slime Rain spawning, release-owner state, moon events and player buffs/Journey remain open.

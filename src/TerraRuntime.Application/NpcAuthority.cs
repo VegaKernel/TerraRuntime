@@ -814,6 +814,9 @@ internal sealed partial class NpcAuthority
             // The server refreshes Player.nearbyActiveNPCs before NPC.Spawner asks for its rate. Retain one
             // authoritative snapshot for both source checks so a spawn attempt cannot observe two different caps.
             float nearbyNpcCount = CountNearbyOrdinaryNpcs(in player);
+            if (worldClock.SlimeRainActive)
+                TrySpawnSlimeRainNpc(in player, nearbyNpcCount);
+
             GetNaturalSpawnBudget(in player, nearbyNpcCount, out int spawnRate, out int maxSpawns);
             if (nearbyNpcCount >= maxSpawns || naturalSpawnRandom.NextInt32(0, spawnRate) != 0)
                 continue;
@@ -844,6 +847,100 @@ internal sealed partial class NpcAuthority
                 AppliedSpawns++;
             return;
         }
+    }
+
+    private void TrySpawnSlimeRainNpc(in VanillaNpcTargetCandidate player, float nearbyNpcCount)
+    {
+        // NPC.SlimeRainSpawns runs once for every eligible player immediately before TrySpawnAnNPC.
+        // It deliberately does not consume the ordinary spawn attempt: vanilla can produce one Slime Rain
+        // slime and one normal natural NPC on the same world tick.
+        const int screenWidthPixels = 1920;
+        const int screenHeightPixels = 1200;
+        const float maximumNearbySlots = 15f;
+        WorldTileStore tiles = worldTiles!;
+        double playerTop = player.CenterY - player.HitboxHeight * .5f;
+        double surface = tiles.WorldSurfaceTiles ?? naturalSpawnWorldFacts?.WorldSurface ?? tiles.Dimensions.HeightTiles / 3d;
+        if (playerTop > surface * 16d + screenHeightPixels / 2d || nearbyNpcCount > maximumNearbySlots)
+            return;
+
+        float occupancy = nearbyNpcCount / maximumNearbySlots;
+        int spawnRate = 45 + (int)(450f * occupancy);
+        if (CaptureDifficulty() >= 2f)
+            spawnRate = (int)(spawnRate * .85d);
+        if (naturalSpawnRandom.NextInt32(0, spawnRate) != 0)
+            return;
+
+        int minimumX = (int)(player.CenterX - screenWidthPixels);
+        int maximumX = minimumX + screenWidthPixels * 2;
+        int minimumY = (int)(player.CenterY - screenHeightPixels * 1.5d);
+        int maximumY = (int)(player.CenterY - screenHeightPixels * .75d);
+        int tileX = naturalSpawnRandom.NextInt32(minimumX, maximumX) / 16;
+        int tileY = naturalSpawnRandom.NextInt32(minimumY, maximumY) / 16;
+        if (tileX < 10 || tileX >= tiles.Dimensions.WidthTiles - 10 ||
+            tileY < surface * .3d || tileY > surface ||
+            HasSolidTiles(tileX - 3, tileX + 3, tileY - 5, tileY + 2) ||
+            IsHouseWall(tiles.Get(tileX, tileY).Wall))
+        {
+            return;
+        }
+
+        NpcNetId netId = SelectSlimeRainNetId(CaptureDifficulty() >= 2f);
+        if (!VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.BlueSlime, netId, out VanillaNpcDefinition definition) ||
+            !VanillaNpcAiCoverageCatalog.TryGet(VanillaNpcIds.BlueSlime, out _))
+        {
+            return;
+        }
+
+        var update = new NpcStateUpdate(
+            Type: VanillaNpcIds.BlueSlime.Value,
+            NetId: checked((short)netId.Value),
+            PositionX: tileX * 16f + 8f - definition.Width * .5f,
+            PositionY: tileY * 16f,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: player.Slot,
+            Ai: default,
+            Simulation: NpcSimulationState.Initial with { TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft });
+        if (npcs.TrySpawnVanilla(in update, out _))
+            AppliedSpawns++;
+    }
+
+    private NpcNetId SelectSlimeRainNetId(bool expertMode)
+    {
+        // The source first gives Pinky its independent 1/200 roll. The following branches retain their
+        // exact order so the shared NPC random stream agrees with NPC.SlimeRainSpawns.
+        if (naturalSpawnRandom.NextInt32(0, 200) == 0)
+            return VanillaNpcNetVariantCatalog.Pinky;
+        if (expertMode)
+        {
+            if (naturalSpawnRandom.NextInt32(0, 7) == 0)
+                return VanillaNpcNetVariantCatalog.PurpleSlime;
+            return naturalSpawnRandom.NextInt32(0, 3) == 0
+                ? VanillaNpcNetVariantCatalog.GreenSlime
+                : new NpcNetId(VanillaNpcIds.BlueSlime.Value);
+        }
+        if (naturalSpawnRandom.NextInt32(0, 10) == 0)
+            return VanillaNpcNetVariantCatalog.PurpleSlime;
+        return naturalSpawnRandom.NextInt32(0, 5) < 2
+            ? VanillaNpcNetVariantCatalog.GreenSlime
+            : new NpcNetId(VanillaNpcIds.BlueSlime.Value);
+    }
+
+    private bool HasSolidTiles(int left, int right, int top, int bottom)
+    {
+        WorldTileStore tiles = worldTiles!;
+        if (left < 0 || top < 0 || right >= tiles.Dimensions.WidthTiles || bottom >= tiles.Dimensions.HeightTiles)
+            return true;
+        for (int x = left; x <= right; x++)
+        {
+            for (int y = top; y <= bottom; y++)
+            {
+                WorldTile tile = tiles.Get(x, y);
+                if (tile.IsActive && !tile.IsActuated && VanillaTileCollisionCatalog.IsSolid(tile.TileType))
+                    return true;
+            }
+        }
+        return false;
     }
 
     private void GetNaturalSpawnBudget(
