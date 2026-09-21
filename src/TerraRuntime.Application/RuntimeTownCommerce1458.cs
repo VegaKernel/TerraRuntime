@@ -73,7 +73,8 @@ internal readonly record struct RuntimeTownCommerceWorldFacts1458(
     int DungeonY,
     bool ZenithWorld = false,
     bool SandstormHappening = false,
-    bool InvasionActive = false)
+    bool InvasionActive = false,
+    bool NoTrapsWorld = false)
 {
     public static RuntimeTownCommerceWorldFacts1458 FromMetadata(WorldFileRuntimeMetadata metadata)
     {
@@ -122,7 +123,8 @@ internal readonly record struct RuntimeTownCommerceWorldFacts1458(
             metadata.DungeonY,
             metadata.ZenithWorld,
             metadata.SandstormHappening,
-            metadata.InvasionType is >= 1 and <= 4);
+            metadata.InvasionType is >= 1 and <= 4,
+            metadata.NoTrapsWorld);
     }
 }
 

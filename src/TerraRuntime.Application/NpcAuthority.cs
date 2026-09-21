@@ -356,7 +356,8 @@ internal sealed partial class NpcAuthority
                     CaptureDifficulty() >= 3f,
                     worldClock.WindSpeedCurrent,
                     naturalSpawnWorldFacts?.RemixWorld ?? false,
-                    worldClock.Time);
+                    worldClock.Time,
+                    naturalSpawnWorldFacts?.NoTrapsWorld ?? false);
                 vanillaTargeting.SetMoonEventState(worldClock.PumpkinMoonActive);
             }
         }
