@@ -221,6 +221,7 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
         float positionX = npc.PositionX;
         float positionY = npc.PositionY;
         float velocityX = npc.VelocityX;
+        float velocityY = npc.VelocityY;
         // NPC.AI_001 initializes a contained Sand Slime item only once. In a Skyblock world
         // whose generation scan found no Fossil blocks, it has a one-in-five Fossil Slime roll.
         if (definition.Type == VanillaNpcIds.SandSlime && ai.Ai1 == 0f)
@@ -314,6 +315,13 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
                 KnockBackResist = 0f
             };
         }
+        // These source item states apply their extra vertical impulse before the shared slime
+        // movement branch; ordinary world physics adds its usual gravity later in the tick.
+        const float vanillaNpcGravity = .3f;
+        if (ai.Ai1 == 3f && velocityY > 0f)
+            velocityY += vanillaNpcGravity * 2f;
+        if (ai.Ai1 == 751f && velocityY != 0f)
+            velocityY -= vanillaNpcGravity * .6f;
         // Heart and Hell Slime compare against NPC.defLifeMax, which is the spawn-time value after
         // SetDefaults/scaling. The runtime retains that baseline independently so their initialization
         // does not repeat after a state-only update.
@@ -528,7 +536,7 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
         var input = new VanillaBlueSlimeMotionInput(
             PositionX: positionX,
             VelocityX: velocityX,
-            VelocityY: npc.VelocityY,
+            VelocityY: velocityY,
             OldVelocityY: simulation.OldVelocityY,
             DirectionX: simulation.DirectionX,
             DirectionY: simulation.DirectionY,

@@ -131,6 +131,21 @@ public sealed class VanillaFossilSlimeAiTests
     }
 
     [Theory]
+    [InlineData(3f, 1f, 1.6f)]
+    [InlineData(3f, -1f, -1f)]
+    [InlineData(751f, 1f, .82f)]
+    [InlineData(751f, -1f, -1.18f)]
+    public void Stone_and_cloud_slimes_apply_their_source_airborne_vertical_impulse(
+        float item, float velocityY, float expectedVelocityY)
+    {
+        var stepper = CreateStepper(skyblockNoFossils: false, new ThrowingRandom());
+        NpcSnapshot slime = Snapshot(VanillaNpcIds.BlueSlime, positionY: 1601f, ai1: item) with { VelocityY = velocityY };
+
+        Assert.True(stepper.TryStepState(in slime, out NpcStateUpdate next));
+        Assert.Equal(expectedVelocityY, next.VelocityY, 4);
+    }
+
+    [Theory]
     [InlineData(25, 50)]
     [InlineData(9, 9)]
     public void Heart_slime_uses_the_spawn_life_baseline_only_once(int life, int expectedLife)
