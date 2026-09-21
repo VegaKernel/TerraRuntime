@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Queen Slime teleport geometry: AI_121 now applies the source 1.0→0.5→1.0 live scale transition using its integer bottom-center anchor. The completed state-2 teleport tick is hidden and invulnerable, then state 1 restores normal geometry over its 30-tick materialization.
+
 2026-09-21 Queen Slime minions: AI_121 now uses the source `NewNPC` bottom-center placement and retains the per-minion random-draw sequence for position, blue/pink/purple type, horizontal/vertical launch velocity and initial jump delay. The HP threshold remains source-owned through `localAI[0]`.
 
 2026-09-21 Queen Slime phase boundary: AI_121 now applies its post-state half-health transition. Crossing the source `life < lifeMax / 2` boundary resets the active attack's `ai[0..2]` and moves the minion HP anchor to current life, while retaining the normally updated teleport/line-of-sight pressure in `ai[3]`.

@@ -96,6 +96,8 @@ internal sealed class VanillaQueenSlimeNpcBehaviorStrategy : IVanillaNpcBehavior
 
         bool noGravity = false;
         bool noTileCollide = false;
+        bool teleporting = false;
+        float nextScale = simulation.Scale;
         if (phaseTwo)
         {
             float frameTimer = local.Ai3 + 1f;
@@ -148,6 +150,7 @@ internal sealed class VanillaQueenSlimeNpcBehaviorStrategy : IVanillaNpcBehavior
 
             case 1:
                 ai = ai with { Ai1 = ai.Ai1 + 1f };
+                nextScale = 0.5f + Math.Clamp(ai.Ai1 / 30f, 0f, 1f) * 0.5f;
                 if (ai.Ai1 >= 30f)
                 {
                     ai = ai with { Ai0 = 0f, Ai1 = 0f };
@@ -157,11 +160,13 @@ internal sealed class VanillaQueenSlimeNpcBehaviorStrategy : IVanillaNpcBehavior
 
             case 2:
                 ai = ai with { Ai1 = ai.Ai1 + 1f };
+                nextScale = 0.5f + Math.Clamp((60f - ai.Ai1) / 60f, 0f, 1f) * 0.5f;
                 if (ai.Ai1 >= 60f)
                 {
                     x = local.Ai1 - hitbox.Width * 0.5f;
                     y = local.Ai2 - hitbox.Height;
                     ai = ai with { Ai0 = 1f, Ai1 = 0f };
+                    teleporting = true;
                 }
                 break;
 
@@ -261,6 +266,17 @@ internal sealed class VanillaQueenSlimeNpcBehaviorStrategy : IVanillaNpcBehavior
                 break;
         }
 
+        // NPC.AI (1.4.5.8, style 121) rescales its live hitbox after the state body while preserving the
+        // integer bottom-center. State 2 is hidden/invulnerable only on the completed teleport tick.
+        if (nextScale != simulation.Scale && definition.TryResolveHitbox(nextScale, out VanillaNpcHitboxSize nextHitbox))
+        {
+            x += hitbox.Width / 2;
+            y += hitbox.Height;
+            x -= nextHitbox.Width / 2;
+            y -= nextHitbox.Height;
+            simulation = simulation with { Scale = nextScale };
+        }
+
         // The source checks the phase boundary after the state body: crossing half health cancels whichever
         // attack was active, while retaining ai[3]'s teleport/line-of-sight pressure. localAI[0] then becomes
         // the new HP anchor before the phase-two minion threshold is evaluated.
@@ -277,7 +293,15 @@ internal sealed class VanillaQueenSlimeNpcBehaviorStrategy : IVanillaNpcBehavior
         if (life + minionThreshold < local.Ai0)
             local = local with { Ai0 = life };
 
-        simulation = simulation with { NoGravity = noGravity, NoTileCollide = noTileCollide, LocalAi = local, JustHit = false };
+        simulation = simulation with
+        {
+            NoGravity = noGravity,
+            NoTileCollide = noTileCollide,
+            Hidden = teleporting,
+            DontTakeDamage = teleporting,
+            LocalAi = local,
+            JustHit = false
+        };
         next = new NpcStateUpdate(npc.Type, npc.NetId, x, y, vx, vy, targetSlot, ai, simulation);
         return true;
     }
