@@ -348,7 +348,7 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] add Goblin Sorcerer/Chaos Ball, Tim/Tim Fireball and Rune Wizard/Rune Blast AI_008 vertical: typed defaults, source timer and post-commit random teleport search, `ai[1]` countdown, source child spawn coordinates and lifecycle; Rune Wizard has its 75-tick cadence, alpha fade and post-commit randomized `Rune Blast` velocity; only Goblin Sorcerer bypasses the global firing-distance check;
 - [x] add Hardmode Dungeon Skeleton caster AI_008 types `281..286`: typed defaults and `SetDefaults` timer initialization (`400`, Rune Wizard `450`, beam casters `390/400`), source attack cadence and Dungeon/Skeletron teleport placement boundaries, committed skull/beam/flame variants `293/290/291`, source aim jitter/lead and Flame target coordinates;
 - [x] complete AI_016 for Goldfish/Corrupt Goldfish/Piranha/Shark/Angler Fish/Arapaima/Blood Feeder/Crimson Goldfish/Gold Goldfish/Pupfish/Dolphin/Pufferfish/Orca: source defaults, passive/hostile targeting, slope/collision/depth steering, wet pursuit profiles, dry flop RNG, Dolphin breach/surface states and Pufferfish inflation/water-line state;
-- [ ] remaining bat special branches, mimics, remaining critters and event enemy families;
+- [ ] remaining bat special branches, mimics, remaining critters and event enemy families; the AI_003 Moon-event fighter pairs `305..314` now use their source `2/1.25/2.25/1.5/1` speed bands, and `305..309` retain their grounded relaunch and airborne steering branch.
 - [ ] spawn pool, biome, time, weather and progression eligibility.
 
 ## N3 — Bosses

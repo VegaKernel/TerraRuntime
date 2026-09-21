@@ -41,6 +41,7 @@ public readonly record struct VanillaZombieMotionInput(
     public int SpriteDirection { get; init; } = -1;
     public bool ScaleAdjustsMaximumHorizontalSpeed { get; init; } = true;
     public float ReversingVelocityDamping { get; init; } = 1f;
+    public VanillaGroundFighterMotionProfile MotionProfile { get; init; } = VanillaGroundFighterMotionProfile.Standard;
 }
 
 public readonly record struct VanillaZombieMotionResult(
@@ -54,6 +55,13 @@ public readonly record struct VanillaZombieMotionResult(
 {
     public int TimeLeft { get; init; }
     public int SpriteDirection { get; init; }
+}
+
+/// <summary>Type-specific horizontal movement branches inside TerrariaServer 1.4.5.8 AI_003_Fighters.</summary>
+public enum VanillaGroundFighterMotionProfile : byte
+{
+    Standard = 0,
+    MoonEventLeaper = 1
 }
 
 /// <summary>
@@ -86,6 +94,7 @@ public static class VanillaZombieMotion
             input.DirectionX is < -1 or > 1 ||
             input.DirectionY is < -1 or > 1 ||
             input.SpriteDirection is < -1 or > 1 ||
+            !Enum.IsDefined(input.MotionProfile) ||
             !float.IsFinite(input.ReversingVelocityDamping) ||
             input.ReversingVelocityDamping <= 0f || input.ReversingVelocityDamping > 1f ||
             input.Target > byte.MaxValue ||
@@ -167,7 +176,23 @@ public static class VanillaZombieMotion
             maximumSpeed *= 1f + (1f - input.Scale);
         if ((velocityX > 0f && directionX < 0) || (velocityX < 0f && directionX > 0))
             velocityX *= input.ReversingVelocityDamping;
-        if (velocityX < -maximumSpeed || velocityX > maximumSpeed)
+        if (input.MotionProfile == VanillaGroundFighterMotionProfile.MoonEventLeaper)
+        {
+            if (velocityY == 0f)
+            {
+                velocityX *= 0.85f;
+                if (velocityX is > -0.3f and < 0.3f)
+                {
+                    velocityY = -7f;
+                    velocityX = maximumSpeed * directionX;
+                }
+            }
+            else if (spriteDirection == directionX)
+            {
+                velocityX = (velocityX * 10f + maximumSpeed * directionX) / 11f;
+            }
+        }
+        else if (velocityX < -maximumSpeed || velocityX > maximumSpeed)
         {
             if (velocityY == 0f)
                 velocityX *= 0.8f;
@@ -231,7 +256,8 @@ public readonly record struct VanillaGroundFighterBehaviorParameters(
     float PursuitGapSpeedMultiplier,
     bool ScaleAdjustsMaximumHorizontalSpeed = false,
     bool CloseRangeLunge = false,
-    float ReversingVelocityDamping = 1f)
+    float ReversingVelocityDamping = 1f,
+    VanillaGroundFighterMotionProfile MotionProfile = VanillaGroundFighterMotionProfile.Standard)
 {
     public bool IsValid =>
         float.IsFinite(BaseMaximumHorizontalSpeed) && BaseMaximumHorizontalSpeed > 0f &&
@@ -246,7 +272,8 @@ public readonly record struct VanillaGroundFighterBehaviorParameters(
         IsJumpVelocity(ThreeTileJumpVelocity) &&
         IsJumpVelocity(PursuitGapJumpVelocity) &&
         float.IsFinite(PursuitGapSpeedMultiplier) && PursuitGapSpeedMultiplier > 0f &&
-        float.IsFinite(ReversingVelocityDamping) && ReversingVelocityDamping is > 0f and <= 1f;
+        float.IsFinite(ReversingVelocityDamping) && ReversingVelocityDamping is > 0f and <= 1f &&
+        Enum.IsDefined(MotionProfile);
 
     private static bool IsJumpVelocity(float velocity) => float.IsFinite(velocity) && velocity < 0f;
 }

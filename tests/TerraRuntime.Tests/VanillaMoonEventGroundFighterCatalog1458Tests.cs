@@ -26,4 +26,61 @@ public sealed class VanillaMoonEventGroundFighterCatalog1458Tests
         Assert.Equal(knockBackResist, definition.KnockBackResist);
         Assert.Equal(scale, definition.Scale);
     }
+
+    [Theory]
+    [InlineData(305, 2f, VanillaGroundFighterMotionProfile.MoonEventLeaper)]
+    [InlineData(306, 1.25f, VanillaGroundFighterMotionProfile.MoonEventLeaper)]
+    [InlineData(307, 2.25f, VanillaGroundFighterMotionProfile.MoonEventLeaper)]
+    [InlineData(308, 1.5f, VanillaGroundFighterMotionProfile.MoonEventLeaper)]
+    [InlineData(309, 1f, VanillaGroundFighterMotionProfile.MoonEventLeaper)]
+    [InlineData(310, 2f, VanillaGroundFighterMotionProfile.Standard)]
+    [InlineData(311, 1.25f, VanillaGroundFighterMotionProfile.Standard)]
+    [InlineData(312, 2.25f, VanillaGroundFighterMotionProfile.Standard)]
+    [InlineData(313, 1.5f, VanillaGroundFighterMotionProfile.Standard)]
+    [InlineData(314, 1f, VanillaGroundFighterMotionProfile.Standard)]
+    public void Moon_event_ai3_fighters_keep_their_source_movement_family(
+        short type,
+        float maximumHorizontalSpeed,
+        VanillaGroundFighterMotionProfile motionProfile)
+    {
+        Assert.True(VanillaGroundFighterBehaviorCatalog.TryGet(new NpcTypeId(type), out var behavior));
+
+        Assert.Equal(maximumHorizontalSpeed, behavior.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
+        Assert.Equal(motionProfile, behavior.MotionProfile);
+    }
+
+    [Fact]
+    public void Moon_event_leaper_damps_then_relaunches_on_ground_and_steers_in_air()
+    {
+        var grounded = CreateInput(velocityX: .35f, velocityY: 0f);
+        Assert.True(VanillaZombieMotion.TryStep(in grounded, out VanillaZombieMotionResult launch));
+        Assert.Equal(2f, launch.VelocityX, 5);
+        Assert.Equal(-7f, launch.VelocityY, 5);
+
+        var airborne = CreateInput(velocityX: 0f, velocityY: -3f);
+        Assert.True(VanillaZombieMotion.TryStep(in airborne, out VanillaZombieMotionResult steering));
+        Assert.Equal(2f / 11f, steering.VelocityX, 5);
+        Assert.Equal(-3f, steering.VelocityY, 5);
+    }
+
+    private static VanillaZombieMotionInput CreateInput(float velocityX, float velocityY) => new(
+        PositionX: 100f,
+        OldPositionX: 99f,
+        VelocityX: velocityX,
+        VelocityY: velocityY,
+        DirectionX: 1,
+        DirectionY: 1,
+        Target: VanillaNpcDefinitionCatalog.DefaultTarget,
+        Ai: default,
+        Scale: 1f,
+        TargetOverlaps: false,
+        ClosestTarget: new VanillaZombieTargetRefresh(true, 3, 1, 1))
+    {
+        BaseMaximumHorizontalSpeed = 2f,
+        HorizontalAcceleration = .07f,
+        MotionProfile = VanillaGroundFighterMotionProfile.MoonEventLeaper,
+        SpriteDirection = 1,
+        TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft
+    };
 }

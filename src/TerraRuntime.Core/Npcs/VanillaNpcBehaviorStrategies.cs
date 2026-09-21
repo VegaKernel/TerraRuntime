@@ -345,7 +345,8 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             TimeLeft = simulation.TimeLeft,
             SpriteDirection = simulation.SpriteDirection,
             ScaleAdjustsMaximumHorizontalSpeed = parameters.ScaleAdjustsMaximumHorizontalSpeed,
-            ReversingVelocityDamping = parameters.ReversingVelocityDamping
+            ReversingVelocityDamping = parameters.ReversingVelocityDamping,
+            MotionProfile = parameters.MotionProfile
         };
 
         if (!VanillaZombieMotion.TryStep(in input, out VanillaZombieMotionResult result))

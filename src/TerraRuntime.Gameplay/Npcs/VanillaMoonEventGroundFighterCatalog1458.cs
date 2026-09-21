@@ -13,15 +13,19 @@ public static class VanillaMoonEventGroundFighterCatalog1458
 
     private static readonly Entry[] Entries =
     [
-        Fighter(305, 60, 18, 500, .4f, 1f), Fighter(306, 52, 14, 400, .2f, 1.05f),
-        Fighter(307, 78, 16, 600, .25f, .9f), Fighter(308, 66, 14, 650, .35f, .95f),
-        Fighter(309, 52, 26, 450, .5f, 1.1f), Fighter(310, 60, 18, 500, .4f, 1f),
-        Fighter(311, 52, 14, 400, .2f, 1.05f), Fighter(312, 78, 16, 600, .25f, .9f),
-        Fighter(313, 66, 14, 650, .35f, .95f), Fighter(314, 52, 26, 450, .5f, 1.1f),
+        Fighter(305, 60, 18, 500, .4f, 1f, 2f, VanillaGroundFighterMotionProfile.MoonEventLeaper),
+        Fighter(306, 52, 14, 400, .2f, 1.05f, 1.25f, VanillaGroundFighterMotionProfile.MoonEventLeaper),
+        Fighter(307, 78, 16, 600, .25f, .9f, 2.25f, VanillaGroundFighterMotionProfile.MoonEventLeaper),
+        Fighter(308, 66, 14, 650, .35f, .95f, 1.5f, VanillaGroundFighterMotionProfile.MoonEventLeaper),
+        Fighter(309, 52, 26, 450, .5f, 1.1f, 1f, VanillaGroundFighterMotionProfile.MoonEventLeaper),
+        Fighter(310, 60, 18, 500, .4f, 1f, 2f), Fighter(311, 52, 14, 400, .2f, 1.05f, 1.25f),
+        Fighter(312, 78, 16, 600, .25f, .9f, 2.25f), Fighter(313, 66, 14, 650, .35f, .95f, 1.5f),
+        Fighter(314, 52, 26, 450, .5f, 1.1f, 1f),
         Fighter(326, 100, 32, 1200, .2f, 1f), Fighter(342, 90, 26, 750, .2f, 1f),
-        Fighter(343, 140, 50, 3500, 0f, 1f, 38, 78), Fighter(348, 80, 26, 1800, .4f, 1f, 28, 76),
-        Fighter(349, 100, 42, 1800, .1f, 1f, 28, 76), Fighter(350, 70, 30, 900, .45f, 1f),
-        Fighter(351, 100, 40, 2500, .1f, 1f, 18, 90)
+        Fighter(343, 140, 50, 3500, 0f, 1f, width: 38, height: 78),
+        Fighter(348, 80, 26, 1800, .4f, 1f, width: 28, height: 76),
+        Fighter(349, 100, 42, 1800, .1f, 1f, width: 28, height: 76), Fighter(350, 70, 30, 900, .45f, 1f),
+        Fighter(351, 100, 40, 2500, .1f, 1f, width: 18, height: 90)
     ];
 
     public static int DefinitionCount => Entries.Length;
@@ -74,6 +78,8 @@ public static class VanillaMoonEventGroundFighterCatalog1458
         int lifeMax,
         float knockBackResist,
         float scale,
+        float maximumHorizontalSpeed = 1f,
+        VanillaGroundFighterMotionProfile motionProfile = VanillaGroundFighterMotionProfile.Standard,
         int width = 18,
         int height = 40) =>
         new(
@@ -94,7 +100,7 @@ public static class VanillaMoonEventGroundFighterCatalog1458
                 NoTileCollideAtSpawn: false,
                 VanillaNpcSyncAnchor.TopLeft),
             new VanillaGroundFighterBehaviorParameters(
-                BaseMaximumHorizontalSpeed: 1f,
+                BaseMaximumHorizontalSpeed: maximumHorizontalSpeed,
                 HorizontalAcceleration: .07f,
                 StuckThreshold: 60f,
                 MaximumStuckCounter: 600f,
@@ -107,5 +113,6 @@ public static class VanillaMoonEventGroundFighterCatalog1458
                 PursuitGapJumpVelocity: -8f,
                 PursuitGapSpeedMultiplier: 1.5f,
                 ScaleAdjustsMaximumHorizontalSpeed: false,
-                CloseRangeLunge: false));
+                CloseRangeLunge: false,
+                MotionProfile: motionProfile));
 }
