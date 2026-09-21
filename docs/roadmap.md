@@ -12,6 +12,8 @@
 
 2026-09-21 Snow Moon Santa-NK1: source NPC 345 `SetDefaults` and AI_060 are admitted through the wave selector. The runtime retains all three night states, life-based movement/attack clocks, target refresh and day escape. Rockets and bombs are created only after their matching committed clock transition, retain source damage and hitboxes, and bombs preserve their solid-tile gate and gravity. Remaining Snow Moon special-AI NPCs remain open.
 
+2026-09-21 Snow Moon Ice Queen: source NPC 346 `SetDefaults`, AI_061's day escape, life-scaled hover motion, floor probe and 300/240 phase clock are admitted. Its phase-one Frost Bolt now retains source cadence, aim, damage and random-draw order after the committed transition. The three independent rare projectile branches of AI_061 remain open.
+
 2026-09-21 Moon-event AI_026 type 315: Pumpkin Moon now admits Mourning Wood with its source defaults, six-pixel AI_026 charge and 480-tick post-commit fireball branch. The projectile preserves pre-motion center/velocity, retained NPC difficulty damage and its pre-refresh target; rejected state transitions consume no random draws. Remaining special-AI types and later waves remain open.
 
 2026-09-21 Moon-event AI_022 type 330: Pumpkin Moon now admits the source no-clip ghost defaults and authoritative flight slice, including target tracking, acceleration bands, alpha transition and event-gated despawn. Remaining special-AI types and later waves remain open.

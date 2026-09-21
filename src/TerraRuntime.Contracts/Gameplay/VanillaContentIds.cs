@@ -548,6 +548,9 @@ public static class VanillaProjectileIds
     // Snow Moon AI_060 Santank projectiles.
     public static readonly ProjectileTypeId SantankRocket = new(348);
     public static readonly ProjectileTypeId SantankBomb = new(349);
+
+    // Snow Moon AI_061 Ice Queen primary bolt.
+    public static readonly ProjectileTypeId IceQueenFrostBolt = new(180);
     public static readonly ProjectileTypeId Sharknado = new(384);
     public static readonly ProjectileTypeId SharknadoBolt = new(385);
     public static readonly ProjectileTypeId Cthulunado = new(386);

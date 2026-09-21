@@ -57,6 +57,40 @@ public sealed class VanillaMoonEventEverscreamAiTests
     }
 
     [Fact]
+    public void Ice_queen_defaults_and_ai61_hover_phase_clock_match_source()
+    {
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(346), out VanillaNpcDefinition definition));
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(new NpcTypeId(346), out VanillaNpcAiCoverage coverage));
+        Assert.Equal((61, 112, 140, 120, 56, 18000), (definition.AiStyle.Value, definition.BaseWidth, definition.BaseHeight,
+            definition.Damage, definition.Defense, definition.LifeMax));
+        Assert.Equal(VanillaNpcBehaviorFamily.SnowMoonIceQueen, definition.BehaviorFamily);
+        Assert.True(coverage.Has(VanillaNpcAiCapability.DefinitionDefaults | VanillaNpcAiCapability.TargetingSlice |
+            VanillaNpcAiCapability.StateTransitionSlice | VanillaNpcAiCapability.WorldPhysicsSlice));
+
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(new SequenceRandom(), solid: false);
+        var state = new NpcStateUpdate(346, 346, 100f, 200f, 0f, 0f, 3, new NpcAiState(0f, 299f, 0f, 0f),
+            NpcSimulationState.Initial with { Life = 18000, LifeMax = 18000, TimeLeft = 750 });
+        var npcs = new RuntimeNpcStore(); Assert.True(npcs.TrySpawn(1, state, out NpcSnapshot npc));
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+        Assert.Equal(new NpcAiState(1f, 0f, 0f, 0f), next.Ai);
+        Assert.Equal(2f / 21f, next.VelocityX, 5); Assert.Equal(.025f, next.VelocityY, 5);
+
+        NpcSnapshot attack = npc with { Ai = new NpcAiState(1f, 240f, 0f, 0f), VelocityX = 3f };
+        Assert.True(stepper.TryStepState(in attack, out NpcStateUpdate resumed));
+        Assert.Equal(new NpcAiState(0f, 0f, 0f, 0f), resumed.Ai); Assert.Equal(2.7f, resumed.VelocityX, 5);
+
+        var shooters = new RuntimeNpcStore();
+        var shotState = new NpcStateUpdate(346, 346, 100f, 200f, 0f, 0f, 3, new NpcAiState(1f, 15f, 0f, 0f),
+            NpcSimulationState.Initial with { DirectionX = 1, SpriteDirection = 1, Life = 18000, LifeMax = 18000, TimeLeft = 750 });
+        Assert.True(shooters.TrySpawn(1, shotState, out _)); var projectiles = new RuntimeProjectileStore();
+        var random = new SequenceRandom(); stepper = CreateStepper(random, solid: false);
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(shooters, projectiles).Tick(new EverscreamOnly(stepper)).Applied);
+        Assert.True(projectiles.TryGetActive(0, out ProjectileSnapshot bolt));
+        Assert.Equal(VanillaProjectileIds.IceQueenFrostBolt, bolt.Type); Assert.Equal((short)36, bolt.Damage);
+        Assert.Equal(5, random.Draws);
+    }
+
+    [Fact]
     public void Pine_needles_and_ornaments_spawn_only_after_the_exact_committed_attack_tick()
     {
         AssertProjectile(new NpcAiState(1f, 4f, 0f, 0f), VanillaProjectileIds.EverscreamPineNeedle, 43, expectedDraws: 11);

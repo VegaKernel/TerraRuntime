@@ -540,6 +540,16 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 12,
         CollisionHeight: 12);
 
+    private static readonly VanillaProjectileDefinition IceQueenFrostBoltDefinition = new(
+        Width: 4,
+        Height: 4,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 4,
+        CollisionHeight: 4);
+
     private static readonly VanillaProjectileDefinition GolemEyeBeamDefinition = new(
         Width: 8,
         Height: 8,
@@ -916,6 +926,12 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.SantankBomb)
         {
             definition = SantankBombDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.IceQueenFrostBolt)
+        {
+            definition = IceQueenFrostBoltDefinition;
             return true;
         }
 

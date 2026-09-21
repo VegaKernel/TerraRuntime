@@ -65,6 +65,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaMoonEventEverscreamNpcBehaviorStrategy _moonEventEverscream;
     private readonly VanillaPumpkingNpcBehaviorStrategy _pumpking;
     private readonly VanillaSnowMoonSantankNpcBehaviorStrategy _santank;
+    private readonly VanillaSnowMoonIceQueenNpcBehaviorStrategy _iceQueen;
     private readonly VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy _eyeOfCthulhu;
     private readonly VanillaServantOfCthulhuNpcBehaviorStrategy _flyer;
     private readonly VanillaWormNpcBehaviorStrategy _worm = new();
@@ -129,6 +130,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         _moonEventEverscream = new VanillaMoonEventEverscreamNpcBehaviorStrategy(_random);
         _pumpking = new VanillaPumpkingNpcBehaviorStrategy(_random);
         _santank = new VanillaSnowMoonSantankNpcBehaviorStrategy(_random);
+        _iceQueen = new VanillaSnowMoonIceQueenNpcBehaviorStrategy();
         if (kingSlimeEnvironment is IVanillaEyeOfCthulhuEnvironment eyeEnvironment)
             _eyeOfCthulhu.SetEnvironment(eyeEnvironment);
         if (kingSlimeEnvironment is IVanillaBrainOfCthulhuEnvironment brainEnvironment)
@@ -203,7 +205,14 @@ public sealed class VanillaNpcTargetingAiStepper :
         _flyingEye.SetEnvironment(environment);
 
     public void SetEverscreamEnvironment(IVanillaEverscreamEnvironment environment) =>
+        SetMoonEventHoverEnvironment(environment);
+
+    public void SetMoonEventHoverEnvironment(IVanillaEverscreamEnvironment environment)
+    {
+        ArgumentNullException.ThrowIfNull(environment);
         _moonEventEverscream.SetEnvironment(environment);
+        _iceQueen.SetEnvironment(environment);
+    }
 
     public void SetProjectileAnchors(IVanillaNpcProjectileAnchorLookup anchors) =>
         _context.ProjectileAnchors = anchors ?? throw new ArgumentNullException(nameof(anchors));
@@ -282,6 +291,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.MoonEventEverscream when _context.GroundFighterEnabled => _moonEventEverscream,
             VanillaNpcBehaviorFamily.PumpkinMoonPumpking when _context.GroundFighterEnabled => _pumpking,
             VanillaNpcBehaviorFamily.SnowMoonSantank when _context.GroundFighterEnabled => _santank,
+            VanillaNpcBehaviorFamily.SnowMoonIceQueen when _context.GroundFighterEnabled => _iceQueen,
             VanillaNpcBehaviorFamily.EyeOfCthulhu => _eyeOfCthulhu,
             VanillaNpcBehaviorFamily.Flyer => _flyer,
             VanillaNpcBehaviorFamily.Worm => _worm,
@@ -2076,6 +2086,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         SpawnPumpkingGreekFire(in before, in committed, mutations);
         SpawnPumpkingBladeScythe(in before, in committed, mutations);
         SpawnSantankProjectiles(in before, in committed, mutations);
+        SpawnIceQueenProjectiles(in before, in committed, mutations);
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);
         VanillaMoonLordLeechBehavior.SpawnFromHead(in before, in committed, _context, mutations);
         VanillaDestroyerNpcBehaviorStrategy.SpawnChain(in before, in committed, _context.GoodWorld, mutations);
@@ -2328,6 +2339,27 @@ public sealed class VanillaNpcTargetingAiStepper :
         float shotY = before.PositionY + 50f + committed.Simulation.LocalAi.Ai1 * 4f;
         SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.SantankBomb, shotX, shotY,
             committed.Simulation.LocalAi.Ai0, committed.Simulation.LocalAi.Ai1, 35);
+    }
+
+    private void SpawnIceQueenProjectiles(in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaMoonEventSpecialCatalog1458.SnowMoonAi61IceQueen ||
+            committed.TypeIdentity != before.TypeIdentity || before.Ai.Ai0 != 1f || committed.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate player))
+            return;
+        float elapsed = before.Ai.Ai1 + 1f;
+        if (elapsed > 240f) return;
+        float life = before.Simulation.Life > 0 ? before.Simulation.Life : 18000f;
+        int cadence = life < 4500f ? 8 : life < 9000f ? 11 : life < 13500f ? 14 : 16;
+        if (elapsed % cadence != 0f) return;
+        float centerX = before.PositionX + 56f + committed.Simulation.DirectionX * 50f;
+        float centerY = before.PositionY + 70f + _random.NextInt32(15, 36);
+        float dx = player.CenterX - centerX + _random.NextInt32(-40, 41);
+        float dy = player.CenterY - centerY + _random.NextInt32(-40, 41);
+        NormalizeTo(ref dx, ref dy, 15f);
+        dx *= 1f + _random.NextInt32(-20, 21) * .015f;
+        dy *= 1f + _random.NextInt32(-20, 21) * .015f;
+        SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.IceQueenFrostBolt, centerX, centerY, dx, dy, 36);
     }
 
     private ProjectileTypeId RandomPumpkingAttack() => _random.NextInt32(326, 329) switch

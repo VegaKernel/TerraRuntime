@@ -454,6 +454,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
             return true;
         }
 
+        if (type == VanillaProjectileIds.IceQueenFrostBolt)
+        {
+            profile = HostileStraightNoGravityProfile;
+            return true;
+        }
+
         if (type == VanillaProjectileIds.Sharknado || type == VanillaProjectileIds.Cthulunado)
         {
             profile = SharknadoProfile;

@@ -68,7 +68,8 @@ public enum VanillaNpcBehaviorFamily : byte
     MoonEventGhost = 54,
     MoonEventEverscream = 55,
     PumpkinMoonPumpking = 56,
-    SnowMoonSantank = 57
+    SnowMoonSantank = 57,
+    SnowMoonIceQueen = 58
 }
 
 /// <summary>
