@@ -259,6 +259,36 @@ public sealed class RuntimeWorldClockTests
     }
 
     [Fact]
+    public void Slime_rain_kill_counter_uses_source_threshold_and_post_spawn_cooldown()
+    {
+        var clock = new RuntimeWorldClock(0d, true, default, slimeRainTime: 1d, dayRate: 0);
+
+        for (int index = 0; index < 149; index++)
+            Assert.False(clock.TryAdvanceSlimeRainKillCount(slimeRainNpc: true, kingSlimeActive: false, kingSlimeDowned: false));
+
+        Assert.Equal(149, clock.SlimeRainKillCount);
+        Assert.True(clock.TryAdvanceSlimeRainKillCount(slimeRainNpc: true, kingSlimeActive: false, kingSlimeDowned: false));
+        Assert.Equal(-75, clock.SlimeRainKillCount);
+        Assert.False(clock.TryAdvanceSlimeRainKillCount(slimeRainNpc: true, kingSlimeActive: false, kingSlimeDowned: false));
+        Assert.Equal(-74, clock.SlimeRainKillCount);
+    }
+
+    [Fact]
+    public void Slime_rain_counter_uses_post_king_slime_threshold_and_ignores_blocked_deaths()
+    {
+        var clock = new RuntimeWorldClock(0d, true, default, slimeRainTime: 1d, dayRate: 0);
+
+        Assert.False(clock.TryAdvanceSlimeRainKillCount(slimeRainNpc: false, kingSlimeActive: false, kingSlimeDowned: true));
+        Assert.False(clock.TryAdvanceSlimeRainKillCount(slimeRainNpc: true, kingSlimeActive: true, kingSlimeDowned: true));
+        Assert.Equal(0, clock.SlimeRainKillCount);
+        for (int index = 0; index < 74; index++)
+            Assert.False(clock.TryAdvanceSlimeRainKillCount(slimeRainNpc: true, kingSlimeActive: false, kingSlimeDowned: true));
+
+        Assert.True(clock.TryAdvanceSlimeRainKillCount(slimeRainNpc: true, kingSlimeActive: false, kingSlimeDowned: true));
+        Assert.Equal(-37, clock.SlimeRainKillCount);
+    }
+
+    [Fact]
     public void Persisted_creative_slider_maps_to_vanilla_one_through_twenty_four_rate()
     {
         var metadata = new WorldFileRuntimeMetadata

@@ -1,6 +1,8 @@
 # TerraRuntime roadmap
 
-2026-09-21 Natural spawn Moon Lord guard: `NPC.CanSpawnEnemiesNear` now applies the source `Player.isNearNPC(398, 4500)` check before either Slime Rain or the ordinary natural-spawn pass. The strict physical-center distance suppresses every random roll inside range. Journey slider suppression, Slime Rain population weights, King Slime kill progression, player buffs and Moon event NPC waves remain open.
+2026-09-21 Slime Rain King Slime progression: eligible canonical Blue-Slime-type deaths now run the source post-loot counter in all server damage paths. The event calls the player-targeted King Slime spawn boundary at 150 kills, or 75 after the first King Slime kill, then resets to negative half of its threshold; an existing King Slime blocks progress. Slime Rain population weights, player buffs/Journey and Moon event NPC waves remain open.
+
+2026-09-21 Natural spawn Moon Lord guard: `NPC.CanSpawnEnemiesNear` now applies the source `Player.isNearNPC(398, 4500)` check before either Slime Rain or the ordinary natural-spawn pass. The strict physical-center distance suppresses every random roll inside range. Journey slider suppression, Slime Rain population weights, player buffs and Moon event NPC waves remain open.
 
 2026-09-21 Natural Slime Rain: active server-owned Slime Rain now executes `NPC.SlimeRainSpawns` before each eligible player's regular spawn attempt. The source 15-slot/surface gate, rate curve, 1920-by-1200 sample, collision and housing rejection, and Pinky/Purple/Green random order are implemented. A tick pins all seven RNG calls, Green Slime net-id `-3`, and the ordinary rate-360 attempt that follows. Slime Rain population weights, King Slime kill progression, player buffs/Journey and Moon event NPC waves remain open.
 

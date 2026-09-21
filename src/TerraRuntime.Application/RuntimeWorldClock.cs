@@ -168,6 +168,12 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
     public bool SlimeRainActive => SlimeRainTime > 0d;
 
+    /// <summary>
+    /// Transient kill progress for the current Slime Rain. Terraria does not persist this counter in the world
+    /// header: it is reset with the live server event, while the event duration itself is persisted separately.
+    /// </summary>
+    public int SlimeRainKillCount { get; private set; }
+
     public bool BloodMoonActive { get; private set; }
 
     public bool PumpkinMoonActive { get; }
@@ -293,6 +299,25 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         // Main.StopSlimeRain on server: slimeRainTime = -Main.rand.Next(3024, 6048) * 100.
         SlimeRainTime = -random.NextInt32(3024, 6048) * 100d;
         PublishCommittedState();
+        return true;
+    }
+
+    /// <summary>
+    /// Applies <c>NPC.DoDeathEvents_AdvanceSlimeRain</c> after an eligible slime's loot has been resolved.
+    /// The caller owns the source-ordered SpawnOnPlayer side effect when this returns <see langword="true"/>.
+    /// </summary>
+    public bool TryAdvanceSlimeRainKillCount(bool slimeRainNpc, bool kingSlimeActive, bool kingSlimeDowned)
+    {
+        if (!SlimeRainActive || !slimeRainNpc || kingSlimeActive)
+            return false;
+
+        int threshold = kingSlimeDowned ? 75 : 150;
+        SlimeRainKillCount++;
+        if (SlimeRainKillCount < threshold)
+            return false;
+
+        // Main.slimeRainKillCount is reset even if NPC.SpawnOnPlayer cannot find a valid location.
+        SlimeRainKillCount = -threshold / 2;
         return true;
     }
 

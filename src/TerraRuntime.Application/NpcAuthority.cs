@@ -186,7 +186,8 @@ internal sealed partial class NpcAuthority
             projectiles,
             townCommerceWorldFacts?.DownedPlantera,
             projectileReplication,
-            townCommerceWorldFacts?.ZenithWorld ?? false);
+            townCommerceWorldFacts?.ZenithWorld ?? false,
+            TrySpawnSlimeRainKing);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
             projectiles,
             npcs,
@@ -763,6 +764,43 @@ internal sealed partial class NpcAuthority
         }
         target = default;
         return false;
+    }
+
+    private bool TrySpawnSlimeRainKing(PlayerSlotId slot)
+    {
+        // The source check for an already-active King Slime happens before the kill count is advanced. Keep
+        // the spawn boundary defensive as it is shared with asynchronous combat paths.
+        int active = npcs.CopyActive(naturalSpawnNpcBuffer);
+        for (int index = 0; index < active; index++)
+            if (naturalSpawnNpcBuffer[index].TypeIdentity == VanillaNpcIds.KingSlime)
+                return false;
+
+        if (npcs.ActiveCount >= npcs.Capacity ||
+            !TryGetPlayerTarget(slot.Value, out VanillaNpcTargetCandidate player) ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.KingSlime, out VanillaNpcDefinition definition) ||
+            !TryFindBossSpawnPosition(in player, definition, out float x, out float y))
+        {
+            return false;
+        }
+
+        var update = new NpcStateUpdate(
+            Type: VanillaNpcIds.KingSlime.Value,
+            NetId: checked((short)VanillaNpcIds.KingSlime.Value),
+            PositionX: x,
+            PositionY: y,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: player.Slot,
+            Ai: default,
+            Simulation: NpcSimulationState.Initial with { TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft });
+        if (!npcs.TrySpawnVanilla(in update, out _))
+        {
+            RejectedSpawns++;
+            return false;
+        }
+
+        AppliedSpawns++;
+        return true;
     }
 
     private bool TryFindBossSpawnPosition(

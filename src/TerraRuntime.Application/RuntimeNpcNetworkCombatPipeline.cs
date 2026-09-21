@@ -76,6 +76,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private readonly bool isThereAWorldSurface;
     private readonly bool evilBossDownedBaseline;
     private readonly bool zenithWorld;
+    private readonly Func<PlayerSlotId, bool>? slimeRainKingSpawn;
     private readonly PlayerSlotId[] interactionSlots =
         new PlayerSlotId[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly VanillaKingSlimeLootPlayer[] activeLootPlayers =
@@ -126,7 +127,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         RuntimeProjectileStore? projectiles = null,
         bool? planteraDownedBaseline = null,
         RuntimeProjectileReplicationRegistry? projectileReplication = null,
-        bool zenithWorld = false)
+        bool zenithWorld = false,
+        Func<PlayerSlotId, bool>? slimeRainKingSpawn = null)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         moonLordProjectiles = projectiles;
@@ -147,6 +149,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         this.isThereAWorldSurface = isThereAWorldSurface;
         this.evilBossDownedBaseline = evilBossDownedBaseline;
         this.zenithWorld = zenithWorld;
+        this.slimeRainKingSpawn = slimeRainKingSpawn;
         this.planteraDownedBaseline = planteraDownedBaseline;
         planteraLoot = new RuntimePlanteraLootDeliverySink(worldItems, instancedLeases, worldItemReplication);
         golemLoot = new RuntimeGolemLootDeliverySink(worldItems, instancedLeases, worldItemReplication);
@@ -372,6 +375,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             if (!TryExecuteImportedLoot(in dead, eaterBoss))
                 throw new InvalidOperationException("Imported NPC loot could not be finalized after a lethal packet-28 commit.");
 
+            AdvanceSlimeRainDeath(in dead);
             if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
                 ApplyKingSlimeDeathEffects(in dead);
             else if (dead.TypeIdentity == VanillaNpcIds.EyeOfCthulhu)
@@ -550,6 +554,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         if (!TryExecuteImportedLoot(in dead, eaterBoss))
             throw new InvalidOperationException("Imported NPC loot could not be finalized after player-owned damage.");
 
+        AdvanceSlimeRainDeath(in dead);
         if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
             ApplyKingSlimeDeathEffects(in dead);
         else if (dead.TypeIdentity == VanillaNpcIds.EyeOfCthulhu)
@@ -678,6 +683,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         if (!TryExecuteImportedLoot(in dead, eaterBoss))
             throw new InvalidOperationException("Imported NPC loot could not be finalized after Town NPC melee.");
 
+        AdvanceSlimeRainDeath(in dead);
         if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
             ApplyKingSlimeDeathEffects(in dead);
         else if (dead.TypeIdentity == VanillaNpcIds.EyeOfCthulhu)

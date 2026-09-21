@@ -381,6 +381,38 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         return foundAny;
     }
 
+    private void AdvanceSlimeRainDeath(in NpcSnapshot dead)
+    {
+        // Main.slimeRainNPC is consulted with NPC.type. The implemented Slime Rain variants all retain
+        // Blue Slime's canonical type and differ only by net ID, so this deliberately does not filter net IDs.
+        if (worldClock is null || dead.TypeIdentity != VanillaNpcIds.BlueSlime)
+            return;
+
+        bool kingSlimeActive = false;
+        int active = npcs.CopyActive(npcFamilyBuffer);
+        for (int index = 0; index < active; index++)
+        {
+            if (npcFamilyBuffer[index].TypeIdentity == VanillaNpcIds.KingSlime)
+            {
+                kingSlimeActive = true;
+                break;
+            }
+        }
+
+        if (!worldClock.TryAdvanceSlimeRainKillCount(
+                slimeRainNpc: true,
+                kingSlimeActive,
+                progression.IsCompleted(VanillaWorldProgressionId.KingSlime)))
+        {
+            return;
+        }
+
+        // NPC.NPCLoot resolves closestPlayer before DoDeathEvents. It resets the counter after calling
+        // SpawnOnPlayer regardless of whether placement succeeds, which RuntimeWorldClock already preserved.
+        if (slimeRainKingSpawn is not null && TryFindClosestPlayer(in dead, out PlayerStateSnapshot closest))
+            _ = slimeRainKingSpawn(closest.Player.Slot);
+    }
+
     private void ApplyKingSlimeDeathEffects(in NpcSnapshot kingSlime)
     {
         progression.SetSlimeBlueSpawnBaseline(worldClock?.SlimeBlueSpawnUnlocked == true);
