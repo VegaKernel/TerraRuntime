@@ -71,6 +71,9 @@ internal sealed class VanillaNpcBehaviorContext
     /// <summary>Generation-time <c>WorldGen.Skyblock.noFossils</c>, projected from the loaded world.</summary>
     public bool SkyblockNoFossils { get; private set; }
 
+    /// <summary>Generation-time <c>WorldGen.Skyblock.lowTiles</c> projection for AI_001 item rolls.</summary>
+    public bool SkyblockLowTiles { get; private set; }
+
     /// <summary>Vanilla Main.time sampled before NPC AI for the current game tick.</summary>
     public double WorldTime { get; private set; }
 
@@ -107,7 +110,8 @@ internal sealed class VanillaNpcBehaviorContext
         bool remixWorld = false,
         double worldTime = 0d,
         bool noTrapsWorld = false,
-        bool skyblockNoFossils = false)
+        bool skyblockNoFossils = false,
+        bool skyblockLowTiles = false)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -126,6 +130,7 @@ internal sealed class VanillaNpcBehaviorContext
         WorldTime = worldTime;
         NoTrapsWorld = noTrapsWorld;
         SkyblockNoFossils = skyblockNoFossils;
+        SkyblockLowTiles = skyblockLowTiles;
         if (!remixWorld)
             empressRemixRageMode = false;
     }

@@ -363,7 +363,8 @@ internal sealed partial class NpcAuthority
                     naturalSpawnWorldFacts?.RemixWorld ?? false,
                     worldClock.Time,
                     naturalSpawnWorldFacts?.NoTrapsWorld ?? false,
-                    naturalSpawnSkyblockNoFossils);
+                    naturalSpawnSkyblockNoFossils,
+                    naturalSpawnSkyblockLowTiles);
                 vanillaTargeting.SetMoonEventState(worldClock.PumpkinMoonActive);
             }
         }

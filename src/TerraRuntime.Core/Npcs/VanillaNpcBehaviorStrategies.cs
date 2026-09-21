@@ -227,6 +227,24 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
             if (context.SkyblockNoFossils && random.NextInt32(0, 5) == 0)
                 ai = ai with { Ai1 = 3347f };
         }
+        // Ice and Spiked Ice Slimes use the same one-time contained-item slot. Below the world surface,
+        // ordinary worlds roll once at 1/40; Skyblock lowTiles makes five 1/20 attempts, stopping at the
+        // first success, then chooses Slush (1103) or Snow (593) with a separate source draw.
+        if ((definition.Type == VanillaNpcIds.IceSlime || definition.Type == VanillaNpcIds.SpikedIceSlime) &&
+            ai.Ai1 == 0f)
+        {
+            ai = ai with { Ai1 = -1f };
+            if (npc.PositionY > context.WorldSurfacePixels)
+            {
+                int attempts = context.SkyblockLowTiles ? 5 : 1;
+                int chance = context.SkyblockLowTiles ? 20 : 40;
+                for (int attempt = 0; attempt < attempts && ai.Ai1 == -1f; attempt++)
+                {
+                    if (random.NextInt32(0, chance) == 0)
+                        ai = ai with { Ai1 = random.NextInt32(0, 2) == 0 ? 1103f : 593f };
+                }
+            }
+        }
         // The source applies this before the shared ground-motion timer, so Fossil Slime advances
         // ai[0] twice per grounded tick: once here and once in VanillaBlueSlimeMotion.
         if (definition.Type == VanillaNpcIds.SandSlime && ai.Ai1 == 3347f)
