@@ -59,6 +59,39 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     }
 
     [Fact]
+    public void Surface_snow_uses_server_cloud_alpha_before_empty_population_rate_band()
+    {
+        var npcs = new RuntimeNpcStore();
+        var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
+        for (int x = 115; x < 166; x++)
+            for (int y = 250; y < 280; y++)
+                tiles.Tiles[tiles.GetUncheckedIndex(x, y)] = new WorldTile { Type = 147, Flags = WorldTileFlags.Active };
+
+        // 600 * ((1 - .5 + 1) / 2) = 450, then empty-population .6 = 270.
+        // Main.Update assigns cloudAlpha = maxRaining in server mode, so the runtime clock's
+        // authoritative MaxRain is the source input rather than a presentation approximation.
+        var random = new RateRejectingRandom(270);
+        RuntimeTownCommerceWorldFacts1458 world = default;
+        world = world with { WorldSurface = 350, RockLayer = 500 };
+        var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
+            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0, maxRain: .5f, raining: true),
+            townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+            naturalSpawnRandom: random, worldProgression: new RuntimeWorldProgressionMutations());
+        var slots = new PlayerSlotPool(1);
+        Assert.True(slots.TryAcquireConnection(out var lease));
+        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        session.ObserveWorldRequest(); session.ObserveSectionRequest();
+        var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(817), session.Handle);
+        state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
+            new PlayerSpawnCommitRequest(session.Handle.Slot, 200, 300, 0, 0, 0, 0, 0)));
+
+        state.Tick();
+
+        random.AssertConsumed();
+        Assert.Equal(0, npcs.ActiveCount);
+    }
+
+    [Fact]
     public void Source_surface_flag_includes_the_ground_row_at_world_surface()
     {
         var npcs = new RuntimeNpcStore();
@@ -245,5 +278,20 @@ public sealed class RuntimeUnderworldSpawn1458Tests
         }
 
         public void AssertConsumed() => Assert.Equal(9, call);
+    }
+
+    private sealed class RateRejectingRandom(int expectedRate) : IVanillaNpcRandom
+    {
+        private int call;
+
+        public int NextInt32(int inclusiveMin, int exclusiveMax)
+        {
+            Assert.Equal(0, call++);
+            Assert.Equal(0, inclusiveMin);
+            Assert.Equal(expectedRate, exclusiveMax);
+            return 1;
+        }
+
+        public void AssertConsumed() => Assert.Equal(1, call);
     }
 }

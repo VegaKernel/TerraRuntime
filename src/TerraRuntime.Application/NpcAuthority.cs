@@ -942,13 +942,22 @@ internal sealed partial class NpcAuthority
 
         int playerTileX = Math.Clamp((int)(player.CenterX / 16f), 0, tiles.Dimensions.WidthTiles - 1);
         int playerTile = Math.Clamp((int)playerTileY, 0, tiles.Dimensions.HeightTiles - 1);
+        VanillaTownSceneMetrics1458? scene = npcSceneMetrics?.Scan(playerTileX, playerTile);
+        // На выделенном сервере Main.Update присваивает cloudAlpha = maxRaining. GetSpawnRate
+        // применяет этот Snow-поверхностный множитель до стен и остальных biome-модификаторов.
+        if (scene is { ZoneSnow: true } && playerTileY < surface)
+        {
+            float cloudAlpha = worldClock!.MaxRain;
+            maxSpawns = (int)(maxSpawns + maxSpawns * cloudAlpha);
+            spawnRate = (int)(spawnRate * (1f - cloudAlpha + 1f) / 2f);
+        }
+
         if (naturalSpawnWorldFacts?.DrunkWorld == true && tiles.Get(playerTileX, playerTile).Wall == 86)
         {
             spawnRate = (int)(spawnRate * .3d);
             maxSpawns = (int)(maxSpawns * 1.8f);
         }
 
-        VanillaTownSceneMetrics1458? scene = npcSceneMetrics?.Scan(playerTileX, playerTile);
         if (scene is VanillaTownSceneMetrics1458 biome)
         {
             if (biome.ZoneDungeon)

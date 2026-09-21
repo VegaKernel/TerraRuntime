@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Natural spawn surface Snow: `GetSpawnRate` now receives its server-authoritative `cloudAlpha` from `RuntimeWorldClock.MaxRain`, because TerrariaServer assigns `cloudAlpha = maxRaining` in `Main.Update`. The Snow surface multiplier runs before walls and later biome branches; a real runtime tick with `MaxRain=.5` pins the final empty-population rate at 270. Pumpkin/Snow Moon, per-player buffs/candles/Journey, town-count Jungle, meteor/sandstorm/temple and source npcSlots remain open.
+
 2026-09-20 NPC urgent replication: AI_037 retains Destroyer's source `localAI[0]` digging marker and issues a forced packet-23 update exactly when that marker changes. The same opt-in path preserves AI_037's body-laser `netUpdate` only after a Death Laser passes `Collision.CanHit` and is planned, never for a counter reset behind a wall. AI_069 now forces packet 23 for Duke Fishron's retained-target refresh past the source 5600-pixel guard and for known root-phase transitions; ordinary counters retain the 30-tick cadence. Focused regressions cover all admitted boundaries and the committed forced-update kind. Other source `NPC.netUpdate` paths remain open.
 
 ## Prime melee implementation - 2026-09-16
