@@ -233,6 +233,11 @@ internal sealed class VanillaQueenSlimeNpcBehaviorStrategy : IVanillaNpcBehavior
                 }
                 else
                 {
+                    if (ai.Ai1 == 0f)
+                    {
+                        TryRefresh(in npc, in definition, context, ref targetSlot, out target);
+                        hasTarget = TryGetTarget(targetSlot, context, out target);
+                    }
                     float timer = ai.Ai1 + 1f;
                     if (timer >= 60f)
                     { timer = 0f; ai = ai with { Ai2 = 1f }; vy = -3f; }
@@ -259,9 +264,16 @@ internal sealed class VanillaQueenSlimeNpcBehaviorStrategy : IVanillaNpcBehavior
                 }
                 else
                 {
+                    if (ai.Ai1 == 0f)
+                    {
+                        TryRefresh(in npc, in definition, context, ref targetSlot, out target);
+                        hasTarget = TryGetTarget(targetSlot, context, out target);
+                    }
                     float timer = ai.Ai1 + 1f;
                     if (timer >= 50f) { timer = 0f; ai = ai with { Ai2 = 1f }; }
                     ai = ai with { Ai1 = timer };
+                    if (phaseTwo && ai.Ai2 != 1f && hasTarget)
+                        SimpleFly(centerX, centerY, in target, simulation.TimeLeft, simulation.DirectionX, ref vx, ref vy);
                 }
                 break;
         }
