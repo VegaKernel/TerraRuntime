@@ -376,6 +376,161 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
 }
 
 /// <summary>State portion of AI_025 for Snow Moon type 341; gravity and collision stay in the world-motion layer.</summary>
+/// <summary>State portion of Pumpkin Moon type 329's AI_026 unicorn branch.</summary>
+internal sealed class VanillaMoonEventUnicornNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
+{
+    private const int StuckThreshold = 30;
+    private const int MaximumStuckCounter = StuckThreshold * 10;
+
+    public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        INpcAiStateStepper inner, out NpcStateUpdate next)
+    {
+        if (definition.Type != VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi26 || definition.AiStyle.Value != 26)
+        {
+            next = default;
+            return false;
+        }
+
+        NpcSimulationState simulation = npc.Simulation;
+        int directionX = simulation.DirectionX;
+        int directionY = simulation.DirectionY;
+        int spriteDirection = simulation.SpriteDirection;
+        ushort target = npc.Target;
+        float ai0 = npc.Ai.Ai0;
+        float ai3 = npc.Ai.Ai3;
+        float velocityX = npc.VelocityX;
+        float velocityY = npc.VelocityY;
+
+        bool reversingOnGround = velocityY == 0f &&
+            ((velocityX > 0f && directionX < 0) || (velocityX < 0f && directionX > 0));
+        if (reversingOnGround)
+            ai3++;
+
+        bool stuck = false;
+        if ((npc.PositionX == simulation.OldPositionX || ai3 >= StuckThreshold) | reversingOnGround)
+        {
+            ai3++;
+            stuck = true;
+        }
+        else if (ai3 > 0f)
+        {
+            ai3--;
+        }
+
+        if (ai3 > MaximumStuckCounter)
+            ai3 = 0f;
+        if (simulation.JustHit)
+            ai3 = 0f;
+
+        if (!TryResolveCurrentTarget(in npc, in definition, context, ref target, out VanillaNpcTargetCandidate player))
+        {
+            next = default;
+            return false;
+        }
+
+        float centerX = npc.PositionX + definition.Width * .5f;
+        float centerY = npc.PositionY + definition.Height * .5f;
+        float targetTop = player.CenterY - player.Height * .5f;
+        float dx = player.CenterX - centerX;
+        float dy = targetTop - centerY;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        if (distance < 200f && !stuck)
+            ai3 = 0f;
+
+        if (velocityY == 0f && distance < 100f && MathF.Abs(velocityX) > 3f &&
+            ((centerX < player.CenterX && velocityX > 0f) || (centerX > player.CenterX && velocityX < 0f)))
+        {
+            velocityY -= 4f;
+        }
+
+        int timeLeft = simulation.TimeLeft;
+        if (ai3 < StuckThreshold)
+        {
+            if (!context.PumpkinMoonActive)
+                timeLeft = 10;
+            else
+                RefreshTarget(in npc, in definition, context, ref target, ref directionX, ref directionY);
+        }
+        else
+        {
+            if (velocityX == 0f && velocityY == 0f)
+            {
+                ai0++;
+                if (ai0 >= 2f)
+                {
+                    directionX *= -1;
+                    spriteDirection = directionX;
+                    ai0 = 0f;
+                }
+            }
+            else
+            {
+                ai0 = 0f;
+            }
+
+            directionY = -1;
+            if (directionX == 0)
+                directionX = 1;
+        }
+
+        if (velocityY == 0f || simulation.Wet ||
+            (velocityX <= 0f && directionX < 0) || (velocityX >= 0f && directionX > 0))
+        {
+            if (velocityX > 0f && directionX < 0)
+                velocityX *= .9f;
+            if (velocityX < 0f && directionX > 0)
+                velocityX *= .9f;
+            if (directionX > 0 && velocityX < 3f)
+                velocityX += .1f;
+            if (directionX < 0 && velocityX > -3f)
+                velocityX -= .1f;
+        }
+
+        next = new NpcStateUpdate(
+            definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, velocityX, velocityY, target,
+            new NpcAiState(ai0, npc.Ai.Ai1, npc.Ai.Ai2, ai3), simulation with
+            {
+                DirectionX = directionX,
+                DirectionY = directionY,
+                SpriteDirection = spriteDirection,
+                NoGravity = false,
+                JustHit = false,
+                TimeLeft = timeLeft
+            });
+        return true;
+    }
+
+    private static bool TryResolveCurrentTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        VanillaNpcBehaviorContext context, ref ushort target, out VanillaNpcTargetCandidate player)
+    {
+        if (target < byte.MaxValue && context.TryFindCandidate((byte)target, out player) &&
+            player.Active && !player.Dead && !player.Ghost)
+        {
+            return true;
+        }
+
+        if (context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) &&
+            closest.HasTarget && context.TryFindCandidate((byte)closest.Target, out player))
+        {
+            target = closest.Target;
+            return true;
+        }
+
+        player = default;
+        return false;
+    }
+
+    private static void RefreshTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        VanillaNpcBehaviorContext context, ref ushort target, ref int directionX, ref int directionY)
+    {
+        if (!context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) || !closest.HasTarget)
+            return;
+        target = closest.Target;
+        directionX = closest.DirectionX;
+        directionY = closest.DirectionY;
+    }
+}
+
 internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,

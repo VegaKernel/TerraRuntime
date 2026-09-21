@@ -59,7 +59,8 @@ public enum VanillaNpcAiCapability : ulong
     HardmodeBossProjectileSlice = 1ul << 49,
     GroundFighterCloseRangeLungeSlice = 1ul << 50,
     BatMotionSlice = 1ul << 51,
-    FishMotionSlice = 1ul << 52
+    FishMotionSlice = 1ul << 52,
+    UnicornTraversalSlice = 1ul << 53
 }
 
 /// <summary>
@@ -124,7 +125,7 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaBatNpcCatalog1458.DefinitionCount +
             VanillaFishNpcCatalog1458.DefinitionCount +
             VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount +
-            VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 2];
+            VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 3];
         entries[0] = Partial(
             VanillaNpcIds.BlueSlime,
             OrdinaryCore |
@@ -287,7 +288,10 @@ public static class VanillaNpcAiCoverageCatalog
 
         entries[index++] = Partial(
             VanillaMoonEventSpecialCatalog1458.SnowMoonAi25,
-            OrdinaryCore | VanillaNpcAiCapability.CheckActiveSlice);
+            OrdinaryCore);
+        entries[index++] = Partial(
+            VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi26,
+            OrdinaryCore | VanillaNpcAiCapability.UnicornTraversalSlice);
 
         foreach (VanillaNpcDefinition definition in VanillaSlimeNpcCatalog.AllDefinitions)
         {

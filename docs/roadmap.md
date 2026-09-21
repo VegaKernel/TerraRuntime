@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Moon-event AI_026 type 329: Pumpkin Moon now admits the source unicorn defaults and an authoritative state/traversal slice: target pursuit to 3 px/tick, close-range -4 lunge, event-gated despawn, stuck fallback, source step-up, and the distinct -6/-7/-7.5/-8.5/-8 obstacle jumps. Remaining special-AI types and later waves remain open.
+
 2026-09-21 Moon-event AI_025 type 341: source SetDefaults and the authoritative wait/jump state cycle now admit the Snow special selected before every early-wave branch. It keeps the source 12/20 grounded waits, target refreshes, alternating 3.5/-4 and 2.5/-8 launches, horizontal airborne correction, geometry and combat defaults. Other special-AI event NPCs and later waves remain open.
 
 2026-09-21 Moon-event early-wave selection: source `NPC.Spawner.SpawnAnNPC` choice order now drives Pumpkin/Snow waves 1–5 after Dungeon/Meteor priority. Active-type caps and each RNG draw are preserved; admitted ground fighters can spawn while unsupported special-AI selections fail closed without an ordinary-hostile substitution. Later waves and special-AI event NPCs remain open.

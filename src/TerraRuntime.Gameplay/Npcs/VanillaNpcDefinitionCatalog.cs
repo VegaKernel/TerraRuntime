@@ -63,7 +63,8 @@ public enum VanillaNpcBehaviorFamily : byte
     Fish = 49,
     MoonLordLeechBlob = 50,
     DarkCaster = 51,
-    MoonEventJumpingFighter = 52
+    MoonEventJumpingFighter = 52,
+    MoonEventUnicorn = 53
 }
 
 /// <summary>
@@ -83,7 +84,8 @@ public enum VanillaNpcPhysicsFamily : byte
     BlazingWheel = 7,
     GenericGround = 8,
     BatFlight = 9,
-    FishSwimming = 10
+    FishSwimming = 10,
+    UnicornGround = 11
 }
 
 /// <summary>One resolved vanilla NPC hitbox for the current runtime scale.</summary>

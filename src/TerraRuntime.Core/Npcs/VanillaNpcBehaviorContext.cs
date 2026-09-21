@@ -54,6 +54,8 @@ internal sealed class VanillaNpcBehaviorContext
 
     public bool SlimeRainActive { get; private set; }
 
+    public bool PumpkinMoonActive { get; private set; }
+
     public bool GoodWorld { get; private set; }
 
     public bool ExpertMode { get; private set; }
@@ -71,6 +73,8 @@ internal sealed class VanillaNpcBehaviorContext
 
     public void SetPlayerSnapshotLookup(IRuntimePlayerSlotSnapshotLookup playerSnapshots) =>
         _playerSnapshots = playerSnapshots ?? throw new ArgumentNullException(nameof(playerSnapshots));
+
+    public void SetMoonEventState(bool pumpkinMoonActive) => PumpkinMoonActive = pumpkinMoonActive;
 
     public void EnableSlimeGround(double worldSurfaceTiles)
     {

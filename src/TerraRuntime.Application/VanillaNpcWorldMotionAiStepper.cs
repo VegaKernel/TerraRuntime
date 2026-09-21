@@ -234,6 +234,19 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                 velocityY = lungedVelocityY;
             }
         }
+        else if (definition.PhysicsFamily == VanillaNpcPhysicsFamily.UnicornGround)
+        {
+            VanillaZombieStepUpResult stepUp = VanillaWorldZombieStepUp.Resolve(
+                tiles, aiState.PositionX, aiState.PositionY, velocityX, velocityY, hitboxWidth, hitboxHeight);
+            if (stepUp.Stepped)
+                aiState = aiState with { PositionY = stepUp.PositionY };
+
+            VanillaZombieObstacleMotionResult obstacle = VanillaWorldUnicornObstacleMotion.Resolve(
+                tiles, aiState.PositionX, aiState.PositionY, velocityX, velocityY, hitboxWidth, hitboxHeight,
+                simulation.DirectionX, simulation.DirectionY, simulation.SpriteDirection);
+            velocityX = obstacle.VelocityX;
+            velocityY = obstacle.VelocityY;
+        }
 
         if (!VanillaNpcGravity.TryApply(
                 in definition,
@@ -301,6 +314,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             VanillaNpcPhysicsFamily.FlyingEye => true,
             VanillaNpcPhysicsFamily.BatFlight => true,
             VanillaNpcPhysicsFamily.GroundFighter => simulation.DirectionY == 1,
+            VanillaNpcPhysicsFamily.UnicornGround => simulation.DirectionY == 1,
             _ => false
         };
         VanillaTileCollisionResult collision = VanillaWorldCollision.TileCollision(
