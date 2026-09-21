@@ -39,6 +39,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId ChaosBall = new(30);
     public static readonly NpcTypeId Tim = new(45);
     public static readonly NpcTypeId TimFireball = new(665);
+    public static readonly NpcTypeId RuneWizard = new(172);
     public static readonly NpcTypeId SkeletronHead = new(35);
     public static readonly NpcTypeId SkeletronHand = new(36);
     public static readonly NpcTypeId Demolitionist = new(38);
@@ -531,6 +532,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId PoisonedKnife = new(54);
     public static readonly ProjectileTypeId RainbowRodBullet = new(79);
     public static readonly ProjectileTypeId ProbePinkLaser = new(84);
+    public static readonly ProjectileTypeId RuneBlast = new(129);
     public static readonly ProjectileTypeId GrenadeI = new(133);
     public static readonly ProjectileTypeId RocketI = new(134);
     public static readonly ProjectileTypeId ProximityMineI = new(135);

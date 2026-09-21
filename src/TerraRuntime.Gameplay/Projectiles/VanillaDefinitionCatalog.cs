@@ -106,6 +106,16 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 16,
         CollisionHeight: 16);
 
+    private static readonly VanillaProjectileDefinition RuneBlastDefinition = new(
+        Width: 14,
+        Height: 14,
+        AiStyle: new ProjectileAiStyleId(28),
+        TileCollide: false,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 14,
+        CollisionHeight: 14);
+
     private static readonly VanillaProjectileDefinition FireArrowDefinition = new(
         Width: 10,
         Height: 10,
@@ -844,6 +854,12 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.RedDevilSickle)
         {
             definition = RedDevilSickleDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.RuneBlast)
+        {
+            definition = RuneBlastDefinition;
             return true;
         }
 

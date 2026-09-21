@@ -176,6 +176,11 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         RejectServerOwned: false,
         ExemptFromPreAiWorldBounds: false);
 
+    private static readonly VanillaProjectileBehaviorProfile RuneBlastProfile = HostileStraightNoGravityProfile with
+    {
+        ExpectedAiStyle = new ProjectileAiStyleId(28)
+    };
+
     private static readonly VanillaProjectileBehaviorProfile CultistIceMistProfile = new(
         VanillaProjectileBehaviorFamily.CultistIceMist,
         VanillaProjectileAiStyles.CultistIceMist,
@@ -440,6 +445,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.RedDevilSickle)
         {
             profile = RedDevilSickleProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.RuneBlast)
+        {
+            profile = RuneBlastProfile;
             return true;
         }
 

@@ -73,7 +73,8 @@ public enum VanillaNpcBehaviorFamily : byte
     SnowMoonAi62 = 59,
     SnowMoonAi63 = 60,
     GoblinSorcerer = 61,
-    ChaosBall = 62
+    ChaosBall = 62,
+    RuneWizard = 63
 }
 
 /// <summary>
@@ -420,6 +421,14 @@ public static class VanillaNpcDefinitionCatalog
             definition = new VanillaNpcDefinition(VanillaNpcIds.TimFireball, VanillaNpcAiStyles.BurningSphere,
                 VanillaNpcBehaviorFamily.ChaosBall, VanillaNpcPhysicsFamily.NoClipFlight, NpcArchetypeRole.Ordinary,
                 16, 16, 20, 0, 1, 0f, 1f, true, true, VanillaNpcSyncAnchor.TopLeft) { AlphaAtSpawn = 100 };
+            return true;
+        }
+
+        if (type == VanillaNpcIds.RuneWizard)
+        {
+            definition = new VanillaNpcDefinition(VanillaNpcIds.RuneWizard, VanillaNpcAiStyles.Caster,
+                VanillaNpcBehaviorFamily.RuneWizard, VanillaNpcPhysicsFamily.NoClipFlight, NpcArchetypeRole.Ordinary,
+                18, 40, 200, 30, 600, .3f, 1f, false, false, VanillaNpcSyncAnchor.TopLeft);
             return true;
         }
 
