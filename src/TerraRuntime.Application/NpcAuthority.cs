@@ -1587,6 +1587,20 @@ internal sealed partial class NpcAuthority
             Math.Clamp((int)(player.CenterX / 16f), 0, tiles.Dimensions.WidthTiles - 1),
             Math.Clamp((int)(player.CenterY / 16f), 0, tiles.Dimensions.HeightTiles - 1));
 
+        // In NPC.Spawner the Moon branches sit after Dungeon and Meteor handling. Preserve those higher-priority
+        // zones, then take the source event table rather than falling through to ordinary surface hostiles.
+        if (worldClock!.MoonEventActive && !worldClock.DayTime &&
+            (surface || naturalSpawnWorldFacts?.RemixWorld == true) &&
+            scene is not { ZoneDungeon: true } and not { ZoneMeteor: true } &&
+            worldClock.MoonEventWaveNumber <= 5)
+        {
+            return VanillaMoonEventEarlySpawnSelector1458.Select(
+                worldClock.SnowMoonActive,
+                worldClock.MoonEventWaveNumber,
+                naturalSpawnRandom,
+                CountActiveNpcType);
+        }
+
         // Базовая ветка waterTile из SpawnAnNPC: две заполненные обычной водой клетки над
         // твёрдым spawnTileY. Биомные, океанские, событийные и Hardmode-цепочки остаются
         // закрытыми до появления всех необходимых source-фактов.
@@ -1645,6 +1659,16 @@ internal sealed partial class NpcAuthority
         // server-owned ground-fighter motion slice; unsupported cave families stay out instead of spawning
         // entities that cannot simulate authoritatively.
         return naturalSpawnRandom.NextInt32(0, 3) == 0 ? VanillaNpcIds.Skeleton : VanillaNpcIds.BlueSlime;
+    }
+
+    private int CountActiveNpcType(short type)
+    {
+        int active = npcs.CopyActive(naturalSpawnNpcBuffer);
+        int count = 0;
+        for (int index = 0; index < active; index++)
+            if (naturalSpawnNpcBuffer[index].Type == type)
+                count++;
+        return count;
     }
 
     private bool IsOrdinaryPreHardmodeWaterSpawn(

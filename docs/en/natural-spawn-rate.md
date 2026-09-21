@@ -38,6 +38,8 @@ Pumpkin Moon and Snow Moon use their source night and Remix spawn-rate transform
 
 The AI_003 Moon-event ground fighters now have source `SetDefaults` geometry, combat values, scale and knockback resistance plus the admitted server ground-fighter movement path. This covers Pumpkin types 305–314 and 326, and Snow types 342, 343 and 348–351; wave selection and special-AI event NPCs remain open.
 
+Moon events now take the source `NPC.Spawner.SpawnAnNPC` selection table for waves one through five after the source Dungeon and Meteor priorities. The server preserves source random-draw order and active-type caps, uses admitted ordinary fighters when selected, and leaves unsupported special-AI selections unspawned instead of replacing them with ordinary hostiles. Later waves and special-AI event NPCs remain open.
+
 Moon-event deaths now advance server-owned transient wave state after loot in every authoritative lethal-damage path. The counter starts at wave 1, uses the source 21-entry requirement table (wave 20 remains endless), discards overflow when a wave completes, and keeps the source Pumpkin/Snow point values with Classic, Expert and Master scalars of 1, 2 and 2.5. Each qualifying death also broadcasts the source packet-78 progress payload (`Int32` current points, `Int32` current-wave maximum, Frost/Pumpkin icon, and wave number) to every playing client. Event NPC definitions and wave selection remain open.
 
 Packet 61 actions `-4` and `-5` now start Pumpkin and Snow Moon through the world clock only at night while no Moon event is active. The clock resets wave state at dawn and requests WorldInfo replication on both start and finish.

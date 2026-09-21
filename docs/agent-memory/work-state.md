@@ -1,5 +1,7 @@
 # Work state
 
+2026-09-21: Natural spawning now takes the source Moon-event selector for Pumpkin/Snow waves 1–5 after the source Dungeon/Meteor priority. The selector preserves every branch's RNG order and active-type caps; a real authority tick admits Pumpkin 305, while the unsupported Snow 341 selection remains unspawned rather than falling back to an ordinary hostile. Later waves and special-AI event NPC behavior remain open. Release rebuild, focused harness, documentation checks and Windows NativeAOT `.cache/moon-event-early-waves-final-win-aot-20260921` pass all five smokes.
+
 2026-09-21: Added source `SetDefaults` definitions for the AI_003 Moon-event ground fighters: Pumpkin 305–314/326 and Snow 342/343/348–351. Each is admitted to the existing authoritative ground-fighter movement/physics path; regression assertions pin geometry, combat defaults, scale, knockback, coverage and behavior resolution. Release rebuild, focused harness, documentation checks and Windows NativeAOT `.cache/moon-event-ai3-final-win-aot-20260921` pass all five smokes.
 
 2026-09-21: Packet 78 now has the exact protocol-326 encoder (`Int32 progress`, `Int32 maximum`, `SByte icon`, `SByte wave`) and an authoritative-loop fanout after each accepted Moon-event death. A progress revision prevents idle-tick traffic and preserves source truncation and the zero-progress state after a wave transition. Release rebuild, focused harness, documentation checks and Windows NativeAOT `.cache/moon-event-packet78-final-win-aot-20260921` pass all five smokes.

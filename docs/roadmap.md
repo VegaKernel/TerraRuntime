@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Moon-event early-wave selection: source `NPC.Spawner.SpawnAnNPC` choice order now drives Pumpkin/Snow waves 1–5 after Dungeon/Meteor priority. Active-type caps and each RNG draw are preserved; admitted ground fighters can spawn while unsupported special-AI selections fail closed without an ordinary-hostile substitution. Later waves and special-AI event NPCs remain open.
+
 2026-09-21 Moon-event AI_003 fighters: source `NPC.SetDefaults` defaults and the admitted ground-fighter runtime path now cover Pumpkin 305–314/326 and Snow 342/343/348–351. Source wave selection and special-AI event NPCs remain open.
 
 2026-09-21 Moon-event packet-78 replication: protocol-326 now encodes the source ten-byte payload and the authoritative world loop broadcasts it to every playing client after a qualifying Moon-event death. It preserves source truncation of fractional Master points, current-wave maximum, icon and post-transition wave number. Event definitions and source wave selection remain open.
