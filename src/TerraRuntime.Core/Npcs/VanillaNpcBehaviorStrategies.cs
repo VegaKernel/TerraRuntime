@@ -327,6 +327,17 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
             return false;
         }
 
+        // AI_001 applies this only after selecting and constructing a grounded jump, so do not fold it into the
+        // generic timer profile (which would incorrectly affect water escape and airborne steering).
+        if (definition.Type == VanillaNpcIds.ToxicSludge && npc.VelocityY == 0f && result.VelocityY < 0f)
+        {
+            result = result with
+            {
+                VelocityX = result.VelocityX * 1.2f,
+                VelocityY = result.VelocityY * 1.3f
+            };
+        }
+
         next = new NpcStateUpdate(
             definition.Type.Value,
             npc.NetId,
