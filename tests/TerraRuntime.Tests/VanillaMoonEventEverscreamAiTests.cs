@@ -91,6 +91,24 @@ public sealed class VanillaMoonEventEverscreamAiTests
     }
 
     [Fact]
+    public void Snow_moon_ai62_defaults_slows_and_releases_its_committed_frost_bolt()
+    {
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(347), out VanillaNpcDefinition definition));
+        Assert.Equal((62, 50, 50, 60, 28, 1200), (definition.AiStyle.Value, definition.BaseWidth, definition.BaseHeight,
+            definition.Damage, definition.Defense, definition.LifeMax));
+        var npcs = new RuntimeNpcStore();
+        var state = new NpcStateUpdate(347, 347, 100f, 200f, 0f, 0f, 3, default,
+            NpcSimulationState.Initial with { DirectionX = 1, SpriteDirection = 1, Life = 1200, LifeMax = 1200,
+                LocalAi = new NpcAiState(14f, 0f, 0f, 0f) });
+        Assert.True(npcs.TrySpawn(1, state, out _)); var projectiles = new RuntimeProjectileStore();
+        var random = new SequenceRandom(); VanillaNpcTargetingAiStepper stepper = CreateStepper(random, solid: false);
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new EverscreamOnly(stepper)).Applied);
+        Assert.True(projectiles.TryGetActive(0, out ProjectileSnapshot bolt));
+        Assert.Equal(VanillaProjectileIds.IceQueenFrostBolt, bolt.Type); Assert.Equal((short)32, bolt.Damage);
+        Assert.Equal(6, random.Draws);
+    }
+
+    [Fact]
     public void Pine_needles_and_ornaments_spawn_only_after_the_exact_committed_attack_tick()
     {
         AssertProjectile(new NpcAiState(1f, 4f, 0f, 0f), VanillaProjectileIds.EverscreamPineNeedle, 43, expectedDraws: 11);
