@@ -51,8 +51,11 @@ public static class VanillaGroundFighterNpcCatalog
         ,Fighter(new NpcTypeId(251), 18, 40, 50, 30, 1000, .3f, 1f, 1f,
             acceleration: .08f, motionProfile: VanillaGroundFighterMotionProfile.MissingHealthBerserker, overspeedGroundDamping: .7f,
             missingHealthSpeedBonus: 2f, missingHealthAccelerationBonus: .2f)
-        ,Fighter(new NpcTypeId(257), 44, 34, 38, 24, 230, .3f, 1f, 2f)
-        ,Fighter(new NpcTypeId(258), 30, 24, 60, 16, 220, .3f, 1f, 3f, reversingVelocityDamping: .99f)
+        ,Fighter(new NpcTypeId(254), 18, 40, 40, 10, 180, .4f, 1f, 1.5f, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new NpcTypeId(255), 18, 40, 38, 16, 220, .3f, 1f, 1f, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new NpcTypeId(257), 44, 34, 38, 24, 230, .3f, 1f, 2f, daySurfaceEncouragesDespawn: false)
+        ,Fighter(new NpcTypeId(258), 30, 24, 60, 16, 220, .3f, 1f, 3f,
+            reversingVelocityDamping: .99f, daySurfaceEncouragesDespawn: false)
         ,Fighter(new NpcTypeId(269), 18, 40, 70, 34, 550, .3f, 1f, 2f)
         ,Fighter(new NpcTypeId(270), 18, 40, 55, 50, 400, .2f, 1f, 1f)
         ,Fighter(new NpcTypeId(271), 18, 40, 70, 40, 450, .25f, 1f, 1.5f)
@@ -86,7 +89,7 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.TwiggyZombie,
         VanillaNpcIds.FemaleZombie,
         VanillaNpcIds.VampireHumanoid,
-        new(78), new(79), new(80), new(243), new(251), new(257), new(258), new(287), new(630),
+        new(78), new(79), new(80), new(243), new(251), new(254), new(255), new(257), new(258), new(287), new(630),
         new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280)
     ];
 
@@ -142,7 +145,8 @@ public static class VanillaGroundFighterNpcCatalog
         float halfHealthSpeedMultiplier = 1f,
         float overspeedGroundDamping = .8f,
         float missingHealthSpeedBonus = 0f,
-        float missingHealthAccelerationBonus = 0f) =>
+        float missingHealthAccelerationBonus = 0f,
+        bool daySurfaceEncouragesDespawn = true) =>
         new(
             new VanillaNpcDefinition(
                 type,
@@ -180,5 +184,6 @@ public static class VanillaGroundFighterNpcCatalog
                 HalfHealthSpeedMultiplier: halfHealthSpeedMultiplier,
                 OverspeedGroundDamping: overspeedGroundDamping,
                 MissingHealthSpeedBonus: missingHealthSpeedBonus,
-                MissingHealthAccelerationBonus: missingHealthAccelerationBonus));
+                MissingHealthAccelerationBonus: missingHealthAccelerationBonus,
+                DaySurfaceEncouragesDespawn: daySurfaceEncouragesDespawn));
 }

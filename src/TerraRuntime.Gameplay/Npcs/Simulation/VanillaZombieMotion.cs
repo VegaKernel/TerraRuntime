@@ -305,7 +305,8 @@ public readonly record struct VanillaGroundFighterBehaviorParameters(
     float HalfHealthSpeedMultiplier = 1f,
     float OverspeedGroundDamping = .8f,
     float MissingHealthSpeedBonus = 0f,
-    float MissingHealthAccelerationBonus = 0f)
+    float MissingHealthAccelerationBonus = 0f,
+    bool DaySurfaceEncouragesDespawn = true)
 {
     public bool IsValid =>
         float.IsFinite(BaseMaximumHorizontalSpeed) && BaseMaximumHorizontalSpeed > 0f &&

@@ -337,7 +337,9 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             return TryStep(in transformed, in transformedDefinition, context, inner, out next);
         }
 
-        bool daytimeSurface = context.DayTime && npc.PositionY < context.WorldSurfacePixels;
+        bool daytimeSurface = context.DayTime &&
+            npc.PositionY < context.WorldSurfacePixels &&
+            parameters.DaySurfaceEncouragesDespawn;
         int startingDirectionY = npc.Simulation.DirectionY;
         if (npc.Target < byte.MaxValue &&
             context.TryFindCandidate(checked((byte)npc.Target), out VanillaNpcTargetCandidate currentTarget) &&
