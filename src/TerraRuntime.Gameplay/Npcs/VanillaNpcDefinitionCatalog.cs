@@ -331,6 +331,9 @@ public static class VanillaNpcDefinitionCatalog
         if (VanillaAntlionNpcCatalog1458.TryGetDefinition(type, out definition))
             return true;
 
+        if (VanillaMimicNpcCatalog1458.TryGetDefinition(type, out definition))
+            return true;
+
         if (type == VanillaNpcIds.QueenBee)
         {
             definition = new VanillaNpcDefinition(

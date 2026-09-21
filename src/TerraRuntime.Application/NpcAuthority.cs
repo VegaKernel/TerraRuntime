@@ -240,7 +240,11 @@ internal sealed partial class NpcAuthority
                 {
                     double rockLayer = townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 facts &&
                         facts.RockLayer > verifiedSurface ? facts.RockLayer : double.PositiveInfinity;
-                    vanillaTargeting.SetWorldBounds(worldTiles.Dimensions.WidthTiles, verifiedSurface, rockLayer);
+                    vanillaTargeting.SetWorldBounds(
+                        worldTiles.Dimensions.WidthTiles,
+                        verifiedSurface,
+                        rockLayer,
+                        worldTiles.Dimensions.HeightTiles);
                 }
                 var flyingEyeEnvironment = new VanillaFlyingEyeWorldEnvironment(worldTiles);
                 vanillaTargeting.SetFlyingEyeEnvironment(flyingEyeEnvironment);
@@ -373,7 +377,7 @@ internal sealed partial class NpcAuthority
                     naturalSpawnSkyblockNoHellstone,
                     naturalSpawnSkyblockNoLifeCrystals,
                     naturalSpawnWorldFacts?.DownedBoss3 ?? false);
-                vanillaTargeting.SetMoonEventState(worldClock.PumpkinMoonActive);
+                vanillaTargeting.SetMoonEventState(worldClock.PumpkinMoonActive, worldClock.SnowMoonActive);
             }
         }
 

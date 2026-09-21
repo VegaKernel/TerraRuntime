@@ -158,8 +158,12 @@ public sealed class VanillaNpcTargetingAiStepper :
     public void SetCasterEnvironment(IVanillaCasterEnvironment environment) =>
         _darkCaster.Environment = environment ?? throw new ArgumentNullException(nameof(environment));
 
-    public void SetWorldBounds(int widthTiles, double worldSurfaceTiles, double rockLayerTiles = double.PositiveInfinity) =>
-        _context.SetWorldBounds(widthTiles, worldSurfaceTiles, rockLayerTiles);
+    public void SetWorldBounds(
+        int widthTiles,
+        double worldSurfaceTiles,
+        double rockLayerTiles = double.PositiveInfinity,
+        int worldHeightTiles = 0) =>
+        _context.SetWorldBounds(widthTiles, worldSurfaceTiles, rockLayerTiles, worldHeightTiles);
 
     public void SetPlayerSnapshotLookup(IRuntimePlayerSlotSnapshotLookup playerSnapshots) =>
         _context.SetPlayerSnapshotLookup(playerSnapshots);
@@ -263,7 +267,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         bool downedSkeletron = false) =>
         _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld, expertMode, masterMode, windSpeedCurrent, remixWorld, worldTime, noTrapsWorld, skyblockNoFossils, skyblockLowTiles, skyblockNoHellstone, skyblockNoLifeCrystals, downedSkeletron);
 
-    public void SetMoonEventState(bool pumpkinMoonActive) => _context.SetMoonEventState(pumpkinMoonActive);
+    public void SetMoonEventState(bool pumpkinMoonActive, bool snowMoonActive = false) =>
+        _context.SetMoonEventState(pumpkinMoonActive, snowMoonActive);
 
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates) =>
         _context.SetCandidates(candidates);

@@ -1995,7 +1995,8 @@ internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanil
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
         INpcAiStateStepper inner, out NpcStateUpdate next)
     {
-        if (definition.Type != VanillaMoonEventSpecialCatalog1458.SnowMoonAi25 || definition.AiStyle.Value != 25)
+        if (definition.AiStyle.Value != 25 ||
+            (definition.Type != VanillaMoonEventSpecialCatalog1458.SnowMoonAi25 && definition.Type.Value is not 85 and not 341 and not 629))
         {
             next = default;
             return false;
@@ -2009,16 +2010,37 @@ internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanil
         float ai0 = npc.Ai.Ai0;
         float ai1 = npc.Ai.Ai1;
         float ai2 = npc.Ai.Ai2;
+        float ai3 = npc.Ai.Ai3;
+        float positionX = npc.PositionX;
+        bool suppressTargetRefresh = definition.Type.Value == 341 && !context.SnowMoonActive;
 
-        // Type 341 forces ai[3] to one, bypassing the depth classification of the shared AI_025 body.
+        // AI_025 offsets a freshly spawned body before storing its source depth state. Present and Ice Mimics
+        // then force the shared field to one, while an ordinary Mimic retains its world-depth classification.
+        if (ai3 == 0f)
+        {
+            positionX += 8f;
+            if (npc.PositionY > context.UnderworldLayerPixels)
+                ai3 = 3f;
+            else if (npc.PositionY > context.WorldSurfacePixels)
+            {
+                RefreshTarget(in npc, in definition, context, ref target, ref directionX, ref directionY);
+                ai3 = 2f;
+            }
+            else
+                ai3 = 1f;
+        }
+        if (definition.Type.Value is 341 or 629)
+            ai3 = 1f;
+
         if (ai0 == 0f)
         {
-            RefreshTarget(in npc, in definition, context, ref target, ref directionX, ref directionY);
+            if (!suppressTargetRefresh)
+                RefreshTarget(in npc, in definition, context, ref target, ref directionX, ref directionY);
             if (npc.VelocityX != 0f || npc.VelocityY < 0f || npc.VelocityY > .3f)
                 ai0 = 1f;
             else if (target < byte.MaxValue && context.TryFindCandidate((byte)target, out VanillaNpcTargetCandidate player) &&
                      player.Active && !player.Dead && !player.Ghost &&
-                     IntersectsActivationRectangle(in npc, in definition, in player))
+                     (IntersectsActivationRectangle(in npc, in definition, in player) || simulation.Life < simulation.LifeMax))
                 ai0 = 1f;
         }
         else if (npc.VelocityY == 0f)
@@ -2028,7 +2050,8 @@ internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanil
             if (ai2 >= wait)
             {
                 ai2 = 0f;
-                RefreshTarget(in npc, in definition, context, ref target, ref directionX, ref directionY);
+                if (!suppressTargetRefresh)
+                    RefreshTarget(in npc, in definition, context, ref target, ref directionX, ref directionY);
                 if (directionX == 0)
                     directionX = -1;
                 spriteDirection = directionX;
@@ -2036,27 +2059,27 @@ internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanil
                 if (ai1 == 2f)
                 {
                     ai1 = 0f;
-                    next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, directionX * 2.5f, -8f);
+                    next = Build(in npc, in definition, positionX, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, ai3, directionX * 2.5f, -8f);
                     return true;
                 }
-                next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, directionX * 3.5f, -4f);
+                next = Build(in npc, in definition, positionX, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, ai3, directionX * 3.5f, -4f);
                 return true;
             }
-            next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, npc.VelocityX * .9f, npc.VelocityY);
+            next = Build(in npc, in definition, positionX, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, ai3, npc.VelocityX * .9f, npc.VelocityY);
             return true;
         }
         else if (directionX == 1 && npc.VelocityX < 1f)
         {
-            next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, npc.VelocityX + .1f, npc.VelocityY);
+            next = Build(in npc, in definition, positionX, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, ai3, npc.VelocityX + .1f, npc.VelocityY);
             return true;
         }
         else if (directionX == -1 && npc.VelocityX > -1f)
         {
-            next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, npc.VelocityX - .1f, npc.VelocityY);
+            next = Build(in npc, in definition, positionX, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, ai3, npc.VelocityX - .1f, npc.VelocityY);
             return true;
         }
 
-        next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, npc.VelocityX, npc.VelocityY);
+        next = Build(in npc, in definition, positionX, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, ai3, npc.VelocityX, npc.VelocityY);
         return true;
     }
 
@@ -2071,13 +2094,13 @@ internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanil
     }
 
     private static NpcStateUpdate Build(in NpcSnapshot npc, in VanillaNpcDefinition definition,
-        ushort target, int directionX, int directionY, int spriteDirection, float ai0, float ai1, float ai2,
-        float velocityX, float velocityY)
+        float positionX, ushort target, int directionX, int directionY, int spriteDirection, float ai0, float ai1,
+        float ai2, float ai3, float velocityX, float velocityY)
     {
         NpcSimulationState simulation = npc.Simulation;
         return new NpcStateUpdate(
-            definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, velocityX, velocityY, target,
-            new NpcAiState(ai0, ai1, ai2, 1f), simulation with
+            definition.Type.Value, npc.NetId, positionX, npc.PositionY, velocityX, velocityY, target,
+            new NpcAiState(ai0, ai1, ai2, ai3), simulation with
             {
                 DirectionX = directionX,
                 DirectionY = directionY,

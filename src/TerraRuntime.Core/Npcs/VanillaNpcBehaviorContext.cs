@@ -34,9 +34,16 @@ internal sealed class VanillaNpcBehaviorContext
 
     public double RockLayerPixels { get; private set; } = double.PositiveInfinity;
 
+    /// <summary>Top edge of the source underworld layer, or infinity when the world height is unavailable.</summary>
+    public double UnderworldLayerPixels { get; private set; } = double.PositiveInfinity;
+
     public double WorldWidthPixels { get; private set; }
 
-    public void SetWorldBounds(int widthTiles, double worldSurfaceTiles, double rockLayerTiles = double.PositiveInfinity)
+    public void SetWorldBounds(
+        int widthTiles,
+        double worldSurfaceTiles,
+        double rockLayerTiles = double.PositiveInfinity,
+        int worldHeightTiles = 0)
     {
         if (widthTiles <= 0)
             throw new ArgumentOutOfRangeException(nameof(widthTiles));
@@ -47,9 +54,12 @@ internal sealed class VanillaNpcBehaviorContext
         {
             throw new ArgumentOutOfRangeException(nameof(rockLayerTiles));
         }
+        if (worldHeightTiles < 0 || (worldHeightTiles > 0 && worldHeightTiles <= 200))
+            throw new ArgumentOutOfRangeException(nameof(worldHeightTiles));
         WorldWidthPixels = widthTiles * 16d;
         WorldSurfacePixels = worldSurfaceTiles * 16d;
         RockLayerPixels = rockLayerTiles * 16d;
+        UnderworldLayerPixels = worldHeightTiles == 0 ? double.PositiveInfinity : (worldHeightTiles - 200) * 16d;
     }
 
     public bool DayTime { get; private set; } = true;
@@ -57,6 +67,8 @@ internal sealed class VanillaNpcBehaviorContext
     public bool SlimeRainActive { get; private set; }
 
     public bool PumpkinMoonActive { get; private set; }
+
+    public bool SnowMoonActive { get; private set; }
 
     public bool GoodWorld { get; private set; }
 
@@ -91,7 +103,11 @@ internal sealed class VanillaNpcBehaviorContext
     public void SetPlayerSnapshotLookup(IRuntimePlayerSlotSnapshotLookup playerSnapshots) =>
         _playerSnapshots = playerSnapshots ?? throw new ArgumentNullException(nameof(playerSnapshots));
 
-    public void SetMoonEventState(bool pumpkinMoonActive) => PumpkinMoonActive = pumpkinMoonActive;
+    public void SetMoonEventState(bool pumpkinMoonActive, bool snowMoonActive = false)
+    {
+        PumpkinMoonActive = pumpkinMoonActive;
+        SnowMoonActive = snowMoonActive;
+    }
 
     public void EnableSlimeGround(double worldSurfaceTiles)
     {

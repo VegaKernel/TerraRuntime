@@ -138,7 +138,8 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaJellyfishNpcCatalog1458.DefinitionCount +
             VanillaAntlionNpcCatalog1458.DefinitionCount +
             VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount +
-            VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 14];
+            VanillaMoonEventGroundFighterCatalog1458.DefinitionCount +
+            VanillaMimicNpcCatalog1458.DefinitionCount - 1 + 14];
         entries[0] = Partial(
             VanillaNpcIds.BlueSlime,
             OrdinaryCore |
@@ -307,6 +308,12 @@ public static class VanillaNpcAiCoverageCatalog
         entries[index++] = Partial(
             VanillaMoonEventSpecialCatalog1458.SnowMoonAi25,
             OrdinaryCore);
+        foreach (VanillaNpcDefinition definition in VanillaMimicNpcCatalog1458.AllDefinitions)
+        {
+            // Type 341 is already the shared Snow Moon AI_025 coverage entry above.
+            if (definition.Type != VanillaMoonEventSpecialCatalog1458.SnowMoonAi25)
+                entries[index++] = Partial(definition.Type, OrdinaryCore);
+        }
         entries[index++] = Partial(
             VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi26,
             OrdinaryCore | VanillaNpcAiCapability.UnicornTraversalSlice);
