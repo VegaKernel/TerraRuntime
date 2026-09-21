@@ -63,6 +63,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly IVanillaNpcBehaviorStrategy _moonEventUnicorn = new VanillaMoonEventUnicornNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _moonEventGhost = new VanillaMoonEventGhostNpcBehaviorStrategy();
     private readonly VanillaMoonEventEverscreamNpcBehaviorStrategy _moonEventEverscream;
+    private readonly VanillaPumpkingNpcBehaviorStrategy _pumpking;
     private readonly VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy _eyeOfCthulhu;
     private readonly VanillaServantOfCthulhuNpcBehaviorStrategy _flyer;
     private readonly VanillaWormNpcBehaviorStrategy _worm = new();
@@ -125,6 +126,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         _dukeFishron = new VanillaDukeFishronNpcBehaviorStrategy(_random);
         _moonLord = new VanillaMoonLordNpcBehaviorStrategy(_random);
         _moonEventEverscream = new VanillaMoonEventEverscreamNpcBehaviorStrategy(_random);
+        _pumpking = new VanillaPumpkingNpcBehaviorStrategy(_random);
         if (kingSlimeEnvironment is IVanillaEyeOfCthulhuEnvironment eyeEnvironment)
             _eyeOfCthulhu.SetEnvironment(eyeEnvironment);
         if (kingSlimeEnvironment is IVanillaBrainOfCthulhuEnvironment brainEnvironment)
@@ -276,6 +278,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.MoonEventUnicorn when _context.GroundFighterEnabled => _moonEventUnicorn,
             VanillaNpcBehaviorFamily.MoonEventGhost when _context.GroundFighterEnabled => _moonEventGhost,
             VanillaNpcBehaviorFamily.MoonEventEverscream when _context.GroundFighterEnabled => _moonEventEverscream,
+            VanillaNpcBehaviorFamily.PumpkinMoonPumpking when _context.GroundFighterEnabled => _pumpking,
             VanillaNpcBehaviorFamily.EyeOfCthulhu => _eyeOfCthulhu,
             VanillaNpcBehaviorFamily.Flyer => _flyer,
             VanillaNpcBehaviorFamily.Worm => _worm,
@@ -402,6 +405,8 @@ public sealed class VanillaNpcTargetingAiStepper :
             return PlanDukeFishronBubble(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.LunaticCultist.Value && proposed.Type == source.Type)
             return PlanLunaticCultistSpawns(in source, in proposed, destination);
+        if (source.TypeIdentity == VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi58Pumpking && proposed.Type == source.Type)
+            return PlanPumpkingBlades(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.MoonLordCore.Value && proposed.Type == source.Type)
             return PlanMoonLordParts(in source, in proposed, destination);
 
@@ -1690,6 +1695,19 @@ public sealed class VanillaNpcTargetingAiStepper :
         return 4;
     }
 
+    private static int PlanPumpkingBlades(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
+    {
+        if (source.Ai.Ai0 != 0f || proposed.Ai.Ai0 != 1f || destination.Length < 2)
+            return 0;
+        int centerX = (int)(source.PositionX + 50f), centerY = (int)(source.PositionY + 50f);
+        float parent = source.Handle.Slot;
+        destination[0] = new NpcAiSpawnIntent(VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi59PumpkingBlade,
+            centerX, centerY, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(-1f, parent, 0f, 0f), StartSlot = source.Handle.Slot };
+        destination[1] = new NpcAiSpawnIntent(VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi59PumpkingBlade,
+            centerX, centerY, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(1f, parent, 0f, 150f), StartSlot = source.Handle.Slot };
+        return 2;
+    }
+
     private int PlanQueenSlimeMinions(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
     {
         int lifeMax = Math.Max(1, proposed.Simulation.LifeMax);
@@ -2052,6 +2070,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         SpawnMourningWoodFireball(in before, in committed, mutations);
         SpawnEverscreamProjectiles(in before, in committed, mutations);
         SpawnPumpkingProjectiles(in before, in committed, mutations);
+        SpawnPumpkingGreekFire(in before, in committed, mutations);
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);
         VanillaMoonLordLeechBehavior.SpawnFromHead(in before, in committed, _context, mutations);
         VanillaDestroyerNpcBehaviorStrategy.SpawnChain(in before, in committed, _context.GoodWorld, mutations);
@@ -2214,6 +2233,30 @@ public sealed class VanillaNpcTargetingAiStepper :
             dy *= 1f + _random.NextInt32(-30, 31) * .005f;
             SpawnPumpkingProjectile(in committed, mutations, RandomPumpkingAttack(), x, y, dx, dy, 50);
         }
+    }
+
+    private void SpawnPumpkingGreekFire(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi58Pumpking ||
+            committed.TypeIdentity != before.TypeIdentity || before.Ai.Ai3 != 0f || before.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)before.Target, out VanillaNpcTargetCandidate player))
+            return;
+
+        float elapsed = before.Simulation.LocalAi.Ai2 + 1f;
+        if (elapsed <= 30f || elapsed > 300f || elapsed % 30f != 0f)
+            return;
+
+        float x = before.PositionX + 50f, y = before.PositionY + 80f;
+        float dx = player.CenterX - x + _random.NextInt32(-50, 51);
+        float dy = player.CenterY - player.Height * .5f - y + _random.NextInt32(50, 201);
+        dy *= .2f;
+        NormalizeTo(ref dx, ref dy, 5f);
+        dx *= 1f + _random.NextInt32(-30, 31) * .01f;
+        dy *= 1f + _random.NextInt32(-30, 31) * .01f;
+        SpawnPumpkingProjectile(in committed, mutations, RandomPumpkingAttack(), x, y, dx, dy, 40);
     }
 
     private ProjectileTypeId RandomPumpkingAttack() => _random.NextInt32(326, 329) switch

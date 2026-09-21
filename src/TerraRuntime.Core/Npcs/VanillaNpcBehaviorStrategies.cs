@@ -823,6 +823,63 @@ internal sealed class VanillaMoonEventEverscreamNpcBehaviorStrategy : IVanillaNp
     }
 }
 
+/// <summary>Source AI_058/059 movement core for Pumpkin Moon Pumpking and its blades.</summary>
+internal sealed class VanillaPumpkingNpcBehaviorStrategy(IVanillaNpcRandom random) : IVanillaNpcBehaviorStrategy
+{
+    public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        INpcAiStateStepper inner, out NpcStateUpdate next)
+    {
+        if (definition.Type == VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi58Pumpking)
+            return StepPumpking(in npc, in definition, context, out next);
+        if (definition.Type == VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi59PumpkingBlade)
+            return StepBlade(in npc, in definition, context, out next);
+        next = default; return false;
+    }
+
+    private bool StepPumpking(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, out NpcStateUpdate next)
+    {
+        if (!context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) || !closest.HasTarget ||
+            !context.TryFindCandidate((byte)closest.Target, out VanillaNpcTargetCandidate player)) { next = default; return false; }
+        NpcAiState ai = npc.Ai; NpcAiState local = npc.Simulation.LocalAi;
+        local = local with { Ai0 = local.Ai0 + 1f };
+        if (local.Ai0 > 6f) local = local with { Ai0 = 0f, Ai1 = local.Ai1 >= 4f ? 0f : local.Ai1 + 1f };
+        local = local with { Ai2 = local.Ai2 + 1f };
+        if (local.Ai2 > 300f) { local = local with { Ai2 = 0f }; ai = ai with { Ai3 = random.NextInt32(0, 3) }; }
+        float vx = npc.VelocityX, vy = npc.VelocityY;
+        if (context.DayTime) { vy += .3f; vx *= .9f; }
+        else if (ai.Ai1 == 2f) { vy += .1f; if (vy < 0f) vy *= .95f; vx *= .95f; }
+        else
+        {
+            float cx = npc.PositionX + 50f, cy = npc.PositionY + 50f;
+            float dx = player.CenterX - cx, dy = player.CenterY - (ai.Ai1 == 1f ? cy : cy + 200f);
+            float distance = MathF.Max(1f, MathF.Sqrt(dx * dx + dy * dy));
+            float speed = ai.Ai1 == 1f ? 16f : ai.Ai3 == 1f ? distance > 900f ? 12f : distance > 600f ? 10f : distance > 300f ? 8f : 6f : 6f;
+            if (distance > 50f || ai.Ai1 == 1f) { vx = (vx * (ai.Ai1 == 1f ? 49f : 14f) + dx / distance * speed) / (ai.Ai1 == 1f ? 50f : 15f); vy = (vy * (ai.Ai1 == 1f ? 49f : 14f) + dy / distance * speed) / (ai.Ai1 == 1f ? 50f : 15f); }
+            float timer = ai.Ai2 + 1f;
+            if (timer >= (ai.Ai1 == 1f ? 600f : 300f)) { ai = ai with { Ai1 = ai.Ai3 == 1f && ai.Ai1 == 0f ? 1f : 0f, Ai2 = 0f }; }
+            else ai = ai with { Ai2 = timer };
+        }
+        if (ai.Ai0 == 0f) ai = ai with { Ai0 = 1f };
+        next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, vx, vy, closest.Target, ai,
+            npc.Simulation with { LocalAi = local, NoGravity = true, NoTileCollide = true, DirectionX = vx < 0 ? -1 : 1, SpriteDirection = vx < 0 ? -1 : 1 });
+        return true;
+    }
+
+    private static bool StepBlade(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, out NpcStateUpdate next)
+    {
+        if (!context.TryFindNpcPeer((byte)Math.Clamp((int)npc.Ai.Ai1, 0, byte.MaxValue), out NpcSnapshot parent) ||
+            parent.TypeIdentity != VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi58Pumpking) { next = default; return false; }
+        float sign = npc.Ai.Ai0, cx = npc.PositionX + 40f, cy = npc.PositionY + 40f;
+        float targetX = parent.PositionX + 50f - 170f * sign, targetY = parent.PositionY + 140f;
+        float dx = targetX - cx, dy = targetY - cy, d = MathF.Max(1f, MathF.Sqrt(dx * dx + dy * dy));
+        float speed = d > 1000f ? 21f : d > 800f ? 18f : d > 600f ? 15f : d > 400f ? 12f : d > 200f ? 9f : 6f;
+        next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY,
+            (npc.VelocityX * 14f + dx / d * speed) / 15f, (npc.VelocityY * 14f + dy / d * speed) / 15f, npc.Target,
+            npc.Ai with { Ai3 = npc.Ai.Ai3 + 1f }, npc.Simulation with { NoGravity = true, NoTileCollide = true });
+        return true;
+    }
+}
+
 internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,

@@ -11,6 +11,8 @@ public static class VanillaMoonEventSpecialCatalog1458
     public static readonly NpcTypeId PumpkinMoonAi26MourningWood = new(315);
     public static readonly NpcTypeId PumpkinMoonAi26 = new(329);
     public static readonly NpcTypeId PumpkinMoonAi22 = new(330);
+    public static readonly NpcTypeId PumpkinMoonAi58Pumpking = new(327);
+    public static readonly NpcTypeId PumpkinMoonAi59PumpkingBlade = new(328);
 
     public static bool TryGetDefinition(NpcTypeId type, out VanillaNpcDefinition definition)
     {
@@ -56,6 +58,24 @@ public static class VanillaMoonEventSpecialCatalog1458
                 NoGravityAtSpawn: true,
                 NoTileCollideAtSpawn: true,
                 VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == PumpkinMoonAi58Pumpking)
+        {
+            definition = new VanillaNpcDefinition(PumpkinMoonAi58Pumpking, new NpcAiStyleId(58),
+                VanillaNpcBehaviorFamily.PumpkinMoonPumpking, VanillaNpcPhysicsFamily.NoClipFlight,
+                NpcArchetypeRole.Boss, 100, 100, 50, 40, 26000, 0f, 1f, true, true,
+                VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == PumpkinMoonAi59PumpkingBlade)
+        {
+            definition = new VanillaNpcDefinition(PumpkinMoonAi59PumpkingBlade, new NpcAiStyleId(59),
+                VanillaNpcBehaviorFamily.PumpkinMoonPumpking, VanillaNpcPhysicsFamily.NoClipFlight,
+                NpcArchetypeRole.Ordinary, 80, 80, 65, 14, 5000, 0f, 1f, true, true,
+                VanillaNpcSyncAnchor.TopLeft) { DontTakeDamageAtSpawn = true };
             return true;
         }
 

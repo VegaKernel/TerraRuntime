@@ -86,6 +86,46 @@ public sealed class VanillaMoonEventEverscreamAiTests
     }
 
     [Fact]
+    public void Pumpking_and_blades_keep_source_defaults_initial_links_and_parent_motion()
+    {
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(327), out VanillaNpcDefinition pumpking));
+        Assert.Equal((58, 100, 100, 50, 40, 26000), (pumpking.AiStyle.Value, pumpking.BaseWidth, pumpking.BaseHeight, pumpking.Damage, pumpking.Defense, pumpking.LifeMax));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(328), out VanillaNpcDefinition blade));
+        Assert.Equal((59, 80, 80, 65, 14, 5000), (blade.AiStyle.Value, blade.BaseWidth, blade.BaseHeight, blade.Damage, blade.Defense, blade.LifeMax));
+        Assert.True(blade.DontTakeDamageAtSpawn);
+
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(new SequenceRandom(), solid: false);
+        var state = new NpcStateUpdate(327, 327, 100f, 200f, 0f, 0f, 3, default,
+            NpcSimulationState.Initial with { Life = 26000, LifeMax = 26000 });
+        var npcs = new RuntimeNpcStore(); Assert.True(npcs.TrySpawn(7, state, out NpcSnapshot source));
+        Assert.True(stepper.TryStepState(in source, out NpcStateUpdate next)); Assert.Equal(1f, next.Ai.Ai0);
+        Span<NpcAiSpawnIntent> intents = stackalloc NpcAiSpawnIntent[2];
+        Assert.Equal(2, stepper.PlanNpcSpawns(in source, in next, intents));
+        Assert.Equal(new NpcAiState(-1f, 7f, 0f, 0f), intents[0].InitialAi);
+        Assert.Equal(new NpcAiState(1f, 7f, 0f, 150f), intents[1].InitialAi);
+
+        var bladeState = new NpcStateUpdate(328, 328, 400f, 400f, 0f, 0f, 3, intents[0].InitialAi,
+            NpcSimulationState.Initial with { Life = 5000, LifeMax = 5000, DontTakeDamage = true });
+        Assert.True(npcs.TrySpawn(8, bladeState, out NpcSnapshot bladeNpc)); stepper.SetNpcPeers([source]);
+        Assert.True(stepper.TryStepState(in bladeNpc, out NpcStateUpdate bladeNext));
+        Assert.True(bladeNext.VelocityX < 0f); Assert.True(bladeNext.VelocityY < 0f);
+    }
+
+    [Fact]
+    public void Pumpking_greek_fire_uses_the_committed_local_ai58_clock()
+    {
+        var npcs = new RuntimeNpcStore();
+        var state = new NpcStateUpdate(327, 327, 100f, 200f, 0f, 0f, 3, new NpcAiState(1f, 0f, 0f, 0f),
+            NpcSimulationState.Initial with { Life = 26000, LifeMax = 26000, LocalAi = new NpcAiState(0f, 0f, 59f, 0f) });
+        Assert.True(npcs.TrySpawn(7, state, out _)); var projectiles = new RuntimeProjectileStore();
+        var random = new SequenceRandom(); VanillaNpcTargetingAiStepper stepper = CreateStepper(random, solid: false);
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new EverscreamOnly(stepper)).Applied);
+        Assert.True(projectiles.TryGetActive(0, out ProjectileSnapshot projectile));
+        Assert.Equal(VanillaProjectileIds.GreekFire1, projectile.Type); Assert.Equal((short)40, projectile.Damage);
+        Assert.Equal(5, random.Draws);
+    }
+
+    [Fact]
     public void Rejected_attack_transition_does_not_consume_rng_or_create_a_projectile()
     {
         var npcs = new RuntimeNpcStore();
