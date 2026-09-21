@@ -41,7 +41,6 @@ internal sealed partial class NpcAuthority
     private readonly RuntimeWorldProgressionMutations naturalSpawnProgression;
     private readonly VanillaTownSpawnWorldFacts1458? naturalTownSpawnFacts;
     private readonly NpcSnapshot[] naturalSpawnNpcBuffer = new NpcSnapshot[RuntimeNpcStore.MaximumAddressableCapacity];
-    private int naturalSpawnPlayerCursor;
     private readonly bool expertMode;
     private readonly bool masterMode;
     private readonly VanillaTownSceneMetricsScanner1458? npcSceneMetrics;
@@ -799,45 +798,48 @@ internal sealed partial class NpcAuthority
         if (count == 0)
             return;
 
-        // One candidate maximum per authoritative tick keeps spawn work bounded regardless of player count.
-        int start = naturalSpawnPlayerCursor++ % count;
-        VanillaNpcTargetCandidate player = targetCandidates[start];
-        if (!player.Active || player.Dead || player.Ghost)
-            return;
-
-        // The server refreshes Player.nearbyActiveNPCs before NPC.Spawner asks for its rate.  Retain one
-        // authoritative snapshot for both source checks so a spawn attempt cannot observe two different caps.
-        int nearbyNpcCount = CountNearbyOrdinaryNpcs(player.CenterX, player.CenterY, 1600f);
-        GetNaturalSpawnBudget(in player, nearbyNpcCount, out int spawnRate, out int maxSpawns);
-        if (nearbyNpcCount >= maxSpawns || naturalSpawnRandom.NextInt32(0, spawnRate) != 0)
+        // NPC.Spawner walks player slots in ascending order and stops after its first complete spawn
+        // attempt. A rejected rate/floor check therefore permits the next player during the same tick;
+        // a selected unsupported runtime type still consumes the source attempt and ends this pass.
+        for (int candidateIndex = 0; candidateIndex < count; candidateIndex++)
         {
+            VanillaNpcTargetCandidate player = targetCandidates[candidateIndex];
+            if (!player.Active || player.Dead)
+                continue;
+
+            // The server refreshes Player.nearbyActiveNPCs before NPC.Spawner asks for its rate. Retain one
+            // authoritative snapshot for both source checks so a spawn attempt cannot observe two different caps.
+            int nearbyNpcCount = CountNearbyOrdinaryNpcs(player.CenterX, player.CenterY, 1600f);
+            GetNaturalSpawnBudget(in player, nearbyNpcCount, out int spawnRate, out int maxSpawns);
+            if (nearbyNpcCount >= maxSpawns || naturalSpawnRandom.NextInt32(0, spawnRate) != 0)
+                continue;
+
+            if (!TryFindVanillaNaturalSpawnFloor(in player, out int tileX, out int floorY))
+                continue;
+
+            NpcTypeId type = SelectNaturalHostileType(in player, tileX, floorY);
+            if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition) || definition.IsBoss ||
+                !VanillaNpcAiCoverageCatalog.TryGet(type, out _))
+            {
+                return;
+            }
+
+            float spawnX = tileX * 16f + 8f - definition.Width * 0.5f;
+            float spawnY = floorY * 16f - definition.Height;
+            var update = new NpcStateUpdate(
+                Type: type.Value,
+                NetId: checked((short)type.Value),
+                PositionX: spawnX,
+                PositionY: spawnY,
+                VelocityX: 0f,
+                VelocityY: 0f,
+                Target: player.Slot,
+                Ai: default,
+                Simulation: NpcSimulationState.Initial with { TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft });
+            if (npcs.TrySpawnVanilla(in update, out _))
+                AppliedSpawns++;
             return;
         }
-
-        if (!TryFindVanillaNaturalSpawnFloor(in player, out int tileX, out int floorY))
-            return;
-
-        NpcTypeId type = SelectNaturalHostileType(in player, tileX, floorY);
-        if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition) || definition.IsBoss ||
-            !VanillaNpcAiCoverageCatalog.TryGet(type, out _))
-        {
-            return;
-        }
-
-        float spawnX = tileX * 16f + 8f - definition.Width * 0.5f;
-        float spawnY = floorY * 16f - definition.Height;
-        var update = new NpcStateUpdate(
-            Type: type.Value,
-            NetId: checked((short)type.Value),
-            PositionX: spawnX,
-            PositionY: spawnY,
-            VelocityX: 0f,
-            VelocityY: 0f,
-            Target: player.Slot,
-            Ai: default,
-            Simulation: NpcSimulationState.Initial with { TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft });
-        if (npcs.TrySpawnVanilla(in update, out _))
-            AppliedSpawns++;
     }
 
     private void GetNaturalSpawnBudget(

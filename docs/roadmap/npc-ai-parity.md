@@ -2,7 +2,7 @@
 
 ## Natural hostile spawn-rate slice - 2026-09-21
 
-`NpcAuthority` now follows the server-owned branches of TerrariaServer 1.4.5.8 `NPC.Spawner.GetSpawnRate`: mount-aware top-left player depth, normal/Remix vertical ordering, Blood Moon, Eclipse, Drunk-world wall 86, Dungeon/evil/Hallow modifiers, source nearby-population bands and the post-clamp Good World adjustment. The count is captured once before the source cap/random order. Real world-tick regressions pin the ordinary and Hardmode underworld rates (252/226) and a surface Eclipse rate (72); natural type selection and all unsupported source facts remain separate. Pumpkin/Snow Moon, player buffs/candles, Journey slider, town-count Jungle rule, meteor/sandstorm/temple and source `npcSlots` accounting are still open.
+`NpcAuthority` now follows the server-owned branches of TerrariaServer 1.4.5.8 `NPC.Spawner.GetSpawnRate`: mount-aware top-left player depth, normal/Remix vertical ordering, Blood Moon, Eclipse, Drunk-world wall 86, Dungeon/evil/Hallow modifiers, source nearby-population bands and the post-clamp Good World adjustment. Candidates use ascending source slot order until the first complete attempt, so a failed rate roll immediately advances to the next eligible player without creating a second attempt. Real world-tick regressions pin the ordinary and Hardmode underworld rates (252/226), a surface Eclipse rate (72), and the two-player rejected-first/admitted-second order; natural type selection and all unsupported source facts remain separate. Pumpkin/Snow Moon, player buffs/candles, Journey slider, town-count Jungle rule, meteor/sandstorm/temple and source `npcSlots` accounting are still open.
 
 ## Prime melee implementation - 2026-09-16
 
