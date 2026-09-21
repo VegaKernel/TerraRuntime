@@ -7,6 +7,7 @@ namespace TerraRuntime.World;
 public readonly record struct VanillaSkyblockRuntimeState1458(
     bool SkyblockWorld,
     bool LowTiles,
+    bool NoFossils,
     int ActiveTileCount,
     int TotalTileCount)
 {
@@ -45,24 +46,31 @@ public static class VanillaSkyblockRuntimePolicy1458
         ArgumentNullException.ThrowIfNull(tiles);
 
         int activeTileCount = 0;
+        bool noFossils = metadata.SkyblockWorld;
         foreach (ref readonly WorldTile tile in tiles.Tiles)
         {
             if (tile.IsActive)
                 activeTileCount++;
+            // WorldGen.Skyblock records this once while inspecting the generated world. It does not
+            // become true again when players later mine the fossil block.
+            if (tile.IsActive && tile.Type == 404)
+                noFossils = false;
         }
 
-        return Create(metadata.SkyblockWorld, activeTileCount, tiles.Count);
+        return Create(metadata.SkyblockWorld, activeTileCount, tiles.Count, noFossils);
     }
 
     public static VanillaSkyblockRuntimeState1458 Create(
         bool skyblockWorld,
         int activeTileCount,
-        int totalTileCount)
+        int totalTileCount,
+        bool? noFossils = null)
     {
         bool lowTiles = IsLowTiles(skyblockWorld, activeTileCount, totalTileCount);
         return new VanillaSkyblockRuntimeState1458(
             skyblockWorld,
             lowTiles,
+            skyblockWorld && noFossils.GetValueOrDefault(),
             activeTileCount,
             totalTileCount);
     }

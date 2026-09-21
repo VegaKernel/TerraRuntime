@@ -194,6 +194,11 @@ internal sealed class VanillaFlyingEyeNpcBehaviorStrategy : IVanillaNpcBehaviorS
 
 internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
+    private readonly IVanillaNpcRandom random;
+
+    public VanillaSlimeGroundNpcBehaviorStrategy(IVanillaNpcRandom random) =>
+        this.random = random ?? throw new ArgumentNullException(nameof(random));
+
     public bool TryStep(
         in NpcSnapshot npc,
         in VanillaNpcDefinition definition,
@@ -214,6 +219,25 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
         NpcSimulationState simulation = npc.Simulation;
         NpcAiState ai = npc.Ai;
         float velocityX = npc.VelocityX;
+        // NPC.AI_001 initializes a contained Sand Slime item only once. In a Skyblock world
+        // whose generation scan found no Fossil blocks, it has a one-in-five Fossil Slime roll.
+        if (definition.Type == VanillaNpcIds.SandSlime && ai.Ai1 == 0f)
+        {
+            ai = ai with { Ai1 = -1f };
+            if (context.SkyblockNoFossils && random.NextInt32(0, 5) == 0)
+                ai = ai with { Ai1 = 3347f };
+        }
+        // The source applies this before the shared ground-motion timer, so Fossil Slime advances
+        // ai[0] twice per grounded tick: once here and once in VanillaBlueSlimeMotion.
+        if (definition.Type == VanillaNpcIds.SandSlime && ai.Ai1 == 3347f)
+        {
+            ai = ai with { Ai0 = ai.Ai0 + 1f };
+            simulation = simulation with
+            {
+                Alpha = 125,
+                DamageOverride = (simulation.BaseDamage ?? definition.Damage) + 10
+            };
+        }
         // AI_001 increments Rainbow Slime's synchronized timer before its generic movement branch,
         // including while airborne. The balloon sentinel returns before this source branch.
         if (definition.Type == VanillaNpcIds.RainbowSlime && ai.Ai0 != -999f)

@@ -56,7 +56,7 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     private readonly INpcAiStateStepper _inner;
     private readonly VanillaNpcBehaviorContext _context = new();
-    private readonly IVanillaNpcBehaviorStrategy _slimeGround = new VanillaSlimeGroundNpcBehaviorStrategy();
+    private readonly IVanillaNpcBehaviorStrategy _slimeGround;
     private readonly VanillaFlyingEyeNpcBehaviorStrategy _flyingEye = new();
     private readonly IVanillaNpcBehaviorStrategy _groundFighter = new VanillaGroundFighterNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _moonEventJumpingFighter = new VanillaMoonEventJumpingFighterNpcBehaviorStrategy();
@@ -120,6 +120,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         ArgumentNullException.ThrowIfNull(inner);
         _inner = inner;
         _random = random ?? new SystemVanillaNpcRandom();
+        _slimeGround = new VanillaSlimeGroundNpcBehaviorStrategy(_random);
         _fireImp = new VanillaFireImpNpcBehaviorStrategy(_random);
         _goblinSorcerer = new VanillaGoblinSorcererBehavior(_random);
         _flyer = new VanillaServantOfCthulhuNpcBehaviorStrategy(_random);
@@ -254,8 +255,9 @@ public sealed class VanillaNpcTargetingAiStepper :
         float windSpeedCurrent = 0f,
         bool remixWorld = false,
         double worldTime = 0d,
-        bool noTrapsWorld = false) =>
-        _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld, expertMode, masterMode, windSpeedCurrent, remixWorld, worldTime, noTrapsWorld);
+        bool noTrapsWorld = false,
+        bool skyblockNoFossils = false) =>
+        _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld, expertMode, masterMode, windSpeedCurrent, remixWorld, worldTime, noTrapsWorld, skyblockNoFossils);
 
     public void SetMoonEventState(bool pumpkinMoonActive) => _context.SetMoonEventState(pumpkinMoonActive);
 
