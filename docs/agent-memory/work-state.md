@@ -1,5 +1,7 @@
 # Work state
 
+2026-09-21: Natural spawning now carries the authoritative `WorldGen.Skyblock.lowTiles` state from runtime composition and applies its source final `spawnRate /= 2` transform. A real tick pins rate 180. Release rebuild, focused harness and documentation checks pass; Windows NativeAOT `.cache/natural-spawn-skyblock-low-tiles-final-win-aot-20260921` passes loop, protocol, network, world and TUI smokes.
+
 2026-09-21: Natural spawning now applies the source Dungeon pre-Skeletron final override (`spawnRate = 10`) after ordinary biome, occupancy, candle, seed and invasion transforms. A real Dungeon tick with `DownedBoss3 == false` pins rate 10. Release rebuild, focused harness and documentation checks pass; Windows NativeAOT `.cache/natural-spawn-pre-skeletron-dungeon-final-win-aot-20260921` passes loop, protocol, network, world and TUI smokes.
 
 2026-09-21: Natural spawning now scans active Water Candle tile 49 and Peace Candle tile 372 only at source `FrameX < 18`. Their source modifiers run after NPC occupancy, including Water Candle's independent sky multiplier; real ticks pin Water to 270 and Peace to 468. Release rebuild, focused harness and documentation checks pass; Windows NativeAOT `.cache/natural-spawn-candles-final-win-aot-20260921` passes loop, protocol, network, world and TUI smokes.

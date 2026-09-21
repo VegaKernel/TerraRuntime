@@ -46,6 +46,7 @@ internal sealed partial class NpcAuthority
     private readonly VanillaTownSceneMetricsScanner1458? npcSceneMetrics;
     private readonly RuntimeTownCommerceWorldFacts1458? naturalSpawnWorldFacts;
     private readonly RuntimeTownNpcStateStore? naturalSpawnTownNpcs;
+    private readonly bool naturalSpawnSkyblockLowTiles;
     private readonly VanillaNpcTargetCandidate[] targetCandidates =
         new VanillaNpcTargetCandidate[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
     private readonly PlayerStateSnapshot[] serverPlayerSnapshots =
@@ -116,6 +117,7 @@ internal sealed partial class NpcAuthority
         npcs.SetVanillaSpawnRandomSource(this.naturalSpawnRandom);
         naturalSpawnWorldFacts = townCommerceWorldFacts;
         naturalSpawnTownNpcs = townNpcs;
+        naturalSpawnSkyblockLowTiles = skyblockLowTiles;
         if (worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 sceneWorldFacts)
         {
             npcSceneMetrics = new VanillaTownSceneMetricsScanner1458(worldTiles, in sceneWorldFacts);
@@ -1108,6 +1110,9 @@ internal sealed partial class NpcAuthority
 
         if (scene is { ZoneDungeon: true } && naturalSpawnWorldFacts?.DownedBoss3 == false)
             spawnRate = 10;
+
+        if (naturalSpawnSkyblockLowTiles)
+            spawnRate /= 2;
     }
 
     private bool IsWallOfFleshActive()
