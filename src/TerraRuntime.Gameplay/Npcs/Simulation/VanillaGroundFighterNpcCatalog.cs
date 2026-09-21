@@ -35,6 +35,18 @@ public static class VanillaGroundFighterNpcCatalog
         Fighter(VanillaNpcIds.FemaleZombie, 18, 40, 12, 4, 38, 0.6f, 1f, 0.87f, scaleAdjustsSpeed: true),
         Fighter(VanillaNpcIds.VampireHumanoid, 18, 40, 80, 24, 750, 0.4f, 1f, 6f,
             reversingVelocityDamping: 0.95f)
+        ,Fighter(new NpcTypeId(269), 18, 40, 70, 34, 550, .3f, 1f, 2f)
+        ,Fighter(new NpcTypeId(270), 18, 40, 55, 50, 400, .2f, 1f, 1f)
+        ,Fighter(new NpcTypeId(271), 18, 40, 70, 40, 450, .25f, 1f, 1.5f)
+        ,Fighter(new NpcTypeId(272), 18, 40, 75, 28, 400, .35f, 1f, 3f)
+        ,Fighter(new NpcTypeId(273), 18, 40, 45, 50, 500, .15f, 1f, 1.25f)
+        ,Fighter(new NpcTypeId(274), 18, 40, 65, 34, 350, .4f, 1f, 3f)
+        ,Fighter(new NpcTypeId(275), 18, 40, 45, 50, 550, .15f, 1f, 3.25f)
+        ,Fighter(new NpcTypeId(276), 18, 40, 85, 54, 500, .2f, 1f, 2f)
+        ,Fighter(new NpcTypeId(277), 18, 40, 70, 32, 400, .4f, 1f, 2.75f)
+        ,Fighter(new NpcTypeId(278), 18, 40, 65, 48, 450, .3f, 1f, 1.8f)
+        ,Fighter(new NpcTypeId(279), 18, 40, 40, 54, 500, .2f, 1f, 1.3f)
+        ,Fighter(new NpcTypeId(280), 18, 40, 75, 34, 500, .4f, 1f, 2.5f)
     ];
 
     private static readonly NpcTypeId[] AdditionalTypes =
