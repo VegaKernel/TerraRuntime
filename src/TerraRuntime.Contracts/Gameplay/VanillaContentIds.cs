@@ -11,6 +11,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId ExplosiveBunny = new(614);
     public static readonly NpcTypeId Demon = new(62);
     public static readonly NpcTypeId VoodooDemon = new(66);
+    public static readonly NpcTypeId RedDevil = new(156);
     public static readonly NpcTypeId DemonEye = new(2);
     public static readonly NpcTypeId Zombie = new(3);
     public static readonly NpcTypeId EyeOfCthulhu = new(4);
@@ -519,6 +520,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId StickyBomb = new(37);
     public static readonly ProjectileTypeId HarpyFeather = new(38);
     public static readonly ProjectileTypeId DemonScythe = new(44);
+    public static readonly ProjectileTypeId RedDevilSickle = new(115);
     public static readonly ProjectileTypeId Flamelash = new(34);
     public static readonly ProjectileTypeId ThrowingKnife = new(48);
     public static readonly ProjectileTypeId Seed = new(51);

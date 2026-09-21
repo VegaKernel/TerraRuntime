@@ -141,8 +141,10 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
         if (!VanillaNpcGlobalFiringDistance.Contains(centerX, centerY, target.CenterX, target.CenterY))
             return committed;
 
-        int resetBase = before.TypeIdentity == VanillaNpcIds.Harpy ? 400 : 300;
-        int resetRange = before.TypeIdentity == VanillaNpcIds.Harpy ? 400 : 300;
+        int resetBase = before.TypeIdentity == VanillaNpcIds.Harpy ? 400 :
+            before.TypeIdentity == VanillaNpcIds.RedDevil ? 250 : 300;
+        int resetRange = before.TypeIdentity == VanillaNpcIds.Harpy ? 400 :
+            before.TypeIdentity == VanillaNpcIds.RedDevil ? 250 : 300;
         // Source evaluates the random reset threshold on every non-shot tick within the global firing rectangle.
         if (committed.Ai.Ai0 < resetBase + random.NextInt32(0, resetRange))
             return committed;
@@ -187,7 +189,7 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
 
         float centerX = committed.PositionX + hitbox.Width * .5f;
         float centerY = committed.PositionY + hitbox.Height * .5f;
-        const int jitter = 100;
+        int jitter = before.TypeIdentity == VanillaNpcIds.RedDevil ? 50 : 100;
         float velocityX = target.CenterX - centerX + random.NextInt32(-jitter, jitter + 1);
         float velocityY = target.CenterY - centerY + random.NextInt32(-jitter, jitter + 1);
         float length = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
@@ -199,13 +201,25 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
         velocityY = velocityY / length * projectileSpeed;
         ProjectileTypeId projectileType = before.TypeIdentity == VanillaNpcIds.Harpy
             ? VanillaProjectileIds.HarpyFeather
-            : VanillaProjectileIds.DemonScythe;
+            : before.TypeIdentity == VanillaNpcIds.RedDevil
+                ? VanillaProjectileIds.RedDevilSickle
+                : VanillaProjectileIds.DemonScythe;
         float projectileHalfSize = before.TypeIdentity == VanillaNpcIds.Harpy ? 7f : 24f;
-        int damage = before.TypeIdentity == VanillaNpcIds.Harpy ? 15 : 21;
+        int damage = before.TypeIdentity == VanillaNpcIds.Harpy ? 15 :
+            before.TypeIdentity == VanillaNpcIds.RedDevil ? 80 : 21;
+        float projectilePositionX = centerX - projectileHalfSize;
+        float projectilePositionY = centerY - projectileHalfSize;
+        if (before.TypeIdentity == VanillaNpcIds.RedDevil)
+        {
+            // AI_014 emits type 115 from the leading NPC center plus a 100px shot offset. NewProjectile receives
+            // these top-left coordinates directly; it does not center the 16px projectile at this point.
+            projectilePositionX = centerX + committed.VelocityX * 5f + velocityX * 100f;
+            projectilePositionY = centerY + committed.VelocityY * 5f + velocityY * 100f;
+        }
         var intent = new NpcAiProjectileIntent(
             projectileType,
-            centerX - projectileHalfSize,
-            centerY - projectileHalfSize,
+            projectilePositionX,
+            projectilePositionY,
             velocityX,
             velocityY,
             Damage: damage,
@@ -217,12 +231,15 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
     }
 
     private static bool IsBatShooter(NpcTypeId type) =>
-        type == VanillaNpcIds.Harpy || type == VanillaNpcIds.Demon || type == VanillaNpcIds.VoodooDemon;
+        type == VanillaNpcIds.Harpy || type == VanillaNpcIds.Demon || type == VanillaNpcIds.VoodooDemon ||
+        type == VanillaNpcIds.RedDevil;
 
     private static bool IsBatShooterShotTick(NpcTypeId type, float timer) =>
         type == VanillaNpcIds.Harpy
             ? timer is 30f or 60f or 90f
-            : timer is 20f or 40f or 60f or 80f;
+            : type == VanillaNpcIds.RedDevil
+                ? timer is 20f or 40f or 60f or 80f or 100f
+                : timer is 20f or 40f or 60f or 80f;
 
     private static int ScaleTransformLife(int life, int lifeMax, int transformedLifeMax) =>
         lifeMax > 0 ? Math.Max(1, (int)((long)life * transformedLifeMax / lifeMax)) : transformedLifeMax;

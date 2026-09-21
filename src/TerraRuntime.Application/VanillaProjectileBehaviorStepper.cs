@@ -197,6 +197,16 @@ internal static partial class VanillaProjectileBehaviorStepper
                 }
                 break;
 
+            case VanillaProjectileBehaviorFamily.RedDevilSickle:
+                // AI_027 type 115 increments its synchronized timer and accelerates exactly through tick 29.
+                ai0 += 1f;
+                if (ai0 < 30f)
+                {
+                    velocityX *= 1.125f;
+                    velocityY *= 1.125f;
+                }
+                break;
+
             case VanillaProjectileBehaviorFamily.HostileStraightArrow:
                 // AI_001 no-gravity switch: WoF/Probe/Retinazer/Golem hostile beams do not advance ai[0]
                 // and therefore never enter the common arrow gravity branch. Their first AI step only flips ai[1]

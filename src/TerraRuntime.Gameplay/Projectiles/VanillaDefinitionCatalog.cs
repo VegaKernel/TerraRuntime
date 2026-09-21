@@ -16,6 +16,7 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId BouncyBall = new(14);
     public static readonly ProjectileAiStyleId Bomb = new(16);
     public static readonly ProjectileAiStyleId DemonScythe = new(18);
+    public static readonly ProjectileAiStyleId RedDevilSickle = new(27);
     public static readonly ProjectileAiStyleId EyeFire = new(23);
     public static readonly ProjectileAiStyleId RollingBoulder = new(25);
     public static readonly ProjectileAiStyleId FlamingScythe = new(56);
@@ -94,6 +95,16 @@ public static class VanillaDefinitionCatalog
         CanCutTiles: true,
         CollisionWidth: 12,
         CollisionHeight: 12);
+
+    private static readonly VanillaProjectileDefinition RedDevilSickleDefinition = new(
+        Width: 16,
+        Height: 16,
+        AiStyle: VanillaProjectileAiStyles.RedDevilSickle,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 16,
+        CollisionHeight: 16);
 
     private static readonly VanillaProjectileDefinition FireArrowDefinition = new(
         Width: 10,
@@ -827,6 +838,12 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.DemonScythe)
         {
             definition = DemonScytheDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.RedDevilSickle)
+        {
+            definition = RedDevilSickleDefinition;
             return true;
         }
 
