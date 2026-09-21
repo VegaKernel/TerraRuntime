@@ -270,6 +270,14 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
             simulation = simulation with { DefenseOverride = (simulation.BaseDefense ?? definition.Defense) + 16 };
         if (ai.Ai1 == 147f)
             simulation = simulation with { DamageOverride = (simulation.BaseDamage ?? definition.Damage) * 2 };
+        if (ai.Ai1 == 3609f)
+        {
+            simulation = simulation with
+            {
+                DefenseOverride = (simulation.BaseDefense ?? definition.Defense) + 8,
+                DamageOverride = (simulation.BaseDamage ?? definition.Damage) + 6
+            };
+        }
         // The source applies this before the shared ground-motion timer, so Fossil Slime advances
         // ai[0] twice per grounded tick: once here and once in VanillaBlueSlimeMotion.
         if (definition.Type == VanillaNpcIds.SandSlime && ai.Ai1 == 3347f)

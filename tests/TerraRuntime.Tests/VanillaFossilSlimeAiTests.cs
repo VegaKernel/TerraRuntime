@@ -106,6 +106,17 @@ public sealed class VanillaFossilSlimeAiTests
         Assert.Equal(-98f, next.Ai.Ai0);
     }
 
+    [Fact]
+    public void Conveyor_slime_reapplies_its_source_combat_overrides()
+    {
+        var stepper = CreateStepper(skyblockNoFossils: false, new ThrowingRandom());
+        NpcSnapshot slime = Snapshot(VanillaNpcIds.BlueSlime, positionY: 1601f, ai1: 3609f);
+
+        Assert.True(stepper.TryStepState(in slime, out NpcStateUpdate next));
+        Assert.Equal(10, next.Simulation.DefenseOverride);
+        Assert.Equal(13, next.Simulation.DamageOverride);
+    }
+
     private static VanillaNpcTargetingAiStepper CreateStepper(bool skyblockNoFossils, IVanillaNpcRandom random,
         bool skyblockLowTiles = false, bool skyblockNoHellstone = false, bool downedSkeletron = false,
         bool slimeRainActive = false)
