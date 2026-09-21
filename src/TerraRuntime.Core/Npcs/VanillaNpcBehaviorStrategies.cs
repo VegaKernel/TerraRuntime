@@ -364,6 +364,17 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
                 positionY += body.Height - height;
             }
         }
+        // ItemID.Sets.IsAVoiceChangeItem is also consumed by AI_001. It uses the same
+        // defLifeMax guard as Heart Slime, but triples the original body without any
+        // other combat or geometry changes.
+        if (IsVoiceChangeItem(ai.Ai1) && simulation.LifeMax == baseLifeMax)
+        {
+            simulation = simulation with
+            {
+                Life = simulation.Life == simulation.LifeMax ? baseLifeMax * 3 : simulation.Life,
+                LifeMax = baseLifeMax * 3
+            };
+        }
         // The source applies this before the shared ground-motion timer, so Fossil Slime advances
         // ai[0] twice per grounded tick: once here and once in VanillaBlueSlimeMotion.
         if (definition.Type == VanillaNpcIds.SandSlime && ai.Ai1 == 3347f)
@@ -589,6 +600,11 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
             });
         return true;
     }
+
+    private static bool IsVoiceChangeItem(float item) =>
+        item > 0f && item < VanillaItemIds.Count && (int)item is
+            215 or 5484 or 5485 or 5499 or 5500 or 5501 or 5502 or 5503 or 5504 or 5505 or
+            5506 or 5507 or 5508 or 5509 or 5534;
 }
 
 internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy

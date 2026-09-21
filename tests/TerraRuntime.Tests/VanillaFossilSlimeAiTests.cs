@@ -260,6 +260,58 @@ public sealed class VanillaFossilSlimeAiTests
         Assert.Equal(-1f, next.Ai.Ai1);
     }
 
+    [Theory]
+    [InlineData(215f)]
+    [InlineData(5484f)]
+    [InlineData(5485f)]
+    [InlineData(5499f)]
+    [InlineData(5500f)]
+    [InlineData(5501f)]
+    [InlineData(5502f)]
+    [InlineData(5503f)]
+    [InlineData(5504f)]
+    [InlineData(5505f)]
+    [InlineData(5506f)]
+    [InlineData(5507f)]
+    [InlineData(5508f)]
+    [InlineData(5509f)]
+    [InlineData(5534f)]
+    public void Voice_change_item_uses_the_source_life_tripling_transition(float item)
+    {
+        var stepper = CreateStepper(skyblockNoFossils: false, new ThrowingRandom());
+        NpcSnapshot slime = Snapshot(VanillaNpcIds.BlueSlime, positionY: 1601f, ai1: item) with
+        {
+            Simulation = NpcSimulationState.Initial with
+            {
+                Life = 25, LifeMax = 25, BaseLifeMax = 25, Scale = 1f, DirectionX = 1, DirectionY = 1
+            }
+        };
+
+        Assert.True(stepper.TryStepState(in slime, out NpcStateUpdate next));
+        Assert.Equal(75, next.Simulation.Life);
+        Assert.Equal(75, next.Simulation.LifeMax);
+    }
+
+    [Fact]
+    public void Voice_change_item_preserves_current_damage_and_ignores_non_voice_contents()
+    {
+        var stepper = CreateStepper(skyblockNoFossils: false, new ThrowingRandom());
+        NpcSnapshot injured = Snapshot(VanillaNpcIds.BlueSlime, positionY: 1601f, ai1: 5507f) with
+        {
+            Simulation = NpcSimulationState.Initial with
+            {
+                Life = 9, LifeMax = 25, BaseLifeMax = 25, Scale = 1f, DirectionX = 1, DirectionY = 1
+            }
+        };
+        NpcSnapshot ordinary = injured with { Ai = new NpcAiState(-200f, 5510f, 0f, 0f) };
+
+        Assert.True(stepper.TryStepState(in injured, out NpcStateUpdate injuredNext));
+        Assert.Equal(9, injuredNext.Simulation.Life);
+        Assert.Equal(75, injuredNext.Simulation.LifeMax);
+        Assert.True(stepper.TryStepState(in ordinary, out NpcStateUpdate ordinaryNext));
+        Assert.Equal(25, ordinaryNext.Simulation.LifeMax);
+    }
+
     private static VanillaNpcTargetingAiStepper CreateStepper(bool skyblockNoFossils, IVanillaNpcRandom random,
         bool skyblockLowTiles = false, bool skyblockNoHellstone = false, bool downedSkeletron = false,
         bool slimeRainActive = false, bool skyblockNoLifeCrystals = false)
