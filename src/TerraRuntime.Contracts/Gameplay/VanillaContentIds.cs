@@ -544,6 +544,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId GreekFire1 = new(326);
     public static readonly ProjectileTypeId GreekFire2 = new(327);
     public static readonly ProjectileTypeId GreekFire3 = new(328);
+    public static readonly ProjectileTypeId FlamingScythe = new(329);
     public static readonly ProjectileTypeId Sharknado = new(384);
     public static readonly ProjectileTypeId SharknadoBolt = new(385);
     public static readonly ProjectileTypeId Cthulunado = new(386);

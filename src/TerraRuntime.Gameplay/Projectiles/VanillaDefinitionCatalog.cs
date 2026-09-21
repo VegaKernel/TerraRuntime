@@ -244,6 +244,10 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 6,
         CollisionHeight: 12);
 
+    private static readonly VanillaProjectileDefinition FlamingScytheDefinition = new(
+        Width: 80, Height: 80, AiStyle: new ProjectileAiStyleId(56), TileCollide: false,
+        IgnoreWater: false, CanCutTiles: true, CollisionWidth: 80, CollisionHeight: 80);
+
     private static readonly VanillaProjectileDefinition QueenBeeStingerDefinition = new(
         Width: 10,
         Height: 10,
@@ -885,6 +889,12 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.GreekFire3)
         {
             definition = GreekFire3Definition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.FlamingScythe)
+        {
+            definition = FlamingScytheDefinition;
             return true;
         }
 

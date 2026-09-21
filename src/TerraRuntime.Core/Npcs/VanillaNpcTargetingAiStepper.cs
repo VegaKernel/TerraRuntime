@@ -2071,6 +2071,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         SpawnEverscreamProjectiles(in before, in committed, mutations);
         SpawnPumpkingProjectiles(in before, in committed, mutations);
         SpawnPumpkingGreekFire(in before, in committed, mutations);
+        SpawnPumpkingBladeScythe(in before, in committed, mutations);
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);
         VanillaMoonLordLeechBehavior.SpawnFromHead(in before, in committed, _context, mutations);
         VanillaDestroyerNpcBehaviorStrategy.SpawnChain(in before, in committed, _context.GoodWorld, mutations);
@@ -2260,6 +2261,21 @@ public sealed class VanillaNpcTargetingAiStepper :
         dx *= 1f + _random.NextInt32(-30, 31) * .01f;
         dy *= 1f + _random.NextInt32(-30, 31) * .01f;
         SpawnPumpkingProjectile(in committed, mutations, RandomPumpkingAttack(), x, y, dx, dy, 40);
+    }
+
+    private void SpawnPumpkingBladeScythe(in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi59PumpkingBlade ||
+            committed.TypeIdentity != before.TypeIdentity || before.Target >= byte.MaxValue ||
+            !_context.TryFindNpcPeer((byte)Math.Clamp((int)before.Ai.Ai1, 0, byte.MaxValue), out NpcSnapshot parent) ||
+            parent.TypeIdentity != VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi58Pumpking || parent.Ai.Ai3 != 2f ||
+            before.Simulation.LocalAi.Ai1 + 1f <= 90f ||
+            !_context.TryFindCandidate((byte)before.Target, out VanillaNpcTargetCandidate player))
+            return;
+        float x = before.PositionX + 40f, y = before.PositionY + 40f;
+        float dx = player.CenterX - x, dy = player.CenterY - player.Height * .5f - (y + 30f);
+        NormalizeTo(ref dx, ref dy, .01f);
+        SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.FlamingScythe, x, y, dx, dy, 60);
     }
 
     private ProjectileTypeId RandomPumpkingAttack() => _random.NextInt32(326, 329) switch

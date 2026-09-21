@@ -870,12 +870,18 @@ internal sealed class VanillaPumpkingNpcBehaviorStrategy(IVanillaNpcRandom rando
         if (!context.TryFindNpcPeer((byte)Math.Clamp((int)npc.Ai.Ai1, 0, byte.MaxValue), out NpcSnapshot parent) ||
             parent.TypeIdentity != VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi58Pumpking) { next = default; return false; }
         float sign = npc.Ai.Ai0, cx = npc.PositionX + 40f, cy = npc.PositionY + 40f;
+        NpcSimulationState simulation = npc.Simulation;
+        if (parent.Ai.Ai3 == 2f)
+        {
+            float clock = simulation.LocalAi.Ai1 + 1f;
+            simulation = simulation with { LocalAi = simulation.LocalAi with { Ai1 = clock > 90f ? 0f : clock } };
+        }
         float targetX = parent.PositionX + 50f - 170f * sign, targetY = parent.PositionY + 140f;
         float dx = targetX - cx, dy = targetY - cy, d = MathF.Max(1f, MathF.Sqrt(dx * dx + dy * dy));
         float speed = d > 1000f ? 21f : d > 800f ? 18f : d > 600f ? 15f : d > 400f ? 12f : d > 200f ? 9f : 6f;
         next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY,
             (npc.VelocityX * 14f + dx / d * speed) / 15f, (npc.VelocityY * 14f + dy / d * speed) / 15f, npc.Target,
-            npc.Ai with { Ai3 = npc.Ai.Ai3 + 1f }, npc.Simulation with { NoGravity = true, NoTileCollide = true });
+            npc.Ai with { Ai3 = npc.Ai.Ai3 + 1f }, simulation with { NoGravity = true, NoTileCollide = true });
         return true;
     }
 }
