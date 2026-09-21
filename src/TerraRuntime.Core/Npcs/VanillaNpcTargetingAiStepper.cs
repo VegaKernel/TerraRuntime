@@ -62,6 +62,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly IVanillaNpcBehaviorStrategy _moonEventJumpingFighter = new VanillaMoonEventJumpingFighterNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _moonEventUnicorn = new VanillaMoonEventUnicornNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _moonEventGhost = new VanillaMoonEventGhostNpcBehaviorStrategy();
+    private readonly VanillaMoonEventEverscreamNpcBehaviorStrategy _moonEventEverscream;
     private readonly VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy _eyeOfCthulhu;
     private readonly VanillaServantOfCthulhuNpcBehaviorStrategy _flyer;
     private readonly VanillaWormNpcBehaviorStrategy _worm = new();
@@ -123,6 +124,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         _destroyer = new VanillaDestroyerNpcBehaviorStrategy(_random);
         _dukeFishron = new VanillaDukeFishronNpcBehaviorStrategy(_random);
         _moonLord = new VanillaMoonLordNpcBehaviorStrategy(_random);
+        _moonEventEverscream = new VanillaMoonEventEverscreamNpcBehaviorStrategy(_random);
         if (kingSlimeEnvironment is IVanillaEyeOfCthulhuEnvironment eyeEnvironment)
             _eyeOfCthulhu.SetEnvironment(eyeEnvironment);
         if (kingSlimeEnvironment is IVanillaBrainOfCthulhuEnvironment brainEnvironment)
@@ -195,6 +197,9 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public void SetFlyingEyeEnvironment(IVanillaFlyingEyeEnvironment environment) =>
         _flyingEye.SetEnvironment(environment);
+
+    public void SetEverscreamEnvironment(IVanillaEverscreamEnvironment environment) =>
+        _moonEventEverscream.SetEnvironment(environment);
 
     public void SetProjectileAnchors(IVanillaNpcProjectileAnchorLookup anchors) =>
         _context.ProjectileAnchors = anchors ?? throw new ArgumentNullException(nameof(anchors));
@@ -270,6 +275,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.MoonEventJumpingFighter when _context.GroundFighterEnabled => _moonEventJumpingFighter,
             VanillaNpcBehaviorFamily.MoonEventUnicorn when _context.GroundFighterEnabled => _moonEventUnicorn,
             VanillaNpcBehaviorFamily.MoonEventGhost when _context.GroundFighterEnabled => _moonEventGhost,
+            VanillaNpcBehaviorFamily.MoonEventEverscream when _context.GroundFighterEnabled => _moonEventEverscream,
             VanillaNpcBehaviorFamily.EyeOfCthulhu => _eyeOfCthulhu,
             VanillaNpcBehaviorFamily.Flyer => _flyer,
             VanillaNpcBehaviorFamily.Worm => _worm,
@@ -2044,6 +2050,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (before.TypeIdentity == VanillaNpcIds.DarkCaster && committed.TypeIdentity == VanillaNpcIds.DarkCaster)
             VanillaDarkCasterBehavior.SpawnSphere(in before, in committed, mutations);
         SpawnMourningWoodFireball(in before, in committed, mutations);
+        SpawnEverscreamProjectiles(in before, in committed, mutations);
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);
         VanillaMoonLordLeechBehavior.SpawnFromHead(in before, in committed, _context, mutations);
         VanillaDestroyerNpcBehaviorStrategy.SpawnChain(in before, in committed, _context.GoodWorld, mutations);
@@ -2084,6 +2091,60 @@ public sealed class VanillaNpcTargetingAiStepper :
             InitialAi = new ProjectileAiState(before.Target, 0f, 0f)
         };
         mutations.TrySpawnProjectile(in committed, in intent, out _);
+    }
+
+    private void SpawnEverscreamProjectiles(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaMoonEventSpecialCatalog1458.SnowMoonAi57Everscream ||
+            committed.TypeIdentity != before.TypeIdentity || before.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)before.Target, out VanillaNpcTargetCandidate player))
+        {
+            return;
+        }
+
+        float elapsed = before.Ai.Ai1 + 1f;
+        if (before.Ai.Ai0 == 1f && elapsed <= 180f && elapsed % 5f == 0f)
+        {
+            // AI_057 retains its dust chance on a dedicated server before consuming the source shot draws.
+            _random.NextInt32(0, 5);
+            float x = before.PositionX + 20f + _random.NextInt32(0, 132);
+            float y = before.PositionY + 20f + _random.NextInt32(0, 90);
+            float dx = player.CenterX - x + _random.NextInt32(-50, 51);
+            float dy = player.CenterY - player.Height * .5f - y + _random.NextInt32(-50, 51);
+            dy -= MathF.Abs(dx) * _random.NextInt32(0, 21) * .01f;
+            NormalizeTo(ref dx, ref dy, 12.5f);
+            dx *= 1f + _random.NextInt32(-20, 21) * .02f;
+            dy *= 1f + _random.NextInt32(-20, 21) * .02f;
+            var intent = new NpcAiProjectileIntent(
+                VanillaProjectileIds.EverscreamPineNeedle, x - 2f, y - 2f, dx, dy, 43, 0f)
+            {
+                InitialAi = new ProjectileAiState(_random.NextInt32(0, 31), 0f, 0f)
+            };
+            mutations.TrySpawnProjectile(in committed, in intent, out _);
+        }
+        else if (before.Ai.Ai0 == 2f && elapsed > 60f && elapsed < 240f && elapsed % 15f == 0f)
+        {
+            float x = before.PositionX + 20f + _random.NextInt32(0, 132);
+            float y = before.PositionY + 60f + _random.NextInt32(0, 50);
+            float dx = player.CenterX - x;
+            float dy = player.CenterY - player.Height * .5f - y;
+            dy -= MathF.Abs(dx) * .3f;
+            float speed = 4.5f + MathF.Abs(dx) * .004f;
+            dx += _random.NextInt32(-50, 51);
+            dy += _random.NextInt32(50, 201);
+            NormalizeTo(ref dx, ref dy, speed);
+            dx *= 1f + _random.NextInt32(-30, 31) * .01f;
+            dy *= 1f + _random.NextInt32(-30, 31) * .01f;
+            var intent = new NpcAiProjectileIntent(
+                VanillaProjectileIds.EverscreamOrnament, x - 9f, y - 9f, dx, dy, 57, 0f)
+            {
+                InitialAi = new ProjectileAiState(0f, _random.NextInt32(0, 2), 0f)
+            };
+            mutations.TrySpawnProjectile(in committed, in intent, out _);
+        }
     }
 
     private static int PumpkinMoonProjectileDamage(float? difficulty)

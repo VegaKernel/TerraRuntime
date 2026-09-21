@@ -695,6 +695,116 @@ internal sealed class VanillaMoonEventGhostNpcBehaviorStrategy : IVanillaNpcBeha
     }
 }
 
+/// <summary>TerrariaServer 1.4.5.8 AI_057 state and hover motion for Snow Moon Everscream.</summary>
+internal sealed class VanillaMoonEventEverscreamNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
+{
+    private readonly IVanillaNpcRandom random;
+    private IVanillaEverscreamEnvironment? environment;
+
+    public VanillaMoonEventEverscreamNpcBehaviorStrategy(IVanillaNpcRandom random) =>
+        this.random = random ?? throw new ArgumentNullException(nameof(random));
+
+    public void SetEnvironment(IVanillaEverscreamEnvironment value) =>
+        environment = value ?? throw new ArgumentNullException(nameof(value));
+
+    public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        INpcAiStateStepper inner, out NpcStateUpdate next)
+    {
+        if (definition.Type != VanillaMoonEventSpecialCatalog1458.SnowMoonAi57Everscream ||
+            definition.AiStyle.Value != 57 || environment is null ||
+            !TryTarget(in npc, in definition, context, out ushort target, out VanillaNpcTargetCandidate player))
+        {
+            next = default;
+            return false;
+        }
+
+        NpcSimulationState simulation = npc.Simulation;
+        float ai0 = npc.Ai.Ai0;
+        float ai1 = npc.Ai.Ai1;
+        float life = simulation.Life > 0 ? simulation.Life : definition.LifeMax;
+        float speed = life < definition.LifeMax * .5f ? 4f : life < definition.LifeMax * .75f ? 3f : 2f;
+        int timeLeft = simulation.TimeLeft;
+        if (context.DayTime)
+        {
+            timeLeft = 10;
+            speed = 8f;
+        }
+
+        if (!context.DayTime && ai0 == 0f)
+        {
+            ai1++;
+            if (life < definition.LifeMax * .5f) ai1++;
+            if (life < definition.LifeMax * .25f) ai1++;
+            if (ai1 >= 300f)
+            {
+                ai1 = 0f;
+                ai0 = random.NextInt32(1, 3);
+            }
+        }
+        else if (ai0 == 1f)
+        {
+            ai1++;
+            if (ai1 >= 180f) { ai0 = 0f; ai1 = 0f; }
+        }
+        else if (ai0 == 2f)
+        {
+            ai1++;
+            if (ai1 >= 300f) { ai0 = 0f; ai1 = 0f; }
+        }
+
+        float centerX = npc.PositionX + definition.Width * .5f;
+        bool stopHorizontal = MathF.Abs(centerX - player.CenterX) < 50f;
+        float velocityX = npc.VelocityX;
+        if (stopHorizontal)
+            velocityX *= .9f;
+        else if (centerX < player.CenterX)
+            velocityX = (velocityX * 20f + speed) / 21f;
+        else
+            velocityX = (velocityX * 20f - speed) / 21f;
+
+        float playerLeft = player.CenterX - player.Width * .5f;
+        float playerTop = player.CenterY - player.Height * .5f;
+        bool overlapsFromAbove = npc.PositionX < playerLeft && npc.PositionX + definition.Width > playerLeft &&
+            npc.PositionY + definition.Height < playerTop + player.Height - 16f;
+        bool hasGroundBelow = environment.SolidCollision(centerX - 40f, npc.PositionY + definition.Height - 20f, 80, 20);
+        float velocityY = ResolveVerticalVelocity(npc.VelocityY, overlapsFromAbove, hasGroundBelow);
+
+        next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, velocityX, velocityY,
+            target, new NpcAiState(ai0, ai1, npc.Ai.Ai2, npc.Ai.Ai3), simulation with
+            {
+                NoGravity = true, NoTileCollide = true, DirectionX = velocityX < 0f ? -1 : 1,
+                SpriteDirection = velocityX < 0f ? -1 : 1, JustHit = false, TimeLeft = timeLeft
+            });
+        return true;
+    }
+
+    private static bool TryTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        out ushort target, out VanillaNpcTargetCandidate player)
+    {
+        if (context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) && closest.HasTarget &&
+            context.TryFindCandidate((byte)closest.Target, out player) && player.Active && !player.Dead && !player.Ghost)
+        {
+            target = closest.Target;
+            return true;
+        }
+        target = VanillaNpcDefinitionCatalog.DefaultTarget;
+        player = default;
+        return false;
+    }
+
+    private static float ResolveVerticalVelocity(float velocityY, bool overlapsFromAbove, bool hasGroundBelow)
+    {
+        if (overlapsFromAbove) return MathF.Min(10f, velocityY + .5f);
+        if (hasGroundBelow)
+        {
+            if (velocityY > 0f) velocityY = 0f;
+            return MathF.Max(-4f, velocityY > -.2f ? velocityY - .025f : velocityY - .2f);
+        }
+        if (velocityY < 0f) velocityY = 0f;
+        return MathF.Min(10f, velocityY < .1f ? velocityY + .025f : velocityY + .5f);
+    }
+}
+
 internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,

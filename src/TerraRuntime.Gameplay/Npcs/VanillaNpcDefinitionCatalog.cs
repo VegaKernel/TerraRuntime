@@ -65,7 +65,8 @@ public enum VanillaNpcBehaviorFamily : byte
     DarkCaster = 51,
     MoonEventJumpingFighter = 52,
     MoonEventUnicorn = 53,
-    MoonEventGhost = 54
+    MoonEventGhost = 54,
+    MoonEventEverscream = 55
 }
 
 /// <summary>

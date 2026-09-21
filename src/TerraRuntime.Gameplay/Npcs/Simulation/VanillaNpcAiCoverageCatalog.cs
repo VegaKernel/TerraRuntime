@@ -61,7 +61,8 @@ public enum VanillaNpcAiCapability : ulong
     BatMotionSlice = 1ul << 51,
     FishMotionSlice = 1ul << 52,
     UnicornTraversalSlice = 1ul << 53,
-    MoonEventProjectileSlice = 1ul << 54
+    MoonEventProjectileSlice = 1ul << 54,
+    MoonEventEverscreamSlice = 1ul << 55
 }
 
 /// <summary>
@@ -126,7 +127,7 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaBatNpcCatalog1458.DefinitionCount +
             VanillaFishNpcCatalog1458.DefinitionCount +
             VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount +
-            VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 5];
+            VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 6];
         entries[0] = Partial(
             VanillaNpcIds.BlueSlime,
             OrdinaryCore |
@@ -301,6 +302,11 @@ public static class VanillaNpcAiCoverageCatalog
         entries[index++] = Partial(
             VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi22,
             OrdinaryCore);
+        entries[index++] = Partial(
+            VanillaMoonEventSpecialCatalog1458.SnowMoonAi57Everscream,
+            OrdinaryCore |
+            VanillaNpcAiCapability.MoonEventProjectileSlice |
+            VanillaNpcAiCapability.MoonEventEverscreamSlice);
 
         foreach (VanillaNpcDefinition definition in VanillaSlimeNpcCatalog.AllDefinitions)
         {

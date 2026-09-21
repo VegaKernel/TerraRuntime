@@ -6,6 +6,7 @@ namespace TerraRuntime.Gameplay.Npcs;
 public static class VanillaMoonEventSpecialCatalog1458
 {
     public static readonly NpcTypeId SnowMoonAi25 = new(341);
+    public static readonly NpcTypeId SnowMoonAi57Everscream = new(344);
     public static readonly NpcTypeId PumpkinMoonAi26MourningWood = new(315);
     public static readonly NpcTypeId PumpkinMoonAi26 = new(329);
     public static readonly NpcTypeId PumpkinMoonAi22 = new(330);
@@ -23,6 +24,21 @@ public static class VanillaMoonEventSpecialCatalog1458
                 24, 24, 100, 32, 900, .25f, 1f,
                 NoGravityAtSpawn: false,
                 NoTileCollideAtSpawn: false,
+                VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == SnowMoonAi57Everscream)
+        {
+            definition = new VanillaNpcDefinition(
+                SnowMoonAi57Everscream,
+                new NpcAiStyleId(57),
+                VanillaNpcBehaviorFamily.MoonEventEverscream,
+                VanillaNpcPhysicsFamily.NoClipFlight,
+                NpcArchetypeRole.Ordinary,
+                172, 130, 110, 38, 13000, 0f, 1f,
+                NoGravityAtSpawn: true,
+                NoTileCollideAtSpawn: true,
                 VanillaNpcSyncAnchor.TopLeft);
             return true;
         }

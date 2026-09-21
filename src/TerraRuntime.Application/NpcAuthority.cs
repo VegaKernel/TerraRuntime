@@ -232,7 +232,9 @@ internal sealed partial class NpcAuthority
                         facts.RockLayer > verifiedSurface ? facts.RockLayer : double.PositiveInfinity;
                     vanillaTargeting.SetWorldBounds(worldTiles.Dimensions.WidthTiles, verifiedSurface, rockLayer);
                 }
-                vanillaTargeting.SetFlyingEyeEnvironment(new VanillaFlyingEyeWorldEnvironment(worldTiles));
+                var flyingEyeEnvironment = new VanillaFlyingEyeWorldEnvironment(worldTiles);
+                vanillaTargeting.SetFlyingEyeEnvironment(flyingEyeEnvironment);
+                vanillaTargeting.SetEverscreamEnvironment(flyingEyeEnvironment);
                 vanillaTargeting.SetQueenBeeEnvironment(new VanillaQueenBeeWorldEnvironment(
                     worldTiles,
                     worldSurfaceTiles,

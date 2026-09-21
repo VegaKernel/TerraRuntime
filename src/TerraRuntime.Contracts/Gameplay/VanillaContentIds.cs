@@ -579,6 +579,8 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId FairyQueenSunDance = new(923);
     public static readonly ProjectileTypeId MoonBoulder = new(1021);
     public static readonly ProjectileTypeId MourningWoodFireball = new(1001);
+    public static readonly ProjectileTypeId EverscreamPineNeedle = new(345);
+    public static readonly ProjectileTypeId EverscreamOrnament = new(346);
     public static readonly ProjectileTypeId QueenBeeStinger = new(719);
     public static readonly ProjectileTypeId WallOfFleshEyeLaser = new(83);
     public static readonly ProjectileTypeId SpazmatismCursedFlame = new(96);
