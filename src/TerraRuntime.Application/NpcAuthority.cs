@@ -1105,6 +1105,9 @@ internal sealed partial class NpcAuthority
             spawnRate = 20;
             maxSpawns = (int)(defaultMaxSpawns * (2d + .3d * CountActiveNaturalSpawnPlayers()));
         }
+
+        if (scene is { ZoneDungeon: true } && naturalSpawnWorldFacts?.DownedBoss3 == false)
+            spawnRate = 10;
     }
 
     private bool IsWallOfFleshActive()

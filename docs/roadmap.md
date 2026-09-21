@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Natural spawn pre-Skeletron Dungeon: the loaded `DownedBoss3` fact now enables the source final Dungeon override only before Skeletron is defeated; a real scene tick pins rate 10. Moon events, player buffs/Journey and source npcSlots remain open.
+
 2026-09-21 Natural spawn candles: SceneMetrics now counts active Water Candle 49 and Peace Candle 372 at `FrameX < 18`; their exact post-occupancy transforms and Water's sky multiplier are applied. Ticks pin Water at 270 and Peace at 468. Moon events, player buffs/Journey and source npcSlots remain open.
 
 2026-09-21 Natural spawn invasions: known persisted invasion identities 1..4 now trigger the source final override (rate 20 and a cap based on authoritative active-player count). A one-player tick pins rate 20. Moon events, player buffs/candles/Journey and source npcSlots remain open.

@@ -15,3 +15,5 @@ An active Wall of Flesh applies its source Underworld cap and rate transform bef
 Known persisted invasions reset the rate and scale the cap from the authoritative active-player count.
 
 Water and Peace Candles are scanned from their active source tiles and apply after NPC occupancy bands.
+
+Before Skeletron is defeated, Dungeon applies the source final spawn-rate override.
