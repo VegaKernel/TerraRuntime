@@ -42,6 +42,10 @@ public readonly record struct VanillaZombieMotionInput(
     public bool ScaleAdjustsMaximumHorizontalSpeed { get; init; } = true;
     public float ReversingVelocityDamping { get; init; } = 1f;
     public VanillaGroundFighterMotionProfile MotionProfile { get; init; } = VanillaGroundFighterMotionProfile.Standard;
+    public int Life { get; init; } = 1;
+    public int LifeMax { get; init; } = 1;
+    public float HalfHealthSpeedMultiplier { get; init; } = 1f;
+    public float OverspeedGroundDamping { get; init; } = .8f;
 }
 
 public readonly record struct VanillaZombieMotionResult(
@@ -61,7 +65,8 @@ public readonly record struct VanillaZombieMotionResult(
 public enum VanillaGroundFighterMotionProfile : byte
 {
     Standard = 0,
-    MoonEventLeaper = 1
+    MoonEventLeaper = 1,
+    HalfHealthBerserker = 2
 }
 
 /// <summary>
@@ -95,6 +100,9 @@ public static class VanillaZombieMotion
             input.DirectionY is < -1 or > 1 ||
             input.SpriteDirection is < -1 or > 1 ||
             !Enum.IsDefined(input.MotionProfile) ||
+            input.Life < 0 || input.LifeMax <= 0 || input.Life > input.LifeMax ||
+            !float.IsFinite(input.HalfHealthSpeedMultiplier) || input.HalfHealthSpeedMultiplier <= 0f ||
+            !float.IsFinite(input.OverspeedGroundDamping) || input.OverspeedGroundDamping is <= 0f or > 1f ||
             !float.IsFinite(input.ReversingVelocityDamping) ||
             input.ReversingVelocityDamping <= 0f || input.ReversingVelocityDamping > 1f ||
             input.Target > byte.MaxValue ||
@@ -192,10 +200,17 @@ public static class VanillaZombieMotion
                 velocityX = (velocityX * 10f + maximumSpeed * directionX) / 11f;
             }
         }
+        else if (input.MotionProfile == VanillaGroundFighterMotionProfile.HalfHealthBerserker)
+        {
+            float halfHealthFactor = input.Life < input.LifeMax / 2 ? 2f : 1f;
+            maximumSpeed *= halfHealthFactor * input.HalfHealthSpeedMultiplier;
+            float acceleration = input.HorizontalAcceleration * halfHealthFactor;
+            ApplyStandardMotion(maximumSpeed, acceleration, input.OverspeedGroundDamping);
+        }
         else if (velocityX < -maximumSpeed || velocityX > maximumSpeed)
         {
             if (velocityY == 0f)
-                velocityX *= 0.8f;
+                velocityX *= input.OverspeedGroundDamping;
         }
         else if (velocityX < maximumSpeed && directionX == 1)
         {
@@ -223,6 +238,23 @@ public static class VanillaZombieMotion
             SpriteDirection = spriteDirection
         };
         return true;
+
+        void ApplyStandardMotion(float maximumSpeed, float acceleration, float groundDamping)
+        {
+            if (velocityX < -maximumSpeed || velocityX > maximumSpeed)
+            {
+                if (velocityY == 0f)
+                    velocityX *= groundDamping;
+            }
+            else if (velocityX < maximumSpeed && directionX == 1)
+            {
+                velocityX = MathF.Min(velocityX + acceleration, maximumSpeed);
+            }
+            else if (velocityX > -maximumSpeed && directionX == -1)
+            {
+                velocityX = MathF.Max(velocityX - acceleration, -maximumSpeed);
+            }
+        }
 
         void RefreshTarget()
         {
@@ -257,7 +289,9 @@ public readonly record struct VanillaGroundFighterBehaviorParameters(
     bool ScaleAdjustsMaximumHorizontalSpeed = false,
     bool CloseRangeLunge = false,
     float ReversingVelocityDamping = 1f,
-    VanillaGroundFighterMotionProfile MotionProfile = VanillaGroundFighterMotionProfile.Standard)
+    VanillaGroundFighterMotionProfile MotionProfile = VanillaGroundFighterMotionProfile.Standard,
+    float HalfHealthSpeedMultiplier = 1f,
+    float OverspeedGroundDamping = .8f)
 {
     public bool IsValid =>
         float.IsFinite(BaseMaximumHorizontalSpeed) && BaseMaximumHorizontalSpeed > 0f &&
@@ -273,7 +307,9 @@ public readonly record struct VanillaGroundFighterBehaviorParameters(
         IsJumpVelocity(PursuitGapJumpVelocity) &&
         float.IsFinite(PursuitGapSpeedMultiplier) && PursuitGapSpeedMultiplier > 0f &&
         float.IsFinite(ReversingVelocityDamping) && ReversingVelocityDamping is > 0f and <= 1f &&
-        Enum.IsDefined(MotionProfile);
+        Enum.IsDefined(MotionProfile) &&
+        float.IsFinite(HalfHealthSpeedMultiplier) && HalfHealthSpeedMultiplier > 0f &&
+        float.IsFinite(OverspeedGroundDamping) && OverspeedGroundDamping is > 0f and <= 1f;
 
     private static bool IsJumpVelocity(float velocity) => float.IsFinite(velocity) && velocity < 0f;
 }
