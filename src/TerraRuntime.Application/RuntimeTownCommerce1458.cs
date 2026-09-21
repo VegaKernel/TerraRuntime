@@ -71,7 +71,8 @@ internal readonly record struct RuntimeTownCommerceWorldFacts1458(
     double WorldSurface,
     double RockLayer,
     int DungeonY,
-    bool ZenithWorld = false)
+    bool ZenithWorld = false,
+    bool SandstormHappening = false)
 {
     public static RuntimeTownCommerceWorldFacts1458 FromMetadata(WorldFileRuntimeMetadata metadata)
     {
@@ -118,7 +119,8 @@ internal readonly record struct RuntimeTownCommerceWorldFacts1458(
             metadata.WorldSurface,
             metadata.RockLayer,
             metadata.DungeonY,
-            metadata.ZenithWorld);
+            metadata.ZenithWorld,
+            metadata.SandstormHappening);
     }
 }
 

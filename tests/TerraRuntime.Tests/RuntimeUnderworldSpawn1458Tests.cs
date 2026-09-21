@@ -92,6 +92,39 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     }
 
     [Fact]
+    public void Surface_desert_sandstorm_precedes_empty_population_rate_band()
+    {
+        var npcs = new RuntimeNpcStore();
+        var tiles = new WorldTileStore(new WorldDimensions(1000, 1200));
+        // The scene scanner excludes ocean sand. Keep this threshold block in the central desert band.
+        for (int x = 415; x < 466; x++)
+            for (int y = 250; y < 280; y++)
+                tiles.Tiles[tiles.GetUncheckedIndex(x, y)] = new WorldTile { Type = 53, Flags = WorldTileFlags.Active };
+
+        // 600 * .9 (pre-Hardmode sandstorm) = 540, then empty-population .6 = 324.
+        // NPC.Spawner tests ZoneSandstorm before Underground Desert, Jungle and evil-zone branches.
+        var random = new RateRejectingRandom(324);
+        RuntimeTownCommerceWorldFacts1458 world = default;
+        world = world with { WorldSurface = 350, RockLayer = 500, SandstormHappening = true };
+        var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
+            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+            townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+            naturalSpawnRandom: random, worldProgression: new RuntimeWorldProgressionMutations());
+        var slots = new PlayerSlotPool(1);
+        Assert.True(slots.TryAcquireConnection(out var lease));
+        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        session.ObserveWorldRequest(); session.ObserveSectionRequest();
+        var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(818), session.Handle);
+        state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
+            new PlayerSpawnCommitRequest(session.Handle.Slot, 500, 300, 0, 0, 0, 0, 0)));
+
+        state.Tick();
+
+        random.AssertConsumed();
+        Assert.Equal(0, npcs.ActiveCount);
+    }
+
+    [Fact]
     public void Source_surface_flag_includes_the_ground_row_at_world_surface()
     {
         var npcs = new RuntimeNpcStore();

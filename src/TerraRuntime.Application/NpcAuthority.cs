@@ -941,8 +941,10 @@ internal sealed partial class NpcAuthority
         }
 
         int playerTileX = Math.Clamp((int)(player.CenterX / 16f), 0, tiles.Dimensions.WidthTiles - 1);
-        int playerTile = Math.Clamp((int)playerTileY, 0, tiles.Dimensions.HeightTiles - 1);
-        VanillaTownSceneMetrics1458? scene = npcSceneMetrics?.Scan(playerTileX, playerTile);
+        // NPC.Spawner.SetSpawnFlags derives pX/pY and all SceneMetrics zones from Player.Center.
+        // GetSpawnRate's vertical depth checks below intentionally retain Player.position.
+        int playerSceneTileY = Math.Clamp((int)(player.CenterY / 16f), 0, tiles.Dimensions.HeightTiles - 1);
+        VanillaTownSceneMetrics1458? scene = npcSceneMetrics?.Scan(playerTileX, playerSceneTileY);
         // На выделенном сервере Main.Update присваивает cloudAlpha = maxRaining. GetSpawnRate
         // применяет этот Snow-поверхностный множитель до стен и остальных biome-модификаторов.
         if (scene is { ZoneSnow: true } && playerTileY < surface)
@@ -952,7 +954,7 @@ internal sealed partial class NpcAuthority
             spawnRate = (int)(spawnRate * (1f - cloudAlpha + 1f) / 2f);
         }
 
-        if (naturalSpawnWorldFacts?.DrunkWorld == true && tiles.Get(playerTileX, playerTile).Wall == 86)
+        if (naturalSpawnWorldFacts?.DrunkWorld == true && tiles.Get(playerTileX, playerSceneTileY).Wall == 86)
         {
             spawnRate = (int)(spawnRate * .3d);
             maxSpawns = (int)(maxSpawns * 1.8f);
@@ -964,6 +966,16 @@ internal sealed partial class NpcAuthority
             {
                 spawnRate = (int)(spawnRate * .3d);
                 maxSpawns = (int)(maxSpawns * 1.8f);
+            }
+            else if (biome.ZoneDesert && naturalSpawnWorldFacts?.SandstormHappening == true &&
+                (remixWorld
+                    ? playerSceneTileY > rockLayer && playerSceneTileY < tiles.Dimensions.HeightTiles - 350
+                    : playerSceneTileY <= surface))
+            {
+                // SceneMetrics.ZoneSandstorm = ZoneDesert && SurfaceAtmospherics && Sandstorm.Happening.
+                // Preserve the source float multipliers before the later occupancy transforms.
+                spawnRate = (int)(spawnRate * (hardMode ? .4f : .9f));
+                maxSpawns = (int)(maxSpawns * (hardMode ? 1.5f : 1.2f));
             }
             else if (biome.ZoneCorrupt || biome.ZoneCrimson)
             {
