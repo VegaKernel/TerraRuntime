@@ -147,8 +147,30 @@ On merged base `843bd1a3`, Release warnings-as-errors build passed; the focused 
 ## Resume point for the vanilla generation work - 2026-09-21
 
 Closed since the last resume point, each against the registered delegate with negative controls: rows 83
-(Grass Wall), 77 (Spreading Grass) and 74 (Quick Cleanup). All three invented owners were replaced, and the
-ledger is now **24P + 48C = 72 unfinished rows**. Earlier in this stretch: rows 92, 94, 95, 79 and 89, plus the two findings
+(Grass Wall), 77 (Spreading Grass), 74 (Quick Cleanup) and 60 (Wall Variety). All four invented owners were
+replaced, and the ledger is now **23P + 49C = 72 unfinished rows**.
+
+The whole-world measurement was refreshed against the same official reference the audit has always used, and
+it is the thing to look at before choosing the next row: tile L1 0.201211 to **0.069896**, wall L1 0.530400 to
+**0.262730**, silhouette correlation 0.922428 to **0.994504**, dungeon delta (+85,-6) to **(0,0)**. The
+terrain is effectively matched; what remains is contents, and the histogram in the audit's measurement section
+localises it. Largest first: the six moss families (61,927 official cells against 521 of ours, rows 69 and
+98), spider caves (row 67), the dungeon's green wall families, pots (row 75), small piles (row 81), living
+mahogany (row 72), thin ice (row 59) and minecart track (row 101).
+
+**Laying a wall costs shared RNG.** `Actions.PlaceWall` frames five squares and each square's centre draws
+`Next(0, 3)`, about 550 values per painted structure. This is now `GenerationWallFraming1458` and every
+remaining wall row needs it. The three wall passes closed before it are unaffected and that was checked:
+`Spread.Wall2`, the grass wall's unsafe stain and Quick Cleanup's borrowed wall all assign `tile.wall`
+directly in the source with no framing call.
+
+**The draw-count search needs four values, not one.** Re-seeding and looking for the position whose next
+`Next(1000000)` matches the official's reported value gives several false positives over a few million
+samples, and one of them cost real time in the Wall Variety work. Match four consecutive values.
+
+**Depth-keyed passes want the RETAINED layer.** Wall Variety splits its wall families on `GenVars.rockLayer`;
+handing it the published gameplay layer put most pockets above the line and was worth 0.0225 of wall L1 on its
+own. Use `workspace.VanillaTerrainState?.CurrentRockLayer`. Earlier in this stretch: rows 92, 94, 95, 79 and 89, plus the two findings
 that reach further than any single row - `KillTile` spending RNG on dust, and the loading liquid death
 footprints.
 

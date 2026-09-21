@@ -228,7 +228,7 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
                 ApplyIce(context, grid, random);
                 break;
             case PostSettleStage1458.WallVariety:
-                ApplyWallVariety(context, grid, random);
+                ApplyWallVariety(context, workspace);
                 break;
             case PostSettleStage1458.LifeCrystals:
                 ApplyLifeCrystals(context, grid, random);
@@ -473,55 +473,21 @@ internal sealed class PostSettlePass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Freezing underground snow-biome pockets ({frozen} ice tiles)");
     }
 
-    private void ApplyWallVariety(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyWallVariety(IWorldGenerationContext context, Workspace workspace)
     {
-        ushort[] dirtWalls = [CaveDirtUnsafeWall, RoughDirtUnsafeWall, DirtUnsafeWall];
-        ushort[] rockWalls =
-        [
-            RockyDirtUnsafeWall,
-            OldStoneUnsafeWall,
-            CraggyStoneUnsafeWall,
-            WornStoneUnsafeWall,
-            StalactiteStoneUnsafeWall,
-            MottledStoneUnsafeWall,
-            FracturedStoneUnsafeWall
-        ];
-        int minY = Math.Clamp((int)state.WorldSurface + 20, 1, state.UnderworldTop - 1);
-        int patches = Math.Max(30, grid.Width / 70);
-        long painted = 0;
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Wall variety requires shared UnifiedRandom semantics.");
 
-        for (int i = 0; i < patches; i++)
-        {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(30, grid.Width - 30);
-            int y = random.Next(minY, state.UnderworldTop);
-            int rx = random.Next(10, 28);
-            int ry = random.Next(7, 20);
-            bool dirtBand = y < state.RockLayer + 90;
-            ushort wall = dirtBand ? dirtWalls[random.Next(dirtWalls.Length)] : rockWalls[random.Next(rockWalls.Length)];
-
-            for (int dx = -rx; dx <= rx; dx++)
-            {
-                double nx = dx / (double)rx;
-                for (int dy = -ry; dy <= ry; dy++)
-                {
-                    double ny = dy / (double)ry;
-                    if (nx * nx + ny * ny > 1d)
-                        continue;
-                    int tx = x + dx;
-                    int ty = y + dy;
-                    if (!grid.Contains(tx, ty))
-                        continue;
-                    ref WorldTile tile = ref grid.At(tx, ty);
-                    if (tile.Wall == 0 || !IsNaturalCaveWall(tile.Wall))
-                        continue;
-                    tile.Wall = wall;
-                    painted++;
-                }
-            }
-        }
-
-        context.ReportProgress(1d, $"Weathering cave background walls ({painted} cells)");
+        int lavaLine = workspace.VanillaLiquidLines?.LavaLine ?? checked((int)Math.Round(state.RockLayer));
+        WorldGenerationPoint shimmer = workspace.VanillaShimmerPosition ?? new WorldGenerationPoint(0, 0);
+        // The depth split reads the RETAINED GenVars.rockLayer, not the published gameplay layer. Handing it
+        // the published one puts most pockets above the line and floods the world with the shallow family.
+        double rockLayer = workspace.VanillaTerrainState?.CurrentRockLayer ?? state.RockLayer;
+        var pass = new CaveWallVarietyPass1458(
+            workspace.TileStore, random, state.WorldSurface, rockLayer, lavaLine, shimmer,
+            context.CancellationToken);
+        pass.Apply();
+        context.ReportProgress(1d, $"Adding Wall Variety ({pass.Painted} cells in {pass.Pockets} pockets)");
     }
 
     private void ApplyLifeCrystals(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
