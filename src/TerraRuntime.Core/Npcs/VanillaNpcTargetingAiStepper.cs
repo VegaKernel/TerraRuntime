@@ -469,6 +469,9 @@ public sealed class VanillaNpcTargetingAiStepper :
             return PlanSpikedSlimeSpikes(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.SpikedJungleSlime.Value && proposed.Type == source.Type)
             return PlanSpikedJungleSlimeThorns(in source, in proposed, destination);
+        if ((source.Type == VanillaNpcIds.QueenSlimeMinionBlue.Value || source.Type == VanillaNpcIds.QueenSlimeMinionPink.Value) &&
+            proposed.Type == source.Type)
+            return PlanQueenSlimeMinionShards(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.Antlion.Value && proposed.Type == source.Type)
             return PlanAntlionSand(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.SkeletronHead.Value && proposed.Type == source.Type)
@@ -622,6 +625,83 @@ public sealed class VanillaNpcTargetingAiStepper :
                 velocityY,
                 Damage: 13,
                 KnockBack: 0f);
+        }
+        return burstCount;
+    }
+
+    private int PlanQueenSlimeMinionShards(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiProjectileIntent> destination)
+    {
+        bool blue = source.Type == VanillaNpcIds.QueenSlimeMinionBlue.Value;
+        bool burst = blue && proposed.Simulation.LocalAi.Ai0 == 25f;
+        bool normal = blue ? proposed.Simulation.LocalAi.Ai0 == 50f :
+            proposed.Simulation.LocalAi.Ai0 is 30f or 40f;
+        ProjectileTypeId projectileType = blue
+            ? VanillaProjectileIds.QueenSlimeBlueMinionShard
+            : VanillaProjectileIds.QueenSlimePinkMinionShard;
+        NpcTypeId slimeType = new(source.Type);
+        if ((!burst && !normal) || source.Simulation.LocalAi.Ai0 is < 0f or > 1f ||
+            source.VelocityY != 0f || source.Simulation.Wet || source.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)source.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.NoAggro ||
+            !VanillaNpcDefinitionCatalog.TryGet(slimeType, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox) ||
+            !VanillaDefinitionCatalog.TryGet(projectileType, out VanillaProjectileDefinition projectile))
+        {
+            return 0;
+        }
+
+        float centerX = source.PositionX + hitbox.Width * .5f;
+        float centerY = source.PositionY + hitbox.Height * .5f;
+        float originalDx = target.CenterX - centerX;
+        float originalDy = target.CenterY - centerY;
+        float originalDistance = MathF.Sqrt(originalDx * originalDx + originalDy * originalDy);
+        if (MathF.Abs(originalDx) >= 500f || MathF.Abs(originalDy) >= 550f || _context.ProjectileEnvironment is null ||
+            !_context.ProjectileEnvironment.CanHit(source.PositionX, source.PositionY, hitbox.Width, hitbox.Height,
+                target.CenterX - target.Width * .5f, target.CenterY - target.Height * .5f,
+                (int)target.Width, (int)target.Height))
+        {
+            return 0;
+        }
+
+        int damage = _context.MasterMode ? 20 : _context.ExpertMode ? 17 : 15;
+        if (!burst)
+        {
+            if (destination.IsEmpty)
+                return 1;
+            float velocityX = originalDx;
+            float velocityY = target.CenterY - target.Height * .5f - centerY - _random.NextInt32(0, 200);
+            float speed = 9f;
+            if (originalDistance > 350f)
+                speed *= blue ? 2f : 1.75f;
+            else if (originalDistance > 250f)
+                speed *= blue ? 1.5f : 1.25f;
+            NormalizeTo(ref velocityX, ref velocityY, speed);
+            destination[0] = new NpcAiProjectileIntent(projectileType,
+                centerX - projectile.Width * .5f, centerY - projectile.Height * .5f,
+                velocityX, velocityY, damage, 0f);
+            return 1;
+        }
+
+        const int burstCount = 3;
+        if (destination.Length < burstCount)
+            return destination.Length + 1;
+        float burstMultiplier = 1f;
+        if (originalDistance > 350f)
+            burstMultiplier = 2f;
+        else if (originalDistance > 250f)
+            burstMultiplier = 1.5f;
+        for (int index = 0; index < burstCount; index++)
+        {
+            float velocityX = (index - 1) * (1f + _random.NextInt32(-50, 51) * .005f);
+            float velocityY = -4f * (1f + _random.NextInt32(-50, 51) * .005f);
+            NormalizeTo(ref velocityX, ref velocityY,
+                (6f + _random.NextInt32(-50, 51) * .01f) * burstMultiplier);
+            destination[index] = new NpcAiProjectileIntent(projectileType,
+                centerX - projectile.Width * .5f, centerY - projectile.Height * .5f,
+                velocityX, velocityY, damage, 0f);
         }
         return burstCount;
     }

@@ -294,6 +294,51 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
 
             simulation = simulation with { LocalAi = localAi };
         }
+        if (definition.Type == VanillaNpcIds.QueenSlimeMinionBlue || definition.Type == VanillaNpcIds.QueenSlimeMinionPink)
+        {
+            NpcAiState localAi = simulation.LocalAi;
+            if (localAi.Ai0 > 0f)
+                localAi = localAi with { Ai0 = localAi.Ai0 - 1f };
+
+            if (!simulation.Wet && npc.VelocityY == 0f && npc.Target < byte.MaxValue &&
+                context.TryFindCandidate((byte)npc.Target, out VanillaNpcTargetCandidate target) &&
+                target.Active && !target.Dead && !target.NoAggro &&
+                definition.TryResolveHitbox(simulation, out VanillaNpcHitboxSize hitbox) &&
+                context.ProjectileEnvironment is not null)
+            {
+                float centerX = npc.PositionX + hitbox.Width * .5f;
+                float centerY = npc.PositionY + hitbox.Height * .5f;
+                float dx = target.CenterX - centerX;
+                float dy = target.CenterY - centerY;
+                bool canHit = MathF.Abs(dx) < 500f && MathF.Abs(dy) < 550f &&
+                    context.ProjectileEnvironment.CanHit(npc.PositionX, npc.PositionY, hitbox.Width, hitbox.Height,
+                        target.CenterX - target.Width * .5f, target.CenterY - target.Height * .5f,
+                        (int)target.Width, (int)target.Height);
+                if (canHit)
+                {
+                    ai = ai with { Ai0 = -40f };
+                    velocityX *= .9f;
+                    if (localAi.Ai0 == 0f)
+                    {
+                        if (definition.Type == VanillaNpcIds.QueenSlimeMinionBlue && context.ExpertMode &&
+                            context.CountNpcPeers(VanillaNpcIds.QueenSlimeMinionBlue) < 5)
+                        {
+                            localAi = localAi with { Ai0 = 25f };
+                        }
+                        else if (definition.Type == VanillaNpcIds.QueenSlimeMinionBlue)
+                        {
+                            localAi = localAi with { Ai0 = 50f };
+                        }
+                        else
+                        {
+                            localAi = localAi with { Ai0 = context.ExpertMode ? 30f : 40f };
+                        }
+                    }
+                }
+            }
+
+            simulation = simulation with { LocalAi = localAi };
+        }
         bool damaged = simulation.LifeMax > 0 && simulation.Life != simulation.LifeMax;
         bool engaged = definition.Type == VanillaNpcIds.CorruptSlime ||
                        definition.Type == VanillaNpcIds.Crimslime ||
@@ -301,6 +346,8 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
                        definition.Type == VanillaNpcIds.SpikedIceSlime ||
                        definition.Type == VanillaNpcIds.SpikedSlime ||
                        definition.Type == VanillaNpcIds.SpikedJungleSlime ||
+                       definition.Type == VanillaNpcIds.QueenSlimeMinionBlue ||
+                       definition.Type == VanillaNpcIds.QueenSlimeMinionPink ||
                        !context.DayTime ||
                        damaged ||
                        context.SlimeRainActive ||

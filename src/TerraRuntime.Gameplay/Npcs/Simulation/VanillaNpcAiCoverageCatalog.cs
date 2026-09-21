@@ -354,7 +354,8 @@ public static class VanillaNpcAiCoverageCatalog
             if (definition.Type == VanillaNpcIds.CorruptSlime)
                 capabilities |= VanillaNpcAiCapability.NegativeNetVariantDefaults;
             if (definition.Type == VanillaNpcIds.SpikedIceSlime || definition.Type == VanillaNpcIds.SpikedSlime ||
-                definition.Type == VanillaNpcIds.SpikedJungleSlime)
+                definition.Type == VanillaNpcIds.SpikedJungleSlime || definition.Type == VanillaNpcIds.QueenSlimeMinionBlue ||
+                definition.Type == VanillaNpcIds.QueenSlimeMinionPink)
                 capabilities |= VanillaNpcAiCapability.SlimeProjectileSideEffectSlice;
 
             entries[index++] = Partial(definition.Type, capabilities);
