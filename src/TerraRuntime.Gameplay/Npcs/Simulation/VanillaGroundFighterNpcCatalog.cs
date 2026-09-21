@@ -67,7 +67,8 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.SwampZombie,
         VanillaNpcIds.TwiggyZombie,
         VanillaNpcIds.FemaleZombie,
-        VanillaNpcIds.VampireHumanoid
+        VanillaNpcIds.VampireHumanoid,
+        new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280)
     ];
 
     public static int DefinitionCount => Entries.Length;
