@@ -1,5 +1,7 @@
 # Work state
 
+2026-09-21: Natural spawning now observes an active Wall of Flesh root from the authoritative NPC store in the Underworld. It applies the source `maxSpawns * .3` then `spawnRate * 3` before occupancy, pinning a real empty-underworld tick to rate 75. Release rebuild, focused harness and documentation checks pass; Windows NativeAOT `.cache/natural-spawn-wall-of-flesh-final-win-aot-20260921` passes loop, protocol, network, world and TUI smokes.
+
 2026-09-21: Remix natural spawning now applies both source surface Corruption/Crimson transforms around the occupancy bands: `0.5` / `x2` after Temple and `0.8` / `x2` after the evil-depth band. A real surface-Corruption tick reaches rate 64. Release rebuild, focused harness and documentation checks pass; Windows NativeAOT `.cache/natural-spawn-remix-evil-final-win-aot-20260921` passes loop, protocol, network, world and TUI smokes.
 
 2026-09-21: Natural spawning now samples Lihzahrd Temple from the source center-wall predicate (`Wall == 87`) and applies the `0.8` rate / `1.2` cap transform after Meteor; Remix worlds add the source `0.4` rate / `1.5` cap transform. Real ticks pin final empty-population rates 288 and 115. Release rebuild, focused harness and documentation checks pass; Windows NativeAOT `.cache/natural-spawn-temple-final-win-aot-20260921` passes loop, protocol, network, world and TUI smokes.

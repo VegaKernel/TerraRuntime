@@ -1044,6 +1044,12 @@ internal sealed partial class NpcAuthority
                 spawnRate = (int)(spawnRate * .65d);
                 maxSpawns = (int)(maxSpawns * 1.3f);
             }
+
+            if (playerTileY > tiles.Dimensions.HeightTiles - 200d && IsWallOfFleshActive())
+            {
+                maxSpawns = (int)(maxSpawns * .3f);
+                spawnRate *= 3;
+            }
         }
 
         // GetSpawnRate applies these two occupancy bands after the biome/event rate transforms.
@@ -1077,6 +1083,15 @@ internal sealed partial class NpcAuthority
             spawnRate = (int)(spawnRate * .8f);
             maxSpawns = (int)(maxSpawns * 1.2f);
         }
+    }
+
+    private bool IsWallOfFleshActive()
+    {
+        int active = npcs.CopyActive(naturalSpawnNpcBuffer);
+        for (int index = 0; index < active; index++)
+            if (naturalSpawnNpcBuffer[index].TypeIdentity == VanillaNpcIds.WallOfFlesh)
+                return true;
+        return false;
     }
 
     private bool TryFindVanillaNaturalSpawnFloor(

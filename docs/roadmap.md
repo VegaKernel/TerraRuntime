@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Natural spawn Wall of Flesh: the Underworld rate now observes the active root from authoritative NPC slots and applies source cap `x.3` then rate `x3` before occupancy. A real empty-underworld tick pins rate 75. Moon events, player buffs/candles/Journey and source npcSlots remain open.
+
 2026-09-21 Natural spawn Remix evil surface: Corruption/Crimson now receives both source transforms around the occupancy bands (`0.5` / `x2`, then `0.8` / `x2`). A source-order tick at the surface pins rate 64. Moon events, player buffs/candles/Journey and source npcSlots remain open.
 
 2026-09-21 Natural spawn Lihzahrd Temple: the scene scanner now samples the exact center wall `87` and applies the source `0.8` rate / `1.2` cap transform after Meteor. Remix worlds additionally apply `0.4` / `1.5`; real ticks pin final empty-population rates 288 and 115. Moon events, player buffs/candles/Journey and source npcSlots remain open.

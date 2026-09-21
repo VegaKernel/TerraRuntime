@@ -321,6 +321,38 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     }
 
     [Fact]
+    public void Active_wall_of_flesh_reduces_underworld_spawn_cap_before_population_bands()
+    {
+        var npcs = new RuntimeNpcStore();
+        var wall = new NpcStateUpdate(VanillaNpcIds.WallOfFlesh.Value, (short)VanillaNpcIds.WallOfFlesh.Value,
+            0, 0, 0, 0, 0, default, NpcSimulationState.Initial);
+        Assert.True(npcs.TrySpawnVanilla(in wall, out _));
+        var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
+
+        // Underworld starts with cap 10. Wall of Flesh changes it to 3 and rate to 180;
+        // empty and deep source bands then produce 180 * .6 * .7 = 75.
+        var random = new RateRejectingRandom(75);
+        RuntimeTownCommerceWorldFacts1458 world = default;
+        world = world with { WorldSurface = 350, RockLayer = 600 };
+        var state = new ServerRuntimeState(npcs: npcs, npcAiStepper: new IdleNpcStepper(), worldTiles: tiles,
+            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+            townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+            naturalSpawnRandom: random, worldProgression: new RuntimeWorldProgressionMutations());
+        var slots = new PlayerSlotPool(1);
+        Assert.True(slots.TryAcquireConnection(out var lease));
+        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        session.ObserveWorldRequest(); session.ObserveSectionRequest();
+        var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(825), session.Handle);
+        state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
+            new PlayerSpawnCommitRequest(session.Handle.Slot, 200, 1050, 0, 0, 0, 0, 0)));
+
+        state.Tick();
+
+        random.AssertConsumed();
+        Assert.Equal(1, npcs.ActiveCount);
+    }
+
+    [Fact]
     public void Source_surface_flag_includes_the_ground_row_at_world_surface()
     {
         var npcs = new RuntimeNpcStore();
@@ -522,5 +554,14 @@ public sealed class RuntimeUnderworldSpawn1458Tests
         }
 
         public void AssertConsumed() => Assert.Equal(1, call);
+    }
+
+    private sealed class IdleNpcStepper : INpcAiStateStepper
+    {
+        public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
+        {
+            next = default;
+            return false;
+        }
     }
 }
