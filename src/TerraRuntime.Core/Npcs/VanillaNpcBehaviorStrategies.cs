@@ -304,6 +304,16 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
                 DamageOverride = (simulation.BaseDamage ?? definition.Damage) + 6
             };
         }
+        // Granite and Marble Slime share AI_001's contained-item combat state: both retain the
+        // source defense bonus and become immune to knockback without changing their base motion.
+        if (ai.Ai1 is 3086f or 3081f)
+        {
+            simulation = simulation with
+            {
+                DefenseOverride = (simulation.BaseDefense ?? definition.Defense) + 16,
+                KnockBackResist = 0f
+            };
+        }
         // Heart and Hell Slime compare against NPC.defLifeMax, which is the spawn-time value after
         // SetDefaults/scaling. The runtime retains that baseline independently so their initialization
         // does not repeat after a state-only update.

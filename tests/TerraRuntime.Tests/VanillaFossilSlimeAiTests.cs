@@ -118,6 +118,19 @@ public sealed class VanillaFossilSlimeAiTests
     }
 
     [Theory]
+    [InlineData(3086f)]
+    [InlineData(3081f)]
+    public void Granite_and_marble_slimes_reapply_source_defense_and_knockback_immunity(float item)
+    {
+        var stepper = CreateStepper(skyblockNoFossils: false, new ThrowingRandom());
+        NpcSnapshot slime = Snapshot(VanillaNpcIds.BlueSlime, positionY: 1601f, ai1: item);
+
+        Assert.True(stepper.TryStepState(in slime, out NpcStateUpdate next));
+        Assert.Equal(18, next.Simulation.DefenseOverride);
+        Assert.Equal(0f, next.Simulation.KnockBackResist);
+    }
+
+    [Theory]
     [InlineData(25, 50)]
     [InlineData(9, 9)]
     public void Heart_slime_uses_the_spawn_life_baseline_only_once(int life, int expectedLife)
