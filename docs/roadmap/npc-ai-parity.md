@@ -324,7 +324,8 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] admitted AI_005 size net variants for Eaters, Crimeras and Hornet families;
 - [x] AI_005 source-ordered jitter, close homing, Bee/SmallBee acceleration ramp, daylight flight/despawn, surface Hornet damping, bounce minima and wet-rise movement;
 - [x] ordinary AI_005 Probe laser and Blood Squid blood-shot/recoil side effects through generation-safe post-commit projectile intents;
-- [ ] remaining AI_005 side effects: Good World Eater spawn requires admitted NPC 666 defaults/lifecycle; Hornet/Moss Hornet and jungle variants' stingers now use the authoritative player stealth/item-animation gate, source timer/RNG ordering and hostile type `55` lifecycle;
+- [x] Good World AI_005 Eater of Souls 60-tick `localAI[0]` spawn branch, including direct-visibility gating and the NPC `666` AI_009 lifecycle;
+- [x] AI_005 Hornet/Moss Hornet and jungle-variant stingers use the authoritative player stealth/item-animation gate, source timer/RNG ordering and hostile type `55` lifecycle;
 - [x] typed AI_006 head/body/tail family relationships for Devourer, Giant Worm, Eater of Worlds and Bone Serpent;
 - [x] source-backed worm head burrow/air steering and exact segment-gap follow primitives;
 - [x] frozen-prepass runtime leader lookup and authoritative body/tail follow for admitted ordinary worm segments;

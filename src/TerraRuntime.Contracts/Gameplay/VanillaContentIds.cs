@@ -39,6 +39,8 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId ChaosBall = new(30);
     public static readonly NpcTypeId Tim = new(45);
     public static readonly NpcTypeId TimFireball = new(665);
+    /// <summary>AI_009 projectile NPC created by Eater of Souls in Good World while the Eater of Worlds is active.</summary>
+    public static readonly NpcTypeId EaterOfWorldsSpit = new(666);
     public static readonly NpcTypeId RuneWizard = new(172);
     public static readonly NpcTypeId DungeonTacticalSkeleton = new(281);
     public static readonly NpcTypeId DungeonTacticalSkeleton2 = new(282);

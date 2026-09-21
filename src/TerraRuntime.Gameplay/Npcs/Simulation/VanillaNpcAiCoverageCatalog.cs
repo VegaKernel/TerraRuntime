@@ -136,7 +136,7 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaJellyfishNpcCatalog1458.DefinitionCount +
             VanillaAntlionNpcCatalog1458.DefinitionCount +
             VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount +
-            VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 13];
+            VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 14];
         entries[0] = Partial(
             VanillaNpcIds.BlueSlime,
             OrdinaryCore |
@@ -230,7 +230,11 @@ public static class VanillaNpcAiCoverageCatalog
             OrdinaryCore |
             VanillaNpcAiCapability.WallOfFleshLinkedChildSlice);
 
-        int index = 16;
+        entries[16] = Partial(
+            VanillaNpcIds.EaterOfWorldsSpit,
+            OrdinaryCore);
+
+        int index = 17;
         VanillaNpcAiCapability hardmodeRoot = OrdinaryCore | VanillaNpcAiCapability.HardmodeBossStateSlice | VanillaNpcAiCapability.BossDeathLootProgressionSlice;
         VanillaNpcAiCapability hardmodePart = OrdinaryCore | VanillaNpcAiCapability.HardmodeBossStateSlice | VanillaNpcAiCapability.HardmodeBossLinkedChildSlice;
         VanillaNpcAiCapability hardmodeProjectileRoot = hardmodeRoot | VanillaNpcAiCapability.HardmodeBossProjectileSlice;
@@ -373,6 +377,8 @@ public static class VanillaNpcAiCoverageCatalog
             if (definition.Type == VanillaNpcIds.Probe || definition.Type == VanillaNpcIds.BloodSquid ||
                 IsHornetStingerShooter(definition.Type))
                 capabilities |= VanillaNpcAiCapability.FlyerProjectileSideEffectSlice;
+            if (definition.Type == VanillaNpcIds.EaterOfSouls)
+                capabilities |= VanillaNpcAiCapability.ChildSpawnSlice;
 
             entries[index++] = Partial(definition.Type, capabilities);
         }

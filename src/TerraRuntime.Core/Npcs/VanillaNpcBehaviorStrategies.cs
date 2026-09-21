@@ -1885,10 +1885,13 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
         if (!context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) ||
             !context.TryFindCandidate(checked((byte)closest.Target), out VanillaNpcTargetCandidate candidate))
         {
+            bool idleClearJustHit = TryAdvanceGoodWorldEaterSpitClock(in npc, context, out NpcAiState idleLocalAi);
             NpcSimulationState idleSimulation = npc.Simulation with
             {
                 NoGravity = true,
-                NoTileCollide = definition.NoTileCollideAtSpawn
+                NoTileCollide = definition.NoTileCollideAtSpawn,
+                LocalAi = idleLocalAi,
+                JustHit = idleClearJustHit ? false : npc.Simulation.JustHit
             };
             next = new NpcStateUpdate(
                 definition.Type.Value,
@@ -1937,6 +1940,7 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
         float finalVelocityX = result.VelocityX;
         float finalVelocityY = result.VelocityY;
         NpcAiState localAi = npc.Simulation.LocalAi;
+        bool clearJustHit = TryAdvanceGoodWorldEaterSpitClock(in npc, context, out localAi);
         if (VanillaFlyerProjectileAttack.IsSupportedShooter(definition.Type) &&
             VanillaFlyerProjectileAttack.TryStep(
                 definition.Type,
@@ -1970,7 +1974,8 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
                 NoGravity = true,
                 NoTileCollide = definition.NoTileCollideAtSpawn,
                 TimeLeft = result.TimeLeft,
-                LocalAi = localAi
+                LocalAi = localAi,
+                JustHit = clearJustHit ? false : npc.Simulation.JustHit
             });
         return true;
     }
@@ -2177,6 +2182,68 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
         type == VanillaNpcIds.Hornet ||
         type == VanillaNpcIds.MossHornet ||
         type.Value is >= 231 and <= 235;
+
+    private static bool TryAdvanceGoodWorldEaterSpitClock(
+        in NpcSnapshot npc,
+        VanillaNpcBehaviorContext context,
+        out NpcAiState localAi)
+    {
+        localAi = npc.Simulation.LocalAi;
+        if (npc.TypeIdentity != VanillaNpcIds.EaterOfSouls || !context.GoodWorld ||
+            context.CountNpcPeers(VanillaNpcIds.EaterOfWorldsHead) == 0)
+        {
+            return false;
+        }
+
+        // AI_005: a hit restarts this server-only clock, then the same tick advances it. The resulting exact
+        // 60-tick edge is consumed after the NPC motion proposal commits, even if no player target exists.
+        float timer = npc.Simulation.JustHit ? 0f : localAi.Ai0;
+        timer += 1f;
+        localAi = localAi with { Ai0 = timer == 60f ? 0f : timer };
+        return true;
+    }
+
+    public void SpawnGoodWorldEaterSpit(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        VanillaNpcBehaviorContext context,
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaNpcIds.EaterOfSouls || committed.TypeIdentity != before.TypeIdentity ||
+            !context.GoodWorld || context.CountNpcPeers(VanillaNpcIds.EaterOfWorldsHead) == 0 ||
+            !VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, before.NetIdentity, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(committed.Simulation, out VanillaNpcHitboxSize hitbox))
+        {
+            return;
+        }
+
+        float beforeTimer = before.Simulation.JustHit ? 0f : before.Simulation.LocalAi.Ai0;
+        if (beforeTimer + 1f != 60f || committed.Simulation.LocalAi.Ai0 != 0f ||
+            committed.Target >= byte.MaxValue || !context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.Ghost || projectileEnvironment is null)
+        {
+            return;
+        }
+
+        float centerX = committed.PositionX + hitbox.Width * .5f;
+        float centerY = committed.PositionY + hitbox.Height * .5f;
+        if (!VanillaNpcGlobalFiringDistance.Contains(centerX, centerY, target.CenterX, target.CenterY) ||
+            !projectileEnvironment.CanHit(
+                committed.PositionX, committed.PositionY, hitbox.Width, hitbox.Height,
+                target.CenterX - target.Width * .5f, target.CenterY - target.Height * .5f,
+                (int)target.Width, (int)target.Height))
+        {
+            return;
+        }
+
+        mutations.TrySpawn(in committed, new NpcAiSpawnIntent(
+            VanillaNpcIds.EaterOfWorldsSpit,
+            (int)(centerX + committed.VelocityX),
+            (int)(centerY + committed.VelocityY),
+            0f,
+            0f,
+            byte.MaxValue), out _);
+    }
 
     private static bool IsMechQueenUp(VanillaNpcBehaviorContext context) =>
         TryGetMechQueen(context, out _);

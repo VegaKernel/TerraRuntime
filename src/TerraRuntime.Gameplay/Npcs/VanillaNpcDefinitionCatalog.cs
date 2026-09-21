@@ -434,6 +434,19 @@ public static class VanillaNpcDefinitionCatalog
             return true;
         }
 
+        // NPC.SetDefaults(666), TerrariaServer 1.4.5.8. This projectile NPC is created by the AI_005
+        // Good World Eater of Souls branch; it is intentionally distinct from the normal projectile catalog.
+        if (type == VanillaNpcIds.EaterOfWorldsSpit)
+        {
+            definition = new VanillaNpcDefinition(VanillaNpcIds.EaterOfWorldsSpit, VanillaNpcAiStyles.BurningSphere,
+                VanillaNpcBehaviorFamily.BurningSphere, VanillaNpcPhysicsFamily.NoClipFlight, NpcArchetypeRole.Ordinary,
+                16, 16, 65, 0, 1, 0f, .9f, true, true, VanillaNpcSyncAnchor.TopLeft)
+            {
+                AlphaAtSpawn = 80
+            };
+            return true;
+        }
+
         if (type == VanillaNpcIds.RuneWizard)
         {
             definition = new VanillaNpcDefinition(VanillaNpcIds.RuneWizard, VanillaNpcAiStyles.Caster,
