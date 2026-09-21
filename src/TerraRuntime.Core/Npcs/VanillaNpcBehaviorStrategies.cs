@@ -372,6 +372,33 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
                 positionY += body.Height - height;
             }
         }
+        // Cobalt through Titanium Slime share the ore-contained AI_001 state. Its physical
+        // body grows from the current source body by the newly multiplied scale, preserving
+        // bottom center exactly as NPC.AI_001 does before the ground-motion state machine.
+        if (ai.Ai1 is 364f or 1104f or 365f or 1105f or 366f or 1106f)
+        {
+            simulation = simulation with
+            {
+                DefenseOverride = (simulation.BaseDefense ?? definition.Defense) + 30,
+                DamageOverride = (simulation.BaseDamage ?? definition.Damage) * 3,
+                KnockBackResist = 0f
+            };
+            if (simulation.LifeMax == baseLifeMax && definition.TryResolveHitbox(simulation, out VanillaNpcHitboxSize body))
+            {
+                float scale = simulation.Scale * 1.2f;
+                int width = (int)(body.Width * scale);
+                int height = (int)(body.Height * scale);
+                simulation = simulation with
+                {
+                    Life = simulation.Life == simulation.LifeMax ? baseLifeMax * 3 : simulation.Life,
+                    LifeMax = baseLifeMax * 3,
+                    Scale = scale,
+                    HitboxOverride = new NpcHitboxDimensions(width, height)
+                };
+                positionX += body.Width / 2 - width / 2;
+                positionY += body.Height - height;
+            }
+        }
         // ItemID.Sets.IsAVoiceChangeItem is also consumed by AI_001. It uses the same
         // defLifeMax guard as Heart Slime, but triples the original body without any
         // other combat or geometry changes.

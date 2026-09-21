@@ -337,6 +337,37 @@ public sealed class VanillaFossilSlimeAiTests
         Assert.Equal(25, ordinaryNext.Simulation.LifeMax);
     }
 
+    [Theory]
+    [InlineData(364f)]
+    [InlineData(1104f)]
+    [InlineData(365f)]
+    [InlineData(1105f)]
+    [InlineData(366f)]
+    [InlineData(1106f)]
+    public void Ore_slime_applies_source_combat_health_and_body_transition(float item)
+    {
+        var stepper = CreateStepper(skyblockNoFossils: false, new ThrowingRandom());
+        NpcSnapshot slime = Snapshot(VanillaNpcIds.BlueSlime, positionY: 1601f, ai1: item) with
+        {
+            Simulation = NpcSimulationState.Initial with
+            {
+                Life = 25, LifeMax = 25, BaseLifeMax = 25, Scale = 1f, DirectionX = 1, DirectionY = 1,
+                KnockBackResist = .9f
+            }
+        };
+
+        Assert.True(stepper.TryStepState(in slime, out NpcStateUpdate next));
+        Assert.Equal(75, next.Simulation.Life);
+        Assert.Equal(75, next.Simulation.LifeMax);
+        Assert.Equal(32, next.Simulation.DamageOverride);
+        Assert.Equal(32, next.Simulation.DefenseOverride);
+        Assert.Equal(0f, next.Simulation.KnockBackResist);
+        Assert.Equal(1.2f, next.Simulation.Scale);
+        Assert.Equal(new NpcHitboxDimensions(28, 21), next.Simulation.HitboxOverride);
+        Assert.Equal(98f, next.PositionX);
+        Assert.Equal(1598f, next.PositionY);
+    }
+
     private static VanillaNpcTargetingAiStepper CreateStepper(bool skyblockNoFossils, IVanillaNpcRandom random,
         bool skyblockLowTiles = false, bool skyblockNoHellstone = false, bool downedSkeletron = false,
         bool slimeRainActive = false, bool skyblockNoLifeCrystals = false)
