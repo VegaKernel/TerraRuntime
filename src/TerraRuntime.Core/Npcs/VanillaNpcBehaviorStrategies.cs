@@ -410,6 +410,30 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             return false;
         }
 
+        if (definition.Type.Value == 258 &&
+            result.VelocityY != 0f &&
+            context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh airborneTarget) &&
+            context.TryFindCandidate(checked((byte)airborneTarget.Target), out VanillaNpcTargetCandidate airborneCandidate) &&
+            VanillaGroundFighter258Motion.TryResolveAirborne(
+                new VanillaGroundFighter258AirborneInput(
+                    npc.PositionX,
+                    definition.Width,
+                    result.VelocityX,
+                    result.VelocityY,
+                    airborneTarget.DirectionX,
+                    airborneCandidate.CenterX),
+                out VanillaGroundFighter258AirborneResult airborne))
+        {
+            result = result with
+            {
+                VelocityX = airborne.VelocityX,
+                DirectionX = airborneTarget.DirectionX,
+                DirectionY = airborneTarget.DirectionY,
+                Target = airborneTarget.Target,
+                SpriteDirection = airborne.SpriteDirection
+            };
+        }
+
         if (definition.Type == VanillaNpcIds.VampireHumanoid && result.Target < byte.MaxValue &&
             context.TryFindCandidate((byte)result.Target, out VanillaNpcTargetCandidate vampireTarget))
         {
