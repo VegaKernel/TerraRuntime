@@ -2108,8 +2108,13 @@ public sealed class VanillaNpcTargetingAiStepper :
         float elapsed = before.Ai.Ai1 + 1f;
         if (before.Ai.Ai0 == 1f && elapsed <= 180f && elapsed % 5f == 0f)
         {
-            // AI_057 retains its dust chance on a dedicated server before consuming the source shot draws.
-            _random.NextInt32(0, 5);
+            // AI_057 retains the dedicated-server visual draw sequence before its source shot draws.
+            // NextVector2Square consumes two scalar values when the dust branch is selected.
+            if (_random.NextInt32(0, 5) == 0)
+            {
+                _random.NextDouble();
+                _random.NextDouble();
+            }
             float x = before.PositionX + 20f + _random.NextInt32(0, 132);
             float y = before.PositionY + 20f + _random.NextInt32(0, 90);
             float dx = player.CenterX - x + _random.NextInt32(-50, 51);
@@ -2134,7 +2139,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             dy -= MathF.Abs(dx) * .3f;
             float speed = 4.5f + MathF.Abs(dx) * .004f;
             dx += _random.NextInt32(-50, 51);
-            dy += _random.NextInt32(50, 201);
+            dy -= _random.NextInt32(50, 201);
             NormalizeTo(ref dx, ref dy, speed);
             dx *= 1f + _random.NextInt32(-30, 31) * .01f;
             dy *= 1f + _random.NextInt32(-30, 31) * .01f;

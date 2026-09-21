@@ -39,7 +39,7 @@ public sealed class VanillaMoonEventEverscreamAiTests
     [Fact]
     public void Pine_needles_and_ornaments_spawn_only_after_the_exact_committed_attack_tick()
     {
-        AssertProjectile(new NpcAiState(1f, 4f, 0f, 0f), VanillaProjectileIds.EverscreamPineNeedle, 43, expectedDraws: 9);
+        AssertProjectile(new NpcAiState(1f, 4f, 0f, 0f), VanillaProjectileIds.EverscreamPineNeedle, 43, expectedDraws: 11);
         AssertProjectile(new NpcAiState(2f, 74f, 0f, 0f), VanillaProjectileIds.EverscreamOrnament, 57, expectedDraws: 7);
     }
 
