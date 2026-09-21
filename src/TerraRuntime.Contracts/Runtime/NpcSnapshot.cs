@@ -97,6 +97,9 @@ public readonly record struct NpcSimulationState(
 
     public bool JustHit { get; init; }
 
+    /// <summary>Authoritative NPC.confused state consumed by source AI branches that reset hostile attack clocks.</summary>
+    public bool Confused { get; init; }
+
     public int TimeLeft { get; init; }
 
     /// <summary>

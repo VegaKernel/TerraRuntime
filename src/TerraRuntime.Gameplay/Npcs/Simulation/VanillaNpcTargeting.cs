@@ -48,6 +48,9 @@ public readonly record struct VanillaNpcTargetCandidate(
 
     /// <summary>Live player liquid contact used by ordinary flying-family state clocks.</summary>
     public bool Wet { get; init; }
+
+    /// <summary>Authoritative Player.frozen state used by hostile source projectile gates.</summary>
+    public bool Frozen { get; init; }
 }
 
 public readonly record struct VanillaNpcTargetSelection(

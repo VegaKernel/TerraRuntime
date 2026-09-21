@@ -758,6 +758,8 @@ internal static class VanillaProjectileBehaviorProfileCatalog
     private static bool IsHostileStraightArrow(ProjectileTypeId type) =>
         type == VanillaProjectileIds.WallOfFleshEyeLaser ||
         type == VanillaProjectileIds.ProbePinkLaser ||
+        type == VanillaProjectileIds.GroundFighter243Bolt ||
+        type == VanillaProjectileIds.GroundFighter251Bolt ||
         type == VanillaProjectileIds.RetinazerDeathLaser ||
         type == VanillaProjectileIds.GolemEyeBeam;
 
