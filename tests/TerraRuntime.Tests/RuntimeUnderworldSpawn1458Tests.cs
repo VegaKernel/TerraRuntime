@@ -125,6 +125,39 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     }
 
     [Fact]
+    public void Underground_desert_wall_precedes_empty_population_rate_band()
+    {
+        var npcs = new RuntimeNpcStore();
+        var tiles = new WorldTileStore(new WorldDimensions(1000, 1200));
+        for (int x = 415; x < 466; x++)
+            for (int y = 450; y < 480; y++)
+                tiles.Tiles[tiles.GetUncheckedIndex(x, y)] = new WorldTile { Type = 53, Flags = WorldTileFlags.Active };
+        // Player.Center is at tile 498 for floor tile 500, which is a valid Sandstone wall position.
+        tiles.Tiles[tiles.GetUncheckedIndex(500, 498)] = new WorldTile { Wall = 187 };
+
+        // 600 * .2 (underground desert) = 120, then empty-population .6 = 72.
+        var random = new RateRejectingRandom(72);
+        RuntimeTownCommerceWorldFacts1458 world = default;
+        world = world with { WorldSurface = 350, RockLayer = 600 };
+        var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
+            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+            townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+            naturalSpawnRandom: random, worldProgression: new RuntimeWorldProgressionMutations());
+        var slots = new PlayerSlotPool(1);
+        Assert.True(slots.TryAcquireConnection(out var lease));
+        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        session.ObserveWorldRequest(); session.ObserveSectionRequest();
+        var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(819), session.Handle);
+        state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
+            new PlayerSpawnCommitRequest(session.Handle.Slot, 500, 500, 0, 0, 0, 0, 0)));
+
+        state.Tick();
+
+        random.AssertConsumed();
+        Assert.Equal(0, npcs.ActiveCount);
+    }
+
+    [Fact]
     public void Source_surface_flag_includes_the_ground_row_at_world_surface()
     {
         var npcs = new RuntimeNpcStore();

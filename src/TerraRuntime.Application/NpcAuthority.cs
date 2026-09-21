@@ -977,6 +977,14 @@ internal sealed partial class NpcAuthority
                 spawnRate = (int)(spawnRate * (hardMode ? .4f : .9f));
                 maxSpawns = (int)(maxSpawns * (hardMode ? 1.5f : 1.2f));
             }
+            else if (biome.ZoneDesert && playerSceneTileY > surface &&
+                IsUndergroundDesertWall(tiles.Get(playerTileX, playerSceneTileY).Wall))
+            {
+                // SceneMetrics.ZoneUndergroundDesert also excludes Main.wallHouse; none of these source
+                // conversion walls are housing walls in the supported wall catalog.
+                spawnRate = (int)(spawnRate * .2f);
+                maxSpawns = (int)(maxSpawns * 3f);
+            }
             else if (biome.ZoneCorrupt || biome.ZoneCrimson)
             {
                 spawnRate = (int)(spawnRate * .65d);
@@ -1081,6 +1089,10 @@ internal sealed partial class NpcAuthority
         return wallType is 1 or 4 or 5 or 6 or 10 or 11 or 12 or 13 or 14 or 15 or 16 or 17 or 18 or 19 or 20 or
             21 or 22 or 23 or 24 or 27 or 29 or 30 or 31 or 32 or 33 or 34 or 35 or 36 or 37 or 38 or 39;
     }
+
+    private static bool IsUndergroundDesertWall(ushort wallType) => wallType is
+        187 or 220 or 222 or 221 or 275 or 308 or 310 or 309 or
+        216 or 217 or 219 or 218 or 304 or 305 or 307 or 306 or 223;
 
     private int CountNearbyOrdinaryNpcs(float x, float y, float radius)
     {

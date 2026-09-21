@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Natural spawn Underground Desert: the source Desert scene count, below-surface center and Sandstone/Hardened Sand/Desert Fossil wall predicate now apply the `0.2` rate and `3.0` cap transforms before Jungle and evil branches. A real tick with wall 187 pins final empty-population rate 72. Jungle town count, meteor, temple, moon events, player buffs/candles/Journey and source npcSlots remain open.
+
 2026-09-21 Natural spawn sandstorm: the loaded `SandstormHappening` world fact now enters the source `ZoneSandstorm` rate branch before Underground Desert, Jungle and evil zones. The runtime uses the source `ZoneDesert && SurfaceAtmospherics && Sandstorm.Happening` predicate and `Player.Center` for the `SetSpawnFlags` scene/wall inputs; a real pre-Hardmode surface-Desert tick pins its final empty-population rate at 324. Underground Desert, Jungle town count, meteor, temple, moon events, player buffs/candles/Journey and source npcSlots remain open.
 
 2026-09-21 Natural spawn surface Snow: `GetSpawnRate` now receives its server-authoritative `cloudAlpha` from `RuntimeWorldClock.MaxRain`, because TerrariaServer assigns `cloudAlpha = maxRaining` in `Main.Update`. The Snow surface multiplier runs before walls and later biome branches; a real runtime tick with `MaxRain=.5` pins the final empty-population rate at 270. Pumpkin/Snow Moon, per-player buffs/candles/Journey, town-count Jungle, meteor/sandstorm/temple and source npcSlots remain open.
