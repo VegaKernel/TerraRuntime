@@ -178,7 +178,7 @@ Types35/36 now resolve shared spawn difficulty/player/Good World defaults.158 or
 
 ## Prime initial arm coordinates - 2026-09-15
 
-The initial batch uses the head's pre-motion physical center with original integer cast order. PrimeArmsSpawn1458 retains48 original head calls (modes0/1/2, Good World, roots1/10/198/199, normal/fractional positions);96 tests cover AI-only/world-motion composition, ordered child defaults and partial/exhausted allocation without retry. Old coordinates fail63, post-motion coordinates18, wrong vertical cast36. Full child AI, rotations, Mechdusa, packet/RNG continuation and complete encounters remain open. Adjacent Skeletron hands also need their own fractional-coordinate comparison: source has the same vertical cast order, while the current planner still casts the summed center.
+The initial batch uses the head's pre-motion physical center with original integer cast order. PrimeArmsSpawn1458 retains48 original head calls (modes0/1/2, Good World, roots1/10/198/199, normal/fractional positions);96 tests cover AI-only/world-motion composition, ordered child defaults and partial/exhausted allocation without retry. Old coordinates fail63, post-motion coordinates18, wrong vertical cast36. Full child AI, rotations, Mechdusa, packet/RNG continuation and complete encounters remain open. Skeletron hands use the same source vertical cast order, `(int)position.Y + height / 2`; the existing hand-batch fixture covers fractional placement.
 
 ## Prime creation and head phases - 2026-09-15
 
