@@ -376,7 +376,8 @@ internal sealed partial class NpcAuthority
                     naturalSpawnSkyblockLowTiles,
                     naturalSpawnSkyblockNoHellstone,
                     naturalSpawnSkyblockNoLifeCrystals,
-                    naturalSpawnWorldFacts?.DownedBoss3 ?? false);
+                    naturalSpawnWorldFacts?.DownedBoss3 ?? false,
+                    naturalSpawnWorldFacts?.Eclipse ?? false);
                 vanillaTargeting.SetMoonEventState(worldClock.PumpkinMoonActive, worldClock.SnowMoonActive);
             }
         }

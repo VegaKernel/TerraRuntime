@@ -161,6 +161,8 @@ public static class VanillaBatMotion1458
         ApplyClosest(input.ClosestTarget, ref target, ref directionX, ref directionY);
         if (type == VanillaNpcIds.QueenSlimeMinionPurple)
             ApplyQueenSlimeMinionAcceleration(ref velocityX, ref velocityY, directionX, directionY);
+        else if (type == VanillaNpcIds.Vampire)
+            ApplyVampireAcceleration(ref velocityX, ref velocityY, directionX, directionY);
         else if (type == VanillaNpcIds.FlyingSnake)
             ApplyFlyingSnakeAcceleration(ref velocityX, ref velocityY, directionX, directionY);
         else
@@ -266,6 +268,17 @@ public static class VanillaBatMotion1458
         // AI_014 type 226 uses its own 0.2/0.1 acceleration and 4/2.5 speed caps.
         AccelerateAxis(ref velocityX, directionX, 0.2f, 4f, 0.1f, 0.05f);
         AccelerateAxis(ref velocityY, directionY, 0.1f, 2.5f, 0.05f, 0.03f);
+    }
+
+    private static void ApplyVampireAcceleration(
+        ref float velocityX,
+        ref float velocityY,
+        int directionX,
+        int directionY)
+    {
+        // Flying Vampire is the only AI_014 member with seven-pixel acceleration on both axes.
+        AccelerateAxis(ref velocityX, directionX, 0.2f, 7f, 0.1f, 0.05f);
+        AccelerateAxis(ref velocityY, directionY, 0.2f, 7f, 0.1f, 0.05f);
     }
 
     private static void AccelerateAxis(

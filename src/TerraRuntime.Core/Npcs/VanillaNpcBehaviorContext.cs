@@ -64,6 +64,8 @@ internal sealed class VanillaNpcBehaviorContext
 
     public bool DayTime { get; private set; } = true;
 
+    public bool EclipseActive { get; private set; }
+
     public bool SlimeRainActive { get; private set; }
 
     public bool PumpkinMoonActive { get; private set; }
@@ -137,7 +139,8 @@ internal sealed class VanillaNpcBehaviorContext
         bool skyblockLowTiles = false,
         bool skyblockNoHellstone = false,
         bool skyblockNoLifeCrystals = false,
-        bool downedSkeletron = false)
+        bool downedSkeletron = false,
+        bool eclipseActive = false)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -147,6 +150,7 @@ internal sealed class VanillaNpcBehaviorContext
             throw new ArgumentOutOfRangeException(nameof(worldTime));
 
         DayTime = dayTime;
+        EclipseActive = eclipseActive;
         SlimeRainActive = slimeRainActive;
         GoodWorld = goodWorld;
         ExpertMode = expertMode;

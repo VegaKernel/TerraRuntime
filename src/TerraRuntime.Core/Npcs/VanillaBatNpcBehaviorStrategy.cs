@@ -68,6 +68,13 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
             };
         }
 
+        if (definition.Type == VanillaNpcIds.Vampire && closest.HasTarget &&
+            npc.PositionY < context.WorldSurfacePixels && context.DayTime && !context.EclipseActive)
+        {
+            // AI_014 reverses the horizontal target direction and climbs while a Flying Vampire is exposed at day.
+            closest = closest with { DirectionX = -closest.DirectionX, DirectionY = -1 };
+        }
+
         NpcSimulationState simulation = npc.Simulation;
         var input = new VanillaBatMotionInput1458(
             npc.VelocityX,

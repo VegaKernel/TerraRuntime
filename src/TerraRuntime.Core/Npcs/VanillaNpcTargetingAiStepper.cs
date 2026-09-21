@@ -264,8 +264,9 @@ public sealed class VanillaNpcTargetingAiStepper :
         bool skyblockLowTiles = false,
         bool skyblockNoHellstone = false,
         bool skyblockNoLifeCrystals = false,
-        bool downedSkeletron = false) =>
-        _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld, expertMode, masterMode, windSpeedCurrent, remixWorld, worldTime, noTrapsWorld, skyblockNoFossils, skyblockLowTiles, skyblockNoHellstone, skyblockNoLifeCrystals, downedSkeletron);
+        bool downedSkeletron = false,
+        bool eclipseActive = false) =>
+        _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld, expertMode, masterMode, windSpeedCurrent, remixWorld, worldTime, noTrapsWorld, skyblockNoFossils, skyblockLowTiles, skyblockNoHellstone, skyblockNoLifeCrystals, downedSkeletron, eclipseActive);
 
     public void SetMoonEventState(bool pumpkinMoonActive, bool snowMoonActive = false) =>
         _context.SetMoonEventState(pumpkinMoonActive, snowMoonActive);
