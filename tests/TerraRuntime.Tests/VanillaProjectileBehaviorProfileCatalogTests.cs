@@ -12,6 +12,7 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
         ProjectileTypeId[] basicArrows =
         [
             VanillaProjectileIds.WoodenArrowFriendly,
+            VanillaProjectileIds.HarpyFeather,
             VanillaProjectileIds.FireArrow,
             VanillaProjectileIds.UnholyArrow,
             VanillaProjectileIds.JestersArrow,
@@ -35,6 +36,7 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
             Assert.False(profile.RejectServerOwned);
             Assert.False(profile.ExemptFromPreAiWorldBounds);
         }
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.SkipsBasicArrowGravity(VanillaProjectileIds.HarpyFeather));
 
         ProjectileTypeId[] thrown =
         [
@@ -188,6 +190,7 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
         ProjectileTypeId[] types =
         [
             VanillaProjectileIds.WoodenArrowFriendly,
+            VanillaProjectileIds.HarpyFeather,
             VanillaProjectileIds.FireArrow,
             VanillaProjectileIds.UnholyArrow,
             VanillaProjectileIds.JestersArrow,

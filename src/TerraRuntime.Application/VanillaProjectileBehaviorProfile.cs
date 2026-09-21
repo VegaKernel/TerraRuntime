@@ -679,10 +679,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
     // share aiStyle 1 with arrows but never acquire ordinary arrow gravity from their default AI state.
     internal static bool SkipsBasicArrowGravity(ProjectileTypeId type) =>
         type == VanillaProjectileIds.Bullet || type == VanillaProjectileIds.SilverBullet ||
-        type == VanillaProjectileIds.GreenLaser || type == VanillaProjectileIds.JestersArrow;
+        type == VanillaProjectileIds.GreenLaser || type == VanillaProjectileIds.JestersArrow ||
+        type == VanillaProjectileIds.HarpyFeather;
 
     private static bool IsBasicArrow(ProjectileTypeId type) =>
         type == VanillaProjectileIds.WoodenArrowFriendly ||
+        type == VanillaProjectileIds.HarpyFeather ||
         type == VanillaProjectileIds.FireArrow ||
         type == VanillaProjectileIds.UnholyArrow ||
         type == VanillaProjectileIds.JestersArrow ||

@@ -1,6 +1,8 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Core.Npcs;
+using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Gameplay.Npcs;
 
 namespace TerraRuntime.Tests;
@@ -66,7 +68,7 @@ public sealed class VanillaBatAi1458Tests
     [Fact]
     public void Catalog_admits_source_defaults_for_ordinary_bats_slimer_and_vampire()
     {
-        Assert.Equal(11, VanillaBatNpcCatalog1458.DefinitionCount);
+        Assert.Equal(12, VanillaBatNpcCatalog1458.DefinitionCount);
         foreach (VanillaNpcDefinition definition in VanillaBatNpcCatalog1458.AllDefinitions)
         {
             Assert.Equal(VanillaNpcAiStyles.Bat, definition.AiStyle);
@@ -87,6 +89,14 @@ public sealed class VanillaBatAi1458Tests
         Assert.Equal(160, lavaBat.LifeMax);
         Assert.Equal(0.6f, lavaBat.KnockBackResist);
         Assert.Equal(1.15f, lavaBat.Scale);
+
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Harpy, out VanillaNpcDefinition harpy));
+        Assert.Equal((24, 34, 25, 8, 100), (harpy.BaseWidth, harpy.BaseHeight, harpy.Damage, harpy.Defense, harpy.LifeMax));
+        Assert.Equal(.6f, harpy.KnockBackResist);
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.HarpyFeather, out VanillaProjectileDefinition feather));
+        Assert.Equal((14, 14, VanillaProjectileAiStyles.Arrow), (feather.Width, feather.Height, feather.AiStyle));
+        Assert.True(feather.TileCollide);
+        Assert.True(VanillaProjectileFacts.IsHostile(VanillaProjectileIds.HarpyFeather));
     }
 
     [Fact]
@@ -176,6 +186,61 @@ public sealed class VanillaBatAi1458Tests
     }
 
     [Fact]
+    public void Harpy_uses_its_source_wet_escape_and_low_speed_wander_profile()
+    {
+        VanillaBatMotionResult1458 result = Step(
+            VanillaNpcIds.Harpy,
+            velocityY: 3f,
+            directionX: 1,
+            directionY: 1,
+            ai: new NpcAiState(0f, 200f, 150f, 0f),
+            wet: true);
+
+        Assert.Equal(201f, result.Ai.Ai1);
+        Assert.Equal(151f, result.Ai.Ai2);
+        Assert.Equal(.22f, result.VelocityX, 5);
+        Assert.Equal(2.35f, result.VelocityY, 5);
+    }
+
+    [Fact]
+    public void Harpy_feather_and_timer_reset_run_only_after_the_source_state_commits()
+    {
+        var shotNpcs = new RuntimeNpcStore(2);
+        Assert.True(shotNpcs.TrySpawn(1, HarpyUpdate(ai0: 29f), out NpcSnapshot shotSource));
+        var shotProjectiles = new RuntimeProjectileStore(2);
+        var shotRandom = new SequenceRandom();
+        VanillaNpcTargetingAiStepper shotStepper = CreateHarpyStepper(shotRandom);
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(shotNpcs, shotProjectiles).Tick(new HarpyOnly(shotStepper)).Applied);
+        Assert.True(shotNpcs.TryGet(shotSource.Handle, out NpcSnapshot shotCommitted));
+        Assert.Equal(30f, shotCommitted.Ai.Ai0);
+        Assert.True(shotProjectiles.TryGetActive(0, out ProjectileSnapshot feather));
+        Assert.Equal(VanillaProjectileIds.HarpyFeather, feather.Type);
+        Assert.Equal((short)15, feather.Damage);
+        Assert.Equal(105f, feather.PositionX, 5);
+        Assert.Equal(110f, feather.PositionY, 5);
+        Assert.Equal(2, shotRandom.Draws);
+        Assert.True(shotProjectiles.TryGetServerNpcSource(feather.Handle, out NpcHandle provenance));
+        Assert.Equal(shotSource.Handle, provenance);
+
+        var resetNpcs = new RuntimeNpcStore(2);
+        Assert.True(resetNpcs.TrySpawn(1, HarpyUpdate(ai0: 399f), out NpcSnapshot resetSource));
+        var resetRandom = new SequenceRandom();
+        VanillaNpcTargetingAiStepper resetStepper = CreateHarpyStepper(resetRandom);
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(resetNpcs).Tick(new HarpyOnly(resetStepper)).Applied);
+        Assert.True(resetNpcs.TryGet(resetSource.Handle, out NpcSnapshot resetCommitted));
+        Assert.Equal(0f, resetCommitted.Ai.Ai0);
+        Assert.Equal(1, resetRandom.Draws);
+
+        var rejectedNpcs = new RuntimeNpcStore(2);
+        Assert.True(rejectedNpcs.TrySpawn(1, HarpyUpdate(ai0: 399f), out _));
+        var rejectedRandom = new SequenceRandom();
+        VanillaNpcTargetingAiStepper rejectedStepper = CreateHarpyStepper(rejectedRandom);
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(rejectedNpcs).Tick(new StaleHarpyOnly(rejectedStepper, rejectedNpcs)).Rejected);
+        Assert.Equal(0, rejectedRandom.Draws);
+    }
+
+    [Fact]
     public void Dry_visible_target_resets_pursuit_clock_but_still_advances_wander_phase()
     {
         VanillaBatMotionResult1458 result = Step(
@@ -216,6 +281,10 @@ public sealed class VanillaBatAi1458Tests
 
         Assert.False(VanillaBatMotion1458.TryStepPursuit(
             VanillaNpcIds.QueenSlimeMinionPurple,
+            in input,
+            out _));
+        Assert.False(VanillaBatMotion1458.TryStepPursuit(
+            VanillaNpcIds.Harpy,
             in input,
             out _));
     }
@@ -295,6 +364,25 @@ public sealed class VanillaBatAi1458Tests
                 Scale = 1f
             });
 
+    private static VanillaNpcTargetingAiStepper CreateHarpyStepper(IVanillaNpcRandom random)
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: random);
+        stepper.SetProjectileEnvironment(new VisibleEnvironment());
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(7, 200f, 100f, 0, true, false, false, false)]);
+        return stepper;
+    }
+
+    private static NpcStateUpdate HarpyUpdate(float ai0) => new(
+        VanillaNpcIds.Harpy.Value,
+        (short)VanillaNpcIds.Harpy.Value,
+        PositionX: 100f,
+        PositionY: 100f,
+        VelocityX: 0f,
+        VelocityY: 0f,
+        Target: 7,
+        Ai: new NpcAiState(ai0, 0f, 0f, 0f),
+        Simulation: NpcSimulationState.Initial with { Life = 100, LifeMax = 100, DirectionX = 1, DirectionY = 1, TimeLeft = 750 });
+
     private sealed class VisibleEnvironment : IVanillaNpcProjectileEnvironment
     {
         public bool CanHit(
@@ -315,5 +403,41 @@ public sealed class VanillaBatAi1458Tests
             next = default;
             return false;
         }
+    }
+
+    private sealed class HarpyOnly(VanillaNpcTargetingAiStepper stepper) : INpcAiStateStepper, INpcAiStatePostCommitEffect
+    {
+        public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next) => stepper.TryStepState(in npc, out next);
+        public bool DefersStatePublication(in NpcSnapshot before, in NpcStateUpdate proposed) =>
+            stepper.DefersStatePublication(in before, in proposed);
+        public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations) =>
+            stepper.CompleteCommittedState(in before, in committed, mutations);
+        public void ApplyCommittedEffect(in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations) =>
+            stepper.ApplyCommittedEffect(in before, in committed, mutations);
+    }
+
+    private sealed class StaleHarpyOnly(VanillaNpcTargetingAiStepper stepper, RuntimeNpcStore store)
+        : INpcAiStateStepper, INpcAiStatePostCommitEffect
+    {
+        public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
+        {
+            if (!stepper.TryStepState(in npc, out next))
+                return false;
+            Assert.True(store.TryUpdate(npc.Handle, in next, out _));
+            return true;
+        }
+
+        public bool DefersStatePublication(in NpcSnapshot before, in NpcStateUpdate proposed) =>
+            stepper.DefersStatePublication(in before, in proposed);
+        public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations) =>
+            stepper.CompleteCommittedState(in before, in committed, mutations);
+        public void ApplyCommittedEffect(in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations) =>
+            stepper.ApplyCommittedEffect(in before, in committed, mutations);
+    }
+
+    private sealed class SequenceRandom : IVanillaNpcRandom
+    {
+        public int Draws { get; private set; }
+        public int NextInt32(int inclusiveMin, int exclusiveMax) { Draws++; return inclusiveMin; }
     }
 }

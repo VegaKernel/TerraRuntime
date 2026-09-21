@@ -69,6 +69,11 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
             return false;
         }
 
+        // AI_014 advances Harpy's server-only firing timer after its flight and wander work. The timer reset
+        // needs RNG, so it is completed only after this proposed state is accepted by the NPC store.
+        if (definition.Type == VanillaNpcIds.Harpy)
+            result = result with { Ai = result.Ai with { Ai0 = result.Ai.Ai0 + 1f } };
+
         if (definition.Type == VanillaNpcIds.Vampire && closest.HasTarget &&
             context.TryFindCandidate((byte)closest.Target, out target) && environment is not null)
         {
@@ -113,6 +118,97 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
             });
         return true;
     }
+
+    public NpcSnapshot CompleteHarpyAttackTimer(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        VanillaNpcBehaviorContext context,
+        IVanillaNpcRandom random,
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaNpcIds.Harpy || committed.TypeIdentity != VanillaNpcIds.Harpy ||
+            IsHarpyShotTick(committed.Ai.Ai0) || committed.Target >= byte.MaxValue ||
+            !context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.Ghost ||
+            !VanillaBatNpcCatalog1458.TryGetDefinition(VanillaNpcIds.Harpy, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(committed.Simulation, out VanillaNpcHitboxSize hitbox))
+        {
+            return committed;
+        }
+
+        float centerX = committed.PositionX + hitbox.Width * .5f;
+        float centerY = committed.PositionY + hitbox.Height * .5f;
+        if (!VanillaNpcGlobalFiringDistance.Contains(centerX, centerY, target.CenterX, target.CenterY))
+            return committed;
+
+        // Source evaluates Main.rand.Next(400) on every non-shot tick within the global firing rectangle.
+        if (committed.Ai.Ai0 < 400f + random.NextInt32(0, 400))
+            return committed;
+
+        return mutations.TryUpdateAi(in committed, committed.Ai with { Ai0 = 0f }, out NpcSnapshot completed)
+            ? completed
+            : committed;
+    }
+
+    public void SpawnHarpyFeather(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        VanillaNpcBehaviorContext context,
+        IVanillaNpcRandom random,
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaNpcIds.Harpy || committed.TypeIdentity != VanillaNpcIds.Harpy ||
+            !IsHarpyShotTick(committed.Ai.Ai0) || committed.Target >= byte.MaxValue ||
+            environment is null ||
+            !context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.Ghost ||
+            !VanillaBatNpcCatalog1458.TryGetDefinition(VanillaNpcIds.Harpy, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(committed.Simulation, out VanillaNpcHitboxSize hitbox))
+        {
+            return;
+        }
+
+        float targetPositionX = target.CenterX - target.Width * .5f;
+        float targetPositionY = target.CenterY - target.Height * .5f;
+        if (!environment.CanHit(
+                committed.PositionX,
+                committed.PositionY,
+                hitbox.Width,
+                hitbox.Height,
+                targetPositionX,
+                targetPositionY,
+                (int)target.Width,
+                (int)target.Height))
+        {
+            return;
+        }
+
+        float centerX = committed.PositionX + hitbox.Width * .5f;
+        float centerY = committed.PositionY + hitbox.Height * .5f;
+        float velocityX = target.CenterX - centerX + random.NextInt32(-100, 101);
+        float velocityY = target.CenterY - centerY + random.NextInt32(-100, 101);
+        float length = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
+        if (!(length > 0f) || !float.IsFinite(length))
+            return;
+
+        const float projectileSpeed = 6f;
+        velocityX = velocityX / length * projectileSpeed;
+        velocityY = velocityY / length * projectileSpeed;
+        var intent = new NpcAiProjectileIntent(
+            VanillaProjectileIds.HarpyFeather,
+            centerX - 7f,
+            centerY - 7f,
+            velocityX,
+            velocityY,
+            Damage: 15,
+            KnockBack: 0f)
+        {
+            TimeLeftOverride = 300
+        };
+        mutations.TrySpawnProjectile(in committed, in intent, out _);
+    }
+
+    private static bool IsHarpyShotTick(float timer) => timer is 30f or 60f or 90f;
 
     private static int ScaleTransformLife(int life, int lifeMax, int transformedLifeMax) =>
         lifeMax > 0 ? Math.Max(1, (int)((long)life * transformedLifeMax / lifeMax)) : transformedLifeMax;

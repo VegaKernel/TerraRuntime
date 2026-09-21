@@ -105,6 +105,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId BoneSerpentBody = new(40);
     public static readonly NpcTypeId BoneSerpentTail = new(41);
     public static readonly NpcTypeId CaveBat = new(49);
+    public static readonly NpcTypeId Harpy = new(48);
     public static readonly NpcTypeId KingSlime = new(50);
     public static readonly NpcTypeId JungleBat = new(51);
     public static readonly NpcTypeId Goldfish = new(55);
@@ -516,6 +517,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId Bomb = new(28);
     public static readonly ProjectileTypeId Dynamite = new(29);
     public static readonly ProjectileTypeId StickyBomb = new(37);
+    public static readonly ProjectileTypeId HarpyFeather = new(38);
     public static readonly ProjectileTypeId Flamelash = new(34);
     public static readonly ProjectileTypeId ThrowingKnife = new(48);
     public static readonly ProjectileTypeId Seed = new(51);

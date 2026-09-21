@@ -74,6 +74,16 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 10,
         CollisionHeight: 10);
 
+    private static readonly VanillaProjectileDefinition HarpyFeatherDefinition = new(
+        Width: 14,
+        Height: 14,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 14,
+        CollisionHeight: 14);
+
     private static readonly VanillaProjectileDefinition FireArrowDefinition = new(
         Width: 10,
         Height: 10,
@@ -794,6 +804,12 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.WoodenArrowFriendly)
         {
             definition = WoodenArrowDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.HarpyFeather)
+        {
+            definition = HarpyFeatherDefinition;
             return true;
         }
 

@@ -2061,12 +2061,18 @@ public sealed class VanillaNpcTargetingAiStepper :
     }
 
     public bool DefersStatePublication(in NpcSnapshot before, in NpcStateUpdate proposed) =>
-        before.TypeIdentity == VanillaNpcIds.DarkCaster && proposed.Type == before.Type;
+        proposed.Type == before.Type &&
+        (before.TypeIdentity == VanillaNpcIds.DarkCaster || before.TypeIdentity == VanillaNpcIds.Harpy);
 
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
-        INpcAiCommittedNpcMutationSink mutations) =>
-        before.TypeIdentity == VanillaNpcIds.DarkCaster && committed.TypeIdentity == VanillaNpcIds.DarkCaster
-            ? _darkCaster.Complete(in before, in committed, _context, _random, mutations) : committed;
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity == VanillaNpcIds.DarkCaster && committed.TypeIdentity == VanillaNpcIds.DarkCaster)
+            return _darkCaster.Complete(in before, in committed, _context, _random, mutations);
+        if (before.TypeIdentity == VanillaNpcIds.Harpy && committed.TypeIdentity == VanillaNpcIds.Harpy)
+            return _bat.CompleteHarpyAttackTimer(in before, in committed, _context, _random, mutations);
+        return committed;
+    }
 
     public bool DeactivatesAfterStep(in NpcSnapshot before, in NpcStateUpdate proposed) =>
         (proposed.Type == before.Type && proposed.Simulation.Life == 0 &&
@@ -2096,6 +2102,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaSkeletronPrimeLimbNpcBehaviorStrategy.ApplyEffects(in before, in committed, _random, mutations);
         if (before.TypeIdentity == VanillaNpcIds.DarkCaster && committed.TypeIdentity == VanillaNpcIds.DarkCaster)
             VanillaDarkCasterBehavior.SpawnSphere(in before, in committed, mutations);
+        _bat.SpawnHarpyFeather(in before, in committed, _context, _random, mutations);
         SpawnMourningWoodFireball(in before, in committed, mutations);
         SpawnEverscreamProjectiles(in before, in committed, mutations);
         SpawnPumpkingProjectiles(in before, in committed, mutations);

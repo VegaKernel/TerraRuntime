@@ -7,6 +7,7 @@ public static class VanillaBatNpcCatalog1458
 {
     private static readonly VanillaNpcDefinition[] Definitions =
     [
+        Bat(VanillaNpcIds.Harpy, 24, 34, 25, 8, 100, 0.6f),
         Bat(VanillaNpcIds.CaveBat, 22, 18, 13, 2, 16, 0.8f),
         Bat(VanillaNpcIds.JungleBat, 22, 18, 20, 4, 34, 0.8f),
         Bat(VanillaNpcIds.Hellbat, 22, 18, 35, 8, 46, 0.8f, 1.1f),
