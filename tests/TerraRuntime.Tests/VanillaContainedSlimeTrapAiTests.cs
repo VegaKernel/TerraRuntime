@@ -38,6 +38,26 @@ public sealed class VanillaContainedSlimeTrapAiTests
     }
 
     [Fact]
+    public void Every_source_item_containing_slime_can_emit_the_trap()
+    {
+        AssertCanEmitTrap(VanillaNpcIds.LavaSlime);
+        AssertCanEmitTrap(VanillaNpcIds.IceSlime);
+        AssertCanEmitTrap(VanillaNpcIds.SpikedIceSlime);
+        AssertCanEmitTrap(VanillaNpcIds.SandSlime);
+    }
+
+    private static void AssertCanEmitTrap(NpcTypeId type)
+    {
+        var stepper = CreateStepper(goodWorld: false, noTrapsWorld: false, visible: true, new MinimumRandom());
+        NpcSnapshot slime = Snapshot(type);
+        Assert.True(stepper.TryStepState(in slime, out NpcStateUpdate next));
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[6];
+        int expectedCount = type == VanillaNpcIds.SpikedIceSlime ? 2 : 1;
+        Assert.Equal(expectedCount, stepper.PlanProjectileSpawns(in slime, in next, intents));
+        Assert.Equal(VanillaProjectileIds.ContainedSlimeTrap, intents[0].Type);
+    }
+
+    [Fact]
     public void Contained_trap_uses_source_arrow_defaults_and_blue_slime_coverage()
     {
         Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.ContainedSlimeTrap,
@@ -60,11 +80,15 @@ public sealed class VanillaContainedSlimeTrapAiTests
         return stepper;
     }
 
-    private static NpcSnapshot Snapshot() => new(
-        new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1), VanillaNpcIds.BlueSlime.Value,
-        checked((short)VanillaNpcIds.BlueSlime.Value), 100f, 100f, 0f, 0f, 7,
+    private static NpcSnapshot Snapshot(NpcTypeId? type = null)
+    {
+        NpcTypeId resolvedType = type ?? VanillaNpcIds.BlueSlime;
+        return new(
+        new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1), resolvedType.Value,
+        checked((short)resolvedType.Value), 100f, 100f, 0f, 0f, 7,
         new NpcAiState(-200f, 539f, 0f, 0f),
         NpcSimulationState.Initial with { Life = 25, LifeMax = 25, Scale = 1f, DirectionX = 1, DirectionY = 1 });
+    }
 
     private sealed class VisibilityEnvironment(bool visible) : IVanillaNpcProjectileEnvironment
     {

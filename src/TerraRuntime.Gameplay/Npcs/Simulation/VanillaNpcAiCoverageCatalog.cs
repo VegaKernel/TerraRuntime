@@ -359,6 +359,9 @@ public static class VanillaNpcAiCoverageCatalog
                 definition.Type == VanillaNpcIds.SpikedJungleSlime || definition.Type == VanillaNpcIds.QueenSlimeMinionBlue ||
                 definition.Type == VanillaNpcIds.QueenSlimeMinionPink)
                 capabilities |= VanillaNpcAiCapability.SlimeProjectileSideEffectSlice;
+            if (definition.Type == VanillaNpcIds.LavaSlime || definition.Type == VanillaNpcIds.IceSlime ||
+                definition.Type == VanillaNpcIds.SpikedIceSlime || definition.Type == VanillaNpcIds.SandSlime)
+                capabilities |= VanillaNpcAiCapability.SlimeContainedItemSlice;
 
             entries[index++] = Partial(definition.Type, capabilities);
         }

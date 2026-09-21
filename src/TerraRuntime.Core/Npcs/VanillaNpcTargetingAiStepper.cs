@@ -466,15 +466,23 @@ public sealed class VanillaNpcTargetingAiStepper :
         in NpcStateUpdate proposed,
         Span<NpcAiProjectileIntent> destination)
     {
+        int containedTrapCount = IsItemContainingSlime(source.Type) && proposed.Type == source.Type
+            ? PlanContainedSlimeTrap(in source, in proposed, destination)
+            : 0;
+        if (containedTrapCount > destination.Length)
+            return containedTrapCount;
         if ((source.Type == VanillaNpcIds.SpikedIceSlime.Value || source.Type == VanillaNpcIds.SpikedSlime.Value) && proposed.Type == source.Type)
-            return PlanSpikedSlimeSpikes(in source, in proposed, destination);
+        {
+            int spikeCount = PlanSpikedSlimeSpikes(in source, in proposed, destination[containedTrapCount..]);
+            return containedTrapCount + spikeCount;
+        }
         if (source.Type == VanillaNpcIds.SpikedJungleSlime.Value && proposed.Type == source.Type)
             return PlanSpikedJungleSlimeThorns(in source, in proposed, destination);
         if ((source.Type == VanillaNpcIds.QueenSlimeMinionBlue.Value || source.Type == VanillaNpcIds.QueenSlimeMinionPink.Value) &&
             proposed.Type == source.Type)
             return PlanQueenSlimeMinionShards(in source, in proposed, destination);
-        if (source.Type == VanillaNpcIds.BlueSlime.Value && proposed.Type == source.Type)
-            return PlanContainedSlimeTrap(in source, in proposed, destination);
+        if (containedTrapCount > 0)
+            return containedTrapCount;
         if (source.Type == VanillaNpcIds.Antlion.Value && proposed.Type == source.Type)
             return PlanAntlionSand(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.SkeletronHead.Value && proposed.Type == source.Type)
@@ -719,7 +727,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (source.Ai.Ai1 != 539f || proposed.Ai.Ai1 != 539f || source.Target >= byte.MaxValue ||
             !_context.TryFindCandidate((byte)source.Target, out VanillaNpcTargetCandidate target) ||
             !target.Active || target.Dead || target.NoAggro || _context.ProjectileEnvironment is null ||
-            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.BlueSlime, out VanillaNpcDefinition definition) ||
+            !VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(source.Type), out VanillaNpcDefinition definition) ||
             !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox) ||
             !VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.ContainedSlimeTrap, out VanillaProjectileDefinition trap))
         {
@@ -744,6 +752,13 @@ public sealed class VanillaNpcTargetingAiStepper :
             source.Simulation.DirectionX * 12f, 0f, 20, 2f);
         return 1;
     }
+
+    private static bool IsItemContainingSlime(int type) => type is
+        1 or // Blue Slime
+        59 or // Lava Slime
+        147 or // Ice Slime
+        184 or // Spiked Ice Slime
+        537; // Sand Slime
 
     public int PlanProjectileMutations(
         in NpcSnapshot source,
