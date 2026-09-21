@@ -604,6 +604,19 @@ internal sealed partial class NpcAuthority
             return;
         }
 
+        // Player.ItemCheck sends these two packet-61 action IDs only after its night/no-event item gate. Keep the
+        // active world state authoritative, including rejection of forged daytime or overlapping event requests.
+        if (command.NpcType == -4)
+        {
+            worldClock?.TryStartPumpkinMoon();
+            return;
+        }
+        if (command.NpcType == -5)
+        {
+            worldClock?.TryStartSnowMoon();
+            return;
+        }
+
         if (!IsVanillaMultiplayerAllowedSummon(command.NpcType))
             return;
 

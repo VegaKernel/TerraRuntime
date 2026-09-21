@@ -37,3 +37,5 @@ An active Moon Lord Core within the source strict 4500-pixel center distance sup
 Pumpkin Moon and Snow Moon use their source night and Remix spawn-rate transforms, then apply the final surface-or-Remix rate 20 override before later invasion handling.
 
 Moon-event deaths now advance server-owned transient wave state after loot in every authoritative lethal-damage path. The counter starts at wave 1, uses the source 21-entry requirement table (wave 20 remains endless), discards overflow when a wave completes, and keeps the source Pumpkin/Snow point values with Classic, Expert and Master scalars of 1, 2 and 2.5. Event NPC definitions, wave selection and packet-78 client progress replication remain open.
+
+Packet 61 actions `-4` and `-5` now start Pumpkin and Snow Moon through the world clock only at night while no Moon event is active. The clock resets wave state at dawn and requests WorldInfo replication on both start and finish.

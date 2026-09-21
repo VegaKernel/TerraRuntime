@@ -320,6 +320,29 @@ public sealed class RuntimeWorldClockTests
     }
 
     [Fact]
+    public void Moon_events_start_only_at_night_and_clear_their_transient_progress_at_dawn()
+    {
+        var day = new RuntimeWorldClock(0d, true, default, 0d, dayRate: 0);
+        Assert.False(day.TryStartPumpkinMoon());
+
+        var night = new RuntimeWorldClock(RuntimeWorldClock.NightLength, false, default, 0d, dayRate: 1);
+        Assert.True(night.TryStartSnowMoon());
+        Assert.True(night.SnowMoonActive);
+        Assert.True(night.ConsumeWorldInfoSyncRequest());
+        Assert.False(night.TryStartPumpkinMoon());
+        Assert.True(night.TryAdvanceMoonEventDeath(new NpcTypeId(338), expertMode: false, masterMode: false));
+
+        night.Tick();
+
+        Assert.True(night.DayTime);
+        Assert.False(night.MoonEventActive);
+        Assert.Equal(0, night.MoonEventWaveNumber);
+        Assert.Equal(0f, night.MoonEventWaveKills);
+        Assert.Equal(0f, night.MoonEventTotalInvasionPoints);
+        Assert.True(night.ConsumeWorldInfoSyncRequest());
+    }
+
+    [Fact]
     public void Persisted_creative_slider_maps_to_vanilla_one_through_twenty_four_rate()
     {
         var metadata = new WorldFileRuntimeMetadata

@@ -178,9 +178,9 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
     public bool BloodMoonActive { get; private set; }
 
-    public bool PumpkinMoonActive { get; }
+    public bool PumpkinMoonActive { get; private set; }
 
-    public bool SnowMoonActive { get; }
+    public bool SnowMoonActive { get; private set; }
 
     public bool MoonEventActive => PumpkinMoonActive || SnowMoonActive;
 
@@ -365,6 +365,43 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         return advanced;
     }
 
+    /// <summary>
+    /// Applies the server-side start boundary reached by packet 61 action <c>-4</c>. The item-use branch in
+    /// TerrariaServer only emits that action at night while neither Moon event is already active; retaining those
+    /// predicates here prevents an injected client action from creating an impossible event state.
+    /// </summary>
+    public bool TryStartPumpkinMoon() => TryStartMoonEvent(pumpkin: true);
+
+    /// <summary>Applies the analogous packet 61 action <c>-5</c> for Frost Moon.</summary>
+    public bool TryStartSnowMoon() => TryStartMoonEvent(pumpkin: false);
+
+    private bool TryStartMoonEvent(bool pumpkin)
+    {
+        if (DayTime || MoonEventActive)
+            return false;
+
+        PumpkinMoonActive = pumpkin;
+        SnowMoonActive = !pumpkin;
+        MoonEventWaveNumber = 1;
+        MoonEventWaveKills = 0f;
+        MoonEventTotalInvasionPoints = 0f;
+        RequestWorldInfoSync();
+        return true;
+    }
+
+    private void StopMoonEvents()
+    {
+        if (!MoonEventActive)
+            return;
+
+        PumpkinMoonActive = false;
+        SnowMoonActive = false;
+        MoonEventWaveNumber = 0;
+        MoonEventWaveKills = 0f;
+        MoonEventTotalInvasionPoints = 0f;
+        RequestWorldInfoSync();
+    }
+
     private bool ApplyMoonEventPoints(float points)
     {
         MoonEventWaveKills += points;
@@ -449,6 +486,7 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
                 Time = 0d;
                 DayTime = true;
                 BloodMoonActive = false;
+                StopMoonEvents();
                 MoonPhase = VanillaMoonPhases.Next(MoonPhase);
             }
         }

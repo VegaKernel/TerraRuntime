@@ -73,6 +73,31 @@ public sealed class MechdusaBossSummonTests
         Assert.Equal(0, npcs.ActiveCount);
     }
 
+    [Fact]
+    public void Packet_61_moon_actions_start_only_the_source_eligible_night_event()
+    {
+        var clock = new RuntimeWorldClock(100d, false, default, 0d, dayRate: 0);
+        var state = new ServerRuntimeState(worldClock: clock);
+        var slots = new PlayerSlotPool(1);
+        using PlayerJoinSession session = CreatePlayingSession(slots);
+        ConnectionHandle player = new(GameCommandSourceId.FromConnection(1460), session.Handle);
+        state.Apply(new PlayerSpawnRuntimeCommand(
+            player, session, new PlayerSpawnCommitRequest(session.Slot, 200, 120, 0, 0, 0, 0, 0)));
+
+        state.Apply(new ClientBossSummonRuntimeCommand(player, -4));
+
+        Assert.True(clock.PumpkinMoonActive);
+        Assert.False(clock.SnowMoonActive);
+        Assert.Equal(1, clock.MoonEventWaveNumber);
+
+        state.Apply(new ClientBossSummonRuntimeCommand(player, -5));
+        Assert.True(clock.PumpkinMoonActive);
+
+        var dayClock = new RuntimeWorldClock(100d, true, default, 0d, dayRate: 0);
+        Assert.False(dayClock.TryStartSnowMoon());
+        Assert.False(dayClock.MoonEventActive);
+    }
+
     private static NpcSnapshot Single(NpcSnapshot[] snapshots, NpcTypeId type) =>
         Assert.Single(snapshots, npc => npc.TypeIdentity == type);
 
