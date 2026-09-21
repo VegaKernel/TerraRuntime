@@ -25,6 +25,10 @@ public static class VanillaMimicNpcCatalog1458
         return false;
     }
 
+    public static bool IsMimic(NpcTypeId type) => type.Value is 85 or 341 or 629;
+
+    public static bool HasPreHardModeDefaults(NpcTypeId type) => type.Value is 85 or 629;
+
     private static VanillaNpcDefinition Mimic(int type, int damage, int defense, int lifeMax, float knockBackResist) =>
         new(new NpcTypeId(type), new NpcAiStyleId(25), VanillaNpcBehaviorFamily.MoonEventJumpingFighter,
             VanillaNpcPhysicsFamily.GenericGround, NpcArchetypeRole.Ordinary, 24, 24, damage, defense, lifeMax,
