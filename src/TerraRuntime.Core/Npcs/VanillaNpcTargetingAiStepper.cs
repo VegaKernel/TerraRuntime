@@ -60,6 +60,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly IVanillaNpcBehaviorStrategy _groundFighter = new VanillaGroundFighterNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _moonEventJumpingFighter = new VanillaMoonEventJumpingFighterNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _moonEventUnicorn = new VanillaMoonEventUnicornNpcBehaviorStrategy();
+    private readonly IVanillaNpcBehaviorStrategy _moonEventGhost = new VanillaMoonEventGhostNpcBehaviorStrategy();
     private readonly VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy _eyeOfCthulhu;
     private readonly VanillaServantOfCthulhuNpcBehaviorStrategy _flyer;
     private readonly VanillaWormNpcBehaviorStrategy _worm = new();
@@ -267,6 +268,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.GroundFighter when _context.GroundFighterEnabled => _groundFighter,
             VanillaNpcBehaviorFamily.MoonEventJumpingFighter when _context.GroundFighterEnabled => _moonEventJumpingFighter,
             VanillaNpcBehaviorFamily.MoonEventUnicorn when _context.GroundFighterEnabled => _moonEventUnicorn,
+            VanillaNpcBehaviorFamily.MoonEventGhost when _context.GroundFighterEnabled => _moonEventGhost,
             VanillaNpcBehaviorFamily.EyeOfCthulhu => _eyeOfCthulhu,
             VanillaNpcBehaviorFamily.Flyer => _flyer,
             VanillaNpcBehaviorFamily.Worm => _worm,

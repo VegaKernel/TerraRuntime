@@ -1,5 +1,7 @@
 # Work state
 
+2026-09-21: Pumpkin Moon type 330 now has the AI_022 SetDefaults and server-owned no-clip flight motion: tracking, source horizontal/vertical acceleration bands, alpha transition and event-gated despawn. Direct regressions pin defaults, movement and despawn. Release rebuild, focused harness, documentation checks and Windows NativeAOT `.cache/moon-event-ai22-final-win-aot-20260921` pass all five smokes.
+
 2026-09-21: Pumpkin Moon type 329 now has source AI_026 defaults plus authoritative pursuit and traversal: the world clock gates pursuit/despawn, its 3 px/tick acceleration and close -4 lunge are preserved, and a dedicated collision probe handles the source -6/-7/-7.5/-8.5/-8 obstacle jumps. Direct regressions pin defaults, state branches and tile heights. Release rebuild, focused harness, documentation checks and Windows NativeAOT `.cache/moon-event-ai26-final-win-aot-20260921` pass all five smokes.
 
 2026-09-21: Snow Moon type 341 now has its source AI_025 SetDefaults and authoritative state motion: source 12/20 grounded waits, target refresh, alternating 3.5/-4 and 2.5/-8 jumps, plus airborne horizontal correction. It is admitted through the early Moon selector instead of being discarded. Release rebuild, focused regression, documentation checks and Windows NativeAOT `.cache/moon-event-ai25-final-win-aot-20260921` pass all five smokes.

@@ -7,6 +7,7 @@ public static class VanillaMoonEventSpecialCatalog1458
 {
     public static readonly NpcTypeId SnowMoonAi25 = new(341);
     public static readonly NpcTypeId PumpkinMoonAi26 = new(329);
+    public static readonly NpcTypeId PumpkinMoonAi22 = new(330);
 
     public static bool TryGetDefinition(NpcTypeId type, out VanillaNpcDefinition definition)
     {
@@ -37,6 +38,24 @@ public static class VanillaMoonEventSpecialCatalog1458
                 NoGravityAtSpawn: false,
                 NoTileCollideAtSpawn: false,
                 VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == PumpkinMoonAi22)
+        {
+            definition = new VanillaNpcDefinition(
+                PumpkinMoonAi22,
+                new NpcAiStyleId(22),
+                VanillaNpcBehaviorFamily.MoonEventGhost,
+                VanillaNpcPhysicsFamily.NoClipFlight,
+                NpcArchetypeRole.Ordinary,
+                24, 44, 90, 44, 1250, .4f, 1f,
+                NoGravityAtSpawn: true,
+                NoTileCollideAtSpawn: true,
+                VanillaNpcSyncAnchor.TopLeft)
+            {
+                AlphaAtSpawn = 100
+            };
             return true;
         }
 

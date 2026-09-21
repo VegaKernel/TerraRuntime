@@ -531,6 +531,154 @@ internal sealed class VanillaMoonEventUnicornNpcBehaviorStrategy : IVanillaNpcBe
     }
 }
 
+/// <summary>Source AI_022 movement state for Pumpkin Moon type 330.</summary>
+internal sealed class VanillaMoonEventGhostNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
+{
+    public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        INpcAiStateStepper inner, out NpcStateUpdate next)
+    {
+        if (definition.Type != VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi22 || definition.AiStyle.Value != 22)
+        {
+            next = default;
+            return false;
+        }
+
+        NpcSimulationState simulation = npc.Simulation;
+        ushort target = npc.Target;
+        int directionX = simulation.DirectionX;
+        int directionY = simulation.DirectionY;
+        float ai0 = npc.Ai.Ai0;
+        float ai1 = npc.Ai.Ai1;
+        float ai2 = simulation.JustHit ? 0f : npc.Ai.Ai2;
+        float velocityX = npc.VelocityX;
+        float velocityY = npc.VelocityY;
+
+        if (!TryTarget(in npc, in definition, context, ref target, out VanillaNpcTargetCandidate player))
+        {
+            next = default;
+            return false;
+        }
+
+        if (ai2 >= 0f)
+        {
+            bool sameX = npc.PositionX > ai0 - 16f && npc.PositionX < ai0 + 16f ||
+                         (velocityX < 0f && directionX > 0) || (velocityX > 0f && directionX < 0);
+            bool sameY = npc.PositionY > ai1 - 40f && npc.PositionY < ai1 + 40f;
+            if (sameX & sameY)
+            {
+                ai2++;
+                if (ai2 >= 60f)
+                {
+                    ai2 = -200f;
+                    directionX *= -1;
+                    velocityX *= -1f;
+                }
+            }
+            else
+            {
+                ai0 = npc.PositionX;
+                ai1 = npc.PositionY;
+                ai2 = 0f;
+            }
+            Refresh(in npc, in definition, context, ref target, ref directionX, ref directionY);
+        }
+        else
+        {
+            ai2 += .1f;
+            directionX = player.CenterX > npc.PositionX + definition.Width * .5f ? -1 : 1;
+        }
+
+        bool eventEnded = !context.PumpkinMoonActive;
+        bool descend = npc.PositionY + definition.Height <= player.CenterY - player.Height * .5f;
+        if (descend)
+            velocityY = Math.Min(3f, velocityY + .1f);
+        else
+        {
+            if (directionY < 0 && velocityY > 0f)
+                velocityY -= .1f;
+            velocityY = Math.Max(-4f, velocityY);
+        }
+
+        int timeLeft = simulation.TimeLeft;
+        if (!eventEnded)
+            Refresh(in npc, in definition, context, ref target, ref directionX, ref directionY);
+        else
+            timeLeft = 10;
+
+        if (directionX < 0 && velocityX > 0f)
+            velocityX *= .9f;
+        if (directionX > 0 && velocityX < 0f)
+            velocityX *= .9f;
+        if (directionX == -1 && velocityX > -4f)
+        {
+            velocityX -= .1f;
+            if (velocityX > 4f) velocityX -= .1f;
+            else if (velocityX > 0f) velocityX += .05f;
+            if (velocityX < -4f) velocityX = -4f;
+        }
+        else if (directionX == 1 && velocityX < 4f)
+        {
+            velocityX += .1f;
+            if (velocityX < -4f) velocityX += .1f;
+            else if (velocityX < 0f) velocityX -= .05f;
+            if (velocityX > 4f) velocityX = 4f;
+        }
+        if (directionY == -1 && velocityY > -1.5f)
+        {
+            velocityY -= .04f;
+            if (velocityY > 1.5f) velocityY -= .05f;
+            else if (velocityY > 0f) velocityY += .03f;
+            if (velocityY < -1.5f) velocityY = -1.5f;
+        }
+        else if (directionY == 1 && velocityY < 1.5f)
+        {
+            velocityY += .04f;
+            if (velocityY < -1.5f) velocityY += .05f;
+            else if (velocityY < 0f) velocityY -= .03f;
+            if (velocityY > 1.5f) velocityY = 1.5f;
+        }
+
+        next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, velocityX, velocityY,
+            target, new NpcAiState(ai0, ai1, ai2, npc.Ai.Ai3), simulation with
+            {
+                NoGravity = true,
+                NoTileCollide = true,
+                Alpha = 0,
+                DirectionX = directionX,
+                DirectionY = directionY,
+                JustHit = false,
+                TimeLeft = timeLeft
+            });
+        return true;
+    }
+
+    private static bool TryTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        ref ushort target, out VanillaNpcTargetCandidate player)
+    {
+        if (target < byte.MaxValue && context.TryFindCandidate((byte)target, out player) && player.Active && !player.Dead && !player.Ghost)
+            return true;
+        if (context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) && closest.HasTarget &&
+            context.TryFindCandidate((byte)closest.Target, out player))
+        {
+            target = closest.Target;
+            return true;
+        }
+        player = default;
+        return false;
+    }
+
+    private static void Refresh(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        ref ushort target, ref int directionX, ref int directionY)
+    {
+        if (context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) && closest.HasTarget)
+        {
+            target = closest.Target;
+            directionX = closest.DirectionX;
+            directionY = closest.DirectionY;
+        }
+    }
+}
+
 internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
