@@ -467,6 +467,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     {
         if (source.Type == VanillaNpcIds.SpikedIceSlime.Value && proposed.Type == source.Type)
             return PlanSpikedIceSlimeSpikes(in source, in proposed, destination);
+        if (source.Type == VanillaNpcIds.SpikedJungleSlime.Value && proposed.Type == source.Type)
+            return PlanSpikedJungleSlimeThorns(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.Antlion.Value && proposed.Type == source.Type)
             return PlanAntlionSand(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.SkeletronHead.Value && proposed.Type == source.Type)
@@ -508,7 +510,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         in NpcStateUpdate proposed,
         Span<NpcAiProjectileIntent> destination)
     {
-        if (source.Simulation.LocalAi.Ai0 != 0f ||
+        if (source.Simulation.LocalAi.Ai0 is < 0f or > 1f ||
             proposed.Simulation.LocalAi.Ai0 is not 30f and not 50f ||
             source.Target >= byte.MaxValue ||
             !_context.TryFindCandidate((byte)source.Target, out VanillaNpcTargetCandidate target) ||
@@ -555,6 +557,66 @@ public sealed class VanillaNpcTargetingAiStepper :
                 velocityX,
                 velocityY,
                 Damage: 9,
+                KnockBack: 0f);
+        }
+        return burstCount;
+    }
+
+    private int PlanSpikedJungleSlimeThorns(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiProjectileIntent> destination)
+    {
+        if (source.Simulation.LocalAi.Ai0 is < 0f or > 1f ||
+            proposed.Simulation.LocalAi.Ai0 is not 80f and not 65f ||
+            source.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)source.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.NoAggro ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.SpikedJungleSlime, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox) ||
+            !VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.SpikedJungleSlimeThorn, out VanillaProjectileDefinition thorn))
+        {
+            return 0;
+        }
+
+        float centerX = source.PositionX + hitbox.Width * .5f;
+        float centerY = source.PositionY + hitbox.Height * .5f;
+        if (proposed.Simulation.LocalAi.Ai0 == 65f)
+        {
+            if (destination.IsEmpty)
+                return 1;
+            float originalDx = target.CenterX - centerX;
+            float originalDy = target.CenterY - target.Height * .5f - centerY;
+            float originalDistance = MathF.Sqrt(originalDx * originalDx + originalDy * originalDy);
+            float velocityY = originalDy - _random.NextInt32(-30, 20) - originalDistance * .05f;
+            float velocityX = originalDx - _random.NextInt32(-20, 20);
+            NormalizeTo(ref velocityX, ref velocityY, 7f);
+            destination[0] = new NpcAiProjectileIntent(
+                VanillaProjectileIds.SpikedJungleSlimeThorn,
+                centerX - thorn.Width * .5f,
+                centerY - thorn.Height * .5f,
+                velocityX,
+                velocityY,
+                Damage: 13,
+                KnockBack: 0f);
+            return 1;
+        }
+
+        const int burstCount = 5;
+        if (destination.Length < burstCount)
+            return destination.Length + 1;
+        for (int index = 0; index < burstCount; index++)
+        {
+            float velocityX = (index - 2) * (1f + _random.NextInt32(-50, 51) * .02f);
+            float velocityY = -2f * (1f + _random.NextInt32(-50, 51) * .02f);
+            NormalizeTo(ref velocityX, ref velocityY, 3f + _random.NextInt32(-50, 51) * .01f);
+            destination[index] = new NpcAiProjectileIntent(
+                VanillaProjectileIds.SpikedJungleSlimeThorn,
+                centerX - thorn.Width * .5f,
+                centerY - thorn.Height * .5f,
+                velocityX,
+                velocityY,
+                Damage: 13,
                 KnockBack: 0f);
         }
         return burstCount;

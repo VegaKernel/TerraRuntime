@@ -315,7 +315,7 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 
 - [x] typed definitions and movement profiles for the hostile AI_001 catalog;
 - [x] source-backed slime net variants `-1..-10` with effective spawn/packet defaults;
-- [ ] remaining AI_001 authoritative projectile, item-containment, split, transform and seed branches; Spiked Ice Slime now has its source direct-visibility `120/200` attack gates, `30/50` local cooldowns and hostile projectile `174`; presentation-only visual branches are intentionally out of scope;
+- [ ] remaining AI_001 authoritative projectile, item-containment, split, transform and seed branches; Spiked Ice Slime now has its source direct-visibility `120/200` attack gates, `30/50` local cooldowns and hostile projectile `174`; Spiked Jungle Slime now has its `200/400` visibility gates, source-shaped `80/65` cooldowns and hostile projectile `176`; presentation-only visual branches are intentionally out of scope;
 - [x] typed definitions, steering profiles and wet behavior for all hostile AI_002 identities;
 - [x] source-backed AI_002 net variants `-38..-43` with effective spawn/packet defaults;
 - [x] AI_002 source-backed daylight discouragement/despawn and Pigron 300-tick line-of-sight phasing/re-entry state with live world collision/Graveyard queries;

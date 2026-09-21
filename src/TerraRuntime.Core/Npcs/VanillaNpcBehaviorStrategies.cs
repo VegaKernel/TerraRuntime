@@ -220,7 +220,7 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
             if (localAi.Ai0 > 0f)
                 localAi = localAi with { Ai0 = localAi.Ai0 - 1f };
 
-            if (!simulation.Wet && simulation.LocalAi.Ai0 == 0f && npc.VelocityY == 0f &&
+            if (!simulation.Wet && localAi.Ai0 == 0f && npc.VelocityY == 0f &&
                 npc.Target < byte.MaxValue &&
                 context.TryFindCandidate((byte)npc.Target, out VanillaNpcTargetCandidate target) &&
                 target.Active && !target.Dead && !target.NoAggro &&
@@ -248,8 +248,51 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
 
             simulation = simulation with { LocalAi = localAi };
         }
+        if (definition.Type == VanillaNpcIds.SpikedJungleSlime)
+        {
+            NpcAiState localAi = simulation.LocalAi;
+            if (localAi.Ai0 > 0f)
+                localAi = localAi with { Ai0 = localAi.Ai0 - 1f };
+
+            if (!simulation.Wet && npc.VelocityY == 0f && npc.Target < byte.MaxValue &&
+                context.TryFindCandidate((byte)npc.Target, out VanillaNpcTargetCandidate target) &&
+                target.Active && !target.Dead && !target.NoAggro &&
+                definition.TryResolveHitbox(simulation, out VanillaNpcHitboxSize hitbox) &&
+                context.ProjectileEnvironment is not null)
+            {
+                float centerX = npc.PositionX + hitbox.Width * .5f;
+                float centerY = npc.PositionY + hitbox.Height * .5f;
+                float targetTopY = target.CenterY - target.Height * .5f;
+                float dx = target.CenterX - centerX;
+                float dy = targetTopY - centerY;
+                float distanceSquared = dx * dx + dy * dy;
+                bool canHit = context.ProjectileEnvironment.CanHit(
+                    npc.PositionX, npc.PositionY - 20f, hitbox.Width, hitbox.Height + 20,
+                    target.CenterX - target.Width * .5f, targetTopY,
+                    (int)target.Width, (int)target.Height);
+                if (context.ExpertMode && distanceSquared < 200f * 200f && canHit)
+                {
+                    ai = ai with { Ai0 = -40f };
+                    velocityX *= .9f;
+                    if (localAi.Ai0 == 0f)
+                        localAi = localAi with { Ai0 = 80f };
+                }
+                // The source intentionally uses a second independent if after the Expert burst. That branch
+                // resets ai[0] to -80 and applies another 0.9 velocity multiplier even after arming the burst.
+                if (distanceSquared < 400f * 400f && canHit)
+                {
+                    ai = ai with { Ai0 = -80f };
+                    velocityX *= .9f;
+                    if (localAi.Ai0 == 0f)
+                        localAi = localAi with { Ai0 = 65f };
+                }
+            }
+
+            simulation = simulation with { LocalAi = localAi };
+        }
         bool damaged = simulation.LifeMax > 0 && simulation.Life != simulation.LifeMax;
         bool engaged = definition.Type == VanillaNpcIds.SpikedIceSlime ||
+                       definition.Type == VanillaNpcIds.SpikedJungleSlime ||
                        !context.DayTime ||
                        damaged ||
                        context.SlimeRainActive ||

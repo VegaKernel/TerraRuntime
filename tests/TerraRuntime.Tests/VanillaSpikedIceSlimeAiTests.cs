@@ -82,6 +82,21 @@ public sealed class VanillaSpikedIceSlimeAiTests
         Assert.Equal(0, stepper.PlanProjectileSpawns(in coolingDown, in coolingNext, intents));
     }
 
+    [Fact]
+    public void Cooldown_last_tick_can_arm_the_source_spike_attack()
+    {
+        var stepper = CreateStepper(expert: false, new MinimumRandom());
+        NpcSnapshot coolingDown = Snapshot() with
+        {
+            Simulation = Snapshot().Simulation with { LocalAi = new NpcAiState(1f, 0f, 0f, 0f) }
+        };
+
+        Assert.True(stepper.TryStepState(in coolingDown, out NpcStateUpdate next));
+        Assert.Equal(50f, next.Simulation.LocalAi.Ai0);
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
+        Assert.Equal(1, stepper.PlanProjectileSpawns(in coolingDown, in next, intents));
+    }
+
     private static VanillaNpcTargetingAiStepper CreateStepper(
         bool expert,
         IVanillaNpcRandom random,
