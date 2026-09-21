@@ -24,13 +24,48 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     public void Missing_world_facts_do_not_fall_back_to_cave_slime_in_hell()
         => AssertSpawn(0, [], knownFacts: false);
 
+    [Fact]
+    public void Surface_eclipse_uses_source_event_and_empty_population_rate_order()
+    {
+        var npcs = new RuntimeNpcStore();
+        var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
+        for (int x = 0; x < 500; x++)
+            tiles.Tiles[tiles.GetUncheckedIndex(x, 303)] = new WorldTile { Type = 57, Flags = WorldTileFlags.Active };
+
+        // 600 * .2 (eclipse) * .6 (empty nearby-NPC band) = 72.  This is deliberately above
+        // the final source minimum of 60, so it detects both operation order and the lower clamp.
+        var random = new SpawnRandom([], 72);
+        RuntimeTownCommerceWorldFacts1458 world = default;
+        world = world with { Eclipse = true, WorldSurface = 350, RockLayer = 500 };
+        var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
+            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+            townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+            naturalSpawnRandom: random, worldProgression: new RuntimeWorldProgressionMutations());
+        var slots = new PlayerSlotPool(1);
+        Assert.True(slots.TryAcquireConnection(out var lease));
+        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        session.ObserveWorldRequest();
+        session.ObserveSectionRequest();
+        var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(812), session.Handle);
+        state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
+            new PlayerSpawnCommitRequest(session.Handle.Slot, 200, 300, 0, 0, 0, 0, 0)));
+
+        state.Tick();
+
+        random.AssertConsumed();
+        var snapshots = new NpcSnapshot[npcs.Capacity];
+        Assert.Equal(1, npcs.CopyActive(snapshots));
+        Assert.Equal(VanillaNpcIds.BlueSlime.Value, snapshots[0].Type);
+    }
+
     private static void AssertSpawn(int expected, int[] selection, bool liveHardmode = false, bool knownFacts = true)
     {
         var npcs = new RuntimeNpcStore();
         var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
         for (int x = 0; x < 500; x++)
             tiles.Tiles[tiles.GetUncheckedIndex(x, 1050)] = new WorldTile { Type = 57, Flags = WorldTileFlags.Active };
-        var random = new SpawnRandom(selection, liveHardmode ? 540 : 600);
+        // GetSpawnRate applies the empty-nearby-NPC multiplier, then the second deep-world multiplier.
+        var random = new SpawnRandom(selection, liveHardmode ? 226 : 252);
         var progression = new RuntimeWorldProgressionMutations();
         RuntimeTownCommerceWorldFacts1458 world = default;
         world = world with { WorldSurface = 350, RockLayer = 500 };

@@ -1,5 +1,9 @@
 # Vanilla NPC and AI parity roadmap
 
+## Natural hostile spawn-rate slice - 2026-09-21
+
+`NpcAuthority` now follows the server-owned branches of TerrariaServer 1.4.5.8 `NPC.Spawner.GetSpawnRate`: mount-aware top-left player depth, normal/Remix vertical ordering, Blood Moon, Eclipse, Drunk-world wall 86, Dungeon/evil/Hallow modifiers, source nearby-population bands and the post-clamp Good World adjustment. The count is captured once before the source cap/random order. Real world-tick regressions pin the ordinary and Hardmode underworld rates (252/226) and a surface Eclipse rate (72); natural type selection and all unsupported source facts remain separate. Pumpkin/Snow Moon, player buffs/candles, Journey slider, town-count Jungle rule, meteor/sandstorm/temple and source `npcSlots` accounting are still open.
+
 ## Prime melee implementation - 2026-09-16
 
 Prime Saw/Vice AI33/34 now use source hover, pursuit, vertical/repeated charge and return phase ordering. The runtime additionally supplies a bounded retained-slot snapshot for source reads of inactive parents; active peer consumers remain unchanged. Charge completion reads the target's live mount-adjusted top edge rather than reconstructing a fixed 42-pixel player body. Retained regression fixtures contain 6,048 baseline + 3,360 edge + 112 parent calls, independently matched against original Windows/Linux after-state and RNG. SHA256 of parent Linux JSON: b39f407f06ece6977646de4c3e08ab4b5a61c54e320b3bf8bc59e1c5b78661f5. All 9,408 initial cases failed on the old strategy. The focused 9,528 cases and merged full suite of 100,113 tests pass, as do Windows NativeAOT publication and all five smokes. Dedicated-server death consumes four gore RNG draws after revision acceptance; only despawn is published. Full encounters, raw inactive targets, outer movement and full parity remain open. Next: continuous encounter traces before claiming encounter parity.

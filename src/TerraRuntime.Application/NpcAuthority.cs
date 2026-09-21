@@ -805,9 +805,11 @@ internal sealed partial class NpcAuthority
         if (!player.Active || player.Dead || player.Ghost)
             return;
 
-        GetNaturalSpawnBudget(in player, out int spawnRate, out int maxSpawns);
-        if (naturalSpawnRandom.NextInt32(0, spawnRate) != 0 ||
-            CountNearbyOrdinaryNpcs(player.CenterX, player.CenterY, 1600f) >= maxSpawns)
+        // The server refreshes Player.nearbyActiveNPCs before NPC.Spawner asks for its rate.  Retain one
+        // authoritative snapshot for both source checks so a spawn attempt cannot observe two different caps.
+        int nearbyNpcCount = CountNearbyOrdinaryNpcs(player.CenterX, player.CenterY, 1600f);
+        GetNaturalSpawnBudget(in player, nearbyNpcCount, out int spawnRate, out int maxSpawns);
+        if (nearbyNpcCount >= maxSpawns || naturalSpawnRandom.NextInt32(0, spawnRate) != 0)
         {
             return;
         }
@@ -840,12 +842,14 @@ internal sealed partial class NpcAuthority
 
     private void GetNaturalSpawnBudget(
         in VanillaNpcTargetCandidate player,
+        int nearbyNpcCount,
         out int spawnRate,
         out int maxSpawns)
     {
-        // TerrariaServer 1.4.5.8 NPC.Spawner defaults are 600 ticks / 5 NPC slots.  The runtime
-        // intentionally imports the vertical/day-night modifiers that can be evaluated from server-owned
-        // world state without pretending that unsupported player buffs/candles/town suppression are known.
+        // TerrariaServer 1.4.5.8 NPC.Spawner.GetSpawnRate defaults are 600 ticks / 5 NPC slots.  This
+        // follows every branch whose world facts are server-owned in this runtime; per-player buffs,
+        // candles and Journey slider input remain outside this authority until they have an authoritative
+        // state projection.
         const int defaultSpawnRate = 600;
         const int defaultMaxSpawns = 5;
         spawnRate = defaultSpawnRate;
@@ -860,40 +864,134 @@ internal sealed partial class NpcAuthority
         }
 
         WorldTileStore tiles = worldTiles!;
-        double playerTileY = player.CenterY / 16d;
+        // Source compares Player.position rather than its centre.  Target candidates retain mount-aware
+        // physical dimensions, so recover the same top-left coordinate here.
+        double playerTileY = (player.CenterY - player.HitboxHeight * .5f) / 16d;
         double surface = tiles.WorldSurfaceTiles ?? naturalSpawnWorldFacts?.WorldSurface ?? tiles.Dimensions.HeightTiles / 3d;
         double rockLayer = naturalSpawnWorldFacts?.RockLayer ?? Math.Max(surface + 1d, tiles.Dimensions.HeightTiles * 0.45d);
         // NPC.sHeight is pinned to 1200 in 1.4.5.8; GetSpawnRate compares player.position.Y to
         // worldSurface/rockLayer plus one screen height. 75 tiles is the exact 1200 / 16 projection.
         const double sourceScreenHeightTiles = 75d;
 
+        bool remixWorld = naturalSpawnWorldFacts?.RemixWorld == true;
         if (playerTileY > tiles.Dimensions.HeightTiles - 200d)
         {
             maxSpawns = (int)(maxSpawns * 2f);
         }
         else if (playerTileY > rockLayer + sourceScreenHeightTiles)
         {
-            spawnRate = (int)(spawnRate * 0.4d);
-            maxSpawns = (int)(maxSpawns * 1.9f);
+            if (remixWorld)
+            {
+                spawnRate = (int)(spawnRate * (hardMode ? .45d : .5d));
+                maxSpawns = (int)(maxSpawns * (hardMode ? 1.8f : 1.7f));
+            }
+            else
+            {
+                spawnRate = (int)(spawnRate * .4d);
+                maxSpawns = (int)(maxSpawns * 1.9f);
+            }
         }
         else if (playerTileY > surface + sourceScreenHeightTiles)
         {
-            spawnRate = (int)(spawnRate * (hardMode ? 0.45d : 0.5d));
-            maxSpawns = (int)(maxSpawns * (hardMode ? 1.8f : 1.7f));
+            if (remixWorld)
+            {
+                spawnRate = (int)(spawnRate * .4d);
+                maxSpawns = (int)(maxSpawns * 1.9f);
+            }
+            else
+            {
+                spawnRate = (int)(spawnRate * (hardMode ? .45d : .5d));
+                maxSpawns = (int)(maxSpawns * (hardMode ? 1.8f : 1.7f));
+            }
+        }
+        else if (remixWorld)
+        {
+            if (!worldClock!.DayTime)
+            {
+                spawnRate = (int)(spawnRate * .6d);
+                maxSpawns = (int)(maxSpawns * 1.3f);
+            }
         }
         else if (!worldClock!.DayTime)
         {
-            spawnRate = (int)(spawnRate * 0.6d);
+            spawnRate = (int)(spawnRate * .6d);
             maxSpawns = (int)(maxSpawns * 1.3f);
             if (worldClock.BloodMoonActive)
             {
-                spawnRate = (int)(spawnRate * 0.3d);
+                spawnRate = (int)(spawnRate * .3d);
                 maxSpawns = (int)(maxSpawns * 1.8f);
             }
         }
+        else if (naturalSpawnWorldFacts?.Eclipse == true)
+        {
+            spawnRate = (int)(spawnRate * .2d);
+            maxSpawns = (int)(maxSpawns * 1.9f);
+        }
+
+        // The remix blood-moon adjustment runs after the depth branch.  Pumpkin/Snow Moon state is not
+        // yet authoritative in WorldRuntime and therefore cannot be folded into this branch.
+        if (remixWorld && !worldClock!.DayTime && worldClock.BloodMoonActive)
+        {
+            spawnRate = (int)(spawnRate * .3d);
+            maxSpawns = (int)(maxSpawns * 1.8f);
+            if (playerTileY > rockLayer + sourceScreenHeightTiles)
+                spawnRate = (int)(spawnRate * .6d);
+        }
+
+        int playerTileX = Math.Clamp((int)(player.CenterX / 16f), 0, tiles.Dimensions.WidthTiles - 1);
+        int playerTile = Math.Clamp((int)playerTileY, 0, tiles.Dimensions.HeightTiles - 1);
+        if (naturalSpawnWorldFacts?.DrunkWorld == true && tiles.Get(playerTileX, playerTile).Wall == 86)
+        {
+            spawnRate = (int)(spawnRate * .3d);
+            maxSpawns = (int)(maxSpawns * 1.8f);
+        }
+
+        VanillaTownSceneMetrics1458? scene = npcSceneMetrics?.Scan(playerTileX, playerTile);
+        if (scene is VanillaTownSceneMetrics1458 biome)
+        {
+            if (biome.ZoneDungeon)
+            {
+                spawnRate = (int)(spawnRate * .3d);
+                maxSpawns = (int)(maxSpawns * 1.8f);
+            }
+            else if (biome.ZoneCorrupt || biome.ZoneCrimson)
+            {
+                spawnRate = (int)(spawnRate * .65d);
+                maxSpawns = (int)(maxSpawns * 1.3f);
+            }
+
+            if (biome.ZoneHallow && playerTileY > rockLayer + sourceScreenHeightTiles)
+            {
+                spawnRate = (int)(spawnRate * .65d);
+                maxSpawns = (int)(maxSpawns * 1.3f);
+            }
+        }
+
+        // GetSpawnRate applies these two occupancy bands after the biome/event rate transforms.
+        if (nearbyNpcCount < maxSpawns * .2f)
+            spawnRate = (int)(spawnRate * .6f);
+        else if (nearbyNpcCount < maxSpawns * .4f)
+            spawnRate = (int)(spawnRate * .7f);
+        else if (nearbyNpcCount < maxSpawns * .6f)
+            spawnRate = (int)(spawnRate * .8f);
+        else if (nearbyNpcCount < maxSpawns * .8f)
+            spawnRate = (int)(spawnRate * .9f);
+
+        if (playerTileY > (surface + rockLayer) * .5d || scene is { ZoneCorrupt: true } or { ZoneCrimson: true })
+        {
+            if (nearbyNpcCount < maxSpawns * .2f)
+                spawnRate = (int)(spawnRate * .7f);
+            else if (nearbyNpcCount < maxSpawns * .4f)
+                spawnRate = (int)(spawnRate * .9f);
+        }
 
         spawnRate = Math.Max(defaultSpawnRate / 10, spawnRate);
-        maxSpawns = Math.Clamp(maxSpawns, 1, defaultMaxSpawns * 3);
+        maxSpawns = Math.Min(defaultMaxSpawns * 3, maxSpawns);
+        if (worldClock!.GetGoodWorld)
+        {
+            spawnRate = (int)(spawnRate * .8f);
+            maxSpawns = (int)(maxSpawns * 1.2f);
+        }
     }
 
     private bool TryFindVanillaNaturalSpawnFloor(
