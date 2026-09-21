@@ -2250,6 +2250,9 @@ public sealed class VanillaNpcTargetingAiStepper :
             return;
 
         float x = before.PositionX + 50f, y = before.PositionY + 80f;
+        if (_projectileEnvironment is not IVanillaNpcSolidTileEnvironment solids ||
+            solids.IsSolidTile((int)x / 16, (int)y / 16))
+            return;
         float dx = player.CenterX - x + _random.NextInt32(-50, 51);
         float dy = player.CenterY - player.Height * .5f - y + _random.NextInt32(50, 201);
         dy *= .2f;

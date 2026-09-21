@@ -169,6 +169,7 @@ public sealed class VanillaMoonEventEverscreamAiTests
     private static VanillaNpcTargetingAiStepper CreateStepper(IVanillaNpcRandom random, bool solid)
     {
         var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: random);
+        stepper.SetProjectileEnvironment(new EmptyProjectileEnvironment());
         stepper.EnableZombieMotion(100d);
         stepper.SetWorldConditions(dayTime: false, slimeRainActive: false);
         stepper.SetEverscreamEnvironment(new Environment(solid));
@@ -193,6 +194,13 @@ public sealed class VanillaMoonEventEverscreamAiTests
     private sealed class Environment(bool solid) : IVanillaEverscreamEnvironment
     {
         public bool SolidCollision(float positionX, float positionY, int width, int height) => solid;
+    }
+
+    private sealed class EmptyProjectileEnvironment : IVanillaNpcProjectileEnvironment, IVanillaNpcSolidTileEnvironment
+    {
+        public bool CanHit(float sourcePositionX, float sourcePositionY, int sourceWidth, int sourceHeight,
+            float targetPositionX, float targetPositionY, int targetWidth, int targetHeight) => true;
+        public bool IsSolidTile(int tileX, int tileY) => false;
     }
 
     private sealed class RejectingStepper : INpcAiStateStepper
