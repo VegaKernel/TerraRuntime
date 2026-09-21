@@ -1,5 +1,7 @@
 # Work state
 
+2026-09-21: Natural spawning now detects the server-owned Blue, Green and Pink Fairy NPCs through the source `Player.isNearFairy` radius of 1920 pixels. Their fixed 18-by-20 source bodies supply the exact center test and the post-candle `spawnRate * 1.2` / `maxSpawns * .8` transform; a real tick pins rate 432. Release rebuild, focused harness and documentation checks pass; Windows NativeAOT `.cache/natural-spawn-fairy-proximity-final-win-aot-20260921` passes loop, protocol, network, world and TUI smokes.
+
 2026-09-21: Natural spawning now carries the authoritative `WorldGen.Skyblock.lowTiles` state from runtime composition and applies its source final `spawnRate /= 2` transform. A real tick pins rate 180. Release rebuild, focused harness and documentation checks pass; Windows NativeAOT `.cache/natural-spawn-skyblock-low-tiles-final-win-aot-20260921` passes loop, protocol, network, world and TUI smokes.
 
 2026-09-21: Natural spawning now applies the source Dungeon pre-Skeletron final override (`spawnRate = 10`) after ordinary biome, occupancy, candle, seed and invasion transforms. A real Dungeon tick with `DownedBoss3 == false` pins rate 10. Release rebuild, focused harness and documentation checks pass; Windows NativeAOT `.cache/natural-spawn-pre-skeletron-dungeon-final-win-aot-20260921` passes loop, protocol, network, world and TUI smokes.

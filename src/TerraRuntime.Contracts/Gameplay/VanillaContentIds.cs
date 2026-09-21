@@ -61,6 +61,9 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId DemonTaxCollector = new(534);
     public static readonly NpcTypeId Tavernkeep = new(550);
     public static readonly NpcTypeId BartenderUnconscious = new(579);
+    public static readonly NpcTypeId BlueFairy = new(583);
+    public static readonly NpcTypeId GreenFairy = new(584);
+    public static readonly NpcTypeId PinkFairy = new(585);
     public static readonly NpcTypeId Golfer = new(588);
     public static readonly NpcTypeId GolferRescue = new(589);
     public static readonly NpcTypeId Zoologist = new(633);

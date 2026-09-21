@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Natural spawn fairy proximity: source Blue, Green and Pink Fairies are now read from the authoritative NPC store and apply their post-candle modifier within `NPC.sWidth`. Moon events, player buffs/Journey and source npcSlots remain open.
+
 2026-09-21 Natural spawn Skyblock low tiles: the composed `WorldGen.Skyblock.lowTiles` fact now halves the final source spawn interval. A real tick pins rate 180. Moon events, player buffs/Journey and source npcSlots remain open.
 
 2026-09-21 Natural spawn pre-Skeletron Dungeon: the loaded `DownedBoss3` fact now enables the source final Dungeon override only before Skeletron is defeated; a real scene tick pins rate 10. Moon events, player buffs/Journey and source npcSlots remain open.

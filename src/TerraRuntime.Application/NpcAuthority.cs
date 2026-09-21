@@ -1094,6 +1094,12 @@ internal sealed partial class NpcAuthority
             maxSpawns = (int)(maxSpawns * .7f);
         }
 
+        if (IsNearFairy(player.CenterX, player.CenterY))
+        {
+            spawnRate = (int)(spawnRate * 1.2f);
+            maxSpawns = (int)(maxSpawns * .8f);
+        }
+
         spawnRate = Math.Max(defaultSpawnRate / 10, spawnRate);
         maxSpawns = Math.Min(defaultMaxSpawns * 3, maxSpawns);
         if (worldClock!.GetGoodWorld)
@@ -1121,6 +1127,30 @@ internal sealed partial class NpcAuthority
         for (int index = 0; index < active; index++)
             if (naturalSpawnNpcBuffer[index].TypeIdentity == VanillaNpcIds.WallOfFlesh)
                 return true;
+        return false;
+    }
+
+    private bool IsNearFairy(float playerCenterX, float playerCenterY)
+    {
+        // TerrariaServer 1.4.5.8 Player.isNearFairy uses NPC.sWidth (1920 px), independent of
+        // the spawn-rate occupancy count. Fairies have fixed SetDefaults dimensions 18 by 20.
+        const float fairyRange = 1920f;
+        const float fairyRangeSquared = fairyRange * fairyRange;
+        int active = npcs.CopyActive(naturalSpawnNpcBuffer);
+        for (int index = 0; index < active; index++)
+        {
+            NpcSnapshot npc = naturalSpawnNpcBuffer[index];
+            NpcTypeId type = npc.TypeIdentity;
+            if (type != VanillaNpcIds.BlueFairy && type != VanillaNpcIds.GreenFairy && type != VanillaNpcIds.PinkFairy)
+            {
+                continue;
+            }
+
+            float dx = npc.PositionX + 9f - playerCenterX;
+            float dy = npc.PositionY + 10f - playerCenterY;
+            if (dx * dx + dy * dy < fairyRangeSquared)
+                return true;
+        }
         return false;
     }
 

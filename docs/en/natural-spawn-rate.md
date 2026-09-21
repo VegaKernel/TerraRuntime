@@ -19,3 +19,5 @@ Water and Peace Candles are scanned from their active source tiles and apply aft
 Before Skeletron is defeated, Dungeon applies the source final spawn-rate override.
 
 Skyblock low-tile state halves the final source spawn rate.
+
+Server-owned Blue, Green and Pink Fairies within the source 1920-pixel range apply the post-candle fairy rate and cap modifier.
