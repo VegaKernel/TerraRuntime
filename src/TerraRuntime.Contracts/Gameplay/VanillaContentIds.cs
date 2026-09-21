@@ -12,6 +12,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId Demon = new(62);
     public static readonly NpcTypeId VoodooDemon = new(66);
     public static readonly NpcTypeId RedDevil = new(156);
+    public static readonly NpcTypeId FlyingSnake = new(226);
     public static readonly NpcTypeId DemonEye = new(2);
     public static readonly NpcTypeId Zombie = new(3);
     public static readonly NpcTypeId EyeOfCthulhu = new(4);

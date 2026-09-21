@@ -48,6 +48,26 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
                 (int)VanillaPlayerHitboxFacts.BaseHeight);
         }
 
+        if (definition.Type == VanillaNpcIds.FlyingSnake && closest.HasTarget && environment is not null &&
+            context.TryFindCandidate(checked((byte)closest.Target), out VanillaNpcTargetCandidate snakeTarget) &&
+            !environment.CanHit(
+                npc.PositionX,
+                npc.PositionY,
+                hitbox.Width,
+                hitbox.Height,
+                snakeTarget.CenterX - snakeTarget.Width * .5f,
+                snakeTarget.CenterY - snakeTarget.Height * .5f,
+                (int)snakeTarget.Width,
+                (int)snakeTarget.Height))
+        {
+            // Type 226 first calls TargetClosest, then restores pursuit from its velocity signs when sight is blocked.
+            closest = closest with
+            {
+                DirectionX = npc.VelocityX < 0f ? -1 : 1,
+                DirectionY = npc.VelocityY < 0f ? -1 : 1
+            };
+        }
+
         NpcSimulationState simulation = npc.Simulation;
         var input = new VanillaBatMotionInput1458(
             npc.VelocityX,

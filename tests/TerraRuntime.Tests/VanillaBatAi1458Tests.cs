@@ -68,7 +68,7 @@ public sealed class VanillaBatAi1458Tests
     [Fact]
     public void Catalog_admits_source_defaults_for_ordinary_bats_slimer_and_vampire()
     {
-        Assert.Equal(15, VanillaBatNpcCatalog1458.DefinitionCount);
+        Assert.Equal(16, VanillaBatNpcCatalog1458.DefinitionCount);
         foreach (VanillaNpcDefinition definition in VanillaBatNpcCatalog1458.AllDefinitions)
         {
             Assert.Equal(VanillaNpcAiStyles.Bat, definition.AiStyle);
@@ -122,6 +122,11 @@ public sealed class VanillaBatAi1458Tests
         Assert.Equal((16, 16), (sickle.CollisionWidth, sickle.CollisionHeight));
         Assert.True(sickle.TileCollide);
         Assert.True(VanillaProjectileFacts.IsHostile(VanillaProjectileIds.RedDevilSickle));
+
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.FlyingSnake, out VanillaNpcDefinition flyingSnake));
+        Assert.Equal((34, 50, 85, 28, 260),
+            (flyingSnake.BaseWidth, flyingSnake.BaseHeight, flyingSnake.Damage, flyingSnake.Defense, flyingSnake.LifeMax));
+        Assert.Equal(.65f, flyingSnake.KnockBackResist);
     }
 
     [Fact]
@@ -134,6 +139,35 @@ public sealed class VanillaBatAi1458Tests
 
         Assert.Equal(0.1f, result.VelocityX, 5);
         Assert.Equal(-0.04f, result.VelocityY, 5);
+    }
+
+    [Fact]
+    public void Flying_snake_uses_its_source_ai14_acceleration_profile()
+    {
+        VanillaBatMotionResult1458 result = Step(
+            VanillaNpcIds.FlyingSnake,
+            directionX: 1,
+            directionY: -1);
+
+        Assert.Equal(.2f, result.VelocityX, 5);
+        Assert.Equal(-.1f, result.VelocityY, 5);
+    }
+
+    [Fact]
+    public void Flying_snake_restores_velocity_sign_directions_when_sight_is_blocked()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper());
+        stepper.SetProjectileEnvironment(new BlockedEnvironment());
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(7, 200f, 40f, 0, true, false, false, false)]);
+        NpcSnapshot snake = Snapshot(VanillaNpcIds.FlyingSnake) with { VelocityX = -1f, VelocityY = 1f };
+
+        Assert.True(stepper.TryStepState(in snake, out NpcStateUpdate next));
+
+        Assert.Equal((ushort)7, next.Target);
+        Assert.Equal(-1, next.Simulation.DirectionX);
+        Assert.Equal(1, next.Simulation.DirectionY);
+        Assert.Equal(-1.2f, next.VelocityX, 5);
+        Assert.Equal(1.1f, next.VelocityY, 5);
     }
 
     [Fact]
@@ -560,6 +594,19 @@ public sealed class VanillaBatAi1458Tests
             float targetPositionY,
             int targetWidth,
             int targetHeight) => true;
+    }
+
+    private sealed class BlockedEnvironment : IVanillaNpcProjectileEnvironment
+    {
+        public bool CanHit(
+            float sourcePositionX,
+            float sourcePositionY,
+            int sourceWidth,
+            int sourceHeight,
+            float targetPositionX,
+            float targetPositionY,
+            int targetWidth,
+            int targetHeight) => false;
     }
 
     private sealed class RejectingStepper : INpcAiStateStepper

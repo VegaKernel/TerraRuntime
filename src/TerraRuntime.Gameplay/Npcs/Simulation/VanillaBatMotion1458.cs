@@ -79,7 +79,8 @@ public static class VanillaBatMotion1458
     {
         // Exclude Queen Slime's minion special case: it shares aiStyle 14 motion machinery but is not an ordinary
         // standalone bat preset and its lifecycle belongs to a boss-owned child path.
-        if (!input.IsValid || IsBatShooter(type) || !VanillaBatNpcCatalog1458.TryGetDefinition(type, out _))
+        if (!input.IsValid || IsBatShooter(type) || type == VanillaNpcIds.FlyingSnake ||
+            !VanillaBatNpcCatalog1458.TryGetDefinition(type, out _))
         {
             result = default;
             return false;
@@ -160,6 +161,8 @@ public static class VanillaBatMotion1458
         ApplyClosest(input.ClosestTarget, ref target, ref directionX, ref directionY);
         if (type == VanillaNpcIds.QueenSlimeMinionPurple)
             ApplyQueenSlimeMinionAcceleration(ref velocityX, ref velocityY, directionX, directionY);
+        else if (type == VanillaNpcIds.FlyingSnake)
+            ApplyFlyingSnakeAcceleration(ref velocityX, ref velocityY, directionX, directionY);
         else
             ApplyOrdinaryAcceleration(ref velocityX, ref velocityY, directionX, directionY);
 
@@ -252,6 +255,17 @@ public static class VanillaBatMotion1458
     {
         AccelerateAxis(ref velocityX, directionX, 0.35f, 6f, 0.35f, 0.175f);
         AccelerateAxis(ref velocityY, directionY, 0.3f, 5f, 0.3f, 0.225f);
+    }
+
+    private static void ApplyFlyingSnakeAcceleration(
+        ref float velocityX,
+        ref float velocityY,
+        int directionX,
+        int directionY)
+    {
+        // AI_014 type 226 uses its own 0.2/0.1 acceleration and 4/2.5 speed caps.
+        AccelerateAxis(ref velocityX, directionX, 0.2f, 4f, 0.1f, 0.05f);
+        AccelerateAxis(ref velocityY, directionY, 0.1f, 2.5f, 0.05f, 0.03f);
     }
 
     private static void AccelerateAxis(
