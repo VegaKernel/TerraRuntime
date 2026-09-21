@@ -177,7 +177,7 @@ public sealed class VanillaWallOfFleshBehaviorTests
         Assert.Equal(1, new RuntimeNpcAiStateExecutor(store).Tick(stepper).Applied);
         Assert.True(store.TryGet(imp.Handle, out NpcSnapshot after));
         Assert.Equal(1, environment.TeleportCalls);
-        Assert.Equal(new NpcAiState(1f, 5f, 68f, 62f), after.Ai);
+        Assert.Equal(new NpcAiState(1f, 4f, 68f, 62f), after.Ai);
     }
 
     [Fact]

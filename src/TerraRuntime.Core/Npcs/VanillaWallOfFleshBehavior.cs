@@ -557,7 +557,8 @@ internal sealed class VanillaFireImpNpcBehaviorStrategy : IVanillaNpcBehaviorStr
 
         return mutations.TryUpdateAi(
             in committed,
-            committed.Ai with { Ai1 = 5f, Ai2 = tileX, Ai3 = tileY },
+            // AI_008 assigns five, then reaches its shared ai[1] decrement in the same source tick.
+            committed.Ai with { Ai1 = 4f, Ai2 = tileX, Ai3 = tileY },
             out NpcSnapshot completed)
             ? completed
             : committed;
