@@ -272,8 +272,8 @@ public sealed class WorldRuntime : IDisposable
                     byte[] worldInfoFrame = PlayerJoinFrameEncoder.EncodeWorldInfo(
                         world,
                         new WorldInfoTransientState(
-                            PumpkinMoon: false,
-                            SnowMoon: false,
+                            PumpkinMoon: WorldClock.PumpkinMoonActive,
+                            SnowMoon: WorldClock.SnowMoonActive,
                             Dd2EventOngoing: false,
                             FreeCake: false,
                             SkyblockLowTiles: skyblockRuntime.LowTiles,
@@ -348,8 +348,8 @@ public sealed class WorldRuntime : IDisposable
             Rain = WorldClock.NetworkRain
         };
         var transient = new WorldInfoTransientState(
-            PumpkinMoon: false,
-            SnowMoon: false,
+            PumpkinMoon: WorldClock.PumpkinMoonActive,
+            SnowMoon: WorldClock.SnowMoonActive,
             Dd2EventOngoing: false,
             FreeCake: false,
             SkyblockLowTiles: VanillaSkyblockRuntimePolicy1458.Evaluate(World).LowTiles,

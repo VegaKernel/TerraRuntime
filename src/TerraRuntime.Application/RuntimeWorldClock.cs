@@ -104,7 +104,9 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         bool raining = false,
         int rainTime = 0,
         bool cloudBackgroundActive = false,
-        byte cloudCount = 0)
+        byte cloudCount = 0,
+        bool pumpkinMoon = false,
+        bool snowMoon = false)
     {
         if (!double.IsFinite(time) || time < 0d)
             throw new ArgumentOutOfRangeException(nameof(time));
@@ -128,6 +130,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         MoonPhase = moonPhase;
         SlimeRainTime = slimeRainTime;
         BloodMoonActive = bloodMoonActive && !dayTime;
+        PumpkinMoonActive = pumpkinMoon;
+        SnowMoonActive = snowMoon;
         GetGoodWorld = getGoodWorld;
         SlimeBlueSpawnUnlocked = slimeBlueSpawnUnlocked;
         WindSpeedCurrent = windSpeedCurrent;
@@ -165,6 +169,12 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     public bool SlimeRainActive => SlimeRainTime > 0d;
 
     public bool BloodMoonActive { get; private set; }
+
+    public bool PumpkinMoonActive { get; }
+
+    public bool SnowMoonActive { get; }
+
+    public bool MoonEventActive => PumpkinMoonActive || SnowMoonActive;
 
     public bool GetGoodWorld { get; }
 

@@ -927,6 +927,11 @@ internal sealed partial class NpcAuthority
                 spawnRate = (int)(spawnRate * .3d);
                 maxSpawns = (int)(maxSpawns * 1.8f);
             }
+            if (worldClock.MoonEventActive && playerTileY < surface)
+            {
+                spawnRate = (int)(spawnRate * .2d);
+                maxSpawns *= 2;
+            }
         }
         else if (naturalSpawnWorldFacts?.Eclipse == true)
         {
@@ -934,12 +939,18 @@ internal sealed partial class NpcAuthority
             maxSpawns = (int)(maxSpawns * 1.9f);
         }
 
-        // The remix blood-moon adjustment runs after the depth branch.  Pumpkin/Snow Moon state is not
-        // yet authoritative in WorldRuntime and therefore cannot be folded into this branch.
+        // Remix event adjustments run after the depth branch.
         if (remixWorld && !worldClock!.DayTime && worldClock.BloodMoonActive)
         {
             spawnRate = (int)(spawnRate * .3d);
             maxSpawns = (int)(maxSpawns * 1.8f);
+            if (playerTileY > rockLayer + sourceScreenHeightTiles)
+                spawnRate = (int)(spawnRate * .6d);
+        }
+        if (remixWorld && !worldClock!.DayTime && worldClock.MoonEventActive)
+        {
+            spawnRate = (int)(spawnRate * .2d);
+            maxSpawns *= 2;
             if (playerTileY > rockLayer + sourceScreenHeightTiles)
                 spawnRate = (int)(spawnRate * .6d);
         }
@@ -1106,6 +1117,12 @@ internal sealed partial class NpcAuthority
         {
             spawnRate = (int)(spawnRate * .8f);
             maxSpawns = (int)(maxSpawns * 1.2f);
+        }
+
+        if (worldClock.MoonEventActive && (remixWorld || playerTileY < surface))
+        {
+            maxSpawns = (int)(defaultMaxSpawns * (2d + .3d * CountActiveNaturalSpawnPlayers()));
+            spawnRate = 20;
         }
 
         if (naturalSpawnWorldFacts?.InvasionActive == true)

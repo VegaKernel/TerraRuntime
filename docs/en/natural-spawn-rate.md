@@ -27,3 +27,5 @@ Nearby NPC population uses the source `NPC.CheckActive` body-intersection rectan
 Population also uses the source `NPC.SetDefaults` `npcSlots` weights for each currently admitted ordinary type before cap and rate-band evaluation: Fire Imp 3, Bone Serpent head 6, Cave/Hell/Lava Bat .5, Demon/Voodoo Demon 2, and the default 1 for other admitted base types.
 
 Admitted negative net variants `-11…-23`, `-38…-43`, and `-56…-65` additionally multiply their source slots by their `SetDefaultsFromNetId` scale; slime-like variants `-1…-10` retain unscaled slots.
+
+Pumpkin Moon and Snow Moon use their source night and Remix spawn-rate transforms, then apply the final surface-or-Remix rate 20 override before later invasion handling.
