@@ -30,4 +30,6 @@ Admitted negative net variants `-11…-23`, `-38…-43`, and `-56…-65` additio
 
 While Slime Rain is active, each eligible player receives the separate source `NPC.SlimeRainSpawns` pass before the ordinary natural-spawn attempt. It preserves the 15-slot surface gate, the 45-to-495 interval, a 1920-by-1200 screen sample, solid and housing rejection, and the Pinky/Purple/Green selection order. The ordinary attempt still follows even when the event pass spawns a slime.
 
+An active Moon Lord Core within the source strict 4500-pixel center distance suppresses both event and ordinary natural-spawn attempts before they consume RNG.
+
 Pumpkin Moon and Snow Moon use their source night and Remix spawn-rate transforms, then apply the final surface-or-Remix rate 20 override before later invasion handling.

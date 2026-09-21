@@ -810,6 +810,8 @@ internal sealed partial class NpcAuthority
             VanillaNpcTargetCandidate player = targetCandidates[candidateIndex];
             if (!player.Active || player.Dead)
                 continue;
+            if (IsNaturalSpawnSuppressedByMoonLord(in player))
+                continue;
 
             // The server refreshes Player.nearbyActiveNPCs before NPC.Spawner asks for its rate. Retain one
             // authoritative snapshot for both source checks so a spawn attempt cannot observe two different caps.
@@ -847,6 +849,31 @@ internal sealed partial class NpcAuthority
                 AppliedSpawns++;
             return;
         }
+    }
+
+    private bool IsNaturalSpawnSuppressedByMoonLord(in VanillaNpcTargetCandidate player)
+    {
+        // NPC.CanSpawnEnemiesNear delegates to Player.isNearNPC(398, NPC.MoonLordFightingDistance).
+        // The source comparison is between physical body centers and is strict at the 4500-pixel boundary.
+        const float range = 4500f;
+        const float rangeSquared = range * range;
+        int active = npcs.CopyActive(naturalSpawnNpcBuffer);
+        for (int i = 0; i < active; i++)
+        {
+            NpcSnapshot npc = naturalSpawnNpcBuffer[i];
+            if (npc.TypeIdentity != VanillaNpcIds.MoonLordCore ||
+                !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) ||
+                !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
+            {
+                continue;
+            }
+
+            float dx = npc.PositionX + hitbox.Width * .5f - player.CenterX;
+            float dy = npc.PositionY + hitbox.Height * .5f - player.CenterY;
+            if (dx * dx + dy * dy < rangeSquared)
+                return true;
+        }
+        return false;
     }
 
     private void TrySpawnSlimeRainNpc(in VanillaNpcTargetCandidate player, float nearbyNpcCount)

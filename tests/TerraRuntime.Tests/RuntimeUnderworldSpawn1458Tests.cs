@@ -531,6 +531,33 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     }
 
     [Fact]
+    public void Moon_lord_core_within_the_source_fighting_range_suppresses_natural_spawns()
+    {
+        var npcs = new RuntimeNpcStore();
+        var core = new NpcStateUpdate(VanillaNpcIds.MoonLordCore.Value, (short)VanillaNpcIds.MoonLordCore.Value,
+            3_200, 4_800, 0, 0, 0, default, NpcSimulationState.Initial);
+        Assert.True(npcs.TrySpawnVanilla(in core, out _));
+        var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
+        RuntimeTownCommerceWorldFacts1458 world = default;
+        world = world with { WorldSurface = 350, RockLayer = 600 };
+        var state = new ServerRuntimeState(npcs: npcs, npcAiStepper: new IdleNpcStepper(), worldTiles: tiles,
+            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+            townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+            naturalSpawnRandom: new NeverCalledRandom(), worldProgression: new RuntimeWorldProgressionMutations());
+        var slots = new PlayerSlotPool(1);
+        Assert.True(slots.TryAcquireConnection(out var lease));
+        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        session.ObserveWorldRequest(); session.ObserveSectionRequest();
+        var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(836), session.Handle);
+        state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
+            new PlayerSpawnCommitRequest(session.Handle.Slot, 200, 300, 0, 0, 0, 0, 0)));
+
+        state.Tick();
+
+        Assert.Equal(1, npcs.ActiveCount);
+    }
+
+    [Fact]
     public void Nearby_server_owned_fairy_uses_the_source_post_candle_spawn_modifier()
     {
         var npcs = new RuntimeNpcStore();
