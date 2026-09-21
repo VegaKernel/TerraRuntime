@@ -159,6 +159,7 @@ public sealed class VanillaBatAi1458Tests
         VanillaBatMotionResult1458 profile = Step(VanillaNpcIds.Vampire, directionX: 1, directionY: -1);
         Assert.Equal(.2f, profile.VelocityX, 5);
         Assert.Equal(-.2f, profile.VelocityY, 5);
+        Assert.Equal(2f, profile.Ai.Ai1);
 
         var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper());
         stepper.SetProjectileEnvironment(new VisibleEnvironment());
@@ -171,6 +172,7 @@ public sealed class VanillaBatAi1458Tests
 
         Assert.Equal(-.2f, next.VelocityX, 5);
         Assert.Equal(-.2f, next.VelocityY, 5);
+        Assert.Equal(2f, next.Ai.Ai1);
     }
 
     [Fact]

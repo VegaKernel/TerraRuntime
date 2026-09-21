@@ -190,7 +190,10 @@ public static class VanillaBatMotion1458
             ApplyOrdinaryAcceleration(ref velocityX, ref velocityY, directionX, directionY);
         }
 
-        ai1++;
+        // Flying Vampire's AI_014 increments ai[1] once more after its transform check. A successful transform
+        // exits through the type-change path before this state is committed, so only retained flying Vampires
+        // receive the two-tick cadence here.
+        ai1 += type == VanillaNpcIds.Vampire ? 2f : 1f;
         if (ai1 > 200f)
         {
             if (input.TargetDryAndVisible)
