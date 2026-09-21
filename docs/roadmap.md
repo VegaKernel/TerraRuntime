@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Natural spawn active rectangle: nearby population now follows `NPC.CheckActive`'s 4032-by-2520-pixel body-intersection rectangle rather than a 1600-pixel radial approximation; a tick pins the one-NPC rate at 420. Source `npcSlots` weighting, moon events and player buffs/Journey remain open.
+
 2026-09-21 Natural spawn fairy proximity: source Blue, Green and Pink Fairies are now read from the authoritative NPC store and apply their post-candle modifier within `NPC.sWidth`. Moon events, player buffs/Journey and source npcSlots remain open.
 
 2026-09-21 Natural spawn Skyblock low tiles: the composed `WorldGen.Skyblock.lowTiles` fact now halves the final source spawn interval. A real tick pins rate 180. Moon events, player buffs/Journey and source npcSlots remain open.

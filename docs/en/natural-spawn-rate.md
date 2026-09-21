@@ -21,3 +21,5 @@ Before Skeletron is defeated, Dungeon applies the source final spawn-rate overri
 Skyblock low-tile state halves the final source spawn rate.
 
 Server-owned Blue, Green and Pink Fairies within the source 1920-pixel range apply the post-candle fairy rate and cap modifier.
+
+Nearby NPC population uses the source `NPC.CheckActive` body-intersection rectangle of 4032 by 2520 pixels, not a radial distance approximation.

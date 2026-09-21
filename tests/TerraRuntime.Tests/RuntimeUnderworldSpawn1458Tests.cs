@@ -496,6 +496,37 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     }
 
     [Fact]
+    public void Nearby_population_uses_the_source_active_rectangle_instead_of_a_short_radius()
+    {
+        var npcs = new RuntimeNpcStore();
+        var demonEye = new NpcStateUpdate(VanillaNpcIds.DemonEye.Value, (short)VanillaNpcIds.DemonEye.Value,
+            3_500, 300, 0, 0, 0, default, NpcSimulationState.Initial);
+        Assert.True(npcs.TrySpawnVanilla(in demonEye, out _));
+        var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
+        // The Demon Eye is 3,300 px away: outside the former 1,600-px approximation but inside the
+        // source active rectangle. One occupied source slot selects the .7, rather than empty .6, band.
+        var random = new RateRejectingRandom(420);
+        RuntimeTownCommerceWorldFacts1458 world = default;
+        world = world with { WorldSurface = 350, RockLayer = 600 };
+        var state = new ServerRuntimeState(npcs: npcs, npcAiStepper: new IdleNpcStepper(), worldTiles: tiles,
+            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+            townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+            naturalSpawnRandom: random, worldProgression: new RuntimeWorldProgressionMutations());
+        var slots = new PlayerSlotPool(1);
+        Assert.True(slots.TryAcquireConnection(out var lease));
+        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        session.ObserveWorldRequest(); session.ObserveSectionRequest();
+        var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(831), session.Handle);
+        state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
+            new PlayerSpawnCommitRequest(session.Handle.Slot, 200, 300, 0, 0, 0, 0, 0)));
+
+        state.Tick();
+
+        random.AssertConsumed();
+        Assert.Equal(1, npcs.ActiveCount);
+    }
+
+    [Fact]
     public void Source_surface_flag_includes_the_ground_row_at_world_surface()
     {
         var npcs = new RuntimeNpcStore();

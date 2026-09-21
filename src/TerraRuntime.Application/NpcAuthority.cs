@@ -813,7 +813,7 @@ internal sealed partial class NpcAuthority
 
             // The server refreshes Player.nearbyActiveNPCs before NPC.Spawner asks for its rate. Retain one
             // authoritative snapshot for both source checks so a spawn attempt cannot observe two different caps.
-            int nearbyNpcCount = CountNearbyOrdinaryNpcs(player.CenterX, player.CenterY, 1600f);
+            int nearbyNpcCount = CountNearbyOrdinaryNpcs(in player);
             GetNaturalSpawnBudget(in player, nearbyNpcCount, out int spawnRate, out int maxSpawns);
             if (nearbyNpcCount >= maxSpawns || naturalSpawnRandom.NextInt32(0, spawnRate) != 0)
                 continue;
@@ -1231,19 +1231,36 @@ internal sealed partial class NpcAuthority
         187 or 220 or 222 or 221 or 275 or 308 or 310 or 309 or
         216 or 217 or 219 or 218 or 304 or 305 or 307 or 306 or 223;
 
-    private int CountNearbyOrdinaryNpcs(float x, float y, float radius)
+    private int CountNearbyOrdinaryNpcs(in VanillaNpcTargetCandidate player)
     {
+        // NPC.CheckActive in TerrariaServer 1.4.5.8 adds an NPC to Player.nearbyActiveNPCs when the
+        // player's physical body intersects the NPC-centered active rectangle. It is 2.1 NPC screens in
+        // each direction (4032 by 2520 px for the fixed 1920 by 1200 spawn screen), not a radial probe.
+        const int activeRangeX = 4032;
+        const int activeRangeY = 2520;
         int count = npcs.CopyActive(naturalSpawnNpcBuffer);
-        float radiusSq = radius * radius;
         int nearby = 0;
+        int playerLeft = (int)(player.CenterX - player.HitboxWidth * .5f);
+        int playerTop = (int)(player.CenterY - player.HitboxHeight * .5f);
+        int playerRight = playerLeft + (int)player.HitboxWidth;
+        int playerBottom = playerTop + (int)player.HitboxHeight;
         for (int i = 0; i < count; i++)
         {
             NpcSnapshot npc = naturalSpawnNpcBuffer[i];
-            if (!VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, out VanillaNpcDefinition definition) || definition.IsBoss)
+            if (npc.Type is 25 or 30 or 33 ||
+                !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, out VanillaNpcDefinition definition) ||
+                definition.IsBoss ||
+                !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox) ||
+                definition.LifeMax <= 0)
+            {
                 continue;
-            float dx = npc.PositionX - x;
-            float dy = npc.PositionY - y;
-            if (dx * dx + dy * dy <= radiusSq)
+            }
+
+            int npcLeft = (int)(npc.PositionX + hitbox.Width / 2f - activeRangeX);
+            int npcTop = (int)(npc.PositionY + hitbox.Height / 2f - activeRangeY);
+            int npcRight = npcLeft + activeRangeX * 2;
+            int npcBottom = npcTop + activeRangeY * 2;
+            if (npcLeft < playerRight && playerLeft < npcRight && npcTop < playerBottom && playerTop < npcBottom)
                 nearby++;
         }
         return nearby;
