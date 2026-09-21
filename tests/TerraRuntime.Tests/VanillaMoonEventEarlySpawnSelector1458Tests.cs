@@ -74,6 +74,24 @@ public sealed class VanillaMoonEventEarlySpawnSelector1458Tests
         Assert.Null(VanillaMoonEventEarlySpawnSelector1458.Select(true, 20, random, static _ => 0, reachedInvasionBossCap: true));
     }
 
+    [Fact]
+    public void Pumpkin_wave_fourteen_retains_both_source_spawn_intents()
+    {
+        var random = new SequenceRandom(0, 1, 1, 1, 1, 1, 305);
+        var selection = VanillaMoonEventEarlySpawnSelector1458.SelectPlan(false, 14, random, static _ => 0);
+        Assert.Equal(327, selection.First.GetValueOrDefault().Value);
+        Assert.Equal(305, selection.Second.GetValueOrDefault().Value);
+    }
+
+    [Fact]
+    public void Pumpkin_wave_eighteen_can_select_two_boss_intents()
+    {
+        var random = new SequenceRandom(0, 0);
+        var selection = VanillaMoonEventEarlySpawnSelector1458.SelectPlan(false, 18, random, static _ => 0);
+        Assert.Equal(327, selection.First.GetValueOrDefault().Value);
+        Assert.Equal(325, selection.Second.GetValueOrDefault().Value);
+    }
+
     [Theory]
     [InlineData(false, new[] { 305 }, 305, 1)]
     [InlineData(true, new[] { 0 }, 341, 1)]

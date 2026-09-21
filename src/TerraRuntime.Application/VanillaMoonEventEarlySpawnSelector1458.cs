@@ -3,15 +3,23 @@ using TerraRuntime.Core.Npcs;
 
 namespace TerraRuntime.Application;
 
-/// <summary>Source-order Pumpkin/Snow Moon choices through Snow Moon wave thirteen in NPC.Spawner.SpawnAnNPC.</summary>
+/// <summary>Source-order Pumpkin/Snow Moon choices through Snow Moon wave twenty in NPC.Spawner.SpawnAnNPC.</summary>
 internal static class VanillaMoonEventEarlySpawnSelector1458
 {
+    internal readonly record struct Selection(NpcTypeId? First, NpcTypeId? Second);
+
     public static NpcTypeId? Select(bool snowMoon, int wave, IVanillaNpcRandom random, Func<short, int> count,
+        bool reachedInvasionBossCap = false) =>
+        SelectPlan(snowMoon, wave, random, count, reachedInvasionBossCap).First;
+
+    public static Selection SelectPlan(bool snowMoon, int wave, IVanillaNpcRandom random, Func<short, int> count,
         bool reachedInvasionBossCap = false)
     {
         ArgumentNullException.ThrowIfNull(random);
         ArgumentNullException.ThrowIfNull(count);
-        return snowMoon ? SelectSnow(wave, random, count, reachedInvasionBossCap) : SelectPumpkin(wave, random, count);
+        return snowMoon
+            ? new Selection(SelectSnow(wave, random, count, reachedInvasionBossCap), null)
+            : SelectPumpkinPlan(wave, random, count, reachedInvasionBossCap);
     }
 
     private static NpcTypeId? SelectSnow(int wave, IVanillaNpcRandom random, Func<short, int> count,
@@ -148,6 +156,66 @@ internal static class VanillaMoonEventEarlySpawnSelector1458
                  random.NextInt32(0, 8) == 0 ? new NpcTypeId(348) : FrostBase(random),
             _ => random.NextInt32(0, 3) == 0 ? new NpcTypeId(342) : FrostBase(random)
         };
+    }
+
+    private static Selection SelectPumpkinPlan(int wave, IVanillaNpcRandom random, Func<short, int> count,
+        bool reachedInvasionBossCap)
+    {
+        if (wave >= 20)
+        {
+            if (reachedInvasionBossCap) return default;
+            if (random.NextInt32(0, 2) == 0 && count(327) < 2) return new Selection(new NpcTypeId(327), null);
+            if (random.NextInt32(0, 3) != 0 && count(325) < 2) return new Selection(new NpcTypeId(325), null);
+            return count(315) < 3 ? new Selection(new NpcTypeId(315), null) : default;
+        }
+        if (wave == 19)
+        {
+            if (random.NextInt32(0, 5) == 0 && count(327) < 2) return new Selection(new NpcTypeId(327), null);
+            if (random.NextInt32(0, 5) == 0 && count(325) < 2) return new Selection(new NpcTypeId(325), null);
+            return !reachedInvasionBossCap && count(315) < 5 ? new Selection(new NpcTypeId(315), null) : default;
+        }
+        if (wave == 18)
+        {
+            NpcTypeId? first = random.NextInt32(0, 7) == 0 && count(327) < 2 ? new NpcTypeId(327) : null;
+            NpcTypeId second = random.NextInt32(0, 7) == 0 && count(325) < 2 ? new NpcTypeId(325) :
+                random.NextInt32(0, 7) == 0 && count(315) < 3 ? new NpcTypeId(315) : new NpcTypeId(330);
+            return new Selection(first, second);
+        }
+        if (wave == 17)
+        {
+            NpcTypeId? first = random.NextInt32(0, 7) == 0 && count(327) < 2 ? new NpcTypeId(327) : null;
+            NpcTypeId second = random.NextInt32(0, 7) == 0 && count(325) < 2 ? new NpcTypeId(325) :
+                random.NextInt32(0, 7) == 0 && count(315) < 2 ? new NpcTypeId(315) :
+                random.NextInt32(0, 3) == 0 ? new NpcTypeId(330) : new NpcTypeId(329);
+            return new Selection(first, second);
+        }
+        if (wave == 16)
+        {
+            if (random.NextInt32(0, 10) == 0 && count(327) < 2) return new Selection(new NpcTypeId(327), null);
+            if (random.NextInt32(0, 10) == 0 && count(315) < 2) return new Selection(new NpcTypeId(315), null);
+            if (random.NextInt32(0, 6) == 0) return new Selection(new NpcTypeId(330), null);
+            return new Selection(random.NextInt32(0, 3) == 0 ? new NpcTypeId(329) : new NpcTypeId(326), null);
+        }
+        if (wave == 15)
+        {
+            NpcTypeId? first = random.NextInt32(0, 10) == 0 && count(327) == 0 ? new NpcTypeId(327) : null;
+            NpcTypeId second = random.NextInt32(0, 7) == 0 && count(325) < 2 ? new NpcTypeId(325) :
+                random.NextInt32(0, 5) == 0 ? new NpcTypeId(330) :
+                random.NextInt32(0, 3) == 0 ? new NpcTypeId(326) : PumpkinBase(random);
+            return new Selection(first, second);
+        }
+        if (wave == 14)
+        {
+            NpcTypeId? first = random.NextInt32(0, 10) == 0 && count(327) == 0 ? new NpcTypeId(327) : null;
+            NpcTypeId second = random.NextInt32(0, 7) == 0 && count(325) < 2 ? new NpcTypeId(325) :
+                random.NextInt32(0, 10) == 0 && count(315) == 0 ? new NpcTypeId(315) :
+                random.NextInt32(0, 10) == 0 ? new NpcTypeId(330) :
+                random.NextInt32(0, 7) == 0 ? new NpcTypeId(329) :
+                random.NextInt32(0, 3) == 0 ? new NpcTypeId(326) : PumpkinBase(random);
+            return new Selection(first, second);
+        }
+
+        return new Selection(SelectPumpkin(wave, random, count), null);
     }
 
     private static NpcTypeId SelectPumpkin(int wave, IVanillaNpcRandom random, Func<short, int> count)

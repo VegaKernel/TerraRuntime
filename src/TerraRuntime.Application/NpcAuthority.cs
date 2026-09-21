@@ -880,33 +880,28 @@ internal sealed partial class NpcAuthority
             if (!TryFindVanillaNaturalSpawnFloor(in player, out int tileX, out int floorY))
                 continue;
 
-            NpcTypeId? selectedType = SelectNaturalHostileType(in player, tileX, floorY);
-            if (!selectedType.HasValue)
+            NpcTypeId? selectedType = SelectNaturalHostileType(in player, tileX, floorY, out NpcTypeId? additionalType);
+            if (selectedType.HasValue && !TrySpawnNaturalHostileType(selectedType.Value, in player, tileX, floorY) && !additionalType.HasValue)
                 return;
-
-            NpcTypeId type = selectedType.Value;
-            if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition) || definition.IsBoss ||
-                !VanillaNpcAiCoverageCatalog.TryGet(type, out _))
-            {
-                return;
-            }
-
-            float spawnX = tileX * 16f + 8f - definition.Width * 0.5f;
-            float spawnY = floorY * 16f - definition.Height;
-            var update = new NpcStateUpdate(
-                Type: type.Value,
-                NetId: checked((short)type.Value),
-                PositionX: spawnX,
-                PositionY: spawnY,
-                VelocityX: 0f,
-                VelocityY: 0f,
-                Target: player.Slot,
-                Ai: default,
-                Simulation: NpcSimulationState.Initial with { TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft });
-            if (npcs.TrySpawnVanilla(in update, out _))
-                AppliedSpawns++;
+            if (additionalType.HasValue)
+                TrySpawnNaturalHostileType(additionalType.Value, in player, tileX, floorY);
             return;
         }
+    }
+
+    private bool TrySpawnNaturalHostileType(NpcTypeId type, in VanillaNpcTargetCandidate player, int tileX, int floorY)
+    {
+        if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition) || definition.IsBoss ||
+            !VanillaNpcAiCoverageCatalog.TryGet(type, out _))
+            return false;
+
+        float spawnX = tileX * 16f + 8f - definition.Width * 0.5f;
+        float spawnY = floorY * 16f - definition.Height;
+        var update = new NpcStateUpdate(type.Value, checked((short)type.Value), spawnX, spawnY, 0f, 0f, player.Slot,
+            default, NpcSimulationState.Initial with { TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft });
+        if (npcs.TrySpawnVanilla(in update, out _))
+            AppliedSpawns++;
+        return true;
     }
 
     private bool IsNaturalSpawnSuppressedByMoonLord(in VanillaNpcTargetCandidate player)
@@ -1580,8 +1575,10 @@ internal sealed partial class NpcAuthority
     private NpcTypeId? SelectNaturalHostileType(
         in VanillaNpcTargetCandidate player,
         int tileX,
-        int floorY)
+        int floorY,
+        out NpcTypeId? additionalType)
     {
+        additionalType = null;
         WorldTileStore tiles = worldTiles!;
         double surfaceThreshold = Math.Clamp(
             tiles.WorldSurfaceTiles ?? naturalSpawnWorldFacts?.WorldSurface ?? tiles.Dimensions.HeightTiles / 3d,
@@ -1599,14 +1596,16 @@ internal sealed partial class NpcAuthority
         if (worldClock!.MoonEventActive && !worldClock.DayTime &&
             (surface || naturalSpawnWorldFacts?.RemixWorld == true) &&
             scene is not { ZoneDungeon: true } and not { ZoneMeteor: true } &&
-            (worldClock.SnowMoonActive || worldClock.MoonEventWaveNumber <= 13))
+            (worldClock.SnowMoonActive || worldClock.PumpkinMoonActive))
         {
-            return VanillaMoonEventEarlySpawnSelector1458.Select(
+            VanillaMoonEventEarlySpawnSelector1458.Selection selection = VanillaMoonEventEarlySpawnSelector1458.SelectPlan(
                 worldClock.SnowMoonActive,
                 worldClock.MoonEventWaveNumber,
                 naturalSpawnRandom,
                 CountActiveNpcType,
                 HasReachedMoonEventBossCap());
+            additionalType = selection.Second;
+            return selection.First;
         }
 
         // Базовая ветка waterTile из SpawnAnNPC: две заполненные обычной водой клетки над
