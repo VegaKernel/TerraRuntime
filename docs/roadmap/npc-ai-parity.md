@@ -305,7 +305,7 @@ Conversely, packet emission, NPC/projectile/item spawn, player/NPC damage or buf
 - [x] route the admitted ordinary hostile AI_003 roster through concrete NPC types instead of Zombie fallback: Goblin Peon/Thief/Warrior/Scout, Angry Bones, Doctor Bones, The Groom, Armored Skeleton, Bald Zombie, Zombie Eskimo, Undead Viking and Pincushion/Slimed/Swamp/Twiggy/Female Zombie now carry pinned SetDefaults, speed/scale profiles and type-aware door pressure;
 - [x] import the source-grounded close-range lunge for Angry Bones and Armored Skeleton after obstacle/stuck-hop resolution (`|dx| < 100`, `|dy| < 50`, X doubled/clamped to `±3`, Y `-4`);
 - [x] implement type `26` authoritative closed-door/tall-gate destruction, object drops and packet-17 replication;
-- [ ] partition and import remaining AI_003 movement parameter families and subtype-only transformation/event branches;
+- [ ] partition and import remaining AI_003 movement parameter families and subtype-only transformation/event branches; type `257` now carries its source 44×34 defaults and `2`-pixel movement branch;
 - [ ] type-specific authoritative attacks, transformations, projectiles and spawn side effects; presentation-only spawn effects are intentionally out of scope;
 - [ ] differential scenarios for each admitted AI_003 subtype.
 
