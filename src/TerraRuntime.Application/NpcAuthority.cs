@@ -1083,6 +1083,12 @@ internal sealed partial class NpcAuthority
             spawnRate = (int)(spawnRate * .8f);
             maxSpawns = (int)(maxSpawns * 1.2f);
         }
+
+        if (naturalSpawnWorldFacts?.InvasionActive == true)
+        {
+            spawnRate = 20;
+            maxSpawns = (int)(defaultMaxSpawns * (2d + .3d * CountActiveNaturalSpawnPlayers()));
+        }
     }
 
     private bool IsWallOfFleshActive()
@@ -1092,6 +1098,14 @@ internal sealed partial class NpcAuthority
             if (naturalSpawnNpcBuffer[index].TypeIdentity == VanillaNpcIds.WallOfFlesh)
                 return true;
         return false;
+    }
+
+    private int CountActiveNaturalSpawnPlayers()
+    {
+        int count = 0;
+        for (int slot = 0; slot < byte.MaxValue; slot++)
+            if (playerSnapshots.TryGetPlayer(new PlayerSlotId((byte)slot), out _)) count++;
+        return count;
     }
 
     private bool TryFindVanillaNaturalSpawnFloor(

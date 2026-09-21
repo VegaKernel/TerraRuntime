@@ -11,3 +11,5 @@ Lihzahrd Temple uses the source center-wall predicate (`Wall == 87`) after Meteo
 On the Remix surface, Corruption and Crimson apply both source modifiers around the occupancy bands.
 
 An active Wall of Flesh applies its source Underworld cap and rate transform before NPC occupancy bands.
+
+Known persisted invasions reset the rate and scale the cap from the authoritative active-player count.
