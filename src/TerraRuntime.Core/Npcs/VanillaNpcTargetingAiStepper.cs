@@ -80,6 +80,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaBatNpcBehaviorStrategy _bat = new();
     private readonly VanillaFishNpcBehaviorStrategy _fish;
     private readonly VanillaJellyfishNpcBehaviorStrategy _jellyfish = new();
+    private readonly VanillaAntlionNpcBehaviorStrategy _antlion = new();
     private readonly VanillaSkeletronHeadNpcBehaviorStrategy _skeletronHead = new();
     private readonly VanillaSkeletronHandNpcBehaviorStrategy _skeletronHand = new();
     private readonly VanillaQueenBeeNpcBehaviorStrategy _queenBee;
@@ -212,6 +213,9 @@ public sealed class VanillaNpcTargetingAiStepper :
         _jellyfish.SetEnvironment(environment);
     }
 
+    public void SetAntlionEnvironment(IVanillaAntlionEnvironment environment) =>
+        _antlion.SetEnvironment(environment);
+
     public void SetFlyingEyeEnvironment(IVanillaFlyingEyeEnvironment environment) =>
         _flyingEye.SetEnvironment(environment);
 
@@ -318,6 +322,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.Bat => _bat,
             VanillaNpcBehaviorFamily.Fish => _fish,
             VanillaNpcBehaviorFamily.Jellyfish => _jellyfish,
+            VanillaNpcBehaviorFamily.Antlion => _antlion,
             VanillaNpcBehaviorFamily.SkeletronHead => _skeletronHead,
             VanillaNpcBehaviorFamily.SkeletronHand => _skeletronHand,
             VanillaNpcBehaviorFamily.QueenBee => _queenBee,
@@ -459,6 +464,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         in NpcStateUpdate proposed,
         Span<NpcAiProjectileIntent> destination)
     {
+        if (source.Type == VanillaNpcIds.Antlion.Value && proposed.Type == source.Type)
+            return PlanAntlionSand(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.SkeletronHead.Value && proposed.Type == source.Type)
             return 0; // AI_011 draws and allocates only in the accepted effect phase.
         if (source.Type == VanillaNpcIds.QueenBee.Value && proposed.Type == source.Type)
@@ -745,6 +752,56 @@ public sealed class VanillaNpcTargetingAiStepper :
             0f)
         {
             TimeLeftOverride = 600
+        };
+        return 1;
+    }
+
+    private int PlanAntlionSand(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
+    {
+        if (destination.IsEmpty || source.Ai.Ai0 != 0f || proposed.Ai.Ai0 != VanillaAntlionMotion1458.ProjectileCooldown ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Antlion, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox))
+        {
+            return 0;
+        }
+
+        float centerX = source.PositionX + hitbox.Width * .5f;
+        float centerY = source.PositionY + hitbox.Height * .5f;
+        float velocityX;
+        float velocityY;
+        if (proposed.Simulation.DirectionY < 0 && proposed.Target < byte.MaxValue &&
+            _context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target))
+        {
+            float targetTopY = target.CenterY - target.Height * .5f;
+            float rawRotation = MathF.Atan2(targetTopY - centerY, target.CenterX - centerX) + MathF.PI * .5f;
+            if (rawRotation is >= -1.2f and <= 1.2f)
+            {
+                velocityX = target.CenterX - centerX;
+                velocityY = targetTopY - centerY;
+            }
+            else
+            {
+                velocityX = MathF.Cos(proposed.Simulation.Rotation ?? 0f - MathF.PI * .5f);
+                velocityY = MathF.Sin(proposed.Simulation.Rotation ?? 0f - MathF.PI * .5f);
+            }
+        }
+        else
+        {
+            velocityX = MathF.Cos(proposed.Simulation.Rotation ?? 0f - MathF.PI * .5f);
+            velocityY = MathF.Sin(proposed.Simulation.Rotation ?? 0f - MathF.PI * .5f);
+        }
+
+        float length = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
+        if (!(length > 0f) || !float.IsFinite(length))
+            return 0;
+
+        velocityX = velocityX / length * VanillaAntlionMotion1458.ProjectileSpeed;
+        velocityY = velocityY / length * VanillaAntlionMotion1458.ProjectileSpeed;
+        destination[0] = new NpcAiProjectileIntent(
+            VanillaProjectileIds.AntlionSand, centerX, centerY, velocityX, velocityY, Damage: 10, KnockBack: 0f)
+        {
+            InitialAi = new ProjectileAiState(2f, 0f, 0f),
+            TimeLeftOverride = 300
         };
         return 1;
     }

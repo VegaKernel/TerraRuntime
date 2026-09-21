@@ -144,6 +144,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId SeekerBody = new(99);
     public static readonly NpcTypeId SeekerTail = new(100);
     public static readonly NpcTypeId AnglerFish = new(102);
+    public static readonly NpcTypeId Antlion = new(69);
     public static readonly NpcTypeId Jellyfish = new(256);
     public static readonly NpcTypeId Retinazer = new(125);
     public static readonly NpcTypeId Spazmatism = new(126);
@@ -299,6 +300,7 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId Fish = new(16);
     public static readonly NpcAiStyleId Vulture = new(17);
     public static readonly NpcAiStyleId Jellyfish = new(18);
+    public static readonly NpcAiStyleId Antlion = new(19);
     public static readonly NpcAiStyleId SpikeBall = new(20);
     public static readonly NpcAiStyleId BlazingWheel = new(21);
     public static readonly NpcAiStyleId WallOfFlesh = new(27);
@@ -531,6 +533,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId Bomb = new(28);
     public static readonly ProjectileTypeId Dynamite = new(29);
     public static readonly ProjectileTypeId StickyBomb = new(37);
+    public static readonly ProjectileTypeId AntlionSand = new(31);
     public static readonly ProjectileTypeId HarpyFeather = new(38);
     public static readonly ProjectileTypeId DemonScythe = new(44);
     public static readonly ProjectileTypeId RedDevilSickle = new(115);

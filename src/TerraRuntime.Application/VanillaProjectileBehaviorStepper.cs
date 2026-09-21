@@ -143,7 +143,21 @@ internal static partial class VanillaProjectileBehaviorStepper
         {
             case VanillaProjectileBehaviorFamily.FallingBlock:
                 // Only server-owned gravity blocks; sandgun/magic channel variants are not this admission.
-                if (!VanillaProjectileOwnership.IsServerOwned(current.Spawner) || current.Ai.Ai1 != 0 || ai0 is not (0f or 1f))
+                if (!VanillaProjectileOwnership.IsServerOwned(current.Spawner) || current.Ai.Ai1 != 0)
+                { next = default; return false; }
+                // AI_019 Antlion creates the ordinary Sand Ball (31) with ai[0]=2. It shares AI_010's
+                // collision shape but is an attack projectile, so it uses the source .2 gravity and X damping
+                // rather than the terrain-restoring falling-block route.
+                if (current.Type == VanillaProjectileIds.AntlionSand && ai0 == 2f)
+                {
+                    velocityY = Math.Min(10f, velocityY + .2f);
+                    if (velocityX < -.04f) velocityX += .04f;
+                    else if (velocityX > .04f) velocityX -= .04f;
+                    else velocityX = 0f;
+                    next = new(velocityX, velocityY, ai0, TileCollideOverride: true);
+                    return true;
+                }
+                if (ai0 is not (0f or 1f))
                 { next = default; return false; }
                 next = new(velocityX, Math.Min(10f, velocityY + .41f), 1f,
                     TileCollideOverride: ai0 != 0); // AI_010 changes ai0 after disabling first-update collision.

@@ -90,6 +90,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             targeting.SetKingSlimeEnvironment(new VanillaKingSlimeWorldEnvironment(tiles));
             targeting.SetWormEnvironment(new VanillaWormWorldEnvironment(tiles));
             targeting.SetFishEnvironment(new VanillaFishWorldEnvironment1458(tiles));
+            targeting.SetAntlionEnvironment(new VanillaAntlionWorldEnvironment1458(tiles));
         }
     }
 

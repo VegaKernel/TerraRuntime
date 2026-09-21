@@ -63,7 +63,8 @@ public enum VanillaNpcAiCapability : ulong
     UnicornTraversalSlice = 1ul << 53,
     MoonEventProjectileSlice = 1ul << 54,
     MoonEventEverscreamSlice = 1ul << 55,
-    JellyfishMotionSlice = 1ul << 56
+    JellyfishMotionSlice = 1ul << 56,
+    AntlionMotionSlice = 1ul << 57
 }
 
 /// <summary>
@@ -128,6 +129,7 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaBatNpcCatalog1458.DefinitionCount +
             VanillaFishNpcCatalog1458.DefinitionCount +
             VanillaJellyfishNpcCatalog1458.DefinitionCount +
+            VanillaAntlionNpcCatalog1458.DefinitionCount +
             VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount +
             VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 13];
         entries[0] = Partial(
@@ -435,6 +437,14 @@ public static class VanillaNpcAiCoverageCatalog
             entries[index++] = Partial(
                 definition.Type,
                 OrdinaryCore | VanillaNpcAiCapability.JellyfishMotionSlice);
+        }
+
+        foreach (VanillaNpcDefinition definition in VanillaAntlionNpcCatalog1458.AllDefinitions)
+        {
+            entries[index++] = Partial(
+                definition.Type,
+                OrdinaryCore | VanillaNpcAiCapability.AntlionMotionSlice |
+                VanillaNpcAiCapability.FlyerProjectileSideEffectSlice);
         }
 
         if (index != entries.Length)

@@ -76,7 +76,8 @@ public enum VanillaNpcBehaviorFamily : byte
     ChaosBall = 62,
     RuneWizard = 63,
     DungeonCaster = 64,
-    Jellyfish = 65
+    Jellyfish = 65,
+    Antlion = 66
 }
 
 /// <summary>
@@ -325,6 +326,9 @@ public static class VanillaNpcDefinitionCatalog
             return true;
 
         if (VanillaJellyfishNpcCatalog1458.TryGetDefinition(type, out definition))
+            return true;
+
+        if (VanillaAntlionNpcCatalog1458.TryGetDefinition(type, out definition))
             return true;
 
         if (type == VanillaNpcIds.QueenBee)

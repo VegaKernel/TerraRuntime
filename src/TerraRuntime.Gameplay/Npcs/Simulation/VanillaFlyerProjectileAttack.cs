@@ -25,6 +25,14 @@ public interface IVanillaNpcSolidTileEnvironment
     bool IsSolidTile(int tileX, int tileY);
 }
 
+/// <summary>Tile and line-of-sight facts consumed by TerrariaServer 1.4.5.8 AI_019 Antlion.</summary>
+public interface IVanillaAntlionEnvironment : IVanillaNpcProjectileEnvironment
+{
+    bool HasSolidFloor(float positionX, float positionY, int width, int height);
+
+    bool HasConveyorBelow(float positionX, float positionY, int width, int height);
+}
+
 /// <summary>
 /// TerrariaServer 1.4.5.8 NPC.AI_GlobalFiringDistanceCheck. The source uses Main.MaxWorldViewSize 1920x1200,
 /// centers that rectangle on the target Point, then inflates it by -50 pixels on both axes. Rectangle right and
