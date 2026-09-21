@@ -261,6 +261,15 @@ internal sealed class VanillaQueenSlimeNpcBehaviorStrategy : IVanillaNpcBehavior
                 break;
         }
 
+        // The source checks the phase boundary after the state body: crossing half health cancels whichever
+        // attack was active, while retaining ai[3]'s teleport/line-of-sight pressure. localAI[0] then becomes
+        // the new HP anchor before the phase-two minion threshold is evaluated.
+        if (local.Ai0 >= lifeMax * .5f && life < lifeMax * .5f)
+        {
+            local = local with { Ai0 = life };
+            ai = ai with { Ai0 = 0f, Ai1 = 0f, Ai2 = 0f };
+        }
+
         // Terraria uses localAI[0] as the HP anchor for Queen Slime minion threshold spawns.
         // Advance it exactly when this tick crosses the current phase threshold, so the spawn planner
         // emits one batch instead of re-emitting minions on every subsequent tick.

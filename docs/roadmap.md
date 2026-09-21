@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Queen Slime phase boundary: AI_121 now applies its post-state half-health transition. Crossing the source `life < lifeMax / 2` boundary resets the active attack's `ai[0..2]` and moves the minion HP anchor to current life, while retaining the normally updated teleport/line-of-sight pressure in `ai[3]`.
+
 2026-09-21 Queen Bee committed effects: AI_043 retains its one `Next(20)` attack-origin offset for every state-1/state-3 tick in server-owned `localAI[1]`. The committed Bee and Stinger planners reuse that same offset for their collision gate and spawn position, preserving source RNG order before the child-type or aim-jitter draws.
 
 2026-09-21 Snow Moon wave selection: `NPC.Spawner.SpawnAnNPC` now owns the source table through wave 20, including its explicit wave-14 no-spawn path and the late shared invasion-boss slot cap over active player count. Every active-type cap and RNG draw is retained after the wave-wide 1-in-30 special check. Unsupported special selections fail closed instead of falling back to an ordinary hostile. Santa-NK1 is admitted with its AI_060 body; other special-AI NPCs remain open.
