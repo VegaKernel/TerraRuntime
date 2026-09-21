@@ -378,6 +378,40 @@ public sealed class RuntimeUnderworldSpawn1458Tests
         Assert.Equal(0, npcs.ActiveCount);
     }
 
+    [Theory]
+    [InlineData(49, 270)]
+    [InlineData(372, 468)]
+    public void Scene_candle_uses_the_source_post_occupancy_rate_band(int tileType, int expectedRate)
+    {
+        var npcs = new RuntimeNpcStore();
+        var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
+        tiles.Tiles[tiles.GetUncheckedIndex(120, 250)] = new WorldTile
+        {
+            Type = (ushort)tileType,
+            Flags = WorldTileFlags.Active,
+            FrameX = 0
+        };
+        var random = new RateRejectingRandom(expectedRate);
+        RuntimeTownCommerceWorldFacts1458 world = default;
+        world = world with { WorldSurface = 350, RockLayer = 600 };
+        var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
+            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+            townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+            naturalSpawnRandom: random, worldProgression: new RuntimeWorldProgressionMutations());
+        var slots = new PlayerSlotPool(1);
+        Assert.True(slots.TryAcquireConnection(out var lease));
+        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        session.ObserveWorldRequest(); session.ObserveSectionRequest();
+        var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(827), session.Handle);
+        state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
+            new PlayerSpawnCommitRequest(session.Handle.Slot, 200, 300, 0, 0, 0, 0, 0)));
+
+        state.Tick();
+
+        random.AssertConsumed();
+        Assert.Equal(0, npcs.ActiveCount);
+    }
+
     [Fact]
     public void Source_surface_flag_includes_the_ground_row_at_world_surface()
     {

@@ -1,5 +1,7 @@
 # Work state
 
+2026-09-21: Natural spawning now scans active Water Candle tile 49 and Peace Candle tile 372 only at source `FrameX < 18`. Their source modifiers run after NPC occupancy, including Water Candle's independent sky multiplier; real ticks pin Water to 270 and Peace to 468. Release rebuild, focused harness and documentation checks pass; Windows NativeAOT `.cache/natural-spawn-candles-final-win-aot-20260921` passes loop, protocol, network, world and TUI smokes.
+
 2026-09-21: Natural spawning now projects the known persisted invasion identities 1..4 into the source invasion override. It resets rate to 20 and scales the cap by the authoritative active-player count; a one-player tick pins rate 20. Release rebuild, focused harness and documentation checks pass; Windows NativeAOT `.cache/natural-spawn-invasion-final-win-aot-20260921` passes loop, protocol, network, world and TUI smokes.
 
 2026-09-21: Natural spawning now observes an active Wall of Flesh root from the authoritative NPC store in the Underworld. It applies the source `maxSpawns * .3` then `spawnRate * 3` before occupancy, pinning a real empty-underworld tick to rate 75. Release rebuild, focused harness and documentation checks pass; Windows NativeAOT `.cache/natural-spawn-wall-of-flesh-final-win-aot-20260921` passes loop, protocol, network, world and TUI smokes.

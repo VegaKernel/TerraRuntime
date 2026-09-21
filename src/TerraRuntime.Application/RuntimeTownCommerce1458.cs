@@ -131,6 +131,8 @@ internal readonly record struct VanillaTownSceneMetrics1458(
     bool ZoneJungle,
     bool ZoneMeteor,
     bool ZoneLihzhardTemple,
+    bool ZoneWaterCandle,
+    bool ZonePeaceCandle,
     bool ZoneGraveyard,
     bool ZoneUnderworld,
     bool ZoneGlowshroom,
@@ -186,6 +188,8 @@ internal sealed class VanillaTownSceneMetricsScanner1458
         int oceanSand = 0;
         int grave = 0;
         int sunflower = 0;
+        int waterCandle = 0;
+        int peaceCandle = 0;
         for (int x = left; x < right; x++)
         {
             for (int y = top; y < bottom; y++)
@@ -211,6 +215,8 @@ internal sealed class VanillaTownSceneMetricsScanner1458
                         oceanSand++;
                 }
                 if (type == 85) grave++;
+                if (type == 49 && tile.FrameX < 18) waterCandle++;
+                if (type == 372 && tile.FrameX < 18) peaceCandle++;
             }
         }
 
@@ -242,6 +248,8 @@ internal sealed class VanillaTownSceneMetricsScanner1458
         WorldTile center = tiles.Get(centerX, centerY);
         bool zoneDungeon = dungeon >= 250 && centerY > dungeonSurface && IsDungeonWall(center.Wall);
         bool zoneLihzhardTemple = center.Wall == 87;
+        bool zoneWaterCandle = waterCandle > 0;
+        bool zonePeaceCandle = peaceCandle > 0;
         bool beach = IsOceanDepth(centerX, centerY, d.WidthTiles);
         bool belowSurface = centerY > surface;
         bool anyBiome = zoneDungeon || corrupt || crimson || glowshroom || hallow || zoneJungle || zoneSnow || beach || zoneDesert;
@@ -253,6 +261,8 @@ internal sealed class VanillaTownSceneMetricsScanner1458
             zoneJungle,
             zoneMeteor,
             zoneLihzhardTemple,
+            zoneWaterCandle,
+            zonePeaceCandle,
             graveyard,
             underworld,
             glowshroom,

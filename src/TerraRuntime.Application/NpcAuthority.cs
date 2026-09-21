@@ -1076,6 +1076,22 @@ internal sealed partial class NpcAuthority
             maxSpawns *= 2;
         }
 
+        if (scene is { ZoneWaterCandle: true } candleScene)
+        {
+            if (!candleScene.ZonePeaceCandle)
+            {
+                spawnRate = (int)(spawnRate * .75d);
+                maxSpawns = (int)(maxSpawns * 1.5f);
+            }
+            if (playerTileY < surface * .3499999940395355d)
+                spawnRate = (int)(spawnRate * .5d);
+        }
+        else if (scene is { ZonePeaceCandle: true })
+        {
+            spawnRate = (int)(spawnRate * 1.3d);
+            maxSpawns = (int)(maxSpawns * .7f);
+        }
+
         spawnRate = Math.Max(defaultSpawnRate / 10, spawnRate);
         maxSpawns = Math.Min(defaultMaxSpawns * 3, maxSpawns);
         if (worldClock!.GetGoodWorld)
