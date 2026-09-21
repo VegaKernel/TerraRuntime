@@ -6,17 +6,66 @@ namespace TerraRuntime.Application;
 /// <summary>Source-order Pumpkin/Snow Moon choices through Snow Moon wave thirteen in NPC.Spawner.SpawnAnNPC.</summary>
 internal static class VanillaMoonEventEarlySpawnSelector1458
 {
-    public static NpcTypeId Select(bool snowMoon, int wave, IVanillaNpcRandom random, Func<short, int> count)
+    public static NpcTypeId? Select(bool snowMoon, int wave, IVanillaNpcRandom random, Func<short, int> count,
+        bool reachedInvasionBossCap = false)
     {
         ArgumentNullException.ThrowIfNull(random);
         ArgumentNullException.ThrowIfNull(count);
-        return snowMoon ? SelectSnow(wave, random, count) : SelectPumpkin(wave, random, count);
+        return snowMoon ? SelectSnow(wave, random, count, reachedInvasionBossCap) : SelectPumpkin(wave, random, count);
     }
 
-    private static NpcTypeId SelectSnow(int wave, IVanillaNpcRandom random, Func<short, int> count)
+    private static NpcTypeId? SelectSnow(int wave, IVanillaNpcRandom random, Func<short, int> count,
+        bool reachedInvasionBossCap)
     {
         if (random.NextInt32(0, 30) == 0 && count(341) < 4)
             return new NpcTypeId(341);
+
+        if (wave >= 20)
+        {
+            int choice = random.NextInt32(0, 3);
+            return reachedInvasionBossCap ? null : choice switch
+            {
+                0 => new NpcTypeId(345),
+                1 => new NpcTypeId(346),
+                _ => new NpcTypeId(344)
+            };
+        }
+        if (wave >= 19)
+        {
+            if (random.NextInt32(0, 10) == 0 && count(345) < 4) return new NpcTypeId(345);
+            if (random.NextInt32(0, 10) == 0 && count(346) < 5) return new NpcTypeId(346);
+            return random.NextInt32(0, 10) == 0 && count(344) < 7 ? new NpcTypeId(344) : new NpcTypeId(343);
+        }
+        if (wave >= 18)
+        {
+            if (random.NextInt32(0, 10) == 0 && count(345) < 3) return new NpcTypeId(345);
+            if (random.NextInt32(0, 10) == 0 && count(346) < 4) return new NpcTypeId(346);
+            if (random.NextInt32(0, 10) == 0 && count(344) < 6) return new NpcTypeId(344);
+            if (random.NextInt32(0, 3) == 0) return new NpcTypeId(348);
+            return random.NextInt32(0, 3) == 0 ? new NpcTypeId(351) : new NpcTypeId(343);
+        }
+        if (wave >= 17)
+        {
+            if (random.NextInt32(0, 10) == 0 && count(345) < 2) return new NpcTypeId(345);
+            if (random.NextInt32(0, 10) == 0 && count(346) < 3) return new NpcTypeId(346);
+            if (random.NextInt32(0, 10) == 0 && count(344) < 5) return new NpcTypeId(344);
+            if (random.NextInt32(0, 4) == 0) return new NpcTypeId(347);
+            return random.NextInt32(0, 2) == 0 ? new NpcTypeId(351) : new NpcTypeId(343);
+        }
+        if (wave >= 16)
+        {
+            if (random.NextInt32(0, 10) == 0 && count(345) < 2) return new NpcTypeId(345);
+            if (random.NextInt32(0, 10) == 0 && count(346) < 2) return new NpcTypeId(346);
+            if (random.NextInt32(0, 10) == 0 && count(344) < 4) return new NpcTypeId(344);
+            return random.NextInt32(0, 2) == 0 ? new NpcTypeId(352) : new NpcTypeId(343);
+        }
+        if (wave >= 15)
+        {
+            if (random.NextInt32(0, 10) == 0 && count(345) == 0) return new NpcTypeId(345);
+            if (random.NextInt32(0, 10) == 0 && count(346) < 2) return new NpcTypeId(346);
+            if (random.NextInt32(0, 10) == 0 && count(344) < 3) return new NpcTypeId(344);
+            return random.NextInt32(0, 3) == 0 ? new NpcTypeId(347) : new NpcTypeId(343);
+        }
 
         if (wave == 6)
         {
@@ -76,6 +125,13 @@ internal static class VanillaMoonEventEarlySpawnSelector1458
             if (random.NextInt32(0, 3) == 0) return new NpcTypeId(352);
             if (random.NextInt32(0, 6) == 0) return new NpcTypeId(343);
             return random.NextInt32(0, 3) == 0 ? new NpcTypeId(342) : new NpcTypeId(347);
+        }
+        if (wave == 14)
+        {
+            if (random.NextInt32(0, 10) == 0 && count(345) == 0) return new NpcTypeId(345);
+            if (random.NextInt32(0, 10) == 0 && count(346) == 0) return new NpcTypeId(346);
+            if (random.NextInt32(0, 10) == 0 && count(344) == 0) return new NpcTypeId(344);
+            return random.NextInt32(0, 3) == 0 ? new NpcTypeId(343) : null;
         }
 
         return wave switch

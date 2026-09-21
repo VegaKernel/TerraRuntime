@@ -880,7 +880,11 @@ internal sealed partial class NpcAuthority
             if (!TryFindVanillaNaturalSpawnFloor(in player, out int tileX, out int floorY))
                 continue;
 
-            NpcTypeId type = SelectNaturalHostileType(in player, tileX, floorY);
+            NpcTypeId? selectedType = SelectNaturalHostileType(in player, tileX, floorY);
+            if (!selectedType.HasValue)
+                return;
+
+            NpcTypeId type = selectedType.Value;
             if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition) || definition.IsBoss ||
                 !VanillaNpcAiCoverageCatalog.TryGet(type, out _))
             {
@@ -1573,7 +1577,7 @@ internal sealed partial class NpcAuthority
         return true;
     }
 
-    private NpcTypeId SelectNaturalHostileType(
+    private NpcTypeId? SelectNaturalHostileType(
         in VanillaNpcTargetCandidate player,
         int tileX,
         int floorY)
@@ -1601,7 +1605,8 @@ internal sealed partial class NpcAuthority
                 worldClock.SnowMoonActive,
                 worldClock.MoonEventWaveNumber,
                 naturalSpawnRandom,
-                CountActiveNpcType);
+                CountActiveNpcType,
+                HasReachedMoonEventBossCap());
         }
 
         // Базовая ветка waterTile из SpawnAnNPC: две заполненные обычной водой клетки над
@@ -1672,6 +1677,22 @@ internal sealed partial class NpcAuthority
             if (naturalSpawnNpcBuffer[index].Type == type)
                 count++;
         return count;
+    }
+
+    private bool HasReachedMoonEventBossCap()
+    {
+        int active = npcs.CopyActive(naturalSpawnNpcBuffer);
+        float occupiedSlots = 0f;
+        for (int index = 0; index < active; index++)
+        {
+            NpcSnapshot npc = naturalSpawnNpcBuffer[index];
+            if (npc.Type is 315 or 325 or 327 or 328 or 344 or 345 or 346)
+                occupiedSlots += GetNaturalSpawnSlots(in npc);
+        }
+
+        int activePlayers = CountActiveNaturalSpawnPlayers();
+        int defaultMaxSpawns = (int)(5f * (2f + .3f * activePlayers));
+        return occupiedSlots >= activePlayers * defaultMaxSpawns;
     }
 
     private bool IsOrdinaryPreHardmodeWaterSpawn(

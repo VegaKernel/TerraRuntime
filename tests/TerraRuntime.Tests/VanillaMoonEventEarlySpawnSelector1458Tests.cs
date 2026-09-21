@@ -22,6 +22,12 @@ public sealed class VanillaMoonEventEarlySpawnSelector1458Tests
     [InlineData(true, 11, new[] { 1, 1, 0 }, 352)]
     [InlineData(true, 12, new[] { 1, 1, 1, 1, 0 }, 342)]
     [InlineData(true, 13, new[] { 1, 1, 1, 0 }, 352)]
+    [InlineData(true, 15, new[] { 1, 1, 1, 1, 1 }, 343)]
+    [InlineData(true, 16, new[] { 1, 1, 1, 1, 0 }, 352)]
+    [InlineData(true, 17, new[] { 1, 1, 1, 1, 1, 0 }, 351)]
+    [InlineData(true, 18, new[] { 1, 1, 1, 1, 0 }, 348)]
+    [InlineData(true, 19, new[] { 1, 1, 1, 1 }, 343)]
+    [InlineData(true, 20, new[] { 1, 2 }, 344)]
     [InlineData(false, 1, new[] { 309 }, 309)]
     [InlineData(false, 2, new[] { 0 }, 326)]
     [InlineData(false, 4, new[] { 0 }, 330)]
@@ -29,21 +35,35 @@ public sealed class VanillaMoonEventEarlySpawnSelector1458Tests
     public void Early_wave_selection_preserves_source_random_order(bool snow, int wave, int[] rolls, short expected)
     {
         var random = new SequenceRandom(rolls);
-        Assert.Equal(expected, VanillaMoonEventEarlySpawnSelector1458.Select(snow, wave, random, static _ => 0).Value);
+        Assert.Equal(expected, VanillaMoonEventEarlySpawnSelector1458.Select(snow, wave, random, static _ => 0).GetValueOrDefault().Value);
     }
 
     [Fact]
     public void Snow_special_spawn_falls_through_when_the_source_cap_is_reached()
     {
         var random = new SequenceRandom(1, 0, 0);
-        Assert.Equal(350, VanillaMoonEventEarlySpawnSelector1458.Select(true, 4, random, static type => type == 344 ? 1 : 0).Value);
+        Assert.Equal(350, VanillaMoonEventEarlySpawnSelector1458.Select(true, 4, random, static type => type == 344 ? 1 : 0).GetValueOrDefault().Value);
     }
 
     [Fact]
     public void Snow_later_wave_cap_falls_through_in_source_order()
     {
         var random = new SequenceRandom(1, 0, 0);
-        Assert.Equal(352, VanillaMoonEventEarlySpawnSelector1458.Select(true, 11, random, static type => type == 345 ? 1 : 0).Value);
+        Assert.Equal(352, VanillaMoonEventEarlySpawnSelector1458.Select(true, 11, random, static type => type == 345 ? 1 : 0).GetValueOrDefault().Value);
+    }
+
+    [Fact]
+    public void Snow_wave_fourteen_preserves_the_source_no_spawn_branch()
+    {
+        var random = new SequenceRandom(1, 1, 1, 1, 1);
+        Assert.Null(VanillaMoonEventEarlySpawnSelector1458.Select(true, 14, random, static _ => 0));
+    }
+
+    [Fact]
+    public void Snow_wave_twenty_consumes_its_choice_when_the_boss_cap_is_reached()
+    {
+        var random = new SequenceRandom(1, 2);
+        Assert.Null(VanillaMoonEventEarlySpawnSelector1458.Select(true, 20, random, static _ => 0, reachedInvasionBossCap: true));
     }
 
     [Theory]
