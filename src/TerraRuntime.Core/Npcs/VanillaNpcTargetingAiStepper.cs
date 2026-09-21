@@ -79,6 +79,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly IVanillaNpcBehaviorStrategy _blazingWheel = new VanillaBlazingWheelNpcBehaviorStrategy();
     private readonly VanillaBatNpcBehaviorStrategy _bat = new();
     private readonly VanillaFishNpcBehaviorStrategy _fish;
+    private readonly VanillaJellyfishNpcBehaviorStrategy _jellyfish = new();
     private readonly VanillaSkeletronHeadNpcBehaviorStrategy _skeletronHead = new();
     private readonly VanillaSkeletronHandNpcBehaviorStrategy _skeletronHand = new();
     private readonly VanillaQueenBeeNpcBehaviorStrategy _queenBee;
@@ -205,8 +206,11 @@ public sealed class VanillaNpcTargetingAiStepper :
         _destroyer.SetEnvironment(environment);
     }
 
-    public void SetFishEnvironment(IVanillaFishEnvironment1458 environment) =>
+    public void SetFishEnvironment(IVanillaFishEnvironment1458 environment)
+    {
         _fish.SetEnvironment(environment);
+        _jellyfish.SetEnvironment(environment);
+    }
 
     public void SetFlyingEyeEnvironment(IVanillaFlyingEyeEnvironment environment) =>
         _flyingEye.SetEnvironment(environment);
@@ -313,6 +317,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.BlazingWheel => _blazingWheel,
             VanillaNpcBehaviorFamily.Bat => _bat,
             VanillaNpcBehaviorFamily.Fish => _fish,
+            VanillaNpcBehaviorFamily.Jellyfish => _jellyfish,
             VanillaNpcBehaviorFamily.SkeletronHead => _skeletronHead,
             VanillaNpcBehaviorFamily.SkeletronHand => _skeletronHand,
             VanillaNpcBehaviorFamily.QueenBee => _queenBee,

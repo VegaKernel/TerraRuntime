@@ -75,7 +75,8 @@ public enum VanillaNpcBehaviorFamily : byte
     GoblinSorcerer = 61,
     ChaosBall = 62,
     RuneWizard = 63,
-    DungeonCaster = 64
+    DungeonCaster = 64,
+    Jellyfish = 65
 }
 
 /// <summary>
@@ -96,7 +97,8 @@ public enum VanillaNpcPhysicsFamily : byte
     GenericGround = 8,
     BatFlight = 9,
     FishSwimming = 10,
-    UnicornGround = 11
+    UnicornGround = 11,
+    Jellyfish = 12
 }
 
 /// <summary>One resolved vanilla NPC hitbox for the current runtime scale.</summary>
@@ -320,6 +322,9 @@ public static class VanillaNpcDefinitionCatalog
             return true;
 
         if (VanillaFishNpcCatalog1458.TryGetDefinition(type, out definition))
+            return true;
+
+        if (VanillaJellyfishNpcCatalog1458.TryGetDefinition(type, out definition))
             return true;
 
         if (type == VanillaNpcIds.QueenBee)

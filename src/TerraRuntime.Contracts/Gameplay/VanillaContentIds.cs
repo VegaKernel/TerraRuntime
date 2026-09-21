@@ -144,6 +144,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId SeekerBody = new(99);
     public static readonly NpcTypeId SeekerTail = new(100);
     public static readonly NpcTypeId AnglerFish = new(102);
+    public static readonly NpcTypeId Jellyfish = new(256);
     public static readonly NpcTypeId Retinazer = new(125);
     public static readonly NpcTypeId Spazmatism = new(126);
     public static readonly NpcTypeId SkeletronPrime = new(127);
@@ -297,6 +298,7 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId KingSlime = new(15);
     public static readonly NpcAiStyleId Fish = new(16);
     public static readonly NpcAiStyleId Vulture = new(17);
+    public static readonly NpcAiStyleId Jellyfish = new(18);
     public static readonly NpcAiStyleId SpikeBall = new(20);
     public static readonly NpcAiStyleId BlazingWheel = new(21);
     public static readonly NpcAiStyleId WallOfFlesh = new(27);

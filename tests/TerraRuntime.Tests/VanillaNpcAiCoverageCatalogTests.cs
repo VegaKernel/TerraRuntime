@@ -16,6 +16,7 @@ public sealed class VanillaNpcAiCoverageCatalogTests
             VanillaFlyerNpcCatalog.DefinitionCount +
             VanillaBatNpcCatalog1458.DefinitionCount +
             VanillaFishNpcCatalog1458.DefinitionCount +
+            VanillaJellyfishNpcCatalog1458.DefinitionCount +
             VanillaWormNpcCatalog.Count +
             VanillaNpcAi17_20_21Catalog1458.DefinitionCount;
         expected += VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 13;
