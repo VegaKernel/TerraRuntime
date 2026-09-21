@@ -128,6 +128,7 @@ internal readonly record struct VanillaTownSceneMetrics1458(
     bool ZoneSnow,
     bool ZoneJungle,
     bool ZoneMeteor,
+    bool ZoneLihzhardTemple,
     bool ZoneGraveyard,
     bool ZoneUnderworld,
     bool ZoneGlowshroom,
@@ -238,6 +239,7 @@ internal sealed class VanillaTownSceneMetricsScanner1458
         double dungeonSurface = world.DrunkWorld ? Math.Max(surface, world.DungeonY + 40d) : surface;
         WorldTile center = tiles.Get(centerX, centerY);
         bool zoneDungeon = dungeon >= 250 && centerY > dungeonSurface && IsDungeonWall(center.Wall);
+        bool zoneLihzhardTemple = center.Wall == 87;
         bool beach = IsOceanDepth(centerX, centerY, d.WidthTiles);
         bool belowSurface = centerY > surface;
         bool anyBiome = zoneDungeon || corrupt || crimson || glowshroom || hallow || zoneJungle || zoneSnow || beach || zoneDesert;
@@ -248,6 +250,7 @@ internal sealed class VanillaTownSceneMetricsScanner1458
             zoneSnow,
             zoneJungle,
             zoneMeteor,
+            zoneLihzhardTemple,
             graveyard,
             underworld,
             glowshroom,

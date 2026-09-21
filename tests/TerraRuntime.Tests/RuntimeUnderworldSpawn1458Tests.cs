@@ -255,6 +255,39 @@ public sealed class RuntimeUnderworldSpawn1458Tests
         Assert.Equal(0, npcs.ActiveCount);
     }
 
+    [Theory]
+    [InlineData(false, 288)]
+    [InlineData(true, 115)]
+    public void Temple_wall_uses_source_rate_band_before_empty_population(bool remixWorld, int expectedRate)
+    {
+        var npcs = new RuntimeNpcStore();
+        var tiles = new WorldTileStore(new WorldDimensions(1000, 1200));
+        // Player.Center is tile 498 for a floor tile of 500, which matches SceneMetrics' wall sample.
+        tiles.Tiles[tiles.GetUncheckedIndex(500, 498)] = new WorldTile { Wall = 87 };
+
+        // Normal: 600 * .8 (Temple) * .6 (empty population) = 288.
+        // Remix adds the source Temple .4 multiplier: 600 * .8 * .4 * .6 = 115.
+        var random = new RateRejectingRandom(expectedRate);
+        RuntimeTownCommerceWorldFacts1458 world = default;
+        world = world with { RemixWorld = remixWorld, WorldSurface = 350, RockLayer = 600 };
+        var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
+            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+            townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+            naturalSpawnRandom: random, worldProgression: new RuntimeWorldProgressionMutations());
+        var slots = new PlayerSlotPool(1);
+        Assert.True(slots.TryAcquireConnection(out var lease));
+        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        session.ObserveWorldRequest(); session.ObserveSectionRequest();
+        var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(823), session.Handle);
+        state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
+            new PlayerSpawnCommitRequest(session.Handle.Slot, 500, 500, 0, 0, 0, 0, 0)));
+
+        state.Tick();
+
+        random.AssertConsumed();
+        Assert.Equal(0, npcs.ActiveCount);
+    }
+
     [Fact]
     public void Source_surface_flag_includes_the_ground_row_at_world_surface()
     {

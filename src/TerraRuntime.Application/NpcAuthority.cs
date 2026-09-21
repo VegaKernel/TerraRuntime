@@ -1022,6 +1022,17 @@ internal sealed partial class NpcAuthority
                 maxSpawns = (int)(maxSpawns * 1.1f);
             }
 
+            if (biome.ZoneLihzhardTemple)
+            {
+                spawnRate = (int)(spawnRate * .8f);
+                maxSpawns = (int)(maxSpawns * 1.2f);
+                if (remixWorld)
+                {
+                    spawnRate = (int)(spawnRate * .4d);
+                    maxSpawns = (int)(maxSpawns * 1.5f);
+                }
+            }
+
             if (biome.ZoneHallow && playerTileY > rockLayer + sourceScreenHeightTiles)
             {
                 spawnRate = (int)(spawnRate * .65d);

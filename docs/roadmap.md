@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Natural spawn Lihzahrd Temple: the scene scanner now samples the exact center wall `87` and applies the source `0.8` rate / `1.2` cap transform after Meteor. Remix worlds additionally apply `0.4` / `1.5`; real ticks pin final empty-population rates 288 and 115. Moon events, player buffs/candles/Journey and source npcSlots remain open.
+
 2026-09-21 Natural spawn Meteor: the SceneMetrics projection now counts active tile `37` and admits the source threshold 75. The source `0.4` rate and `1.1` cap transform runs after Jungle/evil alternatives; a tick at the exact threshold pins final empty-population rate 144. Temple, moon events, player buffs/candles/Journey and source npcSlots remain open.
 
 2026-09-21 Natural spawn Jungle: active persisted town residents are now counted from live runtime centers in the source 3840-by-2400-pixel `SceneMetrics.TownNPCRectSize`, then select the four Jungle rate/cap bands before evil zones. Ticks pin zero-resident rate 144 and one remote-home Merchant rate 198. Meteor, temple, moon events, player buffs/candles/Journey and source npcSlots remain open.
