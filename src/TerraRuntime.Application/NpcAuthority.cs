@@ -814,10 +814,10 @@ internal sealed partial class NpcAuthority
             if (nearbyNpcCount >= maxSpawns || naturalSpawnRandom.NextInt32(0, spawnRate) != 0)
                 continue;
 
-            if (!TryFindVanillaNaturalSpawnFloor(in player, out int tileX, out int spawnTileY, out int floorY))
+            if (!TryFindVanillaNaturalSpawnFloor(in player, out int tileX, out int floorY))
                 continue;
 
-            NpcTypeId type = SelectNaturalHostileType(in player, tileX, spawnTileY, floorY);
+            NpcTypeId type = SelectNaturalHostileType(in player, tileX, floorY);
             if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition) || definition.IsBoss ||
                 !VanillaNpcAiCoverageCatalog.TryGet(type, out _))
             {
@@ -999,7 +999,6 @@ internal sealed partial class NpcAuthority
     private bool TryFindVanillaNaturalSpawnFloor(
         in VanillaNpcTargetCandidate player,
         out int tileX,
-        out int spawnTileY,
         out int floorY)
     {
         WorldTileStore tiles = worldTiles!;
@@ -1020,8 +1019,6 @@ internal sealed partial class NpcAuthority
             int y = playerTileY + naturalSpawnRandom.NextInt32(-spawnRangeY, spawnRangeY + 1);
             if (x < 10 || x >= width - 10 || y < 10 || y >= height - 12)
                 continue;
-            int sampledTileY = y;
-
             WorldTile start = tiles.Get(x, y);
             if ((start.IsActive && !start.IsActuated && VanillaTileCollisionCatalog.IsSolid(start.TileType)) ||
                 IsHouseWall(start.Wall))
@@ -1046,15 +1043,12 @@ internal sealed partial class NpcAuthority
                     break;
 
                 tileX = x;
-                // Preserve the sampled tile coordinate: source SpawnAnNPC receives this value while
-                // FindGroundTile only supplies the terrain identity.
-                spawnTileY = sampledTileY;
                 floorY = y;
                 return true;
             }
         }
 
-        tileX = spawnTileY = floorY = 0;
+        tileX = floorY = 0;
         return false;
     }
 
@@ -1143,7 +1137,6 @@ internal sealed partial class NpcAuthority
     private NpcTypeId SelectNaturalHostileType(
         in VanillaNpcTargetCandidate player,
         int tileX,
-        int spawnTileY,
         int floorY)
     {
         WorldTileStore tiles = worldTiles!;
@@ -1151,15 +1144,13 @@ internal sealed partial class NpcAuthority
             tiles.WorldSurfaceTiles ?? naturalSpawnWorldFacts?.WorldSurface ?? tiles.Dimensions.HeightTiles / 3d,
             1d,
             tiles.Dimensions.HeightTiles - 1d);
-        // NPC.Spawner.SetSpawnFlagsForChosenTile uses the originally sampled spawn tile, not the
-        // ground tile returned by FindGroundTile, and its surface comparison is inclusive.
-        bool surface = spawnTileY <= surfaceThreshold;
+        bool surface = floorY < surfaceThreshold;
 
         VanillaTownSceneMetrics1458? scene = npcSceneMetrics?.Scan(
             Math.Clamp((int)(player.CenterX / 16f), 0, tiles.Dimensions.WidthTiles - 1),
             Math.Clamp((int)(player.CenterY / 16f), 0, tiles.Dimensions.HeightTiles - 1));
 
-        if (VanillaUnderworldSpawn1458.IsUnderworld(spawnTileY, tiles.Dimensions.HeightTiles))
+        if (VanillaUnderworldSpawn1458.IsUnderworld(floorY, tiles.Dimensions.HeightTiles))
         {
             // This is the ordinary dry underworld branch, not a substitute for the source's
             // earlier event/biome/secret-seed branches. Missing facts never become cave slimes.

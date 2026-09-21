@@ -29,7 +29,6 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     {
         var npcs = new RuntimeNpcStore();
         var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
-        Assert.True(tiles.TryAttachWorldSurface(350));
         for (int x = 0; x < 500; x++)
             tiles.Tiles[tiles.GetUncheckedIndex(x, 303)] = new WorldTile { Type = 57, Flags = WorldTileFlags.Active };
 
@@ -50,41 +49,6 @@ public sealed class RuntimeUnderworldSpawn1458Tests
         var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(812), session.Handle);
         state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
             new PlayerSpawnCommitRequest(session.Handle.Slot, 200, 300, 0, 0, 0, 0, 0)));
-
-        state.Tick();
-
-        random.AssertConsumed();
-        var snapshots = new NpcSnapshot[npcs.Capacity];
-        Assert.Equal(1, npcs.CopyActive(snapshots));
-        Assert.Equal(VanillaNpcIds.BlueSlime.Value, snapshots[0].Type);
-    }
-
-    [Fact]
-    public void Source_surface_flag_uses_the_sampled_tile_and_includes_the_world_surface()
-    {
-        var npcs = new RuntimeNpcStore();
-        var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
-        Assert.True(tiles.TryAttachWorldSurface(352));
-        for (int x = 0; x < 500; x++)
-            tiles.Tiles[tiles.GetUncheckedIndex(x, 353)] = new WorldTile { Type = 57, Flags = WorldTileFlags.Active };
-
-        // The player centre samples a row at or below 352. FindGroundTile reaches row 353, but
-        // SetSpawnFlags keeps the sampled row and treats it as a surface spawn (`<= worldSurface`), which chooses Blue Slime by day
-        // without another selector draw.
-        var random = new SpawnRandom([], 360);
-        RuntimeTownCommerceWorldFacts1458 world = default;
-        world = world with { WorldSurface = 352, RockLayer = 500 };
-        var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
-            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
-            townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
-            naturalSpawnRandom: random, worldProgression: new RuntimeWorldProgressionMutations());
-        var slots = new PlayerSlotPool(1);
-        Assert.True(slots.TryAcquireConnection(out var lease));
-        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
-        session.ObserveWorldRequest(); session.ObserveSectionRequest();
-        var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(815), session.Handle);
-        state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
-            new PlayerSpawnCommitRequest(session.Handle.Slot, 200, 352, 0, 0, 0, 0, 0)));
 
         state.Tick();
 
