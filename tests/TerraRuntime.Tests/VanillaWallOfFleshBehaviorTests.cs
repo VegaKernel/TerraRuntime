@@ -150,10 +150,39 @@ public sealed class VanillaWallOfFleshBehaviorTests
         Assert.Equal(120, intents[0].BottomY);
     }
 
-    private static VanillaNpcTargetingAiStepper CreateStepper()
+    [Fact]
+    public void Fire_imp_ai008_resolves_its_random_teleport_only_after_the_timer_state_commits()
+    {
+        var environment = new TestEnvironment { TeleportSucceeds = true, TeleportTileX = 68, TeleportTileY = 62 };
+        var stepper = CreateStepper(environment);
+        stepper.SetCandidates([Target(0, 1_100f, 1_000f)]);
+        var store = new RuntimeNpcStore(capacity: 8);
+        var update = new NpcStateUpdate(
+            VanillaNpcIds.FireImp.Value,
+            checked((short)VanillaNpcIds.FireImp.Value),
+            1_000f,
+            1_000f,
+            0f,
+            0f,
+            0,
+            new NpcAiState(649f, 0f, 0f, 0f),
+            NpcSimulationState.Initial with { Life = 70, LifeMax = 70 });
+        Assert.True(store.TrySpawnVanilla(in update, out NpcSnapshot imp));
+
+        Assert.True(stepper.TryStepState(in imp, out NpcStateUpdate proposal));
+        Assert.Equal(1f, proposal.Ai.Ai0);
+        Assert.Equal(0, environment.TeleportCalls);
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(store).Tick(stepper).Applied);
+        Assert.True(store.TryGet(imp.Handle, out NpcSnapshot after));
+        Assert.Equal(1, environment.TeleportCalls);
+        Assert.Equal(new NpcAiState(1f, 5f, 68f, 62f), after.Ai);
+    }
+
+    private static VanillaNpcTargetingAiStepper CreateStepper(TestEnvironment? environment = null)
     {
         var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: new ZeroRandom());
-        stepper.SetWallOfFleshEnvironment(new TestEnvironment());
+        stepper.SetWallOfFleshEnvironment(environment ?? new TestEnvironment());
         stepper.SetWorldConditions(dayTime: false, slimeRainActive: false);
         return stepper;
     }
@@ -192,6 +221,10 @@ public sealed class VanillaWallOfFleshBehaviorTests
 
     private sealed class TestEnvironment : IVanillaWallOfFleshEnvironment
     {
+        public int TeleportCalls { get; private set; }
+        public bool TeleportSucceeds { get; init; }
+        public int TeleportTileX { get; init; }
+        public int TeleportTileY { get; init; }
         public int WorldWidthTiles => 8400;
         public int WorldHeightTiles => 2400;
         public int UnderworldLayerTiles => 2200;
@@ -212,11 +245,20 @@ public sealed class VanillaWallOfFleshBehaviorTests
             return false;
         }
 
-        public bool TryFindTeleportSpot(int targetTileX, int targetTileY, int npcWidth, int npcHeight, out int tileX, out int tileY)
+        public bool TryFindTeleportSpot(
+            float npcCenterX,
+            float npcCenterY,
+            int targetTileX,
+            int targetTileY,
+            ReadOnlySpan<VanillaNpcTargetCandidate> players,
+            IVanillaNpcRandom random,
+            out int tileX,
+            out int tileY)
         {
-            tileX = 0;
-            tileY = 0;
-            return false;
+            TeleportCalls++;
+            tileX = TeleportTileX;
+            tileY = TeleportTileY;
+            return TeleportSucceeds;
         }
     }
 

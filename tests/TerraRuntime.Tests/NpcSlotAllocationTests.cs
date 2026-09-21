@@ -303,6 +303,6 @@ public sealed class NpcSlotAllocationTests
 
         public bool CanHit(float sourceX, float sourceY, int sourceWidth, int sourceHeight, float targetX, float targetY, int targetWidth, int targetHeight) => true;
         public bool TryFindGroundSpawn(int tileX, int startTileY, out int bottomX, out int bottomY) { bottomX = 0; bottomY = 0; return false; }
-        public bool TryFindTeleportSpot(int targetTileX, int targetTileY, int npcWidth, int npcHeight, out int tileX, out int tileY) { tileX = 0; tileY = 0; return false; }
+        public bool TryFindTeleportSpot(float npcCenterX, float npcCenterY, int targetTileX, int targetTileY, ReadOnlySpan<VanillaNpcTargetCandidate> players, IVanillaNpcRandom random, out int tileX, out int tileY) { tileX = 0; tileY = 0; return false; }
     }
 }

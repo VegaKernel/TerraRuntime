@@ -94,7 +94,7 @@ This slice does not expose arbitrary child-NPC or projectile spawning from a beh
 
 ## Source-backed Wall of Flesh vertical slice
 
-The pre-Hardmode boss boundary now also admits Wall of Flesh (`NPC 113`) and its linked server-owned children rather than relying on a generic fallback. The root performs the source-shaped corridor movement and initial 13-child bootstrap (two eyes plus eleven Hungry), while eye/Hungry state preserves explicit root ownership. Runtime post-state intents cover leeches, Good World Fire Imp support, Expert Hungry pressure and eye laser projectile `83`; eye damage is committed back to the shared root life before lethal finalization.
+The pre-Hardmode boss boundary now also admits Wall of Flesh (`NPC 113`) and its linked server-owned children rather than relying on a generic fallback. The root performs the source-shaped corridor movement and initial 13-child bootstrap (two eyes plus eleven Hungry), while eye/Hungry state preserves explicit root ownership. Runtime post-state intents cover leeches, Good World Fire Imp support, Expert Hungry pressure and eye laser projectile `83`; eye damage is committed back to the shared root life before lethal finalization. Fire Imp AI_008 resolves its 100-attempt random teleport search only after the timer transition has committed, using the source floor, clearance, lava and moving-player telefrag checks.
 
 The death path owns the gameplay mutations that must happen on the server: normal/Expert/Master loot delivery, source-shaped recovery drops, the Demonite/Crimtane brick box with liquid clearing, child cleanup and the persisted Hardmode progression mutation. Cosmetic dust/gore/sound and client presentation remain outside this boundary.
 

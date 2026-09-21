@@ -86,7 +86,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaWallOfFleshNpcBehaviorStrategy _wallOfFlesh = new();
     private readonly VanillaWallOfFleshEyeNpcBehaviorStrategy _wallOfFleshEye = new();
     private readonly VanillaWallOfFleshHungryNpcBehaviorStrategy _wallOfFleshHungry = new();
-    private readonly VanillaFireImpNpcBehaviorStrategy _fireImp = new();
+    private readonly VanillaFireImpNpcBehaviorStrategy _fireImp;
     private readonly VanillaDarkCasterBehavior _darkCaster = new();
     private readonly VanillaSphereNpcBehaviorStrategy _burningSphere = new();
     private readonly VanillaQueenSlimeNpcBehaviorStrategy _queenSlime;
@@ -117,6 +117,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         ArgumentNullException.ThrowIfNull(inner);
         _inner = inner;
         _random = random ?? new SystemVanillaNpcRandom();
+        _fireImp = new VanillaFireImpNpcBehaviorStrategy(_random);
         _flyer = new VanillaServantOfCthulhuNpcBehaviorStrategy(_random);
         _eyeOfCthulhu = new VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy(_random);
         _kingSlime = new VanillaKingSlimeNpcBehaviorStrategy(kingSlimeEnvironment);
@@ -2062,7 +2063,7 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public bool DefersStatePublication(in NpcSnapshot before, in NpcStateUpdate proposed) =>
         proposed.Type == before.Type &&
-        (before.TypeIdentity == VanillaNpcIds.DarkCaster || before.TypeIdentity == VanillaNpcIds.Harpy ||
+        (before.TypeIdentity == VanillaNpcIds.DarkCaster || before.TypeIdentity == VanillaNpcIds.FireImp || before.TypeIdentity == VanillaNpcIds.Harpy ||
          before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon ||
          before.TypeIdentity == VanillaNpcIds.RedDevil);
 
@@ -2071,6 +2072,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     {
         if (before.TypeIdentity == VanillaNpcIds.DarkCaster && committed.TypeIdentity == VanillaNpcIds.DarkCaster)
             return _darkCaster.Complete(in before, in committed, _context, _random, mutations);
+        if (before.TypeIdentity == VanillaNpcIds.FireImp && committed.TypeIdentity == VanillaNpcIds.FireImp)
+            return _fireImp.Complete(in before, in committed, _context, mutations);
         if ((before.TypeIdentity == VanillaNpcIds.Harpy || before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon || before.TypeIdentity == VanillaNpcIds.RedDevil) &&
             committed.TypeIdentity == before.TypeIdentity)
             return _bat.CompleteBatShooterAttackTimer(in before, in committed, _context, _random, mutations);

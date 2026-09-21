@@ -121,54 +121,99 @@ internal sealed class VanillaWallOfFleshWorldEnvironment : IVanillaWallOfFleshEn
     }
 
     public bool TryFindTeleportSpot(
+        float npcCenterX,
+        float npcCenterY,
         int targetTileX,
         int targetTileY,
-        int npcWidth,
-        int npcHeight,
+        ReadOnlySpan<VanillaNpcTargetCandidate> players,
+        IVanillaNpcRandom random,
         out int tileX,
         out int tileY)
     {
-        tileX = 0;
-        tileY = 0;
-        int halfWidthTiles = Math.Max(1, (npcWidth + 15) / 32);
-        int heightTiles = Math.Max(1, (npcHeight + 15) / 16);
-        for (int radius = 8; radius <= 30; radius++)
+        tileX = tileY = 0;
+        if (!float.IsFinite(npcCenterX) || !float.IsFinite(npcCenterY) ||
+            targetTileX < 20 || targetTileX >= WorldWidthTiles - 20 ||
+            targetTileY < 20 || targetTileY >= WorldHeightTiles - 20)
         {
-            for (int dx = -radius; dx <= radius; dx++)
+            return false;
+        }
+
+        int ownX = (int)npcCenterX / TileSize;
+        int ownY = (int)npcCenterY / TileSize;
+        if (Math.Abs((long)ownX * TileSize - targetTileX * (long)TileSize) +
+            Math.Abs((long)ownY * TileSize - targetTileY * (long)TileSize) > 2_000L)
+        {
+            return false;
+        }
+
+        for (int attempt = 0; attempt < 100; attempt++)
+        {
+            int x = random.NextInt32(targetTileX - 20, targetTileX + 21);
+            int startY = random.NextInt32(targetTileY - 20, targetTileY + 21);
+            for (int y = startY; y < targetTileY + 20; y++)
             {
-                if (Math.Abs(dx) < radius && radius != 8)
-                    continue;
-                for (int sign = -1; sign <= 1; sign += 2)
+                if ((y >= ownY - 1 && y <= ownY + 1 && x >= ownX - 1 && x <= ownX + 1) ||
+                    !tiles.Get(x, y).IsActive)
                 {
-                    int x = targetTileX + dx;
-                    int startY = targetTileY + sign * radius;
-                    if (!TryFindGroundSpawn(x, startY, out _, out int bottom))
-                        continue;
-                    int groundY = bottom / TileSize;
-                    int standY = groundY - 1;
-                    if (!AreaClear(x, standY, halfWidthTiles, heightTiles))
-                        continue;
-                    tileX = x;
-                    tileY = groundY;
-                    return true;
+                    continue;
                 }
+
+                if (tiles.Get(x, y - 1).LiquidKind == WorldLiquidKind.Lava ||
+                    !VanillaTileCollisionCatalog.IsSolid(tiles.Get(x, y).TileType) ||
+                    SolidClearance(x, y))
+                    continue;
+                if (IntersectsPlayerTeleportSafety(x, y, players))
+                    break;
+
+                tileX = x;
+                tileY = y;
+                return true;
             }
         }
+
         return false;
     }
 
-    private bool AreaClear(int centerX, int bottomTileY, int halfWidthTiles, int heightTiles)
+    private bool SolidClearance(int x, int floorY)
     {
-        int left = centerX - halfWidthTiles;
-        int right = centerX + halfWidthTiles;
-        int top = bottomTileY - heightTiles + 1;
-        if (left < 1 || right >= WorldWidthTiles - 1 || top < 1 || bottomTileY >= WorldHeightTiles - 1)
-            return false;
-        for (int x = left; x <= right; x++)
-            for (int y = top; y <= bottomTileY; y++)
-                if (IsSolidOrLiquid(x, y))
-                    return false;
-        return true;
+        if (x - 1 < 0 || x + 1 >= WorldWidthTiles || floorY - 4 < 0 || floorY - 1 >= WorldHeightTiles)
+            return true;
+        for (int cx = x - 1; cx <= x + 1; cx++)
+            for (int cy = floorY - 4; cy <= floorY - 1; cy++)
+                if (IsFullSolid(cx, cy))
+                    return true;
+        return false;
+    }
+
+    private static bool IntersectsPlayerTeleportSafety(
+        int tileX,
+        int tileY,
+        ReadOnlySpan<VanillaNpcTargetCandidate> players)
+    {
+        int left = tileX * TileSize - 80;
+        int top = tileY * TileSize - 80;
+        int right = tileX * TileSize + 96;
+        int bottom = tileY * TileSize + 96;
+        foreach (VanillaNpcTargetCandidate player in players)
+        {
+            if (!player.Active || player.Dead)
+                continue;
+
+            int width = (int)player.Width;
+            int height = (int)player.Height;
+            int playerLeft = (int)(player.CenterX - player.Width * .5f);
+            int playerTop = (int)(player.CenterY - player.Height * .5f);
+            int deltaX = (int)(player.VelocityX * 20f);
+            int deltaY = (int)(player.VelocityY * 20f);
+            int sweptLeft = Math.Min(playerLeft, playerLeft + deltaX);
+            int sweptTop = Math.Min(playerTop, playerTop + deltaY);
+            int sweptRight = Math.Max(playerLeft + width, playerLeft + deltaX + width);
+            int sweptBottom = Math.Max(playerTop + height, playerTop + deltaY + height);
+            if (sweptLeft < right && sweptRight > left && sweptTop < bottom && sweptBottom > top)
+                return true;
+        }
+
+        return false;
     }
 
     private bool IsSolidOrLiquid(int x, int y)

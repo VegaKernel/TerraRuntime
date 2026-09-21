@@ -20,7 +20,15 @@ public interface IVanillaWallOfFleshEnvironment
 
     bool TryFindGroundSpawn(int tileX, int startTileY, out int bottomX, out int bottomY);
 
-    bool TryFindTeleportSpot(int targetTileX, int targetTileY, int npcWidth, int npcHeight, out int tileX, out int tileY);
+    bool TryFindTeleportSpot(
+        float npcCenterX,
+        float npcCenterY,
+        int targetTileX,
+        int targetTileY,
+        ReadOnlySpan<VanillaNpcTargetCandidate> players,
+        IVanillaNpcRandom random,
+        out int tileX,
+        out int tileY);
 }
 
 internal sealed class VanillaWallOfFleshNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
@@ -432,7 +440,12 @@ internal sealed class VanillaWallOfFleshHungryNpcBehaviorStrategy : IVanillaNpcB
 
 internal sealed class VanillaFireImpNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
+    private readonly IVanillaNpcRandom random;
     private IVanillaWallOfFleshEnvironment? environment;
+
+    public VanillaFireImpNpcBehaviorStrategy(IVanillaNpcRandom random) =>
+        this.random = random ?? throw new ArgumentNullException(nameof(random));
+
     public void SetEnvironment(IVanillaWallOfFleshEnvironment value) => environment = value ?? throw new ArgumentNullException(nameof(value));
 
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, INpcAiStateStepper inner, out NpcStateUpdate next)
@@ -494,16 +507,7 @@ internal sealed class VanillaFireImpNpcBehaviorStrategy : IVanillaNpcBehaviorStr
                 target.CenterY))
             attackTimer = 30f;
         if (timer >= 650f && hasTarget)
-        {
             timer = 1f;
-            int tx = (int)(target.CenterX / 16f);
-            int ty = (int)(target.CenterY / 16f);
-            if (environment.TryFindTeleportSpot(tx, ty, definition.Width, definition.Height, out int tileX, out int tileY))
-            {
-                attackTimer = 5f;
-                ai = ai with { Ai2 = tileX, Ai3 = tileY };
-            }
-        }
         if (attackTimer > 0f)
             attackTimer -= 1f;
         ai = ai with { Ai0 = timer, Ai1 = attackTimer };
@@ -516,5 +520,60 @@ internal sealed class VanillaFireImpNpcBehaviorStrategy : IVanillaNpcBehaviorStr
         };
         next = new NpcStateUpdate(npc.Type, npc.NetId, positionX, positionY, velocityX, velocityY, targetSlot, ai, simulation);
         return true;
+    }
+
+    public NpcSnapshot Complete(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        VanillaNpcBehaviorContext context,
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (environment is null ||
+            before.TypeIdentity != VanillaNpcIds.FireImp ||
+            committed.TypeIdentity != VanillaNpcIds.FireImp ||
+            !ReachedTeleportAttempt(in before, context) ||
+            !VanillaNpcDefinitionCatalog.TryGet(committed.TypeIdentity, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(committed.Simulation, out VanillaNpcHitboxSize hitbox) ||
+            !context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.Ghost)
+        {
+            return committed;
+        }
+
+        float centerX = committed.PositionX + hitbox.Width * .5f;
+        float centerY = committed.PositionY + hitbox.Height * .5f;
+        if (!environment.TryFindTeleportSpot(
+                centerX,
+                centerY,
+                (int)target.CenterX / 16,
+                (int)target.CenterY / 16,
+                context.Candidates,
+                random,
+                out int tileX,
+                out int tileY))
+        {
+            return committed;
+        }
+
+        return mutations.TryUpdateAi(
+            in committed,
+            committed.Ai with { Ai1 = 5f, Ai2 = tileX, Ai3 = tileY },
+            out NpcSnapshot completed)
+            ? completed
+            : committed;
+    }
+
+    private static bool ReachedTeleportAttempt(in NpcSnapshot before, VanillaNpcBehaviorContext context)
+    {
+        float timer = before.Ai.Ai0 == 0f ? 500f : before.Ai.Ai0;
+        timer += 1f;
+        if (context.GoodWorld && context.CountNpcPeers(VanillaNpcIds.WallOfFlesh) > 0)
+        {
+            timer += 1f;
+            if (timer % 2f == 1f)
+                timer -= 1f;
+        }
+
+        return timer >= 650f;
     }
 }

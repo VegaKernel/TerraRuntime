@@ -94,7 +94,7 @@ Identity игрока и NPC generation-safe там, где использует
 
 ## Source-backed вертикальный срез Wall of Flesh
 
-Граница дохардмодных боссов теперь явно допускает Wall of Flesh (`NPC 113`) и его linked server-owned детей вместо generic fallback. Root выполняет source-shaped движение по коридору и стартовый bootstrap из 13 детей (два глаза и одиннадцать Hungry), а state глаз/Hungry сохраняет явную привязку к root. Runtime post-state intents покрывают leech, Good World Fire Imp, Expert Hungry pressure и laser projectile `83` глаз; damage по глазу перед lethal-finalization коммитится в общий life root.
+Граница дохардмодных боссов теперь явно допускает Wall of Flesh (`NPC 113`) и его linked server-owned детей вместо generic fallback. Root выполняет source-shaped движение по коридору и стартовый bootstrap из 13 детей (два глаза и одиннадцать Hungry), а state глаз/Hungry сохраняет явную привязку к root. Runtime post-state intents покрывают leech, Good World Fire Imp, Expert Hungry pressure и laser projectile `83` глаз; damage по глазу перед lethal-finalization коммитится в общий life root. AI_008 Fire Imp выполняет исходный случайный поиск точки телепорта из 100 попыток только после коммита таймера; проверяются пол, свободный объём, лава и пересечение с движущимися игроками.
 
 Death path владеет обязательными server gameplay мутациями: normal/Expert/Master loot, source-shaped recovery drops, Demonite/Crimtane brick box с очисткой жидкости, cleanup детей и persisted Hardmode progression mutation. Cosmetic dust/gore/sound и client presentation остаются вне этой границы.
 
