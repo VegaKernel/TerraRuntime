@@ -100,6 +100,37 @@ public sealed class VanillaProjectileBehaviorStepperTests
     }
 
     [Fact]
+    public void Dungeon_beam_ai048_records_its_center_at_the_source_third_subupdate()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.DungeonBeam,
+            velocityX: 6f,
+            velocityY: -2f,
+            ai0: 0f,
+            positionX: 120f,
+            positionY: 80f);
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        var context = new VanillaProjectileBehaviorContext(
+            false,
+            0f,
+            0f,
+            LocalAi: new ProjectileLocalAiState(3f, 0f, 0f));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile,
+            in definition,
+            in context,
+            out VanillaProjectileBehaviorResult next));
+
+        Assert.Equal(6f, next.VelocityX);
+        Assert.Equal(-2f, next.VelocityY);
+        Assert.NotNull(next.LocalAiOverride);
+        Assert.Equal(4f, next.LocalAiOverride.Value.Ai0);
+        Assert.Equal(122f, next.LocalAiOverride.Value.Ai1);
+        Assert.Equal(82f, next.LocalAiOverride.Value.Ai2);
+    }
+
+    [Fact]
     public void Red_devil_sickle_ai027_accelerates_through_tick_twenty_nine_only()
     {
         ProjectileSnapshot accelerating = CreateProjectile(

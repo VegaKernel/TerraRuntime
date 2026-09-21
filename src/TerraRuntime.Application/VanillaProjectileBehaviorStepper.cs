@@ -297,6 +297,16 @@ internal static partial class VanillaProjectileBehaviorStepper
                     ai1Override = 1f;
                 break;
 
+            case VanillaProjectileBehaviorFamily.DungeonBeam:
+                // AI_048 stores the physical center after its third update; type 290 otherwise keeps
+                // its launch velocity and only advances localAI on a dedicated server.
+                ProjectileLocalAiState local = context.LocalAi;
+                if (local.Ai0 == 3f)
+                    local = local with { Ai1 = current.PositionX + definition.Width * .5f, Ai2 = current.PositionY + definition.Height * .5f };
+                local = local with { Ai0 = local.Ai0 + 1f };
+                next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0, LocalAiOverride: local);
+                return true;
+
             case VanillaProjectileBehaviorFamily.CultistIceMist:
             {
                 // TerrariaServer 1.4.5.8 aiStyle 86, CultistBossIceMist (#464). ai[1] == 1 is the

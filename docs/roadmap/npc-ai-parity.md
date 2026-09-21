@@ -347,7 +347,7 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] add Red Devil's AI_014 vertical: source defaults and ordinary flight profile, accepted-state `20/40/60/80/100` sickle cadence, exact `250 + Next(250)` reset draw order, lead/100px source offset and hostile type `115` AI_027 lifecycle;
 - [x] add Goblin Sorcerer/Chaos Ball, Tim/Tim Fireball and Rune Wizard/Rune Blast AI_008 vertical: typed defaults, source timer and post-commit random teleport search, `ai[1]` countdown, source child spawn coordinates and lifecycle; Rune Wizard has its 75-tick cadence, alpha fade and post-commit randomized `Rune Blast` velocity; only Goblin Sorcerer bypasses the global firing-distance check;
 - [x] complete AI_016 for Goldfish/Corrupt Goldfish/Piranha/Shark/Angler Fish/Arapaima/Blood Feeder/Crimson Goldfish/Gold Goldfish/Pupfish/Dolphin/Pufferfish/Orca: source defaults, passive/hostile targeting, slope/collision/depth steering, wet pursuit profiles, dry flop RNG, Dolphin breach/surface states and Pufferfish inflation/water-line state;
-- [ ] remaining bat special branches, casters, mimics, remaining critters and event enemy families;
+- [ ] remaining bat special branches, dungeon casters (including AI_008 attacks using projectiles 290/291/293), mimics, remaining critters and event enemy families;
 - [ ] spawn pool, biome, time, weather and progression eligibility.
 
 ## N3 — Bosses

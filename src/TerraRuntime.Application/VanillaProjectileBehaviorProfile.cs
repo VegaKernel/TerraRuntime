@@ -53,7 +53,8 @@ internal enum VanillaProjectileBehaviorFamily : byte
     IceQueenFrostWave = 40,
     IceQueenIceSpike = 41,
     DemonScythe = 42,
-    RedDevilSickle = 43
+    RedDevilSickle = 43,
+    DungeonBeam = 44
 }
 
 /// <summary>
@@ -180,6 +181,14 @@ internal static class VanillaProjectileBehaviorProfileCatalog
     {
         ExpectedAiStyle = new ProjectileAiStyleId(28)
     };
+
+    private static readonly VanillaProjectileBehaviorProfile DungeonBeamProfile = new(
+        VanillaProjectileBehaviorFamily.DungeonBeam,
+        VanillaProjectileAiStyles.DungeonBeam,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
 
     private static readonly VanillaProjectileBehaviorProfile CultistIceMistProfile = new(
         VanillaProjectileBehaviorFamily.CultistIceMist,
@@ -451,6 +460,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.RuneBlast)
         {
             profile = RuneBlastProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.DungeonBeam)
+        {
+            profile = DungeonBeamProfile;
             return true;
         }
 
