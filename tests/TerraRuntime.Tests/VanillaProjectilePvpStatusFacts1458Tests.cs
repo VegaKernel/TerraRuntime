@@ -10,6 +10,7 @@ public sealed class VanillaProjectilePvpStatusFacts1458Tests
     public void Admitted_type_specific_StatusPvP_rules_match_1458()
     {
         AssertRule(VanillaProjectileIds.FireArrow, VanillaBuffIds.OnFire, 180, 3);
+        AssertRule(VanillaProjectileIds.GroundFighter350Bolt, VanillaBuffIds.OnFire, 420, 3);
         AssertRule(VanillaProjectileIds.Flamelash, VanillaBuffIds.OnFire, 240, 2);
         AssertRule(VanillaProjectileIds.PoisonedKnife, VanillaBuffIds.Poisoned, 600, 2);
 

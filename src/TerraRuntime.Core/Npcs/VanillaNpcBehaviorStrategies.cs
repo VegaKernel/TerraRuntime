@@ -288,6 +288,55 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             return false;
         }
 
+        // AI_003 transforms Snow Moon type 348 before the common fighter work. NPC.Transform clears ai[],
+        // applies target-349 SetDefaults, preserves its bottom edge and scales life; both source hitboxes are
+        // 28-by-76, so this specific transform has no position delta before the same-tick type-349 movement.
+        if (definition.Type.Value == 348 && npc.Simulation.Life * 100 <= npc.Simulation.LifeMax * 55 &&
+            VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(349), new NpcNetId(349), out VanillaNpcDefinition transformedDefinition))
+        {
+            int transformedLife = ScaleTransformLife(npc.Simulation.Life, npc.Simulation.LifeMax, 1800);
+            NpcSnapshot transformed = npc with
+            {
+                Type = 349,
+                NetId = 349,
+                Ai = default,
+                Simulation = npc.Simulation with
+                {
+                    Life = transformedLife,
+                    LifeMax = 1800,
+                    HitboxOverride = null,
+                    BaseDamage = null,
+                    BaseDefense = null,
+                    DefenseOverride = null,
+                    DamageOverride = null,
+                    KnockBackResist = null,
+                    NoGravity = false,
+                    NoTileCollide = false,
+                    DirectionX = 1,
+                    DirectionY = 1,
+                    LocalAi = default,
+                    FrameCounter = 0d,
+                    TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft,
+                    Alpha = 0,
+                    Hidden = false,
+                    DontTakeDamage = false,
+                    ReflectsProjectiles = false,
+                    JustHit = false,
+                    CanBeReplacedByOtherNpcs = false,
+                    Wet = false,
+                    LiquidContact = NpcLiquidContactKind.None,
+                    CollideX = false,
+                    CollideY = false,
+                    SpriteDirection = VanillaNpcDefinitionCatalog.DefaultSpriteDirection,
+                    Rotation = null,
+                    Friendly = null,
+                    Chaseable = null,
+                    Immortal = null
+                }
+            };
+            return TryStep(in transformed, in transformedDefinition, context, inner, out next);
+        }
+
         bool daytimeSurface = context.DayTime && npc.PositionY < context.WorldSurfacePixels;
         int startingDirectionY = npc.Simulation.DirectionY;
         if (npc.Target < byte.MaxValue &&
@@ -346,7 +395,13 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             SpriteDirection = simulation.SpriteDirection,
             ScaleAdjustsMaximumHorizontalSpeed = parameters.ScaleAdjustsMaximumHorizontalSpeed,
             ReversingVelocityDamping = parameters.ReversingVelocityDamping,
-            MotionProfile = parameters.MotionProfile
+            MotionProfile = parameters.MotionProfile,
+            Life = simulation.Life,
+            LifeMax = simulation.LifeMax,
+            HalfHealthSpeedMultiplier = parameters.HalfHealthSpeedMultiplier,
+            OverspeedGroundDamping = parameters.OverspeedGroundDamping,
+            MissingHealthSpeedBonus = parameters.MissingHealthSpeedBonus,
+            MissingHealthAccelerationBonus = parameters.MissingHealthAccelerationBonus
         };
 
         if (!VanillaZombieMotion.TryStep(in input, out VanillaZombieMotionResult result))

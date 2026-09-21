@@ -21,11 +21,12 @@ public static class VanillaMoonEventGroundFighterCatalog1458
         Fighter(310, 60, 18, 500, .4f, 1f, 2f), Fighter(311, 52, 14, 400, .2f, 1.05f, 1.25f),
         Fighter(312, 78, 16, 600, .25f, .9f, 2.25f), Fighter(313, 66, 14, 650, .35f, .95f, 1.5f),
         Fighter(314, 52, 26, 450, .5f, 1.1f, 1f),
-        Fighter(326, 100, 32, 1200, .2f, 1f), Fighter(342, 90, 26, 750, .2f, 1f),
-        Fighter(343, 140, 50, 3500, 0f, 1f, width: 38, height: 78),
-        Fighter(348, 80, 26, 1800, .4f, 1f, width: 28, height: 76),
-        Fighter(349, 100, 42, 1800, .1f, 1f, width: 28, height: 76), Fighter(350, 70, 30, 900, .45f, 1f),
-        Fighter(351, 100, 40, 2500, .1f, 1f, width: 18, height: 90)
+        Fighter(326, 100, 32, 1200, .2f, 1f, 2f),
+        Fighter(342, 90, 26, 750, .2f, 1f, 1.5f, scaleAdjustsMaximumHorizontalSpeed: true),
+        Fighter(343, 140, 50, 3500, 0f, 1f, 2f, width: 38, height: 78),
+        Fighter(348, 80, 26, 1800, .4f, 1f, 2f, width: 28, height: 76),
+        Fighter(349, 100, 42, 1800, .1f, 1f, 6f, reversingVelocityDamping: .99f, width: 28, height: 76), Fighter(350, 70, 30, 900, .45f, 1f),
+        Fighter(351, 100, 40, 2500, .1f, 1f, 2f, width: 18, height: 90)
     ];
 
     public static int DefinitionCount => Entries.Length;
@@ -80,6 +81,8 @@ public static class VanillaMoonEventGroundFighterCatalog1458
         float scale,
         float maximumHorizontalSpeed = 1f,
         VanillaGroundFighterMotionProfile motionProfile = VanillaGroundFighterMotionProfile.Standard,
+        float reversingVelocityDamping = 1f,
+        bool scaleAdjustsMaximumHorizontalSpeed = false,
         int width = 18,
         int height = 40) =>
         new(
@@ -112,7 +115,8 @@ public static class VanillaMoonEventGroundFighterCatalog1458
                 ThreeTileJumpVelocity: -8f,
                 PursuitGapJumpVelocity: -8f,
                 PursuitGapSpeedMultiplier: 1.5f,
-                ScaleAdjustsMaximumHorizontalSpeed: false,
+                ScaleAdjustsMaximumHorizontalSpeed: scaleAdjustsMaximumHorizontalSpeed,
                 CloseRangeLunge: false,
-                MotionProfile: motionProfile));
+                MotionProfile: motionProfile,
+                ReversingVelocityDamping: reversingVelocityDamping));
 }

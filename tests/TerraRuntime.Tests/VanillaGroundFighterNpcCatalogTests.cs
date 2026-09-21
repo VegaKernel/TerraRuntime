@@ -23,6 +23,7 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         [VanillaNpcIds.SwampZombie, 18, 40, 13, 8, 45, 0.45f, 1f, 1.2f, true, false],
         [VanillaNpcIds.TwiggyZombie, 18, 40, 16, 4, 45, 0.55f, 1f, 0.8f, true, false],
         [VanillaNpcIds.FemaleZombie, 18, 40, 12, 4, 38, 0.6f, 1f, 0.87f, true, false],
+        [new NpcTypeId(257), 44, 34, 38, 24, 230, .3f, 1f, 2f, false, false],
         [VanillaNpcIds.VampireHumanoid, 18, 40, 80, 24, 750, 0.4f, 1f, 6f, false, false],
     ];
 
@@ -72,8 +73,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(31, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(29, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(39, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(37, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
@@ -92,4 +93,116 @@ public sealed class VanillaGroundFighterNpcCatalogTests
             Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
         }
     }
+
+    [Theory]
+    [InlineData(78, 50, 16, 130, .6f, 1f, .05f, 1f)]
+    [InlineData(79, 60, 18, 180, .5f, 1f, .05f, 1.5f)]
+    [InlineData(80, 55, 18, 200, .55f, 1f, .05f, 1f)]
+    [InlineData(630, 60, 18, 180, .5f, 1f, .05f, 1.5f)]
+    public void Half_health_ai003_fighters_keep_source_defaults_and_enrage_profile(
+        int type,
+        int damage,
+        int defense,
+        int lifeMax,
+        float knockBackResist,
+        float speed,
+        float acceleration,
+        float halfHealthSpeedMultiplier)
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetDefinition(new NpcTypeId(type), out var definition));
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(new NpcTypeId(type), out var behavior));
+
+        Assert.Equal(damage, definition.Damage);
+        Assert.Equal(defense, definition.Defense);
+        Assert.Equal(lifeMax, definition.LifeMax);
+        Assert.Equal(knockBackResist, definition.KnockBackResist, 5);
+        Assert.Equal(speed, behavior.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(acceleration, behavior.HorizontalAcceleration, 5);
+        Assert.Equal(VanillaGroundFighterMotionProfile.HalfHealthBerserker, behavior.MotionProfile);
+        Assert.Equal(halfHealthSpeedMultiplier, behavior.HalfHealthSpeedMultiplier, 5);
+        Assert.Equal(.7f, behavior.OverspeedGroundDamping, 5);
+    }
+
+    [Fact]
+    public void Fast_ai003_fighter_keeps_the_source_speed_acceleration_and_damping()
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetDefinition(new NpcTypeId(287), out var definition));
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(new NpcTypeId(287), out var behavior));
+
+        Assert.Equal(90, definition.Damage);
+        Assert.Equal(42, definition.Defense);
+        Assert.Equal(1000, definition.LifeMax);
+        Assert.Equal(.3f, definition.KnockBackResist, 5);
+        Assert.Equal(5f, behavior.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.2f, behavior.HorizontalAcceleration, 5);
+        Assert.Equal(VanillaGroundFighterMotionProfile.Standard, behavior.MotionProfile);
+        Assert.Equal(.7f, behavior.OverspeedGroundDamping, 5);
+    }
+
+    [Fact]
+    public void Half_health_ai003_profile_uses_the_source_strict_health_threshold()
+    {
+        var fullHealth = CreateHalfHealthInput(life: 50);
+        var lowHealth = CreateHalfHealthInput(life: 49);
+
+        Assert.True(VanillaZombieMotion.TryStep(in fullHealth, out var fullHealthResult));
+        Assert.True(VanillaZombieMotion.TryStep(in lowHealth, out var lowHealthResult));
+
+        Assert.Equal(1.05f, fullHealthResult.VelocityX, 5);
+        Assert.Equal(1.1f, lowHealthResult.VelocityX, 5);
+    }
+
+    [Theory]
+    [InlineData(243, 30, 114, 60, 32, 4000, .05f, .07f, 1.5f, .15f)]
+    [InlineData(251, 18, 40, 50, 30, 1000, .3f, .08f, 2f, .2f)]
+    public void Missing_health_ai003_fighters_keep_source_defaults_and_linear_motion_profile(
+        int type,
+        int width,
+        int height,
+        int damage,
+        int defense,
+        int lifeMax,
+        float knockBackResist,
+        float acceleration,
+        float speedBonus,
+        float accelerationBonus)
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetDefinition(new NpcTypeId(type), out var definition));
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(new NpcTypeId(type), out var behavior));
+
+        Assert.Equal(width, definition.BaseWidth);
+        Assert.Equal(height, definition.BaseHeight);
+        Assert.Equal(damage, definition.Damage);
+        Assert.Equal(defense, definition.Defense);
+        Assert.Equal(lifeMax, definition.LifeMax);
+        Assert.Equal(knockBackResist, definition.KnockBackResist, 5);
+        Assert.Equal(acceleration, behavior.HorizontalAcceleration, 5);
+        Assert.Equal(VanillaGroundFighterMotionProfile.MissingHealthBerserker, behavior.MotionProfile);
+        Assert.Equal(speedBonus, behavior.MissingHealthSpeedBonus, 5);
+        Assert.Equal(accelerationBonus, behavior.MissingHealthAccelerationBonus, 5);
+        Assert.Equal(.7f, behavior.OverspeedGroundDamping, 5);
+    }
+
+    private static VanillaZombieMotionInput CreateHalfHealthInput(int life) => new(
+        PositionX: 100f,
+        OldPositionX: 99f,
+        VelocityX: 1f,
+        VelocityY: 0f,
+        DirectionX: 1,
+        DirectionY: 1,
+        Target: VanillaNpcDefinitionCatalog.DefaultTarget,
+        Ai: default,
+        Scale: 1f,
+        TargetOverlaps: false,
+        ClosestTarget: new VanillaZombieTargetRefresh(true, 3, 1, 1))
+    {
+        BaseMaximumHorizontalSpeed = 1f,
+        HorizontalAcceleration = .05f,
+        MotionProfile = VanillaGroundFighterMotionProfile.HalfHealthBerserker,
+        HalfHealthSpeedMultiplier = 1.5f,
+        OverspeedGroundDamping = .7f,
+        Life = life,
+        LifeMax = 100,
+        TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft
+    };
 }

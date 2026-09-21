@@ -607,6 +607,38 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 4,
         CollisionHeight: 4);
 
+    // Projectile.SetDefaults 83 and 257: AI_003 types 251 and 243 respectively.
+    private static readonly VanillaProjectileDefinition GroundFighter251BoltDefinition = new(
+        Width: 4,
+        Height: 4,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 4,
+        CollisionHeight: 4);
+
+    private static readonly VanillaProjectileDefinition GroundFighter243BoltDefinition = new(
+        Width: 4,
+        Height: 4,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 4,
+        CollisionHeight: 4);
+
+    // Projectile.SetDefaults 82: AI_003 type 350.
+    private static readonly VanillaProjectileDefinition GroundFighter350BoltDefinition = new(
+        Width: 10,
+        Height: 10,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
+
     private static readonly VanillaProjectileDefinition IceQueenFrostFlareDefinition = new(14, 14, VanillaProjectileAiStyles.Arrow, false, false, true, 14, 14);
     private static readonly VanillaProjectileDefinition IceQueenFrostWaveDefinition = new(24, 24, new ProjectileAiStyleId(58), false, false, true, 24, 24);
     private static readonly VanillaProjectileDefinition IceQueenIceSpikeDefinition = new(30, 30, VanillaProjectileAiStyles.BouncyBall, true, false, true, 30, 30);
@@ -981,6 +1013,24 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.GreenLaser)
         {
             definition = GreenLaserDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.GroundFighter251Bolt)
+        {
+            definition = GroundFighter251BoltDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.GroundFighter243Bolt)
+        {
+            definition = GroundFighter243BoltDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.GroundFighter350Bolt)
+        {
+            definition = GroundFighter350BoltDefinition;
             return true;
         }
 

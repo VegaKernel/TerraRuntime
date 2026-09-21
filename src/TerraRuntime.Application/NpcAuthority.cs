@@ -1896,7 +1896,11 @@ internal sealed partial class NpcAuthority
                     Dead: player.IsDead,
                     Ghost: false,
                     NoAggro: false)
-                { HitboxWidth = memberWidth, HitboxHeight = memberHeight }, includeBiomeZoneFacts);
+                {
+                    HitboxWidth = memberWidth,
+                    HitboxHeight = memberHeight,
+                    ItemAnimation = (player.MiscFlags2 & (1 << 6)) != 0 ? 1 : 0
+                }, includeBiomeZoneFacts);
                 continue;
             }
 
@@ -1923,7 +1927,11 @@ internal sealed partial class NpcAuthority
                 Dead: serverPlayer.IsDead,
                 Ghost: false,
                 NoAggro: false)
-            { HitboxWidth = mountWidth, HitboxHeight = mountHeight }, includeBiomeZoneFacts);
+            {
+                HitboxWidth = mountWidth,
+                HitboxHeight = mountHeight,
+                ItemAnimation = (serverPlayer.MiscFlags2 & (1 << 6)) != 0 ? 1 : 0
+            }, includeBiomeZoneFacts);
         }
 
         return written;

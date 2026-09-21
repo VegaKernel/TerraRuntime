@@ -35,6 +35,23 @@ public static class VanillaGroundFighterNpcCatalog
         Fighter(VanillaNpcIds.FemaleZombie, 18, 40, 12, 4, 38, 0.6f, 1f, 0.87f, scaleAdjustsSpeed: true),
         Fighter(VanillaNpcIds.VampireHumanoid, 18, 40, 80, 24, 750, 0.4f, 1f, 6f,
             reversingVelocityDamping: 0.95f)
+        ,Fighter(new NpcTypeId(78), 18, 40, 50, 16, 130, .6f, 1f, 1f,
+            acceleration: .05f, motionProfile: VanillaGroundFighterMotionProfile.HalfHealthBerserker, overspeedGroundDamping: .7f)
+        ,Fighter(new NpcTypeId(79), 18, 40, 60, 18, 180, .5f, 1f, 1f,
+            acceleration: .05f, motionProfile: VanillaGroundFighterMotionProfile.HalfHealthBerserker, halfHealthSpeedMultiplier: 1.5f, overspeedGroundDamping: .7f)
+        ,Fighter(new NpcTypeId(80), 18, 40, 55, 18, 200, .55f, 1f, 1f,
+            acceleration: .05f, motionProfile: VanillaGroundFighterMotionProfile.HalfHealthBerserker, overspeedGroundDamping: .7f)
+        ,Fighter(new NpcTypeId(287), 18, 40, 90, 42, 1000, .3f, 1f, 5f,
+            acceleration: .2f, overspeedGroundDamping: .7f)
+        ,Fighter(new NpcTypeId(630), 18, 40, 60, 18, 180, .5f, 1f, 1f,
+            acceleration: .05f, motionProfile: VanillaGroundFighterMotionProfile.HalfHealthBerserker, halfHealthSpeedMultiplier: 1.5f, overspeedGroundDamping: .7f)
+        ,Fighter(new NpcTypeId(243), 30, 114, 60, 32, 4000, .05f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.MissingHealthBerserker, overspeedGroundDamping: .7f,
+            missingHealthSpeedBonus: 1.5f, missingHealthAccelerationBonus: .15f)
+        ,Fighter(new NpcTypeId(251), 18, 40, 50, 30, 1000, .3f, 1f, 1f,
+            acceleration: .08f, motionProfile: VanillaGroundFighterMotionProfile.MissingHealthBerserker, overspeedGroundDamping: .7f,
+            missingHealthSpeedBonus: 2f, missingHealthAccelerationBonus: .2f)
+        ,Fighter(new NpcTypeId(257), 44, 34, 38, 24, 230, .3f, 1f, 2f)
         ,Fighter(new NpcTypeId(269), 18, 40, 70, 34, 550, .3f, 1f, 2f)
         ,Fighter(new NpcTypeId(270), 18, 40, 55, 50, 400, .2f, 1f, 1f)
         ,Fighter(new NpcTypeId(271), 18, 40, 70, 40, 450, .25f, 1f, 1.5f)
@@ -68,6 +85,7 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.TwiggyZombie,
         VanillaNpcIds.FemaleZombie,
         VanillaNpcIds.VampireHumanoid,
+        new(78), new(79), new(80), new(243), new(251), new(257), new(287), new(630),
         new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280)
     ];
 
@@ -117,7 +135,13 @@ public static class VanillaGroundFighterNpcCatalog
         float maximumHorizontalSpeed,
         bool scaleAdjustsSpeed = false,
         bool closeRangeLunge = false,
-        float reversingVelocityDamping = 1f) =>
+        float reversingVelocityDamping = 1f,
+        float acceleration = .07f,
+        VanillaGroundFighterMotionProfile motionProfile = VanillaGroundFighterMotionProfile.Standard,
+        float halfHealthSpeedMultiplier = 1f,
+        float overspeedGroundDamping = .8f,
+        float missingHealthSpeedBonus = 0f,
+        float missingHealthAccelerationBonus = 0f) =>
         new(
             new VanillaNpcDefinition(
                 type,
@@ -137,7 +161,7 @@ public static class VanillaGroundFighterNpcCatalog
                 VanillaNpcSyncAnchor.TopLeft),
             new VanillaGroundFighterBehaviorParameters(
                 BaseMaximumHorizontalSpeed: maximumHorizontalSpeed,
-                HorizontalAcceleration: 0.07f,
+                HorizontalAcceleration: acceleration,
                 StuckThreshold: 60f,
                 MaximumStuckCounter: 600f,
                 EncouragedDespawnTime: 10,
@@ -150,5 +174,10 @@ public static class VanillaGroundFighterNpcCatalog
                 PursuitGapSpeedMultiplier: 1.5f,
                 ScaleAdjustsMaximumHorizontalSpeed: scaleAdjustsSpeed,
                 CloseRangeLunge: closeRangeLunge,
-                ReversingVelocityDamping: reversingVelocityDamping));
+                ReversingVelocityDamping: reversingVelocityDamping,
+                MotionProfile: motionProfile,
+                HalfHealthSpeedMultiplier: halfHealthSpeedMultiplier,
+                OverspeedGroundDamping: overspeedGroundDamping,
+                MissingHealthSpeedBonus: missingHealthSpeedBonus,
+                MissingHealthAccelerationBonus: missingHealthAccelerationBonus));
 }

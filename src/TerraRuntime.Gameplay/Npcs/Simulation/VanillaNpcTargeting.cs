@@ -48,6 +48,18 @@ public readonly record struct VanillaNpcTargetCandidate(
 
     /// <summary>Live player liquid contact used by ordinary flying-family state clocks.</summary>
     public bool Wet { get; init; }
+
+    /// <summary>Authoritative Player.frozen state used by hostile source projectile gates.</summary>
+    public bool Frozen { get; init; }
+
+    /// <summary>Terraria Player.stealth consumed by the AI_003 ranged-fighter preparation gate.</summary>
+    public float Stealth { get; init; }
+
+    /// <summary>
+    /// Nonzero Terraria Player.itemAnimation projection. The runtime supplies one while its server-owned successful
+    /// item-use flag is set, which is the source fact this NPC branch observes.
+    /// </summary>
+    public int ItemAnimation { get; init; }
 }
 
 public readonly record struct VanillaNpcTargetSelection(

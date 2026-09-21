@@ -305,7 +305,7 @@ Conversely, packet emission, NPC/projectile/item spawn, player/NPC damage or buf
 - [x] route the admitted ordinary hostile AI_003 roster through concrete NPC types instead of Zombie fallback: Goblin Peon/Thief/Warrior/Scout, Angry Bones, Doctor Bones, The Groom, Armored Skeleton, Bald Zombie, Zombie Eskimo, Undead Viking and Pincushion/Slimed/Swamp/Twiggy/Female Zombie now carry pinned SetDefaults, speed/scale profiles and type-aware door pressure;
 - [x] import the source-grounded close-range lunge for Angry Bones and Armored Skeleton after obstacle/stuck-hop resolution (`|dx| < 100`, `|dy| < 50`, X doubled/clamped to `±3`, Y `-4`);
 - [x] implement type `26` authoritative closed-door/tall-gate destruction, object drops and packet-17 replication;
-- [ ] partition and import remaining AI_003 movement parameter families and subtype-only projectile/transformation/event branches;
+- [ ] partition and import remaining AI_003 movement parameter families and subtype-only transformation/event branches; type `257` now carries its source 44×34 defaults and `2`-pixel movement branch;
 - [ ] type-specific authoritative attacks, transformations, projectiles and spawn side effects; presentation-only spawn effects are intentionally out of scope;
 - [ ] differential scenarios for each admitted AI_003 subtype.
 
@@ -348,7 +348,10 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] add Goblin Sorcerer/Chaos Ball, Tim/Tim Fireball and Rune Wizard/Rune Blast AI_008 vertical: typed defaults, source timer and post-commit random teleport search, `ai[1]` countdown, source child spawn coordinates and lifecycle; Rune Wizard has its 75-tick cadence, alpha fade and post-commit randomized `Rune Blast` velocity; only Goblin Sorcerer bypasses the global firing-distance check;
 - [x] add Hardmode Dungeon Skeleton caster AI_008 types `281..286`: typed defaults and `SetDefaults` timer initialization (`400`, Rune Wizard `450`, beam casters `390/400`), source attack cadence and Dungeon/Skeletron teleport placement boundaries, committed skull/beam/flame variants `293/290/291`, source aim jitter/lead and Flame target coordinates;
 - [x] complete AI_016 for Goldfish/Corrupt Goldfish/Piranha/Shark/Angler Fish/Arapaima/Blood Feeder/Crimson Goldfish/Gold Goldfish/Pupfish/Dolphin/Pufferfish/Orca: source defaults, passive/hostile targeting, slope/collision/depth steering, wet pursuit profiles, dry flop RNG, Dolphin breach/surface states and Pufferfish inflation/water-line state;
-- [ ] remaining bat special branches, mimics, remaining critters and event enemy families; the AI_003 Moon-event fighter pairs `305..314` now use their source `2/1.25/2.25/1.5/1` speed bands, and `305..309` retain their grounded relaunch and airborne steering branch.
+- [ ] remaining bat special branches, mimics, remaining critters and event enemy families; the AI_003 Moon-event fighter pairs `305..314` now use their source `2/1.25/2.25/1.5/1` speed bands, and `305..309` retain their grounded relaunch and airborne steering branch. AI_003 types `78/79/80/630` now use their strict half-life `1→2` / `1.5→3` speed profile, and `287` its `5` speed profile.
+- [x] AI_003 types `243` and `251`: accepted-state lost-health cadence, hit/confusion/frozen gates, LOS/global-distance checks and source projectile `257`/`83` allocation.
+- [x] Snow Moon AI_003 type `350`: source `110/55` wind-up, hit/confusion cancellation, item-use/stealth, LOS and `<700` preparation gates, accepted-state jitter, motion damping and projectile `82` allocation (damage `45`, 1/3 On Fire for 420 ticks).
+- [x] Snow Moon AI_003 type `348`: inclusive `life <= lifeMax * .55` `NPC.Transform(349)` transition before common fighter motion, including source life scaling and reset state; `326/343/348/351` retain their `2`-pixel branch, `342` its scale-adjusted `1.5` branch, and transformed `349` its `6`-pixel reversal profile.
 - [ ] spawn pool, biome, time, weather and progression eligibility.
 
 ## N3 — Bosses

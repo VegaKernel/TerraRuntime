@@ -51,6 +51,33 @@ public sealed class VanillaMoonEventGroundFighterCatalog1458Tests
     }
 
     [Fact]
+    public void Snow_moon_type_349_uses_its_six_pixel_reversal_profile_after_transform()
+    {
+        Assert.True(VanillaGroundFighterBehaviorCatalog.TryGet(new NpcTypeId(349), out var behavior));
+        Assert.Equal(6f, behavior.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
+        Assert.Equal(.99f, behavior.ReversingVelocityDamping, 5);
+    }
+
+    [Theory]
+    [InlineData(326, 2f, false)]
+    [InlineData(342, 1.5f, true)]
+    [InlineData(343, 2f, false)]
+    [InlineData(348, 2f, false)]
+    [InlineData(349, 6f, false)]
+    [InlineData(350, 1f, false)]
+    [InlineData(351, 2f, false)]
+    public void Snow_moon_ai3_fighters_keep_their_source_speed_and_scale_profiles(
+        short type,
+        float maximumHorizontalSpeed,
+        bool scaleAdjustsMaximumHorizontalSpeed)
+    {
+        Assert.True(VanillaGroundFighterBehaviorCatalog.TryGet(new NpcTypeId(type), out var behavior));
+        Assert.Equal(maximumHorizontalSpeed, behavior.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(scaleAdjustsMaximumHorizontalSpeed, behavior.ScaleAdjustsMaximumHorizontalSpeed);
+    }
+
+    [Fact]
     public void Moon_event_leaper_damps_then_relaunches_on_ground_and_steers_in_air()
     {
         var grounded = CreateInput(velocityX: .35f, velocityY: 0f);
