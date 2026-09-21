@@ -51,6 +51,15 @@ public sealed class VanillaMoonEventGroundFighterCatalog1458Tests
     }
 
     [Fact]
+    public void Snow_moon_type_349_uses_its_six_pixel_reversal_profile_after_transform()
+    {
+        Assert.True(VanillaGroundFighterBehaviorCatalog.TryGet(new NpcTypeId(349), out var behavior));
+        Assert.Equal(6f, behavior.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
+        Assert.Equal(.99f, behavior.ReversingVelocityDamping, 5);
+    }
+
+    [Fact]
     public void Moon_event_leaper_damps_then_relaunches_on_ground_and_steers_in_air()
     {
         var grounded = CreateInput(velocityX: .35f, velocityY: 0f);

@@ -24,7 +24,7 @@ public static class VanillaMoonEventGroundFighterCatalog1458
         Fighter(326, 100, 32, 1200, .2f, 1f), Fighter(342, 90, 26, 750, .2f, 1f),
         Fighter(343, 140, 50, 3500, 0f, 1f, width: 38, height: 78),
         Fighter(348, 80, 26, 1800, .4f, 1f, width: 28, height: 76),
-        Fighter(349, 100, 42, 1800, .1f, 1f, width: 28, height: 76), Fighter(350, 70, 30, 900, .45f, 1f),
+        Fighter(349, 100, 42, 1800, .1f, 1f, 6f, reversingVelocityDamping: .99f, width: 28, height: 76), Fighter(350, 70, 30, 900, .45f, 1f),
         Fighter(351, 100, 40, 2500, .1f, 1f, width: 18, height: 90)
     ];
 
@@ -80,6 +80,7 @@ public static class VanillaMoonEventGroundFighterCatalog1458
         float scale,
         float maximumHorizontalSpeed = 1f,
         VanillaGroundFighterMotionProfile motionProfile = VanillaGroundFighterMotionProfile.Standard,
+        float reversingVelocityDamping = 1f,
         int width = 18,
         int height = 40) =>
         new(
@@ -114,5 +115,6 @@ public static class VanillaMoonEventGroundFighterCatalog1458
                 PursuitGapSpeedMultiplier: 1.5f,
                 ScaleAdjustsMaximumHorizontalSpeed: false,
                 CloseRangeLunge: false,
-                MotionProfile: motionProfile));
+                MotionProfile: motionProfile,
+                ReversingVelocityDamping: reversingVelocityDamping));
 }
