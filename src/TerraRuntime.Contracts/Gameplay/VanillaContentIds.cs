@@ -40,6 +40,12 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId Tim = new(45);
     public static readonly NpcTypeId TimFireball = new(665);
     public static readonly NpcTypeId RuneWizard = new(172);
+    public static readonly NpcTypeId DungeonTacticalSkeleton = new(281);
+    public static readonly NpcTypeId DungeonTacticalSkeleton2 = new(282);
+    public static readonly NpcTypeId DungeonTacticalSkeleton3 = new(283);
+    public static readonly NpcTypeId DungeonTacticalSkeleton4 = new(284);
+    public static readonly NpcTypeId DungeonTacticalSkeleton5 = new(285);
+    public static readonly NpcTypeId DungeonTacticalSkeleton6 = new(286);
     public static readonly NpcTypeId SkeletronHead = new(35);
     public static readonly NpcTypeId SkeletronHand = new(36);
     public static readonly NpcTypeId Demolitionist = new(38);
@@ -533,6 +539,9 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId RainbowRodBullet = new(79);
     public static readonly ProjectileTypeId ProbePinkLaser = new(84);
     public static readonly ProjectileTypeId RuneBlast = new(129);
+    public static readonly ProjectileTypeId DungeonBeam = new(290);
+    public static readonly ProjectileTypeId DungeonFlame = new(291);
+    public static readonly ProjectileTypeId DungeonSkull = new(293);
     public static readonly ProjectileTypeId GrenadeI = new(133);
     public static readonly ProjectileTypeId RocketI = new(134);
     public static readonly ProjectileTypeId ProximityMineI = new(135);

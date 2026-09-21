@@ -4,7 +4,7 @@ using TerraRuntime.Gameplay.Npcs;
 
 namespace TerraRuntime.Core.Npcs;
 
-/// <summary>Dedicated-server NPC.AI style 8 for the source-verified Goblin Sorcerer, Tim and Rune Wizard variants.</summary>
+/// <summary>Dedicated-server NPC.AI style 8 for verified caster variants, including Hardmode Dungeon Skeletons.</summary>
 internal sealed class VanillaGoblinSorcererBehavior(IVanillaNpcRandom random) : IVanillaNpcBehaviorStrategy
 {
     private readonly IVanillaNpcRandom random = random ?? throw new ArgumentNullException(nameof(random));
@@ -49,14 +49,12 @@ internal sealed class VanillaGoblinSorcererBehavior(IVanillaNpcRandom random) : 
         float attack = ai.Ai1;
         bool withinFiringRange = VanillaNpcGlobalFiringDistance.Contains(
             x + definition.Width * .5f, y + definition.Height * .5f, target.CenterX, target.CenterY);
-        bool armsAttack = npc.TypeIdentity == VanillaNpcIds.RuneWizard
-            ? timer is 75f or 150f or 225f or 300f or 375f or 450f && withinFiringRange
-            : timer is 100f or 200f or 300f && (npc.TypeIdentity == VanillaNpcIds.GoblinSorcerer || withinFiringRange);
+        bool armsAttack = ArmsAttack(npc.TypeIdentity, timer, withinFiringRange);
         if (armsAttack)
         {
             attack = 30f;
         }
-        if (timer >= 650f) timer = 1f;
+        if (ShouldTeleport(npc.TypeIdentity, ai.Ai0)) timer = 1f;
         if (attack > 0f) attack--;
         NpcSimulationState simulation = npc.Simulation with
         {
@@ -79,35 +77,65 @@ internal sealed class VanillaGoblinSorcererBehavior(IVanillaNpcRandom random) : 
         INpcAiCommittedNpcMutationSink mutations)
     {
         if (environment is null || !IsSupported(before.TypeIdentity) ||
-            committed.TypeIdentity != before.TypeIdentity || AdvanceTimer(before.Ai.Ai0) < 650f ||
+            committed.TypeIdentity != before.TypeIdentity || !ShouldTeleport(before.TypeIdentity, before.Ai.Ai0) ||
             !context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate target) ||
             !target.Active || target.Dead || target.Ghost ||
             !VanillaNpcDefinitionCatalog.TryGet(committed.TypeIdentity, out VanillaNpcDefinition definition))
-            return CompleteRuneBlast(in before, in committed, context, mutations);
+            return CompleteProjectile(in before, in committed, context, mutations);
 
         NpcSnapshot current = committed;
-        if (AdvanceTimer(before.Ai.Ai0) >= 650f)
+        float centerX = current.PositionX + definition.Width * .5f;
+        float centerY = current.PositionY + definition.Height * .5f;
+        bool found = before.TypeIdentity.Value is >= 281 and <= 286 && environment is IVanillaDungeonCasterEnvironment dungeon
+            ? dungeon.TryFindDungeonCasterTeleportSpot(centerX, centerY, (int)target.CenterX / 16, (int)target.CenterY / 16,
+                context.CountNpcPeers(VanillaNpcIds.SkeletronHead) > 0, context.Candidates, random, out int x, out int y)
+            : environment.TryFindTeleportSpot(centerX, centerY, (int)target.CenterX / 16, (int)target.CenterY / 16,
+                context.Candidates, random, out x, out y);
+        if (!found ||
+            !mutations.TryUpdateAi(in current, current.Ai with { Ai1 = 19f, Ai2 = x, Ai3 = y }, out current))
         {
-            if (!environment.TryFindTeleportSpot(current.PositionX + definition.Width * .5f,
-                    current.PositionY + definition.Height * .5f, (int)target.CenterX / 16, (int)target.CenterY / 16,
-                    context.Candidates, random, out int x, out int y) ||
-                !mutations.TryUpdateAi(in current, current.Ai with { Ai1 = 19f, Ai2 = x, Ai3 = y }, out current))
-            {
-                return committed;
-            }
+            return committed;
         }
-        return CompleteRuneBlast(in before, in current, context, mutations);
+        return CompleteProjectile(in before, in current, context, mutations);
     }
 
     private static float AdvanceTimer(float timer) => timer == 0f ? 501f : timer + 1f;
 
-    private NpcSnapshot CompleteRuneBlast(in NpcSnapshot before, in NpcSnapshot committed,
+    private static bool ArmsAttack(NpcTypeId type, float timer, bool withinFiringRange)
+    {
+        if (type == VanillaNpcIds.RuneWizard)
+            return withinFiringRange && timer is 75f or 150f or 225f or 300f or 375f or 450f;
+        if (type == VanillaNpcIds.GoblinSorcerer)
+            return timer is 100f or 200f or 300f;
+        if (type.Value is 281 or 282)
+            return withinFiringRange && timer is 100f or 120f or 140f or 200f or 220f or 240f or 300f or 320f or 340f;
+        if (type.Value is 283 or 284)
+            return withinFiringRange && timer is 100f or 150f or 200f or 250f or 300f;
+        return withinFiringRange && timer is 100f or 200f or 300f;
+    }
+
+    private static bool ShouldTeleport(NpcTypeId type, float previousTimer)
+    {
+        float timer = AdvanceTimer(previousTimer);
+        return type.Value switch
+        {
+            281 or 282 => timer >= 540f,
+            283 or 284 => timer >= 450f,
+            285 or 286 => timer > 400f,
+            _ => timer >= 650f
+        };
+    }
+
+    private NpcSnapshot CompleteProjectile(in NpcSnapshot before, in NpcSnapshot committed,
         VanillaNpcBehaviorContext context, INpcAiCommittedNpcMutationSink mutations)
     {
-        if (before.TypeIdentity != VanillaNpcIds.RuneWizard || before.Ai.Ai1 != 26f || committed.Ai.Ai1 != 25f ||
+        if (before.Ai.Ai1 != 26f || committed.Ai.Ai1 != 25f ||
             !context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate target) ||
             !target.Active || target.Dead || target.Ghost)
             return committed;
+
+        if (before.TypeIdentity != VanillaNpcIds.RuneWizard)
+            return CompleteDungeonCasterProjectile(in before, in committed, target, context, mutations);
 
         float centerX = committed.PositionX + 9f;
         float centerY = committed.PositionY + 20f;
@@ -120,6 +148,54 @@ internal sealed class VanillaGoblinSorcererBehavior(IVanillaNpcRandom random) : 
         return committed;
     }
 
+    private NpcSnapshot CompleteDungeonCasterProjectile(in NpcSnapshot before, in NpcSnapshot committed,
+        in VanillaNpcTargetCandidate target, VanillaNpcBehaviorContext context, INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity.Value is < 281 or > 286)
+            return committed;
+
+        float centerX = committed.PositionX + 9f;
+        float centerY = committed.PositionY;
+        float velocityX = target.CenterX - centerX;
+        float velocityY = target.CenterY - centerY;
+        ProjectileTypeId projectileType;
+        float speed;
+        int damage;
+        if (before.TypeIdentity.Value is 283 or 284)
+        {
+            velocityX += random.NextInt32(-30, 31) - target.VelocityX * 10f;
+            velocityY += random.NextInt32(-30, 31) - target.VelocityY * 10f;
+            projectileType = VanillaProjectileIds.DungeonBeam;
+            speed = 6f;
+            damage = context.ExpertMode ? 24 : 30;
+        }
+        else if (before.TypeIdentity.Value is 285 or 286)
+        {
+            projectileType = VanillaProjectileIds.DungeonFlame;
+            speed = 8f;
+            damage = context.ExpertMode ? 32 : 40;
+        }
+        else
+        {
+            projectileType = VanillaProjectileIds.DungeonSkull;
+            speed = 4f;
+            damage = context.ExpertMode ? 32 : 40;
+        }
+
+        float length = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
+        if (!(length > 0f) || !float.IsFinite(length))
+            return committed;
+        float scale = speed / length;
+        int halfSize = projectileType == VanillaProjectileIds.DungeonBeam ? 2 : 6;
+        var intent = new NpcAiProjectileIntent(projectileType, centerX - halfSize, centerY - halfSize,
+            velocityX * scale, velocityY * scale, damage, 0f);
+        if (projectileType == VanillaProjectileIds.DungeonFlame)
+            intent = intent with { InitialAi = new ProjectileAiState(target.CenterX, target.CenterY, 0f) };
+        mutations.TrySpawnProjectile(in committed, in intent, out _);
+        return committed;
+    }
+
     private static bool IsSupported(NpcTypeId type) =>
-        type == VanillaNpcIds.GoblinSorcerer || type == VanillaNpcIds.Tim || type == VanillaNpcIds.RuneWizard;
+        type == VanillaNpcIds.GoblinSorcerer || type == VanillaNpcIds.Tim || type == VanillaNpcIds.RuneWizard ||
+        type.Value is >= 281 and <= 286;
 }

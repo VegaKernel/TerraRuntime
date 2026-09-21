@@ -323,6 +323,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.FireImp => _fireImp,
             VanillaNpcBehaviorFamily.GoblinSorcerer => _goblinSorcerer,
             VanillaNpcBehaviorFamily.RuneWizard => _goblinSorcerer,
+            VanillaNpcBehaviorFamily.DungeonCaster => _goblinSorcerer,
             VanillaNpcBehaviorFamily.ChaosBall => _burningSphere,
             VanillaNpcBehaviorFamily.DarkCaster => _darkCaster,
             VanillaNpcBehaviorFamily.BurningSphere => _burningSphere,
@@ -2082,7 +2083,7 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public bool DefersStatePublication(in NpcSnapshot before, in NpcStateUpdate proposed) =>
         proposed.Type == before.Type &&
-        (before.TypeIdentity == VanillaNpcIds.DarkCaster || before.TypeIdentity == VanillaNpcIds.FireImp || before.TypeIdentity == VanillaNpcIds.GoblinSorcerer || before.TypeIdentity == VanillaNpcIds.Tim || before.TypeIdentity == VanillaNpcIds.RuneWizard || before.TypeIdentity == VanillaNpcIds.Harpy ||
+        (before.TypeIdentity == VanillaNpcIds.DarkCaster || before.TypeIdentity == VanillaNpcIds.FireImp || before.TypeIdentity == VanillaNpcIds.GoblinSorcerer || before.TypeIdentity == VanillaNpcIds.Tim || before.TypeIdentity == VanillaNpcIds.RuneWizard || before.TypeIdentity.Value is >= 281 and <= 286 || before.TypeIdentity == VanillaNpcIds.Harpy ||
          before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon ||
          before.TypeIdentity == VanillaNpcIds.RedDevil);
 
@@ -2093,7 +2094,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             return _darkCaster.Complete(in before, in committed, _context, _random, mutations);
         if (before.TypeIdentity == VanillaNpcIds.FireImp && committed.TypeIdentity == VanillaNpcIds.FireImp)
             return _fireImp.Complete(in before, in committed, _context, mutations);
-        if ((before.TypeIdentity == VanillaNpcIds.GoblinSorcerer || before.TypeIdentity == VanillaNpcIds.Tim || before.TypeIdentity == VanillaNpcIds.RuneWizard) && committed.TypeIdentity == before.TypeIdentity)
+        if ((before.TypeIdentity == VanillaNpcIds.GoblinSorcerer || before.TypeIdentity == VanillaNpcIds.Tim || before.TypeIdentity == VanillaNpcIds.RuneWizard || before.TypeIdentity.Value is >= 281 and <= 286) && committed.TypeIdentity == before.TypeIdentity)
             return _goblinSorcerer.Complete(in before, in committed, _context, mutations);
         if ((before.TypeIdentity == VanillaNpcIds.Harpy || before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon || before.TypeIdentity == VanillaNpcIds.RedDevil) &&
             committed.TypeIdentity == before.TypeIdentity)

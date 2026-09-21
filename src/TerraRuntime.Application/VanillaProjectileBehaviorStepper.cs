@@ -297,6 +297,72 @@ internal static partial class VanillaProjectileBehaviorStepper
                     ai1Override = 1f;
                 break;
 
+            case VanillaProjectileBehaviorFamily.DungeonBeam:
+            {
+                // AI_048 stores the physical center after its third update; type 290 otherwise keeps
+                // its launch velocity and only advances localAI on a dedicated server.
+                ProjectileLocalAiState local = context.LocalAi;
+                if (local.Ai0 == 3f)
+                    local = local with { Ai1 = current.PositionX + definition.Width * .5f, Ai2 = current.PositionY + definition.Height * .5f };
+                local = local with { Ai0 = local.Ai0 + 1f };
+                next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0, LocalAiOverride: local);
+                return true;
+            }
+
+            case VanillaProjectileBehaviorFamily.DungeonFlame:
+            {
+                // AI_050 type 291 travels toward its source ai target. The dedicated server owns this
+                // NPC projectile, so passing that point stops and terminates it in the same AI update.
+                ProjectileLocalAiState local = context.LocalAi.Ai0 == 0f
+                    ? context.LocalAi with { Ai0 = 1f }
+                    : context.LocalAi;
+                if (current.Ai.Ai0 != 0f || current.Ai.Ai1 != 0f)
+                {
+                    float centerX = current.PositionX + definition.Width * .5f;
+                    float centerY = current.PositionY + definition.Height * .5f;
+                    float remainingX = current.Ai.Ai0 - centerX;
+                    float remainingY = current.Ai.Ai1 - centerY;
+                    if (remainingX * velocityX + remainingY * velocityY <= 0f)
+                    {
+                        next = new VanillaProjectileBehaviorResult(
+                            0f, 0f, ai0, Kill: true, LocalAiOverride: local);
+                        return true;
+                    }
+                }
+
+                next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0, LocalAiOverride: local);
+                return true;
+            }
+
+            case VanillaProjectileBehaviorFamily.DungeonSkull:
+            {
+                // AI_051 type 293 scans player slots in source order with a strict 200 px Manhattan
+                // envelope, then blends its velocity toward the selected player at speed three.
+                ProjectileLocalAiState local = context.LocalAi.Ai0 == 0f
+                    ? context.LocalAi with { Ai0 = 1f }
+                    : context.LocalAi;
+                if (TryFindClosestPlayerByManhattanDistance(
+                        in current, in definition, context.PlayerSnapshots, 200f,
+                        out float targetX, out float targetY))
+                {
+                    float centerX = current.PositionX + definition.Width * .5f;
+                    float centerY = current.PositionY + definition.Height * .5f;
+                    float dx = targetX - centerX;
+                    float dy = targetY - centerY;
+                    float distance = MathF.Sqrt(dx * dx + dy * dy);
+                    if (distance > 0f && float.IsFinite(distance))
+                    {
+                        float desiredX = dx / distance * 3f;
+                        float desiredY = dy / distance * 3f;
+                        velocityX = (velocityX * 100f + desiredX) / 101f;
+                        velocityY = (velocityY * 100f + desiredY) / 101f;
+                    }
+                }
+
+                next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0, LocalAiOverride: local);
+                return true;
+            }
+
             case VanillaProjectileBehaviorFamily.CultistIceMist:
             {
                 // TerrariaServer 1.4.5.8 aiStyle 86, CultistBossIceMist (#464). ai[1] == 1 is the

@@ -7,7 +7,7 @@ namespace TerraRuntime.Application;
 /// WorldTileStore-backed source queries for TerrariaServer 1.4.5.8 Wall of Flesh AI_027/028 and the Good-World
 /// Fire Imp support branch. It exposes only collision/placement facts; presentation state remains client-owned.
 /// </summary>
-internal sealed class VanillaWallOfFleshWorldEnvironment : IVanillaWallOfFleshEnvironment
+internal sealed class VanillaWallOfFleshWorldEnvironment : IVanillaWallOfFleshEnvironment, IVanillaDungeonCasterEnvironment
 {
     private const int TileSize = 16;
     private readonly WorldTileStore tiles;
@@ -179,6 +179,19 @@ internal sealed class VanillaWallOfFleshWorldEnvironment : IVanillaWallOfFleshEn
 
         return false;
     }
+
+    public bool TryFindDungeonCasterTeleportSpot(
+        float npcCenterX,
+        float npcCenterY,
+        int targetTileX,
+        int targetTileY,
+        bool skeletronActive,
+        ReadOnlySpan<VanillaNpcTargetCandidate> players,
+        IVanillaNpcRandom random,
+        out int tileX,
+        out int tileY) =>
+        new VanillaCasterWorldEnvironment(tiles, fnaRectangleUnion).TryFindTeleportSpot(
+            npcCenterX, npcCenterY, targetTileX, targetTileY, skeletronActive, players, random, out tileX, out tileY);
 
     private bool SolidClearance(int x, int floorY)
     {

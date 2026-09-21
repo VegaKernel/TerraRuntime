@@ -89,6 +89,80 @@ public sealed class GoblinSorcererAiTests
         Assert.InRange(MathF.Sqrt(mutations.Projectile.VelocityX * mutations.Projectile.VelocityX + mutations.Projectile.VelocityY * mutations.Projectile.VelocityY), 9.999f, 10.001f);
     }
 
+    [Fact]
+    public void Hardmode_dungeon_casters_use_their_source_cadence_and_committed_projectile_variants()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: new ZeroRandom());
+        stepper.SetWallOfFleshEnvironment(new Environment());
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 300f, 120f, 0, true, false, false, false)]);
+
+        foreach ((int type, float timer, ProjectileTypeId projectile, float speed, int damage) in new[]
+        {
+            (281, 10f, VanillaProjectileIds.DungeonSkull, 4f, 40),
+            (283, 10f, VanillaProjectileIds.DungeonBeam, 6f, 30),
+            (285, 10f, VanillaProjectileIds.DungeonFlame, 8f, 40)
+        })
+        {
+            var source = new NpcSnapshot(new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1), type, (short)type,
+                100f, 100f, 0f, 0f, 0, new NpcAiState(timer, 26f, 0f, 0f), NpcSimulationState.Initial);
+            Assert.True(stepper.TryStepState(in source, out NpcStateUpdate next));
+            Assert.Equal(25f, next.Ai.Ai1);
+            var committed = source with { Revision = new NpcRevision(2), Ai = next.Ai, Simulation = next.Simulation };
+            var mutations = new CapturingMutationSink();
+            stepper.CompleteCommittedState(in source, in committed, mutations);
+
+            Assert.True(mutations.ProjectileSpawned);
+            Assert.Equal(projectile, mutations.Projectile.Type);
+            Assert.Equal(damage, mutations.Projectile.Damage);
+            Assert.InRange(MathF.Sqrt(mutations.Projectile.VelocityX * mutations.Projectile.VelocityX + mutations.Projectile.VelocityY * mutations.Projectile.VelocityY), speed - .001f, speed + .001f);
+            if (projectile == VanillaProjectileIds.DungeonFlame)
+            {
+                Assert.Equal(300f, mutations.Projectile.InitialAi.Ai0);
+                Assert.Equal(120f, mutations.Projectile.InitialAi.Ai1);
+            }
+        }
+    }
+
+    [Fact]
+    public void Caster_setdefaults_materializes_source_ai008_timers_before_the_first_update()
+    {
+        var store = new RuntimeNpcStore();
+        store.SetVanillaSpawnRandomSource(new ZeroRandom());
+
+        Assert.True(store.TrySpawnVanilla(new NpcStateUpdate(281, 281, 100f, 100f, 0f, 0f, 0,
+            default, NpcSimulationState.Initial), out var skullCaster));
+        Assert.True(store.TrySpawnVanilla(new NpcStateUpdate(VanillaNpcIds.RuneWizard.Value, checked((short)VanillaNpcIds.RuneWizard.Value),
+            100f, 100f, 0f, 0f, 0, default, NpcSimulationState.Initial), out var runeWizard));
+        Assert.True(store.TrySpawnVanilla(new NpcStateUpdate(283, 283, 100f, 100f, 0f, 0f, 0,
+            default, NpcSimulationState.Initial), out var beamCaster));
+        Assert.True(store.TrySpawnVanilla(new NpcStateUpdate(285, 285, 100f, 100f, 0f, 0f, 0,
+            new NpcAiState(17f, 0f, 0f, 0f), NpcSimulationState.Initial), out var explicitTimer));
+
+        Assert.Equal(400f, skullCaster.Ai.Ai0);
+        Assert.Equal(450f, runeWizard.Ai.Ai0);
+        Assert.Equal(390f, beamCaster.Ai.Ai0);
+        Assert.Equal(17f, explicitTimer.Ai.Ai0);
+    }
+
+    [Fact]
+    public void Hardmode_dungeon_caster_uses_its_dedicated_teleport_world_query()
+    {
+        var environment = new DungeonCasterEnvironment();
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: new ZeroRandom());
+        stepper.SetWallOfFleshEnvironment(environment);
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 300f, 120f, 0, true, false, false, false)]);
+        var source = new NpcSnapshot(new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1), 281, 281,
+            100f, 100f, 0f, 0f, 0, new NpcAiState(539f, 0f, 0f, 0f), NpcSimulationState.Initial);
+        var committed = source with { Revision = new NpcRevision(2), Ai = new NpcAiState(1f, 0f, 0f, 0f) };
+        var mutations = new CapturingMutationSink();
+
+        stepper.CompleteCommittedState(in source, in committed, mutations);
+
+        Assert.True(environment.DungeonQueryCalled);
+        Assert.False(environment.SkeletronActive);
+        Assert.Equal(new NpcAiState(1f, 19f, 31f, 42f), mutations.LastAiUpdate);
+    }
+
     private sealed class RejectingStepper : INpcAiStateStepper
     { public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next) { next = default; return false; } }
     private sealed class ZeroRandom : IVanillaNpcRandom
@@ -102,11 +176,28 @@ public sealed class GoblinSorcererAiTests
         public bool TryFindTeleportSpot(float a,float b,int c,int d,ReadOnlySpan<VanillaNpcTargetCandidate> e,IVanillaNpcRandom f,out int x,out int y) { x=y=0; return false; }
     }
 
+    private sealed class DungeonCasterEnvironment : IVanillaWallOfFleshEnvironment, IVanillaDungeonCasterEnvironment
+    {
+        public bool DungeonQueryCalled { get; private set; }
+        public bool SkeletronActive { get; private set; }
+        public int WorldWidthTiles => 400; public int WorldHeightTiles => 400; public int UnderworldLayerTiles => 200;
+        public bool TryResolveCorridor(float a, float b, int c, int d, out float e, out float f) { e = f = 0; return false; }
+        public bool CanHit(float a, float b, int c, int d, float e, float f, int g, int h) => true;
+        public bool TryFindGroundSpawn(int a, int b, out int c, out int d) { c = d = 0; return false; }
+        public bool TryFindTeleportSpot(float a, float b, int c, int d, ReadOnlySpan<VanillaNpcTargetCandidate> e, IVanillaNpcRandom f, out int x, out int y) { x = y = 0; return false; }
+        public bool TryFindDungeonCasterTeleportSpot(float a, float b, int c, int d, bool skeletronActive,
+            ReadOnlySpan<VanillaNpcTargetCandidate> e, IVanillaNpcRandom f, out int x, out int y)
+        {
+            DungeonQueryCalled = true; SkeletronActive = skeletronActive; x = 31; y = 42; return true;
+        }
+    }
+
     private sealed class CapturingMutationSink : INpcAiCommittedNpcMutationSink
     {
         public bool ProjectileSpawned { get; private set; }
+        public NpcAiState LastAiUpdate { get; private set; }
         public NpcAiProjectileIntent Projectile { get; private set; }
-        public bool TryUpdateAi(in NpcSnapshot expected, NpcAiState ai, out NpcSnapshot committed) { committed = expected with { Ai = ai }; return true; }
+        public bool TryUpdateAi(in NpcSnapshot expected, NpcAiState ai, out NpcSnapshot committed) { LastAiUpdate = ai; committed = expected with { Ai = ai }; return true; }
         public int TryHeal(NpcHandle npc, int maximumAmount) => 0;
         public bool TrySpawn(in NpcAiSpawnIntent intent, out NpcSnapshot spawned) { spawned = default; return false; }
         public bool TrySpawn(in NpcSnapshot source, in NpcAiSpawnIntent intent, out NpcSnapshot spawned) { spawned = default; return false; }

@@ -101,6 +101,7 @@ public sealed partial class RuntimeNpcStore
                 CanBeReplacedByOtherNpcs = intent.CanBeReplacedByOtherNpcs
             });
 
+        // An AI intent models NewNPC's explicit ai arguments, including an intentional all-zero state.
         return TrySpawnVanillaCore(in update, out snapshot, intent.StartSlot, spawnDefaults);
     }
 
@@ -116,7 +117,18 @@ public sealed partial class RuntimeNpcStore
         }
         var owned = update with { Type = type, NetId = netId,
             Simulation = update.Simulation with { SpawnDifficulty = update.Simulation.SpawnDifficulty ?? difficulty } };
-        return TrySpawnVanillaCore(in owned, out snapshot, startSlot, spawnDefaults);
+        NpcStateUpdate initialized = ApplySpawnAiDefaults(in owned);
+        return TrySpawnVanillaCore(in initialized, out snapshot, startSlot, spawnDefaults);
+    }
+
+    private NpcStateUpdate ApplySpawnAiDefaults(in NpcStateUpdate update)
+    {
+        if (!VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(update.Type), new NpcNetId(update.NetId), out var definition))
+            return update;
+        return update with
+        {
+            Ai = VanillaNpcAiSpawnDefaults1458.Resolve(new NpcTypeId(update.Type), in definition, update.Ai, _spawnRandom)
+        };
     }
 
     private bool TryCaptureSpawnDefaults(ref int type, ref short netId, out VanillaNpcSpawnDefaults? defaults, out float difficulty)

@@ -17,6 +17,9 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId Bomb = new(16);
     public static readonly ProjectileAiStyleId DemonScythe = new(18);
     public static readonly ProjectileAiStyleId RedDevilSickle = new(27);
+    public static readonly ProjectileAiStyleId DungeonBeam = new(48);
+    public static readonly ProjectileAiStyleId DungeonFlame = new(50);
+    public static readonly ProjectileAiStyleId DungeonSkull = new(51);
     public static readonly ProjectileAiStyleId EyeFire = new(23);
     public static readonly ProjectileAiStyleId RollingBoulder = new(25);
     public static readonly ProjectileAiStyleId FlamingScythe = new(56);
@@ -115,6 +118,18 @@ public static class VanillaDefinitionCatalog
         CanCutTiles: true,
         CollisionWidth: 14,
         CollisionHeight: 14);
+
+    private static readonly VanillaProjectileDefinition DungeonBeamDefinition = new(
+        Width: 4, Height: 4, AiStyle: VanillaProjectileAiStyles.DungeonBeam, TileCollide: true,
+        IgnoreWater: false, CanCutTiles: true, CollisionWidth: 4, CollisionHeight: 4);
+
+    private static readonly VanillaProjectileDefinition DungeonFlameDefinition = new(
+        Width: 12, Height: 12, AiStyle: VanillaProjectileAiStyles.DungeonFlame, TileCollide: false,
+        IgnoreWater: false, CanCutTiles: true, CollisionWidth: 12, CollisionHeight: 12);
+
+    private static readonly VanillaProjectileDefinition DungeonSkullDefinition = new(
+        Width: 12, Height: 12, AiStyle: VanillaProjectileAiStyles.DungeonSkull, TileCollide: false,
+        IgnoreWater: false, CanCutTiles: true, CollisionWidth: 12, CollisionHeight: 12);
 
     private static readonly VanillaProjectileDefinition FireArrowDefinition = new(
         Width: 10,
@@ -860,6 +875,24 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.RuneBlast)
         {
             definition = RuneBlastDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.DungeonBeam)
+        {
+            definition = DungeonBeamDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.DungeonFlame)
+        {
+            definition = DungeonFlameDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.DungeonSkull)
+        {
+            definition = DungeonSkullDefinition;
             return true;
         }
 

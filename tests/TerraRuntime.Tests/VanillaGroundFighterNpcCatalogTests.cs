@@ -72,11 +72,24 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(19, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(17, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(31, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(29, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
         Assert.Equal(.95f, vampire.ReversingVelocityDamping, 5);
+    }
+
+    [Fact]
+    public void Hardmode_dungeon_skeleton_fighters_keep_their_source_speed_band()
+    {
+        foreach ((int type, float speed) in new[] { (269, 2f), (270, 1f), (271, 1.5f), (272, 3f),
+            (273, 1.25f), (274, 3f), (275, 3.25f), (276, 2f), (277, 2.75f), (278, 1.8f),
+            (279, 1.3f), (280, 2.5f) })
+        {
+            Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(new NpcTypeId(type), out var behavior));
+            Assert.Equal(speed, behavior.BaseMaximumHorizontalSpeed, 5);
+            Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
+        }
     }
 }

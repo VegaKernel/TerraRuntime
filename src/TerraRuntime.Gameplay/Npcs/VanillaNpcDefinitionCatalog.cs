@@ -74,7 +74,8 @@ public enum VanillaNpcBehaviorFamily : byte
     SnowMoonAi63 = 60,
     GoblinSorcerer = 61,
     ChaosBall = 62,
-    RuneWizard = 63
+    RuneWizard = 63,
+    DungeonCaster = 64
 }
 
 /// <summary>
@@ -429,6 +430,24 @@ public static class VanillaNpcDefinitionCatalog
             definition = new VanillaNpcDefinition(VanillaNpcIds.RuneWizard, VanillaNpcAiStyles.Caster,
                 VanillaNpcBehaviorFamily.RuneWizard, VanillaNpcPhysicsFamily.NoClipFlight, NpcArchetypeRole.Ordinary,
                 18, 40, 200, 30, 600, .3f, 1f, false, false, VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type is var dungeonCaster && dungeonCaster.Value is >= 281 and <= 286)
+        {
+            (int damage, int defense, int lifeMax, float knockBackResist) = dungeonCaster.Value switch
+            {
+                281 => (40, 20, 400, .6f),
+                282 => (35, 28, 450, .5f),
+                283 => (50, 18, 300, .55f),
+                284 => (35, 24, 450, .5f),
+                285 => (50, 12, 200, .7f),
+                286 => (60, 10, 250, .65f),
+                _ => throw new InvalidOperationException()
+            };
+            definition = new VanillaNpcDefinition(dungeonCaster, VanillaNpcAiStyles.Caster,
+                VanillaNpcBehaviorFamily.DungeonCaster, VanillaNpcPhysicsFamily.NoClipFlight, NpcArchetypeRole.Ordinary,
+                18, 40, damage, defense, lifeMax, knockBackResist, 1f, false, false, VanillaNpcSyncAnchor.TopLeft);
             return true;
         }
 
