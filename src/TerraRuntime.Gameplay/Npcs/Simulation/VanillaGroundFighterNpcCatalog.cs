@@ -45,6 +45,12 @@ public static class VanillaGroundFighterNpcCatalog
             acceleration: .2f, overspeedGroundDamping: .7f)
         ,Fighter(new NpcTypeId(630), 18, 40, 60, 18, 180, .5f, 1f, 1f,
             acceleration: .05f, motionProfile: VanillaGroundFighterMotionProfile.HalfHealthBerserker, halfHealthSpeedMultiplier: 1.5f, overspeedGroundDamping: .7f)
+        ,Fighter(new NpcTypeId(243), 30, 114, 60, 32, 4000, .05f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.MissingHealthBerserker, overspeedGroundDamping: .7f,
+            missingHealthSpeedBonus: 1.5f, missingHealthAccelerationBonus: .15f)
+        ,Fighter(new NpcTypeId(251), 18, 40, 50, 30, 1000, .3f, 1f, 1f,
+            acceleration: .08f, motionProfile: VanillaGroundFighterMotionProfile.MissingHealthBerserker, overspeedGroundDamping: .7f,
+            missingHealthSpeedBonus: 2f, missingHealthAccelerationBonus: .2f)
         ,Fighter(new NpcTypeId(269), 18, 40, 70, 34, 550, .3f, 1f, 2f)
         ,Fighter(new NpcTypeId(270), 18, 40, 55, 50, 400, .2f, 1f, 1f)
         ,Fighter(new NpcTypeId(271), 18, 40, 70, 40, 450, .25f, 1f, 1.5f)
@@ -78,7 +84,7 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.TwiggyZombie,
         VanillaNpcIds.FemaleZombie,
         VanillaNpcIds.VampireHumanoid,
-        new(78), new(79), new(80), new(287), new(630),
+        new(78), new(79), new(80), new(243), new(251), new(287), new(630),
         new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280)
     ];
 
@@ -132,7 +138,9 @@ public static class VanillaGroundFighterNpcCatalog
         float acceleration = .07f,
         VanillaGroundFighterMotionProfile motionProfile = VanillaGroundFighterMotionProfile.Standard,
         float halfHealthSpeedMultiplier = 1f,
-        float overspeedGroundDamping = .8f) =>
+        float overspeedGroundDamping = .8f,
+        float missingHealthSpeedBonus = 0f,
+        float missingHealthAccelerationBonus = 0f) =>
         new(
             new VanillaNpcDefinition(
                 type,
@@ -168,5 +176,7 @@ public static class VanillaGroundFighterNpcCatalog
                 ReversingVelocityDamping: reversingVelocityDamping,
                 MotionProfile: motionProfile,
                 HalfHealthSpeedMultiplier: halfHealthSpeedMultiplier,
-                OverspeedGroundDamping: overspeedGroundDamping));
+                OverspeedGroundDamping: overspeedGroundDamping,
+                MissingHealthSpeedBonus: missingHealthSpeedBonus,
+                MissingHealthAccelerationBonus: missingHealthAccelerationBonus));
 }

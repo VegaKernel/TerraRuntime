@@ -350,7 +350,9 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             Life = simulation.Life,
             LifeMax = simulation.LifeMax,
             HalfHealthSpeedMultiplier = parameters.HalfHealthSpeedMultiplier,
-            OverspeedGroundDamping = parameters.OverspeedGroundDamping
+            OverspeedGroundDamping = parameters.OverspeedGroundDamping,
+            MissingHealthSpeedBonus = parameters.MissingHealthSpeedBonus,
+            MissingHealthAccelerationBonus = parameters.MissingHealthAccelerationBonus
         };
 
         if (!VanillaZombieMotion.TryStep(in input, out VanillaZombieMotionResult result))
