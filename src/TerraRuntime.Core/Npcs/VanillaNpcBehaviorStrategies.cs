@@ -322,6 +322,8 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
             velocityY += vanillaNpcGravity * 2f;
         if (ai.Ai1 == 751f && velocityY != 0f)
             velocityY -= vanillaNpcGravity * .6f;
+        if (ai.Ai1 is 3736f or 3737f or 3738f && simulation.CollideY && simulation.OldVelocityY > 4f)
+            velocityY = -simulation.OldVelocityY * .7f;
         // Heart and Hell Slime compare against NPC.defLifeMax, which is the spawn-time value after
         // SetDefaults/scaling. The runtime retains that baseline independently so their initialization
         // does not repeat after a state-only update.

@@ -145,6 +145,24 @@ public sealed class VanillaFossilSlimeAiTests
         Assert.Equal(expectedVelocityY, next.VelocityY, 4);
     }
 
+    [Fact]
+    public void Balloon_slime_bounces_from_a_fast_source_ground_collision()
+    {
+        var stepper = CreateStepper(skyblockNoFossils: false, new ThrowingRandom());
+        NpcSnapshot balloon = Snapshot(VanillaNpcIds.BlueSlime, positionY: 1601f, ai1: 3736f) with
+        {
+            VelocityY = 1f,
+            Simulation = Snapshot(VanillaNpcIds.BlueSlime, positionY: 1601f, ai1: 3736f).Simulation with
+            {
+                CollideY = true,
+                OldVelocityY = 5f
+            }
+        };
+
+        Assert.True(stepper.TryStepState(in balloon, out NpcStateUpdate next));
+        Assert.Equal(-3.5f, next.VelocityY, 4);
+    }
+
     [Theory]
     [InlineData(25, 50)]
     [InlineData(9, 9)]
