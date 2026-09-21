@@ -98,6 +98,54 @@ public sealed class VanillaBlueSlimeMotionTests
     }
 
     [Fact]
+    public void Non_remix_lava_slime_uses_its_deeper_water_escape_and_vertical_cap()
+    {
+        VanillaBlueSlimeMotionResult escape = Step(
+            velocityY: 1f,
+            directionY: -1,
+            target: 3,
+            ai: new NpcAiState(-200f, 0f, 5f, 0f),
+            wet: true,
+            usesLavaSlimeMotion: true);
+        VanillaBlueSlimeMotionResult capped = Step(
+            velocityY: -9.8f,
+            directionY: -1,
+            target: 3,
+            ai: new NpcAiState(-200f, 0f, 5f, 0f),
+            wet: true,
+            usesLavaSlimeMotion: true);
+
+        Assert.Equal(-0.3f, escape.VelocityY, 3);
+        Assert.Equal(-10f, capped.VelocityY, 3);
+    }
+
+    [Fact]
+    public void Non_remix_lava_slime_strengthens_normal_and_large_ground_jumps()
+    {
+        VanillaBlueSlimeMotionResult normal = Step(
+            velocityY: 0f,
+            directionX: 1,
+            target: 2,
+            ai: new NpcAiState(-1f, 0f, 1f, 0f),
+            timerBonus: 2f,
+            usesLavaSlimeMotion: true);
+        VanillaBlueSlimeMotionResult large = Step(
+            velocityY: 0f,
+            directionX: -1,
+            target: 2,
+            ai: new NpcAiState(-1600f, 0f, 1f, 0f),
+            timerBonus: 2f,
+            usesLavaSlimeMotion: true);
+
+        Assert.Equal(4f, normal.VelocityX, 3);
+        Assert.Equal(-6f, normal.VelocityY, 3);
+        Assert.Equal(-1120f, normal.Ai.Ai0);
+        Assert.Equal(-3.5f, large.VelocityX, 3);
+        Assert.Equal(-10f, large.VelocityY, 3);
+        Assert.Equal(-200f, large.Ai.Ai0);
+    }
+
+    [Fact]
     public void Airborne_targeted_slime_steers_toward_facing_direction()
     {
         VanillaBlueSlimeMotionResult result = Step(
@@ -177,7 +225,11 @@ public sealed class VanillaBlueSlimeMotionTests
         bool collideY = false,
         bool engaged = false,
         bool solidCollision = false,
-        VanillaBlueSlimeTargetRefresh closestTarget = default)
+        VanillaBlueSlimeTargetRefresh closestTarget = default,
+        float timerBonus = 0f,
+        float jumpTimerBand = -1000f,
+        bool usesLavaSlimeMotion = false,
+        bool remixWorld = false)
     {
         var input = new VanillaBlueSlimeMotionInput(
             positionX,
@@ -193,7 +245,11 @@ public sealed class VanillaBlueSlimeMotionTests
             collideY,
             engaged,
             solidCollision,
-            closestTarget);
+            closestTarget,
+            timerBonus,
+            jumpTimerBand,
+            usesLavaSlimeMotion,
+            remixWorld);
 
         Assert.True(VanillaBlueSlimeMotion.TryStep(in input, out VanillaBlueSlimeMotionResult result));
         return result;

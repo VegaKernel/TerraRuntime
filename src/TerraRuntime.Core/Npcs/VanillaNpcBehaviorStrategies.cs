@@ -297,6 +297,8 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
                        damaged ||
                        context.SlimeRainActive ||
                        npc.PositionY > context.WorldSurfacePixels;
+        if (definition.Type == VanillaNpcIds.LavaSlime && context.RemixWorld && !damaged)
+            engaged = false;
         if (!VanillaSlimeNpcCatalog.TryGetMotionProfile(definition.Type, out VanillaSlimeMotionProfile profile) ||
             !profile.IsValid)
         {
@@ -319,7 +321,9 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
             SolidCollision: simulation.SolidCollision,
             ClosestTarget: closest,
             TimerBonus: profile.TimerBonus,
-            JumpTimerBand: profile.JumpTimerBand);
+            JumpTimerBand: profile.JumpTimerBand,
+            UsesLavaSlimeMotion: definition.Type == VanillaNpcIds.LavaSlime,
+            RemixWorld: context.RemixWorld);
 
         if (!VanillaBlueSlimeMotion.TryStep(in input, out VanillaBlueSlimeMotionResult result))
         {

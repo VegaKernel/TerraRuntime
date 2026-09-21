@@ -39,6 +39,37 @@ public sealed class VanillaNpcEngagementFactsTests
     }
 
     [Fact]
+    public void Healthy_lava_slime_stays_unengaged_in_remix_world()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        stepper.EnableBlueSlimeMotion(worldSurfaceTiles: 100d);
+        stepper.SetWorldConditions(dayTime: false, slimeRainActive: false, remixWorld: true);
+        NpcSnapshot npc = new(
+            Handle: new NpcHandle(1, new NpcGeneration(1)),
+            Revision: new NpcRevision(1),
+            Type: VanillaNpcIds.LavaSlime.Value,
+            NetId: checked((short)VanillaNpcIds.LavaSlime.Value),
+            PositionX: 100f,
+            PositionY: 80f,
+            VelocityX: 0f,
+            VelocityY: 0f,
+            Target: VanillaNpcDefinitionCatalog.DefaultTarget,
+            Ai: new NpcAiState(-4f, 0f, 1f, 0f),
+            Simulation: NpcSimulationState.Initial with
+            {
+                DirectionX = 1,
+                DirectionY = 1,
+                Life = 50,
+                LifeMax = 50
+            });
+
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+
+        Assert.Equal(-1f, next.Ai.Ai0);
+        Assert.Equal(0f, next.VelocityY);
+    }
+
+    [Fact]
     public void Zombie_forces_upward_direction_when_player_center_is_above_npc_bottom()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
