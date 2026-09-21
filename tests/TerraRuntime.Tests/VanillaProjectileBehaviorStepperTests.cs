@@ -131,6 +131,68 @@ public sealed class VanillaProjectileBehaviorStepperTests
     }
 
     [Fact]
+    public void Dungeon_flame_ai050_stops_and_terminates_after_passing_its_source_target()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.DungeonFlame,
+            velocityX: 2f,
+            velocityY: 0f,
+            ai0: 100f,
+            ai1: 100f,
+            spawner: VanillaProjectileOwnership.ServerOwner,
+            positionX: 100f,
+            positionY: 100f);
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile,
+            in definition,
+            default,
+            out VanillaProjectileBehaviorResult next));
+
+        Assert.True(next.Kill);
+        Assert.Equal(0f, next.VelocityX);
+        Assert.Equal(0f, next.VelocityY);
+        Assert.Equal(1f, next.LocalAiOverride!.Value.Ai0);
+    }
+
+    [Fact]
+    public void Dungeon_skull_ai051_homes_only_inside_its_strict_manhattan_target_range()
+    {
+        ProjectileSnapshot projectile = CreateProjectile(
+            VanillaProjectileIds.DungeonSkull,
+            velocityX: 2f,
+            velocityY: 0f,
+            ai0: 0f,
+            spawner: VanillaProjectileOwnership.ServerOwner,
+            positionX: 100f,
+            positionY: 100f);
+        Assert.True(VanillaDefinitionCatalog.TryGet(projectile.Type, out VanillaProjectileDefinition definition));
+        var closeContext = new VanillaProjectileBehaviorContext(
+            false, 0f, 0f, PlayerSnapshots: new SinglePlayerLookup(206f, 85f));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile,
+            in definition,
+            in closeContext,
+            out VanillaProjectileBehaviorResult homing));
+
+        Assert.Equal((200f + 3f) / 101f, homing.VelocityX, 5);
+        Assert.Equal(0f, homing.VelocityY, 5);
+        Assert.Equal(1f, homing.LocalAiOverride!.Value.Ai0);
+
+        var boundaryContext = new VanillaProjectileBehaviorContext(
+            false, 0f, 0f, PlayerSnapshots: new SinglePlayerLookup(296f, 85f));
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(
+            in projectile,
+            in definition,
+            in boundaryContext,
+            out VanillaProjectileBehaviorResult unchanged));
+        Assert.Equal(2f, unchanged.VelocityX);
+        Assert.Equal(0f, unchanged.VelocityY);
+    }
+
+    [Fact]
     public void Red_devil_sickle_ai027_accelerates_through_tick_twenty_nine_only()
     {
         ProjectileSnapshot accelerating = CreateProjectile(

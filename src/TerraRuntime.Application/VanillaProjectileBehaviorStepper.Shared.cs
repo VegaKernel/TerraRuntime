@@ -90,4 +90,43 @@ internal static partial class VanillaProjectileBehaviorStepper
         }
         return found;
     }
+
+    private static bool TryFindClosestPlayerByManhattanDistance(
+        in ProjectileSnapshot projectile,
+        in VanillaProjectileDefinition definition,
+        IRuntimePlayerSlotSnapshotLookup? players,
+        float maximumDistance,
+        out float centerX,
+        out float centerY)
+    {
+        centerX = 0f;
+        centerY = 0f;
+        if (players is null || !(maximumDistance > 0f) || !float.IsFinite(maximumDistance))
+            return false;
+
+        float projectileCenterX = projectile.PositionX + definition.Width * .5f;
+        float projectileCenterY = projectile.PositionY + definition.Height * .5f;
+        float bestDistance = maximumDistance;
+        bool found = false;
+        for (int rawSlot = 0; rawSlot < byte.MaxValue; rawSlot++)
+        {
+            var candidateSlot = new PlayerSlotId(checked((byte)rawSlot));
+            if (!players.TryGetPlayer(candidateSlot, out PlayerStateSnapshot player) || player.IsDead)
+                continue;
+
+            float playerCenterX = player.PositionX + 10f;
+            float playerCenterY = player.PositionY + 21f;
+            float distance = MathF.Abs(projectileCenterX - playerCenterX) +
+                MathF.Abs(projectileCenterY - playerCenterY);
+            if (!float.IsFinite(distance) || !(distance < bestDistance))
+                continue;
+
+            bestDistance = distance;
+            centerX = playerCenterX;
+            centerY = playerCenterY;
+            found = true;
+        }
+
+        return found;
+    }
 }
