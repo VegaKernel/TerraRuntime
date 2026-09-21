@@ -61,7 +61,7 @@ public sealed class RuntimeNpcDeathLifecycleFinalizer
         }
 
         if (type == VanillaNpcIds.MotherSlime)
-            SpawnMotherSlimeChildren(in snapshot);
+            VanillaMotherSlimeDeathSplit1458.SpawnChildren(_store, in snapshot, _random);
         if (!_store.TryDespawn(snapshot.Handle))
             return false;
 
@@ -83,11 +83,18 @@ public sealed class RuntimeNpcDeathLifecycleFinalizer
                (type == VanillaNpcIds.KingSlime && !lootContext.IsExpertMode);
     }
 
-    private void SpawnMotherSlimeChildren(in NpcSnapshot parent)
+}
+
+/// <summary>Server-relevant Mother Slime death side effect from TerrariaServer 1.4.5.8 <c>NPC.HitEffect</c>.</summary>
+public static class VanillaMotherSlimeDeathSplit1458
+{
+    public static void SpawnChildren(RuntimeNpcStore store, in NpcSnapshot parent, IVanillaNpcRandom random)
     {
         // NPC.HitEffect (1.4.5.8): a dead Mother Slime creates two or three Baby Slimes after hit effects,
         // preserving parent velocity and then applying each source-ordered random offset.
-        int count = _random.NextInt32(0, 2) + 2;
+        ArgumentNullException.ThrowIfNull(store);
+        ArgumentNullException.ThrowIfNull(random);
+        int count = random.NextInt32(0, 2) + 2;
         if (!VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.MotherSlime, out VanillaNpcDefinition definition))
             return;
         int bottomX = (int)(parent.PositionX + definition.Width * .5f);
@@ -95,14 +102,14 @@ public sealed class RuntimeNpcDeathLifecycleFinalizer
         for (int index = 0; index < count; index++)
         {
             var intent = new NpcAiSpawnIntent(VanillaNpcIds.BlueSlime, bottomX, bottomY,
-                parent.VelocityX * 2f + _random.NextInt32(-20, 20) * .1f + index * parent.Simulation.DirectionX * .3f,
-                parent.VelocityY - _random.NextInt32(0, 10) * .1f - index,
+                parent.VelocityX * 2f + random.NextInt32(-20, 20) * .1f + index * parent.Simulation.DirectionX * .3f,
+                parent.VelocityY - random.NextInt32(0, 10) * .1f - index,
                 parent.Target)
             {
                 NetIdOverride = VanillaNpcNetVariantCatalog.BabySlime,
-                InitialAi = new NpcAiState(-1000f * _random.NextInt32(0, 3), 0f, 0f, 0f)
+                InitialAi = new NpcAiState(-1000f * random.NextInt32(0, 3), 0f, 0f, 0f)
             };
-            _store.TrySpawnIntent(in intent, out _);
+            store.TrySpawnIntent(in intent, out _);
         }
     }
 }
