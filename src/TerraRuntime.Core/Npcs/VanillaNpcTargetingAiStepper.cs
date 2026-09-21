@@ -132,7 +132,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         _moonEventEverscream = new VanillaMoonEventEverscreamNpcBehaviorStrategy(_random);
         _pumpking = new VanillaPumpkingNpcBehaviorStrategy(_random);
         _santank = new VanillaSnowMoonSantankNpcBehaviorStrategy(_random);
-        _iceQueen = new VanillaSnowMoonIceQueenNpcBehaviorStrategy();
+        _iceQueen = new VanillaSnowMoonIceQueenNpcBehaviorStrategy(_random);
         _snowMoonAi62 = new VanillaSnowMoonAi62NpcBehaviorStrategy();
         if (kingSlimeEnvironment is IVanillaEyeOfCthulhuEnvironment eyeEnvironment)
             _eyeOfCthulhu.SetEnvironment(eyeEnvironment);
@@ -2093,6 +2093,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         SpawnPumpkingBladeScythe(in before, in committed, mutations);
         SpawnSantankProjectiles(in before, in committed, mutations);
         SpawnIceQueenProjectiles(in before, in committed, mutations);
+        SpawnIceQueenRareProjectiles(in before, in committed, mutations);
         SpawnSnowMoonAi62Projectile(in before, in committed, mutations);
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);
         VanillaMoonLordLeechBehavior.SpawnFromHead(in before, in committed, _context, mutations);
@@ -2367,6 +2368,34 @@ public sealed class VanillaNpcTargetingAiStepper :
         dx *= 1f + _random.NextInt32(-20, 21) * .015f;
         dy *= 1f + _random.NextInt32(-20, 21) * .015f;
         SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.IceQueenFrostBolt, centerX, centerY, dx, dy, 36);
+    }
+
+    private void SpawnIceQueenRareProjectiles(in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaMoonEventSpecialCatalog1458.SnowMoonAi61IceQueen ||
+            committed.TypeIdentity != before.TypeIdentity || committed.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate player)) return;
+        float x = before.PositionX + 56f - committed.Simulation.DirectionX * 24f, y = before.PositionY + 6f;
+        if (committed.Simulation.LocalAi.Ai0 == 1f)
+        {
+            float vx = committed.Simulation.LocalAi.Ai3, vy = 1f;
+            NormalizeTo(ref vx, ref vy, 1f);
+            SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.IceQueenIceSpike, x, y, vx, vy, 80);
+        }
+        if (before.Simulation.LocalAi.Ai1 == 11f && committed.Simulation.LocalAi.Ai1 == 12f)
+        {
+            float dx = player.CenterX - x + _random.NextInt32(-50, 51), dy = player.CenterY - y + _random.NextInt32(-50, 51);
+            NormalizeTo(ref dx, ref dy, 12.5f);
+            dx *= 1f + _random.NextInt32(-20, 21) * .015f; dy *= 1f + _random.NextInt32(-20, 21) * .015f;
+            SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.IceQueenFrostFlare, x, y, dx, dy, 42);
+        }
+        if (before.Simulation.LocalAi.Ai2 == 8f && committed.Simulation.LocalAi.Ai2 == 9f)
+        {
+            float dx = _random.NextInt32(-100, 101), dy = -300f;
+            NormalizeTo(ref dx, ref dy, 11f);
+            dx *= 1f + _random.NextInt32(-20, 21) * .01f; dy *= 1f + _random.NextInt32(-20, 21) * .01f;
+            SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.IceQueenFrostWave, x, y, dx, dy, 50);
+        }
     }
 
     private void SpawnSnowMoonAi62Projectile(in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)

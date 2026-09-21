@@ -550,6 +550,10 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 4,
         CollisionHeight: 4);
 
+    private static readonly VanillaProjectileDefinition IceQueenFrostFlareDefinition = new(14, 14, VanillaProjectileAiStyles.Arrow, false, false, true, 14, 14);
+    private static readonly VanillaProjectileDefinition IceQueenFrostWaveDefinition = new(24, 24, new ProjectileAiStyleId(58), false, false, true, 24, 24);
+    private static readonly VanillaProjectileDefinition IceQueenIceSpikeDefinition = new(30, 30, VanillaProjectileAiStyles.BouncyBall, true, false, true, 30, 30);
+
     private static readonly VanillaProjectileDefinition GolemEyeBeamDefinition = new(
         Width: 8,
         Height: 8,
@@ -934,6 +938,10 @@ public static class VanillaDefinitionCatalog
             definition = IceQueenFrostBoltDefinition;
             return true;
         }
+
+        if (type == VanillaProjectileIds.IceQueenFrostFlare) { definition = IceQueenFrostFlareDefinition; return true; }
+        if (type == VanillaProjectileIds.IceQueenFrostWave) { definition = IceQueenFrostWaveDefinition; return true; }
+        if (type == VanillaProjectileIds.IceQueenIceSpike) { definition = IceQueenIceSpikeDefinition; return true; }
 
         if (type == VanillaProjectileIds.QueenBeeStinger)
         {

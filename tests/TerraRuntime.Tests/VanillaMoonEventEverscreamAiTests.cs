@@ -87,7 +87,7 @@ public sealed class VanillaMoonEventEverscreamAiTests
         Assert.Equal(1, new RuntimeNpcAiStateExecutor(shooters, projectiles).Tick(new EverscreamOnly(stepper)).Applied);
         Assert.True(projectiles.TryGetActive(0, out ProjectileSnapshot bolt));
         Assert.Equal(VanillaProjectileIds.IceQueenFrostBolt, bolt.Type); Assert.Equal((short)36, bolt.Damage);
-        Assert.Equal(5, random.Draws);
+        Assert.Equal(9, random.Draws);
     }
 
     [Fact]
@@ -120,6 +120,41 @@ public sealed class VanillaMoonEventEverscreamAiTests
         Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
         Assert.Equal(20f, next.Ai.Ai0); Assert.Equal(.3f, next.Simulation.Rotation!.Value, 5);
         Assert.True(next.Simulation.NoGravity); Assert.True(next.Simulation.NoTileCollide);
+    }
+
+    [Fact]
+    public void Ice_queen_committed_rare_spike_uses_its_retained_source_vector()
+    {
+        var npcs = new RuntimeNpcStore();
+        var state = new NpcStateUpdate(346, 346, 100f, 200f, 0f, 0f, 3, default,
+            NpcSimulationState.Initial with { DirectionX = 1, SpriteDirection = 1, Life = 18000, LifeMax = 18000 });
+        Assert.True(npcs.TrySpawn(1, state, out _)); var projectiles = new RuntimeProjectileStore();
+        var random = new SequenceRandom(); VanillaNpcTargetingAiStepper stepper = CreateStepper(random, solid: false);
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new EverscreamOnly(stepper)).Applied);
+        Assert.True(projectiles.TryGetActive(0, out ProjectileSnapshot spike));
+        Assert.Equal(VanillaProjectileIds.IceQueenIceSpike, spike.Type); Assert.Equal((short)80, spike.Damage);
+        Assert.Equal(4, random.Draws);
+    }
+
+    [Fact]
+    public void Ice_queen_committed_flare_and_wave_clocks_emit_their_source_projectiles()
+    {
+        AssertRareIceQueenProjectile(new NpcAiState(0f, 0f, 0f, 0f), new NpcAiState(0f, 11f, 0f, 0f),
+            VanillaProjectileIds.IceQueenFrostFlare, 42, new SequenceRandom(1, 1, 1, 0, 0, 0, 0));
+        AssertRareIceQueenProjectile(new NpcAiState(0f, 0f, 0f, 0f), new NpcAiState(0f, 0f, 8f, 0f),
+            VanillaProjectileIds.IceQueenFrostWave, 50, new SequenceRandom(1, 1, 1, 0, 0, 0));
+    }
+
+    private static void AssertRareIceQueenProjectile(NpcAiState ai, NpcAiState localAi, ProjectileTypeId type, int damage, SequenceRandom random)
+    {
+        var npcs = new RuntimeNpcStore();
+        var state = new NpcStateUpdate(346, 346, 100f, 200f, 0f, 0f, 3, ai,
+            NpcSimulationState.Initial with { DirectionX = 1, SpriteDirection = 1, Life = 18000, LifeMax = 18000, LocalAi = localAi });
+        Assert.True(npcs.TrySpawn(1, state, out _)); var projectiles = new RuntimeProjectileStore();
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, solid: false);
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new EverscreamOnly(stepper)).Applied);
+        Assert.True(projectiles.TryGetActive(0, out ProjectileSnapshot projectile));
+        Assert.Equal(type, projectile.Type); Assert.Equal((short)damage, projectile.Damage);
     }
 
     [Fact]
@@ -332,10 +367,15 @@ public sealed class VanillaMoonEventEverscreamAiTests
         }
     }
 
-    private sealed class SequenceRandom : IVanillaNpcRandom
+    private sealed class SequenceRandom(params int[] values) : IVanillaNpcRandom
     {
+        private int index;
         public int Draws { get; private set; }
-        public int NextInt32(int inclusiveMin, int exclusiveMax) { Draws++; return inclusiveMin; }
+        public int NextInt32(int inclusiveMin, int exclusiveMax)
+        {
+            Draws++;
+            return index < values.Length ? values[index++] : inclusiveMin;
+        }
         public double NextDouble() { Draws++; return 0d; }
     }
 }

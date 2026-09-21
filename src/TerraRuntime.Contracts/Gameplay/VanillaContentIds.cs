@@ -551,6 +551,9 @@ public static class VanillaProjectileIds
 
     // Snow Moon AI_061 Ice Queen primary bolt.
     public static readonly ProjectileTypeId IceQueenFrostBolt = new(180);
+    public static readonly ProjectileTypeId IceQueenFrostFlare = new(350);
+    public static readonly ProjectileTypeId IceQueenFrostWave = new(351);
+    public static readonly ProjectileTypeId IceQueenIceSpike = new(352);
     public static readonly ProjectileTypeId Sharknado = new(384);
     public static readonly ProjectileTypeId SharknadoBolt = new(385);
     public static readonly ProjectileTypeId Cthulunado = new(386);

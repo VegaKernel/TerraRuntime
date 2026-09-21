@@ -1360,7 +1360,7 @@ internal sealed class VanillaSnowMoonAi63NpcBehaviorStrategy : IVanillaNpcBehavi
 }
 
 /// <summary>TerrariaServer 1.4.5.8 AI_061 flight and phase clock for Snow Moon Ice Queen.</summary>
-internal sealed class VanillaSnowMoonIceQueenNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
+internal sealed class VanillaSnowMoonIceQueenNpcBehaviorStrategy(IVanillaNpcRandom random) : IVanillaNpcBehaviorStrategy
 {
     private IVanillaEverscreamEnvironment? environment;
 
@@ -1407,6 +1407,29 @@ internal sealed class VanillaSnowMoonIceQueenNpcBehaviorStrategy : IVanillaNpcBe
             ai = ai with { Ai1 = ai.Ai1 + 1f };
             haltHorizontal = true;
             if (ai.Ai1 > 240f) ai = ai with { Ai0 = 0f, Ai1 = 0f };
+        }
+
+        if (!context.DayTime)
+        {
+            int spikeRate = life < definition.LifeMax * .25f ? 300 : life < definition.LifeMax * .5f ? 450 : life < definition.LifeMax * .75f ? 540 : 600;
+            int flareRate = life < definition.LifeMax * .25f ? 600 : life < definition.LifeMax * .5f ? 900 : life < definition.LifeMax * .75f ? 1080 : 1200;
+            int waveRate = life < definition.LifeMax * .25f ? 1350 : life < definition.LifeMax * .5f ? 2025 : life < definition.LifeMax * .75f ? 2430 : 2700;
+            NpcAiState local = simulation.LocalAi with { Ai0 = 0f };
+            if (random.NextInt32(0, spikeRate) == 0)
+                local = local with { Ai0 = 1f, Ai3 = random.NextInt32(1, 100) * directionX };
+            if (random.NextInt32(0, flareRate) == 0) local = local with { Ai1 = 1f };
+            if (local.Ai1 >= 1f)
+            {
+                local = local with { Ai1 = local.Ai1 + 1f };
+                if (local.Ai1 >= 100f) local = local with { Ai1 = 0f };
+            }
+            if (random.NextInt32(0, waveRate) == 0) local = local with { Ai2 = 2f };
+            if (local.Ai2 > 0f)
+            {
+                local = local with { Ai2 = local.Ai2 + 1f };
+                if (local.Ai2 >= 100f) local = local with { Ai2 = 0f };
+            }
+            simulation = simulation with { LocalAi = local };
         }
 
         if (MathF.Abs(centerX - player.CenterX) < 50f) haltHorizontal = true;

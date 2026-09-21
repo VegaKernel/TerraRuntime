@@ -49,7 +49,9 @@ internal enum VanillaProjectileBehaviorFamily : byte
     MoonLeech = 36,
     MoonBoulder = 37,
     FlamingScythe = 38,
-    SantankBomb = 39
+    SantankBomb = 39,
+    IceQueenFrostWave = 40,
+    IceQueenIceSpike = 41
 }
 
 /// <summary>
@@ -311,6 +313,11 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         RejectServerOwned: false,
         ExemptFromPreAiWorldBounds: false);
 
+    private static readonly VanillaProjectileBehaviorProfile IceQueenFrostWaveProfile = new(
+        VanillaProjectileBehaviorFamily.IceQueenFrostWave, new ProjectileAiStyleId(58), true, true, false, false);
+    private static readonly VanillaProjectileBehaviorProfile IceQueenIceSpikeProfile = new(
+        VanillaProjectileBehaviorFamily.IceQueenIceSpike, VanillaProjectileAiStyles.BouncyBall, true, true, false, false);
+
     private static readonly VanillaProjectileBehaviorProfile HallowBossRainbowStreakProfile = new(
         VanillaProjectileBehaviorFamily.HallowBossRainbowStreak,
         VanillaProjectileAiStyles.HallowBossRainbowStreak,
@@ -459,6 +466,10 @@ internal static class VanillaProjectileBehaviorProfileCatalog
             profile = HostileStraightNoGravityProfile;
             return true;
         }
+
+        if (type == VanillaProjectileIds.IceQueenFrostFlare) { profile = HostileStraightNoGravityProfile; return true; }
+        if (type == VanillaProjectileIds.IceQueenFrostWave) { profile = IceQueenFrostWaveProfile; return true; }
+        if (type == VanillaProjectileIds.IceQueenIceSpike) { profile = IceQueenIceSpikeProfile; return true; }
 
         if (type == VanillaProjectileIds.Sharknado || type == VanillaProjectileIds.Cthulunado)
         {

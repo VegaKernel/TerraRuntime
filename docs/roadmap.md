@@ -12,7 +12,7 @@
 
 2026-09-21 Snow Moon Santa-NK1: source NPC 345 `SetDefaults` and AI_060 are admitted through the wave selector. The runtime retains all three night states, life-based movement/attack clocks, target refresh and day escape. Rockets and bombs are created only after their matching committed clock transition, retain source damage and hitboxes, and bombs preserve their solid-tile gate and gravity. Remaining Snow Moon special-AI NPCs remain open.
 
-2026-09-21 Snow Moon Ice Queen: source NPC 346 `SetDefaults`, AI_061's day escape, life-scaled hover motion, floor probe and 300/240 phase clock are admitted. Its phase-one Frost Bolt now retains source cadence, aim, damage and random-draw order after the committed transition. The three independent rare projectile branches of AI_061 remain open.
+2026-09-21 Snow Moon Ice Queen: source NPC 346 `SetDefaults`, AI_061's day escape, life-scaled hover motion, floor probe and 300/240 phase clock are admitted. Frost Bolt plus the rare Ice Spike, Frost Flare and Frost Wave branches retain their source projectile types, damage, hitboxes, aim and committed local-AI clocks. The Frost Wave's AI_058 fall transition and Ice Spike gravity are simulated server-side. Remaining Snow Moon special-AI NPCs remain open.
 
 2026-09-21 Snow Moon AI_062: source NPC 347 `SetDefaults` is admitted with its target pursuit, daylight retreat, line-of-sight gate and stationary 15-tick Frost Bolt clock. The server creates projectile 180 after the matching committed local-AI transition with source aim, damage and six random draws. Remaining Snow Moon special-AI NPCs remain open.
 

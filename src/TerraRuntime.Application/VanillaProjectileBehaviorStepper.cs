@@ -863,6 +863,21 @@ internal static partial class VanillaProjectileBehaviorStepper
                 velocityY += .2f;
                 break;
 
+            case VanillaProjectileBehaviorFamily.IceQueenFrostWave:
+                if (ai0 == 0f)
+                {
+                    float ai1 = current.Ai.Ai1 + 1f;
+                    ai1Override = ai1;
+                    if (ai1 > 30f) velocityY += .1f;
+                    if (velocityY >= 0f) ai0 = 1f;
+                }
+                if (ai0 == 1f) { velocityY = MathF.Min(3f, velocityY + .1f); velocityX *= .99f; }
+                break;
+
+            case VanillaProjectileBehaviorFamily.IceQueenIceSpike:
+                velocityY -= .5f;
+                break;
+
             default:
                 next = default;
                 return false;
