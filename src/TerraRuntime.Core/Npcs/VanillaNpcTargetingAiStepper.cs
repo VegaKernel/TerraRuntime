@@ -465,8 +465,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         in NpcStateUpdate proposed,
         Span<NpcAiProjectileIntent> destination)
     {
-        if (source.Type == VanillaNpcIds.SpikedIceSlime.Value && proposed.Type == source.Type)
-            return PlanSpikedIceSlimeSpikes(in source, in proposed, destination);
+        if ((source.Type == VanillaNpcIds.SpikedIceSlime.Value || source.Type == VanillaNpcIds.SpikedSlime.Value) && proposed.Type == source.Type)
+            return PlanSpikedSlimeSpikes(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.SpikedJungleSlime.Value && proposed.Type == source.Type)
             return PlanSpikedJungleSlimeThorns(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.Antlion.Value && proposed.Type == source.Type)
@@ -505,19 +505,23 @@ public sealed class VanillaNpcTargetingAiStepper :
         return _flyer.PlanProjectileSpawns(in source, in proposed, _context, destination);
     }
 
-    private int PlanSpikedIceSlimeSpikes(
+    private int PlanSpikedSlimeSpikes(
         in NpcSnapshot source,
         in NpcStateUpdate proposed,
         Span<NpcAiProjectileIntent> destination)
     {
+        NpcTypeId slimeType = new(source.Type);
+        ProjectileTypeId spikeType = source.Type == VanillaNpcIds.SpikedSlime.Value
+            ? VanillaProjectileIds.SpikedSlimeSpike
+            : VanillaProjectileIds.SpikedIceSlimeSpike;
         if (source.Simulation.LocalAi.Ai0 is < 0f or > 1f ||
             proposed.Simulation.LocalAi.Ai0 is not 30f and not 50f ||
             source.Target >= byte.MaxValue ||
             !_context.TryFindCandidate((byte)source.Target, out VanillaNpcTargetCandidate target) ||
             !target.Active || target.Dead || target.NoAggro ||
-            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.SpikedIceSlime, out VanillaNpcDefinition definition) ||
+            !VanillaNpcDefinitionCatalog.TryGet(slimeType, out VanillaNpcDefinition definition) ||
             !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox) ||
-            !VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.SpikedIceSlimeSpike, out VanillaProjectileDefinition spike))
+            !VanillaDefinitionCatalog.TryGet(spikeType, out VanillaProjectileDefinition spike))
         {
             return 0;
         }
@@ -532,7 +536,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             float velocityY = target.CenterY - target.Height * .5f - centerY - _random.NextInt32(0, 200);
             NormalizeTo(ref velocityX, ref velocityY, 4.5f);
             destination[0] = new NpcAiProjectileIntent(
-                VanillaProjectileIds.SpikedIceSlimeSpike,
+                spikeType,
                 centerX - spike.Width * .5f,
                 centerY - spike.Height * .5f,
                 velocityX,
@@ -551,7 +555,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             float velocityY = -4f * (1f + _random.NextInt32(-50, 51) * .005f);
             NormalizeTo(ref velocityX, ref velocityY, 4f + _random.NextInt32(-50, 51) * .01f);
             destination[index] = new NpcAiProjectileIntent(
-                VanillaProjectileIds.SpikedIceSlimeSpike,
+                spikeType,
                 centerX - spike.Width * .5f,
                 centerY - spike.Height * .5f,
                 velocityX,

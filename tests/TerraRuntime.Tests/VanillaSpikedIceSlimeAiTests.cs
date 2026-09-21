@@ -20,6 +20,13 @@ public sealed class VanillaSpikedIceSlimeAiTests
         Assert.True(VanillaNpcAiCoverageCatalog.TryGet(VanillaNpcIds.SpikedIceSlime,
             out VanillaNpcAiCoverage coverage));
         Assert.True(coverage.Has(VanillaNpcAiCapability.SlimeProjectileSideEffectSlice));
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.SpikedSlimeSpike,
+            out VanillaProjectileDefinition hallowProjectile));
+        Assert.Equal((6, 6, VanillaProjectileAiStyles.Arrow),
+            (hallowProjectile.Width, hallowProjectile.Height, hallowProjectile.AiStyle));
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(VanillaNpcIds.SpikedSlime,
+            out VanillaNpcAiCoverage hallowCoverage));
+        Assert.True(hallowCoverage.Has(VanillaNpcAiCapability.SlimeProjectileSideEffectSlice));
     }
 
     [Fact]
@@ -62,6 +69,19 @@ public sealed class VanillaSpikedIceSlimeAiTests
                 intents[index].VelocityY * intents[index].VelocityY), 3.499f, 3.501f);
         }
         Assert.Equal(15, random.Draws);
+    }
+
+    [Fact]
+    public void Hallow_spiked_slime_emits_projectile_605_with_the_same_source_cooldown()
+    {
+        var stepper = CreateStepper(expert: false, new MinimumRandom());
+        NpcSnapshot slime = Snapshot(VanillaNpcIds.SpikedSlime);
+        Assert.True(stepper.TryStepState(in slime, out NpcStateUpdate next));
+        Assert.Equal(50f, next.Simulation.LocalAi.Ai0);
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
+        Assert.Equal(1, stepper.PlanProjectileSpawns(in slime, in next, intents));
+        Assert.Equal(VanillaProjectileIds.SpikedSlimeSpike, intents[0].Type);
+        Assert.Equal(9, intents[0].Damage);
     }
 
     [Fact]
@@ -111,11 +131,14 @@ public sealed class VanillaSpikedIceSlimeAiTests
         return stepper;
     }
 
-    private static NpcSnapshot Snapshot() =>
-        new(new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1), VanillaNpcIds.SpikedIceSlime.Value,
-            checked((short)VanillaNpcIds.SpikedIceSlime.Value), 100f, 100f, 10f, 0f, 7,
+    private static NpcSnapshot Snapshot(NpcTypeId? type = null)
+    {
+        NpcTypeId resolvedType = type ?? VanillaNpcIds.SpikedIceSlime;
+        return new(new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1), resolvedType.Value,
+            checked((short)resolvedType.Value), 100f, 100f, 10f, 0f, 7,
             new NpcAiState(-200f, 0f, 1f, 0f),
             NpcSimulationState.Initial with { Life = 60, LifeMax = 60, Scale = 1f, DirectionX = 1, DirectionY = 1 });
+    }
 
     private sealed class VisibilityEnvironment(bool visible) : IVanillaNpcProjectileEnvironment
     {

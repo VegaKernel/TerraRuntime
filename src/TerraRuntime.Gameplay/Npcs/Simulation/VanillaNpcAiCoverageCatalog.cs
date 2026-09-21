@@ -353,7 +353,8 @@ public static class VanillaNpcAiCoverageCatalog
                 OrdinaryCore | VanillaNpcAiCapability.SlimeTimerProfileSlice;
             if (definition.Type == VanillaNpcIds.CorruptSlime)
                 capabilities |= VanillaNpcAiCapability.NegativeNetVariantDefaults;
-            if (definition.Type == VanillaNpcIds.SpikedIceSlime || definition.Type == VanillaNpcIds.SpikedJungleSlime)
+            if (definition.Type == VanillaNpcIds.SpikedIceSlime || definition.Type == VanillaNpcIds.SpikedSlime ||
+                definition.Type == VanillaNpcIds.SpikedJungleSlime)
                 capabilities |= VanillaNpcAiCapability.SlimeProjectileSideEffectSlice;
 
             entries[index++] = Partial(definition.Type, capabilities);

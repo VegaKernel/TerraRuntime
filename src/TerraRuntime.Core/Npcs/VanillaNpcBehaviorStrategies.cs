@@ -218,7 +218,7 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
         // including while airborne. The balloon sentinel returns before this source branch.
         if (definition.Type == VanillaNpcIds.RainbowSlime && ai.Ai0 != -999f)
             ai = ai with { Ai0 = ai.Ai0 + 2f };
-        if (definition.Type == VanillaNpcIds.SpikedIceSlime)
+        if (definition.Type == VanillaNpcIds.SpikedIceSlime || definition.Type == VanillaNpcIds.SpikedSlime)
         {
             NpcAiState localAi = simulation.LocalAi;
             if (localAi.Ai0 > 0f)
@@ -299,6 +299,7 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
                        definition.Type == VanillaNpcIds.Crimslime ||
                        definition.Type == VanillaNpcIds.RainbowSlime ||
                        definition.Type == VanillaNpcIds.SpikedIceSlime ||
+                       definition.Type == VanillaNpcIds.SpikedSlime ||
                        definition.Type == VanillaNpcIds.SpikedJungleSlime ||
                        !context.DayTime ||
                        damaged ||

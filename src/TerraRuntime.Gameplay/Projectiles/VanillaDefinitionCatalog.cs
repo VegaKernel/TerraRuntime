@@ -661,6 +661,11 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 6,
         CollisionHeight: 6);
 
+    // Projectile.SetDefaults 605: hostile Hallow Spiked Slime shot.
+    private static readonly VanillaProjectileDefinition SpikedSlimeSpikeDefinition = new(
+        Width: 6, Height: 6, AiStyle: VanillaProjectileAiStyles.Arrow, TileCollide: true,
+        IgnoreWater: false, CanCutTiles: true, CollisionWidth: 6, CollisionHeight: 6);
+
     private static readonly VanillaProjectileDefinition IceQueenFrostFlareDefinition = new(14, 14, VanillaProjectileAiStyles.Arrow, false, false, true, 14, 14);
     private static readonly VanillaProjectileDefinition IceQueenFrostWaveDefinition = new(24, 24, new ProjectileAiStyleId(58), false, false, true, 24, 24);
     private static readonly VanillaProjectileDefinition IceQueenIceSpikeDefinition = new(30, 30, VanillaProjectileAiStyles.BouncyBall, true, false, true, 30, 30);
@@ -1121,6 +1126,7 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.IceQueenIceSpike) { definition = IceQueenIceSpikeDefinition; return true; }
         if (type == VanillaProjectileIds.SpikedIceSlimeSpike) { definition = SpikedIceSlimeSpikeDefinition; return true; }
         if (type == VanillaProjectileIds.SpikedJungleSlimeThorn) { definition = SpikedJungleSlimeThornDefinition; return true; }
+        if (type == VanillaProjectileIds.SpikedSlimeSpike) { definition = SpikedSlimeSpikeDefinition; return true; }
 
         if (type == VanillaProjectileIds.QueenBeeStinger)
         {
