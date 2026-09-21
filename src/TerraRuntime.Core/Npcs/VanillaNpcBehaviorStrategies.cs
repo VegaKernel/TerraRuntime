@@ -2076,6 +2076,108 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
         return 1;
     }
 
+    public NpcSnapshot CompleteHornetStingerAttack(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        VanillaNpcBehaviorContext context,
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (!IsHornetStingerShooter(before.TypeIdentity) || committed.TypeIdentity != before.TypeIdentity ||
+            !VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, before.NetIdentity, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(committed.Simulation, out VanillaNpcHitboxSize hitbox))
+        {
+            return committed;
+        }
+
+        float timer = committed.Ai.Ai1 == 101f ? 0f : committed.Ai.Ai1;
+        float scale = committed.Simulation.Scale;
+        if (!float.IsFinite(scale) || scale <= 0f)
+            return committed;
+
+        timer += random.NextInt32(5, 20) * .1f * scale;
+        if (before.TypeIdentity == VanillaNpcIds.MossHornet)
+            timer += random.NextInt32(5, 20) * .1f * scale;
+        if (context.GoodWorld)
+            timer += random.NextInt32(5, 20) * .1f * scale;
+
+        VanillaNpcTargetCandidate target = default;
+        bool hasPlayer = committed.Target < byte.MaxValue &&
+            context.TryFindCandidate((byte)committed.Target, out target) &&
+            target.Active && !target.Dead && !target.Ghost;
+        if (hasPlayer && target.Stealth == 0f && target.ItemAnimation == 0)
+            timer = 0f;
+
+        bool hasShot = false;
+        float shotX = 0f;
+        float shotY = 0f;
+        if (timer >= 130f)
+        {
+            float centerX = committed.PositionX + hitbox.Width * .5f;
+            float centerY = committed.PositionY + hitbox.Height * .5f;
+            bool canShoot = hasPlayer && projectileEnvironment is not null &&
+                VanillaNpcGlobalFiringDistance.Contains(centerX, centerY, target.CenterX, target.CenterY) &&
+                projectileEnvironment.CanHit(
+                    committed.PositionX, committed.PositionY, hitbox.Width, hitbox.Height,
+                    target.CenterX - target.Width * .5f, target.CenterY - target.Height * .5f,
+                    (int)target.Width, (int)target.Height);
+            if (canShoot)
+            {
+                shotX = target.CenterX - centerX + random.NextInt32(-20, 21);
+                shotY = target.CenterY - centerY + random.NextInt32(-20, 21);
+                if ((shotX < 0f && committed.VelocityX < 0f) || (shotX > 0f && committed.VelocityX > 0f))
+                {
+                    float length = MathF.Sqrt(shotX * shotX + shotY * shotY);
+                    if (length > 0f && float.IsFinite(length))
+                    {
+                        shotX = shotX / length * 8f;
+                        shotY = shotY / length * 8f;
+                        timer = 101f;
+                        hasShot = true;
+                    }
+                    else
+                    {
+                        timer = 0f;
+                    }
+                }
+                else
+                {
+                    timer = 0f;
+                }
+            }
+            else
+            {
+                timer = 0f;
+            }
+        }
+
+        NpcAiState ai = committed.Ai with { Ai1 = timer };
+        if (ai == committed.Ai)
+            return committed;
+
+        if (!mutations.TryUpdateAi(in committed, ai, out NpcSnapshot completed))
+            return committed;
+
+        if (hasShot)
+        {
+            float centerX = completed.PositionX + hitbox.Width * .5f;
+            float centerY = completed.PositionY + hitbox.Height * .5f;
+            int damage = (int)((before.TypeIdentity == VanillaNpcIds.MossHornet ? 30f : 10f) * scale);
+            var intent = new NpcAiProjectileIntent(
+                VanillaProjectileIds.HornetStinger, centerX, centerY, shotX, shotY, damage, 0f)
+            {
+                TimeLeftOverride = 300
+            };
+            mutations.TrySpawnProjectile(in completed, in intent, out _);
+        }
+
+        return completed;
+    }
+
+    public static bool IsHornetStingerShooter(NpcTypeId type) =>
+        type == VanillaNpcIds.Hornet ||
+        type == VanillaNpcIds.MossHornet ||
+        type.Value is >= 231 and <= 235;
+
     private static bool IsMechQueenUp(VanillaNpcBehaviorContext context) =>
         TryGetMechQueen(context, out _);
 

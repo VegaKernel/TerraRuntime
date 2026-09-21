@@ -886,6 +886,12 @@ public static class VanillaDefinitionCatalog
             return true;
         }
 
+        if (type == VanillaProjectileIds.HornetStinger)
+        {
+            definition = WoodenArrowDefinition;
+            return true;
+        }
+
         if (type == VanillaProjectileIds.HarpyFeather)
         {
             definition = HarpyFeatherDefinition;

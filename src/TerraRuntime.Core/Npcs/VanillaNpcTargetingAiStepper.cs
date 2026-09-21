@@ -2147,7 +2147,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         proposed.Type == before.Type &&
         (before.TypeIdentity == VanillaNpcIds.DarkCaster || before.TypeIdentity == VanillaNpcIds.FireImp || before.TypeIdentity == VanillaNpcIds.GoblinSorcerer || before.TypeIdentity == VanillaNpcIds.Tim || before.TypeIdentity == VanillaNpcIds.RuneWizard || before.TypeIdentity.Value is >= 281 and <= 286 || before.TypeIdentity == VanillaNpcIds.Harpy ||
          before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon ||
-         before.TypeIdentity == VanillaNpcIds.RedDevil || VanillaGroundFighterProjectileAttack.IsSupported(before.TypeIdentity));
+         before.TypeIdentity == VanillaNpcIds.RedDevil || VanillaServantOfCthulhuNpcBehaviorStrategy.IsHornetStingerShooter(before.TypeIdentity) ||
+         VanillaGroundFighterProjectileAttack.IsSupported(before.TypeIdentity));
 
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations)
@@ -2161,6 +2162,9 @@ public sealed class VanillaNpcTargetingAiStepper :
         if ((before.TypeIdentity == VanillaNpcIds.Harpy || before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon || before.TypeIdentity == VanillaNpcIds.RedDevil) &&
             committed.TypeIdentity == before.TypeIdentity)
             return _bat.CompleteBatShooterAttackTimer(in before, in committed, _context, _random, mutations);
+        if (VanillaServantOfCthulhuNpcBehaviorStrategy.IsHornetStingerShooter(before.TypeIdentity) &&
+            committed.TypeIdentity == before.TypeIdentity)
+            return _flyer.CompleteHornetStingerAttack(in before, in committed, _context, mutations);
         if (VanillaGroundFighterProjectileAttack.IsSupported(before.TypeIdentity) &&
             committed.TypeIdentity == before.TypeIdentity)
             return VanillaGroundFighterProjectileAttack.Complete(

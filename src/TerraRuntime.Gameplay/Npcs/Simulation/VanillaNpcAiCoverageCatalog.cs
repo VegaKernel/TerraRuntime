@@ -116,6 +116,11 @@ public static class VanillaNpcAiCoverageCatalog
         VanillaNpcAiCapability capabilities) =>
         new(type, capabilities, FullVanillaAiParity: false);
 
+    private static bool IsHornetStingerShooter(NpcTypeId type) =>
+        type == VanillaNpcIds.Hornet ||
+        type == VanillaNpcIds.MossHornet ||
+        type.Value is >= 231 and <= 235;
+
     private static VanillaNpcAiCoverage[] CreateEntries()
     {
         const int hardmodeBossBehaviorCount = 35;
@@ -365,7 +370,8 @@ public static class VanillaNpcAiCoverageCatalog
                 OrdinaryCore | VanillaNpcAiCapability.FlyerPursuitProfileSlice;
             if (HasNegativeNetVariant(definition.Type))
                 capabilities |= VanillaNpcAiCapability.NegativeNetVariantDefaults;
-            if (definition.Type == VanillaNpcIds.Probe || definition.Type == VanillaNpcIds.BloodSquid)
+            if (definition.Type == VanillaNpcIds.Probe || definition.Type == VanillaNpcIds.BloodSquid ||
+                IsHornetStingerShooter(definition.Type))
                 capabilities |= VanillaNpcAiCapability.FlyerProjectileSideEffectSlice;
 
             entries[index++] = Partial(definition.Type, capabilities);

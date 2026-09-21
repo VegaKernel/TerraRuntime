@@ -536,6 +536,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId AntlionSand = new(31);
     public static readonly ProjectileTypeId HarpyFeather = new(38);
     public static readonly ProjectileTypeId DemonScythe = new(44);
+    public static readonly ProjectileTypeId HornetStinger = new(55);
     public static readonly ProjectileTypeId RedDevilSickle = new(115);
     public static readonly ProjectileTypeId Flamelash = new(34);
     public static readonly ProjectileTypeId ThrowingKnife = new(48);
