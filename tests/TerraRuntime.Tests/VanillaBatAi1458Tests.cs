@@ -174,6 +174,22 @@ public sealed class VanillaBatAi1458Tests
     }
 
     [Fact]
+    public void Flying_vampire_does_not_retreat_during_an_eclipse()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper());
+        stepper.SetProjectileEnvironment(new VisibleEnvironment());
+        stepper.SetWorldBounds(4200, 100d);
+        stepper.SetWorldConditions(dayTime: true, slimeRainActive: false, eclipseActive: true);
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(7, 300f, 100f, 0, true, false, false, false)]);
+        NpcSnapshot vampire = Snapshot(VanillaNpcIds.Vampire);
+
+        Assert.True(stepper.TryStepState(in vampire, out NpcStateUpdate next));
+
+        Assert.Equal(.2f, next.VelocityX, 5);
+        Assert.Equal(.2f, next.VelocityY, 5);
+    }
+
+    [Fact]
     public void Flying_snake_restores_velocity_sign_directions_when_sight_is_blocked()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper());
