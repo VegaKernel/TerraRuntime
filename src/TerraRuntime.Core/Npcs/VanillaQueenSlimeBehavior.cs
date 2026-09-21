@@ -272,7 +272,8 @@ internal sealed class VanillaQueenSlimeNpcBehaviorStrategy : IVanillaNpcBehavior
                     float timer = ai.Ai1 + 1f;
                     if (timer >= 50f) { timer = 0f; ai = ai with { Ai2 = 1f }; }
                     ai = ai with { Ai1 = timer };
-                    if (phaseTwo && ai.Ai2 != 1f && hasTarget)
+                    // The source still performs one final fly step on the tick that changes ai[2] to release.
+                    if (phaseTwo && hasTarget)
                         SimpleFly(centerX, centerY, in target, simulation.TimeLeft, simulation.DirectionX, ref vx, ref vy);
                 }
                 break;

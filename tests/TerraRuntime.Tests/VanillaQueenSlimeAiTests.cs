@@ -25,6 +25,20 @@ public sealed class VanillaQueenSlimeAiTests
     }
 
     [Fact]
+    public void Phase_two_gel_burst_keeps_its_last_fly_step_on_the_release_transition()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper());
+        stepper.SetKingSlimeEnvironment(new FixedEnvironment());
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(7, 600f, 300f, 0, true, false, false, false)]);
+        NpcSnapshot queen = Queen(life: 8_999, localAi0: 8_999f) with { Ai = new NpcAiState(5f, 49f, 0f, 0f) };
+
+        Assert.True(stepper.TryStepState(in queen, out NpcStateUpdate next));
+        Assert.Equal(new NpcAiState(5f, 0f, 1f, 0f), next.Ai);
+        Assert.True(next.VelocityX > 0f);
+        Assert.True(next.VelocityY < 0f);
+    }
+
+    [Fact]
     public void Teleport_completion_shrinks_the_live_hitbox_while_preserving_bottom_center()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper());
