@@ -2485,6 +2485,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);
         VanillaMoonLordLeechBehavior.SpawnFromHead(in before, in committed, _context, mutations);
         _flyer.SpawnGoodWorldEaterSpit(in before, in committed, _context, mutations);
+        _flyer.SpawnCorruptorSpit(in before, in committed, _context, mutations);
         VanillaDestroyerNpcBehaviorStrategy.SpawnChain(in before, in committed, _context.GoodWorld, mutations);
         VanillaDestroyerNpcBehaviorStrategy.DespawnDaytimeChain(in before, in committed, _context, mutations);
     }

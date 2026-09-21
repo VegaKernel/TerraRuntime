@@ -2359,6 +2359,11 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
         float finalVelocityY = result.VelocityY;
         NpcAiState localAi = npc.Simulation.LocalAi;
         bool clearJustHit = TryAdvanceGoodWorldEaterSpitClock(in npc, context, out localAi);
+        if (TryAdvanceCorruptorSpitClock(in npc, out NpcAiState corruptorLocalAi))
+        {
+            localAi = corruptorLocalAi;
+            clearJustHit = true;
+        }
         if (VanillaFlyerProjectileAttack.IsSupportedShooter(definition.Type) &&
             VanillaFlyerProjectileAttack.TryStep(
                 definition.Type,
@@ -2661,6 +2666,58 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
             0f,
             0f,
             byte.MaxValue), out _);
+    }
+
+    public void SpawnCorruptorSpit(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        VanillaNpcBehaviorContext context,
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaNpcIds.Corruptor || committed.TypeIdentity != before.TypeIdentity ||
+            !VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, before.NetIdentity, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(committed.Simulation, out VanillaNpcHitboxSize hitbox))
+        {
+            return;
+        }
+
+        float beforeTimer = before.Simulation.JustHit ? 0f : before.Simulation.LocalAi.Ai0;
+        if (beforeTimer + 1f != 180f || committed.Simulation.LocalAi.Ai0 != 0f ||
+            committed.Target >= byte.MaxValue || !context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.Ghost || projectileEnvironment is null)
+        {
+            return;
+        }
+
+        float centerX = committed.PositionX + hitbox.Width * .5f;
+        float centerY = committed.PositionY + hitbox.Height * .5f;
+        if (!VanillaNpcGlobalFiringDistance.Contains(centerX, centerY, target.CenterX, target.CenterY) ||
+            !projectileEnvironment.CanHit(committed.PositionX, committed.PositionY, hitbox.Width, hitbox.Height,
+                target.CenterX - target.Width * .5f, target.CenterY - target.Height * .5f,
+                (int)target.Width, (int)target.Height))
+        {
+            return;
+        }
+
+        mutations.TrySpawn(in committed, new NpcAiSpawnIntent(
+            VanillaNpcIds.CorruptorSpit,
+            (int)(centerX + committed.VelocityX),
+            (int)(centerY + committed.VelocityY),
+            0f,
+            0f,
+            byte.MaxValue), out _);
+    }
+
+    private static bool TryAdvanceCorruptorSpitClock(in NpcSnapshot npc, out NpcAiState localAi)
+    {
+        localAi = npc.Simulation.LocalAi;
+        if (npc.TypeIdentity != VanillaNpcIds.Corruptor)
+            return false;
+
+        float timer = npc.Simulation.JustHit ? 0f : localAi.Ai0;
+        timer += 1f;
+        localAi = localAi with { Ai0 = timer == 180f ? 0f : timer };
+        return true;
     }
 
     private static bool IsMechQueenUp(VanillaNpcBehaviorContext context) =>

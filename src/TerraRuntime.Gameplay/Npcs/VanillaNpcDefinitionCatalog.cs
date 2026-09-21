@@ -450,6 +450,19 @@ public static class VanillaNpcDefinitionCatalog
             return true;
         }
 
+        // NPC.SetDefaults(112), TerrariaServer 1.4.5.8. Corruptor AI_005 creates this separate AI_009
+        // projectile NPC; it shares the retained launch/collision state machine with the Good World Eater spit.
+        if (type == VanillaNpcIds.CorruptorSpit)
+        {
+            definition = new VanillaNpcDefinition(VanillaNpcIds.CorruptorSpit, VanillaNpcAiStyles.BurningSphere,
+                VanillaNpcBehaviorFamily.BurningSphere, VanillaNpcPhysicsFamily.NoClipFlight, NpcArchetypeRole.Ordinary,
+                16, 16, 65, 0, 1, 0f, .9f, true, true, VanillaNpcSyncAnchor.TopLeft)
+            {
+                AlphaAtSpawn = 80
+            };
+            return true;
+        }
+
         if (type == VanillaNpcIds.RuneWizard)
         {
             definition = new VanillaNpcDefinition(VanillaNpcIds.RuneWizard, VanillaNpcAiStyles.Caster,

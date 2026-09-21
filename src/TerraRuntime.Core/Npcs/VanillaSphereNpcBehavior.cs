@@ -15,7 +15,9 @@ internal sealed class VanillaSphereNpcBehaviorStrategy : IVanillaNpcBehaviorStra
         bool water = npc.TypeIdentity == VanillaNpcIds.WaterSphere;
         bool chaos = npc.TypeIdentity == VanillaNpcIds.ChaosBall || npc.TypeIdentity == VanillaNpcIds.TimFireball;
         bool eaterSpit = npc.TypeIdentity == VanillaNpcIds.EaterOfWorldsSpit;
-        if ((!water && !chaos && !eaterSpit && npc.TypeIdentity != VanillaNpcIds.BurningSphere) ||
+        bool corruptorSpit = npc.TypeIdentity == VanillaNpcIds.CorruptorSpit;
+        bool hostileSpit = eaterSpit || corruptorSpit;
+        if ((!water && !chaos && !hostileSpit && npc.TypeIdentity != VanillaNpcIds.BurningSphere) ||
             definition.AiStyle != VanillaNpcAiStyles.BurningSphere ||
             !definition.TryResolveHitbox(npc.Simulation, out var hitbox))
         {
@@ -37,7 +39,7 @@ internal sealed class VanillaSphereNpcBehaviorStrategy : IVanillaNpcBehaviorStra
                     VanillaPlayerHitboxFacts.BaseHeight * .5f, 0, false, false, false, false);
             float centerX = npc.PositionX + hitbox.Width * .5f, centerY = npc.PositionY + hitbox.Height * .5f;
             float dx = target.CenterX - centerX, dy = target.CenterY - centerY;
-            float speed = eaterSpit ? context.GoodWorld ? 10f : 7f : water ? 6f : 5f;
+            float speed = eaterSpit ? context.GoodWorld ? 10f : 7f : corruptorSpit ? 7f : water ? 6f : 5f;
             if (protectedByBoss)
                 speed = water ? (VanillaSkeletronCombat.HasRedHatAdjustments(npc.TypeIdentity, npc.Ai, npc.Simulation.LocalAi) ? 8f : 10f) : 14f;
             float length = (float)Math.Sqrt(dx * dx + dy * dy);
@@ -58,18 +60,23 @@ internal sealed class VanillaSphereNpcBehaviorStrategy : IVanillaNpcBehaviorStra
         NpcAiState ai = npc.Ai;
         float positionX = npc.PositionX;
         float positionY = npc.PositionY;
-        bool hitsSolid = eaterSpit && npc.Simulation.SolidCollision;
+        bool hitsSolid = hostileSpit && npc.Simulation.SolidCollision;
         int timeLeft = npc.Simulation.TimeLeft < 0 ? 100 : Math.Min(npc.Simulation.TimeLeft, 100);
         bool protectedAboveSurface = eaterSpit && context.GoodWorld && !npc.Simulation.DontTakeDamage &&
             !double.IsPositiveInfinity(context.WorldSurfacePixels) &&
             npc.PositionY + hitbox.Height * .5f < context.WorldSurfacePixels;
         int? damageOverride = npc.Simulation.DamageOverride;
-        if (eaterSpit)
+        if (hostileSpit)
         {
-            // NPC.GetAttackDamage_CappedAtMaster(32): the retained spawn difficulty supplies the source
-            // difficulty multiplier while values above Master remain capped at the Master endpoint.
-            float difficulty = Math.Clamp(npc.Simulation.SpawnDifficulty ?? 1f, .5f, 3f);
-            damageOverride = (int)(32f * difficulty);
+            if (eaterSpit)
+            {
+                // NPC.GetAttackDamage_CappedAtMaster(32): the retained spawn difficulty supplies the source
+                // difficulty multiplier while values above Master remain capped at the Master endpoint.
+                float difficulty = Math.Clamp(npc.Simulation.SpawnDifficulty ?? 1f, .5f, 3f);
+                damageOverride = (int)(32f * difficulty);
+            }
+            else
+                damageOverride = definition.Damage;
             ai = ai with { Ai0 = Math.Min(3f, ai.Ai0 + 1f) };
             if (ai.Ai0 == 2f)
             {

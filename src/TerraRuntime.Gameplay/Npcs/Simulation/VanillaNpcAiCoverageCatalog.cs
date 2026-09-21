@@ -396,7 +396,7 @@ public static class VanillaNpcAiCoverageCatalog
             if (definition.Type == VanillaNpcIds.Probe || definition.Type == VanillaNpcIds.BloodSquid ||
                 IsHornetStingerShooter(definition.Type))
                 capabilities |= VanillaNpcAiCapability.FlyerProjectileSideEffectSlice;
-            if (definition.Type == VanillaNpcIds.EaterOfSouls)
+            if (definition.Type == VanillaNpcIds.EaterOfSouls || definition.Type == VanillaNpcIds.Corruptor)
                 capabilities |= VanillaNpcAiCapability.ChildSpawnSlice;
 
             entries[index++] = Partial(definition.Type, capabilities);
