@@ -1,6 +1,6 @@
 # TerraRuntime roadmap
 
-2026-09-21 Snow Moon waves 6-10: `NPC.Spawner.SpawnAnNPC` now selects source Everscream, Santa-NK1, Ice Queen and ground-fighter branches through wave ten, retaining every active-type cap and RNG draw after the wave-wide 1-in-30 special check. Unsupported special selections fail closed instead of falling back to an ordinary hostile. Waves 11-20, their no-spawn branches, and remaining special-AI NPCs remain open.
+2026-09-21 Snow Moon waves 6-13: `NPC.Spawner.SpawnAnNPC` now selects source Everscream, Santa-NK1, Ice Queen and ground-fighter branches through wave thirteen, retaining every active-type cap and RNG draw after the wave-wide 1-in-30 special check. Unsupported special selections fail closed instead of falling back to an ordinary hostile. Waves 14-20, their no-spawn branches, and remaining special-AI NPCs remain open.
 
 2026-09-21 Snow Moon Everscream: source NPC 344 `SetDefaults` and AI_057 are now admitted through the existing wave-4/5 selector. The server owns life-scaled horizontal pursuit, the 80-by-20 hover collision probe, both 180/300-tick attack clocks, and post-commit Pine Needle/Ornament projectile creation with source random order and provenance. Snow Moon later waves and the remaining special-AI NPCs remain open.
 

@@ -3,7 +3,7 @@ using TerraRuntime.Core.Npcs;
 
 namespace TerraRuntime.Application;
 
-/// <summary>Source-order Pumpkin/Snow Moon choices through Snow Moon wave ten in NPC.Spawner.SpawnAnNPC.</summary>
+/// <summary>Source-order Pumpkin/Snow Moon choices through Snow Moon wave thirteen in NPC.Spawner.SpawnAnNPC.</summary>
 internal static class VanillaMoonEventEarlySpawnSelector1458
 {
     public static NpcTypeId Select(bool snowMoon, int wave, IVanillaNpcRandom random, Func<short, int> count)
@@ -55,6 +55,27 @@ internal static class VanillaMoonEventEarlySpawnSelector1458
             if (random.NextInt32(0, 6) == 0) return new NpcTypeId(351);
             if (random.NextInt32(0, 3) == 0) return new NpcTypeId(348);
             return random.NextInt32(0, 3) == 0 ? new NpcTypeId(347) : FrostBase(random);
+        }
+        if (wave == 11)
+        {
+            if (random.NextInt32(0, 10) == 0 && count(345) == 0) return new NpcTypeId(345);
+            if (random.NextInt32(0, 6) == 0) return new NpcTypeId(352);
+            return random.NextInt32(0, 2) == 0 ? new NpcTypeId(342) : FrostBase(random);
+        }
+        if (wave == 12)
+        {
+            if (random.NextInt32(0, 10) == 0 && count(345) == 0) return new NpcTypeId(345);
+            if (random.NextInt32(0, 10) == 0 && count(344) == 0) return new NpcTypeId(344);
+            if (random.NextInt32(0, 8) == 0) return new NpcTypeId(343);
+            return random.NextInt32(0, 3) == 0 ? new NpcTypeId(342) : FrostBase(random);
+        }
+        if (wave == 13)
+        {
+            if (random.NextInt32(0, 10) == 0 && count(345) == 0) return new NpcTypeId(345);
+            if (random.NextInt32(0, 10) == 0 && count(346) == 0) return new NpcTypeId(346);
+            if (random.NextInt32(0, 3) == 0) return new NpcTypeId(352);
+            if (random.NextInt32(0, 6) == 0) return new NpcTypeId(343);
+            return random.NextInt32(0, 3) == 0 ? new NpcTypeId(342) : new NpcTypeId(347);
         }
 
         return wave switch

@@ -19,6 +19,9 @@ public sealed class VanillaMoonEventEarlySpawnSelector1458Tests
     [InlineData(true, 8, new[] { 1, 1, 1, 0 }, 348)]
     [InlineData(true, 9, new[] { 1, 1, 1, 0 }, 348)]
     [InlineData(true, 10, new[] { 1, 1, 1, 0 }, 351)]
+    [InlineData(true, 11, new[] { 1, 1, 0 }, 352)]
+    [InlineData(true, 12, new[] { 1, 1, 1, 1, 0 }, 342)]
+    [InlineData(true, 13, new[] { 1, 1, 1, 0 }, 352)]
     [InlineData(false, 1, new[] { 309 }, 309)]
     [InlineData(false, 2, new[] { 0 }, 326)]
     [InlineData(false, 4, new[] { 0 }, 330)]
@@ -34,6 +37,13 @@ public sealed class VanillaMoonEventEarlySpawnSelector1458Tests
     {
         var random = new SequenceRandom(1, 0, 0);
         Assert.Equal(350, VanillaMoonEventEarlySpawnSelector1458.Select(true, 4, random, static type => type == 344 ? 1 : 0).Value);
+    }
+
+    [Fact]
+    public void Snow_later_wave_cap_falls_through_in_source_order()
+    {
+        var random = new SequenceRandom(1, 0, 0);
+        Assert.Equal(352, VanillaMoonEventEarlySpawnSelector1458.Select(true, 11, random, static type => type == 345 ? 1 : 0).Value);
     }
 
     [Theory]
