@@ -11,9 +11,14 @@ internal sealed class VanillaWallOfFleshWorldEnvironment : IVanillaWallOfFleshEn
 {
     private const int TileSize = 16;
     private readonly WorldTileStore tiles;
+    // FNA's ref/out Rectangle.Union aliases its first input in NPC.AI_AttemptToFindTeleportSpot.
+    private readonly bool fnaRectangleUnion;
 
-    public VanillaWallOfFleshWorldEnvironment(WorldTileStore tiles) =>
+    public VanillaWallOfFleshWorldEnvironment(WorldTileStore tiles, bool? useFnaRectangleUnion = null)
+    {
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
+        fnaRectangleUnion = useFnaRectangleUnion ?? !OperatingSystem.IsWindows();
+    }
 
     public int WorldWidthTiles => tiles.Dimensions.WidthTiles;
     public int WorldHeightTiles => tiles.Dimensions.HeightTiles;
@@ -152,14 +157,15 @@ internal sealed class VanillaWallOfFleshWorldEnvironment : IVanillaWallOfFleshEn
             int startY = random.NextInt32(targetTileY - 20, targetTileY + 21);
             for (int y = startY; y < targetTileY + 20; y++)
             {
+                WorldTile floor = tiles.Get(x, y);
                 if ((y >= ownY - 1 && y <= ownY + 1 && x >= ownX - 1 && x <= ownX + 1) ||
-                    !tiles.Get(x, y).IsActive)
+                    !floor.IsActive || floor.IsActuated)
                 {
                     continue;
                 }
 
                 if (tiles.Get(x, y - 1).LiquidKind == WorldLiquidKind.Lava ||
-                    !VanillaTileCollisionCatalog.IsSolid(tiles.Get(x, y).TileType) ||
+                    !VanillaTileCollisionCatalog.IsSolid(floor.TileType) ||
                     SolidClearance(x, y))
                     continue;
                 if (IntersectsPlayerTeleportSafety(x, y, players))
@@ -185,7 +191,7 @@ internal sealed class VanillaWallOfFleshWorldEnvironment : IVanillaWallOfFleshEn
         return false;
     }
 
-    private static bool IntersectsPlayerTeleportSafety(
+    private bool IntersectsPlayerTeleportSafety(
         int tileX,
         int tileY,
         ReadOnlySpan<VanillaNpcTargetCandidate> players)
@@ -207,8 +213,8 @@ internal sealed class VanillaWallOfFleshWorldEnvironment : IVanillaWallOfFleshEn
             int deltaY = (int)(player.VelocityY * 20f);
             int sweptLeft = Math.Min(playerLeft, playerLeft + deltaX);
             int sweptTop = Math.Min(playerTop, playerTop + deltaY);
-            int sweptRight = Math.Max(playerLeft + width, playerLeft + deltaX + width);
-            int sweptBottom = Math.Max(playerTop + height, playerTop + deltaY + height);
+            int sweptRight = (fnaRectangleUnion ? playerLeft : Math.Max(playerLeft, playerLeft + deltaX)) + width;
+            int sweptBottom = (fnaRectangleUnion ? playerTop : Math.Max(playerTop, playerTop + deltaY)) + height;
             if (sweptLeft < right && sweptRight > left && sweptTop < bottom && sweptBottom > top)
                 return true;
         }

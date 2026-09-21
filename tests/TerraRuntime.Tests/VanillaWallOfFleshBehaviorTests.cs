@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Application;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.World;
 
@@ -179,6 +180,21 @@ public sealed class VanillaWallOfFleshBehaviorTests
         Assert.Equal(new NpcAiState(1f, 5f, 68f, 62f), after.Ai);
     }
 
+    [Fact]
+    public void Fire_imp_teleport_environment_uses_the_source_random_floor_search()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(200, 200));
+        var floor = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        tiles.Set(50, 50, in floor);
+        var random = new SequenceRandom(50, 50);
+        var environment = new VanillaWallOfFleshWorldEnvironment(tiles, useFnaRectangleUnion: false);
+
+        Assert.True(environment.TryFindTeleportSpot(30 * 16f, 50 * 16f, 50, 50, [], random, out int x, out int y));
+        Assert.Equal(50, x);
+        Assert.Equal(50, y);
+        Assert.Equal(2, random.Calls);
+    }
+
     private static VanillaNpcTargetingAiStepper CreateStepper(TestEnvironment? environment = null)
     {
         var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: new ZeroRandom());
@@ -274,5 +290,18 @@ public sealed class VanillaWallOfFleshBehaviorTests
     private sealed class ZeroRandom : IVanillaNpcRandom
     {
         public int NextInt32(int inclusiveMin, int exclusiveMax) => inclusiveMin;
+    }
+
+    private sealed class SequenceRandom(params int[] values) : IVanillaNpcRandom
+    {
+        private int index;
+        public int Calls => index;
+
+        public int NextInt32(int inclusiveMin, int exclusiveMax)
+        {
+            int value = values[index++];
+            Assert.InRange(value, inclusiveMin, exclusiveMax - 1);
+            return value;
+        }
     }
 }
