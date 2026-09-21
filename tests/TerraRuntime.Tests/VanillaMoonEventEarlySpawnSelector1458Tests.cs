@@ -32,7 +32,7 @@ public sealed class VanillaMoonEventEarlySpawnSelector1458Tests
 
     [Theory]
     [InlineData(false, new[] { 305 }, 305, 1)]
-    [InlineData(true, new[] { 0 }, 0, 0)]
+    [InlineData(true, new[] { 0 }, 341, 1)]
     public void Live_authority_uses_the_early_moon_selection_without_an_ordinary_fallback(
         bool snowMoon,
         int[] eventRolls,

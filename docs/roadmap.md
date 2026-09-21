@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Moon-event AI_025 type 341: source SetDefaults and the authoritative wait/jump state cycle now admit the Snow special selected before every early-wave branch. It keeps the source 12/20 grounded waits, target refreshes, alternating 3.5/-4 and 2.5/-8 launches, horizontal airborne correction, geometry and combat defaults. Other special-AI event NPCs and later waves remain open.
+
 2026-09-21 Moon-event early-wave selection: source `NPC.Spawner.SpawnAnNPC` choice order now drives Pumpkin/Snow waves 1–5 after Dungeon/Meteor priority. Active-type caps and each RNG draw are preserved; admitted ground fighters can spawn while unsupported special-AI selections fail closed without an ordinary-hostile substitution. Later waves and special-AI event NPCs remain open.
 
 2026-09-21 Moon-event AI_003 fighters: source `NPC.SetDefaults` defaults and the admitted ground-fighter runtime path now cover Pumpkin 305–314/326 and Snow 342/343/348–351. Source wave selection and special-AI event NPCs remain open.

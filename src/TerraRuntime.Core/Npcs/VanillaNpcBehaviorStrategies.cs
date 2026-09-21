@@ -375,6 +375,106 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
     }
 }
 
+/// <summary>State portion of AI_025 for Snow Moon type 341; gravity and collision stay in the world-motion layer.</summary>
+internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
+{
+    public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        INpcAiStateStepper inner, out NpcStateUpdate next)
+    {
+        if (definition.Type != VanillaMoonEventSpecialCatalog1458.SnowMoonAi25 || definition.AiStyle.Value != 25)
+        {
+            next = default;
+            return false;
+        }
+
+        NpcSimulationState simulation = npc.Simulation;
+        ushort target = npc.Target;
+        int directionX = simulation.DirectionX;
+        int directionY = simulation.DirectionY;
+        int spriteDirection = simulation.SpriteDirection;
+        float ai0 = npc.Ai.Ai0;
+        float ai1 = npc.Ai.Ai1;
+        float ai2 = npc.Ai.Ai2;
+
+        // Type 341 forces ai[3] to one, bypassing the depth classification of the shared AI_025 body.
+        if (ai0 == 0f)
+        {
+            RefreshTarget(in npc, in definition, context, ref target, ref directionX, ref directionY);
+            if (npc.VelocityX != 0f || npc.VelocityY < 0f || npc.VelocityY > .3f)
+                ai0 = 1f;
+            else if (target < byte.MaxValue && context.TryFindCandidate((byte)target, out VanillaNpcTargetCandidate player) &&
+                     player.Active && !player.Dead && !player.Ghost &&
+                     MathF.Abs(player.CenterX - (npc.PositionX + 12f)) <= 112f &&
+                     MathF.Abs(player.CenterY - (npc.PositionY + 12f)) <= 112f)
+                ai0 = 1f;
+        }
+        else if (npc.VelocityY == 0f)
+        {
+            ai2++;
+            int wait = ai1 == 0f ? 12 : 20;
+            if (ai2 >= wait)
+            {
+                ai2 = 0f;
+                RefreshTarget(in npc, in definition, context, ref target, ref directionX, ref directionY);
+                if (directionX == 0)
+                    directionX = -1;
+                spriteDirection = directionX;
+                ai1++;
+                if (ai1 == 2f)
+                {
+                    ai1 = 0f;
+                    next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, directionX * 2.5f, -8f);
+                    return true;
+                }
+                next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, directionX * 3.5f, -4f);
+                return true;
+            }
+            next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, npc.VelocityX * .9f, npc.VelocityY);
+            return true;
+        }
+        else if (directionX == 1 && npc.VelocityX < 1f)
+        {
+            next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, npc.VelocityX + .1f, npc.VelocityY);
+            return true;
+        }
+        else if (directionX == -1 && npc.VelocityX > -1f)
+        {
+            next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, npc.VelocityX - .1f, npc.VelocityY);
+            return true;
+        }
+
+        next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, npc.VelocityX, npc.VelocityY);
+        return true;
+    }
+
+    private static void RefreshTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        VanillaNpcBehaviorContext context, ref ushort target, ref int directionX, ref int directionY)
+    {
+        if (!context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) || !closest.HasTarget)
+            return;
+        target = closest.Target;
+        directionX = closest.DirectionX;
+        directionY = closest.DirectionY;
+    }
+
+    private static NpcStateUpdate Build(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        ushort target, int directionX, int directionY, int spriteDirection, float ai0, float ai1, float ai2,
+        float velocityX, float velocityY)
+    {
+        NpcSimulationState simulation = npc.Simulation;
+        return new NpcStateUpdate(
+            definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, velocityX, velocityY, target,
+            new NpcAiState(ai0, ai1, ai2, 1f), simulation with
+            {
+                DirectionX = directionX,
+                DirectionY = directionY,
+                SpriteDirection = spriteDirection,
+                NoGravity = false,
+                JustHit = false
+            });
+    }
+}
+
 internal sealed class VanillaEyeOfCthulhuNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
     public bool TryStep(

@@ -62,7 +62,8 @@ public enum VanillaNpcBehaviorFamily : byte
     Bat = 48,
     Fish = 49,
     MoonLordLeechBlob = 50,
-    DarkCaster = 51
+    DarkCaster = 51,
+    MoonEventJumpingFighter = 52
 }
 
 /// <summary>
@@ -246,6 +247,9 @@ public static class VanillaNpcDefinitionCatalog
             return true;
 
         if (VanillaMoonEventGroundFighterCatalog1458.TryGetDefinition(type, out definition))
+            return true;
+
+        if (VanillaMoonEventSpecialCatalog1458.TryGetDefinition(type, out definition))
             return true;
 
         if (type == VanillaNpcIds.EyeOfCthulhu)
