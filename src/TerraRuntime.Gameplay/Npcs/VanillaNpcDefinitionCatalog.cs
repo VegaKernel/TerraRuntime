@@ -407,6 +407,22 @@ public static class VanillaNpcDefinitionCatalog
             return true;
         }
 
+        if (type == VanillaNpcIds.Tim)
+        {
+            definition = new VanillaNpcDefinition(VanillaNpcIds.Tim, VanillaNpcAiStyles.Caster,
+                VanillaNpcBehaviorFamily.GoblinSorcerer, VanillaNpcPhysicsFamily.NoClipFlight, NpcArchetypeRole.Ordinary,
+                18, 40, 20, 4, 200, .6f, 1f, false, false, VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == VanillaNpcIds.TimFireball)
+        {
+            definition = new VanillaNpcDefinition(VanillaNpcIds.TimFireball, VanillaNpcAiStyles.BurningSphere,
+                VanillaNpcBehaviorFamily.ChaosBall, VanillaNpcPhysicsFamily.NoClipFlight, NpcArchetypeRole.Ordinary,
+                16, 16, 20, 0, 1, 0f, 1f, true, true, VanillaNpcSyncAnchor.TopLeft) { AlphaAtSpawn = 100 };
+            return true;
+        }
+
         if (type == VanillaNpcIds.WallOfFlesh)
         {
             definition = new VanillaNpcDefinition(

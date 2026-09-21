@@ -345,7 +345,7 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] add Harpy's AI_014 vertical: source defaults, wet escape, low-speed wander profile, accepted-state `30/60/90` feather cadence, exact `400 + Next(400)` reset draw order and hostile type `38` lifecycle;
 - [x] add Demon/Voodoo Demon's AI_014 vertical: source defaults, double acceleration, wet escape, low-speed wander profile, accepted-state `20/40/60/80` Demon Scythe cadence, exact `300 + Next(300)` reset draw order and hostile type `44` AI_018 lifecycle/collision shape;
 - [x] add Red Devil's AI_014 vertical: source defaults and ordinary flight profile, accepted-state `20/40/60/80/100` sickle cadence, exact `250 + Next(250)` reset draw order, lead/100px source offset and hostile type `115` AI_027 lifecycle;
-- [x] add Goblin Sorcerer/Chaos Ball AI_008/009 vertical: typed defaults, source timer and post-commit random teleport search, `ai[1]` countdown, Chaos Ball spawn coordinates and lifecycle;
+- [x] add Goblin Sorcerer/Chaos Ball and Tim/Tim Fireball AI_008/009 vertical: typed defaults, source timer and post-commit random teleport search, `ai[1]` countdown, source child spawn coordinates and lifecycle;
 - [x] complete AI_016 for Goldfish/Corrupt Goldfish/Piranha/Shark/Angler Fish/Arapaima/Blood Feeder/Crimson Goldfish/Gold Goldfish/Pupfish/Dolphin/Pufferfish/Orca: source defaults, passive/hostile targeting, slope/collision/depth steering, wet pursuit profiles, dry flop RNG, Dolphin breach/surface states and Pufferfish inflation/water-line state;
 - [ ] remaining bat special branches, casters, mimics, remaining critters and event enemy families;
 - [ ] spawn pool, biome, time, weather and progression eligibility.

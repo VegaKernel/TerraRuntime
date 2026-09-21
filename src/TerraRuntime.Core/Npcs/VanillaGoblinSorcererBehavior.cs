@@ -17,7 +17,7 @@ internal sealed class VanillaGoblinSorcererBehavior(IVanillaNpcRandom random) : 
         INpcAiStateStepper inner, out NpcStateUpdate next)
     {
         _ = inner;
-        if (environment is null || npc.TypeIdentity != VanillaNpcIds.GoblinSorcerer ||
+        if (environment is null || (npc.TypeIdentity != VanillaNpcIds.GoblinSorcerer && npc.TypeIdentity != VanillaNpcIds.Tim) ||
             definition.AiStyle != VanillaNpcAiStyles.Caster)
         {
             next = default;
@@ -57,8 +57,8 @@ internal sealed class VanillaGoblinSorcererBehavior(IVanillaNpcRandom random) : 
     public NpcSnapshot Complete(in NpcSnapshot before, in NpcSnapshot committed, VanillaNpcBehaviorContext context,
         INpcAiCommittedNpcMutationSink mutations)
     {
-        if (environment is null || before.TypeIdentity != VanillaNpcIds.GoblinSorcerer ||
-            committed.TypeIdentity != VanillaNpcIds.GoblinSorcerer || AdvanceTimer(before.Ai.Ai0) < 650f ||
+        if (environment is null || (before.TypeIdentity != VanillaNpcIds.GoblinSorcerer && before.TypeIdentity != VanillaNpcIds.Tim) ||
+            committed.TypeIdentity != before.TypeIdentity || AdvanceTimer(before.Ai.Ai0) < 650f ||
             !context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate target) ||
             !target.Active || target.Dead || target.Ghost ||
             !VanillaNpcDefinitionCatalog.TryGet(committed.TypeIdentity, out VanillaNpcDefinition definition))

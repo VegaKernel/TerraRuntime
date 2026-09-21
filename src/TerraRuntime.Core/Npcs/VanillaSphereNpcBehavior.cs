@@ -13,7 +13,7 @@ internal sealed class VanillaSphereNpcBehaviorStrategy : IVanillaNpcBehaviorStra
     {
         _ = inner;
         bool water = npc.TypeIdentity == VanillaNpcIds.WaterSphere;
-        bool chaos = npc.TypeIdentity == VanillaNpcIds.ChaosBall;
+        bool chaos = npc.TypeIdentity == VanillaNpcIds.ChaosBall || npc.TypeIdentity == VanillaNpcIds.TimFireball;
         if ((!water && !chaos && npc.TypeIdentity != VanillaNpcIds.BurningSphere) ||
             definition.AiStyle != VanillaNpcAiStyles.BurningSphere ||
             !definition.TryResolveHitbox(npc.Simulation, out var hitbox))

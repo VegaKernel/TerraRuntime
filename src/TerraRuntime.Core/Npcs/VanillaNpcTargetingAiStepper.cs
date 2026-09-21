@@ -416,7 +416,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         if (source.Type == VanillaNpcIds.FireImp.Value && proposed.Type == source.Type)
             return PlanFireImpSphere(in source, in proposed, destination);
 
-        if (source.Type == VanillaNpcIds.GoblinSorcerer.Value && proposed.Type == source.Type)
+        if ((source.Type == VanillaNpcIds.GoblinSorcerer.Value || source.Type == VanillaNpcIds.Tim.Value) && proposed.Type == source.Type)
             return PlanGoblinSorcererChaosBall(in source, in proposed, destination);
 
         if (source.Type == VanillaNpcIds.SkeletronPrime.Value && proposed.Type == source.Type)
@@ -701,7 +701,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     {
         if (destination.IsEmpty || source.Ai.Ai1 != 26f || proposed.Ai.Ai1 != 25f)
             return 0;
-        destination[0] = new NpcAiSpawnIntent(VanillaNpcIds.ChaosBall,
+        NpcTypeId child = source.TypeIdentity == VanillaNpcIds.Tim ? VanillaNpcIds.TimFireball : VanillaNpcIds.ChaosBall;
+        destination[0] = new NpcAiSpawnIntent(child,
             (int)proposed.PositionX + 9, (int)proposed.PositionY - 8, 0f, 0f, byte.MaxValue);
         return 1;
     }
@@ -2080,7 +2081,7 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public bool DefersStatePublication(in NpcSnapshot before, in NpcStateUpdate proposed) =>
         proposed.Type == before.Type &&
-        (before.TypeIdentity == VanillaNpcIds.DarkCaster || before.TypeIdentity == VanillaNpcIds.FireImp || before.TypeIdentity == VanillaNpcIds.GoblinSorcerer || before.TypeIdentity == VanillaNpcIds.Harpy ||
+        (before.TypeIdentity == VanillaNpcIds.DarkCaster || before.TypeIdentity == VanillaNpcIds.FireImp || before.TypeIdentity == VanillaNpcIds.GoblinSorcerer || before.TypeIdentity == VanillaNpcIds.Tim || before.TypeIdentity == VanillaNpcIds.Harpy ||
          before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon ||
          before.TypeIdentity == VanillaNpcIds.RedDevil);
 
@@ -2091,7 +2092,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             return _darkCaster.Complete(in before, in committed, _context, _random, mutations);
         if (before.TypeIdentity == VanillaNpcIds.FireImp && committed.TypeIdentity == VanillaNpcIds.FireImp)
             return _fireImp.Complete(in before, in committed, _context, mutations);
-        if (before.TypeIdentity == VanillaNpcIds.GoblinSorcerer && committed.TypeIdentity == VanillaNpcIds.GoblinSorcerer)
+        if ((before.TypeIdentity == VanillaNpcIds.GoblinSorcerer || before.TypeIdentity == VanillaNpcIds.Tim) && committed.TypeIdentity == before.TypeIdentity)
             return _goblinSorcerer.Complete(in before, in committed, _context, mutations);
         if ((before.TypeIdentity == VanillaNpcIds.Harpy || before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon || before.TypeIdentity == VanillaNpcIds.RedDevil) &&
             committed.TypeIdentity == before.TypeIdentity)
