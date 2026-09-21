@@ -123,6 +123,27 @@ public sealed class GoblinSorcererAiTests
         }
     }
 
+    [Fact]
+    public void Caster_setdefaults_materializes_source_ai008_timers_before_the_first_update()
+    {
+        var store = new RuntimeNpcStore();
+        store.SetVanillaSpawnRandomSource(new ZeroRandom());
+
+        Assert.True(store.TrySpawnVanilla(new NpcStateUpdate(281, 281, 100f, 100f, 0f, 0f, 0,
+            default, NpcSimulationState.Initial), out var skullCaster));
+        Assert.True(store.TrySpawnVanilla(new NpcStateUpdate(VanillaNpcIds.RuneWizard.Value, checked((short)VanillaNpcIds.RuneWizard.Value),
+            100f, 100f, 0f, 0f, 0, default, NpcSimulationState.Initial), out var runeWizard));
+        Assert.True(store.TrySpawnVanilla(new NpcStateUpdate(283, 283, 100f, 100f, 0f, 0f, 0,
+            default, NpcSimulationState.Initial), out var beamCaster));
+        Assert.True(store.TrySpawnVanilla(new NpcStateUpdate(285, 285, 100f, 100f, 0f, 0f, 0,
+            new NpcAiState(17f, 0f, 0f, 0f), NpcSimulationState.Initial), out var explicitTimer));
+
+        Assert.Equal(400f, skullCaster.Ai.Ai0);
+        Assert.Equal(450f, runeWizard.Ai.Ai0);
+        Assert.Equal(390f, beamCaster.Ai.Ai0);
+        Assert.Equal(17f, explicitTimer.Ai.Ai0);
+    }
+
     private sealed class RejectingStepper : INpcAiStateStepper
     { public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next) { next = default; return false; } }
     private sealed class ZeroRandom : IVanillaNpcRandom
