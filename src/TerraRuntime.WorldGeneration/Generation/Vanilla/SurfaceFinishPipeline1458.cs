@@ -224,7 +224,7 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
         switch (stage)
         {
             case SurfaceFinishStage1458.QuickCleanup:
-                ApplyQuickCleanup(context, grid);
+                ApplyQuickCleanup(context, workspace);
                 break;
             case SurfaceFinishStage1458.Pots:
                 ApplyPots(context, grid, random);
@@ -259,38 +259,18 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
         }
     }
 
-    private static void ApplyQuickCleanup(IWorldGenerationContext context, RuntimeGrid grid)
+    private void ApplyQuickCleanup(IWorldGenerationContext context, Workspace workspace)
     {
-        int normalized = 0;
-        for (int x = 1; x < grid.Width - 1; x++)
-        {
-            if ((x & 127) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Quick cleanup requires shared UnifiedRandom semantics.");
 
-            for (int y = 1; y < grid.Height - 1; y++)
-            {
-                ref WorldTile tile = ref grid.At(x, y);
-                if (!tile.IsActive)
-                {
-                    if (tile.Shape != 0)
-                    {
-                        tile.Shape = 0;
-                        normalized++;
-                    }
-                    continue;
-                }
-
-                if (!VanillaWorldFrameImportance326.IsFrameImportant(tile.Type) &&
-                    (tile.FrameX != 0 || tile.FrameY != 0))
-                {
-                    tile.FrameX = 0;
-                    tile.FrameY = 0;
-                    normalized++;
-                }
-            }
-        }
-
-        context.ReportProgress(1d, $"Quick Cleanup normalized {normalized} tile states");
+        var pass = new QuickCleanupPass1458(
+            workspace.TileStore, random, state.WorldSurface, state.RockLayer,
+            DungeonGenerationCatalog1458.BeachDistance, context.CancellationToken);
+        pass.Apply();
+        context.ReportProgress(1d,
+            $"Quick cleanup ({pass.Dropped} dropped, {pass.Retyped} retyped, {pass.SandFill} sand fill, " +
+            $"{pass.Freshened} freshened)");
     }
 
     private void ApplyPots(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
