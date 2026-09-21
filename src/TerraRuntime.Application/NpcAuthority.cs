@@ -49,6 +49,7 @@ internal sealed partial class NpcAuthority
     private readonly bool naturalSpawnSkyblockLowTiles;
     private readonly bool naturalSpawnSkyblockNoFossils;
     private readonly bool naturalSpawnSkyblockNoHellstone;
+    private readonly bool naturalSpawnSkyblockNoLifeCrystals;
     private readonly VanillaNpcTargetCandidate[] targetCandidates =
         new VanillaNpcTargetCandidate[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
     private readonly PlayerStateSnapshot[] serverPlayerSnapshots =
@@ -120,14 +121,13 @@ internal sealed partial class NpcAuthority
         naturalSpawnWorldFacts = townCommerceWorldFacts;
         naturalSpawnTownNpcs = townNpcs;
         naturalSpawnSkyblockLowTiles = skyblockLowTiles;
-        naturalSpawnSkyblockNoFossils = worldTiles is not null &&
-            townCommerceWorldFacts is { SkyblockWorld: true } &&
-            VanillaSkyblockRuntimePolicy1458.Evaluate(
-                new WorldFileRuntimeMetadata { SkyblockWorld = true }, worldTiles).NoFossils;
-        naturalSpawnSkyblockNoHellstone = worldTiles is not null &&
-            townCommerceWorldFacts is { SkyblockWorld: true } &&
-            VanillaSkyblockRuntimePolicy1458.Evaluate(
-                new WorldFileRuntimeMetadata { SkyblockWorld = true }, worldTiles).NoHellstone;
+        VanillaSkyblockRuntimeState1458 skyblockState = worldTiles is not null &&
+            townCommerceWorldFacts is { SkyblockWorld: true }
+            ? VanillaSkyblockRuntimePolicy1458.Evaluate(new WorldFileRuntimeMetadata { SkyblockWorld = true }, worldTiles)
+            : default;
+        naturalSpawnSkyblockNoFossils = skyblockState.NoFossils;
+        naturalSpawnSkyblockNoHellstone = skyblockState.NoHellstone;
+        naturalSpawnSkyblockNoLifeCrystals = skyblockState.NoLifeCrystals;
         if (worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 sceneWorldFacts)
         {
             npcSceneMetrics = new VanillaTownSceneMetricsScanner1458(worldTiles, in sceneWorldFacts);
@@ -371,6 +371,7 @@ internal sealed partial class NpcAuthority
                     naturalSpawnSkyblockNoFossils,
                     naturalSpawnSkyblockLowTiles,
                     naturalSpawnSkyblockNoHellstone,
+                    naturalSpawnSkyblockNoLifeCrystals,
                     naturalSpawnWorldFacts?.DownedBoss3 ?? false);
                 vanillaTargeting.SetMoonEventState(worldClock.PumpkinMoonActive);
             }

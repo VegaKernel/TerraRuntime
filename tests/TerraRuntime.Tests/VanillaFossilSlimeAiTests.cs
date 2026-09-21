@@ -181,15 +181,48 @@ public sealed class VanillaFossilSlimeAiTests
         Assert.Equal(new NpcHitboxDimensions(28, 21), afterRepeat.Simulation.HitboxOverride);
     }
 
+    [Fact]
+    public void Blue_slime_selects_a_single_skyblock_heart_only_in_the_source_rock_layer()
+    {
+        var stepper = CreateStepper(skyblockNoFossils: false, new FixedRandom(0), skyblockNoLifeCrystals: true);
+        stepper.SetWorldBounds(widthTiles: 400, worldSurfaceTiles: 50d, rockLayerTiles: 99d);
+        NpcSnapshot blue = Snapshot(VanillaNpcIds.BlueSlime, positionY: 1601f, ai1: 0f) with
+        {
+            Simulation = NpcSimulationState.Initial with
+            {
+                Life = 25, LifeMax = 25, BaseLifeMax = 25, Scale = 1f, DirectionX = 1, DirectionY = 1
+            }
+        };
+
+        Assert.True(stepper.TryStepState(in blue, out NpcStateUpdate next));
+        Assert.Equal(29f, next.Ai.Ai1);
+        Assert.Equal(50, next.Simulation.Life);
+        Assert.Equal(50, next.Simulation.LifeMax);
+        Assert.Equal(6, next.Simulation.DefenseOverride);
+    }
+
+    [Fact]
+    public void Existing_heart_slime_blocks_the_source_roll_without_consuming_rng()
+    {
+        var stepper = CreateStepper(skyblockNoFossils: false, new ThrowingRandom(), skyblockNoLifeCrystals: true);
+        stepper.SetWorldBounds(widthTiles: 400, worldSurfaceTiles: 50d, rockLayerTiles: 99d);
+        NpcSnapshot blue = Snapshot(VanillaNpcIds.BlueSlime, positionY: 1601f, ai1: 0f);
+        NpcSnapshot existingHeart = blue with { Ai = new NpcAiState(-200f, 29f, 0f, 0f) };
+        stepper.SetNpcPeers([existingHeart]);
+
+        Assert.True(stepper.TryStepState(in blue, out NpcStateUpdate next));
+        Assert.Equal(-1f, next.Ai.Ai1);
+    }
+
     private static VanillaNpcTargetingAiStepper CreateStepper(bool skyblockNoFossils, IVanillaNpcRandom random,
         bool skyblockLowTiles = false, bool skyblockNoHellstone = false, bool downedSkeletron = false,
-        bool slimeRainActive = false)
+        bool slimeRainActive = false, bool skyblockNoLifeCrystals = false)
     {
         var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: random);
         stepper.EnableBlueSlimeMotion(100d);
         stepper.SetWorldConditions(dayTime: true, slimeRainActive: slimeRainActive, skyblockNoFossils: skyblockNoFossils,
             skyblockLowTiles: skyblockLowTiles, skyblockNoHellstone: skyblockNoHellstone,
-            downedSkeletron: downedSkeletron);
+            skyblockNoLifeCrystals: skyblockNoLifeCrystals, downedSkeletron: downedSkeletron);
         return stepper;
     }
 

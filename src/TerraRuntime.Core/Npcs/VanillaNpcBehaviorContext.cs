@@ -73,6 +73,9 @@ internal sealed class VanillaNpcBehaviorContext
 
     public bool SkyblockNoHellstone { get; private set; }
 
+    /// <summary>Generation-time <c>WorldGen.Skyblock.noLifeCrystals</c> projected from the loaded world.</summary>
+    public bool SkyblockNoLifeCrystals { get; private set; }
+
     public bool DownedSkeletron { get; private set; }
 
     /// <summary>Generation-time <c>WorldGen.Skyblock.lowTiles</c> projection for AI_001 item rolls.</summary>
@@ -117,6 +120,7 @@ internal sealed class VanillaNpcBehaviorContext
         bool skyblockNoFossils = false,
         bool skyblockLowTiles = false,
         bool skyblockNoHellstone = false,
+        bool skyblockNoLifeCrystals = false,
         bool downedSkeletron = false)
     {
         if (masterMode && !expertMode)
@@ -138,6 +142,7 @@ internal sealed class VanillaNpcBehaviorContext
         SkyblockNoFossils = skyblockNoFossils;
         SkyblockLowTiles = skyblockLowTiles;
         SkyblockNoHellstone = skyblockNoHellstone;
+        SkyblockNoLifeCrystals = skyblockNoLifeCrystals;
         DownedSkeletron = downedSkeletron;
         if (!remixWorld)
             empressRemixRageMode = false;
@@ -264,6 +269,32 @@ internal sealed class VanillaNpcBehaviorContext
                 count++;
         }
         return count;
+    }
+
+    /// <summary>Source-shaped active-NPC scan for AI branches such as <c>AnyLifeCrystalSlimes</c>.</summary>
+    public bool HasNpcPeerWithAi1(NpcTypeId type, float ai1)
+    {
+        for (int index = 0; index < _npcPeerCount; index++)
+        {
+            NpcSnapshot candidate = _npcPeers[index];
+            if (candidate.IsActive && candidate.TypeIdentity == type && candidate.Ai.Ai1 == ai1)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>Mirrors <c>WorldGen.isThisInTheRockLayer((int)(position.Y / 16f))</c>.</summary>
+    public bool IsInRockLayer(float positionY)
+    {
+        if (!float.IsFinite(positionY) || !double.IsFinite(WorldSurfacePixels) || !double.IsFinite(RockLayerPixels))
+            return false;
+
+        int tileY = (int)(positionY / 16f);
+        double worldSurfaceTiles = WorldSurfacePixels / 16d;
+        double rockLayerTiles = RockLayerPixels / 16d;
+        return RemixWorld
+            ? tileY > worldSurfaceTiles && tileY <= rockLayerTiles
+            : tileY > rockLayerTiles;
     }
 
     public ReadOnlySpan<VanillaNpcTargetCandidate> Candidates => _candidates.AsSpan(0, _candidateCount);

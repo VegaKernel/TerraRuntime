@@ -263,6 +263,30 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
                 }
             }
         }
+        // Blue Slime uses the generic AI_001 item loop. A Skyblock world with no Life Crystals (or
+        // lowTiles) may select one Heart Slime at a time while its source position is in the rock layer.
+        // The active-peer scan mirrors AnyLifeCrystalSlimes before consuming the one-in-200 roll.
+        if (definition.Type == VanillaNpcIds.BlueSlime && npc.NetId is not -5 and not -4 && ai.Ai1 == 0f)
+        {
+            ai = ai with { Ai1 = -1f };
+            int attempts = 1;
+            if (context.SkyblockLowTiles)
+                attempts += npc.NetId == -6 ? 9 : 4;
+            else if (npc.NetId == -6)
+                attempts += 4;
+            if (context.SlimeRainActive)
+                attempts += 2;
+            for (int attempt = 0; attempt < attempts && ai.Ai1 == -1f; attempt++)
+            {
+                if (context.IsInRockLayer(positionY) &&
+                    (context.SkyblockNoLifeCrystals || context.SkyblockLowTiles) &&
+                    !context.HasNpcPeerWithAi1(VanillaNpcIds.BlueSlime, 29f) &&
+                    random.NextInt32(0, 200) == 0)
+                {
+                    ai = ai with { Ai1 = 29f };
+                }
+            }
+        }
         // Existing contained-item variants are re-applied by AI_001 on every server tick before
         // the shared slime movement state machine. These effects are independent of the branch
         // that originally selected the item into ai[1].

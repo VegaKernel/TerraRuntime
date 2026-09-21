@@ -9,6 +9,7 @@ public readonly record struct VanillaSkyblockRuntimeState1458(
     bool LowTiles,
     bool NoHellstone,
     bool NoFossils,
+    bool NoLifeCrystals,
     int ActiveTileCount,
     int TotalTileCount)
 {
@@ -49,6 +50,7 @@ public static class VanillaSkyblockRuntimePolicy1458
         int activeTileCount = 0;
         bool noHellstone = metadata.SkyblockWorld;
         bool noFossils = metadata.SkyblockWorld;
+        bool noLifeCrystals = metadata.SkyblockWorld;
         foreach (ref readonly WorldTile tile in tiles.Tiles)
         {
             if (tile.IsActive)
@@ -59,9 +61,11 @@ public static class VanillaSkyblockRuntimePolicy1458
                 noFossils = false;
             if (tile.IsActive && tile.Type == 58)
                 noHellstone = false;
+            if (tile.IsActive && tile.Type == 12)
+                noLifeCrystals = false;
         }
 
-        return Create(metadata.SkyblockWorld, activeTileCount, tiles.Count, noHellstone, noFossils);
+        return Create(metadata.SkyblockWorld, activeTileCount, tiles.Count, noHellstone, noFossils, noLifeCrystals);
     }
 
     public static VanillaSkyblockRuntimeState1458 Create(
@@ -69,7 +73,8 @@ public static class VanillaSkyblockRuntimePolicy1458
         int activeTileCount,
         int totalTileCount,
         bool? noHellstone = null,
-        bool? noFossils = null)
+        bool? noFossils = null,
+        bool? noLifeCrystals = null)
     {
         bool lowTiles = IsLowTiles(skyblockWorld, activeTileCount, totalTileCount);
         return new VanillaSkyblockRuntimeState1458(
@@ -77,6 +82,7 @@ public static class VanillaSkyblockRuntimePolicy1458
             lowTiles,
             skyblockWorld && noHellstone.GetValueOrDefault(),
             skyblockWorld && noFossils.GetValueOrDefault(),
+            skyblockWorld && noLifeCrystals.GetValueOrDefault(),
             activeTileCount,
             totalTileCount);
     }
