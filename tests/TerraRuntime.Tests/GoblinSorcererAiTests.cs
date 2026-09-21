@@ -89,6 +89,40 @@ public sealed class GoblinSorcererAiTests
         Assert.InRange(MathF.Sqrt(mutations.Projectile.VelocityX * mutations.Projectile.VelocityX + mutations.Projectile.VelocityY * mutations.Projectile.VelocityY), 9.999f, 10.001f);
     }
 
+    [Fact]
+    public void Hardmode_dungeon_casters_use_their_source_cadence_and_committed_projectile_variants()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: new ZeroRandom());
+        stepper.SetWallOfFleshEnvironment(new Environment());
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(0, 300f, 120f, 0, true, false, false, false)]);
+
+        foreach ((int type, float timer, ProjectileTypeId projectile, float speed, int damage) in new[]
+        {
+            (281, 10f, VanillaProjectileIds.DungeonSkull, 4f, 40),
+            (283, 10f, VanillaProjectileIds.DungeonBeam, 6f, 30),
+            (285, 10f, VanillaProjectileIds.DungeonFlame, 8f, 40)
+        })
+        {
+            var source = new NpcSnapshot(new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1), type, (short)type,
+                100f, 100f, 0f, 0f, 0, new NpcAiState(timer, 26f, 0f, 0f), NpcSimulationState.Initial);
+            Assert.True(stepper.TryStepState(in source, out NpcStateUpdate next));
+            Assert.Equal(25f, next.Ai.Ai1);
+            var committed = source with { Revision = new NpcRevision(2), Ai = next.Ai, Simulation = next.Simulation };
+            var mutations = new CapturingMutationSink();
+            stepper.CompleteCommittedState(in source, in committed, mutations);
+
+            Assert.True(mutations.ProjectileSpawned);
+            Assert.Equal(projectile, mutations.Projectile.Type);
+            Assert.Equal(damage, mutations.Projectile.Damage);
+            Assert.InRange(MathF.Sqrt(mutations.Projectile.VelocityX * mutations.Projectile.VelocityX + mutations.Projectile.VelocityY * mutations.Projectile.VelocityY), speed - .001f, speed + .001f);
+            if (projectile == VanillaProjectileIds.DungeonFlame)
+            {
+                Assert.Equal(300f, mutations.Projectile.InitialAi.Ai0);
+                Assert.Equal(120f, mutations.Projectile.InitialAi.Ai1);
+            }
+        }
+    }
+
     private sealed class RejectingStepper : INpcAiStateStepper
     { public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next) { next = default; return false; } }
     private sealed class ZeroRandom : IVanillaNpcRandom

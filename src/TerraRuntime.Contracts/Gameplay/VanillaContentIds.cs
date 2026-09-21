@@ -40,6 +40,12 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId Tim = new(45);
     public static readonly NpcTypeId TimFireball = new(665);
     public static readonly NpcTypeId RuneWizard = new(172);
+    public static readonly NpcTypeId DungeonTacticalSkeleton = new(281);
+    public static readonly NpcTypeId DungeonTacticalSkeleton2 = new(282);
+    public static readonly NpcTypeId DungeonTacticalSkeleton3 = new(283);
+    public static readonly NpcTypeId DungeonTacticalSkeleton4 = new(284);
+    public static readonly NpcTypeId DungeonTacticalSkeleton5 = new(285);
+    public static readonly NpcTypeId DungeonTacticalSkeleton6 = new(286);
     public static readonly NpcTypeId SkeletronHead = new(35);
     public static readonly NpcTypeId SkeletronHand = new(36);
     public static readonly NpcTypeId Demolitionist = new(38);
