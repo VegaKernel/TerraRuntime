@@ -71,6 +71,10 @@ internal sealed class VanillaNpcBehaviorContext
     /// <summary>Generation-time <c>WorldGen.Skyblock.noFossils</c>, projected from the loaded world.</summary>
     public bool SkyblockNoFossils { get; private set; }
 
+    public bool SkyblockNoHellstone { get; private set; }
+
+    public bool DownedSkeletron { get; private set; }
+
     /// <summary>Generation-time <c>WorldGen.Skyblock.lowTiles</c> projection for AI_001 item rolls.</summary>
     public bool SkyblockLowTiles { get; private set; }
 
@@ -111,7 +115,9 @@ internal sealed class VanillaNpcBehaviorContext
         double worldTime = 0d,
         bool noTrapsWorld = false,
         bool skyblockNoFossils = false,
-        bool skyblockLowTiles = false)
+        bool skyblockLowTiles = false,
+        bool skyblockNoHellstone = false,
+        bool downedSkeletron = false)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -131,6 +137,8 @@ internal sealed class VanillaNpcBehaviorContext
         NoTrapsWorld = noTrapsWorld;
         SkyblockNoFossils = skyblockNoFossils;
         SkyblockLowTiles = skyblockLowTiles;
+        SkyblockNoHellstone = skyblockNoHellstone;
+        DownedSkeletron = downedSkeletron;
         if (!remixWorld)
             empressRemixRageMode = false;
     }

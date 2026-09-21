@@ -245,6 +245,22 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
                 }
             }
         }
+        // AI_001's Remix item generator is a separate unimplemented source branch. Outside Remix,
+        // a Skyblock world without Hellstone grants each normal Lava Slime initialization attempt
+        // a post-Skeletron one-in-fifteen Hellstone roll. lowTiles/slime-rain alter attempt count.
+        if (definition.Type == VanillaNpcIds.LavaSlime && ai.Ai1 == 0f)
+        {
+            ai = ai with { Ai1 = -1f };
+            if (!context.RemixWorld && context.SkyblockNoHellstone && context.DownedSkeletron)
+            {
+                int attempts = 1 + (context.SkyblockLowTiles ? 4 : 0) + (context.SlimeRainActive ? 2 : 0);
+                for (int attempt = 0; attempt < attempts && ai.Ai1 == -1f; attempt++)
+                {
+                    if (random.NextInt32(0, 15) == 0)
+                        ai = ai with { Ai1 = 174f };
+                }
+            }
+        }
         // The source applies this before the shared ground-motion timer, so Fossil Slime advances
         // ai[0] twice per grounded tick: once here and once in VanillaBlueSlimeMotion.
         if (definition.Type == VanillaNpcIds.SandSlime && ai.Ai1 == 3347f)

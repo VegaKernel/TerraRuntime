@@ -68,13 +68,26 @@ public sealed class VanillaFossilSlimeAiTests
         Assert.Equal(-1f, next.Ai.Ai1);
     }
 
+    [Fact]
+    public void Non_remix_lava_slime_uses_post_skeletron_skyblock_hellstone_rolls()
+    {
+        var stepper = CreateStepper(skyblockNoFossils: false, new SequenceRandom([1, 1, 0]),
+            skyblockLowTiles: false, skyblockNoHellstone: true, downedSkeletron: true, slimeRainActive: true);
+        NpcSnapshot lava = Snapshot(VanillaNpcIds.LavaSlime, positionY: 1601f, ai1: 0f);
+
+        Assert.True(stepper.TryStepState(in lava, out NpcStateUpdate next));
+        Assert.Equal(174f, next.Ai.Ai1);
+    }
+
     private static VanillaNpcTargetingAiStepper CreateStepper(bool skyblockNoFossils, IVanillaNpcRandom random,
-        bool skyblockLowTiles = false)
+        bool skyblockLowTiles = false, bool skyblockNoHellstone = false, bool downedSkeletron = false,
+        bool slimeRainActive = false)
     {
         var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: random);
         stepper.EnableBlueSlimeMotion(100d);
-        stepper.SetWorldConditions(dayTime: true, slimeRainActive: false, skyblockNoFossils: skyblockNoFossils,
-            skyblockLowTiles: skyblockLowTiles);
+        stepper.SetWorldConditions(dayTime: true, slimeRainActive: slimeRainActive, skyblockNoFossils: skyblockNoFossils,
+            skyblockLowTiles: skyblockLowTiles, skyblockNoHellstone: skyblockNoHellstone,
+            downedSkeletron: downedSkeletron);
         return stepper;
     }
 

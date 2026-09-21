@@ -48,6 +48,7 @@ internal sealed partial class NpcAuthority
     private readonly RuntimeTownNpcStateStore? naturalSpawnTownNpcs;
     private readonly bool naturalSpawnSkyblockLowTiles;
     private readonly bool naturalSpawnSkyblockNoFossils;
+    private readonly bool naturalSpawnSkyblockNoHellstone;
     private readonly VanillaNpcTargetCandidate[] targetCandidates =
         new VanillaNpcTargetCandidate[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
     private readonly PlayerStateSnapshot[] serverPlayerSnapshots =
@@ -123,6 +124,10 @@ internal sealed partial class NpcAuthority
             townCommerceWorldFacts is { SkyblockWorld: true } &&
             VanillaSkyblockRuntimePolicy1458.Evaluate(
                 new WorldFileRuntimeMetadata { SkyblockWorld = true }, worldTiles).NoFossils;
+        naturalSpawnSkyblockNoHellstone = worldTiles is not null &&
+            townCommerceWorldFacts is { SkyblockWorld: true } &&
+            VanillaSkyblockRuntimePolicy1458.Evaluate(
+                new WorldFileRuntimeMetadata { SkyblockWorld = true }, worldTiles).NoHellstone;
         if (worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 sceneWorldFacts)
         {
             npcSceneMetrics = new VanillaTownSceneMetricsScanner1458(worldTiles, in sceneWorldFacts);
@@ -364,7 +369,9 @@ internal sealed partial class NpcAuthority
                     worldClock.Time,
                     naturalSpawnWorldFacts?.NoTrapsWorld ?? false,
                     naturalSpawnSkyblockNoFossils,
-                    naturalSpawnSkyblockLowTiles);
+                    naturalSpawnSkyblockLowTiles,
+                    naturalSpawnSkyblockNoHellstone,
+                    naturalSpawnWorldFacts?.DownedBoss3 ?? false);
                 vanillaTargeting.SetMoonEventState(worldClock.PumpkinMoonActive);
             }
         }

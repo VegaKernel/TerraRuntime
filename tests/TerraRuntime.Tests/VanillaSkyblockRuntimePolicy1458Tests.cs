@@ -68,8 +68,11 @@ public sealed class VanillaSkyblockRuntimePolicy1458Tests
         var skyblock = new WorldFileRuntimeMetadata { SkyblockWorld = true };
 
         Assert.True(VanillaSkyblockRuntimePolicy1458.Evaluate(skyblock, tiles).NoFossils);
+        Assert.True(VanillaSkyblockRuntimePolicy1458.Evaluate(skyblock, tiles).NoHellstone);
         tiles.Set(3, 4, new WorldTile { Type = 404, Flags = WorldTileFlags.Active });
         Assert.False(VanillaSkyblockRuntimePolicy1458.Evaluate(skyblock, tiles).NoFossils);
+        tiles.Set(4, 4, new WorldTile { Type = 58, Flags = WorldTileFlags.Active });
+        Assert.False(VanillaSkyblockRuntimePolicy1458.Evaluate(skyblock, tiles).NoHellstone);
         Assert.False(VanillaSkyblockRuntimePolicy1458.Evaluate(new WorldFileRuntimeMetadata(), tiles).NoFossils);
     }
 
