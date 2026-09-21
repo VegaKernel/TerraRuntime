@@ -1127,7 +1127,7 @@ internal sealed partial class NpcAuthority
             {
                 WorldTile tile = tiles.Get(x + dx, floorY - dy);
                 if ((tile.IsActive && !tile.IsActuated && VanillaTileCollisionCatalog.IsSolid(tile.TileType)) ||
-                    tile.LiquidAmount > 160)
+                    (tile.LiquidAmount != 0 && tile.LiquidKind == WorldLiquidKind.Lava))
                     return false;
             }
         }
@@ -1150,6 +1150,12 @@ internal sealed partial class NpcAuthority
         VanillaTownSceneMetrics1458? scene = npcSceneMetrics?.Scan(
             Math.Clamp((int)(player.CenterX / 16f), 0, tiles.Dimensions.WidthTiles - 1),
             Math.Clamp((int)(player.CenterY / 16f), 0, tiles.Dimensions.HeightTiles - 1));
+
+        // Базовая ветка waterTile из SpawnAnNPC: две заполненные обычной водой клетки над
+        // твёрдым spawnTileY. Биомные, океанские, событийные и Hardmode-цепочки остаются
+        // закрытыми до появления всех необходимых source-фактов.
+        if (IsOrdinaryPreHardmodeWaterSpawn(tiles, tileX, floorY, scene))
+            return naturalSpawnRandom.NextInt32(0, 400) == 0 ? VanillaNpcIds.GoldGoldfish : VanillaNpcIds.Goldfish;
 
         if (VanillaUnderworldSpawn1458.IsUnderworld(floorY, tiles.Dimensions.HeightTiles))
         {
@@ -1203,6 +1209,27 @@ internal sealed partial class NpcAuthority
         // server-owned ground-fighter motion slice; unsupported cave families stay out instead of spawning
         // entities that cannot simulate authoritatively.
         return naturalSpawnRandom.NextInt32(0, 3) == 0 ? VanillaNpcIds.Skeleton : VanillaNpcIds.BlueSlime;
+    }
+
+    private bool IsOrdinaryPreHardmodeWaterSpawn(
+        WorldTileStore tiles,
+        int tileX,
+        int spawnTileY,
+        VanillaTownSceneMetrics1458? scene)
+    {
+        if (spawnTileY < 2 ||
+            naturalSpawnWorldFacts is not RuntimeTownCommerceWorldFacts1458 facts ||
+            facts.HardMode || facts.Eclipse || facts.RemixWorld || facts.InfectedSeed ||
+            worldClock!.BloodMoonActive ||
+            scene is not VanillaTownSceneMetrics1458 biome ||
+            biome.ZoneJungle || biome.ZoneCorrupt || biome.ZoneCrimson || biome.ZoneDungeon ||
+            biome.ZoneHallow || biome.ZoneSnow || biome.ZoneGlowshroom || biome.ZoneDesert)
+            return false;
+
+        WorldTile above = tiles.Get(tileX, spawnTileY - 1);
+        WorldTile twoAbove = tiles.Get(tileX, spawnTileY - 2);
+        return above.LiquidAmount != 0 && twoAbove.LiquidAmount != 0 &&
+            above.LiquidKind == WorldLiquidKind.Water;
     }
 
     private void ApplySpawn(NpcSpawnRuntimeCommand command)

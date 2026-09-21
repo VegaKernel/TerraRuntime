@@ -94,6 +94,46 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     }
 
     [Fact]
+    public void Ordinary_pre_hardmode_water_spawn_uses_the_source_goldfish_branch()
+    {
+        var npcs = new RuntimeNpcStore();
+        var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
+        for (int x = 0; x < 500; x++)
+        {
+            tiles.Tiles[tiles.GetUncheckedIndex(x, 400)] = new WorldTile { Type = 57, Flags = WorldTileFlags.Active };
+            tiles.Tiles[tiles.GetUncheckedIndex(x, 399)] = new WorldTile { LiquidAmount = 255, LiquidKind = WorldLiquidKind.Water };
+            tiles.Tiles[tiles.GetUncheckedIndex(x, 398)] = new WorldTile { LiquidAmount = 255, LiquidKind = WorldLiquidKind.Water };
+        }
+
+        // Source CanSpawnInTile permits water but rejects lava. SetSpawnFlagsForChosenTile then
+        // identifies waterTile from the two cells above the solid row; the ordinary pre-Hardmode
+        // central-world path chooses Goldfish unless its 1/400 Gold Goldfish roll succeeds.
+        // The admitted fish AI runs in the same tick and keeps using this authoritative stream:
+        // non-wet initial Goldfish consumes its three grounded-launch rolls after the 1/400 roll.
+        var random = new SpawnRandom([1, -50, -20, 0], 360);
+        RuntimeTownCommerceWorldFacts1458 world = default;
+        world = world with { WorldSurface = 350, RockLayer = 500 };
+        var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
+            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
+            townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+            naturalSpawnRandom: random, worldProgression: new RuntimeWorldProgressionMutations());
+        var slots = new PlayerSlotPool(1);
+        Assert.True(slots.TryAcquireConnection(out var lease));
+        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        session.ObserveWorldRequest(); session.ObserveSectionRequest();
+        var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(816), session.Handle);
+        state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
+            new PlayerSpawnCommitRequest(session.Handle.Slot, 200, 398, 0, 0, 0, 0, 0)));
+
+        state.Tick();
+
+        random.AssertConsumed();
+        var snapshots = new NpcSnapshot[npcs.Capacity];
+        Assert.Equal(1, npcs.CopyActive(snapshots));
+        Assert.Equal(VanillaNpcIds.Goldfish.Value, snapshots[0].Type);
+    }
+
+    [Fact]
     public void Source_slot_order_tries_the_next_player_when_the_first_rate_roll_rejects()
     {
         var npcs = new RuntimeNpcStore();
@@ -176,7 +216,8 @@ public sealed class RuntimeUnderworldSpawn1458Tests
             if (index == 0) { Assert.Equal(rate, exclusiveMax); return 0; }
             if (index == 1) { Assert.Equal(-84, inclusiveMin); return 70; }
             if (index == 2) { Assert.Equal(-52, inclusiveMin); return 0; }
-            Assert.True(index - 3 < selection.Length, "Unexpected reroll/substitute after underworld selection.");
+            Assert.True(index - 3 < selection.Length,
+                $"Unexpected natural-spawn selector roll {inclusiveMin}..{exclusiveMax} at draw {index}.");
             return selection[index - 3];
         }
         public void AssertConsumed() => Assert.Equal(selection.Length + 3, call);
