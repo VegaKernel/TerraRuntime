@@ -324,6 +324,17 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
         return _npcs.TryUpdateUnpublished(current.Handle, in update, out committed);
     }
 
+    bool INpcAiCommittedNpcMutationSink.TryUpdateState(
+        in NpcSnapshot expected,
+        in NpcStateUpdate update,
+        out NpcSnapshot committed)
+    {
+        committed = default;
+        if (!_npcs.TryGet(expected.Handle, out NpcSnapshot current) || current.Revision != expected.Revision)
+            return false;
+        return _npcs.TryUpdateUnpublished(current.Handle, in update, out committed);
+    }
+
     bool INpcAiCommittedNpcMutationSink.TrySpawnProjectile(in NpcSnapshot source,
         in NpcAiProjectileIntent intent, out ProjectileSnapshot spawned)
     {

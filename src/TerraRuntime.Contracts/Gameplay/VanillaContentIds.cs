@@ -538,9 +538,10 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId PoisonedKnife = new(54);
     public static readonly ProjectileTypeId RainbowRodBullet = new(79);
     public static readonly ProjectileTypeId ProbePinkLaser = new(84);
-    // AI_003 type 243 and type 251 source projectile identities.
+    // AI_003 type 243, type 251 and type 350 source projectile identities.
     public static readonly ProjectileTypeId GroundFighter243Bolt = new(257);
     public static readonly ProjectileTypeId GroundFighter251Bolt = new(83);
+    public static readonly ProjectileTypeId GroundFighter350Bolt = new(82);
     public static readonly ProjectileTypeId RuneBlast = new(129);
     public static readonly ProjectileTypeId DungeonBeam = new(290);
     public static readonly ProjectileTypeId DungeonFlame = new(291);

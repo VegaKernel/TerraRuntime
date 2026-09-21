@@ -54,6 +54,100 @@ public sealed class VanillaGroundFighterProjectileAttackTests
         Assert.False(projectiles.TryGetActive(0, out _));
     }
 
+    [Fact]
+    public void Type_350_arms_only_for_an_active_player_item_use_and_preserves_source_rng_order()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, Update(new NpcTypeId(350), 0f), out NpcSnapshot source));
+        var random = new MinimumRandom();
+        VanillaNpcTargetCandidate target = new(7, 300f, 150f, 0, true, false, false, false) { ItemAnimation = 1 };
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, new VisibleEnvironment(), target);
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot committed));
+        Assert.Equal(110f, committed.Ai.Ai1);
+        Assert.Equal(3f, committed.Ai.Ai2);
+        Assert.Equal(.035f, committed.VelocityX, 5);
+        Assert.Equal(2, random.Draws);
+    }
+
+    [Fact]
+    public void Type_350_fires_at_half_windup_with_its_source_projectile_and_damage()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, Update(new NpcTypeId(350), 0f) with
+        {
+            Ai = new NpcAiState(0f, 56f, 3f, 0f)
+        }, out NpcSnapshot source));
+        var projectiles = new RuntimeProjectileStore(2);
+        var random = new MinimumRandom();
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, new VisibleEnvironment());
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot committed));
+        Assert.Equal(55f, committed.Ai.Ai1);
+        Assert.Equal(3f, committed.Ai.Ai2);
+        Assert.Equal(.063f, committed.VelocityX, 5);
+        Assert.True(projectiles.TryGetActive(0, out ProjectileSnapshot projectile));
+        Assert.Equal(VanillaProjectileIds.GroundFighter350Bolt, projectile.Type);
+        Assert.Equal((short)45, projectile.Damage);
+        Assert.Equal(11f, MathF.Sqrt(projectile.VelocityX * projectile.VelocityX + projectile.VelocityY * projectile.VelocityY), 5);
+        Assert.Equal(2, random.Draws);
+    }
+
+    [Fact]
+    public void Type_350_rejects_idle_nonstealthed_players_before_its_aim_rng()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, Update(new NpcTypeId(350), 0f), out NpcSnapshot source));
+        var random = new MinimumRandom();
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, new VisibleEnvironment());
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot committed));
+        Assert.Equal(0f, committed.Ai.Ai1);
+        Assert.Equal(0f, committed.Ai.Ai2);
+        Assert.Equal(0, random.Draws);
+    }
+
+    [Fact]
+    public void Type_350_consumes_preparation_jitter_before_rejecting_a_distant_target()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, Update(new NpcTypeId(350), 0f), out NpcSnapshot source));
+        var random = new MinimumRandom();
+        VanillaNpcTargetCandidate target = new(7, 1_000f, 150f, 0, true, false, false, false) { ItemAnimation = 1 };
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, new VisibleEnvironment(), target);
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot committed));
+        Assert.Equal(0f, committed.Ai.Ai1);
+        Assert.Equal(0f, committed.Ai.Ai2);
+        Assert.Equal(2, random.Draws);
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void Type_350_hit_or_confusion_cancels_its_windup(bool justHit, bool confused)
+    {
+        var npcs = new RuntimeNpcStore(2);
+        NpcStateUpdate update = Update(new NpcTypeId(350), 0f) with
+        {
+            Ai = new NpcAiState(0f, 70f, 3f, 0f),
+            Simulation = Update(new NpcTypeId(350), 0f).Simulation with { JustHit = justHit, Confused = confused }
+        };
+        Assert.True(npcs.TrySpawn(1, update, out NpcSnapshot source));
+        var random = new MinimumRandom();
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, new VisibleEnvironment());
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot committed));
+        Assert.Equal(0f, committed.Ai.Ai2);
+        Assert.Equal(justHit ? 30f : 0f, committed.Ai.Ai1);
+        Assert.Equal(0, random.Draws);
+    }
+
     [Theory]
     [InlineData(83, false)]
     [InlineData(257, true)]
@@ -69,6 +163,17 @@ public sealed class VanillaGroundFighterProjectileAttackTests
     }
 
     [Fact]
+    public void Type_350_projectile_keeps_its_source_ai001_defaults()
+    {
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.GroundFighter350Bolt, out VanillaProjectileDefinition definition));
+        Assert.Equal(10, definition.Width);
+        Assert.Equal(10, definition.Height);
+        Assert.Equal(VanillaProjectileAiStyles.Arrow, definition.AiStyle);
+        Assert.True(definition.TileCollide);
+        Assert.False(definition.IgnoreWater);
+    }
+
+    [Fact]
     public void Rejected_ground_fighter_transition_does_not_consume_attack_rng()
     {
         var npcs = new RuntimeNpcStore(2);
@@ -80,13 +185,29 @@ public sealed class VanillaGroundFighterProjectileAttackTests
         Assert.Equal(0, random.Draws);
     }
 
-    private static VanillaNpcTargetingAiStepper CreateStepper(IVanillaNpcRandom random, IVanillaNpcProjectileEnvironment environment)
+    [Fact]
+    public void Rejected_type_350_transition_does_not_consume_preparation_rng()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, Update(new NpcTypeId(350), 0f), out _));
+        var random = new MinimumRandom();
+        VanillaNpcTargetCandidate target = new(7, 300f, 150f, 0, true, false, false, false) { ItemAnimation = 1 };
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, new VisibleEnvironment(), target);
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs).Tick(new StaleGroundFighterOnly(stepper, npcs)).Rejected);
+        Assert.Equal(0, random.Draws);
+    }
+
+    private static VanillaNpcTargetingAiStepper CreateStepper(
+        IVanillaNpcRandom random,
+        IVanillaNpcProjectileEnvironment environment,
+        VanillaNpcTargetCandidate? target = null)
     {
         var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: random);
         stepper.EnableZombieMotion(100d);
         stepper.SetWorldConditions(dayTime: false, slimeRainActive: false);
         stepper.SetProjectileEnvironment(environment);
-        stepper.SetCandidates([new VanillaNpcTargetCandidate(7, 300f, 150f, 0, true, false, false, false)]);
+        stepper.SetCandidates([target ?? new VanillaNpcTargetCandidate(7, 300f, 150f, 0, true, false, false, false)]);
         return stepper;
     }
 
@@ -101,8 +222,8 @@ public sealed class VanillaGroundFighterProjectileAttackTests
         Ai: new NpcAiState(0f, 0f, timer, 0f),
         Simulation: NpcSimulationState.Initial with
         {
-            Life = type.Value == 243 ? 4000 : 1000,
-            LifeMax = type.Value == 243 ? 4000 : 1000,
+            Life = type.Value == 243 ? 4000 : type.Value == 350 ? 900 : 1000,
+            LifeMax = type.Value == 243 ? 4000 : type.Value == 350 ? 900 : 1000,
             DirectionX = 1,
             DirectionY = 1,
             Scale = 1f,

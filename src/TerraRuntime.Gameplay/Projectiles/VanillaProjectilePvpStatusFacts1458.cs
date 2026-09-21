@@ -24,6 +24,11 @@ public static class VanillaProjectilePvpStatusFacts1458
             rule = new Rule(VanillaBuffIds.OnFire, DurationTicks: 180, ChanceDenominator: 3);
             return true;
         }
+        if (type == VanillaProjectileIds.GroundFighter350Bolt)
+        {
+            rule = new Rule(VanillaBuffIds.OnFire, DurationTicks: 420, ChanceDenominator: 3);
+            return true;
+        }
         if (type == VanillaProjectileIds.Flamelash)
         {
             rule = new Rule(VanillaBuffIds.OnFire, DurationTicks: 240, ChanceDenominator: 2);

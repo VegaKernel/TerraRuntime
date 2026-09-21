@@ -784,7 +784,8 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         type == VanillaProjectileIds.ConfettiMelee ||
         type == VanillaProjectileIds.BoneArrowFromMerchant ||
         type == VanillaProjectileIds.SoundGun ||
-        type == VanillaProjectileIds.BoneShard;
+        type == VanillaProjectileIds.BoneShard ||
+        type == VanillaProjectileIds.GroundFighter350Bolt;
 
     private static bool IsThrown(ProjectileTypeId type) =>
         type == VanillaProjectileIds.Bone ||

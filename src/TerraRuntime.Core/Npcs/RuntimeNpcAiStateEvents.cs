@@ -50,6 +50,16 @@ public interface INpcAiCommittedNpcMutationSink
     /// <summary>Updates AI only at the expected revision, withholding publication until finalization completes.</summary>
     bool TryUpdateAi(in NpcSnapshot expected, NpcAiState ai, out NpcSnapshot committed);
 
+    /// <summary>
+    /// Applies one complete source state mutation at the expected revision while publication is deferred. The default
+    /// keeps narrow test sinks source-safe; runtime-owned sinks opt in when an accepted AI tail also changes motion.
+    /// </summary>
+    bool TryUpdateState(in NpcSnapshot expected, in NpcStateUpdate update, out NpcSnapshot committed)
+    {
+        committed = default;
+        return false;
+    }
+
     int TryHeal(NpcHandle npc, int maximumAmount);
 
     bool TrySpawn(in NpcAiSpawnIntent intent, out NpcSnapshot spawned);
