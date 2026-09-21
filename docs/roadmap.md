@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-09-21 Queen Slime fly targeting: AI_121 now refreshes the closest player on every phase-two fly step, covering both idle flight and gel-burst preparation/release. This matches the helper's server target acquisition rather than carrying its prior tick's target.
+
 2026-09-21 Queen Slime target refresh: AI_121 refreshes `TargetClosest` on the first preparation tick of both slam and gel-burst. Phase-two gel-burst continues its source fly steering through the tick that enters its release substate, so it follows the refreshed player rather than a stale target slot.
 
 2026-09-21 Queen Slime teleport geometry: AI_121 now applies the source 1.0→0.5→1.0 live scale transition using its integer bottom-center anchor. The completed state-2 teleport tick is hidden and invulnerable, then state 1 restores normal geometry over its 30-tick materialization.

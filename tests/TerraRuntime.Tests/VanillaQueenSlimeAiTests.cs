@@ -7,6 +7,23 @@ namespace TerraRuntime.Tests;
 public sealed class VanillaQueenSlimeAiTests
 {
     [Fact]
+    public void Phase_two_idle_flight_refreshes_the_closest_target_each_tick()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper());
+        stepper.SetKingSlimeEnvironment(new FixedEnvironment());
+        stepper.SetCandidates([
+            new VanillaNpcTargetCandidate(7, 2_000f, 2_000f, 0, true, false, false, false),
+            new VanillaNpcTargetCandidate(8, 600f, 300f, 0, true, false, false, false)
+        ]);
+        NpcSnapshot queen = Queen(life: 8_999, localAi0: 8_999f);
+
+        Assert.True(stepper.TryStepState(in queen, out NpcStateUpdate next));
+        Assert.Equal((ushort)8, next.Target);
+        Assert.True(next.VelocityX > 0f);
+        Assert.True(next.VelocityY < 0f);
+    }
+
+    [Fact]
     public void Phase_two_gel_burst_refreshes_target_and_keeps_source_fly_motion_before_release()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper());

@@ -115,6 +115,11 @@ internal sealed class VanillaQueenSlimeNpcBehaviorStrategy : IVanillaNpcBehavior
                     noGravity = true;
                     noTileCollide = true;
                     if (hasTarget)
+                    {
+                        TryRefresh(in npc, in definition, context, ref targetSlot, out target);
+                        hasTarget = TryGetTarget(targetSlot, context, out target);
+                    }
+                    if (hasTarget)
                         SimpleFly(centerX, centerY, in target, simulation.TimeLeft, simulation.DirectionX, ref vx, ref vy);
                 }
                 else if (vy == 0f)
@@ -273,6 +278,11 @@ internal sealed class VanillaQueenSlimeNpcBehaviorStrategy : IVanillaNpcBehavior
                     if (timer >= 50f) { timer = 0f; ai = ai with { Ai2 = 1f }; }
                     ai = ai with { Ai1 = timer };
                     // The source still performs one final fly step on the tick that changes ai[2] to release.
+                    if (phaseTwo && hasTarget)
+                    {
+                        TryRefresh(in npc, in definition, context, ref targetSlot, out target);
+                        hasTarget = TryGetTarget(targetSlot, context, out target);
+                    }
                     if (phaseTwo && hasTarget)
                         SimpleFly(centerX, centerY, in target, simulation.TimeLeft, simulation.DirectionX, ref vx, ref vy);
                 }
