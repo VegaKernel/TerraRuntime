@@ -413,6 +413,13 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             _ = slimeRainKingSpawn(closest.Player.Slot);
     }
 
+    private void AdvanceMoonEventDeath(in NpcSnapshot dead)
+    {
+        // NPC.DoDeathEvents invokes both Moon-event progress checks after NPCLoot. RuntimeWorldClock owns their
+        // shared transient wave state, while this boundary makes every authoritative kill path contribute once.
+        worldClock?.TryAdvanceMoonEventDeath(dead.TypeIdentity, expertMode, masterMode);
+    }
+
     private void ApplyKingSlimeDeathEffects(in NpcSnapshot kingSlime)
     {
         progression.SetSlimeBlueSpawnBaseline(worldClock?.SlimeBlueSpawnUnlocked == true);

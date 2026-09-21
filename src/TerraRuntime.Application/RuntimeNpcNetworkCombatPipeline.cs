@@ -376,6 +376,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                 throw new InvalidOperationException("Imported NPC loot could not be finalized after a lethal packet-28 commit.");
 
             AdvanceSlimeRainDeath(in dead);
+            AdvanceMoonEventDeath(in dead);
             if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
                 ApplyKingSlimeDeathEffects(in dead);
             else if (dead.TypeIdentity == VanillaNpcIds.EyeOfCthulhu)
@@ -555,6 +556,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             throw new InvalidOperationException("Imported NPC loot could not be finalized after player-owned damage.");
 
         AdvanceSlimeRainDeath(in dead);
+        AdvanceMoonEventDeath(in dead);
         if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
             ApplyKingSlimeDeathEffects(in dead);
         else if (dead.TypeIdentity == VanillaNpcIds.EyeOfCthulhu)
@@ -684,6 +686,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             throw new InvalidOperationException("Imported NPC loot could not be finalized after Town NPC melee.");
 
         AdvanceSlimeRainDeath(in dead);
+        AdvanceMoonEventDeath(in dead);
         if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
             ApplyKingSlimeDeathEffects(in dead);
         else if (dead.TypeIdentity == VanillaNpcIds.EyeOfCthulhu)

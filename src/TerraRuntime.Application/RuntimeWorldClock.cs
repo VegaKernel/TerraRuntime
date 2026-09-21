@@ -1,4 +1,5 @@
 using TerraRuntime.World;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Gameplay.Worlds;
 
 namespace TerraRuntime.Application;
@@ -132,6 +133,7 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         BloodMoonActive = bloodMoonActive && !dayTime;
         PumpkinMoonActive = pumpkinMoon;
         SnowMoonActive = snowMoon;
+        MoonEventWaveNumber = MoonEventActive ? 1 : 0;
         GetGoodWorld = getGoodWorld;
         SlimeBlueSpawnUnlocked = slimeBlueSpawnUnlocked;
         WindSpeedCurrent = windSpeedCurrent;
@@ -181,6 +183,25 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     public bool SnowMoonActive { get; }
 
     public bool MoonEventActive => PumpkinMoonActive || SnowMoonActive;
+
+    /// <summary>
+    /// Source <c>NPC.waveNumber</c> for the active Pumpkin/Snow Moon. The counter is transient server state:
+    /// it begins at wave one when an event is started and is not part of the world header.
+    /// </summary>
+    public int MoonEventWaveNumber { get; private set; }
+
+    /// <summary>Source <c>NPC.waveKills</c>, shared by the two mutually exclusive Moon events.</summary>
+    public float MoonEventWaveKills { get; private set; }
+
+    /// <summary>Source <c>NPC.totalInvasionPoints</c> accumulated during the current Moon event.</summary>
+    public float MoonEventTotalInvasionPoints { get; private set; }
+
+    /// <summary>
+    /// The required point totals indexed by source <c>NPC.waveNumber</c>. Index zero is deliberately unused and
+    /// wave twenty is endless, with a zero requirement, exactly as TerrariaServer 1.4.5.8 declares it.
+    /// </summary>
+    private static ReadOnlySpan<int> MoonEventRequiredPointsPerWave =>
+        [0, 25, 40, 50, 80, 100, 160, 180, 200, 250, 300, 375, 450, 525, 675, 850, 1025, 1325, 1550, 2000, 0];
 
     public bool GetGoodWorld { get; }
 
@@ -319,6 +340,81 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         // Main.slimeRainKillCount is reset even if NPC.SpawnOnPlayer cannot find a valid location.
         SlimeRainKillCount = -threshold / 2;
         return true;
+    }
+
+    /// <summary>
+    /// Applies the post-death <c>NPC.CheckProgressFrostMoon</c> and
+    /// <c>NPC.CheckProgressPumpkinMoon</c> accounting from TerrariaServer 1.4.5.8. The combat pipeline calls
+    /// this only after the dead NPC's loot has been finalized. The source uses one shared wave counter; the two
+    /// event type sets are disjoint, but retaining that shared state also preserves source behavior for malformed
+    /// worlds that expose both event flags.
+    /// </summary>
+    public bool TryAdvanceMoonEventDeath(NpcTypeId type, bool expertMode, bool masterMode)
+    {
+        if (masterMode && !expertMode)
+            throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
+        if (!MoonEventActive)
+            return false;
+
+        float scalar = masterMode ? 2.5f : expertMode ? 2f : 1f;
+        bool advanced = false;
+        if (SnowMoonActive && TryGetFrostMoonPoints(type, out float frostPoints))
+            advanced |= ApplyMoonEventPoints(frostPoints * scalar);
+        if (PumpkinMoonActive && TryGetPumpkinMoonPoints(type, out float pumpkinPoints))
+            advanced |= ApplyMoonEventPoints(pumpkinPoints * scalar);
+        return advanced;
+    }
+
+    private bool ApplyMoonEventPoints(float points)
+    {
+        MoonEventWaveKills += points;
+        MoonEventTotalInvasionPoints += points;
+
+        int required = MoonEventRequiredPointsPerWave[MoonEventWaveNumber];
+        if (required == 0 || MoonEventWaveKills < required)
+            return true;
+
+        // NPC.CheckProgress* discards surplus points when a wave advances rather than carrying them forward.
+        MoonEventWaveKills = 0f;
+        MoonEventWaveNumber++;
+        return true;
+    }
+
+    private static bool TryGetFrostMoonPoints(NpcTypeId type, out float points)
+    {
+        points = type.Value switch
+        {
+            338 or 339 or 340 => 1f,
+            341 => 20f,
+            342 => 2f,
+            343 => 18f,
+            344 => 50f,
+            345 => 150f,
+            346 => 100f,
+            347 => 8f,
+            348 or 349 => 4f,
+            350 => 3f,
+            351 => 10f,
+            352 => 5f,
+            _ => 0f
+        };
+        return points != 0f;
+    }
+
+    private static bool TryGetPumpkinMoonPoints(NpcTypeId type, out float points)
+    {
+        points = type.Value switch
+        {
+            >= 305 and <= 314 => 1f,
+            315 => 50f,
+            325 => 75f,
+            326 => 2f,
+            327 => 150f,
+            329 => 5f,
+            330 => 10f,
+            _ => 0f
+        };
+        return points != 0f;
     }
 
     public void Tick()

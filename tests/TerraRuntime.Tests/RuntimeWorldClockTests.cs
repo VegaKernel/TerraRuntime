@@ -289,6 +289,37 @@ public sealed class RuntimeWorldClockTests
     }
 
     [Fact]
+    public void Frost_moon_deaths_use_source_points_and_discard_wave_overflow()
+    {
+        var clock = new RuntimeWorldClock(0d, false, default, 0d, dayRate: 0, snowMoon: true);
+
+        Assert.Equal(1, clock.MoonEventWaveNumber);
+        for (int index = 0; index < 24; index++)
+            Assert.True(clock.TryAdvanceMoonEventDeath(new NpcTypeId(338), expertMode: false, masterMode: false));
+
+        Assert.Equal(24f, clock.MoonEventWaveKills);
+        Assert.True(clock.TryAdvanceMoonEventDeath(new NpcTypeId(338), expertMode: false, masterMode: false));
+
+        Assert.Equal(2, clock.MoonEventWaveNumber);
+        Assert.Equal(0f, clock.MoonEventWaveKills);
+        Assert.Equal(25f, clock.MoonEventTotalInvasionPoints);
+    }
+
+    [Fact]
+    public void Pumpkin_moon_applies_master_scalar_and_ignores_unrelated_deaths()
+    {
+        var clock = new RuntimeWorldClock(0d, false, default, 0d, dayRate: 0, pumpkinMoon: true);
+
+        Assert.False(clock.TryAdvanceMoonEventDeath(new NpcTypeId(1), expertMode: false, masterMode: false));
+        Assert.True(clock.TryAdvanceMoonEventDeath(new NpcTypeId(315), expertMode: true, masterMode: true));
+
+        Assert.Equal(2, clock.MoonEventWaveNumber);
+        Assert.Equal(0f, clock.MoonEventWaveKills);
+        Assert.Equal(125f, clock.MoonEventTotalInvasionPoints);
+        Assert.Throws<ArgumentException>(() => clock.TryAdvanceMoonEventDeath(new NpcTypeId(315), expertMode: false, masterMode: true));
+    }
+
+    [Fact]
     public void Persisted_creative_slider_maps_to_vanilla_one_through_twenty_four_rate()
     {
         var metadata = new WorldFileRuntimeMetadata
