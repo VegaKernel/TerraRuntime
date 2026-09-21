@@ -64,15 +64,15 @@ public sealed class VanillaMoonEventEverscreamAiTests
     }
 
     [Fact]
-    public void Pumpking_projectile_branches_and_source_rng_order_match_ai57()
+    public void Mourning_wood_projectile_branches_and_source_rng_order_match_ai57()
     {
-        AssertPumpkingProjectile(new NpcAiState(1f, 14f, 0f, 0f), VanillaProjectileIds.PumpkingScythe, 50, expectedDraws: 2);
-        AssertPumpkingProjectile(new NpcAiState(2f, 71f, 0f, 0f), VanillaProjectileIds.PumpkinMoonAttack326, 40, expectedDraws: 5);
-        AssertPumpkingProjectile(new NpcAiState(3f, 29f, 0f, 0f), VanillaProjectileIds.PumpkingScythe, 75, expectedDraws: 2);
-        AssertPumpkingProjectile(new NpcAiState(4f, 9f, 0f, 0f), VanillaProjectileIds.PumpkinMoonAttack326, 50, expectedDraws: 5);
-        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.PumpkingScythe, out VanillaProjectileDefinition scythe));
+        AssertPumpkingProjectile(new NpcAiState(1f, 14f, 0f, 0f), VanillaProjectileIds.FlamingWood, 50, expectedDraws: 2);
+        AssertPumpkingProjectile(new NpcAiState(2f, 71f, 0f, 0f), VanillaProjectileIds.GreekFire1, 40, expectedDraws: 5);
+        AssertPumpkingProjectile(new NpcAiState(3f, 29f, 0f, 0f), VanillaProjectileIds.FlamingWood, 75, expectedDraws: 2);
+        AssertPumpkingProjectile(new NpcAiState(4f, 9f, 0f, 0f), VanillaProjectileIds.GreekFire1, 50, expectedDraws: 5);
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.FlamingWood, out VanillaProjectileDefinition scythe));
         Assert.Equal((14, 14), (scythe.Width, scythe.Height));
-        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.PumpkinMoonAttack328, out VanillaProjectileDefinition attack328));
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.GreekFire3, out VanillaProjectileDefinition attack328));
         Assert.Equal((6, 12), (attack328.Width, attack328.Height));
     }
 

@@ -539,12 +539,11 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId PlanteraSeed = new(275);
     public static readonly ProjectileTypeId PlanteraPoisonSeed = new(276);
     public static readonly ProjectileTypeId PlanteraThornBall = new(277);
-    // Pumpkin Moon AI_057 emits the raw 1.4.5.8 projectile range 325..328. The names retain
-    // the event ownership where the vanilla identifier table has no runtime-facing catalog entry.
-    public static readonly ProjectileTypeId PumpkingScythe = new(325);
-    public static readonly ProjectileTypeId PumpkinMoonAttack326 = new(326);
-    public static readonly ProjectileTypeId PumpkinMoonAttack327 = new(327);
-    public static readonly ProjectileTypeId PumpkinMoonAttack328 = new(328);
+    // Pumpkin Moon AI_057 emits the 1.4.5.8 Mourning Wood projectile family.
+    public static readonly ProjectileTypeId FlamingWood = new(325);
+    public static readonly ProjectileTypeId GreekFire1 = new(326);
+    public static readonly ProjectileTypeId GreekFire2 = new(327);
+    public static readonly ProjectileTypeId GreekFire3 = new(328);
     public static readonly ProjectileTypeId Sharknado = new(384);
     public static readonly ProjectileTypeId SharknadoBolt = new(385);
     public static readonly ProjectileTypeId Cthulunado = new(386);

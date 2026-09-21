@@ -204,7 +204,7 @@ public static class VanillaDefinitionCatalog
         CollisionHeight: 26);
 
     // Projectile.SetDefaults 325..328: Pumpkin Moon AI_057 projectile family.
-    private static readonly VanillaProjectileDefinition PumpkingScytheDefinition = new(
+    private static readonly VanillaProjectileDefinition FlamingWoodDefinition = new(
         Width: 14,
         Height: 14,
         AiStyle: VanillaProjectileAiStyles.Arrow,
@@ -214,7 +214,7 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 14,
         CollisionHeight: 14);
 
-    private static readonly VanillaProjectileDefinition PumpkinMoonAttack326Definition = new(
+    private static readonly VanillaProjectileDefinition GreekFire1Definition = new(
         Width: 14,
         Height: 16,
         AiStyle: VanillaProjectileAiStyles.BouncyBall,
@@ -224,7 +224,7 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 14,
         CollisionHeight: 16);
 
-    private static readonly VanillaProjectileDefinition PumpkinMoonAttack327Definition = new(
+    private static readonly VanillaProjectileDefinition GreekFire2Definition = new(
         Width: 12,
         Height: 14,
         AiStyle: VanillaProjectileAiStyles.BouncyBall,
@@ -234,7 +234,7 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 12,
         CollisionHeight: 14);
 
-    private static readonly VanillaProjectileDefinition PumpkinMoonAttack328Definition = new(
+    private static readonly VanillaProjectileDefinition GreekFire3Definition = new(
         Width: 6,
         Height: 12,
         AiStyle: VanillaProjectileAiStyles.BouncyBall,
@@ -864,27 +864,27 @@ public static class VanillaDefinitionCatalog
             return true;
         }
 
-        if (type == VanillaProjectileIds.PumpkingScythe)
+        if (type == VanillaProjectileIds.FlamingWood)
         {
-            definition = PumpkingScytheDefinition;
+            definition = FlamingWoodDefinition;
             return true;
         }
 
-        if (type == VanillaProjectileIds.PumpkinMoonAttack326)
+        if (type == VanillaProjectileIds.GreekFire1)
         {
-            definition = PumpkinMoonAttack326Definition;
+            definition = GreekFire1Definition;
             return true;
         }
 
-        if (type == VanillaProjectileIds.PumpkinMoonAttack327)
+        if (type == VanillaProjectileIds.GreekFire2)
         {
-            definition = PumpkinMoonAttack327Definition;
+            definition = GreekFire2Definition;
             return true;
         }
 
-        if (type == VanillaProjectileIds.PumpkinMoonAttack328)
+        if (type == VanillaProjectileIds.GreekFire3)
         {
-            definition = PumpkinMoonAttack328Definition;
+            definition = GreekFire3Definition;
             return true;
         }
 

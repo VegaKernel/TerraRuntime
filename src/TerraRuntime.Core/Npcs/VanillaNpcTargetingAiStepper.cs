@@ -2175,7 +2175,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             NormalizeTo(ref dx, ref dy, 10f);
             dx *= 1f + _random.NextInt32(-20, 21) * .01f;
             dy *= 1f + _random.NextInt32(-20, 21) * .01f;
-            SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.PumpkingScythe,
+            SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.FlamingWood,
                 x, y, dx, dy, 50);
         }
         else if (before.Ai.Ai0 == 2f && elapsed > 60f && elapsed < 240f && elapsed % 8f == 0f)
@@ -2198,7 +2198,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             NormalizeTo(ref dx, ref dy, 16f);
             dx *= 1f + _random.NextInt32(-20, 21) * .001f;
             dy *= 1f + _random.NextInt32(-20, 21) * .001f;
-            SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.PumpkingScythe,
+            SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.FlamingWood,
                 x, y, dx, dy, 75);
         }
         else if (before.Ai.Ai0 == 4f && elapsed % 10f == 0f)
@@ -2218,9 +2218,9 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     private ProjectileTypeId RandomPumpkingAttack() => _random.NextInt32(326, 329) switch
     {
-        326 => VanillaProjectileIds.PumpkinMoonAttack326,
-        327 => VanillaProjectileIds.PumpkinMoonAttack327,
-        _ => VanillaProjectileIds.PumpkinMoonAttack328
+        326 => VanillaProjectileIds.GreekFire1,
+        327 => VanillaProjectileIds.GreekFire2,
+        _ => VanillaProjectileIds.GreekFire3
     };
 
     private static void SpawnPumpkingProjectile(
