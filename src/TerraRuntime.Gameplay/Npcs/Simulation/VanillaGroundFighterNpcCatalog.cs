@@ -39,6 +39,13 @@ public static class VanillaGroundFighterNpcCatalog
         ,Fighter(VanillaNpcIds.ZombieElf, 18, 40, 65, 18, 600, .4f, 1f, 1.75f)
         ,Fighter(VanillaNpcIds.ZombieElfBeard, 18, 40, 52, 24, 700, .2f, 1.05f, 1.25f)
         ,Fighter(VanillaNpcIds.ZombieElfGirl, 18, 40, 78, 14, 500, .25f, .9f, 2f)
+        // TerrariaServer 1.4.5.8 NPC.SetDefaults (319..324); each reaches AI_003's generic num108 branch.
+        ,Fighter(VanillaNpcIds.ZombieDoctor, 18, 40, 20, 6, 40, .6f, .9f, 1f)
+        ,Fighter(VanillaNpcIds.ZombieSuperman, 18, 40, 15, 8, 60, .5f, 1.05f, 1f)
+        ,Fighter(VanillaNpcIds.ZombiePixie, 18, 40, 20, 14, 34, .3f, 1.1f, 1f)
+        ,Fighter(VanillaNpcIds.SkeletonTopHat, 18, 40, 23, 0, 115, .65f, 1f, 1f)
+        ,Fighter(VanillaNpcIds.SkeletonAstronaut, 18, 40, 18, 10, 65, .5f, 1f, 1f)
+        ,Fighter(VanillaNpcIds.SkeletonAlien, 18, 40, 22, 10, 70, .4f, 1.05f, 1f)
         ,Fighter(new NpcTypeId(78), 18, 40, 50, 16, 130, .6f, 1f, 1f,
             acceleration: .05f, motionProfile: VanillaGroundFighterMotionProfile.HalfHealthBerserker, overspeedGroundDamping: .7f)
         ,Fighter(new NpcTypeId(79), 18, 40, 60, 18, 180, .5f, 1f, 1f,
@@ -96,6 +103,12 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.ZombieElf,
         VanillaNpcIds.ZombieElfBeard,
         VanillaNpcIds.ZombieElfGirl,
+        VanillaNpcIds.ZombieDoctor,
+        VanillaNpcIds.ZombieSuperman,
+        VanillaNpcIds.ZombiePixie,
+        VanillaNpcIds.SkeletonTopHat,
+        VanillaNpcIds.SkeletonAstronaut,
+        VanillaNpcIds.SkeletonAlien,
         new(78), new(79), new(80), new(243), new(251), new(254), new(255), new(257), new(258), new(287), new(630),
         new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280)
     ];

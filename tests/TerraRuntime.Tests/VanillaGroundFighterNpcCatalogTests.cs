@@ -31,6 +31,12 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         [VanillaNpcIds.ZombieElf, 18, 40, 65, 18, 600, 0.4f, 1f, 1.75f, false, false],
         [VanillaNpcIds.ZombieElfBeard, 18, 40, 52, 24, 700, 0.2f, 1.05f, 1.25f, false, false],
         [VanillaNpcIds.ZombieElfGirl, 18, 40, 78, 14, 500, 0.25f, 0.9f, 2f, false, false],
+        [VanillaNpcIds.ZombieDoctor, 18, 40, 20, 6, 40, 0.6f, 0.9f, 1f, false, false],
+        [VanillaNpcIds.ZombieSuperman, 18, 40, 15, 8, 60, 0.5f, 1.05f, 1f, false, false],
+        [VanillaNpcIds.ZombiePixie, 18, 40, 20, 14, 34, 0.3f, 1.1f, 1f, false, false],
+        [VanillaNpcIds.SkeletonTopHat, 18, 40, 23, 0, 115, 0.65f, 1f, 1f, false, false],
+        [VanillaNpcIds.SkeletonAstronaut, 18, 40, 18, 10, 65, 0.5f, 1f, 1f, false, false],
+        [VanillaNpcIds.SkeletonAlien, 18, 40, 22, 10, 70, 0.4f, 1.05f, 1f, false, false],
     ];
 
     [Theory]
@@ -79,8 +85,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(45, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(43, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(51, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(49, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
@@ -125,6 +131,27 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
         Assert.False(behavior.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.Equal(VanillaGroundFighterMotionProfile.Standard, behavior.MotionProfile);
+    }
+
+    [Fact]
+    public void Halloween_zombie_and_skeleton_variants_use_the_generic_source_ai003_profile()
+    {
+        foreach (NpcTypeId type in new[]
+        {
+            VanillaNpcIds.ZombieDoctor,
+            VanillaNpcIds.ZombieSuperman,
+            VanillaNpcIds.ZombiePixie,
+            VanillaNpcIds.SkeletonTopHat,
+            VanillaNpcIds.SkeletonAstronaut,
+            VanillaNpcIds.SkeletonAlien
+        })
+        {
+            Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(type, out var behavior));
+            Assert.Equal(1f, behavior.BaseMaximumHorizontalSpeed, 5);
+            Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
+            Assert.False(behavior.ScaleAdjustsMaximumHorizontalSpeed);
+            Assert.Equal(VanillaGroundFighterMotionProfile.Standard, behavior.MotionProfile);
+        }
     }
 
     [Theory]
