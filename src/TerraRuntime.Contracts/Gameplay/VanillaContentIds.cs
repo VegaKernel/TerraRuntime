@@ -105,6 +105,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId BoneSerpentBody = new(40);
     public static readonly NpcTypeId BoneSerpentTail = new(41);
     public static readonly NpcTypeId CaveBat = new(49);
+    public static readonly NpcTypeId Harpy = new(48);
     public static readonly NpcTypeId KingSlime = new(50);
     public static readonly NpcTypeId JungleBat = new(51);
     public static readonly NpcTypeId Goldfish = new(55);
@@ -153,6 +154,8 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId IlluminantBat = new(137);
     public static readonly NpcTypeId IlluminantSlime = new(138);
     public static readonly NpcTypeId Slimer = new(121);
+    public static readonly NpcTypeId Vampire = new(158);
+    public static readonly NpcTypeId VampireHumanoid = new(159);
     public static readonly NpcTypeId ToxicSludge = new(141);
     public static readonly NpcTypeId IceSlime = new(147);
     public static readonly NpcTypeId IceBat = new(150);
@@ -514,6 +517,8 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId Bomb = new(28);
     public static readonly ProjectileTypeId Dynamite = new(29);
     public static readonly ProjectileTypeId StickyBomb = new(37);
+    public static readonly ProjectileTypeId HarpyFeather = new(38);
+    public static readonly ProjectileTypeId DemonScythe = new(44);
     public static readonly ProjectileTypeId Flamelash = new(34);
     public static readonly ProjectileTypeId ThrowingKnife = new(48);
     public static readonly ProjectileTypeId Seed = new(51);
@@ -551,6 +556,9 @@ public static class VanillaProjectileIds
 
     // Snow Moon AI_061 Ice Queen primary bolt.
     public static readonly ProjectileTypeId IceQueenFrostBolt = new(180);
+    public static readonly ProjectileTypeId IceQueenFrostFlare = new(350);
+    public static readonly ProjectileTypeId IceQueenFrostWave = new(351);
+    public static readonly ProjectileTypeId IceQueenIceSpike = new(352);
     public static readonly ProjectileTypeId Sharknado = new(384);
     public static readonly ProjectileTypeId SharknadoBolt = new(385);
     public static readonly ProjectileTypeId Cthulunado = new(386);

@@ -344,13 +344,37 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             JustHit = simulation.JustHit,
             TimeLeft = simulation.TimeLeft,
             SpriteDirection = simulation.SpriteDirection,
-            ScaleAdjustsMaximumHorizontalSpeed = parameters.ScaleAdjustsMaximumHorizontalSpeed
+            ScaleAdjustsMaximumHorizontalSpeed = parameters.ScaleAdjustsMaximumHorizontalSpeed,
+            ReversingVelocityDamping = parameters.ReversingVelocityDamping
         };
 
         if (!VanillaZombieMotion.TryStep(in input, out VanillaZombieMotionResult result))
         {
             next = default;
             return false;
+        }
+
+        if (definition.Type == VanillaNpcIds.VampireHumanoid && result.Target < byte.MaxValue &&
+            context.TryFindCandidate((byte)result.Target, out VanillaNpcTargetCandidate vampireTarget))
+        {
+            float dx = vampireTarget.CenterX - (npc.PositionX + definition.Width * .5f);
+            float dy = vampireTarget.CenterY - (npc.PositionY + definition.Height * .5f);
+            if (dx * dx + dy * dy > 90_000f)
+            {
+                int transformedLife = ScaleTransformLife(simulation.Life, simulation.LifeMax, 750);
+                next = new NpcStateUpdate(VanillaNpcIds.Vampire.Value, (short)VanillaNpcIds.Vampire.Value,
+                    npc.PositionX, npc.PositionY + 18f, result.VelocityX, result.VelocityY, result.Target, default,
+                    simulation with { Life = transformedLife, LifeMax = 750, HitboxOverride = null, BaseDamage = null, BaseDefense = null,
+                        DefenseOverride = null, DamageOverride = null, KnockBackResist = null, NoGravity = true, NoTileCollide = false,
+                        DirectionX = vampireTarget.CenterX < npc.PositionX + 11f ? -1 : 1,
+                        DirectionY = vampireTarget.CenterY < npc.PositionY + 29f ? -1 : 1,
+                        LocalAi = default, FrameCounter = 0d, TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft,
+                        Alpha = 0, Hidden = false, DontTakeDamage = false, ReflectsProjectiles = false, JustHit = false,
+                        CanBeReplacedByOtherNpcs = false, Wet = false, LiquidContact = NpcLiquidContactKind.None,
+                        CollideX = false, CollideY = false, SpriteDirection = VanillaNpcDefinitionCatalog.DefaultSpriteDirection,
+                        Rotation = null, Friendly = null, Chaseable = null, Immortal = null });
+                return true;
+            }
         }
 
         next = new NpcStateUpdate(
@@ -373,6 +397,9 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             });
         return true;
     }
+
+    private static int ScaleTransformLife(int life, int lifeMax, int transformedLifeMax) =>
+        lifeMax > 0 ? Math.Max(1, (int)((long)life * transformedLifeMax / lifeMax)) : transformedLifeMax;
 }
 
 /// <summary>State portion of Pumpkin Moon AI_026 for types 315 and 329.</summary>
@@ -1250,8 +1277,117 @@ internal sealed class VanillaSnowMoonSantankNpcBehaviorStrategy(IVanillaNpcRando
     }
 }
 
+/// <summary>TerrariaServer 1.4.5.8 AI_062 pursuit, retreat and stationary shot clock.</summary>
+internal sealed class VanillaSnowMoonAi62NpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
+{
+    private IVanillaNpcProjectileEnvironment? environment;
+
+    public void SetEnvironment(IVanillaNpcProjectileEnvironment value) =>
+        environment = value ?? throw new ArgumentNullException(nameof(value));
+
+    public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        INpcAiStateStepper inner, out NpcStateUpdate next)
+    {
+        if (definition.Type != VanillaMoonEventSpecialCatalog1458.SnowMoonAi62 || definition.AiStyle.Value != 62 ||
+            environment is null ||
+            !TryTarget(in npc, in definition, context, out ushort target, out VanillaNpcTargetCandidate player, out int directionX))
+        { next = default; return false; }
+        float centerX = npc.PositionX + 25f, centerY = npc.PositionY + 25f;
+        float sourceX = centerX + directionX * 20f, sourceY = centerY + 6f;
+        float dx = player.CenterX - sourceX, dy = player.CenterY - player.Height * .5f - sourceY;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        Normalize(ref dx, ref dy, 7f);
+        float velocityX = npc.VelocityX, velocityY = npc.VelocityY;
+        NpcSimulationState simulation = npc.Simulation;
+        if (context.DayTime)
+        {
+            velocityX = (velocityX * 59f - dx) / 60f;
+            velocityY = (velocityY * 59f - dy) / 60f;
+            simulation = simulation with { TimeLeft = EncourageDespawn(simulation.TimeLeft, 10) };
+        }
+        else if (distance > 600f || !environment.CanHit(centerX, centerY, 1, 1, player.CenterX, player.CenterY, 1, 1))
+        {
+            velocityX = (velocityX * 59f + dx) / 60f;
+            velocityY = (velocityY * 59f + dy) / 60f;
+        }
+        else
+        {
+            velocityX *= .98f; velocityY *= .98f;
+            if (MathF.Abs(velocityX) < 1f && MathF.Abs(velocityY) < 1f)
+            {
+                float clock = simulation.LocalAi.Ai0 + 1f;
+                simulation = simulation with { LocalAi = simulation.LocalAi with { Ai0 = clock >= 15f ? 0f : clock } };
+            }
+        }
+        next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, velocityX, velocityY, target,
+            npc.Ai, simulation with { NoGravity = true, NoTileCollide = true, DirectionX = directionX, SpriteDirection = directionX,
+                Rotation = MathF.Abs(velocityX) * directionX * .1f, JustHit = false });
+        return true;
+    }
+
+    private static bool TryTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        out ushort target, out VanillaNpcTargetCandidate player, out int directionX)
+    {
+        if (context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) && closest.HasTarget &&
+            closest.Target < byte.MaxValue && context.TryFindCandidate((byte)closest.Target, out player))
+        { target = closest.Target; directionX = closest.DirectionX; return true; }
+        target = VanillaNpcDefinitionCatalog.DefaultTarget; player = default; directionX = 0; return false;
+    }
+
+    private static int EncourageDespawn(int timeLeft, int maximum) => timeLeft < 0 ? maximum : Math.Min(timeLeft, maximum);
+    private static void Normalize(ref float x, ref float y, float speed) { float d = MathF.Max(1f, MathF.Sqrt(x * x + y * y)); x = x / d * speed; y = y / d * speed; }
+}
+
+/// <summary>TerrariaServer 1.4.5.8 AI_063 close-range orbit and pursuit motion.</summary>
+internal sealed class VanillaSnowMoonAi63NpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
+{
+    public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        INpcAiStateStepper inner, out NpcStateUpdate next)
+    {
+        if (definition.Type != VanillaMoonEventSpecialCatalog1458.SnowMoonAi63 || definition.AiStyle.Value != 63 ||
+            !TryTarget(in npc, in definition, context, out ushort target, out VanillaNpcTargetCandidate player, out int direction))
+        { next = default; return false; }
+        float sourceX = npc.PositionX + 27f + direction * 20f, sourceY = npc.PositionY + 33f;
+        float dx = player.CenterX - sourceX, dy = player.CenterY - sourceY;
+        float distance = MathF.Sqrt(dx * dx + dy * dy);
+        Normalize(ref dx, ref dy, 11f);
+        if (context.DayTime) { dx = -dx; dy = -dy; }
+        NpcAiState ai = npc.Ai with { Ai0 = npc.Ai.Ai0 - 1f };
+        float velocityX = npc.VelocityX, velocityY = npc.VelocityY;
+        NpcSimulationState simulation = npc.Simulation;
+        if (distance < 200f || ai.Ai0 > 0f)
+        {
+            if (distance < 200f) ai = ai with { Ai0 = 20f };
+            direction = velocityX < 0f ? -1 : 1;
+            simulation = simulation with { Rotation = (simulation.Rotation ?? 0f) + direction * .3f };
+        }
+        else
+        {
+            velocityX = (velocityX * 50f + dx) / 51f;
+            velocityY = (velocityY * 50f + dy) / 51f;
+            if (distance < 350f) { velocityX = (velocityX * 10f + dx) / 11f; velocityY = (velocityY * 10f + dy) / 11f; }
+            if (distance < 300f) { velocityX = (velocityX * 7f + dx) / 8f; velocityY = (velocityY * 7f + dy) / 8f; }
+            simulation = simulation with { Rotation = velocityX * .15f };
+        }
+        next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, velocityX, velocityY, target, ai,
+            simulation with { NoGravity = true, NoTileCollide = true, DirectionX = direction, SpriteDirection = direction, JustHit = false });
+        return true;
+    }
+
+    private static bool TryTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        out ushort target, out VanillaNpcTargetCandidate player, out int direction)
+    {
+        if (context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) && closest.HasTarget &&
+            closest.Target < byte.MaxValue && context.TryFindCandidate((byte)closest.Target, out player))
+        { target = closest.Target; direction = closest.DirectionX; return true; }
+        target = VanillaNpcDefinitionCatalog.DefaultTarget; player = default; direction = 0; return false;
+    }
+
+    private static void Normalize(ref float x, ref float y, float speed) { float d = MathF.Max(1f, MathF.Sqrt(x * x + y * y)); x = x / d * speed; y = y / d * speed; }
+}
+
 /// <summary>TerrariaServer 1.4.5.8 AI_061 flight and phase clock for Snow Moon Ice Queen.</summary>
-internal sealed class VanillaSnowMoonIceQueenNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
+internal sealed class VanillaSnowMoonIceQueenNpcBehaviorStrategy(IVanillaNpcRandom random) : IVanillaNpcBehaviorStrategy
 {
     private IVanillaEverscreamEnvironment? environment;
 
@@ -1298,6 +1434,29 @@ internal sealed class VanillaSnowMoonIceQueenNpcBehaviorStrategy : IVanillaNpcBe
             ai = ai with { Ai1 = ai.Ai1 + 1f };
             haltHorizontal = true;
             if (ai.Ai1 > 240f) ai = ai with { Ai0 = 0f, Ai1 = 0f };
+        }
+
+        if (!context.DayTime)
+        {
+            int spikeRate = life < definition.LifeMax * .25f ? 300 : life < definition.LifeMax * .5f ? 450 : life < definition.LifeMax * .75f ? 540 : 600;
+            int flareRate = life < definition.LifeMax * .25f ? 600 : life < definition.LifeMax * .5f ? 900 : life < definition.LifeMax * .75f ? 1080 : 1200;
+            int waveRate = life < definition.LifeMax * .25f ? 1350 : life < definition.LifeMax * .5f ? 2025 : life < definition.LifeMax * .75f ? 2430 : 2700;
+            NpcAiState local = simulation.LocalAi with { Ai0 = 0f };
+            if (random.NextInt32(0, spikeRate) == 0)
+                local = local with { Ai0 = 1f, Ai3 = random.NextInt32(1, 100) * directionX };
+            if (random.NextInt32(0, flareRate) == 0) local = local with { Ai1 = 1f };
+            if (local.Ai1 >= 1f)
+            {
+                local = local with { Ai1 = local.Ai1 + 1f };
+                if (local.Ai1 >= 100f) local = local with { Ai1 = 0f };
+            }
+            if (random.NextInt32(0, waveRate) == 0) local = local with { Ai2 = 2f };
+            if (local.Ai2 > 0f)
+            {
+                local = local with { Ai2 = local.Ai2 + 1f };
+                if (local.Ai2 >= 100f) local = local with { Ai2 = 0f };
+            }
+            simulation = simulation with { LocalAi = local };
         }
 
         if (MathF.Abs(centerX - player.CenterX) < 50f) haltHorizontal = true;

@@ -111,7 +111,7 @@ internal sealed class VanillaQueenBeeNpcBehaviorStrategy : IVanillaNpcBehaviorSt
 
             case 3 when hasTarget:
                 RefreshDirection(in npc, in definition, in target, ref simulation);
-                StepStingerAttack(in npc, in definition, in target, context, enrage, ref ai, ref simulation, ref velocityX, ref velocityY);
+                StepStingerAttack(in npc, in definition, in target, context, enrage, ref ai, ref localAi, ref simulation, ref velocityX, ref velocityY);
                 break;
 
             case 4 when hasTarget:
@@ -427,9 +427,12 @@ internal sealed class VanillaQueenBeeNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         ref float velocityX,
         ref float velocityY)
     {
-        localAi = localAi with { Ai0 = 0f };
+        int spawnOffset = random.NextInt32(0, 20);
+        // AI_043 consumes this offset on every state-1 update. localAI[1] is unused by the source family, so
+        // retain it until the committed child-spawn planner uses the same offset rather than drawing again.
+        localAi = localAi with { Ai0 = 0f, Ai1 = spawnOffset };
         int direction = simulation.DirectionX == 0 ? (target.CenterX < npc.PositionX + definition.Width * 0.5f ? -1 : 1) : simulation.DirectionX;
-        float spawnX = npc.PositionX + definition.Width / 2f + random.NextInt32(0, 20) * direction;
+        float spawnX = npc.PositionX + definition.Width / 2f + spawnOffset * direction;
         float spawnY = npc.PositionY + definition.Height * 0.8f;
         float centerX = npc.PositionX + definition.Width * 0.5f;
         float centerY = npc.PositionY + definition.Height * 0.5f;
@@ -480,6 +483,7 @@ internal sealed class VanillaQueenBeeNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         VanillaNpcBehaviorContext context,
         float enrage,
         ref NpcAiState ai,
+        ref NpcAiState localAi,
         ref NpcSimulationState simulation,
         ref float velocityX,
         ref float velocityY)
@@ -489,7 +493,10 @@ internal sealed class VanillaQueenBeeNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         acceleration += 0.2f * enrage;
         speed += 6f * enrage;
         int direction = simulation.DirectionX == 0 ? (target.CenterX < npc.PositionX + definition.Width * 0.5f ? -1 : 1) : simulation.DirectionX;
-        float spawnX = npc.PositionX + definition.Width / 2f + random.NextInt32(0, 20) * direction;
+        int spawnOffset = random.NextInt32(0, 20);
+        // See state 1: the projectile planner must use this exact source roll after the accepted AI transition.
+        localAi = localAi with { Ai1 = spawnOffset };
+        float spawnX = npc.PositionX + definition.Width / 2f + spawnOffset * direction;
         float spawnY = npc.PositionY + definition.Height * 0.8f;
         float centerX = npc.PositionX + definition.Width * 0.5f;
         float centerY = npc.PositionY + definition.Height * 0.5f;

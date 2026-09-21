@@ -88,6 +88,46 @@ public sealed class VanillaQueenBeeVerticalTests
         Assert.Equal(300, intents[0].TimeLeftOverride);
     }
 
+    [Fact]
+    public void Bee_summon_reuses_the_ai_tick_source_offset_without_a_second_random_draw()
+    {
+        var random = new QueueRandom(7, 210);
+        var stepper = CreateStepper(random);
+        NpcSnapshot source = Queen(life: 3400, lifeMax: 3400, y: 300f, ai0: 1f, ai1: 40f, ai2: 0f) with { Target = 7 };
+
+        Assert.True(stepper.TryStepState(in source, out NpcStateUpdate proposed));
+        Assert.Equal(7f, proposed.Simulation.LocalAi.Ai1);
+        Span<NpcAiSpawnIntent> intents = stackalloc NpcAiSpawnIntent[1];
+        Assert.Equal(1, stepper.PlanNpcSpawns(in source, in proposed, intents));
+        Assert.Equal(140, intents[0].BottomX);
+        Assert.Equal(2, random.Draws);
+    }
+
+    [Fact]
+    public void Stinger_reuses_the_ai_tick_source_offset_before_its_aim_jitter()
+    {
+        var random = new QueueRandom(7, 0, 0);
+        var stepper = CreateStepper(random);
+        NpcSnapshot source = Queen(life: 3400, lifeMax: 3400, y: 100f, ai0: 3f, ai1: 38f) with { Target = 7 };
+
+        Assert.True(stepper.TryStepState(in source, out NpcStateUpdate proposed));
+        Assert.Equal(7f, proposed.Simulation.LocalAi.Ai1);
+        Span<NpcAiProjectileIntent> intents = stackalloc NpcAiProjectileIntent[1];
+        Assert.Equal(1, stepper.PlanProjectileSpawns(in source, in proposed, intents));
+        Assert.Equal(140f, intents[0].PositionX);
+        Assert.Equal(3, random.Draws);
+    }
+
+    private static VanillaNpcTargetingAiStepper CreateStepper(QueueRandom random)
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper(), random: random);
+        stepper.SetWorldConditions(dayTime: true, slimeRainActive: false);
+        stepper.SetQueenBeeEnvironment(new FakeQueenEnvironment(50d, jungle: true));
+        stepper.SetProjectileEnvironment(new AlwaysHitEnvironment());
+        stepper.SetCandidates([new VanillaNpcTargetCandidate(7, 400f, 600f, 0, true, false, false, false)]);
+        return stepper;
+    }
+
     private static NpcSnapshot Queen(int life, int lifeMax, float y, float ai0, float ai1, float ai2 = 0f) =>
         new(new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1), 222, 222, 100f, y, 0f, 0f, 255,
             new NpcAiState(ai0, ai1, ai2, 0f), NpcSimulationState.Initial with { Life = life, LifeMax = lifeMax, TimeLeft = 750 });
@@ -112,8 +152,10 @@ public sealed class VanillaQueenBeeVerticalTests
     private sealed class QueueRandom(params int[] values) : IVanillaNpcRandom
     {
         private readonly Queue<int> values = new(values);
+        public int Draws { get; private set; }
         public int NextInt32(int inclusiveMin, int exclusiveMax)
         {
+            Draws++;
             if (values.Count == 0) return inclusiveMin;
             int value = values.Dequeue();
             return Math.Clamp(value, inclusiveMin, exclusiveMax - 1);

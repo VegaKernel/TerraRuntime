@@ -1,5 +1,21 @@
 # TerraRuntime roadmap
 
+2026-09-21 Vampire forms: AI_014 type 158 and AI_003 type 159 now use pinned source defaults and the bidirectional source transform. Flying Vampire converts only below a visible player inside 200 pixels; humanoid Vampire returns to flight beyond 300 pixels. The transition preserves the lower edge, scales life through `NPC.Transform`, resets AI-local state and retargets. Humanoid reversal damping and its six-pixel speed cap are source-backed; projectile-shooting AI_014 variants remain open.
+
+2026-09-21 Queen Slime blocked flight: AI_121 now follows the source's two live line-of-sight height branches. A clear path steers 250 pixels above the player; a blocked path steers at the player height through the authoritative world line query. The source's finer vertical-solid landing probe remains open.
+
+2026-09-21 Queen Slime fly targeting: AI_121 now refreshes the closest player on every phase-two fly step, covering both idle flight and gel-burst preparation/release. This matches the helper's server target acquisition rather than carrying its prior tick's target.
+
+2026-09-21 Queen Slime target refresh: AI_121 refreshes `TargetClosest` on the first preparation tick of both slam and gel-burst. Phase-two gel-burst continues its source fly steering through the tick that enters its release substate, so it follows the refreshed player rather than a stale target slot.
+
+2026-09-21 Queen Slime teleport geometry: AI_121 now applies the source 1.0→0.5→1.0 live scale transition using its integer bottom-center anchor. The completed state-2 teleport tick is hidden and invulnerable, then state 1 restores normal geometry over its 30-tick materialization.
+
+2026-09-21 Queen Slime minions: AI_121 now uses the source `NewNPC` bottom-center placement and retains the per-minion random-draw sequence for position, blue/pink/purple type, horizontal/vertical launch velocity and initial jump delay. The HP threshold remains source-owned through `localAI[0]`.
+
+2026-09-21 Queen Slime phase boundary: AI_121 now applies its post-state half-health transition. Crossing the source `life < lifeMax / 2` boundary resets the active attack's `ai[0..2]` and moves the minion HP anchor to current life, while retaining the normally updated teleport/line-of-sight pressure in `ai[3]`.
+
+2026-09-21 Queen Bee committed effects: AI_043 retains its one `Next(20)` attack-origin offset for every state-1/state-3 tick in server-owned `localAI[1]`. The committed Bee and Stinger planners reuse that same offset for their collision gate and spawn position, preserving source RNG order before the child-type or aim-jitter draws.
+
 2026-09-21 Snow Moon wave selection: `NPC.Spawner.SpawnAnNPC` now owns the source table through wave 20, including its explicit wave-14 no-spawn path and the late shared invasion-boss slot cap over active player count. Every active-type cap and RNG draw is retained after the wave-wide 1-in-30 special check. Unsupported special selections fail closed instead of falling back to an ordinary hostile. Santa-NK1 is admitted with its AI_060 body; other special-AI NPCs remain open.
 
 2026-09-21 Pumpkin Moon wave selection: source `NPC.Spawner.SpawnAnNPC` now covers waves 1-20, including the independent first/second selections that can create two NPCs in waves 14, 15, 17 and 18, source no-spawn paths, active-type caps and the shared invasion-boss cap. Unsupported special selections remain fail-closed; their AI implementations remain open.
@@ -12,7 +28,11 @@
 
 2026-09-21 Snow Moon Santa-NK1: source NPC 345 `SetDefaults` and AI_060 are admitted through the wave selector. The runtime retains all three night states, life-based movement/attack clocks, target refresh and day escape. Rockets and bombs are created only after their matching committed clock transition, retain source damage and hitboxes, and bombs preserve their solid-tile gate and gravity. Remaining Snow Moon special-AI NPCs remain open.
 
-2026-09-21 Snow Moon Ice Queen: source NPC 346 `SetDefaults`, AI_061's day escape, life-scaled hover motion, floor probe and 300/240 phase clock are admitted. Its phase-one Frost Bolt now retains source cadence, aim, damage and random-draw order after the committed transition. The three independent rare projectile branches of AI_061 remain open.
+2026-09-21 Snow Moon Ice Queen: source NPC 346 `SetDefaults`, AI_061's day escape, life-scaled hover motion, floor probe and 300/240 phase clock are admitted. Frost Bolt plus the rare Ice Spike, Frost Flare and Frost Wave branches retain their source projectile types, damage, hitboxes, aim and committed local-AI clocks. The Frost Wave's AI_058 fall transition and Ice Spike gravity are simulated server-side. Remaining Snow Moon special-AI NPCs remain open.
+
+2026-09-21 Snow Moon AI_062: source NPC 347 `SetDefaults` is admitted with its target pursuit, daylight retreat, line-of-sight gate and stationary 15-tick Frost Bolt clock. The server creates projectile 180 after the matching committed local-AI transition with source aim, damage and six random draws. Remaining Snow Moon special-AI NPCs remain open.
+
+2026-09-21 Snow Moon AI_063: source NPC 352 `SetDefaults` and its no-clip target motion are admitted. The runtime keeps the source close-range orbit timer, daylight vector reversal, two near-distance pursuit gains and rotation/direction handoff. Remaining Snow Moon special-AI NPCs remain open.
 
 2026-09-21 Moon-event AI_026 type 315: Pumpkin Moon now admits Mourning Wood with its source defaults, six-pixel AI_026 charge and 480-tick post-commit fireball branch. The projectile preserves pre-motion center/velocity, retained NPC difficulty damage and its pre-refresh target; rejected state transitions consume no random draws. Remaining special-AI types and later waves remain open.
 

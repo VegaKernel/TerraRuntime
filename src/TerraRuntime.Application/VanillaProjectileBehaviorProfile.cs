@@ -49,7 +49,10 @@ internal enum VanillaProjectileBehaviorFamily : byte
     MoonLeech = 36,
     MoonBoulder = 37,
     FlamingScythe = 38,
-    SantankBomb = 39
+    SantankBomb = 39,
+    IceQueenFrostWave = 40,
+    IceQueenIceSpike = 41,
+    DemonScythe = 42
 }
 
 /// <summary>
@@ -83,6 +86,14 @@ internal static class VanillaProjectileBehaviorProfileCatalog
     {
         RejectServerOwned = true
     };
+
+    private static readonly VanillaProjectileBehaviorProfile DemonScytheProfile = new(
+        VanillaProjectileBehaviorFamily.DemonScythe,
+        VanillaProjectileAiStyles.DemonScythe,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
 
     private static readonly VanillaProjectileBehaviorProfile SkeletronSkullProfile = new(
         VanillaProjectileBehaviorFamily.SkeletronSkull,
@@ -311,6 +322,11 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         RejectServerOwned: false,
         ExemptFromPreAiWorldBounds: false);
 
+    private static readonly VanillaProjectileBehaviorProfile IceQueenFrostWaveProfile = new(
+        VanillaProjectileBehaviorFamily.IceQueenFrostWave, new ProjectileAiStyleId(58), true, true, false, false);
+    private static readonly VanillaProjectileBehaviorProfile IceQueenIceSpikeProfile = new(
+        VanillaProjectileBehaviorFamily.IceQueenIceSpike, VanillaProjectileAiStyles.BouncyBall, true, true, false, false);
+
     private static readonly VanillaProjectileBehaviorProfile HallowBossRainbowStreakProfile = new(
         VanillaProjectileBehaviorFamily.HallowBossRainbowStreak,
         VanillaProjectileAiStyles.HallowBossRainbowStreak,
@@ -406,6 +422,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
             return true;
         }
 
+        if (type == VanillaProjectileIds.DemonScythe)
+        {
+            profile = DemonScytheProfile;
+            return true;
+        }
+
         if (type == VanillaProjectileIds.SkeletronSkull)
         {
             profile = SkeletronSkullProfile;
@@ -459,6 +481,10 @@ internal static class VanillaProjectileBehaviorProfileCatalog
             profile = HostileStraightNoGravityProfile;
             return true;
         }
+
+        if (type == VanillaProjectileIds.IceQueenFrostFlare) { profile = HostileStraightNoGravityProfile; return true; }
+        if (type == VanillaProjectileIds.IceQueenFrostWave) { profile = IceQueenFrostWaveProfile; return true; }
+        if (type == VanillaProjectileIds.IceQueenIceSpike) { profile = IceQueenIceSpikeProfile; return true; }
 
         if (type == VanillaProjectileIds.Sharknado || type == VanillaProjectileIds.Cthulunado)
         {
@@ -668,10 +694,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
     // share aiStyle 1 with arrows but never acquire ordinary arrow gravity from their default AI state.
     internal static bool SkipsBasicArrowGravity(ProjectileTypeId type) =>
         type == VanillaProjectileIds.Bullet || type == VanillaProjectileIds.SilverBullet ||
-        type == VanillaProjectileIds.GreenLaser || type == VanillaProjectileIds.JestersArrow;
+        type == VanillaProjectileIds.GreenLaser || type == VanillaProjectileIds.JestersArrow ||
+        type == VanillaProjectileIds.HarpyFeather;
 
     private static bool IsBasicArrow(ProjectileTypeId type) =>
         type == VanillaProjectileIds.WoodenArrowFriendly ||
+        type == VanillaProjectileIds.HarpyFeather ||
         type == VanillaProjectileIds.FireArrow ||
         type == VanillaProjectileIds.UnholyArrow ||
         type == VanillaProjectileIds.JestersArrow ||

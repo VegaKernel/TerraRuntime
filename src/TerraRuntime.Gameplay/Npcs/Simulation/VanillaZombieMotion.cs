@@ -40,6 +40,7 @@ public readonly record struct VanillaZombieMotionInput(
     public int TimeLeft { get; init; }
     public int SpriteDirection { get; init; } = -1;
     public bool ScaleAdjustsMaximumHorizontalSpeed { get; init; } = true;
+    public float ReversingVelocityDamping { get; init; } = 1f;
 }
 
 public readonly record struct VanillaZombieMotionResult(
@@ -85,6 +86,8 @@ public static class VanillaZombieMotion
             input.DirectionX is < -1 or > 1 ||
             input.DirectionY is < -1 or > 1 ||
             input.SpriteDirection is < -1 or > 1 ||
+            !float.IsFinite(input.ReversingVelocityDamping) ||
+            input.ReversingVelocityDamping <= 0f || input.ReversingVelocityDamping > 1f ||
             input.Target > byte.MaxValue ||
             input.TimeLeft < 0 ||
             !input.Ai.IsFinite ||
@@ -162,6 +165,8 @@ public static class VanillaZombieMotion
         float maximumSpeed = input.BaseMaximumHorizontalSpeed;
         if (input.ScaleAdjustsMaximumHorizontalSpeed)
             maximumSpeed *= 1f + (1f - input.Scale);
+        if ((velocityX > 0f && directionX < 0) || (velocityX < 0f && directionX > 0))
+            velocityX *= input.ReversingVelocityDamping;
         if (velocityX < -maximumSpeed || velocityX > maximumSpeed)
         {
             if (velocityY == 0f)
@@ -225,7 +230,8 @@ public readonly record struct VanillaGroundFighterBehaviorParameters(
     float PursuitGapJumpVelocity,
     float PursuitGapSpeedMultiplier,
     bool ScaleAdjustsMaximumHorizontalSpeed = false,
-    bool CloseRangeLunge = false)
+    bool CloseRangeLunge = false,
+    float ReversingVelocityDamping = 1f)
 {
     public bool IsValid =>
         float.IsFinite(BaseMaximumHorizontalSpeed) && BaseMaximumHorizontalSpeed > 0f &&
@@ -239,7 +245,8 @@ public readonly record struct VanillaGroundFighterBehaviorParameters(
         IsJumpVelocity(TwoTileJumpVelocity) &&
         IsJumpVelocity(ThreeTileJumpVelocity) &&
         IsJumpVelocity(PursuitGapJumpVelocity) &&
-        float.IsFinite(PursuitGapSpeedMultiplier) && PursuitGapSpeedMultiplier > 0f;
+        float.IsFinite(PursuitGapSpeedMultiplier) && PursuitGapSpeedMultiplier > 0f &&
+        float.IsFinite(ReversingVelocityDamping) && ReversingVelocityDamping is > 0f and <= 1f;
 
     private static bool IsJumpVelocity(float velocity) => float.IsFinite(velocity) && velocity < 0f;
 }

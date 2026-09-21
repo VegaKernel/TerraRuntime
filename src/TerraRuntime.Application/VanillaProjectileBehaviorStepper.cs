@@ -178,6 +178,25 @@ internal static partial class VanillaProjectileBehaviorStepper
                     velocityY = MaximumArrowFallSpeed;
                 break;
 
+            case VanillaProjectileBehaviorFamily.DemonScythe:
+                // AI_018 type 44: first update marks ai[1], then the scythe accelerates only on source ticks
+                // 30 through 99 and retains the 200 sentinel once its acceleration window is exhausted.
+                ai1Override = current.Ai.Ai1 == 0f ? 1f : null;
+                ai0 += 1f;
+                if (ai0 >= 30f)
+                {
+                    if (ai0 < 100f)
+                    {
+                        velocityX *= 1.06f;
+                        velocityY *= 1.06f;
+                    }
+                    else
+                    {
+                        ai0 = 200f;
+                    }
+                }
+                break;
+
             case VanillaProjectileBehaviorFamily.HostileStraightArrow:
                 // AI_001 no-gravity switch: WoF/Probe/Retinazer/Golem hostile beams do not advance ai[0]
                 // and therefore never enter the common arrow gravity branch. Their first AI step only flips ai[1]
@@ -861,6 +880,21 @@ internal static partial class VanillaProjectileBehaviorStepper
                 // Santank's projectile 349 is an AI_001 no-counter exception; its only authoritative
                 // motion mutation is the pre-translation 0.2 px/update downward acceleration.
                 velocityY += .2f;
+                break;
+
+            case VanillaProjectileBehaviorFamily.IceQueenFrostWave:
+                if (ai0 == 0f)
+                {
+                    float ai1 = current.Ai.Ai1 + 1f;
+                    ai1Override = ai1;
+                    if (ai1 > 30f) velocityY += .1f;
+                    if (velocityY >= 0f) ai0 = 1f;
+                }
+                if (ai0 == 1f) { velocityY = MathF.Min(3f, velocityY + .1f); velocityX *= .99f; }
+                break;
+
+            case VanillaProjectileBehaviorFamily.IceQueenIceSpike:
+                velocityY -= .5f;
                 break;
 
             default:

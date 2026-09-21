@@ -15,6 +15,7 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId FallingBlock = new(10);
     public static readonly ProjectileAiStyleId BouncyBall = new(14);
     public static readonly ProjectileAiStyleId Bomb = new(16);
+    public static readonly ProjectileAiStyleId DemonScythe = new(18);
     public static readonly ProjectileAiStyleId EyeFire = new(23);
     public static readonly ProjectileAiStyleId RollingBoulder = new(25);
     public static readonly ProjectileAiStyleId FlamingScythe = new(56);
@@ -73,6 +74,26 @@ public static class VanillaDefinitionCatalog
         CanCutTiles: true,
         CollisionWidth: 10,
         CollisionHeight: 10);
+
+    private static readonly VanillaProjectileDefinition HarpyFeatherDefinition = new(
+        Width: 14,
+        Height: 14,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 14,
+        CollisionHeight: 14);
+
+    private static readonly VanillaProjectileDefinition DemonScytheDefinition = new(
+        Width: 48,
+        Height: 48,
+        AiStyle: VanillaProjectileAiStyles.DemonScythe,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 12,
+        CollisionHeight: 12);
 
     private static readonly VanillaProjectileDefinition FireArrowDefinition = new(
         Width: 10,
@@ -550,6 +571,10 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 4,
         CollisionHeight: 4);
 
+    private static readonly VanillaProjectileDefinition IceQueenFrostFlareDefinition = new(14, 14, VanillaProjectileAiStyles.Arrow, false, false, true, 14, 14);
+    private static readonly VanillaProjectileDefinition IceQueenFrostWaveDefinition = new(24, 24, new ProjectileAiStyleId(58), false, false, true, 24, 24);
+    private static readonly VanillaProjectileDefinition IceQueenIceSpikeDefinition = new(30, 30, VanillaProjectileAiStyles.BouncyBall, true, false, true, 30, 30);
+
     private static readonly VanillaProjectileDefinition GolemEyeBeamDefinition = new(
         Width: 8,
         Height: 8,
@@ -793,6 +818,18 @@ public static class VanillaDefinitionCatalog
             return true;
         }
 
+        if (type == VanillaProjectileIds.HarpyFeather)
+        {
+            definition = HarpyFeatherDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.DemonScythe)
+        {
+            definition = DemonScytheDefinition;
+            return true;
+        }
+
         if (type == VanillaProjectileIds.FireArrow)
         {
             definition = FireArrowDefinition;
@@ -934,6 +971,10 @@ public static class VanillaDefinitionCatalog
             definition = IceQueenFrostBoltDefinition;
             return true;
         }
+
+        if (type == VanillaProjectileIds.IceQueenFrostFlare) { definition = IceQueenFrostFlareDefinition; return true; }
+        if (type == VanillaProjectileIds.IceQueenFrostWave) { definition = IceQueenFrostWaveDefinition; return true; }
+        if (type == VanillaProjectileIds.IceQueenIceSpike) { definition = IceQueenIceSpikeDefinition; return true; }
 
         if (type == VanillaProjectileIds.QueenBeeStinger)
         {

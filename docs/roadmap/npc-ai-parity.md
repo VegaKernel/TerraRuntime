@@ -342,8 +342,10 @@ The current door layer is no longer guessing frame geometry. Normal-door mutatio
 - [x] source-backed AI_020 Spike Ball and AI_021 Blazing Wheel authoritative motion state machines;
 - [x] source-backed ordinary AI_014 bat family: Cave/Jungle/Hell/Giant/Illuminant/Ice/Lava Bat, Giant Flying Fox and Spore Bat defaults, collision rebound, closest-target steering, wet escape and wander clock;
 - [x] extend deterministic AI_014 motion to Slimer and Queen Slime's Purple Slime minion, including their single-pass/default and dedicated high-acceleration profiles;
+- [x] add Harpy's AI_014 vertical: source defaults, wet escape, low-speed wander profile, accepted-state `30/60/90` feather cadence, exact `400 + Next(400)` reset draw order and hostile type `38` lifecycle;
+- [x] add Demon/Voodoo Demon's AI_014 vertical: source defaults, double acceleration, wet escape, low-speed wander profile, accepted-state `20/40/60/80` Demon Scythe cadence, exact `300 + Next(300)` reset draw order and hostile type `44` AI_018 lifecycle/collision shape;
 - [x] complete AI_016 for Goldfish/Corrupt Goldfish/Piranha/Shark/Angler Fish/Arapaima/Blood Feeder/Crimson Goldfish/Gold Goldfish/Pupfish/Dolphin/Pufferfish/Orca: source defaults, passive/hostile targeting, slope/collision/depth steering, wet pursuit profiles, dry flop RNG, Dolphin breach/surface states and Pufferfish inflation/water-line state;
-- [ ] remaining bat special branches (shooters and Vampire Bat transformation), casters, mimics, remaining critters and event enemy families;
+- [ ] remaining bat special branches (Red Devil shooter), casters, mimics, remaining critters and event enemy families;
 - [ ] spawn pool, biome, time, weather and progression eligibility.
 
 ## N3 — Bosses

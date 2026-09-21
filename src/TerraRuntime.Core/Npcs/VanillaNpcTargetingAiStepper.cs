@@ -66,6 +66,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaPumpkingNpcBehaviorStrategy _pumpking;
     private readonly VanillaSnowMoonSantankNpcBehaviorStrategy _santank;
     private readonly VanillaSnowMoonIceQueenNpcBehaviorStrategy _iceQueen;
+    private readonly VanillaSnowMoonAi62NpcBehaviorStrategy _snowMoonAi62;
+    private readonly VanillaSnowMoonAi63NpcBehaviorStrategy _snowMoonAi63 = new();
     private readonly VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy _eyeOfCthulhu;
     private readonly VanillaServantOfCthulhuNpcBehaviorStrategy _flyer;
     private readonly VanillaWormNpcBehaviorStrategy _worm = new();
@@ -130,7 +132,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         _moonEventEverscream = new VanillaMoonEventEverscreamNpcBehaviorStrategy(_random);
         _pumpking = new VanillaPumpkingNpcBehaviorStrategy(_random);
         _santank = new VanillaSnowMoonSantankNpcBehaviorStrategy(_random);
-        _iceQueen = new VanillaSnowMoonIceQueenNpcBehaviorStrategy();
+        _iceQueen = new VanillaSnowMoonIceQueenNpcBehaviorStrategy(_random);
+        _snowMoonAi62 = new VanillaSnowMoonAi62NpcBehaviorStrategy();
         if (kingSlimeEnvironment is IVanillaEyeOfCthulhuEnvironment eyeEnvironment)
             _eyeOfCthulhu.SetEnvironment(eyeEnvironment);
         if (kingSlimeEnvironment is IVanillaBrainOfCthulhuEnvironment brainEnvironment)
@@ -226,6 +229,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         _queenBee.SetProjectileEnvironment(environment);
         _retinazer.SetProjectileEnvironment(environment);
         _spazmatism.SetProjectileEnvironment(environment);
+        _snowMoonAi62.SetEnvironment(environment);
     }
 
     public void SetWorldConditions(
@@ -292,6 +296,8 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.PumpkinMoonPumpking when _context.GroundFighterEnabled => _pumpking,
             VanillaNpcBehaviorFamily.SnowMoonSantank when _context.GroundFighterEnabled => _santank,
             VanillaNpcBehaviorFamily.SnowMoonIceQueen when _context.GroundFighterEnabled => _iceQueen,
+            VanillaNpcBehaviorFamily.SnowMoonAi62 when _context.GroundFighterEnabled => _snowMoonAi62,
+            VanillaNpcBehaviorFamily.SnowMoonAi63 when _context.GroundFighterEnabled => _snowMoonAi63,
             VanillaNpcBehaviorFamily.EyeOfCthulhu => _eyeOfCthulhu,
             VanillaNpcBehaviorFamily.Flyer => _flyer,
             VanillaNpcBehaviorFamily.Worm => _worm,
@@ -829,7 +835,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         float centerX = source.PositionX + definition.Width * 0.5f;
         float centerY = source.PositionY + definition.Height * 0.5f;
         int direction = target.CenterX < centerX ? -1 : 1;
-        float spawnX = source.PositionX + definition.Width * 0.5f + _random.NextInt32(0, 20) * direction;
+        float spawnX = source.PositionX + definition.Width * 0.5f + proposed.Simulation.LocalAi.Ai1 * direction;
         float spawnY = source.PositionY + definition.Height * 0.8f;
         if (!_projectileEnvironment.CanHit(
                 spawnX, spawnY, 1, 1,
@@ -884,7 +890,7 @@ public sealed class VanillaNpcTargetingAiStepper :
 
         float centerX = source.PositionX + definition.Width * 0.5f;
         int direction = target.CenterX < centerX ? -1 : 1;
-        float spawnX = source.PositionX + definition.Width * 0.5f + _random.NextInt32(0, 20) * direction;
+        float spawnX = source.PositionX + definition.Width * 0.5f + proposed.Simulation.LocalAi.Ai1 * direction;
         float spawnY = source.PositionY + definition.Height * 0.8f;
         if (!_projectileEnvironment.CanHit(
                 spawnX, spawnY, 1, 1,
@@ -1723,6 +1729,13 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     private int PlanQueenSlimeMinions(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)
     {
+        if (!VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.QueenSlime, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(proposed.Simulation, out VanillaNpcHitboxSize hitbox) ||
+            hitbox.Width <= 32 || hitbox.Height <= 32)
+        {
+            return 0;
+        }
+
         int lifeMax = Math.Max(1, proposed.Simulation.LifeMax);
         int life = proposed.Simulation.Life;
         bool phaseTwo = life <= lifeMax / 2;
@@ -1737,10 +1750,13 @@ public sealed class VanillaNpcTargetingAiStepper :
         NpcTypeId[] types = [VanillaNpcIds.QueenSlimeMinionBlue, VanillaNpcIds.QueenSlimeMinionPink, VanillaNpcIds.QueenSlimeMinionPurple];
         for (int i = 0; i < count; i++)
         {
+            // NPC.AI (1.4.5.8, style 121) draws spawn position before its minion type and velocity.
+            int bottomX = (int)(proposed.PositionX + _random.NextInt32(0, hitbox.Width - 32));
+            int bottomY = (int)(proposed.PositionY + _random.NextInt32(0, hitbox.Height - 32));
             NpcTypeId type = types[_random.NextInt32(0, types.Length)];
-            float vx = _random.NextInt32(-20, 21) * 0.1f;
+            float vx = _random.NextInt32(-15, 16) * 0.1f;
             float vy = _random.NextInt32(-20, 1) * 0.1f;
-            destination[i] = new NpcAiSpawnIntent(type, (int)(proposed.PositionX + 57f), (int)(proposed.PositionY + 100f), vx, vy, proposed.Target)
+            destination[i] = new NpcAiSpawnIntent(type, bottomX, bottomY, vx, vy, proposed.Target)
             { InitialAi = new NpcAiState(-500f * _random.NextInt32(0, 3), 0f, 0f, 0f) };
         }
         return count;
@@ -2045,12 +2061,20 @@ public sealed class VanillaNpcTargetingAiStepper :
     }
 
     public bool DefersStatePublication(in NpcSnapshot before, in NpcStateUpdate proposed) =>
-        before.TypeIdentity == VanillaNpcIds.DarkCaster && proposed.Type == before.Type;
+        proposed.Type == before.Type &&
+        (before.TypeIdentity == VanillaNpcIds.DarkCaster || before.TypeIdentity == VanillaNpcIds.Harpy ||
+         before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon);
 
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
-        INpcAiCommittedNpcMutationSink mutations) =>
-        before.TypeIdentity == VanillaNpcIds.DarkCaster && committed.TypeIdentity == VanillaNpcIds.DarkCaster
-            ? _darkCaster.Complete(in before, in committed, _context, _random, mutations) : committed;
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity == VanillaNpcIds.DarkCaster && committed.TypeIdentity == VanillaNpcIds.DarkCaster)
+            return _darkCaster.Complete(in before, in committed, _context, _random, mutations);
+        if ((before.TypeIdentity == VanillaNpcIds.Harpy || before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon) &&
+            committed.TypeIdentity == before.TypeIdentity)
+            return _bat.CompleteBatShooterAttackTimer(in before, in committed, _context, _random, mutations);
+        return committed;
+    }
 
     public bool DeactivatesAfterStep(in NpcSnapshot before, in NpcStateUpdate proposed) =>
         (proposed.Type == before.Type && proposed.Simulation.Life == 0 &&
@@ -2080,6 +2104,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaSkeletronPrimeLimbNpcBehaviorStrategy.ApplyEffects(in before, in committed, _random, mutations);
         if (before.TypeIdentity == VanillaNpcIds.DarkCaster && committed.TypeIdentity == VanillaNpcIds.DarkCaster)
             VanillaDarkCasterBehavior.SpawnSphere(in before, in committed, mutations);
+        _bat.SpawnBatShooterProjectile(in before, in committed, _context, _random, mutations);
         SpawnMourningWoodFireball(in before, in committed, mutations);
         SpawnEverscreamProjectiles(in before, in committed, mutations);
         SpawnPumpkingProjectiles(in before, in committed, mutations);
@@ -2087,6 +2112,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         SpawnPumpkingBladeScythe(in before, in committed, mutations);
         SpawnSantankProjectiles(in before, in committed, mutations);
         SpawnIceQueenProjectiles(in before, in committed, mutations);
+        SpawnIceQueenRareProjectiles(in before, in committed, mutations);
+        SpawnSnowMoonAi62Projectile(in before, in committed, mutations);
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);
         VanillaMoonLordLeechBehavior.SpawnFromHead(in before, in committed, _context, mutations);
         VanillaDestroyerNpcBehaviorStrategy.SpawnChain(in before, in committed, _context.GoodWorld, mutations);
@@ -2360,6 +2387,53 @@ public sealed class VanillaNpcTargetingAiStepper :
         dx *= 1f + _random.NextInt32(-20, 21) * .015f;
         dy *= 1f + _random.NextInt32(-20, 21) * .015f;
         SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.IceQueenFrostBolt, centerX, centerY, dx, dy, 36);
+    }
+
+    private void SpawnIceQueenRareProjectiles(in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaMoonEventSpecialCatalog1458.SnowMoonAi61IceQueen ||
+            committed.TypeIdentity != before.TypeIdentity || committed.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate player)) return;
+        float x = before.PositionX + 56f - committed.Simulation.DirectionX * 24f, y = before.PositionY + 6f;
+        if (committed.Simulation.LocalAi.Ai0 == 1f)
+        {
+            float vx = committed.Simulation.LocalAi.Ai3, vy = 1f;
+            NormalizeTo(ref vx, ref vy, 1f);
+            SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.IceQueenIceSpike, x, y, vx, vy, 80);
+        }
+        if (before.Simulation.LocalAi.Ai1 == 11f && committed.Simulation.LocalAi.Ai1 == 12f)
+        {
+            float dx = player.CenterX - x + _random.NextInt32(-50, 51), dy = player.CenterY - y + _random.NextInt32(-50, 51);
+            NormalizeTo(ref dx, ref dy, 12.5f);
+            dx *= 1f + _random.NextInt32(-20, 21) * .015f; dy *= 1f + _random.NextInt32(-20, 21) * .015f;
+            SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.IceQueenFrostFlare, x, y, dx, dy, 42);
+        }
+        if (before.Simulation.LocalAi.Ai2 == 8f && committed.Simulation.LocalAi.Ai2 == 9f)
+        {
+            float dx = _random.NextInt32(-100, 101), dy = -300f;
+            NormalizeTo(ref dx, ref dy, 11f);
+            dx *= 1f + _random.NextInt32(-20, 21) * .01f; dy *= 1f + _random.NextInt32(-20, 21) * .01f;
+            SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.IceQueenFrostWave, x, y, dx, dy, 50);
+        }
+    }
+
+    private void SpawnSnowMoonAi62Projectile(in NpcSnapshot before, in NpcSnapshot committed, INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaMoonEventSpecialCatalog1458.SnowMoonAi62 ||
+            committed.TypeIdentity != before.TypeIdentity || before.Simulation.LocalAi.Ai0 != 14f ||
+            committed.Simulation.LocalAi.Ai0 != 0f || committed.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate player))
+            return;
+        float x = before.PositionX + 25f + committed.Simulation.DirectionX * 20f;
+        float y = before.PositionY + 31f;
+        float dx = player.CenterX - x + _random.NextInt32(-35, 36);
+        float dy = player.CenterY - y + _random.NextInt32(-35, 36);
+        dx *= 1f + _random.NextInt32(-20, 21) * .015f;
+        dy *= 1f + _random.NextInt32(-20, 21) * .015f;
+        NormalizeTo(ref dx, ref dy, 10f);
+        dx *= 1f + _random.NextInt32(-20, 21) * .0125f;
+        dy *= 1f + _random.NextInt32(-20, 21) * .0125f;
+        SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.IceQueenFrostBolt, x, y, dx, dy, 32);
     }
 
     private ProjectileTypeId RandomPumpkingAttack() => _random.NextInt32(326, 329) switch
