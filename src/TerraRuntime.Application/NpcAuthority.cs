@@ -1033,6 +1033,12 @@ internal sealed partial class NpcAuthority
                 }
             }
 
+            if (remixWorld && (biome.ZoneCorrupt || biome.ZoneCrimson) && playerTileY < surface)
+            {
+                spawnRate = (int)(spawnRate * .5d);
+                maxSpawns *= 2;
+            }
+
             if (biome.ZoneHallow && playerTileY > rockLayer + sourceScreenHeightTiles)
             {
                 spawnRate = (int)(spawnRate * .65d);
@@ -1056,6 +1062,12 @@ internal sealed partial class NpcAuthority
                 spawnRate = (int)(spawnRate * .7f);
             else if (nearbyNpcCount < maxSpawns * .4f)
                 spawnRate = (int)(spawnRate * .9f);
+        }
+
+        if (remixWorld && playerTileY < surface && scene is { ZoneCorrupt: true } or { ZoneCrimson: true })
+        {
+            spawnRate = (int)(spawnRate * .8d);
+            maxSpawns *= 2;
         }
 
         spawnRate = Math.Max(defaultSpawnRate / 10, spawnRate);

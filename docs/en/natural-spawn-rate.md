@@ -7,3 +7,5 @@ Jungle uses the source four rate/cap bands for zero, one, two, and at least thre
 Meteor uses the source active Meteorite tile `37` threshold of 75 before its rate/cap transform.
 
 Lihzahrd Temple uses the source center-wall predicate (`Wall == 87`) after Meteor; Remix worlds add its second rate/cap transform.
+
+On the Remix surface, Corruption and Crimson apply both source modifiers around the occupancy bands.
