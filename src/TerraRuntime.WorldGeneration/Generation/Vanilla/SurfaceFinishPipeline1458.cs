@@ -192,7 +192,6 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
     private const ushort Dirt = 0;
     private const ushort Stone = 1;
     private const ushort Grass = 2;
-    private const ushort Pot = 28;
     private const ushort Ash = 57;
     private const ushort PressurePlate = 135;
     private const ushort Trap = 137;
@@ -227,7 +226,7 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
                 ApplyQuickCleanup(context, workspace);
                 break;
             case SurfaceFinishStage1458.Pots:
-                ApplyPots(context, grid, random);
+                ApplyPots(context, workspace);
                 break;
             case SurfaceFinishStage1458.Hellforge:
                 int forges = HellforgePlacement1458.Generate(workspace.TileStore, context.VanillaRandom!, context.CancellationToken);
@@ -273,36 +272,18 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
             $"{pass.Freshened} freshened)");
     }
 
-    private void ApplyPots(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyPots(IWorldGenerationContext context, Workspace workspace)
     {
-        int target = grid.Width switch
-        {
-            <= 4200 => 95,
-            <= 6400 => 145,
-            _ => 195
-        };
-        int minY = Math.Clamp((int)state.WorldSurface + 30, 20, grid.Height - 80);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 25);
-        int placed = 0;
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Pots require shared UnifiedRandom semantics.");
 
-        for (int attempt = 0; attempt < target * 80 && placed < target; attempt++)
-        {
-            if ((attempt & 255) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            int left = random.Next(8, grid.Width - 10);
-            int probe = random.Next(minY, maxY);
-            int floor = grid.FindFirstActiveY(left, probe, Math.Min(maxY + 40, grid.Height - 2));
-            int top = floor - 2;
-            if (!CanPlaceObject(grid, left, top, width: 2, height: 2))
-                continue;
-
-            int style = random.Next(4);
-            PlaceFramedObject(grid, left, top, width: 2, height: 2, Pot, styleWidthPixels: 36, style);
-            placed++;
-        }
-
-        context.ReportProgress(1d, $"Placing cavern pots ({placed}/{target})");
+        double surfaceHigh = workspace.VanillaTerrainState?.WorldSurfaceHigh ?? state.WorldSurface;
+        double surfaceLow = workspace.VanillaTerrainState?.WorldSurfaceLow ?? state.WorldSurface;
+        var pass = new PotScatterPass1458(
+            workspace.TileStore, random, state.WorldSurface, surfaceHigh, surfaceLow, state.RockLayer,
+            DungeonGenerationCatalog1458.BeachDistance, context.CancellationToken);
+        pass.Apply();
+        context.ReportProgress(1d, $"Placing Pots ({pass.Placed})");
     }
 
     private void ApplySpreadingGrass(IWorldGenerationContext context, Workspace workspace)
@@ -548,48 +529,6 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
 
     private VanillaWorldGenerationBootstrapState1458 RequireBootstrap() =>
         state.Bootstrap ?? throw new InvalidOperationException("Surface-finish pass executed before bootstrap initialization.");
-
-    private static bool CanPlaceObject(RuntimeGrid grid, int left, int top, int width, int height)
-    {
-        if (left < 1 || top < 1 || left + width >= grid.Width - 1 || top + height >= grid.Height - 1)
-            return false;
-        for (int x = left; x < left + width; x++)
-        for (int y = top; y < top + height; y++)
-        {
-            if (grid.At(x, y).IsActive || grid.At(x, y).LiquidAmount != 0)
-                return false;
-        }
-        for (int x = left; x < left + width; x++)
-        {
-            if (!grid.At(x, top + height).IsActive)
-                return false;
-        }
-        return true;
-    }
-
-    private static void PlaceFramedObject(
-        RuntimeGrid grid,
-        int left,
-        int top,
-        int width,
-        int height,
-        ushort type,
-        int styleWidthPixels,
-        int style)
-    {
-        for (int dx = 0; dx < width; dx++)
-        for (int dy = 0; dy < height; dy++)
-        {
-            ref WorldTile tile = ref grid.At(left + dx, top + dy);
-            tile.Type = type;
-            tile.Flags |= WorldTileFlags.Active;
-            tile.FrameX = checked((short)(style * styleWidthPixels + dx * 18));
-            tile.FrameY = checked((short)(dy * 18));
-            tile.Shape = 0;
-            tile.LiquidAmount = 0;
-            tile.LiquidKind = WorldLiquidKind.Water;
-        }
-    }
 
     private static void WireBetween(RuntimeGrid grid, int x0, int y0, int x1, int y1)
     {

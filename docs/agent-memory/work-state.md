@@ -147,16 +147,25 @@ On merged base `843bd1a3`, Release warnings-as-errors build passed; the focused 
 ## Resume point for the vanilla generation work - 2026-09-21
 
 Closed since the last resume point, each against the registered delegate with negative controls: rows 83
-(Grass Wall), 77 (Spreading Grass), 74 (Quick Cleanup) and 60 (Wall Variety). All four invented owners were
-replaced, and the ledger is now **23P + 49C = 72 unfinished rows**.
+(Grass Wall), 77 (Spreading Grass), 74 (Quick Cleanup), 60 (Wall Variety) and 75 (Pots). All five invented
+owners were replaced. The ledger is **23P + 49C = 72 unfinished rows** - row 75 was already counted `C`, so
+closing it made the claim true without moving the count.
 
 The whole-world measurement was refreshed against the same official reference the audit has always used, and
-it is the thing to look at before choosing the next row: tile L1 0.201211 to **0.069896**, wall L1 0.530400 to
-**0.262730**, silhouette correlation 0.922428 to **0.994504**, dungeon delta (+85,-6) to **(0,0)**. The
-terrain is effectively matched; what remains is contents, and the histogram in the audit's measurement section
-localises it. Largest first: the six moss families (61,927 official cells against 521 of ours, rows 69 and
-98), spider caves (row 67), the dungeon's green wall families, pots (row 75), small piles (row 81), living
-mahogany (row 72), thin ice (row 59) and minecart track (row 101).
+it is the thing to look at before choosing the next row: tile L1 0.201211 to **0.063671**, wall L1 0.530400 to
+**0.262731**, active ratio to **0.988416**, silhouette correlation 0.922428 to **0.994504**, dungeon delta
+(+85,-6) to **(0,0)**. The terrain is effectively matched; what remains is contents, and the histogram in the
+audit's measurement section localises it. Largest first: the six moss families (61,927 official cells against
+521 of ours, rows 69 and 98); spider caves (row 67, cobweb 38,833 against 24,294 and the spider wall 38,347
+against 2,558); the dungeon's green wall families, mis-split by about 40,000; small piles (row 81, 4,108
+against 155); living mahogany (row 72); thin ice (row 59); and minecart track (row 101).
+
+**Row 69 (Moss) is the next one and it is the largest single win left.** Six families, 61,927 official cells
+against 521: LongMoss 15,026 against 8, BlueMoss 9,527 against 150, PurpleMoss 8,575 against 113, LavaMoss
+7,298 against 0, RedMoss 5,569 against 135, XenonMoss 4,122 against 0. It is also the largest row: six stages,
+`neonMossBiome` at about 116 lines, plus `randMoss`, `setMoss`, `countTiles` and `Spread.Moss`, and
+`GenerationGrass1458` has to be extended to take dirt 1 to moss. Row 98 (`LongMoss`) is tiny by comparison but
+needs the `PlaceTile(184)` slice and is gated on row 69's output, so the two go together.
 
 **Laying a wall costs shared RNG.** `Actions.PlaceWall` frames five squares and each square's centre draws
 `Next(0, 3)`, about 550 values per painted structure. This is now `GenerationWallFraming1458` and every
@@ -167,6 +176,12 @@ directly in the source with no framing call.
 **The draw-count search needs four values, not one.** Re-seeding and looking for the position whose next
 `Next(1000000)` matches the official's reported value gives several false positives over a few million
 samples, and one of them cost real time in the Wall Variety work. Match four consecutive values.
+
+**A pass that only budgets its failures can loop forever on a fixture with no candidates.** Wall Variety
+charges its failure budget only when a sample WAS a candidate and was refused; a region with no stone under
+air never becomes a candidate at all, so the official delegate spins. Pots has the mirror hazard from the
+other side: a fixture where every offer is refused pays a style draw per row per column for ten thousand
+attempts per pot. Build fixtures that let some candidates succeed.
 
 **Depth-keyed passes want the RETAINED layer.** Wall Variety splits its wall families on `GenVars.rockLayer`;
 handing it the published gameplay layer put most pockets above the line and was worth 0.0225 of wall L1 on its
