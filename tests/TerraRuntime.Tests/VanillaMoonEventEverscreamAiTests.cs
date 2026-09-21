@@ -126,6 +126,46 @@ public sealed class VanillaMoonEventEverscreamAiTests
     }
 
     [Fact]
+    public void Pumpking_blade_releases_flaming_scythe_with_source_rotation_and_sprite_direction()
+    {
+        var npcs = new RuntimeNpcStore();
+        var bladeState = new NpcStateUpdate(328, 328, 400f, 400f, 0f, 0f, 3, new NpcAiState(-1f, 7f, 0f, 0f),
+            NpcSimulationState.Initial with { Life = 5000, LifeMax = 5000, DontTakeDamage = true, LocalAi = new NpcAiState(0f, 90f, 0f, 0f) });
+        Assert.True(npcs.TrySpawn(8, bladeState, out _));
+        var parent = new NpcSnapshot(new NpcHandle(7, new NpcGeneration(1)), new NpcRevision(1),
+            327, 327, 100f, 200f, 0f, 0f, 3, new NpcAiState(1f, 0f, 0f, 2f),
+            NpcSimulationState.Initial with { Life = 26000, LifeMax = 26000 });
+        var projectiles = new RuntimeProjectileStore();
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(new SequenceRandom(), solid: false);
+        stepper.SetNpcPeers([parent]);
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new EverscreamOnly(stepper)).Applied);
+        Assert.True(projectiles.TryGetActive(0, out ProjectileSnapshot projectile));
+        Assert.Equal(VanillaProjectileIds.FlamingScythe, projectile.Type);
+        Assert.Equal((short)60, projectile.Damage);
+        Assert.Equal(1f, projectile.Ai.Ai1);
+        // AI_059 applies its left-blade offset before using the same vector for rotation.
+        Assert.Equal(MathF.Atan2(-167.5f, -49f) + 1.57f, projectile.Ai.Ai0, 5);
+        Assert.True(projectiles.TryGetServerNpcSource(projectile.Handle, out NpcHandle source));
+        Assert.Equal((byte)8, source.Slot);
+    }
+
+    [Fact]
+    public void Pumpking_blade_is_authoritatively_retired_when_its_ai58_parent_is_gone()
+    {
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(new SequenceRandom(), solid: false);
+        var blade = new NpcSnapshot(new NpcHandle(8, new NpcGeneration(1)), new NpcRevision(1),
+            328, 328, 400f, 400f, 3f, -2f, 3, new NpcAiState(-1f, 7f, 0f, 0f),
+            NpcSimulationState.Initial with { Life = 5000, LifeMax = 5000, DontTakeDamage = true });
+
+        Assert.True(stepper.TryStepState(in blade, out NpcStateUpdate next));
+        Assert.Equal(0, next.Simulation.Life);
+        Assert.Equal(0, next.Simulation.TimeLeft);
+        Assert.Equal(2.7f, next.VelocityX, 5);
+        Assert.Equal(-1.8f, next.VelocityY, 5);
+    }
+
+    [Fact]
     public void Rejected_attack_transition_does_not_consume_rng_or_create_a_projectile()
     {
         var npcs = new RuntimeNpcStore();

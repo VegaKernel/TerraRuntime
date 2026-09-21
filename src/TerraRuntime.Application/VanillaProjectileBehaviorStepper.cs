@@ -846,6 +846,17 @@ internal static partial class VanillaProjectileBehaviorStepper
             case VanillaProjectileBehaviorFamily.DeerclopsShadowHand:
                 return TryStepDeerclopsShadowHand(in current, in definition, out next);
 
+            case VanillaProjectileBehaviorFamily.FlamingScythe:
+                // AI_056 records the source angle/direction on its first update for presentation, then grows
+                // its velocity by five percent until the Manhattan speed reaches sixteen pixels per update.
+                // Rotation is presentation-only in the current projectile snapshot; the velocity rule is not.
+                if (MathF.Abs(velocityX) + MathF.Abs(velocityY) < 16f)
+                {
+                    velocityX *= 1.05f;
+                    velocityY *= 1.05f;
+                }
+                break;
+
             default:
                 next = default;
                 return false;

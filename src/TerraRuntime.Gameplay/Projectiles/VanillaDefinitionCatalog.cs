@@ -17,6 +17,7 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId Bomb = new(16);
     public static readonly ProjectileAiStyleId EyeFire = new(23);
     public static readonly ProjectileAiStyleId RollingBoulder = new(25);
+    public static readonly ProjectileAiStyleId FlamingScythe = new(56);
     public static readonly ProjectileAiStyleId HeldProjectile = new(75);
     public static readonly ProjectileAiStyleId Sharknado = new(64);
     public static readonly ProjectileAiStyleId SharknadoBolt = new(65);
@@ -245,7 +246,7 @@ public static class VanillaDefinitionCatalog
         CollisionHeight: 12);
 
     private static readonly VanillaProjectileDefinition FlamingScytheDefinition = new(
-        Width: 80, Height: 80, AiStyle: new ProjectileAiStyleId(56), TileCollide: false,
+        Width: 80, Height: 80, AiStyle: VanillaProjectileAiStyles.FlamingScythe, TileCollide: false,
         IgnoreWater: false, CanCutTiles: true, CollisionWidth: 80, CollisionHeight: 80);
 
     private static readonly VanillaProjectileDefinition QueenBeeStingerDefinition = new(

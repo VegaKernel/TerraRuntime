@@ -2275,7 +2275,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         float x = before.PositionX + 40f, y = before.PositionY + 40f;
         float dx = player.CenterX - x, dy = player.CenterY - player.Height * .5f - (y + 30f);
         NormalizeTo(ref dx, ref dy, .01f);
-        SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.FlamingScythe, x, y, dx, dy, 60);
+        SpawnPumpkingProjectile(in committed, mutations, VanillaProjectileIds.FlamingScythe, x, y, dx, dy, 60,
+            new ProjectileAiState(committed.Simulation.Rotation ?? 0f, committed.Simulation.SpriteDirection, 0f));
     }
 
     private ProjectileTypeId RandomPumpkingAttack() => _random.NextInt32(326, 329) switch
@@ -2293,7 +2294,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         float centerY,
         float velocityX,
         float velocityY,
-        int damage)
+        int damage,
+        ProjectileAiState initialAi = default)
     {
         if (!VanillaDefinitionCatalog.TryGet(type, out VanillaProjectileDefinition definition))
             return;
@@ -2303,7 +2305,10 @@ public sealed class VanillaNpcTargetingAiStepper :
             velocityX,
             velocityY,
             damage,
-            0f);
+            0f)
+        {
+            InitialAi = initialAi
+        };
         mutations.TrySpawnProjectile(in committed, in intent, out _);
     }
 

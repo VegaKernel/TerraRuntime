@@ -838,51 +838,258 @@ internal sealed class VanillaPumpkingNpcBehaviorStrategy(IVanillaNpcRandom rando
 
     private bool StepPumpking(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, out NpcStateUpdate next)
     {
-        if (!context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) || !closest.HasTarget ||
-            !context.TryFindCandidate((byte)closest.Target, out VanillaNpcTargetCandidate player)) { next = default; return false; }
-        NpcAiState ai = npc.Ai; NpcAiState local = npc.Simulation.LocalAi;
+        if (!TryTarget(in npc, in definition, context, out ushort target, out VanillaNpcTargetCandidate player))
+        {
+            next = default;
+            return false;
+        }
+
+        NpcAiState ai = npc.Ai;
+        NpcAiState local = npc.Simulation.LocalAi;
         local = local with { Ai0 = local.Ai0 + 1f };
         if (local.Ai0 > 6f) local = local with { Ai0 = 0f, Ai1 = local.Ai1 >= 4f ? 0f : local.Ai1 + 1f };
         local = local with { Ai2 = local.Ai2 + 1f };
         if (local.Ai2 > 300f) { local = local with { Ai2 = 0f }; ai = ai with { Ai3 = random.NextInt32(0, 3) }; }
+
+        // AI_058 initializes the linked blades only after TargetClosest has selected their target.
+        if (ai.Ai0 == 0f)
+        {
+            if (!TrySelectClosest(in npc, in definition, context, out target, out player))
+            {
+                next = default;
+                return false;
+            }
+            ai = ai with { Ai0 = 1f };
+        }
+
+        bool targetLost = player.Dead || MathF.Abs(npc.PositionX - (player.CenterX - player.Width * .5f)) > 2000f ||
+            MathF.Abs(npc.PositionY - (player.CenterY - player.Height * .5f)) > 2000f;
+        if (targetLost)
+        {
+            if (TrySelectClosest(in npc, in definition, context, out ushort refreshedTarget, out VanillaNpcTargetCandidate refreshedPlayer))
+            {
+                target = refreshedTarget;
+                player = refreshedPlayer;
+                targetLost = player.Dead || MathF.Abs(npc.PositionX - (player.CenterX - player.Width * .5f)) > 2000f ||
+                    MathF.Abs(npc.PositionY - (player.CenterY - player.Height * .5f)) > 2000f;
+            }
+            if (targetLost)
+                ai = ai with { Ai1 = 2f };
+        }
+
         float vx = npc.VelocityX, vy = npc.VelocityY;
         if (context.DayTime) { vy += .3f; vx *= .9f; }
-        else if (ai.Ai1 == 2f) { vy += .1f; if (vy < 0f) vy *= .95f; vx *= .95f; }
-        else
+        else if (ai.Ai1 == 0f)
         {
+            ai = ai with { Ai2 = ai.Ai2 + 1f };
+            if (ai.Ai2 >= 300f)
+            {
+                if (ai.Ai3 != 1f)
+                    ai = ai with { Ai1 = 0f, Ai2 = 0f };
+                else
+                {
+                    ai = ai with { Ai1 = 1f, Ai2 = 0f };
+                    if (TrySelectClosest(in npc, in definition, context, out ushort refreshedTarget, out VanillaNpcTargetCandidate refreshedPlayer))
+                    {
+                        target = refreshedTarget;
+                        player = refreshedPlayer;
+                    }
+                }
+            }
             float cx = npc.PositionX + 50f, cy = npc.PositionY + 50f;
-            float dx = player.CenterX - cx, dy = player.CenterY - (ai.Ai1 == 1f ? cy : cy + 200f);
+            float dx = player.CenterX - cx, dy = player.CenterY - 200f - cy;
             float distance = MathF.Max(1f, MathF.Sqrt(dx * dx + dy * dy));
-            float speed = ai.Ai1 == 1f ? 16f : ai.Ai3 == 1f ? distance > 900f ? 12f : distance > 600f ? 10f : distance > 300f ? 8f : 6f : 6f;
-            if (distance > 50f || ai.Ai1 == 1f) { vx = (vx * (ai.Ai1 == 1f ? 49f : 14f) + dx / distance * speed) / (ai.Ai1 == 1f ? 50f : 15f); vy = (vy * (ai.Ai1 == 1f ? 49f : 14f) + dy / distance * speed) / (ai.Ai1 == 1f ? 50f : 15f); }
-            float timer = ai.Ai2 + 1f;
-            if (timer >= (ai.Ai1 == 1f ? 600f : 300f)) { ai = ai with { Ai1 = ai.Ai3 == 1f && ai.Ai1 == 0f ? 1f : 0f, Ai2 = 0f }; }
-            else ai = ai with { Ai2 = timer };
+            float speed = ai.Ai3 == 1f ? distance > 900f ? 12f : distance > 600f ? 10f : distance > 300f ? 8f : 6f : 6f;
+            if (distance > 50f)
+            {
+                vx = (vx * 14f + dx / distance * speed) / 15f;
+                vy = (vy * 14f + dy / distance * speed) / 15f;
+            }
         }
-        if (ai.Ai0 == 0f) ai = ai with { Ai0 = 1f };
-        next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, vx, vy, closest.Target, ai,
-            npc.Simulation with { LocalAi = local, NoGravity = true, NoTileCollide = true, DirectionX = vx < 0 ? -1 : 1, SpriteDirection = vx < 0 ? -1 : 1 });
+        else if (ai.Ai1 == 1f)
+        {
+            ai = ai with { Ai2 = ai.Ai2 + 1f };
+            if (ai.Ai2 >= 600f || ai.Ai3 != 1f)
+                ai = ai with { Ai1 = 0f, Ai2 = 0f };
+            float cx = npc.PositionX + 50f, cy = npc.PositionY + 50f;
+            float dx = player.CenterX - cx, dy = player.CenterY - cy;
+            float distance = MathF.Max(1f, MathF.Sqrt(dx * dx + dy * dy));
+            vx = (vx * 49f + dx / distance * 16f) / 50f;
+            vy = (vy * 49f + dy / distance * 16f) / 50f;
+        }
+        else if (ai.Ai1 == 2f)
+        {
+            vy += .1f;
+            if (vy < 0f) vy *= .95f;
+            vx *= .95f;
+        }
+
+        next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, vx, vy, target, ai,
+            npc.Simulation with
+            {
+                LocalAi = local,
+                NoGravity = true,
+                NoTileCollide = true,
+                DirectionX = vx < 0f ? -1 : 1,
+                SpriteDirection = vx < 0f ? -1 : 1,
+                Rotation = vx * -.02f,
+                TimeLeft = ai.Ai1 == 2f ? EncourageDespawn(npc.Simulation.TimeLeft, 500) : npc.Simulation.TimeLeft
+            });
         return true;
     }
 
     private static bool StepBlade(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, out NpcStateUpdate next)
     {
         if (!context.TryFindNpcPeer((byte)Math.Clamp((int)npc.Ai.Ai1, 0, byte.MaxValue), out NpcSnapshot parent) ||
-            parent.TypeIdentity != VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi58Pumpking) { next = default; return false; }
-        float sign = npc.Ai.Ai0, cx = npc.PositionX + 40f, cy = npc.PositionY + 40f;
+            parent.TypeIdentity != VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi58Pumpking)
+        {
+            next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY,
+                npc.VelocityX * .9f, npc.VelocityY * .9f, npc.Target, npc.Ai,
+                npc.Simulation with { Life = 0, TimeLeft = 0, JustHit = false });
+            return true;
+        }
+        if (!TryTarget(in npc, in definition, context, out ushort target, out VanillaNpcTargetCandidate player))
+        {
+            next = default;
+            return false;
+        }
+
+        int sign = (int)npc.Ai.Ai0;
+        float cx = npc.PositionX + 40f, cy = npc.PositionY + 40f;
+        float vx = npc.VelocityX, vy = npc.VelocityY;
+        NpcAiState ai = npc.Ai;
         NpcSimulationState simulation = npc.Simulation;
         if (parent.Ai.Ai3 == 2f)
         {
             float clock = simulation.LocalAi.Ai1 + 1f;
             simulation = simulation with { LocalAi = simulation.LocalAi with { Ai1 = clock > 90f ? 0f : clock } };
         }
-        float targetX = parent.PositionX + 50f - 170f * sign, targetY = parent.PositionY + 140f;
-        float dx = targetX - cx, dy = targetY - cy, d = MathF.Max(1f, MathF.Sqrt(dx * dx + dy * dy));
-        float speed = d > 1000f ? 21f : d > 800f ? 18f : d > 600f ? 15f : d > 400f ? 12f : d > 200f ? 9f : 6f;
-        next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY,
-            (npc.VelocityX * 14f + dx / d * speed) / 15f, (npc.VelocityY * 14f + dy / d * speed) / 15f, npc.Target,
-            npc.Ai with { Ai3 = npc.Ai.Ai3 + 1f }, simulation with { NoGravity = true, NoTileCollide = true });
+
+        if (context.DayTime)
+        {
+            vy += .3f;
+            vx *= .9f;
+        }
+        else if (ai.Ai2 is 0f or 3f)
+        {
+            if (parent.Ai.Ai1 == 2f)
+                simulation = simulation with { TimeLeft = EncourageDespawn(simulation.TimeLeft, 10) };
+            ai = ai with { Ai3 = ai.Ai3 + 1f };
+            if (ai.Ai3 >= 180f)
+                ai = ai with { Ai2 = ai.Ai2 + 1f, Ai3 = 0f };
+
+            float dx = (player.CenterX + parent.PositionX + 50f) * .5f - 170f * sign - cx;
+            float dy = (player.CenterY + parent.PositionY + 50f) * .5f + 90f - cy;
+            float playerParentDistance = MathF.Abs(player.CenterX - (parent.PositionX + 50f)) + MathF.Abs(player.CenterY - (parent.PositionY + 50f));
+            if (playerParentDistance > 700f)
+            {
+                dx = parent.PositionX + 50f - 170f * sign - cx;
+                dy = parent.PositionY + 140f - cy;
+            }
+            float distance = MathF.Max(1f, MathF.Sqrt(dx * dx + dy * dy));
+            float speed = distance > 1000f ? 21f : distance > 800f ? 18f : distance > 600f ? 15f : distance > 400f ? 12f : distance > 200f ? 9f : 6f;
+            if (sign < 0 && cx > parent.PositionX + 50f) dx -= 4f;
+            if (sign > 0 && cx < parent.PositionX + 50f) dx += 4f;
+            vx = (vx * 14f + dx / distance * speed) / 15f;
+            vy = (vy * 14f + dy / distance * speed) / 15f;
+            if (distance > 20f)
+                simulation = simulation with { Rotation = MathF.Atan2(dy, dx) + 1.57f };
+        }
+        else if (ai.Ai2 == 1f)
+        {
+            float dx = parent.PositionX + 50f - 200f * sign - cx;
+            float dy = parent.PositionY + 230f - cy;
+            simulation = simulation with { Rotation = MathF.Atan2(dy, dx) + 1.57f };
+            vx *= .95f;
+            vy = MathF.Max(-14f, vy - .3f);
+            if (npc.PositionY < parent.PositionY - 200f)
+            {
+                if (TrySelectClosest(in npc, in definition, context, out ushort refreshedTarget, out VanillaNpcTargetCandidate refreshedPlayer))
+                {
+                    target = refreshedTarget;
+                    player = refreshedPlayer;
+                }
+                ai = ai with { Ai2 = 2f };
+                dx = player.CenterX - cx;
+                dy = player.CenterY - cy;
+                Normalize(ref dx, ref dy, 18f);
+                vx = dx;
+                vy = dy;
+            }
+        }
+        else if (ai.Ai2 == 2f)
+        {
+            float parentDistance = MathF.Abs(cx - (parent.PositionX + 50f)) + MathF.Abs(cy - (parent.PositionY + 50f));
+            if (npc.PositionY > player.CenterY - player.Height * .5f || vy < 0f || parentDistance > 800f)
+                ai = ai with { Ai2 = 3f };
+        }
+        else if (ai.Ai2 == 4f)
+        {
+            float dx = parent.PositionX + 50f - 200f * sign - cx;
+            float dy = parent.PositionY + 230f - cy;
+            simulation = simulation with { Rotation = MathF.Atan2(dy, dx) + 1.57f };
+            vy *= .95f;
+            vx = Math.Clamp(vx - .3f * sign, -14f, 14f);
+            if (cx < parent.PositionX - 500f || cx > parent.PositionX + 500f)
+            {
+                if (TrySelectClosest(in npc, in definition, context, out ushort refreshedTarget, out VanillaNpcTargetCandidate refreshedPlayer))
+                {
+                    target = refreshedTarget;
+                    player = refreshedPlayer;
+                }
+                ai = ai with { Ai2 = 5f };
+                dx = player.CenterX - cx;
+                dy = player.CenterY - cy;
+                Normalize(ref dx, ref dy, 17f);
+                vx = dx;
+                vy = dy;
+            }
+        }
+        else if (ai.Ai2 == 5f)
+        {
+            float parentDistance = MathF.Abs(cx - (parent.PositionX + 50f)) + MathF.Abs(cy - (parent.PositionY + 50f));
+            if ((vx > 0f && cx > player.CenterX) || (vx < 0f && cx < player.CenterX) || parentDistance > 800f)
+                ai = ai with { Ai2 = 0f };
+        }
+
+        next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, vx, vy, target, ai,
+            simulation with { NoGravity = true, NoTileCollide = true, SpriteDirection = -sign });
         return true;
+    }
+
+    private static bool TryTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        out ushort target, out VanillaNpcTargetCandidate player)
+    {
+        if (npc.Target < byte.MaxValue && context.TryFindCandidate((byte)npc.Target, out player))
+        {
+            target = npc.Target;
+            return true;
+        }
+        return TrySelectClosest(in npc, in definition, context, out target, out player);
+    }
+
+    private static bool TrySelectClosest(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        out ushort target, out VanillaNpcTargetCandidate player)
+    {
+        if (context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) && closest.HasTarget &&
+            closest.Target < byte.MaxValue && context.TryFindCandidate((byte)closest.Target, out player))
+        {
+            target = closest.Target;
+            return true;
+        }
+        target = VanillaNpcDefinitionCatalog.DefaultTarget;
+        player = default;
+        return false;
+    }
+
+    private static int EncourageDespawn(int currentTimeLeft, int maximum) =>
+        currentTimeLeft < 0 ? maximum : Math.Min(currentTimeLeft, maximum);
+
+    private static void Normalize(ref float x, ref float y, float speed)
+    {
+        float distance = MathF.Max(1f, MathF.Sqrt(x * x + y * y));
+        x = x / distance * speed;
+        y = y / distance * speed;
     }
 }
 

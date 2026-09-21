@@ -75,6 +75,21 @@ public sealed class VanillaProjectileBehaviorStepperTests
     }
 
     [Fact]
+    public void Flaming_scythe_ai056_accelerates_by_five_percent_only_below_source_manhattan_cap()
+    {
+        ProjectileSnapshot accelerating = CreateProjectile(VanillaProjectileIds.FlamingScythe, 10f, -5f, ai0: .25f, ai1: -1f);
+        Assert.True(VanillaDefinitionCatalog.TryGet(accelerating.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(in accelerating, in definition, default, out VanillaProjectileBehaviorResult faster));
+        Assert.Equal(10.5f, faster.VelocityX, 5);
+        Assert.Equal(-5.25f, faster.VelocityY, 5);
+
+        ProjectileSnapshot capped = accelerating with { VelocityX = 12f, VelocityY = -4f };
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(in capped, in definition, default, out VanillaProjectileBehaviorResult steady));
+        Assert.Equal(12f, steady.VelocityX, 5);
+        Assert.Equal(-4f, steady.VelocityY, 5);
+    }
+
+    [Fact]
     public void Basic_arrow_nondefault_feature_selector_remains_unsupported()
     {
         ProjectileSnapshot projectile = CreateProjectile(

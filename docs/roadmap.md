@@ -6,7 +6,7 @@
 
 2026-09-21 Pumpkin Moon AI_057 Mourning Wood (type 325): source defaults, damage/life state thresholds, low-life states 3/4, state durations, no-clip hover movement and all four server projectile branches now execute authoritatively through the shared AI_057 body. It retains the source centre anchoring, Flaming Wood/Greek Fire hitboxes, damage, timing, and random-draw order. Pumpking AI_058 and Pumpking Blade AI_059 remain open.
 
-2026-09-21 Pumpkin Moon Pumpking start: types 327/328 now have source defaults, the parent initializes its two linked Blades in source slot/AI order, and their no-clip parent/return motion is authoritative. Pumpking retains its 30-tick Greek Fire server branch and post-commit provenance. The remaining AI_058/059 attack transitions and tile-gated projectile branch are open.
+2026-09-21 Pumpkin Moon Pumpking: types 327/328 have source defaults; AI_058 initializes the two linked Blades in source slot/AI order, follows its hover/dash/despawn state machine, and emits tile-gated Greek Fire on the retained local clock. AI_059 covers its orbit, climb/dive and side-pass states, parent loss, and the committed Flaming Scythe release including its source rotation/sprite AI. Projectile 329 retains that initial AI and implements its aiStyle-56 speed growth.
 
 2026-09-21 Snow Moon Everscream: source NPC 344 `SetDefaults` and AI_057 are now admitted through the existing wave-4/5 selector. The server owns life-scaled horizontal pursuit, the 80-by-20 hover collision probe, both 180/300-tick attack clocks, and post-commit Pine Needle/Ornament projectile creation with source random order and provenance. Snow Moon later waves and the remaining special-AI NPCs remain open.
 
