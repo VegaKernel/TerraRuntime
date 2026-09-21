@@ -36,7 +36,7 @@ internal sealed class FlowerAndMushroomPatchPass1458(
     private const ushort Tree = 5;
     private const ushort CorruptPlants = 24;
     private const ushort Flowers = 73;
-    private const ushort Sandstone40 = 40;
+    private const ushort ClayBlock = 40;
     private const ushort Stone = 1;
     private const ushort SmallPiles = 185;
     private const ushort LargePiles = 186;
@@ -118,7 +118,7 @@ internal sealed class FlowerAndMushroomPatchPass1458(
         }
 
         WorldTile below = At(x, y + 1);
-        bool convertibleGround = below.Type is Sandstone40 or Stone || IsOre(below.Type);
+        bool convertibleGround = below.Type is ClayBlock or Stone || IsOre(below.Type);
         bool groundOk = below.Wall == 0 && below.IsActive &&
             (below.Type == Grass || (convertibleGround && !cell.IsActive));
         bool cellOk = !cell.IsActive ||
@@ -268,7 +268,7 @@ internal sealed class FlowerAndMushroomPatchPass1458(
         type is 7 or 166 or 6 or 167 or 9 or 168 or 8 or 169 or 22 or 204 or 37 or 58 or 107 or 221 or 108
             or 222 or 111 or 223 or 211;
 
-    private static bool IsConvertible(ushort type) => type is Sandstone40 or Stone || IsOre(type);
+    private static bool IsConvertible(ushort type) => type is ClayBlock or Stone || IsOre(type);
 
     private static int NextFromList(IWorldGenerationVanillaRandom random, ReadOnlySpan<int> values) =>
         values[random.Next(values.Length)];

@@ -139,6 +139,7 @@ internal sealed class SurfaceFinishState1458
 {
     public VanillaWorldGenerationBootstrapState1458? Bootstrap { get; private set; }
     public double WorldSurface { get; private set; }
+    public double WorldSurfaceHigh { get; private set; }
     public double RockLayer { get; private set; }
     public int UnderworldTop { get; private set; }
     public WorldGenerationPoint? SpawnPoint { get; set; }
@@ -154,6 +155,7 @@ internal sealed class SurfaceFinishState1458
             throw new InvalidOperationException("Surface-finish vanilla generation requires source-backed Terrain layers.");
 
         WorldSurface = layers.WorldSurface;
+        WorldSurfaceHigh = workspace.VanillaTerrainState?.WorldSurfaceHigh ?? layers.WorldSurface;
         RockLayer = layers.RockLayer;
         UnderworldTop = Math.Clamp(workspace.HeightTiles - 200, (int)RockLayer + 120, workspace.HeightTiles - 90);
     }
@@ -192,13 +194,10 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
     private const ushort Grass = 2;
     private const ushort Pot = 28;
     private const ushort Ash = 57;
-    private const ushort Mud = 59;
-    private const ushort JungleGrass = 60;
     private const ushort PressurePlate = 135;
     private const ushort Trap = 137;
     private const ushort SmallPile = 185;
     private const ushort FallenLog = 488;
-    private const ushort GrassUnsafeWall = 63;
 
     private readonly SurfaceFinishStage1458 stage;
     private readonly SurfaceFinishState1458 state;
@@ -235,7 +234,7 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
                 context.ReportProgress(1d, $"Placing Hellforges ({forges}/{workspace.WidthTiles / 200})");
                 break;
             case SurfaceFinishStage1458.SpreadingGrass:
-                ApplySpreadingGrass(context, grid);
+                ApplySpreadingGrass(context, workspace);
                 break;
             case SurfaceFinishStage1458.SurfaceOreAndStone:
                 ApplySurfaceOreAndStone(context, grid, random);
@@ -253,7 +252,7 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
                 ApplySpawnPoint(context, grid);
                 break;
             case SurfaceFinishStage1458.GrassWall:
-                ApplyGrassWall(context, grid, random);
+                ApplyGrassWall(context, workspace);
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
@@ -326,35 +325,21 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Placing cavern pots ({placed}/{target})");
     }
 
-    private void ApplySpreadingGrass(IWorldGenerationContext context, RuntimeGrid grid)
+    private void ApplySpreadingGrass(IWorldGenerationContext context, Workspace workspace)
     {
-        int converted = 0;
-        int maxY = Math.Clamp((int)state.WorldSurface + 85, 20, grid.Height - 2);
-        for (int x = 2; x < grid.Width - 2; x++)
-        {
-            if ((x & 127) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Surface grass spreading requires shared UnifiedRandom semantics.");
 
-            for (int y = 2; y < maxY; y++)
-            {
-                ref WorldTile tile = ref grid.At(x, y);
-                if (!tile.IsActive || !grid.HasOpenNeighbor(x, y))
-                    continue;
-
-                if (tile.Type == Dirt)
-                {
-                    tile.Type = Grass;
-                    converted++;
-                }
-                else if (tile.Type == Mud)
-                {
-                    tile.Type = JungleGrass;
-                    converted++;
-                }
-            }
-        }
-
-        context.ReportProgress(1d, $"Spreading surface grass ({converted} blocks)");
+        // The jungle's own columns are still unmeasured here. WorldGen.Reset leaves them at -1 and the pass
+        // that fills them in is registered twenty-two places after this one, so the re-decision the re-skin
+        // keys off them cannot fire in an ordinary world - and the pass is handed the value the source
+        // actually holds rather than a later one that would change its answer.
+        var pass = new SurfaceGrassSpreadPass1458(
+            workspace.TileStore, random, state.WorldSurface, state.WorldSurfaceHigh,
+            -1, -1, context.CancellationToken);
+        pass.Apply();
+        context.ReportProgress(1d,
+            $"Spreading surface grass ({pass.Grown} grown, {pass.Reskinned} re-skinned)");
     }
 
     private void ApplySurfaceOreAndStone(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
@@ -569,41 +554,16 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Selecting spawn point ({spawn.X}, {spawn.Y})");
     }
 
-    private void ApplyGrassWall(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyGrassWall(IWorldGenerationContext context, Workspace workspace)
     {
-        int patches = grid.Width switch
-        {
-            <= 4200 => 55,
-            <= 6400 => 80,
-            _ => 110
-        };
-        int minY = Math.Max(12, (int)state.WorldSurface - 80);
-        int maxY = Math.Min(grid.Height - 12, (int)state.WorldSurface + 110);
-        int painted = 0;
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Surface grass walls require shared UnifiedRandom semantics.");
 
-        for (int patch = 0; patch < patches; patch++)
-        {
-            if ((patch & 15) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            int cx = random.Next(20, grid.Width - 20);
-            int cy = random.Next(minY, maxY);
-            int rx = random.Next(3, 9);
-            int ry = random.Next(2, 6);
-
-            for (int x = cx - rx; x <= cx + rx; x++)
-            for (int y = cy - ry; y <= cy + ry; y++)
-            {
-                if ((x - cx) * (x - cx) * ry * ry + (y - cy) * (y - cy) * rx * rx > rx * rx * ry * ry)
-                    continue;
-                ref WorldTile tile = ref grid.At(x, y);
-                if (tile.IsActive || tile.Wall != 0 || !grid.HasNearbySurfaceSoil(x, y))
-                    continue;
-                tile.Wall = GrassUnsafeWall;
-                painted++;
-            }
-        }
-
-        context.ReportProgress(1d, $"Adding unsafe Grass Wall patches ({painted} cells)");
+        var pass = new GrassWallPass1458(
+            workspace.TileStore, random, state.WorldSurface, context.CancellationToken);
+        pass.Apply();
+        context.ReportProgress(1d,
+            $"Adding Grass Walls ({pass.Painted} cells in {pass.Pockets} pockets, {pass.Grown} grown)");
     }
 
     private VanillaWorldGenerationBootstrapState1458 RequireBootstrap() =>
@@ -710,9 +670,6 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
             return max;
         }
 
-        public bool HasOpenNeighbor(int x, int y) =>
-            !At(x - 1, y).IsActive || !At(x + 1, y).IsActive || !At(x, y - 1).IsActive || !At(x, y + 1).IsActive;
-
         public bool IsPlayerClearanceAvailable(int x, int top, int bottom)
         {
             if (top < 1 || bottom >= Height - 1)
@@ -727,18 +684,6 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
                     return false;
             }
             return true;
-        }
-
-        public bool HasNearbySurfaceSoil(int x, int y)
-        {
-            for (int dx = -2; dx <= 2; dx++)
-            for (int dy = -2; dy <= 2; dy++)
-            {
-                WorldTile tile = At(x + dx, y + dy);
-                if (tile.IsActive && tile.Type is Dirt or Grass)
-                    return true;
-            }
-            return false;
         }
     }
 }

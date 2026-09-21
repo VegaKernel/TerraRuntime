@@ -144,34 +144,60 @@ Prime Saw/Vice AI33/34 now receive a bounded, read-only view of retained NPC slo
 
 On merged base `843bd1a3`, Release warnings-as-errors build passed; the focused matrix passed all 9,528 cases; the complete suite passed all 100,113 tests with zero errors, failures or skips in 170.393 seconds; Windows NativeAOT publication and loop, protocol, network, world and TUI smokes all passed. Documentation validation passed 94 mirrored RU/EN pages and 227 Markdown files. Full encounter cadence, alternative player body geometry, raw inactive/ghost player targeting, outer motion, further NPC families, gameplay/items and packet parity remain open.
 
-## Resume point for the vanilla generation work - 2026-09-19
+## Resume point for the vanilla generation work - 2026-09-21
 
-Closed this stretch, each against the registered delegate with negative controls: rows 92, 94, 95 (Flowers,
-Mushrooms, JunglePlantsPart2), 79 (Place Fallen Log, which also closed the Flowers relocation divergence) and
-89 (Webs And Honey). Plus the two findings that reach further than any single row - `KillTile` spending RNG on
-dust, and the loading liquid death footprints - both written up above.
+Closed since the last resume point, each against the registered delegate with negative controls: rows 83
+(Grass Wall) and 77 (Spreading Grass). Both invented owners were replaced, and the ledger is now
+**25P + 47C = 72 unfinished rows**. Earlier in this stretch: rows 92, 94, 95, 79 and 89, plus the two findings
+that reach further than any single row - `KillTile` spending RNG on dust, and the loading liquid death
+footprints.
+
+Three shared primitives came out of rows 83 and 77 and are worth knowing about before touching anything
+nearby:
+
+- `GenerationWallSpread1458` is `Spread.Wall2`: a wave flood with its own 5000-cell cap, a set of walls it
+  refuses to replace, and a "stops at air" mode that the grass walls use - which is also what gives it the
+  diagonal and two-columns-over offers, so it can step around a one-cell seam of bare air.
+- `GenerationDirtWallCount1458` is `countDirtTiles`: it measures a papered pocket and reports the caller's cap
+  instead of a size when the pocket touches the border, snow, or one of five forbidden walls. One offending
+  cell refuses the whole pocket.
+- `GenerationGrass1458` now admits ordinary green grass and takes its framer from the caller. Its guard is
+  split the way the source splits it: the evil grasses take the shore-and-centre refusal, everything else takes
+  the surface-line refusal. Its existing callers are unchanged in behaviour - verified by their own fixtures.
+
+Two things about the shape of these passes that cost time to find and would cost it again:
+
+- The Grass Wall pass keeps triggering over the same cells until every pocket it can reach is painted, so
+  *which* candidate in a square it enters the pocket at is almost unobservable - the outcome converges. It only
+  becomes visible when two pockets in one square get opposite verdicts from the measurement.
+- `SpreadGrass`'s recursion runs down the side of any hollow, so a ledge under a hollow gets grass whether or
+  not the column walk offered it. Isolating the column walk's own refusals needed pockets sealed in grass.
 
 Next, in the order they are worth doing:
 
-1. **Rows 77 and 83 together** (Spreading Grass, Grass Wall). They are coupled: the Grass Wall pass ends by
-   calling `SpreadGrass` with the ordinary dirt-to-grass identities, which `GenerationGrass1458` does NOT yet
-   admit - it covers dirt-to-evil and mud-to-jungle only. Read `WorldGen.SpreadGrass` at line 75750 of the
-   decompile: its two guard branches are keyed on the GRASS identity, not on the dirt, and the runtime's helper
-   currently keys the beach/middle refusal on `dirt == 0`, which only coincides for the evil grasses. The pass
-   also needs `Spread.Wall2` (a flood fill with its own `maxWallOut2` budget) and `countDirtTiles` /
-   `nextDirtCount` (a recursive counter capped at 3500). Bigger and more delicate than the rows above, because
-   `SpreadGrass` is shared and its existing callers are pinned by fixtures.
-
+1. **Row 74 (Quick Cleanup).** About 120 lines of source, 17998 to 18118 of the decompile, and the remix and
+   special-seed parts are already excluded for an ordinary world. It is a whole-map scan doing five unrelated
+   things: ocean liquid normalisation, a sand column fill whose `genRand.Next(4, 7)` sits inside the `for`
+   CONDITION and is therefore redrawn every iteration (the same shape as the pyramid tunnel finding), hive and
+   temple wall retyping with its own liquid rules, a wall borrow for sand overhanging open space, and the slope
+   and half-brick cleanup. Two details to carry into it: the pass temporarily sets `Main.tileSolid[137]` and
+   `[130]` false, which changes what `SolidTile` reports inside it, but `TileID.Sets.SaveSlopes` was baked in
+   `PostSetupContent` from the ORIGINAL solidity and is not affected; and `oceanDepths` is just
+   `y <= (worldSurface + rockLayer) / 2 + 40` and `x` outside the beach distance.
 2. **`WorldGen.AddBuriedChest`** (line 36258, 1691 lines). Unblocks row 44 - its selection and geometry are
    already closed and only the chamber's chest remains - and turns rows 63 to 66 from placeholder `C` into
    evidenced ones. The geometry is only the first ~330 lines; the rest is per-style loot tables, and most of
    the branch cascade is guarded by secret-seed and world flags that an ordinary world never sets. It is a
    public static method, so a probe can call it directly and compare the return, the retained chest location,
    the next shared RNG, the tiles and the chest's contents.
-
 3. The world-hash helpers in the older differential tests carry the liquid AMOUNT but not its KIND. The webs
    and honey work showed what that hides: a pass that only changes water into honey is invisible to them. The
    newer tests carry the kind; the older ones would need their expectations re-derived.
+4. The framer handed to `GenerationGrass1458` by the two surface passes models the pile, plant, detritus and
+   platform families and leaves any other frame-important identity alone, where the source would run that
+   identity's own validator. Nothing either pass writes changes a cell's solidity, so a validator that only
+   tests its support cannot reach a different answer - but that is an argument, not a measurement, and the
+   fixtures hold nothing frame-important. Closing it means porting more of `TileFrameImportant`.
 
 ## Breaking a tile costs shared RNG: WorldGen.KillTile spends it on dust - 2026-09-19
 
