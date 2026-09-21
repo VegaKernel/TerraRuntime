@@ -710,7 +710,8 @@ internal sealed class VanillaMoonEventEverscreamNpcBehaviorStrategy : IVanillaNp
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
         INpcAiStateStepper inner, out NpcStateUpdate next)
     {
-        if (definition.Type != VanillaMoonEventSpecialCatalog1458.SnowMoonAi57Everscream ||
+        if ((definition.Type != VanillaMoonEventSpecialCatalog1458.SnowMoonAi57Everscream &&
+             definition.Type != VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi57MourningWood) ||
             definition.AiStyle.Value != 57 || environment is null ||
             !TryTarget(in npc, in definition, context, out ushort target, out VanillaNpcTargetCandidate player))
         {
@@ -738,18 +739,33 @@ internal sealed class VanillaMoonEventEverscreamNpcBehaviorStrategy : IVanillaNp
             if (ai1 >= 300f)
             {
                 ai1 = 0f;
-                ai0 = random.NextInt32(1, 3);
+                ai0 = life < definition.LifeMax * .25f &&
+                    definition.Type == VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi57MourningWood
+                    ? random.NextInt32(3, 5) : random.NextInt32(1, 3);
             }
         }
         else if (ai0 == 1f)
         {
             ai1++;
-            if (ai1 >= 180f) { ai0 = 0f; ai1 = 0f; }
+            if (ai1 >= (definition.Type == VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi57MourningWood ? 120f : 180f))
+            { ai0 = 0f; ai1 = 0f; }
         }
         else if (ai0 == 2f)
         {
             ai1++;
             if (ai1 >= 300f) { ai0 = 0f; ai1 = 0f; }
+        }
+        else if (ai0 == 3f)
+        {
+            ai1++;
+            if (ai1 >= 120f) { ai0 = 0f; ai1 = 0f; }
+            speed = 4f;
+        }
+        else if (ai0 == 4f)
+        {
+            ai1++;
+            if (ai1 >= 240f) { ai0 = 0f; ai1 = 0f; }
+            speed = 4f;
         }
 
         float centerX = npc.PositionX + definition.Width * .5f;

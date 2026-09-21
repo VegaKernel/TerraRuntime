@@ -37,6 +37,24 @@ public sealed class VanillaMoonEventEverscreamAiTests
     }
 
     [Fact]
+    public void Type_325_defaults_and_ai57_state_choice_match_source()
+    {
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(325), out VanillaNpcDefinition definition));
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(new NpcTypeId(325), out VanillaNpcAiCoverage coverage));
+        Assert.Equal(new NpcAiStyleId(57), definition.AiStyle);
+        Assert.Equal((164, 154, 120, 34, 14000), (definition.BaseWidth, definition.BaseHeight, definition.Damage, definition.Defense, definition.LifeMax));
+        Assert.True(definition.NoGravityAtSpawn); Assert.True(definition.NoTileCollideAtSpawn);
+        Assert.True(coverage.Has(VanillaNpcAiCapability.MoonEventEverscreamSlice));
+
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(new SequenceRandom(), solid: false);
+        var update = new NpcStateUpdate(325, 325, 100f, 200f, 0f, 0f, 3, new NpcAiState(0f, 298f, 0f, 0f),
+            NpcSimulationState.Initial with { DirectionX = 1, SpriteDirection = 1, Life = 3000, LifeMax = 14000, TimeLeft = 750 });
+        var npcs = new RuntimeNpcStore(); Assert.True(npcs.TrySpawn(1, update, out NpcSnapshot npc));
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+        Assert.Equal(3f, next.Ai.Ai0); Assert.Equal(0f, next.Ai.Ai1);
+    }
+
+    [Fact]
     public void Pine_needles_and_ornaments_spawn_only_after_the_exact_committed_attack_tick()
     {
         AssertProjectile(new NpcAiState(1f, 4f, 0f, 0f), VanillaProjectileIds.EverscreamPineNeedle, 43, expectedDraws: 11);

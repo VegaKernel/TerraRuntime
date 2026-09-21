@@ -4,6 +4,8 @@
 
 2026-09-21 Pumpkin Moon wave selection: source `NPC.Spawner.SpawnAnNPC` now covers waves 1-20, including the independent first/second selections that can create two NPCs in waves 14, 15, 17 and 18, source no-spawn paths, active-type caps and the shared invasion-boss cap. Unsupported special selections remain fail-closed; their AI implementations remain open.
 
+2026-09-21 Pumpkin Moon AI_057 type 325: source defaults, damage/life state thresholds, low-life states 3/4, state durations and no-clip hover movement now execute authoritatively through the shared AI_057 body. Its projectile effects, Pumpking AI_058 and Splinterling AI_059 remain open.
+
 2026-09-21 Snow Moon Everscream: source NPC 344 `SetDefaults` and AI_057 are now admitted through the existing wave-4/5 selector. The server owns life-scaled horizontal pursuit, the 80-by-20 hover collision probe, both 180/300-tick attack clocks, and post-commit Pine Needle/Ornament projectile creation with source random order and provenance. Snow Moon later waves and the remaining special-AI NPCs remain open.
 
 2026-09-21 Moon-event AI_026 type 315: Pumpkin Moon now admits Mourning Wood with its source defaults, six-pixel AI_026 charge and 480-tick post-commit fireball branch. The projectile preserves pre-motion center/velocity, retained NPC difficulty damage and its pre-refresh target; rejected state transitions consume no random draws. Remaining special-AI types and later waves remain open.

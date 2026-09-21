@@ -7,6 +7,7 @@ public static class VanillaMoonEventSpecialCatalog1458
 {
     public static readonly NpcTypeId SnowMoonAi25 = new(341);
     public static readonly NpcTypeId SnowMoonAi57Everscream = new(344);
+    public static readonly NpcTypeId PumpkinMoonAi57MourningWood = new(325);
     public static readonly NpcTypeId PumpkinMoonAi26MourningWood = new(315);
     public static readonly NpcTypeId PumpkinMoonAi26 = new(329);
     public static readonly NpcTypeId PumpkinMoonAi22 = new(330);
@@ -37,6 +38,21 @@ public static class VanillaMoonEventSpecialCatalog1458
                 VanillaNpcPhysicsFamily.NoClipFlight,
                 NpcArchetypeRole.Ordinary,
                 172, 130, 110, 38, 13000, 0f, 1f,
+                NoGravityAtSpawn: true,
+                NoTileCollideAtSpawn: true,
+                VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
+
+        if (type == PumpkinMoonAi57MourningWood)
+        {
+            definition = new VanillaNpcDefinition(
+                PumpkinMoonAi57MourningWood,
+                new NpcAiStyleId(57),
+                VanillaNpcBehaviorFamily.MoonEventEverscream,
+                VanillaNpcPhysicsFamily.NoClipFlight,
+                NpcArchetypeRole.Ordinary,
+                164, 154, 120, 34, 14000, 0f, 1f,
                 NoGravityAtSpawn: true,
                 NoTileCollideAtSpawn: true,
                 VanillaNpcSyncAnchor.TopLeft);
