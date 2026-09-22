@@ -47,6 +47,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         [VanillaNpcIds.ArmedZombieTwiggy, 18, 40, 16, 4, 45, 0.55f, 1f, 1f, false, false],
         [VanillaNpcIds.ArmedZombieCenx, 18, 40, 12, 4, 38, 0.6f, 1f, 1f, false, false],
         [VanillaNpcIds.ArmedTorchZombie, 18, 40, 14, 6, 45, 0.5f, 1f, 1f, false, false],
+        [VanillaNpcIds.Crawdad, 28, 22, 28, 6, 50, 1f, 1f, 1f, true, false],
+        [VanillaNpcIds.Crawdad2, 28, 22, 28, 6, 50, 1f, 1f, 1f, true, false],
     ];
 
     [Theory]
@@ -95,8 +97,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(61, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(59, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(63, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(61, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
@@ -192,6 +194,17 @@ public sealed class VanillaGroundFighterNpcCatalogTests
             Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
             Assert.False(behavior.ScaleAdjustsMaximumHorizontalSpeed);
             Assert.Equal(VanillaGroundFighterMotionProfile.ArmedZombie, behavior.MotionProfile);
+        }
+    }
+
+    [Fact]
+    public void Crawdad_pair_keeps_the_source_short_range_armed_melee_profile()
+    {
+        foreach (NpcTypeId type in new[] { VanillaNpcIds.Crawdad, VanillaNpcIds.Crawdad2 })
+        {
+            Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(type, out var behavior));
+            Assert.True(behavior.ScaleAdjustsMaximumHorizontalSpeed);
+            Assert.Equal(VanillaGroundFighterMotionProfile.Crawdad, behavior.MotionProfile);
         }
     }
 

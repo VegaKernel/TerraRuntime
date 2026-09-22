@@ -237,6 +237,8 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId ArmedZombieTwiggy = new(435);
     public static readonly NpcTypeId ArmedZombieCenx = new(436);
     public static readonly NpcTypeId LunaticCultist = new(439);
+    public static readonly NpcTypeId Crawdad = new(494);
+    public static readonly NpcTypeId Crawdad2 = new(495);
     public static readonly NpcTypeId LunaticCultistClone = new(440);
     public static readonly NpcTypeId CultistDragonHead = new(454);
     public static readonly NpcTypeId CultistDragonBody1 = new(455);

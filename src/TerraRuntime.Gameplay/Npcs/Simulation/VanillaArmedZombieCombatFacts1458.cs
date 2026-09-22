@@ -3,7 +3,7 @@ using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Gameplay.Npcs;
 
-/// <summary>Source-pinned AI_003 and GetMeleeCollisionData facts for armed zombie types 430 through 436.</summary>
+/// <summary>Source-pinned AI_003 armed-melee and GetMeleeCollisionData facts.</summary>
 public static class VanillaArmedZombieCombatFacts1458
 {
     public const float AttackDamageMultiplier = 1.5f;
@@ -12,8 +12,12 @@ public static class VanillaArmedZombieCombatFacts1458
 
     public static bool IsArmedZombie(NpcTypeId type) => type.Value is >= 430 and <= 436 or 591;
 
+    public static bool IsCrawdad(NpcTypeId type) => type.Value is 494 or 495;
+
     public static bool HasExtendedMeleeReach(NpcTypeId type, NpcAiState ai) =>
-        IsArmedZombie(type) && ai.Ai2 > 5f;
+        (IsArmedZombie(type) || IsCrawdad(type)) && ai.Ai2 > 5f;
+
+    public static int GetExtendedMeleeReach(NpcTypeId type) => IsCrawdad(type) ? 18 : ExtendedMeleeReach;
 
     public static int ResolveAttackDamage(int baseDamage) =>
         checked((int)(baseDamage * AttackDamageMultiplier));
@@ -34,8 +38,8 @@ public static class VanillaArmedZombieCombatFacts1458
             return;
 
         if (spriteDirection < 0)
-            left -= ExtendedMeleeReach;
+            left -= GetExtendedMeleeReach(type);
         else
-            right += ExtendedMeleeReach;
+            right += GetExtendedMeleeReach(type);
     }
 }

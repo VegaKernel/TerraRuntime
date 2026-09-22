@@ -35,6 +35,7 @@ public sealed class VanillaArmedZombieAiTests
         Assert.False(VanillaArmedZombieCombatFacts1458.HasExtendedMeleeReach(VanillaNpcIds.ArmedZombie, beforeReach));
         Assert.True(VanillaArmedZombieCombatFacts1458.HasExtendedMeleeReach(VanillaNpcIds.ArmedZombie, activeReach));
         Assert.True(VanillaArmedZombieCombatFacts1458.HasExtendedMeleeReach(VanillaNpcIds.ArmedTorchZombie, activeReach));
+        Assert.True(VanillaArmedZombieCombatFacts1458.HasExtendedMeleeReach(VanillaNpcIds.Crawdad, activeReach));
         Assert.Equal(21, VanillaArmedZombieCombatFacts1458.ResolveMeleeDamage(17, VanillaNpcIds.ArmedZombie, activeReach));
 
         float left = 100f;
@@ -48,6 +49,12 @@ public sealed class VanillaArmedZombieAiTests
         VanillaArmedZombieCombatFacts1458.ExpandMeleeHitbox(VanillaNpcIds.ArmedZombie, activeReach, 1, ref left, ref right);
         Assert.Equal(100f, left, 5);
         Assert.Equal(152f, right, 5);
+
+        left = 100f;
+        right = 128f;
+        VanillaArmedZombieCombatFacts1458.ExpandMeleeHitbox(VanillaNpcIds.Crawdad, activeReach, -1, ref left, ref right);
+        Assert.Equal(82f, left, 5);
+        Assert.Equal(128f, right, 5);
     }
 
     private static VanillaZombieMotionInput Input(float ai2, float velocityX) => new(

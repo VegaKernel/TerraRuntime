@@ -804,7 +804,8 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             ArmedAttackMustEnd = context.DayTime && npc.PositionY < context.WorldSurfacePixels
         };
 
-        if (parameters.MotionProfile == VanillaGroundFighterMotionProfile.ArmedZombie &&
+        bool armedMelee = parameters.MotionProfile is VanillaGroundFighterMotionProfile.ArmedZombie or VanillaGroundFighterMotionProfile.Crawdad;
+        if (armedMelee &&
             npc.Ai.Ai2 == 0f &&
             npc.VelocityY == 0f &&
             !input.ArmedAttackMustEnd &&
@@ -817,7 +818,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             float dy = sourceCenterY - armedCandidate.CenterY;
             input = input with
             {
-                ArmedAttackCanStart = dx * dx + dy * dy < 2500f &&
+                ArmedAttackCanStart = dx * dx + dy * dy < (parameters.MotionProfile == VanillaGroundFighterMotionProfile.Crawdad ? 1764f : 2500f) &&
                     context.ProjectileEnvironment is not null &&
                     context.ProjectileEnvironment.CanHit(sourceCenterX, sourceCenterY, 1, 1,
                         armedCandidate.CenterX, armedCandidate.CenterY, 1, 1)
@@ -877,7 +878,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             }
         }
 
-        int? damageOverride = parameters.MotionProfile == VanillaGroundFighterMotionProfile.ArmedZombie && npc.Ai.Ai2 > 0f
+        int? damageOverride = armedMelee && npc.Ai.Ai2 > 0f
             ? VanillaArmedZombieCombatFacts1458.ResolveAttackDamage(simulation.BaseDamage ?? definition.Damage)
             : null;
 

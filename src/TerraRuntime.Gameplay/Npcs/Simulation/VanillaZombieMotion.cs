@@ -72,7 +72,8 @@ public enum VanillaGroundFighterMotionProfile : byte
     MoonEventLeaper = 1,
     HalfHealthBerserker = 2,
     MissingHealthBerserker = 3,
-    ArmedZombie = 4
+    ArmedZombie = 4,
+    Crawdad = 5
 }
 
 /// <summary>
@@ -187,7 +188,7 @@ public static class VanillaZombieMotion
                 directionX = 1;
         }
 
-        bool armedAttackTick = input.MotionProfile == VanillaGroundFighterMotionProfile.ArmedZombie && ai2 > 0f;
+        bool armedAttackTick = input.MotionProfile is VanillaGroundFighterMotionProfile.ArmedZombie or VanillaGroundFighterMotionProfile.Crawdad && ai2 > 0f;
         if (armedAttackTick)
         {
             // AI_003_Fighters: armed zombies retain the common target/stuck prepass, then brake for twenty
@@ -261,7 +262,7 @@ public static class VanillaZombieMotion
             }
         }
 
-        if (input.MotionProfile == VanillaGroundFighterMotionProfile.ArmedZombie && !armedAttackTick && input.ArmedAttackCanStart)
+        if (input.MotionProfile is VanillaGroundFighterMotionProfile.ArmedZombie or VanillaGroundFighterMotionProfile.Crawdad && !armedAttackTick && input.ArmedAttackCanStart)
         {
             velocityX *= .7f;
             ai2 = 1f;
