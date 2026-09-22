@@ -24,7 +24,8 @@ internal static class GenerationDecorationPlacement1458
     /// pixels and which additionally refuses a boulder floor; any other size is the single cell, indexed by 18.
     /// Lava in the target cell refuses either outright.
     /// </summary>
-    public static bool TryPlaceSmallPile(WorldTileStore store, int x, int y, int style, int size = 1)
+    public static bool TryPlaceSmallPile(
+        WorldTileStore store, int x, int y, int style, int size = 1, IReadOnlySet<ushort>? notSolid = null)
     {
         if (!Contains(store, x, y) || !Contains(store, x + 1, y + 1))
             return false;
@@ -34,7 +35,7 @@ internal static class GenerationDecorationPlacement1458
         short frameY = checked((short)(size * 18));
         if (size == 1)
         {
-            if (!IsFlatSolidFloor(store, x, y + 1) || !IsFlatSolidFloor(store, x + 1, y + 1))
+            if (!IsFlatSolidFloor(store, x, y + 1, notSolid) || !IsFlatSolidFloor(store, x + 1, y + 1, notSolid))
                 return false;
             if (store.Get(x, y).IsActive || store.Get(x + 1, y).IsActive)
                 return false;
@@ -47,7 +48,7 @@ internal static class GenerationDecorationPlacement1458
             return true;
         }
 
-        if (!IsFlatSolidFloor(store, x, y + 1) || store.Get(x, y).IsActive)
+        if (!IsFlatSolidFloor(store, x, y + 1, notSolid) || store.Get(x, y).IsActive)
             return false;
 
         Write(store, x, y, SmallPiles, checked((short)(style * 18)), frameY);
@@ -67,7 +68,8 @@ internal static class GenerationDecorationPlacement1458
         int x,
         int y,
         ushort type,
-        int style)
+        int style,
+        IReadOnlySet<ushort>? notSolid = null)
     {
         if (!Contains(store, x, y))
             return false;
@@ -88,7 +90,7 @@ internal static class GenerationDecorationPlacement1458
             anchor.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
         }
 
-        bool placed = TryPlace3x2(store, x, y, type, style);
+        bool placed = TryPlace3x2(store, x, y, type, style, notSolid);
         var framing = new GenerationTileFraming1458(store, random);
         framing.SquareTileFrame(x, y);
 
@@ -105,7 +107,8 @@ internal static class GenerationDecorationPlacement1458
     /// <c>PlaceTile</c> reaches Plant Detritus. The footprint's six cells must be clear, every column must
     /// stand on flat solid ground, and for detritus no column may stand on a boulder.
     /// </summary>
-    public static bool TryPlace3x2(WorldTileStore store, int x, int y, ushort type, int style)
+    public static bool TryPlace3x2(
+        WorldTileStore store, int x, int y, ushort type, int style, IReadOnlySet<ushort>? notSolid = null)
     {
         int width = store.Dimensions.WidthTiles;
         int height = store.Dimensions.HeightTiles;
@@ -122,7 +125,7 @@ internal static class GenerationDecorationPlacement1458
 
             if (type is PlantDetritus or 186 && IsBoulder(store, column, y + 1))
                 return false;
-            if (!IsFlatSolidFloor(store, column, y + 1))
+            if (!IsFlatSolidFloor(store, column, y + 1, notSolid))
                 return false;
         }
 
@@ -188,12 +191,18 @@ internal static class GenerationDecorationPlacement1458
     }
 
     /// <summary>Source <c>SolidTile2</c>: active, solid, unsloped, not a half brick and not actuated.</summary>
-    private static bool IsFlatSolidFloor(WorldTileStore store, int x, int y)
+    private static bool IsFlatSolidFloor(
+        WorldTileStore store, int x, int y, IReadOnlySet<ushort>? notSolid = null)
     {
         if (!Contains(store, x, y))
             return true;
 
         WorldTile tile = store.Get(x, y);
+        // A caller that has cleared identities out of Main.tileSolid for its own duration reads them as
+        // air here, exactly as the source does while that override stands.
+        if (notSolid is not null && notSolid.Contains(tile.Type))
+            return false;
+
         return tile.IsActive && !tile.IsActuated && tile.Shape == 0 &&
             VanillaTileCollisionCatalog.IsSolid(tile.TileType);
     }
