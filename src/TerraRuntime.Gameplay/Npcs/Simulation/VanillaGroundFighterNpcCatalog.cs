@@ -125,7 +125,7 @@ public static class VanillaGroundFighterNpcCatalog
             motionProfile: VanillaGroundFighterMotionProfile.StationaryArcher)
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 206 and AI_003's Icewater Spit wind-up.
         ,Fighter(VanillaNpcIds.IcyMerman, 18, 40, 60, 30, 280, .5f, 1f, 1f,
-            motionProfile: VanillaGroundFighterMotionProfile.IcyMerman)
+            motionProfile: VanillaGroundFighterMotionProfile.IcyMerman, daySurfaceEncouragesDespawn: false)
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 214/215 and their stationary pirate weapon wind-ups.
         ,Fighter(VanillaNpcIds.PirateDeckhand, 18, 40, 35, 16, 200, .4f, 1f, 2f,
             daySurfaceEncouragesDespawn: false)
@@ -138,9 +138,12 @@ public static class VanillaGroundFighterNpcCatalog
         ,Fighter(VanillaNpcIds.PirateCaptain, 18, 40, 70, 28, 2000, 0f, 1f, 1f,
             motionProfile: VanillaGroundFighterMotionProfile.PirateCaptain, daySurfaceEncouragesDespawn: false)
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 217..220, with Sea Snail's narrow AI_003 speed band.
-        ,Fighter(VanillaNpcIds.CochinealBeetle, 28, 20, 20, 10, 40, 1f, 1f, 1.5f)
-        ,Fighter(VanillaNpcIds.CyanBeetle, 28, 20, 20, 10, 40, 1f, 1f, 1.5f)
-        ,Fighter(VanillaNpcIds.LacBeetle, 28, 20, 20, 10, 40, 1f, 1f, 1.5f)
+        ,Fighter(VanillaNpcIds.CochinealBeetle, 28, 20, 20, 10, 40, 1f, 1f, 1.5f,
+            daySurfaceEncouragesDespawn: false)
+        ,Fighter(VanillaNpcIds.CyanBeetle, 28, 20, 20, 10, 40, 1f, 1f, 1.5f,
+            daySurfaceEncouragesDespawn: false)
+        ,Fighter(VanillaNpcIds.LacBeetle, 28, 20, 20, 10, 40, 1f, 1f, 1.5f,
+            daySurfaceEncouragesDespawn: false)
         ,Fighter(VanillaNpcIds.SeaSnail, 28, 20, 20, 10, 40, 1f, 1f, .5f,
             acceleration: .03f, overspeedGroundDamping: .7f, motionProfile: VanillaGroundFighterMotionProfile.SeaSnail,
             daySurfaceEncouragesDespawn: false)

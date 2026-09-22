@@ -301,7 +301,7 @@ Conversely, packet emission, NPC/projectile/item spawn, player/NPC damage or buf
 - [x] Icy Merman `206`: source `50/25` stationary wind-up, elevated Icewater Spit `177` release and AI_028 projectile defaults;
 - [x] Pirate Deadeye `214` and Crossbower `215`: source `40/20` and `80/40` stationary weapon wind-ups with their distinct aim lead and committed bullets `180/82`;
 - [x] Pirate Captain `216`: source twenty-shot fast-bullet cycle followed by a 60-tick Cannonball `240` wind-up, using revision-owned `localAI[2]`;
-- [x] Cochineal/Cyan/Lac Beetles `217–219` and Sea Snail `220`: concrete source defaults and AI_003 speed bands, including Sea Snail's `.5/.03/.7` branch;
+- [x] Cochineal/Cyan/Lac Beetles `217–219` and Sea Snail `220`: concrete source defaults, day-surface exemption and AI_003 speed bands, including Sea Snail's `.5/.03/.7` branch;
 - [x] Crab `67`, Lihzahrd `199`, Pirate Deckhand `212` and Corsair `213`: source defaults, their distinct `.5/.03/.7`, `4/.1/.8`, `2/.07/.8` and `3/.07/.99` movement profiles, plus the source day-surface exemption shared by the pirate wave;
 - [x] Clown `109`: source `2/.04` ground movement, hit-reset `ai[2]` timer and the server-owned 450-tick Happy Bomb `75` throw, including its hostile AI_016 fuse and armed 128-pixel explosion;
 - [x] Rain Zombie `223`: source defaults and its scale-adjusted `1.05` AI_003 movement band;

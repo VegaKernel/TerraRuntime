@@ -213,6 +213,18 @@ public sealed class VanillaGroundFighterNpcCatalogTests
     }
 
     [Theory]
+    [InlineData(206)]
+    [InlineData(217)]
+    [InlineData(218)]
+    [InlineData(219)]
+    [InlineData(220)]
+    public void Icy_merman_and_beetle_family_keep_the_source_day_surface_exemption(int rawType)
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(new NpcTypeId(rawType), out var behavior));
+        Assert.False(behavior.DaySurfaceEncouragesDespawn);
+    }
+
+    [Theory]
     [InlineData(338, 1.75f)]
     [InlineData(339, 1.25f)]
     [InlineData(340, 2f)]
