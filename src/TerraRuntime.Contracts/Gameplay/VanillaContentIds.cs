@@ -8,6 +8,7 @@ public static class VanillaNpcIds
 {
     public static readonly NpcTypeId BlueSlime = new(1);
     public static readonly NpcTypeId Bunny = new(46);
+    public static readonly NpcTypeId Crab = new(67);
     public static readonly NpcTypeId ExplosiveBunny = new(614);
     public static readonly NpcTypeId Demon = new(62);
     public static readonly NpcTypeId VoodooDemon = new(66);
@@ -216,6 +217,8 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId SkeletonArcher = new(110);
     public static readonly NpcTypeId GoblinArcher = new(111);
     public static readonly NpcTypeId IcyMerman = new(206);
+    public static readonly NpcTypeId PirateDeckhand = new(212);
+    public static readonly NpcTypeId PirateCorsair = new(213);
     public static readonly NpcTypeId PirateDeadeye = new(214);
     public static readonly NpcTypeId PirateCrossbower = new(215);
     public static readonly NpcTypeId PirateCaptain = new(216);
@@ -223,6 +226,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId CyanBeetle = new(218);
     public static readonly NpcTypeId LacBeetle = new(219);
     public static readonly NpcTypeId SeaSnail = new(220);
+    public static readonly NpcTypeId Lihzahrd = new(199);
     public static readonly NpcTypeId ZombieXmas = new(331);
     public static readonly NpcTypeId ZombieSweater = new(332);
     public static readonly NpcTypeId ZombieElf = new(338);

@@ -123,8 +123,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(89, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(87, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(93, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(91, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
@@ -155,6 +155,32 @@ public sealed class VanillaGroundFighterNpcCatalogTests
             Assert.Equal(speed, behavior.BaseMaximumHorizontalSpeed, 5);
             Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
         }
+    }
+
+    [Fact]
+    public void Crab_lihzahrd_and_pirate_melee_fighters_keep_source_motion_and_daytime_profiles()
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.Crab, out var crab));
+        Assert.Equal(VanillaGroundFighterMotionProfile.SeaSnail, crab.MotionProfile);
+        Assert.Equal(.5f, crab.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.03f, crab.HorizontalAcceleration, 5);
+        Assert.Equal(.7f, crab.OverspeedGroundDamping, 5);
+        Assert.False(crab.DaySurfaceEncouragesDespawn);
+
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.Lihzahrd, out var lihzahrd));
+        Assert.Equal(4f, lihzahrd.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.1f, lihzahrd.HorizontalAcceleration, 5);
+        Assert.Equal(.8f, lihzahrd.ReversingVelocityDamping, 5);
+        Assert.False(lihzahrd.DaySurfaceEncouragesDespawn);
+
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.PirateDeckhand, out var deckhand));
+        Assert.Equal(2f, deckhand.BaseMaximumHorizontalSpeed, 5);
+        Assert.False(deckhand.DaySurfaceEncouragesDespawn);
+
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.PirateCorsair, out var corsair));
+        Assert.Equal(3f, corsair.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.99f, corsair.ReversingVelocityDamping, 5);
+        Assert.False(corsair.DaySurfaceEncouragesDespawn);
     }
 
     [Theory]

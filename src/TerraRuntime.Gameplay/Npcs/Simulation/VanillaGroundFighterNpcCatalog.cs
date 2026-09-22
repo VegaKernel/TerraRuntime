@@ -35,6 +35,13 @@ public static class VanillaGroundFighterNpcCatalog
         Fighter(VanillaNpcIds.FemaleZombie, 18, 40, 12, 4, 38, 0.6f, 1f, 0.87f, scaleAdjustsSpeed: true),
         Fighter(VanillaNpcIds.VampireHumanoid, 18, 40, 80, 24, 750, 0.4f, 1f, 6f,
             reversingVelocityDamping: 0.95f)
+        // TerrariaServer 1.4.5.8 NPC.SetDefaults 67 and AI_003's narrow crab movement branch.
+        ,Fighter(VanillaNpcIds.Crab, 28, 20, 20, 10, 40, 1f, 1f, .5f,
+            acceleration: .03f, overspeedGroundDamping: .7f,
+            motionProfile: VanillaGroundFighterMotionProfile.SeaSnail, daySurfaceEncouragesDespawn: false)
+        // TerrariaServer 1.4.5.8 NPC.SetDefaults 199 and AI_003's Lihzahrd acceleration/reversal branch.
+        ,Fighter(VanillaNpcIds.Lihzahrd, 42, 30, 60, 30, 400, 0f, 1f, 4f,
+            reversingVelocityDamping: .8f, acceleration: .1f, daySurfaceEncouragesDespawn: false)
         // TerrariaServer 1.4.5.8 NPC.SetDefaults (338..340) and AI_003_Fighters num84 bands.
         ,Fighter(VanillaNpcIds.ZombieElf, 18, 40, 65, 18, 600, .4f, 1f, 1.75f)
         ,Fighter(VanillaNpcIds.ZombieElfBeard, 18, 40, 52, 24, 700, .2f, 1.05f, 1.25f)
@@ -116,18 +123,23 @@ public static class VanillaGroundFighterNpcCatalog
         ,Fighter(VanillaNpcIds.IcyMerman, 18, 40, 60, 30, 280, .5f, 1f, 1f,
             motionProfile: VanillaGroundFighterMotionProfile.IcyMerman)
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 214/215 and their stationary pirate weapon wind-ups.
+        ,Fighter(VanillaNpcIds.PirateDeckhand, 18, 40, 35, 16, 200, .4f, 1f, 2f,
+            daySurfaceEncouragesDespawn: false)
+        ,Fighter(VanillaNpcIds.PirateCorsair, 18, 40, 50, 20, 300, .2f, 1f, 3f,
+            reversingVelocityDamping: .99f, daySurfaceEncouragesDespawn: false)
         ,Fighter(VanillaNpcIds.PirateDeadeye, 18, 40, 30, 12, 150, .3f, 1f, 1f,
-            motionProfile: VanillaGroundFighterMotionProfile.PirateDeadeye)
+            motionProfile: VanillaGroundFighterMotionProfile.PirateDeadeye, daySurfaceEncouragesDespawn: false)
         ,Fighter(VanillaNpcIds.PirateCrossbower, 18, 40, 35, 18, 260, .35f, 1f, 1f,
-            motionProfile: VanillaGroundFighterMotionProfile.PirateCrossbower)
+            motionProfile: VanillaGroundFighterMotionProfile.PirateCrossbower, daySurfaceEncouragesDespawn: false)
         ,Fighter(VanillaNpcIds.PirateCaptain, 18, 40, 70, 28, 2000, 0f, 1f, 1f,
-            motionProfile: VanillaGroundFighterMotionProfile.PirateCaptain)
+            motionProfile: VanillaGroundFighterMotionProfile.PirateCaptain, daySurfaceEncouragesDespawn: false)
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 217..220, with Sea Snail's narrow AI_003 speed band.
         ,Fighter(VanillaNpcIds.CochinealBeetle, 28, 20, 20, 10, 40, 1f, 1f, 1.5f)
         ,Fighter(VanillaNpcIds.CyanBeetle, 28, 20, 20, 10, 40, 1f, 1f, 1.5f)
         ,Fighter(VanillaNpcIds.LacBeetle, 28, 20, 20, 10, 40, 1f, 1f, 1.5f)
         ,Fighter(VanillaNpcIds.SeaSnail, 28, 20, 20, 10, 40, 1f, 1f, .5f,
-            acceleration: .03f, overspeedGroundDamping: .7f, motionProfile: VanillaGroundFighterMotionProfile.SeaSnail)
+            acceleration: .03f, overspeedGroundDamping: .7f, motionProfile: VanillaGroundFighterMotionProfile.SeaSnail,
+            daySurfaceEncouragesDespawn: false)
         ,Fighter(new NpcTypeId(78), 18, 40, 50, 16, 130, .6f, 1f, 1f,
             acceleration: .05f, motionProfile: VanillaGroundFighterMotionProfile.HalfHealthBerserker, overspeedGroundDamping: .7f)
         ,Fighter(new NpcTypeId(79), 18, 40, 60, 18, 180, .5f, 1f, 1f,
@@ -182,6 +194,8 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.TwiggyZombie,
         VanillaNpcIds.FemaleZombie,
         VanillaNpcIds.VampireHumanoid,
+        VanillaNpcIds.Crab,
+        VanillaNpcIds.Lihzahrd,
         VanillaNpcIds.ZombieElf,
         VanillaNpcIds.ZombieElfBeard,
         VanillaNpcIds.ZombieElfGirl,
@@ -222,6 +236,8 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.SkeletonArcher,
         VanillaNpcIds.GoblinArcher,
         VanillaNpcIds.IcyMerman,
+        VanillaNpcIds.PirateDeckhand,
+        VanillaNpcIds.PirateCorsair,
         VanillaNpcIds.PirateDeadeye,
         VanillaNpcIds.PirateCrossbower,
         VanillaNpcIds.PirateCaptain,
