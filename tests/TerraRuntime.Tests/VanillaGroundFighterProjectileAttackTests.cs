@@ -199,6 +199,22 @@ public sealed class VanillaGroundFighterProjectileAttackTests
     }
 
     [Fact]
+    public void Skeleton_commando_rocket_keeps_its_source_hostile_ai016_defaults()
+    {
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.SkeletonCommandoRocket, out VanillaProjectileDefinition definition));
+        Assert.Equal(14, definition.Width);
+        Assert.Equal(14, definition.Height);
+        Assert.Equal(VanillaProjectileAiStyles.Bomb, definition.AiStyle);
+        Assert.True(definition.TileCollide);
+        Assert.False(definition.IgnoreWater);
+        Assert.True(VanillaExplosiveProjectileFacts1458.TryGetAi016MotionKind(
+            VanillaProjectileIds.SkeletonCommandoRocket, out VanillaAi016MotionKind1458 motion));
+        Assert.Equal(VanillaAi016MotionKind1458.StraightRocket, motion);
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(VanillaProjectileIds.SkeletonCommandoRocket, out VanillaProjectileBehaviorProfile profile));
+        Assert.Equal(VanillaProjectileBehaviorFamily.Bomb, profile.Family);
+    }
+
+    [Fact]
     public void Salamander_arms_for_a_visible_active_player_inside_its_source_range()
     {
         var npcs = new RuntimeNpcStore(2);
@@ -292,6 +308,37 @@ public sealed class VanillaGroundFighterProjectileAttackTests
         Assert.Equal(11f, MathF.Sqrt(projectile.VelocityX * projectile.VelocityX + projectile.VelocityY * projectile.VelocityY), 5);
         Assert.Equal(119.92f, projectile.PositionX, 2);
         Assert.Equal(121.31f, projectile.PositionY, 2);
+    }
+
+    [Fact]
+    public void Skeleton_commando_arms_and_fires_its_source_rocket_at_half_windup()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, Update(VanillaNpcIds.SkeletonCommando, 0f), out NpcSnapshot source));
+        var random = new MinimumRandom();
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, new VisibleEnvironment());
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot armed));
+        Assert.Equal(90f, armed.Ai.Ai1);
+        Assert.Equal(3f, armed.Ai.Ai2);
+        Assert.Equal(2, random.Draws);
+
+        Assert.True(npcs.TryUpdate(source.Handle, Update(VanillaNpcIds.SkeletonCommando, 0f) with
+        {
+            Ai = new NpcAiState(0f, 46f, 3f, 0f)
+        }, out NpcSnapshot firing));
+        var projectiles = new RuntimeProjectileStore(2);
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(firing.Handle, out NpcSnapshot committed));
+        Assert.Equal(45f, committed.Ai.Ai1);
+        Assert.Equal(4, random.Draws);
+        Assert.True(projectiles.TryGetActive(0, out ProjectileSnapshot projectile));
+        Assert.Equal(VanillaProjectileIds.SkeletonCommandoRocket, projectile.Type);
+        Assert.Equal((short)60, projectile.Damage);
+        Assert.Equal(4f, MathF.Sqrt(projectile.VelocityX * projectile.VelocityX + projectile.VelocityY * projectile.VelocityY), 5);
+        Assert.Equal(112.93f, projectile.PositionX, 2);
+        Assert.Equal(119.24f, projectile.PositionY, 2);
     }
 
     [Fact]

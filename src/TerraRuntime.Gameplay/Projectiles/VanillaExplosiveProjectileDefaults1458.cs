@@ -69,6 +69,23 @@ public static class VanillaExplosiveProjectileFacts1458
             return true;
         }
 
+        if (type == VanillaProjectileIds.SkeletonCommandoRocket)
+        {
+            defaults = new VanillaExplosiveProjectileDefaults1458(
+                Width: 14,
+                Height: 14,
+                AiStyle: VanillaProjectileAiStyles.Bomb,
+                Penetrate: -1,
+                TimeLeft: VanillaProjectileLifecycleFacts.DefaultTimeLeft,
+                TileCollide: true,
+                IgnoreWater: false,
+                Friendly: false,
+                Hostile: true,
+                Ranged: true,
+                ExtraUpdates: 0);
+            return true;
+        }
+
         if (type.Value is >= 715 and <= 718)
         {
             defaults = new VanillaExplosiveProjectileDefaults1458(
@@ -125,7 +142,7 @@ public static class VanillaExplosiveProjectileFacts1458
             return true;
         }
 
-        if (raw is 793 or 796 or 799 or 803 or 804 or 805 or 806 or 807 or 808 or 809 or 810)
+        if (raw is 303 or 793 or 796 or 799 or 803 or 804 or 805 or 806 or 807 or 808 or 809 or 810)
         {
             kind = VanillaAi016MotionKind1458.StraightRocket;
             return true;

@@ -244,6 +244,24 @@ public sealed class VanillaProjectileBehaviorStepperTests
     }
 
     [Fact]
+    public void Skeleton_commando_rocket_uses_ai016_straight_rocket_acceleration()
+    {
+        ProjectileSnapshot rocket = CreateProjectile(
+            VanillaProjectileIds.SkeletonCommandoRocket,
+            velocityX: 4f,
+            velocityY: -3f,
+            ai0: 2f,
+            spawner: VanillaProjectileOwnership.ServerOwner);
+        Assert.True(VanillaDefinitionCatalog.TryGet(rocket.Type, out VanillaProjectileDefinition definition));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(in rocket, in definition, default, out VanillaProjectileBehaviorResult next));
+
+        Assert.Equal(3f, next.Ai0);
+        Assert.Equal(4.4f, next.VelocityX, 5);
+        Assert.Equal(-3.3f, next.VelocityY, 5);
+    }
+
+    [Fact]
     public void Basic_arrow_nondefault_feature_selector_remains_unsupported()
     {
         ProjectileSnapshot projectile = CreateProjectile(

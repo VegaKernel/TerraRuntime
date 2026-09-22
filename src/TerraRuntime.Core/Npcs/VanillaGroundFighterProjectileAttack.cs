@@ -17,9 +17,10 @@ internal static class VanillaGroundFighterProjectileAttack
     private static readonly NpcTypeId Type350 = new(350);
     private static readonly NpcTypeId SkeletonSniper = new(291);
     private static readonly NpcTypeId TacticalSkeleton = new(292);
+    private static readonly NpcTypeId SkeletonCommando = new(293);
 
     public static bool IsSupported(NpcTypeId type) =>
-        type == Type243 || type == Type251 || type == Type350 || type == SkeletonSniper || type == TacticalSkeleton || IsSalamander(type);
+        type == Type243 || type == Type251 || type == Type350 || type == SkeletonSniper || type == TacticalSkeleton || type == SkeletonCommando || IsSalamander(type);
 
     public static NpcSnapshot Complete(
         in NpcSnapshot before,
@@ -42,9 +43,13 @@ internal static class VanillaGroundFighterProjectileAttack
         if (IsSalamander(before.TypeIdentity))
             return CompleteSalamander(in before, in committed, in definition, in hitbox, context, random, environment, mutations);
         if (before.TypeIdentity == SkeletonSniper)
-            return CompleteSkeletonSniper(in before, in committed, in definition, in hitbox, context, random, environment, mutations);
+            return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
+                mutations, 200f, 100f, 11f, .2f, noVerticalLead: true, VanillaProjectileIds.SkeletonSniperBullet, 100);
         if (before.TypeIdentity == TacticalSkeleton)
             return CompleteTacticalSkeleton(in before, in committed, in definition, in hitbox, context, random, environment, mutations);
+        if (before.TypeIdentity == SkeletonCommando)
+            return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
+                mutations, 90f, 45f, 4f, 1f, noVerticalLead: false, VanillaProjectileIds.SkeletonCommandoRocket, 60);
 
         float timer = committed.Ai.Ai2;
         if (before.TypeIdentity == Type243)
@@ -91,10 +96,11 @@ internal static class VanillaGroundFighterProjectileAttack
         return type251Completed;
     }
 
-    private static NpcSnapshot CompleteSkeletonSniper(
+    private static NpcSnapshot CompleteDungeonSkeletonShooter(
         in NpcSnapshot before, in NpcSnapshot committed, in VanillaNpcDefinition definition, in VanillaNpcHitboxSize hitbox,
         VanillaNpcBehaviorContext context, IVanillaNpcRandom random, IVanillaNpcProjectileEnvironment? environment,
-        INpcAiCommittedNpcMutationSink mutations)
+        INpcAiCommittedNpcMutationSink mutations, float windup, float fireAt, float projectileSpeed, float firingJitter,
+        bool noVerticalLead, ProjectileTypeId projectileType, short damage)
     {
         float timer = committed.Ai.Ai1;
         float mode = committed.Ai.Ai2;
@@ -126,13 +132,15 @@ internal static class VanillaGroundFighterProjectileAttack
                 targetSlot = refresh.Target;
                 directionX = refresh.DirectionX;
                 directionY = refresh.DirectionY;
-                if (timer == 100f)
+                if (timer == fireAt)
                 {
                     float sourceX = committed.PositionX + hitbox.Width * .5f;
                     float sourceY = committed.PositionY + hitbox.Height * .5f;
-                    shotVelocityX = target.CenterX - sourceX + random.NextInt32(-40, 41) * .2f;
-                    shotVelocityY = target.CenterY - sourceY + random.NextInt32(-40, 41) * .2f;
-                    hasShot = TryNormalize(ref shotVelocityX, ref shotVelocityY, 11f);
+                    float targetX = target.CenterX - sourceX;
+                    shotVelocityX = targetX + random.NextInt32(-40, 41) * firingJitter;
+                    shotVelocityY = target.CenterY - sourceY - (noVerticalLead ? 0f : MathF.Abs(targetX) * .1f) +
+                        random.NextInt32(-40, 41) * firingJitter;
+                    hasShot = TryNormalize(ref shotVelocityX, ref shotVelocityY, projectileSpeed);
                     if (hasShot)
                     {
                         shotX = sourceX + shotVelocityX;
@@ -165,7 +173,7 @@ internal static class VanillaGroundFighterProjectileAttack
             {
                 velocityX *= .5f;
                 mode = AimCategory(aimX, aimY);
-                timer = 200f;
+                timer = windup;
             }
         }
 
@@ -180,7 +188,7 @@ internal static class VanillaGroundFighterProjectileAttack
         if (hasShot)
         {
             var intent = new NpcAiProjectileIntent(
-                VanillaProjectileIds.SkeletonSniperBullet, shotX, shotY, shotVelocityX, shotVelocityY, 100, 0f);
+                projectileType, shotX, shotY, shotVelocityX, shotVelocityY, damage, 0f);
             mutations.TrySpawnProjectile(in completed, in intent, out _);
         }
         return completed;

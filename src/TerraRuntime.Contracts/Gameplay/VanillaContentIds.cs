@@ -211,6 +211,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId BigHelmetAngryBones = new(296);
     public static readonly NpcTypeId SkeletonSniper = new(291);
     public static readonly NpcTypeId TacticalSkeleton = new(292);
+    public static readonly NpcTypeId SkeletonCommando = new(293);
     public static readonly NpcTypeId ZombieXmas = new(331);
     public static readonly NpcTypeId ZombieSweater = new(332);
     public static readonly NpcTypeId ZombieElf = new(338);
@@ -580,6 +581,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId HornetStinger = new(55);
     public static readonly ProjectileTypeId TacticalSkeletonBullet = new(180);
     public static readonly ProjectileTypeId SkeletonSniperBullet = new(302);
+    public static readonly ProjectileTypeId SkeletonCommandoRocket = new(303);
     public static readonly ProjectileTypeId RedDevilSickle = new(115);
     /// <summary>AI_001 Spiked Ice Slime hostile ice spike.</summary>
     public static readonly ProjectileTypeId SpikedIceSlimeSpike = new(174);
