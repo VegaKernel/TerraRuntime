@@ -252,6 +252,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
 
         return profile.Family is VanillaProjectileBehaviorFamily.BasicArrow or
             VanillaProjectileBehaviorFamily.Thrown or
+            VanillaProjectileBehaviorFamily.PirateCaptainCannonball or
             VanillaProjectileBehaviorFamily.Boomerang or
             VanillaProjectileBehaviorFamily.Bomb or
             VanillaProjectileBehaviorFamily.ControlledMagicMissile;

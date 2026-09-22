@@ -705,6 +705,17 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 10,
         CollisionHeight: 10);
 
+    // Projectile.SetDefaults 240: Pirate Captain's hostile cannonball.
+    private static readonly VanillaProjectileDefinition PirateCaptainCannonballDefinition = new(
+        Width: 16,
+        Height: 16,
+        AiStyle: VanillaProjectileAiStyles.Thrown,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 16,
+        CollisionHeight: 16);
+
     // Projectile.SetDefaults 174: hostile Spiked Ice Slime shot.
     private static readonly VanillaProjectileDefinition SpikedIceSlimeSpikeDefinition = new(
         Width: 6,
@@ -1178,6 +1189,12 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.IcewaterSpit)
         {
             definition = IcewaterSpitDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PirateCaptainCannonball)
+        {
+            definition = PirateCaptainCannonballDefinition;
             return true;
         }
 

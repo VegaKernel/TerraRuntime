@@ -178,6 +178,17 @@ internal static partial class VanillaProjectileBehaviorStepper
                     velocityY = MaximumThrownFallSpeed;
                 break;
 
+            case VanillaProjectileBehaviorFamily.PirateCaptainCannonball:
+                // AI_002 type 240: Cannonball remains straight for its sixteen-tick fuse, then uses its
+                // distinct gravity and horizontal damping instead of the common thrown-item constants.
+                ai0 += 1f;
+                if (ai0 >= 16f)
+                {
+                    velocityY += .18f;
+                    velocityX *= .991f;
+                }
+                break;
+
             case VanillaProjectileBehaviorFamily.BasicArrow:
                 // TerrariaServer 1.4.5.8 Projectile.AI_001(), source-backed basic aiStyle-1 path.
                 if (!VanillaProjectileBehaviorProfileCatalog.SkipsBasicArrowGravity(current.Type))

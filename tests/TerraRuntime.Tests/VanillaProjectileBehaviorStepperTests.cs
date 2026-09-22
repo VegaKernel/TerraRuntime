@@ -53,6 +53,19 @@ public sealed class VanillaProjectileBehaviorStepperTests
     }
 
     [Fact]
+    public void Pirate_captain_cannonball_uses_its_source_sixteen_tick_delay_then_distinct_ballistics()
+    {
+        ProjectileSnapshot straight = CreateProjectile(VanillaProjectileIds.PirateCaptainCannonball, 4f, -1f, ai0: 14f);
+        Assert.True(VanillaDefinitionCatalog.TryGet(straight.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(in straight, in definition, default, out VanillaProjectileBehaviorResult first));
+        Assert.Equal(15f, first.Ai0); Assert.Equal(4f, first.VelocityX); Assert.Equal(-1f, first.VelocityY);
+
+        ProjectileSnapshot falling = straight with { Ai = straight.Ai with { Ai0 = 15f } };
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(in falling, in definition, default, out VanillaProjectileBehaviorResult second));
+        Assert.Equal(16f, second.Ai0); Assert.Equal(3.964f, second.VelocityX, 5); Assert.Equal(-.82f, second.VelocityY, 5);
+    }
+
+    [Fact]
     public void Basic_arrow_family_caps_ai_timer_and_fall_speed_without_world_queries()
     {
         ProjectileSnapshot projectile = CreateProjectile(

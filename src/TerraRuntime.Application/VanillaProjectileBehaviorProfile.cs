@@ -56,7 +56,8 @@ internal enum VanillaProjectileBehaviorFamily : byte
     RedDevilSickle = 43,
     DungeonBeam = 44,
     DungeonFlame = 45,
-    DungeonSkull = 46
+    DungeonSkull = 46,
+    PirateCaptainCannonball = 47
 }
 
 /// <summary>
@@ -250,6 +251,14 @@ internal static class VanillaProjectileBehaviorProfileCatalog
 
     private static readonly VanillaProjectileBehaviorProfile ThrownProfile = new(
         VanillaProjectileBehaviorFamily.Thrown,
+        VanillaProjectileAiStyles.Thrown,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile PirateCaptainCannonballProfile = new(
+        VanillaProjectileBehaviorFamily.PirateCaptainCannonball,
         VanillaProjectileAiStyles.Thrown,
         BehaviorImplemented: true,
         RequiresDefaultAi2: false,
@@ -484,6 +493,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.IcewaterSpit)
         {
             profile = RuneBlastProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PirateCaptainCannonball)
+        {
+            profile = PirateCaptainCannonballProfile;
             return true;
         }
 

@@ -24,9 +24,10 @@ internal static class VanillaGroundFighterProjectileAttack
     private static readonly NpcTypeId IcyMerman = new(206);
     private static readonly NpcTypeId PirateDeadeye = new(214);
     private static readonly NpcTypeId PirateCrossbower = new(215);
+    private static readonly NpcTypeId PirateCaptain = new(216);
 
     public static bool IsSupported(NpcTypeId type) =>
-        type == Type243 || type == Type251 || type == Type350 || type == SkeletonSniper || type == TacticalSkeleton || type == SkeletonCommando || type == Paladin || type == SkeletonArcher || type == GoblinArcher || type == IcyMerman || type == PirateDeadeye || type == PirateCrossbower || IsSalamander(type);
+        type == Type243 || type == Type251 || type == Type350 || type == SkeletonSniper || type == TacticalSkeleton || type == SkeletonCommando || type == Paladin || type == SkeletonArcher || type == GoblinArcher || type == IcyMerman || type == PirateDeadeye || type == PirateCrossbower || type == PirateCaptain || IsSalamander(type);
 
     public static NpcSnapshot Complete(
         in NpcSnapshot before,
@@ -74,6 +75,11 @@ internal static class VanillaGroundFighterProjectileAttack
         if (before.TypeIdentity == PirateCrossbower)
             return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
                 mutations, 80f, 40f, 16f, 1f, verticalLeadMultiplier: .08f, sourceYOffset: 0f, VanillaProjectileIds.GroundFighter350Bolt, 40);
+        if (before.TypeIdentity == PirateCaptain)
+            return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
+                mutations, 8f, 4f, 11f, 1f, verticalLeadMultiplier: 0f, sourceYOffset: 0f, VanillaProjectileIds.TacticalSkeletonBullet, 30,
+                localShotsBeforeHeavy: 20f, heavyWindup: 60f, heavyVerticalLeadMultiplier: .1f,
+                heavyProjectileType: VanillaProjectileIds.PirateCaptainCannonball, heavyDamage: 100);
 
         float timer = committed.Ai.Ai2;
         if (before.TypeIdentity == Type243)
@@ -124,7 +130,9 @@ internal static class VanillaGroundFighterProjectileAttack
         in NpcSnapshot before, in NpcSnapshot committed, in VanillaNpcDefinition definition, in VanillaNpcHitboxSize hitbox,
         VanillaNpcBehaviorContext context, IVanillaNpcRandom random, IVanillaNpcProjectileEnvironment? environment,
         INpcAiCommittedNpcMutationSink mutations, float windup, float fireAt, float projectileSpeed, float firingJitter,
-        float verticalLeadMultiplier, float sourceYOffset, ProjectileTypeId projectileType, short damage)
+        float verticalLeadMultiplier, float sourceYOffset, ProjectileTypeId projectileType, short damage,
+        float localShotsBeforeHeavy = 0f, float heavyWindup = 0f, float heavyVerticalLeadMultiplier = 0f,
+        ProjectileTypeId heavyProjectileType = default, short heavyDamage = 0)
     {
         float timer = committed.Ai.Ai1;
         float mode = committed.Ai.Ai2;
@@ -133,15 +141,24 @@ internal static class VanillaGroundFighterProjectileAttack
         int directionX = committed.Simulation.DirectionX;
         int directionY = committed.Simulation.DirectionY;
         int spriteDirection = committed.Simulation.SpriteDirection;
-        if (timer > 0f)
-            timer--;
-        if (before.Simulation.JustHit)
-        {
-            timer = 30f;
-            mode = 0f;
-        }
+        NpcAiState localAi = committed.Simulation.LocalAi;
+        bool supportsHeavyShot = localShotsBeforeHeavy > 0f;
+        bool heavyShot = supportsHeavyShot && localAi.Ai2 >= localShotsBeforeHeavy;
+        float activeWindup = heavyShot ? heavyWindup : windup;
+        float activeFireAt = activeWindup * .5f;
+        float activeVerticalLeadMultiplier = heavyShot ? heavyVerticalLeadMultiplier : verticalLeadMultiplier;
         if (committed.Simulation.Confused)
             mode = 0f;
+        else
+        {
+            if (timer > 0f)
+                timer--;
+            if (before.Simulation.JustHit)
+            {
+                timer = 30f;
+                mode = 0f;
+            }
+        }
 
         bool hasShot = false;
         float shotX = 0f;
@@ -156,13 +173,13 @@ internal static class VanillaGroundFighterProjectileAttack
                 targetSlot = refresh.Target;
                 directionX = refresh.DirectionX;
                 directionY = refresh.DirectionY;
-                if (timer == fireAt)
+                if (timer == activeFireAt)
                 {
                     float sourceX = committed.PositionX + hitbox.Width * .5f;
                     float sourceY = committed.PositionY + hitbox.Height * .5f + sourceYOffset;
                     float targetX = target.CenterX - sourceX;
                     shotVelocityX = targetX + random.NextInt32(-40, 41) * firingJitter;
-                    shotVelocityY = target.CenterY - sourceY - MathF.Abs(targetX) * verticalLeadMultiplier +
+                    shotVelocityY = target.CenterY - sourceY - MathF.Abs(targetX) * activeVerticalLeadMultiplier +
                         random.NextInt32(-40, 41) * firingJitter;
                     hasShot = TryNormalize(ref shotVelocityX, ref shotVelocityY, projectileSpeed);
                     if (hasShot)
@@ -170,6 +187,12 @@ internal static class VanillaGroundFighterProjectileAttack
                         shotX = sourceX + shotVelocityX;
                         shotY = sourceY + shotVelocityY;
                         mode = AimCategory(shotVelocityX, shotVelocityY);
+                        if (supportsHeavyShot)
+                        {
+                            localAi = localAi with { Ai2 = localAi.Ai2 + 1f };
+                            if (heavyShot)
+                                localAi = localAi with { Ai2 = 0f };
+                        }
                     }
                 }
             }
@@ -192,17 +215,17 @@ internal static class VanillaGroundFighterProjectileAttack
             float sourceX = committed.PositionX + hitbox.Width * .5f;
             float sourceY = committed.PositionY + hitbox.Height * .5f;
             float aimX = target.CenterX - sourceX + random.NextInt32(-40, 41);
-            float aimY = target.CenterY - sourceY - MathF.Abs(target.CenterX - sourceX) * verticalLeadMultiplier + random.NextInt32(-40, 41);
+            float aimY = target.CenterY - sourceY - MathF.Abs(target.CenterX - sourceX) * activeVerticalLeadMultiplier + random.NextInt32(-40, 41);
             if (MathF.Sqrt(aimX * aimX + aimY * aimY) < 700f)
             {
                 velocityX *= .5f;
                 mode = AimCategory(aimX, aimY);
-                timer = windup;
+                timer = activeWindup;
             }
         }
 
         NpcAiState ai = committed.Ai with { Ai1 = timer, Ai2 = mode };
-        NpcSimulationState simulation = committed.Simulation with { DirectionX = directionX, DirectionY = directionY, SpriteDirection = spriteDirection };
+        NpcSimulationState simulation = committed.Simulation with { DirectionX = directionX, DirectionY = directionY, SpriteDirection = spriteDirection, LocalAi = localAi };
         if (ai == committed.Ai && simulation == committed.Simulation && velocityX == committed.VelocityX && targetSlot == committed.Target)
             return committed;
         var update = new NpcStateUpdate(committed.Type, committed.NetId, committed.PositionX, committed.PositionY,
@@ -212,7 +235,8 @@ internal static class VanillaGroundFighterProjectileAttack
         if (hasShot)
         {
             var intent = new NpcAiProjectileIntent(
-                projectileType, shotX, shotY, shotVelocityX, shotVelocityY, damage, 0f);
+                heavyShot ? heavyProjectileType : projectileType, shotX, shotY, shotVelocityX, shotVelocityY,
+                heavyShot ? heavyDamage : damage, 0f);
             mutations.TrySpawnProjectile(in completed, in intent, out _);
         }
         return completed;

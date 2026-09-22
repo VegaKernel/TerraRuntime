@@ -472,6 +472,37 @@ public sealed class VanillaGroundFighterProjectileAttackTests
     }
 
     [Fact]
+    public void Pirate_captain_emits_twenty_fast_shots_then_resets_its_local_counter_with_a_cannonball()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, Update(VanillaNpcIds.PirateCaptain, 0f) with
+        {
+            Ai = new NpcAiState(0f, 5f, 3f, 0f),
+            Simulation = Update(VanillaNpcIds.PirateCaptain, 0f).Simulation with { LocalAi = new NpcAiState(0f, 0f, 19f, 0f) }
+        }, out NpcSnapshot source));
+        var random = new MinimumRandom();
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, new VisibleEnvironment());
+        var fastShots = new RuntimeProjectileStore(2);
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, fastShots).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot charged));
+        Assert.Equal(20f, charged.Simulation.LocalAi.Ai2);
+        Assert.True(fastShots.TryGetActive(0, out ProjectileSnapshot bullet));
+        Assert.Equal(VanillaProjectileIds.TacticalSkeletonBullet, bullet.Type); Assert.Equal((short)30, bullet.Damage);
+
+        Assert.True(npcs.TryUpdate(charged.Handle, Update(VanillaNpcIds.PirateCaptain, 0f) with
+        {
+            Ai = new NpcAiState(0f, 31f, 3f, 0f),
+            Simulation = charged.Simulation with { LocalAi = new NpcAiState(0f, 0f, 20f, 0f) }
+        }, out NpcSnapshot heavySource));
+        var heavyShots = new RuntimeProjectileStore(2);
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, heavyShots).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(heavySource.Handle, out NpcSnapshot reset));
+        Assert.Equal(0f, reset.Simulation.LocalAi.Ai2);
+        Assert.True(heavyShots.TryGetActive(0, out ProjectileSnapshot cannonball));
+        Assert.Equal(VanillaProjectileIds.PirateCaptainCannonball, cannonball.Type); Assert.Equal((short)100, cannonball.Damage);
+    }
+
+    [Fact]
     public void Rejected_ground_fighter_transition_does_not_consume_attack_rng()
     {
         var npcs = new RuntimeNpcStore(2);
