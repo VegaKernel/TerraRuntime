@@ -144,6 +144,22 @@ public sealed class VanillaZombieMotionTests
         Assert.Equal(12f, result.Ai.Ai3);
     }
 
+    [Fact]
+    public void Sea_snail_uses_its_source_narrow_speed_band_and_ground_damping()
+    {
+        VanillaZombieMotionInput accelerating = CreateInput() with
+        {
+            VelocityX = .49f,
+            MotionProfile = VanillaGroundFighterMotionProfile.SeaSnail
+        };
+        Assert.True(VanillaZombieMotion.TryStep(in accelerating, out VanillaZombieMotionResult faster));
+        Assert.Equal(.5f, faster.VelocityX, 5);
+
+        VanillaZombieMotionInput damping = accelerating with { VelocityX = 1f };
+        Assert.True(VanillaZombieMotion.TryStep(in damping, out VanillaZombieMotionResult slower));
+        Assert.Equal(.7f, slower.VelocityX, 5);
+    }
+
     private static VanillaZombieMotionInput CreateInput() =>
         new(
             PositionX: 100f,

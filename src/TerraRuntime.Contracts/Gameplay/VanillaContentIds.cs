@@ -219,6 +219,10 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId PirateDeadeye = new(214);
     public static readonly NpcTypeId PirateCrossbower = new(215);
     public static readonly NpcTypeId PirateCaptain = new(216);
+    public static readonly NpcTypeId CochinealBeetle = new(217);
+    public static readonly NpcTypeId CyanBeetle = new(218);
+    public static readonly NpcTypeId LacBeetle = new(219);
+    public static readonly NpcTypeId SeaSnail = new(220);
     public static readonly NpcTypeId ZombieXmas = new(331);
     public static readonly NpcTypeId ZombieSweater = new(332);
     public static readonly NpcTypeId ZombieElf = new(338);

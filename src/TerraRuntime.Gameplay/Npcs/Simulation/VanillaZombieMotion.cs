@@ -83,7 +83,8 @@ public enum VanillaGroundFighterMotionProfile : byte
     IcyMerman = 12,
     PirateDeadeye = 13,
     PirateCrossbower = 14,
-    PirateCaptain = 15
+    PirateCaptain = 15,
+    SeaSnail = 16
 }
 
 /// <summary>
@@ -252,6 +253,22 @@ public static class VanillaZombieMotion
             else if (spriteDirection == directionX)
             {
                 velocityX = (velocityX * 10f + maximumSpeed * directionX) / 11f;
+            }
+        }
+        else if (input.MotionProfile == VanillaGroundFighterMotionProfile.SeaSnail)
+        {
+            if (velocityX < -maximumSpeed || velocityX > maximumSpeed)
+            {
+                if (velocityY == 0f)
+                    velocityX *= .7f;
+            }
+            else if (velocityX < maximumSpeed && directionX == 1)
+            {
+                velocityX = MathF.Min(velocityX + .03f, maximumSpeed);
+            }
+            else if (velocityX > -maximumSpeed && directionX == -1)
+            {
+                velocityX = MathF.Max(velocityX - .03f, -maximumSpeed);
             }
         }
         else if (input.MotionProfile == VanillaGroundFighterMotionProfile.HalfHealthBerserker)

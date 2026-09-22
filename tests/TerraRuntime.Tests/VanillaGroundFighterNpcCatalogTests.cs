@@ -71,6 +71,10 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         [VanillaNpcIds.PirateDeadeye, 18, 40, 30, 12, 150, .3f, 1f, 1f, false, false],
         [VanillaNpcIds.PirateCrossbower, 18, 40, 35, 18, 260, .35f, 1f, 1f, false, false],
         [VanillaNpcIds.PirateCaptain, 18, 40, 70, 28, 2000, 0f, 1f, 1f, false, false],
+        [VanillaNpcIds.CochinealBeetle, 28, 20, 20, 10, 40, 1f, 1f, 1.5f, false, false],
+        [VanillaNpcIds.CyanBeetle, 28, 20, 20, 10, 40, 1f, 1f, 1.5f, false, false],
+        [VanillaNpcIds.LacBeetle, 28, 20, 20, 10, 40, 1f, 1f, 1.5f, false, false],
+        [VanillaNpcIds.SeaSnail, 28, 20, 20, 10, 40, 1f, 1f, .5f, false, false],
     ];
 
     [Theory]
@@ -119,8 +123,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(85, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(83, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(89, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(87, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);

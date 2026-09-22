@@ -301,6 +301,7 @@ Conversely, packet emission, NPC/projectile/item spawn, player/NPC damage or buf
 - [x] Icy Merman `206`: source `50/25` stationary wind-up, elevated Icewater Spit `177` release and AI_028 projectile defaults;
 - [x] Pirate Deadeye `214` and Crossbower `215`: source `40/20` and `80/40` stationary weapon wind-ups with their distinct aim lead and committed bullets `180/82`;
 - [x] Pirate Captain `216`: source twenty-shot fast-bullet cycle followed by a 60-tick Cannonball `240` wind-up, using revision-owned `localAI[2]`;
+- [x] Cochineal/Cyan/Lac Beetles `217–219` and Sea Snail `220`: concrete source defaults and AI_003 speed bands, including Sea Snail's `.5/.03/.7` branch;
 - [x] Skeleton definition, distinct speed band, world physics, check-active and packet sync;
 - [x] route admitted fighter speed, acceleration, stuck/despawn windows and terrain-jump values through explicit version-pinned profiles consumed by AI and world traversal;
 - [x] carry persisted Blood Moon state into the authoritative NPC world-motion stage;
