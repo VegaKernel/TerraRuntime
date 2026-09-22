@@ -304,6 +304,7 @@ Conversely, packet emission, NPC/projectile/item spawn, player/NPC damage or buf
 - [x] Cochineal/Cyan/Lac Beetles `217–219` and Sea Snail `220`: concrete source defaults and AI_003 speed bands, including Sea Snail's `.5/.03/.7` branch;
 - [x] Crab `67`, Lihzahrd `199`, Pirate Deckhand `212` and Corsair `213`: source defaults, their distinct `.5/.03/.7`, `4/.1/.8`, `2/.07/.8` and `3/.07/.99` movement profiles, plus the source day-surface exemption shared by the pirate wave;
 - [x] Clown `109`: source `2/.04` ground movement, hit-reset `ai[2]` timer and the server-owned 450-tick Happy Bomb `75` throw, including its hostile AI_016 fuse and armed 128-pixel explosion;
+- [x] Rain Zombie `223`: source defaults and its scale-adjusted `1.05` AI_003 movement band;
 - [x] Skeleton definition, distinct speed band, world physics, check-active and packet sync;
 - [x] route admitted fighter speed, acceleration, stuck/despawn windows and terrain-jump values through explicit version-pinned profiles consumed by AI and world traversal;
 - [x] carry persisted Blood Moon state into the authoritative NPC world-motion stage;

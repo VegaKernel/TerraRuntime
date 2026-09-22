@@ -123,8 +123,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(94, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(92, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(95, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(93, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
@@ -196,6 +196,20 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.Clown, out var behavior));
         Assert.Equal(2f, behavior.BaseMaximumHorizontalSpeed, 5);
         Assert.Equal(.04f, behavior.HorizontalAcceleration, 5);
+    }
+
+    [Fact]
+    public void Rain_zombie_keeps_its_source_scale_adjusted_speed_band()
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetDefinition(VanillaNpcIds.RainZombie, out var definition));
+        Assert.Equal(16, definition.Damage);
+        Assert.Equal(8, definition.Defense);
+        Assert.Equal(50, definition.LifeMax);
+        Assert.Equal(.45f, definition.KnockBackResist, 5);
+
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.RainZombie, out var behavior));
+        Assert.Equal(1.05f, behavior.BaseMaximumHorizontalSpeed, 5);
+        Assert.True(behavior.ScaleAdjustsMaximumHorizontalSpeed);
     }
 
     [Theory]

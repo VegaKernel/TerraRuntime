@@ -35,6 +35,8 @@ public static class VanillaGroundFighterNpcCatalog
         Fighter(VanillaNpcIds.FemaleZombie, 18, 40, 12, 4, 38, 0.6f, 1f, 0.87f, scaleAdjustsSpeed: true),
         Fighter(VanillaNpcIds.VampireHumanoid, 18, 40, 80, 24, 750, 0.4f, 1f, 6f,
             reversingVelocityDamping: 0.95f)
+        // TerrariaServer 1.4.5.8 NPC.SetDefaults 223 and AI_003's scale-adjusted rain-zombie speed band.
+        ,Fighter(VanillaNpcIds.RainZombie, 18, 40, 16, 8, 50, .45f, 1f, 1.05f, scaleAdjustsSpeed: true)
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 109 and AI_003's dedicated low-acceleration clown branch.
         ,Fighter(VanillaNpcIds.Clown, 34, 78, 50, 20, 400, .4f, 1f, 2f, acceleration: .04f)
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 67 and AI_003's narrow crab movement branch.
@@ -196,6 +198,7 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.TwiggyZombie,
         VanillaNpcIds.FemaleZombie,
         VanillaNpcIds.VampireHumanoid,
+        VanillaNpcIds.RainZombie,
         VanillaNpcIds.Clown,
         VanillaNpcIds.Crab,
         VanillaNpcIds.Lihzahrd,
