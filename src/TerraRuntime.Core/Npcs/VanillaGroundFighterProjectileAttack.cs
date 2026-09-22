@@ -22,9 +22,11 @@ internal static class VanillaGroundFighterProjectileAttack
     private static readonly NpcTypeId SkeletonArcher = new(110);
     private static readonly NpcTypeId GoblinArcher = new(111);
     private static readonly NpcTypeId IcyMerman = new(206);
+    private static readonly NpcTypeId PirateDeadeye = new(214);
+    private static readonly NpcTypeId PirateCrossbower = new(215);
 
     public static bool IsSupported(NpcTypeId type) =>
-        type == Type243 || type == Type251 || type == Type350 || type == SkeletonSniper || type == TacticalSkeleton || type == SkeletonCommando || type == Paladin || type == SkeletonArcher || type == GoblinArcher || type == IcyMerman || IsSalamander(type);
+        type == Type243 || type == Type251 || type == Type350 || type == SkeletonSniper || type == TacticalSkeleton || type == SkeletonCommando || type == Paladin || type == SkeletonArcher || type == GoblinArcher || type == IcyMerman || type == PirateDeadeye || type == PirateCrossbower || IsSalamander(type);
 
     public static NpcSnapshot Complete(
         in NpcSnapshot before,
@@ -48,24 +50,30 @@ internal static class VanillaGroundFighterProjectileAttack
             return CompleteSalamander(in before, in committed, in definition, in hitbox, context, random, environment, mutations);
         if (before.TypeIdentity == SkeletonSniper)
             return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
-                mutations, 200f, 100f, 11f, .2f, noVerticalLead: true, sourceYOffset: 0f, VanillaProjectileIds.SkeletonSniperBullet, 100);
+                mutations, 200f, 100f, 11f, .2f, verticalLeadMultiplier: 0f, sourceYOffset: 0f, VanillaProjectileIds.SkeletonSniperBullet, 100);
         if (before.TypeIdentity == TacticalSkeleton)
             return CompleteTacticalSkeleton(in before, in committed, in definition, in hitbox, context, random, environment, mutations);
         if (before.TypeIdentity == SkeletonCommando)
             return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
-                mutations, 90f, 45f, 4f, 1f, noVerticalLead: false, sourceYOffset: 0f, VanillaProjectileIds.SkeletonCommandoRocket, 60);
+                mutations, 90f, 45f, 4f, 1f, verticalLeadMultiplier: .1f, sourceYOffset: 0f, VanillaProjectileIds.SkeletonCommandoRocket, 60);
         if (before.TypeIdentity == Paladin)
             return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
-                mutations, 30f, 15f, 9f, 1f, noVerticalLead: false, sourceYOffset: -10f, VanillaProjectileIds.PaladinHammer, 60);
+                mutations, 30f, 15f, 9f, 1f, verticalLeadMultiplier: .1f, sourceYOffset: -10f, VanillaProjectileIds.PaladinHammer, 60);
         if (before.TypeIdentity == SkeletonArcher)
             return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
-                mutations, 70f, 35f, 11f, 1f, noVerticalLead: false, sourceYOffset: 0f, VanillaProjectileIds.GroundFighter350Bolt, 35);
+                mutations, 70f, 35f, 11f, 1f, verticalLeadMultiplier: .1f, sourceYOffset: 0f, VanillaProjectileIds.GroundFighter350Bolt, 35);
         if (before.TypeIdentity == GoblinArcher)
             return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
-                mutations, 180f, 90f, 9f, 1f, noVerticalLead: false, sourceYOffset: 0f, VanillaProjectileIds.GoblinArcherArrow, 11);
+                mutations, 180f, 90f, 9f, 1f, verticalLeadMultiplier: .1f, sourceYOffset: 0f, VanillaProjectileIds.GoblinArcherArrow, 11);
         if (before.TypeIdentity == IcyMerman)
             return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
-                mutations, 50f, 25f, 7f, 1f, noVerticalLead: false, sourceYOffset: -10f, VanillaProjectileIds.IcewaterSpit, 37);
+                mutations, 50f, 25f, 7f, 1f, verticalLeadMultiplier: .1f, sourceYOffset: -10f, VanillaProjectileIds.IcewaterSpit, 37);
+        if (before.TypeIdentity == PirateDeadeye)
+            return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
+                mutations, 40f, 20f, 14f, 1f, verticalLeadMultiplier: 0f, sourceYOffset: 0f, VanillaProjectileIds.TacticalSkeletonBullet, 25);
+        if (before.TypeIdentity == PirateCrossbower)
+            return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
+                mutations, 80f, 40f, 16f, 1f, verticalLeadMultiplier: .08f, sourceYOffset: 0f, VanillaProjectileIds.GroundFighter350Bolt, 40);
 
         float timer = committed.Ai.Ai2;
         if (before.TypeIdentity == Type243)
@@ -116,7 +124,7 @@ internal static class VanillaGroundFighterProjectileAttack
         in NpcSnapshot before, in NpcSnapshot committed, in VanillaNpcDefinition definition, in VanillaNpcHitboxSize hitbox,
         VanillaNpcBehaviorContext context, IVanillaNpcRandom random, IVanillaNpcProjectileEnvironment? environment,
         INpcAiCommittedNpcMutationSink mutations, float windup, float fireAt, float projectileSpeed, float firingJitter,
-        bool noVerticalLead, float sourceYOffset, ProjectileTypeId projectileType, short damage)
+        float verticalLeadMultiplier, float sourceYOffset, ProjectileTypeId projectileType, short damage)
     {
         float timer = committed.Ai.Ai1;
         float mode = committed.Ai.Ai2;
@@ -154,7 +162,7 @@ internal static class VanillaGroundFighterProjectileAttack
                     float sourceY = committed.PositionY + hitbox.Height * .5f + sourceYOffset;
                     float targetX = target.CenterX - sourceX;
                     shotVelocityX = targetX + random.NextInt32(-40, 41) * firingJitter;
-                    shotVelocityY = target.CenterY - sourceY - (noVerticalLead ? 0f : MathF.Abs(targetX) * .1f) +
+                    shotVelocityY = target.CenterY - sourceY - MathF.Abs(targetX) * verticalLeadMultiplier +
                         random.NextInt32(-40, 41) * firingJitter;
                     hasShot = TryNormalize(ref shotVelocityX, ref shotVelocityY, projectileSpeed);
                     if (hasShot)
@@ -184,7 +192,7 @@ internal static class VanillaGroundFighterProjectileAttack
             float sourceX = committed.PositionX + hitbox.Width * .5f;
             float sourceY = committed.PositionY + hitbox.Height * .5f;
             float aimX = target.CenterX - sourceX + random.NextInt32(-40, 41);
-            float aimY = target.CenterY - sourceY - MathF.Abs(target.CenterX - sourceX) * .1f + random.NextInt32(-40, 41);
+            float aimY = target.CenterY - sourceY - MathF.Abs(target.CenterX - sourceX) * verticalLeadMultiplier + random.NextInt32(-40, 41);
             if (MathF.Sqrt(aimX * aimX + aimY * aimY) < 700f)
             {
                 velocityX *= .5f;

@@ -415,6 +415,8 @@ public sealed class VanillaGroundFighterProjectileAttackTests
     [InlineData(110, 36f, 70f, 35f, 11f, 82, 35)]
     [InlineData(111, 91f, 180f, 90f, 9f, 81, 11)]
     [InlineData(206, 26f, 50f, 25f, 7f, 177, 37)]
+    [InlineData(214, 21f, 40f, 20f, 14f, 180, 25)]
+    [InlineData(215, 41f, 80f, 40f, 16f, 82, 40)]
     public void Stationary_ranged_fighters_arm_and_fire_their_source_projectile_at_half_windup(
         int rawType, float firingTimer, float windup, float expectedTimer, float speed, int projectileType, int damage)
     {

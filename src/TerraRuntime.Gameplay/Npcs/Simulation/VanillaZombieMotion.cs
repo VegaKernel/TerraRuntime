@@ -80,7 +80,9 @@ public enum VanillaGroundFighterMotionProfile : byte
     SkeletonCommando = 9,
     Paladin = 10,
     StationaryArcher = 11,
-    IcyMerman = 12
+    IcyMerman = 12,
+    PirateDeadeye = 13,
+    PirateCrossbower = 14
 }
 
 /// <summary>
@@ -147,6 +149,8 @@ public static class VanillaZombieMotion
         bool stationaryRangedArmed = input.MotionProfile is
             VanillaGroundFighterMotionProfile.StationaryArcher or
             VanillaGroundFighterMotionProfile.IcyMerman or
+            VanillaGroundFighterMotionProfile.PirateDeadeye or
+            VanillaGroundFighterMotionProfile.PirateCrossbower or
             VanillaGroundFighterMotionProfile.SkeletonSniper or
             VanillaGroundFighterMotionProfile.TacticalSkeleton or
             VanillaGroundFighterMotionProfile.SkeletonCommando && ai2 > 0f;
@@ -228,7 +232,7 @@ public static class VanillaZombieMotion
             // The source's armed branch owns horizontal motion for this tick.
         }
         else if (input.MotionProfile == VanillaGroundFighterMotionProfile.Salamander ||
-                 (input.MotionProfile is VanillaGroundFighterMotionProfile.TacticalSkeleton or VanillaGroundFighterMotionProfile.SkeletonSniper or VanillaGroundFighterMotionProfile.SkeletonCommando or VanillaGroundFighterMotionProfile.Paladin or VanillaGroundFighterMotionProfile.StationaryArcher or VanillaGroundFighterMotionProfile.IcyMerman && ai2 > 0f))
+                 (input.MotionProfile is VanillaGroundFighterMotionProfile.TacticalSkeleton or VanillaGroundFighterMotionProfile.SkeletonSniper or VanillaGroundFighterMotionProfile.SkeletonCommando or VanillaGroundFighterMotionProfile.Paladin or VanillaGroundFighterMotionProfile.StationaryArcher or VanillaGroundFighterMotionProfile.IcyMerman or VanillaGroundFighterMotionProfile.PirateDeadeye or VanillaGroundFighterMotionProfile.PirateCrossbower && ai2 > 0f))
         {
             // AI_003's stationary ranged branches take over after the shared target/stuck prepass.
         }

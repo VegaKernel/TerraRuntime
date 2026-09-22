@@ -216,6 +216,8 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId SkeletonArcher = new(110);
     public static readonly NpcTypeId GoblinArcher = new(111);
     public static readonly NpcTypeId IcyMerman = new(206);
+    public static readonly NpcTypeId PirateDeadeye = new(214);
+    public static readonly NpcTypeId PirateCrossbower = new(215);
     public static readonly NpcTypeId ZombieXmas = new(331);
     public static readonly NpcTypeId ZombieSweater = new(332);
     public static readonly NpcTypeId ZombieElf = new(338);

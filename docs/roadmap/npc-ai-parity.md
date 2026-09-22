@@ -299,6 +299,7 @@ Conversely, packet emission, NPC/projectile/item spawn, player/NPC damage or buf
 - [x] Paladin `290`: source `30/15` stationary wind-up, elevated release and committed hammer `300` shot;
 - [x] Skeleton Archer `110` and Goblin Archer `111`: source `70/35` and `180/90` stationary arrow wind-ups with committed projectiles `82/81`;
 - [x] Icy Merman `206`: source `50/25` stationary wind-up, elevated Icewater Spit `177` release and AI_028 projectile defaults;
+- [x] Pirate Deadeye `214` and Crossbower `215`: source `40/20` and `80/40` stationary weapon wind-ups with their distinct aim lead and committed bullets `180/82`;
 - [x] Skeleton definition, distinct speed band, world physics, check-active and packet sync;
 - [x] route admitted fighter speed, acceleration, stuck/despawn windows and terrain-jump values through explicit version-pinned profiles consumed by AI and world traversal;
 - [x] carry persisted Blood Moon state into the authoritative NPC world-motion stage;
