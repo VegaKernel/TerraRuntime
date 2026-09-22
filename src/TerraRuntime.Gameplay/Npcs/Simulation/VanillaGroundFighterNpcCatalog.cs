@@ -91,6 +91,10 @@ public static class VanillaGroundFighterNpcCatalog
             motionProfile: VanillaGroundFighterMotionProfile.Salamander)
         ,Fighter(VanillaNpcIds.Salamander9, 24, 44, 18, 10, 65, 1f, 1f, 1f,
             motionProfile: VanillaGroundFighterMotionProfile.Salamander)
+        // TerrariaServer 1.4.5.8 NPC.SetDefaults (294..296), AI_003 generic motion and close-range leap.
+        ,Fighter(VanillaNpcIds.BigAngryBones, 18, 40, 34, 6, 70, .9f, 1f, 1f, closeRangeLunge: true)
+        ,Fighter(VanillaNpcIds.BigMuscleAngryBones, 18, 40, 28, 12, 70, .7f, 1f, 1f, closeRangeLunge: true)
+        ,Fighter(VanillaNpcIds.BigHelmetAngryBones, 18, 40, 24, 14, 120, .6f, 1f, 1f, closeRangeLunge: true)
         ,Fighter(new NpcTypeId(78), 18, 40, 50, 16, 130, .6f, 1f, 1f,
             acceleration: .05f, motionProfile: VanillaGroundFighterMotionProfile.HalfHealthBerserker, overspeedGroundDamping: .7f)
         ,Fighter(new NpcTypeId(79), 18, 40, 60, 18, 180, .5f, 1f, 1f,
@@ -175,6 +179,9 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.Salamander7,
         VanillaNpcIds.Salamander8,
         VanillaNpcIds.Salamander9,
+        VanillaNpcIds.BigAngryBones,
+        VanillaNpcIds.BigMuscleAngryBones,
+        VanillaNpcIds.BigHelmetAngryBones,
         new(78), new(79), new(80), new(243), new(251), new(254), new(255), new(257), new(258), new(287), new(630),
         new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280)
     ];

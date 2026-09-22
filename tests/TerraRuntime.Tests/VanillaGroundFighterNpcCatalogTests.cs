@@ -58,6 +58,9 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         [VanillaNpcIds.Salamander7, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
         [VanillaNpcIds.Salamander8, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
         [VanillaNpcIds.Salamander9, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.BigAngryBones, 18, 40, 34, 6, 70, .9f, 1f, 1f, false, true],
+        [VanillaNpcIds.BigMuscleAngryBones, 18, 40, 28, 12, 70, .7f, 1f, 1f, false, true],
+        [VanillaNpcIds.BigHelmetAngryBones, 18, 40, 24, 14, 120, .6f, 1f, 1f, false, true],
     ];
 
     [Theory]
@@ -106,8 +109,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(72, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(70, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(75, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(73, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
@@ -226,6 +229,22 @@ public sealed class VanillaGroundFighterNpcCatalogTests
             Assert.Equal(VanillaGroundFighterMotionProfile.Salamander, behavior.MotionProfile);
             Assert.Equal(1f, behavior.BaseMaximumHorizontalSpeed, 5);
             Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
+        }
+    }
+
+    [Fact]
+    public void Big_angry_bones_variants_keep_their_source_leap_profile()
+    {
+        foreach (NpcTypeId type in new[]
+        {
+            VanillaNpcIds.BigAngryBones,
+            VanillaNpcIds.BigMuscleAngryBones,
+            VanillaNpcIds.BigHelmetAngryBones
+        })
+        {
+            Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(type, out var behavior));
+            Assert.Equal(VanillaGroundFighterMotionProfile.Standard, behavior.MotionProfile);
+            Assert.True(behavior.CloseRangeLunge);
         }
     }
 

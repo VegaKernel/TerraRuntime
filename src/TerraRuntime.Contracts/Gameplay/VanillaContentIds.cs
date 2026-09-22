@@ -206,6 +206,9 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId SkeletonTopHat = new(322);
     public static readonly NpcTypeId SkeletonAstronaut = new(323);
     public static readonly NpcTypeId SkeletonAlien = new(324);
+    public static readonly NpcTypeId BigAngryBones = new(294);
+    public static readonly NpcTypeId BigMuscleAngryBones = new(295);
+    public static readonly NpcTypeId BigHelmetAngryBones = new(296);
     public static readonly NpcTypeId ZombieXmas = new(331);
     public static readonly NpcTypeId ZombieSweater = new(332);
     public static readonly NpcTypeId ZombieElf = new(338);

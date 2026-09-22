@@ -292,6 +292,7 @@ Conversely, packet emission, NPC/projectile/item spawn, player/NPC damage or buf
 - [x] Zombie ordinary fighter slice;
 - [x] Crawdad `494/495`: source 42-pixel AI_003 armed-melee entry, twenty-tick 1.5x damage state and post-five-tick 18-pixel directional contact reach;
 - [x] Salamander `498..506`: stationary AI_003 70-tick ranged wind-up, per-armed-tick target refresh and committed projectile `572` spawn;
+- [x] Big Angry Bones `294..296`: pinned Fighter defaults and generic AI_003 close-range leap profile;
 - [x] Skeleton definition, distinct speed band, world physics, check-active and packet sync;
 - [x] route admitted fighter speed, acceleration, stuck/despawn windows and terrain-jump values through explicit version-pinned profiles consumed by AI and world traversal;
 - [x] carry persisted Blood Moon state into the authoritative NPC world-motion stage;
