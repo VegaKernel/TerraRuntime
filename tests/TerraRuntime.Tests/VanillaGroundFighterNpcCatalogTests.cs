@@ -123,8 +123,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(93, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(91, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(94, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(92, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
@@ -181,6 +181,21 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(3f, corsair.BaseMaximumHorizontalSpeed, 5);
         Assert.Equal(.99f, corsair.ReversingVelocityDamping, 5);
         Assert.False(corsair.DaySurfaceEncouragesDespawn);
+    }
+
+    [Fact]
+    public void Clown_keeps_its_source_slow_ai003_motion_profile()
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetDefinition(VanillaNpcIds.Clown, out var definition));
+        Assert.Equal(34, definition.BaseWidth);
+        Assert.Equal(78, definition.BaseHeight);
+        Assert.Equal(50, definition.Damage);
+        Assert.Equal(20, definition.Defense);
+        Assert.Equal(400, definition.LifeMax);
+
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.Clown, out var behavior));
+        Assert.Equal(2f, behavior.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.04f, behavior.HorizontalAcceleration, 5);
     }
 
     [Theory]

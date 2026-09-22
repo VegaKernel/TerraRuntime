@@ -51,19 +51,19 @@ public static class VanillaExplosiveProjectileFacts1458
             return true;
         }
 
-        if (type == VanillaProjectileIds.Bomb || type == VanillaProjectileIds.Dynamite)
+        if (type == VanillaProjectileIds.Bomb || type == VanillaProjectileIds.Dynamite || type == VanillaProjectileIds.HappyBomb)
         {
             bool bomb = type == VanillaProjectileIds.Bomb;
             defaults = new VanillaExplosiveProjectileDefaults1458(
-                Width: bomb ? 22 : 10,
-                Height: bomb ? 22 : 10,
+                Width: bomb || type == VanillaProjectileIds.HappyBomb ? 22 : 10,
+                Height: bomb || type == VanillaProjectileIds.HappyBomb ? 22 : 10,
                 AiStyle: VanillaProjectileAiStyles.Bomb,
                 Penetrate: -1,
                 TimeLeft: VanillaProjectileLifecycleFacts.DefaultTimeLeft,
                 TileCollide: true,
                 IgnoreWater: false,
-                Friendly: true,
-                Hostile: false,
+                Friendly: type != VanillaProjectileIds.HappyBomb,
+                Hostile: type == VanillaProjectileIds.HappyBomb,
                 Ranged: false,
                 ExtraUpdates: 0);
             return true;
@@ -131,7 +131,7 @@ public static class VanillaExplosiveProjectileFacts1458
     public static bool TryGetAi016MotionKind(ProjectileTypeId type, out VanillaAi016MotionKind1458 kind)
     {
         int raw = type.Value;
-        if (raw is 28 or 29)
+        if (raw is 28 or 29 or 75)
         {
             kind = VanillaAi016MotionKind1458.OrdinaryFuse;
             return true;

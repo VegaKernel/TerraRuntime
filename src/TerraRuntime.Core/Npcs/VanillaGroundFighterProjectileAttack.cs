@@ -21,13 +21,14 @@ internal static class VanillaGroundFighterProjectileAttack
     private static readonly NpcTypeId Paladin = new(290);
     private static readonly NpcTypeId SkeletonArcher = new(110);
     private static readonly NpcTypeId GoblinArcher = new(111);
+    private static readonly NpcTypeId Clown = new(109);
     private static readonly NpcTypeId IcyMerman = new(206);
     private static readonly NpcTypeId PirateDeadeye = new(214);
     private static readonly NpcTypeId PirateCrossbower = new(215);
     private static readonly NpcTypeId PirateCaptain = new(216);
 
     public static bool IsSupported(NpcTypeId type) =>
-        type == Type243 || type == Type251 || type == Type350 || type == SkeletonSniper || type == TacticalSkeleton || type == SkeletonCommando || type == Paladin || type == SkeletonArcher || type == GoblinArcher || type == IcyMerman || type == PirateDeadeye || type == PirateCrossbower || type == PirateCaptain || IsSalamander(type);
+        type == Type243 || type == Type251 || type == Type350 || type == SkeletonSniper || type == TacticalSkeleton || type == SkeletonCommando || type == Paladin || type == SkeletonArcher || type == GoblinArcher || type == Clown || type == IcyMerman || type == PirateDeadeye || type == PirateCrossbower || type == PirateCaptain || IsSalamander(type);
 
     public static NpcSnapshot Complete(
         in NpcSnapshot before,
@@ -66,6 +67,8 @@ internal static class VanillaGroundFighterProjectileAttack
         if (before.TypeIdentity == GoblinArcher)
             return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
                 mutations, 180f, 90f, 9f, 1f, verticalLeadMultiplier: .1f, sourceYOffset: 0f, VanillaProjectileIds.GoblinArcherArrow, 11);
+        if (before.TypeIdentity == Clown)
+            return CompleteClown(in before, in committed, in hitbox, mutations);
         if (before.TypeIdentity == IcyMerman)
             return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
                 mutations, 50f, 25f, 7f, 1f, verticalLeadMultiplier: .1f, sourceYOffset: -10f, VanillaProjectileIds.IcewaterSpit, 37);
@@ -124,6 +127,36 @@ internal static class VanillaGroundFighterProjectileAttack
         if (CanFire(in type251Completed, in hitbox, context, environment, requireGlobalDistance: true, out VanillaNpcTargetCandidate type251Target))
             SpawnType251Bolt(in type251Completed, in type251Target, in hitbox, random, mutations);
         return type251Completed;
+    }
+
+    private static NpcSnapshot CompleteClown(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        in VanillaNpcHitboxSize hitbox,
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        // NPC.AI_003_Fighters: the timer is reset by a hit, advances without an LOS/facing gate, and the
+        // Happy Bomb is created with zero initial damage; AI_016 arms it during its three-tick explosion frame.
+        float timer = before.Simulation.JustHit ? 0f : committed.Ai.Ai2;
+        timer += 1f;
+        if (timer <= 450f)
+            return UpdateTimer(in committed, timer, mutations);
+
+        NpcSnapshot completed = UpdateTimer(in committed, 0f, mutations);
+        if (completed.Revision == committed.Revision)
+            return committed;
+
+        int direction = completed.Simulation.DirectionX;
+        var intent = new NpcAiProjectileIntent(
+            VanillaProjectileIds.HappyBomb,
+            completed.PositionX + hitbox.Width * .5f - direction * 24f,
+            completed.PositionY + 4f,
+            3f * direction,
+            -5f,
+            Damage: 0,
+            KnockBack: 0f);
+        mutations.TrySpawnProjectile(in completed, in intent, out _);
+        return completed;
     }
 
     private static NpcSnapshot CompleteDungeonSkeletonShooter(

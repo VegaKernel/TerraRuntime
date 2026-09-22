@@ -830,12 +830,14 @@ internal static partial class VanillaProjectileBehaviorStepper
                     short? armedDamage = current.Type.Value switch
                     {
                         28 => 100,
+                        75 => 100,
                         29 => 250,
                         _ => null
                     };
                     float? armedKnockBack = current.Type.Value switch
                     {
                         28 => 8f,
+                        75 => 8f,
                         29 => 10f,
                         _ => null
                     };

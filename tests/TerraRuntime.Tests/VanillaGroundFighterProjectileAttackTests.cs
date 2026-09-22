@@ -503,6 +503,32 @@ public sealed class VanillaGroundFighterProjectileAttackTests
     }
 
     [Fact]
+    public void Clown_resets_hits_and_throws_a_zero_damage_happy_bomb_after_450_ticks()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, Update(VanillaNpcIds.Clown, 450f), out NpcSnapshot source));
+        var projectiles = new RuntimeProjectileStore(2);
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(new MinimumRandom(), new VisibleEnvironment());
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot committed));
+        Assert.Equal(0f, committed.Ai.Ai2);
+        Assert.True(projectiles.TryGetActive(0, out ProjectileSnapshot bomb));
+        Assert.Equal(VanillaProjectileIds.HappyBomb, bomb.Type);
+        Assert.Equal((short)0, bomb.Damage);
+        Assert.Equal(3f, bomb.VelocityX, 5);
+        Assert.Equal(-5f, bomb.VelocityY, 5);
+
+        Assert.True(npcs.TryUpdate(committed.Handle, Update(VanillaNpcIds.Clown, 400f) with
+        {
+            Simulation = committed.Simulation with { JustHit = true }
+        }, out NpcSnapshot hit));
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(hit.Handle, out NpcSnapshot reset));
+        Assert.Equal(1f, reset.Ai.Ai2);
+    }
+
+    [Fact]
     public void Rejected_ground_fighter_transition_does_not_consume_attack_rng()
     {
         var npcs = new RuntimeNpcStore(2);
