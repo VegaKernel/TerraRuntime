@@ -218,6 +218,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId SkeletonArcher = new(110);
     public static readonly NpcTypeId GoblinArcher = new(111);
     public static readonly NpcTypeId Clown = new(109);
+    public static readonly NpcTypeId ChaosElemental = new(120);
     public static readonly NpcTypeId IcyMerman = new(206);
     public static readonly NpcTypeId PirateDeckhand = new(212);
     public static readonly NpcTypeId PirateCorsair = new(213);

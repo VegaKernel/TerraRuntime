@@ -90,6 +90,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaWallOfFleshHungryNpcBehaviorStrategy _wallOfFleshHungry = new();
     private readonly VanillaFireImpNpcBehaviorStrategy _fireImp;
     private readonly VanillaGoblinSorcererBehavior _goblinSorcerer;
+    private readonly VanillaChaosElementalBehavior _chaosElemental;
     private readonly VanillaDarkCasterBehavior _darkCaster = new();
     private readonly VanillaSphereNpcBehaviorStrategy _burningSphere = new();
     private readonly VanillaQueenSlimeNpcBehaviorStrategy _queenSlime;
@@ -123,6 +124,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         _slimeGround = new VanillaSlimeGroundNpcBehaviorStrategy(_random);
         _fireImp = new VanillaFireImpNpcBehaviorStrategy(_random);
         _goblinSorcerer = new VanillaGoblinSorcererBehavior(_random);
+        _chaosElemental = new VanillaChaosElementalBehavior(_random);
         _flyer = new VanillaServantOfCthulhuNpcBehaviorStrategy(_random);
         _eyeOfCthulhu = new VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy(_random);
         _kingSlime = new VanillaKingSlimeNpcBehaviorStrategy(kingSlimeEnvironment);
@@ -204,7 +206,12 @@ public sealed class VanillaNpcTargetingAiStepper :
         _wallOfFleshEye.SetEnvironment(environment);
         _fireImp.SetEnvironment(environment);
         _goblinSorcerer.SetEnvironment(environment);
+        if (environment is IVanillaChaosElementalEnvironment chaosEnvironment)
+            _chaosElemental.SetEnvironment(chaosEnvironment);
     }
+
+    public void SetChaosElementalEnvironment(IVanillaChaosElementalEnvironment environment) =>
+        _chaosElemental.SetEnvironment(environment);
 
     public void SetWormEnvironment(IVanillaWormEnvironment environment)
     {
@@ -2419,7 +2426,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         proposed.Type == before.Type &&
         (before.TypeIdentity == VanillaNpcIds.DarkCaster || before.TypeIdentity == VanillaNpcIds.FireImp || before.TypeIdentity == VanillaNpcIds.GoblinSorcerer || before.TypeIdentity == VanillaNpcIds.Tim || before.TypeIdentity == VanillaNpcIds.RuneWizard || before.TypeIdentity.Value is >= 281 and <= 286 || before.TypeIdentity == VanillaNpcIds.Harpy ||
          before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon ||
-         before.TypeIdentity == VanillaNpcIds.RedDevil || VanillaServantOfCthulhuNpcBehaviorStrategy.IsHornetStingerShooter(before.TypeIdentity) ||
+         before.TypeIdentity == VanillaNpcIds.RedDevil || before.TypeIdentity == VanillaNpcIds.ChaosElemental || VanillaServantOfCthulhuNpcBehaviorStrategy.IsHornetStingerShooter(before.TypeIdentity) ||
          VanillaGroundFighterProjectileAttack.IsSupported(before.TypeIdentity));
 
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
@@ -2431,6 +2438,8 @@ public sealed class VanillaNpcTargetingAiStepper :
             return _fireImp.Complete(in before, in committed, _context, mutations);
         if ((before.TypeIdentity == VanillaNpcIds.GoblinSorcerer || before.TypeIdentity == VanillaNpcIds.Tim || before.TypeIdentity == VanillaNpcIds.RuneWizard || before.TypeIdentity.Value is >= 281 and <= 286) && committed.TypeIdentity == before.TypeIdentity)
             return _goblinSorcerer.Complete(in before, in committed, _context, mutations);
+        if (before.TypeIdentity == VanillaNpcIds.ChaosElemental && committed.TypeIdentity == VanillaNpcIds.ChaosElemental)
+            return _chaosElemental.Complete(in before, in committed, _context, mutations);
         if ((before.TypeIdentity == VanillaNpcIds.Harpy || before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon || before.TypeIdentity == VanillaNpcIds.RedDevil) &&
             committed.TypeIdentity == before.TypeIdentity)
             return _bat.CompleteBatShooterAttackTimer(in before, in committed, _context, _random, mutations);

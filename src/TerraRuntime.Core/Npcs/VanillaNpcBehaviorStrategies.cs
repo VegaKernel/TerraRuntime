@@ -769,15 +769,26 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             fighterDirectionY);
 
         NpcSimulationState simulation = npc.Simulation;
+        NpcAiState fighterAi = npc.Ai;
+        float fighterVelocityX = npc.VelocityX;
+        float fighterVelocityY = npc.VelocityY;
+        // AI_003 restores Chaos Elemental from the committed -120 teleport sentinel before the common fighter
+        // stage. The source clears both velocity components and only then resumes ordinary movement.
+        if (definition.Type == VanillaNpcIds.ChaosElemental && fighterAi.Ai3 == -120f)
+        {
+            fighterVelocityX = 0f;
+            fighterVelocityY = 0f;
+            fighterAi = fighterAi with { Ai3 = 0f };
+        }
         var input = new VanillaZombieMotionInput(
             PositionX: npc.PositionX,
             OldPositionX: simulation.OldPositionX,
-            VelocityX: npc.VelocityX,
-            VelocityY: npc.VelocityY,
+            VelocityX: fighterVelocityX,
+            VelocityY: fighterVelocityY,
             DirectionX: simulation.DirectionX,
             DirectionY: startingDirectionY,
             Target: npc.Target,
-            Ai: npc.Ai,
+            Ai: fighterAi,
             Scale: simulation.Scale,
             TargetOverlaps: context.TargetOverlapsNpc(in npc, in definition),
             ClosestTarget: fighterTarget)
@@ -830,6 +841,9 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             next = default;
             return false;
         }
+
+        if (definition.Type == VanillaNpcIds.ChaosElemental && result.VelocityY < 0f)
+            result = result with { VelocityY = result.VelocityY * 1.1f };
 
         if (definition.Type.Value == 258 &&
             result.VelocityY != 0f &&

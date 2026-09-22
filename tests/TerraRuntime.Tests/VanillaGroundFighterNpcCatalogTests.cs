@@ -125,8 +125,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(97, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(95, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(98, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(96, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
@@ -233,6 +233,24 @@ public sealed class VanillaGroundFighterNpcCatalogTests
     {
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(new NpcTypeId(rawType), out var behavior));
         Assert.True(behavior.CloseRangeLunge);
+        Assert.False(behavior.DaySurfaceEncouragesDespawn);
+    }
+
+    [Fact]
+    public void Chaos_elemental_keeps_its_source_teleport_pressure_motion_profile()
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetDefinition(VanillaNpcIds.ChaosElemental, out var definition));
+        Assert.Equal(18, definition.BaseWidth);
+        Assert.Equal(40, definition.BaseHeight);
+        Assert.Equal(40, definition.Damage);
+        Assert.Equal(30, definition.Defense);
+        Assert.Equal(370, definition.LifeMax);
+        Assert.Equal(.4f, definition.KnockBackResist, 5);
+
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.ChaosElemental, out var behavior));
+        Assert.Equal(3f, behavior.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.99f, behavior.ReversingVelocityDamping, 5);
+        Assert.Equal(180f, behavior.StuckThreshold, 5);
         Assert.False(behavior.DaySurfaceEncouragesDespawn);
     }
 

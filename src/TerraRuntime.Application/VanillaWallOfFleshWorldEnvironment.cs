@@ -7,7 +7,7 @@ namespace TerraRuntime.Application;
 /// WorldTileStore-backed source queries for TerrariaServer 1.4.5.8 Wall of Flesh AI_027/028 and the Good-World
 /// Fire Imp support branch. It exposes only collision/placement facts; presentation state remains client-owned.
 /// </summary>
-internal sealed class VanillaWallOfFleshWorldEnvironment : IVanillaWallOfFleshEnvironment, IVanillaDungeonCasterEnvironment
+internal sealed class VanillaWallOfFleshWorldEnvironment : IVanillaWallOfFleshEnvironment, IVanillaDungeonCasterEnvironment, IVanillaChaosElementalEnvironment
 {
     private const int TileSize = 16;
     private readonly WorldTileStore tiles;
@@ -170,6 +170,50 @@ internal sealed class VanillaWallOfFleshWorldEnvironment : IVanillaWallOfFleshEn
                     continue;
                 if (IntersectsPlayerTeleportSafety(x, y, players))
                     break;
+
+                tileX = x;
+                tileY = y;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public bool TryFindTeleportSpot(
+        float npcPositionX,
+        float npcPositionY,
+        int targetTileX,
+        int targetTileY,
+        IVanillaNpcRandom random,
+        out int tileX,
+        out int tileY)
+    {
+        tileX = tileY = 0;
+        if (!float.IsFinite(npcPositionX) || !float.IsFinite(npcPositionY) ||
+            targetTileX < 20 || targetTileX >= WorldWidthTiles - 20 ||
+            targetTileY < 20 || targetTileY >= WorldHeightTiles - 20 ||
+            Math.Abs(npcPositionX - targetTileX * 16f) + Math.Abs(npcPositionY - targetTileY * 16f) > 2_000f)
+        {
+            return false;
+        }
+
+        int ownX = (int)npcPositionX / TileSize;
+        int ownY = (int)npcPositionY / TileSize;
+        for (int attempt = 0; attempt < 100; attempt++)
+        {
+            int x = random.NextInt32(targetTileX - 20, targetTileX + 20);
+            int startY = random.NextInt32(targetTileY - 20, targetTileY + 20);
+            for (int y = startY; y < targetTileY + 20; y++)
+            {
+                if ((y >= ownY - 1 && y <= ownY + 1 && x >= ownX - 1 && x <= ownX + 1) ||
+                    !tiles.Get(x, y).IsActive ||
+                    tiles.Get(x, y - 1).LiquidKind == WorldLiquidKind.Lava ||
+                    !VanillaTileCollisionCatalog.IsSolid(tiles.Get(x, y).TileType) ||
+                    SolidClearance(x, y))
+                {
+                    continue;
+                }
 
                 tileX = x;
                 tileY = y;

@@ -40,6 +40,9 @@ public static class VanillaGroundFighterNpcCatalog
             closeRangeLunge: true, daySurfaceEncouragesDespawn: false)
         ,Fighter(VanillaNpcIds.CorruptPenguin, 16, 34, 20, 4, 70, 1f, 1f, 1.5f,
             closeRangeLunge: true, daySurfaceEncouragesDespawn: false)
+        // TerrariaServer 1.4.5.8 NPC.SetDefaults 120 and AI_003's 180-tick teleport pressure branch.
+        ,Fighter(VanillaNpcIds.ChaosElemental, 18, 40, 40, 30, 370, .4f, 1f, 3f,
+            reversingVelocityDamping: .99f, stuckThreshold: 180f, daySurfaceEncouragesDespawn: false)
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 223 and AI_003's scale-adjusted rain-zombie speed band.
         ,Fighter(VanillaNpcIds.RainZombie, 18, 40, 16, 8, 50, .45f, 1f, 1.05f, scaleAdjustsSpeed: true)
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 109 and AI_003's dedicated low-acceleration clown branch.
@@ -208,6 +211,7 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.VampireHumanoid,
         VanillaNpcIds.CorruptBunny,
         VanillaNpcIds.CorruptPenguin,
+        VanillaNpcIds.ChaosElemental,
         VanillaNpcIds.RainZombie,
         VanillaNpcIds.Clown,
         VanillaNpcIds.Crab,
@@ -318,7 +322,8 @@ public static class VanillaGroundFighterNpcCatalog
         float overspeedGroundDamping = .8f,
         float missingHealthSpeedBonus = 0f,
         float missingHealthAccelerationBonus = 0f,
-        bool daySurfaceEncouragesDespawn = true) =>
+        bool daySurfaceEncouragesDespawn = true,
+        float stuckThreshold = 60f) =>
         new(
             new VanillaNpcDefinition(
                 type,
@@ -339,7 +344,7 @@ public static class VanillaGroundFighterNpcCatalog
             new VanillaGroundFighterBehaviorParameters(
                 BaseMaximumHorizontalSpeed: maximumHorizontalSpeed,
                 HorizontalAcceleration: acceleration,
-                StuckThreshold: 60f,
+                StuckThreshold: stuckThreshold,
                 MaximumStuckCounter: 600f,
                 EncouragedDespawnTime: 10,
                 StuckHopVelocity: -5f,
