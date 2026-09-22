@@ -247,6 +247,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId AncientVision = new(521);
     public static readonly NpcTypeId AncientLight = new(522);
     public static readonly NpcTypeId AncientDoom = new(523);
+    public static readonly NpcTypeId ArmedTorchZombie = new(591);
     public static readonly NpcTypeId SpikedSlime = new(535);
     public static readonly NpcTypeId SandSlime = new(537);
     public static readonly NpcTypeId DuneSplicerHead = new(510);

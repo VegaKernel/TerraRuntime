@@ -10,7 +10,7 @@ public static class VanillaArmedZombieCombatFacts1458
     public const float ExtendedMeleeDamageMultiplier = 1.25f;
     public const int ExtendedMeleeReach = 34;
 
-    public static bool IsArmedZombie(NpcTypeId type) => type.Value is >= 430 and <= 436;
+    public static bool IsArmedZombie(NpcTypeId type) => type.Value is >= 430 and <= 436 or 591;
 
     public static bool HasExtendedMeleeReach(NpcTypeId type, NpcAiState ai) =>
         IsArmedZombie(type) && ai.Ai2 > 5f;

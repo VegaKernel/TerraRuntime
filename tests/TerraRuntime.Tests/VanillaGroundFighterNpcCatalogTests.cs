@@ -46,6 +46,7 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         [VanillaNpcIds.ArmedZombieSwamp, 18, 40, 13, 8, 45, 0.45f, 1f, 1f, false, false],
         [VanillaNpcIds.ArmedZombieTwiggy, 18, 40, 16, 4, 45, 0.55f, 1f, 1f, false, false],
         [VanillaNpcIds.ArmedZombieCenx, 18, 40, 12, 4, 38, 0.6f, 1f, 1f, false, false],
+        [VanillaNpcIds.ArmedTorchZombie, 18, 40, 14, 6, 45, 0.5f, 1f, 1f, false, false],
     ];
 
     [Theory]
@@ -94,8 +95,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(60, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(58, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(61, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(59, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
@@ -183,7 +184,7 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         {
             VanillaNpcIds.ArmedZombie, VanillaNpcIds.ArmedZombieEskimo, VanillaNpcIds.ArmedZombiePincushion,
             VanillaNpcIds.ArmedZombieSlimed, VanillaNpcIds.ArmedZombieSwamp, VanillaNpcIds.ArmedZombieTwiggy,
-            VanillaNpcIds.ArmedZombieCenx
+            VanillaNpcIds.ArmedZombieCenx, VanillaNpcIds.ArmedTorchZombie
         })
         {
             Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(type, out var behavior));

@@ -34,6 +34,7 @@ public sealed class VanillaArmedZombieAiTests
 
         Assert.False(VanillaArmedZombieCombatFacts1458.HasExtendedMeleeReach(VanillaNpcIds.ArmedZombie, beforeReach));
         Assert.True(VanillaArmedZombieCombatFacts1458.HasExtendedMeleeReach(VanillaNpcIds.ArmedZombie, activeReach));
+        Assert.True(VanillaArmedZombieCombatFacts1458.HasExtendedMeleeReach(VanillaNpcIds.ArmedTorchZombie, activeReach));
         Assert.Equal(21, VanillaArmedZombieCombatFacts1458.ResolveMeleeDamage(17, VanillaNpcIds.ArmedZombie, activeReach));
 
         float left = 100f;
