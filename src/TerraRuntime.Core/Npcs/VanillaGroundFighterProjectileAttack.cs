@@ -19,9 +19,11 @@ internal static class VanillaGroundFighterProjectileAttack
     private static readonly NpcTypeId TacticalSkeleton = new(292);
     private static readonly NpcTypeId SkeletonCommando = new(293);
     private static readonly NpcTypeId Paladin = new(290);
+    private static readonly NpcTypeId SkeletonArcher = new(110);
+    private static readonly NpcTypeId GoblinArcher = new(111);
 
     public static bool IsSupported(NpcTypeId type) =>
-        type == Type243 || type == Type251 || type == Type350 || type == SkeletonSniper || type == TacticalSkeleton || type == SkeletonCommando || type == Paladin || IsSalamander(type);
+        type == Type243 || type == Type251 || type == Type350 || type == SkeletonSniper || type == TacticalSkeleton || type == SkeletonCommando || type == Paladin || type == SkeletonArcher || type == GoblinArcher || IsSalamander(type);
 
     public static NpcSnapshot Complete(
         in NpcSnapshot before,
@@ -54,6 +56,12 @@ internal static class VanillaGroundFighterProjectileAttack
         if (before.TypeIdentity == Paladin)
             return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
                 mutations, 30f, 15f, 9f, 1f, noVerticalLead: false, sourceYOffset: -10f, VanillaProjectileIds.PaladinHammer, 60);
+        if (before.TypeIdentity == SkeletonArcher)
+            return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
+                mutations, 70f, 35f, 11f, 1f, noVerticalLead: false, sourceYOffset: 0f, VanillaProjectileIds.GroundFighter350Bolt, 35);
+        if (before.TypeIdentity == GoblinArcher)
+            return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
+                mutations, 180f, 90f, 9f, 1f, noVerticalLead: false, sourceYOffset: 0f, VanillaProjectileIds.GoblinArcherArrow, 11);
 
         float timer = committed.Ai.Ai2;
         if (before.TypeIdentity == Type243)

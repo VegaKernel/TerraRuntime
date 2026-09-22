@@ -228,6 +228,19 @@ public sealed class VanillaGroundFighterProjectileAttackTests
     }
 
     [Fact]
+    public void Goblin_archer_arrow_keeps_its_source_hostile_arrow_defaults()
+    {
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.GoblinArcherArrow, out VanillaProjectileDefinition definition));
+        Assert.Equal(10, definition.Width);
+        Assert.Equal(10, definition.Height);
+        Assert.Equal(VanillaProjectileAiStyles.Arrow, definition.AiStyle);
+        Assert.True(definition.TileCollide);
+        Assert.False(definition.IgnoreWater);
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(VanillaProjectileIds.GoblinArcherArrow, out VanillaProjectileBehaviorProfile profile));
+        Assert.Equal(VanillaProjectileBehaviorFamily.BasicArrow, profile.Family);
+    }
+
+    [Fact]
     public void Salamander_arms_for_a_visible_active_player_inside_its_source_range()
     {
         var npcs = new RuntimeNpcStore(2);
@@ -383,6 +396,39 @@ public sealed class VanillaGroundFighterProjectileAttackTests
         Assert.Equal(9f, MathF.Sqrt(projectile.VelocityX * projectile.VelocityX + projectile.VelocityY * projectile.VelocityY), 5);
         Assert.Equal(125.82f, projectile.PositionX, 2);
         Assert.Equal(119.19f, projectile.PositionY, 2);
+    }
+
+    [Theory]
+    [InlineData(110, 36f, 70f, 35f, 11f, 82, 35)]
+    [InlineData(111, 91f, 180f, 90f, 9f, 81, 11)]
+    public void Stationary_archers_arm_and_fire_their_source_arrow_at_half_windup(
+        int rawType, float firingTimer, float windup, float expectedTimer, float speed, int projectileType, int damage)
+    {
+        NpcTypeId type = new(rawType);
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, Update(type, 0f), out NpcSnapshot source));
+        var random = new MinimumRandom();
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, new VisibleEnvironment());
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot armed));
+        Assert.Equal(windup, armed.Ai.Ai1);
+        Assert.Equal(3f, armed.Ai.Ai2);
+        Assert.Equal(2, random.Draws);
+
+        Assert.True(npcs.TryUpdate(source.Handle, Update(type, 0f) with
+        {
+            Ai = new NpcAiState(0f, firingTimer, 3f, 0f)
+        }, out NpcSnapshot firing));
+        var projectiles = new RuntimeProjectileStore(2);
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(firing.Handle, out NpcSnapshot committed));
+        Assert.Equal(expectedTimer, committed.Ai.Ai1);
+        Assert.Equal(4, random.Draws);
+        Assert.True(projectiles.TryGetActive(0, out ProjectileSnapshot projectile));
+        Assert.Equal(new ProjectileTypeId(projectileType), projectile.Type);
+        Assert.Equal((short)damage, projectile.Damage);
+        Assert.Equal(speed, MathF.Sqrt(projectile.VelocityX * projectile.VelocityX + projectile.VelocityY * projectile.VelocityY), 5);
     }
 
     [Fact]

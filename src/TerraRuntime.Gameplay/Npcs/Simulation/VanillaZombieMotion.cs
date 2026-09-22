@@ -78,7 +78,8 @@ public enum VanillaGroundFighterMotionProfile : byte
     TacticalSkeleton = 7,
     SkeletonSniper = 8,
     SkeletonCommando = 9,
-    Paladin = 10
+    Paladin = 10,
+    StationaryArcher = 11
 }
 
 /// <summary>
@@ -217,7 +218,7 @@ public static class VanillaZombieMotion
             // The source's armed branch owns horizontal motion for this tick.
         }
         else if (input.MotionProfile == VanillaGroundFighterMotionProfile.Salamander ||
-                 (input.MotionProfile is VanillaGroundFighterMotionProfile.TacticalSkeleton or VanillaGroundFighterMotionProfile.SkeletonSniper or VanillaGroundFighterMotionProfile.SkeletonCommando or VanillaGroundFighterMotionProfile.Paladin && ai2 > 0f))
+                 (input.MotionProfile is VanillaGroundFighterMotionProfile.TacticalSkeleton or VanillaGroundFighterMotionProfile.SkeletonSniper or VanillaGroundFighterMotionProfile.SkeletonCommando or VanillaGroundFighterMotionProfile.Paladin or VanillaGroundFighterMotionProfile.StationaryArcher && ai2 > 0f))
         {
             // AI_003's stationary ranged branches take over after the shared target/stuck prepass.
         }

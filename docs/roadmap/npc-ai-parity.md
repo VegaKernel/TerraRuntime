@@ -297,6 +297,7 @@ Conversely, packet emission, NPC/projectile/item spawn, player/NPC damage or buf
 - [x] Tactical Skeleton `292`: source `120/60` stationary wind-up, target refresh and four committed projectile `180` shots;
 - [x] Skeleton Commando `293`: source `90/45` stationary wind-up, target refresh and committed AI_016 rocket `303` shot;
 - [x] Paladin `290`: source `30/15` stationary wind-up, elevated release and committed hammer `300` shot;
+- [x] Skeleton Archer `110` and Goblin Archer `111`: source `70/35` and `180/90` stationary arrow wind-ups with committed projectiles `82/81`;
 - [x] Skeleton definition, distinct speed band, world physics, check-active and packet sync;
 - [x] route admitted fighter speed, acceleration, stuck/despawn windows and terrain-jump values through explicit version-pinned profiles consumed by AI and world traversal;
 - [x] carry persisted Blood Moon state into the authoritative NPC world-motion stage;

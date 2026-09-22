@@ -683,6 +683,17 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 38,
         CollisionHeight: 38);
 
+    // Projectile.SetDefaults 81: Goblin Archer's hostile Wooden Arrow.
+    private static readonly VanillaProjectileDefinition GoblinArcherArrowDefinition = new(
+        Width: 10,
+        Height: 10,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
+
     // Projectile.SetDefaults 174: hostile Spiked Ice Slime shot.
     private static readonly VanillaProjectileDefinition SpikedIceSlimeSpikeDefinition = new(
         Width: 6,
@@ -1144,6 +1155,12 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.PaladinHammer)
         {
             definition = PaladinHammerDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.GoblinArcherArrow)
+        {
+            definition = GoblinArcherArrowDefinition;
             return true;
         }
 
