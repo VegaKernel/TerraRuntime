@@ -587,6 +587,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId GroundFighter243Bolt = new(257);
     public static readonly ProjectileTypeId GroundFighter251Bolt = new(83);
     public static readonly ProjectileTypeId GroundFighter350Bolt = new(82);
+    public static readonly ProjectileTypeId SalamanderBolt = new(572);
     public static readonly ProjectileTypeId RuneBlast = new(129);
     public static readonly ProjectileTypeId DungeonBeam = new(290);
     public static readonly ProjectileTypeId DungeonFlame = new(291);

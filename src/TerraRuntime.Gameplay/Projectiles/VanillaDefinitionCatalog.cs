@@ -639,6 +639,17 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 10,
         CollisionHeight: 10);
 
+    // Projectile.SetDefaults 572: hostile Salamander AI_003 shot.
+    private static readonly VanillaProjectileDefinition SalamanderBoltDefinition = new(
+        Width: 10,
+        Height: 10,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
+
     // Projectile.SetDefaults 174: hostile Spiked Ice Slime shot.
     private static readonly VanillaProjectileDefinition SpikedIceSlimeSpikeDefinition = new(
         Width: 6,
@@ -1076,6 +1087,12 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.GroundFighter350Bolt)
         {
             definition = GroundFighter350BoltDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SalamanderBolt)
+        {
+            definition = SalamanderBoltDefinition;
             return true;
         }
 

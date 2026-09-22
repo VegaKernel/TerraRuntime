@@ -174,6 +174,17 @@ public sealed class VanillaGroundFighterProjectileAttackTests
     }
 
     [Fact]
+    public void Salamander_projectile_keeps_its_source_ai001_defaults()
+    {
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.SalamanderBolt, out VanillaProjectileDefinition definition));
+        Assert.Equal(10, definition.Width);
+        Assert.Equal(10, definition.Height);
+        Assert.Equal(VanillaProjectileAiStyles.Arrow, definition.AiStyle);
+        Assert.True(definition.TileCollide);
+        Assert.False(definition.IgnoreWater);
+    }
+
+    [Fact]
     public void Rejected_ground_fighter_transition_does_not_consume_attack_rng()
     {
         var npcs = new RuntimeNpcStore(2);
