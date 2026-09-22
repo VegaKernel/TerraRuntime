@@ -103,12 +103,6 @@ internal static class ChestLoot1458
         return BuildUnderworld(random, bootstrap, primary, shadow: false);
     }
 
-    internal static WorldGenerationChestItem[] BuildShadow(
-        IWorldGenerationVanillaRandom random,
-        VanillaWorldGenerationBootstrapState1458 bootstrap,
-        int primary) =>
-        BuildUnderworld(random, bootstrap, primary, shadow: true);
-
     internal static WorldGenerationChestItem[] BuildJungle(
         IWorldGenerationVanillaRandom random,
         VanillaWorldGenerationBootstrapState1458 bootstrap,
@@ -125,22 +119,6 @@ internal static class ChestLoot1458
         if (floorY < worldHeight - 250)
             return BuildCavern(random, bootstrap, primary, floorY, lavaLine, water: false, jungle: true, state);
         return BuildUnderworld(random, bootstrap, primary, shadow: false, jungle: true, state);
-    }
-
-    internal static WorldGenerationChestItem[] BuildWater(
-        IWorldGenerationVanillaRandom random,
-        VanillaWorldGenerationBootstrapState1458 bootstrap,
-        int primary,
-        int floorY,
-        double rockLayer,
-        int lavaLine,
-        int worldHeight)
-    {
-        if (floorY < rockLayer)
-            return BuildUnderground(random, bootstrap, primary, water: true, jungle: false, state: null);
-        if (floorY < worldHeight - 250)
-            return BuildCavern(random, bootstrap, primary, floorY, lavaLine, water: true, jungle: false, state: null);
-        return BuildUnderworld(random, bootstrap, primary, shadow: false);
     }
 
     private static WorldGenerationChestItem[] BuildUnderground(

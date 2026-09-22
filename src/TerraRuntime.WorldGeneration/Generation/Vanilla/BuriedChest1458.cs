@@ -31,7 +31,9 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 internal sealed class BuriedChest1458(
     WorldTileStore store,
     IWorldGenerationVanillaRandom random,
-    BuriedChestContext1458 context)
+    BuriedChestContext1458 context,
+    Func<int, int, bool>? chestSlotAvailable = null,
+    Action<BuriedChestResult1458>? onPlaced = null)
 {
     private const ushort Containers = 21;
     private const ushort Containers2 = 467;
@@ -267,7 +269,9 @@ internal sealed class BuriedChest1458(
                 dungeon, lockedBiome, forcedSurfaceItem, skyware, lihzahrd);
             WorldGenerationChestItem[] items =
                 BuriedChestLoot1458.Fill(random, context, in kind, floor, style, primary, chestTileType);
-            Chests.Add(new BuriedChestResult1458(chestX, chestY - 1, chestTileType, style, items));
+            var result = new BuriedChestResult1458(chestX, chestY - 1, chestTileType, style, items);
+            Chests.Add(result);
+            onPlaced?.Invoke(result);
             return true;
         }
 
@@ -307,7 +311,10 @@ internal sealed class BuriedChest1458(
             }
         }
 
-        return true;
+        // Source Chest.CreateChest runs AFTER the object is written, so a refused slot leaves a chest-shaped
+        // hole in the world and still reports failure. Nothing in generation reaches that, but the order is
+        // the source's and the tiles stay written either way.
+        return chestSlotAvailable is null || chestSlotAvailable(x, top);
     }
 
     /// <summary>
