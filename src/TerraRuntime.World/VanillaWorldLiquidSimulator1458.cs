@@ -448,11 +448,10 @@ public sealed class VanillaWorldLiquidSimulator1458
 
                 if (tile.IsActive && ShouldDieInLoadingLiquid1458(in tile))
                 {
-                    if (!TryResolveLoadingDeath1458(x, y, in tile, out WorldTileRegion death))
+                    if (!TryResolveLoadingDeath1458(x, y, in tile, out WorldTileRegion death, out WorldTileRegion cascade))
                         throw new InvalidOperationException("A preflighted loading liquid-death object changed.");
-                    for (int objectX = death.X; objectX < death.ExclusiveRight; objectX++)
-                    for (int objectY = death.Y; objectY < death.ExclusiveBottom; objectY++)
-                        KillSingleCellDuringLoading1458(objectX, objectY, tiles.Get(objectX, objectY));
+                    KillRegionDuringLoading1458(in death);
+                    KillRegionDuringLoading1458(in cascade);
                     tile = tiles.Get(x, y);
                 }
 
@@ -510,7 +509,7 @@ public sealed class VanillaWorldLiquidSimulator1458
                     continue;
                 }
 
-                if (!TryResolveLoadingDeath1458(x, y, in tile, out _))
+                if (!TryResolveLoadingDeath1458(x, y, in tile, out _, out _))
                 {
                     return new VanillaWaterCheckDiagnostic1458(
                         VanillaWaterCheckResult1458.UnsupportedLiquidDeathTile,
@@ -524,9 +523,17 @@ public sealed class VanillaWorldLiquidSimulator1458
         return VanillaWaterCheckDiagnostic1458.Applied;
     }
 
-    private bool TryResolveLoadingDeath1458(int x, int y, in WorldTile tile, out WorldTileRegion region)
+    /// <summary>
+    /// The cells a single lava- or water-bearing object loses during load. Most objects are one rectangle, but
+    /// a pot standing on a platform is not: killing the platform cascades through <c>CheckPot</c> into the
+    /// pot's whole two-by-two while the pot's OTHER support, if it carries no lava, stays exactly where it is.
+    /// The second rectangle carries that cascade; it is empty for everything else.
+    /// </summary>
+    private bool TryResolveLoadingDeath1458(
+        int x, int y, in WorldTile tile, out WorldTileRegion region, out WorldTileRegion cascade)
     {
         region = new WorldTileRegion(x, y, 1, 1);
+        cascade = default;
         if (!VanillaTileObjectLiquidDeath1458.TryGet(in tile, out _, out _)) return false;
         // KillTile.CheckTileBreakability checks a locked temple door below even for non-solid objects.
         WorldTile support = tiles.Get(x, y + 1);
@@ -542,6 +549,12 @@ public sealed class VanillaWorldLiquidSimulator1458
             // another platform, a chest, a table and a bookcase, each built at its own footprint. Only what
             // sits ON the platform can lose its anchor, which is the case below.
             if (!above.IsActive) return true;
+            // KillTile -> SquareTileFrame -> CheckPot: a pot standing on this platform tests BOTH of its
+            // supports, and losing either one destroys all four of its cells. Measured against the official
+            // WaterCheck, the pot's two-by-two dies together with this platform cell and the pot's other
+            // support survives untouched when it carries no lava of its own.
+            if (above.TileType == VanillaTileIds.Pots && TryResolvePotFootprint1458(x, y - 1, out cascade))
+                return true;
             // KillTile -> SquareTileFrame -> CheckOnTable1x1: an ordinary single-cell book loses
             // its table anchor when the platform below dies. No items are created during loading.
             // Admit only the independently verified book frames and a clear cell above it; chests,
@@ -704,6 +717,47 @@ public sealed class VanillaWorldLiquidSimulator1458
 
     private bool IsQueuedForLoading1458(int x, int y) =>
         tiles.LiquidUpdates.IsQueued(x, y) || tiles.LiquidUpdates.IsBuffered(x, y);
+
+    /// <summary>
+    /// Source <c>WorldGen.CheckPot</c>'s own origin arithmetic, used here to name the four cells a pot
+    /// occupies. A pot whose cells do not agree on that origin is refused, so an unrepresented arrangement
+    /// still fails closed rather than taking neighbouring cells with it.
+    /// </summary>
+    private bool TryResolvePotFootprint1458(int x, int y, out WorldTileRegion region)
+    {
+        region = default;
+        WorldTile anchor = tiles.Get(x, y);
+        int left = x - (anchor.FrameX / 18) % 2;
+        int top = y - (anchor.FrameY / 18) % 2;
+        int style = anchor.FrameY / 18 / 2;
+        if (left <= 0 || top <= 0 ||
+            left + 1 >= tiles.Dimensions.WidthTiles || top + 1 >= tiles.Dimensions.HeightTiles)
+        {
+            return false;
+        }
+
+        for (int cellX = left; cellX < left + 2; cellX++)
+        for (int cellY = top; cellY < top + 2; cellY++)
+        {
+            WorldTile cell = tiles.Get(cellX, cellY);
+            if (!cell.IsActive || cell.TileType != VanillaTileIds.Pots ||
+                (cell.FrameX / 18) % 2 != cellX - left ||
+                cell.FrameY != (cellY - top) * 18 + style * 36)
+            {
+                return false;
+            }
+        }
+
+        region = new WorldTileRegion(left, top, 2, 2);
+        return true;
+    }
+
+    private void KillRegionDuringLoading1458(in WorldTileRegion region)
+    {
+        for (int x = region.X; x < region.ExclusiveRight; x++)
+        for (int y = region.Y; y < region.ExclusiveBottom; y++)
+            KillSingleCellDuringLoading1458(x, y, tiles.Get(x, y));
+    }
 
     private void KillSingleCellDuringLoading1458(int x, int y, in WorldTile before)
     {
