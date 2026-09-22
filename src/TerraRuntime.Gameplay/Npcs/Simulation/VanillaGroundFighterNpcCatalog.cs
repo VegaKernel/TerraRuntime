@@ -72,6 +72,25 @@ public static class VanillaGroundFighterNpcCatalog
             scaleAdjustsSpeed: true, motionProfile: VanillaGroundFighterMotionProfile.Crawdad)
         ,Fighter(VanillaNpcIds.Crawdad2, 28, 22, 28, 6, 50, 1f, 1f, 1f,
             scaleAdjustsSpeed: true, motionProfile: VanillaGroundFighterMotionProfile.Crawdad)
+        // TerrariaServer 1.4.5.8 NPC.SetDefaults (498..506) and AI_003's stationary ranged wind-up.
+        ,Fighter(VanillaNpcIds.Salamander, 24, 44, 18, 10, 65, 1f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.Salamander)
+        ,Fighter(VanillaNpcIds.Salamander2, 24, 44, 18, 10, 65, 1f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.Salamander)
+        ,Fighter(VanillaNpcIds.Salamander3, 24, 44, 18, 10, 65, 1f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.Salamander)
+        ,Fighter(VanillaNpcIds.Salamander4, 24, 44, 18, 10, 65, 1f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.Salamander)
+        ,Fighter(VanillaNpcIds.Salamander5, 24, 44, 18, 10, 65, 1f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.Salamander)
+        ,Fighter(VanillaNpcIds.Salamander6, 24, 44, 18, 10, 65, 1f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.Salamander)
+        ,Fighter(VanillaNpcIds.Salamander7, 24, 44, 18, 10, 65, 1f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.Salamander)
+        ,Fighter(VanillaNpcIds.Salamander8, 24, 44, 18, 10, 65, 1f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.Salamander)
+        ,Fighter(VanillaNpcIds.Salamander9, 24, 44, 18, 10, 65, 1f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.Salamander)
         ,Fighter(new NpcTypeId(78), 18, 40, 50, 16, 130, .6f, 1f, 1f,
             acceleration: .05f, motionProfile: VanillaGroundFighterMotionProfile.HalfHealthBerserker, overspeedGroundDamping: .7f)
         ,Fighter(new NpcTypeId(79), 18, 40, 60, 18, 180, .5f, 1f, 1f,
@@ -147,6 +166,15 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.ArmedTorchZombie,
         VanillaNpcIds.Crawdad,
         VanillaNpcIds.Crawdad2,
+        VanillaNpcIds.Salamander,
+        VanillaNpcIds.Salamander2,
+        VanillaNpcIds.Salamander3,
+        VanillaNpcIds.Salamander4,
+        VanillaNpcIds.Salamander5,
+        VanillaNpcIds.Salamander6,
+        VanillaNpcIds.Salamander7,
+        VanillaNpcIds.Salamander8,
+        VanillaNpcIds.Salamander9,
         new(78), new(79), new(80), new(243), new(251), new(254), new(255), new(257), new(258), new(287), new(630),
         new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280)
     ];

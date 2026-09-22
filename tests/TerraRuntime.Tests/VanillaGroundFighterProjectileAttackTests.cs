@@ -185,6 +185,48 @@ public sealed class VanillaGroundFighterProjectileAttackTests
     }
 
     [Fact]
+    public void Salamander_arms_for_a_visible_active_player_inside_its_source_range()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, Update(VanillaNpcIds.Salamander, 0f), out NpcSnapshot source));
+        var random = new MinimumRandom();
+        VanillaNpcTargetCandidate target = new(7, 300f, 150f, 0, true, false, false, false) { ItemAnimation = 1 };
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, new VisibleEnvironment(), target);
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot committed));
+        Assert.Equal(70f, committed.Ai.Ai1);
+        Assert.Equal(3f, committed.Ai.Ai2);
+        Assert.Equal(0f, committed.VelocityX);
+        Assert.Equal(2, random.Draws);
+    }
+
+    [Fact]
+    public void Salamander_fires_on_the_source_half_windup_tick()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, Update(VanillaNpcIds.Salamander, 0f) with
+        {
+            Ai = new NpcAiState(0f, 36f, 3f, 0f)
+        }, out NpcSnapshot source));
+        var projectiles = new RuntimeProjectileStore(2);
+        var random = new MinimumRandom();
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, new VisibleEnvironment());
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot committed));
+        Assert.Equal(35f, committed.Ai.Ai1);
+        Assert.Equal(3f, committed.Ai.Ai2);
+        Assert.True(projectiles.TryGetActive(0, out ProjectileSnapshot projectile));
+        Assert.Equal(VanillaProjectileIds.SalamanderBolt, projectile.Type);
+        Assert.Equal((short)14, projectile.Damage);
+        Assert.Equal(112f, projectile.PositionX, 5);
+        Assert.Equal(114f, projectile.PositionY, 5);
+        Assert.Equal(7f, MathF.Sqrt(projectile.VelocityX * projectile.VelocityX + projectile.VelocityY * projectile.VelocityY), 5);
+        Assert.Equal(3, random.Draws);
+    }
+
+    [Fact]
     public void Rejected_ground_fighter_transition_does_not_consume_attack_rng()
     {
         var npcs = new RuntimeNpcStore(2);

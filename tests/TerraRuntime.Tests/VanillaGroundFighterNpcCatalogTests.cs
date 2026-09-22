@@ -49,6 +49,15 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         [VanillaNpcIds.ArmedTorchZombie, 18, 40, 14, 6, 45, 0.5f, 1f, 1f, false, false],
         [VanillaNpcIds.Crawdad, 28, 22, 28, 6, 50, 1f, 1f, 1f, true, false],
         [VanillaNpcIds.Crawdad2, 28, 22, 28, 6, 50, 1f, 1f, 1f, true, false],
+        [VanillaNpcIds.Salamander, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.Salamander2, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.Salamander3, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.Salamander4, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.Salamander5, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.Salamander6, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.Salamander7, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.Salamander8, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.Salamander9, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
     ];
 
     [Theory]
@@ -97,8 +106,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(63, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(61, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(72, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(70, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
@@ -205,6 +214,18 @@ public sealed class VanillaGroundFighterNpcCatalogTests
             Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(type, out var behavior));
             Assert.True(behavior.ScaleAdjustsMaximumHorizontalSpeed);
             Assert.Equal(VanillaGroundFighterMotionProfile.Crawdad, behavior.MotionProfile);
+        }
+    }
+
+    [Fact]
+    public void Salamander_variants_keep_the_source_stationary_ranged_profile()
+    {
+        for (int rawType = 498; rawType <= 506; rawType++)
+        {
+            Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(new NpcTypeId(rawType), out var behavior));
+            Assert.Equal(VanillaGroundFighterMotionProfile.Salamander, behavior.MotionProfile);
+            Assert.Equal(1f, behavior.BaseMaximumHorizontalSpeed, 5);
+            Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
         }
     }
 

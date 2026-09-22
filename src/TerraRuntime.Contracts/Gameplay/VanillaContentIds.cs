@@ -237,6 +237,15 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId ArmedZombieTwiggy = new(435);
     public static readonly NpcTypeId ArmedZombieCenx = new(436);
     public static readonly NpcTypeId LunaticCultist = new(439);
+    public static readonly NpcTypeId Salamander = new(498);
+    public static readonly NpcTypeId Salamander2 = new(499);
+    public static readonly NpcTypeId Salamander3 = new(500);
+    public static readonly NpcTypeId Salamander4 = new(501);
+    public static readonly NpcTypeId Salamander5 = new(502);
+    public static readonly NpcTypeId Salamander6 = new(503);
+    public static readonly NpcTypeId Salamander7 = new(504);
+    public static readonly NpcTypeId Salamander8 = new(505);
+    public static readonly NpcTypeId Salamander9 = new(506);
     public static readonly NpcTypeId Crawdad = new(494);
     public static readonly NpcTypeId Crawdad2 = new(495);
     public static readonly NpcTypeId LunaticCultistClone = new(440);

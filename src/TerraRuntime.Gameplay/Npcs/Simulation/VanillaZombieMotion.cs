@@ -73,7 +73,8 @@ public enum VanillaGroundFighterMotionProfile : byte
     HalfHealthBerserker = 2,
     MissingHealthBerserker = 3,
     ArmedZombie = 4,
-    Crawdad = 5
+    Crawdad = 5,
+    Salamander = 6
 }
 
 /// <summary>
@@ -210,6 +211,11 @@ public static class VanillaZombieMotion
         if (armedAttackTick)
         {
             // The source's armed branch owns horizontal motion for this tick.
+        }
+        else if (input.MotionProfile == VanillaGroundFighterMotionProfile.Salamander)
+        {
+            // AI_003's Salamander branch takes over after the shared target/stuck prepass. Its ranged tail
+            // brakes only during an armed wind-up, so ordinary fighter acceleration must not run here.
         }
         else if (input.MotionProfile == VanillaGroundFighterMotionProfile.MoonEventLeaper)
         {
