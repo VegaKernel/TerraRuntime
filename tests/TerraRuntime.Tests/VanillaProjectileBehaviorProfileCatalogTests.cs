@@ -261,6 +261,7 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
             VanillaProjectileIds.BoneShard,
             VanillaProjectileIds.GroundFighter350Bolt,
             VanillaProjectileIds.SalamanderBolt,
+            VanillaProjectileIds.TacticalSkeletonBullet,
             VanillaProjectileIds.MoonBoulder
         ];
 

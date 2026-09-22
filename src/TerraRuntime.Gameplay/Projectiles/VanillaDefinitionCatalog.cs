@@ -650,6 +650,17 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 10,
         CollisionHeight: 10);
 
+    // Projectile.SetDefaults 180: Tactical Skeleton's hostile Deadeye Bullet.
+    private static readonly VanillaProjectileDefinition TacticalSkeletonBulletDefinition = new(
+        Width: 4,
+        Height: 4,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 4,
+        CollisionHeight: 4);
+
     // Projectile.SetDefaults 174: hostile Spiked Ice Slime shot.
     private static readonly VanillaProjectileDefinition SpikedIceSlimeSpikeDefinition = new(
         Width: 6,
@@ -1093,6 +1104,12 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.SalamanderBolt)
         {
             definition = SalamanderBoltDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.TacticalSkeletonBullet)
+        {
+            definition = TacticalSkeletonBulletDefinition;
             return true;
         }
 

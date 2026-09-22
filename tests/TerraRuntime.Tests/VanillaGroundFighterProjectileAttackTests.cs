@@ -227,6 +227,45 @@ public sealed class VanillaGroundFighterProjectileAttackTests
     }
 
     [Fact]
+    public void Tactical_skeleton_arms_its_source_120_tick_stationary_burst()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, Update(VanillaNpcIds.TacticalSkeleton, 0f), out NpcSnapshot source));
+        var random = new MinimumRandom();
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, new VisibleEnvironment());
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot committed));
+        Assert.Equal(120f, committed.Ai.Ai1);
+        Assert.Equal(3f, committed.Ai.Ai2);
+        Assert.Equal(2, random.Draws);
+    }
+
+    [Fact]
+    public void Tactical_skeleton_fires_its_source_four_bullet_burst_at_half_windup()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, Update(VanillaNpcIds.TacticalSkeleton, 0f) with
+        {
+            Ai = new NpcAiState(0f, 61f, 3f, 0f)
+        }, out NpcSnapshot source));
+        var projectiles = new RuntimeProjectileStore(8);
+        var random = new MinimumRandom();
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, new VisibleEnvironment());
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot committed));
+        Assert.Equal(60f, committed.Ai.Ai1);
+        Assert.Equal(8, random.Draws);
+        for (int i = 0; i < 4; i++)
+        {
+            Assert.True(projectiles.TryGetActive(checked((ushort)i), out ProjectileSnapshot projectile));
+            Assert.Equal(VanillaProjectileIds.TacticalSkeletonBullet, projectile.Type);
+            Assert.Equal((short)50, projectile.Damage);
+        }
+    }
+
+    [Fact]
     public void Rejected_ground_fighter_transition_does_not_consume_attack_rng()
     {
         var npcs = new RuntimeNpcStore(2);
