@@ -15,10 +15,11 @@ internal static class VanillaGroundFighterProjectileAttack
     private static readonly NpcTypeId Type243 = new(243);
     private static readonly NpcTypeId Type251 = new(251);
     private static readonly NpcTypeId Type350 = new(350);
+    private static readonly NpcTypeId SkeletonSniper = new(291);
     private static readonly NpcTypeId TacticalSkeleton = new(292);
 
     public static bool IsSupported(NpcTypeId type) =>
-        type == Type243 || type == Type251 || type == Type350 || type == TacticalSkeleton || IsSalamander(type);
+        type == Type243 || type == Type251 || type == Type350 || type == SkeletonSniper || type == TacticalSkeleton || IsSalamander(type);
 
     public static NpcSnapshot Complete(
         in NpcSnapshot before,
@@ -40,6 +41,8 @@ internal static class VanillaGroundFighterProjectileAttack
             return CompleteType350(in before, in committed, in hitbox, context, random, environment, mutations);
         if (IsSalamander(before.TypeIdentity))
             return CompleteSalamander(in before, in committed, in definition, in hitbox, context, random, environment, mutations);
+        if (before.TypeIdentity == SkeletonSniper)
+            return CompleteSkeletonSniper(in before, in committed, in definition, in hitbox, context, random, environment, mutations);
         if (before.TypeIdentity == TacticalSkeleton)
             return CompleteTacticalSkeleton(in before, in committed, in definition, in hitbox, context, random, environment, mutations);
 
@@ -86,6 +89,101 @@ internal static class VanillaGroundFighterProjectileAttack
         if (CanFire(in type251Completed, in hitbox, context, environment, requireGlobalDistance: true, out VanillaNpcTargetCandidate type251Target))
             SpawnType251Bolt(in type251Completed, in type251Target, in hitbox, random, mutations);
         return type251Completed;
+    }
+
+    private static NpcSnapshot CompleteSkeletonSniper(
+        in NpcSnapshot before, in NpcSnapshot committed, in VanillaNpcDefinition definition, in VanillaNpcHitboxSize hitbox,
+        VanillaNpcBehaviorContext context, IVanillaNpcRandom random, IVanillaNpcProjectileEnvironment? environment,
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        float timer = committed.Ai.Ai1;
+        float mode = committed.Ai.Ai2;
+        float velocityX = committed.VelocityX;
+        ushort targetSlot = committed.Target;
+        int directionX = committed.Simulation.DirectionX;
+        int directionY = committed.Simulation.DirectionY;
+        int spriteDirection = committed.Simulation.SpriteDirection;
+        if (timer > 0f)
+            timer--;
+        if (before.Simulation.JustHit)
+        {
+            timer = 30f;
+            mode = 0f;
+        }
+        if (committed.Simulation.Confused)
+            mode = 0f;
+
+        bool hasShot = false;
+        float shotX = 0f;
+        float shotY = 0f;
+        float shotVelocityX = 0f;
+        float shotVelocityY = 0f;
+        if (mode > 0f)
+        {
+            if (TrySelectClosestTarget(in committed, in definition, context, out VanillaNpcTargetCandidate target,
+                out VanillaBlueSlimeTargetRefresh refresh))
+            {
+                targetSlot = refresh.Target;
+                directionX = refresh.DirectionX;
+                directionY = refresh.DirectionY;
+                if (timer == 100f)
+                {
+                    float sourceX = committed.PositionX + hitbox.Width * .5f;
+                    float sourceY = committed.PositionY + hitbox.Height * .5f;
+                    shotVelocityX = target.CenterX - sourceX + random.NextInt32(-40, 41) * .2f;
+                    shotVelocityY = target.CenterY - sourceY + random.NextInt32(-40, 41) * .2f;
+                    hasShot = TryNormalize(ref shotVelocityX, ref shotVelocityY, 11f);
+                    if (hasShot)
+                    {
+                        shotX = sourceX + shotVelocityX;
+                        shotY = sourceY + shotVelocityY;
+                        mode = AimCategory(shotVelocityX, shotVelocityY);
+                    }
+                }
+            }
+            if (committed.VelocityY != 0f || timer <= 0f)
+            {
+                mode = 0f;
+                timer = 0f;
+            }
+            else
+            {
+                velocityX *= .9f;
+                spriteDirection = directionX;
+            }
+        }
+        else if (committed.VelocityY == 0f && timer <= 0f &&
+                 TryGetTarget(in committed, context, out VanillaNpcTargetCandidate target) && !target.Dead && environment is not null &&
+                 environment.CanHit(committed.PositionX, committed.PositionY, hitbox.Width, hitbox.Height,
+                     target.CenterX - target.Width * .5f, target.CenterY - target.Height * .5f, (int)target.Width, (int)target.Height))
+        {
+            float sourceX = committed.PositionX + hitbox.Width * .5f;
+            float sourceY = committed.PositionY + hitbox.Height * .5f;
+            float aimX = target.CenterX - sourceX + random.NextInt32(-40, 41);
+            float aimY = target.CenterY - sourceY - MathF.Abs(target.CenterX - sourceX) * .1f + random.NextInt32(-40, 41);
+            if (MathF.Sqrt(aimX * aimX + aimY * aimY) < 700f)
+            {
+                velocityX *= .5f;
+                mode = AimCategory(aimX, aimY);
+                timer = 200f;
+            }
+        }
+
+        NpcAiState ai = committed.Ai with { Ai1 = timer, Ai2 = mode };
+        NpcSimulationState simulation = committed.Simulation with { DirectionX = directionX, DirectionY = directionY, SpriteDirection = spriteDirection };
+        if (ai == committed.Ai && simulation == committed.Simulation && velocityX == committed.VelocityX && targetSlot == committed.Target)
+            return committed;
+        var update = new NpcStateUpdate(committed.Type, committed.NetId, committed.PositionX, committed.PositionY,
+            velocityX, committed.VelocityY, targetSlot, ai, simulation);
+        if (!mutations.TryUpdateState(in committed, in update, out NpcSnapshot completed))
+            return committed;
+        if (hasShot)
+        {
+            var intent = new NpcAiProjectileIntent(
+                VanillaProjectileIds.SkeletonSniperBullet, shotX, shotY, shotVelocityX, shotVelocityY, 100, 0f);
+            mutations.TrySpawnProjectile(in completed, in intent, out _);
+        }
+        return completed;
     }
 
     private static NpcSnapshot CompleteTacticalSkeleton(

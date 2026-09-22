@@ -185,6 +185,20 @@ public sealed class VanillaGroundFighterProjectileAttackTests
     }
 
     [Fact]
+    public void Skeleton_sniper_projectile_keeps_its_source_high_velocity_defaults()
+    {
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.SkeletonSniperBullet, out VanillaProjectileDefinition definition));
+        Assert.Equal(4, definition.Width);
+        Assert.Equal(4, definition.Height);
+        Assert.Equal(VanillaProjectileAiStyles.Arrow, definition.AiStyle);
+        Assert.True(definition.TileCollide);
+        Assert.True(definition.IgnoreWater);
+        Assert.Equal(7, VanillaProjectileUpdateFacts.GetExtraUpdates(VanillaProjectileIds.SkeletonSniperBullet));
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(VanillaProjectileIds.SkeletonSniperBullet, out VanillaProjectileBehaviorProfile profile));
+        Assert.Equal(VanillaProjectileBehaviorFamily.HostileStraightNoGravity, profile.Family);
+    }
+
+    [Fact]
     public void Salamander_arms_for_a_visible_active_player_inside_its_source_range()
     {
         var npcs = new RuntimeNpcStore(2);
@@ -239,6 +253,45 @@ public sealed class VanillaGroundFighterProjectileAttackTests
         Assert.Equal(120f, committed.Ai.Ai1);
         Assert.Equal(3f, committed.Ai.Ai2);
         Assert.Equal(2, random.Draws);
+    }
+
+    [Fact]
+    public void Skeleton_sniper_arms_its_source_200_tick_stationary_shot_without_item_use()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, Update(VanillaNpcIds.SkeletonSniper, 0f), out NpcSnapshot source));
+        var random = new MinimumRandom();
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, new VisibleEnvironment());
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot committed));
+        Assert.Equal(200f, committed.Ai.Ai1);
+        Assert.Equal(3f, committed.Ai.Ai2);
+        Assert.Equal(2, random.Draws);
+    }
+
+    [Fact]
+    public void Skeleton_sniper_fires_its_source_high_velocity_bullet_at_half_windup()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, Update(VanillaNpcIds.SkeletonSniper, 0f) with
+        {
+            Ai = new NpcAiState(0f, 101f, 3f, 0f)
+        }, out NpcSnapshot source));
+        var projectiles = new RuntimeProjectileStore(2);
+        var random = new MinimumRandom();
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, new VisibleEnvironment());
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot committed));
+        Assert.Equal(100f, committed.Ai.Ai1);
+        Assert.Equal(2, random.Draws);
+        Assert.True(projectiles.TryGetActive(0, out ProjectileSnapshot projectile));
+        Assert.Equal(VanillaProjectileIds.SkeletonSniperBullet, projectile.Type);
+        Assert.Equal((short)100, projectile.Damage);
+        Assert.Equal(11f, MathF.Sqrt(projectile.VelocityX * projectile.VelocityX + projectile.VelocityY * projectile.VelocityY), 5);
+        Assert.Equal(119.92f, projectile.PositionX, 2);
+        Assert.Equal(121.31f, projectile.PositionY, 2);
     }
 
     [Fact]

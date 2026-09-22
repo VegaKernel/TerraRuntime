@@ -661,6 +661,17 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 4,
         CollisionHeight: 4);
 
+    // Projectile.SetDefaults 302: Skeleton Sniper's hostile Bullet High Velocity.
+    private static readonly VanillaProjectileDefinition SkeletonSniperBulletDefinition = new(
+        Width: 4,
+        Height: 4,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 4,
+        CollisionHeight: 4);
+
     // Projectile.SetDefaults 174: hostile Spiked Ice Slime shot.
     private static readonly VanillaProjectileDefinition SpikedIceSlimeSpikeDefinition = new(
         Width: 6,
@@ -1110,6 +1121,12 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.TacticalSkeletonBullet)
         {
             definition = TacticalSkeletonBulletDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SkeletonSniperBullet)
+        {
+            definition = SkeletonSniperBulletDefinition;
             return true;
         }
 

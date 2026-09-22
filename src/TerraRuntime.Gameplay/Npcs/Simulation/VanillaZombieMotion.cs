@@ -75,7 +75,8 @@ public enum VanillaGroundFighterMotionProfile : byte
     ArmedZombie = 4,
     Crawdad = 5,
     Salamander = 6,
-    TacticalSkeleton = 7
+    TacticalSkeleton = 7,
+    SkeletonSniper = 8
 }
 
 /// <summary>
@@ -214,7 +215,7 @@ public static class VanillaZombieMotion
             // The source's armed branch owns horizontal motion for this tick.
         }
         else if (input.MotionProfile == VanillaGroundFighterMotionProfile.Salamander ||
-                 (input.MotionProfile == VanillaGroundFighterMotionProfile.TacticalSkeleton && ai2 > 0f))
+                 (input.MotionProfile is VanillaGroundFighterMotionProfile.TacticalSkeleton or VanillaGroundFighterMotionProfile.SkeletonSniper && ai2 > 0f))
         {
             // AI_003's stationary ranged branches take over after the shared target/stuck prepass.
         }

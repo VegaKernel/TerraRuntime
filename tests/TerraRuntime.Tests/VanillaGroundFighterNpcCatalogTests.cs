@@ -61,6 +61,7 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         [VanillaNpcIds.BigAngryBones, 18, 40, 34, 6, 70, .9f, 1f, 1f, false, true],
         [VanillaNpcIds.BigMuscleAngryBones, 18, 40, 28, 12, 70, .7f, 1f, 1f, false, true],
         [VanillaNpcIds.BigHelmetAngryBones, 18, 40, 24, 14, 120, .6f, 1f, 1f, false, true],
+        [VanillaNpcIds.SkeletonSniper, 18, 40, 60, 28, 400, .4f, 1f, 1f, false, false],
         [VanillaNpcIds.TacticalSkeleton, 18, 40, 60, 28, 400, .4f, 1f, 1f, false, false],
     ];
 
@@ -110,8 +111,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(76, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(74, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(77, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(75, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
