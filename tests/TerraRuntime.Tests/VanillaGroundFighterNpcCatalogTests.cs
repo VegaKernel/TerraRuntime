@@ -23,6 +23,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         [VanillaNpcIds.SwampZombie, 18, 40, 13, 8, 45, 0.45f, 1f, 1.2f, true, false],
         [VanillaNpcIds.TwiggyZombie, 18, 40, 16, 4, 45, 0.55f, 1f, 0.8f, true, false],
         [VanillaNpcIds.FemaleZombie, 18, 40, 12, 4, 38, 0.6f, 1f, 0.87f, true, false],
+        [VanillaNpcIds.CorruptBunny, 18, 20, 20, 4, 70, 1f, 1f, 1.5f, false, true],
+        [VanillaNpcIds.CorruptPenguin, 16, 34, 20, 4, 70, 1f, 1f, 1.5f, false, true],
         [new NpcTypeId(254), 18, 40, 40, 10, 180, .4f, 1f, 1.5f, false, false],
         [new NpcTypeId(255), 18, 40, 38, 16, 220, .3f, 1f, 1f, false, false],
         [new NpcTypeId(257), 44, 34, 38, 24, 230, .3f, 1f, 2f, false, false],
@@ -123,8 +125,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(95, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(93, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(97, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(95, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
@@ -221,6 +223,16 @@ public sealed class VanillaGroundFighterNpcCatalogTests
     public void Icy_merman_and_beetle_family_keep_the_source_day_surface_exemption(int rawType)
     {
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(new NpcTypeId(rawType), out var behavior));
+        Assert.False(behavior.DaySurfaceEncouragesDespawn);
+    }
+
+    [Theory]
+    [InlineData(47)]
+    [InlineData(168)]
+    public void Corrupt_critters_keep_their_source_day_surface_exemption(int rawType)
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(new NpcTypeId(rawType), out var behavior));
+        Assert.True(behavior.CloseRangeLunge);
         Assert.False(behavior.DaySurfaceEncouragesDespawn);
     }
 

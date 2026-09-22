@@ -8,6 +8,7 @@ public static class VanillaNpcIds
 {
     public static readonly NpcTypeId BlueSlime = new(1);
     public static readonly NpcTypeId Bunny = new(46);
+    public static readonly NpcTypeId CorruptBunny = new(47);
     public static readonly NpcTypeId Crab = new(67);
     public static readonly NpcTypeId ExplosiveBunny = new(614);
     public static readonly NpcTypeId Demon = new(62);
@@ -228,6 +229,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId LacBeetle = new(219);
     public static readonly NpcTypeId SeaSnail = new(220);
     public static readonly NpcTypeId RainZombie = new(223);
+    public static readonly NpcTypeId CorruptPenguin = new(168);
     public static readonly NpcTypeId Lihzahrd = new(199);
     public static readonly NpcTypeId ZombieXmas = new(331);
     public static readonly NpcTypeId ZombieSweater = new(332);
