@@ -31,7 +31,9 @@ public readonly record struct VanillaBlueSlimeMotionInput(
     bool SolidCollision,
     VanillaBlueSlimeTargetRefresh ClosestTarget,
     float TimerBonus = 0f,
-    float JumpTimerBand = -1000f);
+    float JumpTimerBand = -1000f,
+    bool UsesLavaSlimeMotion = false,
+    bool RemixWorld = false);
 
 public readonly record struct VanillaBlueSlimeMotionResult(
     float PositionX,
@@ -114,12 +116,26 @@ public static class VanillaBlueSlimeMotion
             if (velocityY > 0f)
                 ai3 = positionX;
 
-            if (velocityY > 2f)
-                velocityY *= 0.9f;
+            if (input.UsesLavaSlimeMotion && !input.RemixWorld)
+            {
+                if (velocityY > 2f)
+                    velocityY *= 0.9f;
+                else if (directionY < 0)
+                    velocityY -= 0.8f;
 
-            velocityY -= 0.5f;
-            if (velocityY < -4f)
-                velocityY = -4f;
+                velocityY -= 0.5f;
+                if (velocityY < -10f)
+                    velocityY = -10f;
+            }
+            else
+            {
+                if (velocityY > 2f)
+                    velocityY *= 0.9f;
+
+                velocityY -= 0.5f;
+                if (velocityY < -4f)
+                    velocityY = -4f;
+            }
 
             if (ai2 == 1f && input.Engaged)
                 RefreshTarget();
@@ -177,7 +193,13 @@ public static class VanillaBlueSlimeMotion
                 if (jumpKind == 3)
                 {
                     velocityY = -8f;
+                    if (input.UsesLavaSlimeMotion && !input.RemixWorld)
+                        velocityY -= 2f;
+
                     velocityX += 3f * directionX;
+                    if (input.UsesLavaSlimeMotion && !input.RemixWorld)
+                        velocityX += 0.5f * directionX;
+
                     ai0 = -200f;
                     ai3 = positionX;
                 }
@@ -185,6 +207,9 @@ public static class VanillaBlueSlimeMotion
                 {
                     velocityY = -6f;
                     velocityX += 2f * directionX;
+                    if (input.UsesLavaSlimeMotion && !input.RemixWorld)
+                        velocityX += 2f * directionX;
+
                     ai0 = -120f;
                     ai0 += jumpKind == 1
                         ? input.JumpTimerBand

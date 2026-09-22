@@ -56,9 +56,9 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     private readonly INpcAiStateStepper _inner;
     private readonly VanillaNpcBehaviorContext _context = new();
-    private readonly IVanillaNpcBehaviorStrategy _slimeGround = new VanillaSlimeGroundNpcBehaviorStrategy();
+    private readonly IVanillaNpcBehaviorStrategy _slimeGround;
     private readonly VanillaFlyingEyeNpcBehaviorStrategy _flyingEye = new();
-    private readonly IVanillaNpcBehaviorStrategy _groundFighter = new VanillaGroundFighterNpcBehaviorStrategy();
+    private readonly IVanillaNpcBehaviorStrategy _groundFighter;
     private readonly IVanillaNpcBehaviorStrategy _moonEventJumpingFighter = new VanillaMoonEventJumpingFighterNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _moonEventUnicorn = new VanillaMoonEventUnicornNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _moonEventGhost = new VanillaMoonEventGhostNpcBehaviorStrategy();
@@ -79,6 +79,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly IVanillaNpcBehaviorStrategy _blazingWheel = new VanillaBlazingWheelNpcBehaviorStrategy();
     private readonly VanillaBatNpcBehaviorStrategy _bat = new();
     private readonly VanillaFishNpcBehaviorStrategy _fish;
+    private readonly VanillaJellyfishNpcBehaviorStrategy _jellyfish = new();
+    private readonly VanillaAntlionNpcBehaviorStrategy _antlion = new();
     private readonly VanillaSkeletronHeadNpcBehaviorStrategy _skeletronHead = new();
     private readonly VanillaSkeletronHandNpcBehaviorStrategy _skeletronHand = new();
     private readonly VanillaQueenBeeNpcBehaviorStrategy _queenBee;
@@ -88,6 +90,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaWallOfFleshHungryNpcBehaviorStrategy _wallOfFleshHungry = new();
     private readonly VanillaFireImpNpcBehaviorStrategy _fireImp;
     private readonly VanillaGoblinSorcererBehavior _goblinSorcerer;
+    private readonly VanillaChaosElementalBehavior _chaosElemental;
+    private readonly VanillaGastropodBehavior _gastropod;
     private readonly VanillaDarkCasterBehavior _darkCaster = new();
     private readonly VanillaSphereNpcBehaviorStrategy _burningSphere = new();
     private readonly VanillaQueenSlimeNpcBehaviorStrategy _queenSlime;
@@ -118,8 +122,12 @@ public sealed class VanillaNpcTargetingAiStepper :
         ArgumentNullException.ThrowIfNull(inner);
         _inner = inner;
         _random = random ?? new SystemVanillaNpcRandom();
+        _groundFighter = new VanillaGroundFighterNpcBehaviorStrategy(_random);
+        _slimeGround = new VanillaSlimeGroundNpcBehaviorStrategy(_random);
         _fireImp = new VanillaFireImpNpcBehaviorStrategy(_random);
         _goblinSorcerer = new VanillaGoblinSorcererBehavior(_random);
+        _chaosElemental = new VanillaChaosElementalBehavior(_random);
+        _gastropod = new VanillaGastropodBehavior(_random);
         _flyer = new VanillaServantOfCthulhuNpcBehaviorStrategy(_random);
         _eyeOfCthulhu = new VanillaEyeOfCthulhuExpertRapidDashNpcBehaviorStrategy(_random);
         _kingSlime = new VanillaKingSlimeNpcBehaviorStrategy(kingSlimeEnvironment);
@@ -155,8 +163,12 @@ public sealed class VanillaNpcTargetingAiStepper :
     public void SetCasterEnvironment(IVanillaCasterEnvironment environment) =>
         _darkCaster.Environment = environment ?? throw new ArgumentNullException(nameof(environment));
 
-    public void SetWorldBounds(int widthTiles, double worldSurfaceTiles, double rockLayerTiles = double.PositiveInfinity) =>
-        _context.SetWorldBounds(widthTiles, worldSurfaceTiles, rockLayerTiles);
+    public void SetWorldBounds(
+        int widthTiles,
+        double worldSurfaceTiles,
+        double rockLayerTiles = double.PositiveInfinity,
+        int worldHeightTiles = 0) =>
+        _context.SetWorldBounds(widthTiles, worldSurfaceTiles, rockLayerTiles, worldHeightTiles);
 
     public void SetPlayerSnapshotLookup(IRuntimePlayerSlotSnapshotLookup playerSnapshots) =>
         _context.SetPlayerSnapshotLookup(playerSnapshots);
@@ -197,7 +209,12 @@ public sealed class VanillaNpcTargetingAiStepper :
         _wallOfFleshEye.SetEnvironment(environment);
         _fireImp.SetEnvironment(environment);
         _goblinSorcerer.SetEnvironment(environment);
+        if (environment is IVanillaChaosElementalEnvironment chaosEnvironment)
+            _chaosElemental.SetEnvironment(chaosEnvironment);
     }
+
+    public void SetChaosElementalEnvironment(IVanillaChaosElementalEnvironment environment) =>
+        _chaosElemental.SetEnvironment(environment);
 
     public void SetWormEnvironment(IVanillaWormEnvironment environment)
     {
@@ -205,8 +222,14 @@ public sealed class VanillaNpcTargetingAiStepper :
         _destroyer.SetEnvironment(environment);
     }
 
-    public void SetFishEnvironment(IVanillaFishEnvironment1458 environment) =>
+    public void SetFishEnvironment(IVanillaFishEnvironment1458 environment)
+    {
         _fish.SetEnvironment(environment);
+        _jellyfish.SetEnvironment(environment);
+    }
+
+    public void SetAntlionEnvironment(IVanillaAntlionEnvironment environment) =>
+        _antlion.SetEnvironment(environment);
 
     public void SetFlyingEyeEnvironment(IVanillaFlyingEyeEnvironment environment) =>
         _flyingEye.SetEnvironment(environment);
@@ -228,12 +251,14 @@ public sealed class VanillaNpcTargetingAiStepper :
     {
         ArgumentNullException.ThrowIfNull(environment);
         _projectileEnvironment = environment;
+        _context.ProjectileEnvironment = environment;
         _flyer.SetProjectileEnvironment(environment);
         _bat.SetEnvironment(environment);
         _queenBee.SetProjectileEnvironment(environment);
         _retinazer.SetProjectileEnvironment(environment);
         _spazmatism.SetProjectileEnvironment(environment);
         _snowMoonAi62.SetEnvironment(environment);
+        _gastropod.SetProjectileEnvironment(environment);
     }
 
     public void SetWorldConditions(
@@ -244,10 +269,18 @@ public sealed class VanillaNpcTargetingAiStepper :
         bool masterMode = false,
         float windSpeedCurrent = 0f,
         bool remixWorld = false,
-        double worldTime = 0d) =>
-        _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld, expertMode, masterMode, windSpeedCurrent, remixWorld, worldTime);
+        double worldTime = 0d,
+        bool noTrapsWorld = false,
+        bool skyblockNoFossils = false,
+        bool skyblockLowTiles = false,
+        bool skyblockNoHellstone = false,
+        bool skyblockNoLifeCrystals = false,
+        bool downedSkeletron = false,
+        bool eclipseActive = false) =>
+        _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld, expertMode, masterMode, windSpeedCurrent, remixWorld, worldTime, noTrapsWorld, skyblockNoFossils, skyblockLowTiles, skyblockNoHellstone, skyblockNoLifeCrystals, downedSkeletron, eclipseActive);
 
-    public void SetMoonEventState(bool pumpkinMoonActive) => _context.SetMoonEventState(pumpkinMoonActive);
+    public void SetMoonEventState(bool pumpkinMoonActive, bool snowMoonActive = false) =>
+        _context.SetMoonEventState(pumpkinMoonActive, snowMoonActive);
 
     public void SetCandidates(ReadOnlySpan<VanillaNpcTargetCandidate> candidates) =>
         _context.SetCandidates(candidates);
@@ -313,6 +346,8 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.BlazingWheel => _blazingWheel,
             VanillaNpcBehaviorFamily.Bat => _bat,
             VanillaNpcBehaviorFamily.Fish => _fish,
+            VanillaNpcBehaviorFamily.Jellyfish => _jellyfish,
+            VanillaNpcBehaviorFamily.Antlion => _antlion,
             VanillaNpcBehaviorFamily.SkeletronHead => _skeletronHead,
             VanillaNpcBehaviorFamily.SkeletronHand => _skeletronHand,
             VanillaNpcBehaviorFamily.QueenBee => _queenBee,
@@ -454,6 +489,25 @@ public sealed class VanillaNpcTargetingAiStepper :
         in NpcStateUpdate proposed,
         Span<NpcAiProjectileIntent> destination)
     {
+        int containedTrapCount = IsItemContainingSlime(source.Type) && proposed.Type == source.Type
+            ? PlanContainedSlimeTrap(in source, in proposed, destination)
+            : 0;
+        if (containedTrapCount > destination.Length)
+            return containedTrapCount;
+        if ((source.Type == VanillaNpcIds.SpikedIceSlime.Value || source.Type == VanillaNpcIds.SpikedSlime.Value) && proposed.Type == source.Type)
+        {
+            int spikeCount = PlanSpikedSlimeSpikes(in source, in proposed, destination[containedTrapCount..]);
+            return containedTrapCount + spikeCount;
+        }
+        if (source.Type == VanillaNpcIds.SpikedJungleSlime.Value && proposed.Type == source.Type)
+            return PlanSpikedJungleSlimeThorns(in source, in proposed, destination);
+        if ((source.Type == VanillaNpcIds.QueenSlimeMinionBlue.Value || source.Type == VanillaNpcIds.QueenSlimeMinionPink.Value) &&
+            proposed.Type == source.Type)
+            return PlanQueenSlimeMinionShards(in source, in proposed, destination);
+        if (containedTrapCount > 0)
+            return containedTrapCount;
+        if (source.Type == VanillaNpcIds.Antlion.Value && proposed.Type == source.Type)
+            return PlanAntlionSand(in source, in proposed, destination);
         if (source.Type == VanillaNpcIds.SkeletronHead.Value && proposed.Type == source.Type)
             return 0; // AI_011 draws and allocates only in the accepted effect phase.
         if (source.Type == VanillaNpcIds.QueenBee.Value && proposed.Type == source.Type)
@@ -487,6 +541,247 @@ public sealed class VanillaNpcTargetingAiStepper :
 
         return _flyer.PlanProjectileSpawns(in source, in proposed, _context, destination);
     }
+
+    private int PlanSpikedSlimeSpikes(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiProjectileIntent> destination)
+    {
+        NpcTypeId slimeType = new(source.Type);
+        ProjectileTypeId spikeType = source.Type == VanillaNpcIds.SpikedSlime.Value
+            ? VanillaProjectileIds.SpikedSlimeSpike
+            : VanillaProjectileIds.SpikedIceSlimeSpike;
+        if (source.Simulation.LocalAi.Ai0 is < 0f or > 1f ||
+            proposed.Simulation.LocalAi.Ai0 is not 30f and not 50f ||
+            source.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)source.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.NoAggro ||
+            !VanillaNpcDefinitionCatalog.TryGet(slimeType, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox) ||
+            !VanillaDefinitionCatalog.TryGet(spikeType, out VanillaProjectileDefinition spike))
+        {
+            return 0;
+        }
+
+        float centerX = source.PositionX + hitbox.Width * .5f;
+        float centerY = source.PositionY + hitbox.Height * .5f;
+        if (proposed.Simulation.LocalAi.Ai0 == 50f)
+        {
+            if (destination.IsEmpty)
+                return 1;
+            float velocityX = target.CenterX - centerX;
+            float velocityY = target.CenterY - target.Height * .5f - centerY - _random.NextInt32(0, 200);
+            NormalizeTo(ref velocityX, ref velocityY, 4.5f);
+            destination[0] = new NpcAiProjectileIntent(
+                spikeType,
+                centerX - spike.Width * .5f,
+                centerY - spike.Height * .5f,
+                velocityX,
+                velocityY,
+                Damage: 9,
+                KnockBack: 0f);
+            return 1;
+        }
+
+        const int burstCount = 5;
+        if (destination.Length < burstCount)
+            return destination.Length + 1;
+        for (int index = 0; index < burstCount; index++)
+        {
+            float velocityX = (index - 2) * (1f + _random.NextInt32(-50, 51) * .005f);
+            float velocityY = -4f * (1f + _random.NextInt32(-50, 51) * .005f);
+            NormalizeTo(ref velocityX, ref velocityY, 4f + _random.NextInt32(-50, 51) * .01f);
+            destination[index] = new NpcAiProjectileIntent(
+                spikeType,
+                centerX - spike.Width * .5f,
+                centerY - spike.Height * .5f,
+                velocityX,
+                velocityY,
+                Damage: 9,
+                KnockBack: 0f);
+        }
+        return burstCount;
+    }
+
+    private int PlanSpikedJungleSlimeThorns(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiProjectileIntent> destination)
+    {
+        if (source.Simulation.LocalAi.Ai0 is < 0f or > 1f ||
+            proposed.Simulation.LocalAi.Ai0 is not 80f and not 65f ||
+            source.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)source.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.NoAggro ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.SpikedJungleSlime, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox) ||
+            !VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.SpikedJungleSlimeThorn, out VanillaProjectileDefinition thorn))
+        {
+            return 0;
+        }
+
+        float centerX = source.PositionX + hitbox.Width * .5f;
+        float centerY = source.PositionY + hitbox.Height * .5f;
+        if (proposed.Simulation.LocalAi.Ai0 == 65f)
+        {
+            if (destination.IsEmpty)
+                return 1;
+            float originalDx = target.CenterX - centerX;
+            float originalDy = target.CenterY - target.Height * .5f - centerY;
+            float originalDistance = MathF.Sqrt(originalDx * originalDx + originalDy * originalDy);
+            float velocityY = originalDy - _random.NextInt32(-30, 20) - originalDistance * .05f;
+            float velocityX = originalDx - _random.NextInt32(-20, 20);
+            NormalizeTo(ref velocityX, ref velocityY, 7f);
+            destination[0] = new NpcAiProjectileIntent(
+                VanillaProjectileIds.SpikedJungleSlimeThorn,
+                centerX - thorn.Width * .5f,
+                centerY - thorn.Height * .5f,
+                velocityX,
+                velocityY,
+                Damage: 13,
+                KnockBack: 0f);
+            return 1;
+        }
+
+        const int burstCount = 5;
+        if (destination.Length < burstCount)
+            return destination.Length + 1;
+        for (int index = 0; index < burstCount; index++)
+        {
+            float velocityX = (index - 2) * (1f + _random.NextInt32(-50, 51) * .02f);
+            float velocityY = -2f * (1f + _random.NextInt32(-50, 51) * .02f);
+            NormalizeTo(ref velocityX, ref velocityY, 3f + _random.NextInt32(-50, 51) * .01f);
+            destination[index] = new NpcAiProjectileIntent(
+                VanillaProjectileIds.SpikedJungleSlimeThorn,
+                centerX - thorn.Width * .5f,
+                centerY - thorn.Height * .5f,
+                velocityX,
+                velocityY,
+                Damage: 13,
+                KnockBack: 0f);
+        }
+        return burstCount;
+    }
+
+    private int PlanQueenSlimeMinionShards(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiProjectileIntent> destination)
+    {
+        bool blue = source.Type == VanillaNpcIds.QueenSlimeMinionBlue.Value;
+        bool burst = blue && proposed.Simulation.LocalAi.Ai0 == 25f;
+        bool normal = blue ? proposed.Simulation.LocalAi.Ai0 == 50f :
+            proposed.Simulation.LocalAi.Ai0 is 30f or 40f;
+        ProjectileTypeId projectileType = blue
+            ? VanillaProjectileIds.QueenSlimeBlueMinionShard
+            : VanillaProjectileIds.QueenSlimePinkMinionShard;
+        NpcTypeId slimeType = new(source.Type);
+        if ((!burst && !normal) || source.Simulation.LocalAi.Ai0 is < 0f or > 1f ||
+            source.VelocityY != 0f || source.Simulation.Wet || source.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)source.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.NoAggro ||
+            !VanillaNpcDefinitionCatalog.TryGet(slimeType, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox) ||
+            !VanillaDefinitionCatalog.TryGet(projectileType, out VanillaProjectileDefinition projectile))
+        {
+            return 0;
+        }
+
+        float centerX = source.PositionX + hitbox.Width * .5f;
+        float centerY = source.PositionY + hitbox.Height * .5f;
+        float originalDx = target.CenterX - centerX;
+        float originalDy = target.CenterY - centerY;
+        float originalDistance = MathF.Sqrt(originalDx * originalDx + originalDy * originalDy);
+        if (MathF.Abs(originalDx) >= 500f || MathF.Abs(originalDy) >= 550f || _context.ProjectileEnvironment is null ||
+            !_context.ProjectileEnvironment.CanHit(source.PositionX, source.PositionY, hitbox.Width, hitbox.Height,
+                target.CenterX - target.Width * .5f, target.CenterY - target.Height * .5f,
+                (int)target.Width, (int)target.Height))
+        {
+            return 0;
+        }
+
+        int damage = _context.MasterMode ? 20 : _context.ExpertMode ? 17 : 15;
+        if (!burst)
+        {
+            if (destination.IsEmpty)
+                return 1;
+            float velocityX = originalDx;
+            float velocityY = target.CenterY - target.Height * .5f - centerY - _random.NextInt32(0, 200);
+            float speed = 9f;
+            if (originalDistance > 350f)
+                speed *= blue ? 2f : 1.75f;
+            else if (originalDistance > 250f)
+                speed *= blue ? 1.5f : 1.25f;
+            NormalizeTo(ref velocityX, ref velocityY, speed);
+            destination[0] = new NpcAiProjectileIntent(projectileType,
+                centerX - projectile.Width * .5f, centerY - projectile.Height * .5f,
+                velocityX, velocityY, damage, 0f);
+            return 1;
+        }
+
+        const int burstCount = 3;
+        if (destination.Length < burstCount)
+            return destination.Length + 1;
+        float burstMultiplier = 1f;
+        if (originalDistance > 350f)
+            burstMultiplier = 2f;
+        else if (originalDistance > 250f)
+            burstMultiplier = 1.5f;
+        for (int index = 0; index < burstCount; index++)
+        {
+            float velocityX = (index - 1) * (1f + _random.NextInt32(-50, 51) * .005f);
+            float velocityY = -4f * (1f + _random.NextInt32(-50, 51) * .005f);
+            NormalizeTo(ref velocityX, ref velocityY,
+                (6f + _random.NextInt32(-50, 51) * .01f) * burstMultiplier);
+            destination[index] = new NpcAiProjectileIntent(projectileType,
+                centerX - projectile.Width * .5f, centerY - projectile.Height * .5f,
+                velocityX, velocityY, damage, 0f);
+        }
+        return burstCount;
+    }
+
+    private int PlanContainedSlimeTrap(
+        in NpcSnapshot source,
+        in NpcStateUpdate proposed,
+        Span<NpcAiProjectileIntent> destination)
+    {
+        // NPC.AI_001: the item id 539 carries the server-owned dart trap. Its roll is evaluated after
+        // movement, while the source keeps the contained item in ai[1].
+        if (source.Ai.Ai1 != 539f || proposed.Ai.Ai1 != 539f || source.Target >= byte.MaxValue ||
+            !_context.TryFindCandidate((byte)source.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.NoAggro || _context.ProjectileEnvironment is null ||
+            !VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(source.Type), out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox) ||
+            !VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.ContainedSlimeTrap, out VanillaProjectileDefinition trap))
+        {
+            return 0;
+        }
+
+        int chance = 300 - (_context.NoTrapsWorld ? 120 : 0) - (_context.GoodWorld ? 120 : 0);
+        if (_random.NextInt32(0, chance) != 0 ||
+            !_context.ProjectileEnvironment.CanHit(source.PositionX, source.PositionY, hitbox.Width, hitbox.Height,
+                target.CenterX - target.Width * .5f, target.CenterY - target.Height * .5f,
+                (int)target.Width, (int)target.Height))
+        {
+            return 0;
+        }
+        if (destination.IsEmpty)
+            return 1;
+
+        float centerX = source.PositionX + hitbox.Width * .5f;
+        float centerY = source.PositionY + hitbox.Height * .5f;
+        destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.ContainedSlimeTrap,
+            centerX - trap.Width * .5f, centerY - trap.Height * .5f,
+            source.Simulation.DirectionX * 12f, 0f, 20, 2f);
+        return 1;
+    }
+
+    private static bool IsItemContainingSlime(int type) => type is
+        1 or // Blue Slime
+        59 or // Lava Slime
+        147 or // Ice Slime
+        184 or // Spiked Ice Slime
+        537; // Sand Slime
 
     public int PlanProjectileMutations(
         in NpcSnapshot source,
@@ -740,6 +1035,56 @@ public sealed class VanillaNpcTargetingAiStepper :
             0f)
         {
             TimeLeftOverride = 600
+        };
+        return 1;
+    }
+
+    private int PlanAntlionSand(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiProjectileIntent> destination)
+    {
+        if (destination.IsEmpty || source.Ai.Ai0 != 0f || proposed.Ai.Ai0 != VanillaAntlionMotion1458.ProjectileCooldown ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Antlion, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(source.Simulation, out VanillaNpcHitboxSize hitbox))
+        {
+            return 0;
+        }
+
+        float centerX = source.PositionX + hitbox.Width * .5f;
+        float centerY = source.PositionY + hitbox.Height * .5f;
+        float velocityX;
+        float velocityY;
+        if (proposed.Simulation.DirectionY < 0 && proposed.Target < byte.MaxValue &&
+            _context.TryFindCandidate((byte)proposed.Target, out VanillaNpcTargetCandidate target))
+        {
+            float targetTopY = target.CenterY - target.Height * .5f;
+            float rawRotation = MathF.Atan2(targetTopY - centerY, target.CenterX - centerX) + MathF.PI * .5f;
+            if (rawRotation is >= -1.2f and <= 1.2f)
+            {
+                velocityX = target.CenterX - centerX;
+                velocityY = targetTopY - centerY;
+            }
+            else
+            {
+                velocityX = MathF.Cos(proposed.Simulation.Rotation ?? 0f - MathF.PI * .5f);
+                velocityY = MathF.Sin(proposed.Simulation.Rotation ?? 0f - MathF.PI * .5f);
+            }
+        }
+        else
+        {
+            velocityX = MathF.Cos(proposed.Simulation.Rotation ?? 0f - MathF.PI * .5f);
+            velocityY = MathF.Sin(proposed.Simulation.Rotation ?? 0f - MathF.PI * .5f);
+        }
+
+        float length = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
+        if (!(length > 0f) || !float.IsFinite(length))
+            return 0;
+
+        velocityX = velocityX / length * VanillaAntlionMotion1458.ProjectileSpeed;
+        velocityY = velocityY / length * VanillaAntlionMotion1458.ProjectileSpeed;
+        destination[0] = new NpcAiProjectileIntent(
+            VanillaProjectileIds.AntlionSand, centerX, centerY, velocityX, velocityY, Damage: 10, KnockBack: 0f)
+        {
+            InitialAi = new ProjectileAiState(2f, 0f, 0f),
+            TimeLeftOverride = 300
         };
         return 1;
     }
@@ -2085,7 +2430,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         proposed.Type == before.Type &&
         (before.TypeIdentity == VanillaNpcIds.DarkCaster || before.TypeIdentity == VanillaNpcIds.FireImp || before.TypeIdentity == VanillaNpcIds.GoblinSorcerer || before.TypeIdentity == VanillaNpcIds.Tim || before.TypeIdentity == VanillaNpcIds.RuneWizard || before.TypeIdentity.Value is >= 281 and <= 286 || before.TypeIdentity == VanillaNpcIds.Harpy ||
          before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon ||
-         before.TypeIdentity == VanillaNpcIds.RedDevil || VanillaGroundFighterProjectileAttack.IsSupported(before.TypeIdentity));
+         before.TypeIdentity == VanillaNpcIds.RedDevil || before.TypeIdentity == VanillaNpcIds.ChaosElemental || before.TypeIdentity == VanillaNpcIds.Gastropod || VanillaServantOfCthulhuNpcBehaviorStrategy.IsHornetStingerShooter(before.TypeIdentity) ||
+         VanillaGroundFighterProjectileAttack.IsSupported(before.TypeIdentity));
 
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations)
@@ -2096,9 +2442,16 @@ public sealed class VanillaNpcTargetingAiStepper :
             return _fireImp.Complete(in before, in committed, _context, mutations);
         if ((before.TypeIdentity == VanillaNpcIds.GoblinSorcerer || before.TypeIdentity == VanillaNpcIds.Tim || before.TypeIdentity == VanillaNpcIds.RuneWizard || before.TypeIdentity.Value is >= 281 and <= 286) && committed.TypeIdentity == before.TypeIdentity)
             return _goblinSorcerer.Complete(in before, in committed, _context, mutations);
+        if (before.TypeIdentity == VanillaNpcIds.ChaosElemental && committed.TypeIdentity == VanillaNpcIds.ChaosElemental)
+            return _chaosElemental.Complete(in before, in committed, _context, mutations);
+        if (before.TypeIdentity == VanillaNpcIds.Gastropod && committed.TypeIdentity == VanillaNpcIds.Gastropod)
+            return _gastropod.Complete(in before, in committed, _context, mutations);
         if ((before.TypeIdentity == VanillaNpcIds.Harpy || before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon || before.TypeIdentity == VanillaNpcIds.RedDevil) &&
             committed.TypeIdentity == before.TypeIdentity)
             return _bat.CompleteBatShooterAttackTimer(in before, in committed, _context, _random, mutations);
+        if (VanillaServantOfCthulhuNpcBehaviorStrategy.IsHornetStingerShooter(before.TypeIdentity) &&
+            committed.TypeIdentity == before.TypeIdentity)
+            return _flyer.CompleteHornetStingerAttack(in before, in committed, _context, mutations);
         if (VanillaGroundFighterProjectileAttack.IsSupported(before.TypeIdentity) &&
             committed.TypeIdentity == before.TypeIdentity)
             return VanillaGroundFighterProjectileAttack.Complete(
@@ -2146,6 +2499,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         SpawnSnowMoonAi62Projectile(in before, in committed, mutations);
         VanillaMoonLordLeechBehavior.ApplyHealing(in before, in committed, _context, mutations);
         VanillaMoonLordLeechBehavior.SpawnFromHead(in before, in committed, _context, mutations);
+        _flyer.SpawnGoodWorldEaterSpit(in before, in committed, _context, mutations);
+        _flyer.SpawnCorruptorSpit(in before, in committed, _context, mutations);
         VanillaDestroyerNpcBehaviorStrategy.SpawnChain(in before, in committed, _context.GoodWorld, mutations);
         VanillaDestroyerNpcBehaviorStrategy.DespawnDaytimeChain(in before, in committed, _context, mutations);
     }

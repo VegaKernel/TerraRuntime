@@ -23,7 +23,9 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
             VanillaProjectileIds.ConfettiMelee,
             VanillaProjectileIds.BoneArrowFromMerchant,
             VanillaProjectileIds.SoundGun,
-            VanillaProjectileIds.BoneShard
+            VanillaProjectileIds.BoneShard,
+            VanillaProjectileIds.GroundFighter350Bolt,
+            VanillaProjectileIds.SalamanderBolt
         ];
 
         foreach (ProjectileTypeId type in basicArrows)
@@ -257,6 +259,9 @@ public sealed class VanillaProjectileBehaviorProfileCatalogTests
             VanillaProjectileIds.SoundGun,
             VanillaProjectileIds.MeleeBone,
             VanillaProjectileIds.BoneShard,
+            VanillaProjectileIds.GroundFighter350Bolt,
+            VanillaProjectileIds.SalamanderBolt,
+            VanillaProjectileIds.TacticalSkeletonBullet,
             VanillaProjectileIds.MoonBoulder
         ];
 

@@ -89,6 +89,10 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 14,
         CollisionHeight: 14);
 
+    private static readonly VanillaProjectileDefinition GastropodBoltDefinition = new(
+        Width: 8, Height: 8, AiStyle: VanillaProjectileAiStyles.Arrow, TileCollide: true,
+        IgnoreWater: false, CanCutTiles: true, CollisionWidth: 8, CollisionHeight: 8);
+
     private static readonly VanillaProjectileDefinition DemonScytheDefinition = new(
         Width: 48,
         Height: 48,
@@ -639,6 +643,122 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 10,
         CollisionHeight: 10);
 
+    // Projectile.SetDefaults 572: hostile Salamander AI_003 shot.
+    private static readonly VanillaProjectileDefinition SalamanderBoltDefinition = new(
+        Width: 10,
+        Height: 10,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
+
+    // Projectile.SetDefaults 180: Tactical Skeleton's hostile Deadeye Bullet.
+    private static readonly VanillaProjectileDefinition TacticalSkeletonBulletDefinition = new(
+        Width: 4,
+        Height: 4,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 4,
+        CollisionHeight: 4);
+
+    // Projectile.SetDefaults 302: Skeleton Sniper's hostile Bullet High Velocity.
+    private static readonly VanillaProjectileDefinition SkeletonSniperBulletDefinition = new(
+        Width: 4,
+        Height: 4,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 4,
+        CollisionHeight: 4);
+
+    // Projectile.SetDefaults 300: Paladin's hostile hammer.
+    private static readonly VanillaProjectileDefinition PaladinHammerDefinition = new(
+        Width: 38,
+        Height: 38,
+        AiStyle: VanillaProjectileAiStyles.Thrown,
+        TileCollide: false,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 38,
+        CollisionHeight: 38);
+
+    // Projectile.SetDefaults 81: Goblin Archer's hostile Wooden Arrow.
+    private static readonly VanillaProjectileDefinition GoblinArcherArrowDefinition = new(
+        Width: 10,
+        Height: 10,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
+
+    // Projectile.SetDefaults 177: Icy Merman's hostile Icewater Spit.
+    private static readonly VanillaProjectileDefinition IcewaterSpitDefinition = new(
+        Width: 10,
+        Height: 10,
+        AiStyle: new ProjectileAiStyleId(28),
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
+
+    // Projectile.SetDefaults 240: Pirate Captain's hostile cannonball.
+    private static readonly VanillaProjectileDefinition PirateCaptainCannonballDefinition = new(
+        Width: 16,
+        Height: 16,
+        AiStyle: VanillaProjectileAiStyles.Thrown,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 16,
+        CollisionHeight: 16);
+
+    // Projectile.SetDefaults 174: hostile Spiked Ice Slime shot.
+    private static readonly VanillaProjectileDefinition SpikedIceSlimeSpikeDefinition = new(
+        Width: 6,
+        Height: 6,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 6,
+        CollisionHeight: 6);
+
+    // Projectile.SetDefaults 176: hostile Spiked Jungle Slime thorn.
+    private static readonly VanillaProjectileDefinition SpikedJungleSlimeThornDefinition = new(
+        Width: 6,
+        Height: 6,
+        AiStyle: VanillaProjectileAiStyles.Arrow,
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 6,
+        CollisionHeight: 6);
+
+    // Projectile.SetDefaults 605: hostile Hallow Spiked Slime shot.
+    private static readonly VanillaProjectileDefinition SpikedSlimeSpikeDefinition = new(
+        Width: 6, Height: 6, AiStyle: VanillaProjectileAiStyles.Arrow, TileCollide: true,
+        IgnoreWater: false, CanCutTiles: true, CollisionWidth: 6, CollisionHeight: 6);
+
+    // Projectile.SetDefaults 920/921: Queen Slime minion hostile shards.
+    private static readonly VanillaProjectileDefinition QueenSlimeBlueMinionShardDefinition = new(
+        Width: 6, Height: 6, AiStyle: VanillaProjectileAiStyles.Arrow, TileCollide: true,
+        IgnoreWater: false, CanCutTiles: true, CollisionWidth: 6, CollisionHeight: 6);
+    private static readonly VanillaProjectileDefinition QueenSlimePinkMinionShardDefinition = new(
+        Width: 6, Height: 6, AiStyle: VanillaProjectileAiStyles.Arrow, TileCollide: true,
+        IgnoreWater: false, CanCutTiles: true, CollisionWidth: 6, CollisionHeight: 6);
+    // Projectile.SetDefaults 1073: item-containing Slime's hostile dart trap.
+    private static readonly VanillaProjectileDefinition ContainedSlimeTrapDefinition = new(
+        Width: 10, Height: 10, AiStyle: VanillaProjectileAiStyles.Arrow, TileCollide: true,
+        IgnoreWater: false, CanCutTiles: true, CollisionWidth: 10, CollisionHeight: 10);
+
     private static readonly VanillaProjectileDefinition IceQueenFrostFlareDefinition = new(14, 14, VanillaProjectileAiStyles.Arrow, false, false, true, 14, 14);
     private static readonly VanillaProjectileDefinition IceQueenFrostWaveDefinition = new(24, 24, new ProjectileAiStyleId(58), false, false, true, 24, 24);
     private static readonly VanillaProjectileDefinition IceQueenIceSpikeDefinition = new(30, 30, VanillaProjectileAiStyles.BouncyBall, true, false, true, 30, 30);
@@ -886,6 +1006,18 @@ public static class VanillaDefinitionCatalog
             return true;
         }
 
+        if (type == VanillaProjectileIds.HornetStinger)
+        {
+            definition = WoodenArrowDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.GastropodBolt)
+        {
+            definition = GastropodBoltDefinition;
+            return true;
+        }
+
         if (type == VanillaProjectileIds.HarpyFeather)
         {
             definition = HarpyFeatherDefinition;
@@ -1034,6 +1166,48 @@ public static class VanillaDefinitionCatalog
             return true;
         }
 
+        if (type == VanillaProjectileIds.SalamanderBolt)
+        {
+            definition = SalamanderBoltDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.TacticalSkeletonBullet)
+        {
+            definition = TacticalSkeletonBulletDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.SkeletonSniperBullet)
+        {
+            definition = SkeletonSniperBulletDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PaladinHammer)
+        {
+            definition = PaladinHammerDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.GoblinArcherArrow)
+        {
+            definition = GoblinArcherArrowDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.IcewaterSpit)
+        {
+            definition = IcewaterSpitDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PirateCaptainCannonball)
+        {
+            definition = PirateCaptainCannonballDefinition;
+            return true;
+        }
+
         if (type == VanillaProjectileIds.SkeletronSkull)
         {
             definition = SkeletronSkullDefinition;
@@ -1091,6 +1265,12 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.IceQueenFrostFlare) { definition = IceQueenFrostFlareDefinition; return true; }
         if (type == VanillaProjectileIds.IceQueenFrostWave) { definition = IceQueenFrostWaveDefinition; return true; }
         if (type == VanillaProjectileIds.IceQueenIceSpike) { definition = IceQueenIceSpikeDefinition; return true; }
+        if (type == VanillaProjectileIds.SpikedIceSlimeSpike) { definition = SpikedIceSlimeSpikeDefinition; return true; }
+        if (type == VanillaProjectileIds.SpikedJungleSlimeThorn) { definition = SpikedJungleSlimeThornDefinition; return true; }
+        if (type == VanillaProjectileIds.SpikedSlimeSpike) { definition = SpikedSlimeSpikeDefinition; return true; }
+        if (type == VanillaProjectileIds.QueenSlimeBlueMinionShard) { definition = QueenSlimeBlueMinionShardDefinition; return true; }
+        if (type == VanillaProjectileIds.QueenSlimePinkMinionShard) { definition = QueenSlimePinkMinionShardDefinition; return true; }
+        if (type == VanillaProjectileIds.ContainedSlimeTrap) { definition = ContainedSlimeTrapDefinition; return true; }
 
         if (type == VanillaProjectileIds.QueenBeeStinger)
         {

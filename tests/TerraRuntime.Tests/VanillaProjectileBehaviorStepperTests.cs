@@ -53,6 +53,19 @@ public sealed class VanillaProjectileBehaviorStepperTests
     }
 
     [Fact]
+    public void Pirate_captain_cannonball_uses_its_source_sixteen_tick_delay_then_distinct_ballistics()
+    {
+        ProjectileSnapshot straight = CreateProjectile(VanillaProjectileIds.PirateCaptainCannonball, 4f, -1f, ai0: 14f);
+        Assert.True(VanillaDefinitionCatalog.TryGet(straight.Type, out VanillaProjectileDefinition definition));
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(in straight, in definition, default, out VanillaProjectileBehaviorResult first));
+        Assert.Equal(15f, first.Ai0); Assert.Equal(4f, first.VelocityX); Assert.Equal(-1f, first.VelocityY);
+
+        ProjectileSnapshot falling = straight with { Ai = straight.Ai with { Ai0 = 15f } };
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(in falling, in definition, default, out VanillaProjectileBehaviorResult second));
+        Assert.Equal(16f, second.Ai0); Assert.Equal(3.964f, second.VelocityX, 5); Assert.Equal(-.82f, second.VelocityY, 5);
+    }
+
+    [Fact]
     public void Basic_arrow_family_caps_ai_timer_and_fall_speed_without_world_queries()
     {
         ProjectileSnapshot projectile = CreateProjectile(
@@ -241,6 +254,24 @@ public sealed class VanillaProjectileBehaviorStepperTests
         Assert.True(VanillaDefinitionCatalog.TryGet(bomb.Type, out VanillaProjectileDefinition bombDefinition));
         Assert.True(VanillaProjectileBehaviorStepper.TryStep(in bomb, in bombDefinition, default, out VanillaProjectileBehaviorResult bombNext));
         Assert.Equal(3f, bombNext.VelocityX, 5); Assert.Equal(4.2f, bombNext.VelocityY, 5);
+    }
+
+    [Fact]
+    public void Skeleton_commando_rocket_uses_ai016_straight_rocket_acceleration()
+    {
+        ProjectileSnapshot rocket = CreateProjectile(
+            VanillaProjectileIds.SkeletonCommandoRocket,
+            velocityX: 4f,
+            velocityY: -3f,
+            ai0: 2f,
+            spawner: VanillaProjectileOwnership.ServerOwner);
+        Assert.True(VanillaDefinitionCatalog.TryGet(rocket.Type, out VanillaProjectileDefinition definition));
+
+        Assert.True(VanillaProjectileBehaviorStepper.TryStep(in rocket, in definition, default, out VanillaProjectileBehaviorResult next));
+
+        Assert.Equal(3f, next.Ai0);
+        Assert.Equal(4.4f, next.VelocityX, 5);
+        Assert.Equal(-3.3f, next.VelocityY, 5);
     }
 
     [Fact]

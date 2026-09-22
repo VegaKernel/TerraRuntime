@@ -56,7 +56,8 @@ internal enum VanillaProjectileBehaviorFamily : byte
     RedDevilSickle = 43,
     DungeonBeam = 44,
     DungeonFlame = 45,
-    DungeonSkull = 46
+    DungeonSkull = 46,
+    PirateCaptainCannonball = 47
 }
 
 /// <summary>
@@ -250,6 +251,14 @@ internal static class VanillaProjectileBehaviorProfileCatalog
 
     private static readonly VanillaProjectileBehaviorProfile ThrownProfile = new(
         VanillaProjectileBehaviorFamily.Thrown,
+        VanillaProjectileAiStyles.Thrown,
+        BehaviorImplemented: true,
+        RequiresDefaultAi2: false,
+        RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile PirateCaptainCannonballProfile = new(
+        VanillaProjectileBehaviorFamily.PirateCaptainCannonball,
         VanillaProjectileAiStyles.Thrown,
         BehaviorImplemented: true,
         RequiresDefaultAi2: false,
@@ -481,6 +490,18 @@ internal static class VanillaProjectileBehaviorProfileCatalog
             return true;
         }
 
+        if (type == VanillaProjectileIds.IcewaterSpit)
+        {
+            profile = RuneBlastProfile;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PirateCaptainCannonball)
+        {
+            profile = PirateCaptainCannonballProfile;
+            return true;
+        }
+
         if (type == VanillaProjectileIds.DungeonBeam)
         {
             profile = DungeonBeamProfile;
@@ -556,6 +577,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         if (type == VanillaProjectileIds.IceQueenFrostFlare) { profile = HostileStraightNoGravityProfile; return true; }
         if (type == VanillaProjectileIds.IceQueenFrostWave) { profile = IceQueenFrostWaveProfile; return true; }
         if (type == VanillaProjectileIds.IceQueenIceSpike) { profile = IceQueenIceSpikeProfile; return true; }
+
+        if (type == VanillaProjectileIds.SkeletonSniperBullet)
+        {
+            profile = HostileStraightNoGravityProfile;
+            return true;
+        }
 
         if (type == VanillaProjectileIds.Sharknado || type == VanillaProjectileIds.Cthulunado)
         {
@@ -772,6 +799,9 @@ internal static class VanillaProjectileBehaviorProfileCatalog
 
     private static bool IsBasicArrow(ProjectileTypeId type) =>
         type == VanillaProjectileIds.WoodenArrowFriendly ||
+        type == VanillaProjectileIds.HornetStinger ||
+        type == VanillaProjectileIds.GastropodBolt ||
+        type == VanillaProjectileIds.GoblinArcherArrow ||
         type == VanillaProjectileIds.HarpyFeather ||
         type == VanillaProjectileIds.FireArrow ||
         type == VanillaProjectileIds.UnholyArrow ||
@@ -785,7 +815,8 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         type == VanillaProjectileIds.BoneArrowFromMerchant ||
         type == VanillaProjectileIds.SoundGun ||
         type == VanillaProjectileIds.BoneShard ||
-        type == VanillaProjectileIds.GroundFighter350Bolt;
+        type == VanillaProjectileIds.GroundFighter350Bolt ||
+        type == VanillaProjectileIds.SalamanderBolt;
 
     private static bool IsThrown(ProjectileTypeId type) =>
         type == VanillaProjectileIds.Bone ||
@@ -798,5 +829,6 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         type == VanillaProjectileIds.SantaBombs ||
         type == VanillaProjectileIds.BoneDagger ||
         type == VanillaProjectileIds.Waffle ||
-        type == VanillaProjectileIds.MeleeBone;
+        type == VanillaProjectileIds.MeleeBone ||
+        type == VanillaProjectileIds.PaladinHammer;
 }

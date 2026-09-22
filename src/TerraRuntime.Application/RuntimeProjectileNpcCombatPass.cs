@@ -69,7 +69,8 @@ internal sealed class RuntimeProjectileNpcCombatPass
         {
             ProjectileSnapshot projectile = projectileBuffer[projectileIndex];
             if (projectiles.IsCombatTrusted(projectile.Handle) && VanillaProjectileOwnership.IsServerOwned(projectile.Spawner) &&
-                VanillaFallingBlock1458.TryGetTile(projectile.Type, out _))
+                VanillaFallingBlock1458.TryGetTile(projectile.Type, out _) &&
+                !(projectile.Type == VanillaProjectileIds.AntlionSand && projectile.Ai.Ai0 == 2f))
             {
                 TickFallingBlock(in projectile, npcCount, tick);
                 continue;
@@ -251,6 +252,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
 
         return profile.Family is VanillaProjectileBehaviorFamily.BasicArrow or
             VanillaProjectileBehaviorFamily.Thrown or
+            VanillaProjectileBehaviorFamily.PirateCaptainCannonball or
             VanillaProjectileBehaviorFamily.Boomerang or
             VanillaProjectileBehaviorFamily.Bomb or
             VanillaProjectileBehaviorFamily.ControlledMagicMissile;

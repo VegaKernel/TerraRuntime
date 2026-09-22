@@ -88,6 +88,7 @@ internal sealed class VanillaFlyingEyeNpcBehaviorStrategy : IVanillaNpcBehaviorS
             Ai: staged.Ai,
             TimeLeft: staged.Simulation.TimeLeft,
             NoTileCollide: staged.Simulation.NoTileCollide,
+            Wet: staged.Simulation.Wet,
             DayTime: context.DayTime,
             WorldSurfacePixels: context.WorldSurfacePixels,
             TargetInGraveyard: targetInGraveyard,
@@ -129,6 +130,7 @@ internal sealed class VanillaFlyingEyeNpcBehaviorStrategy : IVanillaNpcBehaviorS
             Simulation = next.Simulation with
             {
                 NoTileCollide = lifecycle.NoTileCollide,
+                Wet = lifecycle.Wet,
                 TimeLeft = lifecycle.TimeLeft
             }
         };
@@ -194,6 +196,11 @@ internal sealed class VanillaFlyingEyeNpcBehaviorStrategy : IVanillaNpcBehaviorS
 
 internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
+    private readonly IVanillaNpcRandom random;
+
+    public VanillaSlimeGroundNpcBehaviorStrategy(IVanillaNpcRandom random) =>
+        this.random = random ?? throw new ArgumentNullException(nameof(random));
+
     public bool TryStep(
         in NpcSnapshot npc,
         in VanillaNpcDefinition definition,
@@ -212,34 +219,389 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
                 ? selected
                 : default;
         NpcSimulationState simulation = npc.Simulation;
+        NpcAiState ai = npc.Ai;
+        float positionX = npc.PositionX;
+        float positionY = npc.PositionY;
+        float velocityX = npc.VelocityX;
+        float velocityY = npc.VelocityY;
+        // NPC.AI_001 initializes a contained Sand Slime item only once. In a Skyblock world
+        // whose generation scan found no Fossil blocks, it has a one-in-five Fossil Slime roll.
+        if (definition.Type == VanillaNpcIds.SandSlime && ai.Ai1 == 0f)
+        {
+            ai = ai with { Ai1 = -1f };
+            if (context.SkyblockNoFossils && random.NextInt32(0, 5) == 0)
+                ai = ai with { Ai1 = 3347f };
+        }
+        // Ice and Spiked Ice Slimes use the same one-time contained-item slot. Below the world surface,
+        // ordinary worlds roll once at 1/40; Skyblock lowTiles makes five 1/20 attempts, stopping at the
+        // first success, then chooses Slush (1103) or Snow (593) with a separate source draw.
+        if ((definition.Type == VanillaNpcIds.IceSlime || definition.Type == VanillaNpcIds.SpikedIceSlime) &&
+            ai.Ai1 == 0f)
+        {
+            ai = ai with { Ai1 = -1f };
+            if (npc.PositionY > context.WorldSurfacePixels)
+            {
+                int attempts = context.SkyblockLowTiles ? 5 : 1;
+                int chance = context.SkyblockLowTiles ? 20 : 40;
+                for (int attempt = 0; attempt < attempts && ai.Ai1 == -1f; attempt++)
+                {
+                    if (random.NextInt32(0, chance) == 0)
+                        ai = ai with { Ai1 = random.NextInt32(0, 2) == 0 ? 1103f : 593f };
+                }
+            }
+        }
+        // AI_001's Remix item generator is a separate unimplemented source branch. Outside Remix,
+        // a Skyblock world without Hellstone grants each normal Lava Slime initialization attempt
+        // a post-Skeletron one-in-fifteen Hellstone roll. lowTiles/slime-rain alter attempt count.
+        if (definition.Type == VanillaNpcIds.LavaSlime && ai.Ai1 == 0f)
+        {
+            ai = ai with { Ai1 = -1f };
+            if (!context.RemixWorld && context.SkyblockNoHellstone && context.DownedSkeletron)
+            {
+                int attempts = 1 + (context.SkyblockLowTiles ? 4 : 0) + (context.SlimeRainActive ? 2 : 0);
+                for (int attempt = 0; attempt < attempts && ai.Ai1 == -1f; attempt++)
+                {
+                    if (random.NextInt32(0, 15) == 0)
+                        ai = ai with { Ai1 = 174f };
+                }
+            }
+        }
+        // Blue Slime uses the generic AI_001 item loop. A Skyblock world with no Life Crystals (or
+        // lowTiles) may select one Heart Slime at a time while its source position is in the rock layer.
+        // The active-peer scan mirrors AnyLifeCrystalSlimes before consuming the one-in-200 roll.
+        if (definition.Type == VanillaNpcIds.BlueSlime && npc.NetId is not -5 and not -4 && ai.Ai1 == 0f)
+        {
+            ai = ai with { Ai1 = -1f };
+            int attempts = 1;
+            if (context.SkyblockLowTiles)
+                attempts += npc.NetId == -6 ? 9 : 4;
+            else if (npc.NetId == -6)
+                attempts += 4;
+            if (context.SlimeRainActive)
+                attempts += 2;
+            for (int attempt = 0; attempt < attempts && ai.Ai1 == -1f; attempt++)
+            {
+                bool selectedHeart = context.IsInRockLayer(positionY) &&
+                    (context.SkyblockNoLifeCrystals || context.SkyblockLowTiles) &&
+                    !context.HasNpcPeerWithAi1(VanillaNpcIds.BlueSlime, 29f) &&
+                    random.NextInt32(0, 200) == 0;
+                if (selectedHeart)
+                {
+                    ai = ai with { Ai1 = 29f };
+                }
+                // Source evaluates this after a failed Heart Slime roll, once per generic
+                // item-loop attempt. The item identity draw is Item.GetRandomVoiceItem().
+                else if (context.SkyblockLowTiles && positionY > context.WorldSurfacePixels &&
+                         random.NextInt32(0, 1000) == 0)
+                {
+                    ai = ai with { Ai1 = GetRandomVoiceChangeItem(random.NextInt32(0, 14)) };
+                }
+            }
+        }
+        // Existing contained-item variants are re-applied by AI_001 on every server tick before
+        // the shared slime movement state machine. These effects are independent of the branch
+        // that originally selected the item into ai[1].
+        if (ai.Ai1 == 2f && npc.VelocityY == 0f)
+            ai = ai with { Ai0 = ai.Ai0 + 9f };
+        if (ai.Ai1 == 9f)
+            simulation = simulation with { DefenseOverride = (simulation.BaseDefense ?? definition.Defense) + 16 };
+        if (ai.Ai1 == 147f)
+            simulation = simulation with { DamageOverride = (simulation.BaseDamage ?? definition.Damage) * 2 };
+        if (ai.Ai1 == 3609f)
+        {
+            simulation = simulation with
+            {
+                DefenseOverride = (simulation.BaseDefense ?? definition.Defense) + 8,
+                DamageOverride = (simulation.BaseDamage ?? definition.Damage) + 6
+            };
+        }
+        // Granite and Marble Slime share AI_001's contained-item combat state: both retain the
+        // source defense bonus and become immune to knockback without changing their base motion.
+        if (ai.Ai1 is 3086f or 3081f)
+        {
+            simulation = simulation with
+            {
+                DefenseOverride = (simulation.BaseDefense ?? definition.Defense) + 16,
+                KnockBackResist = 0f
+            };
+        }
+        // These source item states apply their extra vertical impulse before the shared slime
+        // movement branch; ordinary world physics adds its usual gravity later in the tick.
+        const float vanillaNpcGravity = .3f;
+        if (ai.Ai1 == 3f && velocityY > 0f)
+            velocityY += vanillaNpcGravity * 2f;
+        if (ai.Ai1 == 751f && velocityY != 0f)
+            velocityY -= vanillaNpcGravity * .6f;
+        if (ai.Ai1 is 3736f or 3737f or 3738f && simulation.CollideY && simulation.OldVelocityY > 4f)
+            velocityY = -simulation.OldVelocityY * .7f;
+        // Heart and Hell Slime compare against NPC.defLifeMax, which is the spawn-time value after
+        // SetDefaults/scaling. The runtime retains that baseline independently so their initialization
+        // does not repeat after a state-only update.
+        int baseLifeMax = simulation.BaseLifeMax ?? definition.LifeMax;
+        if (ai.Ai1 == 29f)
+        {
+            simulation = simulation with { DefenseOverride = (simulation.BaseDefense ?? definition.Defense) + 4 };
+            if (simulation.LifeMax == baseLifeMax)
+            {
+                simulation = simulation with
+                {
+                    Life = simulation.Life == simulation.LifeMax ? baseLifeMax * 2 : simulation.Life,
+                    LifeMax = baseLifeMax * 2
+                };
+            }
+        }
+        if (ai.Ai1 == 174f)
+        {
+            simulation = simulation with
+            {
+                DefenseOverride = (simulation.BaseDefense ?? definition.Defense) + 14,
+                DamageOverride = (simulation.BaseDamage ?? definition.Damage) + 20
+            };
+            if (simulation.LifeMax == baseLifeMax && definition.TryResolveHitbox(simulation, out VanillaNpcHitboxSize body))
+            {
+                const float expansion = 1.2f;
+                int width = (int)(body.Width * expansion);
+                int height = (int)(body.Height * expansion);
+                simulation = simulation with
+                {
+                    KnockBackResist = (simulation.KnockBackResist ?? definition.KnockBackResist) / 3f,
+                    Life = simulation.Life * 2,
+                    LifeMax = simulation.LifeMax * 2,
+                    Scale = simulation.Scale * expansion,
+                    HitboxOverride = new NpcHitboxDimensions(width, height)
+                };
+                positionX += body.Width / 2 - width / 2;
+                positionY += body.Height - height;
+            }
+        }
+        // Cobalt through Titanium Slime share the ore-contained AI_001 state. Its physical
+        // body grows from the current source body by the newly multiplied scale, preserving
+        // bottom center exactly as NPC.AI_001 does before the ground-motion state machine.
+        if (ai.Ai1 is 364f or 1104f or 365f or 1105f or 366f or 1106f)
+        {
+            simulation = simulation with
+            {
+                DefenseOverride = (simulation.BaseDefense ?? definition.Defense) + 30,
+                DamageOverride = (simulation.BaseDamage ?? definition.Damage) * 3,
+                KnockBackResist = 0f
+            };
+            if (simulation.LifeMax == baseLifeMax && definition.TryResolveHitbox(simulation, out VanillaNpcHitboxSize body))
+            {
+                float scale = simulation.Scale * 1.2f;
+                int width = (int)(body.Width * scale);
+                int height = (int)(body.Height * scale);
+                simulation = simulation with
+                {
+                    Life = simulation.Life == simulation.LifeMax ? baseLifeMax * 3 : simulation.Life,
+                    LifeMax = baseLifeMax * 3,
+                    Scale = scale,
+                    HitboxOverride = new NpcHitboxDimensions(width, height)
+                };
+                positionX += body.Width / 2 - width / 2;
+                positionY += body.Height - height;
+            }
+        }
+        // ItemID.Sets.IsAVoiceChangeItem is also consumed by AI_001. It uses the same
+        // defLifeMax guard as Heart Slime, but triples the original body without any
+        // other combat or geometry changes.
+        if (IsVoiceChangeItem(ai.Ai1) && simulation.LifeMax == baseLifeMax)
+        {
+            simulation = simulation with
+            {
+                Life = simulation.Life == simulation.LifeMax ? baseLifeMax * 3 : simulation.Life,
+                LifeMax = baseLifeMax * 3
+            };
+        }
+        // The source applies this before the shared ground-motion timer, so Fossil Slime advances
+        // ai[0] twice per grounded tick: once here and once in VanillaBlueSlimeMotion.
+        if (definition.Type == VanillaNpcIds.SandSlime && ai.Ai1 == 3347f)
+        {
+            ai = ai with { Ai0 = ai.Ai0 + 1f };
+            simulation = simulation with
+            {
+                Alpha = 125,
+                DamageOverride = (simulation.BaseDamage ?? definition.Damage) + 10
+            };
+        }
+        // AI_001 increments Rainbow Slime's synchronized timer before its generic movement branch,
+        // including while airborne. The balloon sentinel returns before this source branch.
+        if (definition.Type == VanillaNpcIds.RainbowSlime && ai.Ai0 != -999f)
+            ai = ai with { Ai0 = ai.Ai0 + 2f };
+        if (definition.Type == VanillaNpcIds.SpikedIceSlime || definition.Type == VanillaNpcIds.SpikedSlime)
+        {
+            NpcAiState localAi = simulation.LocalAi;
+            if (localAi.Ai0 > 0f)
+                localAi = localAi with { Ai0 = localAi.Ai0 - 1f };
+
+            if (!simulation.Wet && localAi.Ai0 == 0f && npc.VelocityY == 0f &&
+                npc.Target < byte.MaxValue &&
+                context.TryFindCandidate((byte)npc.Target, out VanillaNpcTargetCandidate target) &&
+                target.Active && !target.Dead && !target.NoAggro &&
+                definition.TryResolveHitbox(simulation, out VanillaNpcHitboxSize hitbox) &&
+                context.ProjectileEnvironment is not null)
+            {
+                float centerX = npc.PositionX + hitbox.Width * .5f;
+                float centerY = npc.PositionY + hitbox.Height * .5f;
+                float targetTopY = target.CenterY - target.Height * .5f;
+                float dx = target.CenterX - centerX;
+                float dy = targetTopY - centerY;
+                float distanceSquared = dx * dx + dy * dy;
+                bool canHit = context.ProjectileEnvironment.CanHit(
+                    npc.PositionX, npc.PositionY, hitbox.Width, hitbox.Height,
+                    target.CenterX - target.Width * .5f, targetTopY,
+                    (int)target.Width, (int)target.Height);
+                bool expertBurst = context.ExpertMode && distanceSquared < 120f * 120f;
+                if (canHit && (expertBurst || distanceSquared < 200f * 200f))
+                {
+                    ai = ai with { Ai0 = -40f };
+                    velocityX *= .9f;
+                    localAi = localAi with { Ai0 = expertBurst ? 30f : 50f };
+                }
+            }
+
+            simulation = simulation with { LocalAi = localAi };
+        }
+        if (definition.Type == VanillaNpcIds.SpikedJungleSlime)
+        {
+            NpcAiState localAi = simulation.LocalAi;
+            if (localAi.Ai0 > 0f)
+                localAi = localAi with { Ai0 = localAi.Ai0 - 1f };
+
+            if (!simulation.Wet && npc.VelocityY == 0f && npc.Target < byte.MaxValue &&
+                context.TryFindCandidate((byte)npc.Target, out VanillaNpcTargetCandidate target) &&
+                target.Active && !target.Dead && !target.NoAggro &&
+                definition.TryResolveHitbox(simulation, out VanillaNpcHitboxSize hitbox) &&
+                context.ProjectileEnvironment is not null)
+            {
+                float centerX = npc.PositionX + hitbox.Width * .5f;
+                float centerY = npc.PositionY + hitbox.Height * .5f;
+                float targetTopY = target.CenterY - target.Height * .5f;
+                float dx = target.CenterX - centerX;
+                float dy = targetTopY - centerY;
+                float distanceSquared = dx * dx + dy * dy;
+                bool canHit = context.ProjectileEnvironment.CanHit(
+                    npc.PositionX, npc.PositionY - 20f, hitbox.Width, hitbox.Height + 20,
+                    target.CenterX - target.Width * .5f, targetTopY,
+                    (int)target.Width, (int)target.Height);
+                if (context.ExpertMode && distanceSquared < 200f * 200f && canHit)
+                {
+                    ai = ai with { Ai0 = -40f };
+                    velocityX *= .9f;
+                    if (localAi.Ai0 == 0f)
+                        localAi = localAi with { Ai0 = 80f };
+                }
+                // The source intentionally uses a second independent if after the Expert burst. That branch
+                // resets ai[0] to -80 and applies another 0.9 velocity multiplier even after arming the burst.
+                if (distanceSquared < 400f * 400f && canHit)
+                {
+                    ai = ai with { Ai0 = -80f };
+                    velocityX *= .9f;
+                    if (localAi.Ai0 == 0f)
+                        localAi = localAi with { Ai0 = 65f };
+                }
+            }
+
+            simulation = simulation with { LocalAi = localAi };
+        }
+        if (definition.Type == VanillaNpcIds.QueenSlimeMinionBlue || definition.Type == VanillaNpcIds.QueenSlimeMinionPink)
+        {
+            NpcAiState localAi = simulation.LocalAi;
+            if (localAi.Ai0 > 0f)
+                localAi = localAi with { Ai0 = localAi.Ai0 - 1f };
+
+            if (!simulation.Wet && npc.VelocityY == 0f && npc.Target < byte.MaxValue &&
+                context.TryFindCandidate((byte)npc.Target, out VanillaNpcTargetCandidate target) &&
+                target.Active && !target.Dead && !target.NoAggro &&
+                definition.TryResolveHitbox(simulation, out VanillaNpcHitboxSize hitbox) &&
+                context.ProjectileEnvironment is not null)
+            {
+                float centerX = npc.PositionX + hitbox.Width * .5f;
+                float centerY = npc.PositionY + hitbox.Height * .5f;
+                float dx = target.CenterX - centerX;
+                float dy = target.CenterY - centerY;
+                bool canHit = MathF.Abs(dx) < 500f && MathF.Abs(dy) < 550f &&
+                    context.ProjectileEnvironment.CanHit(npc.PositionX, npc.PositionY, hitbox.Width, hitbox.Height,
+                        target.CenterX - target.Width * .5f, target.CenterY - target.Height * .5f,
+                        (int)target.Width, (int)target.Height);
+                if (canHit)
+                {
+                    ai = ai with { Ai0 = -40f };
+                    velocityX *= .9f;
+                    if (localAi.Ai0 == 0f)
+                    {
+                        if (definition.Type == VanillaNpcIds.QueenSlimeMinionBlue && context.ExpertMode &&
+                            context.CountNpcPeers(VanillaNpcIds.QueenSlimeMinionBlue) < 5)
+                        {
+                            localAi = localAi with { Ai0 = 25f };
+                        }
+                        else if (definition.Type == VanillaNpcIds.QueenSlimeMinionBlue)
+                        {
+                            localAi = localAi with { Ai0 = 50f };
+                        }
+                        else
+                        {
+                            localAi = localAi with { Ai0 = context.ExpertMode ? 30f : 40f };
+                        }
+                    }
+                }
+            }
+
+            simulation = simulation with { LocalAi = localAi };
+        }
         bool damaged = simulation.LifeMax > 0 && simulation.Life != simulation.LifeMax;
-        bool engaged = !context.DayTime ||
+        bool engaged = definition.Type == VanillaNpcIds.CorruptSlime ||
+                       definition.Type == VanillaNpcIds.Crimslime ||
+                       definition.Type == VanillaNpcIds.RainbowSlime ||
+                       definition.Type == VanillaNpcIds.SpikedIceSlime ||
+                       definition.Type == VanillaNpcIds.SpikedSlime ||
+                       definition.Type == VanillaNpcIds.SpikedJungleSlime ||
+                       definition.Type == VanillaNpcIds.QueenSlimeMinionBlue ||
+                       definition.Type == VanillaNpcIds.QueenSlimeMinionPink ||
+                       !context.DayTime ||
                        damaged ||
                        context.SlimeRainActive ||
                        npc.PositionY > context.WorldSurfacePixels;
+        if (definition.Type == VanillaNpcIds.LavaSlime && context.RemixWorld && !damaged)
+            engaged = false;
         if (!VanillaSlimeNpcCatalog.TryGetMotionProfile(definition.Type, out VanillaSlimeMotionProfile profile) ||
             !profile.IsValid)
         {
             next = default;
             return false;
         }
+        float timerBonus = definition.Type == VanillaNpcIds.LavaSlime && context.RemixWorld
+            ? 0f
+            : profile.TimerBonus;
+        // Corrupt Slime (AI_001 type 81) takes its ordinary +4 cadence only for a nonnegative scale;
+        // the source's negative-scale branch instead contributes +1.
+        if (definition.Type == VanillaNpcIds.CorruptSlime && simulation.Scale < 0f)
+            timerBonus = 1f;
+        // AI_001 Hoppin' Jack: `(1 - life / lifeMax) * 10` uses integer division in the source,
+        // so every damaged state receives the full ten-tick grounded cadence bonus.
+        if (definition.Type == VanillaNpcIds.HoppinJack &&
+            simulation.LifeMax > 0 && simulation.Life < simulation.LifeMax)
+        {
+            timerBonus += 10f;
+        }
         var input = new VanillaBlueSlimeMotionInput(
-            PositionX: npc.PositionX,
-            VelocityX: npc.VelocityX,
-            VelocityY: npc.VelocityY,
+            PositionX: positionX,
+            VelocityX: velocityX,
+            VelocityY: velocityY,
             OldVelocityY: simulation.OldVelocityY,
             DirectionX: simulation.DirectionX,
             DirectionY: simulation.DirectionY,
             Target: npc.Target,
-            Ai: npc.Ai,
+            Ai: ai,
             Wet: simulation.Wet,
             CollideX: simulation.CollideX,
             CollideY: simulation.CollideY,
             Engaged: engaged,
             SolidCollision: simulation.SolidCollision,
             ClosestTarget: closest,
-            TimerBonus: profile.TimerBonus,
-            JumpTimerBand: profile.JumpTimerBand);
+            TimerBonus: timerBonus,
+            JumpTimerBand: profile.JumpTimerBand,
+            UsesLavaSlimeMotion: definition.Type == VanillaNpcIds.LavaSlime,
+            RemixWorld: context.RemixWorld);
 
         if (!VanillaBlueSlimeMotion.TryStep(in input, out VanillaBlueSlimeMotionResult result))
         {
@@ -247,11 +609,22 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
             return false;
         }
 
+        // AI_001 applies this only after selecting and constructing a grounded jump, so do not fold it into the
+        // generic timer profile (which would incorrectly affect water escape and airborne steering).
+        if (definition.Type == VanillaNpcIds.ToxicSludge && npc.VelocityY == 0f && result.VelocityY < 0f)
+        {
+            result = result with
+            {
+                VelocityX = result.VelocityX * 1.2f,
+                VelocityY = result.VelocityY * 1.3f
+            };
+        }
+
         next = new NpcStateUpdate(
             definition.Type.Value,
             npc.NetId,
             result.PositionX,
-            npc.PositionY,
+            positionY,
             result.VelocityX,
             result.VelocityY,
             result.Target,
@@ -264,10 +637,34 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
             });
         return true;
     }
+
+    private static bool IsVoiceChangeItem(float item) =>
+        item > 0f && item < VanillaItemIds.Count && (int)item is
+            215 or 5484 or 5485 or 5499 or 5500 or 5501 or 5502 or 5503 or 5504 or 5505 or
+            5506 or 5507 or 5508 or 5509 or 5534;
+
+    private static float GetRandomVoiceChangeItem(int choice) => choice switch
+    {
+        1 => 5500f,
+        2 => 5501f,
+        3 => 5502f,
+        4 => 5503f,
+        5 => 5504f,
+        6 => 5505f,
+        7 => 5506f,
+        8 => 5507f,
+        9 => 5508f,
+        10 => 5509f,
+        11 => 5484f,
+        12 => 5485f,
+        13 => 5534f,
+        _ => 5499f
+    };
 }
 
-internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
+internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom random) : IVanillaNpcBehaviorStrategy
 {
+    private readonly IVanillaNpcRandom random = random ?? throw new ArgumentNullException(nameof(random));
     public bool TryStep(
         in NpcSnapshot npc,
         in VanillaNpcDefinition definition,
@@ -307,6 +704,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
                     HitboxOverride = null,
                     BaseDamage = null,
                     BaseDefense = null,
+                    BaseLifeMax = null,
                     DefenseOverride = null,
                     DamageOverride = null,
                     KnockBackResist = null,
@@ -372,15 +770,34 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             fighterDirectionY);
 
         NpcSimulationState simulation = npc.Simulation;
+        NpcAiState fighterAi = npc.Ai;
+        float fighterVelocityX = npc.VelocityX;
+        float fighterVelocityY = npc.VelocityY;
+        // AI_003 restores Chaos Elemental from the committed -120 teleport sentinel before the common fighter
+        // stage. The source clears both velocity components and only then resumes ordinary movement.
+        if (definition.Type == VanillaNpcIds.ChaosElemental && fighterAi.Ai3 == -120f)
+        {
+            fighterVelocityX = 0f;
+            fighterVelocityY = 0f;
+            fighterAi = fighterAi with { Ai3 = 0f };
+        }
+        bool resetWraithClock = false;
+        if (definition.Type == VanillaNpcIds.Wraith &&
+            TryStepWraith(in npc, in definition, context, out next, out resetWraithClock))
+        {
+            return true;
+        }
+        if (definition.Type == VanillaNpcIds.Wraith && resetWraithClock)
+            fighterAi = fighterAi with { Ai2 = 0f };
         var input = new VanillaZombieMotionInput(
             PositionX: npc.PositionX,
             OldPositionX: simulation.OldPositionX,
-            VelocityX: npc.VelocityX,
-            VelocityY: npc.VelocityY,
+            VelocityX: fighterVelocityX,
+            VelocityY: fighterVelocityY,
             DirectionX: simulation.DirectionX,
             DirectionY: startingDirectionY,
             Target: npc.Target,
-            Ai: npc.Ai,
+            Ai: fighterAi,
             Scale: simulation.Scale,
             TargetOverlaps: context.TargetOverlapsNpc(in npc, in definition),
             ClosestTarget: fighterTarget)
@@ -403,14 +820,39 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             HalfHealthSpeedMultiplier = parameters.HalfHealthSpeedMultiplier,
             OverspeedGroundDamping = parameters.OverspeedGroundDamping,
             MissingHealthSpeedBonus = parameters.MissingHealthSpeedBonus,
-            MissingHealthAccelerationBonus = parameters.MissingHealthAccelerationBonus
+            MissingHealthAccelerationBonus = parameters.MissingHealthAccelerationBonus,
+            ArmedAttackMustEnd = context.DayTime && npc.PositionY < context.WorldSurfacePixels
         };
+
+        bool armedMelee = parameters.MotionProfile is VanillaGroundFighterMotionProfile.ArmedZombie or VanillaGroundFighterMotionProfile.Crawdad;
+        if (armedMelee &&
+            npc.Ai.Ai2 == 0f &&
+            npc.VelocityY == 0f &&
+            !input.ArmedAttackMustEnd &&
+            context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh armedTarget) &&
+            context.TryFindCandidate(checked((byte)armedTarget.Target), out VanillaNpcTargetCandidate armedCandidate))
+        {
+            float sourceCenterX = npc.PositionX + definition.Width * .5f;
+            float sourceCenterY = npc.PositionY + definition.Height * .5f;
+            float dx = sourceCenterX - armedCandidate.CenterX;
+            float dy = sourceCenterY - armedCandidate.CenterY;
+            input = input with
+            {
+                ArmedAttackCanStart = dx * dx + dy * dy < (parameters.MotionProfile == VanillaGroundFighterMotionProfile.Crawdad ? 1764f : 2500f) &&
+                    context.ProjectileEnvironment is not null &&
+                    context.ProjectileEnvironment.CanHit(sourceCenterX, sourceCenterY, 1, 1,
+                        armedCandidate.CenterX, armedCandidate.CenterY, 1, 1)
+            };
+        }
 
         if (!VanillaZombieMotion.TryStep(in input, out VanillaZombieMotionResult result))
         {
             next = default;
             return false;
         }
+
+        if (definition.Type == VanillaNpcIds.ChaosElemental && result.VelocityY < 0f)
+            result = result with { VelocityY = result.VelocityY * 1.1f };
 
         if (definition.Type.Value == 258 &&
             result.VelocityY != 0f &&
@@ -446,7 +888,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
                 int transformedLife = ScaleTransformLife(simulation.Life, simulation.LifeMax, 750);
                 next = new NpcStateUpdate(VanillaNpcIds.Vampire.Value, (short)VanillaNpcIds.Vampire.Value,
                     npc.PositionX, npc.PositionY + 18f, result.VelocityX, result.VelocityY, result.Target, default,
-                    simulation with { Life = transformedLife, LifeMax = 750, HitboxOverride = null, BaseDamage = null, BaseDefense = null,
+                    simulation with { Life = transformedLife, LifeMax = 750, HitboxOverride = null, BaseDamage = null, BaseDefense = null, BaseLifeMax = null,
                         DefenseOverride = null, DamageOverride = null, KnockBackResist = null, NoGravity = true, NoTileCollide = false,
                         DirectionX = vampireTarget.CenterX < npc.PositionX + 11f ? -1 : 1,
                         DirectionY = vampireTarget.CenterY < npc.PositionY + 29f ? -1 : 1,
@@ -458,6 +900,10 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
                 return true;
             }
         }
+
+        int? damageOverride = armedMelee && npc.Ai.Ai2 > 0f
+            ? VanillaArmedZombieCombatFacts1458.ResolveAttackDamage(simulation.BaseDamage ?? definition.Damage)
+            : null;
 
         next = new NpcStateUpdate(
             definition.Type.Value,
@@ -475,8 +921,57 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
                 SpriteDirection = result.SpriteDirection,
                 NoGravity = false,
                 JustHit = false,
-                TimeLeft = result.TimeLeft
+                TimeLeft = result.TimeLeft,
+                DamageOverride = damageOverride
             });
+        return true;
+    }
+
+    private bool TryStepWraith(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        out NpcStateUpdate next, out bool resetClock)
+    {
+        resetClock = false;
+        float clock = npc.Ai.Ai2;
+        if (random.NextInt32(0, 240) == 0)
+            clock = random.NextInt32(-480, -60);
+        if (clock >= 0f)
+        {
+            next = default;
+            return false;
+        }
+
+        ushort target = npc.Target;
+        int directionX = npc.Simulation.DirectionX;
+        int directionY = npc.Simulation.DirectionY;
+        if (context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh refresh))
+        {
+            target = refresh.Target;
+            directionX = refresh.DirectionX;
+            directionY = refresh.DirectionY;
+        }
+        if (npc.Simulation.JustHit ||
+            (target < byte.MaxValue && context.TryFindCandidate((byte)target, out VanillaNpcTargetCandidate candidate) &&
+             context.ProjectileEnvironment is not null && context.ProjectileEnvironment.CanHit(
+                 npc.PositionX + definition.Width * .5f, npc.PositionY + definition.Height * .5f, 1, 1,
+                 candidate.CenterX, candidate.CenterY, 1, 1)))
+        {
+            clock = 0f;
+        }
+        if (clock >= 0f)
+        {
+            resetClock = true;
+            next = default;
+            return false;
+        }
+
+        float velocityX = npc.VelocityX * .9f;
+        if (velocityX is > -.1f and < .1f)
+            velocityX = 0f;
+        clock++;
+        if (clock == 0f)
+            velocityX = directionX * .1f;
+        next = new NpcStateUpdate(npc.Type, npc.NetId, npc.PositionX, npc.PositionY, velocityX, npc.VelocityY, target,
+            npc.Ai with { Ai2 = clock }, npc.Simulation with { DirectionX = directionX, DirectionY = directionY });
         return true;
     }
 
@@ -1600,7 +2095,8 @@ internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanil
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
         INpcAiStateStepper inner, out NpcStateUpdate next)
     {
-        if (definition.Type != VanillaMoonEventSpecialCatalog1458.SnowMoonAi25 || definition.AiStyle.Value != 25)
+        if (definition.AiStyle.Value != 25 ||
+            (definition.Type != VanillaMoonEventSpecialCatalog1458.SnowMoonAi25 && definition.Type.Value is not 85 and not 341 and not 629))
         {
             next = default;
             return false;
@@ -1614,16 +2110,37 @@ internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanil
         float ai0 = npc.Ai.Ai0;
         float ai1 = npc.Ai.Ai1;
         float ai2 = npc.Ai.Ai2;
+        float ai3 = npc.Ai.Ai3;
+        float positionX = npc.PositionX;
+        bool suppressTargetRefresh = definition.Type.Value == 341 && !context.SnowMoonActive;
 
-        // Type 341 forces ai[3] to one, bypassing the depth classification of the shared AI_025 body.
+        // AI_025 offsets a freshly spawned body before storing its source depth state. Present and Ice Mimics
+        // then force the shared field to one, while an ordinary Mimic retains its world-depth classification.
+        if (ai3 == 0f)
+        {
+            positionX += 8f;
+            if (npc.PositionY > context.UnderworldLayerPixels)
+                ai3 = 3f;
+            else if (npc.PositionY > context.WorldSurfacePixels)
+            {
+                RefreshTarget(in npc, in definition, context, ref target, ref directionX, ref directionY);
+                ai3 = 2f;
+            }
+            else
+                ai3 = 1f;
+        }
+        if (definition.Type.Value is 341 or 629)
+            ai3 = 1f;
+
         if (ai0 == 0f)
         {
-            RefreshTarget(in npc, in definition, context, ref target, ref directionX, ref directionY);
+            if (!suppressTargetRefresh)
+                RefreshTarget(in npc, in definition, context, ref target, ref directionX, ref directionY);
             if (npc.VelocityX != 0f || npc.VelocityY < 0f || npc.VelocityY > .3f)
                 ai0 = 1f;
             else if (target < byte.MaxValue && context.TryFindCandidate((byte)target, out VanillaNpcTargetCandidate player) &&
                      player.Active && !player.Dead && !player.Ghost &&
-                     IntersectsActivationRectangle(in npc, in definition, in player))
+                     (IntersectsActivationRectangle(in npc, in definition, in player) || simulation.Life < simulation.LifeMax))
                 ai0 = 1f;
         }
         else if (npc.VelocityY == 0f)
@@ -1633,7 +2150,8 @@ internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanil
             if (ai2 >= wait)
             {
                 ai2 = 0f;
-                RefreshTarget(in npc, in definition, context, ref target, ref directionX, ref directionY);
+                if (!suppressTargetRefresh)
+                    RefreshTarget(in npc, in definition, context, ref target, ref directionX, ref directionY);
                 if (directionX == 0)
                     directionX = -1;
                 spriteDirection = directionX;
@@ -1641,27 +2159,27 @@ internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanil
                 if (ai1 == 2f)
                 {
                     ai1 = 0f;
-                    next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, directionX * 2.5f, -8f);
+                    next = Build(in npc, in definition, positionX, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, ai3, directionX * 2.5f, -8f);
                     return true;
                 }
-                next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, directionX * 3.5f, -4f);
+                next = Build(in npc, in definition, positionX, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, ai3, directionX * 3.5f, -4f);
                 return true;
             }
-            next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, npc.VelocityX * .9f, npc.VelocityY);
+            next = Build(in npc, in definition, positionX, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, ai3, npc.VelocityX * .9f, npc.VelocityY);
             return true;
         }
         else if (directionX == 1 && npc.VelocityX < 1f)
         {
-            next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, npc.VelocityX + .1f, npc.VelocityY);
+            next = Build(in npc, in definition, positionX, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, ai3, npc.VelocityX + .1f, npc.VelocityY);
             return true;
         }
         else if (directionX == -1 && npc.VelocityX > -1f)
         {
-            next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, npc.VelocityX - .1f, npc.VelocityY);
+            next = Build(in npc, in definition, positionX, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, ai3, npc.VelocityX - .1f, npc.VelocityY);
             return true;
         }
 
-        next = Build(in npc, in definition, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, npc.VelocityX, npc.VelocityY);
+        next = Build(in npc, in definition, positionX, target, directionX, directionY, spriteDirection, ai0, ai1, ai2, ai3, npc.VelocityX, npc.VelocityY);
         return true;
     }
 
@@ -1676,13 +2194,13 @@ internal sealed class VanillaMoonEventJumpingFighterNpcBehaviorStrategy : IVanil
     }
 
     private static NpcStateUpdate Build(in NpcSnapshot npc, in VanillaNpcDefinition definition,
-        ushort target, int directionX, int directionY, int spriteDirection, float ai0, float ai1, float ai2,
-        float velocityX, float velocityY)
+        float positionX, ushort target, int directionX, int directionY, int spriteDirection, float ai0, float ai1,
+        float ai2, float ai3, float velocityX, float velocityY)
     {
         NpcSimulationState simulation = npc.Simulation;
         return new NpcStateUpdate(
-            definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, velocityX, velocityY, target,
-            new NpcAiState(ai0, ai1, ai2, 1f), simulation with
+            definition.Type.Value, npc.NetId, positionX, npc.PositionY, velocityX, velocityY, target,
+            new NpcAiState(ai0, ai1, ai2, ai3), simulation with
             {
                 DirectionX = directionX,
                 DirectionY = directionY,
@@ -1885,10 +2403,13 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
         if (!context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh closest) ||
             !context.TryFindCandidate(checked((byte)closest.Target), out VanillaNpcTargetCandidate candidate))
         {
+            bool idleClearJustHit = TryAdvanceGoodWorldEaterSpitClock(in npc, context, out NpcAiState idleLocalAi);
             NpcSimulationState idleSimulation = npc.Simulation with
             {
                 NoGravity = true,
-                NoTileCollide = definition.NoTileCollideAtSpawn
+                NoTileCollide = definition.NoTileCollideAtSpawn,
+                LocalAi = idleLocalAi,
+                JustHit = idleClearJustHit ? false : npc.Simulation.JustHit
             };
             next = new NpcStateUpdate(
                 definition.Type.Value,
@@ -1937,6 +2458,12 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
         float finalVelocityX = result.VelocityX;
         float finalVelocityY = result.VelocityY;
         NpcAiState localAi = npc.Simulation.LocalAi;
+        bool clearJustHit = TryAdvanceGoodWorldEaterSpitClock(in npc, context, out localAi);
+        if (TryAdvanceCorruptorSpitClock(in npc, out NpcAiState corruptorLocalAi))
+        {
+            localAi = corruptorLocalAi;
+            clearJustHit = true;
+        }
         if (VanillaFlyerProjectileAttack.IsSupportedShooter(definition.Type) &&
             VanillaFlyerProjectileAttack.TryStep(
                 definition.Type,
@@ -1970,7 +2497,8 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
                 NoGravity = true,
                 NoTileCollide = definition.NoTileCollideAtSpawn,
                 TimeLeft = result.TimeLeft,
-                LocalAi = localAi
+                LocalAi = localAi,
+                JustHit = clearJustHit ? false : npc.Simulation.JustHit
             });
         return true;
     }
@@ -2074,6 +2602,222 @@ internal sealed class VanillaServantOfCthulhuNpcBehaviorStrategy : IVanillaNpcBe
             BloodSquidDamage,
             BloodSquidKnockBack);
         return 1;
+    }
+
+    public NpcSnapshot CompleteHornetStingerAttack(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        VanillaNpcBehaviorContext context,
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (!IsHornetStingerShooter(before.TypeIdentity) || committed.TypeIdentity != before.TypeIdentity ||
+            !VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, before.NetIdentity, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(committed.Simulation, out VanillaNpcHitboxSize hitbox))
+        {
+            return committed;
+        }
+
+        float timer = committed.Ai.Ai1 == 101f ? 0f : committed.Ai.Ai1;
+        float scale = committed.Simulation.Scale;
+        if (!float.IsFinite(scale) || scale <= 0f)
+            return committed;
+
+        timer += random.NextInt32(5, 20) * .1f * scale;
+        if (before.TypeIdentity == VanillaNpcIds.MossHornet)
+            timer += random.NextInt32(5, 20) * .1f * scale;
+        if (context.GoodWorld)
+            timer += random.NextInt32(5, 20) * .1f * scale;
+
+        VanillaNpcTargetCandidate target = default;
+        bool hasPlayer = committed.Target < byte.MaxValue &&
+            context.TryFindCandidate((byte)committed.Target, out target) &&
+            target.Active && !target.Dead && !target.Ghost;
+        if (hasPlayer && target.Stealth == 0f && target.ItemAnimation == 0)
+            timer = 0f;
+
+        bool hasShot = false;
+        float shotX = 0f;
+        float shotY = 0f;
+        if (timer >= 130f)
+        {
+            float centerX = committed.PositionX + hitbox.Width * .5f;
+            float centerY = committed.PositionY + hitbox.Height * .5f;
+            bool canShoot = hasPlayer && projectileEnvironment is not null &&
+                VanillaNpcGlobalFiringDistance.Contains(centerX, centerY, target.CenterX, target.CenterY) &&
+                projectileEnvironment.CanHit(
+                    committed.PositionX, committed.PositionY, hitbox.Width, hitbox.Height,
+                    target.CenterX - target.Width * .5f, target.CenterY - target.Height * .5f,
+                    (int)target.Width, (int)target.Height);
+            if (canShoot)
+            {
+                shotX = target.CenterX - centerX + random.NextInt32(-20, 21);
+                shotY = target.CenterY - centerY + random.NextInt32(-20, 21);
+                if ((shotX < 0f && committed.VelocityX < 0f) || (shotX > 0f && committed.VelocityX > 0f))
+                {
+                    float length = MathF.Sqrt(shotX * shotX + shotY * shotY);
+                    if (length > 0f && float.IsFinite(length))
+                    {
+                        shotX = shotX / length * 8f;
+                        shotY = shotY / length * 8f;
+                        timer = 101f;
+                        hasShot = true;
+                    }
+                    else
+                    {
+                        timer = 0f;
+                    }
+                }
+                else
+                {
+                    timer = 0f;
+                }
+            }
+            else
+            {
+                timer = 0f;
+            }
+        }
+
+        NpcAiState ai = committed.Ai with { Ai1 = timer };
+        if (ai == committed.Ai)
+            return committed;
+
+        if (!mutations.TryUpdateAi(in committed, ai, out NpcSnapshot completed))
+            return committed;
+
+        if (hasShot)
+        {
+            float centerX = completed.PositionX + hitbox.Width * .5f;
+            float centerY = completed.PositionY + hitbox.Height * .5f;
+            int damage = (int)((before.TypeIdentity == VanillaNpcIds.MossHornet ? 30f : 10f) * scale);
+            var intent = new NpcAiProjectileIntent(
+                VanillaProjectileIds.HornetStinger, centerX, centerY, shotX, shotY, damage, 0f)
+            {
+                TimeLeftOverride = 300
+            };
+            mutations.TrySpawnProjectile(in completed, in intent, out _);
+        }
+
+        return completed;
+    }
+
+    public static bool IsHornetStingerShooter(NpcTypeId type) =>
+        type == VanillaNpcIds.Hornet ||
+        type == VanillaNpcIds.MossHornet ||
+        type.Value is >= 231 and <= 235;
+
+    private static bool TryAdvanceGoodWorldEaterSpitClock(
+        in NpcSnapshot npc,
+        VanillaNpcBehaviorContext context,
+        out NpcAiState localAi)
+    {
+        localAi = npc.Simulation.LocalAi;
+        if (npc.TypeIdentity != VanillaNpcIds.EaterOfSouls || !context.GoodWorld ||
+            context.CountNpcPeers(VanillaNpcIds.EaterOfWorldsHead) == 0)
+        {
+            return false;
+        }
+
+        // AI_005: a hit restarts this server-only clock, then the same tick advances it. The resulting exact
+        // 60-tick edge is consumed after the NPC motion proposal commits, even if no player target exists.
+        float timer = npc.Simulation.JustHit ? 0f : localAi.Ai0;
+        timer += 1f;
+        localAi = localAi with { Ai0 = timer == 60f ? 0f : timer };
+        return true;
+    }
+
+    public void SpawnGoodWorldEaterSpit(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        VanillaNpcBehaviorContext context,
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaNpcIds.EaterOfSouls || committed.TypeIdentity != before.TypeIdentity ||
+            !context.GoodWorld || context.CountNpcPeers(VanillaNpcIds.EaterOfWorldsHead) == 0 ||
+            !VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, before.NetIdentity, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(committed.Simulation, out VanillaNpcHitboxSize hitbox))
+        {
+            return;
+        }
+
+        float beforeTimer = before.Simulation.JustHit ? 0f : before.Simulation.LocalAi.Ai0;
+        if (beforeTimer + 1f != 60f || committed.Simulation.LocalAi.Ai0 != 0f ||
+            committed.Target >= byte.MaxValue || !context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.Ghost || projectileEnvironment is null)
+        {
+            return;
+        }
+
+        float centerX = committed.PositionX + hitbox.Width * .5f;
+        float centerY = committed.PositionY + hitbox.Height * .5f;
+        if (!VanillaNpcGlobalFiringDistance.Contains(centerX, centerY, target.CenterX, target.CenterY) ||
+            !projectileEnvironment.CanHit(
+                committed.PositionX, committed.PositionY, hitbox.Width, hitbox.Height,
+                target.CenterX - target.Width * .5f, target.CenterY - target.Height * .5f,
+                (int)target.Width, (int)target.Height))
+        {
+            return;
+        }
+
+        mutations.TrySpawn(in committed, new NpcAiSpawnIntent(
+            VanillaNpcIds.EaterOfWorldsSpit,
+            (int)(centerX + committed.VelocityX),
+            (int)(centerY + committed.VelocityY),
+            0f,
+            0f,
+            byte.MaxValue), out _);
+    }
+
+    public void SpawnCorruptorSpit(
+        in NpcSnapshot before,
+        in NpcSnapshot committed,
+        VanillaNpcBehaviorContext context,
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity != VanillaNpcIds.Corruptor || committed.TypeIdentity != before.TypeIdentity ||
+            !VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, before.NetIdentity, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(committed.Simulation, out VanillaNpcHitboxSize hitbox))
+        {
+            return;
+        }
+
+        float beforeTimer = before.Simulation.JustHit ? 0f : before.Simulation.LocalAi.Ai0;
+        if (beforeTimer + 1f != 180f || committed.Simulation.LocalAi.Ai0 != 0f ||
+            committed.Target >= byte.MaxValue || !context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate target) ||
+            !target.Active || target.Dead || target.Ghost || projectileEnvironment is null)
+        {
+            return;
+        }
+
+        float centerX = committed.PositionX + hitbox.Width * .5f;
+        float centerY = committed.PositionY + hitbox.Height * .5f;
+        if (!VanillaNpcGlobalFiringDistance.Contains(centerX, centerY, target.CenterX, target.CenterY) ||
+            !projectileEnvironment.CanHit(committed.PositionX, committed.PositionY, hitbox.Width, hitbox.Height,
+                target.CenterX - target.Width * .5f, target.CenterY - target.Height * .5f,
+                (int)target.Width, (int)target.Height))
+        {
+            return;
+        }
+
+        mutations.TrySpawn(in committed, new NpcAiSpawnIntent(
+            VanillaNpcIds.CorruptorSpit,
+            (int)(centerX + committed.VelocityX),
+            (int)(centerY + committed.VelocityY),
+            0f,
+            0f,
+            byte.MaxValue), out _);
+    }
+
+    private static bool TryAdvanceCorruptorSpitClock(in NpcSnapshot npc, out NpcAiState localAi)
+    {
+        localAi = npc.Simulation.LocalAi;
+        if (npc.TypeIdentity != VanillaNpcIds.Corruptor)
+            return false;
+
+        float timer = npc.Simulation.JustHit ? 0f : localAi.Ai0;
+        timer += 1f;
+        localAi = localAi with { Ai0 = timer == 180f ? 0f : timer };
+        return true;
     }
 
     private static bool IsMechQueenUp(VanillaNpcBehaviorContext context) =>

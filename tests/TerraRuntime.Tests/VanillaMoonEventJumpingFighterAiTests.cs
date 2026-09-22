@@ -87,22 +87,67 @@ public sealed class VanillaMoonEventJumpingFighterAiTests
         Assert.Equal(-1f, next.VelocityY, 5);
     }
 
-    private static VanillaNpcTargetingAiStepper CreateStepper(float centerX, float centerY)
+    [Fact]
+    public void Ordinary_mimic_initial_tick_offsets_and_records_underground_depth()
+    {
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(300f, 100f);
+        stepper.SetWorldBounds(4200, 100d, worldHeightTiles: 1200);
+        NpcSnapshot npc = CreateNpc(default, type: 85) with { PositionY = 1601f };
+
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+
+        Assert.Equal(108f, next.PositionX, 5);
+        Assert.Equal(2f, next.Ai.Ai3, 5);
+        Assert.Equal((ushort)3, next.Target);
+    }
+
+    [Fact]
+    public void Ordinary_mimic_initial_tick_records_underworld_depth()
+    {
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(300f, 100f);
+        stepper.SetWorldBounds(4200, 100d, worldHeightTiles: 1200);
+        NpcSnapshot npc = CreateNpc(default, type: 85) with { PositionY = 16001f };
+
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+
+        Assert.Equal(108f, next.PositionX, 5);
+        Assert.Equal(3f, next.Ai.Ai3, 5);
+    }
+
+    [Fact]
+    public void Present_mimic_preserves_existing_target_outside_snow_moon()
+    {
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(300f, 100f, snowMoonActive: false);
+        NpcSnapshot npc = CreateNpc(new NpcAiState(1f, 0f, 11f, 1f)) with
+        {
+            Target = 7,
+            Simulation = CreateNpc(default).Simulation with { DirectionX = -1, DirectionY = 1, SpriteDirection = -1 }
+        };
+
+        Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
+
+        Assert.Equal((ushort)7, next.Target);
+        Assert.Equal(-1, next.Simulation.DirectionX);
+        Assert.Equal(-3.5f, next.VelocityX, 5);
+    }
+
+    private static VanillaNpcTargetingAiStepper CreateStepper(float centerX, float centerY, bool snowMoonActive = true)
     {
         var stepper = new VanillaNpcTargetingAiStepper(new RejectingStepper());
         stepper.EnableZombieMotion(100d);
+        stepper.SetMoonEventState(pumpkinMoonActive: false, snowMoonActive);
         stepper.SetCandidates([
             new VanillaNpcTargetCandidate(3, centerX, centerY, 0, true, false, false, false)
         ]);
         return stepper;
     }
 
-    private static NpcSnapshot CreateNpc(NpcAiState ai) =>
+    private static NpcSnapshot CreateNpc(NpcAiState ai, int type = 341) =>
         new(
             Handle: new NpcHandle(1, new NpcGeneration(1)),
             Revision: new NpcRevision(1),
-            Type: 341,
-            NetId: 341,
+            Type: checked((short)type),
+            NetId: checked((short)type),
             PositionX: 100f,
             PositionY: 100f,
             VelocityX: 0f,

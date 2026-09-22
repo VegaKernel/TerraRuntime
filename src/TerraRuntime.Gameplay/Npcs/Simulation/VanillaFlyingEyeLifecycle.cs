@@ -10,6 +10,7 @@ public readonly record struct VanillaFlyingEyeLifecycleInput(
     NpcAiState Ai,
     int TimeLeft,
     bool NoTileCollide,
+    bool Wet,
     bool DayTime,
     double WorldSurfacePixels,
     bool TargetInGraveyard,
@@ -20,6 +21,7 @@ public readonly record struct VanillaFlyingEyeLifecycleResult(
     NpcAiState Ai,
     int TimeLeft,
     bool NoTileCollide,
+    bool Wet,
     bool Discouraged);
 
 /// <summary>
@@ -58,6 +60,7 @@ public static class VanillaFlyingEyeLifecycle
         float ai0 = input.Ai.Ai0;
         float ai1 = input.Ai.Ai1;
         bool noTileCollide = input.NoTileCollide;
+        bool wet = input.Wet;
 
         if (VanillaFlyingEyeNpcCatalog.IsPigron(type))
         {
@@ -81,6 +84,11 @@ public static class VanillaFlyingEyeLifecycle
             }
 
             noTileCollide = ai1 != 0f;
+
+            // TerrariaServer 1.4.5.8 NPC.AI_002_FloatingEye clears wet immediately
+            // after choosing the phased branch, before the Pigron steering code.
+            if (noTileCollide)
+                wet = false;
         }
 
         int timeLeft = input.TimeLeft;
@@ -91,6 +99,7 @@ public static class VanillaFlyingEyeLifecycle
             new NpcAiState(ai0, ai1, input.Ai.Ai2, input.Ai.Ai3),
             timeLeft,
             noTileCollide,
+            wet,
             discouraged);
         return true;
     }

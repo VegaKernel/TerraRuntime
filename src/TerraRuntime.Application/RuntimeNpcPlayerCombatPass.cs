@@ -79,6 +79,8 @@ internal sealed class RuntimeNpcPlayerCombatPass
             float npcTop = npc.PositionY;
             float npcRight = npcLeft + hitbox.Width;
             float npcBottom = npcTop + hitbox.Height;
+            VanillaArmedZombieCombatFacts1458.ExpandMeleeHitbox(
+                npc.TypeIdentity, npc.Ai, npc.Simulation.SpriteDirection, ref npcLeft, ref npcRight);
             foreach (RuntimePlayerMember target in players.Members)
             {
                 PlayerHandle targetHandle = target.Connection.Player;
@@ -169,7 +171,8 @@ internal sealed class RuntimeNpcPlayerCombatPass
     }
 
     private static int ResolveContactDamage(in NpcSnapshot npc, in VanillaNpcDefinition definition) =>
-        npc.Simulation.DamageOverride ?? definition.Damage;
+        VanillaArmedZombieCombatFacts1458.ResolveMeleeDamage(
+            npc.Simulation.DamageOverride ?? definition.Damage, npc.TypeIdentity, npc.Ai);
 
     private bool IsGodModeCoolingDown(NpcHandle npc, PlayerHandle player, long tick)
     {

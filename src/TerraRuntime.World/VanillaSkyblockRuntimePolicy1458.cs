@@ -7,6 +7,9 @@ namespace TerraRuntime.World;
 public readonly record struct VanillaSkyblockRuntimeState1458(
     bool SkyblockWorld,
     bool LowTiles,
+    bool NoHellstone,
+    bool NoFossils,
+    bool NoLifeCrystals,
     int ActiveTileCount,
     int TotalTileCount)
 {
@@ -45,24 +48,41 @@ public static class VanillaSkyblockRuntimePolicy1458
         ArgumentNullException.ThrowIfNull(tiles);
 
         int activeTileCount = 0;
+        bool noHellstone = metadata.SkyblockWorld;
+        bool noFossils = metadata.SkyblockWorld;
+        bool noLifeCrystals = metadata.SkyblockWorld;
         foreach (ref readonly WorldTile tile in tiles.Tiles)
         {
             if (tile.IsActive)
                 activeTileCount++;
+            // WorldGen.Skyblock records this once while inspecting the generated world. It does not
+            // become true again when players later mine the fossil block.
+            if (tile.IsActive && tile.Type == 404)
+                noFossils = false;
+            if (tile.IsActive && tile.Type == 58)
+                noHellstone = false;
+            if (tile.IsActive && tile.Type == 12)
+                noLifeCrystals = false;
         }
 
-        return Create(metadata.SkyblockWorld, activeTileCount, tiles.Count);
+        return Create(metadata.SkyblockWorld, activeTileCount, tiles.Count, noHellstone, noFossils, noLifeCrystals);
     }
 
     public static VanillaSkyblockRuntimeState1458 Create(
         bool skyblockWorld,
         int activeTileCount,
-        int totalTileCount)
+        int totalTileCount,
+        bool? noHellstone = null,
+        bool? noFossils = null,
+        bool? noLifeCrystals = null)
     {
         bool lowTiles = IsLowTiles(skyblockWorld, activeTileCount, totalTileCount);
         return new VanillaSkyblockRuntimeState1458(
             skyblockWorld,
             lowTiles,
+            skyblockWorld && noHellstone.GetValueOrDefault(),
+            skyblockWorld && noFossils.GetValueOrDefault(),
+            skyblockWorld && noLifeCrystals.GetValueOrDefault(),
             activeTileCount,
             totalTileCount);
     }

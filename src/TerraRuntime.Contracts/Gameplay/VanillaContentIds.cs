@@ -8,10 +8,15 @@ public static class VanillaNpcIds
 {
     public static readonly NpcTypeId BlueSlime = new(1);
     public static readonly NpcTypeId Bunny = new(46);
+    public static readonly NpcTypeId CorruptBunny = new(47);
+    public static readonly NpcTypeId Crab = new(67);
     public static readonly NpcTypeId ExplosiveBunny = new(614);
     public static readonly NpcTypeId Demon = new(62);
     public static readonly NpcTypeId VoodooDemon = new(66);
     public static readonly NpcTypeId RedDevil = new(156);
+    public static readonly NpcTypeId FlyingSnake = new(226);
+    /// <summary>AI_009 projectile NPC emitted by Corruptor AI_005.</summary>
+    public static readonly NpcTypeId CorruptorSpit = new(112);
     public static readonly NpcTypeId DemonEye = new(2);
     public static readonly NpcTypeId Zombie = new(3);
     public static readonly NpcTypeId EyeOfCthulhu = new(4);
@@ -39,6 +44,8 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId ChaosBall = new(30);
     public static readonly NpcTypeId Tim = new(45);
     public static readonly NpcTypeId TimFireball = new(665);
+    /// <summary>AI_009 projectile NPC created by Eater of Souls in Good World while the Eater of Worlds is active.</summary>
+    public static readonly NpcTypeId EaterOfWorldsSpit = new(666);
     public static readonly NpcTypeId RuneWizard = new(172);
     public static readonly NpcTypeId DungeonTacticalSkeleton = new(281);
     public static readonly NpcTypeId DungeonTacticalSkeleton2 = new(282);
@@ -144,6 +151,8 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId SeekerBody = new(99);
     public static readonly NpcTypeId SeekerTail = new(100);
     public static readonly NpcTypeId AnglerFish = new(102);
+    public static readonly NpcTypeId Antlion = new(69);
+    public static readonly NpcTypeId Jellyfish = new(256);
     public static readonly NpcTypeId Retinazer = new(125);
     public static readonly NpcTypeId Spazmatism = new(126);
     public static readonly NpcTypeId SkeletronPrime = new(127);
@@ -190,8 +199,46 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId GolemFistRight = new(248);
     public static readonly NpcTypeId GolemHeadFree = new(249);
     public static readonly NpcTypeId SlimeMasked = new(302);
+    public static readonly NpcTypeId HoppinJack = new(304);
     public static readonly NpcTypeId DemonEyeOwl = new(317);
     public static readonly NpcTypeId DemonEyeSpaceship = new(318);
+    public static readonly NpcTypeId ZombieDoctor = new(319);
+    public static readonly NpcTypeId ZombieSuperman = new(320);
+    public static readonly NpcTypeId ZombiePixie = new(321);
+    public static readonly NpcTypeId SkeletonTopHat = new(322);
+    public static readonly NpcTypeId SkeletonAstronaut = new(323);
+    public static readonly NpcTypeId SkeletonAlien = new(324);
+    public static readonly NpcTypeId BigAngryBones = new(294);
+    public static readonly NpcTypeId BigMuscleAngryBones = new(295);
+    public static readonly NpcTypeId BigHelmetAngryBones = new(296);
+    public static readonly NpcTypeId SkeletonSniper = new(291);
+    public static readonly NpcTypeId TacticalSkeleton = new(292);
+    public static readonly NpcTypeId SkeletonCommando = new(293);
+    public static readonly NpcTypeId Paladin = new(290);
+    public static readonly NpcTypeId SkeletonArcher = new(110);
+    public static readonly NpcTypeId GoblinArcher = new(111);
+    public static readonly NpcTypeId Clown = new(109);
+    public static readonly NpcTypeId ChaosElemental = new(120);
+    public static readonly NpcTypeId Gastropod = new(163);
+    public static readonly NpcTypeId Wraith = new(166);
+    public static readonly NpcTypeId IcyMerman = new(206);
+    public static readonly NpcTypeId PirateDeckhand = new(212);
+    public static readonly NpcTypeId PirateCorsair = new(213);
+    public static readonly NpcTypeId PirateDeadeye = new(214);
+    public static readonly NpcTypeId PirateCrossbower = new(215);
+    public static readonly NpcTypeId PirateCaptain = new(216);
+    public static readonly NpcTypeId CochinealBeetle = new(217);
+    public static readonly NpcTypeId CyanBeetle = new(218);
+    public static readonly NpcTypeId LacBeetle = new(219);
+    public static readonly NpcTypeId SeaSnail = new(220);
+    public static readonly NpcTypeId RainZombie = new(223);
+    public static readonly NpcTypeId CorruptPenguin = new(168);
+    public static readonly NpcTypeId Lihzahrd = new(199);
+    public static readonly NpcTypeId ZombieXmas = new(331);
+    public static readonly NpcTypeId ZombieSweater = new(332);
+    public static readonly NpcTypeId ZombieElf = new(338);
+    public static readonly NpcTypeId ZombieElfBeard = new(339);
+    public static readonly NpcTypeId ZombieElfGirl = new(340);
     public static readonly NpcTypeId SlimeRibbonWhite = new(333);
     public static readonly NpcTypeId SlimeRibbonYellow = new(334);
     public static readonly NpcTypeId SlimeRibbonGreen = new(335);
@@ -210,7 +257,25 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId SolarCrawltipedeHead = new(412);
     public static readonly NpcTypeId SolarCrawltipedeBody = new(413);
     public static readonly NpcTypeId SolarCrawltipedeTail = new(414);
+    public static readonly NpcTypeId ArmedZombie = new(430);
+    public static readonly NpcTypeId ArmedZombieEskimo = new(431);
+    public static readonly NpcTypeId ArmedZombiePincushion = new(432);
+    public static readonly NpcTypeId ArmedZombieSlimed = new(433);
+    public static readonly NpcTypeId ArmedZombieSwamp = new(434);
+    public static readonly NpcTypeId ArmedZombieTwiggy = new(435);
+    public static readonly NpcTypeId ArmedZombieCenx = new(436);
     public static readonly NpcTypeId LunaticCultist = new(439);
+    public static readonly NpcTypeId Salamander = new(498);
+    public static readonly NpcTypeId Salamander2 = new(499);
+    public static readonly NpcTypeId Salamander3 = new(500);
+    public static readonly NpcTypeId Salamander4 = new(501);
+    public static readonly NpcTypeId Salamander5 = new(502);
+    public static readonly NpcTypeId Salamander6 = new(503);
+    public static readonly NpcTypeId Salamander7 = new(504);
+    public static readonly NpcTypeId Salamander8 = new(505);
+    public static readonly NpcTypeId Salamander9 = new(506);
+    public static readonly NpcTypeId Crawdad = new(494);
+    public static readonly NpcTypeId Crawdad2 = new(495);
     public static readonly NpcTypeId LunaticCultistClone = new(440);
     public static readonly NpcTypeId CultistDragonHead = new(454);
     public static readonly NpcTypeId CultistDragonBody1 = new(455);
@@ -221,6 +286,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId AncientVision = new(521);
     public static readonly NpcTypeId AncientLight = new(522);
     public static readonly NpcTypeId AncientDoom = new(523);
+    public static readonly NpcTypeId ArmedTorchZombie = new(591);
     public static readonly NpcTypeId SpikedSlime = new(535);
     public static readonly NpcTypeId SandSlime = new(537);
     public static readonly NpcTypeId DuneSplicerHead = new(510);
@@ -297,6 +363,8 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId KingSlime = new(15);
     public static readonly NpcAiStyleId Fish = new(16);
     public static readonly NpcAiStyleId Vulture = new(17);
+    public static readonly NpcAiStyleId Jellyfish = new(18);
+    public static readonly NpcAiStyleId Antlion = new(19);
     public static readonly NpcAiStyleId SpikeBall = new(20);
     public static readonly NpcAiStyleId BlazingWheel = new(21);
     public static readonly NpcAiStyleId WallOfFlesh = new(27);
@@ -529,9 +597,32 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId Bomb = new(28);
     public static readonly ProjectileTypeId Dynamite = new(29);
     public static readonly ProjectileTypeId StickyBomb = new(37);
+    public static readonly ProjectileTypeId AntlionSand = new(31);
     public static readonly ProjectileTypeId HarpyFeather = new(38);
     public static readonly ProjectileTypeId DemonScythe = new(44);
+    public static readonly ProjectileTypeId HappyBomb = new(75);
+    public static readonly ProjectileTypeId HornetStinger = new(55);
+    public static readonly ProjectileTypeId GastropodBolt = new(472);
+    public static readonly ProjectileTypeId TacticalSkeletonBullet = new(180);
+    public static readonly ProjectileTypeId SkeletonSniperBullet = new(302);
+    public static readonly ProjectileTypeId SkeletonCommandoRocket = new(303);
+    public static readonly ProjectileTypeId PaladinHammer = new(300);
+    public static readonly ProjectileTypeId GoblinArcherArrow = new(81);
+    public static readonly ProjectileTypeId IcewaterSpit = new(177);
+    public static readonly ProjectileTypeId PirateCaptainCannonball = new(240);
     public static readonly ProjectileTypeId RedDevilSickle = new(115);
+    /// <summary>AI_001 Spiked Ice Slime hostile ice spike.</summary>
+    public static readonly ProjectileTypeId SpikedIceSlimeSpike = new(174);
+    /// <summary>AI_001 Spiked Jungle Slime hostile thorn.</summary>
+    public static readonly ProjectileTypeId SpikedJungleSlimeThorn = new(176);
+    /// <summary>AI_001 Hallow Spiked Slime hostile spike.</summary>
+    public static readonly ProjectileTypeId SpikedSlimeSpike = new(605);
+    /// <summary>AI_001 Queen Slime blue-minion hostile shard.</summary>
+    public static readonly ProjectileTypeId QueenSlimeBlueMinionShard = new(920);
+    /// <summary>AI_001 Queen Slime pink-minion hostile shard.</summary>
+    public static readonly ProjectileTypeId QueenSlimePinkMinionShard = new(921);
+    /// <summary>AI_001 item-containing Slime trap projectile.</summary>
+    public static readonly ProjectileTypeId ContainedSlimeTrap = new(1073);
     public static readonly ProjectileTypeId Flamelash = new(34);
     public static readonly ProjectileTypeId ThrowingKnife = new(48);
     public static readonly ProjectileTypeId Seed = new(51);
@@ -542,6 +633,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId GroundFighter243Bolt = new(257);
     public static readonly ProjectileTypeId GroundFighter251Bolt = new(83);
     public static readonly ProjectileTypeId GroundFighter350Bolt = new(82);
+    public static readonly ProjectileTypeId SalamanderBolt = new(572);
     public static readonly ProjectileTypeId RuneBlast = new(129);
     public static readonly ProjectileTypeId DungeonBeam = new(290);
     public static readonly ProjectileTypeId DungeonFlame = new(291);

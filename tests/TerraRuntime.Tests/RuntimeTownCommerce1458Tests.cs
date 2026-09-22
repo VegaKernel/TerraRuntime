@@ -88,6 +88,15 @@ public sealed class RuntimeTownCommerce1458Tests
         Assert.True((session.MissingFacts & RuntimeTownCommerceMissingFacts1458.LoveStruck) != 0);
     }
 
+    [Fact]
+    public void Metadata_projection_preserves_no_traps_world_for_npc_ai_consumers()
+    {
+        RuntimeTownCommerceWorldFacts1458 facts = RuntimeTownCommerceWorldFacts1458.FromMetadata(
+            new WorldFileRuntimeMetadata { NoTrapsWorld = true });
+
+        Assert.True(facts.NoTrapsWorld);
+    }
+
     private static RuntimeTownCommerceWorldFacts1458 Facts(bool skyblock) => new(
         HardMode: false, PartyIsUp: false, Halloween: false, XMas: false, Eclipse: false, LanternsUp: false,
         Crimson: false, RemixWorld: false, TenthAnniversaryWorld: false, NotTheBeesWorld: false,

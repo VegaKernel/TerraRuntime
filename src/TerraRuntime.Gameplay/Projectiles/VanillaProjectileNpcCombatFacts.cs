@@ -33,7 +33,8 @@ public static class VanillaProjectileNpcCombatFacts
             penetration = 5;
             return true;
         }
-        if (type == VanillaProjectileIds.JestersArrow || type == VanillaProjectileIds.EnchantedBoomerang)
+        if (type == VanillaProjectileIds.JestersArrow || type == VanillaProjectileIds.EnchantedBoomerang ||
+            type == VanillaProjectileIds.HornetStinger || type == VanillaProjectileIds.GastropodBolt)
         {
             penetration = -1;
             return true;

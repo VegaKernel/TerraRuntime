@@ -23,11 +23,60 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         [VanillaNpcIds.SwampZombie, 18, 40, 13, 8, 45, 0.45f, 1f, 1.2f, true, false],
         [VanillaNpcIds.TwiggyZombie, 18, 40, 16, 4, 45, 0.55f, 1f, 0.8f, true, false],
         [VanillaNpcIds.FemaleZombie, 18, 40, 12, 4, 38, 0.6f, 1f, 0.87f, true, false],
+        [VanillaNpcIds.CorruptBunny, 18, 20, 20, 4, 70, 1f, 1f, 1.5f, false, true],
+        [VanillaNpcIds.CorruptPenguin, 16, 34, 20, 4, 70, 1f, 1f, 1.5f, false, true],
         [new NpcTypeId(254), 18, 40, 40, 10, 180, .4f, 1f, 1.5f, false, false],
         [new NpcTypeId(255), 18, 40, 38, 16, 220, .3f, 1f, 1f, false, false],
         [new NpcTypeId(257), 44, 34, 38, 24, 230, .3f, 1f, 2f, false, false],
         [new NpcTypeId(258), 30, 24, 60, 16, 220, .3f, 1f, 3f, false, false],
         [VanillaNpcIds.VampireHumanoid, 18, 40, 80, 24, 750, 0.4f, 1f, 6f, false, false],
+        [VanillaNpcIds.ZombieElf, 18, 40, 65, 18, 600, 0.4f, 1f, 1.75f, false, false],
+        [VanillaNpcIds.ZombieElfBeard, 18, 40, 52, 24, 700, 0.2f, 1.05f, 1.25f, false, false],
+        [VanillaNpcIds.ZombieElfGirl, 18, 40, 78, 14, 500, 0.25f, 0.9f, 2f, false, false],
+        [VanillaNpcIds.ZombieDoctor, 18, 40, 20, 6, 40, 0.6f, 0.9f, 1f, false, false],
+        [VanillaNpcIds.ZombieSuperman, 18, 40, 15, 8, 60, 0.5f, 1.05f, 1f, false, false],
+        [VanillaNpcIds.ZombiePixie, 18, 40, 20, 14, 34, 0.3f, 1.1f, 1f, false, false],
+        [VanillaNpcIds.SkeletonTopHat, 18, 40, 23, 0, 115, 0.65f, 1f, 1f, false, false],
+        [VanillaNpcIds.SkeletonAstronaut, 18, 40, 18, 10, 65, 0.5f, 1f, 1f, false, false],
+        [VanillaNpcIds.SkeletonAlien, 18, 40, 22, 10, 70, 0.4f, 1.05f, 1f, false, false],
+        [VanillaNpcIds.ZombieXmas, 18, 40, 14, 6, 45, 0.5f, 1f, 1f, true, false],
+        [VanillaNpcIds.ZombieSweater, 18, 40, 14, 6, 45, 0.5f, 1f, 1f, true, false],
+        [VanillaNpcIds.ArmedZombie, 18, 40, 14, 6, 45, 0.5f, 1f, 1f, false, false],
+        [VanillaNpcIds.ArmedZombieEskimo, 18, 40, 16, 8, 50, 0.45f, 1f, 1f, false, false],
+        [VanillaNpcIds.ArmedZombiePincushion, 18, 40, 16, 8, 50, 0.45f, 1f, 1f, false, false],
+        [VanillaNpcIds.ArmedZombieSlimed, 18, 40, 13, 6, 40, 0.55f, 1f, 1f, false, false],
+        [VanillaNpcIds.ArmedZombieSwamp, 18, 40, 13, 8, 45, 0.45f, 1f, 1f, false, false],
+        [VanillaNpcIds.ArmedZombieTwiggy, 18, 40, 16, 4, 45, 0.55f, 1f, 1f, false, false],
+        [VanillaNpcIds.ArmedZombieCenx, 18, 40, 12, 4, 38, 0.6f, 1f, 1f, false, false],
+        [VanillaNpcIds.ArmedTorchZombie, 18, 40, 14, 6, 45, 0.5f, 1f, 1f, false, false],
+        [VanillaNpcIds.Crawdad, 28, 22, 28, 6, 50, 1f, 1f, 1f, true, false],
+        [VanillaNpcIds.Crawdad2, 28, 22, 28, 6, 50, 1f, 1f, 1f, true, false],
+        [VanillaNpcIds.Salamander, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.Salamander2, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.Salamander3, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.Salamander4, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.Salamander5, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.Salamander6, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.Salamander7, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.Salamander8, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.Salamander9, 24, 44, 18, 10, 65, 1f, 1f, 1f, false, false],
+        [VanillaNpcIds.BigAngryBones, 18, 40, 34, 6, 70, .9f, 1f, 1f, false, true],
+        [VanillaNpcIds.BigMuscleAngryBones, 18, 40, 28, 12, 70, .7f, 1f, 1f, false, true],
+        [VanillaNpcIds.BigHelmetAngryBones, 18, 40, 24, 14, 120, .6f, 1f, 1f, false, true],
+        [VanillaNpcIds.SkeletonSniper, 18, 40, 60, 28, 400, .4f, 1f, 1f, false, false],
+        [VanillaNpcIds.TacticalSkeleton, 18, 40, 60, 28, 400, .4f, 1f, 1f, false, false],
+        [VanillaNpcIds.SkeletonCommando, 18, 40, 60, 28, 400, .4f, 1f, 1f, false, false],
+        [VanillaNpcIds.Paladin, 34, 62, 100, 50, 5000, 0f, 1f, 1f, false, false],
+        [VanillaNpcIds.SkeletonArcher, 18, 40, 45, 14, 210, .55f, 1f, 1f, false, false],
+        [VanillaNpcIds.GoblinArcher, 18, 40, 20, 6, 80, .7f, .95f, 1f, false, false],
+        [VanillaNpcIds.IcyMerman, 18, 40, 60, 30, 280, .5f, 1f, 1f, false, false],
+        [VanillaNpcIds.PirateDeadeye, 18, 40, 30, 12, 150, .3f, 1f, 1f, false, false],
+        [VanillaNpcIds.PirateCrossbower, 18, 40, 35, 18, 260, .35f, 1f, 1f, false, false],
+        [VanillaNpcIds.PirateCaptain, 18, 40, 70, 28, 2000, 0f, 1f, 1f, false, false],
+        [VanillaNpcIds.CochinealBeetle, 28, 20, 20, 10, 40, 1f, 1f, 1.5f, false, false],
+        [VanillaNpcIds.CyanBeetle, 28, 20, 20, 10, 40, 1f, 1f, 1.5f, false, false],
+        [VanillaNpcIds.LacBeetle, 28, 20, 20, 10, 40, 1f, 1f, 1.5f, false, false],
+        [VanillaNpcIds.SeaSnail, 28, 20, 20, 10, 40, 1f, 1f, .5f, false, false],
     ];
 
     [Theory]
@@ -76,8 +125,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(42, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(40, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(102, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(100, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
@@ -107,6 +156,241 @@ public sealed class VanillaGroundFighterNpcCatalogTests
             Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(new NpcTypeId(type), out var behavior));
             Assert.Equal(speed, behavior.BaseMaximumHorizontalSpeed, 5);
             Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
+        }
+    }
+
+    [Fact]
+    public void Crab_lihzahrd_and_pirate_melee_fighters_keep_source_motion_and_daytime_profiles()
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.Crab, out var crab));
+        Assert.Equal(VanillaGroundFighterMotionProfile.SeaSnail, crab.MotionProfile);
+        Assert.Equal(.5f, crab.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.03f, crab.HorizontalAcceleration, 5);
+        Assert.Equal(.7f, crab.OverspeedGroundDamping, 5);
+        Assert.False(crab.DaySurfaceEncouragesDespawn);
+
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.Lihzahrd, out var lihzahrd));
+        Assert.Equal(4f, lihzahrd.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.1f, lihzahrd.HorizontalAcceleration, 5);
+        Assert.Equal(.8f, lihzahrd.ReversingVelocityDamping, 5);
+        Assert.False(lihzahrd.DaySurfaceEncouragesDespawn);
+
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.PirateDeckhand, out var deckhand));
+        Assert.Equal(2f, deckhand.BaseMaximumHorizontalSpeed, 5);
+        Assert.False(deckhand.DaySurfaceEncouragesDespawn);
+
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.PirateCorsair, out var corsair));
+        Assert.Equal(3f, corsair.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.99f, corsair.ReversingVelocityDamping, 5);
+        Assert.False(corsair.DaySurfaceEncouragesDespawn);
+    }
+
+    [Fact]
+    public void Clown_keeps_its_source_slow_ai003_motion_profile()
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetDefinition(VanillaNpcIds.Clown, out var definition));
+        Assert.Equal(34, definition.BaseWidth);
+        Assert.Equal(78, definition.BaseHeight);
+        Assert.Equal(50, definition.Damage);
+        Assert.Equal(20, definition.Defense);
+        Assert.Equal(400, definition.LifeMax);
+
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.Clown, out var behavior));
+        Assert.Equal(2f, behavior.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.04f, behavior.HorizontalAcceleration, 5);
+    }
+
+    [Fact]
+    public void Rain_zombie_keeps_its_source_scale_adjusted_speed_band()
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetDefinition(VanillaNpcIds.RainZombie, out var definition));
+        Assert.Equal(16, definition.Damage);
+        Assert.Equal(8, definition.Defense);
+        Assert.Equal(50, definition.LifeMax);
+        Assert.Equal(.45f, definition.KnockBackResist, 5);
+
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.RainZombie, out var behavior));
+        Assert.Equal(1.05f, behavior.BaseMaximumHorizontalSpeed, 5);
+        Assert.True(behavior.ScaleAdjustsMaximumHorizontalSpeed);
+    }
+
+    [Theory]
+    [InlineData(206)]
+    [InlineData(217)]
+    [InlineData(218)]
+    [InlineData(219)]
+    [InlineData(220)]
+    public void Icy_merman_and_beetle_family_keep_the_source_day_surface_exemption(int rawType)
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(new NpcTypeId(rawType), out var behavior));
+        Assert.False(behavior.DaySurfaceEncouragesDespawn);
+    }
+
+    [Theory]
+    [InlineData(47)]
+    [InlineData(168)]
+    public void Corrupt_critters_keep_their_source_day_surface_exemption(int rawType)
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(new NpcTypeId(rawType), out var behavior));
+        Assert.True(behavior.CloseRangeLunge);
+        Assert.False(behavior.DaySurfaceEncouragesDespawn);
+    }
+
+    [Fact]
+    public void Chaos_elemental_keeps_its_source_teleport_pressure_motion_profile()
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetDefinition(VanillaNpcIds.ChaosElemental, out var definition));
+        Assert.Equal(18, definition.BaseWidth);
+        Assert.Equal(40, definition.BaseHeight);
+        Assert.Equal(40, definition.Damage);
+        Assert.Equal(30, definition.Defense);
+        Assert.Equal(370, definition.LifeMax);
+        Assert.Equal(.4f, definition.KnockBackResist, 5);
+
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.ChaosElemental, out var behavior));
+        Assert.Equal(3f, behavior.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.99f, behavior.ReversingVelocityDamping, 5);
+        Assert.Equal(180f, behavior.StuckThreshold, 5);
+        Assert.False(behavior.DaySurfaceEncouragesDespawn);
+    }
+
+    [Fact]
+    public void Wraith_keeps_its_source_wait_clock_fighter_profile()
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetDefinition(VanillaNpcIds.Wraith, out var definition));
+        Assert.Equal((18, 40, 70, 26, 450),
+            (definition.BaseWidth, definition.BaseHeight, definition.Damage, definition.Defense, definition.LifeMax));
+        Assert.Equal(.2f, definition.KnockBackResist, 5);
+
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.Wraith, out var behavior));
+        Assert.Equal(3f, behavior.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
+        Assert.Equal(.99f, behavior.ReversingVelocityDamping, 5);
+        Assert.False(behavior.DaySurfaceEncouragesDespawn);
+    }
+
+    [Theory]
+    [InlineData(163, 50, 20, 90, 40, 350, .25f, 2f)]
+    [InlineData(164, 50, 20, 30, 10, 80, .25f, 1.5f)]
+    [InlineData(239, 50, 20, 30, 8, 60, .5f, 1.5f)]
+    public void Source_wide_ai003_variants_keep_their_distinct_body_and_speed_profiles(
+        int type, int width, int height, int damage, int defense, int lifeMax, float knockBackResist, float speed)
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetDefinition(new NpcTypeId(type), out var definition));
+        Assert.Equal(width, definition.BaseWidth);
+        Assert.Equal(height, definition.BaseHeight);
+        Assert.Equal(damage, definition.Damage);
+        Assert.Equal(defense, definition.Defense);
+        Assert.Equal(lifeMax, definition.LifeMax);
+        Assert.Equal(knockBackResist, definition.KnockBackResist, 5);
+
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(new NpcTypeId(type), out var behavior));
+        Assert.Equal(speed, behavior.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
+    }
+
+    [Theory]
+    [InlineData(338, 1.75f)]
+    [InlineData(339, 1.25f)]
+    [InlineData(340, 2f)]
+    public void Snow_moon_zombie_elves_keep_their_source_ai003_speed_bands(int type, float speed)
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(new NpcTypeId(type), out var behavior));
+
+        Assert.Equal(speed, behavior.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
+        Assert.False(behavior.ScaleAdjustsMaximumHorizontalSpeed);
+        Assert.Equal(VanillaGroundFighterMotionProfile.Standard, behavior.MotionProfile);
+    }
+
+    [Fact]
+    public void Halloween_zombie_and_skeleton_variants_use_the_generic_source_ai003_profile()
+    {
+        foreach (NpcTypeId type in new[]
+        {
+            VanillaNpcIds.ZombieDoctor,
+            VanillaNpcIds.ZombieSuperman,
+            VanillaNpcIds.ZombiePixie,
+            VanillaNpcIds.SkeletonTopHat,
+            VanillaNpcIds.SkeletonAstronaut,
+            VanillaNpcIds.SkeletonAlien
+        })
+        {
+            Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(type, out var behavior));
+            Assert.Equal(1f, behavior.BaseMaximumHorizontalSpeed, 5);
+            Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
+            Assert.False(behavior.ScaleAdjustsMaximumHorizontalSpeed);
+            Assert.Equal(VanillaGroundFighterMotionProfile.Standard, behavior.MotionProfile);
+        }
+    }
+
+    [Fact]
+    public void Christmas_zombies_keep_the_source_scale_adjusted_ai003_profile()
+    {
+        foreach (NpcTypeId type in new[] { VanillaNpcIds.ZombieXmas, VanillaNpcIds.ZombieSweater })
+        {
+            Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(type, out var behavior));
+            Assert.Equal(1f, behavior.BaseMaximumHorizontalSpeed, 5);
+            Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
+            Assert.True(behavior.ScaleAdjustsMaximumHorizontalSpeed);
+            Assert.Equal(VanillaGroundFighterMotionProfile.Standard, behavior.MotionProfile);
+        }
+    }
+
+    [Fact]
+    public void Armed_zombies_keep_the_source_ai003_armed_melee_profile()
+    {
+        foreach (NpcTypeId type in new[]
+        {
+            VanillaNpcIds.ArmedZombie, VanillaNpcIds.ArmedZombieEskimo, VanillaNpcIds.ArmedZombiePincushion,
+            VanillaNpcIds.ArmedZombieSlimed, VanillaNpcIds.ArmedZombieSwamp, VanillaNpcIds.ArmedZombieTwiggy,
+            VanillaNpcIds.ArmedZombieCenx, VanillaNpcIds.ArmedTorchZombie
+        })
+        {
+            Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(type, out var behavior));
+            Assert.Equal(1f, behavior.BaseMaximumHorizontalSpeed, 5);
+            Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
+            Assert.False(behavior.ScaleAdjustsMaximumHorizontalSpeed);
+            Assert.Equal(VanillaGroundFighterMotionProfile.ArmedZombie, behavior.MotionProfile);
+        }
+    }
+
+    [Fact]
+    public void Crawdad_pair_keeps_the_source_short_range_armed_melee_profile()
+    {
+        foreach (NpcTypeId type in new[] { VanillaNpcIds.Crawdad, VanillaNpcIds.Crawdad2 })
+        {
+            Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(type, out var behavior));
+            Assert.True(behavior.ScaleAdjustsMaximumHorizontalSpeed);
+            Assert.Equal(VanillaGroundFighterMotionProfile.Crawdad, behavior.MotionProfile);
+        }
+    }
+
+    [Fact]
+    public void Salamander_variants_keep_the_source_stationary_ranged_profile()
+    {
+        for (int rawType = 498; rawType <= 506; rawType++)
+        {
+            Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(new NpcTypeId(rawType), out var behavior));
+            Assert.Equal(VanillaGroundFighterMotionProfile.Salamander, behavior.MotionProfile);
+            Assert.Equal(1f, behavior.BaseMaximumHorizontalSpeed, 5);
+            Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
+        }
+    }
+
+    [Fact]
+    public void Big_angry_bones_variants_keep_their_source_leap_profile()
+    {
+        foreach (NpcTypeId type in new[]
+        {
+            VanillaNpcIds.BigAngryBones,
+            VanillaNpcIds.BigMuscleAngryBones,
+            VanillaNpcIds.BigHelmetAngryBones
+        })
+        {
+            Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(type, out var behavior));
+            Assert.Equal(VanillaGroundFighterMotionProfile.Standard, behavior.MotionProfile);
+            Assert.True(behavior.CloseRangeLunge);
         }
     }
 

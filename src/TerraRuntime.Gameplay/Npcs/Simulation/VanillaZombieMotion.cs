@@ -48,6 +48,8 @@ public readonly record struct VanillaZombieMotionInput(
     public float OverspeedGroundDamping { get; init; } = .8f;
     public float MissingHealthSpeedBonus { get; init; }
     public float MissingHealthAccelerationBonus { get; init; }
+    public bool ArmedAttackCanStart { get; init; }
+    public bool ArmedAttackMustEnd { get; init; }
 }
 
 public readonly record struct VanillaZombieMotionResult(
@@ -69,7 +71,20 @@ public enum VanillaGroundFighterMotionProfile : byte
     Standard = 0,
     MoonEventLeaper = 1,
     HalfHealthBerserker = 2,
-    MissingHealthBerserker = 3
+    MissingHealthBerserker = 3,
+    ArmedZombie = 4,
+    Crawdad = 5,
+    Salamander = 6,
+    TacticalSkeleton = 7,
+    SkeletonSniper = 8,
+    SkeletonCommando = 9,
+    Paladin = 10,
+    StationaryArcher = 11,
+    IcyMerman = 12,
+    PirateDeadeye = 13,
+    PirateCrossbower = 14,
+    PirateCaptain = 15,
+    SeaSnail = 16
 }
 
 /// <summary>
@@ -133,22 +148,34 @@ public static class VanillaZombieMotion
         int targetRefreshes = 0;
         int timeLeft = input.TimeLeft;
 
-        bool reversingWhileGrounded =
-            velocityY == 0f &&
-            ((velocityX > 0f && directionX < 0) ||
-             (velocityX < 0f && directionX > 0));
+        bool stationaryRangedArmed = input.MotionProfile is
+            VanillaGroundFighterMotionProfile.StationaryArcher or
+            VanillaGroundFighterMotionProfile.IcyMerman or
+            VanillaGroundFighterMotionProfile.PirateDeadeye or
+            VanillaGroundFighterMotionProfile.PirateCrossbower or
+            VanillaGroundFighterMotionProfile.PirateCaptain or
+            VanillaGroundFighterMotionProfile.SkeletonSniper or
+            VanillaGroundFighterMotionProfile.TacticalSkeleton or
+            VanillaGroundFighterMotionProfile.SkeletonCommando && ai2 > 0f;
+        if (!stationaryRangedArmed)
+        {
+            bool reversingWhileGrounded =
+                velocityY == 0f &&
+                ((velocityX > 0f && directionX < 0) ||
+                 (velocityX < 0f && directionX > 0));
 
-        if (input.PositionX == input.OldPositionX || ai3 >= input.StuckThreshold || reversingWhileGrounded)
-            ai3++;
-        else if (MathF.Abs(velocityX) > 0.9f && ai3 > 0f)
-            ai3--;
+            if (input.PositionX == input.OldPositionX || ai3 >= input.StuckThreshold || reversingWhileGrounded)
+                ai3++;
+            else if (MathF.Abs(velocityX) > 0.9f && ai3 > 0f)
+                ai3--;
 
-        if (ai3 > input.MaximumStuckCounter)
-            ai3 = 0f;
-        if (input.JustHit)
-            ai3 = 0f;
-        if (input.TargetOverlaps)
-            ai3 = 0f;
+            if (ai3 > input.MaximumStuckCounter)
+                ai3 = 0f;
+            if (input.JustHit)
+                ai3 = 0f;
+            if (input.TargetOverlaps)
+                ai3 = 0f;
+        }
 
         bool pursue = ai3 < input.StuckThreshold && input.PursuitAllowed;
         if (pursue)
@@ -184,12 +211,35 @@ public static class VanillaZombieMotion
                 directionX = 1;
         }
 
+        bool armedAttackTick = input.MotionProfile is VanillaGroundFighterMotionProfile.ArmedZombie or VanillaGroundFighterMotionProfile.Crawdad && ai2 > 0f;
+        if (armedAttackTick)
+        {
+            // AI_003_Fighters: armed zombies retain the common target/stuck prepass, then brake for twenty
+            // ticks while their melee damage is raised by the owning strategy.
+            ai3 = 1f;
+            velocityX *= .9f;
+            if (MathF.Abs(velocityX) < .1f)
+                velocityX = 0f;
+            ai2++;
+            if (ai2 >= 20f || velocityY != 0f || input.ArmedAttackMustEnd)
+                ai2 = 0f;
+        }
+
         float maximumSpeed = input.BaseMaximumHorizontalSpeed;
         if (input.ScaleAdjustsMaximumHorizontalSpeed)
             maximumSpeed *= 1f + (1f - input.Scale);
         if ((velocityX > 0f && directionX < 0) || (velocityX < 0f && directionX > 0))
             velocityX *= input.ReversingVelocityDamping;
-        if (input.MotionProfile == VanillaGroundFighterMotionProfile.MoonEventLeaper)
+        if (armedAttackTick)
+        {
+            // The source's armed branch owns horizontal motion for this tick.
+        }
+        else if (input.MotionProfile == VanillaGroundFighterMotionProfile.Salamander ||
+                 (input.MotionProfile is VanillaGroundFighterMotionProfile.TacticalSkeleton or VanillaGroundFighterMotionProfile.SkeletonSniper or VanillaGroundFighterMotionProfile.SkeletonCommando or VanillaGroundFighterMotionProfile.Paladin or VanillaGroundFighterMotionProfile.StationaryArcher or VanillaGroundFighterMotionProfile.IcyMerman or VanillaGroundFighterMotionProfile.PirateDeadeye or VanillaGroundFighterMotionProfile.PirateCrossbower or VanillaGroundFighterMotionProfile.PirateCaptain && ai2 > 0f))
+        {
+            // AI_003's stationary ranged branches take over after the shared target/stuck prepass.
+        }
+        else if (input.MotionProfile == VanillaGroundFighterMotionProfile.MoonEventLeaper)
         {
             if (velocityY == 0f)
             {
@@ -203,6 +253,22 @@ public static class VanillaZombieMotion
             else if (spriteDirection == directionX)
             {
                 velocityX = (velocityX * 10f + maximumSpeed * directionX) / 11f;
+            }
+        }
+        else if (input.MotionProfile == VanillaGroundFighterMotionProfile.SeaSnail)
+        {
+            if (velocityX < -maximumSpeed || velocityX > maximumSpeed)
+            {
+                if (velocityY == 0f)
+                    velocityX *= .7f;
+            }
+            else if (velocityX < maximumSpeed && directionX == 1)
+            {
+                velocityX = MathF.Min(velocityX + .03f, maximumSpeed);
+            }
+            else if (velocityX > -maximumSpeed && directionX == -1)
+            {
+                velocityX = MathF.Max(velocityX - .03f, -maximumSpeed);
             }
         }
         else if (input.MotionProfile == VanillaGroundFighterMotionProfile.HalfHealthBerserker)
@@ -219,22 +285,31 @@ public static class VanillaZombieMotion
             float acceleration = input.HorizontalAcceleration + missingHealth * input.MissingHealthAccelerationBonus;
             ApplyStandardMotion(maximumSpeed, acceleration, input.OverspeedGroundDamping);
         }
-        else if (velocityX < -maximumSpeed || velocityX > maximumSpeed)
+        else
         {
-            if (velocityY == 0f)
-                velocityX *= input.OverspeedGroundDamping;
+            if (velocityX < -maximumSpeed || velocityX > maximumSpeed)
+            {
+                if (velocityY == 0f)
+                    velocityX *= input.OverspeedGroundDamping;
+            }
+            else if (velocityX < maximumSpeed && directionX == 1)
+            {
+                velocityX += input.HorizontalAcceleration;
+                if (velocityX > maximumSpeed)
+                    velocityX = maximumSpeed;
+            }
+            else if (velocityX > -maximumSpeed && directionX == -1)
+            {
+                velocityX -= input.HorizontalAcceleration;
+                if (velocityX < -maximumSpeed)
+                    velocityX = -maximumSpeed;
+            }
         }
-        else if (velocityX < maximumSpeed && directionX == 1)
+
+        if (input.MotionProfile is VanillaGroundFighterMotionProfile.ArmedZombie or VanillaGroundFighterMotionProfile.Crawdad && !armedAttackTick && input.ArmedAttackCanStart)
         {
-            velocityX += input.HorizontalAcceleration;
-            if (velocityX > maximumSpeed)
-                velocityX = maximumSpeed;
-        }
-        else if (velocityX > -maximumSpeed && directionX == -1)
-        {
-            velocityX -= input.HorizontalAcceleration;
-            if (velocityX < -maximumSpeed)
-                velocityX = -maximumSpeed;
+            velocityX *= .7f;
+            ai2 = 1f;
         }
 
         result = new VanillaZombieMotionResult(

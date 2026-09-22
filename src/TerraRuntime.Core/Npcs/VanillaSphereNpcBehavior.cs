@@ -5,7 +5,7 @@ using TerraRuntime.Gameplay.Players;
 
 namespace TerraRuntime.Core.Npcs;
 
-/// <summary>NPC.AI style 9 for Burning Sphere and Water Sphere, TerrariaServer 1.4.5.8.</summary>
+/// <summary>NPC.AI style 9 for Burning Sphere, Water Sphere and the Good World Eater projectile NPC, TerrariaServer 1.4.5.8.</summary>
 internal sealed class VanillaSphereNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
     public bool TryStep(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
@@ -14,7 +14,10 @@ internal sealed class VanillaSphereNpcBehaviorStrategy : IVanillaNpcBehaviorStra
         _ = inner;
         bool water = npc.TypeIdentity == VanillaNpcIds.WaterSphere;
         bool chaos = npc.TypeIdentity == VanillaNpcIds.ChaosBall || npc.TypeIdentity == VanillaNpcIds.TimFireball;
-        if ((!water && !chaos && npc.TypeIdentity != VanillaNpcIds.BurningSphere) ||
+        bool eaterSpit = npc.TypeIdentity == VanillaNpcIds.EaterOfWorldsSpit;
+        bool corruptorSpit = npc.TypeIdentity == VanillaNpcIds.CorruptorSpit;
+        bool hostileSpit = eaterSpit || corruptorSpit;
+        if ((!water && !chaos && !hostileSpit && npc.TypeIdentity != VanillaNpcIds.BurningSphere) ||
             definition.AiStyle != VanillaNpcAiStyles.BurningSphere ||
             !definition.TryResolveHitbox(npc.Simulation, out var hitbox))
         {
@@ -36,7 +39,7 @@ internal sealed class VanillaSphereNpcBehaviorStrategy : IVanillaNpcBehaviorStra
                     VanillaPlayerHitboxFacts.BaseHeight * .5f, 0, false, false, false, false);
             float centerX = npc.PositionX + hitbox.Width * .5f, centerY = npc.PositionY + hitbox.Height * .5f;
             float dx = target.CenterX - centerX, dy = target.CenterY - centerY;
-            float speed = water ? 6f : 5f;
+            float speed = eaterSpit ? context.GoodWorld ? 10f : 7f : corruptorSpit ? 7f : water ? 6f : 5f;
             if (protectedByBoss)
                 speed = water ? (VanillaSkeletronCombat.HasRedHatAdjustments(npc.TypeIdentity, npc.Ai, npc.Simulation.LocalAi) ? 8f : 10f) : 14f;
             float length = (float)Math.Sqrt(dx * dx + dy * dy);
@@ -54,15 +57,47 @@ internal sealed class VanillaSphereNpcBehaviorStrategy : IVanillaNpcBehaviorStra
             }
         }
 
+        NpcAiState ai = npc.Ai;
+        float positionX = npc.PositionX;
+        float positionY = npc.PositionY;
+        bool hitsSolid = hostileSpit && npc.Simulation.SolidCollision;
+        int timeLeft = npc.Simulation.TimeLeft < 0 ? 100 : Math.Min(npc.Simulation.TimeLeft, 100);
+        bool protectedAboveSurface = eaterSpit && context.GoodWorld && !npc.Simulation.DontTakeDamage &&
+            !double.IsPositiveInfinity(context.WorldSurfacePixels) &&
+            npc.PositionY + hitbox.Height * .5f < context.WorldSurfacePixels;
+        int? damageOverride = npc.Simulation.DamageOverride;
+        if (hostileSpit)
+        {
+            if (eaterSpit)
+            {
+                // NPC.GetAttackDamage_CappedAtMaster(32): the retained spawn difficulty supplies the source
+                // difficulty multiplier while values above Master remain capped at the Master endpoint.
+                float difficulty = Math.Clamp(npc.Simulation.SpawnDifficulty ?? 1f, .5f, 3f);
+                damageOverride = (int)(32f * difficulty);
+            }
+            else
+                damageOverride = definition.Damage;
+            ai = ai with { Ai0 = Math.Min(3f, ai.Ai0 + 1f) };
+            if (ai.Ai0 == 2f)
+            {
+                positionX += velocityX;
+                positionY += velocityY;
+            }
+            if (hitsSolid)
+                timeLeft = 0;
+        }
+
         var simulation = npc.Simulation with
         {
             DirectionX = direction,
             DirectionY = directionY,
-            DontTakeDamage = npc.Simulation.DontTakeDamage || protectedByBoss,
-            TimeLeft = npc.Simulation.TimeLeft < 0 ? 100 : Math.Min(npc.Simulation.TimeLeft, 100),
-            Rotation = (npc.Simulation.Rotation ?? 0f) + .4f * direction
+            DontTakeDamage = npc.Simulation.DontTakeDamage || protectedByBoss || protectedAboveSurface,
+            TimeLeft = timeLeft,
+            Rotation = (npc.Simulation.Rotation ?? 0f) + .4f * direction,
+            DamageOverride = damageOverride,
+            Life = hitsSolid ? 0 : npc.Simulation.Life
         };
-        next = new(npc.Type, npc.NetId, npc.PositionX, npc.PositionY, velocityX, velocityY, targetSlot, npc.Ai, simulation);
+        next = new(npc.Type, npc.NetId, positionX, positionY, velocityX, velocityY, targetSlot, ai, simulation);
         return true;
     }
 }

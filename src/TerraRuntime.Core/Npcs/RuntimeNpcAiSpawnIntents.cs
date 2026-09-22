@@ -19,6 +19,9 @@ public readonly record struct NpcAiSpawnIntent(
 {
     public NpcAiState InitialAi { get; init; }
 
+    /// <summary>Optional source-selected net identity applied by SetDefaultsFromNetId after NewNPC allocation.</summary>
+    public NpcNetId? NetIdOverride { get; init; }
+
     /// <summary>Vanilla NewNPC.Start: ascending search includes this slot; reverse search excludes it.</summary>
     public byte StartSlot { get; init; }
 

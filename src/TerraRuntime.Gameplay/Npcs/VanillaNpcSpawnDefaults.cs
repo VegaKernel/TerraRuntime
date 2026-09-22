@@ -43,6 +43,11 @@ public readonly record struct VanillaNpcSpawnDefaults(
             defaults = ResolveOrdinary(in definition, in context, windowsArithmetic);
             return true;
         }
+        if (context.IsValid && VanillaMimicNpcCatalog1458.IsMimic(definition.Type))
+        {
+            defaults = ResolveMimic(in definition, in context, windowsArithmetic);
+            return true;
+        }
         bool probe = definition.Type == VanillaNpcIds.Probe;
         bool skeletronHead = definition.Type == VanillaNpcIds.SkeletronHead;
         bool skeletronHand = definition.Type == VanillaNpcIds.SkeletronHand;
@@ -131,6 +136,29 @@ public readonly record struct VanillaNpcSpawnDefaults(
             KnockBackResist = windowsArithmetic
                 ? (float)(definition.KnockBackResist * Ramp(difficulty, 1f, 3f, .8f, true))
                 : definition.KnockBackResist * (float)Ramp(difficulty, 1f, 3f, .8f, false)
+        };
+    }
+
+    private static VanillaNpcSpawnDefaults ResolveMimic(in VanillaNpcDefinition definition, in VanillaNpcSpawnContext context,
+        bool windowsArithmetic)
+    {
+        // NPC.SetDefaults assigns 30/12/300 to ordinary and Ice Mimics before ScaleStats. Present Mimic
+        // retains its own 100/32/900 baseline. None of the three types has a type-specific ScaleStats tweak
+        // or multiplayer life multiplier in 1.4.5.8.
+        bool preHardMode = !context.HardMode && VanillaMimicNpcCatalog1458.HasPreHardModeDefaults(definition.Type);
+        int life = preHardMode ? 300 : definition.LifeMax;
+        int damage = preHardMode ? 30 : definition.Damage;
+        int defense = preHardMode ? 12 : definition.Defense;
+        float difficulty = context.Difficulty;
+        life = windowsArithmetic ? (int)(life * (double)difficulty) : (int)(life * difficulty);
+        double damageMultiplier = DamageMultiplier(difficulty, windowsArithmetic);
+        damage = windowsArithmetic ? (int)(damage * damageMultiplier) : (int)(damage * (float)damageMultiplier);
+        float knockBackResist = windowsArithmetic
+            ? (float)(definition.KnockBackResist * Ramp(difficulty, 1f, 3f, .8f, true))
+            : definition.KnockBackResist * (float)Ramp(difficulty, 1f, 3f, .8f, false);
+        return new(new(definition.Width, definition.Height), definition.Scale, life, damage, defense)
+        {
+            KnockBackResist = knockBackResist
         };
     }
 

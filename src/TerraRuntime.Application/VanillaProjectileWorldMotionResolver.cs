@@ -39,7 +39,8 @@ internal sealed class VanillaProjectileWorldMotionResolver
         out ProjectileSimulationStepResult next)
     {
         ProjectileSnapshot current = projectile.Projectile;
-        bool fallingBlock = VanillaFallingBlock1458.TryGetTile(current.Type, out _);
+        bool fallingBlock = VanillaFallingBlock1458.TryGetTile(current.Type, out _) &&
+            !(current.Type == VanillaProjectileIds.AntlionSand && current.Ai.Ai0 == 2f);
         float velocityX = behavior.VelocityX;
         float velocityY = behavior.VelocityY;
         float behaviorPositionX = behavior.PositionXOverride ?? current.PositionX;

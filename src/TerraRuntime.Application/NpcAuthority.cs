@@ -47,6 +47,9 @@ internal sealed partial class NpcAuthority
     private readonly RuntimeTownCommerceWorldFacts1458? naturalSpawnWorldFacts;
     private readonly RuntimeTownNpcStateStore? naturalSpawnTownNpcs;
     private readonly bool naturalSpawnSkyblockLowTiles;
+    private readonly bool naturalSpawnSkyblockNoFossils;
+    private readonly bool naturalSpawnSkyblockNoHellstone;
+    private readonly bool naturalSpawnSkyblockNoLifeCrystals;
     private readonly VanillaNpcTargetCandidate[] targetCandidates =
         new VanillaNpcTargetCandidate[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
     private readonly PlayerStateSnapshot[] serverPlayerSnapshots =
@@ -118,6 +121,13 @@ internal sealed partial class NpcAuthority
         naturalSpawnWorldFacts = townCommerceWorldFacts;
         naturalSpawnTownNpcs = townNpcs;
         naturalSpawnSkyblockLowTiles = skyblockLowTiles;
+        VanillaSkyblockRuntimeState1458 skyblockState = worldTiles is not null &&
+            townCommerceWorldFacts is { SkyblockWorld: true }
+            ? VanillaSkyblockRuntimePolicy1458.Evaluate(new WorldFileRuntimeMetadata { SkyblockWorld = true }, worldTiles)
+            : default;
+        naturalSpawnSkyblockNoFossils = skyblockState.NoFossils;
+        naturalSpawnSkyblockNoHellstone = skyblockState.NoHellstone;
+        naturalSpawnSkyblockNoLifeCrystals = skyblockState.NoLifeCrystals;
         if (worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 sceneWorldFacts)
         {
             npcSceneMetrics = new VanillaTownSceneMetricsScanner1458(worldTiles, in sceneWorldFacts);
@@ -230,7 +240,11 @@ internal sealed partial class NpcAuthority
                 {
                     double rockLayer = townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 facts &&
                         facts.RockLayer > verifiedSurface ? facts.RockLayer : double.PositiveInfinity;
-                    vanillaTargeting.SetWorldBounds(worldTiles.Dimensions.WidthTiles, verifiedSurface, rockLayer);
+                    vanillaTargeting.SetWorldBounds(
+                        worldTiles.Dimensions.WidthTiles,
+                        verifiedSurface,
+                        rockLayer,
+                        worldTiles.Dimensions.HeightTiles);
                 }
                 var flyingEyeEnvironment = new VanillaFlyingEyeWorldEnvironment(worldTiles);
                 vanillaTargeting.SetFlyingEyeEnvironment(flyingEyeEnvironment);
@@ -356,8 +370,15 @@ internal sealed partial class NpcAuthority
                     CaptureDifficulty() >= 3f,
                     worldClock.WindSpeedCurrent,
                     naturalSpawnWorldFacts?.RemixWorld ?? false,
-                    worldClock.Time);
-                vanillaTargeting.SetMoonEventState(worldClock.PumpkinMoonActive);
+                    worldClock.Time,
+                    naturalSpawnWorldFacts?.NoTrapsWorld ?? false,
+                    naturalSpawnSkyblockNoFossils,
+                    naturalSpawnSkyblockLowTiles,
+                    naturalSpawnSkyblockNoHellstone,
+                    naturalSpawnSkyblockNoLifeCrystals,
+                    naturalSpawnWorldFacts?.DownedBoss3 ?? false,
+                    naturalSpawnWorldFacts?.Eclipse ?? false);
+                vanillaTargeting.SetMoonEventState(worldClock.PumpkinMoonActive, worldClock.SnowMoonActive);
             }
         }
 

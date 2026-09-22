@@ -375,6 +375,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             if (!TryExecuteImportedLoot(in dead, eaterBoss))
                 throw new InvalidOperationException("Imported NPC loot could not be finalized after a lethal packet-28 commit.");
 
+            ExecuteNpcDeathHitEffects(in dead);
             AdvanceSlimeRainDeath(in dead);
             AdvanceMoonEventDeath(in dead);
             if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
@@ -555,6 +556,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         if (!TryExecuteImportedLoot(in dead, eaterBoss))
             throw new InvalidOperationException("Imported NPC loot could not be finalized after player-owned damage.");
 
+        ExecuteNpcDeathHitEffects(in dead);
         AdvanceSlimeRainDeath(in dead);
         AdvanceMoonEventDeath(in dead);
         if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
@@ -685,6 +687,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         if (!TryExecuteImportedLoot(in dead, eaterBoss))
             throw new InvalidOperationException("Imported NPC loot could not be finalized after Town NPC melee.");
 
+        ExecuteNpcDeathHitEffects(in dead);
         AdvanceSlimeRainDeath(in dead);
         AdvanceMoonEventDeath(in dead);
         if (dead.TypeIdentity == VanillaNpcIds.KingSlime)

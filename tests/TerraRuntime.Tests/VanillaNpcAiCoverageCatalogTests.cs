@@ -16,9 +16,12 @@ public sealed class VanillaNpcAiCoverageCatalogTests
             VanillaFlyerNpcCatalog.DefinitionCount +
             VanillaBatNpcCatalog1458.DefinitionCount +
             VanillaFishNpcCatalog1458.DefinitionCount +
+            VanillaJellyfishNpcCatalog1458.DefinitionCount +
+            VanillaAntlionNpcCatalog1458.DefinitionCount +
             VanillaWormNpcCatalog.Count +
-            VanillaNpcAi17_20_21Catalog1458.DefinitionCount;
-        expected += VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 13;
+            VanillaNpcAi17_20_21Catalog1458.DefinitionCount +
+            VanillaMimicNpcCatalog1458.DefinitionCount - 1;
+        expected += VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 14;
         Assert.Equal(expected, VanillaNpcAiCoverageCatalog.Count);
 
         foreach (VanillaNpcAiCoverage coverage in VanillaNpcAiCoverageCatalog.All)
@@ -45,6 +48,12 @@ public sealed class VanillaNpcAiCoverageCatalogTests
         Assert.True(kingSlime.Has(VanillaNpcAiCapability.TeleportEnvironmentSlice));
         Assert.True(kingSlime.Has(VanillaNpcAiCapability.KingSlimeDifficultySeedSlice));
         Assert.False(kingSlime.FullVanillaAiParity);
+
+        Assert.True(VanillaNpcAiCoverageCatalog.TryGet(
+            VanillaNpcIds.MotherSlime,
+            out VanillaNpcAiCoverage motherSlime));
+        Assert.True(motherSlime.Has(VanillaNpcAiCapability.ChildSpawnSlice));
+        Assert.False(motherSlime.FullVanillaAiParity);
 
         Assert.True(VanillaNpcAiCoverageCatalog.TryGet(
             VanillaNpcIds.BrainOfCthulhu,
@@ -120,6 +129,14 @@ public sealed class VanillaNpcAiCoverageCatalogTests
         Assert.True(spikeBall.Has(VanillaNpcAiCapability.SpikeBallMotionSlice));
         Assert.True(VanillaNpcAiCoverageCatalog.TryGet(VanillaNpcIds.BlazingWheel, out VanillaNpcAiCoverage wheel));
         Assert.True(wheel.Has(VanillaNpcAiCapability.BlazingWheelMotionSlice));
+
+        foreach (VanillaNpcDefinition mimic in VanillaMimicNpcCatalog1458.AllDefinitions)
+        {
+            Assert.True(VanillaNpcAiCoverageCatalog.TryGet(mimic.Type, out VanillaNpcAiCoverage coverage));
+            Assert.True(coverage.Has(VanillaNpcAiCapability.TargetingSlice));
+            Assert.True(coverage.Has(VanillaNpcAiCapability.StateTransitionSlice));
+            Assert.True(coverage.Has(VanillaNpcAiCapability.WorldPhysicsSlice));
+        }
 
         Assert.True(VanillaNpcAiCoverageCatalog.TryGet(VanillaNpcIds.Plantera, out VanillaNpcAiCoverage plantera));
         Assert.True(plantera.Has(VanillaNpcAiCapability.HardmodeBossStateSlice));

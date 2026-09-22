@@ -58,7 +58,7 @@ public static class VanillaProjectileExplosionFacts
             return true;
         }
 
-        if (type.Value is 28 or 37 or 516 or 519)
+        if (type.Value is 28 or 37 or 75 or 516 or 519)
         {
             definition = BombExplosion;
             return true;

@@ -62,7 +62,11 @@ public enum VanillaNpcAiCapability : ulong
     FishMotionSlice = 1ul << 52,
     UnicornTraversalSlice = 1ul << 53,
     MoonEventProjectileSlice = 1ul << 54,
-    MoonEventEverscreamSlice = 1ul << 55
+    MoonEventEverscreamSlice = 1ul << 55,
+    JellyfishMotionSlice = 1ul << 56,
+    AntlionMotionSlice = 1ul << 57,
+    SlimeProjectileSideEffectSlice = 1ul << 58,
+    SlimeContainedItemSlice = 1ul << 59
 }
 
 /// <summary>
@@ -114,6 +118,11 @@ public static class VanillaNpcAiCoverageCatalog
         VanillaNpcAiCapability capabilities) =>
         new(type, capabilities, FullVanillaAiParity: false);
 
+    private static bool IsHornetStingerShooter(NpcTypeId type) =>
+        type == VanillaNpcIds.Hornet ||
+        type == VanillaNpcIds.MossHornet ||
+        type.Value is >= 231 and <= 235;
+
     private static VanillaNpcAiCoverage[] CreateEntries()
     {
         const int hardmodeBossBehaviorCount = 35;
@@ -126,13 +135,17 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaNpcAi17_20_21Catalog1458.DefinitionCount +
             VanillaBatNpcCatalog1458.DefinitionCount +
             VanillaFishNpcCatalog1458.DefinitionCount +
+            VanillaJellyfishNpcCatalog1458.DefinitionCount +
+            VanillaAntlionNpcCatalog1458.DefinitionCount +
             VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount +
-            VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 13];
+            VanillaMoonEventGroundFighterCatalog1458.DefinitionCount +
+            VanillaMimicNpcCatalog1458.DefinitionCount - 1 + 14];
         entries[0] = Partial(
             VanillaNpcIds.BlueSlime,
             OrdinaryCore |
             VanillaNpcAiCapability.SlimeTimerProfileSlice |
-            VanillaNpcAiCapability.NegativeNetVariantDefaults);
+            VanillaNpcAiCapability.NegativeNetVariantDefaults |
+            VanillaNpcAiCapability.SlimeContainedItemSlice);
         entries[1] = Partial(
             VanillaNpcIds.DemonEye,
             OrdinaryCore |
@@ -221,7 +234,11 @@ public static class VanillaNpcAiCoverageCatalog
             OrdinaryCore |
             VanillaNpcAiCapability.WallOfFleshLinkedChildSlice);
 
-        int index = 16;
+        entries[16] = Partial(
+            VanillaNpcIds.EaterOfWorldsSpit,
+            OrdinaryCore);
+
+        int index = 17;
         VanillaNpcAiCapability hardmodeRoot = OrdinaryCore | VanillaNpcAiCapability.HardmodeBossStateSlice | VanillaNpcAiCapability.BossDeathLootProgressionSlice;
         VanillaNpcAiCapability hardmodePart = OrdinaryCore | VanillaNpcAiCapability.HardmodeBossStateSlice | VanillaNpcAiCapability.HardmodeBossLinkedChildSlice;
         VanillaNpcAiCapability hardmodeProjectileRoot = hardmodeRoot | VanillaNpcAiCapability.HardmodeBossProjectileSlice;
@@ -291,6 +308,12 @@ public static class VanillaNpcAiCoverageCatalog
         entries[index++] = Partial(
             VanillaMoonEventSpecialCatalog1458.SnowMoonAi25,
             OrdinaryCore);
+        foreach (VanillaNpcDefinition definition in VanillaMimicNpcCatalog1458.AllDefinitions)
+        {
+            // Type 341 is already the shared Snow Moon AI_025 coverage entry above.
+            if (definition.Type != VanillaMoonEventSpecialCatalog1458.SnowMoonAi25)
+                entries[index++] = Partial(definition.Type, OrdinaryCore);
+        }
         entries[index++] = Partial(
             VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi26,
             OrdinaryCore | VanillaNpcAiCapability.UnicornTraversalSlice);
@@ -339,6 +362,15 @@ public static class VanillaNpcAiCoverageCatalog
                 OrdinaryCore | VanillaNpcAiCapability.SlimeTimerProfileSlice;
             if (definition.Type == VanillaNpcIds.CorruptSlime)
                 capabilities |= VanillaNpcAiCapability.NegativeNetVariantDefaults;
+            if (definition.Type == VanillaNpcIds.SpikedIceSlime || definition.Type == VanillaNpcIds.SpikedSlime ||
+                definition.Type == VanillaNpcIds.SpikedJungleSlime || definition.Type == VanillaNpcIds.QueenSlimeMinionBlue ||
+                definition.Type == VanillaNpcIds.QueenSlimeMinionPink)
+                capabilities |= VanillaNpcAiCapability.SlimeProjectileSideEffectSlice;
+            if (definition.Type == VanillaNpcIds.LavaSlime || definition.Type == VanillaNpcIds.IceSlime ||
+                definition.Type == VanillaNpcIds.SpikedIceSlime || definition.Type == VanillaNpcIds.SandSlime)
+                capabilities |= VanillaNpcAiCapability.SlimeContainedItemSlice;
+            if (definition.Type == VanillaNpcIds.MotherSlime)
+                capabilities |= VanillaNpcAiCapability.ChildSpawnSlice;
 
             entries[index++] = Partial(definition.Type, capabilities);
         }
@@ -361,8 +393,11 @@ public static class VanillaNpcAiCoverageCatalog
                 OrdinaryCore | VanillaNpcAiCapability.FlyerPursuitProfileSlice;
             if (HasNegativeNetVariant(definition.Type))
                 capabilities |= VanillaNpcAiCapability.NegativeNetVariantDefaults;
-            if (definition.Type == VanillaNpcIds.Probe || definition.Type == VanillaNpcIds.BloodSquid)
+            if (definition.Type == VanillaNpcIds.Probe || definition.Type == VanillaNpcIds.BloodSquid ||
+                IsHornetStingerShooter(definition.Type))
                 capabilities |= VanillaNpcAiCapability.FlyerProjectileSideEffectSlice;
+            if (definition.Type == VanillaNpcIds.EaterOfSouls || definition.Type == VanillaNpcIds.Corruptor)
+                capabilities |= VanillaNpcAiCapability.ChildSpawnSlice;
 
             entries[index++] = Partial(definition.Type, capabilities);
         }
@@ -426,6 +461,21 @@ public static class VanillaNpcAiCoverageCatalog
             entries[index++] = Partial(
                 definition.Type,
                 OrdinaryCore | VanillaNpcAiCapability.FishMotionSlice);
+        }
+
+        foreach (VanillaNpcDefinition definition in VanillaJellyfishNpcCatalog1458.AllDefinitions)
+        {
+            entries[index++] = Partial(
+                definition.Type,
+                OrdinaryCore | VanillaNpcAiCapability.JellyfishMotionSlice);
+        }
+
+        foreach (VanillaNpcDefinition definition in VanillaAntlionNpcCatalog1458.AllDefinitions)
+        {
+            entries[index++] = Partial(
+                definition.Type,
+                OrdinaryCore | VanillaNpcAiCapability.AntlionMotionSlice |
+                VanillaNpcAiCapability.FlyerProjectileSideEffectSlice);
         }
 
         if (index != entries.Length)

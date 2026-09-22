@@ -10,6 +10,12 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class RuntimeNpcNetworkCombatPipeline
 {
+    private void ExecuteNpcDeathHitEffects(in NpcSnapshot npc)
+    {
+        if (npc.TypeIdentity == VanillaNpcIds.MotherSlime)
+            VanillaMotherSlimeDeathSplit1458.SpawnChildren(npcs, in npc, random);
+    }
+
     private bool TryGetActiveLootPlayer(PlayerSlotId slot, out PlayerStateSnapshot player)
     {
         if (!players.TryGetPlayer(slot, out player))
@@ -617,7 +623,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         }
     }
 
-    private sealed class SystemNpcCombatRandom : INpcLootRollSource, IKingSlimeDeathRandom
+    private sealed class SystemNpcCombatRandom : INpcLootRollSource, IKingSlimeDeathRandom, IVanillaNpcRandom
     {
         private readonly Random random = new();
 

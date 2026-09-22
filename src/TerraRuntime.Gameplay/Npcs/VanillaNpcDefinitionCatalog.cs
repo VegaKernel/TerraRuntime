@@ -75,7 +75,9 @@ public enum VanillaNpcBehaviorFamily : byte
     GoblinSorcerer = 61,
     ChaosBall = 62,
     RuneWizard = 63,
-    DungeonCaster = 64
+    DungeonCaster = 64,
+    Jellyfish = 65,
+    Antlion = 66
 }
 
 /// <summary>
@@ -96,7 +98,8 @@ public enum VanillaNpcPhysicsFamily : byte
     GenericGround = 8,
     BatFlight = 9,
     FishSwimming = 10,
-    UnicornGround = 11
+    UnicornGround = 11,
+    Jellyfish = 12
 }
 
 /// <summary>One resolved vanilla NPC hitbox for the current runtime scale.</summary>
@@ -322,6 +325,15 @@ public static class VanillaNpcDefinitionCatalog
         if (VanillaFishNpcCatalog1458.TryGetDefinition(type, out definition))
             return true;
 
+        if (VanillaJellyfishNpcCatalog1458.TryGetDefinition(type, out definition))
+            return true;
+
+        if (VanillaAntlionNpcCatalog1458.TryGetDefinition(type, out definition))
+            return true;
+
+        if (VanillaMimicNpcCatalog1458.TryGetDefinition(type, out definition))
+            return true;
+
         if (type == VanillaNpcIds.QueenBee)
         {
             definition = new VanillaNpcDefinition(
@@ -422,6 +434,32 @@ public static class VanillaNpcDefinitionCatalog
             definition = new VanillaNpcDefinition(VanillaNpcIds.TimFireball, VanillaNpcAiStyles.BurningSphere,
                 VanillaNpcBehaviorFamily.ChaosBall, VanillaNpcPhysicsFamily.NoClipFlight, NpcArchetypeRole.Ordinary,
                 16, 16, 20, 0, 1, 0f, 1f, true, true, VanillaNpcSyncAnchor.TopLeft) { AlphaAtSpawn = 100 };
+            return true;
+        }
+
+        // NPC.SetDefaults(666), TerrariaServer 1.4.5.8. This projectile NPC is created by the AI_005
+        // Good World Eater of Souls branch; it is intentionally distinct from the normal projectile catalog.
+        if (type == VanillaNpcIds.EaterOfWorldsSpit)
+        {
+            definition = new VanillaNpcDefinition(VanillaNpcIds.EaterOfWorldsSpit, VanillaNpcAiStyles.BurningSphere,
+                VanillaNpcBehaviorFamily.BurningSphere, VanillaNpcPhysicsFamily.NoClipFlight, NpcArchetypeRole.Ordinary,
+                16, 16, 65, 0, 1, 0f, .9f, true, true, VanillaNpcSyncAnchor.TopLeft)
+            {
+                AlphaAtSpawn = 80
+            };
+            return true;
+        }
+
+        // NPC.SetDefaults(112), TerrariaServer 1.4.5.8. Corruptor AI_005 creates this separate AI_009
+        // projectile NPC; it shares the retained launch/collision state machine with the Good World Eater spit.
+        if (type == VanillaNpcIds.CorruptorSpit)
+        {
+            definition = new VanillaNpcDefinition(VanillaNpcIds.CorruptorSpit, VanillaNpcAiStyles.BurningSphere,
+                VanillaNpcBehaviorFamily.BurningSphere, VanillaNpcPhysicsFamily.NoClipFlight, NpcArchetypeRole.Ordinary,
+                16, 16, 65, 0, 1, 0f, .9f, true, true, VanillaNpcSyncAnchor.TopLeft)
+            {
+                AlphaAtSpawn = 80
+            };
             return true;
         }
 

@@ -48,6 +48,33 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
                 (int)VanillaPlayerHitboxFacts.BaseHeight);
         }
 
+        if (definition.Type == VanillaNpcIds.FlyingSnake && closest.HasTarget && environment is not null &&
+            context.TryFindCandidate(checked((byte)closest.Target), out VanillaNpcTargetCandidate snakeTarget) &&
+            !environment.CanHit(
+                npc.PositionX,
+                npc.PositionY,
+                hitbox.Width,
+                hitbox.Height,
+                snakeTarget.CenterX - snakeTarget.Width * .5f,
+                snakeTarget.CenterY - snakeTarget.Height * .5f,
+                (int)snakeTarget.Width,
+                (int)snakeTarget.Height))
+        {
+            // Type 226 first calls TargetClosest, then restores pursuit from its velocity signs when sight is blocked.
+            closest = closest with
+            {
+                DirectionX = npc.VelocityX < 0f ? -1 : 1,
+                DirectionY = npc.VelocityY < 0f ? -1 : 1
+            };
+        }
+
+        if (definition.Type == VanillaNpcIds.Vampire && closest.HasTarget &&
+            npc.PositionY < context.WorldSurfacePixels && context.DayTime && !context.EclipseActive)
+        {
+            // AI_014 reverses the horizontal target direction and climbs while a Flying Vampire is exposed at day.
+            closest = closest with { DirectionX = -closest.DirectionX, DirectionY = -1 };
+        }
+
         NpcSimulationState simulation = npc.Simulation;
         var input = new VanillaBatMotionInput1458(
             npc.VelocityX,
@@ -87,7 +114,7 @@ internal sealed class VanillaBatNpcBehaviorStrategy : IVanillaNpcBehaviorStrateg
                 int transformedLife = ScaleTransformLife(simulation.Life, simulation.LifeMax, 750);
                 next = new NpcStateUpdate(VanillaNpcIds.VampireHumanoid.Value, (short)VanillaNpcIds.VampireHumanoid.Value,
                     npc.PositionX, npc.PositionY - 18f, result.VelocityX, result.VelocityY, closest.Target, default,
-                    simulation with { Life = transformedLife, LifeMax = 750, HitboxOverride = null, BaseDamage = null, BaseDefense = null,
+                    simulation with { Life = transformedLife, LifeMax = 750, HitboxOverride = null, BaseDamage = null, BaseDefense = null, BaseLifeMax = null,
                         DefenseOverride = null, DamageOverride = null, KnockBackResist = null, NoGravity = false, NoTileCollide = false,
                         DirectionX = target.CenterX < npc.PositionX + 9f ? -1 : 1,
                         DirectionY = target.CenterY < npc.PositionY + 2f ? -1 : 1,

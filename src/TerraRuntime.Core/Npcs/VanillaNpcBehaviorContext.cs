@@ -14,6 +14,8 @@ internal sealed class VanillaNpcBehaviorContext
 {
     public IVanillaNpcProjectileAnchorLookup? ProjectileAnchors { get; set; }
 
+    public IVanillaNpcProjectileEnvironment? ProjectileEnvironment { get; set; }
+
     public const int MaximumPlayerCandidates = byte.MaxValue;
 
     private readonly VanillaNpcTargetCandidate[] _candidates = new VanillaNpcTargetCandidate[MaximumPlayerCandidates];
@@ -32,9 +34,16 @@ internal sealed class VanillaNpcBehaviorContext
 
     public double RockLayerPixels { get; private set; } = double.PositiveInfinity;
 
+    /// <summary>Top edge of the source underworld layer, or infinity when the world height is unavailable.</summary>
+    public double UnderworldLayerPixels { get; private set; } = double.PositiveInfinity;
+
     public double WorldWidthPixels { get; private set; }
 
-    public void SetWorldBounds(int widthTiles, double worldSurfaceTiles, double rockLayerTiles = double.PositiveInfinity)
+    public void SetWorldBounds(
+        int widthTiles,
+        double worldSurfaceTiles,
+        double rockLayerTiles = double.PositiveInfinity,
+        int worldHeightTiles = 0)
     {
         if (widthTiles <= 0)
             throw new ArgumentOutOfRangeException(nameof(widthTiles));
@@ -45,16 +54,23 @@ internal sealed class VanillaNpcBehaviorContext
         {
             throw new ArgumentOutOfRangeException(nameof(rockLayerTiles));
         }
+        if (worldHeightTiles < 0 || (worldHeightTiles > 0 && worldHeightTiles <= 200))
+            throw new ArgumentOutOfRangeException(nameof(worldHeightTiles));
         WorldWidthPixels = widthTiles * 16d;
         WorldSurfacePixels = worldSurfaceTiles * 16d;
         RockLayerPixels = rockLayerTiles * 16d;
+        UnderworldLayerPixels = worldHeightTiles == 0 ? double.PositiveInfinity : (worldHeightTiles - 200) * 16d;
     }
 
     public bool DayTime { get; private set; } = true;
 
+    public bool EclipseActive { get; private set; }
+
     public bool SlimeRainActive { get; private set; }
 
     public bool PumpkinMoonActive { get; private set; }
+
+    public bool SnowMoonActive { get; private set; }
 
     public bool GoodWorld { get; private set; }
 
@@ -63,6 +79,21 @@ internal sealed class VanillaNpcBehaviorContext
     public bool MasterMode { get; private set; }
 
     public bool RemixWorld { get; private set; }
+
+    public bool NoTrapsWorld { get; private set; }
+
+    /// <summary>Generation-time <c>WorldGen.Skyblock.noFossils</c>, projected from the loaded world.</summary>
+    public bool SkyblockNoFossils { get; private set; }
+
+    public bool SkyblockNoHellstone { get; private set; }
+
+    /// <summary>Generation-time <c>WorldGen.Skyblock.noLifeCrystals</c> projected from the loaded world.</summary>
+    public bool SkyblockNoLifeCrystals { get; private set; }
+
+    public bool DownedSkeletron { get; private set; }
+
+    /// <summary>Generation-time <c>WorldGen.Skyblock.lowTiles</c> projection for AI_001 item rolls.</summary>
+    public bool SkyblockLowTiles { get; private set; }
 
     /// <summary>Vanilla Main.time sampled before NPC AI for the current game tick.</summary>
     public double WorldTime { get; private set; }
@@ -74,7 +105,11 @@ internal sealed class VanillaNpcBehaviorContext
     public void SetPlayerSnapshotLookup(IRuntimePlayerSlotSnapshotLookup playerSnapshots) =>
         _playerSnapshots = playerSnapshots ?? throw new ArgumentNullException(nameof(playerSnapshots));
 
-    public void SetMoonEventState(bool pumpkinMoonActive) => PumpkinMoonActive = pumpkinMoonActive;
+    public void SetMoonEventState(bool pumpkinMoonActive, bool snowMoonActive = false)
+    {
+        PumpkinMoonActive = pumpkinMoonActive;
+        SnowMoonActive = snowMoonActive;
+    }
 
     public void EnableSlimeGround(double worldSurfaceTiles)
     {
@@ -98,7 +133,14 @@ internal sealed class VanillaNpcBehaviorContext
         bool masterMode = false,
         float windSpeedCurrent = 0f,
         bool remixWorld = false,
-        double worldTime = 0d)
+        double worldTime = 0d,
+        bool noTrapsWorld = false,
+        bool skyblockNoFossils = false,
+        bool skyblockLowTiles = false,
+        bool skyblockNoHellstone = false,
+        bool skyblockNoLifeCrystals = false,
+        bool downedSkeletron = false,
+        bool eclipseActive = false)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -108,6 +150,7 @@ internal sealed class VanillaNpcBehaviorContext
             throw new ArgumentOutOfRangeException(nameof(worldTime));
 
         DayTime = dayTime;
+        EclipseActive = eclipseActive;
         SlimeRainActive = slimeRainActive;
         GoodWorld = goodWorld;
         ExpertMode = expertMode;
@@ -115,6 +158,12 @@ internal sealed class VanillaNpcBehaviorContext
         WindSpeedCurrent = windSpeedCurrent;
         RemixWorld = remixWorld;
         WorldTime = worldTime;
+        NoTrapsWorld = noTrapsWorld;
+        SkyblockNoFossils = skyblockNoFossils;
+        SkyblockLowTiles = skyblockLowTiles;
+        SkyblockNoHellstone = skyblockNoHellstone;
+        SkyblockNoLifeCrystals = skyblockNoLifeCrystals;
+        DownedSkeletron = downedSkeletron;
         if (!remixWorld)
             empressRemixRageMode = false;
     }
@@ -240,6 +289,32 @@ internal sealed class VanillaNpcBehaviorContext
                 count++;
         }
         return count;
+    }
+
+    /// <summary>Source-shaped active-NPC scan for AI branches such as <c>AnyLifeCrystalSlimes</c>.</summary>
+    public bool HasNpcPeerWithAi1(NpcTypeId type, float ai1)
+    {
+        for (int index = 0; index < _npcPeerCount; index++)
+        {
+            NpcSnapshot candidate = _npcPeers[index];
+            if (candidate.IsActive && candidate.TypeIdentity == type && candidate.Ai.Ai1 == ai1)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>Mirrors <c>WorldGen.isThisInTheRockLayer((int)(position.Y / 16f))</c>.</summary>
+    public bool IsInRockLayer(float positionY)
+    {
+        if (!float.IsFinite(positionY) || !double.IsFinite(WorldSurfacePixels) || !double.IsFinite(RockLayerPixels))
+            return false;
+
+        int tileY = (int)(positionY / 16f);
+        double worldSurfaceTiles = WorldSurfacePixels / 16d;
+        double rockLayerTiles = RockLayerPixels / 16d;
+        return RemixWorld
+            ? tileY > worldSurfaceTiles && tileY <= rockLayerTiles
+            : tileY > rockLayerTiles;
     }
 
     public ReadOnlySpan<VanillaNpcTargetCandidate> Candidates => _candidates.AsSpan(0, _candidateCount);
