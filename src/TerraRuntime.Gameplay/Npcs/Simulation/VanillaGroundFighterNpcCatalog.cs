@@ -43,6 +43,10 @@ public static class VanillaGroundFighterNpcCatalog
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 120 and AI_003's 180-tick teleport pressure branch.
         ,Fighter(VanillaNpcIds.ChaosElemental, 18, 40, 40, 30, 370, .4f, 1f, 3f,
             reversingVelocityDamping: .99f, stuckThreshold: 180f, daySurfaceEncouragesDespawn: false)
+        // TerrariaServer 1.4.5.8 NPC.SetDefaults 163/164/239 and AI_003's two- and one-and-a-half-pixel branches.
+        ,Fighter(new NpcTypeId(163), 50, 20, 90, 40, 350, .25f, 1f, 2f)
+        ,Fighter(new NpcTypeId(164), 50, 20, 30, 10, 80, .25f, 1f, 1.5f)
+        ,Fighter(new NpcTypeId(239), 50, 20, 30, 8, 60, .5f, 1f, 1.5f)
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 223 and AI_003's scale-adjusted rain-zombie speed band.
         ,Fighter(VanillaNpcIds.RainZombie, 18, 40, 16, 8, 50, .45f, 1f, 1.05f, scaleAdjustsSpeed: true)
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 109 and AI_003's dedicated low-acceleration clown branch.
@@ -212,6 +216,9 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.CorruptBunny,
         VanillaNpcIds.CorruptPenguin,
         VanillaNpcIds.ChaosElemental,
+        new(163),
+        new(164),
+        new(239),
         VanillaNpcIds.RainZombie,
         VanillaNpcIds.Clown,
         VanillaNpcIds.Crab,

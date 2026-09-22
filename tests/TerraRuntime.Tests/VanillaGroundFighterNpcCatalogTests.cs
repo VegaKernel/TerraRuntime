@@ -125,8 +125,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(98, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(96, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(101, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(99, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
@@ -252,6 +252,26 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(.99f, behavior.ReversingVelocityDamping, 5);
         Assert.Equal(180f, behavior.StuckThreshold, 5);
         Assert.False(behavior.DaySurfaceEncouragesDespawn);
+    }
+
+    [Theory]
+    [InlineData(163, 50, 20, 90, 40, 350, .25f, 2f)]
+    [InlineData(164, 50, 20, 30, 10, 80, .25f, 1.5f)]
+    [InlineData(239, 50, 20, 30, 8, 60, .5f, 1.5f)]
+    public void Source_wide_ai003_variants_keep_their_distinct_body_and_speed_profiles(
+        int type, int width, int height, int damage, int defense, int lifeMax, float knockBackResist, float speed)
+    {
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetDefinition(new NpcTypeId(type), out var definition));
+        Assert.Equal(width, definition.BaseWidth);
+        Assert.Equal(height, definition.BaseHeight);
+        Assert.Equal(damage, definition.Damage);
+        Assert.Equal(defense, definition.Defense);
+        Assert.Equal(lifeMax, definition.LifeMax);
+        Assert.Equal(knockBackResist, definition.KnockBackResist, 5);
+
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(new NpcTypeId(type), out var behavior));
+        Assert.Equal(speed, behavior.BaseMaximumHorizontalSpeed, 5);
+        Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
     }
 
     [Theory]

@@ -307,6 +307,7 @@ Conversely, packet emission, NPC/projectile/item spawn, player/NPC damage or buf
 - [x] Rain Zombie `223`: source defaults and its scale-adjusted `1.05` AI_003 movement band;
 - [x] Corrupt Bunny `47` and Corrupt Penguin `168`: source defaults, day-surface exemption and shared close-range AI_003 lunge;
 - [x] Chaos Elemental `120`: source `3/.07/.99` fighter profile, 180-tick stuck pressure, `-120` post-teleport reset and server-owned source tile search with its own RNG/solid/lava rules;
+- [x] wide AI_003 bodies `163`, `164` and `239`: source `50x20` defaults and their `2/.07` or `1.5/.07` movement bands; Gastropod's Expert projectile remains in the explicit type-specific attack work;
 - [x] Skeleton definition, distinct speed band, world physics, check-active and packet sync;
 - [x] route admitted fighter speed, acceleration, stuck/despawn windows and terrain-jump values through explicit version-pinned profiles consumed by AI and world traversal;
 - [x] carry persisted Blood Moon state into the authoritative NPC world-motion stage;
