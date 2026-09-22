@@ -245,7 +245,7 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
                 ApplyTraps(context, grid, random);
                 break;
             case SurfaceFinishStage1458.Piles:
-                ApplyPiles(context, grid, random);
+                ApplyPiles(context, workspace);
                 break;
             case SurfaceFinishStage1458.SpawnPoint:
                 ApplySpawnPoint(context, grid);
@@ -430,40 +430,26 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Placing wired cavern traps ({placed}/{target})");
     }
 
-    private void ApplyPiles(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    /// <summary>
+    /// Source <c>GenPassNameID.Piles</c>, delegated to <see cref="PilePass1458"/>. Seven sample-and-cascade
+    /// stages with their own bands, style tables and budgets, which between them cover almost every floor in
+    /// the world.
+    /// </summary>
+    private void ApplyPiles(IWorldGenerationContext context, Workspace workspace)
     {
-        int target = grid.Width switch
-        {
-            <= 4200 => 140,
-            <= 6400 => 210,
-            _ => 280
-        };
-        int minY = Math.Clamp((int)state.WorldSurface - 60, 15, grid.Height - 50);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 20);
-        int placed = 0;
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Piles require shared UnifiedRandom semantics.");
 
-        for (int attempt = 0; attempt < target * 80 && placed < target; attempt++)
-        {
-            if ((attempt & 255) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(5, grid.Width - 5);
-            int probe = random.Next(minY, maxY);
-            int floor = grid.FindFirstActiveY(x, probe, Math.Min(grid.Height - 2, maxY + 30));
-            int y = floor - 1;
-            if (y < 2 || grid.At(x, y).IsActive || !grid.At(x, floor).IsActive)
-                continue;
+        var pass = new PilePass1458(
+            workspace.TileStore,
+            random,
+            state.WorldSurface,
+            state.RockLayer,
+            DungeonGenerationCatalog1458.BeachDistance,
+            context.CancellationToken);
+        pass.Apply();
 
-            ref WorldTile pile = ref grid.At(x, y);
-            pile.Type = SmallPile;
-            pile.Flags |= WorldTileFlags.Active;
-            pile.FrameX = checked((short)(random.Next(9) * 18));
-            pile.FrameY = 0;
-            pile.Shape = 0;
-            pile.LiquidAmount = 0;
-            placed++;
-        }
-
-        context.ReportProgress(1d, $"Placing ambient piles ({placed}/{target})");
+        context.ReportProgress(1d, $"Placing ambient piles ({pass.Placed})");
     }
 
     private void ApplySpawnPoint(IWorldGenerationContext context, RuntimeGrid grid)
