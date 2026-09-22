@@ -126,65 +126,214 @@ internal sealed class GenerationTileFraming1458(
     }
 
     /// <summary>
-    /// The platform arm of <c>TileFrameImportant</c>, reduced to unsloped, unhammered platforms. A platform
-    /// takes its horizontal frame from what stands either side of it, so a run of them only looks like a run
-    /// once each one has been re-framed - which is why <c>PlaceTile</c> frames the square around every platform
-    /// it lays rather than the platform alone.
+    /// The platform arm of <c>TileFrameImportant</c>. A platform takes its horizontal frame from what stands
+    /// either side of it, so a run of them only looks like a run once each one has been re-framed - which is
+    /// why <c>PlaceTile</c> frames the square around every platform it lays rather than the platform alone.
     /// </summary>
     /// <remarks>
-    /// The source's sloped and half-brick branches are not ported and this refuses them outright, because their
-    /// frame table folds in rope ends, merge culling and bottom-corner probes that nothing in generation
-    /// reaches. The source's <c>tileStone</c> remap is also absent: it only ever rewrites a neighbour's
-    /// identity to Stone, and the frame table compares identities for equality with the platform's own, so the
-    /// remap cannot change the outcome for any neighbour that is solid in the first place.
+    /// <para>
+    /// The table is not symmetric and it is not only about the two side neighbours. A half-brick platform
+    /// merges only with another half-brick of its own identity and with nothing else at all; a sloped platform
+    /// picks from an entirely separate set of frames that depend on the cell diagonally below it and on whether
+    /// the cell above forbids sloping; and a platform whose upper diagonal neighbour slopes toward it counts
+    /// that neighbour as a side merge even though nothing is beside it.
+    /// </para>
+    /// <para>
+    /// Two source details are reproduced rather than simplified. A neighbour in <c>Main.tileStone</c> is read
+    /// as Stone before anything else looks at it, which matters because some of that set is not solid on its
+    /// own and Stone is. And the merge culling exists to hide echo-coated blocks: it compares the invisible-block
+    /// flag of each neighbour against this cell's, so during generation, where nothing is coated, it is inert -
+    /// but it is implemented rather than assumed, because a coated block reaching a platform would otherwise
+    /// frame wrongly.
+    /// </para>
+    /// <para>
+    /// The source's trailing <c>HandleRopeEndFraming</c> is absent. It re-frames the ends of a rope running
+    /// through the platform's column, and it is measured inert here: a platform with empty space above it
+    /// resolves to an inactive cell that framing does nothing with, and a platform with solid cells above it
+    /// finds no rope end within the five-row reach.
+    /// </para>
     /// </remarks>
     private void FramePlatform(int i, int j)
     {
         ref WorldTile cell = ref At(i, j);
-        if (cell.Shape != 0)
+        ushort type = cell.Type;
+
+        WorldTile left = Neighbour(i - 1, j);
+        WorldTile right = Neighbour(i + 1, j);
+        WorldTile lowerLeft = Neighbour(i - 1, j + 1);
+        WorldTile lowerRight = Neighbour(i + 1, j + 1);
+        WorldTile upperLeft = Neighbour(i - 1, j - 1);
+        WorldTile upperRight = Neighbour(i + 1, j - 1);
+
+        bool coated = (cell.Flags & WorldTileFlags.InvisibleBlock) != 0;
+        bool cullLeft = Coated(left) != coated;
+        bool cullRight = Coated(right) != coated;
+        bool cullUpperLeft = Coated(upperLeft) != coated;
+        bool cullUpperRight = Coated(upperRight) != coated;
+        bool cullLowerLeft = Coated(lowerLeft) != coated;
+        bool cullLowerRight = Coated(lowerRight) != coated;
+
+        int leftIdentity = SideIdentity(left, type);
+        int rightIdentity = SideIdentity(right, type);
+        if (rightIdentity >= 0 && cullRight)
+            rightIdentity = -1;
+        if (leftIdentity >= 0 && cullLeft)
+            leftIdentity = -1;
+        if (rightIdentity >= 0 && !VanillaTileCollisionCatalog.IsSolid(new TileTypeId(rightIdentity)))
+            rightIdentity = -1;
+        if (leftIdentity >= 0 && !VanillaTileCollisionCatalog.IsSolid(new TileTypeId(leftIdentity)))
+            leftIdentity = -1;
+
+        bool hammered = cell.Shape == 1;
+        if (leftIdentity == type && (left.Shape == 1) != hammered)
+            leftIdentity = -1;
+        if (rightIdentity == type && (right.Shape == 1) != hammered)
+            rightIdentity = -1;
+        if (leftIdentity != -1 && leftIdentity != type && hammered)
+            leftIdentity = -1;
+        if (rightIdentity != -1 && rightIdentity != type && hammered)
+            rightIdentity = -1;
+
+        // A platform sloping down toward this one from the upper diagonal merges as if it were beside it.
+        if (leftIdentity == -1 && upperLeft.IsActive && upperLeft.Type == type && Slope(upperLeft) == 1 &&
+            !cullUpperLeft)
+            leftIdentity = type;
+        if (rightIdentity == -1 && upperRight.IsActive && upperRight.Type == type && Slope(upperRight) == 2 &&
+            !cullUpperRight)
+            rightIdentity = type;
+
+        // And a side neighbour sloping AWAY takes the other side's merge with it.
+        if (leftIdentity == type && Slope(left) == 2 && rightIdentity != type)
+            rightIdentity = -1;
+        if (rightIdentity == type && Slope(right) == 1 && leftIdentity != type)
+            leftIdentity = -1;
+
+        bool forbidsSloping = ForbidsSloping(i, j - 1);
+        cell.FrameX = checked((short)(Slope(cell) switch
         {
-            throw new NotSupportedException(
-                "WorldGen.TileFrameImportant frames a sloped or hammered platform from a table that is not " +
-                "ported. Extend GenerationTileFraming1458 before sloping a generated platform.");
+            1 => SlopedDownRight(type, left, right, lowerRight, upperLeft,
+                cullLeft, cullRight, cullUpperLeft, cullLowerRight, forbidsSloping),
+            2 => SlopedDownLeft(type, left, right, lowerLeft, upperRight,
+                cullLeft, cullRight, cullUpperRight, cullLowerLeft, forbidsSloping),
+            _ => Flat(type, left, right, leftIdentity, rightIdentity)
+        }));
+    }
+
+    /// <summary>The ordinary, unsloped half of the platform table.</summary>
+    private static int Flat(ushort type, in WorldTile left, in WorldTile right, int leftIdentity, int rightIdentity)
+    {
+        if (leftIdentity == type && rightIdentity == type)
+        {
+            return (Slope(left), Slope(right)) switch
+            {
+                (2, 1) => 252,
+                (2, _) => 216,
+                (_, 1) => 234,
+                _ => 0
+            };
         }
 
-        ushort type = cell.Type;
-        int left = NeighbourIdentity(i - 1, j, type);
-        int right = NeighbourIdentity(i + 1, j, type);
-
-        cell.FrameX = (left, right) switch
-        {
-            _ when left == type && right == type => 0,
-            _ when left == type && right == -1 => 18,
-            _ when left == -1 && right == type => 36,
-            _ when left != type && right == type => 54,
-            _ when left == type && right != type => 72,
-            _ when left != type && left != -1 && right == -1 => 108,
-            _ when left != -1 || right == type || right == -1 => 90,
-            _ => 126,
-        };
+        if (leftIdentity == type && rightIdentity == -1)
+            return Slope(left) != 2 ? 18 : 270;
+        if (leftIdentity == -1 && rightIdentity == type)
+            return Slope(right) != 1 ? 36 : 288;
+        if (leftIdentity != type && rightIdentity == type)
+            return 54;
+        if (leftIdentity == type && rightIdentity != type)
+            return 72;
+        if (leftIdentity != type && leftIdentity != -1 && rightIdentity == -1)
+            return 108;
+        return leftIdentity != -1 || rightIdentity == type || rightIdentity == -1 ? 90 : 126;
     }
 
-    /// <summary>What the platform frame table sees to one side: its own identity, a solid neighbour, or nothing.</summary>
-    private int NeighbourIdentity(int x, int y, ushort platform)
+    /// <summary>
+    /// A platform hammered so it descends to the right. It has a run of frames of its own, and the only thing
+    /// that takes it out of them is a flat platform to its right or a cell above that refuses to be sloped.
+    /// </summary>
+    private static int SlopedDownRight(
+        ushort type,
+        in WorldTile left,
+        in WorldTile right,
+        in WorldTile lowerRight,
+        in WorldTile upperLeft,
+        bool cullLeft,
+        bool cullRight,
+        bool cullUpperLeft,
+        bool cullLowerRight,
+        bool forbidsSloping)
     {
-        if (!Contains(x, y))
-            return -1;
+        _ = type;
+        if (VanillaTileIds.IsPlatform(right.TileType) && Slope(right) == 0 && right.Shape != 1 && !cullRight)
+            return 468;
+        if (forbidsSloping)
+            return 468;
 
-        WorldTile neighbour = At(x, y);
+        bool supported = (left.IsActive && !cullLeft) ||
+            (VanillaTileIds.IsPlatform(upperLeft.TileType) && Slope(upperLeft) == 1 && !cullUpperLeft);
+        bool openBelow = (!lowerRight.IsActive || cullLowerRight) &&
+            (!VanillaTileIds.IsPlatform(lowerRight.TileType) || Slope(lowerRight) == 2 || cullLowerRight);
+        return openBelow ? (supported ? 360 : 432) : (supported ? 180 : 396);
+    }
+
+    /// <summary>The mirror of <see cref="SlopedDownRight"/>, for a platform that descends to the left.</summary>
+    private static int SlopedDownLeft(
+        ushort type,
+        in WorldTile left,
+        in WorldTile right,
+        in WorldTile lowerLeft,
+        in WorldTile upperRight,
+        bool cullLeft,
+        bool cullRight,
+        bool cullUpperRight,
+        bool cullLowerLeft,
+        bool forbidsSloping)
+    {
+        _ = type;
+        if (VanillaTileIds.IsPlatform(left.TileType) && Slope(left) == 0 && left.Shape != 1 && !cullLeft)
+            return 450;
+        if (forbidsSloping)
+            return 450;
+
+        bool supported = (right.IsActive && !cullRight) ||
+            (VanillaTileIds.IsPlatform(upperRight.TileType) && Slope(upperRight) == 2 && !cullUpperRight);
+        bool openBelow = (!lowerLeft.IsActive || cullLowerLeft) &&
+            (!VanillaTileIds.IsPlatform(lowerLeft.TileType) || Slope(lowerLeft) == 1 || cullLowerLeft);
+        return openBelow ? (supported ? 342 : 414) : (supported ? 144 : 378);
+    }
+
+    /// <summary>
+    /// What the platform frame table sees to one side before the culling and half-brick rules narrow it: a
+    /// stone-merging neighbour reads as Stone, another platform reads as this platform's own identity, and
+    /// anything else reads as itself.
+    /// </summary>
+    private static int SideIdentity(in WorldTile neighbour, ushort platform)
+    {
         if (!neighbour.IsActive)
             return -1;
-
-        int identity = VanillaTileIds.IsPlatform(neighbour.TileType) ? platform : neighbour.Type;
-        if (!VanillaTileCollisionCatalog.IsSolid(new TileTypeId(identity)))
-            return -1;
-
-        // The framed platform is unhammered here, so a hammered neighbour of any identity does not merge.
-        if (neighbour.Shape == 1)
-            return -1;
-
-        return identity;
+        if (IsStoneMerging(neighbour.Type))
+            return 1;
+        return VanillaTileIds.IsPlatform(neighbour.TileType) ? platform : neighbour.Type;
     }
+
+    /// <summary>Source <c>Main.tileStone</c>: the gems, their sparkling variants and Stone itself.</summary>
+    private static bool IsStoneMerging(ushort type) =>
+        type is 63 or 64 or 65 or 66 or 67 or 68 or 130 or 131 or 566;
+
+    /// <summary>Source <c>WorldGen.ForbidsSloping</c>, read on the cell ABOVE the platform.</summary>
+    private bool ForbidsSloping(int x, int y) => Neighbour(x, y).Type
+        is 21 or 26 or 77 or 88 or 235 or 237 or 441 or 467 or 468 or 470 or 475 or 488 or 597;
+
+    /// <summary>Vanilla's slope number, which <see cref="WorldTile.Shape"/> stores offset by one.</summary>
+    private static int Slope(in WorldTile tile) => tile.Shape >= 2 ? tile.Shape - 1 : 0;
+
+    /// <summary>Source <c>Tile.invisibleBlock</c>, which is what the merge culling compares.</summary>
+    private static bool Coated(in WorldTile tile) => (tile.Flags & WorldTileFlags.InvisibleBlock) != 0;
+
+    /// <summary>
+    /// A neighbour outside the world reads as an empty cell. The source would read a null tile and abandon the
+    /// framing entirely, which no generated platform reaches because framing never runs on the map's edge.
+    /// </summary>
+    private WorldTile Neighbour(int x, int y) => Contains(x, y) ? At(x, y) : default;
 
     /// <summary>
     /// Source <c>WorldGen.Check3x2</c> for the pile family. The origin is re-derived from the cell's own frame,
