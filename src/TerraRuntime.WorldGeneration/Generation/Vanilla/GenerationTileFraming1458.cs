@@ -50,6 +50,7 @@ internal sealed class GenerationTileFraming1458(
     private const ushort LifeFruit = 238;
     private const ushort JungleBulb702 = 702;
     private const ushort JungleGrass = 60;
+    private const ushort LongMoss = 184;
     private const ushort FallenLog = 488;
 
     private readonly int width = store.Dimensions.WidthTiles;
@@ -111,6 +112,12 @@ internal sealed class GenerationTileFraming1458(
         if (tile.Type is 3 or 24 or 61 or 71 or 73 or 74 or 110 or 113 or 201 or 637 or 703)
         {
             PlantCheck(i, j);
+            return;
+        }
+
+        if (tile.Type == LongMoss)
+        {
+            FrameLongMoss(i, j);
             return;
         }
 
@@ -673,6 +680,77 @@ internal sealed class GenerationTileFraming1458(
         tile.Flags &= ~WorldTileFlags.Inactive;
         SquareTileFrame(i, j);
     }
+
+    /// <summary>
+    /// Source <c>WorldGen.TileFrameImportant</c>'s case for long moss, which is where the Moss Grass pass
+    /// actually decides what a strand looks like and whether it lives at all.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The draw comes FIRST and unconditionally, before any neighbour has been consulted, so a strand that is
+    /// about to be destroyed still costs a value. Then the four neighbours are tried in a fixed order - below,
+    /// above, left, right - and the FIRST one carrying a moss colour decides both the strand's colour column
+    /// and which band of rows it hangs in. Each band is three rows wide and the drawn value is only written
+    /// when the existing row is outside that band, so a strand that is re-framed without changing direction
+    /// keeps the row it already had and the draw is spent for nothing.
+    /// </para>
+    /// <para>
+    /// If no neighbour carries a moss colour the strand is KILLED, and that is not free: <c>KillTile</c> spends
+    /// dust from the shared stream. Long moss on a lone block therefore costs more than long moss in a field.
+    /// </para>
+    /// </remarks>
+    private void FrameLongMoss(int i, int j)
+    {
+        WorldTile above = At(i, j - 1);
+        WorldTile below = At(i, j + 1);
+        WorldTile left = At(i - 1, j);
+        WorldTile right = At(i + 1, j);
+
+        // Source reads each neighbour through a different guard: what hangs above must not be bottom-sloped,
+        // what a strand stands under must be neither half brick nor top-sloped, and the sides are read bare.
+        int aboveType = above.IsActive && above.Shape is not (4 or 5) ? above.Type : -1;
+        int belowType = below.IsActive && below.Shape != 1 && below.Shape is not (2 or 3) ? below.Type : -1;
+        int leftType = left.IsActive ? left.Type : -1;
+        int rightType = right.IsActive ? right.Type : -1;
+
+        short roll = (short)(random.Next(3) * 18);
+        ref WorldTile cell = ref At(i, j);
+        if (belowType >= 0 && MossColor(belowType) >= 0)
+            Hang(ref cell, MossColor(belowType), 0, roll);
+        else if (aboveType >= 0 && MossColor(aboveType) >= 0)
+            Hang(ref cell, MossColor(aboveType), 54, roll);
+        else if (leftType >= 0 && MossColor(leftType) >= 0)
+            Hang(ref cell, MossColor(leftType), 108, roll);
+        else if (rightType >= 0 && MossColor(rightType) >= 0)
+            Hang(ref cell, MossColor(rightType), 162, roll);
+        else
+            KillTile(i, j);
+    }
+
+    /// <summary>The colour column is 22 pixels wide, not the ordinary 18.</summary>
+    private static void Hang(ref WorldTile cell, int color, short band, short roll)
+    {
+        cell.FrameX = (short)(22 * color);
+        if (cell.FrameY < band || cell.FrameY > band + 36)
+            cell.FrameY = (short)(band + roll);
+    }
+
+    /// <summary>Source <c>WorldGen.GetTileMossColor</c>: a moss block and its brick share one colour.</summary>
+    private static int MossColor(int type) => type switch
+    {
+        179 or 512 => 0,
+        180 or 513 => 1,
+        181 or 514 => 2,
+        182 or 515 => 3,
+        183 or 516 => 4,
+        381 or 517 => 5,
+        534 or 535 => 6,
+        536 or 537 => 7,
+        539 or 540 => 8,
+        625 or 626 => 9,
+        627 or 628 => 10,
+        _ => -1
+    };
 
     /// <summary>
     /// Source <c>WorldGen.SolidTileAllowBottomSlope</c>. Out of world reads as solid, which is what keeps the

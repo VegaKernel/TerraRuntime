@@ -137,7 +137,6 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
     private const ushort RedMoss = 181;
     private const ushort BlueMoss = 182;
     private const ushort PurpleMoss = 183;
-    private const ushort MossGrowth = 184;
     private const ushort Hive = 225;
     private const ushort Larva = 231;
 
@@ -146,7 +145,6 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
     private const ushort HiveUnsafeWall = 86;
 
     private static readonly ushort[] GemTiles = [Sapphire, Ruby, Emerald, Topaz, Amethyst, Diamond];
-    private static readonly ushort[] MossTiles = [GreenMoss, BrownMoss, RedMoss, BlueMoss, PurpleMoss];
 
     private readonly UndergroundFinishStage1458 stage;
     private readonly UndergroundFinishState1458 state;
@@ -179,7 +177,7 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
                 ApplyRandomGems(context, grid, random);
                 break;
             case UndergroundFinishStage1458.MossGrass:
-                ApplyMossGrass(context, grid, random);
+                ApplyMossGrass(context, workspace);
                 break;
             case UndergroundFinishStage1458.MudsWallsInJungle:
                 ApplyMudsWallsInJungle(context, grid, random);
@@ -260,41 +258,18 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Scattering random exposed gems ({converted} blocks)");
     }
 
-    private void ApplyMossGrass(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyMossGrass(IWorldGenerationContext context, Workspace workspace)
     {
-        int attempts = grid.Width * 4;
-        int minY = Math.Clamp((int)state.RockLayer - 20, 20, state.UnderworldTop - 100);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 25);
-        int moss = 0;
-        int growth = 0;
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Moss Grass requires shared UnifiedRandom semantics.");
 
-        for (int attempt = 0; attempt < attempts; attempt++)
-        {
-            if ((attempt & 1023) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(2, grid.Width - 2);
-            int y = random.Next(minY, maxY);
-            ref WorldTile tile = ref grid.At(x, y);
-            if (tile.IsActive && tile.Type == Stone && grid.HasOpenNeighbor(x, y) && random.Next(3) == 0)
-            {
-                tile.Type = MossTiles[random.Next(MossTiles.Length)];
-                tile.FrameX = 0;
-                tile.FrameY = 0;
-                tile.Shape = 0;
-                moss++;
-                continue;
-            }
-
-            if (tile.IsActive || tile.LiquidAmount != 0 || !grid.TryGetAdjacentMoss(x, y, out ushort adjacentMoss))
-                continue;
-            int style = Array.IndexOf(MossTiles, adjacentMoss);
-            if (style < 0)
-                continue;
-            SetFramedTile(ref tile, MossGrowth, style * 18, 0);
-            growth++;
-        }
-
-        context.ReportProgress(1d, $"Extending moss grass and growth ({moss} moss, {growth} growth)");
+        // The strand's appearance and its survival are both decided by the ordinary SquareTileFrame that
+        // PlaceTile triggers - twice per placement - so the pass is handed the real framer rather than a
+        // biome-specific one.
+        var framing = new GenerationTileFraming1458(workspace.TileStore, random);
+        var pass = new LongMossPass1458(workspace.TileStore, random, framing, context.CancellationToken);
+        pass.Apply();
+        context.ReportProgress(1d, $"Growing Moss Grass ({pass.Placed} strands)");
     }
 
     private void ApplyMudsWallsInJungle(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
@@ -432,21 +407,6 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
             WorldTile up = At(x, y - 1);
             WorldTile down = At(x, y + 1);
             return IsMaterial(left, a, b) || IsMaterial(right, a, b) || IsMaterial(up, a, b) || IsMaterial(down, a, b);
-        }
-
-        public bool TryGetAdjacentMoss(int x, int y, out ushort moss)
-        {
-            ushort[] candidates = [At(x - 1, y).Type, At(x + 1, y).Type, At(x, y - 1).Type, At(x, y + 1).Type];
-            foreach (ushort type in candidates)
-            {
-                if (type is >= GreenMoss and <= PurpleMoss)
-                {
-                    moss = type;
-                    return true;
-                }
-            }
-            moss = 0;
-            return false;
         }
 
         public bool IsEmptyRectangle(int left, int top, int width, int height)
