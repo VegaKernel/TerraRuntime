@@ -161,16 +161,12 @@ cells against 66); spider caves (row 67, cobweb 38,833 against 24,254 and the sp
 under by 3,736 (row 59); small piles (row 81, 4,108 against 154); living mahogany (row 72); and minecart
 track (row 101).
 
-**One large-world test is RED and it is the first thing to fix.**
-`VanillaWorldGenerationFullIntegrationTests.Canonical_seed1458_world_survives_real_post_load_liquid_preparation`
-fails at 6400x1800 only, with `UnsupportedLiquidDeathTile` on a platform at 793,1325 holding lava and carrying
-a pot. It was green before the Moss row and green at HEAD, so the Moss row is what exposed it - but neither
-the Moss row nor the Pots row is wrong: `PlacePot` accepts any `Main.tileSolid` support and platforms are
-solid, and `CheckPot` keeps the pot because `SolidTile2` has no platform exclusion either. What fails is the
-loading liquid model: the cells that must die are the pot's two-by-two plus exactly ONE of the two platform
-cells beneath it, and the model's death footprint is a single RECTANGLE, so it fails closed as designed. The
-fix is to give that footprint a shape other than a rectangle and to verify the cascade against the official
-engine with the liquid region replay harness, not against a source reading.
+**The large-world liquid test is green again.** A pot standing on a platform with lava in one of its two
+support cells used to refuse the 6400x1800 world, because the loading death footprint was a single rectangle
+and the cells that die are the pot's two-by-two plus exactly ONE of the two platform cells. The footprint now
+carries a second rectangle, measured against `WorldGen.WaterCheck` with six differential comparisons. Still
+not reproduced, and measured: the surviving platform is re-framed 0 to 90 - the loading model frames nothing
+at all, which is a general loading-time framing gap worth its own row.
 
 **Row 98 (`Moss Grass`, the long moss) is the next worldgen one and it is now the largest single tile gap: 15,026
 official cells against 66.** It was gated on row 69 because long moss grows only on moss, and row 69 is now

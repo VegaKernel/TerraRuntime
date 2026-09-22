@@ -30,9 +30,22 @@ are the pot's two-by-two plus exactly ONE of the two platform cells under it - t
 lava and survives. No rectangle covers that, so `TryResolveLoadingDeath1458` fails closed, which is the
 designed behaviour for a footprint it cannot represent.
 
-Closing it means giving the loading death model a footprint that is not a single rectangle, and verifying the
-cascade against the official engine rather than against this reading. That is a liquid-subsystem row with its
-own differential, and it is the next thing to do.
+Closed the same day. The death footprint now carries a SECOND rectangle for the cascade, and the pot's origin
+is derived with `CheckPot`'s own arithmetic with all four of its cells required to agree on it, so an
+incoherent arrangement still fails closed rather than taking a neighbour with it. Evidence: 6 differential
+comparisons against the unmodified `WorldGen.WaterCheck` in the pinned dedicated server - lava under the left
+support, the right, both and neither, a stone platform that does not burn, and the same lava with no pot above
+it. The 6400x1800 world loads again.
+
+Measuring it needed one thing that is worth carrying to every later object probe: `WorldGen.destroyObject` is
+a static guard the `CheckXxx` validators raise while they tear an object down, and a fixture that leaves it
+raised makes every later fixture's validator return on its first line. Before it was cleared between fixtures
+the probe reported the pot SURVIVING lava in five of six cases, which is the exact opposite of the truth.
+
+One measured thing the runtime still does not reproduce: the surviving platform is re-framed from 0 to 90 by
+the `SquareTileFrame` inside `KillTile`. The loading model kills cells and frames nothing at all, so this is a
+general gap in loading-time framing rather than anything about pots, and the comparisons check the death set
+and the liquid while deliberately not checking that frame.
 
 Moss (2026-09-21): stage69 was `P` with "moss selection / growth / RNG", and its owner was invented - three attempts per column, each picking one of five mosses uniformly and dropping it on any exposed stone between the rock layer and the underworld. A measured world carried 521 moss cells against the official's 61,927, which is under one percent, and the six moss families together were the largest single gap the whole-world histogram showed.
 
