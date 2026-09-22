@@ -215,6 +215,19 @@ public sealed class VanillaGroundFighterProjectileAttackTests
     }
 
     [Fact]
+    public void Paladin_hammer_keeps_its_source_hostile_thrown_defaults()
+    {
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.PaladinHammer, out VanillaProjectileDefinition definition));
+        Assert.Equal(38, definition.Width);
+        Assert.Equal(38, definition.Height);
+        Assert.Equal(VanillaProjectileAiStyles.Thrown, definition.AiStyle);
+        Assert.False(definition.TileCollide);
+        Assert.True(definition.IgnoreWater);
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(VanillaProjectileIds.PaladinHammer, out VanillaProjectileBehaviorProfile profile));
+        Assert.Equal(VanillaProjectileBehaviorFamily.Thrown, profile.Family);
+    }
+
+    [Fact]
     public void Salamander_arms_for_a_visible_active_player_inside_its_source_range()
     {
         var npcs = new RuntimeNpcStore(2);
@@ -339,6 +352,37 @@ public sealed class VanillaGroundFighterProjectileAttackTests
         Assert.Equal(4f, MathF.Sqrt(projectile.VelocityX * projectile.VelocityX + projectile.VelocityY * projectile.VelocityY), 5);
         Assert.Equal(112.93f, projectile.PositionX, 2);
         Assert.Equal(119.24f, projectile.PositionY, 2);
+    }
+
+    [Fact]
+    public void Paladin_arms_and_fires_its_source_hammer_at_half_windup()
+    {
+        var npcs = new RuntimeNpcStore(2);
+        Assert.True(npcs.TrySpawn(1, Update(VanillaNpcIds.Paladin, 0f), out NpcSnapshot source));
+        var random = new MinimumRandom();
+        VanillaNpcTargetingAiStepper stepper = CreateStepper(random, new VisibleEnvironment());
+
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(source.Handle, out NpcSnapshot armed));
+        Assert.Equal(30f, armed.Ai.Ai1);
+        Assert.Equal(3f, armed.Ai.Ai2);
+        Assert.Equal(2, random.Draws);
+
+        Assert.True(npcs.TryUpdate(source.Handle, Update(VanillaNpcIds.Paladin, 0f) with
+        {
+            Ai = new NpcAiState(0f, 16f, 3f, 0f)
+        }, out NpcSnapshot firing));
+        var projectiles = new RuntimeProjectileStore(2);
+        Assert.Equal(1, new RuntimeNpcAiStateExecutor(npcs, projectiles).Tick(new GroundFighterOnly(stepper)).Applied);
+        Assert.True(npcs.TryGet(firing.Handle, out NpcSnapshot committed));
+        Assert.Equal(15f, committed.Ai.Ai1);
+        Assert.Equal(4, random.Draws);
+        Assert.True(projectiles.TryGetActive(0, out ProjectileSnapshot projectile));
+        Assert.Equal(VanillaProjectileIds.PaladinHammer, projectile.Type);
+        Assert.Equal((short)60, projectile.Damage);
+        Assert.Equal(9f, MathF.Sqrt(projectile.VelocityX * projectile.VelocityX + projectile.VelocityY * projectile.VelocityY), 5);
+        Assert.Equal(125.82f, projectile.PositionX, 2);
+        Assert.Equal(119.19f, projectile.PositionY, 2);
     }
 
     [Fact]

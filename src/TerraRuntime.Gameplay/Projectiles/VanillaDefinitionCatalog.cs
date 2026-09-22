@@ -672,6 +672,17 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 4,
         CollisionHeight: 4);
 
+    // Projectile.SetDefaults 300: Paladin's hostile hammer.
+    private static readonly VanillaProjectileDefinition PaladinHammerDefinition = new(
+        Width: 38,
+        Height: 38,
+        AiStyle: VanillaProjectileAiStyles.Thrown,
+        TileCollide: false,
+        IgnoreWater: true,
+        CanCutTiles: true,
+        CollisionWidth: 38,
+        CollisionHeight: 38);
+
     // Projectile.SetDefaults 174: hostile Spiked Ice Slime shot.
     private static readonly VanillaProjectileDefinition SpikedIceSlimeSpikeDefinition = new(
         Width: 6,
@@ -1127,6 +1138,12 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.SkeletonSniperBullet)
         {
             definition = SkeletonSniperBulletDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.PaladinHammer)
+        {
+            definition = PaladinHammerDefinition;
             return true;
         }
 

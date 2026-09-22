@@ -18,9 +18,10 @@ internal static class VanillaGroundFighterProjectileAttack
     private static readonly NpcTypeId SkeletonSniper = new(291);
     private static readonly NpcTypeId TacticalSkeleton = new(292);
     private static readonly NpcTypeId SkeletonCommando = new(293);
+    private static readonly NpcTypeId Paladin = new(290);
 
     public static bool IsSupported(NpcTypeId type) =>
-        type == Type243 || type == Type251 || type == Type350 || type == SkeletonSniper || type == TacticalSkeleton || type == SkeletonCommando || IsSalamander(type);
+        type == Type243 || type == Type251 || type == Type350 || type == SkeletonSniper || type == TacticalSkeleton || type == SkeletonCommando || type == Paladin || IsSalamander(type);
 
     public static NpcSnapshot Complete(
         in NpcSnapshot before,
@@ -44,12 +45,15 @@ internal static class VanillaGroundFighterProjectileAttack
             return CompleteSalamander(in before, in committed, in definition, in hitbox, context, random, environment, mutations);
         if (before.TypeIdentity == SkeletonSniper)
             return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
-                mutations, 200f, 100f, 11f, .2f, noVerticalLead: true, VanillaProjectileIds.SkeletonSniperBullet, 100);
+                mutations, 200f, 100f, 11f, .2f, noVerticalLead: true, sourceYOffset: 0f, VanillaProjectileIds.SkeletonSniperBullet, 100);
         if (before.TypeIdentity == TacticalSkeleton)
             return CompleteTacticalSkeleton(in before, in committed, in definition, in hitbox, context, random, environment, mutations);
         if (before.TypeIdentity == SkeletonCommando)
             return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
-                mutations, 90f, 45f, 4f, 1f, noVerticalLead: false, VanillaProjectileIds.SkeletonCommandoRocket, 60);
+                mutations, 90f, 45f, 4f, 1f, noVerticalLead: false, sourceYOffset: 0f, VanillaProjectileIds.SkeletonCommandoRocket, 60);
+        if (before.TypeIdentity == Paladin)
+            return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
+                mutations, 30f, 15f, 9f, 1f, noVerticalLead: false, sourceYOffset: -10f, VanillaProjectileIds.PaladinHammer, 60);
 
         float timer = committed.Ai.Ai2;
         if (before.TypeIdentity == Type243)
@@ -100,7 +104,7 @@ internal static class VanillaGroundFighterProjectileAttack
         in NpcSnapshot before, in NpcSnapshot committed, in VanillaNpcDefinition definition, in VanillaNpcHitboxSize hitbox,
         VanillaNpcBehaviorContext context, IVanillaNpcRandom random, IVanillaNpcProjectileEnvironment? environment,
         INpcAiCommittedNpcMutationSink mutations, float windup, float fireAt, float projectileSpeed, float firingJitter,
-        bool noVerticalLead, ProjectileTypeId projectileType, short damage)
+        bool noVerticalLead, float sourceYOffset, ProjectileTypeId projectileType, short damage)
     {
         float timer = committed.Ai.Ai1;
         float mode = committed.Ai.Ai2;
@@ -135,7 +139,7 @@ internal static class VanillaGroundFighterProjectileAttack
                 if (timer == fireAt)
                 {
                     float sourceX = committed.PositionX + hitbox.Width * .5f;
-                    float sourceY = committed.PositionY + hitbox.Height * .5f;
+                    float sourceY = committed.PositionY + hitbox.Height * .5f + sourceYOffset;
                     float targetX = target.CenterX - sourceX;
                     shotVelocityX = targetX + random.NextInt32(-40, 41) * firingJitter;
                     shotVelocityY = target.CenterY - sourceY - (noVerticalLead ? 0f : MathF.Abs(targetX) * .1f) +

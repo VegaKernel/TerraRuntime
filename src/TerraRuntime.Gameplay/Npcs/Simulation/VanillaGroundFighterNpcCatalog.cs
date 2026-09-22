@@ -104,6 +104,9 @@ public static class VanillaGroundFighterNpcCatalog
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 293 and AI_003's rocket wind-up.
         ,Fighter(VanillaNpcIds.SkeletonCommando, 18, 40, 60, 28, 400, .4f, 1f, 1f,
             motionProfile: VanillaGroundFighterMotionProfile.SkeletonCommando)
+        // TerrariaServer 1.4.5.8 NPC.SetDefaults 290 and AI_003's Paladin hammer wind-up.
+        ,Fighter(VanillaNpcIds.Paladin, 34, 62, 100, 50, 5000, 0f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.Paladin)
         ,Fighter(new NpcTypeId(78), 18, 40, 50, 16, 130, .6f, 1f, 1f,
             acceleration: .05f, motionProfile: VanillaGroundFighterMotionProfile.HalfHealthBerserker, overspeedGroundDamping: .7f)
         ,Fighter(new NpcTypeId(79), 18, 40, 60, 18, 180, .5f, 1f, 1f,
@@ -194,6 +197,7 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.SkeletonSniper,
         VanillaNpcIds.TacticalSkeleton,
         VanillaNpcIds.SkeletonCommando,
+        VanillaNpcIds.Paladin,
         new(78), new(79), new(80), new(243), new(251), new(254), new(255), new(257), new(258), new(287), new(630),
         new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280)
     ];

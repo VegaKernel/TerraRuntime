@@ -806,5 +806,6 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         type == VanillaProjectileIds.SantaBombs ||
         type == VanillaProjectileIds.BoneDagger ||
         type == VanillaProjectileIds.Waffle ||
-        type == VanillaProjectileIds.MeleeBone;
+        type == VanillaProjectileIds.MeleeBone ||
+        type == VanillaProjectileIds.PaladinHammer;
 }
