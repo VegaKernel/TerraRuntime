@@ -147,25 +147,48 @@ On merged base `843bd1a3`, Release warnings-as-errors build passed; the focused 
 ## Resume point for the vanilla generation work - 2026-09-21
 
 Closed since the last resume point, each against the registered delegate with negative controls: rows 83
-(Grass Wall), 77 (Spreading Grass), 74 (Quick Cleanup), 60 (Wall Variety) and 75 (Pots). All five invented
-owners were replaced. The ledger is **23P + 49C = 72 unfinished rows** - row 75 was already counted `C`, so
-closing it made the claim true without moving the count.
+(Grass Wall), 77 (Spreading Grass), 74 (Quick Cleanup), 60 (Wall Variety), 75 (Pots) and 69 (Moss). All six
+invented owners were replaced. The ledger is **22P + 50C = 72 unfinished rows** - row 75 was already counted
+`C`, so closing it made the claim true without moving the count, and row 69 moved from `P`.
 
 The whole-world measurement was refreshed against the same official reference the audit has always used, and
-it is the thing to look at before choosing the next row: tile L1 0.201211 to **0.063671**, wall L1 0.530400 to
-**0.262731**, active ratio to **0.988416**, silhouette correlation 0.922428 to **0.994504**, dungeon delta
+it is the thing to look at before choosing the next row: tile L1 0.201211 to **0.042399**, wall L1 0.530400 to
+**0.257287**, active ratio to **0.987532**, silhouette correlation 0.922428 to **0.994504**, dungeon delta
 (+85,-6) to **(0,0)**. The terrain is effectively matched; what remains is contents, and the histogram in the
-audit's measurement section localises it. Largest first: the six moss families (61,927 official cells against
-521 of ours, rows 69 and 98); spider caves (row 67, cobweb 38,833 against 24,294 and the spider wall 38,347
-against 2,558); the dungeon's green wall families, mis-split by about 40,000; small piles (row 81, 4,108
-against 155); living mahogany (row 72); thin ice (row 59); and minecart track (row 101).
+audit's measurement section localises it. Largest first: the long moss undergrowth (row 98, 15,026 official
+cells against 66); spider caves (row 67, cobweb 38,833 against 24,254 and the spider wall 38,347 against
+2,558); the dungeon's green wall families, mis-split by about 40,000; stalactites over by 5,644 and thin ice
+under by 3,736 (row 59); small piles (row 81, 4,108 against 154); living mahogany (row 72); and minecart
+track (row 101).
 
-**Row 69 (Moss) is the next one and it is the largest single win left.** Six families, 61,927 official cells
-against 521: LongMoss 15,026 against 8, BlueMoss 9,527 against 150, PurpleMoss 8,575 against 113, LavaMoss
-7,298 against 0, RedMoss 5,569 against 135, XenonMoss 4,122 against 0. It is also the largest row: six stages,
-`neonMossBiome` at about 116 lines, plus `randMoss`, `setMoss`, `countTiles` and `Spread.Moss`, and
-`GenerationGrass1458` has to be extended to take dirt 1 to moss. Row 98 (`LongMoss`) is tiny by comparison but
-needs the `PlaceTile(184)` slice and is gated on row 69's output, so the two go together.
+**One large-world test is RED and it is the first thing to fix.**
+`VanillaWorldGenerationFullIntegrationTests.Canonical_seed1458_world_survives_real_post_load_liquid_preparation`
+fails at 6400x1800 only, with `UnsupportedLiquidDeathTile` on a platform at 793,1325 holding lava and carrying
+a pot. It was green before the Moss row and green at HEAD, so the Moss row is what exposed it - but neither
+the Moss row nor the Pots row is wrong: `PlacePot` accepts any `Main.tileSolid` support and platforms are
+solid, and `CheckPot` keeps the pot because `SolidTile2` has no platform exclusion either. What fails is the
+loading liquid model: the cells that must die are the pot's two-by-two plus exactly ONE of the two platform
+cells beneath it, and the model's death footprint is a single RECTANGLE, so it fails closed as designed. The
+fix is to give that footprint a shape other than a rectangle and to verify the cascade against the official
+engine with the liquid region replay harness, not against a source reading.
+
+**Row 98 (`Moss Grass`, the long moss) is the next worldgen one and it is now the largest single tile gap: 15,026
+official cells against 66.** It was gated on row 69 because long moss grows only on moss, and row 69 is now
+closed. The pass itself is small - scan the world column-major, and for every moss tile offer
+`PlaceTile(nx, ny, 184, mute: true)` to each of its four neighbours that is inactive. The work is the
+`PlaceTile` slice for identity 184, and it has the same shape as the pots style cascade: **two SEPARATE `if`
+statements**, one testing the four neighbours against `Main.tileMoss` and one against
+`TileID.Sets.tileMossBrick` = {512..517, 535, 537, 540, 626, 628}, each drawing `Next(3)` for the frame and
+each writing the tile, so a cell beside both a moss block and a moss brick draws twice and keeps the second.
+Tile 184 is not solid and is not in the liquid-refused list, so a wet cell accepts it; an inactive cell is
+cleared of identity, frames, block paint and slope first; and an active fallen log refuses the whole call
+during generation. `GenerationTileFraming1458.SquareTileFrame` is the framer the source calls.
+
+**Row 69's moss is at ninety percent, not a hundred, and the shortfall is worth understanding before row 98.**
+The six families total 31,683 against 35,091, and moss walls 13,051 against 18,555 - a much wider gap. The
+differential is exact on identical input, so the shortfall is upstream: the flood stage only takes a cave whose
+measured size lands between ten and 2500 with no wall anywhere in it, so our cave shapes and our existing wall
+coverage both decide how much moss the world can carry. Do not chase it by widening any budget.
 
 **Laying a wall costs shared RNG.** `Actions.PlaceWall` frames five squares and each square's centre draws
 `Next(0, 3)`, about 550 values per painted structure. This is now `GenerationWallFraming1458` and every
@@ -176,6 +199,18 @@ directly in the source with no framing call.
 **The draw-count search needs four values, not one.** Re-seeding and looking for the position whose next
 `Next(1000000)` matches the official's reported value gives several false positives over a few million
 samples, and one of them cost real time in the Wall Variety work. Match four consecutive values.
+
+**Two structural facts from row 69 that reach past it.** The flood counter's five side counters are all read
+by their callers as booleans, so the walk's visit order and the fact that a solid block reached from several
+sides is counted several times are both unobservable - do not spend fixtures trying to pin them. And
+`SpreadGrass` closes over the whole connected component of its substrate, which absorbs any change to WHICH
+cell in a component is offered first; only a systematic change to how far a caller reaches is visible.
+
+**A killed control run leaves its mutation in the tree.** The control scripts restore from a backup in a
+`finally`, so stopping one skips the restore. One did, and the next differential failed all twelve comparisons
+with all four RNG values matching and only the world hash differing - and a whole-world measurement had
+already been taken from that build. Let control runs finish, and never measure without a green differential in
+the same build.
 
 **A pass that only budgets its failures can loop forever on a fixture with no candidates.** Wall Variety
 charges its failure budget only when a sample WAS a candidate and was refused; a region with no stone under

@@ -31,7 +31,8 @@ internal sealed class GenerationGrass1458(WorldTileStore store, IWorldGeneration
 
     public void Apply(int x, int y, ushort dirt, ushort grass)
     {
-        if (!((dirt == 0 && grass is 2 or 23 or 199) || (dirt == 59 && grass is 60 or 661 or 662)))
+        if (!((dirt == 0 && grass is 2 or 23 or 199) || (dirt == 59 && grass is 60 or 661 or 662) ||
+              (dirt == 1 && grass is (>= 179 and <= 183) or 381 or 534 or 536 or 539 or 625 or 627)))
             throw new InvalidOperationException("Unverified generation grass conversion.");
         Spread(x,y,dirt,grass,0);
     }
@@ -64,9 +65,19 @@ internal sealed class GenerationGrass1458(WorldTileStore store, IWorldGeneration
         // CanBeClearedDuringGeneration admits both Dirt0 and Mud59. Above-type27 rejects even when inactive,
         // and only for the grasses that grow something on top of it - ordinary green grass does not.
         if (enclosed || (grass is 23 or 199 or 661 or 662 or 109 && At(x,y-1).Type == 27)) return;
+        // Source TryConvertingOrKillingTreesAboveIfTheyWouldBecomeInvalid: a tree above the converted floor
+        // survives when its growth profile still accepts the new floor, and is KILLED otherwise - which is not
+        // free, because KillTile spends dust from the shared stream. GemTreeGroundTest accepts every moss
+        // identity, so a gem tree standing on stone that takes moss is left exactly as it is. Every other tree
+        // this guard names needs grass, jungle grass, snow, mushroom grass, sand or ash beneath it, so none of
+        // them can be standing on the stone a moss conversion changes; the throw keeps that assumption honest.
         WorldTile above = At(x,y-1);
-        if (above.IsActive && above.Type is 5 or 72 or 323 or >= 583 and <= 589 or 596 or 616 or 634)
-            throw new InvalidOperationException("Generation grass requires unimplemented tree conversion/framing.");
+        if (above.IsActive && above.Type is 5 or 72 or 323 or >= 583 and <= 589 or 596 or 616 or 634 &&
+            !(above.Type is >= 583 and <= 589 && IsMossConversion(grass)))
+        {
+            throw new InvalidOperationException(
+                $"Generation grass requires unimplemented tree conversion/framing: {above.Type} above {x},{y} taking {grass}.");
+        }
         cell.Type = grass;
         Converted++;
         if (frameSquare is null)
@@ -82,6 +93,10 @@ internal sealed class GenerationGrass1458(WorldTileStore store, IWorldGeneration
         for (int ty = y - 1; ty <= y + 1; ty++)
             if (At(tx,ty).IsActive && At(tx,ty).Type == dirt) Spread(tx,ty,dirt,grass,depth+1);
     }
+
+    /// <summary>Source <c>TileID.Sets.Conversion.Moss</c>.</summary>
+    private static bool IsMossConversion(ushort type) =>
+        type is 179 or 180 or 181 or 182 or 183 or 381 or 534 or 536 or 539 or 625 or 627;
 
     private ref WorldTile At(int x, int y) => ref store.Tiles[store.GetUncheckedIndex(x,y)];
 }

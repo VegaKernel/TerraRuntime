@@ -12,6 +12,120 @@ and worth keeping for that work: the final descending tunnel re-evaluates `genRa
 condition, so it draws once per column per step rather than once per step, and that tunnel alone accounts for
 roughly two thirds of a pyramid's RNG cost.
 
+A pot standing on a platform in lava is not representable by the loading liquid model, and the Moss row is
+what made a seed-1458 world contain one (2026-09-21). This is recorded against the row that exposed it, not
+against the row that caused it, because neither row is wrong.
+
+`VanillaWorldGenerationFullIntegrationTests.Canonical_seed1458_world_survives_real_post_load_liquid_preparation`
+goes red at 6400x1800 with `UnsupportedLiquidDeathTile` on a platform at 793,1325 holding lava, with a pot
+standing on it. Both halves of that arrangement are ordinary vanilla: `WorldGen.PlacePot` accepts a support on
+plain `Main.tileSolid`, which platforms satisfy, and `WorldGen.CheckPot` keeps the pot for the same reason
+because `SolidTile2` has no platform exclusion either. So the pot belongs there, and the Moss row only moved
+the shared stream enough for one to land in lava.
+
+What the runtime cannot yet express is the cascade. Source kills the lava-bearing platform cell, and the
+`SquareTileFrame` that follows runs `CheckPot`, which finds one of the pot's two supports gone and destroys
+all four of the pot's cells. The loading model's death footprint is a RECTANGLE, and the cells that die here
+are the pot's two-by-two plus exactly ONE of the two platform cells under it - the other platform cell has no
+lava and survives. No rectangle covers that, so `TryResolveLoadingDeath1458` fails closed, which is the
+designed behaviour for a footprint it cannot represent.
+
+Closing it means giving the loading death model a footprint that is not a single rectangle, and verifying the
+cascade against the official engine rather than against this reading. That is a liquid-subsystem row with its
+own differential, and it is the next thing to do.
+
+Moss (2026-09-21): stage69 was `P` with "moss selection / growth / RNG", and its owner was invented - three attempts per column, each picking one of five mosses uniformly and dropping it on any exposed stone between the rock layer and the underworld. A measured world carried 521 moss cells against the official's 61,927, which is under one percent, and the six moss families together were the largest single gap the whole-world histogram showed.
+
+The first thing the invented owner got wrong is that a world does not have one moss. A roll at the top of the pass picks three DIFFERENT ordinary mosses and one neon moss, and the three ordinary ones are then handed to the left, middle and right thirds of the map by position. Which moss a cave takes is therefore decided by WHERE it is, not by a roll at the moment it is taken, and the two rejection loops that keep the three distinct are themselves draws whose count depends on the rolls.
+
+Six stages run under the one registration, all of them spending from the same stream. Two neon moss biomes - one per 2100 columns - are drunken walks placed by a sampler that refuses any site whose hundred-and-one-square box carries a foreign material. Then a hundredth of the map's width in caves, each measured by the flood counter and taken whole, wall and stone together. Then one offer per column of the map on bare stone. Then a twentieth of the map's width on EXPOSED stone, whose budget only moves on a success. Then the lava moss. And finally a whole-world scan that hands every moss tile to the grass spreader for its four neighbours - which is where most of the moss a finished world carries actually comes from, the five stages above being seeds rather than the crop.
+
+The lava budget is the subtlest arithmetic in the pass, because it has three different decrements. Every iteration takes a thousandth off it whatever happened; an exposed stone cell that fails the lava census takes a further two thousandths; and only a cell that passes takes a whole unit. So the loop terminates on a map with no lava at all, just slowly, and the number of lava mosses is not the number of iterations.
+
+The shimmer refusal is asymmetric in two ways worth porting carefully. It guards the three middle stages and neither the neon biomes before them nor the lava moss after them; and inside the flood stage it guards only the FIRST sample, because the retries that follow are never re-checked. Those retries also sample a DEEPER band than the first offer did, which matters because almost every offer is a retry.
+
+Four findings came out of the controls rather than out of the source, and each one is a statement about what
+CANNOT be observed.
+
+The flood counter's five side counters are all read by this caller as booleans - more than none, or none at
+all. That makes two properties of the walk unobservable: the order it visits cells in, and the fact that a
+solid block reached from three sides raises its counter three times because only an OPEN cell is ever marked
+visited. Both are real behaviours of the source and both are invisible here, so the controls for them are
+inert for this caller rather than evidence of a weak fixture.
+
+The counter's refusals also make two of the moss spread's own guards dead code. The counter slams its count to
+the ceiling for any cave that touches the world border or carries any wall, so the spread is only ever started
+in caves where neither its one-tile border fluff nor its guard against repapering an already-papered edge can
+possibly matter. Proving that took a fixture with a corridor reaching in from the world edge and a pocket cut
+into self-papered stone - both of which ended up demonstrating the unreachability rather than the guards.
+
+The counter's lava cap and the flood stage's lava term shadow each other. Either one alone refuses a wet cave,
+so neither is visible while the other stands; only dropping both at once fails anything, which it does on ten
+of twelve.
+
+The whole-world spread at the end is insensitive to the order it works in - the four neighbours may be offered
+in any order, and the scan may go row-major instead of column-major - because the grass spreader closes over
+the whole connected component of stone and every order reaches the same cells. That insensitivity does NOT
+extend to WHICH cell is offered: the neon biome hands the spreader the cell to the LEFT of the one it tested,
+and moving that to the tested cell fails five of twelve, because it decides which component gets seeded at all.
+
+Two guards in the source are unreachable by construction. The neon biome's fixup for a zero horizontal
+velocity cannot fire, because the velocity comes from a double scaled off zero and is never exactly zero; and
+the sampler's give-up after a world's width of consecutive refusals cannot be reached even in a fixture where
+nearly every site is refused.
+
+Evidence: 12 official comparisons of the registered delegate through `GenPass.Apply`, each checking the next
+FOUR shared RNG values and a SHA-256 over every field of every cell. Six fixtures, two seeds each, on a real
+world's shape - 4200 by 1200, because the biome count of one per 2100 columns is zero on anything narrower.
+
+86 negative controls were run across five fixture generations. 71 of them fail at least one comparison. 15
+never fail anywhere, and those divide into the findings above, two guards that are unreachable by
+construction, and two boundaries the fixtures simply do not pin: the exact inclusivity of the box scan's
+hundred-and-one-wide sweep, and of the lava census's fifty-wide one. Both only show when a cell sits precisely
+on a boundary ring, and a single-column marker band added for the first still did not catch it.
+
+Five further controls are pinned by an EARLIER fixture generation and not by the committed one, which is worth
+recording rather than papering over: the neon walk's rock-layer clamp and the velocity turnaround that clamp
+performs, the flood counter's mushroom counter and the flood stage's mushroom term, and the direction of the
+final scan. The fixtures changed under them as later rounds moved the material bands, and the coverage was
+lost rather than disproved.
+
+The fixtures took five rounds and that is the part worth recording as method. The first round's ground could
+not discriminate twenty of seventy-three controls, and in every case but the findings above the fault was the
+fixture's. The nine refused materials were laid as bands sixty wide on an eighty pitch, so each sat inside its
+neighbour's fifty-tile scan reach and dropping any one arm of the cascade changed nothing; widening the pitch
+was not enough either, because in a mostly clean world the sampler is accepted on its first or second try and
+never reaches most of the bands at all, so a sixth fixture was added in which wide foreign fields leave clean
+windows barely wider than the scan and nearly every site is refused. Two of those bands then had to move again
+because they had landed in the middle quarter of the map that the sampler re-rolls out of. The flood counter's
+shimmer rule had nothing shimmering to find. Its lava rule had only a cave so wide that it was refused for its
+size long before its lava mattered, so a small wet one was added. Its border rule had a cave that touched the
+edge but never reached column 200, where the stage starts sampling; then one that reached it but was too big
+for the ceiling; then one thin enough but whose ceiling ran through the mushroom band, so it was refused on
+material instead. Its solidity test had a world of whole blocks and needed a half-bricked one. The lava
+census's threshold had only pools far above and far below it and needed one sized to land between ten and
+twenty - and then that pool had to move again, because it had been cut above the band the stage samples.
+
+The lesson is the one the earlier rows kept teaching in smaller doses: a control that does not discriminate is a statement about the fixture until it is proven to be a statement about the pass, and the work of telling those apart is most of the work.
+
+A control run that was stopped part way through cost the last stretch of this row and is worth recording as a
+hazard of the method rather than of the pass. The control scripts mutate one production line, build, test and
+restore from a backup in a `finally`, so killing the run skips the restore and leaves that mutation behind. The
+one left behind replaced the third selection with a constant, and the next differential failed all twelve
+comparisons with all four RNG values matching and only the world hash differing - which is exactly the
+signature of a change that writes different cells without drawing differently. A whole-world measurement had
+already been taken from that build before the differential caught it; the numbers below are the ones taken
+after it was restored.
+
+Measured effect: the six moss families go from 521 cells to **31,683** against the official's 35,091, which is
+ninety percent, and moss walls from none to 13,051 against 18,555. Tile L1 falls from 0.069896 to **0.042399**
+and wall L1 from 0.262731 to **0.257287** - the first wall improvement this batch has produced, because moss
+walls are the first walls a closed row has ever laid. Generation stays at ten seconds.
+
+Stage69 moves from `P` to `C`, so the ledger becomes **22P + 50C = 72 unfinished rows**; **31 E9 / 279
+checkpoints** is unchanged. Row 98 (`Moss Grass`, the long moss undergrowth) is now the largest single tile gap
+in the world at 15,026 official cells against 66, and it was gated on this row because it grows only on moss.
+
 Pots (2026-09-21): stage75 was already counted `C`, and what changed is that the claim is now true. Its owner was invented - ninety-five to a hundred and ninety-five pots chosen by world width, against the source's count scaled from world AREA. A measured world carried 400 pots against the official's 15,932, two and a half percent, and it was the fourth largest single gap the whole-world histogram showed.
 
 The ordinary path is the only one that runs. The teleporters, the graveyards and the extra boulders that share the registration all sit behind secret-seed and world flags an ordinary generation never sets.
@@ -416,7 +530,7 @@ Full Desert integration also exposed later-stage boundary defects. Ordinary Sett
 | 66 | Water Chests | Chest | C | AddBuriedChest / liquid eligibility / RNG |
 | 67 | Spider Caves | LateStructure | P | SpiderBiome / webs / walls / RNG |
 | 68 | Gem Caves | LateStructure | P | GemCave / RNG |
-| 69 | Moss | LateStructure | P | moss selection / growth / RNG |
+| 69 | Moss | LateStructure | C | `MossAndMossCaves`: the three-moss roll and its thirds, the neon biome sampler and walk, the flood counter, the moss spread, the lava budget's three decrements and the whole-world spread: 12 official complete-delegate fixtures |
 | 70 | Temple | LateStructure | P | temple finishing / traps / RNG |
 | 71 | Cave Walls | LateStructure | C | CaveWallVariety / regions / RNG |
 | 72 | Jungle Trees | LateStructure | C | tree grower / placement / RNG |
@@ -484,9 +598,9 @@ Whole-world fingerprints are not yet required to match by the [reference differe
 
 Whole-world measurement refreshed (2026-09-21): the numbers below had gone stale by a dozen closed rows, so a fresh Small/Classic/Corruption seed-1458 candidate was generated by the Release build and compared against a newly generated official reference with the same copied seed `1.1.1.1458`. That reference is byte-identical to the one this document has always used, `a73ec6c799c5e6ce3f9684377e97b07770caf19f4369c63d237d20c4fb21fa26`, so the series is continuous.
 
-tile L1 **0.063671** (0.069896 before the Pots row, 0.201211 at the batch's start), wall L1 **0.262731** (previous 0.530400), active ratio **0.988416**, liquid ratio 1.034483, silhouette NMAE 0.000666, p95 0.000833, correlation **0.994504** (previous 0.922428). Spawn delta (1,0); **dungeon delta (0,0)**, previously (+85,-6); surface and rock layer deltas both 0; chests 181 to 151, town NPCs 2 to 2. The candidate fingerprint still differs and whole-world equality is not claimed.
+tile L1 **0.042399** (0.063671 before the Moss row, 0.201211 at the batch's start), wall L1 **0.257287** (0.262731 before it, 0.530400 at the start), active ratio **0.987532**, liquid ratio 1.034374, silhouette NMAE 0.000666, p95 0.000833, correlation **0.994504** (previous 0.922428). Spawn delta (1,0); **dungeon delta (0,0)**, previously (+85,-6); surface and rock layer deltas both 0; chests 181 to 151, town NPCs 2 to 2. The candidate fingerprint still differs and whole-world equality is not claimed.
 
-The terrain itself is now effectively matched - correlation 0.9945 and a silhouette error of seven ten-thousandths - and what remains is contents. Localised by histogram, largest first: the six moss families at 61,927 official cells against 521 of ours (rows 69 and 98); spider walls at 38,347 against 2,558 with cobweb at 62% (row 67); the green dungeon wall families mis-split by about 40,000 inside a dungeon whose anchor is now exact; small piles at 4,108 against 155 (row 81); living mahogany at about a fifth (row 72); thin ice at 3,814 against 78 (row 59); and minecart track at 36% (row 101). Dirt wall against mud wall is over by 66,300 and under by 56,396, which belongs to the wall rows still open. This list localises the next work; it is not a set of quotas to paint towards.
+The terrain itself is now effectively matched - correlation 0.9945 and a silhouette error of seven ten-thousandths - and what remains is contents. Localised by histogram, largest first: the long moss undergrowth at 15,026 official cells against 66 of ours (row 98, which row 69 has just unblocked); spider walls at 38,347 against 2,558 with cobweb at 62% (row 67); the green dungeon wall families mis-split by about 40,000 inside a dungeon whose anchor is now exact; small piles at 4,108 against 155 (row 81); living mahogany at about a fifth (row 72); thin ice at 3,814 against 78 (row 59); and minecart track at 36% (row 101). Dirt wall against mud wall is over by 66,300 and under by 56,396, which belongs to the wall rows still open. This list localises the next work; it is not a set of quotas to paint towards.
 
 Current Marble+Granite batch: component86/86, affected221/221 and restored full4515/4515 pass with zero errors/skips; Release has zero warnings/errors. Windows NativeAOT and all six smokes pass. Fresh Small/Classic/Corruption1458 loads in both servers; official exits without saving, runtime saves only its fixture checkpoint, and both owned servers are stopped. Same-reference, unchanged-budget comparison: tileL1=0.275338 (previous0.289948), wallL1=0.532758 (previous0.591555), active ratio=0.964576, liquid ratio=1.039093, silhouette NMAE=0.007985, p95=0.044167, correlation=0.922362. Spawn delta(+1,0), dungeon delta(+85,-6), chests181→142 and town NPCs2→2 remain different. Candidate fingerprint `7aec2ba77dd20f939008743fb06cb052ace6ac20565e629f3ceff8f03113cbd3`; ignored evidence `stone-world-compare.json/log`. Linux NativeAOT, remote CI and official-client playthrough remain unverified. All measurements below are historical; no budget was widened and no whole-world equality is claimed.
 

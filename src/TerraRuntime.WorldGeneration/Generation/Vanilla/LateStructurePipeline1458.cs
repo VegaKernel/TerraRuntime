@@ -182,7 +182,6 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
     private const int JungleWallSpreadLimit = 5000;
 
     private static readonly ushort[] GemTiles = [Sapphire, Ruby, Emerald, Topaz, Amethyst, Diamond];
-    private static readonly ushort[] MossTiles = [179, 180, 181, 182, 183];
 
     private readonly LateStructureStage1458 stage;
     private readonly LateStructureState1458 state;
@@ -215,7 +214,7 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
                 ApplyGemCaves(context, grid, random);
                 break;
             case LateStructureStage1458.Moss:
-                ApplyMoss(context, grid, random);
+                ApplyMoss(context, workspace);
                 break;
             case LateStructureStage1458.Temple:
                 ApplyTemple(context, grid);
@@ -343,32 +342,31 @@ internal sealed class LateStructurePass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Seeding Gem Caves ({converted} gem blocks)");
     }
 
-    private void ApplyMoss(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private void ApplyMoss(IWorldGenerationContext context, Workspace workspace)
     {
-        int attempts = grid.Width * 3;
-        int minY = Math.Clamp((int)state.RockLayer, 20, state.UnderworldTop - 80);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 35);
-        int converted = 0;
+        IWorldGenerationVanillaRandom random = context.VanillaRandom ??
+            throw new InvalidOperationException("Moss requires shared UnifiedRandom semantics.");
 
-        for (int i = 0; i < attempts; i++)
-        {
-            if ((i & 511) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
+        int waterLine = workspace.VanillaLiquidLines?.WaterLine ?? checked((int)Math.Round(state.RockLayer));
+        int lavaLine = workspace.VanillaLiquidLines?.LavaLine ?? checked((int)Math.Round(state.RockLayer));
+        // Source reads GenVars.shimmerPosition, which is the zero vector until the Shimmer pass sets it.
+        WorldGenerationPoint shimmer = workspace.VanillaShimmerPosition ?? new WorldGenerationPoint(0, 0);
+        double rockLayer = workspace.VanillaTerrainState?.CurrentRockLayer ?? state.RockLayer;
 
-            int x = random.Next(2, grid.Width - 2);
-            int y = random.Next(minY, maxY);
-            ref WorldTile tile = ref grid.At(x, y);
-            if (!tile.IsActive || tile.Type != Stone || !grid.HasOpenNeighbor(x, y))
-                continue;
-
-            tile.Type = MossTiles[random.Next(MossTiles.Length)];
-            tile.FrameX = 0;
-            tile.FrameY = 0;
-            tile.Shape = 0;
-            converted++;
-        }
-
-        context.ReportProgress(1d, $"Spreading cavern moss ({converted} blocks)");
+        // The spreader re-frames every square it converts, and source does that through the ordinary
+        // SquareTileFrame rather than through any biome-specific framer. It matters that this is the real one:
+        // a moss conversion changes a block's identity while leaving it solid, so every object check the
+        // framing triggers finds its own footprint intact and spends nothing - but a framer that threw on
+        // identities it had not modelled would refuse a statue standing beside a cave that takes moss.
+        var framing = new GenerationTileFraming1458(workspace.TileStore, random);
+        var grass = new GenerationGrass1458(
+            workspace.TileStore, random, context.CancellationToken, state.WorldSurface,
+            (x, y) => framing.SquareTileFrame(x, y));
+        var pass = new MossPass1458(
+            workspace.TileStore, random, state.WorldSurface, rockLayer, waterLine, lavaLine,
+            shimmer.X, shimmer.Y, context.CancellationToken);
+        pass.Apply(grass);
+        context.ReportProgress(1d, $"Spreading Moss ({pass.Placed} seeded, {grass.Converted} spread)");
     }
 
     private static void ApplyTemple(IWorldGenerationContext context, RuntimeGrid grid)
