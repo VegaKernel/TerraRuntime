@@ -334,12 +334,16 @@ internal sealed class ChestPlacementPass1458 : IWorldGenerationPass
         RuntimeGrid grid,
         IWorldGenerationVanillaRandom random)
     {
-        // The ocean-cave treasure points are the ocean pass's, and that pass does not publish them yet, so
-        // the first half of the source pass has nothing to walk. The scattered half, which is the large
-        // majority of the world's water chests, runs in full.
+        // The two ocean-cave treasure anchors come from the Ocean Caves pass, in the slot order it recorded
+        // them; the source's spiral search starts from each of them before the scattered half runs.
+        ReadOnlySpan<WorldGenerationPoint> anchors = workspace.VanillaOceanCaveTreasure;
+        var treasure = new (int X, int Y)[anchors.Length];
+        for (int index = 0; index < anchors.Length; index++)
+            treasure[index] = (anchors[index].X, anchors[index].Y);
+
         var placer = CreatePlacer(workspace, random);
         new UnderwaterChestsPass1458(placer, workspace.TileStore, random, state.WorldSurface, BeachDistance,
-            [], context.CancellationToken).Apply();
+            treasure, context.CancellationToken).Apply();
 
         context.ReportProgress(1d, $"Placing Water Chests ({placer.Chests.Count})");
     }
