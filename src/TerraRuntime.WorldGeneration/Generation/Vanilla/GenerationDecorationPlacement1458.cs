@@ -89,7 +89,14 @@ internal static class GenerationDecorationPlacement1458
         }
 
         bool placed = TryPlace3x2(store, x, y, type, style);
-        new GenerationTileFraming1458(store, random).SquareTileFrame(x, y);
+        var framing = new GenerationTileFraming1458(store, random);
+        framing.SquareTileFrame(x, y);
+
+        // PlaceTile frames the square a SECOND time at the tail of the method, after the whole identity
+        // switch, for any cell that ended up occupied. Measured on the long moss row, where it was the whole
+        // difference between 12 draws and the official's 20 for one placement.
+        if (At(store, x, y).IsActive)
+            framing.SquareTileFrame(x, y);
         return placed;
     }
 
