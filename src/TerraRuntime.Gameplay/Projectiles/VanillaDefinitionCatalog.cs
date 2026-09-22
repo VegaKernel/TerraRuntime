@@ -89,6 +89,10 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 14,
         CollisionHeight: 14);
 
+    private static readonly VanillaProjectileDefinition GastropodBoltDefinition = new(
+        Width: 8, Height: 8, AiStyle: VanillaProjectileAiStyles.Arrow, TileCollide: true,
+        IgnoreWater: false, CanCutTiles: true, CollisionWidth: 8, CollisionHeight: 8);
+
     private static readonly VanillaProjectileDefinition DemonScytheDefinition = new(
         Width: 48,
         Height: 48,
@@ -1005,6 +1009,12 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.HornetStinger)
         {
             definition = WoodenArrowDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.GastropodBolt)
+        {
+            definition = GastropodBoltDefinition;
             return true;
         }
 

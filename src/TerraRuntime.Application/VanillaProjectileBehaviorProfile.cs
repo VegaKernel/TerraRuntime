@@ -800,6 +800,7 @@ internal static class VanillaProjectileBehaviorProfileCatalog
     private static bool IsBasicArrow(ProjectileTypeId type) =>
         type == VanillaProjectileIds.WoodenArrowFriendly ||
         type == VanillaProjectileIds.HornetStinger ||
+        type == VanillaProjectileIds.GastropodBolt ||
         type == VanillaProjectileIds.GoblinArcherArrow ||
         type == VanillaProjectileIds.HarpyFeather ||
         type == VanillaProjectileIds.FireArrow ||

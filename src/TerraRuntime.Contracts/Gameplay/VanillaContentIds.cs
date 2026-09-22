@@ -219,6 +219,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId GoblinArcher = new(111);
     public static readonly NpcTypeId Clown = new(109);
     public static readonly NpcTypeId ChaosElemental = new(120);
+    public static readonly NpcTypeId Gastropod = new(163);
     public static readonly NpcTypeId IcyMerman = new(206);
     public static readonly NpcTypeId PirateDeckhand = new(212);
     public static readonly NpcTypeId PirateCorsair = new(213);
@@ -600,6 +601,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId DemonScythe = new(44);
     public static readonly ProjectileTypeId HappyBomb = new(75);
     public static readonly ProjectileTypeId HornetStinger = new(55);
+    public static readonly ProjectileTypeId GastropodBolt = new(472);
     public static readonly ProjectileTypeId TacticalSkeletonBullet = new(180);
     public static readonly ProjectileTypeId SkeletonSniperBullet = new(302);
     public static readonly ProjectileTypeId SkeletonCommandoRocket = new(303);
