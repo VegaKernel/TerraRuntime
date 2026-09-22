@@ -168,17 +168,16 @@ carries a second rectangle, measured against `WorldGen.WaterCheck` with six diff
 not reproduced, and measured: the surviving platform is re-framed 0 to 90 - the loading model frames nothing
 at all, which is a general loading-time framing gap worth its own row.
 
-**Row 98 (`Moss Grass`, the long moss) is the next worldgen one and it is now the largest single tile gap: 15,026
-official cells against 66.** It was gated on row 69 because long moss grows only on moss, and row 69 is now
-closed. The pass itself is small - scan the world column-major, and for every moss tile offer
-`PlaceTile(nx, ny, 184, mute: true)` to each of its four neighbours that is inactive. The work is the
-`PlaceTile` slice for identity 184, and it has the same shape as the pots style cascade: **two SEPARATE `if`
-statements**, one testing the four neighbours against `Main.tileMoss` and one against
-`TileID.Sets.tileMossBrick` = {512..517, 535, 537, 540, 626, 628}, each drawing `Next(3)` for the frame and
-each writing the tile, so a cell beside both a moss block and a moss brick draws twice and keeps the second.
-Tile 184 is not solid and is not in the liquid-refused list, so a wet cell accepts it; an inactive cell is
-cleared of identity, frames, block paint and slope first; and an active fallen log refuses the whole call
-during generation. `GenerationTileFraming1458.SquareTileFrame` is the framer the source calls.
+**Row 98 (Moss Grass) is closed at ninety-seven percent**, 14,627 strands against 15,026. The row turned out
+to be about `TileFrameImportant` rather than about the scan: `PlaceTile` frames the square TWICE, once inside
+the identity branch and once at the tail of the method, and one isolated moss block therefore costs 20 draws
+where the first port spent 12. Two of its thirty controls never fail, and both are proofs of unreachability
+rather than weak fixtures - `PlaceTile`'s fallen-log refusal cannot fire because the pass offers only into an
+empty cell, and the framing's kill branch cannot fire because a strand is only ever placed beside a whole
+solid moss block, which the framing's guards accept.
+
+**The next worldgen row is 67, Spider Caves, now the largest tile gap: cobweb at 38,833 official cells against
+24,293, with the spider wall at 38,347 against 2,558.**
 
 **Row 69's moss is at ninety percent, not a hundred, and the shortfall is worth understanding before row 98.**
 The six families total 31,683 against 35,091, and moss walls 13,051 against 18,555 - a much wider gap. The

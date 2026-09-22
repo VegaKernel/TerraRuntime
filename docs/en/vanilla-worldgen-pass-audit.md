@@ -12,6 +12,69 @@ and worth keeping for that work: the final descending tunnel re-evaluates `genRa
 condition, so it draws once per column per step rather than once per step, and that tunnel alone accounts for
 roughly two thirds of a pyramid's RNG cost.
 
+Moss Grass (2026-09-22): stage98 was `P` with "moss growth / RNG", and its owner was invented - a few
+thousand point samples that dropped a strand on any stone near moss. A measured world carried 66 strands
+against the official's 15,026, which was the largest single tile gap left anywhere in the world. It was gated
+on the Moss row, because long moss only ever grows on moss.
+
+The pass itself is almost nothing: a column-major scan that offers a strand to each of a moss tile's four
+EMPTY neighbours. Everything it does happens underneath it, and there are three layers of that.
+
+Only a moss TILE offers. Moss bricks carry a moss colour and can decide which way a strand hangs, but they
+are not in `Main.tileMoss`, so a world of nothing but bricks grows no long moss at all. That is measured, not
+reasoned: a fixture of bricks produces not one strand and does not move the stream by a single value.
+
+The placement is two SEPARATE statements, one testing the four neighbours against the moss blocks and one
+against the moss bricks, each writing the tile and rolling its own row - so a cell standing beside both draws
+twice and keeps the second. Neither is an `else`, which is the same shape the pots style cascade has.
+
+Then `PlaceTile` frames the square TWICE. Once inside the identity branch, and once more at the tail of the
+method, after the whole switch, for any cell that ended up occupied. Every strand already standing in that
+nine-cell square rolls a row on each of those passes, and that is where most of the pass's stream goes: one
+isolated moss block costs **20** draws, and the first port of it spent 12. The difference was exactly the
+tail framing, and it was found by counting the official's draws rather than by reading, because the tail
+frame is three hundred lines away from the branch that placed the tile.
+
+The framing is also where a strand's appearance and its survival are decided, so this row is really a row
+about `TileFrameImportant`. The draw comes FIRST and unconditionally, before any neighbour is consulted. Then
+the four neighbours are tried in a fixed order - below, above, left, right - and the first one carrying a moss
+colour decides both the colour column, which is 22 pixels wide rather than the ordinary 18, and which band of
+three rows the strand hangs in: below gives rows 0 to 36, above 54 to 90, left 108 to 144, right 162 to 198.
+The drawn row is only written when the existing one is outside that band, so a strand re-framed without
+changing direction keeps the row it had and the draw is spent for nothing. Each neighbour is also read through
+a different guard: what hangs above must not be bottom-sloped, and what a strand stands under must be neither
+half brick nor top-sloped, while the two sides are read bare.
+
+Evidence: 16 official comparisons of the registered delegate through `GenPass.Apply`, each checking the next
+four shared RNG values and a SHA-256 over every field of every cell. Eight fixtures, two seeds each.
+
+30 negative controls, 28 of which fail at least one comparison. The two that never fail are not weak fixtures
+but proofs that the source cannot reach those lines from this caller, and both are worth recording.
+`PlaceTile`'s refusal of a fallen log standing in the target cell cannot fire, because the pass offers only
+into a cell that is already EMPTY. And the framing's kill branch cannot fire either: a strand is only ever
+placed beside a whole, upright, unactuated moss block, and those are exactly the blocks the framing's
+per-direction guards accept, so a placed strand always finds a moss colour and is never destroyed.
+
+The first fixture was isolated blocks on a wide pitch, and it could not discriminate ten of the thirty. A
+second, dense one closed seven of those, and each addition names the control it unblocked: two blocks stacked
+with one cell between them so a strand has a moss neighbour both above and below and the order of the
+four-way chain finally matters; a brick directly below a strand whose block is to its left, so the brick half
+of the colour map is consulted at all; a top-sloped block below one strand and a bottom-sloped block above
+another, so the two per-direction guards decide which neighbour wins; two blocks side by side so an offer is
+made into an occupied cell; and blocks on both sides of the scan's five-column border.
+
+One of the ten was a bad control rather than a fixture gap - it moved two independent statements past each
+other and changed nothing - which is its own reminder that a control has to be checked for actually mutating
+behaviour before its zero is believed.
+
+Measured effect: long moss goes from 66 strands to **14,627** against the official's 15,026, which is
+ninety-seven percent. Tile L1 falls from 0.042399 to **0.034758** and the active ratio from 0.987532 to
+**0.992635**. Generation stays at ten seconds.
+
+Stage98 moves from `P` to `C`, so the ledger becomes **21P + 51C = 72 unfinished rows**; **31 E9 / 279
+checkpoints** is unchanged. The largest remaining tile gap is now cobweb at 38,833 official cells against
+24,293 (row 67, spider caves).
+
 A pot standing on a platform in lava is not representable by the loading liquid model, and the Moss row is
 what made a seed-1458 world contain one (2026-09-21). This is recorded against the row that exposed it, not
 against the row that caused it, because neither row is wrong.
@@ -572,7 +635,7 @@ Full Desert integration also exposed later-stage boundary defects. Ordinary Sett
 | 95 | Mushrooms | Vegetation | C | `Mushrooms`: the restamping patch and its inner-loop edge break: 6 official complete-delegate fixtures |
 | 96 | Gems In Ice Biome | UndergroundFinish | P | snow bounds / gems / RNG |
 | 97 | Random Gems | UndergroundFinish | P | placement / RNG |
-| 98 | Moss Grass | UndergroundFinish | P | moss growth / RNG |
+| 98 | Moss Grass | UndergroundFinish | C | `LongMoss`: the scan, the two-armed placement, the double square framing PlaceTile spends and the four-way direction chain that decides a strand's colour, band and survival: 16 official complete-delegate fixtures |
 | 99 | Muds Walls In Jungle | UndergroundFinish | P | wall scans / RNG |
 | 100 | Larva | UndergroundFinish | C | hive anchors / framing / RNG |
 | 101 | Micro Biomes | MicroBiomes | C | TrackGenerator / houses / all biome helpers |
@@ -611,9 +674,9 @@ Whole-world fingerprints are not yet required to match by the [reference differe
 
 Whole-world measurement refreshed (2026-09-21): the numbers below had gone stale by a dozen closed rows, so a fresh Small/Classic/Corruption seed-1458 candidate was generated by the Release build and compared against a newly generated official reference with the same copied seed `1.1.1.1458`. That reference is byte-identical to the one this document has always used, `a73ec6c799c5e6ce3f9684377e97b07770caf19f4369c63d237d20c4fb21fa26`, so the series is continuous.
 
-tile L1 **0.042399** (0.063671 before the Moss row, 0.201211 at the batch's start), wall L1 **0.257287** (0.262731 before it, 0.530400 at the start), active ratio **0.987532**, liquid ratio 1.034374, silhouette NMAE 0.000666, p95 0.000833, correlation **0.994504** (previous 0.922428). Spawn delta (1,0); **dungeon delta (0,0)**, previously (+85,-6); surface and rock layer deltas both 0; chests 181 to 151, town NPCs 2 to 2. The candidate fingerprint still differs and whole-world equality is not claimed.
+tile L1 **0.034758** (0.042399 before the Moss Grass row, 0.201211 at the batch's start), wall L1 **0.257499** (0.530400 at the start), active ratio **0.992635**, liquid ratio 1.034518, silhouette NMAE 0.000666, p95 0.000833, correlation **0.994504** (previous 0.922428). Spawn delta (1,0); **dungeon delta (0,0)**, previously (+85,-6); surface and rock layer deltas both 0; chests 181 to 151, town NPCs 2 to 2. The candidate fingerprint still differs and whole-world equality is not claimed.
 
-The terrain itself is now effectively matched - correlation 0.9945 and a silhouette error of seven ten-thousandths - and what remains is contents. Localised by histogram, largest first: the long moss undergrowth at 15,026 official cells against 66 of ours (row 98, which row 69 has just unblocked); spider walls at 38,347 against 2,558 with cobweb at 62% (row 67); the green dungeon wall families mis-split by about 40,000 inside a dungeon whose anchor is now exact; small piles at 4,108 against 155 (row 81); living mahogany at about a fifth (row 72); thin ice at 3,814 against 78 (row 59); and minecart track at 36% (row 101). Dirt wall against mud wall is over by 66,300 and under by 56,396, which belongs to the wall rows still open. This list localises the next work; it is not a set of quotas to paint towards.
+The terrain itself is now effectively matched - correlation 0.9945 and a silhouette error of seven ten-thousandths - and what remains is contents. Localised by histogram, largest first: cobweb at 38,833 official cells against 24,293 of ours; spider walls at 38,347 against 2,558 with cobweb at 62% (row 67); the green dungeon wall families mis-split by about 40,000 inside a dungeon whose anchor is now exact; small piles at 4,108 against 155 (row 81); living mahogany at about a fifth (row 72); thin ice at 3,814 against 78 (row 59); and minecart track at 36% (row 101). Dirt wall against mud wall is over by 66,300 and under by 56,396, which belongs to the wall rows still open. This list localises the next work; it is not a set of quotas to paint towards.
 
 Current Marble+Granite batch: component86/86, affected221/221 and restored full4515/4515 pass with zero errors/skips; Release has zero warnings/errors. Windows NativeAOT and all six smokes pass. Fresh Small/Classic/Corruption1458 loads in both servers; official exits without saving, runtime saves only its fixture checkpoint, and both owned servers are stopped. Same-reference, unchanged-budget comparison: tileL1=0.275338 (previous0.289948), wallL1=0.532758 (previous0.591555), active ratio=0.964576, liquid ratio=1.039093, silhouette NMAE=0.007985, p95=0.044167, correlation=0.922362. Spawn delta(+1,0), dungeon delta(+85,-6), chests181→142 and town NPCs2→2 remain different. Candidate fingerprint `7aec2ba77dd20f939008743fb06cb052ace6ac20565e629f3ceff8f03113cbd3`; ignored evidence `stone-world-compare.json/log`. Linux NativeAOT, remote CI and official-client playthrough remain unverified. All measurements below are historical; no budget was widened and no whole-world equality is claimed.
 

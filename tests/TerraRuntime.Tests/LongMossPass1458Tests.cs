@@ -36,6 +36,8 @@ public sealed class LongMossPass1458Tests
     // fixture, seed, four next draws, worldHash
     [InlineData("one", 42, 397470, 152193, 90112, 705152, "e96e225d3df5fc759058416cd7aa4597d0e18674374269a3aee1591e86c8ffdb")]
     [InlineData("one", 1458, 542152, 548956, 401207, 378917, "a0d9fd96fc8c1413161504e44e0edd7c1f78e3cec1dbd122986570eb10ed19f7")]
+    [InlineData("dense", 42, 810336, 128322, 107333, 2843, "512ba1aeee01585e03a2e1d3659fa5afadaaf8096c5ab0ebc46440065ed8d969")]
+    [InlineData("dense", 1458, 129475, 162015, 309054, 479155, "fc7382697803eaf0295f5acca222f442f6137fadedb78481ae0d94438ef640dc")]
     // Moss blocks: every one of them grows strands on all four sides.
     [InlineData("moss", 42, 540628, 997269, 144177, 392532, "811379bacea3ffaea090c6321bcfbcde3de8f7547a9699625a49f0d431ab3134")]
     [InlineData("moss", 1458, 737689, 706813, 765536, 506744, "16cb57b909a5b390b53170bc6d592eb0716db8b5d1abd69a6d4cce6b19d55f76")]
@@ -84,7 +86,7 @@ public sealed class LongMossPass1458Tests
 
         // "one" is a single isolated block: few enough draws that the whole sequence can be reasoned about by
         // hand when the stream diverges.
-        int step = fixture == "one" ? 100000 : 6;
+        int step = fixture is "one" or "dense" ? 100000 : 6;
         int slot = 0;
         for (int gx = 20; gx < Width - 20; gx += step)
         for (int gy = 20; gy < Height - 20; gy += step)
@@ -123,6 +125,39 @@ public sealed class LongMossPass1458Tests
             }
         }
 
+        if (fixture == "dense")
+        {
+            // Two blocks with one cell between them: the strand there has a moss neighbour above AND below,
+            // which is the only way the order of the framing's four-way chain shows.
+            Moss(store, 110, 100);
+            Moss(store, 110, 102);
+
+            // A block to the strand's left and a BRICK directly below it. The chain tries below first, so the
+            // brick is what decides the colour - the only arrangement where the brick half of the colour map
+            // is consulted.
+            Moss(store, 130, 100);
+            Brick(store, 131, 101);
+
+            // A block to the left again, and below the strand a moss block that is TOP-SLOPED. The framing's
+            // below guard refuses that one, so the strand must fall through to the left.
+            Moss(store, 139, 101);
+            // WorldTile.Shape offsets the vanilla slope by one: the probe sets slope(2), which is Shape 3.
+            Moss(store, 140, 102, shape: 3);
+
+            // A block to the right of a strand, and above it a moss block that is BOTTOM-SLOPED. The
+            // framing's above guard refuses that one, so the strand falls through to the right.
+            Moss(store, 146, 101);
+            Moss(store, 145, 100, shape: 5);
+
+            // Two blocks side by side, so each offers into the other's occupied cell.
+            Moss(store, 150, 100);
+            Moss(store, 151, 100);
+
+            // Close to the scan's border on both sides of it.
+            Moss(store, 7, 100);
+            Moss(store, 3, 100);
+        }
+
         if (fixture == "log")
         {
             for (int gx = 20; gx < Width - 20; gx += 6)
@@ -133,6 +168,18 @@ public sealed class LongMossPass1458Tests
 
         return store;
     }
+
+    private static void Moss(WorldTileStore store, int x, int y, byte shape = 0) =>
+        store.Set(x, y, new WorldTile
+        {
+            Flags = WorldTileFlags.Active, Type = 179, FrameX = -1, FrameY = -1, Shape = shape
+        });
+
+    private static void Brick(WorldTileStore store, int x, int y) =>
+        store.Set(x, y, new WorldTile
+        {
+            Flags = WorldTileFlags.Active, Type = 513, FrameX = -1, FrameY = -1
+        });
 
     private static string Hash(WorldTileStore store)
     {
