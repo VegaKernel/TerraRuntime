@@ -229,6 +229,13 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId SolarCrawltipedeHead = new(412);
     public static readonly NpcTypeId SolarCrawltipedeBody = new(413);
     public static readonly NpcTypeId SolarCrawltipedeTail = new(414);
+    public static readonly NpcTypeId ArmedZombie = new(430);
+    public static readonly NpcTypeId ArmedZombieEskimo = new(431);
+    public static readonly NpcTypeId ArmedZombiePincushion = new(432);
+    public static readonly NpcTypeId ArmedZombieSlimed = new(433);
+    public static readonly NpcTypeId ArmedZombieSwamp = new(434);
+    public static readonly NpcTypeId ArmedZombieTwiggy = new(435);
+    public static readonly NpcTypeId ArmedZombieCenx = new(436);
     public static readonly NpcTypeId LunaticCultist = new(439);
     public static readonly NpcTypeId LunaticCultistClone = new(440);
     public static readonly NpcTypeId CultistDragonHead = new(454);

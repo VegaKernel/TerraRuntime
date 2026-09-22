@@ -49,6 +49,21 @@ public static class VanillaGroundFighterNpcCatalog
         // TerrariaServer 1.4.5.8 NPC.SetDefaults (331/332) and AI_003_Fighters num108 scaling.
         ,Fighter(VanillaNpcIds.ZombieXmas, 18, 40, 14, 6, 45, .5f, 1f, 1f, scaleAdjustsSpeed: true)
         ,Fighter(VanillaNpcIds.ZombieSweater, 18, 40, 14, 6, 45, .5f, 1f, 1f, scaleAdjustsSpeed: true)
+        // TerrariaServer 1.4.5.8 NPC.SetDefaults (430..436) and AI_003 armed melee state.
+        ,Fighter(VanillaNpcIds.ArmedZombie, 18, 40, 14, 6, 45, .5f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.ArmedZombie)
+        ,Fighter(VanillaNpcIds.ArmedZombieEskimo, 18, 40, 16, 8, 50, .45f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.ArmedZombie)
+        ,Fighter(VanillaNpcIds.ArmedZombiePincushion, 18, 40, 16, 8, 50, .45f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.ArmedZombie)
+        ,Fighter(VanillaNpcIds.ArmedZombieSlimed, 18, 40, 13, 6, 40, .55f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.ArmedZombie)
+        ,Fighter(VanillaNpcIds.ArmedZombieSwamp, 18, 40, 13, 8, 45, .45f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.ArmedZombie)
+        ,Fighter(VanillaNpcIds.ArmedZombieTwiggy, 18, 40, 16, 4, 45, .55f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.ArmedZombie)
+        ,Fighter(VanillaNpcIds.ArmedZombieCenx, 18, 40, 12, 4, 38, .6f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.ArmedZombie)
         ,Fighter(new NpcTypeId(78), 18, 40, 50, 16, 130, .6f, 1f, 1f,
             acceleration: .05f, motionProfile: VanillaGroundFighterMotionProfile.HalfHealthBerserker, overspeedGroundDamping: .7f)
         ,Fighter(new NpcTypeId(79), 18, 40, 60, 18, 180, .5f, 1f, 1f,
@@ -114,6 +129,13 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.SkeletonAlien,
         VanillaNpcIds.ZombieXmas,
         VanillaNpcIds.ZombieSweater,
+        VanillaNpcIds.ArmedZombie,
+        VanillaNpcIds.ArmedZombieEskimo,
+        VanillaNpcIds.ArmedZombiePincushion,
+        VanillaNpcIds.ArmedZombieSlimed,
+        VanillaNpcIds.ArmedZombieSwamp,
+        VanillaNpcIds.ArmedZombieTwiggy,
+        VanillaNpcIds.ArmedZombieCenx,
         new(78), new(79), new(80), new(243), new(251), new(254), new(255), new(257), new(258), new(287), new(630),
         new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280)
     ];

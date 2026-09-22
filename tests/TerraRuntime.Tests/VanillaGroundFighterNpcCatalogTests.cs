@@ -39,6 +39,13 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         [VanillaNpcIds.SkeletonAlien, 18, 40, 22, 10, 70, 0.4f, 1.05f, 1f, false, false],
         [VanillaNpcIds.ZombieXmas, 18, 40, 14, 6, 45, 0.5f, 1f, 1f, true, false],
         [VanillaNpcIds.ZombieSweater, 18, 40, 14, 6, 45, 0.5f, 1f, 1f, true, false],
+        [VanillaNpcIds.ArmedZombie, 18, 40, 14, 6, 45, 0.5f, 1f, 1f, false, false],
+        [VanillaNpcIds.ArmedZombieEskimo, 18, 40, 16, 8, 50, 0.45f, 1f, 1f, false, false],
+        [VanillaNpcIds.ArmedZombiePincushion, 18, 40, 16, 8, 50, 0.45f, 1f, 1f, false, false],
+        [VanillaNpcIds.ArmedZombieSlimed, 18, 40, 13, 6, 40, 0.55f, 1f, 1f, false, false],
+        [VanillaNpcIds.ArmedZombieSwamp, 18, 40, 13, 8, 45, 0.45f, 1f, 1f, false, false],
+        [VanillaNpcIds.ArmedZombieTwiggy, 18, 40, 16, 4, 45, 0.55f, 1f, 1f, false, false],
+        [VanillaNpcIds.ArmedZombieCenx, 18, 40, 12, 4, 38, 0.6f, 1f, 1f, false, false],
     ];
 
     [Theory]
@@ -87,8 +94,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(53, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(51, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(60, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(58, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
@@ -166,6 +173,24 @@ public sealed class VanillaGroundFighterNpcCatalogTests
             Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
             Assert.True(behavior.ScaleAdjustsMaximumHorizontalSpeed);
             Assert.Equal(VanillaGroundFighterMotionProfile.Standard, behavior.MotionProfile);
+        }
+    }
+
+    [Fact]
+    public void Armed_zombies_keep_the_source_ai003_armed_melee_profile()
+    {
+        foreach (NpcTypeId type in new[]
+        {
+            VanillaNpcIds.ArmedZombie, VanillaNpcIds.ArmedZombieEskimo, VanillaNpcIds.ArmedZombiePincushion,
+            VanillaNpcIds.ArmedZombieSlimed, VanillaNpcIds.ArmedZombieSwamp, VanillaNpcIds.ArmedZombieTwiggy,
+            VanillaNpcIds.ArmedZombieCenx
+        })
+        {
+            Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(type, out var behavior));
+            Assert.Equal(1f, behavior.BaseMaximumHorizontalSpeed, 5);
+            Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
+            Assert.False(behavior.ScaleAdjustsMaximumHorizontalSpeed);
+            Assert.Equal(VanillaGroundFighterMotionProfile.ArmedZombie, behavior.MotionProfile);
         }
     }
 
