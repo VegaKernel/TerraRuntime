@@ -662,8 +662,9 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
     };
 }
 
-internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
+internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom random) : IVanillaNpcBehaviorStrategy
 {
+    private readonly IVanillaNpcRandom random = random ?? throw new ArgumentNullException(nameof(random));
     public bool TryStep(
         in NpcSnapshot npc,
         in VanillaNpcDefinition definition,
@@ -780,6 +781,14 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
             fighterVelocityY = 0f;
             fighterAi = fighterAi with { Ai3 = 0f };
         }
+        bool resetWraithClock = false;
+        if (definition.Type == VanillaNpcIds.Wraith &&
+            TryStepWraith(in npc, in definition, context, out next, out resetWraithClock))
+        {
+            return true;
+        }
+        if (definition.Type == VanillaNpcIds.Wraith && resetWraithClock)
+            fighterAi = fighterAi with { Ai2 = 0f };
         var input = new VanillaZombieMotionInput(
             PositionX: npc.PositionX,
             OldPositionX: simulation.OldPositionX,
@@ -915,6 +924,54 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy : IVanillaNpcBehav
                 TimeLeft = result.TimeLeft,
                 DamageOverride = damageOverride
             });
+        return true;
+    }
+
+    private bool TryStepWraith(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+        out NpcStateUpdate next, out bool resetClock)
+    {
+        resetClock = false;
+        float clock = npc.Ai.Ai2;
+        if (random.NextInt32(0, 240) == 0)
+            clock = random.NextInt32(-480, -60);
+        if (clock >= 0f)
+        {
+            next = default;
+            return false;
+        }
+
+        ushort target = npc.Target;
+        int directionX = npc.Simulation.DirectionX;
+        int directionY = npc.Simulation.DirectionY;
+        if (context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh refresh))
+        {
+            target = refresh.Target;
+            directionX = refresh.DirectionX;
+            directionY = refresh.DirectionY;
+        }
+        if (npc.Simulation.JustHit ||
+            (target < byte.MaxValue && context.TryFindCandidate((byte)target, out VanillaNpcTargetCandidate candidate) &&
+             context.ProjectileEnvironment is not null && context.ProjectileEnvironment.CanHit(
+                 npc.PositionX + definition.Width * .5f, npc.PositionY + definition.Height * .5f, 1, 1,
+                 candidate.CenterX, candidate.CenterY, 1, 1)))
+        {
+            clock = 0f;
+        }
+        if (clock >= 0f)
+        {
+            resetClock = true;
+            next = default;
+            return false;
+        }
+
+        float velocityX = npc.VelocityX * .9f;
+        if (velocityX is > -.1f and < .1f)
+            velocityX = 0f;
+        clock++;
+        if (clock == 0f)
+            velocityX = directionX * .1f;
+        next = new NpcStateUpdate(npc.Type, npc.NetId, npc.PositionX, npc.PositionY, velocityX, npc.VelocityY, target,
+            npc.Ai with { Ai2 = clock }, npc.Simulation with { DirectionX = directionX, DirectionY = directionY });
         return true;
     }
 

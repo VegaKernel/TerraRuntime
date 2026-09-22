@@ -58,7 +58,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaNpcBehaviorContext _context = new();
     private readonly IVanillaNpcBehaviorStrategy _slimeGround;
     private readonly VanillaFlyingEyeNpcBehaviorStrategy _flyingEye = new();
-    private readonly IVanillaNpcBehaviorStrategy _groundFighter = new VanillaGroundFighterNpcBehaviorStrategy();
+    private readonly IVanillaNpcBehaviorStrategy _groundFighter;
     private readonly IVanillaNpcBehaviorStrategy _moonEventJumpingFighter = new VanillaMoonEventJumpingFighterNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _moonEventUnicorn = new VanillaMoonEventUnicornNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _moonEventGhost = new VanillaMoonEventGhostNpcBehaviorStrategy();
@@ -122,6 +122,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         ArgumentNullException.ThrowIfNull(inner);
         _inner = inner;
         _random = random ?? new SystemVanillaNpcRandom();
+        _groundFighter = new VanillaGroundFighterNpcBehaviorStrategy(_random);
         _slimeGround = new VanillaSlimeGroundNpcBehaviorStrategy(_random);
         _fireImp = new VanillaFireImpNpcBehaviorStrategy(_random);
         _goblinSorcerer = new VanillaGoblinSorcererBehavior(_random);

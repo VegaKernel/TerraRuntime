@@ -220,6 +220,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId Clown = new(109);
     public static readonly NpcTypeId ChaosElemental = new(120);
     public static readonly NpcTypeId Gastropod = new(163);
+    public static readonly NpcTypeId Wraith = new(166);
     public static readonly NpcTypeId IcyMerman = new(206);
     public static readonly NpcTypeId PirateDeckhand = new(212);
     public static readonly NpcTypeId PirateCorsair = new(213);

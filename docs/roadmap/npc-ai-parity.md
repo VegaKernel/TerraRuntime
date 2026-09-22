@@ -308,6 +308,7 @@ Conversely, packet emission, NPC/projectile/item spawn, player/NPC damage or buf
 - [x] Corrupt Bunny `47` and Corrupt Penguin `168`: source defaults, day-surface exemption and shared close-range AI_003 lunge;
 - [x] Chaos Elemental `120`: source `3/.07/.99` fighter profile, 180-tick stuck pressure, `-120` post-teleport reset and server-owned source tile search with its own RNG/solid/lava rules;
 - [x] wide AI_003 bodies `163`, `164` and `239`: source `50x20` defaults and their `2/.07` or `1.5/.07` movement bands; Gastropod `163` also retains its committed Expert sight-gated local-AI clock and type `472` bolt.
+- [x] Wraith `166`: source `18x40` `3/.07/.99` fighter profile and its server-owned blocked-sight wait clock (`ai[2]`), including random `-480..-61` selection, hit/line-of-sight cancellation and horizontal damping before common fighter motion resumes.
 - [x] Skeleton definition, distinct speed band, world physics, check-active and packet sync;
 - [x] route admitted fighter speed, acceleration, stuck/despawn windows and terrain-jump values through explicit version-pinned profiles consumed by AI and world traversal;
 - [x] carry persisted Blood Moon state into the authoritative NPC world-motion stage;
