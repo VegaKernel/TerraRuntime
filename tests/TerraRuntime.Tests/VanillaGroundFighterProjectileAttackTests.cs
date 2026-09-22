@@ -241,6 +241,19 @@ public sealed class VanillaGroundFighterProjectileAttackTests
     }
 
     [Fact]
+    public void Icy_merman_spit_keeps_its_source_hostile_ai028_defaults()
+    {
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.IcewaterSpit, out VanillaProjectileDefinition definition));
+        Assert.Equal(10, definition.Width);
+        Assert.Equal(10, definition.Height);
+        Assert.Equal(new ProjectileAiStyleId(28), definition.AiStyle);
+        Assert.True(definition.TileCollide);
+        Assert.False(definition.IgnoreWater);
+        Assert.True(VanillaProjectileBehaviorProfileCatalog.TryGet(VanillaProjectileIds.IcewaterSpit, out VanillaProjectileBehaviorProfile profile));
+        Assert.Equal(VanillaProjectileBehaviorFamily.HostileStraightNoGravity, profile.Family);
+    }
+
+    [Fact]
     public void Salamander_arms_for_a_visible_active_player_inside_its_source_range()
     {
         var npcs = new RuntimeNpcStore(2);
@@ -401,7 +414,8 @@ public sealed class VanillaGroundFighterProjectileAttackTests
     [Theory]
     [InlineData(110, 36f, 70f, 35f, 11f, 82, 35)]
     [InlineData(111, 91f, 180f, 90f, 9f, 81, 11)]
-    public void Stationary_archers_arm_and_fire_their_source_arrow_at_half_windup(
+    [InlineData(206, 26f, 50f, 25f, 7f, 177, 37)]
+    public void Stationary_ranged_fighters_arm_and_fire_their_source_projectile_at_half_windup(
         int rawType, float firingTimer, float windup, float expectedTimer, float speed, int projectileType, int damage)
     {
         NpcTypeId type = new(rawType);

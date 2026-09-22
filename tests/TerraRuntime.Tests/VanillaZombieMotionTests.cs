@@ -128,6 +128,22 @@ public sealed class VanillaZombieMotionTests
         Assert.Equal(1.47f, result.VelocityX, 5);
     }
 
+    [Fact]
+    public void Armed_icy_merman_preserves_the_source_stuck_counter_during_its_stationary_windup()
+    {
+        VanillaZombieMotionInput input = CreateInput() with
+        {
+            PositionX = 100f,
+            OldPositionX = 100f,
+            Ai = new NpcAiState(0f, 50f, 3f, 12f),
+            MotionProfile = VanillaGroundFighterMotionProfile.IcyMerman
+        };
+
+        Assert.True(VanillaZombieMotion.TryStep(in input, out VanillaZombieMotionResult result));
+
+        Assert.Equal(12f, result.Ai.Ai3);
+    }
+
     private static VanillaZombieMotionInput CreateInput() =>
         new(
             PositionX: 100f,

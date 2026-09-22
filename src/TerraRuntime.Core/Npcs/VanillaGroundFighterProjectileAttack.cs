@@ -21,9 +21,10 @@ internal static class VanillaGroundFighterProjectileAttack
     private static readonly NpcTypeId Paladin = new(290);
     private static readonly NpcTypeId SkeletonArcher = new(110);
     private static readonly NpcTypeId GoblinArcher = new(111);
+    private static readonly NpcTypeId IcyMerman = new(206);
 
     public static bool IsSupported(NpcTypeId type) =>
-        type == Type243 || type == Type251 || type == Type350 || type == SkeletonSniper || type == TacticalSkeleton || type == SkeletonCommando || type == Paladin || type == SkeletonArcher || type == GoblinArcher || IsSalamander(type);
+        type == Type243 || type == Type251 || type == Type350 || type == SkeletonSniper || type == TacticalSkeleton || type == SkeletonCommando || type == Paladin || type == SkeletonArcher || type == GoblinArcher || type == IcyMerman || IsSalamander(type);
 
     public static NpcSnapshot Complete(
         in NpcSnapshot before,
@@ -62,6 +63,9 @@ internal static class VanillaGroundFighterProjectileAttack
         if (before.TypeIdentity == GoblinArcher)
             return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
                 mutations, 180f, 90f, 9f, 1f, noVerticalLead: false, sourceYOffset: 0f, VanillaProjectileIds.GoblinArcherArrow, 11);
+        if (before.TypeIdentity == IcyMerman)
+            return CompleteDungeonSkeletonShooter(in before, in committed, in definition, in hitbox, context, random, environment,
+                mutations, 50f, 25f, 7f, 1f, noVerticalLead: false, sourceYOffset: -10f, VanillaProjectileIds.IcewaterSpit, 37);
 
         float timer = committed.Ai.Ai2;
         if (before.TypeIdentity == Type243)

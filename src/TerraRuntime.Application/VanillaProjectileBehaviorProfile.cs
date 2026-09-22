@@ -481,6 +481,12 @@ internal static class VanillaProjectileBehaviorProfileCatalog
             return true;
         }
 
+        if (type == VanillaProjectileIds.IcewaterSpit)
+        {
+            profile = RuneBlastProfile;
+            return true;
+        }
+
         if (type == VanillaProjectileIds.DungeonBeam)
         {
             profile = DungeonBeamProfile;

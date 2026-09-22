@@ -694,6 +694,17 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 10,
         CollisionHeight: 10);
 
+    // Projectile.SetDefaults 177: Icy Merman's hostile Icewater Spit.
+    private static readonly VanillaProjectileDefinition IcewaterSpitDefinition = new(
+        Width: 10,
+        Height: 10,
+        AiStyle: new ProjectileAiStyleId(28),
+        TileCollide: true,
+        IgnoreWater: false,
+        CanCutTiles: true,
+        CollisionWidth: 10,
+        CollisionHeight: 10);
+
     // Projectile.SetDefaults 174: hostile Spiked Ice Slime shot.
     private static readonly VanillaProjectileDefinition SpikedIceSlimeSpikeDefinition = new(
         Width: 6,
@@ -1161,6 +1172,12 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.GoblinArcherArrow)
         {
             definition = GoblinArcherArrowDefinition;
+            return true;
+        }
+
+        if (type == VanillaProjectileIds.IcewaterSpit)
+        {
+            definition = IcewaterSpitDefinition;
             return true;
         }
 

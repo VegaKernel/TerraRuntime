@@ -67,6 +67,7 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         [VanillaNpcIds.Paladin, 34, 62, 100, 50, 5000, 0f, 1f, 1f, false, false],
         [VanillaNpcIds.SkeletonArcher, 18, 40, 45, 14, 210, .55f, 1f, 1f, false, false],
         [VanillaNpcIds.GoblinArcher, 18, 40, 20, 6, 80, .7f, .95f, 1f, false, false],
+        [VanillaNpcIds.IcyMerman, 18, 40, 60, 30, 280, .5f, 1f, 1f, false, false],
     ];
 
     [Theory]
@@ -115,8 +116,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(81, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(79, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(82, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(80, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
