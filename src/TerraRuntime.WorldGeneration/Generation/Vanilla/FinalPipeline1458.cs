@@ -413,6 +413,11 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                     }
                 }
 
+                if (tile.IsActive && tile.Type == 162 &&
+                    !grid.At(x, y - 1).IsActive && !grid.At(x, y + 1).IsActive &&
+                    grid.At(x, y + 1).LiquidAmount == 0 && CanKillCleanupTile162(grid, x, y))
+                    tile.Flags &= ~WorldTileFlags.Active;
+
                 // WorldGen.TileCleanup repairs every piece of a broken 2x2 shadow orb / crimson heart
                 // independently of which surviving piece caused this branch.  The drunk-world wall override
                 // is deliberately deferred with the other special-seed-only cleanup branches; this is the
@@ -461,6 +466,34 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
 
     private static bool IsSolidTile(in WorldTile tile) =>
         tile.IsActive && VanillaTileCollisionCatalog.IsSolid(new TileTypeId(tile.Type));
+
+    // The reachable WorldGen.CanKillTile prefix for TileCleanup's type-162 arm in TerrariaServer 1.4.5.8.
+    // Type 162 is not a boulder/container, so its later object-specific branches cannot apply here.
+    private static bool CanKillCleanupTile162(RuntimeGrid grid, int x, int y)
+    {
+        ref WorldTile tile = ref grid.At(x, y);
+        if (!tile.IsActive || tile.Wall == 350)
+            return false;
+
+        ref WorldTile above = ref grid.At(x, y - 1);
+        if (!above.IsActive)
+            return true;
+
+        if (IsTreeTrunk(above.Type) && above.Type != tile.Type &&
+            (above.FrameX != 66 || above.FrameY is < 0 or > 44) &&
+            (above.FrameX != 88 || above.FrameY is < 66 or > 110) && above.FrameY < 198)
+            return false;
+
+        return above.Type switch
+        {
+            323 or 21 or 26 or 72 or 77 or 88 or 467 or 488 => above.Type == tile.Type,
+            80 => above.Type == tile.Type || (above.FrameX / 18 is not (0 or 1 or 4 or 5)),
+            _ => true
+        };
+    }
+
+    // TileID.Sets.IsATreeTrunk from TerrariaServer 1.4.5.8, independently read from the official table.
+    private static bool IsTreeTrunk(ushort type) => type is 5 or 72 or 583 or 584 or 585 or 586 or 587 or 588 or 589 or 596 or 616 or 634;
 
     private static void PlaceCleanupDrip(ref WorldTile destination, WorldLiquidKind kind, bool forceHoney)
     {

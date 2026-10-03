@@ -311,6 +311,30 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Tile_cleanup_removes_unattached_type_162_but_keeps_source_protected_cases()
+    {
+        var workspace = new Workspace(100, 100);
+        Assert.True(workspace.TrySetLayers(10, 20));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        var loose = new WorldTile { Type = 162, Flags = WorldTileFlags.Active };
+        var wallBlocked = new WorldTile { Type = 162, Wall = 350, Flags = WorldTileFlags.Active };
+        var chestBlocked = new WorldTile { Type = 162, Flags = WorldTileFlags.Active };
+        var chestAbove = new WorldTile { Type = 21, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(50, 50, in loose);
+        workspace.TileStore.Set(55, 50, in wallBlocked);
+        workspace.TileStore.Set(60, 50, in chestBlocked);
+        workspace.TileStore.Set(60, 49, in chestAbove);
+
+        var request = new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100);
+        new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
+            .Execute(new Context(request, workspace, new RandomAdapter(1458)));
+
+        Assert.False(workspace.TileStore.Get(50, 50).IsActive);
+        Assert.True(workspace.TileStore.Get(55, 50).IsActive);
+        Assert.True(workspace.TileStore.Get(60, 50).IsActive);
+    }
+
+    [Fact]
     public void Complete_ordinary_plan_matches_every_applicable_source_registration_in_order()
     {
         var request = new WorldGenerationRequest(Provider1458.GeneratorId, "AllPasses", 1458, 4200, 1200);
