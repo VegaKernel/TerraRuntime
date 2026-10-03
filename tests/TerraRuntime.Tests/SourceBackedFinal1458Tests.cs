@@ -621,6 +621,45 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Water_plants_cat_tail_fixture_matches_official_passlegacy_cells_and_rng()
+    {
+        // Direct TerrariaServer 1.4.5.8 Water Plants PassLegacy fixture, 600x500, seed 1458:
+        // one five-cell water column over Grass at x=300. The source offers the submerged cell,
+        // chooses a cat tail, then retains the exact five-segment growth and shared RNG position.
+        const int width = 600;
+        const int height = 500;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        for (int y = 100; y <= 104; y++)
+        {
+            var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+            workspace.TileStore.Set(300, y, in water);
+        }
+        var grass = new WorldTile { Type = 2, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(300, 105, in grass);
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.WaterPlants, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height),
+                workspace,
+                random));
+
+        short[] frames = [90, 108, 108, 108, 72];
+        for (int index = 0; index < frames.Length; index++)
+        {
+            WorldTile tail = workspace.TileStore.Get(300, 100 + index);
+            Assert.True(tail.IsActive);
+            Assert.Equal((ushort)519, tail.Type);
+            Assert.Equal(frames[index], tail.FrameX);
+            Assert.Equal((short)0, tail.FrameY);
+            Assert.Equal(byte.MaxValue, tail.LiquidAmount);
+        }
+        Assert.Equal(1420393577, random.Next());
+    }
+
+    [Fact]
     public void Complete_ordinary_plan_matches_every_applicable_source_registration_in_order()
     {
         var request = new WorldGenerationRequest(Provider1458.GeneratorId, "AllPasses", 1458, 4200, 1200);

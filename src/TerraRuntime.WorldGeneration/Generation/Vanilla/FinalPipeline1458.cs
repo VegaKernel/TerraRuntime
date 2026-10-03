@@ -716,38 +716,237 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, "Lihzahrd Altars complete; placed at retained temple anchor");
     }
 
-    private static void ApplyWaterPlants(
+    private void ApplyWaterPlants(
         IWorldGenerationContext context,
         RuntimeGrid grid,
         IWorldGenerationVanillaRandom random)
     {
+        // TerrariaServer 1.4.5.8 GenPassNameID.LilypadsCattailsBambooAndSeaweed walks every ordinary
+        // surface column. This ordering is important: the one-in-five offer is consumed before any
+        // placement helper decides whether it can use the site.
+        int surface = Math.Clamp((int)state.Layers.WorldSurface, 1, grid.Height - 1);
         int placed = 0;
-        int maxY = Math.Min(grid.Height - 3, Math.Max((int)(grid.Height * 0.55d), (int)grid.Height / 3));
-        for (int x = 2; x < grid.Width - 2; x++)
+        for (int x = 20; x < grid.Width - 20; x++)
         {
-            if ((x & 63) == 0)
+            if ((x & 31) == 0)
                 context.CancellationToken.ThrowIfCancellationRequested();
-            if (random.Next(18) != 0)
-                continue;
 
-            for (int y = 2; y < maxY; y++)
+            for (int y = 1; y < surface; y++)
             {
-                ref WorldTile tile = ref grid.At(x, y);
-                if (tile.IsActive || tile.LiquidAmount < 64)
+                if (random.Next(5) != 0 || grid.At(x, y).LiquidAmount == 0)
                     continue;
 
-                WorldTile above = grid.At(x, y - 1);
-                if (above.IsActive || above.LiquidAmount != 0)
-                    continue;
+                if (!grid.At(x, y).IsActive)
+                {
+                    if (random.Next(2) == 0)
+                        placed += TryPlaceLilyPad(grid, random, x, y) ? 1 : 0;
+                    else
+                    {
+                        VanillaCatTailAnchor1458? anchor = CatTail1458.TryPlace(grid.Store, random, x, y);
+                        if (anchor is { } value)
+                        {
+                            placed++;
+                            int growth = random.Next(14);
+                            for (int k = 0; k < growth; k++)
+                                CatTail1458.Grow(grid.Store, random, value.X, value.Y);
+                        }
+                    }
+                }
 
-                ushort type = random.Next(3) == 0 ? Cattail : LilyPad;
-                SetObjectTile(ref tile, type, frameX: checked((short)(random.Next(3) * 18)), preserveLiquid: true);
-                placed++;
-                break;
+                WorldTile current = grid.At(x, y);
+                if ((!current.IsActive || current.Type is JunglePlants or JunglePlants2) &&
+                    TryPlaceBamboo(grid, random, x, y, surface))
+                {
+                    placed++;
+                    int growth = random.Next(10, 20);
+                    for (int l = 0; l < growth && TryPlaceBamboo(grid, random, x, y - l, surface); l++)
+                        placed++;
+                }
+            }
+
+            for (int y = grid.Height - 1; y > surface; y--)
+            {
+                WorldTile tile = grid.At(x, y);
+                if (!tile.IsActive)
+                    continue;
+                if (tile.Type == Sand && random.Next(3) != 0)
+                    GrowSeaweed(grid, random, x, y);
+                else if (tile.Type == 549)
+                    GrowSeaweed(grid, random, x, y);
             }
         }
         context.ReportProgress(1d, $"Water Plants complete; placed={placed}");
     }
+
+    private static bool TryPlaceLilyPad(RuntimeGrid grid, IWorldGenerationVanillaRandom random, int x, int y)
+    {
+        if (x < 50 || x > grid.Width - 50 || y < 50 || y > grid.Height - 50)
+            return false;
+        WorldTile start = grid.At(x, y);
+        if (start.IsActive || start.LiquidAmount == 0 || start.LiquidKind != WorldLiquidKind.Water)
+            return false;
+        while (grid.At(x, y).LiquidAmount > 0 && y > 50)
+            y--;
+        y++;
+        WorldTile surface = grid.At(x, y);
+        if (surface.IsActive || grid.At(x, y - 1).IsActive || surface.LiquidAmount == 0 ||
+            surface.LiquidKind != WorldLiquidKind.Water ||
+            (surface.Wall != 0 && surface.Wall != 15 && surface.Wall != 70 && (surface.Wall < 63 || surface.Wall > 68)))
+            return false;
+
+        int neighbours = 0;
+        for (int i = x - 5; i <= x + 5; i++)
+        for (int j = y - 5; j <= y + 5; j++)
+            if (grid.At(i, j).IsActive && grid.At(i, j).Type == LilyPad)
+                neighbours++;
+        if (neighbours > 3)
+            return false;
+
+        int floor = y;
+        while ((!grid.At(x, floor).IsActive || !VanillaTileCollisionCatalog.IsSolid(grid.At(x, floor).TileType) ||
+                VanillaTileCollisionCatalog.IsSolidTop(grid.At(x, floor).TileType)) && floor < grid.Height - 50)
+        {
+            if (grid.At(x, floor).IsActive && grid.At(x, floor).Type == Cattail)
+                return false;
+            floor++;
+        }
+        if (floor - y is > 12 or < 3)
+            return false;
+        WorldTile ground = grid.At(x, floor);
+        short frameY = ground.Type switch { 2 or 477 => 0, 109 or 492 or 116 => 18, 60 => 36, _ => -1 };
+        if (frameY < 0)
+            return false;
+
+        ref WorldTile pad = ref grid.At(x, y);
+        pad.Flags |= WorldTileFlags.Active;
+        pad.Flags &= ~WorldTileFlags.Inactive;
+        pad.Type = LilyPad;
+        pad.TileColor = ground.TileColor;
+        pad.Shape = 0;
+        pad.FrameY = frameY;
+        if (random.Next(2) == 0)
+            pad.FrameX = checked((short)(18 * random.Next(3)));
+        else if (random.Next(15) == 0)
+            pad.FrameX = checked((short)(18 * random.Next(18)));
+        else
+        {
+            int fifth = grid.Width / 5;
+            int group = x < fifth ? random.Next(6, 9) : x < fifth * 2 ? random.Next(9, 12) :
+                x < fifth * 3 ? random.Next(3, 6) : x < fifth * 4 ? random.Next(15, 18) : random.Next(12, 15);
+            pad.FrameX = checked((short)(18 * group));
+        }
+        return true;
+    }
+
+    private static bool TryPlaceBamboo(
+        RuntimeGrid grid,
+        IWorldGenerationVanillaRandom random,
+        int x,
+        int y,
+        int surface)
+    {
+        // WorldGen.PlaceBamboo draws this before every rejection, including malformed candidates.
+        int densityRoll = random.Next(1, 21);
+        if ((uint)x >= (uint)grid.Width || (uint)y >= (uint)(grid.Height - 1))
+            return false;
+        WorldTile tile = grid.At(x, y);
+        if (tile.Wall > 0 && y <= surface || tile.IsActive && tile.Type == 314)
+            return false;
+        WorldTile below = grid.At(x, y + 1);
+        if (!below.IsActive || below.Type is not (571 or JungleGrass))
+            return false;
+        int waterDepth = GetWaterDepth(grid, x, y);
+        if (waterDepth is < 2 or > 5)
+            return false;
+        int plants = CountGrowingPlantTiles(grid, x, y, 5, 571);
+        int distance = 1;
+        if (below.Type == 571)
+        {
+            while (y + distance < grid.Height && !IsOrdinarySolid(grid.At(x, y + distance)))
+                distance++;
+            if (y + distance >= grid.Height || distance + plants / random.Next(1, 21) > densityRoll)
+                return false;
+        }
+        else
+            plants += 25;
+        plants += distance * 2;
+        if (plants > random.Next(40, 61))
+            return false;
+
+        ref WorldTile planted = ref grid.At(x, y);
+        planted.Flags |= WorldTileFlags.Active;
+        planted.Flags &= ~WorldTileFlags.Inactive;
+        planted.Type = 571;
+        planted.FrameX = 0;
+        planted.FrameY = 0;
+        planted.Shape = 0;
+        planted.TileColor = below.TileColor;
+        planted.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+        planted.Flags |= below.Flags & (WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
+        return true;
+    }
+
+    private static int GetWaterDepth(RuntimeGrid grid, int x, int y)
+    {
+        int bottom = y;
+        while (bottom < grid.Height && !IsOrdinarySolid(grid.At(x, bottom)))
+            bottom++;
+        if (bottom >= grid.Height)
+            return 0;
+        bottom--;
+        int top = bottom;
+        while (top >= 0 && grid.At(x, top).LiquidAmount > 0 && !IsOrdinarySolid(grid.At(x, top)))
+            top--;
+        return bottom - top;
+    }
+
+    private static int CountGrowingPlantTiles(RuntimeGrid grid, int x, int y, int range, ushort type)
+    {
+        int count = 0;
+        for (int i = Math.Max(0, x - range); i <= Math.Min(grid.Width - 1, x + range); i++)
+        for (int j = Math.Max(0, y - range * 3); j <= Math.Min(grid.Height - 1, y + range * 3); j++)
+            if (grid.At(i, j).IsActive && grid.At(i, j).Type == type)
+                count++;
+        return count;
+    }
+
+    private static void GrowSeaweed(RuntimeGrid grid, IWorldGenerationVanillaRandom random, int x, int y)
+    {
+        WorldTile tile = grid.At(x, y);
+        if (tile.Type == 549 && tile.LiquidAmount < 200 || grid.At(x, y - 1).LiquidAmount < 200)
+        {
+            if (tile.IsActive && tile.Type == 549 && random.Next(2) == 0)
+                KillSingleTileDuringCleanup(ref grid.At(x, y));
+            return;
+        }
+        if (grid.At(x, y - 1).IsActive || grid.At(x, y - 2).IsActive || random.Next(1) != 0 ||
+            grid.At(x, y - 2).LiquidAmount != byte.MaxValue || grid.At(x, y - 3).LiquidAmount != byte.MaxValue)
+            return;
+        int neighbours = 0;
+        for (int i = Math.Max(0, x - 4); i <= Math.Min(grid.Width - 1, x + 4); i++)
+        for (int j = y; j <= Math.Min(grid.Height - 1, y + 12); j++)
+        {
+            if (grid.At(i, j).IsActive && grid.At(i, j).Type == 549 && ++neighbours > 30)
+                return;
+        }
+        int floor = y;
+        while (floor < grid.Height - 50 && !IsOrdinarySolid(grid.At(x, floor)))
+            floor++;
+        if (floor - y < 17 - random.Next(20))
+        {
+            ref WorldTile seaweed = ref grid.At(x, y - 1);
+            seaweed.Flags |= WorldTileFlags.Active;
+            seaweed.Flags &= ~WorldTileFlags.Inactive;
+            seaweed.Type = 549;
+            seaweed.FrameX = 0;
+            seaweed.FrameY = 0;
+            seaweed.Shape = 0;
+        }
+    }
+
+    private static bool IsOrdinarySolid(in WorldTile tile) =>
+        tile.IsActive && VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+        !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
 
     /// <summary>
     /// Source <c>GenPassNameID.SpeleothemsAndGemTrees</c>, delegated to <see cref="SpeleothemPass1458"/>.
