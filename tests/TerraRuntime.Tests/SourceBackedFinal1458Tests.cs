@@ -461,6 +461,41 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Tile_cleanup_trap_neighbour_fixture_matches_official_passlegacy_cells_and_rng()
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1458: a frame-0 trap
+        // clears only the active bit of its left half-brick neighbour. No pass RNG is consumed.
+        const int width = 600;
+        const int height = 500;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            workspace.TileStore.Set(x, y, in stone);
+
+        var trap = new WorldTile { Type = 137, Flags = WorldTileFlags.Active, FrameX = 0, FrameY = 0 };
+        var halfBrick = new WorldTile { Type = 1, Flags = WorldTileFlags.Active, Shape = 1 };
+        workspace.TileStore.Set(300, 200, in trap);
+        workspace.TileStore.Set(299, 200, in halfBrick);
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height),
+                workspace,
+                random));
+
+        WorldTile cleared = workspace.TileStore.Get(299, 200);
+        Assert.False(cleared.IsActive);
+        Assert.Equal((ushort)1, cleared.Type);
+        Assert.Equal((byte)1, cleared.Shape);
+        Assert.True(workspace.TileStore.Get(300, 200).IsActive);
+        Assert.Equal(906992634, random.Next());
+    }
+
+    [Fact]
     public void Lihzahrd_altar_consumes_the_retained_temple_anchor_without_rng_or_site_search()
     {
         // TerrariaServer 1.4.5.8 GenPassNameID.LihzahrdAltar writes GenVars.lAltarX/lAltarY directly:
