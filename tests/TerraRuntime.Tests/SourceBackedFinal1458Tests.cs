@@ -335,6 +335,40 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Tile_cleanup_recovers_basic_chest_with_its_source_loot_style()
+    {
+        var workspace = new Workspace(100, 100);
+        Assert.True(workspace.TrySetLayers(10, 20));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        for (int dx = 0; dx < 2; dx++)
+        for (int dy = 0; dy < 2; dy++)
+        {
+            var piece = new WorldTile { Type = 21, Flags = WorldTileFlags.Active, FrameX = (short)(dx * 18), FrameY = (short)(dy * 18) };
+            workspace.TileStore.Set(50 + dx, 50 + dy, in piece);
+        }
+        Assert.True(workspace.TryAddGeneratedChest(50, 50, string.Empty, [new WorldChestItem(1, 1156, 0)]));
+        var survivor = new WorldTile { Type = 21, Flags = WorldTileFlags.Active, FrameX = 18, FrameY = 18, Shape = 3 };
+        workspace.TileStore.Set(51, 51, in survivor);
+        var support = new WorldTile { Wall = 3 };
+        workspace.TileStore.Set(50, 52, in support);
+        workspace.TileStore.Set(51, 52, in support);
+
+        var request = new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100);
+        new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
+            .Execute(new Context(request, workspace, new RandomAdapter(1458)));
+
+        for (int dx = 0; dx < 2; dx++)
+        for (int dy = 0; dy < 2; dy++)
+        {
+            WorldTile repaired = workspace.TileStore.Get(50 + dx, 50 + dy);
+            Assert.True(repaired.IsActive);
+            Assert.Equal((ushort)21, repaired.Type);
+            Assert.Equal((short)(828 + dx * 18), repaired.FrameX);
+            Assert.Equal((short)(dy * 18), repaired.FrameY);
+        }
+    }
+
+    [Fact]
     public void Complete_ordinary_plan_matches_every_applicable_source_registration_in_order()
     {
         var request = new WorldGenerationRequest(Provider1458.GeneratorId, "AllPasses", 1458, 4200, 1200);

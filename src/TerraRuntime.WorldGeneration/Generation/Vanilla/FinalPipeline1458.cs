@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.World;
+using TerraRuntime.WorldGeneration.Runtime;
 
 namespace TerraRuntime.WorldGeneration.Vanilla;
 
@@ -445,6 +446,9 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                     EnsureTwoWideTerrainSupport(grid, originX, originY + 2);
                 }
 
+                if (tile.IsActive && tile.Type is 21 or 467)
+                    RepairBasicChest(context, grid, x, y, tile.Type, tile.FrameX, tile.FrameY);
+
                 if (tile.IsActive && tile.Type == 26)
                 {
                     int frameColumn = tile.FrameX / 18;
@@ -466,6 +470,39 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
 
     private static bool IsSolidTile(in WorldTile tile) =>
         tile.IsActive && VanillaTileCollisionCatalog.IsSolid(new TileTypeId(tile.Type));
+
+    private static void RepairBasicChest(
+        IWorldGenerationContext context, RuntimeGrid grid, int x, int y, ushort observedType, short frameX, short frameY)
+    {
+        int frameColumn = frameX / 18;
+        int originX = x - frameColumn % 2;
+        int originY = y - frameY / 18;
+        int style = frameX / 36;
+        ushort type = observedType == 467 ? (ushort)467 : (ushort)21;
+
+        if (context.Workspace is Workspace workspace)
+        {
+            foreach (WorldChest chest in workspace.CaptureGeneratedChests())
+            {
+                if (chest.X != originX || chest.Y != originY || chest.Items.Length == 0)
+                    continue;
+
+                style = chest.Items[0].ItemType switch
+                {
+                    1156 => 23,
+                    1571 => 24,
+                    1569 => 25,
+                    1260 => 26,
+                    1572 => 27,
+                    _ => style
+                };
+                break;
+            }
+        }
+
+        RepairTwoByTwoObject(grid, originX, originY, type, style, 0);
+        EnsureTwoWideTerrainSupport(grid, originX, originY + 2);
+    }
 
     // The reachable WorldGen.CanKillTile prefix for TileCleanup's type-162 arm in TerrariaServer 1.4.5.8.
     // Type 162 is not a boulder/container, so its later object-specific branches cannot apply here.
