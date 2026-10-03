@@ -525,6 +525,35 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Tile_cleanup_spike_ball_support_fixture_matches_official_passlegacy_cells_and_rng()
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy fixture: type 237 directly above type 232 converts
+        // only that support to Sunplate 226 and preserves the shared RNG position.
+        const int width = 600;
+        const int height = 500;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            workspace.TileStore.Set(x, y, in stone);
+        var spikeBall = new WorldTile { Type = 237, Flags = WorldTileFlags.Active };
+        var support = new WorldTile { Type = 232, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(300, 200, in spikeBall);
+        workspace.TileStore.Set(300, 201, in support);
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height), workspace, random));
+
+        Assert.Equal((ushort)237, workspace.TileStore.Get(300, 200).Type);
+        Assert.Equal((ushort)226, workspace.TileStore.Get(300, 201).Type);
+        Assert.Equal(906992634, random.Next());
+    }
+
+    [Fact]
     public void Tile_cleanup_life_crystal_fixture_matches_official_passlegacy_cells_and_rng()
     {
         // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1458: the sole lower-right
