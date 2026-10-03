@@ -101,13 +101,23 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         if (TryCreateKingSlimeTerminalTransition(in npc, out next))
             return true;
 
-        bool fighterStuckHopEligible = npc.VelocityX == 0f && !npc.Simulation.JustHit;
         if (!inner.TryStepState(in npc, out NpcStateUpdate aiState))
         {
             next = default;
             return false;
         }
+        if (npc.TypeIdentity == VanillaNpcIds.Nailhead || npc.TypeIdentity == VanillaNpcIds.DrManFly)
+        {
+            next = aiState;
+            return true;
+        }
+        return TryApplyWorldMotion(in npc, in aiState, out next);
+    }
 
+    internal bool TryApplyWorldMotion(in NpcSnapshot npc, in NpcStateUpdate proposed, out NpcStateUpdate next)
+    {
+        NpcStateUpdate aiState = proposed;
+        bool fighterStuckHopEligible = npc.VelocityX == 0f && !npc.Simulation.JustHit;
         if (!NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
             !VanillaNpcDefinitionCatalog.TryGet(npcType, npc.NetIdentity, out VanillaNpcDefinition definition) ||
             definition.PhysicsFamily == VanillaNpcPhysicsFamily.None)
@@ -166,7 +176,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
 
             VanillaGroundFighterDoorEnvironment doorEnvironment = ResolveDoorEnvironment(in aiState);
             // Source flag8 is false for Psycho: its ai[2] remains the ambush clock, never door pressure.
-            VanillaZombieDoorContactResult doorContact = definition.Type == VanillaNpcIds.Psycho
+            VanillaZombieDoorContactResult doorContact = (definition.Type == VanillaNpcIds.Psycho || definition.Type == VanillaNpcIds.DrManFly)
                 ? new VanillaZombieDoorContactResult(velocityX, aiState.Ai, false, false, false)
                 : VanillaWorldZombieDoorContact.Resolve(
                 tiles,
@@ -263,6 +273,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                     velocityY = leapingVelocityY;
                 }
             }
+            if (definition.Type == VanillaNpcIds.Butcher && doorContact.GroundSupported && velocityY < 0f)
+            { velocityX *= 1.3f; velocityY *= 1.1f; }
         }
         else if (definition.PhysicsFamily == VanillaNpcPhysicsFamily.UnicornGround)
         {
@@ -278,6 +290,22 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             velocityY = obstacle.VelocityY;
         }
 
+        return TryFinishPhysics(tiles, worldSurfaceTiles, in npc, aiState with { VelocityX = velocityX, VelocityY = velocityY, Simulation = simulation }, out next);
+    }
+
+    internal static bool TryFinishPhysics(WorldTileStore tiles, double worldSurfaceTiles,
+        in NpcSnapshot npc, in NpcStateUpdate aiState, out NpcStateUpdate next)
+    {
+        if (!VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(aiState.Type), new NpcNetId(aiState.NetId), out var definition) ||
+            definition.PhysicsFamily == VanillaNpcPhysicsFamily.None ||
+            !definition.TryResolveHitbox(aiState.Simulation, out var hitbox))
+        {
+            next = default;
+            return false;
+        }
+        var simulation = aiState.Simulation;
+        int hitboxWidth = hitbox.Width, hitboxHeight = hitbox.Height;
+        float velocityX = aiState.VelocityX, velocityY = aiState.VelocityY;
         if (!VanillaNpcGravity.TryApply(
                 in definition,
                 aiState.PositionY,
@@ -431,9 +459,22 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             .DefersStatePublication(in before, in proposed) ?? false;
 
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
-        INpcAiCommittedNpcMutationSink mutations) =>
-        NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitEffect>(inner)?
+        INpcAiCommittedNpcMutationSink mutations)
+    {
+        if (before.TypeIdentity == committed.TypeIdentity &&
+            (before.TypeIdentity == VanillaNpcIds.Nailhead || before.TypeIdentity == VanillaNpcIds.DrManFly) &&
+            NpcAiStateStepperComposition.FindCapability<INpcAiAcceptedWorldMotionPlanner>(inner) is { } planner)
+        {
+            Span<NpcAiProjectileIntent> shots = stackalloc NpcAiProjectileIntent[5];
+            if (!planner.TryPlanBeforeWorldMotion(in before, in committed, shots, out int count, out var planned) ||
+                !TryApplyWorldMotion(in before, in planned, out var final) ||
+                !mutations.TryUpdateState(in committed, in final, out var completed)) return default;
+            for (int i = 0; i < count; i++) mutations.TrySpawnProjectile(in completed, in shots[i], out _);
+            return completed;
+        }
+        return NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitEffect>(inner)?
             .CompleteCommittedState(in before, in committed, mutations) ?? committed;
+    }
 
     public bool DeactivatesAfterStep(in NpcSnapshot before, in NpcStateUpdate proposed) =>
         NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitEffect>(inner)?

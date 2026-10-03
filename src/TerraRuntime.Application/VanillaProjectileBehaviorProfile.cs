@@ -57,7 +57,9 @@ internal enum VanillaProjectileBehaviorFamily : byte
     DungeonBeam = 44,
     DungeonFlame = 45,
     DungeonSkull = 46,
-    PirateCaptainCannonball = 47
+    PirateCaptainCannonball = 47,
+    Nail = 48,
+    DrManFlyFlask = 49
 }
 
 /// <summary>
@@ -122,6 +124,14 @@ internal static class VanillaProjectileBehaviorProfileCatalog
         BehaviorImplemented: true,
         RequiresDefaultAi2: true,
         RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
+
+    private static readonly VanillaProjectileBehaviorProfile NailProfile = HostileStraightArrowProfile with
+    { Family = VanillaProjectileBehaviorFamily.Nail };
+
+    private static readonly VanillaProjectileBehaviorProfile DrManFlyFlaskProfile = new(
+        VanillaProjectileBehaviorFamily.DrManFlyFlask, VanillaProjectileAiStyles.Thrown,
+        BehaviorImplemented: true, RequiresDefaultAi2: true, RejectServerOwned: false,
         ExemptFromPreAiWorldBounds: false);
 
     // Projectile.Update leaves type 100 active after it crosses Main.rightWorld. The other AI_001 hostile
@@ -483,6 +493,9 @@ internal static class VanillaProjectileBehaviorProfileCatalog
             profile = RedDevilSickleProfile;
             return true;
         }
+
+        if (type == VanillaProjectileIds.Nail) { profile = NailProfile; return true; }
+        if (type == VanillaProjectileIds.DrManFlyFlask) { profile = DrManFlyFlaskProfile; return true; }
 
         if (type == VanillaProjectileIds.RuneBlast)
         {

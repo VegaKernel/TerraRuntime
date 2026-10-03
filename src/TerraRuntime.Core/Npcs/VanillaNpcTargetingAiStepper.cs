@@ -20,7 +20,8 @@ public sealed class VanillaNpcTargetingAiStepper :
     INpcAiPeerSnapshotConsumer,
     INpcAiRetainedSlotSnapshotConsumer,
     INpcAiForcedUpdateIntentPlanner,
-    INpcAiStatePostCommitEffect
+    INpcAiStatePostCommitEffect,
+    INpcAiAcceptedWorldMotionPlanner
 {
     public const int MaximumPlayerCandidates = VanillaNpcBehaviorContext.MaximumPlayerCandidates;
     private const float MourningWoodFireballHalfSize = 13f;
@@ -32,6 +33,12 @@ public sealed class VanillaNpcTargetingAiStepper :
         VanillaPrimeRangedBehavior.RequiresImmediateSync(in before, in proposed) ||
         VanillaSkeletronPrimeLimbNpcBehaviorStrategy.RequiresImmediateSync(in before, in proposed, _context) ||
         VanillaMoonLordNpcBehaviorStrategy.RequiresImmediateSync(in before, in proposed);
+
+    public bool RequiresForcedUpdateAfterCompletion(in NpcSnapshot before, in NpcSnapshot finalized) =>
+        before.TypeIdentity == VanillaNpcIds.DrManFly && finalized.TypeIdentity == before.TypeIdentity &&
+        (before.Simulation.JustHit || (finalized.Ai.Ai1 == 70f && finalized.Ai.Ai2 > 0f) ||
+         (before.Ai.Ai1 == 36f && before.Ai.Ai2 > 0f && finalized.Ai.Ai1 == 35f && finalized.Ai.Ai2 > 0f &&
+          _context.TryFindCandidate((byte)finalized.Target, out var target) && target.Active && !target.Dead));
 
     public bool RequiresForcedUpdateAfterPlanning(
         in NpcSnapshot before,
@@ -1950,65 +1957,65 @@ public sealed class VanillaNpcTargetingAiStepper :
             switch (variation)
             {
                 case 1:
-                {
-                    float angle = NextUnitFloat() * MathF.PI * 2f;
-                    float cos = MathF.Cos(angle);
-                    float sin = MathF.Sin(angle);
-                    spawnX = target.CenterX - cos * radius;
-                    spawnY = target.CenterY - sin * radius;
-                    velocityX = cos * 4f;
-                    velocityY = sin * 4f;
-                    ai0 = 180f;
-                    ai1 = angle - MathF.PI * 0.5f;
-                    break;
-                }
-                case 2:
-                {
-                    float angle = NextUnitFloat() * MathF.PI * 2f;
-                    float cos = MathF.Cos(angle);
-                    float sin = MathF.Sin(angle);
-                    spawnX = target.CenterX - cos * radius;
-                    spawnY = target.CenterY - sin * radius;
-                    velocityX = cos * 4f;
-                    velocityY = sin * 4f;
-                    ai0 = 300f;
-                    ai1 = angle;
-                    break;
-                }
-                case 3:
-                {
-                    const int leadTicks = 60;
-                    float angle = NextUnitFloat() * MathF.PI * 2f;
-                    float curve = MathF.PI * 0.5f / leadTicks * NextFloatDirection();
-                    spawnX = target.CenterX + target.VelocityX * leadTicks;
-                    spawnY = target.CenterY + target.VelocityY * leadTicks;
-                    velocityX = MathF.Cos(angle) * 8f;
-                    velocityY = MathF.Sin(angle) * 8f;
-                    for (int tick = 0; tick < leadTicks; tick++)
                     {
-                        spawnX -= velocityX;
-                        spawnY -= velocityY;
-                        Rotate(ref velocityX, ref velocityY, -curve);
+                        float angle = NextUnitFloat() * MathF.PI * 2f;
+                        float cos = MathF.Cos(angle);
+                        float sin = MathF.Sin(angle);
+                        spawnX = target.CenterX - cos * radius;
+                        spawnY = target.CenterY - sin * radius;
+                        velocityX = cos * 4f;
+                        velocityY = sin * 4f;
+                        ai0 = 180f;
+                        ai1 = angle - MathF.PI * 0.5f;
+                        break;
                     }
-                    ai0 = 390f;
-                    ai1 = curve;
-                    break;
-                }
+                case 2:
+                    {
+                        float angle = NextUnitFloat() * MathF.PI * 2f;
+                        float cos = MathF.Cos(angle);
+                        float sin = MathF.Sin(angle);
+                        spawnX = target.CenterX - cos * radius;
+                        spawnY = target.CenterY - sin * radius;
+                        velocityX = cos * 4f;
+                        velocityY = sin * 4f;
+                        ai0 = 300f;
+                        ai1 = angle;
+                        break;
+                    }
+                case 3:
+                    {
+                        const int leadTicks = 60;
+                        float angle = NextUnitFloat() * MathF.PI * 2f;
+                        float curve = MathF.PI * 0.5f / leadTicks * NextFloatDirection();
+                        spawnX = target.CenterX + target.VelocityX * leadTicks;
+                        spawnY = target.CenterY + target.VelocityY * leadTicks;
+                        velocityX = MathF.Cos(angle) * 8f;
+                        velocityY = MathF.Sin(angle) * 8f;
+                        for (int tick = 0; tick < leadTicks; tick++)
+                        {
+                            spawnX -= velocityX;
+                            spawnY -= velocityY;
+                            Rotate(ref velocityX, ref velocityY, -curve);
+                        }
+                        ai0 = 390f;
+                        ai1 = curve;
+                        break;
+                    }
                 default:
-                {
-                    float jitter = NextFloatDirection() * MathF.PI * 0.125f;
-                    float cos = MathF.Cos(jitter);
-                    float sin = MathF.Sin(jitter);
-                    float offsetX = -side * radius;
-                    spawnX = target.CenterX + target.VelocityX * 30f + offsetX * cos;
-                    spawnY = target.CenterY + target.VelocityY * 30f + offsetX * sin;
-                    float speed = side * radius / (travelTicks + 10f);
-                    velocityX = speed * cos;
-                    velocityY = speed * sin;
-                    ai0 = 0f;
-                    ai1 = 0f;
-                    break;
-                }
+                    {
+                        float jitter = NextFloatDirection() * MathF.PI * 0.125f;
+                        float cos = MathF.Cos(jitter);
+                        float sin = MathF.Sin(jitter);
+                        float offsetX = -side * radius;
+                        spawnX = target.CenterX + target.VelocityX * 30f + offsetX * cos;
+                        spawnY = target.CenterY + target.VelocityY * 30f + offsetX * sin;
+                        float speed = side * radius / (travelTicks + 10f);
+                        velocityX = speed * cos;
+                        velocityY = speed * sin;
+                        ai0 = 0f;
+                        ai1 = 0f;
+                        break;
+                    }
             }
 
             if (!_context.ShadowSpawnIntersectsOtherPlayer(target.Slot, spawnX, spawnY, 50f))
@@ -2087,9 +2094,11 @@ public sealed class VanillaNpcTargetingAiStepper :
         int centerX = (int)(source.PositionX + 50f), centerY = (int)(source.PositionY + 50f);
         float parent = source.Handle.Slot;
         destination[0] = new NpcAiSpawnIntent(VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi59PumpkingBlade,
-            centerX, centerY, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(-1f, parent, 0f, 0f), StartSlot = source.Handle.Slot };
+            centerX, centerY, 0f, 0f, proposed.Target)
+        { InitialAi = new NpcAiState(-1f, parent, 0f, 0f), StartSlot = source.Handle.Slot };
         destination[1] = new NpcAiSpawnIntent(VanillaMoonEventSpecialCatalog1458.PumpkinMoonAi59PumpkingBlade,
-            centerX, centerY, 0f, 0f, proposed.Target) { InitialAi = new NpcAiState(1f, parent, 0f, 150f), StartSlot = source.Handle.Slot };
+            centerX, centerY, 0f, 0f, proposed.Target)
+        { InitialAi = new NpcAiState(1f, parent, 0f, 150f), StartSlot = source.Handle.Slot };
         return 2;
     }
 
@@ -2223,7 +2232,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             vy += _random.NextInt32(-40, 41) * jitter;
             lead = type == VanillaProjectileIds.WallOfFleshEyeLaser ? 15f : 4f;
         }
-        destination[0] = new NpcAiProjectileIntent(type, cx + vx*lead, cy + vy*lead, vx, vy, damage, 0f);
+        destination[0] = new NpcAiProjectileIntent(type, cx + vx * lead, cy + vy * lead, vx, vy, damage, 0f);
         return 1;
     }
 
@@ -2458,6 +2467,10 @@ public sealed class VanillaNpcTargetingAiStepper :
                 in before, in committed, _context, _random, _projectileEnvironment, mutations);
         return committed;
     }
+
+    public bool TryPlanBeforeWorldMotion(in NpcSnapshot before, in NpcSnapshot accepted,
+        Span<NpcAiProjectileIntent> shots, out int count, out NpcStateUpdate next) =>
+        VanillaEclipseFighterAcceptedPlanner.TryPlan(in before, in accepted, _context, _random, _projectileEnvironment, shots, out count, out next);
 
     public bool DeactivatesAfterStep(in NpcSnapshot before, in NpcStateUpdate proposed) =>
         (proposed.Type == before.Type && proposed.Simulation.Life == 0 &&
@@ -3493,8 +3506,8 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     private static int MoonPartAttackElapsed(float ai1, int row, out int state, out int duration)
     {
-        ReadOnlySpan<int> states = row switch { 0 => [0,1,2,0,3], 1 => [1,0,3,0,2], _ => [3,0,2,3,1] };
-        ReadOnlySpan<int> durations = row switch { 0 => [50,70,330,60,90], 1 => [70,50,90,60,330], _ => [180,30,435,180,375] };
+        ReadOnlySpan<int> states = row switch { 0 => [0, 1, 2, 0, 3], 1 => [1, 0, 3, 0, 2], _ => [3, 0, 2, 3, 1] };
+        ReadOnlySpan<int> durations = row switch { 0 => [50, 70, 330, 60, 90], 1 => [70, 50, 90, 60, 330], _ => [180, 30, 435, 180, 375] };
         int total = 0; for (int i = 0; i < durations.Length; i++) total += durations[i];
         int t = ((int)ai1) % total; if (t < 0) t += total;
         int start = 0;
@@ -3508,8 +3521,8 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     private static int MoonEyeAttackElapsed(float ai1, out int state, out int duration)
     {
-        ReadOnlySpan<int> states = [0,1,0,2,0,3,0,4,0,2];
-        ReadOnlySpan<int> durations = [53,90,53,135,53,200,53,375,53,135];
+        ReadOnlySpan<int> states = [0, 1, 0, 2, 0, 3, 0, 4, 0, 2];
+        ReadOnlySpan<int> durations = [53, 90, 53, 135, 53, 200, 53, 375, 53, 135];
         const int total = 1200;
         int t = ((int)ai1) % total; if (t < 0) t += total;
         int start = 0;
@@ -3605,7 +3618,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         float vy = dy / d * 8f + _random.NextInt32(-20, 21) * .05f;
         int damage = _context.ExpertMode ? 18 : 22;
         destination[0] = new NpcAiProjectileIntent(VanillaProjectileIds.RetinazerDeathLaser,
-            cx + vx * 5f, cy + vy * 5f, vx, vy, damage, 0f) { TimeLeftOverride = 300 };
+            cx + vx * 5f, cy + vy * 5f, vx, vy, damage, 0f)
+        { TimeLeftOverride = 300 };
         return 1;
     }
 

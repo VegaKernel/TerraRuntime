@@ -112,6 +112,9 @@ public sealed class MiningToolCombat1458Tests
     [MemberData(nameof(OriginalTools))]
     public void Real_npc_hit_rejects_forged_damage_then_uses_tool_authority_and_retains_stack(
         int id, int damage, float knockBack, int crit, int useTime, int animation)
+        => AssertOwnedNpcHit(id, damage, knockBack, crit, useTime, animation);
+
+    internal static void AssertOwnedNpcHit(int id, int damage, float knockBack, int crit, int useTime, int animation)
     {
         _ = (knockBack, crit, useTime, animation);
         using var fixture = new Fixture();
@@ -141,6 +144,9 @@ public sealed class MiningToolCombat1458Tests
     [MemberData(nameof(OriginalTools))]
     public void Real_pvp_hit_uses_same_tool_family_and_rejects_forged_claim_before_hp_mutation(
         int id, int damage, float knockBack, int crit, int useTime, int animation)
+        => AssertOwnedPvpHit(id, damage, knockBack, crit, useTime, animation);
+
+    internal static void AssertOwnedPvpHit(int id, int damage, float knockBack, int crit, int useTime, int animation)
     {
         _ = (knockBack, crit, useTime, animation);
         using var fixture = new Fixture();

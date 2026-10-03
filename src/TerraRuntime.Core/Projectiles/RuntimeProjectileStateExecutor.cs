@@ -24,7 +24,8 @@ public readonly record struct ProjectileSimulationStepContext(
     int SubupdateIndex,
     int SubupdatesPerWorldTick,
     ProjectileSimulationTerminationReason TerminationReason = ProjectileSimulationTerminationReason.None,
-    ProjectilePlayerBuffApplication? PlayerBuff = null)
+    ProjectilePlayerBuffApplication? PlayerBuff = null,
+    ProjectileKillOrigin? KillOrigin = null)
 {
     public int VanillaNumUpdates => SubupdatesPerWorldTick - SubupdateIndex - 2;
 
@@ -44,7 +45,14 @@ public readonly record struct ProjectileSimulationStepResult(
     ProjectileLiquidState? Liquid = null,
     ProjectileSimulationTerminationReason TerminationReason = ProjectileSimulationTerminationReason.None,
     ProjectileLocalAiState? LocalAi = null,
-    ProjectilePlayerBuffApplication? PlayerBuff = null);
+    ProjectilePlayerBuffApplication? PlayerBuff = null,
+    ProjectileKillOrigin? KillOrigin = null);
+
+/// <summary>Runtime-only top-left at the source Kill boundary before a remaining position-update tail.</summary>
+public readonly record struct ProjectileKillOrigin(float X, float Y)
+{
+    public bool IsValid => float.IsFinite(X) && float.IsFinite(Y);
+}
 
 /// <summary>One player buff proposed during a local subupdate, applied only after its projectile commit.</summary>
 public readonly record struct ProjectilePlayerBuffApplication(PlayerHandle Target, BuffTypeId Type, int DurationTicks);
@@ -88,7 +96,8 @@ public readonly record struct ProjectileTerminationCommit(
     ProjectileSimulationTerminationReason Reason,
     bool CombatTrusted,
     PlayerHandle TrustedOwner,
-    NpcHandle SourceNpc = default);
+    NpcHandle SourceNpc = default,
+    ProjectileKillOrigin? KillOrigin = null);
 
 public interface IProjectileTerminationCommitSink
 {
@@ -257,7 +266,8 @@ public sealed class RuntimeProjectileStateExecutor
                         finalResult.TerminationReason,
                         wasCombatTrusted,
                         trustedOwner,
-                        sourceNpc);
+                        sourceNpc,
+                        finalResult.KillOrigin);
                     _terminationSink.ProjectileTerminated(in termination);
                 }
             }
@@ -274,6 +284,12 @@ public sealed class RuntimeProjectileStateExecutor
         in ProjectileSimulationStepResult proposed,
         out ProjectileSimulationStepResult normalized)
     {
+        if (proposed.KillOrigin is { } killOrigin &&
+            (!killOrigin.IsValid || proposed.TimeLeft > 0 || proposed.TerminationReason == ProjectileSimulationTerminationReason.WorldBounds))
+        {
+            normalized = default;
+            return false;
+        }
         if (proposed.PlayerBuff is { } buff &&
             (!buff.Target.IsAssigned || buff.Type == VanillaBuffIds.None ||
              !VanillaBuffIds.TryCreate(buff.Type.Value, out _) || buff.DurationTicks <= 0))

@@ -85,7 +85,9 @@ public enum VanillaGroundFighterMotionProfile : byte
     PirateCrossbower = 14,
     PirateCaptain = 15,
     SeaSnail = 16,
-    Psycho = 17
+    Psycho = 17,
+    Butcher = 18,
+    DrManFly = 19
 }
 
 /// <summary>
@@ -240,6 +242,32 @@ public static class VanillaZombieMotion
                  (input.MotionProfile is VanillaGroundFighterMotionProfile.TacticalSkeleton or VanillaGroundFighterMotionProfile.SkeletonSniper or VanillaGroundFighterMotionProfile.SkeletonCommando or VanillaGroundFighterMotionProfile.Paladin or VanillaGroundFighterMotionProfile.StationaryArcher or VanillaGroundFighterMotionProfile.IcyMerman or VanillaGroundFighterMotionProfile.PirateDeadeye or VanillaGroundFighterMotionProfile.PirateCrossbower or VanillaGroundFighterMotionProfile.PirateCaptain && ai2 > 0f))
         {
             // AI_003's stationary ranged branches take over after the shared target/stuck prepass.
+        }
+        else if (input.MotionProfile == VanillaGroundFighterMotionProfile.Butcher)
+        {
+            float speed = 3f + (1f - input.Life / (float)input.LifeMax) * 3f;
+            float acceleration = .1f;
+            float magnitude = MathF.Abs(velocityX);
+            for (float threshold = 2f; threshold <= 5.5f; threshold += .5f)
+                if (magnitude > threshold) acceleration *= .8f;
+            if (magnitude > speed)
+            {
+                if (velocityY == 0f) velocityX *= .7f;
+            }
+            else if (directionX == 1 && velocityX < speed)
+            {
+                if (velocityX < 0f) velocityX *= .93f;
+                velocityX = MathF.Min(speed, velocityX + acceleration);
+            }
+            else if (directionX == -1 && velocityX > -speed)
+            {
+                if (velocityX > 0f) velocityX *= .93f;
+                velocityX = MathF.Max(-speed, velocityX - acceleration);
+            }
+        }
+        else if (input.MotionProfile == VanillaGroundFighterMotionProfile.DrManFly)
+        {
+            // Caster motion runs after the accepted attack tail.
         }
         else if (input.MotionProfile == VanillaGroundFighterMotionProfile.MoonEventLeaper)
         {

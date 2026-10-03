@@ -226,6 +226,9 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId Gastropod = new(163);
     public static readonly NpcTypeId Wraith = new(166);
     public static readonly NpcTypeId Psycho = new(466);
+    public static readonly NpcTypeId Butcher = new(460);
+    public static readonly NpcTypeId Nailhead = new(463);
+    public static readonly NpcTypeId DrManFly = new(468);
     public static readonly NpcTypeId CreatureFromTheDeep = new(461);
     public static readonly NpcTypeId IcyMerman = new(206);
     public static readonly NpcTypeId PirateDeckhand = new(212);
@@ -642,6 +645,8 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId GroundFighter251Bolt = new(83);
     public static readonly ProjectileTypeId GroundFighter350Bolt = new(82);
     public static readonly ProjectileTypeId SalamanderBolt = new(572);
+    public static readonly ProjectileTypeId Nail = new(498);
+    public static readonly ProjectileTypeId DrManFlyFlask = new(501);
     public static readonly ProjectileTypeId RuneBlast = new(129);
     public static readonly ProjectileTypeId DungeonBeam = new(290);
     public static readonly ProjectileTypeId DungeonFlame = new(291);

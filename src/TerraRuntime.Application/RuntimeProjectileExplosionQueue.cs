@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Projectiles;
+using TerraRuntime.Contracts.Gameplay;
 
 namespace TerraRuntime.Application;
 
@@ -25,12 +26,14 @@ internal readonly record struct RuntimeProjectileExplosionEvent(
 internal sealed class RuntimeProjectileExplosionQueue : IProjectileTerminationCommitSink
 {
     private readonly RuntimeProjectileExplosionEvent[] events;
+    private readonly VanillaUnifiedRandom1458? terminationRandom;
     private int count;
 
-    public RuntimeProjectileExplosionQueue(int capacity)
+    public RuntimeProjectileExplosionQueue(int capacity, VanillaUnifiedRandom1458? terminationRandom = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(capacity);
         events = new RuntimeProjectileExplosionEvent[capacity];
+        this.terminationRandom = terminationRandom;
     }
 
     public ReadOnlySpan<RuntimeProjectileExplosionEvent> Events => events.AsSpan(0, count);
@@ -59,8 +62,23 @@ internal sealed class RuntimeProjectileExplosionQueue : IProjectileTerminationCo
             throw new InvalidOperationException("Projectile explosion queue capacity was exceeded by one simulation tick.");
 
         ProjectileSnapshot final = termination.FinalProjectile;
-        float centerX = final.PositionX + sourceDefinition.Width * 0.5f;
-        float centerY = final.PositionY + sourceDefinition.Height * 0.5f;
+        if (termination.KillOrigin is { IsValid: false })
+            throw new InvalidOperationException("An accepted projectile termination carried an invalid Kill origin.");
+        if (final.Type == VanillaProjectileIds.DrManFlyFlask)
+        {
+            // Kill consumes these arguments even though Gore.NewGore immediately exits on a dedicated server.
+            // The intermediate dust/gore body is 15+40=55, before the second expansion to 135.
+            if (terminationRandom is null)
+                throw new InvalidOperationException("Dr Man Fly termination requires its authority-owned RNG.");
+            for (int index = 0; index < VanillaEclipseProjectileFacts1458.FlaskGoreArgumentCount; index++)
+            {
+                terminationRandom.Next(VanillaEclipseProjectileFacts1458.FlaskIntermediateBodySize);
+                terminationRandom.Next(VanillaEclipseProjectileFacts1458.FlaskIntermediateBodySize);
+                terminationRandom.Next(VanillaEclipseProjectileFacts1458.FlaskGoreMinimum, VanillaEclipseProjectileFacts1458.FlaskGoreMaximumExclusive);
+            }
+        }
+        float centerX = (termination.KillOrigin?.X ?? final.PositionX) + sourceDefinition.Width * 0.5f;
+        float centerY = (termination.KillOrigin?.Y ?? final.PositionY) + sourceDefinition.Height * 0.5f;
         ProjectileSnapshot prepared = final with
         {
             Damage = checked((short)(explosion.DamageOverride ?? final.Damage)),

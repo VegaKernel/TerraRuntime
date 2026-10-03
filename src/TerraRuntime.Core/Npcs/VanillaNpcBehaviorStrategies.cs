@@ -782,7 +782,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
         }
 
         bool daytimeSurface = context.DayTime &&
-            !((definition.Type == VanillaNpcIds.Psycho || definition.Type == VanillaNpcIds.CreatureFromTheDeep) && context.EclipseActive) &&
+            !((definition.Type == VanillaNpcIds.Psycho || definition.Type == VanillaNpcIds.CreatureFromTheDeep || definition.Type == VanillaNpcIds.Butcher || definition.Type == VanillaNpcIds.Nailhead || definition.Type == VanillaNpcIds.DrManFly) && context.EclipseActive) &&
             npc.PositionY < context.WorldSurfacePixels &&
             parameters.DaySurfaceEncouragesDespawn;
         int startingDirectionY = npc.Simulation.DirectionY;
@@ -832,7 +832,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
             }
             next = new NpcStateUpdate(npc.Type, npc.NetId, npc.PositionX, npc.PositionY, velocityX, npc.VelocityY,
                 target, npc.Ai with { Ai2 = clock }, npc.Simulation with
-                    { Alpha = alpha, DirectionX = directionX, DirectionY = directionY });
+                { Alpha = alpha, DirectionX = directionX, DirectionY = directionY });
             return true;
         }
 
@@ -840,6 +840,15 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
             context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh selected)
                 ? selected
                 : default;
+        // TargetClosest retains slot zero geometry when no active player can be selected.
+        // Nailhead can still release its untargeted volley; inactive geometry never enters that target list.
+        if (!closest.HasTarget && definition.Type == VanillaNpcIds.Nailhead &&
+            context.TryFindCandidate(0, out var retainedTarget))
+        {
+            closest = new VanillaBlueSlimeTargetRefresh(true, 0,
+                retainedTarget.CenterX < npc.PositionX + definition.Width * .5f ? -1 : 1,
+                retainedTarget.CenterY < npc.PositionY + definition.Height * .5f ? -1 : 1);
+        }
         int fighterDirectionY = closest.DirectionY;
         if (closest.HasTarget &&
             fighterDirectionY > 0 &&
@@ -856,6 +865,12 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
             fighterDirectionY);
 
         NpcSimulationState simulation = definition.Type == VanillaNpcIds.Psycho ? npc.Simulation with { Alpha = 0 } : npc.Simulation;
+        if (definition.Type == VanillaNpcIds.Butcher)
+            simulation = simulation with
+            {
+                KnockBackResist = MathF.Abs(npc.VelocityY) > .3f ? 0f :
+                .25f * (1f + (Math.Clamp(npc.Simulation.SpawnDifficulty ?? 1f, 1f, 3f) - 1f) * (.8f - 1f) / 2f)
+            };
         NpcAiState fighterAi = npc.Ai;
         float fighterVelocityX = npc.VelocityX;
         float fighterVelocityY = npc.VelocityY;
@@ -974,15 +989,40 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
                 int transformedLife = ScaleTransformLife(simulation.Life, simulation.LifeMax, 750);
                 next = new NpcStateUpdate(VanillaNpcIds.Vampire.Value, (short)VanillaNpcIds.Vampire.Value,
                     npc.PositionX, npc.PositionY + 18f, result.VelocityX, result.VelocityY, result.Target, default,
-                    simulation with { Life = transformedLife, LifeMax = 750, HitboxOverride = null, BaseDamage = null, BaseDefense = null, BaseLifeMax = null,
-                        DefenseOverride = null, DamageOverride = null, KnockBackResist = null, NoGravity = true, NoTileCollide = false,
+                    simulation with
+                    {
+                        Life = transformedLife,
+                        LifeMax = 750,
+                        HitboxOverride = null,
+                        BaseDamage = null,
+                        BaseDefense = null,
+                        BaseLifeMax = null,
+                        DefenseOverride = null,
+                        DamageOverride = null,
+                        KnockBackResist = null,
+                        NoGravity = true,
+                        NoTileCollide = false,
                         DirectionX = vampireTarget.CenterX < npc.PositionX + 11f ? -1 : 1,
                         DirectionY = vampireTarget.CenterY < npc.PositionY + 29f ? -1 : 1,
-                        LocalAi = default, FrameCounter = 0d, TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft,
-                        Alpha = 0, Hidden = false, DontTakeDamage = false, ReflectsProjectiles = false, JustHit = false,
-                        CanBeReplacedByOtherNpcs = false, Wet = false, LiquidContact = NpcLiquidContactKind.None,
-                        CollideX = false, CollideY = false, SpriteDirection = VanillaNpcDefinitionCatalog.DefaultSpriteDirection,
-                        Rotation = null, Friendly = null, Chaseable = null, Immortal = null });
+                        LocalAi = default,
+                        FrameCounter = 0d,
+                        TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft,
+                        Alpha = 0,
+                        Hidden = false,
+                        DontTakeDamage = false,
+                        ReflectsProjectiles = false,
+                        JustHit = false,
+                        CanBeReplacedByOtherNpcs = false,
+                        Wet = false,
+                        LiquidContact = NpcLiquidContactKind.None,
+                        CollideX = false,
+                        CollideY = false,
+                        SpriteDirection = VanillaNpcDefinitionCatalog.DefaultSpriteDirection,
+                        Rotation = null,
+                        Friendly = null,
+                        Chaseable = null,
+                        Immortal = null
+                    });
                 return true;
             }
         }
@@ -1045,7 +1085,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
         var motion = VanillaCreatureFromDeepMotion1458.Steer(velocityX, npc.VelocityY, targetDx, targetDy, directionX, visible);
         next = new NpcStateUpdate(npc.Type, npc.NetId, npc.PositionX, npc.PositionY, motion.X, motion.Y, target,
             npc.Ai with { Ai3 = VanillaCreatureFromDeepMotion1458.SwimmingClock }, npc.Simulation with
-                { DirectionX = directionX, DirectionY = directionY });
+            { DirectionX = directionX, DirectionY = directionY });
         return float.IsFinite(motion.X) && float.IsFinite(motion.Y);
     }
 
@@ -1516,8 +1556,12 @@ internal sealed class VanillaMoonEventEverscreamNpcBehaviorStrategy : IVanillaNp
         next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, velocityX, velocityY,
             target, new NpcAiState(ai0, ai1, npc.Ai.Ai2, npc.Ai.Ai3), simulation with
             {
-                NoGravity = true, NoTileCollide = true, DirectionX = velocityX < 0f ? -1 : 1,
-                SpriteDirection = velocityX < 0f ? -1 : 1, JustHit = false, TimeLeft = timeLeft
+                NoGravity = true,
+                NoTileCollide = true,
+                DirectionX = velocityX < 0f ? -1 : 1,
+                SpriteDirection = velocityX < 0f ? -1 : 1,
+                JustHit = false,
+                TimeLeft = timeLeft
             });
         return true;
     }
@@ -1947,8 +1991,12 @@ internal sealed class VanillaSnowMoonSantankNpcBehaviorStrategy(IVanillaNpcRando
         next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, velocityX, velocityY,
             target, ai, simulation with
             {
-                NoGravity = true, NoTileCollide = true, DirectionX = velocityX < 0f ? -1 : 1,
-                SpriteDirection = velocityX < 0f ? -1 : 1, Rotation = rotation, JustHit = false
+                NoGravity = true,
+                NoTileCollide = true,
+                DirectionX = velocityX < 0f ? -1 : 1,
+                SpriteDirection = velocityX < 0f ? -1 : 1,
+                Rotation = rotation,
+                JustHit = false
             });
         return true;
     }
@@ -2019,8 +2067,15 @@ internal sealed class VanillaSnowMoonAi62NpcBehaviorStrategy : IVanillaNpcBehavi
             }
         }
         next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, velocityX, velocityY, target,
-            npc.Ai, simulation with { NoGravity = true, NoTileCollide = true, DirectionX = directionX, SpriteDirection = directionX,
-                Rotation = MathF.Abs(velocityX) * directionX * .1f, JustHit = false });
+            npc.Ai, simulation with
+            {
+                NoGravity = true,
+                NoTileCollide = true,
+                DirectionX = directionX,
+                SpriteDirection = directionX,
+                Rotation = MathF.Abs(velocityX) * directionX * .1f,
+                JustHit = false
+            });
         return true;
     }
 
@@ -2190,8 +2245,13 @@ internal sealed class VanillaSnowMoonIceQueenNpcBehaviorStrategy(IVanillaNpcRand
         next = new NpcStateUpdate(definition.Type.Value, npc.NetId, npc.PositionX, npc.PositionY, velocityX, velocityY,
             target, ai, simulation with
             {
-                NoGravity = true, NoTileCollide = true, DirectionX = directionX, DirectionY = directionY,
-                SpriteDirection = directionX, JustHit = false, TimeLeft = timeLeft
+                NoGravity = true,
+                NoTileCollide = true,
+                DirectionX = directionX,
+                DirectionY = directionY,
+                SpriteDirection = directionX,
+                JustHit = false,
+                TimeLeft = timeLeft
             });
         return true;
     }

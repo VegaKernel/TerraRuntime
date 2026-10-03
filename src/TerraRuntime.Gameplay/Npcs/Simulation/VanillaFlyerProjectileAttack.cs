@@ -19,6 +19,12 @@ public interface IVanillaNpcProjectileEnvironment
         int targetHeight);
 }
 
+/// <summary>Source CanHitLine capability; no approximation using CanHit is accepted.</summary>
+public interface IVanillaNpcProjectileLineEnvironment
+{
+    bool CanHitLine(float sourceX,float sourceY,int sourceWidth,int sourceHeight,float targetX,float targetY,int targetWidth,int targetHeight);
+}
+
 /// <summary>WorldGen.SolidTile-compatible tile fact required by Moon Lord's Good World boulder burst.</summary>
 public interface IVanillaNpcSolidTileEnvironment
 {

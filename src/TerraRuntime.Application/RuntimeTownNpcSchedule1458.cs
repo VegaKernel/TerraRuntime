@@ -55,7 +55,7 @@ internal sealed class NpcRuntimeTownScheduleRandom1458(IVanillaNpcRandom random)
 /// pinned night chair search, occupied-seat exclusion, horizontal settling and forced-sitting transition. Broader
 /// AI_007 social/emote/combat/presentation behavior deliberately remains outside this schedule boundary.
 /// </summary>
-internal sealed class RuntimeTownNpcSchedule1458
+internal sealed partial class RuntimeTownNpcSchedule1458
 {
     private const int ChairFrameCycleHeight = 40;
     private const int TavernkeepReservedChairFrameYStart = 1080;
@@ -157,6 +157,8 @@ internal sealed class RuntimeTownNpcSchedule1458
             if (!conditions.ReturnHomeRequested)
             {
                 states[slot] = RuntimeTownNpcScheduleState1458.DayWander;
+                if (TryTickOrdinaryMotion(in snapshot, in home, shelterAtHome: false, out NpcSnapshot wandering))
+                    townNpcs.TryUpdatePosition(slot, in wandering);
                 continue;
             }
 
@@ -183,6 +185,13 @@ internal sealed class RuntimeTownNpcSchedule1458
                     home.NpcType,
                     snapshot.Simulation.Wet))
             {
+                if (snapshot.Ai.Ai0 == 1f &&
+                    TryTickOrdinaryMotion(in snapshot, in home, shelterAtHome: true, out NpcSnapshot resting))
+                {
+                    townNpcs.TryUpdatePosition(slot, in resting);
+                    states[slot] = RuntimeTownNpcScheduleState1458.RestingAtHome;
+                    continue;
+                }
                 if (snapshot.Ai.Ai0 == 5f)
                 {
                     states[slot] = RuntimeTownNpcScheduleState1458.RestingAtHome;

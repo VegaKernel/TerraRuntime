@@ -18,6 +18,7 @@ public readonly record struct VanillaProjectileExplosionDefinition(
 public static class VanillaProjectileExplosionFacts
 {
     private static readonly VanillaProjectileExplosionDefinition SkeletronPrimeBombExplosion = new(128, 128, 8f, 40);
+    private static readonly VanillaProjectileExplosionDefinition DrManFlyFlaskExplosion = new(135, 135, 0f, PreserveKnockBack: true);
     private static readonly VanillaProjectileExplosionDefinition PhantasmalEyeExplosion = new(144, 144, 0f, PreserveKnockBack: true);
     private static readonly VanillaProjectileExplosionDefinition PhantasmalSphereExplosion = new(208, 208, 0f, PreserveKnockBack: true);
     private static readonly VanillaProjectileExplosionDefinition CultistFireballExplosion = new(176, 176, 0f, PreserveKnockBack: true);
@@ -33,6 +34,11 @@ public static class VanillaProjectileExplosionFacts
         ProjectileTypeId type,
         out VanillaProjectileExplosionDefinition definition)
     {
+        if (type == VanillaProjectileIds.DrManFlyFlask)
+        {
+            definition = DrManFlyFlaskExplosion;
+            return true;
+        }
         if (type == VanillaProjectileIds.SkeletronPrimeBomb)
         {
             definition = SkeletronPrimeBombExplosion;

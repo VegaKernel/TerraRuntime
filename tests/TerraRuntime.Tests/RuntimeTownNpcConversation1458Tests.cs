@@ -170,8 +170,9 @@ public sealed class RuntimeTownNpcConversation1458Tests
         players.TryApply(new PlayerDisconnectRuntimeCommand(connection));
         f.Sink.Commits.Clear();
         authority.TickLifecycle(null);
-        Assert.Empty(f.Sink.Commits);
-        Assert.Equal(299f, f.Current.Ai.Ai1);
+        Assert.Equal(NpcStateCommitKind.Update, Assert.Single(f.Sink.Commits));
+        Assert.Equal(298f, f.Current.Ai.Ai1); // The ordinary idle owner resumes instead of refreshing talk299.
+        Assert.Equal(98f, f.Current.Simulation.LocalAi.Ai3);
     }
 
     [Theory]

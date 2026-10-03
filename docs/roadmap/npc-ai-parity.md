@@ -334,6 +334,9 @@ Conversely, packet emission, NPC/projectile/item spawn, player/NPC damage or buf
 - [x] implement type `26` authoritative closed-door/tall-gate destruction, object drops and packet-17 replication;
 - [x] Creature from the Deep `461`: source wet/dry physical forms, center-preserving body changes, visible/blocked swimming, collision reversal, capped dry exit impulse, difficulty-scaled knockback and world-executor ownership; direct original Linux AI differential covers 28,320 finite states, with explicit rejection of original degenerate NaN normalization.
 - [x] Psycho `466`: source ambush/reveal/pursuit state family, proximity/hit/motion triggers, sixteen-tick reveal, distinct reversal braking, positive-state stuck/idle suppression and production world-physics preservation; direct original Linux AI differential covers 10,080 states.
+- [x] Butcher `460`: concrete defaults, health-dependent speed, eight acceleration thresholds, reversal braking, difficulty/vertical-velocity knockback and boosted terrain jumps.
+- [x] Nailhead `463`: source hit/cooldown response, three-to-five-nail volley, physical-slot CanHitLine scan, hundred-swap target shuffle, difficulty damage and accepted prephysics projectile provenance.
+- [x] Dr. Man Fly `468`: Eclipse-only initiation, seventy/thirty-five-tick wind-up/release, jittered range and stealth/animation eligibility, queued attacks outside Eclipse, source aim/origin, hit cancellation and source immediate sync. Shared direct original AI/projectile/RNG differential covers 59,328 states; world ticks pin attack-before-physics.
 - [ ] partition and import remaining AI_003 movement parameter families and subtype-only transformation/event branches; types `254`, `255`, `257` and `258` now carry their source defaults and day-surface exemption, with `258` also using its airborne pursuit, high-target leap and reduced-gravity branch;
 - [ ] type-specific authoritative attacks, transformations, projectiles and spawn side effects; presentation-only spawn effects are intentionally out of scope;
 - [ ] differential scenarios for each admitted AI_003 subtype.
@@ -433,6 +436,7 @@ King Slime still intentionally reports `FullVanillaAiParity = false`. Normal-mod
 ## N4 — Town, friendly and special NPCs
 
 - [ ] town AI, housing and schedules;
+  - dry housed ordinary AI_007 states `0/1` now execute ordered idle/walking timers, home steering and terrain navigation before shared physics and one commit; eighteen original quiet body/navigation fixtures and two complete original UpdateNPC movement fixtures pin this slice. Broad danger/doors/social, homeless/pet/aquatic branches and complete follow-on RNG remain open;
   - ordinary seated-state timer/removal/damping and ordered stand-up delay draws now execute authoritatively, with one forced update and matching live-home identity; ten original quiet fixtures cover this branch, while danger/social continuation and full AI_007 RNG remain open;
   - authenticated player talk interrupts ordinary activities, while server-owned player poses `6/7/18/19` maintain source visibility/distance/LOS/facing/timers and ordered exit RNG; twenty-nine original quiet fixtures pin the bounded family, while danger/social/emote initiation and full follow-on RNG remain open;
   - source-backed AI_007 shelter/home/chair scheduling, shimmer state 25, projectile combat for Merchant/Nurse/Arms Dealer/Guide, and melee state 15 for Dye Trader/Tax Collector/Stylist are authoritative; social/emote and remaining special town branches remain open;

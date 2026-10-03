@@ -192,6 +192,11 @@ public static class VanillaGroundFighterNpcCatalog
         ,Fighter(new NpcTypeId(277), 18, 40, 70, 32, 400, .4f, 1f, 2.75f)
         ,Fighter(new NpcTypeId(278), 18, 40, 65, 48, 450, .3f, 1f, 1.8f)
         ,Fighter(new NpcTypeId(279), 18, 40, 40, 54, 500, .2f, 1f, 1.3f)
+        ,Fighter(VanillaNpcIds.Butcher, 18, 40, 70, 30, 700, .25f, 1f, 3f,
+            acceleration: .1f, motionProfile: VanillaGroundFighterMotionProfile.Butcher)
+        ,Fighter(VanillaNpcIds.Nailhead, 18, 40, 100, 34, 4000, .1f, 1f, .75f)
+        ,Fighter(VanillaNpcIds.DrManFly, 18, 40, 65, 24, 500, .6f, 1f, 1f,
+            motionProfile: VanillaGroundFighterMotionProfile.DrManFly)
         ,Fighter(VanillaNpcIds.CreatureFromTheDeep, 18, 40, 60, 22, 400, .3f, 1f, 2f)
         ,Fighter(VanillaNpcIds.Psycho, 18, 40, 70, 40, 550, .5f, 1f, 3.75f,
             motionProfile: VanillaGroundFighterMotionProfile.Psycho)
@@ -278,7 +283,7 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.LacBeetle,
         VanillaNpcIds.SeaSnail,
         new(78), new(79), new(80), new(243), new(251), new(254), new(255), new(257), new(258), new(287), new(630),
-        new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280), VanillaNpcIds.Psycho, VanillaNpcIds.CreatureFromTheDeep
+        new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280), VanillaNpcIds.Psycho, VanillaNpcIds.CreatureFromTheDeep, VanillaNpcIds.Butcher, VanillaNpcIds.Nailhead, VanillaNpcIds.DrManFly
     ];
 
     public static int DefinitionCount => Entries.Length;

@@ -9,7 +9,8 @@ public readonly record struct VanillaPlayerStepResult(
 /// <summary>
 /// Clean-room normal-gravity player StepDown/StepUp primitives from TerrariaServer 1.4.5.8 Collision.
 /// The runtime-owned player path is unmounted, does not hold platform-matching input, does not water-walk,
-/// and uses specialChecksMode=0. Visual stepSpeed/gfxOffY are returned for source-equivalence tests even
+/// and uses specialChecksMode=0. Optional matching/NPC checks admit the town caller without changing player defaults.
+/// Visual stepSpeed/gfxOffY are returned for source-equivalence tests even
 /// though authoritative server-player state currently consumes only the corrected Y position.
 /// </summary>
 public static class VanillaWorldPlayerStepCollision
@@ -101,7 +102,9 @@ public static class VanillaWorldPlayerStepCollision
         int width,
         int height,
         float stepSpeed = 0f,
-        float graphicsOffsetY = 0f)
+        float graphicsOffsetY = 0f,
+        bool holdsMatching = false,
+        bool npcSpecialChecks = false)
     {
         Validate(tiles, positionX, positionY, velocityX, width, height);
 
@@ -162,8 +165,18 @@ public static class VanillaWorldPlayerStepCollision
             (!obstacleTopSlope || positionY + height > tileY * TileSize) &&
             VanillaTileCollisionCatalog.IsSolid(obstacle.TileType) &&
             !VanillaTileCollisionCatalog.IsSolidTop(obstacle.TileType);
+        bool matchingObstacle = IsActive(in obstacle) &&
+            (!obstacleTopSlope ||
+             (obstacleSlope == 1 && playerCenterX < tileLeft) ||
+             (obstacleSlope == 2 && playerCenterX > tileLeft + TileSize)) &&
+            (!obstacleTopSlope || positionY + height > tileY * TileSize) && holdsMatching &&
+            ((VanillaTileCollisionCatalog.IsSolidTop(obstacle.TileType) && obstacle.FrameY == 0) ||
+             TerraRuntime.Contracts.Gameplay.VanillaTileIds.IsPlatform(obstacle.TileType) ||
+             obstacle.Type == VanillaTownNpcNavigationCatalog1458.PlanterBoxType) &&
+            (!VanillaTileCollisionCatalog.IsSolid(aboveObstacle.TileType) || !IsActive(in aboveObstacle)) &&
+            (!npcSpecialChecks || !VanillaTownNpcNavigationCatalog1458.IsIgnoredByStepUp(obstacle.TileType));
         bool halfBrickAboveObstacle = IsActive(in aboveObstacle) && IsHalfBrick(in aboveObstacle);
-        bool validObstacle = solidObstacle || halfBrickAboveObstacle;
+        bool validObstacle = solidObstacle || matchingObstacle || halfBrickAboveObstacle;
         validObstacle &=
             !VanillaTileCollisionCatalog.IsSolidTop(obstacle.TileType) ||
             !VanillaTileCollisionCatalog.IsSolidTop(aboveObstacle.TileType);

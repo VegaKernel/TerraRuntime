@@ -38,6 +38,8 @@ public interface INpcAiForcedUpdateIntentPlanner
         in NpcSnapshot before,
         in NpcStateUpdate proposed,
         ReadOnlySpan<NpcAiProjectileIntent> plannedProjectiles) => RequiresForcedUpdate(in before, in proposed);
+    bool RequiresForcedUpdateAfterCompletion(in NpcSnapshot before, in NpcSnapshot finalized) => false;
+
 }
 
 /// <summary>
@@ -115,7 +117,8 @@ public interface INpcAiStatePostCommitEffect
     void ApplyCommittedEffectAfterSpawns(
         in NpcSnapshot before,
         in NpcSnapshot committed,
-        INpcAiCommittedNpcMutationSink mutations) { }
+        INpcAiCommittedNpcMutationSink mutations)
+    { }
 }
 
 /// <summary>Publishes presentation after a generation-safe AI healing mutation, without manufacturing damage events.</summary>

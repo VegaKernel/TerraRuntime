@@ -72,7 +72,8 @@ internal sealed partial class ProjectileAuthority
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.players = players;
         this.playerSnapshots = playerSnapshots ?? throw new ArgumentNullException(nameof(playerSnapshots));
-        explosions = new RuntimeProjectileExplosionQueue(projectiles.Capacity);
+        this.projectileRandom = projectileRandom ?? new VanillaUnifiedRandom1458(Random.Shared.Next());
+        explosions = new RuntimeProjectileExplosionQueue(projectiles.Capacity, this.projectileRandom);
         tileExplosions = new RuntimeProjectileTileExplosionQueue(projectiles.Capacity);
         childSpawns = new RuntimeProjectileChildSpawnQueue(projectiles.Capacity);
         liveChildSpawns = new RuntimeProjectileLiveChildSpawnQueue(projectiles.Capacity);
@@ -87,7 +88,6 @@ internal sealed partial class ProjectileAuthority
         this.worldTiles = worldTiles;
         this.expertMode = expertMode;
         hostilePlayerTargets = worldTiles is null ? null : new VanillaProjectilePlayerTargetResolver(playerSnapshots, worldTiles);
-        this.projectileRandom = projectileRandom ?? new VanillaUnifiedRandom1458(Random.Shared.Next());
         controlledProjectileBuffer = new ProjectileSnapshot[projectiles.Capacity];
     }
 

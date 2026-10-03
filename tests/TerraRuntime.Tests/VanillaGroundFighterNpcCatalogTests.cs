@@ -125,8 +125,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(104, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(102, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(107, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(105, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);

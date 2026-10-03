@@ -260,7 +260,14 @@ public sealed class RuntimeProjectileBehaviorStateStepper : IProjectileStateStep
         in ProjectileSimulationStepResult update,
         out ProjectileSimulationStepContext projected)
     {
-        if (!RuntimeProjectileStateExecutor.TryNormalizeTermination(in update, out ProjectileSimulationStepResult normalized))
+        // State-only post decorators do not replace a source semantic Kill boundary with lifetime expiry.
+        ProjectileSimulationStepResult represented = update with
+        {
+            KillOrigin = update.KillOrigin ?? current.KillOrigin,
+            TerminationReason = update.TimeLeft <= 0 && update.TerminationReason == ProjectileSimulationTerminationReason.None
+                ? current.TerminationReason : update.TerminationReason
+        };
+        if (!RuntimeProjectileStateExecutor.TryNormalizeTermination(in represented, out ProjectileSimulationStepResult normalized))
         {
             projected = default;
             return false;
@@ -302,7 +309,8 @@ public sealed class RuntimeProjectileBehaviorStateStepper : IProjectileStateStep
             current.SubupdateIndex,
             current.SubupdatesPerWorldTick,
             normalized.TerminationReason,
-            normalized.PlayerBuff ?? current.PlayerBuff);
+            normalized.PlayerBuff ?? current.PlayerBuff,
+            normalized.KillOrigin ?? current.KillOrigin);
         return true;
     }
 
@@ -374,5 +382,6 @@ public sealed class RuntimeProjectileBehaviorStateStepper : IProjectileStateStep
             current.Lifecycle.Liquid,
             current.TerminationReason,
             current.Lifecycle.LocalAi,
-            current.PlayerBuff);
+            current.PlayerBuff,
+            current.KillOrigin);
 }

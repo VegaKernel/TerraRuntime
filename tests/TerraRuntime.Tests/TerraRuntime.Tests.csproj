@@ -56,6 +56,9 @@
     <EmbeddedResource Include="Fixtures/lunar-event-headers-1458.bin.gz" LogicalName="LunarEventHeaders1458" />
     <EmbeddedResource Include="Fixtures/moon-lord-intro-1458.json.gz" LogicalName="MoonLordIntroduction1458" />
     <EmbeddedResource Include="Fixtures/late-boss-headers-1458.bin.gz" LogicalName="LateBossHeaders1458" />
+    <EmbeddedResource Include="Fixtures/eclipse-fighters-ai003-linux-1458.json.gz" LogicalName="eclipse-fightersAi003Linux1458" />
+    <EmbeddedResource Include="Fixtures/drmanfly-targets-ai003-linux-1458.json.gz" LogicalName="drmanfly-targetsAi003Linux1458" />
+    <EmbeddedResource Include="Fixtures/nailhead-volley-ai003-linux-1458.json.gz" LogicalName="nailhead-volleyAi003Linux1458" />
   </ItemGroup>
   <ItemGroup><ProjectReference Include="../../tools/TerraRuntime.WorkerPoolProbe/TerraRuntime.WorkerPoolProbe.csproj" /></ItemGroup>
   <ItemGroup>
@@ -136,5 +139,10 @@
     <EmbeddedResource Include="Fixtures/prime-melee-edge-1458.json.gz" LogicalName="PrimeMeleeEdge1458" />
     <EmbeddedResource Include="Fixtures/prime-encounter-linux-1458.json.gz" LogicalName="PrimeEncounterLinux1458" />
     <EmbeddedResource Include="Fixtures/prime-encounter-windows-1458.json.gz" LogicalName="PrimeEncounterWindows1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/eclipse-projectile-ai-1458.json.gz" LogicalName="EclipseProjectileAi1458" />
+    <EmbeddedResource Include="Fixtures/eclipse-projectile-motion-1458.json.gz" LogicalName="EclipseProjectileMotion1458" />
+    <EmbeddedResource Include="Fixtures/eclipse-projectile-terrain-1458.json.gz" LogicalName="EclipseProjectileTerrain1458" />
   </ItemGroup>
 </Project>

@@ -69,6 +69,11 @@ public readonly record struct VanillaProjectileDefinition(
 /// </summary>
 public static class VanillaDefinitionCatalog
 {
+    private static readonly VanillaProjectileDefinition NailDefinition = new(6, 6,
+        VanillaProjectileAiStyles.Arrow, true, false, true, 6, 6);
+    // SetDefaults scales the initial 14x14 body by 1.1, truncating each final dimension to 15.
+    private static readonly VanillaProjectileDefinition DrManFlyFlaskDefinition = new(15, 15,
+        VanillaProjectileAiStyles.Thrown, true, false, true, 15, 15);
     private static readonly VanillaProjectileDefinition WoodenArrowDefinition = new(
         Width: 10,
         Height: 10,
@@ -1202,6 +1207,8 @@ public static class VanillaDefinitionCatalog
             return true;
         }
 
+        if (type == VanillaProjectileIds.Nail) { definition = NailDefinition; return true; }
+        if (type == VanillaProjectileIds.DrManFlyFlask) { definition = DrManFlyFlaskDefinition; return true; }
         if (type == VanillaProjectileIds.PirateCaptainCannonball)
         {
             definition = PirateCaptainCannonballDefinition;

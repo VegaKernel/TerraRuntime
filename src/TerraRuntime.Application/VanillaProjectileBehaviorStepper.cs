@@ -178,6 +178,30 @@ internal static partial class VanillaProjectileBehaviorStepper
                     velocityY = MaximumThrownFallSpeed;
                 break;
 
+            case VanillaProjectileBehaviorFamily.Nail:
+                ai0 += 1f;
+                if (ai0 >= 50f)
+                {
+                    velocityX *= .98f;
+                    velocityY += .15f;
+                }
+                velocityY = Math.Min(MaximumArrowFallSpeed, velocityY);
+                next = new VanillaProjectileBehaviorResult(velocityX, velocityY, ai0,
+                    LocalAiOverride: context.LocalAi with { Ai0 = context.LocalAi.Ai0 == 0f ? 1f : context.LocalAi.Ai0 });
+                return true;
+
+            case VanillaProjectileBehaviorFamily.DrManFlyFlask:
+                if (context.WindPhysics)
+                    velocityX += context.WindSpeedCurrent * context.WindPhysicsStrength;
+                ai0 += 1f;
+                if (ai0 >= 18f)
+                {
+                    velocityX *= .995f;
+                    velocityY += .2f;
+                }
+                velocityY = Math.Min(MaximumThrownFallSpeed, velocityY);
+                break;
+
             case VanillaProjectileBehaviorFamily.PirateCaptainCannonball:
                 // AI_002 type 240: Cannonball remains straight for its sixteen-tick fuse, then uses its
                 // distinct gravity and horizontal damping instead of the common thrown-item constants.

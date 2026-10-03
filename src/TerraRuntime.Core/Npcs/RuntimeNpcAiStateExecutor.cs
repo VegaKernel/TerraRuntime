@@ -226,7 +226,7 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 {
                     var completed = postCommitEffect!.CompleteCommittedState(in npc, in committed, this);
                     if (completed.Handle != committed.Handle || !_npcs.TryGet(completed.Handle, out var finalized) ||
-                        finalized.Revision != completed.Revision || !_npcs.TryPublishUpdate(in finalized))
+                        finalized.Revision != completed.Revision || !_npcs.TryPublishUpdate(in finalized, forceSync: forceUpdate || (forcedUpdatePlanner?.RequiresForcedUpdateAfterCompletion(in npc, in finalized) ?? false)))
                         continue;
                     committed = finalized;
                     if (!_npcs.TryGet(committed.Handle, out var published) || published.Revision != committed.Revision)

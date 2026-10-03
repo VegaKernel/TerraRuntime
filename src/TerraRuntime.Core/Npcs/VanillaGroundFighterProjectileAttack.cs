@@ -14,7 +14,7 @@ namespace TerraRuntime.Core.Npcs;
 internal static class VanillaGroundFighterProjectileAttack
 {
     public static bool IsSupported(NpcTypeId type) =>
-        type == IceGolem || type == Eyezor || type == ElfArcher || type == SkeletonSniper || type == TacticalSkeleton || type == SkeletonCommando || type == Paladin || type == SkeletonArcher || type == GoblinArcher || type == Clown || type == IcyMerman || type == PirateDeadeye || type == PirateCrossbower || type == PirateCaptain || IsSalamander(type);
+        VanillaEclipseFighterAcceptedPlanner.IsSupported(type) || type == IceGolem || type == Eyezor || type == ElfArcher || type == SkeletonSniper || type == TacticalSkeleton || type == SkeletonCommando || type == Paladin || type == SkeletonArcher || type == GoblinArcher || type == Clown || type == IcyMerman || type == PirateDeadeye || type == PirateCrossbower || type == PirateCaptain || IsSalamander(type);
 
     public static NpcSnapshot Complete(
         in NpcSnapshot before,
@@ -32,6 +32,14 @@ internal static class VanillaGroundFighterProjectileAttack
             return committed;
         }
 
+        if (VanillaEclipseFighterAcceptedPlanner.IsSupported(before.TypeIdentity))
+        {
+            Span<NpcAiProjectileIntent> shots = stackalloc NpcAiProjectileIntent[5];
+            if (!VanillaEclipseFighterAcceptedPlanner.TryPlan(in before, in committed, context, random, environment, shots, out int count, out var update) ||
+                !mutations.TryUpdateState(in committed, in update, out var completed)) return committed;
+            for (int i = 0; i < count; i++) mutations.TrySpawnProjectile(in completed, in shots[i], out _);
+            return completed;
+        }
         if (before.TypeIdentity == ElfArcher)
             return CompleteElfArcher(in before, in committed, in hitbox, context, random, environment, mutations);
         if (IsSalamander(before.TypeIdentity))

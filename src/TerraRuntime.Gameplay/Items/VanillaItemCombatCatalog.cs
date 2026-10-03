@@ -140,6 +140,32 @@ public static class VanillaItemCombatCatalog
         new(new ItemTypeId(5295), 20, 5f, VanillaBaseMeleeCrit + 0, 12, 24, 192f), // AcornAxe
     ];
 
+    // Wood and metal broadswords with invariant Item.SetDefaults bodies, melee contact and no shoot.
+    // Copper remains in its existing entry. Ash Wood Sword requires the world-owned Remix ItemVariant.
+    private static readonly VanillaDirectMeleeCombatDefinition[] Broadswords =
+    [
+        new(new ItemTypeId(4), 12, 5.5f, VanillaBaseMeleeCrit, 20, 20, 192f), // IronBroadsword
+        new(new ItemTypeId(24), 7, 5f, VanillaBaseMeleeCrit, 20, 20, 192f), // WoodenSword
+        new(new ItemTypeId(482), 61, 6f, VanillaBaseMeleeCrit, 21, 21, 192f), // AdamantiteSword
+        new(new ItemTypeId(483), 40, 5f, VanillaBaseMeleeCrit, 19, 19, 192f), // CobaltSword
+        new(new ItemTypeId(484), 50, 6f, VanillaBaseMeleeCrit, 20, 20, 192f), // MythrilSword
+        new(new ItemTypeId(653), 11, 6f, VanillaBaseMeleeCrit, 19, 19, 192f), // EbonwoodSword
+        new(new ItemTypeId(656), 8, 6f, VanillaBaseMeleeCrit, 19, 19, 192f), // RichMahoganySword
+        new(new ItemTypeId(659), 30, 7f, VanillaBaseMeleeCrit, 15, 15, 192f), // PearlwoodSword
+        new(new ItemTypeId(921), 11, 6f, VanillaBaseMeleeCrit, 19, 19, 192f), // ShadewoodSword
+        new(new ItemTypeId(1185), 49, 5.5f, VanillaBaseMeleeCrit, 22, 22, 192f), // PalladiumSword
+        new(new ItemTypeId(1192), 59, 6f, VanillaBaseMeleeCrit, 22, 22, 192f), // OrichalcumSword
+        new(new ItemTypeId(1199), 61, 6f, VanillaBaseMeleeCrit, 20, 20, 192f), // TitaniumSword
+        new(new ItemTypeId(2517), 8, 6f, VanillaBaseMeleeCrit, 19, 19, 192f), // PalmWoodSword
+        new(new ItemTypeId(2745), 8, 6f, VanillaBaseMeleeCrit, 20, 20, 192f), // BorealWoodSword
+        new(new ItemTypeId(3484), 16, 6.5f, VanillaBaseMeleeCrit, 17, 17, 192f), // PlatinumBroadsword
+        new(new ItemTypeId(3490), 14, 6f, VanillaBaseMeleeCrit, 19, 19, 192f), // TungstenBroadsword
+        new(new ItemTypeId(3496), 13, 5.5f, VanillaBaseMeleeCrit, 20, 20, 192f), // LeadBroadsword
+        new(new ItemTypeId(3502), 10, 5.5f, VanillaBaseMeleeCrit, 20, 20, 192f), // TinBroadsword
+        new(new ItemTypeId(3514), 14, 6f, VanillaBaseMeleeCrit, 20, 20, 192f), // SilverBroadsword
+        new(new ItemTypeId(3520), 15, 6.5f, VanillaBaseMeleeCrit, 18, 18, 192f), // GoldBroadsword
+    ];
+
     public static bool TryGetDirectMelee(ItemTypeId type, out VanillaDirectMeleeCombatDefinition definition)
     {
         if (type == VanillaItemIds.Muramasa)
@@ -158,6 +184,15 @@ public static class VanillaItemCombatCatalog
             if (MiningTools[i].Type == type)
             {
                 definition = MiningTools[i];
+                return true;
+            }
+        }
+
+        for (int i = 0; i < Broadswords.Length; i++)
+        {
+            if (Broadswords[i].Type == type)
+            {
+                definition = Broadswords[i];
                 return true;
             }
         }

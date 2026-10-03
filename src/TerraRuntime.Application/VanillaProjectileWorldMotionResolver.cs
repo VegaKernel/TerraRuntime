@@ -176,6 +176,9 @@ internal sealed class VanillaProjectileWorldMotionResolver
 
             collidedVelocityX = collision.VelocityX;
             collidedVelocityY = collision.VelocityY;
+            if (!liquid.Wet && (current.Type == VanillaProjectileIds.Nail || current.Type == VanillaProjectileIds.DrManFlyFlask))
+                ResolveEclipseDryCollision(in definition, velocityX, velocityY,
+                    ref behaviorPositionX, ref behaviorPositionY, ref collidedVelocityX, ref collidedVelocityY);
             collideX = collidedVelocityX != velocityX;
             collideY = collidedVelocityY != velocityY;
         }
@@ -338,6 +341,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
 
         float positionX = behaviorPositionX;
         float positionY = behaviorPositionY;
+        ProjectileKillOrigin? killOrigin = null;
         bool skipUpdatePosition = definition.AiStyle == VanillaProjectileAiStyles.PhantasmalDeathray;
         if (!skipUpdatePosition && tileImpact && !bombCollisionHandled && !golemFireballCollisionHandled &&
             !thornBallCollisionHandled && !rainbowRodControlledCollisionHandled && !cultistLightningArcCollisionHandled &&
@@ -347,6 +351,9 @@ internal sealed class VanillaProjectileWorldMotionResolver
             // collision-clamped velocity, Kill() expires the projectile, then UpdatePosition reaches its common tail.
             positionX += collidedVelocityX;
             positionY += collidedVelocityY;
+            // Dr Man Fly's Kill damage runs here, before the common UpdatePosition tail.
+            if (current.Type == VanillaProjectileIds.DrManFlyFlask)
+                killOrigin = new ProjectileKillOrigin(positionX, positionY);
         }
 
         if (!skipUpdatePosition)
@@ -453,7 +460,8 @@ internal sealed class VanillaProjectileWorldMotionResolver
             timeLeft,
             liquid,
             terminationReason,
-            resolvedLocalAi);
+            resolvedLocalAi,
+            KillOrigin: killOrigin);
         return true;
     }
 
@@ -593,6 +601,48 @@ internal sealed class VanillaProjectileWorldMotionResolver
         WorldTile tile = tiles.Get(tileX, tileY);
         return tile.IsActive && !tile.IsActuated &&
                (VanillaTileIds.IsPlatform(tile.TileType) || tile.Type == 380);
+    }
+
+    // HandleMovement's bounded dry high-speed branch; only independently verified families enter here.
+    private void ResolveEclipseDryCollision(in VanillaProjectileDefinition definition, float velocityX, float velocityY,
+        ref float positionX, ref float positionY, ref float resolvedX, ref float resolvedY)
+    {
+        float distance = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
+        int stride = Math.Clamp(Math.Min(definition.CollisionWidth, definition.CollisionHeight),
+            VanillaEclipseProjectileFacts1458.MinimumCollisionStride, VanillaEclipseProjectileFacts1458.MaximumCollisionStride);
+        if (distance <= stride) return;
+        float directionX = velocityX / distance;
+        float directionY = velocityY / distance;
+        if (resolvedY == 0f) directionY = 0f;
+        float cursorX = positionX + definition.CollisionOffsetX;
+        float cursorY = positionY + definition.CollisionOffsetY;
+        float totalX = 0f, totalY = 0f;
+        for (int index = 0; index < VanillaEclipseProjectileFacts1458.MaximumCollisionSubsteps && distance > 0f; index++)
+        {
+            float length = Math.Min(distance, stride);
+            distance -= length;
+            var collision = VanillaWorldCollision.TileCollision(tiles, cursorX, cursorY,
+                directionX * length, directionY * length, definition.CollisionWidth, definition.CollisionHeight,
+                fallThrough: true, fall2: true);
+            cursorX += collision.VelocityX;
+            cursorY += collision.VelocityY;
+            var slope = VanillaWorldSlopeCollision.Resolve(tiles, cursorX, cursorY,
+                collision.VelocityX, collision.VelocityY, definition.CollisionWidth, definition.CollisionHeight, fall: true);
+            positionX += slope.PositionX - cursorX;
+            positionY += slope.PositionY - cursorY;
+            cursorX = slope.PositionX;
+            cursorY = slope.PositionY;
+            totalX += slope.VelocityX;
+            totalY += slope.VelocityY;
+        }
+        resolvedX = MathF.Abs(totalX - velocityX) < VanillaEclipseProjectileFacts1458.CollisionVelocityEpsilon ? velocityX : totalX;
+        resolvedY = MathF.Abs(totalY - velocityY) < VanillaEclipseProjectileFacts1458.CollisionVelocityEpsilon ? velocityY : totalY;
+        var finalSlope = VanillaWorldSlopeCollision.Resolve(tiles, cursorX, cursorY, resolvedX, resolvedY,
+            definition.CollisionWidth, definition.CollisionHeight, fall: true);
+        positionX += finalSlope.PositionX - cursorX;
+        positionY += finalSlope.PositionY - cursorY;
+        resolvedX = finalSlope.VelocityX;
+        resolvedY = finalSlope.VelocityY;
     }
 
     private void ApplyPostAiWind(
