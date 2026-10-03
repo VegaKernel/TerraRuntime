@@ -773,6 +773,49 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Water_plants_bamboo_fixture_matches_official_passlegacy_cells_and_rng()
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1: an active Jungle Plant
+        // in a three-cell water column over Jungle Grass enters PlaceBamboo and grows its source stack.
+        const int width = 600;
+        const int height = 500;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        for (int y = 98; y <= 100; y++)
+        {
+            var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+            workspace.TileStore.Set(300, y, in water);
+        }
+        for (int y = 98; y <= 99; y++)
+        {
+            var plant = new WorldTile { Type = 3, Flags = WorldTileFlags.Active, LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+            workspace.TileStore.Set(300, y, in plant);
+        }
+        var junglePlant = new WorldTile { Type = 61, Flags = WorldTileFlags.Active, LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+        var jungleGrass = new WorldTile { Type = 60, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(300, 100, in junglePlant);
+        workspace.TileStore.Set(300, 101, in jungleGrass);
+
+        var random = new RandomAdapter(1);
+        new FinalPass1458(FinalStage1458.WaterPlants, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1, width, height),
+                workspace,
+                random));
+
+        for (int y = 96; y <= 100; y++)
+        {
+            WorldTile bamboo = workspace.TileStore.Get(300, y);
+            Assert.True(bamboo.IsActive);
+            Assert.Equal((ushort)571, bamboo.Type);
+            Assert.Equal((short)0, bamboo.FrameX);
+            Assert.Equal((short)0, bamboo.FrameY);
+        }
+        Assert.Equal(1928246059, random.Next());
+    }
+
+    [Fact]
     public void Complete_ordinary_plan_matches_every_applicable_source_registration_in_order()
     {
         var request = new WorldGenerationRequest(Provider1458.GeneratorId, "AllPasses", 1458, 4200, 1200);
