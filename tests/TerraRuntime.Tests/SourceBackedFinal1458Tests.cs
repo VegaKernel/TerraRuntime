@@ -571,6 +571,45 @@ public sealed class SourceBackedFinal1458Tests
         Assert.Equal(906992634, random.Next());
     }
 
+    [Theory]
+    [InlineData((ushort)639)]
+    [InlineData((ushort)28)]
+    public void Tile_cleanup_special_two_by_two_fixture_matches_official_passlegacy_cells_and_rng(ushort type)
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy fixtures, 600x500 all-stone seed 1458: lower-right
+        // style-1 pieces of types 639 and 28 recover the 2x2 source frame bank at (299..300,199..200).
+        const int width = 600;
+        const int height = 500;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            workspace.TileStore.Set(x, y, in stone);
+
+        var piece = new WorldTile { Type = type, Flags = WorldTileFlags.Active, FrameX = 54, FrameY = 54 };
+        workspace.TileStore.Set(300, 200, in piece);
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height),
+                workspace,
+                random));
+
+        for (int dx = 0; dx < 2; dx++)
+        for (int dy = 0; dy < 2; dy++)
+        {
+            WorldTile repaired = workspace.TileStore.Get(299 + dx, 199 + dy);
+            Assert.True(repaired.IsActive);
+            Assert.Equal(type, repaired.Type);
+            Assert.Equal((short)(36 + dx * 18), repaired.FrameX);
+            Assert.Equal((short)(36 + dy * 18), repaired.FrameY);
+        }
+        Assert.Equal(906992634, random.Next());
+    }
+
     [Fact]
     public void Tile_cleanup_crimson_heart_fixture_matches_official_passlegacy_cells_and_rng()
     {
