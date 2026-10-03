@@ -816,6 +816,44 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Water_plants_seaweed_fixture_matches_official_passlegacy_cells_and_rng()
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1: a submerged seaweed
+        // tile at y=200 over a stone floor at y=210 grows one source segment at y=199.
+        const int width = 600;
+        const int height = 500;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        for (int y = 197; y <= 200; y++)
+        {
+            var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+            workspace.TileStore.Set(300, y, in water);
+        }
+        var seaweed = new WorldTile { Type = 549, Flags = WorldTileFlags.Active, LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+        var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(300, 200, in seaweed);
+        workspace.TileStore.Set(300, 210, in stone);
+
+        var random = new RandomAdapter(1);
+        new FinalPass1458(FinalStage1458.WaterPlants, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1, width, height),
+                workspace,
+                random));
+
+        for (int y = 199; y <= 200; y++)
+        {
+            WorldTile segment = workspace.TileStore.Get(300, y);
+            Assert.True(segment.IsActive);
+            Assert.Equal((ushort)549, segment.Type);
+            Assert.Equal((short)0, segment.FrameX);
+            Assert.Equal((short)0, segment.FrameY);
+        }
+        Assert.Equal(540780342, random.Next());
+    }
+
+    [Fact]
     public void Complete_ordinary_plan_matches_every_applicable_source_registration_in_order()
     {
         var request = new WorldGenerationRequest(Provider1458.GeneratorId, "AllPasses", 1458, 4200, 1200);
