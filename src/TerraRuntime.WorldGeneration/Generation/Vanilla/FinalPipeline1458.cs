@@ -469,7 +469,9 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
     }
 
     private static bool IsSolidTile(in WorldTile tile) =>
-        tile.IsActive && VanillaTileCollisionCatalog.IsSolid(new TileTypeId(tile.Type));
+        // TileCleanup temporarily sets Main.tileSolid[379] = false around its complete scan. The mutation
+        // affects its SolidTile ceiling gate for drip offers, then the global table is restored on return.
+        tile.IsActive && tile.Type != 379 && VanillaTileCollisionCatalog.IsSolid(new TileTypeId(tile.Type));
 
     private static void RepairBasicChest(
         IWorldGenerationContext context, RuntimeGrid grid, int x, int y, ushort observedType, short frameX, short frameY)

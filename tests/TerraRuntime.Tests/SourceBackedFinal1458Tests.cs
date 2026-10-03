@@ -152,6 +152,26 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Tile_cleanup_treats_type_379_as_non_solid_for_its_temporary_drip_ceiling_gate()
+    {
+        // TileCleanup itself sets Main.tileSolid[379] false before the scan. A full water source above
+        // Bubble 379 therefore cannot offer the otherwise accepted ceiling drip at the empty target.
+        var workspace = CreateFinalWorkspace();
+        var bubble = new WorldTile { Type = 379, Flags = WorldTileFlags.Active };
+        var water = new WorldTile { LiquidAmount = 128, LiquidKind = WorldLiquidKind.Water };
+        workspace.TileStore.Set(50, 49, in bubble);
+        workspace.TileStore.Set(50, 48, in water);
+
+        new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100),
+                workspace,
+                new DripRandom()));
+
+        Assert.False(workspace.TileStore.Get(50, 50).IsActive);
+    }
+
+    [Fact]
     public void Tile_cleanup_repairs_every_piece_of_a_broken_crimson_heart()
     {
         var workspace = new Workspace(100, 100);
