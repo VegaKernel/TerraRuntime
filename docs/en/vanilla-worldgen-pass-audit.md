@@ -660,7 +660,7 @@ Full Desert integration also exposed later-stage boundary defects. Ordinary Sett
 | 102 | Settle Liquids Again | Final | P | `SettleLiquidsPart2AndNotTheBees`: generation `QuickWater`, `WaterCheck` and ten bounded quick-settle rounds; one official complete-delegate fixture / broader liquid coverage remains |
 | 103 | Cactus, Palm Trees, & Coral | Final | C | growers / planting distribution / RNG |
 | 104 | Tile Cleanup | Final | P | `TileCleanup` carries source `SaveSlopes`, slow-water death, ordinary drip offers, liquid-blocking walls, trap-neighbour cleanup, 2x2 recovery for shadow orbs, crimson hearts, Life Crystals, type `639`, type `28`, and basic chests (including source loot-style overrides), plus 3x2 heart recovery, spike-ball support repair, and type-`162` orphan cleanup with the reachable `CanKillTile` guards; recovered objects preserve source frame banks and wall-terrain support without synthetic field normalization; direct TerrariaServer `PassLegacy` fixtures now execute for the liquid-death and dry-object paths, while further object repair/framing branches remain |
-| 105 | Lihzahrd Altars | Final | C | temple anchors / placement / RNG |
+| 105 | Lihzahrd Altars | Final | P | exact retained `GenVars.lAltarX/lAltarY` anchor, fixed 3x2 `237` footprint and `226` support row with no RNG; focused source-backed regression / complete `PassLegacy` differential remains |
 | 106 | Water Plants | Final | P | liquid/substrate selection / RNG |
 | 107 | Stalac | Final | C | `SpeleothemsAndGemTrees`: whole-map scan, `PlaceTight`, the substrate atlas and `CheckStalactite`'s restyle: 32 official complete-delegate fixtures / world-level counts track a terrain surplus |
 | 108 | Remove Broken Traps | Final | C | trap validation / source scan |

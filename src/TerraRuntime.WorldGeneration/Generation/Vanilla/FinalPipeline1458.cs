@@ -191,7 +191,7 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 ApplyTileCleanup(context, grid, random);
                 break;
             case FinalStage1458.LihzahrdAltars:
-                ApplyLihzahrdAltars(context, grid, random);
+                ApplyLihzahrdAltars(context, workspace, grid);
                 break;
             case FinalStage1458.WaterPlants:
                 ApplyWaterPlants(context, grid, random);
@@ -683,44 +683,35 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
 
     private static void ApplyLihzahrdAltars(
         IWorldGenerationContext context,
-        RuntimeGrid grid,
-        IWorldGenerationVanillaRandom random)
+        Workspace workspace,
+        RuntimeGrid grid)
     {
-        if (grid.ContainsTileType(LihzahrdAltar))
+        VanillaLihzahrdAltarState1458 altar = workspace.VanillaLihzahrdAltarState ??
+            throw new InvalidOperationException(
+                "Lihzahrd Altars requires the Jungle Temple GenVars.lAltarX/lAltarY anchor.");
+
+        // TerrariaServer 1.4.5.8 GenPassNameID.LihzahrdAltar consumes makeTemple's exact GenVars anchor;
+        // it neither discovers a temple nor draws RNG. SquareTileFrame follows these writes in vanilla, but
+        // no runtime re-framer is needed for this fixed explicit 3x2 footprint.
+        for (int dx = 0; dx < 3; dx++)
         {
-            context.ReportProgress(1d, "Lihzahrd Altars complete; existing altar preserved");
-            return;
+            context.CancellationToken.ThrowIfCancellationRequested();
+            for (int dy = 0; dy < 2; dy++)
+            {
+                ref WorldTile tile = ref grid.At(altar.X + dx, altar.Y + dy);
+                tile.Flags |= WorldTileFlags.Active;
+                tile.Type = LihzahrdAltar;
+                tile.FrameX = checked((short)(dx * 18));
+                tile.FrameY = checked((short)(dy * 18));
+            }
+
+            ref WorldTile support = ref grid.At(altar.X + dx, altar.Y + 2);
+            support.Flags |= WorldTileFlags.Active;
+            support.Shape = 0;
+            support.Type = LihzahrdBrick;
         }
 
-        if (!grid.TryFindBounds(LihzahrdBrick, out TileBounds bounds))
-        {
-            context.ReportProgress(1d, "Lihzahrd Altars complete; no temple bounds found");
-            return;
-        }
-
-        int minX = Math.Max(bounds.Left + 3, 3);
-        int maxX = Math.Min(bounds.Right - 3, grid.Width - 4);
-        int minY = Math.Clamp(bounds.Top + Math.Max(4, bounds.Height / 2), 3, grid.Height - 5);
-        int maxY = Math.Min(bounds.Bottom - 2, grid.Height - 4);
-        bool placed = false;
-
-        for (int attempt = 0; attempt < 5000 && minX <= maxX && minY <= maxY; attempt++)
-        {
-            if ((attempt & 127) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            int left = random.Next(minX, maxX + 1) - 1;
-            int top = random.Next(minY, maxY + 1) - 1;
-            if (!grid.IsEmptyRectangle(left, top, 3, 2))
-                continue;
-            if (!grid.IsSolidTempleFloor(left, top + 2, 3))
-                continue;
-
-            PlaceFramedObject(grid, left, top, 3, 2, LihzahrdAltar);
-            placed = true;
-            break;
-        }
-
-        context.ReportProgress(1d, placed ? "Lihzahrd Altars complete; altar placed" : "Lihzahrd Altars complete; no legal altar site");
+        context.ReportProgress(1d, "Lihzahrd Altars complete; placed at retained temple anchor");
     }
 
     private static void ApplyWaterPlants(

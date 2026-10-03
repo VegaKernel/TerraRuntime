@@ -673,6 +673,7 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         state.TempleBottom = builder.Bottom;
         workspace.SetVanillaTemplePart2State(new VanillaTemplePart2State1458(
             builder.Left, builder.Right, builder.Top, builder.Bottom, builder.Rooms));
+        workspace.SetVanillaLihzahrdAltarState(new VanillaLihzahrdAltarState1458(builder.AltarX, builder.AltarY));
 
         context.ReportProgress(
             1d,

@@ -32,6 +32,9 @@ internal readonly record struct VanillaUndergroundDesertRegion1458(int X, int Y,
 /// <summary>Source <c>GenVars.tLeft/tRight/tTop/tBottom/tRooms</c>, retained for Temple Part 2.</summary>
 internal readonly record struct VanillaTemplePart2State1458(int Left, int Right, int Top, int Bottom, int Rooms);
 
+/// <summary>Source <c>GenVars.lAltarX/lAltarY</c>, retained for the later Lihzahrd Altar pass.</summary>
+internal readonly record struct VanillaLihzahrdAltarState1458(int X, int Y);
+
 /// <summary>
 /// Isolated mutable tile workspace for a candidate generated world. Writes bypass live-world dirty tracking because
 /// the store is not authoritative or network-visible until the caller explicitly accepts the completed candidate.
@@ -85,6 +88,7 @@ public sealed class Workspace :
     private VanillaUndergroundDesertRegion1458? vanillaUndergroundDesertRegion;
     private VanillaDesertGenerationState1458? vanillaDesertGenerationState;
     private VanillaTemplePart2State1458? vanillaTemplePart2State;
+    private VanillaLihzahrdAltarState1458? vanillaLihzahrdAltarState;
     // WorldGen.AddBuriedChest is called by passes on both sides of Spider Caves. Its once-per-world
     // loot flags must therefore outlive the Chest pipeline's private pass state.
     private Vanilla.BuriedChestContext1458? vanillaBuriedChestContext;
@@ -108,6 +112,7 @@ public sealed class Workspace :
     internal VanillaWorldSeedProfile1458 VanillaSeedProfile => vanillaSeedProfile;
     internal VanillaWorldGenerationBootstrapState1458? VanillaBootstrapState => vanillaBootstrapState;
     internal VanillaTemplePart2State1458? VanillaTemplePart2State => vanillaTemplePart2State;
+    internal VanillaLihzahrdAltarState1458? VanillaLihzahrdAltarState => vanillaLihzahrdAltarState;
     internal TerrainGenerationState1458? VanillaTerrainState => vanillaTerrainState;
     internal VanillaLiquidLines1458? VanillaLiquidLines => vanillaLiquidLines;
     internal VanillaFallenLogAnchor1458? VanillaFallenLogAnchor => vanillaFallenLogAnchor;
@@ -194,6 +199,15 @@ public sealed class Workspace :
         }
 
         vanillaTemplePart2State = state;
+    }
+
+    internal void SetVanillaLihzahrdAltarState(VanillaLihzahrdAltarState1458 state)
+    {
+        // TerrariaServer 1.4.5.8 writes a 3x2 altar and its three-cell support row from this anchor.
+        if (state.X < 0 || state.Y < 0 || state.X + 2 >= WidthTiles || state.Y + 2 >= HeightTiles)
+            throw new ArgumentOutOfRangeException(nameof(state));
+
+        vanillaLihzahrdAltarState = state;
     }
     internal void SetVanillaOasisAnchors(IReadOnlyList<Vanilla.VanillaOasisAnchor1458> anchors)
     {

@@ -369,6 +369,54 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Lihzahrd_altar_consumes_the_retained_temple_anchor_without_rng_or_site_search()
+    {
+        // TerrariaServer 1.4.5.8 GenPassNameID.LihzahrdAltar writes GenVars.lAltarX/lAltarY directly:
+        // type 237 at its 3x2 footprint and active, unsloped type 226 below each column. This fixture
+        // starts with unrelated active content so a material scan or an existing-altar early exit cannot pass.
+        var workspace = CreateFinalWorkspace();
+        workspace.SetVanillaLihzahrdAltarState(new VanillaLihzahrdAltarState1458(50, 50));
+        for (int dx = 0; dx < 3; dx++)
+        for (int dy = 0; dy < 3; dy++)
+        {
+            var stale = new WorldTile
+            {
+                Type = 1,
+                FrameX = 72,
+                FrameY = 54,
+                Flags = WorldTileFlags.Active | WorldTileFlags.Actuator,
+                Shape = 3,
+                LiquidAmount = 87,
+                LiquidKind = WorldLiquidKind.Honey
+            };
+            workspace.TileStore.Set(50 + dx, 50 + dy, in stale);
+        }
+
+        new FinalPass1458(FinalStage1458.LihzahrdAltars, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100),
+                workspace,
+                new ThrowingRandom()));
+
+        for (int dx = 0; dx < 3; dx++)
+        {
+            for (int dy = 0; dy < 2; dy++)
+            {
+                WorldTile altar = workspace.TileStore.Get(50 + dx, 50 + dy);
+                Assert.True(altar.IsActive);
+                Assert.Equal((ushort)237, altar.Type);
+                Assert.Equal((short)(dx * 18), altar.FrameX);
+                Assert.Equal((short)(dy * 18), altar.FrameY);
+            }
+
+            WorldTile support = workspace.TileStore.Get(50 + dx, 52);
+            Assert.True(support.IsActive);
+            Assert.Equal((ushort)226, support.Type);
+            Assert.Equal((byte)0, support.Shape);
+        }
+    }
+
+    [Fact]
     public void Complete_ordinary_plan_matches_every_applicable_source_registration_in_order()
     {
         var request = new WorldGenerationRequest(Provider1458.GeneratorId, "AllPasses", 1458, 4200, 1200);
@@ -532,6 +580,14 @@ public sealed class SourceBackedFinal1458Tests
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot.ToString())));
     }
 
+    private static Workspace CreateFinalWorkspace()
+    {
+        var workspace = new Workspace(100, 100);
+        Assert.True(workspace.TrySetLayers(10, 20));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        return workspace;
+    }
+
     private sealed class CaptureBuilder : IWorldGenerationPlanBuilder
     {
         public List<CaptureEntry> Entries { get; } = [];
@@ -576,5 +632,14 @@ public sealed class SourceBackedFinal1458Tests
             DrawCount++;
             return value;
         }
+    }
+
+    private sealed class ThrowingRandom : IWorldGenerationVanillaRandom
+    {
+        public int Next() => throw new Xunit.Sdk.XunitException("The Lihzahrd Altar pass must not consume RNG.");
+        public int Next(int maxValue) => Next();
+        public int Next(int minValue, int maxValue) => Next();
+        public double NextDouble() => throw new Xunit.Sdk.XunitException("The Lihzahrd Altar pass must not consume RNG.");
+        public void NextBytes(byte[] buffer) => throw new Xunit.Sdk.XunitException("The Lihzahrd Altar pass must not consume RNG.");
     }
 }
