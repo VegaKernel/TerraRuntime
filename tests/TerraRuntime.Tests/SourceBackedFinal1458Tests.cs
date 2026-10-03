@@ -737,6 +737,42 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Water_plants_lily_pad_fixture_matches_official_passlegacy_cells_and_rng()
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 7: the same five-cell
+        // water column over grass selects a lily pad. Frame 72 exercises the column-dependent frame bank.
+        const int width = 600;
+        const int height = 500;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        for (int y = 100; y <= 104; y++)
+        {
+            var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+            workspace.TileStore.Set(300, y, in water);
+        }
+        var grass = new WorldTile { Type = 2, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(300, 105, in grass);
+
+        var random = new RandomAdapter(7);
+        new FinalPass1458(FinalStage1458.WaterPlants, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 7, width, height),
+                workspace,
+                random));
+
+        WorldTile pad = workspace.TileStore.Get(300, 100);
+        Assert.True(pad.IsActive);
+        Assert.Equal((ushort)518, pad.Type);
+        Assert.Equal((short)72, pad.FrameX);
+        Assert.Equal((short)0, pad.FrameY);
+        Assert.Equal(byte.MaxValue, pad.LiquidAmount);
+        for (int y = 101; y <= 104; y++)
+            Assert.False(workspace.TileStore.Get(300, y).IsActive);
+        Assert.Equal(902071154, random.Next());
+    }
+
+    [Fact]
     public void Complete_ordinary_plan_matches_every_applicable_source_registration_in_order()
     {
         var request = new WorldGenerationRequest(Provider1458.GeneratorId, "AllPasses", 1458, 4200, 1200);
