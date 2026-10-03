@@ -496,6 +496,35 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Tile_cleanup_liquid_blocking_wall_fixture_matches_official_passlegacy_cells_and_rng()
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy fixture: ordinary wall 13 clears liquid in its
+        // inactive cell without consuming shared generation RNG.
+        const int width = 600;
+        const int height = 500;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            workspace.TileStore.Set(x, y, in stone);
+        var target = new WorldTile { Wall = 13, LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+        workspace.TileStore.Set(300, 200, in target);
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height), workspace, random));
+
+        WorldTile cleared = workspace.TileStore.Get(300, 200);
+        Assert.False(cleared.IsActive);
+        Assert.Equal((ushort)13, cleared.Wall);
+        Assert.Equal((byte)0, cleared.LiquidAmount);
+        Assert.Equal(906992634, random.Next());
+    }
+
+    [Fact]
     public void Tile_cleanup_life_crystal_fixture_matches_official_passlegacy_cells_and_rng()
     {
         // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1458: the sole lower-right
