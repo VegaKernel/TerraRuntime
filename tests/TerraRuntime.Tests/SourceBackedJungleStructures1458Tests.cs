@@ -204,22 +204,30 @@ public sealed class SourceBackedJungleStructures1458Tests
         // TerrariaServer 1.4.5.8 GenPassNameID.SettleLiquids calls Liquid.QuickWater, WaterCheck and
         // ten quick-settle rounds before clearing transient liquid work.
         // While that runs, tile 137 is non-solid. The previous six direct gravity sweeps stopped above it.
-        var workspace = new Workspace(48, 48);
+        // Direct official QuickWater -> WaterCheck -> ten quick-settle rounds -> ClearPendingLiquid
+        // on this 600x500 enclosed basin leaves x291..309,y121 at amount12 (sum228); next RNG906992634.
+        // The former 48x48 fixture fell outside vanilla's update border and underworld evaporation bounds.
+        var workspace = new Workspace(600, 500);
         WorldTile water = new() { LiquidAmount = 200, LiquidKind = WorldLiquidKind.Water };
-        workspace.TileStore.Set(24, 8, in water);
-        SetActive(workspace, 24, 16, type: 137);
-        SetActive(workspace, 24, 22, type: 1);
+        workspace.TileStore.Set(300, 100, in water);
+        SetActive(workspace, 300, 116, type: 137);
+        for (int x = 290; x <= 310; x++)
+            SetActive(workspace, x, 122, type: 1);
+        for (int y = 80; y <= 122; y++)
+        {
+            SetActive(workspace, 290, y, type: 1);
+            SetActive(workspace, 310, y, type: 1);
+        }
 
         JungleStructurePass1458.ApplySettleLiquidsForTesting(workspace);
 
-        Assert.Equal((byte)0, workspace.TileStore.Get(24, 8).LiquidAmount);
-        Assert.Equal((byte)0, workspace.TileStore.Get(24, 15).LiquidAmount);
+        Assert.Equal((byte)0, workspace.TileStore.Get(300, 100).LiquidAmount);
+        Assert.Equal((byte)0, workspace.TileStore.Get(300, 115).LiquidAmount);
         WorldTile[] tiles = workspace.TileStore.Tiles.ToArray();
-        Assert.Equal(200, tiles.Sum(static tile => tile.LiquidAmount));
-        Assert.Equal((byte)0, workspace.TileStore.Get(24, 8).LiquidAmount);
-        Assert.Contains(tiles.Select(static (tile, index) => (tile, index)),
-            static entry => entry.tile.LiquidAmount > 0 && entry.index % 48 > 16);
-        Assert.True(tiles.Count(static tile => tile.LiquidAmount > 0) > 1);
+        Assert.Equal(228, tiles.Sum(static tile => tile.LiquidAmount));
+        Assert.Equal(19, tiles.Count(static tile => tile.LiquidAmount > 0));
+        for (int x = 291; x <= 309; x++)
+            Assert.Equal((byte)12, workspace.TileStore.Get(x, 121).LiquidAmount);
         Assert.False(workspace.TileStore.LiquidUpdates.HasPendingWork);
     }
 

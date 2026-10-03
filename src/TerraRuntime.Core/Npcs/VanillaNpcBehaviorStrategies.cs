@@ -689,7 +689,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
         // applies target-349 SetDefaults, preserves its bottom edge and scales life; both source hitboxes are
         // 28-by-76, so this specific transform has no position delta before the same-tick type-349 movement.
         if (definition.Type.Value == 348 && npc.Simulation.Life * 100 <= npc.Simulation.LifeMax * 55 &&
-            VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(349), new NpcNetId(349), out VanillaNpcDefinition transformedDefinition))
+            VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.NutcrackerSpinning, new NpcNetId((short)VanillaNpcIds.NutcrackerSpinning.Value), out VanillaNpcDefinition transformedDefinition))
         {
             int transformedLife = ScaleTransformLife(npc.Simulation.Life, npc.Simulation.LifeMax, 1800);
             NpcSnapshot transformed = npc with
@@ -901,9 +901,13 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
             }
         }
 
-        int? damageOverride = armedMelee && npc.Ai.Ai2 > 0f
-            ? VanillaArmedZombieCombatFacts1458.ResolveAttackDamage(simulation.BaseDamage ?? definition.Damage)
-            : null;
+        // AI_003_Fighters (1.4.5.8) resets damage only in the armed-melee branch.
+        // Ordinary fighters retain their committed damage, including host-owned overrides.
+        int? damageOverride = !armedMelee
+            ? simulation.DamageOverride
+            : npc.Ai.Ai2 > 0f
+                ? VanillaArmedZombieCombatFacts1458.ResolveAttackDamage(simulation.BaseDamage ?? definition.Damage)
+                : simulation.BaseDamage is int baseDamage && baseDamage != definition.Damage ? baseDamage : null;
 
         next = new NpcStateUpdate(
             definition.Type.Value,

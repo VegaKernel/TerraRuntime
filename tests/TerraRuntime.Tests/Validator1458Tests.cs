@@ -7,29 +7,29 @@ namespace TerraRuntime.Tests;
 public sealed class VanillaWorldGenerationValidator1458Tests
 {
     [Theory]
-    [InlineData(138, false)]
-    [InlineData(484, false)]
-    [InlineData(546, false)]
-    [InlineData(664, false)]
-    [InlineData(711, false)]
-    [InlineData(712, false)]
-    [InlineData(713, false)]
-    [InlineData(714, false)]
-    [InlineData(715, false)]
-    [InlineData(716, false)]
-    [InlineData(10, false)]
-    [InlineData(190, false)]
-    [InlineData(191, false)]
-    [InlineData(192, false)]
-    [InlineData(0, true)]
-    [InlineData(1, true)]
-    [InlineData(53, true)]
-    [InlineData(396, true)]
-    [InlineData(397, true)]
-    public void Canonical_liquid_validation_uses_source_settling_solidity(int type, bool blocks)
+    [InlineData(138)]
+    [InlineData(484)]
+    [InlineData(546)]
+    [InlineData(664)]
+    [InlineData(711)]
+    [InlineData(712)]
+    [InlineData(713)]
+    [InlineData(714)]
+    [InlineData(715)]
+    [InlineData(716)]
+    [InlineData(10)]
+    [InlineData(190)]
+    [InlineData(191)]
+    [InlineData(192)]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(53)]
+    [InlineData(396)]
+    [InlineData(397)]
+    public void Canonical_structural_validation_preserves_source_solid_and_object_liquid_records(int type)
     {
-        // Source Liquid.tilesIgnoreWater/worldGenTilesIgnoreWater permit embedded liquid
-        // in boulders and these generation overrides; ordinary full solids still reject.
+        // TileCleanup runs after settlement and can restore solid supports with liquid still present.
+        // WorldFile.SaveWorldTiles accepts both solid and object records; liquid settlement is a later boundary.
         var workspace = new Workspace(4200, 1200);
         for (int x = 20; x < 22; x++)
             for (int y = 20; y < 22; y++)
@@ -47,8 +47,52 @@ public sealed class VanillaWorldGenerationValidator1458Tests
 
         // Passing liquid validation reaches the deliberately absent biome check, not a
         // claim that this minimal fixture is a valid complete world.
-        Assert.Equal(blocks ? WorldValidationStatus.InvalidLiquid : WorldValidationStatus.BiomeMissing, result.Status);
-        Assert.Contains(blocks ? "Solid tile" : "too sparse", result.Detail, StringComparison.Ordinal);
+        Assert.Equal(WorldValidationStatus.BiomeMissing, result.Status);
+        Assert.Contains("too sparse", result.Detail, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0, 128)]
+    [InlineData(0, 255)]
+    [InlineData(25, 255)]
+    public void Official_cleanup_and_tile_file_roundtrip_embedded_liquid_is_structurally_admissible(int type, byte amount)
+    {
+        // Actual unmodified TerrariaServer 1.4.5.8 TileCleanup + FinalCleanup on 600x500 stone:
+        // altar supports (301/302,201) become Dirt with 128/255 water; Ebonstone (320,220) retains 255.
+        // Its SaveWorldTiles/LoadWorldTiles roundtrip preserves all three; WaterCheck then clears them.
+        var workspace = new Workspace(4200, 1200);
+        ref WorldTile tile = ref workspace.TileStore.Tiles[workspace.TileStore.GetUncheckedIndex(301, 201)];
+        tile.Type = checked((ushort)type);
+        tile.Flags = WorldTileFlags.Active;
+        tile.LiquidAmount = amount;
+        var metadata = new RuntimeWorldGenerationMetadataSnapshot(new(32, 10), new(10, 10), new(300d, 600d));
+
+        WorldValidationResult result = Validator1458.Validate(workspace, metadata);
+
+        // The structural validator retains later world requirements and does not mutate the source record.
+        Assert.Equal(WorldValidationStatus.BiomeMissing, result.Status);
+        Assert.Contains("too sparse", result.Detail, StringComparison.Ordinal);
+        Assert.Equal(amount, workspace.TileStore.Get(301, 201).LiquidAmount);
+        Assert.Equal((ushort)type, workspace.TileStore.Get(301, 201).Type);
+        Assert.True(workspace.TileStore.Get(301, 201).IsActive);
+    }
+
+    [Theory]
+    [InlineData(255, 4)]
+    [InlineData(0, 1)]
+    public void Embedded_liquid_admission_keeps_liquid_encoding_validation(byte amount, byte kind)
+    {
+        var workspace = new Workspace(4200, 1200);
+        ref WorldTile tile = ref workspace.TileStore.Tiles[workspace.TileStore.GetUncheckedIndex(301, 201)];
+        tile.Type = 0;
+        tile.Flags = WorldTileFlags.Active;
+        tile.LiquidAmount = amount;
+        tile.LiquidKind = (WorldLiquidKind)kind;
+        var metadata = new RuntimeWorldGenerationMetadataSnapshot(new(32, 10), new(10, 10), new(300d, 600d));
+
+        WorldValidationResult result = Validator1458.Validate(workspace, metadata);
+
+        Assert.Equal(WorldValidationStatus.InvalidLiquid, result.Status);
     }
 
     [Fact]

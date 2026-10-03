@@ -13,6 +13,7 @@ internal sealed partial class ServerRuntimeState
 {
     public void Tick()
     {
+        _runtime.WorldClock?.UpdateWindyDayState();
         _runtime.Npcs.AdvanceWorldTick();
         _runtime.Players.AdvanceCombatTick(Updates);
         _runtime.WorldTileAuthority.AdvanceTo(Updates);

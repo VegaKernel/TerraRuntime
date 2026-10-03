@@ -38,6 +38,7 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
     private const int TallGateHeight = 5;
     private const int TallGateCoordinateFullHeight = 90;
     private const int FrameUnit = 18;
+    private const int TrapdoorStyleStride = 2 * FrameUnit;
     private const int ClosedDoorStyleHeight = 54;
     private const int ClosedDoorHorizontalStyleWidth = 54;
     private const int OpenDoorHorizontalStyleWidth = 72;
@@ -323,7 +324,7 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
 
         int leftX = tileX - (touched.FrameX / FrameUnit % 2);
         int topY = tileY - (touched.FrameY / FrameUnit % 2);
-        int directionStyle = touched.FrameX / 36;
+        int directionStyle = touched.FrameX / TrapdoorStyleStride;
         if (directionStyle is not 0 and not 1 || !Contains(leftX, topY) || !Contains(leftX + 1, topY + 1))
             return false;
 
@@ -341,7 +342,7 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
                 return false;
         }
 
-        int styleY = touched.FrameY / 36;
+        int styleY = touched.FrameY / TrapdoorStyleStride;
         for (int column = 0; column < 2; column++)
         {
             WorldTile source = tiles.Get(leftX + column, topY);
@@ -630,7 +631,7 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
     // locked-door branches are unreachable because the candidate type is already verified as 387.
     private bool CanKillTrapdoorTile(int x, int y, in WorldTile tile)
     {
-        if (!tile.IsActive || tile.Wall == 350 || y == 0)
+        if (!tile.IsActive || tile.WallType == VanillaWallIds.UnbreakableTemple || y == 0)
             return false;
 
         WorldTile above = tiles.Get(x, y - 1);

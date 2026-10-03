@@ -5,6 +5,34 @@ namespace TerraRuntime.Tests;
 public sealed class WorldLiquidUpdateQueueTests
 {
     [Fact]
+    public void Loading_slot_handoff_retains_membership_and_restores_owned_snapshot_order()
+    {
+        var queue = new WorldLiquidUpdateQueue(new WorldDimensions(5, 4));
+        Assert.True(queue.TryEnqueue(2, 3, delay: 7, kill: 3));
+        Assert.True(queue.TryEnqueue(1, 2));
+        Assert.True(queue.TryBuffer(4, 3));
+        queue.SetSkipNextUpdate(2, 3);
+        Assert.True(queue.TryTakeLoadingSlot(out WorldLiquidUpdate first));
+        Assert.True(queue.IsQueued(2, 3));
+        Assert.False(queue.TryEnqueue(2, 3));
+        Assert.True(queue.TryTakeLoadingSlot(out _));
+        Assert.True(queue.TryEnqueue(3, 2));
+        Assert.True(queue.TryTakeLoadingSlot(out WorldLiquidUpdate appended));
+        queue.RestoreLoadingSlots([first with { Kill = 4 }, appended]);
+        Assert.True(queue.IsQueued(2, 3));
+        Assert.False(queue.IsQueued(1, 2));
+        Assert.True(queue.IsBuffered(4, 3));
+        Assert.True(queue.IsSkipNextUpdate(2, 3));
+        var restored = new WorldLiquidUpdateQueue(queue.Dimensions);
+        Assert.True(restored.TryRestoreSnapshot(queue.CaptureActiveSnapshot(), queue.CaptureBufferSnapshot()));
+        Assert.True(restored.TryDequeue(out WorldLiquidUpdate owned));
+        Assert.Equal(first with { Kill = 4 }, owned);
+        Assert.True(restored.TryDequeue(out owned));
+        Assert.Equal(appended, owned);
+        Assert.True(restored.IsBuffered(4, 3));
+    }
+
+    [Fact]
     public void Active_and_buffered_work_are_deduplicated_and_fifo()
     {
         var queue = new WorldLiquidUpdateQueue(new WorldDimensions(4, 3));

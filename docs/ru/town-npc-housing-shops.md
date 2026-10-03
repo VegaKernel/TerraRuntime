@@ -43,7 +43,9 @@ Truffle housing 1.4.5.8: до первого вселения нужна surface
 
 Packet 40 теперь повторяет серверную часть `Player.SetTalkNPC`: после проверки authenticated player slot authoritative game thread разрешает live NPC, снимает packet-5 inventory/vitals/team state, сканирует pinned `169x124` SceneMetrics вокруг игрока, считает source-shaped housing crowding и числовой happiness, затем собирает обычный `Chest.SetupShop` или поддержанный special shop в immutable per-player session. Закрытие разговора очищает session, disconnect не даёт ей протечь в переиспользованный player generation.
 
-Не принадлежащие runtime факты не подменяются выдумками: `LoveStruck`, live wind/weather, Golfer score, полный Bestiary/Fairy Torch state, Artisan Bread и Traveling Merchant `travelShop` отмечаются явными missing-fact flags.
+Не принадлежащие runtime факты не подменяются выдумками: `LoveStruck`, Golfer score, полный Bestiary/Fairy Torch state, Artisan Bread и Traveling Merchant `travelShop` отмечаются явными missing-fact flags.
+
+Предмет торговца `4074` теперь зависит от живого состояния `RuntimeWorldClock.HappyWindyDay`. Исходный `Main.UpdateWindyDayState` выполняется до сущностей и погоды, в том числе при замороженном времени: сухой день с временем `10800..43200` включает состояние при абсолютном целевом ветре `0.4`, выключает ниже `0.34` и сохраняет его между порогами. Состояние облаков выделенного сервера удерживается с предыдущей фазы погоды; дождь сбрасывает признак вне Remix, а в Remix сохраняет его. Признак и состояние облаков не сохраняются: загрузка мира сбрасывает признак и задаёт облака из сохранённого максимума дождя. При отсутствии часов остаётся явный пробел `LiveWeather`. Четырнадцать прямых вызовов оригинальной сборки независимо закрепляют ветки времени, ветра, дождя и Remix; полная совместимость погоды и магазинов остаётся открытой.
 
 ### Rescue и жизненный цикл critter
 

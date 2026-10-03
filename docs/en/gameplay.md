@@ -323,6 +323,8 @@ This still does **not** mean complete Terraria projectile parity. Unsupported ir
 
 ## 18. Combat
 
+Incoming NPC contact, hostile projectiles and their termination explosions check generation-owned `General` immunity before drawing damage variation for connected and server-owned players. This preserves Terraria `1.4.5.8` `Update_NPCCollision` / `Damage_EVP` ordering: immune ordinary hits consume no damage RNG; `BossNoCheese` hits still draw before `Hurt` rejects their separate cooldown. Expired immunity admits the next draw. Ordinary AI `3` fighters also retain their committed contact-damage overrides; only the armed-melee branch restores its source base damage outside an attack. These corrections do not complete equipment, debuff or full incoming-combat parity.
+
 Combat is a separate semantic subsystem, not just fields attached to projectile/NPC packets.
 
 The target model includes damage source/provenance, attacker/target, base/final damage, defense interaction, knockback, critical hits, immunity/cooldowns, death reason/result and PvP/environment/NPC/projectile categories.
@@ -362,6 +364,8 @@ The admitted projectile-specific PvP status slice is now server-resolved from so
 Complete buff gameplay remains broad future work. Identity/presentation validation must not be confused with implementing every buff effect, immunity, duration/RNG rule, prefix stat family or reforging rule.
 
 ## 21. Wiring, liquids and growth
+
+Generation/loading quick settlement preserves the source active-slot order: `AddWater` keeps existing membership and appends admitted cells immediately, horizontal offers follow left/right order at each distance, and retirement scans backwards while replacing a removed slot with the last slot. A reusable scratch array is bounded by the smaller of world tile count and `24999` active entries (the source `25000` table reserves its final slot). Oversized incoming work fails before any active entry is taken. The game-loop owner restores every retained delay/kill entry to `WorldLiquidUpdateQueue` before returning, including on failure; queued snapshots therefore retain their ordered state. Skip flags and buffered work remain with the queue; a full active table leaves buffered cells pending until a slot becomes available. The live FIFO scheduler retains its existing bounded approximation. The direct official enclosed-basin fixture now ends with nineteen water cells of amount `12`, total `228`, matching Terraria `1.4.5.8`; wider liquid/cascade parity remains open.
 
 Wiring, liquid material and growth commits now have separate typed mutation boundaries. Liquids also have an explicit runtime work queue that can be persisted through warm snapshots.
 

@@ -202,7 +202,8 @@ public static class VanillaBatMotion1458
             if (ai1 > 1000f)
                 ai1 = 0f;
 
-            bool shooterWanderProfile = type == VanillaNpcIds.Harpy || type == VanillaNpcIds.Demon || type == VanillaNpcIds.VoodooDemon;
+            bool shooterWanderProfile = type == VanillaNpcIds.Harpy || type == VanillaNpcIds.Demon || type == VanillaNpcIds.VoodooDemon ||
+        type == VanillaNpcIds.RedDevil;
             float wanderAcceleration = shooterWanderProfile ? 0.12f : 0.2f;
             float wanderVerticalAcceleration = shooterWanderProfile ? 0.07f : 0.1f;
             float wanderMaximumHorizontalSpeed = shooterWanderProfile ? 3f : 4f;
@@ -329,5 +330,6 @@ public static class VanillaBatMotion1458
     }
 
     private static bool IsBatShooter(NpcTypeId type) =>
-        type == VanillaNpcIds.Harpy || type == VanillaNpcIds.Demon || type == VanillaNpcIds.VoodooDemon;
+        type == VanillaNpcIds.Harpy || type == VanillaNpcIds.Demon || type == VanillaNpcIds.VoodooDemon ||
+        type == VanillaNpcIds.RedDevil;
 }

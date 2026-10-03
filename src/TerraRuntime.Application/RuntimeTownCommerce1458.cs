@@ -375,7 +375,7 @@ internal sealed class RuntimeTownCommerceResolver1458
             HardMode: world.HardMode,
             BloodMoon: bloodMoon,
             DayTime: dayTime,
-            HappyWindyDay: false,
+            HappyWindyDay: clock?.HappyWindyDay ?? false,
             PartyIsUp: world.PartyIsUp,
             Halloween: world.Halloween,
             ZoneSnow: scene.ZoneSnow,
@@ -442,8 +442,9 @@ internal sealed class RuntimeTownCommerceResolver1458
             MaxTilesY: tiles.Dimensions.HeightTiles);
 
         RuntimeTownCommerceMissingFacts1458 missing =
-            RuntimeTownCommerceMissingFacts1458.LoveStruck |
-            RuntimeTownCommerceMissingFacts1458.LiveWeather;
+            RuntimeTownCommerceMissingFacts1458.LoveStruck;
+        if (clock is null)
+            missing |= RuntimeTownCommerceMissingFacts1458.LiveWeather;
         VanillaTownHappinessResult1458 happiness = ResolveHappiness(npcSlot, npcType, in vendor, in scene);
         float priceAdjustment = happiness.PriceAdjustment;
         bool moodRuined = happiness.MoodRuined;

@@ -1,5 +1,11 @@
 # Vanilla NPC and AI parity roadmap
 
+## Gameplay/NPC integration repair — 2026-10-03
+
+Moon Lord head/hand source `netUpdate` intents now publish once on the accepted state transition; redundant zero-distance post-commit mutations are removed. Fishron AI `70`/`71` target-loss, emergence-to-charge retargeting and Bubble bootstrap/contact synchronization are explicit. Tiny positive world dimensions accepted by `WorldDimensions` also reach NPC authority without an invented minimum-height rejection. Ordinary AI `003` preserves retained damage; only armed attack families restore their source base damage. Retained official fixtures and focused negative controls cover these bounded repairs. Controlled bat motion excludes the Red Devil shooter.
+
+The same pass wires the live, retained windy-day state into Merchant inventory and preserves pre-damage-roll General player immunity in NPC/projectile combat. Broader spawn pools, town/social branches, boss/event behavior, item use, bag opening and full encounter parity remain open; `FullVanillaAiParity` stays false.
+
 ## Natural hostile spawn-rate slice - 2026-09-21
 
 `NpcAuthority` now follows the server-owned branches of TerrariaServer 1.4.5.8 `NPC.Spawner.GetSpawnRate`: mount-aware top-left player depth, normal/Remix vertical ordering, Blood Moon, Eclipse, Drunk-world wall 86, Dungeon/evil/Hallow modifiers, source nearby-population bands and the post-clamp Good World adjustment. Candidates use ascending source slot order until the first complete attempt, so a failed rate roll immediately advances to the next eligible player without creating a second attempt. Real world-tick regressions pin the ordinary and Hardmode underworld rates (252/226), a surface Eclipse rate (72), and the two-player rejected-first/admitted-second order; natural type selection and all unsupported source facts remain separate. Pumpkin/Snow Moon, player buffs/candles, Journey slider, town-count Jungle rule, meteor/sandstorm/temple and source `npcSlots` accounting are still open.

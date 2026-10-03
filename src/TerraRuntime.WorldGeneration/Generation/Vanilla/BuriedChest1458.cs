@@ -81,7 +81,11 @@ internal sealed class BuriedChest1458(
 
             // A sloped floor is flattened for the duration of the attempt and put back if the attempt fails,
             // so a chest can sit on ground the placement check would otherwise refuse.
-            if (trySlope && IsSolidForChest(At(i, k)) &&
+            // The source admission tests tile identity before flattening; SolidTile would reject the
+            // very slope this branch exists to repair (WorldGen.AddBuriedChest, TerrariaServer 1.4.5.8).
+            if (trySlope && At(i, k).IsActive &&
+                !(spikyLihzahrdIsNonSolid && At(i, k).Type == 232) &&
+                VanillaTileCollisionCatalog.IsSolid(At(i, k).TileType) &&
                 !VanillaTileCollisionCatalog.IsSolidTop(At(i, k).TileType))
             {
                 // The ocean's chests refuse to land anywhere within thirty tiles of another chest, which is a

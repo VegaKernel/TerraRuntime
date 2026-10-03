@@ -204,7 +204,7 @@ Built-in ordinary canonical provider теперь доходит до всей s
 flowchart TD
     Candidate["Candidate workspace + metadata"] --> Dimensions["Dimensions & layer bounds"]
     Dimensions --> Tiles["Tile/Wall каталог & flag/shape"]
-    Tiles --> Liquids["Liquid kind/amount & solid/liquid exclusion"]
+    Tiles --> Liquids["Представление вида и количества жидкости"]
     Liquids --> Objects["Frame-important footprints & chest anchors"]
     Objects --> Dungeon["Dungeon & Temple presence"]
     Dungeon --> Biomes["Biome presence для canonical worlds"]
@@ -219,7 +219,9 @@ flowchart TD
     Spawn --> Invalid
 ```
 
-Для canonical `$4200\times1200$`, `$6400\times1800$` и `$8400\times2400$` ordinary миров валидатор проверяет плотность active tiles, `$147$`/`$161$` snow, `$59$`/`$60$` jungle, `$53$` desert, `$70$` mushroom, `$41$` dungeon, `$226$` temple, `$58$` hellstone, $2\times2$ `21`-chest footprints (modulo `$36$` style), уникальность chest-anchor, дубликаты сундуков, объекты вне границ, solid/liquid exclusion, spawn ground, минимумы ocean sand/water и непрерывную связанную с краем геометрию океанского бассейна с подъёмом к пляжу. Non-canonical и custom-generator миры валидируются только по tile/wall каталогу, liquid, chest-anchor и metadata, чтобы fixture generators и synthetic миры не отбрасывались ложно.
+Для обычных canonical миров $4200\times1200$, $6400\times1800$ и $8400\times2400$ валидатор проверяет плотность активных клеток, ожидаемые типы биомов и структур, целостность сундуков и уникальность их anchors, границы объектов, опору точки появления, минимумы песка и воды в океане и связность океанского бассейна. Non-canonical и custom-generator миры сохраняют проверки каталога tile/wall, представления жидкости, chest-anchor и metadata, чтобы небольшие фикстуры не отбрасывались ложно.
+
+Активная твёрдая клетка с жидкостью структурно допустима. Оригинальный TerrariaServer `1.4.5.8` в `TileCleanup` может восстановить опоры алтаря, сохранив их жидкость; полный `FinalCleanup` и официальный цикл `SaveWorldTiles`/`LoadWorldTiles` сохраняют такие клетки. Последующий загрузочный `WaterCheck` очищает жидкость внутри барьеров. Поэтому валидация генерации сохраняет это исходное состояние вместо отказа или скрытой очистки; неверные виды жидкости и неверное представление нулевого количества по-прежнему отклоняются.
 
 Валидация выполняется внутри `Finalizer`: `Finalized` возвращается только когда `Validate` даёт `Valid`; иначе возвращается `ValidationFailed` и candidate отбрасывается до сохранения. Новый `VanillaWorldGenerationValidator1458Tests` проверяет валидную canonical генерацию, невалидные tile/wall types, orphan chest anchors, дубликаты сундуков, spawn вне мира и нарушения ocean bounds.
 

@@ -12,7 +12,7 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     [InlineData(60, new[] { 1, 1, 1, 1, 1 })]
     [InlineData(0, new[] { 1, 1, 0 })] // Fire Imp has defaults, but no admitted coverage entry yet.
     [InlineData(0, new[] { 0 })] // Unadmitted multi-actor bait: no substitution.
-    [InlineData(0, new[] { 1, 1, 1, 0, 1 })] // Demon AI is not admitted: no substitution.
+    [InlineData(62, new[] { 1, 1, 1, 0, 1 })] // Demon AI_014 and its committed scythes are admitted.
     public void Real_world_tick_uses_hell_branch_and_preserves_ai_admission(int expected, int[] selection)
         => AssertSpawn(expected, selection);
 
@@ -132,15 +132,15 @@ public sealed class RuntimeUnderworldSpawn1458Tests
         for (int x = 415; x < 466; x++)
             for (int y = 450; y < 480; y++)
                 tiles.Tiles[tiles.GetUncheckedIndex(x, y)] = new WorldTile { Type = 53, Flags = WorldTileFlags.Active };
-        // Player.Center is at tile 499 for floor tile 500, which is a valid Sandstone wall position.
-        tiles.Tiles[tiles.GetUncheckedIndex(500, 499)] = new WorldTile { Wall = 187 };
+        // Unmounted Player.Center is at tile 498 for floor tile 500, which is a valid Sandstone wall position.
+        tiles.Tiles[tiles.GetUncheckedIndex(500, 498)] = new WorldTile { Wall = 187 };
 
         // The cavern band (.5), underground desert (.2) and both empty-population bands (.6, .7)
         // fall below TerrariaServer's final 60-tick floor.
         var random = new RateRejectingRandom(60);
         RuntimeTownCommerceWorldFacts1458 world = default;
         world = world with { WorldSurface = 350, RockLayer = 600 };
-        Assert.True(new VanillaTownSceneMetricsScanner1458(tiles, in world).Scan(500, 499).ZoneDesert);
+        Assert.True(new VanillaTownSceneMetricsScanner1458(tiles, in world).Scan(500, 498).ZoneDesert);
         var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
             worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
             townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
@@ -265,8 +265,8 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     {
         var npcs = new RuntimeNpcStore();
         var tiles = new WorldTileStore(new WorldDimensions(1000, 1200));
-        // Player.Center is tile 499 for a floor tile of 500, which matches SceneMetrics' wall sample.
-        tiles.Tiles[tiles.GetUncheckedIndex(500, 499)] = new WorldTile { Wall = 87 };
+        // Unmounted Player.Center is tile 498 for a floor tile of 500, which matches SceneMetrics' wall sample.
+        tiles.Tiles[tiles.GetUncheckedIndex(500, 498)] = new WorldTile { Wall = 87 };
 
         // Normal: 600 * .5 (cavern) * .8 (Temple) * .6 * .7 (empty population) = 100.
         // Remix applies the .4 cavern and Temple multipliers and reaches the final 60-tick floor.
@@ -425,7 +425,7 @@ public sealed class RuntimeUnderworldSpawn1458Tests
         for (int x = 415; x < 441; x++)
             for (int y = 450; y < 460; y++)
                 tiles.Tiles[tiles.GetUncheckedIndex(x, y)] = new WorldTile { Type = 41, Flags = WorldTileFlags.Active };
-        tiles.Tiles[tiles.GetUncheckedIndex(500, 499)] = new WorldTile { Wall = 7 };
+        tiles.Tiles[tiles.GetUncheckedIndex(500, 498)] = new WorldTile { Wall = 7 };
         var random = new RateRejectingRandom(10);
         RuntimeTownCommerceWorldFacts1458 world = default;
         world = world with { WorldSurface = 350, RockLayer = 600 };
@@ -894,7 +894,8 @@ public sealed class RuntimeUnderworldSpawn1458Tests
             {
                 case 0: Assert.Equal((0, 45), (inclusiveMin, exclusiveMax)); return 0;
                 case 1: Assert.Equal((1288, 5128), (inclusiveMin, exclusiveMax)); return 3200;
-                case 2: Assert.Equal((2989, 3889), (inclusiveMin, exclusiveMax)); return 3200;
+                // Unmounted player center: 300 * 16 - 42 / 2 = 4779; source offsets are -1800 and -900.
+                case 2: Assert.Equal((2979, 3879), (inclusiveMin, exclusiveMax)); return 3200;
                 case 3: Assert.Equal((0, 200), (inclusiveMin, exclusiveMax)); return 1;
                 case 4: Assert.Equal((0, 10), (inclusiveMin, exclusiveMax)); return 1;
                 case 5: Assert.Equal((0, 5), (inclusiveMin, exclusiveMax)); return 0;

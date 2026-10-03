@@ -2,6 +2,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Gameplay.Projectiles;
+using static TerraRuntime.Contracts.Gameplay.VanillaNpcIds;
 
 namespace TerraRuntime.Core.Npcs;
 
@@ -12,23 +13,8 @@ namespace TerraRuntime.Core.Npcs;
 /// </summary>
 internal static class VanillaGroundFighterProjectileAttack
 {
-    private static readonly NpcTypeId Type243 = new(243);
-    private static readonly NpcTypeId Type251 = new(251);
-    private static readonly NpcTypeId Type350 = new(350);
-    private static readonly NpcTypeId SkeletonSniper = new(291);
-    private static readonly NpcTypeId TacticalSkeleton = new(292);
-    private static readonly NpcTypeId SkeletonCommando = new(293);
-    private static readonly NpcTypeId Paladin = new(290);
-    private static readonly NpcTypeId SkeletonArcher = new(110);
-    private static readonly NpcTypeId GoblinArcher = new(111);
-    private static readonly NpcTypeId Clown = new(109);
-    private static readonly NpcTypeId IcyMerman = new(206);
-    private static readonly NpcTypeId PirateDeadeye = new(214);
-    private static readonly NpcTypeId PirateCrossbower = new(215);
-    private static readonly NpcTypeId PirateCaptain = new(216);
-
     public static bool IsSupported(NpcTypeId type) =>
-        type == Type243 || type == Type251 || type == Type350 || type == SkeletonSniper || type == TacticalSkeleton || type == SkeletonCommando || type == Paladin || type == SkeletonArcher || type == GoblinArcher || type == Clown || type == IcyMerman || type == PirateDeadeye || type == PirateCrossbower || type == PirateCaptain || IsSalamander(type);
+        type == IceGolem || type == Eyezor || type == ElfArcher || type == SkeletonSniper || type == TacticalSkeleton || type == SkeletonCommando || type == Paladin || type == SkeletonArcher || type == GoblinArcher || type == Clown || type == IcyMerman || type == PirateDeadeye || type == PirateCrossbower || type == PirateCaptain || IsSalamander(type);
 
     public static NpcSnapshot Complete(
         in NpcSnapshot before,
@@ -46,8 +32,8 @@ internal static class VanillaGroundFighterProjectileAttack
             return committed;
         }
 
-        if (before.TypeIdentity == Type350)
-            return CompleteType350(in before, in committed, in hitbox, context, random, environment, mutations);
+        if (before.TypeIdentity == ElfArcher)
+            return CompleteElfArcher(in before, in committed, in hitbox, context, random, environment, mutations);
         if (IsSalamander(before.TypeIdentity))
             return CompleteSalamander(in before, in committed, in definition, in hitbox, context, random, environment, mutations);
         if (before.TypeIdentity == SkeletonSniper)
@@ -85,7 +71,7 @@ internal static class VanillaGroundFighterProjectileAttack
                 heavyProjectileType: VanillaProjectileIds.PirateCaptainCannonball, heavyDamage: 100);
 
         float timer = committed.Ai.Ai2;
-        if (before.TypeIdentity == Type243)
+        if (before.TypeIdentity == IceGolem)
         {
             if (before.Simulation.JustHit && random.NextInt32(0, 3) == 0)
                 timer -= random.NextInt32(0, 30);
@@ -105,7 +91,7 @@ internal static class VanillaGroundFighterProjectileAttack
             NpcSnapshot completed = UpdateTimer(in committed, 0f, mutations);
             if (completed.Revision == committed.Revision)
                 return committed;
-            SpawnType243Bolt(in completed, in target, in hitbox, random, mutations);
+            SpawnIceGolemBolt(in completed, in target, in hitbox, random, mutations);
             return completed;
         }
 
@@ -125,7 +111,7 @@ internal static class VanillaGroundFighterProjectileAttack
         if (type251Completed.Revision == committed.Revision)
             return committed;
         if (CanFire(in type251Completed, in hitbox, context, environment, requireGlobalDistance: true, out VanillaNpcTargetCandidate type251Target))
-            SpawnType251Bolt(in type251Completed, in type251Target, in hitbox, random, mutations);
+            SpawnEyezorBolt(in type251Completed, in type251Target, in hitbox, random, mutations);
         return type251Completed;
     }
 
@@ -520,7 +506,7 @@ internal static class VanillaGroundFighterProjectileAttack
         return completed;
     }
 
-    private static NpcSnapshot CompleteType350(
+    private static NpcSnapshot CompleteElfArcher(
         in NpcSnapshot before,
         in NpcSnapshot committed,
         in VanillaNpcHitboxSize hitbox,
@@ -732,7 +718,7 @@ internal static class VanillaGroundFighterProjectileAttack
             (int)target.Height);
     }
 
-    private static void SpawnType243Bolt(
+    private static void SpawnIceGolemBolt(
         in NpcSnapshot source,
         in VanillaNpcTargetCandidate target,
         in VanillaNpcHitboxSize hitbox,
@@ -758,7 +744,7 @@ internal static class VanillaGroundFighterProjectileAttack
         mutations.TrySpawnProjectile(in source, in intent, out _);
     }
 
-    private static void SpawnType251Bolt(
+    private static void SpawnEyezorBolt(
         in NpcSnapshot source,
         in VanillaNpcTargetCandidate target,
         in VanillaNpcHitboxSize hitbox,

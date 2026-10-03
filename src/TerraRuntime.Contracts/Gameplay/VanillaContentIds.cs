@@ -212,6 +212,10 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId BigMuscleAngryBones = new(295);
     public static readonly NpcTypeId BigHelmetAngryBones = new(296);
     public static readonly NpcTypeId SkeletonSniper = new(291);
+    public static readonly NpcTypeId IceGolem = new(243);
+    public static readonly NpcTypeId Eyezor = new(251);
+    public static readonly NpcTypeId ElfArcher = new(350);
+    public static readonly NpcTypeId NutcrackerSpinning = new(349);
     public static readonly NpcTypeId TacticalSkeleton = new(292);
     public static readonly NpcTypeId SkeletonCommando = new(293);
     public static readonly NpcTypeId Paladin = new(290);
@@ -770,6 +774,7 @@ public static class VanillaTileIds
     public const int Count = 754;
 
     public static readonly TileTypeId Dirt = new(0);
+    public static readonly TileTypeId DesertFossil = new(404);
     public static readonly TileTypeId Stone = new(1);
     public static readonly TileTypeId Grass = new(2);
     public static readonly TileTypeId Plants = new(3);

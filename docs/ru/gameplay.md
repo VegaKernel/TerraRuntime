@@ -323,6 +323,8 @@ Hostile Cultist lightning slice теперь владеет Orb `465` и Arc `46
 
 ## 18. Combat
 
+Контакт NPC, враждебные снаряды и взрывы при их завершении проверяют принадлежащий поколению игрока иммунитет `General` до выбора случайного разброса урона как для подключённых, так и для серверных игроков. Сохраняется порядок Terraria `1.4.5.8` `Update_NPCCollision` / `Damage_EVP`: обычный удар по защищённому игроку не расходует damage RNG; удар `BossNoCheese` всё ещё выбирает разброс до того, как `Hurt` отклонит его по отдельному cooldown. После истечения иммунитета следующий удар снова расходует RNG. Обычные бойцы AI `3` также сохраняют уже применённый override контактного урона; только ветка armed melee восстанавливает исходный базовый урон вне атаки. Эти исправления не завершают parity экипировки, дебаффов или всего входящего урона.
+
 Combat является отдельной semantic subsystem, а не просто fields projectile/NPC packets.
 
 Target model включает damage source/provenance, attacker/target, base/final damage, defense interaction, knockback, critical hits, immunity/cooldowns, death reason/result и PvP/environment/NPC/projectile categories.
@@ -362,6 +364,8 @@ Admitted projectile-specific PvP status slice теперь server-resolved из 
 Полный buff gameplay остаётся broad future work. Identity/presentation validation нельзя путать с реализацией каждого buff effect, immunity, duration/RNG rule, prefix stat family или reforging rule.
 
 ## 21. Wiring, liquids и growth
+
+Быстрое оседание жидкости при генерации и загрузке сохраняет исходный порядок активных слотов: `AddWater` удерживает существующее членство и сразу добавляет допустимые ячейки в конец, горизонтальные предложения идут слева/справа на каждом расстоянии, а удаление проходит с конца и заменяет удалённый слот последним. Переиспользуемый рабочий массив ограничен меньшим из числа тайлов мира и `24999` активных записей (исходная таблица `25000` резервирует последний слот). Превышение лимита входящей работы отклоняется до извлечения активных записей. Владелец игрового цикла возвращает все сохранённые записи delay/kill в `WorldLiquidUpdateQueue` перед выходом, в том числе при ошибке; снимки очереди сохраняют их порядок и состояние. Skip-флаги и buffered work остаются в очереди; заполненная активная таблица оставляет buffered cells ожидающими свободного слота. Live FIFO scheduler сохраняет существующее ограниченное приближение. Прямой официальный fixture закрытого бассейна теперь заканчивается девятнадцатью ячейками воды с объёмом `12`, суммарно `228`, как в Terraria `1.4.5.8`; более широкая parity жидкостей и каскадов остаётся открытой.
 
 Wiring, liquid material и growth commits теперь имеют отдельные typed mutation boundaries. Liquids также имеют explicit runtime work queue, persistable через warm snapshots.
 

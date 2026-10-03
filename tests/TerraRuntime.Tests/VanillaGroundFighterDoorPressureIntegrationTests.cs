@@ -141,6 +141,7 @@ public sealed class VanillaGroundFighterDoorPressureIntegrationTests
             Ai: new NpcAiState(0f, ai1, ai2, 0f),
             Simulation: NpcSimulationState.Initial with
             {
+                Life = 45, LifeMax = 45,
                 DirectionX = 1, DirectionY = 1, OldPositionX = 95f, OldPositionY = 80f,
                 TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft, Scale = scale
             });
@@ -159,6 +160,8 @@ public sealed class VanillaGroundFighterDoorPressureIntegrationTests
             Ai: new NpcAiState(0f, 5f, 59f, 0f),
             Simulation: NpcSimulationState.Initial with
             {
+                Life = 45,
+                LifeMax = 45,
                 DirectionX = 1,
                 DirectionY = 1,
                 OldPositionX = 95f,

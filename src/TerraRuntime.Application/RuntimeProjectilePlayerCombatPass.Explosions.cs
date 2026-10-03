@@ -103,6 +103,8 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
             VanillaIncomingPlayerDamageFacts1458.GetHostileProjectileImmunityChannel(projectile.Type);
         foreach (RuntimePlayerMember target in players.Members)
         {
+            if (immunityChannel == VanillaPlayerImmunityChannel1458.General && players.IsGeneralPveImmune(target.Connection.Player, tick))
+                continue;
             if (target.IsDead || !target.HasHealth || target.Life <= 0 || !Intersects(in explosion, target))
                 continue;
 
@@ -144,6 +146,8 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
         for (int targetIndex = 0; targetIndex < serverCount; targetIndex++)
         {
             PlayerStateSnapshot target = serverPlayerBuffer[targetIndex];
+            if (immunityChannel == VanillaPlayerImmunityChannel1458.General && serverPlayers.IsGeneralPveImmune(target.Player, tick))
+                continue;
             if (target.IsDead || !target.HasHealth || target.Life <= 0 || !Intersects(in explosion, in target))
                 continue;
 

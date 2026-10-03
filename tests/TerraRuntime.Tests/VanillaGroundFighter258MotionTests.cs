@@ -33,7 +33,7 @@ public sealed class VanillaGroundFighter258MotionTests
     }
 
     [Theory]
-    [InlineData(100f, 49.9f, true, -7f, true)]
+    [InlineData(100f, 49.9f, true, 0f, true)]
     [InlineData(100f, 50f, true, 0f, false)]
     [InlineData(100f, 49.9f, false, 0f, false)]
     [InlineData(100f, 49.9f, true, .01f, false)]

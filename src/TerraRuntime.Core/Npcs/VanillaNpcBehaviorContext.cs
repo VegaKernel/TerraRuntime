@@ -54,7 +54,9 @@ internal sealed class VanillaNpcBehaviorContext
         {
             throw new ArgumentOutOfRangeException(nameof(rockLayerTiles));
         }
-        if (worldHeightTiles < 0 || (worldHeightTiles > 0 && worldHeightTiles <= 200))
+        // Runtime WorldDimensions permits small synthetic worlds. The source underworld threshold is
+        // maxTilesY - 200 even when it is zero/negative; only a negative supplied height is invalid.
+        if (worldHeightTiles < 0)
             throw new ArgumentOutOfRangeException(nameof(worldHeightTiles));
         WorldWidthPixels = widthTiles * 16d;
         WorldSurfacePixels = worldSurfaceTiles * 16d;

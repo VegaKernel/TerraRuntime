@@ -23,6 +23,42 @@ public sealed class SourceBackedFinal1458Tests
         SourceBackedFinal1458.FinalCleanupId
     ];
 
+    [Theory]
+    [InlineData(500, 100, 128, 0, 0, false, true)]
+    [InlineData(380, 100, 128, 0, 0, false, false)]
+    [InlineData(620, 100, 128, 0, 0, false, false)]
+    [InlineData(500, 140, 128, 0, 0, false, false)]
+    [InlineData(500, 100, 255, 0, 0, false, false)]
+    [InlineData(500, 100, 128, 255, 0, false, false)]
+    [InlineData(500, 100, 128, 0, 189, true, false)]
+    [InlineData(500, 100, 128, 0, 196, true, false)]
+    [InlineData(500, 100, 128, 0, 460, true, false)]
+    [InlineData(500, 100, 128, 0, 717, true, false)]
+    [InlineData(500, 100, 128, 0, 718, true, false)]
+    [InlineData(500, 100, 128, 0, 719, true, false)]
+    [InlineData(500, 100, 128, 0, 189, false, true)]
+    public void Final_cleanup_clears_only_source_isolated_partial_surface_liquid(
+        int x, int y, byte amount, byte neighbourAmount, ushort neighbourType, bool neighbourActive, bool clears)
+    {
+        // TerrariaServer 1.4.5.8 WorldGen.FinalCleanup uses the strict beach/surface bounds,
+        // three neighbours, partial liquid and TileID.Sets.Clouds; terrain activity is not a gate.
+        var workspace = new Workspace(1000, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        var wet = new WorldTile { Type = 0, Flags = WorldTileFlags.Active, LiquidAmount = amount };
+        workspace.TileStore.Set(x, y, in wet);
+        var neighbour = new WorldTile { Type = neighbourType, LiquidAmount = neighbourAmount,
+            Flags = neighbourActive ? WorldTileFlags.Active : WorldTileFlags.None };
+        workspace.TileStore.Set(x, y + 1, in neighbour);
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500),
+                workspace, new RandomAdapter(1458)));
+        WorldTile after = workspace.TileStore.Get(x, y);
+        Assert.Equal(clears ? (byte)0 : amount, after.LiquidAmount);
+        Assert.True(after.IsActive);
+        Assert.Equal(wet.Type, after.Type);
+    }
+
     [Fact]
     public void Settle_liquids_again_matches_official_passlegacy_fixture()
     {

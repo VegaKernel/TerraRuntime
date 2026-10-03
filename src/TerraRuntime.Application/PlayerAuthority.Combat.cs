@@ -12,6 +12,11 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class PlayerAuthority
 {
+    // TerrariaServer 1.4.5.8 Update_NPCCollision/Damage_EVP check general immunity before DamageVar.
+    // BossNoCheese cooldown rejection happens later in Hurt and must still consume the variation draw.
+    internal bool IsGeneralPveImmune(PlayerHandle player, long tick) =>
+        damageImmunity.IsPveImmune(player, VanillaPlayerImmunityChannel1458.General, tick);
+
     private void ApplyPlayerPvpToggle(PlayerPvpToggleRuntimeCommand command)
     {
         if (!membership.TryGet(command.Connection, out RuntimePlayerMember? player) || !player.TryAdvanceRevision())

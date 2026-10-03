@@ -1000,7 +1000,7 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Remove Broken Traps complete; removed={removed}");
     }
 
-    private static void ApplyFinalCleanup(IWorldGenerationContext context, RuntimeGrid grid)
+    private void ApplyFinalCleanup(IWorldGenerationContext context, RuntimeGrid grid)
     {
         long normalized = 0;
         for (int x = 0; x < grid.Width; x++)
@@ -1039,12 +1039,32 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                     tile.LiquidKind = WorldLiquidKind.Water;
                     normalized++;
                 }
+                // FinalCleanup removes isolated partial surface fluid after TileCleanup may have restored
+                // terrain supports into it. Do not clear full pools, coastal fluid or cloud-supported fluid.
+                if (x > FinalCleanupBeachMargin && x < grid.Width - FinalCleanupBeachMargin &&
+                    y < state.Layers.WorldSurface && tile.LiquidAmount is > 0 and < byte.MaxValue &&
+                    grid.At(x - 1, y).LiquidAmount < byte.MaxValue &&
+                    grid.At(x + 1, y).LiquidAmount < byte.MaxValue &&
+                    grid.At(x, y + 1).LiquidAmount < byte.MaxValue &&
+                    !IsActiveCloud(grid.At(x - 1, y)) && !IsActiveCloud(grid.At(x + 1, y)) &&
+                    !IsActiveCloud(grid.At(x, y + 1)))
+                {
+                    tile.LiquidAmount = 0;
+                    tile.LiquidKind = WorldLiquidKind.Water;
+                    normalized++;
+                }
                 tile.Reserved = 0;
             }
         }
         context.ReportProgress(1d, $"Final Cleanup complete; normalized={normalized}");
     }
 
+
+    private const int FinalCleanupBeachMargin = 380; // WorldGen.beachDistance, TerrariaServer 1.4.5.8.
+
+    // TileID.Sets.Clouds, including the six 1.4.5.8 identities (not MergesWithClouds).
+    private static bool IsActiveCloud(in WorldTile tile) =>
+        tile.IsActive && tile.Type is 189 or 196 or 460 or 717 or 718 or 719;
 
     private static bool IsUnsupportedSingleTilePlant(in WorldTile plant, in WorldTile support)
     {

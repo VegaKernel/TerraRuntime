@@ -359,7 +359,7 @@ public sealed class VanillaFossilSlimeAiTests
         Assert.True(stepper.TryStepState(in slime, out NpcStateUpdate next));
         Assert.Equal(75, next.Simulation.Life);
         Assert.Equal(75, next.Simulation.LifeMax);
-        Assert.Equal(32, next.Simulation.DamageOverride);
+        Assert.Equal(21, next.Simulation.DamageOverride); // AI1: Blue Slime defDamage 7 multiplied by 3.
         Assert.Equal(32, next.Simulation.DefenseOverride);
         Assert.Equal(0f, next.Simulation.KnockBackResist);
         Assert.Equal(1.2f, next.Simulation.Scale);

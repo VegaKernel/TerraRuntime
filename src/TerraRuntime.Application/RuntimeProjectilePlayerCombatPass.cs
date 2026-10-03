@@ -234,6 +234,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
             {
                 PlayerHandle targetHandle = target.Connection.Player;
                 if (target.IsDead || !target.HasHealth || target.Life <= 0 ||
+                    (immunityChannel == VanillaPlayerImmunityChannel1458.General && players.IsGeneralPveImmune(targetHandle, tick)) ||
                     (target.GodMode && IsPlayerOnProjectileCooldown(projectile.Handle, targetHandle, tick)) ||
                     !IntersectsHostile(in projectile, in definition, in lifecycle, sourceNpc, target.PositionX, target.PositionY))
                 {
@@ -291,6 +292,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 PlayerStateSnapshot target = serverPlayerBuffer[targetIndex];
                 PlayerHandle targetHandle = target.Player;
                 if (target.IsDead || !target.HasHealth || target.Life <= 0 ||
+                    (immunityChannel == VanillaPlayerImmunityChannel1458.General && serverPlayers.IsGeneralPveImmune(targetHandle, tick)) ||
                     (target.GodMode && IsPlayerOnProjectileCooldown(projectile.Handle, targetHandle, tick)) ||
                     !IntersectsHostile(in projectile, in definition, in lifecycle, sourceNpc, target.PositionX, target.PositionY))
                 {

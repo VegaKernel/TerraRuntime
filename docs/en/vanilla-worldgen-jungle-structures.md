@@ -54,7 +54,13 @@ This early pass reserves separated chest candidate positions and prepares their 
 
 ### First Settle Liquids
 
-The pass performs bounded downward settling sweeps over generated liquid cells. It preserves liquid kind, refuses to mix unlike liquids in one cell, and stops early when a sweep moves no material. This is generation-time settling, not the runtime liquid simulation subsystem.
+The pass follows ordinary TerrariaServer 1.4.5.8 generation settlement: `QuickWater`, `WaterCheck`, ten bounded quick-settle rounds with another `WaterCheck` after each round, then clearing transient queues. Each round permits five updates per entry queued at its start. Generation's temporary tile solidity remains distinct from ordinary runtime collision.
+
+Damaged Antlion Larva (`485`) objects can occur before settlement. Their generation-only death path follows `KillTile`/`CheckSuper`: remove active matching larva cells within the frame-derived two-by-two footprint, preserve foreign and inactive siblings, and suppress NPC children. Conflicting live frame anchors still fail closed. A direct original-binary fixture independently pins this partial-object behavior.
+
+The same generation boundary admits damaged closed-door (`10`) columns through source `CheckDoorClosed`: only the surviving active door cells within the three frame-derived rows are removed, while foreign siblings and outside supports remain. Conflicting row anchors and locked temple doors remain rejected, and the loading boundary keeps its existing policy. An original-binary fixture verifies the foreign-top-cell case.
+
+Later `FinalCleanup` removes isolated partial surface liquid, including liquid under restored altar support: strict interior beach and surface bounds, amount below `255`, no full left/right/lower neighbor and no active cloud in those three cells. Full pools, coast fluid and cloud-supported fluid remain. The six source cloud identities are `189/196/460/717/718/719`; this does not close the remaining Final Cleanup branches.
 
 ## Compatibility barriers
 

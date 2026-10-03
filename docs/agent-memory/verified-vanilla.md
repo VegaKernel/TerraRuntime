@@ -1,5 +1,15 @@
 # Verified vanilla facts
 
+## Gameplay/NPC integration boundaries — 2026-10-03
+
+The direct original `600x500` enclosed-basin settlement fixture executes `QuickWater`, `WaterCheck`, ten settlement rounds and final cleanup: its nineteen bottom-row water cells each retain amount `12`, total `228`, with next RNG `906992634`. Horizontal neighbour wake order is left/right at each distance; loading active entries retain membership and retire in reverse order with last-slot replacement. The previous runtime FIFO returned `247` on the same fixture. This establishes the admitted generation/loading ordering only, not complete liquid simulation parity.
+
+The direct original Linux executable fixture in `.cache/solid-liquid-official-probe` executes complete `TileCleanup` and `FinalCleanup`, then original `SaveWorldTiles`/`LoadWorldTiles`: restored Dirt support with liquid 128/255 and Ebonstone with liquid 255 survive as active solid cells. Original loading `WaterCheck` subsequently clears all three amounts. The structural generation validator must not impose a universal solid/liquid exclusion. The reference executable SHA-256 is `4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034`.
+
+Pinned TerrariaServer 1.4.5.8 `NPC.AI_078/079` writes `netUpdate` on represented attack-state changes, hand bolt acquisition at elapsed zero, head bolt acquisition at elapsed one and head Deathray launch at elapsed 180. These are intents on the original state transition, not additional position mutations. `AI_078` aims with player center plus velocity multiplied by 20; live target candidates must include velocity.
+
+Actual original Linux binary probes confirm `Main.UpdateWindyDayState` target-wind hysteresis (.4 start/.34 stop), inclusive daytime 10800..43200 range and previous cloud-alpha/Remix retention rules. Original `Projectile.Damage_EVP` consumes no DamageVar RNG for General immunity, but consumes it before BossNoCheese Hurt rejection; `NPC.AI_003_Fighters` retains an ordinary Zombie's damage override and resets armed families to defDamage. Source AI70/71 refresh/retention rules are pinned in the Fishron minion regression tests. These facts are bounded branch evidence, not full encounter parity.
+
 ## Prime `TargetClosest` replication predicate - 2026-09-21
 
 TerrariaServer `1.4.5.8` `NPC.TargetClosest` saves the old target and facing directions, applies its selected target/direction values, then writes `netUpdate` only when a target or direction changed and both `collideX` and `collideY` are false. Skeletron Prime AI `32` calls it on initialization and retained-target reacquisition; Cannon AI `35` calls it in phase one; Laser AI `36` calls it in phases zero, one and three; Saw/Vice AI `33`/`34` call it in phases zero, one, three and four. This fact scopes only those already admitted callers and does not establish generic NPC proximity streaming parity.

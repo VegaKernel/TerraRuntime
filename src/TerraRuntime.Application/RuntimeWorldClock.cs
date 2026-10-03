@@ -81,6 +81,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     private bool freezeWind;
     private readonly bool freezeRain;
     private readonly bool cloudBackgroundActive;
+    private readonly bool remixWorld;
+    private float windyDayCloudAlpha;
     private readonly byte cloudCount;
     private Func<bool>? hasWeatherEligiblePlayer;
 
@@ -107,7 +109,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         bool cloudBackgroundActive = false,
         byte cloudCount = 0,
         bool pumpkinMoon = false,
-        bool snowMoon = false)
+        bool snowMoon = false,
+        bool remixWorld = false)
     {
         if (!double.IsFinite(time) || time < 0d)
             throw new ArgumentOutOfRangeException(nameof(time));
@@ -142,6 +145,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         this.freezeWind = freezeWind;
         this.freezeRain = freezeRain;
         this.cloudBackgroundActive = cloudBackgroundActive;
+        this.remixWorld = remixWorld;
+        windyDayCloudAlpha = maxRain;
         this.cloudCount = cloudCount;
         Raining = raining;
         RainTime = rainTime;
@@ -231,6 +236,9 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     /// <summary>Source <c>Main.raining</c>; packet 7 transmits its strength as zero while false.</summary>
     public bool Raining { get; private set; }
 
+    /// <summary>Transient Main.IsItAHappyWindyDay hysteresis, reset on world load.</summary>
+    public bool HappyWindyDay { get; private set; }
+
     /// <summary>Source <c>Main.rainTime</c>, in ordinary world-time units.</summary>
     public int RainTime { get; private set; }
 
@@ -288,7 +296,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
             raining: metadata.Raining,
             rainTime: metadata.RainTime,
             cloudBackgroundActive: metadata.CloudBackgroundActive,
-            cloudCount: metadata.CloudCount);
+            cloudCount: metadata.CloudCount,
+            remixWorld: metadata.RemixWorld);
     }
 
     private bool worldInfoSyncRequested;
@@ -468,6 +477,27 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
             _ => 0f
         };
         return points != 0f;
+    }
+
+    /// <summary>Runs once before entity/weather simulation, including while world time is frozen.</summary>
+    public void UpdateWindyDayState()
+    {
+        // Main.DoUpdate / UpdateWindyDayState (1.4.5.8) reads retained cloudAlpha before replacing it
+        // with maxRaining on a dedicated server. Target wind, not rain-scaled current wind, owns the gate.
+        if (windyDayCloudAlpha == 0f)
+        {
+            if (!DayTime || Time < 10_800d || Time > 43_200d)
+                HappyWindyDay = false;
+            else if (MathF.Abs(WindSpeedTarget) >= .4f)
+                HappyWindyDay = true;
+            else if (MathF.Abs(WindSpeedTarget) < .34f)
+                HappyWindyDay = false;
+        }
+        else if (!remixWorld)
+        {
+            HappyWindyDay = false;
+        }
+        windyDayCloudAlpha = MaxRain;
     }
 
     public void Tick()

@@ -7,6 +7,9 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class ServerPlayerAuthority
 {
+    internal bool IsGeneralPveImmune(PlayerHandle player, long tick) =>
+        damageImmunity.IsPveImmune(player, VanillaPlayerImmunityChannel1458.General, tick);
+
     internal PlayerDamageCommitResult TryCommitAuthoritativePvpDamage(
         long tick, in PlayerStateSnapshot attacker, PlayerHandle target, DamageSource source,
         int damage, bool critical, int hitDirection, bool expertMode, bool masterMode,

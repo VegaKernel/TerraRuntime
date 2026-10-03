@@ -40,7 +40,9 @@ The ordinary vendor inventory table is guarded by a pinned TerrariaServer 1.4.5.
 
 Packet 40 now mirrors the server side of `Player.SetTalkNPC`: after authenticating the player slot, the authoritative game thread resolves the live NPC, snapshots packet-5 inventory/vitals/team state, scans the pinned `169x124` SceneMetrics window around the player, computes source-shaped housing crowding and numeric happiness, and resolves the ordinary `Chest.SetupShop` catalog or supported special shop into an immutable per-player session. Closing the conversation clears the session, and disconnect cannot leak it across a reused player generation.
 
-The mirror is deliberately honest about still-unowned inputs. `LoveStruck`, live wind/weather, Golfer score, full Bestiary/Fairy Torch state, Artisan Bread and Traveling Merchant `travelShop` data are represented as explicit missing-fact flags rather than fabricated defaults being advertised as parity.
+The mirror is deliberately honest about still-unowned inputs. `LoveStruck`, Golfer score, full Bestiary/Fairy Torch state, Artisan Bread and Traveling Merchant `travelShop` data are represented as explicit missing-fact flags rather than fabricated defaults being advertised as parity.
+
+Merchant's item `4074` now follows the live `RuntimeWorldClock.HappyWindyDay` state. The source `Main.UpdateWindyDayState` runs before entities and weather, including with frozen time: dry daytime `10800..43200` enables at absolute target wind `0.4`, disables below `0.34`, and retains the intervening band. Dedicated-server cloud state is retained from the previous weather phase; rain clears the state outside Remix, while Remix preserves it. Both the flag and cloud state are transient; world loading resets the flag and initializes cloud state from saved maximum rain. A missing clock remains an explicit `LiveWeather` gap. Fourteen direct original-binary fixtures independently pin the source time, wind, rain and Remix branches; complete weather and shop parity remain open.
 
 ### Rescue and critter lifecycle
 

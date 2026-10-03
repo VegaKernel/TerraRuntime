@@ -1907,7 +1907,11 @@ internal sealed partial class NpcAuthority
         {
             if (players.TryGet(checked((byte)slot), out RuntimePlayerMember? player))
             {
-                (float memberWidth, float memberHeight) = VanillaPlayerMountHitbox1458.Resolve(player.MountType);
+                // Runtime player state reserves MountType zero for unmounted; source mount zero's
+                // Rudolph height must not enlarge ordinary player targets.
+                (float memberWidth, float memberHeight) = player.MountType == 0
+                    ? (VanillaPlayerHitboxFacts.BaseWidth, VanillaPlayerHitboxFacts.BaseHeight)
+                    : VanillaPlayerMountHitbox1458.Resolve(player.MountType);
                 destination[written++] = WithPlayerWorldFacts(new VanillaNpcTargetCandidate(
                     Slot: checked((byte)slot),
                     CenterX: player.PositionX + memberWidth * 0.5f,
@@ -1920,6 +1924,8 @@ internal sealed partial class NpcAuthority
                 {
                     HitboxWidth = memberWidth,
                     HitboxHeight = memberHeight,
+                    VelocityX = player.VelocityX,
+                    VelocityY = player.VelocityY,
                     ItemAnimation = (player.MiscFlags2 & (1 << 6)) != 0 ? 1 : 0
                 }, includeBiomeZoneFacts);
                 continue;
@@ -1938,7 +1944,9 @@ internal sealed partial class NpcAuthority
             }
 
             PlayerStateSnapshot serverPlayer = serverPlayerSnapshots[serverPlayerIndex++];
-            (float mountWidth, float mountHeight) = VanillaPlayerMountHitbox1458.Resolve(serverPlayer.MountType);
+            (float mountWidth, float mountHeight) = serverPlayer.MountType == 0
+                ? (VanillaPlayerHitboxFacts.BaseWidth, VanillaPlayerHitboxFacts.BaseHeight)
+                : VanillaPlayerMountHitbox1458.Resolve(serverPlayer.MountType);
             destination[written++] = WithPlayerWorldFacts(new VanillaNpcTargetCandidate(
                 Slot: checked((byte)slot),
                 CenterX: serverPlayer.PositionX + mountWidth * 0.5f,
@@ -1951,6 +1959,8 @@ internal sealed partial class NpcAuthority
             {
                 HitboxWidth = mountWidth,
                 HitboxHeight = mountHeight,
+                VelocityX = serverPlayer.VelocityX,
+                VelocityY = serverPlayer.VelocityY,
                 ItemAnimation = (serverPlayer.MiscFlags2 & (1 << 6)) != 0 ? 1 : 0
             }, includeBiomeZoneFacts);
         }

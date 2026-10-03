@@ -40,6 +40,8 @@ public static class VanillaItemPrefixTable1458
     public const int PrefixCount = 98;
 
     private const int RecordBytes = 8;
+    private const byte ItemPrefixFamilyMask = 0x07;
+    private const byte ItemHasNoKnockBackFlag = 0x08;
 
     private static ReadOnlySpan<byte> Records =>
     [
@@ -587,8 +589,8 @@ public static class VanillaItemPrefixTable1458
                     (short)(records[offset + 2] | (records[offset + 3] << 8)),
                     records[offset + 4],
                     records[offset + 5],
-                    flags & 0x07,
-                    (flags & 0x08) != 0);
+                    flags & ItemPrefixFamilyMask,
+                    (flags & ItemHasNoKnockBackFlag) != 0);
                 return true;
             }
 

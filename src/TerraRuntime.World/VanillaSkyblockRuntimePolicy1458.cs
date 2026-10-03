@@ -1,3 +1,5 @@
+using TerraRuntime.Contracts.Gameplay;
+
 namespace TerraRuntime.World;
 
 /// <summary>
@@ -57,11 +59,11 @@ public static class VanillaSkyblockRuntimePolicy1458
                 activeTileCount++;
             // WorldGen.Skyblock records this once while inspecting the generated world. It does not
             // become true again when players later mine the fossil block.
-            if (tile.IsActive && tile.Type == 404)
+            if (tile.IsActive && tile.TileType == VanillaTileIds.DesertFossil)
                 noFossils = false;
-            if (tile.IsActive && tile.Type == 58)
+            if (tile.IsActive && tile.TileType == VanillaTileIds.Hellstone)
                 noHellstone = false;
-            if (tile.IsActive && tile.Type == 12)
+            if (tile.IsActive && tile.TileType == VanillaTileIds.Heart)
                 noLifeCrystals = false;
         }
 

@@ -313,7 +313,7 @@ public sealed class VanillaBatAi1458Tests
             ai: new NpcAiState(0f, 200f, 150f, 0f),
             wet: true);
 
-        Assert.Equal(.22f, result.VelocityX, 5);
+        Assert.Equal(.32f, result.VelocityX, 5); // AI14: two .1 pursuit passes, then .12 wander.
         Assert.Equal(2.35f, result.VelocityY, 5);
         Assert.Equal(201f, result.Ai.Ai1);
         Assert.Equal(151f, result.Ai.Ai2);
@@ -330,7 +330,7 @@ public sealed class VanillaBatAi1458Tests
             wet: true);
 
         Assert.Equal(.1f, result.VelocityX, 5);
-        Assert.Equal(3.04f, result.VelocityY, 5);
+        Assert.Equal(3f, result.VelocityY, 5); // AI14 only accelerates toward direction +1 below 1.5.
     }
 
     [Fact]

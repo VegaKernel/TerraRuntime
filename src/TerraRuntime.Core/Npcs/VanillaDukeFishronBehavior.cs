@@ -23,25 +23,39 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
         bool isRoot = before.TypeIdentity == VanillaNpcIds.DukeFishron;
         bool isSharkron = before.TypeIdentity == VanillaNpcIds.Sharkron ||
             before.TypeIdentity == VanillaNpcIds.Sharkron2;
-        if ((!isRoot && !isSharkron) || proposed.Type != before.Type ||
+        bool isBubble = before.TypeIdentity == VanillaNpcIds.DetonatingBubble;
+        if ((!isRoot && !isSharkron && !isBubble) || proposed.Type != before.Type ||
             !VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, before.NetIdentity, out VanillaNpcDefinition definition))
         {
             return false;
         }
 
-        // AI_069 and AI_071 call TargetClosest and set netUpdate whenever the retained player is no longer valid.
+        if (isBubble)
+        {
+            // TerrariaServer 1.4.5.8 AI70 requests netUpdate on initialization and player contact.
+            // The independent lifetime threshold has no request, even though both start the same countdown.
+            NpcHitboxDimensions body = before.Simulation.HitboxOverride ?? new NpcHitboxDimensions(36, 36);
+            return before.Target == byte.MaxValue ||
+                (body.IsValid && before.Ai.Ai0 == 0f && proposed.Ai.Ai0 == 1f &&
+                 context.AnyLivingPlayerIntersects((int)before.PositionX - 40 - body.Width / 2,
+                     (int)before.PositionY - 40 - body.Height / 2, body.Width + 80, body.Height + 80));
+        }
+
+        if (isSharkron)
+        {
+            // AI71 refreshes unassigned/dead targets, but retains inactive and ghost slots until charge entry.
+            return before.Target >= byte.MaxValue ||
+                !context.TryFindCandidate((byte)before.Target, out VanillaNpcTargetCandidate retained) || retained.Dead ||
+                (before.Ai.Ai0 == 0f && proposed.Ai.Ai0 == 1f);
+        }
+
+        // AI_069 calls TargetClosest and sets netUpdate whenever the retained player is no longer valid.
         // AI_069 additionally refreshes before its retreat branch when the player lies beyond 5600 pixels.
         if (before.Target >= byte.MaxValue || !context.TryFindCandidate((byte)before.Target, out VanillaNpcTargetCandidate target) ||
             !target.Active || target.Dead || target.Ghost ||
             (isRoot && IsBeyondTargetRange(in before, in definition, in target)))
         {
             return true;
-        }
-
-        if (isSharkron)
-        {
-            // AI_071 writes netUpdate only when its 90-tick emergence becomes the charge state.
-            return before.Ai.Ai0 == 0f && proposed.Ai.Ai0 == 1f;
         }
 
         // Each source-owned phase boundary writes netUpdate. Do not infer urgency from ai[2]/ai[3] counters.
@@ -407,9 +421,9 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
         ushort targetSlot = npc.Target;
         bool refreshedTarget = targetSlot >= byte.MaxValue ||
             !context.TryFindCandidate((byte)targetSlot, out VanillaNpcTargetCandidate retainedTarget) ||
-            !retainedTarget.Active || retainedTarget.Dead || retainedTarget.Ghost;
-        if (!TryTarget(in npc, in definition, context, ref targetSlot, out VanillaNpcTargetCandidate target))
-        { next = default; return false; }
+            retainedTarget.Dead;
+        ResolveMinionTarget(in npc, in definition, context, refreshedTarget, ref targetSlot,
+            out VanillaNpcTargetCandidate target);
 
         NpcAiState ai = npc.Ai;
         NpcAiState local = npc.Simulation.LocalAi;
@@ -455,7 +469,11 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
             if (ai.Ai1 >= 90f)
             {
                 ai = ai with { Ai0 = 1f, Ai1 = sim.SolidCollision ? 0f : 1f };
-                int direction = Math.Sign(target.CenterX - (positionX + definition.Width * .5f));
+                // AI71 selects again after type-373's position wave, even if its old player is still alive.
+                NpcSnapshot chargeSource = npc with { PositionX = positionX, PositionY = positionY, Simulation = sim };
+                ResolveMinionTarget(in chargeSource, in definition, context, true, ref targetSlot, out target);
+                int direction = target.Dead || (target.NoAggro && sim.DirectionX != 0)
+                    ? 0 : Math.Sign(target.CenterX - (positionX + definition.Width * .5f));
                 if (direction != 0)
                     sim = sim with { DirectionX = direction };
                 int spriteDirection = sim.DirectionX == 0 ? sim.SpriteDirection : sim.DirectionX;
@@ -521,29 +539,27 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
         if (!body.IsValid)
         { next = default; return false; }
         ushort targetSlot = npc.Target;
-        bool hasTarget = TryTarget(in npc, in definition, context, ref targetSlot, out VanillaNpcTargetCandidate target);
+        ResolveMinionTarget(in npc, in definition, context, targetSlot >= byte.MaxValue, ref targetSlot,
+            out VanillaNpcTargetCandidate target);
         NpcAiState ai = npc.Ai;
         float vx = npc.VelocityX;
         float vy = npc.VelocityY;
         float cx = npc.PositionX + body.Width * .5f;
         float cy = npc.PositionY + body.Height * .5f;
-        if (hasTarget)
+        // Only an incoming unassigned target initializes AI70. An assigned, stationary circle child
+        // must accelerate from rest, not receive another artificial launch impulse.
+        if (npc.Target == VanillaNpcDefinitionCatalog.DefaultTarget)
         {
-            // Only an incoming unassigned target initializes AI70. An assigned, stationary circle child
-            // must accelerate from rest, not receive another artificial launch impulse.
-            if (npc.Target == VanillaNpcDefinitionCatalog.DefaultTarget)
-            {
-                ai = ai with { Ai3 = random.NextInt32(80, 121) / 100f };
-                float speed = random.NextInt32(165, 265) / 15f;
-                float offsetX = random.NextInt32(-100, 101);
-                float offsetY = random.NextInt32(-100, 101);
-                SetToward(cx, cy, target.CenterX + offsetX, target.CenterY + offsetY, speed, ref vx, ref vy);
-            }
-            float dx = target.CenterX - cx, dy = target.CenterY - cy;
-            float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
-            vx = (vx * 40f + dx / d * 20f) / 41f;
-            vy = (vy * 40f + dy / d * 20f) / 41f;
+            ai = ai with { Ai3 = random.NextInt32(80, 121) / 100f };
+            float speed = random.NextInt32(165, 265) / 15f;
+            float offsetX = random.NextInt32(-100, 101);
+            float offsetY = random.NextInt32(-100, 101);
+            SetToward(cx, cy, target.CenterX + offsetX, target.CenterY + offsetY, speed, ref vx, ref vy);
         }
+        float dx = target.CenterX - cx, dy = target.CenterY - cy;
+        float d = MathF.Max(.001f, MathF.Sqrt(dx * dx + dy * dy));
+        vx = (vx * 40f + dx / d * 20f) / 41f;
+        vy = (vy * 40f + dy / d * 20f) / 41f;
         if (ai.Ai3 <= 0f)
         { next = default; return false; } // Unverified/invalid bootstrap cannot manufacture a scale.
         vx = (vx * 50f + context.WindSpeedCurrent * 2f + random.NextInt32(-10, 11) * .1f) / 51f;
@@ -582,6 +598,22 @@ internal sealed class VanillaDukeFishronNpcBehaviorStrategy : IVanillaNpcBehavio
         if (expand)
             next = next with { PositionX = cx - 50f, PositionY = cy - 50f };
         return true;
+    }
+
+    private static void ResolveMinionTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        VanillaNpcBehaviorContext context, bool refresh, ref ushort targetSlot, out VanillaNpcTargetCandidate target)
+    {
+        // AI70 and AI71 continue against retained player geometry when no living target exists.
+        // TargetClosest only substitutes slot zero for an unassigned target; it does not erase a dead slot.
+        if (refresh && context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh selected) &&
+            selected.HasTarget)
+            targetSlot = selected.Target;
+        if (targetSlot >= byte.MaxValue)
+            targetSlot = 0;
+        if (context.TryFindCandidate((byte)targetSlot, out target))
+            return;
+        target = new VanillaNpcTargetCandidate((byte)targetSlot, VanillaPlayerHitboxFacts.BaseWidth * .5f,
+            VanillaPlayerHitboxFacts.BaseHeight * .5f, 0, false, false, false, false);
     }
 
     private static void Hover(in VanillaNpcTargetCandidate target, float cx, float cy, float speed, float acceleration,

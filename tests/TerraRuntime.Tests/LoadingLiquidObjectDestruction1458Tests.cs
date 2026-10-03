@@ -4,6 +4,82 @@ namespace TerraRuntime.Tests;
 
 public sealed class LoadingLiquidObjectDestruction1458Tests
 {
+    [Theory]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, false)]
+    public void Generation_lava_removes_damaged_closed_door_and_preserves_foreign_sibling(
+        bool loading, bool locked, bool expectedApplied)
+    {
+        // Original 1.4.5.8 KillTile/CheckDoorClosed: stone occupies the top door cell,
+        // middle/bottom door pieces disappear, and both outside supports remain untouched.
+        var tiles = new WorldTileStore(new WorldDimensions(80, 80));
+        var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        short styleFrameY = locked ? (short)594 : (short)0;
+        var middle = new WorldTile { Type = 10, FrameY = (short)(styleFrameY + 18), Flags = WorldTileFlags.Active };
+        var wet = new WorldTile { Type = 10, FrameY = (short)(styleFrameY + 36), Flags = WorldTileFlags.Active,
+            LiquidAmount = 100, LiquidKind = WorldLiquidKind.Lava };
+        foreach (int y in new[] { 39, 40, 43 })
+            tiles.SetInitialPopulationTile(40, y, in stone);
+        tiles.SetInitialPopulationTile(40, 41, in middle);
+        tiles.SetInitialPopulationTile(40, 42, in wet);
+
+        var simulator = new VanillaWorldLiquidSimulator1458(tiles);
+        VanillaWaterCheckDiagnostic1458 result = loading
+            ? simulator.WaterCheckLoading() : simulator.WaterCheckDuringWorldGeneration();
+
+        Assert.Equal(expectedApplied, result.IsApplied);
+        foreach (int y in new[] { 39, 40, 43 })
+            Assert.Equal(stone, tiles.Get(40, y));
+        if (expectedApplied && !loading)
+        {
+            Assert.False(tiles.Get(40, 41).IsActive);
+            Assert.False(tiles.Get(40, 42).IsActive);
+            Assert.Equal(100, tiles.Get(40, 42).LiquidAmount);
+        }
+        else
+        {
+            Assert.Equal(middle, tiles.Get(40, 41));
+            // Loading does not apply generation's tilesIgnoreWater door override: the solid
+            // door retains its cells while WaterCheck clears the embedded liquid.
+            if (loading)
+            {
+                wet.LiquidAmount = 0;
+                wet.LiquidKind = WorldLiquidKind.Water;
+            }
+            Assert.Equal(wet, tiles.Get(40, 42));
+        }
+    }
+
+    [Fact]
+    public void Generation_lava_removes_damaged_antlion_larva_without_erasing_foreign_or_inactive_cells()
+    {
+        // Original 1.4.5.8 KillTile/CheckSuper fixture: stone at the upper-left, inactive larva
+        // at lower-left, and two live larva cells on the right. Only those two are removed.
+        var tiles = new WorldTileStore(new WorldDimensions(80, 80));
+        var foreign = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        var inactive = new WorldTile { Type = 485, FrameY = 18 };
+        var upper = new WorldTile { Type = 485, FrameX = 18, Flags = WorldTileFlags.Active };
+        var wet = new WorldTile { Type = 485, FrameX = 18, FrameY = 18,
+            Flags = WorldTileFlags.Active, LiquidKind = WorldLiquidKind.Lava, LiquidAmount = 100 };
+        tiles.SetInitialPopulationTile(40, 40, in foreign);
+        tiles.SetInitialPopulationTile(40, 41, in inactive);
+        tiles.SetInitialPopulationTile(41, 40, in upper);
+        tiles.SetInitialPopulationTile(41, 41, in wet);
+        for (int x = 40; x <= 41; x++)
+            tiles.SetInitialPopulationTile(x, 42, in foreign);
+
+        Assert.True(new VanillaWorldLiquidSimulator1458(tiles).WaterCheckDuringWorldGeneration().IsApplied);
+
+        Assert.Equal(foreign, tiles.Get(40, 40));
+        Assert.Equal(inactive, tiles.Get(40, 41));
+        Assert.False(tiles.Get(41, 40).IsActive);
+        Assert.False(tiles.Get(41, 41).IsActive);
+        Assert.Equal(0, tiles.Get(41, 40).Type);
+        Assert.Equal(0, tiles.Get(41, 41).Type);
+        Assert.Equal(100, tiles.Get(41, 41).LiquidAmount);
+    }
+
     // Official 1.4.5.8 KillTile + CheckOnTable1x1: all seven platform types x six book frames.
     public static IEnumerable<object[]> PlatformBooks()
     {

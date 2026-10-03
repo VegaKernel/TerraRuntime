@@ -206,7 +206,7 @@ Every validated world now passes the fail-closed `Validator1458`:
 flowchart TD
     Candidate["Candidate workspace + metadata"] --> Dimensions["Dimensions & layer bounds"]
     Dimensions --> Tiles["Tile/Wall catalog & flag/shape"]
-    Tiles --> Liquids["Liquid kind/amount & solid/liquid exclusion"]
+    Tiles --> Liquids["Liquid kind and amount representation"]
     Liquids --> Objects["Frame-important footprints & chest anchors"]
     Objects --> Dungeon["Dungeon & Temple presence"]
     Dungeon --> Biomes["Biome presence for canonical worlds"]
@@ -221,7 +221,9 @@ flowchart TD
     Spawn --> Invalid
 ```
 
-For canonical `$4200\times1200$`, `$6400\times1800$` and `$8400\times2400$` ordinary worlds the validator checks active-tile density, `$147$`/`$161$` snow, `$59$`/`$60$` jungle, `$53$` desert, `$70$` mushroom, `$41$` dungeon, `$226$` temple, `$58$` hellstone, $2\times2$ `21`-chest footprints (modulo `$36$` style), chest-anchor uniqueness, duplicate chests, out-of-bounds objects, solid/liquid exclusion, spawn ground, ocean sand/water minima, and continuous edge-connected ocean-basin geometry with rising beach transitions. Non-canonical and custom-generator worlds are validated only for tile/wall catalog, liquid, chest-anchor and metadata bounds so that fixture generators and small synthetic worlds are not spuriously rejected.
+For canonical $4200\times1200$, $6400\times1800$ and $8400\times2400$ ordinary worlds the validator checks active-tile density, expected biome/structure identities, chest footprints and anchor uniqueness, object bounds, spawn ground, ocean sand/water minima and connected ocean-basin geometry. Non-canonical and custom-generator worlds retain tile/wall catalog, liquid representation, chest-anchor and metadata checks so small fixtures are not spuriously rejected.
+
+An active solid cell containing liquid is structurally valid. Original TerrariaServer `1.4.5.8` `TileCleanup` can restore altar supports while preserving their liquid; complete `FinalCleanup` and the official `SaveWorldTiles`/`LoadWorldTiles` round trip retain those cells. The later loading `WaterCheck` clears barrier liquid. Generation validation therefore preserves that source state rather than rejecting or silently clearing it; invalid liquid kinds and zero-amount representation remain rejected.
 
 Validation is enforced inside `Finalizer`: `Finalized` is returned only when `Validate` is `Valid`; otherwise `ValidationFailed` is returned and the candidate is discarded before persistence. The new `VanillaWorldGenerationValidator1458Tests` exercise valid canonical generation, invalid tile/wall types, orphan chest anchors, duplicate chests, spawn outside world and ocean-bounds violations.
 

@@ -162,6 +162,8 @@ public sealed class VanillaZombieTargetingStepperTests
             Ai: default,
             Simulation: NpcSimulationState.Initial with
             {
+                Life = 45,
+                LifeMax = 45,
                 DirectionX = 1,
                 DirectionY = 1,
                 OldPositionX = 99f,

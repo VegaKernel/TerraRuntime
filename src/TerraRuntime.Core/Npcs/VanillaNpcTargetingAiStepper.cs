@@ -2873,20 +2873,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             _random.NextInt32(0, 5);
             _random.NextInt32(0, 5);
         }
-        // AI_078 sets netUpdate when changing attacks and when acquiring the bolt target.
-        if (committed.TypeIdentity == VanillaNpcIds.MoonLordHand &&
-            (before.Ai.Ai0 != committed.Ai.Ai0 ||
-             (committed.Ai.Ai0 == 3f && VanillaMoonLordHandBehavior.Phase(
-                 committed.Ai.Ai1, committed.Ai.Ai2 == 0f, out _, out _) == 0)))
-            mutations.TryTranslate(committed.Handle, 0f, 0f, out _);
         VanillaMoonLordNpcBehaviorStrategy.ApplyTeleportToParts(in before, in committed, _context, mutations);
-        if (committed.TypeIdentity == VanillaNpcIds.MoonLordHead && before.Ai.Ai0 >= 0f)
-        {
-            int elapsed = VanillaMoonLordHeadBehavior.Phase(committed.Ai.Ai1, out int phase, out _);
-            if (before.Ai.Ai0 != committed.Ai.Ai0 || before.Target != committed.Target ||
-                (phase == 1 && elapsed == 180) || (phase == 3 && elapsed == 1))
-                mutations.TryTranslate(committed.Handle, 0f, 0f, out _);
-        }
     }
 
     private int PlanMoonLordParts(in NpcSnapshot source, in NpcStateUpdate proposed, Span<NpcAiSpawnIntent> destination)

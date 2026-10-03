@@ -149,8 +149,9 @@ public sealed class VanillaZombieMotionTests
     {
         VanillaZombieMotionInput accelerating = CreateInput() with
         {
-            VelocityX = .49f,
-            MotionProfile = VanillaGroundFighterMotionProfile.SeaSnail
+              VelocityX = .49f,
+              BaseMaximumHorizontalSpeed = .5f,
+              MotionProfile = VanillaGroundFighterMotionProfile.SeaSnail
         };
         Assert.True(VanillaZombieMotion.TryStep(in accelerating, out VanillaZombieMotionResult faster));
         Assert.Equal(.5f, faster.VelocityX, 5);

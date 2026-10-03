@@ -141,6 +141,28 @@ public sealed class WorldLiquidUpdateQueue
         return true;
     }
 
+    // Loading keeps checkingLiquid set until Liquid.UpdateLiquid's reverse retirement pass.
+    internal bool TryTakeLoadingSlot(out WorldLiquidUpdate update)
+    {
+        if (!_active.TryDequeue(out WorldLiquidUpdateEntry entry))
+        {
+            update = default;
+            return false;
+        }
+        DecodeIndex(entry.TileIndex, out int x, out int y);
+        update = new WorldLiquidUpdate(x, y, entry.Delay, entry.Kill);
+        return true;
+    }
+
+    internal void RestoreLoadingSlots(ReadOnlySpan<WorldLiquidUpdate> slots)
+    {
+        _active.Clear();
+        _activeMembership?.SetAll(false);
+        foreach (WorldLiquidUpdate slot in slots)
+            if (!TryEnqueue(slot.X, slot.Y, slot.Delay, slot.Kill))
+                throw new InvalidOperationException("Loading liquid slots must have unique owned cells.");
+    }
+
     public bool TryDequeueBuffered(out int x, out int y)
     {
         if (!_buffered.TryDequeue(out int index))

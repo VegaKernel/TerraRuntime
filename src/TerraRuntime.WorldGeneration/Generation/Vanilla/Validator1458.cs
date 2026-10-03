@@ -164,15 +164,9 @@ public static class Validator1458
                     return new(WorldValidationStatus.InvalidLiquid, $"LiquidKind {(byte)tile.LiquidKind} at ({x},{y}) undefined.");
                 if (tile.LiquidAmount == 0 && tile.LiquidKind != WorldLiquidKind.Water)
                     return new(WorldValidationStatus.InvalidLiquid, $"Liquid 0 but kind {tile.LiquidKind} at ({x},{y}).");
-                if (tile.LiquidAmount > 0 && tile.IsActive && IsSolidBlockingLiquid(tile.Type))
-                {
-                    // Canonical settled worlds must not retain liquid inside ordinary solid terrain.
-                    // Source settling overrides are handled by IsSolidBlockingLiquid, not erased here.
-                    if (!tile.IsActuated && isCanonical)
-                    {
-                        return new(WorldValidationStatus.InvalidLiquid, $"Solid tile type {tile.Type} with liquid {tile.LiquidAmount} at ({x},{y}).");
-                    }
-                }
+                // TerrariaServer 1.4.5.8 TileCleanup may restore solid object supports without clearing
+                // their liquid; FinalCleanup and WorldFile.SaveWorldTiles preserve those valid records.
+                // Embedded liquid is normalized by post-load WaterCheck, not rejected by file validation.
 
                 if (tile.IsActive)
                 {
@@ -385,25 +379,6 @@ public static class Validator1458
         // Singletons like 1x1 pots (type 28?) are allowed isolated; we treat unknown as valid if not chest
         // So we return true for now to avoid over-strictness
         return true;
-    }
-
-    private static bool IsSolidBlockingLiquid(ushort type)
-    {
-        TileTypeId id = new(type);
-        // Liquid.tilesIgnoreWater / worldGenTilesIgnoreWater (1.4.5.8) deliberately
-        // allow settled liquid inside these tiles. Reuse the simulator's exact facts;
-        // ordinary collision solidity alone would reject valid desert boulders.
-        if (VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringSettle(id) ||
-            VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringWorldGenerationSettle(id))
-            return false;
-        // Solid-top tiles are not barriers: the source's own liquid code, and this runtime's
-        // IsWaterCheckSolidBarrier1458 with it, tests tileSolid AND NOT tileSolidTop. Water standing in a
-        // platform's cell is ordinary in vanilla - it is how water sits on a platform at all - so counting
-        // one as corruption would reject a world the source is happy with.
-        if (VanillaTileCollisionCatalog.IsSolid(id) && !VanillaTileCollisionCatalog.IsSolidTop(id))
-            return true;
-        // Additional conservative: types that are always solid: dirt/stone etc
-        return type is 0 or 1 or 25 or 203 or 226 or 41 or 53;
     }
 
     private static bool IsSolidForSpawn(ushort type)

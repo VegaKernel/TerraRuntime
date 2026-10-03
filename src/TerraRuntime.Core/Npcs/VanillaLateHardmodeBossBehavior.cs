@@ -792,7 +792,10 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
         if (before.TypeIdentity == VanillaNpcIds.MoonLordHand)
         {
             // AI_078 sets netUpdate whenever its non-retired attack-table state changes.
-            return before.Ai.Ai0 != -2f && before.Ai.Ai0 != proposed.Ai.Ai0;
+            return before.Ai.Ai0 != -2f &&
+                (before.Ai.Ai0 != proposed.Ai.Ai0 ||
+                 (proposed.Ai.Ai0 == 3f && VanillaMoonLordHandBehavior.Phase(
+                     proposed.Ai.Ai1, proposed.Ai.Ai2 == 0f, out _, out _) == 0));
         }
 
         if (before.TypeIdentity == VanillaNpcIds.MoonLordFreeEye)
@@ -818,7 +821,12 @@ internal sealed class VanillaMoonLordNpcBehaviorStrategy : IVanillaNpcBehaviorSt
 
         int elapsed = VanillaMoonLordHeadBehavior.Phase(proposed.Ai.Ai1, out int state, out _);
         // At elapsed 180 of the Deathray state, AI_079 stores its rotation, creates the ray and sets netUpdate.
-        return proposed.Ai.Ai0 == 1f && state == 1 && elapsed == 180;
+        // AI_079 also explicitly synchronizes the bolt target at elapsed one of state three.
+        // Carry the intent on the original commit: a second zero-distance mutation would duplicate
+        // packet 23 and advance the revision after the accepted attack effects.
+        return (proposed.Ai.Ai0 == 1f && state == 1 && elapsed == 180) ||
+            (proposed.Ai.Ai0 == 3f && state == 3 && elapsed == 1) ||
+            (before.Target != proposed.Target && !before.Simulation.CollideX && !before.Simulation.CollideY);
     }
 
     private bool TryCore(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, out NpcStateUpdate next)

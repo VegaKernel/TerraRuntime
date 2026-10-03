@@ -1,5 +1,7 @@
 # Vanilla world generation: persistent chest placement
 
+При выборе наклонной опоры `AddBuriedChest` проверяет активность и твёрдость типа плитки до выравнивания пола; заранее плоский блок не требуется. Это восстанавливает исходную высоту размещения в ocean/slope случаях и сохраняет временную нетвёрдость Spiky Lihzahrd при генерации храма. Существующие независимые фикстуры оригинальной сборки покрывают seeds `42` и `1458`: размещение, клетки мира, loot и последующий RNG.
+
 [English](../en/vanilla-worldgen-chest-placement.md) · [Post-settle stage](vanilla-worldgen-post-settle.md)
 
 `terraruntime:vanilla` продолжает перенос ordinary Terraria 1.4.5.8 через четыре chest placement pass-а сразу после `Statues`.

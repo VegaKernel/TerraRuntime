@@ -13,6 +13,8 @@ public sealed class VanillaWorldLiquidSimulator1458
 {
     // Admitted CheckOrb/CheckPot/Check*Wall/CheckJunglePlant object cells use 16+2 atlas pixels.
     private const int LoadingObjectFrameStepPixels = 18;
+    private const int LarvaStyleFrameWidth = 2 * LoadingObjectFrameStepPixels;
+    private const int LarvaMaximumFrameX = 7 * LoadingObjectFrameStepPixels;
     // Terraria 1.4.5.8 WorldGen.Check1x2: chair styles contain two rows plus atlas padding.
     private const int LoadingChairStyleStridePixels = 40;
     // CheckOnTable1x1 / PlaceTile: the admitted book row includes Water Bolt at frameX=90.
@@ -45,6 +47,11 @@ public sealed class VanillaWorldLiquidSimulator1458
     private readonly IVanillaLiquidRandom1458 random;
     private readonly int workBudget;
     private readonly int discoveryBudget;
+    private WorldLiquidUpdate[]? loadingSlots;
+    private int loadingSlotCount;
+    private int loadingSlotCursor;
+    private bool executingLoadingSlots;
+    private WorldLiquidUpdate loadingSlotResult;
     private int discoveryCursor;
     private bool discoveryComplete;
     private bool useInitialPopulationWrites;
@@ -83,6 +90,8 @@ public sealed class VanillaWorldLiquidSimulator1458
     /// </summary>
     public int Tick(int activeServerPlayersInLiquidWindow, Span<WorldLiquidSimulationChange> changes)
     {
+        // Returning to live FIFO invalidates the loading-only slot cursor.
+        loadingSlotCursor = 0;
         if ((uint)activeServerPlayersInLiquidWindow > DedicatedServerCountedPlayerSlots1458)
         {
             throw new ArgumentOutOfRangeException(
@@ -113,7 +122,7 @@ public sealed class VanillaWorldLiquidSimulator1458
         useInitialPopulationWrites = true;
         try
         {
-            return TickCore(GeneratingOrLoadingKillUpdates1458, VanillaLiquidUpdateMode1458.QuickSettle, workBudget, changes);
+            return TickLoadingSlots1458(changes);
         }
         finally
         {
@@ -520,6 +529,7 @@ public sealed class VanillaWorldLiquidSimulator1458
             return preflight;
 
         tiles.LiquidUpdates.Clear();
+        loadingSlotCursor = 0;
         discoveryCursor = tiles.Count;
         discoveryComplete = true;
 
@@ -548,8 +558,11 @@ public sealed class VanillaWorldLiquidSimulator1458
                 {
                     if (!TryResolveWaterCheckDeath1458(x, y, in tile, generatingWorld, out WorldTileRegion death, out WorldTileRegion cascade))
                         throw new InvalidOperationException("A preflighted loading liquid-death object changed.");
-                    KillRegionDuringLoading1458(in death);
-                    KillRegionDuringLoading1458(in cascade);
+                    TileTypeId? onlyActiveType = generatingWorld &&
+                        (tile.TileType == VanillaTileIds.AntlionLarva || tile.TileType == VanillaTileIds.ClosedDoor)
+                        ? tile.TileType : null;
+                    KillRegionDuringLoading1458(in death, onlyActiveType);
+                    KillRegionDuringLoading1458(in cascade, onlyActiveType);
                     tile = tiles.Get(x, y);
                 }
 
@@ -635,8 +648,76 @@ public sealed class VanillaWorldLiquidSimulator1458
             return true;
         }
 
+        if (generatingWorld && tile.TileType == VanillaTileIds.AntlionLarva)
+        {
+            // Generation may already have damaged this object. CheckSuper removes only active
+            // type-485 cells in its 2x2 frame-derived bounds; foreign and inactive siblings survive.
+            // NPC children are suppressed by isGeneratingOrLoadingWorld (1.4.5.8 WorldGen.CheckSuper).
+            cascade = default;
+            region = default;
+            if (tile.FrameX is < 0 or > LarvaMaximumFrameX || tile.FrameY is < 0 or > LoadingObjectFrameStepPixels ||
+                tile.FrameX % LoadingObjectFrameStepPixels != 0 || tile.FrameY % LoadingObjectFrameStepPixels != 0)
+                return false;
+            int left = x - tile.FrameX / LoadingObjectFrameStepPixels % 2;
+            int top = y - tile.FrameY / LoadingObjectFrameStepPixels % 2;
+            if (left <= 5 || top <= 5 || left + 1 >= tiles.Dimensions.WidthTiles - 5 ||
+                top + 1 >= tiles.Dimensions.HeightTiles - 5)
+                return false;
+            int styleFrameX = tile.FrameX / LarvaStyleFrameWidth * LarvaStyleFrameWidth;
+            for (int dx = 0; dx < 2; dx++)
+            for (int dy = 0; dy < 2; dy++)
+            {
+                WorldTile cell = tiles.Get(left + dx, top + dy);
+                if (!cell.IsActive || cell.TileType != VanillaTileIds.AntlionLarva)
+                    continue;
+                // Conflicting live anchors could frame another footprint outside this bounded transaction.
+                if (cell.FrameX != styleFrameX + dx * LoadingObjectFrameStepPixels || cell.FrameY != dy * LoadingObjectFrameStepPixels)
+                    return false;
+                WorldTile below = tiles.Get(left + dx, top + dy + 1);
+                if (below.IsActive && below.Type == 10 && below.FrameY is >= 594 and <= 646 && below.FrameX < 54)
+                    return false;
+            }
+            region = new WorldTileRegion(left, top, 2, 2);
+            return true;
+        }
+
+        if (generatingWorld && tile.TileType == VanillaTileIds.ClosedDoor)
+        {
+            // CheckDoorClosed (1.4.5.8) removes only surviving type-10 cells in its frame-derived
+            // three-row column. Generation can have replaced a sibling; preserve that foreign cell.
+            region = default;
+            cascade = default;
+            const int doorHeight = 3;
+            const int styleStride = doorHeight * LoadingObjectFrameStepPixels;
+            if (tile.FrameX < 0 || tile.FrameY < 0 ||
+                tile.FrameX % LoadingObjectFrameStepPixels != 0 || tile.FrameY % LoadingObjectFrameStepPixels != 0)
+                return false;
+            int top = y - tile.FrameY % styleStride / LoadingObjectFrameStepPixels;
+            if (x <= 5 || x >= tiles.Dimensions.WidthTiles - 5 || top <= 5 ||
+                top + doorHeight - 1 >= tiles.Dimensions.HeightTiles - 5)
+                return false;
+            for (int row = 0; row < doorHeight; row++)
+            {
+                WorldTile cell = tiles.Get(x, top + row);
+                if (!cell.IsActive || cell.TileType != VanillaTileIds.ClosedDoor)
+                    continue;
+                if (cell.FrameY % styleStride != row * LoadingObjectFrameStepPixels ||
+                    IsLockedTempleDoor(in cell))
+                    return false;
+                WorldTile below = tiles.Get(x, top + row + 1);
+                if (IsLockedTempleDoor(in below))
+                    return false;
+            }
+            region = new WorldTileRegion(x, top, 1, doorHeight);
+            return true;
+        }
+
         return TryResolveLoadingDeath1458(x, y, in tile, out region, out cascade);
     }
+
+    private static bool IsLockedTempleDoor(in WorldTile tile) =>
+        tile.IsActive && tile.TileType == VanillaTileIds.ClosedDoor &&
+        tile.FrameY is >= 594 and <= 646 && tile.FrameX < 54;
 
     /// <summary>
     /// The cells a single lava- or water-bearing object loses during load. Most objects are one rectangle, but
@@ -821,7 +902,7 @@ public sealed class VanillaWorldLiquidSimulator1458
         if (IsWaterCheckSolidBarrier1458(in tile))
             return;
 
-        if (tiles.LiquidUpdates.ActiveCount >= LoadingActiveLiquidCapacity1458)
+        if (tiles.LiquidUpdates.ActiveCount + loadingSlotCount >= LoadingActiveLiquidCapacity1458)
         {
             if (tiles.LiquidUpdates.BufferedCount < LoadingBufferedLiquidCapacity1458)
                 _ = tiles.LiquidUpdates.TryBuffer(x, y);
@@ -844,9 +925,9 @@ public sealed class VanillaWorldLiquidSimulator1458
     {
         region = default;
         WorldTile anchor = tiles.Get(x, y);
-        int left = x - (anchor.FrameX / 18) % 2;
-        int top = y - (anchor.FrameY / 18) % 2;
-        int style = anchor.FrameY / 18 / 2;
+        int left = x - (anchor.FrameX / LoadingObjectFrameStepPixels) % 2;
+        int top = y - (anchor.FrameY / LoadingObjectFrameStepPixels) % 2;
+        int style = anchor.FrameY / LoadingObjectFrameStepPixels / 2;
         if (left <= 0 || top <= 0 ||
             left + 1 >= tiles.Dimensions.WidthTiles || top + 1 >= tiles.Dimensions.HeightTiles)
         {
@@ -858,8 +939,8 @@ public sealed class VanillaWorldLiquidSimulator1458
         {
             WorldTile cell = tiles.Get(cellX, cellY);
             if (!cell.IsActive || cell.TileType != VanillaTileIds.Pots ||
-                (cell.FrameX / 18) % 2 != cellX - left ||
-                cell.FrameY != (cellY - top) * 18 + style * 36)
+                (cell.FrameX / LoadingObjectFrameStepPixels) % 2 != cellX - left ||
+                cell.FrameY != (cellY - top) * LoadingObjectFrameStepPixels + style * (2 * LoadingObjectFrameStepPixels))
             {
                 return false;
             }
@@ -869,11 +950,15 @@ public sealed class VanillaWorldLiquidSimulator1458
         return true;
     }
 
-    private void KillRegionDuringLoading1458(in WorldTileRegion region)
+    private void KillRegionDuringLoading1458(in WorldTileRegion region, TileTypeId? onlyActiveType = null)
     {
         for (int x = region.X; x < region.ExclusiveRight; x++)
         for (int y = region.Y; y < region.ExclusiveBottom; y++)
-            KillSingleCellDuringLoading1458(x, y, tiles.Get(x, y));
+        {
+            WorldTile cell = tiles.Get(x, y);
+            if (onlyActiveType is null || (cell.IsActive && cell.TileType == onlyActiveType.Value))
+                KillSingleCellDuringLoading1458(x, y, in cell);
+        }
     }
 
     private void KillSingleCellDuringLoading1458(int x, int y, in WorldTile before)
@@ -938,6 +1023,62 @@ public sealed class VanillaWorldLiquidSimulator1458
         return changed;
     }
 
+    private int TickLoadingSlots1458(Span<WorldLiquidSimulationChange> changes)
+    {
+        DiscoverExistingLiquid();
+        PromoteBuffered(workBudget);
+        loadingSlots ??= new WorldLiquidUpdate[Math.Min(LoadingActiveLiquidCapacity1458, tiles.Count)];
+        if (tiles.LiquidUpdates.ActiveCount > loadingSlots.Length)
+            throw new InvalidOperationException("Loading liquid slots exceed the admitted active capacity.");
+        loadingSlotCount = 0;
+        while (tiles.LiquidUpdates.TryTakeLoadingSlot(out WorldLiquidUpdate slot))
+            loadingSlots[loadingSlotCount++] = slot;
+        int existingCount = loadingSlotCount;
+        int end = Math.Min(existingCount, loadingSlotCursor + Math.Min(workBudget, changes.Length / MaximumChangesPerProcessedCell));
+        int changed = 0;
+        bool restored = false;
+        executingLoadingSlots = true;
+        try
+        {
+            // New AddWater slots append immediately, but num6 was captured before this source call.
+            // Existing slots keep checkingLiquid membership and never rotate through a FIFO.
+            for (int i = loadingSlotCursor; i < end; i++)
+            {
+                WorldLiquidUpdate update = loadingSlots[i] with { Delay = HoneyFlowDelayUpdates1458 };
+                loadingSlotResult = update with { Kill = int.MaxValue };
+                RelaxCell(in update, GeneratingOrLoadingKillUpdates1458, VanillaLiquidUpdateMode1458.QuickSettle, changes, ref changed);
+                loadingSlots[i] = loadingSlotResult;
+                tiles.LiquidUpdates.ClearSkipNextUpdate(update.X, update.Y);
+            }
+            while (tiles.LiquidUpdates.TryTakeLoadingSlot(out WorldLiquidUpdate added))
+                loadingSlots[loadingSlotCount++] = added;
+            if (end == existingCount)
+            {
+                // Liquid.DelWater replaces a retired slot with the last live slot, in reverse slot order.
+                for (int i = loadingSlotCount - 1; i >= 0; i--)
+                    if (loadingSlots[i].Kill >= GeneratingOrLoadingKillUpdates1458)
+                        loadingSlots[i] = loadingSlots[--loadingSlotCount];
+                loadingSlotCursor = 0;
+            }
+            else
+                loadingSlotCursor = end;
+            tiles.LiquidUpdates.RestoreLoadingSlots(loadingSlots.AsSpan(0, loadingSlotCount));
+            restored = true;
+        }
+        finally
+        {
+            if (!restored)
+            {
+                while (tiles.LiquidUpdates.TryTakeLoadingSlot(out WorldLiquidUpdate added))
+                    loadingSlots[loadingSlotCount++] = added;
+                tiles.LiquidUpdates.RestoreLoadingSlots(loadingSlots.AsSpan(0, loadingSlotCount));
+            }
+            executingLoadingSlots = false;
+            loadingSlotCount = 0;
+        }
+        return changed;
+    }
+
     private void DiscoverExistingLiquid()
     {
         if (discoveryComplete || PendingCount >= MaximumPendingCells)
@@ -952,7 +1093,12 @@ public sealed class VanillaWorldLiquidSimulator1458
             int y = discoveryCursor % height;
             WorldTile tile = tiles.Get(x, y);
             if (tile.LiquidAmount != 0 && NeedsRelaxation(x, y, in tile))
-                _ = tiles.LiquidUpdates.TryEnqueue(x, y);
+            {
+                if (useInitialPopulationWrites)
+                    TryAddWaterLoading1458(x, y);
+                else
+                    _ = tiles.LiquidUpdates.TryEnqueue(x, y);
+            }
         }
 
         if (discoveryCursor >= count)
@@ -963,11 +1109,14 @@ public sealed class VanillaWorldLiquidSimulator1458
     {
         int promoted = 0;
         while (promoted < processBudget && PendingCount < MaximumPendingCells &&
+               (!useInitialPopulationWrites || tiles.LiquidUpdates.ActiveCount < LoadingActiveLiquidCapacity1458) &&
                tiles.LiquidUpdates.TryDequeueBuffered(out int x, out int y))
         {
             // A successful Liquid.AddWater takes a fresh array slot with kill and delay at zero and clears the
             // cell's skip flag; the buffer promotion in Liquid.UpdateLiquid goes through exactly that path.
-            if (tiles.LiquidUpdates.TryEnqueue(x, y))
+            if (useInitialPopulationWrites)
+                TryAddWaterLoading1458(x, y);
+            else if (tiles.LiquidUpdates.TryEnqueue(x, y))
                 tiles.LiquidUpdates.ClearSkipNextUpdate(x, y);
             promoted++;
         }
@@ -1111,6 +1260,8 @@ public sealed class VanillaWorldLiquidSimulator1458
                 SetTile(update.X, update.Y, in current);
                 Record(update.X, update.Y, in current, changes, ref changed);
             }
+            if (executingLoadingSlots)
+                loadingSlotResult = update with { Kill = nextKill };
             return;
         }
 
@@ -1119,6 +1270,11 @@ public sealed class VanillaWorldLiquidSimulator1458
             : current.LiquidKind is WorldLiquidKind.Lava or WorldLiquidKind.Honey
                 ? 0
                 : update.Delay;
+        if (executingLoadingSlots)
+        {
+            loadingSlotResult = update with { Delay = nextDelay, Kill = nextKill };
+            return;
+        }
         if (!tiles.LiquidUpdates.TryEnqueue(update.X, update.Y, nextDelay, nextKill))
         {
             throw new InvalidOperationException(
@@ -1743,42 +1899,42 @@ public sealed class VanillaWorldLiquidSimulator1458
                 bool right3 = CanShareAt(x + 3, y, source.LiquidKind, requireExistingLiquid: true);
                 if (left3 && right3)
                 {
-                    xs[count++] = x - 3;
-                    xs[count++] = x - 2;
                     xs[count++] = x - 1;
-                    xs[count++] = x;
                     xs[count++] = x + 1;
+                    xs[count++] = x - 2;
                     xs[count++] = x + 2;
+                    xs[count++] = x - 3;
                     xs[count++] = x + 3;
+                    xs[count++] = x;
                 }
                 else
                 {
-                    xs[count++] = x - 2;
                     xs[count++] = x - 1;
-                    xs[count++] = x;
                     xs[count++] = x + 1;
+                    xs[count++] = x - 2;
                     xs[count++] = x + 2;
+                    xs[count++] = x;
                 }
             }
             else if (left2)
             {
-                xs[count++] = x - 2;
                 xs[count++] = x - 1;
-                xs[count++] = x;
                 xs[count++] = x + 1;
+                xs[count++] = x - 2;
+                xs[count++] = x;
             }
             else if (right2)
             {
                 xs[count++] = x - 1;
-                xs[count++] = x;
                 xs[count++] = x + 1;
                 xs[count++] = x + 2;
+                xs[count++] = x;
             }
             else
             {
                 xs[count++] = x - 1;
-                xs[count++] = x;
                 xs[count++] = x + 1;
+                xs[count++] = x;
             }
         }
         else if (left1)
@@ -1788,8 +1944,8 @@ public sealed class VanillaWorldLiquidSimulator1458
         }
         else
         {
-            xs[count++] = x;
             xs[count++] = x + 1;
+            xs[count++] = x;
         }
 
         int total = source.LiquidAmount < 3 ? -1 : 0;
@@ -1890,6 +2046,11 @@ public sealed class VanillaWorldLiquidSimulator1458
 
     private void TryBuffer(int x, int y)
     {
+        if (executingLoadingSlots)
+        {
+            TryAddWaterLoading1458(x, y);
+            return;
+        }
         if (PendingCount < MaximumPendingCells)
             _ = tiles.LiquidUpdates.TryBuffer(x, y);
     }

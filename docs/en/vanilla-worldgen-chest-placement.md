@@ -1,5 +1,7 @@
 # Vanilla world generation: persistent chest placement
 
+`AddBuriedChest` slope offers test active solid tile identity before flattening the floor; they do not require an already-flat block. This restores the source ocean/slope placement height while retaining the Temple's temporary non-solid Spiky Lihzahrd rule. Existing independent original-binary fixtures cover both seeds `42` and `1458`, including placement, world cells, loot and subsequent RNG.
+
 [Русский](../ru/vanilla-worldgen-chest-placement.md) · [Post-settle stage](vanilla-worldgen-post-settle.md)
 
 `terraruntime:vanilla` now continues the ordinary Terraria 1.4.5.8 migration through the four chest placement passes immediately after `Statues`.

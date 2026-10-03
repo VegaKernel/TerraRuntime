@@ -85,6 +85,7 @@ internal sealed class RuntimeNpcPlayerCombatPass
             {
                 PlayerHandle targetHandle = target.Connection.Player;
                 if (target.IsDead || !target.HasHealth || target.Life <= 0 ||
+                    (immunityChannel == VanillaPlayerImmunityChannel1458.General && players.IsGeneralPveImmune(targetHandle, tick)) ||
                     !Intersects(npcLeft, npcTop, npcRight, npcBottom, target) ||
                     (target.GodMode && IsGodModeCoolingDown(npc.Handle, targetHandle, tick)))
                 {
@@ -130,6 +131,7 @@ internal sealed class RuntimeNpcPlayerCombatPass
             {
                 PlayerStateSnapshot target = serverPlayerBuffer[targetIndex];
                 if (target.IsDead || !target.HasHealth || target.Life <= 0 ||
+                    (immunityChannel == VanillaPlayerImmunityChannel1458.General && serverPlayers.IsGeneralPveImmune(target.Player, tick)) ||
                     !Intersects(npcLeft, npcTop, npcRight, npcBottom, target) ||
                     (target.GodMode && IsGodModeCoolingDown(npc.Handle, target.Player, tick)))
                 {

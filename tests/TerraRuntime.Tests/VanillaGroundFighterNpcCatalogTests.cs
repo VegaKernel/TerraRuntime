@@ -110,7 +110,7 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(type, out VanillaGroundFighterBehaviorParameters behavior));
         Assert.True(behavior.IsValid);
         Assert.Equal(maximumHorizontalSpeed, behavior.BaseMaximumHorizontalSpeed, 5);
-        Assert.Equal(0.07f, behavior.HorizontalAcceleration, 5);
+        Assert.Equal(type == VanillaNpcIds.SeaSnail ? .03f : .07f, behavior.HorizontalAcceleration, 5);
         Assert.Equal(scaleAdjustsSpeed, behavior.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.Equal(closeRangeLunge, behavior.CloseRangeLunge);
     }
@@ -266,7 +266,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(3f, behavior.BaseMaximumHorizontalSpeed, 5);
         Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
         Assert.Equal(.99f, behavior.ReversingVelocityDamping, 5);
-        Assert.False(behavior.DaySurfaceEncouragesDespawn);
+        // AI_003's daytime-surface exclusion table does not contain type 82.
+        Assert.True(behavior.DaySurfaceEncouragesDespawn);
     }
 
     [Theory]

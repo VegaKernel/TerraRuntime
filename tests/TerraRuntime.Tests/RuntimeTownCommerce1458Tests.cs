@@ -97,6 +97,103 @@ public sealed class RuntimeTownCommerce1458Tests
         Assert.True(facts.NoTrapsWorld);
     }
 
+    [Theory]
+    [InlineData(10800d, true, .4f, 0f, true)]
+    [InlineData(43200d, true, -.4f, 0f, true)]
+    [InlineData(10799d, true, .6f, 0f, false)]
+    [InlineData(43201d, true, .6f, 0f, false)]
+    [InlineData(27000d, false, .6f, 0f, false)]
+    [InlineData(27000d, true, .399f, 0f, false)]
+    [InlineData(27000d, true, .6f, .01f, false)]
+    public void Merchant_shop_uses_the_live_windy_day_state(
+        double time, bool day, float wind, float rain, bool expectedKite)
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(500, 300));
+        var npcs = new RuntimeNpcStore();
+        var town = new RuntimeTownNpcStateStore(new WorldNpcPersistence([], [
+            new WorldTownNpc(17, "Merchant", 1600f, 1600f, false, 100, 100, null, false)
+        ], []), [], tiles.Dimensions);
+        Assert.True(town.TryReserveRuntimeSlots(npcs));
+        RuntimeTownCommerceWorldFacts1458 facts = Facts(false);
+        var resolver = new RuntimeTownCommerceResolver1458(tiles, town, npcs, in facts);
+        var clock = new RuntimeWorldClock(time, day, default, 0d, 0,
+            windSpeedCurrent: wind, maxRain: rain, freezeRain: true);
+        // Main.UpdateWindyDayState precedes entities and weather even at dayRate zero.
+        clock.UpdateWindyDayState();
+        var player = new RuntimeTownCommercePlayer1458(1600f, 1600f, 400, 200, 0);
+        var items = new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
+        Assert.True(resolver.TryResolve(items, in player, 0, clock, out RuntimeTownShopSession1458 session));
+        Assert.Equal(expectedKite, session.Offers.Any(static offer => offer.Item.Value == 4074));
+        Assert.Equal(RuntimeTownCommerceMissingFacts1458.None,
+            session.MissingFacts & RuntimeTownCommerceMissingFacts1458.LiveWeather);
+
+        Assert.True(resolver.TryResolve(items, in player, 0, null, out RuntimeTownShopSession1458 noClock));
+        Assert.DoesNotContain(noClock.Offers, static offer => offer.Item.Value == 4074);
+        Assert.NotEqual(RuntimeTownCommerceMissingFacts1458.None,
+            noClock.MissingFacts & RuntimeTownCommerceMissingFacts1458.LiveWeather);
+    }
+
+    [Theory]
+    [InlineData(.34f, true)]
+    [InlineData(.399f, true)]
+    [InlineData(.339f, false)]
+    [InlineData(-.34f, true)]
+    public void Windy_day_retains_hysteresis_inside_the_source_wind_band(float wind, bool expected)
+    {
+        var clock = new RuntimeWorldClock(27000d, true, default, 0d, 0,
+            windSpeedCurrent: .4f, freezeRain: true);
+        clock.UpdateWindyDayState();
+        Assert.True(clock.HappyWindyDay);
+        clock.SetWindSpeedTarget(wind);
+        clock.UpdateWindyDayState();
+        Assert.Equal(expected, clock.HappyWindyDay);
+        // Runtime changes to the target cannot directly change current wind while time is frozen.
+        Assert.Equal(.4f, clock.WindSpeedCurrent);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Windy_day_uses_the_previous_cloud_alpha(bool remix)
+    {
+        // Source-compatible clock rain expiry gives an independently owned cloud-alpha transition.
+        var clock = new RuntimeWorldClock(27000d, true, default, 0d, 1,
+            windSpeedCurrent: .4f, maxRain: .1f, raining: true, rainTime: 1,
+            remixWorld: remix, windCounter: 100, extremeWindCounter: 100);
+        clock.UpdateWindyDayState();
+        clock.Tick();
+        Assert.Equal(0f, clock.MaxRain);
+        clock.UpdateWindyDayState();
+        Assert.False(clock.HappyWindyDay); // The previous .1 cloudAlpha still blocks this update.
+        clock.UpdateWindyDayState();
+        Assert.True(clock.HappyWindyDay);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public void Windy_day_rain_start_preserves_source_delay_and_remix_retention(bool remix, bool expected)
+    {
+        var clock = new RuntimeWorldClock(27000d, true, default, 0d, 1,
+            windSpeedCurrent: .4f, remixWorld: remix, windCounter: 100, extremeWindCounter: 100,
+            weatherRandom: new MinimumWeatherRandom());
+        clock.SetWeatherEligiblePlayerProvider(static () => true);
+        clock.UpdateWindyDayState();
+        Assert.True(clock.HappyWindyDay);
+        clock.Tick();
+        Assert.True(clock.Raining);
+        Assert.True(clock.MaxRain > 0f);
+        clock.UpdateWindyDayState();
+        Assert.True(clock.HappyWindyDay); // The retained cloudAlpha is still dry.
+        clock.UpdateWindyDayState();
+        Assert.Equal(expected, clock.HappyWindyDay);
+    }
+
+    private sealed class MinimumWeatherRandom : IRuntimeWeatherRandom1458
+    {
+        public int NextInt32(int inclusiveMin, int exclusiveMax) => inclusiveMin;
+    }
+
     private static RuntimeTownCommerceWorldFacts1458 Facts(bool skyblock) => new(
         HardMode: false, PartyIsUp: false, Halloween: false, XMas: false, Eclipse: false, LanternsUp: false,
         Crimson: false, RemixWorld: false, TenthAnniversaryWorld: false, NotTheBeesWorld: false,
