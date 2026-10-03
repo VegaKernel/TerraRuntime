@@ -145,6 +145,28 @@ public sealed class LoadingLiquidObjectDestruction1458Tests
         Assert.Equal(0, tiles.PersistenceDirtySections.DirtyCount);
     }
 
+    [Fact]
+    public void Generation_watercheck_keeps_rolling_cactus_siblings_after_plain_killtile()
+    {
+        var tiles = CreateObject(484, 2, 2);
+        WorldTile wet = tiles.Get(10, 10);
+        wet.LiquidAmount = byte.MaxValue;
+        wet.LiquidKind = WorldLiquidKind.Lava;
+        tiles.SetInitialPopulationTile(10, 10, in wet);
+
+        Assert.True(new VanillaWorldLiquidSimulator1458(tiles).WaterCheckDuringWorldGeneration().IsApplied);
+
+        WorldTile killed = tiles.Get(10, 10);
+        Assert.False(killed.IsActive);
+        Assert.Equal(0, killed.Type);
+        Assert.Equal(-1, killed.FrameX);
+        Assert.Equal(-1, killed.FrameY);
+        Assert.Equal(byte.MaxValue, killed.LiquidAmount);
+        Assert.True(tiles.Get(11, 10).IsActive);
+        Assert.True(tiles.Get(10, 11).IsActive);
+        Assert.True(tiles.Get(11, 11).IsActive);
+    }
+
     [Theory]
     [InlineData(3)]
     [InlineData(4)]

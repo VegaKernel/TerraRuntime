@@ -94,11 +94,8 @@ internal static class GenerationDecorationPlacement1458
         var framing = new GenerationTileFraming1458(store, random);
         framing.SquareTileFrame(x, y);
 
-        // PlaceTile frames the square a SECOND time at the tail of the method, after the whole identity
-        // switch, for any cell that ended up occupied. Measured on the long moss row, where it was the whole
-        // difference between 12 draws and the official's 20 for one placement.
-        if (At(store, x, y).IsActive)
-            framing.SquareTileFrame(x, y);
+        // TerrariaServer 1.4.5.8 PlaceTile's type-187 branch calls Place3x2 then SquareTileFrame exactly
+        // once. The common method tail does not frame this branch a second time.
         return placed;
     }
 

@@ -152,6 +152,10 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
     private const ushort LihzahrdAltar = 237;
     private const ushort LilyPad = 518;
     private const ushort Cattail = 519;
+    private static readonly HashSet<ushort> SlowlyDiesInWater =
+    [
+        3, 20, 24, 27, 73, 80, 110, 201, 529, 530, 590, 595, 615, 637
+    ];
 
     private readonly FinalStage1458 stage;
     private readonly FinalState1458 state;
@@ -183,7 +187,7 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 ApplyCactusPalmTreesCoral(context, grid, random);
                 break;
             case FinalStage1458.TileCleanup:
-                ApplyTileCleanup(context, grid);
+                ApplyTileCleanup(context, grid, random);
                 break;
             case FinalStage1458.LihzahrdAltars:
                 ApplyLihzahrdAltars(context, grid, random);
@@ -207,83 +211,19 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
 
     private static void ApplySettleLiquidsAgain(IWorldGenerationContext context, RuntimeGrid grid)
     {
-        new VanillaWorldLiquidSimulator1458(grid.Store).ClearEmbeddedLiquidDuringGenerationSettle(context.CancellationToken);
-        long moved = 0;
-        for (int x = 0; x < grid.Width; x++)
+        // TerrariaServer 1.4.5.8 GenPassNameID.SettleLiquidsPart2AndNotTheBees repeats the ordinary
+        // world-generation QuickWater -> WaterCheck -> ten bounded quick-settle rounds -> WaterCheck
+        // sequence. Column compaction is not equivalent: it skips reactions, WaterCheck destruction and
+        // the source queue ordering that controls downstream liquid state.
+        VanillaWaterCheckDiagnostic1458 waterCheck = new VanillaWorldLiquidSimulator1458(grid.Store)
+            .SettleDuringWorldGeneration(context.CancellationToken);
+        if (!waterCheck.IsApplied)
         {
-            if ((x & 31) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            int top = 0;
-            while (top < grid.Height)
-            {
-                while (top < grid.Height && IsLiquidBarrier(in grid.At(x, top)))
-                    top++;
-                if (top >= grid.Height)
-                    break;
-
-                int bottom = top;
-                while (bottom + 1 < grid.Height && !IsLiquidBarrier(in grid.At(x, bottom + 1)))
-                    bottom++;
-
-                moved += CompactLiquidSegment(grid, x, top, bottom);
-                top = bottom + 1;
-            }
+            throw new InvalidOperationException(
+                $"Settle Liquids Again WaterCheck cannot resolve tile {waterCheck.TileType.Value} at {waterCheck.X},{waterCheck.Y}.");
         }
 
-        context.ReportProgress(1d, $"Settle Liquids Again complete; compacted {moved} liquid units");
-    }
-
-    private static long CompactLiquidSegment(RuntimeGrid grid, int x, int top, int bottom)
-    {
-        var runs = new List<LiquidRun>(4);
-        for (int y = bottom; y >= top; y--)
-        {
-            ref WorldTile tile = ref grid.At(x, y);
-            if (tile.LiquidAmount == 0)
-                continue;
-
-            if (runs.Count != 0 && runs[^1].Kind == tile.LiquidKind)
-                runs[^1] = runs[^1] with { Amount = runs[^1].Amount + tile.LiquidAmount };
-            else
-                runs.Add(new LiquidRun(tile.LiquidKind, tile.LiquidAmount));
-        }
-
-        if (runs.Count == 0)
-            return 0;
-
-        long originalWeighted = 0;
-        for (int y = top; y <= bottom; y++)
-        {
-            ref WorldTile tile = ref grid.At(x, y);
-            if (tile.LiquidAmount != 0)
-                originalWeighted += (long)tile.LiquidAmount * y;
-            tile.LiquidAmount = 0;
-            tile.LiquidKind = WorldLiquidKind.Water;
-        }
-
-        int writeY = bottom;
-        foreach (LiquidRun run in runs)
-        {
-            int remaining = run.Amount;
-            while (remaining > 0 && writeY >= top)
-            {
-                int amount = Math.Min(byte.MaxValue, remaining);
-                ref WorldTile tile = ref grid.At(x, writeY--);
-                tile.LiquidAmount = checked((byte)amount);
-                tile.LiquidKind = run.Kind;
-                remaining -= amount;
-            }
-        }
-
-        long settledWeighted = 0;
-        for (int y = top; y <= bottom; y++)
-        {
-            WorldTile tile = grid.At(x, y);
-            if (tile.LiquidAmount != 0)
-                settledWeighted += (long)tile.LiquidAmount * y;
-        }
-        return Math.Max(0, settledWeighted - originalWeighted);
+        context.ReportProgress(1d, "Applied source-backed QuickWater/WaterCheck liquid settle again");
     }
 
     private void ApplyCactusPalmTreesCoral(
@@ -355,9 +295,17 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
         return placed;
     }
 
-    private static void ApplyTileCleanup(IWorldGenerationContext context, RuntimeGrid grid)
+    private static void ApplyTileCleanup(
+        IWorldGenerationContext context,
+        RuntimeGrid grid,
+        IWorldGenerationVanillaRandom random)
     {
-        long normalized = 0;
+        // TerrariaServer 1.4.5.8 TileCleanup begins with this complete-map slope pass.  It does not
+        // normalize inactive frames, liquid kinds, actuator bits or our snapshot-reserved byte; those writes
+        // were invented by the former implementation and destroyed state the source deliberately preserves.
+        // The later cleanup branches remain separately incomplete, but this shared first boundary must stay
+        // source-shaped because they observe the shapes it leaves behind.
+        long flattened = 0;
         for (int x = 0; x < grid.Width; x++)
         {
             if ((x & 31) == 0)
@@ -365,24 +313,302 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
             for (int y = 0; y < grid.Height; y++)
             {
                 ref WorldTile tile = ref grid.At(x, y);
-                WorldTile before = tile;
-                if (tile.Shape > 5)
-                    tile.Shape = 0;
-                if (!tile.IsActive)
-                {
-                    tile.FrameX = 0;
-                    tile.FrameY = 0;
-                    tile.Shape = 0;
-                    tile.Flags &= ~(WorldTileFlags.Inactive | WorldTileFlags.Actuator);
-                }
-                if (tile.LiquidAmount == 0)
-                    tile.LiquidKind = WorldLiquidKind.Water;
-                tile.Reserved = 0;
-                if (!tile.Equals(before))
-                    normalized++;
+                if ((tile.IsActive && TileCleanupKeepsSlope(tile.Type)) || tile.Shape == 0)
+                    continue;
+                tile.Shape = 0;
+                flattened++;
             }
         }
-        context.ReportProgress(1d, $"Tile Cleanup complete; normalized={normalized}");
+
+        // The source's second scan begins at its 40-cell margin. Its first repair turns a top slope into a
+        // half brick when it meets the facing half brick. Runtime shape 2 is source slope 1 (left-facing)
+        // and shape 3 is source slope 2 (right-facing).
+        int repairedTopSlopes = 0;
+        int waterDeaths = 0;
+        int drips = 0;
+        for (int x = 40; x < grid.Width - 40; x++)
+        {
+            if ((x & 31) == 0)
+                context.CancellationToken.ThrowIfCancellationRequested();
+            for (int y = 40; y < grid.Height - 40; y++)
+            {
+                ref WorldTile tile = ref grid.At(x, y);
+                if (tile.IsActive && tile.Shape is (2 or 3))
+                {
+                    bool joinsFacingHalfBrick = tile.Shape == 2
+                        ? grid.At(x + 1, y).IsActive && grid.At(x + 1, y).Shape == 1
+                        : grid.At(x - 1, y).IsActive && grid.At(x - 1, y).Shape == 1;
+                    if (joinsFacingHalfBrick)
+                    {
+                        tile.Shape = 1;
+                        repairedTopSlopes++;
+                    }
+                }
+
+                if (tile.IsActive && tile.LiquidAmount > 0 && SlowlyDiesInWater.Contains(tile.Type))
+                {
+                    KillSingleTileDuringCleanup(ref tile);
+                    waterDeaths++;
+                }
+
+                // TerrariaServer 1.4.5.8 TileCleanup's two drip searches are intentionally inside the
+                // inner scan and share genRand with all subsequent decoration.  Do not pre-scan liquid
+                // columns: both the short-circuiting and the accepted-only draws are observable RNG order.
+                if (!tile.IsActive && tile.LiquidAmount == 0 && random.Next(3) != 0 && IsSolidTile(grid.At(x, y - 1)))
+                {
+                    int ceilingRange = random.Next(15, 21);
+                    for (int sourceY = y - 2; sourceY >= y - ceilingRange; sourceY--)
+                    {
+                        WorldTile source = grid.At(x, sourceY);
+                        if (source.LiquidAmount < 128 || source.LiquidKind == WorldLiquidKind.Shimmer)
+                            continue;
+                        if (random.Next(y - sourceY) > 1)
+                            continue;
+                        PlaceCleanupDrip(ref tile, source.LiquidKind, tile.Wall == 86);
+                        drips++;
+                        break;
+                    }
+
+                    if (!tile.IsActive)
+                    {
+                        int floorRange = random.Next(3, 11);
+                        for (int sourceY = y + 1; sourceY <= y + floorRange; sourceY++)
+                        {
+                            WorldTile source = grid.At(x, sourceY);
+                            if (source.LiquidAmount < 200 || source.LiquidKind == WorldLiquidKind.Shimmer)
+                                continue;
+                            if (random.Next((sourceY - y) * 3) > 1)
+                                continue;
+                            PlaceCleanupDrip(ref tile, source.LiquidKind, forceHoney: false);
+                            drips++;
+                            break;
+                        }
+                    }
+
+                    if (!tile.IsActive && random.Next(4) == 0 && grid.At(x, y - 1).Type is 396 or 397)
+                    {
+                        tile.Type = 461;
+                        tile.FrameX = 0;
+                        tile.FrameY = 0;
+                        tile.Flags |= WorldTileFlags.Active;
+                    }
+                }
+
+                // Ordinary worlds take TileCleanup's non-extraLiquid wall branches.  Wall 87 is an
+                // anti-liquid boundary; the secret-seed conversion branch remains outside this ordinary pass.
+                if (tile.Wall is 13 or 14 or 87)
+                    tile.LiquidAmount = 0;
+
+                // Source TileCleanup removes the sloped/half-brick tile touching specific trap frames;
+                // it deliberately only clears active(), retaining the neighbouring tile's other packed state.
+                if (tile.IsActive && tile.Type == Trap)
+                {
+                    int trapRow = tile.FrameY / 18;
+                    if (trapRow <= 2 || trapRow == 5)
+                    {
+                        int neighbourX = tile.FrameX >= 18 ? x + 1 : x - 1;
+                        ref WorldTile neighbour = ref grid.At(neighbourX, y);
+                        if (neighbour.Shape != 0)
+                            neighbour.Flags &= ~WorldTileFlags.Active;
+                    }
+                }
+
+                // WorldGen.TileCleanup repairs every piece of a broken 2x2 shadow orb / crimson heart
+                // independently of which surviving piece caused this branch.  The drunk-world wall override
+                // is deliberately deferred with the other special-seed-only cleanup branches; this is the
+                // ordinary 1.4.5.8 path selected by the source's `!drunkWorldGen` arm.
+                if (tile.IsActive && tile.Type == 31)
+                {
+                    int frameColumn = tile.FrameX / 18;
+                    int originX = x - frameColumn % 2;
+                    int originY = y - (tile.FrameY / 18) % 2;
+                    int variant = context.Request.Options.Evil == WorldGenerationEvil.Crimson ? 1 : 0;
+                    RepairTwoByTwoObject(grid, originX, originY, 31, variant, tile.FrameY / 36);
+                }
+
+                // TerrariaServer 1.4.5.8 TileCleanup applies this same independent 2x2 recovery to
+                // Life Crystals, boulder-resistant traps, and Shadow Orbs, then restores a terrain
+                // support only where it was absent.  Retain an already-active support's material.
+                if (tile.IsActive && tile.Type is 12 or 639 or 28)
+                {
+                    int frameColumn = tile.FrameX / 18;
+                    int originX = x - frameColumn % 2;
+                    int originY = y - (tile.FrameY / 18) % 2;
+                    int styleX = tile.FrameX / 36;
+                    int styleY = tile.FrameY / 36;
+                    RepairTwoByTwoObject(grid, originX, originY, tile.Type, styleX, styleY);
+                    EnsureTwoWideTerrainSupport(grid, originX, originY + 2);
+                }
+
+                if (tile.IsActive && tile.Type == 26)
+                {
+                    int frameColumn = tile.FrameX / 18;
+                    int originX = x - frameColumn % 3;
+                    int originY = y - tile.FrameY / 18;
+                    int variant = context.Request.Options.Evil == WorldGenerationEvil.Crimson ? 1 : 0;
+                    RepairThreeByTwoObject(grid, originX, originY, 26, variant);
+                    EnsureThreeWideHeartSupport(grid, originX, originY + 2);
+                    ClearAdjacentHeartFragments(grid, originX, originY);
+                }
+
+                if (tile.IsActive && tile.Type == 237 && grid.At(x, y + 1).Type == 232)
+                    grid.At(x, y + 1).Type = 226;
+            }
+        }
+
+        context.ReportProgress(1d, $"Tile Cleanup complete; flattened={flattened}, repairedTopSlopes={repairedTopSlopes}, waterDeaths={waterDeaths}, drips={drips}");
+    }
+
+    private static bool IsSolidTile(in WorldTile tile) =>
+        tile.IsActive && VanillaTileCollisionCatalog.IsSolid(new TileTypeId(tile.Type));
+
+    private static void PlaceCleanupDrip(ref WorldTile destination, WorldLiquidKind kind, bool forceHoney)
+    {
+        destination.Type = forceHoney
+            ? (ushort)375
+            : (ushort)(kind switch
+            {
+                WorldLiquidKind.Lava => 374,
+                WorldLiquidKind.Honey => 375,
+                WorldLiquidKind.Shimmer => 709,
+                _ => 373
+            });
+        destination.FrameX = 0;
+        destination.FrameY = 0;
+        destination.Flags |= WorldTileFlags.Active;
+    }
+
+    private static void RepairTwoByTwoObject(
+        RuntimeGrid grid,
+        int originX,
+        int originY,
+        ushort type,
+        int styleX,
+        int styleY)
+    {
+        for (int dx = 0; dx < 2; dx++)
+        for (int dy = 0; dy < 2; dy++)
+        {
+            ref WorldTile piece = ref grid.At(originX + dx, originY + dy);
+            piece.Flags |= WorldTileFlags.Active;
+            piece.Shape = 0;
+            piece.Type = type;
+            piece.FrameX = checked((short)(dx * 18 + 36 * styleX));
+            piece.FrameY = checked((short)(dy * 18 + 36 * styleY));
+        }
+    }
+
+    private static void EnsureTwoWideTerrainSupport(RuntimeGrid grid, int originX, int supportY)
+    {
+        for (int dx = 0; dx < 2; dx++)
+        {
+            ref WorldTile support = ref grid.At(originX + dx, supportY);
+            if (!support.IsActive)
+            {
+                support.Flags |= WorldTileFlags.Active;
+                support.Type = TerrainTileForWall(support.Wall);
+            }
+
+            support.Shape = 0;
+        }
+    }
+
+    private static void RepairThreeByTwoObject(RuntimeGrid grid, int originX, int originY, ushort type, int style)
+    {
+        for (int dx = 0; dx < 3; dx++)
+        for (int dy = 0; dy < 2; dy++)
+        {
+            ref WorldTile piece = ref grid.At(originX + dx, originY + dy);
+            piece.Flags |= WorldTileFlags.Active;
+            piece.Shape = 0;
+            piece.Type = type;
+            piece.FrameX = checked((short)(dx * 18 + 54 * style));
+            piece.FrameY = checked((short)(dy * 18));
+        }
+    }
+
+    private static void EnsureThreeWideHeartSupport(RuntimeGrid grid, int originX, int supportY)
+    {
+        for (int dx = 0; dx < 3; dx++)
+        {
+            ref WorldTile support = ref grid.At(originX + dx, supportY);
+            if (!support.IsActive)
+            {
+                support.Flags |= WorldTileFlags.Active;
+                support.Type = TerrainTileForWall(support.Wall);
+            }
+
+            TileTypeId supportType = new(support.Type);
+            if ((!VanillaTileCollisionCatalog.IsSolid(supportType) || VanillaTileCollisionCatalog.IsSolidTop(supportType)) &&
+                !VanillaTileIds.IsPlatform(supportType))
+                support.Type = TerrainTileForWall(support.Wall);
+
+            support.Shape = 0;
+            ref WorldTile below = ref grid.At(originX + dx, supportY + 1);
+            if (below.Type == 28 && below.FrameY % 36 >= 18)
+            {
+                below.Type = 0;
+                below.Flags &= ~WorldTileFlags.Active;
+            }
+        }
+    }
+
+    private static void ClearAdjacentHeartFragments(RuntimeGrid grid, int originX, int originY)
+    {
+        for (int dy = 0; dy < 3; dy++)
+        {
+            ref WorldTile left = ref grid.At(originX - 1, originY + dy);
+            if ((left.Type is 28 or 12 or 639) && left.FrameX % 36 < 18)
+            {
+                left.Type = 0;
+                left.Flags &= ~WorldTileFlags.Active;
+            }
+
+            ref WorldTile right = ref grid.At(originX + 3, originY + dy);
+            // Preserve the official source's apparent left-neighbour type-639 predicate in this arm.
+            if (((right.Type is 28 or 12) || left.Type == 639) && right.FrameX % 36 >= 18)
+            {
+                right.Type = 0;
+                right.Flags &= ~WorldTileFlags.Active;
+            }
+        }
+    }
+
+    // Terraria.ID.WallID.Sets.WallTypeToTerrainTileType in TerrariaServer 1.4.5.8. The remaining
+    // ordinary wall identities map to Dirt (0), as independently used by SurfaceLakes1458.
+    private static ushort TerrainTileForWall(ushort wall) => wall switch
+    {
+        40 => 147,
+        71 => 161,
+        15 => 59,
+        86 => 225,
+        3 => 25,
+        83 => 203,
+        178 => 367,
+        180 => 368,
+        _ => 0
+    };
+
+    // Terraria.TileID.Sets.SaveSlopes, built from original solidity in PostSetupContent plus its eight
+    // non-solid exceptions. It must not be derived from mutable generation-time collision overrides.
+    private static bool TileCleanupKeepsSlope(ushort type) =>
+        VanillaTileCollisionCatalog.IsSolid(new TileTypeId(type)) ||
+        type is 131 or 351 or 336 or 340 or 342 or 341 or 343 or 344;
+
+    // TileCleanup calls WorldGen.KillTile rather than clearing fluid; retain the liquid while applying the
+    // single-cell state mutation shared with the verified generation/loading KillTile boundary.
+    private static void KillSingleTileDuringCleanup(ref WorldTile tile)
+    {
+        tile.Type = 0;
+        tile.FrameX = -1;
+        tile.FrameY = -1;
+        tile.TileColor = 0;
+        tile.Shape = 0;
+        tile.Flags &= ~(
+            WorldTileFlags.Active |
+            WorldTileFlags.Inactive |
+            WorldTileFlags.InvisibleBlock |
+            WorldTileFlags.FullbrightBlock);
     }
 
     private static void ApplyLihzahrdAltars(
@@ -572,13 +798,6 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
     private VanillaWorldGenerationBootstrapState1458 RequireBootstrap() =>
         state.Bootstrap ?? throw new InvalidOperationException("Final vanilla world generation is not initialized.");
 
-    private static bool IsLiquidBarrier(in WorldTile tile)
-    {
-        if (!tile.IsActive || tile.IsActuated)
-            return false;
-        return VanillaTileDefinitionCatalog.TryGet(tile.TileType, out VanillaTileDefinition definition) && definition.IsSolid;
-    }
-
     private static bool IsNaturalSolid(in WorldTile tile)
     {
         if (!tile.IsActive || tile.IsActuated || VanillaWorldFrameImportance326.IsFrameImportant(tile.Type))
@@ -644,7 +863,6 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
         }
     }
 
-    private readonly record struct LiquidRun(WorldLiquidKind Kind, int Amount);
     private readonly record struct TileBounds(int Left, int Top, int Right, int Bottom)
     {
         public int Width => Right - Left + 1;

@@ -139,7 +139,7 @@ internal sealed class ChestPlacementState1458
         // One context for the whole run. The shadow key, the ram rune, the living-mahogany wands and the
         // underworld's item cycle are all once-per-world facts, so they have to survive from one chest pass
         // to the next rather than reset with each of them.
-        ChestContext = new BuriedChestContext1458
+        ChestContext = workspace.VanillaBuriedChestContext ?? new BuriedChestContext1458
         {
             Height = workspace.HeightTiles,
             WorldSurface = WorldSurface,
@@ -156,6 +156,7 @@ internal sealed class ChestPlacementState1458
             DesertHiveHigh = workspace.VanillaUndergroundDesertRegion?.Bottom ?? 0,
             HellChestItem = Bootstrap.HellChestItems
         };
+        workspace.SetVanillaBuriedChestContext(ChestContext);
     }
 
     /// <summary>The run-wide chest state every chest pass shares.</summary>

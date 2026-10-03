@@ -105,6 +105,7 @@ internal sealed class UndergroundFinishState1458
 {
     public VanillaWorldGenerationBootstrapState1458? Bootstrap { get; private set; }
     public double RockLayer { get; private set; }
+    public double WorldSurface { get; private set; }
     public int UnderworldTop { get; private set; }
 
     public void EnsureInitialized(IWorldGenerationContext context, Workspace workspace)
@@ -116,21 +117,15 @@ internal sealed class UndergroundFinishState1458
         if (context.Metadata is null || !context.Metadata.TryGetLayers(out WorldGenerationLayers layers))
             throw new InvalidOperationException("Underground-finish generation requires source-backed Terrain layers.");
         RockLayer = layers.RockLayer;
+        WorldSurface = layers.WorldSurface;
         UnderworldTop = Math.Clamp(workspace.HeightTiles - 200, (int)RockLayer + 120, workspace.HeightTiles - 90);
     }
 }
 
 internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
 {
-    private const ushort Stone = 1;
     private const ushort Mud = 59;
     private const ushort JungleGrass = 60;
-    private const ushort Sapphire = 63;
-    private const ushort Ruby = 64;
-    private const ushort Emerald = 65;
-    private const ushort Topaz = 66;
-    private const ushort Amethyst = 67;
-    private const ushort Diamond = 68;
     private const ushort IceBlock = 161;
     private const ushort GreenMoss = 179;
     private const ushort BrownMoss = 180;
@@ -141,10 +136,7 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
     private const ushort Larva = 231;
 
     private const ushort MudUnsafeWall = 15;
-    private const ushort JungleUnsafeWall = 64;
     private const ushort HiveUnsafeWall = 86;
-
-    private static readonly ushort[] GemTiles = [Sapphire, Ruby, Emerald, Topaz, Amethyst, Diamond];
 
     private readonly UndergroundFinishStage1458 stage;
     private readonly UndergroundFinishState1458 state;
@@ -192,70 +184,99 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
 
     private void ApplyGemsInIceBiome(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int left = Math.Max(20, bootstrap.SnowOriginLeft - 70);
-        int right = Math.Min(grid.Width - 20, bootstrap.SnowOriginRight + 70);
-        int minY = Math.Clamp((int)state.RockLayer - 30, 30, state.UnderworldTop - 120);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 60);
-        int target = grid.Width switch { <= 4200 => 40, <= 6400 => 58, _ => 76 };
-        int converted = 0;
+        ReadOnlySpan<VanillaSnowRow1458> snowRows = (context.Workspace as Workspace ??
+            throw new InvalidOperationException("Gems In Ice Biome requires Workspace.")).VanillaSnowRows;
+        int minimumY = checked((int)(state.WorldSurface + state.RockLayer) / 2);
+        int maximumY = RequireLavaLine(context, grid);
+        int placed = 0;
 
-        for (int cluster = 0; cluster < target; cluster++)
+        // TerrariaServer 1.4.5.8 WorldGen.AddPasses / ExposedGemsInIceBiome: each offer first samples
+        // a row, then that row's retained snow interval. Geometry/style rolls happen only after an Ice-family
+        // candidate is accepted; moving them outside this gate changes the shared generation RNG stream.
+        for (int offer = 0; offer < grid.Width * 0.25d; offer++)
         {
-            if ((cluster & 7) == 0)
+            if ((offer & 255) == 0)
                 context.CancellationToken.ThrowIfCancellationRequested();
-            int cx = random.Next(left, right);
-            int cy = random.Next(minY, maxY);
-            int radius = random.Next(2, 5);
-            ushort gem = GemTiles[random.Next(GemTiles.Length)];
+            int y = random.Next(minimumY, maximumY);
+            VanillaSnowRow1458 row = snowRows[y];
+            int x = random.Next(row.Left, row.Right);
+            if (!grid.At(x, y).IsActive || grid.At(x, y).Type is not (147 or IceBlock or 162 or 224))
+                continue;
 
-            for (int x = cx - radius; x <= cx + radius; x++)
-            for (int y = cy - radius; y <= cy + radius; y++)
+            int left = random.Next(1, 4);
+            int right = random.Next(1, 4);
+            int up = random.Next(1, 4);
+            int down = random.Next(1, 4);
+            int style = SelectGemStyle(random.Next(12));
+            for (int tx = x - left; tx < x + right; tx++)
+            for (int ty = y - up; ty < y + down; ty++)
             {
-                if (!grid.Contains(x, y))
+                if (!grid.ContainsWithMargin(tx, ty, 40) || grid.At(tx, ty).IsActive)
                     continue;
-                int dx = x - cx;
-                int dy = y - cy;
-                if (dx * dx + dy * dy > radius * radius + random.Next(3))
-                    continue;
-                ref WorldTile tile = ref grid.At(x, y);
-                if (!tile.IsActive || tile.Type != IceBlock)
-                    continue;
-                tile.Type = gem;
-                tile.FrameX = 0;
-                tile.FrameY = 0;
-                tile.Shape = 0;
-                converted++;
+                if (TryPlaceLooseGem(grid, random, tx, ty, style)) placed++;
             }
         }
 
-        context.ReportProgress(1d, $"Seeding gems in the Ice biome ({converted} blocks)");
+        context.ReportProgress(1d, $"Placing source-backed exposed gems in the Ice biome ({placed} objects)");
     }
 
     private void ApplyRandomGems(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
-        int attempts = grid.Width switch { <= 4200 => 1700, <= 6400 => 2500, _ => 3300 };
-        int minY = Math.Clamp((int)state.RockLayer - 20, 25, state.UnderworldTop - 120);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 45);
-        int converted = 0;
-
-        for (int attempt = 0; attempt < attempts; attempt++)
+        int placed = 0;
+        int lavaLine = RequireLavaLine(context, grid);
+        for (int offer = 0; offer < grid.Width; offer++)
         {
-            if ((attempt & 511) == 0)
+            if ((offer & 511) == 0)
                 context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(3, grid.Width - 3);
-            int y = random.Next(minY, maxY);
-            ref WorldTile tile = ref grid.At(x, y);
-            if (!tile.IsActive || tile.Type != Stone || !grid.HasOpenNeighbor(x, y))
+            int x = random.Next(20, grid.Width - 20);
+            int y = random.Next((int)state.RockLayer, grid.Height - 300);
+            WorldTile tile = grid.At(x, y);
+            if (tile.IsActive || HasLava(in tile) || DungeonGenerationTiles1458.IsDungeonWall(tile.Wall) || tile.Wall == 27)
                 continue;
-            tile.Type = GemTiles[random.Next(GemTiles.Length)];
-            tile.FrameX = 0;
-            tile.FrameY = 0;
-            tile.Shape = 0;
-            converted++;
+            if (TryPlaceLooseGem(grid, random, x, y, SelectGemStyle(random.Next(12)))) placed++;
         }
 
-        context.ReportProgress(1d, $"Scattering random exposed gems ({converted} blocks)");
+        for (int offer = 0; offer < grid.Width; offer++)
+        {
+            if ((offer & 511) == 0)
+                context.CancellationToken.ThrowIfCancellationRequested();
+            int x = random.Next(20, grid.Width - 20);
+            int y = random.Next((int)state.WorldSurface, grid.Height - 300);
+            WorldTile tile = grid.At(x, y);
+            if (tile.IsActive || HasLava(in tile) || tile.Wall is not (216 or 187))
+                continue;
+            int left = random.Next(1, 4);
+            int right = random.Next(1, 4);
+            int up = random.Next(1, 4);
+            int down = random.Next(1, 4);
+            for (int tx = x - left; tx < x + right; tx++)
+            for (int ty = y - up; ty < y + down; ty++)
+                if (!grid.At(tx, ty).IsActive && TryPlaceLooseGem(grid, random, tx, ty, 6)) placed++;
+        }
+
+        context.ReportProgress(1d, $"Placing source-backed random exposed gems ({placed} objects)");
+    }
+
+    private static int RequireLavaLine(IWorldGenerationContext context, RuntimeGrid grid)
+    {
+        int lavaLine = (context.Workspace as Workspace)?.VanillaLiquidLines?.LavaLine
+            ?? throw new InvalidOperationException("Exposed gems require source-backed liquid lines.");
+        return lavaLine > 0 && lavaLine < grid.Height ? lavaLine : throw new InvalidOperationException("Invalid source-backed lava line.");
+    }
+
+    private static int SelectGemStyle(int roll) => roll switch { < 3 => 0, < 6 => 1, < 8 => 2, < 10 => 3, 10 => 4, _ => 5 };
+
+    private static bool HasLava(in WorldTile tile) => tile.LiquidAmount > 0 && tile.LiquidKind == WorldLiquidKind.Lava;
+
+    private static bool TryPlaceLooseGem(RuntimeGrid grid, IRandom random, int x, int y, int style)
+    {
+        if (!grid.HasLooseGemAnchor(x, y)) return false;
+        ref WorldTile tile = ref grid.At(x, y);
+        tile.Type = 178;
+        tile.Flags |= WorldTileFlags.Active;
+        tile.FrameX = (short)(style * 18);
+        tile.FrameY = (short)(random.Next(3) * 18);
+        return true;
     }
 
     private void ApplyMossGrass(IWorldGenerationContext context, Workspace workspace)
@@ -274,31 +295,62 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
 
     private void ApplyMudsWallsInJungle(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int halfWidth = Math.Max(280, grid.Width / 9);
-        int left = Math.Max(10, bootstrap.JungleOriginX - halfWidth);
-        int right = Math.Min(grid.Width - 10, bootstrap.JungleOriginX + halfWidth);
-        int minY = Math.Clamp((int)state.RockLayer - 40, 20, state.UnderworldTop - 100);
-        int maxY = Math.Max(minY + 1, state.UnderworldTop - 25);
-        int painted = 0;
+        // TerrariaServer 1.4.5.8 WorldGen.AddPasses,
+        // DirtWallsIntoMudWallsInJungleAndJungleMinMax: locate the extreme surface Jungle Grass columns,
+        // then replace only dirt/unsafe-dirt walls.  The two edge conditions deliberately precede the wall
+        // test: their short-circuited random draws are part of the shared generation stream even for other walls.
+        int minJungleX = 0;
+        int maxJungleX = 0;
+        int scanEnd = Math.Min(grid.Height, (int)state.WorldSurface + 20);
 
-        for (int x = left; x < right; x++)
+        bool found = false;
+        for (int x = 5; x < grid.Width - 5 && !found; x++)
         {
-            if ((x & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-            for (int y = minY; y < maxY; y++)
+            for (int y = 0; y < scanEnd; y++)
             {
-                ref WorldTile tile = ref grid.At(x, y);
-                if (tile.IsActive || tile.Wall != 0)
+                WorldTile tile = grid.At(x, y);
+                if (!tile.IsActive || tile.Type != JungleGrass)
                     continue;
-                if (!grid.HasNeighborMaterial(x, y, Mud, JungleGrass) || random.Next(5) != 0)
-                    continue;
-                tile.Wall = random.Next(4) == 0 ? JungleUnsafeWall : MudUnsafeWall;
-                painted++;
+                minJungleX = x;
+                found = true;
+                break;
             }
         }
 
-        context.ReportProgress(1d, $"Adding Mud/Jungle cave walls ({painted} cells)");
+        found = false;
+        for (int x = grid.Width - 5; x > 5 && !found; x--)
+        {
+            for (int y = 0; y < scanEnd; y++)
+            {
+                WorldTile tile = grid.At(x, y);
+                if (!tile.IsActive || tile.Type != JungleGrass)
+                    continue;
+                maxJungleX = x;
+                found = true;
+                break;
+            }
+        }
+
+        int painted = 0;
+        for (int x = minJungleX; x <= maxJungleX; x++)
+        {
+            if ((x & 63) == 0)
+                context.CancellationToken.ThrowIfCancellationRequested();
+            for (int y = 0; y < scanEnd; y++)
+            {
+                bool interiorTwo = x >= minJungleX + 2 && x <= maxJungleX - 2;
+                bool interiorThree = x >= minJungleX + 3 && x <= maxJungleX - 3;
+                if ((interiorTwo || random.Next(2) != 0) &&
+                    (interiorThree || random.Next(3) != 0) &&
+                    (grid.At(x, y).Wall is 2 or 59))
+                {
+                    grid.At(x, y).Wall = MudUnsafeWall;
+                    painted++;
+                }
+            }
+        }
+
+        context.ReportProgress(1d, $"Converting Jungle dirt walls ({painted} cells)");
     }
 
     private void ApplyLarva(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
@@ -373,9 +425,6 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
         tile.LiquidKind = WorldLiquidKind.Water;
     }
 
-    private VanillaWorldGenerationBootstrapState1458 RequireBootstrap() =>
-        state.Bootstrap ?? throw new InvalidOperationException("Underground-finish pass executed before bootstrap initialization.");
-
     private interface IRandom
     {
         int Next(int max);
@@ -395,19 +444,13 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
         public int Width => store.Dimensions.WidthTiles;
         public int Height => store.Dimensions.HeightTiles;
         public bool Contains(int x, int y) => (uint)x < (uint)Width && (uint)y < (uint)Height;
+        public bool ContainsWithMargin(int x, int y, int margin) =>
+            x >= margin && x < Width - margin && y >= margin && y < Height - margin;
         public ref WorldTile At(int x, int y) => ref store.Tiles[store.GetUncheckedIndex(x, y)];
 
-        public bool HasOpenNeighbor(int x, int y) =>
-            !At(x - 1, y).IsActive || !At(x + 1, y).IsActive || !At(x, y - 1).IsActive || !At(x, y + 1).IsActive;
-
-        public bool HasNeighborMaterial(int x, int y, ushort a, ushort b)
-        {
-            WorldTile left = At(x - 1, y);
-            WorldTile right = At(x + 1, y);
-            WorldTile up = At(x, y - 1);
-            WorldTile down = At(x, y + 1);
-            return IsMaterial(left, a, b) || IsMaterial(right, a, b) || IsMaterial(up, a, b) || IsMaterial(down, a, b);
-        }
+        public bool HasLooseGemAnchor(int x, int y) =>
+            IsLooseGemAnchor(in At(x, y + 1)) || IsLooseGemAnchor(in At(x - 1, y)) ||
+            IsLooseGemAnchor(in At(x + 1, y)) || IsLooseGemAnchor(in At(x, y - 1));
 
         public bool IsEmptyRectangle(int left, int top, int width, int height)
         {
@@ -443,7 +486,9 @@ internal sealed class UndergroundFinishPass1458 : IWorldGenerationPass
             return hive >= 3 && hiveWall >= 9;
         }
 
-        private static bool IsMaterial(WorldTile tile, ushort a, ushort b) =>
-            tile.IsActive && (tile.Type == a || tile.Type == b);
+        private static bool IsLooseGemAnchor(in WorldTile tile) =>
+            tile.IsActive && !tile.IsActuated && tile.Shape == 0 &&
+            VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+            !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
     }
 }

@@ -33,7 +33,8 @@ internal sealed class BuriedChest1458(
     IWorldGenerationVanillaRandom random,
     BuriedChestContext1458 context,
     Func<int, int, bool>? chestSlotAvailable = null,
-    Action<BuriedChestResult1458>? onPlaced = null)
+    Action<BuriedChestResult1458>? onPlaced = null,
+    bool spikyLihzahrdIsNonSolid = false)
 {
     private const ushort Containers = 21;
     private const ushort Containers2 = 467;
@@ -80,8 +81,7 @@ internal sealed class BuriedChest1458(
 
             // A sloped floor is flattened for the duration of the attempt and put back if the attempt fails,
             // so a chest can sit on ground the placement check would otherwise refuse.
-            if (trySlope && At(i, k).IsActive &&
-                VanillaTileCollisionCatalog.IsSolid(At(i, k).TileType) &&
+            if (trySlope && IsSolidForChest(At(i, k)) &&
                 !VanillaTileCollisionCatalog.IsSolidTop(At(i, k).TileType))
             {
                 // The ocean's chests refuse to land anywhere within thirty tiles of another chest, which is a
@@ -411,7 +411,14 @@ internal sealed class BuriedChest1458(
 
     /// <summary>Source <c>WorldGen.SolidTile</c>.</summary>
     private bool SolidTile(int x, int y) =>
-        !Contains(x, y) || HellFortGenerator1458.Solid(At(x, y), noDoors: false);
+        !Contains(x, y) || IsSolidForChest(At(x, y));
+
+    // TerrariaServer 1.4.5.8 templePart2 temporarily sets Main.tileSolid[232] = false only while its
+    // AddBuriedChest offers run, so Spiky Lihzahrd Brick cannot become a chest's floor in that source scope.
+    private bool IsSolidForChest(in WorldTile tile) =>
+        tile.Type != 232 || !spikyLihzahrdIsNonSolid
+            ? HellFortGenerator1458.Solid(tile, noDoors: false)
+            : false;
 
     private bool IsTopSlope(int x, int y)
     {

@@ -1,5 +1,7 @@
 # Complete vanilla worldgen pass audit — 2026-09-08
 
+Gem Caves (2026-10-02): row 68 moves from `P` to `C`. The source pass makes `width * .003` candidate offers, retries a candidate while its counted cave is too large/small, liquid, ice or without rock, and then performs the connected `Spread.Gem` walk. The port now retains that candidate contract and the six-gem selection set. The important frontier detail is that a converted loose gem is non-solid to this walk: a later wave can give it a cave wall, while a placed gem object is active and must not spend a second object-offer roll when revisited. Evidence is two direct TerrariaServer 1.4.5.8 goldens at seed `1458`: a solid `600 x 500` frontier (next RNG `2010695125`, SHA-256 `b04ad6f6d983518e472824f081fe3df558b75d2fe6109f9eff1b857af50df626`) and an eight-by-eight opening (next RNG `1573606171`, SHA-256 `5688f0564ed790a77805df6963808d1433425a55a46a3888a27ac7528ff4decd`). Both compare every stored cell field and the shared RNG against the locally pinned official server. The ledger is now **36P + 36C = 72 unfinished rows**; **31 E9 / 279 checkpoints** is unchanged.
+
 Ordinary Dungeon full-pass verification (2026-09-09): stage36 moves to bounded `R16`, not `E9`. Sixteen retained comparisons use identical real production-prefix inputs in the unmodified official Dungeon pass and the runtime pass: all normalized cells, ordered chest inventories/prefixes, Old Man anchor and next RNG match. They cover all canonical sizes, all three entrance forms and both evils. Another24 independent flat-input comparisons and14 extra Small seeds also match. `R16` does not claim the preceding prefix, every GenVars field, special seeds or final-world equality. The ledger is now **40P + 32C = 72 unfinished rows**; independent multi-stage prefix evidence remains **31 E9 / 279 checkpoints**. Final acceptance is recorded in agent memory; older paragraphs below are historical.
 
 AddBuriedChest and the chest passes (2026-09-22): rows63 and65 move from `C` to `P`, and rows64 and66 keep `C` but for the first time actually have it. All four carried evidence strings naming `AddBuriedChest`, and nothing in `src/` implemented it. The passes underneath them were invented: budgets scaled by hand, attempt loops with made-up retry counts, and a loot table that omitted every natural prefix roll.
@@ -600,13 +602,13 @@ Full Desert integration also exposed later-stage boundary defects. Ordinary Sett
 | 44 | Pyramids | Dungeon | P | selection closed by 32 official fixtures; `WorldGen.Pyramid` geometry closed by 12 more; only the chamber's `AddBuriedChest` chest remains |
 | 45 | Dirt Rock Wall Runner | JungleStructure | P | wall runners / RNG |
 | 46 | Living Trees | JungleStructure | C | `GrowLivingTree`, its underground passage, room and horizontal tunnels, plus the framing slices they need: 12 official complete-delegate fixtures / the room's `AddBuriedChest` and the site scan's `mCaveX` |
-| 47 | Wood Tree Walls | JungleStructure | P | wall spread / roots / RNG |
+| 47 | Wood Tree Walls | JungleStructure | P | source surface scan and diagonal Living-Wood gate are registered; complete-pass differential remains |
 | 48 | Altars | JungleStructure | P | placement / exclusions / RNG |
-| 49 | Wet Jungle | JungleStructure | P | water placement / scan order |
+| 49 | Wet Jungle | JungleStructure | P | source-backed `SurfaceWaterInJungle` first-active-column scan and two-cell water placement; complete-pass differential remains |
 | 50 | Jungle Temple | JungleStructure | C | `makeTemple` and all six of its helpers: whole-world cell comparison against the official server, identical bounding box, brick at $100.3\%$ / no synthetic fixtures |
 | 51 | Hives | JungleStructure | C | `HiveBiome` tunnels, site disc, honey falls and larva stands: Hive block at $116\%$ of the official world / `HoneyPatchBiome` unported |
-| 52 | Jungle Chests | JungleStructure | P | candidate rooms / frames / RNG |
-| 53 | Settle Liquids | JungleStructure | P | QuickWater(3) / WaterCheck / quickSettle |
+| 52 | Jungle Chests | JungleStructure | P | source-backed `JungleShrines` site rolls, hut shell/cavity, Mud supports, stepped roof and delayed chest anchors; `StructureMap` rejection, object framing and complete differential remain |
+| 53 | Settle Liquids | JungleStructure | P | source-shaped ordinary-world `QuickWater` → `WaterCheck` → ten `quickSettle` rounds, each capped at five `Liquid.UpdateLiquid` calls per starting queued entry → `WaterCheck` → pending-clear sequence, including the Jungle-Shrines tile-137 temporary non-solidity and generation-only single-cell lava death for transient Rolling Cactus / extra-liquid seed branch remains |
 | 54 | Remove Water From Sand | PostSettle | R1 | surface scan / six tile types / boundaries |
 | 55 | Oasis | PostSettle | C | `PlaceOasis`: 30 official comparisons including retained anchors and the dead source branches / remaining prefix proof |
 | 56 | Shell Piles | PostSettle | P | all source branches / decoration / RNG |
@@ -620,10 +622,10 @@ Full Desert integration also exposed later-stage boundary defects. Ordinary Sett
 | 64 | Surface Chests | Chest | C | `SurfaceChests`: the wall test, the living-wood reservoir sweep and the retry counter: 14 official complete-delegate fixtures |
 | 65 | Jungle Chests Placement | Chest | P | shrine anchors unpublished / invented candidate search / RNG |
 | 66 | Water Chests | Chest | C | `UnderwaterChests`: the treasure spiral, the asymmetric scatter pair and the item cycle: 12 official complete-delegate fixtures |
-| 67 | Spider Caves | LateStructure | P | SpiderBiome / webs / walls / RNG |
-| 68 | Gem Caves | LateStructure | P | GemCave / RNG |
+| 67 | Spider Caves | LateStructure | C | `Spider Caves`: direct frontier, floor-decoration and chest-offer goldens plus accepted-candidate and exhausted-retry `PassLegacy` fixtures; cells and next shared RNG match TerrariaServer 1.4.5.8 |
+| 68 | Gem Caves | LateStructure | C | `GemCaves`: source-shaped candidate/retry loop plus direct solid/open frontier goldens; cells and next shared RNG match TerrariaServer 1.4.5.8 |
 | 69 | Moss | LateStructure | C | `MossAndMossCaves`: the three-moss roll and its thirds, the neon biome sampler and walk, the flood counter, the moss spread, the lava budget's three decrements and the whole-world spread: 12 official complete-delegate fixtures |
-| 70 | Temple | LateStructure | P | temple finishing / traps / RNG |
+| 70 | Temple | LateStructure | P | registered `templePart2`: four direct 600x500 cell/RNG goldens plus chest, furniture, painting and trap primitives; broader terrain/TileObjectData rejection coverage remains |
 | 71 | Cave Walls | LateStructure | C | CaveWallVariety / regions / RNG |
 | 72 | Jungle Trees | LateStructure | C | tree grower / placement / RNG |
 | 73 | Floating Island Houses | LateStructure | C | IslandHouse / furniture / loot / RNG |
@@ -634,7 +636,7 @@ Full Desert integration also exposed later-stage boundary defects. Ordinary Sett
 | 78 | Surface Ore and Stone | SurfaceFinish | P | surface scan / TileRunner / RNG |
 | 79 | Place Fallen Log | SurfaceFinish | C | `FallenLogsAndWaterFeatures`: the attempt budget's own difficulty curve, both neighbourhood scans, `Check3x2`'s rebuild and the `logX` anchor: 10 official complete-delegate fixtures |
 | 80 | Traps | SurfaceFinish | C | trap families / wiring / RNG |
-| 81 | Piles | SurfaceFinish | C | styles / placement / RNG |
+| 81 | Piles | SurfaceFinish | C | `PilePass1458`: seven source sample-and-cascade loops, float budgets, temporary `tileSolid` override, placement and framing; 12 official complete-delegate fixtures |
 | 82 | Spawn Point | SurfaceFinish | C | source spawn search / safety |
 | 83 | Grass Wall | SurfaceFinish | C | `SurfaceDirtWallsToGrassWalls`: the per-cell draw, `countDirtTiles`, `Spread.Wall2` and the green `SpreadGrass`: 22 official complete-delegate fixtures |
 | 84 | Guide | StartingNpc | C | Guide / seed profiles / NPC metadata |
@@ -649,15 +651,15 @@ Full Desert integration also exposed later-stage boundary defects. Ordinary Sett
 | 93 | Vines | Vegetation | C | six per-column family scans, `GrowMoreVines`, `TooManyJungleVinesNearby` and the pass's bee hive / no official fixtures yet |
 | 94 | Flowers | Vegetation | C | `Flowers`: the patch box, the per-patch style, the ground conversion, the `PlaceTile` slice and the fallen-log relocation: 18 official complete-delegate fixtures |
 | 95 | Mushrooms | Vegetation | C | `Mushrooms`: the restamping patch and its inner-loop edge break: 6 official complete-delegate fixtures |
-| 96 | Gems In Ice Biome | UndergroundFinish | P | snow bounds / gems / RNG |
-| 97 | Random Gems | UndergroundFinish | P | placement / RNG |
+| 96 | Gems In Ice Biome | UndergroundFinish | P | source candidate stream, retained per-row snow bounds, `PlaceTile(178)` style map and RNG; the `600x800` PassLegacy fixture is cell/RNG differential, while canonical terrain coverage remains |
+| 97 | Random Gems | UndergroundFinish | P | source two-phase offer stream, wall/liquid gates, `PlaceTile(178)` and RNG; the `600x800` PassLegacy fixture differentially pins all loose-gem cells/styles, while canonical terrain coverage remains |
 | 98 | Moss Grass | UndergroundFinish | C | `LongMoss`: the scan, the two-armed placement, the double square framing PlaceTile spends and the four-way direction chain that decides a strand's colour, band and survival: 16 official complete-delegate fixtures |
-| 99 | Muds Walls In Jungle | UndergroundFinish | P | wall scans / RNG |
+| 99 | Muds Walls In Jungle | UndergroundFinish | P | `DirtWallsIntoMudWallsInJungleAndJungleMinMax`: surface Jungle-Grass extrema, source-order edge draws and dirt-wall conversion; one official complete-delegate fixture / canonical terrain coverage remains |
 | 100 | Larva | UndergroundFinish | C | hive anchors / framing / RNG |
 | 101 | Micro Biomes | MicroBiomes | C | TrackGenerator / houses / all biome helpers |
-| 102 | Settle Liquids Again | Final | P | QuickWater / WaterCheck / quickSettle |
+| 102 | Settle Liquids Again | Final | P | `SettleLiquidsPart2AndNotTheBees`: generation `QuickWater`, `WaterCheck` and ten bounded quick-settle rounds; one official complete-delegate fixture / broader liquid coverage remains |
 | 103 | Cactus, Palm Trees, & Coral | Final | C | growers / planting distribution / RNG |
-| 104 | Tile Cleanup | Final | P | scan order / framing rules |
+| 104 | Tile Cleanup | Final | P | `TileCleanup` carries source `SaveSlopes`, slow-water death, ordinary drip offers, liquid-blocking walls, trap-neighbour cleanup, 2x2 recovery for shadow orbs, crimson hearts, Life Crystals, type `639`, and type `28`, plus 3x2 heart recovery and spike-ball support repair; recovered objects preserve source frame banks and wall-terrain support without synthetic field normalization; direct TerrariaServer `PassLegacy` fixtures now execute for the liquid-death and dry-object paths, while chest and further object repair/framing branches remain |
 | 105 | Lihzahrd Altars | Final | C | temple anchors / placement / RNG |
 | 106 | Water Plants | Final | P | liquid/substrate selection / RNG |
 | 107 | Stalac | Final | C | `SpeleothemsAndGemTrees`: whole-map scan, `PlaceTight`, the substrate atlas and `CheckStalactite`'s restyle: 32 official complete-delegate fixtures / world-level counts track a terrain surplus |
@@ -675,7 +677,7 @@ Full Desert integration also exposed later-stage boundary defects. Ordinary Sett
 - [ ] Pyramids, Living Trees, Crimson, Aether, Jungle Temple/Hives: exact builders, walls, entrances, rooms and downstream state; do not paint a corrective shell over a wrong shape.
 - [ ] Floating Islands: preserve proven CloudIsland/CloudLake components; separately verify source placement/IslandHouse/furniture/loot and the result after later passes.
 - [ ] Underworld: preserve proven roof/basin/runner/QuickWater components; verify the full sequence with HellFort, Hellforge and decoration. Final visible lava is not equivalent to the early basin probe.
-- [ ] Settle Liquids/Again: the first pass still uses approximate sweeps and the second vertical column compaction. These are not vanilla QuickWater + WaterCheck + bounded quickSettle orchestration; only embedded-liquid clearing was previously closed. Implement exact orchestration without an alternative live authority path.
+- [ ] Settle Liquids/Again: the first pass now runs the ordinary-world source sequence `QuickWater` → `WaterCheck` → ten bounded `quickSettle` rounds → `WaterCheck` → pending-clear, including tile 137's preceding Jungle-Shrines non-solidity and the official transient single-cell lava death for Rolling Cactus. Its extra-liquid seed branch remains; the second pass still uses vertical column compaction. Complete those exact source branches without an alternative live authority path.
 - [ ] Micro Biomes: preserve corrected rail frames/clearance; port TrackGenerator origin/route/history/tunnel/smoothing and other biome builders. House budgets/frames do not establish source topology.
 - [ ] Every remaining C/P row: prove placement attempts, RNG, frames, side tables, loot and cleanup order. Do not widen differential budgets to accommodate a changed world.
 - [ ] Whole-world matrix: corruption/crimson × Small/Medium/Large × multiple seeds; separate special-seed branches. Official loading, structural budgets, playthrough and exact equality are distinct gates.

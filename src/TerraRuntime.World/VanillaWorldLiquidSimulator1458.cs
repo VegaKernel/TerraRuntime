@@ -48,6 +48,7 @@ public sealed class VanillaWorldLiquidSimulator1458
     private int discoveryCursor;
     private bool discoveryComplete;
     private bool useInitialPopulationWrites;
+    private bool worldGenerationTilesIgnoreWater;
 
     public VanillaWorldLiquidSimulator1458(
         WorldTileStore tiles,
@@ -128,6 +129,74 @@ public sealed class VanillaWorldLiquidSimulator1458
     /// </summary>
     public void QuickWater(int minY = -1, int maxY = -1)
         => QuickWaterCore(minY, maxY, tiles.Dimensions.HeightTiles, default);
+
+    /// <summary>
+    /// Runs the <c>Liquid.QuickWater</c> slice used by world generation while
+    /// <c>Liquid.worldGenTilesIgnoreWater(true)</c> is enabled. This is deliberately separate from loading:
+    /// Jungle Shrines has already made tile 137 non-solid at this point, whereas normal world loading has not.
+    /// </summary>
+    public void QuickWaterDuringWorldGeneration(CancellationToken cancellationToken)
+    {
+        bool previous = worldGenerationTilesIgnoreWater;
+        worldGenerationTilesIgnoreWater = true;
+        try
+        {
+            QuickWaterCore(-1, -1, tiles.Dimensions.HeightTiles, cancellationToken);
+        }
+        finally
+        {
+            worldGenerationTilesIgnoreWater = previous;
+        }
+    }
+
+    /// <summary>
+    /// Replays the ordinary (non-extra-liquid) <c>GenPassNameID.SettleLiquids</c> sequence from
+    /// TerrariaServer 1.4.5.8: <c>QuickWater</c>, <c>WaterCheck</c>, ten bounded quick-settle rounds,
+    /// a <c>WaterCheck</c> after every round, and <c>ClearPendingLiquid</c>. The source gives each round
+    /// at most five <c>Liquid.UpdateLiquid</c> calls per queued entry present at its start; it does not use the load-time 100,000
+    /// iteration guard. SecretSeed.extraLiquid changes the round counter and remains outside this ordinary
+    /// world-generation slice.
+    /// </summary>
+    public VanillaWaterCheckDiagnostic1458 SettleDuringWorldGeneration(CancellationToken cancellationToken)
+    {
+        bool previous = worldGenerationTilesIgnoreWater;
+        worldGenerationTilesIgnoreWater = true;
+        try
+        {
+            QuickWaterCore(-1, -1, tiles.Dimensions.HeightTiles, cancellationToken);
+            VanillaWaterCheckDiagnostic1458 waterCheck = WaterCheckCore1458(generatingWorld: true);
+            if (!waterCheck.IsApplied)
+                return waterCheck;
+
+            var changes = new WorldLiquidSimulationChange[
+                workBudget * MaximumChangesPerProcessedCell];
+            for (int round = 0; round < 10; round++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                int startingPending = tiles.LiquidUpdates.ActiveCount + tiles.LiquidUpdates.BufferedCount;
+                int updateBudget = startingPending * 5;
+                while (tiles.LiquidUpdates.ActiveCount > 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (--updateBudget < 0)
+                        break;
+                    _ = TickQuickSettle(changes);
+                }
+
+                waterCheck = WaterCheckCore1458(generatingWorld: true);
+                if (!waterCheck.IsApplied)
+                    return waterCheck;
+            }
+
+            // WorldGen.ClearPendingLiquid clears both queues and every transient checking/skip marker.
+            tiles.LiquidUpdates.Clear();
+            return VanillaWaterCheckDiagnostic1458.Applied;
+        }
+        finally
+        {
+            worldGenerationTilesIgnoreWater = previous;
+        }
+    }
 
     /// <summary>
     /// The ordinary pre-Dungeon generation flow slice. The generation owner must surround this with
@@ -389,19 +458,21 @@ public sealed class VanillaWorldLiquidSimulator1458
         }
     }
 
-    private static bool IsQuickWaterPassable1458(in WorldTile tile) =>
+    private bool IsQuickWaterPassable1458(in WorldTile tile) =>
         !IsQuickWaterBarrier1458(in tile);
 
     private static bool IsQuickWaterBubbleBarrier1458(in WorldTile tile) =>
         tile.IsActive && !tile.IsActuated && tile.TileType == VanillaTileIds.Bubble;
 
-    private static bool IsQuickWaterBarrier1458(in WorldTile tile)
+    private bool IsQuickWaterBarrier1458(in WorldTile tile)
     {
         if (!tile.IsActive || tile.IsActuated)
             return false;
         if (tile.TileType == VanillaTileIds.Bubble)
             return true;
-        if (VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringSettle(tile.TileType))
+        if (VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringSettle(tile.TileType) ||
+            (worldGenerationTilesIgnoreWater &&
+             VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringWorldGenerationSettle(tile.TileType)))
             return false;
         return VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
                !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);
@@ -417,7 +488,34 @@ public sealed class VanillaWorldLiquidSimulator1458
     /// </summary>
     public VanillaWaterCheckDiagnostic1458 WaterCheckLoading()
     {
-        VanillaWaterCheckDiagnostic1458 preflight = PreflightWaterCheckLiquidDeaths1458();
+        return WaterCheckCore1458(generatingWorld: false);
+    }
+
+    /// <summary>
+    /// Replays the <c>WorldGen.WaterCheck</c> call made from the 1.4.5.8 generation
+    /// <c>Settle Liquids</c> pass.  This is deliberately distinct from the post-load path:
+    /// generation's plain <c>KillTile(i, j)</c> removes the wet Rolling Cactus cell and leaves
+    /// its sibling cells for the later framing pass.  The official 1.4.5.8 probe covers that
+    /// transient state; applying the loading object's eager whole-footprint cleanup here made
+    /// canonical generation reject a valid tile 484 at this stage.
+    /// </summary>
+    public VanillaWaterCheckDiagnostic1458 WaterCheckDuringWorldGeneration()
+    {
+        bool previous = worldGenerationTilesIgnoreWater;
+        worldGenerationTilesIgnoreWater = true;
+        try
+        {
+            return WaterCheckCore1458(generatingWorld: true);
+        }
+        finally
+        {
+            worldGenerationTilesIgnoreWater = previous;
+        }
+    }
+
+    private VanillaWaterCheckDiagnostic1458 WaterCheckCore1458(bool generatingWorld)
+    {
+        VanillaWaterCheckDiagnostic1458 preflight = PreflightWaterCheckLiquidDeaths1458(generatingWorld);
         if (!preflight.IsApplied)
             return preflight;
 
@@ -448,7 +546,7 @@ public sealed class VanillaWorldLiquidSimulator1458
 
                 if (tile.IsActive && ShouldDieInLoadingLiquid1458(in tile))
                 {
-                    if (!TryResolveLoadingDeath1458(x, y, in tile, out WorldTileRegion death, out WorldTileRegion cascade))
+                    if (!TryResolveWaterCheckDeath1458(x, y, in tile, generatingWorld, out WorldTileRegion death, out WorldTileRegion cascade))
                         throw new InvalidOperationException("A preflighted loading liquid-death object changed.");
                     KillRegionDuringLoading1458(in death);
                     KillRegionDuringLoading1458(in cascade);
@@ -494,7 +592,7 @@ public sealed class VanillaWorldLiquidSimulator1458
         return VanillaWaterCheckDiagnostic1458.Applied;
     }
 
-    private VanillaWaterCheckDiagnostic1458 PreflightWaterCheckLiquidDeaths1458()
+    private VanillaWaterCheckDiagnostic1458 PreflightWaterCheckLiquidDeaths1458(bool generatingWorld)
     {
         int width = tiles.Dimensions.WidthTiles;
         int height = tiles.Dimensions.HeightTiles;
@@ -509,7 +607,7 @@ public sealed class VanillaWorldLiquidSimulator1458
                     continue;
                 }
 
-                if (!TryResolveLoadingDeath1458(x, y, in tile, out _, out _))
+                if (!TryResolveWaterCheckDeath1458(x, y, in tile, generatingWorld, out _, out _))
                 {
                     return new VanillaWaterCheckDiagnostic1458(
                         VanillaWaterCheckResult1458.UnsupportedLiquidDeathTile,
@@ -521,6 +619,23 @@ public sealed class VanillaWorldLiquidSimulator1458
         }
 
         return VanillaWaterCheckDiagnostic1458.Applied;
+    }
+
+    private bool TryResolveWaterCheckDeath1458(
+        int x, int y, in WorldTile tile, bool generatingWorld, out WorldTileRegion region, out WorldTileRegion cascade)
+    {
+        // WorldGen.WaterCheck (TerrariaServer 1.4.5.8) calls plain KillTile.  KillTile frames
+        // around the changed cell, but the early generation fixture can legitimately contain a
+        // transient Rolling Cactus whose three sibling cells remain until a later framing pass.
+        // Do not apply the loading-only eager 2x2 cleanup to that observed state.
+        if (generatingWorld && tile.TileType == VanillaTileIds.RollingCactus)
+        {
+            region = new WorldTileRegion(x, y, 1, 1);
+            cascade = default;
+            return true;
+        }
+
+        return TryResolveLoadingDeath1458(x, y, in tile, out region, out cascade);
     }
 
     /// <summary>
@@ -675,11 +790,13 @@ public sealed class VanillaWorldLiquidSimulator1458
         !VanillaTileObjectLiquidDeath1458.TryGet(in tile, out bool water, out bool lava) ||
         (tile.LiquidKind == WorldLiquidKind.Lava ? lava : water);
 
-    private static bool IsWaterCheckSolidBarrier1458(in WorldTile tile)
+    private bool IsWaterCheckSolidBarrier1458(in WorldTile tile)
     {
         if (!tile.IsActive || tile.IsActuated)
             return false;
-        if (VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringSettle(tile.TileType))
+        if (VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringSettle(tile.TileType) ||
+            (worldGenerationTilesIgnoreWater &&
+             VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringWorldGenerationSettle(tile.TileType)))
             return false;
         return VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
                !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType);

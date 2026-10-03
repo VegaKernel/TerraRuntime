@@ -381,6 +381,7 @@ public sealed class VanillaWorldLiquidSimulator1458Tests
         tiles.LiquidUpdates.Clear();
 
         Assert.True(VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringSettle(new TileTypeId(138)));
+        Assert.True(VanillaLiquidQuickWaterFacts1458.IgnoresSolidDuringWorldGenerationSettle(new TileTypeId(137)));
         var simulator = new VanillaWorldLiquidSimulator1458(tiles, workBudgetPerTick: 1, discoveryBudgetPerTick: 1);
         simulator.QuickWater();
 

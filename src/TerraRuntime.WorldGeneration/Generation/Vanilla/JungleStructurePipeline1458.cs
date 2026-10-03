@@ -247,13 +247,13 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
                 ApplyLivingTrees(context, workspace);
                 break;
             case JungleStructureStage1458.WoodTreeWalls:
-                ApplyWoodTreeWalls(context, grid);
+                context.ReportProgress(1d, $"Applying source-backed Living Tree walls ({ApplyWoodTreeWalls(grid, state.WorldSurface, context.CancellationToken)} cells)");
                 break;
             case JungleStructureStage1458.Altars:
                 ApplyAltars(context, workspace);
                 break;
             case JungleStructureStage1458.WetJungle:
-                ApplyWetJungle(context, grid, random);
+                context.ReportProgress(1d, $"Applying source-backed surface jungle water ({ApplyWetJungle(workspace, grid, state.WorldSurface)} columns)");
                 break;
             case JungleStructureStage1458.JungleTemple:
                 ApplyJungleTemple(context, workspace);
@@ -484,39 +484,51 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         return false;
     }
 
-    private static void ApplyWoodTreeWalls(IWorldGenerationContext context, RuntimeGrid grid)
+    private static long ApplyWoodTreeWalls(RuntimeGrid grid, double worldSurface, CancellationToken cancellationToken)
     {
         long walls = 0;
-        for (int x = 1; x < grid.Width - 1; x++)
+        // TerrariaServer 1.4.5.8 GenPassNameID.LivingTreeWalls. This is a surface-bounded scan, not a
+        // flood or neighbour-fill: it writes only when a Living Wood cross has four diagonal neighbours
+        // that are themselves Living Wood (or already carry wall 244).
+        for (int x = 25; x < grid.Width - 25; x++)
         {
             if ((x & 63) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
+                cancellationToken.ThrowIfCancellationRequested();
 
-            for (int y = 1; y < grid.Height - 1; y++)
+            for (int y = 25; y < worldSurface; y++)
             {
-                ref WorldTile tile = ref grid.At(x, y);
-                if (tile.Type == LivingWood && tile.IsActive)
+                if (grid.At(x, y).Type != LivingWood && grid.At(x, y - 1).Type != LivingWood &&
+                    grid.At(x - 1, y).Type != LivingWood && grid.At(x + 1, y).Type != LivingWood &&
+                    grid.At(x, y + 1).Type != LivingWood)
+                    continue;
+
+                bool enclosed = true;
+                for (int neighborX = x - 1; neighborX <= x + 1 && enclosed; neighborX++)
+                for (int neighborY = y - 1; neighborY <= y + 1; neighborY++)
                 {
-                    if (tile.Wall == 0)
+                    // The source's conjunction intentionally selects only the four diagonal cells.
+                    if (neighborX == x || neighborY == y)
+                        continue;
+                    WorldTile diagonal = grid.At(neighborX, neighborY);
+                    if ((!diagonal.IsActive || diagonal.Type != LivingWood) && diagonal.Wall != LivingWoodUnsafeWall)
                     {
-                        tile.Wall = LivingWoodUnsafeWall;
-                        walls++;
+                        enclosed = false;
+                        break;
                     }
-                    continue;
                 }
-
-                if (tile.IsActive || tile.Wall != 0)
-                    continue;
-                if (!grid.HasNeighborType(x, y, LivingWood))
+                if (!enclosed)
                     continue;
 
-                tile.Wall = LivingWoodUnsafeWall;
+                grid.At(x, y).Wall = LivingWoodUnsafeWall;
                 walls++;
             }
         }
 
-        context.ReportProgress(1d, $"Filling living-tree background walls ({walls} cells)");
+        return walls;
     }
+
+    internal static void ApplyWoodTreeWallsForTesting(Workspace workspace, double worldSurface) =>
+        ApplyWoodTreeWalls(new RuntimeGrid(workspace), worldSurface, CancellationToken.None);
 
     private void ApplyAltars(IWorldGenerationContext context, Workspace workspace)
     {
@@ -527,31 +539,60 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Placing evil altars ({placed})");
     }
 
-    private void ApplyWetJungle(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
+    private static int ApplyWetJungle(Workspace workspace, RuntimeGrid grid, double worldSurface)
     {
-        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        int halfWidth = Math.Max(260, grid.Width / 9);
-        int left = Math.Max(30, bootstrap.JungleOriginX - halfWidth);
-        int right = Math.Min(grid.Width - 30, bootstrap.JungleOriginX + halfWidth);
-        int top = Math.Clamp((int)state.RockLayer + 20, 30, state.UnderworldTop - 120);
-        int bottom = Math.Max(top + 1, state.UnderworldTop - 80);
-        int pools = Math.Max(10, grid.Width / 260);
-
-        for (int i = 0; i < pools; i++)
+        // TerrariaServer 1.4.5.8 GenPassNameID.SurfaceWaterInJungle: scan each column from the retained
+        // worldSurfaceLow to just above worldSurface, stop at its FIRST active tile and water only if that tile
+        // is Jungle Grass. This pass creates no pools and consumes no RNG.
+        int columns = 0;
+        int low = (int)(workspace.VanillaTerrainState?.WorldSurfaceLow ?? worldSurface);
+        for (int x = 0; x < grid.Width; x++)
         {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(left, right);
-            int y = random.Next(top, bottom);
-            int rx = random.Next(7, 16);
-            int ry = random.Next(4, 9);
-            WorldLiquidKind liquid = random.Next(8) == 0 ? WorldLiquidKind.Honey : WorldLiquidKind.Water;
-
-            CarveEllipse(grid, x, y, rx, ry, JungleUnsafeWall);
-            FillLiquidEllipse(grid, x, y + 1, Math.Max(3, rx - 2), Math.Max(2, ry - 2), liquid);
-            MudRing(grid, x, y, rx + 3, ry + 3);
+            for (int y = low; y < worldSurface - 1d; y++)
+            {
+                if (!grid.At(x, y).IsActive)
+                    continue;
+                if (grid.At(x, y).Type == JungleGrass && y >= 2)
+                {
+                    ref WorldTile first = ref grid.At(x, y - 1);
+                    first.LiquidKind = WorldLiquidKind.Water;
+                    first.LiquidAmount = byte.MaxValue;
+                    ref WorldTile second = ref grid.At(x, y - 2);
+                    second.LiquidKind = WorldLiquidKind.Water;
+                    second.LiquidAmount = byte.MaxValue;
+                    columns++;
+                }
+                break;
+            }
         }
+        return columns;
+    }
 
-        context.ReportProgress(1d, $"Adding wet-jungle water and honey pockets ({pools} basins)");
+    internal static int ApplyWetJungleForTesting(Workspace workspace, int worldSurfaceLow, double worldSurface) =>
+        ApplyWetJungleForTestingCore(workspace, worldSurfaceLow, worldSurface);
+
+    private static int ApplyWetJungleForTestingCore(Workspace workspace, int worldSurfaceLow, double worldSurface)
+    {
+        int columns = 0;
+        var grid = new RuntimeGrid(workspace);
+        for (int x = 0; x < grid.Width; x++)
+        for (int y = worldSurfaceLow; y < worldSurface - 1d; y++)
+        {
+            if (!grid.At(x, y).IsActive)
+                continue;
+            if (grid.At(x, y).Type == JungleGrass && y >= 2)
+            {
+                ref WorldTile first = ref grid.At(x, y - 1);
+                first.LiquidKind = WorldLiquidKind.Water;
+                first.LiquidAmount = byte.MaxValue;
+                ref WorldTile second = ref grid.At(x, y - 2);
+                second.LiquidKind = WorldLiquidKind.Water;
+                second.LiquidAmount = byte.MaxValue;
+                columns++;
+            }
+            break;
+        }
+        return columns;
     }
 
     /// <summary>
@@ -630,6 +671,8 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
         state.TempleRight = builder.Right;
         state.TempleTop = builder.Top;
         state.TempleBottom = builder.Bottom;
+        workspace.SetVanillaTemplePart2State(new VanillaTemplePart2State1458(
+            builder.Left, builder.Right, builder.Top, builder.Bottom, builder.Rooms));
 
         context.ReportProgress(
             1d,
@@ -663,105 +706,155 @@ internal sealed class JungleStructurePass1458 : IWorldGenerationPass
     {
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
         state.JungleChestCandidates.Clear();
-        int target = grid.Width switch
+        // TerrariaServer 1.4.5.8 GenPassNameID.JungleShrines. These are the hut sites later consumed by
+        // ChestsInJungleShrines, not generic nearby chest candidates.
+        _ = random.Next(40, grid.Width - 40);
+        _ = random.Next((int)((state.WorldSurface + state.RockLayer) / 2d), grid.Height - 400);
+        double target = random.Next(7, 12) * grid.Width / 4200d;
+        int totalFailures = 0;
+
+        for (int placed = 0; placed < target; placed++)
         {
-            <= 4200 => 5,
-            <= 6400 => 7,
-            _ => 9
-        };
-        int halfWidth = Math.Max(260, grid.Width / 9);
-        int left = Math.Max(30, bootstrap.JungleOriginX - halfWidth);
-        int right = Math.Min(grid.Width - 30, bootstrap.JungleOriginX + halfWidth);
-        int top = Math.Clamp((int)state.RockLayer + 45, 20, state.UnderworldTop - 100);
-        int bottom = Math.Max(top + 1, state.UnderworldTop - 60);
+            while (true)
+            {
+                context.CancellationToken.ThrowIfCancellationRequested();
+                totalFailures++;
+                int x = random.Next(40, grid.Width / 2 - 40);
+                if (bootstrap.DungeonSide <= 0)
+                    x += grid.Width / 2;
+                int y = random.Next((int)((state.WorldSurface + state.RockLayer) / 2d), grid.Height - 400);
+                int halfWidth = random.Next(2, 4);
+                int halfHeight = random.Next(2, 4);
 
-        for (int attempt = 0; attempt < target * 120 && state.JungleChestCandidates.Count < target; attempt++)
-        {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            int x = random.Next(left, right);
-            int y = random.Next(top, bottom);
-            if (IntersectsTemple(x - 6, x + 6, y - 5, y + 5))
-                continue;
-            if (grid.At(x, y).IsActive || grid.At(x, y - 1).IsActive)
-                continue;
-            int floor = grid.FindFirstActiveY(x, y + 1, Math.Min(bottom + 35, grid.Height));
-            if (floor >= grid.Height || floor - y > 18)
-                continue;
+                if (!CanPlaceJungleShrine(grid, x, y, halfWidth, halfHeight))
+                {
+                    if (totalFailures > grid.Width * 10)
+                    {
+                        placed++;
+                        totalFailures = 0;
+                        break;
+                    }
+                    continue;
+                }
 
-            var candidate = new WorldGenerationPoint(x, floor - 1);
-            bool nearExisting = state.JungleChestCandidates.Any(existing =>
-                Math.Abs(existing.X - candidate.X) < 70 && Math.Abs(existing.Y - candidate.Y) < 45);
-            if (nearExisting)
-                continue;
-
-            state.JungleChestCandidates.Add(candidate);
-            BuildJungleChestPedestal(grid, candidate.X, candidate.Y + 1);
+                BuildJungleShrine(grid, x, y, halfWidth, halfHeight, (ushort)bootstrap.JungleHut, random);
+                state.JungleChestCandidates.Add(new WorldGenerationPoint(x, y));
+                totalFailures = 0;
+                break;
+            }
         }
 
         context.ReportProgress(
             1d,
-            $"Reserving jungle chest sites ({state.JungleChestCandidates.Count}/{target}); object placement remains a later vanilla pass");
+            $"Building source-backed jungle shrines ({state.JungleChestCandidates.Count}/{target:0.##})");
     }
 
-    private static void BuildJungleChestPedestal(RuntimeGrid grid, int x, int floorY)
+    private bool CanPlaceJungleShrine(RuntimeGrid grid, int x, int y, int halfWidth, int halfHeight)
     {
-        for (int dx = -2; dx <= 2; dx++)
+        if (!grid.Contains(x - 31, y - 31) || !grid.Contains(x + 30, y + 30) ||
+            IntersectsTemple(x - halfWidth - 1, x + halfWidth + 1, y - halfHeight - 1, y + halfHeight + 1))
+            return false;
+        if (!grid.At(x, y).IsActive || grid.At(x, y).Type != JungleGrass)
+            return false;
+        for (int scanX = x - 30; scanX < x + 30; scanX += 3)
+        for (int scanY = y - 30; scanY < y + 30; scanY += 3)
         {
-            if (!grid.Contains(x + dx, floorY))
-                continue;
-            ref WorldTile tile = ref grid.At(x + dx, floorY);
-            if (!tile.IsActive || IsNatural(tile.Type))
-                SetType(ref tile, Mud);
+            WorldTile tile = grid.At(scanX, scanY);
+            if (tile.IsActive && tile.Type is Hive or 229 or LihzahrdBrick or 119 or 120 || tile.Wall is HiveUnsafeWall or LihzahrdBrickUnsafeWall)
+                return false;
         }
+        return true;
+    }
+
+    private static void BuildJungleShrine(RuntimeGrid grid, int x, int y, int halfWidth, int halfHeight, ushort hut, IRandom random)
+    {
+        ushort wall = hut switch { 119 => 23, 120 => 24, 158 => 42, 175 => 45, 45 => 10, _ => 0 };
+        for (int tx = x - halfWidth - 1; tx <= x + halfWidth + 1; tx++)
+        for (int ty = y - halfHeight - 1; ty <= y + halfHeight + 1; ty++)
+            SetJungleShrineShell(ref grid.At(tx, ty), hut);
+        for (int tx = x - halfWidth; tx <= x + halfWidth; tx++)
+        for (int ty = y - halfHeight; ty <= y + halfHeight; ty++)
+        {
+            ClearTile(ref grid.At(tx, ty), preserveWall: false);
+            grid.At(tx, ty).Wall = wall;
+        }
+
+        // Source attempts a style-3 torch up to one hundred times. Preserve the offer stream; object framing is
+        // intentionally delegated to the shared placement boundary as this pass is completed.
+        for (int attempts = 0; attempts < 100; attempts++)
+        {
+            int torchX = random.Next(x - halfWidth, x + halfWidth + 1);
+            int torchY = random.Next(y - halfHeight, y + halfHeight - 2);
+            if (!grid.At(torchX, torchY).IsActive)
+            {
+                SetType(ref grid.At(torchX, torchY), 4);
+                // Official PlaceTile(4, style: 3) selects the background-attached frame (0,66) in a shrine wall.
+                grid.At(torchX, torchY).FrameX = 0;
+                grid.At(torchX, torchY).FrameY = 66;
+                break;
+            }
+        }
+
+        // The source reopens the bottom three rows before it grows up to four Mud support cells below
+        // every shell column, then builds the stepped hut roof with one-to-two-cell contractions.
+        for (int tx = x - halfWidth - 1; tx <= x + halfWidth + 1; tx++)
+        for (int ty = y + halfHeight - 2; ty <= y + halfHeight; ty++)
+            ClearTile(ref grid.At(tx, ty), preserveWall: true);
+        for (int tx = x - halfWidth - 1; tx <= x + halfWidth + 1; tx++)
+        {
+            int remainingSupport = 4;
+            for (int ty = y + halfHeight + 2; ty < grid.Height && remainingSupport > 0 && !grid.At(tx, ty).IsActive; ty++, remainingSupport--)
+                SetActiveTypeWithoutNormalization(ref grid.At(tx, ty), Mud);
+        }
+        halfWidth -= random.Next(1, 3);
+        int roofY = y - halfHeight - 2;
+        while (halfWidth >= 0)
+        {
+            for (int tx = x - halfWidth - 1; tx <= x + halfWidth + 1; tx++)
+                SetActiveTypeWithoutNormalization(ref grid.At(tx, roofY), hut);
+            halfWidth -= random.Next(1, 3);
+            roofY--;
+        }
+    }
+
+    internal static void BuildJungleShrineForTesting(Workspace workspace, int x, int y, int halfWidth, int halfHeight, ushort hut, IWorldGenerationVanillaRandom random) =>
+        BuildJungleShrine(new RuntimeGrid(workspace), x, y, halfWidth, halfHeight, hut, new VanillaRandom(random));
+
+    private static void SetJungleShrineShell(ref WorldTile tile, ushort type)
+    {
+        // JungleShrines changes only activity/type/liquid and lava kind for its shell; frame, shape and wall persist.
+        SetActiveTypeWithoutNormalization(ref tile, type);
+        tile.LiquidAmount = 0;
+        tile.LiquidKind = WorldLiquidKind.Water;
+    }
+
+    private static void SetActiveTypeWithoutNormalization(ref WorldTile tile, ushort type)
+    {
+        tile.Type = type;
+        tile.Flags |= WorldTileFlags.Active;
     }
 
     private void ApplySettleLiquids(IWorldGenerationContext context, RuntimeGrid grid)
     {
-        new VanillaWorldLiquidSimulator1458(grid.Store).ClearEmbeddedLiquidDuringGenerationSettle(context.CancellationToken);
-        int top = Math.Clamp((int)state.WorldSurface - 20, 1, grid.Height - 2);
-        const int sweeps = 6;
-        long moved = 0;
+        ApplySettleLiquidsCore(grid.Store, context.CancellationToken);
+        // TerrariaServer 1.4.5.8 GenPassNameID.SettleLiquids runs QuickWater, WaterCheck and ten bounded
+        // quick-settle rounds. Keep this owner at that source boundary; a fixed gravity sweep changes both
+        // barriers and flow ordering.
+        context.ReportProgress(1d, "Applied source-backed QuickWater/WaterCheck liquid settle");
+    }
 
-        for (int sweep = 0; sweep < sweeps; sweep++)
+    internal static void ApplySettleLiquidsForTesting(Workspace workspace) =>
+        ApplySettleLiquidsCore(workspace.TileStore, default);
+
+    private static void ApplySettleLiquidsCore(WorldTileStore store, CancellationToken cancellationToken)
+    {
+        var simulator = new VanillaWorldLiquidSimulator1458(store);
+        VanillaWaterCheckDiagnostic1458 waterCheck = simulator.SettleDuringWorldGeneration(cancellationToken);
+        if (!waterCheck.IsApplied)
         {
-            context.CancellationToken.ThrowIfCancellationRequested();
-            long sweepMoved = 0;
-            for (int y = grid.Height - 2; y >= top; y--)
-            {
-                if ((y & 31) == 0)
-                    context.CancellationToken.ThrowIfCancellationRequested();
-
-                for (int x = 1; x < grid.Width - 1; x++)
-                {
-                    ref WorldTile source = ref grid.At(x, y);
-                    if (source.LiquidAmount == 0 || source.IsActive)
-                        continue;
-
-                    ref WorldTile below = ref grid.At(x, y + 1);
-                    if (below.IsActive || (below.LiquidAmount > 0 && below.LiquidKind != source.LiquidKind))
-                        continue;
-
-                    int capacity = byte.MaxValue - below.LiquidAmount;
-                    if (capacity <= 0)
-                        continue;
-
-                    int transfer = Math.Min(capacity, source.LiquidAmount);
-                    below.LiquidKind = source.LiquidKind;
-                    below.LiquidAmount = checked((byte)(below.LiquidAmount + transfer));
-                    source.LiquidAmount = checked((byte)(source.LiquidAmount - transfer));
-                    if (source.LiquidAmount == 0)
-                        source.LiquidKind = WorldLiquidKind.Water;
-                    sweepMoved += transfer;
-                }
-            }
-
-            moved += sweepMoved;
-            context.ReportProgress((sweep + 1d) / sweeps, $"Settling liquids sweep {sweep + 1}/{sweeps}");
-            if (sweepMoved == 0)
-                break;
+            throw new InvalidOperationException(
+                $"Source Settle Liquids WaterCheck cannot resolve tile {waterCheck.TileType.Value} at {waterCheck.X},{waterCheck.Y}.");
         }
-
-        context.ReportProgress(1d, $"Completed first liquid-settling stage ({moved} liquid units moved)");
     }
 
     private bool IntersectsTemple(int left, int right, int top, int bottom) =>

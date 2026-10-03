@@ -1,5 +1,7 @@
 # Полный аудит стадий vanilla worldgen — 2026-09-08
 
+Gem Caves (2026-10-02): строка 68 переходит из `P` в `C`. Исходный проход делает `width * .003` предложений кандидатов, повторяет выбор, пока подсчитанная пещера слишком велика/мала, содержит жидкость, лёд или не содержит камня, затем запускает связный обход `Spread.Gem`. Порт теперь сохраняет этот контракт кандидатов и набор из шести видов самоцветов. Ключевая деталь фронтира: превращённый рыхлый самоцвет для этого обхода не твёрдый — поздняя волна может дать ему пещерную стену, тогда как поставленный объект-самоцвет активен и при повторном посещении не должен тратить второй бросок предложения объекта. Доказательство — два прямых golden TerrariaServer 1.4.5.8 с seed `1458`: сплошной фронтир `600 x 500` (следующий RNG `2010695125`, SHA-256 `b04ad6f6d983518e472824f081fe3df558b75d2fe6109f9eff1b857af50df626`) и отверстие восемь на восемь (следующий RNG `1573606171`, SHA-256 `5688f0564ed790a77805df6963808d1433425a55a46a3888a27ac7528ff4decd`). Оба сравнивают каждое сохранённое поле клетки и общий RNG с локально закреплённым официальным сервером. Реестр теперь **36P + 36C = 72 незавершённые строки**; **31 E9 / 279 контрольных точек** не меняется.
+
 Проверка полного обычного Dungeon (2026-09-09): стадия36 переведена в ограниченный `R16`, не `E9`. Шестнадцать сохранённых сравнений подают одинаковый реальный префикс генерации неизменённому официальному Dungeon-проходу и runtime-проходу: совпадают все нормализованные клетки, упорядоченное содержимое/префиксы сундуков, точка старика и следующий RNG. Покрыты все канонические размеры, три вида входа и обе разновидности зла. Также совпали24 независимых плоских сценария и14 дополнительных Small seed. `R16` не доказывает сам предшествующий префикс, каждое поле GenVars, специальные seed или равенство конечного мира. Счётчик теперь **40P + 32C = 72 незавершённые стадии**; независимые многостадийные префиксы остаются **31 E9 / 279 проверок**. Итоговая приёмка записана в agent-memory; старые абзацы ниже исторические.
 
 AddBuriedChest и сундучные проходы (2026-09-22): строки63 и65 уходят из `C` в `P`, а строки64 и66 остаются `C`, но впервые действительно им соответствуют. Все четыре несли строку доказательств с упоминанием `AddBuriedChest`, и ничто в `src/` его не реализовывало. Проходы под ними были выдуманы: бюджеты, отмасштабированные вручную, циклы попыток с придуманными счётчиками повторов и таблица добычи, в которой не было ни одного natural prefix-броска.
@@ -485,13 +487,13 @@ Final Cleanup теперь вызывает ограниченную generation-
 | 44 | Pyramids | Dungeon | P | отбор закрыт 32 официальными фикстурами; геометрия `WorldGen.Pyramid` закрыта ещё 12; остаётся только сундук `AddBuriedChest` в сокровищнице |
 | 45 | Dirt Rock Wall Runner | JungleStructure | P | wall runners / RNG |
 | 46 | Living Trees | JungleStructure | C | `GrowLivingTree`, её подземный ход, комната и горизонтальные тоннели плюс нужные им срезы кадрирования: 12 официальных сравнений полного делегата / `AddBuriedChest` комнаты и `mCaveX` в отборе площадок |
-| 47 | Wood Tree Walls | JungleStructure | P | wall spread / roots / RNG |
+| 47 | Wood Tree Walls | JungleStructure | P | зарегистрированы исходный поверхностный scan и диагональный gate Living Wood; остаётся complete-pass differential |
 | 48 | Altars | JungleStructure | P | placement / exclusions / RNG |
-| 49 | Wet Jungle | JungleStructure | P | water placement / scan order |
+| 49 | Wet Jungle | JungleStructure | P | исходный `SurfaceWaterInJungle`: сканирование первого активного тайла по столбцу и постановка воды в двух клетках; полное differential-сравнение ещё требуется |
 | 50 | Jungle Temple | JungleStructure | C | `makeTemple` и все шесть её помощников: поклеточное сравнение целых миров с официальным сервером, идентичный бокс, кирпич $100.3\%$ / синтетических фикстур нет |
 | 51 | Hives | JungleStructure | C | тоннели `HiveBiome`, диск площадки, мёдопады и подставки для личинок: блок улья $116\%$ от официального мира / `HoneyPatchBiome` не перенесён |
-| 52 | Jungle Chests | JungleStructure | P | candidate rooms / frames / RNG |
-| 53 | Settle Liquids | JungleStructure | P | QuickWater(3) / WaterCheck / quickSettle |
+| 52 | Jungle Chests | JungleStructure | P | исходные roll'ы площадок `JungleShrines`, оболочка/полость хижины, Mud-опоры, ступенчатая крыша и отложенные точки сундуков; остаются отклонение `StructureMap`, framing объектов и полное differential-сравнение |
+| 53 | Settle Liquids | JungleStructure | P | source-shaped ordinary-world sequence `QuickWater` → `WaterCheck` → десять раундов `quickSettle`, каждый ограничен пятью вызовами `Liquid.UpdateLiquid` на исходную queued entry → `WaterCheck` → pending-clear, включая временную нетвёрдость tile 137 после Jungle Shrines и generation-only single-cell lava death transient Rolling Cactus / остаётся extra-liquid seed branch |
 | 54 | Remove Water From Sand | PostSettle | R1 | surface scan / six tile types / boundaries |
 | 55 | Oasis | PostSettle | C | `PlaceOasis`: 30 официальных сравнений, включая сохранённые якоря и мёртвые ветки исходника / остальное доказательство префикса |
 | 56 | Shell Piles | PostSettle | P | all source branches / decoration / RNG |
@@ -505,10 +507,10 @@ Final Cleanup теперь вызывает ограниченную generation-
 | 64 | Surface Chests | Chest | C | `SurfaceChests`: проверка стены, reservoir-обход living wood и счётчик повторов: 14 официальных фикстур целого делегата |
 | 65 | Jungle Chests Placement | Chest | P | якоря святилищ не публикуются / выдуманный поиск кандидатов / RNG |
 | 66 | Water Chests | Chest | C | `UnderwaterChests`: спираль по treasure, асимметричная пара рассеивания и цикл предметов: 12 официальных фикстур целого делегата |
-| 67 | Spider Caves | LateStructure | P | SpiderBiome / webs / walls / RNG |
-| 68 | Gem Caves | LateStructure | P | GemCave / RNG |
+| 67 | Spider Caves | LateStructure | C | `Spider Caves`: golden-тесты фронтира, декора пола и предложения сундука, плюс фикстуры `PassLegacy` для принятого кандидата и исчерпанных повторов; клетки и следующий общий RNG совпадают с TerrariaServer 1.4.5.8 |
+| 68 | Gem Caves | LateStructure | C | `GemCaves`: исходный цикл кандидатов/повторов и прямые golden сплошного/открытого фронтира; клетки и следующий общий RNG совпадают с TerrariaServer 1.4.5.8 |
 | 69 | Moss | LateStructure | C | `MossAndMossCaves`: розыгрыш трёх мхов и его трети, сэмплер и блуждание неонового биома, заливочный счётчик, моховое распространение, три декремента лавового бюджета и скан всего мира: 12 официальных сравнений полного делегата |
-| 70 | Temple | LateStructure | P | temple finishing / traps / RNG |
+| 70 | Temple | LateStructure | P | зарегистрирован `templePart2`: четыре прямых golden клеток/RNG 600x500 плюс сундук, мебель, картина и примитивы ловушек; остаётся покрытие более широкого рельефа и отказов TileObjectData |
 | 71 | Cave Walls | LateStructure | C | CaveWallVariety / regions / RNG |
 | 72 | Jungle Trees | LateStructure | C | tree grower / placement / RNG |
 | 73 | Floating Island Houses | LateStructure | C | IslandHouse / furniture / loot / RNG |
@@ -519,7 +521,7 @@ Final Cleanup теперь вызывает ограниченную generation-
 | 78 | Surface Ore and Stone | SurfaceFinish | P | surface scan / TileRunner / RNG |
 | 79 | Place Fallen Log | SurfaceFinish | C | `FallenLogsAndWaterFeatures`: собственная кривая сложности бюджета попыток, оба скана окрестности, восстановление `Check3x2` и якорь `logX`: 10 официальных сравнений полного делегата |
 | 80 | Traps | SurfaceFinish | C | trap families / wiring / RNG |
-| 81 | Piles | SurfaceFinish | C | styles / placement / RNG |
+| 81 | Piles | SurfaceFinish | C | `PilePass1458`: семь исходных циклов sample-and-cascade, float-бюджеты, временное переопределение `tileSolid`, размещение и framing; 12 официальных фикстур полного делегата |
 | 82 | Spawn Point | SurfaceFinish | C | source spawn search / safety |
 | 83 | Grass Wall | SurfaceFinish | C | `SurfaceDirtWallsToGrassWalls`: розыгрыш на клетку, `countDirtTiles`, `Spread.Wall2` и зелёный `SpreadGrass`: 22 официальных сравнения полного делегата |
 | 84 | Guide | StartingNpc | C | Guide / seed profiles / NPC metadata |
@@ -534,15 +536,15 @@ Final Cleanup теперь вызывает ограниченную generation-
 | 93 | Vines | Vegetation | C | шесть посемейных сканов на колонку, `GrowMoreVines`, `TooManyJungleVinesNearby` и улей прохода / официальных фикстур пока нет |
 | 94 | Flowers | Vegetation | C | `Flowers`: коробка пятна, стиль на пятно, превращение грунта, срез `PlaceTile` и перенос на упавшее бревно: 18 официальных сравнений полного делегата |
 | 95 | Mushrooms | Vegetation | C | `Mushrooms`: перештамповывающее пятно и его выход из внутреннего цикла у края: 6 официальных сравнений полного делегата |
-| 96 | Gems In Ice Biome | UndergroundFinish | P | snow bounds / gems / RNG |
-| 97 | Random Gems | UndergroundFinish | P | placement / RNG |
+| 96 | Gems In Ice Biome | UndergroundFinish | P | поток кандидатов из исходника, сохранённые построчные границы снега, карта стилей `PlaceTile(178)` и RNG; фикстура PassLegacy `600x800` сравнивает клетки/RNG, но покрытие канонического рельефа ещё требуется |
+| 97 | Random Gems | UndergroundFinish | P | двухфазный поток предложений из исходника, фильтры стен/жидкости, `PlaceTile(178)` и RNG; фикстура PassLegacy `600x800` дифференциально закрепляет все клетки/стили свободных самоцветов, но покрытие канонического рельефа ещё требуется |
 | 98 | Moss Grass | UndergroundFinish | C | `LongMoss`: скан, двухармейная укладка, двойное кадрирование квадрата, которое тратит PlaceTile, и четырёхсторонняя цепочка, решающая цвет, полосу и выживание пряди: 16 официальных сравнений полного делегата |
-| 99 | Muds Walls In Jungle | UndergroundFinish | P | wall scans / RNG |
+| 99 | Muds Walls In Jungle | UndergroundFinish | P | `DirtWallsIntoMudWallsInJungleAndJungleMinMax`: экстремумы поверхностной Jungle Grass, граничные розыгрыши в порядке исходника и превращение dirt-wall; одна официальная фикстура полного делегата / покрытие канонического рельефа ещё требуется |
 | 100 | Larva | UndergroundFinish | C | hive anchors / framing / RNG |
 | 101 | Micro Biomes | MicroBiomes | C | TrackGenerator / houses / all biome helpers |
-| 102 | Settle Liquids Again | Final | P | QuickWater / WaterCheck / quickSettle |
+| 102 | Settle Liquids Again | Final | P | `SettleLiquidsPart2AndNotTheBees`: generation `QuickWater`, `WaterCheck` и десять ограниченных раундов quick-settle; одна официальная фикстура полного делегата / более широкое покрытие жидкости ещё требуется |
 | 103 | Cactus, Palm Trees, & Coral | Final | C | growers / planting distribution / RNG |
-| 104 | Tile Cleanup | Final | P | scan order / framing rules |
+| 104 | Tile Cleanup | Final | P | `TileCleanup` несёт исходные `SaveSlopes`, гибель в воде, обычные drip-offer, стены, блокирующие жидкость, cleanup соседей ловушки, восстановление 2x2 shadow orb, crimson heart, Life Crystal, type `639` и type `28`, а также 3x2 heart и ремонт опоры spike ball; восстановленные объекты сохраняют исходные банки frame и wall-terrain опору без синтетической нормализации полей; прямые `PassLegacy`-фикстуры TerrariaServer теперь выполняются для пути liquid-death и сухого объекта, ветви chest и дальнейшего ремонта объектов/framing ещё остаются |
 | 105 | Lihzahrd Altars | Final | C | temple anchors / placement / RNG |
 | 106 | Water Plants | Final | P | liquid/substrate selection / RNG |
 | 107 | Stalac | Final | C | `SpeleothemsAndGemTrees`: скан всей карты, `PlaceTight`, атлас по подложке и перекраска `CheckStalactite`: 32 официальных сравнения полного делегата / счётчики на уровне мира отслеживают избыток рельефа |
@@ -560,7 +562,7 @@ Final Cleanup теперь вызывает ограниченную generation-
 - [ ] Pyramids, Living Trees, Crimson, Aether, Jungle Temple/Hives: точные builders, стены, входы, комнаты и состояние для последующих стадий; не рисовать корректирующую оболочку поверх ошибки.
 - [ ] Floating Islands: сохранить доказанные CloudIsland/CloudLake компоненты; отдельно проверить исходные placement/IslandHouse/мебель/loot и результат после поздних проходов.
 - [ ] Underworld: сохранить доказанные roof/basin/runner/QuickWater компоненты; проверить всю последовательность с HellFort, Hellforge и декорациями. Видимая лава после финала не равнозначна раннему basin probe.
-- [ ] Settle Liquids/Again: первая стадия всё ещё использует упрощённые sweeps, вторая — vertical column compaction. Это не vanilla QuickWater + WaterCheck + bounded quickSettle orchestration; ранее закрыто только удаление embedded liquid. Нужна точная последовательность без альтернативного live authority path.
+- [ ] Settle Liquids/Again: первая стадия теперь запускает ordinary-world source sequence `QuickWater` → `WaterCheck` → десять bounded раундов `quickSettle` → `WaterCheck` → pending-clear, включая временную нетвёрдость tile 137 после Jungle Shrines и официальный transient single-cell lava death Rolling Cactus. Её extra-liquid seed branch остаётся открытой; вторая всё ещё использует vertical column compaction. Нужны точные source branches без альтернативного live authority path.
 - [ ] Micro Biomes: сохранить исправленные rail frames/clearance; переносить TrackGenerator origin/route/history/tunnel/smoothing и остальные biome builders. House budgets/frames не доказывают исходную топологию.
 - [ ] Все оставшиеся C/P строки: доказать placement attempts, RNG, frames, side tables, loot и порядок cleanup. Не расширять differential budgets для прохождения изменившейся карты.
 - [ ] Матрица полного мира: corruption/crimson × Small/Medium/Large × несколько seed; отдельные special-seed ветки. Official-load, structural budgets, playthrough и точное сравнение — разные критерии.

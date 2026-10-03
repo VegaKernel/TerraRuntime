@@ -137,7 +137,13 @@ internal sealed class SpeleothemPass1458(
     /// Source <c>WorldGen.PlaceTight</c>. Exposed because it is a free function in the source and the Webs And
     /// Honey pass calls the same one for the speleothems it grows inside a hive.
     /// </summary>
-    internal void PlaceTight(int x, int y)
+    internal void PlaceTight(int x, int y) => PlaceTight(x, y, spiders: false);
+
+    /// <summary>
+    /// Source <c>WorldGen.PlaceTight</c>'s Spider Caves arm. Unlike ordinary placement it only creates a
+    /// two-cell hanging stalactite, with the spider atlas independent of the supporting tile identity.
+    /// </summary>
+    internal void PlaceTight(int x, int y, bool spiders)
     {
         if (!Contains(x, y - 1) || !Contains(x, y + 1))
             return;
@@ -149,7 +155,7 @@ internal sealed class SpeleothemPass1458(
             return;
         }
 
-        PlaceUncheckedStalactite(x, y, random.Next(2) == 0, random.Next(3));
+        PlaceUncheckedStalactite(x, y, random.Next(2) == 0, random.Next(3), spiders);
         if (IsActive(x, y) && TypeAt(x, y) == Speleothem)
             CheckStalactite(x, y);
     }
@@ -158,12 +164,20 @@ internal sealed class SpeleothemPass1458(
     /// Source <c>WorldGen.PlaceUncheckedStalactite</c> without its spider-cave arm, which only the spider biome
     /// passes. The substrate decides the atlas column; small hangs one cell, tall hangs two.
     /// </summary>
-    private void PlaceUncheckedStalactite(int x, int y, bool preferSmall, int variation)
+    private void PlaceUncheckedStalactite(int x, int y, bool preferSmall, int variation, bool spiders)
     {
         variation = Math.Clamp(variation, 0, 2);
 
         if (IsSolid(x, y - 1) && !IsActive(x, y) && !IsActive(x, y + 1))
         {
+            if (spiders)
+            {
+                int frameX = 108 + variation * 18;
+                WriteSpeleothem(x, y, frameX, 0, x, y - 1);
+                WriteSpeleothem(x, y + 1, frameX, 18, x, y - 1);
+                return;
+            }
+
             ushort support = TypeAt(x, y - 1);
             int ceilingBase = CeilingAtlas(support);
             if (ceilingBase < 0)
@@ -181,7 +195,7 @@ internal sealed class SpeleothemPass1458(
             return;
         }
 
-        if (!IsSolid(x, y + 1) || IsActive(x, y) || IsActive(x, y - 1))
+        if (spiders || !IsSolid(x, y + 1) || IsActive(x, y) || IsActive(x, y - 1))
             return;
 
         ushort floorSupport = TypeAt(x, y + 1);

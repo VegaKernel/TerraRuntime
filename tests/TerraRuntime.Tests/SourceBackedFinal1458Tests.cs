@@ -1,5 +1,9 @@
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Core;
 using TerraRuntime.World;
+using TerraRuntime.WorldGeneration.Vanilla;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace TerraRuntime.Tests;
 
@@ -18,6 +22,293 @@ public sealed class SourceBackedFinal1458Tests
         SourceBackedFinal1458.RemoveBrokenTrapsId,
         SourceBackedFinal1458.FinalCleanupId
     ];
+
+    [Fact]
+    public void Settle_liquids_again_matches_official_passlegacy_fixture()
+    {
+        const int width = 600;
+        const int height = 500;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+
+        for (int x = 296; x <= 304; x++)
+        {
+            var floor = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, 240, in floor);
+        }
+        var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+        workspace.TileStore.Set(300, 200, in water);
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.SettleLiquidsAgain, new FinalState1458())
+            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height), workspace, random));
+
+        Assert.Equal(906992634, random.Next());
+        Assert.Equal("0B0F5A4265C269D93B40FC4D9E026134B1FA0B42CFD92FAC304E105515D6D6F4", HashFixture(workspace));
+    }
+
+    [Fact]
+    public void Tile_cleanup_only_flattens_shapes_the_source_SaveSlopes_gate_rejects()
+    {
+        var workspace = new Workspace(100, 100);
+        Assert.True(workspace.TrySetLayers(10, 20));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+
+        var unsupported = new WorldTile { Type = 51, Flags = WorldTileFlags.Active, Shape = 5 };
+        var retainedException = new WorldTile { Type = 131, Flags = WorldTileFlags.Active, Shape = 4 };
+        var inactive = new WorldTile
+        {
+            Type = 1,
+            FrameX = 72,
+            FrameY = 54,
+            Flags = WorldTileFlags.Actuator | WorldTileFlags.Inactive,
+            Shape = 2,
+            LiquidAmount = 25,
+            LiquidKind = WorldLiquidKind.Lava
+        };
+        workspace.TileStore.Set(10, 10, in unsupported);
+        workspace.TileStore.Set(11, 10, in retainedException);
+        workspace.TileStore.Set(12, 10, in inactive);
+        var leftFacingTopSlope = new WorldTile { Type = 1, Flags = WorldTileFlags.Active, Shape = 2 };
+        var rightFacingTopSlope = new WorldTile { Type = 1, Flags = WorldTileFlags.Active, Shape = 3 };
+        var halfBrick = new WorldTile { Type = 1, Flags = WorldTileFlags.Active, Shape = 1 };
+        workspace.TileStore.Set(50, 50, in leftFacingTopSlope);
+        workspace.TileStore.Set(51, 50, in halfBrick);
+        workspace.TileStore.Set(55, 50, in rightFacingTopSlope);
+        workspace.TileStore.Set(54, 50, in halfBrick);
+        workspace.TileStore.Set(58, 50, in leftFacingTopSlope);
+        workspace.TileStore.Set(57, 50, in halfBrick);
+        var submergedPlant = new WorldTile
+        {
+            Type = 3,
+            FrameX = 18,
+            FrameY = 36,
+            Flags = WorldTileFlags.Active | WorldTileFlags.Inactive | WorldTileFlags.InvisibleBlock,
+            LiquidAmount = byte.MaxValue,
+            LiquidKind = WorldLiquidKind.Honey,
+            TileColor = 7
+        };
+        workspace.TileStore.Set(48, 55, in submergedPlant);
+
+        new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
+            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100), workspace, new RandomAdapter(1458)));
+
+        Assert.Equal((byte)0, workspace.TileStore.Get(10, 10).Shape);
+        Assert.Equal((byte)4, workspace.TileStore.Get(11, 10).Shape);
+        WorldTile preserved = workspace.TileStore.Get(12, 10);
+        Assert.Equal((byte)0, preserved.Shape);
+        Assert.Equal((short)72, preserved.FrameX);
+        Assert.Equal((short)54, preserved.FrameY);
+        Assert.Equal(WorldTileFlags.Actuator | WorldTileFlags.Inactive, preserved.Flags);
+        Assert.Equal((byte)25, preserved.LiquidAmount);
+        Assert.Equal(WorldLiquidKind.Lava, preserved.LiquidKind);
+        Assert.Equal((byte)1, workspace.TileStore.Get(50, 50).Shape);
+        Assert.Equal((byte)1, workspace.TileStore.Get(55, 50).Shape);
+        Assert.Equal((byte)2, workspace.TileStore.Get(58, 50).Shape);
+        WorldTile drowned = workspace.TileStore.Get(48, 55);
+        Assert.False(drowned.IsActive);
+        Assert.Equal((ushort)0, drowned.Type);
+        Assert.Equal((short)-1, drowned.FrameX);
+        Assert.Equal((short)-1, drowned.FrameY);
+        Assert.Equal((byte)0, drowned.TileColor);
+        Assert.Equal((byte)255, drowned.LiquidAmount);
+        Assert.Equal(WorldLiquidKind.Honey, drowned.LiquidKind);
+    }
+
+    [Fact]
+    public void Tile_cleanup_keeps_source_order_for_drips_and_liquid_blocking_walls()
+    {
+        var workspace = new Workspace(100, 100);
+        Assert.True(workspace.TrySetLayers(10, 20));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+
+        var ceiling = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        var water = new WorldTile { LiquidAmount = 128, LiquidKind = WorldLiquidKind.Water };
+        var dungeonWallLiquid = new WorldTile { Wall = 13, LiquidAmount = 255, LiquidKind = WorldLiquidKind.Lava };
+        var templeWallLiquid = new WorldTile { Wall = 87, LiquidAmount = 255, LiquidKind = WorldLiquidKind.Honey };
+        workspace.TileStore.Set(50, 49, in ceiling);
+        workspace.TileStore.Set(50, 48, in water);
+        workspace.TileStore.Set(58, 59, in dungeonWallLiquid);
+        workspace.TileStore.Set(59, 59, in templeWallLiquid);
+        var trap = new WorldTile { Type = 137, Flags = WorldTileFlags.Active, FrameX = 0, FrameY = 0 };
+        var trapNeighbour = new WorldTile { Type = 1, Flags = WorldTileFlags.Active, Shape = 1 };
+        workspace.TileStore.Set(55, 55, in trap);
+        workspace.TileStore.Set(54, 55, in trapNeighbour);
+
+        var random = new DripRandom();
+        new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
+            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100), workspace, random));
+
+        WorldTile drip = workspace.TileStore.Get(50, 50);
+        Assert.True(drip.IsActive);
+        Assert.Equal((ushort)373, drip.Type);
+        Assert.Equal((short)0, drip.FrameX);
+        Assert.Equal((short)0, drip.FrameY);
+        Assert.True(random.DrawCount > 3);
+        Assert.Equal((byte)0, workspace.TileStore.Get(58, 59).LiquidAmount);
+        Assert.Equal((byte)0, workspace.TileStore.Get(59, 59).LiquidAmount);
+        Assert.False(workspace.TileStore.Get(54, 55).IsActive);
+    }
+
+    [Fact]
+    public void Tile_cleanup_repairs_every_piece_of_a_broken_crimson_heart()
+    {
+        var workspace = new Workspace(100, 100);
+        Assert.True(workspace.TrySetLayers(10, 20));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: true, isRemix: false));
+
+        // Only the lower-right piece remains. TerrariaServer TileCleanup derives the 2x2 origin from
+        // frame coordinates and restores all four cells with the Crimson style offset.
+        var survivor = new WorldTile
+        {
+            Type = 31,
+            Flags = WorldTileFlags.Active,
+            FrameX = 54,
+            FrameY = 54,
+            Shape = 3
+        };
+        workspace.TileStore.Set(51, 51, in survivor);
+
+        var request = new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100)
+        {
+            Options = new(WorldGenerationGameMode.Classic, WorldGenerationEvil.Crimson)
+        };
+        new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
+            .Execute(new Context(request, workspace, new RandomAdapter(1458)));
+
+        for (int dx = 0; dx < 2; dx++)
+        for (int dy = 0; dy < 2; dy++)
+        {
+            WorldTile repaired = workspace.TileStore.Get(50 + dx, 50 + dy);
+            Assert.True(repaired.IsActive);
+            Assert.Equal((ushort)31, repaired.Type);
+            Assert.Equal((short)(36 + dx * 18), repaired.FrameX);
+            Assert.Equal((short)(36 + dy * 18), repaired.FrameY);
+            Assert.Equal((byte)0, repaired.Shape);
+        }
+    }
+
+    [Theory]
+    [InlineData((ushort)12)]
+    [InlineData((ushort)28)]
+    [InlineData((ushort)639)]
+    public void Tile_cleanup_repairs_two_by_two_objects_and_their_missing_wall_terrain_support(ushort type)
+    {
+        var workspace = new Workspace(100, 100);
+        Assert.True(workspace.TrySetLayers(10, 20));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+
+        var survivor = new WorldTile
+        {
+            Type = type,
+            Flags = WorldTileFlags.Active,
+            FrameX = 54,
+            FrameY = 54,
+            Shape = 3
+        };
+        workspace.TileStore.Set(51, 51, in survivor);
+
+        var snowWallSupport = new WorldTile { Wall = 40, Shape = 3 };
+        var dirtWallSupport = new WorldTile { Wall = 1, Shape = 2 };
+        workspace.TileStore.Set(50, 52, in snowWallSupport);
+        workspace.TileStore.Set(51, 52, in dirtWallSupport);
+
+        var request = new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100);
+        new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
+            .Execute(new Context(request, workspace, new RandomAdapter(1458)));
+
+        for (int dx = 0; dx < 2; dx++)
+        for (int dy = 0; dy < 2; dy++)
+        {
+            WorldTile repaired = workspace.TileStore.Get(50 + dx, 50 + dy);
+            Assert.True(repaired.IsActive);
+            Assert.Equal(type, repaired.Type);
+            Assert.Equal((short)(36 + dx * 18), repaired.FrameX);
+            Assert.Equal((short)(36 + dy * 18), repaired.FrameY);
+            Assert.Equal((byte)0, repaired.Shape);
+        }
+
+        WorldTile snowSupport = workspace.TileStore.Get(50, 52);
+        WorldTile dirtSupport = workspace.TileStore.Get(51, 52);
+        Assert.True(snowSupport.IsActive);
+        Assert.Equal((ushort)147, snowSupport.Type);
+        Assert.Equal((byte)0, snowSupport.Shape);
+        Assert.True(dirtSupport.IsActive);
+        Assert.Equal((ushort)0, dirtSupport.Type);
+        Assert.Equal((byte)0, dirtSupport.Shape);
+    }
+
+    [Fact]
+    public void Tile_cleanup_repairs_crimson_three_by_two_heart_and_its_source_cleanup_neighbours()
+    {
+        var workspace = new Workspace(100, 100);
+        Assert.True(workspace.TrySetLayers(10, 20));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: true, isRemix: false));
+
+        var survivor = new WorldTile { Type = 26, Flags = WorldTileFlags.Active, FrameX = 90, FrameY = 18, Shape = 3 };
+        workspace.TileStore.Set(52, 51, in survivor);
+        for (int x = 50; x <= 52; x++)
+        {
+            var support = new WorldTile { Wall = 3, Shape = 3 };
+            workspace.TileStore.Set(x, 52, in support);
+        }
+
+        var brokenBelow = new WorldTile { Type = 28, Flags = WorldTileFlags.Active, FrameY = 18 };
+        var leftFragment = new WorldTile { Type = 12, Flags = WorldTileFlags.Active, FrameX = 0 };
+        var rightFragment = new WorldTile { Type = 28, Flags = WorldTileFlags.Active, FrameX = 18 };
+        workspace.TileStore.Set(50, 53, in brokenBelow);
+        workspace.TileStore.Set(49, 50, in leftFragment);
+        workspace.TileStore.Set(53, 50, in rightFragment);
+
+        var request = new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100)
+        {
+            Options = new(WorldGenerationGameMode.Classic, WorldGenerationEvil.Crimson)
+        };
+        new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
+            .Execute(new Context(request, workspace, new RandomAdapter(1458)));
+
+        for (int dx = 0; dx < 3; dx++)
+        for (int dy = 0; dy < 2; dy++)
+        {
+            WorldTile repaired = workspace.TileStore.Get(50 + dx, 50 + dy);
+            Assert.True(repaired.IsActive);
+            Assert.Equal((ushort)26, repaired.Type);
+            Assert.Equal((short)(54 + dx * 18), repaired.FrameX);
+            Assert.Equal((short)(dy * 18), repaired.FrameY);
+            Assert.Equal((byte)0, repaired.Shape);
+        }
+
+        for (int x = 50; x <= 52; x++)
+        {
+            WorldTile support = workspace.TileStore.Get(x, 52);
+            Assert.True(support.IsActive);
+            Assert.Equal((ushort)25, support.Type);
+            Assert.Equal((byte)0, support.Shape);
+            Assert.False(workspace.TileStore.Get(x, 53).IsActive);
+        }
+
+        Assert.False(workspace.TileStore.Get(49, 50).IsActive);
+        Assert.False(workspace.TileStore.Get(53, 50).IsActive);
+    }
+
+    [Fact]
+    public void Tile_cleanup_converts_spike_ball_support_to_sunplate()
+    {
+        var workspace = new Workspace(100, 100);
+        Assert.True(workspace.TrySetLayers(10, 20));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        var spikeBall = new WorldTile { Type = 237, Flags = WorldTileFlags.Active };
+        var lihzahrdBrick = new WorldTile { Type = 232, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(50, 50, in spikeBall);
+        workspace.TileStore.Set(50, 51, in lihzahrdBrick);
+
+        var request = new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100);
+        new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
+            .Execute(new Context(request, workspace, new RandomAdapter(1458)));
+
+        Assert.Equal((ushort)226, workspace.TileStore.Get(50, 51).Type);
+    }
 
     [Fact]
     public void Complete_ordinary_plan_matches_every_applicable_source_registration_in_order()
@@ -170,11 +461,62 @@ public sealed class SourceBackedFinal1458Tests
 
     private readonly record struct CaptureEntry(WorldGenerationPassDescriptor Descriptor, IWorldGenerationPass Pass);
 
+    private static string HashFixture(Workspace workspace)
+    {
+        var snapshot = new StringBuilder(workspace.WidthTiles * workspace.HeightTiles * 20);
+        for (int x = 0; x < workspace.WidthTiles; x++)
+        for (int y = 0; y < workspace.HeightTiles; y++)
+        {
+            WorldTile tile = workspace.TileStore.Get(x, y);
+            snapshot.Append(tile.IsActive ? '1' : '0').Append(',').Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+                .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',').Append(tile.LiquidAmount).Append(';');
+        }
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot.ToString())));
+    }
+
     private sealed class CaptureBuilder : IWorldGenerationPlanBuilder
     {
         public List<CaptureEntry> Entries { get; } = [];
 
         public void Add(WorldGenerationPassDescriptor descriptor, IWorldGenerationPass pass) =>
             Entries.Add(new CaptureEntry(descriptor, pass));
+    }
+
+    private sealed class Context(
+        WorldGenerationRequest request, Workspace workspace, IWorldGenerationVanillaRandom random) : IWorldGenerationContext
+    {
+        public WorldGenerationRequest Request => request;
+        public IWorldGenerationWorkspace Workspace => workspace;
+        public IWorldGenerationMetadataWorkspace Metadata => workspace;
+        public IWorldGenerationRandom Random => throw new NotSupportedException();
+        public IWorldGenerationVanillaRandom VanillaRandom => random;
+        public CancellationToken CancellationToken => CancellationToken.None;
+        public void ReportProgress(double fraction, string? message = null) { }
+    }
+
+    private sealed class RandomAdapter(int seed) : IWorldGenerationVanillaRandom
+    {
+        private readonly VanillaUnifiedRandom1458 random = new(seed);
+        public int Next() => random.Next();
+        public int Next(int maxValue) => random.Next(maxValue);
+        public int Next(int minValue, int maxValue) => random.Next(minValue, maxValue);
+        public double NextDouble() => random.NextDouble();
+        public void NextBytes(byte[] buffer) => random.NextBytes(buffer);
+    }
+
+    private sealed class DripRandom : IWorldGenerationVanillaRandom
+    {
+        public int DrawCount { get; private set; }
+        public int Next() => Take(0);
+        public int Next(int maxValue) => Take(maxValue == 3 ? 1 : 0);
+        public int Next(int minValue, int maxValue) => Take(minValue);
+        public double NextDouble() => Take(0);
+        public void NextBytes(byte[] buffer) => throw new NotSupportedException();
+
+        private int Take(int value)
+        {
+            DrawCount++;
+            return value;
+        }
     }
 }

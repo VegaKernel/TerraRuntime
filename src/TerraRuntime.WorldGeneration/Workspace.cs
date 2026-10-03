@@ -29,6 +29,8 @@ internal readonly record struct VanillaUndergroundDesertRegion1458(int X, int Y,
     public int Right => X + Width;
     public int Bottom => Y + Height;
 }
+/// <summary>Source <c>GenVars.tLeft/tRight/tTop/tBottom/tRooms</c>, retained for Temple Part 2.</summary>
+internal readonly record struct VanillaTemplePart2State1458(int Left, int Right, int Top, int Bottom, int Rooms);
 
 /// <summary>
 /// Isolated mutable tile workspace for a candidate generated world. Writes bypass live-world dirty tracking because
@@ -82,6 +84,10 @@ public sealed class Workspace :
     private VanillaCaveHouseCounts1458? vanillaCaveHouseCounts;
     private VanillaUndergroundDesertRegion1458? vanillaUndergroundDesertRegion;
     private VanillaDesertGenerationState1458? vanillaDesertGenerationState;
+    private VanillaTemplePart2State1458? vanillaTemplePart2State;
+    // WorldGen.AddBuriedChest is called by passes on both sides of Spider Caves. Its once-per-world
+    // loot flags must therefore outlive the Chest pipeline's private pass state.
+    private Vanilla.BuriedChestContext1458? vanillaBuriedChestContext;
     private DungeonSetupProfile1458? vanillaDungeonSetupProfile;
     private DungeonGraph1458? vanillaDungeonGraph;
     private readonly List<VanillaPyramidCandidate1458> vanillaPyramidCandidates = [];
@@ -101,6 +107,7 @@ public sealed class Workspace :
 
     internal VanillaWorldSeedProfile1458 VanillaSeedProfile => vanillaSeedProfile;
     internal VanillaWorldGenerationBootstrapState1458? VanillaBootstrapState => vanillaBootstrapState;
+    internal VanillaTemplePart2State1458? VanillaTemplePart2State => vanillaTemplePart2State;
     internal TerrainGenerationState1458? VanillaTerrainState => vanillaTerrainState;
     internal VanillaLiquidLines1458? VanillaLiquidLines => vanillaLiquidLines;
     internal VanillaFallenLogAnchor1458? VanillaFallenLogAnchor => vanillaFallenLogAnchor;
@@ -177,6 +184,17 @@ public sealed class Workspace :
 
         vanillaPyramidAnchors = copy;
     }
+
+    internal void SetVanillaTemplePart2State(VanillaTemplePart2State1458 state)
+    {
+        if (state.Left < 0 || state.Top < 0 || state.Right <= state.Left || state.Bottom <= state.Top ||
+            state.Right >= WidthTiles || state.Bottom >= HeightTiles || state.Rooms < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(state));
+        }
+
+        vanillaTemplePart2State = state;
+    }
     internal void SetVanillaOasisAnchors(IReadOnlyList<Vanilla.VanillaOasisAnchor1458> anchors)
     {
         ArgumentNullException.ThrowIfNull(anchors);
@@ -241,7 +259,10 @@ public sealed class Workspace :
     internal VanillaCaveHouseCounts1458? VanillaCaveHouseCounts => vanillaCaveHouseCounts;
     internal VanillaUndergroundDesertRegion1458? VanillaUndergroundDesertRegion => vanillaUndergroundDesertRegion;
     internal VanillaDesertGenerationState1458? VanillaDesertGenerationState => vanillaDesertGenerationState;
+    internal Vanilla.BuriedChestContext1458? VanillaBuriedChestContext => vanillaBuriedChestContext;
     internal void SetVanillaDesertGenerationState(VanillaDesertGenerationState1458 value) => vanillaDesertGenerationState = value;
+    internal void SetVanillaBuriedChestContext(Vanilla.BuriedChestContext1458 value) =>
+        vanillaBuriedChestContext = value ?? throw new ArgumentNullException(nameof(value));
     internal DungeonSetupProfile1458? VanillaDungeonSetupProfile => vanillaDungeonSetupProfile;
     internal DungeonGraph1458? VanillaDungeonGraph => vanillaDungeonGraph;
 
