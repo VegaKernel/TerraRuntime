@@ -91,3 +91,9 @@ Protocol changes in this area must preserve all of the following:
 - an integration allocation guard on Multiplicity v3 exact-size serialization so a second complete frame buffer cannot return unnoticed;
 - packet-10 framing directly from the completed DEFLATE writer into the final frame array;
 - no gameplay dependency on Multiplicity concrete types outside the protocol boundary.
+
+## Packet 84: remote stealth
+
+`TerrariaPlayerStealthCodec1458` uses pinned Multiplicity `PlayerStealthView` / `PlayerStealth`, with a bounded five-byte fragmented payload fallback. The eight-byte frame contains player byte plus IEEE little-endian single. `PlayerStealthFrameSink` discards the claimed slot, posts the authenticated generation to `WorldRuntime.PlayerStealthIngress`, and stops malformed frames. Queue backpressure drops this replaceable sample without disconnect. The world validates ownership and finite `[0,1]` values again, then relays through its player event sink to playing peers excluding the source. No join baseline is synthesized. See [player ownership](player-runtime-ownership.md#remote-stealth-ownership-packet-84) for respawn, transfer and accepted Hurt semantics.
+
+Packet 41 uses the exact 1.4.5.8 seven-byte payload: player byte, little-endian Single rotation, and Int16 animation. The bounded codec rejects truncated or extra payloads, nonfinite rotation and negative animation; the full nonnegative Int16 range is retained without an invented short timeout. Authenticated ingress replaces the player claim, commits only the matching connection generation, and relays the normalized observation to peers excluding its sender. SyncOnePlayer has no packet-41 baseline, so no expired animation is cached for a later join. Rotation and animation do not authorize an attack. Golden bytes come from the original dedicated server's NetMessage.SendData, independently of this codec.

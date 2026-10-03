@@ -128,7 +128,10 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         float velocityX = aiState.VelocityX;
         float velocityY = aiState.VelocityY;
 
-        if (definition.PhysicsFamily == VanillaNpcPhysicsFamily.GroundFighter)
+        // Psycho ambush/reveal and Creature swimming return before AI_003 terrain logic; outer physics still runs.
+        if (definition.PhysicsFamily == VanillaNpcPhysicsFamily.GroundFighter &&
+            !(definition.Type == VanillaNpcIds.Psycho && npc.Ai.Ai2 <= 0f) &&
+            !(definition.Type == VanillaNpcIds.CreatureFromTheDeep && npc.Simulation.Wet))
         {
             bool hasFighterProfile = VanillaGroundFighterBehaviorCatalog.TryGet(
                 definition.Type,
@@ -162,7 +165,10 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                 aiState = aiState with { PositionY = stepUp.PositionY };
 
             VanillaGroundFighterDoorEnvironment doorEnvironment = ResolveDoorEnvironment(in aiState);
-            VanillaZombieDoorContactResult doorContact = VanillaWorldZombieDoorContact.Resolve(
+            // Source flag8 is false for Psycho: its ai[2] remains the ambush clock, never door pressure.
+            VanillaZombieDoorContactResult doorContact = definition.Type == VanillaNpcIds.Psycho
+                ? new VanillaZombieDoorContactResult(velocityX, aiState.Ai, false, false, false)
+                : VanillaWorldZombieDoorContact.Resolve(
                 tiles,
                 aiState.PositionX,
                 aiState.PositionY,

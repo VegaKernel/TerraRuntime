@@ -100,6 +100,12 @@ internal sealed partial class PlayerAuthority
             case ClientPlayerPvpHitRuntimeCommand pvpHit:
                 ApplyClientPvpHit(pvpHit);
                 return true;
+            case PlayerItemAnimationRuntimeCommand animation:
+                ApplyPlayerItemAnimation(animation);
+                return true;
+            case PlayerStealthRuntimeCommand stealth:
+                ApplyPlayerStealth(stealth);
+                return true;
             case PlayerBuffTypesRuntimeCommand buffs:
                 ApplyPlayerBuffTypes(buffs);
                 return true;
@@ -515,6 +521,7 @@ internal sealed partial class PlayerAuthority
             activePlayer.Life = request.Life;
             activePlayer.MaxLife = request.MaxLife;
             activePlayer.IsDead = request.Life <= 0;
+            if (activePlayer.IsDead) activePlayer.ItemAnimation = 0;
         }
         else
         {
@@ -631,6 +638,7 @@ internal sealed partial class PlayerAuthority
         if (!player.TryAdvanceRevision())
             return;
 
+        membership.TrySetTalkNpc(player.Connection, TerraRuntime.Protocol.Multiplicity.TerrariaNpcTalkCodec.NoNpc);
         player.Team = request.Team;
         VanillaPlayerSpawnPosition1458.FromFloorTile(request.SpawnX, request.SpawnY, out float respawnPositionX, out float respawnPositionY);
         player.PositionX = respawnPositionX;

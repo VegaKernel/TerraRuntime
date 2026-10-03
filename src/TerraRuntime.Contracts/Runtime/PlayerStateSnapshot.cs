@@ -48,6 +48,11 @@ public readonly record struct PlayerStateSnapshot(
     /// <summary>Mount activation is independent of its type: vanilla mount zero is Rudolph.</summary>
     public bool HasMount { get; init; }
 
+    /// <summary>Owned packet-84 visibility value; null means no retained projection (including default snapshots).</summary>
+    public float? Stealth { get; init; }
+    public int? ItemAnimation { get; init; }
+    public float? ItemRotation { get; init; }
+
     public bool Hostile { get; init; }
 
     public bool GodMode { get; init; }

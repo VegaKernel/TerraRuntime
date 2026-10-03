@@ -685,6 +685,52 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
             return false;
         }
 
+        if (definition.Type == VanillaNpcIds.CreatureFromTheDeep)
+        {
+            if (!definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize retainedBody))
+            {
+                next = default;
+                return false;
+            }
+            int width = npc.Simulation.Wet ? 34 : 18;
+            int height = npc.Simulation.Wet ? 24 : 40;
+            NpcSnapshot formed = npc with
+            {
+                PositionX = npc.PositionX + retainedBody.Width * .5f - width * .5f,
+                PositionY = npc.PositionY + retainedBody.Height * .5f - height * .5f,
+                Simulation = npc.Simulation with
+                {
+                    HitboxOverride = new NpcHitboxDimensions(width, height),
+                    NoGravity = npc.Simulation.Wet,
+                    KnockBackResist = npc.Simulation.Wet ? 0f :
+                        VanillaCreatureFromDeepMotion1458.DryKnockback(npc.Simulation.SpawnDifficulty ?? 1f)
+                }
+            };
+            if (npc.Simulation.Wet)
+                return TryStepSwimmingCreature(in formed, in definition, context, out next);
+            if (npc.Ai.Ai3 == VanillaCreatureFromDeepMotion1458.SwimmingClock)
+            {
+                var exit = VanillaCreatureFromDeepMotion1458.ExitVelocity(npc.VelocityX, npc.VelocityY);
+                int direction = exit.X < 0f ? -1 : exit.X > 0f ? 1 : npc.Simulation.DirectionX;
+                formed = formed with
+                {
+                    VelocityX = exit.X,
+                    VelocityY = exit.Y,
+                    Ai = formed.Ai with { Ai3 = 0f },
+                    Simulation = formed.Simulation with { DirectionX = direction, SpriteDirection = direction }
+                };
+            }
+            // Re-enter the common fighter stage with the restored body, without applying the form prepass twice.
+            return TryStepCommon(in formed, in definition, in parameters, context, inner, out next);
+        }
+
+        return TryStepCommon(in npc, in definition, in parameters, context, inner, out next);
+    }
+
+    private bool TryStepCommon(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        in VanillaGroundFighterBehaviorParameters parameters, VanillaNpcBehaviorContext context,
+        INpcAiStateStepper inner, out NpcStateUpdate next)
+    {
         // AI_003 transforms Snow Moon type 348 before the common fighter work. NPC.Transform clears ai[],
         // applies target-349 SetDefaults, preserves its bottom edge and scales life; both source hitboxes are
         // 28-by-76, so this specific transform has no position delta before the same-tick type-349 movement.
@@ -736,6 +782,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
         }
 
         bool daytimeSurface = context.DayTime &&
+            !((definition.Type == VanillaNpcIds.Psycho || definition.Type == VanillaNpcIds.CreatureFromTheDeep) && context.EclipseActive) &&
             npc.PositionY < context.WorldSurfacePixels &&
             parameters.DaySurfaceEncouragesDespawn;
         int startingDirectionY = npc.Simulation.DirectionY;
@@ -748,6 +795,45 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
             npc.PositionY + definition.Height)
         {
             startingDirectionY = -1;
+        }
+
+        // AI_003 Psycho ambush/reveal returns before the shared fighter stuck, movement and attack stages.
+        if (definition.Type == VanillaNpcIds.Psycho && npc.Ai.Ai2 <= 0f)
+        {
+            ushort target = npc.Target;
+            int directionX = npc.Simulation.DirectionX;
+            int directionY = startingDirectionY;
+            int alpha = npc.Ai.Ai2 == 0f ? 200 : Math.Max(0, npc.Simulation.Alpha - 12);
+            float clock = npc.Ai.Ai2;
+            float velocityX = npc.VelocityX;
+            if (clock == 0f)
+            {
+                if (context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh ambushTarget))
+                {
+                    target = ambushTarget.Target;
+                    directionX = ambushTarget.DirectionX;
+                    directionY = ambushTarget.DirectionY;
+                }
+                bool nearLivingTarget = false;
+                if (target < byte.MaxValue && context.TryFindCandidate((byte)target, out VanillaNpcTargetCandidate candidate) && !candidate.Dead)
+                {
+                    float dx = candidate.CenterX - (npc.PositionX + definition.Width * .5f);
+                    float dy = candidate.CenterY - (npc.PositionY + definition.Height * .5f);
+                    nearLivingTarget = MathF.Sqrt(dx * dx + dy * dy) < 170f;
+                }
+                if (nearLivingTarget || npc.VelocityX != 0f || npc.VelocityY < 0f ||
+                    npc.VelocityY > 2f || npc.Simulation.JustHit)
+                    clock = -16f;
+            }
+            else if (++clock == 0f)
+            {
+                clock = 1f;
+                velocityX = directionX * 2f;
+            }
+            next = new NpcStateUpdate(npc.Type, npc.NetId, npc.PositionX, npc.PositionY, velocityX, npc.VelocityY,
+                target, npc.Ai with { Ai2 = clock }, npc.Simulation with
+                    { Alpha = alpha, DirectionX = directionX, DirectionY = directionY });
+            return true;
         }
 
         VanillaBlueSlimeTargetRefresh closest =
@@ -769,7 +855,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
             closest.DirectionX,
             fighterDirectionY);
 
-        NpcSimulationState simulation = npc.Simulation;
+        NpcSimulationState simulation = definition.Type == VanillaNpcIds.Psycho ? npc.Simulation with { Alpha = 0 } : npc.Simulation;
         NpcAiState fighterAi = npc.Ai;
         float fighterVelocityX = npc.VelocityX;
         float fighterVelocityY = npc.VelocityY;
@@ -929,6 +1015,38 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
                 DamageOverride = damageOverride
             });
         return true;
+    }
+
+    private static bool TryStepSwimmingCreature(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        VanillaNpcBehaviorContext context, out NpcStateUpdate next)
+    {
+        ushort target = npc.Target;
+        int directionX = npc.Simulation.DirectionX;
+        int directionY = npc.Simulation.DirectionY;
+        if (context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh refresh))
+        {
+            target = refresh.Target;
+            directionX = refresh.DirectionX;
+            directionY = refresh.DirectionY;
+        }
+        float velocityX = npc.Simulation.CollideX ? -npc.Simulation.OldVelocityX : npc.VelocityX;
+        if (velocityX < 0f) directionX = -1;
+        if (velocityX > 0f) directionX = 1;
+        bool hasTarget = target < byte.MaxValue && context.TryFindCandidate((byte)target, out _);
+        float targetDx = 0f, targetDy = 0f;
+        bool visible = false;
+        if (hasTarget && context.TryFindCandidate((byte)target, out VanillaNpcTargetCandidate candidate))
+        {
+            targetDx = candidate.CenterX - (npc.PositionX + 17f);
+            targetDy = candidate.CenterY - (npc.PositionY + 12f);
+            visible = context.ProjectileEnvironment?.CanHit(npc.PositionX, npc.PositionY, 34, 24,
+                candidate.CenterX, candidate.CenterY, 1, 1) == true;
+        }
+        var motion = VanillaCreatureFromDeepMotion1458.Steer(velocityX, npc.VelocityY, targetDx, targetDy, directionX, visible);
+        next = new NpcStateUpdate(npc.Type, npc.NetId, npc.PositionX, npc.PositionY, motion.X, motion.Y, target,
+            npc.Ai with { Ai3 = VanillaCreatureFromDeepMotion1458.SwimmingClock }, npc.Simulation with
+                { DirectionX = directionX, DirectionY = directionY });
+        return float.IsFinite(motion.X) && float.IsFinite(motion.Y);
     }
 
     private bool TryStepWraith(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,

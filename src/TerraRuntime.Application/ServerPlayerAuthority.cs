@@ -507,6 +507,8 @@ internal sealed partial class ServerPlayerAuthority
         return true;
     }
 
+    internal void TickItemAnimation() => states.TickItemAnimation();
+
     internal bool PresentItemUse(ServerPlayerId id, float aimX, float aimY, int animationTicks)
     {
         if (!float.IsFinite(aimX) || !float.IsFinite(aimY) || animationTicks is <= 0 or > short.MaxValue ||
@@ -518,7 +520,9 @@ internal sealed partial class ServerPlayerAuthority
             return false;
         events?.ServerPlayerMoved(in after);
         // Ordinary useStyle 5 launch presentation, Player.ItemCheck_Shoot (1.4.5.8).
-        events?.ServerPlayerItemUsePresented(player, MathF.Atan2(aimY * direction, aimX * direction), checked((short)animationTicks));
+        float rotation = MathF.Atan2(aimY * direction, aimX * direction);
+        if (!states.TrySetItemAnimation(player, rotation, animationTicks)) return false;
+        events?.ServerPlayerItemUsePresented(player, rotation, checked((short)animationTicks));
         return true;
     }
 

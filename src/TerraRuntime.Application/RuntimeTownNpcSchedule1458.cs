@@ -26,6 +26,9 @@ internal readonly record struct RuntimeTownNpcScheduleConditions1458(
 
 internal readonly record struct RuntimeTownPlayerBounds1458(float X, float Y, float Width, float Height);
 
+internal readonly record struct RuntimeTownPlayerConversation1458(
+    byte Slot, short TalkNpcSlot, RuntimeTownPlayerBounds1458 Bounds, bool CanBeTalkedTo);
+
 internal interface IRuntimeTownNpcScheduleRandom1458
 {
     int Next(int exclusiveMax);
@@ -40,6 +43,11 @@ internal sealed class SharedRuntimeTownNpcScheduleRandom1458 : IRuntimeTownNpcSc
     }
 
     public int Next(int exclusiveMax) => Random.Shared.Next(exclusiveMax);
+}
+
+internal sealed class NpcRuntimeTownScheduleRandom1458(IVanillaNpcRandom random) : IRuntimeTownNpcScheduleRandom1458
+{
+    public int Next(int exclusiveMax) => random.NextInt32(0, exclusiveMax);
 }
 
 /// <summary>
@@ -62,6 +70,9 @@ internal sealed class RuntimeTownNpcSchedule1458
     private const int ChairSearchStepY = 2;
     private const int SittingDelayBaseTicks = 900;
     private const int SittingDelayRandomTicks = 10800;
+    private const int StandingDelayBaseTicks = 60;
+    private const int StandingDelayRandomTicks = 60;
+    private const int StandingLocalDelayBaseTicks = 30;
 
     private readonly RuntimeTownNpcStateStore townNpcs;
     private readonly RuntimeNpcStore npcs;
@@ -91,7 +102,8 @@ internal sealed class RuntimeTownNpcSchedule1458
 
     public void Tick(
         in RuntimeTownNpcScheduleConditions1458 conditions,
-        ReadOnlySpan<RuntimeTownPlayerBounds1458> players)
+        ReadOnlySpan<RuntimeTownPlayerBounds1458> players,
+        ReadOnlySpan<RuntimeTownPlayerConversation1458> conversations = default)
     {
         Span<RuntimeTownNpcHomeCommit> homes = stackalloc RuntimeTownNpcHomeCommit[RuntimeTownNpcStateStore.MaximumTownNpcs];
         int homeCount = townNpcs.CopyHomeBaselines(homes);
@@ -99,12 +111,48 @@ internal sealed class RuntimeTownNpcSchedule1458
         {
             RuntimeTownNpcHomeCommit home = homes[homeIndex];
             short slot = home.NpcSlot;
-            if (home.Status != TerrariaNpcHomeStatus.HasRoom ||
-                (uint)slot > byte.MaxValue ||
-                !npcs.TryGetActive(checked((byte)slot), out NpcSnapshot snapshot))
+            if ((uint)slot > byte.MaxValue ||
+                !npcs.TryGetActive(checked((byte)slot), out NpcSnapshot snapshot) || snapshot.Type != home.NpcType.Value)
             {
                 continue;
             }
+
+            // Active authenticated talkers interrupt ordinary town activities before chair/pose maintenance.
+            // Attack poses and the special state 24 remain owned by their existing controllers.
+            if (snapshot.Ai.Ai0 is 10f or 12f or 14f or 15f or 24f)
+                continue;
+            if (TryTickPlayerTalk(in snapshot, home.NpcType, conversations, out NpcSnapshot talking))
+            {
+                townNpcs.TryUpdatePosition(slot, in talking);
+                states[slot] = RuntimeTownNpcScheduleState1458.DayWander;
+                continue;
+            }
+            if (snapshot.Ai.Ai0 is 6f or 7f or 18f or 19f)
+            {
+                if (TryTickPlayerPose(in snapshot, home.NpcType, conversations, out NpcSnapshot posing))
+                {
+                    townNpcs.TryUpdatePosition(slot, in posing);
+                    states[slot] = RuntimeTownNpcScheduleState1458.DayWander;
+                }
+                continue;
+            }
+
+            // AI_007 state 5 runs in daylight too. Finish this state once; an expired
+            // chair timer must not immediately enter the shelter/force-sitting path again.
+            if (snapshot.Ai.Ai0 == 5f)
+            {
+                if (TryTickSitting(in snapshot, home.NpcType, out NpcSnapshot seated))
+                {
+                    townNpcs.TryUpdatePosition(slot, in seated);
+                    states[slot] = seated.Ai.Ai0 == 5f
+                        ? RuntimeTownNpcScheduleState1458.RestingAtHome
+                        : RuntimeTownNpcScheduleState1458.DayWander;
+                }
+                continue;
+            }
+
+            if (home.Status != TerrariaNpcHomeStatus.HasRoom)
+                continue;
 
             if (!conditions.ReturnHomeRequested)
             {
@@ -171,6 +219,107 @@ internal sealed class RuntimeTownNpcSchedule1458
                 states[slot] = RuntimeTownNpcScheduleState1458.RestingAtHome;
             }
         }
+    }
+
+    private bool TryTickPlayerTalk(in NpcSnapshot snapshot, NpcTypeId type,
+        ReadOnlySpan<RuntimeTownPlayerConversation1458> players, out NpcSnapshot committed)
+    {
+        committed = default;
+        RuntimeTownPlayerConversation1458? talker = null;
+        foreach (RuntimeTownPlayerConversation1458 player in players)
+        {
+            // Original scans active players 0..254 in ascending order; eligibility and distance do not
+            // gate an already authenticated talkNPC. Select by slot rather than collection insertion order.
+            if (player.Slot < byte.MaxValue && player.TalkNpcSlot == snapshot.Handle.Slot &&
+                (!talker.HasValue || player.Slot > talker.Value.Slot))
+                talker = player;
+        }
+        if (!talker.HasValue)
+            return false;
+
+        RuntimeTownPlayerBounds1458 bounds = talker.Value.Bounds;
+        int facing = bounds.X + (int)bounds.Width / 2 < snapshot.PositionX + GetWidth(type) / 2 ? -1 : 1;
+        float velocity = snapshot.VelocityX;
+        velocity = velocity > .1f ? velocity - .1f : velocity < -.1f ? velocity + .1f : 0f;
+        NpcSimulationState simulation = snapshot.Simulation with {
+            DirectionX = facing, DirectionY = -1,
+            LocalAi = snapshot.Simulation.LocalAi with { Ai3 = 99f } };
+        var update = new NpcStateUpdate(snapshot.Type, snapshot.NetId, snapshot.PositionX, snapshot.PositionY,
+            velocity, snapshot.VelocityY, snapshot.Target,
+            snapshot.Ai with { Ai0 = 0f, Ai1 = 299f }, simulation);
+        return npcs.TryUpdate(snapshot.Handle, in update, out committed, forceSync: snapshot.Ai.Ai0 != 0f);
+    }
+
+    private bool TryTickPlayerPose(in NpcSnapshot snapshot, NpcTypeId type,
+        ReadOnlySpan<RuntimeTownPlayerConversation1458> players, out NpcSnapshot committed)
+    {
+        int target = (int)snapshot.Ai.Ai2;
+        RuntimeTownPlayerConversation1458? peer = null;
+        foreach (RuntimeTownPlayerConversation1458 player in players)
+            if (player.Slot == target)
+                peer = player;
+        float npcCenterX = snapshot.PositionX + GetWidth(type) * .5f;
+        float npcCenterY = snapshot.PositionY + GetHeight(type) * .5f;
+        float remaining = snapshot.Ai.Ai1 - 1f;
+        if (!peer.HasValue || !peer.Value.CanBeTalkedTo)
+            remaining = 0f;
+        else
+        {
+            RuntimeTownPlayerBounds1458 bounds = peer.Value.Bounds;
+            float dx = bounds.X + bounds.Width * .5f - npcCenterX;
+            float dy = bounds.Y + bounds.Height * .5f - npcCenterY;
+            if (MathF.Sqrt(dx * dx + dy * dy) > 200f ||
+                !VanillaWorldLineOfSight.CanHitLine(tiles, npcCenterX, snapshot.PositionY,
+                    bounds.X + bounds.Width * .5f, bounds.Y))
+                remaining = 0f;
+        }
+        NpcAiState ai = snapshot.Ai with { Ai1 = remaining };
+        NpcSimulationState simulation = snapshot.Simulation with { DirectionY = -1 };
+        if (ai.Ai0 == 18f && (simulation.LocalAi.Ai3 < 1f || simulation.LocalAi.Ai3 > 2f))
+            simulation = simulation with { LocalAi = simulation.LocalAi with { Ai3 = 2f } };
+        bool force = false;
+        if (remaining > 0f)
+        {
+            RuntimeTownPlayerBounds1458 bounds = peer!.Value.Bounds;
+            int facing = npcCenterX < bounds.X + bounds.Width * .5f ? 1 : -1;
+            force = facing != simulation.DirectionX;
+            simulation = simulation with { DirectionX = facing, DirectionY = -1 };
+        }
+        else
+        {
+            ai = ai with { Ai0 = 0f, Ai1 = StandingDelayBaseTicks + random.Next(StandingDelayRandomTicks), Ai2 = 0f };
+            simulation = simulation with {
+                LocalAi = simulation.LocalAi with { Ai3 = StandingLocalDelayBaseTicks + random.Next(StandingDelayRandomTicks) } };
+            force = true;
+        }
+        var update = new NpcStateUpdate(snapshot.Type, snapshot.NetId, snapshot.PositionX, snapshot.PositionY,
+            snapshot.VelocityX * .8f, snapshot.VelocityY, snapshot.Target, ai, simulation);
+        return npcs.TryUpdate(snapshot.Handle, in update, out committed, forceSync: force);
+    }
+
+    private bool TryTickSitting(in NpcSnapshot snapshot, NpcTypeId type, out NpcSnapshot committed)
+    {
+        int x = BottomTileX(in snapshot, type);
+        int y = BottomTileY(in snapshot, type, -2f);
+        float remaining = snapshot.Ai.Ai1 - 1f;
+        // Source checks the stored chair identity, not nactive(): an inactive chair remnant
+        // remains a seat until its type changes or its timer expires (NPC.AI_007, 1.4.5.8).
+        if ((uint)x >= (uint)tiles.Dimensions.WidthTiles || (uint)y >= (uint)tiles.Dimensions.HeightTiles ||
+            !VanillaTileIds.IsNpcChair(tiles.Get(x, y).TileType))
+            remaining = 0f;
+        bool standing = remaining <= 0f;
+        NpcAiState ai = snapshot.Ai with { Ai1 = remaining };
+        NpcSimulationState simulation = snapshot.Simulation;
+        if (standing)
+        {
+            // Source order is idle delay first, local cooldown second on the owned NPC RNG stream.
+            ai = ai with { Ai0 = 0f, Ai1 = StandingDelayBaseTicks + random.Next(StandingDelayRandomTicks), Ai2 = 0f };
+            simulation = simulation with {
+                LocalAi = simulation.LocalAi with { Ai3 = StandingLocalDelayBaseTicks + random.Next(StandingDelayRandomTicks) } };
+        }
+        var update = new NpcStateUpdate(snapshot.Type, snapshot.NetId, snapshot.PositionX, snapshot.PositionY,
+            snapshot.VelocityX * .8f, snapshot.VelocityY, snapshot.Target, ai, simulation);
+        return npcs.TryUpdate(snapshot.Handle, in update, out committed, forceSync: standing);
     }
 
     internal static bool IsInGoodRestingSpot(

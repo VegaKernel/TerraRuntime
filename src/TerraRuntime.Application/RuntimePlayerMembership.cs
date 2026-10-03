@@ -211,6 +211,9 @@ internal sealed class RuntimePlayerMember
     public short Life { get; set; }
     public short MaxLife { get; set; }
     public bool IsDead { get; set; }
+    public float Stealth { get; set; } = 1f;
+    public int ItemAnimation { get; set; }
+    public float ItemRotation { get; set; }
     public bool HasMana { get; set; }
     public short Mana { get; set; }
     public short MaxMana { get; set; }
@@ -263,6 +266,9 @@ internal sealed class RuntimePlayerMember
             CameraTargetX,
             CameraTargetY)
         {
+            Stealth = Stealth,
+            ItemAnimation = ItemAnimation,
+            ItemRotation = ItemRotation,
             HasMount = HasMount,
             Hostile = Hostile,
             HasHealth = HasHealth,

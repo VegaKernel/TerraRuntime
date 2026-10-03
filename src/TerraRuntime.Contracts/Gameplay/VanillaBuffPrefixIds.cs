@@ -46,6 +46,8 @@ public static class VanillaBuffIds
     public static readonly BuffTypeId Frostburn = new(44);
     public static readonly BuffTypeId Chilled = new(46);
     public static readonly BuffTypeId Frozen = new(47);
+    public static readonly BuffTypeId Webbed = new(149);
+    public static readonly BuffTypeId Stoned = new(156);
     public static readonly BuffTypeId Ichor = new(69);
     public static readonly BuffTypeId Venom = new(70);
     public static readonly BuffTypeId WeaponImbueVenom = new(71);

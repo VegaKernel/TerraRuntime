@@ -406,6 +406,8 @@ public static class VanillaDefinitionCatalog
             return true;
         if (VanillaEyeOfCthulhuItemCatalog1458.TryGet(type, out definition))
             return true;
+        if (VanillaKingSlimeItemCatalog1458.TryGet(type, out definition))
+            return true;
 
         if (type == VanillaItemIds.DirtBlock)
         {

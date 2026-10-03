@@ -57,7 +57,7 @@ public sealed class VanillaCombatIntegrityCatalogTests
         Assert.Equal(1.18f, ruthless.DamageMultiplier);
         Assert.Equal(0.90f, ruthless.KnockBackMultiplier);
 
-        Assert.False(VanillaItemCombatCatalog.TryGetDirectMelee(new ItemTypeId(1), out _));
+        Assert.False(VanillaItemCombatCatalog.TryGetDirectMelee(new ItemTypeId(5283), out _));
         Assert.False(VanillaItemCombatCatalog.TryGetPrefixModifiers(new PrefixId(1), out _));
     }
 

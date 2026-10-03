@@ -103,6 +103,17 @@ internal sealed partial class PlayerAuthority
     {
         ConnectionHandle connection = command.Connection;
         RuntimePlayerTransferState transfer = command.Transfer;
+        if ((transfer.Player.ItemAnimation is int animation && animation is < 0 or > short.MaxValue) ||
+            (transfer.Player.ItemRotation is float rotation && !float.IsFinite(rotation)))
+        {
+            command.Completion.TrySetResult(false);
+            return;
+        }
+        if (transfer.Player.Stealth is float incomingStealth && (!float.IsFinite(incomingStealth) || incomingStealth < 0f || incomingStealth > 1f))
+        {
+            command.Completion.TrySetResult(false);
+            return;
+        }
         if (!connection.IsAssigned ||
             transfer.Slot != connection.Player.Slot ||
             membership.Contains(connection.Player.Slot) ||
@@ -152,6 +163,9 @@ internal sealed partial class PlayerAuthority
             Life = life,
             MaxLife = previous.MaxLife,
             IsDead = dead,
+            Stealth = previous.Stealth ?? 1f,
+            ItemAnimation = preservePosition && !dead ? previous.ItemAnimation ?? 0 : 0,
+            ItemRotation = previous.ItemRotation ?? 0f,
             HasMana = previous.HasMana,
             Mana = previous.Mana,
             MaxMana = previous.MaxMana,
@@ -188,6 +202,8 @@ internal sealed partial class PlayerAuthority
             Team: state.Team,
             SpawnContext: 0);
         events?.PlayerSpawned(connection, in spawn);
+        if (previous.Stealth.HasValue)
+            events?.PlayerStealthUpdated(connection, state.Stealth);
         if (state.GodMode)
             events?.PlayerGodModeChanged(connection.Player, enabled: true);
 

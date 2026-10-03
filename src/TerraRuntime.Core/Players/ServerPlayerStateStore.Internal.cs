@@ -16,6 +16,8 @@ public sealed partial class ServerPlayerStateStore
         public float VelocityY { get; set; }
         public byte ControlFlags { get; set; } = 1 << 6;
         public byte SelectedItem { get; set; }
+        public int ItemAnimation { get; set; }
+        public float ItemRotation { get; set; }
         public bool IsDead { get; set; }
         public bool Hostile { get; set; }
         public bool GodMode { get; set; }
@@ -53,6 +55,8 @@ public sealed partial class ServerPlayerStateStore
                 CameraTargetY: 0f)
             {
                 Hostile = Hostile,
+                ItemAnimation = ItemAnimation,
+                ItemRotation = ItemRotation,
                 GodMode = GodMode,
                 HasHealth = HasHealth,
                 Life = Life,

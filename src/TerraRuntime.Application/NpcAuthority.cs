@@ -171,7 +171,8 @@ internal sealed partial class NpcAuthority
             townInitialEclipse,
             townInitialInvasionActive,
             expertMode,
-            masterMode);
+            masterMode,
+            this.naturalSpawnRandom);
         mysticFrogCatch = worldTiles is not null
             ? new RuntimeMysticFrogCatchService1458(npcs, worldTiles, playerSnapshots)
             : null;
@@ -612,6 +613,7 @@ internal sealed partial class NpcAuthority
         }
 
         AppliedSpawns++;
+        AnnounceBossSpawn(type);
         return true;
     }
 
@@ -673,9 +675,19 @@ internal sealed partial class NpcAuthority
             Ai: default,
             Simulation: NpcSimulationState.Initial with { TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft });
         if (npcs.TrySpawnVanilla(in update, out _))
+        {
             AppliedSpawns++;
+            AnnounceBossSpawn(type);
+        }
         else
             RejectedSpawns++;
+    }
+
+    private void AnnounceBossSpawn(NpcTypeId type)
+    {
+        if (npcReplication is not null &&
+            VanillaBossAnnouncementCatalog1458.TryGetSpawn(type, out string key, out string? name))
+            npcReplication.BossAnnouncement(key, name);
     }
 
     /// <summary>
@@ -726,6 +738,8 @@ internal sealed partial class NpcAuthority
             prime.Simulation with { TimeLeft = checked(prime.Simulation.TimeLeft * 20) });
         if (!npcs.TryUpdate(prime.Handle, in linkedPrime, out prime))
             return;
+
+        npcReplication?.BossAnnouncement(VanillaBossAnnouncementCatalog1458.MechdusaAwoken);
 
         if (!VanillaNpcDefinitionCatalog.TryGet(prime.TypeIdentity, prime.NetIdentity, out primeDefinition) ||
             !primeDefinition.TryResolveHitbox(prime.Simulation, out VanillaNpcHitboxSize hitbox))
@@ -837,6 +851,7 @@ internal sealed partial class NpcAuthority
         }
 
         AppliedSpawns++;
+        AnnounceBossSpawn(VanillaNpcIds.KingSlime);
         return true;
     }
 
@@ -1947,7 +1962,8 @@ internal sealed partial class NpcAuthority
                     HitboxHeight = memberHeight,
                     VelocityX = player.VelocityX,
                     VelocityY = player.VelocityY,
-                    ItemAnimation = (player.MiscFlags2 & (1 << 6)) != 0 ? 1 : 0
+                    ItemAnimation = player.ItemAnimation,
+                    Stealth = player.Stealth
                 }, includeBiomeZoneFacts);
                 continue;
             }
@@ -1982,7 +1998,8 @@ internal sealed partial class NpcAuthority
                 HitboxHeight = mountHeight,
                 VelocityX = serverPlayer.VelocityX,
                 VelocityY = serverPlayer.VelocityY,
-                ItemAnimation = (serverPlayer.MiscFlags2 & (1 << 6)) != 0 ? 1 : 0
+                ItemAnimation = serverPlayer.ItemAnimation ?? 0,
+                Stealth = serverPlayer.Stealth ?? 1f
             }, includeBiomeZoneFacts);
         }
 

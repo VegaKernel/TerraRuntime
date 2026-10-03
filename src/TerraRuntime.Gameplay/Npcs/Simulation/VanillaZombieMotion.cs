@@ -84,7 +84,8 @@ public enum VanillaGroundFighterMotionProfile : byte
     PirateDeadeye = 13,
     PirateCrossbower = 14,
     PirateCaptain = 15,
-    SeaSnail = 16
+    SeaSnail = 16,
+    Psycho = 17
 }
 
 /// <summary>
@@ -148,7 +149,7 @@ public static class VanillaZombieMotion
         int targetRefreshes = 0;
         int timeLeft = input.TimeLeft;
 
-        bool stationaryRangedArmed = input.MotionProfile is
+        bool suppressesStuckTracking = input.MotionProfile is
             VanillaGroundFighterMotionProfile.StationaryArcher or
             VanillaGroundFighterMotionProfile.IcyMerman or
             VanillaGroundFighterMotionProfile.PirateDeadeye or
@@ -156,8 +157,9 @@ public static class VanillaZombieMotion
             VanillaGroundFighterMotionProfile.PirateCaptain or
             VanillaGroundFighterMotionProfile.SkeletonSniper or
             VanillaGroundFighterMotionProfile.TacticalSkeleton or
-            VanillaGroundFighterMotionProfile.SkeletonCommando && ai2 > 0f;
-        if (!stationaryRangedArmed)
+            VanillaGroundFighterMotionProfile.SkeletonCommando or
+            VanillaGroundFighterMotionProfile.Psycho && ai2 > 0f;
+        if (!suppressesStuckTracking)
         {
             bool reversingWhileGrounded =
                 velocityY == 0f &&
@@ -184,7 +186,7 @@ public static class VanillaZombieMotion
             if (directionY > 0 && closestTarget.HasTarget && closestTarget.DirectionY < 0)
                 directionY = -1;
         }
-        else
+        else if (!(input.MotionProfile == VanillaGroundFighterMotionProfile.Psycho && ai2 > 0f))
         {
             if (input.EncourageDespawn && timeLeft > input.EncouragedDespawnTime)
                 timeLeft = input.EncouragedDespawnTime;
@@ -254,6 +256,14 @@ public static class VanillaZombieMotion
             {
                 velocityX = (velocityX * 10f + maximumSpeed * directionX) / 11f;
             }
+        }
+        else if (input.MotionProfile == VanillaGroundFighterMotionProfile.Psycho)
+        {
+            // AI_003's Psycho reversal brake applies only inside the speed band and beyond +/-2.
+            if (MathF.Abs(velocityX) <= maximumSpeed &&
+                ((directionX == 1 && velocityX < -2f) || (directionX == -1 && velocityX > 2f)))
+                velocityX *= .9f;
+            ApplyStandardMotion(maximumSpeed, input.HorizontalAcceleration, input.OverspeedGroundDamping);
         }
         else if (input.MotionProfile == VanillaGroundFighterMotionProfile.SeaSnail)
         {

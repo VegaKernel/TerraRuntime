@@ -12,17 +12,8 @@ namespace TerraRuntime.Application;
 /// </summary>
 internal static class TerrariaPlayerReplicationFrameEncoder
 {
-    public static byte[] EncodeItemAnimation(PlayerSlotId player, float rotation, short animationTicks)
-    {
-        // TerrariaServer 1.4.5.8 NetMessage/MessageBuffer case 41: byte player, float rotation, short animation.
-        byte[] frame = new byte[10];
-        BinaryPrimitives.WriteUInt16LittleEndian(frame, 10);
-        frame[2] = 41;
-        frame[3] = player.Value;
-        BinaryPrimitives.WriteSingleLittleEndian(frame.AsSpan(4), rotation);
-        BinaryPrimitives.WriteInt16LittleEndian(frame.AsSpan(8), animationTicks);
-        return frame;
-    }
+    public static byte[] EncodeItemAnimation(PlayerSlotId player, float rotation, short animationTicks) =>
+        TerrariaPlayerItemAnimationCodec1458.Encode(player.Value, rotation, animationTicks);
 
     public static byte[] EncodeAppearance(in PlayerAppearanceCommitRequest appearance)
     {

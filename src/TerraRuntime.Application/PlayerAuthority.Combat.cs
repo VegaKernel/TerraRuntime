@@ -159,8 +159,10 @@ internal sealed partial class PlayerAuthority
             return PlayerDamageCommitResult.Rejected;
         }
 
+        ResetStealthAfterAcceptedHurt(target);
         target.Life = checked((short)Math.Max(0, target.Life - final.Damage));
         target.IsDead = target.Life <= 0;
+        if (target.IsDead) target.ItemAnimation = 0;
         if (!final.Mitigation.NoKnockback && hitDirection != 0)
         {
             // Player.Hurt(pvp:true) uses this fixed vanilla impulse; weapon knockback is not an input here.
@@ -279,8 +281,10 @@ internal sealed partial class PlayerAuthority
             return PlayerDamageCommitResult.Rejected;
         }
 
+        ResetStealthAfterAcceptedHurt(target);
         target.Life = checked((short)Math.Max(0, target.Life - final.Damage));
         target.IsDead = target.Life <= 0;
+        if (target.IsDead) target.ItemAnimation = 0;
         if (!final.Mitigation.NoKnockback && hitDirection != 0)
         {
             target.VelocityX = 4.5f * hitDirection;

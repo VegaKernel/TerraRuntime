@@ -27,6 +27,9 @@ internal interface IRuntimePlayerEventSink
         PlayerHealthUpdated(connection, in request);
     }
 
+    void PlayerStealthUpdated(ConnectionHandle connection, float stealth) { }
+    void PlayerItemAnimationUpdated(ConnectionHandle connection, float rotation, short animation) { }
+
     void PlayerManaUpdated(ConnectionHandle connection, in PlayerManaCommitRequest request)
     {
     }

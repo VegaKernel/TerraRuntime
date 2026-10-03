@@ -237,6 +237,9 @@ internal sealed class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRunt
         if (TerrariaSkeletronTauntCodec1458.TryEncode(variant, out var encoded)) Broadcast(encoded);
     }
 
+    public void BossAnnouncement(string key, string? nameKey = null) =>
+        Broadcast(TerrariaBossAnnouncementCodec1458.Encode(key, nameKey));
+
     public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot)
     {
         RuntimeNpcSyncKind syncKind = kind switch

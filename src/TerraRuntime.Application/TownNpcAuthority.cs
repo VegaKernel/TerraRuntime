@@ -2,6 +2,8 @@ using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
+using TerraRuntime.Gameplay.Players;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
@@ -28,6 +30,7 @@ internal sealed class TownNpcAuthority
     private readonly RuntimeNpcReplicationRegistry? npcReplication;
     private readonly VanillaTownSpawnPlayerFacts1458[] spawnPlayers = new VanillaTownSpawnPlayerFacts1458[MaxPlayerSlots];
     private readonly RuntimeTownPlayerBounds1458[] playerBounds = new RuntimeTownPlayerBounds1458[MaxPlayerSlots];
+    private readonly RuntimeTownPlayerConversation1458[] playerConversations = new RuntimeTownPlayerConversation1458[MaxPlayerSlots];
     private readonly bool initialRaining;
     private readonly bool initialEclipse;
     private readonly bool initialInvasionActive;
@@ -47,7 +50,8 @@ internal sealed class TownNpcAuthority
         bool initialEclipse,
         bool initialInvasionActive,
         bool expertMode,
-        bool masterMode)
+        bool masterMode,
+        IVanillaNpcRandom? npcRandom = null)
     {
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         ArgumentNullException.ThrowIfNull(npcs);
@@ -94,7 +98,8 @@ internal sealed class TownNpcAuthority
         if (worldTiles is null || townNpcs is null || housingValidator is null)
             return;
 
-        schedule = new RuntimeTownNpcSchedule1458(townNpcs, npcs, worldTiles);
+        schedule = new RuntimeTownNpcSchedule1458(townNpcs, npcs, worldTiles,
+            npcRandom is null ? null : new NpcRuntimeTownScheduleRandom1458(npcRandom));
         shimmer = new RuntimeTownNpcShimmerService1458(npcs, townNpcs, worldTiles, npcReplication);
         if (townSpawnWorldFacts is not VanillaTownSpawnWorldFacts1458 facts)
             return;
@@ -169,11 +174,20 @@ internal sealed class TownNpcAuthority
                 HasBulletAmmoOrWeapon: bullet,
                 HasDemolitionistBomb: bomb,
                 HasDyeTraderItem: dye);
-            playerBounds[boundsCount++] = new RuntimeTownPlayerBounds1458(
+            (float width, float height) = player.HasMount
+                ? VanillaPlayerMountHitbox1458.Resolve(player.MountType)
+                : (PlayerAuthority.VanillaBasePlayerWidth, PlayerAuthority.VanillaBasePlayerHeight);
+            var bounds = new RuntimeTownPlayerBounds1458(
                 player.PositionX,
                 player.PositionY,
-                PlayerAuthority.VanillaBasePlayerWidth,
-                PlayerAuthority.VanillaBasePlayerHeight);
+                width,
+                height);
+            playerBounds[boundsCount] = bounds;
+            players.TryGetTalkNpc(player.Connection.Player, out short talkNpcSlot);
+            bool invisible = players.HasNaturalSpawnBuffSnapshot(player.Slot.Value, VanillaBuffIds.Invisibility);
+            playerConversations[boundsCount++] = new RuntimeTownPlayerConversation1458(
+                player.Slot.Value, talkNpcSlot, bounds,
+                !player.IsDead && player.Stealth == 1f && (!invisible || player.ItemAnimation != 0));
         }
 
         if (moveIn is not null)
@@ -197,7 +211,8 @@ internal sealed class TownNpcAuthority
                 Eclipse: initialEclipse,
                 SlimeRain: worldClock?.SlimeRainActive ?? false,
                 StormingAboveSurface: false);
-            schedule.Tick(in scheduleConditions, playerBounds.AsSpan(0, boundsCount));
+            schedule.Tick(in scheduleConditions, playerBounds.AsSpan(0, boundsCount),
+                playerConversations.AsSpan(0, boundsCount));
         }
 
         combat?.Tick();

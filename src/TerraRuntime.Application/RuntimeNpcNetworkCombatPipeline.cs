@@ -395,6 +395,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
                 ApplyEvilBossDeathEffects(eaterBoss);
 
+            AnnounceBossDefeat(in dead, eaterBoss);
+
             if (VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity))
                 DropEaterOfWorldsHealingHeartIfEligible(in dead);
             if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
@@ -576,6 +578,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
             ApplyEvilBossDeathEffects(eaterBoss);
 
+        AnnounceBossDefeat(in dead, eaterBoss);
+
         if (VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity))
             DropEaterOfWorldsHealingHeartIfEligible(in dead);
         if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
@@ -706,6 +710,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             ApplyHardmodeBossDeathEffects(in dead);
         else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
             ApplyEvilBossDeathEffects(eaterBoss);
+
+        AnnounceBossDefeat(in dead, eaterBoss);
 
         if (VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity))
             DropEaterOfWorldsHealingHeartIfEligible(in dead);

@@ -33,6 +33,8 @@
     <ProjectReference Include="../TerraRuntime.HostModuleFixture/TerraRuntime.HostModuleFixture.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/creature-deep-ai003-linux-1458.json.gz" LogicalName="CreatureDeepAi003Linux1458" />
+    <EmbeddedResource Include="Fixtures/psycho-ai003-linux-1458.json.gz" LogicalName="PsychoAi003Linux1458" />
     <EmbeddedResource Include="Fixtures/prime-ranged-parent-linux-1458.json.gz" LogicalName="PrimeRangedParentLinux1458" />
     <EmbeddedResource Include="Fixtures/prime-ranged-parent-windows-1458.json.gz" LogicalName="PrimeRangedParentWindows1458" />
     <EmbeddedResource Include="Fixtures/prime-ranged-trace-linux-1458.json.gz" LogicalName="PrimeRangedTraceLinux1458" />

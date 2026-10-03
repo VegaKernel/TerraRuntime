@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-10-04 gameplay/NPC batch: Psycho and Creature from the Deep now have source-backed AI003 movement with 38,400 original complete-AI differential cases. Town chair, conversation and retained pose lifecycles use authenticated player state and ordered NPC RNG. Packet41 item animation and packet84 stealth are generation-owned and projected into NPC decisions; movement packet13 bit6 no longer masquerades as an item-animation clock. Eighty invariant mining tools use the existing authoritative melee paths, Classic King Slime has its missing reward materializers, and admitted boss summon/terminal-death routes emit source-shaped localized announcements. These bounded additions do not close complete town behavior, all fighter attacks, boss bars or the N5 parity gates; see [the NPC ledger](roadmap/npc-ai-parity.md).
+
 2026-10-03 second gameplay/NPC batch: remote Invisibility/Calming/Happy/Battle snapshots now reach source-ordered natural spawn-rate/cap rules without widening combat authority. Town commerce uses active physical NPC presence for vendor unlocks and rejects inactive or replaced residents for happiness/pylons. Endless Quiver/Musket Pouch now reach strict projectile provenance and retain their stack. Player snapshots distinguish mount activation from type zero through NPC geometry, transfer, replication and dry-physics admission. Source mount transitions and complete gameplay/NPC parity remain open.
 
 2026-10-03 gameplay/NPC integration pass: repair source-owned Moon Lord synchronization and live target velocity projection, Fishron minion targeting/loss, ordinary fighter retained damage, pre-roll player immunity, and windy-day shop state. Remaining full gameplay/NPC parity gates stay open; see [the NPC ledger](roadmap/npc-ai-parity.md).
@@ -663,6 +665,8 @@ Current pickup slice assigns the nearest eligible live player every five ticks a
 Combat integrity is not an external packet-sniffing `AntiCheat`. The intended ownership chain is `AuthoritativeCombatCalculator -> CombatValidator -> world mutation`, so normal combat and cheat resistance cannot drift into two competing gameplay implementations. Client `damage`, `crit`, projectile velocity and other combat fields become hints/diagnostics only as source-backed coverage expands.
 
 #### Authoritative item use
+
+- [x] Route the complete 80-item world-invariant, non-`shoot`, direct-melee mining-tool family through the existing shared PvE/PvP selected-inventory calculator and validator; source-pinned damage/knockback/critical/use-time/animation facts and real packet-28/117 command regressions cover every admitted tool. Ash Wood Hammer's Remix variant, projectile-tool families, exact swing geometry, tool status/secondary emissions, bags and broader item-use parity remain open. See [direct-hit scope](en/combat-damage.md).
 
 - [ ] Apply the same authoritative item-use calculation to PvE and PvP. Tools are combat sources too: pickaxes, axes and hammers with vanilla damage must pass through the same damage/cadence/range rules as swords rather than bypassing combat integrity.
 - [ ] Server determines the active weapon from authoritative inventory/equipment state.

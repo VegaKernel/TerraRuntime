@@ -39,6 +39,18 @@ internal sealed class RuntimePlayerEventFanout(
         second.PlayerAuthoritativeHealthUpdated(connection, in request);
     }
 
+    public void PlayerItemAnimationUpdated(ConnectionHandle connection, float rotation, short animation)
+    {
+        first.PlayerItemAnimationUpdated(connection, rotation, animation);
+        second.PlayerItemAnimationUpdated(connection, rotation, animation);
+    }
+
+    public void PlayerStealthUpdated(ConnectionHandle connection, float stealth)
+    {
+        first.PlayerStealthUpdated(connection, stealth);
+        second.PlayerStealthUpdated(connection, stealth);
+    }
+
     public void PlayerManaUpdated(ConnectionHandle connection, in PlayerManaCommitRequest request)
     {
         first.PlayerManaUpdated(connection, in request);

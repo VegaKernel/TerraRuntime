@@ -64,6 +64,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         }
 
         ApplyHardmodeBossDeathEffects(in current);
+        AnnounceBossDefeat(in current, eaterBoss: false);
         if (npcs.TryDespawn(current.Handle))
         {
             interactions.Forget(current.Handle);

@@ -33,10 +33,10 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
         Assert.Equal(0, fixture.State.RejectedClientNpcDamage);
         Assert.False(fixture.Npcs.TryGet(king.Handle, out _));
         Assert.Equal(0, fixture.WorldItems.ActiveCount); // Boss Bag is an unpublished leased slot.
-        Assert.Equal(4, fixture.NpcRelayedFrames); // ack + peer packet 28 + packet 23 to both players.
+        Assert.Equal(6, fixture.NpcRelayedFrames); // ack + peer packet 28 + defeat announcement and packet 23 to both players.
         Assert.Equal(1, fixture.ItemRelayedFrames); // addressed packet 90 only to the interacting player.
-        Assert.Equal(4, fixture.QueuedFrames(attacker.Source)); // baseline + ack + packet 90 + packet 23.
-        Assert.Equal(3, fixture.QueuedFrames(peer.Source)); // baseline + packet 28 + packet 23.
+        Assert.Equal(5, fixture.QueuedFrames(attacker.Source)); // baseline + ack + packet 90 + announcement + packet 23.
+        Assert.Equal(4, fixture.QueuedFrames(peer.Source)); // baseline + packet 28 + announcement + packet 23.
 
         WorldItemStateUpdate ordinary = CreateWorldItem();
         Assert.True(fixture.WorldItems.TryAllocate(in ordinary, out WorldItemSnapshot whileLeased));
@@ -47,8 +47,8 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
             fixture.State.Tick();
 
         Assert.Equal(3, fixture.ItemRelayedFrames); // packet 90 + packet 151 broadcast to two players.
-        Assert.Equal(5, fixture.QueuedFrames(attacker.Source));
-        Assert.Equal(4, fixture.QueuedFrames(peer.Source));
+        Assert.Equal(6, fixture.QueuedFrames(attacker.Source));
+        Assert.Equal(5, fixture.QueuedFrames(peer.Source));
 
         Assert.True(fixture.WorldItems.TryAllocate(in ordinary, out WorldItemSnapshot afterRelease));
         Assert.Equal((short)0, afterRelease.Handle.Slot);
