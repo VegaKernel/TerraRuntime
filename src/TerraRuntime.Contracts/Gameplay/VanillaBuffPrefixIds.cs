@@ -22,6 +22,8 @@ public static class VanillaBuffIds
     public static readonly BuffTypeId Shine = new(11);
     public static readonly BuffTypeId NightOwl = new(12);
     public static readonly BuffTypeId Battle = new(13);
+    public static readonly BuffTypeId Calming = new(106);
+    public static readonly BuffTypeId Happy = new(146);
     public static readonly BuffTypeId Thorns = new(14);
     public static readonly BuffTypeId WaterWalking = new(15);
     public static readonly BuffTypeId Archery = new(16);

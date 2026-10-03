@@ -183,7 +183,7 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
         ServerPlayerHorizontalIntent horizontalIntent)
     {
         if (horizontalIntent == ServerPlayerHorizontalIntent.Stop ||
-            player.IsDead || player.MountType != 0 ||
+            player.IsDead || player.HasMount ||
             !float.IsFinite(player.PositionX) || !float.IsFinite(player.PositionY))
         {
             return false;
@@ -210,7 +210,7 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
         ServerPlayerHorizontalIntent horizontalIntent)
     {
         if (horizontalIntent == ServerPlayerHorizontalIntent.Stop ||
-            player.IsDead || player.MountType != 0 ||
+            player.IsDead || player.HasMount ||
             !float.IsFinite(player.PositionX) || !float.IsFinite(player.PositionY))
         {
             return false;
@@ -285,7 +285,7 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
     {
         if (!player.Player.IsAssigned ||
             player.IsDead ||
-            player.MountType != 0 ||
+            player.HasMount ||
             !float.IsFinite(player.PositionX) ||
             !float.IsFinite(player.PositionY) ||
             !float.IsFinite(velocityX) ||

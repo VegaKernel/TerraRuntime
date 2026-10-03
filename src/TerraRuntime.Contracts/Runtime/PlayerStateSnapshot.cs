@@ -45,6 +45,9 @@ public readonly record struct PlayerStateSnapshot(
     float CameraTargetX,
     float CameraTargetY)
 {
+    /// <summary>Mount activation is independent of its type: vanilla mount zero is Rudolph.</summary>
+    public bool HasMount { get; init; }
+
     public bool Hostile { get; init; }
 
     public bool GodMode { get; init; }

@@ -871,7 +871,7 @@ internal sealed class DashboardWorkspaceWindow : Runnable
             RuntimePlayerSnapshot player = players[i];
             string health = player.HasHealth ? $"{player.Life}/{player.MaxLife}" : "n/a";
             string mana = player.HasMana ? $"{player.Mana}/{player.MaxMana}" : "n/a";
-            string mount = player.MountType == 0 ? "none" : player.MountType.ToString(CultureInfo.InvariantCulture);
+            string mount = !player.HasMount ? "none" : player.MountType.ToString(CultureInfo.InvariantCulture);
             lines[i] =
                 $"#{player.Slot,3} g{player.Generation,-4} c{player.ConnectionId,-5} {SanitizeName(player.Name),-20} " +
                 $"team {player.Team} pos {player.PositionX / 16f:F1},{player.PositionY / 16f:F1}t " +

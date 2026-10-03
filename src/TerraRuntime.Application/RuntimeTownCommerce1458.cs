@@ -498,7 +498,7 @@ internal sealed class RuntimeTownCommerceResolver1458
         in VanillaTownSceneMetrics1458 scene)
     {
         if (world.RemixWorld || npcType.Value is 37 or 368 or 453 ||
-            townNpcs is null || !townNpcs.TryGet(npcSlot, out WorldTownNpc town))
+            townNpcs is null || !townNpcs.TryGet(npcSlot, out WorldTownNpc town) || town.NetId != npcType.Value)
         {
             return new VanillaTownHappinessResult1458(1f, false, 0, 0);
         }
@@ -519,6 +519,8 @@ internal sealed class RuntimeTownCommerceResolver1458
         {
             if (slot == npcSlot ||
                 !townNpcs.TryGet(slot, out WorldTownNpc other) ||
+                !npcs.TryGetActive(checked((byte)slot), out NpcSnapshot otherSnapshot) ||
+                otherSnapshot.Type != other.NetId ||
                 !NpcTypeId.TryCreate(other.NetId, out NpcTypeId otherType) ||
                 otherType.Value is 37 or 368 or 453 ||
                 !VanillaTownNpcFacts1458.TryGetHousingCategory(otherType, out int otherCategory) ||
@@ -529,7 +531,7 @@ internal sealed class RuntimeTownCommerceResolver1458
 
             float ox = other.HomeTileX;
             float oy = other.HomeTileY;
-            if (other.Homeless && npcs.TryGetActive(checked((byte)slot), out NpcSnapshot otherSnapshot))
+            if (other.Homeless)
             {
                 ox = GetNpcCenterTileX(in otherSnapshot, otherType);
                 oy = GetNpcCenterTileY(in otherSnapshot, otherType);
@@ -590,7 +592,8 @@ internal sealed class RuntimeTownCommerceResolver1458
                 town.HomeTileX < left || town.HomeTileX >= right ||
                 town.HomeTileY < top || town.HomeTileY >= bottom ||
                 !NpcTypeId.TryCreate(town.NetId, out NpcTypeId type) ||
-                !npcs.TryGetActive(checked((byte)slot), out NpcSnapshot snapshot))
+                !npcs.TryGetActive(checked((byte)slot), out NpcSnapshot snapshot) ||
+                snapshot.Type != town.NetId)
             {
                 continue;
             }
@@ -603,7 +606,17 @@ internal sealed class RuntimeTownCommerceResolver1458
         return false;
     }
 
-    private bool HasTownNpc(NpcTypeId type) => townNpcs?.ContainsNpcType(type) == true;
+    private bool HasTownNpc(NpcTypeId type)
+    {
+        // Chest.SetupShop calls NPC.AnyNPCs (1.4.5.8): an active physical slot is the
+        // presence authority, including NPCs without a retained housing record.
+        for (int slot = 0; slot < RuntimeTownNpcStateStore.MaximumTownNpcs; slot++)
+        {
+            if (npcs.TryGetActive(checked((byte)slot), out NpcSnapshot npc) && npc.Type == type.Value)
+                return true;
+        }
+        return false;
+    }
 
     private static bool TryGetSpecialShop(NpcTypeId type, out VanillaTownShopId1458 shop)
     {

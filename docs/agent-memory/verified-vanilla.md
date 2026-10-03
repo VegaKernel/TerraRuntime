@@ -1,5 +1,11 @@
 # Verified vanilla facts
 
+## Second gameplay/NPC integration batch — 2026-10-03
+
+Original Linux `Mount.Initialize/SetMount/Dismount` in `.cache/mount-zero-next-probe` independently yields unmounted `20x42`, active Rudolph type zero `20x62`, and restored `20x42`. `MessageBuffer` case 13 reads mount activation from bit seven independently of its unsigned type; zero is a valid mounted identity. Source mount transition-position adjustments remain outside this representation slice.
+
+Original `Player.UpdateBuffs` plus `NPC.Spawner.GetSpawnRate` confirms remote packet-50 time 60 remains retained and derives Invisibility, Calming, Happy and Battle flags. At the ordinary empty population boundary, source rate/cap results are none `360/5`, Invisibility `432/4`, Calming `594/3`, Happy `432/4`, Battle `180/10`, combined `427/2`; candle buff icons alone do not establish scene candles. Original `NPC.AnyNPCs`, shopping settings and pylon probes pin 31 live-presence/rectangle/distance cases. Original `Item.SetDefaults/PickAmmo` pins Endless Quiver `3103` and Endless Musket Pouch `3104` as nonconsumable ammo with ordinary arrow/bullet contributions; conservation rolls still advance RNG. These original binaries run on local Windows CoreCLR and are not Linux NativeAOT acceptance.
+
 ## Gameplay/NPC integration boundaries — 2026-10-03
 
 The direct original `600x500` enclosed-basin settlement fixture executes `QuickWater`, `WaterCheck`, ten settlement rounds and final cleanup: its nineteen bottom-row water cells each retain amount `12`, total `228`, with next RNG `906992634`. Horizontal neighbour wake order is left/right at each distance; loading active entries retain membership and retire in reverse order with last-slot replacement. The previous runtime FIFO returned `247` on the same fixture. This establishes the admitted generation/loading ordering only, not complete liquid simulation parity.

@@ -12,6 +12,76 @@ namespace TerraRuntime.Tests;
 public sealed class ServerRuntimeClientProjectileIngressTests
 {
     [Theory]
+    [InlineData(3103, 39, 1, 9, 2f, 9.1f, 30, 1)]
+    [InlineData(3103, 39, 1, 9, 2f, 9.1f, 30, 50)]
+    [InlineData(3103, 39, 1, 9, 2f, 9.1f, 30, 54)]
+    [InlineData(3104, 95, 14, 20, 3f, 10f, 16, 1)]
+    [InlineData(3104, 95, 14, 20, 3f, 10f, 16, 50)]
+    [InlineData(3104, 95, 14, 20, 3f, 10f, 16, 54)]
+    [InlineData(3104, 98, 14, 13, 2f, 11f, 8, 54)]
+    public void Endless_ammo_admits_source_shots_without_consumption_and_keeps_strict_cadence(
+        int ammoType, int weaponType, int projectileType, short damage, float knockBack,
+        float speed, int useTime, short slot)
+    {
+        // Actual original 1.4.5.8 Item.SetDefaults/PickAmmo outputs, including Minishark's conservation branch.
+        using var fixture = new Fixture(playerCount: 1, projectileStepper: new NoOpProjectileStepper());
+        ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 201);
+        fixture.SetInventoryItem(owner, 0, new ItemTypeId(weaponType), 1);
+        fixture.SetInventoryItem(owner, slot, new ItemTypeId(ammoType), 1);
+        fixture.SetCombatPlayer(owner, 100f, 100f, 100, false);
+        var valid = new TerrariaProjectileUpdateState(
+            new TerrariaProjectileKeyState(owner.Player.Slot.Value, 701, 1),
+            projectileType, 120f, 100f, speed, 0f, 0f, 0f, 0f, 0, damage, knockBack, 0);
+
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, valid with { Damage = (short)(damage + 1) }));
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, valid with { VelocityX = speed + 1f }));
+        Assert.Equal(0, fixture.Projectiles.ActiveCount);
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, valid));
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(valid.Key, out ProjectileHandle first));
+        Assert.True(fixture.Projectiles.IsCombatTrusted(first));
+        Assert.True(fixture.State.TryCaptureProjectileSnapshot(first, out ProjectileSnapshot shot));
+        Assert.Equal(damage, shot.Damage);
+        Assert.Equal(knockBack, shot.KnockBack);
+        Assert.Equal(speed, shot.VelocityX, 3);
+        var second = valid with { Key = new TerrariaProjectileKeyState(owner.Player.Slot.Value, 702, 1) };
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, second));
+        Assert.False(fixture.Replication.WireIdentities.TryResolve(second.Key, out _));
+        for (int tick = 0; tick < useTime; tick++)
+            fixture.State.Tick();
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, second));
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(second.Key, out ProjectileHandle next));
+        Assert.True(fixture.Projectiles.IsCombatTrusted(next));
+        Assert.True(fixture.State.TryCapturePlayerInventoryItem(owner.Player, slot, out RuntimePlayerInventoryItem remaining));
+        Assert.Equal(new ItemTypeId(ammoType), remaining.ItemType);
+        Assert.Equal((short)1, remaining.Stack);
+    }
+
+    [Theory]
+    [InlineData(3103, 39, 40, 1, 9, 2f, 9.1f)]
+    [InlineData(3104, 95, 97, 14, 20, 3f, 10f)]
+    public void Earlier_consumable_ammo_keeps_source_priority_over_endless_stack(
+        int endlessType, int weaponType, int consumableType, int projectileType,
+        short damage, float knockBack, float speed)
+    {
+        using var fixture = new Fixture(playerCount: 1);
+        ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 202);
+        fixture.SetInventoryItem(owner, 0, new ItemTypeId(weaponType), 1);
+        fixture.SetInventoryItem(owner, VanillaPlayerItemSlotCatalog.AmmoSlotStart, new ItemTypeId(consumableType), 2);
+        fixture.SetInventoryItem(owner, (short)(VanillaPlayerItemSlotCatalog.AmmoSlotStart + 1), new ItemTypeId(endlessType), 1);
+        fixture.SetCombatPlayer(owner, 100f, 100f, 100, false);
+        var packet = new TerrariaProjectileUpdateState(
+            new TerrariaProjectileKeyState(owner.Player.Slot.Value, 703, 1),
+            projectileType, 120f, 100f, speed, 0f, 0f, 0f, 0f, 0, damage, knockBack, 0);
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, packet));
+        Assert.True(fixture.Replication.WireIdentities.TryResolve(packet.Key, out ProjectileHandle shot));
+        Assert.True(fixture.Projectiles.IsCombatTrusted(shot));
+        Assert.True(fixture.State.TryCapturePlayerInventoryItem(owner.Player, VanillaPlayerItemSlotCatalog.AmmoSlotStart, out RuntimePlayerInventoryItem consumed));
+        Assert.Equal((short)1, consumed.Stack);
+        Assert.True(fixture.State.TryCapturePlayerInventoryItem(owner.Player, VanillaPlayerItemSlotCatalog.AmmoSlotStart + 1, out RuntimePlayerInventoryItem endless));
+        Assert.Equal((short)1, endless.Stack);
+    }
+
+    [Theory]
     [InlineData((ushort)9)]
     [InlineData((ushort)0)]
     public void Unknown_packet27_allocates_first_physical_slot_and_exact_key_updates_same_handle(ushort generation)

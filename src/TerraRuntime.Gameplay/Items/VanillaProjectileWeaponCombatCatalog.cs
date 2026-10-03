@@ -124,6 +124,10 @@ public static class VanillaProjectileWeaponCombatCatalog
         new(VanillaItemIds.JestersArrow, VanillaProjectileIds.JestersArrow, VanillaProjectileAmmoFamily.Arrow, 10, 4f, 0.5f, true),
         new(VanillaItemIds.MusketBall, VanillaProjectileIds.Bullet, VanillaProjectileAmmoFamily.Bullet, 7, 2f, 4f, true),
         new(VanillaItemIds.SilverBullet, VanillaProjectileIds.SilverBullet, VanillaProjectileAmmoFamily.Bullet, 9, 3f, 4.5f, true),
+        // Item.SetDefaults cases 3103/3104 retain the ordinary arrow/bullet contributions without consumable.
+        // Player.PickAmmo still evaluates weapon/accessory conservation rolls before its consumable gate.
+        new(VanillaItemIds.EndlessQuiver, VanillaProjectileIds.WoodenArrowFriendly, VanillaProjectileAmmoFamily.Arrow, 5, 2f, 3f, false),
+        new(VanillaItemIds.EndlessMusketPouch, VanillaProjectileIds.Bullet, VanillaProjectileAmmoFamily.Bullet, 7, 2f, 4f, false),
         // Rocket ammo stores an offset in Item.shoot. PickAmmo adds it to the launcher's base projectile.
         new(VanillaItemIds.RocketI, new ProjectileTypeId(0), VanillaProjectileAmmoFamily.Rocket, 40, 4f, 0f, true, VanillaProjectileAmmoTransform.AddToWeaponProjectile),
         new(VanillaItemIds.RocketII, new ProjectileTypeId(3), VanillaProjectileAmmoFamily.Rocket, 40, 4f, 0f, true, VanillaProjectileAmmoTransform.AddToWeaponProjectile),

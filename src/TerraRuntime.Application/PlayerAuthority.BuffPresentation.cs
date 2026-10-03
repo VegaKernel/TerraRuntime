@@ -21,6 +21,11 @@ internal sealed partial class PlayerAuthority
             ? transferProfiles.GetBuffDuration(member.Connection, type)
             : type == VanillaBuffIds.MoonLeech ? serverPlayers?.GetMoonLeechDuration(player) ?? 0 : 0;
 
+    // Spawn-only flags follow remote Player.UpdateBuffs; this does not admit combat modifiers.
+    internal bool HasNaturalSpawnBuffSnapshot(byte slot, BuffTypeId type) =>
+        membership.TryGet(new PlayerSlotId(slot), out RuntimePlayerMember? member) &&
+        transferProfiles.GetBuffDuration(member.Connection, type) > 0;
+
     internal bool HasMoonLeech(byte slot) =>
         transferProfiles.HasBuff(slot, VanillaBuffIds.MoonLeech) ||
         (serverPlayers is not null && serverPlayers.TryGet(new PlayerSlotId(slot), out var player) &&

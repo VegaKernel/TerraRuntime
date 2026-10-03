@@ -1,5 +1,7 @@
 # Player runtime ownership
 
+`PlayerStateSnapshot.HasMount` represents activation separately from the mount identity. Producers must set it for every active mount, including type zero; setting only `MountType` does not activate a mount. Movement commands obtain it from the normalized packet-presence bit. Snapshot replication, NPC geometry and preserved-position transfers consume it; respawn and destination spawn placement clear it. This is transient player state and adds no world-file field.
+
 [Русский](../ru/player-runtime-ownership.md) · [Architecture](architecture.md)
 
 ## Ownership rule

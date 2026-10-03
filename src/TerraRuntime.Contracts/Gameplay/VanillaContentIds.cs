@@ -561,6 +561,8 @@ public static class VanillaItemIds
     public static readonly ItemTypeId SolarFlareHelmet = new(2763);
     public static readonly ItemTypeId SolarFlareBreastplate = new(2764);
     public static readonly ItemTypeId SolarFlareLeggings = new(2765);
+    public static readonly ItemTypeId EndlessQuiver = new(3103);
+    public static readonly ItemTypeId EndlessMusketPouch = new(3104);
     public static readonly ItemTypeId CelestialShell = new(3110);
 
     public static bool TryCreate(int rawType, out ItemTypeId type)

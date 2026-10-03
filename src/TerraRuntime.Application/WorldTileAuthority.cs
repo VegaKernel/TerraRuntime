@@ -1695,7 +1695,7 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         // Packet 17 is still the ordinary KillTile action, so the selected inventory item is not the authority
         // source. Require the live mount/control state and the summon item in ordinary inventory; unknown mounts
         // and item-less mount claims remain fail-closed.
-        if (player.MountType != DrillMountType1458 ||
+        if (!player.HasMount || player.MountType != DrillMountType1458 ||
             (player.ControlFlags & ControlUseItemFlag) == 0)
         {
             pickPower = 0;

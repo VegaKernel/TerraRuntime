@@ -104,6 +104,7 @@ internal sealed class RuntimePlayerOperationsTelemetry : IRuntimePlayerEventSink
         float velocityY = request.HasVelocity ? request.VelocityY : 0f;
         byte selectedItem = request.SelectedItem;
         ushort mountType = request.HasMount ? request.MountType : (ushort)0;
+        bool hasMount = request.HasMount;
         UpdateLive(
             connection,
             current => current with
@@ -113,7 +114,8 @@ internal sealed class RuntimePlayerOperationsTelemetry : IRuntimePlayerEventSink
                 VelocityX = velocityX,
                 VelocityY = velocityY,
                 SelectedItem = selectedItem,
-                MountType = mountType
+                MountType = mountType,
+                HasMount = hasMount
             });
     }
 

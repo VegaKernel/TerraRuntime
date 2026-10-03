@@ -1,5 +1,7 @@
 # Vanilla NPC and AI parity roadmap
 
+2026-10-03 second integration batch: four observed remote-player buff flags are projected through the existing generation-owned state only for natural spawn rates/caps. Active physical NPC presence now governs town vendor dependencies, happiness neighbours and pylon counts. Player activation is represented separately from mount type zero; NPC targets receive Rudolph's source body without enlarging unmounted players. These are bounded authority and projection fixes; `FullVanillaAiParity` stays false.
+
 ## Gameplay/NPC integration repair — 2026-10-03
 
 Moon Lord head/hand source `netUpdate` intents now publish once on the accepted state transition; redundant zero-distance post-commit mutations are removed. Fishron AI `70`/`71` target-loss, emergence-to-charge retargeting and Bubble bootstrap/contact synchronization are explicit. Tiny positive world dimensions accepted by `WorldDimensions` also reach NPC authority without an invented minimum-height rejection. Ordinary AI `003` preserves retained damage; only armed attack families restore their source base damage. Retained official fixtures and focused negative controls cover these bounded repairs. Controlled bat motion excludes the Red Devil shooter.

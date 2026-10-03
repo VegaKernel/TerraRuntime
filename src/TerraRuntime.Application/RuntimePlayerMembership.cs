@@ -224,6 +224,7 @@ internal sealed class RuntimePlayerMember
     public float VelocityX { get; set; }
     public float VelocityY { get; set; }
     public ushort MountType { get; set; }
+    public bool HasMount { get; set; }
     public float PotionOfReturnOriginalPositionX { get; set; }
     public float PotionOfReturnOriginalPositionY { get; set; }
     public float PotionOfReturnHomePositionX { get; set; }
@@ -262,6 +263,7 @@ internal sealed class RuntimePlayerMember
             CameraTargetX,
             CameraTargetY)
         {
+            HasMount = HasMount,
             Hostile = Hostile,
             HasHealth = HasHealth,
             Life = Life,

@@ -7,6 +7,31 @@ namespace TerraRuntime.Tests;
 
 public sealed class VanillaCombatIntegrityCatalogTests
 {
+    [Theory]
+    [InlineData(39, 3103, 1, 9, 2f, 9.1f, false)]
+    [InlineData(95, 3104, 14, 20, 3f, 10f, false)]
+    [InlineData(98, 3104, 14, 13, 2f, 11f, false)]
+    [InlineData(39, 3103, 1, 9, 2f, 10.01f, true)]
+    public void Endless_ammo_matches_original_pickammo_outputs(
+        int weaponType, int ammoType, int projectileType, int damage, float knockBack,
+        float speed, bool magicQuiver)
+    {
+        // Independently executed TerrariaServer 1.4.5.8 PickAmmo, seeded 1458, retains stack one.
+        // Minishark and Magic Quiver still draw their conservation RNG: next 1335025742 instead of 906992634.
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryGetWeapon(new ItemTypeId(weaponType), out var weapon));
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryGetAmmo(weapon.AmmoFamily, new ItemTypeId(ammoType), out var ammo));
+        Assert.False(ammo.Consumable);
+        Assert.True(VanillaItemCombatCatalog.TryGetRangedPrefixModifiers(VanillaPrefixIds.None, out var prefix));
+        var attacker = VanillaPlayerCombatSnapshot.Baseline with { MagicQuiver = magicQuiver };
+        Assert.True(VanillaProjectileWeaponCombatCatalog.TryResolveProjectileType(in weapon, in ammo, out var projectile));
+        Assert.Equal(projectileType, projectile.Value);
+        Assert.Equal(damage, VanillaProjectileWeaponCombatCatalog.ResolveDamage(in weapon, in ammo, in prefix, in attacker));
+        Assert.Equal(knockBack, VanillaProjectileWeaponCombatCatalog.ResolveKnockBack(in weapon, in ammo, in prefix, in attacker));
+        Assert.Equal(speed, VanillaProjectileWeaponCombatCatalog.ResolveLaunchSpeedEnvelope(in weapon, in ammo, in prefix, in attacker).CanonicalMagnitude, 3);
+        Assert.True(VanillaProjectileWeaponCombatCatalog.ShouldConserveAmmo(in weapon, in ammo, in attacker, 0, 0));
+        Assert.True(VanillaProjectileWeaponCombatCatalog.ShouldConserveAmmo(in weapon, in ammo, in attacker, 1, 1));
+    }
+
     [Fact]
     public void Direct_melee_catalog_is_opt_in_and_source_backed()
     {

@@ -1051,9 +1051,8 @@ internal sealed partial class NpcAuthority
         out int maxSpawns)
     {
         // TerrariaServer 1.4.5.8 NPC.Spawner.GetSpawnRate defaults are 600 ticks / 5 NPC slots.  This
-        // follows every branch whose world facts are server-owned in this runtime; per-player buffs,
-        // candles and Journey slider input remain outside this authority until they have an authoritative
-        // state projection.
+        // World facts and supported remote-player buff snapshots are owned by the world loop.
+        // Journey slider input and equipment spawn modifiers still require their own state projection.
         const int defaultSpawnRate = 600;
         const int defaultMaxSpawns = 5;
         spawnRate = defaultSpawnRate;
@@ -1285,6 +1284,30 @@ internal sealed partial class NpcAuthority
         {
             spawnRate = (int)(spawnRate * .8d);
             maxSpawns *= 2;
+        }
+
+        // MessageBuffer case 50 installs remote buff types with time 60; Player.UpdateBuffs derives
+        // these four flags without decrementing remote timers. Preserve the GetSpawnRate ordering:
+        // occupancy first, then Invisibility, Calming, Happy, Battle, and scene candles.
+        if (players.HasNaturalSpawnBuffSnapshot(player.Slot, VanillaBuffIds.Invisibility))
+        {
+            spawnRate = (int)(spawnRate * 1.2f);
+            maxSpawns = (int)(maxSpawns * .8f);
+        }
+        if (players.HasNaturalSpawnBuffSnapshot(player.Slot, VanillaBuffIds.Calming))
+        {
+            spawnRate = (int)(spawnRate * 1.65f);
+            maxSpawns = (int)(maxSpawns * .6f);
+        }
+        if (players.HasNaturalSpawnBuffSnapshot(player.Slot, VanillaBuffIds.Happy))
+        {
+            spawnRate = (int)(spawnRate * 1.2f);
+            maxSpawns = (int)(maxSpawns * .8f);
+        }
+        if (players.HasNaturalSpawnBuffSnapshot(player.Slot, VanillaBuffIds.Battle))
+        {
+            spawnRate = (int)(spawnRate * .5d);
+            maxSpawns = (int)(maxSpawns * 2f);
         }
 
         if (scene is { ZoneWaterCandle: true } candleScene)
@@ -1907,9 +1930,7 @@ internal sealed partial class NpcAuthority
         {
             if (players.TryGet(checked((byte)slot), out RuntimePlayerMember? player))
             {
-                // Runtime player state reserves MountType zero for unmounted; source mount zero's
-                // Rudolph height must not enlarge ordinary player targets.
-                (float memberWidth, float memberHeight) = player.MountType == 0
+                (float memberWidth, float memberHeight) = !player.HasMount
                     ? (VanillaPlayerHitboxFacts.BaseWidth, VanillaPlayerHitboxFacts.BaseHeight)
                     : VanillaPlayerMountHitbox1458.Resolve(player.MountType);
                 destination[written++] = WithPlayerWorldFacts(new VanillaNpcTargetCandidate(
@@ -1944,7 +1965,7 @@ internal sealed partial class NpcAuthority
             }
 
             PlayerStateSnapshot serverPlayer = serverPlayerSnapshots[serverPlayerIndex++];
-            (float mountWidth, float mountHeight) = serverPlayer.MountType == 0
+            (float mountWidth, float mountHeight) = !serverPlayer.HasMount
                 ? (VanillaPlayerHitboxFacts.BaseWidth, VanillaPlayerHitboxFacts.BaseHeight)
                 : VanillaPlayerMountHitbox1458.Resolve(serverPlayer.MountType);
             destination[written++] = WithPlayerWorldFacts(new VanillaNpcTargetCandidate(

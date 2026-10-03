@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-10-03 second gameplay/NPC batch: remote Invisibility/Calming/Happy/Battle snapshots now reach source-ordered natural spawn-rate/cap rules without widening combat authority. Town commerce uses active physical NPC presence for vendor unlocks and rejects inactive or replaced residents for happiness/pylons. Endless Quiver/Musket Pouch now reach strict projectile provenance and retain their stack. Player snapshots distinguish mount activation from type zero through NPC geometry, transfer, replication and dry-physics admission. Source mount transitions and complete gameplay/NPC parity remain open.
+
 2026-10-03 gameplay/NPC integration pass: repair source-owned Moon Lord synchronization and live target velocity projection, Fishron minion targeting/loss, ordinary fighter retained damage, pre-roll player immunity, and windy-day shop state. Remaining full gameplay/NPC parity gates stay open; see [the NPC ledger](roadmap/npc-ai-parity.md).
 
 2026-09-21 Vampire forms: AI_014 type 158 and AI_003 type 159 now use pinned source defaults and the bidirectional source transform. Flying Vampire converts only below a visible player inside 200 pixels; humanoid Vampire returns to flight beyond 300 pixels. The transition preserves the lower edge, scales life through `NPC.Transform`, resets AI-local state and retargets. Humanoid reversal damping and its six-pixel speed cap are source-backed; projectile-shooting AI_014 variants remain open.

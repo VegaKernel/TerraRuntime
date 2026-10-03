@@ -178,18 +178,22 @@ public sealed class VanillaServerPlayerDryPhysicsStepperTests
         Assert.True(stepper.ShouldAscendPastObstacle(in airborne, ServerPlayerHorizontalIntent.Right));
     }
 
-    [Fact]
-    public void Dead_and_mounted_players_are_outside_the_verified_dry_slice()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void Dead_and_mounted_players_are_outside_the_verified_dry_slice(ushort mountType)
     {
         WorldTileStore tiles = CreateWorld();
         using SpawnedServerPlayer player = Spawn(positionX: 96f, positionY: 80f);
         var stepper = new VanillaServerPlayerDryPhysicsStepper(tiles);
 
         PlayerStateSnapshot dead = player.Snapshot with { IsDead = true };
-        PlayerStateSnapshot mounted = player.Snapshot with { MountType = 1 };
+        PlayerStateSnapshot mounted = player.Snapshot with { MountType = mountType, HasMount = true };
 
         Assert.False(stepper.TryStep(in dead, out _));
         Assert.False(stepper.TryStep(in mounted, out _));
+        Assert.False(stepper.ShouldAutoJumpObstacle(in mounted, ServerPlayerHorizontalIntent.Right));
+        Assert.False(stepper.ShouldAscendPastObstacle(in mounted, ServerPlayerHorizontalIntent.Right));
     }
 
     [Fact]

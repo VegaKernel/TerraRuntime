@@ -644,6 +644,7 @@ internal sealed partial class PlayerAuthority
         player.VelocityX = 0f;
         player.VelocityY = 0f;
         player.MountType = 0;
+        player.HasMount = false;
         player.PotionOfReturnOriginalPositionX = 0f;
         player.PotionOfReturnOriginalPositionY = 0f;
         player.PotionOfReturnHomePositionX = 0f;
@@ -804,6 +805,7 @@ internal sealed partial class PlayerAuthority
         player.VelocityX = request.HasVelocity ? request.VelocityX : 0f;
         player.VelocityY = request.HasVelocity ? request.VelocityY : 0f;
         player.MountType = request.HasMount ? request.MountType : (ushort)0;
+        player.HasMount = request.HasMount;
         player.PotionOfReturnOriginalPositionX = request.HasPotionOfReturnPositions
             ? request.PotionOfReturnOriginalPositionX
             : 0f;

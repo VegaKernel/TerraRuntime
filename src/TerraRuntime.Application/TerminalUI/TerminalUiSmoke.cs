@@ -331,7 +331,7 @@ internal static class TerminalUiSmoke
                     MaxLife: 100,
                     HasMana: true,
                     Mana: 20,
-                    MaxMana: 20)
+                    MaxMana: 20) { HasMount = true }
             ];
             return new RuntimePlayersSnapshot(players.AsMemory(), DateTimeOffset.UtcNow);
         }

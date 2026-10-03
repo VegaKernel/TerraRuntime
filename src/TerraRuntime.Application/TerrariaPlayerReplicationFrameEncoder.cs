@@ -176,7 +176,7 @@ internal static class TerrariaPlayerReplicationFrameEncoder
             HasVelocity: true,
             player.VelocityX,
             player.VelocityY,
-            HasMount: player.MountType != 0,
+            HasMount: player.HasMount,
             player.MountType,
             HasPotionOfReturnPositions: false,
             player.PotionOfReturnOriginalPositionX,

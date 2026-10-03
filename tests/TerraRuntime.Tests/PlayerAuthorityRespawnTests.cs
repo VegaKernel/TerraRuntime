@@ -29,6 +29,7 @@ public sealed class PlayerAuthorityRespawnTests
         Assert.True(authority.TryApply(new PlayerMovementRuntimeCommand(connection, movement)));
         Assert.True(authority.TryCapture(connection.Player, out PlayerStateSnapshot beforeRespawn));
         Assert.Equal((ushort)2, beforeRespawn.MountType);
+        Assert.True(beforeRespawn.HasMount);
         Assert.Equal(1f, beforeRespawn.PotionOfReturnOriginalPositionX);
         Assert.Equal(5f, beforeRespawn.CameraTargetX);
 
@@ -46,6 +47,7 @@ public sealed class PlayerAuthorityRespawnTests
         Assert.Equal(0f, state.VelocityX);
         Assert.Equal(0f, state.VelocityY);
         Assert.Equal((ushort)0, state.MountType);
+        Assert.False(state.HasMount);
         Assert.Equal(0f, state.PotionOfReturnOriginalPositionX);
         Assert.Equal(0f, state.PotionOfReturnOriginalPositionY);
         Assert.Equal(0f, state.PotionOfReturnHomePositionX);

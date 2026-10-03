@@ -6,8 +6,10 @@ namespace TerraRuntime.Tests;
 
 public sealed class RuntimePlayerOperationsTelemetryTests
 {
-    [Fact]
-    public void Authoritative_events_publish_generation_safe_player_snapshot()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(11)]
+    public void Authoritative_events_publish_generation_safe_player_snapshot(ushort mountType)
     {
         var telemetry = new RuntimePlayerOperationsTelemetry();
         GameCommandSourceId source = GameCommandSourceId.FromConnection(7);
@@ -40,7 +42,7 @@ public sealed class RuntimePlayerOperationsTelemetryTests
             VelocityX: 1.5f,
             VelocityY: -2.25f,
             HasMount: true,
-            MountType: 11,
+            MountType: mountType,
             HasPotionOfReturnPositions: false,
             PotionOfReturnOriginalPositionX: 0f,
             PotionOfReturnOriginalPositionY: 0f,
@@ -64,7 +66,8 @@ public sealed class RuntimePlayerOperationsTelemetryTests
         Assert.Equal(1.5f, live.VelocityX);
         Assert.Equal(-2.25f, live.VelocityY);
         Assert.Equal((byte)8, live.SelectedItem);
-        Assert.Equal((ushort)11, live.MountType);
+        Assert.Equal(mountType, live.MountType);
+        Assert.True(live.HasMount);
         Assert.True(live.HasHealth);
         Assert.Equal((short)87, live.Life);
         Assert.Equal((short)100, live.MaxLife);
@@ -89,6 +92,7 @@ public sealed class RuntimePlayerOperationsTelemetryTests
         Assert.Equal(0f, live.VelocityY);
         Assert.Equal((byte)9, live.SelectedItem);
         Assert.Equal((ushort)0, live.MountType);
+        Assert.False(live.HasMount);
 
         telemetry.PlayerDisconnected(connection);
         Assert.Equal(0, telemetry.CaptureSnapshot().Players.Length);

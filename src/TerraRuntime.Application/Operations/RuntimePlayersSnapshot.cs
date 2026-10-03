@@ -18,7 +18,10 @@ internal readonly record struct RuntimePlayerSnapshot(
     short MaxLife,
     bool HasMana,
     short Mana,
-    short MaxMana);
+    short MaxMana)
+{
+    public bool HasMount { get; init; }
+}
 
 internal readonly record struct RuntimePlayersSnapshot(
     ReadOnlyMemory<RuntimePlayerSnapshot> Players,

@@ -753,6 +753,7 @@ public sealed class Level1PlayerTransferTests
             CameraTargetY: 0f)
         {
             HasHealth = true,
+            HasMount = true,
             Life = life,
             MaxLife = maxLife,
             IsDead = dead,

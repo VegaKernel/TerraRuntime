@@ -165,6 +165,7 @@ internal sealed partial class PlayerAuthority
             VelocityX = preservePosition ? previous.VelocityX : 0f,
             VelocityY = preservePosition ? previous.VelocityY : 0f,
             MountType = preservePosition ? previous.MountType : (ushort)0,
+            HasMount = preservePosition && previous.HasMount,
             PotionOfReturnOriginalPositionX = preservePosition ? previous.PotionOfReturnOriginalPositionX : 0f,
             PotionOfReturnOriginalPositionY = preservePosition ? previous.PotionOfReturnOriginalPositionY : 0f,
             PotionOfReturnHomePositionX = preservePosition ? previous.PotionOfReturnHomePositionX : 0f,
@@ -250,7 +251,7 @@ internal sealed partial class PlayerAuthority
             HasVelocity: state.VelocityX != 0f || state.VelocityY != 0f,
             state.VelocityX,
             state.VelocityY,
-            HasMount: state.MountType != 0,
+            HasMount: state.HasMount,
             state.MountType,
             HasPotionOfReturnPositions: preservePosition &&
                 (state.PotionOfReturnOriginalPositionX != 0f || state.PotionOfReturnOriginalPositionY != 0f ||
