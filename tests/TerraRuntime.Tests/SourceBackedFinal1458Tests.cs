@@ -590,6 +590,37 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Tile_cleanup_type_162_fixture_matches_official_passlegacy_cells_and_rng()
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy fixture: an unattached type 162 clears only its
+        // active bit. The two inactive neighbours also retain the source's ordinary drip RNG offers.
+        const int width = 600;
+        const int height = 500;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            workspace.TileStore.Set(x, y, in stone);
+        var target = new WorldTile { Type = 162, Flags = WorldTileFlags.Active };
+        var empty = new WorldTile();
+        workspace.TileStore.Set(300, 200, in target);
+        workspace.TileStore.Set(300, 199, in empty);
+        workspace.TileStore.Set(300, 201, in empty);
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height), workspace, random));
+
+        WorldTile cleared = workspace.TileStore.Get(300, 200);
+        Assert.False(cleared.IsActive);
+        Assert.Equal((ushort)162, cleared.Type);
+        Assert.Equal(1507290721, random.Next());
+    }
+
+    [Fact]
     public void Tile_cleanup_life_crystal_fixture_matches_official_passlegacy_cells_and_rng()
     {
         // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1458: the sole lower-right
