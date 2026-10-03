@@ -422,6 +422,45 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Tile_cleanup_basic_chest_fixture_matches_official_passlegacy_cells_and_rng()
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1458: the sole lower-right
+        // ordinary chest piece is restored to a 2x2 style-0 chest over its already-solid stone support.
+        // Official next shared genRand is 906992634.
+        const int width = 600;
+        const int height = 500;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            workspace.TileStore.Set(x, y, in stone);
+
+        var chestPiece = new WorldTile { Type = 21, Flags = WorldTileFlags.Active, FrameX = 18, FrameY = 18 };
+        workspace.TileStore.Set(300, 200, in chestPiece);
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height),
+                workspace,
+                random));
+
+        for (int dx = 0; dx < 2; dx++)
+        for (int dy = 0; dy < 2; dy++)
+        {
+            WorldTile chest = workspace.TileStore.Get(299 + dx, 199 + dy);
+            Assert.True(chest.IsActive);
+            Assert.Equal((ushort)21, chest.Type);
+            Assert.Equal((short)(dx * 18), chest.FrameX);
+            Assert.Equal((short)(dy * 18), chest.FrameY);
+        }
+
+        Assert.Equal(906992634, random.Next());
+    }
+
+    [Fact]
     public void Lihzahrd_altar_consumes_the_retained_temple_anchor_without_rng_or_site_search()
     {
         // TerrariaServer 1.4.5.8 GenPassNameID.LihzahrdAltar writes GenVars.lAltarX/lAltarY directly:
