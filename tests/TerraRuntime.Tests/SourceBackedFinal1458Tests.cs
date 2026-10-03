@@ -534,6 +534,44 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Tile_cleanup_shadow_orb_fixture_matches_official_passlegacy_cells_and_rng()
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1458: the lower-right
+        // framed source piece restores the ordinary type-31 frame bank at (299..300,199..200): in
+        // a non-Crimson ordinary world the source ignores its old horizontal style and chooses bank zero.
+        const int width = 600;
+        const int height = 500;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            workspace.TileStore.Set(x, y, in stone);
+
+        var orbPiece = new WorldTile { Type = 31, Flags = WorldTileFlags.Active, FrameX = 54, FrameY = 18 };
+        workspace.TileStore.Set(300, 200, in orbPiece);
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height),
+                workspace,
+                random));
+
+        for (int dx = 0; dx < 2; dx++)
+        for (int dy = 0; dy < 2; dy++)
+        {
+            WorldTile orb = workspace.TileStore.Get(299 + dx, 199 + dy);
+            Assert.True(orb.IsActive);
+            Assert.Equal((ushort)31, orb.Type);
+            Assert.Equal((short)(dx * 18), orb.FrameX);
+            Assert.Equal((short)(dy * 18), orb.FrameY);
+        }
+        Assert.Equal(906992634, random.Next());
+    }
+
+    [Fact]
     public void Tile_cleanup_crimson_heart_fixture_matches_official_passlegacy_cells_and_rng()
     {
         // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1458, ordinary corruption:
