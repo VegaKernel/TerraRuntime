@@ -172,6 +172,39 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Tile_cleanup_type_379_fixture_matches_official_passlegacy_rng_and_target()
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1458: a type-379 ceiling
+        // is deliberately marked solid before TileCleanup, but the pass clears that temporary solidity.
+        // The target remains inactive and the next shared genRand value is 1335025742.
+        const int width = 600;
+        const int height = 500;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            workspace.TileStore.Set(x, y, in stone);
+
+        var inactiveWater = new WorldTile { LiquidAmount = 128, LiquidKind = WorldLiquidKind.Water };
+        var bubble = new WorldTile { Type = 379, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(300, 198, in inactiveWater);
+        workspace.TileStore.Set(300, 199, in bubble);
+        workspace.TileStore.Set(300, 200, default);
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.TileCleanup, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height),
+                workspace,
+                random));
+
+        Assert.False(workspace.TileStore.Get(300, 200).IsActive);
+        Assert.Equal(1335025742, random.Next());
+    }
+
+    [Fact]
     public void Tile_cleanup_repairs_every_piece_of_a_broken_crimson_heart()
     {
         var workspace = new Workspace(100, 100);
