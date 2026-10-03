@@ -764,7 +764,10 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 }
             }
 
-            for (int y = grid.Height - 1; y > surface; y--)
+            // Main.UnderworldLayer is the source's top-of-underworld line (ordinary worlds use the
+            // maxTilesY-200 convention); the seaweed scan must not inspect the lava layer below it.
+            int underworldLayer = Math.Clamp(grid.Height - 200, surface + 1, grid.Height - 1);
+            for (int y = underworldLayer; y > surface; y--)
             {
                 WorldTile tile = grid.At(x, y);
                 if (!tile.IsActive)
