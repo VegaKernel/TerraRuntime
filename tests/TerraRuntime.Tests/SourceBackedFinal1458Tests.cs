@@ -74,12 +74,15 @@ public sealed class SourceBackedFinal1458Tests
         workspace.TileStore.Set(600, 100, in unsafeLiquid);
         var plant = new WorldTile { Type = 314, Flags = WorldTileFlags.Active };
         workspace.TileStore.Set(700, 100, in plant);
-        for (int y = 85; y <= 101; y++)
+        for (int y = 85; y <= 100; y++)
         {
             var water = workspace.TileStore.Get(700, y);
             water.LiquidAmount = 100;
             workspace.TileStore.Set(700, y, in water);
         }
+        var belowWaterColumn = workspace.TileStore.Get(700, 101);
+        belowWaterColumn.LiquidAmount = byte.MaxValue;
+        workspace.TileStore.Set(700, 101, in belowWaterColumn);
         var hanging = new WorldTile { Type = 332, Flags = WorldTileFlags.Active };
         workspace.TileStore.Set(800, 100, in hanging);
 
@@ -96,11 +99,63 @@ public sealed class SourceBackedFinal1458Tests
         WorldTile lava = workspace.TileStore.Get(600, 100);
         Assert.Equal(byte.MaxValue, lava.LiquidAmount);
         Assert.Equal(WorldLiquidKind.Lava, lava.LiquidKind);
-        for (int y = 85; y <= 101; y++) Assert.Equal((byte)0, workspace.TileStore.Get(700, y).LiquidAmount);
+        for (int y = 85; y <= 100; y++) Assert.Equal((byte)0, workspace.TileStore.Get(700, y).LiquidAmount);
+        Assert.Equal(byte.MaxValue, workspace.TileStore.Get(700, 101).LiquidAmount);
         WorldTile support = workspace.TileStore.Get(800, 101);
         Assert.True(support.IsActive);
         Assert.Equal((ushort)332, support.Type);
         Assert.Equal((byte)0, support.LiquidAmount);
+    }
+
+    [Fact]
+    public void Final_cleanup_repairs_boulder_frames_then_replaces_boulders_blocked_by_a_heart()
+    {
+        // TerrariaServer 1.4.5.8 FinalCleanup first restores the frame-derived 2x2 boulder footprint;
+        // a Crimson Heart directly above then converts it to empty active cells (or Sand for tile 484).
+        var workspace = new Workspace(100, 100);
+        Assert.True(workspace.TrySetLayers(40, 60));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        var fragment = new WorldTile { Type = 484, Flags = WorldTileFlags.Active, FrameX = 18, FrameY = 18 };
+        workspace.TileStore.Set(51, 51, in fragment);
+        var heart = new WorldTile { Type = 26, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(50, 49, in heart);
+
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100), workspace, new RandomAdapter(1458)));
+
+        for (int x = 50; x <= 51; x++)
+        for (int y = 50; y <= 51; y++)
+        {
+            WorldTile repaired = workspace.TileStore.Get(x, y);
+            Assert.True(repaired.IsActive);
+            Assert.Equal((ushort)397, repaired.Type);
+            Assert.Equal((short)0, repaired.FrameX);
+            Assert.Equal((short)0, repaired.FrameY);
+        }
+    }
+
+    [Fact]
+    public void Final_cleanup_fills_a_small_open_wall_gap_with_its_dominant_boundary_wall()
+    {
+        // TerrariaServer 1.4.5.8 FillWallHolesInArea flood-fills a bounded open gap before the
+        // Final Cleanup scan; a sealed singleton is deliberately left alone.
+        var workspace = new Workspace(100, 100);
+        Assert.True(workspace.TrySetLayers(60, 80));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        for (int x = 49; x <= 52; x++)
+        for (int y = 49; y <= 51; y++)
+        {
+            if (x is 50 or 51 && y == 50)
+                continue;
+            var solid = new WorldTile { Type = 1, Flags = WorldTileFlags.Active, Wall = 4 };
+            workspace.TileStore.Set(x, y, in solid);
+        }
+
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100), workspace, new RandomAdapter(1458)));
+
+        Assert.Equal((ushort)4, workspace.TileStore.Get(50, 50).Wall);
+        Assert.Equal((ushort)4, workspace.TileStore.Get(51, 50).Wall);
     }
 
     [Fact]
