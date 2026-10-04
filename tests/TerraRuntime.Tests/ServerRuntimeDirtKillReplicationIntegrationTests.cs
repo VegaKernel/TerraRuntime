@@ -71,8 +71,8 @@ public sealed class ServerRuntimeDirtKillReplicationIntegrationTests
     private static void AssertDirtDrop(in TerrariaWorldItemDropState drop)
     {
         Assert.Equal((short)0, drop.ItemIndex);
-        Assert.Equal(162f, drop.PositionX);
-        Assert.Equal(162f, drop.PositionY);
+        Assert.Equal(160f, drop.PositionX);
+        Assert.Equal(160f, drop.PositionY);
         Assert.InRange(drop.VelocityX, -3f, 3f);
         Assert.InRange(drop.VelocityY, -4f, -1.6f);
         Assert.Equal((short)1, drop.Stack);

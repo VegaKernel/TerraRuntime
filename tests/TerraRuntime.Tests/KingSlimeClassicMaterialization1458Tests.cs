@@ -67,7 +67,7 @@ public sealed class KingSlimeClassicMaterialization1458Tests
         Assert.Equal(1, state.AppliedClientNpcDamage);
         Assert.False(npcs.TryGet(king.Handle, out _));
         Span<WorldItemSnapshot> drops = stackalloc WorldItemSnapshot[
-            VanillaKingSlimeNormalLootCatalog.MaximumDropCount + VanillaBossRecovery1458.MaximumRecoveryDrops];
+            items.Capacity];
         int count = items.CopyActive(drops);
         Assert.Equal(items.ActiveCount, count);
         var recovery = drops[..count].ToArray();
@@ -75,7 +75,8 @@ public sealed class KingSlimeClassicMaterialization1458Tests
         Assert.InRange(potion.Stack, 5, 15);
         Assert.InRange(recovery.Count(drop => drop.ItemNetId == VanillaWallOfFleshItemIds.Heart.Value), 5, 9);
         Assert.All(recovery.Where(drop => drop.ItemNetId == VanillaWallOfFleshItemIds.Heart.Value), drop => Assert.Equal((short)1, drop.Stack));
-        Assert.InRange(recovery.Count(drop => drop.ItemNetId is not (28 or 58)), 3, 7);
+        Assert.InRange(recovery.Count(drop => drop.ItemNetId is not (28 or 58) && !VanillaCoinFacts.TryGetValue(new(drop.ItemNetId), out _)), 3, 7);
+        Assert.Contains(recovery, drop => VanillaCoinFacts.TryGetValue(new(drop.ItemNetId), out _));
         var ids = drops[..count].ToArray().Select(drop => drop.ItemNetId).ToArray();
         Assert.Single(ids, id => id is 256 or 257 or 258);
         Assert.Single(ids, id => id is 2585 or 2610);

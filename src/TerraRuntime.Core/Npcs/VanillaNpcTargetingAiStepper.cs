@@ -35,6 +35,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         VanillaMoonLordNpcBehaviorStrategy.RequiresImmediateSync(in before, in proposed);
 
     public bool RequiresForcedUpdateAfterCompletion(in NpcSnapshot before, in NpcSnapshot finalized) =>
+        VanillaGhostHoverNpcBehaviorStrategy1458.RequiresImmediateSync(in before, in finalized, _context) ||
         before.TypeIdentity == VanillaNpcIds.DrManFly && finalized.TypeIdentity == before.TypeIdentity &&
         (before.Simulation.JustHit || (finalized.Ai.Ai1 == 70f && finalized.Ai.Ai2 > 0f) ||
          (before.Ai.Ai1 == 36f && before.Ai.Ai2 > 0f && finalized.Ai.Ai1 == 35f && finalized.Ai.Ai2 > 0f &&
@@ -88,6 +89,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaFishNpcBehaviorStrategy _fish;
     private readonly VanillaJellyfishNpcBehaviorStrategy _jellyfish = new();
     private readonly VanillaAntlionNpcBehaviorStrategy _antlion = new();
+    private readonly VanillaGhostHoverNpcBehaviorStrategy1458 _ghostHover = new();
     private readonly VanillaSkeletronHeadNpcBehaviorStrategy _skeletronHead = new();
     private readonly VanillaSkeletronHandNpcBehaviorStrategy _skeletronHand = new();
     private readonly VanillaQueenBeeNpcBehaviorStrategy _queenBee;
@@ -235,6 +237,9 @@ public sealed class VanillaNpcTargetingAiStepper :
         _jellyfish.SetEnvironment(environment);
     }
 
+    public void SetGhostHoverEnvironment(IVanillaGhostHoverEnvironment1458 environment) =>
+        _ghostHover.SetEnvironment(environment);
+
     public void SetAntlionEnvironment(IVanillaAntlionEnvironment environment) =>
         _antlion.SetEnvironment(environment);
 
@@ -355,6 +360,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.Fish => _fish,
             VanillaNpcBehaviorFamily.Jellyfish => _jellyfish,
             VanillaNpcBehaviorFamily.Antlion => _antlion,
+            VanillaNpcBehaviorFamily.GhostHover => _ghostHover,
             VanillaNpcBehaviorFamily.SkeletronHead => _skeletronHead,
             VanillaNpcBehaviorFamily.SkeletronHand => _skeletronHand,
             VanillaNpcBehaviorFamily.QueenBee => _queenBee,
@@ -2440,11 +2446,22 @@ public sealed class VanillaNpcTargetingAiStepper :
         (before.TypeIdentity == VanillaNpcIds.DarkCaster || before.TypeIdentity == VanillaNpcIds.FireImp || before.TypeIdentity == VanillaNpcIds.GoblinSorcerer || before.TypeIdentity == VanillaNpcIds.Tim || before.TypeIdentity == VanillaNpcIds.RuneWizard || before.TypeIdentity.Value is >= 281 and <= 286 || before.TypeIdentity == VanillaNpcIds.Harpy ||
          before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon ||
          before.TypeIdentity == VanillaNpcIds.RedDevil || before.TypeIdentity == VanillaNpcIds.ChaosElemental || before.TypeIdentity == VanillaNpcIds.BlackRecluse || VanillaServantOfCthulhuNpcBehaviorStrategy.IsHornetStingerShooter(before.TypeIdentity) ||
+         VanillaGhostHoverNpcCatalog1458.IsSupported(before.TypeIdentity) ||
          VanillaGroundFighterProjectileAttack.IsSupported(before.TypeIdentity));
 
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations)
     {
+        if (VanillaGhostHoverNpcCatalog1458.IsSupported(before.TypeIdentity) && committed.TypeIdentity == before.TypeIdentity)
+        {
+            Span<NpcAiProjectileIntent> shots = stackalloc NpcAiProjectileIntent[5];
+            if (!_ghostHover.TryComplete(in before, in committed, _context, _random, shots, out int count, out var planned) ||
+                !mutations.TryUpdateState(in committed, in planned, out var completed))
+                return default;
+            for (int index = 0; index < count; index++)
+                mutations.TrySpawnProjectile(in completed, in shots[index], out _);
+            return completed;
+        }
         if (before.TypeIdentity == VanillaNpcIds.DarkCaster && committed.TypeIdentity == VanillaNpcIds.DarkCaster)
             return _darkCaster.Complete(in before, in committed, _context, _random, mutations);
         if (before.TypeIdentity == VanillaNpcIds.FireImp && committed.TypeIdentity == VanillaNpcIds.FireImp)
@@ -2470,7 +2487,9 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public bool TryPlanBeforeWorldMotion(in NpcSnapshot before, in NpcSnapshot accepted,
         Span<NpcAiProjectileIntent> shots, out int count, out NpcStateUpdate next) =>
-        VanillaEclipseFighterAcceptedPlanner.TryPlan(in before, in accepted, _context, _random, _projectileEnvironment, shots, out count, out next);
+        VanillaGhostHoverNpcCatalog1458.IsSupported(before.TypeIdentity)
+            ? _ghostHover.TryComplete(in before, in accepted, _context, _random, shots, out count, out next)
+            : VanillaEclipseFighterAcceptedPlanner.TryPlan(in before, in accepted, _context, _random, _projectileEnvironment, shots, out count, out next);
 
     public bool DeactivatesAfterStep(in NpcSnapshot before, in NpcStateUpdate proposed) =>
         (proposed.Type == before.Type && proposed.Simulation.Life == 0 &&

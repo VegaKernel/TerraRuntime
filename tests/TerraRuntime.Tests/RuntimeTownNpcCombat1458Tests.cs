@@ -32,7 +32,7 @@ public sealed class RuntimeTownNpcCombat1458Tests
     {
         CombatFixture f = CombatFixture.Create(VanillaNpcIds.Merchant, hardMode: false);
 
-        RuntimeTownNpcCombatTickSummary1458 first = f.Combat.Tick();
+        RuntimeTownNpcCombatTickSummary1458 first = f.Tick();
 
         Assert.Equal(1, first.AttacksStarted);
         Assert.True(f.Npcs.TryGetActive(0, out NpcSnapshot merchant));
@@ -41,7 +41,7 @@ public sealed class RuntimeTownNpcCombat1458Tests
         Assert.Equal(0, f.Projectiles.ActiveCount);
 
         for (int i = 0; i < 10; i++)
-            f.Combat.Tick();
+            f.Tick();
 
         Assert.Equal(1, f.Projectiles.ActiveCount);
         Assert.True(TryGetOnlyProjectile(f.Projectiles, out ProjectileSnapshot knife));
@@ -54,9 +54,9 @@ public sealed class RuntimeTownNpcCombat1458Tests
     {
         CombatFixture f = CombatFixture.Create(VanillaNpcIds.ArmsDealer, hardMode: true);
 
-        f.Combat.Tick();
+        f.Tick();
         for (int i = 0; i < 30; i++)
-            f.Combat.Tick();
+            f.Tick();
 
         Assert.Equal(4, f.Projectiles.ActiveCount);
         Span<ProjectileSnapshot> shots = stackalloc ProjectileSnapshot[4];
@@ -82,8 +82,8 @@ public sealed class RuntimeTownNpcCombat1458Tests
             hardMode,
             expertMode: hardMode);
 
-        f.Combat.Tick();
-        f.Combat.Tick();
+        f.Tick();
+        f.Tick();
 
         Assert.True(TryGetOnlyProjectile(f.Projectiles, out ProjectileSnapshot arrow));
         Assert.Equal(projectileType, arrow.Type.Value);
@@ -95,12 +95,12 @@ public sealed class RuntimeTownNpcCombat1458Tests
     {
         CombatFixture f = CombatFixture.Create(VanillaNpcIds.Guide, hardMode: false, blockedLineOfSight: true);
 
-        RuntimeTownNpcCombatTickSummary1458 tick = f.Combat.Tick();
+        RuntimeTownNpcCombatTickSummary1458 tick = f.Tick();
 
         Assert.Equal(0, tick.AttacksStarted);
         Assert.Equal(0, f.Projectiles.ActiveCount);
         Assert.True(f.Npcs.TryGetActive(0, out NpcSnapshot guide));
-        Assert.Equal(0f, guide.Ai.Ai0);
+        Assert.Equal(1f, guide.Ai.Ai0); // Source common body flees while obstructed LOS prevents shooting.
     }
 
     [Fact]
@@ -108,9 +108,9 @@ public sealed class RuntimeTownNpcCombat1458Tests
     {
         CombatFixture f = CombatFixture.Create(VanillaNpcIds.Nurse, hardMode: false, localCooldown: 3f);
 
-        Assert.Equal(0, f.Combat.Tick().AttacksStarted);
-        Assert.Equal(0, f.Combat.Tick().AttacksStarted);
-        Assert.Equal(1, f.Combat.Tick().AttacksStarted);
+        Assert.Equal(0, f.Tick().AttacksStarted);
+        Assert.Equal(0, f.Tick().AttacksStarted);
+        Assert.Equal(1, f.Tick().AttacksStarted);
     }
 
     [Fact]
@@ -155,16 +155,23 @@ public sealed class RuntimeTownNpcCombat1458Tests
         private CombatFixture(
             RuntimeNpcStore npcs,
             RuntimeProjectileStore projectiles,
-            RuntimeTownNpcCombat1458 combat)
+            RuntimeTownNpcCombat1458 combat, TownNpcTestPhase1458 phase)
         {
             Npcs = npcs;
             Projectiles = projectiles;
             Combat = combat;
+            Phase = phase;
         }
 
         public RuntimeNpcStore Npcs { get; }
         public RuntimeProjectileStore Projectiles { get; }
         public RuntimeTownNpcCombat1458 Combat { get; }
+        public TownNpcTestPhase1458 Phase { get; }
+        public RuntimeTownNpcCombatTickSummary1458 Tick()
+        {
+            var conditions = new RuntimeTownNpcScheduleConditions1458(true, false, false, false, false);
+            return Phase.Tick(in conditions, []);
+        }
 
         public static CombatFixture Create(
             NpcTypeId townType,
@@ -190,11 +197,13 @@ public sealed class RuntimeTownNpcCombat1458Tests
             float localCooldown = 0f)
         {
             var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+            for (int column = 0; column < 100; column++)
+                tiles.Set(column, 13, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
             if (blockedLineOfSight)
             {
                 for (int y = 4; y <= 20; y++)
                 {
-                    tiles.Set(20, y, new WorldTile
+                    tiles.Set(14, y, new WorldTile
                     {
                         Type = checked((ushort)VanillaTileIds.Stone.Value),
                         Flags = WorldTileFlags.Active
@@ -204,7 +213,7 @@ public sealed class RuntimeTownNpcCombat1458Tests
 
             var persistence = new WorldNpcPersistence(
                 [],
-                [new WorldTownNpc(townType.Value, "Town", 160f, 160f, true, 10, 14, null, false)],
+                [new WorldTownNpc(townType.Value, "Town", 160f, 168f, true, 10, 14, null, false)],
                 []);
             var town = new RuntimeTownNpcStateStore(persistence, [], tiles.Dimensions);
             var npcs = new RuntimeNpcStore();
@@ -232,7 +241,7 @@ public sealed class RuntimeTownNpcCombat1458Tests
             var hostile = new NpcStateUpdate(
                 VanillaNpcIds.Zombie.Value,
                 checked((short)VanillaNpcIds.Zombie.Value),
-                400f,
+                300f,
                 160f,
                 0f,
                 0f,
@@ -258,10 +267,15 @@ public sealed class RuntimeTownNpcCombat1458Tests
                 expertMode,
                 masterMode,
                 new ZeroRandom());
-            return new CombatFixture(npcs, projectiles, combat);
+            var schedule = new RuntimeTownNpcSchedule1458(town, npcs, tiles, new QuietScheduleRandom());
+            return new CombatFixture(npcs, projectiles, combat, new(town, npcs, tiles, schedule, combat));
         }
     }
 
+    private sealed class QuietScheduleRandom : IRuntimeTownNpcScheduleRandom1458
+    {
+        public int Next(int exclusiveMax) => exclusiveMax - 1;
+    }
     private sealed class ZeroRandom : IRuntimeTownNpcCombatRandom1458
     {
         public int Next(int exclusiveMax)

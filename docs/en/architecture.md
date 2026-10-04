@@ -1,5 +1,11 @@
 # TerraRuntime architecture
 
+The fourth gameplay/NPC checkpoint on 2026-10-04 passes 451,717/451,717 tests, a clean Release rebuild, Windows NativeAOT and five smoke paths. Default NPC, loot, projectile and world-item owners share the admitted RNG stream; isolated whole-death previews preserve phase order and exact reservation ownership. A retained NPC-status callback preserves the existing empty-tick allocation gate. This local checkpoint leaves full gameplay/NPC parity and Linux NativeAOT acceptance open.
+
+Default server composition owns one `VanillaUnifiedRandom1458` for admitted NPC creation/AI/loot, projectile authority and ordinary world-item spawn callbacks. The existing typed adapters share that object on the game-loop thread. A seeded `SystemVanillaNpcRandom`, or a seeded `SystemWorldItemSpawnRandom` when no NPC adapter was supplied, selects that stream; explicit custom adapters retain their own policy. This closes default composition separation, not complete `Main.rand` parity across unported phases, player combat, weather or world-generation continuation. No new dependency or project edge is introduced.
+
+Death admission can preview bounded NPC storage with independent slot values and RNG state. The copy preserves generation, revision, retained inactive state and spawn protection; it has no publication sink. Its trusted spawn-context provider is sampled once and retained as a value. Application must verify the original NPC revision and RNG state after preview before accepting; host callback side effects cannot be undone by this copy. When a Good World death creates child NPCs, an opaque or separately owned spawn RNG rejects admission before damage. Internal reserved-drop lease adoption requires a token from the lease owner's backing item store and performs no allocation, publication or RNG draw.
+
 [Русский](../ru/architecture.md) · [Documentation](README.md) · [Project guide](project-guide.md) · [Host interfaces](host-interfaces.md)
 
 ## 1. Architectural goal

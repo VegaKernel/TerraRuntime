@@ -152,4 +152,29 @@
   </ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/boss-reward-prefix-1458.json.gz" LogicalName="BossRewardPrefix1458" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/seasonal-pickup-materialization-1458.json.gz" LogicalName="SeasonalPickupMaterialization1458" /></ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/ai22-idle-next-official-1458.json.gz" LogicalName="GhostHoverIdleAi1458" />
+    <EmbeddedResource Include="Fixtures/ai22-idle-gates-official-1458.json.gz" LogicalName="GhostHoverGates1458" />
+    <EmbeddedResource Include="Fixtures/ai22-outer-official-1458.json.gz" LogicalName="GhostHoverOuter1458" />
+    <EmbeddedResource Include="Fixtures/ai22-idle-deep-official-1458.json.gz" LogicalName="GhostHoverDeep1458" />
+    <EmbeddedResource Include="Fixtures/ai22-idle-body-official-1458.json.gz" LogicalName="GhostHoverBody1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/player-luck-factors-official-1458.json.gz" />
+    <EmbeddedResource Include="Fixtures/player-luck-wire-official-1458.json.gz" />
+  </ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/npc-stinky-status-official-1458.json.gz" LogicalName="NpcStinkyStatus1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/shared-classic-gameplay-rng-official-1458.json.gz" LogicalName="SharedClassicGameplayRandom1458" /></ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/npc-money-official-1458.json.gz" />
+    <EmbeddedResource Include="Fixtures/npc-money-defaults-official-1458.json.gz" />
+    <EmbeddedResource Include="Fixtures/npc-money-variants-official-1458.json.gz" />
+  </ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/boss-money-coupled-official-1458.json.gz" LogicalName="BossMoneyCoupled1458" /></ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/town-danger-phase-official-1458.json.gz" LogicalName="TownDangerPhase1458" />
+    <EmbeddedResource Include="Fixtures/town-home-phase-official-1458.json.gz" LogicalName="TownHomePhase1458" />
+    <EmbeddedResource Include="Fixtures/town-active-combat-official-1458.json.gz" LogicalName="TownActiveCombat1458" />
+  </ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/npc-money-closest-official-1458.json.gz" LogicalName="NpcMoneyClosest1458" /></ItemGroup>
 </Project>

@@ -899,14 +899,14 @@ public static class VanillaDefinitionCatalog
         CollisionHeight: 10);
 
     private static readonly VanillaProjectileDefinition NurseSyringeHurtDefinition = new(
-        Width: 10,
-        Height: 10,
+        Width: 8,
+        Height: 8,
         AiStyle: VanillaProjectileAiStyles.Thrown,
         TileCollide: true,
         IgnoreWater: false,
         CanCutTiles: true,
-        CollisionWidth: 10,
-        CollisionHeight: 10);
+        CollisionWidth: 8,
+        CollisionHeight: 8);
 
     private static readonly VanillaProjectileDefinition SantaBombsDefinition = new(
         Width: 10,

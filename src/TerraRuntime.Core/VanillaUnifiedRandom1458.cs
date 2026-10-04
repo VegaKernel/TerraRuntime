@@ -18,6 +18,26 @@ internal sealed class VanillaUnifiedRandom1458
 
     public VanillaUnifiedRandom1458(int seed) => SetSeed(seed);
 
+    public VanillaUnifiedRandom1458 Clone()
+    {
+        var clone = new VanillaUnifiedRandom1458(0);
+        clone.CopyStateFrom(this);
+        return clone;
+    }
+
+    public void CopyStateFrom(VanillaUnifiedRandom1458 source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        source.seedArray.CopyTo(seedArray, 0);
+        inext = source.inext;
+    }
+
+    public bool HasSameState(VanillaUnifiedRandom1458 other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        return inext == other.inext && seedArray.AsSpan().SequenceEqual(other.seedArray);
+    }
+
     public void SetSeed(int seed)
     {
         Array.Clear(seedArray);

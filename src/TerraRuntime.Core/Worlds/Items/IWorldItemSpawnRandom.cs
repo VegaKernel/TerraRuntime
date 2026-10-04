@@ -10,27 +10,29 @@ public interface IWorldItemSpawnRandom
 }
 
 /// <summary>
-/// Default runtime-local random stream for vanilla world-item spawns. Terraria's Main.rand sequence is not treated
-/// as a persistence or protocol identity; source contracts pin the requested ranges and ordering instead.
+/// Owned UnifiedRandom adapter for world-item spawns. Application composition shares the source with admitted
+/// NPC, loot and projectile paths; standalone callers may supply their own seed.
 /// </summary>
 public sealed class SystemWorldItemSpawnRandom : IWorldItemSpawnRandom
 {
-    private readonly Random _random;
+    private readonly VanillaUnifiedRandom1458 _random;
 
     public SystemWorldItemSpawnRandom()
-        : this(new Random())
+        : this(new VanillaUnifiedRandom1458(Environment.TickCount))
     {
     }
 
     public SystemWorldItemSpawnRandom(int seed)
-        : this(new Random(seed))
+        : this(new VanillaUnifiedRandom1458(seed))
     {
     }
 
-    private SystemWorldItemSpawnRandom(Random random)
+    internal SystemWorldItemSpawnRandom(VanillaUnifiedRandom1458 random)
     {
-        _random = random;
+        _random = random ?? throw new ArgumentNullException(nameof(random));
     }
+
+    internal VanillaUnifiedRandom1458 SourceRandom => _random;
 
     public int NextInt32(int inclusiveMin, int exclusiveMax)
     {

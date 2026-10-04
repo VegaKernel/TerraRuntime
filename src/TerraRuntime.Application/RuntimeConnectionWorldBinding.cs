@@ -308,7 +308,8 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
     {
         var vitals = new PlayerVitalsFrameSink(source, bootstrap, runtime.HealthIngress, runtime.ManaIngress);
         var stealth = new PlayerStealthFrameSink(source, bootstrap, vitals, runtime.PlayerStealthIngress);
-        var animation = new PlayerItemAnimationFrameSink(source, bootstrap, stealth, runtime.PlayerItemAnimationIngress);
+        var luck = new PlayerLuckFactorsFrameSink(source, bootstrap, stealth, runtime.PlayerLuckFactorsIngress);
+        var animation = new PlayerItemAnimationFrameSink(source, bootstrap, luck, runtime.PlayerItemAnimationIngress);
         var buffs = new PlayerBuffFrameSink(source, bootstrap, animation, runtime.PlayerBuffIngress);
         var combat = new PlayerCombatFrameSink(source, bootstrap, buffs, runtime.PlayerCombatIngress);
         var items = new WorldItemFrameSink(source, bootstrap, combat, runtime.WorldItemIngress);
@@ -317,7 +318,8 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
         var signs = new SignInteractionFrameSink(source, bootstrap, chests, runtime.SignIngress);
         var homes = new NpcHomeFrameSink(source, bootstrap, signs, runtime.TownNpcHomeIngress);
         var talk = new NpcTalkFrameSink(source, bootstrap, homes, runtime.NpcTalkIngress);
-        var catches = new NpcCatchFrameSink(source, bootstrap, talk, runtime.NpcCatchIngress);
+        var npcBuffs = new NpcBuffFrameSink(source, bootstrap, talk, runtime.NpcBuffIngress);
+        var catches = new NpcCatchFrameSink(source, bootstrap, npcBuffs, runtime.NpcCatchIngress);
         var teleports = new PlayerTeleportRequestFrameSink(source, bootstrap, catches, runtime.PlayerTeleportIngress);
         return new BossSummonFrameSink(source, bootstrap, teleports, runtime.BossSummonIngress);
     }

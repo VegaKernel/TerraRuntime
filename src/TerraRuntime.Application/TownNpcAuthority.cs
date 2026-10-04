@@ -27,6 +27,10 @@ internal sealed class TownNpcAuthority
     private readonly RuntimeTownNpcMoveInCoordinator1458? moveIn;
     private readonly RuntimeTownNpcSchedule1458? schedule;
     private readonly RuntimeTownNpcCombat1458? combat;
+    private readonly RuntimeNpcStinkyStatus1458 npcStatus;
+    private readonly bool ownsStatus;
+    private readonly bool partyIsUp;
+    private readonly RuntimeTownPlayerDanger1458[] playerDanger = new RuntimeTownPlayerDanger1458[MaxPlayerSlots];
     private readonly RuntimeTownNpcShimmerService1458? shimmer;
     private readonly RuntimeNpcReplicationRegistry? npcReplication;
     private readonly VanillaTownSpawnPlayerFacts1458[] spawnPlayers = new VanillaTownSpawnPlayerFacts1458[MaxPlayerSlots];
@@ -58,10 +62,14 @@ internal sealed class TownNpcAuthority
         IVanillaNpcRandom? npcRandom = null,
         IVanillaTallGateOccupancyProbe? actorOccupancy = null,
         RuntimeTileManipulationReplicationRegistry? tileReplication = null,
-        ServerPlayerAuthority? serverPlayers = null)
+        ServerPlayerAuthority? serverPlayers = null,
+        RuntimeNpcStinkyStatus1458? npcStatus = null)
     {
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.serverPlayers = serverPlayers;
+        this.npcStatus = npcStatus ?? new RuntimeNpcStinkyStatus1458(npcs);
+        ownsStatus = npcStatus is null;
+        partyIsUp = townCommerceWorldFacts?.PartyIsUp ?? false;
         ArgumentNullException.ThrowIfNull(npcs);
         ArgumentNullException.ThrowIfNull(projectiles);
         this.townNpcs = townNpcs;
@@ -87,17 +95,17 @@ internal sealed class TownNpcAuthority
             ? new RuntimeTownCommerceResolver1458(worldTiles, townNpcs, npcs, in commerceFacts)
             : null;
         combat = worldTiles is not null &&
-            townNpcs is not null &&
-            townCombatWorldFacts is RuntimeTownNpcCombatWorldFacts1458 combatFacts
+            townNpcs is not null
                 ? new RuntimeTownNpcCombat1458(
                     townNpcs,
                     npcs,
                     projectiles,
                     worldTiles,
-                    in combatFacts,
+                    townCombatWorldFacts ?? default,
                     progression,
                     expertMode,
-                    masterMode)
+                    masterMode,
+                    npcRandom is null ? null : new NpcRuntimeTownCombatRandom1458(npcRandom))
                 : null;
         housingValidator = worldTiles is not null && townNpcs is not null
             ? new VanillaHousingValidator1458(worldTiles)
@@ -148,6 +156,7 @@ internal sealed class TownNpcAuthority
         if (moveIn is null && schedule is null && combat is null)
             return;
 
+        if (ownsStatus) npcStatus.BeginWorldTick();
         int spawnPlayerCount = 0;
         int boundsCount = 0;
         int seatCount = 0;
@@ -196,6 +205,8 @@ internal sealed class TownNpcAuthority
             playerBounds[boundsCount] = bounds;
             players.TryGetTalkNpc(player.Connection.Player, out short talkNpcSlot);
             bool invisible = players.HasNaturalSpawnBuffSnapshot(player.Slot.Value, VanillaBuffIds.Invisibility);
+            playerDanger[boundsCount] = new RuntimeTownPlayerDanger1458(player.Slot.Value, bounds,
+                player.IsDead, players.HasNaturalSpawnBuffSnapshot(player.Slot.Value, VanillaBuffIds.Stinky));
             playerConversations[boundsCount++] = new RuntimeTownPlayerConversation1458(
                 player.Slot.Value, talkNpcSlot, bounds,
                 !player.IsDead && player.Stealth == 1f && (!invisible || player.ItemAnimation != 0));
@@ -227,19 +238,19 @@ internal sealed class TownNpcAuthority
                 playerBounds.AsSpan(0, boundsCount));
         }
 
-        if (schedule is not null)
+        if (schedule is not null && combat is not null)
         {
             var scheduleConditions = new RuntimeTownNpcScheduleConditions1458(
                 DayTime: worldClock?.DayTime ?? true,
                 Raining: worldClock?.Raining ?? initialRaining,
                 Eclipse: initialEclipse,
                 SlimeRain: worldClock?.SlimeRainActive ?? false,
-                StormingAboveSurface: false);
-            schedule.Tick(in scheduleConditions, playerBounds.AsSpan(0, boundsCount),
-                playerConversations.AsSpan(0, boundsCount), seatedPlayers.AsSpan(0, seatCount));
+                StormingAboveSurface: false) { PartyIsUp = partyIsUp };
+            schedule.Tick(in scheduleConditions, playerBounds.AsSpan(0, boundsCount), npcStatus, combat,
+                playerConversations.AsSpan(0, boundsCount), seatedPlayers.AsSpan(0, seatCount),
+                playerDanger.AsSpan(0, boundsCount));
         }
 
-        combat?.Tick();
     }
 
     public void ApplyTalk(ConnectionHandle connection, short npcSlot, RuntimeWorldClock? worldClock)

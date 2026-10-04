@@ -151,7 +151,7 @@ public sealed class BossRecoveryPipeline1458Tests
 
 
     [Theory]
-    [InlineData(400,false)] [InlineData(390,false)] [InlineData(374,false)] [InlineData(373,true)]
+    [InlineData(400,false)] [InlineData(390,false)] [InlineData(391,false)] [InlineData(389,true)]
     public void Full_near_full_and_leased_capacity_reject_before_any_death_mutation_or_rng(int active,bool leased)
     {
         var f=new Fixture(1458);
@@ -219,7 +219,7 @@ public sealed class BossRecoveryPipeline1458Tests
             var last=f.Spawn(reverse?4:113);
             Assert.Equal(RuntimeProjectileNpcDamageResult.Killed,f.Hit(last));
             Assert.Single(f.Items(),i=>i.ItemNetId==5004);
-            Assert.Equal((short)5004,f.Items()[^1].ItemNetId);
+            Assert.All(f.Items().SkipWhile(i=>i.ItemNetId!=5004).Skip(1), item=>Assert.True(VanillaCoinFacts.TryGetValue(new(item.ItemNetId),out _)));
             Assert.False(f.Daily.EyeKilled||f.Daily.WallKilled);
             Assert.Equal(RuntimeProjectileNpcDamageResult.Rejected,f.Hit(last));
             Assert.Single(f.Items(),i=>i.ItemNetId==5004);
@@ -236,12 +236,13 @@ public sealed class BossRecoveryPipeline1458Tests
         public VanillaUnifiedRandom1458 Random {get;}
         public RuntimeWorldClock Clock {get;}=new(0,true,0,0,1);
         public VanillaBossRecoveryDailyState1458 Daily=>Clock.BossRecoveryDailyState;
+        public TerraRuntime.World.RuntimeWorldProgressionMutations Progression {get;}=new();
         public RuntimeNpcNetworkCombatPipeline Pipeline {get;}
         private readonly PlayerHandle player=new(new(0),new(1));
         public Fixture(int seed,int mode=0)
         {
             Random=new(seed);
-            Pipeline=new(Npcs,Store,this,new PlayerAuthority(null,null),static()=>0,null,new(Store),null,Clock,new(),false,false,planteraDownedBaseline:false,lootRandom:Random,seasonalItemContext:()=>new((mode&1)!=0,(mode&2)!=0,(mode&4)!=0));
+            Pipeline=new(Npcs,Store,this,new PlayerAuthority(null,null),static()=>0,null,new(Store),null,Clock,Progression,false,false,planteraDownedBaseline:false,lootRandom:Random,seasonalItemContext:()=>new((mode&1)!=0,(mode&2)!=0,(mode&4)!=0));
         }
         public NpcSnapshot Spawn(int type,int width=0,int height=0)
         {

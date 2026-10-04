@@ -45,16 +45,6 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private readonly IRuntimePlayerSlotSnapshotLookup players;
     private readonly RuntimeCombatIntegrity combatIntegrity;
     private readonly Func<long> tickProvider;
-    private readonly RuntimeKingSlimeDifficultyLootDeliverySink? difficultyLoot;
-    private readonly RuntimeEaterOfWorldsLootDeliverySink eaterLoot;
-    private readonly RuntimeBrainOfCthulhuLootDeliverySink brainLoot;
-    private readonly RuntimeSkeletronLootDeliverySink skeletronLoot;
-    private readonly RuntimeQueenBeeLootDeliverySink queenBeeLoot;
-    private readonly RuntimeDeerclopsLootDeliverySink deerclopsLoot;
-    private readonly RuntimeQueenSlimeLootDeliverySink queenSlimeLoot;
-    private readonly RuntimePlanteraLootDeliverySink planteraLoot;
-    private readonly RuntimeGolemLootDeliverySink golemLoot;
-    private readonly RuntimeMoonLordLootDeliverySink moonLordLoot;
     private readonly VanillaMoonLordLootPlayer[] activeMoonLordLootPlayers =
         new VanillaMoonLordLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly VanillaGolemLootPlayer[] activeGolemLootPlayers =
@@ -62,11 +52,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private readonly bool? planteraDownedBaseline;
     private readonly VanillaPlanteraLootPlayer[] activePlanteraLootPlayers =
         new VanillaPlanteraLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
-    private readonly RuntimeMechanicalBossLootDeliverySink mechanicalBossLoot;
-    private readonly RuntimeEyeOfCthulhuLootDeliverySink eyeOfCthulhuLoot;
-    private readonly RuntimeWallOfFleshLootDeliverySink wallOfFleshLoot;
     private readonly VanillaNpcLootWorldItemMaterializer materializer;
     private readonly SystemNpcCombatRandom random;
+    private readonly RuntimeNpcLootDelivery1458 lootDelivery;
     private readonly bool expertMode;
     private readonly bool masterMode;
     private readonly RuntimeWorldClock? worldClock;
@@ -142,6 +130,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         moonLordProjectileBuffer = projectiles is null ? [] : new ProjectileSnapshot[projectiles.Capacity];
         this.worldItems = worldItems ?? throw new ArgumentNullException(nameof(worldItems));
         this.players = players ?? throw new ArgumentNullException(nameof(players));
+        if (worldItemReplication is not null && instancedLeases is null)
+            throw new ArgumentNullException(nameof(instancedLeases));
+        lootDelivery = new(worldItems, instancedLeases, worldItemReplication, materializer, players);
         ArgumentNullException.ThrowIfNull(playerAuthority);
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
         combatIntegrity = new RuntimeCombatIntegrity(playerAuthority, npcs.Capacity);
@@ -157,66 +148,21 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         this.zenithWorld = zenithWorld;
         this.slimeRainKingSpawn = slimeRainKingSpawn;
         this.planteraDownedBaseline = planteraDownedBaseline;
-        planteraLoot = new RuntimePlanteraLootDeliverySink(worldItems, instancedLeases, worldItemReplication, materializer);
-        golemLoot = new RuntimeGolemLootDeliverySink(worldItems, instancedLeases, worldItemReplication, materializer);
-        moonLordLoot = new RuntimeMoonLordLootDeliverySink(worldItems, instancedLeases, worldItemReplication, materializer);
         this.expertMode = expertMode;
         this.masterMode = masterMode;
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
 
         interactions = new RuntimeNpcPlayerInteractionLedger(npcs);
-        damage = new RuntimeNpcDamageExecutor(npcs, expertMode, interactions);
+        damage = new RuntimeNpcDamageExecutor(npcs, expertMode, interactions, TryAdmitLethalDeath);
         npcFamilyBuffer = new NpcSnapshot[npcs.Capacity];
-        eaterLoot = new RuntimeEaterOfWorldsLootDeliverySink(
-            worldItems,
-            instancedLeases,
-            worldItemReplication, materializer);
-        brainLoot = new RuntimeBrainOfCthulhuLootDeliverySink(
-            worldItems,
-            instancedLeases,
-            worldItemReplication, materializer);
-        skeletronLoot = new RuntimeSkeletronLootDeliverySink(
-            worldItems,
-            instancedLeases,
-            worldItemReplication, materializer);
-        queenBeeLoot = new RuntimeQueenBeeLootDeliverySink(
-            worldItems,
-            instancedLeases,
-            worldItemReplication, materializer);
-        deerclopsLoot = new RuntimeDeerclopsLootDeliverySink(
-            worldItems,
-            instancedLeases,
-            worldItemReplication, materializer);
-        queenSlimeLoot = new RuntimeQueenSlimeLootDeliverySink(
-            worldItems,
-            instancedLeases,
-            worldItemReplication, materializer);
-        mechanicalBossLoot = new RuntimeMechanicalBossLootDeliverySink(
-            worldItems,
-            instancedLeases,
-            worldItemReplication, materializer);
-        eyeOfCthulhuLoot = new RuntimeEyeOfCthulhuLootDeliverySink(
-            worldItems,
-            instancedLeases,
-            worldItemReplication, materializer);
-        wallOfFleshLoot = new RuntimeWallOfFleshLootDeliverySink(
-            worldItems,
-            instancedLeases,
-            worldItemReplication, materializer);
-        if (worldItemReplication is not null)
-        {
-            difficultyLoot = new RuntimeKingSlimeDifficultyLootDeliverySink(
-                worldItems,
-                instancedLeases ?? throw new ArgumentNullException(nameof(instancedLeases)),
-                worldItemReplication, materializer);
-        }
     }
 
     public RuntimeNpcNetworkDamageResult TryApply(
         ConnectionHandle connection,
         in TerrariaNpcDamageState wireState)
     {
+        deathAdmissionRejected = false;
         if (!connection.IsAssigned || !wireState.IsStructurallyValid)
             return RuntimeNpcNetworkDamageResult.Rejected;
 
@@ -315,8 +261,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         {
             if (!damage.TryApply(in request, out NpcDamageResult result))
             {
+                CancelPendingDeathPlan();
                 if (suppressing)
                     npcReplication!.CompleteClientDamage(current.Handle);
+                if (deathAdmissionRejected) { deathAdmissionRejected = false; return RuntimeNpcNetworkDamageResult.Rejected; }
                 npcReplication?.TryPublishDamage(connection.Source, in normalizedWire);
                 return RuntimeNpcNetworkDamageResult.Relayed;
             }
@@ -384,26 +332,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             if (!TryExecuteImportedLoot(in dead, eaterBoss))
                 throw new InvalidOperationException("Imported NPC loot could not be finalized after a lethal packet-28 commit.");
 
-            ExecuteNpcDeathHitEffects(in dead);
-            AdvanceSlimeRainDeath(in dead);
-            AdvanceMoonEventDeath(in dead);
-            if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
-                ApplyKingSlimeDeathEffects(in dead);
-            else if (dead.TypeIdentity == VanillaNpcIds.EyeOfCthulhu)
-                progression.MarkCompleted(VanillaWorldProgressionId.EyeOfCthulhu);
-            else if (dead.TypeIdentity == VanillaNpcIds.SkeletronHead)
-                ApplySkeletronDeathEffects();
-            else if (dead.TypeIdentity == VanillaNpcIds.QueenBee)
-                ApplyQueenBeeDeathEffects();
-            else if (dead.TypeIdentity == VanillaNpcIds.Deerclops)
-                ApplyDeerclopsDeathEffects();
-            else if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
-                ApplyWallOfFleshDeathEffects(in dead);
-            else if (IsHardmodeBossRoot(dead.TypeIdentity))
-                ApplyHardmodeBossDeathEffects(in dead);
-            else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
-                ApplyEvilBossDeathEffects(eaterBoss);
-
+            ExecuteOwnedDeathEvents(in dead, eaterBoss);
             DropBossRecoveryItemsIfEligible(in dead, eaterBoss);
             AnnounceBossDefeat(in dead, eaterBoss);
 
@@ -526,7 +455,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         }
 
         if (!damage.TryApply(in request, out NpcDamageResult result))
-            return RuntimeProjectileNpcDamageResult.Rejected;
+        { CancelPendingDeathPlan(); return RuntimeProjectileNpcDamageResult.Rejected; }
 
         NpcSnapshot dead;
         if (liveTarget.TypeIdentity == VanillaNpcIds.WallOfFleshEye &&
@@ -570,25 +499,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         if (!TryExecuteImportedLoot(in dead, eaterBoss))
             throw new InvalidOperationException("Imported NPC loot could not be finalized after player-owned damage.");
 
-        ExecuteNpcDeathHitEffects(in dead);
-        AdvanceSlimeRainDeath(in dead);
-        AdvanceMoonEventDeath(in dead);
-        if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
-            ApplyKingSlimeDeathEffects(in dead);
-        else if (dead.TypeIdentity == VanillaNpcIds.EyeOfCthulhu)
-            progression.MarkCompleted(VanillaWorldProgressionId.EyeOfCthulhu);
-        else if (dead.TypeIdentity == VanillaNpcIds.SkeletronHead)
-            ApplySkeletronDeathEffects();
-        else if (dead.TypeIdentity == VanillaNpcIds.QueenBee)
-            ApplyQueenBeeDeathEffects();
-        else if (dead.TypeIdentity == VanillaNpcIds.Deerclops)
-            ApplyDeerclopsDeathEffects();
-        else if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
-            ApplyWallOfFleshDeathEffects(in dead);
-        else if (IsHardmodeBossRoot(dead.TypeIdentity))
-            ApplyHardmodeBossDeathEffects(in dead);
-        else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
-            ApplyEvilBossDeathEffects(eaterBoss);
+        ExecuteOwnedDeathEvents(in dead, eaterBoss);
 
         DropBossRecoveryItemsIfEligible(in dead, eaterBoss);
         AnnounceBossDefeat(in dead, eaterBoss);
@@ -663,7 +574,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             KnockBack: knockBack,
             HitDirection: hitDirection);
         if (!damage.TryApply(in request, out NpcDamageResult result))
-            return RuntimeTownNpcMeleeDamageResult1458.Rejected;
+        { CancelPendingDeathPlan(); return RuntimeTownNpcMeleeDamageResult1458.Rejected; }
 
         NpcSnapshot dead;
         if (liveTarget.TypeIdentity == VanillaNpcIds.WallOfFleshEye && TryResolveWallOfFleshRoot(in liveTarget, out NpcSnapshot wallRoot))
@@ -706,25 +617,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         if (!TryExecuteImportedLoot(in dead, eaterBoss))
             throw new InvalidOperationException("Imported NPC loot could not be finalized after Town NPC melee.");
 
-        ExecuteNpcDeathHitEffects(in dead);
-        AdvanceSlimeRainDeath(in dead);
-        AdvanceMoonEventDeath(in dead);
-        if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
-            ApplyKingSlimeDeathEffects(in dead);
-        else if (dead.TypeIdentity == VanillaNpcIds.EyeOfCthulhu)
-            progression.MarkCompleted(VanillaWorldProgressionId.EyeOfCthulhu);
-        else if (dead.TypeIdentity == VanillaNpcIds.SkeletronHead)
-            ApplySkeletronDeathEffects();
-        else if (dead.TypeIdentity == VanillaNpcIds.QueenBee)
-            ApplyQueenBeeDeathEffects();
-        else if (dead.TypeIdentity == VanillaNpcIds.Deerclops)
-            ApplyDeerclopsDeathEffects();
-        else if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
-            ApplyWallOfFleshDeathEffects(in dead);
-        else if (IsHardmodeBossRoot(dead.TypeIdentity))
-            ApplyHardmodeBossDeathEffects(in dead);
-        else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
-            ApplyEvilBossDeathEffects(eaterBoss);
+        ExecuteOwnedDeathEvents(in dead, eaterBoss);
 
         DropBossRecoveryItemsIfEligible(in dead, eaterBoss);
         AnnounceBossDefeat(in dead, eaterBoss);

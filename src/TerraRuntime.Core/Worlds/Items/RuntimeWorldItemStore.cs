@@ -215,6 +215,27 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
             out snapshot);
     }
 
+    /// <summary>Checks that a trusted transaction still owns this exact unpublished reservation.</summary>
+    internal bool HasDropReservation(in WorldItemDropReservation reservation)
+    {
+        if (!reservation.IsAssigned || !IsValidSlot(reservation.Slot))
+            return false;
+
+        SpinWait spin = default;
+        while (true)
+        {
+            int version = ReadStableVersion(ref spin);
+            SlotState state = _slots[reservation.Slot];
+            if (version != ReadVersion())
+            {
+                spin.SpinOnce();
+                continue;
+            }
+
+            return state.Reserved && !state.Active && state.Generation == reservation.Generation.Value;
+        }
+    }
+
     /// <summary>
     /// Releases an exact unpublished reservation without publishing anything. The consumed generation is not reused.
     /// </summary>

@@ -62,6 +62,9 @@ public sealed class RuntimeWorldProgressionMutations
 
     public bool LunarApocalypseIsUp => lunarApocalypseIsUp ?? baselineLunarApocalypseIsUp;
 
+    /// <summary>Isolated scalar progression image for synchronous owner-thread death planning.</summary>
+    public RuntimeWorldProgressionMutations CreateDeathPreview() => (RuntimeWorldProgressionMutations)MemberwiseClone();
+
     public bool SetLunarApocalypseIsUp(bool active)
     {
         if (LunarApocalypseIsUp == active) return false;

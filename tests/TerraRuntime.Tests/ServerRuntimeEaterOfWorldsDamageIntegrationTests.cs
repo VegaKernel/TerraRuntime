@@ -4,6 +4,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
+using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
@@ -21,8 +22,8 @@ public sealed class ServerRuntimeEaterOfWorldsDamageIntegrationTests
         RuntimeWorldProgressionMutations progression = fixture.State.WorldProgression;
 
         Assert.False(progression.IsCompleted(VanillaWorldProgressionId.EvilBoss));
-        Assert.Equal(2, fixture.QueuedFrames(firstPlayer.Source)); // two NPC join baselines.
-        Assert.Equal(2, fixture.QueuedFrames(secondPlayer.Source));
+        fixture.AssertJoinBaseline(firstPlayer.Source, head.Handle.Slot, body.Handle.Slot);
+        fixture.AssertJoinBaseline(secondPlayer.Source, head.Handle.Slot, body.Handle.Slot);
 
         fixture.State.Apply(new ClientNpcDamageRuntimeCommand(firstPlayer, Lethal(head)));
 
@@ -148,6 +149,27 @@ public sealed class ServerRuntimeEaterOfWorldsDamageIntegrationTests
             State.Apply(new PlayerEquipmentRuntimeCommand(connection, equipment));
             Assert.Equal(0, State.RejectedPlayerEquipmentUpdates);
             return connection;
+        }
+
+        public void AssertJoinBaseline(GameCommandSourceId source, params short[] npcSlots)
+        {
+            var queue = (BoundedOutboundQueue)typeof(TerrariaConnectionOutboundQueue)
+                .GetProperty("InnerQueue", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .GetValue(outbound[source])!;
+            Assert.Equal(npcSlots.Length * 2, queue.QueuedFrames);
+            var frames = new List<OutboundFrame>();
+            foreach (short npcSlot in npcSlots)
+            {
+                Assert.True(queue.TryRead(out OutboundFrame state));
+                Assert.Equal((byte)TerrariaMessageId.NpcUpdate, state.Bytes.Span[2]);
+                Assert.Equal(checked((byte)npcSlot), state.Bytes.Span[3]); // Source packet23 writes slot byte, then generation.
+                Assert.True(queue.TryRead(out OutboundFrame buffs));
+                Assert.True(TerrariaNpcBuffCodec.TryEncodeCurrent(npcSlot, 0, out byte[] expected));
+                Assert.Equal(expected, buffs.Bytes.ToArray());
+                frames.Add(state); frames.Add(buffs);
+            }
+            foreach (OutboundFrame frame in frames)
+                Assert.Equal(OutboundEnqueueResult.Enqueued, queue.TryEnqueue(frame));
         }
 
         public int QueuedFrames(GameCommandSourceId source) => outbound[source].QueuedFrames;

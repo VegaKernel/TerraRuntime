@@ -82,7 +82,7 @@ internal sealed partial class WorldTileAuthority
         if (!TryPrepareSimpleBreak(x, y, new WorldTile { Type = checked((ushort)type.Value), Flags = WorldTileFlags.Active }, out var prepared)) return false;
         var old = prepared.Outcome.Drop;
         float offsetY = target.IsActive ? 0 : -2;
-        float halfSize = projectile.Type.Value == 812 ? 7 : 6; // ShellPile uses DefaultToPlaceableTile (14x14); others 12x12.
+        const float halfSize = 8; // RequestNewItem retains fractional projectile center; WorldItem is 16x16.
         var drop = old with { PositionX = projectile.PositionX + 5 - halfSize, PositionY = projectile.PositionY + 5 + offsetY - halfSize };
         prepared = prepared with { Outcome = prepared.Outcome with { Drop = drop } };
         CommitPreparedBreak(prepared);

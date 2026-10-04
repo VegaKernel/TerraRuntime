@@ -109,6 +109,9 @@ internal sealed class RuntimePlayerTransferProfileStore
     }
 
 
+    public bool HasUsedGalaxyPearl(ConnectionHandle connection) =>
+        Get(connection)?.Appearance is { ConsumableUnlockFlags: var flags } && (flags & (1 << 3)) != 0;
+
     public bool HasFunctionalItem(ConnectionHandle connection, ItemTypeId itemType)
     {
         Entry? entry = Get(connection);

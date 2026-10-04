@@ -57,13 +57,13 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
         // AI-triggered checkDead must reach the same progression/loot boundary as combat-triggered death.
         // No packet-28 strike is invented for a timer expiry. Loot and progression commit at tick 600.
-        if (current.Ai.Ai1 < 600f || current.Simulation.Life != 0 || !CanAcceptBossDeathCapacity(in current) ||
+        if (current.Ai.Ai1 < 600f || current.Simulation.Life != 0 || !TryPrepareDeathPlan(in current) ||
             !TryExecuteImportedLoot(in current, eaterBoss: false))
         {
             return;
         }
 
-        ApplyHardmodeBossDeathEffects(in current);
+        ExecuteOwnedDeathEvents(in current, eaterBoss: false);
         DropBossRecoveryItemsIfEligible(in current, eaterBoss: false);
         AnnounceBossDefeat(in current, eaterBoss: false);
         if (npcs.TryDespawn(current.Handle))

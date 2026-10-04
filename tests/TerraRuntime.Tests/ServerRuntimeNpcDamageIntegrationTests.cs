@@ -4,6 +4,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
+using TerraRuntime.Protocol.Multiplicity;
 
 namespace TerraRuntime.Tests;
 
@@ -16,8 +17,8 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
         NpcSnapshot king = fixture.SpawnKingSlime();
         ConnectionHandle attacker = fixture.SpawnPlayer(connectionId: 901);
         ConnectionHandle peer = fixture.SpawnPlayer(connectionId: 902);
-        Assert.Equal(1, fixture.QueuedFrames(attacker.Source)); // NPC join baseline.
-        Assert.Equal(1, fixture.QueuedFrames(peer.Source));
+        fixture.AssertJoinBaseline(attacker.Source, king.Handle.Slot);
+        fixture.AssertJoinBaseline(peer.Source, king.Handle.Slot);
 
         var hit = new TerrariaNpcDamageState(
             NpcSlot: king.Handle.Slot,
@@ -46,8 +47,8 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
         Assert.DoesNotContain(recovery, drop => drop.Handle.Slot == 0); // Addressed Boss Bag retains its unpublished lease.
         Assert.Equal(6, fixture.NpcRelayedFrames); // ack + peer packet 28 + defeat announcement and packet 23 to both players.
         Assert.Equal(1, fixture.ItemRelayedFrames); // addressed packet 90 only to the interacting player.
-        Assert.Equal(5, fixture.QueuedFrames(attacker.Source)); // baseline + ack + packet 90 + announcement + packet 23.
-        Assert.Equal(4, fixture.QueuedFrames(peer.Source)); // baseline + packet 28 + announcement + packet 23.
+        Assert.Equal(6, fixture.QueuedFrames(attacker.Source)); // NPC state + buff baseline + ack + packet 90 + announcement + packet 23.
+        Assert.Equal(5, fixture.QueuedFrames(peer.Source)); // NPC state + buff baseline + packet 28 + announcement + packet 23.
 
         WorldItemStateUpdate ordinary = CreateWorldItem();
         Assert.True(fixture.WorldItems.TryAllocate(in ordinary, out WorldItemSnapshot whileLeased));
@@ -58,8 +59,8 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
             fixture.State.Tick();
 
         Assert.Equal(3, fixture.ItemRelayedFrames); // packet 90 + packet 151 broadcast to two players.
-        Assert.Equal(6, fixture.QueuedFrames(attacker.Source));
-        Assert.Equal(5, fixture.QueuedFrames(peer.Source));
+        Assert.Equal(7, fixture.QueuedFrames(attacker.Source));
+        Assert.Equal(6, fixture.QueuedFrames(peer.Source));
 
         Assert.True(fixture.WorldItems.TryAllocate(in ordinary, out WorldItemSnapshot afterRelease));
         Assert.Equal((short)0, afterRelease.Handle.Slot);
@@ -72,8 +73,8 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
         NpcSnapshot king = fixture.SpawnKingSlime();
         ConnectionHandle attacker = fixture.SpawnPlayer(connectionId: 903);
         ConnectionHandle peer = fixture.SpawnPlayer(connectionId: 904);
-        Assert.Equal(1, fixture.QueuedFrames(attacker.Source));
-        Assert.Equal(1, fixture.QueuedFrames(peer.Source));
+        fixture.AssertJoinBaseline(attacker.Source, king.Handle.Slot);
+        fixture.AssertJoinBaseline(peer.Source, king.Handle.Slot);
         byte currentGeneration = RuntimeNpcPacketProjection.ToProtocolGeneration(king.Handle.Generation);
         byte staleGeneration = currentGeneration == byte.MaxValue ? (byte)1 : checked((byte)(currentGeneration + 1));
         var hit = new TerrariaNpcDamageState(king.Handle.Slot, staleGeneration, 100, 0f, 1, 0);
@@ -86,8 +87,8 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
         Assert.Equal(king.Simulation.Life, alive.Simulation.Life);
         Assert.Equal(1, fixture.NpcRelayedFrames); // packet 162 acknowledgement only.
         Assert.Equal(0, fixture.ItemRelayedFrames);
-        Assert.Equal(2, fixture.QueuedFrames(attacker.Source));
-        Assert.Equal(1, fixture.QueuedFrames(peer.Source));
+        Assert.Equal(3, fixture.QueuedFrames(attacker.Source));
+        Assert.Equal(2, fixture.QueuedFrames(peer.Source));
     }
 
     private static WorldItemStateUpdate CreateWorldItem() =>
@@ -186,6 +187,21 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
             State.Apply(new PlayerEquipmentRuntimeCommand(connection, equipment));
             Assert.Equal(0, State.RejectedPlayerEquipmentUpdates);
             return connection;
+        }
+
+        public void AssertJoinBaseline(GameCommandSourceId source, short npcSlot)
+        {
+            var queue = (BoundedOutboundQueue)typeof(TerrariaConnectionOutboundQueue)
+                .GetProperty("InnerQueue", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .GetValue(outbound[source])!;
+            Assert.Equal(2, queue.QueuedFrames);
+            Assert.True(queue.TryRead(out OutboundFrame state));
+            Assert.Equal((byte)TerrariaMessageId.NpcUpdate, state.Bytes.Span[2]);
+            Assert.True(queue.TryRead(out OutboundFrame buffs));
+            Assert.True(TerrariaNpcBuffCodec.TryEncodeCurrent(npcSlot, 0, out byte[] expected));
+            Assert.Equal(expected, buffs.Bytes.ToArray());
+            Assert.Equal(OutboundEnqueueResult.Enqueued, queue.TryEnqueue(state));
+            Assert.Equal(OutboundEnqueueResult.Enqueued, queue.TryEnqueue(buffs));
         }
 
         public int QueuedFrames(GameCommandSourceId source) => outbound[source].QueuedFrames;

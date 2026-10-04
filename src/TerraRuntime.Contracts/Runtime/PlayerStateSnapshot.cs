@@ -50,6 +50,8 @@ public readonly record struct PlayerStateSnapshot(
 
     /// <summary>Owned packet-84 visibility value; null means no retained projection (including default snapshots).</summary>
     public float? Stealth { get; init; }
+    public float Luck { get; init; }
+    public VanillaPlayerLuckComponents1458? LuckComponents { get; init; }
     public int? ItemAnimation { get; init; }
     public float? ItemRotation { get; init; }
 

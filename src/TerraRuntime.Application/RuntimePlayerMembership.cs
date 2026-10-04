@@ -212,6 +212,8 @@ internal sealed class RuntimePlayerMember
     public short MaxLife { get; set; }
     public bool IsDead { get; set; }
     public float Stealth { get; set; } = 1f;
+    public float Luck { get; set; }
+    public VanillaPlayerLuckComponents1458? LuckComponents { get; set; }
     public int ItemAnimation { get; set; }
     public float ItemRotation { get; set; }
     public bool HasMana { get; set; }
@@ -267,6 +269,8 @@ internal sealed class RuntimePlayerMember
             CameraTargetY)
         {
             Stealth = Stealth,
+            Luck = Luck,
+            LuckComponents = LuckComponents,
             ItemAnimation = ItemAnimation,
             ItemRotation = ItemRotation,
             HasMount = HasMount,

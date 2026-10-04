@@ -28,7 +28,7 @@ public sealed class RuntimeTownNpcChairLifecycle1458Tests
         sink.Commits.Clear();
         var conditions = new RuntimeTownNpcScheduleConditions1458(daytime, false, false, false, false);
 
-        schedule.Tick(in conditions, []);
+        new TownNpcTestPhase1458(fixture.Town, fixture.Npcs, fixture.Tiles, schedule).Tick(in conditions, []);
 
         Assert.True(fixture.Npcs.TryGetActive(0, out NpcSnapshot after));
         Assert.Equal(.4f, after.VelocityX);
@@ -41,7 +41,7 @@ public sealed class RuntimeTownNpcChairLifecycle1458Tests
         Assert.Equal(expectedStanding ? 2 : 0, random.Calls);
         Assert.Equal(expectedStanding ? NpcStateCommitKind.ForcedUpdate : NpcStateCommitKind.Update,
             Assert.Single(sink.Commits));
-        Assert.Equal(fixture.Initial.PositionX, after.PositionX);
+        Assert.Equal(fixture.Initial.PositionX + .4f, after.PositionX);
         Assert.Equal(fixture.Initial.PositionY, after.PositionY);
     }
 
@@ -55,7 +55,7 @@ public sealed class RuntimeTownNpcChairLifecycle1458Tests
         var schedule = new RuntimeTownNpcSchedule1458(fixture.Town, fixture.Npcs, fixture.Tiles, random);
         sink.Commits.Clear();
         var day = new RuntimeTownNpcScheduleConditions1458(true, false, false, false, false);
-        schedule.Tick(in day, []);
+        new TownNpcTestPhase1458(fixture.Town, fixture.Npcs, fixture.Tiles, schedule).Tick(in day, []);
         Assert.True(fixture.Npcs.TryGetActive(0, out NpcSnapshot after));
         Assert.Equal(2f, after.Ai.Ai1);
         Assert.Equal(5f, after.Ai.Ai0);
@@ -76,7 +76,7 @@ public sealed class RuntimeTownNpcChairLifecycle1458Tests
         var schedule = new RuntimeTownNpcSchedule1458(fixture.Town, fixture.Npcs, fixture.Tiles, random);
         sink.Commits.Clear();
         var night = new RuntimeTownNpcScheduleConditions1458(false, false, false, false, false);
-        schedule.Tick(in night, []);
+        new TownNpcTestPhase1458(fixture.Town, fixture.Npcs, fixture.Tiles, schedule).Tick(in night, []);
         Assert.True(fixture.Npcs.TryGet(current.Handle, out NpcSnapshot after));
         Assert.Equal(current, after);
         Assert.Empty(sink.Commits);
@@ -88,6 +88,7 @@ public sealed class RuntimeTownNpcChairLifecycle1458Tests
         public Fixture(Sink sink, int chair, bool active, float timer)
         {
             Tiles = new WorldTileStore(new WorldDimensions(100, 80));
+            for (int x = 0; x < 100; x++) Tiles.Set(x, 30, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
             Tiles.Set(40, 29, new WorldTile { Type = checked((ushort)chair),
                 Flags = active ? WorldTileFlags.Active : default });
             Town = new RuntimeTownNpcStateStore(new WorldNpcPersistence([], [
@@ -113,8 +114,8 @@ public sealed class RuntimeTownNpcChairLifecycle1458Tests
         public int Calls { get; private set; }
         public int Next(int exclusiveMax)
         {
-            Assert.Equal(60, exclusiveMax);
-            return values[Calls++];
+            if (exclusiveMax == 60) return values[Calls++];
+            return exclusiveMax - 1;
         }
     }
     private sealed class Sink : INpcStateCommitSink

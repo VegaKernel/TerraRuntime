@@ -45,6 +45,8 @@ public enum TerrariaMessageId : byte
     PlayerSpawnSelf = 49,
     PlayerBuffs = 50,
     LockAndUnlock = 52,
+    AddNpcBuff = 53,
+    UpdateNpcBuff = 54,
     SetNpcTalk = 40,
     AddPlayerBuffPvp = 55,
     UniqueTownNpcInfoSyncRequest = 56,
@@ -62,6 +64,7 @@ public enum TerrariaMessageId : byte
     PlayerHurt = 117,
     PlayerDeathV2 = 118,
     FinishedConnectingToServer = 129,
+    PlayerLuckFactors = 134,
     WorldItemRemove = 151,
 
     /// <summary>

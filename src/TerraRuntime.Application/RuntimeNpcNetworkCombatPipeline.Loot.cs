@@ -12,8 +12,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 {
     private void ExecuteNpcDeathHitEffects(in NpcSnapshot npc)
     {
-        if (npc.TypeIdentity == VanillaNpcIds.MotherSlime)
-            VanillaMotherSlimeDeathSplit1458.SpawnChildren(npcs, in npc, random);
+        if (npc.TypeIdentity == VanillaNpcIds.MotherSlime && EnsurePreviewSpawnStream())
+            VanillaMotherSlimeDeathSplit1458.SpawnChildren(DeathNpcs, in npc, random);
     }
 
     private bool TryGetActiveLootPlayer(PlayerSlotId slot, out PlayerStateSnapshot player)
@@ -29,6 +29,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
     private bool TryExecuteImportedLoot(in NpcSnapshot npc, bool eaterBoss)
     {
+        if (!IsPreviewingDeath && pendingDeathPlan is { } plan)
+            return plan.TryPublishPhase(NpcDeathDropPhase1458.Imported, lootDelivery.Adopt);
         if (VanillaEaterOfWorldsLifecycle.IsSegment(npc.TypeIdentity))
             return TryExecuteEaterOfWorldsLoot(in npc, eaterBoss);
         if (npc.TypeIdentity == VanillaNpcIds.BrainOfCthulhu || npc.TypeIdentity == VanillaNpcIds.BrainCreeper)
@@ -74,7 +76,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         Span<WorldItemDropReservation> capacity = stackalloc WorldItemDropReservation[MaxOrdinaryDrops];
         Span<WorldItemDropReservation> staged = stackalloc WorldItemDropReservation[MaxOrdinaryDrops];
         int reserved = 0;
-        for (; reserved < maximumDropCount; reserved++)
+        for (; lootDelivery.Preview is null && reserved < maximumDropCount; reserved++)
         {
             if (worldItems.TryReserveDropSlot(out capacity[reserved]))
                 continue;
@@ -119,6 +121,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             }
         }
 
+        if (lootDelivery.Preview is not null) return true;
         ReleaseReservations(capacity[stagedCount..maximumDropCount]);
         for (int index = 0; index < stagedCount; index++)
         {
@@ -135,6 +138,12 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         Span<WorldItemDropReservation> staged,
         ref int stagedCount)
     {
+        if (lootDelivery.Preview is not null)
+        {
+            if (!lootDelivery.TryWorld(in origin, in drop, random)) return false;
+            stagedCount++;
+            return true;
+        }
         if (!materializer.TryMaterialize(in origin, in drop, random, out WorldItemDropStateUpdate materialized))
         {
             ReleaseReservations(capacity);
@@ -179,7 +188,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             in origin,
             activeEaterLootPlayers.AsSpan(0, activeCount),
             random,
-            eaterLoot,
+            lootDelivery,
             out _);
     }
 
@@ -213,7 +222,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             in origin,
             activeBrainLootPlayers.AsSpan(0, activeCount),
             random,
-            brainLoot,
+            lootDelivery,
             out _);
     }
 
@@ -247,7 +256,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             in origin,
             activeSkeletronLootPlayers.AsSpan(0, activeCount),
             random,
-            skeletronLoot,
+            lootDelivery,
             out _);
     }
 
@@ -276,7 +285,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             in origin,
             activeQueenBeeLootPlayers.AsSpan(0, activeCount),
             random,
-            queenBeeLoot,
+            lootDelivery,
             out _);
     }
 
@@ -308,7 +317,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             in origin,
             activeDeerclopsLootPlayers.AsSpan(0, activeCount),
             random,
-            deerclopsLoot,
+            lootDelivery,
             out _);
     }
 
@@ -336,7 +345,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         var origin = ResolveNpcLootOrigin(in npc, in definition);
         var context = new VanillaPlanteraLootContext(expertMode, masterMode, downed);
         return VanillaPlanteraLootEvaluator.TryExecute(in context, in origin,
-            activePlanteraLootPlayers.AsSpan(0, activeCount), random, planteraLoot, out _);
+            activePlanteraLootPlayers.AsSpan(0, activeCount), random, lootDelivery, out _);
     }
 
     private bool TryExecuteGolemLoot(in NpcSnapshot npc)
@@ -367,7 +376,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             in origin,
             activeGolemLootPlayers.AsSpan(0, activeCount),
             random,
-            golemLoot,
+            lootDelivery,
             out _);
     }
 
@@ -399,7 +408,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             in origin,
             activeMoonLordLootPlayers.AsSpan(0, activeCount),
             random,
-            moonLordLoot,
+            lootDelivery,
             out _);
     }
 
@@ -431,7 +440,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             in origin,
             activeQueenSlimeLootPlayers.AsSpan(0, activeCount),
             random,
-            queenSlimeLoot,
+            lootDelivery,
             out _);
     }
 
@@ -463,7 +472,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             in origin,
             activeEyeOfCthulhuLootPlayers.AsSpan(0, activeCount),
             random,
-            eyeOfCthulhuLoot,
+            lootDelivery,
             out _);
     }
 
@@ -495,7 +504,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         {
             NpcTypeId otherType = npc.TypeIdentity == VanillaNpcIds.Retinazer ?
                 VanillaNpcIds.Spazmatism : VanillaNpcIds.Retinazer;
-            int count = npcs.CopyActive(npcFamilyBuffer);
+            int count = DeathNpcs.CopyActive(npcFamilyBuffer);
             for (int index = 0; index < count; index++)
                 otherTwinActive |= npcFamilyBuffer[index].TypeIdentity == otherType;
         }
@@ -506,7 +515,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             in origin,
             activeMechanicalBossLootPlayers.AsSpan(0, activeCount),
             random,
-            mechanicalBossLoot,
+            lootDelivery,
             out _);
     }
 
@@ -515,7 +524,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         if (!zenithWorld)
             return false;
 
-        int count = npcs.CopyActive(npcFamilyBuffer);
+        int count = DeathNpcs.CopyActive(npcFamilyBuffer);
         for (int index = 0; index < count; index++)
         {
             NpcTypeId type = npcFamilyBuffer[index].TypeIdentity;
@@ -550,13 +559,13 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             in origin,
             activeWallOfFleshLootPlayers.AsSpan(0, activeCount),
             random,
-            wallOfFleshLoot,
+            lootDelivery,
             out _);
     }
 
     private bool TryExecuteKingSlimeDifficultyLoot(in NpcSnapshot npc)
     {
-        if (difficultyLoot is null ||
+        if (worldItemReplication is null ||
             !interactions.TryCopyInteractingSlots(npc.Handle, interactionSlots, out int interactionCount) ||
             !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.KingSlime, out VanillaNpcDefinition definition))
         {
@@ -582,7 +591,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             in origin,
             activeLootPlayers.AsSpan(0, activeCount),
             random,
-            difficultyLoot,
+            lootDelivery,
             out _);
     }
 
@@ -595,20 +604,25 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         }
     }
 
-    private sealed class SystemNpcCombatRandom : INpcLootRollSource, IKingSlimeDeathRandom, IVanillaNpcRandom
+    private sealed class SystemNpcCombatRandom : INpcLootRollSource, IKingSlimeDeathRandom, IVanillaNpcRandom, TerraRuntime.Gameplay.Npcs.Loot.INpcMoneyRandom1458
     {
-        private readonly Random random = new();
-        private readonly VanillaUnifiedRandom1458? sourceRandom;
-        public SystemNpcCombatRandom(VanillaUnifiedRandom1458? sourceRandom = null) => this.sourceRandom = sourceRandom;
+        public VanillaUnifiedRandom1458 SourceRandom { get; private set; }
+        public float Luck { get; set; }
+        public SystemNpcCombatRandom(VanillaUnifiedRandom1458? sourceRandom = null) =>
+            SourceRandom = sourceRandom ?? new VanillaUnifiedRandom1458(Random.Shared.Next());
+        public void UseSource(VanillaUnifiedRandom1458 source) => SourceRandom = source;
 
         public int RollLuck(int chanceDenominator)
         {
             ArgumentOutOfRangeException.ThrowIfLessThan(chanceDenominator, 1);
-            return sourceRandom?.Next(chanceDenominator) ?? random.Next(chanceDenominator);
+            if (Luck > 0f && NextFloat() < Luck)
+                return SourceRandom.Next(SourceRandom.Next(chanceDenominator / 2, chanceDenominator));
+            if (Luck < 0f && NextFloat() < -Luck)
+                return SourceRandom.Next(SourceRandom.Next(chanceDenominator, checked(chanceDenominator * 2)));
+            return SourceRandom.Next(chanceDenominator);
         }
-
-        public int NextInt32(int inclusiveMin, int exclusiveMax) => sourceRandom?.Next(inclusiveMin, exclusiveMax) ?? random.Next(inclusiveMin, exclusiveMax);
-
-        public float NextFloatDirection() => (sourceRandom is null ? random.NextSingle() : (float)sourceRandom.NextDouble()) * 2f - 1f;
+        public int NextInt32(int inclusiveMin, int exclusiveMax) => SourceRandom.Next(inclusiveMin, exclusiveMax);
+        public float NextFloat() => (float)SourceRandom.NextDouble();
+        public float NextFloatDirection() => NextFloat() * 2f - 1f;
     }
 }

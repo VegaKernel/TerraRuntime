@@ -27,6 +27,7 @@ internal interface IRuntimePlayerEventSink
         PlayerHealthUpdated(connection, in request);
     }
 
+    void PlayerLuckFactorsUpdated(ConnectionHandle connection, in VanillaPlayerLuckComponents1458 factors) { }
     void PlayerStealthUpdated(ConnectionHandle connection, float stealth) { }
     void PlayerItemAnimationUpdated(ConnectionHandle connection, float rotation, short animation) { }
 

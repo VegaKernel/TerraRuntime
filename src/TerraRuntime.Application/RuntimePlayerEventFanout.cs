@@ -45,6 +45,12 @@ internal sealed class RuntimePlayerEventFanout(
         second.PlayerItemAnimationUpdated(connection, rotation, animation);
     }
 
+    public void PlayerLuckFactorsUpdated(ConnectionHandle connection, in VanillaPlayerLuckComponents1458 factors)
+    {
+        first.PlayerLuckFactorsUpdated(connection, factors);
+        second.PlayerLuckFactorsUpdated(connection, factors);
+    }
+
     public void PlayerStealthUpdated(ConnectionHandle connection, float stealth)
     {
         first.PlayerStealthUpdated(connection, stealth);

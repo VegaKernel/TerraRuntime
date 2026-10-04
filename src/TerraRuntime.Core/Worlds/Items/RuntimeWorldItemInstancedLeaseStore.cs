@@ -28,15 +28,28 @@ public sealed class RuntimeWorldItemInstancedLeaseStore
         if (leaseTicks <= 0 || !_worldItems.TryReserveDrop(in drop, out reservation))
             return false;
 
-        int slot = reservation.Slot;
-        if (_leases[slot].Reservation.IsAssigned)
+        if (!TryAdoptReservedDrop(in reservation, leaseTicks))
         {
             _worldItems.TryReleaseDropReservation(in reservation);
             reservation = default;
             return false;
         }
 
-        _leases[slot] = new Lease(reservation, leaseTicks);
+        return true;
+    }
+
+    /// <summary>
+    /// Takes lease ownership of an exact slot already reserved by a trusted drop transaction. Drop materialization
+    /// and recipient generations remain with that caller; this boundary neither allocates nor publishes an item.
+    /// A failed adoption leaves the existing reservation with its caller and does not renew an existing lease.
+    /// </summary>
+    internal bool TryAdoptReservedDrop(in WorldItemDropReservation reservation, int leaseTicks)
+    {
+        if (leaseTicks <= 0 || !reservation.IsAssigned || (uint)reservation.Slot >= (uint)_leases.Length ||
+            _leases[reservation.Slot].Reservation.IsAssigned || !_worldItems.HasDropReservation(in reservation))
+            return false;
+
+        _leases[reservation.Slot] = new Lease(reservation, leaseTicks);
         ActiveLeaseCount++;
         return true;
     }

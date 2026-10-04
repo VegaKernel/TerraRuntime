@@ -48,7 +48,10 @@ public sealed class SystemVanillaNpcRandom : IVanillaNpcRandom
     {
     }
 
-    private SystemVanillaNpcRandom(VanillaUnifiedRandom1458 random) => _random = random;
+    internal SystemVanillaNpcRandom(VanillaUnifiedRandom1458 random) =>
+        _random = random ?? throw new ArgumentNullException(nameof(random));
+
+    internal VanillaUnifiedRandom1458 SourceRandom => _random;
 
     public double NextDouble() => _random.NextDouble();
 

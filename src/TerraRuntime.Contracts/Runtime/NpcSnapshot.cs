@@ -160,6 +160,14 @@ public readonly record struct NpcSimulationState(
     /// <summary>NPC.difficulty sampled at creation; attack interpolation retains it across world changes.</summary>
     public float? SpawnDifficulty { get; init; }
 
+    /// <summary>Server-owned NPC.value. Null means monetary defaults have not been admitted.</summary>
+    public float? MoneyValue { get; init; }
+    /// <summary>NPC.extraValue, owned coin-pickup/revenge additions; a fresh NPC starts at zero.</summary>
+    public int? ExtraMoneyValue { get; init; }
+    /// <summary>NPC.midas from owned status facts; a fresh NPC starts false.</summary>
+    public bool? Midas { get; init; }
+
+
     /// <summary>Live NPC.knockBackResist, materialized at spawn and retained by state-only updates.</summary>
     public float? KnockBackResist { get; init; }
 
@@ -207,6 +215,8 @@ public readonly record struct NpcSimulationState(
     };
 
     public bool IsValid =>
+        (MoneyValue is null || float.IsFinite(MoneyValue.Value) && MoneyValue.Value >= 0f) &&
+        (ExtraMoneyValue is null || ExtraMoneyValue.Value >= 0) &&
         (Rotation is null || float.IsFinite(Rotation.Value)) &&
         (KnockBackResist is null || float.IsFinite(KnockBackResist.Value) && KnockBackResist.Value >= 0f) &&
         (SpawnDifficulty is null || float.IsFinite(SpawnDifficulty.Value) && SpawnDifficulty.Value is >= .5f and <= 4f) &&

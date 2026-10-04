@@ -60,6 +60,7 @@ internal sealed partial class PlayerAuthority
         }
 
         AppliedBuffSnapshots++;
+        RecalculatePlayerLuck(activePlayer);
         events?.PlayerBuffTypesUpdated(command.Connection, in request);
     }
 }

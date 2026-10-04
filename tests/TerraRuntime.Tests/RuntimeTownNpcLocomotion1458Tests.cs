@@ -32,7 +32,7 @@ public sealed class RuntimeTownNpcLocomotion1458Tests
         Assert.Equal(expectedLocal, after.Simulation.LocalAi.Ai3);
         Assert.Equal(23f, after.Ai.Ai3);
         Assert.Equal(state != expectedState ? 0f : 17f, after.Ai.Ai2);
-        Assert.Equal(draws + (expectedState == 1f && vy == 0f ? 2 : 0), f.Random.Bounds.Count);
+        Assert.Equal(draws + (expectedState == 1f && vy == 0f ? 2 : 0) + (expectedState == 0f && vy == 0f ? 7 : 0), f.Random.Bounds.Count);
         Assert.Equal(forced ? NpcStateCommitKind.ForcedUpdate : NpcStateCommitKind.Update,
             Assert.Single(f.Sink.Commits));
         Assert.Equal(f.Initial.PositionX + expectedVx, after.PositionX);
@@ -74,10 +74,10 @@ public sealed class RuntimeTownNpcLocomotion1458Tests
     {
         var f = new Fixture(1f, 1f, .5f, 0f, 1);
         f.Tick();
-        Assert.Equal(new[] { 300, 900 }, f.Random.Bounds);
+        Assert.Equal(new[] { 300, 900, 300, 1800, 1200, 600, 1800, 600, 1200 }, f.Random.Bounds);
         Assert.Equal(-1f, f.Current.Simulation.LocalAi.Ai3); // Source writes this after setting60 on expiry.
         Assert.Equal(.57f, f.Current.VelocityX);
-        Assert.Equal(1916656655, f.Random.Stream.Next()); // Before the unowned social offers.
+        Assert.Equal(1960233424, f.Random.Stream.Next()); // Original fullAI includes the real idle offers.
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public sealed class RuntimeTownNpcLocomotion1458Tests
         Assert.Equal(71f, f.Current.Ai.Ai1);
         Assert.Equal(.57f, f.Current.VelocityX);
         Assert.Equal(-1f, f.Current.Simulation.LocalAi.Ai3);
-        Assert.Equal(new[] { 50 }, f.Random.Bounds);
+        Assert.Equal(new[] { 50, 300, 1800, 1200, 600, 1800, 600, 1200 }, f.Random.Bounds);
         Assert.Equal(NpcStateCommitKind.ForcedUpdate, Assert.Single(f.Sink.Commits));
     }
 
@@ -128,7 +128,7 @@ public sealed class RuntimeTownNpcLocomotion1458Tests
         Assert.Equal(17f, f.Current.Ai.Ai2);
         Assert.Equal(60f, f.Current.Simulation.LocalAi.Ai3);
         Assert.Equal(.5f, f.Current.VelocityX);
-        Assert.Equal(new[] { 200 }, f.Random.Bounds);
+        Assert.Equal(new[] { 200, 300, 1800, 1200, 600, 1800, 600, 1200 }, f.Random.Bounds);
         Assert.Single(f.Sink.Commits);
     }
 
@@ -138,9 +138,14 @@ public sealed class RuntimeTownNpcLocomotion1458Tests
     {
         var f = new Fixture(state, 20f, .5f, 0f, 1);
         f.Tick();
-        Assert.Equal(f.Initial, f.Current);
+        if (state == 10f)
+        {
+            Assert.Equal(10f, f.Current.Ai.Ai0); Assert.Equal(19f, f.Current.Ai.Ai1);
+            Assert.Equal(10f, f.Current.Simulation.LocalAi.Ai3);
+            Assert.Equal(639.4f, f.Current.PositionX); Assert.Single(f.Sink.Commits);
+        }
+        else { Assert.Equal(f.Initial, f.Current); Assert.Empty(f.Sink.Commits); }
         Assert.Empty(f.Random.Bounds);
-        Assert.Empty(f.Sink.Commits);
     }
 
     [Theory]
@@ -215,6 +220,7 @@ public sealed class RuntimeTownNpcLocomotion1458Tests
             Assert.True(Npcs.TryUpdate(initial.Handle, in update, out NpcSnapshot seeded));
             Initial = seeded;
             Schedule = new RuntimeTownNpcSchedule1458(Town, Npcs, Tiles, Random);
+            Phase = new(Town, Npcs, Tiles, Schedule);
             Sink.Commits.Clear();
         }
         public WorldTileStore Tiles { get; }
@@ -223,9 +229,10 @@ public sealed class RuntimeTownNpcLocomotion1458Tests
         public NpcSnapshot Initial { get; }
         public NpcSnapshot Current { get { Assert.True(Npcs.TryGetActive(0, out NpcSnapshot value)); return value; } }
         public RuntimeTownNpcSchedule1458 Schedule { get; }
+        public TownNpcTestPhase1458 Phase { get; }
         public RandomSource Random { get; } = new();
         public Sink Sink { get; } = new();
-        public void Tick(bool night = false) { var conditions = new RuntimeTownNpcScheduleConditions1458(!night, false, false, false, false); Schedule.Tick(in conditions, []); }
+        public void Tick(bool night = false) { var conditions = new RuntimeTownNpcScheduleConditions1458(!night, false, false, false, false); Phase.Tick(in conditions, []); }
     }
     private sealed class RandomSource : IRuntimeTownNpcScheduleRandom1458
     {

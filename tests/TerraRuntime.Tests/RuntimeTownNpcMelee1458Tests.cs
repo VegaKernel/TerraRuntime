@@ -52,13 +52,13 @@ public sealed class RuntimeTownNpcMelee1458Tests
     {
         MeleeFixture f = MeleeFixture.Create(new NpcTypeId(207), "Dye");
 
-        RuntimeTownNpcCombatTickSummary1458 start = f.Combat.Tick();
+        RuntimeTownNpcCombatTickSummary1458 start = f.Tick();
         Assert.Equal(1, start.AttacksStarted);
         Assert.True(f.Npcs.TryGetActive(0, out NpcSnapshot dye));
         Assert.Equal(15f, dye.Ai.Ai0);
         Assert.Equal(15f, dye.Ai.Ai1);
 
-        RuntimeTownNpcCombatTickSummary1458 swing = f.Combat.Tick();
+        RuntimeTownNpcCombatTickSummary1458 swing = f.Tick();
         Assert.Equal(1, swing.MeleeHits);
         Assert.Single(f.Damage.Hits);
         Assert.Equal(11, f.Damage.Hits[0].Damage);
@@ -66,7 +66,7 @@ public sealed class RuntimeTownNpcMelee1458Tests
         Assert.Equal(1, f.Damage.Hits[0].Direction);
 
         for (int i = 0; i < 6; i++)
-            f.Combat.Tick();
+            f.Tick();
         Assert.Single(f.Damage.Hits);
     }
 
@@ -75,8 +75,8 @@ public sealed class RuntimeTownNpcMelee1458Tests
     {
         MeleeFixture f = MeleeFixture.Create(new NpcTypeId(441), "Andrew");
 
-        f.Combat.Tick();
-        f.Combat.Tick();
+        f.Tick();
+        f.Tick();
 
         MeleeHit hit = Assert.Single(f.Damage.Hits);
         Assert.Equal(18, hit.Damage);
@@ -267,23 +267,32 @@ public sealed class RuntimeTownNpcMelee1458Tests
 
     private sealed class MeleeFixture
     {
-        private MeleeFixture(RuntimeNpcStore npcs, RuntimeTownNpcCombat1458 combat, RecordingDamage damage)
+        private MeleeFixture(RuntimeNpcStore npcs, RuntimeTownNpcCombat1458 combat, RecordingDamage damage, TownNpcTestPhase1458 phase)
         {
             Npcs = npcs;
             Combat = combat;
+            Phase = phase;
             Damage = damage;
         }
 
         public RuntimeNpcStore Npcs { get; }
         public RuntimeTownNpcCombat1458 Combat { get; }
+        public TownNpcTestPhase1458 Phase { get; }
+        public RuntimeTownNpcCombatTickSummary1458 Tick()
+        {
+            var conditions = new RuntimeTownNpcScheduleConditions1458(true, false, false, false, false);
+            return Phase.Tick(in conditions, []);
+        }
         public RecordingDamage Damage { get; }
 
         public static MeleeFixture Create(NpcTypeId townType, string givenName)
         {
             var tiles = new WorldTileStore(new WorldDimensions(100, 100));
+            for (int column = 0; column < 100; column++)
+                tiles.Set(column, 13, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
             var persistence = new WorldNpcPersistence(
                 [],
-                [new WorldTownNpc(townType.Value, givenName, 160f, 160f, true, 10, 14, null, false)],
+                [new WorldTownNpc(townType.Value, givenName, 160f, 168f, true, 10, 14, null, false)],
                 []);
             var town = new RuntimeTownNpcStateStore(persistence, [], tiles.Dimensions);
             var npcs = new RuntimeNpcStore();
@@ -322,7 +331,8 @@ public sealed class RuntimeTownNpcMelee1458Tests
                 new ZeroRandom());
             var damage = new RecordingDamage();
             combat.SetMeleeDamageSink(damage);
-            return new MeleeFixture(npcs, combat, damage);
+            var schedule = new RuntimeTownNpcSchedule1458(town, npcs, tiles, new QuietScheduleRandom());
+            return new MeleeFixture(npcs, combat, damage, new(town, npcs, tiles, schedule, combat));
         }
     }
 
@@ -346,6 +356,10 @@ public sealed class RuntimeTownNpcMelee1458Tests
         }
     }
 
+    private sealed class QuietScheduleRandom : IRuntimeTownNpcScheduleRandom1458
+    {
+        public int Next(int exclusiveMax) => exclusiveMax - 1;
+    }
     private sealed class ZeroRandom : IRuntimeTownNpcCombatRandom1458
     {
         public int Next(int exclusiveMax)

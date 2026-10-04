@@ -100,15 +100,17 @@ public sealed class VanillaEclipseGroundFightersAi1458Tests
     }
 
     [Fact]
-    public void Canonical_names_preserve_admitted_species_and_do_not_admit_unimplemented_AI22()
+    public void Canonical_names_preserve_species_and_distinct_AI22_admission()
     {
         Assert.Equal(82, VanillaNpcIds.Wraith.Value);
         Assert.Equal(122, VanillaNpcIds.Gastropod.Value);
         Assert.Equal(163, VanillaNpcIds.BlackRecluse.Value);
         Assert.Equal(166, VanillaNpcIds.SwampThing.Value);
         Assert.Equal(472, VanillaProjectileIds.WebSpit.Value);
-        Assert.False(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Wraith, out _));
-        Assert.False(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Gastropod, out _));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Wraith, out var wraith));
+        Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Gastropod, out var gastropod));
+        Assert.Equal(VanillaNpcBehaviorFamily.GhostHover, wraith.BehaviorFamily);
+        Assert.Equal(VanillaNpcBehaviorFamily.GhostHover, gastropod.BehaviorFamily);
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.BlackRecluse, out _));
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.SwampThing, out _));
     }

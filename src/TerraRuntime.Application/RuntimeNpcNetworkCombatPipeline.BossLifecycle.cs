@@ -1,4 +1,5 @@
 using TerraRuntime.Gameplay.Npcs;
+using TerraRuntime.Gameplay.Players;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -30,12 +31,12 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         }
         if (IsDestroyerMember(member.TypeIdentity) && float.IsFinite(member.Ai.Ai3) &&
             member.Ai.Ai3 >= 0f && member.Ai.Ai3 < byte.MaxValue && member.Ai.Ai3 == MathF.Truncate(member.Ai.Ai3) &&
-            npcs.TryGetActive((byte)member.Ai.Ai3, out NpcSnapshot linked) && linked.TypeIdentity == VanillaNpcIds.Destroyer)
+            DeathNpcs.TryGetActive((byte)member.Ai.Ai3, out NpcSnapshot linked) && linked.TypeIdentity == VanillaNpcIds.Destroyer)
         {
             root = linked;
             return true;
         }
-        int count = npcs.CopyActive(npcFamilyBuffer);
+        int count = DeathNpcs.CopyActive(npcFamilyBuffer);
         for (int index = 0; index < count; index++)
         {
             if (npcFamilyBuffer[index].TypeIdentity == VanillaNpcIds.Destroyer)
@@ -56,7 +57,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         var update = new NpcStateUpdate(
             npc.Type, npc.NetId, npc.PositionX, npc.PositionY, npc.VelocityX, npc.VelocityY, npc.Target, npc.Ai,
             npc.Simulation with { Life = life });
-        return npcs.TryUpdate(npc.Handle, in update, out committed);
+        return DeathNpcs.TryUpdate(npc.Handle, in update, out committed);
     }
 
     private bool TrySetDestroyerRootLife(in NpcSnapshot root, int life, out NpcSnapshot committed)
@@ -67,7 +68,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         var update = new NpcStateUpdate(
             root.Type, root.NetId, root.PositionX, root.PositionY, root.VelocityX, root.VelocityY, root.Target, root.Ai,
             root.Simulation with { Life = life, JustHit = true });
-        return npcs.TryUpdate(root.Handle, in update, out committed);
+        return DeathNpcs.TryUpdate(root.Handle, in update, out committed);
     }
 
     private void MarkDestroyerInteraction(in NpcSnapshot member, PlayerHandle player)
@@ -77,7 +78,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             interactions.TryMark(member.Handle, player);
             return;
         }
-        int count = npcs.CopyActive(npcFamilyBuffer);
+        int count = DeathNpcs.CopyActive(npcFamilyBuffer);
         for (int index = 0; index < count; index++)
         {
             NpcSnapshot peer = npcFamilyBuffer[index];
@@ -90,14 +91,14 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
     private void CleanupDestroyerSegments(byte rootSlot)
     {
-        int count = npcs.CopyActive(npcFamilyBuffer);
+        int count = DeathNpcs.CopyActive(npcFamilyBuffer);
         for (int index = 0; index < count; index++)
         {
             NpcSnapshot peer = npcFamilyBuffer[index];
             if ((peer.TypeIdentity != VanillaNpcIds.DestroyerBody && peer.TypeIdentity != VanillaNpcIds.DestroyerTail) ||
                 !float.IsFinite(peer.Ai.Ai3) || peer.Ai.Ai3 < 0f || peer.Ai.Ai3 >= byte.MaxValue || (byte)peer.Ai.Ai3 != rootSlot)
                 continue;
-            if (npcs.TryDespawn(peer.Handle))
+            if (DeathNpcs.TryDespawn(peer.Handle))
             {
                 interactions.Forget(peer.Handle);
                 npcReplication?.TryPublishDeath(in peer);
@@ -114,12 +115,12 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         }
         if (member.TypeIdentity == VanillaNpcIds.WallOfFleshEye && float.IsFinite(member.Ai.Ai3) &&
             member.Ai.Ai3 >= 0f && member.Ai.Ai3 < byte.MaxValue &&
-            npcs.TryGetActive((byte)member.Ai.Ai3, out NpcSnapshot linked) && linked.TypeIdentity == VanillaNpcIds.WallOfFlesh)
+            DeathNpcs.TryGetActive((byte)member.Ai.Ai3, out NpcSnapshot linked) && linked.TypeIdentity == VanillaNpcIds.WallOfFlesh)
         {
             root = linked;
             return true;
         }
-        int count = npcs.CopyActive(npcFamilyBuffer);
+        int count = DeathNpcs.CopyActive(npcFamilyBuffer);
         for (int index = 0; index < count; index++)
         {
             if (npcFamilyBuffer[index].TypeIdentity == VanillaNpcIds.WallOfFlesh)
@@ -140,7 +141,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         var update = new NpcStateUpdate(
             root.Type, root.NetId, root.PositionX, root.PositionY, root.VelocityX, root.VelocityY, root.Target, root.Ai,
             root.Simulation with { Life = life, JustHit = true });
-        return npcs.TryUpdate(root.Handle, in update, out committed);
+        return DeathNpcs.TryUpdate(root.Handle, in update, out committed);
     }
 
     private void MarkWallOfFleshInteraction(in NpcSnapshot member, PlayerHandle player)
@@ -148,7 +149,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         if (TryResolveWallOfFleshRoot(in member, out NpcSnapshot root))
             interactions.TryMark(root.Handle, player);
         interactions.TryMark(member.Handle, player);
-        int count = npcs.CopyActive(npcFamilyBuffer);
+        int count = DeathNpcs.CopyActive(npcFamilyBuffer);
         for (int index = 0; index < count; index++)
         {
             NpcSnapshot peer = npcFamilyBuffer[index];
@@ -159,7 +160,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
     private void CleanupWallOfFleshChildren(byte rootSlot)
     {
-        int count = npcs.CopyActive(npcFamilyBuffer);
+        int count = DeathNpcs.CopyActive(npcFamilyBuffer);
         for (int index = 0; index < count; index++)
         {
             NpcSnapshot peer = npcFamilyBuffer[index];
@@ -167,7 +168,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                          float.IsFinite(peer.Ai.Ai3) && peer.Ai.Ai3 >= 0f && peer.Ai.Ai3 < byte.MaxValue && (byte)peer.Ai.Ai3 == rootSlot;
             if (!child)
                 continue;
-            if (npcs.TryDespawn(peer.Handle))
+            if (DeathNpcs.TryDespawn(peer.Handle))
             {
                 interactions.Forget(peer.Handle);
                 npcReplication?.TryPublishDeath(in peer);
@@ -177,7 +178,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
     private void MarkSkeletronInteraction(PlayerHandle player)
     {
-        int count = npcs.CopyActive(npcFamilyBuffer);
+        int count = DeathNpcs.CopyActive(npcFamilyBuffer);
         for (int index = 0; index < count; index++)
         {
             NpcSnapshot peer = npcFamilyBuffer[index];
@@ -195,7 +196,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         // NPC.ApplyInteraction propagates between every active twin, or all active Prime127..131 parts,
         // before the strike. Use the existing exact-generation ledger, not a second encounter credit store.
         bool twins = VanillaMechanicalBossLootEvaluator.IsTwin(type);
-        int count = npcs.CopyActive(npcFamilyBuffer);
+        int count = DeathNpcs.CopyActive(npcFamilyBuffer);
         for (int index = 0; index < count; index++)
         {
             NpcSnapshot peer = npcFamilyBuffer[index];
@@ -208,62 +209,62 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     {
         if (dead.TypeIdentity == VanillaNpcIds.QueenSlime)
         {
-            progression.MarkCompleted(VanillaWorldProgressionId.QueenSlime);
+            DeathProgression.MarkCompleted(VanillaWorldProgressionId.QueenSlime);
             return;
         }
         if (dead.TypeIdentity == VanillaNpcIds.Destroyer)
         {
-            progression.MarkCompleted(VanillaWorldProgressionId.Destroyer);
-            progression.MarkCompleted(VanillaWorldProgressionId.AnyMechanicalBoss);
+            DeathProgression.MarkCompleted(VanillaWorldProgressionId.Destroyer);
+            DeathProgression.MarkCompleted(VanillaWorldProgressionId.AnyMechanicalBoss);
             return;
         }
         if (dead.TypeIdentity == VanillaNpcIds.Retinazer || dead.TypeIdentity == VanillaNpcIds.Spazmatism)
         {
             NpcTypeId other = dead.TypeIdentity == VanillaNpcIds.Retinazer ? VanillaNpcIds.Spazmatism : VanillaNpcIds.Retinazer;
-            int count = npcs.CopyActive(npcFamilyBuffer);
+            int count = DeathNpcs.CopyActive(npcFamilyBuffer);
             for (int index = 0; index < count; index++)
             {
                 NpcSnapshot peer = npcFamilyBuffer[index];
                 if (peer.Handle != dead.Handle && peer.TypeIdentity == other && peer.Simulation.Life > 0)
                     return;
             }
-            progression.MarkCompleted(VanillaWorldProgressionId.Twins);
-            progression.MarkCompleted(VanillaWorldProgressionId.AnyMechanicalBoss);
+            DeathProgression.MarkCompleted(VanillaWorldProgressionId.Twins);
+            DeathProgression.MarkCompleted(VanillaWorldProgressionId.AnyMechanicalBoss);
             return;
         }
         if (dead.TypeIdentity == VanillaNpcIds.SkeletronPrime)
         {
-            progression.MarkCompleted(VanillaWorldProgressionId.SkeletronPrime);
-            progression.MarkCompleted(VanillaWorldProgressionId.AnyMechanicalBoss);
+            DeathProgression.MarkCompleted(VanillaWorldProgressionId.SkeletronPrime);
+            DeathProgression.MarkCompleted(VanillaWorldProgressionId.AnyMechanicalBoss);
             return;
         }
         if (dead.TypeIdentity == VanillaNpcIds.Plantera)
-            progression.MarkCompleted(VanillaWorldProgressionId.Plantera);
+            DeathProgression.MarkCompleted(VanillaWorldProgressionId.Plantera);
         else if (dead.TypeIdentity == VanillaNpcIds.Golem)
-            progression.MarkCompleted(VanillaWorldProgressionId.Golem);
+            DeathProgression.MarkCompleted(VanillaWorldProgressionId.Golem);
         else if (dead.TypeIdentity == VanillaNpcIds.DukeFishron)
-            progression.MarkCompleted(VanillaWorldProgressionId.DukeFishron);
+            DeathProgression.MarkCompleted(VanillaWorldProgressionId.DukeFishron);
         else if (dead.TypeIdentity == VanillaNpcIds.LunaticCultist)
-            progression.MarkCompleted(VanillaWorldProgressionId.LunaticCultist);
+            DeathProgression.MarkCompleted(VanillaWorldProgressionId.LunaticCultist);
         else if (dead.TypeIdentity == VanillaNpcIds.EmpressOfLight)
-            progression.MarkCompleted(VanillaWorldProgressionId.EmpressOfLight);
+            DeathProgression.MarkCompleted(VanillaWorldProgressionId.EmpressOfLight);
         else if (dead.TypeIdentity == VanillaNpcIds.MoonLordCore)
-            progression.MarkCompleted(VanillaWorldProgressionId.MoonLord);
+            DeathProgression.MarkCompleted(VanillaWorldProgressionId.MoonLord);
     }
 
     private void ApplySkeletronDeathEffects()
     {
-        progression.MarkCompleted(VanillaWorldProgressionId.Skeletron);
+        DeathProgression.MarkCompleted(VanillaWorldProgressionId.Skeletron);
     }
 
     private void ApplyQueenBeeDeathEffects()
     {
-        progression.MarkCompleted(VanillaWorldProgressionId.QueenBee);
+        DeathProgression.MarkCompleted(VanillaWorldProgressionId.QueenBee);
     }
 
     private void ApplyDeerclopsDeathEffects()
     {
-        progression.MarkCompleted(VanillaWorldProgressionId.Deerclops);
+        DeathProgression.MarkCompleted(VanillaWorldProgressionId.Deerclops);
     }
 
     private void ApplyWallOfFleshDeathEffects(in NpcSnapshot wallOfFlesh)
@@ -271,7 +272,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         if (!VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.WallOfFlesh, out VanillaNpcDefinition definition))
             throw new InvalidOperationException("Wall of Flesh definition disappeared during its committed death path.");
 
-        if (worldTiles is not null)
+        if (!IsPreviewingDeath && worldTiles is not null)
         {
             VanillaWallOfFleshDeathWorldMutation.Apply(
                 worldTiles,
@@ -282,7 +283,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 crimsonWorld);
         }
 
-        progression.MarkCompleted(VanillaWorldProgressionId.Hardmode);
+        DeathProgression.MarkCompleted(VanillaWorldProgressionId.Hardmode);
     }
 
     private void ApplyEvilBossDeathEffects(bool eaterBoss)
@@ -290,18 +291,19 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         if (eaterBoss)
         {
             // NPC.DoDeathEvents evaluates these branches before SetEventFlagCleared(downedBoss2).
-            bool wasAlreadyDowned = evilBossDownedBaseline || progression.IsCompleted(VanillaWorldProgressionId.EvilBoss);
+            bool wasAlreadyDowned = evilBossDownedBaseline || DeathProgression.IsCompleted(VanillaWorldProgressionId.EvilBoss);
             if (skyblockLowTiles)
-                progression.MarkCompleted(VanillaWorldProgressionId.ShadowOrbSmashed);
+                DeathProgression.MarkCompleted(VanillaWorldProgressionId.ShadowOrbSmashed);
             if (isThereAWorldSurface && (!wasAlreadyDowned || random.NextInt32(0, 2) == 0))
-                worldClock?.ScheduleMeteor();
+                DeathClock?.ScheduleMeteor();
         }
 
-        progression.MarkCompleted(VanillaWorldProgressionId.EvilBoss);
+        DeathProgression.MarkCompleted(VanillaWorldProgressionId.EvilBoss);
     }
 
     private void DropEaterOfWorldsHealingHeartIfEligible(in NpcSnapshot eaterSegment)
     {
+        if (!IsPreviewingDeath && plannedHealingHandle == eaterSegment.Handle) return;
         if (!TryFindClosestPlayer(in eaterSegment, out PlayerStateSnapshot closest) ||
             !closest.HasHealth || closest.Life >= closest.MaxLife ||
             random.NextInt32(0, 4) != 0 ||
@@ -315,18 +317,20 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
         var origin = ResolveNpcLootOrigin(in eaterSegment, in definition);
         var heart = new NpcLootDrop(VanillaWallOfFleshItemIds.Heart, 1);
-        if (!eaterLoot.TryDeliverWorldItem(in origin, in heart, random))
+        if (!lootDelivery.TryDeliverWorldItem(in origin, in heart, random))
             throw new InvalidOperationException("Eater of Worlds healing Heart drop could not be materialized.");
     }
 
     private bool TryFindClosestPlayer(in NpcSnapshot npc, out PlayerStateSnapshot closest)
     {
         closest = default;
-        if (!VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition))
+        if (!VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) ||
+            !definition.TryResolveHitbox(npc.Simulation, out var body))
             return false;
 
-        float npcCenterX = npc.PositionX + definition.Width * 0.5f;
-        float npcCenterY = npc.PositionY + definition.Height * 0.5f;
+        // Player.FindClosest uses integer half-widths/heights and strict Manhattan-distance comparison.
+        float npcCenterX = npc.PositionX + body.Width / 2;
+        float npcCenterY = npc.PositionY + body.Height / 2;
         float bestDistance = -1f;
         bool foundAny = false;
 
@@ -344,8 +348,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             if (player.IsDead)
                 continue;
 
-            float playerCenterX = player.PositionX + VanillaPlayerWidth * 0.5f;
-            float playerCenterY = player.PositionY + VanillaPlayerHeight * 0.5f;
+            (float playerWidth, float playerHeight) = player.HasMount ? VanillaPlayerMountHitbox1458.Resolve(player.MountType) :
+                (VanillaPlayerWidth, VanillaPlayerHeight);
+            float playerCenterX = player.PositionX + (int)playerWidth / 2;
+            float playerCenterY = player.PositionY + (int)playerHeight / 2;
             float distance = MathF.Abs(playerCenterX - npcCenterX) + MathF.Abs(playerCenterY - npcCenterY);
             if (bestDistance >= 0f && distance >= bestDistance)
                 continue;
@@ -361,11 +367,11 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     {
         // Main.slimeRainNPC is consulted with NPC.type. The implemented Slime Rain variants all retain
         // Blue Slime's canonical type and differ only by net ID, so this deliberately does not filter net IDs.
-        if (worldClock is null || dead.TypeIdentity != VanillaNpcIds.BlueSlime)
+        if (DeathClock is null || dead.TypeIdentity != VanillaNpcIds.BlueSlime)
             return;
 
         bool kingSlimeActive = false;
-        int active = npcs.CopyActive(npcFamilyBuffer);
+        int active = DeathNpcs.CopyActive(npcFamilyBuffer);
         for (int index = 0; index < active; index++)
         {
             if (npcFamilyBuffer[index].TypeIdentity == VanillaNpcIds.KingSlime)
@@ -375,10 +381,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             }
         }
 
-        if (!worldClock.TryAdvanceSlimeRainKillCount(
+        if (!DeathClock.TryAdvanceSlimeRainKillCount(
                 slimeRainNpc: true,
                 kingSlimeActive,
-                progression.IsCompleted(VanillaWorldProgressionId.KingSlime)))
+                DeathProgression.IsCompleted(VanillaWorldProgressionId.KingSlime)))
         {
             return;
         }
@@ -386,26 +392,30 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         // NPC.NPCLoot resolves closestPlayer before DoDeathEvents. It resets the counter after calling
         // SpawnOnPlayer regardless of whether placement succeeds, which RuntimeWorldClock already preserved.
         if (slimeRainKingSpawn is not null && TryFindClosestPlayer(in dead, out PlayerStateSnapshot closest))
-            _ = slimeRainKingSpawn(closest.Player.Slot);
+        {
+            if (IsPreviewingDeath) deathPreviewFailed = true;
+            else _ = slimeRainKingSpawn(closest.Player.Slot);
+        }
     }
 
     private void AdvanceMoonEventDeath(in NpcSnapshot dead)
     {
         // NPC.DoDeathEvents invokes both Moon-event progress checks after NPCLoot. RuntimeWorldClock owns their
         // shared transient wave state, while this boundary makes every authoritative kill path contribute once.
-        worldClock?.TryAdvanceMoonEventDeath(dead.TypeIdentity, expertMode, masterMode);
+        DeathClock?.TryAdvanceMoonEventDeath(dead.TypeIdentity, expertMode, masterMode);
     }
 
     private void ApplyKingSlimeDeathEffects(in NpcSnapshot kingSlime)
     {
-        progression.SetSlimeBlueSpawnBaseline(worldClock?.SlimeBlueSpawnUnlocked == true);
+        DeathProgression.SetSlimeBlueSpawnBaseline(DeathClock?.SlimeBlueSpawnUnlocked == true);
 
-        worldClock?.TryStopSlimeRain(random);
-        if (worldClock is not null && progression.MarkSlimeBlueSpawnUnlocked())
+        DeathClock?.TryStopSlimeRain(random);
+        if (DeathClock is not null && DeathProgression.MarkSlimeBlueSpawnUnlocked())
         {
-            worldClock.MarkSlimeBlueSpawnUnlocked();
+            DeathClock.MarkSlimeBlueSpawnUnlocked();
+            if (!EnsurePreviewSpawnStream()) return;
             if (TryCreateNerdySlimeSpawnIntent(in kingSlime, out NpcAiSpawnIntent intent) &&
-                npcs.TrySpawnIntent(in intent, out NpcSnapshot nerdy))
+                DeathNpcs.TrySpawnIntent(in intent, out NpcSnapshot nerdy))
             {
                 float velocityX = random.NextFloatDirection() * 3f;
                 var update = new NpcStateUpdate(
@@ -418,11 +428,11 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                     nerdy.Target,
                     nerdy.Ai,
                     nerdy.Simulation);
-                if (!npcs.TryUpdate(nerdy.Handle, in update, out _))
+                if (!DeathNpcs.TryUpdate(nerdy.Handle, in update, out _))
                     throw new InvalidOperationException("Nerdy Slime death spawn could not receive launch velocity.");
             }
         }
-        progression.MarkCompleted(VanillaWorldProgressionId.KingSlime);
+        DeathProgression.MarkCompleted(VanillaWorldProgressionId.KingSlime);
     }
 
     private static bool TryCreateNerdySlimeSpawnIntent(in NpcSnapshot source, out NpcAiSpawnIntent intent)

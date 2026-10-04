@@ -99,7 +99,8 @@ internal sealed partial class NpcAuthority
         bool evilBossDownedBaseline,
         RuntimeProjectileNpcLocalImmunityRegistry? projectileNpcLocalImmunity = null,
         IVanillaNpcRandom? naturalSpawnRandom = null,
-        RuntimeProjectileReplicationRegistry? projectileReplication = null)
+        RuntimeProjectileReplicationRegistry? projectileReplication = null,
+        VanillaUnifiedRandom1458? lootRandom = null)
     {
         ArgumentNullException.ThrowIfNull(playerSnapshots);
         this.playerSnapshots = playerSnapshots;
@@ -136,6 +137,9 @@ internal sealed partial class NpcAuthority
         naturalSpawnProgression = progression;
         naturalTownSpawnFacts = townSpawnWorldFacts;
         this.npcReplication = npcReplication;
+        npcBuffListChanged = PublishNpcBuffList;
+        npcStinkyStatus = new RuntimeNpcStinkyStatus1458(npcs, npcBuffListChanged);
+        npcReplication?.BindNpcBuffStatus(npcStinkyStatus);
 
         aiExecutor = new RuntimeNpcAiStateExecutor(npcs, projectiles, npcReplication, npcReplication);
         var actorControls = new RuntimeNpcActorControlRegistry(npcs);
@@ -172,7 +176,7 @@ internal sealed partial class NpcAuthority
             townInitialInvasionActive,
             expertMode,
             masterMode,
-            this.naturalSpawnRandom, tallGateOccupancy, tileManipulationReplication, serverPlayers);
+            this.naturalSpawnRandom, tallGateOccupancy, tileManipulationReplication, serverPlayers, npcStinkyStatus);
         mysticFrogCatch = worldTiles is not null
             ? new RuntimeMysticFrogCatchService1458(npcs, worldTiles, playerSnapshots)
             : null;
@@ -199,6 +203,7 @@ internal sealed partial class NpcAuthority
             projectileReplication,
             townCommerceWorldFacts?.ZenithWorld ?? false,
             TrySpawnSlimeRainKing,
+            lootRandom: lootRandom,
             seasonalItemContext: () => new TerraRuntime.Gameplay.Items.VanillaSeasonalItemDropContext1458(
                 townCommerceWorldFacts?.Halloween ?? false,
                 townCommerceWorldFacts?.XMas ?? false,
@@ -290,6 +295,7 @@ internal sealed partial class NpcAuthority
                 archetypes: archetypes,
                 identities: archetypeIdentities);
         }
+        aiStepper = new RuntimeNpcStinkyAiAdmission1458(aiStepper, npcStinkyStatus);
     }
 
     public RuntimeNpcShopCatalogRegistry Shops => shops;
@@ -335,6 +341,9 @@ internal sealed partial class NpcAuthority
             case ClientNpcHomeRuntimeCommand home:
                 TerrariaNpcHomeState homeState = home.State;
                 townNpcAuthority.ApplyHome(home.Connection, in homeState);
+                return true;
+            case ClientNpcBuffRuntimeCommand buff:
+                ApplyClientBuff(buff);
                 return true;
             case ClientNpcTalkRuntimeCommand talk:
                 townNpcAuthority.ApplyTalk(talk.Connection, talk.State.NpcSlot, worldClock);
@@ -388,10 +397,12 @@ internal sealed partial class NpcAuthority
         }
 
         TickNaturalHostileSpawning();
+        npcStinkyStatus.BeginWorldTick(npcBuffListChanged);
         LastAiTick = aiExecutor.Tick(aiStepper, combat);
         lavaContact?.Tick();
         townNpcAuthority.TickShimmer();
         townNpcAuthority.TickLifecycle(worldClock);
+        npcStinkyStatus.FinishWorldTick();
         AppliedDespawns += npcs.DespawnExpired();
     }
 
@@ -1884,8 +1895,11 @@ internal sealed partial class NpcAuthority
             return;
         }
 
-        float playerCenterX = player.PositionX + PlayerAuthority.VanillaBasePlayerWidth / 2f;
-        float playerCenterY = player.PositionY + PlayerAuthority.VanillaBasePlayerHeight / 2f;
+        (float playerWidth, float playerHeight) = player.HasMount
+            ? TerraRuntime.Gameplay.Players.VanillaPlayerMountHitbox1458.Resolve(player.MountType)
+            : (PlayerAuthority.VanillaBasePlayerWidth, PlayerAuthority.VanillaBasePlayerHeight);
+        float playerCenterX = player.PositionX + playerWidth / 2f;
+        float playerCenterY = player.PositionY + playerHeight / 2f;
         WorldItemDropStateUpdate drop = VanillaNpcCatchWorldItem1458.Create(
             playerCenterX,
             playerCenterY,

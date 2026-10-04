@@ -38,4 +38,32 @@ public sealed partial class RuntimeNpcStore
 
     public int Capacity => _slots.Length;
     public int ActiveCount => _activeCount;
+
+    // Only populated on an isolated death preview, from its retained context sample.
+    internal bool HasGoodWorldSpawnContext { get; private set; }
+
+    internal bool IsSpawnRandomSource(VanillaUnifiedRandom1458 source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        return _spawnRandom is SystemVanillaNpcRandom adapter && ReferenceEquals(adapter.SourceRandom, source);
+    }
+
+    // Death admission needs the real allocation/protection/generation rules without publishing child NPCs.
+    // The trusted context provider is sampled once; the preview never retains a callback into live state.
+    // Application must recheck the source NPC revision and shared RNG after this sample before accepting.
+    internal RuntimeNpcStore CreateDeathPreview(IVanillaNpcRandom random)
+    {
+        ArgumentNullException.ThrowIfNull(random);
+        var context = _spawnContext?.Invoke();
+        var preview = new RuntimeNpcStore(Capacity);
+        _slots.CopyTo(preview._slots, 0);
+        preview._activeCount = _activeCount;
+        preview._spawnRandom = random;
+        if (context is { } captured)
+        {
+            preview._spawnContext = () => captured;
+            preview.HasGoodWorldSpawnContext = captured.GoodWorld;
+        }
+        return preview;
+    }
 }

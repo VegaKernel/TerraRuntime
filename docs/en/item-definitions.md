@@ -1,5 +1,7 @@
 # Sparse vanilla item definitions
 
+World-item entity placement uses the original fixed $16\times16\,\mathrm{px}$ physical body independently of item catalog dimensions. Simple tile drops place the entity at the tile's pixel origin. NPC capture resolves the player's current mount-adjusted body and truncates its center before subtracting the physical half-body; falling-block recovery retains the fractional projectile center and the source failed-placement vertical offset. NPC loot retains its separately verified live-body integer origin. These paths keep item metadata intact and consume the original launch-velocity draws.
+
 TerraRuntime uses a deliberately sparse, source-backed item-definition catalog. Missing metadata means **not verified/imported**, never an invented vanilla zero or `false`.
 
 ## Ownership

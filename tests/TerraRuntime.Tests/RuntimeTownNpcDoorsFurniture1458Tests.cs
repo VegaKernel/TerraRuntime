@@ -38,7 +38,7 @@ public sealed class RuntimeTownNpcDoorsFurniture1458Tests
         var f = new Fixture(1458, homeX: 20);
         f.Door();
         var c = new RuntimeTownNpcScheduleConditions1458(false, false, false, false, false);
-        f.Schedule.Tick(in c, [new RuntimeTownPlayerBounds1458(600f, 440f, 20f, 42f)]);
+        f.Phase.Tick(in c, [new RuntimeTownPlayerBounds1458(600f, 440f, 20f, 42f)]);
         Assert.Equal(99f, f.Current.Ai.Ai1);
         Assert.True(f.Schedule.HasRememberedDoor(f.Current.Handle));
         Assert.Equal(new[] { 10, 300, 600 }, f.Random.Bounds);
@@ -193,9 +193,9 @@ public sealed class RuntimeTownNpcDoorsFurniture1458Tests
         Assert.Equal(expires ? 103f : 19f, f.Current.Ai.Ai1);
         Assert.Equal(expires ? 30f : 9f, f.Current.Simulation.LocalAi.Ai3);
         Assert.Equal(.4f, f.Current.VelocityX); Assert.Equal(639.4f, f.Current.PositionX);
-        if (expires) Assert.Equal(new[] { 60, 60 }, f.Random.Bounds); else Assert.Empty(f.Random.Bounds);
-        // Expired state9 proceeds into the still-unowned idle social offers in original fullAI.
-        Assert.Equal(expires ? 388817304 : 1573945525, f.Random.Stream.Next());
+        if (expires) Assert.Equal(new[] { 60, 60, 300, 1800, 1200, 600, 1800, 600, 1200 }, f.Random.Bounds); else Assert.Empty(f.Random.Bounds);
+        // Expired state9 proceeds into the real source idle offer chain.
+        Assert.Equal(expires ? 320707549 : 1573945525, f.Random.Stream.Next());
         Assert.Equal(expires ? NpcStateCommitKind.ForcedUpdate : NpcStateCommitKind.Update, Assert.Single(f.Sink.Commits));
     }
 
@@ -222,12 +222,14 @@ public sealed class RuntimeTownNpcDoorsFurniture1458Tests
     }
 
     [Fact]
-    public void Furniture_admission_conservatively_excludes_possible_hostile_anywhere_in_owned_world()
+    public void Furniture_admission_uses_source_nearby_danger_instead_of_hostiles_anywhere_in_world()
     {
         var f = new Fixture(580); f.Tile(41, 28, 17);
         var hostile = new NpcStateUpdate(3, 3, 1400f, 440f, 0f, 0f, 255, default, NpcSimulationState.Initial);
         Assert.True(f.Npcs.TrySpawn(1, in hostile, out _)); f.Tick();
-        Assert.Equal(1f, f.Current.Ai.Ai0); Assert.Empty(f.Random.Bounds);
+        Assert.Equal(9f, f.Current.Ai.Ai0); Assert.Equal(56f, f.Current.Ai.Ai1);
+        Assert.Equal(new[] { 300, 600, 90 }, f.Random.Bounds);
+        Assert.Equal(762487543, f.Random.Stream.Next());
     }
 
     private sealed class Fixture
@@ -239,12 +241,14 @@ public sealed class RuntimeTownNpcDoorsFurniture1458Tests
             Town = new(new WorldNpcPersistence([], [new WorldTownNpc(17, "Merchant", 639f, 440f, false, homeX, 30, null, false)], []),
                 [new WorldTownRoom(17, homeX, 30)], Tiles.Dimensions);
             Npcs = new(commitSink: Sink); Assert.True(Town.TryReserveRuntimeSlots(Npcs));
-            Seed(); Schedule = new(Town, Npcs, Tiles, Random, Occupancy); Sink.Commits.Clear();
+            Seed(); Schedule = new(Town, Npcs, Tiles, Random, Occupancy);
+            Phase = new(Town, Npcs, Tiles, Schedule); Sink.Commits.Clear();
         }
         public WorldTileStore Tiles { get; }
         public RuntimeTownNpcStateStore Town { get; }
         public RuntimeNpcStore Npcs { get; }
         public RuntimeTownNpcSchedule1458 Schedule { get; }
+        public TownNpcTestPhase1458 Phase { get; }
         public RandomSource Random { get; }
         public Occupancy Occupancy { get; } = new();
         public Sink Sink { get; } = new();
@@ -261,7 +265,7 @@ public sealed class RuntimeTownNpcDoorsFurniture1458Tests
         public void Chair(bool right = false, bool inactive = false, bool reserved = false)
         { Tile(40, 28, 15, right ? (short)18 : (short)0, reserved ? (short)1080 : (short)0); Tile(40, 29, 15, right ? (short)18 : (short)0, reserved ? (short)1098 : (short)20, !inactive); }
         public void Tick(ReadOnlySpan<RuntimeTownPlayerSeat1458> seats = default)
-        { var c = new RuntimeTownNpcScheduleConditions1458(true, false, false, false, false); Schedule.Tick(in c, [], seatedPlayers: seats); }
+        { var c = new RuntimeTownNpcScheduleConditions1458(true, false, false, false, false); Phase.Tick(in c, [], seatedPlayers: seats); }
     }
     private sealed class RandomSource(int seed) : IRuntimeTownNpcScheduleRandom1458
     {

@@ -205,7 +205,7 @@ public sealed class RuntimeUnderworldSpawn1458Tests
 
         // 600 * .55 (one active town NPC) = 330, then empty-population .6 = 198.
         // The intentionally distant home tile proves that SceneMetrics uses the NPC's active center.
-        var random = new RateRejectingRandom(198);
+        var random = new TownRateRejectingRandom();
         RuntimeTownCommerceWorldFacts1458 world = default;
         world = world with { WorldSurface = 350, RockLayer = 500 };
         var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
@@ -867,6 +867,18 @@ public sealed class RuntimeUnderworldSpawn1458Tests
         }
 
         public void AssertConsumed() => Assert.Equal(9, call);
+    }
+
+    private sealed class TownRateRejectingRandom : IVanillaNpcRandom
+    {
+        // Source spawn gate, unsupported-cliff idle reset, then real quiet idle offers share Main.rand.
+        private static readonly int[] Bounds = [198, 120, 300, 1800, 1200, 600, 1800, 600, 1200];
+        private int call;
+        public int NextInt32(int inclusiveMin, int exclusiveMax)
+        {
+            Assert.Equal(0, inclusiveMin); Assert.Equal(Bounds[call++], exclusiveMax); return 1;
+        }
+        public void AssertConsumed() => Assert.Equal(Bounds.Length, call);
     }
 
     private sealed class RateRejectingRandom(int expectedRate) : IVanillaNpcRandom

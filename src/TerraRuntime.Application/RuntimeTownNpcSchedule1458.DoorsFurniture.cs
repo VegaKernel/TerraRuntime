@@ -48,7 +48,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         ReadOnlySpan<RuntimeTownPlayerSeat1458> seatedPlayers, ref float x, ref float y,
         ref float vx, ref float vy, ref int direction, ref NpcAiState ai, ref NpcAiState local, ref bool force)
     {
-        if (ai.Ai0 != 1f || vy != 0f || !IsQuietFurnitureAdmission(in before)) return;
+        if (ai.Ai0 != 1f || vy != 0f) return;
         // Source else-if semantics: a successful chair offer roll skips the furniture roll,
         // even if no usable chair exists. These are actual offers, never placeholder RNG burns.
         if (random.Next(300) == 0)
@@ -81,23 +81,6 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         }
     }
 
-    private bool IsQuietFurnitureAdmission(in NpcSnapshot before)
-    {
-        // Full danger/flee and NPC stinky-buff ownership remain separate. Admit the quiet
-        // retained actor table conservatively; a possible hostile excludes these offers.
-        Span<NpcSnapshot> active = stackalloc NpcSnapshot[RuntimeNpcStore.MaximumAddressableCapacity];
-        int count = npcs.CopyActive(active);
-        for (int i = 0; i < count; i++)
-        {
-            NpcSnapshot npc = active[i];
-            if (npc.Handle == before.Handle ||
-                (npc.Simulation.Friendly ?? VanillaNpcChaseability1458.FriendlyAtSpawn(npc.Type))) continue;
-            if (!VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) ||
-                (npc.Simulation.DamageOverride ?? definition.Damage) > 0) return false;
-        }
-        return true;
-    }
-
     private bool IsWalkingSeatOccupied(NpcHandle self, int x, int y, ReadOnlySpan<RuntimeTownPlayerSeat1458> seatedPlayers)
     {
         Span<NpcSnapshot> active = stackalloc NpcSnapshot[RuntimeNpcStore.MaximumAddressableCapacity];
@@ -125,24 +108,6 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 if (!Interior(tx, ty) || (Cell(tx, ty).IsActive &&
                     VanillaTownNpcNavigationCatalog1458.IsAvoided(Cell(tx, ty).TileType))) return true;
         return false;
-    }
-
-    private bool TryTickFurniture(in NpcSnapshot before, out NpcSnapshot committed)
-    {
-        float remaining = before.Ai.Ai1 - 1f;
-        NpcAiState ai = before.Ai with { Ai1 = remaining };
-        NpcAiState local = before.Simulation.LocalAi;
-        if (remaining <= 0f)
-        {
-            ai = ai with { Ai0 = 0f, Ai1 = StandingDelayBaseTicks + random.Next(StandingDelayRandomTicks), Ai2 = 0f };
-            local = local with { Ai3 = StandingLocalDelayBaseTicks + random.Next(StandingDelayRandomTicks) };
-        }
-        var update = new NpcStateUpdate(before.Type, before.NetId, before.PositionX, before.PositionY,
-            before.VelocityX * .8f, before.VelocityY, before.Target, ai, before.Simulation with { LocalAi = local });
-        double surface = tiles.WorldSurfaceTiles ?? Math.Max(1d, tiles.Dimensions.HeightTiles / 3d);
-        committed = default;
-        return VanillaNpcWorldMotionAiStepper.TryFinishPhysics(tiles, surface, in before, in update, out var moved) &&
-            npcs.TryUpdate(before.Handle, in moved, out committed, forceSync: remaining <= 0f);
     }
 
     private bool Interior(int x, int y) => x >= 1 && y >= 1 &&

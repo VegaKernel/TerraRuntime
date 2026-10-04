@@ -38,8 +38,8 @@ public sealed class ServerRuntimeDirtKillDropTests
         Assert.Equal(1, fixture.State.AppliedWorldItemAllocations);
         Assert.Equal(1, fixture.Items.ActiveCount);
         Assert.True(fixture.Items.TryGetActive(0, out WorldItemSnapshot drop));
-        Assert.Equal(162f, drop.PositionX);
-        Assert.Equal(162f, drop.PositionY);
+        Assert.Equal(160f, drop.PositionX);
+        Assert.Equal(160f, drop.PositionY);
         Assert.InRange(drop.VelocityX, -3f, 3f);
         Assert.InRange(drop.VelocityY, -4f, -1.6f);
         Assert.Equal(1, drop.Stack);

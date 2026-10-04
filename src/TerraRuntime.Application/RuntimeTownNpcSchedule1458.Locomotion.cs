@@ -16,10 +16,13 @@ internal sealed partial class RuntimeTownNpcSchedule1458
 
     // Owns the dry ordinary-resident AI007 body, not the subsequent social/emote offer chain.
     // AI and terrain correction must precede the shared physics tail and its sole state commit.
-    private bool TryTickOrdinaryMotion(in NpcSnapshot before, in RuntimeTownNpcHomeCommit home,
-        bool shelterAtHome, bool seekShelter, ReadOnlySpan<RuntimeTownPlayerSeat1458> seatedPlayers, out NpcSnapshot committed)
+    private bool TryPlanOrdinaryMotion(in NpcSnapshot before, in RuntimeTownNpcHomeCommit home,
+        bool shelterAtHome, bool seekShelter, ReadOnlySpan<RuntimeTownPlayerSeat1458> seatedPlayers,
+        in RuntimeTownNpcDanger1458 danger, out NpcStateUpdate update, out bool force,
+        bool selfStinky = false, int? restingX = null, int? restingY = null, int? originalTileX = null, int? originalTileY = null)
     {
-        committed = default;
+        update = default;
+        force = false;
         if (before.Ai.Ai0 is not (0f or 1f) || before.Simulation.Wet ||
             !VanillaTownNpcFacts1458.TryGetHousingCategory(home.NpcType, out int category) ||
             category != VanillaTownNpcFacts1458.OrdinaryHousingCategory)
@@ -36,19 +39,45 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         if (direction == 0) direction = 1;
         NpcAiState ai = before.Ai;
         NpcAiState local = before.Simulation.LocalAi;
-        bool force = false;
-        int myTileX = (int)((x + width / 2) / 16f);
+        int myTileX = originalTileX ?? (int)((x + width / 2) / 16f);
+        int myTileY = originalTileY ?? (int)((y + height + 1f) / 16f);
+        int floorX = restingX ?? home.HomeTileX, floorY = restingY ?? home.HomeTileY;
 
         if (ai.Ai0 == 0f)
         {
+            if (selfStinky) ai = ai with { Ai0 = 1f };
             if (local.Ai3 > 0f) local = local with { Ai3 = local.Ai3 - 1f };
-            vx = vx > .1f ? vx - .1f : vx < -.1f ? vx + .1f : 0f;
+            if (seekShelter)
+            {
+                if (myTileX == floorX && myTileY == floorY)
+                {
+                    force |= vx != 0f;
+                    if (vx > .1f) vx -= .1f;
+                    else if (vx < -.1f) vx += .1f;
+                    else
+                    {
+                        vx = 0f;
+                        TryPlanForcedSitting(in before, floorX, floorY, home.NpcType,
+                            ref x, ref y, ref vx, ref vy, ref direction, ref ai, ref local, ref force);
+                    }
+                }
+                else
+                {
+                    direction = myTileX > floorX ? -1 : 1;
+                    ai = ai with { Ai0 = 1f, Ai1 = 200 + random.Next(200), Ai2 = 0f };
+                    local = local with { Ai3 = 0f };
+                    force = true;
+                }
+            }
+            else
+            {
+                vx = vx > .1f ? vx - .1f : vx < -.1f ? vx + .1f : 0f;
             if (ai.Ai1 > 0f) ai = ai with { Ai1 = ai.Ai1 - 1f };
             int aheadX = (int)((x + width / 2 + 15 * direction) / 16f);
             int feetY = (int)((y + height - 16f) / 16f);
             if (ai.Ai1 <= 0f)
             {
-                if (!AvoidDryFall(myTileX, home.HomeTileX, direction, aheadX, feetY))
+                if (!AvoidDryFall(myTileX, floorX, direction, aheadX, feetY))
                 {
                     ai = ai with { Ai0 = 1f, Ai1 = 200 + random.Next(300), Ai2 = 0f };
                     local = local with { Ai3 = 0f };
@@ -60,18 +89,19 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 }
                 force = true;
             }
+            }
             // Original continues the idle branch after a transition to walking.
-            if (myTileX < home.HomeTileX - HomeIdleBand || myTileX > home.HomeTileX + HomeIdleBand)
+            if ((!seekShelter || shelterAtHome) && (myTileX < floorX - HomeIdleBand || myTileX > floorX + HomeIdleBand))
             {
                 if (local.Ai3 == 0f &&
-                    ((myTileX < home.HomeTileX - HomeIdleTurnBand && direction == -1) ||
-                     (myTileX > home.HomeTileX + HomeIdleTurnBand && direction == 1)))
+                    ((myTileX < floorX - HomeIdleTurnBand && direction == -1) ||
+                     (myTileX > floorX + HomeIdleTurnBand && direction == 1)))
                 {
                     direction *= -1;
                     force = true;
                 }
             }
-            else if (random.Next(80) == 0 && local.Ai3 == 0f)
+            else if ((!seekShelter || shelterAtHome) && random.Next(80) == 0 && local.Ai3 == 0f)
             {
                 local = local with { Ai3 = 200f };
                 direction *= -1;
@@ -90,9 +120,9 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             bool dungeon = bottom.TileType == VanillaTileIds.BlueDungeonBrick ||
                 bottom.TileType == VanillaTileIds.GreenDungeonBrick || bottom.TileType == VanillaTileIds.PinkDungeonBrick;
             float timer = ai.Ai1 - 1f;
-            if (!dungeon && Math.Abs(myTileX - home.HomeTileX) > HomeWalkBand &&
-                ((x < home.HomeTileX * 16f && direction == -1) ||
-                 (x > home.HomeTileX * 16f && direction == 1)))
+            if (!dungeon && Math.Abs(myTileX - floorX) > HomeWalkBand &&
+                ((x < floorX * 16f && direction == -1) ||
+                 (x > floorX * 16f && direction == 1)))
                 timer -= 5f;
             ai = ai with { Ai1 = timer };
             if (timer <= 0f)
@@ -102,17 +132,20 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 force = true;
             }
             TryCloseRememberedDoor(in before, x, y, width, height, direction);
-            if (vx < -TownWalkSpeed || vx > TownWalkSpeed)
+            float walkSpeed = danger.WithinRange ?
+                1.5f + (1f - (float)before.Simulation.Life / before.Simulation.LifeMax) * .9f : TownWalkSpeed;
+            float walkAcceleration = danger.WithinRange ? .1f : TownWalkAcceleration;
+            if (vx < -walkSpeed || vx > walkSpeed)
             {
                 if (vy == 0f) { vx *= .8f; vy *= .8f; }
             }
-            else if (vx < TownWalkSpeed && direction == 1)
-                vx = Math.Min(TownWalkSpeed, vx + TownWalkAcceleration);
-            else if (vx > -TownWalkSpeed && direction == -1)
+            else if (vx < walkSpeed && direction == 1)
+                vx = Math.Min(walkSpeed, vx + walkAcceleration);
+            else if (vx > -walkSpeed && direction == -1)
             {
-                vx -= TownWalkAcceleration;
+                vx -= walkAcceleration;
                 // Preserve the source's positive comparison in the leftward branch.
-                if (vx > TownWalkSpeed) vx = TownWalkSpeed;
+                if (vx > walkSpeed) vx = walkSpeed;
             }
 
             bool matchPlatforms = home.HomeTileY * 16 - 32 <= y;
@@ -126,7 +159,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 int aheadX = (int)((x + width / 2 + 15 * direction) / 16f);
                 int feetY = (int)((y + height - 16f) / 16f);
                 bool keepWalking = ShouldKeepWalking(in before, ai.Ai1, x, y, width, height);
-                bool avoidFall = AvoidDryFall(myTileX, home.HomeTileX, direction, aheadX, feetY);
+                bool avoidFall = AvoidDryFall(myTileX, floorX, direction, aheadX, feetY);
                 int supports = 0;
                 for (int offset = -1; offset <= 1; offset++)
                     if (Solid(Cell((int)((x + width / 2) / 16f) + offset, feetY + 1))) supports++;
@@ -170,14 +203,18 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                         else turn = true;
                     }
                     else if (avoidFall) turn = true;
-                    if (turn) { direction *= -1; vx *= -1f; force = true; }
+                    if (turn)
+                    {
+                        if (danger.WithinRange) { vx = 0f; keepWalking = false; ai = ai with { Ai0 = 8f, Ai1 = 240f }; }
+                        direction *= -1; vx *= -1f; force = true;
+                    }
                     if (keepWalking) { ai = ai with { Ai1 = 90f }; force = true; }
                     if (vy < 0f) local = local with { Ai3 = x };
                 }
             }
         }
         double surface = tiles.WorldSurfaceTiles ?? Math.Max(1d, tiles.Dimensions.HeightTiles / 3d);
-        if (before.Ai.Ai0 == 1f && !shelterAtHome &&
+        if (before.Ai.Ai0 == 1f && !shelterAtHome && !danger.WithinRange &&
             before.Simulation.OldPositionX == x && before.Simulation.OldPositionY == y &&
             VanillaTownNpcFacts1458.TryGetDefinition(home.NpcType, out VanillaNpcDefinition definition) &&
             VanillaNpcGravity.TryApply(in definition, before.PositionY, before.VelocityY, false,
@@ -195,13 +232,12 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 force = true;
             }
         }
-        TryOfferWalkingFurniture(in before, home.NpcType, seatedPlayers,
-            ref x, ref y, ref vx, ref vy, ref direction, ref ai, ref local, ref force);
-        var update = new NpcStateUpdate(before.Type, before.NetId, x, y, vx, vy, before.Target, ai,
+        if (!danger.WithinRange)
+            TryOfferWalkingFurniture(in before, home.NpcType, seatedPlayers,
+                ref x, ref y, ref vx, ref vy, ref direction, ref ai, ref local, ref force);
+        update = new NpcStateUpdate(before.Type, before.NetId, x, y, vx, vy, before.Target, ai,
             before.Simulation with { DirectionX = direction, DirectionY = -1, LocalAi = local });
-        if (!VanillaNpcWorldMotionAiStepper.TryFinishPhysics(tiles, surface, in before, in update, out NpcStateUpdate moved))
-            return false;
-        return npcs.TryUpdate(before.Handle, in moved, out committed, forceSync: force);
+        return true;
     }
 
     private bool AvoidDryFall(int myX, int homeX, int direction, int aheadX, int feetY)

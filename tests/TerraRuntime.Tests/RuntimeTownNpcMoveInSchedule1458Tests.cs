@@ -145,11 +145,13 @@ public sealed class RuntimeTownNpcMoveInSchedule1458Tests
             SlimeRain: false,
             StormingAboveSurface: false);
 
-        schedule.Tick(in conditions, []);
+        new TownNpcTestPhase1458(town, npcs, tiles, schedule).Tick(in conditions, []);
 
         Assert.True(npcs.TryGetActive(0, out NpcSnapshot moved));
         Assert.InRange(moved.PositionX, room.HomeTileX * 16f - 20f, room.HomeTileX * 16f + 20f);
-        Assert.Equal(RuntimeTownNpcScheduleState1458.RestingAtHome, schedule.GetState(0));
+        Assert.Equal(RuntimeTownNpcScheduleState1458.ReturningHome, schedule.GetState(0));
+        Assert.Equal(1f, moved.Ai.Ai0); // Source continues the original idle-expiry branch after teleport.
+        Assert.InRange(moved.Ai.Ai1, 200f, 499f);
         Assert.Equal(moved.PositionX, town.CaptureNpcPersistence().TownNpcs[0].X);
     }
 
@@ -170,7 +172,7 @@ public sealed class RuntimeTownNpcMoveInSchedule1458Tests
         var conditions = new RuntimeTownNpcScheduleConditions1458(false, false, false, false, false);
         var player = new RuntimeTownPlayerBounds1458(1600f, 1000f, 20f, 42f);
 
-        schedule.Tick(in conditions, [player]);
+        new TownNpcTestPhase1458(town, npcs, tiles, schedule).Tick(in conditions, [player]);
 
         Assert.True(npcs.TryGetActive(0, out NpcSnapshot unchanged));
         Assert.Equal(1600f, unchanged.PositionX);

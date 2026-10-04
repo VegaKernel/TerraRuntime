@@ -191,9 +191,8 @@ internal static class VanillaSimpleTileBreakResolver1458
         if (item.IsNone || stack == 0)
             throw new ArgumentOutOfRangeException(nameof(item), "Authoritative item-drop materialization requires a concrete item and non-zero stack.");
 
-        float halfSize = 6f;
-        if (VanillaDefinitionCatalog.TryGetRuntimeDefaults(item, out VanillaItemRuntimeDefaults defaults) && defaults.IsValid)
-            halfSize = Math.Min(defaults.Width, defaults.Height) * 0.5f;
+        // WorldItem.SetDefaults(1.4.5.8) fixes the physical body independently of Item dimensions.
+        const float halfSize = 8f;
 
         float centerX = tileX * TileSize + SpawnCenterOffset;
         float centerY = tileY * TileSize + SpawnCenterOffset;

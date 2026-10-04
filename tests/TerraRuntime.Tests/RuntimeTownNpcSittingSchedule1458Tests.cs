@@ -65,11 +65,11 @@ public sealed class RuntimeTownNpcSittingSchedule1458Tests
         var schedule = new RuntimeTownNpcSchedule1458(town, npcs, tiles, new FixedRandom(42));
         RuntimeTownNpcScheduleConditions1458 conditions = Night();
 
-        schedule.Tick(in conditions, []);
+        new TownNpcTestPhase1458(town, npcs, tiles, schedule).Tick(in conditions, []);
 
         Assert.True(npcs.TryGetActive(0, out NpcSnapshot seated));
         Assert.Equal(5f, seated.Ai.Ai0);
-        Assert.Equal(942f, seated.Ai.Ai1);
+        Assert.Equal(941f, seated.Ai.Ai1); // Original home prelude enters state5 maintenance in this tick.
         Assert.Equal(1, seated.Simulation.DirectionX);
         Assert.Equal(0f, seated.VelocityX);
         Assert.Equal(0f, seated.VelocityY);
@@ -106,7 +106,7 @@ public sealed class RuntimeTownNpcSittingSchedule1458Tests
         var schedule = new RuntimeTownNpcSchedule1458(town, npcs, tiles, new FixedRandom(0));
         RuntimeTownNpcScheduleConditions1458 conditions = Night();
 
-        schedule.Tick(in conditions, []);
+        new TownNpcTestPhase1458(town, npcs, tiles, schedule).Tick(in conditions, []);
 
         Span<NpcSnapshot> active = stackalloc NpcSnapshot[RuntimeNpcStore.MaximumAddressableCapacity];
         int count = npcs.CopyActive(active);
@@ -155,7 +155,7 @@ public sealed class RuntimeTownNpcSittingSchedule1458Tests
         var schedule = new RuntimeTownNpcSchedule1458(town, npcs, tiles, new FixedRandom(0));
         RuntimeTownNpcScheduleConditions1458 conditions = Night();
 
-        schedule.Tick(in conditions, []);
+        new TownNpcTestPhase1458(town, npcs, tiles, schedule).Tick(in conditions, []);
 
         Assert.True(npcs.TryGetActive(0, out NpcSnapshot settled));
         Assert.InRange(settled.VelocityX, 0.19999f, 0.20001f);
@@ -171,7 +171,7 @@ public sealed class RuntimeTownNpcSittingSchedule1458Tests
 
     private static WorldTileStore CreateRestingWorld(int chairX, int floorY)
     {
-        var tiles = new WorldTileStore(new WorldDimensions(80, 64));
+        var tiles = new WorldTileStore(new WorldDimensions(80, 80));
         BuildFloor(tiles, floorY);
         tiles.Set(chairX, floorY - 2, new WorldTile
         {

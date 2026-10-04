@@ -72,7 +72,7 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
     public const double DayLength = 54_000d;
     public const double NightLength = 32_400d;
 
-    private readonly IRuntimeWorldClockObserver? _observer;
+    private IRuntimeWorldClockObserver? _observer;
     private readonly IRuntimeWeatherRandom1458 _weatherRandom;
     private readonly IRuntimeWindCounterRandom1458 _windCounterRandom;
     private int _dayRate;
@@ -169,7 +169,16 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
     public bool DayTime { get; private set; }
 
-    internal TerraRuntime.Gameplay.Npcs.VanillaBossRecoveryDailyState1458 BossRecoveryDailyState { get; } = new();
+    internal TerraRuntime.Gameplay.Npcs.VanillaBossRecoveryDailyState1458 BossRecoveryDailyState { get; private set; } = new();
+
+    // Death planning uses scalar event state only; it never ticks weather or invokes the live observer.
+    internal RuntimeWorldClock CreateDeathPreview()
+    {
+        var preview = (RuntimeWorldClock)MemberwiseClone();
+        preview._observer = null;
+        preview.BossRecoveryDailyState = BossRecoveryDailyState.CreatePreview();
+        return preview;
+    }
 
     public VanillaMoonPhase MoonPhase { get; private set; }
 

@@ -60,18 +60,16 @@ public sealed class PlanteraLootPipelineTests
         var progression = new RuntimeWorldProgressionMutations();
         var attacker = new PlayerHandle(new(0), new(1));
         var queue = Register(replication, attacker, 8003);
+        var lootRandom = new VanillaUnifiedRandom1458(42);
         var pipeline = new RuntimeNpcNetworkCombatPipeline(npcs, items, new Players(attacker, default),
             new PlayerAuthority(events: null, worldTiles: null), static () => 0, null,
             new RuntimeWorldItemInstancedLeaseStore(items), replication, null, progression, false, false,
-            planteraDownedBaseline: baseline);
+            planteraDownedBaseline: baseline, lootRandom: lootRandom);
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.Plantera, out var definition));
         for (int kill = 0; kill < 2; kill++)
         {
-            // Fix the existing production RNG, not the death/evaluator/delivery path. No production test seam.
-            object random = typeof(RuntimeNpcNetworkCombatPipeline).GetField("random",
-                BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(pipeline)!;
-            random.GetType().GetField("random", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .SetValue(random, new Random(42));
+            // Reset the injected source-compatible stream while exercising the real death transaction.
+            lootRandom.CopyStateFrom(new VanillaUnifiedRandom1458(42));
             var update = new NpcStateUpdate(VanillaNpcIds.Plantera.Value,
                 checked((short)VanillaNpcIds.Plantera.Value), 100, 200, 0, 0, 0, default,
                 NpcSimulationState.Initial with { Life = definition.LifeMax, LifeMax = definition.LifeMax });
@@ -84,7 +82,10 @@ public sealed class PlanteraLootPipelineTests
             {
                 Assert.Single(drops, entry => entry.Drop.ItemNetId == 499);
                 Assert.InRange(drops.Count(entry => entry.Drop.ItemNetId == 58),5,9);
-                Assert.All(drops,entry=>Assert.True(entry.Drop.ItemNetId is 499 or 58));
+                Assert.All(drops, entry => Assert.True(entry.Drop.ItemNetId is 499 or 58 or 71 or 72 or 73 or 74));
+                var coins = drops.Where(entry => entry.Drop.ItemNetId is >= 71 and <= 74).ToArray();
+                Assert.NotEmpty(coins);
+                Assert.All(coins, entry => Assert.True(entry.Drop.Stack > 0)); // Unknown first-kill baseline closes imported rewards, not source money.
                 continue;
             }
             Assert.Single(drops, entry => entry.Drop.ItemNetId == 1141);

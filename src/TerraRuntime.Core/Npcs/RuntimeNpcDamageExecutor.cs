@@ -95,20 +95,25 @@ public static class VanillaNpcDamageResolver
 /// item/projectile attack records the player slot before later strike rejection, matching TerrariaServer packet-28
 /// ordering where NPC.PlayerInteraction runs after the NPC-generation check and before StrikeNPC.
 /// </summary>
+public delegate bool NpcLethalDamageAdmission1458(in NpcSnapshot pendingDeath);
+
 public sealed class RuntimeNpcDamageExecutor
 {
     private readonly RuntimeNpcStore _store;
     private readonly bool _expertMode;
     private readonly RuntimeNpcPlayerInteractionLedger? _interactions;
+    private readonly NpcLethalDamageAdmission1458? _lethalAdmission;
 
     public RuntimeNpcDamageExecutor(
         RuntimeNpcStore store,
         bool expertMode = false,
-        RuntimeNpcPlayerInteractionLedger? interactions = null)
+        RuntimeNpcPlayerInteractionLedger? interactions = null,
+        NpcLethalDamageAdmission1458? lethalAdmission = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _expertMode = expertMode;
         _interactions = interactions;
+        _lethalAdmission = lethalAdmission;
     }
 
     public bool TryApply(in NpcDamageRequest request, out NpcDamageResult result)
@@ -223,6 +228,14 @@ public sealed class RuntimeNpcDamageExecutor
             current.Target,
             ai,
             simulation);
+
+        if (lifeAfter == 0 && !deathIntercepted && _lethalAdmission is not null)
+        {
+            var pendingDeath = current with { VelocityX = update.VelocityX, VelocityY = update.VelocityY,
+                Ai = update.Ai, Simulation = update.Simulation };
+            if (!_lethalAdmission(in pendingDeath) || !_store.TryGet(current.Handle, out var retained) || retained.Revision != current.Revision)
+            { result = default; return false; }
+        }
 
         if (!_store.TryUpdate(current.Handle, in update, out NpcSnapshot committed))
         {

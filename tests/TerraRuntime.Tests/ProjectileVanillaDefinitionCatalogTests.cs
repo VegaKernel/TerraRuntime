@@ -171,7 +171,7 @@ public sealed class ProjectileVanillaDefinitionCatalogTests
     [InlineData(54, 12, 12, 12, 12, 0f, 0f)]
     [InlineData(318, 12, 14, 12, 14, 0f, 0f)]
     [InlineData(330, 22, 22, 22, 22, 0f, 0f)]
-    [InlineData(583, 10, 10, 10, 10, 0f, 0f)]
+    [InlineData(583, 8, 8, 8, 8, 0f, 0f)] // Source583 scales10x10 by0.8 before width/height materialization.
     [InlineData(589, 10, 10, 10, 10, 0f, 0f)]
     [InlineData(599, 22, 22, 10, 10, 6f, 6f)]
     [InlineData(1012, 18, 18, 18, 18, 0f, 0f)]

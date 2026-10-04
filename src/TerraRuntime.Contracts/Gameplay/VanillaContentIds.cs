@@ -7,6 +7,8 @@ namespace TerraRuntime.Contracts.Gameplay;
 public static class VanillaNpcIds
 {
     public static readonly NpcTypeId BlueSlime = new(1);
+    public static readonly NpcTypeId StatueMimic = new(690);
+    public static readonly NpcTypeId SkeletonMerchant = new(453);
     public static readonly NpcTypeId Bunny = new(46);
     public static readonly NpcTypeId CorruptBunny = new(47);
     public static readonly NpcTypeId Crab = new(67);
@@ -231,6 +233,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId Frankenstein = new(162);
     public static readonly NpcTypeId Fritz = new(462);
     public static readonly NpcTypeId ThePossessed = new(469);
+    public static readonly NpcTypeId Reaper = new(253);
     public static readonly NpcTypeId MartianSaucerCore = new(395);
     public static readonly NpcTypeId Butcher = new(460);
     public static readonly NpcTypeId Nailhead = new(463);
@@ -380,6 +383,7 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId Vulture = new(17);
     public static readonly NpcAiStyleId Jellyfish = new(18);
     public static readonly NpcAiStyleId Antlion = new(19);
+    public static readonly NpcAiStyleId GhostHover = new(22);
     public static readonly NpcAiStyleId SpikeBall = new(20);
     public static readonly NpcAiStyleId BlazingWheel = new(21);
     public static readonly NpcAiStyleId WallOfFlesh = new(27);
@@ -921,6 +925,7 @@ public static class VanillaTileIds
     public static readonly TileTypeId MushroomVines = new(528);
     public static readonly TileTypeId TatteredWoodSign = new(573);
     public static readonly TileTypeId TeleportationPylon = new(597);
+    public static readonly TileTypeId PoopBlock = new(666);
     public static readonly TileTypeId StinkbugHousingBlocker = new(630);
     public static readonly TileTypeId StinkbugHousingBlockerEcho = new(631);
     public static readonly TileTypeId ShimmerBlock = new(659);

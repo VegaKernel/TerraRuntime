@@ -394,6 +394,7 @@ public static class VanillaDefinitionCatalog
     public static bool TryGet(ItemTypeId type, out VanillaItemDefinition definition)
     {
         if (VanillaBossRecoveryItemCatalog1458.TryGet(type, out definition)) return true;
+        if (VanillaCoinItemCatalog1458.TryGet(type, out definition)) return true;
         if (VanillaDungeonChestItemCatalog1458.TryGet(type, out definition))
             return true;
         if (VanillaMoonLordItemCatalog1458.TryGet(type, out definition))

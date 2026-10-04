@@ -142,7 +142,8 @@ internal sealed class ServerRuntimeComposition
         var commands = new RuntimeCommandCounter();
         var playersAuthority = new PlayerAuthority(playerEvents, worldTiles, expertMode, masterMode, serverPlayers,
             oceanTeleportSurface: townCommerceWorldFacts is { SkyblockWorld: false } oceanFacts ? oceanFacts.WorldSurface : null,
-            chestCommands: chestCommands);
+            chestCommands: chestCommands,
+            lanternsUp: townCommerceWorldFacts?.LanternsUp);
         var playerSnapshots = new RuntimePlayerSnapshotLookup(playersAuthority, serverPlayers);
 
         RuntimeWorldItemStore worldItemStore = worldItems ?? new RuntimeWorldItemStore();
@@ -150,7 +151,13 @@ internal sealed class ServerRuntimeComposition
         RuntimeTallGateOccupancyProbe? tallGateOccupancy = worldTiles is null
             ? null
             : new RuntimeTallGateOccupancyProbe(playersAuthority, serverPlayers, npcStore);
-        IWorldItemSpawnRandom spawnRandom = worldItemSpawnRandom ?? new SystemWorldItemSpawnRandom();
+        // Main.rand is shared by these admitted callbacks. Explicit host adapters retain their own policy
+        // and are outside the default coupled-stream contract.
+        var gameplayRandom = (naturalSpawnRandom as TerraRuntime.Core.Npcs.SystemVanillaNpcRandom)?.SourceRandom
+            ?? (worldItemSpawnRandom as SystemWorldItemSpawnRandom)?.SourceRandom
+            ?? new VanillaUnifiedRandom1458(Environment.TickCount);
+        IVanillaNpcRandom npcRandom = naturalSpawnRandom ?? new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom(gameplayRandom);
+        IWorldItemSpawnRandom spawnRandom = worldItemSpawnRandom ?? new SystemWorldItemSpawnRandom(gameplayRandom);
         var worldItemAuthority = new WorldItemAuthority(
             playersAuthority,
             worldItemStore,
@@ -180,7 +187,8 @@ internal sealed class ServerRuntimeComposition
             () => updates.Current,
             goodWorld: worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false,
             worldTiles: worldTiles,
-            expertMode: expertMode);
+            expertMode: expertMode,
+            projectileRandom: gameplayRandom);
         var npcAuthority = new NpcAuthority(
             playerSnapshots,
             () => updates.Current,
@@ -215,8 +223,9 @@ internal sealed class ServerRuntimeComposition
             isThereAWorldSurface,
             evilBossDownedBaseline,
             projectileNpcLocalImmunity,
-            naturalSpawnRandom,
-            projectileReplication);
+            npcRandom,
+            projectileReplication,
+            lootRandom: gameplayRandom);
         var worldTileAuthority = new WorldTileAuthority(
             playersAuthority,
             commands,

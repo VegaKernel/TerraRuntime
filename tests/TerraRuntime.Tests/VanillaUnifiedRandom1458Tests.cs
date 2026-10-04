@@ -5,6 +5,51 @@ namespace TerraRuntime.Tests;
 public sealed class VanillaUnifiedRandom1458Tests
 {
     [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(int.MinValue)]
+    public void Clone_and_restore_preserve_mixed_operations_across_cursor_wrap(int seed)
+    {
+        var owner = new VanillaUnifiedRandom1458(seed);
+        for (int i = 0; i < 137; i++)
+            owner.Next();
+        var checkpoint = owner.Clone();
+        var preview = owner.Clone();
+        Assert.True(owner.HasSameState(preview));
+
+        for (int i = 0; i < 120; i++)
+        {
+            Assert.Equal(owner.Next(), preview.Next());
+            Assert.Equal(owner.NextDouble(), preview.NextDouble());
+            Assert.Equal(owner.Next(int.MinValue, int.MaxValue), preview.Next(int.MinValue, int.MaxValue));
+            byte[] actual = new byte[7];
+            byte[] expected = new byte[7];
+            owner.NextBytes(actual);
+            preview.NextBytes(expected);
+            Assert.Equal(expected, actual);
+        }
+
+        Assert.True(owner.HasSameState(preview));
+        Assert.False(owner.HasSameState(checkpoint));
+        owner.CopyStateFrom(checkpoint);
+        Assert.True(owner.HasSameState(checkpoint));
+        Assert.Equal(checkpoint.Next(), owner.Next());
+        owner.Next();
+        Assert.False(owner.HasSameState(checkpoint));
+        owner.CopyStateFrom(owner);
+        Assert.False(owner.HasSameState(checkpoint));
+    }
+
+    [Fact]
+    public void Checkpoint_requires_a_real_owner()
+    {
+        var owner = new VanillaUnifiedRandom1458(0);
+        Assert.Throws<ArgumentNullException>(() => owner.CopyStateFrom(null!));
+        Assert.Throws<ArgumentNullException>(() => owner.HasSameState(null!));
+        Assert.Equal(1559595546, owner.Next());
+    }
+
+    [Theory]
     [InlineData(0, new int[] { 1559595546, 1755192844, 1649316166, 1198642031, 442452829, 1200195957, 1945678308, 949569752 })]
     [InlineData(1, new int[] { 534011718, 237820880, 1002897798, 1657007234, 1412011072, 929393559, 760389092, 2026928803 })]
     [InlineData(123456789, new int[] { 1091672793, 381850644, 1335622286, 865414785, 1968738143, 1473299219, 172313993, 1943666776 })]

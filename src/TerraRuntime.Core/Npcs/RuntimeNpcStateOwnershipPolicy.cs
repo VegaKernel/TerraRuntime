@@ -32,6 +32,9 @@ internal static class RuntimeNpcStateOwnershipPolicy
                 BaseDefense = simulation.BaseDefense ?? spawnDefaults?.Defense ?? definition.Defense,
                 BaseLifeMax = simulation.BaseLifeMax ?? spawnDefaults?.LifeMax ?? definition.LifeMax,
                 SpawnDifficulty = simulation.SpawnDifficulty ?? 1f,
+                MoneyValue = simulation.MoneyValue ?? ResolveMoney(update.Type, update.NetId, simulation.SpawnDifficulty ?? 1f),
+                ExtraMoneyValue = simulation.ExtraMoneyValue ?? 0,
+                Midas = simulation.Midas ?? false,
                 KnockBackResist = simulation.KnockBackResist ?? spawnDefaults?.KnockBackResist ?? definition.KnockBackResist,
                 Rotation = simulation.Rotation ?? 0f,
                 Alpha = simulation.Alpha == 0 ? definition.AlphaAtSpawn : simulation.Alpha,
@@ -92,6 +95,10 @@ internal static class RuntimeNpcStateOwnershipPolicy
         simulation = simulation with
         {
             SpawnDifficulty = sameDefinition ? simulation.SpawnDifficulty ?? previous.Simulation.SpawnDifficulty ?? 1f : 1f,
+            MoneyValue = simulation.MoneyValue ?? (sameDefinition ? previous.Simulation.MoneyValue :
+                ResolveMoney(update.Type, update.NetId, 1f)),
+            ExtraMoneyValue = simulation.ExtraMoneyValue ?? (sameDefinition ? previous.Simulation.ExtraMoneyValue : 0),
+            Midas = simulation.Midas ?? (sameDefinition ? previous.Simulation.Midas : false),
             Rotation = sameDefinition ? simulation.Rotation ?? previous.Simulation.Rotation ?? 0f : 0f,
             KnockBackResist = sameDefinition ? simulation.KnockBackResist ?? previous.Simulation.KnockBackResist ??
                 (hasDefinition ? definition.KnockBackResist : null) : hasDefinition ? definition.KnockBackResist : null,
@@ -169,4 +176,7 @@ internal static class RuntimeNpcStateOwnershipPolicy
 
         return VanillaNpcDefinitionCatalog.TryGet(type, new NpcNetId(rawNetId), out definition);
     }
+    private static float? ResolveMoney(int type, short net, float difficulty) =>
+        VanillaNpcMoneyDefaults1458.TryResolve(new(type), new(net), difficulty, out float amount) ? amount : null;
+
 }

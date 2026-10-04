@@ -91,6 +91,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             targeting.SetWormEnvironment(new VanillaWormWorldEnvironment(tiles));
             targeting.SetFishEnvironment(new VanillaFishWorldEnvironment1458(tiles));
             targeting.SetAntlionEnvironment(new VanillaAntlionWorldEnvironment1458(tiles));
+            targeting.SetGhostHoverEnvironment(new VanillaGhostHoverWorldEnvironment1458(tiles));
         }
     }
 
@@ -106,7 +107,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             next = default;
             return false;
         }
-        if (npc.TypeIdentity == VanillaNpcIds.Nailhead || npc.TypeIdentity == VanillaNpcIds.DrManFly || npc.TypeIdentity == VanillaNpcIds.Frankenstein)
+        if ((targeting is not null && VanillaGhostHoverNpcCatalog1458.IsSupported(npc.TypeIdentity)) ||
+            npc.TypeIdentity == VanillaNpcIds.Nailhead || npc.TypeIdentity == VanillaNpcIds.DrManFly || npc.TypeIdentity == VanillaNpcIds.Frankenstein)
         {
             next = aiState;
             return true;
@@ -397,6 +399,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         {
             VanillaNpcPhysicsFamily.FlyingEye => true,
             VanillaNpcPhysicsFamily.BatFlight => true,
+            VanillaNpcPhysicsFamily.GhostHover => true,
             VanillaNpcPhysicsFamily.GroundFighter => simulation.DirectionY == 1,
             VanillaNpcPhysicsFamily.UnicornGround => simulation.DirectionY == 1,
             _ => false
@@ -488,7 +491,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         INpcAiCommittedNpcMutationSink mutations)
     {
         if (before.TypeIdentity == committed.TypeIdentity &&
-            (before.TypeIdentity == VanillaNpcIds.Nailhead || before.TypeIdentity == VanillaNpcIds.DrManFly || before.TypeIdentity == VanillaNpcIds.Frankenstein) &&
+            ((targeting is not null && VanillaGhostHoverNpcCatalog1458.IsSupported(before.TypeIdentity)) ||
+             before.TypeIdentity == VanillaNpcIds.Nailhead || before.TypeIdentity == VanillaNpcIds.DrManFly || before.TypeIdentity == VanillaNpcIds.Frankenstein) &&
             NpcAiStateStepperComposition.FindCapability<INpcAiAcceptedWorldMotionPlanner>(inner) is { } planner)
         {
             Span<NpcAiProjectileIntent> shots = stackalloc NpcAiProjectileIntent[5];

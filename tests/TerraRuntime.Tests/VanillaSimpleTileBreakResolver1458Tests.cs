@@ -25,8 +25,8 @@ public sealed class VanillaSimpleTileBreakResolver1458Tests
         Assert.True(outcome.HasDrop);
         Assert.False(outcome.FillWithHoney);
         Assert.Equal(0, outcome.NpcSpawnCount);
-        Assert.Equal(162f, outcome.Drop.PositionX);
-        Assert.Equal(322f, outcome.Drop.PositionY);
+        Assert.Equal(160f, outcome.Drop.PositionX);
+        Assert.Equal(320f, outcome.Drop.PositionY);
         Assert.InRange(outcome.Drop.VelocityX, -0.700001f, -0.699999f);
         Assert.InRange(outcome.Drop.VelocityY, -2.100001f, -2.099999f);
         Assert.Equal(1, outcome.Drop.Stack);

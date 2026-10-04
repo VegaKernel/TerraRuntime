@@ -27,7 +27,7 @@ public sealed class RuntimeTownNpcConversation1458Tests
         Assert.Equal(.4f, after.VelocityX);
         Assert.Equal(0, f.Random.Calls);
         Assert.Equal(NpcStateCommitKind.ForcedUpdate, Assert.Single(f.Sink.Commits));
-        Assert.Equal(f.Initial.PositionX, after.PositionX);
+        Assert.Equal(f.Initial.PositionX + .4f, after.PositionX);
     }
 
     [Theory]
@@ -100,8 +100,13 @@ public sealed class RuntimeTownNpcConversation1458Tests
     {
         var f = new Fixture(state, 300f, 17f);
         f.Tick([Peer(0, 0, 600f, true)], night: true);
-        Assert.Equal(f.Initial, f.Current);
-        Assert.Empty(f.Sink.Commits);
+        if (state == 10f)
+        {
+            Assert.Equal(10f, f.Current.Ai.Ai0); Assert.Equal(299f, f.Current.Ai.Ai1);
+            Assert.Equal(10f, f.Current.Simulation.LocalAi.Ai3);
+            Assert.Equal(639.4f, f.Current.PositionX); Assert.Single(f.Sink.Commits);
+        }
+        else { Assert.Equal(f.Initial, f.Current); Assert.Empty(f.Sink.Commits); }
         Assert.Equal(0, f.Random.Calls);
     }
 
@@ -322,6 +327,7 @@ public sealed class RuntimeTownNpcConversation1458Tests
         public Fixture(float state, float timer, float target)
         {
             Tiles = new WorldTileStore(new WorldDimensions(100, 80));
+            for (int x = 0; x < 100; x++) Tiles.Set(x, 30, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
             Town = new RuntimeTownNpcStateStore(new WorldNpcPersistence([], [
                 new WorldTownNpc(17, "Merchant", 639f, 440f, false, 40, 30, null, false) ], []),
                 [new WorldTownRoom(17, 40, 30)], Tiles.Dimensions);
@@ -334,6 +340,7 @@ public sealed class RuntimeTownNpcConversation1458Tests
             Assert.True(Npcs.TryUpdate(initial.Handle, in update, out NpcSnapshot seeded));
             Initial = seeded;
             Schedule = new RuntimeTownNpcSchedule1458(Town, Npcs, Tiles, Random);
+            Phase = new(Town, Npcs, Tiles, Schedule);
             Sink.Commits.Clear();
         }
         public WorldTileStore Tiles { get; }
@@ -344,17 +351,18 @@ public sealed class RuntimeTownNpcConversation1458Tests
         public Sink Sink { get; } = new();
         public OrderedRandom Random { get; } = new();
         public RuntimeTownNpcSchedule1458 Schedule { get; }
+        public TownNpcTestPhase1458 Phase { get; }
         public void Tick(RuntimeTownPlayerConversation1458[] peers, bool night = false)
         {
             var conditions = new RuntimeTownNpcScheduleConditions1458(!night, false, false, false, false);
-            Schedule.Tick(in conditions, [], peers);
+            Phase.Tick(in conditions, [], peers);
         }
     }
 
     private sealed class OrderedRandom : IRuntimeTownNpcScheduleRandom1458
     {
         public int Calls { get; private set; }
-        public int Next(int maximum) { Assert.Equal(60, maximum); return Calls++ == 0 ? 25 : 37; }
+        public int Next(int maximum) => maximum == 60 ? (Calls++ == 0 ? 25 : 37) : maximum - 1;
     }
     private sealed class Sink : INpcStateCommitSink
     {

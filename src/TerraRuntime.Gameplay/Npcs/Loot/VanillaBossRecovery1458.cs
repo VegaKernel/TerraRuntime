@@ -8,6 +8,9 @@ public sealed class VanillaBossRecoveryDailyState1458
     public bool EyeKilled { get; private set; }
     public bool WallKilled { get; private set; }
     public void Reset() { EyeKilled = false; WallKilled = false; }
+    public VanillaBossRecoveryDailyState1458 CreatePreview() => new() { EyeKilled = EyeKilled, WallKilled = WallKilled };
+    public void CopyFrom(VanillaBossRecoveryDailyState1458 source)
+    { ArgumentNullException.ThrowIfNull(source); EyeKilled = source.EyeKilled; WallKilled = source.WallKilled; }
     public bool Record(NpcTypeId type)
     {
         if (type == VanillaNpcIds.EyeOfCthulhu) EyeKilled = true;

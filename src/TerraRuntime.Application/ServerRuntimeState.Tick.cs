@@ -23,6 +23,7 @@ internal sealed partial class ServerRuntimeState
         _runtime.Bots?.Tick();
         _runtime.ServerPlayers?.TickBuffs();
         _runtime.Players.TickItemAnimation();
+        _runtime.Players.TickPlayerLuck();
         _runtime.ServerPlayers?.TickItemAnimation();
         // Player.UpdateLifeRegen and lava collision precede movement. Vampire OnFire and unrepresented
         // buff/mount effects are not inferred from a connected client's presentation packets.

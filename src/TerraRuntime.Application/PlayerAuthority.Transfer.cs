@@ -103,6 +103,12 @@ internal sealed partial class PlayerAuthority
     {
         ConnectionHandle connection = command.Connection;
         RuntimePlayerTransferState transfer = command.Transfer;
+        if (!float.IsFinite(transfer.Player.Luck) ||
+            (transfer.Player.LuckComponents is { } factors && !factors.IsFinite))
+        {
+            command.Completion.TrySetResult(false);
+            return;
+        }
         if ((transfer.Player.ItemAnimation is int animation && animation is < 0 or > short.MaxValue) ||
             (transfer.Player.ItemRotation is float rotation && !float.IsFinite(rotation)))
         {
@@ -164,6 +170,8 @@ internal sealed partial class PlayerAuthority
             MaxLife = previous.MaxLife,
             IsDead = dead,
             Stealth = previous.Stealth ?? 1f,
+            Luck = previous.Luck,
+            LuckComponents = previous.LuckComponents,
             ItemAnimation = preservePosition && !dead ? previous.ItemAnimation ?? 0 : 0,
             ItemRotation = previous.ItemRotation ?? 0f,
             HasMana = previous.HasMana,
@@ -190,6 +198,7 @@ internal sealed partial class PlayerAuthority
         damageImmunity.ResetPvp(connection.Player.Slot);
         membership.Commit(state);
         transferProfiles.Restore(connection, transfer.Appearance, transfer.Equipment, transfer.BuffTypes);
+        RecalculatePlayerLuck(state);
 
         VanillaPlayerSpawnPosition1458.ToFloorTile(positionX, positionY, out short eventSpawnX, out short eventSpawnY);
         var spawn = new PlayerSpawnCommitRequest(

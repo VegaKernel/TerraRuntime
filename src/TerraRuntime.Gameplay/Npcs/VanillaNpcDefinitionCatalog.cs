@@ -77,7 +77,8 @@ public enum VanillaNpcBehaviorFamily : byte
     RuneWizard = 63,
     DungeonCaster = 64,
     Jellyfish = 65,
-    Antlion = 66
+    Antlion = 66,
+    GhostHover = 67
 }
 
 /// <summary>
@@ -99,7 +100,8 @@ public enum VanillaNpcPhysicsFamily : byte
     BatFlight = 9,
     FishSwimming = 10,
     UnicornGround = 11,
-    Jellyfish = 12
+    Jellyfish = 12,
+    GhostHover = 13
 }
 
 /// <summary>One resolved vanilla NPC hitbox for the current runtime scale.</summary>
@@ -329,6 +331,9 @@ public static class VanillaNpcDefinitionCatalog
             return true;
 
         if (VanillaAntlionNpcCatalog1458.TryGetDefinition(type, out definition))
+            return true;
+
+        if (VanillaGhostHoverNpcCatalog1458.TryGetDefinition(type, out definition))
             return true;
 
         if (VanillaMimicNpcCatalog1458.TryGetDefinition(type, out definition))

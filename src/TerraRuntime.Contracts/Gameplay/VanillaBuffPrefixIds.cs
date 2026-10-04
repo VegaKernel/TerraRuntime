@@ -52,6 +52,7 @@ public static class VanillaBuffIds
     public static readonly BuffTypeId Venom = new(70);
     public static readonly BuffTypeId WeaponImbueVenom = new(71);
     public static readonly BuffTypeId Midas = new(72);
+    public static readonly BuffTypeId Stinky = new(120);
     public static readonly BuffTypeId WeaponImbueCursedFlames = new(73);
     public static readonly BuffTypeId WeaponImbueFire = new(74);
     public static readonly BuffTypeId WeaponImbueGold = new(75);

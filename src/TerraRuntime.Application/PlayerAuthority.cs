@@ -41,6 +41,7 @@ internal sealed partial class PlayerAuthority
     private readonly ServerPlayerAuthority? serverPlayers;
     private readonly double? oceanTeleportSurface;
     private readonly RuntimeChestCommandProcessor? chestCommands;
+    private readonly bool? lanternsUp;
 
     public PlayerAuthority(
         IRuntimePlayerEventSink? events,
@@ -49,7 +50,8 @@ internal sealed partial class PlayerAuthority
         bool masterMode = false,
         ServerPlayerAuthority? serverPlayers = null,
         double? oceanTeleportSurface = null,
-        RuntimeChestCommandProcessor? chestCommands = null)
+        RuntimeChestCommandProcessor? chestCommands = null,
+        bool? lanternsUp = null)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -60,6 +62,7 @@ internal sealed partial class PlayerAuthority
         this.serverPlayers = serverPlayers;
         this.oceanTeleportSurface = oceanTeleportSurface;
         this.chestCommands = chestCommands;
+        this.lanternsUp = lanternsUp;
         pvpCombat = new RuntimePvpCombatIntegrity(this);
     }
 
@@ -102,6 +105,9 @@ internal sealed partial class PlayerAuthority
                 return true;
             case PlayerItemAnimationRuntimeCommand animation:
                 ApplyPlayerItemAnimation(animation);
+                return true;
+            case PlayerLuckFactorsRuntimeCommand luck:
+                ApplyPlayerLuckFactors(luck);
                 return true;
             case PlayerStealthRuntimeCommand stealth:
                 ApplyPlayerStealth(stealth);
@@ -445,6 +451,7 @@ internal sealed partial class PlayerAuthority
         }
 
         AppliedAppearances++;
+        RecalculatePlayerLuck(activePlayer);
         events?.PlayerAppearanceUpdated(appearance.Connection, in request);
     }
 

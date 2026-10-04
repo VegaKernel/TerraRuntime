@@ -4,12 +4,12 @@ using TerraRuntime.Contracts.Runtime;
 namespace TerraRuntime.Core.Npcs;
 
 /// <summary>
-/// Item.NewItem state used by NPC.CatchNPC. DefaultToCapturedCritter fixes all captured-critter item hitboxes at
-/// 12x12; Item.NewItem is called with a zero-size source rectangle at player center, then ordinary gravity velocity.
+/// NPC.CatchNPC truncates player center for the zero-size Item.NewItem source rectangle.
+/// WorldItem has a physical 16x16 body independently of captured-item catalog dimensions.
 /// </summary>
 public static class VanillaNpcCatchWorldItem1458
 {
-    private const float CapturedItemHalfSize = 6f;
+    private const float CapturedItemHalfSize = 8f;
     private const float VelocityScale = 0.1f;
     public const int ReservationTicks = 100;
 
@@ -20,12 +20,14 @@ public static class VanillaNpcCatchWorldItem1458
         IWorldItemSpawnRandom random)
     {
         ArgumentNullException.ThrowIfNull(random);
+        if (!float.IsFinite(playerCenterX) || !float.IsFinite(playerCenterY))
+            throw new ArgumentOutOfRangeException(nameof(playerCenterX), "Capture origin must be finite.");
         if (itemType.IsNone)
             throw new ArgumentException("Catch item type must be assigned.", nameof(itemType));
 
         return new WorldItemDropStateUpdate(
-            PositionX: playerCenterX - CapturedItemHalfSize,
-            PositionY: playerCenterY - CapturedItemHalfSize,
+            PositionX: (int)playerCenterX - CapturedItemHalfSize,
+            PositionY: (int)playerCenterY - CapturedItemHalfSize,
             VelocityX: random.NextInt32(-30, 31) * VelocityScale,
             VelocityY: random.NextInt32(-40, -15) * VelocityScale,
             Stack: 1,

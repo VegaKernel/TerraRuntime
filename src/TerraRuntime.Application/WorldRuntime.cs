@@ -324,6 +324,7 @@ public sealed class WorldRuntime : IDisposable
         MovementIngress = new RuntimePlayerMovementIngress(CommandIngress);
         PlayerCombatIngress = new RuntimePlayerCombatNetworkIngress(CommandIngress);
         PlayerStealthIngress = new RuntimePlayerStealthNetworkIngress(CommandIngress);
+        PlayerLuckFactorsIngress = new RuntimePlayerLuckFactorsNetworkIngress(CommandIngress);
         PlayerItemAnimationIngress = new RuntimePlayerItemAnimationNetworkIngress(CommandIngress);
         PlayerBuffIngress = new RuntimePlayerBuffNetworkIngress(CommandIngress);
         WorldItemIngress = new RuntimeWorldItemIngress(CommandIngress, WorldItems);
@@ -333,6 +334,7 @@ public sealed class WorldRuntime : IDisposable
         TownNpcHomeIngress = new RuntimeTownNpcHomeNetworkIngress(CommandIngress);
         NpcTalkIngress = new RuntimeNpcTalkNetworkIngress(CommandIngress);
         NpcCatchIngress = new RuntimeNpcCatchNetworkIngress(CommandIngress);
+        NpcBuffIngress = new RuntimeNpcBuffNetworkIngress(CommandIngress);
         DisconnectIngress = new RuntimePlayerDisconnectIngress(CommandIngress);
     }
 
@@ -415,6 +417,7 @@ public sealed class WorldRuntime : IDisposable
     internal RuntimePlayerMovementIngress MovementIngress { get; }
     internal RuntimePlayerCombatNetworkIngress PlayerCombatIngress { get; }
     internal RuntimePlayerStealthNetworkIngress PlayerStealthIngress { get; }
+    internal RuntimePlayerLuckFactorsNetworkIngress PlayerLuckFactorsIngress { get; }
     internal RuntimePlayerItemAnimationNetworkIngress PlayerItemAnimationIngress { get; }
 
     internal RuntimePlayerBuffNetworkIngress PlayerBuffIngress { get; }
@@ -425,6 +428,7 @@ public sealed class WorldRuntime : IDisposable
     internal RuntimeTownNpcHomeNetworkIngress TownNpcHomeIngress { get; }
     internal RuntimeNpcTalkNetworkIngress NpcTalkIngress { get; }
     internal RuntimeNpcCatchNetworkIngress NpcCatchIngress { get; }
+    internal RuntimeNpcBuffNetworkIngress NpcBuffIngress { get; }
     internal RuntimePlayerDisconnectIngress DisconnectIngress { get; }
     internal RuntimePlayerOperationsTelemetry PlayerOperations { get; }
     internal RuntimeNpcOperationsTelemetry? NpcOperations { get; }
