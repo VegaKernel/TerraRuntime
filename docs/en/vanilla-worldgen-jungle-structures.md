@@ -26,19 +26,21 @@ The nine pass names and their order are pinned by `PassCatalog1458` from the ver
 
 ### Dirt Rock Wall Runner
 
-The pass populates empty underground cave cells adjacent to natural terrain with dirt/rock unsafe background walls. It is intentionally bounded and uses the shared vanilla RNG stream.
+The pass makes exactly one surface-region wall offer per world column. A sampled Dirt unsafe wall (`2`) starts `WorldGen.DirtyRockRunner`: its drifting, shrinking brush converts eligible wall cells to Rocky Dirt unsafe wall (`59`). The source RNG stream includes brush jitter even for cells whose wall is not converted. Direct official full-pass differentials on `600 × 500` and canonical `4200 × 1200` fixtures compare every cell and next RNG.
 
 ### Living Trees and Wood Tree Walls
 
-Canonical worlds receive a size-scaled number of living trees outside spawn, jungle, snow and dungeon exclusion bands. Trees use vanilla tile identities `Living Wood = 191` and `Leaf Block = 192`. The follow-up wall pass fills natural living-wood background state without consuming additional RNG.
+Canonical worlds receive a size-scaled number of living trees outside spawn, jungle, snow and dungeon exclusion bands. Trees use vanilla tile identities `Living Wood = 191` and `Leaf Block = 192`. The follow-up wall pass scans only above `worldSurface`: a Living Wood center or cardinal neighbor offers a cell, and all four diagonals must be Living Wood or already carry wall `244`. It consumes no RNG. Direct ordinary and canonical-size official full-pass differentials compare every cell and the unchanged shared RNG.
 
 ### Altars
 
 The pass places framed 3 × 2 Demon/Crimson Altar objects using tile identity `26`. Crimson worlds use the alternate frame strip. Placement requires a clear object volume and a solid floor so the generator does not manufacture floating frame-important content.
 
+The ordinary registered pass now has a direct official `4200 × 1200` full-grid and next-RNG differential, in addition to the existing exhaustive material/shape/actuator `Place3x2` verification and candidate-search fixtures. The accepted altar count in that canonical fixture is `16`.
+
 ### Wet Jungle
 
-Deep jungle space receives bounded water and honey basins. Carved cells get natural jungle walls, while the basin perimeter is converted to mud. This stage is intentionally before temple/hive placement so later structures can reject overlapping locations.
+`Wet Jungle` scans each column from `worldSurfaceLow` up to but not including `worldSurface - 1`. Only the first active tile decides the column: if it is Jungle Grass `60`, the two cells above receive full water. The pass creates no basin or honey and consumes no RNG. Direct ordinary and canonical-size official full-pass differentials compare every cell and the unchanged shared RNG.
 
 ### Jungle Temple
 
@@ -50,7 +52,7 @@ Hives use tile `225`, unsafe Hive wall `86`, and honey liquid. Candidate hives r
 
 ### Jungle Chests
 
-This early pass reserves separated chest candidate positions and prepares their floor pedestal. It deliberately does **not** place orphan chest tiles: Terraria has a later `Jungle Chests Placement` pass, and TerraRuntime must not create frame-important chest tiles without matching object/chest metadata.
+This early `JungleShrines` pass builds hut shells, cavities, Mud supports, stepped roofs and torch offers, then retains the hut centers for the later chest-placement pass. It rejects nearby Hive/Temple tiles and walls and applies the official `StructureMap.CanPlace(area, 1)` tile/overlap rules for shrines created in this pass. Two direct official canonical full-pass fixtures match all cells, ordered hut anchors and next RNG, including a fixture with obstructing Temple brick and Hive wall. Prior passes' protected-structure rectangles are not yet shared with this pass; this remains a cross-pass limitation. The pass deliberately does **not** place orphan chest tiles.
 
 ### First Settle Liquids
 

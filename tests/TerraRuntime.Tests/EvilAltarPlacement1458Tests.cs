@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text;
 using TerraRuntime.Core;
 using TerraRuntime.World;
 
@@ -7,6 +8,42 @@ namespace TerraRuntime.Tests;
 
 public sealed class EvilAltarPlacement1458Tests
 {
+    [Fact]
+    public void Canonical_registered_altars_pass_matches_official_cells_and_rng()
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy("Altars"), seed1458, 4200x1200.
+        var store = new WorldTileStore(new WorldDimensions(4200, 1200));
+        for (int x = 0; x < 4200; x++)
+        for (int y = 0; y < 1200; y++)
+        {
+            ref WorldTile tile = ref store.Tiles[store.GetUncheckedIndex(x, y)];
+            tile.Type = 1;
+            tile.Wall = 83;
+            tile.FrameX = 18;
+            tile.FrameY = 36;
+            if (y % 20 == 0) tile.Flags |= WorldTileFlags.Active;
+        }
+
+        var random = new RandomAdapter(1458);
+        int placed = new EvilAltarPlacement1458(store, random, 300, 500,
+            TestContext.Current.CancellationToken).Generate(new(600, 280), crimson: false);
+        Assert.Equal(16, placed);
+        Assert.Equal(1689684593, random.Next());
+
+        var snapshot = new StringBuilder(4200 * 1200 * 14);
+        for (int x = 0; x < 4200; x++)
+        for (int y = 0; y < 1200; y++)
+        {
+            WorldTile tile = store.Get(x, y);
+            snapshot.Append(tile.IsActive ? '1' : '0').Append(',')
+                .Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+                .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',')
+                .Append(tile.LiquidAmount).Append(';');
+        }
+        Assert.Equal("AACE4836C9ED3D6FB8F2447C8022B1535AD61398214CBCCABD0027046DE5CD32",
+            Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot.ToString()))));
+    }
+
     [Fact]
     public void Placement_matches_all_official_material_shape_actuator_and_style_results()
     {

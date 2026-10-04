@@ -131,6 +131,41 @@ public sealed class GenerationTileFraming1458Tests
             $"footprint={Footprint(store)}");
     }
 
+    [Fact]
+    public void Sand_plant_requires_conversion_sand_support()
+    {
+        var store = new WorldTileStore(new WorldDimensions(Width, Height));
+        int x = ObjectX;
+        int y = GroundRow - 1;
+        store.Set(x, y, new WorldTile { Type = 529, Flags = WorldTileFlags.Active });
+        store.Set(x, y + 1, new WorldTile { Type = 53, Flags = WorldTileFlags.Active });
+
+        new GenerationTileFraming1458(store, new CountingRandom()).TileFrame(x, y);
+        Assert.True(store.Get(x, y).IsActive);
+
+        store.Set(x, y + 1, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+        new GenerationTileFraming1458(store, new CountingRandom()).TileFrame(x, y);
+        Assert.False(store.Get(x, y).IsActive);
+    }
+
+    [Fact]
+    public void Pile_or_speleothem_rejects_a_boulder_support()
+    {
+        var store = new WorldTileStore(new WorldDimensions(Width, Height));
+        int x = ObjectX;
+        int y = GroundRow - 1;
+        store.Set(x, y, new WorldTile { Type = 324, Flags = WorldTileFlags.Active });
+        store.Set(x, y + 1, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
+
+        new GenerationTileFraming1458(store, new CountingRandom()).TileFrame(x, y);
+        Assert.True(store.Get(x, y).IsActive);
+
+        store.Set(x, y, new WorldTile { Type = 324, Flags = WorldTileFlags.Active });
+        store.Set(x, y + 1, new WorldTile { Type = 138, Flags = WorldTileFlags.Active });
+        new GenerationTileFraming1458(store, new CountingRandom()).TileFrame(x, y);
+        Assert.False(store.Get(x, y).IsActive);
+    }
+
     // Deterministic synthetic input shared verbatim with the official probe.
     private static WorldTileStore CreateStore(ushort substrate, ushort type, int style, bool twoWide)
     {

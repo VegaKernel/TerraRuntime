@@ -36,11 +36,11 @@ These identities are kept local to the clean-room pass until the shared typed ca
 
 ### Gems In Ice Biome
 
-Gem clusters are restricted to the Reset-owned snow span and replace Ice Block cells below the surface layers. The pass uses the same six gem block families already exercised by the earlier cavern gem stage.
+The pass samples rows between the surface/rock midpoint and the lava line, then columns within each row's retained snow bounds. An active Ice-family candidate offers a small rectangle of exposed gem objects (tile `178`) in adjacent air; six styles and the object-frame variation consume the shared RNG. Direct official registered-pass differentials at `600 × 800` and canonical `4200 × 1200` match the cells and next RNG.
 
 ### Random Gems
 
-Sparse exposed stone cells in the cavern layer are converted to gem blocks. Placement requires an open neighboring cell, keeping this stage visually distinct from the earlier bulk `Gem Caves` clusters.
+Two source-ordered offer streams place exposed gem objects (tile `178`): a deep-cavern search with wall/liquid exclusions, then a rectangle scatter around eligible unsafe-wall cells. Each object requires an attachment anchor and receives a source-selected style/frame. Direct official registered-pass differentials at `600 × 800` and canonical `4200 × 1200` match gem object positions/styles and next RNG.
 
 ### Moss Grass
 
@@ -48,7 +48,7 @@ The pass extends moss onto exposed Stone and places matching moss-growth decorat
 
 ### Muds Walls In Jungle
 
-Empty cave cells adjacent to Mud or Jungle Grass inside the Reset-owned Jungle span receive natural unsafe Mud/Jungle walls. This does not overwrite existing structure, Hive, dungeon, or decorative walls.
+The pass finds the leftmost and rightmost surface Jungle Grass columns, then scans all rows above `worldSurface + 20` between them. Only Dirt-family unsafe walls (`2`/`59`) convert to Mud unsafe wall (`15`), with source-ordered random draws at the two lateral edges. Direct official registered-pass differentials at `600 × 500` and canonical `4200 × 1200` match wall coordinates/count and next RNG.
 
 ### Larva
 

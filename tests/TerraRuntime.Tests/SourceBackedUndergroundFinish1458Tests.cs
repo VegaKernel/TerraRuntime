@@ -9,6 +9,100 @@ namespace TerraRuntime.Tests;
 public sealed class SourceBackedUndergroundFinish1458Tests
 {
     [Fact]
+    public void Gems_in_ice_canonical_terrain_matches_official_full_pass()
+    {
+        const int width = 4200;
+        const int height = 1200;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(300, 500));
+        workspace.SetVanillaLiquidLines(600, 1000);
+        workspace.SetVanillaSnowBounds(0, height,
+            Enumerable.Repeat(700, height).ToArray(), Enumerable.Repeat(1700, height).ToArray());
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), width, false, false));
+        for (int x = 700; x < 1700; x += 2)
+        for (int y = 400; y < 1000; y += 2)
+        {
+            var ice = new WorldTile { Type = 161, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, y, in ice);
+        }
+
+        var random = new RandomAdapter(1458);
+        new UndergroundFinishPass1458(UndergroundFinishStage1458.GemsInIceBiome, new UndergroundFinishState1458())
+            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "CanonicalFixture", 1458, width, height), workspace, random));
+
+        Assert.Equal(2069, CountActiveType(workspace, 178));
+        Assert.Equal(1005057184, random.Next());
+        Assert.Equal("9ABC246C6F1C166A02509A26815D9CD884AC43D805E7D7DC09A3B4C6BFC1845E", HashFixture(workspace));
+    }
+
+    [Fact]
+    public void Random_gems_canonical_terrain_matches_official_full_pass()
+    {
+        const int width = 4200;
+        const int height = 1200;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(300, 500));
+        workspace.SetVanillaLiquidLines(600, 1000);
+        workspace.SetVanillaSnowBounds(0, height,
+            Enumerable.Repeat(700, height).ToArray(), Enumerable.Repeat(1700, height).ToArray());
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), width, false, false));
+        for (int x = 0; x < width; x++)
+        for (int y = 300; y < 900; y++)
+        {
+            var tile = new WorldTile { Wall = 216 };
+            if (y % 5 == 0)
+            {
+                tile.Type = 1;
+                tile.Flags = WorldTileFlags.Active;
+                tile.FrameX = -1;
+                tile.FrameY = -1;
+            }
+            workspace.TileStore.Set(x, y, in tile);
+        }
+
+        var random = new RandomAdapter(1458);
+        new UndergroundFinishPass1458(UndergroundFinishStage1458.RandomGems, new UndergroundFinishState1458())
+            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "CanonicalFixture", 1458, width, height), workspace, random));
+
+        Assert.Equal(22630, CountActiveType(workspace, 178));
+        Assert.Equal(400481817, random.Next());
+        Assert.Equal("C9BFE6860E0F157A0395C4A17A7C4F06B8A6757D77437E1359D606D6F49666C7", HashActiveGems(workspace));
+    }
+
+    [Fact]
+    public void Muds_walls_canonical_terrain_matches_official_full_pass()
+    {
+        const int width = 4200;
+        const int height = 1200;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(300, 500));
+        workspace.SetVanillaLiquidLines(600, 1000);
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), width, false, false));
+        for (int x = 0; x < width; x++)
+        for (int y = 0; y < 320; y++)
+        {
+            var tile = new WorldTile { Wall = (x + y) % 3 != 0
+                ? (ushort)(((x + y) & 1) == 0 ? 2 : 59) : (ushort)0 };
+            workspace.TileStore.Set(x, y, in tile);
+        }
+        foreach ((int x, int y) in new[] { (800, 280), (3200, 281) })
+        {
+            WorldTile grass = workspace.TileStore.Get(x, y);
+            grass.Type = 60;
+            grass.Flags |= WorldTileFlags.Active;
+            workspace.TileStore.Set(x, y, in grass);
+        }
+
+        var random = new RandomAdapter(1458);
+        new UndergroundFinishPass1458(UndergroundFinishStage1458.MudsWallsInJungle, new UndergroundFinishState1458())
+            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "CanonicalFixture", 1458, width, height), workspace, random));
+
+        Assert.Equal(1007564380, random.Next());
+        Assert.Equal(511483, CountWalls(workspace, 15));
+        Assert.Equal("AE9CFFFB2FA00708BDDD333C3D9EF2342BD20C178927D829E372DF3E4B73236C", HashWallCoordinates(workspace, 15));
+    }
+
+    [Fact]
     public void Gems_in_ice_biome_matches_official_passlegacy_fixture()
     {
         const int width = 600;

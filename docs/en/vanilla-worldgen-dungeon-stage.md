@@ -156,11 +156,7 @@ candidates this pass itself refused. A surviving candidate then probes downward 
 meets ground or reaches `worldSurface`; only Sand is accepted, and the anchor handed to the builder is one row
 above that ground. Accepted anchors are retained.
 
-The pyramid interior is still TerraRuntime-owned and is deliberately not presented as vanilla. Source
-`WorldGen.Pyramid` builds its shell, entrance, descending corridor, burial chamber and escape tunnel around
-`WorldGen.AddBuriedChest`, which is not ported; one ordinary vanilla pyramid consumes tens of thousands of shared
-RNG values where the placeholder builder consumes two. Pyramid furniture and loot are therefore not fabricated
-before the corresponding chest passes are ported.
+The pyramid builder follows source `WorldGen.Pyramid` through its shell, entrance, descending corridor, chamber and escape tunnel. At the exact chamber point, before pile, banner and pot draws, it invokes the shared `AddBuriedChest` implementation with gold-chest style `1` and the source-selected signature item. The run-scoped chest context is retained for later chest passes. An independent deep-chamber call against TerrariaServer 1.4.5.8 matches every tile, the complete chest inventory and the next shared RNG value; the earlier candidate-selection and chamber-free geometry fixtures remain in place. This closes the ordinary pyramid pass, not the preceding worldgen prefix or special-seed variants.
 
 ## Compatibility barriers
 

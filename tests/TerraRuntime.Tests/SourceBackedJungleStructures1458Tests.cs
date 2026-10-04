@@ -1,4 +1,7 @@
+using System.Security.Cryptography;
+using System.Text;
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Core;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
@@ -90,6 +93,36 @@ public sealed class SourceBackedJungleStructures1458Tests
         Assert.Equal(expected, catalog.Skip(pyramids + 1).Take(expected.Length));
     }
 
+    [Theory]
+    [InlineData(false, "AC93BFA7C4432222F7F89E7F13CF11EC882814C13A0B79676F555EA0B9849D0F", 1288258030)]
+    [InlineData(true, "CAB44932308BEBB43E542B11FA3A2D8EF38DAB7F5CB810AB8C4195729CC9F936", 1872820504)]
+    public void Dirt_rock_wall_runner_full_pass_matches_official_cell_and_rng_differential(
+        bool canonical, string expectedHash, int expectedNext)
+    {
+        int width = canonical ? 4200 : 600;
+        int height = canonical ? 1200 : 500;
+        double surface = canonical ? 300d : 140d;
+        var workspace = new Workspace(width, height);
+        for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+        {
+            var tile = new WorldTile
+            {
+                Type = 1,
+                Wall = x >= 30 && x < width - 30 && y >= 20 && y < surface - 20 && x % 13 < 8
+                    ? (ushort)2 : (ushort)1,
+                Flags = WorldTileFlags.Active
+            };
+            workspace.TileStore.Set(x, y, in tile);
+        }
+
+        var random = new RandomAdapter(1458);
+        JungleStructurePass1458.ApplyDirtRockWallRunnerForTesting(workspace, random, surface);
+
+        Assert.Equal(expectedHash, HashOfficialCells(workspace));
+        Assert.Equal(expectedNext, random.Next());
+    }
+
     [Fact]
     public void Noncanonical_world_keeps_existing_compatibility_plan_unchanged()
     {
@@ -133,6 +166,29 @@ public sealed class SourceBackedJungleStructures1458Tests
         Assert.Equal((ushort)0, accepted.TileStore.Get(30, 60).Wall);
     }
 
+    [Theory]
+    [InlineData(false, "AA898219500BC2A3221DA5B81108D2304B12F84198820E424DC5916DF27032B6")]
+    [InlineData(true, "B939EFF364322474BBA0354648339F1965A65BD97E3CB3AFEEDACF192DCFF8DA")]
+    public void Wood_tree_walls_full_pass_matches_official_cell_and_rng_differential(bool canonical, string expectedHash)
+    {
+        int width = canonical ? 4200 : 600;
+        int height = canonical ? 1200 : 500;
+        var workspace = new Workspace(width, height);
+        for (int centerX = 100; centerX < width; centerX += 100)
+        {
+            int centerY = centerX % 300 == 0 ? canonical ? 300 : 140 : 60;
+            foreach (int dx in new[] { -1, 1 })
+            foreach (int dy in new[] { -1, 1 })
+                SetActive(workspace, centerX + dx, centerY + dy, 191);
+            SetActive(workspace, centerX, centerY, 191);
+        }
+
+        JungleStructurePass1458.ApplyWoodTreeWallsForTesting(workspace, canonical ? 300d : 140d);
+
+        Assert.Equal(expectedHash, HashOfficialCells(workspace));
+        Assert.Equal(906992634, new VanillaUnifiedRandom1458(1458).Next());
+    }
+
     [Fact]
     public void Wet_jungle_waters_only_the_two_cells_above_each_columns_first_jungle_grass_tile()
     {
@@ -155,6 +211,64 @@ public sealed class SourceBackedJungleStructures1458Tests
         AssertFullWater(workspace, 32, 57);
         AssertFullWater(workspace, 32, 56);
         Assert.Equal((byte)0, workspace.TileStore.Get(33, 58).LiquidAmount);
+    }
+
+    [Theory]
+    [InlineData(false, "A426F087F21024799B935A69E7B47EBC5D7B8EAC7D9A97409C58F27F53A49568")]
+    [InlineData(true, "5D889C2121342FDAC7D9330888C55A511E68CDA833D5EE5010FE25E8B4B59B2A")]
+    public void Wet_jungle_full_pass_matches_official_cell_and_rng_differential(bool canonical, string expectedHash)
+    {
+        int width = canonical ? 4200 : 600;
+        int height = canonical ? 1200 : 500;
+        var workspace = new Workspace(width, height);
+        if (canonical)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                switch (x % 7)
+                {
+                    case 0: SetActive(workspace, x, 220, 60); break;
+                    case 1:
+                        SetActive(workspace, x, 215, 1);
+                        SetActive(workspace, x, 220, 60);
+                        break;
+                    case 2: SetActive(workspace, x, 298, 60); break;
+                    case 3: SetActive(workspace, x, 299, 60); break;
+                    case 4: SetActive(workspace, x, 200, 60); break;
+                }
+            }
+        }
+        else
+        {
+            SetActive(workspace, 300, 100, 60);
+            SetActive(workspace, 301, 90, 1);
+            SetActive(workspace, 301, 100, 60);
+            SetActive(workspace, 302, 138, 60);
+            SetActive(workspace, 303, 139, 60);
+        }
+
+        JungleStructurePass1458.ApplyWetJungleForTesting(workspace,
+            canonical ? 200 : 80, canonical ? 300d : 140d);
+
+        Assert.Equal(expectedHash, HashOfficialCells(workspace));
+        Assert.Equal(906992634, new VanillaUnifiedRandom1458(1458).Next());
+    }
+
+    private static string HashOfficialCells(Workspace workspace)
+    {
+        int width = workspace.WidthTiles;
+        int height = workspace.HeightTiles;
+        var snapshot = new StringBuilder(width * height * 12);
+        for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+        {
+            WorldTile tile = workspace.TileStore.Get(x, y);
+            snapshot.Append(tile.IsActive ? '1' : '0').Append(',')
+                .Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+                .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',')
+                .Append(tile.LiquidAmount).Append(';');
+        }
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot.ToString())));
     }
 
     [Fact]
@@ -196,6 +310,46 @@ public sealed class SourceBackedJungleStructures1458Tests
         Assert.Equal((ushort)59, workspace.TileStore.Get(27, 34).Type);
         Assert.Equal((ushort)119, workspace.TileStore.Get(28, 26).Type);
         Assert.Equal(4, random.Calls);
+    }
+
+    [Theory]
+    [InlineData(false,
+        "1571,588;1931,400;1148,560;945,600;1684,722;509,608;235,653;148,703;1033,536;1513,500;1398,645",
+        "2FB948C3E7B191C76C8E737BD0323A755B79103A299438AEDB403E3E018F81DA", 1005695146)]
+    [InlineData(true,
+        "1571,588;1931,400;619,588;52,411;807,519;1804,488;558,636;311,704;581,428;1660,669;1859,587",
+        "54F4030BCB27A6BC67ECBF61214B5BDD4DE50D7A944EF2D4B1854CB42ADCC92C", 1299000437)]
+    public void Jungle_shrines_canonical_full_pass_matches_official_cells_anchors_and_rng(
+        bool obstructed, string expectedAnchors, string expectedHash, int expectedNext)
+    {
+        // Direct TerrariaServer 1.4.5.8 registered JungleShrines PassLegacy, seed 1458:
+        // uniformly active Stone, with Jungle Grass replacing rows 380..749.
+        var workspace = new Workspace(4200, 1200);
+        for (int x = 0; x < workspace.WidthTiles; x++)
+        for (int y = 0; y < workspace.HeightTiles; y++)
+        {
+            var tile = new WorldTile
+            {
+                Type = y is >= 380 and < 750
+                    ? obstructed && x is >= 900 and < 1300 && x % 19 < 3 ? (ushort)226 : (ushort)60
+                    : (ushort)1,
+                Wall = obstructed && x is >= 900 and < 1300 && x % 101 < 7 && y is >= 390 and < 730
+                    ? (ushort)86 : (ushort)0,
+                Flags = WorldTileFlags.Active
+            };
+            workspace.TileStore.Set(x, y, in tile);
+        }
+        var random = new RandomAdapter(1458);
+
+        IReadOnlyList<WorldGenerationPoint> anchors =
+            JungleStructurePass1458.ApplyJungleChestsForTesting(
+                workspace, random, dungeonSide: 1, jungleHut: 119,
+                worldSurface: 300d, rockLayer: 500d);
+
+        Assert.Equal(expectedAnchors,
+            string.Join(';', anchors.Select(static point => $"{point.X},{point.Y}")));
+        Assert.Equal(expectedHash, HashOfficialCells(workspace));
+        Assert.Equal(expectedNext, random.Next());
     }
 
     [Fact]
@@ -286,5 +440,15 @@ public sealed class SourceBackedJungleStructures1458Tests
         }
         public double NextDouble() => throw new NotSupportedException();
         public void NextBytes(byte[] bytes) => throw new NotSupportedException();
+    }
+
+    private sealed class RandomAdapter(int seed) : IWorldGenerationVanillaRandom
+    {
+        private readonly VanillaUnifiedRandom1458 random = new(seed);
+        public int Next() => random.Next();
+        public int Next(int max) => random.Next(max);
+        public int Next(int min, int max) => random.Next(min, max);
+        public double NextDouble() => random.NextDouble();
+        public void NextBytes(byte[] bytes) => random.NextBytes(bytes);
     }
 }

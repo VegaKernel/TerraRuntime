@@ -22,7 +22,9 @@ Canonical production-план вырастает с 78 до 88 entries. Identity
 
 ## Ore tiers конкретного мира
 
-`Surface Ore and Stone` не считает, что каждый мир обязан иметь классический набор Copper/Iron/Silver/Gold. Reset bootstrap уже хранит Terraria-выборы `CopperOre`, `IronOre`, `SilverOre`, `GoldOre`, поэтому pass использует именно их. Миры с Tin, Lead, Tungsten и Platinum не превращаются обратно в classic-ore миры из-за удобного хардкода.
+`Surface Ore and Stone` использует выбранные Reset bootstrap значения `CopperOre` и `IronOre`. `OrePatch` выбирает только между этими двумя уровнями; `SilverOre` и `GoldOre` в этом проходе не используются. Миры с Tin и Lead сохраняют выбранные альтернативы.
+
+Проход повторяет официальные условия для поверхностной травы и подземного рельефа, расстояния между якорями, дрейфующие ore/stone runner-ы и каменный декор. Четыре прямых differential всего `PassLegacy` против TerrariaServer 1.4.5.8 проверяют все поля тайлов и следующий общий RNG, включая две фикстуры `4200 × 1200`: открытую поверхность и смешанный рельеф с полосами песка, облака, dungeon-кирпича, crimson, отсутствующей стены и травы вне conversion-набора. Ветка Skyblock `denyAllGeneration` не расходует RNG.
 
 ## Frame-important объекты
 

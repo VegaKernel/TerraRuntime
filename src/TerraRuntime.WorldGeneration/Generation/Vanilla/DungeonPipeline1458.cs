@@ -1030,6 +1030,15 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
         IWorldGenerationVanillaRandom vanillaRandom = context.VanillaRandom ??
             throw new InvalidOperationException("Source-backed Pyramids require shared UnifiedRandom semantics.");
         var builder = new PyramidBuilder1458(workspace.TileStore, vanillaRandom, context.CancellationToken);
+        BuriedChestContext1458 chestContext = workspace.VanillaBuriedChestContext ??
+            CreatePyramidChestContext(workspace);
+        var chests = new BuriedChest1458(workspace.TileStore, vanillaRandom, chestContext,
+            workspace.CanRegisterGeneratedChest,
+            chest =>
+            {
+                if (!workspace.TryAddChest(chest.Left, chest.Top, string.Empty, chest.Items))
+                    throw new InvalidOperationException("Pyramid chest could not enter the generation side table.");
+            });
 
         for (int i = 0; i < candidates.Length; i++)
         {
@@ -1054,9 +1063,10 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
 
             surface--;
             anchors.Add(new WorldGenerationPoint(candidate.X, surface));
-            VanillaPyramidChamber1458? chamber = builder.TryBuild(candidate.X, surface);
-            if (chamber is VanillaPyramidChamber1458 treasure)
-                PlacePyramidChest(workspace, grid, vanillaRandom, treasure);
+            builder.TryBuild(candidate.X, surface, placeChest: chamber =>
+                chests.TryAdd(chamber.ChestX, chamber.ChestY, out _, out _,
+                    chamber.PrimaryItemType, notNearOtherChests: false, chestStyle: 1,
+                    trySlope: false, chestTileType: 0));
         }
 
         workspace.SetVanillaPyramidAnchors(anchors);
@@ -1067,75 +1077,33 @@ internal sealed class DungeonPass1458 : IWorldGenerationPass
     }
 
     /// <summary>
-    /// Fills the chamber's gold chest. The signature item the source rolled is carried through, and the
-    /// remaining slots come from the runtime's buried-chest loot for that depth.
+    /// Starts the run-scoped AddBuriedChest state before the later chest-placement stages need it.
     /// </summary>
     /// <remarks>
-    /// This is the one part of the pyramid that is not yet differentially verified against the source. The
-    /// source reaches it through <c>WorldGen.AddBuriedChest</c>, whose site scan and loot cascade are not ported,
-    /// so the shared RNG position after a pyramid still differs from the source's. The geometry either side of
-    /// this call is exact; do not read the chest as proof that the pass is.
+    /// The pyramid is the first ordinary caller of WorldGen.AddBuriedChest. Later callers reuse this context
+    /// so run-wide guaranteed items and the underworld chest cycle do not reset between stages.
     /// </remarks>
-    private void PlacePyramidChest(
-        Workspace workspace,
-        RuntimeGrid grid,
-        IWorldGenerationVanillaRandom random,
-        VanillaPyramidChamber1458 chamber)
+    private BuriedChestContext1458 CreatePyramidChestContext(Workspace workspace)
     {
-        int left = chamber.ChestX;
-        int top = FindChamberFloor(grid, left, chamber.ChestY);
-        if (top < 1)
-            return;
-
+        VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
         int lavaLine = workspace.VanillaLiquidLines?.LavaLine ?? checked((int)Math.Round(state.RockLayer));
-        WorldGenerationChestItem[] loot = ChestLoot1458.BuildBuried(
-            random,
-            RequireBootstrap(),
-            top,
-            state.RockLayer,
-            lavaLine,
-            grid.Height,
-            chamber.PrimaryItemType);
-        _ = PlaceGeneratedPyramidChest(workspace, grid, left, top, loot);
-    }
-
-    /// <summary>Finds the two-wide clear pair standing on the chamber floor, or -1 when there is none.</summary>
-    private static int FindChamberFloor(RuntimeGrid grid, int left, int fromY)
-    {
-        int limit = Math.Min(grid.Height - 3, fromY + 40);
-        for (int y = Math.Max(1, fromY); y <= limit; y++)
+        var result = new BuriedChestContext1458
         {
-            if (grid.At(left, y).IsActive || grid.At(left + 1, y).IsActive)
-                continue;
-            if (grid.At(left, y + 1).IsActive || grid.At(left + 1, y + 1).IsActive)
-                continue;
-            if (grid.At(left, y + 2).IsActive && grid.At(left + 1, y + 2).IsActive)
-                return y;
-        }
-
-        return -1;
-    }
-
-    private static bool PlaceGeneratedPyramidChest(
-        Workspace workspace,
-        RuntimeGrid grid,
-        int left,
-        int top,
-        ReadOnlySpan<WorldGenerationChestItem> loot)
-    {
-        for (int dx = 0; dx < 2; dx++)
-        for (int dy = 0; dy < 2; dy++)
-        {
-            ref WorldTile tile = ref grid.At(left + dx, top + dy);
-            tile.Type = 21;
-            tile.Flags |= WorldTileFlags.Active;
-            // Gold chest is style 1: each style is 36 pixels wide in the container atlas.
-            tile.FrameX = checked((short)(36 + dx * 18));
-            tile.FrameY = checked((short)(dy * 18));
-            tile.Shape = 0;
-        }
-
-        return workspace.TryAddChest(left, top, string.Empty, loot);
+            Height = workspace.HeightTiles,
+            WorldSurface = state.WorldSurface,
+            RockLayer = state.RockLayer,
+            LavaLine = lavaLine,
+            CopperBar = bootstrap.CopperBar,
+            IronBar = bootstrap.IronBar,
+            SilverBar = bootstrap.SilverBar,
+            GoldBar = bootstrap.GoldBar,
+            TungstenIsSilverTier = bootstrap.SilverOre == 168,
+            DesertHiveLow = workspace.VanillaUndergroundDesertRegion?.Y ?? 0,
+            DesertHiveHigh = workspace.VanillaUndergroundDesertRegion?.Bottom ?? 0,
+            HellChestItem = bootstrap.HellChestItems
+        };
+        workspace.SetVanillaBuriedChestContext(result);
+        return result;
     }
 
     internal static bool IsOrdinaryPyramidCandidatePositionEligible(

@@ -85,6 +85,58 @@ public sealed class PyramidBuilder1458Tests
         Assert.Equal(new RandomAdapter(42).Next(), random.Next());
     }
 
+    [Fact]
+    public void Deep_chamber_places_source_buried_chest_before_decorations()
+    {
+        WorldTileStore store = CreateStore(1);
+        var random = new RandomAdapter(1458);
+        var context = new BuriedChestContext1458
+        {
+            Height = Height, WorldSurface = 140, RockLayer = 200, LavaLine = 1200,
+            CopperBar = 20, IronBar = 22, SilverBar = 21, GoldBar = 19,
+            TungstenIsSilverTier = false, DesertHiveLow = 0, DesertHiveHigh = 0,
+            HellChestItem = [220, 218, 112, 96, 65, 5011]
+        };
+        var chests = new BuriedChest1458(store, random, context);
+        var builder = new PyramidBuilder1458(store, random, TestContext.Current.CancellationToken);
+
+        VanillaPyramidChamber1458? chamber = builder.TryBuild(AnchorX, SurfaceRow,
+            minimumDepth: 200, maximumDepth: 250,
+            placeChest: room => chests.TryAdd(room.ChestX, room.ChestY, out _, out _,
+                room.PrimaryItemType, false, 1, false, 0));
+
+        Assert.NotNull(chamber);
+        BuriedChestResult1458 placed = Assert.Single(chests.Chests);
+        var inventory = new StringBuilder($"[{placed.Left},{placed.Top}]");
+        foreach (WorldGenerationChestItem item in placed.Items)
+        {
+            if (item.IsEmpty) continue;
+            inventory.Append(item.ItemType.Value).Append('x').Append(item.Stack);
+            if (item.Prefix.Value != 0) inventory.Append('p').Append(item.Prefix.Value);
+            inventory.Append(' ');
+        }
+        Assert.Equal("[817,252]857x1p75 282x50 22x6 42x44 28x5 2350x3 2325x1 72x11 9x74 ",
+            inventory.ToString());
+        Assert.Equal(1089613239, random.Next());
+        Assert.Equal("940D8E1D030AF7C6A16A997A4D1582EA897D387EC47DF9CA900F1D627E95B015",
+            HashOfficialSimple(store));
+    }
+
+    private static string HashOfficialSimple(WorldTileStore store)
+    {
+        var sb = new StringBuilder(Width * Height * 12);
+        for (int x = 0; x < Width; x++)
+        for (int y = 0; y < Height; y++)
+        {
+            WorldTile tile = store.Get(x, y);
+            sb.Append(tile.IsActive ? '1' : '0').Append(',')
+              .Append(tile.Type).Append(',').Append(tile.Wall).Append(',')
+              .Append(tile.FrameX).Append(',').Append(tile.FrameY).Append(',')
+              .Append(tile.LiquidAmount).Append(';');
+        }
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString())));
+    }
+
     private static WorldTileStore CreateStore(int fixture)
     {
         var store = new WorldTileStore(new WorldDimensions(Width, Height));

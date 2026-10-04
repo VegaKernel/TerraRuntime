@@ -76,7 +76,7 @@ public sealed class GenerationDesertObjectFraming1458Tests
     }
 
     [Fact]
-    public void Actual_final_cleanup_removes_only_boulder_fragments()
+    public void Actual_final_cleanup_repairs_the_boulder_footprint_before_object_check()
     {
         Workspace workspace = Fixture(3);
         var random = new RandomAdapter();
@@ -86,8 +86,14 @@ public sealed class GenerationDesertObjectFraming1458Tests
         var builder = new Builder();
         new SourceBackedFinal1458().BuildPlan(request, builder);
         builder.Pass!.Execute(new Context(request, workspace, random));
-        for (int i = 0; i < 3; i++) Assert.False(At(workspace, i).IsActive);
-        Assert.Equal(396, At(workspace, 3).Type);
+        // WorldGen.FinalCleanup restores the full frame-derived boulder before TileFrame sees it.
+        for (int i = 0; i < 4; i++)
+        {
+            Assert.True(At(workspace, i).IsActive);
+            Assert.Equal((ushort)484, At(workspace, i).Type);
+            Assert.Equal((short)(i / 2 * 18), At(workspace, i).FrameX);
+            Assert.Equal((short)(i % 2 * 18), At(workspace, i).FrameY);
+        }
     }
 
     private static Workspace Fixture(int broken)

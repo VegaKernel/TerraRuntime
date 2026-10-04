@@ -121,6 +121,18 @@ internal sealed class GenerationTileFraming1458(
             return;
         }
 
+        if (tile.Type == 529)
+        {
+            FrameSandPlant(i, j);
+            return;
+        }
+
+        if (tile.Type == 324)
+        {
+            FramePileOrSpeleothem(i, j);
+            return;
+        }
+
         if (VanillaTileIds.IsPlatform(tile.TileType))
             FramePlatform(i, j);
     }
@@ -873,6 +885,33 @@ internal sealed class GenerationTileFraming1458(
         else if (rightType >= 0 && MossColor(rightType) >= 0)
             Hang(ref cell, MossColor(rightType), 162, roll);
         else
+            KillTile(i, j);
+    }
+
+    /// <summary>
+    /// TerrariaServer 1.4.5.8 <c>TileFrameImportant</c> case <c>529</c>. This is not ordinary plant
+    /// framing: its support must be both slope-capable solid and a conversion-sand identity.
+    /// </summary>
+    private void FrameSandPlant(int i, int j)
+    {
+        if (!SolidTileAllowBottomSlope(i, j + 1))
+        {
+            KillTile(i, j);
+            return;
+        }
+
+        WorldTile support = At(i, j + 1);
+        if (!support.IsActive || support.Type is not (53 or 112 or 116 or 234 or 396 or 397 or 398 or 399 or 400 or 401 or 402 or 403))
+            KillTile(i, j);
+    }
+
+    /// <summary>
+    /// TerrariaServer 1.4.5.8 <c>TileFrameImportant</c> case <c>324</c>: the one-cell pile/speleothem
+    /// needs an attachable lower support and is rejected when that support is a boulder.
+    /// </summary>
+    private void FramePileOrSpeleothem(int i, int j)
+    {
+        if (!SolidTileAllowBottomSlope(i, j + 1) || IsBoulder(i, j + 1))
             KillTile(i, j);
     }
 

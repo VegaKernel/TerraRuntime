@@ -41,7 +41,8 @@ internal sealed class PyramidBuilder1458(
         int j,
         int minimumDepth = DefaultMinimumDepth1458,
         int maximumDepth = DefaultMaximumDepth1458,
-        bool noTunnel = false)
+        bool noTunnel = false,
+        Action<VanillaPyramidChamber1458>? placeChest = null)
     {
         cancellation.ThrowIfCancellationRequested();
         if (!Contains(i, j))
@@ -82,7 +83,8 @@ internal sealed class PyramidBuilder1458(
             ref runLength,
             corridorHeight,
             baseRow,
-            noTunnel);
+            noTunnel,
+            placeChest);
 
         if (!noTunnel)
             DigExitTunnel(cursorX, cursorY, direction, corridorHeight);
@@ -179,7 +181,8 @@ internal sealed class PyramidBuilder1458(
         ref int runLength,
         int corridorHeight,
         int baseRow,
-        bool noTunnel)
+        bool noTunnel,
+        Action<VanillaPyramidChamber1458>? placeChest)
     {
         VanillaPyramidChamber1458? chamber = null;
         bool firstTurnPending = true;
@@ -210,7 +213,7 @@ internal sealed class PyramidBuilder1458(
                         descending = false;
                     chamberBuilt = true;
                     builtChamberNow = true;
-                    chamber = OpenChamber(ref cursorX, cursorY, direction, corridorHeight);
+                    chamber = OpenChamber(ref cursorX, cursorY, direction, corridorHeight, placeChest);
                 }
 
                 if (firstTurnPending)
@@ -246,7 +249,8 @@ internal sealed class PyramidBuilder1458(
         ref int cursorX,
         int cursorY,
         int direction,
-        int corridorHeight)
+        int corridorHeight,
+        Action<VanillaPyramidChamber1458>? placeChest)
     {
         int roomHeight = random.Next(7, 13);
         int remaining = random.Next(23, 28);
@@ -292,6 +296,10 @@ internal sealed class PyramidBuilder1458(
             _ => 934,
         };
 
+        var chamber = new VanillaPyramidChamber1458((left + right) / 2, cursorY, primary);
+        // WorldGen.Pyramid calls AddBuriedChest before any chamber-pile/banner/pot draws.
+        placeChest?.Invoke(chamber);
+
         int piles = random.Next(1, 10);
         for (int pile = 0; pile < piles; pile++)
         {
@@ -311,7 +319,7 @@ internal sealed class PyramidBuilder1458(
                 store, random, potX, cursorY + corridorHeight, random.Next(25, 28));
         }
 
-        return new VanillaPyramidChamber1458((left + right) / 2, cursorY, primary);
+        return chamber;
     }
 
     /// <summary>

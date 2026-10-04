@@ -22,7 +22,9 @@ The canonical production plan grows from 78 to 88 entries. The generator identit
 
 ## World-specific ore tiers
 
-`Surface Ore and Stone` does not assume the classic Copper/Iron/Silver/Gold set. The Reset bootstrap already owns Terraria's pre-Terrain ore choices, so this pass uses `CopperOre`, `IronOre`, `SilverOre`, and `GoldOre` from that state. Tin, Lead, Tungsten, and Platinum worlds therefore retain their selected alternatives instead of silently reverting to classic ores.
+`Surface Ore and Stone` uses the Reset bootstrap's `CopperOre` and `IronOre` choices. `OrePatch` selects only between those two tiers; `SilverOre` and `GoldOre` are not used by this pass. Tin and Lead worlds retain their selected alternatives.
+
+The pass follows the official surface-grass and deep-terrain predicates, anchor spacing, drifting ore/stone runners, and stone decorations. Four direct TerrariaServer 1.4.5.8 full-`PassLegacy` differentials pin every tile field and the next shared RNG value, including two `4200 × 1200` fixtures: an open surface and a mixed surface with sand, cloud, dungeon, crimson, missing-wall and non-conversion-grass rejection strips. The Skyblock `denyAllGeneration` branch is RNG-neutral.
 
 ## Frame-important objects
 

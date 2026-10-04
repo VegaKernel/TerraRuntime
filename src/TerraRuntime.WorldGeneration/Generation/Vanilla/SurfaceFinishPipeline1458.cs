@@ -307,54 +307,20 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
 
     private void ApplySurfaceOreAndStone(IWorldGenerationContext context, RuntimeGrid grid, IRandom random)
     {
+        WorldGenerationRequest request = context.Request;
+        if (WorldSeedResolver1458.Resolve(in request).Has(VanillaSpecialWorldSeed1458.Skyblock))
+            return; // WorldGen.Skyblock.denyAllGeneration leaves this PassLegacy delegate RNG-neutral.
         VanillaWorldGenerationBootstrapState1458 bootstrap = RequireBootstrap();
-        ushort[] ores =
-        [
-            checked((ushort)bootstrap.CopperOre),
-            checked((ushort)bootstrap.IronOre),
-            checked((ushort)bootstrap.SilverOre),
-            checked((ushort)bootstrap.GoldOre)
-        ];
-
-        // The source pass samples only the narrow surface band.  Its first count is a scaled
-        // `Next(width*5/4200, width*10/4200)`, not a density-derived underground ore budget.
-        int patches = random.Next(grid.Width * 5 / 4200, grid.Width * 10 / 4200);
-        int minY = Math.Clamp((int)state.WorldSurfaceLow, 10, grid.Height - 20);
-        int maxY = Math.Clamp((int)state.WorldSurface, minY + 1, grid.Height - 10);
-        int changed = 0;
-
-        for (int patch = 0; patch < patches; patch++)
-        {
-            if ((patch & 15) == 0)
-                context.CancellationToken.ThrowIfCancellationRequested();
-
-            int cx = random.Next(DungeonGenerationCatalog1458.BeachDistance, grid.Width - DungeonGenerationCatalog1458.BeachDistance);
-            while (cx >= grid.Width * 0.48d && cx <= grid.Width * 0.52d)
-                cx = random.Next(DungeonGenerationCatalog1458.BeachDistance, grid.Width - DungeonGenerationCatalog1458.BeachDistance);
-            int cy = random.Next(minY, maxY);
-            int radius = random.Next(3, 8);
-            bool orePatch = random.Next(4) == 0;
-            ushort replacement = orePatch ? ores[random.Next(ores.Length)] : Stone;
-
-            for (int x = cx - radius; x <= cx + radius; x++)
-            for (int y = cy - radius; y <= cy + radius; y++)
-            {
-                int dx = x - cx;
-                int dy = y - cy;
-                if (dx * dx + dy * dy > radius * radius)
-                    continue;
-                ref WorldTile tile = ref grid.At(x, y);
-                if (!tile.IsActive || tile.Type != Dirt)
-                    continue;
-                tile.Type = replacement;
-                tile.FrameX = 0;
-                tile.FrameY = 0;
-                tile.Shape = 0;
-                changed++;
-            }
-        }
-
-        context.ReportProgress(1d, $"Adding surface ore and stone ({changed} blocks)");
+        var pass = new SurfaceOreStone1458(
+            grid.Store,
+            context.VanillaRandom ?? throw new InvalidOperationException("Surface ore and stone requires shared UnifiedRandom semantics."),
+            state.WorldSurfaceLow,
+            state.WorldSurface,
+            bootstrap.CopperOre,
+            bootstrap.IronOre,
+            context.CancellationToken);
+        pass.Apply();
+        context.ReportProgress(1d, $"Adding surface ore and stone ({pass.Changed} blocks)");
     }
 
     /// <summary>
@@ -562,6 +528,7 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
 
         public int Width => store.Dimensions.WidthTiles;
         public int Height => store.Dimensions.HeightTiles;
+        public WorldTileStore Store => store;
 
         public ref WorldTile At(int x, int y) => ref store.Tiles[store.GetUncheckedIndex(x, y)];
 

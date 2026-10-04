@@ -127,12 +127,14 @@ public sealed class SourceBackedFinal1458Tests
         WorldTile lava = workspace.TileStore.Get(600, 100);
         Assert.Equal(byte.MaxValue, lava.LiquidAmount);
         Assert.Equal(WorldLiquidKind.Lava, lava.LiquidKind);
+        // The type-314 loop clears its own row and fourteen above; the subsequent liquid repair
+        // fills the untouched row above that span to a full cell.
         Assert.Equal(byte.MaxValue, workspace.TileStore.Get(700, 85).LiquidAmount);
         for (int y = 86; y <= 100; y++) Assert.Equal((byte)0, workspace.TileStore.Get(700, y).LiquidAmount);
         Assert.Equal(byte.MaxValue, workspace.TileStore.Get(700, 101).LiquidAmount);
         WorldTile support = workspace.TileStore.Get(800, 101);
         Assert.True(support.IsActive);
-        Assert.Equal((ushort)332, support.Type);
+        Assert.Equal((ushort)1, support.Type);
         Assert.Equal((byte)0, support.LiquidAmount);
     }
 
@@ -232,6 +234,82 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Final_cleanup_matches_the_official_ordinary_passlegacy_whole_grid_fixture()
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1458. The source
+        // delegate receives the same dry heterogeneous grid and the assertion hashes every cell's
+        // activity/type/wall/frame/liquid result after its complete ordinary tail, including the
+        // 3,000 final grass attempts. Targeted assertions retain the shape and exact 15-row
+        // type-314 liquid span that a coarse grid hash does not encode.
+        const int width = 600;
+        const int height = 500;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+
+        void SetTile(int x, int y, ushort type, bool active, short frameX = 0, short frameY = 0,
+            byte liquidAmount = 0, ushort wall = 0, WorldTileFlags extraFlags = WorldTileFlags.None)
+        {
+            var tile = new WorldTile
+            {
+                Type = type,
+                Wall = wall,
+                FrameX = frameX,
+                FrameY = frameY,
+                LiquidAmount = liquidAmount,
+                Flags = active ? WorldTileFlags.Active | extraFlags : extraFlags
+            };
+            workspace.TileStore.Set(x, y, in tile);
+        }
+
+        SetTile(400, 130, 53, active: true);
+        SetTile(400, 129, 323, active: true);
+        SetTile(140, 120, 1, active: true, liquidAmount: 20, wall: 187);
+        SetTile(180, 120, 137, active: true, extraFlags: WorldTileFlags.None);
+        var trap = workspace.TileStore.Get(180, 120);
+        trap.Shape = 1;
+        workspace.TileStore.Set(180, 120, in trap);
+        for (int y = 104; y <= 120; y++)
+            SetTile(220, y, y == 120 ? (ushort)314 : (ushort)0, active: y == 120, liquidAmount: 100);
+        SetTile(220, 121, 1, active: true, liquidAmount: byte.MaxValue);
+        SetTile(260, 120, 332, active: true);
+        SetTile(260, 122, 1, active: true);
+        SetTile(450, 120, 0, active: false, liquidAmount: 100);
+        SetTile(340, 120, 240, active: true);
+        var leftPaintingWall = workspace.TileStore.Get(339, 120);
+        leftPaintingWall.Wall = 7;
+        workspace.TileStore.Set(339, 120, in leftPaintingWall);
+        var rightPaintingWall = workspace.TileStore.Get(341, 120);
+        rightPaintingWall.Wall = 8;
+        workspace.TileStore.Set(341, 120, in rightPaintingWall);
+        SetTile(380, 120, 484, active: true, frameX: 18, frameY: 18);
+        SetTile(379, 118, 26, active: true);
+        SetTile(420, 120, 374, active: true, wall: 7);
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458())
+            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height), workspace, random));
+
+        Assert.Equal("489E00C40B5434E010096D21D998E61BC678CEBF4B7B26DEB0C3EE1997D98BA3", HashFixture(workspace));
+        Assert.Equal(1056314798, random.Next());
+        Assert.Equal(WorldLiquidKind.Lava, workspace.TileStore.Get(140, 120).LiquidKind);
+        Assert.Equal(byte.MaxValue, workspace.TileStore.Get(140, 120).LiquidAmount);
+        Assert.Equal((byte)0, workspace.TileStore.Get(180, 120).Shape);
+        Assert.Equal((byte)100, workspace.TileStore.Get(220, 104).LiquidAmount);
+        Assert.Equal((byte)100, workspace.TileStore.Get(220, 105).LiquidAmount);
+        for (int y = 106; y <= 120; y++)
+            Assert.Equal((byte)0, workspace.TileStore.Get(220, y).LiquidAmount);
+        Assert.Equal((ushort)1, workspace.TileStore.Get(260, 121).Type);
+        Assert.True(workspace.TileStore.Get(260, 121).IsActive);
+        Assert.Equal((byte)100, workspace.TileStore.Get(450, 120).LiquidAmount);
+        Assert.Equal((ushort)7, workspace.TileStore.Get(340, 120).Wall);
+        for (int x = 379; x <= 380; x++)
+        for (int y = 119; y <= 120; y++)
+            Assert.Equal((ushort)397, workspace.TileStore.Get(x, y).Type);
+        Assert.Equal((ushort)373, workspace.TileStore.Get(420, 120).Type);
+    }
+
+    [Fact]
     public void Settle_liquids_again_matches_official_passlegacy_fixture()
     {
         const int width = 600;
@@ -254,6 +332,41 @@ public sealed class SourceBackedFinal1458Tests
 
         Assert.Equal(906992634, random.Next());
         Assert.Equal("0B0F5A4265C269D93B40FC4D9E026134B1FA0B42CFD92FAC304E105515D6D6F4", HashFixture(workspace));
+    }
+
+    [Fact(Skip = "Official canonical three-basin fixture with curMaxLiquid=25000 finds row-102 quick-settle rounding gap at 1989,799.")]
+    public void Settle_liquids_again_canonical_multi_basin_matches_official_passlegacy()
+    {
+        const int width = 4200;
+        const int height = 1200;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(300, 500));
+        workspace.SetVanillaLiquidLines(600, 1000);
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), width, false, false));
+        foreach ((int centerX, int sourceY, int floorY) in new[]
+            { (1000, 450, 600), (2000, 650, 800), (3000, 900, 1050) })
+        {
+            for (int x = centerX - 12; x <= centerX + 12; x++)
+            {
+                var floor = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, floorY, in floor);
+            }
+            for (int y = sourceY - 5; y <= floorY; y++)
+            foreach (int x in new[] { centerX - 12, centerX + 12 })
+            {
+                var wall = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+                workspace.TileStore.Set(x, y, in wall);
+            }
+            var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+            workspace.TileStore.Set(centerX, sourceY, in water);
+        }
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.SettleLiquidsAgain, new FinalState1458())
+            .Execute(new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "CanonicalLiquids", 1458, width, height), workspace, random));
+
+        Assert.Equal(906992634, random.Next());
+        Assert.Equal("2765B5A309AB750342833807BB58B83FCABF7BBFF45DD5FA8B88E9F437514B1F", HashFixture(workspace));
     }
 
     [Fact]

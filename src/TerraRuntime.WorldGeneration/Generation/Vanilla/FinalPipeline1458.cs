@@ -1020,19 +1020,13 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
 
                 if (GenerationObsidianDoorFraming1458.Check(grid.Store, x, y))
                     normalized++;
-                // TerrariaServer 1.4.5.8 repairs boulders in FinalCleanup before its final general
-                // framing sweep.  In particular, tile 484 is intentionally non-solid for that sweep,
-                // so letting the desert-object check run first would erase the incomplete fragment.
+                // TerrariaServer 1.4.5.8 restores the entire 2x2 boulder footprint here, before
+                // TileFrame reaches Check2x2 later in this same cell. Do not validate an incomplete
+                // 484/485 fragment first: FinalCleanup repairs it rather than deleting it.
                 if (tile.IsActive && GenerationObjectSupport1458.IsBoulder(tile.Type))
                 {
-                    if (!HasFinalCleanupBoulderHeartAbove(grid, x, y, tile.FrameX, tile.FrameY) &&
-                        GenerationDesertObjectFraming1458.Check(grid.Store, x, y))
-                        normalized++;
-                    if (tile.IsActive && GenerationObjectSupport1458.IsBoulder(tile.Type))
-                    {
-                        RepairFinalCleanupBoulder(grid, x, y, tile.Type, tile.FrameX, tile.FrameY);
-                        normalized++;
-                    }
+                    RepairFinalCleanupBoulder(grid, x, y, tile.Type, tile.FrameX, tile.FrameY);
+                    normalized++;
                 }
                 if (GenerationDesertObjectFraming1458.Check(grid.Store, x, y))
                     normalized++;
@@ -1045,7 +1039,7 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 {
                     ref WorldTile below = ref grid.At(x, y + 1);
                     if (y < state.Layers.WorldSurface + 10 && (!below.IsActive || VanillaProjectileTileCutFacts.IsCuttable(below.TileType)) &&
-                        below.Wall != 191)
+                        below.Wall != 191 && !IsOceanDepth(x, y, grid.Width))
                     {
                         StabilizeLooseSurfaceMaterial(grid, x, y);
                     }
@@ -1057,6 +1051,11 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                     {
                         tile.Type = LooseMaterialFallback(tile.Type);
                     }
+                    // The source immediately frames an above type-323 cell after this terrain rewrite.
+                    // It is not cosmetic: TileFrame may reject an invalid liquid plant before that cell's
+                    // own turn in the scan.
+                    if (y > 0 && grid.At(x, y - 1).Type == 323)
+                        framing.TileFrame(x, y - 1);
                     normalized++;
                 }
 
@@ -1089,6 +1088,8 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 }
                 if (tile.IsActive && tile.Type == 314)
                 {
+                    // TerrariaServer 1.4.5.8 clears the current row plus fourteen above it. Its
+                    // `while (j - num14 < 15)` loop is not an inclusive fifteen-rows-above range.
                     for (int clearY = Math.Max(0, y - 14); clearY <= y; clearY++)
                         grid.At(x, clearY).LiquidAmount = 0;
                     normalized++;
@@ -1097,7 +1098,10 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 {
                     ref WorldTile support = ref grid.At(x, y + 1);
                     support = default;
-                    support.Type = 332;
+                    // The source first assigns 332, then its complete FinalCleanup tail (including the
+                    // generation queue finalization) leaves the freshly filled support as plain stone.
+                    // Keep the observable post-pass state rather than retaining the transient sandfall ID.
+                    support.Type = 1;
                     support.Flags = WorldTileFlags.Active;
                     normalized++;
                 }
@@ -1153,6 +1157,12 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
 
 
     private const int FinalCleanupBeachMargin = 380; // WorldGen.beachDistance, TerrariaServer 1.4.5.8.
+
+    // WorldGen.oceanDepths uses the generation ocean line, derived from the retained terrain layers.
+    // FinalCleanup must leave unsupported surface material alone inside the pre-ocean band.
+    private bool IsOceanDepth(int x, int y, int width) =>
+        y <= (state.Layers.WorldSurface + state.Layers.RockLayer) / 2d + 40d &&
+        (x < FinalCleanupBeachMargin || x > width - FinalCleanupBeachMargin);
 
     // WorldGen.FillWallHolesInArea(Rectangle(0, 0, maxTilesX, worldSurface)), TerrariaServer 1.4.5.8.
     // This is intentionally a bounded flood through gaps which touch an inactive neighbour; sealed one-cell
@@ -1340,14 +1350,6 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
             piece.FrameX = 0;
             piece.FrameY = 0;
         }
-    }
-
-    private static bool HasFinalCleanupBoulderHeartAbove(RuntimeGrid grid, int x, int y, short frameX, short frameY)
-    {
-        int originX = x - frameX / 18;
-        int originY = y - frameY / 18;
-        return originY > 0 && (grid.At(originX, originY - 1).IsActive && grid.At(originX, originY - 1).Type == 26 ||
-            grid.At(originX + 1, originY - 1).IsActive && grid.At(originX + 1, originY - 1).Type == 26);
     }
 
     // TileID.Sets.Clouds, including the six 1.4.5.8 identities (not MergesWithClouds).
