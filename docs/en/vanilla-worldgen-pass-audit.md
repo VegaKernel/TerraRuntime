@@ -664,7 +664,7 @@ Full Desert integration also exposed later-stage boundary defects. Ordinary Sett
 | 106 | Water Plants | Final | C | TerrariaServer `1.4.5.8` whole-column surface scan retains the `Next(5)` offer cadence, lily-pad/cat-tail choice and cat-tail growth, bamboo placement/growth, and seaweed maintenance. Direct branch fixtures plus a mixed grass/jungle/deep-water `600x500` `PassLegacy` whole-grid digest pin scan order, frames, liquid mutations, and shared RNG. |
 | 107 | Stalac | Final | C | `SpeleothemsAndGemTrees`: whole-map scan, `PlaceTight`, the substrate atlas and `CheckStalactite`'s restyle: 32 official complete-delegate fixtures / world-level counts track a terrain surplus |
 | 108 | Remove Broken Traps | Final | C | trap validation / source scan |
-| 109 | Final Cleanup | Final | P | all cleanup branches / persisted state |
+| 109 | Final Cleanup | Final | P | source-backed surface-material stabilization, unsafe-wall liquid conversion, trap flattening, dungeon-liquid cleanup, type-`314` liquid clearing, and type-`332` support repair are ported with focused regressions; `FillWallHoles`, boulder/painting framing, per-cell `TileFrame`, final grass offers and special-seed tails remain |
 
 ## Priorities from actual differences
 

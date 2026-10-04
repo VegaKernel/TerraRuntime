@@ -1022,6 +1022,71 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 if (GenerationDesertObjectFraming1458.Check(grid.Store, x, y))
                     normalized++;
 
+                // TerrariaServer 1.4.5.8 FinalCleanup first stabilizes unsupported surface sand-family
+                // cells before its per-cell framing tail.  This deliberately changes only identity/activity/
+                // shape; it does not normalize unrelated packed tile state.
+                if (tile.IsActive && y + 1 < grid.Height && IsLooseSurfaceMaterial(tile.Type) &&
+                    !IsOrdinarySolid(grid.At(x, y + 1)))
+                {
+                    ref WorldTile below = ref grid.At(x, y + 1);
+                    if (y < state.Layers.WorldSurface + 10 && (!below.IsActive || VanillaProjectileTileCutFacts.IsCuttable(below.TileType)) &&
+                        below.Wall != 191)
+                    {
+                        StabilizeLooseSurfaceMaterial(grid, x, y);
+                    }
+                    else if (below.IsActive && IsOrdinarySolid(below))
+                    {
+                        below.Shape = 0;
+                    }
+                    else
+                    {
+                        tile.Type = LooseMaterialFallback(tile.Type);
+                    }
+                    normalized++;
+                }
+
+                if (tile.Wall is 187 or 216 && tile.LiquidAmount > 0)
+                {
+                    tile.LiquidAmount = byte.MaxValue;
+                    tile.LiquidKind = WorldLiquidKind.Lava;
+                    normalized++;
+                }
+                if (tile.Type == Trap && tile.Shape != 0)
+                {
+                    tile.Shape = 0;
+                    normalized++;
+                }
+                if (tile.IsActive && tile.Type == 323 && tile.LiquidAmount > 0)
+                {
+                    KillSingleTileDuringCleanup(ref tile);
+                    normalized++;
+                }
+                if (DungeonGenerationTiles1458.IsDungeonWall(tile.Wall))
+                {
+                    tile.LiquidKind = WorldLiquidKind.Water;
+                    if (tile.Type == 374) tile.Type = 373;
+                    if (tile.IsActive && tile.Type == 56)
+                    {
+                        KillSingleTileDuringCleanup(ref tile);
+                        tile.LiquidAmount = byte.MaxValue;
+                    }
+                    normalized++;
+                }
+                if (tile.IsActive && tile.Type == 314)
+                {
+                    for (int clearY = Math.Max(0, y - 15); clearY <= Math.Min(grid.Height - 1, y + 1); clearY++)
+                        grid.At(x, clearY).LiquidAmount = 0;
+                    normalized++;
+                }
+                if (tile.IsActive && tile.Type == 332 && y + 1 < grid.Height && !grid.At(x, y + 1).IsActive)
+                {
+                    ref WorldTile support = ref grid.At(x, y + 1);
+                    support = default;
+                    support.Type = 332;
+                    support.Flags = WorldTileFlags.Active;
+                    normalized++;
+                }
+
                 if (tile.IsActive && y + 1 < grid.Height && IsUnsupportedSingleTilePlant(in tile, in grid.At(x, y + 1)))
                 {
                     ClearTile(ref tile, preserveLiquid: true);
@@ -1061,6 +1126,39 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
 
 
     private const int FinalCleanupBeachMargin = 380; // WorldGen.beachDistance, TerrariaServer 1.4.5.8.
+
+    private static bool IsLooseSurfaceMaterial(ushort type) => type is 53 or 112 or 234 or 224 or 123;
+
+    private static ushort LooseMaterialFallback(ushort type) => type switch
+    {
+        53 => 397, 112 => 398, 234 => 399, 224 => 147, 123 => 1, _ => type
+    };
+
+    private static void StabilizeLooseSurfaceMaterial(RuntimeGrid grid, int x, int y)
+    {
+        ref WorldTile source = ref grid.At(x, y);
+        int destinationY = y + 1;
+        int remaining = 10;
+        while (destinationY < grid.Height - 50 && remaining > 0 &&
+               (!grid.At(x, destinationY).IsActive || VanillaProjectileTileCutFacts.IsCuttable(grid.At(x, destinationY).TileType)))
+        {
+            source.Shape = 0;
+            ref WorldTile destination = ref grid.At(x, destinationY);
+            destination.Flags |= WorldTileFlags.Active;
+            destination.Type = source.Type;
+            destination.Shape = 0;
+            destinationY++;
+            remaining--;
+        }
+        if (remaining == 0 && !grid.At(x, destinationY).IsActive)
+        {
+            ref WorldTile fallback = ref grid.At(x, destinationY);
+            fallback.Type = LooseMaterialFallback(source.Type);
+            fallback.Flags |= WorldTileFlags.Active;
+        }
+        else if (grid.At(x, destinationY).IsActive && IsOrdinarySolid(grid.At(x, destinationY)))
+            grid.At(x, destinationY).Shape = 0;
+    }
 
     // TileID.Sets.Clouds, including the six 1.4.5.8 identities (not MergesWithClouds).
     private static bool IsActiveCloud(in WorldTile tile) =>

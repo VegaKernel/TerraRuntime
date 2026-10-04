@@ -60,6 +60,50 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Final_cleanup_retains_source_surface_material_and_liquid_repair_order()
+    {
+        // TerrariaServer 1.4.5.8 FinalCleanup: unsupported Sand extends through cuttable air, unsafe-wall
+        // liquid becomes full lava, type 314 clears its source vertical liquid band, and type 332 creates
+        // a clean supporting cell. These operations precede the existing partial-surface-liquid cleanup.
+        var workspace = new Workspace(1000, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        var sand = new WorldTile { Type = 53, Flags = WorldTileFlags.Active, Shape = 2 };
+        workspace.TileStore.Set(500, 100, in sand);
+        var unsafeLiquid = new WorldTile { Wall = 187, LiquidAmount = 20, LiquidKind = WorldLiquidKind.Water };
+        workspace.TileStore.Set(600, 100, in unsafeLiquid);
+        var plant = new WorldTile { Type = 314, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(700, 100, in plant);
+        for (int y = 85; y <= 101; y++)
+        {
+            var water = workspace.TileStore.Get(700, y);
+            water.LiquidAmount = 100;
+            workspace.TileStore.Set(700, y, in water);
+        }
+        var hanging = new WorldTile { Type = 332, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(800, 100, in hanging);
+
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, new RandomAdapter(1458)));
+
+        for (int y = 100; y <= 109; y++)
+        {
+            WorldTile placed = workspace.TileStore.Get(500, y);
+            Assert.True(placed.IsActive);
+            Assert.Equal((ushort)53, placed.Type);
+            Assert.Equal((byte)0, placed.Shape);
+        }
+        WorldTile lava = workspace.TileStore.Get(600, 100);
+        Assert.Equal(byte.MaxValue, lava.LiquidAmount);
+        Assert.Equal(WorldLiquidKind.Lava, lava.LiquidKind);
+        for (int y = 85; y <= 101; y++) Assert.Equal((byte)0, workspace.TileStore.Get(700, y).LiquidAmount);
+        WorldTile support = workspace.TileStore.Get(800, 101);
+        Assert.True(support.IsActive);
+        Assert.Equal((ushort)332, support.Type);
+        Assert.Equal((byte)0, support.LiquidAmount);
+    }
+
+    [Fact]
     public void Settle_liquids_again_matches_official_passlegacy_fixture()
     {
         const int width = 600;
