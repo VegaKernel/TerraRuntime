@@ -823,6 +823,36 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Lihzahrd_altar_full_passlegacy_fixture_matches_the_official_grid_digest()
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1458. GenVars.lAltarX/Y
+        // is 300,200; every tile begins as active stone, and the target's prior frames deliberately
+        // prove that the delegate changes only the source-described altar fields.
+        const int width = 600;
+        const int height = 500;
+        var workspace = CreateStoneWorkspace(width, height);
+        workspace.SetVanillaLihzahrdAltarState(new VanillaLihzahrdAltarState1458(300, 200));
+        for (int dx = 0; dx < 3; dx++)
+        for (int dy = 0; dy < 3; dy++)
+        {
+            var tile = workspace.TileStore.Get(300 + dx, 200 + dy);
+            tile.FrameX = 72;
+            tile.FrameY = 54;
+            workspace.TileStore.Set(300 + dx, 200 + dy, in tile);
+        }
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.LihzahrdAltars, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height),
+                workspace,
+                random));
+
+        Assert.Equal("9F59BE7A2E2B8DF81DF32BA2D14D09D34377CEA75976AE67737BE9E073CD8A95", HashFixture(workspace));
+        Assert.Equal(906992634, random.Next());
+    }
+
+    [Fact]
     public void Water_plants_cat_tail_fixture_matches_official_passlegacy_cells_and_rng()
     {
         // Direct TerrariaServer 1.4.5.8 Water Plants PassLegacy fixture, 600x500, seed 1458:
@@ -976,6 +1006,65 @@ public sealed class SourceBackedFinal1458Tests
             Assert.Equal((short)0, segment.FrameY);
         }
         Assert.Equal(540780342, random.Next());
+    }
+
+    [Fact]
+    public void Water_plants_mixed_terrain_full_passlegacy_fixture_matches_the_official_grid_digest()
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1. This single ordinary
+        // terrain fixture combines separate grass pools, a jungle-bamboo column, and two deep seaweed
+        // columns; its whole-grid digest catches scan order, helper RNG, framing, and liquid mutations.
+        const int width = 600;
+        const int height = 500;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        foreach (int x in new[] { 100, 200 })
+        {
+            for (int y = 100; y <= 104; y++)
+            {
+                var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+                workspace.TileStore.Set(x, y, in water);
+            }
+            var grass = new WorldTile { Type = 2, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, 105, in grass);
+        }
+        for (int y = 98; y <= 100; y++)
+        {
+            var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+            workspace.TileStore.Set(300, y, in water);
+        }
+        for (int y = 98; y <= 99; y++)
+        {
+            var plant = new WorldTile { Type = 3, Flags = WorldTileFlags.Active, LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+            workspace.TileStore.Set(300, y, in plant);
+        }
+        var junglePlant = new WorldTile { Type = 61, Flags = WorldTileFlags.Active, LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+        var jungleGrass = new WorldTile { Type = 60, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(300, 100, in junglePlant);
+        workspace.TileStore.Set(300, 101, in jungleGrass);
+        foreach (int x in new[] { 400, 450 })
+        {
+            for (int y = 197; y <= 200; y++)
+            {
+                var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+                workspace.TileStore.Set(x, y, in water);
+            }
+            var seaweed = new WorldTile { Type = 549, Flags = WorldTileFlags.Active, LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+            var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, 200, in seaweed);
+            workspace.TileStore.Set(x, 210, in stone);
+        }
+
+        var random = new RandomAdapter(1);
+        new FinalPass1458(FinalStage1458.WaterPlants, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1, width, height),
+                workspace,
+                random));
+
+        Assert.Equal("0AFD55A6AD59A44C0A4E62B5022301E15900DF6658111CC5F19699F0635615EF", HashFixture(workspace));
+        Assert.Equal(1773873583, random.Next());
     }
 
     [Fact]
@@ -1147,6 +1236,18 @@ public sealed class SourceBackedFinal1458Tests
         var workspace = new Workspace(100, 100);
         Assert.True(workspace.TrySetLayers(10, 20));
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        return workspace;
+    }
+
+    private static Workspace CreateStoneWorkspace(int width, int height)
+    {
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            workspace.TileStore.Set(x, y, in stone);
         return workspace;
     }
 
