@@ -112,8 +112,7 @@ internal static class StructuralValidator
                     return new(WorldValidationStatus.InvalidShape, $"Shape {tile.Shape} at ({x},{y}) >5.");
                 if (!Enum.IsDefined(tile.LiquidKind))
                     return new(WorldValidationStatus.InvalidLiquid, $"LiquidKind {(byte)tile.LiquidKind} at ({x},{y}) undefined.");
-                if (tile.LiquidAmount == 0 && tile.LiquidKind != WorldLiquidKind.Water)
-                    return new(WorldValidationStatus.InvalidLiquid, $"Liquid 0 but kind {tile.LiquidKind} at ({x},{y}).");
+                // Source liquid-type bits can remain after amount-only cleanup; empty fluid has no kind in .wld.
 
                 if (tile.IsActive)
                 {
@@ -124,7 +123,10 @@ internal static class StructuralValidator
                             $"Orphan frame-important tile type {tile.Type} at ({x},{y}) frame ({tile.FrameX},{tile.FrameY}).");
                     }
                 }
-                else if (tile.FrameX != 0 || tile.FrameY != 0 || tile.Shape != 0)
+                // Source generation KillTile retains paired unset frames after clearing the physical tile.
+                // This is a normalized candidate contract, not a universal world-file frame restriction.
+                else if (tile.Shape != 0 || !((tile.FrameX == 0 && tile.FrameY == 0) ||
+                        (tile.FrameX == -1 && tile.FrameY == -1)))
                 {
                     return new(WorldValidationStatus.InvalidFlags,
                         $"Inactive tile at ({x},{y}) has non-zero frame/shape {tile.FrameX},{tile.FrameY} shape {tile.Shape}.");

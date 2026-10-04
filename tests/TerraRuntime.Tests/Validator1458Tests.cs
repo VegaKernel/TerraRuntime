@@ -79,7 +79,7 @@ public sealed class VanillaWorldGenerationValidator1458Tests
 
     [Theory]
     [InlineData(255, 4)]
-    [InlineData(0, 1)]
+    [InlineData(0, 4)]
     public void Embedded_liquid_admission_keeps_liquid_encoding_validation(byte amount, byte kind)
     {
         var workspace = new Workspace(4200, 1200);

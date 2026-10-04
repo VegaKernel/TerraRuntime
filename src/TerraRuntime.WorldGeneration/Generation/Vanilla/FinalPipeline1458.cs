@@ -203,7 +203,7 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 ApplyRemoveBrokenTraps(context, grid);
                 break;
             case FinalStage1458.FinalCleanup:
-                ApplyFinalCleanup(context, grid);
+                ApplyFinalCleanup(context, grid, random);
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
@@ -1000,9 +1000,10 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Remove Broken Traps complete; removed={removed}");
     }
 
-    private void ApplyFinalCleanup(IWorldGenerationContext context, RuntimeGrid grid)
+    private void ApplyFinalCleanup(IWorldGenerationContext context, RuntimeGrid grid, IWorldGenerationVanillaRandom random)
     {
-        long normalized = 0;
+        long normalized = FillWallHolesAboveSurface(grid, (int)state.Layers.WorldSurface);
+        var framing = new GenerationTileFraming1458(grid.Store, random);
         for (int x = 0; x < grid.Width; x++)
         {
             if ((x & 31) == 0)
@@ -1019,8 +1020,87 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
 
                 if (GenerationObsidianDoorFraming1458.Check(grid.Store, x, y))
                     normalized++;
+                // TerrariaServer 1.4.5.8 repairs boulders in FinalCleanup before its final general
+                // framing sweep.  In particular, tile 484 is intentionally non-solid for that sweep,
+                // so letting the desert-object check run first would erase the incomplete fragment.
+                if (tile.IsActive && GenerationObjectSupport1458.IsBoulder(tile.Type))
+                {
+                    if (!HasFinalCleanupBoulderHeartAbove(grid, x, y, tile.FrameX, tile.FrameY) &&
+                        GenerationDesertObjectFraming1458.Check(grid.Store, x, y))
+                        normalized++;
+                    if (tile.IsActive && GenerationObjectSupport1458.IsBoulder(tile.Type))
+                    {
+                        RepairFinalCleanupBoulder(grid, x, y, tile.Type, tile.FrameX, tile.FrameY);
+                        normalized++;
+                    }
+                }
                 if (GenerationDesertObjectFraming1458.Check(grid.Store, x, y))
                     normalized++;
+
+                // TerrariaServer 1.4.5.8 FinalCleanup first stabilizes unsupported surface sand-family
+                // cells before its per-cell framing tail.  This deliberately changes only identity/activity/
+                // shape; it does not normalize unrelated packed tile state.
+                if (tile.IsActive && y + 1 < grid.Height && IsLooseSurfaceMaterial(tile.Type) &&
+                    !IsOrdinarySolid(grid.At(x, y + 1)))
+                {
+                    ref WorldTile below = ref grid.At(x, y + 1);
+                    if (y < state.Layers.WorldSurface + 10 && (!below.IsActive || VanillaProjectileTileCutFacts.IsCuttable(below.TileType)) &&
+                        below.Wall != 191)
+                    {
+                        StabilizeLooseSurfaceMaterial(grid, x, y);
+                    }
+                    else if (below.IsActive && IsOrdinarySolid(below))
+                    {
+                        below.Shape = 0;
+                    }
+                    else
+                    {
+                        tile.Type = LooseMaterialFallback(tile.Type);
+                    }
+                    normalized++;
+                }
+
+                if (tile.Wall is 187 or 216 && tile.LiquidAmount > 0)
+                {
+                    tile.LiquidAmount = byte.MaxValue;
+                    tile.LiquidKind = WorldLiquidKind.Lava;
+                    normalized++;
+                }
+                if (tile.Type == Trap && tile.Shape != 0)
+                {
+                    tile.Shape = 0;
+                    normalized++;
+                }
+                if (tile.IsActive && tile.Type == 323 && tile.LiquidAmount > 0)
+                {
+                    KillSingleTileDuringCleanup(ref tile);
+                    normalized++;
+                }
+                if (DungeonGenerationTiles1458.IsDungeonWall(tile.Wall))
+                {
+                    tile.LiquidKind = WorldLiquidKind.Water;
+                    if (tile.Type == 374) tile.Type = 373;
+                    if (tile.IsActive && tile.Type == 56)
+                    {
+                        KillSingleTileDuringCleanup(ref tile);
+                        tile.LiquidAmount = byte.MaxValue;
+                    }
+                    normalized++;
+                }
+                if (tile.IsActive && tile.Type == 314)
+                {
+                    for (int clearY = Math.Max(0, y - 14); clearY <= y; clearY++)
+                        grid.At(x, clearY).LiquidAmount = 0;
+                    normalized++;
+                }
+                if (tile.IsActive && tile.Type == 332 && y + 1 < grid.Height && !grid.At(x, y + 1).IsActive)
+                {
+                    ref WorldTile support = ref grid.At(x, y + 1);
+                    support = default;
+                    support.Type = 332;
+                    support.Flags = WorldTileFlags.Active;
+                    normalized++;
+                }
 
                 if (tile.IsActive && y + 1 < grid.Height && IsUnsupportedSingleTilePlant(in tile, in grid.At(x, y + 1)))
                 {
@@ -1053,14 +1133,222 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                     tile.LiquidKind = WorldLiquidKind.Water;
                     normalized++;
                 }
+                if (tile.IsActive && IsPainting(tile.Type) && tile.Wall == 0 &&
+                    x >= 2 && x < grid.Width - 2 && y >= 2 && y < grid.Height - 2)
+                {
+                    ushort adjacentWall = FirstAdjacentWall(grid, x, y);
+                    if (adjacentWall != 0)
+                    {
+                        tile.Wall = adjacentWall;
+                        normalized++;
+                    }
+                }
+                framing.TileFrame(x, y);
                 tile.Reserved = 0;
             }
         }
+        PlaceFinalCleanupGrassOffers(grid, random);
         context.ReportProgress(1d, $"Final Cleanup complete; normalized={normalized}");
     }
 
 
     private const int FinalCleanupBeachMargin = 380; // WorldGen.beachDistance, TerrariaServer 1.4.5.8.
+
+    // WorldGen.FillWallHolesInArea(Rectangle(0, 0, maxTilesX, worldSurface)), TerrariaServer 1.4.5.8.
+    // This is intentionally a bounded flood through gaps which touch an inactive neighbour; sealed one-cell
+    // cavities and regions of 150 cells are retained by vanilla.
+    private static int FillWallHolesAboveSurface(RuntimeGrid grid, int surface)
+    {
+        int filled = 0;
+        int lastColumn = Math.Min(grid.Width - 1, grid.Width);
+        int endY = Math.Min(surface, grid.Height - 2);
+        for (int requestedX = 0; requestedX <= lastColumn; requestedX++)
+        {
+            int x = Math.Clamp(requestedX, 2, grid.Width - 3);
+            bool sawWall = false;
+            for (int y = 2; y < endY; y++)
+            {
+                if (grid.At(x, y).Wall == 0)
+                {
+                    if (!sawWall)
+                        continue;
+                    sawWall = false;
+                    if (FillWallHole(grid, x, y))
+                        filled++;
+                }
+                else
+                    sawWall = true;
+            }
+        }
+        return filled;
+    }
+
+    private static bool FillWallHole(RuntimeGrid grid, int originX, int originY)
+    {
+        const int maximumVisited = 150;
+        var visited = new HashSet<(int X, int Y)>();
+        var current = new List<(int X, int Y)> { (originX, originY) };
+        var next = new List<(int X, int Y)>();
+        var wallCounts = new Dictionary<ushort, int>();
+        while (current.Count > 0)
+        {
+            next.Clear();
+            foreach ((int x, int y) in current)
+            {
+                if (visited.Count >= maximumVisited)
+                    return false;
+                if (x < 1 || x >= grid.Width - 1 || y < 1 || y >= grid.Height - 1)
+                    continue;
+                if (!visited.Add((x, y)))
+                    continue;
+                ref WorldTile tile = ref grid.At(x, y);
+                if (tile.Wall != 0)
+                {
+                    wallCounts[tile.Wall] = wallCounts.GetValueOrDefault(tile.Wall) + 1;
+                    continue;
+                }
+                bool touchesOpenSpace = false;
+                for (int checkX = x - 1; checkX <= x + 1 && !touchesOpenSpace; checkX++)
+                    touchesOpenSpace = !grid.At(checkX, y).IsActive;
+                for (int checkY = y - 1; checkY <= y + 1 && !touchesOpenSpace; checkY++)
+                    touchesOpenSpace = !grid.At(x, checkY).IsActive;
+                if (!touchesOpenSpace)
+                    continue;
+                next.Add((x - 1, y));
+                next.Add((x + 1, y));
+                next.Add((x, y - 1));
+                next.Add((x, y + 1));
+            }
+            (current, next) = (next, current);
+        }
+        if (visited.Count == 1)
+            return false;
+        ushort dominantWall = 2;
+        int dominantCount = -1;
+        foreach ((ushort wall, int count) in wallCounts)
+            if (count > dominantCount)
+            {
+                dominantWall = wall;
+                dominantCount = count;
+            }
+        foreach ((int x, int y) in visited)
+            if (grid.At(x, y).Wall == 0)
+                grid.At(x, y).Wall = dominantWall;
+        return true;
+    }
+
+    private static bool IsLooseSurfaceMaterial(ushort type) => type is 53 or 112 or 234 or 224 or 123;
+
+    // TileID.Sets.Paintings in TerrariaServer 1.4.5.8; independently enumerated from the official runtime.
+    private static bool IsPainting(ushort type) => type is 240 or 241 or 242 or 245 or 246;
+
+    private static ushort FirstAdjacentWall(RuntimeGrid grid, int x, int y)
+    {
+        foreach ((int sampleX, int sampleY) in new[] { (x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1) })
+        {
+            ushort wall = grid.At(sampleX, sampleY).Wall;
+            if (wall != 0)
+                return wall;
+        }
+        return 0;
+    }
+
+    private static void PlaceFinalCleanupGrassOffers(RuntimeGrid grid, IWorldGenerationVanillaRandom random)
+    {
+        // WorldGen.FinalCleanup's ordinary final offer loop.  Secret-seed multipliers and Mud eligibility
+        // belong to the explicit secret-seed barrier; the source-backed provider enters this pass only for
+        // the default canonical profile.
+        if (grid.Width <= 100 || grid.Height <= 250)
+            return;
+        int target = grid.Width switch { >= 8400 => 9, >= 6400 => 6, _ => 3 };
+        int attempts = 3000;
+        int placed = 0;
+        while (placed < target && --attempts > 0)
+        {
+            int x = random.Next(50, grid.Width - 50);
+            int y = random.Next(50, grid.Height - 200);
+            ref WorldTile tile = ref grid.At(x, y);
+            if (!tile.IsActive || tile.Type != 0)
+                continue;
+            tile = default;
+            tile.Flags = WorldTileFlags.Active;
+            tile.Type = 668;
+            placed++;
+        }
+    }
+
+    private static ushort LooseMaterialFallback(ushort type) => type switch
+    {
+        53 => 397, 112 => 398, 234 => 399, 224 => 147, 123 => 1, _ => type
+    };
+
+    private static void StabilizeLooseSurfaceMaterial(RuntimeGrid grid, int x, int y)
+    {
+        ref WorldTile source = ref grid.At(x, y);
+        int destinationY = y + 1;
+        int remaining = 10;
+        while (destinationY < grid.Height - 50 && remaining > 0 &&
+               (!grid.At(x, destinationY).IsActive || VanillaProjectileTileCutFacts.IsCuttable(grid.At(x, destinationY).TileType)))
+        {
+            source.Shape = 0;
+            ref WorldTile destination = ref grid.At(x, destinationY);
+            destination.Flags |= WorldTileFlags.Active;
+            destination.Type = source.Type;
+            destination.Shape = 0;
+            destinationY++;
+            remaining--;
+        }
+        if (remaining == 0 && !grid.At(x, destinationY).IsActive)
+        {
+            ref WorldTile fallback = ref grid.At(x, destinationY);
+            fallback.Type = LooseMaterialFallback(source.Type);
+            fallback.Flags |= WorldTileFlags.Active;
+        }
+        else if (grid.At(x, destinationY).IsActive && IsOrdinarySolid(grid.At(x, destinationY)))
+            grid.At(x, destinationY).Shape = 0;
+    }
+
+    private static void RepairFinalCleanupBoulder(RuntimeGrid grid, int x, int y, ushort type, short frameX, short frameY)
+    {
+        int originX = x - frameX / 18;
+        int originY = y - frameY / 18;
+        bool blockedByHeart = false;
+        for (int dx = 0; dx < 2; dx++)
+        {
+            if (originY > 0 && grid.At(originX + dx, originY - 1).IsActive && grid.At(originX + dx, originY - 1).Type == 26)
+                blockedByHeart = true;
+            for (int dy = 0; dy < 2; dy++)
+            {
+                ref WorldTile piece = ref grid.At(originX + dx, originY + dy);
+                piece.Flags |= WorldTileFlags.Active;
+                piece.Shape = 0;
+                piece.Type = type;
+                piece.FrameX = checked((short)(dx * 18));
+                piece.FrameY = checked((short)(dy * 18));
+            }
+        }
+        if (!blockedByHeart)
+            return;
+        ushort replacement = type == 484 ? (ushort)397 : (ushort)0;
+        for (int dx = 0; dx < 2; dx++)
+        for (int dy = 0; dy < 2; dy++)
+        {
+            ref WorldTile piece = ref grid.At(originX + dx, originY + dy);
+            piece.Flags |= WorldTileFlags.Active;
+            piece.Shape = 0;
+            piece.Type = replacement;
+            piece.FrameX = 0;
+            piece.FrameY = 0;
+        }
+    }
+
+    private static bool HasFinalCleanupBoulderHeartAbove(RuntimeGrid grid, int x, int y, short frameX, short frameY)
+    {
+        int originX = x - frameX / 18;
+        int originY = y - frameY / 18;
+        return originY > 0 && (grid.At(originX, originY - 1).IsActive && grid.At(originX, originY - 1).Type == 26 ||
+            grid.At(originX + 1, originY - 1).IsActive && grid.At(originX + 1, originY - 1).Type == 26);
+    }
 
     // TileID.Sets.Clouds, including the six 1.4.5.8 identities (not MergesWithClouds).
     private static bool IsActiveCloud(in WorldTile tile) =>

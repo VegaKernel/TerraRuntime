@@ -9,6 +9,34 @@ namespace TerraRuntime.Tests;
 
 public sealed class SourceBackedFinal1458Tests
 {
+    [Theory]
+    [InlineData(WorldLiquidKind.Water)]
+    [InlineData(WorldLiquidKind.Lava)]
+    [InlineData(WorldLiquidKind.Honey)]
+    [InlineData(WorldLiquidKind.Shimmer)]
+    public void Final_cleanup_rail_retains_source_fifteen_cell_clear_and_earlier_liquid_tags(WorldLiquidKind kind)
+    {
+        // Actual original FinalCleanup on 600x500 stone, rail at300/200: 186..200 clear,
+        // 184/185/201 remain full. Earlier visited cleared cells retain their liquid-type bits.
+        var workspace = CreateStoneWorkspace(600, 500);
+        for (int y = 184; y <= 201; y++)
+        {
+            ref var tile = ref workspace.TileStore.Tiles[workspace.TileStore.GetUncheckedIndex(300, y)];
+            tile.LiquidAmount = 255; tile.LiquidKind = kind;
+            if (y == 200) { tile.Type = 314; tile.FrameX = 0; tile.FrameY = -1; }
+        }
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 600, 500),
+                workspace, new RandomAdapter(1458)));
+        for (int y = 184; y <= 201; y++)
+        {
+            var tile = workspace.TileStore.Get(300, y);
+            Assert.Equal(y is >= 186 and <= 200 ? (byte)0 : byte.MaxValue, tile.LiquidAmount);
+            // Current-cell zero-tag normalization is a separate retained generator convention.
+            if (y != 200) Assert.Equal(kind, tile.LiquidKind);
+        }
+    }
+
     private static readonly WorldGenerationPassId SecretSeedsId = new("terraria:1.4.5.8/SecretSeeds");
 
     private static readonly WorldGenerationPassId[] FinalPassIds =
@@ -57,6 +85,150 @@ public sealed class SourceBackedFinal1458Tests
         Assert.Equal(clears ? (byte)0 : amount, after.LiquidAmount);
         Assert.True(after.IsActive);
         Assert.Equal(wet.Type, after.Type);
+    }
+
+    [Fact]
+    public void Final_cleanup_retains_source_surface_material_and_liquid_repair_order()
+    {
+        // TerrariaServer 1.4.5.8 FinalCleanup: unsupported Sand extends through cuttable air, unsafe-wall
+        // liquid becomes full lava, type 314 clears its source vertical liquid band, and type 332 creates
+        // a clean supporting cell. These operations precede the existing partial-surface-liquid cleanup.
+        var workspace = new Workspace(1000, 500);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        var sand = new WorldTile { Type = 53, Flags = WorldTileFlags.Active, Shape = 2 };
+        workspace.TileStore.Set(500, 100, in sand);
+        var unsafeLiquid = new WorldTile { Wall = 187, LiquidAmount = 20, LiquidKind = WorldLiquidKind.Water };
+        workspace.TileStore.Set(600, 100, in unsafeLiquid);
+        var plant = new WorldTile { Type = 314, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(700, 100, in plant);
+        for (int y = 85; y <= 100; y++)
+        {
+            var water = workspace.TileStore.Get(700, y);
+            water.LiquidAmount = byte.MaxValue;
+            workspace.TileStore.Set(700, y, in water);
+        }
+        var belowWaterColumn = workspace.TileStore.Get(700, 101);
+        belowWaterColumn.LiquidAmount = byte.MaxValue;
+        workspace.TileStore.Set(700, 101, in belowWaterColumn);
+        var hanging = new WorldTile { Type = 332, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(800, 100, in hanging);
+
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 1000, 500), workspace, new RandomAdapter(1458)));
+
+        for (int y = 100; y <= 109; y++)
+        {
+            WorldTile placed = workspace.TileStore.Get(500, y);
+            Assert.True(placed.IsActive);
+            Assert.Equal((ushort)53, placed.Type);
+            Assert.Equal((byte)0, placed.Shape);
+        }
+        WorldTile lava = workspace.TileStore.Get(600, 100);
+        Assert.Equal(byte.MaxValue, lava.LiquidAmount);
+        Assert.Equal(WorldLiquidKind.Lava, lava.LiquidKind);
+        Assert.Equal(byte.MaxValue, workspace.TileStore.Get(700, 85).LiquidAmount);
+        for (int y = 86; y <= 100; y++) Assert.Equal((byte)0, workspace.TileStore.Get(700, y).LiquidAmount);
+        Assert.Equal(byte.MaxValue, workspace.TileStore.Get(700, 101).LiquidAmount);
+        WorldTile support = workspace.TileStore.Get(800, 101);
+        Assert.True(support.IsActive);
+        Assert.Equal((ushort)332, support.Type);
+        Assert.Equal((byte)0, support.LiquidAmount);
+    }
+
+    [Fact]
+    public void Final_cleanup_repairs_boulder_frames_then_replaces_boulders_blocked_by_a_heart()
+    {
+        // TerrariaServer 1.4.5.8 FinalCleanup first restores the frame-derived 2x2 boulder footprint;
+        // a Crimson Heart directly above then converts it to empty active cells (or Sand for tile 484).
+        var workspace = new Workspace(100, 100);
+        Assert.True(workspace.TrySetLayers(40, 60));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        var fragment = new WorldTile { Type = 484, Flags = WorldTileFlags.Active, FrameX = 18, FrameY = 18 };
+        workspace.TileStore.Set(51, 51, in fragment);
+        var heart = new WorldTile { Type = 26, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(50, 49, in heart);
+
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100), workspace, new RandomAdapter(1458)));
+
+        for (int x = 50; x <= 51; x++)
+        for (int y = 50; y <= 51; y++)
+        {
+            WorldTile repaired = workspace.TileStore.Get(x, y);
+            Assert.True(repaired.IsActive);
+            Assert.Equal((ushort)397, repaired.Type);
+            Assert.Equal((short)0, repaired.FrameX);
+            Assert.Equal((short)0, repaired.FrameY);
+        }
+    }
+
+    [Fact]
+    public void Final_cleanup_fills_a_small_open_wall_gap_with_its_dominant_boundary_wall()
+    {
+        // TerrariaServer 1.4.5.8 FillWallHolesInArea flood-fills a bounded open gap before the
+        // Final Cleanup scan; a sealed singleton is deliberately left alone.
+        var workspace = new Workspace(100, 100);
+        Assert.True(workspace.TrySetLayers(60, 80));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        for (int x = 49; x <= 52; x++)
+        for (int y = 49; y <= 51; y++)
+        {
+            if (x is 50 or 51 && y == 50)
+                continue;
+            var solid = new WorldTile { Type = 1, Flags = WorldTileFlags.Active, Wall = 4 };
+            workspace.TileStore.Set(x, y, in solid);
+        }
+
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100), workspace, new RandomAdapter(1458)));
+
+        Assert.Equal((ushort)4, workspace.TileStore.Get(50, 50).Wall);
+        Assert.Equal((ushort)4, workspace.TileStore.Get(51, 50).Wall);
+    }
+
+    [Fact]
+    public void Final_cleanup_assigns_an_adjacent_wall_to_a_wallless_painting_in_source_priority_order()
+    {
+        // TerrariaServer 1.4.5.8 TileID.Sets.Paintings chooses left, right, up, then down when a
+        // generated painting has lost its own wall.
+        var workspace = new Workspace(100, 100);
+        Assert.True(workspace.TrySetLayers(60, 80));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        var painting = new WorldTile { Type = 240, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(50, 50, in painting);
+        var left = new WorldTile { Wall = 7 };
+        workspace.TileStore.Set(49, 50, in left);
+        var right = new WorldTile { Wall = 8 };
+        workspace.TileStore.Set(51, 50, in right);
+
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100), workspace, new RandomAdapter(1458)));
+
+        Assert.Equal((ushort)7, workspace.TileStore.Get(50, 50).Wall);
+    }
+
+    [Fact]
+    public void Final_cleanup_uses_the_source_small_world_quota_for_final_grass_offers()
+    {
+        var workspace = new Workspace(420, 400);
+        Assert.True(workspace.TrySetLayers(180, 250));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        for (int x = 0; x < 420; x++)
+        for (int y = 0; y < 400; y++)
+        {
+            var dirt = new WorldTile { Type = 0, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, y, in dirt);
+        }
+
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 420, 400), workspace, new RandomAdapter(1458)));
+
+        int offers = 0;
+        for (int x = 0; x < 420; x++)
+        for (int y = 0; y < 400; y++)
+            offers += workspace.TileStore.Get(x, y).Type == 668 ? 1 : 0;
+        Assert.Equal(3, offers);
     }
 
     [Fact]
@@ -823,6 +995,36 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Lihzahrd_altar_full_passlegacy_fixture_matches_the_official_grid_digest()
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1458. GenVars.lAltarX/Y
+        // is 300,200; every tile begins as active stone, and the target's prior frames deliberately
+        // prove that the delegate changes only the source-described altar fields.
+        const int width = 600;
+        const int height = 500;
+        var workspace = CreateStoneWorkspace(width, height);
+        workspace.SetVanillaLihzahrdAltarState(new VanillaLihzahrdAltarState1458(300, 200));
+        for (int dx = 0; dx < 3; dx++)
+        for (int dy = 0; dy < 3; dy++)
+        {
+            var tile = workspace.TileStore.Get(300 + dx, 200 + dy);
+            tile.FrameX = 72;
+            tile.FrameY = 54;
+            workspace.TileStore.Set(300 + dx, 200 + dy, in tile);
+        }
+
+        var random = new RandomAdapter(1458);
+        new FinalPass1458(FinalStage1458.LihzahrdAltars, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, width, height),
+                workspace,
+                random));
+
+        Assert.Equal("9F59BE7A2E2B8DF81DF32BA2D14D09D34377CEA75976AE67737BE9E073CD8A95", HashFixture(workspace));
+        Assert.Equal(906992634, random.Next());
+    }
+
+    [Fact]
     public void Water_plants_cat_tail_fixture_matches_official_passlegacy_cells_and_rng()
     {
         // Direct TerrariaServer 1.4.5.8 Water Plants PassLegacy fixture, 600x500, seed 1458:
@@ -976,6 +1178,65 @@ public sealed class SourceBackedFinal1458Tests
             Assert.Equal((short)0, segment.FrameY);
         }
         Assert.Equal(540780342, random.Next());
+    }
+
+    [Fact]
+    public void Water_plants_mixed_terrain_full_passlegacy_fixture_matches_the_official_grid_digest()
+    {
+        // Direct TerrariaServer 1.4.5.8 PassLegacy fixture, 600x500, seed 1. This single ordinary
+        // terrain fixture combines separate grass pools, a jungle-bamboo column, and two deep seaweed
+        // columns; its whole-grid digest catches scan order, helper RNG, framing, and liquid mutations.
+        const int width = 600;
+        const int height = 500;
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        foreach (int x in new[] { 100, 200 })
+        {
+            for (int y = 100; y <= 104; y++)
+            {
+                var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+                workspace.TileStore.Set(x, y, in water);
+            }
+            var grass = new WorldTile { Type = 2, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, 105, in grass);
+        }
+        for (int y = 98; y <= 100; y++)
+        {
+            var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+            workspace.TileStore.Set(300, y, in water);
+        }
+        for (int y = 98; y <= 99; y++)
+        {
+            var plant = new WorldTile { Type = 3, Flags = WorldTileFlags.Active, LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+            workspace.TileStore.Set(300, y, in plant);
+        }
+        var junglePlant = new WorldTile { Type = 61, Flags = WorldTileFlags.Active, LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+        var jungleGrass = new WorldTile { Type = 60, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(300, 100, in junglePlant);
+        workspace.TileStore.Set(300, 101, in jungleGrass);
+        foreach (int x in new[] { 400, 450 })
+        {
+            for (int y = 197; y <= 200; y++)
+            {
+                var water = new WorldTile { LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+                workspace.TileStore.Set(x, y, in water);
+            }
+            var seaweed = new WorldTile { Type = 549, Flags = WorldTileFlags.Active, LiquidAmount = byte.MaxValue, LiquidKind = WorldLiquidKind.Water };
+            var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, 200, in seaweed);
+            workspace.TileStore.Set(x, 210, in stone);
+        }
+
+        var random = new RandomAdapter(1);
+        new FinalPass1458(FinalStage1458.WaterPlants, new FinalState1458())
+            .Execute(new Context(
+                new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1, width, height),
+                workspace,
+                random));
+
+        Assert.Equal("0AFD55A6AD59A44C0A4E62B5022301E15900DF6658111CC5F19699F0635615EF", HashFixture(workspace));
+        Assert.Equal(1773873583, random.Next());
     }
 
     [Fact]
@@ -1147,6 +1408,18 @@ public sealed class SourceBackedFinal1458Tests
         var workspace = new Workspace(100, 100);
         Assert.True(workspace.TrySetLayers(10, 20));
         workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        return workspace;
+    }
+
+    private static Workspace CreateStoneWorkspace(int width, int height)
+    {
+        var workspace = new Workspace(width, height);
+        Assert.True(workspace.TrySetLayers(140, 200));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, effectiveCrimson: false, isRemix: false));
+        var stone = new WorldTile { Type = 1, Flags = WorldTileFlags.Active };
+        for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            workspace.TileStore.Set(x, y, in stone);
         return workspace;
     }
 

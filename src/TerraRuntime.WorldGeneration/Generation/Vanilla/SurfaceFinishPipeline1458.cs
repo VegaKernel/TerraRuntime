@@ -139,6 +139,7 @@ internal sealed class SurfaceFinishState1458
 {
     public VanillaWorldGenerationBootstrapState1458? Bootstrap { get; private set; }
     public double WorldSurface { get; private set; }
+    public double WorldSurfaceLow { get; private set; }
     public double WorldSurfaceHigh { get; private set; }
     public double RockLayer { get; private set; }
     public int UnderworldTop { get; private set; }
@@ -156,6 +157,7 @@ internal sealed class SurfaceFinishState1458
 
         WorldSurface = layers.WorldSurface;
         WorldSurfaceHigh = workspace.VanillaTerrainState?.WorldSurfaceHigh ?? layers.WorldSurface;
+        WorldSurfaceLow = workspace.VanillaTerrainState?.WorldSurfaceLow ?? layers.WorldSurface;
         RockLayer = layers.RockLayer;
         UnderworldTop = Math.Clamp(workspace.HeightTiles - 200, (int)RockLayer + 120, workspace.HeightTiles - 90);
     }
@@ -314,14 +316,11 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
             checked((ushort)bootstrap.GoldOre)
         ];
 
-        int patches = grid.Width switch
-        {
-            <= 4200 => 70,
-            <= 6400 => 105,
-            _ => 140
-        };
-        int minY = Math.Clamp((int)state.WorldSurface - 5, 10, grid.Height - 20);
-        int maxY = Math.Clamp((int)state.RockLayer + 25, minY + 1, grid.Height - 10);
+        // The source pass samples only the narrow surface band.  Its first count is a scaled
+        // `Next(width*5/4200, width*10/4200)`, not a density-derived underground ore budget.
+        int patches = random.Next(grid.Width * 5 / 4200, grid.Width * 10 / 4200);
+        int minY = Math.Clamp((int)state.WorldSurfaceLow, 10, grid.Height - 20);
+        int maxY = Math.Clamp((int)state.WorldSurface, minY + 1, grid.Height - 10);
         int changed = 0;
 
         for (int patch = 0; patch < patches; patch++)
@@ -329,7 +328,9 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
             if ((patch & 15) == 0)
                 context.CancellationToken.ThrowIfCancellationRequested();
 
-            int cx = random.Next(25, grid.Width - 25);
+            int cx = random.Next(DungeonGenerationCatalog1458.BeachDistance, grid.Width - DungeonGenerationCatalog1458.BeachDistance);
+            while (cx >= grid.Width * 0.48d && cx <= grid.Width * 0.52d)
+                cx = random.Next(DungeonGenerationCatalog1458.BeachDistance, grid.Width - DungeonGenerationCatalog1458.BeachDistance);
             int cy = random.Next(minY, maxY);
             int radius = random.Next(3, 8);
             bool orePatch = random.Next(4) == 0;

@@ -162,8 +162,7 @@ public static class Validator1458
                     return new(WorldValidationStatus.InvalidShape, $"Shape {tile.Shape} at ({x},{y}) >5.");
                 if (!Enum.IsDefined(tile.LiquidKind))
                     return new(WorldValidationStatus.InvalidLiquid, $"LiquidKind {(byte)tile.LiquidKind} at ({x},{y}) undefined.");
-                if (tile.LiquidAmount == 0 && tile.LiquidKind != WorldLiquidKind.Water)
-                    return new(WorldValidationStatus.InvalidLiquid, $"Liquid 0 but kind {tile.LiquidKind} at ({x},{y}).");
+                // Source liquid-type bits can remain after amount-only cleanup; empty fluid has no kind in .wld.
                 // TerrariaServer 1.4.5.8 TileCleanup may restore solid object supports without clearing
                 // their liquid; FinalCleanup and WorldFile.SaveWorldTiles preserve those valid records.
                 // Embedded liquid is normalized by post-load WaterCheck, not rejected by file validation.
@@ -210,7 +209,10 @@ public static class Validator1458
                 }
                 else
                 {
-                    if (tile.FrameX != 0 || tile.FrameY != 0 || tile.Shape != 0)
+                    // FinalCleanup TileFrame can invoke source KillTile after zero-frame normalization.
+                    // Admit its paired unset frames; other pairs remain outside this generator's contract.
+                    if (tile.Shape != 0 || !((tile.FrameX == 0 && tile.FrameY == 0) ||
+                        (tile.FrameX == -1 && tile.FrameY == -1)))
                         return new(WorldValidationStatus.InvalidFlags, $"Inactive tile at ({x},{y}) has non-zero frame/shape {tile.FrameX},{tile.FrameY} shape {tile.Shape}.");
                 }
             }
