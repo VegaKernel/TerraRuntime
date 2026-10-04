@@ -203,7 +203,7 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 ApplyRemoveBrokenTraps(context, grid);
                 break;
             case FinalStage1458.FinalCleanup:
-                ApplyFinalCleanup(context, grid);
+                ApplyFinalCleanup(context, grid, random);
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
@@ -1000,7 +1000,7 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
         context.ReportProgress(1d, $"Remove Broken Traps complete; removed={removed}");
     }
 
-    private void ApplyFinalCleanup(IWorldGenerationContext context, RuntimeGrid grid)
+    private void ApplyFinalCleanup(IWorldGenerationContext context, RuntimeGrid grid, IWorldGenerationVanillaRandom random)
     {
         long normalized = FillWallHolesAboveSurface(grid, (int)state.Layers.WorldSurface);
         for (int x = 0; x < grid.Width; x++)
@@ -1139,6 +1139,7 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 tile.Reserved = 0;
             }
         }
+        PlaceFinalCleanupGrassOffers(grid, random);
         context.ReportProgress(1d, $"Final Cleanup complete; normalized={normalized}");
     }
 
@@ -1242,6 +1243,30 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 return wall;
         }
         return 0;
+    }
+
+    private static void PlaceFinalCleanupGrassOffers(RuntimeGrid grid, IWorldGenerationVanillaRandom random)
+    {
+        // WorldGen.FinalCleanup's ordinary final offer loop.  Secret-seed multipliers and Mud eligibility
+        // belong to the explicit secret-seed barrier; the source-backed provider enters this pass only for
+        // the default canonical profile.
+        if (grid.Width <= 100 || grid.Height <= 250)
+            return;
+        int target = grid.Width switch { >= 8400 => 9, >= 6400 => 6, _ => 3 };
+        int attempts = 3000;
+        int placed = 0;
+        while (placed < target && --attempts > 0)
+        {
+            int x = random.Next(50, grid.Width - 50);
+            int y = random.Next(50, grid.Height - 200);
+            ref WorldTile tile = ref grid.At(x, y);
+            if (!tile.IsActive || tile.Type != 0)
+                continue;
+            tile = default;
+            tile.Flags = WorldTileFlags.Active;
+            tile.Type = 668;
+            placed++;
+        }
     }
 
     private static ushort LooseMaterialFallback(ushort type) => type switch

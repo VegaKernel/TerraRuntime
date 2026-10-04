@@ -549,7 +549,7 @@ Final Cleanup теперь вызывает ограниченную generation-
 | 106 | Water Plants | Final | C | Полный поверхностный scan TerrariaServer `1.4.5.8` сохраняет cadence offer `Next(5)`, выбор/рост lily pad/cat tail, размещение/рост bamboo и обслуживание seaweed. Прямые branch-фикстуры и mixed grass/jungle/deep-water `600x500` `PassLegacy`-фикстура с digest всей сетки фиксируют порядок scan, frame, мутации жидкости и общий RNG. |
 | 107 | Stalac | Final | C | `SpeleothemsAndGemTrees`: скан всей карты, `PlaceTight`, атлас по подложке и перекраска `CheckStalactite`: 32 официальных сравнения полного делегата / счётчики на уровне мира отслеживают избыток рельефа |
 | 108 | Remove Broken Traps | Final | C | trap validation / source scan |
-| 109 | Final Cleanup | Final | P | перенесены source-backed стабилизация surface-material, преобразование жидкости unsafe-wall, выравнивание ловушек, dungeon-liquid cleanup, точная очистка жидкости type `314` в `y-15..y`, ремонт опоры type `332`, ограниченное заполнение wall-holes доминирующей стеной, восстановление boulder, блокированного Crimson Heart, и framing painting без стены с фокусными регрессиями; остаются поклеточный `TileFrame`, финальные grass-offer и special-seed хвосты |
+| 109 | Final Cleanup | Final | P | перенесены source-backed стабилизация surface-material, преобразование жидкости unsafe-wall, выравнивание ловушек, dungeon-liquid cleanup, точная очистка жидкости type `314` в `y-15..y`, ремонт опоры type `332`, ограниченное заполнение wall-holes доминирующей стеной, восстановление boulder, блокированного Crimson Heart, framing painting без стены и обычные финальные grass-offer с фокусными регрессиями; остаются поклеточный `TileFrame` и special-seed хвосты |
 
 ## Приоритеты по фактическим расхождениям
 

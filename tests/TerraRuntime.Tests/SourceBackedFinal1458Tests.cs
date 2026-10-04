@@ -180,6 +180,29 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Final_cleanup_uses_the_source_small_world_quota_for_final_grass_offers()
+    {
+        var workspace = new Workspace(420, 400);
+        Assert.True(workspace.TrySetLayers(180, 250));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        for (int x = 0; x < 420; x++)
+        for (int y = 0; y < 400; y++)
+        {
+            var dirt = new WorldTile { Type = 0, Flags = WorldTileFlags.Active };
+            workspace.TileStore.Set(x, y, in dirt);
+        }
+
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 420, 400), workspace, new RandomAdapter(1458)));
+
+        int offers = 0;
+        for (int x = 0; x < 420; x++)
+        for (int y = 0; y < 400; y++)
+            offers += workspace.TileStore.Get(x, y).Type == 668 ? 1 : 0;
+        Assert.Equal(3, offers);
+    }
+
+    [Fact]
     public void Settle_liquids_again_matches_official_passlegacy_fixture()
     {
         const int width = 600;
