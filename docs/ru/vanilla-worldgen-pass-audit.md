@@ -518,7 +518,7 @@ Final Cleanup теперь вызывает ограниченную generation-
 | 75 | Pots | SurfaceFinish | C | `PotsGraveyardsAndBoulderPiles`: обход колонки, два правила сгона, девятиветочный каскад стиля и след два на два: 8 официальных сравнений полного делегата |
 | 76 | Hellforge | SurfaceFinish | C | fort geometry / placement / RNG |
 | 77 | Spreading Grass | SurfaceFinish | C | `SpreadingGrassOnSurfaceSunflowersEvilsOnSurfaceAndLavaCleanup`: переобтяжка поверхности, обход колонок и зелёный `SpreadGrass`, вообще без общего RNG: 24 официальных сравнения полного делегата |
-| 78 | Surface Ore and Stone | SurfaceFinish | P | surface scan / TileRunner / RNG |
+| 78 | Surface Ore and Stone | SurfaceFinish | P | перенесены source-scaled число ore-offer, исключение beach/center и выборка surface-band; остаются terrain predicate `OrePatch`/`StonePatch`, геометрия TileRunner и canonical differential |
 | 79 | Place Fallen Log | SurfaceFinish | C | `FallenLogsAndWaterFeatures`: собственная кривая сложности бюджета попыток, оба скана окрестности, восстановление `Check3x2` и якорь `logX`: 10 официальных сравнений полного делегата |
 | 80 | Traps | SurfaceFinish | C | trap families / wiring / RNG |
 | 81 | Piles | SurfaceFinish | C | `PilePass1458`: семь исходных циклов sample-and-cascade, float-бюджеты, временное переопределение `tileSolid`, размещение и framing; 12 официальных фикстур полного делегата |

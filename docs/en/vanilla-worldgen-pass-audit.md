@@ -633,7 +633,7 @@ Full Desert integration also exposed later-stage boundary defects. Ordinary Sett
 | 75 | Pots | SurfaceFinish | C | `PotsGraveyardsAndBoulderPiles`: the column walk, its two crowding rules, the nine-arm style cascade and the two-by-two footprint: 8 official complete-delegate fixtures |
 | 76 | Hellforge | SurfaceFinish | C | fort geometry / placement / RNG |
 | 77 | Spreading Grass | SurfaceFinish | C | `SpreadingGrassOnSurfaceSunflowersEvilsOnSurfaceAndLavaCleanup`: the surface re-skin, the column walk and the green `SpreadGrass`, with no shared RNG at all: 24 official complete-delegate fixtures |
-| 78 | Surface Ore and Stone | SurfaceFinish | P | surface scan / TileRunner / RNG |
+| 78 | Surface Ore and Stone | SurfaceFinish | P | source-scaled ore-offer count, beach/centre exclusion and surface-band sampling are ported; `OrePatch`/`StonePatch` terrain predicates, TileRunner geometry and canonical differentials remain |
 | 79 | Place Fallen Log | SurfaceFinish | C | `FallenLogsAndWaterFeatures`: the attempt budget's own difficulty curve, both neighbourhood scans, `Check3x2`'s rebuild and the `logX` anchor: 10 official complete-delegate fixtures |
 | 80 | Traps | SurfaceFinish | C | trap families / wiring / RNG |
 | 81 | Piles | SurfaceFinish | C | `PilePass1458`: seven source sample-and-cascade loops, float budgets, temporary `tileSolid` override, placement and framing; 12 official complete-delegate fixtures |
