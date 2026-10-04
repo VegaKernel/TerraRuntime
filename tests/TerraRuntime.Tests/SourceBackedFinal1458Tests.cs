@@ -159,6 +159,27 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
+    public void Final_cleanup_assigns_an_adjacent_wall_to_a_wallless_painting_in_source_priority_order()
+    {
+        // TerrariaServer 1.4.5.8 TileID.Sets.Paintings chooses left, right, up, then down when a
+        // generated painting has lost its own wall.
+        var workspace = new Workspace(100, 100);
+        Assert.True(workspace.TrySetLayers(60, 80));
+        workspace.SetVanillaBootstrapState(BootstrapPass1458.Run(new RandomAdapter(1), 4200, false, false));
+        var painting = new WorldTile { Type = 240, Flags = WorldTileFlags.Active };
+        workspace.TileStore.Set(50, 50, in painting);
+        var left = new WorldTile { Wall = 7 };
+        workspace.TileStore.Set(49, 50, in left);
+        var right = new WorldTile { Wall = 8 };
+        workspace.TileStore.Set(51, 50, in right);
+
+        new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
+            new Context(new WorldGenerationRequest(Provider1458.GeneratorId, "Fixture", 1458, 100, 100), workspace, new RandomAdapter(1458)));
+
+        Assert.Equal((ushort)7, workspace.TileStore.Get(50, 50).Wall);
+    }
+
+    [Fact]
     public void Settle_liquids_again_matches_official_passlegacy_fixture()
     {
         const int width = 600;

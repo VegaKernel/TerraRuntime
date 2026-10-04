@@ -1126,6 +1126,16 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                     tile.LiquidKind = WorldLiquidKind.Water;
                     normalized++;
                 }
+                if (tile.IsActive && IsPainting(tile.Type) && tile.Wall == 0 &&
+                    x >= 2 && x < grid.Width - 2 && y >= 2 && y < grid.Height - 2)
+                {
+                    ushort adjacentWall = FirstAdjacentWall(grid, x, y);
+                    if (adjacentWall != 0)
+                    {
+                        tile.Wall = adjacentWall;
+                        normalized++;
+                    }
+                }
                 tile.Reserved = 0;
             }
         }
@@ -1219,6 +1229,20 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
     }
 
     private static bool IsLooseSurfaceMaterial(ushort type) => type is 53 or 112 or 234 or 224 or 123;
+
+    // TileID.Sets.Paintings in TerrariaServer 1.4.5.8; independently enumerated from the official runtime.
+    private static bool IsPainting(ushort type) => type is 240 or 241 or 242 or 245 or 246;
+
+    private static ushort FirstAdjacentWall(RuntimeGrid grid, int x, int y)
+    {
+        foreach ((int sampleX, int sampleY) in new[] { (x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1) })
+        {
+            ushort wall = grid.At(sampleX, sampleY).Wall;
+            if (wall != 0)
+                return wall;
+        }
+        return 0;
+    }
 
     private static ushort LooseMaterialFallback(ushort type) => type switch
     {
