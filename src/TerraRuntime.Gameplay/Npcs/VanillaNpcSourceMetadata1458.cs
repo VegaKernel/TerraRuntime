@@ -3,7 +3,7 @@ using TerraRuntime.Contracts.Gameplay;
 namespace TerraRuntime.Gameplay.Npcs;
 
 /// <summary>Independent source NPC.SetDefaults boss flags and NPCID.Sets.FaceEmote metadata, not archetype roles.</summary>
-public static class VanillaTownNpcSocialEmoteCatalog1458
+public static class VanillaNpcSourceMetadata1458
 {
     public const int PositiveIdentityCount = 697;
     public static bool TryGet(NpcTypeId type, out bool boss, out byte face)

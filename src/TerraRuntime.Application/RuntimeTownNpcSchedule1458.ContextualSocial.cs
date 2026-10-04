@@ -17,7 +17,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
     private int socialPlayerCount;
     private bool socialPlayerCensusValid = true;
     private readonly record struct SocialPlayer(ConnectionHandle? Connection, PlayerHandle Player, ulong Revision,
-        RuntimeTownPlayerBounds1458 Bounds, bool Dead, PlayerZoneSnapshot1458? Zones);
+        RuntimeTownPlayerBounds1458 Bounds, bool Dead, PlayerZoneSnapshot1458? Zones, int? Life, int? DerivedLifeMax);
 
     internal void SetSocialContext(RuntimeTownSocialWorld1458? world, PlayerAuthority? players,
         RuntimeWorldClock? clock = null, RuntimeWorldProgressionMutations? progression = null,
@@ -38,7 +38,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 ? TerraRuntime.Gameplay.Players.VanillaPlayerMountHitbox1458.Resolve(player.MountType)
                 : (PlayerAuthority.VanillaBasePlayerWidth, PlayerAuthority.VanillaBasePlayerHeight);
             AddSocialPlayer(new(player.Connection, player.Connection.Player, player.Revision,
-                new(player.PositionX, player.PositionY, width, height), player.IsDead, player.Zones));
+                new(player.PositionX, player.PositionY, width, height), player.IsDead, player.Zones, player.HasHealth ? player.Life : null, player.DerivedLifeMax));
         }
         if (serverPlayers is null) return;
         Span<PlayerStateSnapshot> serverSnapshots = stackalloc PlayerStateSnapshot[byte.MaxValue + 1];
@@ -50,7 +50,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 ? TerraRuntime.Gameplay.Players.VanillaPlayerMountHitbox1458.Resolve(player.MountType)
                 : (PlayerAuthority.VanillaBasePlayerWidth, PlayerAuthority.VanillaBasePlayerHeight);
             AddSocialPlayer(new(null, player.Player, player.Revision.Value,
-                new(player.PositionX, player.PositionY, width, height), player.IsDead, player.Zones));
+                new(player.PositionX, player.PositionY, width, height), player.IsDead, player.Zones, player.HasHealth ? player.Life : null, player.DerivedLifeMax));
         }
     }
 
@@ -122,7 +122,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         bool boss = false;
         foreach (NpcSnapshot peer in peers)
         {
-            if (!VanillaTownNpcSocialEmoteCatalog1458.TryGet(peer.TypeIdentity, out bool sourceBoss, out _)) return false;
+            if (!VanillaNpcSourceMetadata1458.TryGet(peer.TypeIdentity, out bool sourceBoss, out _)) return false;
             boss |= sourceBoss;
         }
         if (boss) choices.Add([16, 1, 2, 91, 93, 84, 84]);
@@ -132,12 +132,12 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             if (random.Next(3) == 0)
             {
                 // Source counts identities, then appends faces in identity order, not physical-slot order.
-                Span<bool> present = stackalloc bool[VanillaTownNpcSocialEmoteCatalog1458.PositiveIdentityCount];
+                Span<bool> present = stackalloc bool[VanillaNpcSourceMetadata1458.PositiveIdentityCount];
                 present.Clear();
                 foreach (NpcSnapshot peer in peers) present[peer.Type] = true;
                 for (int type = 1; type < present.Length; type++)
                     if (type != actor.Type && present[type] &&
-                        VanillaTownNpcSocialEmoteCatalog1458.TryGet(new(type), out _, out byte face) && face > 0)
+                        VanillaNpcSourceMetadata1458.TryGet(new(type), out _, out byte face) && face > 0)
                         choices.Add(face);
             }
             if (random.Next(3) == 0)
@@ -148,8 +148,8 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             }
             if (random.Next(3) == 0 && !TrySocialBiome(in actor, in world, ref choices)) return false;
             if (random.Next(2) == 0 && !TrySocialCritters(in actor, in world, ref choices)) return false;
-            // Source Items needs derived statLifeMax2; packet16 owns only statLifeMax. No guessed substitute.
-            if (random.Next(2) == 0) return false;
+            // ProbeItems reads the exact closest physical player after its owned Update phase.
+            if (random.Next(2) == 0 && !TrySocialItems(in actor, ref choices)) return false;
             if (random.Next(5) == 0) SocialBosses(in world, ref choices);
             // NPC fire/poison, live events and cloudBGActive/cloudAlpha have no complete owner yet.
             if (random.Next(2) == 0) return false;
@@ -164,6 +164,16 @@ internal sealed partial class RuntimeTownNpcSchedule1458
     private bool TrySocialBiome(in NpcStateUpdate actor, in RuntimeTownSocialWorld1458 world,
         ref SocialCandidates choices)
     {
+        if (!TryGetClosestSocialPlayer(in actor, out SocialPlayer selected)) return false;
+        if (!TrySelectSocialBiomeTopic(selected.Bounds.X, selected.Bounds.Y, selected.Zones, in world,
+            tiles.Dimensions.WidthTiles, tiles.Dimensions.HeightTiles, out byte emote)) return false;
+        choices.Add(emote);
+        return true;
+    }
+
+    private bool TryGetClosestSocialPlayer(in NpcStateUpdate actor, out SocialPlayer selected)
+    {
+        selected = default;
         if (!VanillaNpcDefinitionCatalog.TryGet(new(actor.Type), new(actor.NetId), out var definition) ||
             !definition.TryResolveHitbox(actor.Simulation, out var size)) return false;
         float cx = actor.PositionX + size.Width * .5f, cy = actor.PositionY + size.Height * .5f;
@@ -181,10 +191,28 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 player.Player.Slot.Value < closest.Value.Player.Slot.Value)
             { distance = candidate; closest = player; }
         }
-        if (closest is not { } selected) return false; // Source inactive slot0 body has no owner.
-        if (!TrySelectSocialBiomeTopic(selected.Bounds.X, selected.Bounds.Y, selected.Zones, in world,
-            tiles.Dimensions.WidthTiles, tiles.Dimensions.HeightTiles, out byte emote)) return false;
-        choices.Add(emote);
+        if (closest is not { } found) return false; // Source inactive slot0 body has no owner.
+        selected = found;
+        return true;
+    }
+
+    private bool TrySocialItems(in NpcStateUpdate actor, ref SocialCandidates choices)
+    {
+        if (!TryGetClosestSocialPlayer(in actor, out SocialPlayer player)) return false;
+        Span<byte> topics = stackalloc byte[7];
+        if (!TryCopySocialItemTopics(player.Life, player.DerivedLifeMax, topics, out int count)) return false;
+        choices.Add(topics[..count]);
+        return true;
+    }
+
+    internal static bool TryCopySocialItemTopics(int? life, int? derivedMaximum, Span<byte> destination, out int count)
+    {
+        count = 0;
+        if (life is not { } current || derivedMaximum is not { } maximum || maximum < 0 || destination.Length < 7) return false;
+        ReadOnlySpan<byte> ordinary = [7, 73, 74, 75, 78, 90];
+        ordinary.CopyTo(destination);
+        count = ordinary.Length;
+        if (current < maximum / 2) destination[count++] = 84;
         return true;
     }
 

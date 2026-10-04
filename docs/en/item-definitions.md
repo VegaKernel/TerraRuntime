@@ -87,3 +87,9 @@ Runtime tests then verify the typed representation and fail-closed capability qu
 ## Scope
 
 Damage, ammo, healing, equipment behavior and other item fields are added only when authoritative gameplay consumes them and official-source evidence is pinned. A giant speculative item table would merely convert unknowns into confidently wrong defaults, which is an impressively inefficient way to create bugs.
+
+## Global NPC reward defaults
+
+`VanillaGlobalNpcDropCatalog1458` admits eighteen source-backed world-drop definitions: Light/Night souls, Pirate Map, six biome keys, Goodie Bag, Present, Living Fire, Bloody Machete, Bladed Glove and four global yoyos. They provide stack limits, item dimensions, gravity and natural-prefix facts. Their physical world bodies remain the shared 16×16 entity bodies. These facts grant no item-use, placement or tool capability.
+
+Bloody Machete and the yoyos use the source Spear prefix array; Bladed Glove uses Sword and rejects Nimble/Murderous after source speed rounding. Materials roll no natural prefix and consume no prefix RNG; both souls use the no-gravity launch branch. All eighteen defaults and seeded Prefix(-1) results are independently captured from the original server (324 rows). The six new weapon drop defaults do not imply weapon attack/projectile behavior.

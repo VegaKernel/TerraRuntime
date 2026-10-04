@@ -12,7 +12,39 @@ internal sealed class PlayerBuffState
     private readonly int[] durations = new int[Capacity];
     private int count;
 
-    public BuffTypeId[] CaptureTypes() => types.AsSpan(0, count).ToArray();
+    public BuffTypeId[] CaptureTypes()
+    {
+        int active = 0;
+        for (int i = 0; i < count; i++) if (types[i] != VanillaBuffIds.None && durations[i] > 0) active++;
+        var snapshot = new BuffTypeId[active];
+        int index = 0;
+        for (int i = 0; i < count; i++) if (types[i] != VanillaBuffIds.None && durations[i] > 0) snapshot[index++] = types[i];
+        return snapshot;
+    }
+
+    public int CountActive(BuffTypeId type)
+    {
+        int result = 0;
+        for (int i = 0; i < count; i++) if (types[i] == type && durations[i] > 0) result++;
+        return result;
+    }
+
+    public bool HasNonPersistentBuffs()
+    {
+        for (int i = 0; i < count; i++)
+            if (types[i] != VanillaBuffIds.None && !VanillaBuffDefinitionCatalog.PersistsThroughPlayerDeath(types[i])) return true;
+        return false;
+    }
+
+    public bool ClearNonPersistentOnDeath()
+    {
+        bool changed = false;
+        // UpdateDead clears slots in place; don't move a preserved last slot into an earlier position.
+        for (int i = 0; i < count; i++)
+            if (types[i] != VanillaBuffIds.None && !VanillaBuffDefinitionCatalog.PersistsThroughPlayerDeath(types[i]))
+            { types[i] = VanillaBuffIds.None; durations[i] = 0; changed = true; }
+        return changed;
+    }
 
     public void ReplaceNetworkSnapshot(ReadOnlySpan<BuffTypeId> snapshot)
     {
@@ -50,6 +82,9 @@ internal sealed class PlayerBuffState
             durations[existing] = Math.Max(durations[existing], duration);
             return true;
         }
+        for (int i = 0; i < count; i++)
+            if (types[i] == VanillaBuffIds.None || durations[i] <= 0)
+            { types[i] = VanillaBuffIds.MoonLeech; durations[i] = duration; return true; }
         if (count == Capacity)
         {
             int replace = 0;

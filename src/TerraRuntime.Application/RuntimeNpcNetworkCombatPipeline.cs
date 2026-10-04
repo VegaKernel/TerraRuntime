@@ -124,7 +124,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         RuntimeNpcDeathPrelude1458? deathPrelude = null,
         bool? onlyShimmerOceanWorlds = null,
         VanillaMechBossSpawnersContext1458 mechanicalLootBaseline = default,
-        bool? lootRemixWorld = false)
+        bool? lootRemixWorld = false,
+        RuntimeNpcGlobalLootWorldFacts1458? globalLootWorld = null,
+        Func<RuntimeNpcGlobalLootWorldFacts1458>? globalLootWorldSource = null)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         random = new SystemNpcCombatRandom(lootRandom);
@@ -146,6 +148,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         this.onlyShimmerOceanWorlds = onlyShimmerOceanWorlds;
         this.mechanicalLootBaseline = mechanicalLootBaseline;
         this.lootRemixWorld = lootRemixWorld;
+        this.globalLootWorld = globalLootWorld;
+        this.globalLootWorldSource = globalLootWorldSource;
         npcReplication?.BindDeathPrelude(this.deathPrelude);
         this.worldItemReplication = worldItemReplication;
         this.worldClock = worldClock;

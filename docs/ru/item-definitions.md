@@ -87,3 +87,9 @@ Runtime-тесты затем проверяют typed representation и fail-cl
 ## Охват
 
 Damage, ammo, healing, equipment behavior и остальные item-поля добавляются только тогда, когда authoritative gameplay действительно начинает их использовать и для них закреплено official-source evidence. Гигантская спекулятивная таблица просто превратила бы неизвестные значения в уверенно неправильные defaults, а подобной инженерной роскоши и без нас хватает.
+
+## Defaults глобальных наград NPC
+
+`VanillaGlobalNpcDropCatalog1458` допускает восемнадцать исходно доказанных world-drop definitions: души Light/Night, Pirate Map, шесть ключей биомов, Goodie Bag, Present, Living Fire, Bloody Machete, Bladed Glove и четыре глобальных йо-йо. Они задают предел stack, размеры Item, gravity и естественные префиксы. Физическое тело world item остаётся общим 16×16. Эти факты не дают capability использования предмета, размещения или инструмента.
+
+Bloody Machete и йо-йо используют исходный массив Spear prefixes; Bladed Glove использует Sword и исключает Nimble/Murderous после исходного округления скорости. Материалы не получают естественный префикс и не расходуют prefix RNG; обе души используют no-gravity ветку скорости. Все восемнадцать defaults и результаты Prefix(-1) по seed независимо захвачены из настоящего сервера (324 строки). Шесть новых defaults оружейных наград не означают поддержку атак или projectile поведения.

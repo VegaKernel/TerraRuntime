@@ -26,6 +26,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private ulong plannedPreludeRevision;
     private RuntimeWorldProgressionMutationSnapshot plannedDeathProgression;
     private bool plannedLootAllowed;
+    private readonly PlayerStateSnapshot[] plannedPlayers = new PlayerStateSnapshot[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
+    private readonly bool[] plannedPlayerPresence = new bool[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private bool IsPreviewingDeath => lootDelivery.Preview is not null;
     private RuntimeNpcStore DeathNpcs => previewDeathNpcs ?? npcs;
     private RuntimeWorldClock? DeathClock => IsPreviewingDeath ? previewDeathClock : worldClock;
@@ -74,6 +76,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             dead.Simulation.ExtraMoneyValue is not int extra || dead.Simulation.Midas is not bool midas)
             return false;
         plannedDeathProgression = progression.CaptureSnapshot();
+        plannedGlobalLootWorld = CaptureGlobalLootWorld();
+        for (int slot = 0; slot < plannedPlayers.Length; slot++)
+            plannedPlayerPresence[slot] = players.TryGetPlayer(new((byte)slot), out plannedPlayers[slot]);
         var liveRandom = random.SourceRandom;
         var plan = new RuntimeNpcDeathDropPlan1458(dead.Handle, dead.Revision, liveRandom);
         bool completed = false;
@@ -192,7 +197,18 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
     private bool IsCurrentDeathOwner(NpcHandle handle, NpcRevision revision) =>
         npcs.TryGet(handle, out var current) && current.Revision == revision && deathPrelude.Revision == plannedPreludeRevision &&
-        progression.CaptureSnapshot() == plannedDeathProgression;
+        progression.CaptureSnapshot() == plannedDeathProgression &&
+        CaptureGlobalLootWorld() == plannedGlobalLootWorld && ArePlannedPlayersCurrent();
+
+    private bool ArePlannedPlayersCurrent()
+    {
+        for (int slot = 0; slot < plannedPlayers.Length; slot++)
+        {
+            bool present = players.TryGetPlayer(new((byte)slot), out var player);
+            if (present != plannedPlayerPresence[slot] || (present && player != plannedPlayers[slot])) return false;
+        }
+        return true;
+    }
 
     private bool MoneyClearedBeforeDeathPhase(in NpcSnapshot dead, bool eaterBoss)
     {

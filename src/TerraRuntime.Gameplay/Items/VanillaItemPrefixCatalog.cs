@@ -133,6 +133,11 @@ public static class VanillaItemPrefixCatalog
     /// </summary>
     public static bool IsValidForItem(ItemTypeId itemType, PrefixId prefix)
     {
+        var globalFamily = VanillaGlobalNpcDropCatalog1458.GetPrefixFamily(itemType);
+        if (globalFamily != VanillaItemPrefixFamily.None)
+            return prefix == VanillaPrefixIds.None ||
+                (Contains(GetRollablePrefixes(globalFamily), prefix) &&
+                 VanillaGlobalNpcDropCatalog1458.PassesNaturalPrefixStatRounding(itemType, prefix));
         if (VanillaBossRewardItemPrefixFacts1458.TryGetFamily(itemType, out var bossRewardFamily))
             return prefix == VanillaPrefixIds.None ||
                 (Contains(GetRollablePrefixes(bossRewardFamily), prefix) &&

@@ -210,6 +210,8 @@ internal sealed class RuntimePlayerMember
     public bool HasHealth { get; set; }
     public short Life { get; set; }
     public short MaxLife { get; set; }
+    // Player constructor initializes statLifeMax2 independently from synchronized base vitals.
+    public int? DerivedLifeMax { get; set; } = 100;
     public bool IsDead { get; set; }
     public float Stealth { get; set; } = 1f;
     // Player constructor owns clear zone bytes; imports deliberately overwrite this with nullable provenance.
@@ -281,6 +283,7 @@ internal sealed class RuntimePlayerMember
             HasHealth = HasHealth,
             Life = Life,
             MaxLife = MaxLife,
+            DerivedLifeMax = DerivedLifeMax,
             IsDead = IsDead,
             HasMana = HasMana,
             Mana = Mana,

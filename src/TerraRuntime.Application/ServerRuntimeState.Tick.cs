@@ -22,6 +22,9 @@ internal sealed partial class ServerRuntimeState
         _runtime.Npcs.CommitPending();
         _runtime.Bots?.Tick();
         _runtime.ServerPlayers?.TickBuffs();
+        _runtime.Players.TickHealthContext();
+        if (_runtime.WorldTiles is { } healthTiles)
+            _runtime.ServerPlayers?.TickHealthContext(healthTiles);
         _runtime.Players.TickItemAnimation();
         _runtime.Players.TickPlayerLuck();
         _runtime.ServerPlayers?.TickItemAnimation();

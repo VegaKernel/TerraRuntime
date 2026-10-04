@@ -8,6 +8,7 @@ public static class VanillaBuffIds
 {
     public const int Count = 401;
 
+    public static readonly BuffTypeId Lifeforce = new(113);
     public static readonly BuffTypeId None = new(0);
     public static readonly BuffTypeId ObsidianSkin = new(1);
     public static readonly BuffTypeId Regeneration = new(2);

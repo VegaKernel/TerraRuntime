@@ -103,6 +103,11 @@ internal sealed partial class PlayerAuthority
     {
         ConnectionHandle connection = command.Connection;
         RuntimePlayerTransferState transfer = command.Transfer;
+        if (transfer.Player.DerivedLifeMax is < 0)
+        {
+            command.Completion.TrySetResult(false);
+            return;
+        }
         if (!float.IsFinite(transfer.Player.Luck) ||
             (transfer.Player.LuckComponents is { } factors && !factors.IsFinite))
         {
@@ -168,6 +173,7 @@ internal sealed partial class PlayerAuthority
             HasHealth = previous.HasHealth,
             Life = life,
             MaxLife = previous.MaxLife,
+            DerivedLifeMax = previous.DerivedLifeMax,
             IsDead = dead,
             Stealth = previous.Stealth ?? 1f,
             Zones = previous.Zones,

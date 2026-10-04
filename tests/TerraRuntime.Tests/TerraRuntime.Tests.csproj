@@ -271,4 +271,15 @@
     <EmbeddedResource Include="Fixtures/BlueSlimeSpawnDefaultsWindows1458.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.BlueSlimeSpawnDefaultsWindows1458.json.gz" />
     <EmbeddedResource Include="Fixtures/npc-loot-color-official-1458.json.gz" LogicalName="NpcLootColor1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/slime-born-target-official-1458.json.gz" LogicalName="SlimeBornTarget1458" />
+    <EmbeddedResource Include="Fixtures/slime-rain-first-update-official-1458.json.gz" LogicalName="SlimeRainFirst1458" />
+    <EmbeddedResource Include="Fixtures/town-player-health-official-1458.json.gz" LogicalName="TownPlayerHealth1458" />
+    <EmbeddedResource Include="Fixtures/town-items-pair-official-1458.json.gz" LogicalName="TownItemsPair1458" />
+    <EmbeddedResource Include="Fixtures/global-loot-ninth-direct-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.global-loot-ninth-direct-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/global-loot-ninth-defaults-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.global-loot-ninth-defaults-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/global-loot-ninth-whole-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.global-loot-ninth-whole-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/global-loot-ninth-calendar-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.global-loot-ninth-calendar-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/global-loot-ninth-metadata-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.global-loot-ninth-metadata-official.json.gz" />
+  </ItemGroup>
 </Project>

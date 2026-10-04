@@ -76,6 +76,15 @@ internal sealed class RuntimePlayerTransferProfileStore
         return true;
     }
 
+    // Source births own clear buff slots; an imported missing snapshot remains unknown until packet50.
+    internal void InitializeSourceBuffs(ConnectionHandle connection) => GetOrReplace(connection).Buffs ??= new PlayerBuffState();
+
+    internal int? CountActiveBuffs(ConnectionHandle connection, BuffTypeId type) => Get(connection)?.Buffs?.CountActive(type);
+
+    internal bool HasNonPersistentBuffs(ConnectionHandle connection) => Get(connection)?.Buffs?.HasNonPersistentBuffs() ?? false;
+
+    internal bool ClearNonPersistentBuffs(ConnectionHandle connection) => Get(connection)?.Buffs?.ClearNonPersistentOnDeath() ?? false;
+
     public bool TryApplyMoonLeech(ConnectionHandle connection, int duration)
     {
         if (!connection.IsAssigned) return false;

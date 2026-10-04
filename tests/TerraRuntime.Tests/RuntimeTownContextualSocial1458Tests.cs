@@ -27,7 +27,7 @@ public sealed class RuntimeTownContextualSocial1458Tests
     [Theory, MemberData(nameof(MetadataCases))]
     public void All_source_default_boss_flags_and_face_emotes_match_independent_original(JsonElement row)
     {
-        Assert.True(VanillaTownNpcSocialEmoteCatalog1458.TryGet(new(row.GetProperty("type").GetInt32()), out bool boss, out byte face));
+        Assert.True(VanillaNpcSourceMetadata1458.TryGet(new(row.GetProperty("type").GetInt32()), out bool boss, out byte face));
         Assert.Equal(row.GetProperty("boss").GetBoolean(), boss);
         Assert.Equal(row.GetProperty("face").GetInt32(), face);
     }
@@ -116,7 +116,7 @@ public sealed class RuntimeTownContextualSocial1458Tests
     public void Unknown_metadata_identity_rejects_instead_of_using_a_role_guess()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new NpcTypeId(0));
-        Assert.False(VanillaTownNpcSocialEmoteCatalog1458.TryGet(new(697), out _, out _));
+        Assert.False(VanillaNpcSourceMetadata1458.TryGet(new(697), out _, out _));
     }
 
     [Theory]

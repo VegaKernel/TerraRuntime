@@ -25,6 +25,7 @@ public sealed partial class ServerPlayerStateStore
         public bool HasHealth { get; set; }
         public short Life { get; set; }
         public short MaxLife { get; set; }
+        public int? DerivedLifeMax { get; set; } = 100;
         public bool HasMana { get; set; }
         public short Mana { get; set; }
         public short MaxMana { get; set; }
@@ -61,6 +62,7 @@ public sealed partial class ServerPlayerStateStore
                 HasHealth = HasHealth,
                 Life = Life,
                 MaxLife = MaxLife,
+                DerivedLifeMax = DerivedLifeMax,
                 IsDead = IsDead,
                 HasMana = HasMana,
                 Mana = Mana,

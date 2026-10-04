@@ -67,6 +67,9 @@ public readonly record struct PlayerStateSnapshot(
 
     public short MaxLife { get; init; }
 
+    /// <summary>Owned Player.statLifeMax2 after the player phase; null means its source context is unavailable.</summary>
+    public int? DerivedLifeMax { get; init; }
+
     public bool IsDead { get; init; }
 
     public bool HasMana { get; init; }

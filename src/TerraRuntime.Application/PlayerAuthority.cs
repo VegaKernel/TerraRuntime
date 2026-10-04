@@ -630,6 +630,7 @@ internal sealed partial class PlayerAuthority
             Mana = hasPending ? pending!.Mana : (short)0,
             MaxMana = hasPending ? pending!.MaxMana : (short)0
         });
+        transferProfiles.InitializeSourceBuffs(spawn.Connection);
         events?.PlayerSpawned(spawn.Connection, in request);
     }
 

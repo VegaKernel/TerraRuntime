@@ -208,16 +208,15 @@ internal sealed partial class NpcAuthority
             townCommerceWorldFacts?.ZenithWorld ?? false,
             TrySpawnSlimeRainKing,
             lootRandom: lootRandom,
-            seasonalItemContext: () => new TerraRuntime.Gameplay.Items.VanillaSeasonalItemDropContext1458(
-                townCommerceWorldFacts?.Halloween ?? false,
-                townCommerceWorldFacts?.XMas ?? false,
-                townCommerceWorldFacts?.TenthAnniversaryWorld ?? false),
+            seasonalItemContext: () => CaptureSeasonalItemContext(),
             deathPrelude: deathPrelude,
             onlyShimmerOceanWorlds: townCommerceWorldFacts?.OnlyShimmerOceanWorlds,
             mechanicalLootBaseline: new(0f, townCommerceWorldFacts?.HardMode ?? false,
                 townCommerceWorldFacts?.DownedMechBoss1 ?? false, townCommerceWorldFacts?.DownedMechBoss2 ?? false,
                 townCommerceWorldFacts?.DownedMechBoss3 ?? false),
-            lootRemixWorld: naturalSpawnWorldFacts?.RemixWorld);
+            lootRemixWorld: naturalSpawnWorldFacts?.RemixWorld,
+            globalLootWorldSource: worldTiles is not null && townCommerceWorldFacts.HasValue
+                ? CaptureGlobalLootWorldFacts : null);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
             projectiles,
             npcs,

@@ -3,6 +3,8 @@ namespace TerraRuntime.Contracts.Runtime;
 /// <summary>Source remote Player zone1..5 and townNPCs, owned by one player generation.</summary>
 public readonly record struct PlayerZoneSnapshot1458(byte Zone1, byte Zone2, byte Zone3, byte Zone4, byte Zone5, byte TownNpcCount)
 {
+    public bool Dungeon => (Zone1 & 1) != 0;
+    public bool Beach => (Zone3 & 32) != 0;
     public bool Corrupt => (Zone1 & 2) != 0;
     public bool Hallow => (Zone1 & 4) != 0;
     public bool Jungle => (Zone1 & 16) != 0;

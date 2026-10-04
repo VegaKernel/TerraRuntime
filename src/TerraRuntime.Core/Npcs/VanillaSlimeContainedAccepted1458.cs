@@ -52,10 +52,29 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
             containedFacts is null || containedEnvironment is null ||
             !definition.TryResolveHitbox(npc.Simulation, out var body) ||
             npc.Simulation.MoneyValue is not float money || npc.Ai.Ai1 != (int)npc.Ai.Ai1 ||
-            npc.Target >= byte.MaxValue || !context.TryFindCandidate((byte)npc.Target, out var target) ||
-            !target.Active || target.Dead || target.Ghost || target.NoAggro || target.Aggro < 0 ||
             !context.TrySelectClosestTarget(in npc, in definition, out _))
             return false;
+
+        // NewNPC uses target 255. AI001 initializes contents before its first TargetClosest;
+        // source producer gates read the permanently inactive server sentinel at this stage.
+        // Main's player array has a constructor-only server sentinel at 255. Neither its
+        // player update loop nor authenticated player allocation includes that slot. Hive reads
+        // this body's LOS even while inactive; the dart separately requires an active player.
+        VanillaNpcTargetCandidate target = new(byte.MaxValue,
+            VanillaPlayerHitboxFacts.BaseWidth * .5f, VanillaPlayerHitboxFacts.BaseHeight * .5f,
+            0, false, false, false, false);
+        bool producerTargetEligible = false;
+        if (npc.Target < byte.MaxValue)
+        {
+            if (!context.TryFindCandidate((byte)npc.Target, out target) ||
+                target.Ghost || target.NoAggro || target.Aggro < 0)
+                return false;
+            producerTargetEligible = target.Active && !target.Dead;
+        }
+        else if (npc.Target != byte.MaxValue)
+        {
+            return false;
+        }
 
         var candidates = context.Candidates.ToArray();
         var players = new List<PlayerStateSnapshot>(candidates.Length);
@@ -63,7 +82,8 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
         {
             if (!candidate.Active)
                 continue;
-            if (!context.TryGetOwnedPlayer(candidate.Slot, out var player) || !MatchesContainedBody(candidate, in player))
+            if (candidate.Ghost || candidate.NoAggro || candidate.Aggro < 0 ||
+                !context.TryGetOwnedPlayer(candidate.Slot, out var player) || !MatchesContainedBody(candidate, in player))
                 return false;
             players.Add(player);
         }
@@ -86,7 +106,7 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
         var effects = VanillaSlimeContainedInitializer1458.ObserveContents(selection.Item,
             facts.GoodWorld, facts.NoTrapsWorld, speculativeRandom);
         IVanillaSlimeContainedWorld1458 world = NoContainedProducerWorld.Instance;
-        if ((effects.Trap || effects.HiveType != 0) &&
+        if (((producerTargetEligible && effects.Trap) || effects.HiveType != 0) &&
             (!containedEnvironment.TryCapture(in npc, in target, out world) || !world.IsCurrent))
             return false;
 

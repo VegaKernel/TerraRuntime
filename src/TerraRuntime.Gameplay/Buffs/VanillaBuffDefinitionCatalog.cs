@@ -31,6 +31,9 @@ public static class VanillaBuffDefinitionCatalog
         197 or 199 or 203 or 204 or 215 or 320 or 321 or 323 or 324 or 332 or 333 or 334 or 344 or
         350 or 353 or 395 or 397 or 398 or 399 or 400;
 
+    // Main.Initialize_TileAndNPCData1/2: UpdateDead preserves precisely these eight buff identities.
+    public static bool PersistsThroughPlayerDeath(BuffTypeId type) => type.Value is 71 or 73 or 74 or 75 or 76 or 77 or 78 or 79;
+
     public static bool TryGet(BuffTypeId type, out VanillaBuffDefinition definition)
     {
         if (!VanillaBuffIds.TryCreate(type.Value, out _))
