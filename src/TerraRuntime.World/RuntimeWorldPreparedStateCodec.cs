@@ -258,6 +258,8 @@ internal static class RuntimeWorldPreparedStateCodec
         writer.Write(m.MoondialCooldown);
         WriteBools(writer, m.ForceHalloweenForever, m.ForceXMasForever);
         writer.Write(m.InvasionType);
+        writer.Write(m.BannerSectionOffset); writer.Write(m.BannerSectionLength);
+        writer.Write(m.Banners.Encode());
         writer.Write(m.ExtraSpawnPoints.Length);
         foreach (WorldSpawnPoint spawn in m.ExtraSpawnPoints)
         {
@@ -326,6 +328,13 @@ internal static class RuntimeWorldPreparedStateCodec
         byte moondialCooldown = reader.ReadByte();
         bool[] foreverFlags = ReadBools(reader, 2);
         sbyte invasionType = reader.ReadSByte();
+        int bannerOffset = reader.ReadInt32(), bannerLength = reader.ReadInt32();
+        int bannerKillsCount = reader.ReadInt16();
+        if (bannerKillsCount is < 0 or > WorldBannerData1458.MaximumEntries) throw new InvalidDataException("Invalid banner kill count.");
+        var bannerKills = new int[bannerKillsCount]; for (int i = 0; i < bannerKillsCount; i++) bannerKills[i] = reader.ReadInt32();
+        int bannerClaimsCount = reader.ReadInt16();
+        if (bannerClaimsCount is < 0 or > WorldBannerData1458.MaximumEntries) throw new InvalidDataException("Invalid banner claim count.");
+        var bannerClaims = new ushort[bannerClaimsCount]; for (int i = 0; i < bannerClaimsCount; i++) bannerClaims[i] = reader.ReadUInt16();
         int spawnCount = ReadCount(reader, 4096);
         var extraSpawnPoints = new WorldSpawnPoint[spawnCount];
         for (int i = 0; i < spawnCount; i++)
@@ -333,6 +342,7 @@ internal static class RuntimeWorldPreparedStateCodec
 
         return new WorldFileRuntimeMetadata
         {
+            Banners = new(bannerKills, bannerClaims), BannerSectionOffset = bannerOffset, BannerSectionLength = bannerLength,
             GameMode = gameMode,
             DrunkWorld = seedFlags[0],
             GetGoodWorld = seedFlags[1],

@@ -50,7 +50,8 @@ internal sealed class SharedRuntimeTownNpcScheduleRandom1458 : IRuntimeTownNpcSc
 
 internal sealed class NpcRuntimeTownScheduleRandom1458(IVanillaNpcRandom random) : IRuntimeTownNpcScheduleRandom1458
 {
-    public int Next(int exclusiveMax) => random.NextInt32(0, exclusiveMax);
+    internal IVanillaNpcRandom Current { get; set; } = random;
+    public int Next(int exclusiveMax) => Current.NextInt32(0, exclusiveMax);
 }
 
 /// <summary>

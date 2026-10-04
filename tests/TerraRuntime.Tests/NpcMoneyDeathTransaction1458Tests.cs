@@ -29,13 +29,13 @@ public sealed class NpcMoneyDeathTransaction1458Tests
         Assert.Equal(row.GetProperty("chosen").GetByte(), closest.Player.Slot.Value);
         Assert.Equal(closest.Player.Slot.Value == 0 ? -1f : 1f, closest.Luck);
     }
-    public static IEnumerable<object[]> OriginalClassicDeaths() => BossRecovery1458Tests.Rows("BossMoneyCoupled1458")
+    public static IEnumerable<object[]> OriginalClassicDeaths() => BossRecovery1458Tests.Rows("BossHealingCoupled1458")
         .Where(row => row.GetProperty("difficulty").GetInt32() == 0 && row.GetProperty("mode").GetInt32() == 0 &&
             row.GetProperty("type").GetInt32() is 4 or 13 or 14 or 15 or 35 or 50 or 113 or 125 or 126 or 127 or 134 or 222 or 245 or 262 or 266 or 398 or 657 or 668)
         .Select(row => new object[] { row });
 
     [Theory, MemberData(nameof(OriginalClassicDeaths))]
-    public void Actual_lethal_request_commits_original_imported_recovery_money_and_rng(JsonElement row)
+    public void Actual_lethal_request_commits_original_imported_recovery_money_healing_and_rng(JsonElement row)
     {
         var fixture = new BossRecoveryPipeline1458Tests.Fixture(row.GetProperty("seed").GetInt32());
         // The independent oracle isolates these callbacks; already unlocked town slime suppresses the

@@ -45,10 +45,10 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
         Assert.InRange(recovery.Count(drop => drop.ItemNetId == VanillaKingSlimeItemIds.KingSlimeTrophy.Value), 0, 1);
         Assert.DoesNotContain(recovery, drop => drop.ItemNetId == VanillaKingSlimeItemIds.KingSlimeBossBag.Value);
         Assert.DoesNotContain(recovery, drop => drop.Handle.Slot == 0); // Addressed Boss Bag retains its unpublished lease.
-        Assert.Equal(6, fixture.NpcRelayedFrames); // ack + peer packet 28 + defeat announcement and packet 23 to both players.
+        Assert.Equal(9, fixture.NpcRelayedFrames); // ack + achievement97 + bestiary82 to both + peer28 + announcement and death23 to both.
         Assert.Equal(1, fixture.ItemRelayedFrames); // addressed packet 90 only to the interacting player.
-        Assert.Equal(6, fixture.QueuedFrames(attacker.Source)); // NPC state + buff baseline + ack + packet 90 + announcement + packet 23.
-        Assert.Equal(5, fixture.QueuedFrames(peer.Source)); // NPC state + buff baseline + packet 28 + announcement + packet 23.
+        Assert.Equal(8, fixture.QueuedFrames(attacker.Source)); // NPC/buff baseline + ack + achievement + bestiary + item90 + announcement + death.
+        Assert.Equal(6, fixture.QueuedFrames(peer.Source)); // NPC/buff baseline + bestiary + packet28 + announcement + death.
 
         WorldItemStateUpdate ordinary = CreateWorldItem();
         Assert.True(fixture.WorldItems.TryAllocate(in ordinary, out WorldItemSnapshot whileLeased));
@@ -59,8 +59,8 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
             fixture.State.Tick();
 
         Assert.Equal(3, fixture.ItemRelayedFrames); // packet 90 + packet 151 broadcast to two players.
-        Assert.Equal(7, fixture.QueuedFrames(attacker.Source));
-        Assert.Equal(6, fixture.QueuedFrames(peer.Source));
+        Assert.Equal(9, fixture.QueuedFrames(attacker.Source));
+        Assert.Equal(7, fixture.QueuedFrames(peer.Source));
 
         Assert.True(fixture.WorldItems.TryAllocate(in ordinary, out WorldItemSnapshot afterRelease));
         Assert.Equal((short)0, afterRelease.Handle.Slot);

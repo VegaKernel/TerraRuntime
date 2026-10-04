@@ -255,6 +255,8 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
         }
         foreach (ReadOnlyMemory<byte> post in packets.GlobalPostSectionFrames)
             frames.Add(new OutboundFrame(post));
+        foreach (ReadOnlyMemory<byte> baseline in Runtime.DeathPrelude.CaptureJoinFrames())
+            frames.Add(new OutboundFrame(baseline));
         // A live world replacement must not expose the player spawn before the destination's persisted global
         // baseline. Keep the packet-12/49 handoff last in the atomic batch.
         frames.Add(new OutboundFrame(finalHandoffFrame));
@@ -298,6 +300,7 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
             inner: null,
             worldItems: runtime.WorldItems);
         bootstrap.SetPlayerNameAdmission(playerNameAdmission);
+        bootstrap.SetDeathPreludeBaseline(runtime.DeathPrelude.CaptureJoinFrames);
         return bootstrap;
     }
 
@@ -321,6 +324,7 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
         var npcBuffs = new NpcBuffFrameSink(source, bootstrap, talk, runtime.NpcBuffIngress);
         var catches = new NpcCatchFrameSink(source, bootstrap, npcBuffs, runtime.NpcCatchIngress);
         var teleports = new PlayerTeleportRequestFrameSink(source, bootstrap, catches, runtime.PlayerTeleportIngress);
-        return new BossSummonFrameSink(source, bootstrap, teleports, runtime.BossSummonIngress);
+        var banners = new BannerClaimFrameSink1458(source, bootstrap, teleports, runtime.BannerClaimIngress);
+        return new BossSummonFrameSink(source, bootstrap, banners, runtime.BossSummonIngress);
     }
 }

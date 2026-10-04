@@ -4,7 +4,7 @@ using TerraRuntime.Core.Worlds;
 
 namespace TerraRuntime.Application;
 
-internal enum NpcDeathDropPhase1458 : byte { Imported, Recovery, Money }
+internal enum NpcDeathDropPhase1458 : byte { Prelude, Imported, Recovery, Money, Healing }
 
 // Bounded exact drop reservations retain physical states; preview never publishes items.
 internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
@@ -13,8 +13,8 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
     private readonly WorldItemDropReservation[] reservations = new WorldItemDropReservation[RuntimeWorldItemStore.VanillaCapacity];
     private readonly VanillaUnifiedRandom1458 originalRandom;
     private readonly VanillaUnifiedRandom1458 beforeRandom;
-    private readonly VanillaUnifiedRandom1458?[] phaseRandom = new VanillaUnifiedRandom1458?[3];
-    private readonly VanillaUnifiedRandom1458?[] beforePhaseRandom = new VanillaUnifiedRandom1458?[3];
+    private readonly VanillaUnifiedRandom1458?[] phaseRandom = new VanillaUnifiedRandom1458?[(int)NpcDeathDropPhase1458.Healing + 1];
+    private readonly VanillaUnifiedRandom1458?[] beforePhaseRandom = new VanillaUnifiedRandom1458?[(int)NpcDeathDropPhase1458.Healing + 1];
     private RuntimeWorldItemStore? store;
     private int reserved;
     private int published;
@@ -37,6 +37,10 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
     public NpcRevision Revision { get; }
     public VanillaUnifiedRandom1458 Random { get; }
     public int Count => count;
+
+    // Source HitEffect precedes the first loot phase and may create NPCs on the same trusted stream.
+    public bool CanBeginDeathHitEffects() => !failed && accepted && store is not null && nextPhase == 0 &&
+        originalRandom.HasSameState(beforeRandom);
 
     public bool TryStage(NpcDeathDropPhase1458 phase, in WorldItemDropStateUpdate state,
         ReadOnlySpan<PlayerHandle> recipients = default, int leaseTicks = 0)
@@ -98,7 +102,8 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
         return true;
     }
 
-    // Imported -> owned death events -> recovery -> money. Instanced callback adopts the existing
+    // HitEffect -> prelude -> imported -> owned death events -> recovery -> money -> healing.
+    // Instanced callback adopts the existing
     // exact reservation and relays only to still-current generation-owned recipients.
     public bool TryPublishPhase(NpcDeathDropPhase1458 phase,
         Func<WorldItemDropReservation, WorldItemDropStateUpdate, PlayerHandle[], int, bool> adoptInstanced)

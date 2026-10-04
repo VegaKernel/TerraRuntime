@@ -24,7 +24,9 @@ internal sealed record RuntimeWorldCheckpointSnapshot(
     WorldSign[]? Signs = null,
     RuntimeWorldProgressionMutationSnapshot? ProgressionMutations = null,
     WorldNpcPersistence? Npcs = null,
-    WorldTownRoom[]? TownRooms = null);
+    WorldTownRoom[]? TownRooms = null,
+    WorldBannerData1458? Banners = null,
+    WorldBestiaryData? Bestiary = null);
 
 /// <summary>
 /// Game-thread-owned snapshot source for the current persistence slice. Tile copying is spread across bounded section
@@ -34,6 +36,7 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
 {
     private readonly WorldTileSaveShadowSynchronizer tileSynchronizer;
     private readonly RuntimeChestStore chestStore;
+    private readonly RuntimeNpcDeathPrelude1458? deathPrelude;
     private readonly RuntimeWorldClock? worldClock;
     private readonly RuntimeSignStore? signStore;
     private readonly RuntimeTownNpcStateStore? townNpcStore;
@@ -46,12 +49,14 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
         RuntimeWorldClock? worldClock = null,
         RuntimeSignStore? signStore = null,
         RuntimeTownNpcStateStore? townNpcStore = null,
-        RuntimeWorldProgressionMutations? progressionMutations = null)
+        RuntimeWorldProgressionMutations? progressionMutations = null,
+        RuntimeNpcDeathPrelude1458? deathPrelude = null)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentOutOfRangeException.ThrowIfLessThan(dirtyBatchCapacity, 1);
         ArgumentNullException.ThrowIfNull(chestStore);
         this.chestStore = chestStore;
+        this.deathPrelude = deathPrelude;
         this.worldClock = worldClock;
         this.signStore = signStore;
         this.townNpcStore = townNpcStore;
@@ -106,7 +111,8 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
             signs,
             progressionMutations.CaptureSnapshot(),
             townNpcStore?.CaptureNpcPersistence(),
-            townNpcStore?.CaptureTownRooms());
+            townNpcStore?.CaptureTownRooms(),
+            deathPrelude?.CaptureBanners(), deathPrelude?.CaptureBestiary());
         return true;
     }
 }

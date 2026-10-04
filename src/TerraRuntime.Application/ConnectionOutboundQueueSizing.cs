@@ -18,7 +18,8 @@ internal static class ConnectionOutboundQueueSizing
     public const int InitialJoinControlFrames = 6;
 
     public const int MaximumInitialJoinFrames =
-        InitialJoinControlFrames + PlayerBootstrapFrameBudget.MaximumTileSectionFrames;
+        InitialJoinControlFrames + PlayerBootstrapFrameBudget.MaximumTileSectionFrames +
+        PlayerBootstrapFrameBudget.MaximumDeathPreludeFrames;
 
     // PlayerSpawned publishes the current runtime entity baselines to the joining connection. NPC bootstrap includes
     // the ordinary NPC sync plus independently cached town identity and home packets. The previous sizing counted

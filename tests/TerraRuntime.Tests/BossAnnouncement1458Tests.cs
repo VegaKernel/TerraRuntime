@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Buffers.Binary;
 using global::Multiplicity.Packets;
 using global::Multiplicity.Packets.Models;
 using TerraRuntime.Contracts.Gameplay;
@@ -209,7 +210,9 @@ public sealed class BossAnnouncement1458Tests
         List<NetTextModule> result = [];
         while (queue.TryRead(out var frame))
         {
-            if (frame.Bytes.Span[2] != 82) continue;
+            // Source module 1 is chat. Death credit now also emits genuine modules 4 and 11;
+            // those have separate original-byte coverage and are not boss announcements.
+            if (frame.Bytes.Span[2] != 82 || BinaryPrimitives.ReadUInt16LittleEndian(frame.Bytes.Span[3..]) != 1) continue;
             Assert.True(TerrariaPacket.TryDeserializePayload(82, frame.Bytes[3..], out var packet));
             result.Add(Assert.IsType<NetTextModule>(Assert.IsType<LoadNetModule>(packet).LoadedModule));
         }

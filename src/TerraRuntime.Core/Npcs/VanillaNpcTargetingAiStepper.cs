@@ -35,6 +35,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         VanillaMoonLordNpcBehaviorStrategy.RequiresImmediateSync(in before, in proposed);
 
     public bool RequiresForcedUpdateAfterCompletion(in NpcSnapshot before, in NpcSnapshot finalized) =>
+        _mothron.RequiresForcedUpdate(in before, in finalized) ||
         VanillaGhostHoverNpcBehaviorStrategy1458.RequiresImmediateSync(in before, in finalized, _context) ||
         before.TypeIdentity == VanillaNpcIds.DrManFly && finalized.TypeIdentity == before.TypeIdentity &&
         (before.Simulation.JustHit || (finalized.Ai.Ai1 == 70f && finalized.Ai.Ai2 > 0f) ||
@@ -90,6 +91,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaJellyfishNpcBehaviorStrategy _jellyfish = new();
     private readonly VanillaAntlionNpcBehaviorStrategy _antlion = new();
     private readonly VanillaGhostHoverNpcBehaviorStrategy1458 _ghostHover = new();
+    private readonly VanillaMothronNpcBehaviorStrategy1458 _mothron = new();
     private readonly VanillaSkeletronHeadNpcBehaviorStrategy _skeletronHead = new();
     private readonly VanillaSkeletronHandNpcBehaviorStrategy _skeletronHand = new();
     private readonly VanillaQueenBeeNpcBehaviorStrategy _queenBee;
@@ -240,6 +242,17 @@ public sealed class VanillaNpcTargetingAiStepper :
     public void SetGhostHoverEnvironment(IVanillaGhostHoverEnvironment1458 environment) =>
         _ghostHover.SetEnvironment(environment);
 
+    public void SetMothronEnvironment(IVanillaMothronEnvironment1458 environment) =>
+        _mothron.Configure(environment, _random);
+
+    public bool TryGetMothronAcceptedPlan(in NpcSnapshot before, in NpcSnapshot accepted,
+        INpcAiCommittedNpcMutationSink mutations, out NpcStateUpdate planned) =>
+        _mothron.TryGetAcceptedPlan(in before, in accepted, mutations, out planned);
+
+    public NpcSnapshot CompleteMothronAcceptedPlan(in NpcSnapshot before, in NpcSnapshot accepted,
+        in NpcStateUpdate final, INpcAiCommittedNpcMutationSink mutations) =>
+        _mothron.Complete(in before, in accepted, in final, mutations);
+
     public void SetAntlionEnvironment(IVanillaAntlionEnvironment environment) =>
         _antlion.SetEnvironment(environment);
 
@@ -361,6 +374,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.Jellyfish => _jellyfish,
             VanillaNpcBehaviorFamily.Antlion => _antlion,
             VanillaNpcBehaviorFamily.GhostHover => _ghostHover,
+            VanillaNpcBehaviorFamily.Mothron => _mothron,
             VanillaNpcBehaviorFamily.SkeletronHead => _skeletronHead,
             VanillaNpcBehaviorFamily.SkeletronHand => _skeletronHand,
             VanillaNpcBehaviorFamily.QueenBee => _queenBee,
@@ -2447,6 +2461,7 @@ public sealed class VanillaNpcTargetingAiStepper :
          before.TypeIdentity == VanillaNpcIds.Demon || before.TypeIdentity == VanillaNpcIds.VoodooDemon ||
          before.TypeIdentity == VanillaNpcIds.RedDevil || before.TypeIdentity == VanillaNpcIds.ChaosElemental || before.TypeIdentity == VanillaNpcIds.BlackRecluse || VanillaServantOfCthulhuNpcBehaviorStrategy.IsHornetStingerShooter(before.TypeIdentity) ||
          VanillaGhostHoverNpcCatalog1458.IsSupported(before.TypeIdentity) ||
+         VanillaMothronNpcCatalog1458.IsSupported(before.TypeIdentity) ||
          VanillaGroundFighterProjectileAttack.IsSupported(before.TypeIdentity));
 
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,

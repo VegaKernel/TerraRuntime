@@ -78,7 +78,8 @@ public enum VanillaNpcBehaviorFamily : byte
     DungeonCaster = 64,
     Jellyfish = 65,
     Antlion = 66,
-    GhostHover = 67
+    GhostHover = 67,
+    Mothron = 68
 }
 
 /// <summary>
@@ -101,7 +102,8 @@ public enum VanillaNpcPhysicsFamily : byte
     FishSwimming = 10,
     UnicornGround = 11,
     Jellyfish = 12,
-    GhostHover = 13
+    GhostHover = 13,
+    Mothron = 14
 }
 
 /// <summary>One resolved vanilla NPC hitbox for the current runtime scale.</summary>
@@ -212,6 +214,19 @@ public static class VanillaNpcDefinitionCatalog
 
         if (VanillaHardmodeBossCatalog1458.TryGetDefinition(type, out definition))
             return true;
+
+        // Source SetDefaults624 supplies contact/danger metadata only. Gnome fighter/stone conversion
+        // has no admitted AI or physics family and cannot inherit generic AI003 through this definition.
+        if (type == VanillaNpcIds.Gnome)
+        {
+            definition = new VanillaNpcDefinition(
+                Type: VanillaNpcIds.Gnome, AiStyle: VanillaNpcAiStyles.Fighter,
+                BehaviorFamily: VanillaNpcBehaviorFamily.None, PhysicsFamily: VanillaNpcPhysicsFamily.None,
+                Role: NpcArchetypeRole.Ordinary, BaseWidth: 14, BaseHeight: 30,
+                Damage: 10, Defense: 0, LifeMax: 25, KnockBackResist: 1f, Scale: 1f,
+                NoGravityAtSpawn: false, NoTileCollideAtSpawn: false, SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+            return true;
+        }
 
         if (type == VanillaNpcIds.BlueSlime)
         {
@@ -334,6 +349,9 @@ public static class VanillaNpcDefinitionCatalog
             return true;
 
         if (VanillaGhostHoverNpcCatalog1458.TryGetDefinition(type, out definition))
+            return true;
+
+        if (VanillaMothronNpcCatalog1458.TryGetDefinition(type, out definition))
             return true;
 
         if (VanillaMimicNpcCatalog1458.TryGetDefinition(type, out definition))

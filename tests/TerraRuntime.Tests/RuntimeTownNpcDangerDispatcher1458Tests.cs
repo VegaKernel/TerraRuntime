@@ -36,19 +36,6 @@ public sealed class RuntimeTownNpcDangerDispatcher1458Tests
         string scenario = row.GetProperty("scenario").GetString()!;
         NpcSnapshot[] peers = new NpcSnapshot[RuntimeNpcStore.MaximumAddressableCapacity];
         int count = f.Npcs.CopyActive(peers);
-        if (outer && family == "danger" && scenario == "equalCenter")
-        {
-            // The source outer pass strikes the resident here. Until that separate damage transaction is
-            // owned, admit no outer NPC mutation; retain all32 independent original contact rows as fence evidence.
-            Assert.False(RuntimeTownNpcSchedule1458.AdmitsOuterContact(in f.Before, peers.AsSpan(0, count)));
-            var summary = f.Schedule.Tick(in f.Conditions, f.Bounds, f.Status, f.Combat,
-                f.Conversations, default, f.PlayerDanger);
-            Assert.Equal(1, summary.RejectedCommits); Assert.Equal(f.Before, f.Current);
-            Assert.Empty(f.Sink.Commits);
-            Assert.Equal(new VanillaUnifiedRandom1458(f.Seed).Next(), f.Random.Stream.Next());
-            return;
-        }
-
         NpcStateUpdate actual;
         NpcAiProjectileIntent? intent = null;
         if (outer)
@@ -154,7 +141,8 @@ public sealed class RuntimeTownNpcDangerDispatcher1458Tests
             float timer = !activeAttack ? 300f : clock is "expire" or "blockedRepeat" ? 1f : clock == "fire" ? attackTime - fireTick + 1 : attackTime;
             var input = new NpcStateUpdate(type, (short)type, x, 440f, homeCase || activeAttack ? .5f : 0f, 0f, 255,
                 new(state, timer, 17f, 23f), initial.Simulation with { DirectionX = 1, SpriteDirection = activeAttack ? 1 : -1,
-                    Life = 250, LifeMax = 250, HitboxOverride = new(18, 40),
+                    Life = 250, LifeMax = 250, BaseLifeMax = 250, BaseDefense = 0,
+                    KnockBackResist = 1f, HitboxOverride = new(18, 40),
                     LocalAi = new(0f, 0f, clock == "blockedRepeat" ? 8f : 0f, activeAttack ? clock == "fire" ? fireTick - 1 : 0 : 9) });
             Assert.True(Npcs.TryUpdate(initial.Handle, in input, out Before));
             Status = new(Npcs);
@@ -204,14 +192,16 @@ public sealed class RuntimeTownNpcDangerDispatcher1458Tests
             Status.BeginWorldTick(); if (homeCase && scenario == "selfStinky") marked.Add(Before.Handle);
             foreach (NpcHandle handle in marked) Assert.True(Status.TryApply(handle, 180));
             Status.BeginWorldTick(); Status.BeginWorldTick();
-            Schedule = new(Town, Npcs, Tiles, new NpcRuntimeTownScheduleRandom1458(Random));
-            Combat = new(Town, Npcs, Projectiles, Tiles, default, new(), false, false, new NpcRuntimeTownCombatRandom1458(Random));
+            Schedule = new(Town, Npcs, Tiles, new NpcRuntimeTownScheduleRandom1458(Random.Adapter));
+            Combat = new(Town, Npcs, Projectiles, Tiles, default, new(), false, false, new NpcRuntimeTownCombatRandom1458(Random.Adapter));
             Conditions = new(!homeCase, false, false, false, false); Sink.Commits.Clear();
         }
     }
     private sealed class OwnedRandom(int seed) : IVanillaNpcRandom
     {
         internal VanillaUnifiedRandom1458 Stream { get; } = new(seed);
+        private SystemVanillaNpcRandom? adapter;
+        internal SystemVanillaNpcRandom Adapter => adapter ??= new(Stream);
         public int NextInt32(int min, int max) => Stream.Next(min, max);
         public double NextDouble() => Stream.NextDouble();
     }

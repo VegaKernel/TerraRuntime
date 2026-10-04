@@ -14,16 +14,8 @@ internal sealed partial class RuntimeTownNpcCombat1458
     internal void BeginWorldTick() => AdvanceMeleeImmunity();
 
     internal RuntimeNpcStinkyVisualOffer1458 PlanStinkyVisualOffer()
-    {
-        if (random.Next(5) != 0) return default;
-        float dx = random.Next(21) - 10, dy = random.Next(21) - 10;
-        float length = MathF.Sqrt(dx * dx + dy * dy);
-        // Preserve Normalize's zero-vector result; this server-only Dust6000 offer has no physical effect.
-        dx /= length; dy /= length;
-        dx *= .66f; dy = MathF.Abs(dy);
-        float multiplier = (3 + random.Next(2)) * .25f;
-        return new(true, dx * multiplier, dy * multiplier * .5f);
-    }
+        => RuntimeNpcStinkyStatus1458.PlanVisualOffer(random);
+
 
     internal bool TryPlanActiveAttack(in NpcSnapshot source, in RuntimeTownNpcDanger1458 danger,
         ReadOnlySpan<NpcSnapshot> peers, Span<RuntimeTownNpcMeleeIntent1458> meleeIntents,

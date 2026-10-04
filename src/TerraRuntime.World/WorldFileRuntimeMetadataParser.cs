@@ -250,9 +250,11 @@ public static class WorldFileRuntimeMetadataParser
             return Finish(WorldFileRuntimeMetadataParseResult.Truncated, ref reader, out bytesConsumed);
         }
 
-        if (!TrySkipBannerSystem(ref reader, limits.MaxBannerEntries, out result))
+        int bannerOffset = reader.Offset;
+        if (!TryReadBannerSystem(ref reader, limits.MaxBannerEntries, out WorldBannerData1458 banners, out result))
             return Finish(result, ref reader, out bytesConsumed);
 
+        int bannerLength = reader.Offset - bannerOffset;
         if (!ReadBool(ref reader, out bool fastForwardTimeToDawn) ||
             !ReadBool(ref reader, out bool downedFishron) ||
             !ReadBool(ref reader, out bool downedMartians) ||
@@ -396,6 +398,7 @@ public static class WorldFileRuntimeMetadataParser
 
         metadata = new WorldFileRuntimeMetadata
         {
+            Banners = banners, BannerSectionOffset = bannerOffset, BannerSectionLength = bannerLength,
             GameMode = (byte)gameMode,
             DrunkWorld = drunkWorld,
             GetGoodWorld = getGoodWorld,
@@ -562,11 +565,13 @@ public static class WorldFileRuntimeMetadataParser
         return WorldFileRuntimeMetadataParseResult.Parsed;
     }
 
-    private static bool TrySkipBannerSystem(
+    private static bool TryReadBannerSystem(
         ref MetadataReader reader,
         int maxEntries,
+        out WorldBannerData1458 banners,
         out WorldFileRuntimeMetadataParseResult result)
     {
+        banners = WorldBannerData1458.Empty;
         result = WorldFileRuntimeMetadataParseResult.Parsed;
         if (!reader.TryReadInt16(out short killCount))
         {
@@ -578,14 +583,15 @@ public static class WorldFileRuntimeMetadataParser
             result = WorldFileRuntimeMetadataParseResult.InvalidCount;
             return false;
         }
-        if (killCount > maxEntries)
+        if (killCount > Math.Min(maxEntries, WorldBannerData1458.MaximumEntries))
         {
             result = WorldFileRuntimeMetadataParseResult.BudgetExceeded;
             return false;
         }
+        var kills = new int[killCount];
         for (int i = 0; i < killCount; i++)
         {
-            if (!reader.TryReadInt32(out _))
+            if (!reader.TryReadInt32(out kills[i]))
             {
                 result = WorldFileRuntimeMetadataParseResult.Truncated;
                 return false;
@@ -602,19 +608,21 @@ public static class WorldFileRuntimeMetadataParser
             result = WorldFileRuntimeMetadataParseResult.InvalidCount;
             return false;
         }
-        if (claimCount > maxEntries)
+        if (claimCount > Math.Min(maxEntries, WorldBannerData1458.MaximumEntries))
         {
             result = WorldFileRuntimeMetadataParseResult.BudgetExceeded;
             return false;
         }
+        var claims = new ushort[claimCount];
         for (int i = 0; i < claimCount; i++)
         {
-            if (!reader.TryReadUInt16(out _))
+            if (!reader.TryReadUInt16(out claims[i]))
             {
                 result = WorldFileRuntimeMetadataParseResult.Truncated;
                 return false;
             }
         }
+        banners = new(kills, claims);
         return true;
     }
 

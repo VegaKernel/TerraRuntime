@@ -3,11 +3,14 @@ using TerraRuntime.Core;
 
 namespace TerraRuntime.Application;
 
+internal interface IRuntimePlayerPreludeNameLookup1458
+{ bool TryGetPreludePlayerName(PlayerHandle player, out string name); }
+
 /// <summary>
 /// Generation-safe authoritative-thread player lookup across connection-owned and runtime-controlled players.
 /// It is the single aggregation boundary used by simulation code that must not know which authority owns a player.
 /// </summary>
-internal sealed class RuntimePlayerSnapshotLookup : IRuntimePlayerSnapshotLookup, IRuntimePlayerSlotSnapshotLookup
+internal sealed class RuntimePlayerSnapshotLookup : IRuntimePlayerSnapshotLookup, IRuntimePlayerSlotSnapshotLookup, IRuntimePlayerPreludeNameLookup1458
 {
     private readonly PlayerAuthority players;
     private readonly ServerPlayerAuthority? serverPlayers;
@@ -16,6 +19,13 @@ internal sealed class RuntimePlayerSnapshotLookup : IRuntimePlayerSnapshotLookup
     {
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.serverPlayers = serverPlayers;
+    }
+
+    public bool TryGetPreludePlayerName(PlayerHandle player, out string name)
+    {
+        if (players.TryGetPreludePlayerName(player, out name)) return true;
+        if (serverPlayers?.TryGetAppearance(player, out var appearance) == true) { name = appearance.Name; return true; }
+        name = ""; return false;
     }
 
     public bool TryGetPlayer(PlayerHandle player, out PlayerStateSnapshot snapshot)

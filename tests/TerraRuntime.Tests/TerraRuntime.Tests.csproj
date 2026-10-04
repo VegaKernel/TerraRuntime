@@ -172,9 +172,34 @@
   </ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/boss-money-coupled-official-1458.json.gz" LogicalName="BossMoneyCoupled1458" /></ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/npc-healing-official-1458.json.gz" LogicalName="NpcHealingLoot1458" />
+    <EmbeddedResource Include="Fixtures/boss-healing-coupled-official-1458.json.gz" LogicalName="BossHealingCoupled1458" />
+    <EmbeddedResource Include="Fixtures/town-contact-official-1458.json.gz" LogicalName="TownContact1458" />
+    <EmbeddedResource Include="Fixtures/MothronWholeAi1458.json.gz" LogicalName="MothronWholeAi1458" />
+    <EmbeddedResource Include="Fixtures/MothronOuter1458.json.gz" LogicalName="MothronOuter1458" />
+    <EmbeddedResource Include="Fixtures/MothronDefaults1458.json.gz" LogicalName="MothronDefaults1458" />
+    <EmbeddedResource Include="Fixtures/MotherSlimeHitEffect1458.json.gz" LogicalName="MotherSlimeHitEffect1458" />
+  </ItemGroup>
+  <ItemGroup>
     <EmbeddedResource Include="Fixtures/town-danger-phase-official-1458.json.gz" LogicalName="TownDangerPhase1458" />
     <EmbeddedResource Include="Fixtures/town-home-phase-official-1458.json.gz" LogicalName="TownHomePhase1458" />
     <EmbeddedResource Include="Fixtures/town-active-combat-official-1458.json.gz" LogicalName="TownActiveCombat1458" />
   </ItemGroup>
   <ItemGroup><EmbeddedResource Include="Fixtures/npc-money-closest-official-1458.json.gz" LogicalName="NpcMoneyClosest1458" /></ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/town-contact-vfx-official-1458.json.gz" LogicalName="TownContactVfx1458" />
+    <EmbeddedResource Include="Fixtures/town-regeneration-official-1458.json.gz" LogicalName="TownRegeneration1458" />
+    <EmbeddedResource Include="Fixtures/town-contact-wire-official-1458.json.gz" LogicalName="TownContactWire1458" />
+    <EmbeddedResource Include="Fixtures/npc-death-prelude-facts-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/npc-death-prelude-credits-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/npc-death-prelude-wire-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/npc-death-prelude-banners-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/npc-death-prelude-claim-behavior-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/npc-death-prelude-achievement-wire-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/npc-death-prelude-achievement-behavior-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/npc-death-prelude-tally-behavior-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/npc-death-prelude-suppressed-deaths-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/npc-death-prelude-banner-closest-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/npc-only-shimmer-ocean-worlds-official.json.gz" />
+  </ItemGroup>
 </Project>

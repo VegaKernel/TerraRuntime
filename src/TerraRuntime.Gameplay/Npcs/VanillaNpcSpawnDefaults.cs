@@ -18,6 +18,38 @@ public readonly record struct VanillaNpcSpawnDefaults(
 {
     public float? KnockBackResist { get; init; }
     public float? Difficulty { get; init; }
+
+    /// <summary>Mother Slime's NewNPC(1) followed by SetDefaults(-5), including the nested knockback scaling.</summary>
+    public static bool TryResolveMotherSlimeChild(in VanillaNpcSpawnContext context,
+        out VanillaNpcSpawnDefaults defaults, out float moneyValue)
+    {
+        defaults = default;
+        moneyValue = 0f;
+        if (!context.IsValid || !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.BlueSlime,
+            VanillaNpcNetVariantCatalog.BabySlime, out var definition))
+            return false;
+        bool windowsArithmetic = OperatingSystem.IsWindows();
+        float firstKnockback = (float)Ramp(context.Difficulty, 1f, 3f, .8f, windowsArithmetic);
+        definition = definition with { KnockBackResist = firstKnockback * .95f };
+        var scaled = ResolveOrdinary(in definition, in context, windowsArithmetic);
+        float scale = context.GoodWorld ? (.9f + .9f * .9f) / 2f : .9f;
+        int width = (int)(24f * scale);
+        int height = (int)(18f * scale);
+        if (height is 16 or 32)
+            height++;
+        defaults = scaled with { Hitbox = new(width, height), Scale = scale, Difficulty = context.Difficulty };
+        int rawMoney = 10;
+        if (context.Difficulty >= 2f && context.HardMode)
+        {
+            int factor = (context.DownedPlantera ? 100 : 80) / (13 + 4 + 30 / 4);
+            rawMoney = (int)((double)(rawMoney * factor) * .8d);
+        }
+        float multiplier = context.Difficulty <= 1f ? 1f : context.Difficulty < 2f
+            ? 1f + (context.Difficulty - 1f) * 1.5f
+            : context.Difficulty <= 3f ? 2.5f : 2.5f + context.Difficulty - 3f;
+        moneyValue = (int)(rawMoney * multiplier);
+        return true;
+    }
     /// <summary>
     /// NPC.SetDefaults -> special-seed adjustments -> ScaleStats for Destroyer, Probe, Prime, Skeletron and Duke Fishron (1.4.5.8).
     /// Other families keep their existing definition defaults until their type-specific scaling is verified.
@@ -30,6 +62,14 @@ public readonly record struct VanillaNpcSpawnDefaults(
         bool windowsArithmetic, out VanillaNpcSpawnDefaults defaults)
     {
         defaults = default;
+        if (context.IsValid && VanillaMothronNpcCatalog1458.IsSupported(definition.Type) && !context.GoodWorld)
+        {
+            defaults = definition.Type == VanillaNpcIds.MothronEgg
+                ? new(new(definition.Width, definition.Height), definition.Scale, definition.LifeMax, definition.Damage, definition.Defense)
+                    { KnockBackResist = definition.KnockBackResist, Difficulty = 1f }
+                : ResolveOrdinary(in definition, in context, windowsArithmetic) with { Difficulty = context.Difficulty };
+            return true;
+        }
         if (context.IsValid && (definition.Type == VanillaNpcIds.Bunny || definition.Type == VanillaNpcIds.ExplosiveBunny))
         {
             // ScaleStats does not enter its scaling block for these five-life, zero-damage critters.

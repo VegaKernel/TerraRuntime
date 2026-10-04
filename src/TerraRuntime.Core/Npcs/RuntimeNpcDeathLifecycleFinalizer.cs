@@ -90,26 +90,21 @@ public static class VanillaMotherSlimeDeathSplit1458
 {
     public static void SpawnChildren(RuntimeNpcStore store, in NpcSnapshot parent, IVanillaNpcRandom random)
     {
-        // NPC.HitEffect (1.4.5.8): a dead Mother Slime creates two or three Baby Slimes after hit effects,
-        // preserving parent velocity and then applying each source-ordered random offset.
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(random);
-        int count = random.NextInt32(0, 2) + 2;
-        if (!VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.MotherSlime, out VanillaNpcDefinition definition))
+        var simulation = parent.Simulation;
+        if (parent.Type != VanillaNpcIds.MotherSlime.Value || simulation.Life != 0 ||
+            !store.TryGet(parent.Handle, out var current) || current.Revision != parent.Revision ||
+            !VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.MotherSlime, out var definition) ||
+            !definition.TryResolveHitbox(in simulation, out var body))
             return;
-        int bottomX = (int)(parent.PositionX + definition.Width * .5f);
-        int bottomY = (int)(parent.PositionY + definition.Height);
+        float bottomX = parent.PositionX + body.Width / 2;
+        float bottomY = parent.PositionY + body.Height;
+        if (!float.IsFinite(bottomX) || !float.IsFinite(bottomY) ||
+            bottomX < int.MinValue || bottomX >= int.MaxValue || bottomY < int.MinValue || bottomY >= int.MaxValue)
+            return;
+        int count = random.NextInt32(0, 2) + 2;
         for (int index = 0; index < count; index++)
-        {
-            var intent = new NpcAiSpawnIntent(VanillaNpcIds.BlueSlime, bottomX, bottomY,
-                parent.VelocityX * 2f + random.NextInt32(-20, 20) * .1f + index * parent.Simulation.DirectionX * .3f,
-                parent.VelocityY - random.NextInt32(0, 10) * .1f - index,
-                parent.Target)
-            {
-                NetIdOverride = VanillaNpcNetVariantCatalog.BabySlime,
-                InitialAi = new NpcAiState(-1000f * random.NextInt32(0, 3), 0f, 0f, 0f)
-            };
-            store.TrySpawnIntent(in intent, out _);
-        }
+            store.TrySpawnMotherSlimeChild(in parent, (int)bottomX, (int)bottomY, index, random, out _);
     }
 }

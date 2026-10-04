@@ -6,7 +6,7 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimeNpcStinkyAiAdmission1458Tests
 {
     [Fact]
-    public void Real_world_tick_fences_unowned_non_town_visual_random_phase_then_resumes_after_expiry()
+    public void Real_world_tick_runs_owned_non_town_visual_random_phase_and_ai_through_expiry()
     {
         var npcs = new RuntimeNpcStore(); var source = new NpcStateUpdate(3, 3, 100, 100, 0, 0, 255, default,
             NpcSimulationState.Initial with { Life = 100, LifeMax = 100 }); Assert.True(npcs.TrySpawn(0, in source, out var npc));
@@ -14,9 +14,9 @@ public sealed class RuntimeNpcStinkyAiAdmission1458Tests
         var runtime = (ServerRuntimeComposition)typeof(ServerRuntimeState).GetField("_runtime", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(state)!;
         Assert.True(runtime.Npcs.NpcStinkyStatus.TryApply(npc.Handle, 1));
         Assert.True(runtime.Npcs.NpcStinkyStatus.TryGetStinky(npc.Handle, out bool immediate)); Assert.False(immediate);
-        state.Tick(); Assert.Equal(0, stepper.Calls); Assert.True(npcs.TryGet(npc.Handle, out var blocked)); Assert.Equal(npc, blocked);
+        state.Tick(); Assert.Equal(1, stepper.Calls); Assert.True(npcs.TryGet(npc.Handle, out var first)); Assert.Equal(101f, first.PositionX);
         Assert.True(runtime.Npcs.NpcStinkyStatus.TryGetWireDuration(npc.Handle, out int duration)); Assert.Equal(-1, duration);
-        state.Tick(); Assert.Equal(1, stepper.Calls); Assert.True(npcs.TryGet(npc.Handle, out var advanced)); Assert.Equal(101f, advanced.PositionX);
+        state.Tick(); Assert.Equal(2, stepper.Calls); Assert.True(npcs.TryGet(npc.Handle, out var advanced)); Assert.Equal(102f, advanced.PositionX);
     }
     [Fact]
     public void Admission_preserves_wrapper_capabilities_and_new_generation_known_clear()
@@ -24,12 +24,29 @@ public sealed class RuntimeNpcStinkyAiAdmission1458Tests
         var npcs = new RuntimeNpcStore(); var source = new NpcStateUpdate(3, 3, 100, 100, 0, 0, 255, default,
             NpcSimulationState.Initial with { Life = 100, LifeMax = 100 }); Assert.True(npcs.TrySpawn(0, in source, out var npc));
         var status = new RuntimeNpcStinkyStatus1458(npcs); var inner = new CountingStep();
-        var wrapped = new RuntimeNpcStinkyAiAdmission1458(inner, status);
+        var wrapped = new RuntimeNpcStinkyAiStepper1458(inner, status, new SystemVanillaNpcRandom(1458));
         Assert.Same(inner, NpcAiStateStepperComposition.FindCapability<CountingStep>(wrapped));
-        Assert.True(status.TryApply(npc.Handle, 180)); status.BeginWorldTick(); Assert.False(wrapped.TryStepState(in npc, out _));
+        Assert.True(status.TryApply(npc.Handle, 180)); status.BeginWorldTick(); Assert.True(wrapped.TryStepState(in npc, out _));
         Assert.True(npcs.TryDespawn(npc.Handle)); Assert.True(npcs.TrySpawn(0, in source, out var replaced));
-        Assert.True(wrapped.TryStepState(in replaced, out _)); Assert.Equal(1, inner.Calls);
+        Assert.True(wrapped.TryStepState(in replaced, out _)); Assert.Equal(2, inner.Calls);
     }
+    [Fact]
+    public void Stale_generation_cannot_run_visual_offer_or_partial_ai()
+    {
+        var npcs = new RuntimeNpcStore();
+        var input = new NpcStateUpdate(3, 3, 100, 100, 0, 0, 255, default,
+            NpcSimulationState.Initial with { Life = 100, LifeMax = 100 });
+        Assert.True(npcs.TrySpawn(0, in input, out var stale));
+        var status = new RuntimeNpcStinkyStatus1458(npcs);
+        Assert.True(status.TryApply(stale.Handle, 180)); status.BeginWorldTick();
+        Assert.True(npcs.TryDespawn(stale.Handle)); Assert.True(npcs.TrySpawn(0, in input, out _));
+        var inner = new CountingStep(); var random = new VanillaUnifiedRandom1458(1458);
+        var expected = random.Clone();
+        var wrapper = new RuntimeNpcStinkyAiStepper1458(inner, status, new SystemVanillaNpcRandom(random));
+        Assert.False(wrapper.TryStepState(in stale, out _));
+        Assert.Equal(0, inner.Calls); Assert.True(random.HasSameState(expected));
+    }
+
     private sealed class CountingStep : INpcAiStateStepper
     {
         internal int Calls;

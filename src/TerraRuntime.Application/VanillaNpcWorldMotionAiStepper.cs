@@ -92,6 +92,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             targeting.SetFishEnvironment(new VanillaFishWorldEnvironment1458(tiles));
             targeting.SetAntlionEnvironment(new VanillaAntlionWorldEnvironment1458(tiles));
             targeting.SetGhostHoverEnvironment(new VanillaGhostHoverWorldEnvironment1458(tiles));
+            targeting.SetMothronEnvironment(new VanillaMothronWorldEnvironment1458(tiles, worldSurfaceTiles));
         }
     }
 
@@ -107,7 +108,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             next = default;
             return false;
         }
-        if ((targeting is not null && VanillaGhostHoverNpcCatalog1458.IsSupported(npc.TypeIdentity)) ||
+        if ((targeting is not null && (VanillaGhostHoverNpcCatalog1458.IsSupported(npc.TypeIdentity) ||
+            VanillaMothronNpcCatalog1458.IsSupported(npc.TypeIdentity))) ||
             npc.TypeIdentity == VanillaNpcIds.Nailhead || npc.TypeIdentity == VanillaNpcIds.DrManFly || npc.TypeIdentity == VanillaNpcIds.Frankenstein)
         {
             next = aiState;
@@ -324,6 +326,18 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     internal static bool TryFinishPhysics(WorldTileStore tiles, double worldSurfaceTiles,
         in NpcSnapshot npc, in NpcStateUpdate aiState, out NpcStateUpdate next)
     {
+        if (!TryApplyGravity(tiles, worldSurfaceTiles, in aiState, out var accelerated, out var gravity))
+        { next = default; return false; }
+        if (!gravity.HasValue) { next = accelerated; return true; }
+        return TryFinishCollision(tiles, in accelerated, gravity.Value.Parameters.Gravity, out next);
+    }
+
+    // NPC.UpdateNPC: AI -> gravity -> GetHurtByOtherNPCs -> collision. Keeping these stages
+    // separate permits contact knockback to reach collision in the same accepted NPC revision.
+    internal static bool TryApplyGravity(WorldTileStore tiles, double worldSurfaceTiles,
+        in NpcStateUpdate aiState, out NpcStateUpdate next, out VanillaNpcGravityResult? appliedGravity)
+    {
+        appliedGravity = null;
         if (!VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(aiState.Type), new NpcNetId(aiState.NetId), out var definition) ||
             definition.PhysicsFamily == VanillaNpcPhysicsFamily.None ||
             !definition.TryResolveHitbox(aiState.Simulation, out var hitbox))
@@ -351,8 +365,22 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         if (!simulation.NoGravity)
             velocityY = gravity.VelocityY;
 
+        appliedGravity = gravity;
         if (velocityX < HorizontalVelocityEpsilon && velocityX > -HorizontalVelocityEpsilon)
             velocityX = 0f;
+        next = aiState with { VelocityX = velocityX, VelocityY = velocityY };
+        return true;
+    }
+
+    internal static bool TryFinishCollision(WorldTileStore tiles, in NpcStateUpdate aiState,
+        float gravityAcceleration, out NpcStateUpdate next)
+    {
+        if (!VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(aiState.Type), new NpcNetId(aiState.NetId), out var definition) ||
+            !definition.TryResolveHitbox(aiState.Simulation, out var hitbox))
+        { next = default; return false; }
+        var simulation = aiState.Simulation;
+        int hitboxWidth = hitbox.Width, hitboxHeight = hitbox.Height;
+        float velocityX = aiState.VelocityX, velocityY = aiState.VelocityY;
 
         if (simulation.NoTileCollide)
         {
@@ -379,7 +407,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             velocityY,
             hitboxWidth,
             hitboxHeight,
-            gravity.Parameters.Gravity);
+            gravityAcceleration);
 
         bool wet = VanillaWorldCollision.TryGetWetContact(
             tiles,
@@ -400,6 +428,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             VanillaNpcPhysicsFamily.FlyingEye => true,
             VanillaNpcPhysicsFamily.BatFlight => true,
             VanillaNpcPhysicsFamily.GhostHover => true,
+            VanillaNpcPhysicsFamily.Mothron => definition.Type == VanillaNpcIds.Mothron,
             VanillaNpcPhysicsFamily.GroundFighter => simulation.DirectionY == 1,
             VanillaNpcPhysicsFamily.UnicornGround => simulation.DirectionY == 1,
             _ => false
@@ -490,6 +519,13 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations)
     {
+        if (targeting is not null && VanillaMothronNpcCatalog1458.IsSupported(before.TypeIdentity))
+        {
+            if (!targeting.TryGetMothronAcceptedPlan(in before, in committed, mutations, out var planned) ||
+                !TryFinishPhysics(tiles, worldSurfaceTiles, in before, in planned, out var final))
+                return default;
+            return targeting.CompleteMothronAcceptedPlan(in before, in committed, in final, mutations);
+        }
         if (before.TypeIdentity == committed.TypeIdentity &&
             ((targeting is not null && VanillaGhostHoverNpcCatalog1458.IsSupported(before.TypeIdentity)) ||
              before.TypeIdentity == VanillaNpcIds.Nailhead || before.TypeIdentity == VanillaNpcIds.DrManFly || before.TypeIdentity == VanillaNpcIds.Frankenstein) &&

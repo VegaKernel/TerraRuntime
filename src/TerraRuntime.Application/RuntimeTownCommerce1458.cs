@@ -76,6 +76,10 @@ internal readonly record struct RuntimeTownCommerceWorldFacts1458(
     bool InvasionActive = false,
     bool NoTrapsWorld = false)
 {
+    // TerrariaServer 1.4.5.8 Main.onlyShimmerOceanWorlds uses retained seed flags only.
+    public bool OnlyShimmerOceanWorlds => DrunkWorld && TenthAnniversaryWorld &&
+        !RemixWorld && !ZenithWorld && !NotTheBeesWorld;
+
     public static RuntimeTownCommerceWorldFacts1458 FromMetadata(WorldFileRuntimeMetadata metadata)
     {
         ArgumentNullException.ThrowIfNull(metadata);

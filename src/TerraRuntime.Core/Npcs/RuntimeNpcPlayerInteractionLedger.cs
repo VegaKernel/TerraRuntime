@@ -12,6 +12,7 @@ public sealed class RuntimeNpcPlayerInteractionLedger
 {
     private readonly RuntimeNpcStore _store;
     private readonly Dictionary<NpcHandle, PlayerSlotMask> _interactions = [];
+    private readonly Dictionary<byte, (NpcHandle Handle, PlayerSlotId Player)> _lastInteraction = [];
 
     public RuntimeNpcPlayerInteractionLedger(RuntimeNpcStore store)
     {
@@ -30,6 +31,7 @@ public sealed class RuntimeNpcPlayerInteractionLedger
 
         _interactions.TryGetValue(npc, out PlayerSlotMask mask);
         _interactions[npc] = mask.With(player.Slot.Value);
+        _lastInteraction[npc.Slot] = (npc, player.Slot);
         return true;
     }
 
@@ -39,7 +41,7 @@ public sealed class RuntimeNpcPlayerInteractionLedger
             player.Value >= VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots ||
             !_store.TryGet(npc, out _))
         {
-            _interactions.Remove(npc);
+            Forget(npc);
             return false;
         }
 
@@ -58,7 +60,7 @@ public sealed class RuntimeNpcPlayerInteractionLedger
         count = 0;
         if (!npc.IsAssigned || !_store.TryGet(npc, out _))
         {
-            _interactions.Remove(npc);
+            Forget(npc);
             return false;
         }
 
@@ -81,7 +83,22 @@ public sealed class RuntimeNpcPlayerInteractionLedger
     public void Forget(NpcHandle npc)
     {
         if (npc.IsAssigned)
+        {
             _interactions.Remove(npc);
+            if (_lastInteraction.TryGetValue(npc.Slot, out var last) && last.Handle == npc)
+                _lastInteraction.Remove(npc.Slot);
+        }
+    }
+
+    public bool HasAnyInteraction(NpcHandle npc) => _store.TryGet(npc, out _) &&
+        _interactions.TryGetValue(npc, out var mask) && mask.Count != 0;
+
+    public bool TryGetLastInteraction(NpcHandle npc, out PlayerSlotId slot)
+    {
+        slot = default;
+        if (!_store.TryGet(npc, out _) || !_lastInteraction.TryGetValue(npc.Slot, out var last) || last.Handle != npc)
+            return false;
+        slot = last.Player; return true;
     }
 
     private readonly record struct PlayerSlotMask(ulong A, ulong B, ulong C, ulong D)

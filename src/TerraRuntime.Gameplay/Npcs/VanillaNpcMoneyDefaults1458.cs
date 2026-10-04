@@ -446,6 +446,9 @@ public static class VanillaNpcMoneyDefaults1458
             684 => 0,
             688 => 0,
             692 => 10000,
+            477 => 50000,
+            478 => 0,
+            479 => 0,
             _ => -1
         };
         if (baseline < 0) return false;

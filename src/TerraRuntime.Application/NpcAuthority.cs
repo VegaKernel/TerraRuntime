@@ -27,6 +27,7 @@ internal sealed partial class NpcAuthority
     private readonly VanillaNpcTargetingAiStepper? vanillaTargeting;
     private readonly VanillaNpcCheckActiveAiStepper? vanillaCheckActive;
     private readonly RuntimeNpcNetworkCombatPipeline combat;
+    internal RuntimeNpcDeathPrelude1458 DeathPrelude => combat.DeathPrelude;
     private readonly RuntimeNpcReplicationRegistry? npcReplication;
     private readonly RuntimeNpcLavaContactPass1458? lavaContact;
     private readonly RuntimeProjectileNpcCombatPass projectileNpcCombat;
@@ -100,7 +101,8 @@ internal sealed partial class NpcAuthority
         RuntimeProjectileNpcLocalImmunityRegistry? projectileNpcLocalImmunity = null,
         IVanillaNpcRandom? naturalSpawnRandom = null,
         RuntimeProjectileReplicationRegistry? projectileReplication = null,
-        VanillaUnifiedRandom1458? lootRandom = null)
+        VanillaUnifiedRandom1458? lootRandom = null,
+        RuntimeNpcDeathPrelude1458? deathPrelude = null)
     {
         ArgumentNullException.ThrowIfNull(playerSnapshots);
         this.playerSnapshots = playerSnapshots;
@@ -207,7 +209,9 @@ internal sealed partial class NpcAuthority
             seasonalItemContext: () => new TerraRuntime.Gameplay.Items.VanillaSeasonalItemDropContext1458(
                 townCommerceWorldFacts?.Halloween ?? false,
                 townCommerceWorldFacts?.XMas ?? false,
-                townCommerceWorldFacts?.TenthAnniversaryWorld ?? false));
+                townCommerceWorldFacts?.TenthAnniversaryWorld ?? false),
+            deathPrelude: deathPrelude,
+            onlyShimmerOceanWorlds: townCommerceWorldFacts?.OnlyShimmerOceanWorlds);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
             projectiles,
             npcs,
@@ -295,7 +299,8 @@ internal sealed partial class NpcAuthority
                 archetypes: archetypes,
                 identities: archetypeIdentities);
         }
-        aiStepper = new RuntimeNpcStinkyAiAdmission1458(aiStepper, npcStinkyStatus);
+        aiStepper = new RuntimeNpcStinkyAiStepper1458(aiStepper, npcStinkyStatus, this.naturalSpawnRandom,
+            worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false);
     }
 
     public RuntimeNpcShopCatalogRegistry Shops => shops;
@@ -341,6 +346,9 @@ internal sealed partial class NpcAuthority
             case ClientNpcHomeRuntimeCommand home:
                 TerrariaNpcHomeState homeState = home.State;
                 townNpcAuthority.ApplyHome(home.Connection, in homeState);
+                return true;
+            case BannerClaimRuntimeCommand1458 banner:
+                DeathPrelude.TryClaim(banner.Connection, banner.Request);
                 return true;
             case ClientNpcBuffRuntimeCommand buff:
                 ApplyClientBuff(buff);
@@ -1544,6 +1552,8 @@ internal sealed partial class NpcAuthority
             var value when value == VanillaNpcIds.BoneSerpentHead => 6f,
             var value when value == VanillaNpcIds.CaveBat || value == VanillaNpcIds.Hellbat || value == VanillaNpcIds.LavaBat => .5f,
             var value when value == VanillaNpcIds.Demon || value == VanillaNpcIds.VoodooDemon => 2f,
+            var value when value == VanillaNpcIds.MothronEgg => 0f,
+            var value when value == VanillaNpcIds.BabyMothron => .1f,
             _ => 1f
         };
 

@@ -137,6 +137,7 @@ public sealed class WorldRuntime : IDisposable
         Signs = new RuntimeSignStore(world.Signs, world.Tiles);
         SignCommands = new RuntimeSignCommandProcessor(Signs, SignReplication);
 
+        DeathPrelude = new(world.RuntimeMetadata.Banners, world.Bestiary, NpcReplication);
         if (persistence is not null)
         {
             worldSave = new RuntimeWorldCheckpointCoordinator(
@@ -150,7 +151,7 @@ public sealed class WorldRuntime : IDisposable
                 signStore: Signs,
                 townNpcStore: TownNpcs,
                 progressionMutations: WorldProgression,
-                checkpointValidationLimits: persistence.LoadLimits);
+                checkpointValidationLimits: persistence.LoadLimits, deathPrelude: DeathPrelude);
             autosave = new VanillaWorldAutosaveScheduler();
         }
 
@@ -227,7 +228,8 @@ public sealed class WorldRuntime : IDisposable
             skeletronDownedBaseline: world.RuntimeMetadata.DownedBoss3,
             golemDownedBaseline: world.RuntimeMetadata.DownedGolemBoss,
             worldIdentity: Identity,
-            chestCommands: ChestCommands);
+            chestCommands: ChestCommands,
+            deathPrelude: DeathPrelude);
         WorldClock.SetWeatherEligiblePlayerProvider(State.HasWindEligiblePlayer);
 
         sectionCacheRebuild = new SectionCacheRebuildPipeline(
@@ -335,6 +337,7 @@ public sealed class WorldRuntime : IDisposable
         NpcTalkIngress = new RuntimeNpcTalkNetworkIngress(CommandIngress);
         NpcCatchIngress = new RuntimeNpcCatchNetworkIngress(CommandIngress);
         NpcBuffIngress = new RuntimeNpcBuffNetworkIngress(CommandIngress);
+        BannerClaimIngress = new RuntimeBannerClaimIngress1458(CommandIngress);
         DisconnectIngress = new RuntimePlayerDisconnectIngress(CommandIngress);
     }
 
@@ -429,6 +432,7 @@ public sealed class WorldRuntime : IDisposable
     internal RuntimeNpcTalkNetworkIngress NpcTalkIngress { get; }
     internal RuntimeNpcCatchNetworkIngress NpcCatchIngress { get; }
     internal RuntimeNpcBuffNetworkIngress NpcBuffIngress { get; }
+    internal RuntimeBannerClaimIngress1458 BannerClaimIngress { get; }
     internal RuntimePlayerDisconnectIngress DisconnectIngress { get; }
     internal RuntimePlayerOperationsTelemetry PlayerOperations { get; }
     internal RuntimeNpcOperationsTelemetry? NpcOperations { get; }
@@ -438,6 +442,8 @@ public sealed class WorldRuntime : IDisposable
     internal SectionCacheRebuildPipelineSnapshot SectionCacheSnapshot => sectionCacheRebuild.Snapshot;
     internal RuntimeWorldSaveStatus? CaptureSaveStatus() => worldSave?.CaptureStatus();
     internal bool TryRequestSave() => worldSave?.TryRequestSave() ?? false;
+
+    internal RuntimeNpcDeathPrelude1458 DeathPrelude { get; }
 
     public WorldRuntimeSnapshot CaptureSnapshot()
     {

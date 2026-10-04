@@ -250,13 +250,15 @@ internal readonly record struct RuntimeTownNpcCombatWorldFacts1458(
     bool CombatBookWasUsed,
     bool CombatBookVolumeTwoWasUsed)
 {
+    internal bool InfectedSeed { get; init; }
+
     public static RuntimeTownNpcCombatWorldFacts1458 FromMetadata(WorldFileRuntimeMetadata metadata)
     {
         ArgumentNullException.ThrowIfNull(metadata);
         return new RuntimeTownNpcCombatWorldFacts1458(
             metadata.Progression,
             metadata.CombatBookWasUsed,
-            metadata.CombatBookVolumeTwoWasUsed);
+            metadata.CombatBookVolumeTwoWasUsed) { InfectedSeed = metadata.InfectedSeed };
     }
 }
 
@@ -310,6 +312,7 @@ internal sealed partial class RuntimeTownNpcCombat1458
     private readonly ulong[] meleeImmuneGenerations;
     private readonly int[] meleeImmuneTicks;
     private IRuntimeTownNpcMeleeDamageSink1458? meleeDamage;
+    private readonly RuntimeNpcReplicationRegistry? contactReplication;
 
     public RuntimeTownNpcCombat1458(
         RuntimeTownNpcStateStore townNpcs,
@@ -320,12 +323,14 @@ internal sealed partial class RuntimeTownNpcCombat1458
         RuntimeWorldProgressionMutations progression,
         bool expertMode,
         bool masterMode,
-        IRuntimeTownNpcCombatRandom1458? random = null)
+        IRuntimeTownNpcCombatRandom1458? random = null,
+        RuntimeNpcReplicationRegistry? contactReplication = null)
     {
         this.townNpcs = townNpcs ?? throw new ArgumentNullException(nameof(townNpcs));
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
+        this.contactReplication = contactReplication;
         this.world = world;
         this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
         this.expertMode = expertMode;

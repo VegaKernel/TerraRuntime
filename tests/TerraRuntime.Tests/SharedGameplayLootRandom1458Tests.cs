@@ -20,7 +20,7 @@ public sealed class SharedGameplayLootRandom1458Tests
 
     // Independent original callbacks, executable SHA4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034.
     // Flask Kill uses netMode2; direct NewNPC/loot calls omit broadcasts using netMode0.
-    // Captured Eye callbacks pin imported/recovery/money ordering; they do not prove a continuous encounter.
+    // Captured Eye callbacks pin imported/recovery/money/healing ordering; they do not prove a continuous encounter.
     [Theory]
     [MemberData(nameof(OriginalEyeCallbacks))]
     public void Composition_shares_loot_and_dedicated_flask_random(JsonElement row)

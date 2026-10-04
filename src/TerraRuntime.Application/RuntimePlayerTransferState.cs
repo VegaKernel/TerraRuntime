@@ -195,6 +195,8 @@ internal sealed class RuntimePlayerTransferProfileStore
             entries[connection.Player.Slot.Value] = null;
     }
 
+    internal string? GetName(ConnectionHandle connection) => Get(connection)?.Appearance?.Name;
+
     private Entry? Get(ConnectionHandle connection)
     {
         if (!connection.IsAssigned)

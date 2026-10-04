@@ -573,6 +573,10 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
         public TerrariaConnectionOutboundQueue Outbound { get; } =
             outbound ?? throw new ArgumentNullException(nameof(outbound));
 
+        public bool MatchesPlayer(PlayerHandle player) => IsPlaying &&
+            Volatile.Read(ref playingSlot) == player.Slot.Value &&
+            Volatile.Read(ref playingGeneration) == player.Generation.Value;
+
         public bool IsPlaying =>
             Volatile.Read(ref playingSlot) >= 0 && Volatile.Read(ref playingGeneration) != 0;
 

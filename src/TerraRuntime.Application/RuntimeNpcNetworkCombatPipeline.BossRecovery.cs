@@ -24,11 +24,12 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         if (!IsPreviewingDeath && pendingDeathPlan is { } plan)
         {
             if (!plan.TryPublishPhase(NpcDeathDropPhase1458.Recovery, lootDelivery.Adopt) ||
-                !plan.TryPublishPhase(NpcDeathDropPhase1458.Money, lootDelivery.Adopt))
+                !plan.TryPublishPhase(NpcDeathDropPhase1458.Money, lootDelivery.Adopt) ||
+                !plan.TryPublishPhase(NpcDeathDropPhase1458.Healing, lootDelivery.Adopt))
                 throw new InvalidOperationException("Accepted death events diverged from their owned RNG preview.");
             bossRecoveryDaily.CopyFrom(plannedDaily!);
-            plannedHealingHandle = npc.Handle;
             plan.Dispose(); pendingDeathPlan = null; plannedDaily = null;
+            plannedPrelude = null; plannedPreludeRevision = 0; plannedLootAllowed = false;
             return;
         }
         if (!eaterBoss && !VanillaBossRecovery1458.IsAdmittedRoot(npc.TypeIdentity)) return;

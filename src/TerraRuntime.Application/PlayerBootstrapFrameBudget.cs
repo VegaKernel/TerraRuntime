@@ -1,12 +1,13 @@
 using TerraRuntime.Core;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
+using TerraRuntime.Gameplay.Npcs;
 
 namespace TerraRuntime.Application;
 
 /// <summary>
 /// Hard upper bounds for the packet-8 tile bootstrap before packet 49 hands the connection over to normal
-/// gameplay. Runtime entity/global baselines are deliberately outside this pre-49 contract.
+/// gameplay. The source banner/bestiary baseline precedes that handoff; other runtime entities retain their existing phase.
 /// </summary>
 internal static class PlayerBootstrapFrameBudget
 {
@@ -25,8 +26,10 @@ internal static class PlayerBootstrapFrameBudget
     public const int MaximumDynamicEntityFrames =
         MaximumWorldItemSlots * WorldItemBootstrapPacketEncoder.FramesPerItem;
 
+    public const int MaximumDeathPreludeFrames = 1 + VanillaNpcBestiaryNetCatalog1458.MaximumKnownNetIdentities * 3;
+
     public const int MaximumFramesBeforeEnterWorld =
-        FixedFramesBeforeEnterWorld + MaximumTileSectionFrames;
+        FixedFramesBeforeEnterWorld + MaximumTileSectionFrames + MaximumDeathPreludeFrames;
 
     // The live probe counts packet-10 frames while waiting for packet 49. Leave a small emergency margin above the
     // current structural ceiling so CI catches accidental bootstrap growth long before outbound backpressure.

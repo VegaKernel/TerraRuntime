@@ -74,6 +74,9 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
     private float _correctionPositionX;
     private float _correctionPositionY;
     private Func<string, bool>? _playerNameAdmission;
+    private Func<ReadOnlyMemory<byte>[]>? _deathPreludeBaseline;
+    internal void SetDeathPreludeBaseline(Func<ReadOnlyMemory<byte>[]> capture) =>
+        _deathPreludeBaseline = capture ?? throw new ArgumentNullException(nameof(capture));
 
     public PlayerBootstrapFrameSink(
         PlayerSlotPool slots,
@@ -472,9 +475,11 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
                 return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
         }
 
-        // Keep the first vanilla-client handoff deliberately minimal. Entity and global
-        // persistence baselines must not sit between the final packet 10 and packet 49;
-        // they can be synchronized after the client has entered the world.
+        // MessageBuffer case8 sends Banner full state and represented bestiary counters before packet49.
+        // The callback returns immutable bytes published by the world owner, never mutable world state.
+        if (_deathPreludeBaseline is not null)
+            foreach (ReadOnlyMemory<byte> baseline in _deathPreludeBaseline())
+                if (!TryQueue(baseline)) return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
         if (!TryQueue(_packets.EnterWorldFrame))
             return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
 

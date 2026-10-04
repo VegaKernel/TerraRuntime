@@ -21,7 +21,7 @@ public sealed class VanillaNpcAiCoverageCatalogTests
             VanillaWormNpcCatalog.Count +
             VanillaNpcAi17_20_21Catalog1458.DefinitionCount +
             VanillaMimicNpcCatalog1458.DefinitionCount - 1;
-        expected += VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 14;
+        expected += VanillaMoonEventGroundFighterCatalog1458.DefinitionCount + 14 + VanillaMothronNpcCatalog1458.DefinitionCount;
         Assert.Equal(expected, VanillaNpcAiCoverageCatalog.Count);
 
         foreach (VanillaNpcAiCoverage coverage in VanillaNpcAiCoverageCatalog.All)

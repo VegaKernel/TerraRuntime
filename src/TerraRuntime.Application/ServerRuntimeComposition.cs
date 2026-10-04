@@ -132,7 +132,8 @@ internal sealed class ServerRuntimeComposition
         Random? projectilePlayerCombatRandom,
         IVanillaNpcRandom? naturalSpawnRandom = null,
         WorldRuntimeIdentity worldIdentity = default,
-        RuntimeChestCommandProcessor? chestCommands = null)
+        RuntimeChestCommandProcessor? chestCommands = null,
+        RuntimeNpcDeathPrelude1458? deathPrelude = null)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -225,7 +226,7 @@ internal sealed class ServerRuntimeComposition
             projectileNpcLocalImmunity,
             npcRandom,
             projectileReplication,
-            lootRandom: gameplayRandom);
+            lootRandom: gameplayRandom, deathPrelude: deathPrelude);
         var worldTileAuthority = new WorldTileAuthority(
             playersAuthority,
             commands,

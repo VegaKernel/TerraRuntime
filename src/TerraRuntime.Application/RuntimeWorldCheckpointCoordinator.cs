@@ -74,7 +74,8 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
         RuntimeSignStore? signStore = null,
         RuntimeTownNpcStateStore? townNpcStore = null,
         RuntimeWorldProgressionMutations? progressionMutations = null,
-        WorldFileLoadLimits? checkpointValidationLimits = null)
+        WorldFileLoadLimits? checkpointValidationLimits = null,
+        RuntimeNpcDeathPrelude1458? deathPrelude = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
         ArgumentNullException.ThrowIfNull(sourceEnvelope);
@@ -123,7 +124,7 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
             worldClock,
             signStore,
             townNpcStore,
-            progressionMutations);
+            progressionMutations, deathPrelude);
         coordinator = new WorldSaveCoordinator<RuntimeWorldCheckpointSnapshot>(
             destinationPath,
             CaptureSnapshotOnOwner,
@@ -415,6 +416,16 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
             townRoomSection = encodedTownRooms;
         }
 
+        byte[]? encodedBestiary = null;
+        if (snapshot.Bestiary is WorldBestiaryData bestiary)
+        {
+            using var bestiaryStream = new MemoryStream();
+            var limits = new WorldFileBestiaryLimits(1000000, 1000000, 1000000, 16384, 16L * 1024 * 1024);
+            if (WorldFileBestiaryEncoder.TryEncode(bestiary, limits, bestiaryStream, out _) != WorldFileBestiaryEncodeResult.Encoded)
+                throw new InvalidDataException("Authoritative bestiary encoding failed.");
+            encodedBestiary = bestiaryStream.ToArray();
+        }
+
         WorldFileTileChestRewriteResult result = WorldFileTileChestRewriter.TryRewrite(
             sourceEnvelope,
             sourceHeader,
@@ -426,7 +437,8 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
             npcSection,
             townRoomSection,
             destination,
-            out _);
+            out _, banners: snapshot.Banners,
+            bestiarySection: encodedBestiary is null ? (ReadOnlyMemory<byte>?)null : encodedBestiary);
         if (result != WorldFileTileChestRewriteResult.Rewritten)
             throw new InvalidDataException($"Authoritative tile/chest/sign/town world save failed: {result}.");
 

@@ -13,6 +13,10 @@ public readonly record struct WorldOreTiers(
 
 public sealed class WorldFileRuntimeMetadata
 {
+    public WorldBannerData1458 Banners { get; init; } = WorldBannerData1458.Empty;
+    public int BannerSectionOffset { get; init; }
+    public int BannerSectionLength { get; init; }
+
     public byte GameMode { get; init; }
 
     public bool DrunkWorld { get; init; }

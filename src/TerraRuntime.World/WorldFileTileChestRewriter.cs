@@ -111,7 +111,8 @@ public static class WorldFileTileChestRewriter
 
     /// <summary>
     /// Rewrites the currently authoritative semantic sections while preserving all remaining opaque sections.
-    /// NPC and town-room payloads must already be encoded in the pinned world format.
+    /// NPC, town-room and optional bestiary payloads must already be encoded in the pinned world format.
+    /// The optional banner state replaces its decoded header range and may change the header length.
     /// </summary>
     public static WorldFileTileChestRewriteResult TryRewrite(
         WorldFileEnvelope sourceEnvelope,
@@ -124,7 +125,9 @@ public static class WorldFileTileChestRewriter
         ReadOnlySpan<byte> npcSection,
         ReadOnlySpan<byte> townRoomSection,
         Stream destination,
-        out long bytesWritten)
+        out long bytesWritten,
+        WorldBannerData1458? banners = null,
+        ReadOnlyMemory<byte>? bestiarySection = null)
     {
         ArgumentNullException.ThrowIfNull(sourceEnvelope);
         ArgumentNullException.ThrowIfNull(header);
@@ -135,6 +138,13 @@ public static class WorldFileTileChestRewriter
 
         if (headerSection.Length != preserved.Header.Length || headerSection.IsEmpty)
             return WorldFileTileChestRewriteResult.InvalidHeaderSection;
+        byte[]? patchedBannerHeader = null;
+        if (banners is not null)
+        {
+            if (!WorldFileBannerHeaderPatcher1458.TryPatch(headerSection, header, banners, out patchedBannerHeader))
+                return WorldFileTileChestRewriteResult.InvalidHeaderSection;
+            headerSection = patchedBannerHeader;
+        }
         if (signSection.IsEmpty)
             return WorldFileTileChestRewriteResult.InvalidSignSection;
         if (npcSection.IsEmpty)
@@ -205,7 +215,7 @@ public static class WorldFileTileChestRewriter
             destination.Write(townRoomSection);
             if (!TryRecordOffset(destination, offsets, 8))
                 return WorldFileTileChestRewriteResult.SectionOffsetOverflow;
-            destination.Write(preserved.Bestiary.Span);
+            destination.Write(bestiarySection.HasValue ? bestiarySection.Value.Span : preserved.Bestiary.Span);
             if (!TryRecordOffset(destination, offsets, 9))
                 return WorldFileTileChestRewriteResult.SectionOffsetOverflow;
             destination.Write(preserved.CreativePowers.Span);

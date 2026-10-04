@@ -10,6 +10,17 @@ internal readonly record struct RuntimeNpcStinkyVisualOffer1458(bool Offered, fl
 
 internal sealed class RuntimeNpcStinkyStatus1458(RuntimeNpcStore npcs, Action<NpcHandle>? buffListChanged = null)
 {
+    internal static RuntimeNpcStinkyVisualOffer1458 PlanVisualOffer(IRuntimeTownNpcCombatRandom1458 random)
+    {
+        if (random.Next(5) != 0) return default;
+        float dx = random.Next(21) - 10, dy = random.Next(21) - 10;
+        float length = MathF.Sqrt(dx * dx + dy * dy);
+        dx /= length; dy /= length;
+        dx *= .66f; dy = MathF.Abs(dy);
+        float multiplier = 3 + random.Next(2);
+        // Source multiplication order is vector * integer * .25f, before Dust's dedicated-server return.
+        return new(true, dx * multiplier * .25f, dy * multiplier * .25f * .5f);
+    }
     private readonly Entry[] entries = new Entry[RuntimeNpcStore.MaximumAddressableCapacity];
     private struct Entry
     {
@@ -33,6 +44,7 @@ internal sealed class RuntimeNpcStinkyStatus1458(RuntimeNpcStore npcs, Action<Np
             ref Entry entry = ref entries[index];
             if (entry.Handle != live.Handle) entry = new Entry { Handle = live.Handle };
             entry.PreviousFlag = entry.Flag;
+            entry.VisualOffer = default;
             // A buff with time1 flags this tick, then is removed from the source buff list.
             entry.Flag = entry.Present && entry.Duration > 0;
             if (entry.Duration > 0) entry.Duration--;

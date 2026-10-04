@@ -119,7 +119,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         bool zenithWorld = false,
         Func<PlayerSlotId, bool>? slimeRainKingSpawn = null,
         VanillaUnifiedRandom1458? lootRandom = null,
-        Func<VanillaSeasonalItemDropContext1458>? seasonalItemContext = null)
+        Func<VanillaSeasonalItemDropContext1458>? seasonalItemContext = null,
+        RuntimeNpcDeathPrelude1458? deathPrelude = null,
+        bool? onlyShimmerOceanWorlds = null)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         random = new SystemNpcCombatRandom(lootRandom);
@@ -137,6 +139,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
         combatIntegrity = new RuntimeCombatIntegrity(playerAuthority, npcs.Capacity);
         this.npcReplication = npcReplication;
+        this.deathPrelude = deathPrelude ?? new(replication: npcReplication);
+        this.onlyShimmerOceanWorlds = onlyShimmerOceanWorlds;
+        npcReplication?.BindDeathPrelude(this.deathPrelude);
         this.worldItemReplication = worldItemReplication;
         this.worldClock = worldClock;
         this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
@@ -336,8 +341,6 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             DropBossRecoveryItemsIfEligible(in dead, eaterBoss);
             AnnounceBossDefeat(in dead, eaterBoss);
 
-            if (VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity))
-                DropEaterOfWorldsHealingHeartIfEligible(in dead);
             if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
                 CleanupWallOfFleshChildren(dead.Handle.Slot);
             if (dead.TypeIdentity == VanillaNpcIds.Destroyer)
@@ -504,8 +507,6 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         DropBossRecoveryItemsIfEligible(in dead, eaterBoss);
         AnnounceBossDefeat(in dead, eaterBoss);
 
-        if (VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity))
-            DropEaterOfWorldsHealingHeartIfEligible(in dead);
         if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
             CleanupWallOfFleshChildren(dead.Handle.Slot);
         if (dead.TypeIdentity == VanillaNpcIds.Destroyer)
@@ -622,8 +623,6 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         DropBossRecoveryItemsIfEligible(in dead, eaterBoss);
         AnnounceBossDefeat(in dead, eaterBoss);
 
-        if (VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity))
-            DropEaterOfWorldsHealingHeartIfEligible(in dead);
         if (dead.TypeIdentity == VanillaNpcIds.WallOfFlesh)
             CleanupWallOfFleshChildren(dead.Handle.Slot);
         if (dead.TypeIdentity == VanillaNpcIds.Destroyer)

@@ -20,7 +20,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private bool deathPreviewFailed;
     private VanillaUnifiedRandom1458? deathPreviewLiveRandom;
     private bool deathAdmissionRejected;
-    private NpcHandle plannedHealingHandle;
+    private RuntimeNpcDeathPrelude1458? plannedPrelude;
+    private ulong plannedPreludeRevision;
+    private bool plannedLootAllowed;
     private bool IsPreviewingDeath => lootDelivery.Preview is not null;
     private RuntimeNpcStore DeathNpcs => previewDeathNpcs ?? npcs;
     private RuntimeWorldClock? DeathClock => IsPreviewingDeath ? previewDeathClock : worldClock;
@@ -29,7 +31,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
     private void ExecuteOwnedDeathEvents(in NpcSnapshot dead, bool eaterBoss)
     {
-        ExecuteNpcDeathHitEffects(in dead);
+        if (!IsPreviewingDeath && pendingDeathPlan is not null && !plannedLootAllowed) return;
         AdvanceSlimeRainDeath(in dead);
         AdvanceMoonEventDeath(in dead);
         if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
@@ -88,18 +90,29 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             if (!previewDeathNpcs.TryUpdate(dead.Handle, in deathState, out var previewDead)) return false;
             bool eaterBoss = VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity) &&
                 VanillaEaterOfWorldsLifecycle.IsLastActiveSegment(previewDeathNpcs, in previewDead, npcFamilyBuffer);
-            float luck = TryFindClosestPlayer(in dead, out var closest) ? closest.Luck : 0f;
+            bool hasClosest = TryFindClosestPlayer(in dead, out var closest);
+            float luck = hasClosest ? closest.Luck : 0f;
             if (!float.IsFinite(luck)) return false;
             random.Luck = luck;
+            ExecuteNpcDeathHitEffects(in previewDead);
+            if (deathPreviewFailed) return false;
+            plannedPreludeRevision = deathPrelude.Revision;
+            var prelude = deathPrelude.CreatePreview();
+            lootDelivery.Phase = NpcDeathDropPhase1458.Prelude;
+            if (!plan.BeginPreviewPhase(NpcDeathDropPhase1458.Prelude) ||
+                !TryCaptureDeathPreludeContext(in dead, eaterBoss, out var preludeContext) ||
+                !prelude.TryApply(in dead, in preludeContext, plan.Random, out bool allowLoot) ||
+                !plan.FinishPreviewPhase(NpcDeathDropPhase1458.Prelude)) return false;
             lootDelivery.Phase = NpcDeathDropPhase1458.Imported;
-            if (!plan.BeginPreviewPhase(NpcDeathDropPhase1458.Imported) || !TryExecuteImportedLoot(in dead, eaterBoss) ||
+            if (!plan.BeginPreviewPhase(NpcDeathDropPhase1458.Imported) ||
+                (allowLoot && !TryExecuteImportedLoot(in dead, eaterBoss)) ||
                 !plan.FinishPreviewPhase(NpcDeathDropPhase1458.Imported)) return false;
 
-            ExecuteOwnedDeathEvents(in dead, eaterBoss);
+            if (allowLoot) ExecuteOwnedDeathEvents(in dead, eaterBoss);
             if (deathPreviewFailed) return false;
             lootDelivery.Phase = NpcDeathDropPhase1458.Recovery;
             if (!plan.BeginPreviewPhase(NpcDeathDropPhase1458.Recovery)) return false;
-            DropBossRecoveryItemsIfEligible(in dead, eaterBoss);
+            if (allowLoot) DropBossRecoveryItemsIfEligible(in dead, eaterBoss);
             if (!plan.FinishPreviewPhase(NpcDeathDropPhase1458.Recovery)) return false;
             lootDelivery.Phase = NpcDeathDropPhase1458.Money;
             if (!plan.BeginPreviewPhase(NpcDeathDropPhase1458.Money)) return false;
@@ -108,12 +121,21 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             if (!VanillaNpcDefinitionCatalog.TryGet(dead.TypeIdentity, dead.NetIdentity, out var definition)) return false;
             var origin = ResolveNpcLootOrigin(in dead, in definition);
             var moneySink = new MoneyPlanningSink(lootDelivery, origin, random);
-            if (!VanillaNpcMoneyLoot1458.TryPlan(in context, random, moneySink, MaximumMoneySplitAttempts)) return false;
-            if (VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity)) DropEaterOfWorldsHealingHeartIfEligible(in dead);
+            if (allowLoot && !VanillaNpcMoneyLoot1458.TryPlan(in context, random, moneySink, MaximumMoneySplitAttempts)) return false;
             if (!plan.FinishPreviewPhase(NpcDeathDropPhase1458.Money)) return false;
+            lootDelivery.Phase = NpcDeathDropPhase1458.Healing;
+            if (!plan.BeginPreviewPhase(NpcDeathDropPhase1458.Healing)) return false;
+            var healing = new VanillaNpcHealingContext1458(dead.TypeIdentity, dead.NetIdentity,
+                dead.Simulation.LifeMax, dead.Simulation.DamageOverride ?? definition.Damage,
+                hasClosest && closest.HasHealth && closest.Life < closest.MaxLife,
+                hasClosest && closest.HasMana && closest.Mana < closest.MaxMana, expertMode);
+            if ((allowLoot && !VanillaNpcHealingLoot1458.TryExecute(in healing, in origin, random, lootDelivery)) ||
+                !plan.FinishPreviewPhase(NpcDeathDropPhase1458.Healing)) return false;
             random.UseSource(liveRandom);
             if (!plan.TryReserve(worldItems) || !plan.TryAccept(IsCurrentDeathOwner)) return false;
             plannedDaily = previewDaily;
+            plannedPrelude = prelude;
+            plannedLootAllowed = allowLoot;
             pendingDeathPlan = plan;
             completed = true;
             return true;
@@ -123,7 +145,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             random.UseSource(liveRandom); random.Luck = oldLuck;
             lootDelivery.Preview = null;
             previewDeathNpcs = null; previewDeathClock = null; previewDeathProgression = null; previewDaily = null; deathPreviewLiveRandom = null;
-            if (!completed) plan.Dispose();
+            if (!completed)
+            {
+                plan.Dispose(); plannedPrelude = null; plannedPreludeRevision = 0; plannedLootAllowed = false;
+            }
         }
     }
 
@@ -138,10 +163,11 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private void CancelPendingDeathPlan()
     {
         pendingDeathPlan?.Dispose(); pendingDeathPlan = null; plannedDaily = null;
+        plannedPrelude = null; plannedPreludeRevision = 0; plannedLootAllowed = false;
     }
 
     private bool IsCurrentDeathOwner(NpcHandle handle, NpcRevision revision) =>
-        npcs.TryGet(handle, out var current) && current.Revision == revision;
+        npcs.TryGet(handle, out var current) && current.Revision == revision && deathPrelude.Revision == plannedPreludeRevision;
 
     private bool MoneyClearedBeforeDeathPhase(in NpcSnapshot dead, bool eaterBoss)
     {

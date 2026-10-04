@@ -34,26 +34,41 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 before.Type != home.NpcType.Value) continue;
             visited++;
             int peerCount = npcs.CopyActive(peers);
-            if (!AdmitsOuterContact(in before, peers[..peerCount]) ||
-                !status.TryGetStinky(before.Handle, out bool selfStinky)) { rejected++; continue; }
+            if (!status.TryGetStinky(before.Handle, out bool selfStinky)) { rejected++; continue; }
+            using var randomScope = combat.BeginRandomScope(random);
             int originX = BottomTileX(in before, home.NpcType), originY = BottomTileY(in before, home.NpcType, 1f);
             if (Interior(originX, originY) && Cell(originX, originY).TileType == VanillaTileIds.PoopBlock)
                 status.TryApplyRepeated(before.Handle);
-            if (selfStinky)
-            {
-                RuntimeNpcStinkyVisualOffer1458 offer = combat.PlanStinkyVisualOffer();
-                status.ObserveVisualOffer(before.Handle, in offer);
-            }
+            RuntimeNpcStinkyVisualOffer1458 visualOffer = selfStinky ? combat.PlanStinkyVisualOffer() : default;
             if (!TryPlanUnifiedResident(in before, in home, in conditions, players, conversations,
                     seatedPlayers, playerDanger, peers[..peerCount], status, combat, melee,
                     out NpcStateUpdate aiState, out bool force, out NpcAiProjectileIntent? projectile,
                     out int meleeCount)) { rejected++; continue; }
             double surface = tiles.WorldSurfaceTiles ?? Math.Max(1d, tiles.Dimensions.HeightTiles / 3d);
-            if (!VanillaNpcWorldMotionAiStepper.TryFinishPhysics(tiles, surface, in before, in aiState, out var moved))
+            aiState = aiState with { Simulation = aiState.Simulation with {
+                HostileContactImmunity = Math.Max(0, aiState.Simulation.HostileContactImmunity - 1) } };
+            if (!VanillaNpcWorldMotionAiStepper.TryApplyGravity(tiles, surface, in aiState, out var accelerated, out var gravity) ||
+                !combat.TryPlanContact(in before, RuntimeTownNpcCombat1458.PlanFriendlyRegeneration(in accelerated), peers[..peerCount], randomScope is not null,
+                    out var contacted, out var strike))
             { rejected++; continue; }
+            NpcStateUpdate moved;
+            if (gravity.HasValue)
+            {
+                if (!VanillaNpcWorldMotionAiStepper.TryFinishCollision(tiles, in contacted,
+                        gravity.Value.Parameters.Gravity, out moved)) { rejected++; continue; }
+            }
+            else moved = contacted;
             moved = FinishResidentPresentation(in moved);
+            moved = moved with { Simulation = moved.Simulation with { JustHit = false } };
             if (!npcs.TryGet(before.Handle, out var current) || current.Revision != before.Revision ||
-                !npcs.TryUpdate(before.Handle, in moved, out var committed, forceSync: force)) { rejected++; continue; }
+                randomScope is not null && !randomScope.IsCurrent ||
+                !npcs.TryUpdateUnpublished(before.Handle, in moved, out var committed)) { rejected++; continue; }
+            // TryUpdateUnpublished has no external callbacks. Adopt before the single publication so a
+            // trusted sink can draw from the accepted stream without those draws being overwritten.
+            randomScope?.Accept();
+            if (selfStinky) status.ObserveVisualOffer(before.Handle, in visualOffer);
+            if (strike.HasValue) combat.PublishContact(in committed, strike.Value);
+            npcs.TryPublishUpdate(in committed, forceSync: force || strike.HasValue);
             townNpcs.TryUpdatePosition(home.NpcSlot, in committed);
             states[home.NpcSlot] = committed.Ai.Ai0 == 5f || conditions.ReturnHomeRequested && committed.Ai.Ai0 == 0f &&
                 Math.Abs(BottomTileX(in committed, home.NpcType) - home.HomeTileX) <= 1
@@ -85,6 +100,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         Span<RuntimeTownNpcMeleeIntent1458> melee, out NpcStateUpdate update, out bool force,
         out NpcAiProjectileIntent? projectile, out int meleeCount)
     {
+        NpcSnapshot combatInput = combat.PlanVitals(in before);
         update = default;
         force = false;
         projectile = null;
@@ -94,9 +110,10 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             VanillaWorldCollision.TryGetWetContact(tiles, before.PositionX, before.PositionY,
                 GetWidth(home.NpcType), GetHeight(home.NpcType), out _)) return false;
         if (before.Handle.Slot >= TerrariaNpcTalkCodec.MaximumNpcSlots ||
-            !TryPlanHomePrelude(in before, in home, in conditions, players, out var homeInput,
+            !TryPlanHomePrelude(in combatInput, in home, in conditions, players, out var homeInput,
                 out int floorX, out int floorY, out int originTileX, out int originTileY, out bool homeForce) ||
             !status.TryGetStinky(before.Handle, out bool selfStinky)) return false;
+        if (!combat.AdmitsContactBeforeWorldEffects(in homeInput, peers)) return false;
         force |= homeForce;
         bool attackExempt = homeInput.Ai.Ai0 is 10f or 12f or 14f or 15f or 24f;
         RuntimeTownPlayerConversation1458? talker = null;

@@ -30,7 +30,13 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private bool TryExecuteImportedLoot(in NpcSnapshot npc, bool eaterBoss)
     {
         if (!IsPreviewingDeath && pendingDeathPlan is { } plan)
+        {
+            if (!plan.CanBeginDeathHitEffects() || deathPrelude.Revision != plannedPreludeRevision) return false;
+            ExecuteNpcDeathHitEffects(in npc);
+            if (!plan.TryPublishPhase(NpcDeathDropPhase1458.Prelude, lootDelivery.Adopt) ||
+                !deathPrelude.TryPublish(plannedPrelude!, plannedPreludeRevision)) return false;
             return plan.TryPublishPhase(NpcDeathDropPhase1458.Imported, lootDelivery.Adopt);
+        }
         if (VanillaEaterOfWorldsLifecycle.IsSegment(npc.TypeIdentity))
             return TryExecuteEaterOfWorldsLoot(in npc, eaterBoss);
         if (npc.TypeIdentity == VanillaNpcIds.BrainOfCthulhu || npc.TypeIdentity == VanillaNpcIds.BrainCreeper)

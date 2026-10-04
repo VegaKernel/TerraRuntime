@@ -7,9 +7,9 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimeWorldSnapshotCacheValidityTests
 {
     [Fact]
-    public void Runtime_cache_layout_revision_tracks_lunar_event_metadata()
+    public void Runtime_cache_layout_revision_tracks_lunar_and_banner_metadata()
     {
-        Assert.Equal(3, RuntimeWorldSnapshotCache.CurrentLayoutVersion);
+        Assert.Equal(4, RuntimeWorldSnapshotCache.CurrentLayoutVersion);
     }
 
     [Fact]

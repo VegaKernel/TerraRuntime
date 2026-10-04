@@ -97,6 +97,12 @@ public readonly record struct NpcSimulationState(
 
     public bool JustHit { get; init; }
 
+    /// <summary>Generation-owned NPC.immune[255], decremented after AI and before hostile contact.</summary>
+    public int HostileContactImmunity { get; init; }
+
+    /// <summary>Generation-owned ordinary friendly regeneration accumulator from NPC.CheckLifeRegen.</summary>
+    public int FriendlyRegenerationCounter { get; init; }
+
     /// <summary>Authoritative NPC.confused state consumed by source AI branches that reset hostile attack clocks.</summary>
     public bool Confused { get; init; }
 
@@ -215,6 +221,8 @@ public readonly record struct NpcSimulationState(
     };
 
     public bool IsValid =>
+        HostileContactImmunity >= 0 &&
+        FriendlyRegenerationCounter is >= 0 and <= 180 &&
         (MoneyValue is null || float.IsFinite(MoneyValue.Value) && MoneyValue.Value >= 0f) &&
         (ExtraMoneyValue is null || ExtraMoneyValue.Value >= 0) &&
         (Rotation is null || float.IsFinite(Rotation.Value)) &&

@@ -8,9 +8,10 @@ namespace TerraRuntime.Application;
 
 internal sealed class NpcRuntimeTownCombatRandom1458(IVanillaNpcRandom random) : IRuntimeTownNpcCombatRandom1458
 {
-    public int Next(int exclusiveMax) => random.NextInt32(0, exclusiveMax);
+    internal IVanillaNpcRandom Current { get; set; } = random;
+    public int Next(int exclusiveMax) => Current.NextInt32(0, exclusiveMax);
     public float NextFloat(float inclusiveMin, float exclusiveMax) =>
-        (float)random.NextDouble() * (exclusiveMax - inclusiveMin) + inclusiveMin;
+        (float)Current.NextDouble() * (exclusiveMax - inclusiveMin) + inclusiveMin;
 }
 
 internal sealed partial class RuntimeTownNpcCombat1458

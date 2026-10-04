@@ -105,7 +105,8 @@ internal sealed class TownNpcAuthority
                     progression,
                     expertMode,
                     masterMode,
-                    npcRandom is null ? null : new NpcRuntimeTownCombatRandom1458(npcRandom))
+                    npcRandom is null ? null : new NpcRuntimeTownCombatRandom1458(npcRandom),
+                    contactReplication: npcReplication)
                 : null;
         housingValidator = worldTiles is not null && townNpcs is not null
             ? new VanillaHousingValidator1458(worldTiles)

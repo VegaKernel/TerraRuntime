@@ -52,7 +52,8 @@ internal sealed partial class ServerRuntimeState
         Random? projectilePlayerCombatRandom = null,
         IVanillaNpcRandom? naturalSpawnRandom = null,
         WorldRuntimeIdentity worldIdentity = default,
-        RuntimeChestCommandProcessor? chestCommands = null)
+        RuntimeChestCommandProcessor? chestCommands = null,
+        RuntimeNpcDeathPrelude1458? deathPrelude = null)
     {
         WorldIdentity = worldIdentity.IsAssigned ? worldIdentity : new(WorldRuntimeId.CreateNew(), WorldSessionId.CreateNew());
         _runtime = ServerRuntimeComposition.Create(
@@ -94,6 +95,6 @@ internal sealed partial class ServerRuntimeState
             projectilePlayerCombatRandom,
             naturalSpawnRandom,
             WorldIdentity,
-            chestCommands);
+            chestCommands, deathPrelude);
     }
 }

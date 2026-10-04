@@ -301,26 +301,6 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         DeathProgression.MarkCompleted(VanillaWorldProgressionId.EvilBoss);
     }
 
-    private void DropEaterOfWorldsHealingHeartIfEligible(in NpcSnapshot eaterSegment)
-    {
-        if (!IsPreviewingDeath && plannedHealingHandle == eaterSegment.Handle) return;
-        if (!TryFindClosestPlayer(in eaterSegment, out PlayerStateSnapshot closest) ||
-            !closest.HasHealth || closest.Life >= closest.MaxLife ||
-            random.NextInt32(0, 4) != 0 ||
-            !VanillaNpcDefinitionCatalog.TryGet(
-                eaterSegment.TypeIdentity,
-                eaterSegment.NetIdentity,
-                out VanillaNpcDefinition definition))
-        {
-            return;
-        }
-
-        var origin = ResolveNpcLootOrigin(in eaterSegment, in definition);
-        var heart = new NpcLootDrop(VanillaWallOfFleshItemIds.Heart, 1);
-        if (!lootDelivery.TryDeliverWorldItem(in origin, in heart, random))
-            throw new InvalidOperationException("Eater of Worlds healing Heart drop could not be materialized.");
-    }
-
     private bool TryFindClosestPlayer(in NpcSnapshot npc, out PlayerStateSnapshot closest)
     {
         closest = default;

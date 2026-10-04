@@ -21,7 +21,7 @@ public sealed partial class RuntimeNpcStore
         TrySpawnCore(slot, in update, out snapshot, replaceActive: false, protect: false);
 
     private bool TrySpawnCore(byte slot, in NpcStateUpdate update, out NpcSnapshot snapshot, bool replaceActive, bool protect,
-        VanillaNpcSpawnDefaults? spawnDefaults = null)
+        VanillaNpcSpawnDefaults? spawnDefaults = null, bool publish = true)
     {
         if (!IsAddressableSlot(slot) || !IsValid(in update))
         {
@@ -44,7 +44,8 @@ public sealed partial class RuntimeNpcStore
         state.Update = normalized;
         if (!wasActive) _activeCount++;
         snapshot = Capture(slot, in state);
-        _commitSink?.NpcStateCommitted(NpcStateCommitKind.Spawn, in snapshot);
+        if (publish)
+            _commitSink?.NpcStateCommitted(NpcStateCommitKind.Spawn, in snapshot);
         return true;
     }
 
@@ -132,11 +133,16 @@ public sealed partial class RuntimeNpcStore
     }
 
     private bool TryCaptureSpawnDefaults(ref int type, ref short netId, out VanillaNpcSpawnDefaults? defaults, out float difficulty)
+        => TryCaptureSpawnDefaults(ref type, ref netId, out defaults, out difficulty, out _);
+
+    private bool TryCaptureSpawnDefaults(ref int type, ref short netId, out VanillaNpcSpawnDefaults? defaults,
+        out float difficulty, out VanillaNpcSpawnContext context)
     {
         defaults = null;
         difficulty = 1f;
+        context = new(1f, 1, false);
         if (_spawnContext is null) return true;
-        var context = _spawnContext();
+        context = _spawnContext();
         if (!context.IsValid) return false;
         if (context.GoodWorld)
         {
@@ -159,7 +165,7 @@ public sealed partial class RuntimeNpcStore
     }
 
     private bool TrySpawnVanillaCore(in NpcStateUpdate update, out NpcSnapshot snapshot, int startSlot,
-        VanillaNpcSpawnDefaults? spawnDefaults)
+        VanillaNpcSpawnDefaults? spawnDefaults, bool publish = true)
     {
         if (!IsValid(in update))
         {
@@ -188,13 +194,13 @@ public sealed partial class RuntimeNpcStore
             ref readonly SlotState state = ref _slots[slot];
             if (state.Generation == ulong.MaxValue) continue;
             if (!state.Active && state.SpawnProtection == 0)
-                return TrySpawnCore((byte)slot, in spawnedState, out snapshot, replaceActive: false, protect: true, spawnDefaults);
+                return TrySpawnCore((byte)slot, in spawnedState, out snapshot, replaceActive: false, protect: true, spawnDefaults, publish);
             if (replacement < 0 && state.Update.Simulation.CanBeReplacedByOtherNpcs)
                 replacement = slot;
         }
 
         if (replacement >= 0)
-            return TrySpawnCore((byte)replacement, in spawnedState, out snapshot, replaceActive: true, protect: true, spawnDefaults);
+            return TrySpawnCore((byte)replacement, in spawnedState, out snapshot, replaceActive: true, protect: true, spawnDefaults, publish);
         snapshot = default;
         return false;
     }

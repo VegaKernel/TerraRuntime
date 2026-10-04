@@ -8,6 +8,7 @@ public static class VanillaNpcIds
 {
     public static readonly NpcTypeId BlueSlime = new(1);
     public static readonly NpcTypeId StatueMimic = new(690);
+    public static readonly NpcTypeId Gnome = new(624);
     public static readonly NpcTypeId SkeletonMerchant = new(453);
     public static readonly NpcTypeId Bunny = new(46);
     public static readonly NpcTypeId CorruptBunny = new(47);
@@ -234,6 +235,9 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId Fritz = new(462);
     public static readonly NpcTypeId ThePossessed = new(469);
     public static readonly NpcTypeId Reaper = new(253);
+    public static readonly NpcTypeId Mothron = new(477);
+    public static readonly NpcTypeId MothronEgg = new(478);
+    public static readonly NpcTypeId BabyMothron = new(479);
     public static readonly NpcTypeId MartianSaucerCore = new(395);
     public static readonly NpcTypeId Butcher = new(460);
     public static readonly NpcTypeId Nailhead = new(463);
@@ -384,6 +388,9 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId Jellyfish = new(18);
     public static readonly NpcAiStyleId Antlion = new(19);
     public static readonly NpcAiStyleId GhostHover = new(22);
+    public static readonly NpcAiStyleId Mothron = new(88);
+    public static readonly NpcAiStyleId MothronEgg = new(89);
+    public static readonly NpcAiStyleId BabyMothron = new(90);
     public static readonly NpcAiStyleId SpikeBall = new(20);
     public static readonly NpcAiStyleId BlazingWheel = new(21);
     public static readonly NpcAiStyleId WallOfFlesh = new(27);
