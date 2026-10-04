@@ -1025,8 +1025,14 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 // so letting the desert-object check run first would erase the incomplete fragment.
                 if (tile.IsActive && GenerationObjectSupport1458.IsBoulder(tile.Type))
                 {
-                    RepairFinalCleanupBoulder(grid, x, y, tile.Type, tile.FrameX, tile.FrameY);
-                    normalized++;
+                    if (!HasFinalCleanupBoulderHeartAbove(grid, x, y, tile.FrameX, tile.FrameY) &&
+                        GenerationDesertObjectFraming1458.Check(grid.Store, x, y))
+                        normalized++;
+                    if (tile.IsActive && GenerationObjectSupport1458.IsBoulder(tile.Type))
+                    {
+                        RepairFinalCleanupBoulder(grid, x, y, tile.Type, tile.FrameX, tile.FrameY);
+                        normalized++;
+                    }
                 }
                 if (GenerationDesertObjectFraming1458.Check(grid.Store, x, y))
                     normalized++;
@@ -1334,6 +1340,14 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
             piece.FrameX = 0;
             piece.FrameY = 0;
         }
+    }
+
+    private static bool HasFinalCleanupBoulderHeartAbove(RuntimeGrid grid, int x, int y, short frameX, short frameY)
+    {
+        int originX = x - frameX / 18;
+        int originY = y - frameY / 18;
+        return originY > 0 && (grid.At(originX, originY - 1).IsActive && grid.At(originX, originY - 1).Type == 26 ||
+            grid.At(originX + 1, originY - 1).IsActive && grid.At(originX + 1, originY - 1).Type == 26);
     }
 
     // TileID.Sets.Clouds, including the six 1.4.5.8 identities (not MergesWithClouds).
