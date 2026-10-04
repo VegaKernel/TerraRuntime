@@ -46,7 +46,7 @@ public sealed class ServerRuntimeWorldItemCommandTests
 
         Assert.True(runtime.TryCaptureWorldItemSnapshot(allocated.Handle.Slot, out WorldItemSnapshot updated));
         Assert.Equal(allocated.Handle, updated.Handle);
-        Assert.Equal((ulong)3, updated.Revision.Value);
+        Assert.Equal(allocated.Revision.Value + 2, updated.Revision.Value);
         Assert.Equal(130f, updated.PositionX);
         Assert.Equal((short)3, updated.Stack);
         Assert.Equal(playerSlot, updated.OwnerPlayerId);
@@ -266,9 +266,9 @@ public sealed class ServerRuntimeWorldItemCommandTests
             VelocityX: 1.5f,
             VelocityY: -2f,
             Stack: stack,
-            Prefix: 4,
+            Prefix: 0,
             Ownership: WorldItemOwnershipMode.None,
-            ItemNetId: 100,
+            ItemNetId: 2,
             Shimmered: false,
             ShimmerTime: 0f,
             EnemyGrabDelayTime: 0);

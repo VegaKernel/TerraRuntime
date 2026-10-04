@@ -87,11 +87,13 @@ public sealed class MiningInventoryRegressionTests
             f.Kill();
             Assert.False(f.Tiles.Get(50, 52).IsActive);
             Assert.Equal(1, f.Items.ActiveCount);
-            Assert.Contains((byte)21, f.Drain());
+            byte[] creationFrames = f.Drain();
+            Assert.Contains((byte)21, creationFrames);
+            Assert.True(Array.IndexOf(creationFrames, (byte)22) > Array.IndexOf(creationFrames, (byte)21));
             f.DiscoverOwner();
             Assert.True(f.Items.TryGetActive(0, out var item));
             Assert.Equal(f.Player.Slot.Value, item.OwnerPlayerId);
-            Assert.Contains((byte)22, f.Drain());
+            Assert.DoesNotContain((byte)22, f.Drain());
             f.Remove(0);
             Assert.Equal(0, f.Items.ActiveCount);
             Assert.Equal(new byte[] { 151 }, f.Drain());
@@ -132,14 +134,19 @@ public sealed class MiningInventoryRegressionTests
     }
 
     [Fact]
-    public void Missing_max_stack_remains_closed_and_nonowner_cannot_delete_or_release_a_lease()
+    public void Unknown_item_allocation_remains_closed_and_nonowner_cannot_delete_or_release_a_lease()
     {
         using var f = new Fixture(fullInventory: true);
-        f.Equip(49, 269, 1); // Sparse catalog has no maximum for this type.
+        f.Equip(49, 32767, 1); // Outside the complete pinned-source item catalog.
         var drop = new WorldItemDropStateUpdate(800, 800, 0, 0, 1, 0,
-            WorldItemOwnershipMode.None, 269, false, 0, 0);
+            WorldItemOwnershipMode.None, 32767, false, 0, 0);
+        Assert.False(f.Items.TryAllocateDrop(in drop, out _));
+        Assert.Equal(0, f.Items.ActiveCount);
+        drop = drop with { ItemNetId = 2 };
         Assert.True(f.Items.TryAllocateDrop(in drop, out var original));
         f.DiscoverOwner();
+        var unowned = new WorldItemOwnerStateUpdate(byte.MaxValue, 0, byte.MaxValue, 0, 800, 800);
+        Assert.True(f.Items.TryApplyOwner(original.Handle.Slot, in unowned, out _));
         f.Remove(original.Handle.Slot);
         Assert.True(f.Items.TryGetActive(original.Handle.Slot, out var stillPresent));
         Assert.Equal(byte.MaxValue, stillPresent.OwnerPlayerId);
@@ -150,13 +157,13 @@ public sealed class MiningInventoryRegressionTests
     }
 
     [Fact]
-    public void Previously_invisible_full_pool_recovers_when_owner_sends_compact_removal()
+    public void Full_source_table_publishes_transient_drop_then_owner_removal_allows_a_physical_retry()
     {
         using var f = new Fixture(fullInventory: false);
         f.Equip(7, 3509, 1);
         f.Select(7);
-        // Full age-zero source stacks cannot compact or select an oldest item. The network sentinel owner
-        // search remains outside this admission, so removal must provide a physical slot before retry.
+        // Full age-zero stacks select the source transient index400. Once an owner removes a physical
+        // item, a subsequent producer must reuse that slot with a fresh generation.
         var drop = new WorldItemDropStateUpdate(800, 800, 0, 0, 9999, 0,
             WorldItemOwnershipMode.None, 1, false, 0, 0);
         for (int i = 0; i < 400; i++)
@@ -166,12 +173,14 @@ public sealed class MiningInventoryRegressionTests
         }
         Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(f.Tiles, 50, 52));
         f.Kill();
-        Assert.True(f.Tiles.Get(50, 52).IsActive); // No item loss / unbounded allocation to hide pressure.
-        Assert.Equal(1, f.State.RejectedWorldItemAllocations);
+        Assert.False(f.Tiles.Get(50, 52).IsActive);
+        Assert.Equal(0, f.State.RejectedWorldItemAllocations);
+        Assert.Equal(400, f.Items.ActiveCount);
         f.DiscoverOwner();
         f.Drain();
         f.Remove(0);
         Assert.Equal(399, f.Items.ActiveCount);
+        Assert.True(WorldTileTestMutations.TryPlaceDirtOnEmpty(f.Tiles, 50, 52));
         f.Kill();
         Assert.False(f.Tiles.Get(50, 52).IsActive);
         Assert.True(f.Items.TryGetActive(0, out var replacement));

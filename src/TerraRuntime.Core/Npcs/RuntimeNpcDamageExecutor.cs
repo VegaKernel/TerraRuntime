@@ -180,7 +180,9 @@ public sealed class RuntimeNpcDamageExecutor
             damage = Math.Max(1, (int)(damage * 0.7f));
 
         int lifeBefore = current.Simulation.Life;
-        int lifeAfter = Math.Max(0, lifeBefore - damage);
+        // StrikeNPC_Inner still resolves the strike, JustHit and knockback for an immortal actor, but skips
+        // the life subtraction. This flag differs from upstream DontTakeDamage strike admission.
+        int lifeAfter = current.Simulation.Immortal == true ? lifeBefore : Math.Max(0, lifeBefore - damage);
         VanillaNpcKnockbackResult knockback = VanillaNpcKnockbackResolver.Resolve(
             current.VelocityX,
             current.VelocityY,

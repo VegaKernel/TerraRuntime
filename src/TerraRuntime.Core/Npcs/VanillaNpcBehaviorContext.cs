@@ -107,6 +107,13 @@ internal sealed class VanillaNpcBehaviorContext
     public void SetPlayerSnapshotLookup(IRuntimePlayerSlotSnapshotLookup playerSnapshots) =>
         _playerSnapshots = playerSnapshots ?? throw new ArgumentNullException(nameof(playerSnapshots));
 
+    internal bool TryGetOwnedPlayer(byte slot, out PlayerStateSnapshot snapshot)
+    {
+        snapshot = default;
+        return _playerSnapshots is not null && _playerSnapshots.TryGetPlayer(new PlayerSlotId(slot), out snapshot) &&
+            snapshot.Player.IsAssigned && snapshot.Player.Slot.Value == slot;
+    }
+
     public void SetMoonEventState(bool pumpkinMoonActive, bool snowMoonActive = false)
     {
         PumpkinMoonActive = pumpkinMoonActive;

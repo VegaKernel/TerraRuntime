@@ -102,7 +102,7 @@ public static class VanillaFlyingEyeNpcCatalog
         {
             profile = new(HungryHorizontal, HungryVertical, RisesInWater: true);
         }
-        else if (type == VanillaNpcIds.WanderingEye && lifeMax > 0 && life < lifeMax / 2)
+        else if (type == VanillaNpcIds.WanderingEye && lifeMax > 0 && (double)life < (double)lifeMax * .5d)
         {
             profile = new(
                 EnragedWanderingHorizontal,

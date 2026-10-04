@@ -111,7 +111,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         }
         if ((targeting is not null && (VanillaGhostHoverNpcCatalog1458.IsSupported(npc.TypeIdentity) ||
             VanillaMothronNpcCatalog1458.IsSupported(npc.TypeIdentity) ||
-            VanillaBigMimicNpcCatalog1458.IsSupported(npc.TypeIdentity))) ||
+            VanillaBigMimicNpcCatalog1458.IsSupported(npc.TypeIdentity) || targeting.HasFlyingEyeRetainedPlan(in npc))) ||
             npc.TypeIdentity == VanillaNpcIds.Nailhead || npc.TypeIdentity == VanillaNpcIds.DrManFly || npc.TypeIdentity == VanillaNpcIds.Frankenstein)
         {
             next = aiState;
@@ -521,6 +521,17 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations)
     {
+        if (targeting is not null && targeting.HasFlyingEyeRetainedPlan(in before))
+        {
+            if (!targeting.TryGetFlyingEyeRetainedPlan(in before, in committed, mutations, out var planned) ||
+                !TryFinishPhysics(tiles, worldSurfaceTiles, in before, in planned, out var final,
+                    VanillaFlyingEyeNpcCatalog.FleesDaylight(before.TypeIdentity)))
+            {
+                targeting.CancelFlyingEyeRetainedPlan();
+                return default;
+            }
+            return targeting.CompleteFlyingEyeRetainedPlan(in before, in committed, in final, mutations);
+        }
         if (targeting is not null && VanillaBigMimicNpcCatalog1458.IsSupported(before.TypeIdentity))
         {
             if (!targeting.TryGetBigMimicAcceptedPlan(in before, in committed, mutations, out var planned, out bool fallThrough) ||

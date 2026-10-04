@@ -1,5 +1,7 @@
 # NPC behavior-family dispatch
 
+2026-10-04 seventh gameplay/NPC checkpoint is accepted on baseline `52c8c5ab`: retained AI002 state/RNG/defaults and world execution, source item owner eligibility and client creation/timing, bounded contextual town emotes, Immortal HP and unchecked knockback arithmetic. Full **1,182,793/1,182,793** tests pass in **513.212 s**, with zero failures/errors/skips; clean Release rebuild, Windows NativeAOT/five smokes and documentation/domain/graph/staged-diff gates pass. Production/test inputs stayed unchanged through acceptance: `2b4baf3527e7c98579b702c7b05796e4343b0654174d6039ffe1123374e4c200`. Evidence `.cache/flying-eye-owner-emotes-final-status.json`. FullVanillaAiParity remains false; broad N1–N5, Linux NativeAOT, unowned AI002 target/frame facts, selected unknown town contexts and instanced item400 remain open. Next: contained slime items/Hive/Bee, source mechanical-summon loot before contents, and authenticated town biome context. No push requested.
+
 [Русский](../ru/npc-behavior-families.md) · [Gameplay](gameplay.md) · [Gameplay decomposition roadmap](../roadmap/gameplay-decomposition-and-catalogs.md)
 
 ## Purpose
@@ -118,7 +120,11 @@ Brain of Cthulhu and Brain Creeper are now explicit fail-closed families. The Br
 
 AI_002 now keeps its non-cosmetic lifecycle rules outside packet/state guessing. Daylight discouragement is source-shaped: only the pinned fleeing identities, during daytime, at or above `worldSurface`, and only when the current target is not in a functional Graveyard. The branch clamps `timeLeft` to 10, forces upward intent, and deliberately skips `TargetClosest` for that tick.
 
-Pigrons now preserve the source `ai[0]/ai[1]` phase machine. Missing line of sight increments `ai[0]`; tick 300 enters no-tile-collision mode. Restored LOS only exits phasing after `Collision.SolidCollision` is false. Production facts come from `VanillaWorldCanHit`, `VanillaWorldSolidCollision`, and `VanillaWorldGraveyardScene`. Cosmetic alpha, rotation, dust and sound remain outside the authoritative state claim.
+Pigrons preserve the source `ai[0]/ai[1]` phase machine. Missing line of sight increments `ai[0]`; tick 300 enters no-tile-collision mode. Restored LOS only exits phasing after `Collision.SolidCollision` is false. Production facts come from `VanillaWorldCanHit`, `VanillaWorldSolidCollision`, and `VanillaWorldGraveyardScene`, using both actors' actual bodies. Alpha, rotation, wet clearing and explicit phase synchronization are retained in the accepted simulation state.
+
+The accepted seventh slice completes the bounded AI_002 ordering for the existing 13 canonical identities and six negative eye variants: incoming collision rebound precedes daylight/target decisions; source integer target rectangles determine facing; overlapping Pigron bodies preserve momentum; Hungry/Pigron/Wandering speed caps stay independent of ordinary-eye scale; Wandering Eye uses the source double half-life comparison. Dedicated-server IdleSounds and AI dust/sound draws consume the shared original RNG, even though presentation particles are not created. After physics, source sprite/rotation, family-specific platform traversal and CheckActive lifetime/reset rectangles use live player bodies, including Rudolph. The source body has no transform or attack producer; Owl/Bird conversion belongs to AI_024.
+
+Independent original evidence contains 65,562 whole-AI rows, 5,752 complete UpdateNPC rows and 2,736 canonical/negative SetDefaults rows. The outer matrix includes solid walls, phasing overlap, platforms, mounted targets and inactivity rectangle edges. Expert/Good World Hungry scaling, hardmode/Plantera monetary scaling and negative-variant float multiplication are pinned by the defaults matrix. This candidate does not claim full family parity: raw inactive/sentinel targets, NoAggro/negative-aggro facing, tank-pet redirection, imported Shimmer transparency and animation frame counters remain outside the verified admission. FullVanillaAiParity remains false; common presentation scheduling across every NPC family remains open.
 
 ### AI_005 projectile side-effect boundary
 

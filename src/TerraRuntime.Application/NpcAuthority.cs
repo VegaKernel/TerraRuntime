@@ -102,7 +102,8 @@ internal sealed partial class NpcAuthority
         IVanillaNpcRandom? naturalSpawnRandom = null,
         RuntimeProjectileReplicationRegistry? projectileReplication = null,
         VanillaUnifiedRandom1458? lootRandom = null,
-        RuntimeNpcDeathPrelude1458? deathPrelude = null)
+        RuntimeNpcDeathPrelude1458? deathPrelude = null,
+        RuntimeTownSocialWorld1458? townSocialWorldFacts = null)
     {
         ArgumentNullException.ThrowIfNull(playerSnapshots);
         this.playerSnapshots = playerSnapshots;
@@ -178,7 +179,8 @@ internal sealed partial class NpcAuthority
             townInitialInvasionActive,
             expertMode,
             masterMode,
-            this.naturalSpawnRandom, tallGateOccupancy, tileManipulationReplication, serverPlayers, npcStinkyStatus);
+            this.naturalSpawnRandom, tallGateOccupancy, tileManipulationReplication, serverPlayers, npcStinkyStatus,
+            townSocialWorldFacts: townSocialWorldFacts);
         mysticFrogCatch = worldTiles is not null
             ? new RuntimeMysticFrogCatchService1458(npcs, worldTiles, playerSnapshots)
             : null;
@@ -230,6 +232,7 @@ internal sealed partial class NpcAuthority
             vanillaTargeting.SetBigMimicEffects(new RuntimeBigMimicEffects1458(projectiles, worldItems, playerSnapshots),
                 townCommerceWorldFacts?.TenthAnniversaryWorld ?? false);
             vanillaTargeting.SetPlayerInteractions(combat.Interactions);
+            vanillaTargeting.SetPlayerSnapshotLookup(playerSnapshots);
             if (projectileReplication is not null)
                 vanillaTargeting.SetProjectileAnchors(new RuntimeNpcProjectileAnchors(projectiles, projectileReplication.WireIdentities, players));
             var behaviorDispatch = new RuntimeNpcBehaviorStateStepper(

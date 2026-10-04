@@ -10,6 +10,8 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId StatueMimic = new(690);
     public static readonly NpcTypeId Gnome = new(624);
     public static readonly NpcTypeId SkeletonMerchant = new(453);
+    public static readonly NpcTypeId TravellingMerchant = new(368);
+    public static readonly NpcTypeId TorchGod = new(664);
     public static readonly NpcTypeId Bunny = new(46);
     public static readonly NpcTypeId CorruptBunny = new(47);
     public static readonly NpcTypeId Crab = new(67);

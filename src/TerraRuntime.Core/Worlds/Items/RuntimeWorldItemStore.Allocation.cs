@@ -7,6 +7,47 @@ public sealed partial class RuntimeWorldItemStore
 {
     private readonly WorldItemStackTransfer1458[] sourceTransfers = new WorldItemStackTransfer1458[VanillaCapacity];
     private int sourceTransferCount;
+    private IWorldItemOwnerFactsProvider1458? ownerFactsProvider;
+
+    /// <summary>One-time binding before the world exposes commands; a reused store cannot retain another world's players.</summary>
+    public void AttachOwnerFactsProvider(IWorldItemOwnerFactsProvider1458 provider)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+        if (ownerFactsProvider is not null) throw new InvalidOperationException("World item owner facts are already bound.");
+        ownerFactsProvider = provider;
+    }
+
+    public bool TryGetSourceOwnerMetadata(WorldItemHandle handle, out int age, out bool releaseRequested)
+    {
+        age = 0; releaseRequested = false;
+        if (!handle.IsAssigned || !IsValidSlot(handle.Slot)) return false;
+        SpinWait spin = default;
+        while (true)
+        {
+            int version = ReadStableVersion(ref spin); var state = _slots[handle.Slot];
+            if (version != ReadVersion()) continue;
+            if (!state.Active || state.Generation != handle.Generation.Value) return false;
+            age = state.SourceOwnerAge; releaseRequested = state.SourceReleaseRequested; return true;
+        }
+    }
+
+    public bool TryRequestSourceOwnerRelease(WorldItemHandle handle)
+    {
+        WorldItemSnapshot snapshot;
+        if (!handle.IsAssigned || !IsValidSlot(handle.Slot)) return false;
+        BeginWrite();
+        try
+        {
+            ref var state = ref _slots[handle.Slot];
+            if (!state.Active || state.Claimed || state.Generation != handle.Generation.Value ||
+                state.Update.OwnerPlayerId == byte.MaxValue || state.SourceReleaseRequested || !TryAdvance(ref state.Revision)) return false;
+            state.SourceReleaseRequested = true; state.SourceOwnerAge = -1;
+            snapshot = Capture(handle.Slot, state);
+        }
+        finally { EndWrite(); }
+        Publish(WorldItemStateCommitKind.OwnershipReleaseRequested, snapshot);
+        return true;
+    }
 
     public bool HasPendingSourceTransfer(WorldItemHandle handle)
     {
@@ -34,11 +75,12 @@ public sealed partial class RuntimeWorldItemStore
         => new(this, players);
 
     public bool TryAllocateSourceDrop(in WorldItemDropStateUpdate drop, ReadOnlySpan<WorldItemAllocationPlayer1458> players,
-        out WorldItemSnapshot snapshot, out short selectedSlot, byte? sourceLocalPlayerId = null)
+        out WorldItemSnapshot snapshot, out short selectedSlot, byte? sourceLocalPlayerId = null,
+        WorldItemCreationSource1458 creationSource = WorldItemCreationSource1458.NewItem)
     {
         snapshot = default; selectedSlot = -1;
         using var preview = CreateAllocationPreview(players);
-        if (!preview.TrySpawnSource(in drop, 0, out _, sourceLocalPlayerId) || !preview.TryClaim() ||
+        if (!preview.TrySpawnSource(in drop, 0, out _, sourceLocalPlayerId, creationSource) || !preview.TryClaim() ||
             !preview.TryCommitNext(out selectedSlot, out _)) return false;
         return selectedSlot == VanillaCapacity || TryGetActive(selectedSlot, out snapshot);
     }
@@ -87,6 +129,8 @@ public sealed partial class RuntimeWorldItemStore
         private readonly SlotState[] working;
         private readonly SlotState[] expected;
         private readonly WorldItemAllocationPlayer1458[] players;
+        private readonly IWorldItemOwnerFactsProvider1458? capturedProvider;
+        private readonly IWorldItemOwnerFactsSnapshot1458? ownerFacts;
         private readonly WorldItemStackTransfer1458[] pending;
         private readonly bool[] touched = new bool[VanillaCapacity];
         private readonly List<Operation> operations = new();
@@ -101,6 +145,8 @@ public sealed partial class RuntimeWorldItemStore
         internal AllocationPreview(RuntimeWorldItemStore owner, ReadOnlySpan<WorldItemAllocationPlayer1458> players)
         {
             this.owner = owner; this.players = players.ToArray();
+            capturedProvider = owner.ownerFactsProvider;
+            ownerFacts = capturedProvider?.Capture(); // Outside store locks, on the authoritative world thread.
             if (players.Length > byte.MaxValue) throw new ArgumentOutOfRangeException(nameof(players));
             foreach (var player in players)
                 if (!float.IsFinite(player.X) || !float.IsFinite(player.Y) || player.Width <= 0 || player.Height <= 0 ||
@@ -118,7 +164,8 @@ public sealed partial class RuntimeWorldItemStore
         {
             get
             {
-                if (disposed || failed || owner.sourceTransferCount != expectedPending) return false;
+                if (disposed || failed || owner.sourceTransferCount != expectedPending ||
+                    !ReferenceEquals(owner.ownerFactsProvider, capturedProvider) || ownerFacts?.IsCurrent == false) return false;
                 if (!owner.sourceTransfers.AsSpan(0, expectedPending).SequenceEqual(expectedTransfers.AsSpan(0, expectedPending))) return false;
                 for (int i = 0; i < baseline.Length; i++)
                 {
@@ -129,11 +176,15 @@ public sealed partial class RuntimeWorldItemStore
             }
         }
 
-        public bool TrySpawnSource(in WorldItemDropStateUpdate drop, int leaseTicks, out short slot, byte? sourceLocalPlayerId = null)
+        public bool TrySpawnSource(in WorldItemDropStateUpdate drop, int leaseTicks, out short slot, byte? sourceLocalPlayerId = null,
+            WorldItemCreationSource1458 creationSource = WorldItemCreationSource1458.NewItem)
         {
             slot = -1;
-            if (disposed || claimed || failed || steps.Count == VanillaCapacity || leaseTicks < 0 || !IsValidDrop(in drop) ||
+            if (disposed || claimed || failed || steps.Count == VanillaCapacity || leaseTicks < 0 ||
+                creationSource is not (WorldItemCreationSource1458.NewItem or WorldItemCreationSource1458.ClientSynchronization) || !IsValidDrop(in drop) ||
                 !VanillaWorldItemAllocationCatalog1458.TryGet(drop.ItemNetId, out var facts)) return Fail();
+            var publicationDrop = creationSource == WorldItemCreationSource1458.ClientSynchronization
+                ? drop with { Ownership = WorldItemOwnershipMode.None } : drop;
             foreach (var retained in working)
                 if (retained.Reserved && !retained.SourceLease) return Fail();
             int start = operations.Count;
@@ -157,18 +208,30 @@ public sealed partial class RuntimeWorldItemStore
             if (selected == VanillaCapacity && owner._commitSink is IWorldItemSentinelCommitSink1458)
             {
                 WorldItemOwnerStateUpdate? sentinelOwner = null;
-                var transientDrop = drop;
+                var transientDrop = publicationDrop;
                 if (drop.Ownership == WorldItemOwnershipMode.ReserveForLocalPlayer)
                 {
                     if (sourceLocalPlayerId is not { } local || local == byte.MaxValue) return Fail();
                     bool active = false; foreach (var player in players) if (player.Slot == local) { active = true; break; }
                     if (!active) return Fail();
-                    transientDrop = drop with { EnemyGrabDelayTime = 100 };
                     sentinelOwner = new(local, 100, 0, 0, drop.PositionX, drop.PositionY);
                 }
-                else if (drop.Ownership == WorldItemOwnershipMode.GrabDelayForLocalPlayer ||
-                    (drop.Ownership == WorldItemOwnershipMode.None && players.Length != 0))
-                    return Fail(); // ItemSpace/CanPull, magnets and hopper facts must be represented before a network ghost is accepted.
+                else if (drop.Ownership == WorldItemOwnershipMode.None || drop.Ownership == WorldItemOwnershipMode.GrabDelayForLocalPlayer)
+                {
+                    int delay = 0; byte delayPlayer = 0;
+                    if (drop.Ownership == WorldItemOwnershipMode.GrabDelayForLocalPlayer)
+                    {
+                        if (sourceLocalPlayerId is not { } local || local == byte.MaxValue) return Fail();
+                        delay = 100; delayPlayer = local;
+                    }
+                    if (ownerFacts is not null)
+                    {
+                        if (!ownerFacts.TrySelectOwner(in drop, delay, delayPlayer, out byte selectedOwner)) return Fail();
+                        if (selectedOwner != byte.MaxValue)
+                            sentinelOwner = new(selectedOwner, 15, delayPlayer, delay, drop.PositionX, drop.PositionY);
+                    }
+                    else if (players.Length != 0 || delay != 0) return Fail();
+                }
                 transient = new(transientDrop, sentinelOwner);
             }
             if (selected < VanillaCapacity)
@@ -188,10 +251,38 @@ public sealed partial class RuntimeWorldItemStore
                 pendingCount = kept;
                 state.Generation++; state.Revision = leaseTicks == 0 ? 1UL : 0UL;
                 state.Active = leaseTicks == 0; state.Reserved = leaseTicks != 0; state.SourceLease = leaseTicks != 0;
-                state.SourceReuseTicks = leaseTicks; state.SourceAge = facts.InitialAge; state.SourceReleaseRequested = false; state.Update = CreateInitial(in drop);
+                state.SourceReuseTicks = leaseTicks; state.SourceAge = facts.InitialAge; state.SourceOwnerAge = 0; state.SourceReleaseRequested = false; state.Update = CreateInitial(in publicationDrop);
+                if (leaseTicks == 0 && ownerFacts is not null)
+                    state.Update = state.Update with { GrabDelayPlayer = 0 };
                 if (drop.Ownership == WorldItemOwnershipMode.GrabDelayForAllPlayers)
                     state.Update = state.Update with { GrabDelayTime = 100, GrabDelayPlayer = byte.MaxValue };
+                if (leaseTicks == 0 && drop.Ownership == WorldItemOwnershipMode.GrabDelayForLocalPlayer)
+                {
+                    if (sourceLocalPlayerId is not { } local || local == byte.MaxValue) return Fail();
+                    state.Update = state.Update with { GrabDelayTime = 100, GrabDelayPlayer = local };
+                }
                 if (!Record(slot, leaseTicks == 0 ? WorldItemStateCommitKind.Drop : null)) return Fail();
+                // Client MessageBuffer21 applies the requested reservation after its source21.
+                // Retain it in this claimed plan; an external owner update cannot mutate a claimed slot.
+                if (leaseTicks == 0 && creationSource == WorldItemCreationSource1458.ClientSynchronization &&
+                    drop.Ownership == WorldItemOwnershipMode.ReserveForLocalPlayer)
+                {
+                    if (sourceLocalPlayerId is not { } local || local == byte.MaxValue) return Fail();
+                    state.Update = state.Update with { OwnerPlayerId = local, TimeToKeepReservation = 100, GrabDelayPlayer = 0, GrabDelayTime = 0 };
+                    if (!RecordSync(slot, WorldItemStateCommitKind.Owner)) return Fail();
+                }
+                // Dedicated NewItem(noBroadcast:true) skips ApplySpawnOwnership before MakeInstanced90.
+                // Ordinary source NewItem publishes21, then FindOwner may publish22.
+                if (leaseTicks == 0 && ownerFacts is not null &&
+                    drop.Ownership is WorldItemOwnershipMode.None or WorldItemOwnershipMode.GrabDelayForLocalPlayer)
+                {
+                    if (!ownerFacts.TrySelectOwner(in drop, state.Update.GrabDelayTime, state.Update.GrabDelayPlayer, out byte selectedOwner)) return Fail();
+                    if (selectedOwner != byte.MaxValue)
+                    {
+                        state.Update = state.Update with { OwnerPlayerId = selectedOwner, TimeToKeepReservation = 15 };
+                        if (!RecordSync(slot, WorldItemStateCommitKind.Owner)) return Fail();
+                    }
+                }
             }
             steps.Add(new(start, operations.Count, slot, leaseTicks, pending[..pendingCount].ToArray(), transient));
             return true;
@@ -305,10 +396,12 @@ public sealed partial class RuntimeWorldItemStore
             {
                 if (state.SourceReleaseRequested) return true;
                 state.SourceReleaseRequested = true;
+                state.SourceOwnerAge = -1;
                 return RecordSync(slot, WorldItemStateCommitKind.OwnershipReleaseRequested);
             }
             state.Update = state.Update with { OwnerPlayerId = byte.MaxValue };
             state.SourceReleaseRequested = false;
+            state.SourceOwnerAge = 0;
             return RecordSync(slot, WorldItemStateCommitKind.Owner);
         }
 

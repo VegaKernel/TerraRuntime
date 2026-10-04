@@ -453,10 +453,15 @@ public static class VanillaNpcMoneyDefaults1458
             _ => -1
         };
         if (baseline < 0) return false;
+        value = ScaleBaseline(baseline, difficulty);
+        return true;
+    }
+
+    internal static int ScaleBaseline(int baseline, float difficulty)
+    {
         // GameDifficultyData.EnemyMoneyDropMultiplier is a linear curve, clamped outside its keys.
         float multiplier = difficulty <= 1f ? 1f : difficulty < 2f ? 1f + (difficulty - 1f) * 1.5f :
             difficulty <= 3f ? 2.5f : 2.5f + (difficulty - 3f);
-        value = (int)(baseline * multiplier);
-        return true;
+        return (int)(baseline * multiplier);
     }
 }

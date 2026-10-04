@@ -393,6 +393,14 @@ public static class VanillaDefinitionCatalog
 
     public static bool TryGet(ItemTypeId type, out VanillaItemDefinition definition)
     {
+        // Item.SetDefaults(267): 14x26, accessory but ItemID.Sets.CanGetPrefixes[267] is false.
+        // Its existing source lava lifecycle also admits authenticated client NewItem creation.
+        if (type == VanillaWallOfFleshItemIds.GuideVoodooDoll)
+        {
+            definition = new(type, new(14, 26, CommonMaximumStack), null, null, null,
+                new(14, 26, false, VanillaItemPrefixFamily.None));
+            return true;
+        }
         if (VanillaBossRecoveryItemCatalog1458.TryGet(type, out definition)) return true;
         if (VanillaCoinItemCatalog1458.TryGet(type, out definition)) return true;
         if (VanillaDungeonChestItemCatalog1458.TryGet(type, out definition))

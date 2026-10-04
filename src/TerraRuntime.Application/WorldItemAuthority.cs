@@ -14,28 +14,39 @@ internal sealed partial class WorldItemAuthority
     private readonly RuntimeWorldItemStore worldItems;
     private readonly RuntimeWorldItemReplicationRegistry? replication;
     private readonly RuntimeWorldItemInstancedLeaseStore instancedItemLeases;
+    private readonly RuntimeWorldItemOwnerFactsProvider1458 ownerFacts;
+    private readonly Func<VanillaSeasonalItemDropContext1458>? seasonalContext;
     private readonly short[] expiredInstancedItemSlots = new short[RuntimeWorldItemStore.VanillaCapacity];
     private readonly WorldItemSnapshot[] reservationScan = new WorldItemSnapshot[RuntimeWorldItemStore.VanillaCapacity];
 
     // TerrariaServer 1.4.5.8 Main.UpdateServer calls FindOwner for unowned items on a 5-tick cadence.
     private const int OwnerDiscoveryCadenceTicks1458 = 5;
-    private const int OwnerSearchManhattanRange1458 = 1920; // NPC.sWidth
+    private const int OwnedOwnerDiscoveryCadenceTicks1458 = 300;
     private const int DefaultOwnerReservationTicks1458 = 15; // WorldItem.ReserveFor default parameter
 
     public WorldItemAuthority(
         PlayerAuthority players,
         RuntimeWorldItemStore worldItems,
         IWorldItemSpawnRandom spawnRandom,
-        RuntimeWorldItemReplicationRegistry? replication)
+        RuntimeWorldItemReplicationRegistry? replication,
+        TerraRuntime.World.WorldTileStore? worldTiles = null,
+        bool expertMode = false,
+        bool masterMode = false,
+        Func<VanillaSeasonalItemDropContext1458>? seasonalContext = null)
     {
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.worldItems = worldItems ?? throw new ArgumentNullException(nameof(worldItems));
         SpawnRandom = spawnRandom ?? throw new ArgumentNullException(nameof(spawnRandom));
         this.replication = replication;
         instancedItemLeases = new RuntimeWorldItemInstancedLeaseStore(worldItems);
+        // Pickup equipment uses Main.expertMode/masterMode from source effective difficulty,
+        // including GoodWorld. Composition supplies those flags separately from base combat mode.
+        ownerFacts = new(players, worldTiles, expertMode, masterMode);
+        this.seasonalContext = seasonalContext;
     }
 
     public IWorldItemSpawnRandom SpawnRandom { get; }
+    internal RuntimeWorldItemOwnerFactsProvider1458 SourceOwnerFacts => ownerFacts;
 
     public long AppliedAllocations { get; private set; }
     public long RejectedAllocations { get; private set; }
@@ -76,23 +87,21 @@ internal sealed partial class WorldItemAuthority
 
     public void TickPlayerReservations(long tick)
     {
-        if (tick < 0 || tick % OwnerDiscoveryCadenceTicks1458 != 1)
-            return;
+        if (tick < 0) return;
 
         int count = worldItems.CopyActive(reservationScan);
         for (int index = 0; index < count; index++)
         {
             WorldItemSnapshot item = reservationScan[index];
-            if (!item.Handle.IsAssigned || worldItems.HasPendingSourceTransfer(item.Handle) || item.ShimmerTime > 0f || item.TimeToKeepReservation > 0 ||
-                (item.GrabDelayTime > 0 && item.GrabDelayPlayer == byte.MaxValue))
-                continue;
+            if (!item.Handle.IsAssigned || !worldItems.TryGetSourceOwnerMetadata(item.Handle, out int age, out _) ||
+                item.TimeToKeepReservation > 0) continue;
 
             RuntimePlayerMember? currentOwner = null;
             if (item.OwnerPlayerId != byte.MaxValue)
             {
                 foreach (RuntimePlayerMember player in players.Members)
                 {
-                    if (player.Slot.Value == item.OwnerPlayerId && !player.IsDead)
+                    if (player.Slot.Value == item.OwnerPlayerId)
                     {
                         currentOwner = player;
                         break;
@@ -100,13 +109,18 @@ internal sealed partial class WorldItemAuthority
                 }
             }
 
-            if (currentOwner is not null)
-                continue;
+            if (item.OwnerPlayerId == byte.MaxValue)
+            { if (age % OwnerDiscoveryCadenceTicks1458 != 1) continue; }
+            else if (currentOwner is not null && age % OwnedOwnerDiscoveryCadenceTicks1458 != 0) continue;
 
-            RuntimePlayerMember? selected = FindNearestEligibleOwner(in item);
-            byte owner = selected?.Slot.Value ?? byte.MaxValue;
+            byte owner = byte.MaxValue;
+            if (item.ShimmerTime <= 0f && !worldItems.HasPendingSourceTransfer(item.Handle) &&
+                !(item.GrabDelayTime > 0 && item.GrabDelayPlayer == byte.MaxValue) &&
+                !TryFindSourceOwner(in item, out owner)) continue;
             if (owner == item.OwnerPlayerId)
                 continue;
+            if (currentOwner is not null)
+            { _ = worldItems.TryRequestSourceOwnerRelease(item.Handle); continue; }
 
             var update = new WorldItemOwnerStateUpdate(
                 OwnerPlayerId: owner,
@@ -119,54 +133,12 @@ internal sealed partial class WorldItemAuthority
         }
     }
 
-    private RuntimePlayerMember? FindNearestEligibleOwner(in WorldItemSnapshot item)
+    private bool TryFindSourceOwner(in WorldItemSnapshot item, out byte selected)
     {
-        RuntimePlayerMember? selected = null;
-        float bestDistance = OwnerSearchManhattanRange1458;
-        foreach (RuntimePlayerMember player in players.Members)
-        {
-            if (player.IsDead || !HasOrdinaryItemSpace(player.Connection, in item))
-                continue;
-            if (item.GrabDelayTime > 0 && (item.GrabDelayPlayer == player.Slot.Value || item.GrabDelayPlayer == byte.MaxValue))
-                continue;
-
-            float playerCenterX = player.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
-            float playerCenterY = player.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
-            float distance = Math.Abs(playerCenterX - item.PositionX) + Math.Abs(playerCenterY - item.PositionY);
-            if (distance >= bestDistance)
-                continue;
-
-            bestDistance = distance;
-            selected = player;
-        }
-        return selected;
-    }
-
-    private bool HasOrdinaryItemSpace(ConnectionHandle connection, in WorldItemSnapshot drop)
-    {
-        // Terraria 1.4.5.8 Player.ItemSpace / CanItemSlotAcceptPickup accept an existing matching stack,
-        // even when all main slots are occupied. Requiring an empty slot stranded ordinary mining drops
-        // until the bounded world-item pool filled and every subsequent drop-producing break was refused.
-        // Item.CanStack compares type AND prefix. Unknown maxima/favorited non-placement items stay closed;
-        // do not infer OnlyNeedOneInInventory, empty ammo-slot routing or Void Bag semantics here.
-        for (short slot = 0; slot < VanillaPlayerItemSlotCatalog.InventoryMouseItem; slot++)
-        {
-            if (!players.TryGetInventoryItem(connection, slot, out RuntimePlayerInventoryItem item))
-                continue;
-            bool mainSlot = slot < VanillaPlayerItemSlotCatalog.MainInventoryEndExclusive;
-            if (mainSlot && item.IsEmpty)
-                return true;
-            // ItemSpace also tests already occupied ammo slots 54..57, but not coin slots for ordinary items.
-            if ((!mainSlot && slot < VanillaPlayerItemSlotCatalog.AmmoSlotStart) || item.IsEmpty ||
-                item.ItemType.Value != drop.ItemNetId || item.Prefix.Value != drop.Prefix ||
-                !VanillaDefinitionCatalog.TryGet(item.ItemType, out VanillaItemDefinition definition) ||
-                !definition.RuntimeDefaults.IsValid || item.Stack >= definition.RuntimeDefaults.MaximumStack)
-                continue;
-            if ((item.ItemFlags & PlayerEquipmentCommitRequest.FavoriteItemFlag) == 0 ||
-                definition.Placement is { Consumable: true })
-                return true;
-        }
-        return false;
+        var context = ownerFacts.Capture();
+        var drop = new WorldItemDropStateUpdate(item.PositionX, item.PositionY, item.VelocityX, item.VelocityY,
+            item.Stack, item.Prefix, item.Ownership, item.ItemNetId, item.Shimmered, item.ShimmerTime, item.EnemyGrabDelayTime);
+        return context.TrySelectOwner(in drop, item.GrabDelayTime, item.GrabDelayPlayer, out selected) && context.IsCurrent;
     }
 
     public void TickInstancedLeases()
@@ -231,6 +203,9 @@ internal sealed partial class WorldItemAuthority
         }
 
         WorldItemDropStateUpdate state = command.State;
+        if (!TryPrepareClientCreation(in state, out var created, out var liveRandom, out var beforeRandom, out var afterRandom, out var calendar))
+        { RejectedAllocations++; command.Completion?.TrySetResult(null); return; }
+        state = created;
         Span<WorldItemAllocationPlayer1458> views = stackalloc WorldItemAllocationPlayer1458[byte.MaxValue];
         int viewCount = 0;
         foreach (var player in players.Members)
@@ -238,19 +213,15 @@ internal sealed partial class WorldItemAuthority
             var body = player.HasMount ? TerraRuntime.Gameplay.Players.VanillaPlayerMountHitbox1458.Resolve(player.MountType) : (Width: 20f, Height: 42f);
             views[viewCount++] = new(player.Slot.Value, player.PositionX, player.PositionY, (int)body.Width, (int)body.Height);
         }
-        if (worldItems.TryAllocateSourceDrop(in state, views[..viewCount], out WorldItemSnapshot snapshot, out short selectedSlot, sourceLocalPlayerId: command.Connection.Player.Slot.Value))
+        using var allocation = worldItems.CreateAllocationPreview(views[..viewCount]);
+        if (allocation.TrySpawnSource(in state, 0, out _, sourceLocalPlayerId: command.Connection.Player.Slot.Value,
+                creationSource: WorldItemCreationSource1458.ClientSynchronization) &&
+            liveRandom!.HasSameState(beforeRandom!) && (seasonalContext is null || seasonalContext() == calendar) && allocation.TryClaim())
         {
-            // MessageBuffer21 -> ApplySpawnOwnership: do not discard the spawning connection's grab delay.
-            // Packet22 remains a server-owned projection; the client supplies only the source ownership mode.
-            if (selectedSlot < worldItems.Capacity && state.Ownership != WorldItemOwnershipMode.None)
-            {
-                bool reserve = state.Ownership == WorldItemOwnershipMode.ReserveForLocalPlayer;
-                byte local = command.Connection.Player.Slot.Value;
-                var owner = new WorldItemOwnerStateUpdate(reserve ? local : byte.MaxValue, reserve ? 100 : 0,
-                    state.Ownership == WorldItemOwnershipMode.GrabDelayForLocalPlayer ? local : byte.MaxValue,
-                    reserve ? 0 : 100, state.PositionX, state.PositionY);
-                _ = worldItems.TryApplyOwner(snapshot.Handle.Slot, in owner, out snapshot);
-            }
+            liveRandom.CopyStateFrom(afterRandom!); // Adopt before any source21/22 publication callback.
+            if (!allocation.TryCommitNext(out short selectedSlot, out _)) throw new InvalidOperationException("Accepted client item creation lost its claimed source plan.");
+            WorldItemSnapshot snapshot = default;
+            if (selectedSlot < worldItems.Capacity) _ = worldItems.TryGetActive(selectedSlot, out snapshot);
             AppliedAllocations++;
             command.Completion?.TrySetResult(snapshot.Handle.IsAssigned ? snapshot : null);
             return;
@@ -331,8 +302,9 @@ internal sealed partial class WorldItemAuthority
         }
         // Source case39 relinquishes ownership; a client cannot choose the next recipient or position.
         bool pendingTransfer = worldItems.HasPendingSourceTransfer(item.Handle);
-        byte owner = command.ForceServer || pendingTransfer || item.TimeToKeepReservation > 0
-            ? byte.MaxValue : FindNearestEligibleOwner(in item)?.Slot.Value ?? byte.MaxValue;
+        byte owner = byte.MaxValue;
+        if (!command.ForceServer && !pendingTransfer && item.TimeToKeepReservation <= 0 &&
+            !TryFindSourceOwner(in item, out owner)) { RejectedOwners++; return; }
         var update = new WorldItemOwnerStateUpdate(owner,
             (command.ForceServer || pendingTransfer) ? 0 : owner == byte.MaxValue ? item.TimeToKeepReservation : DefaultOwnerReservationTicks1458,
             item.GrabDelayPlayer, item.GrabDelayTime, item.PositionX, item.PositionY);

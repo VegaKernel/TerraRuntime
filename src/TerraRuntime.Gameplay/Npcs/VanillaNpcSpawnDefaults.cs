@@ -18,6 +18,7 @@ public readonly record struct VanillaNpcSpawnDefaults(
 {
     public float? KnockBackResist { get; init; }
     public float? Difficulty { get; init; }
+    public float? VerifiedMoneyValue { get; init; }
 
     /// <summary>Mother Slime's NewNPC(1) followed by SetDefaults(-5), including the nested knockback scaling.</summary>
     public static bool TryResolveMotherSlimeChild(in VanillaNpcSpawnContext context,
@@ -62,6 +63,8 @@ public readonly record struct VanillaNpcSpawnDefaults(
         bool windowsArithmetic, out VanillaNpcSpawnDefaults defaults)
     {
         defaults = default;
+        if (context.IsValid && definition.BehaviorFamily == VanillaNpcBehaviorFamily.FlyingEye)
+            return TryResolveFlyingEye(in definition, in context, windowsArithmetic, out defaults);
         if (context.IsValid && VanillaBigMimicNpcCatalog1458.IsSupported(definition.Type))
         {
             defaults = ResolveOrdinary(in definition, in context, windowsArithmetic) with { Difficulty = context.Difficulty };
@@ -141,6 +144,83 @@ public readonly record struct VanillaNpcSpawnDefaults(
             life = (int)Math.Round(life * multiplier);
         }
         defaults = new(new(width, height), scale, life, damage, definition.Defense);
+        return true;
+    }
+
+    private static bool TryResolveFlyingEye(in VanillaNpcDefinition definition, in VanillaNpcSpawnContext context,
+        bool windowsArithmetic, out VanillaNpcSpawnDefaults defaults)
+    {
+        defaults = default;
+        if (!VanillaNpcDefinitionCatalog.TryGet(definition.Type, out var canonical) ||
+            canonical.BehaviorFamily != VanillaNpcBehaviorFamily.FlyingEye ||
+            !VanillaNpcMoneyDefaults1458.TryResolve(canonical.Type, new((short)canonical.Type.Value),
+                1f, out float money))
+            return false;
+        bool hungry = canonical.Type == VanillaNpcIds.TheHungryII;
+        var scalingContext = hungry ? context with { HardMode = false } : context;
+        var scaled = ResolveOrdinary(in canonical, in scalingContext, windowsArithmetic);
+        if (!hungry && context.Difficulty >= 2f && context.HardMode)
+        {
+            int budget = Math.Max(1, canonical.Damage + canonical.Defense + canonical.LifeMax / 4);
+            int threshold = context.DownedPlantera ? 100 : 80;
+            if (budget < threshold)
+                money = (int)((double)(money * (threshold / budget)) * .8d);
+        }
+        money = VanillaNpcMoneyDefaults1458.ScaleBaseline((int)money, context.Difficulty);
+        if (hungry)
+        {
+            float lifeTweak = (float)Ramp(context.Difficulty, 1f, 2f, .7f, windowsArithmetic);
+            int life = (int)Math.Round(windowsArithmetic ? scaled.LifeMax * (double)lifeTweak : scaled.LifeMax * lifeTweak);
+            float knockback = scaled.KnockBackResist ?? canonical.KnockBackResist;
+            if (context.Difficulty >= 2f)
+            {
+                life = (int)Math.Round(life * (double)PlayerBalance(context.ActivePlayers, windowsArithmetic));
+                if (context.ActivePlayers > 4)
+                    knockback = 0f;
+                else if (context.ActivePlayers > 1)
+                {
+                    float boost = .35f;
+                    for (int player = 1; player < context.ActivePlayers; player++)
+                        boost = windowsArithmetic ? (float)(boost + (1d - boost) / 3d) : boost + (1f - boost) / 3f;
+                    knockback *= 1f - boost;
+                }
+            }
+            float hungryScale = context.GoodWorld ? 1.4f : 1f;
+            scaled = scaled with
+            {
+                LifeMax = life,
+                Scale = hungryScale,
+                Hitbox = new((int)(canonical.BaseWidth * hungryScale), (int)(canonical.BaseHeight * hungryScale)),
+                KnockBackResist = knockback
+            };
+        }
+        if (definition == canonical)
+        {
+            defaults = scaled with { Difficulty = context.Difficulty, VerifiedMoneyValue = money };
+            return true;
+        }
+        // SetDefaultsFromNetId invokes canonical SetDefaults with the scale override, then multiplies
+        // its already difficulty-scaled live stats. Recognize the exact existing source variant definition.
+        bool recognized = false;
+        foreach (var variant in VanillaNpcNetVariantCatalog.All)
+            if (variant.NetId.Value is >= -43 and <= -38 && variant.Type == canonical.Type &&
+                variant.ApplyTo(in canonical) == definition)
+            {
+                recognized = true;
+                break;
+            }
+        if (!recognized)
+            return false;
+        float scale = definition.Scale;
+        if (context.GoodWorld)
+            scale = (scale + scale * scale) / 2f;
+        defaults = new(new((int)(canonical.BaseWidth * scale), (int)(canonical.BaseHeight * scale)), scale,
+            (int)(scaled.LifeMax * scale), (int)(scaled.Damage * scale), (int)(scaled.Defense * scale))
+        {
+            Difficulty = context.Difficulty,
+            KnockBackResist = (scaled.KnockBackResist ?? canonical.KnockBackResist) * (2f - scale),
+            VerifiedMoneyValue = (int)(money * scale)
+        };
         return true;
     }
 

@@ -33,7 +33,7 @@ internal static class RuntimeNpcStateOwnershipPolicy
                 BaseDefense = simulation.BaseDefense ?? spawnDefaults?.Defense ?? definition.Defense,
                 BaseLifeMax = simulation.BaseLifeMax ?? spawnDefaults?.LifeMax ?? definition.LifeMax,
                 SpawnDifficulty = simulation.SpawnDifficulty ?? 1f,
-                MoneyValue = simulation.MoneyValue ?? ResolveMoney(update.Type, update.NetId, simulation.SpawnDifficulty ?? 1f),
+                MoneyValue = simulation.MoneyValue ?? spawnDefaults?.VerifiedMoneyValue ?? ResolveMoney(update.Type, update.NetId, simulation.SpawnDifficulty ?? 1f),
                 ExtraMoneyValue = simulation.ExtraMoneyValue ?? 0,
                 Midas = simulation.Midas ?? false,
                 KnockBackResist = simulation.KnockBackResist ?? spawnDefaults?.KnockBackResist ?? definition.KnockBackResist,

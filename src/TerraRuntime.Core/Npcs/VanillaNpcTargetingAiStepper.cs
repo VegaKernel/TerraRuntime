@@ -35,6 +35,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         VanillaMoonLordNpcBehaviorStrategy.RequiresImmediateSync(in before, in proposed);
 
     public bool RequiresForcedUpdateAfterCompletion(in NpcSnapshot before, in NpcSnapshot finalized) =>
+        _flyingEye.RequiresRetainedForcedUpdate(in before, in finalized) ||
         _bigMimic.RequiresForcedUpdate(in before, in finalized) ||
         _mothron.RequiresForcedUpdate(in before, in finalized) ||
         VanillaGhostHoverNpcBehaviorStrategy1458.RequiresImmediateSync(in before, in finalized, _context) ||
@@ -274,8 +275,23 @@ public sealed class VanillaNpcTargetingAiStepper :
     public void SetAntlionEnvironment(IVanillaAntlionEnvironment environment) =>
         _antlion.SetEnvironment(environment);
 
-    public void SetFlyingEyeEnvironment(IVanillaFlyingEyeEnvironment environment) =>
+    public void SetFlyingEyeEnvironment(IVanillaFlyingEyeEnvironment environment)
+    {
         _flyingEye.SetEnvironment(environment);
+        _flyingEye.SetRandom(_random);
+    }
+
+    internal bool HasFlyingEyeRetainedPlan(in NpcSnapshot before) => _flyingEye.HasRetainedPlan(in before);
+
+    internal bool TryGetFlyingEyeRetainedPlan(in NpcSnapshot before, in NpcSnapshot accepted,
+        INpcAiCommittedNpcMutationSink mutations, out NpcStateUpdate planned) =>
+        _flyingEye.TryGetRetainedPlan(in before, in accepted, mutations, out planned);
+
+    internal NpcSnapshot CompleteFlyingEyeRetainedPlan(in NpcSnapshot before, in NpcSnapshot accepted,
+        in NpcStateUpdate final, INpcAiCommittedNpcMutationSink mutations) =>
+        _flyingEye.CompleteRetained(in before, in accepted, in final, mutations);
+
+    internal void CancelFlyingEyeRetainedPlan() => _flyingEye.CancelRetained();
 
     public void SetEverscreamEnvironment(IVanillaEverscreamEnvironment environment) =>
         SetMoonEventHoverEnvironment(environment);
@@ -2482,6 +2498,7 @@ public sealed class VanillaNpcTargetingAiStepper :
          VanillaGhostHoverNpcCatalog1458.IsSupported(before.TypeIdentity) ||
          VanillaMothronNpcCatalog1458.IsSupported(before.TypeIdentity) ||
          VanillaBigMimicNpcCatalog1458.IsSupported(before.TypeIdentity) ||
+         _flyingEye.HasRetainedPlan(in before) ||
          VanillaGroundFighterProjectileAttack.IsSupported(before.TypeIdentity));
 
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,

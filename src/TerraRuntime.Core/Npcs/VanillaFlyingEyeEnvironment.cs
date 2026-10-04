@@ -20,3 +20,18 @@ public interface IVanillaFlyingEyeEnvironment
 
     bool SolidCollision(float positionX, float positionY, int width, int height);
 }
+
+
+/// <summary>Retains the exact live tile regions read by a complete AI_002 plan.</summary>
+internal interface IVanillaFlyingEyeWorldFence1458
+{
+    bool IsCurrent { get; }
+}
+
+internal interface IVanillaFlyingEyeRetainedEnvironment1458 : IVanillaFlyingEyeEnvironment
+{
+    bool TryCapture(in TerraRuntime.Contracts.Runtime.NpcSnapshot source,
+        in TerraRuntime.Gameplay.Npcs.VanillaNpcTargetCandidate current,
+        in TerraRuntime.Gameplay.Npcs.VanillaNpcTargetCandidate closest,
+        out IVanillaFlyingEyeWorldFence1458 fence);
+}

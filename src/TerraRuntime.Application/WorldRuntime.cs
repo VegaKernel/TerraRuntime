@@ -229,7 +229,9 @@ public sealed class WorldRuntime : IDisposable
             golemDownedBaseline: world.RuntimeMetadata.DownedGolemBoss,
             worldIdentity: Identity,
             chestCommands: ChestCommands,
-            deathPrelude: DeathPrelude);
+            deathPrelude: DeathPrelude,
+            townSocialWorldFacts: RuntimeTownSocialWorld1458.FromMetadata(world.RuntimeMetadata,
+                world.RuntimeMetadata.GameMode is (byte)WorldGenerationGameMode.Expert or (byte)WorldGenerationGameMode.Master));
         WorldClock.SetWeatherEligiblePlayerProvider(State.HasWindEligiblePlayer);
 
         sectionCacheRebuild = new SectionCacheRebuildPipeline(

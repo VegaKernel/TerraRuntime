@@ -59,7 +59,8 @@ internal sealed class NpcRuntimeTownScheduleRandom1458(IVanillaNpcRandom random)
 
 /// <summary>
 /// Source-shaped ordinary dry AI_007 common phase: household, danger, body/poses, real offers and admitted
-/// combat are planned before one physics/state commit. Paired social transactions and special families remain closed.
+/// combat, paired socials and admitted contextual emotes are planned before one physics/state commit.
+/// Selected unavailable context and special families remain closed.
 /// </summary>
 internal sealed partial class RuntimeTownNpcSchedule1458
 {

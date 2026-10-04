@@ -15,7 +15,7 @@ public sealed class TileDropRandomAdmission1458Tests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public void Rejected_fixed_tile_or_wall_drop_preserves_live_rng_and_world(bool wall, bool networkSentinel)
+    public void Fixed_drop_rejects_unowned_reservation_but_known_network_sentinel_uses_source_owner_facts(bool wall, bool networkSentinel)
     {
         var random=new VanillaUnifiedRandom1458(1458);var tiles=new WorldTileStore(new WorldDimensions(200,150));
         var registry=networkSentinel?new RuntimeWorldItemReplicationRegistry():null;
@@ -32,8 +32,18 @@ public sealed class TileDropRandomAdmission1458Tests
         if(wall){tile.Flags=0;Assert.True(tile.TrySetWallType(new WallTypeId(1)));}
         tiles.Set(10,10,tile);var before=random.Clone();
         state.Apply(new ClientTileManipulationRuntimeCommand(connection,new((byte)(wall?TerrariaTileManipulationAction.KillWall:TerrariaTileManipulationAction.KillTile),10,10,0,0)));
-        Assert.Equal(tile,tiles.Get(10,10));Assert.True(random.HasSameState(before));
-        Assert.Equal(0,state.AppliedWorldItemAllocations);Assert.Equal(0,state.AppliedClientTileManipulations);Assert.Equal(1,state.RejectedWorldItemAllocations);
+        if(networkSentinel)
+        {
+            before.Next(-30,31);before.Next(-40,-15);
+            Assert.True(random.HasSameState(before));Assert.Equal(1,state.AppliedClientTileManipulations);Assert.Equal(0,state.RejectedWorldItemAllocations);
+            if(wall)Assert.Equal(0,tiles.Get(10,10).WallType.Value);else Assert.False(tiles.Get(10,10).IsActive);
+            Assert.False(items.TryGetActive(400,out _)); // Source21/22 transient, never a physical runtime slot.
+        }
+        else
+        {
+            Assert.Equal(tile,tiles.Get(10,10));Assert.True(random.HasSameState(before));
+            Assert.Equal(0,state.AppliedWorldItemAllocations);Assert.Equal(0,state.AppliedClientTileManipulations);Assert.Equal(1,state.RejectedWorldItemAllocations);
+        }
         Assert.Equal(networkSentinel?400:0,items.ActiveCount);if(!networkSentinel)Assert.True(items.HasDropReservation(held));
     }
 

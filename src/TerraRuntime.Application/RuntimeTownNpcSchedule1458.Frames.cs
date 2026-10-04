@@ -11,7 +11,8 @@ internal sealed partial class RuntimeTownNpcSchedule1458
 
     // Source FindFrame runs after contact and collision, still before this actor's network update.
     private bool TryPlanPresentation(in NpcStateUpdate state, ReadOnlySpan<NpcSnapshot> peers,
-        ref SocialPeerPlan? partner, Span<SocialEmotePlan> emotes, out int emoteCount, out NpcStateUpdate next)
+        ref SocialPeerPlan? partner, Span<SocialEmotePlan> emotes, bool ownsRandomPreview,
+        out int emoteCount, out NpcStateUpdate next)
     {
         next = FinishResidentPresentation(in state);
         emoteCount = 0;
@@ -60,9 +61,23 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             if (index != 0 && offset is not (1 or 2 or 4 or 5)) { index = 0; clock = 0d; }
             if (next.Ai.Ai0 is 3f or 4f)
             {
-                // Contextual NPC emote selection needs world/player facts beyond the admitted frame owner.
-                // Fence only the source emitting phase; never replace its RNG with dummy draws.
-                if (next.Ai.Ai0 == 3f && clock is 70d or 216d or 320d) return false;
+                if (next.Ai.Ai0 == 3f && clock is 70d or 216d or 320d)
+                {
+                    if (!ownsRandomPreview) return false;
+                    NpcSnapshot? selected = null;
+                    foreach (NpcSnapshot candidate in peers)
+                        if (candidate.Handle.Slot == (int)next.Ai.Ai2) { selected = candidate; break; }
+                    if (selected is not { } peer) return false;
+                    NpcStateUpdate peerState = partner is { } plan && plan.Expected.Handle == peer.Handle
+                        ? plan.Update : ToUpdate(in peer);
+                    bool peerSpeaks = clock == 70d;
+                    if (!VanillaTownNpcFrameCatalog1458.TryGet(peer.TypeIdentity, out _, out _, out _)) return false;
+                    NpcStateUpdate emitter = peerSpeaks ? peerState : next;
+                    NpcStateUpdate listener = peerSpeaks ? next : peerState;
+                    if (!TryContextualEmote(in emitter, in listener, peers, out byte emote)) return false;
+                    emotes[0] = new(peerSpeaks ? peer.Handle : default, (ushort)(peerSpeaks ? 90 : clock == 216d ? 70 : 100), emote);
+                    emoteCount = 1;
+                }
                 index = ConversationFrame(clock, socialBase, next.Ai.Ai0 == 3f);
             }
             else

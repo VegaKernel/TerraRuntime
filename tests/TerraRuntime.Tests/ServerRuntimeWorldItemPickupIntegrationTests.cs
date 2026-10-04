@@ -50,14 +50,8 @@ public sealed class ServerRuntimeWorldItemPickupIntegrationTests
 
         TerrariaFrame initialDrop = DequeueFrame(outbound);
         Assert.Equal(TerrariaMessageId.WorldItemDrop, (TerrariaMessageId)initialDrop.MessageId);
-        Assert.Equal(byte.MaxValue, allocated.OwnerPlayerId);
-
-        state.Tick(); // Updates == 0
-        state.Tick(); // Updates == 1 -> Main.UpdateServer-style FindOwner cadence
-
-        Assert.True(state.TryCaptureWorldItemSnapshot(allocated.Handle.Slot, out WorldItemSnapshot reserved));
-        Assert.Equal(connection.Player.Slot.Value, reserved.OwnerPlayerId);
-        Assert.Equal(15, reserved.TimeToKeepReservation);
+        Assert.Equal(connection.Player.Slot.Value, allocated.OwnerPlayerId);
+        Assert.Equal(15, allocated.TimeToKeepReservation);
 
         TerrariaFrame ownerFrame = DequeueFrame(outbound);
         Assert.Equal(
@@ -66,6 +60,13 @@ public sealed class ServerRuntimeWorldItemPickupIntegrationTests
         Assert.Equal(allocated.Handle.Slot, owner.ItemIndex);
         Assert.Equal(connection.Player.Slot.Value, owner.OwnerPlayerId);
         Assert.Equal(15, owner.TimeToKeepReservation);
+
+        state.Tick();
+        state.Tick();
+        Assert.True(state.TryCaptureWorldItemSnapshot(allocated.Handle.Slot, out WorldItemSnapshot reserved));
+        Assert.Equal(connection.Player.Slot.Value, reserved.OwnerPlayerId);
+        Assert.Equal(13, reserved.TimeToKeepReservation);
+        Assert.Equal(0, outbound.QueuedFrames);
 
         using var bootstrap = new PlayerBootstrapFrameSink(
             slots,

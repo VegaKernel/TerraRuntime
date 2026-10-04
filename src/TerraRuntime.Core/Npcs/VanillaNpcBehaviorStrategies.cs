@@ -14,7 +14,7 @@ internal interface IVanillaNpcBehaviorStrategy
         out NpcStateUpdate next);
 }
 
-internal sealed class VanillaFlyingEyeNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
+internal sealed partial class VanillaFlyingEyeNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
     private IVanillaFlyingEyeEnvironment? _environment;
 
@@ -28,6 +28,9 @@ internal sealed class VanillaFlyingEyeNpcBehaviorStrategy : IVanillaNpcBehaviorS
         INpcAiStateStepper inner,
         out NpcStateUpdate next)
     {
+        if (_environment is IVanillaFlyingEyeRetainedEnvironment1458 retained)
+            return TryRetain(in npc, in definition, context, retained, out next);
+
         if (definition.AiStyle != VanillaNpcAiStyles.DemonEye)
         {
             next = default;

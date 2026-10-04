@@ -21,7 +21,7 @@ public sealed class RuntimeNpcServerStrikeWire1458Tests
         using var json = JsonDocument.Parse(gzip);
         foreach (var row in json.RootElement.EnumerateArray())
         {
-            if (row.GetProperty("scenario").GetString() != "active" || row.GetProperty("pendingSpawn").GetBoolean() ||
+            if (row.GetProperty("scenario").GetString() is not ("active" or "immortal") || row.GetProperty("pendingSpawn").GetBoolean() ||
                 row.GetProperty("outer").GetBoolean() || row.GetProperty("fromNet").GetBoolean() ||
                 row.GetProperty("damage").GetInt32() <= 0) continue;
             bool critical = row.GetProperty("crit").GetBoolean();
@@ -32,12 +32,12 @@ public sealed class RuntimeNpcServerStrikeWire1458Tests
     }
 
     // Independent original NPC.StrikeNPC/StrikeNPCNoInteraction -> real SendData socket bytes. The raw source
-    // pending-spawn, immortal and caller eligibility branches remain outside this already-published actor slice.
+    // pending-spawn and raw caller eligibility branches remain outside this already-published actor slice.
     [Theory]
     [MemberData(nameof(OriginalCases))]
     public void Accepted_server_strike_broadcasts_original_raw_damage_before_final_npc_state(JsonElement row, bool projectile)
     {
-        var f = new Fixture(row.GetProperty("generation").GetByte());
+        var f = new Fixture(row.GetProperty("generation").GetByte(), immortal: row.GetProperty("scenario").GetString() == "immortal");
         int damage = row.GetProperty("damage").GetInt32(), direction = row.GetProperty("direction").GetInt32();
         bool critical = row.GetProperty("crit").GetBoolean();
         bool killed = row.GetProperty("life").GetInt32() == 0;
@@ -130,12 +130,12 @@ public sealed class RuntimeNpcServerStrikeWire1458Tests
         public PlayerHandle Player { get; } = new(new(0), new(1));
         public TerrariaConnectionOutboundQueue First { get; }
         public TerrariaConnectionOutboundQueue Second { get; }
-        public Fixture(byte generation)
+        public Fixture(byte generation, bool immortal = false)
         {
             var replication = new RuntimeNpcReplicationRegistry(); Npcs = new(commitSink: replication);
             NpcSnapshot npc = default;
             var input = new NpcStateUpdate(3, 3, 100, 100, 0, 0, 0, default,
-                NpcSimulationState.Initial with { Life = int.MaxValue, LifeMax = int.MaxValue, DefenseOverride = 15 });
+                NpcSimulationState.Initial with { Life = int.MaxValue, LifeMax = int.MaxValue, DefenseOverride = 15, Immortal = immortal });
             for (int i = 0; i < generation; i++)
             {
                 Assert.True(Npcs.TrySpawn(0, in input, out npc));

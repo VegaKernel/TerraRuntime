@@ -36,14 +36,19 @@ public sealed class ServerRuntimeDirtKillReplicationIntegrationTests
 
         TerrariaConnectionOutboundQueue originOutbound = fixture.Outbound(origin);
         TerrariaConnectionOutboundQueue peerOutbound = fixture.Outbound(peer);
-        Assert.Equal(1, originOutbound.QueuedFrames);
-        Assert.Equal(2, peerOutbound.QueuedFrames);
+        Assert.Equal(2, originOutbound.QueuedFrames);
+        Assert.Equal(3, peerOutbound.QueuedFrames);
 
         TerrariaFrame originDropFrame = DequeueFrame(originOutbound);
         Assert.Equal(
             TerrariaWorldItemDropDecodeResult.Decoded,
             TerrariaWorldItemDropDecoder.TryDecode(in originDropFrame, out TerrariaWorldItemDropState originDrop));
         AssertDirtDrop(in originDrop);
+        TerrariaFrame originOwnerFrame = DequeueFrame(originOutbound);
+        Assert.Equal(TerrariaWorldItemOwnerDecodeResult.Decoded,
+            TerrariaWorldItemOwnerDecoder.TryDecode(in originOwnerFrame, out var originOwner));
+        Assert.Equal((short)0, originOwner.ItemIndex);
+        Assert.Equal(origin.Player.Slot.Value, originOwner.OwnerPlayerId);
 
         TerrariaFrame peerDropFrame = DequeueFrame(peerOutbound);
         Assert.Equal(
@@ -51,6 +56,10 @@ public sealed class ServerRuntimeDirtKillReplicationIntegrationTests
             TerrariaWorldItemDropDecoder.TryDecode(in peerDropFrame, out TerrariaWorldItemDropState peerDrop));
         AssertDirtDrop(in peerDrop);
         Assert.Equal(originDrop, peerDrop);
+        TerrariaFrame peerOwnerFrame = DequeueFrame(peerOutbound);
+        Assert.Equal(TerrariaWorldItemOwnerDecodeResult.Decoded,
+            TerrariaWorldItemOwnerDecoder.TryDecode(in peerOwnerFrame, out var peerOwner));
+        Assert.Equal(originOwner, peerOwner);
 
         TerrariaFrame peerTileFrame = DequeueFrame(peerOutbound);
         Assert.Equal(
@@ -58,7 +67,7 @@ public sealed class ServerRuntimeDirtKillReplicationIntegrationTests
             TerrariaTileManipulationCodec.TryDecode(in peerTileFrame, out TerrariaTileManipulationState relayedTile));
         Assert.Equal(request, relayedTile);
 
-        Assert.Equal(2, fixture.WorldItemReplication.RelayedFrames);
+        Assert.Equal(4, fixture.WorldItemReplication.RelayedFrames);
         Assert.Equal(0, fixture.WorldItemReplication.RejectedFrames);
         Assert.Equal(0, fixture.WorldItemReplication.UnsupportedCommits);
         Assert.Equal(1, fixture.TileReplication.RelayedFrames);

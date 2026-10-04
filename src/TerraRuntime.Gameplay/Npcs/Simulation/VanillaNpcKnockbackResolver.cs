@@ -28,7 +28,8 @@ public static class VanillaNpcKnockbackResolver
         if (critical)
             strength *= 1.4f;
 
-        long staggerThreshold = (long)resolvedDamage * (expertMode ? 15 : 10);
+        // StrikeNPC_Inner uses an unchecked Int32 product, including overflow at high damage.
+        int staggerThreshold = unchecked(resolvedDamage * (expertMode ? 15 : 10));
         if (staggerThreshold > lifeMax)
         {
             velocityX = ApplyStrongHorizontalKnockback(velocityX, strength, hitDirection);

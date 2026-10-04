@@ -230,4 +230,23 @@
     <EmbeddedResource Include="Fixtures/town-nurse-wire-official-1458.json.gz" LogicalName="TownNurseWire1458" />
     <EmbeddedResource Include="Fixtures/town-nurse-bounce-official-1458.json.gz" LogicalName="TownNurseBounce1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/world-item-owner-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/world-item-owner-ack-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/world-item-client-create-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/world-item-owner-equipment-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/world-item-owner-cadence-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/world-item-owner-buff-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/town-contextual-social-official-1458.json.gz" LogicalName="TownContextualSocial1458" />
+    <EmbeddedResource Include="Fixtures/town-social-metadata-official-1458.json.gz" LogicalName="TownSocialMetadata1458" />
+    <EmbeddedResource Include="Fixtures/world-item-pickup-defaults-official.json.gz" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/FloatingEyeWholeAi1458.json.gz" LogicalName="FloatingEyeWholeAi1458" />
+    <EmbeddedResource Include="Fixtures/FloatingEyeOuter1458.json.gz" LogicalName="FloatingEyeOuter1458" />
+    <EmbeddedResource Include="Fixtures/FloatingEyeDefaults1458.json.gz" LogicalName="FloatingEyeDefaults1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/nonclient-knockback-official-1458.json.gz" LogicalName="NonclientKnockback1458" />
+  </ItemGroup>
 </Project>

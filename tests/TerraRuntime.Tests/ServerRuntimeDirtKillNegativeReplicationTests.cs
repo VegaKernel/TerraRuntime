@@ -10,10 +10,10 @@ namespace TerraRuntime.Tests;
 public sealed class ServerRuntimeDirtKillNegativeReplicationTests
 {
     [Fact]
-    public void Full_world_item_pool_rejects_dirt_kill_without_tile_or_wire_commit()
+    public void Unknown_item_reservation_rejects_dirt_kill_without_tile_or_wire_commit()
     {
         using var fixture = new Fixture();
-        fixture.FillWorldItemPoolBeforePlayers();
+        WorldItemDropReservation held = fixture.FillWorldItemPoolBeforePlayers();
         ConnectionHandle origin = fixture.SpawnPlayer(connectionId: 9501);
         ConnectionHandle peer = fixture.SpawnPlayer(connectionId: 9502);
         fixture.SetSelectedCopperPickaxe(origin);
@@ -26,9 +26,10 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
         Assert.Equal(1, fixture.State.RejectedWorldItemAllocations);
         Assert.Equal(0, fixture.State.AppliedClientTileManipulations);
         Assert.Equal(0, fixture.State.AppliedWorldItemAllocations);
-        Assert.Equal(RuntimeWorldItemStore.VanillaCapacity, fixture.Items.ActiveCount);
+        Assert.Equal(RuntimeWorldItemStore.VanillaCapacity - 1, fixture.Items.ActiveCount);
         Assert.Equal(before, fixture.Tiles.Get(10, 10));
         fixture.AssertOnlyOriginCorrection(origin, peer);
+        Assert.True(fixture.Items.TryReleaseDropReservation(in held));
     }
 
     [Fact]
@@ -151,17 +152,19 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
         public RuntimeWorldItemReplicationRegistry WorldItemReplication { get; }
         public ServerRuntimeState State { get; }
 
-        public void FillWorldItemPoolBeforePlayers()
+        public WorldItemDropReservation FillWorldItemPoolBeforePlayers()
         {
             WorldItemDropStateUpdate drop = CreateProbeDrop() with { ItemNetId = 1, Stack = 9999 };
-            for (int i = 0; i < RuntimeWorldItemStore.VanillaCapacity; i++)
+            for (int i = 0; i < RuntimeWorldItemStore.VanillaCapacity - 1; i++)
             {
                 Assert.True(Items.TryAllocateDrop(in drop, out WorldItemSnapshot allocated));
                 Assert.Equal((short)i, allocated.Handle.Slot);
             }
 
-            Assert.Equal(RuntimeWorldItemStore.VanillaCapacity, Items.ActiveCount);
+            Assert.Equal(RuntimeWorldItemStore.VanillaCapacity - 1, Items.ActiveCount);
             Assert.Equal(0, WorldItemReplication.RelayedFrames);
+            Assert.True(Items.TryReserveDropSlot(out var held));
+            return held;
         }
 
         public ConnectionHandle SpawnPlayer(long connectionId)

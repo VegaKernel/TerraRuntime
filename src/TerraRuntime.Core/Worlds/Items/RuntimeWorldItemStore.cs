@@ -344,6 +344,7 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
             if (state.Active && !state.Claimed && TryAdvance(ref state.Revision))
             {
                 state.SourceReleaseRequested = false;
+                state.SourceOwnerAge = 0;
                 state.Update = state.Update with
                 {
                     PositionX = owner.PositionX,
@@ -406,6 +407,10 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
                 ref SlotState state = ref _slots[i];
                 if (!state.Claimed && state.Active && state.SourceAge < TerraRuntime.Gameplay.Items.VanillaWorldItemAllocation1458.AgeCeiling)
                     state.SourceAge++;
+                // Main.UpdateServer increments only nonnegative source owner ages. Pending39 uses -1;
+                // unchecked Int32 wrap also pauses the resulting negative age on subsequent ticks.
+                if (!state.Claimed && state.Active && state.SourceOwnerAge >= 0)
+                    state.SourceOwnerAge = unchecked(state.SourceOwnerAge + 1); // Main.UpdateServer int counter, including its wrap.
                 if (state.Claimed || !state.Active || (state.Update.GrabDelayTime == 0 && state.Update.TimeToKeepReservation == 0 &&
                     state.Update.EnemyGrabDelayTime == 0) || !TryAdvance(ref state.Revision)) continue;
                 state.Update = state.Update with
@@ -550,7 +555,7 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
 
             state.Revision = 1;
             state.Active = true;
-            state.SourceAge = InitialSourceAge(update.ItemNetId);
+            state.SourceAge = InitialSourceAge(update.ItemNetId); state.SourceOwnerAge = 0;
             state.Update = update;
             _activeCount++;
             snapshot = Capture(slot, in state);
@@ -616,7 +621,7 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
 
             state.Reserved = false;
             state.Active = true;
-            state.SourceAge = InitialSourceAge(state.Update.ItemNetId);
+            state.SourceAge = InitialSourceAge(state.Update.ItemNetId); state.SourceOwnerAge = 0;
             state.Revision = 1;
             _activeCount++;
             snapshot = Capture(reservation.Slot, in state);
@@ -651,7 +656,7 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
 
             state.Revision = 1;
             state.Active = true;
-            state.SourceAge = InitialSourceAge(update.ItemNetId);
+            state.SourceAge = InitialSourceAge(update.ItemNetId); state.SourceOwnerAge = 0;
             _activeCount++;
         }
         else if (!TryAdvance(ref state.Revision))
@@ -799,6 +804,7 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
         public bool Reserved;
         public bool Claimed;
         public int SourceAge;
+        public int SourceOwnerAge;
         public int SourceReuseTicks;
         public bool SourceLease;
         public bool SourceReleaseRequested;

@@ -42,6 +42,8 @@ internal sealed class TownNpcAuthority
     private readonly bool initialRaining;
     private readonly bool initialEclipse;
     private readonly bool initialInvasionActive;
+    private readonly RuntimeTownSocialWorld1458? socialWorld;
+    private readonly RuntimeWorldProgressionMutations progression;
 
     public TownNpcAuthority(
         PlayerAuthority players,
@@ -63,7 +65,8 @@ internal sealed class TownNpcAuthority
         IVanillaTallGateOccupancyProbe? actorOccupancy = null,
         RuntimeTileManipulationReplicationRegistry? tileReplication = null,
         ServerPlayerAuthority? serverPlayers = null,
-        RuntimeNpcStinkyStatus1458? npcStatus = null)
+        RuntimeNpcStinkyStatus1458? npcStatus = null,
+        RuntimeTownSocialWorld1458? townSocialWorldFacts = null)
     {
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.serverPlayers = serverPlayers;
@@ -78,6 +81,8 @@ internal sealed class TownNpcAuthority
         this.initialEclipse = initialEclipse;
         this.initialInvasionActive = initialInvasionActive;
         ArgumentNullException.ThrowIfNull(progression);
+        this.progression = progression;
+        socialWorld = townSocialWorldFacts;
 
         rescue = townNpcs is not null && worldTiles is not null
             ? new RuntimeTownNpcRescueService1458(npcs, townNpcs, progression)
@@ -241,6 +246,13 @@ internal sealed class TownNpcAuthority
 
         if (schedule is not null && combat is not null)
         {
+            RuntimeTownSocialWorld1458? context = socialWorld is { } saved ? saved with {
+                ExpertMode = saved.ExpertMode || worldClock?.GetGoodWorld == true,
+                DayTime = worldClock?.DayTime ?? saved.DayTime,
+                BloodMoon = worldClock?.BloodMoonActive ?? saved.BloodMoon,
+                Time = worldClock?.Time ?? saved.Time,
+                Progression = progression.CaptureSnapshot() } : null;
+            schedule.SetSocialContext(context, players, worldClock, progression);
             var scheduleConditions = new RuntimeTownNpcScheduleConditions1458(
                 DayTime: worldClock?.DayTime ?? true,
                 Raining: worldClock?.Raining ?? initialRaining,

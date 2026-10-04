@@ -68,12 +68,13 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                         gravity.Value.Parameters.Gravity, out moved)) { rejected++; continue; }
             }
             else moved = contacted;
-            if (!TryPlanPresentation(in moved, peers[..peerCount], ref socialPeer, emotes,
+            if (!TryPlanPresentation(in moved, peers[..peerCount], ref socialPeer, emotes, randomScope is not null,
                     out int emoteCount, out moved)) { rejected++; continue; }
             moved = moved with { Simulation = moved.Simulation with { JustHit = false } };
             if (!moved.Simulation.Wet && moved.Simulation.Breath is { } breath)
                 moved = moved with { Simulation = moved.Simulation with { Breath = Math.Min(200, breath + 3) } };
             if (!npcs.TryGet(before.Handle, out var current) || current.Revision != before.Revision ||
+                emoteCount > 0 && !SocialContextIsCurrent(peers[..peerCount]) ||
                 randomScope is not null && !randomScope.IsCurrent) { rejected++; continue; }
             NpcSnapshot committed;
             if (socialPeer.HasValue)
