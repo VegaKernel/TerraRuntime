@@ -139,6 +139,7 @@ internal sealed class SurfaceFinishState1458
 {
     public VanillaWorldGenerationBootstrapState1458? Bootstrap { get; private set; }
     public double WorldSurface { get; private set; }
+    public double WorldSurfaceLow { get; private set; }
     public double WorldSurfaceHigh { get; private set; }
     public double RockLayer { get; private set; }
     public int UnderworldTop { get; private set; }
@@ -156,6 +157,7 @@ internal sealed class SurfaceFinishState1458
 
         WorldSurface = layers.WorldSurface;
         WorldSurfaceHigh = workspace.VanillaTerrainState?.WorldSurfaceHigh ?? layers.WorldSurface;
+        WorldSurfaceLow = workspace.VanillaTerrainState?.WorldSurfaceLow ?? layers.WorldSurface;
         RockLayer = layers.RockLayer;
         UnderworldTop = Math.Clamp(workspace.HeightTiles - 200, (int)RockLayer + 120, workspace.HeightTiles - 90);
     }
@@ -317,7 +319,7 @@ internal sealed class SurfaceFinishPass1458 : IWorldGenerationPass
         // The source pass samples only the narrow surface band.  Its first count is a scaled
         // `Next(width*5/4200, width*10/4200)`, not a density-derived underground ore budget.
         int patches = random.Next(grid.Width * 5 / 4200, grid.Width * 10 / 4200);
-        int minY = Math.Clamp((int)state.WorldSurface - 20, 10, grid.Height - 20);
+        int minY = Math.Clamp((int)state.WorldSurfaceLow, 10, grid.Height - 20);
         int maxY = Math.Clamp((int)state.WorldSurface, minY + 1, grid.Height - 10);
         int changed = 0;
 
