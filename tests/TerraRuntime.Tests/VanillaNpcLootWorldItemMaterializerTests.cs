@@ -42,8 +42,8 @@ public sealed class VanillaNpcLootWorldItemMaterializerTests
             random,
             out WorldItemDropStateUpdate item));
 
-        Assert.Equal(17f, item.PositionX);
-        Assert.Equal(23f, item.PositionY);
+        Assert.Equal(14f, item.PositionX);
+        Assert.Equal(21f, item.PositionY);
         Assert.Equal(0.5f, item.VelocityX);
         Assert.Equal(-2f, item.VelocityY);
         Assert.Equal((short)2, item.Stack);
@@ -66,8 +66,8 @@ public sealed class VanillaNpcLootWorldItemMaterializerTests
             random,
             out WorldItemDropStateUpdate item));
 
-        Assert.Equal(9f, item.PositionX);
-        Assert.Equal(15f, item.PositionY);
+        Assert.Equal(14f, item.PositionX);
+        Assert.Equal(21f, item.PositionY);
         Assert.Equal((byte)0, item.Prefix);
         Assert.Equal(new[] { "rng:0:4", "rng:-30:31", "rng:-40:-15" }, random.Calls);
     }

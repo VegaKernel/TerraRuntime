@@ -172,7 +172,7 @@ internal sealed partial class NpcAuthority
             townInitialInvasionActive,
             expertMode,
             masterMode,
-            this.naturalSpawnRandom);
+            this.naturalSpawnRandom, tallGateOccupancy, tileManipulationReplication, serverPlayers);
         mysticFrogCatch = worldTiles is not null
             ? new RuntimeMysticFrogCatchService1458(npcs, worldTiles, playerSnapshots)
             : null;
@@ -198,7 +198,11 @@ internal sealed partial class NpcAuthority
             townCommerceWorldFacts?.DownedPlantera,
             projectileReplication,
             townCommerceWorldFacts?.ZenithWorld ?? false,
-            TrySpawnSlimeRainKing);
+            TrySpawnSlimeRainKing,
+            seasonalItemContext: () => new TerraRuntime.Gameplay.Items.VanillaSeasonalItemDropContext1458(
+                townCommerceWorldFacts?.Halloween ?? false,
+                townCommerceWorldFacts?.XMas ?? false,
+                townCommerceWorldFacts?.TenthAnniversaryWorld ?? false));
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
             projectiles,
             npcs,

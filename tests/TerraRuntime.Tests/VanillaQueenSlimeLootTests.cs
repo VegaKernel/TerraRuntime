@@ -13,15 +13,15 @@ public sealed class VanillaQueenSlimeLootTests
     [InlineData(2, 4984)]
     public void Classic_preserves_exact_luck_raw_stack_and_armor_selection_order(int option, int armor)
     {
-        var rolls = new ScriptedRolls(
+        var rolls = new ScriptedRolls("L10=0", "N1:2=1",
             "L1=0", "N25:76=75", "L7=0", "N1:2=1", "L1=0", $"N0:3={option}",
-            "L4=0", "N1:2=1", "L4=0", "N1:2=1", "N0:3=0", "N1:2=1", "L10=0", "N1:2=1");
+            "L4=0", "N1:2=1", "L4=0", "N1:2=1", "N0:3=0", "N1:2=1");
         var sink = new RecordingSink();
         Assert.True(VanillaQueenSlimeLootEvaluator.TryExecute(new(false, false), new(100, 200),
             [], rolls, sink, out QueenSlimeLootExecutionResult result));
-        Assert.Equal([4986, 4959, armor, 4758, 4981, 4980, 4958],
+        Assert.Equal([4958, 4986, 4959, armor, 4758, 4981, 4980],
             sink.World.Select(static entry => entry.Drop.ItemType.Value));
-        Assert.Equal([75, 1, 1, 1, 1, 1, 1], sink.World.Select(static entry => (int)entry.Drop.Stack));
+        Assert.Equal([1, 75, 1, 1, 1, 1, 1], sink.World.Select(static entry => (int)entry.Drop.Stack));
         Assert.Equal(new QueenSlimeLootExecutionResult(7, 0, 0, 0), result);
         rolls.AssertConsumed();
     }
@@ -29,9 +29,9 @@ public sealed class VanillaQueenSlimeLootTests
     [Fact]
     public void Classic_hook_raw_roll_is_independent_of_failed_luck_rolls()
     {
-        var rolls = new ScriptedRolls(
+        var rolls = new ScriptedRolls("L10=9",
             "L1=0", "N25:76=25", "L7=6", "L1=0", "N0:3=1",
-            "L4=3", "L4=3", "N0:3=0", "N1:2=1", "L10=9");
+            "L4=3", "L4=3", "N0:3=0", "N1:2=1");
         var sink = new RecordingSink();
         Assert.True(VanillaQueenSlimeLootEvaluator.TryExecute(new(false, false), new(100, 200),
             [], rolls, sink, out _));
@@ -42,7 +42,7 @@ public sealed class VanillaQueenSlimeLootTests
     [Fact]
     public void Expert_delivers_only_interactor_bags_and_optional_trophy()
     {
-        var rolls = new ScriptedRolls("N0:1=0", "N1:2=1", "L10=9");
+        var rolls = new ScriptedRolls("L10=9", "N0:1=0", "N1:2=1");
         var sink = new RecordingSink();
         VanillaQueenSlimeLootPlayer[] players = [new(new(1), 10, 20), new(new(4), 30, 40)];
         Assert.True(VanillaQueenSlimeLootEvaluator.TryExecute(new(true, false), new(100, 200),
@@ -57,14 +57,14 @@ public sealed class VanillaQueenSlimeLootTests
     [Fact]
     public void Master_relic_uses_common_luck_and_pets_use_independent_player_ordered_raw_rolls()
     {
-        var rolls = new ScriptedRolls("N0:1=0", "N1:2=1", "L1=0", "N1:2=1",
-            "N1:2=1", "N0:4=3", "N0:4=0", "L10=0", "N1:2=1");
+        var rolls = new ScriptedRolls("L10=0", "N1:2=1", "N0:1=0", "N1:2=1", "L1=0", "N1:2=1",
+            "N1:2=1", "N0:4=3", "N0:4=0");
         var sink = new RecordingSink();
         VanillaQueenSlimeLootPlayer[] players = [new(new(1), 10, 20), new(new(4), 30, 40)];
         Assert.True(VanillaQueenSlimeLootEvaluator.TryExecute(new(true, true), new(100, 200),
             players, rolls, sink, out QueenSlimeLootExecutionResult result));
-        Assert.Equal([4950, 4960, 4958], sink.World.Select(static entry => entry.Drop.ItemType.Value));
-        Assert.Equal(new NpcLootWorldItemOrigin(30, 40), sink.World[1].Origin);
+        Assert.Equal([4958, 4950, 4960], sink.World.Select(static entry => entry.Drop.ItemType.Value));
+        Assert.Equal(new NpcLootWorldItemOrigin(30, 40), sink.World[2].Origin);
         Assert.Equal(new QueenSlimeLootExecutionResult(3, 1, 2, 1), result);
         rolls.AssertConsumed();
     }
@@ -144,7 +144,7 @@ public sealed class VanillaQueenSlimeLootTests
         Assert.True(VanillaNpcLootWorldItemMaterializer.Instance.TryMaterialize(new(100, 200),
             new(VanillaQueenSlimeItemIds.BladeStaff, 1), rolls, out WorldItemDropStateUpdate drop));
         Assert.Equal((byte)87, drop.Prefix);
-        Assert.Equal((87f, 186f), (drop.PositionX, drop.PositionY));
+        Assert.Equal((92f, 192f), (drop.PositionX, drop.PositionY));
         Assert.Equal((1.2f, -2f), (drop.VelocityX, drop.VelocityY));
         rolls.AssertConsumed();
     }

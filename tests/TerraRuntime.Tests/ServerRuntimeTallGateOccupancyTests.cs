@@ -112,7 +112,7 @@ public sealed class ServerRuntimeTallGateOccupancyTests
     {
         for (int row = 0; row < 5; row++)
         {
-            WorldTile tile = new() { Type = (ushort)VanillaTileIds.TallGateClosed.Value, Flags = WorldTileFlags.Active, FrameY = (short)(row * 18) };
+            WorldTile tile = new() { Type = (ushort)VanillaTileIds.TallGateClosed.Value, Flags = WorldTileFlags.Active, FrameY = (short)(new[] { 0, 20, 38, 56, 74 }[row]) };
             tiles.Set(x, topY + row, in tile);
         }
     }

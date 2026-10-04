@@ -19,6 +19,12 @@ public interface IVanillaNpcProjectileEnvironment
         int targetHeight);
 }
 
+/// <summary>Retained background-wall fact consumed by the AI_003 Possessed wall-flight branch.</summary>
+public interface IVanillaNpcBackgroundWallEnvironment
+{
+    bool HasBackgroundWall(int tileX, int tileY);
+}
+
 /// <summary>Source CanHitLine capability; no approximation using CanHit is accepted.</summary>
 public interface IVanillaNpcProjectileLineEnvironment
 {

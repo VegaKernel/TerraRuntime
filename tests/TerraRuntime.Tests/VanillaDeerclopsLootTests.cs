@@ -23,13 +23,13 @@ public sealed class VanillaDeerclopsLootTests
 
         ItemTypeId[] expected =
         [
+            VanillaDeerclopsItemIds.DeerclopsTrophy,
             VanillaDeerclopsItemIds.DeerclopsMask,
             VanillaDeerclopsItemIds.ChesterPetItem,
             VanillaDeerclopsItemIds.Eyebrella,
             VanillaDeerclopsItemIds.DontStarveShaderItem,
             VanillaDeerclopsItemIds.DizzyHat,
             VanillaDeerclopsItemIds.PewMaticHorn,
-            VanillaDeerclopsItemIds.DeerclopsTrophy
         ];
 
         Assert.Equal(expected, sink.WorldDrops.Select(static drop => drop.ItemType));
@@ -61,11 +61,11 @@ public sealed class VanillaDeerclopsLootTests
         Assert.Equal(VanillaDeerclopsItemIds.DeerclopsBossBag, Assert.Single(sink.InstancedDrops).ItemType);
         Assert.Equal(
             [
+                VanillaDeerclopsItemIds.DeerclopsTrophy,
                 VanillaDeerclopsItemIds.DeerclopsMasterTrophy,
                 VanillaDeerclopsItemIds.DeerclopsPetItem,
                 VanillaDeerclopsItemIds.DeerclopsPetItem,
-                VanillaDeerclopsItemIds.DeerclopsTrophy
-            ],
+                ],
             sink.WorldDrops.Select(static drop => drop.ItemType));
         Assert.Equal(4, result.WorldItemCount);
         Assert.Equal(1, result.InstancedItemCount);

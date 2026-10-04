@@ -223,9 +223,15 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId GoblinArcher = new(111);
     public static readonly NpcTypeId Clown = new(109);
     public static readonly NpcTypeId ChaosElemental = new(120);
-    public static readonly NpcTypeId Gastropod = new(163);
-    public static readonly NpcTypeId Wraith = new(166);
+    public static readonly NpcTypeId Gastropod = new(122);
+    public static readonly NpcTypeId BlackRecluse = new(163);
+    public static readonly NpcTypeId Wraith = new(82);
+    public static readonly NpcTypeId SwampThing = new(166);
     public static readonly NpcTypeId Psycho = new(466);
+    public static readonly NpcTypeId Frankenstein = new(162);
+    public static readonly NpcTypeId Fritz = new(462);
+    public static readonly NpcTypeId ThePossessed = new(469);
+    public static readonly NpcTypeId MartianSaucerCore = new(395);
     public static readonly NpcTypeId Butcher = new(460);
     public static readonly NpcTypeId Nailhead = new(463);
     public static readonly NpcTypeId DrManFly = new(468);
@@ -613,7 +619,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId DemonScythe = new(44);
     public static readonly ProjectileTypeId HappyBomb = new(75);
     public static readonly ProjectileTypeId HornetStinger = new(55);
-    public static readonly ProjectileTypeId GastropodBolt = new(472);
+    public static readonly ProjectileTypeId WebSpit = new(472);
     public static readonly ProjectileTypeId TacticalSkeletonBullet = new(180);
     public static readonly ProjectileTypeId SkeletonSniperBullet = new(302);
     public static readonly ProjectileTypeId SkeletonCommandoRocket = new(303);

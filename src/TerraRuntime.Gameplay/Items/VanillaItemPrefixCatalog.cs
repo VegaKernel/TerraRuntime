@@ -133,6 +133,10 @@ public static class VanillaItemPrefixCatalog
     /// </summary>
     public static bool IsValidForItem(ItemTypeId itemType, PrefixId prefix)
     {
+        if (VanillaBossRewardItemPrefixFacts1458.TryGetFamily(itemType, out var bossRewardFamily))
+            return prefix == VanillaPrefixIds.None ||
+                (Contains(GetRollablePrefixes(bossRewardFamily), prefix) &&
+                 VanillaBossRewardItemPrefixFacts1458.PassesStatRounding(itemType, prefix));
         if (VanillaDungeonChestItemCatalog1458.TryGet(itemType, out VanillaItemDefinition dungeon) &&
             dungeon.WorldDrop is { PrefixFamily: not VanillaItemPrefixFamily.None } dungeonDrop)
         {

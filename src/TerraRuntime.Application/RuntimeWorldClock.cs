@@ -169,6 +169,8 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
 
     public bool DayTime { get; private set; }
 
+    internal TerraRuntime.Gameplay.Npcs.VanillaBossRecoveryDailyState1458 BossRecoveryDailyState { get; } = new();
+
     public VanillaMoonPhase MoonPhase { get; private set; }
 
     public double SlimeRainTime { get; private set; }
@@ -540,6 +542,7 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         {
             Time = 0d;
             DayTime = false;
+            BossRecoveryDailyState.Reset();
         }
 
         PublishCommittedState();

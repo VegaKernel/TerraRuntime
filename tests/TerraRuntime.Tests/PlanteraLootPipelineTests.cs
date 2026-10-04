@@ -82,7 +82,9 @@ public sealed class PlanteraLootPipelineTests
             Assert.True(progression.IsCompleted(VanillaWorldProgressionId.Plantera));
             if (kill == 0 && baseline is null)
             {
-                Assert.Empty(drops);
+                Assert.Single(drops, entry => entry.Drop.ItemNetId == 499);
+                Assert.InRange(drops.Count(entry => entry.Drop.ItemNetId == 58),5,9);
+                Assert.All(drops,entry=>Assert.True(entry.Drop.ItemNetId is 499 or 58));
                 continue;
             }
             Assert.Single(drops, entry => entry.Drop.ItemNetId == 1141);

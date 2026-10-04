@@ -26,6 +26,8 @@ internal readonly record struct RuntimeTownNpcScheduleConditions1458(
 
 internal readonly record struct RuntimeTownPlayerBounds1458(float X, float Y, float Width, float Height);
 
+internal readonly record struct RuntimeTownPlayerSeat1458(byte Slot, RuntimeTownPlayerBounds1458 Bounds);
+
 internal readonly record struct RuntimeTownPlayerConversation1458(
     byte Slot, short TalkNpcSlot, RuntimeTownPlayerBounds1458 Bounds, bool CanBeTalkedTo);
 
@@ -79,12 +81,17 @@ internal sealed partial class RuntimeTownNpcSchedule1458
     private readonly WorldTileStore tiles;
     private readonly IRuntimeTownNpcScheduleRandom1458 random;
     private readonly Dictionary<short, RuntimeTownNpcScheduleState1458> states = [];
+    private readonly Dictionary<byte, RememberedDoor> doors = [];
+    private readonly RuntimeGroundFighterDoorOpeningSink doorSink;
+    private readonly record struct RememberedDoor(NpcHandle Handle, int X, int Y);
 
     public RuntimeTownNpcSchedule1458(
         RuntimeTownNpcStateStore townNpcs,
         RuntimeNpcStore npcs,
         WorldTileStore tiles,
-        IRuntimeTownNpcScheduleRandom1458? random = null)
+        IRuntimeTownNpcScheduleRandom1458? random = null,
+        IVanillaTallGateOccupancyProbe? actorOccupancy = null,
+        RuntimeTileManipulationReplicationRegistry? tileReplication = null)
     {
         ArgumentNullException.ThrowIfNull(townNpcs);
         ArgumentNullException.ThrowIfNull(npcs);
@@ -93,6 +100,8 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         this.npcs = npcs;
         this.tiles = tiles;
         this.random = random ?? SharedRuntimeTownNpcScheduleRandom1458.Instance;
+        doorSink = new RuntimeGroundFighterDoorOpeningSink(tiles, tileReplication, actorOccupancy,
+            doorCloseRandom: new TownDoorCloseRandom(this.random));
     }
 
     public RuntimeTownNpcScheduleState1458 GetState(short slot) =>
@@ -103,8 +112,14 @@ internal sealed partial class RuntimeTownNpcSchedule1458
     public void Tick(
         in RuntimeTownNpcScheduleConditions1458 conditions,
         ReadOnlySpan<RuntimeTownPlayerBounds1458> players,
-        ReadOnlySpan<RuntimeTownPlayerConversation1458> conversations = default)
+        ReadOnlySpan<RuntimeTownPlayerConversation1458> conversations = default,
+        ReadOnlySpan<RuntimeTownPlayerSeat1458> seatedPlayers = default)
     {
+        if (doors.Count > 0)
+            for (int index = 0; index <= byte.MaxValue; index++)
+                if (doors.TryGetValue((byte)index, out RememberedDoor retained) &&
+                    (!npcs.TryGetActive((byte)index, out NpcSnapshot live) || live.Handle != retained.Handle))
+                    doors.Remove((byte)index);
         Span<RuntimeTownNpcHomeCommit> homes = stackalloc RuntimeTownNpcHomeCommit[RuntimeTownNpcStateStore.MaximumTownNpcs];
         int homeCount = townNpcs.CopyHomeBaselines(homes);
         for (int homeIndex = 0; homeIndex < homeCount; homeIndex++)
@@ -151,13 +166,21 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 continue;
             }
 
+            if (snapshot.Ai.Ai0 == 9f)
+            {
+                if (TryTickFurniture(in snapshot, out NpcSnapshot inspecting))
+                    townNpcs.TryUpdatePosition(slot, in inspecting);
+                states[slot] = RuntimeTownNpcScheduleState1458.DayWander;
+                continue;
+            }
+
             if (home.Status != TerrariaNpcHomeStatus.HasRoom)
                 continue;
 
             if (!conditions.ReturnHomeRequested)
             {
                 states[slot] = RuntimeTownNpcScheduleState1458.DayWander;
-                if (TryTickOrdinaryMotion(in snapshot, in home, shelterAtHome: false, out NpcSnapshot wandering))
+                if (TryTickOrdinaryMotion(in snapshot, in home, shelterAtHome: false, seekShelter: false, seatedPlayers, out NpcSnapshot wandering))
                     townNpcs.TryUpdatePosition(slot, in wandering);
                 continue;
             }
@@ -186,7 +209,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                     snapshot.Simulation.Wet))
             {
                 if (snapshot.Ai.Ai0 == 1f &&
-                    TryTickOrdinaryMotion(in snapshot, in home, shelterAtHome: true, out NpcSnapshot resting))
+                    TryTickOrdinaryMotion(in snapshot, in home, shelterAtHome: true, seekShelter: true, seatedPlayers, out NpcSnapshot resting))
                 {
                     townNpcs.TryUpdatePosition(slot, in resting);
                     states[slot] = RuntimeTownNpcScheduleState1458.RestingAtHome;
@@ -212,7 +235,12 @@ internal sealed partial class RuntimeTownNpcSchedule1458
 
             states[slot] = RuntimeTownNpcScheduleState1458.ReturningHome;
             if (!IsTeleportSafe(snapshot, floorX, floorY, home.NpcType, players))
+            {
+                if (TryTickOrdinaryMotion(in snapshot, in home, shelterAtHome: false,
+                        seekShelter: true, seatedPlayers, out NpcSnapshot walkingHome))
+                    townNpcs.TryUpdatePosition(slot, in walkingHome);
                 continue;
+            }
 
             if (!TryTeleport(snapshot, floorX, floorY, home.NpcType, out NpcSnapshot committed))
                 continue;

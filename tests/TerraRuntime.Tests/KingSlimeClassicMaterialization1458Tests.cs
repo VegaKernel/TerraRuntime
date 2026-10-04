@@ -66,9 +66,16 @@ public sealed class KingSlimeClassicMaterialization1458Tests
         state.Apply(new ClientNpcDamageRuntimeCommand(owner, wire));
         Assert.Equal(1, state.AppliedClientNpcDamage);
         Assert.False(npcs.TryGet(king.Handle, out _));
-        Span<WorldItemSnapshot> drops = stackalloc WorldItemSnapshot[8];
+        Span<WorldItemSnapshot> drops = stackalloc WorldItemSnapshot[
+            VanillaKingSlimeNormalLootCatalog.MaximumDropCount + VanillaBossRecovery1458.MaximumRecoveryDrops];
         int count = items.CopyActive(drops);
-        Assert.InRange(count, 3, 7);
+        Assert.Equal(items.ActiveCount, count);
+        var recovery = drops[..count].ToArray();
+        var potion = Assert.Single(recovery, drop => drop.ItemNetId == VanillaBossRecoveryItemIds1458.LesserHealingPotion.Value);
+        Assert.InRange(potion.Stack, 5, 15);
+        Assert.InRange(recovery.Count(drop => drop.ItemNetId == VanillaWallOfFleshItemIds.Heart.Value), 5, 9);
+        Assert.All(recovery.Where(drop => drop.ItemNetId == VanillaWallOfFleshItemIds.Heart.Value), drop => Assert.Equal((short)1, drop.Stack));
+        Assert.InRange(recovery.Count(drop => drop.ItemNetId is not (28 or 58)), 3, 7);
         var ids = drops[..count].ToArray().Select(drop => drop.ItemNetId).ToArray();
         Assert.Single(ids, id => id is 256 or 257 or 258);
         Assert.Single(ids, id => id is 2585 or 2610);

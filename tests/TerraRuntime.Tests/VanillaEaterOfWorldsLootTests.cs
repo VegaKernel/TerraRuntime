@@ -26,11 +26,11 @@ public sealed class VanillaEaterOfWorldsLootTests
     }
 
     [Fact]
-    public void Classic_last_segment_appends_normal_boss_rules_then_trophy()
+    public void Classic_last_segment_runs_trophy_before_segment_and_normal_boss_rules()
     {
         var rolls = new SequenceRolls(
             luck: [0, 0, 0, 0, 0, 0],
-            raw: [1, 3, 40, 1, 1, 1]);
+            raw: [1, 1, 3, 40, 1, 1]);
         var sink = new RecordingSink();
         var context = new VanillaEaterOfWorldsLootContext(false, false, true);
         var origin = new NpcLootWorldItemOrigin(10f, 20f);
@@ -42,19 +42,19 @@ public sealed class VanillaEaterOfWorldsLootTests
         Assert.Equal(4, result.BossWorldItemCount);
         Assert.Equal(
             [
+                "world:1361:1:10:20",
                 "world:86:1:10:20",
                 "world:56:3:10:20",
                 "world:56:40:10:20",
                 "world:994:1:10:20",
                 "world:2111:1:10:20",
-                "world:1361:1:10:20"
             ],
             sink.Events);
         rolls.AssertExhausted();
     }
 
     [Fact]
-    public void Master_last_segment_runs_small_rules_bag_relic_per_player_pet_then_trophy()
+    public void Master_last_segment_runs_trophy_then_small_rules_bag_relic_and_per_player_pet()
     {
         VanillaEaterOfWorldsLootPlayer[] players =
         [
@@ -63,7 +63,7 @@ public sealed class VanillaEaterOfWorldsLootTests
         ];
         var rolls = new SequenceRolls(
             luck: [0, 0, 0, 0],
-            raw: [2, 1, 0, 1, 1, 1, 0, 3, 1]);
+            raw: [1, 2, 1, 0, 1, 1, 1, 0, 3]);
         var sink = new RecordingSink();
         var context = new VanillaEaterOfWorldsLootContext(true, true, true);
         var origin = new NpcLootWorldItemOrigin(100f, 200f);
@@ -78,12 +78,12 @@ public sealed class VanillaEaterOfWorldsLootTests
         Assert.Equal(1, result.MasterPetDropCount);
         Assert.Equal(
             [
+                "world:1361:1:100:200",
                 "world:86:2:100:200",
                 "world:56:1:100:200",
                 "instanced:3320:1:2:54000",
                 "world:4925:1:100:200",
                 "world:4799:1:20:30",
-                "world:1361:1:100:200"
             ],
             sink.Events);
         rolls.AssertExhausted();

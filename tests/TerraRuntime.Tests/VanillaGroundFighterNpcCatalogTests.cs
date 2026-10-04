@@ -125,8 +125,8 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         Assert.Equal(1.5f, skeleton.BaseMaximumHorizontalSpeed, 5);
         Assert.True(zombie.ScaleAdjustsMaximumHorizontalSpeed);
         Assert.True(skeleton.ScaleAdjustsMaximumHorizontalSpeed);
-        Assert.Equal(107, VanillaGroundFighterNpcCatalog.DefinitionCount);
-        Assert.Equal(105, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
+        Assert.Equal(110, VanillaGroundFighterNpcCatalog.DefinitionCount);
+        Assert.Equal(108, VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount);
 
         Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.VampireHumanoid, out var vampire));
         Assert.Equal(6f, vampire.BaseMaximumHorizontalSpeed, 5);
@@ -255,14 +255,14 @@ public sealed class VanillaGroundFighterNpcCatalogTests
     }
 
     [Fact]
-    public void Wraith_keeps_its_source_wait_clock_fighter_profile()
+    public void Swamp_thing_keeps_its_source_wait_clock_fighter_profile()
     {
-        Assert.True(VanillaGroundFighterNpcCatalog.TryGetDefinition(VanillaNpcIds.Wraith, out var definition));
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetDefinition(VanillaNpcIds.SwampThing, out var definition));
         Assert.Equal((18, 40, 70, 26, 450),
             (definition.BaseWidth, definition.BaseHeight, definition.Damage, definition.Defense, definition.LifeMax));
         Assert.Equal(.2f, definition.KnockBackResist, 5);
 
-        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.Wraith, out var behavior));
+        Assert.True(VanillaGroundFighterNpcCatalog.TryGetBehavior(VanillaNpcIds.SwampThing, out var behavior));
         Assert.Equal(3f, behavior.BaseMaximumHorizontalSpeed, 5);
         Assert.Equal(.07f, behavior.HorizontalAcceleration, 5);
         Assert.Equal(.99f, behavior.ReversingVelocityDamping, 5);

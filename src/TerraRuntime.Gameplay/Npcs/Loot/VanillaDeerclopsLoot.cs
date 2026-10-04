@@ -93,6 +93,9 @@ public static class VanillaDeerclopsLootEvaluator
         int recipients = 0;
         int petDrops = 0;
 
+        // RegisterBossTrophies precedes RegisterBosses in ItemDropDatabase.Populate.
+        RollClassic(VanillaDeerclopsItemIds.DeerclopsTrophy, 10, in npcOrigin, rolls, sink, ref worldItems);
+
         if (context.IsExpertMode)
         {
             // BossBag(): the guaranteed local-drop rule consumes its CommonDrop chance and stack calls before Item.NewItem.
@@ -149,15 +152,18 @@ public static class VanillaDeerclopsLootEvaluator
             RollClassic(VanillaDeerclopsItemIds.DontStarveShaderItem, 3, in npcOrigin, rolls, sink, ref worldItems);
             RollClassic(VanillaDeerclopsItemIds.DizzyHat, 14, in npcOrigin, rolls, sink, ref worldItems);
 
-            // OneFromRulesRule(1, OneFromOptionsNotScalingWithLuck(1, ...)) has two explicit guaranteed
-            // Next(1) calls before selecting the option. Preserve both to keep the shared Main.rand stream aligned.
+            // OneFromRules consumes chance and one-rule choice; the selected option rule consumes its own
+            // chance before choosing the item, whose fixed stack is not a CommonDrop stack roll.
+            rolls.NextInt32(0, 1);
             rolls.NextInt32(0, 1);
             rolls.NextInt32(0, 1);
             ItemTypeId selected = ClassicWeaponOptions[rolls.NextInt32(0, ClassicWeaponOptions.Length)];
-            DropGuaranteed(selected, in npcOrigin, rolls, sink, ref worldItems);
+            var selectedDrop = new NpcLootDrop(selected, 1);
+            if (!sink.TryDeliverWorldItem(in npcOrigin, in selectedDrop, rolls))
+                throw new InvalidOperationException("Deerclops option delivery failed.");
+            worldItems++;
         }
 
-        RollClassic(VanillaDeerclopsItemIds.DeerclopsTrophy, 10, in npcOrigin, rolls, sink, ref worldItems);
 
         result = new DeerclopsLootExecutionResult(worldItems, instancedItems, recipients, petDrops);
         return result.IsValid;

@@ -56,6 +56,7 @@
     <EmbeddedResource Include="Fixtures/lunar-event-headers-1458.bin.gz" LogicalName="LunarEventHeaders1458" />
     <EmbeddedResource Include="Fixtures/moon-lord-intro-1458.json.gz" LogicalName="MoonLordIntroduction1458" />
     <EmbeddedResource Include="Fixtures/late-boss-headers-1458.bin.gz" LogicalName="LateBossHeaders1458" />
+    <EmbeddedResource Include="Fixtures/eclipse-ground-ai003-linux-1458.json.gz" LogicalName="EclipseGroundAi003Linux1458" />
     <EmbeddedResource Include="Fixtures/eclipse-fighters-ai003-linux-1458.json.gz" LogicalName="eclipse-fightersAi003Linux1458" />
     <EmbeddedResource Include="Fixtures/drmanfly-targets-ai003-linux-1458.json.gz" LogicalName="drmanfly-targetsAi003Linux1458" />
     <EmbeddedResource Include="Fixtures/nailhead-volley-ai003-linux-1458.json.gz" LogicalName="nailhead-volleyAi003Linux1458" />
@@ -145,4 +146,10 @@
     <EmbeddedResource Include="Fixtures/eclipse-projectile-motion-1458.json.gz" LogicalName="EclipseProjectileMotion1458" />
     <EmbeddedResource Include="Fixtures/eclipse-projectile-terrain-1458.json.gz" LogicalName="EclipseProjectileTerrain1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/boss-recovery-1458.json.gz" LogicalName="BossRecovery1458" />
+    <EmbeddedResource Include="Fixtures/boss-recovery-coupled-1458.json.gz" LogicalName="BossRecoveryCoupled1458" />
+  </ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/boss-reward-prefix-1458.json.gz" LogicalName="BossRewardPrefix1458" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/seasonal-pickup-materialization-1458.json.gz" LogicalName="SeasonalPickupMaterialization1458" /></ItemGroup>
 </Project>

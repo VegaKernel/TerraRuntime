@@ -282,29 +282,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 crimsonWorld);
         }
 
-        DropWallOfFleshRecoveryItems(in wallOfFlesh, in definition);
         progression.MarkCompleted(VanillaWorldProgressionId.Hardmode);
-    }
-
-    private void DropWallOfFleshRecoveryItems(in NpcSnapshot wallOfFlesh, in VanillaNpcDefinition definition)
-    {
-        var origin = new NpcLootWorldItemOrigin(
-            wallOfFlesh.PositionX + definition.Width * 0.5f,
-            wallOfFlesh.PositionY + definition.Height * 0.5f);
-
-        var potions = new NpcLootDrop(
-            VanillaWallOfFleshItemIds.HealingPotion,
-            checked((short)random.NextInt32(5, 16)));
-        if (!wallOfFleshLoot.TryDeliverWorldItem(in origin, in potions, random))
-            throw new InvalidOperationException("Wall of Flesh recovery Healing Potion drop could not be materialized.");
-
-        int heartCount = random.NextInt32(0, 5) + 5;
-        for (int index = 0; index < heartCount; index++)
-        {
-            var heart = new NpcLootDrop(VanillaWallOfFleshItemIds.Heart, 1);
-            if (!wallOfFleshLoot.TryDeliverWorldItem(in origin, in heart, random))
-                throw new InvalidOperationException("Wall of Flesh recovery Heart drop could not be materialized.");
-        }
     }
 
     private void ApplyEvilBossDeathEffects(bool eaterBoss)
@@ -335,9 +313,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             return;
         }
 
-        var origin = new NpcLootWorldItemOrigin(
-            eaterSegment.PositionX + definition.Width * 0.5f,
-            eaterSegment.PositionY + definition.Height * 0.5f);
+        var origin = ResolveNpcLootOrigin(in eaterSegment, in definition);
         var heart = new NpcLootDrop(VanillaWallOfFleshItemIds.Heart, 1);
         if (!eaterLoot.TryDeliverWorldItem(in origin, in heart, random))
             throw new InvalidOperationException("Eater of Worlds healing Heart drop could not be materialized.");

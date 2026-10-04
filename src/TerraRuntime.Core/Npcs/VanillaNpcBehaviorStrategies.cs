@@ -662,7 +662,7 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
     };
 }
 
-internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom random) : IVanillaNpcBehaviorStrategy
+internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom random) : IVanillaNpcBehaviorStrategy
 {
     private readonly IVanillaNpcRandom random = random ?? throw new ArgumentNullException(nameof(random));
     public bool TryStep(
@@ -727,10 +727,11 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
         return TryStepCommon(in npc, in definition, in parameters, context, inner, out next);
     }
 
-    private bool TryStepCommon(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+    private bool TryStepCommon(in NpcSnapshot sourceNpc, in VanillaNpcDefinition definition,
         in VanillaGroundFighterBehaviorParameters parameters, VanillaNpcBehaviorContext context,
         INpcAiStateStepper inner, out NpcStateUpdate next)
     {
+        NpcSnapshot npc = sourceNpc;
         // AI_003 transforms Snow Moon type 348 before the common fighter work. NPC.Transform clears ai[],
         // applies target-349 SetDefaults, preserves its bottom edge and scales life; both source hitboxes are
         // 28-by-76, so this specific transform has no position delta before the same-tick type-349 movement.
@@ -781,10 +782,50 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
             return TryStep(in transformed, in transformedDefinition, context, inner, out next);
         }
 
+        bool subtypeOwnsStuckPrepass = definition.Type == VanillaNpcIds.Fritz || definition.Type == VanillaNpcIds.ThePossessed;
+        if (subtypeOwnsStuckPrepass)
+        {
+            float stuck = npc.Ai.Ai3;
+            bool reversing = npc.VelocityY == 0f &&
+                ((npc.VelocityX > 0f && npc.Simulation.DirectionX < 0) ||
+                 (npc.VelocityX < 0f && npc.Simulation.DirectionX > 0));
+            if (npc.PositionX == npc.Simulation.OldPositionX || stuck >= parameters.StuckThreshold || reversing)
+                stuck++;
+            else if (MathF.Abs(npc.VelocityX) > .9f && stuck > 0f)
+                stuck--;
+            if (stuck > parameters.MaximumStuckCounter || npc.Simulation.JustHit || context.TargetOverlapsNpc(in npc, in definition))
+                stuck = 0f;
+            npc = npc with { Ai = npc.Ai with { Ai3 = stuck } };
+        }
+        if (definition.Type == VanillaNpcIds.ThePossessed)
+        {
+            if (!TryPreparePossessed(in npc, in definition, context, out var prepared, out bool flying))
+            {
+                next = default;
+                return false;
+            }
+            npc = prepared;
+            if (flying)
+            {
+                next = new(npc.Type, npc.NetId, npc.PositionX, npc.PositionY, npc.VelocityX, npc.VelocityY,
+                    npc.Target, npc.Ai, npc.Simulation);
+                return true;
+            }
+        }
+        else if (definition.Type == VanillaNpcIds.Fritz)
+            npc = PrepareFritz(in npc, in definition, context);
+
         bool daytimeSurface = context.DayTime &&
-            !((definition.Type == VanillaNpcIds.Psycho || definition.Type == VanillaNpcIds.CreatureFromTheDeep || definition.Type == VanillaNpcIds.Butcher || definition.Type == VanillaNpcIds.Nailhead || definition.Type == VanillaNpcIds.DrManFly) && context.EclipseActive) &&
+            !((definition.Type == VanillaNpcIds.Psycho || definition.Type == VanillaNpcIds.CreatureFromTheDeep || definition.Type == VanillaNpcIds.Butcher || definition.Type == VanillaNpcIds.Nailhead || definition.Type == VanillaNpcIds.DrManFly || definition.Type == VanillaNpcIds.Frankenstein ||
+              definition.Type == VanillaNpcIds.Fritz || definition.Type == VanillaNpcIds.ThePossessed ||
+              definition.Type == VanillaNpcIds.SwampThing) && context.EclipseActive) &&
             npc.PositionY < context.WorldSurfacePixels &&
             parameters.DaySurfaceEncouragesDespawn;
+        if (!definition.TryResolveHitbox(npc.Simulation, out var fighterBody))
+        {
+            next = default;
+            return false;
+        }
         int startingDirectionY = npc.Simulation.DirectionY;
         if (npc.Target < byte.MaxValue &&
             context.TryFindCandidate(checked((byte)npc.Target), out VanillaNpcTargetCandidate currentTarget) &&
@@ -792,7 +833,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
             !currentTarget.Dead &&
             !currentTarget.Ghost &&
             currentTarget.CenterY + VanillaPlayerHitboxFacts.BaseHeight * 0.5f ==
-            npc.PositionY + definition.Height)
+            npc.PositionY + fighterBody.Height)
         {
             startingDirectionY = -1;
         }
@@ -853,7 +894,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
         if (closest.HasTarget &&
             fighterDirectionY > 0 &&
             context.TryFindCandidate(checked((byte)closest.Target), out VanillaNpcTargetCandidate selectedCandidate) &&
-            selectedCandidate.CenterY <= npc.PositionY + definition.Height)
+            selectedCandidate.CenterY <= npc.PositionY + fighterBody.Height)
         {
             fighterDirectionY = -1;
         }
@@ -882,13 +923,13 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
             fighterVelocityY = 0f;
             fighterAi = fighterAi with { Ai3 = 0f };
         }
-        bool resetWraithClock = false;
-        if (definition.Type == VanillaNpcIds.Wraith &&
-            TryStepWraith(in npc, in definition, context, out next, out resetWraithClock))
+        bool resetSwampThingClock = false;
+        if (definition.Type == VanillaNpcIds.SwampThing &&
+            TryStepSwampThing(in npc, in definition, context, out next, out resetSwampThingClock))
         {
             return true;
         }
-        if (definition.Type == VanillaNpcIds.Wraith && resetWraithClock)
+        if (definition.Type == VanillaNpcIds.SwampThing && resetSwampThingClock)
             fighterAi = fighterAi with { Ai2 = 0f };
         var input = new VanillaZombieMotionInput(
             PositionX: npc.PositionX,
@@ -903,6 +944,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
             TargetOverlaps: context.TargetOverlapsNpc(in npc, in definition),
             ClosestTarget: fighterTarget)
         {
+            StuckTrackingAlreadyApplied = subtypeOwnsStuckPrepass,
             BaseMaximumHorizontalSpeed = parameters.BaseMaximumHorizontalSpeed,
             HorizontalAcceleration = parameters.HorizontalAcceleration,
             StuckThreshold = parameters.StuckThreshold,
@@ -1089,7 +1131,7 @@ internal sealed class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNpcRandom 
         return float.IsFinite(motion.X) && float.IsFinite(motion.Y);
     }
 
-    private bool TryStepWraith(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
+    private bool TryStepSwampThing(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context,
         out NpcStateUpdate next, out bool resetClock)
     {
         resetClock = false;

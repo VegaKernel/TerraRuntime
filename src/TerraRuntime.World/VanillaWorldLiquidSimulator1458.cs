@@ -558,8 +558,8 @@ public sealed class VanillaWorldLiquidSimulator1458
                 {
                     if (!TryResolveWaterCheckDeath1458(x, y, in tile, generatingWorld, out WorldTileRegion death, out WorldTileRegion cascade))
                         throw new InvalidOperationException("A preflighted loading liquid-death object changed.");
-                    TileTypeId? onlyActiveType = generatingWorld &&
-                        (tile.TileType == VanillaTileIds.AntlionLarva || tile.TileType == VanillaTileIds.ClosedDoor)
+                    TileTypeId? onlyActiveType = tile.TileType == VanillaTileIds.Pots || (generatingWorld &&
+                        (tile.TileType == VanillaTileIds.AntlionLarva || tile.TileType == VanillaTileIds.ClosedDoor))
                         ? tile.TileType : null;
                     KillRegionDuringLoading1458(in death, onlyActiveType);
                     KillRegionDuringLoading1458(in cascade, onlyActiveType);
@@ -637,6 +637,13 @@ public sealed class VanillaWorldLiquidSimulator1458
     private bool TryResolveWaterCheckDeath1458(
         int x, int y, in WorldTile tile, bool generatingWorld, out WorldTileRegion region, out WorldTileRegion cascade)
     {
+        if (tile.TileType == VanillaTileIds.Pots)
+        {
+            // CheckPot destroys remaining active type-28 cells even when a sibling is missing or foreign.
+            // Its frameX check uses column parity, not a shared horizontal artwork variant.
+            cascade = default;
+            return TryResolveWaterCheckPotRemnant1458(x, y, in tile, out region);
+        }
         // WorldGen.WaterCheck (TerrariaServer 1.4.5.8) calls plain KillTile.  KillTile frames
         // around the changed cell, but the early generation fixture can legitimately contain a
         // transient Rolling Cactus whose three sibling cells remain until a later framing pass.
@@ -713,6 +720,36 @@ public sealed class VanillaWorldLiquidSimulator1458
         }
 
         return TryResolveLoadingDeath1458(x, y, in tile, out region, out cascade);
+    }
+
+    private bool TryResolveWaterCheckPotRemnant1458(int x, int y, in WorldTile tile, out WorldTileRegion region)
+    {
+        region = default;
+        if (tile.FrameX < 0 || tile.FrameY < 0 ||
+            tile.FrameX % LoadingObjectFrameStepPixels != 0 || tile.FrameY % LoadingObjectFrameStepPixels != 0)
+            return false;
+        int column = tile.FrameX / LoadingObjectFrameStepPixels % 2;
+        int row = tile.FrameY / LoadingObjectFrameStepPixels % 2;
+        int left = x - column, top = y - row;
+        if (left <= 5 || top <= 5 || left + 1 >= tiles.Dimensions.WidthTiles - 5 ||
+            top + 1 >= tiles.Dimensions.HeightTiles - 5)
+            return false;
+        int styleFrameY = tile.FrameY - row * LoadingObjectFrameStepPixels;
+        for (int dx = 0; dx < 2; dx++)
+        for (int dy = 0; dy < 2; dy++)
+        {
+            WorldTile cell = tiles.Get(left + dx, top + dy);
+            if (!cell.IsActive || cell.TileType != VanillaTileIds.Pots)
+                continue;
+            // Conflicting live anchors can frame another pot outside this bounded footprint.
+            if (cell.FrameX < 0 || cell.FrameX % LoadingObjectFrameStepPixels != 0 ||
+                cell.FrameX / LoadingObjectFrameStepPixels % 2 != dx ||
+                cell.FrameY != styleFrameY + dy * LoadingObjectFrameStepPixels ||
+                IsLockedTempleDoor(tiles.Get(left + dx, top + dy + 1)))
+                return false;
+        }
+        region = new WorldTileRegion(left, top, 2, 2);
+        return true;
     }
 
     private static bool IsLockedTempleDoor(in WorldTile tile) =>

@@ -137,7 +137,7 @@ public sealed class VanillaMechanicalBossLootTests
         var rolls = new ScriptedRolls("N-30:31=12", "N-30:31=30");
         Assert.True(VanillaNpcLootWorldItemMaterializer.Instance.TryMaterialize(new(100, 200),
             new(new(type), 40), rolls, out var item));
-        Assert.Equal((91f, 191f, 1.2f, 3f), (item.PositionX, item.PositionY, item.VelocityX, item.VelocityY));
+        Assert.Equal((92f, 192f, 1.2f, 3f), (item.PositionX, item.PositionY, item.VelocityX, item.VelocityY));
         Assert.Equal((byte)0, item.Prefix);
         rolls.AssertConsumed();
     }

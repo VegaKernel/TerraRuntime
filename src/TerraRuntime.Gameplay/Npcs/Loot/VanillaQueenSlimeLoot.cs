@@ -63,6 +63,10 @@ public static class VanillaQueenSlimeLootEvaluator
             return false;
 
         int worldItems = 0, instancedItems = 0, recipients = 0, petDrops = 0;
+        // RegisterBossTrophies precedes RegisterBosses in ItemDropDatabase.Populate.
+        RollCommon(VanillaQueenSlimeItemIds.QueenSlimeTrophy, 10, 1, 1,
+            in npcOrigin, rolls, sink, ref worldItems);
+
         if (context.IsExpertMode)
         {
             rolls.NextInt32(0, 1);
@@ -109,8 +113,6 @@ public static class VanillaQueenSlimeLootEvaluator
                     in npcOrigin, rolls, sink, ref worldItems);
         }
 
-        RollCommon(VanillaQueenSlimeItemIds.QueenSlimeTrophy, 10, 1, 1,
-            in npcOrigin, rolls, sink, ref worldItems);
         result = new QueenSlimeLootExecutionResult(worldItems, instancedItems, recipients, petDrops);
         return true;
     }

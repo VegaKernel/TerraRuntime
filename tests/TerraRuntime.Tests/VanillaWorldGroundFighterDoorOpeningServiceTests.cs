@@ -239,7 +239,7 @@ public sealed class VanillaWorldGroundFighterDoorOpeningServiceTests
         {
             WorldTile gate = tiles.Get(15, 10 + row);
             Assert.Equal(VanillaTileIds.TallGateOpen, gate.TileType);
-            Assert.Equal((short)(row * 18), gate.FrameY);
+            Assert.Equal((short)new[] { 0, 20, 38, 56, 74 }[row], gate.FrameY);
             Assert.Equal((byte)(20 + row), gate.TileColor);
             Assert.True((gate.Flags & WorldTileFlags.WireGreen) != 0);
         }
@@ -376,7 +376,7 @@ public sealed class VanillaWorldGroundFighterDoorOpeningServiceTests
         {
             WorldTile tile = ActiveTile(checked((ushort)VanillaTileIds.TallGateClosed.Value));
             tile.FrameX = 0;
-            tile.FrameY = checked((short)(row * 18));
+            tile.FrameY = checked((short)(new[] { 0, 20, 38, 56, 74 }[row]));
             tile.TileColor = checked((byte)(20 + row));
             tile.Flags |= WorldTileFlags.WireGreen;
             tiles.Set(x, topY + row, in tile);

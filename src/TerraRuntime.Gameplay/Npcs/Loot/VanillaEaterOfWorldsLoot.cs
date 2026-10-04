@@ -120,6 +120,20 @@ public static class VanillaEaterOfWorldsLootEvaluator
         int bossItems = 0;
         int petDrops = 0;
 
+        // Trophy registration is before all segment and boss rules; its condition rejects non-boss segments.
+        if (context.IsBoss && !TryRollWorldItem(
+                VanillaEaterOfWorldsItemIds.EaterOfWorldsTrophy,
+                10,
+                1,
+                1,
+                in npcOrigin,
+                rolls,
+                sink,
+                ref bossItems))
+        {
+            return false;
+        }
+
         int scaleChance = context.IsMasterMode ? 10 : context.IsExpertMode ? 5 : 2;
         if (!TryRollWorldItem(
                 VanillaEaterOfWorldsItemIds.ShadowScale,
@@ -243,20 +257,6 @@ public static class VanillaEaterOfWorldsLootEvaluator
             {
                 return false;
             }
-        }
-
-        // Trophy rules for 13/14/15 are registered later and retain their source position after RegisterBoss_EOW.
-        if (!TryRollWorldItem(
-                VanillaEaterOfWorldsItemIds.EaterOfWorldsTrophy,
-                10,
-                1,
-                1,
-                in npcOrigin,
-                rolls,
-                sink,
-                ref bossItems))
-        {
-            return false;
         }
 
         result = new EaterOfWorldsLootExecutionResult(

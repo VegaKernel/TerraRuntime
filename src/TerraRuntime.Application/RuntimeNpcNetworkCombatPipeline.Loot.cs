@@ -82,9 +82,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             return false;
         }
 
-        var origin = new NpcLootWorldItemOrigin(
-            (int)npc.PositionX + definition.Width * 0.5f,
-            (int)npc.PositionY + definition.Height * 0.5f);
+        var origin = ResolveNpcLootOrigin(in npc, in definition);
         int stagedCount = 0;
         var context = new VanillaNpcLootContext(expertMode, DropExtraGel: false);
 
@@ -174,9 +172,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 player.PositionY + VanillaPlayerHeight * 0.5f);
         }
 
-        var origin = new NpcLootWorldItemOrigin(
-            (int)npc.PositionX + definition.Width * 0.5f,
-            (int)npc.PositionY + definition.Height * 0.5f);
+        var origin = ResolveNpcLootOrigin(in npc, in definition);
         var context = new VanillaEaterOfWorldsLootContext(expertMode, masterMode, isBoss);
         return VanillaEaterOfWorldsLootEvaluator.TryExecute(
             in context,
@@ -210,9 +206,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             }
         }
 
-        var origin = new NpcLootWorldItemOrigin(
-            (int)npc.PositionX + definition.Width * 0.5f,
-            (int)npc.PositionY + definition.Height * 0.5f);
+        var origin = ResolveNpcLootOrigin(in npc, in definition);
         var context = new VanillaBrainOfCthulhuLootContext(expertMode, masterMode, npc.TypeIdentity);
         return VanillaBrainOfCthulhuLootEvaluator.TryExecute(
             in context,
@@ -243,9 +237,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 player.PositionY + VanillaPlayerHeight * 0.5f);
         }
 
-        var origin = new NpcLootWorldItemOrigin(
-            (int)npc.PositionX + definition.Width * 0.5f,
-            (int)npc.PositionY + definition.Height * 0.5f);
+        var origin = ResolveNpcLootOrigin(in npc, in definition);
         var context = new VanillaSkeletronLootContext(
             expertMode,
             masterMode,
@@ -277,9 +269,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 player.PositionY + VanillaPlayerHeight * 0.5f);
         }
 
-        var origin = new NpcLootWorldItemOrigin(
-            (int)npc.PositionX + definition.Width * 0.5f,
-            (int)npc.PositionY + definition.Height * 0.5f);
+        var origin = ResolveNpcLootOrigin(in npc, in definition);
         var context = new VanillaQueenBeeLootContext(expertMode, masterMode);
         return VanillaQueenBeeLootEvaluator.TryExecute(
             in context,
@@ -311,9 +301,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 player.PositionY + VanillaPlayerHeight * 0.5f);
         }
 
-        var origin = new NpcLootWorldItemOrigin(
-            (int)npc.PositionX + definition.Width * 0.5f,
-            (int)npc.PositionY + definition.Height * 0.5f);
+        var origin = ResolveNpcLootOrigin(in npc, in definition);
         var context = new VanillaDeerclopsLootContext(expertMode, masterMode);
         return VanillaDeerclopsLootEvaluator.TryExecute(
             in context,
@@ -345,9 +333,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 player.PositionX + VanillaPlayerWidth * 0.5f,
                 player.PositionY + VanillaPlayerHeight * 0.5f);
         }
-        var origin = new NpcLootWorldItemOrigin(
-            (int)npc.PositionX + definition.Width * 0.5f,
-            (int)npc.PositionY + definition.Height * 0.5f);
+        var origin = ResolveNpcLootOrigin(in npc, in definition);
         var context = new VanillaPlanteraLootContext(expertMode, masterMode, downed);
         return VanillaPlanteraLootEvaluator.TryExecute(in context, in origin,
             activePlanteraLootPlayers.AsSpan(0, activeCount), random, planteraLoot, out _);
@@ -374,9 +360,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 player.PositionY + VanillaPlayerHeight * 0.5f);
         }
 
-        var origin = new NpcLootWorldItemOrigin(
-            (int)npc.PositionX + definition.Width * 0.5f,
-            (int)npc.PositionY + definition.Height * 0.5f);
+        var origin = ResolveNpcLootOrigin(in npc, in definition);
         var context = new VanillaGolemLootContext(expertMode, masterMode);
         return VanillaGolemLootEvaluator.TryExecute(
             in context,
@@ -408,9 +392,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 player.PositionY + VanillaPlayerHeight * 0.5f);
         }
 
-        var origin = new NpcLootWorldItemOrigin(
-            (int)npc.PositionX + definition.Width * 0.5f,
-            (int)npc.PositionY + definition.Height * 0.5f);
+        var origin = ResolveNpcLootOrigin(in npc, in definition);
         var context = new VanillaMoonLordLootContext(expertMode, masterMode);
         return VanillaMoonLordLootEvaluator.TryExecute(
             in context,
@@ -442,9 +424,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 player.PositionY + VanillaPlayerHeight * 0.5f);
         }
 
-        var origin = new NpcLootWorldItemOrigin(
-            (int)npc.PositionX + definition.Width * 0.5f,
-            (int)npc.PositionY + definition.Height * 0.5f);
+        var origin = ResolveNpcLootOrigin(in npc, in definition);
         var context = new VanillaQueenSlimeLootContext(expertMode, masterMode);
         return VanillaQueenSlimeLootEvaluator.TryExecute(
             in context,
@@ -476,9 +456,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 player.PositionY + VanillaPlayerHeight * 0.5f);
         }
 
-        var origin = new NpcLootWorldItemOrigin(
-            (int)npc.PositionX + definition.Width * 0.5f,
-            (int)npc.PositionY + definition.Height * 0.5f);
+        var origin = ResolveNpcLootOrigin(in npc, in definition);
         var context = new VanillaEyeOfCthulhuLootContext(expertMode, masterMode, crimsonWorld);
         return VanillaEyeOfCthulhuLootEvaluator.TryExecute(
             in context,
@@ -510,9 +488,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 player.PositionY + VanillaPlayerHeight * 0.5f);
         }
 
-        var origin = new NpcLootWorldItemOrigin(
-            (int)npc.PositionX + definition.Width * 0.5f,
-            (int)npc.PositionY + definition.Height * 0.5f);
+        var origin = ResolveNpcLootOrigin(in npc, in definition);
         bool otherTwinActive = false;
         bool mechdusaKill = IsMechdusaKill(in npc);
         if (VanillaMechanicalBossLootEvaluator.IsTwin(npc.TypeIdentity))
@@ -567,9 +543,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 player.PositionY + VanillaPlayerHeight * 0.5f);
         }
 
-        var origin = new NpcLootWorldItemOrigin(
-            (int)npc.PositionX + definition.Width * 0.5f,
-            (int)npc.PositionY + definition.Height * 0.5f);
+        var origin = ResolveNpcLootOrigin(in npc, in definition);
         var context = new VanillaWallOfFleshLootContext(expertMode, masterMode);
         return VanillaWallOfFleshLootEvaluator.TryExecute(
             in context,
@@ -601,9 +575,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 player.PositionY + VanillaPlayerHeight * 0.5f);
         }
 
-        var origin = new NpcLootWorldItemOrigin(
-            (int)npc.PositionX + definition.Width * 0.5f,
-            (int)npc.PositionY + definition.Height * 0.5f);
+        var origin = ResolveNpcLootOrigin(in npc, in definition);
         var context = new VanillaKingSlimeDifficultyLootContext(expertMode, masterMode);
         return VanillaKingSlimeDifficultyLootEvaluator.TryExecute(
             in context,
@@ -626,14 +598,17 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private sealed class SystemNpcCombatRandom : INpcLootRollSource, IKingSlimeDeathRandom, IVanillaNpcRandom
     {
         private readonly Random random = new();
+        private readonly VanillaUnifiedRandom1458? sourceRandom;
+        public SystemNpcCombatRandom(VanillaUnifiedRandom1458? sourceRandom = null) => this.sourceRandom = sourceRandom;
 
         public int RollLuck(int chanceDenominator)
         {
             ArgumentOutOfRangeException.ThrowIfLessThan(chanceDenominator, 1);
-            return random.Next(chanceDenominator);
+            return sourceRandom?.Next(chanceDenominator) ?? random.Next(chanceDenominator);
         }
 
-        public int NextInt32(int inclusiveMin, int exclusiveMax) => random.Next(inclusiveMin, exclusiveMax);
+        public int NextInt32(int inclusiveMin, int exclusiveMax) => sourceRandom?.Next(inclusiveMin, exclusiveMax) ?? random.Next(inclusiveMin, exclusiveMax);
 
-        public float NextFloatDirection() => random.NextSingle() * 2f - 1f;
-    }}
+        public float NextFloatDirection() => (sourceRandom is null ? random.NextSingle() : (float)sourceRandom.NextDouble()) * 2f - 1f;
+    }
+}

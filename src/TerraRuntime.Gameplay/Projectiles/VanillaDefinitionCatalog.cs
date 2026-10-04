@@ -94,7 +94,7 @@ public static class VanillaDefinitionCatalog
         CollisionWidth: 14,
         CollisionHeight: 14);
 
-    private static readonly VanillaProjectileDefinition GastropodBoltDefinition = new(
+    private static readonly VanillaProjectileDefinition WebSpitDefinition = new(
         Width: 8, Height: 8, AiStyle: VanillaProjectileAiStyles.Arrow, TileCollide: true,
         IgnoreWater: false, CanCutTiles: true, CollisionWidth: 8, CollisionHeight: 8);
 
@@ -1017,9 +1017,9 @@ public static class VanillaDefinitionCatalog
             return true;
         }
 
-        if (type == VanillaProjectileIds.GastropodBolt)
+        if (type == VanillaProjectileIds.WebSpit)
         {
-            definition = GastropodBoltDefinition;
+            definition = WebSpitDefinition;
             return true;
         }
 

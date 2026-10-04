@@ -10,10 +10,15 @@ namespace TerraRuntime.Core.Npcs;
 /// </summary>
 public sealed class VanillaNpcLootWorldItemMaterializer : INpcLootWorldItemMaterializer
 {
+    // TerrariaServer 1.4.5.8 WorldItem(Item) fixes the entity body independently of Item.SetDefaults dimensions.
+    private const int PhysicalBodySize1458 = 16;
+    private readonly Func<VanillaSeasonalItemDropContext1458>? seasonalContext;
+
     public static VanillaNpcLootWorldItemMaterializer Instance { get; } = new();
 
-    private VanillaNpcLootWorldItemMaterializer()
+    public VanillaNpcLootWorldItemMaterializer(Func<VanillaSeasonalItemDropContext1458>? seasonalContext = null)
     {
+        this.seasonalContext = seasonalContext;
     }
 
     public bool CanMaterialize(ItemTypeId itemType) =>
@@ -29,15 +34,19 @@ public sealed class VanillaNpcLootWorldItemMaterializer : INpcLootWorldItemMater
         ArgumentNullException.ThrowIfNull(random);
         worldItem = default;
 
-        if (!origin.IsValid ||
-            !drop.IsValid ||
-            !CanMaterialize(drop.ItemType) ||
+        if (!origin.IsValid || !drop.IsValid || !CanMaterialize(drop.ItemType))
+            return false;
+
+        // Item.NewItem substitutes seasonal hearts/stars before defaults, Prefix(-1) and launch velocity.
+        VanillaSeasonalItemDropContext1458 context = seasonalContext?.Invoke() ?? default;
+        ItemTypeId itemType = VanillaSeasonalItemDropFacts1458.Resolve(drop.ItemType, in context, random);
+        if (!CanMaterialize(itemType) ||
             !VanillaDefinitionCatalog.TryGetWorldDrop(
-                drop.ItemType,
+                itemType,
                 out VanillaItemWorldDropDefinition definition) ||
-            !VanillaNaturalItemPrefixRoller.TryRoll(drop.ItemType, random, out PrefixId prefix) ||
+            !VanillaNaturalItemPrefixRoller.TryRoll(itemType, random, out PrefixId prefix) ||
             prefix.Value > byte.MaxValue ||
-            drop.ItemType.Value > short.MaxValue)
+            itemType.Value > short.MaxValue)
         {
             return false;
         }
@@ -49,14 +58,14 @@ public sealed class VanillaNpcLootWorldItemMaterializer : INpcLootWorldItemMater
             : random.NextInt32(-40, -15) * 0.1f;
 
         worldItem = new WorldItemDropStateUpdate(
-            PositionX: origin.CenterX - definition.Width / 2f,
-            PositionY: origin.CenterY - definition.Height / 2f,
+            PositionX: origin.CenterX - PhysicalBodySize1458 / 2f,
+            PositionY: origin.CenterY - PhysicalBodySize1458 / 2f,
             VelocityX: velocityX,
             VelocityY: velocityY,
             Stack: drop.Stack,
             Prefix: checked((byte)prefix.Value),
             Ownership: WorldItemOwnershipMode.None,
-            ItemNetId: checked((short)drop.ItemType.Value),
+            ItemNetId: checked((short)itemType.Value),
             Shimmered: false,
             ShimmerTime: 0f,
             EnemyGrabDelayTime: 0);

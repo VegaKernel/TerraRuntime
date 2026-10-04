@@ -8,7 +8,7 @@ namespace TerraRuntime.Tests;
 public sealed class RuntimeTownNpcLocomotion1458Tests
 {
     // Independent TerrariaServer 1.4.5.8 full AI007 quiet fixtures, seed1458, floor row30.
-    // Random assertions describe only the owned body, before the separate social offer chain.
+    // Walking now includes actual chair/furniture offers; idle social selection remains separate.
     [Theory]
     [InlineData(0f, 3f, .5f, 0f, 1, 0f, 2f, .4f, 8f, false, 1)]
     [InlineData(0f, 1f, .5f, 0f, 1, 1f, 326f, .4f, 0f, true, 2)]
@@ -32,7 +32,7 @@ public sealed class RuntimeTownNpcLocomotion1458Tests
         Assert.Equal(expectedLocal, after.Simulation.LocalAi.Ai3);
         Assert.Equal(23f, after.Ai.Ai3);
         Assert.Equal(state != expectedState ? 0f : 17f, after.Ai.Ai2);
-        Assert.Equal(draws, f.Random.Bounds.Count);
+        Assert.Equal(draws + (expectedState == 1f && vy == 0f ? 2 : 0), f.Random.Bounds.Count);
         Assert.Equal(forced ? NpcStateCommitKind.ForcedUpdate : NpcStateCommitKind.Update,
             Assert.Single(f.Sink.Commits));
         Assert.Equal(f.Initial.PositionX + expectedVx, after.PositionX);
@@ -66,7 +66,7 @@ public sealed class RuntimeTownNpcLocomotion1458Tests
         var f = new Fixture(1f, 20f, .5f * direction, 0f, direction, x: 1239f);
         f.Tick();
         Assert.Equal(timer, f.Current.Ai.Ai1);
-        Assert.Empty(f.Random.Bounds);
+        Assert.Equal(new[] { 300, 600 }, f.Random.Bounds);
     }
 
     [Fact]
@@ -85,9 +85,9 @@ public sealed class RuntimeTownNpcLocomotion1458Tests
     {
         var f = new Fixture(0f, 1f, .5f, 0f, 1);
         f.Tick();
-        Assert.Equal(new[] { 300, 80 }, f.Random.Bounds);
+        Assert.Equal(new[] { 300, 80, 300, 600 }, f.Random.Bounds);
         Assert.Equal(.4f, f.Current.VelocityX);
-        Assert.Equal(1916656655, f.Random.Stream.Next());
+        Assert.Equal(1014131397, f.Random.Stream.Next());
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public sealed class RuntimeTownNpcLocomotion1458Tests
         Assert.Equal(639.57f, f.Current.PositionX);
         Assert.Equal(0f, f.Current.VelocityY);
         Assert.Equal(19f, f.Current.Ai.Ai1);
-        Assert.Empty(f.Random.Bounds);
+        Assert.Equal(new[] { 300, 600 }, f.Random.Bounds);
         Assert.Equal(NpcStateCommitKind.Update, Assert.Single(f.Sink.Commits));
     }
 
@@ -193,7 +193,7 @@ public sealed class RuntimeTownNpcLocomotion1458Tests
         Assert.Equal(0f, f.Current.Simulation.LocalAi.Ai2);
         Assert.Equal(-.57f, f.Current.VelocityX);
         Assert.Equal(-1, f.Current.Simulation.DirectionX);
-        Assert.Equal(new[] { 300 }, f.Random.Bounds);
+        Assert.Equal(new[] { 300, 300, 600 }, f.Random.Bounds);
         Assert.Equal(NpcStateCommitKind.ForcedUpdate, Assert.Single(f.Sink.Commits));
     }
 

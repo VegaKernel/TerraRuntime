@@ -64,12 +64,12 @@ This conservative capacity preflight intentionally differs from Terraria's oppor
 Ordinary NPC loot uses the integer NPC center
 
 $$
-x_c=\lfloor x_{npc}\rfloor+\left\lfloor\frac{w_{npc}}2\right\rfloor,
+x_c=\operatorname{trunc}(x_{npc})+\left\lfloor\frac{w_{npc}}2\right\rfloor,
 \qquad
-y_c=\lfloor y_{npc}\rfloor+\left\lfloor\frac{h_{npc}}2\right\rfloor.
+y_c=\operatorname{trunc}(y_{npc})+\left\lfloor\frac{h_{npc}}2\right\rfloor.
 $$
 
-The materialized world-item top-left is the center minus half the verified item dimensions. Neither supported item is in `ItemID.Sets.ItemNoGravity`, so default velocity is
+The materialized world-item top-left is the center minus $8\,\mathrm{px}$ on each axis. The physical `WorldItem` body is always $16\times16\,\mathrm{px}$; `Item.SetDefaults` dimensions describe item data and do not size that entity. Neither supported item is in `ItemID.Sets.ItemNoGravity`, so default velocity is
 
 $$
 v_x=0.1R_x,\quad R_x\in[-30,30],
@@ -98,7 +98,7 @@ The materializer performs prefix selection before velocity RNG, matching `Item.N
 
 `d87e3faf08637f6be8882c63e7f11fb7e792b0230006309618473ece0f863e1e`
 
-The executable probe verifies rule registration, `Player.RollLuck`, stack ranges, NPC center placement, item dimensions, gravity membership, shared `Main.rand`, immediate `CommonDrop → Item.NewItem` execution, summon-prefix membership, reduced-natural-chance data and Slime Staff prefix validity.
+The executable probe verifies rule registration, `Player.RollLuck`, stack ranges, integer NPC drop centers, item default dimensions, gravity membership, shared `Main.rand`, immediate `CommonDrop → Item.NewItem` execution, summon-prefix membership, reduced-natural-chance data and Slime Staff prefix validity.
 
 ## Deerclops boss death vertical
 
@@ -109,7 +109,7 @@ Deerclops now has an explicit imported boss-death path rather than falling throu
 - Classic: mask `5109`, Chester `5098`, Eyebrella `5101`, shader `5113`, Dizzy Hat `5385`, and one guaranteed weapon from `5117/5118/5119/5095`;
 - all difficulties: Deerclops trophy `5108` at the source `1/10` boss-trophy rule.
 
-The Classic guaranteed weapon path intentionally retains both nested guaranteed `Next(1)` calls from `OneFromRulesRule(1)` and `OneFromOptionsNotScalingWithLuck(1)` before selecting the weapon option. Active interacting players must be supplied in player-slot order so Master per-player rolls stay aligned with the vanilla loop.
+The Classic guaranteed weapon wrapper consumes three `Next(1)` calls: the outer chance, its single-rule choice, then the option rule chance. It chooses the weapon with a fourth call and delivers a fixed stack without another stack draw. The trophy registration precedes these boss-specific rules, as in `ItemDropDatabase.Populate`.
 
 Successful authoritative death marks `VanillaWorldProgressionId.Deerclops`. The `.wld` progression header patcher now updates the source-backed `downedDeerclops` byte located immediately after `downedQueenSlime`. Regression coverage round-trips a current-format world and proves that the patch changes exactly one header byte while preserving the adjacent Empress, Queen Slime and town-slime/truffle unlock flags.
 
@@ -125,4 +125,12 @@ Admitted boss deaths announce after loot and progression, before removal. The fi
 
 Classic King Slime ordinary loot now has source-backed body and nonprefixable facts for all nine formerly missing reward items, including the guaranteed Ninja clothing, Solidifier and Slime Hook/Slime Gun branch. Accepted lethal hits can therefore finish ordinary loot and death; previously the materializer rejected those mandatory drops. Loot rule order is unchanged; bag opening and global loot parity remain open.
 
-Those dimensions describe `Item.SetDefaults` data. A subsequent independent `1.4.5.8` probe confirms that physical `WorldItem` bodies are fixed at $16\times16\,\mathrm{px}$ and NPC drop rectangles use truncated coordinates and the live integer hitbox. The existing materializer still conflates these dimensions, and some drop origins use the base definition or a fractional center. Correcting this shared boundary, general boss potion/heart recovery and seasonal substitutions remains open; admitted reward identities do not establish full world-drop geometry parity.
+The shared materializer now places physical $16\times16\,\mathrm{px}$ bodies. Generic transactions and all retained Application boss-loot paths use truncated NPC coordinates plus half the live integer hitbox, including explicit AI body overrides. Independent original captures verify three body sizes at fractional NPC positions.
+
+The common `VanillaBossRecovery1458` phase replaces Wall-only recovery. It runs after imported loot and boss-specific `DoDeathEvents` effects, before the boss defeat announcement. It drops the source potion stack $5\ldots15$, then $5\ldots9$ hearts; potion identity follows the explicit source boss branches. First Twins, nonterminal Eater segments and Moon Lord shells do not recover. Moon Lord core recovers only through its generation-safe terminal tick $600$. The world-clock-owned `VanillaBossRecoveryDailyState1458` retains Eye/Wall kills until both occur, delivers one Badger hat and clears both flags. Dusk and new-world ownership reset this transient ledger; dawn and persistence do not.
+
+`VanillaSeasonalItemDropFacts1458` substitutes hearts/stars before prefix and launch RNG. Tenth-anniversary choices take precedence; simultaneous Halloween/Christmas chooses between their substitutions. Composition reads retained forced-world seasonal facts. Ordinary calendar activation is not admitted. `VanillaBossRecoveryItemCatalog1458` contains the independently verified potion/pickup defaults. `VanillaBossRewardItemPrefixFacts1458` adds exact natural prefix families and rounding guards for sixteen retained weapon/accessory rewards; this does not admit additional weapon use. Seven imported evaluators now place ordinary trophies before boss rules; option rules deliver fixed stacks without invented RNG calls.
+
+The source overflow allocator uses item age, pickup replacement and emergency stacking, which remain unported. Retained boss damage therefore probes and releases generation-safe capacity before damage RNG or mutation. Its conservative ceiling is the existing sixteen ordinary slots, eleven recovery slots, an expert lease and one possible master reward per currently eligible player. The probe includes reserved/leased slots and does not reorder item allocation. Full/near-full pools reject the strike; Moon Lord terminal finalization waits for capacity. Accepted synchronous delivery relies on the existing single owner; arbitrary reentrant item-allocation callbacks are not admitted. No accepted recovery is silently discarded.
+
+Independent executable evidence comprises $1152$ direct recovery cases, $2592$ admitted post-imported recovery suffix cases over seasonal modes/difficulties/live bodies, $108$ complete Classic imported-loot/recovery cases without seasonal global rules, sixty-four original heart/star materializations and sixteen full prefix-family/stat-guard captures. They assert item order, stacks, prefixes, positions, velocities and the next shared RNG value as applicable. Suffix cases begin at the captured original post-imported cursor and do not claim omitted global-rule parity. Pipeline fixtures also verify terminal gates, duplicate/stale deaths, Badger pairing, dusk reset and pressure admission. These coupled checks inject one retained `VanillaUnifiedRandom1458` into the pipeline; production-wide `Main.rand` alignment across NPC creation/AI/loot/projectiles remains open. Generic coins, generic pickup/banner/bestiary death phases, calendar authority, full overflow allocation and bag opening remain open.

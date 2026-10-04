@@ -110,6 +110,35 @@ public sealed class RuntimeGroundFighterDoorOpeningSinkTests
         Assert.Equal((short)11, state.TileY);
     }
 
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public void Town_unforced_close_publishes_close_action_after_commit_and_outbound_failure_does_not_undo(bool closedQueue)
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(40, 40));
+        for (int row = 0; row < 3; row++)
+        for (int col = 0; col < 2; col++) tiles.Set(10 + col, 10 + row, new WorldTile {
+            Type = 11, FrameX = (short)(col * 18), FrameY = (short)(row * 18), Flags = WorldTileFlags.Active });
+        var replication = new RuntimeTileManipulationReplicationRegistry();
+        var outbound = CreateOutbound(); var source = GameCommandSourceId.FromConnection(905);
+        Assert.True(replication.TryRegister(source, outbound)); MarkPlaying(replication, source, 1);
+        if (closedQueue) outbound.Complete();
+        var sink = new RuntimeGroundFighterDoorOpeningSink(tiles, replication,
+            new RuntimeTallGateOccupancyProbe((x, y) => true), doorCloseRandom: new CloseRandom());
+        Assert.True(sink.TryClose(10, 11, tallGate: false, direction: -1));
+        Assert.Equal((ushort)10, tiles.Get(10, 11).Type); Assert.False(tiles.Get(11, 11).IsActive);
+        if (!closedQueue)
+        {
+            var frame = DequeueFrame(outbound);
+            Assert.Equal(TerrariaDoorToggleDecodeResult.Decoded, TerrariaDoorToggleCodec.TryDecode(in frame, out var state));
+            Assert.Equal((byte)TerrariaDoorToggleAction.CloseDoor, state.Action);
+            Assert.Equal(-1, state.DirectionX); Assert.Equal((short)10, state.TileX); Assert.Equal((short)11, state.TileY);
+        }
+        else Assert.Equal(0, outbound.QueuedFrames);
+    }
+
+    private sealed class CloseRandom : IVanillaDoorCloseRandom1458
+    { public int NextClosedDoorFrameColumn() => 1; }
+
     private static void AssertDoorPacket(TerrariaFrame frame)
     {
         Assert.Equal(

@@ -56,6 +56,10 @@ public static class VanillaEyeOfCthulhuLootEvaluator
             return false;
 
         int worldItems = 0, instancedItems = 0, recipients = 0, petDrops = 0;
+        // RegisterBossTrophies precedes RegisterBosses in ItemDropDatabase.Populate.
+        RollCommon(VanillaEyeOfCthulhuItemIds.EyeOfCthulhuTrophy, 10, 1, 1,
+            in npcOrigin, rolls, sink, ref worldItems);
+
         if (context.IsExpertMode)
         {
             rolls.NextInt32(0, 1);
@@ -99,8 +103,6 @@ public static class VanillaEyeOfCthulhuLootEvaluator
                 VanillaEyeOfCthulhuItemIds.CorruptSeeds, 1, 1, 3, in npcOrigin, rolls, sink, ref worldItems);
         }
 
-        RollCommon(VanillaEyeOfCthulhuItemIds.EyeOfCthulhuTrophy, 10, 1, 1,
-            in npcOrigin, rolls, sink, ref worldItems);
         result = new EyeOfCthulhuLootExecutionResult(worldItems, instancedItems, recipients, petDrops);
         return true;
     }

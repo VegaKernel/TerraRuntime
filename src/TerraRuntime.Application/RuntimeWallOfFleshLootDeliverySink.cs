@@ -7,7 +7,7 @@ using TerraRuntime.Protocol;
 namespace TerraRuntime.Application;
 
 /// <summary>Production world-item and addressed Boss Bag delivery for the Wall of Flesh death-loot slice.</summary>
-internal sealed class RuntimeWallOfFleshLootDeliverySink : IWallOfFleshLootDeliverySink
+internal sealed class RuntimeWallOfFleshLootDeliverySink : IWallOfFleshLootDeliverySink, IBossRecoveryLootDeliverySink1458
 {
     private readonly RuntimeWorldItemStore worldItems;
     private readonly RuntimeWorldItemInstancedLeaseStore? leases;

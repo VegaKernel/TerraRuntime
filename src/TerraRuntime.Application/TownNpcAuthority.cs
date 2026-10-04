@@ -15,6 +15,7 @@ namespace TerraRuntime.Application;
 /// </summary>
 internal sealed class TownNpcAuthority
 {
+    private const byte SittingFlag = 1 << 2;
     private const int MaxPlayerSlots = byte.MaxValue + 1;
 
     private readonly PlayerAuthority players;
@@ -30,6 +31,9 @@ internal sealed class TownNpcAuthority
     private readonly RuntimeNpcReplicationRegistry? npcReplication;
     private readonly VanillaTownSpawnPlayerFacts1458[] spawnPlayers = new VanillaTownSpawnPlayerFacts1458[MaxPlayerSlots];
     private readonly RuntimeTownPlayerBounds1458[] playerBounds = new RuntimeTownPlayerBounds1458[MaxPlayerSlots];
+    private readonly RuntimeTownPlayerSeat1458[] seatedPlayers = new RuntimeTownPlayerSeat1458[MaxPlayerSlots];
+    private readonly ServerPlayerAuthority? serverPlayers;
+    private readonly PlayerStateSnapshot[] serverSnapshots = new PlayerStateSnapshot[MaxPlayerSlots];
     private readonly RuntimeTownPlayerConversation1458[] playerConversations = new RuntimeTownPlayerConversation1458[MaxPlayerSlots];
     private readonly bool initialRaining;
     private readonly bool initialEclipse;
@@ -51,9 +55,13 @@ internal sealed class TownNpcAuthority
         bool initialInvasionActive,
         bool expertMode,
         bool masterMode,
-        IVanillaNpcRandom? npcRandom = null)
+        IVanillaNpcRandom? npcRandom = null,
+        IVanillaTallGateOccupancyProbe? actorOccupancy = null,
+        RuntimeTileManipulationReplicationRegistry? tileReplication = null,
+        ServerPlayerAuthority? serverPlayers = null)
     {
         this.players = players ?? throw new ArgumentNullException(nameof(players));
+        this.serverPlayers = serverPlayers;
         ArgumentNullException.ThrowIfNull(npcs);
         ArgumentNullException.ThrowIfNull(projectiles);
         this.townNpcs = townNpcs;
@@ -99,7 +107,7 @@ internal sealed class TownNpcAuthority
             return;
 
         schedule = new RuntimeTownNpcSchedule1458(townNpcs, npcs, worldTiles,
-            npcRandom is null ? null : new NpcRuntimeTownScheduleRandom1458(npcRandom));
+            npcRandom is null ? null : new NpcRuntimeTownScheduleRandom1458(npcRandom), actorOccupancy, tileReplication);
         shimmer = new RuntimeTownNpcShimmerService1458(npcs, townNpcs, worldTiles, npcReplication);
         if (townSpawnWorldFacts is not VanillaTownSpawnWorldFacts1458 facts)
             return;
@@ -142,6 +150,7 @@ internal sealed class TownNpcAuthority
 
         int spawnPlayerCount = 0;
         int boundsCount = 0;
+        int seatCount = 0;
         Span<RuntimePlayerInventoryItem> inventory =
             stackalloc RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
         foreach (RuntimePlayerMember player in players.Members)
@@ -182,12 +191,27 @@ internal sealed class TownNpcAuthority
                 player.PositionY,
                 width,
                 height);
+            if (player.Slot.Value < byte.MaxValue && (player.MiscFlags1 & SittingFlag) != 0)
+                seatedPlayers[seatCount++] = new RuntimeTownPlayerSeat1458(player.Slot.Value, bounds);
             playerBounds[boundsCount] = bounds;
             players.TryGetTalkNpc(player.Connection.Player, out short talkNpcSlot);
             bool invisible = players.HasNaturalSpawnBuffSnapshot(player.Slot.Value, VanillaBuffIds.Invisibility);
             playerConversations[boundsCount++] = new RuntimeTownPlayerConversation1458(
                 player.Slot.Value, talkNpcSlot, bounds,
                 !player.IsDead && player.Stealth == 1f && (!invisible || player.ItemAnimation != 0));
+        }
+
+        int serverCount = serverPlayers?.CopySnapshots(serverSnapshots) ?? 0;
+        for (int i = 0; i < serverCount; i++)
+        {
+            PlayerStateSnapshot player = serverSnapshots[i];
+            if (player.Player.Slot.Value == byte.MaxValue || (player.MiscFlags1 & SittingFlag) == 0) continue;
+            (float width, float height) = player.HasMount
+                ? VanillaPlayerMountHitbox1458.Resolve(player.MountType)
+                : (PlayerAuthority.VanillaBasePlayerWidth, PlayerAuthority.VanillaBasePlayerHeight);
+            if (seatCount < seatedPlayers.Length)
+                seatedPlayers[seatCount++] = new RuntimeTownPlayerSeat1458(player.Player.Slot.Value,
+                    new RuntimeTownPlayerBounds1458(player.PositionX, player.PositionY, width, height));
         }
 
         if (moveIn is not null)
@@ -212,7 +236,7 @@ internal sealed class TownNpcAuthority
                 SlimeRain: worldClock?.SlimeRainActive ?? false,
                 StormingAboveSurface: false);
             schedule.Tick(in scheduleConditions, playerBounds.AsSpan(0, boundsCount),
-                playerConversations.AsSpan(0, boundsCount));
+                playerConversations.AsSpan(0, boundsCount), seatedPlayers.AsSpan(0, seatCount));
         }
 
         combat?.Tick();

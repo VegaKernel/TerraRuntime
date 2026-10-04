@@ -44,8 +44,8 @@ public static class VanillaGroundFighterNpcCatalog
         ,Fighter(VanillaNpcIds.ChaosElemental, 18, 40, 40, 30, 370, .4f, 1f, 3f,
             reversingVelocityDamping: .99f, stuckThreshold: 180f, daySurfaceEncouragesDespawn: false)
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 163/164/239 and AI_003's two- and one-and-a-half-pixel branches.
-        ,Fighter(VanillaNpcIds.Gastropod, 50, 20, 90, 40, 350, .25f, 1f, 2f)
-        ,Fighter(VanillaNpcIds.Wraith, 18, 40, 70, 26, 450, .2f, 1f, 3f, reversingVelocityDamping: .99f)
+        ,Fighter(VanillaNpcIds.BlackRecluse, 50, 20, 90, 40, 350, .25f, 1f, 2f)
+        ,Fighter(VanillaNpcIds.SwampThing, 18, 40, 70, 26, 450, .2f, 1f, 3f, reversingVelocityDamping: .99f)
         ,Fighter(new NpcTypeId(164), 50, 20, 30, 10, 80, .25f, 1f, 1.5f)
         ,Fighter(new NpcTypeId(239), 50, 20, 30, 8, 60, .5f, 1f, 1.5f)
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 223 and AI_003's scale-adjusted rain-zombie speed band.
@@ -192,6 +192,10 @@ public static class VanillaGroundFighterNpcCatalog
         ,Fighter(new NpcTypeId(277), 18, 40, 70, 32, 400, .4f, 1f, 2.75f)
         ,Fighter(new NpcTypeId(278), 18, 40, 65, 48, 450, .3f, 1f, 1.8f)
         ,Fighter(new NpcTypeId(279), 18, 40, 40, 54, 500, .2f, 1f, 1.3f)
+        ,Fighter(VanillaNpcIds.Frankenstein, 18, 40, 65, 18, 350, .3f, 1f, 2f)
+        ,Fighter(VanillaNpcIds.Fritz, 20, 24, 70, 14, 270, .7f, 1f, 4f,
+            motionProfile: VanillaGroundFighterMotionProfile.Fritz)
+        ,Fighter(VanillaNpcIds.ThePossessed, 38, 26, 68, 28, 600, .35f, 1f, 3.25f)
         ,Fighter(VanillaNpcIds.Butcher, 18, 40, 70, 30, 700, .25f, 1f, 3f,
             acceleration: .1f, motionProfile: VanillaGroundFighterMotionProfile.Butcher)
         ,Fighter(VanillaNpcIds.Nailhead, 18, 40, 100, 34, 4000, .1f, 1f, .75f)
@@ -225,8 +229,8 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.CorruptBunny,
         VanillaNpcIds.CorruptPenguin,
         VanillaNpcIds.ChaosElemental,
-        VanillaNpcIds.Gastropod,
-        VanillaNpcIds.Wraith,
+        VanillaNpcIds.BlackRecluse,
+        VanillaNpcIds.SwampThing,
         new(164),
         new(239),
         VanillaNpcIds.RainZombie,
@@ -283,7 +287,7 @@ public static class VanillaGroundFighterNpcCatalog
         VanillaNpcIds.LacBeetle,
         VanillaNpcIds.SeaSnail,
         new(78), new(79), new(80), new(243), new(251), new(254), new(255), new(257), new(258), new(287), new(630),
-        new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280), VanillaNpcIds.Psycho, VanillaNpcIds.CreatureFromTheDeep, VanillaNpcIds.Butcher, VanillaNpcIds.Nailhead, VanillaNpcIds.DrManFly
+        new(269), new(270), new(271), new(272), new(273), new(274), new(275), new(276), new(277), new(278), new(279), new(280), VanillaNpcIds.Psycho, VanillaNpcIds.CreatureFromTheDeep, VanillaNpcIds.Butcher, VanillaNpcIds.Nailhead, VanillaNpcIds.DrManFly, VanillaNpcIds.Frankenstein, VanillaNpcIds.Fritz, VanillaNpcIds.ThePossessed
     ];
 
     public static int DefinitionCount => Entries.Length;

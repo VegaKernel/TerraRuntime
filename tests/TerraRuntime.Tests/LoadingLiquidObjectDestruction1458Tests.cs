@@ -281,7 +281,7 @@ public sealed class LoadingLiquidObjectDestruction1458Tests
 
     [Theory]
     [InlineData(28, false)]
-    [InlineData(28, true)]
+    // A foreign pot sibling is source-admitted and preserved; covered by LoadingLiquidPotRemnants1458Tests.
     [InlineData(484, false)]
     [InlineData(484, true)]
     [InlineData(485, false)]

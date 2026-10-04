@@ -7,7 +7,7 @@ using TerraRuntime.Gameplay.Projectiles;
 
 namespace TerraRuntime.Tests;
 
-public sealed class VanillaGastropodAiTests
+public sealed class VanillaBlackRecluseAiTests
 {
     [Fact]
     public void Expert_clock_commits_before_spawning_the_source_bolt()
@@ -26,19 +26,19 @@ public sealed class VanillaGastropodAiTests
         Assert.True(mutations.StateUpdated);
         Assert.Equal(0f, completed.Simulation.LocalAi.Ai0);
         Assert.True(mutations.ProjectileSpawned);
-        Assert.Equal(VanillaProjectileIds.GastropodBolt, mutations.Projectile.Type);
+        Assert.Equal(VanillaProjectileIds.WebSpit, mutations.Projectile.Type);
         Assert.Equal((121f, 106f), (mutations.Projectile.PositionX, mutations.Projectile.PositionY));
         Assert.Equal(18, mutations.Projectile.Damage);
         Assert.Equal(8f, MathF.Sqrt(mutations.Projectile.VelocityX * mutations.Projectile.VelocityX + mutations.Projectile.VelocityY * mutations.Projectile.VelocityY), 5);
     }
 
     [Fact]
-    public void Gastropod_bolt_keeps_source_arrow_defaults()
+    public void Web_spit_keeps_source_arrow_defaults()
     {
-        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.GastropodBolt, out var definition));
+        Assert.True(VanillaDefinitionCatalog.TryGet(VanillaProjectileIds.WebSpit, out var definition));
         Assert.Equal((8, 8, VanillaProjectileAiStyles.Arrow), (definition.Width, definition.Height, definition.AiStyle));
         Assert.True(definition.TileCollide);
-        Assert.True(VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(VanillaProjectileIds.GastropodBolt, out int penetrate));
+        Assert.True(VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(VanillaProjectileIds.WebSpit, out int penetrate));
         Assert.Equal(-1, penetrate);
     }
 

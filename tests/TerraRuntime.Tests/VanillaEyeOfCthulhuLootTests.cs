@@ -14,14 +14,14 @@ public sealed class VanillaEyeOfCthulhuLootTests
     [InlineData(true, 50, 90, 3)]
     public void Classic_source_order_pins_ore_seed_branch_and_inclusive_stack_bounds(bool crimson, int arrows, int ore, int seeds)
     {
-        var rolls = new ScriptedRolls("L7=0", "N1:2=1", "L40=0", "N1:2=1",
-            "L1=0", $"N20:51={arrows}", "L1=0", $"N30:91={ore}", "L1=0", $"N1:4={seeds}", "L10=0", "N1:2=1");
+        var rolls = new ScriptedRolls("L10=0", "N1:2=1", "L7=0", "N1:2=1", "L40=0", "N1:2=1",
+            "L1=0", $"N20:51={arrows}", "L1=0", $"N30:91={ore}", "L1=0", $"N1:4={seeds}");
         var sink = new RecordingSink();
         Assert.True(VanillaEyeOfCthulhuLootEvaluator.TryExecute(new(false, false, crimson),
             new(100, 200), [], rolls, sink, out var result));
-        Assert.Equal([2112, 1299, 47, crimson ? 880 : 56, crimson ? 2171 : 59, 1360],
+        Assert.Equal([1360, 2112, 1299, 47, crimson ? 880 : 56, crimson ? 2171 : 59],
             sink.World.Select(static x => x.Drop.ItemType.Value));
-        Assert.Equal([1, 1, arrows, ore, seeds, 1], sink.World.Select(static x => (int)x.Drop.Stack));
+        Assert.Equal([1, 1, 1, arrows, ore, seeds], sink.World.Select(static x => (int)x.Drop.Stack));
         Assert.Equal(new EyeOfCthulhuLootExecutionResult(6, 0, 0, 0), result);
         rolls.AssertConsumed();
     }
@@ -31,8 +31,8 @@ public sealed class VanillaEyeOfCthulhuLootTests
     [InlineData(true)]
     public void Classic_failed_optional_rolls_do_not_consume_stacks_or_require_opposite_evil_capability(bool crimson)
     {
-        var rolls = new ScriptedRolls("L7=6", "L40=39", "L1=0", "N20:51=20",
-            "L1=0", "N30:91=30", "L1=0", "N1:4=1", "L10=9");
+        var rolls = new ScriptedRolls("L10=9", "L7=6", "L40=39", "L1=0", "N20:51=20",
+            "L1=0", "N30:91=30", "L1=0", "N1:4=1");
         var sink = new RecordingSink { Unsupported = new(crimson ? 56 : 880) };
         Assert.True(VanillaEyeOfCthulhuLootEvaluator.TryExecute(new(false, false, crimson),
             new(100, 200), [], rolls, sink, out var result));
@@ -45,7 +45,7 @@ public sealed class VanillaEyeOfCthulhuLootTests
     [InlineData(true)]
     public void Expert_bag_does_not_use_classic_evil_branch(bool crimson)
     {
-        var rolls = new ScriptedRolls("N0:1=0", "N1:2=1", "L10=9");
+        var rolls = new ScriptedRolls("L10=9", "N0:1=0", "N1:2=1");
         var sink = new RecordingSink();
         Assert.True(VanillaEyeOfCthulhuLootEvaluator.TryExecute(new(true, false, crimson),
             new(100, 200), [new(new(2), 10, 20)], rolls, sink, out var result));
@@ -58,13 +58,13 @@ public sealed class VanillaEyeOfCthulhuLootTests
     [Fact]
     public void Master_has_two_guaranteed_common_drops_before_independent_per_player_pet()
     {
-        var rolls = new ScriptedRolls("N0:1=0", "N1:2=1", "L1=0", "N1:2=1",
-            "L1=0", "N1:2=1", "N1:2=1", "N0:4=3", "N0:4=0", "L10=0", "N1:2=1");
+        var rolls = new ScriptedRolls("L10=0", "N1:2=1", "N0:1=0", "N1:2=1", "L1=0", "N1:2=1",
+            "L1=0", "N1:2=1", "N1:2=1", "N0:4=3", "N0:4=0");
         var sink = new RecordingSink();
         Assert.True(VanillaEyeOfCthulhuLootEvaluator.TryExecute(new(true, true, false), new(100, 200),
             [new(new(1), 10, 20), new(new(4), 30, 40)], rolls, sink, out var result));
-        Assert.Equal([4924, 3763, 4798, 1360], sink.World.Select(static x => x.Drop.ItemType.Value));
-        Assert.Equal(new NpcLootWorldItemOrigin(30, 40), sink.World[2].Origin);
+        Assert.Equal([1360, 4924, 3763, 4798], sink.World.Select(static x => x.Drop.ItemType.Value));
+        Assert.Equal(new NpcLootWorldItemOrigin(30, 40), sink.World[3].Origin);
         Assert.Equal(new EyeOfCthulhuLootExecutionResult(4, 1, 2, 1), result);
         rolls.AssertConsumed();
     }

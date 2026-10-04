@@ -32,7 +32,18 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
         Assert.Equal(1, fixture.State.AppliedClientNpcDamage);
         Assert.Equal(0, fixture.State.RejectedClientNpcDamage);
         Assert.False(fixture.Npcs.TryGet(king.Handle, out _));
-        Assert.Equal(0, fixture.WorldItems.ActiveCount); // Boss Bag is an unpublished leased slot.
+        Span<WorldItemSnapshot> drops = stackalloc WorldItemSnapshot[VanillaBossRecovery1458.MaximumRecoveryDrops];
+        int count = fixture.WorldItems.CopyActive(drops);
+        Assert.Equal(fixture.WorldItems.ActiveCount, count);
+        var recovery = drops[..count].ToArray();
+        var potion = Assert.Single(recovery, drop => drop.ItemNetId == VanillaBossRecoveryItemIds1458.LesserHealingPotion.Value);
+        Assert.InRange(potion.Stack, 5, 15);
+        Assert.InRange(recovery.Count(drop => drop.ItemNetId == VanillaWallOfFleshItemIds.Heart.Value), 5, 9);
+        Assert.All(recovery.Where(drop => drop.ItemNetId == VanillaWallOfFleshItemIds.Heart.Value), drop => Assert.Equal((short)1, drop.Stack));
+        Assert.All(recovery, drop => Assert.True(drop.ItemNetId is 28 or 58 or 2489));
+        Assert.InRange(recovery.Count(drop => drop.ItemNetId == VanillaKingSlimeItemIds.KingSlimeTrophy.Value), 0, 1);
+        Assert.DoesNotContain(recovery, drop => drop.ItemNetId == VanillaKingSlimeItemIds.KingSlimeBossBag.Value);
+        Assert.DoesNotContain(recovery, drop => drop.Handle.Slot == 0); // Addressed Boss Bag retains its unpublished lease.
         Assert.Equal(6, fixture.NpcRelayedFrames); // ack + peer packet 28 + defeat announcement and packet 23 to both players.
         Assert.Equal(1, fixture.ItemRelayedFrames); // addressed packet 90 only to the interacting player.
         Assert.Equal(5, fixture.QueuedFrames(attacker.Source)); // baseline + ack + packet 90 + announcement + packet 23.
@@ -40,7 +51,7 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
 
         WorldItemStateUpdate ordinary = CreateWorldItem();
         Assert.True(fixture.WorldItems.TryAllocate(in ordinary, out WorldItemSnapshot whileLeased));
-        Assert.Equal((short)1, whileLeased.Handle.Slot);
+        Assert.Equal(checked((short)(count + 1)), whileLeased.Handle.Slot);
         Assert.True(fixture.WorldItems.TryRemove(whileLeased.Handle.Slot, out _));
 
         for (int tick = 0; tick < VanillaKingSlimeDifficultyLootEvaluator.InstancedItemSlotLeaseTicks; tick++)

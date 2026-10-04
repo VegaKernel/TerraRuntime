@@ -5,7 +5,7 @@ using TerraRuntime.Core.Npcs;
 
 namespace TerraRuntime.Tests;
 
-public sealed class VanillaWraithAiTests
+public sealed class VanillaSwampThingAiTests
 {
     [Fact]
     public void Blocked_sight_starts_the_source_wait_clock_before_common_fighter_motion()
@@ -16,8 +16,8 @@ public sealed class VanillaWraithAiTests
         stepper.SetProjectileEnvironment(new BlockedEnvironment());
         stepper.SetCandidates([new VanillaNpcTargetCandidate(3, 300f, 100f, 0, true, false, false, false)]);
         NpcSnapshot npc = new(
-            new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1), VanillaNpcIds.Wraith.Value,
-            checked((short)VanillaNpcIds.Wraith.Value), 100f, 100f, 1f, 0f, VanillaNpcDefinitionCatalog.DefaultTarget,
+            new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1), VanillaNpcIds.SwampThing.Value,
+            checked((short)VanillaNpcIds.SwampThing.Value), 100f, 100f, 1f, 0f, VanillaNpcDefinitionCatalog.DefaultTarget,
             default, NpcSimulationState.Initial with { DirectionX = 1, DirectionY = 1, SpriteDirection = -1, OldPositionX = 99f, Life = 450, LifeMax = 450, TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft });
 
         Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));
@@ -37,8 +37,8 @@ public sealed class VanillaWraithAiTests
         stepper.SetProjectileEnvironment(new VisibleEnvironment());
         stepper.SetCandidates([new VanillaNpcTargetCandidate(3, 300f, 100f, 0, true, false, false, false)]);
         NpcSnapshot npc = new(
-            new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1), VanillaNpcIds.Wraith.Value,
-            checked((short)VanillaNpcIds.Wraith.Value), 100f, 100f, 1f, 0f, VanillaNpcDefinitionCatalog.DefaultTarget,
+            new NpcHandle(1, new NpcGeneration(1)), new NpcRevision(1), VanillaNpcIds.SwampThing.Value,
+            checked((short)VanillaNpcIds.SwampThing.Value), 100f, 100f, 1f, 0f, VanillaNpcDefinitionCatalog.DefaultTarget,
             new NpcAiState(0f, 0f, -5f, 0f), NpcSimulationState.Initial with { DirectionX = 1, DirectionY = 1, SpriteDirection = -1, OldPositionX = 99f, Life = 450, LifeMax = 450, TimeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft });
 
         Assert.True(stepper.TryStepState(in npc, out NpcStateUpdate next));

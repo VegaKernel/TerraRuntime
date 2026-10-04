@@ -24,11 +24,12 @@ internal sealed class RuntimeGroundFighterDoorOpeningSink : IVanillaGroundFighte
         RuntimeTileManipulationReplicationRegistry? replication = null,
         IVanillaTallGateOccupancyProbe? tallGateOccupancy = null,
         RuntimeWorldItemStore? worldItems = null,
-        IWorldItemSpawnRandom? worldItemSpawnRandom = null)
+        IWorldItemSpawnRandom? worldItemSpawnRandom = null,
+        IVanillaDoorCloseRandom1458? doorCloseRandom = null)
     {
         openings = new VanillaWorldGroundFighterDoorOpeningService(
             tiles ?? throw new ArgumentNullException(nameof(tiles)),
-            tallGateOccupancy);
+            tallGateOccupancy, doorCloseRandom);
         this.replication = replication;
         this.worldItems = worldItems;
         this.worldItemSpawnRandom = worldItemSpawnRandom;
@@ -45,6 +46,23 @@ internal sealed class RuntimeGroundFighterDoorOpeningSink : IVanillaGroundFighte
         if (!openings.TryOpen(in intent, out VanillaGroundFighterDoorOpeningMutation mutation))
             return false;
 
+        Publish(in mutation, closing: false);
+        return true;
+    }
+
+    public bool TryClose(int tileX, int tileY, bool tallGate, int direction)
+    {
+        bool changed = tallGate
+            ? openings.TryShiftTallGate(tileX, tileY, closing: true, forced: false, out var mutation)
+            : openings.TryCloseDoor(tileX, tileY, forced: false, out mutation);
+        if (!changed) return false;
+        mutation = mutation with { DirectionX = direction };
+        Publish(in mutation, closing: true);
+        return true;
+    }
+
+    private void Publish(in VanillaGroundFighterDoorOpeningMutation mutation, bool closing)
+    {
         if (!mutation.DropItem.IsNone && worldItems is not null && worldItemSpawnRandom is not null)
         {
             WorldItemDropStateUpdate drop = VanillaSimpleTileBreakResolver1458.MaterializeItemState(
@@ -70,13 +88,13 @@ internal sealed class RuntimeGroundFighterDoorOpeningSink : IVanillaGroundFighte
                     Data: 0,
                     Style: 0);
                 replication.TryPublishCommitted(GameCommandSourceId.System, in state);
-                return true;
+                return;
             }
 
             byte action = mutation.Kind switch
             {
-                VanillaGroundFighterDoorOpeningKind.Door => (byte)TerrariaDoorToggleAction.OpenDoor,
-                VanillaGroundFighterDoorOpeningKind.TallGate => (byte)TerrariaDoorToggleAction.OpenTallGate,
+                VanillaGroundFighterDoorOpeningKind.Door => (byte)(closing ? TerrariaDoorToggleAction.CloseDoor : TerrariaDoorToggleAction.OpenDoor),
+                VanillaGroundFighterDoorOpeningKind.TallGate => (byte)(closing ? TerrariaDoorToggleAction.CloseTallGate : TerrariaDoorToggleAction.OpenTallGate),
                 _ => byte.MaxValue
             };
 
@@ -93,6 +111,5 @@ internal sealed class RuntimeGroundFighterDoorOpeningSink : IVanillaGroundFighte
             }
         }
 
-        return true;
     }
 }

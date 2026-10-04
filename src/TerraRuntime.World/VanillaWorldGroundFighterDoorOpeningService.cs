@@ -36,8 +36,9 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
 {
     private const ushort StalactiteTileType = 165;
     private const int TallGateHeight = 5;
-    private const int TallGateCoordinateFullHeight = 90;
+    private const int TallGateCoordinateFullHeight = 94;
     private const int FrameUnit = 18;
+    private static readonly int[] TallGateRowFrameOffsets = [0, 20, 38, 56, 74];
     private const int TrapdoorStyleStride = 2 * FrameUnit;
     private const int ClosedDoorStyleHeight = 54;
     private const int ClosedDoorHorizontalStyleWidth = 54;
@@ -97,7 +98,10 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
     /// path deliberately skips Collision.EmptyTile, but retains the exact 2x3 open-door validation and one
     /// <c>genRand.Next(3)</c> draw for every row restored to the one-cell closed door.
     /// </summary>
-    public bool TryCloseDoor(int tileX, int tileY, out VanillaGroundFighterDoorOpeningMutation mutation)
+    public bool TryCloseDoor(int tileX, int tileY, out VanillaGroundFighterDoorOpeningMutation mutation) =>
+        TryCloseDoor(tileX, tileY, forced: true, out mutation);
+
+    public bool TryCloseDoor(int tileX, int tileY, bool forced, out VanillaGroundFighterDoorOpeningMutation mutation)
     {
         mutation = default;
         if (doorCloseRandom is null || !Contains(tileX, tileY))
@@ -154,6 +158,14 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
         if (!Contains(clearedLeftX, topY) || !Contains(clearedLeftX + 1, topY + 2))
             return false;
 
+        // Unforced town closing tests only the retained column, before validation or RNG.
+        if (!forced)
+        {
+            if (tallGateOccupancy is null) return false;
+            for (int row = 0; row < 3; row++)
+                if (!tallGateOccupancy.IsActorFree(retainedX, topY + row)) return false;
+        }
+
         for (int column = 0; column < 2; column++)
         {
             for (int row = 0; row < 3; row++)
@@ -200,7 +212,10 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
     /// network path deliberately bypasses the non-forced Collision.EmptyTile branch after validating the complete
     /// active 1x5 object, and preserves all source frames while changing only the tile type.
     /// </summary>
-    public bool TryShiftTallGate(int tileX, int tileY, bool closing, out VanillaGroundFighterDoorOpeningMutation mutation)
+    public bool TryShiftTallGate(int tileX, int tileY, bool closing, out VanillaGroundFighterDoorOpeningMutation mutation) =>
+        TryShiftTallGate(tileX, tileY, closing, forced: true, out mutation);
+
+    public bool TryShiftTallGate(int tileX, int tileY, bool closing, bool forced, out VanillaGroundFighterDoorOpeningMutation mutation)
     {
         mutation = default;
         if (!Contains(tileX, tileY))
@@ -212,12 +227,7 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
         if (!touched.IsActive || touched.TileType != expectedType || touched.FrameY < 0)
             return false;
 
-        int frameWithinStyle = touched.FrameY % TallGateCoordinateFullHeight;
-        if (frameWithinStyle % FrameUnit != 0)
-            return false;
-        int row = frameWithinStyle / FrameUnit;
-        if ((uint)row >= TallGateHeight)
-            return false;
+        if (!TryResolveTallGateRow(touched.FrameY, out int row)) return false;
 
         int topY = tileY - row;
         if (!Contains(tileX, topY) || !Contains(tileX, topY + TallGateHeight - 1))
@@ -228,6 +238,12 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
             WorldTile gate = tiles.Get(tileX, topY + offset);
             if (!gate.IsActive || gate.TileType != expectedType)
                 return false;
+        }
+        if (!forced)
+        {
+            if (tallGateOccupancy is null) return false;
+            for (int offset = 0; offset < TallGateHeight; offset++)
+                if (!tallGateOccupancy.IsActorFree(tileX, topY + offset)) return false;
         }
 
         for (int offset = 0; offset < TallGateHeight; offset++)
@@ -431,13 +447,7 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
         if (touched.FrameX < 0 || touched.FrameY < 0)
             return false;
 
-        int frameWithinStyle = touched.FrameY % TallGateCoordinateFullHeight;
-        if (frameWithinStyle % FrameUnit != 0)
-            return false;
-
-        int row = frameWithinStyle / FrameUnit;
-        if ((uint)row >= TallGateHeight)
-            return false;
+        if (!TryResolveTallGateRow(touched.FrameY, out int row)) return false;
 
         int topY = intent.TileY - row;
         int expectedFrameX = touched.FrameX / FrameUnit * FrameUnit;
@@ -451,7 +461,7 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
             if (!gate.IsActive ||
                 gate.TileType != VanillaTileIds.TallGateClosed ||
                 gate.FrameX != expectedFrameX ||
-                gate.FrameY != styleFrameY + offset * FrameUnit)
+                gate.FrameY != styleFrameY + TallGateRowFrameOffsets[offset])
             {
                 return false;
             }
@@ -573,13 +583,7 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
         if (tallGateOccupancy is null || touched.FrameY < 0)
             return false;
 
-        int frameWithinStyle = touched.FrameY % TallGateCoordinateFullHeight;
-        if (frameWithinStyle % FrameUnit != 0)
-            return false;
-
-        int row = frameWithinStyle / FrameUnit;
-        if ((uint)row >= TallGateHeight)
-            return false;
+        if (!TryResolveTallGateRow(touched.FrameY, out int row)) return false;
 
         int topY = intent.TileY - row;
         if (!Contains(intent.TileX, topY) || !Contains(intent.TileX, topY + TallGateHeight - 1))
@@ -608,6 +612,12 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
             intent.DirectionX,
             ChangedTiles: TallGateHeight);
         return true;
+    }
+
+    private static bool TryResolveTallGateRow(int frameY, out int row)
+    {
+        row = Array.IndexOf(TallGateRowFrameOffsets, frameY % TallGateCoordinateFullHeight);
+        return row >= 0;
     }
 
     private static bool IsLockedDoor(in WorldTile tile) =>

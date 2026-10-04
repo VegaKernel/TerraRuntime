@@ -359,7 +359,7 @@ public sealed class TempleDoorUnlock1458Tests
             var tile = new WorldTile
             {
                 Type = checked((ushort)VanillaTileIds.TallGateClosed.Value),
-                FrameY = checked((short)(offset * 18)),
+                FrameY = checked((short)(new[] { 0, 20, 38, 56, 74 }[offset])),
                 Flags = WorldTileFlags.Active
             };
             tiles.Set(x, topY + offset, in tile);

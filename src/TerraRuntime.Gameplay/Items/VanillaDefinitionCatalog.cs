@@ -53,6 +53,7 @@ public readonly record struct VanillaItemUseTimingDefinition(
 /// <summary>
 /// Source-backed item defaults required to materialize a world-item spawn. PrefixFamily represents verified
 /// Prefix(-1) capability; None means the source-backed item cannot receive a natural prefix in this path.
+/// Width/Height retain Item.SetDefaults dimensions; Terraria 1.4.5.8 physical WorldItem bodies are separately 16x16.
 /// </summary>
 public readonly record struct VanillaItemWorldDropDefinition(
     int Width,
@@ -264,8 +265,8 @@ public static class VanillaDefinitionCatalog
     private static readonly VanillaItemDefinition QueenBeeHatDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeeHat, 28, 20);
     private static readonly VanillaItemDefinition QueenBeeShirtDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeeShirt, 18, 14);
     private static readonly VanillaItemDefinition QueenBeePantsDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeePants, 18, 14);
-    private static readonly VanillaItemDefinition BeeGunDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeeGun, 50, 18);
-    private static readonly VanillaItemDefinition BeeKeeperDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeeKeeper, 40, 40);
+    private static readonly VanillaItemDefinition BeeGunDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeeGun, 50, 18, VanillaItemPrefixFamily.Magic);
+    private static readonly VanillaItemDefinition BeeKeeperDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeeKeeper, 40, 40, VanillaItemPrefixFamily.Sword);
     private static readonly VanillaItemDefinition HiveWandDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.HiveWand, 8, 10);
     private static readonly VanillaItemDefinition BeenadeDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.Beenade, 10, 10);
     private static readonly VanillaItemDefinition HoneyCombDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.HoneyComb, 22, 22);
@@ -274,14 +275,14 @@ public static class VanillaDefinitionCatalog
     private static readonly VanillaItemDefinition BeeMaskDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeeMask, 28, 20);
     private static readonly VanillaItemDefinition BeeWaxDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeeWax, 18, 16);
     private static readonly VanillaItemDefinition HoneyedGogglesDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.HoneyedGoggles, 16, 30);
-    private static readonly VanillaItemDefinition BeesKneesDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeesKnees, 12, 28);
+    private static readonly VanillaItemDefinition BeesKneesDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.BeesKnees, 12, 28, VanillaItemPrefixFamily.Ranged);
     private static readonly VanillaItemDefinition QueenBeeBossBagDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.QueenBeeBossBag, 24, 24);
     private static readonly VanillaItemDefinition QueenBeePetItemDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.QueenBeePetItem, 16, 30);
     private static readonly VanillaItemDefinition QueenBeeMasterTrophyDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.QueenBeeMasterTrophy, 14, 14);
     private static readonly VanillaItemDefinition QueenOfBeesDefinition = QueenBeeWorldDrop(VanillaQueenBeeItemIds.QueenOfBees, 30, 30);
 
     private static readonly VanillaItemDefinition DeerclopsPetItemDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.DeerclopsPetItem, 16, 30);
-    private static readonly VanillaItemDefinition LucyTheAxeDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.LucyTheAxe, 24, 28);
+    private static readonly VanillaItemDefinition LucyTheAxeDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.LucyTheAxe, 24, 28, VanillaItemPrefixFamily.Sword);
     private static readonly VanillaItemDefinition ChesterPetItemDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.ChesterPetItem, 16, 30);
     private static readonly VanillaItemDefinition EyebrellaDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.Eyebrella, 28, 20);
     private static readonly VanillaItemDefinition DeerclopsTrophyDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.DeerclopsTrophy, 30, 30);
@@ -289,27 +290,27 @@ public static class VanillaDefinitionCatalog
     private static readonly VanillaItemDefinition DeerclopsMasterTrophyDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.DeerclopsMasterTrophy, 14, 14);
     private static readonly VanillaItemDefinition DeerclopsBossBagDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.DeerclopsBossBag, 24, 24);
     private static readonly VanillaItemDefinition DontStarveShaderItemDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.DontStarveShaderItem, 26, 30);
-    private static readonly VanillaItemDefinition PewMaticHornDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.PewMaticHorn, 24, 24);
-    private static readonly VanillaItemDefinition WeatherPainDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.WeatherPain, 24, 24);
-    private static readonly VanillaItemDefinition HoundiusShootiusDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.HoundiusShootius, 18, 20);
+    private static readonly VanillaItemDefinition PewMaticHornDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.PewMaticHorn, 24, 24, VanillaItemPrefixFamily.Ranged);
+    private static readonly VanillaItemDefinition WeatherPainDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.WeatherPain, 24, 24, VanillaItemPrefixFamily.Magic);
+    private static readonly VanillaItemDefinition HoundiusShootiusDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.HoundiusShootius, 18, 20, VanillaItemPrefixFamily.Summon);
     private static readonly VanillaItemDefinition DizzyHatDefinition = DeerclopsWorldDrop(VanillaDeerclopsItemIds.DizzyHat, 28, 20);
 
     private static readonly VanillaItemDefinition WofHealingPotionDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.HealingPotion, 14, 24);
     private static readonly VanillaItemDefinition WofHeartDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.Heart, 12, 12);
-    private static readonly VanillaItemDefinition PwnhammerDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.Pwnhammer, 24, 28);
-    private static readonly VanillaItemDefinition SorcererEmblemDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.SorcererEmblem, 24, 24);
-    private static readonly VanillaItemDefinition WarriorEmblemDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.WarriorEmblem, 24, 24);
-    private static readonly VanillaItemDefinition RangerEmblemDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.RangerEmblem, 24, 24);
-    private static readonly VanillaItemDefinition BreakerBladeDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.BreakerBlade, 60, 70);
-    private static readonly VanillaItemDefinition ClockworkAssaultRifleDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.ClockworkAssaultRifle, 50, 18);
-    private static readonly VanillaItemDefinition LaserRifleDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.LaserRifle, 36, 22);
+    private static readonly VanillaItemDefinition PwnhammerDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.Pwnhammer, 24, 28, VanillaItemPrefixFamily.Sword);
+    private static readonly VanillaItemDefinition SorcererEmblemDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.SorcererEmblem, 24, 24, VanillaItemPrefixFamily.Accessory);
+    private static readonly VanillaItemDefinition WarriorEmblemDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.WarriorEmblem, 24, 24, VanillaItemPrefixFamily.Accessory);
+    private static readonly VanillaItemDefinition RangerEmblemDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.RangerEmblem, 24, 24, VanillaItemPrefixFamily.Accessory);
+    private static readonly VanillaItemDefinition BreakerBladeDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.BreakerBlade, 60, 70, VanillaItemPrefixFamily.Sword);
+    private static readonly VanillaItemDefinition ClockworkAssaultRifleDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.ClockworkAssaultRifle, 50, 18, VanillaItemPrefixFamily.Ranged);
+    private static readonly VanillaItemDefinition LaserRifleDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.LaserRifle, 36, 22, VanillaItemPrefixFamily.Magic);
     private static readonly VanillaItemDefinition WallOfFleshTrophyDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.WallOfFleshTrophy, 30, 30);
     private static readonly VanillaItemDefinition FleshMaskDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.FleshMask, 28, 20);
-    private static readonly VanillaItemDefinition SummonerEmblemDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.SummonerEmblem, 24, 24);
+    private static readonly VanillaItemDefinition SummonerEmblemDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.SummonerEmblem, 24, 24, VanillaItemPrefixFamily.Accessory);
     private static readonly VanillaItemDefinition WallOfFleshBossBagDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.WallOfFleshBossBag, 24, 24);
     private static readonly VanillaItemDefinition GoatSkullDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.GoatSkull, 10, 32);
     private static readonly VanillaItemDefinition WallOfFleshRelicDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.WallOfFleshRelic, 14, 14);
-    private static readonly VanillaItemDefinition FirecrackerDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.Firecracker, 18, 18);
+    private static readonly VanillaItemDefinition FirecrackerDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.Firecracker, 18, 18, VanillaItemPrefixFamily.Sword);
     private static readonly VanillaItemDefinition BadgersHatDefinition = WallOfFleshWorldDrop(VanillaWallOfFleshItemIds.BadgersHat, 18, 14);
 
     private static VanillaItemDefinition BrainWorldDrop(ItemTypeId type, int width, int height) =>
@@ -338,7 +339,7 @@ public static class VanillaDefinitionCatalog
                 NoGravity: false,
                 PrefixFamily: VanillaItemPrefixFamily.None));
 
-    private static VanillaItemDefinition QueenBeeWorldDrop(ItemTypeId type, int width, int height) =>
+    private static VanillaItemDefinition QueenBeeWorldDrop(ItemTypeId type, int width, int height, VanillaItemPrefixFamily prefix = VanillaItemPrefixFamily.None) =>
         new(
             Type: type,
             RuntimeDefaults: new VanillaItemRuntimeDefaults(width, height, CommonMaximumStack),
@@ -349,9 +350,9 @@ public static class VanillaDefinitionCatalog
                 width,
                 height,
                 NoGravity: false,
-                PrefixFamily: VanillaItemPrefixFamily.None));
+                PrefixFamily: prefix));
 
-    private static VanillaItemDefinition DeerclopsWorldDrop(ItemTypeId type, int width, int height) =>
+    private static VanillaItemDefinition DeerclopsWorldDrop(ItemTypeId type, int width, int height, VanillaItemPrefixFamily prefix = VanillaItemPrefixFamily.None) =>
         new(
             Type: type,
             RuntimeDefaults: new VanillaItemRuntimeDefaults(width, height, CommonMaximumStack),
@@ -362,9 +363,9 @@ public static class VanillaDefinitionCatalog
                 width,
                 height,
                 NoGravity: false,
-                PrefixFamily: VanillaItemPrefixFamily.None));
+                PrefixFamily: prefix));
 
-    private static VanillaItemDefinition WallOfFleshWorldDrop(ItemTypeId type, int width, int height) =>
+    private static VanillaItemDefinition WallOfFleshWorldDrop(ItemTypeId type, int width, int height, VanillaItemPrefixFamily prefix = VanillaItemPrefixFamily.None) =>
         new(
             Type: type,
             RuntimeDefaults: new VanillaItemRuntimeDefaults(width, height, CommonMaximumStack),
@@ -375,7 +376,7 @@ public static class VanillaDefinitionCatalog
                 width,
                 height,
                 NoGravity: false,
-                PrefixFamily: VanillaItemPrefixFamily.None));
+                PrefixFamily: prefix));
 
     private static VanillaItemDefinition EaterWorldDrop(ItemTypeId type, int width, int height) =>
         new(
@@ -392,6 +393,7 @@ public static class VanillaDefinitionCatalog
 
     public static bool TryGet(ItemTypeId type, out VanillaItemDefinition definition)
     {
+        if (VanillaBossRecoveryItemCatalog1458.TryGet(type, out definition)) return true;
         if (VanillaDungeonChestItemCatalog1458.TryGet(type, out definition))
             return true;
         if (VanillaMoonLordItemCatalog1458.TryGet(type, out definition))

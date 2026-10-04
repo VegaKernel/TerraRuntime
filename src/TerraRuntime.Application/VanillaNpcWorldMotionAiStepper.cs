@@ -106,7 +106,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             next = default;
             return false;
         }
-        if (npc.TypeIdentity == VanillaNpcIds.Nailhead || npc.TypeIdentity == VanillaNpcIds.DrManFly)
+        if (npc.TypeIdentity == VanillaNpcIds.Nailhead || npc.TypeIdentity == VanillaNpcIds.DrManFly || npc.TypeIdentity == VanillaNpcIds.Frankenstein)
         {
             next = aiState;
             return true;
@@ -115,6 +115,23 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     }
 
     internal bool TryApplyWorldMotion(in NpcSnapshot npc, in NpcStateUpdate proposed, out NpcStateUpdate next)
+    {
+        if (!TryApplyTerrainMotion(in npc, in proposed, out var adjusted))
+        {
+            next = default;
+            return false;
+        }
+        // Preserve the wrapper's existing AI-only path for explicitly unowned/custom physics.
+        if (!VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var definition) ||
+            definition.PhysicsFamily == VanillaNpcPhysicsFamily.None)
+        {
+            next = adjusted;
+            return true;
+        }
+        return TryFinishPhysics(tiles, worldSurfaceTiles, in npc, in adjusted, out next);
+    }
+
+    internal bool TryApplyTerrainMotion(in NpcSnapshot npc, in NpcStateUpdate proposed, out NpcStateUpdate next)
     {
         NpcStateUpdate aiState = proposed;
         bool fighterStuckHopEligible = npc.VelocityX == 0f && !npc.Simulation.JustHit;
@@ -141,7 +158,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         // Psycho ambush/reveal and Creature swimming return before AI_003 terrain logic; outer physics still runs.
         if (definition.PhysicsFamily == VanillaNpcPhysicsFamily.GroundFighter &&
             !(definition.Type == VanillaNpcIds.Psycho && npc.Ai.Ai2 <= 0f) &&
-            !(definition.Type == VanillaNpcIds.CreatureFromTheDeep && npc.Simulation.Wet))
+            !(definition.Type == VanillaNpcIds.CreatureFromTheDeep && npc.Simulation.Wet) &&
+            !(definition.Type == VanillaNpcIds.ThePossessed && simulation.NoGravity))
         {
             bool hasFighterProfile = VanillaGroundFighterBehaviorCatalog.TryGet(
                 definition.Type,
@@ -163,6 +181,13 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
                 : VanillaZombieObstacleMotionParameters.Vanilla;
             float stuckHopVelocity = hasFighterProfile ? fighterProfile.StuckHopVelocity : -5f;
 
+            // These source launches set AI_003's force-ground-scan flag despite negative vertical motion.
+            if ((definition.Type == VanillaNpcIds.Fritz || definition.Type == VanillaNpcIds.ThePossessed) &&
+                npc.VelocityY == 0f && velocityY < 0f &&
+                !VanillaWorldZombieDoorContact.HasGroundSupport(tiles, aiState.PositionX, aiState.PositionY,
+                    hitboxWidth, hitboxHeight))
+                velocityY = 0f;
+
             VanillaZombieStepUpResult stepUp = VanillaWorldZombieStepUp.Resolve(
                 tiles,
                 aiState.PositionX,
@@ -176,7 +201,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
 
             VanillaGroundFighterDoorEnvironment doorEnvironment = ResolveDoorEnvironment(in aiState);
             // Source flag8 is false for Psycho: its ai[2] remains the ambush clock, never door pressure.
-            VanillaZombieDoorContactResult doorContact = (definition.Type == VanillaNpcIds.Psycho || definition.Type == VanillaNpcIds.DrManFly)
+            VanillaZombieDoorContactResult doorContact = (definition.Type == VanillaNpcIds.Psycho || definition.Type == VanillaNpcIds.DrManFly || definition.Type == VanillaNpcIds.ThePossessed)
                 ? new VanillaZombieDoorContactResult(velocityX, aiState.Ai, false, false, false)
                 : VanillaWorldZombieDoorContact.Resolve(
                 tiles,
@@ -290,7 +315,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             velocityY = obstacle.VelocityY;
         }
 
-        return TryFinishPhysics(tiles, worldSurfaceTiles, in npc, aiState with { VelocityX = velocityX, VelocityY = velocityY, Simulation = simulation }, out next);
+        next = aiState with { VelocityX = velocityX, VelocityY = velocityY, Simulation = simulation };
+        return true;
     }
 
     internal static bool TryFinishPhysics(WorldTileStore tiles, double worldSurfaceTiles,
@@ -462,7 +488,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         INpcAiCommittedNpcMutationSink mutations)
     {
         if (before.TypeIdentity == committed.TypeIdentity &&
-            (before.TypeIdentity == VanillaNpcIds.Nailhead || before.TypeIdentity == VanillaNpcIds.DrManFly) &&
+            (before.TypeIdentity == VanillaNpcIds.Nailhead || before.TypeIdentity == VanillaNpcIds.DrManFly || before.TypeIdentity == VanillaNpcIds.Frankenstein) &&
             NpcAiStateStepperComposition.FindCapability<INpcAiAcceptedWorldMotionPlanner>(inner) is { } planner)
         {
             Span<NpcAiProjectileIntent> shots = stackalloc NpcAiProjectileIntent[5];

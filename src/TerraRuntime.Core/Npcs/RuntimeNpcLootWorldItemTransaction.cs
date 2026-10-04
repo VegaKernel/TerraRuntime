@@ -58,7 +58,8 @@ public sealed class RuntimeNpcLootWorldItemTransaction
             npc.Simulation.LifeMax <= 0 ||
             npc.Simulation.Life != 0 ||
             !NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
-            !VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition npcDefinition))
+            !VanillaNpcDefinitionCatalog.TryGet(npcType, out VanillaNpcDefinition npcDefinition) ||
+            !npcDefinition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
         {
             return false;
         }
@@ -101,8 +102,8 @@ public sealed class RuntimeNpcLootWorldItemTransaction
         }
 
         var origin = new NpcLootWorldItemOrigin(
-            CenterX: (int)npc.PositionX + npcDefinition.Width / 2,
-            CenterY: (int)npc.PositionY + npcDefinition.Height / 2);
+            CenterX: (int)npc.PositionX + hitbox.Width / 2,
+            CenterY: (int)npc.PositionY + hitbox.Height / 2);
         Span<WorldItemDropReservation> stagedReservations =
             stackalloc WorldItemDropReservation[maximumDropCount];
         int stagedCount = 0;

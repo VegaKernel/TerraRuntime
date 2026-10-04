@@ -13,7 +13,7 @@ public interface INpcAiAcceptedWorldMotionPlanner
 
 internal static class VanillaEclipseFighterAcceptedPlanner
 {
-    public static bool IsSupported(NpcTypeId type) => type == VanillaNpcIds.Nailhead || type == VanillaNpcIds.DrManFly;
+    public static bool IsSupported(NpcTypeId type) => type == VanillaNpcIds.Nailhead || type == VanillaNpcIds.DrManFly || type == VanillaNpcIds.Frankenstein;
     public static bool TryPlan(in NpcSnapshot before, in NpcSnapshot accepted, VanillaNpcBehaviorContext context,
         IVanillaNpcRandom random, IVanillaNpcProjectileEnvironment? environment,
         Span<NpcAiProjectileIntent> shots, out int count, out NpcStateUpdate next)
@@ -24,6 +24,17 @@ internal static class VanillaEclipseFighterAcceptedPlanner
         if (before.TypeIdentity != accepted.TypeIdentity || !IsSupported(accepted.TypeIdentity) || shots.Length < 5 ||
             !VanillaNpcDefinitionCatalog.TryGet(accepted.TypeIdentity, accepted.NetIdentity, out var definition) ||
             !definition.TryResolveHitbox(accepted.Simulation, out var body)) return false;
+        if (accepted.TypeIdentity == VanillaNpcIds.Frankenstein)
+        {
+            bool discouraged = context.DayTime && !context.EclipseActive && before.PositionY < context.WorldSurfacePixels;
+            if (!discouraged && accepted.Ai.Ai3 < 60f)
+            {
+                // Dedicated-server SoundEngine is inert, but AI_003 still consumes both source sound rolls.
+                random.NextInt32(0, 1000);
+                random.NextInt32(0, 500);
+            }
+            return true;
+        }
         if (accepted.TypeIdentity == VanillaNpcIds.Nailhead)
         {
             var local = accepted.Simulation.LocalAi;

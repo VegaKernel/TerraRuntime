@@ -3,6 +3,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.World;
+using TerraRuntime.Gameplay.Players;
 
 namespace TerraRuntime.Application;
 
@@ -16,6 +17,8 @@ internal sealed class RuntimeTallGateOccupancyProbe : IVanillaTallGateOccupancyP
     private readonly ServerPlayerAuthority? serverPlayers;
     private readonly RuntimeNpcStore? npcs;
     private readonly NpcSnapshot[] npcBuffer;
+    private readonly PlayerStateSnapshot[] serverPlayerBuffer = new PlayerStateSnapshot[byte.MaxValue + 1];
+    private const byte GhostFlag = 1 << 6;
 
     public RuntimeTallGateOccupancyProbe(Func<int, int, bool> isFree)
     {
@@ -47,11 +50,14 @@ internal sealed class RuntimeTallGateOccupancyProbe : IVanillaTallGateOccupancyP
         int tileBottom = checked(tileTop + 16);
         foreach (RuntimePlayerMember player in players.Members)
         {
-            if (!player.IsDead && Intersects(
+            (float width, float height) = player.HasMount
+                ? VanillaPlayerMountHitbox1458.Resolve(player.MountType)
+                : (PlayerAuthority.VanillaBasePlayerWidth, PlayerAuthority.VanillaBasePlayerHeight);
+            if (player.Slot.Value < byte.MaxValue && !player.IsDead && (player.MovementFlags & GhostFlag) == 0 && Intersects(
                     player.PositionX,
                     player.PositionY,
-                    PlayerAuthority.VanillaBasePlayerWidth,
-                    PlayerAuthority.VanillaBasePlayerHeight,
+                    width,
+                    height,
                     tileLeft,
                     tileTop,
                     tileRight,
@@ -61,15 +67,17 @@ internal sealed class RuntimeTallGateOccupancyProbe : IVanillaTallGateOccupancyP
             }
         }
 
-        if (serverPlayers?.IntersectsLivingPlayer(
-                tileLeft,
-                tileTop,
-                tileRight,
-                tileBottom,
-                PlayerAuthority.VanillaBasePlayerWidth,
-                PlayerAuthority.VanillaBasePlayerHeight) == true)
+        int serverCount = serverPlayers?.CopySnapshots(serverPlayerBuffer) ?? 0;
+        for (int index = 0; index < serverCount; index++)
         {
-            return false;
+            PlayerStateSnapshot player = serverPlayerBuffer[index];
+            if (player.Player.Slot.Value == byte.MaxValue || player.IsDead || (player.MovementFlags & GhostFlag) != 0)
+                continue;
+            (float width, float height) = player.HasMount
+                ? VanillaPlayerMountHitbox1458.Resolve(player.MountType)
+                : (PlayerAuthority.VanillaBasePlayerWidth, PlayerAuthority.VanillaBasePlayerHeight);
+            if (Intersects(player.PositionX, player.PositionY, width, height, tileLeft, tileTop, tileRight, tileBottom))
+                return false;
         }
 
         int npcCount = npcs.CopyActive(npcBuffer);
@@ -91,13 +99,17 @@ internal sealed class RuntimeTallGateOccupancyProbe : IVanillaTallGateOccupancyP
     {
         if (!npc.IsActive)
             return false;
+        if (npc.Simulation.HitboxOverride is NpcHitboxDimensions physical)
+            return !physical.IsValid || Intersects(npc.PositionX, npc.PositionY, physical.Width, physical.Height,
+                tileLeft, tileTop, tileRight, tileBottom);
         if (!NpcTypeId.TryCreate(npc.Type, out NpcTypeId type) ||
             !VanillaNpcDefinitionCatalog.TryGet(type, npc.NetIdentity, out VanillaNpcDefinition definition))
         {
-            return Intersects(npc.PositionX, npc.PositionY, 16f, 16f, tileLeft, tileTop, tileRight, tileBottom);
+            // Unknown physical metadata cannot prove an actor-free tile.
+            return true;
         }
         if (!definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
-            return false;
+            return true;
 
         return Intersects(
             npc.PositionX,
@@ -119,6 +131,6 @@ internal sealed class RuntimeTallGateOccupancyProbe : IVanillaTallGateOccupancyP
         int tileTop,
         int tileRight,
         int tileBottom) =>
-        actorX < tileRight && actorX + actorWidth > tileLeft &&
-        actorY < tileBottom && actorY + actorHeight > tileTop;
+        (int)actorX < tileRight && (int)actorX + actorWidth > tileLeft &&
+        (int)actorY < tileBottom && (int)actorY + actorHeight > tileTop;
 }

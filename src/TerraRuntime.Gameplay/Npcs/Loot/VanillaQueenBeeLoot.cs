@@ -55,6 +55,9 @@ public static class VanillaQueenBeeLootEvaluator
         int recipients = 0;
         int petDrops = 0;
 
+        // RegisterBossTrophies precedes RegisterBosses in ItemDropDatabase.Populate.
+        Roll(VanillaQueenBeeItemIds.QueenBeeTrophy, 10, 1, 1, 1, in npcOrigin, rolls, sink, ref worldItems);
+
         if (context.IsExpertMode)
         {
             rolls.NextInt32(0, 1);
@@ -92,14 +95,13 @@ public static class VanillaQueenBeeLootEvaluator
 
             if (rolls.RollLuck(3) == 0)
                 DropGuaranteed(VanillaQueenBeeItemIds.HiveWand, in npcOrigin, rolls, sink, ref worldItems);
-            else if (rolls.NextInt32(0, 2) == 0)
-                DropOneOf(VanityOptions, 1, in npcOrigin, rolls, sink, ref worldItems);
+            else
+                DropOneOf(VanityOptions, 2, in npcOrigin, rolls, sink, ref worldItems);
 
             Roll(VanillaQueenBeeItemIds.Beenade, 4, 3, 10, 30, in npcOrigin, rolls, sink, ref worldItems);
             Roll(VanillaQueenBeeItemIds.BeeWax, 1, 1, 17, 30, in npcOrigin, rolls, sink, ref worldItems);
         }
 
-        Roll(VanillaQueenBeeItemIds.QueenBeeTrophy, 10, 1, 1, 1, in npcOrigin, rolls, sink, ref worldItems);
         result = new QueenBeeLootExecutionResult(worldItems, instancedItems, recipients, petDrops);
         return result.IsValid;
     }
@@ -132,7 +134,7 @@ public static class VanillaQueenBeeLootEvaluator
     {
         if (rolls.NextInt32(0, denominator) != 0) return;
         ItemTypeId item = options[rolls.NextInt32(0, options.Length)];
-        Deliver(item, checked((short)rolls.NextInt32(1, 2)), in origin, rolls, sink, ref count);
+        Deliver(item, 1, in origin, rolls, sink, ref count);
     }
 
     private static void Deliver(ItemTypeId item, short stack, in NpcLootWorldItemOrigin origin, INpcLootRollSource rolls, IQueenBeeLootDeliverySink sink, ref int count)

@@ -108,6 +108,9 @@ public static class VanillaBrainOfCthulhuLootEvaluator
         int recipients = 0;
         int petDrops = 0;
 
+        if (!TryRollWorldItem(VanillaBrainOfCthulhuItemIds.BrainOfCthulhuTrophy, 10, 1, 1, 1, in npcOrigin, rolls, sink, ref worldItems))
+            return false;
+
         if (context.IsExpertMode)
         {
             rolls.NextInt32(0, 1);
@@ -160,8 +163,6 @@ public static class VanillaBrainOfCthulhuLootEvaluator
             }
         }
 
-        if (!TryRollWorldItem(VanillaBrainOfCthulhuItemIds.BrainOfCthulhuTrophy, 10, 1, 1, 1, in npcOrigin, rolls, sink, ref worldItems))
-            return false;
 
         result = new BrainOfCthulhuLootExecutionResult(worldItems, instancedItems, recipients, petDrops);
         return result.IsValid;

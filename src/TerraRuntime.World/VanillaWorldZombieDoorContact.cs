@@ -260,13 +260,17 @@ public static class VanillaWorldZombieDoorContact
         (tile.Flags & WorldTileFlags.Inactive) == 0 &&
         VanillaTileIds.IsClosedDoor(tile.TileType);
 
-    private static bool HasGroundSupport(
+    /// <summary>Source underfoot/ceiling scan, independent of door pressure or AI clocks.</summary>
+    public static bool HasGroundSupport(
         WorldTileStore tiles,
         float positionX,
         float positionY,
         int width,
         int height)
     {
+        if (width <= 0 || height <= 0 || !float.IsFinite(positionX) || !float.IsFinite(positionY))
+            return false;
+
         int groundY = (int)(positionY + height + 7f) / 16;
         int ceilingY = (int)(positionY - 9f) / 16;
         int minX = (int)(positionX + 8f) / 16;

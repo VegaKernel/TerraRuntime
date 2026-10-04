@@ -37,6 +37,7 @@ public readonly record struct VanillaZombieMotionInput(
     public bool PursuitAllowed { get; init; } = true;
     public bool EncourageDespawn { get; init; }
     public bool JustHit { get; init; }
+    public bool StuckTrackingAlreadyApplied { get; init; }
     public int TimeLeft { get; init; }
     public int SpriteDirection { get; init; } = -1;
     public bool ScaleAdjustsMaximumHorizontalSpeed { get; init; } = true;
@@ -87,7 +88,8 @@ public enum VanillaGroundFighterMotionProfile : byte
     SeaSnail = 16,
     Psycho = 17,
     Butcher = 18,
-    DrManFly = 19
+    DrManFly = 19,
+    Fritz = 20
 }
 
 /// <summary>
@@ -161,7 +163,7 @@ public static class VanillaZombieMotion
             VanillaGroundFighterMotionProfile.TacticalSkeleton or
             VanillaGroundFighterMotionProfile.SkeletonCommando or
             VanillaGroundFighterMotionProfile.Psycho && ai2 > 0f;
-        if (!suppressesStuckTracking)
+        if (!suppressesStuckTracking && !input.StuckTrackingAlreadyApplied)
         {
             bool reversingWhileGrounded =
                 velocityY == 0f &&
@@ -264,6 +266,17 @@ public static class VanillaZombieMotion
                 if (velocityX > 0f) velocityX *= .93f;
                 velocityX = MathF.Max(-speed, velocityX - acceleration);
             }
+        }
+        else if (input.MotionProfile == VanillaGroundFighterMotionProfile.Fritz)
+        {
+            if (velocityX < -4f || velocityX > 4f)
+            {
+                if (velocityY == 0f) velocityX *= .8f;
+            }
+            else if (directionX == 1 && velocityX < 4f) velocityX = MathF.Min(4f, velocityX + .07f);
+            else if (directionX == -1 && velocityX > -4f) velocityX = MathF.Max(-4f, velocityX - .07f);
+            if (velocityY == 0f && ((directionX > 0 && velocityX < 0f) || (directionX < 0 && velocityX > 0f)))
+                velocityX *= .9f;
         }
         else if (input.MotionProfile == VanillaGroundFighterMotionProfile.DrManFly)
         {

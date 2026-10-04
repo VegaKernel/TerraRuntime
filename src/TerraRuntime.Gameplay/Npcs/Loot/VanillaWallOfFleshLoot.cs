@@ -71,6 +71,9 @@ public static class VanillaWallOfFleshLootEvaluator
         int recipients = 0;
         int masterMounts = 0;
 
+        // RegisterBossTrophies precedes RegisterBosses in ItemDropDatabase.Populate.
+        Roll(VanillaWallOfFleshItemIds.WallOfFleshTrophy, 10, in origin, rolls, sink, ref world);
+
         if (context.IsExpertMode)
         {
             rolls.NextInt32(0, 1);
@@ -83,6 +86,7 @@ public static class VanillaWallOfFleshLootEvaluator
 
         if (context.IsMasterMode)
         {
+            rolls.NextInt32(0, 1);
             DropGuaranteed(VanillaWallOfFleshItemIds.WallOfFleshRelic, in origin, rolls, sink, ref world);
             short stack = checked((short)rolls.NextInt32(1, 2));
             for (int index = 0; index < players.Length; index++)
@@ -100,12 +104,12 @@ public static class VanillaWallOfFleshLootEvaluator
         else if (!context.IsExpertMode)
         {
             Roll(VanillaWallOfFleshItemIds.FleshMask, 7, in origin, rolls, sink, ref world);
+            rolls.NextInt32(0, 1);
             DropGuaranteed(VanillaWallOfFleshItemIds.Pwnhammer, in origin, rolls, sink, ref world);
             DropOneOf(Emblems, in origin, rolls, sink, ref world);
             DropOneOf(Weapons, in origin, rolls, sink, ref world);
         }
 
-        Roll(VanillaWallOfFleshItemIds.WallOfFleshTrophy, 10, in origin, rolls, sink, ref world);
         result = new WallOfFleshLootExecutionResult(world, instanced, recipients, masterMounts);
         return result.IsValid;
     }
@@ -135,7 +139,10 @@ public static class VanillaWallOfFleshLootEvaluator
     {
         rolls.NextInt32(0, 1);
         ItemTypeId item = options[rolls.NextInt32(0, options.Length)];
-        DropGuaranteed(item, in origin, rolls, sink, ref count);
+        var drop = new NpcLootDrop(item, 1);
+        if (!sink.TryDeliverWorldItem(in origin, in drop, rolls))
+            throw new InvalidOperationException("Wall of Flesh option delivery failed.");
+        count++;
     }
 
     private static void DropGuaranteed(ItemTypeId item, in NpcLootWorldItemOrigin origin, INpcLootRollSource rolls, IWallOfFleshLootDeliverySink sink, ref int count)

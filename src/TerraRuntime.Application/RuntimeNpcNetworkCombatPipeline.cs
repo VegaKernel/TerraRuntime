@@ -1,4 +1,5 @@
 using TerraRuntime.Gameplay.Npcs;
+using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -64,8 +65,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private readonly RuntimeMechanicalBossLootDeliverySink mechanicalBossLoot;
     private readonly RuntimeEyeOfCthulhuLootDeliverySink eyeOfCthulhuLoot;
     private readonly RuntimeWallOfFleshLootDeliverySink wallOfFleshLoot;
-    private readonly VanillaNpcLootWorldItemMaterializer materializer = VanillaNpcLootWorldItemMaterializer.Instance;
-    private readonly SystemNpcCombatRandom random = new();
+    private readonly VanillaNpcLootWorldItemMaterializer materializer;
+    private readonly SystemNpcCombatRandom random;
     private readonly bool expertMode;
     private readonly bool masterMode;
     private readonly RuntimeWorldClock? worldClock;
@@ -128,9 +129,14 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         bool? planteraDownedBaseline = null,
         RuntimeProjectileReplicationRegistry? projectileReplication = null,
         bool zenithWorld = false,
-        Func<PlayerSlotId, bool>? slimeRainKingSpawn = null)
+        Func<PlayerSlotId, bool>? slimeRainKingSpawn = null,
+        VanillaUnifiedRandom1458? lootRandom = null,
+        Func<VanillaSeasonalItemDropContext1458>? seasonalItemContext = null)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
+        random = new SystemNpcCombatRandom(lootRandom);
+        materializer = seasonalItemContext is null ? VanillaNpcLootWorldItemMaterializer.Instance : new(seasonalItemContext);
+        bossRecoveryDaily = worldClock?.BossRecoveryDailyState ?? new();
         moonLordProjectiles = projectiles;
         moonLordProjectileReplication = projectileReplication;
         moonLordProjectileBuffer = projectiles is null ? [] : new ProjectileSnapshot[projectiles.Capacity];
@@ -151,9 +157,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         this.zenithWorld = zenithWorld;
         this.slimeRainKingSpawn = slimeRainKingSpawn;
         this.planteraDownedBaseline = planteraDownedBaseline;
-        planteraLoot = new RuntimePlanteraLootDeliverySink(worldItems, instancedLeases, worldItemReplication);
-        golemLoot = new RuntimeGolemLootDeliverySink(worldItems, instancedLeases, worldItemReplication);
-        moonLordLoot = new RuntimeMoonLordLootDeliverySink(worldItems, instancedLeases, worldItemReplication);
+        planteraLoot = new RuntimePlanteraLootDeliverySink(worldItems, instancedLeases, worldItemReplication, materializer);
+        golemLoot = new RuntimeGolemLootDeliverySink(worldItems, instancedLeases, worldItemReplication, materializer);
+        moonLordLoot = new RuntimeMoonLordLootDeliverySink(worldItems, instancedLeases, worldItemReplication, materializer);
         this.expertMode = expertMode;
         this.masterMode = masterMode;
         if (masterMode && !expertMode)
@@ -165,45 +171,45 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         eaterLoot = new RuntimeEaterOfWorldsLootDeliverySink(
             worldItems,
             instancedLeases,
-            worldItemReplication);
+            worldItemReplication, materializer);
         brainLoot = new RuntimeBrainOfCthulhuLootDeliverySink(
             worldItems,
             instancedLeases,
-            worldItemReplication);
+            worldItemReplication, materializer);
         skeletronLoot = new RuntimeSkeletronLootDeliverySink(
             worldItems,
             instancedLeases,
-            worldItemReplication);
+            worldItemReplication, materializer);
         queenBeeLoot = new RuntimeQueenBeeLootDeliverySink(
             worldItems,
             instancedLeases,
-            worldItemReplication);
+            worldItemReplication, materializer);
         deerclopsLoot = new RuntimeDeerclopsLootDeliverySink(
             worldItems,
             instancedLeases,
-            worldItemReplication);
+            worldItemReplication, materializer);
         queenSlimeLoot = new RuntimeQueenSlimeLootDeliverySink(
             worldItems,
             instancedLeases,
-            worldItemReplication);
+            worldItemReplication, materializer);
         mechanicalBossLoot = new RuntimeMechanicalBossLootDeliverySink(
             worldItems,
             instancedLeases,
-            worldItemReplication);
+            worldItemReplication, materializer);
         eyeOfCthulhuLoot = new RuntimeEyeOfCthulhuLootDeliverySink(
             worldItems,
             instancedLeases,
-            worldItemReplication);
+            worldItemReplication, materializer);
         wallOfFleshLoot = new RuntimeWallOfFleshLootDeliverySink(
             worldItems,
             instancedLeases,
-            worldItemReplication);
+            worldItemReplication, materializer);
         if (worldItemReplication is not null)
         {
             difficultyLoot = new RuntimeKingSlimeDifficultyLootDeliverySink(
                 worldItems,
                 instancedLeases ?? throw new ArgumentNullException(nameof(instancedLeases)),
-                worldItemReplication);
+                worldItemReplication, materializer);
         }
     }
 
@@ -223,6 +229,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         {
             return RuntimeNpcNetworkDamageResult.Rejected;
         }
+
+        if (!CanAcceptBossDeathCapacity(in current))
+            return RuntimeNpcNetworkDamageResult.Rejected;
 
         NpcDamageRequest authoritativeRequest = default;
         CombatIntegrityResolveResult integrity = combatIntegrity.ResolveClientNpcHit(
@@ -395,6 +404,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
                 ApplyEvilBossDeathEffects(eaterBoss);
 
+            DropBossRecoveryItemsIfEligible(in dead, eaterBoss);
             AnnounceBossDefeat(in dead, eaterBoss);
 
             if (VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity))
@@ -480,6 +490,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     {
         NpcSnapshot liveTarget = target;
         NpcDamageRequest request = sourceRequest;
+        if (!CanAcceptBossDeathCapacity(in liveTarget))
+            return RuntimeProjectileNpcDamageResult.Rejected;
         MarkMoonLordCoreInteraction(in liveTarget, request.Source.Player);
         if (VanillaEaterOfWorldsLifecycle.IsSegment(liveTarget.TypeIdentity))
         {
@@ -578,6 +590,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
             ApplyEvilBossDeathEffects(eaterBoss);
 
+        DropBossRecoveryItemsIfEligible(in dead, eaterBoss);
         AnnounceBossDefeat(in dead, eaterBoss);
 
         if (VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity))
@@ -632,6 +645,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private RuntimeTownNpcMeleeDamageResult1458 CommitNonPlayerDamage(
         NpcSnapshot liveTarget, DamageSource source, int baseDamage, float knockBack, int hitDirection)
     {
+        if (!CanAcceptBossDeathCapacity(in liveTarget))
+            return RuntimeTownNpcMeleeDamageResult1458.Rejected;
         NpcSnapshot destroyerRoot = default;
         bool destroyerSharedLife = IsDestroyerMember(liveTarget.TypeIdentity) &&
             TryResolveDestroyerRoot(in liveTarget, out destroyerRoot);
@@ -711,6 +726,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         else if (eaterBoss || dead.TypeIdentity == VanillaNpcIds.BrainOfCthulhu)
             ApplyEvilBossDeathEffects(eaterBoss);
 
+        DropBossRecoveryItemsIfEligible(in dead, eaterBoss);
         AnnounceBossDefeat(in dead, eaterBoss);
 
         if (VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity))

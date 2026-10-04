@@ -17,7 +17,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
     // Owns the dry ordinary-resident AI007 body, not the subsequent social/emote offer chain.
     // AI and terrain correction must precede the shared physics tail and its sole state commit.
     private bool TryTickOrdinaryMotion(in NpcSnapshot before, in RuntimeTownNpcHomeCommit home,
-        bool shelterAtHome, out NpcSnapshot committed)
+        bool shelterAtHome, bool seekShelter, ReadOnlySpan<RuntimeTownPlayerSeat1458> seatedPlayers, out NpcSnapshot committed)
     {
         committed = default;
         if (before.Ai.Ai0 is not (0f or 1f) || before.Simulation.Wet ||
@@ -101,6 +101,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 local = local with { Ai3 = 60f };
                 force = true;
             }
+            TryCloseRememberedDoor(in before, x, y, width, height, direction);
             if (vx < -TownWalkSpeed || vx > TownWalkSpeed)
             {
                 if (vy == 0f) { vx *= .8f; vy *= .8f; }
@@ -140,9 +141,15 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 if (x == local.Ai3) { direction *= -1; force = true; }
                 local = local with { Ai3 = -1f };
                 WorldTile ahead = Cell(aheadX, feetY), above = Cell(aheadX, feetY - 1), high = Cell(aheadX, feetY - 2);
-                // Door state/occupancy and remembered closeDoor are separate, deliberately unadmitted here.
-                if (!VanillaTileIds.IsClosedDoor(high.TileType) &&
-                    ((vx < 0f && direction == -1) || (vx > 0f && direction == 1)))
+                bool doorOffer = high.IsActive && !high.IsActuated && VanillaTileIds.IsClosedDoor(high.TileType);
+                if (doorOffer && ((random.Next(10) == 0) | seekShelter))
+                {
+                    if (TryOpenTownDoor(in before, aheadX, feetY - 2, direction, high.TileType))
+                        ai = ai with { Ai1 = ai.Ai1 + 80f };
+                    else direction *= -1;
+                    force = true;
+                }
+                else if ((vx < 0f && direction == -1) || (vx > 0f && direction == 1))
                 {
                     bool turn = false;
                     if (FullSolid(high) && (height / 16 >= 3 || FullSolid(above)))
@@ -188,6 +195,8 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 force = true;
             }
         }
+        TryOfferWalkingFurniture(in before, home.NpcType, seatedPlayers,
+            ref x, ref y, ref vx, ref vy, ref direction, ref ai, ref local, ref force);
         var update = new NpcStateUpdate(before.Type, before.NetId, x, y, vx, vy, before.Target, ai,
             before.Simulation with { DirectionX = direction, DirectionY = -1, LocalAi = local });
         if (!VanillaNpcWorldMotionAiStepper.TryFinishPhysics(tiles, surface, in before, in update, out NpcStateUpdate moved))

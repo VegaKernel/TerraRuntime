@@ -161,7 +161,7 @@ public sealed class VanillaPlanteraLootTests
         Assert.True(VanillaNpcLootWorldItemMaterializer.Instance.TryMaterialize(new(100,200),
             new(VanillaPlanteraItemIds.VenusMagnum,1),rolls,out var drop));
         Assert.Equal(16,drop.Prefix);
-        Assert.Equal((88f,189f),(drop.PositionX,drop.PositionY));
+        Assert.Equal((92f,192f),(drop.PositionX,drop.PositionY));
         Assert.Equal((1.2f,-2f),(drop.VelocityX,drop.VelocityY));
         rolls.AssertConsumed();
     }

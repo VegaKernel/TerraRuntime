@@ -4,8 +4,8 @@ using TerraRuntime.Gameplay.Npcs;
 
 namespace TerraRuntime.Core.Npcs;
 
-/// <summary>Server-owned Expert projectile clock from TerrariaServer 1.4.5.8 AI_003 Gastropod.</summary>
-internal sealed class VanillaGastropodBehavior(IVanillaNpcRandom random)
+/// <summary>Server-owned Expert projectile clock from TerrariaServer 1.4.5.8 AI_003 Black Recluse.</summary>
+internal sealed class VanillaBlackRecluseBehavior(IVanillaNpcRandom random)
 {
     private readonly IVanillaNpcRandom random = random ?? throw new ArgumentNullException(nameof(random));
     private IVanillaNpcProjectileEnvironment? environment;
@@ -16,7 +16,7 @@ internal sealed class VanillaGastropodBehavior(IVanillaNpcRandom random)
     public NpcSnapshot Complete(in NpcSnapshot before, in NpcSnapshot committed, VanillaNpcBehaviorContext context,
         INpcAiCommittedNpcMutationSink mutations)
     {
-        if (before.TypeIdentity != VanillaNpcIds.Gastropod || committed.TypeIdentity != VanillaNpcIds.Gastropod ||
+        if (before.TypeIdentity != VanillaNpcIds.BlackRecluse || committed.TypeIdentity != VanillaNpcIds.BlackRecluse ||
             !context.ExpertMode || committed.Simulation.Confused || environment is null || committed.Target >= byte.MaxValue ||
             !context.TryFindCandidate((byte)committed.Target, out VanillaNpcTargetCandidate target) ||
             !target.Active || target.Dead || target.Ghost ||
@@ -48,7 +48,7 @@ internal sealed class VanillaGastropodBehavior(IVanillaNpcRandom random)
             return updated;
         velocityX *= 8f / length;
         velocityY *= 8f / length;
-        mutations.TrySpawnProjectile(in updated, new NpcAiProjectileIntent(VanillaProjectileIds.GastropodBolt,
+        mutations.TrySpawnProjectile(in updated, new NpcAiProjectileIntent(VanillaProjectileIds.WebSpit,
             updated.PositionX + 21f, updated.PositionY + 6f, velocityX, velocityY, 18, 0f), out _);
         return updated;
     }

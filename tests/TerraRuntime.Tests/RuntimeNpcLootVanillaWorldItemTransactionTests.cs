@@ -7,6 +7,31 @@ namespace TerraRuntime.Tests;
 
 public sealed class RuntimeNpcLootVanillaWorldItemTransactionTests
 {
+    [Theory]
+    [InlineData(101, 121)]
+    [InlineData(47, 35)]
+    public void Drop_origin_uses_live_integer_body_and_truncated_npc_position(int width, int height)
+    {
+        var npcs = new RuntimeNpcStore(capacity: 1);
+        var items = new RuntimeWorldItemStore();
+        var update = new NpcStateUpdate(VanillaNpcIds.BlueSlime.Value,
+            checked((short)VanillaNpcIds.BlueSlime.Value), 1000.75f, 1000.25f, 0, 0,
+            VanillaNpcDefinitionCatalog.DefaultTarget, default,
+            NpcSimulationState.Initial with { HitboxOverride = new NpcHitboxDimensions(width, height) });
+        Assert.True(npcs.TrySpawn(0, in update, out NpcSnapshot slime));
+        Kill(npcs, slime.Handle);
+        var random = new ScriptedRollSource(new[] { 0, 1 }, new[] { 1, 0, -20 });
+        Span<WorldItemSnapshot> spawned = stackalloc WorldItemSnapshot[2];
+        Assert.True(new RuntimeNpcLootWorldItemTransaction(npcs, items).TryFinalizeAndSpawn(
+            slime.Handle, default, random, VanillaNpcLootWorldItemMaterializer.Instance,
+            spawned, out var result));
+        // Original CommonCode.DropItemFromNPC uses the integer rectangle and integer half-size.
+        Assert.Equal((1000f + width / 2, 1000f + height / 2), (result.Origin.CenterX, result.Origin.CenterY));
+        Assert.Equal((result.Origin.CenterX - 8, result.Origin.CenterY - 8),
+            (spawned[0].PositionX, spawned[0].PositionY));
+        Assert.Equal(1, result.SpawnedItemCount);
+    }
+
     [Fact]
     public void Blue_slime_streams_each_successful_rule_into_ItemNewItem_rng_before_next_rule()
     {
@@ -41,16 +66,16 @@ public sealed class RuntimeNpcLootVanillaWorldItemTransactionTests
 
         Assert.True(spawned[0].TryGetItemType(out ItemTypeId firstType));
         Assert.Equal(VanillaItemIds.Gel, firstType);
-        Assert.Equal(17f, spawned[0].PositionX);
-        Assert.Equal(23f, spawned[0].PositionY);
+        Assert.Equal(14f, spawned[0].PositionX);
+        Assert.Equal(21f, spawned[0].PositionY);
         Assert.Equal(0.5f, spawned[0].VelocityX);
         Assert.Equal(-2f, spawned[0].VelocityY);
         Assert.Equal((byte)0, spawned[0].Prefix);
 
         Assert.True(spawned[1].TryGetItemType(out ItemTypeId secondType));
         Assert.Equal(VanillaItemIds.SlimeStaff, secondType);
-        Assert.Equal(9f, spawned[1].PositionX);
-        Assert.Equal(15f, spawned[1].PositionY);
+        Assert.Equal(14f, spawned[1].PositionX);
+        Assert.Equal(21f, spawned[1].PositionY);
         Assert.Equal(-0.5f, spawned[1].VelocityX);
         Assert.Equal(-3f, spawned[1].VelocityY);
         Assert.Equal((byte)85, spawned[1].Prefix);
