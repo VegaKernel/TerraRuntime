@@ -111,7 +111,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         }
         if ((targeting is not null && (VanillaGhostHoverNpcCatalog1458.IsSupported(npc.TypeIdentity) ||
             VanillaMothronNpcCatalog1458.IsSupported(npc.TypeIdentity) ||
-            VanillaBigMimicNpcCatalog1458.IsSupported(npc.TypeIdentity) || targeting.HasFlyingEyeRetainedPlan(in npc))) ||
+            VanillaBigMimicNpcCatalog1458.IsSupported(npc.TypeIdentity) || targeting.HasFlyingEyeRetainedPlan(in npc) ||
+            targeting.HasSlimeContainedPlan(in npc))) ||
             npc.TypeIdentity == VanillaNpcIds.Nailhead || npc.TypeIdentity == VanillaNpcIds.DrManFly || npc.TypeIdentity == VanillaNpcIds.Frankenstein)
         {
             next = aiState;
@@ -521,6 +522,16 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations)
     {
+        if (targeting is not null && targeting.HasSlimeContainedPlan(in before))
+        {
+            if (!targeting.TryGetSlimeContainedPlan(in before, in committed, out var planned) ||
+                !TryFinishPhysics(tiles, worldSurfaceTiles, in before, in planned, out var final))
+            {
+                targeting.CancelSlimeContainedPlan();
+                return default;
+            }
+            return targeting.CompleteSlimeContainedPlan(in before, in committed, in final);
+        }
         if (targeting is not null && targeting.HasFlyingEyeRetainedPlan(in before))
         {
             if (!targeting.TryGetFlyingEyeRetainedPlan(in before, in committed, mutations, out var planned) ||

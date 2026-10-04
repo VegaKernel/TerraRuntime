@@ -18,7 +18,8 @@ public readonly record struct WorldItemDropStateUpdate(
     short ItemNetId,
     bool Shimmered,
     float ShimmerTime,
-    byte EnemyGrabDelayTime)
+    byte EnemyGrabDelayTime,
+    WorldItemColor? Color = null)
 {
     public PrefixId PrefixId => new(Prefix);
 

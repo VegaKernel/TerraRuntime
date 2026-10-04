@@ -6,7 +6,8 @@ namespace TerraRuntime.Gameplay.Npcs;
 public enum VanillaNpcLootRuleKind : byte
 {
     ExtraGel = 1,
-    NormalVsExpertCommon = 2
+    NormalVsExpertCommon = 2,
+    NotFromStatueCommon = 3
 }
 
 /// <summary>
@@ -24,7 +25,8 @@ public readonly record struct VanillaNpcLootRule(
     short ExtraGelMultiplier)
 {
     public bool IsValid =>
-        (Kind is VanillaNpcLootRuleKind.ExtraGel or VanillaNpcLootRuleKind.NormalVsExpertCommon) &&
+        (Kind is VanillaNpcLootRuleKind.ExtraGel or VanillaNpcLootRuleKind.NormalVsExpertCommon or
+            VanillaNpcLootRuleKind.NotFromStatueCommon) &&
         !ItemType.IsNone &&
         NormalChanceDenominator > 0 &&
         ExpertChanceDenominator > 0 &&
@@ -138,6 +140,22 @@ public static class VanillaNpcLootRuleCatalog
         VanillaNpcIds.BlueSlime,
         BlueSlimeRules);
 
+    // RegisterFoodDrops runs before the ordinary slime registration in ItemDropDatabase.Populate.
+    private static readonly VanillaNpcLootRule[] IceSlimeRules =
+    [
+        new(VanillaNpcLootRuleKind.NotFromStatueCommon, VanillaItemIds.IceCream, 150, 150, 1, 1, 1),
+        BlueSlimeRules[0],
+        BlueSlimeRules[1]
+    ];
+    private static readonly VanillaNpcLootRule[] SandSlimeRules =
+    [
+        VanillaNpcLootRule.ExtraGel(VanillaItemIds.Gel, 1, 2, 3, 2),
+        VanillaNpcLootRule.NormalVsExpertCommon(VanillaItemIds.SlimeStaff, 8000, 5600)
+    ];
+    private static readonly VanillaNpcLootTable IceSlimeTable = new(VanillaNpcIds.IceSlime, IceSlimeRules);
+    private static readonly VanillaNpcLootTable SpikedIceSlimeTable = new(VanillaNpcIds.SpikedIceSlime, IceSlimeRules);
+    private static readonly VanillaNpcLootTable SandSlimeTable = new(VanillaNpcIds.SandSlime, SandSlimeRules);
+
     /// <summary>
     /// Resolves an explicitly imported NPC-specific loot table. Lookup failure is the unsupported signal; callers
     /// should not use an empty span as a proxy for support because a verified NPC may legitimately have no rules.
@@ -149,6 +167,9 @@ public static class VanillaNpcLootRuleCatalog
             table = BlueSlimeTable;
             return table.IsValid;
         }
+        if (npcType == VanillaNpcIds.IceSlime) { table = IceSlimeTable; return true; }
+        if (npcType == VanillaNpcIds.SpikedIceSlime) { table = SpikedIceSlimeTable; return true; }
+        if (npcType == VanillaNpcIds.SandSlime) { table = SandSlimeTable; return true; }
 
         table = default;
         return false;
@@ -162,7 +183,8 @@ public static class VanillaNpcLootRuleCatalog
 /// </summary>
 public readonly record struct VanillaNpcLootContext(
     bool IsExpertMode,
-    bool DropExtraGel);
+    bool DropExtraGel,
+    bool SpawnedFromStatue = false);
 
 /// <summary>
 /// Semantic random/luck boundary matching Terraria's CommonDrop call order. For production NPC loot the source
@@ -204,6 +226,8 @@ public static class VanillaNpcLootEvaluator
 
         if (!rule.IsValid)
             return false;
+        if (rule.Kind == VanillaNpcLootRuleKind.NotFromStatueCommon && context.SpawnedFromStatue)
+            return true;
 
         int denominator = context.IsExpertMode
             ? rule.ExpertChanceDenominator

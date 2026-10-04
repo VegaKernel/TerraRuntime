@@ -65,6 +65,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private readonly bool isThereAWorldSurface;
     private readonly bool evilBossDownedBaseline;
     private readonly bool zenithWorld;
+    private readonly bool? lootRemixWorld;
     private readonly Func<PlayerSlotId, bool>? slimeRainKingSpawn;
     private readonly PlayerSlotId[] interactionSlots =
         new PlayerSlotId[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
@@ -121,7 +122,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         VanillaUnifiedRandom1458? lootRandom = null,
         Func<VanillaSeasonalItemDropContext1458>? seasonalItemContext = null,
         RuntimeNpcDeathPrelude1458? deathPrelude = null,
-        bool? onlyShimmerOceanWorlds = null)
+        bool? onlyShimmerOceanWorlds = null,
+        VanillaMechBossSpawnersContext1458 mechanicalLootBaseline = default,
+        bool? lootRemixWorld = false)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         random = new SystemNpcCombatRandom(lootRandom);
@@ -141,6 +144,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         this.npcReplication = npcReplication;
         this.deathPrelude = deathPrelude ?? new(replication: npcReplication);
         this.onlyShimmerOceanWorlds = onlyShimmerOceanWorlds;
+        this.mechanicalLootBaseline = mechanicalLootBaseline;
+        this.lootRemixWorld = lootRemixWorld;
         npcReplication?.BindDeathPrelude(this.deathPrelude);
         this.worldItemReplication = worldItemReplication;
         this.worldClock = worldClock;
@@ -245,11 +250,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         NpcSnapshot destroyerRoot = default;
         bool destroyerSharedLife = IsDestroyerMember(current.TypeIdentity) &&
             TryResolveDestroyerRoot(in current, out destroyerRoot);
-        if (destroyerSharedLife && current.Handle != destroyerRoot.Handle && current.Simulation.Life != destroyerRoot.Simulation.Life)
-        {
-            if (!TrySetNpcLife(in current, destroyerRoot.Simulation.Life, out current))
-                throw new InvalidOperationException("Destroyer segment could not synchronize shared root life before packet-28 damage.");
-        }
+
 
         var request = integrity == CombatIntegrityResolveResult.Accepted
             ? authoritativeRequest
@@ -264,13 +265,14 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         bool suppressing = npcReplication?.TryBeginClientDamage(current.Handle) == true;
         try
         {
-            if (!damage.TryApply(in request, out NpcDamageResult result))
+            if (!damage.TryApplyClient(in request,
+                    destroyerSharedLife && current.Handle != destroyerRoot.Handle ? destroyerRoot : null, out NpcDamageResult result))
             {
                 CancelPendingDeathPlan();
                 if (suppressing)
                     npcReplication!.CompleteClientDamage(current.Handle);
                 if (deathAdmissionRejected) { deathAdmissionRejected = false; return RuntimeNpcNetworkDamageResult.Rejected; }
-                npcReplication?.TryPublishDamage(connection.Source, in normalizedWire);
+                PublishNpcDamage(current.Handle, connection.Source, in normalizedWire);
                 return RuntimeNpcNetworkDamageResult.Relayed;
             }
 
@@ -284,7 +286,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                 {
                     if (suppressing)
                         npcReplication!.CompleteClientDamage(current.Handle);
-                    npcReplication?.TryPublishDamage(connection.Source, in normalizedWire);
+                    PublishNpcDamage(current.Handle, connection.Source, in normalizedWire);
                     return RuntimeNpcNetworkDamageResult.Committed;
                 }
                 dead = updatedRoot;
@@ -299,7 +301,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                     {
                         if (suppressing)
                             npcReplication!.CompleteClientDamage(current.Handle);
-                        npcReplication?.TryPublishDamage(connection.Source, in normalizedWire);
+                        PublishNpcDamage(current.Handle, connection.Source, in normalizedWire);
                         return RuntimeNpcNetworkDamageResult.Committed;
                     }
                     dead = updatedRoot;
@@ -310,7 +312,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                     {
                         if (suppressing)
                             npcReplication!.CompleteClientDamage(current.Handle);
-                        npcReplication?.TryPublishDamage(connection.Source, in normalizedWire);
+                        PublishNpcDamage(current.Handle, connection.Source, in normalizedWire);
                         return RuntimeNpcNetworkDamageResult.Committed;
                     }
                     if (!npcs.TryGet(current.Handle, out dead))
@@ -323,7 +325,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                 {
                     if (suppressing)
                         npcReplication!.CompleteClientDamage(current.Handle);
-                    npcReplication?.TryPublishDamage(connection.Source, in normalizedWire);
+                    PublishNpcDamage(current.Handle, connection.Source, in normalizedWire);
                     return RuntimeNpcNetworkDamageResult.Committed;
                 }
                 if (!npcs.TryGet(current.Handle, out dead))
@@ -351,7 +353,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
 
             if (suppressing)
                 npcReplication!.CompleteClientDamage(current.Handle);
-            npcReplication?.TryPublishDamage(connection.Source, in normalizedWire);
+            PublishNpcDamage(current.Handle, connection.Source, in normalizedWire);
             npcReplication?.TryPublishDeath(in dead);
             return RuntimeNpcNetworkDamageResult.Killed;
         }
@@ -450,14 +452,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         NpcSnapshot destroyerRoot = default;
         bool destroyerSharedLife = IsDestroyerMember(liveTarget.TypeIdentity) &&
             TryResolveDestroyerRoot(in liveTarget, out destroyerRoot);
-        if (destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle && liveTarget.Simulation.Life != destroyerRoot.Simulation.Life)
-        {
-            if (!TrySetNpcLife(in liveTarget, destroyerRoot.Simulation.Life, out liveTarget))
-                throw new InvalidOperationException("Destroyer segment could not synchronize shared root life before player-owned damage.");
-            request = request with { Target = liveTarget.Handle };
-        }
 
-        if (!TryApplyServerStrike(in request, out NpcDamageResult result))
+
+        if (!TryApplyServerStrike(in request, out NpcDamageResult result,
+                destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle ? destroyerRoot : null))
         { CancelPendingDeathPlan(); return RuntimeProjectileNpcDamageResult.Rejected; }
 
         NpcSnapshot dead;
@@ -561,11 +559,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         NpcSnapshot destroyerRoot = default;
         bool destroyerSharedLife = IsDestroyerMember(liveTarget.TypeIdentity) &&
             TryResolveDestroyerRoot(in liveTarget, out destroyerRoot);
-        if (destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle && liveTarget.Simulation.Life != destroyerRoot.Simulation.Life)
-        {
-            if (!TrySetNpcLife(in liveTarget, destroyerRoot.Simulation.Life, out liveTarget))
-                throw new InvalidOperationException("Destroyer segment could not synchronize shared root life before a non-player strike.");
-        }
+
 
         var request = new NpcDamageRequest(
             liveTarget.Handle,
@@ -573,7 +567,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             baseDamage,
             KnockBack: knockBack,
             HitDirection: hitDirection);
-        if (!TryApplyServerStrike(in request, out NpcDamageResult result))
+        if (!TryApplyServerStrike(in request, out NpcDamageResult result,
+                destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle ? destroyerRoot : null))
         { CancelPendingDeathPlan(); return RuntimeTownNpcMeleeDamageResult1458.Rejected; }
 
         NpcSnapshot dead;

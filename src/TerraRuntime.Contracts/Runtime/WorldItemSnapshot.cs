@@ -82,7 +82,8 @@ public readonly record struct WorldItemSnapshot(
     byte OwnerPlayerId,
     int TimeToKeepReservation,
     byte GrabDelayPlayer,
-    int GrabDelayTime)
+    int GrabDelayTime,
+    WorldItemColor? Color = null)
 {
     public PrefixId PrefixId => new(Prefix);
 

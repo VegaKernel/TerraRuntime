@@ -150,6 +150,7 @@ internal sealed class ServerRuntimeComposition
 
         RuntimeWorldItemStore worldItemStore = worldItems ?? new RuntimeWorldItemStore();
         RuntimeNpcStore npcStore = npcs ?? new RuntimeNpcStore();
+        playersAuthority.SetZoneNpcOwner(npcStore);
         RuntimeTallGateOccupancyProbe? tallGateOccupancy = worldTiles is null
             ? null
             : new RuntimeTallGateOccupancyProbe(playersAuthority, serverPlayers, npcStore);

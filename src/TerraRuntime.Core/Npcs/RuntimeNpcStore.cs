@@ -26,6 +26,17 @@ public sealed partial class RuntimeNpcStore
     private readonly SlotState[] _slots;
     private readonly INpcStateCommitSink? _commitSink;
     private int _activeCount;
+    private ulong mutationSerial;
+    private bool mutationSerialExhausted;
+
+    private void MarkSlotMutation()
+    {
+        // Exhaustion disables retained speculative plans rather than allowing an old serial to match.
+        if (mutationSerial == ulong.MaxValue)
+            mutationSerialExhausted = true;
+        else
+            mutationSerial++;
+    }
 
     public RuntimeNpcStore(int capacity = MaximumAddressableCapacity, INpcStateCommitSink? commitSink = null)
     {

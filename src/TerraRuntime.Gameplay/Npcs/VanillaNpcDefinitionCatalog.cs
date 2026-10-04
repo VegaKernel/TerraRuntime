@@ -247,7 +247,7 @@ public static class VanillaNpcDefinitionCatalog
                 Scale: 1f,
                 NoGravityAtSpawn: false,
                 NoTileCollideAtSpawn: false,
-                SyncAnchor: VanillaNpcSyncAnchor.TopLeft);
+                SyncAnchor: VanillaNpcSyncAnchor.TopLeft) { AlphaAtSpawn = 175 };
             return true;
         }
 

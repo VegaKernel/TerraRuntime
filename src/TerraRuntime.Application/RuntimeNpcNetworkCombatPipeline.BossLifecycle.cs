@@ -49,21 +49,11 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         return false;
     }
 
-    private bool TrySetNpcLife(in NpcSnapshot npc, int life, out NpcSnapshot committed)
-    {
-        committed = default;
-        if (life < 0 || life > npc.Simulation.LifeMax)
-            return false;
-        var update = new NpcStateUpdate(
-            npc.Type, npc.NetId, npc.PositionX, npc.PositionY, npc.VelocityX, npc.VelocityY, npc.Target, npc.Ai,
-            npc.Simulation with { Life = life });
-        return DeathNpcs.TryUpdate(npc.Handle, in update, out committed);
-    }
-
     private bool TrySetDestroyerRootLife(in NpcSnapshot root, int life, out NpcSnapshot committed)
     {
         committed = default;
-        if (root.TypeIdentity != VanillaNpcIds.Destroyer || life < 0 || life > root.Simulation.LifeMax)
+        if (root.TypeIdentity != VanillaNpcIds.Destroyer || life < 0 || life > root.Simulation.LifeMax ||
+            !DeathNpcs.TryGet(root.Handle, out var current) || current != root)
             return false;
         var update = new NpcStateUpdate(
             root.Type, root.NetId, root.PositionX, root.PositionY, root.VelocityX, root.VelocityY, root.Target, root.Ai,

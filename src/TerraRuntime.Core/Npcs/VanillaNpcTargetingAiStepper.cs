@@ -67,7 +67,7 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     private readonly INpcAiStateStepper _inner;
     private readonly VanillaNpcBehaviorContext _context = new();
-    private readonly IVanillaNpcBehaviorStrategy _slimeGround;
+    private readonly VanillaSlimeGroundNpcBehaviorStrategy _slimeGround;
     private readonly VanillaFlyingEyeNpcBehaviorStrategy _flyingEye = new();
     private readonly IVanillaNpcBehaviorStrategy _groundFighter;
     private readonly IVanillaNpcBehaviorStrategy _moonEventJumpingFighter = new VanillaMoonEventJumpingFighterNpcBehaviorStrategy();
@@ -292,6 +292,20 @@ public sealed class VanillaNpcTargetingAiStepper :
         _flyingEye.CompleteRetained(in before, in accepted, in final, mutations);
 
     internal void CancelFlyingEyeRetainedPlan() => _flyingEye.CancelRetained();
+
+    internal void SetSlimeContainedOwner(RuntimeNpcStore store, Func<VanillaSlimeContainedFacts1458> facts,
+        IVanillaSlimeContainedEnvironment1458 environment) =>
+        _slimeGround.SetContainedOwner(store, facts, environment);
+
+    internal bool HasSlimeContainedPlan(in NpcSnapshot before) => _slimeGround.HasContainedPlan(in before);
+
+    internal bool TryGetSlimeContainedPlan(in NpcSnapshot before, in NpcSnapshot accepted,
+        out NpcStateUpdate planned) => _slimeGround.TryGetContainedPlan(in before, in accepted, out planned);
+
+    internal NpcSnapshot CompleteSlimeContainedPlan(in NpcSnapshot before, in NpcSnapshot accepted,
+        in NpcStateUpdate final) => _slimeGround.CompleteContainedPlan(in before, in accepted, in final);
+
+    internal void CancelSlimeContainedPlan() => _slimeGround.CancelContainedPlan();
 
     public void SetEverscreamEnvironment(IVanillaEverscreamEnvironment environment) =>
         SetMoonEventHoverEnvironment(environment);
@@ -551,7 +565,9 @@ public sealed class VanillaNpcTargetingAiStepper :
         in NpcStateUpdate proposed,
         Span<NpcAiProjectileIntent> destination)
     {
-        int containedTrapCount = IsItemContainingSlime(source.Type) && proposed.Type == source.Type
+        int containedTrapCount = _slimeGround.HasContainedPlan(in source)
+            ? _slimeGround.PlanContainedTrap(in source, destination)
+            : IsItemContainingSlime(source.Type) && proposed.Type == source.Type
             ? PlanContainedSlimeTrap(in source, in proposed, destination)
             : 0;
         if (containedTrapCount > destination.Length)
@@ -2499,6 +2515,7 @@ public sealed class VanillaNpcTargetingAiStepper :
          VanillaMothronNpcCatalog1458.IsSupported(before.TypeIdentity) ||
          VanillaBigMimicNpcCatalog1458.IsSupported(before.TypeIdentity) ||
          _flyingEye.HasRetainedPlan(in before) ||
+         _slimeGround.HasContainedPlan(in before) ||
          VanillaGroundFighterProjectileAttack.IsSupported(before.TypeIdentity));
 
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,

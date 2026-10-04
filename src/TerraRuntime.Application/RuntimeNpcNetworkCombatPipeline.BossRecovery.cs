@@ -11,12 +11,14 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
     private bool CanAcceptBossDeathCapacity(in NpcSnapshot npc) => pendingDeathPlan is null;
 
-    private static NpcLootWorldItemOrigin ResolveNpcLootOrigin(in NpcSnapshot npc, in VanillaNpcDefinition definition)
+    private NpcLootWorldItemOrigin ResolveNpcLootOrigin(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        bool sourceCommonCode = true)
     {
         if (!definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize body))
             throw new InvalidOperationException("Committed NPC loot has no valid physical body.");
         // CommonCode.DropItemFromNPC and recovery's legacy Item.NewItem rectangle overload use integer halves.
-        return new((int)npc.PositionX + body.Width / 2, (int)npc.PositionY + body.Height / 2);
+        return new((int)npc.PositionX + body.Width / 2, (int)npc.PositionY + body.Height / 2,
+            sourceCommonCode ? new NpcLootColorContext1458(npc.TypeIdentity, npc.NetIdentity, lootRemixWorld) : null);
     }
 
     private void DropBossRecoveryItemsIfEligible(in NpcSnapshot npc, bool eaterBoss)

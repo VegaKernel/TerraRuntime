@@ -213,7 +213,11 @@ internal sealed partial class NpcAuthority
                 townCommerceWorldFacts?.XMas ?? false,
                 townCommerceWorldFacts?.TenthAnniversaryWorld ?? false),
             deathPrelude: deathPrelude,
-            onlyShimmerOceanWorlds: townCommerceWorldFacts?.OnlyShimmerOceanWorlds);
+            onlyShimmerOceanWorlds: townCommerceWorldFacts?.OnlyShimmerOceanWorlds,
+            mechanicalLootBaseline: new(0f, townCommerceWorldFacts?.HardMode ?? false,
+                townCommerceWorldFacts?.DownedMechBoss1 ?? false, townCommerceWorldFacts?.DownedMechBoss2 ?? false,
+                townCommerceWorldFacts?.DownedMechBoss3 ?? false),
+            lootRemixWorld: naturalSpawnWorldFacts?.RemixWorld);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
             projectiles,
             npcs,
@@ -267,6 +271,8 @@ internal sealed partial class NpcAuthority
                 }
                 var flyingEyeEnvironment = new VanillaFlyingEyeWorldEnvironment(worldTiles);
                 vanillaTargeting.SetFlyingEyeEnvironment(flyingEyeEnvironment);
+                vanillaTargeting.SetSlimeContainedOwner(npcs, CaptureSlimeContainedFacts,
+                    new VanillaSlimeContainedWorld1458(worldTiles));
                 vanillaTargeting.SetEverscreamEnvironment(flyingEyeEnvironment);
                 vanillaTargeting.SetQueenBeeEnvironment(new VanillaQueenBeeWorldEnvironment(
                     worldTiles,
@@ -947,9 +953,13 @@ internal sealed partial class NpcAuthority
 
             NpcTypeId? selectedType = SelectNaturalHostileType(in player, tileX, floorY, out NpcTypeId? additionalType);
             if (selectedType.HasValue && !TrySpawnNaturalHostileType(selectedType.Value, in player, tileX, floorY) && !additionalType.HasValue)
+            {
+                npcs.PublishPendingBirths();
                 return;
+            }
             if (additionalType.HasValue)
                 TrySpawnNaturalHostileType(additionalType.Value, in player, tileX, floorY);
+            npcs.PublishPendingBirths();
             return;
         }
     }
@@ -964,7 +974,7 @@ internal sealed partial class NpcAuthority
         float spawnY = floorY * 16f - definition.Height;
         var update = new NpcStateUpdate(type.Value, checked((short)type.Value), spawnX, spawnY, 0f, 0f, player.Slot,
             default, NpcSimulationState.Initial with { TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft });
-        if (npcs.TrySpawnVanilla(in update, out _))
+        if (npcs.TrySpawnVanillaPending(in update, out _))
             AppliedSpawns++;
         return true;
     }
@@ -1040,13 +1050,13 @@ internal sealed partial class NpcAuthority
             Type: VanillaNpcIds.BlueSlime.Value,
             NetId: checked((short)netId.Value),
             PositionX: tileX * 16f + 8f - definition.Width * .5f,
-            PositionY: tileY * 16f,
+            PositionY: tileY * 16f - definition.Height,
             VelocityX: 0f,
             VelocityY: 0f,
-            Target: player.Slot,
+            Target: byte.MaxValue,
             Ai: default,
             Simulation: NpcSimulationState.Initial with { TimeLeft = VanillaNpcDefinitionCatalog.NewNpcTimeLeft });
-        if (npcs.TrySpawnVanilla(in update, out _))
+        if (npcs.TrySpawnVanillaPendingAtBottomCenter(in update, tileX * 16f + 8f, tileY * 16f, out _))
             AppliedSpawns++;
     }
 
@@ -1977,7 +1987,8 @@ internal sealed partial class NpcAuthority
             HardMode = (naturalSpawnWorldFacts?.HardMode ?? false) || naturalSpawnProgression.IsCompleted(VanillaWorldProgressionId.Hardmode),
             DownedPlantera = (naturalSpawnWorldFacts?.DownedPlantera ?? false) || naturalSpawnProgression.IsCompleted(VanillaWorldProgressionId.Plantera),
             SkeletronActive = skeletronActive,
-            TenthAnniversaryWorld = naturalSpawnWorldFacts?.TenthAnniversaryWorld ?? false
+            TenthAnniversaryWorld = naturalSpawnWorldFacts?.TenthAnniversaryWorld ?? false,
+            RemixWorld = naturalSpawnWorldFacts?.RemixWorld ?? false
         };
     }
 

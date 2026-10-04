@@ -15,7 +15,7 @@ public sealed partial class RuntimeNpcStore
     internal bool TryPublishUpdate(in NpcSnapshot expected, bool forceSync = false)
     {
         if (!TryGet(expected.Handle, out var current) || current.Revision != expected.Revision) return false;
-        _commitSink?.NpcStateCommitted(forceSync ? NpcStateCommitKind.ForcedUpdate : NpcStateCommitKind.Update, in current);
+        PublishCurrentUpdate(ref _slots[expected.Handle.Slot], in current, forceSync);
         return true;
     }
 
@@ -42,8 +42,10 @@ public sealed partial class RuntimeNpcStore
         }
 
         state.Update = normalized;
+        MarkSlotMutation();
         snapshot = Capture(handle.Slot, in state);
-        if (publish) _commitSink?.NpcStateCommitted(forceSync ? NpcStateCommitKind.ForcedUpdate : NpcStateCommitKind.Update, in snapshot);
+        if (publish)
+            PublishCurrentUpdate(ref state, in snapshot, forceSync);
         return true;
     }
 

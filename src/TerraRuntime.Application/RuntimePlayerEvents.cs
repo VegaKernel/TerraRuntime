@@ -29,6 +29,7 @@ internal interface IRuntimePlayerEventSink
 
     void PlayerLuckFactorsUpdated(ConnectionHandle connection, in VanillaPlayerLuckComponents1458 factors) { }
     void PlayerStealthUpdated(ConnectionHandle connection, float stealth) { }
+    void PlayerZonesUpdated(ConnectionHandle connection, in PlayerZoneSnapshot1458 zones) { }
     void PlayerItemAnimationUpdated(ConnectionHandle connection, float rotation, short animation) { }
 
     void PlayerManaUpdated(ConnectionHandle connection, in PlayerManaCommitRequest request)

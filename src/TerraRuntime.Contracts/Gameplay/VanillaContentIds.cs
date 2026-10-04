@@ -12,6 +12,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId SkeletonMerchant = new(453);
     public static readonly NpcTypeId TravellingMerchant = new(368);
     public static readonly NpcTypeId TorchGod = new(664);
+    public static readonly NpcTypeId Shimmerfly = new(677);
     public static readonly NpcTypeId Bunny = new(46);
     public static readonly NpcTypeId CorruptBunny = new(47);
     public static readonly NpcTypeId Crab = new(67);
@@ -453,6 +454,7 @@ public static class VanillaItemIds
     public static readonly ItemTypeId DirtBlock = new(2);
     public static readonly ItemTypeId StoneBlock = new(3);
     public static readonly ItemTypeId Torch = new(8);
+    public static readonly ItemTypeId IceCream = new(4026);
     public static readonly ItemTypeId Gel = new(23);
     public static readonly ItemTypeId WoodenBow = new(39);
     public static readonly ItemTypeId WoodenArrow = new(40);

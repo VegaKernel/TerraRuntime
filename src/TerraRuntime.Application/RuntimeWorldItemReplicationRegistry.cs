@@ -36,6 +36,13 @@ internal sealed class RuntimeWorldItemReplicationRegistry : IWorldItemStateCommi
 
     public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot)
     {
+        if (kind == WorldItemStateCommitKind.Color)
+        {
+            if (snapshot.Color is { } color)
+                Broadcast(TerrariaWorldItemColorCodec1458.Encode(snapshot.Handle.Slot, color));
+            else Interlocked.Increment(ref unsupportedCommits);
+            return;
+        }
         ReadOnlyMemory<byte> encoded;
         if (kind == WorldItemStateCommitKind.OwnershipReleaseRequested)
         {
@@ -75,6 +82,8 @@ internal sealed class RuntimeWorldItemReplicationRegistry : IWorldItemStateCommi
             if (TerrariaWorldItemFrameEncoder.TryEncodeSentinelOwner(in projection, out frame) == TerrariaWorldItemFrameEncodeResult.Encoded) Broadcast(frame);
             else Interlocked.Increment(ref unsupportedCommits);
         }
+        if (drop.Color is { } color)
+            Broadcast(TerrariaWorldItemColorCodec1458.Encode(400, color));
     }
 
     /// <summary>Whether this exact player generation has an active client-local item consumer.</summary>

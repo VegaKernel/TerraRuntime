@@ -180,6 +180,12 @@ World-item merging/overflow eviction, специальные magnets, Void Bag r
 
 World-item identity отделена от item content type. Future pickup/stack/ownership validation строится на server-owned identity, а не на доверии arbitrary client slot metadata.
 
+Цветные NPC drops сохраняют nullable RGBA-оттенок в world-item state и snapshot, которыми владеют точные generation/revision. Исходный `CommonCode.ModifyItemDropFromNPC` окрашивает обычный Gel из поддержанных default-вариантов Blue Slime, оранжевый Gel из Lava Slime в известном Remix world и четыре исходных net-варианта Leather. Неизвестный custom NPC tint или неизвестный выбранный Remix-факт отклоняется до creation RNG. `SlimeBodyItemDropRule` также вызывает CommonCode: held Gel и следующий обычный Gel drop получают собственную цветовую операцию. Прямой `Item.NewItem` без CommonCode не выполняет эту postdrop-обработку.
+
+Source allocation публикует packet 21, возможный packet 22 выбора владельца, затем color-only packet 88 до следующих death drops и money. Первые два committed snapshot остаются без tint; цветовая операция увеличивает revision того же предмета. Обычный slot 400 сохраняет тот же transient wire order без active handle. Partial drop/owner/motion updates сохраняют оттенок, а изменение цвета по точной revision отклоняет stale, replaced и claimed items. Исходный join loop остаётся 21>22 без повторения 88: это source behavior, а не расширение join для сохранения цвета. Active world items и их tint являются transient: ни исходный `.wld`, ни текущий runtime checkpoint не сериализуют этот entity pool. Формат файлов не менялся. Широкие входящие packet-88 изменения weapon/item stats и inventory tint ownership остаются за границей этого среза.
+
+Независимые доказательства исполняют original defaults и `CommonCode` с recording socket для 288 комбинаций identity/item/Remix/slot, включая slots 0, 399 и 400. 293 focused checks также проверяют retained metadata и snapshot в момент source publication. Ещё 16 original whole-death cases сохраняют Gel в Slime ai1 и проверяют обе source color operations; все 80 соседних live pending-birth wire cases проходят. Copied controls без цвета/публикации, с ранним изменением цвета и без окраски Slime contents дают соответственно 46, один и восемь ожидаемых assertion failures без runner errors. Эта ограниченная поддержка цвета не закрывает все item или NPC death semantics.
+
 ## 11. Tiles и world mutation
 
 World edits проходят semantic/runtime mutation paths, а не напрямую переписывают tile из decoder.

@@ -180,6 +180,12 @@ World-item merging/overflow eviction, special magnets, Void Bag routing, full it
 
 World-item identity is separate from item content type. Future pickup/stack/ownership validation builds on this server-owned identity instead of trusting arbitrary client slot metadata.
 
+Colored NPC drops retain a nullable RGBA tint in the generation/revision-owned world-item state and snapshots. Source `CommonCode.ModifyItemDropFromNPC` colors ordinary Gel from the admitted default Blue Slime variants, orange Gel from Lava Slime in known Remix worlds, and the four source Leather net variants. Unknown custom NPC tint or unknown selected Remix facts reject before creation RNG. `SlimeBodyItemDropRule` also calls CommonCode: held Gel and the later ordinary Gel drop both receive their own color operation. A plain `Item.NewItem` call without CommonCode has no such postdrop modification.
+
+A source allocation publishes packet 21, any packet 22 owner selection, then the color-only packet 88 before later death drops and money. The first two committed snapshots remain untinted; the color operation advances the same item's revision. Ordinary slot 400 has the same transient wire order without an active handle. Partial drop/owner/motion changes preserve tint, while an exact-revision color update rejects stale, replaced or claimed items. The original join loop remains 21>22 without replaying 88; this is source behavior, not a color-preserving join extension. Active world items and their tint are transient: neither the original `.wld` nor the current runtime checkpoint serializes this entity pool. No file-layout change was introduced. Incoming broad packet-88 weapon/item-stat mutations and inventory tint ownership remain outside this slice.
+
+Independent evidence executes original defaults and `CommonCode` with a recording socket for 288 identity/item/Remix/slot combinations, including slots 0, 399 and 400. The 293 focused checks also cover retained metadata and source publication snapshots. Sixteen additional original whole-death cases retain Gel in Slime ai1 and verify both source color operations; all 80 adjacent live pending-birth wire cases pass. Copied missing-color/publication, early-color-state and uncolored-Slime-contents controls produce 46, one and eight expected assertion failures respectively, with no runner errors. This bounded color support does not close all item or NPC death semantics.
+
 ## 11. Tiles and world mutation
 
 World edits pass through semantic/runtime mutation paths rather than directly rewriting tiles in a decoder.

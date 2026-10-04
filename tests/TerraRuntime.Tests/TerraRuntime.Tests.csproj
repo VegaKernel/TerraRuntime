@@ -33,6 +33,21 @@
     <ProjectReference Include="../TerraRuntime.HostModuleFixture/TerraRuntime.HostModuleFixture.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/mech-spawners-official-1458.json.gz" LogicalName="MechSpawners1458" />
+    <EmbeddedResource Include="Fixtures/slime-contained-initialization-official-1458.json.gz" LogicalName="SlimeContainedInitialization1458" />
+    <EmbeddedResource Include="Fixtures/hive-slime-ai-official-1458.json.gz" LogicalName="HiveSlimeAi1458" />
+    <EmbeddedResource Include="Fixtures/bee-pending-wire-official-1458.json.gz" LogicalName="BeePendingWire1458" />
+    <EmbeddedResource Include="Fixtures/blue-slime-pending-wire-official-1458.json.gz" LogicalName="BlueSlimePendingWire1458" />
+    <EmbeddedResource Include="Fixtures/SlimeBeeRemixDefaults1458.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.SlimeBeeRemixDefaults1458.json.gz" />
+    <EmbeddedResource Include="Fixtures/SlimeBeeRemixDefaultsWindows1458.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.SlimeBeeRemixDefaultsWindows1458.json.gz" />
+    <EmbeddedResource Include="Fixtures/mech-spawners-defaults-official-1458.json.gz" LogicalName="MechSpawnersDefaults1458" />
+    <EmbeddedResource Include="Fixtures/mech-spawners-coupled-official-1458.json.gz" LogicalName="MechSpawnersCoupled1458" />
+    <EmbeddedResource Include="Fixtures/slime-contained-direct-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.slime-contained-direct-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/slime-contained-death-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.slime-contained-death-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/slime-contained-imported-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.slime-contained-imported-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/slime-contained-defaults-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.slime-contained-defaults-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/town-biome-social-official-1458.json.gz" LogicalName="TownBiomeSocial1458" />
+    <EmbeddedResource Include="Fixtures/town-player-zones-official-1458.json.gz" LogicalName="TownPlayerZones1458" />
     <EmbeddedResource Include="Fixtures/creature-deep-ai003-linux-1458.json.gz" LogicalName="CreatureDeepAi003Linux1458" />
     <EmbeddedResource Include="Fixtures/psycho-ai003-linux-1458.json.gz" LogicalName="PsychoAi003Linux1458" />
     <EmbeddedResource Include="Fixtures/prime-ranged-parent-linux-1458.json.gz" LogicalName="PrimeRangedParentLinux1458" />
@@ -248,5 +263,12 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Fixtures/nonclient-knockback-official-1458.json.gz" LogicalName="NonclientKnockback1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/slime-contained-generator-official-1458.json.gz" LogicalName="SlimeContainedGenerator1458" />
+    <EmbeddedResource Include="Fixtures/bee-birth-wet-official-1458.json.gz" LogicalName="BeeBirthWet1458" />
+    <EmbeddedResource Include="Fixtures/BlueSlimeSpawnDefaults1458.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.BlueSlimeSpawnDefaults1458.json.gz" />
+    <EmbeddedResource Include="Fixtures/BlueSlimeSpawnDefaultsWindows1458.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.BlueSlimeSpawnDefaultsWindows1458.json.gz" />
+    <EmbeddedResource Include="Fixtures/npc-loot-color-official-1458.json.gz" LogicalName="NpcLootColor1458" />
   </ItemGroup>
 </Project>

@@ -23,7 +23,8 @@ public readonly record struct WorldItemStateUpdate(
     byte OwnerPlayerId,
     int TimeToKeepReservation,
     byte GrabDelayPlayer,
-    int GrabDelayTime)
+    int GrabDelayTime,
+    WorldItemColor? Color = null)
 {
     public PrefixId PrefixId => new(Prefix);
 
@@ -686,7 +687,8 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
             OwnerPlayerId: byte.MaxValue,
             TimeToKeepReservation: 0,
             GrabDelayPlayer: byte.MaxValue,
-            GrabDelayTime: 0);
+            GrabDelayTime: 0,
+            Color: drop.Color);
 
     private static WorldItemStateUpdate MergeDrop(
         in WorldItemStateUpdate current,
@@ -703,7 +705,8 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
             ItemNetId = drop.ItemNetId,
             Shimmered = drop.Shimmered,
             ShimmerTime = drop.ShimmerTime,
-            EnemyGrabDelayTime = drop.EnemyGrabDelayTime
+            EnemyGrabDelayTime = drop.EnemyGrabDelayTime,
+            Color = drop.Color ?? (current.ItemNetId == drop.ItemNetId ? current.Color : null)
         };
 
     private static WorldItemSnapshot Capture(short slot, in SlotState state)
@@ -726,7 +729,8 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
             update.OwnerPlayerId,
             update.TimeToKeepReservation,
             update.GrabDelayPlayer,
-            update.GrabDelayTime);
+            update.GrabDelayTime,
+            update.Color);
     }
 
     private void BeginWrite()

@@ -1,14 +1,20 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Core;
 using TerraRuntime.Protocol;
 
 namespace TerraRuntime.Application;
 
 internal sealed partial class RuntimeNpcNetworkCombatPipeline
 {
-    private bool TryApplyServerStrike(in NpcDamageRequest request, out NpcDamageResult result)
+    private bool TryApplyServerStrike(in NpcDamageRequest request, out NpcDamageResult result, NpcSnapshot? sharedLifeOwner = null)
     {
-        if (!damage.TryApplyUnpublished(in request, out result, out var committed, out bool spawnTrueEye, out bool forceUpdate))
+        if (!npcs.TryGet(request.Target, out var before))
+        {
+            result = default;
+            return false;
+        }
+        if (!damage.TryApplyUnpublished(in request, out result, out var committed, out bool spawnTrueEye, out bool forceUpdate, sharedLifeOwner))
             return false;
 
         // TerrariaServer 1.4.5.8 StrikeNPC_Inner sends the supplied damage/critical flag, rather than HP damage.
@@ -18,6 +24,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             RuntimeNpcPacketProjection.ToProtocolGeneration(committed.Handle.Generation),
             (short)Math.Min(request.BaseDamage, short.MaxValue), request.KnockBack,
             checked((byte)(request.HitDirection + 1)), request.Critical ? (byte)1 : (byte)0);
+        npcs.TryPublishPendingBirthBeforeStrike(in before, in committed);
         npcReplication?.TryPublishDamage(default, in wire);
 
         // A lethal actor is published by the final despawn, after owned loot/death effects. Publishing the
@@ -25,5 +32,14 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         if (!damage.TryCompleteUnpublished(in committed, spawnTrueEye, publishUpdate: !result.Lethal, forceUpdate))
             throw new InvalidOperationException("An accepted server strike lost its exact NPC revision before publication.");
         return true;
+    }
+
+    private void PublishNpcDamage(NpcHandle handle, GameCommandSourceId excludedSource,
+        in TerrariaNpcDamageState wire)
+    {
+        // Source SendData(28) flushes spawnNeedsSyncing before the strike frame. Use the exact
+        // handle, never just a slot or wrapped wire generation which could refer to a replacement.
+        npcs.TryPublishPendingBirth(handle);
+        npcReplication?.TryPublishDamage(excludedSource, in wire);
     }
 }

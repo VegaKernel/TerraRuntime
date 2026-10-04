@@ -212,6 +212,8 @@ internal sealed class RuntimePlayerMember
     public short MaxLife { get; set; }
     public bool IsDead { get; set; }
     public float Stealth { get; set; } = 1f;
+    // Player constructor owns clear zone bytes; imports deliberately overwrite this with nullable provenance.
+    public PlayerZoneSnapshot1458? Zones { get; set; } = default(PlayerZoneSnapshot1458);
     public float Luck { get; set; }
     public VanillaPlayerLuckComponents1458? LuckComponents { get; set; }
     public int ItemAnimation { get; set; }
@@ -269,6 +271,7 @@ internal sealed class RuntimePlayerMember
             CameraTargetY)
         {
             Stealth = Stealth,
+            Zones = Zones,
             Luck = Luck,
             LuckComponents = LuckComponents,
             ItemAnimation = ItemAnimation,

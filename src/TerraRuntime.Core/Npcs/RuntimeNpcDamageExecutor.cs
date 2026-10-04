@@ -122,8 +122,17 @@ public sealed class RuntimeNpcDamageExecutor
     // Server-origin strikes need their packet 28 before the resulting packet 23. Finish all eligibility and
     // lethal-capacity admission before committing, then let the application publish the accepted strike.
     internal bool TryApplyUnpublished(in NpcDamageRequest request, out NpcDamageResult result,
-        out NpcSnapshot committed, out bool spawnTrueEye, out bool forceUpdate)
-        => TryApplyCore(in request, publish: false, out result, out committed, out spawnTrueEye, out forceUpdate);
+        out NpcSnapshot committed, out bool spawnTrueEye, out bool forceUpdate, NpcSnapshot? sharedLifeOwner = null)
+        => TryApplyCore(in request, publish: false, out result, out committed, out spawnTrueEye, out forceUpdate, sharedLifeOwner);
+
+    internal bool TryApplyClient(in NpcDamageRequest request, NpcSnapshot? sharedLifeOwner, out NpcDamageResult result)
+    {
+        // MessageBuffer completes StrikeNPC's effects before SendData(28) flushes a retained birth.
+        bool retainedBirth = _store.HasPendingBirth(request.Target);
+        if (!TryApplyCore(in request, publish: !retainedBirth, out result, out var committed,
+                out bool spawnTrueEye, out bool forceUpdate, sharedLifeOwner)) return false;
+        return !retainedBirth || TryCompleteUnpublished(in committed, spawnTrueEye, publishUpdate: false, forceUpdate);
+    }
 
     internal bool TryCompleteUnpublished(in NpcSnapshot committed, bool spawnTrueEye, bool publishUpdate, bool forceUpdate)
     {
@@ -135,7 +144,7 @@ public sealed class RuntimeNpcDamageExecutor
     }
 
     private bool TryApplyCore(in NpcDamageRequest request, bool publish, out NpcDamageResult result,
-        out NpcSnapshot committedSnapshot, out bool spawnTrueEye, out bool forceUpdate)
+        out NpcSnapshot committedSnapshot, out bool spawnTrueEye, out bool forceUpdate, NpcSnapshot? sharedLifeOwner = null)
     {
         committedSnapshot = default;
         spawnTrueEye = false;
@@ -145,6 +154,11 @@ public sealed class RuntimeNpcDamageExecutor
             result = default;
             return false;
         }
+
+        if (sharedLifeOwner is { } owner &&
+            (!_store.TryGet(owner.Handle, out var retainedOwner) || retainedOwner != owner ||
+             owner.Simulation.Life <= 0 || owner.Simulation.Life > current.Simulation.LifeMax))
+        { result = default; return false; }
 
         // MessageBuffer packet 28 calls NPC.PlayerInteraction after validating the exact NPC generation and before
         // StrikeNPC. Keep that observable ordering: invulnerable/rejected strikes may still grant interaction credit,
@@ -179,7 +193,7 @@ public sealed class RuntimeNpcDamageExecutor
         if (VanillaSkeletronCombat.HasRedHatAdjustments(current.TypeIdentity, current.Ai, current.Simulation.LocalAi))
             damage = Math.Max(1, (int)(damage * 0.7f));
 
-        int lifeBefore = current.Simulation.Life;
+        int lifeBefore = sharedLifeOwner?.Simulation.Life ?? current.Simulation.Life;
         // StrikeNPC_Inner still resolves the strike, JustHit and knockback for an immortal actor, but skips
         // the life subtraction. This flag differs from upstream DontTakeDamage strike admission.
         int lifeAfter = current.Simulation.Immortal == true ? lifeBefore : Math.Max(0, lifeBefore - damage);
@@ -266,6 +280,11 @@ public sealed class RuntimeNpcDamageExecutor
             if (!_lethalAdmission(in pendingDeath) || !_store.TryGet(current.Handle, out var retained) || retained.Revision != current.Revision)
             { result = default; return false; }
         }
+
+        // Shared-life synchronization belongs to this accepted strike, never an eager published update.
+        if (sharedLifeOwner is { } expectedOwner &&
+            (!_store.TryGet(expectedOwner.Handle, out var currentOwner) || currentOwner != expectedOwner))
+        { result = default; return false; }
 
         bool updated = publish
             ? _store.TryUpdate(current.Handle, in update, out NpcSnapshot committed, forceSync: forceUpdate)

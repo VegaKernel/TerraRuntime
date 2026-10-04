@@ -12,6 +12,11 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 {
     private void ExecuteNpcDeathHitEffects(in NpcSnapshot npc)
     {
+        if (npc.TypeIdentity == VanillaNpcIds.Bee || npc.TypeIdentity == VanillaNpcIds.SmallBee)
+        {
+            // NPC.HitEffect (1.4.5.8) still makes six noGravity choices after dedicated Dust.NewDust returns.
+            for (int particle = 0; particle < 6; particle++) random.NextInt32(0, 2);
+        }
         if (npc.TypeIdentity == VanillaNpcIds.MotherSlime && EnsurePreviewSpawnStream())
             VanillaMotherSlimeDeathSplit1458.SpawnChildren(DeathNpcs, in npc, random);
     }
@@ -37,6 +42,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 !deathPrelude.TryPublish(plannedPrelude!, plannedPreludeRevision)) return false;
             return plan.TryPublishPhase(NpcDeathDropPhase1458.Imported, lootDelivery.Adopt);
         }
+        if (!TryExecuteMechSpawnersLoot(in npc)) return false;
+        if (!TryExecuteSlimeBodyLoot(in npc)) return false;
         if (VanillaEaterOfWorldsLifecycle.IsSegment(npc.TypeIdentity))
             return TryExecuteEaterOfWorldsLoot(in npc, eaterBoss);
         if (npc.TypeIdentity == VanillaNpcIds.BrainOfCthulhu || npc.TypeIdentity == VanillaNpcIds.BrainCreeper)
@@ -81,7 +88,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
         var origin = ResolveNpcLootOrigin(in npc, in definition);
         int stagedCount = 0;
-        var context = new VanillaNpcLootContext(expertMode, DropExtraGel: false);
+        var context = new VanillaNpcLootContext(expertMode, DropExtraGel: false,
+            SpawnedFromStatue: npc.Simulation.SpawnedFromStatue);
 
         if (kingSlimeNormal)
         {
@@ -113,6 +121,16 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         }
 
         return true;
+    }
+
+    private bool TryExecuteSlimeBodyLoot(in NpcSnapshot npc)
+    {
+        if (!VanillaSlimeBodyLoot1458.TryEvaluate(npc.TypeIdentity, npc.Ai.Ai1, random,
+                out bool dropped, out NpcLootDrop drop)) return false;
+        if (!dropped) return true;
+        if (!VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var definition)) return false;
+        var origin = ResolveNpcLootOrigin(in npc, in definition);
+        return lootDelivery.TryWorld(in origin, in drop, random);
     }
 
     private bool StageDrop(in NpcLootWorldItemOrigin origin, in NpcLootDrop drop, ref int stagedCount)

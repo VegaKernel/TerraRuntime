@@ -9,7 +9,7 @@ namespace TerraRuntime.Application;
 /// </summary>
 internal sealed class RuntimeNpcStateCommitFanout(
     INpcStateCommitSink first,
-    INpcStateCommitSink second) : INpcStateCommitSink
+    INpcStateCommitSink second) : INpcStateCommitSink, INpcBirthRetentionSink
 {
     private readonly INpcStateCommitSink first = first ?? throw new ArgumentNullException(nameof(first));
     private readonly INpcStateCommitSink second = second ?? throw new ArgumentNullException(nameof(second));
@@ -18,5 +18,13 @@ internal sealed class RuntimeNpcStateCommitFanout(
     {
         first.NpcStateCommitted(kind, in snapshot);
         second.NpcStateCommitted(kind, in snapshot);
+    }
+
+    public void NpcBirthRetained(in NpcSnapshot snapshot)
+    {
+        if (first is INpcBirthRetentionSink firstRetained)
+            firstRetained.NpcBirthRetained(in snapshot);
+        if (second is INpcBirthRetentionSink secondRetained)
+            secondRetained.NpcBirthRetained(in snapshot);
     }
 }

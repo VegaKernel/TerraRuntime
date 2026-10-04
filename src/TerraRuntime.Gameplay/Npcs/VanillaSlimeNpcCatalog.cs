@@ -21,7 +21,7 @@ public static class VanillaSlimeNpcCatalog
     private static readonly VanillaNpcDefinition[] Definitions =
     [
         Slime(VanillaNpcIds.MotherSlime, 36, 24, 20, 7, 90, 0.6f, 1.25f),
-        Slime(VanillaNpcIds.LavaSlime, 24, 18, 15, 10, 50, 1f, 1.1f),
+        Slime(VanillaNpcIds.LavaSlime, 24, 18, 15, 10, 50, 1f, 1.1f) with { AlphaAtSpawn = 50 },
         Slime(VanillaNpcIds.DungeonSlime, 36, 24, 30, 7, 150, 0.6f, 1.25f),
         Slime(VanillaNpcIds.CorruptSlime, 40, 30, 55, 20, 170, 1f, 1.1f),
         Slime(VanillaNpcIds.IlluminantSlime, 24, 18, 70, 30, 180, 0.85f, 1.05f),

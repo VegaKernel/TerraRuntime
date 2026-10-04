@@ -109,6 +109,9 @@ internal sealed partial class PlayerAuthority
             case PlayerLuckFactorsRuntimeCommand luck:
                 ApplyPlayerLuckFactors(luck);
                 return true;
+            case PlayerZonesRuntimeCommand zones:
+                ApplyPlayerZones(zones);
+                return true;
             case PlayerStealthRuntimeCommand stealth:
                 ApplyPlayerStealth(stealth);
                 return true;

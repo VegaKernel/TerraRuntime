@@ -413,6 +413,7 @@ public static class VanillaDefinitionCatalog
             return true;
         if (VanillaQueenSlimeItemCatalog1458.TryGet(type, out definition))
             return true;
+        if (VanillaMechSummonDropCatalog1458.TryGet(type, out definition)) return true;
         if (VanillaMechanicalBossItemCatalog1458.TryGet(type, out definition))
             return true;
         if (VanillaEyeOfCthulhuItemCatalog1458.TryGet(type, out definition))
@@ -622,6 +623,7 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaWallOfFleshItemIds.BadgersHat) { definition = BadgersHatDefinition; return true; }
 
         if (VanillaBigMimicCannonItemCatalog1458.TryGet(type, out definition)) return true;
+        if (VanillaSlimeContainedItemCatalog1458.TryGet(type, out definition)) return true;
         definition = default;
         return false;
     }

@@ -35,7 +35,8 @@ public readonly record struct VanillaNpcNetVariantDefinition(
             Damage = Damage,
             Defense = Defense,
             LifeMax = LifeMax,
-            KnockBackResist = KnockBackResist
+            KnockBackResist = KnockBackResist,
+            AlphaAtSpawn = NetId == VanillaNpcNetVariantCatalog.BabySlime ? 120 : baseDefinition.AlphaAtSpawn
         };
 }
 

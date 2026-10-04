@@ -9,11 +9,12 @@ public readonly record struct VanillaNpcSpawnContext(float Difficulty, int Activ
     public bool DownedPlantera { get; init; }
     public bool SkeletronActive { get; init; }
     public bool TenthAnniversaryWorld { get; init; }
+    public bool RemixWorld { get; init; }
     public bool IsValid => float.IsFinite(Difficulty) && Difficulty is >= .5f and <= 4f &&
         ActivePlayers is >= 0 and <= 255;
 }
 
-public readonly record struct VanillaNpcSpawnDefaults(
+public readonly partial record struct VanillaNpcSpawnDefaults(
     VanillaNpcHitboxSize Hitbox, float Scale, int LifeMax, int Damage, int Defense)
 {
     public float? KnockBackResist { get; init; }
@@ -63,6 +64,11 @@ public readonly record struct VanillaNpcSpawnDefaults(
         bool windowsArithmetic, out VanillaNpcSpawnDefaults defaults)
     {
         defaults = default;
+        if (context.IsValid && definition.Type == VanillaNpcIds.BlueSlime)
+            return TryResolveSlimeFamily(in definition, in context, windowsArithmetic, out defaults);
+        if (context.IsValid && (definition.Type == VanillaNpcIds.LavaSlime ||
+            definition.Type == VanillaNpcIds.Bee || definition.Type == VanillaNpcIds.SmallBee))
+            return TryResolveContainedFamily(in definition, in context, windowsArithmetic, out defaults);
         if (context.IsValid && definition.BehaviorFamily == VanillaNpcBehaviorFamily.FlyingEye)
             return TryResolveFlyingEye(in definition, in context, windowsArithmetic, out defaults);
         if (context.IsValid && VanillaBigMimicNpcCatalog1458.IsSupported(definition.Type))

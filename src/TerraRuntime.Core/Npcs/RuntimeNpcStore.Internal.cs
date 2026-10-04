@@ -22,11 +22,16 @@ public sealed partial class RuntimeNpcStore
     private void DespawnSlot(byte slot, ref SlotState state)
     {
         NpcSnapshot finalSnapshot = Capture(slot, in state);
+        bool birthPending = state.BirthPending;
+        state.BirthPending = false;
         state.Active = false;
         state.Revision = 0;
         // Original allocation's second pass may reuse a replaceable inactive NPC even while protected.
         // Queries still hide inactive snapshots; retain the bounded value state until the next spawn.
         _activeCount--;
+        MarkSlotMutation();
+        if (birthPending)
+            _commitSink?.NpcStateCommitted(NpcStateCommitKind.Spawn, in finalSnapshot);
         _commitSink?.NpcStateCommitted(NpcStateCommitKind.Despawn, in finalSnapshot);
     }
 
@@ -59,6 +64,7 @@ public sealed partial class RuntimeNpcStore
     private struct SlotState
     {
         public bool Active;
+        public bool BirthPending;
         public int SpawnProtection;
         public ulong Generation;
         public ulong Revision;

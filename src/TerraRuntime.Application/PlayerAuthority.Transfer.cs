@@ -170,6 +170,7 @@ internal sealed partial class PlayerAuthority
             MaxLife = previous.MaxLife,
             IsDead = dead,
             Stealth = previous.Stealth ?? 1f,
+            Zones = previous.Zones,
             Luck = previous.Luck,
             LuckComponents = previous.LuckComponents,
             ItemAnimation = preservePosition && !dead ? previous.ItemAnimation ?? 0 : 0,

@@ -46,6 +46,10 @@ public sealed class VanillaNpcLootWorldItemMaterializer : INpcLootWorldItemMater
         if (!origin.IsValid || !drop.IsValid || !CanMaterialize(drop.ItemType))
             return false;
 
+        WorldItemColor? color = null;
+        if (origin.ColorContext is { } colorContext &&
+            !VanillaNpcLootColor1458.TryResolve(in colorContext, drop.ItemType, out color)) return false;
+
         // Item.NewItem substitutes seasonal hearts/stars before defaults, Prefix(-1) and launch velocity.
         VanillaSeasonalItemDropContext1458 context = seasonalContext?.Invoke() ?? default;
         ItemTypeId itemType = VanillaSeasonalItemDropFacts1458.Resolve(drop.ItemType, in context, random);
@@ -77,7 +81,8 @@ public sealed class VanillaNpcLootWorldItemMaterializer : INpcLootWorldItemMater
             ItemNetId: checked((short)itemType.Value),
             Shimmered: false,
             ShimmerTime: 0f,
-            EnemyGrabDelayTime: 0);
+            EnemyGrabDelayTime: 0,
+            Color: color);
         return true;
     }
 }

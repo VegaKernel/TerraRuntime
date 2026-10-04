@@ -30,18 +30,32 @@ public sealed partial class RuntimeNpcStore
         }
 
         ref SlotState state = ref _slots[slot];
-        if (state.Active && !replaceActive || !TryAdvance(ref state.Generation))
+        if (state.Active && !replaceActive || state.Generation == ulong.MaxValue)
         {
             snapshot = default;
             return false;
         }
 
+        if (state.BirthPending && (publish || _commitSink is not null))
+        {
+            var previous = Capture(slot, in state);
+            if (!TryPublishPendingBirth(previous.Handle) || !MatchesSource(in previous))
+            {
+                snapshot = default;
+                return false;
+            }
+        }
+
+        state.Generation++;
+
         NpcStateUpdate normalized = RuntimeNpcStateOwnershipPolicy.MaterializeSpawnDefaults(in update, spawnDefaults);
         bool wasActive = state.Active;
         state.Active = true;
+        state.BirthPending = false;
         if (protect) state.SpawnProtection = VanillaNpcSpawnRules.SpawnProtectionUpdates;
         state.Revision = 1;
         state.Update = normalized;
+        MarkSlotMutation();
         if (!wasActive) _activeCount++;
         snapshot = Capture(slot, in state);
         if (publish)
@@ -108,6 +122,21 @@ public sealed partial class RuntimeNpcStore
 
     /// <summary>Allocates in vanilla search order, observing protection and replacement eligibility.</summary>
     public bool TrySpawnVanilla(in NpcStateUpdate update, out NpcSnapshot snapshot, int startSlot = 0)
+        => TrySpawnVanillaCreation(in update, out snapshot, startSlot, deferBirth: false);
+
+    internal bool TrySpawnVanillaPending(in NpcStateUpdate update, out NpcSnapshot snapshot, int startSlot = 0)
+        => TrySpawnVanillaCreation(in update, out snapshot, startSlot, deferBirth: true);
+
+    internal bool TrySpawnVanillaPendingAtBottomCenter(in NpcStateUpdate update,
+        float centerX, float bottomY, out NpcSnapshot snapshot)
+    {
+        snapshot = default;
+        return float.IsFinite(centerX) && float.IsFinite(bottomY) &&
+            TrySpawnVanillaCreation(in update, out snapshot, 0, deferBirth: true, (centerX, bottomY));
+    }
+
+    private bool TrySpawnVanillaCreation(in NpcStateUpdate update, out NpcSnapshot snapshot,
+        int startSlot, bool deferBirth, (float X, float Y)? bottomCenter = null)
     {
         int type = update.Type;
         short netId = update.NetId;
@@ -118,8 +147,31 @@ public sealed partial class RuntimeNpcStore
         }
         var owned = update with { Type = type, NetId = netId,
             Simulation = update.Simulation with { SpawnDifficulty = update.Simulation.SpawnDifficulty ?? difficulty } };
+        if (bottomCenter is { } anchor)
+        {
+            if (!VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(type), new NpcNetId(netId), out var definition))
+            {
+                snapshot = default;
+                return false;
+            }
+            var materialized = RuntimeNpcStateOwnershipPolicy.MaterializeSpawnDefaults(in owned, spawnDefaults);
+            if (!definition.TryResolveHitbox(materialized.Simulation, out var body))
+            {
+                snapshot = default;
+                return false;
+            }
+            owned = owned with
+            {
+                PositionX = anchor.X - body.Width * .5f,
+                PositionY = anchor.Y - body.Height
+            };
+        }
         NpcStateUpdate initialized = ApplySpawnAiDefaults(in owned);
-        return TrySpawnVanillaCore(in initialized, out snapshot, startSlot, spawnDefaults);
+        if (!TrySpawnVanillaCore(in initialized, out snapshot, startSlot, spawnDefaults, publish: !deferBirth))
+            return false;
+        if (deferBirth)
+            TryRetainPendingBirth(in snapshot);
+        return true;
     }
 
     private NpcStateUpdate ApplySpawnAiDefaults(in NpcStateUpdate update)
@@ -212,8 +264,13 @@ public sealed partial class RuntimeNpcStore
         for (int slot = 0; slot < capacity; slot++)
         {
             ref SlotState state = ref _slots[slot];
-            state.SpawnProtection = state.Active ? VanillaNpcSpawnRules.SpawnProtectionUpdates :
+            int protection = state.Active ? VanillaNpcSpawnRules.SpawnProtectionUpdates :
                 Math.Max(0, state.SpawnProtection - 1);
+            if (state.SpawnProtection != protection)
+            {
+                state.SpawnProtection = protection;
+                MarkSlotMutation();
+            }
         }
     }
 }

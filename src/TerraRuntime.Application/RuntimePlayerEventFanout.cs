@@ -51,6 +51,12 @@ internal sealed class RuntimePlayerEventFanout(
         second.PlayerLuckFactorsUpdated(connection, factors);
     }
 
+    public void PlayerZonesUpdated(ConnectionHandle connection, in PlayerZoneSnapshot1458 zones)
+    {
+        first.PlayerZonesUpdated(connection, in zones);
+        second.PlayerZonesUpdated(connection, in zones);
+    }
+
     public void PlayerStealthUpdated(ConnectionHandle connection, float stealth)
     {
         first.PlayerStealthUpdated(connection, stealth);

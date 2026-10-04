@@ -7,7 +7,8 @@ public enum WorldItemStateCommitKind : byte
     Drop = 0,
     Owner = 1,
     Remove = 2,
-    OwnershipReleaseRequested = 3
+    OwnershipReleaseRequested = 3,
+    Color = 4
 }
 
 /// <summary>

@@ -10,36 +10,62 @@ internal sealed partial class RuntimeTownNpcSchedule1458
 {
     private RuntimeTownSocialWorld1458? socialWorld;
     private PlayerAuthority? socialPlayerOwner;
+    private ServerPlayerAuthority? socialServerPlayerOwner;
     private RuntimeWorldClock? socialClockOwner;
     private RuntimeWorldProgressionMutations? socialProgressionOwner;
     private readonly SocialPlayer[] socialPlayers = new SocialPlayer[byte.MaxValue];
     private int socialPlayerCount;
-    private readonly record struct SocialPlayer(ConnectionHandle Connection, ulong Revision,
-        RuntimeTownPlayerBounds1458 Bounds, bool Dead);
+    private bool socialPlayerCensusValid = true;
+    private readonly record struct SocialPlayer(ConnectionHandle? Connection, PlayerHandle Player, ulong Revision,
+        RuntimeTownPlayerBounds1458 Bounds, bool Dead, PlayerZoneSnapshot1458? Zones);
 
     internal void SetSocialContext(RuntimeTownSocialWorld1458? world, PlayerAuthority? players,
-        RuntimeWorldClock? clock = null, RuntimeWorldProgressionMutations? progression = null)
+        RuntimeWorldClock? clock = null, RuntimeWorldProgressionMutations? progression = null,
+        ServerPlayerAuthority? serverPlayers = null)
     {
         socialWorld = world;
         socialPlayerOwner = players;
+        socialServerPlayerOwner = serverPlayers;
         socialClockOwner = clock;
         socialProgressionOwner = progression;
         socialPlayerCount = 0;
-        if (players is null) return;
+        socialPlayerCensusValid = true;
+        if (players is not null)
         foreach (RuntimePlayerMember player in players.Members)
         {
             if (player.Slot.Value == byte.MaxValue) continue;
             (float width, float height) = player.HasMount
                 ? TerraRuntime.Gameplay.Players.VanillaPlayerMountHitbox1458.Resolve(player.MountType)
                 : (PlayerAuthority.VanillaBasePlayerWidth, PlayerAuthority.VanillaBasePlayerHeight);
-            socialPlayers[socialPlayerCount++] = new(player.Connection, player.Revision,
-                new(player.PositionX, player.PositionY, width, height), player.IsDead);
+            AddSocialPlayer(new(player.Connection, player.Connection.Player, player.Revision,
+                new(player.PositionX, player.PositionY, width, height), player.IsDead, player.Zones));
         }
+        if (serverPlayers is null) return;
+        Span<PlayerStateSnapshot> serverSnapshots = stackalloc PlayerStateSnapshot[byte.MaxValue + 1];
+        int serverCount = serverPlayers.CopySnapshots(serverSnapshots);
+        foreach (var player in serverSnapshots[..serverCount])
+        {
+            if (player.Player.Slot.Value == byte.MaxValue) continue;
+            (float width, float height) = player.HasMount
+                ? TerraRuntime.Gameplay.Players.VanillaPlayerMountHitbox1458.Resolve(player.MountType)
+                : (PlayerAuthority.VanillaBasePlayerWidth, PlayerAuthority.VanillaBasePlayerHeight);
+            AddSocialPlayer(new(null, player.Player, player.Revision.Value,
+                new(player.PositionX, player.PositionY, width, height), player.IsDead, player.Zones));
+        }
+    }
+
+    private void AddSocialPlayer(in SocialPlayer player)
+    {
+        if (socialPlayerCount == socialPlayers.Length) { socialPlayerCensusValid = false; return; }
+        for (int index = 0; index < socialPlayerCount; index++)
+            if (socialPlayers[index].Player.Slot == player.Player.Slot) { socialPlayerCensusValid = false; return; }
+        socialPlayers[socialPlayerCount++] = player;
     }
 
     // Recheck the complete candidate/closest-player population before any RNG adoption or packet91.
     private bool SocialContextIsCurrent(ReadOnlySpan<NpcSnapshot> expected)
     {
+        if (!socialPlayerCensusValid) return false;
         if (socialWorld is { } world &&
             (socialClockOwner is { } clock && (clock.DayTime != world.DayTime ||
                 clock.BloodMoonActive != world.BloodMoon || clock.Time != world.Time) ||
@@ -55,8 +81,8 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 if (!matched) return false;
             }
         if (actualCount != expected.Length) return false;
-        if (socialPlayerOwner is null) return socialPlayerCount == 0;
         int playerCount = 0;
+        if (socialPlayerOwner is not null)
         foreach (RuntimePlayerMember player in socialPlayerOwner.Members)
         {
             if (player.Slot.Value == byte.MaxValue) continue;
@@ -67,6 +93,21 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 { matched = true; break; }
             if (!matched) return false;
         }
+        if (socialServerPlayerOwner is not null)
+        {
+            Span<PlayerStateSnapshot> serverSnapshots = stackalloc PlayerStateSnapshot[byte.MaxValue + 1];
+            int count = socialServerPlayerOwner.CopySnapshots(serverSnapshots);
+            foreach (var player in serverSnapshots[..count])
+            {
+                if (player.Player.Slot.Value == byte.MaxValue) continue;
+                playerCount++;
+                bool matched = false;
+                for (int index = 0; index < socialPlayerCount; index++)
+                    if (socialPlayers[index].Connection is null && socialPlayers[index].Player == player.Player &&
+                        socialPlayers[index].Revision == player.Revision.Value) { matched = true; break; }
+                if (!matched) return false;
+            }
+        }
         return playerCount == socialPlayerCount;
     }
 
@@ -74,6 +115,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         ReadOnlySpan<NpcSnapshot> peers, out byte emote)
     {
         emote = 0;
+        if (!socialPlayerCensusValid) return false;
         if (random is not NpcRuntimeTownScheduleRandom1458 { Current: SystemVanillaNpcRandom }) return false;
         Span<byte> buffer = stackalloc byte[256];
         var choices = new SocialCandidates(buffer);
@@ -130,21 +172,42 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         foreach (SocialPlayer player in socialPlayers.AsSpan(0, socialPlayerCount))
         {
             // FindClosest fallback is the first active physical slot, including dead players.
-            if (closest is null || distance < 0f && player.Connection.Player.Slot.Value < closest.Value.Connection.Player.Slot.Value)
+            if (closest is null || distance < 0f && player.Player.Slot.Value < closest.Value.Player.Slot.Value)
                 closest = player;
             if (player.Dead) continue;
             float candidate = MathF.Abs(player.Bounds.X + (int)player.Bounds.Width / 2 - cx) +
                 MathF.Abs(player.Bounds.Y + (int)player.Bounds.Height / 2 - cy);
             if (distance < 0f || candidate < distance || candidate == distance &&
-                player.Connection.Player.Slot.Value < closest.Value.Connection.Player.Slot.Value)
+                player.Player.Slot.Value < closest.Value.Player.Slot.Value)
             { distance = candidate; closest = player; }
         }
         if (closest is not { } selected) return false; // Source inactive slot0 body has no owner.
-        double tileY = selected.Bounds.Y / 16f;
-        if (tileY < world.Metadata.WorldSurface * .45d) choices.Add(22);
-        else if (tileY > world.Metadata.RockLayer + tiles.Dimensions.HeightTiles / 2 - 100d) choices.Add(31);
-        else if (tileY > world.Metadata.RockLayer) choices.Add(30);
-        else return false; // Remote Zone* comes from packet36, not commerce's tile scan.
+        if (!TrySelectSocialBiomeTopic(selected.Bounds.X, selected.Bounds.Y, selected.Zones, in world,
+            tiles.Dimensions.WidthTiles, tiles.Dimensions.HeightTiles, out byte emote)) return false;
+        choices.Add(emote);
+        return true;
+    }
+
+    internal static bool TrySelectSocialBiomeTopic(float x, float y, PlayerZoneSnapshot1458? zones,
+        in RuntimeTownSocialWorld1458 world, int widthTiles, int heightTiles, out byte emote)
+    {
+        emote = 0;
+        double tileY = y / 16f;
+        if (tileY < world.Metadata.WorldSurface * .45d) emote = 22;
+        else if (tileY > world.Metadata.RockLayer + heightTiles / 2 - 100d) emote = 31;
+        else if (tileY > world.Metadata.RockLayer) emote = 30;
+        else
+        {
+            // The remote Zone properties are packet36 facts, not inferred from terrain or commerce.
+            if (zones is not { } owned) return false;
+            if (owned.Hallow) emote = 27;
+            else if (owned.Corrupt) emote = 26;
+            else if (owned.Crimson) emote = 25;
+            else if (owned.Jungle) emote = 24;
+            else if (owned.Snow) emote = 32;
+            else if (tileY < world.Metadata.WorldSurface && (x < 4000f || x > 16f * (widthTiles - 250))) emote = 29;
+            else emote = owned.Desert ? (byte)28 : (byte)23;
+        }
         return true;
     }
 

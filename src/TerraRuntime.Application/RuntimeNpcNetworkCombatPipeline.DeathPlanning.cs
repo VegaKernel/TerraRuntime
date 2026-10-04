@@ -24,6 +24,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private bool deathAdmissionRejected;
     private RuntimeNpcDeathPrelude1458? plannedPrelude;
     private ulong plannedPreludeRevision;
+    private RuntimeWorldProgressionMutationSnapshot plannedDeathProgression;
     private bool plannedLootAllowed;
     private bool IsPreviewingDeath => lootDelivery.Preview is not null;
     private RuntimeNpcStore DeathNpcs => previewDeathNpcs ?? npcs;
@@ -72,6 +73,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         if (pendingDeathPlan is not null || dead.Simulation.MoneyValue is not float value ||
             dead.Simulation.ExtraMoneyValue is not int extra || dead.Simulation.Midas is not bool midas)
             return false;
+        plannedDeathProgression = progression.CaptureSnapshot();
         var liveRandom = random.SourceRandom;
         var plan = new RuntimeNpcDeathDropPlan1458(dead.Handle, dead.Revision, liveRandom);
         bool completed = false;
@@ -189,7 +191,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     }
 
     private bool IsCurrentDeathOwner(NpcHandle handle, NpcRevision revision) =>
-        npcs.TryGet(handle, out var current) && current.Revision == revision && deathPrelude.Revision == plannedPreludeRevision;
+        npcs.TryGet(handle, out var current) && current.Revision == revision && deathPrelude.Revision == plannedPreludeRevision &&
+        progression.CaptureSnapshot() == plannedDeathProgression;
 
     private bool MoneyClearedBeforeDeathPhase(in NpcSnapshot dead, bool eaterBoss)
     {

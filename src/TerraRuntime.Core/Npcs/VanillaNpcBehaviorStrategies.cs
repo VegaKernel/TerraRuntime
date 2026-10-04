@@ -197,7 +197,7 @@ internal sealed partial class VanillaFlyingEyeNpcBehaviorStrategy : IVanillaNpcB
     }
 }
 
-internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
+internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehaviorStrategy
 {
     private readonly IVanillaNpcRandom random;
 
@@ -210,6 +210,21 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
         VanillaNpcBehaviorContext context,
         INpcAiStateStepper inner,
         out NpcStateUpdate next)
+    {
+        if (containedEnvironment is not null &&
+            (definition.Type == VanillaNpcIds.BlueSlime || definition.Type == VanillaNpcIds.LavaSlime))
+            return TryRetainContained(in npc, in definition, context, inner, out next);
+
+        return TryStepMechanical(in npc, in definition, context, inner, out next);
+    }
+
+    private bool TryStepMechanical(
+        in NpcSnapshot npc,
+        in VanillaNpcDefinition definition,
+        VanillaNpcBehaviorContext context,
+        INpcAiStateStepper inner,
+        out NpcStateUpdate next,
+        bool containedInitializationObserved = false)
     {
         if (definition.AiStyle != VanillaNpcAiStyles.Slime)
         {
@@ -256,7 +271,7 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
         // AI_001's Remix item generator is a separate unimplemented source branch. Outside Remix,
         // a Skyblock world without Hellstone grants each normal Lava Slime initialization attempt
         // a post-Skeletron one-in-fifteen Hellstone roll. lowTiles/slime-rain alter attempt count.
-        if (definition.Type == VanillaNpcIds.LavaSlime && ai.Ai1 == 0f)
+        if (!containedInitializationObserved && definition.Type == VanillaNpcIds.LavaSlime && ai.Ai1 == 0f)
         {
             ai = ai with { Ai1 = -1f };
             if (!context.RemixWorld && context.SkyblockNoHellstone && context.DownedSkeletron)
@@ -272,7 +287,7 @@ internal sealed class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNpcBehavio
         // Blue Slime uses the generic AI_001 item loop. A Skyblock world with no Life Crystals (or
         // lowTiles) may select one Heart Slime at a time while its source position is in the rock layer.
         // The active-peer scan mirrors AnyLifeCrystalSlimes before consuming the one-in-200 roll.
-        if (definition.Type == VanillaNpcIds.BlueSlime && npc.NetId is not -5 and not -4 && ai.Ai1 == 0f)
+        if (!containedInitializationObserved && definition.Type == VanillaNpcIds.BlueSlime && npc.NetId is not -5 and not -4 && ai.Ai1 == 0f)
         {
             ai = ai with { Ai1 = -1f };
             int attempts = 1;

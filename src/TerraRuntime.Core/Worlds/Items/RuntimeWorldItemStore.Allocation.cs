@@ -1,4 +1,4 @@
-﻿using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Gameplay.Items;
 
 namespace TerraRuntime.Core.Worlds;
@@ -252,6 +252,7 @@ public sealed partial class RuntimeWorldItemStore
                 state.Generation++; state.Revision = leaseTicks == 0 ? 1UL : 0UL;
                 state.Active = leaseTicks == 0; state.Reserved = leaseTicks != 0; state.SourceLease = leaseTicks != 0;
                 state.SourceReuseTicks = leaseTicks; state.SourceAge = facts.InitialAge; state.SourceOwnerAge = 0; state.SourceReleaseRequested = false; state.Update = CreateInitial(in publicationDrop);
+                if (leaseTicks == 0) state.Update = state.Update with { Color = null };
                 if (leaseTicks == 0 && ownerFacts is not null)
                     state.Update = state.Update with { GrabDelayPlayer = 0 };
                 if (drop.Ownership == WorldItemOwnershipMode.GrabDelayForAllPlayers)
@@ -283,6 +284,12 @@ public sealed partial class RuntimeWorldItemStore
                         if (!RecordSync(slot, WorldItemStateCommitKind.Owner)) return Fail();
                     }
                 }
+            }
+            // CommonCode modifies item tint after Item.NewItem has published its drop and owner.
+            if (slot < VanillaCapacity && leaseTicks == 0 && publicationDrop.Color is { } tint)
+            {
+                working[slot].Update = working[slot].Update with { Color = tint };
+                if (!RecordSync(slot, WorldItemStateCommitKind.Color)) return Fail();
             }
             steps.Add(new(start, operations.Count, slot, leaseTicks, pending[..pendingCount].ToArray(), transient));
             return true;

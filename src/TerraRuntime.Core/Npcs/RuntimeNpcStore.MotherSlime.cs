@@ -59,6 +59,7 @@ public sealed partial class RuntimeNpcStore
             });
         ref SlotState state = ref _slots[birth.Handle.Slot];
         state.Update = RuntimeNpcStateOwnershipPolicy.MaterializeSpawnDefaults(in update, babyDefaults);
+        MarkSlotMutation();
         child = Capture(birth.Handle.Slot, in state);
         _commitSink?.NpcStateCommitted(NpcStateCommitKind.Spawn, in child);
         return true;

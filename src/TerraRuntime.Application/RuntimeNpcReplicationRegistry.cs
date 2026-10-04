@@ -17,7 +17,7 @@ namespace TerraRuntime.Application;
 /// Ordinary motion commits are additionally sampled on vanilla's default <c>Main.npcStreamSpeed</c>
 /// cadence; spawn, despawn and committed life changes remain immediate.
 /// </summary>
-internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSink, IRuntimePlayerEventSink, INpcAiHealingCommitSink, INpcAiTauntCommitSink
+internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSink, INpcBirthRetentionSink, IRuntimePlayerEventSink, INpcAiHealingCommitSink, INpcAiTauntCommitSink
 {
     private const int MaxNpcSlots = RuntimeNpcStore.MaximumAddressableCapacity;
     // TerrariaServer 1.4.5.8 Main.npcStreamSpeed defaults to 30. This is a containment boundary
@@ -257,7 +257,10 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
             return;
         }
 
-        bool suppressBroadcast = suppressedClientDamageNpc.IsAssigned && snapshot.Handle == suppressedClientDamageNpc;
+        // SendData(28) first announces a NewNPC generation which is still spawnNeedsSyncing.
+        // A retained birth is therefore observable even inside the client StrikeNPC scope.
+        bool suppressBroadcast = kind != NpcStateCommitKind.Spawn &&
+            suppressedClientDamageNpc.IsAssigned && snapshot.Handle == suppressedClientDamageNpc;
         if (kind == NpcStateCommitKind.Despawn)
         {
             if (!suppressBroadcast)
@@ -307,6 +310,17 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
 
         Broadcast(encoded);
         RecordLiveFrame(in snapshot, encoded);
+    }
+
+    public void NpcBirthRetained(in NpcSnapshot snapshot)
+    {
+        if (RuntimeNpcPacketProjection.TryCreate(in snapshot, RuntimeNpcSyncKind.Spawn, out var state) &&
+            TerrariaNpcUpdateEncoder.TryEncode(in state, out byte[] encoded))
+            Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], encoded);
+        if (RuntimeNpcPacketProjection.TryCreate(in snapshot, RuntimeNpcSyncKind.Despawn, out var despawn) &&
+            TerrariaNpcUpdateEncoder.TryEncode(in despawn, out byte[] encodedDespawn))
+            Volatile.Write(ref despawnFrames[snapshot.Handle.Slot], encodedDespawn);
+        ClearLiveFrame(snapshot.Handle);
     }
 
     private bool IsDuplicateLiveFrame(NpcHandle owner, byte[] encoded)

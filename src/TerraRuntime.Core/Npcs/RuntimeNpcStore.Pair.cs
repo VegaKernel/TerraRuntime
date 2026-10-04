@@ -31,6 +31,7 @@ public sealed partial class RuntimeNpcStore
         b.Update = normalizedB;
         a.Revision = nextA;
         b.Revision = nextB;
+        MarkSlotMutation();
         committedA = Capture(expectedA.Handle.Slot, in a);
         committedB = Capture(expectedB.Handle.Slot, in b);
         return true;

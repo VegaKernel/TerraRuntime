@@ -310,7 +310,8 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
         PlayerBootstrapFrameSink bootstrap)
     {
         var vitals = new PlayerVitalsFrameSink(source, bootstrap, runtime.HealthIngress, runtime.ManaIngress);
-        var stealth = new PlayerStealthFrameSink(source, bootstrap, vitals, runtime.PlayerStealthIngress);
+        var zones = new PlayerZonesFrameSink(source, bootstrap, vitals, runtime.PlayerZonesIngress);
+        var stealth = new PlayerStealthFrameSink(source, bootstrap, zones, runtime.PlayerStealthIngress);
         var luck = new PlayerLuckFactorsFrameSink(source, bootstrap, stealth, runtime.PlayerLuckFactorsIngress);
         var animation = new PlayerItemAnimationFrameSink(source, bootstrap, luck, runtime.PlayerItemAnimationIngress);
         var buffs = new PlayerBuffFrameSink(source, bootstrap, animation, runtime.PlayerBuffIngress);

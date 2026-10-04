@@ -506,7 +506,7 @@ public sealed class RuntimeUnderworldSpawn1458Tests
         var random = new SlimeRainSpawnRandom();
         RuntimeTownCommerceWorldFacts1458 world = default;
         world = world with { WorldSurface = 350, RockLayer = 600 };
-        var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
+        var state = new ServerRuntimeState(npcs: npcs, npcAiStepper: new IdleNpcStepper(), worldTiles: tiles,
             worldClock: new RuntimeWorldClock(1000, true, default, slimeRainTime: 1, dayRate: 0),
             townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
             naturalSpawnRandom: random, worldProgression: new RuntimeWorldProgressionMutations());
@@ -525,9 +525,14 @@ public sealed class RuntimeUnderworldSpawn1458Tests
         Assert.Equal(1, npcs.CopyActive(snapshots));
         Assert.Equal(VanillaNpcIds.BlueSlime, snapshots[0].TypeIdentity);
         Assert.Equal(VanillaNpcNetVariantCatalog.GreenSlime, snapshots[0].NetIdentity);
-        Assert.Equal(session.Handle.Slot.Value, snapshots[0].Target);
+        Assert.Equal(VanillaNpcDefinitionCatalog.DefaultTarget, snapshots[0].Target);
         Assert.Equal(3197.5f, snapshots[0].PositionX);
-        Assert.Equal(3200.30005f, snapshots[0].PositionY);
+        // This fixture isolates the source spawn pass with an idle AI stepper: its scripted
+        // spawn RNG does not own the retained AI001 stream. Assert actual NewNPC(-3) birth
+        // geometry here; Main runs the subsequent NPC outer-update pass separately.
+        Assert.Equal(3183f, snapshots[0].PositionY);
+        Assert.Equal(0f, snapshots[0].VelocityY);
+        Assert.Equal(new NpcRevision(1), snapshots[0].Revision);
     }
 
     [Fact]

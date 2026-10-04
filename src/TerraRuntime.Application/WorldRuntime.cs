@@ -328,6 +328,7 @@ public sealed class WorldRuntime : IDisposable
         MovementIngress = new RuntimePlayerMovementIngress(CommandIngress);
         PlayerCombatIngress = new RuntimePlayerCombatNetworkIngress(CommandIngress);
         PlayerStealthIngress = new RuntimePlayerStealthNetworkIngress(CommandIngress);
+        PlayerZonesIngress = new RuntimePlayerZonesNetworkIngress(CommandIngress);
         PlayerLuckFactorsIngress = new RuntimePlayerLuckFactorsNetworkIngress(CommandIngress);
         PlayerItemAnimationIngress = new RuntimePlayerItemAnimationNetworkIngress(CommandIngress);
         PlayerBuffIngress = new RuntimePlayerBuffNetworkIngress(CommandIngress);
@@ -422,6 +423,7 @@ public sealed class WorldRuntime : IDisposable
     internal RuntimePlayerMovementIngress MovementIngress { get; }
     internal RuntimePlayerCombatNetworkIngress PlayerCombatIngress { get; }
     internal RuntimePlayerStealthNetworkIngress PlayerStealthIngress { get; }
+    internal RuntimePlayerZonesNetworkIngress PlayerZonesIngress { get; }
     internal RuntimePlayerLuckFactorsNetworkIngress PlayerLuckFactorsIngress { get; }
     internal RuntimePlayerItemAnimationNetworkIngress PlayerItemAnimationIngress { get; }
 

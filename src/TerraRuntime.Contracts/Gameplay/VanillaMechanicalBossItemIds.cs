@@ -3,6 +3,9 @@ namespace TerraRuntime.Contracts.Gameplay;
 /// <summary>TerrariaServer 1.4.5.8 mechanical-boss ordinary death-loot identities.</summary>
 public static class VanillaMechanicalBossItemIds
 {
+    public static readonly ItemTypeId MechanicalEye = new(544);
+    public static readonly ItemTypeId MechanicalWorm = new(556);
+    public static readonly ItemTypeId MechanicalSkull = new(557);
     public static readonly ItemTypeId SoulOfFright = new(547);
     public static readonly ItemTypeId SoulOfMight = new(548);
     public static readonly ItemTypeId SoulOfSight = new(549);

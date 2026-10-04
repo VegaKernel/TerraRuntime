@@ -252,7 +252,7 @@ internal sealed class TownNpcAuthority
                 BloodMoon = worldClock?.BloodMoonActive ?? saved.BloodMoon,
                 Time = worldClock?.Time ?? saved.Time,
                 Progression = progression.CaptureSnapshot() } : null;
-            schedule.SetSocialContext(context, players, worldClock, progression);
+            schedule.SetSocialContext(context, players, worldClock, progression, serverPlayers);
             var scheduleConditions = new RuntimeTownNpcScheduleConditions1458(
                 DayTime: worldClock?.DayTime ?? true,
                 Raining: worldClock?.Raining ?? initialRaining,
