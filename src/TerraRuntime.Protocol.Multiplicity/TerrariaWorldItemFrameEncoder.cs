@@ -23,9 +23,15 @@ public static class TerrariaWorldItemFrameEncoder
     public static TerrariaWorldItemFrameEncodeResult TryEncodeDrop(
         in TerrariaWorldItemDropState state,
         out ReadOnlyMemory<byte> frame)
+        => EncodeDrop(in state, allowSentinel: false, out frame);
+
+    public static TerrariaWorldItemFrameEncodeResult TryEncodeSentinelDrop(in TerrariaWorldItemDropState state, out ReadOnlyMemory<byte> frame)
+        => state.ItemIndex == 400 ? EncodeDrop(in state, allowSentinel: true, out frame) : Reject(out frame);
+
+    private static TerrariaWorldItemFrameEncodeResult EncodeDrop(in TerrariaWorldItemDropState state, bool allowSentinel, out ReadOnlyMemory<byte> frame)
     {
         frame = default;
-        if (!state.IsValid || state.IsNewItemRequest || state.IsRemoval || state.ItemIndex >= 400)
+        if (!state.IsValid || state.IsRemoval || (!allowSentinel && state.IsNewItemRequest))
             return TerrariaWorldItemFrameEncodeResult.InvalidState;
 
         var packet = new ItemDrop
@@ -111,6 +117,30 @@ public static class TerrariaWorldItemFrameEncoder
         };
 
         return TrySerialize(packet, out frame);
+    }
+
+    public static TerrariaWorldItemFrameEncodeResult TryEncodeSentinelOwner(in TerrariaWorldItemOwnerState state, out ReadOnlyMemory<byte> frame)
+    {
+        if (state.ItemIndex != 400 || !(state with { ItemIndex = 0 }).IsValid) return Reject(out frame);
+        var packet = new ItemOwner { ItemId = 400, PlayerId = state.OwnerPlayerId, TimeToKeepReservation = state.TimeToKeepReservation,
+            GrabDelayPlayer = state.GrabDelayPlayer, GrabDelayTime = state.GrabDelayTime, PositionX = state.PositionX, PositionY = state.PositionY };
+        return TrySerialize(packet, out frame);
+    }
+
+    private static TerrariaWorldItemFrameEncodeResult Reject(out ReadOnlyMemory<byte> frame)
+    { frame = default; return TerrariaWorldItemFrameEncodeResult.InvalidState; }
+
+    /// <summary>Source WorldItem.FindOwner requests an authenticated owner's release with packet39.</summary>
+    public static TerrariaWorldItemFrameEncodeResult TryEncodeOwnershipReleaseRequest(short slot, out ReadOnlyMemory<byte> frame)
+    {
+        frame = default;
+        if ((uint)slot >= 400) return TerrariaWorldItemFrameEncodeResult.InvalidState;
+        byte[] bytes = new byte[6];
+        BinaryPrimitives.WriteUInt16LittleEndian(bytes, 6);
+        bytes[2] = 39;
+        BinaryPrimitives.WriteInt16LittleEndian(bytes.AsSpan(3), slot);
+        // The server sends false; the owner client responds after forcing its local item to server ownership.
+        frame = bytes; return TerrariaWorldItemFrameEncodeResult.Encoded;
     }
 
     private static TerrariaWorldItemFrameEncodeResult TrySerialize(

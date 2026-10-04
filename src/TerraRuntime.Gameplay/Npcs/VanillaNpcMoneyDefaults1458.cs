@@ -446,6 +446,7 @@ public static class VanillaNpcMoneyDefaults1458
             684 => 0,
             688 => 0,
             692 => 10000,
+            473 or 474 or 475 or 476 => 30000,
             477 => 50000,
             478 => 0,
             479 => 0,

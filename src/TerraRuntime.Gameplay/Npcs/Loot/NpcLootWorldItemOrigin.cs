@@ -8,3 +8,9 @@ public readonly record struct NpcLootWorldItemOrigin(float CenterX, float Center
 {
     public bool IsValid => float.IsFinite(CenterX) && float.IsFinite(CenterY);
 }
+
+/// <summary>Item.NewItem's explicit velocity bypasses both default launch random draws.</summary>
+public readonly record struct NpcLootWorldItemVelocity1458(float X, float Y)
+{
+    public bool IsValid => float.IsFinite(X) && float.IsFinite(Y);
+}

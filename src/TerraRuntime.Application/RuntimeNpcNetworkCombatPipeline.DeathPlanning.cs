@@ -3,13 +3,15 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Gameplay.Npcs.Loot;
+using TerraRuntime.Gameplay.Items;
+using TerraRuntime.Gameplay.Players;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Application;
 
 internal sealed partial class RuntimeNpcNetworkCombatPipeline
 {
-    // Safety ceilings bound split retries and physical drop storage; vanilla overflow replacement remains open.
+    // Runtime admission ceiling bounds money split retries independently of source overflow allocation.
     private const int MaximumMoneySplitAttempts = 4096;
     private RuntimeNpcDeathDropPlan1458? pendingDeathPlan;
     private VanillaBossRecoveryDailyState1458? plannedDaily;
@@ -132,7 +134,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             if ((allowLoot && !VanillaNpcHealingLoot1458.TryExecute(in healing, in origin, random, lootDelivery)) ||
                 !plan.FinishPreviewPhase(NpcDeathDropPhase1458.Healing)) return false;
             random.UseSource(liveRandom);
-            if (!plan.TryReserve(worldItems) || !plan.TryAccept(IsCurrentDeathOwner)) return false;
+            Span<WorldItemAllocationPlayer1458> allocationViews = stackalloc WorldItemAllocationPlayer1458[
+                VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
+            if (!TryCaptureAllocationViews(allocationViews, out int viewCount) ||
+                !plan.TryReserve(worldItems, allocationViews[..viewCount]) || !plan.TryAccept(IsCurrentDeathOwner)) return false;
             plannedDaily = previewDaily;
             plannedPrelude = prelude;
             plannedLootAllowed = allowLoot;
@@ -150,6 +155,23 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 plan.Dispose(); plannedPrelude = null; plannedPreludeRevision = 0; plannedLootAllowed = false;
             }
         }
+    }
+
+    private bool TryCaptureAllocationViews(Span<WorldItemAllocationPlayer1458> destination, out int count)
+    {
+        count = 0;
+        // Source GetPlayerViewRects uses every active physical player, including dead players. Its fixed
+        // 2320x1600 rectangle is centered on the actual mounted body, rather than client camera coordinates.
+        for (int slot = 0; slot < VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots; slot++)
+        {
+            if (!players.TryGetPlayer(new((byte)slot), out var player) || !player.Player.IsAssigned) continue;
+            if (player.Player.Slot.Value != slot || !float.IsFinite(player.PositionX) || !float.IsFinite(player.PositionY))
+                return false;
+            var size = player.HasMount ? VanillaPlayerMountHitbox1458.Resolve(player.MountType) :
+                (VanillaPlayerHitboxFacts.BaseWidth, VanillaPlayerHitboxFacts.BaseHeight);
+            destination[count++] = new((byte)slot, player.PositionX, player.PositionY, (int)size.Item1, (int)size.Item2);
+        }
+        return true;
     }
 
     private bool EnsurePreviewSpawnStream()

@@ -12,7 +12,7 @@ namespace TerraRuntime.Application;
 /// and broadcast packet-151 boundary used by server-side instanced loot. Join baselines remain sourced directly from
 /// RuntimeWorldItemStore; leased instanced copies are deliberately client-local and never enter a join baseline.
 /// </summary>
-internal sealed class RuntimeWorldItemReplicationRegistry : IWorldItemStateCommitSink, IRuntimePlayerEventSink
+internal sealed class RuntimeWorldItemReplicationRegistry : IWorldItemStateCommitSink, IWorldItemSentinelCommitSink1458, IRuntimePlayerEventSink
 {
     private readonly ConcurrentDictionary<GameCommandSourceId, Endpoint> endpoints = new();
     private long relayedFrames;
@@ -37,6 +37,13 @@ internal sealed class RuntimeWorldItemReplicationRegistry : IWorldItemStateCommi
     public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot snapshot)
     {
         ReadOnlyMemory<byte> encoded;
+        if (kind == WorldItemStateCommitKind.OwnershipReleaseRequested)
+        {
+            if (TerrariaWorldItemFrameEncoder.TryEncodeOwnershipReleaseRequest(snapshot.Handle.Slot, out encoded) == TerrariaWorldItemFrameEncodeResult.Encoded)
+                _ = TrySendInstanced(new PlayerSlotId(snapshot.OwnerPlayerId), encoded);
+            else Interlocked.Increment(ref unsupportedCommits);
+            return;
+        }
         TerrariaWorldItemFrameEncodeResult result = kind switch
         {
             WorldItemStateCommitKind.Drop => EncodeDrop(in snapshot, out encoded),
@@ -52,6 +59,22 @@ internal sealed class RuntimeWorldItemReplicationRegistry : IWorldItemStateCommi
         }
 
         Broadcast(encoded);
+    }
+
+    public void WorldItemSentinelCommitted(in WorldItemSentinelCommit1458 commit)
+    {
+        var drop = commit.Drop;
+        var wire = MapDrop(400, in drop);
+        if (TerrariaWorldItemFrameEncoder.TryEncodeSentinelDrop(in wire, out var frame) != TerrariaWorldItemFrameEncodeResult.Encoded)
+        { Interlocked.Increment(ref unsupportedCommits); return; }
+        Broadcast(frame);
+        if (commit.Owner is { } owner)
+        {
+            var projection = new TerrariaWorldItemOwnerState(400, owner.OwnerPlayerId, owner.TimeToKeepReservation,
+                owner.GrabDelayPlayer, owner.GrabDelayTime, owner.PositionX, owner.PositionY);
+            if (TerrariaWorldItemFrameEncoder.TryEncodeSentinelOwner(in projection, out frame) == TerrariaWorldItemFrameEncodeResult.Encoded) Broadcast(frame);
+            else Interlocked.Increment(ref unsupportedCommits);
+        }
     }
 
     /// <summary>Whether this exact player generation has an active client-local item consumer.</summary>

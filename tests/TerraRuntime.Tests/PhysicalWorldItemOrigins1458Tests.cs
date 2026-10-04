@@ -137,8 +137,9 @@ public sealed class PhysicalWorldItemOrigins1458Tests
         float x, float y, float vx, float vy, int next)
     {
         var random = new SystemWorldItemSpawnRandom(seed);
-        var npcs = new RuntimeNpcStore();
-        var items = new RuntimeWorldItemStore();
+        var publication = new CatchPublication();
+        var npcs = new RuntimeNpcStore(commitSink: publication);
+        var items = new RuntimeWorldItemStore(publication);
         var state = new ServerRuntimeState(npcs: npcs, worldItems: items, worldItemSpawnRandom: random);
         var slots = new PlayerSlotPool(1);
         Assert.True(slots.TryAcquireConnection(out var lease));
@@ -155,7 +156,9 @@ public sealed class PhysicalWorldItemOrigins1458Tests
                 false, 0, 0, 0, 0, false, 0, 0)));
         Assert.True(npcs.TrySpawnVanilla(new(46, 46, 1000, 1000, 0, 0, 255, default, NpcSimulationState.Initial), out var npc));
         var command = new ClientNpcCatchRuntimeCommand(connection, new TerrariaNpcCatchState(npc.Handle.Slot));
+        publication.Events.Clear();
         state.Apply(command);
+        Assert.Equal(new byte[] { 21, 22, 23 }, publication.Events.ToArray());
         Assert.False(npcs.TryGet(npc.Handle, out _));
         Assert.Equal(1, items.ActiveCount);
         Assert.True(items.TryGetActive(0, out var item));
@@ -163,9 +166,58 @@ public sealed class PhysicalWorldItemOrigins1458Tests
         Assert.Equal((short)2019, item.ItemNetId);
         Assert.Equal(connection.Player.Slot.Value, item.OwnerPlayerId);
         Assert.Equal(100, item.TimeToKeepReservation);
+        Assert.Equal((byte)0, item.GrabDelayPlayer);
         Assert.Equal(next, random.SourceRandom.Next());
         state.Apply(command);
         Assert.Equal(1, items.ActiveCount);
+    }
+
+    [Fact]
+    public void Live_authenticated_catch_at_full_source_capacity_publishes_sentinel_before_npc_removal()
+    {
+        var random = new SystemWorldItemSpawnRandom(1458);
+        var publication = new CatchPublication();
+        var npcs = new RuntimeNpcStore(commitSink: publication);
+        var items = WorldItemSourceAllocation1458Tests.Arrange(10, publication);
+        var state = new ServerRuntimeState(npcs: npcs, worldItems: items, worldItemSpawnRandom: random);
+        var slots = new PlayerSlotPool(1);
+        Assert.True(slots.TryAcquireConnection(out var lease));
+        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+        session.ObserveWorldRequest(); session.ObserveSectionRequest();
+        var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(733), session.Handle);
+        state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
+            new PlayerSpawnCommitRequest(session.Slot, 100, 200, 0, 0, 0, 0, 0)));
+        state.Apply(new PlayerMovementRuntimeCommand(connection,
+            new PlayerMovementCommitRequest(session.Slot, 0, 0, 0, 0, 0, 1000.25f, 1000.75f,
+                false, 0, 0, false, 0, false, 0, 0, 0, 0, false, 0, 0)));
+        Assert.True(npcs.TrySpawnVanilla(new(46, 46, 1000, 1000, 0, 0, 255, default, NpcSimulationState.Initial), out var npc));
+        publication.Events.Clear();
+        state.Apply(new ClientNpcCatchRuntimeCommand(connection, new TerrariaNpcCatchState(npc.Handle.Slot)));
+        Assert.Equal(new byte[] { 21, 22, 23 }, publication.Events.ToArray());
+        Assert.False(npcs.TryGet(npc.Handle, out _));
+        Assert.Equal(400, items.ActiveCount);
+        Assert.False(items.TryGetActive(400, out _));
+        var sentinel = Assert.Single(publication.Sentinels);
+        Assert.Equal((short)2019, sentinel.Drop.ItemNetId);
+        Assert.Equal((1002f, 1013f, -.5f, -2.5f),
+            (sentinel.Drop.PositionX, sentinel.Drop.PositionY, sentinel.Drop.VelocityX, sentinel.Drop.VelocityY));
+        Assert.True(sentinel.Owner.HasValue);
+        Assert.Equal((byte)0, sentinel.Owner.Value.OwnerPlayerId);
+        Assert.Equal(100, sentinel.Owner.Value.TimeToKeepReservation);
+        Assert.Equal((byte)0, sentinel.Owner.Value.GrabDelayPlayer);
+        Assert.Equal(1916656655, random.SourceRandom.Next());
+    }
+
+    private sealed class CatchPublication : INpcStateCommitSink, IWorldItemStateCommitSink, IWorldItemSentinelCommitSink1458
+    {
+        public List<byte> Events { get; } = [];
+        public List<WorldItemSentinelCommit1458> Sentinels { get; } = [];
+        public void WorldItemSentinelCommitted(in WorldItemSentinelCommit1458 commit)
+        { Sentinels.Add(commit); Events.Add(21); if (commit.Owner.HasValue) Events.Add(22); }
+        public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot npc)
+        { if (kind == NpcStateCommitKind.Despawn) Events.Add(23); }
+        public void WorldItemStateCommitted(WorldItemStateCommitKind kind, in WorldItemSnapshot item)
+        { if (kind == WorldItemStateCommitKind.Drop) Events.Add(21); else if (kind == WorldItemStateCommitKind.Owner) Events.Add(22); }
     }
 
 }

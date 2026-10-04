@@ -155,8 +155,10 @@ public sealed class MiningInventoryRegressionTests
         using var f = new Fixture(fullInventory: false);
         f.Equip(7, 3509, 1);
         f.Select(7);
-        var drop = new WorldItemDropStateUpdate(800, 800, 0, 0, 1, 0,
-            WorldItemOwnershipMode.None, 2, false, 0, 0);
+        // Full age-zero source stacks cannot compact or select an oldest item. The network sentinel owner
+        // search remains outside this admission, so removal must provide a physical slot before retry.
+        var drop = new WorldItemDropStateUpdate(800, 800, 0, 0, 9999, 0,
+            WorldItemOwnershipMode.None, 1, false, 0, 0);
         for (int i = 0; i < 400; i++)
         {
             Assert.True(f.Items.TryAllocateDrop(in drop, out _));

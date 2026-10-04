@@ -25,7 +25,8 @@ public readonly record struct ProjectileSimulationStepContext(
     int SubupdatesPerWorldTick,
     ProjectileSimulationTerminationReason TerminationReason = ProjectileSimulationTerminationReason.None,
     ProjectilePlayerBuffApplication? PlayerBuff = null,
-    ProjectileKillOrigin? KillOrigin = null)
+    ProjectileKillOrigin? KillOrigin = null,
+    ProjectileNpcHealingApplication? NpcHealing = null)
 {
     public int VanillaNumUpdates => SubupdatesPerWorldTick - SubupdateIndex - 2;
 
@@ -46,7 +47,10 @@ public readonly record struct ProjectileSimulationStepResult(
     ProjectileSimulationTerminationReason TerminationReason = ProjectileSimulationTerminationReason.None,
     ProjectileLocalAiState? LocalAi = null,
     ProjectilePlayerBuffApplication? PlayerBuff = null,
-    ProjectileKillOrigin? KillOrigin = null);
+    ProjectileKillOrigin? KillOrigin = null,
+    ProjectileNpcHealingApplication? NpcHealing = null,
+    int? PenetrateOverride = null,
+    ProjectileCollisionTileCutOffer? CollisionTileCutOffer = null);
 
 /// <summary>Runtime-only top-left at the source Kill boundary before a remaining position-update tail.</summary>
 public readonly record struct ProjectileKillOrigin(float X, float Y)
@@ -56,6 +60,12 @@ public readonly record struct ProjectileKillOrigin(float X, float Y)
 
 /// <summary>One player buff proposed during a local subupdate, applied only after its projectile commit.</summary>
 public readonly record struct ProjectilePlayerBuffApplication(PlayerHandle Target, BuffTypeId Type, int DurationTicks);
+
+/// <summary>Healing proposed against the exact NPC state observed in a local projectile AI phase.</summary>
+public readonly record struct ProjectileNpcHealingApplication(NpcHandle Target, NpcRevision Revision, int Amount);
+
+/// <summary>A genuine HandleMovement collision offer, evaluated only after the simulation is accepted.</summary>
+public readonly record struct ProjectileCollisionTileCutOffer;
 
 /// <summary>
 /// Projectile state and deferred-effect proposal stepper. Returning false on the first subupdate means the stepper does
@@ -83,6 +93,13 @@ public interface IProjectileSimulationCommitSink
         ReadOnlySpan<ProjectileSimulationStepResult> subupdates,
         in ProjectileSnapshot finalProjectile,
         bool expired);
+}
+
+/// <summary>Trusted owned source offers run after state adoption and before its network publication.</summary>
+public interface IProjectileSimulationPrePublicationCommitSink
+{
+    bool OwnsCollisionTileCutOffers { get; }
+    void ProjectileSimulationCommittedBeforePublication(ReadOnlySpan<ProjectileSimulationStepResult> subupdates);
 }
 
 /// <summary>
@@ -123,18 +140,21 @@ public sealed class RuntimeProjectileStateExecutor
     private readonly RuntimeProjectileStore _projectiles;
     private readonly IProjectileSimulationCommitSink? _commitSink;
     private readonly IProjectileTerminationCommitSink? _terminationSink;
+    private readonly RuntimeNpcStore? _npcs;
     private readonly ProjectileSnapshot[] _snapshotBuffer;
     private readonly ProjectileSimulationStepResult[] _stepBuffer;
 
     public RuntimeProjectileStateExecutor(
         RuntimeProjectileStore projectiles,
         IProjectileSimulationCommitSink? commitSink = null,
-        IProjectileTerminationCommitSink? terminationSink = null)
+        IProjectileTerminationCommitSink? terminationSink = null,
+        RuntimeNpcStore? npcs = null)
     {
         ArgumentNullException.ThrowIfNull(projectiles);
         _projectiles = projectiles;
         _commitSink = commitSink;
         _terminationSink = terminationSink;
+        _npcs = npcs;
         _snapshotBuffer = new ProjectileSnapshot[projectiles.Capacity];
         _stepBuffer = new ProjectileSimulationStepResult[VanillaProjectileUpdateFacts.MaximumExtraUpdates + 1];
     }
@@ -192,7 +212,9 @@ public sealed class RuntimeProjectileStateExecutor
                 }
 
                 ProjectileStateUpdate nextState = next.State;
-                if (!RuntimeProjectileStore.IsValidState(in nextState) ||
+                if (!RuntimeProjectileStore.IsValidState(in nextState) || !IsCurrentHealing(in next) ||
+                    next.CollisionTileCutOffer.HasValue &&
+                        _commitSink is not IProjectileSimulationPrePublicationCommitSink { OwnsCollisionTileCutOffers: true } ||
                     !TryProjectLifecycle(
                         currentProjectile.Type,
                         nextState.Type,
@@ -200,6 +222,7 @@ public sealed class RuntimeProjectileStateExecutor
                         next.TimeLeft,
                         next.Liquid,
                         next.LocalAi,
+                        next.PenetrateOverride,
                         out ProjectileLifecycleState nextLifecycle))
                 {
                     invalid = true;
@@ -238,16 +261,23 @@ public sealed class RuntimeProjectileStateExecutor
             _projectiles.TryGetServerNpcSource(projectile.Handle, out sourceNpc);
 
             ProjectileStateUpdate finalState = finalResult.State;
-            if (_projectiles.TryCommitSimulationStep(
+            if (IsCurrentHealing(in finalResult) && _projectiles.TryGet(projectile.Handle, out var retainedProjectile) &&
+                retainedProjectile.Revision == projectile.Revision &&
+                _projectiles.TryGetLifecycle(projectile.Handle, out var retainedLifecycle) && retainedLifecycle == lifecycle &&
+                _projectiles.TryCommitSimulationStepUnpublished(
                     projectile.Handle,
                     in finalState,
                     finalResult.TimeLeft,
                     currentLifecycle.Liquid,
                     currentLifecycle.LocalAi,
                     out ProjectileSnapshot committed,
-                    out bool expired))
+                    out bool expired,
+                    currentLifecycle.PenetrateOverride))
             {
                 applied++;
+                if (_commitSink is IProjectileSimulationPrePublicationCommitSink beforePublication)
+                    beforePublication.ProjectileSimulationCommittedBeforePublication(_stepBuffer.AsSpan(0, recordedSubupdates));
+                _projectiles.TryPublishSimulationCommit(in committed, expired);
                 if (_commitSink is not null)
                 {
                     _commitSink.ProjectileSimulationCommitted(
@@ -284,6 +314,19 @@ public sealed class RuntimeProjectileStateExecutor
         in ProjectileSimulationStepResult proposed,
         out ProjectileSimulationStepResult normalized)
     {
+        if (proposed.CollisionTileCutOffer.HasValue &&
+            (proposed.State.Type != VanillaProjectileIds.NurseSyringeHeal || proposed.State.Damage != 0))
+        {
+            normalized = default;
+            return false;
+        }
+        if (proposed.PenetrateOverride is < -1 || proposed.NpcHealing is { } heal &&
+            (!heal.Target.IsAssigned || !heal.Revision.IsAssigned || heal.Amount <= 0 ||
+             proposed.TimeLeft > 0 || proposed.TerminationReason != ProjectileSimulationTerminationReason.BehaviorKill))
+        {
+            normalized = default;
+            return false;
+        }
         if (proposed.KillOrigin is { } killOrigin &&
             (!killOrigin.IsValid || proposed.TimeLeft > 0 || proposed.TerminationReason == ProjectileSimulationTerminationReason.WorldBounds))
         {
@@ -326,6 +369,11 @@ public sealed class RuntimeProjectileStateExecutor
         return true;
     }
 
+    private bool IsCurrentHealing(in ProjectileSimulationStepResult result) =>
+        result.NpcHealing is not { } heal || _npcs is not null &&
+        _npcs.TryGet(heal.Target, out var target) && target.Revision == heal.Revision &&
+        (long)target.Simulation.Life + heal.Amount <= target.Simulation.LifeMax;
+
     private static bool TryProjectLifecycle(
         ProjectileTypeId previousType,
         ProjectileTypeId nextType,
@@ -333,6 +381,7 @@ public sealed class RuntimeProjectileStateExecutor
         int timeLeft,
         ProjectileLiquidState? liquid,
         ProjectileLocalAiState? localAi,
+        int? penetrateOverride,
         out ProjectileLifecycleState next)
     {
         bool netImportant = previous.NetImportant;
@@ -357,7 +406,7 @@ public sealed class RuntimeProjectileStateExecutor
             OldVelocityX = previous.OldVelocityX,
             OldVelocityY = previous.OldVelocityY,
             Reflected = previous.Reflected,
-            PenetrateOverride = previous.PenetrateOverride,
+            PenetrateOverride = penetrateOverride ?? previous.PenetrateOverride,
             LocalAi = localAi ?? previous.LocalAi
         };
         return true;

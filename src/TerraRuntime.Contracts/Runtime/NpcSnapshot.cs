@@ -103,6 +103,9 @@ public readonly record struct NpcSimulationState(
     /// <summary>Generation-owned ordinary friendly regeneration accumulator from NPC.CheckLifeRegen.</summary>
     public int FriendlyRegenerationCounter { get; init; }
 
+    /// <summary>NPC.breath when owned; null is an unknown imported respiratory history.</summary>
+    public int? Breath { get; init; }
+
     /// <summary>Authoritative NPC.confused state consumed by source AI branches that reset hostile attack clocks.</summary>
     public bool Confused { get; init; }
 
@@ -125,6 +128,10 @@ public readonly record struct NpcSimulationState(
 
     /// <summary>Vanilla NPC.frameCounter; some boss AI uses this state for authoritative damage gates.</summary>
     public double FrameCounter { get; init; }
+
+    /// <summary>Owned source frame index (NPC.frame.Y / frame height). Null means the presentation branch
+    /// has not been admitted; authoritative social frames must not infer an index for that context.</summary>
+    public int? FrameIndex { get; init; }
 
     /// <summary>Vanilla NPC.hide-style presentation state owned by authoritative boss transitions.</summary>
     public bool Hidden { get; init; }
@@ -223,6 +230,7 @@ public readonly record struct NpcSimulationState(
     public bool IsValid =>
         HostileContactImmunity >= 0 &&
         FriendlyRegenerationCounter is >= 0 and <= 180 &&
+        (!Breath.HasValue || Breath.Value is >= 0 and <= 200) &&
         (MoneyValue is null || float.IsFinite(MoneyValue.Value) && MoneyValue.Value >= 0f) &&
         (ExtraMoneyValue is null || ExtraMoneyValue.Value >= 0) &&
         (Rotation is null || float.IsFinite(Rotation.Value)) &&
@@ -241,6 +249,7 @@ public readonly record struct NpcSimulationState(
         Scale > 0f &&
         LocalAi.IsFinite &&
         double.IsFinite(FrameCounter) &&
+        (!FrameIndex.HasValue || FrameIndex.Value >= 0) &&
         Alpha is >= 0 and <= 255 &&
         ((LifeMax == 0 && Life == 0) ||
          (LifeMax > 0 && Life >= 0 && Life <= LifeMax)) &&

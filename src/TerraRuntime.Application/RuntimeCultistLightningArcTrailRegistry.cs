@@ -124,8 +124,16 @@ internal sealed class RuntimeCultistLightningArcTrailRegistry : IProjectileSimul
 internal sealed class RuntimeProjectileSimulationCommitSink(
     RuntimeProjectileLiveChildSpawnQueue liveChildren,
     RuntimeCultistLightningArcTrailRegistry lightningTrails,
-    PlayerAuthority? players = null) : IProjectileSimulationCommitSink
+    PlayerAuthority? players = null,
+    RuntimeProjectileNpcHealing1458? npcHealing = null,
+    RuntimeProjectileCollisionTileCut1458? collisionTileCuts = null) : IProjectileSimulationCommitSink, IProjectileSimulationPrePublicationCommitSink
 {
+    public bool OwnsCollisionTileCutOffers => collisionTileCuts is not null;
+    public void ProjectileSimulationCommittedBeforePublication(ReadOnlySpan<ProjectileSimulationStepResult> subupdates)
+    {
+        if (collisionTileCuts is null) return;
+        foreach (ref readonly ProjectileSimulationStepResult step in subupdates) collisionTileCuts.Evaluate(in step);
+    }
     public void ProjectileSimulationCommitted(
         in ProjectileSnapshot initialProjectile,
         in ProjectileLifecycleState initialLifecycle,
@@ -140,5 +148,8 @@ internal sealed class RuntimeProjectileSimulationCommitSink(
         if (players is not null)
             foreach (ref readonly ProjectileSimulationStepResult step in subupdates)
                 if (step.PlayerBuff is { } application) players.TryApplyProjectileBuff(in application);
+        if (npcHealing is not null)
+            foreach (ref readonly ProjectileSimulationStepResult step in subupdates)
+                if (step.NpcHealing is { } application) npcHealing.TryApply(in application);
     }
 }

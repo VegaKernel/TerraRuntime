@@ -105,10 +105,23 @@ public sealed partial class RuntimeProjectileStore
         ProjectileLiquidState? liquidState,
         ProjectileLocalAiState? localAiState,
         out ProjectileSnapshot snapshot,
-        out bool expired)
+        out bool expired,
+        int? penetrateOverride = null)
+        => TryCommitSimulationStepCore(handle, in update, timeLeft, liquidState, localAiState,
+            out snapshot, out expired, penetrateOverride, publish: true);
+
+    internal bool TryCommitSimulationStepUnpublished(ProjectileHandle handle, in ProjectileStateUpdate update,
+        int timeLeft, ProjectileLiquidState? liquidState, ProjectileLocalAiState? localAiState,
+        out ProjectileSnapshot snapshot, out bool expired, int? penetrateOverride = null)
+        => TryCommitSimulationStepCore(handle, in update, timeLeft, liquidState, localAiState,
+            out snapshot, out expired, penetrateOverride, publish: false);
+
+    private bool TryCommitSimulationStepCore(ProjectileHandle handle, in ProjectileStateUpdate update,
+        int timeLeft, ProjectileLiquidState? liquidState, ProjectileLocalAiState? localAiState,
+        out ProjectileSnapshot snapshot, out bool expired, int? penetrateOverride, bool publish)
     {
         expired = false;
-        if (!IsCurrentHandleCandidate(handle) || !IsValidState(in update))
+        if (!IsCurrentHandleCandidate(handle) || !IsValidState(in update) || penetrateOverride is < -1)
         {
             snapshot = default;
             return false;
@@ -139,7 +152,7 @@ public sealed partial class RuntimeProjectileStore
             ProjectileStateCommitKind kind = VanillaProjectileOwnership.IsServerOwned(snapshot.Spawner)
                 ? ProjectileStateCommitKind.Despawn
                 : ProjectileStateCommitKind.Remove;
-            _commitSink?.ProjectileStateCommitted(kind, in snapshot);
+            if (publish) _commitSink?.ProjectileStateCommitted(kind, in snapshot);
             return true;
         }
 
@@ -159,6 +172,7 @@ public sealed partial class RuntimeProjectileStore
         lifecycle = lifecycle with
         {
             TimeLeft = timeLeft,
+            PenetrateOverride = penetrateOverride ?? lifecycle.PenetrateOverride,
             Liquid = liquidState ?? lifecycle.Liquid,
             LocalAi = localAiState ?? lifecycle.LocalAi,
             OldVelocityX = state.Update.VelocityX,
@@ -173,7 +187,20 @@ public sealed partial class RuntimeProjectileStore
         state.Update = update;
         state.Lifecycle = lifecycle;
         snapshot = Capture(handle.Slot, in state);
-        _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in snapshot);
+        if (publish) _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in snapshot);
+        return true;
+    }
+
+    internal bool TryPublishSimulationCommit(in ProjectileSnapshot snapshot, bool expired)
+    {
+        if (!IsCurrentHandleCandidate(snapshot.Handle)) return false;
+        ref SlotState state = ref _slots[snapshot.Handle.Slot];
+        if (state.Generation != snapshot.Handle.Generation.Value ||
+            (expired ? state.Active : !state.Active || state.Revision != snapshot.Revision.Value)) return false;
+        ProjectileStateCommitKind kind = expired
+            ? VanillaProjectileOwnership.IsServerOwned(snapshot.Spawner) ? ProjectileStateCommitKind.Despawn : ProjectileStateCommitKind.Remove
+            : ProjectileStateCommitKind.Update;
+        _commitSink?.ProjectileStateCommitted(kind, in snapshot);
         return true;
     }
 
@@ -321,6 +348,19 @@ public sealed partial class RuntimeProjectileStore
         float velocityY,
         short damage,
         out ProjectileSnapshot snapshot)
+        => TryReflectCore(handle, velocityX, velocityY, damage, publish: true, out snapshot);
+
+    internal bool TryReflect(in ProjectileSnapshot expected, in ProjectileLifecycleState expectedLifecycle,
+        float velocityX, float velocityY, short damage, out ProjectileSnapshot snapshot)
+    {
+        snapshot = default;
+        return TryGet(expected.Handle, out var current) && current == expected &&
+            TryGetLifecycle(expected.Handle, out var lifecycle) && lifecycle == expectedLifecycle &&
+            TryReflectCore(expected.Handle, velocityX, velocityY, damage, publish: false, out snapshot);
+    }
+
+    private bool TryReflectCore(ProjectileHandle handle, float velocityX, float velocityY, short damage,
+        bool publish, out ProjectileSnapshot snapshot)
     {
         if (!IsCurrentHandleCandidate(handle) ||
             !float.IsFinite(velocityX) ||
@@ -353,7 +393,8 @@ public sealed partial class RuntimeProjectileStore
             PenetrateOverride = 1
         };
         snapshot = Capture(handle.Slot, in state);
-        _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in snapshot);
+        if (publish)
+            _commitSink?.ProjectileStateCommitted(ProjectileStateCommitKind.Update, in snapshot);
         return true;
     }
 

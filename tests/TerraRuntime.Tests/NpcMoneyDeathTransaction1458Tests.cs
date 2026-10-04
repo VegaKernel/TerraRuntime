@@ -77,7 +77,7 @@ public sealed class NpcMoneyDeathTransaction1458Tests
     }
 
     [Theory]
-    [InlineData(390, false)] [InlineData(389, true)] [InlineData(400, false)]
+    [InlineData(0, true)] [InlineData(389, true)] [InlineData(399, true)]
     public void Pressure_rejection_preserves_NPC_daily_ledger_items_and_live_random(int occupied, bool held)
     {
         var fixture = new BossRecoveryPipeline1458Tests.Fixture(1458);
@@ -95,15 +95,37 @@ public sealed class NpcMoneyDeathTransaction1458Tests
     }
 
     [Fact]
-    public void Exact_eleven_remaining_slots_accept_and_duplicate_stale_generation_cannot_repeat()
+    public void Source_emergency_stacking_accepts_and_duplicate_stale_generation_cannot_repeat()
     {
         var fixture = new BossRecoveryPipeline1458Tests.Fixture(1458);
         for (int index = 0; index < 389; index++)
             Assert.True(fixture.Store.TryAllocateDrop(new(0, 0, 0, 0, 1, 0, WorldItemOwnershipMode.None, 1, false, 0, 0), out _));
         var npc = fixture.Spawn(VanillaNpcIds.EyeOfCthulhu.Value);
-        Assert.Equal(RuntimeProjectileNpcDamageResult.Killed, fixture.Hit(npc)); Assert.Equal(400, fixture.Store.ActiveCount);
+        Assert.Equal(RuntimeProjectileNpcDamageResult.Killed, fixture.Hit(npc));
+        // Source emergency allocation starts at physical slot360, even with later free slots. It consolidates
+        // twenty of these identical partial stacks before appending the source eleven death drops.
+        Assert.Equal(380, fixture.Store.ActiveCount);
+        Assert.Equal(389, fixture.Items().Where(x => x.ItemNetId == 1).Sum(x => x.Stack));
         var before = fixture.Random.Clone(); Assert.Equal(RuntimeProjectileNpcDamageResult.Rejected, fixture.Hit(npc));
         Assert.True(before.HasSameState(fixture.Random));
+    }
+
+    [Theory]
+    [InlineData(390)] [InlineData(400)]
+    public void Full_partial_stack_pressure_uses_original_zero_random_allocator_and_preserves_existing_material(int occupied)
+    {
+        var reference = new BossRecoveryPipeline1458Tests.Fixture(1458);
+        Assert.Equal(RuntimeProjectileNpcDamageResult.Killed, reference.Hit(reference.Spawn(VanillaNpcIds.EyeOfCthulhu.Value)));
+        var fixture = new BossRecoveryPipeline1458Tests.Fixture(1458);
+        for (int index = 0; index < occupied; index++)
+            Assert.True(fixture.Store.TryAllocateDrop(new(0, 0, 0, 0, 1, 0, WorldItemOwnershipMode.None, 1, false, 0, 0), out _));
+        var npc = fixture.Spawn(VanillaNpcIds.EyeOfCthulhu.Value);
+        Assert.Equal(RuntimeProjectileNpcDamageResult.Killed, fixture.Hit(npc));
+        Assert.False(fixture.Npcs.TryGet(npc.Handle, out _)); Assert.True(fixture.Daily.EyeKilled);
+        Assert.True(fixture.Random.HasSameState(reference.Random));
+        Assert.Equal(occupied, fixture.Items().Where(x => x.ItemNetId == 1).Sum(x => x.Stack));
+        var after = fixture.Random.Clone(); Assert.Equal(RuntimeProjectileNpcDamageResult.Rejected, fixture.Hit(npc));
+        Assert.True(fixture.Random.HasSameState(after));
     }
 
     private sealed class ClosestPlayers(JsonElement row) : IRuntimePlayerSlotSnapshotLookup

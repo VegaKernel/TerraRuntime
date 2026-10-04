@@ -78,13 +78,11 @@ internal sealed partial class WorldTileAuthority
             replication?.TryPublishTileSquareToAll(tiles, x, y);
             return true;
         }
-        // Reuse the existing fixed-item materialization/reservation owner, correcting the source drop center.
-        if (!TryPrepareSimpleBreak(x, y, new WorldTile { Type = checked((ushort)type.Value), Flags = WorldTileFlags.Active }, out var prepared)) return false;
-        var old = prepared.Outcome.Drop;
+        // Reuse fixed-item materialization while retaining the original projectile-centered request origin.
         float offsetY = target.IsActive ? 0 : -2;
         const float halfSize = 8; // RequestNewItem retains fractional projectile center; WorldItem is 16x16.
-        var drop = old with { PositionX = projectile.PositionX + 5 - halfSize, PositionY = projectile.PositionY + 5 + offsetY - halfSize };
-        prepared = prepared with { Outcome = prepared.Outcome with { Drop = drop } };
+        if (!TryPrepareSimpleBreak(x, y, new WorldTile { Type = checked((ushort)type.Value), Flags = WorldTileFlags.Active },
+                out var prepared, dropPosition: (projectile.PositionX + 5 - halfSize, projectile.PositionY + 5 + offsetY - halfSize))) return false;
         CommitPreparedBreak(prepared);
         return true;
     }

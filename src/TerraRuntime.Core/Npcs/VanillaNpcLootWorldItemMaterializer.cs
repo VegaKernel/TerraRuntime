@@ -30,9 +30,18 @@ public sealed class VanillaNpcLootWorldItemMaterializer : INpcLootWorldItemMater
         in NpcLootDrop drop,
         INpcLootRollSource random,
         out WorldItemDropStateUpdate worldItem)
+        => TryMaterialize(in origin, in drop, random, null, out worldItem);
+
+    public bool TryMaterialize(
+        in NpcLootWorldItemOrigin origin,
+        in NpcLootDrop drop,
+        INpcLootRollSource random,
+        NpcLootWorldItemVelocity1458? velocity,
+        out WorldItemDropStateUpdate worldItem)
     {
         ArgumentNullException.ThrowIfNull(random);
         worldItem = default;
+        if (velocity is { IsValid: false }) return false;
 
         if (!origin.IsValid || !drop.IsValid || !CanMaterialize(drop.ItemType))
             return false;
@@ -52,10 +61,10 @@ public sealed class VanillaNpcLootWorldItemMaterializer : INpcLootWorldItemMater
         }
 
         // Item.NewItem applies Prefix(-1) before it consumes default world-item velocity RNG.
-        float velocityX = random.NextInt32(-30, 31) * 0.1f;
-        float velocityY = definition.NoGravity
+        float velocityX = velocity?.X ?? random.NextInt32(-30, 31) * 0.1f;
+        float velocityY = velocity?.Y ?? (definition.NoGravity
             ? random.NextInt32(-30, 31) * 0.1f
-            : random.NextInt32(-40, -15) * 0.1f;
+            : random.NextInt32(-40, -15) * 0.1f);
 
         worldItem = new WorldItemDropStateUpdate(
             PositionX: origin.CenterX - PhysicalBodySize1458 / 2f,

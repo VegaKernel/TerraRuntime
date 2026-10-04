@@ -79,7 +79,8 @@ public enum VanillaNpcBehaviorFamily : byte
     Jellyfish = 65,
     Antlion = 66,
     GhostHover = 67,
-    Mothron = 68
+    Mothron = 68,
+    BigMimic = 69
 }
 
 /// <summary>
@@ -103,7 +104,8 @@ public enum VanillaNpcPhysicsFamily : byte
     UnicornGround = 11,
     Jellyfish = 12,
     GhostHover = 13,
-    Mothron = 14
+    Mothron = 14,
+    BigMimic = 15
 }
 
 /// <summary>One resolved vanilla NPC hitbox for the current runtime scale.</summary>
@@ -349,6 +351,9 @@ public static class VanillaNpcDefinitionCatalog
             return true;
 
         if (VanillaGhostHoverNpcCatalog1458.TryGetDefinition(type, out definition))
+            return true;
+
+        if (VanillaBigMimicNpcCatalog1458.TryGetDefinition(type, out definition))
             return true;
 
         if (VanillaMothronNpcCatalog1458.TryGetDefinition(type, out definition))

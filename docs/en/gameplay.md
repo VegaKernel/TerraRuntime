@@ -1,5 +1,7 @@
 # Gameplay runtime and vanilla parity
 
+2026-10-04 sixth gameplay/NPC batch is accepted on baseline `36bd2a15`: source Big Mimic 473..476 AI87 and retained reflection/cannon effects, paired ordinary-town conversations/RPS/frame ownership and Nurse 13/584 healing, source world-item allocation/overflow and transient sentinel400 wire, physical drop producers and shared nonclient strike28-before-final23. Full 1,088,799/1,088,799 tests pass in 397.240 s with zero failures/errors/skips; clean Release rebuild, Windows NativeAOT and five smokes plus documentation/domain/graph/diff gates pass. Every tracked and new production/test input was included in the source hash that stayed unchanged through immutable acceptance: `c60e7b8a9d27d7deaaab2a02c87b2bb03b6d69f611d02cdcd6a1ccf2bf9ef7cc`. Rejected owned tile/drop transactions preserve RNG; source Catch publishes 21→22→23 and retains source grab-delay fields. Evidence `.cache/big-mimic-social-overflow-final-status.json`. This bounded checkpoint leaves FullVanillaAiParity=false, broad N1-N5 and Linux NativeAOT open. Active-player None400 owner eligibility, instanced400, contextual town emotes, wet/special town families and imported life-above-max remain fenced. Next: source AI002 motion/target/RNG closure and inventory/buff-owned world-item owner selection. No push requested.
+
 [Русский](../ru/gameplay.md) · [Documentation](README.md) · [Architecture](architecture.md) · [Gameplay decomposition roadmap](../roadmap/gameplay-decomposition-and-catalogs.md)
 
 ## 1. Purpose
@@ -167,6 +169,8 @@ Current packet/commit infrastructure should not be mistaken for complete authori
 ## 10. World items
 
 `RuntimeWorldItemStore` is an authoritative runtime entity store rather than a transparent client relay.
+
+The [source allocation owner](world-item-allocation.md) admits age/pickup replacement, emergency stacking and sequential same-slot reuse through guarded previews. Active/dead mounted-player views affect destination ranking; pending remote ownership uses authenticated packet 39. Ordinary sentinel 400 has no physical server entity; instanced sentinel 400 remains closed.
 
 The implemented foundation includes tested slot allocation/reservation, updates/partial updates, runtime ingress/commands, replication-registry integration and selected tile-drop integration. The server runs a conservative `WorldItem.FindOwner` slice every five ticks and publishes packet 22. Space includes empty main slots and matching type/prefix stacks below a verified maximum, including occupied ammo slots; favorite consumable placement stacks are admitted, while unrepresented favorite-item rules and unknown maxima are refused. Cursor slot 58 and ordinary-item coin-slot space do not qualify. This is reservation eligibility, not a new server-side `GetItem` implementation.
 

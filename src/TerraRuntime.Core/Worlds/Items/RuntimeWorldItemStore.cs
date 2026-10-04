@@ -54,7 +54,7 @@ public readonly record struct WorldItemDropReservation(short Slot, WorldItemGene
 /// use a seqlock snapshot and never block the authoritative simulation thread. Commit notifications are emitted
 /// only after the write epoch has closed.
 /// </summary>
-public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
+public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
 {
     public const int VanillaCapacity = 400;
 
@@ -248,7 +248,7 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         try
         {
             ref SlotState state = ref _slots[reservation.Slot];
-            if (!state.Reserved ||
+            if (state.Claimed || !state.Reserved ||
                 state.Active ||
                 state.Generation != reservation.Generation.Value)
             {
@@ -256,6 +256,8 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
             }
 
             state.Reserved = false;
+            state.SourceLease = false;
+            state.SourceReuseTicks = 0;
             state.Revision = 0;
             state.Update = default;
             return true;
@@ -339,8 +341,9 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         try
         {
             ref SlotState state = ref _slots[slot];
-            if (state.Active && TryAdvance(ref state.Revision))
+            if (state.Active && !state.Claimed && TryAdvance(ref state.Revision))
             {
+                state.SourceReleaseRequested = false;
                 state.Update = state.Update with
                 {
                     PositionX = owner.PositionX,
@@ -381,7 +384,7 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         try
         {
             ref SlotState state = ref _slots[target.Slot];
-            if (!state.Active || state.Generation != target.Generation.Value || !TryAdvance(ref state.Revision)) return false;
+            if (state.Claimed || !state.Active || state.Generation != target.Generation.Value || !TryAdvance(ref state.Revision)) return false;
             state.Update = state.Update with
             {
                 PositionX = x, PositionY = y, VelocityX = vx, VelocityY = vy
@@ -401,7 +404,9 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
             for (int i = 0; i < _slots.Length; i++)
             {
                 ref SlotState state = ref _slots[i];
-                if (!state.Active || (state.Update.GrabDelayTime == 0 && state.Update.TimeToKeepReservation == 0 &&
+                if (!state.Claimed && state.Active && state.SourceAge < TerraRuntime.Gameplay.Items.VanillaWorldItemAllocation1458.AgeCeiling)
+                    state.SourceAge++;
+                if (state.Claimed || !state.Active || (state.Update.GrabDelayTime == 0 && state.Update.TimeToKeepReservation == 0 &&
                     state.Update.EnemyGrabDelayTime == 0) || !TryAdvance(ref state.Revision)) continue;
                 state.Update = state.Update with
                 {
@@ -427,7 +432,7 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         try
         {
             ref SlotState state = ref _slots[slot];
-            if (!state.Active)
+            if (!state.Active || state.Claimed)
             {
                 removed = default;
                 return false;
@@ -540,11 +545,12 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         for (short slot = 0; slot < _slots.Length; slot++)
         {
             ref SlotState state = ref _slots[slot];
-            if (state.Active || state.Reserved || !TryAdvance(ref state.Generation))
+            if (state.Active || state.Reserved || state.Claimed || !TryAdvance(ref state.Generation))
                 continue;
 
             state.Revision = 1;
             state.Active = true;
+            state.SourceAge = InitialSourceAge(update.ItemNetId);
             state.Update = update;
             _activeCount++;
             snapshot = Capture(slot, in state);
@@ -560,7 +566,7 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         for (short slot = 0; slot < _slots.Length; slot++)
         {
             ref SlotState state = ref _slots[slot];
-            if (state.Active || state.Reserved || !TryAdvance(ref state.Generation))
+            if (state.Active || state.Reserved || state.Claimed || !TryAdvance(ref state.Generation))
                 continue;
 
             state.Revision = 0;
@@ -591,7 +597,7 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         try
         {
             ref SlotState state = ref _slots[reservation.Slot];
-            if (!state.Reserved ||
+            if (state.Claimed || !state.Reserved ||
                 state.Active ||
                 state.Generation != reservation.Generation.Value)
             {
@@ -610,6 +616,7 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
 
             state.Reserved = false;
             state.Active = true;
+            state.SourceAge = InitialSourceAge(state.Update.ItemNetId);
             state.Revision = 1;
             _activeCount++;
             snapshot = Capture(reservation.Slot, in state);
@@ -628,7 +635,7 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
     private bool TryUpsertSingleWriter(short slot, in WorldItemStateUpdate update, out WorldItemSnapshot snapshot)
     {
         ref SlotState state = ref _slots[slot];
-        if (state.Reserved)
+        if (state.Reserved || state.Claimed)
         {
             snapshot = default;
             return false;
@@ -644,6 +651,7 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
 
             state.Revision = 1;
             state.Active = true;
+            state.SourceAge = InitialSourceAge(update.ItemNetId);
             _activeCount++;
         }
         else if (!TryAdvance(ref state.Revision))
@@ -785,10 +793,15 @@ public sealed class RuntimeWorldItemStore : IWorldItemSnapshotReader
         return true;
     }
 
-    private struct SlotState
+    private record struct SlotState
     {
         public bool Active;
         public bool Reserved;
+        public bool Claimed;
+        public int SourceAge;
+        public int SourceReuseTicks;
+        public bool SourceLease;
+        public bool SourceReleaseRequested;
         public ulong Generation;
         public ulong Revision;
         public WorldItemStateUpdate Update;

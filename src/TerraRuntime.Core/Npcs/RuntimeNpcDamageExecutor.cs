@@ -117,7 +117,29 @@ public sealed class RuntimeNpcDamageExecutor
     }
 
     public bool TryApply(in NpcDamageRequest request, out NpcDamageResult result)
+        => TryApplyCore(in request, publish: true, out result, out _, out _, out _);
+
+    // Server-origin strikes need their packet 28 before the resulting packet 23. Finish all eligibility and
+    // lethal-capacity admission before committing, then let the application publish the accepted strike.
+    internal bool TryApplyUnpublished(in NpcDamageRequest request, out NpcDamageResult result,
+        out NpcSnapshot committed, out bool spawnTrueEye, out bool forceUpdate)
+        => TryApplyCore(in request, publish: false, out result, out committed, out spawnTrueEye, out forceUpdate);
+
+    internal bool TryCompleteUnpublished(in NpcSnapshot committed, bool spawnTrueEye, bool publishUpdate, bool forceUpdate)
     {
+        if (!_store.TryGet(committed.Handle, out var current) || current.Revision != committed.Revision)
+            return false;
+        if (publishUpdate && !_store.TryPublishUpdate(in committed, forceSync: forceUpdate)) return false;
+        if (spawnTrueEye) TrySpawnMoonLordTrueEye(in committed);
+        return true;
+    }
+
+    private bool TryApplyCore(in NpcDamageRequest request, bool publish, out NpcDamageResult result,
+        out NpcSnapshot committedSnapshot, out bool spawnTrueEye, out bool forceUpdate)
+    {
+        committedSnapshot = default;
+        spawnTrueEye = false;
+        forceUpdate = false;
         if (!request.IsValid || !_store.TryGet(request.Target, out NpcSnapshot current))
         {
             result = default;
@@ -172,6 +194,12 @@ public sealed class RuntimeNpcDamageExecutor
             _expertMode);
 
         NpcAiState ai = current.Ai;
+        // StrikeNPC_Inner wakes an idle AI_087 Mimic before its next AI update.
+        if (VanillaBigMimicNpcCatalog1458.IsSupported(current.TypeIdentity) && ai.Ai0 == 0f)
+        {
+            ai = ai with { Ai0 = 1f, Ai1 = 0f };
+            forceUpdate = true;
+        }
         bool deathIntercepted = false;
         bool spawnMoonLordTrueEye = false;
         NpcSimulationState simulation = current.Simulation with
@@ -237,13 +265,18 @@ public sealed class RuntimeNpcDamageExecutor
             { result = default; return false; }
         }
 
-        if (!_store.TryUpdate(current.Handle, in update, out NpcSnapshot committed))
+        bool updated = publish
+            ? _store.TryUpdate(current.Handle, in update, out NpcSnapshot committed, forceSync: forceUpdate)
+            : _store.TryUpdateUnpublished(current.Handle, in update, out committed);
+        if (!updated)
         {
             result = default;
             return false;
         }
 
-        if (spawnMoonLordTrueEye)
+        committedSnapshot = committed;
+        spawnTrueEye = spawnMoonLordTrueEye;
+        if (publish && spawnMoonLordTrueEye)
             TrySpawnMoonLordTrueEye(in committed);
 
         result = new NpcDamageResult(

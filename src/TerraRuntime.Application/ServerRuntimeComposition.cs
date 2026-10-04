@@ -189,7 +189,8 @@ internal sealed class ServerRuntimeComposition
             goodWorld: worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false,
             worldTiles: worldTiles,
             expertMode: expertMode,
-            projectileRandom: gameplayRandom);
+            projectileRandom: gameplayRandom,
+            npcReplication: npcReplication);
         var npcAuthority = new NpcAuthority(
             playerSnapshots,
             () => updates.Current,

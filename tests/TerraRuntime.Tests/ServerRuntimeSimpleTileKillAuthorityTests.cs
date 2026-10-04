@@ -9,6 +9,39 @@ namespace TerraRuntime.Tests;
 public sealed class ServerRuntimeSimpleTileKillAuthorityTests
 {
     [Theory]
+    [InlineData(1, false)] // original defaults: age0, maxStack9999 -> source sentinel400
+    [InlineData(2, true)]  // original DirtBlock offset200, full stacks -> first oldest slot0
+    public void Full_source_item_table_accepts_mining_without_inventing_guaranteed_drop_delivery(short itemType, bool replaces)
+    {
+        using var fixture = new Fixture();
+        var connection = fixture.SpawnPlayer(145820);
+        fixture.SetSelectedInventoryItem(connection, VanillaItemIds.CopperPickaxe, 1);
+        fixture.SetActiveTile(10, 10, 1);
+        for (int i = 0; i < 400; i++)
+            Assert.True(fixture.Items.TryAllocateDrop(new(1000, 1000, 0, 0, 9999, 0,
+                WorldItemOwnershipMode.None, itemType, false, 0, 0), out _));
+        Assert.True(fixture.Items.TryGetActive(0, out var before));
+        fixture.State.Apply(new ClientTileManipulationRuntimeCommand(connection,
+            new((byte)TerrariaTileManipulationAction.KillTile, 10, 10, 0, 0)));
+        Assert.False(fixture.Tiles.Get(10, 10).IsActive);
+        Assert.Equal(1, fixture.State.AppliedClientTileManipulations);
+        Assert.Equal(0, fixture.State.RejectedWorldItemAllocations);
+        Assert.Equal(400, fixture.Items.ActiveCount);
+        Assert.True(fixture.Items.TryGetActive(0, out var after));
+        if (replaces)
+        {
+            Assert.Equal(before.Handle.Generation.Value + 1, after.Handle.Generation.Value);
+            Assert.Equal(3, after.ItemNetId); Assert.Equal(1, after.Stack);
+        }
+        else Assert.Equal(before, after);
+        for (short slot = 1; slot < 400; slot++)
+        {
+            Assert.True(fixture.Items.TryGetActive(slot, out var retained));
+            Assert.Equal(itemType, retained.ItemNetId); Assert.Equal(9999, retained.Stack);
+        }
+    }
+
+    [Theory]
     [InlineData(1, 3)]
     [InlineData(53, 169)]
     [InlineData(147, 593)]

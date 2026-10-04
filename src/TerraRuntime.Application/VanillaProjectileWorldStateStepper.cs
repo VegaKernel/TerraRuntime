@@ -62,6 +62,8 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
         out ProjectileSimulationStepResult next)
     {
         ProjectileSnapshot current = projectile.Projectile;
+        if (current.Type == VanillaProjectileIds.NurseSyringeHeal && current.Damage != 0)
+        { next = default; return false; }
         if (!VanillaDefinitionCatalog.TryGet(current.Type, out VanillaProjectileDefinition definition) ||
             !VanillaProjectileBehaviorProfileCatalog.TryGet(current.Type, out VanillaProjectileBehaviorProfile profile) ||
             definition.AiStyle != profile.ExpectedAiStyle)
@@ -124,7 +126,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
             in behavior,
             in behaviorContext,
             out next);
-        if (resolved) next = next with { PlayerBuff = behavior.PlayerBuff };
+        if (resolved) next = next with { PlayerBuff = behavior.PlayerBuff, NpcHealing = behavior.NpcHealing };
         return resolved;
     }
 

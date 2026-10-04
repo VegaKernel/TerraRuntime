@@ -1,6 +1,8 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Core.Worlds;
+using TerraRuntime.Gameplay.Items;
+using TerraRuntime.Gameplay.Players;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
@@ -18,6 +20,7 @@ internal sealed class RuntimeGroundFighterDoorOpeningSink : IVanillaGroundFighte
     private readonly RuntimeTileManipulationReplicationRegistry? replication;
     private readonly RuntimeWorldItemStore? worldItems;
     private readonly IWorldItemSpawnRandom? worldItemSpawnRandom;
+    private readonly IRuntimePlayerSlotSnapshotLookup? playerSnapshots;
 
     public RuntimeGroundFighterDoorOpeningSink(
         WorldTileStore tiles,
@@ -25,7 +28,8 @@ internal sealed class RuntimeGroundFighterDoorOpeningSink : IVanillaGroundFighte
         IVanillaTallGateOccupancyProbe? tallGateOccupancy = null,
         RuntimeWorldItemStore? worldItems = null,
         IWorldItemSpawnRandom? worldItemSpawnRandom = null,
-        IVanillaDoorCloseRandom1458? doorCloseRandom = null)
+        IVanillaDoorCloseRandom1458? doorCloseRandom = null,
+        IRuntimePlayerSlotSnapshotLookup? playerSnapshots = null)
     {
         openings = new VanillaWorldGroundFighterDoorOpeningService(
             tiles ?? throw new ArgumentNullException(nameof(tiles)),
@@ -33,6 +37,7 @@ internal sealed class RuntimeGroundFighterDoorOpeningSink : IVanillaGroundFighte
         this.replication = replication;
         this.worldItems = worldItems;
         this.worldItemSpawnRandom = worldItemSpawnRandom;
+        this.playerSnapshots = playerSnapshots;
         if ((worldItems is null) != (worldItemSpawnRandom is null))
         {
             throw new ArgumentException(
@@ -43,9 +48,39 @@ internal sealed class RuntimeGroundFighterDoorOpeningSink : IVanillaGroundFighte
 
     public bool TryOpen(in VanillaGroundFighterDoorOpeningIntent intent)
     {
+        RuntimeWorldItemStore.AllocationPreview? allocation = null;
+        VanillaUnifiedRandom1458? preparedRandom = null;
+        var original = worldItemSpawnRandom as SystemWorldItemSpawnRandom;
+        if (intent.Operation == VanillaGroundFighterDoorOperation.Destroy && worldItems is not null)
+        {
+            if (!openings.TryPrepareDestruction(in intent, out var prepared)) return false;
+            preparedRandom = original?.SourceRandom.Clone();
+            IWorldItemSpawnRandom spawnRandom = preparedRandom is null ? worldItemSpawnRandom! : new SystemWorldItemSpawnRandom(preparedRandom);
+            var drop = VanillaSimpleTileBreakResolver1458.MaterializeItemState(prepared.DropItem, 1,
+                prepared.DropTileX, prepared.DropTileY, spawnRandom);
+            Span<WorldItemAllocationPlayer1458> views = stackalloc WorldItemAllocationPlayer1458[byte.MaxValue];
+            int count = 0;
+            for (int slot = 0; slot < byte.MaxValue; slot++)
+            {
+                if (playerSnapshots?.TryGetPlayer(new((byte)slot), out var player) != true || !player.Player.IsAssigned) continue;
+                var size = player.HasMount ? VanillaPlayerMountHitbox1458.Resolve(player.MountType) :
+                    (VanillaPlayerHitboxFacts.BaseWidth, VanillaPlayerHitboxFacts.BaseHeight);
+                views[count++] = new((byte)slot, player.PositionX, player.PositionY, (int)size.Item1, (int)size.Item2);
+            }
+            allocation = worldItems.CreateAllocationPreview(views[..count]);
+            if (!allocation.TrySpawnSource(in drop, 0, out _) || !allocation.TryClaim())
+            { allocation.Dispose(); return false; }
+        }
+        using var preparedAllocation = allocation;
         if (!openings.TryOpen(in intent, out VanillaGroundFighterDoorOpeningMutation mutation))
             return false;
 
+        if (allocation is not null)
+        {
+            if (preparedRandom is not null) original!.SourceRandom.CopyStateFrom(preparedRandom);
+            if (!allocation.TryCommitNext(out _, out _))
+                throw new InvalidOperationException("A prepared door item allocation changed after authoritative destruction.");
+        }
         Publish(in mutation, closing: false);
         return true;
     }
@@ -63,17 +98,6 @@ internal sealed class RuntimeGroundFighterDoorOpeningSink : IVanillaGroundFighte
 
     private void Publish(in VanillaGroundFighterDoorOpeningMutation mutation, bool closing)
     {
-        if (!mutation.DropItem.IsNone && worldItems is not null && worldItemSpawnRandom is not null)
-        {
-            WorldItemDropStateUpdate drop = VanillaSimpleTileBreakResolver1458.MaterializeItemState(
-                mutation.DropItem,
-                stack: 1,
-                mutation.DropTileX,
-                mutation.DropTileY,
-                worldItemSpawnRandom);
-            _ = worldItems.TryAllocateDrop(in drop, out _);
-        }
-
         if (replication is not null &&
             mutation.PacketTileX >= short.MinValue && mutation.PacketTileX <= short.MaxValue &&
             mutation.PacketTileY >= short.MinValue && mutation.PacketTileY <= short.MaxValue)

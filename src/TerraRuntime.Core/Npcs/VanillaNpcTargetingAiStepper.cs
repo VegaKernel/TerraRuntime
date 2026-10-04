@@ -35,6 +35,7 @@ public sealed class VanillaNpcTargetingAiStepper :
         VanillaMoonLordNpcBehaviorStrategy.RequiresImmediateSync(in before, in proposed);
 
     public bool RequiresForcedUpdateAfterCompletion(in NpcSnapshot before, in NpcSnapshot finalized) =>
+        _bigMimic.RequiresForcedUpdate(in before, in finalized) ||
         _mothron.RequiresForcedUpdate(in before, in finalized) ||
         VanillaGhostHoverNpcBehaviorStrategy1458.RequiresImmediateSync(in before, in finalized, _context) ||
         before.TypeIdentity == VanillaNpcIds.DrManFly && finalized.TypeIdentity == before.TypeIdentity &&
@@ -92,6 +93,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaAntlionNpcBehaviorStrategy _antlion = new();
     private readonly VanillaGhostHoverNpcBehaviorStrategy1458 _ghostHover = new();
     private readonly VanillaMothronNpcBehaviorStrategy1458 _mothron = new();
+    private readonly VanillaBigMimicNpcBehaviorStrategy1458 _bigMimic = new();
     private readonly VanillaSkeletronHeadNpcBehaviorStrategy _skeletronHead = new();
     private readonly VanillaSkeletronHandNpcBehaviorStrategy _skeletronHand = new();
     private readonly VanillaQueenBeeNpcBehaviorStrategy _queenBee;
@@ -242,6 +244,22 @@ public sealed class VanillaNpcTargetingAiStepper :
     public void SetGhostHoverEnvironment(IVanillaGhostHoverEnvironment1458 environment) =>
         _ghostHover.SetEnvironment(environment);
 
+    public void SetBigMimicEnvironment(IVanillaBigMimicEnvironment1458 environment) =>
+        _bigMimic.Configure(environment, _random);
+
+    internal void SetBigMimicEffects(IVanillaBigMimicEffects1458 effects, bool tenthAnniversary) =>
+        _bigMimic.ConfigureEffects(effects, tenthAnniversary);
+
+    internal bool TryGetBigMimicAcceptedPlan(in NpcSnapshot before, in NpcSnapshot accepted,
+        INpcAiCommittedNpcMutationSink mutations, out NpcStateUpdate planned, out bool fallThrough) =>
+        _bigMimic.TryGetAcceptedPlan(in before, in accepted, mutations, out planned, out fallThrough);
+
+    internal NpcSnapshot CompleteBigMimicAcceptedPlan(in NpcSnapshot before, in NpcSnapshot accepted,
+        in NpcStateUpdate final, INpcAiCommittedNpcMutationSink mutations) =>
+        _bigMimic.Complete(in before, in accepted, in final, mutations);
+
+    internal void CancelBigMimicAcceptedPlan() => _bigMimic.Cancel();
+
     public void SetMothronEnvironment(IVanillaMothronEnvironment1458 environment) =>
         _mothron.Configure(environment, _random);
 
@@ -375,6 +393,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.Antlion => _antlion,
             VanillaNpcBehaviorFamily.GhostHover => _ghostHover,
             VanillaNpcBehaviorFamily.Mothron => _mothron,
+            VanillaNpcBehaviorFamily.BigMimic => _bigMimic,
             VanillaNpcBehaviorFamily.SkeletronHead => _skeletronHead,
             VanillaNpcBehaviorFamily.SkeletronHand => _skeletronHand,
             VanillaNpcBehaviorFamily.QueenBee => _queenBee,
@@ -2462,6 +2481,7 @@ public sealed class VanillaNpcTargetingAiStepper :
          before.TypeIdentity == VanillaNpcIds.RedDevil || before.TypeIdentity == VanillaNpcIds.ChaosElemental || before.TypeIdentity == VanillaNpcIds.BlackRecluse || VanillaServantOfCthulhuNpcBehaviorStrategy.IsHornetStingerShooter(before.TypeIdentity) ||
          VanillaGhostHoverNpcCatalog1458.IsSupported(before.TypeIdentity) ||
          VanillaMothronNpcCatalog1458.IsSupported(before.TypeIdentity) ||
+         VanillaBigMimicNpcCatalog1458.IsSupported(before.TypeIdentity) ||
          VanillaGroundFighterProjectileAttack.IsSupported(before.TypeIdentity));
 
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,

@@ -151,8 +151,8 @@ public sealed class BossRecoveryPipeline1458Tests
 
 
     [Theory]
-    [InlineData(400,false)] [InlineData(390,false)] [InlineData(391,false)] [InlineData(389,true)]
-    public void Full_near_full_and_leased_capacity_reject_before_any_death_mutation_or_rng(int active,bool leased)
+    [InlineData(399,true)] [InlineData(390,true)] [InlineData(391,true)] [InlineData(389,true)]
+    public void Unknown_allocation_lease_rejects_before_any_death_mutation_or_rng(int active,bool leased)
     {
         var f=new Fixture(1458);
         for(int i=0;i<active;i++) Assert.True(f.Store.TryAllocateDrop(new(10,20,0,0,1,0,WorldItemOwnershipMode.None,1,false,0,0),out _));
@@ -176,7 +176,7 @@ public sealed class BossRecoveryPipeline1458Tests
     public void Sufficient_preflight_capacity_does_not_reserve_slots_ahead_of_source_loot_order()
     {
         var f=new Fixture(1458);
-        for(int i=0;i<373;i++)Assert.True(f.Store.TryAllocateDrop(new(10,20,0,0,1,0,WorldItemOwnershipMode.None,1,false,0,0),out _));
+        for(int i=0;i<373;i++)Assert.True(f.Store.TryAllocateDrop(new(10,20,0,0,9999,0,WorldItemOwnershipMode.None,1,false,0,0),out _));
         var npc=f.Spawn(4,101,121);
         Assert.Equal(RuntimeProjectileNpcDamageResult.Killed,f.Hit(npc));
         Assert.Equal(new short[]{47,56,59,28},f.Items().Skip(373).Take(4).Select(a=>a.ItemNetId));

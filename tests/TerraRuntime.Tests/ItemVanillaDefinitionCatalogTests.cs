@@ -118,13 +118,13 @@ public sealed class ItemVanillaDefinitionCatalogTests
             VanillaItemIds.CopperPickaxe,
             out _));
         Assert.False(VanillaDefinitionCatalog.TryGetWorldDrop(
-            VanillaItemIds.DirtBlock,
+            new ItemTypeId(0),
             out _));
         Assert.False(VanillaDefinitionCatalog.TryGetUseTiming(
             VanillaItemIds.Gel,
             out _));
         Assert.False(VanillaDefinitionCatalog.TryGet(
-            new ItemTypeId(1),
+            new ItemTypeId(0),
             out _));
     }
 

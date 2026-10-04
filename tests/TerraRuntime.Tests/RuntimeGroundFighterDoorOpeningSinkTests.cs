@@ -13,6 +13,43 @@ namespace TerraRuntime.Tests;
 
 public sealed class RuntimeGroundFighterDoorOpeningSinkTests
 {
+    [Theory]
+    [InlineData(1, false)] [InlineData(2, true)]
+    public void Destroyed_door_uses_source_overflow_and_sentinel_instead_of_silently_requiring_empty_slot(short type, bool replaces)
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(40, 40));
+        for (int row = 0; row < 3; row++)
+            tiles.Set(10, 10 + row, new WorldTile { Type = 10, FrameY = (short)(row * 18), Flags = WorldTileFlags.Active });
+        var items = new RuntimeWorldItemStore();
+        for (int slot = 0; slot < 400; slot++)
+            Assert.True(items.TryAllocateDrop(new(1000, 1000, 0, 0, 9999, 0, WorldItemOwnershipMode.None, type, false, 0, 0), out _));
+        Assert.True(items.TryGetActive(0, out var before));
+        var random = new VanillaUnifiedRandom1458(1458);
+        var sink = new RuntimeGroundFighterDoorOpeningSink(tiles, worldItems: items, worldItemSpawnRandom: new SystemWorldItemSpawnRandom(random));
+        Assert.True(sink.TryOpen(new(10, 11, 1, VanillaTileIds.ClosedDoor, VanillaGroundFighterDoorOperation.Destroy)));
+        Assert.Equal(400, items.ActiveCount);
+        Assert.True(items.TryGetActive(0, out var after));
+        if (replaces) { Assert.Equal(25, after.ItemNetId); Assert.Equal(before.Handle.Generation.Value + 1, after.Handle.Generation.Value); }
+        else Assert.Equal(before, after);
+        for (int row = 0; row < 3; row++) Assert.False(tiles.Get(10, 10 + row).IsActive);
+        var expected = new VanillaUnifiedRandom1458(1458); expected.Next(-30, 31); expected.Next(-40, -15);
+        Assert.True(expected.HasSameState(random));
+    }
+
+    [Fact]
+    public void Unknown_reserved_items_reject_door_destruction_without_mutation_or_random_draws()
+    {
+        var tiles = new WorldTileStore(new WorldDimensions(40, 40));
+        for (int row = 0; row < 3; row++)
+            tiles.Set(10, 10 + row, new WorldTile { Type = 10, FrameY = (short)(row * 18), Flags = WorldTileFlags.Active });
+        var items = new RuntimeWorldItemStore(); Assert.True(items.TryReserveDropSlot(out var reservation));
+        var random = new VanillaUnifiedRandom1458(1458); var baseline = random.Clone();
+        var sink = new RuntimeGroundFighterDoorOpeningSink(tiles, worldItems: items, worldItemSpawnRandom: new SystemWorldItemSpawnRandom(random));
+        Assert.False(sink.TryOpen(new(10, 11, 1, VanillaTileIds.ClosedDoor, VanillaGroundFighterDoorOperation.Destroy)));
+        Assert.True(random.HasSameState(baseline)); Assert.True(items.HasDropReservation(in reservation));
+        for (int row = 0; row < 3; row++) Assert.True(tiles.Get(10, 10 + row).IsActive);
+    }
+
     [Fact]
     public void Authoritative_normal_door_mutation_publishes_packet19_to_every_playing_peer()
     {

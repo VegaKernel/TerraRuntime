@@ -153,7 +153,7 @@ public sealed class ServerRuntimeDirtKillNegativeReplicationTests
 
         public void FillWorldItemPoolBeforePlayers()
         {
-            WorldItemDropStateUpdate drop = CreateProbeDrop();
+            WorldItemDropStateUpdate drop = CreateProbeDrop() with { ItemNetId = 1, Stack = 9999 };
             for (int i = 0; i < RuntimeWorldItemStore.VanillaCapacity; i++)
             {
                 Assert.True(Items.TryAllocateDrop(in drop, out WorldItemSnapshot allocated));

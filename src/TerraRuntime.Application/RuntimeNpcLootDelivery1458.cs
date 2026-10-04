@@ -3,6 +3,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Protocol;
+using TerraRuntime.Gameplay.Items;
 
 namespace TerraRuntime.Application;
 
@@ -285,7 +286,23 @@ internal sealed class RuntimeNpcLootDelivery1458(
     internal bool TryWorld(in NpcLootWorldItemOrigin origin, in NpcLootDrop drop, INpcLootRollSource random)
     {
         if (!ownedMaterializer.TryMaterialize(in origin, in drop, random, out var state)) return false;
-        return Preview is { } plan ? plan.TryStage(Phase, in state) : worldItems.TryAllocateDrop(in state, out _);
+        if (Preview is { } plan) return plan.TryStage(Phase, in state);
+        Span<WorldItemAllocationPlayer1458> views = stackalloc WorldItemAllocationPlayer1458[byte.MaxValue];
+        int count = CopyAllocationPlayerViews(views);
+        return worldItems.TryAllocateSourceDrop(in state, views[..count], out _, out _);
+    }
+
+    private int CopyAllocationPlayerViews(Span<WorldItemAllocationPlayer1458> views)
+    {
+        int count = 0;
+        if (players is null) return count;
+        for (int index = 0; index < byte.MaxValue; index++)
+            if (players.TryGetPlayer(new PlayerSlotId((byte)index), out var player))
+            {
+                var body = player.HasMount ? TerraRuntime.Gameplay.Players.VanillaPlayerMountHitbox1458.Resolve(player.MountType) : (Width: 20f, Height: 42f);
+                views[count++] = new((byte)index, player.PositionX, player.PositionY, (int)body.Width, (int)body.Height);
+            }
+        return count;
     }
 
     internal bool TryInstanced(in NpcLootWorldItemOrigin origin, in NpcLootDrop drop,
@@ -305,8 +322,15 @@ internal sealed class RuntimeNpcLootDelivery1458(
             }
             return plan.TryStage(Phase, in state, handles, ticks);
         }
-        if (!leases.TryLease(in state, ticks, out var reservation)) return false;
-        return Send(in reservation, in state, recipients);
+        var projectedDirect = RuntimeWorldItemReplicationRegistry.MapDrop(0, in state);
+        if (TerrariaWorldItemFrameEncoder.TryEncodeInstancedDrop(in projectedDirect, out _) != TerrariaWorldItemFrameEncodeResult.Encoded) return false;
+        Span<WorldItemAllocationPlayer1458> views = stackalloc WorldItemAllocationPlayer1458[byte.MaxValue];
+        int viewCount = CopyAllocationPlayerViews(views);
+        using var allocation = worldItems.CreateAllocationPreview(views[..viewCount]);
+        if (!allocation.TrySpawnSource(in state, ticks, out _) || !allocation.TryClaim() ||
+            !allocation.TryCommitNext(out _, out var reservation) || !leases.TryAdoptReservedDrop(in reservation, ticks)) return false;
+        // A rejected transport enqueue cannot recycle an already accepted client-local source slot.
+        return Send(in reservation, in state, recipients, cancelOnInvalidFrame: false);
     }
 
     internal bool Adopt(WorldItemDropReservation reservation, WorldItemDropStateUpdate state,

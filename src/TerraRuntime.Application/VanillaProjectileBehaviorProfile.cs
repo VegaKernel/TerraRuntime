@@ -59,7 +59,8 @@ internal enum VanillaProjectileBehaviorFamily : byte
     DungeonSkull = 46,
     PirateCaptainCannonball = 47,
     Nail = 48,
-    DrManFlyFlask = 49
+    DrManFlyFlask = 49,
+    NurseHealing = 50
 }
 
 /// <summary>
@@ -81,6 +82,10 @@ internal readonly record struct VanillaProjectileBehaviorProfile(
 /// </summary>
 internal static class VanillaProjectileBehaviorProfileCatalog
 {
+    private static readonly VanillaProjectileBehaviorProfile NurseHealingProfile = new(
+        VanillaProjectileBehaviorFamily.NurseHealing, VanillaProjectileAiStyles.NurseHealing,
+        BehaviorImplemented: true, RequiresDefaultAi2: true, RejectServerOwned: false,
+        ExemptFromPreAiWorldBounds: false);
     private static readonly VanillaProjectileBehaviorProfile BasicArrowProfile = new(
         VanillaProjectileBehaviorFamily.BasicArrow,
         VanillaProjectileAiStyles.Arrow,
@@ -496,6 +501,7 @@ internal static class VanillaProjectileBehaviorProfileCatalog
 
         if (type == VanillaProjectileIds.Nail) { profile = NailProfile; return true; }
         if (type == VanillaProjectileIds.DrManFlyFlask) { profile = DrManFlyFlaskProfile; return true; }
+        if (type == VanillaProjectileIds.NurseSyringeHeal) { profile = NurseHealingProfile; return true; }
 
         if (type == VanillaProjectileIds.RuneBlast)
         {

@@ -32,6 +32,7 @@ public static class VanillaProjectileAiStyles
     public static readonly ProjectileAiStyleId MoonLeech = new(85);
     public static readonly ProjectileAiStyleId CultistIceMist = new(86);
     public static readonly ProjectileAiStyleId CultistLightning = new(88);
+    public static readonly ProjectileAiStyleId NurseHealing = new(110);
     public static readonly ProjectileAiStyleId HallowBossRainbowStreak = new(171);
     public static readonly ProjectileAiStyleId HallowBossRainbowTrail = new(173);
     public static readonly ProjectileAiStyleId QueenSlimeSmash = new(135);
@@ -69,6 +70,8 @@ public readonly record struct VanillaProjectileDefinition(
 /// </summary>
 public static class VanillaDefinitionCatalog
 {
+    private static readonly VanillaProjectileDefinition NurseHealingDefinition = new(8, 8,
+        VanillaProjectileAiStyles.NurseHealing, true, false, true, 8, 8);
     private static readonly VanillaProjectileDefinition NailDefinition = new(6, 6,
         VanillaProjectileAiStyles.Arrow, true, false, true, 6, 6);
     // SetDefaults scales the initial 14x14 body by 1.1, truncating each final dimension to 15.
@@ -1527,6 +1530,11 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaProjectileIds.NurseSyringeHurt)
         {
             definition = NurseSyringeHurtDefinition;
+            return true;
+        }
+        if (type == VanillaProjectileIds.NurseSyringeHeal)
+        {
+            definition = NurseHealingDefinition;
             return true;
         }
 

@@ -176,7 +176,8 @@ internal sealed class VanillaProjectileWorldMotionResolver
 
             collidedVelocityX = collision.VelocityX;
             collidedVelocityY = collision.VelocityY;
-            if (!liquid.Wet && (current.Type == VanillaProjectileIds.Nail || current.Type == VanillaProjectileIds.DrManFlyFlask))
+            if (!liquid.Wet && (current.Type == VanillaProjectileIds.Nail || current.Type == VanillaProjectileIds.DrManFlyFlask ||
+                current.Type == VanillaProjectileIds.NurseSyringeHeal))
                 ResolveEclipseDryCollision(in definition, velocityX, velocityY,
                     ref behaviorPositionX, ref behaviorPositionY, ref collidedVelocityX, ref collidedVelocityY);
             collideX = collidedVelocityX != velocityX;
@@ -184,6 +185,26 @@ internal sealed class VanillaProjectileWorldMotionResolver
         }
 
         bool tileImpact = collideX || collideY;
+        bool nurseCollisionHandled = false;
+        int? nursePenetration = null;
+        if (tileImpact && current.Type == VanillaProjectileIds.NurseSyringeHeal)
+        {
+            bool bounce = false;
+            if (collideX) { collidedVelocityX = velocityX * -.75f; bounce = true; }
+            if ((collideY && velocityY > 2f) || collidedVelocityY == 0f)
+            { collidedVelocityY = velocityY * -.75f; bounce = true; }
+            if (bounce)
+            {
+                float oldSpeed = MathF.Sqrt(velocityX * velocityX + velocityY * velocityY);
+                float newSpeed = MathF.Sqrt(collidedVelocityX * collidedVelocityX + collidedVelocityY * collidedVelocityY);
+                float ratio = oldSpeed / newSpeed;
+                if (ratio == 0f) ratio = 1f;
+                collidedVelocityX /= ratio;
+                collidedVelocityY /= ratio;
+                nursePenetration = (projectile.Lifecycle.PenetrateOverride ?? 3) - 1;
+            }
+            nurseCollisionHandled = true;
+        }
         if (fallingBlock && tileImpact)
         {
             if (VanillaWorldProjectileTileCut.HasCandidateAlongSweep(tiles, behaviorPositionX, behaviorPositionY,
@@ -345,7 +366,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
         bool skipUpdatePosition = definition.AiStyle == VanillaProjectileAiStyles.PhantasmalDeathray;
         if (!skipUpdatePosition && tileImpact && !bombCollisionHandled && !golemFireballCollisionHandled &&
             !thornBallCollisionHandled && !rainbowRodControlledCollisionHandled && !cultistLightningArcCollisionHandled &&
-            !moonBoulderCollisionHandled)
+            !moonBoulderCollisionHandled && !nurseCollisionHandled)
         {
             // Supported aiStyle-1/2 families use the generic impact fallback: movement first advances by the
             // collision-clamped velocity, Kill() expires the projectile, then UpdatePosition reaches its common tail.
@@ -375,7 +396,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
 
         // Dedicated-server ownership reaches CutTiles. Until irreversible KillTile/drop effects are modeled,
         // server-owned simulation is accepted only when a conservative sweep proves no candidate is reachable.
-        if (definition.CanCutTiles &&
+        if (definition.CanCutTiles && resolvedDamage > 0 &&
             VanillaProjectileOwnership.IsServerOwned(current.Spawner) &&
             VanillaWorldProjectileTileCut.HasCandidateAlongSweep(
                 tiles,
@@ -439,7 +460,7 @@ internal sealed class VanillaProjectileWorldMotionResolver
                     ? ProjectileSimulationTerminationReason.LifetimeExpired
                     : ProjectileSimulationTerminationReason.None;
         }
-        else if (rainbowRodControlledCollisionHandled || thornBallCollisionHandled || cultistLightningArcCollisionHandled)
+        else if (rainbowRodControlledCollisionHandled || thornBallCollisionHandled || cultistLightningArcCollisionHandled || nurseCollisionHandled)
         {
             timeLeft = sourceTimeLeft - 1;
             terminationReason = timeLeft <= 0
@@ -461,7 +482,15 @@ internal sealed class VanillaProjectileWorldMotionResolver
             liquid,
             terminationReason,
             resolvedLocalAi,
-            KillOrigin: killOrigin);
+            KillOrigin: killOrigin,
+            PenetrateOverride: nursePenetration,
+            CollisionTileCutOffer: current.Type == VanillaProjectileIds.NurseSyringeHeal && tileImpact
+                ? new ProjectileCollisionTileCutOffer() : null);
+        if (current.Type == VanillaProjectileIds.NurseSyringeHeal &&
+            (nursePenetration ?? projectile.Lifecycle.PenetrateOverride ?? 3) == 0)
+            next = next with { TimeLeft = 0, TerminationReason = tileImpact
+                ? ProjectileSimulationTerminationReason.TileCollision
+                : ProjectileSimulationTerminationReason.BehaviorKill };
         return true;
     }
 

@@ -55,7 +55,7 @@ public sealed class RuntimeTownNpcDangerDispatcher1458Tests
             Span<RuntimeTownNpcMeleeIntent1458> melee = stackalloc RuntimeTownNpcMeleeIntent1458[RuntimeNpcStore.MaximumAddressableCapacity];
             Assert.True(f.Schedule.TryPlanUnifiedResident(in f.Before, in homes[0], in f.Conditions,
                 f.Bounds, f.Conversations, default, f.PlayerDanger, peers.AsSpan(0, count), f.Status, f.Combat,
-                melee, out actual, out _, out intent, out _));
+                melee, out actual, out _, out intent, out _, out _));
             Assert.Equal(f.Before, f.Current); Assert.Empty(f.Sink.Commits);
         }
         Assert.Equal(Ai(row, "ai"), actual.Ai);

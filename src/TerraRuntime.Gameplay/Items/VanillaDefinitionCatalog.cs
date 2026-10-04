@@ -613,6 +613,7 @@ public static class VanillaDefinitionCatalog
         if (type == VanillaWallOfFleshItemIds.Firecracker) { definition = FirecrackerDefinition; return true; }
         if (type == VanillaWallOfFleshItemIds.BadgersHat) { definition = BadgersHatDefinition; return true; }
 
+        if (VanillaBigMimicCannonItemCatalog1458.TryGet(type, out definition)) return true;
         definition = default;
         return false;
     }
@@ -729,6 +730,12 @@ public static class VanillaDefinitionCatalog
             return true;
         }
 
+        // Cannon admission adds only verified drop/prefix facts; existing placement/tool capabilities remain authoritative.
+        if (VanillaBigMimicCannonItemCatalog1458.TryGet(type, out var cannon) && cannon.WorldDrop is { } cannonDrop)
+        {
+            worldDrop = cannonDrop;
+            return true;
+        }
         worldDrop = default;
         return false;
     }

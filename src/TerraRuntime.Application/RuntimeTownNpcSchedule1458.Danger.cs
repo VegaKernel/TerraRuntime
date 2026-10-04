@@ -8,7 +8,8 @@ internal sealed partial class RuntimeTownNpcSchedule1458
 {
     // Speculative source prelude: caller completes body/combat/physics before a single store mutation.
     private bool TryPlanDangerResponse(in NpcSnapshot before, in RuntimeTownNpcHomeCommit home,
-        in RuntimeTownNpcDanger1458 scanned, bool activeTalk, out NpcSnapshot staged,
+        in RuntimeTownNpcDanger1458 scanned, bool activeTalk, ReadOnlySpan<NpcSnapshot> peers,
+        ref SocialPeerPlan? socialPeer, out NpcSnapshot staged,
         out RuntimeTownNpcDanger1458 danger, out bool force)
     {
         staged = before;
@@ -35,14 +36,25 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 danger = danger with { WithinRange = false };
             else if (ai.Ai0 != 1f)
             {
-                // Paired social states require a two-actor plan; not admitted by this resident-only prelude.
-                if (ai.Ai0 is 3f or 4f or 16f or 17f) return false;
                 int width = GetWidth(home.NpcType), height = GetHeight(home.NpcType);
                 int myX = (int)((before.PositionX + width / 2) / 16f);
                 int aheadX = (int)((before.PositionX + width / 2 + 15 * direction) / 16f);
                 int feetY = (int)((before.PositionY + height - 16f) / 16f);
                 if (!AvoidDryFall(myX, home.HomeTileX, direction, aheadX, feetY))
                 {
+                    if (ai.Ai0 is 3f or 4f or 16f or 17f)
+                        foreach (NpcSnapshot peer in peers)
+                            if (peer.Handle.Slot == (int)ai.Ai2)
+                            {
+                                if (!townNpcs.TryGet(peer.Handle.Slot, out var owned) || owned.NetId != peer.NetId)
+                                    return false;
+                                NpcStateUpdate partner = ToUpdate(in peer) with {
+                                    Ai = peer.Ai with { Ai0 = 1f, Ai1 = 120 + random.Next(120), Ai2 = 0f },
+                                    Simulation = peer.Simulation with { DirectionX = away,
+                                        LocalAi = peer.Simulation.LocalAi with { Ai3 = 0f } } };
+                                socialPeer = new(peer, partner, Force: true);
+                                break;
+                            }
                     ai = ai with { Ai0 = 1f, Ai1 = 120 + random.Next(120), Ai2 = 0f };
                     local = local with { Ai3 = 0f };
                     direction = away;

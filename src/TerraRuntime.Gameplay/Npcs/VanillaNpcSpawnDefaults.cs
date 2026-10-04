@@ -62,6 +62,11 @@ public readonly record struct VanillaNpcSpawnDefaults(
         bool windowsArithmetic, out VanillaNpcSpawnDefaults defaults)
     {
         defaults = default;
+        if (context.IsValid && VanillaBigMimicNpcCatalog1458.IsSupported(definition.Type))
+        {
+            defaults = ResolveOrdinary(in definition, in context, windowsArithmetic) with { Difficulty = context.Difficulty };
+            return true;
+        }
         if (context.IsValid && VanillaMothronNpcCatalog1458.IsSupported(definition.Type) && !context.GoodWorld)
         {
             defaults = definition.Type == VanillaNpcIds.MothronEgg

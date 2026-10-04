@@ -1,5 +1,7 @@
 # Gameplay runtime и vanilla parity
 
+2026-10-04 шестой блок gameplay/NPC принят на базе `36bd2a15`: Big Mimic 473..476 AI87 с отражением и пушкой, парные разговоры/RPS и кадры обычных жителей, лечение Nurse 13/584, исходное распределение предметов с переполнением и временными пакетами индекса400, физические производители выпадений и общая отправка server strike28 перед итоговым23. Полный прогон 1,088,799/1,088,799 проходит за 397.240 с без отказов, ошибок и пропусков; чистая Release-сборка, Windows NativeAOT, пять smoke-проверок и проверки документации/литералов/графа/diff проходят. Хэш всех исходников и тестов, включая новые файлы, сохраняется: `c60e7b8a9d27d7deaaab2a02c87b2bb03b6d69f611d02cdcd6a1ccf2bf9ef7cc`. При отказе подготовленного выпадения тайлов owned RNG не меняется; ловля NPC отправляет21→22→23 с исходными полями задержки. Артефакт `.cache/big-mimic-social-overflow-final-status.json`. FullVanillaAiParity=false; общие N1-N5 и Linux NativeAOT остаются открытыми. Поиск владельца None400 при активных игроках, instanced400, контекстные эмоции, мокрые/специальные жители и импортированный Life выше LifeMax ограничены до представления исходных фактов. Далее — исходная геометрия/цели/RNG AI002 и поиск владельца предмета по owned инвентарю и эффектам игрока. Push не запрошен.
+
 [English](../en/gameplay.md) · [Документация](README.md) · [Архитектура](architecture.md) · [Gameplay decomposition roadmap](../roadmap/gameplay-decomposition-and-catalogs.md)
 
 ## 1. Назначение
@@ -167,6 +169,8 @@ Current packet/commit infrastructure нельзя считать complete author
 ## 10. World items
 
 `RuntimeWorldItemStore` является authoritative runtime entity store, а не transparent client relay.
+
+[Владелец выделения по исходнику](world-item-allocation.md) допускает замену по возрасту, аварийное объединение и повторное использование слота через проверяемые планы. Видимость учитывает активных мёртвых игроков и верховое тело; отложенное владение использует аутентифицированный packet 39. Обычный sentinel 400 не создаёт физический объект сервера; адресный sentinel 400 остаётся закрытым.
 
 Implemented foundation покрывает slot allocation/reservation, updates/partial updates, runtime ingress/commands, replication-registry integration и selected tile-drop integration. Сервер каждые пять ticks выполняет консервативный slice `WorldItem.FindOwner` и публикует packet 22. Место учитывает пустые main slots и совпадающие по type/prefix стопки ниже проверенного максимума, включая занятые ammo slots; избранные consumable placement стопки допускаются, неизвестные favorite-item правила и максимумы отклоняются. Cursor slot 58 и coin slots для обычных предметов не подходят. Это проверка eligibility для reservation, не новая серверная реализация `GetItem`.
 

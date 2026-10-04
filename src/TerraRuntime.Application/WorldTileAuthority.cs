@@ -352,27 +352,23 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
 
                             ItemTypeId wallDrop = default;
                             bool hasDrop = VanillaWallDropCatalog1458.TryResolve(wall, out wallDrop) && !wallDrop.IsNone;
-                            WorldItemDropReservation reservation = default;
-                            if (hasDrop && !worldItems.TryReserveDropSlot(out reservation))
+                            RuntimeWorldItemStore.AllocationPreview? allocation = null;
+                            var dropRandom = CreateItemDropRandomPreview();
+                            var dropState = hasDrop ? VanillaSimpleTileBreakResolver1458.MaterializeItemState(
+                                wallDrop, 1, wallX, wallY, dropRandom.Random) : default;
+                            if (hasDrop && !TryPrepareItemDrop(in dropState, out allocation))
                                 continue;
+                            using var wallAllocation = allocation;
 
                             if (!ApplyTileMutation(mutations, WorldTileMutationKind.KillWall, wallX, wallY))
                             {
-                                if (hasDrop)
-                                    _ = worldItems.TryReleaseDropReservation(in reservation);
                                 continue;
                             }
 
                             if (hasDrop)
                             {
-                                WorldItemDropStateUpdate dropState = VanillaSimpleTileBreakResolver1458.MaterializeItemState(
-                                    wallDrop,
-                                    stack: 1,
-                                    wallX,
-                                    wallY,
-                                    worldItemSpawnRandom);
-                                if (!worldItems.TryCommitReservedDrop(in reservation, in dropState, out _))
-                                    throw new InvalidOperationException("Reserved explosive wall drop failed after authoritative wall mutation.");
+                                dropRandom.Commit();
+                                CommitItemDrop(allocation!);
                                 AppliedWorldItemAllocations++;
                             }
 
@@ -609,7 +605,10 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         int x,
         int y,
         in WorldTile before,
-        out PreparedSimpleBreak prepared)
+        out PreparedSimpleBreak prepared,
+        RuntimeWorldItemStore.AllocationPreview? sharedAllocation = null,
+        (float X, float Y)? dropPosition = null,
+        ItemDropRandomPreview? sharedRandom = null)
     {
         prepared = default;
         if (!before.IsActive ||
@@ -620,6 +619,7 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
             return false;
         }
 
+        var dropRandom = sharedRandom ?? CreateItemDropRandomPreview();
         bool closestPlayerHasCordage =
             definition.ContextualDropKind == VanillaTileContextualDropKind.CordageVine &&
             players.ClosestPlayerHasFunctionalItem(x, y, VanillaItemIds.GuideToPlantFiberCordage);
@@ -628,51 +628,49 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
             x,
             y,
             closestPlayerHasCordage,
-            worldItemSpawnRandom);
-        if (outcome.DropStatus == VanillaTileDropResolutionStatus.WrongPath || outcome.FillWithHoney)
+            dropRandom.Random);
+        if (!dropRandom.IsCurrent || outcome.DropStatus == VanillaTileDropResolutionStatus.WrongPath || outcome.FillWithHoney)
             return false;
 
-        WorldItemDropReservation reservation = default;
-        bool reserved = false;
+        // Falling projectile recovery supplies its fractional physical center before the allocation plan is
+        // staged. Changing only the later outcome would leave the already retained tile-centered drop untouched.
+        if (outcome.HasDrop && dropPosition is { } position)
+            outcome = outcome with { Drop = outcome.Drop with { PositionX = position.X, PositionY = position.Y } };
+
+        RuntimeWorldItemStore.AllocationPreview? allocation = null;
         if (outcome.HasDrop)
         {
-            if (!worldItems.TryReserveDropSlot(out reservation))
-                return false;
-            reserved = true;
+            if (sharedAllocation is null)
+            {
+                if (!TryPrepareItemDrop(outcome.Drop, out allocation)) return false;
+            }
+            else
+            {
+                allocation = sharedAllocation;
+                if (!allocation.TrySpawnSource(outcome.Drop, 0, out _)) return false;
+            }
         }
 
-        prepared = new PreparedSimpleBreak(outcome, reservation, reserved);
+        prepared = new PreparedSimpleBreak(outcome, allocation, sharedAllocation is null, dropRandom, sharedRandom is null);
         return true;
     }
 
     private void CommitPreparedBreak(in PreparedSimpleBreak prepared)
     {
+        if (prepared.OwnsRandom) prepared.Random?.Commit();
         SpawnTileBreakNpc(prepared.Outcome.FirstNpc, prepared.Outcome.NpcSpawnCount >= 1);
         SpawnTileBreakNpc(prepared.Outcome.SecondNpc, prepared.Outcome.NpcSpawnCount >= 2);
-        if (!prepared.Reserved)
+        if (prepared.Allocation is null)
             return;
 
-        WorldItemDropReservation reservation = prepared.Reservation;
-        WorldItemDropStateUpdate drop = prepared.Outcome.Drop;
-        if (!worldItems.TryCommitReservedDrop(
-                in reservation,
-                in drop,
-                out _))
-        {
-            throw new InvalidOperationException(
-                "Reserved liquid tile-side-effect drop could not commit after authoritative tile mutation.");
-        }
-
+        CommitItemDrop(prepared.Allocation);
+        if (prepared.OwnsAllocation) prepared.Allocation.Dispose();
         AppliedWorldItemAllocations++;
     }
 
     private void ReleasePreparedBreak(in PreparedSimpleBreak prepared)
     {
-        if (prepared.Reserved)
-        {
-            WorldItemDropReservation reservation = prepared.Reservation;
-            _ = worldItems.TryReleaseDropReservation(in reservation);
-        }
+        if (prepared.OwnsAllocation) prepared.Allocation?.Dispose();
     }
 
     private bool CanSafelyReplaceLiquidMergeTarget(int x, int y, in WorldTile target)
@@ -728,8 +726,10 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
 
     private readonly record struct PreparedSimpleBreak(
         VanillaSimpleTileBreakOutcome Outcome,
-        WorldItemDropReservation Reservation,
-        bool Reserved);
+        RuntimeWorldItemStore.AllocationPreview? Allocation,
+        bool OwnsAllocation,
+        ItemDropRandomPreview? Random,
+        bool OwnsRandom);
 
     private readonly record struct LiquidMergePreparation(
         VanillaLiquidMergeTileRequest1458 Request,
@@ -777,12 +777,18 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
             return;
         }
 
-        if (!worldItems.TryReserveDropSlot(out WorldItemDropReservation reservation))
+        int dropTileX = descriptor.TopLeftX + (descriptor.Definition.Width - 1) / 2;
+        int dropTileY = descriptor.TopLeftY + (descriptor.Definition.Height - 1) / 2;
+        var objectRandom = CreateItemDropRandomPreview();
+        WorldItemDropStateUpdate dropState = VanillaSimpleTileBreakResolver1458.MaterializeItemState(
+            itemDefinition.ItemType, 1, dropTileX, dropTileY, objectRandom.Random);
+        if (!TryPrepareItemDrop(in dropState, out var allocation))
         {
             RejectedWorldItemAllocations++;
             RejectWithCorrection(command, in tileState);
             return;
         }
+        using var objectAllocation = allocation;
 
         VanillaMultiTileObjectMutationResult broken = objectService.TryBreakAt(
             tileState.TileX,
@@ -790,24 +796,12 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
             metadata);
         if (!broken.Applied)
         {
-            _ = worldItems.TryReleaseDropReservation(in reservation);
             RejectWithCorrection(command, in tileState);
             return;
         }
 
-        int dropTileX = descriptor.TopLeftX + (descriptor.Definition.Width - 1) / 2;
-        int dropTileY = descriptor.TopLeftY + (descriptor.Definition.Height - 1) / 2;
-        WorldItemDropStateUpdate dropState = VanillaSimpleTileBreakResolver1458.MaterializeItemState(
-            itemDefinition.ItemType,
-            stack: 1,
-            dropTileX,
-            dropTileY,
-            worldItemSpawnRandom);
-        if (!worldItems.TryCommitReservedDrop(in reservation, in dropState, out _))
-        {
-            throw new InvalidOperationException(
-                "Reserved object drop could not commit after authoritative multi-tile break.");
-        }
+        objectRandom.Commit();
+        CommitItemDrop(allocation);
 
         AppliedWorldItemAllocations++;
         AppliedClientManipulations++;
@@ -869,18 +863,20 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
             return;
         }
 
-        WorldItemDropReservation reservation = default;
-        bool reserved = false;
+        RuntimeWorldItemStore.AllocationPreview? allocation = null;
+        var wallRandom = CreateItemDropRandomPreview();
         if (!dropItem.IsNone)
         {
-            if (!worldItems.TryReserveDropSlot(out reservation))
+            var dropState = VanillaSimpleTileBreakResolver1458.MaterializeItemState(
+                dropItem, 1, tileState.TileX, tileState.TileY, wallRandom.Random);
+            if (!TryPrepareItemDrop(in dropState, out allocation))
             {
                 RejectedWorldItemAllocations++;
                 RejectWithCorrection(command, in tileState);
                 return;
             }
-            reserved = true;
         }
+        using var wallAllocation = allocation;
 
         if (!ApplyTileMutation(
                 mutations,
@@ -888,25 +884,14 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
                 tileState.TileX,
                 tileState.TileY))
         {
-            if (reserved)
-                _ = worldItems.TryReleaseDropReservation(in reservation);
             RejectWithCorrection(command, in tileState);
             return;
         }
 
-        if (reserved)
+        if (allocation is not null)
         {
-            WorldItemDropStateUpdate dropState = VanillaSimpleTileBreakResolver1458.MaterializeItemState(
-                dropItem,
-                stack: 1,
-                tileState.TileX,
-                tileState.TileY,
-                worldItemSpawnRandom);
-            if (!worldItems.TryCommitReservedDrop(in reservation, in dropState, out _))
-            {
-                throw new InvalidOperationException(
-                    "Reserved wall drop could not commit after authoritative wall mutation.");
-            }
+            wallRandom.Commit();
+            CommitItemDrop(allocation);
             AppliedWorldItemAllocations++;
         }
 
@@ -1193,17 +1178,21 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
 
         WorldTile firstBefore = tiles.Get(leftX, targetY);
         WorldTile secondBefore = tiles.Get(leftX + 1, targetY);
-        if (!TryPrepareTrapdoorOpenCutTarget(leftX, targetY, in firstBefore, out PreparedSimpleBreak firstPrepared))
+        using var allocation = CreateItemAllocationPreview();
+        var dropRandom = CreateItemDropRandomPreview();
+        if (!TryPrepareTrapdoorOpenCutTarget(leftX, targetY, in firstBefore, allocation, dropRandom, out PreparedSimpleBreak firstPrepared))
         {
             ReleasePreparedBreak(in firstPrepared);
             return false;
         }
-        if (!TryPrepareTrapdoorOpenCutTarget(leftX + 1, targetY, in secondBefore, out PreparedSimpleBreak secondPrepared))
+        if (!TryPrepareTrapdoorOpenCutTarget(leftX + 1, targetY, in secondBefore, allocation, dropRandom, out PreparedSimpleBreak secondPrepared))
         {
             ReleasePreparedBreak(in firstPrepared);
             ReleasePreparedBreak(in secondPrepared);
             return false;
         }
+
+        if (!dropRandom.IsCurrent || !allocation.TryClaim()) return false;
 
         if (!TryApplyPreparedTrapdoorOpenCut(leftX, targetY, firstBefore.IsActive) ||
             !TryApplyPreparedTrapdoorOpenCut(leftX + 1, targetY, secondBefore.IsActive))
@@ -1213,6 +1202,7 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
             throw new InvalidOperationException("Prepared trapdoor destination cut changed before commit.");
         }
 
+        dropRandom.Commit();
         CommitPreparedBreak(in firstPrepared);
         CommitPreparedBreak(in secondPrepared);
         if (!playerDoorOpenings.TryShiftTrapdoor(tileX, tileY, playerAbove, opening: true, out _))
@@ -1220,7 +1210,8 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         return true;
     }
 
-    private bool TryPrepareTrapdoorOpenCutTarget(int x, int y, in WorldTile before, out PreparedSimpleBreak prepared)
+    private bool TryPrepareTrapdoorOpenCutTarget(int x, int y, in WorldTile before,
+        RuntimeWorldItemStore.AllocationPreview allocation, ItemDropRandomPreview dropRandom, out PreparedSimpleBreak prepared)
     {
         prepared = default;
         if (!before.IsActive)
@@ -1230,7 +1221,7 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         // drip identities. Stalactites are door-only and deliberately do not enter this packet-19 path.
         if (!VanillaProjectileTileCutFacts.IsCuttable(before.TileType) && before.Type is not (373 or 374 or 375 or 461 or 709))
             return false;
-        return TryPrepareSimpleBreak(x, y, in before, out prepared);
+        return TryPrepareSimpleBreak(x, y, in before, out prepared, allocation, sharedRandom: dropRandom);
     }
 
     private bool TryApplyPreparedTrapdoorOpenCut(int x, int y, bool active) =>
@@ -1518,12 +1509,13 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
                     tileState.TileX,
                     tileState.TileY,
                     VanillaItemIds.GuideToPlantFiberCordage);
+            var breakRandom = CreateItemDropRandomPreview();
             VanillaSimpleTileBreakOutcome breakOutcome = VanillaSimpleTileBreakResolver1458.Resolve(
                 tileDefinition,
                 tileState.TileX,
                 tileState.TileY,
                 closestPlayerHasCordage,
-                worldItemSpawnRandom);
+                breakRandom.Random);
             if (breakOutcome.DropStatus == VanillaTileDropResolutionStatus.WrongPath)
             {
                 UnsupportedWithCorrection(command, in tileState);
@@ -1533,19 +1525,17 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
             bool hasDrop = breakOutcome.HasDrop;
             WorldItemDropStateUpdate dropState = breakOutcome.Drop;
 
-            WorldItemDropReservation reservation = default;
-            bool reserved = false;
+            RuntimeWorldItemStore.AllocationPreview? allocation = null;
             if (hasDrop)
             {
-                if (!worldItems.TryReserveDropSlot(out reservation))
+                if (!TryPrepareItemDrop(in dropState, out allocation))
                 {
                     RejectedWorldItemAllocations++;
                     RejectWithCorrection(command, in tileState);
                     return;
                 }
-
-                reserved = true;
             }
+            using var dropAllocation = allocation;
 
             if (!ApplyTileMutation(
                     tileMutations,
@@ -1553,12 +1543,11 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
                     tileState.TileX,
                     tileState.TileY))
             {
-                if (reserved)
-                    _ = worldItems.TryReleaseDropReservation(in reservation);
                 RejectWithCorrection(command, in tileState);
                 return;
             }
 
+            breakRandom.Commit();
             if (breakOutcome.FillWithHoney)
             {
                 if (liquidMutations is null)
@@ -1588,14 +1577,9 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
             SpawnTileBreakNpc(breakOutcome.FirstNpc, breakOutcome.NpcSpawnCount >= 1);
             SpawnTileBreakNpc(breakOutcome.SecondNpc, breakOutcome.NpcSpawnCount >= 2);
 
-            if (reserved)
+            if (allocation is not null)
             {
-                if (!worldItems.TryCommitReservedDrop(in reservation, in dropState, out _))
-                {
-                    throw new InvalidOperationException(
-                        "Reserved tile drop could not commit after authoritative tile mutation.");
-                }
-
+                CommitItemDrop(allocation);
                 AppliedWorldItemAllocations++;
             }
 

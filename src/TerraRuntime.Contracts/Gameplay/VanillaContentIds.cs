@@ -235,6 +235,10 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId Fritz = new(462);
     public static readonly NpcTypeId ThePossessed = new(469);
     public static readonly NpcTypeId Reaper = new(253);
+    public static readonly NpcTypeId BigMimicCorruption = new(473);
+    public static readonly NpcTypeId BigMimicCrimson = new(474);
+    public static readonly NpcTypeId BigMimicHallow = new(475);
+    public static readonly NpcTypeId BigMimicJungle = new(476);
     public static readonly NpcTypeId Mothron = new(477);
     public static readonly NpcTypeId MothronEgg = new(478);
     public static readonly NpcTypeId BabyMothron = new(479);
@@ -388,6 +392,7 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId Jellyfish = new(18);
     public static readonly NpcAiStyleId Antlion = new(19);
     public static readonly NpcAiStyleId GhostHover = new(22);
+    public static readonly NpcAiStyleId BigMimic = new(87);
     public static readonly NpcAiStyleId Mothron = new(88);
     public static readonly NpcAiStyleId MothronEgg = new(89);
     public static readonly NpcAiStyleId BabyMothron = new(90);
@@ -764,6 +769,7 @@ public static class VanillaProjectileIds
     public static readonly ProjectileTypeId StarAnise = new(330);
     public static readonly ProjectileTypeId BoneArrowFromMerchant = new(474);
     public static readonly ProjectileTypeId NurseSyringeHurt = new(583);
+    public static readonly ProjectileTypeId NurseSyringeHeal = new(584);
     public static readonly ProjectileTypeId SantaBombs = new(589);
     public static readonly ProjectileTypeId BoneDagger = new(599);
     public static readonly ProjectileTypeId Waffle = new(1012);

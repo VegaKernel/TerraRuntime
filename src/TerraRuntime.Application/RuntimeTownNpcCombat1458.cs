@@ -342,6 +342,16 @@ internal sealed partial class RuntimeTownNpcCombat1458
         meleeImmuneTicks = new int[npcs.Capacity];
     }
 
+    internal void PublishEmotes(in NpcSnapshot committed,
+        ReadOnlySpan<RuntimeTownNpcSchedule1458.SocialEmotePlan> emotes)
+    {
+        foreach (var emote in emotes)
+        {
+            NpcHandle actor = emote.Npc.IsAssigned ? emote.Npc : committed.Handle;
+            if (npcs.TryGet(actor, out _)) contactReplication?.PublishNpcEmote(actor.Slot, emote.Lifetime, emote.Emote);
+        }
+    }
+
     public void SetMeleeDamageSink(IRuntimeTownNpcMeleeDamageSink1458 sink) =>
         meleeDamage = sink ?? throw new ArgumentNullException(nameof(sink));
 

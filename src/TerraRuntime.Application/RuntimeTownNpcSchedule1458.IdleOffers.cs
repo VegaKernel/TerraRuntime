@@ -11,7 +11,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
 {
     private bool TryPlanRealIdleOffers(in NpcSnapshot source, in NpcStateUpdate body,
         in RuntimeTownNpcDanger1458 danger, ReadOnlySpan<RuntimeTownPlayerConversation1458> conversations,
-        ReadOnlySpan<RuntimeTownPlayerDanger1458> players, ReadOnlySpan<NpcSnapshot> peers, bool partyIsUp,
+        ReadOnlySpan<RuntimeTownPlayerDanger1458> players, ReadOnlySpan<NpcSnapshot> peers, bool partyIsUp, ref SocialPeerPlan? socialPeer,
         out NpcStateUpdate next, out bool force)
     {
         next = body;
@@ -20,9 +20,9 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         // Both branches are genuine social offers. A selected offer searches its source context and
         // suppresses later else-if offers even when that search finds no eligible actor.
         if (random.Next(300) == 0)
-            return TryPlanSocialAdmission(in source, in body, peers, excludePets: false);
+            return TryPlanSocialAdmission(in source, in body, peers, excludePets: false, out next, out force, ref socialPeer);
         if (random.Next(1800) == 0)
-            return TryPlanSocialAdmission(in source, in body, peers, excludePets: true);
+            return TryPlanSocialAdmission(in source, in body, peers, excludePets: true, out next, out force, ref socialPeer);
         if (random.Next(1200) == 0 && (source.TypeIdentity == VanillaNpcIds.PartyGirl || partyIsUp && VanillaTownNpcDangerCatalog1458.IsPartyAttackType(source.Type)))
         {
             TryPlanPlayerOffer(in body, players, conversations, state: 6f, timer: 300f,
@@ -54,8 +54,10 @@ internal sealed partial class RuntimeTownNpcSchedule1458
     }
 
     private bool TryPlanSocialAdmission(in NpcSnapshot source, in NpcStateUpdate body,
-        ReadOnlySpan<NpcSnapshot> peers, bool excludePets)
+        ReadOnlySpan<NpcSnapshot> peers, bool excludePets, out NpcStateUpdate next, out bool force, ref SocialPeerPlan? socialPeer)
     {
+        next = body;
+        force = false;
         // Source timer offer is sampled before the eligibility search.
         int multiplier = random.Next(2) == 0 ? 1 + random.Next(3) : 1 + random.Next(2);
         int sourceDuration = 420 * multiplier;
@@ -77,9 +79,27 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             if (distance is < 100f and > 20f &&
                 VanillaWorldCanHit.HasLineOfSight(tiles, sx, sy, 1, 1, tx, ty, 1, 1))
             {
-                // A peer transaction/state3/4 or16/17 is deliberately unowned by this package.
-                // Reject the entire speculative phase, rather than publish an invented conversation state.
-                return false;
+                // A selected pet/nonpersistent actor still needs its own source outer phase. Do not
+                // leave a partner in a conversation when that actor's lifecycle is not owned here.
+                if (category != VanillaTownNpcFacts1458.OrdinaryHousingCategory ||
+                    !townNpcs.TryGet((short)peer.Handle.Slot, out var resident) || resident.NetId != peer.NetId) return false;
+                int facing = body.PositionX < peer.PositionX ? 1 : -1;
+                NpcAiState ownLocal = body.Simulation.LocalAi, peerLocal = peer.Simulation.LocalAi;
+                if (excludePets)
+                {
+                    ownLocal = ownLocal with { Ai2 = random.Next(4) };
+                    ownLocal = ownLocal with { Ai3 = random.Next(3 - (int)ownLocal.Ai2) };
+                    peerLocal = peerLocal with { Ai2 = 0f, Ai3 = 0f };
+                }
+                next = body with { Ai = body.Ai with { Ai0 = excludePets ? 16f : 3f,
+                    Ai1 = sourceDuration, Ai2 = peer.Handle.Slot }, Simulation = body.Simulation with {
+                    DirectionX = facing, LocalAi = ownLocal } };
+                NpcStateUpdate partner = ToUpdate(in peer) with {
+                    Ai = peer.Ai with { Ai0 = excludePets ? 17f : 4f, Ai1 = sourceDuration, Ai2 = source.Handle.Slot },
+                    Simulation = peer.Simulation with { DirectionX = -facing, LocalAi = peerLocal } };
+                socialPeer = new(peer, partner, Force: true);
+                force = true;
+                return true;
             }
         }
         return sourceDuration > 0;

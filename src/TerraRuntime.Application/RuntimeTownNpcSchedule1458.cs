@@ -51,7 +51,10 @@ internal sealed class SharedRuntimeTownNpcScheduleRandom1458 : IRuntimeTownNpcSc
 internal sealed class NpcRuntimeTownScheduleRandom1458(IVanillaNpcRandom random) : IRuntimeTownNpcScheduleRandom1458
 {
     internal IVanillaNpcRandom Current { get; set; } = random;
-    public int Next(int exclusiveMax) => Current.NextInt32(0, exclusiveMax);
+    public int Next(int exclusiveMax) => exclusiveMax == 0
+        // UnifiedRandom.Next(0), used by RPS when all three rounds are predetermined, still samples.
+        ? (int)(Current.NextDouble() * exclusiveMax)
+        : Current.NextInt32(0, exclusiveMax);
 }
 
 /// <summary>

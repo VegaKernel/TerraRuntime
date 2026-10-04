@@ -66,7 +66,8 @@ internal sealed partial class ProjectileAuthority
         bool goodWorld = false,
         WorldTileStore? worldTiles = null,
         bool expertMode = false,
-        VanillaUnifiedRandom1458? projectileRandom = null)
+        VanillaUnifiedRandom1458? projectileRandom = null,
+        RuntimeNpcReplicationRegistry? npcReplication = null)
     {
         this.projectiles = projectiles;
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
@@ -79,8 +80,10 @@ internal sealed partial class ProjectileAuthority
         liveChildSpawns = new RuntimeProjectileLiveChildSpawnQueue(projectiles.Capacity);
         cultistLightningArcTrails = new RuntimeCultistLightningArcTrailRegistry(projectiles.Capacity);
         var terminationEffects = new RuntimeProjectileTerminationEffectSink(explosions, tileExplosions, childSpawns, FallingBlocks);
-        var simulationEffects = new RuntimeProjectileSimulationCommitSink(liveChildSpawns, cultistLightningArcTrails, players);
-        executor = new RuntimeProjectileStateExecutor(projectiles, simulationEffects, terminationEffects);
+        var simulationEffects = new RuntimeProjectileSimulationCommitSink(liveChildSpawns, cultistLightningArcTrails,
+            players, new RuntimeProjectileNpcHealing1458(npcs, npcReplication),
+            new RuntimeProjectileCollisionTileCut1458(this.projectileRandom));
+        executor = new RuntimeProjectileStateExecutor(projectiles, simulationEffects, terminationEffects, npcs);
         this.stepper = stepper;
         reflections = new RuntimeNpcProjectileReflectionPass(npcs, projectiles, playerSnapshots, goodWorld: goodWorld);
         this.replication = replication;

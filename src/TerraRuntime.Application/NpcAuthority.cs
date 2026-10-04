@@ -227,6 +227,8 @@ internal sealed partial class NpcAuthority
         if (npcAiStepper is null)
         {
             vanillaTargeting = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper(), random: this.naturalSpawnRandom);
+            vanillaTargeting.SetBigMimicEffects(new RuntimeBigMimicEffects1458(projectiles, worldItems, playerSnapshots),
+                townCommerceWorldFacts?.TenthAnniversaryWorld ?? false);
             vanillaTargeting.SetPlayerInteractions(combat.Interactions);
             if (projectileReplication is not null)
                 vanillaTargeting.SetProjectileAnchors(new RuntimeNpcProjectileAnchors(projectiles, projectileReplication.WireIdentities, players));
@@ -284,7 +286,8 @@ internal sealed partial class NpcAuthority
                         tileManipulationReplication,
                         tallGateOccupancy,
                         worldItems,
-                        worldItemSpawnRandom),
+                        worldItemSpawnRandom,
+                        playerSnapshots: playerSnapshots),
                     progressionMutations: progression);
                 vanillaCheckActive = new VanillaNpcCheckActiveAiStepper(worldMotion);
                 aiStepper = vanillaCheckActive;
@@ -1910,30 +1913,43 @@ internal sealed partial class NpcAuthority
             : (PlayerAuthority.VanillaBasePlayerWidth, PlayerAuthority.VanillaBasePlayerHeight);
         float playerCenterX = player.PositionX + playerWidth / 2f;
         float playerCenterY = player.PositionY + playerHeight / 2f;
+        var liveRandom = (worldItemSpawnRandom as SystemWorldItemSpawnRandom)?.SourceRandom;
+        var preparedRandom = liveRandom?.Clone();
+        IWorldItemSpawnRandom catchRandom = preparedRandom is null ? worldItemSpawnRandom : new SystemWorldItemSpawnRandom(preparedRandom);
         WorldItemDropStateUpdate drop = VanillaNpcCatchWorldItem1458.Create(
             playerCenterX,
             playerCenterY,
             catchItem,
-            worldItemSpawnRandom);
-        if (!worldItems.TryReserveDrop(in drop, out WorldItemDropReservation reservation))
-            return;
-        if (!npcs.TryDespawn(npc.Handle))
+            catchRandom);
+        Span<WorldItemAllocationPlayer1458> views = stackalloc WorldItemAllocationPlayer1458[byte.MaxValue];
+        int viewCount = 0;
+        for (int slot = 0; slot < byte.MaxValue; slot++)
         {
-            worldItems.TryReleaseDropReservation(in reservation);
-            return;
+            if (!playerSnapshots.TryGetPlayer(new PlayerSlotId((byte)slot), out var active) || !active.Player.IsAssigned) continue;
+            var size = active.HasMount ? TerraRuntime.Gameplay.Players.VanillaPlayerMountHitbox1458.Resolve(active.MountType) :
+                (PlayerAuthority.VanillaBasePlayerWidth, PlayerAuthority.VanillaBasePlayerHeight);
+            views[viewCount++] = new((byte)slot, active.PositionX, active.PositionY, (int)size.Item1, (int)size.Item2);
         }
-        if (!worldItems.TryCommitReservedDrop(in reservation, out WorldItemSnapshot item))
-            throw new InvalidOperationException("Reserved NPC catch item failed after authoritative NPC despawn.");
-
-        var owner = new WorldItemOwnerStateUpdate(
-            OwnerPlayerId: command.Connection.Player.Slot.Value,
-            TimeToKeepReservation: VanillaNpcCatchWorldItem1458.ReservationTicks,
-            GrabDelayPlayer: byte.MaxValue,
-            GrabDelayTime: 0,
-            PositionX: item.PositionX,
-            PositionY: item.PositionY);
-        if (!worldItems.TryApplyOwner(item.Handle.Slot, in owner, out _))
-            throw new InvalidOperationException("Caught NPC item could not be reserved for the authenticated player.");
+        using var allocation = worldItems.CreateAllocationPreview(views[..viewCount]);
+        if (!allocation.TrySpawnSource(in drop, 0, out _, sourceLocalPlayerId: command.Connection.Player.Slot.Value) || !allocation.TryClaim() ||
+            !npcs.TryGet(npc.Handle, out var retained) || retained.Revision != npc.Revision)
+            return;
+        if (preparedRandom is not null) liveRandom!.CopyStateFrom(preparedRandom);
+        if (!allocation.TryCommitNext(out short itemSlot, out _))
+            throw new InvalidOperationException("Prepared NPC catch item allocation changed before publication.");
+        allocation.Dispose();
+        if (itemSlot < RuntimeWorldItemStore.VanillaCapacity)
+        {
+            if (!worldItems.TryGetActive(itemSlot, out var item))
+                throw new InvalidOperationException("Accepted NPC catch item disappeared before ownership assignment.");
+            var owner = new WorldItemOwnerStateUpdate(command.Connection.Player.Slot.Value,
+                VanillaNpcCatchWorldItem1458.ReservationTicks, 0, 0, item.PositionX, item.PositionY);
+            if (!worldItems.TryApplyOwner(itemSlot, in owner, out _))
+                throw new InvalidOperationException("Caught NPC item could not be assigned to the authenticated player.");
+        }
+        // Source CatchNPC creates/assigns its item before deactivating the NPC and publishing packet23.
+        if (!npcs.TryDespawn(npc.Handle))
+            throw new InvalidOperationException("An accepted NPC catch lost its exact generation before despawn.");
     }
 
     private float CaptureDifficulty() => (masterMode ? 3f : expertMode ? 2f : 1f) +

@@ -70,6 +70,18 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
     public bool TryOpen(in VanillaGroundFighterDoorOpeningIntent intent) =>
         TryOpen(in intent, out _);
 
+    /// <summary>Resolves the exact destruction footprint and drop before the application claims item allocation.</summary>
+    public bool TryPrepareDestruction(in VanillaGroundFighterDoorOpeningIntent intent,
+        out VanillaGroundFighterDoorOpeningMutation mutation)
+    {
+        mutation = default;
+        if (!intent.IsValid || intent.Operation != VanillaGroundFighterDoorOperation.Destroy ||
+            !Contains(intent.TileX, intent.TileY)) return false;
+        var touched = tiles.Get(intent.TileX, intent.TileY);
+        return touched.IsActive && touched.TileType == intent.ClosedType &&
+            TryDestroy(in intent, in touched, out mutation, commit: false);
+    }
+
     public bool TryOpen(
         in VanillaGroundFighterDoorOpeningIntent intent,
         out VanillaGroundFighterDoorOpeningMutation mutation)
@@ -382,12 +394,13 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
     private bool TryDestroy(
         in VanillaGroundFighterDoorOpeningIntent intent,
         in WorldTile touched,
-        out VanillaGroundFighterDoorOpeningMutation mutation)
+        out VanillaGroundFighterDoorOpeningMutation mutation,
+        bool commit = true)
     {
         if (intent.ClosedType == VanillaTileIds.ClosedDoor)
-            return TryDestroyDoor(in intent, in touched, out mutation);
+            return TryDestroyDoor(in intent, in touched, out mutation, commit);
         if (intent.ClosedType == VanillaTileIds.TallGateClosed)
-            return TryDestroyTallGate(in intent, in touched, out mutation);
+            return TryDestroyTallGate(in intent, in touched, out mutation, commit);
 
         mutation = default;
         return false;
@@ -396,7 +409,8 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
     private bool TryDestroyDoor(
         in VanillaGroundFighterDoorOpeningIntent intent,
         in WorldTile touched,
-        out VanillaGroundFighterDoorOpeningMutation mutation)
+        out VanillaGroundFighterDoorOpeningMutation mutation,
+        bool commit)
     {
         mutation = default;
         if (IsLockedDoor(in touched) || touched.FrameX < 0 || touched.FrameY < 0)
@@ -419,13 +433,6 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
 
         int style = touched.FrameY / ClosedDoorStyleHeight +
             touched.FrameX / ClosedDoorHorizontalStyleWidth * DoorStyleCountPerHorizontalBand;
-        for (int offset = 0; offset < 3; offset++)
-        {
-            WorldTile door = tiles.Get(intent.TileX, topY + offset);
-            ClearCutTile(ref door);
-            tiles.Set(intent.TileX, topY + offset, in door);
-        }
-
         mutation = new VanillaGroundFighterDoorOpeningMutation(
             VanillaGroundFighterDoorOpeningKind.DestroyedDoor,
             intent.TileX,
@@ -435,13 +442,21 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
             VanillaDoorDropCatalog1458.GetDoorItem(style),
             intent.TileX,
             intent.TileY);
+        if (commit)
+            for (int offset = 0; offset < 3; offset++)
+            {
+                WorldTile door = tiles.Get(intent.TileX, topY + offset);
+                ClearCutTile(ref door);
+                tiles.Set(intent.TileX, topY + offset, in door);
+            }
         return true;
     }
 
     private bool TryDestroyTallGate(
         in VanillaGroundFighterDoorOpeningIntent intent,
         in WorldTile touched,
-        out VanillaGroundFighterDoorOpeningMutation mutation)
+        out VanillaGroundFighterDoorOpeningMutation mutation,
+        bool commit)
     {
         mutation = default;
         if (touched.FrameX < 0 || touched.FrameY < 0)
@@ -467,13 +482,6 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
             }
         }
 
-        for (int offset = 0; offset < TallGateHeight; offset++)
-        {
-            WorldTile gate = tiles.Get(intent.TileX, topY + offset);
-            ClearCutTile(ref gate);
-            tiles.Set(intent.TileX, topY + offset, in gate);
-        }
-
         mutation = new VanillaGroundFighterDoorOpeningMutation(
             VanillaGroundFighterDoorOpeningKind.DestroyedTallGate,
             intent.TileX,
@@ -483,6 +491,13 @@ public sealed class VanillaWorldGroundFighterDoorOpeningService : IVanillaGround
             VanillaDoorDropCatalog1458.TallGateItem,
             intent.TileX,
             topY);
+        if (commit)
+            for (int offset = 0; offset < TallGateHeight; offset++)
+            {
+                WorldTile gate = tiles.Get(intent.TileX, topY + offset);
+                ClearCutTile(ref gate);
+                tiles.Set(intent.TileX, topY + offset, in gate);
+            }
         return true;
     }
 

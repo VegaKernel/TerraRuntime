@@ -141,7 +141,7 @@ public sealed class VanillaNpcLootWorldItemMaterializerTests
     {
         var random = new ScriptedRollSource();
         var origin = new NpcLootWorldItemOrigin(0f, 0f);
-        var drop = new NpcLootDrop(VanillaItemIds.DirtBlock, 1);
+        var drop = new NpcLootDrop(new ItemTypeId(short.MaxValue), 1);
 
         Assert.False(VanillaNpcLootWorldItemMaterializer.Instance.TryMaterialize(
             in origin,

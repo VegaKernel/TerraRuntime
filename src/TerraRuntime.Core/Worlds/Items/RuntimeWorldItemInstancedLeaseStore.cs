@@ -46,9 +46,16 @@ public sealed class RuntimeWorldItemInstancedLeaseStore
     internal bool TryAdoptReservedDrop(in WorldItemDropReservation reservation, int leaseTicks)
     {
         if (leaseTicks <= 0 || !reservation.IsAssigned || (uint)reservation.Slot >= (uint)_leases.Length ||
-            _leases[reservation.Slot].Reservation.IsAssigned || !_worldItems.HasDropReservation(in reservation))
+            !_worldItems.HasDropReservation(in reservation))
             return false;
 
+        ref Lease previous = ref _leases[reservation.Slot];
+        if (previous.Reservation.IsAssigned)
+        {
+            if (_worldItems.HasDropReservation(previous.Reservation)) return false;
+            previous = default; ActiveLeaseCount--;
+        }
+        if (!_worldItems.TrySetLeaseCooldown(in reservation, leaseTicks)) return false;
         _leases[reservation.Slot] = new Lease(reservation, leaseTicks);
         ActiveLeaseCount++;
         return true;
@@ -96,10 +103,17 @@ public sealed class RuntimeWorldItemInstancedLeaseStore
         for (short slot = 0; slot < _leases.Length; slot++)
         {
             ref Lease lease = ref _leases[slot];
-            if (!lease.Reservation.IsAssigned)
+            if (!lease.Reservation.IsAssigned || _worldItems.IsAllocationClaimed(slot))
                 continue;
 
+            if (!_worldItems.HasDropReservation(lease.Reservation))
+            {
+                // Source allocation may legitimately replace a protected inactive slot using age-minus-cooldown.
+                // Never release that new generation when this old client-local copy expires.
+                lease = default; ActiveLeaseCount--; continue;
+            }
             int remaining = lease.RemainingTicks - 1;
+            _worldItems.UpdateLeaseCooldown(lease.Reservation, remaining);
             if (remaining > 0)
             {
                 lease = lease with { RemainingTicks = remaining };

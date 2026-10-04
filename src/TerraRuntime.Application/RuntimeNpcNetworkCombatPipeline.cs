@@ -457,7 +457,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             request = request with { Target = liveTarget.Handle };
         }
 
-        if (!damage.TryApply(in request, out NpcDamageResult result))
+        if (!TryApplyServerStrike(in request, out NpcDamageResult result))
         { CancelPendingDeathPlan(); return RuntimeProjectileNpcDamageResult.Rejected; }
 
         NpcSnapshot dead;
@@ -514,7 +514,6 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         if (!npcs.TryDespawn(dead.Handle))
             throw new InvalidOperationException("A player-owned kill could not despawn the exact NPC generation.");
         interactions.Forget(dead.Handle);
-        npcReplication?.TryPublishDeath(in dead);
         return RuntimeProjectileNpcDamageResult.Killed;
     }
 
@@ -574,7 +573,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             baseDamage,
             KnockBack: knockBack,
             HitDirection: hitDirection);
-        if (!damage.TryApply(in request, out NpcDamageResult result))
+        if (!TryApplyServerStrike(in request, out NpcDamageResult result))
         { CancelPendingDeathPlan(); return RuntimeTownNpcMeleeDamageResult1458.Rejected; }
 
         NpcSnapshot dead;
@@ -630,7 +629,6 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         if (!npcs.TryDespawn(dead.Handle))
             throw new InvalidOperationException("A Town NPC melee kill could not despawn the exact NPC generation.");
         interactions.Forget(dead.Handle);
-        npcReplication?.TryPublishDeath(in dead);
         return RuntimeTownNpcMeleeDamageResult1458.Killed;
     }
 

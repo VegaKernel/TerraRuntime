@@ -139,7 +139,7 @@ public static class VanillaNpcAiCoverageCatalog
             VanillaAntlionNpcCatalog1458.DefinitionCount +
             VanillaGroundFighterNpcCatalog.AdditionalDefinitionCount +
             VanillaMoonEventGroundFighterCatalog1458.DefinitionCount +
-            VanillaMimicNpcCatalog1458.DefinitionCount - 1 + 14 + VanillaMothronNpcCatalog1458.DefinitionCount];
+            VanillaMimicNpcCatalog1458.DefinitionCount - 1 + 14 + VanillaMothronNpcCatalog1458.DefinitionCount + VanillaBigMimicNpcCatalog1458.DefinitionCount];
         entries[0] = Partial(
             VanillaNpcIds.BlueSlime,
             OrdinaryCore |
@@ -477,6 +477,9 @@ public static class VanillaNpcAiCoverageCatalog
                 OrdinaryCore | VanillaNpcAiCapability.AntlionMotionSlice |
                 VanillaNpcAiCapability.FlyerProjectileSideEffectSlice);
         }
+
+        foreach (VanillaNpcDefinition definition in VanillaBigMimicNpcCatalog1458.AllDefinitions)
+            entries[index++] = Partial(definition.Type, OrdinaryCore);
 
         foreach (VanillaNpcDefinition definition in VanillaMothronNpcCatalog1458.AllDefinitions)
             entries[index++] = Partial(definition.Type, OrdinaryCore |

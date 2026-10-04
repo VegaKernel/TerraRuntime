@@ -24,9 +24,19 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                     doors.Remove((byte)index);
         int visited = 0, started = 0, advanced = 0, shots = 0, hits = 0, rejected = 0;
         Span<RuntimeTownNpcHomeCommit> homes = stackalloc RuntimeTownNpcHomeCommit[RuntimeTownNpcStateStore.MaximumTownNpcs];
+        Span<SocialEmotePlan> emotes = stackalloc SocialEmotePlan[2];
         Span<NpcSnapshot> peers = stackalloc NpcSnapshot[RuntimeNpcStore.MaximumAddressableCapacity];
         Span<RuntimeTownNpcMeleeIntent1458> melee = stackalloc RuntimeTownNpcMeleeIntent1458[RuntimeNpcStore.MaximumAddressableCapacity];
         int count = townNpcs.CopyHomeBaselines(homes);
+        // NPC.UpdateNPC visits physical slots, regardless of household insertion order.
+        for (int index = 1; index < count; index++)
+        {
+            RuntimeTownNpcHomeCommit home = homes[index];
+            int prior = index - 1;
+            while (prior >= 0 && homes[prior].NpcSlot > home.NpcSlot)
+            { homes[prior + 1] = homes[prior]; prior--; }
+            homes[prior + 1] = home;
+        }
         for (int index = 0; index < count; index++)
         {
             RuntimeTownNpcHomeCommit home = homes[index];
@@ -43,7 +53,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             if (!TryPlanUnifiedResident(in before, in home, in conditions, players, conversations,
                     seatedPlayers, playerDanger, peers[..peerCount], status, combat, melee,
                     out NpcStateUpdate aiState, out bool force, out NpcAiProjectileIntent? projectile,
-                    out int meleeCount)) { rejected++; continue; }
+                    out int meleeCount, out SocialPeerPlan? socialPeer)) { rejected++; continue; }
             double surface = tiles.WorldSurfaceTiles ?? Math.Max(1d, tiles.Dimensions.HeightTiles / 3d);
             aiState = aiState with { Simulation = aiState.Simulation with {
                 HostileContactImmunity = Math.Max(0, aiState.Simulation.HostileContactImmunity - 1) } };
@@ -58,17 +68,31 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                         gravity.Value.Parameters.Gravity, out moved)) { rejected++; continue; }
             }
             else moved = contacted;
-            moved = FinishResidentPresentation(in moved);
+            if (!TryPlanPresentation(in moved, peers[..peerCount], ref socialPeer, emotes,
+                    out int emoteCount, out moved)) { rejected++; continue; }
             moved = moved with { Simulation = moved.Simulation with { JustHit = false } };
+            if (!moved.Simulation.Wet && moved.Simulation.Breath is { } breath)
+                moved = moved with { Simulation = moved.Simulation with { Breath = Math.Min(200, breath + 3) } };
             if (!npcs.TryGet(before.Handle, out var current) || current.Revision != before.Revision ||
-                randomScope is not null && !randomScope.IsCurrent ||
-                !npcs.TryUpdateUnpublished(before.Handle, in moved, out var committed)) { rejected++; continue; }
+                randomScope is not null && !randomScope.IsCurrent) { rejected++; continue; }
+            NpcSnapshot committed;
+            if (socialPeer.HasValue)
+            {
+                SocialPeerPlan partner = socialPeer.Value;
+                if (!npcs.TryUpdatePairUnpublished(in before, in moved, partner.Expected, partner.Update,
+                        out committed, out var committedPeer)) { rejected++; continue; }
+                if (partner.Force) socialForcedUpdates[committedPeer.Handle.Slot] = committedPeer.Handle;
+            }
+            else if (!npcs.TryUpdateUnpublished(before.Handle, in moved, out committed)) { rejected++; continue; }
             // TryUpdateUnpublished has no external callbacks. Adopt before the single publication so a
             // trusted sink can draw from the accepted stream without those draws being overwritten.
             randomScope?.Accept();
             if (selfStinky) status.ObserveVisualOffer(before.Handle, in visualOffer);
             if (strike.HasValue) combat.PublishContact(in committed, strike.Value);
-            npcs.TryPublishUpdate(in committed, forceSync: force || strike.HasValue);
+            combat.PublishEmotes(in committed, emotes[..emoteCount]);
+            bool peerForce = socialForcedUpdates.Remove(committed.Handle.Slot, out NpcHandle pendingPeer) &&
+                pendingPeer == committed.Handle;
+            npcs.TryPublishUpdate(in committed, forceSync: force || peerForce || strike.HasValue);
             townNpcs.TryUpdatePosition(home.NpcSlot, in committed);
             states[home.NpcSlot] = committed.Ai.Ai0 == 5f || conditions.ReturnHomeRequested && committed.Ai.Ai0 == 0f &&
                 Math.Abs(BottomTileX(in committed, home.NpcType) - home.HomeTileX) <= 1
@@ -98,15 +122,16 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         ReadOnlySpan<RuntimeTownPlayerDanger1458> playerDanger, ReadOnlySpan<NpcSnapshot> peers,
         RuntimeNpcStinkyStatus1458 status, RuntimeTownNpcCombat1458 combat,
         Span<RuntimeTownNpcMeleeIntent1458> melee, out NpcStateUpdate update, out bool force,
-        out NpcAiProjectileIntent? projectile, out int meleeCount)
+        out NpcAiProjectileIntent? projectile, out int meleeCount, out SocialPeerPlan? socialPeer)
     {
         NpcSnapshot combatInput = combat.PlanVitals(in before);
         update = default;
         force = false;
         projectile = null;
         meleeCount = 0;
+        socialPeer = null;
         if (!VanillaTownNpcFacts1458.TryGetHousingCategory(home.NpcType, out int category) || category != VanillaTownNpcFacts1458.OrdinaryHousingCategory ||
-            before.Simulation.Wet || before.Ai.Ai0 is 13f or 14f or 24f ||
+            before.Simulation.Wet || before.Ai.Ai0 is 14f or 24f ||
             VanillaWorldCollision.TryGetWetContact(tiles, before.PositionX, before.PositionY,
                 GetWidth(home.NpcType), GetHeight(home.NpcType), out _)) return false;
         if (before.Handle.Slot >= TerrariaNpcTalkCodec.MaximumNpcSlots ||
@@ -138,7 +163,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 input = input with { Simulation = input.Simulation with { DirectionX = facing } };
             }
         }
-        if (!TryPlanDangerResponse(in input, in home, in scanned, activeTalk, out var staged,
+        if (!TryPlanDangerResponse(in input, in home, in scanned, activeTalk, peers, ref socialPeer, out var staged,
                 out RuntimeTownNpcDanger1458 danger, out bool preludeForce)) return false;
         force |= preludeForce;
         bool activeAttack = staged.Ai.Ai0 is 10f or 12f or 15f;
@@ -157,6 +182,14 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             if (!TryPlanOrdinaryMotion(in staged, in home, shelter && atHome, shelter, seatedPlayers, in danger,
                     out update, out bodyForce, selfStinky, floorX, floorY, originTileX, originTileY)) return false;
         }
+        else if (staged.Ai.Ai0 is 3f or 4f or 16f or 17f)
+        {
+            TryPlanSocialMaintenance(in staged, out update, out bodyForce);
+        }
+        else if (staged.Ai.Ai0 == 13f && staged.TypeIdentity == VanillaNpcIds.Nurse)
+        {
+            if (!TryPlanActiveNurse(in staged, peers, out update, out projectile, out bodyForce)) return false;
+        }
         else if (staged.Ai.Ai0 == 8f)
         {
             if (!TryPlanBlockedFlee(in staged, in danger, out update, out bodyForce)) return false;
@@ -165,12 +198,15 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         force |= bodyForce;
         if (!activeTalk || danger.WithinRange)
         {
+            bool attackEligibleState = update.Ai.Ai0 is 0f or 1f or 8f;
             if (!TryPlanRealIdleOffers(in staged, in update, in danger, conversations, playerDanger, peers,
-                    conditions.PartyIsUp,
+                    conditions.PartyIsUp, ref socialPeer,
                     out update, out bool offerForce)) return false;
             force |= offerForce;
+            if (!TryPlanNurseAdmission(in update, peers, out update, out bool nurseForce)) return false;
+            force |= nurseForce;
             if (!combat.TryPlanAttackInitialization(in before, in update, in danger, activeTalk,
-                    out update, out bool attackForce)) return false;
+                    out update, out bool attackForce, attackEligibleState)) return false;
             force |= attackForce;
         }
         return true;

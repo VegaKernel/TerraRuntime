@@ -29,23 +29,24 @@ public sealed class FallingBlockRuntimeTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void Conveyor_landing_retains_material_until_the_world_item_pool_has_space()
+    public void Conveyor_landing_retains_material_until_an_unknown_allocation_lease_is_released()
     {
         var tiles = Scene(); tiles.EnableFallingBlockUpdates();
         tiles.Set(30, 40, new WorldTile { Type = 421, Flags = WorldTileFlags.Active });
         tiles.Set(30, 20, new WorldTile { Type = 53, Flags = WorldTileFlags.Active });
         var projectiles = new RuntimeProjectileStore(); var items = new RuntimeWorldItemStore();
-        for (int i = 0; i < 400; i++)
-            Assert.True(items.TryAllocate(new(100, 100, 0, 0, 1, 0, WorldItemOwnershipMode.None, 2,
+        for (int i = 0; i < 399; i++)
+            Assert.True(items.TryAllocate(new(100, 100, 0, 0, 9999, 0, WorldItemOwnershipMode.None, 1,
                 false, 0, 0, byte.MaxValue, 0, byte.MaxValue, 0), out _));
+        Assert.True(items.TryReserveDropSlot(out var held));
         var runtime = new ServerRuntimeState(worldTiles: tiles, projectiles: projectiles, worldItems: items,
             projectileStepper: new VanillaProjectileWorldStateStepper(tiles));
         for (int i = 0; i < 100; i++) runtime.Tick();
         Assert.False(tiles.Get(30, 39).IsActive);
         Assert.Equal(0, projectiles.ActiveCount);
-        Assert.True(items.TryRemove(0, out _));
+        Assert.True(items.TryReleaseDropReservation(in held));
         runtime.Tick();
-        Assert.True(items.TryGetActive(0, out var drop));
+        Assert.True(items.TryGetActive(399, out var drop));
         Assert.True(drop.TryGetItemType(out var type));
         Assert.Equal(169, type.Value);
         Assert.Equal(1, drop.Stack);

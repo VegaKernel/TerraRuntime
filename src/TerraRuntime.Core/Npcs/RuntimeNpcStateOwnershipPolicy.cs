@@ -13,7 +13,8 @@ internal static class RuntimeNpcStateOwnershipPolicy
 {
     public static NpcStateUpdate MaterializeSpawnDefaults(in NpcStateUpdate update, VanillaNpcSpawnDefaults? spawnDefaults = null)
     {
-        NpcSimulationState simulation = update.Simulation;
+        NpcSimulationState simulation = update.Simulation with {
+            FrameIndex = update.Simulation.FrameIndex ?? 0, Breath = update.Simulation.Breath ?? 200 };
         if (TryGetDefinition(update.Type, update.NetId, out VanillaNpcDefinition definition))
         {
             if (simulation.LifeMax == 0)
@@ -138,7 +139,7 @@ internal static class RuntimeNpcStateOwnershipPolicy
         }
 
         if (!sameDefinition && hasDefinition)
-            simulation = simulation with { Scale = definition.Scale };
+            simulation = simulation with { Scale = definition.Scale, FrameIndex = 0, FrameCounter = 0d, Breath = 200 };
 
         if (simulation.TimeLeft < 0)
         {

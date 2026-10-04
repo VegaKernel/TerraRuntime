@@ -79,17 +79,6 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             return false;
         }
 
-        Span<WorldItemDropReservation> capacity = stackalloc WorldItemDropReservation[MaxOrdinaryDrops];
-        Span<WorldItemDropReservation> staged = stackalloc WorldItemDropReservation[MaxOrdinaryDrops];
-        int reserved = 0;
-        for (; lootDelivery.Preview is null && reserved < maximumDropCount; reserved++)
-        {
-            if (worldItems.TryReserveDropSlot(out capacity[reserved]))
-                continue;
-            ReleaseReservations(capacity[..reserved]);
-            return false;
-        }
-
         var origin = ResolveNpcLootOrigin(in npc, in definition);
         int stagedCount = 0;
         var context = new VanillaNpcLootContext(expertMode, DropExtraGel: false);
@@ -102,11 +91,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 if (!VanillaKingSlimeNormalLootEvaluator.TryEvaluateRule(
                         in rules[index], random, out bool dropped, out NpcLootDrop drop))
                 {
-                    ReleaseReservations(capacity);
-                    ReleaseReservations(staged[..stagedCount]);
                     return false;
                 }
-                if (dropped && !StageDrop(in origin, in drop, capacity, staged, ref stagedCount))
+                if (dropped && !StageDrop(in origin, in drop, ref stagedCount))
                     return false;
             }
         }
@@ -118,51 +105,19 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 if (!VanillaNpcLootEvaluator.TryEvaluateRule(
                         in rules[index], in context, random, out bool dropped, out NpcLootDrop drop))
                 {
-                    ReleaseReservations(capacity);
-                    ReleaseReservations(staged[..stagedCount]);
                     return false;
                 }
-                if (dropped && !StageDrop(in origin, in drop, capacity, staged, ref stagedCount))
+                if (dropped && !StageDrop(in origin, in drop, ref stagedCount))
                     return false;
             }
         }
 
-        if (lootDelivery.Preview is not null) return true;
-        ReleaseReservations(capacity[stagedCount..maximumDropCount]);
-        for (int index = 0; index < stagedCount; index++)
-        {
-            if (!worldItems.TryCommitReservedDrop(in staged[index], out _))
-                throw new InvalidOperationException("A staged NPC-loot reservation failed after source-ordered evaluation.");
-        }
         return true;
     }
 
-    private bool StageDrop(
-        in NpcLootWorldItemOrigin origin,
-        in NpcLootDrop drop,
-        Span<WorldItemDropReservation> capacity,
-        Span<WorldItemDropReservation> staged,
-        ref int stagedCount)
+    private bool StageDrop(in NpcLootWorldItemOrigin origin, in NpcLootDrop drop, ref int stagedCount)
     {
-        if (lootDelivery.Preview is not null)
-        {
-            if (!lootDelivery.TryWorld(in origin, in drop, random)) return false;
-            stagedCount++;
-            return true;
-        }
-        if (!materializer.TryMaterialize(in origin, in drop, random, out WorldItemDropStateUpdate materialized))
-        {
-            ReleaseReservations(capacity);
-            ReleaseReservations(staged[..stagedCount]);
-            return false;
-        }
-
-        int capacityIndex = stagedCount;
-        if (!worldItems.TryReleaseDropReservation(in capacity[capacityIndex]))
-            throw new InvalidOperationException("Failed to release an exact NPC-loot capacity reservation.");
-        capacity[capacityIndex] = default;
-        if (!worldItems.TryReserveDrop(in materialized, out staged[stagedCount]))
-            throw new InvalidOperationException("Preflighted NPC loot lost reserved world-item capacity.");
+        if (!lootDelivery.TryWorld(in origin, in drop, random)) return false;
         stagedCount++;
         return true;
     }
@@ -599,15 +554,6 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             random,
             lootDelivery,
             out _);
-    }
-
-    private void ReleaseReservations(Span<WorldItemDropReservation> reservations)
-    {
-        for (int index = 0; index < reservations.Length; index++)
-        {
-            if (reservations[index].IsAssigned)
-                worldItems.TryReleaseDropReservation(in reservations[index]);
-        }
     }
 
     private sealed class SystemNpcCombatRandom : INpcLootRollSource, IKingSlimeDeathRandom, IVanillaNpcRandom, TerraRuntime.Gameplay.Npcs.Loot.INpcMoneyRandom1458

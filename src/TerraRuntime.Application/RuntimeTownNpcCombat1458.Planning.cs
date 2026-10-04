@@ -19,7 +19,7 @@ internal sealed partial class RuntimeTownNpcCombat1458
     // Called after the source body and real offers, before physics. No store mutation or shot here.
     internal bool TryPlanAttackInitialization(in NpcSnapshot source,
         in NpcStateUpdate body, in RuntimeTownNpcDanger1458 danger, bool activeTalk,
-        out NpcStateUpdate next, out bool force)
+        out NpcStateUpdate next, out bool force, bool? eligibleStateOverride = null)
     {
         next = body;
         force = false;
@@ -30,7 +30,7 @@ internal sealed partial class RuntimeTownNpcCombat1458
         if (cooldown > 0f) cooldown--;
         next = body with { Simulation = body.Simulation with {
             LocalAi = body.Simulation.LocalAi with { Ai1 = cooldown } } };
-        if (next.Ai.Ai0 is not (0f or 1f or 8f) || !danger.WithinRange || danger.Stinky ||
+        if (!(eligibleStateOverride ?? next.Ai.Ai0 is 0f or 1f or 8f) || !danger.WithinRange || danger.Stinky ||
             next.VelocityY != 0f || cooldown > 0f) return true;
         if (!projectile && !melee) return false;
         int average = projectile ? shot.AttackAverageChance : swing.AttackAverageChance;

@@ -202,4 +202,32 @@
     <EmbeddedResource Include="Fixtures/npc-death-prelude-banner-closest-official.json.gz" />
     <EmbeddedResource Include="Fixtures/npc-only-shimmer-ocean-worlds-official.json.gz" />
   </ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/nonclient-strike-official-1458.json.gz" LogicalName="NonclientStrike1458" /></ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/world-item-overflow-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/world-item-allocation-defaults-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/big-mimic-cannon-prefix-official.json.gz" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/BigMimicWholeAi1458.json.gz" LogicalName="BigMimicWholeAi1458" />
+    <EmbeddedResource Include="Fixtures/BigMimicOuter1458.json.gz" LogicalName="BigMimicOuter1458" />
+    <EmbeddedResource Include="Fixtures/BigMimicDefaults1458.json.gz" LogicalName="BigMimicDefaults1458" />
+    <EmbeddedResource Include="Fixtures/BigMimicReflection1458.json.gz" LogicalName="BigMimicReflection1458" />
+    <EmbeddedResource Include="Fixtures/BigMimicCannon1458.json.gz" LogicalName="BigMimicCannon1458" />
+    <EmbeddedResource Include="Fixtures/BigMimicProjectileDefaults1458.json.gz" LogicalName="BigMimicProjectileDefaults1458" />
+    <EmbeddedResource Include="Fixtures/BigMimicStrike1458.json.gz" LogicalName="BigMimicStrike1458" />
+  </ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/world-item-allocation-views-official.json.gz" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Fixtures/BigMimicSeedAi1458.json.gz" LogicalName="BigMimicSeedAi1458" /></ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/town-social-official-1458.json.gz" LogicalName="TownSocial1458" />
+    <EmbeddedResource Include="Fixtures/town-nurse-official-1458.json.gz" LogicalName="TownNurse1458" />
+    <EmbeddedResource Include="Fixtures/town-nurse-projectile-official-1458.json.gz" LogicalName="TownNurseProjectile1458" />
+    <EmbeddedResource Include="Fixtures/world-item-sentinel-wire-official.json.gz" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/town-social-wire-official-1458.json.gz" LogicalName="TownSocialWire1458" />
+    <EmbeddedResource Include="Fixtures/town-nurse-wire-official-1458.json.gz" LogicalName="TownNurseWire1458" />
+    <EmbeddedResource Include="Fixtures/town-nurse-bounce-official-1458.json.gz" LogicalName="TownNurseBounce1458" />
+  </ItemGroup>
 </Project>

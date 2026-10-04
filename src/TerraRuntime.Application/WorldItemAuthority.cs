@@ -83,7 +83,7 @@ internal sealed partial class WorldItemAuthority
         for (int index = 0; index < count; index++)
         {
             WorldItemSnapshot item = reservationScan[index];
-            if (!item.Handle.IsAssigned || item.ShimmerTime > 0f || item.TimeToKeepReservation > 0 ||
+            if (!item.Handle.IsAssigned || worldItems.HasPendingSourceTransfer(item.Handle) || item.ShimmerTime > 0f || item.TimeToKeepReservation > 0 ||
                 (item.GrabDelayTime > 0 && item.GrabDelayPlayer == byte.MaxValue))
                 continue;
 
@@ -179,7 +179,11 @@ internal sealed partial class WorldItemAuthority
             replication.TryBroadcastInstancedSlotRelease(expiredInstancedItemSlots[index]);
     }
 
-    internal void TickReservationTimers() => worldItems.TickReservationTimers();
+    internal void TickReservationTimers()
+    {
+        worldItems.TickReservationTimers();
+        _ = worldItems.TryProcessPendingSourceTransfers();
+    }
 
     public bool TryCapture(short slot, out WorldItemSnapshot snapshot) =>
         worldItems.TryGetActive(slot, out snapshot);
@@ -227,11 +231,18 @@ internal sealed partial class WorldItemAuthority
         }
 
         WorldItemDropStateUpdate state = command.State;
-        if (worldItems.TryAllocateDrop(in state, out WorldItemSnapshot snapshot))
+        Span<WorldItemAllocationPlayer1458> views = stackalloc WorldItemAllocationPlayer1458[byte.MaxValue];
+        int viewCount = 0;
+        foreach (var player in players.Members)
+        {
+            var body = player.HasMount ? TerraRuntime.Gameplay.Players.VanillaPlayerMountHitbox1458.Resolve(player.MountType) : (Width: 20f, Height: 42f);
+            views[viewCount++] = new(player.Slot.Value, player.PositionX, player.PositionY, (int)body.Width, (int)body.Height);
+        }
+        if (worldItems.TryAllocateSourceDrop(in state, views[..viewCount], out WorldItemSnapshot snapshot, out short selectedSlot, sourceLocalPlayerId: command.Connection.Player.Slot.Value))
         {
             // MessageBuffer21 -> ApplySpawnOwnership: do not discard the spawning connection's grab delay.
             // Packet22 remains a server-owned projection; the client supplies only the source ownership mode.
-            if (state.Ownership != WorldItemOwnershipMode.None)
+            if (selectedSlot < worldItems.Capacity && state.Ownership != WorldItemOwnershipMode.None)
             {
                 bool reserve = state.Ownership == WorldItemOwnershipMode.ReserveForLocalPlayer;
                 byte local = command.Connection.Player.Slot.Value;
@@ -241,7 +252,7 @@ internal sealed partial class WorldItemAuthority
                 _ = worldItems.TryApplyOwner(snapshot.Handle.Slot, in owner, out snapshot);
             }
             AppliedAllocations++;
-            command.Completion?.TrySetResult(snapshot);
+            command.Completion?.TrySetResult(snapshot.Handle.IsAssigned ? snapshot : null);
             return;
         }
 
@@ -319,10 +330,11 @@ internal sealed partial class WorldItemAuthority
             return;
         }
         // Source case39 relinquishes ownership; a client cannot choose the next recipient or position.
-        byte owner = command.ForceServer || item.TimeToKeepReservation > 0
+        bool pendingTransfer = worldItems.HasPendingSourceTransfer(item.Handle);
+        byte owner = command.ForceServer || pendingTransfer || item.TimeToKeepReservation > 0
             ? byte.MaxValue : FindNearestEligibleOwner(in item)?.Slot.Value ?? byte.MaxValue;
         var update = new WorldItemOwnerStateUpdate(owner,
-            command.ForceServer ? 0 : owner == byte.MaxValue ? item.TimeToKeepReservation : DefaultOwnerReservationTicks1458,
+            (command.ForceServer || pendingTransfer) ? 0 : owner == byte.MaxValue ? item.TimeToKeepReservation : DefaultOwnerReservationTicks1458,
             item.GrabDelayPlayer, item.GrabDelayTime, item.PositionX, item.PositionY);
         if (worldItems.TryApplyOwner(item.Handle.Slot, in update, out _)) AppliedOwners++;
         else RejectedOwners++;

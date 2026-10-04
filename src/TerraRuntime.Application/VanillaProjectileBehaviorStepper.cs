@@ -81,7 +81,8 @@ internal readonly record struct VanillaProjectileBehaviorResult(
     ProjectileLocalAiState? LocalAiOverride = null,
     short? DamageOverride = null,
     float? KnockBackOverride = null,
-    ProjectilePlayerBuffApplication? PlayerBuff = null);
+    ProjectilePlayerBuffApplication? PlayerBuff = null,
+    ProjectileNpcHealingApplication? NpcHealing = null);
 
 /// <summary>
 /// Source-backed TerrariaServer 1.4.5.8 projectile behavior that is independent of tile/world queries.
@@ -141,6 +142,8 @@ internal static partial class VanillaProjectileBehaviorStepper
 
         switch (profile.Family)
         {
+            case VanillaProjectileBehaviorFamily.NurseHealing:
+                return TryStepNurseHealing(in current, in definition, in context, out next);
             case VanillaProjectileBehaviorFamily.FallingBlock:
                 // Only server-owned gravity blocks; sandgun/magic channel variants are not this admission.
                 if (!VanillaProjectileOwnership.IsServerOwned(current.Spawner) || current.Ai.Ai1 != 0)

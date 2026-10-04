@@ -93,6 +93,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             targeting.SetAntlionEnvironment(new VanillaAntlionWorldEnvironment1458(tiles));
             targeting.SetGhostHoverEnvironment(new VanillaGhostHoverWorldEnvironment1458(tiles));
             targeting.SetMothronEnvironment(new VanillaMothronWorldEnvironment1458(tiles, worldSurfaceTiles));
+            targeting.SetBigMimicEnvironment(new VanillaBigMimicWorldEnvironment1458(tiles));
         }
     }
 
@@ -109,7 +110,8 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             return false;
         }
         if ((targeting is not null && (VanillaGhostHoverNpcCatalog1458.IsSupported(npc.TypeIdentity) ||
-            VanillaMothronNpcCatalog1458.IsSupported(npc.TypeIdentity))) ||
+            VanillaMothronNpcCatalog1458.IsSupported(npc.TypeIdentity) ||
+            VanillaBigMimicNpcCatalog1458.IsSupported(npc.TypeIdentity))) ||
             npc.TypeIdentity == VanillaNpcIds.Nailhead || npc.TypeIdentity == VanillaNpcIds.DrManFly || npc.TypeIdentity == VanillaNpcIds.Frankenstein)
         {
             next = aiState;
@@ -324,12 +326,12 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     }
 
     internal static bool TryFinishPhysics(WorldTileStore tiles, double worldSurfaceTiles,
-        in NpcSnapshot npc, in NpcStateUpdate aiState, out NpcStateUpdate next)
+        in NpcSnapshot npc, in NpcStateUpdate aiState, out NpcStateUpdate next, bool? fallThroughOverride = null)
     {
         if (!TryApplyGravity(tiles, worldSurfaceTiles, in aiState, out var accelerated, out var gravity))
         { next = default; return false; }
         if (!gravity.HasValue) { next = accelerated; return true; }
-        return TryFinishCollision(tiles, in accelerated, gravity.Value.Parameters.Gravity, out next);
+        return TryFinishCollision(tiles, in accelerated, gravity.Value.Parameters.Gravity, out next, fallThroughOverride);
     }
 
     // NPC.UpdateNPC: AI -> gravity -> GetHurtByOtherNPCs -> collision. Keeping these stages
@@ -373,7 +375,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     }
 
     internal static bool TryFinishCollision(WorldTileStore tiles, in NpcStateUpdate aiState,
-        float gravityAcceleration, out NpcStateUpdate next)
+        float gravityAcceleration, out NpcStateUpdate next, bool? fallThroughOverride = null)
     {
         if (!VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(aiState.Type), new NpcNetId(aiState.NetId), out var definition) ||
             !definition.TryResolveHitbox(aiState.Simulation, out var hitbox))
@@ -423,7 +425,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
 
         float oldVelocityX = velocityX;
         float oldVelocityY = velocityY;
-        bool fallThroughPlatforms = definition.PhysicsFamily switch
+        bool fallThroughPlatforms = fallThroughOverride ?? (definition.PhysicsFamily switch
         {
             VanillaNpcPhysicsFamily.FlyingEye => true,
             VanillaNpcPhysicsFamily.BatFlight => true,
@@ -432,7 +434,7 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             VanillaNpcPhysicsFamily.GroundFighter => simulation.DirectionY == 1,
             VanillaNpcPhysicsFamily.UnicornGround => simulation.DirectionY == 1,
             _ => false
-        };
+        });
         VanillaTileCollisionResult collision = VanillaWorldCollision.TileCollision(
             tiles,
             aiState.PositionX,
@@ -519,6 +521,19 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations)
     {
+        if (targeting is not null && VanillaBigMimicNpcCatalog1458.IsSupported(before.TypeIdentity))
+        {
+            if (!targeting.TryGetBigMimicAcceptedPlan(in before, in committed, mutations, out var planned, out bool fallThrough) ||
+                !TryFinishPhysics(tiles, worldSurfaceTiles, in before, in planned, out var final, fallThrough))
+            {
+                targeting.CancelBigMimicAcceptedPlan();
+                return default;
+            }
+            // Source FindFrame's AI87 body updates sprite facing after collision only when vertical speed is zero.
+            if (final.VelocityY == 0f)
+                final = final with { Simulation = final.Simulation with { SpriteDirection = final.Simulation.DirectionX } };
+            return targeting.CompleteBigMimicAcceptedPlan(in before, in committed, in final, mutations);
+        }
         if (targeting is not null && VanillaMothronNpcCatalog1458.IsSupported(before.TypeIdentity))
         {
             if (!targeting.TryGetMothronAcceptedPlan(in before, in committed, mutations, out var planned) ||

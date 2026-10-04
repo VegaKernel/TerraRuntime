@@ -1,22 +1,22 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Core.Worlds;
+using TerraRuntime.Gameplay.Items;
 
 namespace TerraRuntime.Application;
 
 internal enum NpcDeathDropPhase1458 : byte { Prelude, Imported, Recovery, Money, Healing }
 
-// Bounded exact drop reservations retain physical states; preview never publishes items.
+// Bounded sequential source allocation retains physical states; preview never publishes items.
 internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
 {
     private readonly PlannedDrop[] drops = new PlannedDrop[RuntimeWorldItemStore.VanillaCapacity];
-    private readonly WorldItemDropReservation[] reservations = new WorldItemDropReservation[RuntimeWorldItemStore.VanillaCapacity];
+    private RuntimeWorldItemStore.AllocationPreview? allocation;
     private readonly VanillaUnifiedRandom1458 originalRandom;
     private readonly VanillaUnifiedRandom1458 beforeRandom;
     private readonly VanillaUnifiedRandom1458?[] phaseRandom = new VanillaUnifiedRandom1458?[(int)NpcDeathDropPhase1458.Healing + 1];
     private readonly VanillaUnifiedRandom1458?[] beforePhaseRandom = new VanillaUnifiedRandom1458?[(int)NpcDeathDropPhase1458.Healing + 1];
     private RuntimeWorldItemStore? store;
-    private int reserved;
     private int published;
     private int count;
     private int nextPhase;
@@ -72,30 +72,23 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
         return true;
     }
 
-    public bool TryReserve(RuntimeWorldItemStore items)
+    public bool TryReserve(RuntimeWorldItemStore items, ReadOnlySpan<WorldItemAllocationPlayer1458> players = default)
     {
         if (failed || nextPhase != phaseRandom.Length || store is not null || accepted ||
             !originalRandom.HasSameState(beforeRandom)) return false;
+        allocation = items.CreateAllocationPreview(players);
+        foreach (PlannedDrop drop in drops.AsSpan(0, count))
+            if (!allocation.TrySpawnSource(drop.State, drop.LeaseTicks, out _))
+            { failed = true; allocation.Dispose(); allocation = null; return false; }
+        if (!allocation.TryClaim()) { allocation.Dispose(); allocation = null; return false; }
         store = items;
-        while (reserved < count)
-        {
-            PlannedDrop drop = drops[reserved];
-            WorldItemDropStateUpdate state = drop.State;
-            if (!items.TryReserveDrop(in state, out reservations[reserved]))
-            {
-                failed = true;
-                Dispose();
-                return false;
-            }
-            reserved++;
-        }
         return true;
     }
 
     // The caller checks the ORIGINAL NPC revision before performing its deterministic damage commit.
     public bool TryAccept(Func<NpcHandle, NpcRevision, bool> ownerIsCurrent)
     {
-        if (failed || accepted || store is null || reserved != count ||
+        if (failed || accepted || store is null || allocation?.IsCurrent != true ||
             !originalRandom.HasSameState(beforeRandom) || !ownerIsCurrent(Owner, Revision)) return false;
         accepted = true;
         nextPhase = 0;
@@ -103,8 +96,8 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
     }
 
     // HitEffect -> prelude -> imported -> owned death events -> recovery -> money -> healing.
-    // Instanced callback adopts the existing
-    // exact reservation and relays only to still-current generation-owned recipients.
+    // Instanced callback adopts the exact source-selected
+    // reservation and relays only to still-current generation-owned recipients.
     public bool TryPublishPhase(NpcDeathDropPhase1458 phase,
         Func<WorldItemDropReservation, WorldItemDropStateUpdate, PlayerHandle[], int, bool> adoptInstanced)
     {
@@ -113,10 +106,9 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
         while (published < count && drops[published].Phase == phase)
         {
             PlannedDrop drop = drops[published];
-            WorldItemDropReservation reservation = reservations[published];
-            bool committed = drop.LeaseTicks == 0
-                ? store.TryCommitReservedDrop(in reservation, out _)
-                : adoptInstanced(reservation, drop.State, drop.Recipients, drop.LeaseTicks);
+            bool committed = allocation!.TryCommitNext(out short slot, out WorldItemDropReservation reservation);
+            if (committed && drop.LeaseTicks != 0)
+                committed = adoptInstanced(reservation, drop.State, drop.Recipients, drop.LeaseTicks);
             if (!committed) throw new InvalidOperationException("An accepted single-writer death plan lost its reservation.");
             published++;
         }
@@ -126,14 +118,7 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
 
     public void Dispose()
     {
-        if (store is null) return;
-        while (reserved > published)
-        {
-            WorldItemDropReservation reservation = reservations[--reserved];
-            if (!store.TryReleaseDropReservation(in reservation))
-                throw new InvalidOperationException("Unpublished death-plan reservation lost ownership.");
-        }
-        store = null;
+        allocation?.Dispose(); allocation = null; store = null;
     }
 
     private readonly record struct PlannedDrop(NpcDeathDropPhase1458 Phase, WorldItemDropStateUpdate State,

@@ -84,7 +84,7 @@ public sealed class ServerRuntimeDirtKillDropTests
     }
 
     [Fact]
-    public void Full_world_item_pool_rejects_kill_without_mutating_dirt()
+    public void Unknown_reserved_item_slot_rejects_kill_without_mutating_dirt()
     {
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 9302);
@@ -95,7 +95,7 @@ public sealed class ServerRuntimeDirtKillDropTests
         Assert.Equal(1, fixture.Tiles.DirtySections.Drain(drained));
         WorldTile before = fixture.Tiles.Get(10, 10);
         long beforeVersion = fixture.Tiles.GetSectionVersion(section);
-        FillWorldItemPool(fixture.Items);
+        WorldItemDropReservation held = FillWorldItemPool(fixture.Items);
 
         fixture.State.Apply(new ClientTileManipulationRuntimeCommand(
             connection,
@@ -109,12 +109,13 @@ public sealed class ServerRuntimeDirtKillDropTests
         Assert.Equal(before, fixture.Tiles.Get(10, 10));
         Assert.Equal(beforeVersion, fixture.Tiles.GetSectionVersion(section));
         Assert.Equal(0, fixture.Tiles.DirtySections.DirtyCount);
-        Assert.Equal(RuntimeWorldItemStore.VanillaCapacity, fixture.Items.ActiveCount);
+        Assert.Equal(RuntimeWorldItemStore.VanillaCapacity - 1, fixture.Items.ActiveCount);
         Assert.Equal(0, fixture.State.AppliedClientTileManipulations);
         Assert.Equal(1, fixture.State.RejectedClientTileManipulations);
         Assert.Equal(0, fixture.State.UnsupportedClientTileManipulations);
         Assert.Equal(0, fixture.State.AppliedWorldItemAllocations);
         Assert.Equal(1, fixture.State.RejectedWorldItemAllocations);
+        Assert.True(fixture.Items.TryReleaseDropReservation(in held));
     }
 
     [Fact]
@@ -179,7 +180,7 @@ public sealed class ServerRuntimeDirtKillDropTests
         Assert.Equal(0, fixture.State.UnsupportedClientTileManipulations);
     }
 
-    private static void FillWorldItemPool(RuntimeWorldItemStore items)
+    private static WorldItemDropReservation FillWorldItemPool(RuntimeWorldItemStore items)
     {
         var drop = new WorldItemDropStateUpdate(
             PositionX: 0f,
@@ -194,8 +195,10 @@ public sealed class ServerRuntimeDirtKillDropTests
             ShimmerTime: 0f,
             EnemyGrabDelayTime: 0);
 
-        for (int slot = 0; slot < RuntimeWorldItemStore.VanillaCapacity; slot++)
+        for (int slot = 0; slot < RuntimeWorldItemStore.VanillaCapacity - 1; slot++)
             Assert.True(items.TryAllocateDrop(in drop, out _));
+        Assert.True(items.TryReserveDropSlot(out var held));
+        return held;
     }
 
     private sealed class Fixture : IDisposable
