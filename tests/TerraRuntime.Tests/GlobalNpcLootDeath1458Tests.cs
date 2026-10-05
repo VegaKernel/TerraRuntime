@@ -72,6 +72,9 @@ public sealed class GlobalNpcLootDeath1458Tests
                 Player = new(new(0), new(1)), Revision = new(1), PositionX = context.PositionX, PositionY = context.PositionY,
                 Luck = row.GetProperty("luck").GetSingle(), Zones = context.Zones,
                 HasHealth = true, Life = (short)(injured ? 100 : 400), MaxLife = 400, DerivedLifeMax = 400,
+                // The original callback capture supplies current life immediately before this death;
+                // it does not run an intervening, unowned remote Player.Update phase.
+                NpcLifeCurrent = true,
                 HasMana = true, Mana = (short)(injured ? 20 : 200), MaxMana = 200
             };
             world = new(context.WorldWidth, context.WorldHeight, context.Difficulty, context.HardMode, context.RemixWorld,

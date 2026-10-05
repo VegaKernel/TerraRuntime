@@ -26,6 +26,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             checked((byte)(request.HitDirection + 1)), request.Critical ? (byte)1 : (byte)0);
         npcs.TryPublishPendingBirthBeforeStrike(in before, in committed);
         npcReplication?.TryPublishDamage(default, in wire);
+        if (!result.Lethal) ExecuteNpcNonlethalHitEffects(in committed);
 
         // A lethal actor is published by the final despawn, after owned loot/death effects. Publishing the
         // intermediate Life=0 state here would insert another packet 23 ahead of those effects.

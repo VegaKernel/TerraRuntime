@@ -157,10 +157,12 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             if (!plan.BeginPreviewPhase(NpcDeathDropPhase1458.Healing)) return false;
             var healing = new VanillaNpcHealingContext1458(dead.TypeIdentity, dead.NetIdentity,
                 dead.Simulation.LifeMax, dead.Simulation.DamageOverride ?? definition.Damage,
-                hasClosest && closest.HasHealth && closest.Life < (closest.DerivedLifeMax ?? closest.MaxLife),
+                hasClosest && closest.HasHealth && (!requireOwnedPlayerHealth || closest.NpcLifeCurrent == true) &&
+                    closest.Life < (closest.DerivedLifeMax ?? closest.MaxLife),
                 hasClosest && closest.HasMana && closest.Mana < closest.MaxMana, expertMode,
                 LifeEligibilityKnown: !requireOwnedPlayerHealth ||
-                    (hasClosest && closest.HasHealth && closest.DerivedLifeMax.HasValue) || constructorHealthKnown);
+                    (hasClosest && closest.HasHealth && closest.NpcLifeCurrent == true &&
+                        closest.DerivedLifeMax.HasValue) || constructorHealthKnown);
             if ((allowLoot && !VanillaNpcHealingLoot1458.TryExecute(in healing, in origin, random, lootDelivery)) ||
                 !plan.FinishPreviewPhase(NpcDeathDropPhase1458.Healing)) return false;
             random.UseSource(liveRandom);

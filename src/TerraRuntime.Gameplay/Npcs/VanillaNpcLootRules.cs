@@ -8,7 +8,13 @@ public enum VanillaNpcLootRuleKind : byte
     ExtraGel = 1,
     NormalVsExpertCommon = 2,
     NotFromStatueCommon = 3,
-    SkyblockSickleCommon = 4
+    SkyblockSickleCommon = 4,
+    LowTilesCommon = 5,
+    ExpertCommon = 6,
+    NotExpertCommon = 7,
+    OneFromOptions = 8,
+    FailedRollChain = 9,
+    ExpertGetsOneReroll = 10
 }
 
 /// <summary>
@@ -23,17 +29,20 @@ public readonly record struct VanillaNpcLootRule(
     int ExpertChanceDenominator,
     short MinimumStack,
     short MaximumStack,
-    short ExtraGelMultiplier)
+    short ExtraGelMultiplier,
+    VanillaNpcLootAlternatives1458? Alternatives = null,
+    VanillaNpcLootOptions1458? Options = null)
 {
     public bool IsValid =>
-        (Kind is VanillaNpcLootRuleKind.ExtraGel or VanillaNpcLootRuleKind.NormalVsExpertCommon or
-            VanillaNpcLootRuleKind.NotFromStatueCommon or VanillaNpcLootRuleKind.SkyblockSickleCommon) &&
+        (Kind is >= VanillaNpcLootRuleKind.ExtraGel and <= VanillaNpcLootRuleKind.ExpertGetsOneReroll) &&
         !ItemType.IsNone &&
         NormalChanceDenominator > 0 &&
         ExpertChanceDenominator > 0 &&
         MinimumStack > 0 &&
         MaximumStack >= MinimumStack &&
-        ExtraGelMultiplier > 0;
+        ExtraGelMultiplier > 0 &&
+        (Kind != VanillaNpcLootRuleKind.FailedRollChain || Alternatives is { IsValid: true }) &&
+        (Kind != VanillaNpcLootRuleKind.OneFromOptions || Options is { IsValid: true });
 
     public int MaximumDropCount => IsValid ? 1 : 0;
 
@@ -189,6 +198,7 @@ public static class VanillaNpcLootRuleCatalog
         if (npcType == VanillaNpcIds.Slimer) { table = SlimerTable; return true; }
         if (npcType == VanillaNpcIds.Zombie) { table = ZombieTable; return true; }
         if (npcType == VanillaNpcIds.MeteorHead) { table = MeteorHeadTable; return true; }
+        if (VanillaUndeadLootCatalog1458.TryGet(npcType, out table)) return true;
 
         table = default;
         return false;
@@ -235,8 +245,18 @@ public static class VanillaNpcLootEvaluator
     {
         if (!table.IsValid) return false;
         foreach (ref readonly var rule in table.Rules)
-            if (rule.Kind == VanillaNpcLootRuleKind.SkyblockSickleCommon &&
-                !TryGetSickleEligibility(in context, out _)) return false;
+            if (!TryValidateRuleContext(in rule, in context)) return false;
+        return true;
+    }
+
+    private static bool TryValidateRuleContext(in VanillaNpcLootRule rule, in VanillaNpcLootContext context)
+    {
+        if (rule.Kind == VanillaNpcLootRuleKind.SkyblockSickleCommon &&
+            !TryGetSickleEligibility(in context, out _)) return false;
+        if (rule.Kind == VanillaNpcLootRuleKind.LowTilesCommon && !context.LowTiles.HasValue) return false;
+        if (rule.Alternatives is { } chain)
+            foreach (ref readonly var alternative in chain.Rules)
+                if (!TryValidateRuleContext(in alternative, in context)) return false;
         return true;
     }
 
@@ -265,10 +285,34 @@ public static class VanillaNpcLootEvaluator
         dropped = false;
         drop = default;
 
-        if (!rule.IsValid)
+        if (!rule.IsValid || !TryValidateRuleContext(in rule, in context))
             return false;
+        return TryEvaluateVerifiedRule(in rule, in context, rolls, out dropped, out drop, out _);
+    }
+
+    private static bool TryEvaluateVerifiedRule(
+        in VanillaNpcLootRule rule, in VanillaNpcLootContext context, INpcLootRollSource rolls,
+        out bool dropped, out NpcLootDrop drop, out bool failedRandomRoll)
+    {
+        dropped = false;
+        drop = default;
+        failedRandomRoll = false;
+        if (rule.Kind == VanillaNpcLootRuleKind.FailedRollChain)
+        {
+            foreach (ref readonly var alternative in rule.Alternatives!.Rules)
+            {
+                if (!TryEvaluateVerifiedRule(in alternative, in context, rolls, out dropped, out drop,
+                        out failedRandomRoll)) return false;
+                // Chains.TryIfFailedRandomRoll excludes Success and DidNotMeetConditions.
+                if (!failedRandomRoll) return true;
+            }
+            return true;
+        }
         if (rule.Kind == VanillaNpcLootRuleKind.NotFromStatueCommon && context.SpawnedFromStatue)
             return true;
+        if (rule.Kind == VanillaNpcLootRuleKind.ExpertCommon && !context.IsExpertMode) return true;
+        if (rule.Kind == VanillaNpcLootRuleKind.NotExpertCommon && context.IsExpertMode) return true;
+        if (rule.Kind == VanillaNpcLootRuleKind.LowTilesCommon && context.LowTiles != true) return true;
         if (rule.Kind == VanillaNpcLootRuleKind.SkyblockSickleCommon)
         {
             if (!TryGetSickleEligibility(in context, out bool eligible)) return false;
@@ -280,8 +324,24 @@ public static class VanillaNpcLootEvaluator
             : rule.NormalChanceDenominator;
 
         // CommonDrop always performs Player.RollLuck before any stack RNG, including denominator 1.
-        if (rolls.RollLuck(denominator) >= 1)
+        bool success = rolls.RollLuck(denominator) < 1;
+        // CommonDropWithRerolls short-circuits its logical OR once a roll has succeeded.
+        if (!success && rule.Kind == VanillaNpcLootRuleKind.ExpertGetsOneReroll && context.IsExpertMode)
+            success = rolls.RollLuck(denominator) < 1;
+        if (!success)
+        {
+            failedRandomRoll = true;
             return true;
+        }
+
+        if (rule.Kind == VanillaNpcLootRuleKind.OneFromOptions)
+        {
+            // OneFromOptionsDropRule draws the selection, but no CommonDrop stack roll.
+            var options = rule.Options!.Items;
+            drop = new(options[rolls.NextInt32(0, options.Length)], 1);
+            dropped = true;
+            return true;
+        }
 
         int multiplier = rule.Kind == VanillaNpcLootRuleKind.ExtraGel && context.DropExtraGel
             ? rule.ExtraGelMultiplier

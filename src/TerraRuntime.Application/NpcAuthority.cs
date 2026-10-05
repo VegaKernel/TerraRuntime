@@ -227,7 +227,10 @@ internal sealed partial class NpcAuthority
                 ? CaptureGlobalLootWorldFacts : null,
             npcSpecificLowTiles: townCommerceWorldFacts is { SkyblockWorld: false } ? () => false :
                 townCommerceWorldFacts is { SkyblockWorld: true } ? () => null : null,
-            requireOwnedPlayerHealth: true, rawPlayerSlots: rawPlayerSlots);
+            requireOwnedPlayerHealth: true, rawPlayerSlots: rawPlayerSlots,
+            npcSpecificDropExtraGel: townCommerceWorldFacts is
+                { TenthAnniversaryWorld: true, DrunkWorld: true, RemixWorld: false, NotTheBeesWorld: false },
+            npcSpecificGoodWorld: townCommerceWorldFacts?.GoodWorld ?? false);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
             projectiles,
             npcs,
@@ -282,6 +285,7 @@ internal sealed partial class NpcAuthority
                 }
                 var flyingEyeEnvironment = new VanillaFlyingEyeWorldEnvironment(worldTiles);
                 vanillaTargeting.SetFlyingEyeEnvironment(flyingEyeEnvironment);
+                vanillaTargeting.SetBeeOwner(npcs, flyingEyeEnvironment);
                 vanillaTargeting.SetSlimeContainedOwner(npcs, CaptureSlimeContainedFacts,
                     new VanillaSlimeContainedWorld1458(worldTiles));
                 vanillaTargeting.SetEverscreamEnvironment(flyingEyeEnvironment);

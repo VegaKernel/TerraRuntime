@@ -117,6 +117,8 @@ internal sealed class VanillaNpcBehaviorContext
 
     internal bool HasRawPlayerSlots => rawPlayerSlots is not null;
 
+    internal Func<NpcSnapshot, bool>? BeeChildAdmission { get; set; }
+
     internal void SetRawPlayerSlots(INpcRawPlayerSlotLookup1458 slots) =>
         rawPlayerSlots = slots ?? throw new ArgumentNullException(nameof(slots));
 
@@ -566,12 +568,16 @@ internal sealed class VanillaNpcBehaviorContext
     }
 
     internal bool TrySelectSlimeClosestTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        out VanillaBlueSlimeTargetRefresh target) => TrySelectRawClosestTarget(in npc, in definition, out target);
+
+    internal bool TrySelectRawClosestTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition,
         out VanillaBlueSlimeTargetRefresh target)
     {
         if (TrySelectClosestTarget(in npc, in definition, out target))
             return true;
         if (rawPlayerSlots is null ||
-            (definition.Type != VanillaNpcIds.BlueSlime && definition.Type != VanillaNpcIds.LavaSlime))
+            (definition.Type != VanillaNpcIds.BlueSlime && definition.Type != VanillaNpcIds.LavaSlime &&
+             definition.AiStyle != VanillaNpcAiStyles.DemonEye))
             return false;
         foreach (var candidate in Candidates)
             if (candidate.Active && !candidate.Dead && !candidate.Ghost)

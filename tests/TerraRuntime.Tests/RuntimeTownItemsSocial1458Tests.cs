@@ -23,11 +23,15 @@ public sealed class RuntimeTownItemsSocial1458Tests
         foreach(var row in json.RootElement.EnumerateArray())yield return [row.GetRawText()];
     }
     [Theory, MemberData(nameof(SourceCases))]
-    public void Owned_health_phase_then_whole_pair_matches_actual_Main_and_outer_NPC_wire_clocks_and_rng(string json)
+    public void Fresh_observed_life_after_health_phase_then_pair_matches_original_context_wire_clocks_and_rng(string json)
     {
         using var document=JsonDocument.Parse(json);var row=document.RootElement;using var f=new Fixture(row);
         Assert.True(f.Players.TryGet(f.Connection,out var member));Assert.Equal(100,member.DerivedLifeMax);
-        f.State.Tick();Assert.Equal(row.GetProperty("derived").GetInt32(),member.DerivedLifeMax);
+        f.Players.TickHealthContext();Assert.Equal(row.GetProperty("derived").GetInt32(),member.DerivedLifeMax);
+        Assert.False(member.NpcLifeCurrent);
+        f.State.Apply(new PlayerHealthRuntimeCommand(f.Connection,new(f.Session.Slot,(short)row.GetProperty("life").GetInt32(),400)));
+        f.Schedule.SetSocialContext(f.World,f.Players);
+        f.Schedule.Tick(in f.Conditions,[],f.Status,f.Combat);
         AssertSource(row,f,Drain(f.Peer));
     }
 
@@ -37,6 +41,7 @@ public sealed class RuntimeTownItemsSocial1458Tests
     {
         using var document=JsonDocument.Parse((string)SourceCases().First()[0]);var row=document.RootElement;using var f=new Fixture(row);
         f.Players.TickHealthContext();Assert.True(f.Players.TryGet(f.Connection,out var member));
+        f.State.Apply(new PlayerHealthRuntimeCommand(f.Connection,new(f.Session.Slot,member.Life,member.MaxLife)));
         if(fault=="unknownHealth")member.HasHealth=false;
         if(fault=="unknownDerived")member.DerivedLifeMax=null;
         f.Schedule.SetSocialContext(f.World,f.Players);
@@ -52,6 +57,7 @@ public sealed class RuntimeTownItemsSocial1458Tests
     {
         using var document=JsonDocument.Parse((string)SourceCases().First()[0]);using var f=new Fixture(document.RootElement);
         f.Players.TickHealthContext();Assert.True(f.Players.TryGet(f.Connection,out var member));member.PositionX=1000;
+        f.State.Apply(new PlayerHealthRuntimeCommand(f.Connection,new(f.Session.Slot,member.Life,member.MaxLife)));
         var slots=new PlayerSlotPool(2);Assert.True(slots.TryAcquireConnection(out var occupied));using var reservation=occupied!;
         var identities=new ServerPlayerSlotRegistry(slots);var states=new ServerPlayerStateStore(identities,2);var server=new ServerPlayerAuthority(states,identities);
         Assert.True(server.Create(new("test:health-nearest"),630,439).IsCreated);
@@ -60,7 +66,7 @@ public sealed class RuntimeTownItemsSocial1458Tests
     }
 
     [Fact]
-    public async Task Authenticated_health_and_duplicate_buff_frames_cross_queue_player_phase_and_real_pair_to_peer91()
+    public async Task Authenticated_health_and_duplicate_buff_frames_do_not_admit_unknown_continuous_life_after_player_phase()
     {
         string json=(string)SourceCases().First(x=>{using var d=JsonDocument.Parse((string)x[0]);return d.RootElement.GetProperty("slots").GetInt32()==2 && d.RootElement.GetProperty("life").GetInt32()==239 && d.RootElement.GetProperty("frame").GetInt32()==215;})[0];
         using var document=JsonDocument.Parse(json);var row=document.RootElement;using var f=new Fixture(row);using var bootstrap=f.Bootstrap();
@@ -79,7 +85,9 @@ public sealed class RuntimeTownItemsSocial1458Tests
         Assert.True(f.Players.TryGet(f.Connection,out var member));Assert.Equal(100,member.MaxLife);Assert.Equal(100,member.DerivedLifeMax);Assert.Empty(Drain(f.Peer));
         loop.Start();await ticked.Task.WaitAsync(TimeSpan.FromSeconds(5),TestContext.Current.CancellationToken);Assert.True(loop.Stop(TimeSpan.FromSeconds(5)));Assert.Null(loop.Fault);
         Assert.Equal(400,member.MaxLife);Assert.Equal(560,member.DerivedLifeMax);byte[][] frames=Drain(f.Peer);
-        Assert.True(Array.FindIndex(frames,x=>x[2]==50)<Array.FindIndex(frames,x=>x[2]==91));AssertSource(row,f,frames);
+        Assert.False(member.NpcLifeCurrent);
+        Assert.Contains(frames,x=>x[2]==50);
+        Assert.DoesNotContain(frames,x=>x[2]==91);
     }
 
     private static void AssertSource(JsonElement row,Fixture f,byte[][] frames)

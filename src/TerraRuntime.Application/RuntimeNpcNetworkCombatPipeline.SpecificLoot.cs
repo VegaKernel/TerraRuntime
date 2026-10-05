@@ -18,7 +18,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     {
         bool? lowTiles = CaptureSpecificLowTiles();
         bool? hasSickle = null;
-        if (npc.TypeIdentity == VanillaNpcIds.Zombie && lowTiles != false)
+        if (lowTiles != false && VanillaNpcLootRuleCatalog.TryGetNpcSpecificTable(npc.TypeIdentity, out var table) &&
+            HasSickleCondition(table.Rules))
         {
             var captures = playerAuthority.CaptureItemOwnerPlayers();
             if (IsPreviewingDeath) plannedSpecificPlayers = captures;
@@ -32,10 +33,19 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                     }
             }
         }
-        context = new(expertMode, DropExtraGel: false,
+        // Main.expertMode reads effective Difficulty, which Good World promotes by one level.
+        context = new(expertMode || npcSpecificGoodWorld || worldClock?.GetGoodWorld == true,
+            DropExtraGel: npcSpecificDropExtraGel,
             SpawnedFromStatue: npc.Simulation.SpawnedFromStatue,
             LowTiles: lowTiles, HasSickle: hasSickle);
         return true;
+    }
+
+    private static bool HasSickleCondition(ReadOnlySpan<VanillaNpcLootRule> rules)
+    {
+        foreach (var rule in rules)
+            if (rule.Kind == VanillaNpcLootRuleKind.SkyblockSickleCommon) return true;
+        return false;
     }
 
     private static bool? CaptureSickle(RuntimeItemOwnerPlayerCapture1458 capture)

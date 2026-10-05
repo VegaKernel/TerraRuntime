@@ -151,13 +151,10 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
 
         if (effects.HiveType != 0 && world.CanHit)
         {
-            // A higher-slot child participates in this same source NPC pass. Its raw-target
-            // no-living AI is not admitted yet; reject the selected producer atomically,
-            // rather than retaining a Bee which vanilla would update immediately.
             bool childHasLivingTarget = false;
             foreach (var candidate in candidates)
                 childHasLivingTarget |= candidate.Active && !candidate.Dead && !candidate.Ghost;
-            if (context.HasRawPlayerSlots && !childHasLivingTarget)
+            if (context.HasRawPlayerSlots && !childHasLivingTarget && context.BeeChildAdmission is null)
                 return false;
             int type = speculativeRandom.NextInt32(VanillaNpcIds.Bee.Value, VanillaNpcIds.SmallBee.Value + 1);
             var intent = new NpcAiSpawnIntent(new(type),
@@ -170,6 +167,10 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
             float childY = -inverse * 3f;
             if (allocated && (!world.TryReadBirthWet(in birth, out bool wet) ||
                 !preview.TryFinishHiveChild(in birth, childX, childY, wet)))
+                return false;
+            // A higher physical slot is updated later in this same source pass. Its typed
+            // AI005 target search must already have an owned peer/player boundary.
+            if (allocated && context.BeeChildAdmission is { } admit && !admit(birth))
                 return false;
         }
 

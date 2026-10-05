@@ -45,7 +45,9 @@ public sealed class VanillaNpcTargetingAiStepper :
          _context.TryFindCandidate((byte)finalized.Target, out var target) && target.Active && !target.Dead));
 
     public bool DeactivatesAfterCompletion(in NpcSnapshot before, in NpcSnapshot completed) =>
-        _slimeGround.DeactivatesContainedAfterCompletion(in before, in completed);
+        _slimeGround.DeactivatesContainedAfterCompletion(in before, in completed) ||
+        _flyingEye.DeactivatesRetainedAfterCompletion(in before, in completed) ||
+        _bee.Deactivates(in before, in completed);
 
     public bool RequiresForcedUpdateAfterPlanning(
         in NpcSnapshot before,
@@ -72,6 +74,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaNpcBehaviorContext _context = new();
     private readonly VanillaSlimeGroundNpcBehaviorStrategy _slimeGround;
     private readonly VanillaFlyingEyeNpcBehaviorStrategy _flyingEye = new();
+    private readonly VanillaBeeAccepted1458 _bee = new();
     private readonly IVanillaNpcBehaviorStrategy _groundFighter;
     private readonly IVanillaNpcBehaviorStrategy _moonEventJumpingFighter = new VanillaMoonEventJumpingFighterNpcBehaviorStrategy();
     private readonly IVanillaNpcBehaviorStrategy _moonEventUnicorn = new VanillaMoonEventUnicornNpcBehaviorStrategy();
@@ -303,6 +306,22 @@ public sealed class VanillaNpcTargetingAiStepper :
         IVanillaSlimeContainedEnvironment1458 environment) =>
         _slimeGround.SetContainedOwner(store, facts, environment);
 
+    internal void SetBeeOwner(RuntimeNpcStore store, IVanillaFlyingEyeEnvironment environment)
+    {
+        _bee.Configure(store, environment, _random);
+        _context.BeeChildAdmission = child => _bee.CanAdmitChild(in child, _context);
+    }
+
+    internal bool HasBeePlan(in NpcSnapshot before) => _bee.HasPlan(in before);
+
+    internal bool TryGetBeePlan(in NpcSnapshot before, in NpcSnapshot accepted, out NpcStateUpdate planned) =>
+        _bee.TryGetPlan(in before, in accepted, out planned);
+
+    internal NpcSnapshot CompleteBeePlan(in NpcSnapshot before, in NpcSnapshot accepted, in NpcStateUpdate final) =>
+        _bee.Complete(in before, in accepted, in final);
+
+    internal void CancelBeePlan() => _bee.Cancel();
+
     internal bool HasSlimeContainedPlan(in NpcSnapshot before) => _slimeGround.HasContainedPlan(in before);
 
     internal bool TryGetSlimeContainedPlan(in NpcSnapshot before, in NpcSnapshot accepted,
@@ -473,6 +492,9 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.MoonLordLeechBlob => _moonLord,
             _ => null
         };
+
+        if (_bee.IsConfigured && VanillaBeeAccepted1458.IsBee(npc.TypeIdentity))
+            return _bee.TryStep(in npc, in definition, _context, out next);
 
         return strategy is null
             ? _inner.TryStepState(in npc, out next)
@@ -2521,6 +2543,7 @@ public sealed class VanillaNpcTargetingAiStepper :
          VanillaMothronNpcCatalog1458.IsSupported(before.TypeIdentity) ||
          VanillaBigMimicNpcCatalog1458.IsSupported(before.TypeIdentity) ||
          _flyingEye.HasRetainedPlan(in before) ||
+         _bee.HasPlan(in before) ||
          _slimeGround.HasContainedPlan(in before) ||
          VanillaGroundFighterProjectileAttack.IsSupported(before.TypeIdentity));
 

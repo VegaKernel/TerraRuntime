@@ -123,8 +123,12 @@ public sealed class WorldItemRelease1458Tests
                 tiles.Tiles[tiles.GetUncheckedIndex(x, y)] = x is 150 or 170 || y == 258
                     ? new WorldTile { Type = 1, Flags = WorldTileFlags.Active }
                     : new WorldTile { LiquidAmount = 255, LiquidKind = WorldLiquidKind.Lava };
+            // Pin the shared NewItem/death stream. This fixture exercises an accepted Guide death:
+            // seed0 does not select a heart whose eligibility needs current remote-player life.
+            // Tick invalidates that life provenance; selected-heart rejection has separate endpoint tests.
             State = new ServerRuntimeState(npcs: Npcs, worldItems: Items, worldTiles: tiles,
-                townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458));
+                townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458),
+                naturalSpawnRandom: new SystemVanillaNpcRandom(0));
             Assert.True(Npcs.TrySpawnVanilla(new NpcStateUpdate(22, 22, 800, 800, 0, 0, 255, default, NpcSimulationState.Initial), out var guide));
             Guide = guide;
             var slots = new PlayerSlotPool(2);

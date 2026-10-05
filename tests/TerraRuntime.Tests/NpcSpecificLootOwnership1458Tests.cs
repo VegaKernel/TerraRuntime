@@ -9,6 +9,37 @@ namespace TerraRuntime.Tests;
 public sealed class NpcSpecificLootOwnership1458Tests
 {
     [Theory]
+    [InlineData(3)] [InlineData(591)] [InlineData(331)] [InlineData(332)]
+    [InlineData(132)] [InlineData(161)] [InlineData(186)] [InlineData(187)]
+    [InlineData(188)] [InlineData(189)] [InlineData(200)] [InlineData(223)]
+    [InlineData(319)] [InlineData(320)] [InlineData(321)] [InlineData(430)]
+    [InlineData(431)] [InlineData(432)] [InlineData(433)] [InlineData(434)]
+    [InlineData(435)] [InlineData(436)]
+    public void Every_admitted_zombie_captures_the_closest_players_sickle(int type)
+    {
+        using var f = new Fixture(type);
+        f.Equipment(0, VanillaNpcSpecificDropItemIds.Sickle.Value);
+        Assert.Equal(RuntimeTownNpcMeleeDamageResult1458.Killed,
+            f.Pipeline(() => type is 188 or 189 or 434 or 435 ? true : null)
+                .TryStrikeEnvironment(f.Npc.Handle, 100_000));
+    }
+
+    [Theory]
+    [InlineData(188)] [InlineData(189)] [InlineData(434)] [InlineData(435)]
+    public void Wood_predicate_requires_owned_low_tiles_even_when_sickle_proves_no_sickle_offer(int type)
+    {
+        using var f = new Fixture(type);
+        f.Equipment(0, VanillaNpcSpecificDropItemIds.Sickle.Value);
+        var before = f.Random.Clone();
+        Assert.Equal(RuntimeTownNpcMeleeDamageResult1458.Rejected,
+            f.Pipeline(() => null).TryStrikeEnvironment(f.Npc.Handle, 100_000));
+        Assert.True(f.Npcs.TryGet(f.Npc.Handle, out var after));
+        Assert.Equal(f.Npc, after);
+        Assert.True(before.HasSameState(f.Random));
+        Assert.Equal(0, f.Items.ActiveCount);
+    }
+
+    [Theory]
     [InlineData(null, false, false, false)]
     [InlineData(null, true, false, true)]
     [InlineData(true, false, false, true)]
@@ -74,13 +105,13 @@ public sealed class NpcSpecificLootOwnership1458Tests
         internal readonly ConnectionHandle Connection;
         internal readonly NpcSnapshot Npc;
 
-        internal Fixture()
+        internal Fixture(int type = 3)
         {
             var pool = new PlayerSlotPool(1); Assert.True(pool.TryAcquireConnection(out var lease));
             Session = new(lease!); Session.ObserveWorldRequest(); Session.ObserveSectionRequest();
             Connection = new(GameCommandSourceId.FromConnection(9090), Session.Handle);
             Players.TryApply(new PlayerSpawnRuntimeCommand(Connection, Session, new(Session.Slot, 40, 30, 0, 0, 0, 0, 0)));
-            Assert.True(Npcs.TrySpawnVanilla(new(3, 3, 600, 400, 0, 0, 0, default,
+            Assert.True(Npcs.TrySpawnVanilla(new(checked((short)type), checked((short)type), 600, 400, 0, 0, 0, default,
                 NpcSimulationState.Initial with { Life = 100, LifeMax = 100, MoneyValue = 0f }), out Npc));
         }
 

@@ -1,5 +1,7 @@
 # Sparse vanilla item definitions
 
+Eleventh integrated local acceptance: 1553881/1553882 tests, zero failures/errors, one existing worldgen skip; clean Release rebuild, Windows NativeAOT/five smokes and local gates. See [NPC parity checkpoint](../roadmap/npc-ai-parity.md). Earlier candidate/pending notes below are historical for their respective checkpoints. Full gameplay/NPC parity remains open.
+
 Tenth integrated local acceptance: 1474709/1474710 tests, zero failures/errors, one existing worldgen skip; clean Release rebuild, Windows NativeAOT/five smokes and local gates. See [NPC parity checkpoint](../roadmap/npc-ai-parity.md). Earlier candidate/pending notes below are historical for their respective checkpoints. Broad parity remains open.
 
 World-item entity placement uses the original fixed $16\times16\,\mathrm{px}$ physical body independently of item catalog dimensions. Simple tile drops place the entity at the tile's pixel origin. NPC capture resolves the player's current mount-adjusted body and truncates its center before subtracting the physical half-body; falling-block recovery retains the fractional projectile center and the source failed-placement vertical offset. NPC loot retains its separately verified live-body integer origin. These paths keep item metadata intact and consume the original launch-velocity draws.
@@ -99,3 +101,7 @@ Bloody Machete and the yoyos use the source Spear prefix array; Bladed Glove use
 ## Ordinary NPC reward defaults
 
 The tenth sparse catalog adds Meteorite116, Shackle216, Zombie Arm1304, Sickle1786, Spiffo5332 and Sea of Silence5486. All six use the source maximum stack9999 and ordinary gravity. Their icon/default dimensions are12×12,20×20,24×28,24×28,32×32 and30×30 respectively; physical drops continue to use the shared16×16 world-item body. Shackle rolls the original accessory prefix family; Zombie Arm and Sickle roll Sword with source stat-rounding validity. The other three consume no natural-prefix RNG. These facts grant world-drop materialization only, without item-use/tool/placement capabilities. Independent original SetDefaults/Prefix(-1) captures cover108 rows, including the final RNG state.
+
+## Sparse undead world-drop defaults
+
+The eleventh family verifies26 reward outputs through468 actual original SetDefaults/Prefix(-1) rows. Sparse world-drop facts preserve previously admitted capabilities and grant no weapon use, placement, mining or arbitrary numeric creation. Natural families are Sword for Bone Sword1166, Ranged for Marrow682, and Accessory for Tally Counter3095, Magic Quiver1321 and Nazar891, with original item-specific prefix rounding validity. Remaining rewards have no natural prefix. Icon dimensions remain separate from the16×16 physical world-item body. Source callback evidence checks inline prefix/default-velocity draws before the following rule; copied omission of Bone Sword's family fails20 checks. Integrated eleventh local acceptance is recorded above.

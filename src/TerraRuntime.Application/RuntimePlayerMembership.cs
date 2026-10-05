@@ -219,6 +219,7 @@ internal sealed class RuntimePlayerMember
     // Player constructor initializes statLifeMax2 independently from synchronized base vitals.
     public int? DerivedLifeMax { get; set; } = 100;
     public int? BaseLifeMax { get; set; } = 100;
+    public bool? NpcLifeCurrent { get; set; } = false;
     public PlayerDebuffSnapshot1458? Debuffs { get; set; } = default(PlayerDebuffSnapshot1458);
     public bool IsDead { get; set; }
     public float Stealth { get; set; } = 1f;
@@ -293,6 +294,7 @@ internal sealed class RuntimePlayerMember
             MaxLife = MaxLife,
             DerivedLifeMax = DerivedLifeMax,
             BaseLifeMax = BaseLifeMax,
+            NpcLifeCurrent = Revision < ulong.MaxValue ? NpcLifeCurrent : null,
             Debuffs = Debuffs,
             IsDead = IsDead,
             HasMana = HasMana,

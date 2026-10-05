@@ -529,6 +529,7 @@ internal sealed partial class PlayerAuthority
 
             activePlayer.HasHealth = true;
             activePlayer.Life = request.Life;
+            activePlayer.NpcLifeCurrent = true;
             activePlayer.MaxLife = request.MaxLife;
             activePlayer.BaseLifeMax = request.MaxLife;
             activePlayer.IsDead = request.Life <= 0;
@@ -627,6 +628,7 @@ internal sealed partial class PlayerAuthority
             Life = hasPending ? pending!.Life : (short)0,
             MaxLife = hasPending ? pending!.MaxLife : (short)0,
             BaseLifeMax = hasPending && pending!.HasHealth ? pending.MaxLife : 100,
+            NpcLifeCurrent = hasPending && pending!.HasHealth && pending.Life > 0,
             IsDead = hasPending && pending!.HasHealth && pending.Life <= 0,
             HasMana = hasPending && pending!.HasMana,
             Mana = hasPending ? pending!.Mana : (short)0,
@@ -674,6 +676,7 @@ internal sealed partial class PlayerAuthority
         player.CameraTargetX = 0f;
         player.CameraTargetY = 0f;
         player.IsDead = request.RespawnTimer > 0;
+        player.NpcLifeCurrent = false;
         damageImmunity.ResetPvp(request.ClaimedSlot);
         events?.PlayerRespawned(respawn.Connection, in request);
     }

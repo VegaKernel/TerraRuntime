@@ -28,10 +28,13 @@ internal sealed partial class PlayerAuthority
             }
             bool clear = !outOfRange && member.IsDead && transferProfiles.HasNonPersistentBuffs(member.Connection) &&
                 (member.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) == 0;
-            if (next == member.DerivedLifeMax && debuffs == member.Debuffs && !clear) continue;
+            // Remote Player.Update changes life through regeneration, DoT and environmental writers.
+            // Until that complete phase is owned, a synchronized report is only current before this boundary.
+            if (next == member.DerivedLifeMax && debuffs == member.Debuffs && !clear && member.NpcLifeCurrent != true) continue;
             if (!member.TryAdvanceRevision()) continue;
             member.DerivedLifeMax = next;
             member.Debuffs = debuffs;
+            member.NpcLifeCurrent = false;
             if (clear) transferProfiles.ClearNonPersistentBuffs(member.Connection);
         }
     }

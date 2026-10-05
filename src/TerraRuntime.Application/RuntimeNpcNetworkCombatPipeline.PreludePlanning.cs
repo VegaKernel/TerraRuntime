@@ -36,8 +36,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         // Custom hosts without the retained seed projection reject relevant dungeon gates rather
         // than assume the special-world flag. Standard composition supplies the exact source getter.
         context = new(hasOwnInteractions, eaterBoss, twinPeerAlive,
-            DeathProgression.IsCompleted(VanillaWorldProgressionId.Hardmode), DeathClock?.GetGoodWorld == true,
-            isThereAWorldSurface, DeathProgression.IsCompleted(VanillaWorldProgressionId.Skeletron),
+            plannedGlobalLootWorld?.HardMode == true || DeathProgression.IsCompleted(VanillaWorldProgressionId.Hardmode),
+            DeathClock?.GetGoodWorld == true || npcSpecificGoodWorld,
+            isThereAWorldSurface, plannedGlobalLootWorld?.SkeletronDowned == true ||
+                DeathProgression.IsCompleted(VanillaWorldProgressionId.Skeletron),
             onlyShimmerOceanWorlds, recipients.AsMemory(0, recipientCount),
             hasBannerPlayer ? bannerPlayer.Player.Slot.Value : -1,
             hasBannerPlayer ? bannerName : null, hasOwnInteractions);

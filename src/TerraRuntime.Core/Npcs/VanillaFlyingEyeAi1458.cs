@@ -11,6 +11,7 @@ internal sealed class VanillaFlyingEyeAi1458
     public int Life, LifeMax, TimeLeft, Alpha;
     public bool NoTileCollide, CollideX, CollideY, Wet, Confused, DayTime, TargetInGraveyard, Force;
     public bool ShimmerTransparent;
+    public bool ClosestDead;
     public double WorldSurfacePixels;
     public float Clock, Phase, Rotation;
     public VanillaFlyingEyeTarget1458 Current, Closest;
@@ -113,10 +114,13 @@ internal sealed class VanillaFlyingEyeAi1458
     {
         Current = Closest;
         Target = Closest.Slot;
-        Direction = (int)Current.X + Current.Width / 2 < X + Width / 2 ? -1 : 1;
-        DirectionY = (int)Current.Y + Current.Height / 2 < Y + Height / 2 ? -1 : 1;
-        if (Confused)
-            Direction *= -1;
+        if (!ClosestDead)
+        {
+            Direction = (int)Current.X + Current.Width / 2 < X + Width / 2 ? -1 : 1;
+            DirectionY = (int)Current.Y + Current.Height / 2 < Y + Height / 2 ? -1 : 1;
+            if (Confused)
+                Direction *= -1;
+        }
         if ((Direction != OldDirection || DirectionY != OldDirectionY || Target != OldTarget) && !CollideX && !CollideY)
             Force = true;
     }

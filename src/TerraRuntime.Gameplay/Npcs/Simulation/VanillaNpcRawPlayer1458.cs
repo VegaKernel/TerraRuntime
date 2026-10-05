@@ -44,7 +44,7 @@ public static class VanillaNpcUnoccupiedTarget1458
             directionX = (int)raw.PositionX + raw.Width / 2 < positionX + width / 2 ? -1 : 1;
             directionY = (int)raw.PositionY + raw.Height / 2 < positionY + height / 2 ? -1 : 1;
         }
-        refresh = new(true, selected, directionX, directionY);
+        refresh = new(true, selected, directionX, directionY, PreserveFacing: raw.Dead);
         return true;
     }
 }

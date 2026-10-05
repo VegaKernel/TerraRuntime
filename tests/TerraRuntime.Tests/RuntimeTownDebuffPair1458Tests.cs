@@ -8,6 +8,8 @@ using TerraRuntime.Core;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.Protocol;
+using TerraRuntime.World;
+using TerraRuntime.Gameplay.Npcs;
 
 namespace TerraRuntime.Tests;
 
@@ -22,7 +24,7 @@ public sealed class RuntimeTownDebuffPair1458Tests
     }
 
     [Theory, MemberData(nameof(Cases))]
-    public void Actual_player_phase_and_two_outer_NPC_updates_match_expiry_emote_frames_and_next_rng(string json)
+    public void Fresh_observed_life_after_player_phase_then_two_outer_NPC_updates_match_source(string json)
     {
         using var doc = JsonDocument.Parse(json); var row = doc.RootElement;
         using var input = JsonDocument.Parse(JsonSerializer.Serialize(new { seed = row.GetProperty("seed").GetInt32(),
@@ -41,6 +43,12 @@ public sealed class RuntimeTownDebuffPair1458Tests
         Assert.Equal(held, heldItem.ItemType.Value);
         Assert.Equal(new PlayerDebuffSnapshot1458(row.GetProperty("fire").GetBoolean(),
             row.GetProperty("fire2").GetBoolean(), row.GetProperty("poison").GetBoolean()), player.Debuffs);
+        Assert.False(player.NpcLifeCurrent);
+        // This report observes the original remote player's actual post-UpdatePlayers life.
+        // It owns the following NPC-only phase, without claiming continuous remote regeneration.
+        f.State.Apply(new PlayerHealthRuntimeCommand(f.Connection,
+            new(f.Session.Slot, (short)row.GetProperty("playerLife").GetInt32(),
+                (short)row.GetProperty("playerBase").GetInt32())));
         for (byte slot = 0; slot < 2; slot++)
         {
             var before = f.Current(slot);
@@ -90,7 +98,8 @@ public sealed class RuntimeTownDebuffPair1458Tests
         using var source = JsonDocument.Parse((string)Cases().First(x => {
             using var d = JsonDocument.Parse((string)x[0]); var r = d.RootElement;
             return r.GetProperty("npcBuff").GetInt32() == 20 && r.GetProperty("playerBuff").GetInt32() == 0 &&
-                r.GetProperty("held").GetInt32() == 0 && r.GetProperty("frame").GetInt32() == 69;
+                r.GetProperty("held").GetInt32() == 0 && r.GetProperty("frame").GetInt32() == 69 &&
+                !r.GetProperty("itemsOffered").GetBoolean();
         })[0]); var row = source.RootElement;
         using var input = JsonDocument.Parse(JsonSerializer.Serialize(new { seed = row.GetProperty("seed").GetInt32(), slots = 0, life = 250, frame = 69 }));
         using var f = new RuntimeTownItemsSocial1458Tests.Fixture(input.RootElement); using var bootstrap = f.Bootstrap();
@@ -126,6 +135,54 @@ public sealed class RuntimeTownDebuffPair1458Tests
         Assert.Equal(row.GetProperty("frames").EnumerateArray().Select(x => x.GetString()), observed.Skip(2).Select(Convert.ToHexString));
         Assert.Equal(249, f.Current(0).Simulation.Life); Assert.Equal(249, f.Current(1).Simulation.Life);
         Assert.Equal(row.GetProperty("next").GetInt32(), f.Random.Next());
+    }
+
+    [Fact]
+    public void Selected_items_with_stale_remote_life_reject_actor_before_expiry_and_rng()
+    {
+        using var input = JsonDocument.Parse("{\"seed\":16,\"slots\":0,\"life\":250,\"frame\":69}");
+        using var f = new RuntimeTownItemsSocial1458Tests.Fixture(input.RootElement, publishBuffs: true);
+        f.Registry.BindNpcBuffStatus(f.Status);
+        Assert.True(f.Players.TryGet(f.Connection, out var initialPlayer), "Fixture player must exist before health phase");
+        f.Players.TickHealthContext();
+        Assert.True(f.Players.TryGet(f.Connection, out var player), "Fixture player must remain after health phase");
+        Assert.False(player.NpcLifeCurrent);
+        // The partner remains a real active actor; this owner invokes only slot zero's phase.
+        WorldTownNpc[] residents = [new(17, "A", 639, 440, false, 40, 30, null, false)];
+        var town = new RuntimeTownNpcStateStore(new([], residents, []), [new(17, 40, 30)], f.Tiles.Dimensions);
+        var adapter = new SystemVanillaNpcRandom(f.Random);
+        var schedule = new RuntimeTownNpcSchedule1458(town, f.Npcs, f.Tiles,
+            new NpcRuntimeTownScheduleRandom1458(adapter));
+        var combat = new RuntimeTownNpcCombat1458(town, f.Npcs, new RuntimeProjectileStore(32),
+            f.Tiles, default, new(), false, false, new NpcRuntimeTownCombatRandom1458(adapter), f.Registry);
+        for (byte slot = 0; slot < 2; slot++)
+        {
+            Assert.True(f.Npcs.TryGetActive(slot, out var before), $"Actor {slot} must remain active during guard setup");
+            var state = new NpcStateUpdate(before.Type, before.NetId, before.PositionX, before.PositionY,
+                before.VelocityX, before.VelocityY, before.Target, before.Ai,
+                before.Simulation with { LifeRegenCounter = -119 });
+            Assert.True(f.Npcs.TryUpdate(before.Handle, in state, out var npc), $"Actor {slot} counter initialization must commit");
+            Assert.True(f.Status.TryApply(npc.Handle, new(slot == 0 ? 20 : 24), 1), $"Actor {slot} status initialization must commit");
+        }
+        f.Status.BeginWorldTick(); schedule.SetSocialContext(f.World, f.Players);
+        f.Registry.AdvanceAuthoritativeTick(); Drain(f.Peer);
+        var actor = f.Current(0); var peer = f.Current(1); var random = f.Random.Clone();
+        Assert.Equal(1, schedule.Tick(in f.Conditions, [], f.Status, combat).RejectedCommits);
+        Assert.Equal(actor, f.Current(0)); Assert.Equal(peer, f.Current(1));
+        Assert.True(f.Random.HasSameState(random)); Assert.Empty(Drain(f.Peer));
+        Span<TerrariaNpcBuffEntryState> retained = stackalloc TerrariaNpcBuffEntryState[20];
+        for (byte slot = 0; slot < 2; slot++)
+        {
+            Assert.True(f.Status.TryCopyWireBuffs(f.Current(slot).Handle, retained, out int count));
+            Assert.Equal(1, count);
+            Assert.Equal(new TerrariaNpcBuffEntryState((ushort)(slot == 0 ? 20 : 24), 1), retained[0]);
+        }
+        // A genuine fresh report admits this same actor and partner context.
+        f.State.Apply(new PlayerHealthRuntimeCommand(f.Connection, new(f.Session.Slot, 250, 400)));
+        schedule.SetSocialContext(f.World, f.Players);
+        Assert.Equal(0, schedule.Tick(in f.Conditions, [], f.Status, combat).RejectedCommits);
+        Assert.Equal(249, f.Current(0).Simulation.Life); Assert.Equal(peer, f.Current(1));
+        Assert.Equal(new[] { "07003600000000", "0D005B000000000001005A003F" }, Drain(f.Peer).Select(Convert.ToHexString));
     }
 
     private sealed class ContinueSink : ITerrariaFrameSink

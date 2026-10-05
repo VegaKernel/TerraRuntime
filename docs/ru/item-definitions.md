@@ -1,5 +1,7 @@
 # Разреженный каталог определений vanilla items
 
+Локальная приёмка одиннадцатого блока: 1553881/1553882 тестов, без ошибок и падений, один прежний пропуск worldgen; чистая Release-сборка, Windows NativeAOT, пять smoke-проверок и локальные gates прошли. См. [контрольную точку NPC](../roadmap/npc-ai-parity.md). Предыдущие записи о кандидатах и ожидаемой приёмке ниже описывают свои исторические блоки. Полная совместимость геймплея и NPC остаётся открытой.
+
 Десятый объединённый блок принят локально: 1474709/1474710 тестов, без ошибок и падений, один прежний пропуск worldgen; чистая Release-сборка, Windows NativeAOT, пять smoke-проверок и локальные проверки пройдены. См. [контрольную точку NPC](../roadmap/npc-ai-parity.md). Прежние записи candidate/pending ниже относятся к истории соответствующих блоков. Полная совместимость остаётся открытой.
 
 Для размещения предмета в мире используется исходное физическое тело $16\times16\,\mathrm{px}$ независимо от размеров предмета в каталоге. Простой дроп блока располагается в пиксельном начале клетки. При ловле NPC учитывается текущее тело игрока с поправкой на маунта: его центр сначала приводится к целому числу, затем вычитается половина физического тела; возврат падающего блока сохраняет дробный центр снаряда и исходное вертикальное смещение при неудачной установке. Добыча NPC сохраняет отдельно проверенное целочисленное начало по живому телу NPC. Метаданные предметов остаются прежними, а случайные значения начальной скорости потребляются в исходном порядке.
@@ -99,3 +101,7 @@ Bloody Machete и йо-йо используют исходный массив S
 ## Defaults обычных наград NPC
 
 Десятый sparse-каталог добавляет Meteorite116, Shackle216, Zombie Arm1304, Sickle1786, Spiffo5332 и Sea of Silence5486. Все шесть сохраняют исходный maximum stack9999 и обычную gravity. Размеры Item/defaults соответственно равны 12×12, 20×20, 24×28, 24×28, 32×32 и 30×30; физические drops используют общее тело world item16×16. Shackle получает исходную accessory-семью префиксов; Zombie Arm и Sickle — Sword с исходной проверкой округления характеристик. Другие три не расходуют natural-prefix RNG. Эти данные допускают только world-drop материализацию и не дают item-use/tool/placement capabilities. Независимые исходные SetDefaults/Prefix(-1) captures покрывают 108 строк и следующий RNG.
+
+## Разреженные undead world-drop defaults
+
+Одиннадцатая семья проверяет26 reward outputs по468 actual original SetDefaults/Prefix(-1) rows. Разреженные world-drop facts сохраняют ранее допущенные capabilities и не дают weapon use, placement, mining или arbitrary numeric creation. Natural families: Sword для Bone Sword1166, Ranged для Marrow682, Accessory для Tally Counter3095, Magic Quiver1321 и Nazar891, с original item-specific prefix rounding validity. Остальные rewards не имеют natural prefix. Icon dimensions отделены от физического world-item body16×16. Source callback evidence проверяет inline prefix/default-velocity draws до следующего rule; copied omission семейства Bone Sword даёт20 failures. Интегрированная локальная приёмка одиннадцатого блока записана выше.

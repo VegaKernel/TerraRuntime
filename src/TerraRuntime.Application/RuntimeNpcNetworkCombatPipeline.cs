@@ -64,6 +64,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private readonly bool skyblockLowTiles;
     private readonly PlayerAuthority playerAuthority;
     private readonly Func<bool?>? npcSpecificLowTiles;
+    private readonly bool npcSpecificDropExtraGel;
+    private readonly bool npcSpecificGoodWorld;
     private readonly bool requireOwnedPlayerHealth;
     private readonly RuntimeNpcRawPlayerSlots1458? rawPlayerSlots;
     private readonly bool isThereAWorldSurface;
@@ -133,7 +135,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         Func<RuntimeNpcGlobalLootWorldFacts1458>? globalLootWorldSource = null,
         Func<bool?>? npcSpecificLowTiles = null,
         bool requireOwnedPlayerHealth = false,
-        RuntimeNpcRawPlayerSlots1458? rawPlayerSlots = null)
+        RuntimeNpcRawPlayerSlots1458? rawPlayerSlots = null,
+        bool npcSpecificDropExtraGel = false,
+        bool npcSpecificGoodWorld = false)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         random = new SystemNpcCombatRandom(lootRandom);
@@ -150,6 +154,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         ArgumentNullException.ThrowIfNull(playerAuthority);
         this.playerAuthority = playerAuthority;
         this.npcSpecificLowTiles = npcSpecificLowTiles;
+        this.npcSpecificDropExtraGel = npcSpecificDropExtraGel;
+        this.npcSpecificGoodWorld = npcSpecificGoodWorld;
         this.requireOwnedPlayerHealth = requireOwnedPlayerHealth;
         this.rawPlayerSlots = rawPlayerSlots;
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
@@ -291,6 +297,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                 return RuntimeNpcNetworkDamageResult.Relayed;
             }
 
+            if (!result.Lethal) ExecuteNpcNonlethalHitEffects(in current);
             NpcSnapshot dead;
             if (current.TypeIdentity == VanillaNpcIds.WallOfFleshEye &&
                 TryResolveWallOfFleshRoot(in current, out NpcSnapshot wallRoot))

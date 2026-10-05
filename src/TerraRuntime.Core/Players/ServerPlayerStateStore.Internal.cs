@@ -62,6 +62,7 @@ public sealed partial class ServerPlayerStateStore
                 ItemRotation = ItemRotation,
                 GodMode = GodMode,
                 HasHealth = HasHealth,
+                NpcLifeCurrent = HasHealth,
                 Life = Life,
                 MaxLife = MaxLife,
                 BaseLifeMax = BaseLifeMax,

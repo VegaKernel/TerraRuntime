@@ -177,6 +177,7 @@ internal sealed partial class PlayerAuthority
             MaxLife = previous.MaxLife,
             DerivedLifeMax = previous.DerivedLifeMax,
             BaseLifeMax = previous.BaseLifeMax,
+            NpcLifeCurrent = command.ForceRespawn ? false : previous.NpcLifeCurrent,
             Debuffs = previous.Debuffs,
             IsDead = dead,
             Stealth = previous.Stealth ?? 1f,

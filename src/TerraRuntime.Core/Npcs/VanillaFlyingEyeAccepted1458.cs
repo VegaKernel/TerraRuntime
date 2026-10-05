@@ -11,16 +11,52 @@ internal sealed partial class VanillaFlyingEyeNpcBehaviorStrategy
     private NpcSnapshot completedBefore;
     private NpcSnapshot completedAfter;
     private bool completedForce;
-    private sealed record RetainedPlan(NpcSnapshot Before, NpcStateUpdate Update, VanillaNpcBehaviorContext Context, VanillaNpcTargetCandidate[] Candidates, PlayerStateSnapshot[] Players, bool DayTime, double Surface, IVanillaFlyingEyeWorldFence1458 World, VanillaUnifiedRandom1458 Owner, VanillaUnifiedRandom1458 BeforeRandom, VanillaUnifiedRandom1458 AfterRandom, bool Force);
+    private bool completedInactive;
+    private sealed record RetainedPlan(NpcSnapshot Before, NpcStateUpdate Update, VanillaNpcBehaviorContext Context, VanillaNpcTargetCandidate[] Candidates, PlayerStateSnapshot[] Players, bool DayTime, double Surface, IVanillaFlyingEyeWorldFence1458 World, VanillaUnifiedRandom1458 Owner, VanillaUnifiedRandom1458 BeforeRandom, VanillaUnifiedRandom1458 AfterRandom, bool Force, NpcRawPlayerSlotSnapshot1458? RawCurrent, NpcRawPlayerSlotSnapshot1458? RawClosest);
     internal void SetRandom(IVanillaNpcRandom random) => retainedRandom = random;
     internal bool HasRetainedPlan(in NpcSnapshot source) => retainedPlan?.Before == source;
     private bool TryRetain(in NpcSnapshot npc, in VanillaNpcDefinition definition, VanillaNpcBehaviorContext context, IVanillaFlyingEyeRetainedEnvironment1458 environment, out NpcStateUpdate next)
     {
         retainedPlan = null;
+        completedInactive = false;
         next = default;
-        if (retainedRandom is not SystemVanillaNpcRandom trusted || definition.AiStyle != VanillaNpcAiStyles.DemonEye || npc.Simulation.LifeMax <= 0 || npc.Simulation.Scale is <= 0f or >= 2f || npc.Simulation.LiquidContact == NpcLiquidContactKind.Shimmer || !definition.TryResolveHitbox(npc.Simulation, out var body) || npc.Target >= 255 || !context.TryFindCandidate((byte)npc.Target, out var current) || !Admitted(current) || !context.TrySelectClosestTarget(in npc, in definition, out var selected) || !context.TryFindCandidate((byte)selected.Target, out var closest) || !Admitted(closest))
+        if (retainedRandom is not SystemVanillaNpcRandom trusted ||
+            definition.AiStyle != VanillaNpcAiStyles.DemonEye || npc.Simulation.LifeMax <= 0 ||
+            npc.Simulation.Scale is <= 0f or >= 2f || npc.Simulation.LiquidContact == NpcLiquidContactKind.Shimmer ||
+            !definition.TryResolveHitbox(npc.Simulation, out var body))
             return false;
         var candidates = context.Candidates.ToArray();
+        var beforeRandom = trusted.SourceRandom.Clone();
+        bool dayTime = context.DayTime;
+        double surface = context.WorldSurfacePixels;
+        if (!context.TrySelectRawClosestTarget(in npc, in definition, out var selected))
+            return false;
+        NpcRawPlayerSlotSnapshot1458? rawCurrent = null;
+        NpcRawPlayerSlotSnapshot1458? rawClosest = null;
+        VanillaNpcTargetCandidate current;
+        VanillaNpcTargetCandidate closest;
+        bool? currentGraveyard = null;
+        if (context.HasRawPlayerSlots)
+        {
+            if (npc.Target > byte.MaxValue || !context.TryCaptureRawPlayer((byte)npc.Target, out var first) ||
+                !context.TryCaptureRawPlayer((byte)selected.Target, out var second) ||
+                first.Facts.Ghost || first.Facts.NoAggro || first.Facts.Aggro < 0 ||
+                second.Facts.Ghost || second.Facts.NoAggro || second.Facts.Aggro < 0)
+                return false;
+            rawCurrent = first;
+            rawClosest = second;
+            current = first.Facts.Candidate;
+            closest = second.Facts.Candidate;
+            currentGraveyard = first.ZoneGraveyard;
+            bool graveyardChangesRetreat = definition.Type != VanillaNpcIds.TheHungryII &&
+                !VanillaFlyingEyeNpcCatalog.IsPigron(definition.Type) && context.DayTime &&
+                npc.PositionY <= context.WorldSurfacePixels;
+            if (graveyardChangesRetreat && currentGraveyard is null)
+                return false;
+        }
+        else if (npc.Target >= byte.MaxValue || !context.TryFindCandidate((byte)npc.Target, out current) ||
+            !Admitted(current) || !context.TryFindCandidate((byte)selected.Target, out closest) || !Admitted(closest))
+            return false;
         var players = new List<PlayerStateSnapshot>(candidates.Length);
         foreach (var candidate in candidates)
         {
@@ -31,7 +67,6 @@ internal sealed partial class VanillaFlyingEyeNpcBehaviorStrategy
             players.Add(player);
         }
 
-        var beforeRandom = trusted.SourceRandom.Clone();
         if (!environment.TryCapture(in npc, in current, in closest, out var world) || !world.IsCurrent)
             return false;
         var afterRandom = beforeRandom.Clone();
@@ -65,9 +100,11 @@ internal sealed partial class VanillaFlyingEyeNpcBehaviorStrategy
             CollideY = npc.Simulation.CollideY,
             Wet = npc.Simulation.Wet,
             Confused = npc.Simulation.Confused,
-            DayTime = context.DayTime,
-            WorldSurfacePixels = context.WorldSurfacePixels,
-            TargetInGraveyard = environment.IsGraveyardAt(current.CenterX, current.CenterY),
+            DayTime = dayTime,
+            WorldSurfacePixels = surface,
+            TargetInGraveyard = rawCurrent is not null ? currentGraveyard ?? false :
+                environment.IsGraveyardAt(current.CenterX, current.CenterY),
+            ClosestDead = closest.Dead,
             Current = Target(current),
             Closest = Target(closest)
         };
@@ -84,7 +121,7 @@ internal sealed partial class VanillaFlyingEyeNpcBehaviorStrategy
             Rotation = state.Rotation
         };
         var update = new NpcStateUpdate(npc.Type, npc.NetId, npc.PositionX, npc.PositionY, state.Vx, state.Vy, checked((ushort)state.Target), new(state.Clock, state.Phase, npc.Ai.Ai2, npc.Ai.Ai3), simulation);
-        var plan = new RetainedPlan(npc, update, context, candidates, players.ToArray(), context.DayTime, context.WorldSurfacePixels, world, trusted.SourceRandom, beforeRandom, afterRandom, state.Force);
+        var plan = new RetainedPlan(npc, update, context, candidates, players.ToArray(), dayTime, surface, world, trusted.SourceRandom, beforeRandom, afterRandom, state.Force, rawCurrent, rawClosest);
         if (!Finite(in update) || !InputsCurrent(plan))
             return false;
         retainedPlan = plan;
@@ -103,7 +140,7 @@ internal sealed partial class VanillaFlyingEyeNpcBehaviorStrategy
 
     internal NpcSnapshot CompleteRetained(in NpcSnapshot before, in NpcSnapshot accepted, in NpcStateUpdate final, INpcAiCommittedNpcMutationSink mutations)
     {
-        if (retainedPlan is not { } plan || plan.Before != before || !Finite(in final) || !Current(plan, in accepted, mutations) || !TryFinishOuter(plan, in final, out var finished) || !mutations.TryUpdateState(in accepted, in finished, out var completed) || !Current(plan, in completed, mutations))
+        if (retainedPlan is not { } plan || plan.Before != before || !Finite(in final) || !Current(plan, in accepted, mutations) || !TryFinishOuter(plan, in final, out var finished, out bool inactive) || !mutations.TryUpdateState(in accepted, in finished, out var completed) || !Current(plan, in completed, mutations))
         {
             retainedPlan = null;
             return default;
@@ -113,13 +150,15 @@ internal sealed partial class VanillaFlyingEyeNpcBehaviorStrategy
         completedBefore = before;
         completedAfter = completed;
         completedForce = plan.Force;
+        completedInactive = inactive;
         retainedPlan = null;
         return completed;
     }
 
-    private static bool TryFinishOuter(RetainedPlan plan, in NpcStateUpdate state, out NpcStateUpdate finished)
+    private static bool TryFinishOuter(RetainedPlan plan, in NpcStateUpdate state, out NpcStateUpdate finished, out bool inactive)
     {
         finished = default;
+        inactive = false;
         if (!VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(state.Type), new NpcNetId(state.NetId), out var definition) || !definition.TryResolveHitbox(state.Simulation, out var body))
             return false;
         // NPC.FindFrame follows collision: Pigron keeps the pre-steering AI rotation.
@@ -135,38 +174,46 @@ internal sealed partial class VanillaFlyingEyeNpcBehaviorStrategy
                 SpriteDirection = state.VelocityX > 0f ? 1 : -1,
                 Rotation = (float)Math.Atan2(state.VelocityY, state.VelocityX) + (state.VelocityX < 0f ? 3.14f : 0f)
             };
-        // All admitted AI_002 types use the ordinary CheckActive rectangles. Dead active
-        // players still keep an NPC active here; target eligibility is a separate source phase.
-        float centerX = state.PositionX + body.Width / 2;
-        float centerY = state.PositionY + body.Height / 2;
-        int rangeX = (int)(centerX - 4032f);
-        int rangeY = (int)(centerY - 2520f);
-        int resetX = (int)((double)centerX - 960d - body.Width);
-        int resetY = (int)((double)centerY - 600d - body.Height);
-        bool active = false;
-        int timeLeft = simulation.TimeLeft;
-        foreach (var player in plan.Candidates)
+        if (plan.RawCurrent is not null)
         {
-            if (!player.Active)
-                continue;
-            int x = (int)(player.CenterX - player.Width * 0.5f);
-            int y = (int)(player.CenterY - player.Height * 0.5f);
-            int width = (int)player.Width;
-            int height = (int)player.Height;
-            active |= Intersects(rangeX, rangeY, 8064, 5040, x, y, width, height);
-            if (Intersects(resetX, resetY, 1920 + body.Width * 2, 1200 + body.Height * 2, x, y, width, height))
-                timeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft;
+            Span<VanillaNpcRawPlayer1458> players = stackalloc VanillaNpcRawPlayer1458[plan.Players.Length];
+            for (int index = 0; index < players.Length; index++)
+            {
+                var player = plan.Players[index];
+                var size = player.HasMount ? VanillaPlayerMountHitbox1458.Resolve(player.MountType) : (20f, 42f);
+                players[index] = new(player.Player.Slot.Value, true, player.IsDead,
+                    (player.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0,
+                    player.PositionX, player.PositionY, (int)size.Item1, (int)size.Item2, 0, false, player.ItemAnimation ?? 0);
+            }
+            if (!VanillaOrdinarySlimeCheckActive1458.TryStep(state.PositionX, state.PositionY, body.Width,
+                body.Height, simulation.TimeLeft, players, out int lifetime, out inactive))
+                return false;
+            simulation = simulation with { TimeLeft = lifetime };
         }
-
-        timeLeft--;
-        // TimeLeft=0 is the runtime's owned expiry boundary; it removes the generation
-        // after this completed update, without authorizing loot or combat death.
-        bool expired = !active || timeLeft <= 0;
-        simulation = simulation with
+        else
         {
-            TimeLeft = expired ? 0 : timeLeft,
-            Life = expired ? 0 : simulation.Life
-        };
+            // Existing isolated AI002 callers have no raw-array owner. Retain their previous
+            // expiry convention while production uses the exact immediate source lifecycle.
+            float centerX = state.PositionX + body.Width / 2;
+            float centerY = state.PositionY + body.Height / 2;
+            int rangeX = (int)(centerX - 4032f), rangeY = (int)(centerY - 2520f);
+            int resetX = (int)((double)centerX - 960d - body.Width);
+            int resetY = (int)((double)centerY - 600d - body.Height);
+            bool active = false;
+            int timeLeft = simulation.TimeLeft;
+            foreach (var player in plan.Candidates)
+            {
+                if (!player.Active) continue;
+                int x = (int)(player.CenterX - player.Width * .5f);
+                int y = (int)(player.CenterY - player.Height * .5f);
+                active |= Intersects(rangeX, rangeY, 8064, 5040, x, y, (int)player.Width, (int)player.Height);
+                if (Intersects(resetX, resetY, 1920 + body.Width * 2, 1200 + body.Height * 2,
+                    x, y, (int)player.Width, (int)player.Height)) timeLeft = VanillaNpcDefinitionCatalog.DefaultTimeLeft;
+            }
+            timeLeft--;
+            bool expired = !active || timeLeft <= 0;
+            simulation = simulation with { TimeLeft = expired ? 0 : timeLeft, Life = expired ? 0 : simulation.Life };
+        }
         finished = state with
         {
             Simulation = simulation
@@ -175,12 +222,16 @@ internal sealed partial class VanillaFlyingEyeNpcBehaviorStrategy
     }
 
     private static bool Intersects(int x, int y, int width, int height, int otherX, int otherY, int otherWidth, int otherHeight) => otherX < x + width && x < otherX + otherWidth && otherY < y + height && y < otherY + otherHeight;
+    internal bool DeactivatesRetainedAfterCompletion(in NpcSnapshot before, in NpcSnapshot after) =>
+        completedBefore == before && completedAfter == after && completedInactive;
     internal bool RequiresRetainedForcedUpdate(in NpcSnapshot before, in NpcSnapshot after) => completedBefore == before && completedAfter == after && completedForce;
     internal void CancelRetained() => retainedPlan = null;
     private static bool Current(RetainedPlan plan, in NpcSnapshot source, INpcAiCommittedNpcMutationSink mutations) => InputsCurrent(plan) && mutations.TryGetActive(source.Handle.Slot, out var current) && current == source && InputsCurrent(plan);
     private static bool InputsCurrent(RetainedPlan plan)
     {
-        if (!plan.Owner.HasSameState(plan.BeforeRandom) || plan.Context.DayTime != plan.DayTime || plan.Context.WorldSurfacePixels != plan.Surface || !plan.Context.Candidates.SequenceEqual(plan.Candidates) || !plan.World.IsCurrent)
+        if ((plan.RawCurrent is { } rawCurrent && !plan.Context.IsRawPlayerCurrent(in rawCurrent)) ||
+            (plan.RawClosest is { } rawClosest && !plan.Context.IsRawPlayerCurrent(in rawClosest)) ||
+            !plan.Owner.HasSameState(plan.BeforeRandom) || plan.Context.DayTime != plan.DayTime || plan.Context.WorldSurfacePixels != plan.Surface || !plan.Context.Candidates.SequenceEqual(plan.Candidates) || !plan.World.IsCurrent)
             return false;
         foreach (var expected in plan.Players)
             if (!plan.Context.TryGetOwnedPlayer(expected.Player.Slot.Value, out var current) || current != expected)

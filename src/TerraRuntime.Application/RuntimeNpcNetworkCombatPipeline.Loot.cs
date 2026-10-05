@@ -10,8 +10,17 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class RuntimeNpcNetworkCombatPipeline
 {
+    private void ExecuteNpcNonlethalHitEffects(in NpcSnapshot npc)
+    {
+        // Dedicated NPC.HitEffect still makes the Eskimo Zombie's gore choice, even though
+        // Gore.NewGore and Dust.NewDust perform no server-side particle allocation.
+        if (npc.TypeIdentity.Value == 186) random.NextInt32(0, 5);
+    }
+
     private void ExecuteNpcDeathHitEffects(in NpcSnapshot npc)
     {
+        // Both Eskimo identities choose a death gore variant on the dedicated server.
+        if (npc.TypeIdentity.Value is 186 or 432) random.NextInt32(0, 2);
         if (npc.TypeIdentity == VanillaNpcIds.Bee || npc.TypeIdentity == VanillaNpcIds.SmallBee)
         {
             // NPC.HitEffect (1.4.5.8) still makes six noGravity choices after dedicated Dust.NewDust returns.

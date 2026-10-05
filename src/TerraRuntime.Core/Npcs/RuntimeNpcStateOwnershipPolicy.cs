@@ -151,7 +151,8 @@ internal static class RuntimeNpcStateOwnershipPolicy
             };
         }
 
-        if (simulation.SpriteDirection == 0)
+        if (simulation.SpriteDirection == 0 &&
+            !(sameDefinition && VanillaFlyingEyeNpcCatalog.IsPigron(new NpcTypeId(update.Type))))
         {
             simulation = simulation with
             {

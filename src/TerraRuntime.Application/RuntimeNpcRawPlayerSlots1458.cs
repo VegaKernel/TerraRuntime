@@ -57,6 +57,7 @@ internal sealed class RuntimeNpcRawPlayerSlots1458 : INpcRawPlayerSlotLookup1458
         var handle = live[slot];
         var facts = VanillaNpcRawPlayer1458.Constructor(slot);
         PlayerStateSnapshot? retained = null;
+        bool? graveyard = false;
         if (slot != byte.MaxValue && players.TryGetPlayer(new PlayerSlotId(slot), out var player))
         {
             if (!handle.IsAssigned || player.Player != handle || !player.Revision.IsAssigned)
@@ -67,6 +68,7 @@ internal sealed class RuntimeNpcRawPlayerSlots1458 : INpcRawPlayerSlotLookup1458
                 player.PositionX, player.PositionY,
                 (int)size.Item1, (int)size.Item2, 0, false, player.ItemAnimation ?? 0);
             retained = player;
+            graveyard = player.Zones is { } zones ? (zones.Zone4 & (1 << 6)) != 0 : null;
         }
         else if (handle.IsAssigned)
         {
@@ -78,7 +80,7 @@ internal sealed class RuntimeNpcRawPlayerSlots1458 : INpcRawPlayerSlotLookup1458
             (serverPlayerSerial?.Invoke() ?? 0) != controlled)
             return false;
 
-        snapshot = new(facts, before, lifetime[slot], retained, clients, controlled);
+        snapshot = new(facts, before, lifetime[slot], retained, clients, controlled, graveyard);
         return true;
     }
 

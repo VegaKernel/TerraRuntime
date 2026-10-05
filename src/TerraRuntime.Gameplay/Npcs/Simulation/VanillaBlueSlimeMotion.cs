@@ -6,7 +6,8 @@ public readonly record struct VanillaBlueSlimeTargetRefresh(
     bool HasTarget,
     ushort Target,
     int DirectionX,
-    int DirectionY)
+    int DirectionY,
+    bool PreserveFacing = false)
 {
     public bool IsValid =>
         (!HasTarget ||
@@ -248,8 +249,11 @@ public static class VanillaBlueSlimeMotion
                 return;
 
             target = closestTarget.Target;
-            directionX = closestTarget.DirectionX;
-            directionY = closestTarget.DirectionY;
+            if (!closestTarget.PreserveFacing)
+            {
+                directionX = closestTarget.DirectionX;
+                directionY = closestTarget.DirectionY;
+            }
         }
 
         VanillaBlueSlimeMotionResult CreateResult() =>
