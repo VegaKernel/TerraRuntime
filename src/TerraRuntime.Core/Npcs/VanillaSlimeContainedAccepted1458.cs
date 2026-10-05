@@ -25,12 +25,16 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
     private Func<VanillaSlimeContainedFacts1458>? containedFacts;
     private IVanillaSlimeContainedEnvironment1458? containedEnvironment;
     private ContainedPlan? containedPlan;
+    private NpcSnapshot completedContainedBefore;
+    private NpcSnapshot completedContainedAfter;
+    private bool completedContainedInactive;
 
     private sealed record ContainedPlan(NpcSnapshot Before, NpcStateUpdate Update,
         RuntimeNpcStore.AiSpawnPreview Preview, VanillaNpcBehaviorContext Context,
         VanillaNpcTargetCandidate[] Candidates, PlayerStateSnapshot[] Players,
         VanillaSlimeContainedFacts1458 Facts, bool DayTime, IVanillaSlimeContainedWorld1458 World,
-        NpcAiProjectileIntent? Trap);
+        NpcAiProjectileIntent? Trap, NpcRawPlayerSlotSnapshot1458? RawTarget,
+        NpcRawPlayerSlotSnapshot1458? RawTracking);
 
     internal void SetContainedOwner(RuntimeNpcStore store, Func<VanillaSlimeContainedFacts1458> facts,
         IVanillaSlimeContainedEnvironment1458 environment)
@@ -47,12 +51,29 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
         VanillaNpcBehaviorContext context, INpcAiStateStepper inner, out NpcStateUpdate next)
     {
         containedPlan = null;
+        completedContainedInactive = false;
         next = default;
         if (random is not SystemVanillaNpcRandom trusted || containedStore is null ||
             containedFacts is null || containedEnvironment is null ||
             !definition.TryResolveHitbox(npc.Simulation, out var body) ||
-            npc.Simulation.MoneyValue is not float money || npc.Ai.Ai1 != (int)npc.Ai.Ai1 ||
-            !context.TrySelectClosestTarget(in npc, in definition, out _))
+            npc.Simulation.MoneyValue is not float money || npc.Ai.Ai1 != (int)npc.Ai.Ai1)
+            return false;
+
+        NpcRawPlayerSlotSnapshot1458? rawTarget = null;
+        NpcRawPlayerSlotSnapshot1458? rawTracking = null;
+        if (context.HasRawPlayerSlots)
+        {
+            if (npc.Target > byte.MaxValue || !context.TryCaptureRawPlayer((byte)npc.Target, out var captured))
+                return false;
+            rawTarget = captured;
+            if (npc.Target == byte.MaxValue)
+            {
+                if (!context.TryCaptureRawPlayer(0, out var fallback))
+                    return false;
+                rawTracking = fallback;
+            }
+        }
+        if (!context.TrySelectSlimeClosestTarget(in npc, in definition, out _))
             return false;
 
         // NewNPC uses target 255. AI001 initializes contents before its first TargetClosest;
@@ -64,7 +85,14 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
             VanillaPlayerHitboxFacts.BaseWidth * .5f, VanillaPlayerHitboxFacts.BaseHeight * .5f,
             0, false, false, false, false);
         bool producerTargetEligible = false;
-        if (npc.Target < byte.MaxValue)
+        if (rawTarget is { } ownedRaw)
+        {
+            target = ownedRaw.Facts.Candidate;
+            if (target.Ghost || target.NoAggro || target.Aggro < 0)
+                return false;
+            producerTargetEligible = target.Active && !target.Dead;
+        }
+        else if (npc.Target < byte.MaxValue)
         {
             if (!context.TryFindCandidate((byte)npc.Target, out target) ||
                 target.Ghost || target.NoAggro || target.Aggro < 0)
@@ -123,6 +151,14 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
 
         if (effects.HiveType != 0 && world.CanHit)
         {
+            // A higher-slot child participates in this same source NPC pass. Its raw-target
+            // no-living AI is not admitted yet; reject the selected producer atomically,
+            // rather than retaining a Bee which vanilla would update immediately.
+            bool childHasLivingTarget = false;
+            foreach (var candidate in candidates)
+                childHasLivingTarget |= candidate.Active && !candidate.Dead && !candidate.Ghost;
+            if (context.HasRawPlayerSlots && !childHasLivingTarget)
+                return false;
             int type = speculativeRandom.NextInt32(VanillaNpcIds.Bee.Value, VanillaNpcIds.SmallBee.Value + 1);
             var intent = new NpcAiSpawnIntent(new(type),
                 (int)(npc.PositionX + body.Width * .5f), (int)(npc.PositionY + body.Height * .5f),
@@ -144,7 +180,7 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
             return false;
 
         var plan = new ContainedPlan(npc, update, preview, context, candidates, players.ToArray(),
-            facts, context.DayTime, world, trap);
+            facts, context.DayTime, world, trap, rawTarget, rawTracking);
         if (!ContainedInputsCurrent(plan) || !preview.IsBeforeCurrent())
             return false;
         containedPlan = plan;
@@ -175,19 +211,63 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
     internal NpcSnapshot CompleteContainedPlan(in NpcSnapshot before, in NpcSnapshot accepted,
         in NpcStateUpdate final)
     {
-        if (containedPlan is not { } plan || plan.Before != before || !ContainedInputsCurrent(plan) ||
-            !plan.Preview.TryAdopt(in accepted, in final, out var completed))
+        if (containedPlan is not { } plan || plan.Before != before || !ContainedInputsCurrent(plan))
+        {
+            containedPlan = null;
+            return default;
+        }
+        var completedState = final;
+        bool despawnAfterCompletion = false;
+        if (plan.RawTarget is not null)
+        {
+            if (!VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, before.NetIdentity, out var definition) ||
+                !definition.TryResolveHitbox(final.Simulation, out var body))
+            {
+                containedPlan = null;
+                return default;
+            }
+            Span<VanillaNpcRawPlayer1458> players = stackalloc VanillaNpcRawPlayer1458[plan.Players.Length];
+            for (int index = 0; index < plan.Players.Length; index++)
+            {
+                var player = plan.Players[index];
+                var size = player.HasMount ? VanillaPlayerMountHitbox1458.Resolve(player.MountType) : (20f, 42f);
+                players[index] = new(player.Player.Slot.Value, true, player.IsDead,
+                    (player.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0,
+                    player.PositionX, player.PositionY, (int)size.Item1, (int)size.Item2,
+                    0, false, player.ItemAnimation ?? 0);
+            }
+            if (!VanillaOrdinarySlimeCheckActive1458.TryStep(final.PositionX, final.PositionY,
+                body.Width, body.Height, final.Simulation.TimeLeft, players, out int lifetime, out bool despawn))
+            {
+                containedPlan = null;
+                return default;
+            }
+            completedState = final with
+            {
+                Simulation = final.Simulation with { TimeLeft = lifetime }
+            };
+            despawnAfterCompletion = despawn;
+        }
+        if (!ContainedInputsCurrent(plan) || !plan.Preview.TryAdopt(in accepted, in completedState, out var completed))
         {
             containedPlan = null;
             return default;
         }
         containedPlan = null;
+        completedContainedBefore = before;
+        completedContainedAfter = completed;
+        completedContainedInactive = despawnAfterCompletion;
         return completed;
     }
+
+    internal bool DeactivatesContainedAfterCompletion(in NpcSnapshot before, in NpcSnapshot completed) =>
+        completedContainedInactive && completedContainedBefore == before && completedContainedAfter == completed;
 
     private bool ContainedInputsCurrent(ContainedPlan plan)
     {
         if (containedFacts is null || !plan.World.IsCurrent ||
+            (plan.RawTarget is { } raw && !plan.Context.IsRawPlayerCurrent(in raw)) ||
+            (plan.RawTracking is { } tracking && !plan.Context.IsRawPlayerCurrent(in tracking)) ||
             plan.Context.DayTime != plan.DayTime ||
             !plan.Context.Candidates.SequenceEqual(plan.Candidates) ||
             (containedFacts() with

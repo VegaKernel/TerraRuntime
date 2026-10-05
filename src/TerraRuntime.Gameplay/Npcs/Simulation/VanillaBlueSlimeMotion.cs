@@ -10,7 +10,7 @@ public readonly record struct VanillaBlueSlimeTargetRefresh(
 {
     public bool IsValid =>
         (!HasTarget ||
-         (Target < byte.MaxValue && DirectionX is -1 or 1 && DirectionY is -1 or 1)) &&
+         Target < byte.MaxValue) &&
         DirectionX is >= -1 and <= 1 &&
         DirectionY is >= -1 and <= 1;
 }

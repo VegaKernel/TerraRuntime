@@ -7,8 +7,8 @@ namespace TerraRuntime.Application;
 
 // NPC.UpdateNPC_BuffApplyVFX precedes IdleSounds/AI. Retain the genuine dedicated-server
 // offer and its source random draws, even though Dust.NewDust returns the nonphysical server slot.
-internal sealed class RuntimeNpcStinkyAiStepper1458(INpcAiStateStepper inner,
-    RuntimeNpcStinkyStatus1458 status, IVanillaNpcRandom random, bool goodWorld = false) : INpcAiStateStepper, INpcAiStateStepperWrapper
+internal sealed class RuntimeNpcBuffAiStepper1458(INpcAiStateStepper inner,
+    RuntimeNpcBuffStatus1458 status, IVanillaNpcRandom random, bool goodWorld = false) : INpcAiStateStepper, INpcAiStateStepperWrapper
 {
     private readonly NpcRuntimeTownCombatRandom1458 visualRandom = new(random);
     public INpcAiStateStepper InnerStepper => inner;
@@ -19,16 +19,13 @@ internal sealed class RuntimeNpcStinkyAiStepper1458(INpcAiStateStepper inner,
         // Town's complete phase owns its own visual offer in the same random transaction as AI/contact.
         if (definition.AiStyle != VanillaNpcAiStyles.Town)
         {
-            if (!status.TryGetStinky(npc.Handle, out bool stinky)) { next = default; return false; }
-            if (!stinky) return inner.TryStepState(in npc, out next);
-            bool canDisplay = !goodWorld || npc.TypeIdentity != VanillaNpcIds.Golem &&
-                npc.TypeIdentity != VanillaNpcIds.GolemHead && npc.TypeIdentity != VanillaNpcIds.GolemFistLeft &&
-                npc.TypeIdentity != VanillaNpcIds.GolemFistRight;
-            if (canDisplay)
-            {
-                var offer = RuntimeNpcStinkyStatus1458.PlanVisualOffer(visualRandom);
-                status.ObserveVisualOffer(npc.Handle, in offer);
-            }
+            if (!status.TryPlan(in npc, out var plan)) { next = default; return false; }
+            var offer = RuntimeNpcBuffStatus1458.PlanVisualOffers(in plan, visualRandom, goodWorld);
+            if (!inner.TryStepState(in npc, out next) || !status.IsCurrent(in plan) ||
+                !status.Commit(in plan, in npc)) { next = default; return false; }
+            status.ObserveVisualOffer(npc.Handle, in offer);
+            status.PublishExpired(in plan);
+            return true;
         }
         return inner.TryStepState(in npc, out next);
     }

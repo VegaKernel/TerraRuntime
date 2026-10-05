@@ -42,7 +42,10 @@ public sealed class VanillaNpcTargetingAiStepper :
         before.TypeIdentity == VanillaNpcIds.DrManFly && finalized.TypeIdentity == before.TypeIdentity &&
         (before.Simulation.JustHit || (finalized.Ai.Ai1 == 70f && finalized.Ai.Ai2 > 0f) ||
          (before.Ai.Ai1 == 36f && before.Ai.Ai2 > 0f && finalized.Ai.Ai1 == 35f && finalized.Ai.Ai2 > 0f &&
-          _context.TryFindCandidate((byte)finalized.Target, out var target) && target.Active && !target.Dead));
+         _context.TryFindCandidate((byte)finalized.Target, out var target) && target.Active && !target.Dead));
+
+    public bool DeactivatesAfterCompletion(in NpcSnapshot before, in NpcSnapshot completed) =>
+        _slimeGround.DeactivatesContainedAfterCompletion(in before, in completed);
 
     public bool RequiresForcedUpdateAfterPlanning(
         in NpcSnapshot before,
@@ -186,6 +189,9 @@ public sealed class VanillaNpcTargetingAiStepper :
 
     public void SetPlayerSnapshotLookup(IRuntimePlayerSlotSnapshotLookup playerSnapshots) =>
         _context.SetPlayerSnapshotLookup(playerSnapshots);
+
+    internal void SetRawPlayerSlots(INpcRawPlayerSlotLookup1458 slots) =>
+        _context.SetRawPlayerSlots(slots);
 
     public void SetKingSlimeEnvironment(IVanillaKingSlimeEnvironment environment)
     {

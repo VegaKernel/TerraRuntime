@@ -13,6 +13,7 @@ namespace TerraRuntime.Application;
 internal sealed class RuntimePlayerMembership
 {
     private readonly Dictionary<byte, RuntimePlayerMember> _members = [];
+    internal ulong Serial { get; private set; } = 1;
     private readonly RuntimePendingPlayerVitals?[] _pendingVitals;
     private readonly short[] _talkNpcSlots;
     private readonly RuntimeTownShopSession1458?[] _townShopSessions;
@@ -77,20 +78,25 @@ internal sealed class RuntimePlayerMembership
             throw new ArgumentException("Player membership must match its assigned connection slot.", nameof(member));
 
         byte slot = member.Slot.Value;
+        if (Serial == ulong.MaxValue)
+            throw new InvalidOperationException("Player membership serial exhausted.");
         if (!_members.TryAdd(slot, member))
             throw new InvalidOperationException($"Player slot {slot} already belongs to an active world member.");
+        Serial++;
         _talkNpcSlots[slot] = TerrariaNpcTalkCodec.NoNpc;
         _townShopSessions[slot] = null;
     }
 
     public bool TryRemove(ConnectionHandle connection, out RuntimePlayerMember member)
     {
-        if (!TryGet(connection, out member))
+        member = null!;
+        if (Serial == ulong.MaxValue || !TryGet(connection, out member))
             return false;
 
         byte slot = connection.Player.Slot.Value;
         if (!_members.Remove(slot))
             return false;
+        Serial++;
 
         _talkNpcSlots[slot] = TerrariaNpcTalkCodec.NoNpc;
         _townShopSessions[slot] = null;
@@ -212,6 +218,8 @@ internal sealed class RuntimePlayerMember
     public short MaxLife { get; set; }
     // Player constructor initializes statLifeMax2 independently from synchronized base vitals.
     public int? DerivedLifeMax { get; set; } = 100;
+    public int? BaseLifeMax { get; set; } = 100;
+    public PlayerDebuffSnapshot1458? Debuffs { get; set; } = default(PlayerDebuffSnapshot1458);
     public bool IsDead { get; set; }
     public float Stealth { get; set; } = 1f;
     // Player constructor owns clear zone bytes; imports deliberately overwrite this with nullable provenance.
@@ -284,6 +292,8 @@ internal sealed class RuntimePlayerMember
             Life = Life,
             MaxLife = MaxLife,
             DerivedLifeMax = DerivedLifeMax,
+            BaseLifeMax = BaseLifeMax,
+            Debuffs = Debuffs,
             IsDead = IsDead,
             HasMana = HasMana,
             Mana = Mana,

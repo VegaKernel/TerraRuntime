@@ -14,7 +14,15 @@ internal sealed partial class RuntimeTownNpcCombat1458
     internal void BeginWorldTick() => AdvanceMeleeImmunity();
 
     internal RuntimeNpcStinkyVisualOffer1458 PlanStinkyVisualOffer()
-        => RuntimeNpcStinkyStatus1458.PlanVisualOffer(random);
+        => RuntimeNpcBuffStatus1458.PlanVisualOffer(random);
+
+    internal RuntimeNpcStinkyVisualOffer1458 PlanBuffVisualOffers(in RuntimeNpcBuffPlan1458 plan)
+        => RuntimeNpcBuffStatus1458.PlanVisualOffers(in plan, random, goodWorld: false);
+
+    internal void RetainAcceptedBuffLife(in RuntimeNpcBuffPlan1458 plan, in NpcSnapshot accepted)
+    {
+        if (plan.DotDamage > 0) contactReplication?.RetainAcceptedBuffLife(plan.Expected, plan.LifeAfter, in accepted);
+    }
 
 
     internal bool TryPlanActiveAttack(in NpcSnapshot source, in RuntimeTownNpcDanger1458 danger,

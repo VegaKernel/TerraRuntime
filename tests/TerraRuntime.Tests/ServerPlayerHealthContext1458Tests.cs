@@ -19,11 +19,14 @@ public sealed class ServerPlayerHealthContext1458Tests
         Assert.True(created.IsCreated);
         Assert.True(states.TryGet(created.Player, out var birth));
         Assert.Equal(100, birth.DerivedLifeMax);
+        Assert.Equal(100, birth.BaseLifeMax);
+        Assert.Equal(new PlayerDebuffSnapshot1458(false, false, false), birth.Debuffs);
         var alive = new ServerPlayerVitalsState(400, 400, 20, 20);
         Assert.True(authority.SetVitals(id, in alive));
         authority.TickHealthContext(tiles);
         Assert.True(states.TryGet(created.Player, out var updated));
         Assert.Equal(400, updated.DerivedLifeMax);
+        Assert.Equal(400, updated.BaseLifeMax);
         authority.TickHealthContext(tiles);
         Assert.True(states.TryGet(created.Player, out var unchanged));
         Assert.Equal(updated.Revision, unchanged.Revision);
@@ -32,6 +35,7 @@ public sealed class ServerPlayerHealthContext1458Tests
         authority.TickHealthContext(tiles);
         Assert.True(states.TryGet(created.Player, out var retained));
         Assert.Equal(400, retained.DerivedLifeMax);
+        Assert.Equal(500, retained.BaseLifeMax);
         Assert.True(authority.SetVitals(id, in alive));
         Assert.True(authority.TryTeleport(id, 0, 0));
         authority.TickHealthContext(tiles);
@@ -41,6 +45,7 @@ public sealed class ServerPlayerHealthContext1458Tests
         var replacement = authority.Create(id, 320, 320);
         Assert.True(states.TryGet(replacement.Player, out var fresh));
         Assert.Equal(100, fresh.DerivedLifeMax);
+        Assert.Equal(100, fresh.BaseLifeMax);
         Assert.False(states.TrySetDerivedLifeMax(in retained, 999));
     }
 

@@ -137,6 +137,9 @@ public sealed class ServerRuntimeEaterOfWorldsDamageIntegrationTests
             State.Apply(new PlayerSpawnRuntimeCommand(connection, session, request));
             Assert.Equal(PlayerSpawnCommitResult.Committed, State.LastSpawnCommitResult);
 
+            // Synchronize the vitals read by the selected source heart offer before lethal ingress.
+            State.Apply(new PlayerHealthRuntimeCommand(connection, new(session.Slot, 100, 100)));
+
             // This fixture validates NPC death/loot/progression, not authoritative direct-melee calculation. Keep a
             // canonical selected item present, but use a bow so combat integrity intentionally takes LegacyFallback.
             var equipment = new PlayerEquipmentCommitRequest(

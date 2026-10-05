@@ -1,13 +1,14 @@
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Protocol.Multiplicity;
 
 namespace TerraRuntime.Application;
 
 internal sealed partial class NpcAuthority
 {
-    private readonly RuntimeNpcStinkyStatus1458 npcStinkyStatus;
+    private readonly RuntimeNpcBuffStatus1458 npcBuffStatus;
     private readonly Action<NpcHandle> npcBuffListChanged;
-    internal RuntimeNpcStinkyStatus1458 NpcStinkyStatus => npcStinkyStatus;
+    internal RuntimeNpcBuffStatus1458 NpcBuffStatus => npcBuffStatus;
     public long AppliedNpcBuffs { get; private set; }
     public long RejectedNpcBuffs { get; private set; }
 
@@ -19,7 +20,7 @@ internal sealed partial class NpcAuthority
         // then retain that exact handle; neither a stale connection nor a later slot reuse owns the buff.
         if (!players.IsCurrent(command.Connection) || !TerrariaNpcBuffCodec.IsValid(command.State) ||
             !npcs.TryGetActive((byte)command.State.NpcSlot, out NpcSnapshot npc) ||
-            !npcStinkyStatus.TryApply(npc.Handle, command.State.Duration))
+            !npcBuffStatus.TryApply(npc.Handle, new BuffTypeId(command.State.BuffType), command.State.Duration))
         {
             RejectedNpcBuffs++;
             return;

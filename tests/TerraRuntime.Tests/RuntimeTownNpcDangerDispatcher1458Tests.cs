@@ -114,7 +114,7 @@ public sealed class RuntimeTownNpcDangerDispatcher1458Tests
         internal readonly RuntimeProjectileStore Projectiles = new(32);
         internal readonly Sink Sink = new();
         internal readonly OwnedRandom Random;
-        internal readonly RuntimeNpcStinkyStatus1458 Status;
+        internal readonly RuntimeNpcBuffStatus1458 Status;
         internal readonly RuntimeTownNpcSchedule1458 Schedule;
         internal readonly RuntimeTownNpcCombat1458 Combat;
         internal readonly RuntimeTownNpcScheduleConditions1458 Conditions;

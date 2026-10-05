@@ -22,6 +22,7 @@ internal sealed class VanillaNpcBehaviorContext
     private readonly NpcSnapshot[] _npcPeers = new NpcSnapshot[RuntimeNpcStore.MaximumAddressableCapacity];
     private readonly VanillaNpcRetainedSlot[] _retainedNpcSlots = new VanillaNpcRetainedSlot[RuntimeNpcStore.MaximumAddressableCapacity];
     private IRuntimePlayerSlotSnapshotLookup? _playerSnapshots;
+    private INpcRawPlayerSlotLookup1458? rawPlayerSlots;
     private int _candidateCount;
     private int _npcPeerCount;
     private int _retainedNpcSlotCount;
@@ -113,6 +114,20 @@ internal sealed class VanillaNpcBehaviorContext
         return _playerSnapshots is not null && _playerSnapshots.TryGetPlayer(new PlayerSlotId(slot), out snapshot) &&
             snapshot.Player.IsAssigned && snapshot.Player.Slot.Value == slot;
     }
+
+    internal bool HasRawPlayerSlots => rawPlayerSlots is not null;
+
+    internal void SetRawPlayerSlots(INpcRawPlayerSlotLookup1458 slots) =>
+        rawPlayerSlots = slots ?? throw new ArgumentNullException(nameof(slots));
+
+    internal bool TryCaptureRawPlayer(byte slot, out NpcRawPlayerSlotSnapshot1458 snapshot)
+    {
+        snapshot = default;
+        return rawPlayerSlots is not null && rawPlayerSlots.TryCapture(slot, out snapshot);
+    }
+
+    internal bool IsRawPlayerCurrent(in NpcRawPlayerSlotSnapshot1458 snapshot) =>
+        rawPlayerSlots?.IsCurrent(in snapshot) == true;
 
     public void SetMoonEventState(bool pumpkinMoonActive, bool snowMoonActive = false)
     {
@@ -548,6 +563,25 @@ internal sealed class VanillaNpcBehaviorContext
             DirectionX: candidate.CenterX < npcCenterX ? -1 : 1,
             DirectionY: candidate.CenterY < npcCenterY ? -1 : 1);
         return true;
+    }
+
+    internal bool TrySelectSlimeClosestTarget(in NpcSnapshot npc, in VanillaNpcDefinition definition,
+        out VanillaBlueSlimeTargetRefresh target)
+    {
+        if (TrySelectClosestTarget(in npc, in definition, out target))
+            return true;
+        if (rawPlayerSlots is null ||
+            (definition.Type != VanillaNpcIds.BlueSlime && definition.Type != VanillaNpcIds.LavaSlime))
+            return false;
+        foreach (var candidate in Candidates)
+            if (candidate.Active && !candidate.Dead && !candidate.Ghost)
+                return false;
+        byte slot = npc.Target < byte.MaxValue ? (byte)npc.Target : (byte)0;
+        return definition.TryResolveHitbox(npc.Simulation, out var body) &&
+            TryCaptureRawPlayer(slot, out var raw) &&
+            VanillaNpcUnoccupiedTarget1458.TryRefresh(npc.Target, npc.Simulation.DirectionX,
+                npc.Simulation.DirectionY, npc.PositionX, npc.PositionY, body.Width, body.Height,
+                raw.Facts, out target);
     }
 
     public bool TargetOverlapsNpc(in NpcSnapshot npc, in VanillaNpcDefinition definition)

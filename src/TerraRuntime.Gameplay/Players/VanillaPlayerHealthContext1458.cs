@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Runtime;
 namespace TerraRuntime.Gameplay.Players;
 
 /// <summary>Source Player.Update/ResetEffects/UpdateBuffs ordering for the represented dedicated remote health context.</summary>
@@ -6,6 +7,18 @@ public static class VanillaPlayerHealthContext1458
     public const int InitialDerivedLifeMax = 100;
     public const byte GhostMovementFlag = 1 << 6;
     public const int RemoteTileMargin = 4;
+
+    public static PlayerDebuffSnapshot1458? ResolveDebuffs(PlayerDebuffSnapshot1458? previous,
+        PlayerDebuffSnapshot1458? positiveBuffFlags, bool outOfRange, bool ghost, bool dead)
+    {
+        if (!outOfRange && (ghost || dead)) return default(PlayerDebuffSnapshot1458);
+        if (positiveBuffFlags is not { } flags) return null;
+        if (!outOfRange) return flags;
+        // Out-of-range UpdateBuffs precedes the normal ResetEffects; previous flags can remain set.
+        return previous is { } prior
+            ? new(prior.OnFire || flags.OnFire, prior.OnFire2 || flags.OnFire2, prior.Poisoned || flags.Poisoned)
+            : null;
+    }
 
     public static int? Resolve(int? previous, int? baseMaximum, int? lifeforceSlots,
         bool outOfRange, bool ghost, bool dead)

@@ -282,4 +282,22 @@
     <EmbeddedResource Include="Fixtures/global-loot-ninth-calendar-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.global-loot-ninth-calendar-official.json.gz" />
     <EmbeddedResource Include="Fixtures/global-loot-ninth-metadata-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.global-loot-ninth-metadata-official.json.gz" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/npc-specific-tenth-defaults-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/npc-specific-tenth-whole-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/npc-specific-tenth-tables-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/slimer-tenth-defaults-windows-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/slimer-tenth-hit-windows-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/slimer-tenth-hit-linux-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/slimer-tenth-coupled-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/town-sourceborn-base-official-1458.json.gz" LogicalName="TownSourceBornBase1458" />
+    <EmbeddedResource Include="Fixtures/town-npc-outer-official-1458.json.gz" LogicalName="TownNpcDebuffOuter1458" />
+    <EmbeddedResource Include="Fixtures/town-debuff-topics-official-1458.json.gz" LogicalName="TownDebuffTopics1458" />
+    <EmbeddedResource Include="Fixtures/slime-inactive-first-official-1458.json.gz" LogicalName="SlimeInactiveFirst1458" />
+    <EmbeddedResource Include="Fixtures/npc-inactive-lifecycle-official-1458.json.gz" LogicalName="NpcInactiveLifecycle1458" />
+    <EmbeddedResource Include="Fixtures/town-derived-heals-official-1458.json.gz" LogicalName="TownDerivedHeals1458" />
+    <EmbeddedResource Include="Fixtures/town-debuff-pair-official-1458.json.gz" LogicalName="TownDebuffPair1458" />
+    <EmbeddedResource Include="Fixtures/npc-difficulty-wire-official-1458.json.gz" LogicalName="NpcDifficultyWire1458" />
+    <EmbeddedResource Include="Fixtures/inactive-player-constructor-healing-tenth-official.json.gz" />
+  </ItemGroup>
 </Project>

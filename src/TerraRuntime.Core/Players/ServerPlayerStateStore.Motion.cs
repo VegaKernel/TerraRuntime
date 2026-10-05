@@ -139,6 +139,7 @@ public sealed partial class ServerPlayerStateStore
         state.HasHealth = true;
         state.Life = normalizedHealth.Life;
         state.MaxLife = normalizedHealth.MaxLife;
+        state.BaseLifeMax = normalizedHealth.MaxLife;
         state.IsDead = normalizedHealth.Life <= 0;
         state.HasMana = true;
         state.Mana = vitals.Mana;

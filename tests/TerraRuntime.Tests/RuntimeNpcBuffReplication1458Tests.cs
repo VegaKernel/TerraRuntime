@@ -21,13 +21,13 @@ public sealed class RuntimeNpcBuffReplication1458Tests
         state.Apply(new ClientNpcBuffRuntimeCommand(new ConnectionHandle(GameCommandSourceId.FromConnection(8112), connection.Player), add));
         state.Apply(new ClientNpcBuffRuntimeCommand(connection with { Player = new PlayerHandle(connection.Player.Slot, new PlayerSessionGeneration(connection.Player.Generation.Value + 1)) }, add));
         Assert.Equal(2, runtime.Npcs.RejectedNpcBuffs);
-        Assert.True(runtime.Npcs.NpcStinkyStatus.TryGetWireDuration(npc.Handle, out int duration)); Assert.Equal(-1, duration);
+        Assert.True(runtime.Npcs.NpcBuffStatus.TryGetWireDuration(npc.Handle, out int duration)); Assert.Equal(-1, duration);
         state.Apply(new ClientNpcBuffRuntimeCommand(connection, add));
         Assert.Equal(1, runtime.Npcs.AppliedNpcBuffs);
-        Assert.True(runtime.Npcs.NpcStinkyStatus.TryGetWireDuration(npc.Handle, out duration)); Assert.Equal(180, duration);
+        Assert.True(runtime.Npcs.NpcBuffStatus.TryGetWireDuration(npc.Handle, out duration)); Assert.Equal(180, duration);
         Assert.True(npcs.TryDespawn(npc.Handle)); Assert.True(npcs.TrySpawn(0, in initial, out var replacement));
-        Assert.False(runtime.Npcs.NpcStinkyStatus.TryApply(npc.Handle, 180));
-        Assert.True(runtime.Npcs.NpcStinkyStatus.TryGetWireDuration(replacement.Handle, out duration)); Assert.Equal(-1, duration);
+        Assert.False(runtime.Npcs.NpcBuffStatus.TryApply(npc.Handle, 180));
+        Assert.True(runtime.Npcs.NpcBuffStatus.TryGetWireDuration(replacement.Handle, out duration)); Assert.Equal(-1, duration);
         state.Apply(new PlayerDisconnectRuntimeCommand(connection)); state.Apply(new ClientNpcBuffRuntimeCommand(connection, add));
         Assert.Equal(3, runtime.Npcs.RejectedNpcBuffs);
     }
@@ -36,7 +36,7 @@ public sealed class RuntimeNpcBuffReplication1458Tests
     public void Source54_reaches_requester_and_other_playing_peer_and_join_replays23_then_current54()
     {
         var registry = new RuntimeNpcReplicationRegistry(); var npcs = new RuntimeNpcStore(commitSink: registry);
-        var owner = new RuntimeNpcStinkyStatus1458(npcs); registry.BindNpcBuffStatus(owner);
+        var owner = new RuntimeNpcBuffStatus1458(npcs); registry.BindNpcBuffStatus(owner);
         var initial = State(17); Assert.True(npcs.TrySpawn(0, in initial, out NpcSnapshot npc));
         var requester = Endpoint(registry, 8113, 0); var peer = Endpoint(registry, 8114, 1);
         Assert.Equal(new byte[] { 23, 54 }, Drain(requester).Select(x => x[2]).ToArray());
@@ -44,7 +44,7 @@ public sealed class RuntimeNpcBuffReplication1458Tests
         Assert.True(owner.TryApply(npc.Handle, 180)); registry.PublishNpcBuffs(npc.Handle);
         Assert.True(TerrariaNpcBuffCodec.TryEncodeCurrent(0, 180, out byte[] expected));
         Assert.Equal(expected, Assert.Single(Drain(requester))); Assert.Equal(expected, Assert.Single(Drain(peer)));
-        owner.BeginWorldTick(); var joining = Endpoint(registry, 8115, 2); byte[][] replay = Drain(joining);
+        owner.BeginWorldTick(); Assert.True(owner.TryPlan(in npc, out var plan)); Assert.True(owner.Commit(in plan, in npc)); var joining = Endpoint(registry, 8115, 2); byte[][] replay = Drain(joining);
         Assert.Equal(new byte[] { 23, 54 }, replay.Select(x => x[2]).ToArray());
         Assert.True(TerrariaNpcBuffCodec.TryEncodeCurrent(0, 179, out byte[] current)); Assert.Equal(current, replay[1]);
         Assert.True(npcs.TryDespawn(npc.Handle)); Assert.True(npcs.TrySpawn(0, in initial, out _));

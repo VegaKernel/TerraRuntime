@@ -21,6 +21,7 @@ internal sealed partial class PlayerAuthority
 
         if (!membership.TryRemove(connection, out _))
             return;
+        ResetNpcRawSlot(connection.Player);
 
         DisconnectedPlayers++;
         chestCommands?.ReleasePlayer(connection);
@@ -63,6 +64,7 @@ internal sealed partial class PlayerAuthority
         transferProfiles.Clear(connection);
         if (!membership.TryRemove(connection, out _))
             throw new InvalidOperationException("Player membership changed during authoritative transfer detach.");
+        ResetNpcRawSlot(connection.Player);
         // Live transport shutdown uses this same detach transaction as world transfer.
         // Release world-owned interactions before completion can admit a replacement session.
         chestCommands?.ReleasePlayer(connection);
@@ -103,7 +105,7 @@ internal sealed partial class PlayerAuthority
     {
         ConnectionHandle connection = command.Connection;
         RuntimePlayerTransferState transfer = command.Transfer;
-        if (transfer.Player.DerivedLifeMax is < 0)
+        if (transfer.Player.DerivedLifeMax is < 0 || transfer.Player.BaseLifeMax is < 0 or > short.MaxValue)
         {
             command.Completion.TrySetResult(false);
             return;
@@ -174,6 +176,8 @@ internal sealed partial class PlayerAuthority
             Life = life,
             MaxLife = previous.MaxLife,
             DerivedLifeMax = previous.DerivedLifeMax,
+            BaseLifeMax = previous.BaseLifeMax,
+            Debuffs = previous.Debuffs,
             IsDead = dead,
             Stealth = previous.Stealth ?? 1f,
             Zones = previous.Zones,
@@ -204,6 +208,7 @@ internal sealed partial class PlayerAuthority
         };
         damageImmunity.ResetPvp(connection.Player.Slot);
         membership.Commit(state);
+        AttachNpcRawSlot(connection.Player);
         transferProfiles.Restore(connection, transfer.Appearance, transfer.Equipment, transfer.BuffTypes);
         RecalculatePlayerLuck(state);
 

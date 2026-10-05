@@ -104,6 +104,9 @@ public interface INpcAiStatePostCommitEffect
     /// <summary>Defers notification until accepted random-dependent AI fields have been resolved.</summary>
     bool DefersStatePublication(in NpcSnapshot before, in NpcStateUpdate proposed) => false;
 
+    /// <summary>Final source lifetime decision after accepted AI, physics and its update publication.</summary>
+    bool DeactivatesAfterCompletion(in NpcSnapshot before, in NpcSnapshot completed) => false;
+
     /// <summary>Completes the unpublished accepted state; never runs for rejected speculative proposals.</summary>
     NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations) => committed;

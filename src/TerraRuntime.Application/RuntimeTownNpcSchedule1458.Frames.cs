@@ -74,6 +74,8 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                     if (!VanillaTownNpcFrameCatalog1458.TryGet(peer.TypeIdentity, out _, out _, out _)) return false;
                     NpcStateUpdate emitter = peerSpeaks ? peerState : next;
                     NpcStateUpdate listener = peerSpeaks ? next : peerState;
+                    if (peerSpeaks && socialNpcBuffOwner is not null &&
+                        !socialNpcBuffOwner.TryGetSourceOrderedDebuffs(socialViewingNpc, peer.Handle, out socialNpcBuffFlags)) return false;
                     if (!TryContextualEmote(in emitter, in listener, peers, out byte emote)) return false;
                     emotes[0] = new(peerSpeaks ? peer.Handle : default, (ushort)(peerSpeaks ? 90 : clock == 216d ? 70 : 100), emote);
                     emoteCount = 1;

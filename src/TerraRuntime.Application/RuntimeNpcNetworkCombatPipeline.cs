@@ -62,6 +62,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private readonly WorldTileStore? worldTiles;
     private readonly bool crimsonWorld;
     private readonly bool skyblockLowTiles;
+    private readonly PlayerAuthority playerAuthority;
+    private readonly Func<bool?>? npcSpecificLowTiles;
+    private readonly bool requireOwnedPlayerHealth;
+    private readonly RuntimeNpcRawPlayerSlots1458? rawPlayerSlots;
     private readonly bool isThereAWorldSurface;
     private readonly bool evilBossDownedBaseline;
     private readonly bool zenithWorld;
@@ -126,7 +130,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         VanillaMechBossSpawnersContext1458 mechanicalLootBaseline = default,
         bool? lootRemixWorld = false,
         RuntimeNpcGlobalLootWorldFacts1458? globalLootWorld = null,
-        Func<RuntimeNpcGlobalLootWorldFacts1458>? globalLootWorldSource = null)
+        Func<RuntimeNpcGlobalLootWorldFacts1458>? globalLootWorldSource = null,
+        Func<bool?>? npcSpecificLowTiles = null,
+        bool requireOwnedPlayerHealth = false,
+        RuntimeNpcRawPlayerSlots1458? rawPlayerSlots = null)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         random = new SystemNpcCombatRandom(lootRandom);
@@ -141,6 +148,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             throw new ArgumentNullException(nameof(instancedLeases));
         lootDelivery = new(worldItems, instancedLeases, worldItemReplication, materializer, players);
         ArgumentNullException.ThrowIfNull(playerAuthority);
+        this.playerAuthority = playerAuthority;
+        this.npcSpecificLowTiles = npcSpecificLowTiles;
+        this.requireOwnedPlayerHealth = requireOwnedPlayerHealth;
+        this.rawPlayerSlots = rawPlayerSlots;
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
         combatIntegrity = new RuntimeCombatIntegrity(playerAuthority, npcs.Capacity);
         this.npcReplication = npcReplication;

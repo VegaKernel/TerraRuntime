@@ -27,7 +27,7 @@ internal sealed class TownNpcAuthority
     private readonly RuntimeTownNpcMoveInCoordinator1458? moveIn;
     private readonly RuntimeTownNpcSchedule1458? schedule;
     private readonly RuntimeTownNpcCombat1458? combat;
-    private readonly RuntimeNpcStinkyStatus1458 npcStatus;
+    private readonly RuntimeNpcBuffStatus1458 npcStatus;
     private readonly bool ownsStatus;
     private readonly bool partyIsUp;
     private readonly RuntimeTownPlayerDanger1458[] playerDanger = new RuntimeTownPlayerDanger1458[MaxPlayerSlots];
@@ -65,12 +65,12 @@ internal sealed class TownNpcAuthority
         IVanillaTallGateOccupancyProbe? actorOccupancy = null,
         RuntimeTileManipulationReplicationRegistry? tileReplication = null,
         ServerPlayerAuthority? serverPlayers = null,
-        RuntimeNpcStinkyStatus1458? npcStatus = null,
+        RuntimeNpcBuffStatus1458? npcStatus = null,
         RuntimeTownSocialWorld1458? townSocialWorldFacts = null)
     {
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.serverPlayers = serverPlayers;
-        this.npcStatus = npcStatus ?? new RuntimeNpcStinkyStatus1458(npcs);
+        this.npcStatus = npcStatus ?? new RuntimeNpcBuffStatus1458(npcs);
         ownsStatus = npcStatus is null;
         partyIsUp = townCommerceWorldFacts?.PartyIsUp ?? false;
         ArgumentNullException.ThrowIfNull(npcs);

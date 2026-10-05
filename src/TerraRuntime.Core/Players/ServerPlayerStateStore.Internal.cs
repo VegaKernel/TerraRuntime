@@ -25,7 +25,9 @@ public sealed partial class ServerPlayerStateStore
         public bool HasHealth { get; set; }
         public short Life { get; set; }
         public short MaxLife { get; set; }
+        public int? BaseLifeMax { get; set; } = 100;
         public int? DerivedLifeMax { get; set; } = 100;
+        public PlayerDebuffSnapshot1458? Debuffs { get; set; } = new(false, false, false);
         public bool HasMana { get; set; }
         public short Mana { get; set; }
         public short MaxMana { get; set; }
@@ -62,7 +64,9 @@ public sealed partial class ServerPlayerStateStore
                 HasHealth = HasHealth,
                 Life = Life,
                 MaxLife = MaxLife,
+                BaseLifeMax = BaseLifeMax,
                 DerivedLifeMax = DerivedLifeMax,
+                Debuffs = Debuffs,
                 IsDead = IsDead,
                 HasMana = HasMana,
                 Mana = Mana,

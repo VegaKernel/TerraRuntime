@@ -326,6 +326,7 @@ internal sealed partial class ServerPlayerAuthority
         }
 
         leases.Add(id, lease);
+        AttachNpcRawSlot(snapshot.Player);
         events?.ServerPlayerCreated(in snapshot);
         return new ServerPlayerCreateResult(ServerPlayerCreateStatus.Created, snapshot.Player);
     }
@@ -583,6 +584,7 @@ internal sealed partial class ServerPlayerAuthority
         }
 
         horizontalIntents.Remove(lease.Player);
+        ResetNpcRawSlot(lease.Player);
         jumpIntents.Remove(lease.Player);
         jumpStates.Remove(lease.Player);
         movementIntents.Remove(lease.Player);

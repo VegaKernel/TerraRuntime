@@ -1,5 +1,9 @@
 # Player runtime ownership
 
+Tenth integrated local acceptance: 1474709/1474710 tests, zero failures/errors, one existing worldgen skip; clean Release rebuild, Windows NativeAOT/five smokes and local gates. See [NPC parity checkpoint](../roadmap/npc-ai-parity.md). Earlier candidate/pending notes below are historical for their respective checkpoints. Broad parity remains open.
+
+2026-10-05: human and server-owned player lifetimes now attach/reset the NPC raw-slot view through their real membership transitions. Generation and membership serials reject disconnect/rejoin ABA; slot255 retains its source constructor state. Server-owned health retains constructor base maximum100 and generation-owned debuff flags, commits derived maximum and flags together, and exposes held inventory slots to town topics. NPC heart eligibility consumes the current derived maximum; live unknown health selectively rejects a selected heart offer. Item eligibility retains whole-player captures and an inventory mutation serial, including misses and restored inventory values. These changes add no persistent world-file fields. Dynamic Skyblock lowTiles and an open Void Bag with incomplete imported storage remain unknown and selectively fence Zombie Sickle offers.
+
 `PlayerStateSnapshot.HasMount` represents activation separately from the mount identity. Producers must set it for every active mount, including type zero; setting only `MountType` does not activate a mount. Movement commands obtain it from the normalized packet-presence bit. Snapshot replication, NPC geometry and preserved-position transfers consume it; respawn and destination spawn placement clear it. This is transient player state and adds no world-file field.
 
 [Русский](../ru/player-runtime-ownership.md) · [Architecture](architecture.md)

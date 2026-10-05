@@ -130,7 +130,7 @@ public sealed class RuntimeTownNpcSocialNurse1458Tests
         internal readonly RuntimeTownNpcStateStore Town;
         internal readonly WorldTileStore Tiles = new(new(100, 80));
         internal readonly VanillaUnifiedRandom1458 Random;
-        internal readonly RuntimeNpcStinkyStatus1458 Status;
+        internal readonly RuntimeNpcBuffStatus1458 Status;
         internal readonly RuntimeTownNpcSchedule1458 Schedule;
         internal readonly RuntimeTownNpcCombat1458 Combat;
         internal readonly RuntimeTownNpcScheduleConditions1458 Conditions = new(true, false, false, false, false);

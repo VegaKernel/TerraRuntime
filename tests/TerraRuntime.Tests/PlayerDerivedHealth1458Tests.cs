@@ -27,6 +27,7 @@ public sealed class PlayerDerivedHealth1458Tests
         f.Phase(row.GetProperty("mode").GetString()!);
         for (int tick = 0; tick < row.GetProperty("tick").GetInt32(); tick++) f.Players.TickHealthContext();
         Assert.Equal(row.GetProperty("derived").GetInt32(), f.Member.DerivedLifeMax);
+        AssertDebuffs(row, f.Member);
         Assert.Equal(row.GetProperty("buffTime").GetInt32(), f.Players.GetBuffDuration(f.Connection.Player, f.FirstBuff));
         Span<byte> items = stackalloc byte[7];
         Assert.True(RuntimeTownNpcSchedule1458.TryCopySocialItemTopics(row.GetProperty("life").GetInt32(), f.Member.DerivedLifeMax, items, out int count));
@@ -43,6 +44,7 @@ public sealed class PlayerDerivedHealth1458Tests
         int final = row.GetProperty("index").GetInt32() % sequence.Length;
         for (int index = 0; index <= final; index++) { f.Phase(sequence[index]); f.Players.TickHealthContext(); }
         Assert.Equal(row.GetProperty("derived").GetInt32(), f.Member.DerivedLifeMax);
+        AssertDebuffs(row, f.Member);
         Assert.Equal(row.GetProperty("buffTime").GetInt32(), f.Players.GetBuffDuration(f.Connection.Player, f.FirstBuff));
         Assert.Equal(row.GetProperty("phase").GetString(), sequence[final]);
     }
@@ -150,6 +152,10 @@ public sealed class PlayerDerivedHealth1458Tests
         Assert.True(buffs.ClearNonPersistentOnDeath()); Assert.Equal(new BuffTypeId[] { new(71), new(79) }, buffs.CaptureTypes());
         Assert.True(buffs.TryApplyMoonLeech(120)); Assert.Equal(new BuffTypeId[] { VanillaBuffIds.MoonLeech, new(71), new(79) }, buffs.CaptureTypes());
     }
+
+    private static void AssertDebuffs(JsonElement row, RuntimePlayerMember member) =>
+        Assert.Equal(new PlayerDebuffSnapshot1458(row.GetProperty("onFire").GetBoolean(),
+            row.GetProperty("onFire2").GetBoolean(), row.GetProperty("poisoned").GetBoolean()), member.Debuffs);
 
     internal sealed class Fixture : IDisposable
     {

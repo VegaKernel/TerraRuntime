@@ -1,5 +1,6 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Gameplay.Npcs;
 
 namespace TerraRuntime.Core.Npcs;
 
@@ -50,6 +51,21 @@ public sealed partial class RuntimeNpcStore
     public int Capacity => _slots.Length;
     public int ActiveCount => _activeCount;
 
+    internal bool TryCaptureDeathMutationSerial(out ulong serial)
+    {
+        serial = mutationSerial;
+        return !mutationSerialExhausted && serial < ulong.MaxValue;
+    }
+
+    internal VanillaNpcSpawnContext? CapturedDeathSpawnContext { get; private set; }
+
+    internal bool TryCaptureDeathSpawnContext(out VanillaNpcSpawnContext? context)
+    {
+        ulong before = mutationSerial;
+        context = _spawnContext?.Invoke();
+        return !mutationSerialExhausted && mutationSerial == before && context is not { IsValid: false };
+    }
+
     // Only populated on an isolated death preview, from its retained context sample.
     internal bool HasGoodWorldSpawnContext { get; private set; }
 
@@ -67,6 +83,7 @@ public sealed partial class RuntimeNpcStore
         ArgumentNullException.ThrowIfNull(random);
         var context = _spawnContext?.Invoke();
         var preview = new RuntimeNpcStore(Capacity);
+        preview.CapturedDeathSpawnContext = context;
         _slots.CopyTo(preview._slots, 0);
         preview._activeCount = _activeCount;
         preview._spawnRandom = random;

@@ -3,6 +3,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Gameplay.Npcs;
+using TerraRuntime.Gameplay.Players;
 using TerraRuntime.HostContracts;
 using TerraRuntime.Protocol;
 using TerraRuntime.World;
@@ -17,8 +18,10 @@ internal sealed partial class NpcAuthority
 {
     private readonly PlayerAuthority players;
     private readonly RuntimePlayerSnapshotLookup playerSnapshots;
+    private readonly RuntimeNpcRawPlayerSlots1458 rawPlayerSlots;
     private readonly RuntimeNpcStore npcs;
     private readonly RuntimeNpcAiStateExecutor aiExecutor;
+    private readonly TerraRuntime.Core.Npcs.RuntimeNpcSpawnCycle1458 sourceSpawnCycle = new();
     private readonly RuntimeNpcActorControlOwner actorControlOwner;
     private readonly RuntimeNpcArchetypeRegistry archetypes;
     private readonly RuntimeNpcArchetypeSpawner archetypeSpawner;
@@ -117,6 +120,10 @@ internal sealed partial class NpcAuthority
         this.worldClock = worldClock;
         this.worldTiles = worldTiles;
         this.serverPlayers = serverPlayers;
+        rawPlayerSlots = new(playerSnapshots, () => players.MembershipSerial,
+            serverPlayers is null ? null : () => serverPlayers.MembershipSerial);
+        players.BindNpcRawPlayerSlots(rawPlayerSlots);
+        serverPlayers?.BindNpcRawPlayerSlots(rawPlayerSlots);
         this.expertMode = expertMode;
         this.masterMode = masterMode;
         npcs.SetVanillaSpawnContextSource(CaptureSpawnContext);
@@ -141,10 +148,11 @@ internal sealed partial class NpcAuthority
         naturalTownSpawnFacts = townSpawnWorldFacts;
         this.npcReplication = npcReplication;
         npcBuffListChanged = PublishNpcBuffList;
-        npcStinkyStatus = new RuntimeNpcStinkyStatus1458(npcs, npcBuffListChanged);
-        npcReplication?.BindNpcBuffStatus(npcStinkyStatus);
+        npcBuffStatus = new RuntimeNpcBuffStatus1458(npcs, npcBuffListChanged);
+        npcReplication?.BindNpcBuffStatus(npcBuffStatus);
 
-        aiExecutor = new RuntimeNpcAiStateExecutor(npcs, projectiles, npcReplication, npcReplication);
+        aiExecutor = new RuntimeNpcAiStateExecutor(npcs, projectiles, npcReplication, npcReplication,
+            sourceSpawnCycle: sourceSpawnCycle);
         var actorControls = new RuntimeNpcActorControlRegistry(npcs);
         archetypes = npcArchetypes ?? new RuntimeNpcArchetypeRegistry();
         RuntimeNpcArchetypeIdentityStore archetypeIdentities =
@@ -179,7 +187,7 @@ internal sealed partial class NpcAuthority
             townInitialInvasionActive,
             expertMode,
             masterMode,
-            this.naturalSpawnRandom, tallGateOccupancy, tileManipulationReplication, serverPlayers, npcStinkyStatus,
+            this.naturalSpawnRandom, tallGateOccupancy, tileManipulationReplication, serverPlayers, npcBuffStatus,
             townSocialWorldFacts: townSocialWorldFacts);
         mysticFrogCatch = worldTiles is not null
             ? new RuntimeMysticFrogCatchService1458(npcs, worldTiles, playerSnapshots)
@@ -216,7 +224,10 @@ internal sealed partial class NpcAuthority
                 townCommerceWorldFacts?.DownedMechBoss3 ?? false),
             lootRemixWorld: naturalSpawnWorldFacts?.RemixWorld,
             globalLootWorldSource: worldTiles is not null && townCommerceWorldFacts.HasValue
-                ? CaptureGlobalLootWorldFacts : null);
+                ? CaptureGlobalLootWorldFacts : null,
+            npcSpecificLowTiles: townCommerceWorldFacts is { SkyblockWorld: false } ? () => false :
+                townCommerceWorldFacts is { SkyblockWorld: true } ? () => null : null,
+            requireOwnedPlayerHealth: true, rawPlayerSlots: rawPlayerSlots);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
             projectiles,
             npcs,
@@ -236,6 +247,7 @@ internal sealed partial class NpcAuthority
                 townCommerceWorldFacts?.TenthAnniversaryWorld ?? false);
             vanillaTargeting.SetPlayerInteractions(combat.Interactions);
             vanillaTargeting.SetPlayerSnapshotLookup(playerSnapshots);
+            vanillaTargeting.SetRawPlayerSlots(rawPlayerSlots);
             if (projectileReplication is not null)
                 vanillaTargeting.SetProjectileAnchors(new RuntimeNpcProjectileAnchors(projectiles, projectileReplication.WireIdentities, players));
             var behaviorDispatch = new RuntimeNpcBehaviorStateStepper(
@@ -310,7 +322,7 @@ internal sealed partial class NpcAuthority
                 archetypes: archetypes,
                 identities: archetypeIdentities);
         }
-        aiStepper = new RuntimeNpcStinkyAiStepper1458(aiStepper, npcStinkyStatus, this.naturalSpawnRandom,
+        aiStepper = new RuntimeNpcBuffAiStepper1458(aiStepper, npcBuffStatus, this.naturalSpawnRandom,
             worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false);
     }
 
@@ -416,12 +428,12 @@ internal sealed partial class NpcAuthority
         }
 
         TickNaturalHostileSpawning();
-        npcStinkyStatus.BeginWorldTick(npcBuffListChanged);
+        npcBuffStatus.BeginWorldTick();
         LastAiTick = aiExecutor.Tick(aiStepper, combat);
         lavaContact?.Tick();
         townNpcAuthority.TickShimmer();
         townNpcAuthority.TickLifecycle(worldClock);
-        npcStinkyStatus.FinishWorldTick();
+        npcBuffStatus.FinishWorldTick();
         AppliedDespawns += npcs.DespawnExpired();
     }
 
@@ -919,6 +931,7 @@ internal sealed partial class NpcAuthority
 
     private void TickNaturalHostileSpawning()
     {
+        if (!sourceSpawnCycle.TryBeginCycle()) return;
         if (worldTiles is null || worldClock is null || npcs.ActiveCount >= Math.Min(npcs.Capacity - 8, 180))
             return;
 
@@ -2012,7 +2025,7 @@ internal sealed partial class NpcAuthority
                     Aggro: 0,
                     Active: true,
                     Dead: player.IsDead,
-                    Ghost: false,
+                    Ghost: (player.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0,
                     NoAggro: false)
                 {
                     HitboxWidth = memberWidth,
@@ -2048,7 +2061,7 @@ internal sealed partial class NpcAuthority
                 Aggro: 0,
                 Active: true,
                 Dead: serverPlayer.IsDead,
-                Ghost: false,
+                Ghost: (serverPlayer.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0,
                 NoAggro: false)
             {
                 HitboxWidth = mountWidth,

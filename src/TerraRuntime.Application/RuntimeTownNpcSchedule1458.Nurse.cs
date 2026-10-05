@@ -12,7 +12,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
     private const float NurseProjectileSpeed = 8f;
     private const float NurseHealingRange = 500f;
 
-    private bool TryPlanNurseAdmission(in NpcStateUpdate body, ReadOnlySpan<NpcSnapshot> peers,
+    private bool TryPlanNurseAdmission(NpcHandle actor, in NpcStateUpdate body, ReadOnlySpan<NpcSnapshot> peers,
         out NpcStateUpdate next, out bool force)
     {
         next = body;
@@ -24,8 +24,12 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             !definition.TryResolveHitbox(body.Simulation, out var size)) return false;
         float sx = body.PositionX + size.Width * .5f, sy = body.PositionY + size.Height * .5f;
         NpcSnapshot? selected = null;
-        foreach (NpcSnapshot candidate in peers)
+        foreach (NpcSnapshot retained in peers)
         {
+            // Original Main.npc[whoAmI] already contains this actor's pre-AI DoT and vitals.
+            // Peer generations remain the unchanged captured table until their physical turn.
+            NpcSnapshot candidate = retained.Handle == actor ? retained with { Simulation = body.Simulation,
+                PositionX = body.PositionX, PositionY = body.PositionY } : retained;
             if (!VanillaNpcDefinitionCatalog.TryGet(candidate.TypeIdentity, candidate.NetIdentity, out var targetDefinition) ||
                 targetDefinition.Role != NpcArchetypeRole.Town || candidate.Simulation.Life == candidate.Simulation.LifeMax)
                 continue;

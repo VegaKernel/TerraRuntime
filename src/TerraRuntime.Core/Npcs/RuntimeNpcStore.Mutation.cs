@@ -62,6 +62,23 @@ public sealed partial class RuntimeNpcStore
         return true;
     }
 
+    internal bool TryDespawnAfterCheckActive(in NpcSnapshot expected, RuntimeNpcSpawnCycle1458? spawnCycle)
+    {
+        if (!MatchesSource(in expected))
+            return false;
+        ref SlotState state = ref _slots[expected.Handle.Slot];
+        // Source dedicated-server CheckActive retains its decremented timeLeft, but
+        // writes life zero before the final inactive packet. This is one atomic store
+        // operation; no intermediate ordinary update or arbitrary observer runs here.
+        state.Update = state.Update with
+        {
+            Simulation = state.Update.Simulation with { Life = 0 }
+        };
+        spawnCycle?.SuppressNext();
+        DespawnSlot(expected.Handle.Slot, ref state);
+        return true;
+    }
+
     public int DespawnExpired()
     {
         int despawned = 0;

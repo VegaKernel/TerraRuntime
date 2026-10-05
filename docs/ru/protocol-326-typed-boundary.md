@@ -1,5 +1,7 @@
 # Typed boundary протокола 326
 
+Десятый объединённый блок принят локально: 1474709/1474710 тестов, без ошибок и падений, один прежний пропуск worldgen; чистая Release-сборка, Windows NativeAOT, пять smoke-проверок и локальные проверки пройдены. См. [контрольную точку NPC](../roadmap/npc-ai-parity.md). Прежние записи candidate/pending ниже относятся к истории соответствующих блоков. Полная совместимость остаётся открытой.
+
 [English](../en/protocol-326-typed-boundary.md) · [Сеть и протокол](networking-protocol.md) · [Roadmap](../roadmap.md)
 
 ## Область

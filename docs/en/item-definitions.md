@@ -1,5 +1,7 @@
 # Sparse vanilla item definitions
 
+Tenth integrated local acceptance: 1474709/1474710 tests, zero failures/errors, one existing worldgen skip; clean Release rebuild, Windows NativeAOT/five smokes and local gates. See [NPC parity checkpoint](../roadmap/npc-ai-parity.md). Earlier candidate/pending notes below are historical for their respective checkpoints. Broad parity remains open.
+
 World-item entity placement uses the original fixed $16\times16\,\mathrm{px}$ physical body independently of item catalog dimensions. Simple tile drops place the entity at the tile's pixel origin. NPC capture resolves the player's current mount-adjusted body and truncates its center before subtracting the physical half-body; falling-block recovery retains the fractional projectile center and the source failed-placement vertical offset. NPC loot retains its separately verified live-body integer origin. These paths keep item metadata intact and consume the original launch-velocity draws.
 
 TerraRuntime uses a deliberately sparse, source-backed item-definition catalog. Missing metadata means **not verified/imported**, never an invented vanilla zero or `false`.
@@ -93,3 +95,7 @@ Damage, ammo, healing, equipment behavior and other item fields are added only w
 `VanillaGlobalNpcDropCatalog1458` admits eighteen source-backed world-drop definitions: Light/Night souls, Pirate Map, six biome keys, Goodie Bag, Present, Living Fire, Bloody Machete, Bladed Glove and four global yoyos. They provide stack limits, item dimensions, gravity and natural-prefix facts. Their physical world bodies remain the shared 16×16 entity bodies. These facts grant no item-use, placement or tool capability.
 
 Bloody Machete and the yoyos use the source Spear prefix array; Bladed Glove uses Sword and rejects Nimble/Murderous after source speed rounding. Materials roll no natural prefix and consume no prefix RNG; both souls use the no-gravity launch branch. All eighteen defaults and seeded Prefix(-1) results are independently captured from the original server (324 rows). The six new weapon drop defaults do not imply weapon attack/projectile behavior.
+
+## Ordinary NPC reward defaults
+
+The tenth sparse catalog adds Meteorite116, Shackle216, Zombie Arm1304, Sickle1786, Spiffo5332 and Sea of Silence5486. All six use the source maximum stack9999 and ordinary gravity. Their icon/default dimensions are12×12,20×20,24×28,24×28,32×32 and30×30 respectively; physical drops continue to use the shared16×16 world-item body. Shackle rolls the original accessory prefix family; Zombie Arm and Sickle roll Sword with source stat-rounding validity. The other three consume no natural-prefix RNG. These facts grant world-drop materialization only, without item-use/tool/placement capabilities. Independent original SetDefaults/Prefix(-1) captures cover108 rows, including the final RNG state.

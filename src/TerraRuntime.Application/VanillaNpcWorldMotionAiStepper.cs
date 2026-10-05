@@ -519,6 +519,10 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
         NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitEffect>(inner)?
             .DefersStatePublication(in before, in proposed) ?? false;
 
+    public bool DeactivatesAfterCompletion(in NpcSnapshot before, in NpcSnapshot completed) =>
+        NpcAiStateStepperComposition.FindCapability<INpcAiStatePostCommitEffect>(inner)?
+            .DeactivatesAfterCompletion(in before, in completed) ?? false;
+
     public NpcSnapshot CompleteCommittedState(in NpcSnapshot before, in NpcSnapshot committed,
         INpcAiCommittedNpcMutationSink mutations)
     {

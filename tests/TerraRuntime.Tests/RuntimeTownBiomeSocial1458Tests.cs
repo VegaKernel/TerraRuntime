@@ -73,7 +73,7 @@ public sealed class RuntimeTownBiomeSocial1458Tests
         internal readonly VanillaUnifiedRandom1458 Random;
         internal readonly RuntimeTownNpcSchedule1458 Schedule;
         internal readonly RuntimeTownNpcCombat1458 Combat;
-        internal readonly RuntimeNpcStinkyStatus1458 Status;
+        internal readonly RuntimeNpcBuffStatus1458 Status;
         internal readonly RuntimeTownNpcScheduleConditions1458 Conditions = new(true, false, false, false, false);
         internal readonly RuntimeTownSocialWorld1458 World = RuntimeTownSocialWorld1458.FromMetadata(
             new WorldFileRuntimeMetadata { DayTime = true, Time = 1000, WorldSurface = 40, RockLayer = 35 }, false);

@@ -39,6 +39,8 @@ public static class VanillaPlayerItemSlotCatalog
     public const short MiscDyeCount = 5;
     public const short InventoryAndEquipmentEndExclusive = 99;
     public const short Bank4Start = 700;
+    public const short Bank4Count = 40;
+    public const short Bank4EndExclusive = Bank4Start + Bank4Count;
     public const short Count = 990;
     public const int RelayableCount = InventoryAndEquipmentEndExclusive + (Count - Bank4Start);
 

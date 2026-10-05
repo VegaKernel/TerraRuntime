@@ -99,7 +99,7 @@ public sealed class RuntimeTownItemsSocial1458Tests
     {var sequence=new ReadOnlySequence<byte>(bytes);Assert.Equal(TerrariaFrameReadResult.Frame,TerrariaFrameDecoder.TryRead(ref sequence,out var frame));return frame;}
     private sealed class NoNpcStep:INpcAiStateStepper
     {public bool TryStepState(in NpcSnapshot npc,out NpcStateUpdate next){next=default;return false;}}
-    private sealed class Fixture : IDisposable
+    internal sealed class Fixture : IDisposable
     {
         internal readonly RuntimeNpcReplicationRegistry Registry = new();
         internal readonly RuntimeConnectionRegistry PlayerRegistry = new();
@@ -115,11 +115,11 @@ public sealed class RuntimeTownItemsSocial1458Tests
         internal readonly VanillaUnifiedRandom1458 Random;
         internal readonly RuntimeTownNpcSchedule1458 Schedule;
         internal readonly RuntimeTownNpcCombat1458 Combat;
-        internal readonly RuntimeNpcStinkyStatus1458 Status;
+        internal readonly RuntimeNpcBuffStatus1458 Status;
         internal readonly RuntimeTownNpcScheduleConditions1458 Conditions = new(true, false, false, false, false);
         internal readonly RuntimeTownSocialWorld1458 World = RuntimeTownSocialWorld1458.FromMetadata(
             new WorldFileRuntimeMetadata { DayTime = true, Time = 1000, WorldSurface = 40, RockLayer = 35 }, false);
-        internal Fixture(JsonElement row)
+        internal Fixture(JsonElement row, bool publishBuffs = false)
         {
             Npcs = new(commitSink: Registry);
             Tiles = new WorldTileStore(new(100, 80)); var tiles=Tiles;
@@ -140,7 +140,8 @@ public sealed class RuntimeTownItemsSocial1458Tests
                 Assert.True(Npcs.TryUpdate(current.Handle,in state,out _));
             }
             Random = new(row.GetProperty("seed").GetInt32()); var adapter = new SystemVanillaNpcRandom(Random);
-            Status = new(Npcs); Status.BeginWorldTick();
+            Action<NpcHandle>? publish = publishBuffs ? Registry.PublishNpcBuffs : null;
+            Status = new(Npcs, publish); Status.BeginWorldTick();
             Schedule = new(town,Npcs,tiles,new NpcRuntimeTownScheduleRandom1458(adapter));
             State = new(playerEvents:PlayerRegistry,npcs:Npcs,npcAiStepper:new NoNpcStep(),worldTiles:Tiles,townNpcs:Town,
                 npcReplication:Registry,naturalSpawnRandom:adapter,townSocialWorldFacts:World);

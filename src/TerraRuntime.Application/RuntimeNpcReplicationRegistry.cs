@@ -314,13 +314,18 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
 
     public void NpcBirthRetained(in NpcSnapshot snapshot)
     {
+        RefreshBaselineFrames(in snapshot);
+        ClearLiveFrame(snapshot.Handle);
+    }
+
+    private void RefreshBaselineFrames(in NpcSnapshot snapshot)
+    {
         if (RuntimeNpcPacketProjection.TryCreate(in snapshot, RuntimeNpcSyncKind.Spawn, out var state) &&
             TerrariaNpcUpdateEncoder.TryEncode(in state, out byte[] encoded))
             Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], encoded);
         if (RuntimeNpcPacketProjection.TryCreate(in snapshot, RuntimeNpcSyncKind.Despawn, out var despawn) &&
             TerrariaNpcUpdateEncoder.TryEncode(in despawn, out byte[] encodedDespawn))
             Volatile.Write(ref despawnFrames[snapshot.Handle.Slot], encodedDespawn);
-        ClearLiveFrame(snapshot.Handle);
     }
 
     private bool IsDuplicateLiveFrame(NpcHandle owner, byte[] encoded)

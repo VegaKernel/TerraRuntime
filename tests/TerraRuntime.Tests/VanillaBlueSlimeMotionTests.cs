@@ -189,8 +189,10 @@ public sealed class VanillaBlueSlimeMotionTests
         Assert.Equal(2.5f, result.VelocityX, 3);
     }
 
-    [Fact]
-    public void Invalid_target_refresh_is_rejected()
+    [Theory]
+    [InlineData(0, true)]
+    [InlineData(2, false)]
+    public void Target_refresh_admits_source_zero_facing_and_rejects_out_of_range_direction(int direction, bool admitted)
     {
         var input = new VanillaBlueSlimeMotionInput(
             PositionX: 0f,
@@ -206,9 +208,9 @@ public sealed class VanillaBlueSlimeMotionTests
             CollideY: false,
             Engaged: false,
             SolidCollision: false,
-            ClosestTarget: new VanillaBlueSlimeTargetRefresh(true, 2, 0, 1));
+            ClosestTarget: new VanillaBlueSlimeTargetRefresh(true, 2, direction, 1));
 
-        Assert.False(VanillaBlueSlimeMotion.TryStep(in input, out _));
+        Assert.Equal(admitted, VanillaBlueSlimeMotion.TryStep(in input, out _));
     }
 
     private static VanillaBlueSlimeMotionResult Step(

@@ -50,6 +50,7 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
     private readonly INpcAiHealingCommitSink? _healing;
     private readonly INpcAiTauntCommitSink? _taunts;
     private readonly RuntimeProjectileStore? _projectiles;
+    private readonly RuntimeNpcSpawnCycle1458? sourceSpawnCycle;
     private readonly NpcSnapshot[] _snapshotBuffer;
     private readonly VanillaNpcRetainedSlot[] _retainedSlotBuffer;
     private readonly NpcAiSpawnIntent[] _spawnIntentBuffer;
@@ -58,13 +59,15 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
     private readonly ProjectileSnapshot[] _projectileMutationScratch;
 
     public RuntimeNpcAiStateExecutor(RuntimeNpcStore npcs, RuntimeProjectileStore? projectiles = null,
-        INpcAiHealingCommitSink? healing = null, INpcAiTauntCommitSink? taunts = null)
+        INpcAiHealingCommitSink? healing = null, INpcAiTauntCommitSink? taunts = null,
+        RuntimeNpcSpawnCycle1458? sourceSpawnCycle = null)
     {
         ArgumentNullException.ThrowIfNull(npcs);
         _npcs = npcs;
         _healing = healing;
         _taunts = taunts;
         _projectiles = projectiles;
+        this.sourceSpawnCycle = sourceSpawnCycle;
         _snapshotBuffer = new NpcSnapshot[npcs.Capacity];
         _retainedSlotBuffer = new VanillaNpcRetainedSlot[npcs.Capacity];
         _spawnIntentBuffer = new NpcAiSpawnIntent[npcs.Capacity];
@@ -303,7 +306,13 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                 }
                 if (_npcs.TryGet(committed.Handle, out NpcSnapshot current) && current.Revision == committed.Revision)
                     postCommitEffect?.ApplyCommittedEffectAfterSpawns(in npc, in committed, this);
-                if (deactivate && _npcs.TryGet(committed.Handle, out current) && current.Revision == committed.Revision)
+                if (postCommitEffect?.DeactivatesAfterCompletion(in npc, in committed) == true &&
+                    _npcs.TryGet(committed.Handle, out current) && current.Revision == committed.Revision)
+                {
+                    _npcs.TryDespawnAfterCheckActive(in current, sourceSpawnCycle);
+                }
+                else if (deactivate &&
+                    _npcs.TryGet(committed.Handle, out current) && current.Revision == committed.Revision)
                     _npcs.TryDespawn(committed.Handle);
             }
             else

@@ -530,6 +530,7 @@ internal sealed partial class PlayerAuthority
             activePlayer.HasHealth = true;
             activePlayer.Life = request.Life;
             activePlayer.MaxLife = request.MaxLife;
+            activePlayer.BaseLifeMax = request.MaxLife;
             activePlayer.IsDead = request.Life <= 0;
             if (activePlayer.IsDead) activePlayer.ItemAnimation = 0;
         }
@@ -625,12 +626,14 @@ internal sealed partial class PlayerAuthority
             HasHealth = hasPending && pending!.HasHealth,
             Life = hasPending ? pending!.Life : (short)0,
             MaxLife = hasPending ? pending!.MaxLife : (short)0,
+            BaseLifeMax = hasPending && pending!.HasHealth ? pending.MaxLife : 100,
             IsDead = hasPending && pending!.HasHealth && pending.Life <= 0,
             HasMana = hasPending && pending!.HasMana,
             Mana = hasPending ? pending!.Mana : (short)0,
             MaxMana = hasPending ? pending!.MaxMana : (short)0
         });
         transferProfiles.InitializeSourceBuffs(spawn.Connection);
+        AttachNpcRawSlot(spawn.Connection.Player);
         events?.PlayerSpawned(spawn.Connection, in request);
     }
 

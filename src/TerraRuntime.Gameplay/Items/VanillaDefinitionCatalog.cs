@@ -415,6 +415,7 @@ public static class VanillaDefinitionCatalog
             return true;
         if (VanillaMechSummonDropCatalog1458.TryGet(type, out definition)) return true;
         if (VanillaGlobalNpcDropCatalog1458.TryGet(type, out definition)) return true;
+        if (VanillaNpcSpecificDropCatalog1458.TryGet(type, out definition)) return true;
         if (VanillaMechanicalBossItemCatalog1458.TryGet(type, out definition))
             return true;
         if (VanillaEyeOfCthulhuItemCatalog1458.TryGet(type, out definition))

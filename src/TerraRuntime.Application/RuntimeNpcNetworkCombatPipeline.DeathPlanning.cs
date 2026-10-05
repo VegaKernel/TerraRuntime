@@ -26,6 +26,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private ulong plannedPreludeRevision;
     private RuntimeWorldProgressionMutationSnapshot plannedDeathProgression;
     private bool plannedLootAllowed;
+    private ulong? plannedDeathSpawnSerial;
+    private VanillaNpcSpawnContext? plannedDeathSpawnContext;
+    private TerraRuntime.Core.Npcs.NpcRawPlayerSlotSnapshot1458? plannedHealingFallback;
     private readonly PlayerStateSnapshot[] plannedPlayers = new PlayerStateSnapshot[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly bool[] plannedPlayerPresence = new bool[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private bool IsPreviewingDeath => lootDelivery.Preview is not null;
@@ -77,6 +80,16 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             return false;
         plannedDeathProgression = progression.CaptureSnapshot();
         plannedGlobalLootWorld = CaptureGlobalLootWorld();
+        plannedSpecificLowTiles = CaptureSpecificLowTiles();
+        plannedSpecificPlayers = null;
+        plannedSpecificInventorySerial = playerAuthority.NpcLootInventorySerial;
+        plannedHealingFallback = null;
+        plannedDeathSpawnSerial = null;
+        if (dead.TypeIdentity == VanillaNpcIds.MotherSlime || dead.TypeIdentity == VanillaNpcIds.Slimer)
+        {
+            if (!npcs.TryCaptureDeathMutationSerial(out ulong spawnSerial)) return false;
+            plannedDeathSpawnSerial = spawnSerial;
+        }
         for (int slot = 0; slot < plannedPlayers.Length; slot++)
             plannedPlayerPresence[slot] = players.TryGetPlayer(new((byte)slot), out plannedPlayers[slot]);
         var liveRandom = random.SourceRandom;
@@ -89,6 +102,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             random.UseSource(plan.Random);
             lootDelivery.Preview = plan;
             previewDeathNpcs = npcs.CreateDeathPreview(random);
+            plannedDeathSpawnContext = previewDeathNpcs.CapturedDeathSpawnContext;
             previewDeathClock = worldClock?.CreateDeathPreview();
             previewDeathProgression = progression.CreateDeathPreview();
             previewDaily = bossRecoveryDaily.CreatePreview();
@@ -100,6 +114,13 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             bool eaterBoss = VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity) &&
                 VanillaEaterOfWorldsLifecycle.IsLastActiveSegment(previewDeathNpcs, in previewDead, npcFamilyBuffer);
             bool hasClosest = TryFindClosestPlayer(in dead, out var closest);
+            // FindClosest returns raw slot0 when no player is active. Only the concrete
+            // constructor/final-reset owner proves its Life100/statLifeMax2=100 predicate.
+            TerraRuntime.Core.Npcs.NpcRawPlayerSlotSnapshot1458 rawFallback = default;
+            bool constructorHealthKnown = !hasClosest && rawPlayerSlots is not null &&
+                rawPlayerSlots.TryCapture(0, out rawFallback) &&
+                !rawFallback.Facts.Active && rawFallback.LivePlayer is null;
+            if (constructorHealthKnown) plannedHealingFallback = rawFallback;
             float luck = hasClosest ? closest.Luck : 0f;
             if (!float.IsFinite(luck)) return false;
             random.Luck = luck;
@@ -136,8 +157,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             if (!plan.BeginPreviewPhase(NpcDeathDropPhase1458.Healing)) return false;
             var healing = new VanillaNpcHealingContext1458(dead.TypeIdentity, dead.NetIdentity,
                 dead.Simulation.LifeMax, dead.Simulation.DamageOverride ?? definition.Damage,
-                hasClosest && closest.HasHealth && closest.Life < closest.MaxLife,
-                hasClosest && closest.HasMana && closest.Mana < closest.MaxMana, expertMode);
+                hasClosest && closest.HasHealth && closest.Life < (closest.DerivedLifeMax ?? closest.MaxLife),
+                hasClosest && closest.HasMana && closest.Mana < closest.MaxMana, expertMode,
+                LifeEligibilityKnown: !requireOwnedPlayerHealth ||
+                    (hasClosest && closest.HasHealth && closest.DerivedLifeMax.HasValue) || constructorHealthKnown);
             if ((allowLoot && !VanillaNpcHealingLoot1458.TryExecute(in healing, in origin, random, lootDelivery)) ||
                 !plan.FinishPreviewPhase(NpcDeathDropPhase1458.Healing)) return false;
             random.UseSource(liveRandom);
@@ -196,9 +219,14 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     }
 
     private bool IsCurrentDeathOwner(NpcHandle handle, NpcRevision revision) =>
+        (plannedDeathSpawnSerial is null ||
+            (npcs.TryCaptureDeathSpawnContext(out var spawnContext) && spawnContext == plannedDeathSpawnContext)) &&
         npcs.TryGet(handle, out var current) && current.Revision == revision && deathPrelude.Revision == plannedPreludeRevision &&
         progression.CaptureSnapshot() == plannedDeathProgression &&
-        CaptureGlobalLootWorld() == plannedGlobalLootWorld && ArePlannedPlayersCurrent();
+        CaptureGlobalLootWorld() == plannedGlobalLootWorld && ArePlannedPlayersCurrent() && IsSpecificLootContextCurrent() &&
+        (plannedDeathSpawnSerial is not { } serial ||
+            (npcs.TryCaptureDeathMutationSerial(out ulong currentSerial) && currentSerial == serial)) &&
+        (plannedHealingFallback is not { } fallback || rawPlayerSlots!.IsCurrent(in fallback));
 
     private bool ArePlannedPlayersCurrent()
     {

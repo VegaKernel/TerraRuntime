@@ -70,6 +70,8 @@ internal readonly record struct RuntimePlayerInventoryMutation(
 /// </summary>
 internal sealed class RuntimePlayerInventoryStore
 {
+    internal ulong Serial { get; private set; } = 1;
+    private void Changed() { if (Serial < ulong.MaxValue) Serial++; }
     private const int PlayerSlotCount = byte.MaxValue + 1;
     private const int InventorySlotCount = VanillaPlayerItemSlotCatalog.InventoryCount;
 
@@ -92,6 +94,7 @@ internal sealed class RuntimePlayerInventoryStore
             return false;
 
         connections[connection.Player.Slot.Value] = connection;
+        Changed();
         return true;
     }
 
@@ -110,6 +113,7 @@ internal sealed class RuntimePlayerInventoryStore
         int playerSlot = connection.Player.Slot.Value;
         connections[playerSlot] = connection;
         items[GetOffset(playerSlot, request.SlotId)] = item;
+        Changed();
         return true;
     }
 
@@ -189,6 +193,7 @@ internal sealed class RuntimePlayerInventoryStore
                 : mutation.Item;
         }
 
+        if (mutations.Length > 0) Changed();
         return true;
     }
 
@@ -202,6 +207,7 @@ internal sealed class RuntimePlayerInventoryStore
             return;
 
         connections[playerSlot] = default;
+        Changed();
         items.AsSpan(playerSlot * InventorySlotCount, InventorySlotCount).Clear();
     }
 

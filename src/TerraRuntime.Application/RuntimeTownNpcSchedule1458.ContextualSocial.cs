@@ -16,8 +16,12 @@ internal sealed partial class RuntimeTownNpcSchedule1458
     private readonly SocialPlayer[] socialPlayers = new SocialPlayer[byte.MaxValue];
     private int socialPlayerCount;
     private bool socialPlayerCensusValid = true;
+    private PlayerDebuffSnapshot1458 socialNpcBuffFlags;
+    private RuntimeNpcBuffStatus1458? socialNpcBuffOwner;
+    private NpcHandle socialViewingNpc;
     private readonly record struct SocialPlayer(ConnectionHandle? Connection, PlayerHandle Player, ulong Revision,
-        RuntimeTownPlayerBounds1458 Bounds, bool Dead, PlayerZoneSnapshot1458? Zones, int? Life, int? DerivedLifeMax);
+        RuntimeTownPlayerBounds1458 Bounds, bool Dead, PlayerZoneSnapshot1458? Zones, int? Life, int? DerivedLifeMax,
+        PlayerDebuffSnapshot1458? Debuffs, int? HeldItem);
 
     internal void SetSocialContext(RuntimeTownSocialWorld1458? world, PlayerAuthority? players,
         RuntimeWorldClock? clock = null, RuntimeWorldProgressionMutations? progression = null,
@@ -38,7 +42,8 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 ? TerraRuntime.Gameplay.Players.VanillaPlayerMountHitbox1458.Resolve(player.MountType)
                 : (PlayerAuthority.VanillaBasePlayerWidth, PlayerAuthority.VanillaBasePlayerHeight);
             AddSocialPlayer(new(player.Connection, player.Connection.Player, player.Revision,
-                new(player.PositionX, player.PositionY, width, height), player.IsDead, player.Zones, player.HasHealth ? player.Life : null, player.DerivedLifeMax));
+                new(player.PositionX, player.PositionY, width, height), player.IsDead, player.Zones, player.HasHealth ? player.Life : null, player.DerivedLifeMax,
+                player.Debuffs, players.TryGetInventoryItem(player.Connection, player.SelectedItem, out var held) ? held.ItemType.Value : null));
         }
         if (serverPlayers is null) return;
         Span<PlayerStateSnapshot> serverSnapshots = stackalloc PlayerStateSnapshot[byte.MaxValue + 1];
@@ -50,7 +55,8 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 ? TerraRuntime.Gameplay.Players.VanillaPlayerMountHitbox1458.Resolve(player.MountType)
                 : (PlayerAuthority.VanillaBasePlayerWidth, PlayerAuthority.VanillaBasePlayerHeight);
             AddSocialPlayer(new(null, player.Player, player.Revision.Value,
-                new(player.PositionX, player.PositionY, width, height), player.IsDead, player.Zones, player.HasHealth ? player.Life : null, player.DerivedLifeMax));
+                new(player.PositionX, player.PositionY, width, height), player.IsDead, player.Zones, player.HasHealth ? player.Life : null, player.DerivedLifeMax,
+                player.Debuffs, serverPlayers.TryGetHeldItem(player.Player, player.SelectedItem, out int held) ? held : null));
         }
     }
 
@@ -89,7 +95,9 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             playerCount++;
             bool matched = false;
             for (int i = 0; i < socialPlayerCount; i++)
-                if (socialPlayers[i].Connection == player.Connection && socialPlayers[i].Revision == player.Revision)
+                if (socialPlayers[i].Connection == player.Connection && socialPlayers[i].Revision == player.Revision &&
+                    socialPlayers[i].HeldItem == (socialPlayerOwner.TryGetInventoryItem(player.Connection,
+                        player.SelectedItem, out var held) ? held.ItemType.Value : (int?)null))
                 { matched = true; break; }
             if (!matched) return false;
         }
@@ -151,13 +159,47 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             // ProbeItems reads the exact closest physical player after its owned Update phase.
             if (random.Next(2) == 0 && !TrySocialItems(in actor, ref choices)) return false;
             if (random.Next(5) == 0) SocialBosses(in world, ref choices);
-            // NPC fire/poison, live events and cloudBGActive/cloudAlpha have no complete owner yet.
-            if (random.Next(2) == 0) return false;
+            if (random.Next(2) == 0 && !TrySocialDebuffs(in actor, ref choices)) return false;
+            // Live events and cloudBGActive/cloudAlpha have no complete owner yet.
             if (random.Next(2) == 0) return false;
             if (random.Next(2) == 0) return false;
             SocialExceptions(in actor, in other, in world, ref choices);
         }
         if (choices.Count > 0) emote = choices[random.Next(choices.Count)];
+        return true;
+    }
+
+    private bool TrySocialDebuffs(in NpcStateUpdate actor, ref SocialCandidates choices)
+    {
+        if (!TryGetClosestSocialPlayer(in actor, out SocialPlayer player)) return false;
+        Span<byte> topics = stackalloc byte[4];
+        if (!TryCopySocialDebuffTopics(player.Bounds.Y + player.Bounds.Height / 2f,
+            tiles.Dimensions.HeightTiles, player.Debuffs, player.Zones, socialNpcBuffFlags,
+            player.HeldItem, random, topics, out int count)) return false;
+        choices.Add(topics[..count]);
+        return true;
+    }
+
+    internal static bool TryCopySocialDebuffTopics(float playerCenterY, int worldHeight,
+        PlayerDebuffSnapshot1458? playerFlags, PlayerZoneSnapshot1458? zones,
+        PlayerDebuffSnapshot1458 npcFlags, int? heldItem, IRuntimeTownNpcScheduleRandom1458 random,
+        Span<byte> topics, out int count)
+    {
+        count = 0;
+        if (topics.Length < 4 || !float.IsFinite(playerCenterY) || worldHeight <= 0) return false;
+        bool deep = playerCenterY > worldHeight * 16f - 3200f;
+        if (deep || npcFlags.OnFire) topics[count++] = 9;
+        else
+        {
+            if (playerFlags is not { } flags) return false;
+            if (flags.OnFire || flags.OnFire2) topics[count++] = 9;
+        }
+        if (random.Next(2) == 0) topics[count++] = 11;
+        if (npcFlags.Poisoned || playerFlags is { Poisoned: true } || zones is { Jungle: true })
+            topics[count++] = 8;
+        else if (playerFlags is null || zones is null) return false;
+        if (heldItem is not { } held) return false;
+        if (held == VanillaItemIds.WhoopieCushion.Value || random.Next(3) == 0) topics[count++] = 10;
         return true;
     }
 

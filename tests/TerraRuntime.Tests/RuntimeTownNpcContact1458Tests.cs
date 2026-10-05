@@ -201,7 +201,7 @@ public sealed class RuntimeTownNpcContact1458Tests
         internal readonly WorldTileStore Tiles = new(new WorldDimensions(100, 80));
         internal readonly VanillaUnifiedRandom1458 Random;
         internal readonly SystemVanillaNpcRandom Adapter;
-        internal readonly RuntimeNpcStinkyStatus1458 Status;
+        internal readonly RuntimeNpcBuffStatus1458 Status;
         internal readonly RuntimeTownNpcSchedule1458 Schedule;
         internal readonly RuntimeTownNpcCombat1458 Combat;
         internal readonly NpcSnapshot Before;

@@ -11,7 +11,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
 {
     public RuntimeTownNpcCombatTickSummary1458 Tick(in RuntimeTownNpcScheduleConditions1458 conditions,
         ReadOnlySpan<RuntimeTownPlayerBounds1458> players,
-        RuntimeNpcStinkyStatus1458 status, RuntimeTownNpcCombat1458 combat,
+        RuntimeNpcBuffStatus1458 status, RuntimeTownNpcCombat1458 combat,
         ReadOnlySpan<RuntimeTownPlayerConversation1458> conversations = default,
         ReadOnlySpan<RuntimeTownPlayerSeat1458> seatedPlayers = default,
         ReadOnlySpan<RuntimeTownPlayerDanger1458> playerDanger = default)
@@ -44,13 +44,25 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 before.Type != home.NpcType.Value) continue;
             visited++;
             int peerCount = npcs.CopyActive(peers);
-            if (!status.TryGetStinky(before.Handle, out bool selfStinky)) { rejected++; continue; }
-            using var randomScope = combat.BeginRandomScope(random);
+            if (!status.TryPlan(in before, out var buffPlan)) { rejected++; continue; }
             int originX = BottomTileX(in before, home.NpcType), originY = BottomTileY(in before, home.NpcType, 1f);
             if (Interior(originX, originY) && Cell(originX, originY).TileType == VanillaTileIds.PoopBlock)
+            {
+                // Tile666 refresh is a separate source effect. Combined DoT admission remains closed
+                // until that refresh can share this actor's unpublished status transaction.
+                if (buffPlan.Flags.OnFire || buffPlan.Flags.Poisoned) { rejected++; continue; }
                 status.TryApplyRepeated(before.Handle);
-            RuntimeNpcStinkyVisualOffer1458 visualOffer = selfStinky ? combat.PlanStinkyVisualOffer() : default;
-            if (!TryPlanUnifiedResident(in before, in home, in conditions, players, conversations,
+                if (!status.TryPlan(in before, out buffPlan)) { rejected++; continue; }
+            }
+            bool selfStinky = buffPlan.Stinky;
+            using var randomScope = combat.BeginRandomScope(random);
+            RuntimeNpcStinkyVisualOffer1458 visualOffer = combat.PlanBuffVisualOffers(in buffPlan);
+            var statusInput = before with { Simulation = before.Simulation with {
+                Life = buffPlan.LifeAfter, LifeRegenCounter = buffPlan.CounterAfter } };
+            socialNpcBuffFlags = buffPlan.Flags;
+            socialNpcBuffOwner = status;
+            socialViewingNpc = before.Handle;
+            if (!TryPlanUnifiedResident(in statusInput, in home, in conditions, players, conversations,
                     seatedPlayers, playerDanger, peers[..peerCount], status, combat, melee,
                     out NpcStateUpdate aiState, out bool force, out NpcAiProjectileIntent? projectile,
                     out int meleeCount, out SocialPeerPlan? socialPeer)) { rejected++; continue; }
@@ -74,6 +86,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             if (!moved.Simulation.Wet && moved.Simulation.Breath is { } breath)
                 moved = moved with { Simulation = moved.Simulation with { Breath = Math.Min(200, breath + 3) } };
             if (!npcs.TryGet(before.Handle, out var current) || current.Revision != before.Revision ||
+                !status.IsCurrent(in buffPlan) ||
                 emoteCount > 0 && !SocialContextIsCurrent(peers[..peerCount]) ||
                 randomScope is not null && !randomScope.IsCurrent) { rejected++; continue; }
             NpcSnapshot committed;
@@ -88,11 +101,15 @@ internal sealed partial class RuntimeTownNpcSchedule1458
             // TryUpdateUnpublished has no external callbacks. Adopt before the single publication so a
             // trusted sink can draw from the accepted stream without those draws being overwritten.
             randomScope?.Accept();
+            if (!status.Commit(in buffPlan, in committed))
+                throw new InvalidOperationException("Unpublished NPC/status commit lost its owned revision.");
+            status.PublishExpired(in buffPlan);
             if (selfStinky) status.ObserveVisualOffer(before.Handle, in visualOffer);
             if (strike.HasValue) combat.PublishContact(in committed, strike.Value);
             combat.PublishEmotes(in committed, emotes[..emoteCount]);
             bool peerForce = socialForcedUpdates.Remove(committed.Handle.Slot, out NpcHandle pendingPeer) &&
                 pendingPeer == committed.Handle;
+            if (!force && !peerForce && !strike.HasValue) combat.RetainAcceptedBuffLife(in buffPlan, in committed);
             npcs.TryPublishUpdate(in committed, forceSync: force || peerForce || strike.HasValue);
             townNpcs.TryUpdatePosition(home.NpcSlot, in committed);
             states[home.NpcSlot] = committed.Ai.Ai0 == 5f || conditions.ReturnHomeRequested && committed.Ai.Ai0 == 0f &&
@@ -121,7 +138,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
         ReadOnlySpan<RuntimeTownPlayerConversation1458> conversations,
         ReadOnlySpan<RuntimeTownPlayerSeat1458> seatedPlayers,
         ReadOnlySpan<RuntimeTownPlayerDanger1458> playerDanger, ReadOnlySpan<NpcSnapshot> peers,
-        RuntimeNpcStinkyStatus1458 status, RuntimeTownNpcCombat1458 combat,
+        RuntimeNpcBuffStatus1458 status, RuntimeTownNpcCombat1458 combat,
         Span<RuntimeTownNpcMeleeIntent1458> melee, out NpcStateUpdate update, out bool force,
         out NpcAiProjectileIntent? projectile, out int meleeCount, out SocialPeerPlan? socialPeer)
     {
@@ -204,7 +221,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                     conditions.PartyIsUp, ref socialPeer,
                     out update, out bool offerForce)) return false;
             force |= offerForce;
-            if (!TryPlanNurseAdmission(in update, peers, out update, out bool nurseForce)) return false;
+            if (!TryPlanNurseAdmission(before.Handle, in update, peers, out update, out bool nurseForce)) return false;
             force |= nurseForce;
             if (!combat.TryPlanAttackInitialization(in before, in update, in danger, activeTalk,
                     out update, out bool attackForce, attackEligibleState)) return false;

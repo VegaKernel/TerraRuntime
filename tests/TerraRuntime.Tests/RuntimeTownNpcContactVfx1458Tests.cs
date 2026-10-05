@@ -53,13 +53,13 @@ public sealed class RuntimeTownNpcContactVfx1458Tests
         var input = new NpcStateUpdate(type, (short)type, 639, 440, 0, 0, 255, default,
             NpcSimulationState.Initial with { Life = 100, LifeMax = 100 });
         Assert.True(npcs.TrySpawn(0, in input, out var npc));
-        var status = new RuntimeNpcStinkyStatus1458(npcs);
+        var status = new RuntimeNpcBuffStatus1458(npcs);
         if (row.GetProperty("apply").GetBoolean()) Assert.True(status.TryApply(npc.Handle, 180));
         status.BeginWorldTick();
         Assert.True(status.TryGetStinky(npc.Handle, out bool flag)); Assert.Equal(row.GetProperty("flag").GetBoolean(), flag);
         var stream = new VanillaUnifiedRandom1458(row.GetProperty("seed").GetInt32());
         var inner = new ObservingStep(stream);
-        var wrapper = new RuntimeNpcStinkyAiStepper1458(inner, status, new SystemVanillaNpcRandom(stream),
+        var wrapper = new RuntimeNpcBuffAiStepper1458(inner, status, new SystemVanillaNpcRandom(stream),
             row.GetProperty("good").GetBoolean());
         Assert.Same(inner, NpcAiStateStepperComposition.FindCapability<ObservingStep>(wrapper));
         Assert.True(wrapper.TryStepState(in npc, out _)); Assert.Equal(1, inner.Calls);

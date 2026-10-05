@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Gameplay;
+using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Gameplay.Buffs;
 
 namespace TerraRuntime.Application;
@@ -28,6 +29,10 @@ internal sealed class PlayerBuffState
         for (int i = 0; i < count; i++) if (types[i] == type && durations[i] > 0) result++;
         return result;
     }
+
+    internal PlayerDebuffSnapshot1458 CaptureDebuffFlags() =>
+        new(CountActive(VanillaBuffIds.OnFire) != 0, CountActive(VanillaBuffIds.CursedInferno) != 0,
+            CountActive(VanillaBuffIds.Poisoned) != 0);
 
     public bool HasNonPersistentBuffs()
     {

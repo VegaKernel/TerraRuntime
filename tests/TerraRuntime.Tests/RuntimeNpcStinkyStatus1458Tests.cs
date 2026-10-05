@@ -8,20 +8,20 @@ using TerraRuntime.Protocol.Multiplicity;
 
 namespace TerraRuntime.Tests;
 
-public sealed class RuntimeNpcStinkyStatus1458Tests
+public sealed class RuntimeNpcBuffStatus1458Tests
 {
     [Theory]
     [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(180)] [InlineData(32767)]
     public void Source_flags_are_set_before_expiry_and_do_not_start_during_AddBuff(int duration)
     {
         var npcs = new RuntimeNpcStore(); NpcSnapshot npc = Spawn(npcs, 0, VanillaNpcIds.Merchant.Value);
-        var owner = new RuntimeNpcStinkyStatus1458(npcs);
+        int expired = 0;
+        var owner = new RuntimeNpcBuffStatus1458(npcs, _ => expired++);
         Assert.True(owner.TryApply(npc.Handle, duration));
         Assert.True(owner.TryGetStinky(npc.Handle, out bool immediate)); Assert.False(immediate);
-        int expired = 0;
         for (int tick = 0; tick < 3; tick++)
         {
-            owner.BeginWorldTick(_ => expired++);
+            owner.BeginWorldTick(); AdvanceStatus(owner, in npc);
             JsonElement row = Rows().Single(x => Case(x) == "duration" &&
                 x.GetProperty("time").GetInt32() == duration && !x.GetProperty("immune").GetBoolean() &&
                 x.GetProperty("tick").GetInt32() == tick);
@@ -49,7 +49,7 @@ public sealed class RuntimeNpcStinkyStatus1458Tests
     public void Refresh_uses_original_maximum_and_same_generation_transforms_retain_duration(int refresh)
     {
         var npcs = new RuntimeNpcStore(); NpcSnapshot npc = Spawn(npcs, 0, VanillaNpcIds.Merchant.Value);
-        var owner = new RuntimeNpcStinkyStatus1458(npcs);
+        var owner = new RuntimeNpcBuffStatus1458(npcs);
         Assert.True(owner.TryApply(npc.Handle, 180)); Assert.True(owner.TryApply(npc.Handle, refresh));
         Assert.True(owner.TryGetWireDuration(npc.Handle, out int time));
         Assert.Equal(Rows().Single(x => Case(x) == "refresh" && x.GetProperty("refresh").GetInt32() == refresh)
@@ -72,7 +72,7 @@ public sealed class RuntimeNpcStinkyStatus1458Tests
         var npcs = new RuntimeNpcStore();
         NpcSnapshot resident = Spawn(npcs, earlier ? (byte)1 : (byte)0, VanillaNpcIds.Merchant.Value);
         NpcSnapshot peer = Spawn(npcs, earlier ? (byte)0 : (byte)1, VanillaNpcIds.Guide.Value);
-        var owner = new RuntimeNpcStinkyStatus1458(npcs); Assert.True(owner.TryApply(peer.Handle, duration));
+        var owner = new RuntimeNpcBuffStatus1458(npcs); Assert.True(owner.TryApply(peer.Handle, duration));
         for (int tick = 0; tick < 3; tick++)
         {
             owner.BeginWorldTick();
@@ -81,8 +81,12 @@ public sealed class RuntimeNpcStinkyStatus1458Tests
                 x.GetProperty("duration").GetInt32() == duration && x.GetProperty("peerEarlier").GetBoolean() == earlier &&
                 x.GetProperty("tick").GetInt32() == tick);
             Assert.Equal(row.GetProperty("peerFlagSeen").GetBoolean(), flag);
+            AdvanceStatus(owner, in peer);
         }
     }
+
+    private static void AdvanceStatus(RuntimeNpcBuffStatus1458 owner, in NpcSnapshot npc)
+    { Assert.True(owner.TryPlan(in npc, out var plan)); Assert.True(owner.Commit(in plan, in npc)); owner.PublishExpired(in plan); }
 
     [Theory]
     [InlineData(0)] [InlineData(1)] [InlineData(180)] [InlineData(32767)]
@@ -100,7 +104,7 @@ public sealed class RuntimeNpcStinkyStatus1458Tests
     }
 
     [Theory]
-    [InlineData(-1, 120, 180)] [InlineData(200, 120, 180)] [InlineData(0, 20, 180)] [InlineData(0, 120, -1)]
+    [InlineData(-1, 120, 180)] [InlineData(200, 120, 180)] [InlineData(0, 39, 180)] [InlineData(0, 120, -1)]
     public void Invalid_or_unowned_buff_proposal_is_rejected_before_queue(int slot, int buff, int duration)
     {
         var request = new TerrariaNpcBuffState((short)slot, (ushort)buff, (short)duration);
@@ -116,7 +120,7 @@ public sealed class RuntimeNpcStinkyStatus1458Tests
         var wet = State(npc.Type) with { Simulation = npc.Simulation with { Wet = true,
             LiquidContact = lava ? NpcLiquidContactKind.Lava : NpcLiquidContactKind.Water } };
         Assert.True(npcs.TryUpdate(npc.Handle, in wet, out npc));
-        var owner = new RuntimeNpcStinkyStatus1458(npcs); Assert.True(owner.TryApply(npc.Handle, 180));
+        var owner = new RuntimeNpcBuffStatus1458(npcs); Assert.True(owner.TryApply(npc.Handle, 180));
         if (flagged) { owner.BeginWorldTick(); Assert.True(owner.TryApply(npc.Handle, 180)); }
         Assert.True(owner.TryRemoveWetStatus(npc.Handle));
         JsonElement row = Rows().Single(x => Case(x) == "wetRemoval" &&
@@ -133,7 +137,7 @@ public sealed class RuntimeNpcStinkyStatus1458Tests
         int duration, int expected, int broadcasts)
     {
         var npcs = new RuntimeNpcStore(); NpcSnapshot npc = Spawn(npcs, 0, VanillaNpcIds.Merchant.Value);
-        int changed = 0; var owner = new RuntimeNpcStinkyStatus1458(npcs, _ => changed++);
+        int changed = 0; var owner = new RuntimeNpcBuffStatus1458(npcs, _ => changed++);
         if (duration > 0) Assert.True(owner.TryApply(npc.Handle, duration));
         Assert.True(owner.TryApplyRepeated(npc.Handle)); Assert.Equal(broadcasts, changed);
         Assert.True(owner.TryGetWireDuration(npc.Handle, out int current)); Assert.Equal(expected, current);
@@ -149,7 +153,7 @@ public sealed class RuntimeNpcStinkyStatus1458Tests
     private static string? Case(JsonElement row) => row.GetProperty("caseName").GetString();
     private static JsonElement[] Rows()
     {
-        using Stream stream = typeof(RuntimeNpcStinkyStatus1458Tests).Assembly.GetManifestResourceStream("NpcStinkyStatus1458")!;
+        using Stream stream = typeof(RuntimeNpcBuffStatus1458Tests).Assembly.GetManifestResourceStream("NpcStinkyStatus1458")!;
         using var gzip = new GZipStream(stream, CompressionMode.Decompress);
         using JsonDocument document = JsonDocument.Parse(gzip);
         return document.RootElement.GetProperty("rows").EnumerateArray().Select(x => x.Clone()).ToArray();

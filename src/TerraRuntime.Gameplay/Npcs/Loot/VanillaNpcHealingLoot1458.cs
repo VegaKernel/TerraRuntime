@@ -5,7 +5,7 @@ namespace TerraRuntime.Gameplay.Npcs.Loot;
 
 public readonly record struct VanillaNpcHealingContext1458(
     NpcTypeId Type, NpcNetId NetId, int LifeMax, int Damage,
-    bool NeedsLife, bool NeedsMana, bool ExpertMode);
+    bool NeedsLife, bool NeedsMana, bool ExpertMode, bool LifeEligibilityKnown = true);
 
 /// <summary>Source NPC.NPCLoot_DropHeals, after the money phase.</summary>
 public static class VanillaNpcHealingLoot1458
@@ -33,9 +33,10 @@ public static class VanillaNpcHealingLoot1458
                     if (!TryDrop(VanillaBossRecoveryItemIds1458.Star, in origin, random, sink))
                         return false;
                 }
-                else if (random.NextInt32(0, 2) == 0 && context.NeedsLife)
+                else if (random.NextInt32(0, 2) == 0)
                 {
-                    if (!TryDrop(VanillaWallOfFleshItemIds.Heart, in origin, random, sink))
+                    if (!context.LifeEligibilityKnown) return false;
+                    if (context.NeedsLife && !TryDrop(VanillaWallOfFleshItemIds.Heart, in origin, random, sink))
                         return false;
                 }
             }
@@ -44,6 +45,13 @@ public static class VanillaNpcHealingLoot1458
                 return false;
         }
 
+        if (context.Type.Value == 267 || context.Type.Value is >= 13 and <= 15)
+        {
+            int denominator = context.Type.Value == 267 ? 2 : 4;
+            if (random.NextInt32(0, denominator) != 0) return true;
+            if (!context.LifeEligibilityKnown) return false;
+            return !context.NeedsLife || TryDrop(VanillaWallOfFleshItemIds.Heart, in origin, random, sink);
+        }
         int hearts = context.Type.Value switch
         {
             >= 305 and <= 314 or 329 or 330 => random.RollLuck(4) == 0 ? 1 : 0,
@@ -53,8 +61,6 @@ public static class VanillaNpcHealingLoot1458
             >= 338 and <= 340 => random.RollLuck(5) == 0 ? 1 : 0,
             342 => random.NextInt32(0, 3) != 0 ? 1 : 0,
             325 or 327 or 344 or 345 or 346 => random.NextInt32(0, 6) + 6,
-            267 => random.NextInt32(0, 2) == 0 && context.NeedsLife ? 1 : 0,
-            >= 13 and <= 15 => random.NextInt32(0, 4) == 0 && context.NeedsLife ? 1 : 0,
             >= 116 and <= 119 => !context.ExpertMode || random.NextInt32(0, 5) == 0 ? 1 : 0,
             139 => random.NextInt32(0, 2) == 0 ? 1 : 0,
             _ => 0

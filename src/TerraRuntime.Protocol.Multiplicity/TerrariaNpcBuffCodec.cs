@@ -7,6 +7,7 @@ using TerraRuntime.Protocol;
 namespace TerraRuntime.Protocol.Multiplicity;
 
 public readonly record struct TerrariaNpcBuffState(short NpcSlot, ushort BuffType, short Duration);
+public readonly record struct TerrariaNpcBuffEntryState(ushort BuffType, ushort Duration);
 
 /// <summary>Protocol-326 NPC AddBuff and current-list projection. Multiplicity owns outbound layouts.</summary>
 public static class TerrariaNpcBuffCodec
@@ -14,7 +15,10 @@ public static class TerrariaNpcBuffCodec
     public const int AddPayloadLength = 6;
     public static bool IsValid(in TerrariaNpcBuffState state) =>
         (uint)state.NpcSlot < TerrariaNpcTalkCodec.MaximumNpcSlots &&
-        state.BuffType == VanillaBuffIds.Stinky.Value && state.Duration >= 0;
+        IsSupported(state.BuffType) && state.Duration >= 0;
+
+    private static bool IsSupported(ushort type) => type == VanillaBuffIds.Stinky.Value ||
+        type == VanillaBuffIds.Poisoned.Value || type == VanillaBuffIds.OnFire.Value;
 
     public static bool TryDecode(in TerrariaFrame frame, out TerrariaNpcBuffState state)
     {
@@ -51,6 +55,20 @@ public static class TerrariaNpcBuffCodec
         var packet = new NpcUpdateBuff { NpcId = npcSlot };
         if (duration > 0)
             packet.Buffs.Add(new NpcBuffEntry((ushort)VanillaBuffIds.Stinky.Value, (ushort)duration));
+        return packet.TrySerialize(out frame);
+    }
+
+    public static bool TryEncodeCurrent(short npcSlot, ReadOnlySpan<TerrariaNpcBuffEntryState> buffs,
+        out byte[] frame)
+    {
+        frame = [];
+        if ((uint)npcSlot >= TerrariaNpcTalkCodec.MaximumNpcSlots || buffs.Length > 20) return false;
+        var packet = new NpcUpdateBuff { NpcId = npcSlot };
+        foreach (var buff in buffs)
+        {
+            if (!IsSupported(buff.BuffType) || buff.Duration == 0 || buff.Duration > (ushort)short.MaxValue) return false;
+            packet.Buffs.Add(new NpcBuffEntry(buff.BuffType, buff.Duration));
+        }
         return packet.TrySerialize(out frame);
     }
 }

@@ -70,6 +70,11 @@ public readonly record struct PlayerStateSnapshot(
     /// <summary>Owned Player.statLifeMax2 after the player phase; null means its source context is unavailable.</summary>
     public int? DerivedLifeMax { get; init; }
 
+    /// <summary>Retained source statLifeMax provenance, including constructor100; null means unknown import.</summary>
+    public int? BaseLifeMax { get; init; }
+
+    public PlayerDebuffSnapshot1458? Debuffs { get; init; }
+
     public bool IsDead { get; init; }
 
     public bool HasMana { get; init; }

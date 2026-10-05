@@ -17,6 +17,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             // NPC.HitEffect (1.4.5.8) still makes six noGravity choices after dedicated Dust.NewDust returns.
             for (int particle = 0; particle < 6; particle++) random.NextInt32(0, 2);
         }
+        if (npc.TypeIdentity == VanillaNpcIds.Slimer && EnsurePreviewSpawnStream() &&
+            !DeathNpcs.TryExecuteSlimerDeathSpawn(in npc, out _, out _))
+            deathPreviewFailed = true;
         if (npc.TypeIdentity == VanillaNpcIds.MotherSlime && EnsurePreviewSpawnStream())
             VanillaMotherSlimeDeathSplit1458.SpawnChildren(DeathNpcs, in npc, random);
     }
@@ -89,8 +92,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
         var origin = ResolveNpcLootOrigin(in npc, in definition);
         int stagedCount = 0;
-        var context = new VanillaNpcLootContext(expertMode, DropExtraGel: false,
-            SpawnedFromStatue: npc.Simulation.SpawnedFromStatue);
+        if (!TryCaptureSpecificLootContext(in npc, out var context)) return false;
 
         if (kingSlimeNormal)
         {
@@ -108,6 +110,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         }
         else
         {
+            if (!VanillaNpcLootEvaluator.TryValidateNpcSpecificContext(in genericTable, in context)) return false;
             ReadOnlySpan<VanillaNpcLootRule> rules = genericTable.Rules;
             for (int index = 0; index < rules.Length; index++)
             {

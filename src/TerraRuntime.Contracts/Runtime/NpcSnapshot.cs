@@ -103,6 +103,9 @@ public readonly record struct NpcSimulationState(
     /// <summary>Generation-owned ordinary friendly regeneration accumulator from NPC.CheckLifeRegen.</summary>
     public int FriendlyRegenerationCounter { get; init; }
 
+    /// <summary>Source lifeRegenCount; nullable imports cannot be treated as source counter zero.</summary>
+    public int? LifeRegenCounter { get; init; }
+
     /// <summary>NPC.breath when owned; null is an unknown imported respiratory history.</summary>
     public int? Breath { get; init; }
 

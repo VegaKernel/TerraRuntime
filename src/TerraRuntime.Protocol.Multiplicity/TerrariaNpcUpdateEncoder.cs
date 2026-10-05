@@ -31,6 +31,9 @@ public static class TerrariaNpcUpdateEncoder
             ? NpcUpdateExtraFlags.SpawnNeedsSyncing
             : NpcUpdateExtraFlags.None;
 
+        if (state.SpawnDifficulty != 1f)
+            extraFlags |= NpcUpdateExtraFlags.HasDifficultyOverride;
+
         var packet = new NpcUpdate
         {
             NpcSlot = state.NpcSlot,
@@ -44,6 +47,7 @@ public static class TerrariaNpcUpdateEncoder
             ExtraFlags = extraFlags,
             NpcNetId = state.NpcNetId,
             NpcType = state.NpcType,
+            Difficulty = state.SpawnDifficulty,
             Life = state.Life,
             LifeBytes = state.Life == state.LifeMax ? (byte)0 : GetVanillaLifeWidth(state.LifeMax)
         };

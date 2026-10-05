@@ -7,7 +7,8 @@ public enum VanillaNpcLootRuleKind : byte
 {
     ExtraGel = 1,
     NormalVsExpertCommon = 2,
-    NotFromStatueCommon = 3
+    NotFromStatueCommon = 3,
+    SkyblockSickleCommon = 4
 }
 
 /// <summary>
@@ -26,7 +27,7 @@ public readonly record struct VanillaNpcLootRule(
 {
     public bool IsValid =>
         (Kind is VanillaNpcLootRuleKind.ExtraGel or VanillaNpcLootRuleKind.NormalVsExpertCommon or
-            VanillaNpcLootRuleKind.NotFromStatueCommon) &&
+            VanillaNpcLootRuleKind.NotFromStatueCommon or VanillaNpcLootRuleKind.SkyblockSickleCommon) &&
         !ItemType.IsNone &&
         NormalChanceDenominator > 0 &&
         ExpertChanceDenominator > 0 &&
@@ -155,6 +156,20 @@ public static class VanillaNpcLootRuleCatalog
     private static readonly VanillaNpcLootTable IceSlimeTable = new(VanillaNpcIds.IceSlime, IceSlimeRules);
     private static readonly VanillaNpcLootTable SpikedIceSlimeTable = new(VanillaNpcIds.SpikedIceSlime, IceSlimeRules);
     private static readonly VanillaNpcLootTable SandSlimeTable = new(VanillaNpcIds.SandSlime, SandSlimeRules);
+    private static readonly VanillaNpcLootTable SpikedSlimeTable = new(VanillaNpcIds.SpikedSlime, BlueSlimeRules);
+    private static readonly VanillaNpcLootTable SlimerTable = new(VanillaNpcIds.Slimer, []);
+    private static readonly VanillaNpcLootTable ZombieTable = new(VanillaNpcIds.Zombie,
+    [
+        VanillaNpcLootRule.NormalVsExpertCommon(VanillaNpcSpecificDropItemIds.Shackle, 50, 50),
+        VanillaNpcLootRule.NormalVsExpertCommon(VanillaNpcSpecificDropItemIds.ZombieArm, 250, 250),
+        VanillaNpcLootRule.NormalVsExpertCommon(VanillaNpcSpecificDropItemIds.SpiffoPlush, 1500, 1500),
+        new(VanillaNpcLootRuleKind.SkyblockSickleCommon, VanillaNpcSpecificDropItemIds.Sickle, 15, 15, 1, 1, 1)
+    ]);
+    private static readonly VanillaNpcLootTable MeteorHeadTable = new(VanillaNpcIds.MeteorHead,
+    [
+        VanillaNpcLootRule.NormalVsExpertCommon(VanillaNpcSpecificDropItemIds.Meteorite, 50, 50),
+        VanillaNpcLootRule.NormalVsExpertCommon(VanillaNpcSpecificDropItemIds.TheSeaOfSilence, 100, 100)
+    ]);
 
     /// <summary>
     /// Resolves an explicitly imported NPC-specific loot table. Lookup failure is the unsupported signal; callers
@@ -170,6 +185,10 @@ public static class VanillaNpcLootRuleCatalog
         if (npcType == VanillaNpcIds.IceSlime) { table = IceSlimeTable; return true; }
         if (npcType == VanillaNpcIds.SpikedIceSlime) { table = SpikedIceSlimeTable; return true; }
         if (npcType == VanillaNpcIds.SandSlime) { table = SandSlimeTable; return true; }
+        if (npcType == VanillaNpcIds.SpikedSlime) { table = SpikedSlimeTable; return true; }
+        if (npcType == VanillaNpcIds.Slimer) { table = SlimerTable; return true; }
+        if (npcType == VanillaNpcIds.Zombie) { table = ZombieTable; return true; }
+        if (npcType == VanillaNpcIds.MeteorHead) { table = MeteorHeadTable; return true; }
 
         table = default;
         return false;
@@ -184,7 +203,9 @@ public static class VanillaNpcLootRuleCatalog
 public readonly record struct VanillaNpcLootContext(
     bool IsExpertMode,
     bool DropExtraGel,
-    bool SpawnedFromStatue = false);
+    bool SpawnedFromStatue = false,
+    bool? LowTiles = null,
+    bool? HasSickle = null);
 
 /// <summary>
 /// Semantic random/luck boundary matching Terraria's CommonDrop call order. For production NPC loot the source
@@ -209,6 +230,26 @@ public readonly record struct NpcLootDrop(ItemTypeId ItemType, short Stack)
 /// </summary>
 public static class VanillaNpcLootEvaluator
 {
+    /// <summary>Checks the Sickle condition's exact owned facts before any table luck or stack RNG.</summary>
+    public static bool TryValidateNpcSpecificContext(in VanillaNpcLootTable table, in VanillaNpcLootContext context)
+    {
+        if (!table.IsValid) return false;
+        foreach (ref readonly var rule in table.Rules)
+            if (rule.Kind == VanillaNpcLootRuleKind.SkyblockSickleCommon &&
+                !TryGetSickleEligibility(in context, out _)) return false;
+        return true;
+    }
+
+    private static bool TryGetSickleEligibility(in VanillaNpcLootContext context, out bool eligible)
+    {
+        eligible = false;
+        // HasSickle means Player.HasItemInInventoryOrOpenVoidBag(1786), not an inventory-only approximation.
+        if (context.LowTiles == false || context.HasSickle == true) return true;
+        if (!context.LowTiles.HasValue || !context.HasSickle.HasValue) return false;
+        eligible = true;
+        return true;
+    }
+
     /// <summary>
     /// Evaluates one verified rule without buffering later rules. This boundary exists because vanilla CommonDrop
     /// immediately materializes a successful item before the next rule executes, and both paths consume Main.rand.
@@ -228,6 +269,11 @@ public static class VanillaNpcLootEvaluator
             return false;
         if (rule.Kind == VanillaNpcLootRuleKind.NotFromStatueCommon && context.SpawnedFromStatue)
             return true;
+        if (rule.Kind == VanillaNpcLootRuleKind.SkyblockSickleCommon)
+        {
+            if (!TryGetSickleEligibility(in context, out bool eligible)) return false;
+            if (!eligible) return true;
+        }
 
         int denominator = context.IsExpertMode
             ? rule.ExpertChanceDenominator
@@ -256,7 +302,7 @@ public static class VanillaNpcLootEvaluator
         out int dropCount)
     {
         ArgumentNullException.ThrowIfNull(rolls);
-        if (!table.IsValid || destination.Length < table.MaximumDropCount)
+        if (!TryValidateNpcSpecificContext(in table, in context) || destination.Length < table.MaximumDropCount)
         {
             dropCount = 0;
             return false;

@@ -5,13 +5,13 @@ namespace TerraRuntime.Tests;
 internal sealed class TownNpcTestPhase1458
 {
     private readonly RuntimeTownNpcSchedule1458 schedule;
-    private readonly RuntimeNpcStinkyStatus1458 status;
+    private readonly RuntimeNpcBuffStatus1458 status;
     private readonly RuntimeTownNpcCombat1458 combat;
     internal TownNpcTestPhase1458(RuntimeTownNpcStateStore town, RuntimeNpcStore npcs, WorldTileStore tiles,
         RuntimeTownNpcSchedule1458 schedule, RuntimeTownNpcCombat1458? combat = null)
     {
         this.schedule = schedule;
-        status = new RuntimeNpcStinkyStatus1458(npcs);
+        status = new RuntimeNpcBuffStatus1458(npcs);
         this.combat = combat ?? new RuntimeTownNpcCombat1458(town, npcs, new RuntimeProjectileStore(), tiles,
             default, new RuntimeWorldProgressionMutations(), false, false);
     }

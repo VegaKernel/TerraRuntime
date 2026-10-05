@@ -233,7 +233,7 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy : IVanillaNp
         }
 
         VanillaBlueSlimeTargetRefresh closest =
-            context.TrySelectClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh selected)
+            context.TrySelectSlimeClosestTarget(in npc, in definition, out VanillaBlueSlimeTargetRefresh selected)
                 ? selected
                 : default;
         NpcSimulationState simulation = npc.Simulation;

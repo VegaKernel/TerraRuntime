@@ -448,6 +448,7 @@ public static class VanillaNpcAiStyles
 public static class VanillaItemIds
 {
     public static readonly ItemTypeId MagicMirror = new(50);
+    public static readonly ItemTypeId WhoopieCushion = new(215);
     public const int Count = 6196;
 
     public static ItemTypeId None => default;

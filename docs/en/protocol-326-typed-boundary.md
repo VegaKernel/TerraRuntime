@@ -1,5 +1,7 @@
 # Protocol 326 typed packet boundary
 
+Tenth integrated local acceptance: 1474709/1474710 tests, zero failures/errors, one existing worldgen skip; clean Release rebuild, Windows NativeAOT/five smokes and local gates. See [NPC parity checkpoint](../roadmap/npc-ai-parity.md). Earlier candidate/pending notes below are historical for their respective checkpoints. Broad parity remains open.
+
 [Русский](../ru/protocol-326-typed-boundary.md) · [Networking and protocol](networking-protocol.md) · [Roadmap](../roadmap.md)
 
 ## Scope

@@ -19,9 +19,14 @@ internal sealed partial class ServerPlayerAuthority
             // The server-owned buff owner currently admits Moon Leech and lava On Fire, neither of which
             // changes statLifeMax2. A new buff writer must also extend this represented health context.
             int? next = VanillaPlayerHealthContext1458.Resolve(
-                player.DerivedLifeMax, player.HasHealth ? player.MaxLife : 100, lifeforceSlots: 0,
+                player.DerivedLifeMax, player.BaseLifeMax, lifeforceSlots: 0,
                 outOfRange, ghost: false, player.IsDead);
-            states.TrySetDerivedLifeMax(in player, next);
+            ref LavaState lava = ref lavaStates[player.Player.Slot.Value];
+            var represented = new PlayerDebuffSnapshot1458(
+                lava.Owner == player.Player && lava.BurningTicks > 0, false, false);
+            var debuffs = VanillaPlayerHealthContext1458.ResolveDebuffs(
+                player.Debuffs, represented, outOfRange, ghost: false, player.IsDead);
+            states.TrySetHealthContext(in player, next, debuffs);
         }
     }
 }

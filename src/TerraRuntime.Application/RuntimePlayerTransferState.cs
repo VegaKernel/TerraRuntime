@@ -81,6 +81,8 @@ internal sealed class RuntimePlayerTransferProfileStore
 
     internal int? CountActiveBuffs(ConnectionHandle connection, BuffTypeId type) => Get(connection)?.Buffs?.CountActive(type);
 
+    internal PlayerDebuffSnapshot1458? CaptureDebuffFlags(ConnectionHandle connection) => Get(connection)?.Buffs?.CaptureDebuffFlags();
+
     internal bool HasNonPersistentBuffs(ConnectionHandle connection) => Get(connection)?.Buffs?.HasNonPersistentBuffs() ?? false;
 
     internal bool ClearNonPersistentBuffs(ConnectionHandle connection) => Get(connection)?.Buffs?.ClearNonPersistentOnDeath() ?? false;

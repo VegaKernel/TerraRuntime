@@ -25,7 +25,7 @@ internal static class RuntimeTownNpcDangerScanner1458
 {
     internal static bool TryScan(WorldTileStore tiles, in NpcSnapshot source,
         ReadOnlySpan<NpcSnapshot> candidates, ReadOnlySpan<RuntimeTownPlayerDanger1458> players,
-        RuntimeNpcStinkyStatus1458 status, bool activeTalk, bool meleeAttack,
+        RuntimeNpcBuffStatus1458 status, bool activeTalk, bool meleeAttack,
         out RuntimeTownNpcDanger1458 facts)
     {
         facts = default;

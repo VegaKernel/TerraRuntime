@@ -67,7 +67,8 @@ internal static class RuntimeNpcPacketProjection
             NpcNetId: checked((short)netIdentity.Value),
             Life: life,
             LifeMax: lifeMax,
-            SpawnNeedsSyncing: kind == RuntimeNpcSyncKind.Spawn);
+            SpawnNeedsSyncing: kind == RuntimeNpcSyncKind.Spawn,
+            SpawnDifficulty: simulation.SpawnDifficulty ?? 1f);
         return state.IsValid;
     }
 
