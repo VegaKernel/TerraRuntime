@@ -8,6 +8,32 @@ public sealed partial class RuntimeWorldItemStore
     private readonly WorldItemStackTransfer1458[] sourceTransfers = new WorldItemStackTransfer1458[VanillaCapacity];
     private int sourceTransferCount;
     private IWorldItemOwnerFactsProvider1458? ownerFactsProvider;
+    private SlotState[]? deathSourceSlots;
+    private WorldItemStackTransfer1458[]? deathSourceTransfers;
+    private int deathSourceTransferCount;
+
+    // Same scalar allocation/protection/transfer state, independent slots and no publication sink.
+    // Whole-operation admission uses this fork; its mutations never lease or publish live items.
+    internal RuntimeWorldItemStore CreateDeathPreview()
+    {
+        var preview = new RuntimeWorldItemStore();
+        _slots.CopyTo(preview._slots, 0);
+        preview._activeCount = _activeCount;
+        sourceTransfers.CopyTo(preview.sourceTransfers, 0);
+        preview.sourceTransferCount = sourceTransferCount;
+        preview.ownerFactsProvider = ownerFactsProvider;
+        preview.deathSourceSlots = (SlotState[])_slots.Clone();
+        preview.deathSourceTransfers = (WorldItemStackTransfer1458[])sourceTransfers.Clone();
+        preview.deathSourceTransferCount = sourceTransferCount;
+        return preview;
+    }
+
+    internal bool IsDeathPreviewSourceCurrent(RuntimeWorldItemStore preview) =>
+        preview.deathSourceSlots is not null && preview.deathSourceTransfers is not null &&
+        ReferenceEquals(ownerFactsProvider, preview.ownerFactsProvider) &&
+        sourceTransferCount == preview.deathSourceTransferCount &&
+        _slots.AsSpan().SequenceEqual(preview.deathSourceSlots) &&
+        sourceTransfers.AsSpan(0, sourceTransferCount).SequenceEqual(preview.deathSourceTransfers.AsSpan(0, sourceTransferCount));
 
     /// <summary>One-time binding before the world exposes commands; a reused store cannot retain another world's players.</summary>
     public void AttachOwnerFactsProvider(IWorldItemOwnerFactsProvider1458 provider)

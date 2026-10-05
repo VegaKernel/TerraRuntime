@@ -20,6 +20,8 @@ internal interface IVanillaSlimeContainedWorld1458
     bool TryPlanTileProducer(int item, in NpcSnapshot parent, IVanillaNpcRandom random, out bool grew)
     { grew = false; return false; }
     void CommitTileProducer() { }
+    bool TryClaimTileProducer() => true;
+    void CancelTileProducer() { }
 }
 
 internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
@@ -27,6 +29,7 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
     private RuntimeNpcStore? containedStore;
     private Func<VanillaSlimeContainedFacts1458>? containedFacts;
     private IVanillaSlimeContainedEnvironment1458? containedEnvironment;
+    private IVanillaSlimeStatusOwner1458? containedStatusOwner;
     private ContainedPlan? containedPlan;
     private NpcSnapshot completedContainedBefore;
     private NpcSnapshot completedContainedAfter;
@@ -37,7 +40,10 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
         VanillaNpcTargetCandidate[] Candidates, PlayerStateSnapshot[] Players,
         VanillaSlimeContainedFacts1458 Facts, bool DayTime, IVanillaSlimeContainedWorld1458 World,
         NpcAiProjectileIntent? Trap, NpcRawPlayerSlotSnapshot1458? RawTarget,
-        NpcRawPlayerSlotSnapshot1458? RawTracking);
+        NpcRawPlayerSlotSnapshot1458? RawTracking, IVanillaSlimeStatusPlan1458? Status);
+
+    internal void SetContainedStatusOwner(IVanillaSlimeStatusOwner1458 owner) =>
+        containedStatusOwner = owner ?? throw new ArgumentNullException(nameof(owner));
 
     internal void SetContainedOwner(RuntimeNpcStore store, Func<VanillaSlimeContainedFacts1458> facts,
         IVanillaSlimeContainedEnvironment1458 environment)
@@ -48,18 +54,31 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
     }
 
     internal bool HasContainedPlan(in NpcSnapshot source) => containedPlan?.Before == source;
-    internal void CancelContainedPlan() => containedPlan = null;
+    internal void CancelContainedPlan()
+    {
+        var previous = containedPlan;
+        containedPlan = null;
+        previous?.World.CancelTileProducer();
+    }
 
     private bool TryRetainContained(in NpcSnapshot npc, in VanillaNpcDefinition definition,
         VanillaNpcBehaviorContext context, INpcAiStateStepper inner, out NpcStateUpdate next)
     {
-        containedPlan = null;
+        CancelContainedPlan();
         completedContainedInactive = false;
         next = default;
         if (random is not SystemVanillaNpcRandom trusted || containedStore is null ||
             containedFacts is null || containedEnvironment is null ||
             !definition.TryResolveHitbox(npc.Simulation, out var body) ||
             npc.Simulation.MoneyValue is not float money || npc.Ai.Ai1 != (int)npc.Ai.Ai1)
+            return false;
+
+        // Sample both owners before invoking player, world or source-fact callbacks.
+        ulong statusRevision = 0;
+        if (containedStatusOwner is not null &&
+            !containedStatusOwner.TryCaptureRevision(in npc, out statusRevision))
+            return false;
+        if (!containedStore.TryCreateAiSpawnPreview(in npc, trusted.SourceRandom, out var preview))
             return false;
 
         NpcRawPlayerSlotSnapshot1458? rawTarget = null;
@@ -123,15 +142,21 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
         {
             HasHeartSlime = context.HasNpcPeerWithAi1(VanillaNpcIds.BlueSlime, 29f)
         };
-        if (!containedStore.TryCreateAiSpawnPreview(in npc, trusted.SourceRandom, out var preview))
+        if (!preview!.IsBeforeCurrent())
             return false;
 
         var speculativeRandom = new SystemVanillaNpcRandom(preview!.Random);
+        IVanillaSlimeStatusPlan1458? status = null;
+        if (containedStatusOwner is not null &&
+            (!containedStatusOwner.TryPrepare(in npc, speculativeRandom, facts.GoodWorld, out status) ||
+             status.Revision != statusRevision))
+            return false;
         VanillaSlimeContainedInitializer1458.ObserveBeforeSelection(npc.Type, (int)npc.Ai.Ai1, speculativeRandom);
         var input = new VanillaSlimeContainedInput1458(npc.Type, npc.NetId, npc.PositionY, body.Height,
             money, (int)npc.Ai.Ai1, npc.Ai.Ai0 == -999f);
         if (!VanillaSlimeContainedInitializer1458.TrySelect(in input, in facts, speculativeRandom,
-                out var selection) || !selection.Admitted && selection.Item is not (314 or 150))
+                out var selection) || !selection.Admitted && selection.Item is not (314 or 150) &&
+                !(selection.Item == VanillaItemIds.Torch.Value && status is not null))
             return false;
 
         var effects = VanillaSlimeContainedInitializer1458.ObserveContents(selection.Item,
@@ -180,19 +205,29 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
 
         bool grew = false;
         if (tileProducer && !world.TryPlanTileProducer(selection.Item, in npc, speculativeRandom, out grew))
+        {
+            world.CancelTileProducer();
             return false;
+        }
+        var simulation = status?.Simulation ?? npc.Simulation;
         var staged = npc with { Ai = npc.Ai with { Ai1 = selection.Item },
-            Simulation = grew ? npc.Simulation with { LocalAi = npc.Simulation.LocalAi with {
-                Ai3 = npc.Simulation.LocalAi.Ai3 + 1f } } : npc.Simulation };
+            Simulation = grew ? simulation with { LocalAi = simulation.LocalAi with {
+                Ai3 = simulation.LocalAi.Ai3 + 1f } } : simulation };
         var mechanical = new VanillaSlimeGroundNpcBehaviorStrategy(speculativeRandom);
         if (!mechanical.TryStepMechanical(in staged, in definition, context, inner,
                 out var update, containedInitializationObserved: true) || !RuntimeNpcStore.IsValid(in update))
+        {
+            world.CancelTileProducer();
             return false;
+        }
 
         var plan = new ContainedPlan(npc, update, preview, context, candidates, players.ToArray(),
-            facts, context.DayTime, world, trap, rawTarget, rawTracking);
+            facts, context.DayTime, world, trap, rawTarget, rawTracking, status);
         if (!ContainedInputsCurrent(plan) || !preview.IsBeforeCurrent())
+        {
+            world.CancelTileProducer();
             return false;
+        }
         containedPlan = plan;
         next = ContainedState(in npc);
         return true;
@@ -223,7 +258,7 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
     {
         if (containedPlan is not { } plan || plan.Before != before || !ContainedInputsCurrent(plan))
         {
-            containedPlan = null;
+            CancelContainedPlan();
             return default;
         }
         var completedState = final;
@@ -233,7 +268,7 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
             if (!VanillaNpcDefinitionCatalog.TryGet(before.TypeIdentity, before.NetIdentity, out var definition) ||
                 !definition.TryResolveHitbox(final.Simulation, out var body))
             {
-                containedPlan = null;
+                CancelContainedPlan();
                 return default;
             }
             Span<VanillaNpcRawPlayer1458> players = stackalloc VanillaNpcRawPlayer1458[plan.Players.Length];
@@ -249,7 +284,7 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
             if (!VanillaOrdinarySlimeCheckActive1458.TryStep(final.PositionX, final.PositionY,
                 body.Width, body.Height, final.Simulation.TimeLeft, players, out int lifetime, out bool despawn))
             {
-                containedPlan = null;
+                CancelContainedPlan();
                 return default;
             }
             completedState = final with
@@ -258,12 +293,15 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
             };
             despawnAfterCompletion = despawn;
         }
-        if (!ContainedInputsCurrent(plan) || !plan.Preview.TryAdopt(in accepted, in completedState, out var completed))
+        if (!ContainedInputsCurrent(plan) || !plan.World.TryClaimTileProducer() ||
+            !ContainedInputsCurrent(plan) || !plan.Preview.TryAdopt(in accepted, in completedState, out var completed))
         {
-            containedPlan = null;
+            CancelContainedPlan();
             return default;
         }
         containedPlan = null;
+        plan.Status?.Commit(in completed, completed.TypeIdentity == VanillaNpcIds.BlueSlime &&
+            completed.Ai.Ai1 == VanillaItemIds.Torch.Value && plan.Facts.GoodWorld);
         // These producers cannot stage a child, so adoption above has no external callback.
         // All tile claims were validated first; mutate and publish source20 before the actor's final23.
         plan.World.CommitTileProducer();
@@ -278,7 +316,7 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
 
     private bool ContainedInputsCurrent(ContainedPlan plan)
     {
-        if (containedFacts is null || !plan.World.IsCurrent ||
+        if (containedFacts is null || !plan.World.IsCurrent || plan.Status?.IsCurrent == false ||
             (plan.RawTarget is { } raw && !plan.Context.IsRawPlayerCurrent(in raw)) ||
             (plan.RawTracking is { } tracking && !plan.Context.IsRawPlayerCurrent(in tracking)) ||
             plan.Context.DayTime != plan.DayTime ||
@@ -291,7 +329,7 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
         foreach (var expected in plan.Players)
             if (!plan.Context.TryGetOwnedPlayer(expected.Player.Slot.Value, out var current) || current != expected)
                 return false;
-        return plan.World.IsCurrent;
+        return plan.World.IsCurrent && plan.Status?.IsCurrent != false;
     }
 
     // No selected producer reads LOS or constructor liquid state. Mechanical terrain remains owned

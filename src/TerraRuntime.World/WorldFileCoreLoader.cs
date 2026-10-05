@@ -131,6 +131,7 @@ public static class WorldFileCoreLoader
                 tileResult);
         }
 
+        tiles.MarkCanonicalCobwebFrameNumbersZero();
         world = new WorldFileCore(envelope, header, tiles);
         profile = new WorldFileLoadProfile(
             envelopeAndHeader,

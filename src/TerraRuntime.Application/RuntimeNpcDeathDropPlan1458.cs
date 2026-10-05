@@ -22,9 +22,8 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
     private int nextPhase;
     private bool accepted;
     private bool failed;
-    private bool precedingRemoval;
-    private bool removalPublished;
     private VanillaUnifiedRandom1458? strikePreludeRandom;
+    private bool borrowedAllocation;
 
     public RuntimeNpcDeathDropPlan1458(NpcHandle owner, NpcRevision revision, VanillaUnifiedRandom1458 random)
     {
@@ -40,6 +39,28 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
     public NpcRevision Revision { get; }
     public VanillaUnifiedRandom1458 Random { get; }
     public int Count => count;
+
+    internal RuntimeNpcDeathDropPlan1458? RetainForBatch(RuntimeWorldItemStore liveItems,
+        VanillaUnifiedRandom1458 liveRandom, RuntimeWorldItemStore.AllocationPreview sharedAllocation)
+    {
+        if (!accepted || failed || nextPhase != 0) return null;
+        var retained = new RuntimeNpcDeathDropPlan1458(Owner, Revision, liveRandom);
+        retained.beforeRandom.CopyStateFrom(beforeRandom);
+        retained.Random.CopyStateFrom(Random);
+        retained.count = count;
+        drops.CopyTo(retained.drops, 0);
+        for (int phase = 0; phase < phaseRandom.Length; phase++)
+        {
+            retained.phaseRandom[phase] = phaseRandom[phase]?.Clone();
+            retained.beforePhaseRandom[phase] = beforePhaseRandom[phase]?.Clone();
+        }
+        retained.strikePreludeRandom = strikePreludeRandom?.Clone();
+        foreach (PlannedDrop drop in drops.AsSpan(0, count))
+            if (!sharedAllocation.TrySpawnSource(drop.State, drop.LeaseTicks, out _)) return null;
+        retained.allocation = sharedAllocation; retained.store = liveItems;
+        retained.borrowedAllocation = true; retained.accepted = true;
+        return retained;
+    }
 
     public void RetainStrikePrelude() => strikePreludeRandom = Random.Clone();
 
@@ -85,33 +106,16 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
         return true;
     }
 
-    public bool TryReserve(RuntimeWorldItemStore items, ReadOnlySpan<WorldItemAllocationPlayer1458> players = default,
-        WorldItemSnapshot? removeBeforeDeath = null)
+    public bool TryReserve(RuntimeWorldItemStore items, ReadOnlySpan<WorldItemAllocationPlayer1458> players = default)
     {
         if (failed || nextPhase != phaseRandom.Length || store is not null || accepted ||
             !originalRandom.HasSameState(beforeRandom)) return false;
         allocation = items.CreateAllocationPreview(players);
-        if (removeBeforeDeath is { } removal)
-        {
-            if (!allocation.TryRemoveSource(in removal))
-            { failed = true; allocation.Dispose(); allocation = null; return false; }
-            precedingRemoval = true;
-        }
         foreach (PlannedDrop drop in drops.AsSpan(0, count))
             if (!allocation.TrySpawnSource(drop.State, drop.LeaseTicks, out _))
             { failed = true; allocation.Dispose(); allocation = null; return false; }
         if (!allocation.TryClaim()) { allocation.Dispose(); allocation = null; return false; }
         store = items;
-        return true;
-    }
-
-    // Called after the admitted unpublished lethal strike, before its source packet28.
-    public bool TryPublishPrecedingRemoval()
-    {
-        if (!precedingRemoval) return true;
-        if (failed || !accepted || store is null || nextPhase != 0 || removalPublished ||
-            !originalRandom.HasSameState(beforeRandom) || !allocation!.TryCommitNext(out _, out _)) return false;
-        removalPublished = true;
         return true;
     }
 
@@ -131,7 +135,7 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
     public bool TryPublishPhase(NpcDeathDropPhase1458 phase,
         Func<WorldItemDropReservation, WorldItemDropStateUpdate, PlayerHandle[], int, bool> adoptInstanced)
     {
-        if (failed || !accepted || store is null || (precedingRemoval && !removalPublished) || (int)phase != nextPhase ||
+        if (failed || !accepted || store is null || (int)phase != nextPhase ||
             !originalRandom.HasSameState(beforePhaseRandom[nextPhase]!)) return false;
         while (published < count && drops[published].Phase == phase)
         {
@@ -148,7 +152,8 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
 
     public void Dispose()
     {
-        allocation?.Dispose(); allocation = null; store = null;
+        if (!borrowedAllocation) allocation?.Dispose();
+        allocation = null; store = null;
     }
 
     private readonly record struct PlannedDrop(NpcDeathDropPhase1458 Phase, WorldItemDropStateUpdate State,

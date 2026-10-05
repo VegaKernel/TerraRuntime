@@ -306,6 +306,9 @@ public sealed class VanillaNpcTargetingAiStepper :
         IVanillaSlimeContainedEnvironment1458 environment) =>
         _slimeGround.SetContainedOwner(store, facts, environment);
 
+    internal void SetSlimeStatusOwner(IVanillaSlimeStatusOwner1458 owner) =>
+        _slimeGround.SetContainedStatusOwner(owner);
+
     internal void SetBeeOwner(RuntimeNpcStore store, IVanillaFlyingEyeEnvironment environment)
     {
         _bee.Configure(store, environment, _random);

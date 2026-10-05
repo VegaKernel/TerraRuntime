@@ -55,6 +55,22 @@ internal sealed class RuntimeNpcDeathPrelude1458
     public WorldBestiaryData CaptureBestiary() => new(bestiary.Select(static entry => new WorldBestiaryKill(entry.Key, entry.Value)).ToArray(),
         (string[])sightings.Clone(), (string[])chats.Clone());
 
+    // WorldItem.VoodooDollLavaDeath registers this kill before StrikeNPC, without an interaction gate.
+    internal bool TryRegisterScriptedKill(in NpcSnapshot victim)
+    {
+        if (applied || Revision == ulong.MaxValue ||
+            !VanillaNpcDeathPreludeCatalog1458.TryGet(victim.TypeIdentity, victim.NetIdentity, out var facts)) return false;
+        applied = true;
+        if (VanillaNpcDeathPreludeCatalog1458.IsExcludedBestiaryType(victim.TypeIdentity)) return true;
+        bestiary.TryGetValue(facts.BestiaryCreditId, out int count);
+        if (!bestiary.ContainsKey(facts.BestiaryCreditId) && bestiary.Count == maximumBestiaryKeys) return false;
+        int reported = count + 1;
+        bestiary[facts.BestiaryCreditId] = Math.Min(reported, VanillaNpcDeathPreludeCatalog1458.MaximumBestiaryKills);
+        pendingFrames.Add((null, TerrariaNpcDeathPreludeCodec1458.EncodeBestiaryKill(checked((short)victim.NetId), reported)));
+        Revision++;
+        return true;
+    }
+
     public bool TryApply(in NpcSnapshot dead, in RuntimeNpcDeathPreludeContext1458 context,
         VanillaUnifiedRandom1458 random, out bool allowLoot)
     {

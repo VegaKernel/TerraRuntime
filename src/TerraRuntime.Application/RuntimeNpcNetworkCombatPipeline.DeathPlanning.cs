@@ -63,6 +63,16 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private bool TryAdmitLethalDeath(in NpcSnapshot pending)
     {
         deathAdmissionRejected = false;
+        if (replayingDollDeath is { } retainedDollDeath)
+        {
+            if (pending != retainedDollDeath.Pending) { deathAdmissionRejected = true; return false; }
+            pendingDeathPlan = retainedDollDeath.Plan;
+            plannedDaily = retainedDollDeath.Daily;
+            plannedPrelude = retainedDollDeath.Prelude;
+            plannedPreludeRevision = retainedDollDeath.PreludeRevision;
+            plannedLootAllowed = retainedDollDeath.LootAllowed;
+            return true;
+        }
         if (pendingDeathPlan is not null) { deathAdmissionRejected = true; return false; }
         NpcSnapshot dead = pending;
         if (pending.TypeIdentity == VanillaNpcIds.WallOfFleshEye && TryResolveWallOfFleshRoot(in pending, out var wall))
@@ -88,10 +98,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         plannedGuideName = null;
         plannedDeathSpawnSerial = null;
         if (dead.TypeIdentity == VanillaNpcIds.MotherSlime || dead.TypeIdentity == VanillaNpcIds.Slimer ||
-            guideDollRemoval.HasValue || pendingTownStrike is not null)
+            pendingTownStrike is not null)
         {
             if (!npcs.TryCaptureDeathMutationSerial(out ulong spawnSerial)) return false;
-            if (guideDollNpcSerial is { } expectedSerial && spawnSerial != expectedSerial) return false;
             plannedDeathSpawnSerial = spawnSerial;
         }
         for (int slot = 0; slot < plannedPlayers.Length; slot++)
@@ -175,16 +184,16 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                     (hasClosest && closest.NpcLife.HasValue && closest.DerivedLifeMax.HasValue) || constructorHealthKnown);
             if ((allowLoot && !VanillaNpcHealingLoot1458.TryExecute(in healing, in origin, random, lootDelivery)) ||
                 !plan.FinishPreviewPhase(NpcDeathDropPhase1458.Healing)) return false;
-            if (!TryValidateGuideDollContinuation(in dead, plan.Random)) return false;
             random.UseSource(liveRandom);
             Span<WorldItemAllocationPlayer1458> allocationViews = stackalloc WorldItemAllocationPlayer1458[
                 VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
             if (!TryCaptureAllocationViews(allocationViews, out int viewCount) ||
-                !plan.TryReserve(worldItems, allocationViews[..viewCount], guideDollRemoval) || !plan.TryAccept(IsCurrentDeathOwner)) return false;
+                !plan.TryReserve(worldItems, allocationViews[..viewCount]) || !plan.TryAccept(IsCurrentDeathOwner)) return false;
             plannedDaily = previewDaily;
             plannedPrelude = prelude;
             plannedLootAllowed = allowLoot;
             pendingDeathPlan = plan;
+            captureDollDeath?.Invoke(new(dead, plan, plannedDaily!, prelude, plannedPreludeRevision, allowLoot));
             completed = true;
             return true;
         }
@@ -237,7 +246,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         npcs.TryGet(handle, out var current) && current.Revision == revision && deathPrelude.Revision == plannedPreludeRevision &&
         progression.CaptureSnapshot() == plannedDeathProgression &&
         CaptureGlobalLootWorld() == plannedGlobalLootWorld && IsSpecificLootContextCurrent() &&
-        IsGuideNameCurrent() && ArePlannedPlayersCurrent() &&
+        IsGuideNameCurrent() && ArePlannedPlayersCurrent() && IsCurrentDebuffPrelude() &&
         (plannedDeathSpawnSerial is not { } serial ||
             (npcs.TryCaptureDeathMutationSerial(out ulong currentSerial) && currentSerial == serial)) &&
         (plannedHealingFallback is not { } fallback || rawPlayerSlots!.IsCurrent(in fallback));

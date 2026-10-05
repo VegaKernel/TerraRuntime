@@ -7,7 +7,8 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class RuntimeNpcNetworkCombatPipeline
 {
-    private bool TryApplyServerStrike(in NpcDamageRequest request, out NpcDamageResult result, NpcSnapshot? sharedLifeOwner = null)
+    private bool TryApplyServerStrike(in NpcDamageRequest request, out NpcDamageResult result,
+        NpcSnapshot? sharedLifeOwner = null, NpcDamagePrelude1458? prelude = null)
     {
         if (!npcs.TryGet(request.Target, out var before))
         {
@@ -22,17 +23,15 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         try
         {
             applied = damage.TryApplyUnpublished(in request, out result, out committed, out spawnTrueEye,
-                out forceUpdate, sharedLifeOwner, townStrike?.Reaction);
+                out forceUpdate, sharedLifeOwner, townStrike?.Reaction, prelude);
         }
         finally { pendingTownStrike = null; }
         if (!applied)
             return false;
 
-        // Guide-doll admission claims its source whole-stack removal together with all death drops.
-        // Publish that already accepted removal before StrikeNPC's packet28; no arbitrary callback
-        // participates in admission or can consume the doll on a rejected unknown death dependency.
-        if (guideDollRemoval.HasValue && (pendingDeathPlan is null || !pendingDeathPlan.TryPublishPrecedingRemoval()))
-            throw new InvalidOperationException("Accepted Guide doll death lost its source removal claim.");
+        // Buff expiry belongs before GetHurtByDebuff's actual 9999 StrikeNPC. The prepared
+        // status owner publishes only after the entire lethal operation has been admitted.
+        prelude?.PublishBeforeStrike(committed);
 
         // TerrariaServer 1.4.5.8 StrikeNPC_Inner sends the supplied damage/critical flag, rather than HP damage.
         // SendData takes number2 as float and narrows it to short. The supported net11 Windows execution

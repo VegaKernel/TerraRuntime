@@ -92,7 +92,7 @@ public sealed class SlimeBornTarget1458Tests
         state.Tick();
         Assert.True(npcs.TryGetActive(0, out var actual));
         int item = (int)row.GetProperty("after").GetProperty("ai")[1].GetSingle();
-        if (item is 314 or 150 || item == 8 && good)
+        if (item is 314 or 150)
         {
             AssertState(row.GetProperty("birth"), in actual);
             Assert.Equal(new NpcRevision(1), actual.Revision);

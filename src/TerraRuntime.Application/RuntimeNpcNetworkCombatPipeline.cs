@@ -53,6 +53,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private readonly VanillaPlanteraLootPlayer[] activePlanteraLootPlayers =
         new VanillaPlanteraLootPlayer[VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
     private readonly VanillaNpcLootWorldItemMaterializer materializer;
+    private readonly Func<VanillaSeasonalItemDropContext1458>? seasonalItemContextSource;
     private readonly SystemNpcCombatRandom random;
     private readonly RuntimeNpcLootDelivery1458 lootDelivery;
     private readonly bool expertMode;
@@ -144,6 +145,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         random = new SystemNpcCombatRandom(lootRandom);
         materializer = seasonalItemContext is null ? VanillaNpcLootWorldItemMaterializer.Instance : new(seasonalItemContext);
+        seasonalItemContextSource = seasonalItemContext;
         bossRecoveryDaily = worldClock?.BossRecoveryDailyState ?? new();
         moonLordProjectiles = projectiles;
         moonLordProjectileReplication = projectileReplication;
@@ -589,7 +591,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     }
 
     private RuntimeTownNpcMeleeDamageResult1458 CommitNonPlayerDamage(
-        NpcSnapshot liveTarget, DamageSource source, int baseDamage, float knockBack, int hitDirection)
+        NpcSnapshot liveTarget, DamageSource source, int baseDamage, float knockBack, int hitDirection,
+        NpcDamagePrelude1458? prelude = null)
     {
         if (!CanAcceptBossDeathCapacity(in liveTarget))
             return RuntimeTownNpcMeleeDamageResult1458.Rejected;
@@ -605,7 +608,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             KnockBack: knockBack,
             HitDirection: hitDirection);
         if (!TryApplyServerStrike(in request, out NpcDamageResult result,
-                destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle ? destroyerRoot : null))
+                destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle ? destroyerRoot : null, prelude))
         { CancelPendingDeathPlan(); return RuntimeTownNpcMeleeDamageResult1458.Rejected; }
 
         NpcSnapshot dead;

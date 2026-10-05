@@ -13,12 +13,9 @@ internal sealed partial class VanillaSlimeContainedWorld1458
         private (int X, int Y, bool Checking)? producerLiquid;
         private (int X, int Y)? producerSquare;
         private const int TileSizePixels = 16;
-        private const int IsolatedWebFrameX = 162;
-        private const int IsolatedWebFrameY = 54;
-        private const int FrameStepPixels = 18;
-
-        private bool ProducerIsCurrent() => producerLiquid is not { } claim ||
-            tiles.LiquidUpdates.IsCheckingLiquid(claim.X, claim.Y) == claim.Checking;
+        private bool ProducerIsCurrent() =>
+            (producerLiquid is not { } claim || tiles.LiquidUpdates.IsCheckingLiquid(claim.X, claim.Y) == claim.Checking) &&
+            CobwebPlanIsCurrent();
 
         public bool TryPlanTileProducer(int item, in NpcSnapshot parent,
             IVanillaNpcRandom random, out bool grew)
@@ -58,32 +55,16 @@ internal sealed partial class VanillaSlimeContainedWorld1458
             producerLiquid = (webX, webY, checking);
             // Source still sends20 after a failed dry-check, but performs no framing or tile mutation.
             if (web.LiquidAmount > 0 || checking) return IsCurrent;
-            // General neighboring objects/solids have independent framing and break effects.
-            // Admit this complete isolated frame arm, including all eight inactive-cell cleanups.
-            if (webX <= 6 || webY <= 6 || webX >= tiles.Dimensions.WidthTiles - 6 || webY >= tiles.Dimensions.HeightTiles - 6)
-                return false;
-            for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++)
-            {
-                if (dx == 0 && dy == 0) continue;
-                WorldTile adjacent = tiles.Get(webX + dx, webY + dy);
-                if (adjacent.IsActive || adjacent.LiquidAmount > 0) return false;
-                adjacent.Shape = 0; adjacent.TileColor = 0;
-                adjacent.Flags &= ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock);
-                producerTiles.Add((webX + dx, webY + dy, adjacent));
-            }
-            // PlaceTile clears Tile/TilePaint/Slope, then SquareTileFrame resets only the center bank.
-            web.Type = (ushort)VanillaTileIds.Cobweb.Value; web.Shape = 0; web.TileColor = 0;
-            web.Flags = (web.Flags & ~(WorldTileFlags.InvisibleBlock | WorldTileFlags.FullbrightBlock)) | WorldTileFlags.Active;
-            web.FrameX = (short)(IsolatedWebFrameX + random.NextInt32(0, 3) * FrameStepPixels);
-            web.FrameY = IsolatedWebFrameY;
-            producerTiles.Add((webX, webY, web));
-            return IsCurrent;
+            bool planned = TryPlanCobwebSquare(webX, webY, in web, random);
+            if (!planned) CancelTileProducer();
+            return planned && IsCurrent;
         }
 
         public void CommitTileProducer()
         {
             // The actor/RNG adoption immediately before this call has no callbacks for these two producers.
             foreach (var cell in producerTiles) tiles.Set(cell.X, cell.Y, in cell.Tile);
+            CommitCobwebPlan();
             if (producerSquare is { } square)
                 tileReplication?.TryPublishTileSquareToAll(tiles, square.X, square.Y, 1, 1,
                     VanillaTileChangeType1458.None, respectSectionRange: true);

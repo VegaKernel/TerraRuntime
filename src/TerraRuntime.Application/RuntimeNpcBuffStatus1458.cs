@@ -16,7 +16,7 @@ internal readonly record struct RuntimeNpcBuffPlan1458(NpcSnapshot Expected, ulo
     int LifeAfter, int? CounterAfter, int DotDamage);
 
 // One generation-owned source NPC.maxBuffs table. Preview never emits54, ages live slots or draws RNG.
-internal sealed class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Action<NpcHandle>? buffListChanged = null)
+internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Action<NpcHandle>? buffListChanged = null)
 {
     internal const int Capacity = 20;
     private readonly Entry[] entries = new Entry[RuntimeNpcStore.MaximumAddressableCapacity];
@@ -30,6 +30,9 @@ internal sealed class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Action<NpcH
         internal bool Stinky;
         internal bool PreviousStinky;
         internal RuntimeNpcStinkyVisualOffer1458 VisualOffer;
+        internal int DefinitionType;
+        internal int DefinitionNetId;
+        internal bool TorchImmunity;
     }
 
     internal static RuntimeNpcStinkyVisualOffer1458 PlanVisualOffer(IRuntimeTownNpcCombatRandom1458 random)
@@ -67,7 +70,8 @@ internal sealed class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Action<NpcH
         }
     }
 
-    internal bool TryPlan(in NpcSnapshot before, out RuntimeNpcBuffPlan1458 plan)
+    internal bool TryPlan(in NpcSnapshot before, out RuntimeNpcBuffPlan1458 plan, bool goodWorld = false,
+        bool allowLethal = false)
     {
         plan = default;
         if (!EnsureGeneration(before.Handle) || !npcs.TryGet(before.Handle, out var current) || current != before) return false;
@@ -83,17 +87,29 @@ internal sealed class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Action<NpcH
             if (slots[i].Type > 0 && slots[i].Duration <= 0) { RemoveAt(ref slots, i); expired = true; }
         int life = before.Simulation.Life, damage = 0;
         int? counter = before.Simulation.LifeRegenCounter;
-        if (!before.Simulation.DontTakeDamage && (flags.OnFire || flags.Poisoned))
+        bool torch = before.TypeIdentity == VanillaNpcIds.BlueSlime &&
+            before.Ai.Ai1 == VanillaItemIds.Torch.Value && goodWorld;
+        bool slime = before.TypeIdentity == VanillaNpcIds.BlueSlime || before.TypeIdentity == VanillaNpcIds.LavaSlime;
+        if (slime)
+        {
+            if (!VanillaSlimeRegeneration1458.TryStep(in before, goodWorld, flags.Poisoned, flags.OnFire, out var regen))
+                return false;
+            life = regen.Life;
+            counter = regen.Counter;
+            damage = regen.Damage;
+            if (life <= 0 && !allowLethal) return false;
+        }
+        else if (!before.Simulation.DontTakeDamage && (flags.Poisoned || flags.OnFire && !torch))
         {
             // This owned ordinary branch has no positive regen, acceleration, realLife or dripping modifiers.
             if (!IsDotResident(before.Type) || before.Simulation.Immortal is not { } immortal ||
                 counter is not { } count || count is < -119 or > 119 || before.Simulation.Wet) return false;
-            count -= (flags.Poisoned ? 12 : 0) + (flags.OnFire ? 8 : 0);
+            count -= (flags.Poisoned ? 12 : 0) + (flags.OnFire && !torch ? 8 : 0);
             while (count <= -120) { count += 120; damage++; }
             counter = count;
             if (!immortal) life -= damage;
             // Town death chat/tombstones remain unowned. Reject before slots,54,counters or RNG change.
-            if (life <= 0) return false;
+            if (life <= 0 && !allowLethal) return false;
         }
         plan = new(before, entry.Revision, slots, flags, stinky, expired, life, counter, damage);
         return true;
@@ -129,6 +145,9 @@ internal sealed class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Action<NpcH
         if (duration is < 0 or > short.MaxValue || !EnsureGeneration(handle) || !npcs.TryGet(handle, out var npc) ||
             type != VanillaBuffIds.Stinky && type != VanillaBuffIds.Poisoned && type != VanillaBuffIds.OnFire) return false;
         if (type != VanillaBuffIds.Stinky && !IsDotResident(npc.Type)) return false;
+        if ((npc.TypeIdentity == VanillaNpcIds.BlueSlime || npc.TypeIdentity == VanillaNpcIds.LavaSlime) &&
+            (type == VanillaBuffIds.Poisoned || type == VanillaBuffIds.OnFire && npc.TypeIdentity == VanillaNpcIds.LavaSlime))
+            return true;
         if (type == VanillaBuffIds.Stinky && VanillaNpcStinkyCatalog1458.IsImmune(npc.Type)) return true;
         ref Entry entry = ref entries[handle.Slot];
         if (entry.Revision == ulong.MaxValue) return false;
@@ -217,7 +236,8 @@ internal sealed class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Action<NpcH
     private static bool IsDotResident(int type) => type == VanillaNpcIds.Merchant.Value ||
         type == VanillaNpcIds.Nurse.Value || type == VanillaNpcIds.ArmsDealer.Value ||
         type == VanillaNpcIds.Guide.Value || type == VanillaNpcIds.DyeTrader.Value ||
-        type == VanillaNpcIds.Stylist.Value || type == VanillaNpcIds.TaxCollector.Value;
+        type == VanillaNpcIds.Stylist.Value || type == VanillaNpcIds.TaxCollector.Value ||
+        type == VanillaNpcIds.BlueSlime.Value || type == VanillaNpcIds.LavaSlime.Value;
     private static void ReadFlags(in RuntimeNpcBuffSlots1458 slots, out PlayerDebuffSnapshot1458 flags, out bool stinky)
     {
         bool fire = false, poison = false; stinky = false;
@@ -232,7 +252,17 @@ internal sealed class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Action<NpcH
     internal bool EnsureGeneration(NpcHandle handle)
     {
         if (!npcs.TryGet(handle, out var npc) || !IsSupported(in npc)) return false;
-        if (entries[handle.Slot].Handle != handle) entries[handle.Slot] = new Entry { Handle = handle, Revision = 1 };
+        if (entries[handle.Slot].Handle != handle)
+            entries[handle.Slot] = new Entry { Handle = handle, Revision = 1,
+                DefinitionType = npc.Type, DefinitionNetId = npc.NetId };
+        else if (entries[handle.Slot].DefinitionType != npc.Type || entries[handle.Slot].DefinitionNetId != npc.NetId)
+        {
+            ref Entry entry = ref entries[handle.Slot];
+            entry.DefinitionType = npc.Type;
+            entry.DefinitionNetId = npc.NetId;
+            entry.TorchImmunity = false;
+            if (entry.Revision != ulong.MaxValue) entry.Revision++;
+        }
         return true;
     }
 }

@@ -123,8 +123,8 @@ public sealed class RuntimeNpcDamageExecutor
     // lethal-capacity admission before committing, then let the application publish the accepted strike.
     internal bool TryApplyUnpublished(in NpcDamageRequest request, out NpcDamageResult result,
         out NpcSnapshot committed, out bool spawnTrueEye, out bool forceUpdate, NpcSnapshot? sharedLifeOwner = null,
-        NpcTownStrikeReaction1458? townReaction = null)
-        => TryApplyCore(in request, publish: false, out result, out committed, out spawnTrueEye, out forceUpdate, sharedLifeOwner, townReaction);
+        NpcTownStrikeReaction1458? townReaction = null, NpcDamagePrelude1458? prelude = null)
+        => TryApplyCore(in request, publish: false, out result, out committed, out spawnTrueEye, out forceUpdate, sharedLifeOwner, townReaction, prelude);
 
     internal bool TryApplyClient(in NpcDamageRequest request, NpcSnapshot? sharedLifeOwner, out NpcDamageResult result,
         NpcTownStrikeReaction1458? townReaction = null)
@@ -147,7 +147,7 @@ public sealed class RuntimeNpcDamageExecutor
 
     private bool TryApplyCore(in NpcDamageRequest request, bool publish, out NpcDamageResult result,
         out NpcSnapshot committedSnapshot, out bool spawnTrueEye, out bool forceUpdate, NpcSnapshot? sharedLifeOwner = null,
-        NpcTownStrikeReaction1458? townReaction = null)
+        NpcTownStrikeReaction1458? townReaction = null, NpcDamagePrelude1458? prelude = null)
     {
         committedSnapshot = default;
         spawnTrueEye = false;
@@ -156,6 +156,17 @@ public sealed class RuntimeNpcDamageExecutor
         {
             result = default;
             return false;
+        }
+
+        if (prelude is not null)
+        {
+            var prepared = new NpcStateUpdate(current.Type, current.NetId, current.PositionX,
+                current.PositionY, current.VelocityX, current.VelocityY, current.Target, current.Ai, prelude.Simulation);
+            if (prelude.Before != current || sharedLifeOwner is not null || prelude.Simulation.Life != 1 ||
+                prelude.Simulation.LifeMax != current.Simulation.LifeMax ||
+                !RuntimeNpcStore.IsValid(in prepared) || !prelude.IsCurrent())
+            { result = default; return false; }
+            current = current with { Simulation = prelude.Simulation };
         }
 
         if (sharedLifeOwner is { } owner &&
@@ -304,6 +315,11 @@ public sealed class RuntimeNpcDamageExecutor
         if (townReaction is { } guardedReaction &&
             (guardedReaction.SourceRandom is null || guardedReaction.BeforeRandom is null ||
              !guardedReaction.SourceRandom.HasSameState(guardedReaction.BeforeRandom)))
+        { result = default; return false; }
+
+        if (prelude is not null &&
+            (!prelude.IsCurrent() || !_store.TryGet(prelude.Before.Handle, out var retainedPrelude) ||
+             retainedPrelude != prelude.Before))
         { result = default; return false; }
 
         bool updated = publish

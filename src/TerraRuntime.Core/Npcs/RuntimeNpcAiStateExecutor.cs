@@ -13,6 +13,13 @@ public interface INpcAiStateStepper
     bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next);
 }
 
+// NPC.UpdateNPC can complete a source-owned lethal buff transition before entering AI.
+// A consumed prepass has already admitted and committed the whole death operation.
+internal interface INpcAiPrepass1458
+{
+    bool TryRunPrepass(in NpcSnapshot npc, out bool consumed);
+}
+
 /// <summary>Receives an immutable active-NPC view immediately before each authoritative AI step.</summary>
 public interface INpcAiPeerSnapshotConsumer
 {
@@ -89,6 +96,7 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
         int proposed = 0;
         int applied = 0;
         int rejected = 0;
+        INpcAiPrepass1458? prepass = NpcAiStateStepperComposition.FindCapability<INpcAiPrepass1458>(stepper);
         INpcAiSpawnIntentPlanner? spawnPlanner =
             NpcAiStateStepperComposition.FindCapability<INpcAiSpawnIntentPlanner>(stepper);
         INpcAiProjectileIntentPlanner? projectilePlanner = _projectiles is null
@@ -113,6 +121,20 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
             if (!_npcs.TryGetActive(checked((byte)slot), out NpcSnapshot npc))
                 continue;
             examined++;
+            if (prepass is not null)
+            {
+                if (!prepass.TryRunPrepass(in npc, out bool consumed))
+                {
+                    rejected++;
+                    continue;
+                }
+                if (consumed)
+                {
+                    proposed++;
+                    applied++;
+                    continue;
+                }
+            }
             if (peerConsumer is not null)
             {
                 // A bounded full view keeps existing peer consumers coherent with earlier slot effects.

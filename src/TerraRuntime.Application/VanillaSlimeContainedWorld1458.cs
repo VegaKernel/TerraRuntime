@@ -1,12 +1,15 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core.Npcs;
+using TerraRuntime.Core.Worlds;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Application;
 
 internal sealed partial class VanillaSlimeContainedWorld1458(WorldTileStore tiles,
-    RuntimeTileManipulationReplicationRegistry? tileReplication = null) : IVanillaSlimeContainedEnvironment1458
+    RuntimeTileManipulationReplicationRegistry? tileReplication = null,
+    RuntimeWorldItemStore? worldItems = null,
+    RuntimeNpcStore? protectionNpcs = null) : IVanillaSlimeContainedEnvironment1458
 {
     public bool TryCapture(in NpcSnapshot parent, in VanillaNpcTargetCandidate target,
         out IVanillaSlimeContainedWorld1458 world)
@@ -45,7 +48,7 @@ internal sealed partial class VanillaSlimeContainedWorld1458(WorldTileStore tile
                 return false;
             versions[index] = version;
         }
-        var captured = new CapturedWorld(tiles, first, columns, versions, tileReplication,
+        var captured = new CapturedWorld(tiles, first, columns, versions, tileReplication, worldItems, protectionNpcs,
             VanillaWorldCanHit.HasLineOfSight(tiles, parent.PositionX, parent.PositionY, body.Width, body.Height,
                 target.CenterX - target.Width * .5f, target.CenterY - target.Height * .5f,
                 (int)target.Width, (int)target.Height));
@@ -54,7 +57,8 @@ internal sealed partial class VanillaSlimeContainedWorld1458(WorldTileStore tile
     }
 
     private sealed partial class CapturedWorld(WorldTileStore tiles, WorldSectionId first, int columns,
-        long[] versions, RuntimeTileManipulationReplicationRegistry? tileReplication,
+        long[] versions, RuntimeTileManipulationReplicationRegistry? tileReplication, RuntimeWorldItemStore? worldItems,
+        RuntimeNpcStore? protectionNpcs,
         bool canHit) : IVanillaSlimeContainedWorld1458
     {
         public bool CanHit => canHit;

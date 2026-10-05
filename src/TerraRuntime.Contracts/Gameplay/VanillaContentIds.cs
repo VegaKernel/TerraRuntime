@@ -458,6 +458,14 @@ public static class VanillaItemIds
     public static readonly ItemTypeId DirtBlock = new(2);
     public static readonly ItemTypeId StoneBlock = new(3);
     public static readonly ItemTypeId Torch = new(8);
+    public static readonly ItemTypeId LifeCrystal = new(29);
+    public static readonly ItemTypeId Hellstone = new(174);
+    public static readonly ItemTypeId CobaltOre = new(364);
+    public static readonly ItemTypeId MythrilOre = new(365);
+    public static readonly ItemTypeId AdamantiteOre = new(366);
+    public static readonly ItemTypeId PalladiumOre = new(1104);
+    public static readonly ItemTypeId OrichalcumOre = new(1105);
+    public static readonly ItemTypeId TitaniumOre = new(1106);
     public static readonly ItemTypeId IceCream = new(4026);
     public static readonly ItemTypeId Gel = new(23);
     public static readonly ItemTypeId WoodenBow = new(39);

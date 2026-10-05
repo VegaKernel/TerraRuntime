@@ -19,6 +19,21 @@ public sealed class RuntimeNpcPlayerInteractionLedger
         _store = store ?? throw new ArgumentNullException(nameof(store));
     }
 
+    internal bool CopyDeathPreviewTo(RuntimeNpcPlayerInteractionLedger target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        foreach (var entry in _interactions)
+            if (_store.TryGet(entry.Key, out _))
+            {
+                if (!target._store.TryGet(entry.Key, out _)) return false;
+                target._interactions[entry.Key] = entry.Value;
+            }
+        foreach (var entry in _lastInteraction)
+            if (_store.TryGet(entry.Value.Handle, out _) && target._store.TryGet(entry.Value.Handle, out _))
+                target._lastInteraction[entry.Key] = entry.Value;
+        return true;
+    }
+
     public bool TryMark(NpcHandle npc, PlayerHandle player)
     {
         if (!npc.IsAssigned ||

@@ -14,6 +14,7 @@
 
 ## Руководства по подсистемам и инженерным правилам
 
+- [Инвентаризация идентификаторов NPC оригинала](npc-source-inventory-1458.md)
 - [Управляемый контекст здоровья NPC и физические эффекты](npc-owned-health-and-producers-1458.md) — часы удалённого здоровья, целая допущенная операция куклы Гида и исходное размещение травы/паутины.
 
 - [Сеть и протокол](networking-protocol.md) — framing, connection policy, граница Multiplicity, queues, rate accounting, stop reasons и join traffic.

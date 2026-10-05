@@ -5,7 +5,7 @@ namespace TerraRuntime.World;
 /// This matches vanilla .wld traversal order, keeping load/save scans sequential without dictating packet-section layout.
 /// Mutable access is intended for the authoritative game thread.
 /// </summary>
-public sealed class WorldTileStore
+public sealed partial class WorldTileStore
 {
     private readonly WorldTile[] _tiles;
     private readonly long[] _sectionVersions;
@@ -92,6 +92,7 @@ public sealed class WorldTileStore
         // thread remains the only writer, while asynchronous snapshot consumers can detect a concurrent edit.
         Interlocked.Increment(ref _sectionVersions[sectionIndex]);
         _tiles[index] = tile;
+        InvalidateCobwebFrameNumber(index, in tile);
         Interlocked.Increment(ref _sectionVersions[sectionIndex]);
         DirtySections.MarkDirty(section);
         PersistenceDirtySections.MarkDirty(section);

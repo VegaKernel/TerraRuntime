@@ -29,13 +29,14 @@ public sealed class GuideVoodooDoll1458Tests
     }
 
     [Fact]
-    public void Multiple_Guides_remain_unconsumed_until_shared_multi_death_transaction_is_owned()
+    public void Unowned_second_Guide_name_fences_the_whole_multi_death_operation()
     {
         var f = new Fixture();
         var first = f.Npc(22);
         var second = f.Npc(22);
         var merchant = f.Npc(17);
         var doll = f.Doll();
+        Assert.Equal("", f.CaptureName(first)); Assert.Null(f.CaptureName(second));
         f.State.Tick();
         Assert.True(f.Items.TryGetActive(doll.Handle.Slot, out _));
         Assert.True(f.Npcs.TryGet(first.Handle, out _));
@@ -45,15 +46,34 @@ public sealed class GuideVoodooDoll1458Tests
     }
 
     [Fact]
-    public void Later_town_victim_stack_is_fenced_before_Guide_or_doll_mutation()
+    public void Real_tick_loaded_named_Guides_both_die_with_one_in_loop_Wall_and_two_caps()
+    {
+        var f = new Fixture(loadedGuides: 2, loadedName: "Andrew");
+        var guides = f.ActiveNpcs(); Assert.Equal(2, guides.Length);
+        foreach (var guide in guides) Assert.Equal("Andrew", f.CaptureName(guide));
+        var doll = f.Doll(); f.Events.Clear(); f.State.Tick();
+        Assert.False(f.Items.TryGetActive(doll.Handle.Slot, out var item) && item.Handle == doll.Handle);
+        foreach (var guide in guides) Assert.False(f.Npcs.TryGet(guide.Handle, out _));
+        Assert.Single(f.ActiveNpcs(), npc => npc.TypeIdentity == VanillaNpcIds.WallOfFlesh);
+        var items = new WorldItemSnapshot[f.Items.Capacity]; int count = f.Items.CopyActive(items);
+        Assert.Equal(2, count); Assert.All(items[..count], cap => Assert.Equal(VanillaItemIds.GreenCap.Value, cap.ItemNetId));
+        int firstDeath = f.Events.IndexOf("npc:Despawn:22"), lastDeath = f.Events.LastIndexOf("npc:Despawn:22");
+        int wall = f.Events.IndexOf("npc:Spawn:113");
+        Assert.True(firstDeath < wall && wall < lastDeath);
+        Assert.Equal("item:Remove:267", f.Events.First(e => e.StartsWith("item:", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void Real_tick_accepts_owned_Guide_and_later_town_victim_as_one_whole_operation()
     {
         var f = new Fixture(); var guide = f.Npc(22); var merchant = f.Npc(17); var doll = f.Doll(2);
         f.Events.Clear(); f.State.Tick();
-        Assert.True(f.Items.TryGetActive(doll.Handle.Slot, out _));
-        Assert.True(f.Npcs.TryGet(guide.Handle, out var retained)); Assert.Equal(guide.Simulation.Life, retained.Simulation.Life);
-        Assert.True(f.Npcs.TryGet(merchant.Handle, out retained)); Assert.Equal(merchant.Simulation.Life, retained.Simulation.Life);
-        Assert.DoesNotContain("item:Remove:267", f.Events);
-        Assert.DoesNotContain(f.ActiveNpcs(), n => n.Type == 113);
+        Assert.False(f.Items.TryGetActive(doll.Handle.Slot, out _));
+        Assert.False(f.Npcs.TryGet(guide.Handle, out _)); Assert.False(f.Npcs.TryGet(merchant.Handle, out _));
+        Assert.Equal("item:Remove:267", f.Events.First(e => e.StartsWith("item:", StringComparison.Ordinal)));
+        Assert.True(f.Events.IndexOf("npc:Despawn:22") < f.Events.IndexOf("npc:Spawn:113"));
+        Assert.True(f.Events.IndexOf("npc:Spawn:113") < f.Events.IndexOf("npc:Despawn:17"));
+        Assert.Single(f.ActiveNpcs(), n => n.Type == 113);
     }
 
     [Fact]
@@ -161,12 +181,21 @@ public sealed class GuideVoodooDoll1458Tests
         public RuntimeWorldItemStore Items { get; }
         public ServerRuntimeState State { get; }
         private readonly int poolY;
-        private readonly RuntimeTownNpcStateStore town = new(new WorldNpcPersistence([], [], []), [], new(400, 400));
-        public Fixture(int poolY = 250, WorldLiquidKind liquid = WorldLiquidKind.Lava, bool known = true)
+        private readonly RuntimeTownNpcStateStore town;
+        public Fixture(int poolY = 250, WorldLiquidKind liquid = WorldLiquidKind.Lava, bool known = true,
+            int loadedGuides = 0, string loadedName = "")
         {
             this.poolY = poolY;
             Npcs = new RuntimeNpcStore(commitSink: this);
             Items = new RuntimeWorldItemStore(this);
+            var identities = new WorldTownNpc[loadedGuides];
+            for (int i = 0; i < loadedGuides; i++)
+            {
+                Assert.True(Npcs.TrySpawn((byte)i, new(22, 22, 800, 800, 0, 0, 255, default,
+                    NpcSimulationState.Initial), out _));
+                identities[i] = new(22, loadedName, 800, 800, true, 0, 0, null, false);
+            }
+            town = new(new([], identities, []), [], new(400, 400));
             var tiles = new WorldTileStore(new WorldDimensions(400, 400));
             for (int x = 150; x <= 170; x++)
             for (int y = poolY - 3; y <= poolY + 8; y++)
@@ -185,6 +214,7 @@ public sealed class GuideVoodooDoll1458Tests
                 Assert.True(town.TryAdoptRescuedResident(npc.Handle.Slot, new(type), in npc));
             return npc;
         }
+        public string? CaptureName(NpcSnapshot npc) => town.CaptureResidentName(npc.Handle);
         public WorldItemSnapshot Doll(short stack = 1, byte owner = 255, float? y = null, short type = 267)
         {
             var update = new WorldItemStateUpdate(2560, y ?? poolY * 16, 0, 0, stack, 0, WorldItemOwnershipMode.None,

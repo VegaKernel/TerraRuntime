@@ -10,6 +10,30 @@ public sealed class WorldFileCoreLoaderTests
     private const int HeaderEnd = 240;
 
     [Fact]
+    public void Canonical_load_establishes_cobweb_bank_zero_but_imports_and_equal_writes_do_not()
+    {
+        // The runtime bank is absent from .wld. Source clearWorld/LoadWorldTiles establishes
+        // zero for active cobwebs and inactive future placements; arbitrary tile copies do not.
+        byte[] file = CreateCurrentCoreWorld([0x02, 51, 0x40, 0x01, 0x40, 0x02]);
+        Assert.Equal(WorldFileCoreLoadResult.Loaded,
+            WorldFileCoreLoader.TryLoad(file, maxTileCount: 6, out var world).Result);
+        Assert.NotNull(world);
+        Assert.True(world.Tiles.TryGetCobwebFrameNumber(0, 0, out byte active));
+        Assert.Equal(0, active);
+        Assert.True(world.Tiles.TryGetCobwebPlacementFrameNumber(0, 1, out byte inactive));
+        Assert.Equal(0, inactive);
+
+        var imported = new WorldTileStore(new(2, 3));
+        world.Tiles.Tiles.CopyTo(imported.Tiles);
+        Assert.False(imported.TryGetCobwebFrameNumber(0, 0, out _));
+        Assert.False(imported.TryGetCobwebPlacementFrameNumber(0, 1, out _));
+        var before = world.Tiles.Get(0, 1);
+        world.Tiles.Set(0, 1, in before);
+        Assert.False(world.Tiles.TryGetCobwebPlacementFrameNumber(0, 1, out _));
+        Assert.True(world.Tiles.TryGetCobwebFrameNumber(0, 0, out _));
+    }
+
+    [Fact]
     public void Loads_verified_header_and_complete_tile_store_atomically()
     {
         byte[] file = CreateCurrentCoreWorld([0x40, 0x02, 0x40, 0x02]);

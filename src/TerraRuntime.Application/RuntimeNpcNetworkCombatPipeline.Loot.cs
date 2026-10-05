@@ -19,6 +19,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
     private void ExecuteNpcDeathHitEffects(in NpcSnapshot npc)
     {
+        VanillaTownNpcDeathHitEffect1458.ConsumeLethalChoices(npc.TypeIdentity, random);
         // Both Eskimo identities choose a death gore variant on the dedicated server.
         if (npc.TypeIdentity.Value is 186 or 432) random.NextInt32(0, 2);
         if (npc.TypeIdentity == VanillaNpcIds.Bee || npc.TypeIdentity == VanillaNpcIds.SmallBee)

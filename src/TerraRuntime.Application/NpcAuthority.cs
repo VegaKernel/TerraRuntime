@@ -289,7 +289,8 @@ internal sealed partial class NpcAuthority
                 vanillaTargeting.SetFlyingEyeEnvironment(flyingEyeEnvironment);
                 vanillaTargeting.SetBeeOwner(npcs, flyingEyeEnvironment);
                 vanillaTargeting.SetSlimeContainedOwner(npcs, CaptureSlimeContainedFacts,
-                    new VanillaSlimeContainedWorld1458(worldTiles, tileManipulationReplication));
+                    new VanillaSlimeContainedWorld1458(worldTiles, tileManipulationReplication, worldItems, npcs));
+                vanillaTargeting.SetSlimeStatusOwner(npcBuffStatus);
                 vanillaTargeting.SetEverscreamEnvironment(flyingEyeEnvironment);
                 vanillaTargeting.SetQueenBeeEnvironment(new VanillaQueenBeeWorldEnvironment(
                     worldTiles,
@@ -329,7 +330,8 @@ internal sealed partial class NpcAuthority
                 identities: archetypeIdentities);
         }
         aiStepper = new RuntimeNpcBuffAiStepper1458(aiStepper, npcBuffStatus, this.naturalSpawnRandom,
-            worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false);
+            worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false,
+            retainedSlimeStatuses: worldTiles is not null, debuffDeath: combat.TryStrikeSlimeDebuffDeath);
     }
 
     public RuntimeNpcShopCatalogRegistry Shops => shops;
