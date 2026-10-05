@@ -149,7 +149,8 @@ A non-trivial change is not done until the relevant checks are green:
 
 - build with warnings as errors;
 - focused unit/integration regression test;
-- existing test suite;
+- mandatory fast tier plus complete matrices for affected domains (`tools/ci/run_test_tiers.py`); shared contracts/RNG/fixtures, unknown changes or unavailable comparison history require the unfiltered full fallback;
+- unfiltered full suite before releases, new broad vanilla support or parity acceptance checkpoints, and on scheduled/manual full-test gates; tier-selection tooling changes require its regression tests and partition/filter validation against discovery;
 - Linux NativeAOT publish + exercised smoke path;
 - Windows NativeAOT publish + exercised smoke path;
 - independent verification when the change is protocol/gameplay/world-format shaped;

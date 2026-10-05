@@ -1,0 +1,67 @@
+name: Full Tests
+
+on:
+  push:
+    tags: ['v*']
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terra-runtime-full-tests-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  full-tests:
+    name: Full tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Test CI tools
+        run: python -m unittest discover -s tools/ci -p "test_*.py"
+
+      - name: Validate bilingual documentation
+        run: python tools/ci/check_documentation.py
+
+      - name: Setup .NET 11
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Restore
+        run: dotnet restore build/TerraRuntime.slnx
+
+      - name: Build
+        run: dotnet build build/TerraRuntime.slnx -c Release --no-restore
+
+      - name: Full tests
+        run: python tools/ci/run_test_tiers.py --tier full --output-dir artifacts/test-tiers/full
+
+      - name: Upload full test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraruntime-full-tests-${{ matrix.os }}-${{ github.sha }}
+          path: artifacts/test-tiers/full
+          if-no-files-found: warn
+          retention-days: 14

@@ -20,12 +20,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
-      - name: Test documentation checker
-        run: python3 tools/ci/test_check_documentation.py
-
-      - name: Test gameplay acceptance tools
-        run: python3 -m unittest discover -s tools/ci -p test_gameplay_acceptance_tools.py
+      - name: Test CI tools
+        run: python3 -m unittest discover -s tools/ci -p "test_*.py"
 
       - name: Validate bilingual documentation
         run: python3 tools/ci/check_documentation.py
@@ -41,8 +40,22 @@ jobs:
       - name: Build
         run: dotnet build build/TerraRuntime.slnx -c Release --no-restore
 
-      - name: Test
-        run: dotnet test tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build
+      - name: Fast tests
+        run: python3 tools/ci/run_test_tiers.py --tier fast --output-dir artifacts/test-tiers/fast
+
+      - name: Tests affected by this change
+        env:
+          TEST_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: python3 tools/ci/run_test_tiers.py --tier affected --base "$TEST_BASE_SHA" --output-dir artifacts/test-tiers/affected
+
+      - name: Upload test tier evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraruntime-test-tiers-linux-${{ github.sha }}
+          path: artifacts/test-tiers
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Authoritative loop smoke
         run: dotnet run --project src/TerraRuntime/TerraRuntime.csproj -c Release --no-build -- --loop-smoke

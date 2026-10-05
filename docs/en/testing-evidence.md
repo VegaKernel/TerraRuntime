@@ -26,7 +26,7 @@ dotnet build build/TerraRuntime.slnx -c Release -warnaserror
 dotnet run --project tests/TerraRuntime.Tests/TerraRuntime.Tests.csproj -c Release --no-build -- -noLogo -method "*VanillaNpcAi17_20_21Tests*" -method "*VanillaNpcAiCoverageCatalogTests*"
 ```
 
-The NPC source-contract workflow previously ran the full suite despite its VSTest filter and failed on an unrelated dashboard timing assertion. All twelve filtered workflows now use the native runner; their selectors were compared with complete discovery to verify both nonempty results and the intended substring scope. Stale source paths and renamed test selectors were updated as part of that repair. The main CI job still runs the complete suite.
+The NPC source-contract workflow previously ran the full suite despite its VSTest filter and failed on an unrelated dashboard timing assertion. All twelve filtered workflows now use the native runner; their selectors were compared with complete discovery to verify both nonempty results and the intended substring scope. Stale source paths and renamed test selectors were updated as part of that repair. Main CI now runs mandatory fast and affected tiers; the complete suite has separate full-test gates.
 
 The historical one-shot Skeletron migration runs only through `workflow_dispatch`. It reapplies an old port and rewrites a feature branch, so editing its workflow file does not start that migration automatically.
 
@@ -48,6 +48,31 @@ Secondary implementations never override verified current official behavior. Dec
 A roadmap `[x]` means the claim is verified on `main` by implementation plus tests/CI or equivalent executable proof.
 
 A type/interface existing, a successful compile, a stub, a self-round-trip, an incomplete architectural layer or code that merely resembles decompiled source is not enough. Foundation-only work remains `[ ]`.
+
+### Test tiers
+
+After a Release build, ordinary changes require the fast tier and complete matrices for affected domains:
+
+```sh
+python tools/ci/run_test_tiers.py --tier fast --output-dir artifacts/test-tiers/fast
+python tools/ci/run_test_tiers.py --tier affected --base <comparison-commit> --output-dir artifacts/test-tiers/affected
+```
+
+The audited manifest `tools/ci/test_tiers.json` excludes 166 expensive methods from fast execution, with explicit dependency domains. No tests or golden rows are deleted or sampled. Every selected method runs all its rows; new methods automatically join the fast tier. Missing manifest methods fail selection. Changed source/test ownership selects the union of complete domain matrices; unknown paths, shared contracts, RNG, materialization/allocation, fixtures, configuration or missing Git history require an unfiltered full fallback. Staged, unstaged and untracked paths are included. Documentation-only changes need fast execution but no additional matrices. `--changed-path` supports explicit local diagnostic selection; CI uses `--base`. `--dry-run` records selection without claiming test acceptance.
+
+On the unchanged `afa4f17f` gameplay baseline, fast runs 15,589 cases: 15,588 passed, zero failures/errors and the one existing liquid skip. Runner time is $37.685\,\mathrm{s}$; measured process wall time is $39.069\,\mathrm{s}$. The prior full run on the same source passed 1,553,881 of 1,553,882 cases in $537.539\,\mathrm{s}$ runner time. These are local observations, not a guarantee for other machines or affected domains; broad gameplay changes may still select nearly the full suite.
+
+Run the unfiltered full suite before releases, broad vanilla support additions and parity acceptance checkpoints:
+
+The hardened runner also passed a repeat fast run in $47.715\,\mathrm{s}$ process wall time and a real world-generation selection: 83 complete methods, 81,041 passed cases, zero failures/errors/skips, $389.024\,\mathrm{s}$ wall time. All 49 CI-tool regression tests passed. Independent checks confirmed that moved heavy tests remain selected and truncated XML is rejected; XML is read through completion with bounded memory, count arithmetic and exact allowed skip identity checks.
+
+```sh
+python tools/ci/run_test_tiers.py --tier full --output-dir artifacts/test-tiers/full
+```
+
+Main CI runs fast plus affected tests. Full Tests runs daily at 02:30 UTC, manually, on `v*` tags and after release publication on Linux and Windows. The publication event is a backstop: the pre-release local full gate remains mandatory. NativeAOT/CoreCLR publishing and smoke gates remain unchanged. The gameplay architecture workflow retains domain/graph audits and loop smoke while main CI owns affected xUnit matrices.
+
+Each tier writes `plan.json` and `result.json`; executed tiers also write `tests.xml` and `tests.log`. Acceptance requires successful runner exit, a nonempty assembly summary, zero failures/errors and at most the existing one skip. No-matrix and dry-run results explicitly record `executed: false`. Fast/affected success establishes bounded regression coverage, not full vanilla parity.
 
 ## 4. Build and test baseline
 

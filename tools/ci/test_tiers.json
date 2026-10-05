@@ -1,0 +1,2007 @@
+{
+  "version": 1,
+  "baseline_commit": "afa4f17f745495538dc85ea78f1b037e00a215d4",
+  "baseline_source_sha256": "2f87739d3ef28db23bc039976a88a2d34af3647d7abe94f8aa84108323d357d4",
+  "baseline_cases": 1553882,
+  "baseline_fast_cases": 15589,
+  "classification": "Audited baseline methods with >=256 rows or >=2 summed seconds; exact method exclusions, no row sampling. New methods stay in fast until explicitly reviewed.",
+  "maximum_existing_skips": 1,
+  "allowed_skipped_tests": [
+    "TerraRuntime.Tests.SourceBackedFinal1458Tests.Settle_liquids_again_canonical_multi_basin_matches_official_passlegacy"
+  ],
+  "domains": [
+    "npc_ai",
+    "npc_loot",
+    "npc_creation",
+    "players",
+    "town",
+    "items",
+    "worldgen",
+    "world",
+    "infrastructure"
+  ],
+  "full_paths": [
+    "src/TerraRuntime.Contracts/**",
+    "src/**/*Random*.cs",
+    "src/**/*Materializ*.cs",
+    "src/**/*Allocation*.cs",
+    "tests/TerraRuntime.Tests/Fixtures/**",
+    "tests/**/*.csproj",
+    "tests/**/Program.cs",
+    "tests/**/*.json",
+    "tools/ci/*test*tier*",
+    "tools/ci/test_tiers.json",
+    ".github/**",
+    "build/**",
+    "global.json",
+    "Directory.*",
+    "AGENTS.md",
+    "src/**/AGENTS.md",
+    ".git*"
+  ],
+  "ignored_paths": [
+    "docs/**",
+    "README*",
+    "LICENSE*",
+    "*.md"
+  ],
+  "routes": [
+    {
+      "paths": [
+        "src/TerraRuntime.WorldGeneration/**"
+      ],
+      "domains": [
+        "worldgen",
+        "infrastructure"
+      ]
+    },
+    {
+      "paths": [
+        "src/TerraRuntime.Gameplay/Npcs/Loot/**",
+        "src/TerraRuntime.Gameplay/Npcs/*Loot*.cs",
+        "src/TerraRuntime.Application/RuntimeNpcNetworkCombatPipeline*.cs"
+      ],
+      "domains": [
+        "npc_loot",
+        "npc_creation",
+        "players",
+        "town",
+        "items",
+        "world",
+        "infrastructure"
+      ]
+    },
+    {
+      "paths": [
+        "src/TerraRuntime.Gameplay/Npcs/**",
+        "src/TerraRuntime.Core/Npcs/**",
+        "src/TerraRuntime.Application/*Npc*.cs"
+      ],
+      "domains": [
+        "npc_ai",
+        "npc_loot",
+        "npc_creation",
+        "players",
+        "town",
+        "items",
+        "world"
+      ]
+    },
+    {
+      "paths": [
+        "src/TerraRuntime.Gameplay/Items/**",
+        "src/TerraRuntime.Application/*WorldItem*.cs",
+        "src/TerraRuntime.Core/*WorldItem*.cs",
+        "src/TerraRuntime.Core/WorldItems/**"
+      ],
+      "domains": [
+        "npc_ai",
+        "npc_loot",
+        "npc_creation",
+        "players",
+        "town",
+        "items",
+        "world"
+      ]
+    },
+    {
+      "paths": [
+        "src/TerraRuntime.Gameplay/Players/**",
+        "src/TerraRuntime.Core/Players/**",
+        "src/TerraRuntime.Application/*Player*.cs"
+      ],
+      "domains": [
+        "npc_ai",
+        "npc_loot",
+        "npc_creation",
+        "players",
+        "town",
+        "items",
+        "world"
+      ]
+    },
+    {
+      "paths": [
+        "src/TerraRuntime.World/**"
+      ],
+      "domains": [
+        "npc_ai",
+        "npc_loot",
+        "npc_creation",
+        "players",
+        "town",
+        "items",
+        "worldgen",
+        "world",
+        "infrastructure"
+      ]
+    },
+    {
+      "paths": [
+        "src/TerraRuntime.Network/**",
+        "src/TerraRuntime.Transport/**",
+        "src/TerraRuntime.Schematics/**",
+        "src/TerraRuntime.Protocol*/**"
+      ],
+      "domains": [
+        "npc_ai",
+        "npc_loot",
+        "npc_creation",
+        "players",
+        "town",
+        "items",
+        "worldgen",
+        "world",
+        "infrastructure"
+      ]
+    }
+  ],
+  "heavy_methods": [
+    {
+      "method": "TerraRuntime.Tests.BannerClosest1458Tests.Actual_banner_boundary_matches_original_squared_float_body_dead_ghost_and_ties",
+      "file": "tests/TerraRuntime.Tests/BannerClosest1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "players"
+      ],
+      "baseline_cases": 256,
+      "baseline_summed_seconds": 0.62835
+    },
+    {
+      "method": "TerraRuntime.Tests.BeeRawAi0051458Tests.Original_AI005_and_UpdateNPC_use_None_player_or_non_bee_NPC_targets",
+      "file": "tests/TerraRuntime.Tests/BeeRawAi0051458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "world",
+        "npc_creation"
+      ],
+      "baseline_cases": 5424,
+      "baseline_summed_seconds": 8.302946
+    },
+    {
+      "method": "TerraRuntime.Tests.BigMimicAi1458Tests.Complete_original_AI_matches_all_phases_and_random_checkpoint",
+      "file": "tests/TerraRuntime.Tests/BigMimicAi1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_creation",
+        "players",
+        "items"
+      ],
+      "baseline_cases": 409408,
+      "baseline_summed_seconds": 11.642283
+    },
+    {
+      "method": "TerraRuntime.Tests.BigMimicAi1458Tests.Default_reflection_predicate_matches_every_original_projectile_identity",
+      "file": "tests/TerraRuntime.Tests/BigMimicAi1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "items"
+      ],
+      "baseline_cases": 1135,
+      "baseline_summed_seconds": 0.010728
+    },
+    {
+      "method": "TerraRuntime.Tests.BigMimicAi1458Tests.Original_two_slot_reflection_has_exact_old_velocity_and_nonfinite_source_outcomes",
+      "file": "tests/TerraRuntime.Tests/BigMimicAi1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "items"
+      ],
+      "baseline_cases": 2304,
+      "baseline_summed_seconds": 0.023886
+    },
+    {
+      "method": "TerraRuntime.Tests.BigMimicWorldExecution1458Tests.Retained_whole_AI_then_dry_physics_matches_original_UpdateNPC",
+      "file": "tests/TerraRuntime.Tests/BigMimicWorldExecution1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_creation",
+        "players",
+        "world",
+        "items"
+      ],
+      "baseline_cases": 2880,
+      "baseline_summed_seconds": 3.567514
+    },
+    {
+      "method": "TerraRuntime.Tests.BlueSlimeSpawnDefaults1458Tests.Pure_defaults_match_actual_original_spawn_overrides",
+      "file": "tests/TerraRuntime.Tests/BlueSlimeSpawnDefaults1458Tests.cs",
+      "domains": [
+        "npc_creation",
+        "npc_loot"
+      ],
+      "baseline_cases": 4608,
+      "baseline_summed_seconds": 0.051888
+    },
+    {
+      "method": "TerraRuntime.Tests.BlueSlimeSpawnDefaults1458Tests.Store_materializes_owned_body_combat_money_and_source_creation_rng",
+      "file": "tests/TerraRuntime.Tests/BlueSlimeSpawnDefaults1458Tests.cs",
+      "domains": [
+        "npc_creation",
+        "npc_loot"
+      ],
+      "baseline_cases": 2304,
+      "baseline_summed_seconds": 0.040704
+    },
+    {
+      "method": "TerraRuntime.Tests.BossRecovery1458Tests.Complete_original_recovery_and_seasonal_materialization_matches",
+      "file": "tests/TerraRuntime.Tests/BossRecovery1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 1152,
+      "baseline_summed_seconds": 0.247614
+    },
+    {
+      "method": "TerraRuntime.Tests.BossRecoveryPipeline1458Tests.Recovery_suffix_matches_original_post_imported_rng_and_all_seasonal_live_bodies",
+      "file": "tests/TerraRuntime.Tests/BossRecoveryPipeline1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "players",
+        "town",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 2592,
+      "baseline_summed_seconds": 13.564651
+    },
+    {
+      "method": "TerraRuntime.Tests.BuriedChest1458Tests.Chest_matches_official",
+      "file": "tests/TerraRuntime.Tests/BuriedChest1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 64,
+      "baseline_summed_seconds": 28.018012
+    },
+    {
+      "method": "TerraRuntime.Tests.BuriedChestsPass1458Tests.Pass_matches_official",
+      "file": "tests/TerraRuntime.Tests/BuriedChestsPass1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 10,
+      "baseline_summed_seconds": 6.02985
+    },
+    {
+      "method": "TerraRuntime.Tests.CasterSpawnTests.Creation_matches_original_difficulty_world_progression_and_head_presence",
+      "file": "tests/TerraRuntime.Tests/CasterSpawnTests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_creation",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 784,
+      "baseline_summed_seconds": 0.169506
+    },
+    {
+      "method": "TerraRuntime.Tests.CreateOceanCaves1458Tests.Production_pass_matches_official",
+      "file": "tests/TerraRuntime.Tests/CreateOceanCaves1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 72,
+      "baseline_summed_seconds": 4.05995
+    },
+    {
+      "method": "TerraRuntime.Tests.DarkCasterAiTests.Committed_caster_matches_original_AI_children_and_RNG",
+      "file": "tests/TerraRuntime.Tests/DarkCasterAiTests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 4800,
+      "baseline_summed_seconds": 3.408336
+    },
+    {
+      "method": "TerraRuntime.Tests.DarkCasterAiTests.Five_calls_preserve_queued_teleport_marker_and_ordered_RNG",
+      "file": "tests/TerraRuntime.Tests/DarkCasterAiTests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 960,
+      "baseline_summed_seconds": 2.663651
+    },
+    {
+      "method": "TerraRuntime.Tests.DarkCasterAiTests.Shared_firing_rectangle_matches_original_fractional_edges",
+      "file": "tests/TerraRuntime.Tests/DarkCasterAiTests.cs",
+      "domains": [
+        "npc_ai",
+        "players"
+      ],
+      "baseline_cases": 486,
+      "baseline_summed_seconds": 0.009137
+    },
+    {
+      "method": "TerraRuntime.Tests.DarkCasterAiTests.Teleport_query_matches_original_geometry_players_and_RNG",
+      "file": "tests/TerraRuntime.Tests/DarkCasterAiTests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 1200,
+      "baseline_summed_seconds": 0.243817
+    },
+    {
+      "method": "TerraRuntime.Tests.DungeonFurniture1458Tests.Furniture_tiles_dressers_and_random_stream_match_original",
+      "file": "tests/TerraRuntime.Tests/DungeonFurniture1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 72,
+      "baseline_summed_seconds": 3.126722
+    },
+    {
+      "method": "TerraRuntime.Tests.DungeonLegacyEntrance1458Tests.Production_entrance_renderer_matches_official_building_and_metadata",
+      "file": "tests/TerraRuntime.Tests/DungeonLegacyEntrance1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 108,
+      "baseline_summed_seconds": 2.498317
+    },
+    {
+      "method": "TerraRuntime.Tests.DungeonLegacyHall1458Tests.Hall_matches_official_full_cells_endpoint_and_direction",
+      "file": "tests/TerraRuntime.Tests/DungeonLegacyHall1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 135,
+      "baseline_summed_seconds": 4.511017
+    },
+    {
+      "method": "TerraRuntime.Tests.DungeonPitProtection1458Tests.Protected_pit_gates_consumers_but_not_wall_variants",
+      "file": "tests/TerraRuntime.Tests/DungeonPitProtection1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 504,
+      "baseline_summed_seconds": 10.606058
+    },
+    {
+      "method": "TerraRuntime.Tests.DungeonPitTraps1458Tests.Ordinary_early_feature_matches_all_cells_bounds_flooding_and_shared_random",
+      "file": "tests/TerraRuntime.Tests/DungeonPitTraps1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 72,
+      "baseline_summed_seconds": 4.00443
+    },
+    {
+      "method": "TerraRuntime.Tests.DungeonPlatforms1458Tests.Building_platforms_and_shelf_objects_match_original_tiles_and_rng",
+      "file": "tests/TerraRuntime.Tests/DungeonPlatforms1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 216,
+      "baseline_summed_seconds": 5.177408
+    },
+    {
+      "method": "TerraRuntime.Tests.DungeonProductionPrefix1458Tests.Complete_pass_matches_official_cells_chests_anchor_and_rng_on_real_prefix",
+      "file": "tests/TerraRuntime.Tests/DungeonProductionPrefix1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 16,
+      "baseline_summed_seconds": 150.684532
+    },
+    {
+      "method": "TerraRuntime.Tests.DungeonSurfaceBuildings1458Tests.Production_renderer_matches_original_whole_building",
+      "file": "tests/TerraRuntime.Tests/DungeonSurfaceBuildings1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 216,
+      "baseline_summed_seconds": 4.301666
+    },
+    {
+      "method": "TerraRuntime.Tests.DungeonSurfaceFeatures1458Tests.Spikes_walls_and_continuation_match_original",
+      "file": "tests/TerraRuntime.Tests/DungeonSurfaceFeatures1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 144,
+      "baseline_summed_seconds": 3.5702
+    },
+    {
+      "method": "TerraRuntime.Tests.DungeonTraps1458Tests.Trap_search_objects_and_random_stream_match_original",
+      "file": "tests/TerraRuntime.Tests/DungeonTraps1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 108,
+      "baseline_summed_seconds": 18.941508
+    },
+    {
+      "method": "TerraRuntime.Tests.DungeonWholePass1458Tests.Complete_ordinary_dungeon_matches_original",
+      "file": "tests/TerraRuntime.Tests/DungeonWholePass1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 24,
+      "baseline_summed_seconds": 7.001624
+    },
+    {
+      "method": "TerraRuntime.Tests.EarlyTerrainReference1458Tests.Production_prefix_matches_each_official_stage",
+      "file": "tests/TerraRuntime.Tests/EarlyTerrainReference1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 9,
+      "baseline_summed_seconds": 137.180345
+    },
+    {
+      "method": "TerraRuntime.Tests.EclipseProjectile1458Tests.Ai_matches_original_server",
+      "file": "tests/TerraRuntime.Tests/EclipseProjectile1458Tests.cs",
+      "domains": [
+        "items",
+        "npc_ai",
+        "world"
+      ],
+      "baseline_cases": 2376,
+      "baseline_summed_seconds": 0.10146
+    },
+    {
+      "method": "TerraRuntime.Tests.EclipseProjectile1458Tests.Full_update_matches_original_motion_and_liquid_history",
+      "file": "tests/TerraRuntime.Tests/EclipseProjectile1458Tests.cs",
+      "domains": [
+        "items",
+        "npc_ai",
+        "world"
+      ],
+      "baseline_cases": 1344,
+      "baseline_summed_seconds": 1.093652
+    },
+    {
+      "method": "TerraRuntime.Tests.FallenLogPass1458Tests.Pass_matches_official",
+      "file": "tests/TerraRuntime.Tests/FallenLogPass1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 10,
+      "baseline_summed_seconds": 5.994173
+    },
+    {
+      "method": "TerraRuntime.Tests.FloatingEyeAi1458Tests.Original_canonical_and_negative_eye_defaults_scale_before_variant_stats",
+      "file": "tests/TerraRuntime.Tests/FloatingEyeAi1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_creation"
+      ],
+      "baseline_cases": 2736,
+      "baseline_summed_seconds": 0.037648
+    },
+    {
+      "method": "TerraRuntime.Tests.FloatingEyeAi1458Tests.Whole_original_AI_keeps_source_state_order_actual_bodies_and_shared_random",
+      "file": "tests/TerraRuntime.Tests/FloatingEyeAi1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_creation",
+        "players"
+      ],
+      "baseline_cases": 65562,
+      "baseline_summed_seconds": 3.183493
+    },
+    {
+      "method": "TerraRuntime.Tests.FloatingEyeWorldExecution1458Tests.Retained_AI_physics_frame_and_CheckActive_match_original_world_tick",
+      "file": "tests/TerraRuntime.Tests/FloatingEyeWorldExecution1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "world",
+        "npc_creation"
+      ],
+      "baseline_cases": 5752,
+      "baseline_summed_seconds": 10.02413
+    },
+    {
+      "method": "TerraRuntime.Tests.FlowerAndMushroomPatchPass1458Tests.Passes_match_official",
+      "file": "tests/TerraRuntime.Tests/FlowerAndMushroomPatchPass1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 28,
+      "baseline_summed_seconds": 5.997212
+    },
+    {
+      "method": "TerraRuntime.Tests.GlobalNpcLoot1458Tests.All_seventeen_predicates_and_inline_materialization_match_original",
+      "file": "tests/TerraRuntime.Tests/GlobalNpcLoot1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 4335,
+      "baseline_summed_seconds": 0.461761
+    },
+    {
+      "method": "TerraRuntime.Tests.GlobalNpcLoot1458Tests.Original_item_money_heal_callbacks_preserve_all_nineteen_global_checkpoints",
+      "file": "tests/TerraRuntime.Tests/GlobalNpcLoot1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 8790,
+      "baseline_summed_seconds": 1.061285
+    },
+    {
+      "method": "TerraRuntime.Tests.GlobalNpcLoot1458Tests.Sparse_defaults_and_natural_prefix_match_original_without_item_use_admission",
+      "file": "tests/TerraRuntime.Tests/GlobalNpcLoot1458Tests.cs",
+      "domains": [
+        "items",
+        "npc_loot"
+      ],
+      "baseline_cases": 324,
+      "baseline_summed_seconds": 0.059383
+    },
+    {
+      "method": "TerraRuntime.Tests.GlobalNpcLootDeath1458Tests.Actual_lethal_commit_matches_original_global_specific_money_healing_and_next_rng",
+      "file": "tests/TerraRuntime.Tests/GlobalNpcLootDeath1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "players",
+        "town",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 8790,
+      "baseline_summed_seconds": 34.860826
+    },
+    {
+      "method": "TerraRuntime.Tests.GlobalNpcLootOwnership1458Tests.Generalized_metadata_preserves_actual_positive_npc_boss_and_face_fields",
+      "file": "tests/TerraRuntime.Tests/GlobalNpcLootOwnership1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "town"
+      ],
+      "baseline_cases": 696,
+      "baseline_summed_seconds": 0.005367
+    },
+    {
+      "method": "TerraRuntime.Tests.GlobalNpcLootOwnership1458Tests.Original_calendar_methods_with_only_date_input_substituted_match_leap_year_and_forced_flags",
+      "file": "tests/TerraRuntime.Tests/GlobalNpcLootOwnership1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "world",
+        "items"
+      ],
+      "baseline_cases": 5856,
+      "baseline_summed_seconds": 0.039694
+    },
+    {
+      "method": "TerraRuntime.Tests.HiveSlimeAi1458Tests.Actual_AI001_Hive_producer_matches_LOS_capacity_difficulty_and_shared_stream",
+      "file": "tests/TerraRuntime.Tests/HiveSlimeAi1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_creation",
+        "players",
+        "world",
+        "items"
+      ],
+      "baseline_cases": 6144,
+      "baseline_summed_seconds": 7.807937
+    },
+    {
+      "method": "TerraRuntime.Tests.JunglePlantsPass1458Tests.Jungle_half_matches_official",
+      "file": "tests/TerraRuntime.Tests/JunglePlantsPass1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 12,
+      "baseline_summed_seconds": 2.309019
+    },
+    {
+      "method": "TerraRuntime.Tests.Level1SandboxRuntimeTests.Sandbox_operations_create_vanilla_large_world_through_the_same_request_path_as_ui",
+      "file": "tests/TerraRuntime.Tests/Level1SandboxRuntimeTests.cs",
+      "domains": [
+        "worldgen",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 1,
+      "baseline_summed_seconds": 52.755457
+    },
+    {
+      "method": "TerraRuntime.Tests.Level1SandboxRuntimeTests.Sandbox_operations_create_vanilla_small_world_through_the_same_request_path_as_ui",
+      "file": "tests/TerraRuntime.Tests/Level1SandboxRuntimeTests.cs",
+      "domains": [
+        "worldgen",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 1,
+      "baseline_summed_seconds": 19.084998
+    },
+    {
+      "method": "TerraRuntime.Tests.LivingTreeGrower1458Tests.Tree_matches_official",
+      "file": "tests/TerraRuntime.Tests/LivingTreeGrower1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 12,
+      "baseline_summed_seconds": 2.228937
+    },
+    {
+      "method": "TerraRuntime.Tests.LongMossPass1458Tests.Pass_matches_official",
+      "file": "tests/TerraRuntime.Tests/LongMossPass1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 16,
+      "baseline_summed_seconds": 2.481586
+    },
+    {
+      "method": "TerraRuntime.Tests.MechSpawners1458Tests.Original_full_BlueSlime_chain_keeps_global_before_contents_and_Gel",
+      "file": "tests/TerraRuntime.Tests/MechSpawners1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 30720,
+      "baseline_summed_seconds": 0.965708
+    },
+    {
+      "method": "TerraRuntime.Tests.MechSpawners1458Tests.Original_global_offers_materialization_and_next_rng",
+      "file": "tests/TerraRuntime.Tests/MechSpawners1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 30720,
+      "baseline_summed_seconds": 0.373159
+    },
+    {
+      "method": "TerraRuntime.Tests.MechSpawnersDeath1458Tests.Actual_lethal_commit_matches_original_global_contents_specific_money_healing_and_rng",
+      "file": "tests/TerraRuntime.Tests/MechSpawnersDeath1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "players",
+        "town",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 3072,
+      "baseline_summed_seconds": 11.619629
+    },
+    {
+      "method": "TerraRuntime.Tests.MiningInventoryRegressionTests.More_than_two_world_item_pools_of_mining_switching_tools_and_literal_pickups_keep_working",
+      "file": "tests/TerraRuntime.Tests/MiningInventoryRegressionTests.cs",
+      "domains": [
+        "players",
+        "items",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 2,
+      "baseline_summed_seconds": 3.437035
+    },
+    {
+      "method": "TerraRuntime.Tests.MoonLordHandTests.State_and_projectiles_match_original_hand_AI",
+      "file": "tests/TerraRuntime.Tests/MoonLordHandTests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "items"
+      ],
+      "baseline_cases": 3600,
+      "baseline_summed_seconds": 8.126677
+    },
+    {
+      "method": "TerraRuntime.Tests.MoonLordHeadTests.Head_state_and_projectiles_match_original",
+      "file": "tests/TerraRuntime.Tests/MoonLordHeadTests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "items"
+      ],
+      "baseline_cases": 3600,
+      "baseline_summed_seconds": 3.373796
+    },
+    {
+      "method": "TerraRuntime.Tests.MoonLordIntroductionTests.Original_server_initialization_intro_and_return_match_through_spawn_executor",
+      "file": "tests/TerraRuntime.Tests/MoonLordIntroductionTests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_creation",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 384,
+      "baseline_summed_seconds": 0.65754
+    },
+    {
+      "method": "TerraRuntime.Tests.MossPass1458Tests.Pass_matches_official",
+      "file": "tests/TerraRuntime.Tests/MossPass1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 12,
+      "baseline_summed_seconds": 14.653372
+    },
+    {
+      "method": "TerraRuntime.Tests.MotherSlimeHitEffect1458Tests.Original_birth_fields_live_body_capacity_and_next_random_match",
+      "file": "tests/TerraRuntime.Tests/MotherSlimeHitEffect1458Tests.cs",
+      "domains": [
+        "npc_creation",
+        "npc_loot"
+      ],
+      "baseline_cases": 3456,
+      "baseline_summed_seconds": 1.93556
+    },
+    {
+      "method": "TerraRuntime.Tests.MothronWorldExecution1458Tests.Accepted_AI_and_collision_match_original_complete_UpdateNPC",
+      "file": "tests/TerraRuntime.Tests/MothronWorldExecution1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "world",
+        "npc_creation"
+      ],
+      "baseline_cases": 560,
+      "baseline_summed_seconds": 0.822978
+    },
+    {
+      "method": "TerraRuntime.Tests.NewNpcRandomTests.Vanilla_creation_matches_original_substitution_stats_and_RNG_even_when_full",
+      "file": "tests/TerraRuntime.Tests/NewNpcRandomTests.cs",
+      "domains": [
+        "npc_creation",
+        "world"
+      ],
+      "baseline_cases": 5760,
+      "baseline_summed_seconds": 1.139787
+    },
+    {
+      "method": "TerraRuntime.Tests.NpcDeathPrelude1458Tests.Every_original_net_identity_retains_source_credit_and_banner",
+      "file": "tests/TerraRuntime.Tests/NpcDeathPrelude1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "world"
+      ],
+      "baseline_cases": 762,
+      "baseline_summed_seconds": 0.006948
+    },
+    {
+      "method": "TerraRuntime.Tests.NpcDeathPrelude1458Tests.Every_original_statue_default_is_preserved",
+      "file": "tests/TerraRuntime.Tests/NpcDeathPrelude1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "npc_creation"
+      ],
+      "baseline_cases": 697,
+      "baseline_summed_seconds": 0.006311
+    },
+    {
+      "method": "TerraRuntime.Tests.NpcDeathPreludeWire1458Tests.Announcement_identity_and_threshold_match_original_banner_inverse",
+      "file": "tests/TerraRuntime.Tests/NpcDeathPreludeWire1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "infrastructure"
+      ],
+      "baseline_cases": 293,
+      "baseline_summed_seconds": 0.007106
+    },
+    {
+      "method": "TerraRuntime.Tests.NpcHealingLoot1458Tests.Healing_matches_original_physical_drops_and_next_rng",
+      "file": "tests/TerraRuntime.Tests/NpcHealingLoot1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 22464,
+      "baseline_summed_seconds": 0.310966
+    },
+    {
+      "method": "TerraRuntime.Tests.NpcLootColor1458Tests.Actual_defaults_CommonCode_and_recorded_color_packet_match",
+      "file": "tests/TerraRuntime.Tests/NpcLootColor1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "infrastructure"
+      ],
+      "baseline_cases": 288,
+      "baseline_summed_seconds": 0.011356
+    },
+    {
+      "method": "TerraRuntime.Tests.NpcMoney1458Tests.Exact_original_coin_materialization_and_next_rng",
+      "file": "tests/TerraRuntime.Tests/NpcMoney1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 1120,
+      "baseline_summed_seconds": 0.036939
+    },
+    {
+      "method": "TerraRuntime.Tests.NpcMoney1458Tests.Spawn_value_matches_original_SetDefaults_and_source_strength",
+      "file": "tests/TerraRuntime.Tests/NpcMoney1458Tests.cs",
+      "domains": [
+        "npc_creation",
+        "npc_loot"
+      ],
+      "baseline_cases": 1915,
+      "baseline_summed_seconds": 0.033497
+    },
+    {
+      "method": "TerraRuntime.Tests.NpcScalingArithmeticTests.Creation_profiles_match_original_platform_arithmetic",
+      "file": "tests/TerraRuntime.Tests/NpcScalingArithmeticTests.cs",
+      "domains": [
+        "npc_creation"
+      ],
+      "baseline_cases": 28800,
+      "baseline_summed_seconds": 0.298068
+    },
+    {
+      "method": "TerraRuntime.Tests.NpcSlotAllocationTests.Nonzero_start_matches_original_for_every_type_and_slot_arrangement",
+      "file": "tests/TerraRuntime.Tests/NpcSlotAllocationTests.cs",
+      "domains": [
+        "npc_creation",
+        "npc_ai",
+        "players",
+        "infrastructure"
+      ],
+      "baseline_cases": 9,
+      "baseline_summed_seconds": 3.319209
+    },
+    {
+      "method": "TerraRuntime.Tests.NpcSpecificLoot1458Tests.Original_item_money_heal_callbacks_preserve_all_nineteen_global_checkpoints",
+      "file": "tests/TerraRuntime.Tests/NpcSpecificLoot1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 11550,
+      "baseline_summed_seconds": 2.462986
+    },
+    {
+      "method": "TerraRuntime.Tests.NpcUndeadHitEffects1458Tests.Actual_strike_routes_preserve_dedicated_hit_effect_life_and_shared_rng",
+      "file": "tests/TerraRuntime.Tests/NpcUndeadHitEffects1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_loot",
+        "players",
+        "items",
+        "infrastructure"
+      ],
+      "baseline_cases": 288,
+      "baseline_summed_seconds": 1.318234
+    },
+    {
+      "method": "TerraRuntime.Tests.OasisBasin1458Tests.Placement_matches_official",
+      "file": "tests/TerraRuntime.Tests/OasisBasin1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 26,
+      "baseline_summed_seconds": 3.237801
+    },
+    {
+      "method": "TerraRuntime.Tests.OptimizedCanonical1458RegressionTests.Optimized_canonical_small_seed_1458_satisfies_landmark_budget",
+      "file": "tests/TerraRuntime.Tests/OptimizedCanonical1458RegressionTests.cs",
+      "domains": [
+        "worldgen",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 1,
+      "baseline_summed_seconds": 2.525209
+    },
+    {
+      "method": "TerraRuntime.Tests.OptimizedJungleEcologyV2Tests.Canonical_medium_builds_distinct_queen_bee_ready_hives_and_mushroom_pockets",
+      "file": "tests/TerraRuntime.Tests/JungleEcologyV2Tests.cs",
+      "domains": [
+        "worldgen",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 1,
+      "baseline_summed_seconds": 8.511909
+    },
+    {
+      "method": "TerraRuntime.Tests.OptimizedWorldGenerationProviderTests.Optimized_generator_creates_canonical_small_world_without_crashing",
+      "file": "tests/TerraRuntime.Tests/OptimizedProviderTests.cs",
+      "domains": [
+        "worldgen",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 1,
+      "baseline_summed_seconds": 3.874271
+    },
+    {
+      "method": "TerraRuntime.Tests.PilePass1458Tests.Pass_matches_official",
+      "file": "tests/TerraRuntime.Tests/PilePass1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 12,
+      "baseline_summed_seconds": 8.00473
+    },
+    {
+      "method": "TerraRuntime.Tests.PlayerDerivedHealth1458Tests.Actual_animated_remote_crystal_and_fruit_use_is_owner_only_and_does_not_invalidate_context",
+      "file": "tests/TerraRuntime.Tests/PlayerDerivedHealth1458Tests.cs",
+      "domains": [
+        "players",
+        "town",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 320,
+      "baseline_summed_seconds": 0.21651
+    },
+    {
+      "method": "TerraRuntime.Tests.PlayerDerivedHealth1458Tests.Continuous_remote_Update_retains_exact_derived_maximum_duplicates_and_outside_order",
+      "file": "tests/TerraRuntime.Tests/PlayerDerivedHealth1458Tests.cs",
+      "domains": [
+        "players",
+        "town",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 288,
+      "baseline_summed_seconds": 0.186986
+    },
+    {
+      "method": "TerraRuntime.Tests.PlayerDerivedHealth1458Tests.Dead_buff_metadata_matches_all_original_identities",
+      "file": "tests/TerraRuntime.Tests/PlayerDerivedHealth1458Tests.cs",
+      "domains": [
+        "players",
+        "town"
+      ],
+      "baseline_cases": 401,
+      "baseline_summed_seconds": 0.132287
+    },
+    {
+      "method": "TerraRuntime.Tests.PlayerDerivedHealth1458Tests.Genuine_Main_player_phase_sequence_preserves_dead_field_clears_nonpersistent_buffs_and_recovers",
+      "file": "tests/TerraRuntime.Tests/PlayerDerivedHealth1458Tests.cs",
+      "domains": [
+        "players",
+        "town",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 864,
+      "baseline_summed_seconds": 0.461955
+    },
+    {
+      "method": "TerraRuntime.Tests.PlayerLuckFactors1458Tests.Calculation_matches_original_Player",
+      "file": "tests/TerraRuntime.Tests/PlayerLuckFactors1458Tests.cs",
+      "domains": [
+        "players",
+        "npc_loot",
+        "town",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 448,
+      "baseline_summed_seconds": 0.001652
+    },
+    {
+      "method": "TerraRuntime.Tests.PlayerSourceBornBase1458Tests.Actual_constructor_health_and_authenticated_pre_post_spawn_packets_preserve_phase_provenance",
+      "file": "tests/TerraRuntime.Tests/PlayerSourceBornBase1458Tests.cs",
+      "domains": [
+        "players",
+        "npc_ai",
+        "npc_loot",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 576,
+      "baseline_summed_seconds": 0.291905
+    },
+    {
+      "method": "TerraRuntime.Tests.PlayerZones1458Tests.Source_biome_priority_and_depth_are_not_inferred_from_terrain",
+      "file": "tests/TerraRuntime.Tests/PlayerZones1458Tests.cs",
+      "domains": [
+        "players",
+        "town",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 2048,
+      "baseline_summed_seconds": 0.061351
+    },
+    {
+      "method": "TerraRuntime.Tests.PotScatterPass1458Tests.Pass_matches_official",
+      "file": "tests/TerraRuntime.Tests/PotScatterPass1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 8,
+      "baseline_summed_seconds": 2.15723
+    },
+    {
+      "method": "TerraRuntime.Tests.PrimeMeleeAiTests.Melee_arm_state_projectiles_and_rng_match_original",
+      "file": "tests/TerraRuntime.Tests/PrimeMeleeAiTests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "items"
+      ],
+      "baseline_cases": 9520,
+      "baseline_summed_seconds": 3.74827
+    },
+    {
+      "method": "TerraRuntime.Tests.PrimePhaseTests.Head_phase_restores_spawn_baselines_and_matches_original_motion",
+      "file": "tests/TerraRuntime.Tests/PrimePhaseTests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_creation",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 408,
+      "baseline_summed_seconds": 0.0526
+    },
+    {
+      "method": "TerraRuntime.Tests.PrimePhaseTests.Prime_and_arms_creation_matches_original",
+      "file": "tests/TerraRuntime.Tests/PrimePhaseTests.cs",
+      "domains": [
+        "npc_creation",
+        "npc_ai"
+      ],
+      "baseline_cases": 395,
+      "baseline_summed_seconds": 0.010811
+    },
+    {
+      "method": "TerraRuntime.Tests.PrimeRangedAiTests.Ranged_arm_state_projectiles_and_rng_match_original",
+      "file": "tests/TerraRuntime.Tests/PrimeRangedAiTests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "items"
+      ],
+      "baseline_cases": 10428,
+      "baseline_summed_seconds": 10.74129
+    },
+    {
+      "method": "TerraRuntime.Tests.PyramidBuilder1458Tests.Geometry_matches_official",
+      "file": "tests/TerraRuntime.Tests/PyramidBuilder1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 6,
+      "baseline_summed_seconds": 3.34763
+    },
+    {
+      "method": "TerraRuntime.Tests.PyramidBuilder1458Tests.Wedge_walls_entry_and_staircase_match_official",
+      "file": "tests/TerraRuntime.Tests/PyramidBuilder1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 6,
+      "baseline_summed_seconds": 3.116042
+    },
+    {
+      "method": "TerraRuntime.Tests.RawFloatingEye1458Tests.Original_NewNPC_raw_target_private_phase_and_full_UpdateNPC_are_preserved",
+      "file": "tests/TerraRuntime.Tests/RawFloatingEye1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "world",
+        "npc_creation"
+      ],
+      "baseline_cases": 2496,
+      "baseline_summed_seconds": 4.696057
+    },
+    {
+      "method": "TerraRuntime.Tests.RuntimeNpcImmortalKnockback1458Tests.Immortal_strike_preserves_life_and_original_weak_or_strong_knockback",
+      "file": "tests/TerraRuntime.Tests/RuntimeNpcImmortalKnockback1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_loot"
+      ],
+      "baseline_cases": 3240,
+      "baseline_summed_seconds": 0.466467
+    },
+    {
+      "method": "TerraRuntime.Tests.RuntimeNpcServerStrikeWire1458Tests.Accepted_server_strike_broadcasts_original_raw_damage_before_final_npc_state",
+      "file": "tests/TerraRuntime.Tests/RuntimeNpcServerStrikeWire1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_loot",
+        "players",
+        "items",
+        "infrastructure"
+      ],
+      "baseline_cases": 320,
+      "baseline_summed_seconds": 2.721262
+    },
+    {
+      "method": "TerraRuntime.Tests.RuntimeTownContextualSocial1458Tests.All_source_default_boss_flags_and_face_emotes_match_independent_original",
+      "file": "tests/TerraRuntime.Tests/RuntimeTownContextualSocial1458Tests.cs",
+      "domains": [
+        "town",
+        "npc_loot"
+      ],
+      "baseline_cases": 696,
+      "baseline_summed_seconds": 0.044728
+    },
+    {
+      "method": "TerraRuntime.Tests.RuntimeTownContextualSocial1458Tests.Original_progression_tiers_weighted_candidates_and_real_Next1_draws_match",
+      "file": "tests/TerraRuntime.Tests/RuntimeTownContextualSocial1458Tests.cs",
+      "domains": [
+        "town",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 3600,
+      "baseline_summed_seconds": 0.526202
+    },
+    {
+      "method": "TerraRuntime.Tests.RuntimeTownContextualSocial1458Tests.Real_two_resident_phases_match_original_emitter_lifetime_wire_and_next_rng_or_reject_unknown_context",
+      "file": "tests/TerraRuntime.Tests/RuntimeTownContextualSocial1458Tests.cs",
+      "domains": [
+        "town",
+        "players",
+        "npc_ai",
+        "world",
+        "items",
+        "infrastructure"
+      ],
+      "baseline_cases": 1440,
+      "baseline_summed_seconds": 1.118809
+    },
+    {
+      "method": "TerraRuntime.Tests.RuntimeTownDebuffPair1458Tests.Fresh_observed_life_after_player_phase_then_two_outer_NPC_updates_match_source",
+      "file": "tests/TerraRuntime.Tests/RuntimeTownDebuffPair1458Tests.cs",
+      "domains": [
+        "town",
+        "players",
+        "npc_ai",
+        "world",
+        "items",
+        "infrastructure"
+      ],
+      "baseline_cases": 384,
+      "baseline_summed_seconds": 3.109892
+    },
+    {
+      "method": "TerraRuntime.Tests.RuntimeTownDebuffTopics1458Tests.Actual_ProbeDebuffs_order_and_short_circuit_next_rng_match",
+      "file": "tests/TerraRuntime.Tests/RuntimeTownDebuffTopics1458Tests.cs",
+      "domains": [
+        "town",
+        "players",
+        "npc_ai"
+      ],
+      "baseline_cases": 2048,
+      "baseline_summed_seconds": 0.031789
+    },
+    {
+      "method": "TerraRuntime.Tests.RuntimeTownItemsSocial1458Tests.Fresh_observed_life_after_health_phase_then_pair_matches_original_context_wire_clocks_and_rng",
+      "file": "tests/TerraRuntime.Tests/RuntimeTownItemsSocial1458Tests.cs",
+      "domains": [
+        "town",
+        "players",
+        "npc_ai",
+        "world",
+        "items",
+        "infrastructure"
+      ],
+      "baseline_cases": 648,
+      "baseline_summed_seconds": 4.862896
+    },
+    {
+      "method": "TerraRuntime.Tests.RuntimeTownNpcContact1458Tests.Original_contact_pins_damage_ai_reset_immunity_same_tick_physics_and_random",
+      "file": "tests/TerraRuntime.Tests/RuntimeTownNpcContact1458Tests.cs",
+      "domains": [
+        "town",
+        "players",
+        "npc_ai",
+        "world",
+        "items",
+        "infrastructure"
+      ],
+      "baseline_cases": 1152,
+      "baseline_summed_seconds": 0.202015
+    },
+    {
+      "method": "TerraRuntime.Tests.RuntimeTownNpcContactVfx1458Tests.Original_pre_ai_visual_offer_and_town_vitals_are_owned",
+      "file": "tests/TerraRuntime.Tests/RuntimeTownNpcContactVfx1458Tests.cs",
+      "domains": [
+        "town",
+        "npc_ai",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 4640,
+      "baseline_summed_seconds": 0.841466
+    },
+    {
+      "method": "TerraRuntime.Tests.RuntimeTownNpcDangerDispatcher1458Tests.Source_common_phase_pins_danger_body_combat_home_physics_and_next_random",
+      "file": "tests/TerraRuntime.Tests/RuntimeTownNpcDangerDispatcher1458Tests.cs",
+      "domains": [
+        "town",
+        "players",
+        "npc_ai",
+        "world",
+        "items",
+        "infrastructure"
+      ],
+      "baseline_cases": 2216,
+      "baseline_summed_seconds": 0.402807
+    },
+    {
+      "method": "TerraRuntime.Tests.RuntimeTownNpcDebuffOuter1458Tests.Genuine_outer_UpdateNPC_continuous_flags_expiry_dot_ai_physics_and_rng_match",
+      "file": "tests/TerraRuntime.Tests/RuntimeTownNpcDebuffOuter1458Tests.cs",
+      "domains": [
+        "town",
+        "players",
+        "npc_ai",
+        "world",
+        "items",
+        "infrastructure"
+      ],
+      "baseline_cases": 1512,
+      "baseline_summed_seconds": 0.555563
+    },
+    {
+      "method": "TerraRuntime.Tests.RuntimeTownNpcSocialNurse1458Tests.Source_Nurse_admission_active_13_shot_and_outer_frame_match_original",
+      "file": "tests/TerraRuntime.Tests/RuntimeTownNpcSocialNurse1458Tests.cs",
+      "domains": [
+        "town",
+        "players",
+        "npc_ai",
+        "world",
+        "items",
+        "infrastructure"
+      ],
+      "baseline_cases": 336,
+      "baseline_summed_seconds": 0.237804
+    },
+    {
+      "method": "TerraRuntime.Tests.RuntimeTownNpcSocialNurse1458Tests.Source_two_resident_AI_and_outer_frames_keep_peer_clock_and_next_rng",
+      "file": "tests/TerraRuntime.Tests/RuntimeTownNpcSocialNurse1458Tests.cs",
+      "domains": [
+        "town",
+        "players",
+        "npc_ai",
+        "world",
+        "items",
+        "infrastructure"
+      ],
+      "baseline_cases": 696,
+      "baseline_summed_seconds": 0.465473
+    },
+    {
+      "method": "TerraRuntime.Tests.SandboxWorkerTests.Completed_startup_race_does_not_abandon_unobserved_pipe_faults",
+      "file": "tests/TerraRuntime.Tests/SandboxWorkerTests.cs",
+      "domains": [
+        "worldgen",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 1,
+      "baseline_summed_seconds": 3.019008
+    },
+    {
+      "method": "TerraRuntime.Tests.SandboxWorkerTests.Heartbeat_keeps_a_runtime_alive_without_foreground_probes_and_stops_cleanly",
+      "file": "tests/TerraRuntime.Tests/SandboxWorkerTests.cs",
+      "domains": [
+        "worldgen",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 1,
+      "baseline_summed_seconds": 2.981443
+    },
+    {
+      "method": "TerraRuntime.Tests.ServerRuntimeNpcDamageIntegrationTests.Lethal_expert_king_slime_hit_runs_live_loot_death_and_instanced_lease_pipeline",
+      "file": "tests/TerraRuntime.Tests/ServerRuntimeNpcDamageIntegrationTests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "players",
+        "town",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 1,
+      "baseline_summed_seconds": 2.167424
+    },
+    {
+      "method": "TerraRuntime.Tests.ServerRuntimeServerPlayerPerformanceTests.Controlled_physics_ticks_are_deterministic_and_stay_within_allocation_gate",
+      "file": "tests/TerraRuntime.Tests/ServerRuntimeServerPlayerPerformanceTests.cs",
+      "domains": [
+        "players",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 1,
+      "baseline_summed_seconds": 2.67755
+    },
+    {
+      "method": "TerraRuntime.Tests.SkeletronHandPhaseTests.Hand_phase_matches_original_with_frozen_parent",
+      "file": "tests/TerraRuntime.Tests/SkeletronHandPhaseTests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 2220,
+      "baseline_summed_seconds": 1.110211
+    },
+    {
+      "method": "TerraRuntime.Tests.SkeletronHandPhaseTests.Parent_lifecycle_matches_original_and_publishes_only_terminal_despawn",
+      "file": "tests/TerraRuntime.Tests/SkeletronHandPhaseTests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 288,
+      "baseline_summed_seconds": 0.084211
+    },
+    {
+      "method": "TerraRuntime.Tests.SkeletronHandPhaseTests.RedHat_hand_phase_matches_original_with_frozen_parent",
+      "file": "tests/TerraRuntime.Tests/SkeletronHandPhaseTests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 1296,
+      "baseline_summed_seconds": 0.988782
+    },
+    {
+      "method": "TerraRuntime.Tests.SkeletronHeadEffectsTests.Head_state_effects_and_RNG_match_original",
+      "file": "tests/TerraRuntime.Tests/SkeletronHeadEffectsTests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 2475,
+      "baseline_summed_seconds": 2.024951
+    },
+    {
+      "method": "TerraRuntime.Tests.SkeletronHeadEffectsTests.Summoning_terrain_cap_and_full_table_match_original",
+      "file": "tests/TerraRuntime.Tests/SkeletronHeadEffectsTests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_creation",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 1008,
+      "baseline_summed_seconds": 2.992672
+    },
+    {
+      "method": "TerraRuntime.Tests.SkeletronPhaseTests.Head_phase_restores_spawn_baselines_and_matches_original_motion",
+      "file": "tests/TerraRuntime.Tests/SkeletronPhaseTests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_creation",
+        "players"
+      ],
+      "baseline_cases": 715,
+      "baseline_summed_seconds": 0.104799
+    },
+    {
+      "method": "TerraRuntime.Tests.SkeletronSkullSpawnTests.Accepted_head_spawns_original_projectile_and_preserves_RNG",
+      "file": "tests/TerraRuntime.Tests/SkeletronSkullSpawnTests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "items"
+      ],
+      "baseline_cases": 384,
+      "baseline_summed_seconds": 0.779142
+    },
+    {
+      "method": "TerraRuntime.Tests.SkeletronSkullSpawnTests.Aim_matches_both_original_platforms_bit_for_bit",
+      "file": "tests/TerraRuntime.Tests/SkeletronSkullSpawnTests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "items"
+      ],
+      "baseline_cases": 768,
+      "baseline_summed_seconds": 0.202907
+    },
+    {
+      "method": "TerraRuntime.Tests.SkeletronStrikeTests.Authoritative_strike_matches_original",
+      "file": "tests/TerraRuntime.Tests/SkeletronStrikeTests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_loot"
+      ],
+      "baseline_cases": 1760,
+      "baseline_summed_seconds": 0.336285
+    },
+    {
+      "method": "TerraRuntime.Tests.SkeletronStrikeTests.Large_authoritative_strike_matches_original_double_defense_math",
+      "file": "tests/TerraRuntime.Tests/SkeletronStrikeTests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_loot"
+      ],
+      "baseline_cases": 960,
+      "baseline_summed_seconds": 0.157519
+    },
+    {
+      "method": "TerraRuntime.Tests.SlimeBeeRemixSpawnDefaults1458Tests.Pure_defaults_match_actual_original_spawn_overrides",
+      "file": "tests/TerraRuntime.Tests/SlimeBeeRemixSpawnDefaults1458Tests.cs",
+      "domains": [
+        "npc_creation",
+        "npc_loot"
+      ],
+      "baseline_cases": 3072,
+      "baseline_summed_seconds": 0.234933
+    },
+    {
+      "method": "TerraRuntime.Tests.SlimeBeeRemixSpawnDefaults1458Tests.Store_materializes_owned_body_combat_money_and_source_creation_rng",
+      "file": "tests/TerraRuntime.Tests/SlimeBeeRemixSpawnDefaults1458Tests.cs",
+      "domains": [
+        "npc_creation",
+        "npc_loot"
+      ],
+      "baseline_cases": 1536,
+      "baseline_summed_seconds": 0.237214
+    },
+    {
+      "method": "TerraRuntime.Tests.SlimeBornTarget1458Tests.Actual_birth_and_four_updates_keep_pre_refresh_selection_and_source_stream",
+      "file": "tests/TerraRuntime.Tests/SlimeBornTarget1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_creation",
+        "players",
+        "world",
+        "items"
+      ],
+      "baseline_cases": 3760,
+      "baseline_summed_seconds": 8.748542
+    },
+    {
+      "method": "TerraRuntime.Tests.SlimeContainedDeath1458Tests.Actual_lethal_ingress_matches_original_imported_money_heals_and_next_rng",
+      "file": "tests/TerraRuntime.Tests/SlimeContainedDeath1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "players",
+        "town",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 8060,
+      "baseline_summed_seconds": 36.743772
+    },
+    {
+      "method": "TerraRuntime.Tests.SlimeContainedGenerator1458Tests.Dedicated_server_generator_matches_original_full_item_table_and_next_draw",
+      "file": "tests/TerraRuntime.Tests/SlimeContainedGenerator1458Tests.cs",
+      "domains": [
+        "items",
+        "npc_ai"
+      ],
+      "baseline_cases": 24576,
+      "baseline_summed_seconds": 0.186621
+    },
+    {
+      "method": "TerraRuntime.Tests.SlimeContainedInitialization1458Tests.Complete_original_AI001_selection_state_children_and_stream_match",
+      "file": "tests/TerraRuntime.Tests/SlimeContainedInitialization1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_creation",
+        "items"
+      ],
+      "baseline_cases": 69120,
+      "baseline_summed_seconds": 24.922053
+    },
+    {
+      "method": "TerraRuntime.Tests.SlimeContainedLoot1458Tests.Defaults_and_natural_prefix_match_original",
+      "file": "tests/TerraRuntime.Tests/SlimeContainedLoot1458Tests.cs",
+      "domains": [
+        "items",
+        "npc_loot"
+      ],
+      "baseline_cases": 260,
+      "baseline_summed_seconds": 0.006597
+    },
+    {
+      "method": "TerraRuntime.Tests.SlimeContainedLoot1458Tests.Direct_rule_materializes_original_stack_body_velocity_and_rng",
+      "file": "tests/TerraRuntime.Tests/SlimeContainedLoot1458Tests.cs",
+      "domains": [
+        "items",
+        "npc_loot"
+      ],
+      "baseline_cases": 21080,
+      "baseline_summed_seconds": 0.255885
+    },
+    {
+      "method": "TerraRuntime.Tests.SlimeContainedLoot1458Tests.Global_content_precedes_complete_type_specific_original_chain",
+      "file": "tests/TerraRuntime.Tests/SlimeContainedLoot1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 21286,
+      "baseline_summed_seconds": 0.348655
+    },
+    {
+      "method": "TerraRuntime.Tests.SlimeNoActiveLifecycle1458Tests.Original_birth_private_AI_and_full_first_update_keep_raw_target_and_atomic_lifecycle",
+      "file": "tests/TerraRuntime.Tests/SlimeNoActiveLifecycle1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "npc_creation",
+        "players",
+        "world",
+        "items"
+      ],
+      "baseline_cases": 3840,
+      "baseline_summed_seconds": 7.063138
+    },
+    {
+      "method": "TerraRuntime.Tests.SlimerDeath1458Tests.Actual_lethal_commit_matches_original_global_specific_money_healing_and_next_rng",
+      "file": "tests/TerraRuntime.Tests/SlimerDeath1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "npc_creation",
+        "items",
+        "players",
+        "town",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 2700,
+      "baseline_summed_seconds": 9.169016
+    },
+    {
+      "method": "TerraRuntime.Tests.SlimerSpawn1458Tests.Actual_dedicated_HitEffect_matches_private_birth_reset_motion_and_next_random",
+      "file": "tests/TerraRuntime.Tests/SlimerSpawn1458Tests.cs",
+      "domains": [
+        "npc_creation",
+        "npc_loot"
+      ],
+      "baseline_cases": 3456,
+      "baseline_summed_seconds": 0.502306
+    },
+    {
+      "method": "TerraRuntime.Tests.SlimerSpawn1458Tests.Source_reset_defaults_match_genuine_Framework_arithmetic",
+      "file": "tests/TerraRuntime.Tests/SlimerSpawn1458Tests.cs",
+      "domains": [
+        "npc_creation",
+        "npc_loot"
+      ],
+      "baseline_cases": 512,
+      "baseline_summed_seconds": 0.010277
+    },
+    {
+      "method": "TerraRuntime.Tests.SpeleothemPass1458Tests.Pass_matches_official",
+      "file": "tests/TerraRuntime.Tests/SpeleothemPass1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 32,
+      "baseline_summed_seconds": 4.3327
+    },
+    {
+      "method": "TerraRuntime.Tests.SphereAiTests.Committed_AI_matches_original_state_and_complete_RNG_continuation",
+      "file": "tests/TerraRuntime.Tests/SphereAiTests.cs",
+      "domains": [
+        "npc_ai",
+        "players"
+      ],
+      "baseline_cases": 5760,
+      "baseline_summed_seconds": 2.251967
+    },
+    {
+      "method": "TerraRuntime.Tests.SurfaceChestsPass1458Tests.Pass_matches_official",
+      "file": "tests/TerraRuntime.Tests/SurfaceChestsPass1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 14,
+      "baseline_summed_seconds": 6.418571
+    },
+    {
+      "method": "TerraRuntime.Tests.TerrainReference1458Tests.Production_terrain_matches_official_cells_liquid_lines_and_next_rng",
+      "file": "tests/TerraRuntime.Tests/TerrainReference1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 9,
+      "baseline_summed_seconds": 4.009237
+    },
+    {
+      "method": "TerraRuntime.Tests.TerrariaSocketConnectionTests.A_departed_peer_cannot_hold_the_connection_open_by_never_draining_its_backlog",
+      "file": "tests/TerraRuntime.Tests/TerrariaSocketConnectionTests.cs",
+      "domains": [
+        "infrastructure"
+      ],
+      "baseline_cases": 1,
+      "baseline_summed_seconds": 2.021315
+    },
+    {
+      "method": "TerraRuntime.Tests.UndeadLoot1458Tests.Original_dedicated_hit_then_item_money_heal_callbacks_preserve_source_order",
+      "file": "tests/TerraRuntime.Tests/UndeadLoot1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 39642,
+      "baseline_summed_seconds": 2.203345
+    },
+    {
+      "method": "TerraRuntime.Tests.UndeadLoot1458Tests.Sparse_defaults_and_natural_prefix_match_original_without_item_use_admission",
+      "file": "tests/TerraRuntime.Tests/UndeadLoot1458Tests.cs",
+      "domains": [
+        "items",
+        "npc_loot"
+      ],
+      "baseline_cases": 468,
+      "baseline_summed_seconds": 0.012114
+    },
+    {
+      "method": "TerraRuntime.Tests.UndeadLootContextOwnership1458Tests.Source_selected_saved_world_and_extra_gel_contexts_reach_the_live_death_owner",
+      "file": "tests/TerraRuntime.Tests/UndeadLootContextOwnership1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "players",
+        "town",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 344,
+      "baseline_summed_seconds": 0.992444
+    },
+    {
+      "method": "TerraRuntime.Tests.UndeadLootDeath1458Tests.Actual_admitted_actor_death_matches_original_hit_items_money_heals_and_rng",
+      "file": "tests/TerraRuntime.Tests/UndeadLootDeath1458Tests.cs",
+      "domains": [
+        "npc_loot",
+        "items",
+        "players",
+        "town",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 30306,
+      "baseline_summed_seconds": 85.678708
+    },
+    {
+      "method": "TerraRuntime.Tests.UnderwaterChestsPass1458Tests.Pass_matches_official",
+      "file": "tests/TerraRuntime.Tests/UnderwaterChestsPass1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 12,
+      "baseline_summed_seconds": 8.400609
+    },
+    {
+      "method": "TerraRuntime.Tests.UnderworldLava1458Tests.Real_underworld_pass_restores_lava_before_later_settling",
+      "file": "tests/TerraRuntime.Tests/UnderworldLava1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 3,
+      "baseline_summed_seconds": 33.992279
+    },
+    {
+      "method": "TerraRuntime.Tests.VanillaCreatureFromDeepAi1458Tests.Whole_original_AI_matches_forms_steering_exit_and_difficulty",
+      "file": "tests/TerraRuntime.Tests/VanillaCreatureFromDeepAi1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 28320,
+      "baseline_summed_seconds": 1.789039
+    },
+    {
+      "method": "TerraRuntime.Tests.VanillaEclipseFightersAi1458Tests.Whole_AI_and_projectile_tail_match_original_server",
+      "file": "tests/TerraRuntime.Tests/VanillaEclipseFightersAi1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "players"
+      ],
+      "baseline_cases": 59328,
+      "baseline_summed_seconds": 12.153909
+    },
+    {
+      "method": "TerraRuntime.Tests.VanillaEclipseGroundFightersAi1458Tests.Complete_AI_and_terrain_match_original_including_finite_rejection",
+      "file": "tests/TerraRuntime.Tests/VanillaEclipseGroundFightersAi1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 97896,
+      "baseline_summed_seconds": 13.825006
+    },
+    {
+      "method": "TerraRuntime.Tests.VanillaGhostHoverAi22Tests1458.Source_idle_AI_and_optional_outer_physics_match",
+      "file": "tests/TerraRuntime.Tests/VanillaGhostHoverAi22Tests1458.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 140304,
+      "baseline_summed_seconds": 15.582056
+    },
+    {
+      "method": "TerraRuntime.Tests.VanillaMothronWholeAi1458Tests.Complete_source_AI_fields_peer_mutation_spawn_and_next_random_match",
+      "file": "tests/TerraRuntime.Tests/VanillaMothronWholeAi1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "world",
+        "npc_creation"
+      ],
+      "baseline_cases": 177480,
+      "baseline_summed_seconds": 7.991566
+    },
+    {
+      "method": "TerraRuntime.Tests.VanillaPsychoAi1458Tests.Complete_AI_state_matches_original_dedicated_server",
+      "file": "tests/TerraRuntime.Tests/VanillaPsychoAi1458Tests.cs",
+      "domains": [
+        "npc_ai",
+        "players",
+        "world"
+      ],
+      "baseline_cases": 10080,
+      "baseline_summed_seconds": 0.440157
+    },
+    {
+      "method": "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_passes_preserve_registered_chest_anchors",
+      "file": "tests/TerraRuntime.Tests/VanillaWorldGenerationFullIntegrationTests.cs",
+      "domains": [
+        "worldgen",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 1,
+      "baseline_summed_seconds": 17.181938
+    },
+    {
+      "method": "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_seed1458_world_survives_real_post_load_liquid_preparation",
+      "file": "tests/TerraRuntime.Tests/VanillaWorldGenerationFullIntegrationTests.cs",
+      "domains": [
+        "worldgen",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 3,
+      "baseline_summed_seconds": 104.673168
+    },
+    {
+      "method": "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_seed_1458_rejects_clouds_as_precalculated_dungeon_surface",
+      "file": "tests/TerraRuntime.Tests/VanillaWorldGenerationFullIntegrationTests.cs",
+      "domains": [
+        "worldgen",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 1,
+      "baseline_summed_seconds": 13.35471
+    },
+    {
+      "method": "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_small_generation_produces_valid_metadata_and_terrain",
+      "file": "tests/TerraRuntime.Tests/VanillaWorldGenerationFullIntegrationTests.cs",
+      "domains": [
+        "worldgen",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 1,
+      "baseline_summed_seconds": 7.475442
+    },
+    {
+      "method": "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_small_regression_seeds_finalize_without_world_corruption",
+      "file": "tests/TerraRuntime.Tests/VanillaWorldGenerationFullIntegrationTests.cs",
+      "domains": [
+        "worldgen",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 3,
+      "baseline_summed_seconds": 30.009977
+    },
+    {
+      "method": "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_underworld_retains_forts_connections_and_house_hellforges",
+      "file": "tests/TerraRuntime.Tests/VanillaWorldGenerationFullIntegrationTests.cs",
+      "domains": [
+        "worldgen",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 3,
+      "baseline_summed_seconds": 93.459061
+    },
+    {
+      "method": "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Canonical_world_retains_connected_rideable_rail_frames",
+      "file": "tests/TerraRuntime.Tests/VanillaWorldGenerationFullIntegrationTests.cs",
+      "domains": [
+        "worldgen",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 3,
+      "baseline_summed_seconds": 59.47951
+    },
+    {
+      "method": "TerraRuntime.Tests.VanillaWorldGenerationFullIntegrationTests.Ordinary_crimson_runs_placement_and_downstream_passes_without_coordinate_fallback",
+      "file": "tests/TerraRuntime.Tests/VanillaWorldGenerationFullIntegrationTests.cs",
+      "domains": [
+        "worldgen",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 3,
+      "baseline_summed_seconds": 85.518298
+    },
+    {
+      "method": "TerraRuntime.Tests.VanillaWorldGenerationValidator1458Tests.Validator_accepts_canonical_generated_world",
+      "file": "tests/TerraRuntime.Tests/Validator1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 2,
+      "baseline_summed_seconds": 60.027719
+    },
+    {
+      "method": "TerraRuntime.Tests.WebsAndHoneyPass1458Tests.Pass_matches_official",
+      "file": "tests/TerraRuntime.Tests/WebsAndHoneyPass1458Tests.cs",
+      "domains": [
+        "worldgen",
+        "world"
+      ],
+      "baseline_cases": 10,
+      "baseline_summed_seconds": 3.292649
+    },
+    {
+      "method": "TerraRuntime.Tests.WorkerPoolProcessTests.Worker_lifecycle_survives_isolated_process_conditions",
+      "file": "tests/TerraRuntime.Tests/WorkerPoolProcessTests.cs",
+      "domains": [
+        "infrastructure"
+      ],
+      "baseline_cases": 2,
+      "baseline_summed_seconds": 5.208347
+    },
+    {
+      "method": "TerraRuntime.Tests.WorldItemOwnerFacts1458Tests.Every_item_pickup_rule_matches_independent_original_defaults",
+      "file": "tests/TerraRuntime.Tests/WorldItemOwnerFacts1458Tests.cs",
+      "domains": [
+        "items"
+      ],
+      "baseline_cases": 6195,
+      "baseline_summed_seconds": 0.296598
+    },
+    {
+      "method": "TerraRuntime.Tests.WorldItemOwnerIntegration1458Tests.Generation_owned_equipment_projection_matches_original_UpdateEquips_and_FindOwner",
+      "file": "tests/TerraRuntime.Tests/WorldItemOwnerIntegration1458Tests.cs",
+      "domains": [
+        "players",
+        "items",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 792,
+      "baseline_summed_seconds": 6.363103
+    },
+    {
+      "method": "TerraRuntime.Tests.WorldItemOwnerIntegration1458Tests.Real_client21_creation_matches_actual_original_body_owner_wire_and_rng",
+      "file": "tests/TerraRuntime.Tests/WorldItemOwnerIntegration1458Tests.cs",
+      "domains": [
+        "players",
+        "items",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 3584,
+      "baseline_summed_seconds": 33.101951
+    },
+    {
+      "method": "TerraRuntime.Tests.WorldItemSourceAllocation1458Tests.Every_original_item_keeps_allocation_defaults",
+      "file": "tests/TerraRuntime.Tests/WorldItemSourceAllocation1458Tests.cs",
+      "domains": [
+        "items"
+      ],
+      "baseline_cases": 6195,
+      "baseline_summed_seconds": 0.047215
+    },
+    {
+      "method": "TerraRuntime.Tests.WorldLateBossProgressionPersistenceTests.Late_boss_save_matches_official_header_and_preserves_other_bytes",
+      "file": "tests/TerraRuntime.Tests/WorldLateBossProgressionPersistenceTests.cs",
+      "domains": [
+        "world",
+        "npc_loot"
+      ],
+      "baseline_cases": 256,
+      "baseline_summed_seconds": 0.314519
+    },
+    {
+      "method": "TerraRuntime.Tests.WorldStartupPreparationTests.Generated_vanilla_world_reaches_actual_primary_startup_after_liquid_preparation",
+      "file": "tests/TerraRuntime.Tests/WorldStartupPreparationTests.cs",
+      "domains": [
+        "worldgen",
+        "world",
+        "infrastructure"
+      ],
+      "baseline_cases": 3,
+      "baseline_summed_seconds": 102.066352
+    }
+  ]
+}
