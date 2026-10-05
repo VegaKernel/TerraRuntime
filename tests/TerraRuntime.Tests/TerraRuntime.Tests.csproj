@@ -322,4 +322,11 @@
     <EmbeddedResource Include="Fixtures/npc-difficulty-wire-official-1458.json.gz" LogicalName="NpcDifficultyWire1458" />
     <EmbeddedResource Include="Fixtures/inactive-player-constructor-healing-tenth-official.json.gz" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/town-rules.json.gz" />
+    <EmbeddedResource Include="Fixtures/town-items.json.gz" />
+    <EmbeddedResource Include="Fixtures/town-deaths.json.gz" />
+    <EmbeddedResource Include="Fixtures/town-batches.json.gz" />
+    <EmbeddedResource Include="Fixtures/town-wire.json.gz" />
+  </ItemGroup>
 </Project>

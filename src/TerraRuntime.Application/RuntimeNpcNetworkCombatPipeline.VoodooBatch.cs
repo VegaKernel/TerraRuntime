@@ -80,7 +80,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             lootRemixWorld: lootRemixWorld, globalLootWorld: beforeWorld, npcSpecificLowTiles: () => beforeLow,
             requireOwnedPlayerHealth: requireOwnedPlayerHealth, rawPlayerSlots: rawPlayerSlots,
             npcSpecificDropExtraGel: npcSpecificDropExtraGel, npcSpecificGoodWorld: npcSpecificGoodWorld,
-            guideNameSource: guideNameSource);
+            townNameSource: townNameSource, townLootLanguage: townLootLanguage);
         detached.bossRecoveryDaily.CopyFrom(bossRecoveryDaily);
         if (!interactions.CopyDeathPreviewTo(detached.interactions)) return false;
         var sourceInteractions = new Dictionary<NpcHandle, PlayerSlotId[]>();
@@ -111,12 +111,12 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         bool Stage(NpcSnapshot victim, VanillaUnifiedRandom1458 beforeSelection, bool guide)
         {
             // Generic missing-table fallback cannot establish that a registered town reward is empty.
-            // Guide's name-conditioned Green Cap is explicitly owned by the death planner.
-            if (victim.TypeIdentity != VanillaNpcIds.Guide &&
-                VanillaTownNpcLootFacts1458.HasRegisteredSpecificRules(victim.TypeIdentity)) return false;
-            if (victim.TypeIdentity == VanillaNpcIds.Guide)
+            // Registered town rules, including exact resident names, belong to the death planner.
+            if (VanillaTownNpcLootFacts1458.HasRegisteredSpecificRules(victim.TypeIdentity) &&
+                !VanillaTownNpcLootRules1458.TryGet(victim.TypeIdentity, out _)) return false;
+            if (VanillaTownNpcLootRules1458.RequiresName(victim.TypeIdentity))
             {
-                string? name = guideNameSource?.Invoke(victim.Handle);
+                string? name = townNameSource?.Invoke(victim.Handle);
                 if (name is null) return false;
                 names[victim.Handle] = name;
             }
@@ -175,12 +175,15 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             foreach (var entry in sourceInteractions)
                 if (!interactions.TryCopyInteractingSlots(entry.Key, slots, out int count) ||
                     !slots[..count].SequenceEqual(entry.Value)) return false;
-            foreach (var entry in names) if (guideNameSource?.Invoke(entry.Key) != entry.Value) return false;
+            foreach (var entry in names) if (townNameSource?.Invoke(entry.Key) != entry.Value) return false;
             for (int i = 0; i < census.Length; i++)
             {
                 bool now = players.TryGetPlayer(new((byte)i), out var player);
                 if (now != present[i] || (now && player != census[i])) return false;
             }
+            // Recapture callback-owned facts after names/player census, then finish with direct owners.
+            if (CaptureGlobalLootWorld() != beforeWorld || CaptureSpecificLowTiles() != beforeLow ||
+                seasonalItemContextSource?.Invoke() != beforeSeason) return false;
             // No callback/provider runs after these final direct-owner comparisons. A name/player
             // callback above can legitimately reenter and mutate progression, time or Wall terrain.
             if (progression.CaptureSnapshot() != beforeProgression || deathPrelude.Revision != beforePrelude ||

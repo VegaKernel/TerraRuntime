@@ -130,7 +130,9 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
                 worldItems: WorldItems,
                 npcReplication: npcReplication,
                 worldItemReplication: itemReplication,
-                expertMode: true);
+                expertMode: true,
+                // Seed 7 selects the source heart-eligibility branch; player vitals below must own it.
+                naturalSpawnRandom: new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom(7));
         }
 
         public RuntimeNpcStore Npcs { get; }
@@ -171,6 +173,9 @@ public sealed class ServerRuntimeNpcDamageIntegrationTests
             outbound.Add(source, queue);
 
             var connection = new ConnectionHandle(source, session.Handle);
+            // The real pending packet16 establishes current life before Spawn14. Without it,
+            // the selected healing branch correctly rejects this deliberately partial fixture.
+            State.Apply(new PlayerHealthRuntimeCommand(connection, new(session.Slot, 100, 100)));
             var request = new PlayerSpawnCommitRequest(session.Slot, 100, 200, 0, 0, 0, 0, 0);
             State.Apply(new PlayerSpawnRuntimeCommand(connection, session, request));
             Assert.Equal(PlayerSpawnCommitResult.Committed, State.LastSpawnCommitResult);

@@ -67,7 +67,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private readonly Func<bool?>? npcSpecificLowTiles;
     private readonly bool npcSpecificDropExtraGel;
     private readonly bool npcSpecificGoodWorld;
-    private readonly Func<NpcHandle, string?>? guideNameSource;
+    private readonly Func<NpcHandle, string?>? townNameSource;
+    private readonly VanillaTownNpcLootLanguage1458? townLootLanguage;
     private readonly bool requireOwnedPlayerHealth;
     private readonly RuntimeNpcRawPlayerSlots1458? rawPlayerSlots;
     private readonly bool isThereAWorldSurface;
@@ -140,7 +141,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         RuntimeNpcRawPlayerSlots1458? rawPlayerSlots = null,
         bool npcSpecificDropExtraGel = false,
         bool npcSpecificGoodWorld = false,
-        Func<NpcHandle, string?>? guideNameSource = null)
+        Func<NpcHandle, string?>? townNameSource = null,
+        VanillaTownNpcLootLanguage1458? townLootLanguage = null)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         random = new SystemNpcCombatRandom(lootRandom);
@@ -160,7 +162,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         this.npcSpecificLowTiles = npcSpecificLowTiles;
         this.npcSpecificDropExtraGel = npcSpecificDropExtraGel;
         this.npcSpecificGoodWorld = npcSpecificGoodWorld;
-        this.guideNameSource = guideNameSource;
+        this.townNameSource = townNameSource;
+        this.townLootLanguage = townLootLanguage;
         this.requireOwnedPlayerHealth = requireOwnedPlayerHealth;
         this.rawPlayerSlots = rawPlayerSlots;
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));

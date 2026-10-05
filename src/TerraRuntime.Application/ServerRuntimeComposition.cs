@@ -207,6 +207,8 @@ internal sealed class ServerRuntimeComposition
             expertMode: expertMode,
             projectileRandom: gameplayRandom,
             npcReplication: npcReplication);
+        // Official 1.4.5.8 Program selects GameCulture.DefaultCulture (English).
+        // Loot-name predicates follow that fixed server profile, independently of OS culture.
         var npcAuthority = new NpcAuthority(
             playerSnapshots,
             () => updates.Current,
@@ -243,7 +245,8 @@ internal sealed class ServerRuntimeComposition
             projectileNpcLocalImmunity,
             npcRandom,
             projectileReplication,
-            lootRandom: gameplayRandom, deathPrelude: deathPrelude, townSocialWorldFacts: townSocialWorldFacts);
+            lootRandom: gameplayRandom, deathPrelude: deathPrelude, townSocialWorldFacts: townSocialWorldFacts,
+            townLootLanguage: VanillaTownNpcLootLanguage1458.English);
         var worldTileAuthority = new WorldTileAuthority(
             playersAuthority,
             commands,

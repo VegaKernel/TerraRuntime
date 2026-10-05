@@ -106,7 +106,8 @@ internal sealed partial class NpcAuthority
         RuntimeProjectileReplicationRegistry? projectileReplication = null,
         VanillaUnifiedRandom1458? lootRandom = null,
         RuntimeNpcDeathPrelude1458? deathPrelude = null,
-        RuntimeTownSocialWorld1458? townSocialWorldFacts = null)
+        RuntimeTownSocialWorld1458? townSocialWorldFacts = null,
+        VanillaTownNpcLootLanguage1458? townLootLanguage = null)
     {
         ArgumentNullException.ThrowIfNull(playerSnapshots);
         this.playerSnapshots = playerSnapshots;
@@ -232,7 +233,7 @@ internal sealed partial class NpcAuthority
             npcSpecificDropExtraGel: townCommerceWorldFacts is
                 { TenthAnniversaryWorld: true, DrunkWorld: true, RemixWorld: false, NotTheBeesWorld: false },
             npcSpecificGoodWorld: townCommerceWorldFacts?.GoodWorld ?? false,
-            guideNameSource: townNpcs is null ? null : townNpcs.CaptureResidentName);
+            townNameSource: townNpcs is null ? null : townNpcs.CaptureResidentName, townLootLanguage: townLootLanguage);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
             projectiles,
             npcs,

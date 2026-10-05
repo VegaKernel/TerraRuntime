@@ -58,7 +58,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         if (!TryExecuteMechSpawnersLoot(in npc)) return false;
         if (!TryExecuteSlimeBodyLoot(in npc)) return false;
         if (!TryExecuteGlobalLoot(in npc)) return false;
-        if (npc.TypeIdentity == VanillaNpcIds.Guide) return TryExecuteGuideNameLoot(in npc);
+        if (VanillaTownNpcLootRules1458.TryGet(npc.TypeIdentity, out _)) return TryExecuteTownSpecificLoot(in npc);
         if (VanillaEaterOfWorldsLifecycle.IsSegment(npc.TypeIdentity))
             return TryExecuteEaterOfWorldsLoot(in npc, eaterBoss);
         if (npc.TypeIdentity == VanillaNpcIds.BrainOfCthulhu || npc.TypeIdentity == VanillaNpcIds.BrainCreeper)

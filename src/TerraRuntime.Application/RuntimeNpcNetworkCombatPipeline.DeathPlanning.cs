@@ -94,8 +94,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         plannedSpecificPlayers = null;
         plannedSpecificInventorySerial = playerAuthority.NpcLootInventorySerial;
         plannedHealingFallback = null;
-        plannedGuideNameOwner = default;
-        plannedGuideName = null;
+        plannedTownNameOwner = default;
+        plannedTownName = null;
         plannedDeathSpawnSerial = null;
         if (dead.TypeIdentity == VanillaNpcIds.MotherSlime || dead.TypeIdentity == VanillaNpcIds.Slimer ||
             pendingTownStrike is not null)
@@ -240,16 +240,24 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         plannedPrelude = null; plannedPreludeRevision = 0; plannedLootAllowed = false;
     }
 
-    private bool IsCurrentDeathOwner(NpcHandle handle, NpcRevision revision) =>
-        (plannedDeathSpawnSerial is null ||
-            (npcs.TryCaptureDeathSpawnContext(out var spawnContext) && spawnContext == plannedDeathSpawnContext)) &&
-        npcs.TryGet(handle, out var current) && current.Revision == revision && deathPrelude.Revision == plannedPreludeRevision &&
-        progression.CaptureSnapshot() == plannedDeathProgression &&
-        CaptureGlobalLootWorld() == plannedGlobalLootWorld && IsSpecificLootContextCurrent() &&
-        IsGuideNameCurrent() && ArePlannedPlayersCurrent() && IsCurrentDebuffPrelude() &&
-        (plannedDeathSpawnSerial is not { } serial ||
-            (npcs.TryCaptureDeathMutationSerial(out ulong currentSerial) && currentSerial == serial)) &&
-        (plannedHealingFallback is not { } fallback || rawPlayerSlots!.IsCurrent(in fallback));
+    private bool IsCurrentDeathOwner(NpcHandle handle, NpcRevision revision)
+    {
+        if (CaptureGlobalLootWorld() != plannedGlobalLootWorld || !IsSpecificLootContextCurrent() ||
+            !IsTownNameCurrent() || !ArePlannedPlayersCurrent()) return false;
+        // Names/player reads can reenter an owned world provider. Finish external dependency
+        // reads before the direct NPC/progression/prelude comparisons that authorize publication.
+        bool spawnCurrent = plannedDeathSpawnSerial is null ||
+            (npcs.TryCaptureDeathSpawnContext(out var spawnContext) && spawnContext == plannedDeathSpawnContext);
+        bool debuffCurrent = IsCurrentDebuffPrelude();
+        bool fallbackCurrent = plannedHealingFallback is not { } fallback || rawPlayerSlots!.IsCurrent(in fallback);
+        bool worldCurrent = CaptureGlobalLootWorld() == plannedGlobalLootWorld;
+        bool specificCurrent = IsSpecificLootContextCurrent();
+        return worldCurrent && specificCurrent && spawnCurrent && debuffCurrent && fallbackCurrent &&
+            npcs.TryGet(handle, out var current) && current.Revision == revision &&
+            deathPrelude.Revision == plannedPreludeRevision && progression.CaptureSnapshot() == plannedDeathProgression &&
+            (plannedDeathSpawnSerial is not { } serial ||
+                (npcs.TryCaptureDeathMutationSerial(out ulong currentSerial) && currentSerial == serial));
+    }
 
     private bool ArePlannedPlayersCurrent()
     {

@@ -16,6 +16,7 @@ This directory contains the English TerraRuntime documentation. The Russian vers
 
 - [Original NPC identity inventory](npc-source-inventory-1458.md)
 - [Owned NPC health context and physical producers](npc-owned-health-and-producers-1458.md) — remote life clocks, whole admitted Guide Doll operation and source herb/web placement.
+- [Town NPC death rewards](town-npc-death-rewards-1458.md)
 
 - [Networking and protocol](networking-protocol.md) — framing, connection policy, Multiplicity boundary, queues, rate accounting, stop reasons and join traffic.
 - [Outbound queue sizing evidence](outbound-queue-sizing-evidence.md) — process-lifetime high-water measurements, structural floor, 75% headroom model and safe sizing recommendations.

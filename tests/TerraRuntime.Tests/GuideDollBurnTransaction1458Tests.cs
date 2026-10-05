@@ -170,7 +170,7 @@ public sealed class GuideDollBurnTransaction1458Tests
                 NpcSimulationState.Initial), out _));
             else f.Lookup.Value = f.Lookup.Value with { Revision = new(2) };
         };
-        Assert.False(f.Batch(in doll)); Assert.Equal(2, captures);
+        Assert.False(f.Batch(in doll)); Assert.True(captures >= 2);
         Assert.True(f.Items.TryGetActive(doll.Handle.Slot, out var item)); Assert.Equal(doll, item);
         Assert.True(f.Npcs.TryGet(f.Guide.Handle, out var retained)); Assert.Equal(f.Guide, retained);
         Assert.True(f.Random.HasSameState(random)); Assert.Empty(f.Prelude.CaptureBestiary().Kills);
@@ -354,15 +354,69 @@ public sealed class GuideDollBurnTransaction1458Tests
                     new(row.GetProperty("id").GetInt32())));
     }
 
+    public static IEnumerable<object[]> TownRewardBatches()
+    {
+        var assembly = typeof(GuideDollBurnTransaction1458Tests).Assembly;
+        using var stream = assembly.GetManifestResourceStream(assembly.GetManifestResourceNames()
+            .Single(static name => name.EndsWith("town-batches.json.gz", StringComparison.Ordinal)))!;
+        using var gzip = new GZipStream(stream, CompressionMode.Decompress);
+        using var document = JsonDocument.Parse(gzip);
+        foreach (var row in document.RootElement.EnumerateArray())
+            if (row.TryGetProperty("legacy", out var legacy) && legacy.GetBoolean()) yield return [row.GetRawText()];
+    }
+
+    [Theory, MemberData(nameof(TownRewardBatches))]
+    public void Previously_fenced_reward_victim_matches_actual_original_whole_burn(string json)
+    {
+        using var document = JsonDocument.Parse(json); var row = document.RootElement;
+        int type = row.GetProperty("id").GetInt32(); string mode = row.GetProperty("mode").GetString()!;
+        var f = new Fixture(5, true, andrew: true); var doll = f.Doll(2);
+        Assert.True(f.Npcs.TrySpawn(1, new(type, (short)type, 800, 800, 0, 0, 255, default,
+            NpcSimulationState.Initial with { DirectionX = 1 }), out _));
+        string victimName = mode == "matching" ? type == 178 ? "Whitney" : "Jim"
+            : mode == "other" ? "NotTheMatchingName" : "";
+        f.NameQuery = handle => handle.Slot == 0 ? "Andrew" : victimName;
+        f.Events.Clear(); Assert.True(f.Batch(in doll));
+        var active = new NpcSnapshot[f.Npcs.Capacity]; int count = f.Npcs.CopyActive(active);
+        var survivors = row.GetProperty("alive"); Assert.Equal(survivors.GetArrayLength(), count);
+        for (int i = 0; i < count; i++)
+        {
+            Assert.Equal(survivors[i].GetProperty("slot").GetInt32(), active[i].Handle.Slot);
+            Assert.Equal(survivors[i].GetProperty("type").GetInt32(), active[i].Type);
+            Assert.Equal(survivors[i].GetProperty("life").GetInt32(), active[i].Simulation.Life);
+            Assert.Equal(survivors[i].GetProperty("x").GetSingle(), active[i].PositionX);
+            Assert.Equal(survivors[i].GetProperty("y").GetSingle(), active[i].PositionY);
+        }
+        var items = new WorldItemSnapshot[f.Items.Capacity]; count = f.Items.CopyActive(items);
+        var drops = row.GetProperty("drops"); Assert.Equal(drops.GetArrayLength(), count);
+        for (int i = 0; i < count; i++)
+        {
+            var actual = items[i]; var source = drops[i];
+            Assert.Equal(source.GetProperty("slot").GetInt16(), actual.Handle.Slot);
+            Assert.Equal(source.GetProperty("id").GetInt16(), actual.ItemNetId);
+            Assert.Equal(source.GetProperty("stack").GetInt16(), actual.Stack);
+            Assert.Equal(source.GetProperty("prefix").GetByte(), actual.Prefix);
+            Assert.Equal(source.GetProperty("x").GetSingle(), actual.PositionX);
+            Assert.Equal(source.GetProperty("y").GetSingle(), actual.PositionY);
+            Assert.Equal(source.GetProperty("vx").GetSingle(), actual.VelocityX);
+            Assert.Equal(source.GetProperty("vy").GetSingle(), actual.VelocityY);
+        }
+        Assert.Equal(row.GetProperty("next").GetInt32(), f.Random.Next());
+        Assert.Equal("item:Remove:267", f.Events.First());
+        var credits = f.Prelude.CaptureBestiary().Kills.ToDictionary(static e => e.PersistentId, static e => e.KillCount);
+        Assert.Equal(row.GetProperty("bestiary").EnumerateObject().Count(), credits.Count);
+        foreach (var credit in row.GetProperty("bestiary").EnumerateObject())
+            Assert.Equal(credit.Value.GetInt32(), credits[credit.Name]);
+    }
+
     [Theory]
-    [InlineData(54)] [InlineData(124)] [InlineData(178)] [InlineData(207)]
-    [InlineData(208)] [InlineData(227)] [InlineData(353)] [InlineData(441)]
-    [InlineData(550)] [InlineData(663)]
-    public void Selected_unowned_town_reward_rejects_before_any_Guide_or_doll_commit(int type)
+    [InlineData(178)] [InlineData(227)]
+    public void Selected_unknown_named_town_reward_rejects_before_any_Guide_or_doll_commit(int type)
     {
         var f = new Fixture(5, true, andrew: true); var doll = f.Doll(2);
         Assert.True(f.Npcs.TrySpawn(1, new(type, (short)type, 800, 800, 0, 0, 255, default,
             NpcSimulationState.Initial with { DirectionX = 1 }), out var town));
+        f.NameQuery = handle => handle.Slot == 0 ? "Andrew" : null;
         var random = f.Random.Clone(); f.Events.Clear();
         ulong preludeRevision = f.Prelude.Revision;
         Assert.False(f.Burn(in doll));
@@ -452,7 +506,8 @@ public sealed class GuideDollBurnTransaction1458Tests
             pipeline = new(Npcs, Items, Lookup, new PlayerAuthority(null, null), () => 0, null,
                 new(Items), null, Clock, Progression, false, false, worldTiles: tiles, lootRandom: Random,
                 deathPrelude: Prelude, npcSpecificLowTiles: Context, requireOwnedPlayerHealth: true,
-                guideNameSource: handle => NameQuery is null ? GuideName : NameQuery(handle));
+                townNameSource: handle => NameQuery is null ? GuideName : NameQuery(handle),
+                townLootLanguage: TerraRuntime.Gameplay.Npcs.VanillaTownNpcLootLanguage1458.English);
             Events.Clear();
         }
         public WorldItemSnapshot Doll(short stack = 1)

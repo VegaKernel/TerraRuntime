@@ -16,6 +16,7 @@
 
 - [Инвентаризация идентификаторов NPC оригинала](npc-source-inventory-1458.md)
 - [Управляемый контекст здоровья NPC и физические эффекты](npc-owned-health-and-producers-1458.md) — часы удалённого здоровья, целая допущенная операция куклы Гида и исходное размещение травы/паутины.
+- [Награды за смерть городских NPC](town-npc-death-rewards-1458.md)
 
 - [Сеть и протокол](networking-protocol.md) — framing, connection policy, граница Multiplicity, queues, rate accounting, stop reasons и join traffic.
 - [Evidence для sizing outbound queue](outbound-queue-sizing-evidence.md) — process-lifetime high-water measurements, structural floor, модель 75% headroom и безопасная sizing recommendation.
