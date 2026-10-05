@@ -66,6 +66,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private readonly Func<bool?>? npcSpecificLowTiles;
     private readonly bool npcSpecificDropExtraGel;
     private readonly bool npcSpecificGoodWorld;
+    private readonly Func<NpcHandle, string?>? guideNameSource;
     private readonly bool requireOwnedPlayerHealth;
     private readonly RuntimeNpcRawPlayerSlots1458? rawPlayerSlots;
     private readonly bool isThereAWorldSurface;
@@ -137,7 +138,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         bool requireOwnedPlayerHealth = false,
         RuntimeNpcRawPlayerSlots1458? rawPlayerSlots = null,
         bool npcSpecificDropExtraGel = false,
-        bool npcSpecificGoodWorld = false)
+        bool npcSpecificGoodWorld = false,
+        Func<NpcHandle, string?>? guideNameSource = null)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         random = new SystemNpcCombatRandom(lootRandom);
@@ -156,6 +158,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         this.npcSpecificLowTiles = npcSpecificLowTiles;
         this.npcSpecificDropExtraGel = npcSpecificDropExtraGel;
         this.npcSpecificGoodWorld = npcSpecificGoodWorld;
+        this.guideNameSource = guideNameSource;
         this.requireOwnedPlayerHealth = requireOwnedPlayerHealth;
         this.rawPlayerSlots = rawPlayerSlots;
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
@@ -283,11 +286,22 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                 KnockBack: normalizedWire.KnockBack,
                 HitDirection: normalizedHitDirection);
 
+        if (!TryPlanTownStrike(in current, request.HitDirection, out var townStrike))
+            return RuntimeNpcNetworkDamageResult.Rejected;
         bool suppressing = npcReplication?.TryBeginClientDamage(current.Handle) == true;
         try
         {
-            if (!damage.TryApplyClient(in request,
-                    destroyerSharedLife && current.Handle != destroyerRoot.Handle ? destroyerRoot : null, out NpcDamageResult result))
+            bool applied;
+            NpcDamageResult result;
+            pendingTownStrike = townStrike;
+            try
+            {
+                applied = damage.TryApplyClient(in request,
+                    destroyerSharedLife && current.Handle != destroyerRoot.Handle ? destroyerRoot : null,
+                    out result, townStrike?.Reaction);
+            }
+            finally { pendingTownStrike = null; }
+            if (!applied)
             {
                 CancelPendingDeathPlan();
                 if (suppressing)
@@ -297,6 +311,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                 return RuntimeNpcNetworkDamageResult.Relayed;
             }
 
+            PublishTownStrikeRandom(townStrike);
             if (!result.Lethal) ExecuteNpcNonlethalHitEffects(in current);
             NpcSnapshot dead;
             if (current.TypeIdentity == VanillaNpcIds.WallOfFleshEye &&

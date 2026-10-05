@@ -43,7 +43,7 @@ internal sealed partial class RuntimeTownNpcSchedule1458
                 : (PlayerAuthority.VanillaBasePlayerWidth, PlayerAuthority.VanillaBasePlayerHeight);
             AddSocialPlayer(new(player.Connection, player.Connection.Player, player.Revision,
                 new(player.PositionX, player.PositionY, width, height), player.IsDead, player.Zones,
-                player.HasHealth && player.NpcLifeCurrent == true && player.Revision < ulong.MaxValue ? player.Life : null, player.DerivedLifeMax,
+                player.Revision < ulong.MaxValue ? player.NpcLife : null, player.DerivedLifeMax,
                 player.Debuffs, players.TryGetInventoryItem(player.Connection, player.SelectedItem, out var held) ? held.ItemType.Value : null));
         }
         if (serverPlayers is null) return;

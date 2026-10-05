@@ -126,11 +126,14 @@ public sealed class WorldItemRelease1458Tests
             // Pin the shared NewItem/death stream. This fixture exercises an accepted Guide death:
             // seed0 does not select a heart whose eligibility needs current remote-player life.
             // Tick invalidates that life provenance; selected-heart rejection has separate endpoint tests.
+            var town = new RuntimeTownNpcStateStore(new WorldNpcPersistence([], [], []), [], new(400, 400));
             State = new ServerRuntimeState(npcs: Npcs, worldItems: Items, worldTiles: tiles,
+                townNpcs: town,
                 townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458),
                 naturalSpawnRandom: new SystemVanillaNpcRandom(0));
             Assert.True(Npcs.TrySpawnVanilla(new NpcStateUpdate(22, 22, 800, 800, 0, 0, 255, default, NpcSimulationState.Initial), out var guide));
             Guide = guide;
+            Assert.True(town.TryAdoptRescuedResident(guide.Handle.Slot, guide.TypeIdentity, in guide));
             var slots = new PlayerSlotPool(2);
             Assert.True(slots.TryAcquireConnection(out var lease));
             var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));

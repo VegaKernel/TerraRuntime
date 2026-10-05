@@ -9,40 +9,51 @@ namespace TerraRuntime.Tests;
 public sealed class GuideVoodooDoll1458Tests
 {
     [Fact]
-    public void Real_tick_burns_whole_stack_then_kills_guide_then_spawns_wall()
+    public void Real_tick_burns_whole_stack_with_one_Guide_and_no_later_victims_then_spawns_wall()
     {
         var f = new Fixture();
         var guide = f.Npc(22);
-        var merchant = f.Npc(17);
-        var doll = f.Doll(stack: 2);
+        var doll = f.Doll(stack: 5);
         f.Events.Clear();
         f.State.Tick();
         Assert.False(f.Items.TryGetActive(doll.Handle.Slot, out _));
         Assert.False(f.Npcs.TryGet(guide.Handle, out _));
-        Assert.False(f.Npcs.TryGet(merchant.Handle, out _));
         var wall = Assert.Single(f.ActiveNpcs(), npc => npc.Type == 113);
         Assert.Equal(255, wall.Target);
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(113), out var def));
         Assert.Equal(2560 - def.Width / 2f, wall.PositionX);
         Assert.Equal(246 * 16 - def.Height, wall.PositionY);
-        Assert.Equal("item:Remove:267", f.Events[0]);
+        // The owned town actor phase precedes world-item lava contact in a real tick.
+        Assert.Equal("item:Remove:267", f.Events.First(e => e.StartsWith("item:", StringComparison.Ordinal)));
         Assert.True(f.Events.IndexOf("npc:Despawn:22") < f.Events.IndexOf("npc:Spawn:113"));
-        Assert.True(f.Events.IndexOf("npc:Spawn:113") < f.Events.IndexOf("npc:Despawn:17"));
     }
 
     [Fact]
-    public void One_doll_strikes_all_guides_but_creates_only_one_wall()
+    public void Multiple_Guides_remain_unconsumed_until_shared_multi_death_transaction_is_owned()
     {
         var f = new Fixture();
         var first = f.Npc(22);
         var second = f.Npc(22);
         var merchant = f.Npc(17);
-        f.Doll();
+        var doll = f.Doll();
         f.State.Tick();
-        Assert.False(f.Npcs.TryGet(first.Handle, out _));
-        Assert.False(f.Npcs.TryGet(second.Handle, out _));
+        Assert.True(f.Items.TryGetActive(doll.Handle.Slot, out _));
+        Assert.True(f.Npcs.TryGet(first.Handle, out _));
+        Assert.True(f.Npcs.TryGet(second.Handle, out _));
         Assert.True(f.Npcs.TryGet(merchant.Handle, out _));
-        Assert.Single(f.ActiveNpcs(), n => n.Type == 113);
+        Assert.DoesNotContain(f.ActiveNpcs(), n => n.Type == 113);
+    }
+
+    [Fact]
+    public void Later_town_victim_stack_is_fenced_before_Guide_or_doll_mutation()
+    {
+        var f = new Fixture(); var guide = f.Npc(22); var merchant = f.Npc(17); var doll = f.Doll(2);
+        f.Events.Clear(); f.State.Tick();
+        Assert.True(f.Items.TryGetActive(doll.Handle.Slot, out _));
+        Assert.True(f.Npcs.TryGet(guide.Handle, out var retained)); Assert.Equal(guide.Simulation.Life, retained.Simulation.Life);
+        Assert.True(f.Npcs.TryGet(merchant.Handle, out retained)); Assert.Equal(merchant.Simulation.Life, retained.Simulation.Life);
+        Assert.DoesNotContain("item:Remove:267", f.Events);
+        Assert.DoesNotContain(f.ActiveNpcs(), n => n.Type == 113);
     }
 
     [Fact]
@@ -150,6 +161,7 @@ public sealed class GuideVoodooDoll1458Tests
         public RuntimeWorldItemStore Items { get; }
         public ServerRuntimeState State { get; }
         private readonly int poolY;
+        private readonly RuntimeTownNpcStateStore town = new(new WorldNpcPersistence([], [], []), [], new(400, 400));
         public Fixture(int poolY = 250, WorldLiquidKind liquid = WorldLiquidKind.Lava, bool known = true)
         {
             this.poolY = poolY;
@@ -162,12 +174,15 @@ public sealed class GuideVoodooDoll1458Tests
                     ? new WorldTile { Type = 1, Flags = WorldTileFlags.Active }
                     : new WorldTile { LiquidAmount = 255, LiquidKind = liquid };
             State = new ServerRuntimeState(npcs: Npcs, worldItems: Items, worldTiles: tiles,
-                npcAiStepper: new Stationary(), townCommerceWorldFacts: known ? default(RuntimeTownCommerceWorldFacts1458) : null);
+                npcAiStepper: new Stationary(), townNpcs: town, naturalSpawnRandom: new SystemVanillaNpcRandom(0),
+                townCommerceWorldFacts: known ? default(RuntimeTownCommerceWorldFacts1458) : null);
         }
         public NpcSnapshot Npc(ushort type)
         {
             var update = new NpcStateUpdate(type, (short)type, 800, 800, 0, 0, 255, default, NpcSimulationState.Initial);
             Assert.True(Npcs.TrySpawnVanilla(in update, out var npc));
+            if (town.CanAdoptRescuedResident(npc.Handle.Slot, new(type)))
+                Assert.True(town.TryAdoptRescuedResident(npc.Handle.Slot, new(type), in npc));
             return npc;
         }
         public WorldItemSnapshot Doll(short stack = 1, byte owner = 255, float? y = null, short type = 267)

@@ -447,8 +447,11 @@ public static class VanillaNpcAiStyles
 /// </summary>
 public static class VanillaItemIds
 {
+    public static readonly ItemTypeId GreenCap = new(867);
     public static readonly ItemTypeId MagicMirror = new(50);
     public static readonly ItemTypeId WhoopieCushion = new(215);
+    public static readonly ItemTypeId Cobweb = new(150);
+    public static readonly ItemTypeId DaybloomSeeds = new(314);
     public const int Count = 6196;
 
     public static ItemTypeId None => default;

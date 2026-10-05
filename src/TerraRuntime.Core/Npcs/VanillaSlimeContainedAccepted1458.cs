@@ -17,6 +17,9 @@ internal interface IVanillaSlimeContainedWorld1458
     bool IsCurrent { get; }
     bool CanHit { get; }
     bool TryReadBirthWet(in NpcSnapshot birth, out bool wet);
+    bool TryPlanTileProducer(int item, in NpcSnapshot parent, IVanillaNpcRandom random, out bool grew)
+    { grew = false; return false; }
+    void CommitTileProducer() { }
 }
 
 internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
@@ -128,13 +131,14 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
         var input = new VanillaSlimeContainedInput1458(npc.Type, npc.NetId, npc.PositionY, body.Height,
             money, (int)npc.Ai.Ai1, npc.Ai.Ai0 == -999f);
         if (!VanillaSlimeContainedInitializer1458.TrySelect(in input, in facts, speculativeRandom,
-                out var selection) || !selection.Admitted)
+                out var selection) || !selection.Admitted && selection.Item is not (314 or 150))
             return false;
 
         var effects = VanillaSlimeContainedInitializer1458.ObserveContents(selection.Item,
             facts.GoodWorld, facts.NoTrapsWorld, speculativeRandom);
         IVanillaSlimeContainedWorld1458 world = NoContainedProducerWorld.Instance;
-        if (((producerTargetEligible && effects.Trap) || effects.HiveType != 0) &&
+        bool tileProducer = selection.Item is 314 or 150;
+        if (((producerTargetEligible && effects.Trap) || effects.HiveType != 0 || tileProducer) &&
             (!containedEnvironment.TryCapture(in npc, in target, out world) || !world.IsCurrent))
             return false;
 
@@ -174,7 +178,12 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
                 return false;
         }
 
-        var staged = npc with { Ai = npc.Ai with { Ai1 = selection.Item } };
+        bool grew = false;
+        if (tileProducer && !world.TryPlanTileProducer(selection.Item, in npc, speculativeRandom, out grew))
+            return false;
+        var staged = npc with { Ai = npc.Ai with { Ai1 = selection.Item },
+            Simulation = grew ? npc.Simulation with { LocalAi = npc.Simulation.LocalAi with {
+                Ai3 = npc.Simulation.LocalAi.Ai3 + 1f } } : npc.Simulation };
         var mechanical = new VanillaSlimeGroundNpcBehaviorStrategy(speculativeRandom);
         if (!mechanical.TryStepMechanical(in staged, in definition, context, inner,
                 out var update, containedInitializationObserved: true) || !RuntimeNpcStore.IsValid(in update))
@@ -255,6 +264,9 @@ internal sealed partial class VanillaSlimeGroundNpcBehaviorStrategy
             return default;
         }
         containedPlan = null;
+        // These producers cannot stage a child, so adoption above has no external callback.
+        // All tile claims were validated first; mutate and publish source20 before the actor's final23.
+        plan.World.CommitTileProducer();
         completedContainedBefore = before;
         completedContainedAfter = completed;
         completedContainedInactive = despawnAfterCompletion;

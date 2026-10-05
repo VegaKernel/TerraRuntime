@@ -4,6 +4,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Gameplay.Npcs;
+using TerraRuntime.Gameplay.Players;
 using TerraRuntime.HostContracts;
 using TerraRuntime.World;
 
@@ -146,6 +147,9 @@ internal sealed class ServerRuntimeComposition
             oceanTeleportSurface: townCommerceWorldFacts is { SkyblockWorld: false } oceanFacts ? oceanFacts.WorldSurface : null,
             chestCommands: chestCommands,
             lanternsUp: townCommerceWorldFacts?.LanternsUp);
+        if (townCommerceWorldFacts is { } healthWorld)
+            playersAuthority.SetNpcHealthWorldFacts(() => new PlayerNpcHealthWorld1458(
+                expertMode || (worldClock?.GetGoodWorld ?? healthWorld.GoodWorld), healthWorld.VampireSeed));
         var playerSnapshots = new RuntimePlayerSnapshotLookup(playersAuthority, serverPlayers);
 
         RuntimeWorldItemStore worldItemStore = worldItems ?? new RuntimeWorldItemStore();
@@ -176,6 +180,7 @@ internal sealed class ServerRuntimeComposition
                 ownedCalendar.Halloween, ownedCalendar.XMas, ownedCalendar.TenthAnniversaryWorld) : null);
         worldItemStore.AttachOwnerFactsProvider(worldItemAuthority.SourceOwnerFacts);
         RuntimeProjectileStore projectileStore = projectiles ?? new RuntimeProjectileStore();
+        playersAuthority.SetNpcHealthGrapplingFacts(player => CaptureNpcHealthGrappling(projectileStore, player));
         var projectileNpcLocalImmunity = new RuntimeProjectileNpcLocalImmunityRegistry(
             projectileStore.Capacity,
             npcStore.Capacity);
@@ -306,5 +311,20 @@ internal sealed class ServerRuntimeComposition
             townCommerceWorldFacts,
             expertMode,
             masterMode);
+    }
+
+    private static bool? CaptureNpcHealthGrappling(RuntimeProjectileStore projectiles, PlayerHandle player)
+    {
+        for (int slot = 0; slot < projectiles.Capacity; slot++)
+        {
+            if (!projectiles.TryGetActive((ushort)slot, out var projectile) || projectile.Spawner != player.Slot.Value)
+                continue;
+            // Player.UpdateLifeRegen reads the retained grappling slots. Until AI_007_GrapplingHooks
+            // owns their attachment transitions, an active hook or unknown profile is unavailable.
+            if (!TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(projectile.Type, out var definition) ||
+                definition.AiStyle.Value == 7)
+                return null;
+        }
+        return false;
     }
 }

@@ -220,6 +220,10 @@ internal sealed class RuntimePlayerMember
     public int? DerivedLifeMax { get; set; } = 100;
     public int? BaseLifeMax { get; set; } = 100;
     public bool? NpcLifeCurrent { get; set; } = false;
+    public PlayerNpcHealthState1458? NpcHealth { get; set; } = PlayerNpcHealthState1458.Constructor;
+    public int? NpcLife => Revision < ulong.MaxValue && NpcLifeCurrent == true
+        ? NpcHealth?.Life ?? (HasHealth ? Life : null)
+        : null;
     public PlayerDebuffSnapshot1458? Debuffs { get; set; } = default(PlayerDebuffSnapshot1458);
     public bool IsDead { get; set; }
     public float Stealth { get; set; } = 1f;
@@ -295,6 +299,7 @@ internal sealed class RuntimePlayerMember
             DerivedLifeMax = DerivedLifeMax,
             BaseLifeMax = BaseLifeMax,
             NpcLifeCurrent = Revision < ulong.MaxValue ? NpcLifeCurrent : null,
+            NpcHealth = Revision < ulong.MaxValue ? NpcHealth : null,
             Debuffs = Debuffs,
             IsDead = IsDead,
             HasMana = HasMana,

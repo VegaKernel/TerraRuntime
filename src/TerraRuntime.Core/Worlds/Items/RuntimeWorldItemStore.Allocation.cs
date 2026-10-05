@@ -160,6 +160,24 @@ public sealed partial class RuntimeWorldItemStore
         }
 
         public int Count => steps.Count;
+
+        // Source WorldItem.VoodooDollLavaDeath turns the whole item to air BEFORE NPC loot allocates.
+        // Retain that exact-generation removal in the same claim as the following NewItem operations.
+        internal bool TryRemoveSource(in WorldItemSnapshot item)
+        {
+            if (disposed || claimed || failed || steps.Count != 0 || !item.Handle.IsAssigned ||
+                !IsValidSlot(item.Handle.Slot)) return Fail();
+            short slot = item.Handle.Slot;
+            ref var state = ref working[slot];
+            if (!state.Active || state.Claimed || state.Reserved || Capture(slot, in state) != item) return Fail();
+            int start = operations.Count;
+            state.Active = false;
+            state.Update = default;
+            // Ordinary TryRemove preserves the slot's generation/revision until its next allocation.
+            if (!Record(slot, WorldItemStateCommitKind.Remove)) return Fail();
+            steps.Add(new(start, operations.Count, slot, 0, pending[..pendingCount].ToArray(), null));
+            return true;
+        }
         public bool IsCurrent
         {
             get

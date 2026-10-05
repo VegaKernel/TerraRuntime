@@ -127,7 +127,8 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
         int startY,
         byte width,
         byte height,
-        VanillaTileChangeType1458 changeType)
+        VanillaTileChangeType1458 changeType,
+        bool respectSectionRange = false)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         if (!TerrariaTileSquareCodec.TryEncode(
@@ -143,7 +144,23 @@ internal sealed class RuntimeTileManipulationReplicationRegistry : IRuntimePlaye
             return false;
         }
 
-        return TryPublishFrameToAll(encoded);
+        if (!respectSectionRange) return TryPublishFrameToAll(encoded);
+        var frame = new OutboundFrame(encoded);
+        int size = Math.Max(width, height);
+        foreach (Endpoint endpoint in endpoints.Values)
+        {
+            if (!endpoint.IsPlaying) continue;
+            var sections = endpoint.Sections;
+            // RemoteClient.SectionRange tests the four corners at +size, not +size-1.
+            // A missing table is the existing explicit system/bootstrap endpoint contract.
+            if (sections is not null && !Owns(startX, startY) && !Owns(startX + size, startY) &&
+                !Owns(startX, startY + size) && !Owns(startX + size, startY + size)) continue;
+            Publish(endpoint, frame);
+
+            bool Owns(int x, int y) => x >= 0 && y >= 0 && x < tiles.Dimensions.WidthTiles &&
+                y < tiles.Dimensions.HeightTiles && sections!.OwnsSectionAtTile(x, y);
+        }
+        return true;
     }
 
     public bool TryPublishPlaceObject(

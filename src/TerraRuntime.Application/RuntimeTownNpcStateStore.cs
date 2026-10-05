@@ -41,6 +41,8 @@ internal sealed class RuntimeTownNpcStateStore
     private readonly SortedSet<int> shimmeredTownNpcTypes;
     private readonly WorldPersistentNpc[] persistentNpcs;
     private readonly SortedDictionary<short, WorldTownNpc> townNpcsBySlot = [];
+    private readonly Dictionary<short, NpcHandle> residentNameHandles = [];
+    private RuntimeNpcStore? residentNameOwner;
     private readonly Dictionary<int, WorldTownRoom> roomsByNpcType = [];
     private readonly List<int> roomNpcTypeOrder = [];
     private readonly WorldDimensions dimensions;
@@ -75,6 +77,29 @@ internal sealed class RuntimeTownNpcStateStore
 
     public bool TryGet(short slot, out WorldTownNpc npc) =>
         townNpcsBySlot.TryGetValue(slot, out npc!);
+
+    internal void BindRuntimeNames(RuntimeNpcStore npcs)
+    {
+        ArgumentNullException.ThrowIfNull(npcs);
+        if (residentNameOwner is not null)
+        {
+            if (!ReferenceEquals(residentNameOwner, npcs))
+                throw new InvalidOperationException("Town identity owner cannot be rebound to another NPC table.");
+            return;
+        }
+        residentNameOwner = npcs;
+        foreach (var pair in townNpcsBySlot)
+            if (npcs.TryGetActive((byte)pair.Key, out var npc) && npc.NetId == pair.Value.NetId)
+                residentNameHandles[pair.Key] = npc.Handle;
+    }
+
+    internal string? CaptureResidentName(NpcHandle handle)
+    {
+        return residentNameOwner is not null && residentNameHandles.TryGetValue(handle.Slot, out var retained) &&
+            retained == handle && residentNameOwner.TryGet(handle, out var npc) &&
+            townNpcsBySlot.TryGetValue(handle.Slot, out var identity) && npc.NetId == identity.NetId
+            ? identity.GivenName : null;
+    }
 
     public bool TryGetRoom(NpcTypeId type, out WorldTownRoom room) =>
         roomsByNpcType.TryGetValue(type.Value, out room);
@@ -324,6 +349,7 @@ internal sealed class RuntimeTownNpcStateStore
         }
 
         short slot = snapshot.Handle.Slot;
+        residentNameHandles[slot] = snapshot.Handle;
         townNpcsBySlot[slot] = new WorldTownNpc(
             type.Value,
             string.Empty,
@@ -371,6 +397,7 @@ internal sealed class RuntimeTownNpcStateStore
             homeTileY,
             TownNpcVariationIndex: null,
             HomelessDespawn: false));
+        residentNameHandles[slot] = snapshot.Handle;
         RemoveRoom(type.Value);
         return true;
     }

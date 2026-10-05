@@ -84,16 +84,26 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         plannedSpecificPlayers = null;
         plannedSpecificInventorySerial = playerAuthority.NpcLootInventorySerial;
         plannedHealingFallback = null;
+        plannedGuideNameOwner = default;
+        plannedGuideName = null;
         plannedDeathSpawnSerial = null;
-        if (dead.TypeIdentity == VanillaNpcIds.MotherSlime || dead.TypeIdentity == VanillaNpcIds.Slimer)
+        if (dead.TypeIdentity == VanillaNpcIds.MotherSlime || dead.TypeIdentity == VanillaNpcIds.Slimer ||
+            guideDollRemoval.HasValue || pendingTownStrike is not null)
         {
             if (!npcs.TryCaptureDeathMutationSerial(out ulong spawnSerial)) return false;
+            if (guideDollNpcSerial is { } expectedSerial && spawnSerial != expectedSerial) return false;
             plannedDeathSpawnSerial = spawnSerial;
         }
         for (int slot = 0; slot < plannedPlayers.Length; slot++)
             plannedPlayerPresence[slot] = players.TryGetPlayer(new((byte)slot), out plannedPlayers[slot]);
         var liveRandom = random.SourceRandom;
         var plan = new RuntimeNpcDeathDropPlan1458(dead.Handle, dead.Revision, liveRandom);
+        if (pendingTownStrike is { } townStrike)
+        {
+            if (!liveRandom.HasSameState(townStrike.Before)) return false;
+            plan.Random.CopyStateFrom(townStrike.After);
+            plan.RetainStrikePrelude();
+        }
         bool completed = false;
         float oldLuck = random.Luck;
         try
@@ -157,19 +167,20 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             if (!plan.BeginPreviewPhase(NpcDeathDropPhase1458.Healing)) return false;
             var healing = new VanillaNpcHealingContext1458(dead.TypeIdentity, dead.NetIdentity,
                 dead.Simulation.LifeMax, dead.Simulation.DamageOverride ?? definition.Damage,
-                hasClosest && closest.HasHealth && (!requireOwnedPlayerHealth || closest.NpcLifeCurrent == true) &&
-                    closest.Life < (closest.DerivedLifeMax ?? closest.MaxLife),
+                hasClosest && (requireOwnedPlayerHealth
+                    ? closest.NpcLife is int life && closest.DerivedLifeMax is int maximum && life < maximum
+                    : closest.HasHealth && closest.Life < (closest.DerivedLifeMax ?? closest.MaxLife)),
                 hasClosest && closest.HasMana && closest.Mana < closest.MaxMana, expertMode,
                 LifeEligibilityKnown: !requireOwnedPlayerHealth ||
-                    (hasClosest && closest.HasHealth && closest.NpcLifeCurrent == true &&
-                        closest.DerivedLifeMax.HasValue) || constructorHealthKnown);
+                    (hasClosest && closest.NpcLife.HasValue && closest.DerivedLifeMax.HasValue) || constructorHealthKnown);
             if ((allowLoot && !VanillaNpcHealingLoot1458.TryExecute(in healing, in origin, random, lootDelivery)) ||
                 !plan.FinishPreviewPhase(NpcDeathDropPhase1458.Healing)) return false;
+            if (!TryValidateGuideDollContinuation(in dead, plan.Random)) return false;
             random.UseSource(liveRandom);
             Span<WorldItemAllocationPlayer1458> allocationViews = stackalloc WorldItemAllocationPlayer1458[
                 VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
             if (!TryCaptureAllocationViews(allocationViews, out int viewCount) ||
-                !plan.TryReserve(worldItems, allocationViews[..viewCount]) || !plan.TryAccept(IsCurrentDeathOwner)) return false;
+                !plan.TryReserve(worldItems, allocationViews[..viewCount], guideDollRemoval) || !plan.TryAccept(IsCurrentDeathOwner)) return false;
             plannedDaily = previewDaily;
             plannedPrelude = prelude;
             plannedLootAllowed = allowLoot;
@@ -225,7 +236,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             (npcs.TryCaptureDeathSpawnContext(out var spawnContext) && spawnContext == plannedDeathSpawnContext)) &&
         npcs.TryGet(handle, out var current) && current.Revision == revision && deathPrelude.Revision == plannedPreludeRevision &&
         progression.CaptureSnapshot() == plannedDeathProgression &&
-        CaptureGlobalLootWorld() == plannedGlobalLootWorld && ArePlannedPlayersCurrent() && IsSpecificLootContextCurrent() &&
+        CaptureGlobalLootWorld() == plannedGlobalLootWorld && IsSpecificLootContextCurrent() &&
+        IsGuideNameCurrent() && ArePlannedPlayersCurrent() &&
         (plannedDeathSpawnSerial is not { } serial ||
             (npcs.TryCaptureDeathMutationSerial(out ulong currentSerial) && currentSerial == serial)) &&
         (plannedHealingFallback is not { } fallback || rawPlayerSlots!.IsCurrent(in fallback));

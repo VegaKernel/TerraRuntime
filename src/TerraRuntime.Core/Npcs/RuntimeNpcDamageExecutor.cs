@@ -122,15 +122,17 @@ public sealed class RuntimeNpcDamageExecutor
     // Server-origin strikes need their packet 28 before the resulting packet 23. Finish all eligibility and
     // lethal-capacity admission before committing, then let the application publish the accepted strike.
     internal bool TryApplyUnpublished(in NpcDamageRequest request, out NpcDamageResult result,
-        out NpcSnapshot committed, out bool spawnTrueEye, out bool forceUpdate, NpcSnapshot? sharedLifeOwner = null)
-        => TryApplyCore(in request, publish: false, out result, out committed, out spawnTrueEye, out forceUpdate, sharedLifeOwner);
+        out NpcSnapshot committed, out bool spawnTrueEye, out bool forceUpdate, NpcSnapshot? sharedLifeOwner = null,
+        NpcTownStrikeReaction1458? townReaction = null)
+        => TryApplyCore(in request, publish: false, out result, out committed, out spawnTrueEye, out forceUpdate, sharedLifeOwner, townReaction);
 
-    internal bool TryApplyClient(in NpcDamageRequest request, NpcSnapshot? sharedLifeOwner, out NpcDamageResult result)
+    internal bool TryApplyClient(in NpcDamageRequest request, NpcSnapshot? sharedLifeOwner, out NpcDamageResult result,
+        NpcTownStrikeReaction1458? townReaction = null)
     {
         // MessageBuffer completes StrikeNPC's effects before SendData(28) flushes a retained birth.
         bool retainedBirth = _store.HasPendingBirth(request.Target);
         if (!TryApplyCore(in request, publish: !retainedBirth, out result, out var committed,
-                out bool spawnTrueEye, out bool forceUpdate, sharedLifeOwner)) return false;
+                out bool spawnTrueEye, out bool forceUpdate, sharedLifeOwner, townReaction)) return false;
         return !retainedBirth || TryCompleteUnpublished(in committed, spawnTrueEye, publishUpdate: false, forceUpdate);
     }
 
@@ -144,7 +146,8 @@ public sealed class RuntimeNpcDamageExecutor
     }
 
     private bool TryApplyCore(in NpcDamageRequest request, bool publish, out NpcDamageResult result,
-        out NpcSnapshot committedSnapshot, out bool spawnTrueEye, out bool forceUpdate, NpcSnapshot? sharedLifeOwner = null)
+        out NpcSnapshot committedSnapshot, out bool spawnTrueEye, out bool forceUpdate, NpcSnapshot? sharedLifeOwner = null,
+        NpcTownStrikeReaction1458? townReaction = null)
     {
         committedSnapshot = default;
         spawnTrueEye = false;
@@ -224,6 +227,16 @@ public sealed class RuntimeNpcDamageExecutor
             JustHit = true
         };
 
+        if (townReaction is { } reaction)
+        {
+            if (reaction.Owner != current.Handle || reaction.Revision != current.Revision ||
+                reaction.Direction is < -1 or > 1 || !reaction.Ai.IsValidFor(current.TypeIdentity))
+            { result = default; return false; }
+            ai = reaction.Ai;
+            simulation = simulation with { DirectionX = reaction.Direction,
+                LocalAi = simulation.LocalAi with { Ai3 = 0f } };
+        }
+
         // TerrariaServer 1.4.5.8 NPC.checkDead does not actually kill Detonating Bubbles or Moon Lord parts on the first
         // lethal strike. PrepareForDeathAnimation restores life, makes the NPC invulnerable and leaves a special
         // ai[] state for the normal authoritative AI loop. Keep that transition in the shared damage boundary so
@@ -284,6 +297,13 @@ public sealed class RuntimeNpcDamageExecutor
         // Shared-life synchronization belongs to this accepted strike, never an eager published update.
         if (sharedLifeOwner is { } expectedOwner &&
             (!_store.TryGet(expectedOwner.Handle, out var currentOwner) || currentOwner != expectedOwner))
+        { result = default; return false; }
+
+        // Interaction/death admission may run before this point. Never commit HP or reaction AI
+        // against an RNG preview whose source owner changed during that admission.
+        if (townReaction is { } guardedReaction &&
+            (guardedReaction.SourceRandom is null || guardedReaction.BeforeRandom is null ||
+             !guardedReaction.SourceRandom.HasSameState(guardedReaction.BeforeRandom)))
         { result = default; return false; }
 
         bool updated = publish

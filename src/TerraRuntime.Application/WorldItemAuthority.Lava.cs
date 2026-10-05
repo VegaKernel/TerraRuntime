@@ -29,8 +29,9 @@ internal sealed partial class WorldItemAuthority
                 out float x, out float y, out float vx, out float vy, out bool wet, out bool honey, out bool lava)) continue;
             if (!worldItems.TryAdvanceMotion(item.Handle, x, y, vx, vy, out _)) continue;
             motion.Wet = wet; motion.Honey = honey; motion.Lava = lava;
-            if (!lava || !TryTakeTrusted(item.Handle, out WorldItemSnapshot burned)) continue;
-            npcs.ApplyBurnedGuideDoll(in burned);
+            if (!lava || !worldItems.TryGetActive(item.Handle.Slot, out WorldItemSnapshot touched) ||
+                touched.Handle != item.Handle) continue;
+            _ = npcs.TryBurnGuideDoll(in touched);
         }
     }
 }

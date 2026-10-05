@@ -57,7 +57,7 @@ public sealed class UndeadLootDeath1458Tests
         Assert.Equal(document.RootElement.GetProperty("next").GetInt32(), fixture.Random.Next());
     }
 
-    internal static void AssertCurrentLifeBoundary(bool playerPhase)
+    internal static void AssertCurrentLifeBoundary(string phase)
     {
         string json = (string)OriginalAdmittedDeaths().First(data =>
         {
@@ -68,10 +68,10 @@ public sealed class UndeadLootDeath1458Tests
                 row.GetProperty("drops").EnumerateArray().Any(item => item.GetProperty("id").GetInt32() == 58);
         })[0];
         using var document = JsonDocument.Parse(json);
-        using var fixture = new Fixture(document.RootElement, playerPhase);
+        using var fixture = new Fixture(document.RootElement, phase);
         var beforeRandom = fixture.Random.Clone();
         var result = fixture.Pipeline.TryStrikeEnvironment(fixture.Npc.Handle, 100_000);
-        if (!playerPhase)
+        if (phase != "unknown")
         {
             Assert.Equal(RuntimeTownNpcMeleeDamageResult1458.Killed, result);
             var items = new WorldItemSnapshot[fixture.Items.Capacity];
@@ -99,12 +99,20 @@ public sealed class UndeadLootDeath1458Tests
         private readonly PlayerJoinSession session;
         private readonly PlayerStateSnapshot player;
 
-        internal Fixture(JsonElement row, bool playerPhase = false)
+        internal Fixture(JsonElement row, string phase = "report")
         {
             var context = UndeadLoot1458Tests.Context(row); var profile = row.GetProperty("profile");
             Interacted = profile.TryGetProperty("Interacted", out var interacted) && interacted.GetBoolean();
             Random = new(row.GetProperty("seed").GetInt32());
-            var authority = new PlayerAuthority(null, null);
+            // Missing world in the original report-only fixture selects the source outside early return.
+            // In-world cases distinguish an owned continuous phase from genuinely missing clock/profile facts.
+            var tiles = phase is "owned" or "unknown" ? new WorldTileStore(new WorldDimensions(100, 100)) : null;
+            var authority = new PlayerAuthority(null, tiles);
+            if (phase == "owned")
+            {
+                authority.SetNpcHealthWorldFacts(() => new(false, false));
+                authority.SetNpcHealthGrapplingFacts(_ => false);
+            }
             var pool = new PlayerSlotPool(1);
             Assert.True(pool.TryAcquireConnection(out var lease));
             session = new(lease!); session.ObserveWorldRequest(); session.ObserveSectionRequest();
@@ -114,7 +122,12 @@ public sealed class UndeadLootDeath1458Tests
             bool injured = row.GetProperty("injured").GetBoolean();
             authority.TryApply(new PlayerHealthRuntimeCommand(connection,
                 new(session.Slot, (short)(injured ? 100 : 400), 400)));
-            if (playerPhase) authority.TickHealthContext();
+            if (phase == "unknown")
+            {
+                Assert.True(authority.TryGet(connection, out var member));
+                member.NpcHealth = new(injured ? 100 : 400, null, null);
+            }
+            if (phase != "report") authority.TickHealthContext();
             Assert.True(authority.TryCaptureCombatTarget(session.Slot.Value, out var reported));
             player = default(PlayerStateSnapshot) with
             {
@@ -123,6 +136,7 @@ public sealed class UndeadLootDeath1458Tests
                 HasHealth = true, Life = (short)(injured ? 100 : 400), MaxLife = 400, DerivedLifeMax = 400,
                 // The original capture supplies life immediately before the death callback.
                 NpcLifeCurrent = reported.NpcLifeCurrent,
+                NpcHealth = reported.NpcHealth,
                 HasMana = true, Mana = (short)(injured ? 20 : 200), MaxMana = 200
             };
             int bag = profile.GetProperty("SickleCase").GetInt32();

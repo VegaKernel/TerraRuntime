@@ -131,6 +131,7 @@ internal sealed partial class NpcAuthority
         npcs.SetVanillaSpawnRandomSource(this.naturalSpawnRandom);
         naturalSpawnWorldFacts = townCommerceWorldFacts;
         naturalSpawnTownNpcs = townNpcs;
+        townNpcs?.BindRuntimeNames(npcs);
         naturalSpawnSkyblockLowTiles = skyblockLowTiles;
         VanillaSkyblockRuntimeState1458 skyblockState = worldTiles is not null &&
             townCommerceWorldFacts is { SkyblockWorld: true }
@@ -230,7 +231,8 @@ internal sealed partial class NpcAuthority
             requireOwnedPlayerHealth: true, rawPlayerSlots: rawPlayerSlots,
             npcSpecificDropExtraGel: townCommerceWorldFacts is
                 { TenthAnniversaryWorld: true, DrunkWorld: true, RemixWorld: false, NotTheBeesWorld: false },
-            npcSpecificGoodWorld: townCommerceWorldFacts?.GoodWorld ?? false);
+            npcSpecificGoodWorld: townCommerceWorldFacts?.GoodWorld ?? false,
+            guideNameSource: townNpcs is null ? null : townNpcs.CaptureResidentName);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
             projectiles,
             npcs,
@@ -287,7 +289,7 @@ internal sealed partial class NpcAuthority
                 vanillaTargeting.SetFlyingEyeEnvironment(flyingEyeEnvironment);
                 vanillaTargeting.SetBeeOwner(npcs, flyingEyeEnvironment);
                 vanillaTargeting.SetSlimeContainedOwner(npcs, CaptureSlimeContainedFacts,
-                    new VanillaSlimeContainedWorld1458(worldTiles));
+                    new VanillaSlimeContainedWorld1458(worldTiles, tileManipulationReplication));
                 vanillaTargeting.SetEverscreamEnvironment(flyingEyeEnvironment);
                 vanillaTargeting.SetQueenBeeEnvironment(new VanillaQueenBeeWorldEnvironment(
                     worldTiles,

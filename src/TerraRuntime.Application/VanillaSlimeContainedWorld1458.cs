@@ -5,7 +5,8 @@ using TerraRuntime.World;
 
 namespace TerraRuntime.Application;
 
-internal sealed class VanillaSlimeContainedWorld1458(WorldTileStore tiles) : IVanillaSlimeContainedEnvironment1458
+internal sealed partial class VanillaSlimeContainedWorld1458(WorldTileStore tiles,
+    RuntimeTileManipulationReplicationRegistry? tileReplication = null) : IVanillaSlimeContainedEnvironment1458
 {
     public bool TryCapture(in NpcSnapshot parent, in VanillaNpcTargetCandidate target,
         out IVanillaSlimeContainedWorld1458 world)
@@ -44,7 +45,7 @@ internal sealed class VanillaSlimeContainedWorld1458(WorldTileStore tiles) : IVa
                 return false;
             versions[index] = version;
         }
-        var captured = new CapturedWorld(tiles, first, columns, versions,
+        var captured = new CapturedWorld(tiles, first, columns, versions, tileReplication,
             VanillaWorldCanHit.HasLineOfSight(tiles, parent.PositionX, parent.PositionY, body.Width, body.Height,
                 target.CenterX - target.Width * .5f, target.CenterY - target.Height * .5f,
                 (int)target.Width, (int)target.Height));
@@ -52,8 +53,9 @@ internal sealed class VanillaSlimeContainedWorld1458(WorldTileStore tiles) : IVa
         return world.IsCurrent;
     }
 
-    private sealed class CapturedWorld(WorldTileStore tiles, WorldSectionId first, int columns,
-        long[] versions, bool canHit) : IVanillaSlimeContainedWorld1458
+    private sealed partial class CapturedWorld(WorldTileStore tiles, WorldSectionId first, int columns,
+        long[] versions, RuntimeTileManipulationReplicationRegistry? tileReplication,
+        bool canHit) : IVanillaSlimeContainedWorld1458
     {
         public bool CanHit => canHit;
         public bool IsCurrent
@@ -63,7 +65,7 @@ internal sealed class VanillaSlimeContainedWorld1458(WorldTileStore tiles) : IVa
                 for (int index = 0; index < versions.Length; index++)
                     if (tiles.GetSectionVersion(new(first.X + index % columns, first.Y + index / columns)) != versions[index])
                         return false;
-                return true;
+                return ProducerIsCurrent();
             }
         }
 

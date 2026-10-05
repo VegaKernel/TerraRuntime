@@ -41,6 +41,11 @@ public sealed class WorldLiquidUpdateQueue
 
     public bool HasPendingWork => _active.Count != 0 || _buffered.Count != 0;
 
+    /// <summary>Source Tile.checkingLiquid: both active Liquid and deferred LiquidBuffer entries own the flag.</summary>
+    public bool IsCheckingLiquid(int x, int y) => TryGetIndex(x, y, out int index) &&
+        ((_activeMembership is not null && _activeMembership[index]) ||
+         (_bufferMembership is not null && _bufferMembership[index]));
+
     public bool TryEnqueue(int x, int y, int delay = 0, int kill = 0)
     {
         if (!TryGetIndex(x, y, out int index))

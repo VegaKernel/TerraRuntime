@@ -7,7 +7,7 @@ internal sealed partial class PlayerAuthority
 {
     internal void TickHealthContext()
     {
-        foreach (RuntimePlayerMember member in membership.Members)
+        foreach (RuntimePlayerMember member in membership.Members.ToArray())
         {
             int? next = null;
             TerraRuntime.Contracts.Runtime.PlayerDebuffSnapshot1458? debuffs = null;
@@ -28,13 +28,16 @@ internal sealed partial class PlayerAuthority
             }
             bool clear = !outOfRange && member.IsDead && transferProfiles.HasNonPersistentBuffs(member.Connection) &&
                 (member.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) == 0;
-            // Remote Player.Update changes life through regeneration, DoT and environmental writers.
-            // Until that complete phase is owned, a synchronized report is only current before this boundary.
-            if (next == member.DerivedLifeMax && debuffs == member.Debuffs && !clear && member.NpcLifeCurrent != true) continue;
+            bool ghostPhase = (member.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0;
+            if (!TryPlanNpcHealth(member, next, outOfRange, ghostPhase, out var health)) continue;
+            bool healthCurrent = health is not null;
+            if (next == member.DerivedLifeMax && debuffs == member.Debuffs && !clear &&
+                member.NpcLifeCurrent == healthCurrent && member.NpcHealth == health) continue;
             if (!member.TryAdvanceRevision()) continue;
             member.DerivedLifeMax = next;
             member.Debuffs = debuffs;
-            member.NpcLifeCurrent = false;
+            member.NpcHealth = health;
+            member.NpcLifeCurrent = healthCurrent;
             if (clear) transferProfiles.ClearNonPersistentBuffs(member.Connection);
         }
     }

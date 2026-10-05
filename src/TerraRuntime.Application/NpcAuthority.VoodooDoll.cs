@@ -8,61 +8,32 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class NpcAuthority
 {
-    internal void ApplyBurnedGuideDoll(in WorldItemSnapshot burned)
+    internal bool TryBurnGuideDoll(in WorldItemSnapshot doll)
     {
-        // Only WorldItemAuthority calls this after exact-generation, source-contact removal.
-        if (burned.ItemNetId != VanillaWallOfFleshItemIds.GuideVoodooDoll.Value || burned.Stack <= 0 || worldTiles is null) return;
-        int remaining = burned.Stack;
-        bool hadGuide = false;
+        // Only the owned lava-contact producer calls this; admission precedes source whole-stack removal.
+        if (doll.ItemNetId != VanillaWallOfFleshItemIds.GuideVoodooDoll.Value || doll.Stack <= 0 || worldTiles is null) return false;
+        if (!npcs.TryCaptureDeathMutationSerial(out ulong serial)) return false;
         int count = npcs.CopyActive(naturalSpawnNpcBuffer);
-        for (int i = 0; i < count; i++)
-        {
-            NpcSnapshot guide = naturalSpawnNpcBuffer[i];
-            if (guide.TypeIdentity != VanillaNpcIds.Guide) continue;
-            StrikeDollVictim(in guide);
-            remaining--;
-            hadGuide = true;
-            TrySpawnWallFromDoll(burned.PositionX, burned.PositionY);
-        }
-        if (!hadGuide || remaining <= 0) return;
-        count = npcs.CopyActive(naturalSpawnNpcBuffer);
-        int eligible = 0;
+        NpcSnapshot guide = default;
+        int guides = 0, laterVictims = 0;
         for (int i = 0; i < count; i++)
         {
             NpcSnapshot npc = naturalSpawnNpcBuffer[i];
-            // SetDefaults townNPC residents plus Old Man/Traveling Merchant; isLikeATownNPC adds453.
-            if (VanillaTownNpcFacts1458.IsHousingEligible(npc.TypeIdentity) || npc.Type is 37 or 368 or 453)
-                naturalSpawnNpcBuffer[eligible++] = npc;
+            if (npc.TypeIdentity == VanillaNpcIds.Guide) { guide = npc; guides++; }
+            else if (VanillaTownNpcFacts1458.IsHousingEligible(npc.TypeIdentity) || npc.Type is 37 or 368 or 453)
+                laterVictims++;
         }
-        while (remaining-- > 0 && eligible > 0)
+        if (guides == 0) return combat.TryBurnDollWithoutGuide(in doll);
+        // Source walks every Guide, then random later town victims. An atomic multi-death batch
+        // is not owned yet; never consume a stack and leave one of those deaths rejected halfway.
+        if (guides != 1 || (doll.Stack > 1 && laterVictims > 0)) return false;
+        if (!combat.TryStrikeGuideDoll(in doll, in guide, serial, out var wall)) return false;
+        if (wall is { } spawn)
         {
-            int selected = naturalSpawnRandom.NextInt32(0, eligible);
-            if ((uint)selected >= (uint)eligible) return;
-            StrikeDollVictim(in naturalSpawnNpcBuffer[selected]);
-            Array.Copy(naturalSpawnNpcBuffer, selected + 1, naturalSpawnNpcBuffer, selected, --eligible - selected);
+            if (!npcs.TrySpawnIntent(in spawn, out _))
+                throw new InvalidOperationException("Accepted Guide doll continuation lost its preflighted Wall spawn.");
+            AppliedSpawns++;
         }
-    }
-
-    private void StrikeDollVictim(in NpcSnapshot victim) =>
-        combat.TryStrikeEnvironment(victim.Handle, 9999, 10f, victim.Simulation.DirectionX);
-
-    private bool TrySpawnWallFromDoll(float x, float y)
-    {
-        if (worldTiles is null) return false;
-        // The active store is the existing owner of the live Wall root; never infer it from a client request.
-        for (int slot = 0; slot < npcs.Capacity; slot++)
-            if (npcs.TryGetActive((byte)slot, out NpcSnapshot npc) && npc.TypeIdentity == VanillaNpcIds.WallOfFlesh)
-                return false;
-        int playersCount = 0;
-        for (int slot = 0; slot < byte.MaxValue; slot++)
-            if (playerSnapshots.TryGetPlayer(new PlayerSlotId((byte)slot), out var player))
-                serverPlayerSnapshots[playersCount++] = player;
-        if (!VanillaWallOfFleshSpawn1458.TryFind(worldTiles, x, y, serverPlayerSnapshots.AsSpan(0, playersCount), out int bx, out int by))
-            return false;
-        // NPC.NewNPC's target argument is omitted in SpawnWOF; target defaults to255, not the source player.
-        var intent = new NpcAiSpawnIntent(VanillaNpcIds.WallOfFlesh, bx, by, 0, 0, 255);
-        if (!npcs.TrySpawnIntent(in intent, out _)) { RejectedSpawns++; return false; }
-        AppliedSpawns++;
         return true;
     }
 }

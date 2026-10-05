@@ -42,7 +42,11 @@ public sealed class RuntimeTownItemsSocial1458Tests
         using var document=JsonDocument.Parse((string)SourceCases().First()[0]);var row=document.RootElement;using var f=new Fixture(row);
         f.Players.TickHealthContext();Assert.True(f.Players.TryGet(f.Connection,out var member));
         f.State.Apply(new PlayerHealthRuntimeCommand(f.Connection,new(f.Session.Slot,member.Life,member.MaxLife)));
-        if(fault=="unknownHealth")member.HasHealth=false;
+        if (fault == "unknownHealth")
+        {
+            member.NpcHealth = null;
+            member.NpcLifeCurrent = false;
+        }
         if(fault=="unknownDerived")member.DerivedLifeMax=null;
         f.Schedule.SetSocialContext(f.World,f.Players);
         if(fault=="changedRevision")Assert.True(member.TryAdvanceRevision());

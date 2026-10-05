@@ -14,8 +14,25 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             result = default;
             return false;
         }
-        if (!damage.TryApplyUnpublished(in request, out result, out var committed, out bool spawnTrueEye, out bool forceUpdate, sharedLifeOwner))
+        if (!TryPlanTownStrike(in before, request.HitDirection, out var townStrike))
+        { result = default; return false; }
+        bool applied, spawnTrueEye, forceUpdate;
+        NpcSnapshot committed;
+        pendingTownStrike = townStrike;
+        try
+        {
+            applied = damage.TryApplyUnpublished(in request, out result, out committed, out spawnTrueEye,
+                out forceUpdate, sharedLifeOwner, townStrike?.Reaction);
+        }
+        finally { pendingTownStrike = null; }
+        if (!applied)
             return false;
+
+        // Guide-doll admission claims its source whole-stack removal together with all death drops.
+        // Publish that already accepted removal before StrikeNPC's packet28; no arbitrary callback
+        // participates in admission or can consume the doll on a rejected unknown death dependency.
+        if (guideDollRemoval.HasValue && (pendingDeathPlan is null || !pendingDeathPlan.TryPublishPrecedingRemoval()))
+            throw new InvalidOperationException("Accepted Guide doll death lost its source removal claim.");
 
         // TerrariaServer 1.4.5.8 StrikeNPC_Inner sends the supplied damage/critical flag, rather than HP damage.
         // SendData takes number2 as float and narrows it to short. The supported net11 Windows execution
@@ -26,6 +43,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             checked((byte)(request.HitDirection + 1)), request.Critical ? (byte)1 : (byte)0);
         npcs.TryPublishPendingBirthBeforeStrike(in before, in committed);
         npcReplication?.TryPublishDamage(default, in wire);
+        PublishTownStrikeRandom(townStrike);
         if (!result.Lethal) ExecuteNpcNonlethalHitEffects(in committed);
 
         // A lethal actor is published by the final despawn, after owned loot/death effects. Publishing the

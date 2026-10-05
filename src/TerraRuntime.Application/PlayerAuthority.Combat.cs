@@ -160,8 +160,13 @@ internal sealed partial class PlayerAuthority
         }
 
         ResetStealthAfterAcceptedHurt(target);
+        short previousReportedLife = target.Life;
         target.Life = checked((short)Math.Max(0, target.Life - final.Damage));
+        ApplyNpcHealthHurt(target, previousReportedLife);
         target.IsDead = target.Life <= 0;
+        // Source PvP death changes the later Spawn health policy. Its pvpDeath field is not retained here.
+        if (target.IsDead && target.NpcHealth is { } npcHealth)
+            target.NpcHealth = npcHealth with { SourceProfileKnown = false };
         if (target.IsDead) target.ItemAnimation = 0;
         if (!final.Mitigation.NoKnockback && hitDirection != 0)
         {
@@ -282,7 +287,9 @@ internal sealed partial class PlayerAuthority
         }
 
         ResetStealthAfterAcceptedHurt(target);
+        short previousReportedLife = target.Life;
         target.Life = checked((short)Math.Max(0, target.Life - final.Damage));
+        ApplyNpcHealthHurt(target, previousReportedLife);
         target.IsDead = target.Life <= 0;
         if (target.IsDead) target.ItemAnimation = 0;
         if (!final.Mitigation.NoKnockback && hitDirection != 0)

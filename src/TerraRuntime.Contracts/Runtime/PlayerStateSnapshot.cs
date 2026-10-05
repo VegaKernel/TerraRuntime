@@ -68,6 +68,11 @@ public readonly record struct PlayerStateSnapshot(
     /// <summary>Whether NPC consumers can use this life observation before an unowned remote update; null means unknown import.</summary>
     public bool? NpcLifeCurrent { get; init; }
 
+    public PlayerNpcHealthState1458? NpcHealth { get; init; }
+
+    /// <summary>Current NPC-facing life; a fresh reported observation remains usable before its player phase.</summary>
+    public int? NpcLife => NpcLifeCurrent == true ? NpcHealth?.Life ?? (HasHealth ? Life : null) : null;
+
     public short MaxLife { get; init; }
 
     /// <summary>Owned Player.statLifeMax2 after the player phase; null means its source context is unavailable.</summary>

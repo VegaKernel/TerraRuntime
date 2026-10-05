@@ -14,6 +14,7 @@ public static class VanillaNpcSpecificDropCatalog1458
             1304 or 1786 => (24, 28),
             5332 => (32, 32),
             5486 => (30, 30),
+            867 => (28, 20), // Guide's named Green Cap; SetDefaults/Prefix(-1), official 1.4.5.8.
             _ => null
         };
         definition = default;

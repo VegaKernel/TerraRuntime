@@ -33,6 +33,10 @@
     <ProjectReference Include="../TerraRuntime.HostModuleFixture/TerraRuntime.HostModuleFixture.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/slime-tile-producer-official-1458.json.gz" LogicalName="SlimeTileProducer1458" />
+    <EmbeddedResource Include="Fixtures/slime-herb-placement-official-1458.json.gz" LogicalName="SlimeHerbPlacement1458" />
+    <EmbeddedResource Include="Fixtures/guide-doll-burn-checkpoint-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.guide-doll-burn-checkpoint-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/town-strike-reaction-checkpoint-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.town-strike-reaction-checkpoint-official.json.gz" />
     <EmbeddedResource Include="Fixtures/undead-eleventh-defaults-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.undead-eleventh-defaults-official.json.gz" />
     <EmbeddedResource Include="Fixtures/undead-eleventh-whole-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.undead-eleventh-whole-official.json.gz" />
     <EmbeddedResource Include="Fixtures/undead-eleventh-death-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.undead-eleventh-death-official.json.gz" />
@@ -283,6 +287,7 @@
     <EmbeddedResource Include="Fixtures/slime-born-target-official-1458.json.gz" LogicalName="SlimeBornTarget1458" />
     <EmbeddedResource Include="Fixtures/slime-rain-first-update-official-1458.json.gz" LogicalName="SlimeRainFirst1458" />
     <EmbeddedResource Include="Fixtures/town-player-health-official-1458.json.gz" LogicalName="TownPlayerHealth1458" />
+    <EmbeddedResource Include="Fixtures/player-npc-continuous-health-official-1458.json.gz" LogicalName="PlayerNpcContinuousHealth1458" />
     <EmbeddedResource Include="Fixtures/town-items-pair-official-1458.json.gz" LogicalName="TownItemsPair1458" />
     <EmbeddedResource Include="Fixtures/global-loot-ninth-direct-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.global-loot-ninth-direct-official.json.gz" />
     <EmbeddedResource Include="Fixtures/global-loot-ninth-defaults-official.json.gz" LogicalName="TerraRuntime.Tests.Fixtures.global-loot-ninth-defaults-official.json.gz" />

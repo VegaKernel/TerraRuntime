@@ -14,6 +14,8 @@
 
 ## Руководства по подсистемам и инженерным правилам
 
+- [Управляемый контекст здоровья NPC и физические эффекты](npc-owned-health-and-producers-1458.md) — часы удалённого здоровья, целая допущенная операция куклы Гида и исходное размещение травы/паутины.
+
 - [Сеть и протокол](networking-protocol.md) — framing, connection policy, граница Multiplicity, queues, rate accounting, stop reasons и join traffic.
 - [Evidence для sizing outbound queue](outbound-queue-sizing-evidence.md) — process-lifetime high-water measurements, structural floor, модель 75% headroom и безопасная sizing recommendation.
 - [Телеметрия пакетов по message ID](packet-telemetry.md) — bounded frame/byte counters по ID и direction, rolling top traffic, malformed/unknown traffic и нормализованные rejection counters.

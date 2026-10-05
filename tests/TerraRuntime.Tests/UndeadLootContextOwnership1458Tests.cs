@@ -54,9 +54,10 @@ public sealed class UndeadLootContextOwnership1458Tests
     }
 
     [Theory]
-    [InlineData(false)] [InlineData(true)]
-    public void Source_selected_heart_requires_a_report_current_at_the_npc_phase(bool playerPhase) =>
-        UndeadLootDeath1458Tests.AssertCurrentLifeBoundary(playerPhase);
+    [InlineData("report")] [InlineData("outside")]
+    [InlineData("owned")] [InlineData("unknown")]
+    public void Source_selected_heart_requires_current_life_from_the_report_or_admitted_player_phase(string phase) =>
+        UndeadLootDeath1458Tests.AssertCurrentLifeBoundary(phase);
 
     public static IEnumerable<object[]> OriginalBoundaries()
     {
