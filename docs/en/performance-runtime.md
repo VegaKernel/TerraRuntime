@@ -118,9 +118,9 @@ Disk serialization/write is detached from the authoritative hot path. Tile-save 
 The current final pre-`packet 49` bootstrap contract is compact:
 
 $$
-F_{\mathrm{pre49,max}}=65,
+F_{\mathrm{pre49,max}}=2\,352,
 \qquad
-F_{\mathrm{probe}}=96.
+F_{\mathrm{probe}}=2\,351.
 $$
 
 For default $P=8$, structural connection sizing gives
@@ -132,10 +132,10 @@ $$
 so
 
 $$
-65 < 96 < 4\,077.
+2\,351 < 2\,352 < 4\,077.
 $$
 
-Runtime entity/global baselines are outside the final packet-10-to-packet-49 contract. Join section generation/compression still requires global subsystem budgets rather than per-player multiplication.
+After all announced sections, the immutable Banner full state (module `11`) and recognized Bestiary entries (module `4`) precede `packet 49`, as in original `MessageBuffer` case `8`. Other runtime entity/global baselines retain their later phase. The probe counts at most 63 sections, one Banner, three entries per 762 signed identities, and the empty handoff; the structural ceiling additionally includes the preceding WorldInfo/status frames. Join section generation/compression still requires global subsystem budgets rather than per-player multiplication.
 
 ## 12. Synchronization scaling
 

@@ -128,7 +128,9 @@ public readonly record struct VanillaNpcSyncAnchor(float X, float Y)
 
 /// <summary>
 /// Source-backed vanilla NPC defaults required by authoritative lifecycle and AI bring-up.
-/// BaseWidth/BaseHeight are the raw SetDefaults dimensions before vanilla applies NPC.scale. Width/Height expose
+/// BaseWidth/BaseHeight are the raw SetDefaults dimensions before vanilla applies NPC.scale, except
+/// DefinitionOnly rows leave them zero because raw dimensions have not been captured. Those rows expose
+/// exact classic post-scale body through SourceHitboxAtSpawn and do not own arbitrary scaling. Width/Height expose
 /// the initial post-scale hitbox for compatibility. Runtime geometry that observes mutable NPC scale must call
 /// TryResolveHitbox with the live simulation state so physical AI overrides do not become visual scale changes.
 /// </summary>
@@ -149,6 +151,12 @@ public readonly record struct VanillaNpcDefinition(
     bool NoTileCollideAtSpawn,
     VanillaNpcSyncAnchor SyncAnchor)
 {
+    /// <summary>Source default metadata without admitted spawn, AI, combat, death or archetype-role lifecycle.</summary>
+    public bool DefinitionOnly { get; init; }
+
+    /// <summary>Exact post-scale classic body; raw dimensions are not inferred from rounding.</summary>
+    public VanillaNpcHitboxSize? SourceHitboxAtSpawn { get; init; }
+
     /// <summary>SetDefaults-owned invulnerability that must exist before the first AI tick.</summary>
     public bool DontTakeDamageAtSpawn { get; init; }
 
@@ -172,6 +180,12 @@ public readonly record struct VanillaNpcDefinition(
 
     public bool TryResolveHitbox(float scale, out VanillaNpcHitboxSize hitbox)
     {
+        if (DefinitionOnly)
+        {
+            hitbox = SourceHitboxAtSpawn ?? default;
+            return scale == Scale && hitbox.IsValid;
+        }
+
         if (BaseWidth <= 0 ||
             BaseHeight <= 0 ||
             !float.IsFinite(scale) ||
@@ -710,8 +724,7 @@ public static class VanillaNpcDefinitionCatalog
             return true;
         }
 
-        definition = default;
-        return false;
+        return VanillaNpcSourceDefaultRoster1458.TryGet(type, new NpcNetId((short)type.Value), out definition);
     }
 
     /// <summary>
@@ -744,8 +757,7 @@ public static class VanillaNpcDefinitionCatalog
         if (!VanillaNpcNetVariantCatalog.TryGet(netId, out VanillaNpcNetVariantDefinition variant) ||
             variant.Type != type)
         {
-            definition = default;
-            return false;
+            return VanillaNpcSourceDefaultRoster1458.TryGet(type, netId, out definition);
         }
 
         definition = variant.ApplyTo(in baseDefinition);

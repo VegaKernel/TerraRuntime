@@ -151,12 +151,12 @@ Join follows verified protocol state/order. TerraRuntime owns the player slot, a
 Current pre-`packet 49` structural ceiling is
 
 $$
-F_{\mathrm{pre49,max}}=65\ \text{frames},
+F_{\mathrm{pre49,max}}=2\,352\ \text{frames},
 \qquad
-F_{\mathrm{probe}}=96\ \text{frames}.
+F_{\mathrm{probe}}=2\,351\ \text{frames}.
 $$
 
-Live official-world probes provide independent ordering evidence beyond self-round-trip tests.
+The structural ceiling includes WorldInfo/status, 63 sections, one Banner and at most three Bestiary entries per 762 signed identities. The probe starts after WorldInfo/status and includes the empty `packet 49` handoff. It validates only source Banner/Bestiary modules before handoff. Live official-world probes provide independent ordering evidence beyond self-round-trip tests.
 
 ## 9. Canonical world and runtime cache
 

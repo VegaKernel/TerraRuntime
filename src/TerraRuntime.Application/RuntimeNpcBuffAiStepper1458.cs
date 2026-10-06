@@ -31,7 +31,7 @@ internal sealed class RuntimeNpcBuffAiStepper1458(INpcAiStateStepper inner,
     }
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
     {
-        if (!VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var definition))
+        if (!VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var definition) || definition.DefinitionOnly)
         { next = default; return false; }
         if (retainedSlimeStatuses && (npc.TypeIdentity == VanillaNpcIds.BlueSlime ||
             npc.TypeIdentity == VanillaNpcIds.LavaSlime))

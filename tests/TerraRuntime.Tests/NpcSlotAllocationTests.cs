@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
 using TerraRuntime.Contracts.Runtime;
@@ -13,14 +14,14 @@ public sealed class NpcSlotAllocationTests
     [Theory]
     [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(3)]
     [InlineData(4)] [InlineData(5)] [InlineData(6)] [InlineData(7)] [InlineData(8)]
-    public void All_original_npc_types_match_allocation_for_the_supplied_slot_state(int mode)
+    public void All_original_npc_types_match_private_allocation_for_the_supplied_slot_state(int mode)
     {
         foreach (var row in Reference.GetProperty("rows").EnumerateArray())
         {
             if (row.GetProperty("mode").GetInt32() != mode) continue;
             var store = CreateArrangement(mode);
             int type = row.GetProperty("type").GetInt32(), expected = row.GetProperty("slot").GetInt32();
-            bool created = store.TrySpawnVanilla(State(type), out var result);
+            bool created = TryAllocateRetainedState(store, State(type), out var result);
             int actual = created ? result.Handle.Slot : -1;
             Assert.True(expected == actual, $"mode={mode}, type={type}, expected={expected}, actual={actual}");
         }
@@ -46,7 +47,7 @@ public sealed class NpcSlotAllocationTests
     [Theory]
     [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(3)] [InlineData(4)]
     [InlineData(5)] [InlineData(6)] [InlineData(7)] [InlineData(8)]
-    public void Nonzero_start_matches_original_for_every_type_and_slot_arrangement(int mode)
+    public void Private_allocation_with_nonzero_start_matches_original_for_every_type_and_slot_arrangement(int mode)
     {
         var reference = ReadReference("NpcSlotStart1458", "55ad9275bbc2e8fa15e7d15d97e9767067dbe366c0b96339bcb7a1e09f37526a");
         foreach (var row in reference.GetProperty("rows").EnumerateArray())
@@ -55,7 +56,7 @@ public sealed class NpcSlotAllocationTests
             var store = CreateArrangement(mode);
             int type = row.GetProperty("type").GetInt32(), start = row.GetProperty("start").GetInt32();
             int expected = row.GetProperty("slot").GetInt32();
-            bool created = store.TrySpawnVanilla(State(type), out var result, start);
+            bool created = TryAllocateRetainedState(store, State(type), out var result, start);
             int actual = created ? result.Handle.Slot : -1;
             Assert.True(expected == actual, $"mode={mode}, type={type}, start={start}, expected={expected}, actual={actual}");
         }
@@ -233,6 +234,38 @@ public sealed class NpcSlotAllocationTests
         Assert.False(store.TrySpawnVanilla(State(1), out _));
         runtime.Tick();
         Assert.True(store.TrySpawnVanilla(State(1), out _));
+    }
+
+    [Fact]
+    public void Private_allocator_corpora_retain_all_original_identities_arrangements_and_start_cases()
+    {
+        var ordinary = Reference.GetProperty("rows").EnumerateArray().ToArray();
+        var starts = ReadReference("NpcSlotStart1458", "55ad9275bbc2e8fa15e7d15d97e9767067dbe366c0b96339bcb7a1e09f37526a")
+            .GetProperty("rows").EnumerateArray().ToArray();
+        Assert.Equal(6_264, ordinary.Length);
+        Assert.Equal(25_056, starts.Length);
+        foreach (var rows in new[] { ordinary, starts })
+        {
+            Assert.Equal(Enumerable.Range(1, 696), rows.Select(row => row.GetProperty("type").GetInt32()).Distinct().Order());
+            Assert.Equal(Enumerable.Range(0, 9), rows.Select(row => row.GetProperty("mode").GetInt32()).Distinct().Order());
+        }
+        Assert.Equal(new[] { 1, 17, 198, 199 }, starts.Select(row => row.GetProperty("start").GetInt32()).Distinct().Order());
+    }
+
+    private static readonly MethodInfo AllocateRetainedState = typeof(RuntimeNpcStore).GetMethod(
+        "TrySpawnVanillaCore", BindingFlags.Instance | BindingFlags.NonPublic)
+        ?? throw new MissingMethodException(typeof(RuntimeNpcStore).FullName, "TrySpawnVanillaCore");
+
+    private static bool TryAllocateRetainedState(RuntimeNpcStore store, in NpcStateUpdate update,
+        out NpcSnapshot snapshot, int startSlot = 0)
+    {
+        // Tests exercise the existing private slot search over caller-owned state. This intentionally
+        // excludes NewNPC context, difficulty, initializer RNG and autonomous lifecycle admission.
+        // Reflection is confined to the managed test assembly; no shipping test-only API is added.
+        object?[] arguments = [update, default(NpcSnapshot), startSlot, null, true];
+        bool created = (bool)AllocateRetainedState.Invoke(store, arguments)!;
+        snapshot = (NpcSnapshot)arguments[1]!;
+        return created;
     }
 
     private static RuntimeNpcStore CreateArrangement(int mode)

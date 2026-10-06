@@ -51,6 +51,11 @@ public static class TerrariaNpcUpdateEncoder
             Life = state.Life,
             LifeBytes = state.Life == state.LifeMax ? (byte)0 : GetVanillaLifeWidth(state.LifeMax)
         };
+        // Main.Initialize_TileAndNPCData1 admits the seven gold critters in this contiguous source range.
+        // Multiplicity3.0.0 omits their release-owner byte, including the explicit default 255.
+        const int GoldBird = 442, GoldWorm = 448;
+        if (state.NpcType is >= GoldBird and <= GoldWorm) packet.HasReleaseOwner = true;
+        packet.ReleaseOwner = state.ReleaseOwner;
         packet.AI[0] = state.Ai0;
         packet.AI[1] = state.Ai1;
         packet.AI[2] = state.Ai2;

@@ -54,7 +54,8 @@ public sealed class RuntimeActorInteractionBoundary
             return ActorInteractionValidationResult.TargetUnavailable;
         }
 
-        if (!VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, out VanillaNpcDefinition definition))
+        if (!VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) ||
+            definition.DefinitionOnly)
             return ActorInteractionValidationResult.UnsupportedTargetType;
         if (!IsInSimpleInteractionRange(in player, in npc, in definition))
             return ActorInteractionValidationResult.OutOfRange;

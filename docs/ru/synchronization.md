@@ -38,6 +38,7 @@ sequenceDiagram
     W-->>S: at most 63 section frames
     S->>Q: enqueue pre-enter control + sections
     Q-->>C: ordered bootstrap frames
+    S-->>C: Banner full state + represented Bestiary (packet 82)
     S-->>C: packet 49 enter-world handoff
     Note over S,C: later repeated section requests do not regenerate full transfer
 ```
@@ -51,9 +52,9 @@ Current `PlayerBootstrapFrameBudget` доказывает:
 $$
 F_{\mathrm{sections,max}}=63,
 \qquad
-F_{\mathrm{pre49,max}}=65,
+F_{\mathrm{pre49,max}}=2\,352,
 \qquad
-F_{\mathrm{probe}}=96.
+F_{\mathrm{probe}}=2\,351.
 $$
 
 Для default player capacity $P=8$ `ConnectionOutboundQueueSizing` даёт:
@@ -65,10 +66,10 @@ $$
 Следовательно:
 
 $$
-65 < 96 < 4\,077.
+2\,351 < 2\,352 < 4\,077.
 $$
 
-Historical larger pre-enter budget больше не описывает production: runtime entity/global baselines намеренно вынесены за final packet-10-to-packet-49 contract.
+Baseline перед handoff содержит один полный Banner frame и максимум три Bestiary entries на каждую известную signed identity (`-65..696`). Проба отклоняет неизвестные модули, повреждённые payloads, дубликаты и неполные секции либо неверный порядок. Её счёт начинается после WorldInfo/status и включает `packet 49`; structural ceiling включает WorldInfo/status и исключает handoff. Остальные entity/global baselines остаются вне этой фазы.
 
 ## 5. Sections
 

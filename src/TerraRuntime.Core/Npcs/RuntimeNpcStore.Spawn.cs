@@ -193,6 +193,8 @@ public sealed partial class RuntimeNpcStore
         defaults = null;
         difficulty = 1f;
         context = new(1f, 1, false);
+        if (VanillaNpcDefinitionCatalog.TryGet(new NpcTypeId(type), new NpcNetId(netId), out var selectedDefinition) &&
+            selectedDefinition.DefinitionOnly) return false;
         if (_spawnContext is null) return true;
         context = _spawnContext();
         if (!context.IsValid) return false;

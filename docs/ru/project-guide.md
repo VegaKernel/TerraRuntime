@@ -151,12 +151,12 @@ Join следует verified protocol state/order. TerraRuntime владеет p
 Current pre-`packet 49` structural ceiling:
 
 $$
-F_{\mathrm{pre49,max}}=65\ \text{frames},
+F_{\mathrm{pre49,max}}=2\,352\ \text{frames},
 \qquad
-F_{\mathrm{probe}}=96\ \text{frames}.
+F_{\mathrm{probe}}=2\,351\ \text{frames}.
 $$
 
-Live official-world probes дают independent ordering evidence поверх self-round-trip tests.
+Structural ceiling включает WorldInfo/status, 63 секции, один Banner и максимум три Bestiary entries на каждую из 762 signed identities. Проба начинает счёт после WorldInfo/status и включает пустой handoff `packet 49`. Перед handoff она проверяет только исходные Banner/Bestiary modules. Live-пробы на официальном мире дают независимое подтверждение порядка дополнительно к self-round-trip tests.
 
 ## 9. Canonical world и runtime cache
 

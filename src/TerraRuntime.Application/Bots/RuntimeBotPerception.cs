@@ -72,6 +72,7 @@ internal sealed class RuntimeBotPerception(
             NpcSnapshot npc = npcBuffer[i];
             if (!VanillaNpcChaseability1458.CanBeChasedBy(in npc) || npc.Simulation.Life <= 0 ||
                 !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) ||
+                definition.DefinitionOnly ||
                 definition.Role == NpcArchetypeRole.Town || definition.Damage <= 0 ||
                 !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
             {
@@ -172,6 +173,7 @@ internal sealed class RuntimeBotPerception(
         if (bot.LockedGuardNpc.IsAssigned && npcs.TryCapture(bot.LockedGuardNpc, out NpcSnapshot npc) &&
             VanillaNpcChaseability1458.CanBeChasedBy(in npc) && npc.Simulation.Life > 0 &&
             VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) &&
+            !definition.DefinitionOnly &&
             definition.Role != NpcArchetypeRole.Town && definition.Damage > 0 &&
             definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
         {

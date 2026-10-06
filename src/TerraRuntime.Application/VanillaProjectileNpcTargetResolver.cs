@@ -219,6 +219,7 @@ internal sealed class VanillaProjectileNpcTargetResolver : IVanillaProjectileNpc
                 candidate.TypeIdentity,
                 candidate.NetIdentity,
                 out VanillaNpcDefinition definition) ||
+            definition.DefinitionOnly ||
             !definition.TryResolveHitbox(candidate.Simulation, out hitbox))
         {
             hitbox = default;

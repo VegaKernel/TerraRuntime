@@ -54,7 +54,10 @@ public sealed class RuntimeNpcBehaviorStateStepper : INpcAiStateStepper, INpcAiS
             out GameplayBehaviorBinding<INpcAiStateStepper> archetypeReplacement);
 
         if (!hasTypePlan && !hasArchetypeReplacement)
+        {
+            if (IsDefinitionOnly(in npc)) { next = default; return false; }
             return vanilla.TryStepState(in npc, out next);
+        }
 
         NpcSnapshot current = npc;
         bool changed = false;
@@ -218,13 +221,18 @@ public sealed class RuntimeNpcBehaviorStateStepper : INpcAiStateStepper, INpcAiS
         }
     }
 
+    private static bool IsDefinitionOnly(in NpcSnapshot npc) =>
+        TerraRuntime.Gameplay.Npcs.VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity,
+            out var definition) && definition.DefinitionOnly;
+
     private bool TryRunVanilla(
         in NpcSnapshot current,
         out NpcSnapshot projected,
         out NpcStateUpdate vanillaUpdate,
         out bool vanillaInvalid)
     {
-        if (!vanilla.TryStepState(in current, out vanillaUpdate))
+        vanillaUpdate = default;
+        if (IsDefinitionOnly(in current) || !vanilla.TryStepState(in current, out vanillaUpdate))
         {
             projected = default;
             vanillaInvalid = false;

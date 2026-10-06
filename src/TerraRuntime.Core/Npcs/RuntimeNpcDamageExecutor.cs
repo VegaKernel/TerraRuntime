@@ -158,6 +158,13 @@ public sealed class RuntimeNpcDamageExecutor
             return false;
         }
 
+        if (VanillaNpcDefinitionCatalog.TryGet(current.TypeIdentity, current.NetIdentity, out var selectedDefinition) &&
+            selectedDefinition.DefinitionOnly)
+        {
+            result = default;
+            return false;
+        }
+
         if (prelude is not null)
         {
             var prepared = new NpcStateUpdate(current.Type, current.NetId, current.PositionX,

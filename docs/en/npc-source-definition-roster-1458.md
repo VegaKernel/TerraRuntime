@@ -1,0 +1,17 @@
+# Source NPC definition roster 1.4.5.8
+
+[Русский](../ru/npc-source-definition-roster-1458.md) · [NPC runtime boundary](npc-behavior-runtime-boundary.md)
+
+The queryable definition roster covers 691 of the 696 positive source identities and all 65 signed variants. The five excluded positive IDs (`76`, `146`, `403`, `404`, `408`) have zero source maximum life. This covers all nonzero-life source defaults; it measures definitions, not complete NPC behavior. Source identity `664` has a zero-size body despite nonzero life, so its metadata remains queryable while geometry resolution fails.
+
+The original 430 admitted definitions remain preferred and unchanged. An additional 326 identities (297 positive, 29 signed) expose classic source defaults with `DefinitionOnly = true`, `BehaviorFamily.None` and `PhysicsFamily.None`. The data comes from 761 independent calls to original dedicated-server `SetDefaults` / `SetDefaultsFromNetId`. Only numeric facts are retained; no game source, names or assets are shipped.
+
+New metadata preserves the exact post-scale source hitbox. Its uncaptured raw dimensions remain zero; dividing a rounded source body by scale would invent raw dimensions. `TryResolveHitbox` accepts only the captured classic scale or an explicitly supplied valid live hitbox. Difficulty scaling, special-world scaling and genuine NPC creation require separate source-backed admission.
+
+Definition lookup grants no autonomous lifecycle. Vanilla creation rejects metadata-only rows before context callbacks, RNG draws or slot allocation. The authoritative vanilla AI/status/physics, strike, contact, catch, role classification and unsupported-loot death boundaries also reject unowned behavior. Explicit manual state retention and removal remain available. Deliberately registered custom behavior has its own ownership; a newly queryable presentation identity must not silently disable that extension.
+
+Packet `23` projection for metadata-only imports requires explicit current maximum life and a valid live hitbox override. Metadata must not fill unknown imported simulation facts. Independent original `SendData` bytes cover 326 new identities, including signed variants, with full and partial life. The encoder also writes the original release-owner byte for all seven Gold NPC IDs `442–448`; `TerrariaNpcUpdateState.ReleaseOwner` defaults to `255` and permits an explicitly owned byte value. This wire correction does not admit their capture/release gameplay lifecycle.
+
+`FullVanillaAiParity` remains false. The execution order is live join acceptance, definition roster, item use/inventory/ammo/equipment, combat/buffs, events/invasions/progression, then remaining full NPC AI parity. The prior AI3/AI7 behavioral prototype is preserved separately until its genuine state/wire/currentness evidence is accepted.
+
+Local checkpoint validation: 1562815/1562816 full tests, zero failures/errors and one existing liquid skip; 30,434 focused checks and the fast tier pass. Independent source captures and failing controls cover metadata and lifecycle separation. Windows NativeAOT and all five smoke paths pass. Eight live socket probes across Release and NativeAOT confirm entry, relay/chat and chest lifecycle/observer replication. The populated-world bootstrap is 15 sections, one Banner module, 295 Bestiary entries, then packets 49/129 (312 frames through 49). Graphical official-client acceptance and genuine Linux NativeAOT are not claimed.

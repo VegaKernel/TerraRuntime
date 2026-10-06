@@ -248,7 +248,7 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
     private static void RemoveAt(ref RuntimeNpcBuffSlots1458 slots, int index)
     { for (int i = index; i < Capacity - 1; i++) slots[i] = slots[i + 1]; slots[Capacity - 1] = default; }
     private static bool IsSupported(in NpcSnapshot npc) => npc.Type is >= 0 and < VanillaNpcStinkyCatalog1458.VerifiedNpcTypeCount &&
-        VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out _);
+        VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var definition) && !definition.DefinitionOnly;
     internal bool EnsureGeneration(NpcHandle handle)
     {
         if (!npcs.TryGet(handle, out var npc) || !IsSupported(in npc)) return false;

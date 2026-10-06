@@ -53,7 +53,8 @@ public sealed class RuntimeNpcDeathLifecycleFinalizer
             snapshot.Simulation.LifeMax <= 0 ||
             snapshot.Simulation.Life != 0 ||
             !NpcTypeId.TryCreate(snapshot.Type, out NpcTypeId type) ||
-            !VanillaNpcDefinitionCatalog.TryGet(type, out _) ||
+            !VanillaNpcDefinitionCatalog.TryGet(type, snapshot.NetIdentity, out var selectedDefinition) ||
+            selectedDefinition.DefinitionOnly ||
             HasImportedLootForContext(type, in lootContext) ||
             !_roles.TryClassify(snapshot.Handle, out VanillaNpcRoleClassification classification))
         {

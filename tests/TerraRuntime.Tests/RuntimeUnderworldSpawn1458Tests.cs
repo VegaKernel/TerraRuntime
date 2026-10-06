@@ -563,12 +563,18 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     }
 
     [Fact]
-    public void Nearby_server_owned_fairy_uses_the_source_post_candle_spawn_modifier()
+    public void Nearby_explicitly_retained_fairy_uses_the_source_post_candle_spawn_modifier()
     {
         var npcs = new RuntimeNpcStore();
-        var fairy = new NpcStateUpdate(VanillaNpcIds.BlueFairy.Value, (short)VanillaNpcIds.BlueFairy.Value,
-            3_200, 4_800, 0, 0, 0, default, NpcSimulationState.Initial);
-        Assert.True(npcs.TrySpawnVanilla(in fairy, out _));
+        // Original NPCID.FairyCritterBlue is585. This fixture owns its retained physical presence,
+        // not vanilla creation/AI: source SetDefaults captures18x20/life5/noGravity=true.
+        const int sourceBlueFairy = 585;
+        var fairy = new NpcStateUpdate(sourceBlueFairy, sourceBlueFairy,
+            3_200, 4_800, 0, 0, 0, default, NpcSimulationState.Initial with
+            { Life = 5, LifeMax = 5, HitboxOverride = new(18, 20), NoGravity = true });
+        Assert.True(npcs.TrySpawn(0, in fairy, out var retainedFairy));
+        Assert.Equal(new NpcHitboxDimensions(18, 20), retainedFairy.Simulation.HitboxOverride);
+        Assert.Equal(5, retainedFairy.Simulation.LifeMax);
         var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
         // Empty occupancy produces 600 * .6 = 360. Player.isNearFairy then applies .1.2, yielding 432.
         var random = new RateRejectingRandom(432);

@@ -121,6 +121,24 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
             if (!_npcs.TryGetActive(checked((byte)slot), out NpcSnapshot npc))
                 continue;
             examined++;
+            if (VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var selectedDefinition) &&
+                selectedDefinition.DefinitionOnly)
+            {
+                // Explicit registered state behavior keeps its existing owner. Metadata does not enable
+                // vanilla prepasses, planners, physics, contact, status or post-commit effects.
+                var registered = NpcAiStateStepperComposition.FindCapability<RuntimeNpcBehaviorStateStepper>(stepper);
+                if (registered is null || !registered.TryStepState(in npc, out var explicitUpdate)) continue;
+                proposed++;
+                if (!RuntimeNpcStore.IsValid(in explicitUpdate) || !_npcs.TryGet(npc.Handle, out var retainedExplicit) ||
+                    retainedExplicit.Revision != npc.Revision || !_npcs.TryUpdate(npc.Handle, in explicitUpdate, out var explicitCommit))
+                {
+                    rejected++;
+                    continue;
+                }
+                applied++;
+                commitSink?.NpcAiStateCommitted(in explicitCommit);
+                continue;
+            }
             if (prepass is not null)
             {
                 if (!prepass.TryRunPrepass(in npc, out bool consumed))

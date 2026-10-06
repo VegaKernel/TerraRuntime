@@ -896,7 +896,7 @@
       "baseline_summed_seconds": 0.298068
     },
     {
-      "method": "TerraRuntime.Tests.NpcSlotAllocationTests.Nonzero_start_matches_original_for_every_type_and_slot_arrangement",
+      "method": "TerraRuntime.Tests.NpcSlotAllocationTests.Private_allocation_with_nonzero_start_matches_original_for_every_type_and_slot_arrangement",
       "file": "tests/TerraRuntime.Tests/NpcSlotAllocationTests.cs",
       "domains": [
         "npc_creation",

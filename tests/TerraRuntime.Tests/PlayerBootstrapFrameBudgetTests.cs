@@ -15,9 +15,9 @@ public sealed class PlayerBootstrapFrameBudgetTests
         Assert.Equal(800, PlayerBootstrapFrameBudget.MaximumDynamicEntityFrames);
         Assert.Equal(2287, PlayerBootstrapFrameBudget.MaximumDeathPreludeFrames);
         Assert.Equal(2352, PlayerBootstrapFrameBudget.MaximumFramesBeforeEnterWorld);
-        Assert.Equal(96, PlayerBootstrapFrameBudget.LiveProbeFrameBudget);
+        Assert.Equal(2351, PlayerBootstrapFrameBudget.LiveProbeFrameBudget);
         Assert.True(
-            PlayerBootstrapFrameBudget.FixedFramesBeforeEnterWorld + PlayerBootstrapFrameBudget.MaximumTileSectionFrames <=
+            PlayerBootstrapFrameBudget.MaximumTileSectionFrames + PlayerBootstrapFrameBudget.MaximumDeathPreludeFrames + 1 <=
             PlayerBootstrapFrameBudget.LiveProbeFrameBudget);
         Assert.True(PlayerBootstrapFrameBudget.MaximumFramesBeforeEnterWorld <= ConnectionOutboundQueueSizing.DefaultStructuralFrameBudget);
         Assert.True(

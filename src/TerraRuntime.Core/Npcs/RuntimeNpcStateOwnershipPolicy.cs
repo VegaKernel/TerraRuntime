@@ -15,7 +15,7 @@ internal static class RuntimeNpcStateOwnershipPolicy
     {
         NpcSimulationState simulation = update.Simulation with {
             FrameIndex = update.Simulation.FrameIndex ?? 0, Breath = update.Simulation.Breath ?? 200, LifeRegenCounter = update.Simulation.LifeRegenCounter ?? 0 };
-        if (TryGetDefinition(update.Type, update.NetId, out VanillaNpcDefinition definition))
+        if (TryGetDefinition(update.Type, update.NetId, out VanillaNpcDefinition definition) && !definition.DefinitionOnly)
         {
             if (simulation.LifeMax == 0)
             {
@@ -91,7 +91,7 @@ internal static class RuntimeNpcStateOwnershipPolicy
         bool sameType = update.Type == previous.Type;
         bool sameDefinition = sameType && update.NetId == previous.NetId;
         VanillaNpcDefinition definition = default;
-        bool hasDefinition = TryGetDefinition(update.Type, update.NetId, out definition);
+        bool hasDefinition = TryGetDefinition(update.Type, update.NetId, out definition) && !definition.DefinitionOnly;
 
         simulation = simulation with
         {

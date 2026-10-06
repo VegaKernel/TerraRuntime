@@ -31,7 +31,7 @@ internal static class PlayerBootstrapFrameBudget
     public const int MaximumFramesBeforeEnterWorld =
         FixedFramesBeforeEnterWorld + MaximumTileSectionFrames + MaximumDeathPreludeFrames;
 
-    // The live probe counts packet-10 frames while waiting for packet 49. Leave a small emergency margin above the
-    // current structural ceiling so CI catches accidental bootstrap growth long before outbound backpressure.
-    public const int LiveProbeFrameBudget = 96;
+    // The probe starts after repeated WorldInfo/status and counts sections, the bounded source
+    // banner/bestiary baseline, and packet 49 itself. Do not retain the former tile-only ceiling.
+    public const int LiveProbeFrameBudget = MaximumFramesBeforeEnterWorld - FixedFramesBeforeEnterWorld + 1;
 }

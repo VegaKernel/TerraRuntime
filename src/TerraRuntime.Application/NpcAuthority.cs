@@ -987,7 +987,7 @@ internal sealed partial class NpcAuthority
 
     private bool TrySpawnNaturalHostileType(NpcTypeId type, in VanillaNpcTargetCandidate player, int tileX, int floorY)
     {
-        if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition) || definition.IsBoss ||
+        if (!VanillaNpcDefinitionCatalog.TryGet(type, out VanillaNpcDefinition definition) || definition.DefinitionOnly || definition.IsBoss ||
             !VanillaNpcAiCoverageCatalog.TryGet(type, out _))
             return false;
 
@@ -1561,7 +1561,8 @@ internal sealed partial class NpcAuthority
         {
             NpcSnapshot npc = naturalSpawnNpcBuffer[i];
             if (npc.Type is 25 or 30 or 33 ||
-                !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, out VanillaNpcDefinition definition) ||
+                !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) ||
+                definition.DefinitionOnly ||
                 definition.IsBoss ||
                 !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox) ||
                 definition.LifeMax <= 0)
@@ -1621,7 +1622,8 @@ internal sealed partial class NpcAuthority
         {
             if (!naturalSpawnTownNpcs.TryGet(slot, out _) ||
                 !npcs.TryGetActive(checked((byte)slot), out NpcSnapshot npc) ||
-                !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, out VanillaNpcDefinition definition) ||
+                !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) ||
+                definition.DefinitionOnly ||
                 !definition.TryResolveHitbox(npc.Simulation, out VanillaNpcHitboxSize hitbox))
             {
                 continue;
@@ -1925,6 +1927,8 @@ internal sealed partial class NpcAuthority
             !players.TryGet(command.Connection, out RuntimePlayerMember? player) ||
             !npcs.TryGetActive(checked((byte)command.State.NpcSlot), out NpcSnapshot npc) ||
             !NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType) ||
+            !VanillaNpcDefinitionCatalog.TryGet(npcType, npc.NetIdentity, out var catchDefinition) ||
+            catchDefinition.DefinitionOnly ||
             !VanillaNpcCatchCatalog1458.TryGetCatchItem(npcType, out ItemTypeId catchItem))
         {
             return;

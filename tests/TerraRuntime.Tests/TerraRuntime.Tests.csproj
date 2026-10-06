@@ -34,6 +34,8 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Fixtures/npc-definition-manifest-official-1458.json.gz" LogicalName="NpcDefinitionManifest1458" />
+    <EmbeddedResource Include="Fixtures/npc-source-default-roster-official-1458.json.gz" LogicalName="NpcSourceDefaultRoster1458" />
+    <EmbeddedResource Include="Fixtures/npc-definition-wire-official-1458.json.gz" LogicalName="NpcDefinitionWire1458" />
     <EmbeddedResource Include="Fixtures/slime-debuff-death-official-1458.json.gz" LogicalName="SlimeDebuffDeath1458" />
     <EmbeddedResource Include="Fixtures/town-specific-loot-registry-official-1458.json.gz" LogicalName="TownSpecificLootRegistry1458" />
     <EmbeddedResource Include="Fixtures/town-hit-effects-checkpoint-official-1458.json.gz" LogicalName="TownHitEffects1458" />

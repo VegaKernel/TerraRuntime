@@ -118,9 +118,9 @@ Disk serialization/write detached от authoritative hot path. Tile-save shadow 
 Current final pre-`packet 49` contract:
 
 $$
-F_{\mathrm{pre49,max}}=65,
+F_{\mathrm{pre49,max}}=2\,352,
 \qquad
-F_{\mathrm{probe}}=96.
+F_{\mathrm{probe}}=2\,351.
 $$
 
 Для default $P=8$ structural connection sizing:
@@ -132,10 +132,10 @@ $$
 следовательно:
 
 $$
-65 < 96 < 4\,077.
+2\,351 < 2\,352 < 4\,077.
 $$
 
-Runtime entity/global baselines находятся вне final packet-10-to-packet-49 contract. Join section generation/compression всё равно требует global subsystem budgets, не per-player multiplication.
+После всех объявленных секций перед `packet 49` идут неизменяемый полный Banner state (модуль `11`) и известные Bestiary entries (модуль `4`), как в оригинальном `MessageBuffer` case `8`. Остальные entity/global baselines сохраняют более позднюю фазу. Проба считает максимум 63 секции, один Banner, три записи на каждую из 762 signed identities и пустой handoff; structural ceiling дополнительно включает предшествующие WorldInfo/status. Генерация и сжатие секций требуют общего бюджета подсистемы, а не отдельного полного бюджета на каждого игрока.
 
 ## 12. Synchronization scaling
 

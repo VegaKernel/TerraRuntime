@@ -63,7 +63,8 @@ internal sealed class RuntimeNpcPlayerCombatPass
             NpcSnapshot npc = npcBuffer[i];
             if (!npc.IsActive ||
                 npc.Simulation.Friendly != false ||
-                !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, out VanillaNpcDefinition definition) ||
+                !VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out VanillaNpcDefinition definition) ||
+                definition.DefinitionOnly ||
                 definition.Role == NpcArchetypeRole.Town ||
                 !VanillaIncomingPlayerDamageFacts1458.TryGetNpcContactImmunityChannel(
                     npc.TypeIdentity,

@@ -1,5 +1,7 @@
 # Runtime NPC behavior boundary
 
+The [source definition roster](npc-source-definition-roster-1458.md) now separates queryable classic defaults from autonomous lifecycle admission. See that page for coverage and ownership limits.
+
 Eleventh integrated local acceptance: 1553881/1553882 tests, zero failures/errors, one existing worldgen skip; clean Release rebuild, Windows NativeAOT/five smokes and local gates. See [NPC parity checkpoint](../roadmap/npc-ai-parity.md). Earlier candidate/pending notes below are historical for their respective checkpoints. Full gameplay/NPC parity remains open.
 
 TerraRuntime exposes a trusted-host NPC behavior boundary without transferring simulation ownership to the host. The runtime remains the only authority that owns NPC lifecycle, generation identity, client-visible presentation, state validation, authoritative ticking, world motion/collision, combat and replication.

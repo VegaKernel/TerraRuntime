@@ -128,9 +128,90 @@ HELLO = bytes([
     *b"Terraria326",
 ])
 
-# Mirrors PlayerBootstrapFrameBudget.LiveProbeFrameBudget. The production pre-49 structural
-# maximum is 65 frames; keep a small emergency margin so accidental bootstrap growth fails fast.
-BOOTSTRAP_FRAME_BUDGET = 96
+# MessageBuffer case 8 (1.4.5.8) sends Banner/Bestiary modules before packet 49.
+# Match PlayerBootstrapFrameBudget: 63 sections + one banner + three entries
+# per known signed net identity (-65..696) + the handoff itself.
+MAX_BOOTSTRAP_SECTIONS = 63
+MAX_BESTIARY_IDENTITIES = 762
+BOOTSTRAP_FRAME_BUDGET = MAX_BOOTSTRAP_SECTIONS + 1 + 3 * MAX_BESTIARY_IDENTITIES + 1
+
+
+def validate_banner_baseline(payload):
+    # BannerSystem.NetBannersModule.WriteFullState / Save, module 11, subtype 0.
+    if len(payload) < 7 or payload[2] != 0:
+        raise SystemExit("expected Banner full-state subtype 0 before packet49")
+    kills = struct.unpack_from("<h", payload, 3)[0]
+    if not 0 <= kills <= 293 or len(payload) < 7 + kills * 4:
+        raise SystemExit("invalid Banner kill-array length")
+    if any(value < 0 for value in struct.unpack_from(f"<{kills}i", payload, 5)):
+        raise SystemExit("negative Banner kill counter")
+    claims_offset = 5 + kills * 4
+    claims = struct.unpack_from("<h", payload, claims_offset)[0]
+    if not 0 <= claims <= 293 or len(payload) != claims_offset + 2 + claims * 2:
+        raise SystemExit("invalid Banner claim-array length/trailing bytes")
+
+
+def validate_bestiary_baseline(payload):
+    # NetBestiaryModule: kill=0 (Int32 7-bit count), sight=1, chat=2.
+    if len(payload) < 5 or payload[2] not in (0, 1, 2):
+        raise SystemExit("invalid Bestiary baseline subtype/length")
+    kind, net_id = payload[2], struct.unpack_from("<h", payload, 3)[0]
+    if not -65 <= net_id <= 696:
+        raise SystemExit(f"invalid Bestiary net identity {net_id}")
+    if kind == 0:
+        try:
+            count, end = decode_7bit_int(payload, 5)
+        except RuntimeError as error:
+            raise SystemExit(f"invalid Bestiary kill count: {error}") from error
+        if count > 0x7FFFFFFF or payload[5:end] != encode_7bit_int(count):
+            raise SystemExit("invalid/noncanonical Bestiary Int32 kill count")
+    else:
+        end = 5
+    if end != len(payload):
+        raise SystemExit("unexpected Bestiary trailing bytes")
+    return kind, net_id
+
+
+def receive_bootstrap(client, expected_sections):
+    if not 1 <= expected_sections <= MAX_BOOTSTRAP_SECTIONS:
+        raise SystemExit(f"invalid packet 9 section count {expected_sections}")
+    section_count = frame_count = 0
+    banner_received = False
+    bestiary_entries = set()
+    deadline = time.monotonic() + 15
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise SystemExit("bootstrap timed out before packet49")
+        client.settimeout(remaining)
+        message_id, payload = recv_frame(client)
+        frame_count += 1
+        if frame_count > BOOTSTRAP_FRAME_BUDGET:
+            raise SystemExit(f"bootstrap exceeded {BOOTSTRAP_FRAME_BUDGET} frames before packet49")
+        if message_id == 10:
+            section_count += 1
+            if banner_received or section_count > expected_sections:
+                raise SystemExit("unexpected packet10 after completed section transfer/baseline")
+        elif message_id == 82:
+            if section_count != expected_sections or len(payload) < 2:
+                raise SystemExit("packet82 before completed tile transfer or missing module ID")
+            module_id = struct.unpack_from("<H", payload)[0]
+            if module_id == 11 and not banner_received:
+                validate_banner_baseline(payload)
+                banner_received = True
+            elif module_id == 4 and banner_received:
+                entry = validate_bestiary_baseline(payload)
+                if entry in bestiary_entries:
+                    raise SystemExit(f"duplicate Bestiary baseline entry {entry}")
+                bestiary_entries.add(entry)
+            else:
+                raise SystemExit(f"unexpected pre-spawn module {module_id} or duplicate/out-of-order Banner")
+        elif message_id == 49:
+            if section_count != expected_sections or not banner_received or payload:
+                raise SystemExit("packet49 requires completed sections, Banner baseline and empty payload")
+            return section_count, frame_count
+        else:
+            raise SystemExit(f"unexpected pre-spawn packet {message_id}; expected sections, Banner/Bestiary, packet49")
 
 
 def join_client(host, port, expected_slot):
@@ -170,51 +251,11 @@ def join_client(host, port, expected_slot):
             f"expected packet 9 after repeated packet 7, got id={message_id}"
         )
     expected_sections = struct.unpack_from("<i", status_payload, 0)[0]
-    if expected_sections <= 0:
+    try:
+        section_count, frame_count = receive_bootstrap(client, expected_sections)
+    except BaseException:
         client.close()
-        raise SystemExit(f"invalid packet 9 section count {expected_sections}")
-
-    section_count = 0
-    frame_count = 0
-
-    while True:
-        message_id, _ = recv_frame(client)
-        frame_count += 1
-
-        if message_id == 10:
-            section_count += 1
-            if section_count > expected_sections:
-                client.close()
-                raise SystemExit(
-                    f"received more packet-10 sections than packet 9 announced: "
-                    f"{section_count}/{expected_sections}"
-                )
-        elif message_id == 49:
-            if section_count != expected_sections:
-                client.close()
-                raise SystemExit(
-                    f"received packet49 before tile transfer completed: "
-                    f"{section_count}/{expected_sections} sections"
-                )
-            break
-        else:
-            client.close()
-            raise SystemExit(
-                f"received pre-spawn packet {message_id} after tile transfer began; "
-                "minimal join handoff requires packet10 frames followed immediately by packet49"
-            )
-
-        if frame_count > BOOTSTRAP_FRAME_BUDGET:
-            client.close()
-            raise SystemExit(
-                f"bootstrap exceeded {BOOTSTRAP_FRAME_BUDGET} frames before packet 49"
-            )
-
-    if section_count != expected_sections:
-        client.close()
-        raise SystemExit(
-            f"packet 9 announced {expected_sections} sections but received {section_count} packet-10 frames"
-        )
+        raise
 
     spawn = struct.pack(
         "<HBBhhihhBB",
