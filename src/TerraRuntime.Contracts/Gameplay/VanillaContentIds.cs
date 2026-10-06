@@ -256,6 +256,7 @@ public static class VanillaNpcIds
     public static readonly NpcTypeId PirateDeadeye = new(214);
     public static readonly NpcTypeId PirateCrossbower = new(215);
     public static readonly NpcTypeId PirateCaptain = new(216);
+    public static readonly NpcTypeId PirateGhost = new(662);
     public static readonly NpcTypeId CochinealBeetle = new(217);
     public static readonly NpcTypeId CyanBeetle = new(218);
     public static readonly NpcTypeId LacBeetle = new(219);
@@ -395,6 +396,7 @@ public static class VanillaNpcAiStyles
     public static readonly NpcAiStyleId Jellyfish = new(18);
     public static readonly NpcAiStyleId Antlion = new(19);
     public static readonly NpcAiStyleId GhostHover = new(22);
+    public static readonly NpcAiStyleId PirateGhost = new(122);
     public static readonly NpcAiStyleId BigMimic = new(87);
     public static readonly NpcAiStyleId Mothron = new(88);
     public static readonly NpcAiStyleId MothronEgg = new(89);

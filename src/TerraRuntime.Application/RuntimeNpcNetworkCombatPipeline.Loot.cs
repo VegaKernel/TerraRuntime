@@ -115,7 +115,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         int maximumDropCount = kingSlimeNormal
             ? VanillaKingSlimeNormalLootCatalog.MaximumDropCount
             : genericTable.MaximumDropCount;
-        int maximumSupportedDrops = npc.Type == 212
+        int maximumSupportedDrops = npc.Type is >= 212 and <= 215
             ? VanillaInvasionNpcLootCatalog1458.PirateMaximumDropCount
             : MaxOrdinaryDrops;
         if (maximumDropCount > maximumSupportedDrops ||

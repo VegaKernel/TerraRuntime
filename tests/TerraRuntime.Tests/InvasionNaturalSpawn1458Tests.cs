@@ -141,7 +141,7 @@ public sealed class InvasionNaturalSpawn1458Tests
         Assert.Equal(1, state.AppliedNpcSpawns);
         Assert.Single(Drain(queue), frame => frame[2] == 23);
         Assert.True(owner.TryCapture(out var before));
-        Assert.True(owner.TryAdopt(in before, new InvasionTransition1458(before.State with { Type = 3 }, default), out _));
+        Assert.True(owner.TryAdopt(in before, new InvasionTransition1458(before.State with { Type = 4 }, default), out _));
         var beforeRandom = random.SourceRandom.Clone();
         state.Tick();
         Assert.True(random.SourceRandom.HasSameState(beforeRandom));

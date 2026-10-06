@@ -65,12 +65,26 @@ public static class VanillaInvasionNpcLootCatalog1458
         Common(2805, 200, 1, 1),
     ];
 
+    private static readonly VanillaNpcLootRule[] PirateCaptainRules =
+    [
+        Common(905, 1000),
+        Common(855, 500),
+        Common(854, 250),
+        Common(2584, 250),
+        Common(3033, 125),
+        Common(672, 50),
+        Common(5460, 50)
+    ];
+
     public static bool TryGet(NpcTypeId type, out VanillaNpcLootTable table)
     {
         VanillaNpcLootRule[]? rules = type.Value switch
         {
             26 or 27 or 28 or 29 or 111 => GoblinRules,
-            212 => PirateRules,
+            212 or 213 or 214 or 215 => PirateRules,
+            216 => PirateCaptainRules,
+            // These populated source tables are empty; globals and death events remain separate.
+            252 or 662 => [],
             381 => MartianRules,
             _ => null
         };

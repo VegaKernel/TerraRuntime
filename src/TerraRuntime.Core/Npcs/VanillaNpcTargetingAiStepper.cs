@@ -99,6 +99,7 @@ public sealed class VanillaNpcTargetingAiStepper :
     private readonly VanillaJellyfishNpcBehaviorStrategy _jellyfish = new();
     private readonly VanillaAntlionNpcBehaviorStrategy _antlion = new();
     private readonly VanillaGhostHoverNpcBehaviorStrategy1458 _ghostHover = new();
+    private readonly VanillaPirateGhostNpcBehaviorStrategy1458 _pirateGhost = new();
     private readonly VanillaMothronNpcBehaviorStrategy1458 _mothron = new();
     private readonly VanillaBigMimicNpcBehaviorStrategy1458 _bigMimic = new();
     private readonly VanillaSkeletronHeadNpcBehaviorStrategy _skeletronHead = new();
@@ -397,6 +398,10 @@ public sealed class VanillaNpcTargetingAiStepper :
     public bool TryGetCandidate(byte slot, out VanillaNpcTargetCandidate candidate) =>
         _context.TryFindCandidate(slot, out candidate);
 
+    internal bool TryPlanPirateGhost(in NpcSnapshot before, out NpcStateUpdate plannedAi, out bool fadeStrike) =>
+        VanillaPirateGhostNpcBehaviorStrategy1458.TryPlan(in before,
+            VanillaPirateGhostNpcCatalog1458.Definition, _context, out plannedAi, out fadeStrike);
+
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
     {
         if (!NpcTypeId.TryCreate(npc.Type, out NpcTypeId npcType))
@@ -452,6 +457,7 @@ public sealed class VanillaNpcTargetingAiStepper :
             VanillaNpcBehaviorFamily.Jellyfish => _jellyfish,
             VanillaNpcBehaviorFamily.Antlion => _antlion,
             VanillaNpcBehaviorFamily.GhostHover => _ghostHover,
+            VanillaNpcBehaviorFamily.PirateGhost when !definition.DefinitionOnly => _pirateGhost,
             VanillaNpcBehaviorFamily.Mothron => _mothron,
             VanillaNpcBehaviorFamily.BigMimic => _bigMimic,
             VanillaNpcBehaviorFamily.SkeletronHead => _skeletronHead,

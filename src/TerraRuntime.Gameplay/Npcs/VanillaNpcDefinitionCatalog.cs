@@ -80,7 +80,8 @@ public enum VanillaNpcBehaviorFamily : byte
     Antlion = 66,
     GhostHover = 67,
     Mothron = 68,
-    BigMimic = 69
+    BigMimic = 69,
+    PirateGhost = 70
 }
 
 /// <summary>
@@ -363,6 +364,12 @@ public static class VanillaNpcDefinitionCatalog
 
         if (VanillaAntlionNpcCatalog1458.TryGetDefinition(type, out definition))
             return true;
+
+        if (type == VanillaNpcIds.PirateGhost && !VanillaPirateGhostNpcCatalog1458.Definition.DefinitionOnly)
+        {
+            definition = VanillaPirateGhostNpcCatalog1458.Definition;
+            return true;
+        }
 
         if (VanillaGhostHoverNpcCatalog1458.TryGetDefinition(type, out definition))
             return true;

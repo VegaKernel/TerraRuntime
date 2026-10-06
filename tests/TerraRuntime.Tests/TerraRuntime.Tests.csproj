@@ -45,6 +45,11 @@
     <EmbeddedResource Include="Fixtures/invasion-world-wire-official-1458.json.gz" LogicalName="InvasionWorldWire1458" />
     <EmbeddedResource Include="Fixtures/invasion-completion-event-official-1458.json.gz" LogicalName="InvasionCompletionEvent1458" />
     <EmbeddedResource Include="Fixtures/invasion-npc-loot-official-1458.json.gz" LogicalName="InvasionNpcLoot1458" />
+    <EmbeddedResource Include="Fixtures/pirate-npc-loot-official-1458.json.gz" LogicalName="PirateNpcLoot1458" />
+    <EmbeddedResource Include="Fixtures/invasion-pirate-birth-official-1458.json.gz" LogicalName="InvasionPirateBirth1458" />
+    <EmbeddedResource Include="Fixtures/pirate-ghost-official-1458.json.gz" LogicalName="PirateGhost1458" />
+    <EmbeddedResource Include="Fixtures/pirate-npc-defaults-official-1458.json.gz" LogicalName="PirateNpcDefaults1458" />
+    <EmbeddedResource Include="Fixtures/pirate-npc-defaults-windows-official-1458.json.gz" LogicalName="PirateNpcDefaultsWindows1458" />
     <EmbeddedResource Include="Fixtures/invasion-goblin-birth-official-1458.json.gz" LogicalName="InvasionGoblinBirth1458" />
     <EmbeddedResource Include="Fixtures/invasion-death-credit-official-1458.json.gz" LogicalName="InvasionDeathOrder1458" />
     <EmbeddedResource Include="Fixtures/invasion-death-zero-start-official-1458.json.gz" LogicalName="InvasionDeathZeroStart1458" />

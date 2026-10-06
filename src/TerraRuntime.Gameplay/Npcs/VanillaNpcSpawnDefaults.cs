@@ -69,6 +69,19 @@ public readonly partial record struct VanillaNpcSpawnDefaults(
         if (context.IsValid && (definition.Type == VanillaNpcIds.LavaSlime ||
             definition.Type == VanillaNpcIds.Bee || definition.Type == VanillaNpcIds.SmallBee))
             return TryResolveContainedFamily(in definition, in context, windowsArithmetic, out defaults);
+        if (context.IsValid && (definition.Type == VanillaNpcIds.PirateGhost ||
+            definition.Type == VanillaNpcIds.PirateDeckhand || definition.Type == VanillaNpcIds.PirateCorsair ||
+            definition.Type == VanillaNpcIds.PirateDeadeye || definition.Type == VanillaNpcIds.PirateCrossbower ||
+            definition.Type == VanillaNpcIds.PirateCaptain || definition.Type == VanillaNpcIds.Parrot))
+        {
+            // Independently captured actual GameMode0/1/2, with the Good-world effective difficulty increment.
+            if (context.Difficulty is not (1f or 2f or 3f or 4f)) return false;
+            // Source scaling uses the verified raw dimensions without admitting an executable public definition.
+            var sourceDefinition = definition.Type == VanillaNpcIds.PirateGhost
+                ? VanillaPirateGhostNpcCatalog1458.Definition : definition;
+            defaults = ResolveOrdinary(in sourceDefinition, in context, windowsArithmetic) with { Difficulty = context.Difficulty };
+            return true;
+        }
         if (context.IsValid && definition.BehaviorFamily == VanillaNpcBehaviorFamily.FlyingEye)
             return TryResolveFlyingEye(in definition, in context, windowsArithmetic, out defaults);
         if (context.IsValid && VanillaBigMimicNpcCatalog1458.IsSupported(definition.Type))

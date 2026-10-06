@@ -33,16 +33,18 @@ internal sealed partial class NpcAuthority
             return InvasionSpawnAttempt.Continue;
         var clock = CaptureInvasionSpawnClock();
         var progression = naturalSpawnProgression.CaptureSnapshot();
-        var sections = CaptureInvasionSpawnSections(in player);
+        var sections = CaptureInvasionSpawnSections(in player, invasionState.Type == 3);
         var random = new SystemVanillaNpcRandom(preview.Random);
         var retained = new VanillaNpcRetainedSlot[RuntimeNpcStore.MaximumAddressableCapacity];
         int count = npcs.CopyRetainedSlots(retained);
         Span<RetainedInvasionTownSlot1458> town = stackalloc RetainedInvasionTownSlot1458[200];
-        bool summonerActive = false;
+        bool summonerActive = false, shipActive = false, captainActive = false;
         for (int slot = 0; slot < Math.Min(count, town.Length); slot++)
         {
             var npc = retained[slot];
             summonerActive |= npc.IsActive && npc.Type == 471;
+            shipActive |= npc.IsActive && npc.Type == 491;
+            captainActive |= npc.IsActive && npc.Type == 216;
             // A never-used physical slot has the source constructor's false flag. Imported identities
             // must provide their own retained flag; definition or role alone is not that ownership.
             bool? townFlag = npc.Type == 0 ? false : npc.Simulation.TownNpc;
@@ -74,8 +76,8 @@ internal sealed partial class NpcAuthority
             return CanAdopt() && preview.TryAdoptOwned(out _)
                 ? InvasionSpawnAttempt.Ordinary : InvasionSpawnAttempt.Continue;
         }
-        // Pirate/Martian selectors and Skyblock's extra GetZombieSettings branch are not admitted.
-        if (captured.State.Type != 1 || naturalSpawnSkyblockLowTiles)
+        // Martian selection and Skyblock's extra GetZombieSettings branch remain unowned.
+        if (captured.State.Type is not (1 or 3) || naturalSpawnSkyblockLowTiles)
             return InvasionSpawnAttempt.Stop;
         GetNaturalSpawnBudget(in player, nearbyNpcCount, out int spawnRate, out int maxSpawns, invaders: true);
         if (nearbyNpcCount >= maxSpawns || random.NextInt32(0, spawnRate) != 0)
@@ -83,7 +85,14 @@ internal sealed partial class NpcAuthority
         if (!TryFindVanillaNaturalSpawnFloor(in player, random, out int tileX, out int floorY))
             return AdoptNoBirth();
         bool hardMode = facts.HardMode || progression.IsCompleted(VanillaWorldProgressionId.Hardmode);
-        NpcTypeId selected = RuntimeInvasionSpawn1458.SelectGoblin(hardMode, summonerActive, random);
+        NpcTypeId selected = invasionState.Type == 1
+            ? RuntimeInvasionSpawn1458.SelectGoblin(hardMode, summonerActive, random)
+            : RuntimeInvasionSpawn1458.SelectPirate(in invasionState, shipActive, captainActive,
+                () => IsPirateShipRectangleBlocked(tileX, floorY), random);
+        // Ships require linked cannons; Captain deaths require the not-yet-admitted Ghost lifecycle.
+        // Preserve both selected identities without resampling or adopting the speculative stream.
+        if (selected.Value == 491 || selected == VanillaNpcIds.PirateCaptain)
+            return InvasionSpawnAttempt.Stop;
         if (!VanillaNpcDefinitionCatalog.TryGet(selected, out var admitted) || admitted.DefinitionOnly ||
             admitted.IsBoss || !VanillaNpcAiCoverageCatalog.TryGet(selected, out _))
             return InvasionSpawnAttempt.Stop; // Preserve selected identity: no substitute and no adoption.
@@ -120,15 +129,18 @@ internal sealed partial class NpcAuthority
         (worldClock!.DayTime, worldClock.Time, worldClock.BloodMoonActive, worldClock.PumpkinMoonActive,
             worldClock.SnowMoonActive, worldClock.MoonEventWaveNumber, worldClock.MaxRain);
 
-    private (WorldSectionId Section, long Version)[] CaptureInvasionSpawnSections(in VanillaNpcTargetCandidate player)
+    private (WorldSectionId Section, long Version)[] CaptureInvasionSpawnSections(in VanillaNpcTargetCandidate player, bool pirate)
     {
         var tiles = worldTiles!;
         int x = Math.Clamp((int)(player.CenterX / 16f), 0, tiles.Dimensions.WidthTiles - 1);
         int y = Math.Clamp((int)(player.CenterY / 16f), 0, tiles.Dimensions.HeightTiles - 1);
-        // Source-shaped existing floor search (84x52), body clearance and 169x124 scene scan.
-        var first = TerrariaSectionGeometry.FromTile(tiles.Dimensions, Math.Max(0, x - 87), Math.Max(0, y - 63));
+        // Include the selected Pirate ship rectangle even when its offer is later refused:
+        // floor search reaches +/-84 X and -52 Y; Collision.SolidTiles adds +/-20 X and -40 Y.
+        int horizontal = pirate ? 104 : 87;
+        int above = pirate ? 92 : 63;
+        var first = TerrariaSectionGeometry.FromTile(tiles.Dimensions, Math.Max(0, x - horizontal), Math.Max(0, y - above));
         var last = TerrariaSectionGeometry.FromTile(tiles.Dimensions,
-            Math.Min(tiles.Dimensions.WidthTiles - 1, x + 87), Math.Min(tiles.Dimensions.HeightTiles - 1, y + 63));
+            Math.Min(tiles.Dimensions.WidthTiles - 1, x + horizontal), Math.Min(tiles.Dimensions.HeightTiles - 1, y + 63));
         var captured = new (WorldSectionId, long)[(last.X - first.X + 1) * (last.Y - first.Y + 1)];
         int index = 0;
         for (int sx = first.X; sx <= last.X; sx++)
@@ -138,6 +150,25 @@ internal sealed partial class NpcAuthority
                 captured[index++] = (section, tiles.GetSectionVersion(section));
             }
         return captured;
+    }
+
+    private bool IsPirateShipRectangleBlocked(int floorX, int floorY)
+    {
+        var tiles = worldTiles!;
+        int left = floorX - 20, right = floorX + 20, top = floorY - 40, bottom = floorY - 10;
+        // Source Collision.SolidTiles uses an inclusive rectangle and the bottom-world margin.
+        // WorldTileStore owns a dense table, so a source null Tile cannot arise in this admitted context.
+        if (left < 0 || right >= tiles.Dimensions.WidthTiles || top < 0 || bottom >= tiles.Dimensions.HeightTiles - 40)
+            return true;
+        for (int x = left; x <= right; x++)
+            for (int y = top; y <= bottom; y++)
+            {
+                var tile = tiles.Get(x, y);
+                if (tile.IsActive && !tile.IsActuated && VanillaTileCollisionCatalog.IsSolid(tile.TileType) &&
+                    !VanillaTileCollisionCatalog.IsSolidTop(tile.TileType))
+                    return true;
+            }
+        return false;
     }
 
     private bool InvasionSpawnSectionsCurrent((WorldSectionId Section, long Version)[] captured)

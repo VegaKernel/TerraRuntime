@@ -44,7 +44,8 @@ public sealed class InvasionNpcLoot1458Tests
         Assert.True(VanillaNpcLootRuleCatalog.TryGetNpcSpecificTable(new(212), out var pirate));
         Assert.Equal(34, pirate.MaximumDropCount);
         Assert.Equal(VanillaInvasionNpcLootCatalog1458.PirateMaximumDropCount, pirate.MaximumDropCount);
-        Assert.False(VanillaInvasionNpcLootCatalog1458.TryGet(new(213), out _));
+        Assert.True(VanillaInvasionNpcLootCatalog1458.TryGet(new(213), out var corsair));
+        Assert.Equal(pirate.MaximumDropCount, corsair.MaximumDropCount);
     }
 
     private static void EqualRule(JsonElement original, in VanillaNpcLootRule rule)

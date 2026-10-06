@@ -72,4 +72,25 @@ internal static class RuntimeInvasionSpawn1458
             return VanillaNpcIds.GoblinThief;
         return VanillaNpcIds.GoblinWarrior;
     }
+
+    internal static NpcTypeId SelectPirate(in InvasionState1458 invasion, bool shipActive,
+        bool captainActive, Func<bool> shipRectangleBlocked, IVanillaNpcRandom random)
+    {
+        _ = random.NextInt32(0, 7); // Shared unconditional GetZombieSettings offer.
+        // NPC.Spawner.SpawnAnNPC 1.4.5.8: chance precedes the retained cap and terrain reads.
+        if (invasion.Size < invasion.SizeStart / 2 && random.NextInt32(0, 20) == 0 &&
+            !shipActive && !shipRectangleBlocked())
+            return new NpcTypeId(491);
+        if (random.NextInt32(0, 30) == 0 && !captainActive)
+            return VanillaNpcIds.PirateCaptain;
+        if (random.NextInt32(0, 11) == 0)
+            return VanillaNpcIds.PirateCrossbower;
+        if (random.NextInt32(0, 9) == 0)
+            return VanillaNpcIds.Parrot;
+        if (random.NextInt32(0, 7) == 0)
+            return VanillaNpcIds.PirateDeadeye;
+        if (random.NextInt32(0, 3) == 0)
+            return VanillaNpcIds.PirateCorsair;
+        return VanillaNpcIds.PirateDeckhand;
+    }
 }

@@ -140,15 +140,15 @@ public static class VanillaGroundFighterNpcCatalog
         ,Fighter(VanillaNpcIds.IcyMerman, 18, 40, 60, 30, 280, .5f, 1f, 1f,
             motionProfile: VanillaGroundFighterMotionProfile.IcyMerman, daySurfaceEncouragesDespawn: false)
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 214/215 and their stationary pirate weapon wind-ups.
-        ,Fighter(VanillaNpcIds.PirateDeckhand, 18, 40, 35, 16, 200, .4f, 1f, 2f,
+        ,Fighter(VanillaNpcIds.PirateDeckhand, 18, 40, 35, 17, 300, .4f, 1f, 2f,
             daySurfaceEncouragesDespawn: false)
-        ,Fighter(VanillaNpcIds.PirateCorsair, 18, 40, 50, 20, 300, .2f, 1f, 3f,
+        ,Fighter(VanillaNpcIds.PirateCorsair, 18, 40, 50, 22, 450, .2f, 1f, 3f,
             reversingVelocityDamping: .99f, daySurfaceEncouragesDespawn: false)
-        ,Fighter(VanillaNpcIds.PirateDeadeye, 18, 40, 30, 12, 150, .3f, 1f, 1f,
+        ,Fighter(VanillaNpcIds.PirateDeadeye, 18, 40, 30, 14, 225, .3f, 1f, 1f,
             motionProfile: VanillaGroundFighterMotionProfile.PirateDeadeye, daySurfaceEncouragesDespawn: false)
-        ,Fighter(VanillaNpcIds.PirateCrossbower, 18, 40, 35, 18, 260, .35f, 1f, 1f,
+        ,Fighter(VanillaNpcIds.PirateCrossbower, 18, 40, 35, 20, 350, .35f, 1f, 1f,
             motionProfile: VanillaGroundFighterMotionProfile.PirateCrossbower, daySurfaceEncouragesDespawn: false)
-        ,Fighter(VanillaNpcIds.PirateCaptain, 18, 40, 70, 28, 2000, 0f, 1f, 1f,
+        ,Fighter(VanillaNpcIds.PirateCaptain, 18, 40, 70, 30, 3000, 0f, 1f, 1f,
             motionProfile: VanillaGroundFighterMotionProfile.PirateCaptain, daySurfaceEncouragesDespawn: false)
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 217..220, with Sea Snail's narrow AI_003 speed band.
         ,Fighter(VanillaNpcIds.CochinealBeetle, 28, 20, 20, 10, 40, 1f, 1f, 1.5f,
