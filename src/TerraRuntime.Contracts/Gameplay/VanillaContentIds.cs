@@ -531,6 +531,7 @@ public static class VanillaItemIds
     public static readonly ItemTypeId Sunfury = new(220);
     public static readonly ItemTypeId DarkLance = new(274);
     public static readonly ItemTypeId SilverBullet = new(278);
+    public static readonly ItemTypeId TungstenBullet = new(4915);
     public static readonly ItemTypeId ThrowingKnife = new(279);
     public static readonly ItemTypeId PoisonedKnife = new(287);
     public static readonly ItemTypeId GoldenKey = new(327);

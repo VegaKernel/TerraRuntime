@@ -124,6 +124,7 @@ public static class VanillaProjectileWeaponCombatCatalog
         new(VanillaItemIds.JestersArrow, VanillaProjectileIds.JestersArrow, VanillaProjectileAmmoFamily.Arrow, 10, 4f, 0.5f, true),
         new(VanillaItemIds.MusketBall, VanillaProjectileIds.Bullet, VanillaProjectileAmmoFamily.Bullet, 7, 2f, 4f, true),
         new(VanillaItemIds.SilverBullet, VanillaProjectileIds.SilverBullet, VanillaProjectileAmmoFamily.Bullet, 9, 3f, 4.5f, true),
+        new(VanillaItemIds.TungstenBullet, VanillaProjectileIds.Bullet, VanillaProjectileAmmoFamily.Bullet, 9, 4f, 4.5f, true),
         // Item.SetDefaults cases 3103/3104 retain the ordinary arrow/bullet contributions without consumable.
         // Player.PickAmmo still evaluates weapon/accessory conservation rolls before its consumable gate.
         new(VanillaItemIds.EndlessQuiver, VanillaProjectileIds.WoodenArrowFriendly, VanillaProjectileAmmoFamily.Arrow, 5, 2f, 3f, false),

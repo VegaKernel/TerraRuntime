@@ -194,7 +194,7 @@ public sealed class ProjectileItemUseAtomic1458Tests
     }
 
     [Fact]
-    public void Source_born_empty_buffs_are_supported_but_active_or_imported_unknown_buffs_are_untrusted()
+    public void Source_born_and_reported_buffs_are_supported_but_imported_unknown_buffs_are_untrusted()
     {
         foreach (int buff in new[] { 0, 93, 112, -1 })
         {
@@ -206,10 +206,17 @@ public sealed class ProjectileItemUseAtomic1458Tests
             var before = f.Random.Clone();
             f.Shoot(f.Bullet());
             Assert.True(f.Store.TryGetActive(0, out var shot));
-            Assert.Equal(buff == 0, f.Store.IsCombatTrusted(shot.Handle));
-            if (buff != 0)
+            Assert.Equal(buff != -1, f.Store.IsCombatTrusted(shot.Handle));
+            if (buff == -1)
             {
                 Assert.Equal(5, f.Ammo.Stack);
+                Assert.True(f.Random.HasSameState(before));
+            }
+            else
+            {
+                bool conserve = buff > 0 && before.Next(5) == 0;
+                conserve |= before.Next(3) == 0;
+                Assert.Equal(conserve ? 5 : 4, f.Ammo.Stack);
                 Assert.True(f.Random.HasSameState(before));
             }
         }

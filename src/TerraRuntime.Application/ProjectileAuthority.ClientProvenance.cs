@@ -75,7 +75,7 @@ internal sealed partial class ProjectileAuthority
 
         if (!VanillaItemCombatCatalog.TryGetRangedPrefixModifiers(weaponItem.Prefix, out VanillaCombatPrefixModifiers prefix) ||
             !players.TryCaptureCombatSnapshot(connection, out VanillaPlayerCombatSnapshot attackerCombat) ||
-            !players.HasSupportedAmmoConservationContext(connection))
+            !players.TryCaptureAmmoConservationContext(connection, out bool ammoBox, out bool ammoPotion))
         {
             // An unsupported prefix/equipment combination may still be a legitimate vanilla shot, but it cannot cross
             // the CombatTrusted boundary until its exact source formula is imported.
@@ -167,6 +167,8 @@ internal sealed partial class ProjectileAuthority
                 dx,
                 dy,
                 plannedRandom,
+                ammoBox,
+                ammoPotion,
                 out authoritative);
         }
 
@@ -201,7 +203,7 @@ internal sealed partial class ProjectileAuthority
             KnockBack: expectedKnockBack,
             OriginalDamage: 0);
 
-        bool conserveAmmo = PrepareAmmoConservation(in weapon, in ammo, in attackerCombat, plannedRandom);
+        bool conserveAmmo = PrepareAmmoConservation(in weapon, in ammo, in attackerCombat, plannedRandom, ammoBox, ammoPotion);
         RuntimePlayerInventoryItem remainingAmmo = conserveAmmo
             ? ammoItem
             : ammoItem.Stack == 1
@@ -237,6 +239,8 @@ internal sealed partial class ProjectileAuthority
         float dx,
         float dy,
         VanillaUnifiedRandom1458 plannedRandom,
+        bool ammoBox,
+        bool ammoPotion,
         out AuthoritativeClientProjectileSpawn authoritative)
     {
         authoritative = default;
@@ -277,7 +281,7 @@ internal sealed partial class ProjectileAuthority
         RuntimePlayerInventoryMutation? inventoryMutation = null;
         if (volley.StartsVolley)
         {
-            bool conserveAmmo = PrepareAmmoConservation(in weapon, in ammo, in attackerCombat, plannedRandom);
+            bool conserveAmmo = PrepareAmmoConservation(in weapon, in ammo, in attackerCombat, plannedRandom, ammoBox, ammoPotion);
             RuntimePlayerInventoryItem remainingAmmo = conserveAmmo
                 ? ammoItem
                 : ammoItem.Stack == 1
@@ -445,15 +449,19 @@ internal sealed partial class ProjectileAuthority
         in VanillaProjectileWeaponCombatDefinition weapon,
         in VanillaProjectileAmmoCombatDefinition ammo,
         in VanillaPlayerCombatSnapshot attacker,
-        VanillaUnifiedRandom1458 random)
+        VanillaUnifiedRandom1458 random,
+        bool ammoBox = false,
+        bool ammoPotion = false)
     {
-        // Player.PickAmmo1.4.5.8: Celebration precedes Quiver; Minishark follows it.
+        // Player.PickAmmo1.4.5.8: Celebration, Quiver, AmmoBox, AmmoReservation, then Minishark.
         // Endless ammo still executes the selected conservation tests before consumable is checked.
         int weaponRoll = weapon.Type == VanillaItemIds.CelebrationMk2 ? random.Next(2) : -1;
         int quiverRoll = weapon.AmmoFamily == VanillaProjectileAmmoFamily.Arrow && attacker.MagicQuiver
             ? random.Next(5) : -1;
+        int boxRoll = ammoBox ? random.Next(5) : -1;
+        int potionRoll = ammoPotion ? random.Next(5) : -1;
         if (weapon.Type == VanillaItemIds.Minishark) weaponRoll = random.Next(3);
-        return VanillaProjectileWeaponCombatCatalog.ShouldConserveAmmo(
+        return boxRoll == 0 || potionRoll == 0 || VanillaProjectileWeaponCombatCatalog.ShouldConserveAmmo(
             in weapon, in ammo, in attacker, weaponRoll, quiverRoll);
     }
 

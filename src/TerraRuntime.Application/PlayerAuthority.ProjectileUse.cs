@@ -37,10 +37,14 @@ internal sealed partial class PlayerAuthority
     }
 
     // Player.ResetEffects/UpdateBuffs: source births own empty buff slots; imported missing slots remain unknown.
-    // AmmoBox93/AmmoReservation112 need their own conservation draws and are deliberately outside this slice.
-    internal bool HasSupportedAmmoConservationContext(ConnectionHandle connection) =>
-        transferProfiles.CountActiveBuffs(connection, new BuffTypeId(93)) == 0 &&
-        transferProfiles.CountActiveBuffs(connection, new BuffTypeId(112)) == 0;
+    internal bool TryCaptureAmmoConservationContext(ConnectionHandle connection, out bool ammoBox, out bool ammoPotion)
+    {
+        int? boxes = transferProfiles.CountActiveBuffs(connection, new BuffTypeId(93));
+        int? potions = transferProfiles.CountActiveBuffs(connection, new BuffTypeId(112));
+        ammoBox = boxes > 0;
+        ammoPotion = potions > 0;
+        return boxes is not null && potions is not null;
+    }
 
     internal bool CanCommitProjectileUse(RuntimePlayerProjectileUseCapture capture,
         RuntimePlayerInventoryMutation? mutation, int manaCost)
