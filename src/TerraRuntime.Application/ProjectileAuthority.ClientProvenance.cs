@@ -17,6 +17,27 @@ internal sealed partial class ProjectileAuthority
         in TerrariaProjectileUpdateState packet,
         out AuthoritativeClientProjectileSpawn authoritative)
     {
+        bool captured = players.TryCaptureProjectileUse(connection, out var capture);
+        var before = projectileRandom.Clone();
+        var planned = before.Clone();
+        var result = TryResolveStrictClientProjectileSpawnCore(connection, in packet, planned, out authoritative);
+        if (result != ClientProjectileProvenanceResolveResult.Accepted) return result;
+        if (!captured || capture is null || !players.IsCurrentProjectileUse(capture) ||
+            !projectileRandom.HasSameState(before))
+        {
+            authoritative = default;
+            return ClientProjectileProvenanceResolveResult.Rejected;
+        }
+        authoritative = authoritative with { PlayerCapture = capture, RandomBefore = before, RandomAfter = planned };
+        return result;
+    }
+
+    private ClientProjectileProvenanceResolveResult TryResolveStrictClientProjectileSpawnCore(
+        ConnectionHandle connection,
+        in TerrariaProjectileUpdateState packet,
+        VanillaUnifiedRandom1458 plannedRandom,
+        out AuthoritativeClientProjectileSpawn authoritative)
+    {
         authoritative = default;
         if (!players.TryCapture(connection.Player, out PlayerStateSnapshot player) || player.IsDead)
             return ClientProjectileProvenanceResolveResult.Rejected;
@@ -53,7 +74,8 @@ internal sealed partial class ProjectileAuthority
         }
 
         if (!VanillaItemCombatCatalog.TryGetRangedPrefixModifiers(weaponItem.Prefix, out VanillaCombatPrefixModifiers prefix) ||
-            !players.TryCaptureCombatSnapshot(connection, out VanillaPlayerCombatSnapshot attackerCombat))
+            !players.TryCaptureCombatSnapshot(connection, out VanillaPlayerCombatSnapshot attackerCombat) ||
+            !players.HasSupportedAmmoConservationContext(connection))
         {
             // An unsupported prefix/equipment combination may still be a legitimate vanilla shot, but it cannot cross
             // the CombatTrusted boundary until its exact source formula is imported.
@@ -144,6 +166,7 @@ internal sealed partial class ProjectileAuthority
                 packetSpeed,
                 dx,
                 dy,
+                plannedRandom,
                 out authoritative);
         }
 
@@ -178,14 +201,7 @@ internal sealed partial class ProjectileAuthority
             KnockBack: expectedKnockBack,
             OriginalDamage: 0);
 
-        int weaponConservationRoll = weapon.WeaponAmmoConservationOneIn > 0
-            ? Random.Shared.Next(weapon.WeaponAmmoConservationOneIn)
-            : -1;
-        int quiverConservationRoll = weapon.AmmoFamily == VanillaProjectileAmmoFamily.Arrow && attackerCombat.MagicQuiver
-            ? Random.Shared.Next(5)
-            : -1;
-        bool conserveAmmo = VanillaProjectileWeaponCombatCatalog.ShouldConserveAmmo(
-            in weapon, in ammo, in attackerCombat, weaponConservationRoll, quiverConservationRoll);
+        bool conserveAmmo = PrepareAmmoConservation(in weapon, in ammo, in attackerCombat, plannedRandom);
         RuntimePlayerInventoryItem remainingAmmo = conserveAmmo
             ? ammoItem
             : ammoItem.Stack == 1
@@ -196,7 +212,7 @@ internal sealed partial class ProjectileAuthority
             new RuntimePlayerInventoryMutation(checked((short)ammoSlot), remainingAmmo),
             ManaCost: 0,
             speedEnvelope,
-            authoritativeUseTime);
+            authoritativeUseTime) { UseTick = tick };
         return ClientProjectileProvenanceResolveResult.Accepted;
 
         static ClientProjectileProvenanceResolveResult RejectProvenance() =>
@@ -220,6 +236,7 @@ internal sealed partial class ProjectileAuthority
         float packetSpeed,
         float dx,
         float dy,
+        VanillaUnifiedRandom1458 plannedRandom,
         out AuthoritativeClientProjectileSpawn authoritative)
     {
         authoritative = default;
@@ -260,15 +277,7 @@ internal sealed partial class ProjectileAuthority
         RuntimePlayerInventoryMutation? inventoryMutation = null;
         if (volley.StartsVolley)
         {
-            int weaponConservationRoll = weapon.WeaponAmmoConservationOneIn > 0
-                ? Random.Shared.Next(weapon.WeaponAmmoConservationOneIn)
-                : -1;
-            bool conserveAmmo = VanillaProjectileWeaponCombatCatalog.ShouldConserveAmmo(
-                in weapon,
-                in ammo,
-                in attackerCombat,
-                weaponConservationRoll,
-                quiverConservationRoll: -1);
+            bool conserveAmmo = PrepareAmmoConservation(in weapon, in ammo, in attackerCombat, plannedRandom);
             RuntimePlayerInventoryItem remainingAmmo = conserveAmmo
                 ? ammoItem
                 : ammoItem.Stack == 1
@@ -283,7 +292,7 @@ internal sealed partial class ProjectileAuthority
             ManaCost: 0,
             new VanillaLaunchSpeedEnvelope(expectedSpeed, expectedSpeed),
             UseTimeTicks: 8,
-            CelebrationVolley: volley);
+            CelebrationVolley: volley) { UseTick = tick };
         return ClientProjectileProvenanceResolveResult.Accepted;
     }
 
@@ -351,7 +360,7 @@ internal sealed partial class ProjectileAuthority
             InventoryMutation: null,
             ManaCost: weapon.ManaCost,
             speedEnvelope,
-            weapon.UseTimeTicks);
+            weapon.UseTimeTicks) { UseTick = tick };
         return ClientProjectileProvenanceResolveResult.Accepted;
     }
 
@@ -427,10 +436,26 @@ internal sealed partial class ProjectileAuthority
             new RuntimePlayerInventoryMutation(checked((short)selectedSlot), remaining),
             ManaCost: 0,
             speedEnvelope,
-            weapon.UseTimeTicks);
+            weapon.UseTimeTicks) { UseTick = tick };
         return ClientProjectileProvenanceResolveResult.Accepted;
     }
 
+
+    internal static bool PrepareAmmoConservation(
+        in VanillaProjectileWeaponCombatDefinition weapon,
+        in VanillaProjectileAmmoCombatDefinition ammo,
+        in VanillaPlayerCombatSnapshot attacker,
+        VanillaUnifiedRandom1458 random)
+    {
+        // Player.PickAmmo1.4.5.8: Celebration precedes Quiver; Minishark follows it.
+        // Endless ammo still executes the selected conservation tests before consumable is checked.
+        int weaponRoll = weapon.Type == VanillaItemIds.CelebrationMk2 ? random.Next(2) : -1;
+        int quiverRoll = weapon.AmmoFamily == VanillaProjectileAmmoFamily.Arrow && attacker.MagicQuiver
+            ? random.Next(5) : -1;
+        if (weapon.Type == VanillaItemIds.Minishark) weaponRoll = random.Next(3);
+        return VanillaProjectileWeaponCombatCatalog.ShouldConserveAmmo(
+            in weapon, in ammo, in attacker, weaponRoll, quiverRoll);
+    }
 
     private static int FindFirstAmmo(
         VanillaProjectileAmmoFamily family,

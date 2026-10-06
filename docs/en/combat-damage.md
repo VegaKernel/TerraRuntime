@@ -1,3 +1,5 @@
+Owned metal armor and atomic projectile item use: [scope and transaction](player-item-use-1458.md).
+
 # Combat damage foundation
 
 The same direct-hit authority admits the 21 invariant wood and metal broadswords: Wooden, Ebonwood, Rich Mahogany, Pearlwood, Shadewood, Palm and Boreal Wood; Copper, Tin, Iron, Lead, Silver, Tungsten, Gold, Platinum, Cobalt, Palladium, Mythril, Orichalcum, Adamantite and Titanium. Twenty entries are new; Copper keeps its existing source facts, including `useTime=20` and `useAnimation=21`. Independently captured `Item.SetDefaults` facts and real owned NPC/PvP command tests cover every row, forged claims, duplicate cadence and retained inventory. Ash Wood Sword `5284` remains excluded because its Remix variant is not owned by this boundary. Exact swing geometry, other sword families and world-variant selection remain open.

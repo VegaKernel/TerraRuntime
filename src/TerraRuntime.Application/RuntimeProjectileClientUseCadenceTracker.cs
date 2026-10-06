@@ -20,11 +20,7 @@ internal sealed class RuntimeProjectileClientUseCadenceTracker
     {
         int slot = player.Slot.Value;
         if (generations[slot] != player.Generation)
-        {
-            generations[slot] = player.Generation;
-            lastUseTick[slot] = long.MinValue;
             return false;
-        }
 
         long previous = lastUseTick[slot];
         return previous != long.MinValue && tick - previous < useTimeTicks;

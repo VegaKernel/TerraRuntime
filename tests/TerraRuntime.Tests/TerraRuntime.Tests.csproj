@@ -34,6 +34,8 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Fixtures/npc-definition-manifest-official-1458.json.gz" LogicalName="NpcDefinitionManifest1458" />
+    <EmbeddedResource Include="Fixtures/metal-armor-official-1458.json.gz" LogicalName="MetalArmorEquipment1458" />
+    <EmbeddedResource Include="Fixtures/projectile-ammo-conservation-official-1458.json.gz" LogicalName="ProjectileAmmoConservation1458" />
     <EmbeddedResource Include="Fixtures/npc-source-default-roster-official-1458.json.gz" LogicalName="NpcSourceDefaultRoster1458" />
     <EmbeddedResource Include="Fixtures/npc-definition-wire-official-1458.json.gz" LogicalName="NpcDefinitionWire1458" />
     <EmbeddedResource Include="Fixtures/slime-debuff-death-official-1458.json.gz" LogicalName="SlimeDebuffDeath1458" />

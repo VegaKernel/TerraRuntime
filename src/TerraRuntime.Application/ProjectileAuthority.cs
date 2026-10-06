@@ -23,7 +23,13 @@ internal readonly record struct AuthoritativeClientProjectileSpawn(
     int ManaCost,
     VanillaLaunchSpeedEnvelope LaunchSpeedEnvelope,
     int UseTimeTicks,
-    RuntimeCelebrationMk2VolleyAdmission? CelebrationVolley = null);
+    RuntimeCelebrationMk2VolleyAdmission? CelebrationVolley = null)
+{
+    internal RuntimePlayerProjectileUseCapture? PlayerCapture { get; init; }
+    internal VanillaUnifiedRandom1458? RandomBefore { get; init; }
+    internal VanillaUnifiedRandom1458? RandomAfter { get; init; }
+    internal long UseTick { get; init; }
+}
 
 /// <summary>
 /// Owns the projectile store, simulation, client commit validation and lifecycle metrics for one world.

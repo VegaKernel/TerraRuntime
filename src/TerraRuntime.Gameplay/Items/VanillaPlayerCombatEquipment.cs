@@ -114,13 +114,17 @@ public static class VanillaPlayerCombatEquipmentCatalog
                 return false;
         }
 
-        // ArmorSetBonuses.Initialize: MetalTier1.Set(89, 80, 76) => +2 defense.
-        if (head == VanillaItemIds.CopperHelmet &&
-            body == VanillaItemIds.CopperChainmail &&
-            legs == VanillaItemIds.CopperGreaves)
+        // ArmorSetBonuses.Initialize (1.4.5.8): the ordinary metal sets and their ancient
+        // helmet alternatives have static defense bonuses, with no transient set state.
+        int metalSetDefense = (head.Value, body.Value, legs.Value) switch
         {
-            snapshot = snapshot with { Defense = snapshot.Defense + 2 };
-        }
+            (89, 80, 76) or (687, 688, 689) or (90, 81, 77) or (954, 81, 77) => 2,
+            (91, 82, 78) or (92, 83, 79) or (955, 83, 79) or
+                (690, 691, 692) or (693, 694, 695) => 3,
+            (696, 697, 698) => 4,
+            _ => 0
+        };
+        snapshot = snapshot with { Defense = snapshot.Defense + metalSetDefense };
 
         // Full endgame sets have dynamic set-bonus state (Solar shields, Vortex/Shroomite stealth, Beetle orbs)
         // that is not part of this bounded combat snapshot. Individual pieces are source-backed; complete sets
@@ -140,9 +144,35 @@ public static class VanillaPlayerCombatEquipmentCatalog
 
     private static bool TryApplyArmorPiece(ItemTypeId type, int armorIndex, ref VanillaPlayerCombatSnapshot snapshot)
     {
+        // Item.SetDefaults supplies only defense for these pieces. Slot matching remains
+        // explicit so a chestplate in a helmet slot cannot gain trusted combat modifiers.
+        int metalDefense = (armorIndex, type.Value) switch
+        {
+            (0, 89) => 1,
+            (0, 687) or (0, 90) or (0, 954) => 2,
+            (0, 690) or (0, 91) => 3,
+            (0, 693) or (0, 92) or (0, 955) => 4,
+            (0, 696) => 5,
+            (1, 80) or (1, 688) => 2,
+            (1, 81) or (1, 691) => 3,
+            (1, 82) => 4,
+            (1, 694) or (1, 83) => 5,
+            (1, 697) => 6,
+            (2, 76) or (2, 689) => 1,
+            (2, 77) or (2, 692) => 2,
+            (2, 78) or (2, 695) => 3,
+            (2, 79) => 4,
+            (2, 698) => 5,
+            _ => 0
+        };
+        if (metalDefense != 0)
+        {
+            snapshot = snapshot with { Defense = snapshot.Defense + metalDefense };
+            return true;
+        }
+
         if (armorIndex == 0)
         {
-            if (type == VanillaItemIds.CopperHelmet) { snapshot = snapshot with { Defense = snapshot.Defense + 1 }; return true; }
             if (type == VanillaItemIds.SolarFlareHelmet) { snapshot = snapshot with { Defense = snapshot.Defense + 24, MeleeCrit = snapshot.MeleeCrit + 26 }; return true; }
             if (type == VanillaItemIds.VortexHelmet) { snapshot = snapshot with { Defense = snapshot.Defense + 14, RangedCrit = snapshot.RangedCrit + 7, RangedDamage = snapshot.RangedDamage + 0.16f }; return true; }
             if (type == VanillaItemIds.ShroomiteHeadgear) { snapshot = snapshot with { Defense = snapshot.Defense + 11, RangedCrit = snapshot.RangedCrit + 5, ArrowDamage = snapshot.ArrowDamage * 1.12f }; return true; }
@@ -153,7 +183,6 @@ public static class VanillaPlayerCombatEquipmentCatalog
 
         if (armorIndex == 1)
         {
-            if (type == VanillaItemIds.CopperChainmail) { snapshot = snapshot with { Defense = snapshot.Defense + 2 }; return true; }
             if (type == VanillaItemIds.SolarFlareBreastplate) { snapshot = snapshot with { Defense = snapshot.Defense + 34, MeleeDamage = snapshot.MeleeDamage + 0.29f }; return true; }
             if (type == VanillaItemIds.VortexBreastplate) { snapshot = snapshot with { Defense = snapshot.Defense + 28, RangedCrit = snapshot.RangedCrit + 12, RangedDamage = snapshot.RangedDamage + 0.12f }; return true; }
             if (type == VanillaItemIds.ShroomiteBreastplate) { snapshot = snapshot with { Defense = snapshot.Defense + 24, RangedCrit = snapshot.RangedCrit + 13, RangedDamage = snapshot.RangedDamage + 0.13f }; return true; }
@@ -164,7 +193,6 @@ public static class VanillaPlayerCombatEquipmentCatalog
 
         if (armorIndex == 2)
         {
-            if (type == VanillaItemIds.CopperGreaves) { snapshot = snapshot with { Defense = snapshot.Defense + 1 }; return true; }
             if (type == VanillaItemIds.SolarFlareLeggings) { snapshot = snapshot with { Defense = snapshot.Defense + 20, MeleeAttackSpeed = snapshot.MeleeAttackSpeed + 0.15f }; return true; }
             if (type == VanillaItemIds.VortexLeggings) { snapshot = snapshot with { Defense = snapshot.Defense + 20, RangedCrit = snapshot.RangedCrit + 8, RangedDamage = snapshot.RangedDamage + 0.08f }; return true; }
             if (type == VanillaItemIds.ShroomiteLeggings) { snapshot = snapshot with { Defense = snapshot.Defense + 16, RangedCrit = snapshot.RangedCrit + 7 }; return true; }

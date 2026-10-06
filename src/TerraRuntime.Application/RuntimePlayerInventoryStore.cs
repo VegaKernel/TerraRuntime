@@ -197,6 +197,23 @@ internal sealed class RuntimePlayerInventoryStore
         return true;
     }
 
+    internal bool TryIsCurrent(ConnectionHandle connection, ulong expectedSerial) =>
+        expectedSerial != ulong.MaxValue &&
+        Serial == expectedSerial &&
+        connection.IsAssigned &&
+        connections[connection.Player.Slot.Value] == connection;
+
+    /// <summary>
+    /// Adopts an inventory plan only while its captured projection is still current. Every accepted writer,
+    /// including a same-value packet or another player's write, invalidates this conservative checkpoint.
+    /// No callback runs between this check and the existing whole-batch validation/commit.
+    /// </summary>
+    internal bool TryApplyAtomic(
+        ConnectionHandle connection,
+        ReadOnlySpan<RuntimePlayerInventoryMutation> mutations,
+        ulong expectedSerial) =>
+        TryIsCurrent(connection, expectedSerial) && TryApplyAtomic(connection, mutations);
+
     public void Clear(ConnectionHandle connection)
     {
         if (!connection.IsAssigned)

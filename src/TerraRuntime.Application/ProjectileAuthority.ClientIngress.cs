@@ -92,21 +92,8 @@ internal sealed partial class ProjectileAuthority
                     out int sourceTimeLeft)
                     ? sourceTimeLeft
                     : null;
-                if (projectiles.TrySpawnVanilla(in authoritativeState, timeLeftOverride, out ProjectileSnapshot trusted) &&
-                    projectiles.TryMarkCombatTrusted(trusted.Handle, command.Connection.Player) &&
-                    TryCommitAuthoritativeProjectileUse(command.Connection, in authoritative))
-                {
-                    if (authoritative.CelebrationVolley is RuntimeCelebrationMk2VolleyAdmission celebrationVolley)
-                        celebrationMk2Volleys.Commit(command.Connection.Player, in celebrationVolley);
-                    else
-                        trustedClientUseCadence.MarkUse(command.Connection.Player, tickProvider());
-                    AppliedSpawns++;
-                    PromotedClientProjectileSpawns++;
+                if (TryCommitAuthoritativeProjectileUse(in authoritative, timeLeftOverride))
                     return;
-                }
-
-                if (trusted.Handle.IsAssigned)
-                    projectiles.TryDespawn(trusted.Handle, out _);
                 RejectedSpawns++;
                 RejectedClientProjectileProvenance++;
                 RejectedClientUpdates++;
@@ -300,13 +287,41 @@ internal sealed partial class ProjectileAuthority
 
 
     private bool TryCommitAuthoritativeProjectileUse(
-        ConnectionHandle connection,
-        in AuthoritativeClientProjectileSpawn authoritative)
+        in AuthoritativeClientProjectileSpawn authoritative,
+        int? timeLeftOverride)
     {
-        if (authoritative.ManaCost > 0)
-            return authoritative.InventoryMutation is null && players.TryConsumeMana(connection, authoritative.ManaCost);
-        if (authoritative.InventoryMutation is RuntimePlayerInventoryMutation mutation)
-            return players.TryCommitInventoryMutation(connection, in mutation);
+        if (authoritative.PlayerCapture is not { } capture || authoritative.RandomBefore is not { } before ||
+            authoritative.RandomAfter is not { } after || !projectileRandom.HasSameState(before) ||
+            !players.CanCommitProjectileUse(capture, authoritative.InventoryMutation, authoritative.ManaCost) ||
+            !projectiles.TryPrepareVanillaSpawn(authoritative.State, timeLeftOverride, out var prepared) ||
+            prepared is null || !prepared.IsCurrent)
+            return false;
+        ConnectionHandle connection = capture.Connection;
+        if (authoritative.CelebrationVolley is { } volley)
+        {
+            if (!celebrationMk2Volleys.TryInspect(connection.Player, authoritative.UseTick, volley.Pattern,
+                    authoritative.State.Ai.Ai1, out var current) || current != volley) return false;
+        }
+        else if (trustedClientUseCadence.IsOnCooldown(connection.Player, authoritative.UseTick, authoritative.UseTimeTicks))
+            return false;
+
+        // The entire tail up to publication is callback-free on the authoritative writer. All owners were
+        // validated before any generation, inventory, mana, RNG or cadence state can change.
+        if (!prepared.TryCommitUnpublished(out var trusted)) return false;
+        if (!players.TryCommitProjectileUseUnpublished(capture, authoritative.InventoryMutation, authoritative.ManaCost) ||
+            !projectiles.TryMarkCombatTrusted(trusted.Handle, connection.Player))
+            throw new InvalidOperationException("Validated projectile use changed during callback-free adoption.");
+        projectileRandom.CopyStateFrom(after);
+        if (authoritative.CelebrationVolley is { } admittedVolley)
+            celebrationMk2Volleys.Commit(connection.Player, in admittedVolley);
+        else
+            trustedClientUseCadence.MarkUse(connection.Player, authoritative.UseTick);
+        AppliedSpawns++;
+        PromotedClientProjectileSpawns++;
+        players.PublishProjectileUse(capture, authoritative.InventoryMutation, authoritative.ManaCost);
+        // An event sink may deliberately retire or replace the already-owned generation. Publication then
+        // refuses the stale snapshot; item-use acceptance is not undone after outward callbacks begin.
+        prepared.TryPublish(in trusted);
         return true;
     }
 

@@ -1,3 +1,5 @@
+????????????? ????? ? ????????? projectile item use: [??????? ? ??????????](player-item-use-1458.md).
+
 # Основа combat damage
 
 Та же авторитетная обработка прямых ударов поддерживает 21 деревянный и металлический меч с неизменными характеристиками: Wooden, Ebonwood, Rich Mahogany, Pearlwood, Shadewood, Palm и Boreal Wood; Copper, Tin, Iron, Lead, Silver, Tungsten, Gold, Platinum, Cobalt, Palladium, Mythril, Orichalcum, Adamantite и Titanium. Двадцать записей добавлены впервые; Copper сохраняет прежние исходные параметры, включая `useTime=20` и `useAnimation=21`. Независимо снятые характеристики `Item.SetDefaults` и реальные команды ударов по NPC и игрокам охватывают каждую запись, поддельные заявления, повторные удары и сохранение инвентаря. Ash Wood Sword `5284` остаётся вне поддержки: эта граница не владеет его вариантом Remix. Точная геометрия взмаха, другие семейства мечей и выбор варианта мира остаются открытыми.
