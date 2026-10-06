@@ -237,7 +237,11 @@ public sealed partial class RuntimeNpcStore
         int minimum = startSlot == 0 && VanillaNpcSpawnRules.CannotSpawnInSlotZero(type) ? 1 : startSlot;
         // NewNPCInstanceInSlot constructs a fresh NPC; its directionY initializer is 1 (1.4.5.8).
         // Explicit storage TrySpawn remains exact, and a supplied nonzero direction stays owned by the caller.
-        var spawnedState = update with { Simulation = update.Simulation with { DirectionY = update.Simulation.DirectionY == 0 ? 1 : update.Simulation.DirectionY } };
+        var spawnedState = update with { Simulation = update.Simulation with
+        {
+            DirectionY = update.Simulation.DirectionY == 0 ? 1 : update.Simulation.DirectionY,
+            TownNpc = VanillaNpcTownFlags1458.TryGet(type, out bool townNpc) ? townNpc : null
+        } };
         bool reverse = VanillaNpcSpawnRules.SearchesInReverse(type);
         // Original reverse traversal stops before the start index; even an otherwise eligible slot zero is excluded.
         if (reverse) minimum++;

@@ -75,6 +75,9 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
     private float _correctionPositionY;
     private Func<string, bool>? _playerNameAdmission;
     private Func<ReadOnlyMemory<byte>[]>? _deathPreludeBaseline;
+    private Func<WorldBootstrapSnapshot1458>? _worldResponseSource;
+    internal void SetWorldResponseSource(Func<WorldBootstrapSnapshot1458> capture) =>
+        _worldResponseSource = capture ?? throw new ArgumentNullException(nameof(capture));
     internal void SetDeathPreludeBaseline(Func<ReadOnlyMemory<byte>[]> capture) =>
         _deathPreludeBaseline = capture ?? throw new ArgumentNullException(nameof(capture));
 
@@ -411,7 +414,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
         if (_session!.State == PlayerJoinState.AwaitingWorldRequest)
         {
-            if (!TryQueue(_packets.WorldInfoFrame))
+            if (!TryQueueWorldResponse(_worldResponseSource?.Invoke()))
                 return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
             _session.ObserveWorldRequest();
             return TerrariaFrameSinkResult.Continue;
@@ -419,7 +422,7 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
         if (_session.State is PlayerJoinState.AwaitingSectionRequest or PlayerJoinState.AwaitingSpawn or PlayerJoinState.Playing)
         {
-            return TryQueue(_packets.WorldInfoFrame)
+            return TryQueueWorldResponse(_worldResponseSource?.Invoke())
                 ? TerrariaFrameSinkResult.Continue
                 : Stop(PlayerBootstrapStopReason.OutboundBackpressure);
         }
@@ -441,6 +444,8 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         if (_session.State != PlayerJoinState.AwaitingSectionRequest)
             return Stop(PlayerBootstrapStopReason.InvalidJoinState);
 
+        WorldBootstrapSnapshot1458? worldResponse = _worldResponseSource?.Invoke();
+
         PlayerBootstrapSectionResponseResult sectionResult = _packets.CreateSectionResponseDetailed(
             request.TileX,
             request.TileY,
@@ -451,7 +456,8 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
         if (sectionResult != PlayerBootstrapSectionResponseResult.Created)
             return Stop(PlayerBootstrapStopReason.SectionEncodingFailure);
 
-        if (!TryQueue(_packets.WorldInfoFrame) ||
+        // MessageBuffer case8 sends packet7 without repeating case6's SyncAnInvasion packet78.
+        if (!TryQueue(worldResponse?.WorldInfoFrame ?? _packets.WorldInfoFrame) ||
             !TryQueue(sectionResponse.StatusFrame))
         {
             return Stop(PlayerBootstrapStopReason.OutboundBackpressure);
@@ -762,6 +768,15 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
 
     private bool TryQueue(ReadOnlyMemory<byte> frame) =>
         _outbound.TryEnqueue(new OutboundFrame(frame)) == OutboundEnqueueResult.Enqueued;
+
+    private bool TryQueueWorldResponse(WorldBootstrapSnapshot1458? snapshot)
+    {
+        if (snapshot is null) return TryQueue(_packets.WorldInfoFrame);
+        var frames = snapshot.EncodeFrames();
+        if (frames.Progress.IsEmpty) return TryQueue(frames.WorldInfo);
+        OutboundFrame[] pair = [new(frames.WorldInfo), new(frames.Progress)];
+        return _outbound.TryEnqueueBatch(pair) == OutboundEnqueueResult.Enqueued;
+    }
 
     private bool TryQueueOpportunistic(ReadOnlyMemory<byte> frame) =>
         _outbound.TryEnqueueOpportunistic(new OutboundFrame(frame)) == OutboundEnqueueResult.Enqueued;

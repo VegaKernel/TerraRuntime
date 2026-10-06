@@ -900,10 +900,15 @@ public sealed partial class NpcDefinitionOnlyLifecycle1458Tests
             {
                 var added = typeInfo.Properties.Single(property => property.Name == "ShimmerTransparency");
                 typeInfo.Properties.Remove(added);
+                var townFlag = typeInfo.Properties.Single(property => property.Name == "TownNpc");
+                typeInfo.Properties.Remove(townFlag);
             }
         });
         Assert.Equal(0f, NpcSimulationState.Initial.ShimmerTransparency);
         Assert.Equal(NpcSimulationState.Initial.ShimmerTransparency, after.Simulation.ShimmerTransparency);
+        Assert.False(NpcSimulationState.Initial.TownNpc);
+        Assert.Null(default(NpcSimulationState).TownNpc);
+        Assert.Equal(NpcSimulationState.Initial.TownNpc, after.Simulation.TownNpc);
         string serialized = JsonSerializer.Serialize(new { summary, log, after },
             new JsonSerializerOptions { TypeInfoResolver = oldSchema });
         // Independent accepted14 binaries produced this complete state/summary/dispatch-log hash.

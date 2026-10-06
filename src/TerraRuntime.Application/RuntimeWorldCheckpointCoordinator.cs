@@ -75,7 +75,8 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
         RuntimeTownNpcStateStore? townNpcStore = null,
         RuntimeWorldProgressionMutations? progressionMutations = null,
         WorldFileLoadLimits? checkpointValidationLimits = null,
-        RuntimeNpcDeathPrelude1458? deathPrelude = null)
+        RuntimeNpcDeathPrelude1458? deathPrelude = null,
+        Func<WorldInvasionSaveState1458?>? invasionSaveStateSource = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
         ArgumentNullException.ThrowIfNull(sourceEnvelope);
@@ -124,7 +125,7 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
             worldClock,
             signStore,
             townNpcStore,
-            progressionMutations, deathPrelude);
+            progressionMutations, deathPrelude, invasionSaveStateSource);
         coordinator = new WorldSaveCoordinator<RuntimeWorldCheckpointSnapshot>(
             destinationPath,
             CaptureSnapshotOnOwner,
@@ -337,6 +338,16 @@ internal sealed class RuntimeWorldCheckpointCoordinator : IAsyncDisposable
                 throw new InvalidDataException($"Authoritative world clock header patch failed: {patchResult}.");
 
             headerSection = patchedHeader;
+        }
+
+        if (snapshot.Invasion is WorldInvasionSaveState1458 invasion)
+        {
+            WorldFileInvasionHeaderPatchResult1458 invasionResult = WorldFileInvasionHeaderPatcher1458.TryPatch(
+                headerSection, sourceEnvelope, sourceHeader, in invasion, out byte[] invasionHeader);
+            if (invasionResult != WorldFileInvasionHeaderPatchResult1458.Patched)
+                throw new InvalidDataException($"Authoritative invasion header patch failed: {invasionResult}.");
+
+            headerSection = invasionHeader;
         }
 
         if (snapshot.ProgressionMutations is RuntimeWorldProgressionMutationSnapshot progression && progression.HasAny)

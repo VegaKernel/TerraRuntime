@@ -113,7 +113,7 @@ internal sealed class ServerRuntimeComposition
         RuntimeTownNpcCombatWorldFacts1458? townCombatWorldFacts,
         bool townInitialRaining,
         bool townInitialEclipse,
-        bool townInitialInvasionActive,
+        RuntimeWorldInvasion1458? invasion,
         RuntimeTileManipulationReplicationRegistry? tileManipulationReplication,
         ServerPlayerAuthority? serverPlayers,
         RuntimeBotTelemetry? botTelemetry,
@@ -135,7 +135,9 @@ internal sealed class ServerRuntimeComposition
         WorldRuntimeIdentity worldIdentity = default,
         RuntimeChestCommandProcessor? chestCommands = null,
         RuntimeNpcDeathPrelude1458? deathPrelude = null,
-        RuntimeTownSocialWorld1458? townSocialWorldFacts = null)
+        RuntimeTownSocialWorld1458? townSocialWorldFacts = null,
+        Action<RuntimeInvasionCapture1458>? invasionProgressPublisher = null,
+        Action<RuntimeInvasionCapture1458>? invasionStartPublisher = null)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -231,7 +233,7 @@ internal sealed class ServerRuntimeComposition
             townCombatWorldFacts,
             townInitialRaining,
             townInitialEclipse,
-            townInitialInvasionActive,
+            invasion,
             serverPlayers,
             npcShops,
             npcArchetypes,
@@ -246,7 +248,8 @@ internal sealed class ServerRuntimeComposition
             npcRandom,
             projectileReplication,
             lootRandom: gameplayRandom, deathPrelude: deathPrelude, townSocialWorldFacts: townSocialWorldFacts,
-            townLootLanguage: VanillaTownNpcLootLanguage1458.English);
+            townLootLanguage: VanillaTownNpcLootLanguage1458.English,
+            invasionProgressPublisher: invasionProgressPublisher, invasionStartPublisher: invasionStartPublisher);
         var worldTileAuthority = new WorldTileAuthority(
             playersAuthority,
             commands,

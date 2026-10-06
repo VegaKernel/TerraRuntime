@@ -68,7 +68,7 @@ public sealed class VanillaGroundFighterNpcCatalogTests
         [VanillaNpcIds.SkeletonCommando, 18, 40, 60, 28, 400, .4f, 1f, 1f, false, false],
         [VanillaNpcIds.Paladin, 34, 62, 100, 50, 5000, 0f, 1f, 1f, false, false],
         [VanillaNpcIds.SkeletonArcher, 18, 40, 45, 14, 210, .55f, 1f, 1f, false, false],
-        [VanillaNpcIds.GoblinArcher, 18, 40, 20, 6, 80, .7f, .95f, 1f, false, false],
+        [VanillaNpcIds.GoblinArcher, 18, 38, 20, 6, 80, .7f, .95f, 1f, false, false],
         [VanillaNpcIds.IcyMerman, 18, 40, 60, 30, 280, .5f, 1f, 1f, false, false],
         [VanillaNpcIds.PirateDeadeye, 18, 40, 30, 12, 150, .3f, 1f, 1f, false, false],
         [VanillaNpcIds.PirateCrossbower, 18, 40, 35, 18, 260, .35f, 1f, 1f, false, false],

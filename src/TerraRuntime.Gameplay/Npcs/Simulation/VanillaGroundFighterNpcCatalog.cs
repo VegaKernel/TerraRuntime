@@ -134,7 +134,7 @@ public static class VanillaGroundFighterNpcCatalog
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 110/111 and their stationary arrow wind-ups.
         ,Fighter(VanillaNpcIds.SkeletonArcher, 18, 40, 45, 14, 210, .55f, 1f, 1f,
             motionProfile: VanillaGroundFighterMotionProfile.StationaryArcher)
-        ,Fighter(VanillaNpcIds.GoblinArcher, 18, 40, 20, 6, 80, .7f, .95f, 1f,
+        ,Fighter(VanillaNpcIds.GoblinArcher, 18, 38, 20, 6, 80, .7f, .95f, 1f,
             motionProfile: VanillaGroundFighterMotionProfile.StationaryArcher)
         // TerrariaServer 1.4.5.8 NPC.SetDefaults 206 and AI_003's Icewater Spit wind-up.
         ,Fighter(VanillaNpcIds.IcyMerman, 18, 40, 60, 30, 280, .5f, 1f, 1f,

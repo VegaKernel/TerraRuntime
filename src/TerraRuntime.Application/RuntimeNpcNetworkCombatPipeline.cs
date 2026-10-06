@@ -143,7 +143,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         bool npcSpecificDropExtraGel = false,
         bool npcSpecificGoodWorld = false,
         Func<NpcHandle, string?>? townNameSource = null,
-        VanillaTownNpcLootLanguage1458? townLootLanguage = null)
+        VanillaTownNpcLootLanguage1458? townLootLanguage = null,
+        RuntimeWorldInvasion1458? invasion = null,
+        Action<RuntimeInvasionCapture1458>? invasionProgressPublisher = null)
     {
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         random = new SystemNpcCombatRandom(lootRandom);
@@ -165,6 +167,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         this.npcSpecificGoodWorld = npcSpecificGoodWorld;
         this.townNameSource = townNameSource;
         this.townLootLanguage = townLootLanguage;
+        this.invasion = invasion;
+        this.invasionProgressPublisher = invasionProgressPublisher;
+        if (invasion is not null && invasionProgressPublisher is null)
+            throw new ArgumentNullException(nameof(invasionProgressPublisher));
         this.requireOwnedPlayerHealth = requireOwnedPlayerHealth;
         this.rawPlayerSlots = rawPlayerSlots;
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
@@ -379,6 +385,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                 VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity) &&
                 VanillaEaterOfWorldsLifecycle.IsLastActiveSegment(npcs, in dead, npcFamilyBuffer);
 
+            var invasionCredit = PrepareInvasionDeathCredit(in dead);
             if (!TryExecuteImportedLoot(in dead, eaterBoss))
                 throw new InvalidOperationException("Imported NPC loot could not be finalized after a lethal packet-28 commit.");
 
@@ -390,9 +397,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                 CleanupWallOfFleshChildren(dead.Handle.Slot);
             if (dead.TypeIdentity == VanillaNpcIds.Destroyer)
                 CleanupDestroyerSegments(dead.Handle.Slot);
-            if (!npcs.TryDespawn(dead.Handle))
+            if (!TryCompleteInvasionDeath(in dead, invasionCredit) && !npcs.TryDespawn(dead.Handle))
                 throw new InvalidOperationException("A lethal packet-28 NPC could not be despawned after death effects.");
-            interactions.Forget(dead.Handle);
+            if (!npcs.TryGet(dead.Handle, out _)) interactions.Forget(dead.Handle);
 
             if (suppressing)
                 npcReplication!.CompleteClientDamage(current.Handle);
@@ -547,6 +554,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         bool eaterBoss =
             VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity) &&
             VanillaEaterOfWorldsLifecycle.IsLastActiveSegment(npcs, in dead, npcFamilyBuffer);
+        var invasionCredit = PrepareInvasionDeathCredit(in dead);
         if (!TryExecuteImportedLoot(in dead, eaterBoss))
             throw new InvalidOperationException("Imported NPC loot could not be finalized after player-owned damage.");
 
@@ -559,9 +567,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             CleanupWallOfFleshChildren(dead.Handle.Slot);
         if (dead.TypeIdentity == VanillaNpcIds.Destroyer)
             CleanupDestroyerSegments(dead.Handle.Slot);
-        if (!npcs.TryDespawn(dead.Handle))
+        if (!TryCompleteInvasionDeath(in dead, invasionCredit) && !npcs.TryDespawn(dead.Handle))
             throw new InvalidOperationException("A player-owned kill could not despawn the exact NPC generation.");
-        interactions.Forget(dead.Handle);
+        if (!npcs.TryGet(dead.Handle, out _)) interactions.Forget(dead.Handle);
         return RuntimeProjectileNpcDamageResult.Killed;
     }
 
@@ -666,6 +674,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         bool eaterBoss =
             VanillaEaterOfWorldsLifecycle.IsSegment(dead.TypeIdentity) &&
             VanillaEaterOfWorldsLifecycle.IsLastActiveSegment(npcs, in dead, npcFamilyBuffer);
+        var invasionCredit = PrepareInvasionDeathCredit(in dead);
         if (!TryExecuteImportedLoot(in dead, eaterBoss))
             throw new InvalidOperationException("Imported NPC loot could not be finalized after Town NPC melee.");
 
@@ -678,9 +687,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             CleanupWallOfFleshChildren(dead.Handle.Slot);
         if (dead.TypeIdentity == VanillaNpcIds.Destroyer)
             CleanupDestroyerSegments(dead.Handle.Slot);
-        if (!npcs.TryDespawn(dead.Handle))
+        if (!TryCompleteInvasionDeath(in dead, invasionCredit) && !npcs.TryDespawn(dead.Handle))
             throw new InvalidOperationException("A Town NPC melee kill could not despawn the exact NPC generation.");
-        interactions.Forget(dead.Handle);
+        if (!npcs.TryGet(dead.Handle, out _)) interactions.Forget(dead.Handle);
         return RuntimeTownNpcMeleeDamageResult1458.Killed;
     }
 

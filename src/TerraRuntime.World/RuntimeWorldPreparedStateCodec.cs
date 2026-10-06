@@ -243,7 +243,7 @@ internal static class RuntimeWorldPreparedStateCodec
             m.TowerActiveSolar, m.TowerActiveVortex, m.TowerActiveNebula, m.TowerActiveStardust, m.LunarApocalypseIsUp);
         writer.Write(m.SandstormIntendedSeverity);
         WriteBools(writer, m.DownedDd2InvasionT1, m.DownedDd2InvasionT2, m.DownedDd2InvasionT3,
-            m.CombatBookWasUsed, m.LanternNightGenuine, m.LanternNightManual);
+            m.CombatBookWasUsed, m.LanternNightGenuine, m.LanternNightManual, m.LanternNightNextNight);
         WriteBytes(writer, m.TreeTopVariations);
         WriteBools(writer, m.ForceHalloweenForToday, m.ForceXMasForToday,
             m.BoughtCat, m.BoughtDog, m.BoughtBunny, m.DownedEmpressOfLight,
@@ -257,7 +257,11 @@ internal static class RuntimeWorldPreparedStateCodec
             m.UnlockedSlimeCopperSpawn, m.FastForwardTimeToDusk);
         writer.Write(m.MoondialCooldown);
         WriteBools(writer, m.ForceHalloweenForever, m.ForceXMasForever);
+        writer.Write(m.InvasionDelay);
+        writer.Write(m.InvasionSize);
         writer.Write(m.InvasionType);
+        writer.Write(m.InvasionX);
+        writer.Write(m.InvasionSizeStart);
         writer.Write(m.BannerSectionOffset); writer.Write(m.BannerSectionLength);
         writer.Write(m.Banners.Encode());
         writer.Write(m.ExtraSpawnPoints.Length);
@@ -322,12 +326,17 @@ internal static class RuntimeWorldPreparedStateCodec
 
         bool[] eventFlags = ReadBools(reader, 27);
         float sandstormIntendedSeverity = reader.ReadSingle();
-        bool[] dd2AndLantern = ReadBools(reader, 6);
+        bool[] dd2AndLantern = ReadBools(reader, 7);
         byte[] treeTopVariations = ReadBytes(reader, 13, exact: true);
         bool[] lateFlags = ReadBools(reader, 27);
         byte moondialCooldown = reader.ReadByte();
         bool[] foreverFlags = ReadBools(reader, 2);
+        int invasionDelay = reader.ReadInt32();
+        int invasionSize = reader.ReadInt32();
         sbyte invasionType = reader.ReadSByte();
+        double invasionX = reader.ReadDouble();
+        int invasionSizeStart = reader.ReadInt32();
+        if (!double.IsFinite(invasionX)) throw new InvalidDataException("Invalid invasion position.");
         int bannerOffset = reader.ReadInt32(), bannerLength = reader.ReadInt32();
         int bannerKillsCount = reader.ReadInt16();
         if (bannerKillsCount is < 0 or > WorldBannerData1458.MaximumEntries) throw new InvalidDataException("Invalid banner kill count.");
@@ -456,6 +465,7 @@ internal static class RuntimeWorldPreparedStateCodec
             CombatBookWasUsed = dd2AndLantern[3],
             LanternNightGenuine = dd2AndLantern[4],
             LanternNightManual = dd2AndLantern[5],
+            LanternNightNextNight = dd2AndLantern[6],
             TreeTopVariations = treeTopVariations,
             ForceHalloweenForToday = lateFlags[0],
             ForceXMasForToday = lateFlags[1],
@@ -487,7 +497,11 @@ internal static class RuntimeWorldPreparedStateCodec
             MoondialCooldown = moondialCooldown,
             ForceHalloweenForever = foreverFlags[0],
             ForceXMasForever = foreverFlags[1],
+            InvasionDelay = invasionDelay,
+            InvasionSize = invasionSize,
             InvasionType = invasionType,
+            InvasionX = invasionX,
+            InvasionSizeStart = invasionSizeStart,
             ExtraSpawnPoints = extraSpawnPoints
         };
     }

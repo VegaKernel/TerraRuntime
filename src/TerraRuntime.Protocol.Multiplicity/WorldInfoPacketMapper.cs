@@ -29,6 +29,12 @@ public readonly record struct WorldInfoRuntimeState(
 
     /// <summary>Live packet-7 rain intensity; absent callers retain the persisted header value.</summary>
     public float? Rain { get; init; }
+
+    /// <summary>Owned current invasion identity; null preserves the loaded header value.</summary>
+    public sbyte? InvasionType { get; init; }
+
+    /// <summary>Detached milestones completed by the authoritative runtime since world load.</summary>
+    public RuntimeWorldProgressionMutationSnapshot? ProgressionMutations { get; init; }
 }
 
 /// <summary>
@@ -71,6 +77,9 @@ public static class WorldInfoPacketMapper
 
         WorldInfoRuntimeState live = runtime ?? new WorldInfoRuntimeState(
             state.Time, state.DayTime, state.MoonPhase, state.BloodMoon, state.SlimeRainActive);
+
+        bool Done(VanillaWorldProgressionId milestone, bool persisted) =>
+            persisted || live.ProgressionMutations?.IsCompleted(milestone) == true;
 
         return new WorldInfo
         {
@@ -148,7 +157,7 @@ public static class WorldInfoPacketMapper
                 state.DownedSlimeKing,
                 state.DownedQueenBee,
                 state.DownedFishron,
-                state.DownedMartians,
+                Done(VanillaWorldProgressionId.MartianMadness, state.DownedMartians),
                 state.DownedAncientCultist),
             EventInfo4 = Bits(
                 state.DownedMoonlord,
@@ -160,9 +169,9 @@ public static class WorldInfoPacketMapper
                 state.DownedGolemBoss,
                 state.PartyIsUp),
             EventInfo5 = Bits(
-                state.DownedPirates,
+                Done(VanillaWorldProgressionId.PirateInvasion, state.DownedPirates),
                 state.DownedFrost,
-                state.DownedGoblins,
+                Done(VanillaWorldProgressionId.GoblinArmy, state.DownedGoblins),
                 state.SandstormHappening,
                 transient.Dd2EventOngoing,
                 state.DownedDd2InvasionT1,
@@ -228,7 +237,7 @@ public static class WorldInfoPacketMapper
             OreTierCobalt = state.OreTiers.Cobalt,
             OreTierMythril = state.OreTiers.Mythril,
             OreTierAdamantite = state.OreTiers.Adamantite,
-            InvasionType = state.InvasionType,
+            InvasionType = live.InvasionType ?? state.InvasionType,
             LobbyId = transient.LobbyId,
             SandstormSeverity = state.SandstormIntendedSeverity,
             ExtraSpawnPoints = extraSpawns,

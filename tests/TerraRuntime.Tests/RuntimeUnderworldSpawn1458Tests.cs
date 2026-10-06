@@ -359,27 +359,62 @@ public sealed class RuntimeUnderworldSpawn1458Tests
     [Fact]
     public void Active_invasion_overrides_the_ordinary_rate_after_source_biome_bands()
     {
-        var npcs = new RuntimeNpcStore();
-        var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
-        var random = new RateRejectingRandom(20);
-        RuntimeTownCommerceWorldFacts1458 world = default;
-        world = world with { InvasionActive = true, WorldSurface = 350, RockLayer = 600 };
-        var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
-            worldClock: new RuntimeWorldClock(1000, true, default, 0, 0),
-            townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
-            naturalSpawnRandom: random, worldProgression: new RuntimeWorldProgressionMutations());
-        var slots = new PlayerSlotPool(1);
-        Assert.True(slots.TryAcquireConnection(out var lease));
-        using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
-        session.ObserveWorldRequest(); session.ObserveSectionRequest();
-        var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(826), session.Handle);
-        state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
-            new PlayerSpawnCommitRequest(session.Handle.Slot, 200, 300, 0, 0, 0, 0, 0)));
+        // Source NPC.Spawner.GetSpawnRate sets20 only after ShouldSpawnInvasionEnemies admits this player.
+        // A cached Commerce.InvasionActive flag is not the mutable source invasion owner.
+        const int sourceInvasionRate = 20;
+        int admittedSeed = Enumerable.Range(0, 1000).First(seed =>
+            new VanillaUnifiedRandom1458(seed).Next(sourceInvasionRate) == 0 &&
+            new VanillaUnifiedRandom1458(seed).Next(360) != 0);
+        foreach (int seed in new[] { 0, admittedSeed })
+        {
+            var npcs = new RuntimeNpcStore();
+            var tiles = new WorldTileStore(new WorldDimensions(500, 1200));
+            var live = new VanillaUnifiedRandom1458(seed);
+            var expected = live.Clone();
+            var invasionState = default(TerraRuntime.Gameplay.Worlds.InvasionState1458) with
+            {
+                Type = 1, Size = 120, SizeStart = 120, X = 200
+            };
+            var owner = new RuntimeWorldInvasion1458(invasionState);
+            // Direct source proximity: player at tile200/300, invasionX200, surface350. No town fallback draw.
+            Assert.True(RuntimeInvasionSpawn1458.TryShouldSpawn(in invasionState, 200 * 16f, 300 * 16f,
+                350d, 300, 500, [], new SystemVanillaNpcRandom(expected), out bool eligible));
+            Assert.True(eligible);
+            Assert.True(live.HasSameState(expected));
+            int gate = expected.Next(sourceInvasionRate);
+            if (seed == admittedSeed)
+            {
+                Assert.Equal(0, gate);
+                // Empty terrain rejects all50 floor samples, each with source X/Y draws. No selected NPC.
+                for (int sample = 0; sample < 50; sample++)
+                {
+                    _ = expected.Next(-84, 85);
+                    _ = expected.Next(-52, 53);
+                }
+            }
+            else
+                Assert.NotEqual(0, gate);
+            RuntimeTownCommerceWorldFacts1458 world = default;
+            world = world with { WorldSurface = 350, RockLayer = 600, SpawnTileY = 300 };
+            var state = new ServerRuntimeState(npcs: npcs, worldTiles: tiles,
+                worldClock: new RuntimeWorldClock(1000, true, default, 0, 0), invasion: owner,
+                invasionProgressPublisher: _ => { },
+                townCommerceWorldFacts: world, townSpawnWorldFacts: default(VanillaTownSpawnWorldFacts1458),
+                naturalSpawnRandom: new SystemVanillaNpcRandom(live),
+                worldProgression: new RuntimeWorldProgressionMutations());
+            var slots = new PlayerSlotPool(1);
+            Assert.True(slots.TryAcquireConnection(out var lease));
+            using var session = new PlayerJoinSession(Assert.IsType<PlayerSlotPool.PlayerSlotLease>(lease));
+            session.ObserveWorldRequest(); session.ObserveSectionRequest();
+            var connection = new ConnectionHandle(GameCommandSourceId.FromConnection(826), session.Handle);
+            state.Apply(new PlayerSpawnRuntimeCommand(connection, session,
+                new PlayerSpawnCommitRequest(session.Handle.Slot, 200, 300, 0, 0, 0, 0, 0)));
 
-        state.Tick();
+            state.Tick();
 
-        random.AssertConsumed();
-        Assert.Equal(0, npcs.ActiveCount);
+            Assert.True(live.HasSameState(expected), $"Source20 gate/floor cursor differs for seed{seed}.");
+            Assert.Equal(0, npcs.ActiveCount);
+        }
     }
 
     [Theory]

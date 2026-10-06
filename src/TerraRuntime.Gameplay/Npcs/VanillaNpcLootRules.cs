@@ -198,6 +198,7 @@ public static class VanillaNpcLootRuleCatalog
         if (npcType == VanillaNpcIds.Slimer) { table = SlimerTable; return true; }
         if (npcType == VanillaNpcIds.Zombie) { table = ZombieTable; return true; }
         if (npcType == VanillaNpcIds.MeteorHead) { table = MeteorHeadTable; return true; }
+        if (VanillaInvasionNpcLootCatalog1458.TryGet(npcType, out table)) return true;
         if (VanillaUndeadLootCatalog1458.TryGet(npcType, out table)) return true;
 
         table = default;

@@ -26,7 +26,8 @@ internal sealed record RuntimeWorldCheckpointSnapshot(
     WorldNpcPersistence? Npcs = null,
     WorldTownRoom[]? TownRooms = null,
     WorldBannerData1458? Banners = null,
-    WorldBestiaryData? Bestiary = null);
+    WorldBestiaryData? Bestiary = null,
+    WorldInvasionSaveState1458? Invasion = null);
 
 /// <summary>
 /// Game-thread-owned snapshot source for the current persistence slice. Tile copying is spread across bounded section
@@ -41,6 +42,7 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
     private readonly RuntimeSignStore? signStore;
     private readonly RuntimeTownNpcStateStore? townNpcStore;
     private readonly RuntimeWorldProgressionMutations progressionMutations;
+    private readonly Func<WorldInvasionSaveState1458?>? invasionSaveStateSource;
 
     public RuntimeWorldCheckpointSnapshotSource(
         WorldTileStore tiles,
@@ -50,13 +52,15 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
         RuntimeSignStore? signStore = null,
         RuntimeTownNpcStateStore? townNpcStore = null,
         RuntimeWorldProgressionMutations? progressionMutations = null,
-        RuntimeNpcDeathPrelude1458? deathPrelude = null)
+        RuntimeNpcDeathPrelude1458? deathPrelude = null,
+        Func<WorldInvasionSaveState1458?>? invasionSaveStateSource = null)
     {
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentOutOfRangeException.ThrowIfLessThan(dirtyBatchCapacity, 1);
         ArgumentNullException.ThrowIfNull(chestStore);
         this.chestStore = chestStore;
         this.deathPrelude = deathPrelude;
+        this.invasionSaveStateSource = invasionSaveStateSource;
         this.worldClock = worldClock;
         this.signStore = signStore;
         this.townNpcStore = townNpcStore;
@@ -112,7 +116,8 @@ internal sealed class RuntimeWorldCheckpointSnapshotSource
             progressionMutations.CaptureSnapshot(),
             townNpcStore?.CaptureNpcPersistence(),
             townNpcStore?.CaptureTownRooms(),
-            deathPrelude?.CaptureBanners(), deathPrelude?.CaptureBestiary());
+            deathPrelude?.CaptureBanners(), deathPrelude?.CaptureBestiary(),
+            invasionSaveStateSource?.Invoke());
         return true;
     }
 }

@@ -157,7 +157,12 @@ internal sealed class RuntimeTownNpcStateStore
                 VelocityY: 0f,
                 Target: VanillaNpcDefinitionCatalog.DefaultTarget,
                 Ai: default,
-                Simulation: NpcSimulationState.Initial);
+                // Canonical persisted residents are recreated through the source SetDefaults identity.
+                // Generic store imports still retain explicitly unknown town metadata.
+                Simulation: NpcSimulationState.Initial with
+                {
+                    TownNpc = VanillaNpcTownFlags1458.TryGet(type, out bool townFlag) ? townFlag : null
+                });
             if ((uint)slot > byte.MaxValue || !npcStore.TrySpawn(checked((byte)slot), in update, out _))
                 return false;
         }

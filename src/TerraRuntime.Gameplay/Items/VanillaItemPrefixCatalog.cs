@@ -133,6 +133,11 @@ public static class VanillaItemPrefixCatalog
     /// </summary>
     public static bool IsValidForItem(ItemTypeId itemType, PrefixId prefix)
     {
+        var invasionFamily = VanillaInvasionDropCatalog1458.GetPrefixFamily(itemType);
+        if (invasionFamily != VanillaItemPrefixFamily.None)
+            return prefix == VanillaPrefixIds.None ||
+                (Contains(GetRollablePrefixes(invasionFamily), prefix) &&
+                 VanillaInvasionDropCatalog1458.AcceptsNaturalPrefix(itemType, prefix));
         var townFamily = VanillaTownNpcDropCatalog1458.GetPrefixFamily(itemType);
         if (townFamily != VanillaItemPrefixFamily.None)
             return prefix == VanillaPrefixIds.None ||

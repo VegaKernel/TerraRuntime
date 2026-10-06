@@ -83,7 +83,7 @@ public sealed class TownDoorActorOccupancy1458Tests
         player.MiscFlags1 = 4; player.MovementFlags = 64; // Sitting ghost blocks chair; ghost does not block doors.
         var rng = new Random();
         var authority = new TownNpcAuthority(players, npcs, new RuntimeProjectileStore(), tiles,
-            new RuntimeWorldProgressionMutations(), town, null, null, null, null, false, false, false, false, false, rng);
+            new RuntimeWorldProgressionMutations(), town, null, null, null, null, false, false, null, false, false, rng);
         authority.TickLifecycle(null);
         Assert.True(npcs.TryGetActive(0, out npc)); Assert.Equal(1f, npc.Ai.Ai0);
         Assert.Equal(1409701741, rng.Stream.Next());

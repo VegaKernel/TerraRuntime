@@ -1,5 +1,7 @@
 # Загрузка мира, persistence и runtime snapshots
 
+Контрольное сохранение обычного вторжения также сохраняет флаг будущей Lantern Night, произведённый первой победой. Владелец загружает этот флаг из исходного заголовка; подготовленный кэш с layout `5` передаёт его, а патчер заголовка вторжения изменяет флаг только при явном значении. Существующие вызовы сохранения с пятью полями сохраняют исходный флаг. Неизвестное состояние или Snow Legion сохраняет исходное представление заголовка. Последующая ночная фаза и её RNG остаются за границами этого блока; поэтому скалярный владелец не может сбросить уже установленный флаг. Независимые пары исходного `SaveWorldHeader` и проверки очереди сохранения подтверждают сохранность без заявления полной поддержки исходной загрузки или ночной симуляции.
+
 [English](../en/world-persistence.md) · [Документация](README.md) · [Архитектура](architecture.md) · [Roadmap](../roadmap.md)
 
 ## 1. Модель persistence
@@ -57,6 +59,8 @@ Runtime layout `3` дополнительно означает, что tile imag
 Snapshot не migration format. Incompatible header/layout является normal cache miss и ведёт к canonical `.wld` fallback.
 
 ## 5. Snapshot layout
+
+Runtime layout `5` сохраняет пять invasion-полей заголовка: задержку, оставшийся размер, тип, горизонтальную позицию и начальный размер. Cache layout `4` пересобирается из canonical world; старый payload не читается в новом порядке полей.
 
 Current runtime snapshot имеет fixed header `$128\,\mathrm{B}$`, normalized `WorldTile` record с frozen `$16\,\mathrm{B}$` disk layout и tile shards target `$16\,\mathrm{MiB}$`.
 
@@ -153,6 +157,12 @@ Default synchronization budget: `$4\,\text{sections/tick}$`.
 Save state различает initial shadow bootstrap, dirty sections waiting synchronization, save request waiting shadow consistency и detached snapshot queued background writer. Failed section snapshots requeue'ятся; readiness основана на actual pending dirty work.
 
 ## 11. Что live save сейчас переписывает
+
+Invasion persistence сохраняет исходные поля version326 `invasionDelay`, `invasionSize`, `invasionType`, `invasionX` и `invasionSizeStart`. Загрузка не восстанавливает начальный размер из оставшегося: исходная legacy-ветка `FakeLoadInvasionStart` действует до version107, а version326 читает сохранённое значение. Знаковые счётчики и остаточные значения неактивного события сохраняются; допуск live-события принадлежит отдельному владельцу.
+
+Checkpoint захватывает nullable detached invasion save value на game owner thread вместе с часами и progression. Фоновый serializer использует только этот снимок в порядке clock → invasion → progression и не читает mutable event owner. Отсутствующая привязка или неизвестное/неподдерживаемое состояние владельца сохраняет исходные invasion bytes. Ограниченный header patcher определяет offsets через проверку полного заголовка и меняет ровно 24 bytes. Завершение Goblin, Pirate и Martian обновляет независимо проверенные source booleans, сохраняя остальные bytes заголовка.
+
+Независимые доказательства — пять фактических результатов official `SaveWorldHeader` с 25 scalar values и четыре дополнительных source completion headers. При сравнении пар отдельно учитывается изменяющийся UTC timestamp исходного save; invasion-поля не подменяются. Компактные проверки parser, prepared codec, сохранения bytes и detached checkpoint имеют содержательные copied omission controls. Bootstrap исходного `LoadHeader` пока не подтверждён, поэтому эти проверки не заявляют полный original load или полный lifecycle события.
 
 Прогресс поздних боссов теперь записывает официальные флаги заголовка `downedFishron`, `downedAncientCultist`, `downedEmpressOfLight` и `downedMoonlord`. Раньше эти отметки в памяти приводили к отказу сохранения как неподдержанным изменениям. Обновления монотонны и сохраняют каждый посторонний байт, включая пять флагов лунного события. Все 256 сочетаний исходного прогресса и изменений совпадают с независимо записанными заголовками официального сервера 1.4.5.8; повторное сохранение идемпотентно, усечённые заголовки отклоняются. Для воспроизводимого сравнения fixture writer фиксирует только знаковые 64-битные временные метки. Возврат старого поведения ломает 241 из 257 регрессий.
 

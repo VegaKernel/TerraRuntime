@@ -19,6 +19,8 @@ internal sealed partial class NpcAuthority
     private readonly PlayerAuthority players;
     private readonly RuntimePlayerSnapshotLookup playerSnapshots;
     private readonly RuntimeNpcRawPlayerSlots1458 rawPlayerSlots;
+    private readonly RuntimeWorldInvasion1458? invasion;
+    private readonly Action<RuntimeInvasionCapture1458>? invasionStartPublisher;
     private readonly RuntimeNpcStore npcs;
     private readonly RuntimeNpcAiStateExecutor aiExecutor;
     private readonly TerraRuntime.Core.Npcs.RuntimeNpcSpawnCycle1458 sourceSpawnCycle = new();
@@ -90,7 +92,7 @@ internal sealed partial class NpcAuthority
         RuntimeTownNpcCombatWorldFacts1458? townCombatWorldFacts,
         bool townInitialRaining,
         bool townInitialEclipse,
-        bool townInitialInvasionActive,
+        RuntimeWorldInvasion1458? invasion,
         ServerPlayerAuthority? serverPlayers,
         RuntimeNpcShopCatalogRegistry? npcShops,
         RuntimeNpcArchetypeRegistry? npcArchetypes,
@@ -107,10 +109,14 @@ internal sealed partial class NpcAuthority
         VanillaUnifiedRandom1458? lootRandom = null,
         RuntimeNpcDeathPrelude1458? deathPrelude = null,
         RuntimeTownSocialWorld1458? townSocialWorldFacts = null,
-        VanillaTownNpcLootLanguage1458? townLootLanguage = null)
+        VanillaTownNpcLootLanguage1458? townLootLanguage = null,
+        Action<RuntimeInvasionCapture1458>? invasionProgressPublisher = null,
+        Action<RuntimeInvasionCapture1458>? invasionStartPublisher = null)
     {
         ArgumentNullException.ThrowIfNull(playerSnapshots);
         this.playerSnapshots = playerSnapshots;
+        this.invasion = invasion;
+        this.invasionStartPublisher = invasionStartPublisher;
         ArgumentNullException.ThrowIfNull(tickProvider);
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
@@ -186,7 +192,7 @@ internal sealed partial class NpcAuthority
             npcReplication,
             townInitialRaining,
             townInitialEclipse,
-            townInitialInvasionActive,
+            invasion,
             expertMode,
             masterMode,
             this.naturalSpawnRandom, tallGateOccupancy, tileManipulationReplication, serverPlayers, npcBuffStatus,
@@ -233,7 +239,8 @@ internal sealed partial class NpcAuthority
             npcSpecificDropExtraGel: townCommerceWorldFacts is
                 { TenthAnniversaryWorld: true, DrunkWorld: true, RemixWorld: false, NotTheBeesWorld: false },
             npcSpecificGoodWorld: townCommerceWorldFacts?.GoodWorld ?? false,
-            townNameSource: townNpcs is null ? null : townNpcs.CaptureResidentName, townLootLanguage: townLootLanguage);
+            townNameSource: townNpcs is null ? null : townNpcs.CaptureResidentName, townLootLanguage: townLootLanguage,
+            invasion: invasion, invasionProgressPublisher: invasionProgressPublisher);
         projectileNpcCombat = new RuntimeProjectileNpcCombatPass(
             projectiles,
             npcs,
@@ -435,6 +442,8 @@ internal sealed partial class NpcAuthority
                     naturalSpawnWorldFacts?.DownedBoss3 ?? false,
                     naturalSpawnWorldFacts?.Eclipse ?? false);
                 vanillaTargeting.SetMoonEventState(worldClock.PumpkinMoonActive, worldClock.SnowMoonActive);
+                vanillaTargeting.SetInvasionType(invasion is null ? 0 :
+                    invasion.TryCapture(out var activeInvasion) ? activeInvasion.State.Type : null);
             }
         }
 
@@ -678,6 +687,12 @@ internal sealed partial class NpcAuthority
     {
         if (!command.Connection.IsAssigned || !players.IsCurrent(command.Connection))
             return;
+
+        if (command.NpcType is -1 or -3 or -7)
+        {
+            ApplyInvasionRequest(command.NpcType);
+            return;
+        }
 
         // MessageBuffer case 61 routes -16 to NPC.SpawnMechQueen before the ordinary MPAllowedEnemies
         // gate. The special-seed predicate lives with the loaded world facts, not with a client packet.
@@ -967,6 +982,15 @@ internal sealed partial class NpcAuthority
             if (worldClock.SlimeRainActive)
                 TrySpawnSlimeRainNpc(in player, nearbyNpcCount);
 
+            if (invasion is not null)
+            {
+                InvasionSpawnAttempt invasionAttempt = TryNaturalInvasionSpawn(in player, nearbyNpcCount);
+                if (invasionAttempt == InvasionSpawnAttempt.Stop)
+                    return;
+                if (invasionAttempt == InvasionSpawnAttempt.Continue)
+                    continue;
+            }
+
             GetNaturalSpawnBudget(in player, nearbyNpcCount, out int spawnRate, out int maxSpawns);
             if (nearbyNpcCount >= maxSpawns || naturalSpawnRandom.NextInt32(0, spawnRate) != 0)
                 continue;
@@ -1125,7 +1149,8 @@ internal sealed partial class NpcAuthority
         in VanillaNpcTargetCandidate player,
         float nearbyNpcCount,
         out int spawnRate,
-        out int maxSpawns)
+        out int maxSpawns,
+        bool invaders = false)
     {
         // TerrariaServer 1.4.5.8 NPC.Spawner.GetSpawnRate defaults are 600 ticks / 5 NPC slots.  This
         // World facts and supported remote-player buff snapshots are owned by the world loop.
@@ -1423,7 +1448,7 @@ internal sealed partial class NpcAuthority
             spawnRate = 20;
         }
 
-        if (naturalSpawnWorldFacts?.InvasionActive == true)
+        if (invaders)
         {
             spawnRate = 20;
             maxSpawns = (int)(defaultMaxSpawns * (2d + .3d * CountActiveNaturalSpawnPlayers()));
@@ -1480,6 +1505,12 @@ internal sealed partial class NpcAuthority
     private bool TryFindVanillaNaturalSpawnFloor(
         in VanillaNpcTargetCandidate player,
         out int tileX,
+        out int floorY) => TryFindVanillaNaturalSpawnFloor(in player, naturalSpawnRandom, out tileX, out floorY);
+
+    private bool TryFindVanillaNaturalSpawnFloor(
+        in VanillaNpcTargetCandidate player,
+        IVanillaNpcRandom random,
+        out int tileX,
         out int floorY)
     {
         WorldTileStore tiles = worldTiles!;
@@ -1496,8 +1527,8 @@ internal sealed partial class NpcAuthority
         const int safeRangeY = 39;
         for (int attempt = 0; attempt < 50; attempt++)
         {
-            int x = playerTileX + naturalSpawnRandom.NextInt32(-spawnRangeX, spawnRangeX + 1);
-            int y = playerTileY + naturalSpawnRandom.NextInt32(-spawnRangeY, spawnRangeY + 1);
+            int x = playerTileX + random.NextInt32(-spawnRangeX, spawnRangeX + 1);
+            int y = playerTileY + random.NextInt32(-spawnRangeY, spawnRangeY + 1);
             if (x < 10 || x >= width - 10 || y < 10 || y >= height - 12)
                 continue;
             WorldTile start = tiles.Get(x, y);

@@ -109,6 +109,9 @@ public readonly record struct NpcSimulationState(
     /// <summary>Generation-owned source shimmerTransparency; null denotes unobserved imported history.</summary>
     public float? ShimmerTransparency { get; init; }
 
+    /// <summary>Source townNPC flag; null denotes unobserved imported identity metadata.</summary>
+    public bool? TownNpc { get; init; }
+
     /// <summary>NPC.breath when owned; null is an unknown imported respiratory history.</summary>
     public int? Breath { get; init; }
 
@@ -216,6 +219,7 @@ public readonly record struct NpcSimulationState(
     {
         LiquidContact = NpcLiquidContactKind.None,
         ShimmerTransparency = 0f,
+        TownNpc = false,
         OldPositionX = 0f,
         OldPositionY = 0f,
         Life = 0,

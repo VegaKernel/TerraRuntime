@@ -41,7 +41,7 @@ internal sealed class TownNpcAuthority
     private readonly RuntimeTownPlayerConversation1458[] playerConversations = new RuntimeTownPlayerConversation1458[MaxPlayerSlots];
     private readonly bool initialRaining;
     private readonly bool initialEclipse;
-    private readonly bool initialInvasionActive;
+    private readonly RuntimeWorldInvasion1458? invasion;
     private readonly RuntimeTownSocialWorld1458? socialWorld;
     private readonly RuntimeWorldProgressionMutations progression;
 
@@ -58,7 +58,7 @@ internal sealed class TownNpcAuthority
         RuntimeNpcReplicationRegistry? npcReplication,
         bool initialRaining,
         bool initialEclipse,
-        bool initialInvasionActive,
+        RuntimeWorldInvasion1458? invasion,
         bool expertMode,
         bool masterMode,
         IVanillaNpcRandom? npcRandom = null,
@@ -79,7 +79,7 @@ internal sealed class TownNpcAuthority
         this.npcReplication = npcReplication;
         this.initialRaining = initialRaining;
         this.initialEclipse = initialEclipse;
-        this.initialInvasionActive = initialInvasionActive;
+        this.invasion = invasion;
         ArgumentNullException.ThrowIfNull(progression);
         this.progression = progression;
         socialWorld = townSocialWorldFacts;
@@ -231,12 +231,16 @@ internal sealed class TownNpcAuthority
                     new RuntimeTownPlayerBounds1458(player.PositionX, player.PositionY, width, height));
         }
 
-        if (moveIn is not null)
+        // An unbound partial host retains its explicit no-invasion context. A bound but unknown owner must
+        // not be reinterpreted as clear; the authoritative state can change after loading or a packet 61 command.
+        RuntimeInvasionCapture1458 invasionCapture = default;
+        bool invasionKnown = invasion is null || invasion.TryCapture(out invasionCapture);
+        if (moveIn is not null && invasionKnown)
         {
             var moveInConditions = new RuntimeTownNpcMoveInConditions1458(
                 DayTime: worldClock?.DayTime ?? true,
                 Eclipse: initialEclipse,
-                InvasionActive: initialInvasionActive,
+                InvasionActive: invasion is not null && invasionCapture.State.Type > 0,
                 WorldUpdateRate: 1);
             moveIn.Tick(
                 in moveInConditions,

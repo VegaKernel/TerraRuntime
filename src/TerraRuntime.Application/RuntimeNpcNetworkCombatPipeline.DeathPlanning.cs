@@ -67,6 +67,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private bool TryAdmitLethalDeath(in NpcSnapshot pending)
     {
         deathAdmissionRejected = false;
+        if (!CanOwnInvasionDeath(in pending)) { deathAdmissionRejected = true; return false; }
         if (replayingDollDeath is { } retainedDollDeath)
         {
             if (pending != retainedDollDeath.Pending) { deathAdmissionRejected = true; return false; }

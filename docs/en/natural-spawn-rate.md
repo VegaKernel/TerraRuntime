@@ -1,5 +1,17 @@
 # Natural spawn-rate coverage
 
+## Live invasion context and bounded Goblin selection
+
+Invasion spawning reads the shared current invasion owner rather than a loaded boolean. The pinned `ShouldSpawnInvasionEnemies` predicate runs before the player spawn-rate pass: positive type, zero delay and positive remaining size are required. Its horizontal distance is strictly less than $3000\,\mathrm{px}$; its depth gate uses `NPC.sHeight`, $1200\,\mathrm{px}$, and the source spawn-point exception. Near the world midpoint it scans the complete retained physical NPC array. An inactive slot with the source `townNPC` flag still participates; the first nearby resident's zero `Next(3)` ends the scan. Unknown selected flags or body centers are refused before an invented result can affect spawning.
+
+The bounded Goblin `SpawnAnNPC` dispatch preserves the unconditional `GetZombieSettings` `Next(7)` before the Hardmode Summoner offer and the ordered ordinary choices: Sorcerer `29`, Peon `26`, Archer `111`, Thief `27`, then Warrior `28`. The selected Summoner `471` identity is retained for the later actor-admission gate; unsupported behavior never falls back to another Goblin. This selector requires the represented `Skyblock.lowTiles == false` context. Separate special-AI and broader spawn-priority contexts remain explicit boundaries.
+
+Current invasion type `1` suppresses daytime AI_003 despawn encouragement for Peon, Thief, Warrior and Archer. Changing the owner back to type `0` restores the ordinary branch. Sorcerer `29` retains its separate AI family. Independent original evidence contains 28 eligibility calls, 40 actual Goblin dispatches and eight source daytime-predicate calls. Three compact Facts compare decisions and exact RNG cursors; copied controls detect missing `Next(7)`, an active-only census, continuing after a zero roll, inclusive distance bounds and a missing daytime exemption. These component proofs do not claim a complete `Main` update or autonomous admission of every invasion actor.
+
+Eligible Goblin attempts now execute through a detached physical allocation preview. Eligibility, rate, the existing bounded floor search, dispatch and source `NewNPC` use one cloned shared stream. Final spawn-context sampling and player recapture precede direct invasion, progression, clock, tile-section, NPC-table and RNG checks. Birth and RNG are adopted before retaining or publishing packet 23; a refused attempt exposes neither. An equal tile write invalidates the plan. The selected Summoner, Pirate/Martian selectors and Skyblock's extra branch remain fenced. This integrates the existing bounded floor-search profile; broader `NPC.Spawner` priority, geometry and complete `Main.SwapRandom` phase parity remain open.
+
+Eight independent original `SpawnAnNPC` → `SyncNewlySpawnedNPCs` recordings pin source body, target, cursor and raw packet 23. They exposed the Archer's incorrect base height: source identity 111 uses 38 before scale, rather than 40. Natural `NewNPC` explicitly overwrites caster AI arguments with zero; the new birth path preserves that source order. Three new compact Facts also cover all 696 positive source `townNPC` flags (39 true), canonical loaded residents, retained inactive slots, imports, transforms, live spawning and late event/tile/RNG/NPC refusal. Copied controls detect these physical, RNG and admission regressions. This evidence is separate from the earlier three selector/context Facts and does not claim all invasion actors.
+
 The server applies the source Underground Desert modifier when the player-center scene is below the world surface, has the non-ocean Desert tile threshold, and the center tile has a non-housing Sandstone, Hardened Sand, or Desert Fossil wall. This multiplier runs before Jungle and evil-zone rate transforms.
 
 Jungle uses the source four rate/cap bands for zero, one, two, and at least three active town NPCs. Residents are counted by their live centers in the `3840×2400`-pixel `SceneMetrics.TownNPCRectSize`, so their persisted home coordinates do not alter the count.
@@ -12,7 +24,7 @@ On the Remix surface, Corruption and Crimson apply both source modifiers around 
 
 An active Wall of Flesh applies its source Underworld cap and rate transform before NPC occupancy bands.
 
-Known persisted invasions reset the rate and scale the cap from the authoritative active-player count.
+Only players selected by the current source invasion predicate receive the invasion rate and active-player cap override. Players outside that region retain ordinary spawning.
 
 Water and Peace Candles are scanned from their active source tiles and apply after NPC occupancy bands.
 

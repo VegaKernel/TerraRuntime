@@ -19,6 +19,9 @@ public static class WorldFileProgressionHeaderPatcher
     private const int MaximumStringBytes = 4 * 1024;
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private const ulong SupportedMutationMask =
+        (1UL << (int)VanillaWorldProgressionId.GoblinArmy) |
+        (1UL << (int)VanillaWorldProgressionId.PirateInvasion) |
+        (1UL << (int)VanillaWorldProgressionId.MartianMadness) |
         (1UL << (int)VanillaWorldProgressionId.EyeOfCthulhu) |
         (1UL << (int)VanillaWorldProgressionId.KingSlime) |
         (1UL << (int)VanillaWorldProgressionId.EvilBoss) |
@@ -129,6 +132,14 @@ public static class WorldFileProgressionHeaderPatcher
         if (!reader.TryReadBool(out bool persistedDownedSlimeKing))
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
 
+        HeaderPrefixReader invasionFlagsReader = reader;
+        if (!invasionFlagsReader.TrySkipBools(3)) return WorldFileProgressionHeaderPatchResult.InvalidHeader;
+        int downedGoblinsOffset = invasionFlagsReader.Offset;
+        if (!invasionFlagsReader.TryReadBool(out _) || !invasionFlagsReader.TrySkipBools(2))
+            return WorldFileProgressionHeaderPatchResult.InvalidHeader;
+        int downedPiratesOffset = invasionFlagsReader.Offset;
+        if (!invasionFlagsReader.TryReadBool(out _)) return WorldFileProgressionHeaderPatchResult.InvalidHeader;
+
         HeaderPrefixReader hardModeReader = reader;
         if (!hardModeReader.TrySkipBools(9) ||
             !hardModeReader.TryReadByte(out _) ||
@@ -141,7 +152,8 @@ public static class WorldFileProgressionHeaderPatcher
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
 
         TownStateOffsets1458 townState = default;
-        bool needsTownState = mutations.IsCompleted(VanillaWorldProgressionId.QueenSlime) ||
+        bool needsTownState = mutations.IsCompleted(VanillaWorldProgressionId.MartianMadness) ||
+            mutations.IsCompleted(VanillaWorldProgressionId.QueenSlime) ||
             mutations.IsCompleted(VanillaWorldProgressionId.Deerclops) ||
             mutations.IsCompleted(VanillaWorldProgressionId.DukeFishron) ||
             mutations.IsCompleted(VanillaWorldProgressionId.LunaticCultist) ||
@@ -156,6 +168,10 @@ public static class WorldFileProgressionHeaderPatcher
             return WorldFileProgressionHeaderPatchResult.InvalidHeader;
 
         patchedHeader = sourceHeader.ToArray();
+        if (mutations.IsCompleted(VanillaWorldProgressionId.GoblinArmy)) patchedHeader[downedGoblinsOffset] = 1;
+        if (mutations.IsCompleted(VanillaWorldProgressionId.PirateInvasion)) patchedHeader[downedPiratesOffset] = 1;
+        // Source SaveWorldFlags places downedMartians directly after downedFishron.
+        if (mutations.IsCompleted(VanillaWorldProgressionId.MartianMadness)) patchedHeader[townState.DukeFishronOffset + 1] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.EyeOfCthulhu) && !persistedDownedBoss1)
             patchedHeader[downedBoss1Offset] = 1;
         if (mutations.IsCompleted(VanillaWorldProgressionId.EvilBoss) && !persistedDownedBoss2)

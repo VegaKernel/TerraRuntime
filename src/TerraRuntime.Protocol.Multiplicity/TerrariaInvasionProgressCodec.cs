@@ -3,7 +3,7 @@ using TerraRuntime.Protocol;
 
 namespace TerraRuntime.Protocol.Multiplicity;
 
-/// <summary>Protocol-326 packet 78, emitted by <c>NPC.CheckProgressFrostMoon/PumpkinMoon</c>.</summary>
+/// <summary>Protocol-326 packet78; progress is signed, including source-loaded SizeStart0 residual invasions.</summary>
 public readonly record struct TerrariaInvasionProgressState(int Progress, int Maximum, sbyte Icon, sbyte Wave);
 
 public static class TerrariaInvasionProgressCodec
@@ -12,7 +12,7 @@ public static class TerrariaInvasionProgressCodec
 
     public static bool TryEncode(in TerrariaInvasionProgressState state, out byte[] frame)
     {
-        if (state.Progress < 0 || state.Maximum < 0 || state.Wave < 0)
+        if (state.Maximum < 0 || state.Wave < 0)
         {
             frame = [];
             return false;

@@ -164,7 +164,7 @@ public sealed class RuntimeTownNpcConversation1458Tests
         players.TryApply(new PlayerSpawnRuntimeCommand(connection, session,
             new PlayerSpawnCommitRequest(connection.Player.Slot, 20, 20, 0, 0, 0, 0, 0)));
         var authority = new TownNpcAuthority(players, f.Npcs, new RuntimeProjectileStore(), f.Tiles,
-            new RuntimeWorldProgressionMutations(), f.Town, null, null, null, null, false, false, false, false, false);
+            new RuntimeWorldProgressionMutations(), f.Town, null, null, null, null, false, false, null, false, false);
         authority.ApplyTalk(connection, 0, null);
         f.Sink.Commits.Clear();
         authority.TickLifecycle(null);
@@ -208,7 +208,7 @@ public sealed class RuntimeTownNpcConversation1458Tests
             players.TryApply(new PlayerBuffTypesRuntimeCommand(connection,
                 new PlayerBuffTypesCommitRequest(connection.Player.Slot, new[] { VanillaBuffIds.Invisibility })));
         var authority = new TownNpcAuthority(players, f.Npcs, new RuntimeProjectileStore(), f.Tiles,
-            new RuntimeWorldProgressionMutations(), f.Town, null, null, null, null, false, false, false, false, false);
+            new RuntimeWorldProgressionMutations(), f.Town, null, null, null, null, false, false, null, false, false);
         f.Sink.Commits.Clear();
         authority.TickLifecycle(null);
         Assert.Equal(remains ? 18f : 0f, f.Current.Ai.Ai0);
@@ -231,7 +231,7 @@ public sealed class RuntimeTownNpcConversation1458Tests
         member.PositionX = 600f;
         member.PositionY = 439f;
         var authority = new TownNpcAuthority(players, f.Npcs, new RuntimeProjectileStore(), f.Tiles,
-            new RuntimeWorldProgressionMutations(), f.Town, null, null, null, null, false, false, false, false, false);
+            new RuntimeWorldProgressionMutations(), f.Town, null, null, null, null, false, false, null, false, false);
         authority.ApplyTalk(new ConnectionHandle(GameCommandSourceId.FromConnection(2804), current.Player), 0, null);
         f.Sink.Commits.Clear();
         authority.TickLifecycle(null);

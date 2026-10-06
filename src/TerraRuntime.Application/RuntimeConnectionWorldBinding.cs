@@ -235,6 +235,8 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
             throw new ArgumentException("A world-bootstrap handoff frame is required.", nameof(finalHandoffFrame));
 
         PlayerBootstrapPacketSet packets = Runtime.BootstrapPackets;
+        WorldBootstrapSnapshot1458 snapshot = Runtime.CaptureFreshWorldBootstrap();
+        var worldFrames = snapshot.EncodeFrames();
         if (!packets.TryResolveLiveBaseSectionFrames(out ReadOnlyMemory<byte>[] liveBaseSectionFrames))
         {
             // Do not fall back to the immutable startup packet-10 frames. A temporary rebuild-capacity miss is
@@ -245,7 +247,9 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
         var frames = new List<OutboundFrame>(16 + cleanupFrames.Length);
         for (int i = 0; i < cleanupFrames.Length; i++)
             frames.Add(new OutboundFrame(cleanupFrames[i]));
-        frames.Add(new OutboundFrame(Runtime.CreateLiveWorldInfoFrame()));
+        frames.Add(new OutboundFrame(worldFrames.WorldInfo));
+        if (!worldFrames.Progress.IsEmpty)
+            frames.Add(new OutboundFrame(worldFrames.Progress));
         frames.Add(new OutboundFrame(packets.StatusFrame));
         for (int i = 0; i < liveBaseSectionFrames.Length; i++)
         {
@@ -301,6 +305,7 @@ internal sealed class RuntimeConnectionWorldBinding : IDisposable
             worldItems: runtime.WorldItems);
         bootstrap.SetPlayerNameAdmission(playerNameAdmission);
         bootstrap.SetDeathPreludeBaseline(runtime.DeathPrelude.CaptureJoinFrames);
+        bootstrap.SetWorldResponseSource(runtime.CaptureWorldBootstrap);
         return bootstrap;
     }
 

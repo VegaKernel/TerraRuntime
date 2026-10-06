@@ -750,6 +750,13 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
         INpcAiStateStepper inner, out NpcStateUpdate next)
     {
         NpcSnapshot npc = sourceNpc;
+        // These source AI003 identities select a different day-despawn branch during a Goblin invasion.
+        // A bound owner with unknown state cannot be substituted by the standalone clear default.
+        if (context.InvasionType is null && definition.Type.Value is 26 or 27 or 28 or 111)
+        {
+            next = default;
+            return false;
+        }
         // AI_003's ambient sound offer reads shimmerTransparency, independently of alpha. The preceding
         // Shimmer VFX phase remains unowned; unknown or nonzero histories cannot enter this dry lane.
         if (definition.Type == VanillaNpcIds.Zombie &&
@@ -841,7 +848,11 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
         else if (definition.Type == VanillaNpcIds.Fritz)
             npc = PrepareFritz(in npc, in definition, context);
 
-        bool daytimeSurface = context.DayTime &&
+        // NPC.DespawnEncouragement_AIStyle3_Fighters_NotDiscouraged: current Goblin invasion blocks this offer.
+        bool goblinInvasionExemption = context.InvasionType == 1 &&
+            (definition.Type == VanillaNpcIds.GoblinPeon || definition.Type == VanillaNpcIds.GoblinThief ||
+             definition.Type == VanillaNpcIds.GoblinWarrior || definition.Type == VanillaNpcIds.GoblinArcher);
+        bool daytimeSurface = context.DayTime && !goblinInvasionExemption &&
             !((definition.Type == VanillaNpcIds.Psycho || definition.Type == VanillaNpcIds.CreatureFromTheDeep || definition.Type == VanillaNpcIds.Butcher || definition.Type == VanillaNpcIds.Nailhead || definition.Type == VanillaNpcIds.DrManFly || definition.Type == VanillaNpcIds.Frankenstein ||
               definition.Type == VanillaNpcIds.Fritz || definition.Type == VanillaNpcIds.ThePossessed ||
               definition.Type == VanillaNpcIds.SwampThing) && context.EclipseActive) &&

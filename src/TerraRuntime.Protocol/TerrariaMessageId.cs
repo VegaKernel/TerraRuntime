@@ -67,6 +67,7 @@ public enum TerrariaMessageId : byte
     PlayerDeathV2 = 118,
     FinishedConnectingToServer = 129,
     NpcKillAchievement = 97,
+    NotifyProgressionEvent = 98,
     PlayerLuckFactors = 134,
     WorldItemRemove = 151,
 

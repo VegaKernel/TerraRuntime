@@ -191,12 +191,13 @@ public static class WorldFileRuntimeMetadataParser
             !reader.TryReadInt32(out _) ||
             !ReadBool(ref reader, out bool hardMode) ||
             !ReadBool(ref reader, out _) ||
-            !reader.TryReadInt32(out _) ||
-            !reader.TryReadInt32(out _))
+            !reader.TryReadInt32(out int invasionDelay) ||
+            !reader.TryReadInt32(out int invasionSize))
         {
             return Finish(WorldFileRuntimeMetadataParseResult.Truncated, ref reader, out bytesConsumed);
         }
 
+        int invasionFieldsOffset = reader.Offset - sizeof(int) * 2;
         if (!TryReadSByteCompatibleInt32(ref reader, out sbyte invasionType, out result) ||
             !reader.TryReadDouble(out double invasionX) || !double.IsFinite(invasionX) ||
             !reader.TryReadDouble(out double slimeRainTime) || !double.IsFinite(slimeRainTime) ||
@@ -244,12 +245,13 @@ public static class WorldFileRuntimeMetadataParser
             !ReadBool(ref reader, out bool savedStylist) ||
             !ReadBool(ref reader, out bool savedTaxCollector) ||
             !ReadBool(ref reader, out bool savedGolfer) ||
-            !reader.TryReadInt32(out _) ||
+            !reader.TryReadInt32(out int invasionSizeStart) ||
             !reader.TryReadInt32(out _))
         {
             return Finish(WorldFileRuntimeMetadataParseResult.Truncated, ref reader, out bytesConsumed);
         }
 
+        int invasionSizeStartOffset = reader.Offset - sizeof(int) * 2;
         int bannerOffset = reader.Offset;
         if (!TryReadBannerSystem(ref reader, limits.MaxBannerEntries, out WorldBannerData1458 banners, out result))
             return Finish(result, ref reader, out bytesConsumed);
@@ -308,8 +310,13 @@ public static class WorldFileRuntimeMetadataParser
             !ReadBool(ref reader, out bool combatBookWasUsed) ||
             !reader.TryReadInt32(out _) ||
             !ReadBool(ref reader, out bool lanternNightGenuine) ||
-            !ReadBool(ref reader, out bool lanternNightManual) ||
-            !ReadBool(ref reader, out _) ||
+            !ReadBool(ref reader, out bool lanternNightManual))
+        {
+            return Finish(WorldFileRuntimeMetadataParseResult.InvalidScalar, ref reader, out bytesConsumed);
+        }
+
+        int lanternNightNextNightOffset = reader.Offset;
+        if (!ReadBool(ref reader, out bool lanternNightNextNight) ||
             !reader.TryReadInt32(out int treeTopCount))
         {
             return Finish(WorldFileRuntimeMetadataParseResult.InvalidScalar, ref reader, out bytesConsumed);
@@ -512,6 +519,8 @@ public static class WorldFileRuntimeMetadataParser
             CombatBookWasUsed = combatBookWasUsed,
             LanternNightGenuine = lanternNightGenuine,
             LanternNightManual = lanternNightManual,
+            LanternNightNextNight = lanternNightNextNight,
+            LanternNightNextNightOffset = lanternNightNextNightOffset,
             TreeTopVariations = treeTopVariations,
             ForceHalloweenForToday = forceHalloweenForToday,
             ForceXMasForToday = forceXMasForToday,
@@ -543,7 +552,13 @@ public static class WorldFileRuntimeMetadataParser
             MoondialCooldown = moondialCooldown,
             ForceHalloweenForever = forceHalloweenForever,
             ForceXMasForever = forceXMasForever,
+            InvasionDelay = invasionDelay,
+            InvasionSize = invasionSize,
             InvasionType = invasionType,
+            InvasionX = invasionX,
+            InvasionSizeStart = invasionSizeStart,
+            InvasionFieldsOffset = invasionFieldsOffset,
+            InvasionSizeStartOffset = invasionSizeStartOffset,
             ExtraSpawnPoints = extraSpawnPoints
         };
         return WorldFileRuntimeMetadataParseResult.Parsed;

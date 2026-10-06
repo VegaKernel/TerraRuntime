@@ -27,6 +27,15 @@ internal sealed class VanillaNpcBehaviorContext
     private int _npcPeerCount;
     private int _retainedNpcSlotCount;
 
+    public int? InvasionType { get; private set; } = 0;
+
+    public void SetInvasionType(int? type)
+    {
+        if (type is < 0 or > 4)
+            throw new ArgumentOutOfRangeException(nameof(type));
+        InvasionType = type;
+    }
+
     public bool SlimeGroundEnabled { get; private set; }
 
     public bool GroundFighterEnabled { get; private set; }

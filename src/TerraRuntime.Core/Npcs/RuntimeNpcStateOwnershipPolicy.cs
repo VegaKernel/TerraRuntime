@@ -99,6 +99,8 @@ internal static class RuntimeNpcStateOwnershipPolicy
         simulation = simulation with
         {
             ShimmerTransparency = sameDefinition ? simulation.ShimmerTransparency : previous.Simulation.ShimmerTransparency,
+            TownNpc = sameDefinition ? simulation.TownNpc :
+                VanillaNpcTownFlags1458.TryGet(new(update.Type), out bool townNpc) ? townNpc : null,
             SpawnDifficulty = sameDefinition ? simulation.SpawnDifficulty ?? previous.Simulation.SpawnDifficulty ?? 1f : 1f,
             MoneyValue = simulation.MoneyValue ?? (sameDefinition ? previous.Simulation.MoneyValue :
                 ResolveMoney(update.Type, update.NetId, 1f)),

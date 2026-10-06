@@ -19,10 +19,10 @@ public sealed class TerrariaInvasionProgressCodecTests
     }
 
     [Fact]
-    public void Packet_78_rejects_values_the_source_never_reports()
+    public void Packet_78_retains_source_signed_progress_for_loaded_residual_invasions()
     {
-        var state = new TerrariaInvasionProgressState(-1, 25, 1, 1);
-        Assert.False(TerrariaInvasionProgressCodec.TryEncode(in state, out byte[] frame));
-        Assert.Empty(frame);
+        var state = new TerrariaInvasionProgressState(-93, 1, 4, 0);
+        Assert.True(TerrariaInvasionProgressCodec.TryEncode(in state, out byte[] frame));
+        Assert.Equal("0D004EA3FFFFFF010000000400", Convert.ToHexString(frame));
     }
 }

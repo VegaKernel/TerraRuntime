@@ -380,6 +380,8 @@ public sealed class VanillaNpcTargetingAiStepper :
         bool eclipseActive = false) =>
         _context.SetWorldConditions(dayTime, slimeRainActive, goodWorld, expertMode, masterMode, windSpeedCurrent, remixWorld, worldTime, noTrapsWorld, skyblockNoFossils, skyblockLowTiles, skyblockNoHellstone, skyblockNoLifeCrystals, downedSkeletron, eclipseActive);
 
+    public void SetInvasionType(int? type) => _context.SetInvasionType(type);
+
     public void SetMoonEventState(bool pumpkinMoonActive, bool snowMoonActive = false) =>
         _context.SetMoonEventState(pumpkinMoonActive, snowMoonActive);
 

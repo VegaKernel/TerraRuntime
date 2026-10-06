@@ -32,7 +32,7 @@ internal sealed partial class ServerRuntimeState
         RuntimeTownNpcCombatWorldFacts1458? townCombatWorldFacts = null,
         bool townInitialRaining = false,
         bool townInitialEclipse = false,
-        bool townInitialInvasionActive = false,
+        RuntimeWorldInvasion1458? invasion = null,
         RuntimeTileManipulationReplicationRegistry? tileManipulationReplication = null,
         ServerPlayerAuthority? serverPlayers = null,
         RuntimeBotTelemetry? botTelemetry = null,
@@ -54,7 +54,9 @@ internal sealed partial class ServerRuntimeState
         WorldRuntimeIdentity worldIdentity = default,
         RuntimeChestCommandProcessor? chestCommands = null,
         RuntimeNpcDeathPrelude1458? deathPrelude = null,
-        RuntimeTownSocialWorld1458? townSocialWorldFacts = null)
+        RuntimeTownSocialWorld1458? townSocialWorldFacts = null,
+        Action<RuntimeInvasionCapture1458>? invasionProgressPublisher = null,
+        Action<RuntimeInvasionCapture1458>? invasionStartPublisher = null)
     {
         WorldIdentity = worldIdentity.IsAssigned ? worldIdentity : new(WorldRuntimeId.CreateNew(), WorldSessionId.CreateNew());
         _runtime = ServerRuntimeComposition.Create(
@@ -76,7 +78,7 @@ internal sealed partial class ServerRuntimeState
             townCombatWorldFacts,
             townInitialRaining,
             townInitialEclipse,
-            townInitialInvasionActive,
+            invasion,
             tileManipulationReplication,
             serverPlayers,
             botTelemetry,
@@ -96,6 +98,6 @@ internal sealed partial class ServerRuntimeState
             projectilePlayerCombatRandom,
             naturalSpawnRandom,
             WorldIdentity,
-            chestCommands, deathPrelude, townSocialWorldFacts);
+            chestCommands, deathPrelude, townSocialWorldFacts, invasionProgressPublisher, invasionStartPublisher);
     }
 }

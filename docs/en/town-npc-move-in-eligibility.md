@@ -6,6 +6,8 @@ The eligibility evaluator covers the vanilla `Main.UpdateTime_SpawnTownNPCs` can
 
 ## Eligibility and exact source priority
 
+Move-in conditions now capture the same mutable invasion owner used by the world lifecycle. Any current positive invasion type blocks the pass; an accepted completion or clear immediately permits the next eligible pass. A bound owner with unknown loaded state refuses move-in rather than treating missing counters as a clear world. Standalone partial hosts with no invasion owner retain their explicit no-invasion context. This replaces the old initial invasion boolean without claiming the remaining invasion-sensitive pet, shelter or special interaction branches.
+
 Terraria does not select a resident by simply taking the first true `townNPCCanSpawn` flag. The same update pass independently computes `WorldGen.prioritizedTownNPCType`, and that ordering is now represented explicitly by `VanillaTownSpawnEligibility1458.PrioritizedType`. The prioritized type is moved to the front of the runtime candidate projection before room selection, while `CanSpawn` continues to expose the complete eligible set.
 
 The 1.4.5.8 priority chain is source-pinned, including the seed-specific Dryad/Zoologist overrides, Guide/Merchant/Nurse progression, rescued residents, boss/progression residents, Princess, the non-numeric town-slime order, and Bunny/Cat/Dog tail ordering. Eligibility and priority remain deliberately separate where vanilla separates them: for example, the Tenth Anniversary seed can make Steampunker eligible, but Steampunker becomes `prioritizedTownNPCType` only after a mechanical boss has been defeated.

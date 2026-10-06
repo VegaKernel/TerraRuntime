@@ -141,6 +141,7 @@ public sealed class WorldFileRuntimeMetadata
     public bool CombatBookWasUsed { get; init; }
     public bool LanternNightGenuine { get; init; }
     public bool LanternNightManual { get; init; }
+    public bool LanternNightNextNight { get; init; }
     public byte[] TreeTopVariations { get; init; } = new byte[13];
     public bool ForceHalloweenForToday { get; init; }
     public bool ForceXMasForToday { get; init; }
@@ -174,7 +175,14 @@ public sealed class WorldFileRuntimeMetadata
     public bool ForceHalloweenForever { get; init; }
     public bool ForceXMasForever { get; init; }
 
+    public int InvasionDelay { get; init; }
+    public int InvasionSize { get; init; }
     public sbyte InvasionType { get; init; }
+    public double InvasionX { get; init; }
+    public int InvasionSizeStart { get; init; }
+    internal int InvasionFieldsOffset { get; init; }
+    internal int InvasionSizeStartOffset { get; init; }
+    internal int LanternNightNextNightOffset { get; init; }
     public WorldSpawnPoint[] ExtraSpawnPoints { get; init; } = Array.Empty<WorldSpawnPoint>();
 
     public bool PartyIsUp => PartyManual || PartyGenuine;

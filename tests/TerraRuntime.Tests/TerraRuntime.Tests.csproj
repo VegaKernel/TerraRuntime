@@ -41,6 +41,17 @@
     <EmbeddedResource Include="Fixtures/lava-npc-hit-effect-official-1458.json.gz" LogicalName="LavaNpcHitEffect1458" />
     <EmbeddedResource Include="Fixtures/slime-contained-lava-composed-death-official.json.gz" />
     <EmbeddedResource Include="Fixtures/global-lava-hit-loot-composed-official-1458.json.gz" LogicalName="GlobalLavaHitLootComposed1458" />
+    <EmbeddedResource Include="Fixtures/invasion-lifecycle-official-1458.json.gz" LogicalName="InvasionLifecycle1458" />
+    <EmbeddedResource Include="Fixtures/invasion-world-wire-official-1458.json.gz" LogicalName="InvasionWorldWire1458" />
+    <EmbeddedResource Include="Fixtures/invasion-completion-event-official-1458.json.gz" LogicalName="InvasionCompletionEvent1458" />
+    <EmbeddedResource Include="Fixtures/invasion-npc-loot-official-1458.json.gz" LogicalName="InvasionNpcLoot1458" />
+    <EmbeddedResource Include="Fixtures/invasion-goblin-birth-official-1458.json.gz" LogicalName="InvasionGoblinBirth1458" />
+    <EmbeddedResource Include="Fixtures/invasion-death-credit-official-1458.json.gz" LogicalName="InvasionDeathOrder1458" />
+    <EmbeddedResource Include="Fixtures/invasion-death-zero-start-official-1458.json.gz" LogicalName="InvasionDeathZeroStart1458" />
+    <EmbeddedResource Include="Fixtures/invasion-persistence-official-1458.json.gz" LogicalName="InvasionPersistence1458" />
+    <EmbeddedResource Include="Fixtures/lantern-pending-persistence-official-1458.json.gz" LogicalName="LanternPendingPersistence1458" />
+    <EmbeddedResource Include="Fixtures/invasion-spawn-selection-official-1458.json.gz" LogicalName="InvasionSpawnSelection1458" />
+    <EmbeddedResource Include="Fixtures/invasion-day-fighter-context-official-1458.json.gz" LogicalName="InvasionDayFighterContext1458" />
     <EmbeddedResource Include="Fixtures/projectile-npc-status-continuous-official-1458.json.gz" LogicalName="ProjectileNpcStatusContinuous1458" />
     <EmbeddedResource Include="Fixtures/projectile-npc-status-whole-update-official-1458.json.gz" LogicalName="ProjectileNpcStatusWholeUpdate1458" />
     <EmbeddedResource Include="Fixtures/projectile-npc-status-coupled-official-1458.json.gz" LogicalName="ProjectileNpcStatusCoupled1458" />

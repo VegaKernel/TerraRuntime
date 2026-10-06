@@ -77,6 +77,7 @@ internal readonly record struct RuntimeTownCommerceWorldFacts1458(
     bool NoTrapsWorld = false)
 {
     public byte? GameMode { get; init; }
+    public int? SpawnTileY { get; init; }
     public bool UseLocalSeasonCalendar { get; init; }
     // TerrariaServer 1.4.5.8 Main.onlyShimmerOceanWorlds uses retained seed flags only.
     public bool OnlyShimmerOceanWorlds => DrunkWorld && TenthAnniversaryWorld &&
@@ -130,7 +131,7 @@ internal readonly record struct RuntimeTownCommerceWorldFacts1458(
             metadata.ZenithWorld,
             metadata.SandstormHappening,
             metadata.InvasionType is >= 1 and <= 4,
-            metadata.NoTrapsWorld) { GameMode = metadata.GameMode, UseLocalSeasonCalendar = true };
+            metadata.NoTrapsWorld) { GameMode = metadata.GameMode, UseLocalSeasonCalendar = true, SpawnTileY = metadata.SpawnY };
     }
 }
 

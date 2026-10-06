@@ -1,5 +1,7 @@
 # World loading, persistence and runtime snapshots
 
+Ordinary invasion checkpoints also retain the pending Lantern Night flag produced by the first victory. The owner loads this flag from the source header; prepared cache layout `5` carries it, and the invasion header patch writes it only when explicitly supplied. Existing five-field save callers preserve the raw flag. Unknown or Snow Legion live state keeps the raw header representation. The later nightly consumer and its RNG remain outside this invasion block; the scalar owner therefore cannot clear an already pending flag. Independent original `SaveWorldHeader` pairs and queued checkpoint checks verify preservation without claiming full original loading or night simulation.
+
 [Русский](../ru/world-persistence.md) · [Documentation](README.md) · [Architecture](architecture.md) · [Roadmap](../roadmap.md)
 
 ## 1. Persistence model
@@ -55,6 +57,8 @@ The current snapshot is self-contained for startup and stores an embedded valida
 Runtime layout `3` additionally means the tile image and liquid scheduler have already passed the supported TerrariaServer 1.4.5.8 post-load liquid preparation. The writer refuses raw canonical state; canonical fallback and post-save rebuild both run that initializer before cache publication. A warm-cache decode restores the prepared marker only after full cache validation.
 
 The snapshot is not a migration format. An incompatible header/layout is a normal cache miss and triggers canonical `.wld` fallback.
+
+Runtime layout `5` retains the five invasion header values: delay, remaining size, type, horizontal position and initial size. Layout `4` caches must be rebuilt from the canonical world; no old payload is interpreted using the new field order.
 
 ## 5. Snapshot layout
 
@@ -152,6 +156,12 @@ The default synchronization budget is `$4\,\text{sections/tick}$`.
 The save state distinguishes initial shadow bootstrap, dirty sections awaiting synchronization, a save request waiting for shadow consistency, and a detached snapshot queued to the background writer. Failed section snapshots are requeued. Readiness is based on actual pending dirty work.
 
 ## 11. What the live save currently rewrites
+
+Invasion persistence retains the source version-326 `invasionDelay`, `invasionSize`, `invasionType`, `invasionX` and `invasionSizeStart`. Loading does not reconstruct initial size from remaining size: the original legacy `FakeLoadInvasionStart` branch applies before version107, while version326 reads the stored value. Raw signed counters and inactive residual values are preserved; live event admission is a separate owner responsibility.
+
+The checkpoint captures a nullable detached invasion save value on the game owner thread alongside clock and progression. The background serializer patches only its captured value, in clock → invasion → progression order, and never reads the mutable event owner. Missing binding or an owner reporting unsupported/unknown state preserves the original invasion bytes. The bounded header patcher discovers offsets by validating the complete header and changes exactly 24 bytes. Goblin, Pirate and Martian completion mutations update their independently verified source booleans while preserving unrelated header bytes.
+
+Independent evidence consists of five actual official `SaveWorldHeader` outputs covering 25 scalar values and four additional source completion headers. Pair comparisons isolate the original save's changing UTC timestamp; they do not replace any invasion field. Compact parser, prepared-codec, byte-preservation and detached checkpoint checks have meaningful copied omission controls. The attempted original `LoadHeader` bootstrap remains unverified, so this evidence does not claim a full original load or a complete event lifecycle.
 
 Late-boss progression now writes the official `downedFishron`, `downedAncientCultist`, `downedEmpressOfLight` and `downedMoonlord` header flags. Previously these runtime milestones caused an unsupported-mutation save rejection. Updates are monotonic and preserve every unrelated byte, including the five lunar-event flags. All 256 baseline/mutation combinations match independently emitted official 1.4.5.8 headers; repeated saves are idempotent and truncated headers are rejected. The fixture writer fixes only signed 64-bit timestamps for reproducible comparisons. Reverting support makes 241 of 257 regressions fail.
 

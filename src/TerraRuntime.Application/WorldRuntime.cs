@@ -44,7 +44,7 @@ internal sealed record WorldRuntimePersistence(
 /// bootstrap/cache work, persistence policy and its dedicated single-writer loop. Primary is intentionally absent;
 /// it is a selection made by the process-level registry.
 /// </summary>
-public sealed class WorldRuntime : IDisposable
+public sealed partial class WorldRuntime : IDisposable
 {
     // Correctness-first ceiling retained from the original single-world composition. Each runtime owns its own
     // bounded rebuild worker and at most one queued/completed section snapshot.
@@ -99,6 +99,7 @@ public sealed class WorldRuntime : IDisposable
             world.CreativePowers,
             WorldClockTelemetry);
         WorldProgression = new RuntimeWorldProgressionMutations(world.RuntimeMetadata.LunarApocalypseIsUp);
+        Invasion = RuntimeWorldInvasion1458.FromMetadata(world.RuntimeMetadata, world.Header.Dimensions.WidthTiles);
         RuntimeConnections = new RuntimeConnectionRegistry(interestManagement, world.Header.Dimensions);
 
         NpcReplication = new RuntimeNpcReplicationRegistry();
@@ -151,7 +152,8 @@ public sealed class WorldRuntime : IDisposable
                 signStore: Signs,
                 townNpcStore: TownNpcs,
                 progressionMutations: WorldProgression,
-                checkpointValidationLimits: persistence.LoadLimits, deathPrelude: DeathPrelude);
+                checkpointValidationLimits: persistence.LoadLimits, deathPrelude: DeathPrelude,
+                invasionSaveStateSource: Invasion.CaptureSaveState);
             autosave = new VanillaWorldAutosaveScheduler();
         }
 
@@ -193,6 +195,7 @@ public sealed class WorldRuntime : IDisposable
             out float botSpawnX,
             out float botSpawnY);
         VanillaSkyblockRuntimeState1458 skyblockRuntime = VanillaSkyblockRuntimePolicy1458.Evaluate(world);
+        bootstrapSkyblockLowTiles = skyblockRuntime.LowTiles;
         State = new ServerRuntimeState(
             playerEvents,
             npcs: Npcs,
@@ -210,7 +213,7 @@ public sealed class WorldRuntime : IDisposable
             townCombatWorldFacts: RuntimeTownNpcCombatWorldFacts1458.FromMetadata(world.RuntimeMetadata),
             townInitialRaining: world.RuntimeMetadata.Raining,
             townInitialEclipse: world.RuntimeMetadata.Eclipse,
-            townInitialInvasionActive: world.RuntimeMetadata.InvasionType > 0,
+            invasion: Invasion,
             tileManipulationReplication: TileManipulationReplication,
             serverPlayers: ServerPlayers,
             botTelemetry: BotTelemetry,
@@ -231,8 +234,10 @@ public sealed class WorldRuntime : IDisposable
             chestCommands: ChestCommands,
             deathPrelude: DeathPrelude,
             townSocialWorldFacts: RuntimeTownSocialWorld1458.FromMetadata(world.RuntimeMetadata,
-                world.RuntimeMetadata.GameMode is (byte)WorldGenerationGameMode.Expert or (byte)WorldGenerationGameMode.Master));
+                world.RuntimeMetadata.GameMode is (byte)WorldGenerationGameMode.Expert or (byte)WorldGenerationGameMode.Master),
+            invasionProgressPublisher: PublishInvasionProgress, invasionStartPublisher: PublishInvasionStart);
         WorldClock.SetWeatherEligiblePlayerProvider(State.HasWindEligiblePlayer);
+        RefreshWorldBootstrap();
 
         sectionCacheRebuild = new SectionCacheRebuildPipeline(
             world,
@@ -256,6 +261,7 @@ public sealed class WorldRuntime : IDisposable
             runtime =>
             {
                 runtime.Tick();
+                AdvanceInvasion();
 
                 long liveMoonEventProgressRevision = WorldClock.MoonEventProgressRevision;
                 if (liveMoonEventProgressRevision != lastMoonEventProgressRevision)
@@ -281,27 +287,7 @@ public sealed class WorldRuntime : IDisposable
                     liveMoonPhase != lastWorldInfoMoonPhase;
                 if (WorldClock.ConsumeWorldInfoSyncRequest() || timeBoundaryChanged || worldInfoSyncTicks >= worldInfoSyncPeriodTicks)
                 {
-                    var liveClock = new WorldInfoRuntimeState(
-                        checked((int)Math.Clamp(WorldClock.Time, 0d, int.MaxValue)),
-                        WorldClock.DayTime,
-                        liveMoonPhase,
-                        WorldClock.BloodMoonActive,
-                        WorldClock.SlimeRainActive)
-                    {
-                        WindSpeedTarget = WorldClock.WindSpeedTarget,
-                        Rain = WorldClock.NetworkRain
-                    };
-                    byte[] worldInfoFrame = PlayerJoinFrameEncoder.EncodeWorldInfo(
-                        world,
-                        new WorldInfoTransientState(
-                            PumpkinMoon: WorldClock.PumpkinMoonActive,
-                            SnowMoon: WorldClock.SnowMoonActive,
-                            Dd2EventOngoing: false,
-                            FreeCake: false,
-                            SkyblockLowTiles: skyblockRuntime.LowTiles,
-                            LobbyId: 0),
-                        liveClock);
-                    RuntimeConnections.BroadcastToPlaying(worldInfoFrame);
+                    RuntimeConnections.BroadcastToPlaying(CreateLiveWorldInfoFrame());
                     worldInfoSyncTicks = 0;
                     lastWorldInfoDayTime = WorldClock.DayTime;
                     lastWorldInfoMoonPhase = liveMoonPhase;
@@ -311,6 +297,7 @@ public sealed class WorldRuntime : IDisposable
                 if (autosave?.Tick() == true)
                     worldSave!.RequestSave();
                 worldSave?.Tick();
+                RefreshWorldBootstrap();
             },
             loopOptions);
 
@@ -364,27 +351,9 @@ public sealed class WorldRuntime : IDisposable
     internal PlayerBootstrapPacketSet BootstrapPackets { get; }
     internal RuntimeWorldClock WorldClock { get; }
     internal ReadOnlyMemory<byte> CreateLiveWorldInfoFrame()
-    {
-        var liveClock = new WorldInfoRuntimeState(
-            checked((int)Math.Clamp(WorldClock.Time, 0d, int.MaxValue)),
-            WorldClock.DayTime,
-            checked((byte)WorldClock.MoonPhase),
-            WorldClock.BloodMoonActive,
-            WorldClock.SlimeRainActive)
-        {
-            WindSpeedTarget = WorldClock.WindSpeedTarget,
-            Rain = WorldClock.NetworkRain
-        };
-        var transient = new WorldInfoTransientState(
-            PumpkinMoon: WorldClock.PumpkinMoonActive,
-            SnowMoon: WorldClock.SnowMoonActive,
-            Dd2EventOngoing: false,
-            FreeCake: false,
-            SkyblockLowTiles: VanillaSkyblockRuntimePolicy1458.Evaluate(World).LowTiles,
-            LobbyId: 0);
-        return PlayerJoinFrameEncoder.EncodeWorldInfo(World, transient, liveClock);
-    }
+        => CaptureFreshWorldBootstrap().WorldInfoFrame;
 
+    internal RuntimeWorldInvasion1458 Invasion { get; }
     internal RuntimeWorldProgressionMutations WorldProgression { get; }
     internal RuntimeConnectionRegistry RuntimeConnections { get; }
     internal RuntimeNpcReplicationRegistry NpcReplication { get; }
