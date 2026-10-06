@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.IO.Compression;
+using System.Text.Json.Nodes;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
@@ -9,7 +11,36 @@ namespace TerraRuntime.Tests;
 
 public sealed class GlobalNpcLootDeath1458Tests
 {
-    public static IEnumerable<object[]> OriginalDeaths() => GlobalNpcLoot1458Tests.Rows("whole");
+    public static IEnumerable<object[]> OriginalDeaths()
+    {
+        using var stream = typeof(GlobalNpcLootDeath1458Tests).Assembly.GetManifestResourceStream(
+            "GlobalLavaHitLootComposed1458")!;
+        using var gzip = new GZipStream(stream, CompressionMode.Decompress);
+        using var composed = JsonDocument.Parse(gzip);
+        var lava = composed.RootElement.EnumerateArray().ToDictionary(
+            row => Key(row.GetProperty("input")), row => row.Clone());
+        foreach (var args in GlobalNpcLoot1458Tests.Rows("whole"))
+        {
+            string json = (string)args[0];
+            using var original = JsonDocument.Parse(json);
+            if (original.RootElement.GetProperty("profile").GetProperty("Type").GetInt32() != 59)
+            {
+                yield return args;
+                continue;
+            }
+            // Independent dedicated HitEffect followed by the actual singleplayer NPCLoot evaluator.
+            // The separate standalone loot corpus remains unchanged.
+            var expected = lava[Key(original.RootElement)];
+            var row = JsonNode.Parse(json)!;
+            row["drops"] = JsonNode.Parse(expected.GetProperty("drops").GetRawText());
+            row["next"] = expected.GetProperty("next").GetInt32();
+            yield return [row.ToJsonString()];
+        }
+    }
+
+    private static (string Profile, int Seed, float Luck, bool Injured) Key(JsonElement row) =>
+        (row.GetProperty("profile").GetProperty("Name").GetString()!, row.GetProperty("seed").GetInt32(),
+            row.GetProperty("luck").GetSingle(), row.GetProperty("injured").GetBoolean());
 
     [Theory, MemberData(nameof(OriginalDeaths))]
     public void Actual_lethal_commit_matches_original_global_specific_money_healing_and_next_rng(string json)

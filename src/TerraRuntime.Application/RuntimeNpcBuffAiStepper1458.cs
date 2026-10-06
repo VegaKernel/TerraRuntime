@@ -10,7 +10,8 @@ namespace TerraRuntime.Application;
 // offer and its source random draws, even though Dust.NewDust returns the nonphysical server slot.
 internal sealed class RuntimeNpcBuffAiStepper1458(INpcAiStateStepper inner,
     RuntimeNpcBuffStatus1458 status, IVanillaNpcRandom random, bool goodWorld = false,
-    bool retainedSlimeStatuses = false, RuntimeSlimeDebuffDeath1458? debuffDeath = null) :
+    bool retainedSlimeStatuses = false, RuntimeNpcDebuffDeath1458? debuffDeath = null,
+    RuntimeNpcBuffPhase1458? buffPhase = null) :
     INpcAiStateStepper, INpcAiStateStepperWrapper, INpcAiPrepass1458
 {
     private readonly NpcRuntimeTownCombatRandom1458 visualRandom = new(random);
@@ -18,14 +19,26 @@ internal sealed class RuntimeNpcBuffAiStepper1458(INpcAiStateStepper inner,
     public bool TryRunPrepass(in NpcSnapshot npc, out bool consumed)
     {
         consumed = false;
+        if (retainedSlimeStatuses && npc.TypeIdentity == VanillaNpcIds.Zombie && buffPhase is not null)
+        {
+            // Shimmer changes the outer NPC phase before this source buff/AI slice can be admitted.
+            if (npc.Simulation.ShimmerTransparency != 0f ||
+                npc.Simulation.LiquidContact == NpcLiquidContactKind.Shimmer) return false;
+            if (random is not SystemVanillaNpcRandom source ||
+                !status.TryPlan(in npc, out var zombiePlan, goodWorld, allowLethal: true)) return false;
+            if (zombiePlan.LifeAfter > 0)
+                return buffPhase(in npc, in zombiePlan, status, source.SourceRandom);
+            if (debuffDeath is null || !debuffDeath(in npc, in zombiePlan, status, source.SourceRandom)) return false;
+            consumed = true;
+            return true;
+        }
         if (!retainedSlimeStatuses || npc.TypeIdentity != VanillaNpcIds.BlueSlime &&
             npc.TypeIdentity != VanillaNpcIds.LavaSlime) return true;
         if (!status.TryPlan(in npc, out var plan, goodWorld, allowLethal: true)) return false;
         if (plan.LifeAfter > 0) return true;
         if (random is not SystemVanillaNpcRandom trusted || debuffDeath is null ||
             !debuffDeath(in npc, in plan, status, trusted.SourceRandom)) return false;
-        // Source DOT completes its 9999 strike/death effects before BuffApplyVFX, even for an inactive actor.
-        _ = RuntimeNpcBuffStatus1458.PlanVisualOffers(in plan, visualRandom, goodWorld);
+        // The retained death plan also owns the following BuffApplyVFX draws, even for an inactive actor.
         consumed = true;
         return true;
     }
@@ -34,7 +47,8 @@ internal sealed class RuntimeNpcBuffAiStepper1458(INpcAiStateStepper inner,
         if (!VanillaNpcDefinitionCatalog.TryGet(npc.TypeIdentity, npc.NetIdentity, out var definition) || definition.DefinitionOnly)
         { next = default; return false; }
         if (retainedSlimeStatuses && (npc.TypeIdentity == VanillaNpcIds.BlueSlime ||
-            npc.TypeIdentity == VanillaNpcIds.LavaSlime))
+            npc.TypeIdentity == VanillaNpcIds.LavaSlime ||
+            npc.TypeIdentity == VanillaNpcIds.Zombie && buffPhase is not null))
             return inner.TryStepState(in npc, out next);
         // Town's complete phase owns its own visual offer in the same random transaction as AI/contact.
         if (definition.AiStyle != VanillaNpcAiStyles.Town)

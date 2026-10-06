@@ -54,7 +54,17 @@ public sealed class SlimeContainedDeath1458Tests
         Assert.False(graph.Npcs.TryStrikeBotPlayerMelee(session.Handle, npc.Handle, 100_000, 0, false, 0, 1));
         Assert.True(after.HasSameState(random.SourceRandom)); Assert.False(queue.TryRead(out _));
     }
-    public static IEnumerable<object[]> OriginalDeaths() => SlimeContainedLoot1458Tests.Rows("death");
+    public static IEnumerable<object[]> OriginalDeaths()
+    {
+        // Preserve the standalone loot callback oracle. Lava's lethal producer additionally runs
+        // dedicated HitEffect (netMode 2), then the semantic full-NPCLoot harness (netMode 0).
+        // This composed reference does not claim whole checkDead or dedicated transport parity.
+        foreach (var row in SlimeContainedLoot1458Tests.Rows("death"))
+            if (((JsonElement)row[0]).GetProperty("type").GetInt32() != 59)
+                yield return row;
+        foreach (var row in SlimeContainedLoot1458Tests.Rows("lava-composed-death"))
+            yield return row;
+    }
 
     [Theory, MemberData(nameof(OriginalDeaths))]
     public void Actual_lethal_ingress_matches_original_imported_money_heals_and_next_rng(JsonElement row)

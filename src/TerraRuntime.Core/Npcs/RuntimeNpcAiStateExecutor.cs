@@ -152,6 +152,11 @@ public sealed class RuntimeNpcAiStateExecutor : INpcAiCommittedNpcMutationSink
                     applied++;
                     continue;
                 }
+                // An accepted source buff phase may advance life/counters before AI. Continue only
+                // the same generation; a publication callback can retire or replace this physical slot.
+                if (!_npcs.TryGet(npc.Handle, out var afterPrepass) || !afterPrepass.IsActive)
+                    continue;
+                npc = afterPrepass;
             }
             if (peerConsumer is not null)
             {

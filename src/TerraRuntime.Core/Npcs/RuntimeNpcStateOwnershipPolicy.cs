@@ -17,6 +17,9 @@ internal static class RuntimeNpcStateOwnershipPolicy
             FrameIndex = update.Simulation.FrameIndex ?? 0, Breath = update.Simulation.Breath ?? 200, LifeRegenCounter = update.Simulation.LifeRegenCounter ?? 0 };
         if (TryGetDefinition(update.Type, update.NetId, out VanillaNpcDefinition definition) && !definition.DefinitionOnly)
         {
+            // A fresh NPC constructor owns zero. SetDefaults/Transform do not reset this source field.
+            if (definition.Type == VanillaNpcIds.Zombie)
+                simulation = simulation with { ShimmerTransparency = simulation.ShimmerTransparency ?? 0f };
             if (simulation.LifeMax == 0)
             {
                 simulation = simulation with
@@ -95,6 +98,7 @@ internal static class RuntimeNpcStateOwnershipPolicy
 
         simulation = simulation with
         {
+            ShimmerTransparency = sameDefinition ? simulation.ShimmerTransparency : previous.Simulation.ShimmerTransparency,
             SpawnDifficulty = sameDefinition ? simulation.SpawnDifficulty ?? previous.Simulation.SpawnDifficulty ?? 1f : 1f,
             MoneyValue = simulation.MoneyValue ?? (sameDefinition ? previous.Simulation.MoneyValue :
                 ResolveMoney(update.Type, update.NetId, 1f)),

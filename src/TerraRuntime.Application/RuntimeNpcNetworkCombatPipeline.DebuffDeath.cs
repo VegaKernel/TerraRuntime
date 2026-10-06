@@ -5,18 +5,21 @@ using TerraRuntime.Core.Npcs;
 
 namespace TerraRuntime.Application;
 
-internal delegate bool RuntimeSlimeDebuffDeath1458(in NpcSnapshot before,
+internal delegate bool RuntimeNpcDebuffDeath1458(in NpcSnapshot before,
     in RuntimeNpcBuffPlan1458 plan, RuntimeNpcBuffStatus1458 status, VanillaUnifiedRandom1458 sourceRandom);
 
 internal sealed partial class RuntimeNpcNetworkCombatPipeline
 {
     private NpcDamagePrelude1458? pendingDebuffPrelude;
+    private RuntimeNpcBuffPlan1458? pendingDebuffPlan;
+    private RuntimeNpcStinkyVisualOffer1458 pendingDebuffOffer;
 
-    internal bool TryStrikeSlimeDebuffDeath(in NpcSnapshot before, in RuntimeNpcBuffPlan1458 plan,
+    internal bool TryStrikeDebuffDeath(in NpcSnapshot before, in RuntimeNpcBuffPlan1458 plan,
         RuntimeNpcBuffStatus1458 status, VanillaUnifiedRandom1458 sourceRandom)
     {
         if (pendingDebuffPrelude is not null || pendingDeathPlan is not null ||
-            before.TypeIdentity != VanillaNpcIds.BlueSlime && before.TypeIdentity != VanillaNpcIds.LavaSlime ||
+            before.TypeIdentity != VanillaNpcIds.BlueSlime && before.TypeIdentity != VanillaNpcIds.LavaSlime &&
+            before.TypeIdentity != VanillaNpcIds.Zombie ||
             plan.Expected != before || plan.LifeAfter > 0 || plan.DotDamage <= 0 ||
             plan.CounterAfter is not { } counter || counter is < -119 or > 119 ||
             before.Simulation.Immortal != false || before.Simulation.DontTakeDamage ||
@@ -27,11 +30,13 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         var retainedPlan = plan;
         var checkpoint = sourceRandom.Clone();
         bool Current() => ReferenceEquals(random.SourceRandom, sourceRandom) &&
-            sourceRandom.HasSameState(checkpoint) && status.IsCurrent(in retainedPlan);
+            sourceRandom.HasSameState(checkpoint) && status.IsCurrent(in retainedPlan) && IsPreparedDeathCurrent();
         void Publish(NpcSnapshot committed)
         {
+            AdoptPreparedStrikeOwners();
             if (!status.Commit(in retainedPlan, in committed))
                 throw new InvalidOperationException("An admitted debuff death lost its retained status owner.");
+            status.ObserveVisualOffer(committed.Handle, in pendingDebuffOffer);
             status.PublishExpired(in retainedPlan);
         }
         // NPC.GetHurtByDebuff first subtracts its unmitigated pulse, then restores life=1
@@ -40,6 +45,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         var prelude = new NpcDamagePrelude1458(expected,
             expected.Simulation with { Life = 1, LifeRegenCounter = counter }, Current, Publish);
         pendingDebuffPrelude = prelude;
+        pendingDebuffPlan = retainedPlan;
         try
         {
             return CommitNonPlayerDamage(expected, DamageSource.Environment, 9999, 0f, 0, prelude) ==
@@ -48,6 +54,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         finally
         {
             pendingDebuffPrelude = null;
+            pendingDebuffPlan = null;
+            pendingDebuffOffer = default;
             CancelPendingDeathPlan();
         }
     }

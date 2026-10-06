@@ -106,6 +106,9 @@ public readonly record struct NpcSimulationState(
     /// <summary>Source lifeRegenCount; nullable imports cannot be treated as source counter zero.</summary>
     public int? LifeRegenCounter { get; init; }
 
+    /// <summary>Generation-owned source shimmerTransparency; null denotes unobserved imported history.</summary>
+    public float? ShimmerTransparency { get; init; }
+
     /// <summary>NPC.breath when owned; null is an unknown imported respiratory history.</summary>
     public int? Breath { get; init; }
 
@@ -212,6 +215,7 @@ public readonly record struct NpcSimulationState(
         Scale: 1f)
     {
         LiquidContact = NpcLiquidContactKind.None,
+        ShimmerTransparency = 0f,
         OldPositionX = 0f,
         OldPositionY = 0f,
         Life = 0,
@@ -231,6 +235,7 @@ public readonly record struct NpcSimulationState(
     };
 
     public bool IsValid =>
+        (ShimmerTransparency is null || float.IsFinite(ShimmerTransparency.Value) && ShimmerTransparency.Value is >= 0f and <= 1f) &&
         HostileContactImmunity >= 0 &&
         FriendlyRegenerationCounter is >= 0 and <= 180 &&
         (!Breath.HasValue || Breath.Value is >= 0 and <= 200) &&

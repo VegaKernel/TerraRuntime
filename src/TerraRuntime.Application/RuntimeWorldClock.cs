@@ -180,6 +180,13 @@ internal sealed class RuntimeWorldClock : IVanillaNpcWorldEventState
         return preview;
     }
 
+    internal void AdoptSlimeRainDeathProgress(RuntimeWorldClock preview)
+    {
+        // The retained canonical death lane can only change this counter. Time/event and spawn
+        // dependencies have already been checked before the callback-free adoption tail.
+        SlimeRainKillCount = preview.SlimeRainKillCount;
+    }
+
     public VanillaMoonPhase MoonPhase { get; private set; }
 
     public double SlimeRainTime { get; private set; }

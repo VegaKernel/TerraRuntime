@@ -37,6 +37,13 @@
     <EmbeddedResource Include="Fixtures/metal-armor-official-1458.json.gz" LogicalName="MetalArmorEquipment1458" />
     <EmbeddedResource Include="Fixtures/projectile-ammo-conservation-official-1458.json.gz" LogicalName="ProjectileAmmoConservation1458" />
     <EmbeddedResource Include="Fixtures/ammo-conservation-buffs-official-1458.json.gz" LogicalName="AmmoConservationBuffs1458" />
+    <EmbeddedResource Include="Fixtures/projectile-npc-status-selection-official-1458.json.gz" LogicalName="ProjectileNpcStatusSelection1458" />
+    <EmbeddedResource Include="Fixtures/lava-npc-hit-effect-official-1458.json.gz" LogicalName="LavaNpcHitEffect1458" />
+    <EmbeddedResource Include="Fixtures/slime-contained-lava-composed-death-official.json.gz" />
+    <EmbeddedResource Include="Fixtures/global-lava-hit-loot-composed-official-1458.json.gz" LogicalName="GlobalLavaHitLootComposed1458" />
+    <EmbeddedResource Include="Fixtures/projectile-npc-status-continuous-official-1458.json.gz" LogicalName="ProjectileNpcStatusContinuous1458" />
+    <EmbeddedResource Include="Fixtures/projectile-npc-status-whole-update-official-1458.json.gz" LogicalName="ProjectileNpcStatusWholeUpdate1458" />
+    <EmbeddedResource Include="Fixtures/projectile-npc-status-coupled-official-1458.json.gz" LogicalName="ProjectileNpcStatusCoupled1458" />
     <EmbeddedResource Include="Fixtures/npc-source-default-roster-official-1458.json.gz" LogicalName="NpcSourceDefaultRoster1458" />
     <EmbeddedResource Include="Fixtures/npc-definition-wire-official-1458.json.gz" LogicalName="NpcDefinitionWire1458" />
     <EmbeddedResource Include="Fixtures/slime-debuff-death-official-1458.json.gz" LogicalName="SlimeDebuffDeath1458" />

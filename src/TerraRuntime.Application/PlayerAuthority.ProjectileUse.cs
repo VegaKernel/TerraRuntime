@@ -14,6 +14,13 @@ internal sealed record RuntimePlayerProjectileUseCapture(
 
 internal sealed partial class PlayerAuthority
 {
+    internal bool TryCaptureProjectileUse(PlayerHandle player, out RuntimePlayerProjectileUseCapture? capture)
+    {
+        capture = null;
+        return membership.TryGet(player, out var member) &&
+            TryCaptureProjectileUse(member.Connection, out capture);
+    }
+
     internal bool TryCaptureProjectileUse(ConnectionHandle connection, out RuntimePlayerProjectileUseCapture? capture)
     {
         capture = null;

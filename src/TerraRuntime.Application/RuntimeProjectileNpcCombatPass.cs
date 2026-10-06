@@ -12,7 +12,7 @@ namespace TerraRuntime.Application;
 /// Ordering is physical projectile slot then physical NPC slot. Damage commits before penetration side effects, and
 /// only a committed hit consumes penetration. Unsupported projectile types never reach world mutation.
 /// </summary>
-internal sealed class RuntimeProjectileNpcCombatPass
+internal sealed partial class RuntimeProjectileNpcCombatPass
 {
     private readonly RuntimeProjectileStore projectiles;
     private readonly RuntimeNpcStore npcs;
@@ -21,9 +21,14 @@ internal sealed class RuntimeProjectileNpcCombatPass
     private readonly PlayerAuthority players;
     private readonly ServerPlayerAuthority? serverPlayers;
     private readonly Func<long> tickProvider;
-    private readonly Random random;
+    private readonly Func<int, int, int> nextRandom;
+    private readonly VanillaUnifiedRandom1458 sourceRandom;
+    private readonly bool usesSourceRandom;
+    private readonly RuntimeNpcBuffStatus1458? status;
     private readonly ProjectileSnapshot[] projectileBuffer;
     private readonly NpcSnapshot[] npcBuffer;
+    private readonly RuntimePlayerProjectileUseCapture?[] hitOwnerBuffer;
+    private readonly RuntimeNpcBuffAdditionPlan1458?[] hitStatusBuffer;
     private readonly PlayerSessionGeneration[] ownerGenerations = new PlayerSessionGeneration[PlayerSlotCount];
     private readonly long[] lastOwnerNpcHitTick;
     private readonly NpcGeneration[] lastOwnerNpcHitGeneration;
@@ -37,7 +42,8 @@ internal sealed class RuntimeProjectileNpcCombatPass
         Func<long> tickProvider,
         Random? random = null,
         ServerPlayerAuthority? serverPlayers = null,
-        RuntimeProjectileNpcLocalImmunityRegistry? localNpcImmunity = null)
+        RuntimeProjectileNpcLocalImmunityRegistry? localNpcImmunity = null,
+        RuntimeNpcBuffStatus1458? status = null)
     {
         this.projectiles = projectiles ?? throw new ArgumentNullException(nameof(projectiles));
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
@@ -45,9 +51,14 @@ internal sealed class RuntimeProjectileNpcCombatPass
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.serverPlayers = serverPlayers;
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
-        this.random = random ?? Random.Shared;
+        sourceRandom = combat.SourceRandom;
+        usesSourceRandom = random is null;
+        nextRandom = random is null ? sourceRandom.Next : random.Next;
+        this.status = status;
         projectileBuffer = new ProjectileSnapshot[projectiles.Capacity];
+        hitOwnerBuffer = new RuntimePlayerProjectileUseCapture?[projectiles.Capacity];
         npcBuffer = new NpcSnapshot[npcs.Capacity];
+        hitStatusBuffer = new RuntimeNpcBuffAdditionPlan1458?[npcs.Capacity];
         lastOwnerNpcHitTick = new long[checked(PlayerSlotCount * npcs.Capacity)];
         lastOwnerNpcHitGeneration = new NpcGeneration[lastOwnerNpcHitTick.Length];
         this.localNpcImmunity = localNpcImmunity ??
@@ -61,9 +72,23 @@ internal sealed class RuntimeProjectileNpcCombatPass
 
     public void Tick()
     {
-        long tick = tickProvider();
         int projectileCount = projectiles.CopyActive(projectileBuffer);
         int npcCount = npcs.CopyActive(npcBuffer);
+        var tickRandom = sourceRandom.Clone();
+        for (int i = 0; i < npcCount; i++)
+        {
+            hitStatusBuffer[i] = null;
+            if (status is not null && status.CaptureAddition(in npcBuffer[i], out var captured))
+                hitStatusBuffer[i] = captured;
+        }
+        for (int i = 0; i < projectileCount; i++)
+        {
+            hitOwnerBuffer[i] = null;
+            if (projectiles.TryGetCombatTrustedOwner(projectileBuffer[i].Handle, out var owner))
+                players.TryCaptureProjectileUse(owner, out hitOwnerBuffer[i]);
+        }
+        long tick = tickProvider();
+        if (usesSourceRandom && !sourceRandom.HasSameState(tickRandom)) return;
 
         for (int projectileIndex = 0; projectileIndex < projectileCount; projectileIndex++)
         {
@@ -89,6 +114,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
             }
             bool sharedOwnerImmunity = VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(projectile.Type);
             bool localImmunity = VanillaProjectileNpcCombatFacts.TryGetLocalNpcImmunityCooldown(projectile.Type, out int localImmunityCooldown);
+            bool preparedStatusHit = usesSourceRandom && status is not null && projectile.Type.Value is 2 or 34 or 54;
 
             bool projectileEnded = false;
             for (int npcIndex = 0; npcIndex < npcCount; npcIndex++)
@@ -96,15 +122,34 @@ internal sealed class RuntimeProjectileNpcCombatPass
                 NpcSnapshot target = npcBuffer[npcIndex];
                 if (!IsEligibleTarget(in target, out VanillaNpcHitboxSize npcHitbox) ||
                     !Intersects(in projectile, in projectileDefinition, in target, in npcHitbox) ||
-                    (sharedOwnerImmunity && IsOwnerNpcOnCooldown(ownerRow, target.Handle, tick)) ||
+                    ((sharedOwnerImmunity || preparedStatusHit && projectile.Type.Value != 2) && IsOwnerNpcOnCooldown(ownerRow, target.Handle, tick)) ||
                     (localImmunity && localNpcImmunity.IsImmune(projectile.Handle, target.Handle, tick, localImmunityCooldown)))
                 {
                     continue;
                 }
 
+                if (preparedStatusHit)
+                {
+                    if (TryPreparedStatusHit(projectile, target, ownerCombat, hitOwnerBuffer[projectileIndex],
+                            hitStatusBuffer[npcIndex], ownerRow, tick, sharedOwnerImmunity, localImmunity,
+                            out var preparedCurrent, out bool ended, out var acceptedTarget))
+                    {
+                        projectile = preparedCurrent;
+                        hitStatusBuffer[npcIndex] = null;
+                        if (acceptedTarget is { } retainedTarget &&
+                            status!.CaptureAddition(in retainedTarget, out var capturedStatus))
+                        {
+                            npcBuffer[npcIndex] = retainedTarget;
+                            hitStatusBuffer[npcIndex] = capturedStatus;
+                        }
+                        if (ended) { projectileEnded = true; break; }
+                    }
+                    continue;
+                }
+
                 int hitDirection = projectile.VelocityX > 0.01f ? 1 : projectile.VelocityX < -0.01f ? -1 : 0;
-                int critRoll = random.Next(1, 101);
-                int damageVariation = random.Next(-15, 16);
+                int critRoll = nextRandom(1, 101);
+                int damageVariation = nextRandom(-15, 16);
                 if (!VanillaCombatFacts.TryResolvePveHit(
                         projectile.Type,
                         projectile.Damage,
@@ -158,7 +203,7 @@ internal sealed class RuntimeProjectileNpcCombatPass
                 projectile.Type.Value == 31 && target.TypeIdentity.Value == 69) continue; // Antlion sand immunity.
             // Unowned AI010 blocks have no player crit/armor modifiers. Reuse non-player damage/loot finalization.
             int damage = TerraRuntime.Gameplay.Players.VanillaIncomingPlayerDamageFacts1458.ResolveHostileProjectileDamage(
-                projectile.Damage, random.Next(-15, 16));
+                projectile.Damage, nextRandom(-15, 16));
             int direction = target.PositionX + hitbox.Width * .5f < projectile.PositionX + 5 ? -1 : 1;
             var result = combat.TryStrikeEnvironmentProjectile(projectile, target.Handle, damage, direction);
             if (result == RuntimeTownNpcMeleeDamageResult1458.Rejected) continue;
@@ -204,8 +249,8 @@ internal sealed class RuntimeProjectileNpcCombatPass
                 }
 
                 int hitDirection = ResolveExplosionDirection(in explosion, in target, in npcHitbox);
-                int critRoll = random.Next(1, 101);
-                int damageVariation = random.Next(-15, 16);
+                int critRoll = nextRandom(1, 101);
+                int damageVariation = nextRandom(-15, 16);
                 if (!VanillaCombatFacts.TryResolvePveHit(
                         projectile.Type,
                         projectile.Damage,

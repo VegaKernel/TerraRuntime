@@ -241,7 +241,8 @@ internal sealed partial class NpcAuthority
             players,
             tickProvider,
             serverPlayers: serverPlayers,
-            localNpcImmunity: projectileNpcLocalImmunity);
+            localNpcImmunity: projectileNpcLocalImmunity,
+            status: npcBuffStatus);
         townNpcAuthority.SetMeleeDamageSink(combat);
         if (worldTiles is not null && townCommerceWorldFacts is { RemixWorld: false, GoodWorld: false })
             lavaContact = new RuntimeNpcLavaContactPass1458(npcs, worldTiles, combat, tickProvider);
@@ -332,7 +333,8 @@ internal sealed partial class NpcAuthority
         }
         aiStepper = new RuntimeNpcBuffAiStepper1458(aiStepper, npcBuffStatus, this.naturalSpawnRandom,
             worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false,
-            retainedSlimeStatuses: worldTiles is not null, debuffDeath: combat.TryStrikeSlimeDebuffDeath);
+            retainedSlimeStatuses: worldTiles is not null, debuffDeath: combat.TryStrikeDebuffDeath,
+            buffPhase: combat.TryCommitZombieBuffPhase);
     }
 
     public RuntimeNpcShopCatalogRegistry Shops => shops;

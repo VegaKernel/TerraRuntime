@@ -1,4 +1,5 @@
 using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Core;
 using TerraRuntime.Core.Worlds;
 using TerraRuntime.Gameplay.Items;
@@ -24,6 +25,10 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
     private bool failed;
     private VanillaUnifiedRandom1458? strikePreludeRandom;
     private bool borrowedAllocation;
+    private bool unpublishedMode;
+    private bool adoptedUnpublished;
+    private bool publishingPhase;
+    private RuntimeWorldItemStore.AllocationPreview.AllocationPublication? retainedPublication;
 
     public RuntimeNpcDeathDropPlan1458(NpcHandle owner, NpcRevision revision, VanillaUnifiedRandom1458 random)
     {
@@ -39,6 +44,41 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
     public NpcRevision Revision { get; }
     public VanillaUnifiedRandom1458 Random { get; }
     public int Count => count;
+    internal bool IsUnpublishedMode => unpublishedMode;
+    internal bool IsAdoptedUnpublished => adoptedUnpublished;
+
+    internal bool TryEnableUnpublished(in NpcSnapshot expected)
+    {
+        if (unpublishedMode || failed || !accepted || borrowedAllocation || nextPhase != 0 ||
+            expected.Handle != Owner || expected.Revision != Revision || expected.NetId != expected.Type ||
+            (expected.TypeIdentity != VanillaNpcIds.Zombie && expected.TypeIdentity != VanillaNpcIds.BlueSlime &&
+             expected.TypeIdentity != VanillaNpcIds.LavaSlime)) return false;
+        // Client-local rewards require their own unpublished lease adoption; this lane owns ordinary drops only.
+        foreach (var drop in drops.AsSpan(0, count))
+            if (drop.LeaseTicks != 0 || drop.Recipients.Length != 0) return false;
+        unpublishedMode = true;
+        return CanAdoptUnpublished();
+    }
+
+    internal bool ValidateUnpublishedOwnerFacts() => unpublishedMode && !adoptedUnpublished &&
+        allocation?.ValidateOwnerFacts() == true;
+
+    // No external providers here: the caller finishes callbacks before its final HP/status/projectile guards.
+    internal bool CanAdoptUnpublished() => unpublishedMode && !adoptedUnpublished && !failed &&
+        accepted && nextPhase == 0 && allocation?.IsCurrentOwned == true &&
+        originalRandom.HasSameState(beforeRandom);
+
+    internal bool TryAdoptUnpublished()
+    {
+        if (!CanAdoptUnpublished()) return false;
+        if (!allocation!.TryAdoptUnpublished(out retainedPublication))
+        {
+            return false;
+        }
+        originalRandom.CopyStateFrom(Random);
+        adoptedUnpublished = true;
+        return true;
+    }
 
     internal RuntimeNpcDeathDropPlan1458? RetainForBatch(RuntimeWorldItemStore liveItems,
         VanillaUnifiedRandom1458 liveRandom, RuntimeWorldItemStore.AllocationPreview sharedAllocation)
@@ -66,6 +106,7 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
 
     public bool TryPublishStrikePrelude()
     {
+        if (unpublishedMode) return adoptedUnpublished && !failed && nextPhase == 0;
         if (strikePreludeRandom is null || !accepted || failed || nextPhase != 0 ||
             !originalRandom.HasSameState(beforeRandom)) return false;
         originalRandom.CopyStateFrom(strikePreludeRandom);
@@ -135,6 +176,7 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
     public bool TryPublishPhase(NpcDeathDropPhase1458 phase,
         Func<WorldItemDropReservation, WorldItemDropStateUpdate, PlayerHandle[], int, bool> adoptInstanced)
     {
+        if (unpublishedMode) return TryPublishAdoptedPhase(phase);
         if (failed || !accepted || store is null || (int)phase != nextPhase ||
             !originalRandom.HasSameState(beforePhaseRandom[nextPhase]!)) return false;
         while (published < count && drops[published].Phase == phase)
@@ -147,6 +189,27 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
             published++;
         }
         originalRandom.CopyStateFrom(phaseRandom[nextPhase++]!);
+        return true;
+    }
+
+    private bool TryPublishAdoptedPhase(NpcDeathDropPhase1458 phase)
+    {
+        if (failed || !adoptedUnpublished || publishingPhase || (int)phase != nextPhase) return false;
+        publishingPhase = true;
+        nextPhase++;
+        try
+        {
+            while (published < count && drops[published].Phase == phase)
+            {
+                // Consume each retained source step before a sink can reenter this same plan.
+                published++;
+                if (retainedPublication?.TryPublishNext(out _) != true) return false;
+            }
+        }
+        finally
+        {
+            publishingPhase = false;
+        }
         return true;
     }
 

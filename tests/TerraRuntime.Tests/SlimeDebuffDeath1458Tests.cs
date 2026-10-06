@@ -106,7 +106,7 @@ public sealed class SlimeDebuffDeath1458Tests
                 new RuntimeWorldClock(0, true, 0, 0, 1), new(), false, false,
                 lootRandom: Random, seasonalItemContext: () => default);
             Stepper = new RuntimeNpcBuffAiStepper1458(new Rejecting(), Status, random,
-                retainedSlimeStatuses: true, debuffDeath: pipeline.TryStrikeSlimeDebuffDeath);
+                retainedSlimeStatuses: true, debuffDeath: pipeline.TryStrikeDebuffDeath);
             Executor = new(Npcs);
             outbound = new(new OutboundQueueOptions(64, 65536, 1024));
             var source = GameCommandSourceId.FromConnection(91458);

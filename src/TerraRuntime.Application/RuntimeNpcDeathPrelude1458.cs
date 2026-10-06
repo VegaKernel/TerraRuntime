@@ -163,6 +163,45 @@ internal sealed class RuntimeNpcDeathPrelude1458
         return true;
     }
 
+    internal bool TryAdoptUnpublished(RuntimeNpcDeathPrelude1458 preview, ulong expectedRevision,
+        out PreludePublication? publication)
+    {
+        publication = null;
+        if (ReferenceEquals(preview, this) || Revision != expectedRevision || preview.Revision < Revision)
+            return false;
+        var frames = preview.pendingFrames.ToArray();
+        preview.kills.CopyTo(kills, 0);
+        preview.claims.CopyTo(claims, 0);
+        bestiary.Clear();
+        foreach (var entry in preview.bestiary) bestiary.Add(entry.Key, entry.Value);
+        Revision = preview.Revision;
+        PublishJoinFrames();
+        publication = new(this, Revision, frames);
+        return true;
+    }
+
+    internal sealed class PreludePublication(RuntimeNpcDeathPrelude1458 owner, ulong revision,
+        (PlayerHandle? Player, byte[] Frame)[] frames)
+    {
+        private int next;
+        private bool published;
+
+        internal bool TryPublish()
+        {
+            if (published) return false;
+            published = true;
+            while (next < frames.Length)
+            {
+                if (owner.Revision != revision) break;
+                var entry = frames[next++];
+                if (entry.Player is PlayerHandle player)
+                    owner.replication?.TrySendDeathPrelude(player, entry.Frame);
+                else owner.replication?.BroadcastDeathPrelude(entry.Frame);
+            }
+            return true;
+        }
+    }
+
     private void PublishJoinFrames()
     {
         // Immutable published bytes are the sole cross-thread view: no connection thread reads the ledgers.

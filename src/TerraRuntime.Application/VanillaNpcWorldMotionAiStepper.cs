@@ -135,7 +135,11 @@ internal sealed class VanillaNpcWorldMotionAiStepper :
             next = adjusted;
             return true;
         }
-        return TryFinishPhysics(tiles, worldSurfaceTiles, in npc, in adjusted, out next);
+        if (!TryFinishPhysics(tiles, worldSurfaceTiles, in npc, in adjusted, out next)) return false;
+        // NPC.FindFrame case 3 runs after collision; a grounded Zombie faces its current direction.
+        if (npc.TypeIdentity == VanillaNpcIds.Zombie && next.VelocityY == 0f)
+            next = next with { Simulation = next.Simulation with { SpriteDirection = next.Simulation.DirectionX } };
+        return true;
     }
 
     internal bool TryApplyTerrainMotion(in NpcSnapshot npc, in NpcStateUpdate proposed, out NpcStateUpdate next)

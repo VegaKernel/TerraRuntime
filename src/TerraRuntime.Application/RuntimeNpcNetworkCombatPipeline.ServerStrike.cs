@@ -29,9 +29,18 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         if (!applied)
             return false;
 
+        bool preparedProjectile = pendingProjectileStrike is not null;
+        if (preparedProjectile || pendingDebuffPrelude is not null)
+        {
+            pendingProjectileResolvedDamage = result.ResolvedDamage;
+            preparedProjectileCommittedNpc = committed;
+        }
+
         // Buff expiry belongs before GetHurtByDebuff's actual 9999 StrikeNPC. The prepared
         // status owner publishes only after the entire lethal operation has been admitted.
         prelude?.PublishBeforeStrike(committed);
+        if (prelude is not null &&
+            (!npcs.TryGet(committed.Handle, out var afterPrelude) || afterPrelude != committed)) return true;
 
         // TerrariaServer 1.4.5.8 StrikeNPC_Inner sends the supplied damage/critical flag, rather than HP damage.
         // SendData takes number2 as float and narrows it to short. The supported net11 Windows execution
@@ -41,14 +50,21 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             (short)Math.Min(request.BaseDamage, short.MaxValue), request.KnockBack,
             checked((byte)(request.HitDirection + 1)), request.Critical ? (byte)1 : (byte)0);
         npcs.TryPublishPendingBirthBeforeStrike(in before, in committed);
+        if (prelude is not null &&
+            (!npcs.TryGet(committed.Handle, out var afterBirth) || afterBirth != committed)) return true;
         npcReplication?.TryPublishDamage(default, in wire);
+        if (prelude is not null &&
+            (!npcs.TryGet(committed.Handle, out var afterDamage) || afterDamage != committed)) return true;
         PublishTownStrikeRandom(townStrike);
-        if (!result.Lethal) ExecuteNpcNonlethalHitEffects(in committed);
+        if (!result.Lethal && !preparedProjectile) ExecuteNpcNonlethalHitEffects(in committed, result.ResolvedDamage);
 
         // A lethal actor is published by the final despawn, after owned loot/death effects. Publishing the
         // intermediate Life=0 state here would insert another packet 23 ahead of those effects.
         if (!damage.TryCompleteUnpublished(in committed, spawnTrueEye, publishUpdate: !result.Lethal, forceUpdate))
+        {
+            if (prelude is not null) return true;
             throw new InvalidOperationException("An accepted server strike lost its exact NPC revision before publication.");
+        }
         return true;
     }
 

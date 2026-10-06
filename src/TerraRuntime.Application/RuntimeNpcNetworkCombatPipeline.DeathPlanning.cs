@@ -23,6 +23,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private VanillaUnifiedRandom1458? deathPreviewLiveRandom;
     private bool deathAdmissionRejected;
     private RuntimeNpcDeathPrelude1458? plannedPrelude;
+    private RuntimeWorldClock? plannedUnpublishedClock;
+    private (double?, bool?, bool?, bool?, bool?, long?, double?, int?) plannedStrikeClock;
+    private (bool Eye, bool Wall) plannedStrikeDaily;
     private ulong plannedPreludeRevision;
     private RuntimeWorldProgressionMutationSnapshot plannedDeathProgression;
     private bool plannedLootAllowed;
@@ -40,6 +43,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private void ExecuteOwnedDeathEvents(in NpcSnapshot dead, bool eaterBoss)
     {
         if (!IsPreviewingDeath && pendingDeathPlan is not null && !plannedLootAllowed) return;
+        if (!IsPreviewingDeath && pendingDeathPlan?.IsAdoptedUnpublished == true) return;
         AdvanceSlimeRainDeath(in dead);
         AdvanceMoonEventDeath(in dead);
         if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
@@ -89,6 +93,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             dead.Simulation.ExtraMoneyValue is not int extra || dead.Simulation.Midas is not bool midas)
             return false;
         plannedDeathProgression = progression.CaptureSnapshot();
+        plannedStrikeClock = CaptureStrikeClock();
+        plannedStrikeDaily = CaptureStrikeDaily();
+        plannedUnpublishedClock = null;
         plannedGlobalLootWorld = CaptureGlobalLootWorld();
         plannedSpecificLowTiles = CaptureSpecificLowTiles();
         plannedSpecificPlayers = null;
@@ -107,6 +114,13 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             plannedPlayerPresence[slot] = players.TryGetPlayer(new((byte)slot), out plannedPlayers[slot]);
         var liveRandom = random.SourceRandom;
         var plan = new RuntimeNpcDeathDropPlan1458(dead.Handle, dead.Revision, liveRandom);
+        if (pendingProjectileStrike is { } projectileStrike)
+        {
+            if (pendingTownStrike is not null || !liveRandom.HasSameState(projectileStrike.Before) ||
+                !projectileStrike.IsCurrent()) return false;
+            plan.Random.CopyStateFrom(projectileStrike.After);
+            plan.RetainStrikePrelude();
+        }
         if (pendingTownStrike is { } townStrike)
         {
             if (!liveRandom.HasSameState(townStrike.Before)) return false;
@@ -184,11 +198,26 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                     (hasClosest && closest.NpcLife.HasValue && closest.DerivedLifeMax.HasValue) || constructorHealthKnown);
             if ((allowLoot && !VanillaNpcHealingLoot1458.TryExecute(in healing, in origin, random, lootDelivery)) ||
                 !plan.FinishPreviewPhase(NpcDeathDropPhase1458.Healing)) return false;
+            if (pendingDebuffPlan is { } debuff)
+                pendingDebuffOffer = RuntimeNpcBuffStatus1458.PlanVisualOffers(in debuff,
+                    new NpcRuntimeTownCombatRandom1458(new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom(plan.Random)), false);
             random.UseSource(liveRandom);
             Span<WorldItemAllocationPlayer1458> allocationViews = stackalloc WorldItemAllocationPlayer1458[
                 VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
             if (!TryCaptureAllocationViews(allocationViews, out int viewCount) ||
                 !plan.TryReserve(worldItems, allocationViews[..viewCount]) || !plan.TryAccept(IsCurrentDeathOwner)) return false;
+            if (pendingProjectileStrike is not null || pendingDebuffPrelude is not null)
+            {
+                // Lava's Expert/Skyblock tile producer needs an owned world-tile death operation.
+                if (dead.TypeIdentity == VanillaNpcIds.LavaSlime &&
+                    (expertMode || plannedSpecificLowTiles != false || lootRemixWorld != false)) return false;
+                if (dead.TypeIdentity == VanillaNpcIds.BlueSlime && dead.Ai.Ai1 == 1345f) return false;
+                if (previewDeathProgression.CaptureSnapshot() != plannedDeathProgression ||
+                    !plan.TryEnableUnpublished(in dead) || !plan.ValidateUnpublishedOwnerFacts() ||
+                    CaptureStrikeClock() != plannedStrikeClock || CaptureStrikeDaily() != plannedStrikeDaily ||
+                    !plan.CanAdoptUnpublished()) return false;
+                plannedUnpublishedClock = previewDeathClock;
+            }
             plannedDaily = previewDaily;
             plannedPrelude = prelude;
             plannedLootAllowed = allowLoot;
@@ -238,6 +267,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     {
         pendingDeathPlan?.Dispose(); pendingDeathPlan = null; plannedDaily = null;
         plannedPrelude = null; plannedPreludeRevision = 0; plannedLootAllowed = false;
+        plannedUnpublishedClock = null;
+        preparedDeathPreludePublication = null;
     }
 
     private bool IsCurrentDeathOwner(NpcHandle handle, NpcRevision revision)
@@ -252,12 +283,22 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         bool fallbackCurrent = plannedHealingFallback is not { } fallback || rawPlayerSlots!.IsCurrent(in fallback);
         bool worldCurrent = CaptureGlobalLootWorld() == plannedGlobalLootWorld;
         bool specificCurrent = IsSpecificLootContextCurrent();
-        return worldCurrent && specificCurrent && spawnCurrent && debuffCurrent && fallbackCurrent &&
+        bool projectileCurrent = pendingProjectileStrike?.IsCurrent() ?? true;
+        bool clockCurrent = (pendingProjectileStrike is null && pendingDebuffPrelude is null) ||
+            CaptureStrikeClock() == plannedStrikeClock && CaptureStrikeDaily() == plannedStrikeDaily;
+        return worldCurrent && specificCurrent && spawnCurrent && debuffCurrent && projectileCurrent && clockCurrent && fallbackCurrent &&
             npcs.TryGet(handle, out var current) && current.Revision == revision &&
             deathPrelude.Revision == plannedPreludeRevision && progression.CaptureSnapshot() == plannedDeathProgression &&
             (plannedDeathSpawnSerial is not { } serial ||
                 (npcs.TryCaptureDeathMutationSerial(out ulong currentSerial) && currentSerial == serial));
     }
+
+    private (double?, bool?, bool?, bool?, bool?, long?, double?, int?) CaptureStrikeClock() =>
+        (worldClock?.Time, worldClock?.DayTime, worldClock?.BloodMoonActive, worldClock?.PumpkinMoonActive,
+         worldClock?.SnowMoonActive, worldClock?.MoonEventProgressRevision,
+         worldClock?.SlimeRainTime, worldClock?.SlimeRainKillCount);
+
+    private (bool Eye, bool Wall) CaptureStrikeDaily() => (bossRecoveryDaily.EyeKilled, bossRecoveryDaily.WallKilled);
 
     private bool ArePlannedPlayersCurrent()
     {

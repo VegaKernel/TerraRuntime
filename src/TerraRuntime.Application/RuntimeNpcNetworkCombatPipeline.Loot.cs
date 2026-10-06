@@ -10,8 +10,14 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class RuntimeNpcNetworkCombatPipeline
 {
-    private void ExecuteNpcNonlethalHitEffects(in NpcSnapshot npc)
+    private void ExecuteNpcNonlethalHitEffects(in NpcSnapshot npc, int resolvedDamage = 0)
     {
+        if (npc.TypeIdentity == VanillaNpcIds.LavaSlime && npc.Simulation.LifeMax > 0)
+        {
+            // HitEffect uses the post-defense damage and a double threshold, including a fractional final particle.
+            double particles = (double)resolvedDamage / npc.Simulation.LifeMax * 80.0;
+            for (int particle = 0; particle < particles; particle++) random.NextInt32(0, 8);
+        }
         // Dedicated NPC.HitEffect still makes the Eskimo Zombie's gore choice, even though
         // Gore.NewGore and Dust.NewDust perform no server-side particle allocation.
         if (npc.TypeIdentity.Value == 186) random.NextInt32(0, 5);
@@ -19,6 +25,11 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
     private void ExecuteNpcDeathHitEffects(in NpcSnapshot npc)
     {
+        if (npc.TypeIdentity == VanillaNpcIds.LavaSlime)
+        {
+            // Dedicated Dust.NewDust returns early, but its caller still selects noGravity forty times.
+            for (int particle = 0; particle < 40; particle++) random.NextInt32(0, 8);
+        }
         VanillaTownNpcDeathHitEffect1458.ConsumeLethalChoices(npc.TypeIdentity, random);
         // Both Eskimo identities choose a death gore variant on the dedicated server.
         if (npc.TypeIdentity.Value is 186 or 432) random.NextInt32(0, 2);
@@ -49,6 +60,15 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     {
         if (!IsPreviewingDeath && pendingDeathPlan is { } plan)
         {
+            if (plan.IsUnpublishedMode)
+            {
+                // The selected canonical HitEffect choices were consumed by the detached death preview.
+                // Items/RNG and the ledger are already adopted before the first status54.
+                if (!plan.IsAdoptedUnpublished ||
+                    !plan.TryPublishPhase(NpcDeathDropPhase1458.Prelude, lootDelivery.Adopt) ||
+                    !PublishPreparedDeathPrelude()) return false;
+                return plan.TryPublishPhase(NpcDeathDropPhase1458.Imported, lootDelivery.Adopt);
+            }
             if (!plan.CanBeginDeathHitEffects() || deathPrelude.Revision != plannedPreludeRevision) return false;
             ExecuteNpcDeathHitEffects(in npc);
             if (!plan.TryPublishPhase(NpcDeathDropPhase1458.Prelude, lootDelivery.Adopt) ||

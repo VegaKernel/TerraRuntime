@@ -2,6 +2,9 @@ using TerraRuntime.Contracts.Runtime;
 
 namespace TerraRuntime.Application;
 
+internal readonly record struct ProjectileNpcImmunityCheckpoint1458(
+    int Index, ProjectileGeneration Projectile, NpcGeneration Npc, long Tick);
+
 /// <summary>
 /// Generation-safe runtime mirror of Projectile.localNPCImmunity for the source-backed projectile slice.
 /// Vanilla owns this state on the projectile and both Damage_PVE and target acquisition consult it; keeping one
@@ -57,6 +60,17 @@ internal sealed class RuntimeProjectileNpcLocalImmunityRegistry
         npcGenerations[index] = target.Generation;
         lastHitTicks[index] = tick;
     }
+
+    internal ProjectileNpcImmunityCheckpoint1458 Capture(ProjectileHandle projectile, NpcHandle target)
+    {
+        int index = GetIndex(projectile, target);
+        return new(index, projectileGenerations[index], npcGenerations[index], lastHitTicks[index]);
+    }
+
+    internal bool IsCurrent(in ProjectileNpcImmunityCheckpoint1458 checkpoint) =>
+        (uint)checkpoint.Index < (uint)lastHitTicks.Length &&
+        projectileGenerations[checkpoint.Index] == checkpoint.Projectile &&
+        npcGenerations[checkpoint.Index] == checkpoint.Npc && lastHitTicks[checkpoint.Index] == checkpoint.Tick;
 
     private int GetIndex(ProjectileHandle projectile, NpcHandle target)
     {

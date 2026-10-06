@@ -204,12 +204,18 @@ public sealed partial class RuntimeWorldItemStore
             steps.Add(new(start, operations.Count, slot, 0, pending[..pendingCount].ToArray(), null));
             return true;
         }
-        public bool IsCurrent
+        public bool IsCurrent => ValidateOwnerFacts() && IsCurrentOwned;
+
+        // External owner queries finish before the callback-free final store guard/adoption.
+        internal bool ValidateOwnerFacts() => !disposed && !failed &&
+            ReferenceEquals(owner.ownerFactsProvider, capturedProvider) && ownerFacts?.IsCurrent != false;
+
+        internal bool IsCurrentOwned
         {
             get
             {
                 if (disposed || failed || owner.sourceTransferCount != expectedPending ||
-                    !ReferenceEquals(owner.ownerFactsProvider, capturedProvider) || ownerFacts?.IsCurrent == false) return false;
+                    !ReferenceEquals(owner.ownerFactsProvider, capturedProvider)) return false;
                 if (!owner.sourceTransfers.AsSpan(0, expectedPending).SequenceEqual(expectedTransfers.AsSpan(0, expectedPending))) return false;
                 for (int i = 0; i < baseline.Length; i++)
                 {
@@ -384,6 +390,122 @@ public sealed partial class RuntimeWorldItemStore
                 sink.WorldItemSentinelCommitted(in transient);
             committed++;
             return true;
+        }
+
+        // The application validates external owners before its final pure NPC/player/projectile guards.
+        // This adoption never invokes a provider or sink and releases claims before publication.
+        internal bool TryAdoptUnpublished(out AllocationPublication? publication)
+        {
+            publication = null;
+            if (!claimed || committed != 0 || !IsCurrentOwned)
+                return false;
+
+            var retained = new AllocationPublication(this);
+            owner.BeginWrite();
+            try
+            {
+                foreach (var operation in operations)
+                {
+                    var before = owner._slots[operation.Slot];
+                    owner._slots[operation.Slot] = operation.After;
+                    owner._activeCount += (operation.After.Active ? 1 : 0) - (before.Active ? 1 : 0);
+                    expected[operation.Slot] = operation.After;
+                }
+                if (steps.Count != 0)
+                {
+                    var finalStep = steps[^1];
+                    owner.sourceTransferCount = finalStep.Pending.Length;
+                    finalStep.Pending.CopyTo(owner.sourceTransfers, 0);
+                    expectedPending = finalStep.Pending.Length;
+                    finalStep.Pending.CopyTo(expectedTransfers, 0);
+                }
+                for (int index = 0; index < touched.Length; index++)
+                    if (touched[index]) owner._slots[index].Claimed = false;
+            }
+            finally
+            {
+                owner.EndWrite();
+            }
+            committed = steps.Count;
+            claimed = false;
+            disposed = true;
+            publication = retained;
+            return true;
+        }
+
+        internal sealed class AllocationPublication
+        {
+            private readonly RuntimeWorldItemStore owner;
+            private readonly SlotState[] final;
+            private readonly PublicationOperation[] operations;
+            private readonly PublicationStep[] steps;
+            private int next;
+            private bool publishing;
+
+            internal AllocationPublication(AllocationPreview preview)
+            {
+                owner = preview.owner;
+                final = (SlotState[])preview.working.Clone();
+                operations = new PublicationOperation[preview.operations.Count];
+                var previous = (SlotState[])preview.baseline.Clone();
+                for (int index = 0; index < operations.Length; index++)
+                {
+                    var operation = preview.operations[index];
+                    var snapshot = operation.Kind is null ? default : operation.Kind == WorldItemStateCommitKind.Remove
+                        ? Capture(operation.Slot, in previous[operation.Slot])
+                        : Capture(operation.Slot, operation.After);
+                    operations[index] = new(operation.Slot, operation.Kind, snapshot);
+                    previous[operation.Slot] = operation.After;
+                }
+                steps = new PublicationStep[preview.steps.Count];
+                for (int index = 0; index < steps.Length; index++)
+                {
+                    var step = preview.steps[index];
+                    var lease = step.LeaseTicks == 0 || step.Slot == VanillaCapacity
+                        ? default : new WorldItemDropReservation(step.Slot, new(previous[step.Slot].Generation));
+                    // A source lease prevents subsequent selection of this slot within the batch.
+                    steps[index] = new(step.Start, step.End, step.Slot, lease, step.Transient);
+                }
+            }
+
+            internal int Count => steps.Length;
+
+            internal bool TryGetLease(int index, out WorldItemDropReservation lease)
+            {
+                lease = default;
+                if ((uint)index >= (uint)steps.Length) return false;
+                lease = steps[index].Lease;
+                return true;
+            }
+
+            internal bool TryPublishNext(out short slot)
+            {
+                slot = -1;
+                if (publishing || next == steps.Length) return false;
+                // Consume the entire step before a reentrant sink can ask for another publication.
+                var step = steps[next++];
+                slot = step.Slot;
+                publishing = true;
+                try
+                {
+                    for (int index = step.Start; index < step.End; index++)
+                    {
+                        var operation = operations[index];
+                        if (operation.Kind is { } kind && owner._slots[operation.Slot] == final[operation.Slot])
+                            owner.Publish(kind, operation.Snapshot);
+                    }
+                    if (step.Transient is { } transient && owner._commitSink is IWorldItemSentinelCommitSink1458 sink)
+                        sink.WorldItemSentinelCommitted(in transient);
+                }
+                finally
+                {
+                    publishing = false;
+                }
+                return true;
+            }
+
+            private readonly record struct PublicationOperation(short Slot, WorldItemStateCommitKind? Kind, WorldItemSnapshot Snapshot);
+            private readonly record struct PublicationStep(int Start, int End, short Slot, WorldItemDropReservation Lease, WorldItemSentinelCommit1458? Transient);
         }
 
         public bool TryProcessPendingTransfers()

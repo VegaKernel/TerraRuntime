@@ -29,7 +29,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 !plan.TryPublishPhase(NpcDeathDropPhase1458.Money, lootDelivery.Adopt) ||
                 !plan.TryPublishPhase(NpcDeathDropPhase1458.Healing, lootDelivery.Adopt))
                 throw new InvalidOperationException("Accepted death events diverged from their owned RNG preview.");
-            bossRecoveryDaily.CopyFrom(plannedDaily!);
+            // Selected unpublished deaths adopted this state before their first outward callback.
+            if (!plan.IsUnpublishedMode) bossRecoveryDaily.CopyFrom(plannedDaily!);
             plan.Dispose(); pendingDeathPlan = null; plannedDaily = null;
             plannedPrelude = null; plannedPreludeRevision = 0; plannedLootAllowed = false;
             return;

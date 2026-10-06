@@ -2,6 +2,7 @@ using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Core.Npcs;
 
 namespace TerraRuntime.Tests;
 
@@ -38,6 +39,7 @@ public sealed class VanillaZombieTargetingStepperTests
     public void Day_surface_zombie_encourages_despawn_without_target_refresh()
     {
         var stepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        stepper.SetRawPlayerSlots(new ConstructorPlayerSlot());
         stepper.EnableZombieMotion(worldSurfaceTiles: 100d);
         stepper.SetWorldConditions(dayTime: true, slimeRainActive: false);
         stepper.SetCandidates([
@@ -146,6 +148,35 @@ public sealed class VanillaZombieTargetingStepperTests
         Assert.False(next.Simulation.JustHit);
         Assert.Equal(0f, next.Ai.Ai3, 5);
         Assert.Equal((ushort)7, next.Target);
+    }
+
+    [Fact]
+    public void Day_surface_unknown_raw_graveyard_is_not_a_constructor_default()
+    {
+        var stepper = new VanillaNpcTargetingAiStepper(new VanillaDemonEyeAiStepper());
+        stepper.EnableZombieMotion(worldSurfaceTiles: 100d);
+        stepper.SetWorldConditions(dayTime: true, slimeRainActive: false);
+        NpcSnapshot npc = CreateZombie(positionY: 80f);
+
+        Assert.False(stepper.TryStepState(in npc, out _));
+        stepper.SetRawPlayerSlots(new ConstructorPlayerSlot(graveyard: null));
+        Assert.False(stepper.TryStepState(in npc, out _));
+        stepper.SetRawPlayerSlots(new ConstructorPlayerSlot());
+        Assert.True(stepper.TryStepState(in npc, out var next));
+        Assert.Equal((ushort)255, next.Target);
+        Assert.Equal(10, next.Simulation.TimeLeft);
+    }
+
+    private sealed class ConstructorPlayerSlot(bool? graveyard = false) : INpcRawPlayerSlotLookup1458
+    {
+        public bool TryCapture(byte slot, out NpcRawPlayerSlotSnapshot1458 snapshot)
+        {
+            snapshot = new(VanillaNpcRawPlayer1458.Constructor(slot), 1, 1, null, ZoneGraveyard: graveyard);
+            return slot == byte.MaxValue;
+        }
+
+        public bool IsCurrent(in NpcRawPlayerSlotSnapshot1458 snapshot) =>
+            TryCapture(snapshot.Facts.Slot, out var current) && current == snapshot;
     }
 
     private static NpcSnapshot CreateZombie(float positionY) =>

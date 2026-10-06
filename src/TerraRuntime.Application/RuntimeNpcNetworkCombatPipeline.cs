@@ -101,6 +101,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
     private readonly NpcSnapshot[] npcFamilyBuffer;
 
     internal RuntimeNpcPlayerInteractionLedger Interactions => interactions;
+    internal VanillaUnifiedRandom1458 SourceRandom => random.SourceRandom;
 
     internal int CopyCombatIntegrityDiagnostics(Span<CombatIntegrityDiagnostic> destination) =>
         combatIntegrity.CopyRecentDiagnostics(destination);
@@ -462,7 +463,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
 
     private RuntimeProjectileNpcDamageResult TryStrikePlayerOwnedDamage(
         in NpcSnapshot target,
-        in NpcDamageRequest sourceRequest)
+        in NpcDamageRequest sourceRequest,
+        NpcDamagePrelude1458? prelude = null)
     {
         NpcSnapshot liveTarget = target;
         NpcDamageRequest request = sourceRequest;
@@ -497,8 +499,14 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
 
 
         if (!TryApplyServerStrike(in request, out NpcDamageResult result,
-                destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle ? destroyerRoot : null))
+                destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle ? destroyerRoot : null, prelude))
         { CancelPendingDeathPlan(); return RuntimeProjectileNpcDamageResult.Rejected; }
+
+        if (result.Lethal && pendingDeathPlan?.IsAdoptedUnpublished == true)
+        {
+            CompletePreparedCanonicalDeath(in preparedProjectileCommittedNpc);
+            return RuntimeProjectileNpcDamageResult.Killed;
+        }
 
         NpcSnapshot dead;
         if (liveTarget.TypeIdentity == VanillaNpcIds.WallOfFleshEye &&
@@ -614,6 +622,12 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
                 destroyerSharedLife && liveTarget.Handle != destroyerRoot.Handle ? destroyerRoot : null, prelude))
         { CancelPendingDeathPlan(); return RuntimeTownNpcMeleeDamageResult1458.Rejected; }
 
+        if (result.Lethal && pendingDeathPlan?.IsAdoptedUnpublished == true)
+        {
+            CompletePreparedCanonicalDeath(in preparedProjectileCommittedNpc);
+            return RuntimeTownNpcMeleeDamageResult1458.Killed;
+        }
+
         NpcSnapshot dead;
         if (liveTarget.TypeIdentity == VanillaNpcIds.WallOfFleshEye && TryResolveWallOfFleshRoot(in liveTarget, out NpcSnapshot wallRoot))
         {
@@ -668,6 +682,21 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             throw new InvalidOperationException("A Town NPC melee kill could not despawn the exact NPC generation.");
         interactions.Forget(dead.Handle);
         return RuntimeTownNpcMeleeDamageResult1458.Killed;
+    }
+
+    private void CompletePreparedCanonicalDeath(in NpcSnapshot dead)
+    {
+        // The accepted items, RNG and ledger survive observer reentry. NPC continuation
+        // belongs only to the exact committed revision, never a replacement or revised actor.
+        if (!TryExecuteImportedLoot(in dead, eaterBoss: false))
+            throw new InvalidOperationException("Prepared canonical death publications were not retained.");
+        ExecuteOwnedDeathEvents(in dead, eaterBoss: false);
+        DropBossRecoveryItemsIfEligible(in dead, eaterBoss: false);
+        AnnounceBossDefeat(in dead, eaterBoss: false);
+        if (!npcs.TryGet(dead.Handle, out var current))
+            interactions.Forget(dead.Handle);
+        else if (current == dead && npcs.TryDespawn(dead.Handle))
+            interactions.Forget(dead.Handle);
     }
 
 }

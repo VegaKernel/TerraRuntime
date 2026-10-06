@@ -167,13 +167,24 @@ public sealed class RuntimeNpcDamageExecutor
 
         if (prelude is not null)
         {
-            var prepared = new NpcStateUpdate(current.Type, current.NetId, current.PositionX,
-                current.PositionY, current.VelocityX, current.VelocityY, current.Target, current.Ai, prelude.Simulation);
-            if (prelude.Before != current || sharedLifeOwner is not null || prelude.Simulation.Life != 1 ||
-                prelude.Simulation.LifeMax != current.Simulation.LifeMax ||
-                !RuntimeNpcStore.IsValid(in prepared) || !prelude.IsCurrent())
-            { result = default; return false; }
-            current = current with { Simulation = prelude.Simulation };
+            if (prelude.Before != current || sharedLifeOwner is not null || !prelude.IsCurrent())
+            {
+                result = default;
+                return false;
+            }
+
+            if (prelude.Simulation is { } preparedSimulation)
+            {
+                var prepared = new NpcStateUpdate(current.Type, current.NetId, current.PositionX,
+                    current.PositionY, current.VelocityX, current.VelocityY, current.Target, current.Ai, preparedSimulation);
+                if (preparedSimulation.Life != 1 || preparedSimulation.LifeMax != current.Simulation.LifeMax ||
+                    !RuntimeNpcStore.IsValid(in prepared))
+                {
+                    result = default;
+                    return false;
+                }
+                current = current with { Simulation = preparedSimulation };
+            }
         }
 
         if (sharedLifeOwner is { } owner &&
@@ -184,7 +195,8 @@ public sealed class RuntimeNpcDamageExecutor
         // MessageBuffer packet 28 calls NPC.PlayerInteraction after validating the exact NPC generation and before
         // StrikeNPC. Keep that observable ordering: invulnerable/rejected strikes may still grant interaction credit,
         // while stale generations and malformed requests never do.
-        if (request.Source.Kind is DamageSourceKind.PlayerItem or DamageSourceKind.PlayerProjectile)
+        bool deferInteraction = prelude is { Simulation: null };
+        if (!deferInteraction && request.Source.Kind is DamageSourceKind.PlayerItem or DamageSourceKind.PlayerProjectile)
             _interactions?.TryMark(current.Handle, request.Source.Player);
 
         if (current.Simulation.DontTakeDamage ||
@@ -337,6 +349,11 @@ public sealed class RuntimeNpcDamageExecutor
             result = default;
             return false;
         }
+
+        // Prepared authoritative projectile hits project participation into the death preview,
+        // then adopt it here only after the exact HP transaction succeeds.
+        if (deferInteraction && request.Source.Kind is DamageSourceKind.PlayerItem or DamageSourceKind.PlayerProjectile)
+            _interactions?.TryMark(committed.Handle, request.Source.Player);
 
         committedSnapshot = committed;
         spawnTrueEye = spawnMoonLordTrueEye;

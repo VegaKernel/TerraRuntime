@@ -14,6 +14,9 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private bool TryFindBannerPlayer(in NpcSnapshot npc, out PlayerStateSnapshot selected, out string name)
     {
         selected = default; name = "";
+        if (TryGetPreparedProjectileInteraction(in npc, out var projectedPlayer) &&
+            players.TryGetPlayer(projectedPlayer.Slot, out selected) && !selected.IsDead)
+            return TryResolveBannerPlayerName(selected.Player, out name);
         if (interactions.TryGetLastInteraction(npc.Handle, out PlayerSlotId last) &&
             players.TryGetPlayer(last, out selected) && !selected.IsDead)
             return TryResolveBannerPlayerName(selected.Player, out name);

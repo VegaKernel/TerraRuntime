@@ -750,6 +750,14 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
         INpcAiStateStepper inner, out NpcStateUpdate next)
     {
         NpcSnapshot npc = sourceNpc;
+        // AI_003's ambient sound offer reads shimmerTransparency, independently of alpha. The preceding
+        // Shimmer VFX phase remains unowned; unknown or nonzero histories cannot enter this dry lane.
+        if (definition.Type == VanillaNpcIds.Zombie &&
+            (npc.Simulation.ShimmerTransparency != 0f || npc.Simulation.LiquidContact == NpcLiquidContactKind.Shimmer))
+        {
+            next = default;
+            return false;
+        }
         // AI_003 transforms Snow Moon type 348 before the common fighter work. NPC.Transform clears ai[],
         // applies target-349 SetDefaults, preserves its bottom edge and scales life; both source hitboxes are
         // 28-by-76, so this specific transform has no position delta before the same-tick type-349 movement.
@@ -839,6 +847,37 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
               definition.Type == VanillaNpcIds.SwampThing) && context.EclipseActive) &&
             npc.PositionY < context.WorldSurfacePixels &&
             parameters.DaySurfaceEncouragesDespawn;
+        if (definition.Type == VanillaNpcIds.Zombie)
+        {
+            daytimeSurface = context.DayTime && !context.EclipseActive && !npc.Simulation.SpawnedFromStatue &&
+                npc.PositionY <= context.WorldSurfacePixels;
+            if (daytimeSurface)
+            {
+                bool graveyard;
+                // Source reads player[target] before TargetClosest, including constructor slot 255.
+                if (npc.Target <= byte.MaxValue && context.HasRawPlayerSlots)
+                {
+                    if (!context.TryCaptureRawPlayer((byte)npc.Target, out var raw) ||
+                        raw.ZoneGraveyard is not { } rawGraveyard || !context.IsRawPlayerCurrent(in raw))
+                    {
+                        next = default;
+                        return false;
+                    }
+                    graveyard = rawGraveyard;
+                }
+                else if (npc.Target < byte.MaxValue && context.TryGetOwnedPlayer((byte)npc.Target, out var player) &&
+                    player.Zones is { } zones)
+                {
+                    graveyard = (zones.Zone4 & 64) != 0; // Source Player.ZoneGraveyard = zone4[6].
+                }
+                else
+                {
+                    next = default;
+                    return false;
+                }
+                daytimeSurface = !graveyard;
+            }
+        }
         if (!definition.TryResolveHitbox(npc.Simulation, out var fighterBody))
         {
             next = default;
@@ -1011,6 +1050,11 @@ internal sealed partial class VanillaGroundFighterNpcBehaviorStrategy(IVanillaNp
             next = default;
             return false;
         }
+
+        // Genuine dedicated-server SoundID.Zombie offer, after source stuck tracking and before pursuit.
+        // SoundEngine's server path adds no further random selection; this is not a cursor compensation.
+        if (definition.Type == VanillaNpcIds.Zombie && result.Ai.Ai3 < parameters.StuckThreshold && !daytimeSurface)
+            _ = random.NextInt32(0, 1000);
 
         if (definition.Type == VanillaNpcIds.ChaosElemental && result.VelocityY < 0f)
             result = result with { VelocityY = result.VelocityY * 1.1f };

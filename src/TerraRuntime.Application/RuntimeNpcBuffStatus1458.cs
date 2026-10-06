@@ -63,6 +63,7 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
         {
             if (!npcs.TryGetActive((byte)slot, out var npc) || !IsSupported(in npc))
             { entries[slot] = default; continue; }
+            if (HasUnownedZombieShimmer(in npc)) continue;
             EnsureGeneration(npc.Handle);
             ref Entry entry = ref entries[slot];
             entry.PreviousFlags = entry.Flags; entry.PreviousStinky = entry.Stinky; entry.VisualOffer = default;
@@ -74,6 +75,7 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
         bool allowLethal = false)
     {
         plan = default;
+        if (HasUnownedZombieShimmer(in before)) return false;
         if (!EnsureGeneration(before.Handle) || !npcs.TryGet(before.Handle, out var current) || current != before) return false;
         ref Entry entry = ref entries[before.Handle.Slot];
         if (entry.Revision == ulong.MaxValue) return false;
@@ -195,7 +197,15 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
         return true;
     }
     internal void FinishWorldTick()
-    { for (int slot = 0; slot < entries.Length; slot++) if (npcs.TryGetActive((byte)slot, out var npc)) TryRemoveWetStatus(npc.Handle); }
+    {
+        for (int slot = 0; slot < entries.Length; slot++)
+            if (npcs.TryGetActive((byte)slot, out var npc) && !HasUnownedZombieShimmer(in npc))
+                TryRemoveWetStatus(npc.Handle);
+    }
+
+    private static bool HasUnownedZombieShimmer(in NpcSnapshot npc) =>
+        npc.TypeIdentity == VanillaNpcIds.Zombie &&
+        (npc.Simulation.ShimmerTransparency != 0f || npc.Simulation.LiquidContact == NpcLiquidContactKind.Shimmer);
 
     public bool TryGetStinky(NpcHandle handle, out bool stinky)
     { stinky = false; if (!EnsureGeneration(handle)) return false; stinky = entries[handle.Slot].Stinky; return true; }
@@ -233,7 +243,8 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
         count = 0;
         return npcs.TryGetActive(slot, out var npc) && TryCopyWireBuffs(npc.Handle, destination, out count);
     }
-    private static bool IsDotResident(int type) => type == VanillaNpcIds.Merchant.Value ||
+    private static bool IsDotResident(int type) => type == VanillaNpcIds.Zombie.Value ||
+        type == VanillaNpcIds.Merchant.Value ||
         type == VanillaNpcIds.Nurse.Value || type == VanillaNpcIds.ArmsDealer.Value ||
         type == VanillaNpcIds.Guide.Value || type == VanillaNpcIds.DyeTrader.Value ||
         type == VanillaNpcIds.Stylist.Value || type == VanillaNpcIds.TaxCollector.Value ||
