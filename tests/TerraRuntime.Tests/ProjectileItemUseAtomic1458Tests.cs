@@ -1,3 +1,5 @@
+using System.IO.Compression;
+using System.Text.Json;
 using TerraRuntime.Application;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
@@ -19,16 +21,19 @@ public sealed class ProjectileItemUseAtomic1458Tests
         using var f = new Fixture();
         var expected = f.Random.Clone();
         bool conserved = expected.Next(3) == 0;
+        AdvanceMinisharkSpread(expected);
         f.Shoot(f.Bullet());
         Assert.True(f.Store.TryGetActive(0, out var shot));
         Assert.True(f.Store.IsCombatTrusted(shot.Handle));
         Assert.Equal(new ProjectileGeneration(1), shot.Handle.Generation);
         Assert.Equal((short)13, shot.Damage);
         Assert.Equal(2f, shot.KnockBack);
-        Assert.Equal(11f, shot.VelocityX);
+        OriginalMinisharkShot source = ReadOriginalMinisharkShot(97);
+        Assert.Equal(source.VelocityX, shot.VelocityX);
+        Assert.Equal(source.VelocityY, shot.VelocityY);
         Assert.Equal(conserved ? 5 : 4, f.Ammo.Stack);
         Assert.True(f.Random.HasSameState(expected));
-        Assert.Equal(1335025742, f.Random.Clone().Next());
+        Assert.Equal(source.Next, f.Random.Clone().Next());
     }
 
     [Fact]
@@ -117,6 +122,7 @@ public sealed class ProjectileItemUseAtomic1458Tests
         using var f = new Fixture();
         var expected = f.Random.Clone();
         expected.Next(3);
+        AdvanceMinisharkSpread(expected);
         int observations = 0;
         f.Events.OnEquipment = () =>
         {
@@ -185,6 +191,7 @@ public sealed class ProjectileItemUseAtomic1458Tests
                 f.SetItem(VanillaPlayerItemSlotCatalog.AmmoSlotStart, 3104, 1);
                 packet = f.Bullet();
                 expected.Next(3);
+                AdvanceMinisharkSpread(expected);
             }
             f.Shoot(packet);
             Assert.Equal(1, f.Authority.PromotedClientProjectileSpawns);
@@ -204,7 +211,7 @@ public sealed class ProjectileItemUseAtomic1458Tests
                     new PlayerBuffTypesCommitRequest(f.Connection.Player.Slot, new[] { new BuffTypeId(buff) })));
             if (buff == -1) f.ImportUnknownBuffs();
             var before = f.Random.Clone();
-            f.Shoot(f.Bullet());
+            f.Shoot(f.Bullet(buff: buff));
             Assert.True(f.Store.TryGetActive(0, out var shot));
             Assert.Equal(buff != -1, f.Store.IsCombatTrusted(shot.Handle));
             if (buff == -1)
@@ -216,8 +223,10 @@ public sealed class ProjectileItemUseAtomic1458Tests
             {
                 bool conserve = buff > 0 && before.Next(5) == 0;
                 conserve |= before.Next(3) == 0;
+                AdvanceMinisharkSpread(before);
                 Assert.Equal(conserve ? 5 : 4, f.Ammo.Stack);
                 Assert.True(f.Random.HasSameState(before));
+                Assert.Equal(ReadOriginalMinisharkShot(97, buff == 93, buff == 112).Next, f.Random.Clone().Next());
             }
         }
     }
@@ -329,7 +338,11 @@ public sealed class ProjectileItemUseAtomic1458Tests
             new(new TerrariaProjectileKeyState(Connection.Player.Slot.Value, key, 1),
                 type, 120f, 100f, speed, 0f, 0f, 0f, 0f, 0, damage, knockBack, 0);
 
-        public TerrariaProjectileUpdateState Bullet(ushort key = 701) => Packet(key, 14, 13, 2f, 11f);
+        public TerrariaProjectileUpdateState Bullet(ushort key = 701, int buff = 0)
+        {
+            OriginalMinisharkShot source = ReadOriginalMinisharkShot(Ammo.ItemType.Value, buff == 93, buff == 112);
+            return Packet(key, 14, 13, 2f, source.VelocityX) with { VelocityY = source.VelocityY };
+        }
 
         public TerrariaProjectileUpdateState Celebration(ushort key, float child) =>
             Packet(key, VanillaProjectileIds.CelebrationRocketIV.Value, 115, 16f,
@@ -346,6 +359,30 @@ public sealed class ProjectileItemUseAtomic1458Tests
         }
 
         public void Dispose() => session.Dispose();
+    }
+
+    private static void AdvanceMinisharkSpread(VanillaUnifiedRandom1458 random)
+    {
+        random.Next(-40, 41);
+        random.Next(-40, 41);
+    }
+
+    internal readonly record struct OriginalMinisharkShot(float VelocityX, float VelocityY, int Next);
+
+    // Genuine coupled PickAmmo -> ItemCheck_Shoot; the older PickAmmo-only resource remains unchanged.
+    internal static OriginalMinisharkShot ReadOriginalMinisharkShot(int ammo, bool ammoBox = false, bool ammoPotion = false, int use = 1)
+    {
+        using Stream stream = typeof(ProjectileItemUseAtomic1458Tests).Assembly.GetManifestResourceStream("AmmoBuffMinisharkShoot1458")!;
+        Assert.NotNull(stream);
+        using var gzip = new GZipStream(stream, CompressionMode.Decompress);
+        using JsonDocument data = JsonDocument.Parse(gzip);
+        Assert.Equal("4b87890ac53d40f61db5f928693a379acf4ccbd8ed3b47eb32fb096f145df034", data.RootElement.GetProperty("sourceSha256").GetString());
+        JsonElement row = Assert.Single(data.RootElement.GetProperty("shots").EnumerateArray(), row =>
+            row.GetProperty("seed").GetInt32() == 1458 && row.GetProperty("ammo").GetInt32() == ammo &&
+            row.GetProperty("ammoBox").GetBoolean() == ammoBox && row.GetProperty("ammoPotion").GetBoolean() == ammoPotion &&
+            row.GetProperty("use").GetInt32() == use);
+        JsonElement velocity = row.GetProperty("shots")[0].GetProperty("velocity");
+        return new(velocity.GetProperty("X").GetSingle(), velocity.GetProperty("Y").GetSingle(), row.GetProperty("next").GetInt32());
     }
 
     private sealed class Events : IRuntimePlayerEventSink

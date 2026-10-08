@@ -17,8 +17,8 @@ public enum VanillaProjectileAmmoTransform : byte
 
 /// <summary>
 /// Source-backed projectile-producing weapon facts used by strict packet-27 provenance. Missing entries remain
-/// combat-untrusted. The admitted ordinary bows and single-shot/basic guns have no weapon-specific launch spread;
-/// only source-backed ammo and conservation rules represented here may cross the strict boundary.
+/// combat-untrusted. Weapon-specific bullet spread is planned separately by VanillaBulletWeaponLaunch1458;
+/// defaults alone do not admit a generic fixed-velocity or single-projectile launch.
 /// </summary>
 public readonly record struct VanillaProjectileWeaponCombatDefinition(
     ItemTypeId Type,
@@ -30,7 +30,8 @@ public readonly record struct VanillaProjectileWeaponCombatDefinition(
     int UseTimeTicks,
     int AnimationTicks,
     int WeaponAmmoConservationOneIn,
-    float ImpossibleSpawnCenterDistancePixels);
+    float ImpossibleSpawnCenterDistancePixels,
+    bool ConserveOnNonzeroWeaponRoll = false);
 
 public readonly record struct VanillaChanneledMagicProjectileWeaponCombatDefinition(
     ItemTypeId Type,
@@ -107,6 +108,14 @@ public static class VanillaProjectileWeaponCombatCatalog
         new(VanillaItemIds.Handgun, VanillaProjectileIds.Bullet, VanillaProjectileAmmoFamily.Bullet, 26, 3f, 10f, 15, 15, 0, SpawnRange),
         new(VanillaItemIds.TheUndertaker, VanillaProjectileIds.Bullet, VanillaProjectileAmmoFamily.Bullet, 19, 2f, 6f, 20, 20, 0, SpawnRange),
         new(VanillaItemIds.Revolver, VanillaProjectileIds.Bullet, VanillaProjectileAmmoFamily.Bullet, 20, 4.5f, 16f, 22, 22, 0, SpawnRange),
+
+        new(VanillaItemIds.PhoenixBlaster, VanillaProjectileIds.Bullet, VanillaProjectileAmmoFamily.Bullet, 30, 2f, 13f, 14, 14, 0, SpawnRange),
+        new(VanillaItemIds.Megashark, VanillaProjectileIds.PurificationPowder, VanillaProjectileAmmoFamily.Bullet, 25, 1f, 10f, 7, 7, 2, SpawnRange),
+        new(VanillaItemIds.ChainGun, VanillaProjectileIds.PurificationPowder, VanillaProjectileAmmoFamily.Bullet, 38, 1.75f, 14f, 4, 4, 3, SpawnRange, ConserveOnNonzeroWeaponRoll: true),
+        new(VanillaItemIds.Boomstick, VanillaProjectileIds.PurificationPowder, VanillaProjectileAmmoFamily.Bullet, 14, 5.75f, 5.35f, 40, 40, 0, SpawnRange),
+        new(VanillaItemIds.Shotgun, VanillaProjectileIds.PurificationPowder, VanillaProjectileAmmoFamily.Bullet, 24, 6.5f, 7f, 45, 45, 0, SpawnRange),
+        new(VanillaItemIds.TacticalShotgun, VanillaProjectileIds.PurificationPowder, VanillaProjectileAmmoFamily.Bullet, 36, 7f, 6f, 34, 34, 0, SpawnRange),
+        new(VanillaItemIds.QuadBarrelShotgun, VanillaProjectileIds.Bullet, VanillaProjectileAmmoFamily.Bullet, 14, 6.5f, 7f, 55, 55, 0, SpawnRange),
 
         // Item.SetDefaults cases 758..760. Player.PickAmmo uses projToShoot += item.shoot for AmmoID.Rocket.
         new(VanillaItemIds.GrenadeLauncher, VanillaProjectileIds.GrenadeI, VanillaProjectileAmmoFamily.Rocket, 60, 4f, 10f, 20, 20, 0, SpawnRange),
@@ -395,7 +404,7 @@ public static class VanillaProjectileWeaponCombatCatalog
         if (weapon.WeaponAmmoConservationOneIn > 0 &&
             weaponConservationRoll >= 0 &&
             weaponConservationRoll < weapon.WeaponAmmoConservationOneIn &&
-            weaponConservationRoll == 0)
+            (weapon.ConserveOnNonzeroWeaponRoll ? weaponConservationRoll != 0 : weaponConservationRoll == 0))
         {
             return true;
         }
@@ -404,6 +413,40 @@ public static class VanillaProjectileWeaponCombatCatalog
             attacker.MagicQuiver &&
             quiverConservationRoll >= 0 && quiverConservationRoll < 5 &&
             quiverConservationRoll == 0;
+    }
+
+    /// <summary>Item.Prefix stat-rounding validity, in addition to the represented ranged modifier formulas.</summary>
+    public static bool IsPrefixSupported(ItemTypeId weaponType, PrefixId prefix) =>
+        TryGetWeapon(weaponType, out _) &&
+        VanillaItemCombatCatalog.TryGetRangedPrefixModifiers(prefix, out _) &&
+        (prefix.Value == 0 ||
+         (VanillaItemPrefixTable1458.TryGet(weaponType, out var stats) &&
+          prefix.Value <= byte.MaxValue &&
+          VanillaItemPrefixTable1458.GetFamily(stats.Family).Contains((byte)prefix.Value) &&
+          VanillaItemPrefixTable1458.Accepts(in stats, prefix.Value)));
+
+    /// <summary>
+    /// Player.PickAmmo: execute every selected offer before testing consumable, including when an earlier
+    /// offer already conserved. The caller supplies a detached owned RNG cursor, not a new random stream.
+    /// </summary>
+    public static bool PrepareAmmoConservation(
+        in VanillaProjectileWeaponCombatDefinition weapon,
+        in VanillaProjectileAmmoCombatDefinition ammo,
+        in VanillaPlayerCombatSnapshot attacker,
+        Func<int, int, int> next,
+        bool ammoBox = false,
+        bool ammoPotion = false)
+    {
+        ArgumentNullException.ThrowIfNull(next);
+        int weaponRoll = weapon.Type == VanillaItemIds.CelebrationMk2 ? next(0, 2) : -1;
+        int quiverRoll = weapon.AmmoFamily == VanillaProjectileAmmoFamily.Arrow && attacker.MagicQuiver
+            ? next(0, 5) : -1;
+        int boxRoll = ammoBox ? next(0, 5) : -1;
+        int potionRoll = ammoPotion ? next(0, 5) : -1;
+        if (weapon.Type != VanillaItemIds.CelebrationMk2 && weapon.WeaponAmmoConservationOneIn > 0)
+            weaponRoll = next(0, weapon.WeaponAmmoConservationOneIn);
+        return boxRoll == 0 || potionRoll == 0 ||
+            ShouldConserveAmmo(in weapon, in ammo, in attacker, weaponRoll, quiverRoll);
     }
 
     private static float ResolveRangedDamageMultiplier(

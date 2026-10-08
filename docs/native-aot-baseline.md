@@ -1,5 +1,9 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Bullet launch checkpoint — 2026-10-08
+
+The 2026-10-08 bullet-launch checkpoint owns bounded source-ordered uses for8 bullet weapons, exact-key atomic volleys and physical1000 lifecycle/join exclusion. Local full/focused, shipping WindowsNativeAOT/five smokes, changed-use Native92/278 and Release/Native source82/49 socket checks pass. Strict server-RNG acceptance does not establish complete client Main.rand reconciliation; full player/inventory/animation and wider gameplay/NPC parity remain open. LinuxNativeAOT is locally unverified. See [current work state](agent-memory/work-state.md) for exact evidence and resume scope.
+
 ## Accessory and combat-owner checkpoint — 2026-10-08
 
 The 2026-10-08 checkpoint owns functional accessory slots67/68 under the destination world mode and the generation-owned Demon Heart flag, and rejects stale combat owners after damage-roll callbacks. Selected inactive-loadout sharing and genuine ranged launch spread remain open. See [current work state](agent-memory/work-state.md) for exact local acceptance and the next launch block.

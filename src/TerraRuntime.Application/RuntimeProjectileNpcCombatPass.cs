@@ -93,6 +93,9 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
         for (int projectileIndex = 0; projectileIndex < projectileCount; projectileIndex++)
         {
             ProjectileSnapshot projectile = projectileBuffer[projectileIndex];
+            // Main.UpdateWorld_Projectiles (1.4.5.8) never runs Update/Damage for overflow slot1000.
+            if (projectile.Handle.Slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount)
+                continue;
             if (projectiles.IsCombatTrusted(projectile.Handle) && VanillaProjectileOwnership.IsServerOwned(projectile.Spawner) &&
                 VanillaFallingBlock1458.TryGetTile(projectile.Type, out _) &&
                 !(projectile.Type == VanillaProjectileIds.AntlionSand && projectile.Ai.Ai0 == 2f))
@@ -227,7 +230,8 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
         {
             RuntimeProjectileExplosionEvent explosion = explosions[explosionIndex];
             ProjectileSnapshot projectile = explosion.Projectile;
-            if (!projectile.IsActive || projectile.Damage <= 0 ||
+            if (projectile.Handle.Slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount ||
+                !projectile.IsActive || projectile.Damage <= 0 ||
                 !VanillaProjectileOwnership.IsPlayerOwned(projectile.Spawner) ||
                 VanillaProjectileFacts.IsHostile(projectile.Type) ||
                 !VanillaProjectileExplosionFacts.TryGetOnKillExplosion(projectile.Type, out _) ||

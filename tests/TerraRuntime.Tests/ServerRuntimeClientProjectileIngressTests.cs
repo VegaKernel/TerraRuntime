@@ -2,6 +2,7 @@ using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Gameplay.Items;
+using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Gameplay.Projectiles;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
@@ -24,7 +25,9 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         float speed, int useTime, short slot)
     {
         // Actual original 1.4.5.8 Item.SetDefaults/PickAmmo outputs, including Minishark's conservation branch.
-        using var fixture = new Fixture(playerCount: 1, projectileStepper: new NoOpProjectileStepper());
+        var launchRandom = new VanillaUnifiedRandom1458(1458);
+        using var fixture = new Fixture(playerCount: 1, projectileStepper: new NoOpProjectileStepper(),
+            naturalSpawnRandom: weaponType == 98 ? new SystemVanillaNpcRandom(launchRandom) : null);
         ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 201);
         fixture.SetInventoryItem(owner, 0, new ItemTypeId(weaponType), 1);
         fixture.SetInventoryItem(owner, slot, new ItemTypeId(ammoType), 1);
@@ -32,9 +35,14 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         var valid = new TerrariaProjectileUpdateState(
             new TerrariaProjectileKeyState(owner.Player.Slot.Value, 701, 1),
             projectileType, 120f, 100f, speed, 0f, 0f, 0f, 0f, 0, damage, knockBack, 0);
+        if (weaponType == 98)
+        {
+            var source = ProjectileItemUseAtomic1458Tests.ReadOriginalMinisharkShot(ammoType);
+            valid = valid with { VelocityX = source.VelocityX, VelocityY = source.VelocityY };
+        }
 
         fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, valid with { Damage = (short)(damage + 1) }));
-        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, valid with { VelocityX = speed + 1f }));
+        fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, valid with { VelocityX = valid.VelocityX + 1f }));
         Assert.Equal(0, fixture.Projectiles.ActiveCount);
         fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, valid));
         Assert.True(fixture.Replication.WireIdentities.TryResolve(valid.Key, out ProjectileHandle first));
@@ -42,8 +50,15 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         Assert.True(fixture.State.TryCaptureProjectileSnapshot(first, out ProjectileSnapshot shot));
         Assert.Equal(damage, shot.Damage);
         Assert.Equal(knockBack, shot.KnockBack);
-        Assert.Equal(speed, shot.VelocityX, 3);
+        Assert.Equal(valid.VelocityX, shot.VelocityX, 3);
+        Assert.Equal(valid.VelocityY, shot.VelocityY, 3);
         var second = valid with { Key = new TerrariaProjectileKeyState(owner.Player.Slot.Value, 702, 1) };
+        if (weaponType == 98)
+        {
+            Assert.Equal(ProjectileItemUseAtomic1458Tests.ReadOriginalMinisharkShot(ammoType).Next, launchRandom.Clone().Next());
+            var source = ProjectileItemUseAtomic1458Tests.ReadOriginalMinisharkShot(ammoType, use: 2);
+            second = second with { VelocityX = source.VelocityX, VelocityY = source.VelocityY };
+        }
         fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, second));
         Assert.False(fixture.Replication.WireIdentities.TryResolve(second.Key, out _));
         for (int tick = 0; tick < useTime; tick++)
@@ -51,6 +66,13 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, second));
         Assert.True(fixture.Replication.WireIdentities.TryResolve(second.Key, out ProjectileHandle next));
         Assert.True(fixture.Projectiles.IsCombatTrusted(next));
+        if (weaponType == 98)
+        {
+            Assert.True(fixture.State.TryCaptureProjectileSnapshot(next, out var secondShot));
+            Assert.Equal(second.VelocityX, secondShot.VelocityX);
+            Assert.Equal(second.VelocityY, secondShot.VelocityY);
+            Assert.Equal(ProjectileItemUseAtomic1458Tests.ReadOriginalMinisharkShot(ammoType, use: 2).Next, launchRandom.Clone().Next());
+        }
         Assert.True(fixture.State.TryCapturePlayerInventoryItem(owner.Player, slot, out RuntimePlayerInventoryItem remaining));
         Assert.Equal(new ItemTypeId(ammoType), remaining.ItemType);
         Assert.Equal((short)1, remaining.Stack);
@@ -1040,7 +1062,8 @@ public sealed class ServerRuntimeClientProjectileIngressTests
             IProjectileStateStepper? projectileStepper = null,
             bool withWorldTiles = false,
             Random? projectilePlayerCombatRandom = null,
-            IRuntimePlayerEventSink? playerEventObserver = null)
+            IRuntimePlayerEventSink? playerEventObserver = null,
+            IVanillaNpcRandom? naturalSpawnRandom = null)
         {
             slots = new PlayerSlotPool(playerCount);
             Replication = new RuntimeProjectileReplicationRegistry();
@@ -1055,7 +1078,8 @@ public sealed class ServerRuntimeClientProjectileIngressTests
                 projectiles: Projectiles,
                 projectileStepper: projectileStepper,
                 projectileReplication: Replication,
-                projectilePlayerCombatRandom: projectilePlayerCombatRandom);
+                projectilePlayerCombatRandom: projectilePlayerCombatRandom,
+                naturalSpawnRandom: naturalSpawnRandom);
         }
 
         public RuntimeProjectileReplicationRegistry Replication { get; }

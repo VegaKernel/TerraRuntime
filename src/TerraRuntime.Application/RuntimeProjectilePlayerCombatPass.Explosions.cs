@@ -15,6 +15,8 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
         {
             RuntimeProjectileExplosionEvent explosion = explosions[explosionIndex];
             ProjectileSnapshot projectile = explosion.Projectile;
+            if (projectile.Handle.Slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount)
+                continue;
             if (explosion.SourceNpc.IsAssigned)
             {
                 TickHostileNpcExplosion(in explosion, tick);

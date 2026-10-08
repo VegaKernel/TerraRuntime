@@ -172,6 +172,37 @@ internal sealed partial class ProjectileAuthority
                 out authoritative);
         }
 
+        if (VanillaBulletWeaponLaunch1458.Supports(weapon.Type))
+        {
+            if (!VanillaProjectileWeaponCombatCatalog.IsPrefixSupported(weapon.Type, weaponItem.Prefix))
+                return ClientProjectileProvenanceResolveResult.NotApplicable;
+            if (packet.ProjectileType != expectedProjectileType.Value || packet.Damage != expectedDamage ||
+                packet.OriginalDamage != 0 || MathF.Abs(packet.KnockBack - expectedKnockBack) > knockBackTolerance ||
+                packet.Ai0 != 0f || packet.Ai1 != 0f || packet.Ai2 != 0f || packet.BannerIdToRespondTo != 0 ||
+                dx * dx + dy * dy > maximumDistance * maximumDistance ||
+                trustedClientUseCadence.IsOnCooldown(connection.Player, tick, authoritativeUseTime))
+                return RejectProvenance();
+            // The first source report supplies bounded aim intent, not ownership of MouseWorld/Main.rand.
+            // PickAmmo offers precede the weapon-specific count/spread offers on the detached cursor.
+            bool conserved = PrepareAmmoConservation(in weapon, in ammo, in attackerCombat, plannedRandom, ammoBox, ammoPotion);
+            Span<VanillaBulletLaunchShot1458> shots = stackalloc VanillaBulletLaunchShot1458[VanillaBulletWeaponLaunch1458.MaximumShotCount];
+            if (!VanillaBulletWeaponLaunch1458.TryResolveFromFirstVelocity(weapon.Type, packet.VelocityX,
+                    packet.VelocityY, speedEnvelope.CanonicalMagnitude, expectedProjectileType,
+                    plannedRandom.Next, plannedRandom.NextDouble, shots, out int shotCount))
+                return RejectProvenance();
+            var states = new ProjectileStateUpdate[shotCount];
+            for (int index = 0; index < states.Length; index++)
+                states[index] = new(expectedProjectileType, connection.Player.Slot.Value,
+                    packet.PositionX, packet.PositionY, shots[index].VelocityX, shots[index].VelocityY,
+                    default, BannerIdToRespondTo: 0, Damage: checked((short)expectedDamage),
+                    KnockBack: expectedKnockBack, OriginalDamage: 0);
+            RuntimePlayerInventoryItem remaining = conserved ? ammoItem : ammoItem.Stack == 1
+                ? default : ammoItem with { Stack = checked((short)(ammoItem.Stack - 1)) };
+            authoritative = new(states[0], new RuntimePlayerInventoryMutation(checked((short)ammoSlot), remaining),
+                ManaCost: 0, speedEnvelope, authoritativeUseTime) { UseTick = tick, VolleyStates = states };
+            return ClientProjectileProvenanceResolveResult.Accepted;
+        }
+
         if (packet.ProjectileType != expectedProjectileType.Value ||
             packet.Damage != expectedDamage ||
             packet.OriginalDamage != 0 ||
@@ -453,16 +484,8 @@ internal sealed partial class ProjectileAuthority
         bool ammoBox = false,
         bool ammoPotion = false)
     {
-        // Player.PickAmmo1.4.5.8: Celebration, Quiver, AmmoBox, AmmoReservation, then Minishark.
-        // Endless ammo still executes the selected conservation tests before consumable is checked.
-        int weaponRoll = weapon.Type == VanillaItemIds.CelebrationMk2 ? random.Next(2) : -1;
-        int quiverRoll = weapon.AmmoFamily == VanillaProjectileAmmoFamily.Arrow && attacker.MagicQuiver
-            ? random.Next(5) : -1;
-        int boxRoll = ammoBox ? random.Next(5) : -1;
-        int potionRoll = ammoPotion ? random.Next(5) : -1;
-        if (weapon.Type == VanillaItemIds.Minishark) weaponRoll = random.Next(3);
-        return boxRoll == 0 || potionRoll == 0 || VanillaProjectileWeaponCombatCatalog.ShouldConserveAmmo(
-            in weapon, in ammo, in attacker, weaponRoll, quiverRoll);
+        return VanillaProjectileWeaponCombatCatalog.PrepareAmmoConservation(
+            in weapon, in ammo, in attacker, random.Next, ammoBox, ammoPotion);
     }
 
     private static int FindFirstAmmo(

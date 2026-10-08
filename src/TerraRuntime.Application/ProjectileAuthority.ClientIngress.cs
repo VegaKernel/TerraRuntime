@@ -28,6 +28,9 @@ internal sealed partial class ProjectileAuthority
         RuntimeProjectileClientCommitContext clientCommits = replication.ClientCommitContext;
         TerrariaProjectileKeyState key = packet.Key;
 
+        if (TryContinuePendingBulletVolley(command.Connection, in packet))
+            return;
+
         if (identities.TryResolve(in key, out ProjectileHandle projectile))
         {
             if (!projectiles.TryGet(projectile, out ProjectileSnapshot current) ||
@@ -77,6 +80,18 @@ internal sealed partial class ProjectileAuthority
             TryResolveStrictClientProjectileSpawn(command.Connection, in packet, out AuthoritativeClientProjectileSpawn authoritative);
         if (provenance == ClientProjectileProvenanceResolveResult.Rejected)
         {
+            RejectedClientProjectileProvenance++;
+            RejectedClientUpdates++;
+            return;
+        }
+
+        if (provenance == ClientProjectileProvenanceResolveResult.Accepted && authoritative.VolleyStates is not null)
+        {
+            // Every birth has its explicit retained key. A single ambient client-key scope would incorrectly
+            // attach the first report's identity to a reentrant runtime spawn during publication.
+            if (TryBeginClientBulletVolley(command.Connection, in packet, in authoritative))
+                return;
+            RejectedSpawns++;
             RejectedClientProjectileProvenance++;
             RejectedClientUpdates++;
             return;

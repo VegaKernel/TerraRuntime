@@ -17,7 +17,7 @@ namespace TerraRuntime.Application;
 /// except the source connection, matching vanilla server packet-27/29 echo suppression. Exact packet-27
 /// update duplicates are coalesced per full runtime generation before peer fanout.
 /// </summary>
-internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCommitSink, IRuntimePlayerEventSink
+internal sealed partial class RuntimeProjectileReplicationRegistry : IProjectileStateCommitSink, IRuntimePlayerEventSink
 {
     private const int MaxProjectileSlots = RuntimeProjectileStore.MaximumProtocolAddressableCapacity;
 
@@ -105,6 +105,11 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
 
     public void ProjectileStateCommitted(ProjectileStateCommitKind kind, in ProjectileSnapshot snapshot)
     {
+        // The accepted batch already retained final bindings and queued every historical packet-27.
+        // Other composed sinks still observe each birth; a distinct reentrant spawn follows the normal path.
+        if (kind == ProjectileStateCommitKind.Spawn && IsAcceptedBirthObserver(in snapshot))
+            return;
+
         bool clientCommit = clientCommits.TryGet(
             out GameCommandSourceId excludedSource,
             out TerrariaProjectileKeyState clientKey);
@@ -328,7 +333,8 @@ internal sealed class RuntimeProjectileReplicationRegistry : IProjectileStateCom
         }
 
         endpoint.MarkPlaying(connection.Player);
-        for (int slot = 0; slot < baselineFrames.Length; slot++)
+        // Source MessageBuffer case8 excludes the initialized overflow projectile slot1000.
+        for (int slot = 0; slot < Math.Min(baselineFrames.Length, RuntimeProjectileStore.VanillaPhysicalSlotCount); slot++)
         {
             byte[]? encoded = Volatile.Read(ref baselineFrames[slot]);
             if (encoded is null)

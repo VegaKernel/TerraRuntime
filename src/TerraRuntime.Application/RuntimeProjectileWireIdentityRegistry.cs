@@ -30,6 +30,21 @@ internal sealed class RuntimeProjectileWireIdentityRegistry
 
     public int RuntimeCapacity => reverse.Length;
 
+    internal readonly record struct BindingFacts(
+        TerrariaProjectileKeyState ForwardKey, ProjectileHandle ForwardHandle,
+        TerrariaProjectileKeyState ReverseKey, ProjectileHandle ReverseHandle);
+
+    internal bool TryCaptureBindingFacts(in TerrariaProjectileKeyState key, ushort slot, out BindingFacts facts)
+    {
+        facts = default;
+        if (!key.IsValid || slot >= reverse.Length)
+            return false;
+        ref readonly ForwardEntry selected = ref forward[key.Spawner, key.ProjectileIndex];
+        ref readonly ReverseEntry physical = ref reverse[slot];
+        facts = new(selected.Key, selected.Handle, physical.Key, physical.Handle);
+        return true;
+    }
+
     /// <summary>
     /// Resolves only the key currently selected by vanilla-style (Spawner, Index) lookup. A previous
     /// generation with the same pair intentionally stops resolving even if its physical projectile is

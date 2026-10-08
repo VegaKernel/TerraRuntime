@@ -14,6 +14,7 @@ internal sealed partial class ProjectileAuthority
 {
     public bool TryTickState()
     {
+        ExpirePendingBulletVolleys();
         if (stepper is null)
             return false;
 

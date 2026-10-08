@@ -78,7 +78,8 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
         for (int i = 0; i < projectileCount; i++)
         {
             ProjectileSnapshot projectile = projectileBuffer[i];
-            if (!projectiles.IsCombatTrusted(projectile.Handle) ||
+            if (projectile.Handle.Slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount ||
+                !projectiles.IsCombatTrusted(projectile.Handle) ||
                 !projectiles.TryGetCombatTrustedOwner(projectile.Handle, out PlayerHandle trustedOwner) ||
                 !IsEligible(in projectile, out VanillaProjectileDefinition definition) ||
                 !TryResolveTrustedPvpOwner(
@@ -223,7 +224,8 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
         for (int i = 0; i < activeProjectiles.Length; i++)
         {
             ProjectileSnapshot projectile = activeProjectiles[i];
-            if (!projectile.IsActive || projectile.Damage <= 0 ||
+            if (projectile.Handle.Slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount ||
+                !projectile.IsActive || projectile.Damage <= 0 ||
                 !VanillaProjectileFacts.IsHostile(projectile.Type) ||
                 !TryResolveHostileSource(projectile, out NpcHandle sourceNpc) ||
                 !projectiles.TryGetLifecycle(projectile.Handle, out ProjectileLifecycleState lifecycle) ||

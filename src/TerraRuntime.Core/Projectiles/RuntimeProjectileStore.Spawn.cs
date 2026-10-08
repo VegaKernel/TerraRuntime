@@ -80,12 +80,15 @@ public sealed partial class RuntimeProjectileStore
         return true;
     }
 
-    private bool TrySelectVanillaAllocationSlot(out ushort slot)
+    private bool TrySelectVanillaAllocationSlot(out ushort slot) =>
+        TrySelectVanillaAllocationSlot(_slots, out slot);
+
+    private static bool TrySelectVanillaAllocationSlot(ReadOnlySpan<SlotState> slots, out ushort slot)
     {
-        int normalCapacity = Math.Min(_slots.Length, VanillaPhysicalSlotCount);
+        int normalCapacity = Math.Min(slots.Length, VanillaPhysicalSlotCount);
         for (int candidate = 0; candidate < normalCapacity; candidate++)
         {
-            if (_slots[candidate].Active)
+            if (slots[candidate].Active)
                 continue;
 
             slot = checked((ushort)candidate);
@@ -102,7 +105,7 @@ public sealed partial class RuntimeProjectileStore
         int lowestTimeLeft = VanillaOldestProjectileSentinelTimeLeft;
         for (int candidate = 0; candidate < VanillaPhysicalSlotCount; candidate++)
         {
-            ref readonly SlotState state = ref _slots[candidate];
+            ref readonly SlotState state = ref slots[candidate];
             if (state.Lifecycle.NetImportant || state.Lifecycle.TimeLeft >= lowestTimeLeft)
                 continue;
 
@@ -110,7 +113,7 @@ public sealed partial class RuntimeProjectileStore
             lowestTimeLeft = state.Lifecycle.TimeLeft;
         }
 
-        if (selected == VanillaOverflowSlot && _slots.Length <= VanillaOverflowSlot)
+        if (selected == VanillaOverflowSlot && slots.Length <= VanillaOverflowSlot)
         {
             slot = default;
             return false;

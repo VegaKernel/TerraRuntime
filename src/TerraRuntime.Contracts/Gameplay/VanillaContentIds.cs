@@ -478,6 +478,13 @@ public static class VanillaItemIds
     public static readonly ItemTypeId Musket = new(96);
     public static readonly ItemTypeId MusketBall = new(97);
     public static readonly ItemTypeId Minishark = new(98);
+    public static readonly ItemTypeId PhoenixBlaster = new(219);
+    public static readonly ItemTypeId Megashark = new(533);
+    public static readonly ItemTypeId Shotgun = new(534);
+    public static readonly ItemTypeId TacticalShotgun = new(679);
+    public static readonly ItemTypeId Boomstick = new(964);
+    public static readonly ItemTypeId ChainGun = new(1929);
+    public static readonly ItemTypeId QuadBarrelShotgun = new(4703);
     public static readonly ItemTypeId UnholyArrow = new(47);
     public static readonly ItemTypeId JestersArrow = new(51);
     public static readonly ItemTypeId EnchantedBoomerang = new(55);

@@ -18,7 +18,7 @@ namespace TerraRuntime.Tests;
 public sealed class AmmoBuffItemUseAtomic1458Tests
 {
     [Fact]
-    public void Packet50_then27_matches_original_remote_buff_pickammo_rows_and_rng()
+    public void Packet50_then27_preserves_pickammo_goldens_and_matches_coupled_minishark_launch()
     {
         using JsonDocument facts = Facts();
         Assert.Equal(32, facts.RootElement.GetProperty("shots").GetArrayLength());
@@ -28,7 +28,10 @@ public sealed class AmmoBuffItemUseAtomic1458Tests
             f.Configure(row);
             f.Shoot(f.Packet(row));
             Assert.Equal(row.GetProperty("afterStack").GetInt32(), f.Ammo.Stack);
-            Assert.Equal(row.GetProperty("next").GetInt32(), f.Random.Clone().Next());
+            Assert.Equal(row.GetProperty("weapon").GetInt32() == 98 && row.GetProperty("canShoot").GetBoolean()
+                ? LaunchRow(row.GetProperty("seed").GetInt32(), row.GetProperty("ammo").GetInt32(),
+                    row.GetProperty("ammoBox").GetBoolean(), row.GetProperty("ammoPotion").GetBoolean()).GetProperty("next").GetInt32()
+                : row.GetProperty("next").GetInt32(), f.Random.Clone().Next());
             foreach (int buff in row.GetProperty("buffs").EnumerateArray().Select(v => v.GetInt32()).Distinct())
                 Assert.Equal(60, f.Players.GetBuffDuration(f.Connection.Player, new BuffTypeId(buff)));
             if (!row.GetProperty("canShoot").GetBoolean())
@@ -49,7 +52,14 @@ public sealed class AmmoBuffItemUseAtomic1458Tests
             // The source PickAmmo fixture reports the launcher speed17. Accepted Celebration children
             // use the independently admitted aiStyle167 pattern4 launch speed8, not that launcher value.
             float speed = row.GetProperty("weapon").GetInt32() == 3930 ? 8f : row.GetProperty("speed").GetSingle();
-            Assert.Equal(speed, shot.VelocityX, 3);
+            if (row.GetProperty("weapon").GetInt32() == 98)
+            {
+                JsonElement launch = LaunchRow(row.GetProperty("seed").GetInt32(), row.GetProperty("ammo").GetInt32(),
+                    row.GetProperty("ammoBox").GetBoolean(), row.GetProperty("ammoPotion").GetBoolean());
+                Assert.Equal(launch.GetProperty("shots")[0].GetProperty("velocity").GetProperty("X").GetSingle(), shot.VelocityX);
+                Assert.Equal(launch.GetProperty("shots")[0].GetProperty("velocity").GetProperty("Y").GetSingle(), shot.VelocityY);
+            }
+            else Assert.Equal(speed, shot.VelocityX, 3);
         }
     }
 
@@ -64,7 +74,9 @@ public sealed class AmmoBuffItemUseAtomic1458Tests
             f.Configure(row);
             f.Shoot(f.Packet(row));
             Assert.Equal(row.GetProperty("initialStack").GetInt32(), f.Ammo.Stack);
-            Assert.Equal(1657007234, f.Random.Clone().Next());
+            Assert.Equal(row.GetProperty("weapon").GetInt32() == 98
+                ? LaunchRow(1, row.GetProperty("ammo").GetInt32(), true, true).GetProperty("next").GetInt32()
+                : 1657007234, f.Random.Clone().Next());
             Assert.Equal(1, f.Authority.PromotedClientProjectileSpawns);
         }
     }
@@ -86,7 +98,7 @@ public sealed class AmmoBuffItemUseAtomic1458Tests
         f.Shoot(f.Bullet());
         Assert.Equal(1, f.Authority.PromotedClientProjectileSpawns);
         Assert.Equal(4, f.Ammo.Stack);
-        Assert.Equal(1198642031, f.Random.Clone().Next());
+        Assert.Equal(LaunchRow(0, 97, true, true).GetProperty("next").GetInt32(), f.Random.Clone().Next());
         Assert.True(f.Store.TryGetActive(0, out var accepted));
         Assert.Equal(new ProjectileGeneration(2), accepted.Handle.Generation);
     }
@@ -106,7 +118,7 @@ public sealed class AmmoBuffItemUseAtomic1458Tests
         Assert.Equal(60, f.Players.GetBuffDuration(f.Connection.Player, new BuffTypeId(112)));
         f.Shoot(f.Bullet());
         Assert.Equal(1, f.Authority.PromotedClientProjectileSpawns);
-        Assert.Equal(1649316166, f.Random.Clone().Next());
+        Assert.Equal(LaunchRow(0, 97, false, true).GetProperty("next").GetInt32(), f.Random.Clone().Next());
     }
 
     [Fact]
@@ -124,7 +136,7 @@ public sealed class AmmoBuffItemUseAtomic1458Tests
         f.Shoot(f.Bullet(702));
         Assert.Equal(1, f.Authority.PromotedClientProjectileSpawns);
         Assert.Equal(4, f.Ammo.Stack);
-        Assert.Equal(1198642031, f.Random.Clone().Next());
+        Assert.Equal(LaunchRow(0, 97, true, true).GetProperty("next").GetInt32(), f.Random.Clone().Next());
     }
 
     [Fact]
@@ -139,7 +151,7 @@ public sealed class AmmoBuffItemUseAtomic1458Tests
         Assert.Equal(60, f.Players.GetBuffDuration(f.Connection.Player, new BuffTypeId(112)));
         f.Shoot(f.Bullet());
         Assert.Equal(5, f.Ammo.Stack);
-        Assert.Equal(1657007234, f.Random.Clone().Next());
+        Assert.Equal(LaunchRow(1, 97, true, true).GetProperty("next").GetInt32(), f.Random.Clone().Next());
     }
 
     [Fact]
@@ -166,7 +178,7 @@ public sealed class AmmoBuffItemUseAtomic1458Tests
         Assert.Equal(0, f.Players.GetBuffDuration(f.Connection.Player, new BuffTypeId(93)));
         f.Shoot(f.Bullet());
         Assert.Equal(1, f.Authority.PromotedClientProjectileSpawns);
-        Assert.Equal(237820880, f.Random.Clone().Next());
+        Assert.Equal(LaunchRow(1, 97, false, false).GetProperty("next").GetInt32(), f.Random.Clone().Next());
     }
 
     [Fact]
@@ -196,7 +208,7 @@ public sealed class AmmoBuffItemUseAtomic1458Tests
         {
             callbacks++;
             Assert.Equal(4, f.Ammo.Stack);
-            Assert.Equal(1198642031, f.Random.Clone().Next());
+            Assert.Equal(LaunchRow(0, 97, true, true).GetProperty("next").GetInt32(), f.Random.Clone().Next());
             Assert.True(f.Store.TryGetActive(0, out var shot));
             Assert.True(f.Store.IsCombatTrusted(shot.Handle));
             f.Shoot(f.Bullet(702));
@@ -207,8 +219,19 @@ public sealed class AmmoBuffItemUseAtomic1458Tests
         f.Shoot(f.Bullet());
         Assert.Equal(1, callbacks);
         Assert.Equal(99, f.Ammo.Stack);
-        Assert.Equal(1198642031, f.Random.Clone().Next());
+        Assert.Equal(LaunchRow(0, 97, true, true).GetProperty("next").GetInt32(), f.Random.Clone().Next());
         Assert.Equal(0, f.Players.GetBuffDuration(f.Connection.Player, new BuffTypeId(93)));
+    }
+
+    private static JsonElement LaunchRow(int seed, int ammo, bool box, bool potion, int use = 1)
+    {
+        using Stream stream = typeof(AmmoBuffItemUseAtomic1458Tests).Assembly.GetManifestResourceStream("AmmoBuffMinisharkShoot1458")!;
+        using var gzip = new GZipStream(stream, CompressionMode.Decompress);
+        using JsonDocument facts = JsonDocument.Parse(gzip);
+        return facts.RootElement.GetProperty("shots").EnumerateArray().Single(row =>
+            row.GetProperty("seed").GetInt32() == seed && row.GetProperty("ammo").GetInt32() == ammo &&
+            row.GetProperty("ammoBox").GetBoolean() == box && row.GetProperty("ammoPotion").GetBoolean() == potion &&
+            row.GetProperty("use").GetInt32() == use).Clone();
     }
 
     private static JsonDocument Facts()
@@ -227,6 +250,7 @@ public sealed class AmmoBuffItemUseAtomic1458Tests
         private readonly PlayerSlotPool slots = new(1);
         private PlayerJoinSession session = null!;
         private long connectionId = 8900;
+        private readonly int seed;
         public readonly VanillaUnifiedRandom1458 Random;
         public readonly Events Events = new();
         public readonly PlayerAuthority Players;
@@ -245,6 +269,7 @@ public sealed class AmmoBuffItemUseAtomic1458Tests
 
         public Fixture(int seed, int capacity = 4)
         {
+            this.seed = seed;
             Random = new VanillaUnifiedRandom1458(seed);
             var tiles = new WorldTileStore(new WorldDimensions(300, 200));
             Players = new PlayerAuthority(Events, tiles);
@@ -303,10 +328,28 @@ public sealed class AmmoBuffItemUseAtomic1458Tests
             var packet = Packet(701, row.GetProperty("projectile").GetInt32(),
                 checked((short)row.GetProperty("damage").GetInt32()), row.GetProperty("knockBack").GetSingle(),
                 celebration ? 8f : row.GetProperty("speed").GetSingle());
+            if (row.GetProperty("weapon").GetInt32() == 98 && row.GetProperty("canShoot").GetBoolean())
+            {
+                JsonElement launch = LaunchRow(seed, row.GetProperty("ammo").GetInt32(),
+                    row.GetProperty("ammoBox").GetBoolean(), row.GetProperty("ammoPotion").GetBoolean());
+                var velocity = launch.GetProperty("shots")[0].GetProperty("velocity");
+                packet = packet with { VelocityX = velocity.GetProperty("X").GetSingle(), VelocityY = velocity.GetProperty("Y").GetSingle() };
+            }
             return celebration ? packet with { Ai0 = 4f } : packet;
         }
 
-        public TerrariaProjectileUpdateState Bullet(ushort key = 701) => Packet(key, 14, 13, 2f, 11f);
+        public TerrariaProjectileUpdateState Bullet(ushort key = 701)
+        {
+            bool box = Players.GetBuffDuration(Connection.Player, new BuffTypeId(93)) > 0;
+            bool potion = Players.GetBuffDuration(Connection.Player, new BuffTypeId(112)) > 0;
+            JsonElement launch = LaunchRow(seed, 97, box, potion);
+            var velocity = launch.GetProperty("shots")[0].GetProperty("velocity");
+            return Packet(key, 14, 13, 2f, 11f) with
+            {
+                VelocityX = velocity.GetProperty("X").GetSingle(),
+                VelocityY = velocity.GetProperty("Y").GetSingle()
+            };
+        }
 
         public void Shoot(TerrariaProjectileUpdateState packet) =>
             Assert.True(Authority.TryApply(new ClientProjectileUpdateRuntimeCommand(Connection, packet)));

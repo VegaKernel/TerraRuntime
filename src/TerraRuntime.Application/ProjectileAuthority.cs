@@ -29,6 +29,7 @@ internal readonly record struct AuthoritativeClientProjectileSpawn(
     internal VanillaUnifiedRandom1458? RandomBefore { get; init; }
     internal VanillaUnifiedRandom1458? RandomAfter { get; init; }
     internal long UseTick { get; init; }
+    internal ProjectileStateUpdate[]? VolleyStates { get; init; }
 }
 
 /// <summary>
@@ -57,6 +58,7 @@ internal sealed partial class ProjectileAuthority
     private readonly VanillaUnifiedRandom1458 projectileRandom;
     private readonly RuntimeProjectileClientUseCadenceTracker trustedClientUseCadence = new();
     private readonly RuntimeCelebrationMk2VolleyTracker celebrationMk2Volleys = new();
+    private readonly PendingClientBulletVolley?[] pendingBulletVolleys = new PendingClientBulletVolley[byte.MaxValue + 1];
     private readonly ProjectileSnapshot[] controlledProjectileBuffer;
     private const byte ControlUseItemFlag = 1 << 5;
     internal RuntimeFallingBlockProjectiles FallingBlocks { get; } = new();
