@@ -72,13 +72,53 @@ public readonly record struct VanillaPlayerCombatSnapshot(
         ArmorPenetration + (melee ? MeleeArmorPenetration : 0);
 }
 
+/// <summary>Owned source world difficulty and the retained packet-4 Demon Heart flag.</summary>
+public readonly record struct VanillaPlayerCombatEquipmentContext(bool? ExtraAccessory, bool ExpertMode, bool MasterMode)
+{
+    public bool TryIsSlotUsable(int armorIndex, out bool usable)
+    {
+        usable = true;
+        if (MasterMode && !ExpertMode) return false;
+        if (armorIndex == 8)
+        {
+            if (!ExpertMode) { usable = false; return true; }
+            if (ExtraAccessory is not { } unlocked) return false;
+            usable = unlocked;
+        }
+        else if (armorIndex == 9) usable = MasterMode;
+        return true;
+    }
+}
+
 public static class VanillaPlayerCombatEquipmentCatalog
 {
     public static bool TryBuild(
         ReadOnlySpan<PlayerEquipmentCommitRequest> equipment,
         out VanillaPlayerCombatSnapshot snapshot)
+        => TryBuild(equipment, new VanillaPlayerCombatEquipmentContext(null, false, false), out snapshot);
+
+    public static bool TryBuild(ReadOnlySpan<PlayerEquipmentCommitRequest> equipment,
+        in VanillaPlayerCombatEquipmentContext context, out VanillaPlayerCombatSnapshot snapshot)
     {
         snapshot = VanillaPlayerCombatSnapshot.Baseline;
+        if (context.MasterMode && !context.ExpertMode) return false;
+        // GetEffectiveArmor can inherit a favorited inactive loadout item when the active slot is empty.
+        // The source compatibility/earlier-slot checks are not represented here; selected sharing refuses.
+        for (int index = 0; index < VanillaPlayerItemSlotCatalog.FunctionalArmorCount; index++)
+        {
+            bool active = false, favorite = false;
+            foreach (var item in equipment)
+            {
+                if (item.Stack <= 0 || item.ItemNetId <= 0) continue;
+                if (item.SlotId == VanillaPlayerItemSlotCatalog.ArmorStart + index) active = true;
+                int inactive = item.SlotId - VanillaPlayerItemSlotCatalog.LoadoutArmorStart;
+                if (inactive >= 0 && inactive < VanillaPlayerItemSlotCatalog.LoadoutStride * VanillaPlayerItemSlotCatalog.LoadoutCount &&
+                    inactive % VanillaPlayerItemSlotCatalog.LoadoutStride == index &&
+                    (item.ItemFlags & PlayerEquipmentCommitRequest.FavoriteItemFlag) != 0) favorite = true;
+            }
+            if (active || !favorite) continue;
+            if (!context.TryIsSlotUsable(index, out bool usable) || usable) return false;
+        }
         ItemTypeId head = VanillaItemIds.None;
         ItemTypeId body = VanillaItemIds.None;
         ItemTypeId legs = VanillaItemIds.None;
@@ -89,14 +129,13 @@ public static class VanillaPlayerCombatEquipmentCatalog
             if (!VanillaPlayerItemSlotCatalog.IsFunctionalArmorSlot(request.SlotId))
                 continue;
 
-            // Slots 8/9 depend on Demon Heart / Master-mode unlock state. That state is not yet part of the
-            // authoritative combat snapshot, so a non-empty item there remains outside the trusted slice.
-            if (!VanillaPlayerItemSlotCatalog.IsBaselineFunctionalArmorSlot(request.SlotId))
-                return false;
+            int armorIndex = request.SlotId - VanillaPlayerItemSlotCatalog.ArmorStart;
+            // Source gates run before item identity, accessory prefix and functional benefits.
+            if (!context.TryIsSlotUsable(armorIndex, out bool usable)) return false;
+            if (!usable) continue;
             if (!request.TryGetCanonicalItemType(out ItemTypeId type) || type.IsNone)
                 return false;
 
-            int armorIndex = request.SlotId - VanillaPlayerItemSlotCatalog.ArmorStart;
             if (armorIndex <= 2)
             {
                 if (request.PrefixId != VanillaPrefixIds.None ||

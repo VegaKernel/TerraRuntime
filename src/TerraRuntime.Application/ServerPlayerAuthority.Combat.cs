@@ -32,17 +32,22 @@ internal sealed partial class ServerPlayerAuthority
         if (!states.TryGet(player, out PlayerStateSnapshot state) || state.Player != player)
             return false;
 
+        bool? extraAccessory = states.TryGetAppearance(player, out var appearance)
+            ? (appearance.DifficultyFlags & VanillaPlayerAppearanceNormalizer.ExtraAccessoryDifficultyFlag) != 0 : null;
+        var context = new VanillaPlayerCombatEquipmentContext(extraAccessory, combatEquipmentExpertMode, combatEquipmentMasterMode);
         Span<PlayerEquipmentCommitRequest> equipment = stackalloc PlayerEquipmentCommitRequest[
-            VanillaPlayerItemSlotCatalog.BaselineFunctionalArmorCount];
+            VanillaPlayerItemSlotCatalog.FunctionalArmorCount * (1 + VanillaPlayerItemSlotCatalog.LoadoutCount)];
         int count = 0;
         for (short slot = VanillaPlayerItemSlotCatalog.ArmorStart;
-             slot < VanillaPlayerItemSlotCatalog.BaselineFunctionalArmorEndExclusive;
+             slot < VanillaPlayerItemSlotCatalog.FunctionalArmorEndExclusive;
              slot++)
         {
             if (!states.TryGetItem(player, slot, out ServerPlayerItemState item))
                 return false;
             if (item.IsEmpty)
                 continue;
+            if (!context.TryIsSlotUsable(slot - VanillaPlayerItemSlotCatalog.ArmorStart, out bool usable)) return false;
+            if (!usable) continue;
             if (item.Stack != 1 || item.ItemType.Value > short.MaxValue || item.Prefix.Value > byte.MaxValue)
                 return false;
 
@@ -55,7 +60,18 @@ internal sealed partial class ServerPlayerAuthority
                 item.ItemFlags);
         }
 
-        return VanillaPlayerCombatEquipmentCatalog.TryBuild(equipment[..count], out snapshot);
+        for (int loadout = 0; loadout < VanillaPlayerItemSlotCatalog.LoadoutCount; loadout++)
+        for (int index = 0; index < VanillaPlayerItemSlotCatalog.FunctionalArmorCount; index++)
+        {
+            short slot = checked((short)(VanillaPlayerItemSlotCatalog.LoadoutArmorStart +
+                loadout * VanillaPlayerItemSlotCatalog.LoadoutStride + index));
+            if (!states.TryGetItem(player, slot, out var item)) return false;
+            if (item.IsEmpty || (item.ItemFlags & PlayerEquipmentCommitRequest.FavoriteItemFlag) == 0) continue;
+            if (item.ItemType.Value > short.MaxValue || item.Prefix.Value > byte.MaxValue) return false;
+            equipment[count++] = new(player.Slot, slot, item.Stack, checked((byte)item.Prefix.Value),
+                checked((short)item.ItemType.Value), item.ItemFlags);
+        }
+        return VanillaPlayerCombatEquipmentCatalog.TryBuild(equipment[..count], in context, out snapshot);
     }
 
     internal PlayerDamageCommitResult TryCommitAuthoritativeNpcContactDamage(

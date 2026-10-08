@@ -74,7 +74,8 @@ public sealed class MetalArmorEquipment1458Tests
     public void Existing_unknown_unlock_endgame_and_accessory_guards_are_preserved()
     {
         Assert.False(VanillaPlayerCombatEquipmentCatalog.TryBuild([Equipment(0, 999)], out _));
-        Assert.False(VanillaPlayerCombatEquipmentCatalog.TryBuild([Equipment(8, 696)], out _));
+        Assert.False(VanillaPlayerCombatEquipmentCatalog.TryBuild([Equipment(8, 696)],
+            new VanillaPlayerCombatEquipmentContext(null, true, false), out _));
         Assert.False(VanillaPlayerCombatEquipmentCatalog.TryBuild(
             [Equipment(0, VanillaItemIds.SolarFlareHelmet.Value),
              Equipment(1, VanillaItemIds.SolarFlareBreastplate.Value),

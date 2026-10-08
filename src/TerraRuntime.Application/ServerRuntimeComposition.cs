@@ -170,6 +170,8 @@ internal sealed class ServerRuntimeComposition
         // Player.UpdateEquips uses Main.expertMode/masterMode, derived from Difficulty including Good World.
         float pickupDifficulty = (masterMode ? 3f : expertMode ? 2f : 1f) +
             ((worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false) ? 1f : 0f);
+        playersAuthority.SetCombatEquipmentWorldModes(pickupDifficulty >= 2f, pickupDifficulty >= 3f);
+        serverPlayers?.SetCombatEquipmentWorldModes(pickupDifficulty >= 2f, pickupDifficulty >= 3f);
         var worldItemAuthority = new WorldItemAuthority(
             playersAuthority,
             worldItemStore,

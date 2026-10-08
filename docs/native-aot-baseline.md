@@ -1,5 +1,9 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Accessory and combat-owner checkpoint — 2026-10-08
+
+The 2026-10-08 checkpoint owns functional accessory slots67/68 under the destination world mode and the generation-owned Demon Heart flag, and rejects stale combat owners after damage-roll callbacks. Selected inactive-loadout sharing and genuine ranged launch spread remain open. See [current work state](agent-memory/work-state.md) for exact local acceptance and the next launch block.
+
 ## Pirate foundation checkpoint — 2026-10-06
 
 The 2026-10-06 Pirate foundation checkpoint admits ordinary212–215/252 natural spawning and source-backed loot/defaults. Captain216 and ship491 selected births remain refused; Ghost662 remains DefinitionOnly while its pureAI122/platform defaults are verified. Unfinished death/prepass integration is retained as WIP, not marked complete. Local full/focused, WindowsNativeAOT and source82/49 process checks passed; genuine LinuxNativeAOT was not locally verified. See [current work state](agent-memory/work-state.md).

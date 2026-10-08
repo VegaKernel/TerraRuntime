@@ -59,6 +59,8 @@ internal sealed partial class PlayerAuthority
         this.worldTiles = worldTiles;
         this.expertMode = expertMode;
         this.masterMode = masterMode;
+        combatEquipmentExpertMode = expertMode;
+        combatEquipmentMasterMode = masterMode;
         this.serverPlayers = serverPlayers;
         this.oceanTeleportSurface = oceanTeleportSurface;
         this.chestCommands = chestCommands;
@@ -365,12 +367,16 @@ internal sealed partial class PlayerAuthority
         ConnectionHandle connection,
         out VanillaPlayerCombatSnapshot snapshot)
     {
-        if (!TryCaptureEquipment(connection, out PlayerEquipmentCommitRequest[] equipment))
+        if (!membership.IsCurrent(connection) ||
+            !transferProfiles.TryCapture(connection, out var appearance, out var equipment, out _))
         {
             snapshot = default;
             return false;
         }
-        return VanillaPlayerCombatEquipmentCatalog.TryBuild(equipment, out snapshot);
+        bool? extraAccessory = appearance is { } owned
+            ? (owned.DifficultyFlags & VanillaPlayerAppearanceNormalizer.ExtraAccessoryDifficultyFlag) != 0 : null;
+        var context = new VanillaPlayerCombatEquipmentContext(extraAccessory, combatEquipmentExpertMode, combatEquipmentMasterMode);
+        return VanillaPlayerCombatEquipmentCatalog.TryBuild(equipment, in context, out snapshot);
     }
 
     public bool TryCaptureCombatSnapshot(

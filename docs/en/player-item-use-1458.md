@@ -2,6 +2,12 @@
 
 [Русский](../ru/player-item-use-1458.md) · [Combat calculation](combat-damage.md)
 
+Additional functional accessory slots use the same source usability rules in the common combat calculation. Armor index `8` (packet-5 slot `67`) requires the retained Demon Heart flag and effective Expert mode; index `9` (slot `68`) requires effective Master mode independently of Demon Heart. Good World increases effective difficulty before these checks. Locked slots contribute no item or prefix effects. Unknown Demon Heart ownership refuses a selected Expert slot rather than inferring an unlock. Human and server-player equipment use the destination runtime's mode and the current player's appearance. Inactive-loadout inheritance remains a separate unsupported context.
+
+Projectile item-use preparation retains the player's revision alongside inventory, equipment and buffs. A changed packet-4 profile advances that revision and invalidates the prepared use before ammo, mana, projectile generation or RNG adoption.
+
+Ordinary projectile and explosion hits recheck the attacker after damage-roll callbacks before applying PvE or PvP damage. Direct PvP item hits also recheck the selected inventory and target revision. A refused stale hit does not change target health, penetration or immunity. Supplied external random callbacks retain their own draw state; these checks do not rewind an arbitrary external `Random`. Server-player projectile damage uses the same equipment calculation and refuses unsupported gear instead of applying baseline bonuses.
+
 The common equipment calculator admits all eight ordinary metal armor sets and their Ancient Iron/Gold helmet alternatives: 26 pieces and ten complete-set combinations. Complete defense is 6/7/9/11/13/15/16/20 for Copper/Tin/Iron/Lead/Silver/Tungsten/Gold/Platinum. Mixed pieces retain individual defense. PvE, PvP and server players use the same existing combat snapshot. Wrong slots, armor prefixes, unknown equipment and unowned complete endgame sets retain their gates; vanity and inactive loadouts do not grant effects.
 
 Strict projectile item use captures the exact connection/player, inventory serial, equipment and buffs before calculation. Conservation is prepared on a clone of the existing shared `UnifiedRandom`: Celebration Mk2 (`3930`, `Next(2)`) precedes Magic Quiver; Minishark follows it. Endless ammo still performs applicable draws. Only the first accepted Celebration volley child owns conservation and consumption. Earlier unsupported compatible ammo is never skipped.

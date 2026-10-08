@@ -41,7 +41,10 @@ public static class VanillaPlayerItemSlotCatalog
     public const short Bank4Start = 700;
     public const short Bank4Count = 40;
     public const short Bank4EndExclusive = Bank4Start + Bank4Count;
-    public const short Count = 990;
+    public const short LoadoutArmorStart = 900;
+    public const short LoadoutStride = 30;
+    public const short LoadoutCount = 3;
+    public const short Count = LoadoutArmorStart + LoadoutStride * LoadoutCount;
     public const int RelayableCount = InventoryAndEquipmentEndExclusive + (Count - Bank4Start);
 
     public static bool IsValid(short slot) => (ushort)slot < Count;

@@ -108,6 +108,7 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
 
             if (!projectiles.TryGetCombatTrustedOwner(projectile.Handle, out PlayerHandle trustedOwner) ||
                 !TryResolveOwnerRow(trustedOwner, out int ownerRow) ||
+                !TryCaptureOwnerSnapshot(trustedOwner, out PlayerStateSnapshot ownerSnapshot) ||
                 !TryCaptureOwnerCombatSnapshot(trustedOwner, out VanillaPlayerCombatSnapshot ownerCombat))
             {
                 continue;
@@ -150,6 +151,8 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
                 int hitDirection = projectile.VelocityX > 0.01f ? 1 : projectile.VelocityX < -0.01f ? -1 : 0;
                 int critRoll = nextRandom(1, 101);
                 int damageVariation = nextRandom(-15, 16);
+                if (!IsCurrentOwnerSnapshot(in ownerSnapshot))
+                    continue;
                 if (!VanillaCombatFacts.TryResolvePveHit(
                         projectile.Type,
                         projectile.Damage,
@@ -230,6 +233,7 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
                 !VanillaProjectileExplosionFacts.TryGetOnKillExplosion(projectile.Type, out _) ||
                 !VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(projectile.Type, out _) ||
                 !TryResolveOwnerRow(explosion.TrustedOwner, out int ownerRow) ||
+                !TryCaptureOwnerSnapshot(explosion.TrustedOwner, out PlayerStateSnapshot ownerSnapshot) ||
                 !TryCaptureOwnerCombatSnapshot(explosion.TrustedOwner, out VanillaPlayerCombatSnapshot ownerCombat))
             {
                 continue;
@@ -251,6 +255,8 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
                 int hitDirection = ResolveExplosionDirection(in explosion, in target, in npcHitbox);
                 int critRoll = nextRandom(1, 101);
                 int damageVariation = nextRandom(-15, 16);
+                if (!IsCurrentOwnerSnapshot(in ownerSnapshot))
+                    continue;
                 if (!VanillaCombatFacts.TryResolvePveHit(
                         projectile.Type,
                         projectile.Damage,
@@ -372,17 +378,16 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
     {
         if (players.TryCaptureCombatSnapshot(owner, out snapshot))
             return true;
-        if (serverPlayers is not null && serverPlayers.TryGet(owner, out PlayerStateSnapshot player) &&
-            player.Player == owner && !player.IsDead)
-        {
-            // Runtime-owned bot presets currently contain only ordinary clothing/metal armor with no outgoing
-            // damage bonuses. Baseline therefore matches the source-backed offensive modifiers used by its bow.
-            snapshot = VanillaPlayerCombatSnapshot.Baseline;
+        if (serverPlayers is not null && serverPlayers.TryCaptureCombatSnapshot(owner, out snapshot))
             return true;
-        }
+        // Unknown gear cannot acquire neutral outgoing modifiers after the authoritative
+        // human or server-player equipment projection refused.
         snapshot = default;
         return false;
     }
+
+    private bool IsCurrentOwnerSnapshot(in PlayerStateSnapshot captured) =>
+        TryCaptureOwnerSnapshot(captured.Player, out var current) && current == captured;
 
     private bool TryResolveOwnerRow(PlayerHandle trustedOwner, out int ownerRow)
     {

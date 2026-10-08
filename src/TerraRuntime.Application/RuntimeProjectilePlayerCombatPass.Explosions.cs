@@ -65,6 +65,8 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 }
 
                 int direction = ResolveExplosionDirection(in explosion, target);
+                if (!IsPvpPlayerCurrent(in owner) || !IsPvpPlayerCurrent(in target))
+                    continue;
                 bool killedBefore = target.IsDead;
                 PlayerDamageCommitResult commitResult = players.TryCommitAuthoritativePvpDamageFromSnapshot(
                         tick,

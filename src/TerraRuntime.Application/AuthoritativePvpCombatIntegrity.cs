@@ -81,6 +81,9 @@ internal sealed class RuntimePvpCombatIntegrity
             !players.TryCaptureCombatSnapshot(target.Player, out _))
             return PvpCombatResolveResult.LegacyFallback;
 
+        if (!players.TryCaptureProjectileUse(attacker.Player, out var ownerCapture) || ownerCapture is null || ownerCapture.Player != attacker)
+            return PvpCombatResolveResult.Rejected;
+
         VanillaResolvedDirectMeleeUse resolved = VanillaDirectMeleeCombatMath.Resolve(
             in weapon,
             in prefix,
@@ -88,6 +91,10 @@ internal sealed class RuntimePvpCombatIntegrity
             random.Next(-15, 16),
             random.Next(1, 101),
             pvp: true);
+
+        if (!players.IsCurrentProjectileUse(ownerCapture) ||
+            !players.TryCaptureCombatTarget(target.Player.Slot.Value, out PlayerStateSnapshot currentTarget) || currentTarget != target)
+            return PvpCombatResolveResult.Rejected;
 
         float attackerCx = attacker.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
         float attackerCy = attacker.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;

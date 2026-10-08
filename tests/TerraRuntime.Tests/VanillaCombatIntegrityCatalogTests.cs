@@ -95,12 +95,13 @@ public sealed class VanillaCombatIntegrityCatalogTests
     }
 
     [Fact]
-    public void Equipment_snapshot_fails_closed_for_unknown_active_accessory_and_locked_extra_slot()
+    public void Equipment_snapshot_refuses_unknown_usable_accessory_and_ignores_source_locked_slot()
     {
         Assert.False(VanillaPlayerCombatEquipmentCatalog.TryBuild(
             [Equipment(VanillaPlayerItemSlotCatalog.ArmorStart + 3, new ItemTypeId(999))], out _));
-        Assert.False(VanillaPlayerCombatEquipmentCatalog.TryBuild(
-            [Equipment(VanillaPlayerItemSlotCatalog.ArmorStart + 8, VanillaItemIds.WarriorEmblem)], out _));
+        Assert.True(VanillaPlayerCombatEquipmentCatalog.TryBuild(
+            [Equipment(VanillaPlayerItemSlotCatalog.ArmorStart + 8, VanillaItemIds.WarriorEmblem)], out var locked));
+        Assert.Equal(VanillaPlayerCombatSnapshot.Baseline, locked);
     }
 
     [Fact]

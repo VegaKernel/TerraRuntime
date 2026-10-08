@@ -119,6 +119,8 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 }
 
                 int direction = projectile.VelocityX > 0.01f ? 1 : projectile.VelocityX < -0.01f ? -1 : 0;
+                if (!IsPvpPlayerCurrent(in owner) || !IsPvpPlayerCurrent(in target))
+                    continue;
                 bool killedBefore = target.IsDead;
                 PlayerDamageCommitResult commitResult = players.TryCommitAuthoritativePvpDamageFromSnapshot(
                         tick,
@@ -202,6 +204,11 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
         snapshot = default;
         return false;
     }
+
+    private bool IsPvpPlayerCurrent(in PlayerStateSnapshot expected) =>
+        players.TryCapture(expected.Player, out PlayerStateSnapshot current)
+            ? current == expected
+            : serverPlayers is not null && serverPlayers.TryGet(expected.Player, out current) && current == expected;
 
     private bool TryResolveHostileSource(in ProjectileSnapshot projectile, out NpcHandle sourceNpc)
     {

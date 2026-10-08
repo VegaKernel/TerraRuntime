@@ -48,6 +48,19 @@ public sealed class ServerRuntimeServerPlayerPerformanceTests
     [Fact]
     public async Task Controlled_physics_ticks_are_deterministic_and_stay_within_allocation_gate()
     {
+        // Exercise the controlled path through CoreCLR's delayed tier promotion and warm its pooled
+        // liquid scratch. Use separate fixtures: warming the measured players for this long would
+        // finish MoveTo and silently replace the movement workload with resting ticks.
+        RuntimeFixture warmFirst = await CreateFixtureAsync("test:perf-warm-first");
+        RuntimeFixture warmSecond = await CreateFixtureAsync("test:perf-warm-second");
+        long warmupStart = Stopwatch.GetTimestamp();
+        do
+        {
+            RunTicks(warmFirst.Runtime, 256);
+            RunTicks(warmSecond.Runtime, 256);
+        }
+        while (Stopwatch.GetElapsedTime(warmupStart) < TimeSpan.FromMilliseconds(500));
+
         RuntimeFixture first = await CreateFixtureAsync("test:perf-first");
         RuntimeFixture second = await CreateFixtureAsync("test:perf-second");
         for (int index = 0; index < 16; index++)
@@ -57,16 +70,13 @@ public sealed class ServerRuntimeServerPlayerPerformanceTests
         }
 
         long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-        for (int index = 0; index < 256; index++)
-            first.Runtime.Tick();
+        RunTicks(first.Runtime, 256);
         long controlledAllocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
 
-        for (int index = 0; index < 256; index++)
-            second.Runtime.Tick();
+        RunTicks(second.Runtime, 256);
 
-        // The first ArrayPool rent for the 2,500-cell liquid scratch may allocate one bucket array. Its object
-        // header is 24 bytes on the test runtime; keep 64 bytes of one-time headroom while retaining the 3 KiB
-        // per-tick payload gate.
+        // Keep the existing 3 KiB gate and 64-byte headroom. A cold liquid-change bucket is 32,768
+        // 24-byte entries, so its payload must be warmed rather than treated as a small array header.
         const long oneTimePooledScratchHeaderAllowance = 64;
         Assert.True(
             controlledAllocated <= 256L * 3_072L + oneTimePooledScratchHeaderAllowance,
