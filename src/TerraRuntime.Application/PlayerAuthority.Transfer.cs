@@ -57,7 +57,8 @@ internal sealed partial class PlayerAuthority
             equipment,
             buffTypes,
             player.GodMode,
-            mouseItemNormalized);
+            mouseItemNormalized)
+        { ItemPhase = player.ItemPhase, BuffState = transferProfiles.CaptureBuffState(connection) };
 
         membership.ClearPending(connection);
         this.inventory.Clear(connection);
@@ -190,6 +191,9 @@ internal sealed partial class PlayerAuthority
             HasMana = previous.HasMana,
             Mana = previous.Mana,
             MaxMana = previous.MaxMana,
+            ItemPhase = transfer.ItemPhase is { } phase
+                ? phase with { Selected = phase.Selected with { Animation = preservePosition && !dead ? previous.ItemAnimation ?? 0 : 0 } }
+                : null,
             ControlFlags = preservePosition ? previous.ControlFlags : (byte)0,
             MovementFlags = preservePosition ? previous.MovementFlags : (byte)0,
             MiscFlags1 = preservePosition ? previous.MiscFlags1 : (byte)0,
@@ -212,6 +216,11 @@ internal sealed partial class PlayerAuthority
         membership.Commit(state);
         AttachNpcRawSlot(connection.Player);
         transferProfiles.Restore(connection, transfer.Appearance, transfer.Equipment, transfer.BuffTypes);
+        // The compact import remains the trust boundary. An explicitly absent/edited compact
+        // snapshot must not inherit stale full slots from a record copied with new import fields.
+        if (transfer.BuffTypes is { } importedBuffs && transfer.BuffState is { } retainedBuffs &&
+            retainedBuffs.CaptureTypes().AsSpan().SequenceEqual(importedBuffs))
+            transferProfiles.RestoreBuffState(connection, retainedBuffs);
         RecalculatePlayerLuck(state);
 
         VanillaPlayerSpawnPosition1458.ToFloorTile(positionX, positionY, out short eventSpawnX, out short eventSpawnY);

@@ -1,5 +1,7 @@
 # TerraRuntime roadmap
 
+2026-10-08 ready-work checkpoint adds source-backed selected-consumable/mana/buff and source-world physics components plus retained constructor/transfer state and a separate saved-seed UpdatePlayers stream. Production remote Player.Update integration remains open; no full item-use/inventory or scheduling completion claim. See [item-use scope](en/player-item-use-1458.md) and `.cache/consumable-foundation-v4-status.json` for local acceptance.
+
 ## Inherited equipment checkpoint — 2026-10-08
 
 The 2026-10-08 ready-work merge owns source-order favorited inactive-loadout equipment, actual local255 vanity ownership, locked/vanity compatibility blockers and common human/server-player combat projection. Focused364/364, full 1563004/1563005 with0failures/errors and1existing skip, WindowsNativeAOT/five smokes and Release/Native source82/49 checks pass. Unfinished consumable/mana code is preserved outside shipping source; actual client-RNG reconciliation and broader player/gameplay/NPC parity remain open. LinuxNativeAOT is locally unverified. See [current work state](agent-memory/work-state.md) for exact acceptance and resume evidence.

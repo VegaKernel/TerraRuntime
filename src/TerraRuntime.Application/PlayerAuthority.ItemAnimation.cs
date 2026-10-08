@@ -13,6 +13,8 @@ internal sealed partial class PlayerAuthority
             return;
         member.ItemRotation = command.Rotation;
         member.ItemAnimation = member.IsDead ? 0 : command.Animation;
+        if (member.ItemPhase is { } phase)
+            member.ItemPhase = phase with { Selected = phase.Selected with { Animation = member.ItemAnimation } };
         events?.PlayerItemAnimationUpdated(command.Connection, member.ItemRotation, checked((short)member.ItemAnimation));
     }
 

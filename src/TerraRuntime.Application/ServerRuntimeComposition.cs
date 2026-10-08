@@ -137,7 +137,8 @@ internal sealed class ServerRuntimeComposition
         RuntimeNpcDeathPrelude1458? deathPrelude = null,
         RuntimeTownSocialWorld1458? townSocialWorldFacts = null,
         Action<RuntimeInvasionCapture1458>? invasionProgressPublisher = null,
-        Action<RuntimeInvasionCapture1458>? invasionStartPublisher = null)
+        Action<RuntimeInvasionCapture1458>? invasionStartPublisher = null,
+        PlayerUpdateRandomSeed1458? playerUpdateRandomSeed = null)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -149,6 +150,14 @@ internal sealed class ServerRuntimeComposition
             oceanTeleportSurface: townCommerceWorldFacts is { SkyblockWorld: false } oceanFacts ? oceanFacts.WorldSurface : null,
             chestCommands: chestCommands,
             lanternsUp: townCommerceWorldFacts?.LanternsUp);
+        if (playerUpdateRandomSeed is { } playerSeed)
+            playersAuthority.SetPlayerUpdateRandom(new VanillaUnifiedRandom1458(playerSeed.Value));
+        if (worldTiles is not null && townCommerceWorldFacts is { } playerWorld)
+        {
+            var sourceWorld = new RuntimePlayerUpdateWorld1458(worldTiles.Dimensions.WidthTiles,
+                worldTiles.Dimensions.HeightTiles, playerWorld.WorldSurface, playerWorld.RemixWorld, playerWorld.SkyblockWorld);
+            if (sourceWorld.IsValid) playersAuthority.SetPlayerUpdateWorldFacts(in sourceWorld);
+        }
         if (townCommerceWorldFacts is { } healthWorld)
             playersAuthority.SetNpcHealthWorldFacts(() => new PlayerNpcHealthWorld1458(
                 expertMode || (worldClock?.GetGoodWorld ?? healthWorld.GoodWorld), healthWorld.VampireSeed));

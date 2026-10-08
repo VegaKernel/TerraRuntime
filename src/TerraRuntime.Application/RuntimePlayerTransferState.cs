@@ -18,6 +18,9 @@ internal sealed record RuntimePlayerTransferState(
     bool GodMode,
     bool MouseItemNormalized = false)
 {
+    internal RuntimePlayerItemPhase1458? ItemPhase { get; init; }
+    internal PlayerBuffState? BuffState { get; init; }
+
     public PlayerSlotId Slot => Player.Player.Slot;
 
     public string? PlayerName => Appearance?.Name;
@@ -95,6 +98,22 @@ internal sealed class RuntimePlayerTransferProfileStore
 
     public int GetBuffDuration(ConnectionHandle connection, BuffTypeId type) =>
         Get(connection)?.Buffs?.GetDuration(type) ?? 0;
+
+    internal PlayerBuffState? CaptureBuffState(ConnectionHandle connection) => Get(connection)?.Buffs?.Clone();
+
+    internal bool IsCurrentBuffState(ConnectionHandle connection, PlayerBuffState previous) =>
+        Get(connection)?.Buffs?.HasSameSlots(previous) == true;
+
+    internal bool TryAdoptBuffState(ConnectionHandle connection, PlayerBuffState previous, PlayerBuffState next)
+    {
+        Entry? entry = Get(connection);
+        if (entry?.Buffs is not { } current || !current.HasSameSlots(previous)) return false;
+        entry.Buffs = next;
+        return true;
+    }
+
+    internal void RestoreBuffState(ConnectionHandle connection, PlayerBuffState snapshot) =>
+        GetOrReplace(connection).Buffs = snapshot.Clone();
 
     public bool TryCapture(
         ConnectionHandle connection,

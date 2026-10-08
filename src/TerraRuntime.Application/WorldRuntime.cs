@@ -235,7 +235,8 @@ public sealed partial class WorldRuntime : IDisposable
             deathPrelude: DeathPrelude,
             townSocialWorldFacts: RuntimeTownSocialWorld1458.FromMetadata(world.RuntimeMetadata,
                 world.RuntimeMetadata.GameMode is (byte)WorldGenerationGameMode.Expert or (byte)WorldGenerationGameMode.Master),
-            invasionProgressPublisher: PublishInvasionProgress, invasionStartPublisher: PublishInvasionStart);
+            invasionProgressPublisher: PublishInvasionProgress, invasionStartPublisher: PublishInvasionStart,
+            playerUpdateRandomSeed: new(WorldGenerationRequest.ResolveVanillaSeed1458(world.Header.SeedText)));
         WorldClock.SetWeatherEligiblePlayerProvider(State.HasWindEligiblePlayer);
         RefreshWorldBootstrap();
 

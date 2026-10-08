@@ -83,9 +83,16 @@ public readonly record struct WorldGenerationRequest(
     /// Resolves the Terraria 1.4.5.8 numeric world identity, shared by pass-local UnifiedRandom
     /// and coordinate/material FastRandom streams. Does not alter custom-provider <see cref="Seed"/>.
     /// </summary>
-    public int ResolveVanillaSeed1458()
+    public int ResolveVanillaSeed1458() =>
+        ResolveVanillaSeed1458(SeedText ?? Seed.ToString(CultureInfo.InvariantCulture));
+
+    /// <summary>
+    /// Translates the exact persisted seed text for a source world stream. Numeric parsing uses
+    /// the ordinary invariant server syntax; custom numeric-sign cultures are outside this profile.
+    /// </summary>
+    public static int ResolveVanillaSeed1458(string text)
     {
-        string text = SeedText ?? Seed.ToString(CultureInfo.InvariantCulture);
+        ArgumentNullException.ThrowIfNull(text);
         if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int numeric))
             return numeric == int.MinValue ? int.MaxValue : Math.Abs(numeric);
         uint crc = uint.MaxValue;

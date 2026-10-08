@@ -10,6 +10,13 @@ internal static class VanillaServerPlayerPhysicsProfile
 {
     internal const float FallSpeedNudge = 0.01f;
 
+    internal static VanillaServerPlayerPhysicsParameters Resolve(
+        in VanillaLiquidContactState previousContacts, in RuntimePlayerUpdateWorld1458 world, float positionY)
+    {
+        var profile = Resolve(in previousContacts);
+        return profile with { Gravity = profile.Gravity * world.ResolveGravityMultiplier(positionY) };
+    }
+
     public static VanillaServerPlayerPhysicsParameters Resolve(
         in VanillaLiquidContactState previousContacts)
     {

@@ -577,6 +577,12 @@ internal sealed partial class PlayerAuthority
             activePlayer.HasMana = true;
             activePlayer.Mana = request.Mana;
             activePlayer.MaxMana = request.MaxMana;
+            if (activePlayer.ItemPhase is { } phase)
+                activePlayer.ItemPhase = phase with
+                {
+                    BaseManaMaximum = request.MaxMana,
+                    Mana = phase.Mana with { Mana = request.Mana }
+                };
         }
         else
         {
@@ -645,7 +651,12 @@ internal sealed partial class PlayerAuthority
             IsDead = hasPending && pending!.HasHealth && pending.Life <= 0,
             HasMana = hasPending && pending!.HasMana,
             Mana = hasPending ? pending!.Mana : (short)0,
-            MaxMana = hasPending ? pending!.MaxMana : (short)0
+            MaxMana = hasPending ? pending!.MaxMana : (short)0,
+            ItemPhase = RuntimePlayerItemPhase1458.Constructor with
+            {
+                BaseManaMaximum = hasPending && pending!.HasMana ? pending.MaxMana : 20,
+                Mana = RuntimePlayerItemPhase1458.Constructor.Mana with { Mana = hasPending && pending!.HasMana ? pending.Mana : 0 }
+            }
         });
         transferProfiles.InitializeSourceBuffs(spawn.Connection);
         AttachNpcRawSlot(spawn.Connection.Player);

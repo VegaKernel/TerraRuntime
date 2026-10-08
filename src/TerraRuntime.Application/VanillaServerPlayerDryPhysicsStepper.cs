@@ -115,6 +115,38 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
         in VanillaLiquidContactState previousContacts,
         out ServerPlayerDryPhysicsStepResult next,
         out VanillaServerPlayerJumpState nextJumpState)
+        => TryStepControlled(in player, horizontalIntent, jumpIntent, flightEnabled,
+            in horizontalProfile, in jumpState, in previousContacts, null, out next, out nextJumpState);
+
+    internal bool TryStep(
+        in PlayerStateSnapshot player,
+        ServerPlayerHorizontalIntent horizontalIntent,
+        ServerPlayerJumpIntent jumpIntent,
+        in VanillaServerPlayerJumpState jumpState,
+        in VanillaLiquidContactState previousContacts,
+        in RuntimePlayerUpdateWorld1458 world,
+        out ServerPlayerDryPhysicsStepResult next,
+        out VanillaServerPlayerJumpState nextJumpState)
+    {
+        if (!world.IsValid || world.MaxTilesX != tiles.Dimensions.WidthTiles ||
+            world.MaxTilesY != tiles.Dimensions.HeightTiles)
+        { next = default; nextJumpState = default; return false; }
+        var horizontal = VanillaServerPlayerHorizontalProfile1458.Baseline;
+        return TryStepControlled(in player, horizontalIntent, jumpIntent, false,
+            in horizontal, in jumpState, in previousContacts, world, out next, out nextJumpState);
+    }
+
+    private bool TryStepControlled(
+        in PlayerStateSnapshot player,
+        ServerPlayerHorizontalIntent horizontalIntent,
+        ServerPlayerJumpIntent jumpIntent,
+        bool flightEnabled,
+        in VanillaServerPlayerHorizontalProfile1458 horizontalProfile,
+        in VanillaServerPlayerJumpState jumpState,
+        in VanillaLiquidContactState previousContacts,
+        RuntimePlayerUpdateWorld1458? world,
+        out ServerPlayerDryPhysicsStepResult next,
+        out VanillaServerPlayerJumpState nextJumpState)
     {
         if (!IsValidHorizontalIntent(horizontalIntent))
         {
@@ -123,8 +155,9 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             return false;
         }
 
-        VanillaServerPlayerPhysicsParameters profile =
-            VanillaServerPlayerPhysicsProfile.Resolve(in previousContacts);
+        VanillaServerPlayerPhysicsParameters profile = world is { } sourceWorld
+            ? VanillaServerPlayerPhysicsProfile.Resolve(in previousContacts, in sourceWorld, player.PositionY)
+            : VanillaServerPlayerPhysicsProfile.Resolve(in previousContacts);
         if (horizontalProfile.SoaringInsignia)
             profile = profile with { JumpSpeed = profile.JumpSpeed + 1.8f };
         float velocityX = VanillaServerPlayerHorizontalControl.Apply(
@@ -175,7 +208,7 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             in profile,
             ref nextJumpState,
             out next,
-            poweredFlight);
+            poweredFlight, world);
     }
 
     public bool ShouldAutoJumpObstacle(
@@ -281,7 +314,8 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
         in VanillaServerPlayerPhysicsParameters profile,
         ref VanillaServerPlayerJumpState jumpState,
         out ServerPlayerDryPhysicsStepResult next,
-        bool poweredFlight = false)
+        bool poweredFlight = false,
+        RuntimePlayerUpdateWorld1458? world = null)
     {
         if (!player.Player.IsAssigned ||
             player.IsDead ||
@@ -384,11 +418,16 @@ internal sealed class VanillaServerPlayerDryPhysicsStepper
             jumpState = jumpState with { RemainingTicks = profile.JumpHeight / 5 };
         }
 
+        float finalX = slope.PositionX, finalY = slope.PositionY;
+        float finalVx = slope.VelocityX, finalVy = slope.VelocityY;
+        if (world is { } sourceWorld &&
+            !sourceWorld.TryApplyBorders(ref finalX, ref finalY, ref finalVx, ref finalVy, player.GodMode))
+        { next = default; return false; }
         next = new ServerPlayerDryPhysicsStepResult(
-            slope.PositionX,
-            slope.PositionY,
-            slope.VelocityX,
-            slope.VelocityY,
+            finalX,
+            finalY,
+            finalVx,
+            finalVy,
             CollideX: preCollisionVelocityX != collision.VelocityX,
             CollideY: preCollisionVelocityY != collision.VelocityY,
             collision.HitFloor,

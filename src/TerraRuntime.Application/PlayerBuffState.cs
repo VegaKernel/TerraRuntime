@@ -6,7 +6,7 @@ namespace TerraRuntime.Application;
 
 // One player's bounded authoritative buff slots. Network snapshots supply presence and reset durations;
 // they are not independently counted down for remote players by Terraria's dedicated server.
-internal sealed class PlayerBuffState
+internal sealed partial class PlayerBuffState
 {
     public const int Capacity = 44;
     private readonly BuffTypeId[] types = new BuffTypeId[Capacity];

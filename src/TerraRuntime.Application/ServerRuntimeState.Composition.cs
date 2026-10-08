@@ -56,7 +56,8 @@ internal sealed partial class ServerRuntimeState
         RuntimeNpcDeathPrelude1458? deathPrelude = null,
         RuntimeTownSocialWorld1458? townSocialWorldFacts = null,
         Action<RuntimeInvasionCapture1458>? invasionProgressPublisher = null,
-        Action<RuntimeInvasionCapture1458>? invasionStartPublisher = null)
+        Action<RuntimeInvasionCapture1458>? invasionStartPublisher = null,
+        PlayerUpdateRandomSeed1458? playerUpdateRandomSeed = null)
     {
         WorldIdentity = worldIdentity.IsAssigned ? worldIdentity : new(WorldRuntimeId.CreateNew(), WorldSessionId.CreateNew());
         _runtime = ServerRuntimeComposition.Create(
@@ -98,6 +99,7 @@ internal sealed partial class ServerRuntimeState
             projectilePlayerCombatRandom,
             naturalSpawnRandom,
             WorldIdentity,
-            chestCommands, deathPrelude, townSocialWorldFacts, invasionProgressPublisher, invasionStartPublisher);
+            chestCommands, deathPrelude, townSocialWorldFacts, invasionProgressPublisher, invasionStartPublisher,
+            playerUpdateRandomSeed);
     }
 }

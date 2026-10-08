@@ -236,6 +236,7 @@ internal sealed class RuntimePlayerMember
     public bool HasMana { get; set; }
     public short Mana { get; set; }
     public short MaxMana { get; set; }
+    internal RuntimePlayerItemPhase1458? ItemPhase { get; set; } = RuntimePlayerItemPhase1458.Constructor;
     public byte ControlFlags { get; set; }
     public byte MovementFlags { get; set; }
     public byte MiscFlags1 { get; set; }
