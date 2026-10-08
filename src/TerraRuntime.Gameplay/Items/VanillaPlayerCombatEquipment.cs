@@ -6,7 +6,7 @@ namespace TerraRuntime.Gameplay.Items;
 /// <summary>
 /// Source-backed subset of Player.ResetEffects + UpdateEquips + GrantArmorBenefits + GrantPrefixBenefits
 /// from TerrariaServer 1.4.5.8. Unknown active combat equipment fails closed instead of being approximated.
-/// Vanity, dye, misc and inactive loadout slots are intentionally not combat inputs.
+/// Vanity and inactive loadouts participate in source equipment selection; dye and misc slots grant no combat inputs.
 /// </summary>
 public readonly record struct VanillaPlayerCombatSnapshot(
     int Defense,
@@ -75,6 +75,9 @@ public readonly record struct VanillaPlayerCombatSnapshot(
 /// <summary>Owned source world difficulty and the retained packet-4 Demon Heart flag.</summary>
 public readonly record struct VanillaPlayerCombatEquipmentContext(bool? ExtraAccessory, bool ExpertMode, bool MasterMode)
 {
+    /// <summary>Actual source Main.LocalPlayer vanity armor; absent ownership is not empty armor.</summary>
+    public VanillaPlayerLocalVanityArmor1458? LocalVanityArmor { get; init; }
+
     public bool TryIsSlotUsable(int armorIndex, out bool usable)
     {
         usable = true;
@@ -90,7 +93,7 @@ public readonly record struct VanillaPlayerCombatEquipmentContext(bool? ExtraAcc
     }
 }
 
-public static class VanillaPlayerCombatEquipmentCatalog
+public static partial class VanillaPlayerCombatEquipmentCatalog
 {
     public static bool TryBuild(
         ReadOnlySpan<PlayerEquipmentCommitRequest> equipment,
@@ -102,30 +105,21 @@ public static class VanillaPlayerCombatEquipmentCatalog
     {
         snapshot = VanillaPlayerCombatSnapshot.Baseline;
         if (context.MasterMode && !context.ExpertMode) return false;
-        // GetEffectiveArmor can inherit a favorited inactive loadout item when the active slot is empty.
-        // The source compatibility/earlier-slot checks are not represented here; selected sharing refuses.
-        for (int index = 0; index < VanillaPlayerItemSlotCatalog.FunctionalArmorCount; index++)
+        Span<PlayerEquipmentCommitRequest> effective = stackalloc PlayerEquipmentCommitRequest[VanillaPlayerItemSlotCatalog.FunctionalArmorCount];
+        for (int index = 0; index < effective.Length; index++)
         {
-            bool active = false, favorite = false;
-            foreach (var item in equipment)
-            {
-                if (item.Stack <= 0 || item.ItemNetId <= 0) continue;
-                if (item.SlotId == VanillaPlayerItemSlotCatalog.ArmorStart + index) active = true;
-                int inactive = item.SlotId - VanillaPlayerItemSlotCatalog.LoadoutArmorStart;
-                if (inactive >= 0 && inactive < VanillaPlayerItemSlotCatalog.LoadoutStride * VanillaPlayerItemSlotCatalog.LoadoutCount &&
-                    inactive % VanillaPlayerItemSlotCatalog.LoadoutStride == index &&
-                    (item.ItemFlags & PlayerEquipmentCommitRequest.FavoriteItemFlag) != 0) favorite = true;
-            }
-            if (active || !favorite) continue;
-            if (!context.TryIsSlotUsable(index, out bool usable) || usable) return false;
+            if (!HasEffectiveCandidate(equipment, index)) continue;
+            if (!context.TryIsSlotUsable(index, out bool usable)) return false;
+            if (usable && !TrySelectEffectiveEquipment(equipment, in context, index, out effective[index])) return false;
         }
         ItemTypeId head = VanillaItemIds.None;
         ItemTypeId body = VanillaItemIds.None;
         ItemTypeId legs = VanillaItemIds.None;
 
-        for (int i = 0; i < equipment.Length; i++)
+        for (int i = 0; i < effective.Length; i++)
         {
-            PlayerEquipmentCommitRequest request = equipment[i];
+            PlayerEquipmentCommitRequest request = effective[i];
+            if (request.Stack <= 0 || request.ItemNetId <= 0) continue;
             if (!VanillaPlayerItemSlotCatalog.IsFunctionalArmorSlot(request.SlotId))
                 continue;
 

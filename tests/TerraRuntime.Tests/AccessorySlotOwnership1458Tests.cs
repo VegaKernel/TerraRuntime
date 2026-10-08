@@ -62,8 +62,9 @@ public sealed class AccessorySlotOwnership1458Tests
         var invalid = new VanillaPlayerCombatEquipmentContext(true, false, true);
         Assert.False(VanillaPlayerCombatEquipmentCatalog.TryBuild([], in invalid, out _));
         var inherited = Equip(8, 491) with { SlotId = (short)(VanillaPlayerItemSlotCatalog.LoadoutArmorStart + 8), ItemFlags = 1 };
-        Assert.False(VanillaPlayerCombatEquipmentCatalog.TryBuild([inherited],
-            new VanillaPlayerCombatEquipmentContext(true, true, false), out _));
+        Assert.True(VanillaPlayerCombatEquipmentCatalog.TryBuild([inherited],
+            new VanillaPlayerCombatEquipmentContext(true, true, false), out var inheritedCombat));
+        Assert.Equal(1.15f, inheritedCombat.RangedDamage);
         Assert.True(VanillaPlayerCombatEquipmentCatalog.TryBuild([Equip(8, 491), inherited],
             new VanillaPlayerCombatEquipmentContext(true, true, false), out _));
         Assert.True(VanillaPlayerCombatEquipmentCatalog.TryBuild([inherited], in classic, out _));
@@ -117,12 +118,14 @@ public sealed class AccessorySlotOwnership1458Tests
         Assert.True(bots.SetAppearance(id, botAppearance with { DifficultyFlags = 4 }));
         Assert.True(bots.SetItem(id, new((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 8), new(0), 0, new(0), 0)));
         Assert.True(bots.SetItem(id, new((short)(VanillaPlayerItemSlotCatalog.LoadoutArmorStart + 8), new(491), 1, new(0), 1)));
-        Assert.False(bots.TryCaptureCombatSnapshot(created.Player, out _)); // No hidden neutral bot projection.
+        Assert.True(bots.TryCaptureCombatSnapshot(created.Player, out bot));
+        Assert.Equal(human, bot);
         players.TryApply(new PlayerEquipmentRuntimeCommand(connection, Equip(8, 0) with { PlayerSlot = session.Slot, Stack = 0 }));
         players.TryApply(new PlayerEquipmentRuntimeCommand(connection, Equip(8, 491) with {
             PlayerSlot = session.Slot, SlotId = (short)(VanillaPlayerItemSlotCatalog.LoadoutArmorStart + 8), ItemFlags = 1 }));
         players.TryApply(new PlayerAppearanceRuntimeCommand(connection, appearance));
-        Assert.False(players.TryCaptureCombatSnapshot(connection, out _));
+        Assert.True(players.TryCaptureCombatSnapshot(connection, out var inheritedHuman));
+        Assert.Equal(human, inheritedHuman);
     }
 
     private static PlayerEquipmentCommitRequest Equip(int armor, short item, byte prefix = 0) =>

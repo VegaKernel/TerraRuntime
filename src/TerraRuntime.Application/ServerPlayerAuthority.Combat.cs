@@ -34,21 +34,20 @@ internal sealed partial class ServerPlayerAuthority
 
         bool? extraAccessory = states.TryGetAppearance(player, out var appearance)
             ? (appearance.DifficultyFlags & VanillaPlayerAppearanceNormalizer.ExtraAccessoryDifficultyFlag) != 0 : null;
-        var context = new VanillaPlayerCombatEquipmentContext(extraAccessory, combatEquipmentExpertMode, combatEquipmentMasterMode);
+        var context = new VanillaPlayerCombatEquipmentContext(extraAccessory, combatEquipmentExpertMode, combatEquipmentMasterMode)
+        { LocalVanityArmor = combatEquipmentLocalVanityArmor };
         Span<PlayerEquipmentCommitRequest> equipment = stackalloc PlayerEquipmentCommitRequest[
-            VanillaPlayerItemSlotCatalog.FunctionalArmorCount * (1 + VanillaPlayerItemSlotCatalog.LoadoutCount)];
+            VanillaPlayerItemSlotCatalog.ArmorCount + VanillaPlayerItemSlotCatalog.FunctionalArmorCount * VanillaPlayerItemSlotCatalog.LoadoutCount];
         int count = 0;
         for (short slot = VanillaPlayerItemSlotCatalog.ArmorStart;
-             slot < VanillaPlayerItemSlotCatalog.FunctionalArmorEndExclusive;
+             slot < VanillaPlayerItemSlotCatalog.VanityArmorEndExclusive;
              slot++)
         {
             if (!states.TryGetItem(player, slot, out ServerPlayerItemState item))
                 return false;
             if (item.IsEmpty)
                 continue;
-            if (!context.TryIsSlotUsable(slot - VanillaPlayerItemSlotCatalog.ArmorStart, out bool usable)) return false;
-            if (!usable) continue;
-            if (item.Stack != 1 || item.ItemType.Value > short.MaxValue || item.Prefix.Value > byte.MaxValue)
+            if (item.ItemType.Value > short.MaxValue || item.Prefix.Value > byte.MaxValue)
                 return false;
 
             equipment[count++] = new PlayerEquipmentCommitRequest(

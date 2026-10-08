@@ -375,7 +375,8 @@ internal sealed partial class PlayerAuthority
         }
         bool? extraAccessory = appearance is { } owned
             ? (owned.DifficultyFlags & VanillaPlayerAppearanceNormalizer.ExtraAccessoryDifficultyFlag) != 0 : null;
-        var context = new VanillaPlayerCombatEquipmentContext(extraAccessory, combatEquipmentExpertMode, combatEquipmentMasterMode);
+        var context = new VanillaPlayerCombatEquipmentContext(extraAccessory, combatEquipmentExpertMode, combatEquipmentMasterMode)
+        { LocalVanityArmor = combatEquipmentLocalVanityArmor };
         return VanillaPlayerCombatEquipmentCatalog.TryBuild(equipment, in context, out snapshot);
     }
 

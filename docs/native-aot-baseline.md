@@ -1,5 +1,9 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Inherited equipment checkpoint — 2026-10-08
+
+The 2026-10-08 ready-work merge owns source-order favorited inactive-loadout equipment, actual local255 vanity ownership, locked/vanity compatibility blockers and common human/server-player combat projection. Focused364/364, full 1563004/1563005 with0failures/errors and1existing skip, WindowsNativeAOT/five smokes and Release/Native source82/49 checks pass. Unfinished consumable/mana code is preserved outside shipping source; actual client-RNG reconciliation and broader player/gameplay/NPC parity remain open. LinuxNativeAOT is locally unverified. See [current work state](agent-memory/work-state.md) for exact acceptance and resume evidence.
+
 ## Bullet launch checkpoint — 2026-10-08
 
 The 2026-10-08 bullet-launch checkpoint owns bounded source-ordered uses for8 bullet weapons, exact-key atomic volleys and physical1000 lifecycle/join exclusion. Local full/focused, shipping WindowsNativeAOT/five smokes, changed-use Native92/278 and Release/Native source82/49 socket checks pass. Strict server-RNG acceptance does not establish complete client Main.rand reconciliation; full player/inventory/animation and wider gameplay/NPC parity remain open. LinuxNativeAOT is locally unverified. See [current work state](agent-memory/work-state.md) for exact evidence and resume scope.

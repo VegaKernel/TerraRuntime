@@ -172,6 +172,10 @@ internal sealed class ServerRuntimeComposition
             ((worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false) ? 1f : 0f);
         playersAuthority.SetCombatEquipmentWorldModes(pickupDifficulty >= 2f, pickupDifficulty >= 3f);
         serverPlayers?.SetCombatEquipmentWorldModes(pickupDifficulty >= 2f, pickupDifficulty >= 3f);
+        // Standard dedicated Main.LocalPlayer is reserved slot255 with constructor-empty armor.
+        // The shared PlayerSlotPool leases only0..254; client/server-player equipment cannot write it.
+        playersAuthority.SetCombatEquipmentLocalVanityArmor(VanillaPlayerLocalVanityArmor1458.Empty);
+        serverPlayers?.SetCombatEquipmentLocalVanityArmor(VanillaPlayerLocalVanityArmor1458.Empty);
         var worldItemAuthority = new WorldItemAuthority(
             playersAuthority,
             worldItemStore,

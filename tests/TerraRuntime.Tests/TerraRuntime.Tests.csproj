@@ -15,6 +15,7 @@
     <EmbeddedResource Include="Fixtures/accessory-slots-official-1458.json.gz" LogicalName="AccessorySlots1458" />
     <EmbeddedResource Include="Fixtures/projectile-spawn-batch-official-1458.json.gz" LogicalName="RangedSpawnBatch1458" />
     <EmbeddedResource Include="Fixtures/ranged-bullet-launch-official-1458.json.gz" LogicalName="RangedBulletLaunch1458" />
+    <EmbeddedResource Include="Fixtures/inherited-equipment-official-1458.json.gz" LogicalName="InheritedEquipment1458" />
     <EmbeddedResource Include="Fixtures/ammo-buffs-minishark-shoot-official-1458.json.gz" LogicalName="AmmoBuffMinisharkShoot1458" />
     <EmbeddedResource Include="Fixtures/shotgun-sequential-shoot-official-1458.json.gz" LogicalName="ShotgunSequentialShoot1458" />
   </ItemGroup>

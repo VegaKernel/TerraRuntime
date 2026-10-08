@@ -4,6 +4,7 @@ using TerraRuntime.Core;
 using TerraRuntime.Protocol.Multiplicity;
 using TerraRuntime.World;
 using System.Reflection;
+using TerraRuntime.Gameplay.Npcs;
 
 namespace TerraRuntime.Tests;
 
@@ -164,7 +165,8 @@ public sealed class RuntimeTownNpcConversation1458Tests
         players.TryApply(new PlayerSpawnRuntimeCommand(connection, session,
             new PlayerSpawnCommitRequest(connection.Player.Slot, 20, 20, 0, 0, 0, 0, 0)));
         var authority = new TownNpcAuthority(players, f.Npcs, new RuntimeProjectileStore(), f.Tiles,
-            new RuntimeWorldProgressionMutations(), f.Town, null, null, null, null, false, false, null, false, false);
+            new RuntimeWorldProgressionMutations(), f.Town, null, null, null, null, false, false, null, false, false,
+            npcRandom: new QuietNpcRandom());
         authority.ApplyTalk(connection, 0, null);
         f.Sink.Commits.Clear();
         authority.TickLifecycle(null);
@@ -357,6 +359,13 @@ public sealed class RuntimeTownNpcConversation1458Tests
             var conditions = new RuntimeTownNpcScheduleConditions1458(!night, false, false, false, false);
             Phase.Tick(in conditions, [], peers);
         }
+    }
+
+    // The ingress test selects ordinary idle continuation explicitly. A random laugh is a
+    // valid source ForcedUpdate, but is unrelated to removing the authenticated talker.
+    private sealed class QuietNpcRandom : IVanillaNpcRandom
+    {
+        public int NextInt32(int inclusiveMin, int exclusiveMax) => exclusiveMax - 1;
     }
 
     private sealed class OrderedRandom : IRuntimeTownNpcScheduleRandom1458
