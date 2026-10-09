@@ -210,7 +210,9 @@ public sealed class RemoteBulletItemPhase1458Tests
                 playerUpdateRandomSeed: new(I(source, "seed")));
             Players = ((ServerRuntimeComposition)typeof(ServerRuntimeState).GetField("_runtime", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(State)!).Players;
             Random = (VanillaUnifiedRandom1458)typeof(PlayerAuthority).GetField("playerUpdateRandom", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(Players)!;
-            Players.SetPlayerUpdateWorldFacts(new(400, 300, 80, false, false));
+            // These prefix-none references have identical clocks on both source platforms.
+            Players.SetPlayerUpdateWorldFacts(new(400, 300, 80, false, false)
+            { WindowsItemPrefixArithmetic = OperatingSystem.IsWindows() });
             Players.SetRemotePlayerEnvironment(new(false, false), Projectiles);
             var pool = new PlayerSlotPool(1);
             Assert.True(pool.TryAcquireConnection(out var lease));

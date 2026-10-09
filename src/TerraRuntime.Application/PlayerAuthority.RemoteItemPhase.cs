@@ -141,7 +141,7 @@ internal sealed partial class PlayerAuthority
             item.DeadTime is < 0 or >= int.MaxValue || item.RespawnTimer < 0 || item.ManaPotionDelay < 0 ||
             member.NpcHealth is not { SourceProfileKnown: true } || member.HasMount || plan.GodMode ||
             (plan.Appearance?.ConsumableUnlockFlags ?? 0) != 0 ||
-            plan.Equipment.Any(static equipment => equipment.Stack > 0) ||
+            !TryCaptureNeutralRemoteEquipment(plan.Equipment, out _) ||
             plan.BuffTypes.Any(static type => type.Value is not (21 or 23 or 93 or 94 or 112)) ||
             member.MiscFlags1 != 0 || (member.MiscFlags2 & ~(1 << 6)) != 0 ||
             (member.ControlFlags & ~0x7c) != 0 ||
@@ -206,9 +206,10 @@ internal sealed partial class PlayerAuthority
             return true;
         }
         if (!inventory.TryGet(member.Connection, member.SelectedItem, out var selected) ||
-            !selected.IsCanonical || selected.Prefix != VanillaPrefixIds.None ||
-            (!VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out _) &&
-                !VanillaRemoteBulletItemCheck1458.IsSupported(selected.ItemType))) return false;
+            !selected.IsCanonical ||
+            (!(selected.Prefix == VanillaPrefixIds.None &&
+                VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out _)) &&
+                !VanillaRemoteBulletItemCheck1458.IsSupported(selected.ItemType, selected.Prefix))) return false;
         if (plan.Maximum is not { } maximum || plan.HealthWorld is not { } capturedHealthWorld ||
             !TryPlanNpcHealth(member, maximum, false, false, out var health, selectedItemPhase: true,
                 selectedHealthInputs: (capturedHealthWorld, plan.Grappling)) ||
@@ -247,7 +248,8 @@ internal sealed partial class PlayerAuthority
         {
             var bulletFacts = new PlayerRemoteBulletItemFacts1458(selected.ItemType,
                 CaptureRemoteBulletAmmo(member), facts.ControlUseItem, facts.LastUseSuccess,
-                facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered);
+                facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered, selected.Prefix,
+                world.WindowsItemPrefixArithmetic);
             if (!VanillaRemoteBulletItemCheck1458.TryStep(clocks, in bulletFacts, random.Next, out var bulletUse))
                 return false;
             use = new(bulletUse.State, facts.Life, facts.Mana, false, 0, 0)

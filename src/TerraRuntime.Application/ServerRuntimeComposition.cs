@@ -155,7 +155,8 @@ internal sealed class ServerRuntimeComposition
         if (worldTiles is not null && townCommerceWorldFacts is { } playerWorld)
         {
             var sourceWorld = new RuntimePlayerUpdateWorld1458(worldTiles.Dimensions.WidthTiles,
-                worldTiles.Dimensions.HeightTiles, playerWorld.WorldSurface, playerWorld.RemixWorld, playerWorld.SkyblockWorld);
+                worldTiles.Dimensions.HeightTiles, playerWorld.WorldSurface, playerWorld.RemixWorld, playerWorld.SkyblockWorld)
+            { WindowsItemPrefixArithmetic = OperatingSystem.IsWindows() };
             if (sourceWorld.IsValid) playersAuthority.SetPlayerUpdateWorldFacts(in sourceWorld);
         }
         if (townCommerceWorldFacts is { } healthWorld)

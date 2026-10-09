@@ -27,6 +27,13 @@
     <EmbeddedResource Include="Fixtures/remote-item-phase-census-official-1458.json.gz" LogicalName="RemoteItemPhaseCensus1458" />
     <EmbeddedResource Include="Fixtures/remote-bullet-item-phase-official-1458.json.gz" LogicalName="RemoteBulletItemPhase1458" />
     <EmbeddedResource Include="Fixtures/remote-common-pending-official-1458.json.gz" LogicalName="RemoteCommonPending1458" />
+    <EmbeddedResource Include="Fixtures/neutral-metal-player-phase-official-1458.json.gz" LogicalName="NeutralMetalPlayerPhase1458" />
+    <EmbeddedResource Include="Fixtures/remote-prefixed-bullet-item-phase-official-1458.json.gz" LogicalName="RemotePrefixedBulletItemPhase1458" />
+    <EmbeddedResource Include="Fixtures/remote-prefixed-bullet-defaults-official-1458.json.gz" LogicalName="RemotePrefixedBulletDefaults1458" />
+    <EmbeddedResource Include="Fixtures/remote-prefixed-bullet-windows-phase-official-1458.json.gz" LogicalName="RemotePrefixedBulletWindowsPhase1458" />
+    <EmbeddedResource Include="Fixtures/inherited-metal-whole-player-official-1458.json.gz" LogicalName="InheritedMetalWholePlayer1458" />
+    <EmbeddedResource Include="Fixtures/inherited-metal-blocker-whole-player-official-1458.json.gz" LogicalName="InheritedMetalBlockerWholePlayer1458" />
+    <EmbeddedResource Include="Fixtures/metal-vanity-whole-player-official-1458.json.gz" LogicalName="MetalVanityWholePlayer1458" />
     <EmbeddedResource Include="Fixtures/player-remote-early-returns-official-1458.json.gz" LogicalName="PlayerRemoteEarlyReturns1458" />
     <EmbeddedResource Include="Fixtures/player-dual-horizontal-official-1458.json.gz" LogicalName="PlayerDualHorizontal1458" />
     <EmbeddedResource Include="Fixtures/player-spawn-command-official-1458.json.gz" LogicalName="PlayerSpawnCommand1458" />

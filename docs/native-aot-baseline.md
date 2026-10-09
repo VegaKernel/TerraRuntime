@@ -1,5 +1,9 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Current neutral metal equipment and prefixed remote phase — 2026-10-09, accepted local results
+
+The accepted prefix/metal phase uses the existing shipping graph with no new production dependency/reflection dispatch/project edge. Source-platform arithmetic is typed and bound once in standard composition. Fresh shipping Windows NativeAOT/five smokes and a separate typed changed-lane Native harness 237 scenarios/7524 actual State.Tick calls pass; all 14 referenced DLLs match the final shipping snapshot and all 32 shipping DLLs match combined acceptance binaries. Release/focused 327, unfiltered full 1,563,046/1,563,047 (one known skip) and fresh Release/Native82/49 live gates pass. Genuine Linux NativeAOT remains locally unverified. See [current work state](agent-memory/work-state.md).
+
 ## Current remote bullet phase — 2026-10-09, accepted local results
 
 Eight remote bullet clock/presentation families, neutral93/112/PendingItemReuse and strict verified-phase pending delivery use the existing shipping graph without new dependencies/reflection dispatch/project edges. Independent2752 State.Tick phases and compact ammo/classification evidence pass; new4/adjacent11, meaningful omission controls and coherent272/werror pass. Fresh shipping NativeAOT, changed typed Native harness and combined full acceptance pass; prior66ca811b results remain dated history. Proof `.cache/remote-bullet-item-phase-tests/final-freeze-manifest.json`, `.cache/pending-bullet-phase-tests/status.json`. LinuxNativeAOT and full player/client RNG compatibility remain locally unverified.

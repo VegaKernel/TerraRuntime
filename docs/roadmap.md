@@ -1,5 +1,9 @@
 # TerraRuntime roadmap
 
+## Current neutral metal equipment and prefixed remote phase — 2026-10-09, accepted local results
+
+The combined priority3 checkpoint owns 26 proven neutral metal pieces/10 set arrangements, matching vanity/bounded inherited selection and represented source-valid prefixes for eight remote bullet clocks. Six Facts compare 12,408 original/runtime player phases; five Game/two App omission controls are meaningful. Release/focused 327, full 1,563,046/1,563,047 (0 failures/errors, 1 known skip), shipping/typed Windows Native and fresh Release/Native82/49 live gates pass; no GitHub CI wait. Next: exact retained ItemPhase capture/watermarks, connected 101 tool/broadsword clocks and all 256 source-valid gun-prefix clocks from frozen original proofs. Complete inventory authority, player/client RNG, combat/buffs, events/progression and remaining NPC parity remain open. See [current work state](agent-memory/work-state.md).
+
 ## Current priority3 remote bullet phase — 2026-10-09, accepted local results
 
 The connected State.Tick lane now adds eight bullet clocks/presentation, neutral93/112 and PendingItemReuse, with2752 independent source comparisons,144 ammo updates/all6195 classifications and strict input/member/appearance/phase guards for pending child delivery. No remote second debit/Shoot/PickAmmo or invented reports. New4/adjacent11, omission controls, coherent272/werror and final full/Native/live gates pass. Proof `.cache/remote-bullet-item-phase-tests/final-freeze-manifest.json` and `.cache/pending-bullet-phase-tests/status.json`; [item-use scope](en/player-item-use-1458.md). Accepted66ca811b and unchanged historical goldens are preserved below. Complete client RNG, wider items/equipment and full gameplay parity remain open.

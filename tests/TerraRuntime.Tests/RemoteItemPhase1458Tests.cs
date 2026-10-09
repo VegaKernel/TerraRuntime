@@ -328,7 +328,9 @@ public sealed class RemoteItemPhase1458Tests
                 Random = (VanillaUnifiedRandom1458)typeof(PlayerAuthority).GetField("playerUpdateRandom", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(Players)!;
             }
             else { Players = new(Events, Tiles); Random = new(0); }
-            Players.SetPlayerUpdateWorldFacts(new(400, 300, 80, false, false));
+            // These prefix-none references have identical clocks on both source platforms.
+            Players.SetPlayerUpdateWorldFacts(new(400, 300, 80, false, false)
+            { WindowsItemPrefixArithmetic = OperatingSystem.IsWindows() });
             Players.SetPlayerUpdateRandom(Random);
             Players.SetRemotePlayerEnvironment(new(false, false), projectiles);
             Players.SetNpcHealthWorldFacts(() => new(false, false));

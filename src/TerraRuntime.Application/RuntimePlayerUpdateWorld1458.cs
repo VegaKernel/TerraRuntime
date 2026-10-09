@@ -1,9 +1,13 @@
 namespace TerraRuntime.Application;
 
-/// <summary>Owned source world fields for a remote ordinary Player.Update movement phase.</summary>
+/// <summary>Owned source environment for an ordinary remote Player.Update phase.</summary>
 internal readonly record struct RuntimePlayerUpdateWorld1458(
     int MaxTilesX, int MaxTilesY, double WorldSurface, bool RemixWorld, bool SkyblockWorld)
 {
+    // Official Windows CLR4/x86 retains the Item.Prefix product at greater precision
+    // than the Linux/CoreCLR reference. Bind this arithmetic once with the environment.
+    internal bool WindowsItemPrefixArithmetic { get; init; }
+
     internal bool IsValid => MaxTilesX > 0 && MaxTilesY > 0 &&
         MaxTilesX <= int.MaxValue / 16 && MaxTilesY <= int.MaxValue / 16 &&
         double.IsFinite(WorldSurface) && WorldSurface > 0;

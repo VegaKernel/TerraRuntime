@@ -4,7 +4,8 @@ using TerraRuntime.Gameplay.Items;
 namespace TerraRuntime.Gameplay.Players;
 
 public readonly record struct PlayerRemoteBulletItemFacts1458(ItemTypeId Weapon, bool? HasAmmo,
-    bool ControlUseItem, bool LastUseSuccess, bool Cursed, bool CrowdControlled, bool SelectionBuffered);
+    bool ControlUseItem, bool LastUseSuccess, bool Cursed, bool CrowdControlled, bool SelectionBuffered,
+    PrefixId Prefix = default, bool WindowsItemPrefixArithmetic = false);
 
 public readonly record struct PlayerRemoteBulletItemTransition1458(
     PlayerSelectedConsumableState1458 State, bool PendingItemReuse);
@@ -12,14 +13,15 @@ public readonly record struct PlayerRemoteBulletItemTransition1458(
 /// <summary>Neutral dedicated remote ItemCheck clocks. Its owner-only Shoot/PickAmmo branch is absent.</summary>
 public static class VanillaRemoteBulletItemCheck1458
 {
-    public static bool IsSupported(ItemTypeId weapon) => TryGet(weapon, out _, out _);
+    public static bool IsSupported(ItemTypeId weapon, PrefixId prefix = default) => TryGet(weapon, prefix, out _, out _);
 
     public static bool TryStep(PlayerSelectedConsumableState1458? previous,
         in PlayerRemoteBulletItemFacts1458 facts, Func<int, int, int> nextInteger,
         out PlayerRemoteBulletItemTransition1458 transition)
     {
         transition = default;
-        if (previous is not { } state || !TryGet(facts.Weapon, out int useAnimation, out bool autoReuse) ||
+        if (previous is not { } state ||
+            !TryGet(facts.Weapon, facts.Prefix, out int useAnimation, out bool autoReuse, facts.WindowsItemPrefixArithmetic) ||
             state.ItemTime is < 0 or > short.MaxValue || state.ItemTimeMax is < 0 or > short.MaxValue ||
             state.Animation is < 0 or > short.MaxValue || state.AnimationMax is < 0 or > short.MaxValue ||
             state.PotionDelay is < 0 or > 3_600 || state.RevolverCritBonus < int.MinValue + 2 ||
@@ -65,15 +67,23 @@ public static class VanillaRemoteBulletItemCheck1458
         return true;
     }
 
-    private static bool TryGet(ItemTypeId weapon, out int useAnimation, out bool autoReuse)
+    private static bool TryGet(ItemTypeId weapon, PrefixId prefix, out int useAnimation, out bool autoReuse,
+        bool windowsItemPrefixArithmetic = false)
     {
         useAnimation = 0;
         autoReuse = weapon.Value is 98 or 533 or 1929 or 679;
         if (weapon.Value is not (98 or 219 or 533 or 1929 or 964 or 534 or 679 or 4703) ||
-            !VanillaProjectileWeaponCombatCatalog.TryGetWeapon(weapon, out var definition)) return false;
+            !VanillaProjectileWeaponCombatCatalog.TryGetWeapon(weapon, out var definition) ||
+            !VanillaProjectileWeaponCombatCatalog.IsPrefixSupported(weapon, prefix) ||
+            !VanillaItemCombatCatalog.TryGetRangedPrefixModifiers(prefix, out var modifiers)) return false;
         // Reuse the verified SetDefaults animation; only the remote autoReuse eligibility
         // supplements the launch catalog. These eight have style5, zero mana/reuse delay.
-        useAnimation = definition.AnimationTicks;
+        // Linux/CoreCLR rounds the single-precision product. Official Windows CLR4/x86
+        // retains its wider product into Math.Round (Quad55*.9 =>49, 55*1.1 =>61).
+        // Invalid requested prefixes remain unknown; their source rerolled replacement is not inferred.
+        useAnimation = windowsItemPrefixArithmetic
+            ? (int)Math.Round(definition.AnimationTicks * (double)modifiers.SpeedMultiplier)
+            : (int)Math.Round(definition.AnimationTicks * modifiers.SpeedMultiplier);
         return true;
     }
 }
