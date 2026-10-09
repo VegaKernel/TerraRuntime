@@ -141,7 +141,7 @@ internal sealed partial class PlayerAuthority
             item.DeadTime is < 0 or >= int.MaxValue || item.RespawnTimer < 0 || item.ManaPotionDelay < 0 ||
             member.NpcHealth is not { SourceProfileKnown: true } || member.HasMount || plan.GodMode ||
             (plan.Appearance?.ConsumableUnlockFlags ?? 0) != 0 ||
-            !TryCaptureNeutralRemoteEquipment(plan.Equipment, out _) ||
+            !TryCaptureProvenRemoteEquipment(plan.Equipment, plan.Appearance, out var equipmentCombat) ||
             plan.BuffTypes.Any(static type => type.Value is not (21 or 23 or 93 or 94 or 112)) ||
             member.MiscFlags1 != 0 || (member.MiscFlags2 & ~(1 << 6)) != 0 ||
             (member.ControlFlags & ~0x7c) != 0 ||
@@ -206,7 +206,7 @@ internal sealed partial class PlayerAuthority
             if (ghost)
                 // Source Ghost() has its own crit reset; dead/outside retain their prior fields.
                 item = item with { Mana = item.Mana with { Maximum = item.BaseManaMaximum },
-                    DerivedCrit = PlayerDerivedCritState1458.SourceBaseline };
+                    DerivedCombat = VanillaPlayerCombatSnapshot.Baseline };
             plan.Item = item;
             plan.Changed = true;
             return true;
@@ -225,9 +225,21 @@ internal sealed partial class PlayerAuthority
             return false;
         // ResetEffects derives all three fields from this phase's selected Item.crit.
         // Later selection/equipment reports must not reconstruct these retained values.
-        var baselineCrit = PlayerDerivedCritState1458.SourceBaseline;
-        item = item with { DerivedCrit = new(baselineCrit.Melee + itemCrit,
-            baselineCrit.Ranged + itemCrit, baselineCrit.Magic + itemCrit) };
+        // UpdateBuffs precedes the final magic-damage heat/sickness writer; ItemCheck's
+        // new mana-potion buff is offered afterward and first affects the following phase.
+        int sicknessDuration = plan.Buffs.GetLastActiveDuration(new BuffTypeId(94));
+        float magicDamage = equipmentCombat.MagicDamage;
+        if (sicknessDuration > 0) magicDamage *= 1f - 0.25f * ((float)sicknessDuration / 300f);
+        magicDamage *= heat;
+        var derivedCombat = equipmentCombat with
+        {
+            MeleeCrit = equipmentCombat.MeleeCrit + itemCrit,
+            RangedCrit = equipmentCombat.RangedCrit + itemCrit,
+            MagicCrit = equipmentCombat.MagicCrit + itemCrit,
+            MagicDamage = magicDamage
+        };
+        if (!IsValidDerivedCombat(in derivedCombat)) return false;
+        item = item with { DerivedCombat = derivedCombat };
         if (plan.Maximum is not { } maximum || plan.HealthWorld is not { } capturedHealthWorld ||
             !TryPlanNpcHealth(member, maximum, false, false, out var health, selectedItemPhase: true,
                 selectedHealthInputs: (capturedHealthWorld, plan.Grappling)) ||

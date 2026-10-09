@@ -6,6 +6,7 @@ using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
 using TerraRuntime.Core.Players;
 using TerraRuntime.Gameplay.Players;
+using TerraRuntime.Gameplay.Items;
 using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
@@ -20,7 +21,7 @@ public sealed class PlayerItemPhaseOwnership1458Tests
         // The older fixture omitted these fields; its other retained imports stay nullable.
         var constructor = Phase(Row(source, "constructor").GetProperty("constructor")) with
         {
-            ToolTime = 0, AttackCD = 0, DerivedCrit = new(4, 4, 4)
+            ToolTime = 0, AttackCD = 0, DerivedCombat = VanillaPlayerCombatSnapshot.Baseline
         };
         foreach (bool reportZero in new[] { false, true })
         {

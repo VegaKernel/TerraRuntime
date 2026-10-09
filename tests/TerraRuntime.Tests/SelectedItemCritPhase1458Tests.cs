@@ -75,7 +75,10 @@ public sealed class SelectedItemCritPhase1458Tests
             { new(4, 4, 4), new(9, 7, 5), null, new(-1, 4, 4), new(4, -1, 4), new(4, 4, -1) })
         {
             using var f = new Fixture(false, 0);
-            f.Member.ItemPhase = f.Member.ItemPhase!.Value with { DerivedCrit = crit };
+            var phase = f.Member.ItemPhase!.Value;
+            f.Member.ItemPhase = phase with { DerivedCombat = crit is { } known
+                ? phase.DerivedCombat!.Value with { MeleeCrit = known.Melee, RangedCrit = known.Ranged, MagicCrit = known.Magic }
+                : null };
             var detach = new TaskCompletionSource<RuntimePlayerTransferState?>();
             f.State.Apply(new PlayerTransferDetachRuntimeCommand(f.Connection, detach));
             var transfer = Assert.IsType<RuntimePlayerTransferState>(await detach.Task);
@@ -101,7 +104,7 @@ public sealed class SelectedItemCritPhase1458Tests
     public void Unknown_import_is_overwritten_only_by_a_genuine_living_phase()
     {
         using var f = new Fixture(true, 0);
-        f.Member.ItemPhase = f.Member.ItemPhase!.Value with { DerivedCrit = null };
+        f.Member.ItemPhase = f.Member.ItemPhase!.Value with { DerivedCombat = null };
         f.Member.PositionX = 0; f.Member.PositionY = 0;
         f.State.Tick();
         Assert.Null(f.Member.ItemPhase!.Value.DerivedCrit);
@@ -112,7 +115,10 @@ public sealed class SelectedItemCritPhase1458Tests
         var before = f.Member.CaptureSnapshot();
         f.Players.SetNpcHealthWorldFacts(() =>
         {
-            f.Member.ItemPhase = f.Member.ItemPhase!.Value with { DerivedCrit = new(17, 18, 19) };
+            f.Member.ItemPhase = f.Member.ItemPhase!.Value with
+            {
+                DerivedCombat = f.Member.ItemPhase.Value.DerivedCombat!.Value with { MeleeCrit = 17, RangedCrit = 18, MagicCrit = 19 }
+            };
             return new(false, false);
         });
         Assert.False(f.Players.TryTickRemotePlayerPhase());

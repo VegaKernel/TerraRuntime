@@ -1,13 +1,15 @@
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Gameplay.Items;
+using TerraRuntime.Gameplay.Players;
 
 namespace TerraRuntime.Application;
 
 internal sealed partial class PlayerAuthority
 {
-    private bool TryCaptureNeutralRemoteEquipment(
-        ReadOnlySpan<PlayerEquipmentCommitRequest> equipment, out VanillaPlayerCombatSnapshot combat)
+    private bool TryCaptureProvenRemoteEquipment(
+        ReadOnlySpan<PlayerEquipmentCommitRequest> equipment, PlayerAppearanceCommitRequest? appearance,
+        out VanillaPlayerCombatSnapshot combat)
     {
         combat = default;
         bool inherited = false;
@@ -18,7 +20,7 @@ internal sealed partial class PlayerAuthority
             if (item.Stack <= 0) continue;
             bool inactiveArmor = false;
             int index = item.SlotId - VanillaPlayerItemSlotCatalog.ArmorStart;
-            if ((uint)index >= 3)
+            if ((uint)index >= VanillaPlayerItemSlotCatalog.FunctionalArmorCount)
             {
                 if (index is >= 10 and <= 12)
                 {
@@ -31,7 +33,7 @@ internal sealed partial class PlayerAuthority
                 {
                     int loadout = item.SlotId - VanillaPlayerItemSlotCatalog.LoadoutArmorStart;
                     if (loadout < 0 || loadout >= VanillaPlayerItemSlotCatalog.LoadoutCount * VanillaPlayerItemSlotCatalog.LoadoutStride ||
-                        loadout % VanillaPlayerItemSlotCatalog.LoadoutStride >= 3) return false;
+                        loadout % VanillaPlayerItemSlotCatalog.LoadoutStride >= VanillaPlayerItemSlotCatalog.FunctionalArmorCount) return false;
                     index = loadout % VanillaPlayerItemSlotCatalog.LoadoutStride;
                     inherited = true;
                     inactiveArmor = true;
@@ -40,16 +42,30 @@ internal sealed partial class PlayerAuthority
             // Source CanShareArmor rejects this known weapon in every armor position
             // before armor grants; it may block a later favorite but grants no armor benefits.
             bool sharingBlocker = inactiveArmor && item.ItemNetId == VanillaItemIds.CopperBroadsword.Value;
-            if (item.PrefixId != default || (!IsProvenNeutralMetal(item.ItemNetId) && !sharingBlocker)) return false;
+            bool defensiveAccessory = index is >= 3 and <= 9 && item.ItemNetId is 156 or 3212;
+            if (defensiveAccessory)
+            {
+                // Arcane changes derived mana maximum; Ankh adds immunity writers. Neither
+                // can be admitted merely because the combat projection otherwise looks neutral.
+                if (item.PrefixId.Value is not (0 or 62 or 63 or 64 or 65 or 67 or 68)) return false;
+            }
+            else if (item.PrefixId != default || (!IsProvenNeutralMetal(item.ItemNetId) && !sharingBlocker)) return false;
         }
         if (inherited && combatEquipmentLocalVanityArmor != VanillaPlayerLocalVanityArmor1458.Empty) return false;
 
         // The common catalog owns piece identity, correct slots, prefixes and complete-set
-        // defense. Do not treat a queryable item or an unrepresented modifier as neutral.
-        var context = new VanillaPlayerCombatEquipmentContext(null, combatEquipmentExpertMode, combatEquipmentMasterMode)
+        // defense. Only the independently captured defense/crit/penetration/knockback writers
+        // may differ; a future combat-catalog addition cannot expand this player phase.
+        bool? extraAccessory = appearance is { } owned
+            ? (owned.DifficultyFlags & VanillaPlayerAppearanceNormalizer.ExtraAccessoryDifficultyFlag) != 0 : null;
+        var context = new VanillaPlayerCombatEquipmentContext(extraAccessory, combatEquipmentExpertMode, combatEquipmentMasterMode)
         { LocalVanityArmor = combatEquipmentLocalVanityArmor };
         if (!VanillaPlayerCombatEquipmentCatalog.TryBuild(equipment, in context, out combat)) return false;
-        return combat with { Defense = 0 } == VanillaPlayerCombatSnapshot.Baseline;
+        return combat with
+        {
+            Defense = 0, ArmorPenetration = 0, NoKnockback = false,
+            MeleeCrit = 4, RangedCrit = 4, MagicCrit = 4
+        } == VanillaPlayerCombatSnapshot.Baseline;
     }
 
     private static bool IsProvenNeutralMetal(int type) => type is

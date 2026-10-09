@@ -51,10 +51,13 @@ public sealed class SelectedItemCritNpcHit1458Tests
         {
             using var f = new SelectedItemCritPhase1458Tests.Fixture(false, 1458);
             f.State.Tick();
-            if (unknown) f.Member.ItemPhase = f.Member.ItemPhase!.Value with { DerivedCrit = null };
+            if (unknown) f.Member.ItemPhase = f.Member.ItemPhase!.Value with { DerivedCombat = null };
             using var arena = new Arena(f, row.GetProperty("hitSeed").GetInt32(), row.GetProperty("launch"));
             if (!unknown) arena.BeforeTick = () =>
-                f.Member.ItemPhase = f.Member.ItemPhase!.Value with { DerivedCrit = new(99, 99, 99) };
+                f.Member.ItemPhase = f.Member.ItemPhase!.Value with
+                {
+                    DerivedCombat = f.Member.ItemPhase.Value.DerivedCombat!.Value with { MeleeCrit = 99, RangedCrit = 99, MagicCrit = 99 }
+                };
             var random = arena.Random.Clone();
             arena.Pass.Tick();
             Assert.Equal(0, arena.Pass.CommittedHits);
@@ -109,7 +112,10 @@ public sealed class SelectedItemCritNpcHit1458Tests
             arena.DuringLoot = () =>
             {
                 calls++;
-                if (change) f.Member.ItemPhase = f.Member.ItemPhase!.Value with { DerivedCrit = new(99, 99, 99) };
+                if (change) f.Member.ItemPhase = f.Member.ItemPhase!.Value with
+                {
+                    DerivedCombat = f.Member.ItemPhase.Value.DerivedCombat!.Value with { MeleeCrit = 99, RangedCrit = 99, MagicCrit = 99 }
+                };
             };
             arena.Pass.Tick();
             Assert.True(calls > 0);

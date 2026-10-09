@@ -9,14 +9,26 @@ internal sealed partial class PlayerAuthority
     {
         snapshot = default;
         if (!membership.TryGet(player, out var member) ||
-            member.ItemPhase?.DerivedCrit is not { } crit ||
-            crit.Melee < 0 || crit.Ranged < 0 || crit.Magic < 0 ||
-            !TryCaptureCombatSnapshot(member.Connection, out var equipment)) return false;
+            member.ItemPhase?.DerivedCombat is not { } combat || !IsValidDerivedCombat(in combat)) return false;
 
-        // Player.Update derives these fields before ItemCheck. A later packet13/5 changes
-        // the selected item/equipment without recomputing the last owned player phase.
+        // Player.Update derives the whole represented projection before ItemCheck. Later
+        // selection/equipment reports cannot splice current gear into a prior phase's fields.
         // Keep the equipment-only projection for direct melee, which adds its own item crit.
-        snapshot = equipment with { MeleeCrit = crit.Melee, RangedCrit = crit.Ranged, MagicCrit = crit.Magic };
+        snapshot = combat;
         return true;
     }
+
+    private static bool IsValidDerivedCombat(in VanillaPlayerCombatSnapshot combat) =>
+        combat.Defense >= 0 && combat.MeleeCrit >= 0 && combat.RangedCrit >= 0 && combat.MagicCrit >= 0 &&
+        combat.ArmorPenetration >= 0 && combat.MeleeArmorPenetration >= 0 && combat.LavaProtectionTicks >= 0 &&
+        float.IsFinite(combat.Endurance) && combat.Endurance is >= 0f and <= 1f &&
+        IsNonnegativeFinite(combat.MeleeDamage) && IsNonnegativeFinite(combat.RangedDamage) &&
+        IsNonnegativeFinite(combat.MagicDamage) && float.IsFinite(combat.RangedMultDamage) && combat.RangedMultDamage > 0f &&
+        IsNonnegativeFinite(combat.ArrowDamage) && IsNonnegativeFinite(combat.ArrowDamageAdditiveStack) &&
+        IsNonnegativeFinite(combat.BulletDamage) && IsNonnegativeFinite(combat.MeleeAttackSpeed) &&
+        IsNonnegativeFinite(combat.BowDamageMultiplier) && IsNonnegativeFinite(combat.GunDamageMultiplier) &&
+        IsNonnegativeFinite(combat.MeleeAnimationMultiplier) &&
+        (long)combat.ArmorPenetration + combat.MeleeArmorPenetration <= int.MaxValue;
+
+    private static bool IsNonnegativeFinite(float value) => float.IsFinite(value) && value >= 0f;
 }
