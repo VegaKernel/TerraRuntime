@@ -23,7 +23,8 @@ internal readonly record struct AuthoritativePvpHit(
     int MinimumDamage,
     int MaximumDamage,
     int AnimationTicks,
-    int UseTimeTicks);
+    int UseTimeTicks,
+    IncomingPlayerCombatCapture1458 TargetCapture);
 
 /// <summary>
 /// Strict direct-melee PvP bridge. It shares VanillaDirectMeleeCombatMath with NPC combat and admits only the state
@@ -77,9 +78,10 @@ internal sealed class RuntimePvpCombatIntegrity
             !VanillaItemCombatCatalog.TryGetPrefixModifiers(item.Prefix, out VanillaCombatPrefixModifiers prefix))
             return PvpCombatResolveResult.LegacyFallback;
 
-        if (!players.TryCaptureCombatSnapshot(attackerConnection, out VanillaPlayerCombatSnapshot attackerCombat) ||
-            !players.TryCaptureCombatSnapshot(target.Player, out _))
+        if (!players.TryCaptureCombatSnapshot(attackerConnection, out VanillaPlayerCombatSnapshot attackerCombat))
             return PvpCombatResolveResult.LegacyFallback;
+        if (!players.TryCaptureIncomingCombat(target.Player, out var targetCapture))
+            return PvpCombatResolveResult.Rejected;
 
         if (!players.TryCaptureProjectileUse(attacker.Player, out var ownerCapture) || ownerCapture is null || ownerCapture.Player != attacker)
             return PvpCombatResolveResult.Rejected;
@@ -93,7 +95,7 @@ internal sealed class RuntimePvpCombatIntegrity
             pvp: true);
 
         if (!players.IsCurrentProjectileUse(ownerCapture) ||
-            !players.TryCaptureCombatTarget(target.Player.Slot.Value, out PlayerStateSnapshot currentTarget) || currentTarget != target)
+            !players.IsCurrentIncomingCombat(in targetCapture))
             return PvpCombatResolveResult.Rejected;
 
         float attackerCx = attacker.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
@@ -147,7 +149,8 @@ internal sealed class RuntimePvpCombatIntegrity
             resolved.MinimumDamage,
             resolved.MaximumDamage,
             resolved.AnimationTicks,
-            resolved.UseTimeTicks);
+            resolved.UseTimeTicks,
+            targetCapture);
         return PvpCombatResolveResult.Accepted;
     }
 }

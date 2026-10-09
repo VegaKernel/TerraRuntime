@@ -4,6 +4,8 @@
 
 ## 1. Scope
 
+The live join probe permits the source `Time` Int32 at the start of packet `7` to change between requests `6` and `8`. Official 1.4.5.8 sends a fresh WorldInfo for each request; byte-identical time is not a join requirement. The probe still requires packet `7`, identical remaining payload bytes and the existing section/packet `49`, spawn `129`, relay and chat `82` checks. Rejections include the received packet ID, lengths and both full payloads for diagnosis.
+
 Changing the public listener endpoint preserves already accepted clients. Before rebinding an overlapping address on the same port, draining explicitly stops kernel listening and then cancels the pending accept and disposes the socket. This prevents an outstanding Unix accept from retaining a retired listening endpoint through handle release. The regression exercises 128 immediate reconnects across loopback/wildcard changes while checking the original client's data path.
 
 This guide describes the networking and Terraria protocol path that exists in TerraRuntime today. The protocol baseline is Terraria `1.4.5.8`, protocol `326`, with Multiplicity 3.0.x behind the TerraRuntime protocol boundary.

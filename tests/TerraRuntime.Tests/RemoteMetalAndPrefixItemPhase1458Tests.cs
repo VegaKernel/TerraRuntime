@@ -66,7 +66,7 @@ public sealed class RemoteMetalAndPrefixItemPhase1458Tests
             // Preserve the earlier 84-profile slice while the same unchanged source requests
             // now prove the expanded clock-only mask; launch/combat admission remains separate.
             if (expected && represented.Contains(I(row,"requested"))) oldClockProfiles++;
-            Assert.Equal(expected, VanillaRemoteBulletItemCheck1458.IsSupported(new(I(row, "weapon")), new(I(row, "requested"))));
+            Assert.Equal(expected, VanillaRemoteRangedItemCheck1458.IsSupported(new(I(row, "weapon")), new(I(row, "requested"))));
         }
         Assert.Equal(84,oldClockProfiles);
         Assert.Equal(256,sourceValidProfiles);

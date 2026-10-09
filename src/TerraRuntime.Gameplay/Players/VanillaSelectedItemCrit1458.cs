@@ -18,11 +18,10 @@ public static class VanillaSelectedItemCrit1458
 
         bool windowsArithmetic = arithmetic == VanillaBulletSourceArithmetic1458.WindowsClr4X86;
         int rawCrit;
-        if (VanillaBulletWeaponLaunch1458.Supports(item))
+        if (VanillaRemoteRangedItemCheck1458.IsSupported(item, prefix, windowsArithmetic))
         {
+            // The represented eight guns and nine ordinary bows all have source raw crit zero.
             rawCrit = 0;
-            if (!VanillaItemPrefixTable1458.TryResolveSpeedMultiplier(item, prefix, windowsArithmetic, out _))
-                return false;
         }
         else
         {

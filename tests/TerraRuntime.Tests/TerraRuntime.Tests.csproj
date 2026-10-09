@@ -14,6 +14,10 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.0" />
     <EmbeddedResource Include="Fixtures/accessory-slots-official-1458.json.gz" LogicalName="AccessorySlots1458" />
     <EmbeddedResource Include="Fixtures/remote-defensive-combat-phase-official-1458.json.gz" LogicalName="RemoteDefensiveCombatPhase1458" />
+    <EmbeddedResource Include="Fixtures/remote-bow-player-phase-official-1458.json.gz" LogicalName="RemoteBowPlayerPhase1458" />
+    <EmbeddedResource Include="Fixtures/remote-bow-rounding-player-phase-official-1458.json.gz" LogicalName="RemoteBowRoundingPlayerPhase1458" />
+    <EmbeddedResource Include="Fixtures/remote-bow-prefix-family-official-1458.json.gz" LogicalName="RemoteBowPrefixFamily1458" />
+    <EmbeddedResource Include="Fixtures/incoming-human-phase-callers-official-1458.json.gz" LogicalName="IncomingHumanPhaseCallers1458" />
     <EmbeddedResource Include="Fixtures/projectile-spawn-batch-official-1458.json.gz" LogicalName="RangedSpawnBatch1458" />
     <EmbeddedResource Include="Fixtures/ranged-bullet-launch-official-1458.json.gz" LogicalName="RangedBulletLaunch1458" />
     <EmbeddedResource Include="Fixtures/inherited-equipment-official-1458.json.gz" LogicalName="InheritedEquipment1458" />

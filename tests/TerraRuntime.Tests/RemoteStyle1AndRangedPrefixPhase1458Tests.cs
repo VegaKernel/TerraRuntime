@@ -60,7 +60,7 @@ public sealed class RemoteStyle1AndRangedPrefixPhase1458Tests
         foreach(var row in rejected)
         {
             var type=new ItemTypeId(I(row,"weapon"));var prefix=new PrefixId(I(row,"requested"));
-            Assert.False(VanillaRemoteBulletItemCheck1458.IsSupported(type,prefix));
+            Assert.False(VanillaRemoteRangedItemCheck1458.IsSupported(type,prefix));
             var inputs=gunPhases.RootElement.EnumerateArray().First(r=>I(r,"weapon")==type.Value && I(r,"prefix")==0);
             using var f=new Fixture(inputs);
             f.Equipment(0,checked((short)type.Value),1,checked((byte)prefix.Value));

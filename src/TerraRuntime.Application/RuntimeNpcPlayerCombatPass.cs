@@ -20,6 +20,7 @@ internal sealed class RuntimeNpcPlayerCombatPass
     private readonly ServerPlayerAuthority? serverPlayers;
     private readonly Random random;
     private readonly NpcSnapshot[] npcBuffer;
+    private readonly RuntimePlayerMember?[] humanTargets = new RuntimePlayerMember?[PlayerSlotCount];
     private readonly PlayerStateSnapshot[] serverPlayerBuffer = new PlayerStateSnapshot[byte.MaxValue + 1];
     private readonly bool expertMode;
     private readonly bool masterMode;
@@ -57,6 +58,9 @@ internal sealed class RuntimeNpcPlayerCombatPass
 
     public void Tick(long tick)
     {
+        Array.Clear(humanTargets);
+        foreach (var member in players.Members) humanTargets[member.Connection.Player.Slot.Value] = member;
+        // Physical slot order and a fixed pass census: callback-born/reconnected players wait for the next pass.
         int count = npcs.CopyActive(npcBuffer);
         for (int i = 0; i < count; i++)
         {
@@ -82,8 +86,10 @@ internal sealed class RuntimeNpcPlayerCombatPass
             float npcBottom = npcTop + hitbox.Height;
             VanillaArmedZombieCombatFacts1458.ExpandMeleeHitbox(
                 npc.TypeIdentity, npc.Ai, npc.Simulation.SpriteDirection, ref npcLeft, ref npcRight);
-            foreach (RuntimePlayerMember target in players.Members)
+            foreach (RuntimePlayerMember? target in humanTargets)
             {
+                if (target is null || !players.TryGet(target.Connection, out var liveTarget) || !ReferenceEquals(target, liveTarget))
+                    continue;
                 PlayerHandle targetHandle = target.Connection.Player;
                 if (target.IsDead || !target.HasHealth || target.Life <= 0 ||
                     (immunityChannel == VanillaPlayerImmunityChannel1458.General && players.IsGeneralPveImmune(targetHandle, tick)) ||
@@ -93,12 +99,16 @@ internal sealed class RuntimeNpcPlayerCombatPass
                     continue;
                 }
 
+                if (!players.TryCaptureIncomingCombat(targetHandle, out var targetCapture))
+                    continue;
                 int rawDamage = ResolveContactDamage(in npc, in definition);
                 int damage = VanillaIncomingPlayerDamageFacts1458.ResolveNpcContactDamage(rawDamage, random.Next(-15, 16));
                 if (damage <= 0)
                     continue;
 
-                int hitDirection = npcLeft + hitbox.Width * 0.5f < target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f
+                if (!npcs.TryGet(npc.Handle, out var currentNpc) || currentNpc != npc)
+                    continue;
+                int hitDirection = npcLeft + hitbox.Width * 0.5f < targetCapture.Player.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f
                     ? 1
                     : -1;
                 bool killedBefore = target.IsDead;
@@ -109,7 +119,7 @@ internal sealed class RuntimeNpcPlayerCombatPass
                     damage,
                     hitDirection,
                     immunityChannel,
-                    out PlayerStateSnapshot committed);
+                    out PlayerStateSnapshot committed, targetCapture);
                 if (result == PlayerDamageCommitResult.Rejected)
                     continue;
 

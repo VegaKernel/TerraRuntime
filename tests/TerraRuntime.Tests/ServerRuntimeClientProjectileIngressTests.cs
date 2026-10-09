@@ -641,7 +641,9 @@ public sealed class ServerRuntimeClientProjectileIngressTests
     [Fact]
     public void Trusted_shuriken_pvp_damage_is_server_owned_and_projectile_local_immunity_is_40_ticks()
     {
-        using var fixture = new Fixture(playerCount: 2, projectileStepper: new NoOpProjectileStepper());
+        // This legacy ingress fixture has no owned remote world/player phase.
+        using var fixture = new Fixture(playerCount: 2, projectileStepper: new NoOpProjectileStepper(),
+            incomingHumanCombatPolicy: IncomingHumanCombatPolicy1458.EquipmentComponent);
         ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 33);
         ConnectionHandle target = fixture.SpawnPlayer(connectionId: 34);
         fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.Shuriken, stack: 2);
@@ -690,7 +692,8 @@ public sealed class ServerRuntimeClientProjectileIngressTests
             playerCount: 2,
             projectileStepper: new NoOpProjectileStepper(),
             projectilePlayerCombatRandom: new SequenceRandom(0, 0),
-            playerEventObserver: observer);
+            playerEventObserver: observer,
+            incomingHumanCombatPolicy: IncomingHumanCombatPolicy1458.EquipmentComponent);
         ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 70);
         ConnectionHandle target = fixture.SpawnPlayer(connectionId: 71);
         fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.WoodenBow, stack: 1);
@@ -775,7 +778,8 @@ public sealed class ServerRuntimeClientProjectileIngressTests
             playerCount: 2,
             projectileStepper: new NoOpProjectileStepper(),
             projectilePlayerCombatRandom: new SequenceRandom(0, 1),
-            playerEventObserver: observer);
+            playerEventObserver: observer,
+            incomingHumanCombatPolicy: IncomingHumanCombatPolicy1458.EquipmentComponent);
         ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 72);
         ConnectionHandle target = fixture.SpawnPlayer(connectionId: 73);
         fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.WoodenBow, stack: 1);
@@ -1063,7 +1067,8 @@ public sealed class ServerRuntimeClientProjectileIngressTests
             bool withWorldTiles = false,
             Random? projectilePlayerCombatRandom = null,
             IRuntimePlayerEventSink? playerEventObserver = null,
-            IVanillaNpcRandom? naturalSpawnRandom = null)
+            IVanillaNpcRandom? naturalSpawnRandom = null,
+            IncomingHumanCombatPolicy1458 incomingHumanCombatPolicy = IncomingHumanCombatPolicy1458.PhaseOwned)
         {
             slots = new PlayerSlotPool(playerCount);
             Replication = new RuntimeProjectileReplicationRegistry();
@@ -1079,7 +1084,8 @@ public sealed class ServerRuntimeClientProjectileIngressTests
                 projectileStepper: projectileStepper,
                 projectileReplication: Replication,
                 projectilePlayerCombatRandom: projectilePlayerCombatRandom,
-                naturalSpawnRandom: naturalSpawnRandom);
+                naturalSpawnRandom: naturalSpawnRandom,
+                incomingHumanCombatPolicy: incomingHumanCombatPolicy);
         }
 
         public RuntimeProjectileReplicationRegistry Replication { get; }

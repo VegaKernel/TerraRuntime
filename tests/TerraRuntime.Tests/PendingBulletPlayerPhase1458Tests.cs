@@ -143,20 +143,20 @@ public sealed class PendingBulletPlayerPhase1458Tests
         }
     }
 
-    private static JsonDocument Source()
+    internal static JsonDocument Source()
     {
         using var stream = typeof(PendingBulletPlayerPhase1458Tests).Assembly.GetManifestResourceStream("RangedBulletLaunch1458")!;
         using var gzip = new GZipStream(stream, CompressionMode.Decompress);
         return JsonDocument.Parse(gzip);
     }
 
-    private static JsonElement Row(JsonDocument source) => source.RootElement.GetProperty("launches").EnumerateArray().First(x =>
+    internal static JsonElement Row(JsonDocument source) => source.RootElement.GetProperty("launches").EnumerateArray().First(x =>
         x.GetProperty("weapon").GetInt32() == 534 && x.GetProperty("seed").GetInt32() == 0 &&
         x.GetProperty("aimDirection").GetInt32() == 1 && x.GetProperty("ammo").GetInt32() == 97 &&
         !x.GetProperty("ammoBox").GetBoolean() && !x.GetProperty("ammoPotion").GetBoolean() &&
         (!x.TryGetProperty("prefix", out var prefix) || prefix.GetInt32() == 0));
 
-    private sealed class Fixture : IDisposable
+    internal sealed class Fixture : IDisposable
     {
         internal readonly ServerRuntimeState State;
         internal readonly RuntimeProjectileStore Store = new();

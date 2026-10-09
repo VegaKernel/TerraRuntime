@@ -16,6 +16,8 @@ namespace TerraRuntime.Application;
 internal sealed partial class RuntimeProjectilePlayerCombatPass
 {
     private const int PlayerSlotCount = byte.MaxValue + 1;
+    private static readonly Comparer<PlayerStateSnapshot> PlayerSlotOrder = Comparer<PlayerStateSnapshot>.Create(
+        static (left, right) => left.Player.Slot.Value.CompareTo(right.Player.Slot.Value));
     private readonly RuntimeProjectileStore projectiles;
     private readonly RuntimeNpcStore npcs;
     private readonly PlayerAuthority players;
@@ -29,6 +31,8 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
     private readonly RuntimeCultistLightningArcTrailRegistry cultistLightningArcTrails;
     private readonly PlayerStateSnapshot[] serverPlayerBuffer = new PlayerStateSnapshot[byte.MaxValue + 1];
     private readonly PlayerStateSnapshot[] pvpTargetBuffer = new PlayerStateSnapshot[byte.MaxValue + 1];
+    private readonly RuntimePlayerMember?[] humanTargets = new RuntimePlayerMember?[PlayerSlotCount];
+    private int pvpTargetCount;
     private readonly bool expertMode;
     private readonly bool masterMode;
 
@@ -74,6 +78,10 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
     public void Tick(ReadOnlySpan<RuntimeProjectileExplosionEvent> explosions)
     {
         long tick = tickProvider();
+        Array.Clear(humanTargets);
+        foreach (var member in players.Members) humanTargets[member.Connection.Player.Slot.Value] = member;
+        pvpTargetCount = players.CopyCombatTargets(pvpTargetBuffer);
+        Array.Sort(pvpTargetBuffer, 0, pvpTargetCount, PlayerSlotOrder);
         int projectileCount = projectiles.CopyActive(projectileBuffer);
         for (int i = 0; i < projectileCount; i++)
         {
@@ -92,10 +100,12 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
             }
 
             bool ended = false;
-            int targetCount = players.CopyCombatTargets(pvpTargetBuffer);
+            int targetCount = pvpTargetCount;
             for (int targetIndex = 0; targetIndex < targetCount; targetIndex++)
             {
-                PlayerStateSnapshot target = pvpTargetBuffer[targetIndex];
+                PlayerStateSnapshot capturedTarget = pvpTargetBuffer[targetIndex];
+                if (!players.TryCaptureCombatTarget(capturedTarget.Player.Slot.Value, out var target) || target.Player != capturedTarget.Player)
+                    continue;
                 if (target.Player.Slot.Value == projectile.Spawner || !target.Hostile || target.IsDead || !target.HasHealth || target.Life <= 0 ||
                     (owner.Team != 0 && owner.Team == target.Team) ||
                     IsPlayerOnProjectileCooldown(projectile.Handle, target.Player, tick) ||
@@ -104,6 +114,8 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                     continue;
                 }
 
+                if (!players.TryCaptureIncomingCombat(target.Player, out var targetCapture) || targetCapture.Player != target)
+                    continue;
                 int meleeCritRoll = VanillaCombatFacts.UsesMeleePvpCrit(projectile.Type)
                     ? random.Next(1, 101)
                     : 100;
@@ -120,7 +132,9 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 }
 
                 int direction = projectile.VelocityX > 0.01f ? 1 : projectile.VelocityX < -0.01f ? -1 : 0;
-                if (!IsPvpPlayerCurrent(in owner) || !IsPvpPlayerCurrent(in target))
+                if (!IsPvpPlayerCurrent(in owner) || !IsPvpPlayerCurrent(in target) ||
+                    !projectiles.TryGet(projectile.Handle, out var currentShot) || currentShot != projectile ||
+                    !projectiles.TryGetCombatTrustedOwner(projectile.Handle, out var currentOwner) || currentOwner != trustedOwner)
                     continue;
                 bool killedBefore = target.IsDead;
                 PlayerDamageCommitResult commitResult = players.TryCommitAuthoritativePvpDamageFromSnapshot(
@@ -131,7 +145,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                         hit.Damage,
                         hit.Critical,
                         direction,
-                        out PlayerStateSnapshot committed);
+                        out PlayerStateSnapshot committed, targetCapture);
                 if (commitResult == PlayerDamageCommitResult.Rejected)
                     continue;
 
@@ -239,8 +253,11 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
 
             VanillaPlayerImmunityChannel1458 immunityChannel =
                 VanillaIncomingPlayerDamageFacts1458.GetHostileProjectileImmunityChannel(projectile.Type);
-            foreach (RuntimePlayerMember target in players.Members)
+            NpcSnapshot? capturedSource = npcs.TryGet(sourceNpc, out var sourceSnapshot) ? sourceSnapshot : null;
+            foreach (RuntimePlayerMember? target in humanTargets)
             {
+                if (target is null || !players.TryGet(target.Connection, out var liveTarget) || !ReferenceEquals(target, liveTarget))
+                    continue;
                 PlayerHandle targetHandle = target.Connection.Player;
                 if (target.IsDead || !target.HasHealth || target.Life <= 0 ||
                     (immunityChannel == VanillaPlayerImmunityChannel1458.General && players.IsGeneralPveImmune(targetHandle, tick)) ||
@@ -250,20 +267,28 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                     continue;
                 }
 
+                if (!players.TryCaptureIncomingCombat(target.Connection.Player, out var targetCapture))
+                    continue;
                 int damage = VanillaIncomingPlayerDamageFacts1458.ResolveHostileProjectileDamage(
                     projectile.Damage,
                     random.Next(-15, 16));
                 if (damage <= 0)
                     continue;
 
+                if (!projectiles.TryGet(projectile.Handle, out var currentShot) || currentShot != projectile ||
+                    !projectiles.TryGetLifecycle(projectile.Handle, out var currentLife) || currentLife != lifecycle ||
+                    !TryResolveHostileSource(in projectile, out var currentSource) || currentSource != sourceNpc ||
+                    (capturedSource is { } expectedSource &&
+                        (!npcs.TryGet(sourceNpc, out var liveSource) || liveSource != expectedSource)))
+                    continue;
                 float projectileCenterX = GetHostileProjectileCenterX(in projectile, in definition, in lifecycle);
-                float targetCenterX = target.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
+                float targetCenterX = targetCapture.Player.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
                 int hitDirection = targetCenterX < projectileCenterX ? -1 : 1;
                 bool killedBefore = target.IsDead;
                 PlayerStateSnapshot committed;
                 PlayerDamageCommitResult result = !sourceNpc.IsAssigned
                     ? players.TryCommitAuthoritativeEnvironmentProjectileDamage(tick, projectile.Handle, targetHandle,
-                        damage, hitDirection, immunityChannel, out committed)
+                        damage, hitDirection, immunityChannel, out committed, targetCapture)
                     : players.TryCommitAuthoritativeNpcProjectileDamage(
                     tick,
                     sourceNpc,
@@ -272,7 +297,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                     damage,
                     hitDirection,
                     immunityChannel,
-                    out committed);
+                    out committed, targetCapture);
                 if (result == PlayerDamageCommitResult.Rejected)
                     continue;
 

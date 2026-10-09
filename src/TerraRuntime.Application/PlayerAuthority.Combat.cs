@@ -67,7 +67,7 @@ internal sealed partial class PlayerAuthority
                 hit.Damage,
                 hit.Critical,
                 hit.HitDirection,
-                out _);
+                out _, hit.TargetCapture);
         if (commitResult == PlayerDamageCommitResult.Rejected)
         {
             RejectedAuthoritativePvpHits++;
@@ -86,7 +86,8 @@ internal sealed partial class PlayerAuthority
         int damage,
         bool critical,
         int hitDirection,
-        out PlayerStateSnapshot committed)
+        out PlayerStateSnapshot committed,
+        IncomingPlayerCombatCapture1458? targetCapture = null)
     {
         if (!membership.TryGet(attacker, out RuntimePlayerMember? source))
         {
@@ -103,7 +104,7 @@ internal sealed partial class PlayerAuthority
             damage,
             critical,
             hitDirection,
-            out committed);
+            out committed, targetCapture);
     }
 
     internal PlayerDamageCommitResult TryCommitAuthoritativePvpDamageFromSnapshot(
@@ -114,7 +115,8 @@ internal sealed partial class PlayerAuthority
         int damage,
         bool critical,
         int hitDirection,
-        out PlayerStateSnapshot committed)
+        out PlayerStateSnapshot committed,
+        IncomingPlayerCombatCapture1458? targetCapture = null)
     {
         committed = default;
         PlayerHandle attackerHandle = attacker.Player;
@@ -132,11 +134,18 @@ internal sealed partial class PlayerAuthority
             return PlayerDamageCommitResult.Rejected;
         }
 
+        if (targetCapture is null)
+        {
+            if (!TryCaptureIncomingCombat(targetHandle, out var captured)) return PlayerDamageCommitResult.Rejected;
+            targetCapture = captured;
+        }
+        IncomingPlayerCombatCapture1458 retained = targetCapture.Value;
+        if (retained.Player.Player != targetHandle || !IsCurrentIncomingCombat(in retained))
+            return PlayerDamageCommitResult.Rejected;
         if (target.GodMode)
             return AvoidGodModeDamage(tick, targetHandle, target);
 
-        if (!TryCaptureCombatSnapshot(targetHandle, out VanillaPlayerCombatSnapshot targetCombat))
-            return PlayerDamageCommitResult.Rejected;
+        VanillaPlayerCombatSnapshot targetCombat = retained.Combat;
 
         bool immune = damageImmunity.IsPvpImmune(targetHandle, tick);
         var attack = new AuthoritativeAttackDamage(
@@ -154,6 +163,7 @@ internal sealed partial class PlayerAuthority
                 expertMode,
                 masterMode) ||
             final.Damage <= 0 ||
+            !IsCurrentIncomingCombat(in retained) ||
             !target.TryAdvanceRevision())
         {
             return PlayerDamageCommitResult.Rejected;
@@ -207,7 +217,8 @@ internal sealed partial class PlayerAuthority
         int damage,
         int hitDirection,
         VanillaPlayerImmunityChannel1458 immunityChannel,
-        out PlayerStateSnapshot committed) =>
+        out PlayerStateSnapshot committed,
+        IncomingPlayerCombatCapture1458? targetCapture = null) =>
         TryCommitAuthoritativePveDamage(
             tick,
             targetHandle,
@@ -215,7 +226,7 @@ internal sealed partial class PlayerAuthority
             damage,
             hitDirection,
             immunityChannel,
-            out committed);
+            out committed, targetCapture);
 
     internal PlayerDamageCommitResult TryCommitAuthoritativeNpcProjectileDamage(
         long tick,
@@ -225,7 +236,8 @@ internal sealed partial class PlayerAuthority
         int damage,
         int hitDirection,
         VanillaPlayerImmunityChannel1458 immunityChannel,
-        out PlayerStateSnapshot committed) =>
+        out PlayerStateSnapshot committed,
+        IncomingPlayerCombatCapture1458? targetCapture = null) =>
         TryCommitAuthoritativePveDamage(
             tick,
             targetHandle,
@@ -233,13 +245,14 @@ internal sealed partial class PlayerAuthority
             damage,
             hitDirection,
             immunityChannel,
-            out committed);
+            out committed, targetCapture);
 
     internal PlayerDamageCommitResult TryCommitAuthoritativeEnvironmentProjectileDamage(
         long tick, ProjectileHandle projectile, PlayerHandle target, int damage, int hitDirection,
-        VanillaPlayerImmunityChannel1458 immunityChannel, out PlayerStateSnapshot committed) =>
+        VanillaPlayerImmunityChannel1458 immunityChannel, out PlayerStateSnapshot committed,
+        IncomingPlayerCombatCapture1458? targetCapture = null) =>
         TryCommitAuthoritativePveDamage(tick, target, DamageSource.FromEnvironmentProjectile(projectile),
-            damage, hitDirection, immunityChannel, out committed);
+            damage, hitDirection, immunityChannel, out committed, targetCapture);
 
     private PlayerDamageCommitResult TryCommitAuthoritativePveDamage(
         long tick,
@@ -248,7 +261,8 @@ internal sealed partial class PlayerAuthority
         int damage,
         int hitDirection,
         VanillaPlayerImmunityChannel1458 immunityChannel,
-        out PlayerStateSnapshot committed)
+        out PlayerStateSnapshot committed,
+        IncomingPlayerCombatCapture1458? targetCapture = null)
     {
         committed = default;
         if (!targetHandle.IsAssigned || !sourceDamage.IsValid || damage <= 0 ||
@@ -259,11 +273,18 @@ internal sealed partial class PlayerAuthority
             return PlayerDamageCommitResult.Rejected;
         }
 
+        if (targetCapture is null)
+        {
+            if (!TryCaptureIncomingCombat(targetHandle, out var captured)) return PlayerDamageCommitResult.Rejected;
+            targetCapture = captured;
+        }
+        IncomingPlayerCombatCapture1458 retained = targetCapture.Value;
+        if (retained.Player.Player != targetHandle || !IsCurrentIncomingCombat(in retained))
+            return PlayerDamageCommitResult.Rejected;
         if (target.GodMode)
             return AvoidGodModeDamage(tick, targetHandle, target);
 
-        if (!TryCaptureCombatSnapshot(targetHandle, out VanillaPlayerCombatSnapshot targetCombat))
-            return PlayerDamageCommitResult.Rejected;
+        VanillaPlayerCombatSnapshot targetCombat = retained.Combat;
 
         bool immune = damageImmunity.IsPveImmune(targetHandle, immunityChannel, tick);
         var attack = new AuthoritativeAttackDamage(
@@ -281,6 +302,7 @@ internal sealed partial class PlayerAuthority
                 expertMode,
                 masterMode) ||
             final.Damage <= 0 ||
+            !IsCurrentIncomingCombat(in retained) ||
             !target.TryAdvanceRevision())
         {
             return PlayerDamageCommitResult.Rejected;

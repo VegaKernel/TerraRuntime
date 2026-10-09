@@ -215,7 +215,7 @@ internal sealed partial class PlayerAuthority
             !selected.IsCanonical ||
             (!(selected.Prefix == VanillaPrefixIds.None &&
                 VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out _)) &&
-                !VanillaRemoteBulletItemCheck1458.IsSupported(selected.ItemType, selected.Prefix,
+                !VanillaRemoteRangedItemCheck1458.IsSupported(selected.ItemType, selected.Prefix,
                     world.WindowsItemPrefixArithmetic) &&
                 !VanillaRemoteMeleeItemCheck1458.IsSupported(selected.ItemType, selected.Prefix,
                     world.WindowsItemPrefixArithmetic))) return false;
@@ -276,19 +276,19 @@ internal sealed partial class PlayerAuthority
         PlayerSelectedConsumableTransition1458 use;
         bool beganActualUse;
         bool mining = false;
-        if (VanillaRemoteBulletItemCheck1458.IsSupported(selected.ItemType))
+        if (VanillaRemoteRangedItemCheck1458.TryGetAmmoFamily(selected.ItemType, out var ammoFamily))
         {
-            var bulletFacts = new PlayerRemoteBulletItemFacts1458(selected.ItemType,
-                CaptureRemoteBulletAmmo(member), facts.ControlUseItem, facts.LastUseSuccess,
+            var rangedFacts = new PlayerRemoteRangedItemFacts1458(selected.ItemType,
+                CaptureRemoteRangedAmmo(member, ammoFamily), facts.ControlUseItem, facts.LastUseSuccess,
                 facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered, selected.Prefix,
                 world.WindowsItemPrefixArithmetic);
-            if (!VanillaRemoteBulletItemCheck1458.TryStep(clocks, in bulletFacts, random.Next, out var bulletUse))
+            if (!VanillaRemoteRangedItemCheck1458.TryStep(clocks, in rangedFacts, random.Next, out var rangedUse))
                 return false;
-            use = new(bulletUse.State, facts.Life, facts.Mana, false, 0, 0)
+            use = new(rangedUse.State, facts.Life, facts.Mana, false, 0, 0)
             {
-                PendingItemReuse = bulletUse.PendingItemReuse
+                PendingItemReuse = rangedUse.PendingItemReuse
             };
-            beganActualUse = bulletUse.BeganActualUse;
+            beganActualUse = rangedUse.BeganActualUse;
         }
         else if (VanillaRemoteMeleeItemCheck1458.IsSupported(selected.ItemType, selected.Prefix,
             world.WindowsItemPrefixArithmetic))
@@ -327,7 +327,7 @@ internal sealed partial class PlayerAuthority
         return true;
     }
 
-    private bool? CaptureRemoteBulletAmmo(RuntimePlayerMember member)
+    private bool? CaptureRemoteRangedAmmo(RuntimePlayerMember member, VanillaProjectileAmmoFamily family)
     {
         bool unknown = false;
         // Source HasAmmo is an existence query across inventory0..57. A later known match
@@ -341,7 +341,7 @@ internal sealed partial class PlayerAuthority
             }
             if (item.Stack <= 0) continue;
             if (!VanillaItemIds.TryCreate(item.ItemType.Value, out _)) unknown = true;
-            else if (VanillaProjectileWeaponCombatCatalog.IsBulletAmmoType(item.ItemType)) return true;
+            else if (VanillaProjectileWeaponCombatCatalog.IsAmmoType(family, item.ItemType)) return true;
         }
         return unknown ? null : false;
     }

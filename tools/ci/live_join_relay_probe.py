@@ -214,6 +214,17 @@ def receive_bootstrap(client, expected_sections):
             raise SystemExit(f"unexpected pre-spawn packet {message_id}; expected sections, Banner/Bestiary, packet49")
 
 
+def matching_world_info_repeat(message_id, initial, repeated):
+    # Source NetMessage case 7 begins with Int32 Main.time; MessageBuffer cases
+    # 6 and 8 independently send fresh WorldInfo, so the clock may advance.
+    return (
+        message_id == 7
+        and len(initial) >= 4
+        and len(initial) == len(repeated)
+        and initial[4:] == repeated[4:]
+    )
+
+
 def join_client(host, port, expected_slot):
     client = socket.create_connection((host, port), timeout=5)
     client.settimeout(15)
@@ -229,19 +240,23 @@ def join_client(host, port, expected_slot):
 
     client.sendall(struct.pack("<HB", 3, 6))
     message_id, world_info = recv_frame(client)
-    if message_id != 7 or not world_info:
+    if message_id != 7 or len(world_info) < 4:
         client.close()
         raise SystemExit(
-            f"expected non-empty packet 7 after packet 6, got id={message_id}, bytes={len(world_info)}"
+            f"expected packet 7 with Int32 Time after packet 6, got id={message_id}, "
+            f"bytes={len(world_info)}, payload={world_info.hex()}"
         )
 
     client.sendall(struct.pack("<HBiiB", 12, 8, -1, -1, 0))
 
     message_id, repeated_world_info = recv_frame(client)
-    if message_id != 7 or repeated_world_info != world_info:
+    if not matching_world_info_repeat(message_id, world_info, repeated_world_info):
         client.close()
         raise SystemExit(
-            "packet 8 did not begin with the cached packet 7 WorldInfo frame"
+            "packet 8 did not begin with matching packet 7 WorldInfo fields after Time; "
+            f"id={message_id}, initialBytes={len(world_info)}, "
+            f"repeatedBytes={len(repeated_world_info)}, "
+            f"initial={world_info.hex()}, repeated={repeated_world_info.hex()}"
         )
 
     message_id, status_payload = recv_frame(client)

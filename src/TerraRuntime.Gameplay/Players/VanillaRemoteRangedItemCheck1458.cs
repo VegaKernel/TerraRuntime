@@ -3,23 +3,23 @@ using TerraRuntime.Gameplay.Items;
 
 namespace TerraRuntime.Gameplay.Players;
 
-public readonly record struct PlayerRemoteBulletItemFacts1458(ItemTypeId Weapon, bool? HasAmmo,
+public readonly record struct PlayerRemoteRangedItemFacts1458(ItemTypeId Weapon, bool? HasAmmo,
     bool ControlUseItem, bool LastUseSuccess, bool Cursed, bool CrowdControlled, bool SelectionBuffered,
     PrefixId Prefix = default, bool WindowsItemPrefixArithmetic = false);
 
-public readonly record struct PlayerRemoteBulletItemTransition1458(
+public readonly record struct PlayerRemoteRangedItemTransition1458(
     PlayerSelectedConsumableState1458 State, bool PendingItemReuse, bool BeganActualUse = false);
 
 /// <summary>Neutral dedicated remote ItemCheck clocks. Its owner-only Shoot/PickAmmo branch is absent.</summary>
-public static class VanillaRemoteBulletItemCheck1458
+public static class VanillaRemoteRangedItemCheck1458
 {
     public static bool IsSupported(ItemTypeId weapon, PrefixId prefix = default,
         bool windowsItemPrefixArithmetic = false) =>
         TryGet(weapon, prefix, out _, out _, windowsItemPrefixArithmetic);
 
     public static bool TryStep(PlayerSelectedConsumableState1458? previous,
-        in PlayerRemoteBulletItemFacts1458 facts, Func<int, int, int> nextInteger,
-        out PlayerRemoteBulletItemTransition1458 transition)
+        in PlayerRemoteRangedItemFacts1458 facts, Func<int, int, int> nextInteger,
+        out PlayerRemoteRangedItemTransition1458 transition)
     {
         transition = default;
         if (previous is not { } state ||
@@ -70,17 +70,31 @@ public static class VanillaRemoteBulletItemCheck1458
         return true;
     }
 
+    public static bool TryGetAmmoFamily(ItemTypeId weapon, out VanillaProjectileAmmoFamily family)
+    {
+        family = default;
+        // Only these eight guns and nine ordinary bows have independently represented
+        // whole remote style5 clocks. A queryable launch definition does not admit other items.
+        if (weapon.Value is not (98 or 219 or 533 or 1929 or 964 or 534 or 679 or 4703 or
+            39 or 99 or 3480 or 3486 or 3492 or 3498 or 3504 or 3510 or 3516) ||
+            !VanillaProjectileWeaponCombatCatalog.TryGetWeapon(weapon, out var definition))
+            return false;
+        family = definition.AmmoFamily;
+        return true;
+    }
+
     private static bool TryGet(ItemTypeId weapon, PrefixId prefix, out int useAnimation, out bool autoReuse,
         bool windowsItemPrefixArithmetic = false)
     {
         useAnimation = 0;
         autoReuse = weapon.Value is 98 or 533 or 1929 or 679;
-        if (weapon.Value is not (98 or 219 or 533 or 1929 or 964 or 534 or 679 or 4703) ||
+        if (!TryGetAmmoFamily(weapon, out _) ||
             !VanillaProjectileWeaponCombatCatalog.TryGetWeapon(weapon, out var definition) ||
             !VanillaItemPrefixTable1458.TryResolveSpeedMultiplier(weapon, prefix,
                 windowsItemPrefixArithmetic, out float speedMultiplier)) return false;
         // Reuse the verified SetDefaults animation; only the remote autoReuse eligibility
-        // supplements the launch catalog. These eight have style5, zero mana/reuse delay.
+        // supplements the launch catalog. All seventeen have style5, zero mana/reuse delay;
+        // the nine ordinary bows remain manual and never receive the autoReuse +1.
         // Linux/CoreCLR rounds the single-precision product. Official Windows CLR4/x86
         // retains its wider product into Math.Round (Quad55*.9 =>49, 55*1.1 =>61).
         // Invalid requested prefixes remain unknown; their source rerolled replacement is not inferred.

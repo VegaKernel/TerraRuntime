@@ -57,7 +57,8 @@ internal sealed partial class ServerRuntimeState
         RuntimeTownSocialWorld1458? townSocialWorldFacts = null,
         Action<RuntimeInvasionCapture1458>? invasionProgressPublisher = null,
         Action<RuntimeInvasionCapture1458>? invasionStartPublisher = null,
-        PlayerUpdateRandomSeed1458? playerUpdateRandomSeed = null)
+        PlayerUpdateRandomSeed1458? playerUpdateRandomSeed = null,
+        IncomingHumanCombatPolicy1458 incomingHumanCombatPolicy = IncomingHumanCombatPolicy1458.PhaseOwned)
     {
         WorldIdentity = worldIdentity.IsAssigned ? worldIdentity : new(WorldRuntimeId.CreateNew(), WorldSessionId.CreateNew());
         _runtime = ServerRuntimeComposition.Create(
@@ -100,6 +101,6 @@ internal sealed partial class ServerRuntimeState
             naturalSpawnRandom,
             WorldIdentity,
             chestCommands, deathPrelude, townSocialWorldFacts, invasionProgressPublisher, invasionStartPublisher,
-            playerUpdateRandomSeed);
+            playerUpdateRandomSeed, incomingHumanCombatPolicy);
     }
 }

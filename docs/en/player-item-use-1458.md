@@ -1,5 +1,11 @@
 # Owned player item use 1.4.5.8
 
+## Ordinary bows and incoming combat — 2026-10-10, accepted local checkpoint
+
+The accepted combined block extends the existing remote style5 phase to nine ordinary bows: `39`, `99`, `3480`, `3486`, `3492`, `3498`, `3504`, `3510`, `3516`. Their source manual-release clocks share the gun implementation; HasAmmo selects the existing arrow family across inventory slots `0`–`57`. This phase does not shoot or debit arrows. Selected raw crit uses the same source-valid prefix gate, with explicit Linux/Windows arithmetic. Wooden Bow is `39`; item `5` is Mushroom.
+
+Human world incoming mitigation is connected to the retained whole combat projection. Target capture occurs before hit randomness and is checked again before mutation. Missing or retired phase custody refuses a hit; current equipment does not reconstruct it. A trusted standalone component policy remains explicit. Unsupported actors still retire the entire shared human phase census. Local acceptance passes within these limits; the accepted checkpoint below is historical.
+
 ## Derived combat fields and defensive accessories — 2026-10-09, accepted local checkpoint
 
 The owned item phase now retains the existing nullable combat projection. It covers source defense, armor penetration, NoKnockback and class crit, with the represented final mana heat/Mana Sickness magic-damage writer. Selected-item and equipment reports do not recompute these fields. Constructor/Ghost reset and dead/outside preservation match independent whole-field source observations; unknown imports remain unknown. Projectile NPC combat consumes the retained projection. Incoming player mitigation, direct melee and PvP still use their existing equipment projections and are not included in this acceptance claim.

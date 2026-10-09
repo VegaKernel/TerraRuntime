@@ -51,10 +51,13 @@ internal sealed partial class PlayerAuthority
         ServerPlayerAuthority? serverPlayers = null,
         double? oceanTeleportSurface = null,
         RuntimeChestCommandProcessor? chestCommands = null,
-        bool? lanternsUp = null)
+        bool? lanternsUp = null,
+        IncomingHumanCombatPolicy1458 incomingHumanCombatPolicy = IncomingHumanCombatPolicy1458.EquipmentComponent)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
+        if (incomingHumanCombatPolicy is not (IncomingHumanCombatPolicy1458.EquipmentComponent or IncomingHumanCombatPolicy1458.PhaseOwned))
+            throw new ArgumentOutOfRangeException(nameof(incomingHumanCombatPolicy));
         this.events = events;
         this.worldTiles = worldTiles;
         this.expertMode = expertMode;
@@ -65,6 +68,7 @@ internal sealed partial class PlayerAuthority
         this.oceanTeleportSurface = oceanTeleportSurface;
         this.chestCommands = chestCommands;
         this.lanternsUp = lanternsUp;
+        this.incomingHumanCombatPolicy = incomingHumanCombatPolicy;
         pvpCombat = new RuntimePvpCombatIntegrity(this);
     }
 

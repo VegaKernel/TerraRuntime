@@ -138,7 +138,8 @@ internal sealed class ServerRuntimeComposition
         RuntimeTownSocialWorld1458? townSocialWorldFacts = null,
         Action<RuntimeInvasionCapture1458>? invasionProgressPublisher = null,
         Action<RuntimeInvasionCapture1458>? invasionStartPublisher = null,
-        PlayerUpdateRandomSeed1458? playerUpdateRandomSeed = null)
+        PlayerUpdateRandomSeed1458? playerUpdateRandomSeed = null,
+        IncomingHumanCombatPolicy1458 incomingHumanCombatPolicy = IncomingHumanCombatPolicy1458.PhaseOwned)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -146,10 +147,13 @@ internal sealed class ServerRuntimeComposition
         var progression = worldProgression ?? new RuntimeWorldProgressionMutations();
         var updates = new RuntimeTickCounter();
         var commands = new RuntimeCommandCounter();
+        // Human world mitigation consumes retained Player.Update fields. The explicit component
+        // policy exists for trusted standalone adapters; missing phase/world facts never select it.
         var playersAuthority = new PlayerAuthority(playerEvents, worldTiles, expertMode, masterMode, serverPlayers,
             oceanTeleportSurface: townCommerceWorldFacts is { SkyblockWorld: false } oceanFacts ? oceanFacts.WorldSurface : null,
             chestCommands: chestCommands,
-            lanternsUp: townCommerceWorldFacts?.LanternsUp);
+            lanternsUp: townCommerceWorldFacts?.LanternsUp,
+            incomingHumanCombatPolicy: incomingHumanCombatPolicy);
         if (playerUpdateRandomSeed is { } playerSeed)
             playersAuthority.SetPlayerUpdateRandom(new VanillaUnifiedRandom1458(playerSeed.Value));
         if (worldTiles is not null && townCommerceWorldFacts is { } playerWorld)
