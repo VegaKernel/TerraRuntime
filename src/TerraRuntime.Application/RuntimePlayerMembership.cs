@@ -264,7 +264,7 @@ internal sealed class RuntimePlayerMember
 
         Revision++;
         ProjectileUseInputRevision++;
-        RemotePhaseSnapshot = null;
+        ClearRemotePhaseSnapshot();
         return true;
     }
 
@@ -272,6 +272,8 @@ internal sealed class RuntimePlayerMember
     // progress alone does not replace that input event, while commands and other writers do.
     internal ulong ProjectileUseInputRevision { get; private set; } = 1;
     internal PlayerStateSnapshot? RemotePhaseSnapshot { get; private set; }
+    // A pose alone does not prove that the retained item clocks still belong to this phase.
+    internal RuntimePlayerItemPhase1458? RemotePhaseItem { get; private set; }
     internal ulong RemotePhaseInputRevision { get; private set; }
 
     internal bool TryAdvanceRemotePhaseRevision()
@@ -284,7 +286,15 @@ internal sealed class RuntimePlayerMember
     internal void MarkRemotePhaseSnapshot()
     {
         RemotePhaseSnapshot = CaptureSnapshot();
+        RemotePhaseItem = ItemPhase;
         RemotePhaseInputRevision = ProjectileUseInputRevision;
+    }
+
+    internal void ClearRemotePhaseSnapshot()
+    {
+        RemotePhaseSnapshot = null;
+        RemotePhaseItem = null;
+        RemotePhaseInputRevision = 0;
     }
 
     public PlayerStateSnapshot CaptureSnapshot() =>

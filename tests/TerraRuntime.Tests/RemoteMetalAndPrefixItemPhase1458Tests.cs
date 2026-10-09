@@ -58,11 +58,18 @@ public sealed class RemoteMetalAndPrefixItemPhase1458Tests
         var rows = source.RootElement.EnumerateArray().ToArray();
         Assert.Equal(288, rows.Length);
         int[] represented = [0,16,17,18,19,20,21,22,23,24,25,82];
+        int oldClockProfiles = 0, sourceValidProfiles = 0;
         foreach (var row in rows)
         {
-            bool expected = row.GetProperty("exact").GetBoolean() && represented.Contains(I(row, "requested"));
+            bool expected = row.GetProperty("exact").GetBoolean();
+            if (expected) sourceValidProfiles++;
+            // Preserve the earlier 84-profile slice while the same unchanged source requests
+            // now prove the expanded clock-only mask; launch/combat admission remains separate.
+            if (expected && represented.Contains(I(row,"requested"))) oldClockProfiles++;
             Assert.Equal(expected, VanillaRemoteBulletItemCheck1458.IsSupported(new(I(row, "weapon")), new(I(row, "requested"))));
         }
+        Assert.Equal(84,oldClockProfiles);
+        Assert.Equal(256,sourceValidProfiles);
     }
 
     [Fact]

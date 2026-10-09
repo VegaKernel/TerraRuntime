@@ -1,5 +1,9 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Current remote style1 clocks and all valid gun prefixes — 2026-10-09, accepted local results
+
+The accepted combined block adds 101 remote tool/broadsword clocks and all 256 source-valid roll-family gun/prefix clocks, with nullable ToolTime/AttackCD custody and exact retained ItemPhase capture/watermarks. Independent original comparisons cover 49,252 runtime phases; 16 meaningful omission controls pass after restoration. Release warnings-as-errors/focused 335, one unfiltered full 1,563,054/1,563,055 (zero failures/errors, one known skip), shipping Windows Native/five smokes, separate typed Native 555 scenarios/26,766 actual ticks and fresh Release/Native 82/49 live checks pass. All 32 shipping DLLs match; no new dependency or graph edge. Genuine Linux NativeAOT remains locally unverified; GitHub CI is not awaited. Next: remaining 172 authoritative launch-prefix identities and retained selected-item crit, then wider inventory/combat/buffs/events and NPC parity. See [accepted evidence and resume state](agent-memory/work-state.md). Prior accepted checkpoints remain history below.
+
 ## Current neutral metal equipment and prefixed remote phase — 2026-10-09, accepted local results
 
 The accepted prefix/metal phase uses the existing shipping graph with no new production dependency/reflection dispatch/project edge. Source-platform arithmetic is typed and bound once in standard composition. Fresh shipping Windows NativeAOT/five smokes and a separate typed changed-lane Native harness 237 scenarios/7524 actual State.Tick calls pass; all 14 referenced DLLs match the final shipping snapshot and all 32 shipping DLLs match combined acceptance binaries. Release/focused 327, unfiltered full 1,563,046/1,563,047 (one known skip) and fresh Release/Native82/49 live gates pass. Genuine Linux NativeAOT remains locally unverified. See [current work state](agent-memory/work-state.md).

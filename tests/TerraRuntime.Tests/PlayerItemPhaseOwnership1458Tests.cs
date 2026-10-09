@@ -16,7 +16,12 @@ public sealed class PlayerItemPhaseOwnership1458Tests
     public void Real_join_owns_constructor_clocks_and_prejoin42_changes_only_source_reported_mana()
     {
         using JsonDocument source = Facts();
-        var constructor = Phase(Row(source, "constructor").GetProperty("constructor"));
+        // Official constructor declarations and fresh style1 captures own zero clocks.
+        // The older fixture omitted these fields; its other retained imports stay nullable.
+        var constructor = Phase(Row(source, "constructor").GetProperty("constructor")) with
+        {
+            ToolTime = 0, AttackCD = 0
+        };
         foreach (bool reportZero in new[] { false, true })
         {
             using var f = new Fixture(spawn: false);

@@ -48,6 +48,7 @@ internal sealed partial class PlayerAuthority
         {
             member.ItemPhase = null;
             member.PhysicsPhase = null;
+            member.ClearRemotePhaseSnapshot();
         }
     }
 }

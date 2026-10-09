@@ -15,6 +15,8 @@ internal sealed record RuntimePlayerProjectileUseCapture(
     internal RuntimePlayerMember? Member { get; init; }
     internal ulong InputRevision { get; init; }
     internal PlayerAppearanceCommitRequest? Appearance { get; init; }
+    // Retained clocks and phase retirement can change without changing the public player pose.
+    internal RuntimePlayerItemPhase1458? ItemPhase { get; init; }
 }
 
 internal sealed partial class PlayerAuthority
@@ -36,7 +38,8 @@ internal sealed partial class PlayerAuthority
         bool profile = transferProfiles.TryCapture(connection, out var appearance, out var equipment, out var buffs);
         capture = new(connection, member.CaptureSnapshot(), serial, profile, equipment, buffs)
         {
-            Member = member, InputRevision = member.ProjectileUseInputRevision, Appearance = appearance
+            Member = member, InputRevision = member.ProjectileUseInputRevision, Appearance = appearance,
+            ItemPhase = member.ItemPhase
         };
         return true;
     }
@@ -46,6 +49,7 @@ internal sealed partial class PlayerAuthority
         if (!membership.TryGet(capture.Connection, out var member) || !ReferenceEquals(member, capture.Member) ||
             member.ProjectileUseInputRevision != capture.InputRevision ||
             member.CaptureSnapshot() != capture.Player ||
+            member.ItemPhase != capture.ItemPhase ||
             !inventory.TryIsCurrent(capture.Connection, capture.InventorySerial)) return false;
         bool profile = transferProfiles.TryCapture(capture.Connection, out var appearance, out var equipment, out var buffs);
         return profile == capture.HasProfile && appearance == capture.Appearance && equipment.AsSpan().SequenceEqual(capture.Equipment) &&

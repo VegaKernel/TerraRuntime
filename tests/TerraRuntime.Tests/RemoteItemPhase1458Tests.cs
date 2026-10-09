@@ -172,8 +172,10 @@ public sealed class RemoteItemPhase1458Tests
     public void Actual_runtime_tick_retires_unknown_world_cursor_and_reports_reconnect_or_same_binding_cannot_recover_it()
     {
         using var f = new Fixture("empty-first", runtimeTick: true);
-        // Iron Pickaxe is outside this source-owned remote clock lane; admitted gun98 is not.
-        f.Apply(new PlayerEquipmentRuntimeCommand(f.Connections[0], new(new(0), 0, 1, 0, 1, 0)));
+        // Muramasa has known item metadata but remains outside the 101 source-owned style1 clocks.
+        f.Apply(new PlayerEquipmentRuntimeCommand(f.Connections[0], new(new(0), 0, 1, 0, 155, 0)));
+        Assert.True(f.Players.TryGetInventoryItem(f.Connections[0],0,out var selected));
+        Assert.Equal(155,selected.ItemType.Value);
         var sourceRandom = f.Random.Clone();
         Assert.False(f.Step());
         foreach (byte slot in new byte[] { 0, 2 })
@@ -275,7 +277,12 @@ public sealed class RemoteItemPhase1458Tests
         foreach (bool unknownItem in new[] { true, false })
         {
             using var f = new Fixture("empty-first");
-            if (unknownItem) f.Apply(new PlayerEquipmentRuntimeCommand(f.Connections[0], new(new(0), 0, 1, 0, 1, 0)));
+            if (unknownItem)
+            {
+                f.Apply(new PlayerEquipmentRuntimeCommand(f.Connections[0], new(new(0), 0, 1, 0, 155, 0)));
+                Assert.True(f.Players.TryGetInventoryItem(f.Connections[0],0,out var selected));
+                Assert.Equal(155,selected.ItemType.Value);
+            }
             else f.Member(0).ItemPhase = null;
             var before = f.Member(2).CaptureSnapshot();
             var phase = f.Member(2).ItemPhase;

@@ -169,10 +169,14 @@ internal sealed partial class PlayerAuthority
         }
         if (!VanillaSelectedConsumable1458.TryStepHeat(item.ManaHeat, random.NextDouble, random.Next, out float heat))
             return false;
+        if (item.ToolTime is not >= 0 ||
+            !VanillaRemoteMeleeItemCheck1458.TryStepAttackCooldown(item.AttackCD, item.Selected.Animation, out int attackCD))
+            return false;
         delay = Math.Max(0, delay - 1);
         item = item with
         {
             ManaHeat = heat,
+            AttackCD = attackCD,
             ManaPotionDelay = Math.Max(0, item.ManaPotionDelay - 1),
             Selected = item.Selected with { PotionDelay = delay }
         };
@@ -209,7 +213,10 @@ internal sealed partial class PlayerAuthority
             !selected.IsCanonical ||
             (!(selected.Prefix == VanillaPrefixIds.None &&
                 VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out _)) &&
-                !VanillaRemoteBulletItemCheck1458.IsSupported(selected.ItemType, selected.Prefix))) return false;
+                !VanillaRemoteBulletItemCheck1458.IsSupported(selected.ItemType, selected.Prefix,
+                    world.WindowsItemPrefixArithmetic) &&
+                !VanillaRemoteMeleeItemCheck1458.IsSupported(selected.ItemType, selected.Prefix,
+                    world.WindowsItemPrefixArithmetic))) return false;
         if (plan.Maximum is not { } maximum || plan.HealthWorld is not { } capturedHealthWorld ||
             !TryPlanNpcHealth(member, maximum, false, false, out var health, selectedItemPhase: true,
                 selectedHealthInputs: (capturedHealthWorld, plan.Grappling)) ||
@@ -244,6 +251,8 @@ internal sealed partial class PlayerAuthority
             plan.Buffs.CountActive(new BuffTypeId(23)) != 0, false, true, false);
         var clocks = item.Selected with { PotionDelay = delay };
         PlayerSelectedConsumableTransition1458 use;
+        bool beganActualUse;
+        bool mining = false;
         if (VanillaRemoteBulletItemCheck1458.IsSupported(selected.ItemType))
         {
             var bulletFacts = new PlayerRemoteBulletItemFacts1458(selected.ItemType,
@@ -256,9 +265,29 @@ internal sealed partial class PlayerAuthority
             {
                 PendingItemReuse = bulletUse.PendingItemReuse
             };
+            beganActualUse = bulletUse.BeganActualUse;
         }
-        else if (!VanillaSelectedConsumable1458.TryStep(clocks, in facts, random.Next, random.NextDouble, out use))
-            return false;
+        else if (VanillaRemoteMeleeItemCheck1458.IsSupported(selected.ItemType, selected.Prefix,
+            world.WindowsItemPrefixArithmetic))
+        {
+            var meleeFacts = new PlayerRemoteMeleeItemFacts1458(selected.ItemType, facts.ControlUseItem,
+                facts.LastUseSuccess, facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered,
+                selected.Prefix, world.WindowsItemPrefixArithmetic);
+            if (!VanillaRemoteMeleeItemCheck1458.TryStep(clocks, in meleeFacts, random.Next, out var meleeUse))
+                return false;
+            use = new(meleeUse.State, facts.Life, facts.Mana, false, 0, 0)
+            {
+                PendingItemReuse = meleeUse.PendingItemReuse
+            };
+            beganActualUse = meleeUse.BeganActualUse;
+            mining = meleeUse.IsMiningTool;
+        }
+        else
+        {
+            if (!VanillaSelectedConsumable1458.TryStep(clocks, in facts, random.Next, random.NextDouble, out use))
+                return false;
+            beganActualUse = use.BeganUse;
+        }
         if (use.PotionSicknessOffer > 0)
             plan.Buffs.TryApplySelectedConsumable(new BuffTypeId(21), use.PotionSicknessOffer, false);
         if (use.ManaSicknessOffer > 0)
@@ -267,7 +296,9 @@ internal sealed partial class PlayerAuthority
         plan.Item = item with
         {
             Mana = mana with { Mana = use.Mana }, Selected = use.State,
-            PendingItemReuse = use.PendingItemReuse
+            PendingItemReuse = use.PendingItemReuse,
+            AttackCD = beganActualUse ? 0 : item.AttackCD,
+            ToolTime = beganActualUse && mining ? 1 : item.ToolTime
         };
         plan.Changed = true;
         return true;

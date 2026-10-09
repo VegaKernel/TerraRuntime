@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Reflection;
 using System.Text.Json;
+using TerraRuntime.Application;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -87,6 +88,61 @@ public sealed class PendingBulletPlayerPhase1458Tests
         }
     }
 
+    [Fact]
+    public void Unowned_retained_item_clock_changes_reject_immediate_and_refreshed_pending_use()
+    {
+        using var source = Source();
+        foreach (bool tick in new[] { false, true })
+        {
+            using var f = new Fixture(Row(source));
+            f.Report(0);
+            if (tick) f.State.Tick();
+            var pose = f.Snapshot();
+            var member = f.Member();
+            var phase = Assert.IsType<RuntimePlayerItemPhase1458>(member.ItemPhase);
+            member.ItemPhase = phase with { ToolTime = phase.ToolTime + 1 };
+            Assert.Equal(pose, f.Snapshot());
+            var before = f.Random.Clone();
+            f.Complete();
+            Assert.Equal(0, f.Store.ActiveCount);
+            Assert.Equal(20, f.Ammo());
+            Assert.True(f.Random.HasSameState(before));
+            Assert.Equal(0, f.Outbound.QueuedFrames);
+            Assert.True(f.State.RejectedClientProjectileUpdates > 0);
+        }
+    }
+
+    [Fact]
+    public void Actual_phase_retirement_clears_pending_proof_with_and_without_fallback_input_writes()
+    {
+        using var source = Source();
+        foreach (bool fullTick in new[] { false, true })
+        {
+            using var f = new Fixture(Row(source));
+            f.Report(0);
+            f.State.Tick();
+            var member = f.Member();
+            Assert.NotNull(member.RemotePhaseSnapshot);
+            ulong input = member.ProjectileUseInputRevision;
+            member.PhysicsPhase = null; // Missing source state makes the next real player phase retire.
+            if (fullTick) f.State.Tick();
+            else Assert.False(f.Players().TickRemotePlayerPhase());
+            Assert.Null(member.ItemPhase);
+            Assert.Null(member.RemotePhaseSnapshot);
+            Assert.Null(member.RemotePhaseItem);
+            // The full tick's fallback health writer also advances input; isolate retirement
+            // through its real owner entry point to exercise the unchanged-epoch boundary.
+            if (!fullTick) Assert.Equal(input, member.ProjectileUseInputRevision);
+            var before = f.Random.Clone();
+            f.Complete();
+            Assert.Equal(0, f.Store.ActiveCount);
+            Assert.Equal(20, f.Ammo());
+            Assert.True(f.Random.HasSameState(before));
+            Assert.Equal(0, f.Outbound.QueuedFrames);
+            Assert.True(f.State.RejectedClientProjectileUpdates > 0);
+        }
+    }
+
     private static JsonDocument Source()
     {
         using var stream = typeof(PendingBulletPlayerPhase1458Tests).Assembly.GetManifestResourceStream("RangedBulletLaunch1458")!;
@@ -167,12 +223,19 @@ public sealed class PendingBulletPlayerPhase1458Tests
         }
         internal void MutatePoseWithoutCommand()
         {
-            var runtime = typeof(ServerRuntimeState).GetField("_runtime", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(State)!;
-            var players = (PlayerAuthority)runtime.GetType().GetProperty("Players", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime)!;
+            Member().PositionX = 1601f;
+        }
+        internal RuntimePlayerMember Member()
+        {
+            var players = Players();
             var membership = typeof(PlayerAuthority).GetField("membership", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(players)!;
             var members = (System.Collections.IEnumerable)membership.GetType().GetProperty("Members")!.GetValue(membership)!;
-            object member = members.Cast<object>().Single();
-            member.GetType().GetProperty("PositionX")!.SetValue(member, 1601f);
+            return members.Cast<RuntimePlayerMember>().Single();
+        }
+        internal PlayerAuthority Players()
+        {
+            var runtime = typeof(ServerRuntimeState).GetField("_runtime", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(State)!;
+            return (PlayerAuthority)runtime.GetType().GetProperty("Players", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime)!;
         }
         public void Dispose() { replacement?.Dispose(); Session.Dispose(); }
     }

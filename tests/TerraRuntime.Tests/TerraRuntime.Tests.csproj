@@ -31,6 +31,12 @@
     <EmbeddedResource Include="Fixtures/remote-prefixed-bullet-item-phase-official-1458.json.gz" LogicalName="RemotePrefixedBulletItemPhase1458" />
     <EmbeddedResource Include="Fixtures/remote-prefixed-bullet-defaults-official-1458.json.gz" LogicalName="RemotePrefixedBulletDefaults1458" />
     <EmbeddedResource Include="Fixtures/remote-prefixed-bullet-windows-phase-official-1458.json.gz" LogicalName="RemotePrefixedBulletWindowsPhase1458" />
+    <EmbeddedResource Include="Fixtures/remote-style1-player-phase-linux-official-1458.json.gz" LogicalName="RemoteStyle1PlayerPhaseLinux1458" />
+    <EmbeddedResource Include="Fixtures/remote-style1-player-phase-windows-official-1458.json.gz" LogicalName="RemoteStyle1PlayerPhaseWindows1458" />
+    <EmbeddedResource Include="Fixtures/remote-all-ranged-prefix-phase-linux-official-1458.json.gz" LogicalName="RemoteAllRangedPrefixPhaseLinux1458" />
+    <EmbeddedResource Include="Fixtures/remote-all-ranged-prefix-phase-windows-official-1458.json.gz" LogicalName="RemoteAllRangedPrefixPhaseWindows1458" />
+    <EmbeddedResource Include="Fixtures/remote-crossfamily-clocks-linux-official-1458.json.gz" LogicalName="RemoteCrossFamilyClocksLinux1458" />
+    <EmbeddedResource Include="Fixtures/remote-style1-early-clocks-linux-official-1458.json.gz" LogicalName="RemoteStyle1EarlyClocksLinux1458" />
     <EmbeddedResource Include="Fixtures/inherited-metal-whole-player-official-1458.json.gz" LogicalName="InheritedMetalWholePlayer1458" />
     <EmbeddedResource Include="Fixtures/inherited-metal-blocker-whole-player-official-1458.json.gz" LogicalName="InheritedMetalBlockerWholePlayer1458" />
     <EmbeddedResource Include="Fixtures/metal-vanity-whole-player-official-1458.json.gz" LogicalName="MetalVanityWholePlayer1458" />

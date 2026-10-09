@@ -12,11 +12,12 @@ internal sealed partial class PlayerAuthority
             member.ProjectileUseInputRevision != capture.InputRevision ||
             member.RemotePhaseInputRevision != capture.InputRevision ||
             member.RemotePhaseSnapshot is not { } ownedPhase || member.CaptureSnapshot() != ownedPhase ||
+            member.ItemPhase != member.RemotePhaseItem ||
             !inventory.TryIsCurrent(capture.Connection, capture.InventorySerial)) return false;
 
         // Refresh only the currentness proof. The caller keeps the original launch pose, reports,
         // ammunition decision and detached projectile cursor. Immediate combat guards stay strict.
-        var refreshed = capture with { Player = ownedPhase };
+        var refreshed = capture with { Player = ownedPhase, ItemPhase = member.RemotePhaseItem };
         if (!IsCurrentProjectileUse(refreshed)) return false;
         current = refreshed;
         return true;

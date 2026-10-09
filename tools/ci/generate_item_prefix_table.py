@@ -146,27 +146,58 @@ public static class VanillaItemPrefixTable1458
     /// Source <c>Item.TryGetPrefixStatMultipliersForItem</c>, reduced to the question the roll asks of it:
     /// does this item keep this prefix, or reroll?
     /// </summary>
-    public static bool Accepts(in VanillaItemPrefixRecord1458 record, int prefix)
+    public static bool Accepts(in VanillaItemPrefixRecord1458 record, int prefix,
+        bool windowsItemPrefixArithmetic = true)
     {
         ReadOnlySpan<float> multipliers = Multipliers;
         float damageMultiplier = multipliers[prefix * 3];
         float speedMultiplier = multipliers[prefix * 3 + 1];
         float manaMultiplier = multipliers[prefix * 3 + 2];
 
-        // The products are taken in double. The source writes them in float, but the pinned x86 server
+        // The default retains the existing world-generation x86 rule: products are taken in double.
+        // The source writes them in float, but the pinned x86 server
         // evaluates them wider than float before rounding, and three items turn on the difference: at
         // useAnimation ten, a float-rounded 9.5 rounds back up to ten and rejects the prefix, while the exact
         // 9.49999988 the server computes rounds down to nine and keeps it. Double reproduces the server
         // because the product of a stat this small and a single-precision multiplier is exact in double.
-        if (damageMultiplier != 1f && Math.Round(record.Damage * (double)damageMultiplier) == record.Damage)
+        // Clock queries can explicitly select the independently captured Linux/CoreCLR float product.
+        if (damageMultiplier != 1f && RoundProduct(record.Damage, damageMultiplier, windowsItemPrefixArithmetic) == record.Damage)
             return false;
         if (speedMultiplier != 1f &&
-            Math.Round(record.UseAnimation * (double)speedMultiplier) == record.UseAnimation)
+            RoundProduct(record.UseAnimation, speedMultiplier, windowsItemPrefixArithmetic) == record.UseAnimation)
             return false;
-        if (manaMultiplier != 1f && Math.Round(record.Mana * (double)manaMultiplier) == record.Mana)
+        if (manaMultiplier != 1f && RoundProduct(record.Mana, manaMultiplier, windowsItemPrefixArithmetic) == record.Mana)
             return false;
         return (PrefixFlags[prefix] & 0x01) == 0 || !record.HasNoKnockBack;
     }
+
+    /// <summary>Source speed metadata. This query alone does not admit any item capability.</summary>
+    public static bool TryGetSpeedMultiplier(PrefixId prefix, out float multiplier)
+    {
+        multiplier = default;
+        if ((uint)prefix.Value >= PrefixCount)
+            return false;
+        multiplier = Multipliers[prefix.Value * 3 + 1];
+        return true;
+    }
+
+    /// <summary>Clock-only prefix validity for a known item and its genuine roll family.</summary>
+    public static bool TryResolveSpeedMultiplier(ItemTypeId item, PrefixId prefix,
+        bool windowsItemPrefixArithmetic, out float multiplier)
+    {
+        multiplier = default;
+        if (!TryGet(item, out var record) || !TryGetSpeedMultiplier(prefix, out float speed) ||
+            (prefix.Value != 0 && !GetFamily(record.Family).Contains((byte)prefix.Value)) ||
+            !Accepts(record, prefix.Value, windowsItemPrefixArithmetic))
+            return false;
+        multiplier = speed;
+        return true;
+    }
+
+    private static double RoundProduct(int value, float multiplier, bool windowsItemPrefixArithmetic) =>
+        windowsItemPrefixArithmetic
+            ? Math.Round(value * (double)multiplier)
+            : Math.Round(value * multiplier);
 
     /// <summary>Source <c>PrefixID.Sets.ReducedNaturalChance</c>.</summary>
     public static bool HasReducedNaturalChance(int prefix) => (PrefixFlags[prefix] & 0x02) != 0;
