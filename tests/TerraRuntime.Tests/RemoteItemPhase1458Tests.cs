@@ -25,15 +25,6 @@ public sealed class RemoteItemPhase1458Tests
         {
             string mode = row.GetProperty("mode").GetString()!;
             using var f = new Fixture(mode, runtimeTick);
-            if (mode == "weapon98-first")
-            {
-                var before = f.Member(2).CaptureSnapshot();
-                var random = f.Random.Clone();
-                Assert.False(f.Players.TryTickRemotePlayerPhase());
-                Assert.Equal(before, f.Member(2).CaptureSnapshot());
-                Assert.True(f.Random.HasSameState(random));
-                continue;
-            }
             var sentinel = f.Member(255).CaptureSnapshot();
             var sentinelPhase = f.Member(255).ItemPhase;
             foreach (var step in row.GetProperty("steps").EnumerateArray())
@@ -180,7 +171,9 @@ public sealed class RemoteItemPhase1458Tests
     [Fact]
     public void Actual_runtime_tick_retires_unknown_world_cursor_and_reports_reconnect_or_same_binding_cannot_recover_it()
     {
-        using var f = new Fixture("weapon98-first", runtimeTick: true);
+        using var f = new Fixture("empty-first", runtimeTick: true);
+        // Iron Pickaxe is outside this source-owned remote clock lane; admitted gun98 is not.
+        f.Apply(new PlayerEquipmentRuntimeCommand(f.Connections[0], new(new(0), 0, 1, 0, 1, 0)));
         var sourceRandom = f.Random.Clone();
         Assert.False(f.Step());
         foreach (byte slot in new byte[] { 0, 2 })
@@ -281,8 +274,9 @@ public sealed class RemoteItemPhase1458Tests
     {
         foreach (bool unknownItem in new[] { true, false })
         {
-            using var f = new Fixture(unknownItem ? "weapon98-first" : "empty-first");
-            if (!unknownItem) f.Member(0).ItemPhase = null;
+            using var f = new Fixture("empty-first");
+            if (unknownItem) f.Apply(new PlayerEquipmentRuntimeCommand(f.Connections[0], new(new(0), 0, 1, 0, 1, 0)));
+            else f.Member(0).ItemPhase = null;
             var before = f.Member(2).CaptureSnapshot();
             var phase = f.Member(2).ItemPhase;
             var random = f.Random.Clone();

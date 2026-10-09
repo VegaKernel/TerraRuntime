@@ -38,7 +38,7 @@ internal sealed partial class PlayerAuthority
             if (buff == VanillaBuffIds.Regeneration) regeneration++;
             else if (buff != VanillaBuffIds.Poisoned && buff != VanillaBuffIds.OnFire &&
                 buff != VanillaBuffIds.CursedInferno && buff != VanillaBuffIds.Lifeforce &&
-                !(selectedItemPhase && buff.Value is 21 or 23 or 94)) supported = false;
+                !(selectedItemPhase && buff.Value is 21 or 23 or 93 or 94 or 112)) supported = false;
         }
 
         // Source remote UpdateLifeRegen precedes movement. Liquid, solid overlap and special furniture

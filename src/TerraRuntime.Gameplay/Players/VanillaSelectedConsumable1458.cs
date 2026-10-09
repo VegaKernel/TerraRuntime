@@ -12,7 +12,10 @@ public readonly record struct PlayerSelectedConsumableFacts1458(ItemTypeId Item,
 
 public readonly record struct PlayerSelectedConsumableTransition1458(
     PlayerSelectedConsumableState1458 State, int Life, int Mana,
-    bool BeganUse, int PotionSicknessOffer, int ManaSicknessOffer);
+    bool BeganUse, int PotionSicknessOffer, int ManaSicknessOffer)
+{
+    public bool PendingItemReuse { get; init; }
+}
 
 /// <summary>Selected ordinary remote ItemCheck. Offers do not debit inventory or publish client reports.</summary>
 public static class VanillaSelectedConsumable1458
@@ -49,6 +52,7 @@ public static class VanillaSelectedConsumable1458
         int animation = begin ? item.UseAnimation : state.Animation;
         int animationMax = begin ? item.UseAnimation : state.Animation == 0 ? 0 : state.AnimationMax;
         int delay = begin && item.HealingDelay ? 3_600 : state.PotionDelay;
+        bool pending = animation > 0 && animation == 1 && facts.ControlUseItem && state.ReleaseUseItem;
         if (animation > 0) animation--;
         int time = Math.Max(0, state.ItemTime - 1);
         int timeMax = state.ItemTimeMax;
@@ -75,7 +79,10 @@ public static class VanillaSelectedConsumable1458
             }
         }
         transition = new(new(time, timeMax, animation, animationMax, !facts.ControlUseItem,
-            delay, crit), life, mana, begin, begin && item.HealingDelay ? delay : 0, manaSickness);
+            delay, crit), life, mana, begin, begin && item.HealingDelay ? delay : 0, manaSickness)
+        {
+            PendingItemReuse = pending
+        };
         return true;
     }
 

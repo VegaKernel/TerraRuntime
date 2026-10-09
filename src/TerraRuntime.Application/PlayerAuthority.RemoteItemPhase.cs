@@ -113,7 +113,7 @@ internal sealed partial class PlayerAuthority
             var member = plan.Member;
             // Every condition was checked above; these owned assignments invoke no callbacks.
             transferProfiles.TryAdoptBuffState(member.Connection, plan.BeforeBuffs, plan.Buffs);
-            member.TryAdvanceRevision();
+            member.TryAdvanceRemotePhaseRevision();
             member.ItemPhase = plan.Item;
             member.PhysicsPhase = plan.Physics;
             member.ItemAnimation = plan.Item!.Value.Selected.Animation;
@@ -126,6 +126,7 @@ internal sealed partial class PlayerAuthority
             member.PositionY = plan.Y;
             member.VelocityX = plan.Vx;
             member.VelocityY = plan.Vy;
+            member.MarkRemotePhaseSnapshot();
         }
         random.CopyStateFrom(plannedRandom);
         return true;
@@ -141,7 +142,7 @@ internal sealed partial class PlayerAuthority
             member.NpcHealth is not { SourceProfileKnown: true } || member.HasMount || plan.GodMode ||
             (plan.Appearance?.ConsumableUnlockFlags ?? 0) != 0 ||
             plan.Equipment.Any(static equipment => equipment.Stack > 0) ||
-            plan.BuffTypes.Any(static type => type.Value is not (21 or 23 or 94)) ||
+            plan.BuffTypes.Any(static type => type.Value is not (21 or 23 or 93 or 94 or 112)) ||
             member.MiscFlags1 != 0 || (member.MiscFlags2 & ~(1 << 6)) != 0 ||
             (member.ControlFlags & ~0x7c) != 0 ||
             (member.MovementFlags & ~0x54) != 0 || physical.GravityDirection is not (1f or -1f) ||
@@ -206,7 +207,8 @@ internal sealed partial class PlayerAuthority
         }
         if (!inventory.TryGet(member.Connection, member.SelectedItem, out var selected) ||
             !selected.IsCanonical || selected.Prefix != VanillaPrefixIds.None ||
-            !VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out _)) return false;
+            (!VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out _) &&
+                !VanillaRemoteBulletItemCheck1458.IsSupported(selected.ItemType))) return false;
         if (plan.Maximum is not { } maximum || plan.HealthWorld is not { } capturedHealthWorld ||
             !TryPlanNpcHealth(member, maximum, false, false, out var health, selectedItemPhase: true,
                 selectedHealthInputs: (capturedHealthWorld, plan.Grappling)) ||
@@ -240,16 +242,52 @@ internal sealed partial class PlayerAuthority
             mana.Mana, mana.Maximum, (member.ControlFlags & 32) != 0, (member.MiscFlags2 & 64) != 0,
             plan.Buffs.CountActive(new BuffTypeId(23)) != 0, false, true, false);
         var clocks = item.Selected with { PotionDelay = delay };
-        if (!VanillaSelectedConsumable1458.TryStep(clocks, in facts, random.Next, random.NextDouble, out var use))
+        PlayerSelectedConsumableTransition1458 use;
+        if (VanillaRemoteBulletItemCheck1458.IsSupported(selected.ItemType))
+        {
+            var bulletFacts = new PlayerRemoteBulletItemFacts1458(selected.ItemType,
+                CaptureRemoteBulletAmmo(member), facts.ControlUseItem, facts.LastUseSuccess,
+                facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered);
+            if (!VanillaRemoteBulletItemCheck1458.TryStep(clocks, in bulletFacts, random.Next, out var bulletUse))
+                return false;
+            use = new(bulletUse.State, facts.Life, facts.Mana, false, 0, 0)
+            {
+                PendingItemReuse = bulletUse.PendingItemReuse
+            };
+        }
+        else if (!VanillaSelectedConsumable1458.TryStep(clocks, in facts, random.Next, random.NextDouble, out use))
             return false;
         if (use.PotionSicknessOffer > 0)
             plan.Buffs.TryApplySelectedConsumable(new BuffTypeId(21), use.PotionSicknessOffer, false);
         if (use.ManaSicknessOffer > 0)
             plan.Buffs.TryApplySelectedConsumable(new BuffTypeId(94), use.ManaSicknessOffer, false);
         plan.Health = knownHealth with { Life = use.Life };
-        plan.Item = item with { Mana = mana with { Mana = use.Mana }, Selected = use.State };
+        plan.Item = item with
+        {
+            Mana = mana with { Mana = use.Mana }, Selected = use.State,
+            PendingItemReuse = use.PendingItemReuse
+        };
         plan.Changed = true;
         return true;
+    }
+
+    private bool? CaptureRemoteBulletAmmo(RuntimePlayerMember member)
+    {
+        bool unknown = false;
+        // Source HasAmmo is an existence query across inventory0..57. A later known match
+        // resolves an earlier unknown; cursor58 and the void bag do not participate.
+        for (byte slot = 0; slot < 58; slot++)
+        {
+            if (!inventory.TryGet(member.Connection, slot, out var item) || !item.IsCanonical)
+            {
+                unknown = true;
+                continue;
+            }
+            if (item.Stack <= 0) continue;
+            if (!VanillaItemIds.TryCreate(item.ItemType.Value, out _)) unknown = true;
+            else if (VanillaProjectileWeaponCombatCatalog.IsBulletAmmoType(item.ItemType)) return true;
+        }
+        return unknown ? null : false;
     }
 
     private static ServerPlayerHorizontalIntent ResolveRemoteHorizontalIntent(bool left, bool right, float velocityX)

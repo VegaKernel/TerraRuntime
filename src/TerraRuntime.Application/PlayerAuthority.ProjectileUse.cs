@@ -10,7 +10,12 @@ internal sealed record RuntimePlayerProjectileUseCapture(
     ulong InventorySerial,
     bool HasProfile,
     PlayerEquipmentCommitRequest[] Equipment,
-    BuffTypeId[]? Buffs);
+    BuffTypeId[]? Buffs)
+{
+    internal RuntimePlayerMember? Member { get; init; }
+    internal ulong InputRevision { get; init; }
+    internal PlayerAppearanceCommitRequest? Appearance { get; init; }
+}
 
 internal sealed partial class PlayerAuthority
 {
@@ -26,19 +31,24 @@ internal sealed partial class PlayerAuthority
         capture = null;
         ulong serial = inventory.Serial;
         if (!membership.TryGet(connection, out var member) || member.Revision == ulong.MaxValue ||
+            member.ProjectileUseInputRevision == ulong.MaxValue ||
             !inventory.TryIsCurrent(connection, serial)) return false;
-        bool profile = transferProfiles.TryCapture(connection, out _, out var equipment, out var buffs);
-        capture = new(connection, member.CaptureSnapshot(), serial, profile, equipment, buffs);
+        bool profile = transferProfiles.TryCapture(connection, out var appearance, out var equipment, out var buffs);
+        capture = new(connection, member.CaptureSnapshot(), serial, profile, equipment, buffs)
+        {
+            Member = member, InputRevision = member.ProjectileUseInputRevision, Appearance = appearance
+        };
         return true;
     }
 
     internal bool IsCurrentProjectileUse(RuntimePlayerProjectileUseCapture capture)
     {
-        if (!membership.TryGet(capture.Connection, out var member) ||
+        if (!membership.TryGet(capture.Connection, out var member) || !ReferenceEquals(member, capture.Member) ||
+            member.ProjectileUseInputRevision != capture.InputRevision ||
             member.CaptureSnapshot() != capture.Player ||
             !inventory.TryIsCurrent(capture.Connection, capture.InventorySerial)) return false;
-        bool profile = transferProfiles.TryCapture(capture.Connection, out _, out var equipment, out var buffs);
-        return profile == capture.HasProfile && equipment.AsSpan().SequenceEqual(capture.Equipment) &&
+        bool profile = transferProfiles.TryCapture(capture.Connection, out var appearance, out var equipment, out var buffs);
+        return profile == capture.HasProfile && appearance == capture.Appearance && equipment.AsSpan().SequenceEqual(capture.Equipment) &&
             (buffs is null) == (capture.Buffs is null) &&
             (buffs is null || buffs.AsSpan().SequenceEqual(capture.Buffs));
     }

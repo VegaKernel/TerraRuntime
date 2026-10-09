@@ -20,6 +20,12 @@ internal sealed partial class ProjectileAuthority
                 tick = tickProvider();
                 capturedTick = true;
             }
+            if (!TryRefreshPendingBulletCapture(pending))
+            {
+                pendingBulletVolleys[slot] = null;
+                RejectedClientProjectileProvenance++;
+                continue;
+            }
             var use = pending.Use;
             if (tick >= use.UseTick && tick - use.UseTick <= use.UseTimeTicks &&
                 use.PlayerCapture is { } capture && players.IsCurrentProjectileUse(capture) &&
@@ -34,11 +40,20 @@ internal sealed partial class ProjectileAuthority
     // proposal per player until those reports arrive; guessing keys would create duplicate peer actors.
     private sealed class PendingClientBulletVolley(AuthoritativeClientProjectileSpawn use)
     {
-        internal readonly AuthoritativeClientProjectileSpawn Use = use;
+        internal AuthoritativeClientProjectileSpawn Use = use;
         internal readonly TerrariaProjectileUpdateState[] Reports = new TerrariaProjectileUpdateState[use.VolleyStates!.Length];
         internal int Count = 1;
 
         internal void SetFirst(in TerrariaProjectileUpdateState first) => Reports[0] = first;
+    }
+
+    private bool TryRefreshPendingBulletCapture(PendingClientBulletVolley pending)
+    {
+        var use = pending.Use;
+        if (use.ManaCost != 0 || use.PlayerCapture is not { } capture ||
+            !players.TryRefreshPendingBulletUseCapture(capture, out var current)) return false;
+        if (!ReferenceEquals(current, capture)) pending.Use = use with { PlayerCapture = current };
+        return true;
     }
 
     private bool TryBeginClientBulletVolley(ConnectionHandle connection,
@@ -61,8 +76,13 @@ internal sealed partial class ProjectileAuthority
         int slot = connection.Player.Slot.Value;
         if (pendingBulletVolleys[slot] is not { } pending)
             return false;
-        var use = pending.Use;
         long tick = tickProvider();
+        if (!TryRefreshPendingBulletCapture(pending))
+        {
+            Reject();
+            return true;
+        }
+        var use = pending.Use;
         if (use.PlayerCapture is not { } capture || capture.Connection != connection ||
             tick < use.UseTick || tick - use.UseTick > use.UseTimeTicks ||
             !players.IsCurrentProjectileUse(capture) || use.RandomBefore is not { } before ||
@@ -123,6 +143,7 @@ internal sealed partial class ProjectileAuthority
 
     private bool TryCommitAuthoritativeBulletVolley(PendingClientBulletVolley pending)
     {
+        if (!TryRefreshPendingBulletCapture(pending)) return false;
         var use = pending.Use;
         if (replication is null || use.VolleyStates is not { } states || pending.Count != states.Length ||
             use.PlayerCapture is not { } capture || use.RandomBefore is not { } before ||

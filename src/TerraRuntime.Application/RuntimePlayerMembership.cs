@@ -259,11 +259,32 @@ internal sealed class RuntimePlayerMember
 
     public bool TryAdvanceRevision()
     {
-        if (Revision == ulong.MaxValue)
+        if (Revision == ulong.MaxValue || ProjectileUseInputRevision == ulong.MaxValue)
             return false;
 
         Revision++;
+        ProjectileUseInputRevision++;
+        RemotePhaseSnapshot = null;
         return true;
+    }
+
+    // A pending packet27 volley owns its original launch event. Verified remote clock/motion
+    // progress alone does not replace that input event, while commands and other writers do.
+    internal ulong ProjectileUseInputRevision { get; private set; } = 1;
+    internal PlayerStateSnapshot? RemotePhaseSnapshot { get; private set; }
+    internal ulong RemotePhaseInputRevision { get; private set; }
+
+    internal bool TryAdvanceRemotePhaseRevision()
+    {
+        if (Revision == ulong.MaxValue) return false;
+        Revision++;
+        return true;
+    }
+
+    internal void MarkRemotePhaseSnapshot()
+    {
+        RemotePhaseSnapshot = CaptureSnapshot();
+        RemotePhaseInputRevision = ProjectileUseInputRevision;
     }
 
     public PlayerStateSnapshot CaptureSnapshot() =>

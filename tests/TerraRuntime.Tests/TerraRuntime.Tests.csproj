@@ -25,6 +25,8 @@
     <EmbeddedResource Include="Fixtures/empty-selected-consumable-phase-official-1458.json.gz" LogicalName="EmptySelectedConsumablePhase1458" />
     <EmbeddedResource Include="Fixtures/remote-player-world-physics-official-1458.json.gz" LogicalName="RemotePlayerWorldPhysics1458" />
     <EmbeddedResource Include="Fixtures/remote-item-phase-census-official-1458.json.gz" LogicalName="RemoteItemPhaseCensus1458" />
+    <EmbeddedResource Include="Fixtures/remote-bullet-item-phase-official-1458.json.gz" LogicalName="RemoteBulletItemPhase1458" />
+    <EmbeddedResource Include="Fixtures/remote-common-pending-official-1458.json.gz" LogicalName="RemoteCommonPending1458" />
     <EmbeddedResource Include="Fixtures/player-remote-early-returns-official-1458.json.gz" LogicalName="PlayerRemoteEarlyReturns1458" />
     <EmbeddedResource Include="Fixtures/player-dual-horizontal-official-1458.json.gz" LogicalName="PlayerDualHorizontal1458" />
     <EmbeddedResource Include="Fixtures/player-spawn-command-official-1458.json.gz" LogicalName="PlayerSpawnCommand1458" />
