@@ -58,7 +58,8 @@ internal sealed partial class PlayerAuthority
             buffTypes,
             player.GodMode,
             mouseItemNormalized)
-        { ItemPhase = player.ItemPhase, BuffState = transferProfiles.CaptureBuffState(connection) };
+        { ItemPhase = player.ItemPhase, PhysicsPhase = player.PhysicsPhase,
+          BuffState = transferProfiles.CaptureBuffState(connection) };
 
         membership.ClearPending(connection);
         this.inventory.Clear(connection);
@@ -194,6 +195,10 @@ internal sealed partial class PlayerAuthority
             ItemPhase = transfer.ItemPhase is { } phase
                 ? phase with { Selected = phase.Selected with { Animation = preservePosition && !dead ? previous.ItemAnimation ?? 0 : 0 } }
                 : null,
+            // Transfer attach executes a spawn boundary: source Spawn clears wet/lava contacts
+            // while preserving jump/releaseJump. Missing imported provenance stays unknown.
+            PhysicsPhase = transfer.PhysicsPhase is { } physics
+                ? physics with { Contacts = physics.Contacts with { Wet = false, Lava = false } } : null,
             ControlFlags = preservePosition ? previous.ControlFlags : (byte)0,
             MovementFlags = preservePosition ? previous.MovementFlags : (byte)0,
             MiscFlags1 = preservePosition ? previous.MiscFlags1 : (byte)0,

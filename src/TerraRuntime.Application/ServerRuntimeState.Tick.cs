@@ -22,10 +22,11 @@ internal sealed partial class ServerRuntimeState
         _runtime.Npcs.CommitPending();
         _runtime.Bots?.Tick();
         _runtime.ServerPlayers?.TickBuffs();
-        _runtime.Players.TickHealthContext();
+        bool remotePlayerPhase = _runtime.Players.TickRemotePlayerPhase();
+        if (!remotePlayerPhase) _runtime.Players.TickHealthContext();
         if (_runtime.WorldTiles is { } healthTiles)
             _runtime.ServerPlayers?.TickHealthContext(healthTiles);
-        _runtime.Players.TickItemAnimation();
+        if (!remotePlayerPhase) _runtime.Players.TickItemAnimation();
         _runtime.Players.TickPlayerLuck();
         _runtime.ServerPlayers?.TickItemAnimation();
         // Player.UpdateLifeRegen and lava collision precede movement. Vampire OnFire and unrepresented

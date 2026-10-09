@@ -1,5 +1,9 @@
 # TerraRuntime roadmap
 
+## Current priority3 remote phase — 2026-10-09
+
+Actual State.Tick owns the bounded empty/eight-potion remote lane with full ascending census, typed environment/shared RNG, atomic guards, no duplicate health/clocks/debit/reports and custody retirement. Source12/13, WingTime0 and early preservation are exercised. Release focused2579 passes; initial full1563033/1563035 retained1obsolete Revive assertion+1existing skip,0runnererrors. Test-only correction passes11 vitals/ownership and finalfast24741/24742,0failures/errors,1skip. Identical shipping DLLs avoid a second exhaustive run; fresh WinNative5smokes, live82/49 and scoped typedNative14cases/38ticks pass. Evidence `.cache/remote-player-phase-final-status.json`, [item-use scope](en/player-item-use-1458.md), `.cache/remote-item-phase-tests/final-v8-freeze-manifest.json`. Next: source-owned remote ItemCheck clocks for8 bullet weapons/neutral93/112 using compact1920-pass evidence; full inventory/client-RNG/equipment/consumable/gameplay parity remains open. Dated foundation history follows.
+
 2026-10-08 ready-work checkpoint adds source-backed selected-consumable/mana/buff and source-world physics components plus retained constructor/transfer state and a separate saved-seed UpdatePlayers stream. Production remote Player.Update integration remains open; no full item-use/inventory or scheduling completion claim. See [item-use scope](en/player-item-use-1458.md) and `.cache/consumable-foundation-v4-status.json` for local acceptance.
 
 ## Inherited equipment checkpoint — 2026-10-08

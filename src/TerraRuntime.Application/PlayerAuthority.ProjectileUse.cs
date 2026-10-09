@@ -73,6 +73,8 @@ internal sealed partial class PlayerAuthority
             if (!membership.TryGet(capture.Connection, out var member) || !member.HasMana ||
                 member.Mana < manaCost || !member.TryAdvanceRevision()) return false;
             member.Mana = checked((short)(member.Mana - manaCost));
+            if (member.ItemPhase is { } phase)
+                member.ItemPhase = phase with { Mana = phase.Mana with { Mana = member.Mana } };
             return true;
         }
         if (mutation is not { } value) return true;

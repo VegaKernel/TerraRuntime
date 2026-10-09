@@ -30,7 +30,10 @@ public sealed class ServerRuntimePlayerVitalsTests
         Assert.True(snapshot.HasHealth);
         Assert.Equal((short)0, snapshot.Life);
         Assert.Equal((short)20, snapshot.MaxLife);
-        Assert.True(snapshot.IsDead);
+        // Source Spawn(Revive) clears dead while the prior packet16 report remains observable.
+        Assert.False(snapshot.IsDead);
+        Assert.True(snapshot.NpcLifeCurrent);
+        Assert.Equal(100, snapshot.NpcHealth!.Value.Life);
         Assert.True(snapshot.HasMana);
         Assert.Equal((short)37, snapshot.Mana);
         Assert.Equal((short)80, snapshot.MaxMana);

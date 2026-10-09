@@ -18,15 +18,17 @@ internal sealed partial class PlayerAuthority
         npcHealthGrapplingFacts = capture ?? throw new ArgumentNullException(nameof(capture));
 
     private bool TryPlanNpcHealth(RuntimePlayerMember member, int? maximum,
-        bool outside, bool ghost, out PlayerNpcHealthState1458? next)
+        bool outside, bool ghost, out PlayerNpcHealthState1458? next, bool selectedItemPhase = false,
+        (PlayerNpcHealthWorld1458 World, bool? Grappling)? selectedHealthInputs = null)
     {
         next = null;
         var before = member.CaptureSnapshot();
         ulong serial = membership.Serial;
         ulong inventorySerial = inventory.Serial;
         bool profileCaptured = transferProfiles.TryCapture(member.Connection, out var appearance, out var equipment, out var buffs);
-        bool supported = npcHealthWorldFacts is not null && profileCaptured && buffs is not null &&
-            member.NpcHealth is { SourceProfileKnown: true } && member.ItemAnimation == 0 &&
+        bool supported = (npcHealthWorldFacts is not null || (selectedItemPhase && selectedHealthInputs is not null)) &&
+            profileCaptured && buffs is not null &&
+            member.NpcHealth is { SourceProfileKnown: true } && (member.ItemAnimation == 0 || selectedItemPhase) &&
             !member.HasMount && (member.MiscFlags1 & (1 << 2)) == 0 && (member.MiscFlags2 & 1) == 0 &&
             (appearance?.ConsumableUnlockFlags ?? 0) == 0 &&
             !equipment.Any(static item => item.Stack > 0 && VanillaPlayerItemSlotCatalog.IsFunctionalArmorSlot(item.SlotId));
@@ -35,7 +37,8 @@ internal sealed partial class PlayerAuthority
         {
             if (buff == VanillaBuffIds.Regeneration) regeneration++;
             else if (buff != VanillaBuffIds.Poisoned && buff != VanillaBuffIds.OnFire &&
-                buff != VanillaBuffIds.CursedInferno && buff != VanillaBuffIds.Lifeforce) supported = false;
+                buff != VanillaBuffIds.CursedInferno && buff != VanillaBuffIds.Lifeforce &&
+                !(selectedItemPhase && buff.Value is 21 or 23 or 94)) supported = false;
         }
 
         // Source remote UpdateLifeRegen precedes movement. Liquid, solid overlap and special furniture
@@ -67,8 +70,10 @@ internal sealed partial class PlayerAuthority
         }
         else if (worldTiles is null) supported = false;
 
-        PlayerNpcHealthWorld1458? world = npcHealthWorldFacts?.Invoke();
-        bool? grappling = npcHealthGrapplingFacts?.Invoke(member.Connection.Player);
+        PlayerNpcHealthWorld1458? world = selectedItemPhase && selectedHealthInputs is { } supplied
+            ? supplied.World : npcHealthWorldFacts?.Invoke();
+        bool? grappling = selectedItemPhase && selectedHealthInputs is { } selected
+            ? selected.Grappling : npcHealthGrapplingFacts?.Invoke(member.Connection.Player);
         bool moving = member.VelocityX != 0f;
         if (moving && grappling is null && member.NpcHealth?.RegenTime >= 299f &&
             buffs?.Any(static b => b == VanillaBuffIds.Poisoned || b == VanillaBuffIds.OnFire ||

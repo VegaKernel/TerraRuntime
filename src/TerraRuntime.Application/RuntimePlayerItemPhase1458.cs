@@ -10,6 +10,9 @@ internal readonly record struct RuntimePlayerItemPhase1458(
     PlayerSelectedConsumableState1458 Selected,
     float ManaHeat)
 {
+    internal int DeadTime { get; init; }
+    internal int RespawnTimer { get; init; }
+    internal int ManaPotionDelay { get; init; }
     internal static RuntimePlayerItemPhase1458 Constructor => new(
         20, new(0, 0, 0f, 0, 0), new(0, 0, 0, 0, false, 0, 0), 0f);
 }

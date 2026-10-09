@@ -259,6 +259,8 @@ internal sealed partial class PlayerAuthority
         }
 
         player.Mana = checked((short)(player.Mana - manaCost));
+        if (player.ItemPhase is { } phase)
+            player.ItemPhase = phase with { Mana = phase.Mana with { Mana = player.Mana } };
         var request = new PlayerManaCommitRequest(player.Slot, player.Mana, player.MaxMana);
         events?.PlayerManaUpdated(connection, in request);
         return true;
@@ -543,7 +545,12 @@ internal sealed partial class PlayerAuthority
             activePlayer.MaxLife = request.MaxLife;
             activePlayer.BaseLifeMax = request.MaxLife;
             activePlayer.IsDead = request.Life <= 0;
-            if (activePlayer.IsDead) activePlayer.ItemAnimation = 0;
+            if (activePlayer.IsDead)
+            {
+                activePlayer.ItemAnimation = 0;
+                if (activePlayer.ItemPhase is { } phase)
+                    activePlayer.ItemPhase = phase with { Selected = phase.Selected with { Animation = 0 } };
+            }
         }
         else
         {
@@ -632,7 +639,7 @@ internal sealed partial class PlayerAuthority
         CommittedSpawns++;
         damageImmunity.ResetPvp(request.ClaimedSlot);
         VanillaPlayerSpawnPosition1458.FromFloorTile(request.SpawnX, request.SpawnY, out float spawnPositionX, out float spawnPositionY);
-        membership.Commit(new RuntimePlayerMember
+        var member = new RuntimePlayerMember
         {
             Connection = spawn.Connection,
             Revision = 1,
@@ -648,16 +655,20 @@ internal sealed partial class PlayerAuthority
             NpcHealth = hasPending && pending!.HasHealth
                 ? PlayerNpcHealthState1458.Constructor with { Life = pending.Life }
                 : PlayerNpcHealthState1458.Constructor,
-            IsDead = hasPending && pending!.HasHealth && pending.Life <= 0,
+            IsDead = request.SpawnContext == 1 &&
+                (request.RespawnTimer > 0 || (hasPending && pending!.HasHealth && pending.Life <= 0)),
             HasMana = hasPending && pending!.HasMana,
             Mana = hasPending ? pending!.Mana : (short)0,
             MaxMana = hasPending ? pending!.MaxMana : (short)0,
             ItemPhase = RuntimePlayerItemPhase1458.Constructor with
             {
+                RespawnTimer = request.RespawnTimer,
                 BaseManaMaximum = hasPending && pending!.HasMana ? pending.MaxMana : 20,
                 Mana = RuntimePlayerItemPhase1458.Constructor.Mana with { Mana = hasPending && pending!.HasMana ? pending.Mana : 0 }
             }
-        });
+        };
+        if (hasPending && pending!.HasHealth) ApplyNpcHealthSpawn(member, request.SpawnContext);
+        membership.Commit(member);
         transferProfiles.InitializeSourceBuffs(spawn.Connection);
         AttachNpcRawSlot(spawn.Connection.Player);
         events?.PlayerSpawned(spawn.Connection, in request);
@@ -691,6 +702,14 @@ internal sealed partial class PlayerAuthority
         player.MiscFlags2 = 0;
         player.VelocityX = 0f;
         player.VelocityY = 0f;
+        if (player.PhysicsPhase is { } physics)
+            player.PhysicsPhase = physics with { Contacts = physics.Contacts with { Wet = false, Lava = false } };
+        if (player.ItemPhase is { } phase)
+            player.ItemPhase = phase with
+            {
+                RespawnTimer = request.RespawnTimer,
+                DeadTime = request.SpawnContext == 1 && player.IsDead ? phase.DeadTime : 0
+            };
         player.MountType = 0;
         player.HasMount = false;
         player.PotionOfReturnOriginalPositionX = 0f;
@@ -699,7 +718,9 @@ internal sealed partial class PlayerAuthority
         player.PotionOfReturnHomePositionY = 0f;
         player.CameraTargetX = 0f;
         player.CameraTargetY = 0f;
-        player.IsDead = request.RespawnTimer > 0;
+        // Source packet12 can mark the actor dead before Spawn. SpawningIntoWorld preserves
+        // that state; Revive/Recall/TeamSwap clear it even when the reported timer is positive.
+        player.IsDead = request.SpawnContext == 1 && (player.IsDead || request.RespawnTimer > 0);
         player.NpcLifeCurrent = false;
         ApplyNpcHealthSpawn(player, request.SpawnContext);
         damageImmunity.ResetPvp(request.ClaimedSlot);
@@ -847,6 +868,8 @@ internal sealed partial class PlayerAuthority
 
         player.ControlFlags = request.ControlFlags;
         player.MovementFlags = request.MovementFlags;
+        if (player.PhysicsPhase is { } physics)
+            player.PhysicsPhase = physics with { GravityDirection = (request.MovementFlags & 16) != 0 ? 1f : -1f };
         player.MiscFlags1 = request.MiscFlags1;
         player.MiscFlags2 = request.MiscFlags2;
         player.SelectedItem = request.SelectedItem;

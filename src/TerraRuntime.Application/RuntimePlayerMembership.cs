@@ -30,6 +30,7 @@ internal sealed class RuntimePlayerMembership
     }
 
     public IEnumerable<RuntimePlayerMember> Members => _members.Values;
+    internal int Count => _members.Count;
 
     public bool Contains(PlayerSlotId slot) => _members.ContainsKey(slot.Value);
 
@@ -237,6 +238,7 @@ internal sealed class RuntimePlayerMember
     public short Mana { get; set; }
     public short MaxMana { get; set; }
     internal RuntimePlayerItemPhase1458? ItemPhase { get; set; } = RuntimePlayerItemPhase1458.Constructor;
+    internal RuntimePlayerPhysicsPhase1458? PhysicsPhase { get; set; } = RuntimePlayerPhysicsPhase1458.Constructor;
     public byte ControlFlags { get; set; }
     public byte MovementFlags { get; set; }
     public byte MiscFlags1 { get; set; }

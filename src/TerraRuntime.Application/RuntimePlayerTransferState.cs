@@ -19,6 +19,7 @@ internal sealed record RuntimePlayerTransferState(
     bool MouseItemNormalized = false)
 {
     internal RuntimePlayerItemPhase1458? ItemPhase { get; init; }
+    internal RuntimePlayerPhysicsPhase1458? PhysicsPhase { get; init; }
     internal PlayerBuffState? BuffState { get; init; }
 
     public PlayerSlotId Slot => Player.Player.Slot;
