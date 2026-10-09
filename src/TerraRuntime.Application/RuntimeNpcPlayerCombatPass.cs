@@ -91,7 +91,7 @@ internal sealed class RuntimeNpcPlayerCombatPass
                 if (target is null || !players.TryGet(target.Connection, out var liveTarget) || !ReferenceEquals(target, liveTarget))
                     continue;
                 PlayerHandle targetHandle = target.Connection.Player;
-                if (target.IsDead || !target.HasHealth || target.Life <= 0 ||
+                if (target.IsDead ||
                     (immunityChannel == VanillaPlayerImmunityChannel1458.General && players.IsGeneralPveImmune(targetHandle, tick)) ||
                     !Intersects(npcLeft, npcTop, npcRight, npcBottom, target) ||
                     (target.GodMode && IsGodModeCoolingDown(npc.Handle, targetHandle, tick)))
@@ -99,7 +99,7 @@ internal sealed class RuntimeNpcPlayerCombatPass
                     continue;
                 }
 
-                if (!players.TryCaptureIncomingCombat(targetHandle, out var targetCapture))
+                if (!players.TryCaptureIncomingCombat(targetHandle, out var targetCapture) || !targetCapture.IsAlive)
                     continue;
                 int rawDamage = ResolveContactDamage(in npc, in definition);
                 int damage = VanillaIncomingPlayerDamageFacts1458.ResolveNpcContactDamage(rawDamage, random.Next(-15, 16));

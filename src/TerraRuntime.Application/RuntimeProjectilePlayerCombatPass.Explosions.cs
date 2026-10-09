@@ -46,7 +46,6 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 if (!players.TryCaptureCombatTarget(capturedTarget.Player.Slot.Value, out var target) || target.Player != capturedTarget.Player)
                     continue;
                 if (target.Player.Slot.Value == projectile.Spawner || !target.Hostile || target.IsDead ||
-                    !target.HasHealth || target.Life <= 0 ||
                     (owner.Team != 0 && owner.Team == target.Team) ||
                     IsPlayerOnProjectileCooldown(projectile.Handle, target.Player, tick) ||
                     !Intersects(in explosion, target))
@@ -54,7 +53,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                     continue;
                 }
 
-                if (!players.TryCaptureIncomingCombat(target.Player, out var targetCapture) || targetCapture.Player != target)
+                if (!players.TryCaptureIncomingCombat(target.Player, out var targetCapture) || targetCapture.Player != target || !targetCapture.IsAlive)
                     continue;
                 int meleeCritRoll = VanillaCombatFacts.UsesMeleePvpCrit(projectile.Type)
                     ? random.Next(1, 101)
@@ -119,10 +118,10 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 continue;
             if (immunityChannel == VanillaPlayerImmunityChannel1458.General && players.IsGeneralPveImmune(target.Connection.Player, tick))
                 continue;
-            if (target.IsDead || !target.HasHealth || target.Life <= 0 || !Intersects(in explosion, target))
+            if (target.IsDead || !Intersects(in explosion, target))
                 continue;
 
-            if (!players.TryCaptureIncomingCombat(target.Connection.Player, out var targetCapture))
+            if (!players.TryCaptureIncomingCombat(target.Connection.Player, out var targetCapture) || !targetCapture.IsAlive)
                 continue;
             int damage = VanillaIncomingPlayerDamageFacts1458.ResolveHostileProjectileDamage(
                 projectile.Damage,

@@ -15,6 +15,8 @@ public static class VanillaSelectedItemCrit1458
             return false;
         if (VanillaSelectedConsumableCatalog1458.TryGet(item, out _))
             return prefix.Value == 0;
+        if (VanillaRemotePassiveItemCatalog1458.TryGet(item, prefix, out _))
+            return true;
 
         bool windowsArithmetic = arithmetic == VanillaBulletSourceArithmetic1458.WindowsClr4X86;
         int rawCrit;

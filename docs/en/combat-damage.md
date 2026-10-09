@@ -2,6 +2,12 @@ Owned metal armor and atomic projectile item use: [scope and transaction](player
 
 # Combat damage foundation
 
+## Owned human HP after healing and Spawn — 2026-10-10, accepted local checkpoint
+
+PhaseOwned human damage uses current owned HP after potion use, regeneration and Spawn. Captures preserve health, base/derived maxima, full member/ItemPhase/inventory/GodMode and source lifecycle before hit draws; late changes refuse mutation. Unknown or unrepresentable HP refuses before sampling. Known HP can remain valid with an unknown regeneration profile/count: Hurt preserves nullable count and resets the timer to0. It does not authorize regeneration or Spawn from that unknown profile.
+
+Accepted contact, hostile/PvP projectiles and client melee adopt owned/report HP, HasHealth and base MaxLife before publication, together with existing bounded death/immunity/impulse. Report0 with Spawn-ownedHP200 can take damage; constructorHP100 becomes report90/base100 after an admitted hit. Base400 and derived480 remain distinct. Component/server-owned policies retain their separate contracts; GodMode does not fabricate a phase. Local source callers, two-platform literalHurt components and local build/full/WindowsNative/live gates pass. Complete KillMe effects, full caller cosmetic RNG/Main scheduling and arbitrary client117 damage authority remain open. Earlier checkpoint sections are historical.
+
 ## Retained human target mitigation — 2026-10-10, accepted local checkpoint
 
 The standard world policy consumes the target's retained ItemPhase combat projection for NPC contact, hostile projectiles and PvP damage. A target capture contains the exact member, player snapshot and whole ItemPhase; it precedes hit randomness and must remain current at commit. Unknown phase state refuses without sampling a target hit. Late callback changes refuse mutation; arbitrary injected Random adapters do not promise rewind. Server-owned actors retain their separate equipment policy. Standalone human component adapters select EquipmentComponent explicitly rather than deriving policy from missing world or seed facts.

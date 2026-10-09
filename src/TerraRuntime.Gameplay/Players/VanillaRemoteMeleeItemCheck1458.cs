@@ -9,7 +9,10 @@ public readonly record struct PlayerRemoteMeleeItemFacts1458(ItemTypeId Item,
 
 public readonly record struct PlayerRemoteMeleeItemTransition1458(
     PlayerSelectedConsumableState1458 State, bool PendingItemReuse,
-    bool BeganActualUse, bool IsMiningTool);
+    bool BeganActualUse, bool IsMiningTool)
+{
+    public bool ResetItemRotation { get; init; }
+}
 
 /// <summary>Dedicated remote style1 clocks. Picking and melee hits belong to the absent local-owner branch.</summary>
 public static class VanillaRemoteMeleeItemCheck1458
@@ -23,50 +26,16 @@ public static class VanillaRemoteMeleeItemCheck1458
         out PlayerRemoteMeleeItemTransition1458 transition)
     {
         transition = default;
-        if (previous is not { } state ||
-            !TryGet(facts.Item, facts.Prefix, facts.WindowsItemPrefixArithmetic,
-                out int useAnimation, out bool autoReuse, out bool miningTool) ||
-            state.ItemTime is < 0 or > short.MaxValue || state.ItemTimeMax is < 0 or > short.MaxValue ||
-            state.Animation is < 0 or > short.MaxValue || state.AnimationMax is < 0 or > short.MaxValue ||
-            state.PotionDelay is < 0 or > 3_600 || state.RevolverCritBonus < int.MinValue + 2 ||
-            nextInteger is null)
+        if (!TryGet(facts.Item, facts.Prefix, facts.WindowsItemPrefixArithmetic,
+                out int useAnimation, out bool autoReuse, out bool miningTool))
             return false;
-        if (facts.CrowdControlled)
-        {
-            transition = new(state with { Animation = 0, AnimationMax = 0 }, false, false, miningTool);
-            return true;
-        }
-
-        int animation = state.Animation;
-        int animationMax = state.AnimationMax;
-        bool release = state.ReleaseUseItem;
-        if (autoReuse && !facts.Cursed && !facts.SelectionBuffered)
-        {
-            release = true;
-            // Style1 does not use the remote style5 ApplyItemAnimation renewal. It clears
-            // the last frame and can run genuine StartActualUse in this same ItemCheck.
-            if (animation == 1)
-                animation = 0;
-        }
-        if (animation == 0)
-            animationMax = 0;
-        bool beganActualUse = facts.ControlUseItem && release && animation == 0 &&
-            facts.LastUseSuccess && !facts.Cursed && !facts.SelectionBuffered;
-
-        int crit = state.RevolverCritBonus;
-        if (nextInteger(0, 3) == 0)
-            crit -= 2;
-        if (beganActualUse)
-            animation = animationMax = useAnimation;
-        bool pending = false;
-        if (animation > 0)
-        {
-            animation--;
-            pending = animation == 0 && facts.ControlUseItem && release;
-        }
-        transition = new(new(Math.Max(0, state.ItemTime - 1), state.ItemTimeMax,
-            animation, animationMax, !facts.ControlUseItem, state.PotionDelay, crit),
-            pending, beganActualUse, miningTool);
+        var controls = new PlayerRemoteItemControls1458(facts.ControlUseItem, facts.LastUseSuccess,
+            facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered);
+        if (!VanillaRemoteItemClocks1458.TryStep(previous, useAnimation, autoReuse, true,
+                in controls, nextInteger, out var state, out bool pending, out bool beganActualUse,
+                out bool resetItemRotation))
+            return false;
+        transition = new(state, pending, beganActualUse, miningTool) { ResetItemRotation = resetItemRotation };
         return true;
     }
 

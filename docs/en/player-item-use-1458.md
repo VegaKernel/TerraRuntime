@@ -1,5 +1,13 @@
 # Owned player item use 1.4.5.8
 
+## Passive selected items and use-attempt rotation — 2026-10-10, accepted local checkpoint
+
+The whole remote phase admits1979 exact unprefixed identities:1418 inert selected items and561 ordinary structural blocks/walls. This includes gear when held in hand, without admitting its equipped effects. Int-valued IDs are range-checked before conversion; large IDs cannot alias valid items. Mechdusa-sensitive5334 remains excluded. Ash5279/5280/5281 selected capability matches actual original Remix traces despite changed item defense. Other placeables, channelled magic and unsupported equipment remain outside this block.
+
+Structural clocks reuse the melee/tool owner. The transition explicitly stages the source non-shooting rotation reset at a use attempt, before success, Cursed and potion-delay checks; even a refused start can reset it. Inert/ranged items preserve rotation. Structural, represented melee/tools and potions consume this shared writer, adopted with the complete phase after currentness checks. There is no placement, stack consumption or Shoot expansion. Unsupported actors still retire the shared human phase.
+
+Repeated original captures provide fresh Linux/CoreCLR and genuine WindowsCLR4/x86 identities, carried/orthogonal/Ash Linux components and independent actual41 failed-start evidence. App tests compare26832 whole represented phases, full56 RNG and all20combat fields; private buffered/variant-sensitive references are explicit exclusions. Typed managed/WindowsNative cover18720 actual State.Tick updates/all1979 identities/695810 checks each, with full56 remaining managed-only. Linux carried/orthogonal references are compared directly on Windows, without inventing a second original Windows capture. Build, one full suite and Release/Native live gates pass within these limits. PhaseOwned incoming damage also retains current healed HP; see [combat ownership](combat-damage.md). Earlier sections are historical.
+
 ## Ordinary bows and incoming combat — 2026-10-10, accepted local checkpoint
 
 The accepted combined block extends the existing remote style5 phase to nine ordinary bows: `39`, `99`, `3480`, `3486`, `3492`, `3498`, `3504`, `3510`, `3516`. Their source manual-release clocks share the gun implementation; HasAmmo selects the existing arrow family across inventory slots `0`–`57`. This phase does not shoot or debit arrows. Selected raw crit uses the same source-valid prefix gate, with explicit Linux/Windows arithmetic. Wooden Bow is `39`; item `5` is Mushroom.

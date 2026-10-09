@@ -128,7 +128,7 @@ internal sealed partial class PlayerAuthority
             !sourceDamage.IsValid || sourceDamage.Player != attackerHandle || damage <= 0 ||
             hitDirection is < -1 or > 1 ||
             !membership.TryGet(targetHandle, out RuntimePlayerMember? target) ||
-            !attacker.Hostile || !target.Hostile || attacker.IsDead || target.IsDead || !target.HasHealth || target.Life <= 0 ||
+            !attacker.Hostile || !target.Hostile || attacker.IsDead || target.IsDead ||
             (attacker.Team != 0 && attacker.Team == target.Team))
         {
             return PlayerDamageCommitResult.Rejected;
@@ -140,7 +140,7 @@ internal sealed partial class PlayerAuthority
             targetCapture = captured;
         }
         IncomingPlayerCombatCapture1458 retained = targetCapture.Value;
-        if (retained.Player.Player != targetHandle || !IsCurrentIncomingCombat(in retained))
+        if (retained.Player.Player != targetHandle || !retained.IsAlive || !IsCurrentIncomingCombat(in retained))
             return PlayerDamageCommitResult.Rejected;
         if (target.GodMode)
             return AvoidGodModeDamage(tick, targetHandle, target);
@@ -163,6 +163,7 @@ internal sealed partial class PlayerAuthority
                 expertMode,
                 masterMode) ||
             final.Damage <= 0 ||
+            !TryResolveIncomingLifeAfterDamage(in retained, final.Damage, out short nextLife) ||
             !IsCurrentIncomingCombat(in retained) ||
             !target.TryAdvanceRevision())
         {
@@ -170,9 +171,7 @@ internal sealed partial class PlayerAuthority
         }
 
         ResetStealthAfterAcceptedHurt(target);
-        short previousReportedLife = target.Life;
-        target.Life = checked((short)Math.Max(0, target.Life - final.Damage));
-        ApplyNpcHealthHurt(target, previousReportedLife);
+        AdoptIncomingLife(target, in retained, nextLife);
         target.IsDead = target.Life <= 0;
         // Source PvP death changes the later Spawn health policy. Its pvpDeath field is not retained here.
         if (target.IsDead && target.NpcHealth is { } npcHealth)
@@ -268,7 +267,7 @@ internal sealed partial class PlayerAuthority
         if (!targetHandle.IsAssigned || !sourceDamage.IsValid || damage <= 0 ||
             hitDirection is < -1 or > 1 ||
             !membership.TryGet(targetHandle, out RuntimePlayerMember? target) ||
-            target.IsDead || !target.HasHealth || target.Life <= 0)
+            target.IsDead)
         {
             return PlayerDamageCommitResult.Rejected;
         }
@@ -279,7 +278,7 @@ internal sealed partial class PlayerAuthority
             targetCapture = captured;
         }
         IncomingPlayerCombatCapture1458 retained = targetCapture.Value;
-        if (retained.Player.Player != targetHandle || !IsCurrentIncomingCombat(in retained))
+        if (retained.Player.Player != targetHandle || !retained.IsAlive || !IsCurrentIncomingCombat(in retained))
             return PlayerDamageCommitResult.Rejected;
         if (target.GodMode)
             return AvoidGodModeDamage(tick, targetHandle, target);
@@ -302,6 +301,7 @@ internal sealed partial class PlayerAuthority
                 expertMode,
                 masterMode) ||
             final.Damage <= 0 ||
+            !TryResolveIncomingLifeAfterDamage(in retained, final.Damage, out short nextLife) ||
             !IsCurrentIncomingCombat(in retained) ||
             !target.TryAdvanceRevision())
         {
@@ -309,9 +309,7 @@ internal sealed partial class PlayerAuthority
         }
 
         ResetStealthAfterAcceptedHurt(target);
-        short previousReportedLife = target.Life;
-        target.Life = checked((short)Math.Max(0, target.Life - final.Damage));
-        ApplyNpcHealthHurt(target, previousReportedLife);
+        AdoptIncomingLife(target, in retained, nextLife);
         target.IsDead = target.Life <= 0;
         if (target.IsDead) target.ItemAnimation = 0;
         if (!final.Mitigation.NoKnockback && hitDirection != 0)

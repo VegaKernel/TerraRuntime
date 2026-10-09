@@ -57,6 +57,11 @@
     <EmbeddedResource Include="Fixtures/player-spawn-contacts-official-1458.json.gz" LogicalName="PlayerSpawnContacts1458" />
     <EmbeddedResource Include="Fixtures/ammo-buffs-minishark-shoot-official-1458.json.gz" LogicalName="AmmoBuffMinisharkShoot1458" />
     <EmbeddedResource Include="Fixtures/shotgun-sequential-shoot-official-1458.json.gz" LogicalName="ShotgunSequentialShoot1458" />
+    <EmbeddedResource Include="Fixtures/incoming-human-vitals-local-callers-official-1458.json.gz" LogicalName="IncomingHumanVitals1458" />
+    <EmbeddedResource Include="Fixtures/remote-passive-item-phase-official-1458.json.gz" LogicalName="RemotePassiveItemPhase1458" />
+    <EmbeddedResource Include="Fixtures/remote-item-rotation-configured-official-1458.json.gz" LogicalName="RemoteItemRotation1458" />
+    <EmbeddedResource Include="Fixtures/phase-vitals-hurt75-official-1458.json.gz" LogicalName="IncomingHumanVitalsHurt75" />
+    <EmbeddedResource Include="Fixtures/phase-vitals-hurt-official-1458.json.gz" LogicalName="IncomingHumanVitalsHurt" />
   </ItemGroup>
 
   <ItemGroup>

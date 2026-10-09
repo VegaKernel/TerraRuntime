@@ -117,6 +117,7 @@ internal sealed partial class PlayerAuthority
             member.ItemPhase = plan.Item;
             member.PhysicsPhase = plan.Physics;
             member.ItemAnimation = plan.Item!.Value.Selected.Animation;
+            member.ItemRotation = plan.Rotation;
             member.NpcHealth = plan.Health;
             member.NpcLifeCurrent = plan.Health is not null;
             member.DerivedLifeMax = plan.Maximum;
@@ -218,7 +219,8 @@ internal sealed partial class PlayerAuthority
                 !VanillaRemoteRangedItemCheck1458.IsSupported(selected.ItemType, selected.Prefix,
                     world.WindowsItemPrefixArithmetic) &&
                 !VanillaRemoteMeleeItemCheck1458.IsSupported(selected.ItemType, selected.Prefix,
-                    world.WindowsItemPrefixArithmetic))) return false;
+                    world.WindowsItemPrefixArithmetic) &&
+                !VanillaRemotePassiveItemCheck1458.IsSupported(selected.ItemType, selected.Prefix))) return false;
         var critArithmetic = world.WindowsItemPrefixArithmetic
             ? VanillaBulletSourceArithmetic1458.WindowsClr4X86 : VanillaBulletSourceArithmetic1458.CoreClrSingle;
         if (!VanillaSelectedItemCrit1458.TryResolve(selected.ItemType, selected.Prefix, critArithmetic, out int itemCrit))
@@ -300,10 +302,24 @@ internal sealed partial class PlayerAuthority
                 return false;
             use = new(meleeUse.State, facts.Life, facts.Mana, false, 0, 0)
             {
-                PendingItemReuse = meleeUse.PendingItemReuse
+                PendingItemReuse = meleeUse.PendingItemReuse,
+                ResetItemRotation = meleeUse.ResetItemRotation
             };
             beganActualUse = meleeUse.BeganActualUse;
             mining = meleeUse.IsMiningTool;
+        }
+        else if (VanillaRemotePassiveItemCheck1458.IsSupported(selected.ItemType, selected.Prefix))
+        {
+            var passiveFacts = new PlayerRemotePassiveItemFacts1458(selected.ItemType, facts.ControlUseItem,
+                facts.LastUseSuccess, facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered, selected.Prefix);
+            if (!VanillaRemotePassiveItemCheck1458.TryStep(clocks, in passiveFacts, random.Next, out var passiveUse))
+                return false;
+            use = new(passiveUse.State, facts.Life, facts.Mana, false, 0, 0)
+            {
+                PendingItemReuse = passiveUse.PendingItemReuse,
+                ResetItemRotation = passiveUse.ResetItemRotation
+            };
+            beganActualUse = passiveUse.BeganActualUse;
         }
         else
         {
@@ -311,6 +327,9 @@ internal sealed partial class PlayerAuthority
                 return false;
             beganActualUse = use.BeganUse;
         }
+        // ItemCheck clears non-shooting item rotation when attempting use, even if
+        // the later success/cursed/potion-delay gate rejects the actual start.
+        if (use.ResetItemRotation) plan.Rotation = 0f;
         if (use.PotionSicknessOffer > 0)
             plan.Buffs.TryApplySelectedConsumable(new BuffTypeId(21), use.PotionSicknessOffer, false);
         if (use.ManaSicknessOffer > 0)
@@ -383,6 +402,7 @@ internal sealed partial class PlayerAuthority
         internal float Y { get; set; } = before.PositionY;
         internal float Vx { get; set; } = before.VelocityX;
         internal float Vy { get; set; } = before.VelocityY;
+        internal float Rotation { get; set; } = member.ItemRotation;
         internal bool Changed { get; set; }
     }
 }

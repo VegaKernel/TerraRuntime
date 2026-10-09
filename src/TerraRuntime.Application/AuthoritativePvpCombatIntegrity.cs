@@ -65,7 +65,7 @@ internal sealed class RuntimePvpCombatIntegrity
         if (!players.TryCapture(attackerConnection.Player, out PlayerStateSnapshot attacker) ||
             !players.TryCaptureCombatTarget(wire.TargetPlayer, out PlayerStateSnapshot target))
             return PvpCombatResolveResult.Rejected;
-        if (!attacker.Hostile || !target.Hostile || attacker.IsDead || target.IsDead || !target.HasHealth || target.Life <= 0)
+        if (!attacker.Hostile || !target.Hostile || attacker.IsDead || !players.IsIncomingTargetAlive(in target))
             return PvpCombatResolveResult.Rejected;
         if (attacker.Team != 0 && attacker.Team == target.Team)
             return PvpCombatResolveResult.Rejected;
@@ -80,7 +80,7 @@ internal sealed class RuntimePvpCombatIntegrity
 
         if (!players.TryCaptureCombatSnapshot(attackerConnection, out VanillaPlayerCombatSnapshot attackerCombat))
             return PvpCombatResolveResult.LegacyFallback;
-        if (!players.TryCaptureIncomingCombat(target.Player, out var targetCapture))
+        if (!players.TryCaptureIncomingCombat(target.Player, out var targetCapture) || !targetCapture.IsAlive)
             return PvpCombatResolveResult.Rejected;
 
         if (!players.TryCaptureProjectileUse(attacker.Player, out var ownerCapture) || ownerCapture is null || ownerCapture.Player != attacker)

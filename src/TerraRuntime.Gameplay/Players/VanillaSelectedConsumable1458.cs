@@ -15,6 +15,7 @@ public readonly record struct PlayerSelectedConsumableTransition1458(
     bool BeganUse, int PotionSicknessOffer, int ManaSicknessOffer)
 {
     public bool PendingItemReuse { get; init; }
+    public bool ResetItemRotation { get; init; }
 }
 
 /// <summary>Selected ordinary remote ItemCheck. Offers do not debit inventory or publish client reports.</summary>
@@ -46,8 +47,9 @@ public static class VanillaSelectedConsumable1458
         }
         int crit = state.RevolverCritBonus;
         if (nextInteger(0, 3) == 0) crit -= 2;
-        bool begin = item.UseAnimation > 0 && facts.ControlUseItem && state.ReleaseUseItem && state.Animation == 0 &&
-            !facts.SelectionBuffered && facts.LastUseSuccess && !facts.Cursed &&
+        bool resetItemRotation = item.UseAnimation > 0 && facts.ControlUseItem && state.ReleaseUseItem &&
+            state.Animation == 0 && !facts.SelectionBuffered;
+        bool begin = resetItemRotation && facts.LastUseSuccess && !facts.Cursed &&
             (!item.HealingDelay || state.PotionDelay == 0);
         int animation = begin ? item.UseAnimation : state.Animation;
         int animationMax = begin ? item.UseAnimation : state.Animation == 0 ? 0 : state.AnimationMax;
@@ -81,7 +83,8 @@ public static class VanillaSelectedConsumable1458
         transition = new(new(time, timeMax, animation, animationMax, !facts.ControlUseItem,
             delay, crit), life, mana, begin, begin && item.HealingDelay ? delay : 0, manaSickness)
         {
-            PendingItemReuse = pending
+            PendingItemReuse = pending,
+            ResetItemRotation = resetItemRotation
         };
         return true;
     }

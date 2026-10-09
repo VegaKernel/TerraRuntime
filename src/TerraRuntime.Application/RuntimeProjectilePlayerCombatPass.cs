@@ -106,7 +106,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 PlayerStateSnapshot capturedTarget = pvpTargetBuffer[targetIndex];
                 if (!players.TryCaptureCombatTarget(capturedTarget.Player.Slot.Value, out var target) || target.Player != capturedTarget.Player)
                     continue;
-                if (target.Player.Slot.Value == projectile.Spawner || !target.Hostile || target.IsDead || !target.HasHealth || target.Life <= 0 ||
+                if (target.Player.Slot.Value == projectile.Spawner || !target.Hostile || target.IsDead ||
                     (owner.Team != 0 && owner.Team == target.Team) ||
                     IsPlayerOnProjectileCooldown(projectile.Handle, target.Player, tick) ||
                     !Intersects(in projectile, in definition, target.PositionX, target.PositionY))
@@ -114,7 +114,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                     continue;
                 }
 
-                if (!players.TryCaptureIncomingCombat(target.Player, out var targetCapture) || targetCapture.Player != target)
+                if (!players.TryCaptureIncomingCombat(target.Player, out var targetCapture) || targetCapture.Player != target || !targetCapture.IsAlive)
                     continue;
                 int meleeCritRoll = VanillaCombatFacts.UsesMeleePvpCrit(projectile.Type)
                     ? random.Next(1, 101)
@@ -259,7 +259,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                 if (target is null || !players.TryGet(target.Connection, out var liveTarget) || !ReferenceEquals(target, liveTarget))
                     continue;
                 PlayerHandle targetHandle = target.Connection.Player;
-                if (target.IsDead || !target.HasHealth || target.Life <= 0 ||
+                if (target.IsDead ||
                     (immunityChannel == VanillaPlayerImmunityChannel1458.General && players.IsGeneralPveImmune(targetHandle, tick)) ||
                     (target.GodMode && IsPlayerOnProjectileCooldown(projectile.Handle, targetHandle, tick)) ||
                     !IntersectsHostile(in projectile, in definition, in lifecycle, sourceNpc, target.PositionX, target.PositionY))
@@ -267,7 +267,7 @@ internal sealed partial class RuntimeProjectilePlayerCombatPass
                     continue;
                 }
 
-                if (!players.TryCaptureIncomingCombat(target.Connection.Player, out var targetCapture))
+                if (!players.TryCaptureIncomingCombat(target.Connection.Player, out var targetCapture) || !targetCapture.IsAlive)
                     continue;
                 int damage = VanillaIncomingPlayerDamageFacts1458.ResolveHostileProjectileDamage(
                     projectile.Damage,
