@@ -126,7 +126,7 @@ public sealed class RemotePassivePlayerPhase1458Tests
             Assert.False(VanillaRemotePassiveItemCheck1458.IsSupported(new(id)));
     }
 
-    private static int Compare(JsonElement row, bool windows)
+    internal static int Compare(JsonElement row, bool windows)
     {
         Assert.True(row.GetProperty("inventoryUnchanged").GetBoolean());
         Assert.True(row.GetProperty("restoredOutside").GetBoolean());
@@ -155,7 +155,7 @@ public sealed class RemotePassivePlayerPhase1458Tests
         return updates;
     }
 
-    private static JsonDocument Read(string resource = "RemotePassiveItemPhase1458")
+    internal static JsonDocument Read(string resource = "RemotePassiveItemPhase1458")
     {
         using var stream = typeof(RemotePassivePlayerPhase1458Tests).Assembly.GetManifestResourceStream(resource)!;
         using var gzip = new GZipStream(stream, CompressionMode.Decompress);
@@ -253,7 +253,7 @@ public sealed class RemotePassivePlayerPhase1458Tests
             (int[])typeof(VanillaUnifiedRandom1458).GetField("seedArray", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(random)!);
     }
 
-    private sealed class Fixture : IDisposable
+    internal sealed class Fixture : IDisposable
     {
         internal readonly ServerRuntimeState State;
         internal readonly PlayerAuthority Players;

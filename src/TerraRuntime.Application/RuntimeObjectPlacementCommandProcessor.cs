@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -23,12 +24,13 @@ internal enum RuntimeObjectPlacementResult : byte
 /// Single-writer authoritative transaction for client PlaceObject requests. The processor resolves the selected
 /// inventory slot from committed player state, maps the held item through the sparse vanilla item/object catalog,
 /// commits multi-tile geometry plus runtime-owned metadata, consumes exactly one held item through the ordinary
-/// player equipment path, and only then replicates packet 79 to peers. A failed inventory commit rolls the
-/// just-created empty object back before the command returns.
+/// unpublished inventory path before any observer runs. Packet 79 is published only while the accepted inventory,
+/// footprint and runtime metadata identity remain current; publication never rolls back an accepted object.
 /// </summary>
 internal sealed class RuntimeObjectPlacementCommandProcessor
 {
     private readonly VanillaMultiTileObjectMutationService mutations;
+    private readonly WorldTileStore tiles;
     private readonly IVanillaMultiTileObjectMetadataLifecycle metadata;
     private readonly PlayerAuthority players;
     private readonly RuntimeCommandCounter commands;
@@ -59,6 +61,7 @@ internal sealed class RuntimeObjectPlacementCommandProcessor
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentNullException.ThrowIfNull(metadata);
         mutations = new VanillaMultiTileObjectMutationService(tiles);
+        this.tiles = tiles;
         this.metadata = metadata;
         this.players = players ?? throw new ArgumentNullException(nameof(players));
         this.commands = commands ?? throw new ArgumentNullException(nameof(commands));
@@ -81,10 +84,12 @@ internal sealed class RuntimeObjectPlacementCommandProcessor
 
         Requests++;
         RuntimeObjectPlacementResult result = ApplyPlacement(placement);
-        LastResult = result;
+        // Successful owners and counters are finalized before publication. Do not overwrite a
+        // newer reentrant command's diagnostics after its callback returns.
         if (result == RuntimeObjectPlacementResult.Applied)
-            Applied++;
-        else if (result == RuntimeObjectPlacementResult.UnsupportedSelectedItem)
+            return true;
+        LastResult = result;
+        if (result == RuntimeObjectPlacementResult.UnsupportedSelectedItem)
             Unsupported++;
         else
             Rejected++;
@@ -95,7 +100,7 @@ internal sealed class RuntimeObjectPlacementCommandProcessor
         ClientPlaceObjectRuntimeCommand command)
     {
         LastWorldStatus = default;
-        if (!command.Connection.IsAssigned ||
+        if (!command.Connection.IsAssigned || !players.IsCurrent(command.Connection) ||
             !players.TryCapture(command.Connection.Player, out PlayerStateSnapshot player))
         {
             return RuntimeObjectPlacementResult.StalePlayer;
@@ -104,7 +109,7 @@ internal sealed class RuntimeObjectPlacementCommandProcessor
         short selectedSlot = player.SelectedItem;
         if (!VanillaPlayerItemSlotCatalog.IsInventorySlot(selectedSlot) ||
             !players.TryGetInventoryItem(
-                command.Connection.Player,
+                command.Connection,
                 selectedSlot,
                 out RuntimePlayerInventoryItem selected))
         {
@@ -128,6 +133,13 @@ internal sealed class RuntimeObjectPlacementCommandProcessor
             return RuntimeObjectPlacementResult.PacketMismatch;
         }
 
+        RuntimePlayerInventoryItem remaining = selected.Stack == 1
+            ? default
+            : selected with { Stack = checked((short)(selected.Stack - 1)) };
+        if (!players.TryPrepareInventoryMutation(command.Connection, selectedSlot, in selected, in remaining,
+                out var inventoryPreparation) || inventoryPreparation is null)
+            return RuntimeObjectPlacementResult.InventoryCommitFailed;
+
         VanillaMultiTileObjectMutationResult world = mutations.TryPlaceAtOrigin(
             definition.TileType,
             packet.TileX,
@@ -137,27 +149,7 @@ internal sealed class RuntimeObjectPlacementCommandProcessor
         if (!world.Applied)
             return RuntimeObjectPlacementResult.WorldRejected;
 
-        RuntimePlayerInventoryItem remaining = selected.Stack == 1
-            ? default
-            : selected with { Stack = checked((short)(selected.Stack - 1)) };
-        PlayerEquipmentCommitRequest decrement = remaining.ToCommitRequest(
-            command.Connection.Player.Slot,
-            selectedSlot);
-
-        long appliedBefore = players.AppliedEquipmentUpdates;
-        long rejectedBefore = players.RejectedEquipmentUpdates;
-        commands.Record();
-        players.TryApply(new PlayerEquipmentRuntimeCommand(command.Connection, decrement));
-
-        bool inventoryCommitted =
-            players.AppliedEquipmentUpdates == appliedBefore + 1 &&
-            players.RejectedEquipmentUpdates == rejectedBefore &&
-            players.TryGetInventoryItem(
-                command.Connection.Player,
-                selectedSlot,
-                out RuntimePlayerInventoryItem committed) &&
-            committed == remaining;
-        if (!inventoryCommitted)
+        if (!inventoryPreparation.TryAdoptUnpublished())
         {
             VanillaMultiTileObjectMutationResult rollback = mutations.TryBreakAt(
                 world.Descriptor.TopLeftX,
@@ -173,7 +165,36 @@ internal sealed class RuntimeObjectPlacementCommandProcessor
             return RuntimeObjectPlacementResult.InventoryCommitFailed;
         }
 
-        replication?.TryPublishPlaceObject(command.Connection.Source, in packet);
+        Span<WorldTile> acceptedFootprint = stackalloc WorldTile[4];
+        CaptureFootprint(world.Descriptor, acceptedFootprint);
+        var chestMetadata = metadata as RuntimeChestObjectMetadataLifecycle;
+        WorldChest? acceptedChest = null;
+        bool capturedMetadata = chestMetadata is not null &&
+            chestMetadata.TryCapture(world.Descriptor, out acceptedChest);
+
+        commands.Record();
+        Applied++;
+        LastResult = RuntimeObjectPlacementResult.Applied;
+        inventoryPreparation.TryPublish();
+        if (inventoryPreparation.IsAcceptedCurrent &&
+            IsFootprintCurrent(world.Descriptor, acceptedFootprint) &&
+            capturedMetadata && acceptedChest is not null &&
+            chestMetadata!.IsCurrent(world.Descriptor, acceptedChest))
+            replication?.TryPublishPlaceObject(command.Connection.Source, in packet);
         return RuntimeObjectPlacementResult.Applied;
+    }
+
+    private void CaptureFootprint(in VanillaMultiTileObjectMutationDescriptor descriptor, Span<WorldTile> cells)
+    {
+        for (int row = 0; row < 2; row++)
+            for (int column = 0; column < 2; column++)
+                cells[row * 2 + column] = tiles.Get(descriptor.TopLeftX + column, descriptor.TopLeftY + row);
+    }
+
+    private bool IsFootprintCurrent(in VanillaMultiTileObjectMutationDescriptor descriptor, ReadOnlySpan<WorldTile> expected)
+    {
+        Span<WorldTile> current = stackalloc WorldTile[4];
+        CaptureFootprint(in descriptor, current);
+        return MemoryMarshal.AsBytes(current).SequenceEqual(MemoryMarshal.AsBytes(expected));
     }
 }

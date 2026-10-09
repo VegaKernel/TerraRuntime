@@ -4,6 +4,10 @@
 
 ## 1. Scope
 
+Ordinary tile/wall placement (`17`, actions `1`/`3`) retains vanilla's client-reported inventory contract. The server commits the accepted cell without consuming its selected material; a later full-slot `5` replaces the remaining item. Two wall intents can precede one coalesced report. Duplicate reports do not consume again, and the last item becomes canonical empty. Independent source components cover configured local ItemCheck, explicitly invoked later Sync and dedicated Receive17/5, rather than the full client scheduler or rendered world.
+
+The shipped WorldInfo keeps the server-side-character flag false. Original 1.4.5.8 ignores its own-player `5` correction while server-side characters are disabled and inventory is unlocked. A strict server-owned material producer needs an explicit inventory bootstrap and compatible client correction contract; sending an ordinary owner `5` does not establish that contract. Temple Key and the admitted chest transaction have separate server-owned consumption boundaries. Crafting, pickups, shopping and stack movement remain separate ownership concerns.
+
 PhaseOwned authoritative health publication writes the captured base maximum in packet `16`, while incoming damage uses current owned HP and separately retained derived maximum. Old reports do not replace a healed HP debit. Packet `41` rotation remains an ordered report; represented non-shooting use attempts can reset retained rotation during the next admitted phase, including failed starts. This adds no client packet `117` damage trust or placement/inventory consumption authority.
 
 The live join probe permits the source `Time` Int32 at the start of packet `7` to change between requests `6` and `8`. Official 1.4.5.8 sends a fresh WorldInfo for each request; byte-identical time is not a join requirement. The probe still requires packet `7`, identical remaining payload bytes and the existing section/packet `49`, spawn `129`, relay and chat `82` checks. Rejections include the received packet ID, lengths and both full payloads for diagnosis.

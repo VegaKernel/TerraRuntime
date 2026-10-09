@@ -120,7 +120,7 @@ public sealed class RuntimeObjectPlacementCommandProcessorTests
     }
 
     [Fact]
-    public void Wrong_connection_source_rolls_world_and_chest_metadata_back_when_inventory_commit_rejects()
+    public void Wrong_connection_source_is_refused_before_world_or_inventory_adoption()
     {
         using var fixture = new Fixture();
         ConnectionHandle connection = fixture.SpawnPlayer(connectionId: 1905);
@@ -135,8 +135,8 @@ public sealed class RuntimeObjectPlacementCommandProcessorTests
         Assert.True(fixture.Processor.TryApply(
             new ClientPlaceObjectRuntimeCommand(wrongSource, packet)));
 
-        Assert.Equal(RuntimeObjectPlacementResult.InventoryCommitFailed, fixture.Processor.LastResult);
-        Assert.Equal(1, fixture.Processor.Rollbacks);
+        Assert.Equal(RuntimeObjectPlacementResult.StalePlayer, fixture.Processor.LastResult);
+        Assert.Equal(0, fixture.Processor.Rollbacks);
         Assert.False(fixture.Tiles.Get(10, 9).IsActive);
         Assert.False(fixture.Tiles.Get(11, 10).IsActive);
         Assert.Empty(fixture.Chests.CaptureSnapshot());

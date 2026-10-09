@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Runtime.InteropServices;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -1270,8 +1271,13 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         RuntimePlayerInventoryItem remaining = key.Stack == 1
             ? default
             : key with { Stack = checked((short)(key.Stack - 1)) };
-        var inventoryMutation = new RuntimePlayerInventoryMutation(keySlot, remaining);
-        if (!players.TryCommitInventoryMutation(command.Connection, in inventoryMutation))
+        Span<WorldTile> acceptedDoor = stackalloc WorldTile[3];
+        for (int offset = 0; offset < acceptedDoor.Length; offset++)
+            acceptedDoor[offset] = tiles.Get(command.State.TileX, topY + offset);
+        if (!players.TryPrepareInventoryMutation(command.Connection, keySlot, in key, in remaining,
+                out var keyPreparation) ||
+            !IsTempleDoorFootprintCurrent(command.State.TileX, topY, acceptedDoor) ||
+            !keyPreparation!.TryAdoptUnpublished())
         {
             RejectedClientManipulations++;
             return;
@@ -1281,14 +1287,22 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
         // The footprint check above makes the post-commit mutation infallible and avoids a partial item/tile state.
         for (int offset = 0; offset < 3; offset++)
         {
-            WorldTile door = tiles.Get(command.State.TileX, topY + offset);
+            WorldTile door = acceptedDoor[offset];
             door.FrameY = checked((short)(door.FrameY + 54));
             tiles.Set(command.State.TileX, topY + offset, in door);
+            acceptedDoor[offset] = door;
         }
 
         AppliedClientManipulations++;
+        keyPreparation.TryPublish();
+        // Publication can reenter the writer. Retain its newer inventory/connection/world state
+        // and suppress delayed payloads for an accepted operation that is no longer current.
+        if (!keyPreparation.IsAcceptedCurrent ||
+            !IsTempleDoorFootprintCurrent(command.State.TileX, topY, acceptedDoor)) return;
         TerrariaLockAndUnlockState state = command.State;
         replication?.TryPublishLockAndUnlock(command.Connection.Source, in state);
+        if (!keyPreparation.IsAcceptedCurrent ||
+            !IsTempleDoorFootprintCurrent(command.State.TileX, topY, acceptedDoor)) return;
         // NetMessage.SendTileSquare(-1, x, y, 2) treats x/y as the 2x2 square start because the centered
         // overload subtracts (2 - 1) / 2, which is zero. Preserve the packet coordinate even when it names a
         // lower door row, as the source does.
@@ -1299,6 +1313,14 @@ internal sealed partial class WorldTileAuthority : IVanillaLiquidTileSideEffectS
             width: 2,
             height: 2,
             VanillaTileChangeType1458.None);
+    }
+
+    private bool IsTempleDoorFootprintCurrent(int x, int topY, ReadOnlySpan<WorldTile> expected)
+    {
+        Span<WorldTile> current = stackalloc WorldTile[3];
+        for (int offset = 0; offset < current.Length; offset++)
+            current[offset] = tiles!.Get(x, topY + offset);
+        return MemoryMarshal.AsBytes(current).SequenceEqual(MemoryMarshal.AsBytes(expected));
     }
 
     private static bool TryFindTempleKey(

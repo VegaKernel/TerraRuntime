@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures/client-placement-inventory-causality-official-1458.json.gz" LogicalName="ClientPlacementInventoryCausality1458" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit.v3" Version="3.0.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.0" />
@@ -59,6 +60,7 @@
     <EmbeddedResource Include="Fixtures/shotgun-sequential-shoot-official-1458.json.gz" LogicalName="ShotgunSequentialShoot1458" />
     <EmbeddedResource Include="Fixtures/incoming-human-vitals-local-callers-official-1458.json.gz" LogicalName="IncomingHumanVitals1458" />
     <EmbeddedResource Include="Fixtures/remote-passive-item-phase-official-1458.json.gz" LogicalName="RemotePassiveItemPhase1458" />
+    <EmbeddedResource Include="Fixtures/remote-furniture-player-phase-official-1458.json.gz" LogicalName="RemoteFurniturePlayerPhase1458" />
     <EmbeddedResource Include="Fixtures/remote-item-rotation-configured-official-1458.json.gz" LogicalName="RemoteItemRotation1458" />
     <EmbeddedResource Include="Fixtures/phase-vitals-hurt75-official-1458.json.gz" LogicalName="IncomingHumanVitalsHurt75" />
     <EmbeddedResource Include="Fixtures/phase-vitals-hurt-official-1458.json.gz" LogicalName="IncomingHumanVitalsHurt" />

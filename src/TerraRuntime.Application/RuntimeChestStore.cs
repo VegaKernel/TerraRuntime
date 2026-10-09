@@ -57,6 +57,16 @@ internal sealed class RuntimeChestStore
         !chestByCoordinates.ContainsKey(GetCoordinateKey(tileX, tileY)) &&
         FindFirstFreeChestSlot() >= 0;
 
+    internal bool TryCaptureAt(int tileX, int tileY, out WorldChest chest)
+    {
+        chest = null!;
+        if (!chestByCoordinates.TryGetValue(GetCoordinateKey(tileX, tileY), out short slot) ||
+            chests[slot] is not WorldChest current)
+            return false;
+        chest = current;
+        return true;
+    }
+
     /// <summary>
     /// Creates an empty runtime chest at the normalized metadata anchor. This is not packet handling: callers must
     /// have already validated object geometry, placement policy and authorization. Item-slot count remains explicit
@@ -430,4 +440,3 @@ internal sealed class RuntimeChestStore
     private static long GetCoordinateKey(int x, int y) =>
         ((long)(uint)x << 32) | (uint)y;
 }
-

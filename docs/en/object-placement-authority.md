@@ -34,25 +34,29 @@ The exact loaded `WorldTileStore` is associated with its runtime chest metadata 
 ```mermaid
 flowchart TD
     Request["Decoded PlaceObject + connection/player generation"] --> Player["Capture authoritative PlayerStateSnapshot"]
-    Player --> Item["Read selected inventory slot"]
+    Player --> Item["Capture selected item and inventory serial"]
     Item --> Catalog["VanillaItemObjectPlacementCatalog"]
     Catalog -->|match| World["VanillaMultiTileObjectMutationService"]
     Catalog -->|mismatch / unsupported| Reject["Reject without mutation"]
-    World -->|placement + chest metadata committed| Consume["Apply ordinary PlayerEquipmentRuntimeCommand: stack - 1"]
+    World -->|placement + chest metadata committed| Consume["Adopt captured stack - 1 without callbacks"]
     World -->|support/occupancy/metadata veto| Reject
-    Consume -->|committed| Relay["Relay packet 79 to playing peers"]
-    Consume -->|rejected| Rollback["Break the just-created empty object + remove metadata"]
+    Consume -->|committed| Publish["Finalize counters, then inventory event"]
+    Consume -->|rejected before publication| Rollback["Remove unpublished empty object and metadata"]
+    Publish --> Current["Recheck accepted item, four cells and chest identity"]
+    Current -->|current| Relay["Relay packet 79 to playing peers"]
 ```
 
 The multi-tile service owns the 2×2 geometry, placement origin, support checks, frame cells and chest metadata lifecycle. For `Containers`, packet coordinates are passed as the vanilla placement origin. The object catalog resolves that origin to the normalized top-left chest metadata anchor.
 
-Item consumption is not performed by editing an independent shadow inventory. The processor creates the normalized packet-5-style equipment state and routes it through the ordinary authoritative `ServerRuntimeState` equipment path. This preserves player revisioning, generation checks, inventory normalization and equipment replication.
+The existing `PlayerAuthority` inventory owner prepares one captured canonical write before world placement. Its token retains exact connection/member, player snapshot, item phase, input revision, full inventory serial and old item. Saturated stamps and the last unusable inventory serial refuse before mutation. Adoption uses the existing atomic inventory store without callbacks. World geometry, chest metadata, inventory, accepted result and counters are ready before the first inventory event; internal consumption does not invent another incoming equipment report.
 
-If that equipment commit does not materialize exactly the expected remaining stack, the newly created chest is still empty and unopened, so the same multi-tile lifecycle removes its metadata and all four cells before the command returns. A rollback failure is an invariant violation and faults rather than silently minting an object.
+An adoption failure can remove the unpublished empty object and metadata before any inventory event. Rollback failure faults. Once published, the accepted operation is never rolled back because an observer changed stock, world or membership. A throwing observer leaves all adopted owners and accepted accounting intact. Ordinary equipment reports and default packet-17 placement keep their existing separate contracts.
+
+Temple Key uses the same captured inventory boundary: the first ordinary key in slots `0..57` is consumed and all three source door rows gain `54` before publication. The mouse slot is excluded and the last key becomes canonical empty. The established `52`/tile-square sequence runs only while the accepted occupation, stock and complete door footprint remain current.
 
 ## Replication
 
-Only a committed placement is encoded back as packet 79. The originating connection is excluded; playing peers receive the accepted request after the authoritative world and inventory transaction succeeds. Failed support checks, item mismatches and rollback paths produce no peer placement frame.
+Only a current committed placement is encoded back as packet 79. The originating connection is excluded. After inventory publication, exact accepted stock, all four cells and the runtime chest object identity are checked again; removal/recreation at the same coordinates cannot authorize an old frame. A custom metadata lifecycle without that identity proof can commit locally but does not authorize this delayed relay. Failed support checks, stale connections, item mismatches and pre-publication rollback produce no peer placement frame.
 
 ## Remaining scope
 

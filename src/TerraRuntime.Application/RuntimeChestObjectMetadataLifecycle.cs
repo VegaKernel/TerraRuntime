@@ -19,6 +19,12 @@ internal sealed class RuntimeChestObjectMetadataLifecycle : IVanillaMultiTileObj
         descriptor.MetadataKind == VanillaTileObjectMetadataKind.Chest &&
         chests.CanCreateAt(descriptor.TopLeftX, descriptor.TopLeftY);
 
+    internal bool TryCapture(in VanillaMultiTileObjectMutationDescriptor descriptor, out WorldChest chest) =>
+        chests.TryCaptureAt(descriptor.TopLeftX, descriptor.TopLeftY, out chest);
+
+    internal bool IsCurrent(in VanillaMultiTileObjectMutationDescriptor descriptor, WorldChest accepted) =>
+        TryCapture(in descriptor, out WorldChest current) && ReferenceEquals(current, accepted);
+
     public bool CanRemove(in VanillaMultiTileObjectMutationDescriptor descriptor) =>
         descriptor.MetadataKind == VanillaTileObjectMetadataKind.Chest &&
         chests.CanRemoveAt(descriptor.TopLeftX, descriptor.TopLeftY);
