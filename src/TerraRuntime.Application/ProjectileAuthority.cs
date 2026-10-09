@@ -30,7 +30,10 @@ internal readonly record struct AuthoritativeClientProjectileSpawn(
     internal VanillaUnifiedRandom1458? RandomAfter { get; init; }
     internal long UseTick { get; init; }
     internal ProjectileStateUpdate[]? VolleyStates { get; init; }
+    internal AlternativeBulletUse1458? AlternativeBulletUse { get; init; }
 }
+
+internal sealed record AlternativeBulletUse1458(AuthoritativeClientProjectileSpawn Use);
 
 /// <summary>
 /// Owns the projectile store, simulation, client commit validation and lifecycle metrics for one world.

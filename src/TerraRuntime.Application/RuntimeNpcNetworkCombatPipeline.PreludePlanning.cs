@@ -9,6 +9,7 @@ namespace TerraRuntime.Application;
 internal sealed partial class RuntimeNpcNetworkCombatPipeline
 {
     private readonly bool? onlyShimmerOceanWorlds;
+    private (NpcHandle Target, PlayerHandle Player)? pendingGuardedProjectileInteraction;
 
     private bool TryCaptureDeathPreludeContext(in NpcSnapshot dead, bool eaterBoss,
         out RuntimeNpcDeathPreludeContext1458 context)
@@ -62,10 +63,13 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private bool TryGetPreparedProjectileInteraction(in NpcSnapshot npc, out PlayerHandle player)
     {
         player = default;
-        if (!IsPreviewingDeath || pendingProjectileStrike is not { } strike || strike.Target != npc.Handle ||
-            !players.TryGetPlayer(strike.Player.Slot, out var current) || current.Player != strike.Player)
+        if (!IsPreviewingDeath) return false;
+        var projected = pendingProjectileStrike is { } strike
+            ? (strike.Target, strike.Player) : pendingGuardedProjectileInteraction;
+        if (projected is not { } interaction || interaction.Target != npc.Handle ||
+            !players.TryGetPlayer(interaction.Player.Slot, out var current) || current.Player != interaction.Player)
             return false;
-        player = strike.Player;
+        player = interaction.Player;
         return true;
     }
 }

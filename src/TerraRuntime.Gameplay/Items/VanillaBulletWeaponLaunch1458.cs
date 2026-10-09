@@ -26,7 +26,8 @@ public static class VanillaBulletWeaponLaunch1458
         Func<int, int, int> next,
         Func<double> nextDouble,
         Span<VanillaBulletLaunchShot1458> shots,
-        out int count)
+        out int count,
+        VanillaBulletSourceArithmetic1458 arithmetic = VanillaBulletSourceArithmetic1458.CoreClrSingle)
     {
         count = 0;
         if (!IsValid(weapon, shootSpeed, projectile, shots) || facingDirection is not (-1 or 1) ||
@@ -36,6 +37,11 @@ public static class VanillaBulletWeaponLaunch1458
         if (!float.IsFinite(distance)) return false;
         ArgumentNullException.ThrowIfNull(next);
         ArgumentNullException.ThrowIfNull(nextDouble);
+        if (arithmetic == VanillaBulletSourceArithmetic1458.WindowsClr4X86)
+            return TryPlanWindows(weapon, aimDeltaX, aimDeltaY, facingDirection, shootSpeed,
+                next, nextDouble, shots, out count);
+        if (arithmetic != VanillaBulletSourceArithmetic1458.CoreClrSingle)
+            return false;
 
         float scale;
         if (distance == 0f)
@@ -60,6 +66,90 @@ public static class VanillaBulletWeaponLaunch1458
         return true;
     }
 
+    private static bool TryPlanWindows(ItemTypeId weapon, float aimX, float aimY, int facing, float speed,
+        Func<int, int, int> next, Func<double> nextDouble, Span<VanillaBulletLaunchShot1458> shots, out int count)
+    {
+        double x = aimX;
+        double y = aimY;
+        float length = (float)Math.Sqrt(x * x + y * y);
+        float scale = length == 0 ? speed : speed / length;
+        if (length == 0)
+        {
+            x = facing;
+            y = 0;
+        }
+        if (weapon == VanillaItemIds.ChainGun)
+        {
+            // CLR4's source locals store the early aim as Single before the final normalization product.
+            x = (float)(x + next(-50, 51) * (double)0.03f / scale);
+            y = (float)(y + next(-50, 51) * (double)0.03f / scale);
+        }
+        float baseX = (float)(x * scale);
+        float baseY = (float)(y * scale);
+        count = GetCount(weapon, next);
+        FillWindows(weapon, baseX, baseY, next, nextDouble, shots[..count]);
+        return true;
+    }
+
+    private static void FillWindows(ItemTypeId weapon, float baseX, float baseY,
+        Func<int, int, int> next, Func<double> nextDouble, Span<VanillaBulletLaunchShot1458> shots,
+        bool firstChild = true)
+    {
+        GetJitter(weapon, out int minimum, out int maximum, out float strength);
+        for (int index = 0; index < shots.Length; index++)
+        {
+            float x = baseX;
+            float y = baseY;
+            if (weapon == VanillaItemIds.QuadBarrelShotgun && (!firstChild || index != 0))
+            {
+                float length = (float)Math.Sqrt((double)x * x + (double)y * y);
+                NormalizeWindows(ref x, ref y);
+                double angle = ((float)Math.PI / 2f) * (double)(float)nextDouble();
+                float cosine = (float)Math.Cos(angle);
+                float sine = (float)Math.Sin(angle);
+                float rotatedX = (float)((double)x * cosine - (double)y * sine);
+                float rotatedY = (float)((double)x * sine + (double)y * cosine);
+                float displacement = (float)((float)nextDouble() * 2.0 - 1.0);
+                x = baseX + (float)(rotatedX * displacement) * 5f;
+                y = baseY + (float)(rotatedY * displacement) * 5f;
+                NormalizeWindows(ref x, ref y);
+                x *= length;
+                y *= length;
+                x = (float)(x + next(-40, 41) * (double)0.05f);
+                y = (float)(y + next(-40, 41) * (double)0.05f);
+            }
+            else if (strength != 0f)
+            {
+                if (weapon == VanillaItemIds.ChainGun)
+                {
+                    x = (float)(x + next(minimum, maximum) * (double)strength);
+                    y = (float)(y + next(minimum, maximum) * (double)strength);
+                }
+                else
+                {
+                    x += next(minimum, maximum) * strength;
+                    y += next(minimum, maximum) * strength;
+                }
+            }
+            shots[index] = Damp(x, y);
+        }
+    }
+
+    private static void NormalizeWindows(ref float x, ref float y)
+    {
+        // Actual XNA4 static Normalize: Single square-root result, wider reciprocal, then Single field stores.
+        // Rounding the reciprocal early changes the independently captured Quad Barrel Shotgun children.
+        float length = (float)Math.Sqrt((double)x * x + (double)y * y);
+        if (length == 0)
+        {
+            x = y = 0;
+            return;
+        }
+        double inverse = 1.0 / length;
+        x = (float)(x * inverse);
+        y = (float)(y * inverse);
+    }
+
     /// <summary>
     /// Recovers bounded aim intent from the first published child's velocity and the detached launch cursor.
     /// Raw MouseWorld distance is not recoverable from packet27. Magnitude acceptance is limited to source
@@ -74,11 +164,14 @@ public static class VanillaBulletWeaponLaunch1458
         Func<int, int, int> next,
         Func<double> nextDouble,
         Span<VanillaBulletLaunchShot1458> shots,
-        out int count)
+        out int count,
+        VanillaBulletSourceArithmetic1458 arithmetic = VanillaBulletSourceArithmetic1458.CoreClrSingle)
     {
         count = 0;
         if (!IsValid(weapon, shootSpeed, projectile, shots) ||
-            !float.IsFinite(firstVelocityX) || !float.IsFinite(firstVelocityY))
+            !float.IsFinite(firstVelocityX) || !float.IsFinite(firstVelocityY) ||
+            arithmetic is not (VanillaBulletSourceArithmetic1458.CoreClrSingle or
+                VanillaBulletSourceArithmetic1458.WindowsClr4X86))
             return false;
         ArgumentNullException.ThrowIfNull(next);
         ArgumentNullException.ThrowIfNull(nextDouble);
@@ -102,7 +195,10 @@ public static class VanillaBulletWeaponLaunch1458
         float velocityX = baseX + earlyX;
         float velocityY = baseY + earlyY;
         shots[0] = Damp(velocityX + jitterX, velocityY + jitterY);
-        Fill(weapon, velocityX, velocityY, next, nextDouble, shots[1..plannedCount], firstChild: false);
+        if (arithmetic == VanillaBulletSourceArithmetic1458.WindowsClr4X86)
+            FillWindows(weapon, velocityX, velocityY, next, nextDouble, shots[1..plannedCount], firstChild: false);
+        else
+            Fill(weapon, velocityX, velocityY, next, nextDouble, shots[1..plannedCount], firstChild: false);
         count = plannedCount;
         return true;
     }

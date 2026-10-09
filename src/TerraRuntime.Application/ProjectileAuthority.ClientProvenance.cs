@@ -28,6 +28,9 @@ internal sealed partial class ProjectileAuthority
             authoritative = default;
             return ClientProjectileProvenanceResolveResult.Rejected;
         }
+        if (authoritative.AlternativeBulletUse is { } alternative)
+            authoritative = authoritative with { AlternativeBulletUse = new(alternative.Use with
+                { PlayerCapture = capture, RandomBefore = before }) };
         authoritative = authoritative with { PlayerCapture = capture, RandomBefore = before, RandomAfter = planned };
         return result;
     }
@@ -73,7 +76,12 @@ internal sealed partial class ProjectileAuthority
             return ClientProjectileProvenanceResolveResult.NotApplicable;
         }
 
-        if (!VanillaItemCombatCatalog.TryGetRangedPrefixModifiers(weaponItem.Prefix, out VanillaCombatPrefixModifiers prefix) ||
+        bool bullet = VanillaBulletWeaponLaunch1458.Supports(weapon.Type);
+        bool supportedPrefix = bullet
+            ? VanillaBulletWeaponStats1458.TryGetPrefixModifiers(weapon.Type, weaponItem.Prefix,
+                VanillaBulletSourceArithmetic1458.CoreClrSingle, out var prefix)
+            : VanillaItemCombatCatalog.TryGetRangedPrefixModifiers(weaponItem.Prefix, out prefix);
+        if (!supportedPrefix ||
             !players.TryCaptureCombatSnapshot(connection, out VanillaPlayerCombatSnapshot attackerCombat) ||
             !players.TryCaptureAmmoConservationContext(connection, out bool ammoBox, out bool ammoPotion))
         {
@@ -172,36 +180,10 @@ internal sealed partial class ProjectileAuthority
                 out authoritative);
         }
 
-        if (VanillaBulletWeaponLaunch1458.Supports(weapon.Type))
-        {
-            if (!VanillaProjectileWeaponCombatCatalog.IsPrefixSupported(weapon.Type, weaponItem.Prefix))
-                return ClientProjectileProvenanceResolveResult.NotApplicable;
-            if (packet.ProjectileType != expectedProjectileType.Value || packet.Damage != expectedDamage ||
-                packet.OriginalDamage != 0 || MathF.Abs(packet.KnockBack - expectedKnockBack) > knockBackTolerance ||
-                packet.Ai0 != 0f || packet.Ai1 != 0f || packet.Ai2 != 0f || packet.BannerIdToRespondTo != 0 ||
-                dx * dx + dy * dy > maximumDistance * maximumDistance ||
-                trustedClientUseCadence.IsOnCooldown(connection.Player, tick, authoritativeUseTime))
-                return RejectProvenance();
-            // The first source report supplies bounded aim intent, not ownership of MouseWorld/Main.rand.
-            // PickAmmo offers precede the weapon-specific count/spread offers on the detached cursor.
-            bool conserved = PrepareAmmoConservation(in weapon, in ammo, in attackerCombat, plannedRandom, ammoBox, ammoPotion);
-            Span<VanillaBulletLaunchShot1458> shots = stackalloc VanillaBulletLaunchShot1458[VanillaBulletWeaponLaunch1458.MaximumShotCount];
-            if (!VanillaBulletWeaponLaunch1458.TryResolveFromFirstVelocity(weapon.Type, packet.VelocityX,
-                    packet.VelocityY, speedEnvelope.CanonicalMagnitude, expectedProjectileType,
-                    plannedRandom.Next, plannedRandom.NextDouble, shots, out int shotCount))
-                return RejectProvenance();
-            var states = new ProjectileStateUpdate[shotCount];
-            for (int index = 0; index < states.Length; index++)
-                states[index] = new(expectedProjectileType, connection.Player.Slot.Value,
-                    packet.PositionX, packet.PositionY, shots[index].VelocityX, shots[index].VelocityY,
-                    default, BannerIdToRespondTo: 0, Damage: checked((short)expectedDamage),
-                    KnockBack: expectedKnockBack, OriginalDamage: 0);
-            RuntimePlayerInventoryItem remaining = conserved ? ammoItem : ammoItem.Stack == 1
-                ? default : ammoItem with { Stack = checked((short)(ammoItem.Stack - 1)) };
-            authoritative = new(states[0], new RuntimePlayerInventoryMutation(checked((short)ammoSlot), remaining),
-                ManaCost: 0, speedEnvelope, authoritativeUseTime) { UseTick = tick, VolleyStates = states };
-            return ClientProjectileProvenanceResolveResult.Accepted;
-        }
+        if (bullet)
+            return TryResolveBulletSourceCandidates(connection, in packet, in weaponItem, in weapon,
+                in ammo, in ammoItem, in attackerCombat, ammoSlot, ammoBox, ammoPotion, dx, dy,
+                maximumDistance, tick, plannedRandom, out authoritative);
 
         if (packet.ProjectileType != expectedProjectileType.Value ||
             packet.Damage != expectedDamage ||
@@ -212,7 +194,7 @@ internal sealed partial class ProjectileAuthority
             MathF.Abs(packet.Ai1) > 0.001f ||
             MathF.Abs(packet.Ai2) > 0.001f ||
             dx * dx + dy * dy > maximumDistance * maximumDistance ||
-            trustedClientUseCadence.IsOnCooldown(connection.Player, tick, authoritativeUseTime))
+            trustedClientUseCadence.IsOnCooldown(connection.Player, tick))
         {
             return RejectProvenance();
         }
@@ -371,7 +353,7 @@ internal sealed partial class ProjectileAuthority
             !speedEnvelope.ContainsMagnitude(packetSpeed) ||
             MathF.Abs(packet.Ai0) > 0.001f || MathF.Abs(packet.Ai1) > 0.001f || MathF.Abs(packet.Ai2) > 0.001f ||
             dx * dx + dy * dy > weapon.ImpossibleSpawnCenterDistancePixels * weapon.ImpossibleSpawnCenterDistancePixels ||
-            trustedClientUseCadence.IsOnCooldown(connection.Player, tick, weapon.UseTimeTicks))
+            trustedClientUseCadence.IsOnCooldown(connection.Player, tick))
         {
             return ClientProjectileProvenanceResolveResult.Rejected;
         }
@@ -441,7 +423,7 @@ internal sealed partial class ProjectileAuthority
             MathF.Abs(packet.Ai1) > 0.001f ||
             MathF.Abs(packet.Ai2) > 0.001f ||
             dx * dx + dy * dy > weapon.ImpossibleSpawnCenterDistancePixels * weapon.ImpossibleSpawnCenterDistancePixels ||
-            trustedClientUseCadence.IsOnCooldown(connection.Player, tick, weapon.UseTimeTicks))
+            trustedClientUseCadence.IsOnCooldown(connection.Player, tick))
         {
             return ClientProjectileProvenanceResolveResult.Rejected;
         }

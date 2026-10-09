@@ -37,6 +37,12 @@
     <EmbeddedResource Include="Fixtures/remote-all-ranged-prefix-phase-windows-official-1458.json.gz" LogicalName="RemoteAllRangedPrefixPhaseWindows1458" />
     <EmbeddedResource Include="Fixtures/remote-crossfamily-clocks-linux-official-1458.json.gz" LogicalName="RemoteCrossFamilyClocksLinux1458" />
     <EmbeddedResource Include="Fixtures/remote-style1-early-clocks-linux-official-1458.json.gz" LogicalName="RemoteStyle1EarlyClocksLinux1458" />
+    <EmbeddedResource Include="Fixtures/bullet-prefixed-shoot-linux-official-1458.json.gz" LogicalName="BulletPrefixedShootLinux1458" />
+    <EmbeddedResource Include="Fixtures/bullet-prefixed-shoot-windows-official-1458.json.gz" LogicalName="BulletPrefixedShootWindows1458" />
+    <EmbeddedResource Include="Fixtures/selected-prefix-crit-configured-official-1458.json.gz" LogicalName="SelectedPrefixCritConfigured1458" />
+    <EmbeddedResource Include="Fixtures/selected-prefix-crit-born-configured-official-1458.json.gz" LogicalName="SelectedPrefixCritBornConfigured1458" />
+    <EmbeddedResource Include="Fixtures/selected-prefix-crit-demon-eye-born-official-1458.json.gz" LogicalName="SelectedPrefixCritDemonEyeBorn1458" />
+    <EmbeddedResource Include="Fixtures/selected-crit-early-configured-official-1458.json.gz" LogicalName="SelectedCritEarly1458" />
     <EmbeddedResource Include="Fixtures/inherited-metal-whole-player-official-1458.json.gz" LogicalName="InheritedMetalWholePlayer1458" />
     <EmbeddedResource Include="Fixtures/inherited-metal-blocker-whole-player-official-1458.json.gz" LogicalName="InheritedMetalBlockerWholePlayer1458" />
     <EmbeddedResource Include="Fixtures/metal-vanity-whole-player-official-1458.json.gz" LogicalName="MetalVanityWholePlayer1458" />

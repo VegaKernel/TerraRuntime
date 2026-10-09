@@ -27,7 +27,7 @@ internal sealed partial class ProjectileAuthority
                 continue;
             }
             var use = pending.Use;
-            if (tick >= use.UseTick && tick - use.UseTick <= use.UseTimeTicks &&
+            if (tick >= use.UseTick && tick - use.UseTick <= PendingBulletWindow(use) &&
                 use.PlayerCapture is { } capture && players.IsCurrentProjectileUse(capture) &&
                 use.RandomBefore is { } before && projectileRandom.HasSameState(before))
                 continue;
@@ -52,7 +52,12 @@ internal sealed partial class ProjectileAuthority
         var use = pending.Use;
         if (use.ManaCost != 0 || use.PlayerCapture is not { } capture ||
             !players.TryRefreshPendingBulletUseCapture(capture, out var current)) return false;
-        if (!ReferenceEquals(current, capture)) pending.Use = use with { PlayerCapture = current };
+        if (!ReferenceEquals(current, capture))
+        {
+            if (use.AlternativeBulletUse is { } alternative)
+                use = use with { AlternativeBulletUse = new(alternative.Use with { PlayerCapture = current }) };
+            pending.Use = use with { PlayerCapture = current };
+        }
         return true;
     }
 
@@ -84,7 +89,7 @@ internal sealed partial class ProjectileAuthority
         }
         var use = pending.Use;
         if (use.PlayerCapture is not { } capture || capture.Connection != connection ||
-            tick < use.UseTick || tick - use.UseTick > use.UseTimeTicks ||
+            tick < use.UseTick || tick - use.UseTick > PendingBulletWindow(use) ||
             !players.IsCurrentProjectileUse(capture) || use.RandomBefore is not { } before ||
             !projectileRandom.HasSameState(before))
         {
@@ -100,11 +105,17 @@ internal sealed partial class ProjectileAuthority
             return true;
         }
         ProjectileStateUpdate state = use.VolleyStates![pending.Count];
-        if (replication!.WireIdentities.TryResolve(packet.Key, out _) || !MatchesBulletReport(in packet, in state))
+        bool primaryMatches = tick - use.UseTick <= use.UseTimeTicks && MatchesBulletReport(in packet, in state);
+        var alternative = use.AlternativeBulletUse;
+        bool alternativeMatches = alternative is not null && tick - use.UseTick <= alternative.Use.UseTimeTicks &&
+            MatchesBulletReport(in packet, in alternative.Use.VolleyStates![pending.Count]);
+        if (replication!.WireIdentities.TryResolve(packet.Key, out _) || (!primaryMatches && !alternativeMatches))
         {
             Reject();
             return true;
         }
+        if (!primaryMatches) pending.Use = alternative!.Use;
+        else if (!alternativeMatches) pending.Use = use with { AlternativeBulletUse = null };
         pending.Reports[pending.Count++] = packet;
         if (pending.Count == use.VolleyStates.Length)
         {
@@ -126,6 +137,9 @@ internal sealed partial class ProjectileAuthority
         }
     }
 
+    private static int PendingBulletWindow(in AuthoritativeClientProjectileSpawn use) =>
+        Math.Max(use.UseTimeTicks, use.AlternativeBulletUse?.Use.UseTimeTicks ?? 0);
+
     private static bool MatchesBulletReport(in TerrariaProjectileUpdateState packet, in ProjectileStateUpdate state)
     {
         const float positionTolerance = 0.001f;
@@ -145,11 +159,16 @@ internal sealed partial class ProjectileAuthority
     {
         if (!TryRefreshPendingBulletCapture(pending)) return false;
         var use = pending.Use;
+        // Representation-equivalent reports cannot identify client arithmetic. Prefer the
+        // complete surviving source profile with the shorter clock, so a valid shorter
+        // Windows/Linux period is not rejected because of the host's deterministic tie-break.
+        if (use.AlternativeBulletUse is { } alternative && alternative.Use.UseTimeTicks < use.UseTimeTicks)
+            use = alternative.Use;
         if (replication is null || use.VolleyStates is not { } states || pending.Count != states.Length ||
             use.PlayerCapture is not { } capture || use.RandomBefore is not { } before ||
             use.RandomAfter is not { } after || !projectileRandom.HasSameState(before) ||
             !players.CanCommitProjectileUse(capture, use.InventoryMutation, use.ManaCost) ||
-            trustedClientUseCadence.IsOnCooldown(capture.Connection.Player, use.UseTick, use.UseTimeTicks))
+            trustedClientUseCadence.IsOnCooldown(capture.Connection.Player, use.UseTick))
             return false;
         Span<RuntimeProjectileStore.SpawnRequest> requests = stackalloc RuntimeProjectileStore.SpawnRequest[states.Length];
         Span<TerrariaProjectileKeyState> keys = stackalloc TerrariaProjectileKeyState[states.Length];
@@ -179,7 +198,7 @@ internal sealed partial class ProjectileAuthority
                 if (!projectiles.TryMarkCombatTrusted(final.Handle, capture.Connection.Player))
                     throw new InvalidOperationException("Validated bullet volley lost its final generation.");
             projectileRandom.CopyStateFrom(after);
-            trustedClientUseCadence.MarkUse(capture.Connection.Player, use.UseTick);
+            trustedClientUseCadence.MarkUse(capture.Connection.Player, use.UseTick, use.UseTimeTicks);
             if (!journal.TryAdoptBaselines(projectiles))
                 throw new InvalidOperationException("Validated bullet volley lost its publication ownership.");
             AppliedSpawns += states.Length;

@@ -108,7 +108,9 @@ internal sealed partial class PlayerAuthority
         ConnectionHandle connection = command.Connection;
         RuntimePlayerTransferState transfer = command.Transfer;
         // Unknown imported clocks stay unknown; malformed represented clocks are not constructor facts.
-        if (transfer.ItemPhase is { ToolTime: < 0 } or { AttackCD: < 0 })
+        if (transfer.ItemPhase is { ToolTime: < 0 } or { AttackCD: < 0 } or
+            { DerivedCrit: { Melee: < 0 } } or { DerivedCrit: { Ranged: < 0 } } or
+            { DerivedCrit: { Magic: < 0 } })
         {
             command.Completion.TrySetResult(false);
             return;

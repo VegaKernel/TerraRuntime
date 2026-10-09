@@ -5,7 +5,9 @@ using TerraRuntime.Core.Players;
 using TerraRuntime.Core.Projectiles;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Gameplay.Projectiles;
+using TerraRuntime.Gameplay.Players;
 using TerraRuntime.HostContracts;
+using TerraRuntime.World;
 
 namespace TerraRuntime.Tests;
 
@@ -23,16 +25,32 @@ public sealed class ProjectilePhysicalSentinel1458Tests
             var shots = new RuntimeProjectileStore();
             var stepper = new Stepper();
             var random = new CountingRandom();
+            var tiles = new WorldTileStore(new WorldDimensions(400, 300));
+            Assert.True(tiles.TryAttachWorldSurface(80));
+            // The real movement ingress rejects the old (100,100) pose with world borders.
+            // Keep all collision participants in the admitted interior and own a separate
+            // empty-selected player phase, which derives neutral crit4 without borrowing hit RNG.
             var state = new ServerRuntimeState(npcs: npcs, npcAiStepper: new IdleNpc(), projectiles: shots,
-                projectileStepper: stepper, projectilePlayerCombatRandom: random);
-            using var fixture = new Players(state.Apply);
+                projectileStepper: stepper, projectilePlayerCombatRandom: random, worldTiles: tiles,
+                playerUpdateRandomSeed: new(0),
+                townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458) with { WorldSurface = 80, RockLayer = 150 });
+            var runtime = (ServerRuntimeComposition)typeof(ServerRuntimeState).GetField("_runtime",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(state)!;
+            runtime.Players.SetRemotePlayerEnvironment(new(false, false), shots);
+            runtime.Players.SetNpcHealthWorldFacts(() => new(false, false));
+            using var fixture = new Players(state.Apply, 1000, 1000, normalGravity: true);
+            Assert.True(state.TryCapturePlayerSnapshot(fixture.Target.Player, out var reported));
+            Assert.Equal(1000f, reported.PositionX);
+            Assert.Equal(1000f, reported.PositionY);
             NpcSnapshot npc = default;
-            if (targetNpc) Assert.True(npcs.TrySpawn(0, Actor(), out npc));
-            var shotState = Shot(14, fixture.Owner.Player.Slot.Value);
+            if (targetNpc) Assert.True(npcs.TrySpawn(0, Actor() with { PositionX = 1000, PositionY = 1000 }, out npc));
+            var shotState = Shot(14, fixture.Owner.Player.Slot.Value) with { PositionX = 1000, PositionY = 1000 };
             Assert.True(shots.TrySpawn(slot, shotState, out var shot));
             Assert.True(shots.TryMarkCombatTrusted(shot.Handle, fixture.Owner.Player));
             Assert.True(shots.TryGetLifecycle(shot.Handle, out var before));
             state.Tick();
+            Assert.True(runtime.Players.TryGet(fixture.Owner, out var owner));
+            Assert.Equal(PlayerDerivedCritState1458.SourceBaseline, owner.ItemPhase!.Value.DerivedCrit);
             if (slot == 1000)
             {
                 Assert.Equal(0, stepper.Calls);
@@ -47,9 +65,20 @@ public sealed class ProjectilePhysicalSentinel1458Tests
             }
             else
             {
-                Assert.True(stepper.Calls > 0);
-                if (targetNpc) { Assert.True(npcs.TryGet(npc.Handle, out var actor)); Assert.True(actor.Simulation.Life < 100); }
-                else { Assert.True(random.Draws > 0); Assert.True(state.TryCapturePlayerSnapshot(fixture.Target.Player, out var target)); Assert.True(target.Life < 1000); }
+                Assert.True(stepper.Calls > 0, "Physical999 must execute the configured stepper.");
+                if (targetNpc)
+                {
+                    Assert.True(npcs.TryGet(npc.Handle, out var actor));
+                    Assert.True(actor.Simulation.Life < 100,
+                        $"NPC hit missing at ({actor.PositionX},{actor.PositionY}); projectile retained={shots.TryGet(shot.Handle, out _)}.");
+                }
+                else
+                {
+                    Assert.True(state.TryCapturePlayerSnapshot(fixture.Target.Player, out var target));
+                    Assert.True(random.Draws > 0,
+                        $"Physical999 must reach PvP RNG: ownerHostile={owner.Hostile}, ownerDead={owner.IsDead}, targetHostile={target.Hostile}, targetDead={target.IsDead}, targetHealth={target.HasHealth}, targetLife={target.Life}, targetPosition=({target.PositionX},{target.PositionY}), ownerCombat={runtime.Players.TryCaptureCombatSnapshot(fixture.Owner, out _)}.");
+                    Assert.True(target.Life < 1000);
+                }
             }
         }
     }
@@ -96,7 +125,10 @@ public sealed class ProjectilePhysicalSentinel1458Tests
     }
 
     private static NpcStateUpdate Actor() => new(3, 3, 100, 100, 0, 0, 0, default,
-        NpcSimulationState.Initial with { Life = 100, LifeMax = 100, Immortal = false, MoneyValue = 0, DamageOverride = 0 });
+        // Fresh official NPC constructor declares shimmerTransparency and lifeRegenCount
+        // without initializers (source zero); a manual Initial import otherwise leaves them unknown.
+        NpcSimulationState.Initial with { Life = 100, LifeMax = 100, Immortal = false, MoneyValue = 0,
+            DamageOverride = 0, ShimmerTransparency = 0, LifeRegenCounter = 0 });
     private static ProjectileStateUpdate Shot(int type, byte owner) => new(new(type), owner, 100, 100, 0, 0, default, 0, 20, 0, 20);
     private sealed class CountingRandom : Random
     {
@@ -124,8 +156,15 @@ public sealed class ProjectilePhysicalSentinel1458Tests
         private readonly PlayerSlotPool slots = new(3);
         private readonly List<PlayerJoinSession> sessions = [];
         private readonly Action<RuntimeCommand> apply;
+        private readonly float positionX, positionY;
+        private readonly byte movementFlags;
         internal readonly ConnectionHandle Owner, Target;
-        internal Players(Action<RuntimeCommand> apply) { this.apply = apply; Owner = Join(1); Target = Join(2); }
+        internal Players(Action<RuntimeCommand> apply, float positionX = 100, float positionY = 100, bool normalGravity = false)
+        {
+            this.apply = apply; this.positionX = positionX; this.positionY = positionY;
+            movementFlags = normalGravity ? (byte)16 : (byte)0;
+            Owner = Join(1); Target = Join(2);
+        }
         private ConnectionHandle Join(long id)
         {
             Assert.True(slots.TryAcquireConnection(out var lease));
@@ -136,7 +175,7 @@ public sealed class ProjectilePhysicalSentinel1458Tests
             apply(new PlayerHealthRuntimeCommand(connection, new(session.Slot, 1000, 1000)));
             apply(new PlayerEquipmentRuntimeCommand(connection, new(session.Slot, 59, 0, 0, 0, 0)));
             apply(new PlayerPvpToggleRuntimeCommand(connection, true));
-            apply(new PlayerMovementRuntimeCommand(connection, new(session.Slot, 0, 0, 0, 0, 0, 100, 100,
+            apply(new PlayerMovementRuntimeCommand(connection, new(session.Slot, 0, movementFlags, 0, 0, 0, positionX, positionY,
                 false, 0, 0, false, 0, false, 0, 0, 0, 0, false, 0, 0)));
             return connection;
         }

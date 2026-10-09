@@ -260,7 +260,7 @@ public sealed class ClientBulletVolley1458Tests
         return state;
     }
 
-    private sealed class Fixture : IDisposable
+    internal sealed class Fixture : IDisposable
     {
         internal readonly PlayerJoinSession Session;
         internal readonly ConnectionHandle Connection;
@@ -323,7 +323,7 @@ public sealed class ClientBulletVolley1458Tests
         }
     }
 
-    private sealed class Events : IRuntimePlayerEventSink
+    internal sealed class Events : IRuntimePlayerEventSink
     {
         internal Action? OnEquipment;
         public void PlayerEquipmentUpdated(ConnectionHandle connection, in PlayerEquipmentCommitRequest request)

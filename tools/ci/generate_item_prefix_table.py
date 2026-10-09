@@ -7,9 +7,8 @@ rerolled. Both are lifted from the pinned official TerrariaServer 1.4.5.8 assemb
 
 To reproduce:
 
-    dotnet build .cache/prefix-probe/Probe.csproj -c Release
-    .cache/prefix-probe/bin/Release/net48/PrefixProbe.exe table > prefix.tsv
-    python tools/ci/generate_item_prefix_table.py prefix.tsv
+    dotnet run --project .cache/bullet-prefix-stat-proof/Probe.csproj -c Release
+    python tools/ci/generate_item_prefix_table.py .cache/bullet-prefix-stat-proof/prefix.tsv
 
 The probe lives under .cache (untracked) because it references the pinned assembly, which the repository does
 not carry. Regenerating and diffing the emitted file is how this table is audited.
@@ -85,6 +84,28 @@ public static class VanillaItemPrefixTable1458
     [
 @@MULTIPLIERS@@
     ];
+
+    // Raw source stat effects are metadata, not admission to any combat or item-use subsystem.
+    private static ReadOnlySpan<float> KnockBackShootSpeedMultipliers =>
+    [
+@@OTHER MULTIPLIERS@@
+    ];
+
+    private static ReadOnlySpan<byte> CritBonuses =>
+    [
+@@CRIT BONUSES@@
+    ];
+
+    public static bool TryGetStatModifiers(PrefixId prefix, out VanillaItemPrefixStatModifiers1458 modifiers)
+    {
+        modifiers = default;
+        int value = prefix.Value;
+        if ((uint)value >= PrefixCount)
+            return false;
+        modifiers = new(Multipliers[value * 3], KnockBackShootSpeedMultipliers[value * 2],
+            Multipliers[value * 3 + 1], KnockBackShootSpeedMultipliers[value * 2 + 1], CritBonuses[value]);
+        return true;
+    }
 
     // Bit 0: the prefix changes knockback, so an item with no knockback rejects it.
     // Bit 1: PrefixID.Sets.ReducedNaturalChance, which costs the roll an extra value.
@@ -212,6 +233,10 @@ public readonly record struct VanillaItemPrefixRecord1458(
     byte Mana,
     int Family,
     bool HasNoKnockBack);
+
+public readonly record struct VanillaItemPrefixStatModifiers1458(
+    float DamageMultiplier, float KnockBackMultiplier, float SpeedMultiplier,
+    float ShootSpeedMultiplier, int CritBonus);
 """
 
 
@@ -270,8 +295,10 @@ def main():
             elif section == "families":
                 families[int(fields[0])] = [int(value) for value in fields[1:]]
             else:
+                if len(fields) != 8:
+                    raise ValueError("raw prefix stat capture requires eight fields")
                 prefixes[int(fields[0])] = (float(fields[1]), float(fields[2]), float(fields[3]),
-                                            float(fields[4]) != 1.0, fields[5] == "1")
+                                            float(fields[4]), fields[5] == "1", float(fields[6]), int(fields[7]))
 
     items.sort(key=lambda row: row[0])
 
@@ -307,10 +334,16 @@ def main():
     prefix_count = max(prefixes) + 1
     multipliers = [1.0, 1.0, 1.0]
     prefix_flags = [0]
+    other_multipliers = [1.0, 1.0]
+    crit_bonuses = [0]
     for prefix in range(1, prefix_count):
-        damage_multiplier, speed_multiplier, mana_multiplier, changes_knock_back, reduced = prefixes[prefix]
+        damage_multiplier, speed_multiplier, mana_multiplier, knock_back, reduced, shoot_speed, crit = prefixes[prefix]
+        if not 0 <= crit <= 255:
+            raise ValueError("prefix crit bonus does not fit a byte")
         multipliers.extend([damage_multiplier, speed_multiplier, mana_multiplier])
-        prefix_flags.append((0x01 if changes_knock_back else 0) | (0x02 if reduced else 0))
+        other_multipliers.extend([knock_back, shoot_speed])
+        crit_bonuses.append(crit)
+        prefix_flags.append((0x01 if knock_back != 1.0 else 0) | (0x02 if reduced else 0))
 
     text = (HEADER
             .replace("@@ITEMCOUNT@@", str(len(items)))
@@ -319,6 +352,8 @@ def main():
             .replace("@@FAMILIES@@", byte_lines(family_payload))
             .replace("@@FAMILYSTARTS@@", ", ".join(str(value) for value in family_starts))
             .replace("@@MULTIPLIERS@@", float_lines(multipliers))
+            .replace("@@OTHER MULTIPLIERS@@", float_lines(other_multipliers))
+            .replace("@@CRIT BONUSES@@", byte_lines(crit_bonuses))
             .replace("@@PREFIXFLAGS@@", byte_lines(prefix_flags)))
 
     with io.open(OUTPUT, "w", encoding="utf-8", newline="") as handle:

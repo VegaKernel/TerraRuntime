@@ -36,7 +36,11 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
         // Damage_PVE_Inner chooses a hit point even when SpawnHitVisuals has no branch for this type.
         _ = after.NextDouble();
         _ = after.NextDouble();
-        if (!VanillaProjectileNpcStatus1458.TrySelect(projectile.Type, after.Next, out var addition)) return false;
+        ProjectileNpcStatusAddition1458? addition = null;
+        // Damage_PVE_Inner still chooses the hit point for a plain bullet; StatusNPC
+        // contributes no intrinsic buff or random offer for projectile14.
+        if (projectile.Type.Value != 14 &&
+            !VanillaProjectileNpcStatus1458.TrySelect(projectile.Type, after.Next, out addition)) return false;
         RuntimeNpcBuffAdditionPlan1458 buffPlan;
         if (addition is { } value)
         {

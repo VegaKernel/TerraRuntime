@@ -136,7 +136,7 @@ public sealed class ProjectileNpcStatusContinuous1458Tests
         var sourceHit = projectileSource.RootElement.GetProperty("profiles").EnumerateArray()
             .Single(x => x.GetProperty("projectileType").GetInt32() == 2 && x.GetProperty("seed").GetInt32() == 3 &&
                 x.GetProperty("life").GetInt32() == 9);
-        using var f = new Fixture(row, applyInitialBuff: false, life: 9, seed: 3);
+        using var f = new Fixture(row, applyInitialBuff: false, life: 9, seed: 3, ownPlayerPhase: true);
         Assert.True(f.Shots.TrySpawn(0, new(new(2), f.Player.Slot.Value,
             800, 440, 3, 0, default, 0, 10, 0, 10), out var shot));
         Assert.True(f.Shots.TryMarkCombatTrusted(shot.Handle, f.Player));
@@ -144,6 +144,8 @@ public sealed class ProjectileNpcStatusContinuous1458Tests
         // This is the runtime's explicit server-trusted PvE route. The independent whole Projectile.Update
         // fixture also retains myPlayer255/owner0's no-hit case; it is not a dedicated-local-hit claim.
         f.State.Tick();
+        Assert.True(f.Runtime.Players.TryGet(f.Player, out var attacker));
+        Assert.Equal(PlayerDerivedCritState1458.SourceBaseline, attacker.ItemPhase!.Value.DerivedCrit);
         Assert.True(f.Npcs.TryGet(f.Actor.Handle, out var hit));
         Assert.Equal(sourceHit.GetProperty("hit").GetProperty("life").GetInt32(), hit.Simulation.Life);
         Assert.True(f.Status.TryGetDebuffs(hit.Handle, out var beforeFlags));
@@ -249,7 +251,8 @@ public sealed class ProjectileNpcStatusContinuous1458Tests
         internal PlayerHandle Player => session.Handle;
         internal RuntimeNpcBuffStatus1458 Status => Runtime.Npcs.NpcBuffStatus;
 
-        internal Fixture(JsonElement row, bool applyInitialBuff = true, int? life = null, int? seed = null)
+        internal Fixture(JsonElement row, bool applyInitialBuff = true, int? life = null, int? seed = null,
+            bool ownPlayerPhase = false)
         {
             Random = new(seed ?? row.GetProperty("seed").GetInt32());
             var registry = new RuntimeNpcReplicationRegistry();
@@ -262,8 +265,16 @@ public sealed class ProjectileNpcStatusContinuous1458Tests
             State = new(npcs: Npcs, worldItems: Items, projectiles: Shots, npcReplication: registry, worldTiles: tiles,
                 worldClock: new RuntimeWorldClock(1000, false, default, 0, 0),
                 townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458) with { WorldSurface = 40, RockLayer = 35 },
-                naturalSpawnRandom: new SystemVanillaNpcRandom(Random));
+                naturalSpawnRandom: new SystemVanillaNpcRandom(Random),
+                playerUpdateRandomSeed: ownPlayerPhase ? new(0) : null);
             Runtime = (ServerRuntimeComposition)typeof(ServerRuntimeState).GetField("_runtime", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(State)!;
+            if (ownPlayerPhase)
+            {
+                // These source rows start at NPC.UpdateNPC, not Main.UpdatePlayers. The
+                // independent empty-selected player phase derives known4 on its own stream.
+                Runtime.Players.SetRemotePlayerEnvironment(new(false, false), Shots);
+                Runtime.Players.SetNpcHealthWorldFacts(() => new(false, false));
+            }
             Assert.True(slots.TryAcquireConnection(out var lease));
             session = new(lease!);
             session.ObserveWorldRequest();

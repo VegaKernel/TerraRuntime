@@ -16,9 +16,10 @@ internal readonly record struct RuntimePlayerItemPhase1458(
     internal bool PendingItemReuse { get; init; }
     internal int? ToolTime { get; init; }
     internal int? AttackCD { get; init; }
+    internal PlayerDerivedCritState1458? DerivedCrit { get; init; }
     internal static RuntimePlayerItemPhase1458 Constructor => new(
         20, new(0, 0, 0f, 0, 0), new(0, 0, 0, 0, false, 0, 0), 0f)
     {
-        ToolTime = 0, AttackCD = 0
+        ToolTime = 0, AttackCD = 0, DerivedCrit = PlayerDerivedCritState1458.SourceBaseline
     };
 }

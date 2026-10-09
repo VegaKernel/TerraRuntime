@@ -364,12 +364,17 @@ public static class VanillaProjectileWeaponCombatCatalog
         in VanillaProjectileWeaponCombatDefinition weapon,
         in VanillaProjectileAmmoCombatDefinition ammo,
         in VanillaCombatPrefixModifiers prefix,
-        in VanillaPlayerCombatSnapshot attacker)
+        in VanillaPlayerCombatSnapshot attacker,
+        VanillaBulletSourceArithmetic1458 arithmetic = VanillaBulletSourceArithmetic1458.CoreClrSingle)
     {
         if (weapon.AmmoFamily != ammo.Family)
             return 0;
 
-        int prefixedWeaponDamage = Math.Max(1, (int)Math.Round(weapon.BaseDamage * prefix.DamageMultiplier));
+        double product = weapon.AmmoFamily == VanillaProjectileAmmoFamily.Bullet &&
+            arithmetic == VanillaBulletSourceArithmetic1458.WindowsClr4X86
+            ? weapon.BaseDamage * (double)prefix.DamageMultiplier
+            : weapon.BaseDamage * prefix.DamageMultiplier;
+        int prefixedWeaponDamage = Math.Max(1, (int)Math.Round(product));
         float multiplier = ResolveRangedDamageMultiplier(weapon.AmmoFamily, in attacker);
         int weaponDamage = Math.Max(1, (int)(prefixedWeaponDamage * multiplier + 5E-06f));
         int ammoDamage = ammo.Damage <= 0 ? 0 : (int)(ammo.Damage * multiplier);
@@ -416,8 +421,11 @@ public static class VanillaProjectileWeaponCombatCatalog
     }
 
     /// <summary>Item.Prefix stat-rounding validity, in addition to the represented ranged modifier formulas.</summary>
-    public static bool IsPrefixSupported(ItemTypeId weaponType, PrefixId prefix) =>
-        TryGetWeapon(weaponType, out _) &&
+    public static bool IsPrefixSupported(ItemTypeId weaponType, PrefixId prefix,
+        VanillaBulletSourceArithmetic1458 arithmetic = VanillaBulletSourceArithmetic1458.CoreClrSingle) =>
+        VanillaBulletWeaponLaunch1458.Supports(weaponType)
+        ? VanillaBulletWeaponStats1458.TryResolve(weaponType, prefix, arithmetic, out _)
+        : TryGetWeapon(weaponType, out _) &&
         VanillaItemCombatCatalog.TryGetRangedPrefixModifiers(prefix, out _) &&
         (prefix.Value == 0 ||
          (VanillaItemPrefixTable1458.TryGet(weaponType, out var stats) &&

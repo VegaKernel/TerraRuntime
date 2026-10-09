@@ -317,7 +317,7 @@ internal sealed partial class ProjectileAuthority
             if (!celebrationMk2Volleys.TryInspect(connection.Player, authoritative.UseTick, volley.Pattern,
                     authoritative.State.Ai.Ai1, out var current) || current != volley) return false;
         }
-        else if (trustedClientUseCadence.IsOnCooldown(connection.Player, authoritative.UseTick, authoritative.UseTimeTicks))
+        else if (trustedClientUseCadence.IsOnCooldown(connection.Player, authoritative.UseTick))
             return false;
 
         // The entire tail up to publication is callback-free on the authoritative writer. All owners were
@@ -330,7 +330,7 @@ internal sealed partial class ProjectileAuthority
         if (authoritative.CelebrationVolley is { } admittedVolley)
             celebrationMk2Volleys.Commit(connection.Player, in admittedVolley);
         else
-            trustedClientUseCadence.MarkUse(connection.Player, authoritative.UseTick);
+            trustedClientUseCadence.MarkUse(connection.Player, authoritative.UseTick, authoritative.UseTimeTicks);
         AppliedSpawns++;
         PromotedClientProjectileSpawns++;
         players.PublishProjectileUse(capture, authoritative.InventoryMutation, authoritative.ManaCost);

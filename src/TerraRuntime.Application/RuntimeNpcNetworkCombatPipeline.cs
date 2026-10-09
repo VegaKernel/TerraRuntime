@@ -423,7 +423,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         int hitDirection,
         int authoritativeDamage = -1,
         int armorPenetration = 0,
-        bool critical = false)
+        bool critical = false,
+        Func<bool>? ownerCurrent = null)
     {
         int resolvedSourceDamage = authoritativeDamage > 0 ? authoritativeDamage : projectile.Damage;
         if (!projectile.IsActive || !target.IsAssigned || hitDirection is < -1 or > 1 ||
@@ -436,7 +437,16 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
             return RuntimeProjectileNpcDamageResult.Rejected;
         }
 
-        return TryStrikePlayerOwnedDamage(in liveTarget, in request);
+        if (ownerCurrent is null) return TryStrikePlayerOwnedDamage(in liveTarget, in request);
+        if (pendingGuardedProjectileInteraction is not null || !ownerCurrent())
+            return RuntimeProjectileNpcDamageResult.Rejected;
+        pendingGuardedProjectileInteraction = (liveTarget.Handle, request.Source.Player);
+        try
+        {
+            var prelude = new NpcDamagePrelude1458(liveTarget, null, ownerCurrent, static _ => { });
+            return TryStrikePlayerOwnedDamage(in liveTarget, in request, prelude);
+        }
+        finally { pendingGuardedProjectileInteraction = null; }
     }
 
     public RuntimeProjectileNpcDamageResult TryStrikeServerPlayerMelee(

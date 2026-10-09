@@ -30,6 +30,7 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
     private readonly RuntimePlayerProjectileUseCapture?[] hitOwnerBuffer;
     private readonly RuntimeNpcBuffAdditionPlan1458?[] hitStatusBuffer;
     private readonly PlayerSessionGeneration[] ownerGenerations = new PlayerSessionGeneration[PlayerSlotCount];
+    private readonly RuntimePlayerProjectileUseCapture?[] explosionOwnerBuffer = new RuntimePlayerProjectileUseCapture?[PlayerSlotCount];
     private readonly long[] lastOwnerNpcHitTick;
     private readonly NpcGeneration[] lastOwnerNpcHitGeneration;
     private readonly RuntimeProjectileNpcLocalImmunityRegistry localNpcImmunity;
@@ -116,6 +117,10 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
             {
                 continue;
             }
+            var capturedOwner = hitOwnerBuffer[projectileIndex];
+            if (players.TryCapture(trustedOwner, out _) &&
+                (capturedOwner is null || !players.IsCurrentProjectileUse(capturedOwner)))
+                continue;
             bool sharedOwnerImmunity = VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(projectile.Type);
             bool localImmunity = VanillaProjectileNpcCombatFacts.TryGetLocalNpcImmunityCooldown(projectile.Type, out int localImmunityCooldown);
             bool preparedStatusHit = usesSourceRandom && status is not null && projectile.Type.Value is 2 or 34 or 54;
@@ -124,6 +129,10 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
             for (int npcIndex = 0; npcIndex < npcCount; npcIndex++)
             {
                 NpcSnapshot target = npcBuffer[npcIndex];
+                // A plain bullet has no intrinsic status. Reuse the retained status/death lane
+                // where it is owned without excluding other already-admitted NPC targets.
+                bool preparedPlainBullet = usesSourceRandom && status is not null && projectile.Type.Value == 14 &&
+                    target.TypeIdentity.Value is 1 or 3 or 59;
                 if (!IsEligibleTarget(in target, out VanillaNpcHitboxSize npcHitbox) ||
                     !Intersects(in projectile, in projectileDefinition, in target, in npcHitbox) ||
                     ((sharedOwnerImmunity || preparedStatusHit && projectile.Type.Value != 2) && IsOwnerNpcOnCooldown(ownerRow, target.Handle, tick)) ||
@@ -132,7 +141,7 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
                     continue;
                 }
 
-                if (preparedStatusHit)
+                if (preparedStatusHit || preparedPlainBullet)
                 {
                     if (TryPreparedStatusHit(projectile, target, ownerCombat, hitOwnerBuffer[projectileIndex],
                             hitStatusBuffer[npcIndex], ownerRow, tick, sharedOwnerImmunity, localImmunity,
@@ -154,7 +163,8 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
                 int hitDirection = projectile.VelocityX > 0.01f ? 1 : projectile.VelocityX < -0.01f ? -1 : 0;
                 int critRoll = nextRandom(1, 101);
                 int damageVariation = nextRandom(-15, 16);
-                if (!IsCurrentOwnerSnapshot(in ownerSnapshot))
+                if (!IsCurrentOwnerSnapshot(in ownerSnapshot) ||
+                    capturedOwner is not null && !players.IsCurrentProjectileUse(capturedOwner))
                     continue;
                 if (!VanillaCombatFacts.TryResolvePveHit(
                         projectile.Type,
@@ -166,8 +176,15 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
                 {
                     continue;
                 }
+                if (usesSourceRandom && projectile.Type.Value == 14)
+                {
+                    _ = sourceRandom.NextDouble();
+                    _ = sourceRandom.NextDouble();
+                }
+                if (capturedOwner is not null && !players.IsCurrentProjectileUse(capturedOwner)) continue;
                 RuntimeProjectileNpcDamageResult result = combat.TryStrikeProjectile(
-                    in projectile, target.Handle, hitDirection, hit.Damage, hit.ArmorPenetration, hit.Critical);
+                    in projectile, target.Handle, hitDirection, hit.Damage, hit.ArmorPenetration, hit.Critical,
+                    capturedOwner is null ? null : () => players.IsCurrentProjectileUse(capturedOwner));
                 if (result == RuntimeProjectileNpcDamageResult.Rejected)
                     continue;
 
@@ -224,12 +241,19 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
         if (explosions.IsEmpty)
             return;
 
+        Array.Clear(explosionOwnerBuffer);
+        foreach (var explosion in explosions)
+            if (explosion.TrustedOwner.IsAssigned)
+                players.TryCaptureProjectileUse(explosion.TrustedOwner,
+                    out explosionOwnerBuffer[explosion.TrustedOwner.Slot.Value]);
         long tick = tickProvider();
         int npcCount = npcs.CopyActive(npcBuffer);
         for (int explosionIndex = 0; explosionIndex < explosions.Length; explosionIndex++)
         {
             RuntimeProjectileExplosionEvent explosion = explosions[explosionIndex];
             ProjectileSnapshot projectile = explosion.Projectile;
+            var capturedOwner = explosion.TrustedOwner.IsAssigned
+                ? explosionOwnerBuffer[explosion.TrustedOwner.Slot.Value] : null;
             if (projectile.Handle.Slot >= RuntimeProjectileStore.VanillaPhysicalSlotCount ||
                 !projectile.IsActive || projectile.Damage <= 0 ||
                 !VanillaProjectileOwnership.IsPlayerOwned(projectile.Spawner) ||
@@ -242,6 +266,9 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
             {
                 continue;
             }
+            if (players.TryCapture(explosion.TrustedOwner, out _) &&
+                (capturedOwner is null || capturedOwner.Player.Player != explosion.TrustedOwner ||
+                    !players.IsCurrentProjectileUse(capturedOwner))) continue;
 
             bool sharedOwnerImmunity = VanillaProjectileNpcCombatFacts.UsesSharedOwnerNpcImmunity(projectile.Type);
             bool localImmunity = VanillaProjectileNpcCombatFacts.TryGetLocalNpcImmunityCooldown(projectile.Type, out int localImmunityCooldown);
@@ -259,7 +286,8 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
                 int hitDirection = ResolveExplosionDirection(in explosion, in target, in npcHitbox);
                 int critRoll = nextRandom(1, 101);
                 int damageVariation = nextRandom(-15, 16);
-                if (!IsCurrentOwnerSnapshot(in ownerSnapshot))
+                if (!IsCurrentOwnerSnapshot(in ownerSnapshot) ||
+                    capturedOwner is not null && !players.IsCurrentProjectileUse(capturedOwner))
                     continue;
                 if (!VanillaCombatFacts.TryResolvePveHit(
                         projectile.Type,
@@ -273,7 +301,8 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
                 }
 
                 RuntimeProjectileNpcDamageResult result = combat.TryStrikeProjectile(
-                    in projectile, target.Handle, hitDirection, hit.Damage, hit.ArmorPenetration, hit.Critical);
+                    in projectile, target.Handle, hitDirection, hit.Damage, hit.ArmorPenetration, hit.Critical,
+                    capturedOwner is null ? null : () => players.IsCurrentProjectileUse(capturedOwner));
                 if (result == RuntimeProjectileNpcDamageResult.Rejected)
                     continue;
 
@@ -380,8 +409,8 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
 
     private bool TryCaptureOwnerCombatSnapshot(PlayerHandle owner, out VanillaPlayerCombatSnapshot snapshot)
     {
-        if (players.TryCaptureCombatSnapshot(owner, out snapshot))
-            return true;
+        if (players.TryCapture(owner, out _))
+            return players.TryCaptureProjectileCombatSnapshot(owner, out snapshot);
         if (serverPlayers is not null && serverPlayers.TryCaptureCombatSnapshot(owner, out snapshot))
             return true;
         // Unknown gear cannot acquire neutral outgoing modifiers after the authoritative

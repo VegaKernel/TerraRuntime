@@ -204,7 +204,9 @@ internal sealed partial class PlayerAuthority
                 plan.Physics = physical with { GravityDirection = 1f };
             }
             if (ghost)
-                item = item with { Mana = item.Mana with { Maximum = item.BaseManaMaximum } };
+                // Source Ghost() has its own crit reset; dead/outside retain their prior fields.
+                item = item with { Mana = item.Mana with { Maximum = item.BaseManaMaximum },
+                    DerivedCrit = PlayerDerivedCritState1458.SourceBaseline };
             plan.Item = item;
             plan.Changed = true;
             return true;
@@ -217,6 +219,15 @@ internal sealed partial class PlayerAuthority
                     world.WindowsItemPrefixArithmetic) &&
                 !VanillaRemoteMeleeItemCheck1458.IsSupported(selected.ItemType, selected.Prefix,
                     world.WindowsItemPrefixArithmetic))) return false;
+        var critArithmetic = world.WindowsItemPrefixArithmetic
+            ? VanillaBulletSourceArithmetic1458.WindowsClr4X86 : VanillaBulletSourceArithmetic1458.CoreClrSingle;
+        if (!VanillaSelectedItemCrit1458.TryResolve(selected.ItemType, selected.Prefix, critArithmetic, out int itemCrit))
+            return false;
+        // ResetEffects derives all three fields from this phase's selected Item.crit.
+        // Later selection/equipment reports must not reconstruct these retained values.
+        var baselineCrit = PlayerDerivedCritState1458.SourceBaseline;
+        item = item with { DerivedCrit = new(baselineCrit.Melee + itemCrit,
+            baselineCrit.Ranged + itemCrit, baselineCrit.Magic + itemCrit) };
         if (plan.Maximum is not { } maximum || plan.HealthWorld is not { } capturedHealthWorld ||
             !TryPlanNpcHealth(member, maximum, false, false, out var health, selectedItemPhase: true,
                 selectedHealthInputs: (capturedHealthWorld, plan.Grappling)) ||

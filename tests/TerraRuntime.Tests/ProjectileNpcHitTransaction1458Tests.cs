@@ -10,6 +10,7 @@ using TerraRuntime.Core.Players;
 using TerraRuntime.Core.Projectiles;
 using TerraRuntime.Core.Worlds;
 using TerraRuntime.Gameplay.Items;
+using TerraRuntime.Gameplay.Players;
 using TerraRuntime.Network;
 using TerraRuntime.Protocol;
 using TerraRuntime.Protocol.Multiplicity;
@@ -95,9 +96,13 @@ public sealed class ProjectileNpcHitTransaction1458Tests
         var state = new ServerRuntimeState(npcs: npcs, projectiles: shots, worldTiles: tiles,
             npcReplication: registry, worldClock: new(1000, false, default, 0, 0),
             townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458) with { WorldSurface = 40, RockLayer = 35 },
-            naturalSpawnRandom: new SystemVanillaNpcRandom(random));
+            naturalSpawnRandom: new SystemVanillaNpcRandom(random), playerUpdateRandomSeed: new(0));
         var runtime = (ServerRuntimeComposition)typeof(ServerRuntimeState)
             .GetField("_runtime", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(state)!;
+        // The oracle starts at NPC.UpdateNPC/Projectile.Update. This separate empty-selected
+        // player phase owns constructor-equivalent crit4 without borrowing the NPC RNG stream.
+        runtime.Players.SetRemotePlayerEnvironment(new(false, false), shots);
+        runtime.Players.SetNpcHealthWorldFacts(() => new(false, false));
         var slots = new PlayerSlotPool(1);
         Assert.True(slots.TryAcquireConnection(out var lease));
         using var session = new PlayerJoinSession(lease!);
@@ -110,11 +115,14 @@ public sealed class ProjectileNpcHitTransaction1458Tests
         state.Apply(new PlayerMovementRuntimeCommand(connection, Movement(session.Slot)));
         state.Apply(new PlayerBuffTypesRuntimeCommand(connection,
             new(session.Slot, new BuffTypeId[] { new(93), new(112) })));
-        runtime.Players.TickHealthContext();
+        // State.Tick owns the combined selected phase; the standalone health-only lane
+        // does not represent these neutral ammunition buffs.
         Assert.True(npcs.TrySpawn(0, Actor(), out var before));
         Assert.True(shots.TrySpawn(0, Shot(2), out var projectile));
         Assert.True(shots.TryMarkCombatTrusted(projectile.Handle, session.Handle));
         state.Tick();
+        Assert.True(runtime.Players.TryGet(connection, out var attacker));
+        Assert.Equal(PlayerDerivedCritState1458.SourceBaseline, attacker.ItemPhase!.Value.DerivedCrit);
         Assert.True(npcs.TryGet(before.Handle, out var after));
         Assert.Equal(row.GetProperty("hit").GetProperty("life").GetInt32(), after.Simulation.Life);
         AssertStatus(runtime.Npcs.NpcBuffStatus, after.Handle,

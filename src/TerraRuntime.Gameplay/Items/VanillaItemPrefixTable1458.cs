@@ -550,6 +550,55 @@ public static class VanillaItemPrefixTable1458
         1f, 1f, 1f, 1f, 1f, 1f
     ];
 
+    // Raw source stat effects are metadata, not admission to any combat or item-use subsystem.
+    private static ReadOnlySpan<float> KnockBackShootSpeedMultipliers =>
+    [
+        1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1.1f,
+        1f, 1f, 1f, 1f, 1f, 1f, 1f, 0.85f, 1f,
+        1f, 1f, 1f, 1f, 0.9f, 1f, 1.1f, 1f, 0.8f,
+        1f, 1.15f, 1f, 0.9f, 1f, 1f, 1f, 1f, 1.1f,
+        1f, 1.15f, 1.15f, 1.05f, 1.05f, 1.05f, 1.15f, 1f, 0.9f,
+        0.9f, 1f, 0.9f, 0.8f, 1f, 1f, 1f, 1f, 1f,
+        1f, 1f, 1.05f, 1f, 1f, 1f, 1f, 1f, 0.9f,
+        1f, 1f, 1f, 1.1f, 1f, 1.1f, 1f, 1.15f, 1f,
+        1f, 1f, 1.1f, 1f, 1.15f, 1f, 0.8f, 1f, 1f,
+        1f, 0.85f, 1f, 1f, 1f, 1f, 1f, 1f, 1f,
+        1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f,
+        1f, 1f, 1f, 0.9f, 1f, 1f, 1f, 1f, 1f,
+        1.15f, 1f, 1.15f, 1f, 0.8f, 1f, 0.9f, 1f, 1f,
+        1f, 1.15f, 1f, 1f, 1f, 1f, 1f, 1f, 1f,
+        1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f,
+        1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f,
+        1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f,
+        1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f,
+        1.15f, 1f, 1.15f, 1.1f, 1.15f, 1f, 1.17f, 1f, 1.15f,
+        1f, 1.05f, 1f, 1f, 1f, 1f, 1f, 1f, 1f,
+        0.9f, 1f, 1f, 1f, 1f, 1f, 0.75f, 1f, 0.9f,
+        1f, 1f, 1f, 1f, 1f, 1.25f, 1f
+    ];
+
+    private static ReadOnlySpan<byte> CritBonuses =>
+    [
+        0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x03, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x03, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x03, 0x00,
+        0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x05, 0x05, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x05, 0x05, 0x05, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00
+    ];
+
+    public static bool TryGetStatModifiers(PrefixId prefix, out VanillaItemPrefixStatModifiers1458 modifiers)
+    {
+        modifiers = default;
+        int value = prefix.Value;
+        if ((uint)value >= PrefixCount)
+            return false;
+        modifiers = new(Multipliers[value * 3], KnockBackShootSpeedMultipliers[value * 2],
+            Multipliers[value * 3 + 1], KnockBackShootSpeedMultipliers[value * 2 + 1], CritBonuses[value]);
+        return true;
+    }
+
     // Bit 0: the prefix changes knockback, so an item with no knockback rejects it.
     // Bit 1: PrefixID.Sets.ReducedNaturalChance, which costs the roll an extra value.
     private static ReadOnlySpan<byte> PrefixFlags =>
@@ -682,3 +731,7 @@ public readonly record struct VanillaItemPrefixRecord1458(
     byte Mana,
     int Family,
     bool HasNoKnockBack);
+
+public readonly record struct VanillaItemPrefixStatModifiers1458(
+    float DamageMultiplier, float KnockBackMultiplier, float SpeedMultiplier,
+    float ShootSpeedMultiplier, int CritBonus);

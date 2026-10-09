@@ -20,7 +20,7 @@ public sealed class PlayerItemPhaseOwnership1458Tests
         // The older fixture omitted these fields; its other retained imports stay nullable.
         var constructor = Phase(Row(source, "constructor").GetProperty("constructor")) with
         {
-            ToolTime = 0, AttackCD = 0
+            ToolTime = 0, AttackCD = 0, DerivedCrit = new(4, 4, 4)
         };
         foreach (bool reportZero in new[] { false, true })
         {
