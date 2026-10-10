@@ -6,6 +6,20 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class ProjectileAuthority
 {
+    // The same accepted per-actor use owner is shared by trusted ranged and prepared melee producers.
+    internal bool CanUseTrustedItem(in PlayerStateSnapshot expected, long tick, int useTime) =>
+        tick >= 0 && useTime > 0 && tick <= long.MaxValue - useTime && expected.Player.IsAssigned &&
+        !trustedClientUseCadence.IsOnCooldown(expected.Player, tick) &&
+        playerSnapshots.TryGetPlayer(expected.Player.Slot, out var current) && current == expected;
+
+    internal void MarkAcceptedTrustedItemUse(PlayerHandle player, long tick, int useTime)
+    {
+        if (!player.IsAssigned || tick < 0 || useTime < 1 || tick > long.MaxValue - useTime ||
+            trustedClientUseCadence.IsOnCooldown(player, tick))
+            throw new InvalidOperationException("Validated trusted item use changed during callback-free adoption.");
+        trustedClientUseCadence.MarkUse(player, tick, useTime);
+    }
+
     internal readonly record struct RangedTargetCapture(NpcSnapshot? Npc, PlayerStateSnapshot? Player);
 
     internal bool TryCaptureRangedTarget(NpcHandle npc, PlayerHandle player, out RangedTargetCapture capture)

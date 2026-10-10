@@ -28,7 +28,7 @@ public sealed partial class ServerPlayerStateStore
         ServerPlayerVitalsState? vitals = null, ItemUsePresentation? presentation = null)
     {
         plan = null;
-        if (oldItems.Length == 0 || oldItems.Length > MaximumPreparedItemChanges ||
+        if ((oldItems.Length == 0 && presentation is null) || oldItems.Length > MaximumPreparedItemChanges ||
             oldItems.Length != nextItems.Length || !TryGetState(expected.Player, out var state) ||
             state.CaptureSnapshot() != expected || state.Revision == ulong.MaxValue)
             return false;

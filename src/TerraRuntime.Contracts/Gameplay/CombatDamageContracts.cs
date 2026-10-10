@@ -224,7 +224,7 @@ public readonly record struct TargetMitigation(
 {
     public bool IsValid =>
         EffectiveDefense <= Math.Max(Defense, 0) &&
-        float.IsFinite(Endurance) && Endurance is >= 0f and <= 1f;
+        float.IsFinite(Endurance) && Endurance >= 0f;
 }
 
 /// <summary>Final result of attack calculation -> target mitigation, still prior to actual HP mutation.</summary>

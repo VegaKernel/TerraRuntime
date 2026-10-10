@@ -8,7 +8,8 @@ namespace TerraRuntime.Application;
 internal sealed partial class RuntimeNpcNetworkCombatPipeline
 {
     private bool TryApplyServerStrike(in NpcDamageRequest request, out NpcDamageResult result,
-        NpcSnapshot? sharedLifeOwner = null, NpcDamagePrelude1458? prelude = null)
+        NpcSnapshot? sharedLifeOwner = null, NpcDamagePrelude1458? prelude = null,
+        bool drainPreparedNonlethalPublication = false)
     {
         if (!npcs.TryGet(request.Target, out var before))
         {
@@ -34,6 +35,15 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         {
             pendingProjectileResolvedDamage = result.ResolvedDamage;
             preparedProjectileCommittedNpc = committed;
+        }
+
+        if (drainPreparedNonlethalPublication)
+        {
+            if (prelude is null || result.Lethal || spawnTrueEye)
+                throw new InvalidOperationException("Prepared ordinary melee escaped its nonlethal capability.");
+            PublishPreparedNonlethalStrike(in before, in committed, in request, result.ResolvedDamage,
+                forceUpdate, prelude);
+            return true;
         }
 
         // Buff expiry belongs before GetHurtByDebuff's actual 9999 StrikeNPC. The prepared
@@ -66,6 +76,43 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             throw new InvalidOperationException("An accepted server strike lost its exact NPC revision before publication.");
         }
         return true;
+    }
+
+    private void PublishPreparedNonlethalStrike(in NpcSnapshot before, in NpcSnapshot accepted,
+        in NpcDamageRequest request, int resolvedDamage, bool forceUpdate, NpcDamagePrelude1458 prelude)
+    {
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        var capturedAccepted = accepted;
+        bool Current() => npcs.TryGet(capturedAccepted.Handle, out var live) && live == capturedAccepted;
+        // This action adopts every prepared player/BOT field before its first outward observer.
+        try { prelude.PublishBeforeStrike(accepted); }
+        catch (Exception exception) { failure = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception); }
+        if (Current())
+        {
+            try { npcs.TryPublishPendingBirthBeforeStrike(in before, in accepted); }
+            catch (Exception exception) { failure ??= System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception); }
+        }
+        if (Current())
+        {
+            var wire = new TerrariaNpcDamageState(accepted.Handle.Slot,
+                RuntimeNpcPacketProjection.ToProtocolGeneration(accepted.Handle.Generation),
+                (short)Math.Min(request.BaseDamage, short.MaxValue), request.KnockBack,
+                checked((byte)(request.HitDirection + 1)), request.Critical ? (byte)1 : (byte)0);
+            try { npcReplication?.TryPublishDamage(default, in wire); }
+            catch (Exception exception) { failure ??= System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception); }
+        }
+        // Existing target effects/RNG policy is delegated; this owner only makes the publication tail exception-safe.
+        if (Current())
+        {
+            try { ExecuteNpcNonlethalHitEffects(in accepted, resolvedDamage); }
+            catch (Exception exception) { failure ??= System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception); }
+        }
+        if (Current())
+        {
+            try { damage.TryCompleteUnpublished(in accepted, false, publishUpdate: true, forceUpdate); }
+            catch (Exception exception) { failure ??= System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception); }
+        }
+        failure?.Throw();
     }
 
     private void PublishNpcDamage(NpcHandle handle, GameCommandSourceId excludedSource,

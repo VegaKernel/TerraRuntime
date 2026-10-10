@@ -484,6 +484,15 @@ internal sealed partial class NpcAuthority
             knockBack,
             hitDirection) != RuntimeProjectileNpcDamageResult.Rejected;
 
+    internal bool TryCaptureOrdinaryNonlethalMelee(NpcHandle target, PlayerHandle attacker,
+        int maximumBaseDamage, int armorPenetration, float knockBack, int direction, out NpcSnapshot captured) =>
+        combat.TryCaptureOrdinaryNonlethalMelee(target, attacker, maximumBaseDamage, armorPenetration,
+            knockBack, direction, out captured);
+
+    internal bool TryStrikePreparedBotMelee(in NpcSnapshot target, in NpcDamageRequest request,
+        Func<bool> current, Action<NpcSnapshot> adoptAndPublish) =>
+        combat.TryStrikePreparedBotMelee(in target, in request, current, adoptAndPublish);
+
     public int CopyActive(Span<NpcSnapshot> destination) => npcs.CopyActive(destination);
 
     /// <summary>
@@ -1260,8 +1269,8 @@ internal sealed partial class NpcAuthority
         // GetSpawnRate's vertical depth checks below intentionally retain Player.position.
         int playerSceneTileY = Math.Clamp((int)(player.CenterY / 16f), 0, tiles.Dimensions.HeightTiles - 1);
         VanillaTownSceneMetrics1458? scene = npcSceneMetrics?.Scan(playerTileX, playerSceneTileY);
-        // На выделенном сервере Main.Update присваивает cloudAlpha = maxRaining. GetSpawnRate
-        // применяет этот Snow-поверхностный множитель до стен и остальных biome-модификаторов.
+        // РќР° РІС‹РґРµР»РµРЅРЅРѕРј СЃРµСЂРІРµСЂРµ Main.Update РїСЂРёСЃРІР°РёРІР°РµС‚ cloudAlpha = maxRaining. GetSpawnRate
+        // РїСЂРёРјРµРЅСЏРµС‚ СЌС‚РѕС‚ Snow-РїРѕРІРµСЂС…РЅРѕСЃС‚РЅС‹Р№ РјРЅРѕР¶РёС‚РµР»СЊ РґРѕ СЃС‚РµРЅ Рё РѕСЃС‚Р°Р»СЊРЅС‹С… biome-РјРѕРґРёС„РёРєР°С‚РѕСЂРѕРІ.
         if (scene is { ZoneSnow: true } && playerTileY < surface)
         {
             float cloudAlpha = worldClock!.MaxRain;
@@ -1765,9 +1774,9 @@ internal sealed partial class NpcAuthority
             return selection.First;
         }
 
-        // Базовая ветка waterTile из SpawnAnNPC: две заполненные обычной водой клетки над
-        // твёрдым spawnTileY. Биомные, океанские, событийные и Hardmode-цепочки остаются
-        // закрытыми до появления всех необходимых source-фактов.
+        // Р‘Р°Р·РѕРІР°СЏ РІРµС‚РєР° waterTile РёР· SpawnAnNPC: РґРІРµ Р·Р°РїРѕР»РЅРµРЅРЅС‹Рµ РѕР±С‹С‡РЅРѕР№ РІРѕРґРѕР№ РєР»РµС‚РєРё РЅР°Рґ
+        // С‚РІС‘СЂРґС‹Рј spawnTileY. Р‘РёРѕРјРЅС‹Рµ, РѕРєРµР°РЅСЃРєРёРµ, СЃРѕР±С‹С‚РёР№РЅС‹Рµ Рё Hardmode-С†РµРїРѕС‡РєРё РѕСЃС‚Р°СЋС‚СЃСЏ
+        // Р·Р°РєСЂС‹С‚С‹РјРё РґРѕ РїРѕСЏРІР»РµРЅРёСЏ РІСЃРµС… РЅРµРѕР±С…РѕРґРёРјС‹С… source-С„Р°РєС‚РѕРІ.
         if (IsOrdinaryPreHardmodeWaterSpawn(tiles, tileX, floorY, scene))
             return naturalSpawnRandom.NextInt32(0, 400) == 0 ? VanillaNpcIds.GoldGoldfish : VanillaNpcIds.Goldfish;
 

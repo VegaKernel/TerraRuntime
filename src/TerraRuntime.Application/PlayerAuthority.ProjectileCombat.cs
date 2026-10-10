@@ -21,7 +21,7 @@ internal sealed partial class PlayerAuthority
     private static bool IsValidDerivedCombat(in VanillaPlayerCombatSnapshot combat) =>
         combat.Defense >= 0 && combat.MeleeCrit >= 0 && combat.RangedCrit >= 0 && combat.MagicCrit >= 0 &&
         combat.ArmorPenetration >= 0 && combat.MeleeArmorPenetration >= 0 && combat.LavaProtectionTicks >= 0 &&
-        float.IsFinite(combat.Endurance) && combat.Endurance is >= 0f and <= 1f &&
+        float.IsFinite(combat.Endurance) && combat.Endurance >= 0f &&
         IsNonnegativeFinite(combat.MeleeDamage) && IsNonnegativeFinite(combat.RangedDamage) &&
         IsNonnegativeFinite(combat.MinionDamage) && combat.MinionDamage > 0f &&
         IsNonnegativeFinite(combat.MagicDamage) && float.IsFinite(combat.RangedMultDamage) && combat.RangedMultDamage > 0f &&

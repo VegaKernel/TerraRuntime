@@ -35,7 +35,7 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
             !projectiles.TryPrepareSimulation(in initial, out var actor) || actor is null ||
             actor.SourceNpc.IsAssigned || actor.Lifecycle.Reflected ||
             !stepper.TryCaptureOrdinaryArrowTerrain(in initial, out var terrain)) return false;
-        if (owner.Buffs is null || owner.Buffs.Any(b => b.Value is not (0 or 93 or 112))) return false;
+        if (owner.Buffs is null || !HasSupportedNpcHitBuffs(owner.Buffs)) return false;
         int censusCount = npcs.CopyActive(npcBuffer);
         int count = 0;
         for (int i = 0; i < censusCount; i++)

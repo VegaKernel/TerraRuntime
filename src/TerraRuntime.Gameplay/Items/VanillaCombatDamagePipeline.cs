@@ -38,7 +38,7 @@ public static class VanillaCombatDamagePipeline
         bool masterMode = false)
     {
         if (!attack.IsValid || (masterMode && !expertMode) ||
-            !float.IsFinite(target.Endurance) || target.Endurance is < 0f or > 1f)
+            !float.IsFinite(target.Endurance) || target.Endurance < 0f)
         {
             final = default;
             return false;
@@ -65,7 +65,11 @@ public static class VanillaCombatDamagePipeline
                 ? ExpertDefenseEffectiveness
                 : ClassicDefenseEffectiveness;
         double afterDefense = Math.Max(attack.Damage - effectiveDefense * defenseEffectiveness, 1d);
-        int damage = Math.Max((int)((1f - target.Endurance) * afterDefense), 1);
+        // Original Hurt clamps the reduced result to at least one. Avoid an out-of-range
+        // integer conversion for represented finite Endurance values above one.
+        int damage = target.Endurance >= 1f
+            ? 1
+            : Math.Max((int)((1f - target.Endurance) * afterDefense), 1);
         final = new FinalDamageToHp(damage, mitigation);
         return true;
     }

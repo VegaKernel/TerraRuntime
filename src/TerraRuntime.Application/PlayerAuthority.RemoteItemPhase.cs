@@ -143,7 +143,7 @@ internal sealed partial class PlayerAuthority
             member.NpcHealth is not { SourceProfileKnown: true } || member.HasMount || plan.GodMode ||
             (plan.Appearance?.ConsumableUnlockFlags ?? 0) != 0 ||
             !TryCaptureProvenRemoteEquipment(plan.Equipment, plan.Appearance, out var equipmentCombat, out int manaMaximumBonus) ||
-            plan.BuffTypes.Any(static type => type.Value is not (16 or 21 or 23 or 93 or 94 or 112 or 117)) ||
+            plan.BuffTypes.Any(static type => type.Value is not (5 or 16 or 21 or 23 or 93 or 94 or 112 or 114 or 115 or 117 or 321)) ||
             member.MiscFlags1 != 0 || (member.MiscFlags2 & ~(1 << 6)) != 0 ||
             (member.ControlFlags & ~0x7c) != 0 ||
             (member.MovementFlags & ~0x54) != 0 || physical.GravityDirection is not (1f or -1f) ||
@@ -162,7 +162,7 @@ internal sealed partial class PlayerAuthority
         int delay = item.Selected.PotionDelay;
         if (outside)
         {
-            bool combatBuff = plan.BuffTypes.Any(static type => type.Value is 16 or 117);
+            bool combatBuff = plan.BuffTypes.Any(static type => type.Value is 5 or 16 or 114 or 115 or 117 or 321);
             if (combatBuff)
             {
                 if (item.DerivedCombat is not { } retained || !IsValidDerivedCombat(in retained) ||
@@ -243,9 +243,9 @@ internal sealed partial class PlayerAuthority
                 world.WindowsItemPrefixArithmetic, out float magicDamage)) return false;
         var derivedCombat = buffCombat with
         {
-            MeleeCrit = equipmentCombat.MeleeCrit + itemCrit,
-            RangedCrit = equipmentCombat.RangedCrit + itemCrit,
-            MagicCrit = equipmentCombat.MagicCrit + itemCrit,
+            MeleeCrit = buffCombat.MeleeCrit + itemCrit,
+            RangedCrit = buffCombat.RangedCrit + itemCrit,
+            MagicCrit = buffCombat.MagicCrit + itemCrit,
             MagicDamage = magicDamage
         };
         if (!IsValidDerivedCombat(in derivedCombat)) return false;

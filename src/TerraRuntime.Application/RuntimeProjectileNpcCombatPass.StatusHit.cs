@@ -25,8 +25,7 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
             target.TypeIdentity.Value == 1 && target.Ai.Ai1 == 1345f ||
             !projectiles.TryPrepareNpcHit(in projectile, out var projectilePlan) || projectilePlan is null)
             return false;
-        foreach (var buff in owner.Buffs)
-            if (buff.Value is not (0 or 93 or 112)) return false;
+        if (!HasSupportedNpcHitBuffs(owner.Buffs)) return false;
         var before = sourceRandom.Clone();
         var after = before.Clone();
         int crit = after.Next(1, 101);
@@ -81,4 +80,14 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
         ended = despawned || !projectiles.TryGet(adopted.Handle, out var retained) || retained != adopted;
         return true;
     }
+    // Original UpdateBuffs writes for these represented inputs introduce no intrinsic
+    // StatusNPC/SpawnHitVisuals flag. Their class crit is captured once; Archery/Wrath
+    // damage and speed already belong to the retained phase/launch boundary.
+    private static bool HasSupportedNpcHitBuffs(ReadOnlySpan<TerraRuntime.Contracts.Gameplay.BuffTypeId> buffs)
+    {
+        foreach (var buff in buffs)
+            if (buff.Value is not (0 or 5 or 16 or 93 or 112 or 114 or 115 or 117 or 321)) return false;
+        return true;
+    }
+
 }

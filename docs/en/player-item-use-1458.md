@@ -1,9 +1,12 @@
 # Owned player item use 1.4.5.8
 
+## Prepared melee and combat buffs
 
+Prepared ordinary nonlethal Bot melee adopts NPC HP, actual player item-use presentation, shared accepted cadence and Bot clocks before observers. Preparation uses current NPC geometry and the complete held-item census; an owned refusal cannot fall back. Still-current notifications drain after an exception, then propagate the first failure. Presentation-only use introduces no fake item mutation or packet5. Potentially lethal, boss, town and shared-life paths retain their existing handling; source melee RNG and selected-prefix crit remain open.
 
+The remote phase retains Ironskin5, Endurance114, Rage115 and Brain321 in indexed order, including outside compounding and existing early branches. Selected raw item crit is added once to buff-owned class crit. Endurance remains finite/nonnegative without a1 clamp across phase, transfer and common mitigation; values >=1 yield minimum1 damage (immune0). These four buffs and the already represented Archery16/Wrath117 enter the existing prepared projectile-hit and ordinary4/5 continuation boundaries without new intrinsic status effects. Brain accessory dodge and Inferno are not added. Independent component source probes and typed runtime reports remain distinct from natural-client and whole Main support.
 
-
+Local acceptance passes: Release, focused 18495/18495, one full run 1563144/1563145 with one known skip, shipping Windows NativeAOT/five smokes and Release/Native live 82/49. Typed managed/Native proofs pass 558 melee, 586331 human phase/hit/arrow and 338 Endurance checks each. Managed State.Tick/private RNG/literal-wire assertions and separate typed Native public-state checks retain distinct scopes. Linux NativeAOT remains locally unverified. FullVanillaAiParity remains false.
 
 ## Retained ranged weapon and human combat buffs
 

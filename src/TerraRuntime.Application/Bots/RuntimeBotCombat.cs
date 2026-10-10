@@ -35,11 +35,13 @@ internal sealed partial class RuntimeBotCombat(
 
     private bool TryGuardAttack(BotState bot, in PlayerStateSnapshot self, in BotGuardTarget target, long tick)
     {
-        var command = CaptureRangedCommand();
+        var command = CaptureAttackCommand();
         RuntimeBotAttackKind attack = ResolveAttackKind(bot.Configuration.WeaponPolicy, in self, in target);
         if (attack == RuntimeBotAttackKind.Melee)
         {
-            // Melee remains on its existing separate producer policy.
+            if (TryGuardPreparedMeleeAttack(in self, in target, tick, out bool owned)) return true;
+            if (owned) return false;
+            // Initial unsupported contexts retain the existing broad melee/death/status policy.
             long before = bot.NextAttackTick;
             TryGuardMeleeAttack(bot, in self, in target, tick);
             return bot.NextAttackTick != before;
@@ -48,7 +50,7 @@ internal sealed partial class RuntimeBotCombat(
             return false;
         if (TryGuardRangedAttack(bot, in self, in target, attack, tick))
             return true;
-        if (!projectiles.IsCurrentRangedTarget(capturedTarget) || !IsCurrentRangedCommand(command) ||
+        if (!projectiles.IsCurrentRangedTarget(capturedTarget) || !IsCurrentAttackCommand(command) ||
             bot.Configuration.WeaponPolicy != RuntimeBotWeaponPolicy.Automatic)
             return false;
         RuntimeBotAttackKind fallback = attack == RuntimeBotAttackKind.Gun
@@ -64,7 +66,7 @@ internal sealed partial class RuntimeBotCombat(
         RuntimeBotAttackKind attack,
         long tick)
     {
-        var command = CaptureRangedCommand();
+        var command = CaptureAttackCommand();
         if (tick != bot.CurrentTick || tick < 0 || self.Player != bot.Player || !self.HasHealth ||
             self.Life <= 0 || self.IsDead || !bot.OwnsCurrentActor(serverPlayers) ||
             !projectiles.TryCaptureRangedTarget(target.Npc, target.Player, out var targetCapture)) return false;
@@ -151,7 +153,7 @@ internal sealed partial class RuntimeBotCombat(
                 !TryResolveProjectileLaunch(originX, originY, projectileType, projectileDefinition, speed,
                     target, out float currentVelocityX, out float currentVelocityY) ||
                 currentVelocityX != velocityX || currentVelocityY != velocityY ||
-                !item.IsCurrent || !IsCurrentRangedCommand(command))
+                !item.IsCurrent || !IsCurrentAttackCommand(command))
                 return false;
             if (!spawn.TryAdoptUnpublished()) return false;
             if (!item.TryAdoptUnpublished())

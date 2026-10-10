@@ -42,6 +42,20 @@ internal sealed partial class ServerPlayerAuthority
         return true;
     }
 
+    internal bool TryPrepareItemUse(
+        ServerPlayerId id,
+        in PlayerStateSnapshot expected,
+        in ServerPlayerStateStore.ItemUsePresentation presentation,
+        out PreparedItem? plan)
+    {
+        plan = null;
+        if (!TryGetPlayer(id, out var player) || player != expected.Player ||
+            !states.TryPrepareItems(expected, [], [], out var state, presentation: presentation))
+            return false;
+        plan = new(this, id, player, state!);
+        return true;
+    }
+
     internal sealed class PreparedItem(
         ServerPlayerAuthority owner,
         ServerPlayerId id,
@@ -53,7 +67,7 @@ internal sealed partial class ServerPlayerAuthority
         private bool movementPublished;
         private bool presentationPublished;
 
-        internal bool TryPublishRangedUse()
+        internal bool TryPublishItemUse()
         {
             System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
             try
@@ -159,7 +173,7 @@ internal sealed partial class ServerPlayerAuthority
 
         internal bool TryPublish()
         {
-            if (published || !IsAcceptedCurrent)
+            if (published || state.ItemCount == 0 || !IsAcceptedCurrent)
                 return false;
             published = true; // Consume before any reentrant or throwing observer.
             var next = state.Next;

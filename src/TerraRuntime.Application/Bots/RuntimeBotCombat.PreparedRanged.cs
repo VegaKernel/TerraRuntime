@@ -56,15 +56,15 @@ internal sealed partial class RuntimeBotCombat
     private static int RoundStoredItemStat(int value, float multiplier, bool windows) =>
         (int)Math.Round(windows ? value * (double)multiplier : value * multiplier);
 
-    private readonly record struct RangedCommand(PlayerHandle Player, RuntimeBotConfiguration Configuration,
+    private readonly record struct AttackCommand(PlayerHandle Player, RuntimeBotConfiguration Configuration,
         ulong Goal, ulong Observation, long Tick, long NextAttack, long UseUntil,
         Dictionary<BuffTypeId, long> Buffs, KeyValuePair<BuffTypeId, long>[] Effects);
 
-    private RangedCommand CaptureRangedCommand() => new(bot.Player, bot.Configuration, bot.GoalGeneration,
+    private AttackCommand CaptureAttackCommand() => new(bot.Player, bot.Configuration, bot.GoalGeneration,
         bot.ObservationRevision, bot.CurrentTick, bot.NextAttackTick, bot.UseItemUntilTick,
         bot.ActiveBuffs, bot.ActiveBuffs.ToArray());
 
-    private bool IsCurrentRangedCommand(in RangedCommand command)
+    private bool IsCurrentAttackCommand(in AttackCommand command)
     {
         if (bot.Player != command.Player || !bot.OwnsCurrentActor(serverPlayers) ||
             bot.Configuration != command.Configuration || bot.GoalGeneration != command.Goal ||
@@ -86,7 +86,7 @@ internal sealed partial class RuntimeBotCombat
         System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
         try
         {
-            item.TryPublishRangedUse();
+            item.TryPublishItemUse();
         }
         catch (Exception exception)
         {

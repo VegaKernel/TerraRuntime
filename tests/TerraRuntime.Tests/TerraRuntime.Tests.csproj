@@ -434,6 +434,10 @@
     <EmbeddedResource Include="Fixtures/human-combat-buff-phase-original-1458.json.gz" LogicalName="HumanCombatBuffPhase1458" />
     <EmbeddedResource Include="Fixtures/human-combat-buffs-local-shoot-original-1458.json.gz" LogicalName="HumanCombatBuffShoot1458" />
     <EmbeddedResource Include="Fixtures/archery-pick-ammo-cap-original-1458.json.gz" LogicalName="ArcheryPickAmmoCap1458" />
+    <EmbeddedResource Include="Fixtures/endurance-overone-hurt-original-1458.json.gz" LogicalName="OriginalWindowsEnduranceHurt1458" />
+    <EmbeddedResource Include="Fixtures/human-defensive-crit-buff-phase-original-1458.json.gz" LogicalName="HumanDefensiveCritBuffPhase1458" />
+    <EmbeddedResource Include="Fixtures/human-combat-buff-hit-neighbors-original-1458.json.gz" LogicalName="HumanDefensiveCritBuffHit1458" />
+    <EmbeddedResource Include="Fixtures/human-buffed-arrow-update-original-1458.json.gz" LogicalName="HumanBuffedArrowUpdate1458" />
     <EmbeddedResource Include="Fixtures/arcane-derived-mana-original-1458.json.gz" LogicalName="ArcaneDerivedManaSource1458" />
     <EmbeddedResource Include="Fixtures/arcane-vanity-blockers-original-1458.json.gz" LogicalName="ArcaneVanityBlockerSource1458" />
   </ItemGroup>
