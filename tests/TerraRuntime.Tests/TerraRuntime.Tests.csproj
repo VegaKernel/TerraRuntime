@@ -21,6 +21,9 @@
     <EmbeddedResource Include="Fixtures/incoming-human-phase-callers-official-1458.json.gz" LogicalName="IncomingHumanPhaseCallers1458" />
     <EmbeddedResource Include="Fixtures/projectile-spawn-batch-official-1458.json.gz" LogicalName="RangedSpawnBatch1458" />
     <EmbeddedResource Include="Fixtures/ranged-bullet-launch-official-1458.json.gz" LogicalName="RangedBulletLaunch1458" />
+    <EmbeddedResource Include="Fixtures/packet5-family-normalization-configured-official-1458.json.gz" LogicalName="Packet5FamilyNormalization1458" />
+    <EmbeddedResource Include="Fixtures/packet5-family-normalization-next-cursor-official-1458.json.gz" LogicalName="Packet5FamilyNormalizationNext1458" />
+    <EmbeddedResource Include="Fixtures/packet5-acceptance-ties-configured-official-1458.json.gz" LogicalName="Packet5AcceptanceTies1458" />
     <EmbeddedResource Include="Fixtures/inherited-equipment-official-1458.json.gz" LogicalName="InheritedEquipment1458" />
     <EmbeddedResource Include="Fixtures/selected-consumable-phases-official-1458.json.gz" LogicalName="SelectedConsumablePhases1458" />
     <EmbeddedResource Include="Fixtures/ordinary-consumable-family-official-1458.json.gz" LogicalName="OrdinaryConsumableFamily1458" />

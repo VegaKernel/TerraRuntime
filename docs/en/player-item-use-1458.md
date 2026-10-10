@@ -1,5 +1,33 @@
 # Owned player item use 1.4.5.8
 
+## Packet5 prefix normalization (2026-10-10, accepted local checkpoint)
+
+Supported inventory and equipment reports normalize their prefix before any observer runs. The existing numeric acceptance table determines whether a requested positive prefix survives; a rejected prefix rerolls from the item family using the existing shared gameplay cursor. Item/profile, member and input revisions, cursor and accounting are accepted together. Publication checks accepted state again and suppresses stale work without rollback.
+
+`VanillaItemPrefixNormalization1458.IsSupported` classifies canonical inputs without random callbacks. `Resolve` receives a detached cursor callback and explicit platform arithmetic; only `Resolved` permits adopting its candidate cursor. `Unsupported`, `BudgetExhausted` and `InvalidDraw` preserve the live cursor. The result's `Applied` distinguishes an original requested zero (`false`) from a reroll landing on zero (`true`); it does not grant combat capability.
+
+Nonzero requests on the25 official variant identities retain their previous component policy. The invariant table contains868 prefix-capable records; canonical nonprefixable items consume no random offers. Zero requests need no variant defaults. The256-attempt limit is a runtime safety budget, not an original game limit: an admitted exhausted proposal rejects before live adoption and cannot fall back.
+
+Global prefix clipping>=98, ClientReported inventory, SSCfalse, pre-spawn reports and matching-report pending cancellation retain their existing policies. Full inventory producers, ammo-report causality and complete ItemDefaults remain open. Configured shared-cursor custody does not prove whole Main scheduling. Independent source168 actual LinuxGetData rows and genuine Windows CLR4 x86 Prefix266 subcalls are frozen separately. Aligned same-seed105 rows/platform expose42 arithmetic differences across21 identities. Of210 aligned references,194 are admitted and16 nonzero variant cases stay reference/early-refusal evidence. Three compact durable Facts cover all59 canonical inventory slots/full56/original public-next, actual bootstrap claimed31 to bound0/literal154 server relays, currentness/prejoin/reentry and same-value5 pending cancellation. Game positive/restored3750 checks and six omissions yield427/250/66/152/2/434 assertion failures with zero runner errors. App positive/restored21276 checks and four copied omissions fail independently; all three durable Facts detect each of those omissions with one assertion failure/zero errors. Initial focused v1 preserves704/708 with four old consumer-negative fixture failures and no full run. Three minimal fixture migrations seed deliberately malformed retained prefix directly in its existing owner, preserving every assertion/source golden. Removing migrations reproduces two Mining/one Metal/one Style1 assertion failures; corrected classes and restored runs pass. This isolates source ItemSpace/phase consumer checks from the newly corrected receive producer.
+
+Release Rebuild has zero warnings/errors; focused 708/708 passes. ONE full suite passes 1563116/1563117 with zero failures/errors and one known canonical-liquid skip, runner $685.374\,\mathrm{s}$. Fresh shipping WindowsNativeAOT/five smokes and typed managed/fresh Native22156 checks each pass against exact32 references; AMD64 PE has zero CLR directory. Native proof uses typed canonical inventory, independent public seeded-next, platform arithmetic and adoption/currentness observers; full56/private guards and literal154 relay bytes remain managed evidence. Release/Native live82/49 pass with15 sections/client,312 frames before49,129/relay/chat82 and clean stop. CI-tools/docs/graph/domain/diff pass. No new dependency/project edge. Genuine LinuxNativeAOT remains locally unverified; GitHub CI is not awaited.
+
+Evidence: `.cache/packet5-normalization-block-v2-status.json`, `.cache/packet5-normalization-block-v2-full-tests/result.json`, `.cache/packet5-normalization-shipping-bin-v2/shipping-freeze.json`, `.cache/packet5-normalization-shipping-native-v2/freeze-manifest.json`, `.cache/packet5-normalization-block-live-v2/results.json`, `.cache/packet5-prefix-game-api-work/freeze-manifest.json`, `.cache/packet5-app-promoted-work/freeze-manifest.json` and `.cache/packet5-durable-tests-v2-work/final-freeze-manifest.json`.
+
+```mermaid
+sequenceDiagram
+    participant Ingress
+    participant PlayerAuthority
+    participant PrefixRule
+    participant OwnedState
+    participant Observer
+    Ingress->>PlayerAuthority: canonical equipment command
+    PlayerAuthority->>PrefixRule: supported defaults and cloned cursor
+    PrefixRule-->>PlayerAuthority: normalized prefix and candidate cursor
+    PlayerAuthority->>OwnedState: verify current owners; adopt item, revision, cursor, accounting
+    PlayerAuthority->>Observer: publish current accepted state
+```
+
 ## Retained ordinary-arrow subupdates — 2026-10-10, accepted local checkpoint
 
 The accepted block prepares motion and NPC hits in each source arrow subupdate. Jester has two local updates per world tick; source damage and immunity from the first must affect the next target and update. Genuine configured original36 Update calls distinguish equal-final-cursor cases with different second-hit HP. Stored future damage attenuation and raw AI2 flags accompany hit ordering; adding all RNG offers before the existing outer combat pass would preserve the defect.

@@ -179,6 +179,9 @@ internal sealed class ServerRuntimeComposition
         var gameplayRandom = (naturalSpawnRandom as TerraRuntime.Core.Npcs.SystemVanillaNpcRandom)?.SourceRandom
             ?? (worldItemSpawnRandom as SystemWorldItemSpawnRandom)?.SourceRandom
             ?? new VanillaUnifiedRandom1458(Environment.TickCount);
+        // Admitted MessageBuffer.GetData(5)/Item.Prefix proposals use this existing Main.rand
+        // owner. This does not recover unowned callers or the separate UpdatePlayers schedule.
+        playersAuthority.BindReceiveEquipmentRandom(gameplayRandom, OperatingSystem.IsWindows());
         IVanillaNpcRandom npcRandom = naturalSpawnRandom ?? new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom(gameplayRandom);
         IWorldItemSpawnRandom spawnRandom = worldItemSpawnRandom ?? new SystemWorldItemSpawnRandom(gameplayRandom);
         // Player.UpdateEquips uses Main.expertMode/masterMode, derived from Difficulty including Good World.

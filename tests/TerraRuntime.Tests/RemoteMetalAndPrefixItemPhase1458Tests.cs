@@ -80,7 +80,10 @@ public sealed class RemoteMetalAndPrefixItemPhase1458Tests
         foreach (var entry in new[] { (59,1,0), (59,80,0), (59,89,62), (59,2757,0), (62,490,0), (900,1,0) })
         {
             using var f = new Fixture(row);
-            f.Equipment((short)entry.Item1,(short)entry.Item2,1,(byte)entry.Item3);
+            if (entry.Item3 == 0)
+                f.Equipment((short)entry.Item1, (short)entry.Item2, 1, (byte)entry.Item3);
+            else
+                f.SeedRetainedMalformedArmor((short)entry.Item1, (short)entry.Item2, (byte)entry.Item3);
             var item = f.Member.ItemPhase;
             var physics = f.Member.PhysicsPhase;
             var health = f.Member.NpcHealth;
@@ -375,6 +378,16 @@ public sealed class RemoteMetalAndPrefixItemPhase1458Tests
         }
         internal void Equipment(short slot, short type, short stack, byte prefix=0) =>
             Apply(new PlayerEquipmentRuntimeCommand(Connection, new(new(0), slot, stack, prefix, type, 0)));
+        internal void SeedRetainedMalformedArmor(short slot, short type, byte prefix)
+        {
+            // This private phase guard consumes intentionally malformed retained armor.
+            // Real GetData5 removes its impossible prefix before it reaches that guard.
+            var profiles = (RuntimePlayerTransferProfileStore)typeof(PlayerAuthority)
+                .GetField("transferProfiles", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Players)!;
+            var request = new PlayerEquipmentCommitRequest(Connection.Player.Slot, slot, 1, prefix, type, 0);
+            Assert.True(profiles.TrySetEquipment(Connection, in request));
+        }
+
         internal void Apply(RuntimeCommand command) => State.Apply(command);
         internal void Move(bool use, byte selected) => Apply(new PlayerMovementRuntimeCommand(Connection,
             new(new(0), (byte)(64 | (use ? 32 : 0)), 16, 0, 64, selected, 1600, 1606,

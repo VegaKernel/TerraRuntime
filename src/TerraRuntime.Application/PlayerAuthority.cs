@@ -474,6 +474,23 @@ internal sealed partial class PlayerAuthority
     private void ApplyPlayerEquipment(PlayerEquipmentRuntimeCommand equipment)
     {
         PlayerEquipmentCommitRequest request = equipment.Request;
+        // Unsupported default contexts retain the prior equipment component policy.
+        // After normalization is admitted, every preparation/adoption failure refuses
+        // the receive without falling back or publishing a partially planned cursor.
+        if (receiveEquipmentRandom is not null && request.TryGetCanonicalItemType(out var receiveType) &&
+            VanillaItemPrefixNormalization1458.IsSupported(receiveType, new PrefixId(request.Prefix)) &&
+            VanillaPlayerItemSlotCatalog.CanRelay(request.SlotId))
+        {
+            if (!TryPrepareReceivedEquipment(equipment, out var prepared) || prepared is null ||
+                !prepared.TryAdoptUnpublished())
+            {
+                RejectedEquipmentUpdates++;
+                return;
+            }
+
+            prepared.TryPublish();
+            return;
+        }
         if (!equipment.Connection.IsAssigned ||
             equipment.Connection.Player.Slot != request.PlayerSlot)
         {

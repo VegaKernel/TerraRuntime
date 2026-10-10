@@ -1,5 +1,33 @@
 # Владение использованием предметов игрока 1.4.5.8
 
+## Нормализация prefix в packet5 (2026-10-10, локальная проверка пройдена)
+
+Поддерживаемые отчёты inventory и equipment нормализуют prefix до вызова наблюдателей. Существующая таблица числовой допустимости определяет, сохраняется ли запрошенный положительный prefix; отклонённый prefix выбирается повторно из семейства предмета с существующим общим gameplay-курсором. Предмет/profile, ревизии игрока и ввода, курсор и учёт принимаются вместе. Публикация повторно проверяет принятое состояние и подавляет устаревшую работу без отката.
+
+`VanillaItemPrefixNormalization1458.IsSupported` классифицирует канонический ввод без случайных callbacks. `Resolve` получает callback отделённого курсора и явную платформенную арифметику; только `Resolved` разрешает принять предложенный курсор. `Unsupported`, `BudgetExhausted` и `InvalidDraw` сохраняют живой курсор. Поле `Applied` отличает изначально запрошенный ноль (`false`) от нуля, полученного при повторном выборе (`true`); боевую capability оно не предоставляет.
+
+Ненулевые запросы для25 официальных variant-идентификаторов сохраняют предыдущую компонентную политику. Таблица инвариантных предметов содержит868 записей с поддержкой prefix; канонические предметы без prefix не расходуют случайные предложения. Нулевым запросам variant-defaults не нужны. Лимит256 попыток — бюджет безопасности runtime, а не предел оригинальной игры: исчерпанное принятое предложение отклоняется до изменения живого состояния и не переходит на старый путь.
+
+Глобальное ограничение prefix>=98, ClientReported inventory, SSCfalse, отчёты до Spawn и отмена pending по совпадающему отчёту сохраняют прежние политики. Полные inventory-производители, причинность ammo-отчётов и полные ItemDefaults остаются открытыми. Владение настроенным общим курсором не доказывает целое расписание Main. Независимые168 строки LinuxGetData и266 настоящих Windows CLR4 x86 Prefix subcalls сохранены отдельно. Сравнение105 строк на платформу с одинаковым seed выявляет42 различия арифметики для21 предмета;194 из210 строк поддерживаются,16 ненулевых variant-запросов остаются reference/early-refusal. Три групповых Facts проверяют59 inventory-слотов/full56/оригинальный public-next, настоящий bootstrap claimed31 в bound0 и154 буквальных server relay, currentness/prejoin/reentry и отмену pending по совпадающему5. Game positive/restored3750 проверок; шесть omissions дают427/250/66/152/2/434 assertion failures без runner errors. App positive/restored21276 проверок; четыре omissions выявляются независимо и тремя durable Facts с одним assertion failure на omission. Первоначальный focused v1 сохраняет704/708, четыре конфликта старых consumer-negative fixtures и отсутствие full-прогона. Минимальные исправления трёх fixtures напрямую задают намеренно некорректный retained prefix в существующем owner, сохраняя все assertions/source goldens. Удаление исправлений воспроизводит два Mining/один Metal/один Style1 assertion failures; исправленные классы и restored проходят.
+
+Release Rebuild: ноль warnings/errors; focused 708/708 проходит. ОДИН full suite: 1563116/1563117, ноль failures/errors, один известный canonical-liquid skip, runner $685.374\,\mathrm{s}$. Свежие shipping WindowsNativeAOT/пять smokes и typed managed/Native 22156 проверок каждый проходят с exact32 references; AMD64 PE CLR directory равен нулю. Native проверяет канонический inventory, независимый public seeded-next, платформенную арифметику и adoption/currentness observers; full56/private guards и154 буквальных relay остаются managed-доказательствами. Release/Native live82/49 проходит с15 sections/client,312 frames до49,129/relay/chat82 и чистой остановкой. CI-tools/docs/graph/domain/diff проходят. Новых dependency/project edges нет. Настоящий LinuxNativeAOT локально не проверен; GitHub CI не ожидается.
+
+Evidence: `.cache/packet5-normalization-block-v2-status.json`, `.cache/packet5-normalization-block-v2-full-tests/result.json`, `.cache/packet5-normalization-shipping-bin-v2/shipping-freeze.json`, `.cache/packet5-normalization-shipping-native-v2/freeze-manifest.json`, `.cache/packet5-normalization-block-live-v2/results.json`, `.cache/packet5-prefix-game-api-work/freeze-manifest.json`, `.cache/packet5-app-promoted-work/freeze-manifest.json` and `.cache/packet5-durable-tests-v2-work/final-freeze-manifest.json`.
+
+```mermaid
+sequenceDiagram
+    participant Ingress
+    participant PlayerAuthority
+    participant PrefixRule
+    participant OwnedState
+    participant Observer
+    Ingress->>PlayerAuthority: canonical equipment command
+    PlayerAuthority->>PrefixRule: supported defaults and cloned cursor
+    PrefixRule-->>PlayerAuthority: normalized prefix and candidate cursor
+    PlayerAuthority->>OwnedState: verify current owners; adopt item, revision, cursor, accounting
+    PlayerAuthority->>Observer: publish current accepted state
+```
+
 ## Удерживаемые subupdate обычных стрел — 2026-10-10, локальная проверка пройдена
 
 Принятый блок готовит движение и попадания в NPC на каждом source subupdate стрелы. У Jester два локальных обновления на мировой tick; damage и immunity после первого должны влиять на следующую цель и обновление. Настоящие configured36 Update-вызовы оригинала различают случаи с одинаковым итоговым cursor, но разным HP после второго попадания. Изменение сохранённого damage и raw AI2 flags связано с порядком hits; добавление всех RNG-вызовов перед прежним внешним combat pass сохранит ошибку.

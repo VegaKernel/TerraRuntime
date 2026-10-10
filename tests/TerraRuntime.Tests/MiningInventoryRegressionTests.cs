@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Reflection;
+using TerraRuntime.Application;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
@@ -124,7 +125,10 @@ public sealed class MiningInventoryRegressionTests
     {
         using var f = new Fixture(fullInventory: true);
         f.Equip(49, 3509, 9999);
-        f.Equip(inventorySlot, type, stack, slotPrefix, favorite);
+        if (slotPrefix == 0)
+            f.Equip(inventorySlot, type, stack, slotPrefix, favorite);
+        else
+            f.SeedRetainedItemSpaceFixture(inventorySlot, type, stack, slotPrefix, favorite);
         var drop = new WorldItemDropStateUpdate(800, 800, 0, 0, 1, dropPrefix,
             WorldItemOwnershipMode.None, type, false, 0, 0);
         Assert.True(f.Items.TryAllocateDrop(in drop, out var allocated));
@@ -280,6 +284,20 @@ public sealed class MiningInventoryRegressionTests
             payload[8] = favorite ? (byte)1 : (byte)0;
             Assert.Equal(TerrariaFrameSinkResult.Continue, bootstrap.OnFrame(Frame(5, payload)));
             Assert.Equal(0, State.RejectedPlayerEquipmentUpdates);
+        }
+
+        public void SeedRetainedItemSpaceFixture(short slot, short type, short stack, byte prefix, bool favorite)
+        {
+            // The original ItemSpace oracle directly configured an impossible dirt prefix.
+            // Seed the retained component state; real GetData5 now clears that prefix.
+            var players = ((ServerRuntimeComposition)typeof(ServerRuntimeState)
+                .GetField("_runtime", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(State)!).Players;
+            Assert.True(players.TryGet(Player.Slot, out var member));
+            var inventory = (RuntimePlayerInventoryStore)typeof(PlayerAuthority)
+                .GetField("inventory", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(players)!;
+            var request = new PlayerEquipmentCommitRequest(member.Connection.Player.Slot, slot, stack,
+                prefix, type, favorite ? PlayerEquipmentCommitRequest.FavoriteItemFlag : (byte)0);
+            Assert.True(inventory.TrySet(member.Connection, in request));
         }
 
         public void Select(byte slot)

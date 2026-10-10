@@ -63,7 +63,12 @@ public sealed class RemoteStyle1AndRangedPrefixPhase1458Tests
             Assert.False(VanillaRemoteRangedItemCheck1458.IsSupported(type,prefix));
             var inputs=gunPhases.RootElement.EnumerateArray().First(r=>I(r,"weapon")==type.Value && I(r,"prefix")==0);
             using var f=new Fixture(inputs);
-            f.Equipment(0,checked((short)type.Value),1,checked((byte)prefix.Value));
+            // Consumer-negative imported state: bypass normalized GetData5 after ordinary receive.
+            // The source-invalid retained prefix must still be refused by the phase owner.
+            var inventory=(RuntimePlayerInventoryStore)typeof(PlayerAuthority)
+                .GetField("inventory",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(f.Players)!;
+            var imported=new PlayerEquipmentCommitRequest(new(0),0,1,checked((byte)prefix.Value),checked((short)type.Value),0);
+            Assert.True(inventory.TrySet(f.Connection,in imported));
             var before=f.Member.CaptureSnapshot();var phase=f.Member.ItemPhase;var random=f.Random.Clone();
             Assert.False(f.Players.TryTickRemotePlayerPhase());
             Assert.Equal(before,f.Member.CaptureSnapshot());Assert.Equal(phase,f.Member.ItemPhase);
