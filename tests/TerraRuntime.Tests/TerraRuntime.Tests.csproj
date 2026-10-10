@@ -423,4 +423,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Fixtures/ordinary-arrow-continuation-configured-official-1458.json.gz" LogicalName="OrdinaryArrowContinuation1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/packet5-worldvariant-eight-context-configured-official-1458.json.gz" LogicalName="Packet5WorldContextSource1458" />
+  </ItemGroup>
 </Project>

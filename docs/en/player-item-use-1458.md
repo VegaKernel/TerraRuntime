@@ -1,5 +1,32 @@
 # Owned player item use 1.4.5.8
 
+## Packet5 world-context prefixes (2026-10-10, accepted local checkpoint)
+
+WorldRuntime passes the raw immutable `RemixWorld`, `GetGoodWorld` and `SkyblockWorld` flags into the first binding of the existing receive RNG. A known normal world differs from an unknown context. Known context supports the25 official variant identities, including18 prefix-capable and seven known nonprefixable items; unknown custom composition keeps the existing nonzero variant fence. This yields886 prefix-capable records with known context and868 without it. Prefix zero needs no context. Mechdusa requires `RemixWorld && GetGoodWorld`.
+
+Preparation and publication retain the bound context alongside the existing cursor. Transfer preserves the carried inventory; later packet5 uses the destination world's context and cursor. This selects prefix acceptance metadata only and does not establish complete item defaults, combat variant support or whole inventory producer custody. Independent1400 Linux GetData and1400 Windows CLR4 Prefix references cover all eight contexts; Windows evidence remains a subcall. The independent1400 LinuxGetData and1400 genuine Windows CLR4 Prefix references cover all eight contexts and200 source-default cells. Both original captures repeated identically. Game positive/restored44720 checks and five omissions yield11447/24/82/56/1377 assertion failures, zero runner errors. App positive/restored38085 checks and three omissions fail independently. Three grouped durable Facts compare2800 configured item/cursor rows, all1400 realState receipts and eight actualWorldRuntime raw metadata bindings, nullable first-bind/currentness, transfer destination ownership and known-context pending cancellation. On Windows,1368 peer frames match literal LinuxGetData and32 arithmetic differences use WindowsPrefix-only typed/full56 references; no original WindowsGetData frame oracle is invented. Async durable omission controls each yield one assertion failure, zero runner errors; restored3/3 passes. A minimal optional context parameter in the existing pending fixture preserves all old Fact bodies/assertions/goldens. Initial combined v1 stopped at two xUnit1031 analyzer errors before focused/full; replacing blocking transfer waits with await retains the exact checks. The generated appendix reproduces independent200 numeric cells with canonical UTF-8/LF hashing; three small tool tests include six malformed-input and two line-ending controls.
+
+Release Rebuild has zero warnings/errors; focused 711/711 passes. ONE unfiltered full passes 1563119/1563120 with zero failures/errors and one known canonical-liquid skip, runner $566.598\,\mathrm{s}$. Fresh shipping WindowsNativeAOT/five smokes and typed managed/fresh Native36158 checks each pass against exact32 references; AMD64 PE has zero CLR directory. Native checks use typed canonical inventory and independently captured public Next, not private full56 or literal WindowsGetData. Release/Native live82/49 pass with15 sections/client,312 frames before49,129/relay/chat82 and clean process stop. CI-tools/docs/graph/domain/diff pass. No new dependency/project edge. Genuine LinuxNativeAOT remains locally unverified; GitHub CI is not awaited.
+
+Evidence: `.cache/packet5-world-context-block-v2-status.json`, `.cache/packet5-world-context-block-v2-full-tests/result.json`, `.cache/packet5-world-context-shipping-bin-v2/shipping-freeze.json`, `.cache/packet5-world-context-shipping-native-v1/freeze-manifest.json` (exact v2 shipping snapshot), `.cache/packet5-world-context-block-live-v2/results.json`, `.cache/packet5-worldvariant-eight-context-proof/manifest.json`, `.cache/packet5-contextual-prefix-game-work-v4/freeze-manifest-v4.json`, `.cache/packet5-app-context-prototype/freeze-manifest-v1.json` and `.cache/packet5-context-durable-preparation/promoted-freeze-manifest.json`.
+
+The generated contextual appendix is reproducible from the independent200-cell numeric fixture and the existing normal prefix table. The generator checks all eight contexts, capability, family and acceptance fields before writing; canonical UTF-8/LF input hashing keeps Windows and Linux output identical. It needs no official game DLL:
+
+```powershell
+python tools/ci/generate_item_prefix_world_table.py tests/TerraRuntime.Tests/Fixtures/prefix-world-acceptance-official-1458.json src/TerraRuntime.Gameplay/Items/VanillaItemPrefixTable1458.cs .cache/prefix-world-regenerated.cs
+```
+
+```mermaid
+flowchart LR
+    Metadata[Immutable raw world flags] --> Binding[First receive binding]
+    Cursor[Existing gameplay RNG] --> Binding
+    Binding --> Proposal[Prefix and cursor proposal]
+    Proposal --> Adoption[Guarded owned adoption]
+    Adoption --> Observer[Inventory observer]
+    Destination[Destination world binding] --> Proposal
+```
+
+
 ## Packet5 prefix normalization (2026-10-10, accepted local checkpoint)
 
 Supported inventory and equipment reports normalize their prefix before any observer runs. The existing numeric acceptance table determines whether a requested positive prefix survives; a rejected prefix rerolls from the item family using the existing shared gameplay cursor. Item/profile, member and input revisions, cursor and accounting are accepted together. Publication checks accepted state again and suppresses stale work without rollback.

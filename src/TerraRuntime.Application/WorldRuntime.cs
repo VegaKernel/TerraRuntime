@@ -2,6 +2,7 @@ using TerraRuntime.Application.Bots;
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Application.Operations;
 using TerraRuntime.World;
 using TerraRuntime.Core.Players;
@@ -196,6 +197,7 @@ public sealed partial class WorldRuntime : IDisposable
             out float botSpawnY);
         VanillaSkyblockRuntimeState1458 skyblockRuntime = VanillaSkyblockRuntimePolicy1458.Evaluate(world);
         bootstrapSkyblockLowTiles = skyblockRuntime.LowTiles;
+        // Prefix defaults use the exact raw world flags, not derived difficulty or low-tile state.
         State = new ServerRuntimeState(
             playerEvents,
             npcs: Npcs,
@@ -236,7 +238,9 @@ public sealed partial class WorldRuntime : IDisposable
             townSocialWorldFacts: RuntimeTownSocialWorld1458.FromMetadata(world.RuntimeMetadata,
                 world.RuntimeMetadata.GameMode is (byte)WorldGenerationGameMode.Expert or (byte)WorldGenerationGameMode.Master),
             invasionProgressPublisher: PublishInvasionProgress, invasionStartPublisher: PublishInvasionStart,
-            playerUpdateRandomSeed: new(WorldGenerationRequest.ResolveVanillaSeed1458(world.Header.SeedText)));
+            playerUpdateRandomSeed: new(WorldGenerationRequest.ResolveVanillaSeed1458(world.Header.SeedText)),
+            itemPrefixWorld: new(world.RuntimeMetadata.RemixWorld, world.RuntimeMetadata.GetGoodWorld,
+                world.RuntimeMetadata.SkyblockWorld));
         WorldClock.SetWeatherEligiblePlayerProvider(State.HasWindEligiblePlayer);
         RefreshWorldBootstrap();
 

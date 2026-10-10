@@ -9,20 +9,24 @@ internal sealed partial class PlayerAuthority
 {
     private VanillaUnifiedRandom1458? receiveEquipmentRandom;
     private bool receiveWindowsArithmetic;
+    private VanillaItemPrefixWorld1458? receivePrefixWorld;
 
     // Terraria 1.4.5.8 MessageBuffer.GetData5 calls Item.Prefix on Main.rand.
     // Composition supplies its existing shared gameplay cursor and explicit arithmetic.
-    // Binding another cursor would fabricate recovery of source custody.
-    internal void BindReceiveEquipmentRandom(VanillaUnifiedRandom1458 random, bool windowsArithmetic = false)
+    // The cursor, source arithmetic and nullable world context bind once together.
+    // Replacing them would fabricate recovery of source custody.
+    internal void BindReceiveEquipmentRandom(VanillaUnifiedRandom1458 random, bool windowsArithmetic = false,
+        VanillaItemPrefixWorld1458? world = null)
     {
         ArgumentNullException.ThrowIfNull(random);
         if (receiveEquipmentRandom is not null &&
-            (!ReferenceEquals(receiveEquipmentRandom, random) || receiveWindowsArithmetic != windowsArithmetic))
+            (!ReferenceEquals(receiveEquipmentRandom, random) || receiveWindowsArithmetic != windowsArithmetic || receivePrefixWorld != world))
         {
-            throw new InvalidOperationException("Cannot replace the owned receive cursor.");
+            throw new InvalidOperationException("Cannot replace the owned receive cursor, arithmetic or world context.");
         }
         receiveEquipmentRandom = random;
         receiveWindowsArithmetic = windowsArithmetic;
+        receivePrefixWorld = world;
     }
 
     internal bool TryPrepareReceivedEquipment(PlayerEquipmentRuntimeCommand command,
@@ -39,7 +43,7 @@ internal sealed partial class PlayerAuthority
         {
             return false;
         }
-        if (!VanillaItemPrefixNormalization1458.IsSupported(type, new PrefixId(request.Prefix)))
+        if (!VanillaItemPrefixNormalization1458.IsSupported(type, new PrefixId(request.Prefix), receivePrefixWorld))
         {
             return false;
         }
@@ -57,7 +61,7 @@ internal sealed partial class PlayerAuthority
         var before = random.Clone();
         var after = before.Clone();
         var status = VanillaItemPrefixNormalization1458.Resolve(type, new PrefixId(request.Prefix), after.Next,
-            receiveWindowsArithmetic, out var resolution);
+            receiveWindowsArithmetic, out var resolution, receivePrefixWorld);
         // Exhaustion of the selective attempt budget discards the clone. Once admitted,
         // dispatch refuses this receive rather than falling back to unnormalized adoption.
         if (status != VanillaItemPrefixNormalizationStatus1458.Resolved)
@@ -84,6 +88,7 @@ internal sealed partial class PlayerAuthority
         private readonly PlayerEquipmentCommitRequest[] afterEquipment;
         private readonly VanillaUnifiedRandom1458 random, before, after;
         private readonly bool inventorySlot;
+        private readonly VanillaItemPrefixWorld1458? prefixWorld;
         private PlayerStateSnapshot? acceptedPlayer;
         private RuntimePlayerItemPhase1458? acceptedPhase;
         private ulong acceptedInput, acceptedSerial;
@@ -103,6 +108,7 @@ internal sealed partial class PlayerAuthority
             this.before = before;
             this.after = after;
             this.inventorySlot = inventorySlot;
+            prefixWorld = owner.receivePrefixWorld;
             beforePlayer = member?.CaptureSnapshot();
             beforePhase = member?.ItemPhase;
             beforeInput = member?.ProjectileUseInputRevision ?? 0;
@@ -128,7 +134,7 @@ internal sealed partial class PlayerAuthority
                 (buffs is null) == (beforeBuffs is null) && (buffs is null || buffs.AsSpan().SequenceEqual(beforeBuffs));
         }
 
-        internal bool IsCurrent => !adopted && ReferenceEquals(owner.receiveEquipmentRandom, random) &&
+        internal bool IsCurrent => !adopted && owner.receivePrefixWorld == prefixWorld && ReferenceEquals(owner.receiveEquipmentRandom, random) &&
             random.HasSameState(before) && owner.membership.Serial == beforeMembership &&
             SameMember(beforePlayer, beforePhase, beforeInput) && ProfileCurrent(false) &&
             owner.inventory.Serial == beforeSerial && owner.inventory.CanAccept(connection) &&
@@ -166,7 +172,7 @@ internal sealed partial class PlayerAuthority
 
         internal bool TryPublish()
         {
-            if (!adopted || published || !ReferenceEquals(owner.receiveEquipmentRandom, random) ||
+            if (!adopted || published || owner.receivePrefixWorld != prefixWorld || !ReferenceEquals(owner.receiveEquipmentRandom, random) ||
                 !SameMember(acceptedPlayer, acceptedPhase, acceptedInput) ||
                 owner.membership.Serial != beforeMembership || !ProfileCurrent(true) ||
                 !random.HasSameState(after) || owner.inventory.Serial != acceptedSerial)

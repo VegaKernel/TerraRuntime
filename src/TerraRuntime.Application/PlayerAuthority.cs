@@ -478,7 +478,7 @@ internal sealed partial class PlayerAuthority
         // After normalization is admitted, every preparation/adoption failure refuses
         // the receive without falling back or publishing a partially planned cursor.
         if (receiveEquipmentRandom is not null && request.TryGetCanonicalItemType(out var receiveType) &&
-            VanillaItemPrefixNormalization1458.IsSupported(receiveType, new PrefixId(request.Prefix)) &&
+            VanillaItemPrefixNormalization1458.IsSupported(receiveType, new PrefixId(request.Prefix), receivePrefixWorld) &&
             VanillaPlayerItemSlotCatalog.CanRelay(request.SlotId))
         {
             if (!TryPrepareReceivedEquipment(equipment, out var prepared) || prepared is null ||

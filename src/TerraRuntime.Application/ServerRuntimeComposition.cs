@@ -139,7 +139,8 @@ internal sealed class ServerRuntimeComposition
         Action<RuntimeInvasionCapture1458>? invasionProgressPublisher = null,
         Action<RuntimeInvasionCapture1458>? invasionStartPublisher = null,
         PlayerUpdateRandomSeed1458? playerUpdateRandomSeed = null,
-        IncomingHumanCombatPolicy1458 incomingHumanCombatPolicy = IncomingHumanCombatPolicy1458.PhaseOwned)
+        IncomingHumanCombatPolicy1458 incomingHumanCombatPolicy = IncomingHumanCombatPolicy1458.PhaseOwned,
+        VanillaItemPrefixWorld1458? itemPrefixWorld = null)
     {
         if (masterMode && !expertMode)
             throw new ArgumentException("Master mode is a strict subset of Expert mode.", nameof(masterMode));
@@ -181,7 +182,7 @@ internal sealed class ServerRuntimeComposition
             ?? new VanillaUnifiedRandom1458(Environment.TickCount);
         // Admitted MessageBuffer.GetData(5)/Item.Prefix proposals use this existing Main.rand
         // owner. This does not recover unowned callers or the separate UpdatePlayers schedule.
-        playersAuthority.BindReceiveEquipmentRandom(gameplayRandom, OperatingSystem.IsWindows());
+        playersAuthority.BindReceiveEquipmentRandom(gameplayRandom, OperatingSystem.IsWindows(), itemPrefixWorld);
         IVanillaNpcRandom npcRandom = naturalSpawnRandom ?? new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom(gameplayRandom);
         IWorldItemSpawnRandom spawnRandom = worldItemSpawnRandom ?? new SystemWorldItemSpawnRandom(gameplayRandom);
         // Player.UpdateEquips uses Main.expertMode/masterMode, derived from Difficulty including Good World.

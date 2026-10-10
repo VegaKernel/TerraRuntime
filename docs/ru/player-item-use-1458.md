@@ -1,5 +1,32 @@
 # Владение использованием предметов игрока 1.4.5.8
 
+## Префиксы packet5 с контекстом мира (2026-10-10, локальная проверка пройдена)
+
+WorldRuntime передаёт исходные неизменяемые флаги `RemixWorld`, `GetGoodWorld` и `SkyblockWorld` при первой привязке существующего receive RNG. Известный обычный мир отличается от неизвестного контекста. Известный контекст поддерживает25 официальных variant identities:18 предметов с префиксами и семь заведомо непригодных для них. Пользовательская композиция с неизвестным контекстом сохраняет прежний отказ для ненулевого префикса variant. При известном контексте доступны886 prefix-capable записей, без него868. Нулевой префикс не требует контекста. Mechdusa требует `RemixWorld && GetGoodWorld`.
+
+Подготовка и публикация сохраняют привязанный контекст вместе с существующим курсором. Перенос сохраняет переданный инвентарь; последующий packet5 использует контекст и курсор мира назначения. Здесь выбираются только метаданные принятия префикса: полные ItemDefaults, поддержка variant в combat и авторитетность всех inventory producers не заявляются. Независимые1400 Linux GetData и1400 Windows CLR4 Prefix references покрывают все восемь контекстов; Windows-проверка остаётся subcall. Независимые1400 LinuxGetData и1400 настоящих Windows CLR4 Prefix references покрывают восемь контекстов и200 source-default ячеек; оба оригинальных захвата повторились идентично. Game positive/restored44720 проверок; пять omissions дают11447/24/82/56/1377 assertion failures без runner errors. App positive/restored38085 проверок и три omissions выявляют ошибки независимо. Три групповых durable Facts проверяют2800 настроенных item/cursor строк,1400 настоящих State receipts, восемь привязок исходных WorldRuntime-флагов, null/обычный мир, currentness, перенос и отмену pending при известном контексте. На Windows1368 peer frames совпадают с буквальными LinuxGetData;32 различия арифметики проверяются по WindowsPrefix-only typed/full56 references, без выдуманной WindowsGetData frame oracle. Async omission controls дают по одному assertion failure без runner errors, restored3/3 зелёный. Минимальный необязательный параметр контекста в pending fixture сохраняет прежние Fact bodies/assertions/goldens. Первый combined v1 остановился на двух xUnit1031 analyzer errors до focused/full; await сохраняет все проверки. Генератор воспроизводит200 независимых числовых ячеек с каноническим UTF-8/LF-хешем; три небольших tool tests включают шесть malformed-input и две line-ending проверки.
+
+Release Rebuild без warnings/errors; focused711/711 зелёный. ОДИН полный прогон: 1563119/1563120, ноль failures/errors, один известный canonical-liquid skip, время runner $566.598\,\mathrm{s}$. Свежий shipping WindowsNativeAOT и пять smokes зелёные; typed managed/fresh Native36158 проверок каждый против точных32 references; AMD64 PE с нулевым CLR directory. Native использует typed canonical inventory и независимо захваченный public Next, без private full56 и буквального WindowsGetData. Release/Native live82/49 зелёные:15 sections/client,312 frames before49,129/relay/chat82 и чистое завершение процессов. CI-tools/docs/graph/domain/diff зелёные. Новых dependencies/project edges нет. Настоящий LinuxNativeAOT локально не проверен; GitHub CI не ожидаем.
+
+Evidence: `.cache/packet5-world-context-block-v2-status.json`, `.cache/packet5-world-context-block-v2-full-tests/result.json`, `.cache/packet5-world-context-shipping-bin-v2/shipping-freeze.json`, `.cache/packet5-world-context-shipping-native-v1/freeze-manifest.json` (exact v2 shipping snapshot), `.cache/packet5-world-context-block-live-v2/results.json`, `.cache/packet5-worldvariant-eight-context-proof/manifest.json`, `.cache/packet5-contextual-prefix-game-work-v4/freeze-manifest-v4.json`, `.cache/packet5-app-context-prototype/freeze-manifest-v1.json` and `.cache/packet5-context-durable-preparation/promoted-freeze-manifest.json`.
+
+Контекстное приложение к таблице воспроизводится из независимой числовой fixture на200 ячеек и существующей таблицы обычных префиксов. Генератор проверяет все восемь контекстов, capability, family и поля принятия до записи; канонический UTF-8/LF-хеш входа сохраняет одинаковый результат на Windows и Linux. Официальная игровая DLL не требуется:
+
+```powershell
+python tools/ci/generate_item_prefix_world_table.py tests/TerraRuntime.Tests/Fixtures/prefix-world-acceptance-official-1458.json src/TerraRuntime.Gameplay/Items/VanillaItemPrefixTable1458.cs .cache/prefix-world-regenerated.cs
+```
+
+```mermaid
+flowchart LR
+    Metadata[Неизменяемые исходные флаги мира] --> Binding[Первая receive-привязка]
+    Cursor[Существующий gameplay RNG] --> Binding
+    Binding --> Proposal[Предложение префикса и курсора]
+    Proposal --> Adoption[Принятие с проверками владельца]
+    Adoption --> Observer[Наблюдатель инвентаря]
+    Destination[Привязка мира назначения] --> Proposal
+```
+
+
 ## Нормализация prefix в packet5 (2026-10-10, локальная проверка пройдена)
 
 Поддерживаемые отчёты inventory и equipment нормализуют prefix до вызова наблюдателей. Существующая таблица числовой допустимости определяет, сохраняется ли запрошенный положительный prefix; отклонённый prefix выбирается повторно из семейства предмета с существующим общим gameplay-курсором. Предмет/profile, ревизии игрока и ввода, курсор и учёт принимаются вместе. Публикация повторно проверяет принятое состояние и подавляет устаревшую работу без отката.

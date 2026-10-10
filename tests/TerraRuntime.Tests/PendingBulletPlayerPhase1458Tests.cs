@@ -169,14 +169,14 @@ public sealed class PendingBulletPlayerPhase1458Tests
         private readonly PlayerSlotPool slots = new(1);
         private PlayerJoinSession? replacement;
 
-        internal Fixture(JsonElement row)
+        internal Fixture(JsonElement row, VanillaItemPrefixWorld1458? itemPrefixWorld = null)
         {
             var tiles = new WorldTileStore(new WorldDimensions(400, 300));
             for (int x = 0; x < 400; x++) tiles.Set(x, 103, new WorldTile { Type = 1, Flags = WorldTileFlags.Active });
             State = new(worldTiles: tiles, npcs: new RuntimeNpcStore(capacity: 8), projectiles: Store,
                 projectileReplication: Registry, naturalSpawnRandom: new SystemVanillaNpcRandom(Random),
                 townCommerceWorldFacts: default(RuntimeTownCommerceWorldFacts1458) with { WorldSurface = 80 },
-                playerUpdateRandomSeed: new(0));
+                playerUpdateRandomSeed: new(0), itemPrefixWorld: itemPrefixWorld);
             Assert.True(slots.TryAcquireConnection(out var lease));
             Session = new(lease!); Session.ObserveWorldRequest(); Session.ObserveSectionRequest();
             Connection = new(GameCommandSourceId.FromConnection(99100), Session.Handle);
