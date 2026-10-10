@@ -31,6 +31,7 @@ internal readonly record struct AuthoritativeClientProjectileSpawn(
     internal long UseTick { get; init; }
     internal ProjectileStateUpdate[]? VolleyStates { get; init; }
     internal AlternativeBulletUse1458? AlternativeBulletUse { get; init; }
+    internal bool RequiresPlainBowPose { get; init; }
 }
 
 internal sealed record AlternativeBulletUse1458(AuthoritativeClientProjectileSpawn Use);

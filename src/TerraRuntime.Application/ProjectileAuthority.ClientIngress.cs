@@ -308,6 +308,7 @@ internal sealed partial class ProjectileAuthority
         if (authoritative.PlayerCapture is not { } capture || authoritative.RandomBefore is not { } before ||
             authoritative.RandomAfter is not { } after || !projectileRandom.HasSameState(before) ||
             !players.CanCommitProjectileUse(capture, authoritative.InventoryMutation, authoritative.ManaCost) ||
+            (authoritative.RequiresPlainBowPose && !players.IsCurrentPlainBowProjectilePose(capture)) ||
             !projectiles.TryPrepareVanillaSpawn(authoritative.State, timeLeftOverride, out var prepared) ||
             prepared is null || !prepared.IsCurrent)
             return false;

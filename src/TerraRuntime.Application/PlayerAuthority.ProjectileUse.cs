@@ -17,6 +17,9 @@ internal sealed record RuntimePlayerProjectileUseCapture(
     internal PlayerAppearanceCommitRequest? Appearance { get; init; }
     // Retained clocks and phase retirement can change without changing the public player pose.
     internal RuntimePlayerItemPhase1458? ItemPhase { get; init; }
+    // Only the ordinary bow origin lane consumes this pose provenance. Gun pending
+    // capture/currentness keeps its existing contract.
+    internal RuntimePlayerPhysicsPhase1458? PhysicsPhase { get; init; }
 }
 
 internal sealed partial class PlayerAuthority
@@ -39,7 +42,7 @@ internal sealed partial class PlayerAuthority
         capture = new(connection, member.CaptureSnapshot(), serial, profile, equipment, buffs)
         {
             Member = member, InputRevision = member.ProjectileUseInputRevision, Appearance = appearance,
-            ItemPhase = member.ItemPhase
+            ItemPhase = member.ItemPhase, PhysicsPhase = member.PhysicsPhase
         };
         return true;
     }
@@ -56,6 +59,11 @@ internal sealed partial class PlayerAuthority
             (buffs is null) == (capture.Buffs is null) &&
             (buffs is null || buffs.AsSpan().SequenceEqual(capture.Buffs));
     }
+
+    internal bool IsCurrentPlainBowProjectilePose(RuntimePlayerProjectileUseCapture capture) =>
+        !capture.Player.HasMount && capture.PhysicsPhase is { GravityDirection: 1f } &&
+        membership.TryGet(capture.Connection, out var member) && ReferenceEquals(member, capture.Member) &&
+        member.PhysicsPhase == capture.PhysicsPhase;
 
     // Player.ResetEffects/UpdateBuffs: source births own empty buff slots; imported missing slots remain unknown.
     internal bool TryCaptureAmmoConservationContext(ConnectionHandle connection, out bool ammoBox, out bool ammoPotion)

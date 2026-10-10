@@ -91,9 +91,13 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         fixture.SetInventoryItem(owner, VanillaPlayerItemSlotCatalog.AmmoSlotStart, new ItemTypeId(consumableType), 2);
         fixture.SetInventoryItem(owner, (short)(VanillaPlayerItemSlotCatalog.AmmoSlotStart + 1), new ItemTypeId(endlessType), 1);
         fixture.SetCombatPlayer(owner, 100f, 100f, 100, false);
+        if (weaponType == VanillaItemIds.WoodenBow.Value)
+            SetPlainBowPose(fixture, owner);
         var packet = new TerrariaProjectileUpdateState(
             new TerrariaProjectileKeyState(owner.Player.Slot.Value, 703, 1),
             projectileType, 120f, 100f, speed, 0f, 0f, 0f, 0f, 0, damage, knockBack, 0);
+        if (weaponType == VanillaItemIds.WoodenBow.Value)
+            packet = packet with { PositionX = 105f, PositionY = 116f };
         fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, packet));
         Assert.True(fixture.Replication.WireIdentities.TryResolve(packet.Key, out ProjectileHandle shot));
         Assert.True(fixture.Projectiles.IsCombatTrusted(shot));
@@ -277,18 +281,19 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.WoodenBow, stack: 1);
         fixture.SetInventoryItem(owner, slot: VanillaPlayerItemSlotCatalog.AmmoSlotStart, VanillaItemIds.WoodenArrow, stack: 2);
         fixture.SetCombatPlayer(owner, positionX: 100f, positionY: 100f, life: 100, hostile: false);
+        SetPlainBowPose(fixture, owner);
 
         var packet = new TerrariaProjectileUpdateState(
             new TerrariaProjectileKeyState(owner.Player.Slot.Value, 600, 1),
             VanillaProjectileIds.WoodenArrowFriendly.Value,
-            120f,
-            100f,
+            105f,
+            116f,
             9.1f,
             0f,
             0f,
             0f,
             0f,
-            99,
+            0,
             9,
             2f,
             0);
@@ -314,6 +319,15 @@ public sealed class ServerRuntimeClientProjectileIngressTests
             owner.Player, VanillaPlayerItemSlotCatalog.AmmoSlotStart, out RuntimePlayerInventoryItem ammo));
         Assert.Equal(VanillaItemIds.WoodenArrow, ammo.ItemType);
         Assert.Equal((short)1, ammo.Stack);
+    }
+
+    private static void SetPlainBowPose(Fixture fixture, ConnectionHandle owner)
+    {
+        // Original ordinary bow source uses the unmounted normal-gravity center; arrow1 is 10x10.
+        // Keep the other legacy projectile component fixtures and their inputs unchanged.
+        fixture.State.Apply(new PlayerMovementRuntimeCommand(owner,
+            new PlayerMovementCommitRequest(owner.Player.Slot, 64, 16, 0, 0, 0, 100f, 100f,
+                false, 0f, 0f, false, 0, false, 0f, 0f, 0f, 0f, false, 0f, 0f)));
     }
 
     [Fact]

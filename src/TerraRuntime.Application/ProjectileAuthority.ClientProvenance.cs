@@ -23,6 +23,7 @@ internal sealed partial class ProjectileAuthority
         var result = TryResolveStrictClientProjectileSpawnCore(connection, in packet, planned, out authoritative);
         if (result != ClientProjectileProvenanceResolveResult.Accepted) return result;
         if (!captured || capture is null || !players.IsCurrentProjectileUse(capture) ||
+            (authoritative.RequiresPlainBowPose && !players.IsCurrentPlainBowProjectilePose(capture)) ||
             !projectileRandom.HasSameState(before))
         {
             authoritative = default;
@@ -77,9 +78,17 @@ internal sealed partial class ProjectileAuthority
         }
 
         bool bullet = VanillaBulletWeaponLaunch1458.Supports(weapon.Type);
-        bool supportedPrefix = bullet
+        bool bow = VanillaOrdinaryBowLaunch1458.Supports(weapon.Type);
+        VanillaCombatPrefixModifiers prefix;
+        bool sourceBowPrefix = bow && VanillaOrdinaryBowLaunch1458.TryGetPrefixModifiers(weapon.Type,
+            weaponItem.Prefix, VanillaBulletSourceArithmetic1458.CoreClrSingle, out _);
+        bool supportedPrefix = bow
+            ? VanillaOrdinaryBowLaunch1458.TryGetPrefixModifiers(weapon.Type, weaponItem.Prefix,
+                VanillaBulletSourceArithmetic1458.CoreClrSingle, out prefix) ||
+                VanillaItemCombatCatalog.TryGetRangedPrefixModifiers(weaponItem.Prefix, out prefix)
+            : bullet
             ? VanillaBulletWeaponStats1458.TryGetPrefixModifiers(weapon.Type, weaponItem.Prefix,
-                VanillaBulletSourceArithmetic1458.CoreClrSingle, out var prefix)
+                VanillaBulletSourceArithmetic1458.CoreClrSingle, out prefix)
             : VanillaItemCombatCatalog.TryGetRangedPrefixModifiers(weaponItem.Prefix, out prefix);
         if (!supportedPrefix ||
             !players.TryCaptureCombatSnapshot(connection, out VanillaPlayerCombatSnapshot attackerCombat) ||
@@ -89,6 +98,12 @@ internal sealed partial class ProjectileAuthority
             // the CombatTrusted boundary until its exact source formula is imported.
             return ClientProjectileProvenanceResolveResult.NotApplicable;
         }
+
+        // Expanded bow prefixes are owned by the neutral source launch proof. Other modifier
+        // contexts retain the earlier generic catalog component mask instead of gaining trust.
+        if (bow && !VanillaOrdinaryBowLaunch1458.HasNeutralLaunchModifiers(in attackerCombat) &&
+            !VanillaItemCombatCatalog.TryGetRangedPrefixModifiers(weaponItem.Prefix, out prefix))
+            return ClientProjectileProvenanceResolveResult.NotApplicable;
 
         Span<RuntimePlayerInventoryItem> inventory =
             stackalloc RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
@@ -120,6 +135,17 @@ internal sealed partial class ProjectileAuthority
                 out ammo);
         if (ammoSlot < 0)
             return ClientProjectileProvenanceResolveResult.NotApplicable;
+
+        if (bow)
+        {
+            if (ammoItem.ItemType == VanillaItemIds.WoodenArrow)
+            {
+                if (!sourceBowPrefix)
+                    return ClientProjectileProvenanceResolveResult.NotApplicable;
+            }
+            else if (!VanillaItemCombatCatalog.TryGetRangedPrefixModifiers(weaponItem.Prefix, out prefix))
+                return ClientProjectileProvenanceResolveResult.NotApplicable;
+        }
 
         if (!VanillaProjectileWeaponCombatCatalog.TryResolveProjectileType(in weapon, in ammo, out ProjectileTypeId expectedProjectileType))
             return ClientProjectileProvenanceResolveResult.NotApplicable;
@@ -155,6 +181,12 @@ internal sealed partial class ProjectileAuthority
         long tick = tickProvider();
         float knockBackTolerance = MathF.Max(0.001f, MathF.Abs(expectedKnockBack) * 0.00001f);
 
+        if (bow && ammoItem.ItemType == VanillaItemIds.WoodenArrow &&
+            VanillaOrdinaryBowLaunch1458.HasNeutralLaunchModifiers(in attackerCombat))
+            return TryResolveOrdinaryBowSourceCandidates(connection, in packet, in weaponItem, in weapon,
+                in ammo, in ammoItem, in attackerCombat, ammoSlot, ammoBox, ammoPotion, playerCx, playerCy,
+                tick, plannedRandom, out authoritative);
+
         if (weapon.Type == VanillaItemIds.CelebrationMk2)
         {
             return TryResolveStrictCelebrationMk2ChildSpawn(
@@ -185,6 +217,27 @@ internal sealed partial class ProjectileAuthority
                 in ammo, in ammoItem, in attackerCombat, ammoSlot, ammoBox, ammoPotion, dx, dy,
                 maximumDistance, tick, plannedRandom, out authoritative);
 
+        bool ordinaryBow = bow && ammoItem.ItemType == VanillaItemIds.WoodenArrow;
+        if (ordinaryBow)
+        {
+            // Source NewProjectile takes the player's MountedCenter; packet27 contains the
+            // resulting arrow1 top-left (10x10). The owned plain pose supplies this center.
+            // Other ammo/prefix combinations retain the existing catalog component policy.
+            if (!VanillaOrdinaryBowLaunch1458.IsValidSpawnCenter(packet.PositionX + 5f, packet.PositionY + 5f,
+                    playerCx, playerCy) ||
+                !VanillaOrdinaryBowLaunch1458.IsValidVelocity(packet.VelocityX, packet.VelocityY,
+                    speedEnvelope.CanonicalMagnitude) || packet.BannerIdToRespondTo != 0 ||
+                packet.Ai0 != 0f || packet.Ai1 != 0f || packet.Ai2 != 0f)
+                return RejectProvenance();
+            if (VanillaOrdinaryBowLaunch1458.TryResolve(weapon.Type, weaponItem.Prefix, ammoItem.ItemType,
+                    in attackerCombat, out var sourceLaunch))
+            {
+                expectedDamage = sourceLaunch.Damage;
+                expectedKnockBack = sourceLaunch.KnockBack;
+                authoritativeUseTime = sourceLaunch.UseTime;
+            }
+        }
+
         if (packet.ProjectileType != expectedProjectileType.Value ||
             packet.Damage != expectedDamage ||
             packet.OriginalDamage != 0 ||
@@ -208,8 +261,8 @@ internal sealed partial class ProjectileAuthority
             connection.Player.Slot.Value,
             packet.PositionX,
             packet.PositionY,
-            packet.VelocityX * velocityScale,
-            packet.VelocityY * velocityScale,
+            ordinaryBow ? packet.VelocityX : packet.VelocityX * velocityScale,
+            ordinaryBow ? packet.VelocityY : packet.VelocityY * velocityScale,
             default,
             BannerIdToRespondTo: 0,
             Damage: checked((short)expectedDamage),
@@ -227,7 +280,7 @@ internal sealed partial class ProjectileAuthority
             new RuntimePlayerInventoryMutation(checked((short)ammoSlot), remainingAmmo),
             ManaCost: 0,
             speedEnvelope,
-            authoritativeUseTime) { UseTick = tick };
+            authoritativeUseTime) { UseTick = tick, RequiresPlainBowPose = ordinaryBow };
         return ClientProjectileProvenanceResolveResult.Accepted;
 
         static ClientProjectileProvenanceResolveResult RejectProvenance() =>

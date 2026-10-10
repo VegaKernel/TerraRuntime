@@ -61,6 +61,9 @@
     <EmbeddedResource Include="Fixtures/incoming-human-vitals-local-callers-official-1458.json.gz" LogicalName="IncomingHumanVitals1458" />
     <EmbeddedResource Include="Fixtures/remote-passive-item-phase-official-1458.json.gz" LogicalName="RemotePassiveItemPhase1458" />
     <EmbeddedResource Include="Fixtures/remote-furniture-player-phase-official-1458.json.gz" LogicalName="RemoteFurniturePlayerPhase1458" />
+    <EmbeddedResource Include="Fixtures/ordinary-bow-launch-configured-official-1458.json.gz" LogicalName="OrdinaryBowLaunch1458" />
+    <EmbeddedResource Include="Fixtures/ordinary-bow-geometry-configured-official-1458.json.gz" LogicalName="OrdinaryBowGeometry1458" />
+    <EmbeddedResource Include="Fixtures/ordinary-bow-prefixed-shoot-configured-official-1458.json.gz" LogicalName="OrdinaryBowPrefixedShoot1458" />
     <EmbeddedResource Include="Fixtures/remote-item-rotation-configured-official-1458.json.gz" LogicalName="RemoteItemRotation1458" />
     <EmbeddedResource Include="Fixtures/phase-vitals-hurt75-official-1458.json.gz" LogicalName="IncomingHumanVitalsHurt75" />
     <EmbeddedResource Include="Fixtures/phase-vitals-hurt-official-1458.json.gz" LogicalName="IncomingHumanVitalsHurt" />

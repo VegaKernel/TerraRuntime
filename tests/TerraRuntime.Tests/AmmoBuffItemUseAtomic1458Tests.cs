@@ -310,6 +310,12 @@ public sealed class AmmoBuffItemUseAtomic1458Tests
             if (row.GetProperty("magicQuiver").GetBoolean())
                 SetItem((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 3), 1321, 1);
             Buffs(row.GetProperty("buffs").EnumerateArray().Select(v => v.GetInt32()).ToArray());
+            if (row.GetProperty("weapon").GetInt32() == 39 && row.GetProperty("ammo").GetInt32() == 40)
+            {
+                Players.TryApply(new PlayerMovementRuntimeCommand(Connection,
+                    new PlayerMovementCommitRequest(Connection.Player.Slot, 64, 16, 0, 0, 0, 1600f, 1600f,
+                        false, 0f, 0f, false, 0, false, 0f, 0f, 0f, 0f, false, 0f, 0f)));
+            }
         }
 
         public void Buffs(params int[] types) => Players.TryApply(new PlayerBuffTypesRuntimeCommand(Connection,
@@ -335,6 +341,8 @@ public sealed class AmmoBuffItemUseAtomic1458Tests
                 var velocity = launch.GetProperty("shots")[0].GetProperty("velocity");
                 packet = packet with { VelocityX = velocity.GetProperty("X").GetSingle(), VelocityY = velocity.GetProperty("Y").GetSingle() };
             }
+            if (row.GetProperty("weapon").GetInt32() == 39 && row.GetProperty("ammo").GetInt32() == 40)
+                packet = packet with { PositionX = 1605f, PositionY = 1616f };
             return celebration ? packet with { Ai0 = 4f } : packet;
         }
 
