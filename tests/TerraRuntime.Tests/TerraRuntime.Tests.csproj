@@ -425,5 +425,7 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Fixtures/packet5-worldvariant-eight-context-configured-official-1458.json.gz" LogicalName="Packet5WorldContextSource1458" />
+    <EmbeddedResource Include="Fixtures/packet5-retained-identity-official-1458.json.gz" LogicalName="Packet5RetainedIdentity1458" />
+    <EmbeddedResource Include="Fixtures/item-retained-identity-official-1458.json.gz" LogicalName="ItemRetainedIdentity1458" />
   </ItemGroup>
 </Project>

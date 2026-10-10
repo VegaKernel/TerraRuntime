@@ -29,6 +29,24 @@ internal sealed partial class PlayerAuthority
         receivePrefixWorld = world;
     }
 
+    // Only the bound server-relay receive path adopts SetDefaults identity. Existing ingress
+    // stack/prefix clipping and signed net-id compatibility remain separate policies.
+    private static bool TryResolveRetainedReceiveIdentity(in PlayerEquipmentCommitRequest original,
+        out PlayerEquipmentCommitRequest accepted, out ItemTypeId type)
+    {
+        accepted = original;
+        if (!original.TryGetCanonicalItemType(out var requested) ||
+            !VanillaItemRetainedIdentity1458.TryResolve(requested, out type))
+        {
+            type = default;
+            return false;
+        }
+        accepted = type.IsNone
+            ? original with { ItemNetId = 0, Stack = 0, Prefix = 0, ItemFlags = 0 }
+            : original with { ItemNetId = checked((short)type.Value) };
+        return true;
+    }
+
     internal bool TryPrepareReceivedEquipment(PlayerEquipmentRuntimeCommand command,
         out ReceivedEquipmentPreparation? preparation)
     {
@@ -37,7 +55,7 @@ internal sealed partial class PlayerAuthority
         if (receiveEquipmentRandom is not { } random ||
             !command.Connection.IsAssigned || request.PlayerSlot != command.Connection.Player.Slot ||
             !VanillaPlayerItemSlotCatalog.CanRelay(request.SlotId) ||
-            !request.TryGetCanonicalItemType(out var type) ||
+            !TryResolveRetainedReceiveIdentity(in request, out request, out var type) ||
             !VanillaPrefixIds.TryCreate(request.Prefix, out _) ||
             !inventory.CanAccept(command.Connection) || inventory.Serial >= ulong.MaxValue - 1)
         {

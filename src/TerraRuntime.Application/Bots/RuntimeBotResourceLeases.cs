@@ -36,6 +36,10 @@ internal sealed class RuntimeBotResourceLeases
         owner.IsAssigned && resource.IsValid && owner.World == resource.World &&
         (!leases.TryGetValue(resource, out var lease) || tick >= lease.ExpiresAtTick || lease.Owner == owner);
 
+    public bool IsOwned(RuntimeBotLeaseOwner owner, RuntimeBotResourceKey resource, long tick) =>
+        leases.TryGetValue(resource, out var lease) && lease.Owner == owner &&
+        tick >= lease.IssuedAtTick && tick < lease.ExpiresAtTick;
+
     public bool TryAcquire(RuntimeBotLeaseOwner owner, RuntimeBotResourceKey resource, long tick,
         long ttl = DefaultTtlTicks)
     {

@@ -477,8 +477,8 @@ internal sealed partial class PlayerAuthority
         // Unsupported default contexts retain the prior equipment component policy.
         // After normalization is admitted, every preparation/adoption failure refuses
         // the receive without falling back or publishing a partially planned cursor.
-        if (receiveEquipmentRandom is not null && request.TryGetCanonicalItemType(out var receiveType) &&
-            VanillaItemPrefixNormalization1458.IsSupported(receiveType, new PrefixId(request.Prefix), receivePrefixWorld) &&
+        if (receiveEquipmentRandom is not null && TryResolveRetainedReceiveIdentity(in request, out var receiveRequest, out var receiveType) &&
+            VanillaItemPrefixNormalization1458.IsSupported(receiveType, new PrefixId(receiveRequest.Prefix), receivePrefixWorld) &&
             VanillaPlayerItemSlotCatalog.CanRelay(request.SlotId))
         {
             if (!TryPrepareReceivedEquipment(equipment, out var prepared) || prepared is null ||

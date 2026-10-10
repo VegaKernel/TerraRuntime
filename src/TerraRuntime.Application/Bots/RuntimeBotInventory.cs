@@ -101,20 +101,45 @@ internal sealed class RuntimeBotInventory(
             var owner = new RuntimeBotLeaseOwner(bot.Id, bot.Player, world);
             var resource = RuntimeBotResourceKey.ForItem(world, item.Handle);
             if (!leases.TryAcquire(owner, resource, tick: bot.CurrentTick)) continue;
-            if (!serverPlayers.SetItem(bot.ServerPlayerId, in after))
+            var expectedConfiguration = bot.Configuration;
+            ulong expectedGoal = bot.GoalGeneration;
+            ulong expectedObservation = bot.ObservationRevision;
+            long expectedTick = bot.CurrentTick;
+            try
             {
-                leases.Release(owner, resource);
-                continue;
-            }
-            bool taken = worldItems.TryTakeTrusted(item.Handle, out _);
-            leases.Release(owner, resource);
-            if (taken)
-            {
+                if (!serverPlayers.TryGet(bot.Player, out var currentPlayer) || currentPlayer != self ||
+                    !serverPlayers.TryPrepareItemMutation(bot.ServerPlayerId, currentPlayer, before, after, out var inventoryPlan))
+                    continue;
+                if (!worldItems.TryPrepareTrustedTake(in item, out var stagedRemoval)) continue;
+                using var removal = stagedRemoval!;
+                // Owner callbacks finish before final callback-free guards and adoption.
+                if (!removal.ValidateOwnerFacts() || !inventoryPlan!.IsCurrent || !removal.IsCurrentOwned || !removal.TryClaim())
+                    continue;
+                if (!inventoryPlan.IsCurrent || !removal.IsCurrentOwned || !leases.IsOwned(owner, resource, expectedTick) ||
+                    !bot.OwnsCurrentActor(serverPlayers) ||
+                    bot.Configuration != expectedConfiguration || bot.GoalGeneration != expectedGoal ||
+                    bot.ObservationRevision != expectedObservation || bot.CurrentTick != expectedTick) continue;
+                if (!removal.TryAdoptUnpublished(out var publication)) continue;
+                // World adoption invokes no callbacks and cannot modify the distinct player owner.
+                if (!inventoryPlan.TryAdoptUnpublished())
+                    throw new InvalidOperationException("Callback-free jointly validated player adoption failed.");
                 bot.LastPickedItem = item.Handle;
+                try
+                {
+                    inventoryPlan.TryPublish();
+                }
+                finally
+                {
+                    // A later inventory mutation does not invalidate the committed world removal.
+                    // The existing publication owner independently checks the exact final world slot.
+                    publication!.TryPublishNext(out _);
+                }
                 return RuntimeBotActionResult.Success;
             }
-            if (!serverPlayers.SetItem(bot.ServerPlayerId, in before))
-                throw new InvalidOperationException("Bot inventory rollback failed after stale world-item pickup.");
+            finally
+            {
+                leases.Release(owner, resource);
+            }
         }
         return RuntimeBotActionResult.Failure(RuntimeBotActionFailureCode.ItemUnavailable);
     }
