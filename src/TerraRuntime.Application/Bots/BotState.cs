@@ -99,5 +99,5 @@ internal sealed class BotState(
     public float GuardRepositionX { get; set; }
     public float GuardRepositionY { get; set; }
     public float LastDistance { get; set; } = float.PositiveInfinity;
-    public Dictionary<BuffTypeId, long> ActiveBuffs { get; } = [];
+    public Dictionary<BuffTypeId, long> ActiveBuffs { get; internal set; } = [];
 }

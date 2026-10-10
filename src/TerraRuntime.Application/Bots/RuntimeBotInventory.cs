@@ -14,7 +14,7 @@ using static TerraRuntime.Application.Bots.BotPolicy;
 
 namespace TerraRuntime.Application.Bots;
 
-internal sealed class RuntimeBotInventory(
+internal sealed partial class RuntimeBotInventory(
     BotState bot, ServerPlayerAuthority serverPlayers, WorldItemAuthority worldItems,
     RuntimeBotResourceLeases leases, WorldRuntimeIdentity world) : IRuntimeBotInventory
 {
@@ -33,10 +33,12 @@ internal sealed class RuntimeBotInventory(
             return RuntimeBotActionResult.Failure(RuntimeBotActionFailureCode.StaleDecision);
         if (!serverPlayers.TryGet(bot.Player, out var self) || self.IsDead)
             return RuntimeBotActionResult.Failure(RuntimeBotActionFailureCode.TargetUnavailable);
+        var command = CaptureConsumableCommand();
         ExpireBuffs(bot, observation.Tick);
         TryAutoHeal(bot, self, observation.Tick);
         // Healing can change HP; mana must never write the pre-healing snapshot back.
-        if (serverPlayers.TryGet(bot.Player, out self)) TryAutoMana(bot, self, observation.Tick);
+        if (IsCurrentConsumableCommand(command) && serverPlayers.TryGet(bot.Player, out self))
+            TryAutoMana(bot, self, observation.Tick);
         return RuntimeBotActionResult.Success;
     }
 
@@ -313,19 +315,14 @@ internal sealed class RuntimeBotInventory(
         ServerPlayerItemState consumed = bestItem.Stack == 1
             ? new ServerPlayerItemState(bestSlot, VanillaItemIds.None, 0, VanillaPrefixIds.None, 0)
             : bestItem with { Stack = checked((short)(bestItem.Stack - 1)) };
-        if (!serverPlayers.SetItem(bot.ServerPlayerId, in consumed))
-            return;
-
         short healedLife = checked((short)Math.Min(self.MaxLife, self.Life + bestDefinition.HealLife));
         var vitals = new ServerPlayerVitalsState(healedLife, self.MaxLife, self.Mana, self.MaxMana);
-        if (!serverPlayers.SetVitals(bot.ServerPlayerId, in vitals))
-        {
-            if (!serverPlayers.SetItem(bot.ServerPlayerId, in bestItem))
-                throw new InvalidOperationException("Bot healing-item rollback failed after vitals rejection.");
+        if (tick > long.MaxValue - VanillaBotItemDefinitionCatalog1458.OrdinaryHealingPotionDelayTicks)
             return;
-        }
-
-        bot.PotionDelayUntilTick = tick + VanillaBotItemDefinitionCatalog1458.OrdinaryHealingPotionDelayTicks;
+        var effect = new ConsumableEffect(vitals,
+            tick + VanillaBotItemDefinitionCatalog1458.OrdinaryHealingPotionDelayTicks, default, 0);
+        if (TryPrepareConsumable(self, bestItem, consumed, effect, tick, out var plan))
+            plan!.TryAdoptAndPublish();
     }
 
     private void TryAutoMana(BotState bot, in PlayerStateSnapshot self, long tick)
@@ -354,26 +351,24 @@ internal sealed class RuntimeBotInventory(
             ServerPlayerItemState consumed = item.Stack == 1
                 ? new ServerPlayerItemState(slot, VanillaItemIds.None, 0, VanillaPrefixIds.None, 0)
                 : item with { Stack = checked((short)(item.Stack - 1)) };
-            if (!serverPlayers.SetItem(bot.ServerPlayerId, in consumed))
-                return;
-
             short restoredMana = checked((short)Math.Min(self.MaxMana, self.Mana + definition.HealMana));
             var vitals = new ServerPlayerVitalsState(self.Life, self.MaxLife, restoredMana, self.MaxMana);
-            if (!serverPlayers.SetVitals(bot.ServerPlayerId, in vitals))
-            {
-                if (!serverPlayers.SetItem(bot.ServerPlayerId, in item))
-                    throw new InvalidOperationException("Bot mana-item rollback failed after vitals rejection.");
-            }
+            var effect = new ConsumableEffect(vitals, null, default, 0);
+            if (TryPrepareConsumable(self, item, consumed, effect, tick, out var plan))
+                plan!.TryAdoptAndPublish();
             return;
         }
     }
 
     private void TryAutoUseCombatBuffs(BotState bot, long tick)
     {
+        var command = CaptureConsumableCommand();
         for (short slot = VanillaPlayerItemSlotCatalog.InventoryStart;
              slot < VanillaPlayerItemSlotCatalog.OrdinaryInventoryEndExclusive;
              slot++)
         {
+            if (!IsCurrentConsumableCommand(command))
+                return;
             if (!serverPlayers.TryGetItem(bot.ServerPlayerId, slot, out ServerPlayerItemState item) ||
                 item.IsEmpty || item.Prefix != VanillaPrefixIds.None ||
                 !VanillaBotItemDefinitionCatalog1458.TryGet(item.ItemType, out VanillaBotItemDefinition1458 definition) ||
@@ -388,14 +383,15 @@ internal sealed class RuntimeBotInventory(
             ServerPlayerItemState consumed = item.Stack == 1
                 ? new ServerPlayerItemState(slot, VanillaItemIds.None, 0, VanillaPrefixIds.None, 0)
                 : item with { Stack = checked((short)(item.Stack - 1)) };
-            if (!serverPlayers.SetItem(bot.ServerPlayerId, in consumed))
+            if (tick > long.MaxValue - definition.BuffTimeTicks ||
+                !serverPlayers.TryGet(bot.Player, out var self))
                 continue;
-
-            // TerrariaServer 1.4.5.8 MessageBuffer case 55 is targeted PvP-buff delivery: a client
-            // applies it only when the encoded player slot is Main.myPlayer. A server-owned fake player
-            // therefore keeps supported combat-buff state inside the trusted simulation instead of
-            // broadcasting packet 55 as if it were remote-player buff replication.
-            bot.ActiveBuffs[definition.BuffType] = tick + definition.BuffTimeTicks;
+            // TerrariaServer1.4.5.8 packet55 is targeted PvP-buff delivery: the client applies it
+            // only when its encoded slot is Main.myPlayer. A clientless BOT retains these effects
+            // privately; publishing55 would not synchronize its supported combat buffs.
+            var effect = new ConsumableEffect(null, null, definition.BuffType, tick + definition.BuffTimeTicks);
+            if (TryPrepareConsumable(self, item, consumed, effect, tick, out var plan))
+                plan!.TryAdoptAndPublish();
         }
     }
 
