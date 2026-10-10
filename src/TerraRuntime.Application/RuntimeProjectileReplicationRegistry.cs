@@ -422,30 +422,32 @@ internal sealed partial class RuntimeProjectileReplicationRegistry : IProjectile
 
     private sealed class Endpoint(TerrariaConnectionOutboundQueue outbound)
     {
-        private int playingSlot = -1;
-        private ulong playingGeneration;
+        private sealed record PlayingOccupation(PlayerHandle Player);
+        private PlayingOccupation? playing;
 
         public TerrariaConnectionOutboundQueue Outbound { get; } =
             outbound ?? throw new ArgumentNullException(nameof(outbound));
 
-        public bool IsPlaying =>
-            Volatile.Read(ref playingSlot) >= 0 && Volatile.Read(ref playingGeneration) != 0;
+        public bool IsPlaying => Volatile.Read(ref playing)?.Player.IsAssigned == true;
 
-        public void MarkPlaying(PlayerHandle player)
+        // The exact occupation reference distinguishes same-handle disconnect/spawn transitions.
+        public object? CapturePlayingOccupation() => Volatile.Read(ref playing);
+
+        public bool IsCurrentPlayingOccupation(object captured)
         {
-            Volatile.Write(ref playingGeneration, player.Generation.Value);
-            Volatile.Write(ref playingSlot, player.Slot.Value);
+            var current = Volatile.Read(ref playing);
+            return ReferenceEquals(current, captured) && current?.Player.IsAssigned == true;
         }
+
+        public void MarkPlaying(PlayerHandle player) =>
+            Volatile.Write(ref playing, new PlayingOccupation(player));
 
         public void ClearPlaying(PlayerHandle player)
         {
-            if (Volatile.Read(ref playingGeneration) != player.Generation.Value ||
-                Interlocked.CompareExchange(ref playingSlot, -1, player.Slot.Value) != player.Slot.Value)
-            {
+            var captured = Volatile.Read(ref playing);
+            if (captured?.Player != player)
                 return;
-            }
-
-            Volatile.Write(ref playingGeneration, 0);
+            Interlocked.CompareExchange(ref playing, null, captured);
         }
     }
 }

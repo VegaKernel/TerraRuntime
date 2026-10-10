@@ -3,7 +3,7 @@ using TerraRuntime.Contracts.Runtime;
 namespace TerraRuntime.Application;
 
 /// <summary>
-/// Generation-aware authoritative item-use cadence for client-originated projectile requests.
+/// Generation-aware authoritative item-use cadence for client projectile requests and prepared trusted Bot item uses.
 /// Slot reuse must never inherit cooldown state from a disconnected player generation.
 /// </summary>
 internal sealed class RuntimeProjectileClientUseCadenceTracker

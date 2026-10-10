@@ -9,9 +9,10 @@ internal sealed partial class PlayerAuthority
 {
     private bool TryCaptureProvenRemoteEquipment(
         ReadOnlySpan<PlayerEquipmentCommitRequest> equipment, PlayerAppearanceCommitRequest? appearance,
-        out VanillaPlayerCombatSnapshot combat)
+        out VanillaPlayerCombatSnapshot combat, out int manaMaximumBonus)
     {
         combat = default;
+        manaMaximumBonus = 0;
         bool inherited = false;
         Span<PlayerEquipmentCommitRequest> vanityPiece = stackalloc PlayerEquipmentCommitRequest[1];
         // Pin the whole-phase family independently of future combat-catalog additions.
@@ -22,6 +23,10 @@ internal sealed partial class PlayerAuthority
             int index = item.SlotId - VanillaPlayerItemSlotCatalog.ArmorStart;
             if ((uint)index >= VanillaPlayerItemSlotCatalog.FunctionalArmorCount)
             {
+                // Original source records for these known None vanity accessories prove
+                // no functional grants, but they can block inherited matching favorites.
+                if (index is >= 13 and <= 19 && item.ItemNetId is 156 or 3212 &&
+                    item.PrefixId == default) continue;
                 if (index is >= 10 and <= 12)
                 {
                     // Cosmetic armor has no functional grants, but its source slot identity
@@ -45,9 +50,9 @@ internal sealed partial class PlayerAuthority
             bool defensiveAccessory = index is >= 3 and <= 9 && item.ItemNetId is 156 or 3212;
             if (defensiveAccessory)
             {
-                // Arcane changes derived mana maximum; Ankh adds immunity writers. Neither
-                // can be admitted merely because the combat projection otherwise looks neutral.
-                if (item.PrefixId.Value is not (0 or 62 or 63 or 64 or 65 or 67 or 68)) return false;
+                // Arcane is staged through the common effective-slot mana owner; Ankh
+                // immunity writers still require a separate buff-phase owner.
+                if (item.PrefixId.Value is not (0 or 62 or 63 or 64 or 65 or 66 or 67 or 68)) return false;
             }
             else if (item.PrefixId != default || (!IsProvenNeutralMetal(item.ItemNetId) && !sharingBlocker)) return false;
         }
@@ -60,7 +65,7 @@ internal sealed partial class PlayerAuthority
             ? (owned.DifficultyFlags & VanillaPlayerAppearanceNormalizer.ExtraAccessoryDifficultyFlag) != 0 : null;
         var context = new VanillaPlayerCombatEquipmentContext(extraAccessory, combatEquipmentExpertMode, combatEquipmentMasterMode)
         { LocalVanityArmor = combatEquipmentLocalVanityArmor };
-        if (!VanillaPlayerCombatEquipmentCatalog.TryBuild(equipment, in context, out combat)) return false;
+        if (!VanillaPlayerCombatEquipmentCatalog.TryBuild(equipment, in context, out combat, out manaMaximumBonus)) return false;
         return combat with
         {
             Defense = 0, ArmorPenetration = 0, NoKnockback = false,

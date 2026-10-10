@@ -142,7 +142,7 @@ internal sealed partial class PlayerAuthority
             item.DeadTime is < 0 or >= int.MaxValue || item.RespawnTimer < 0 || item.ManaPotionDelay < 0 ||
             member.NpcHealth is not { SourceProfileKnown: true } || member.HasMount || plan.GodMode ||
             (plan.Appearance?.ConsumableUnlockFlags ?? 0) != 0 ||
-            !TryCaptureProvenRemoteEquipment(plan.Equipment, plan.Appearance, out var equipmentCombat) ||
+            !TryCaptureProvenRemoteEquipment(plan.Equipment, plan.Appearance, out var equipmentCombat, out int manaMaximumBonus) ||
             plan.BuffTypes.Any(static type => type.Value is not (21 or 23 or 93 or 94 or 112)) ||
             member.MiscFlags1 != 0 || (member.MiscFlags2 & ~(1 << 6)) != 0 ||
             (member.ControlFlags & ~0x7c) != 0 ||
@@ -250,7 +250,7 @@ internal sealed partial class PlayerAuthority
         int potionDuration = plan.Buffs.GetLastActiveDuration(new BuffTypeId(21));
         if (potionDuration > 0) delay = potionDuration;
         var manaFacts = new PlayerManaRegenerationFacts1458(plan.Vx, plan.Vy, plan.Grappling!.Value, false, false, 0, 0f, 0);
-        if (!VanillaRemoteManaRegeneration1458.TryStep(item.Mana with { Maximum = Math.Min(item.BaseManaMaximum, 400) },
+        if (!VanillaRemoteManaRegeneration1458.TryStep(item.Mana with { Maximum = (int)Math.Min((long)item.BaseManaMaximum + manaMaximumBonus, 400) },
             in manaFacts, out var mana, out _)) return false;
         mana = mana with { Mana = Math.Min(mana.Mana, mana.Maximum), Count = Math.Max(0, mana.Count) };
 

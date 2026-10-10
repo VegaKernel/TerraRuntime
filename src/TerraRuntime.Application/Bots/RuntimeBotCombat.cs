@@ -14,7 +14,7 @@ using static TerraRuntime.Application.Bots.BotPolicy;
 
 namespace TerraRuntime.Application.Bots;
 
-internal sealed class RuntimeBotCombat(
+internal sealed partial class RuntimeBotCombat(
     BotState bot, ServerPlayerAuthority serverPlayers, NpcAuthority npcs, ProjectileAuthority projectiles,
     WorldTileStore worldTiles, RuntimeBotInventory inventory, IEnumerable<BotState> bots, WorldRuntimeIdentity world) : IRuntimeBotCombat
 {
@@ -23,30 +23,37 @@ internal sealed class RuntimeBotCombat(
         if (!RuntimeBotObservationScope.IsCurrent(bot, world, observation) || observation.GuardTarget is not BotGuardTarget target)
             return RuntimeBotActionResult.Failure(RuntimeBotActionFailureCode.TargetUnavailable);
         if (observation.Tick < bot.NextAttackTick) return RuntimeBotActionResult.Pending();
-        long before = bot.NextAttackTick;
-        TryGuardAttack(bot, observation.Self, target, observation.Tick);
-        return bot.NextAttackTick != before ? RuntimeBotActionResult.Success : RuntimeBotActionResult.Pending();
+        // Same-tick owned inventory/self-care may advance the player revision after perception.
+        // Bind preparation and aim to the complete current actor after the scoped action boundary.
+        if (!serverPlayers.TryGet(bot.Player, out var current) || !current.HasHealth ||
+            current.Life <= 0 || current.IsDead || !bot.OwnsCurrentActor(serverPlayers))
+            return RuntimeBotActionResult.Pending();
+        bool accepted = TryGuardAttack(bot, current, target, observation.Tick);
+        return accepted ? RuntimeBotActionResult.Success : RuntimeBotActionResult.Pending();
     }
 
-    private void TryGuardAttack(BotState bot, in PlayerStateSnapshot self, in BotGuardTarget target, long tick)
+    private bool TryGuardAttack(BotState bot, in PlayerStateSnapshot self, in BotGuardTarget target, long tick)
     {
+        var command = CaptureRangedCommand();
         RuntimeBotAttackKind attack = ResolveAttackKind(bot.Configuration.WeaponPolicy, in self, in target);
         if (attack == RuntimeBotAttackKind.Melee)
         {
+            // Melee remains on its existing separate producer policy.
+            long before = bot.NextAttackTick;
             TryGuardMeleeAttack(bot, in self, in target, tick);
-            return;
+            return bot.NextAttackTick != before;
         }
-
+        if (!projectiles.TryCaptureRangedTarget(target.Npc, target.Player, out var capturedTarget))
+            return false;
         if (TryGuardRangedAttack(bot, in self, in target, attack, tick))
-            return;
-
-        if (bot.Configuration.WeaponPolicy == RuntimeBotWeaponPolicy.Automatic)
-        {
-            RuntimeBotAttackKind fallback = attack == RuntimeBotAttackKind.Gun
-                ? RuntimeBotAttackKind.Bow
-                : RuntimeBotAttackKind.Gun;
-            _ = TryGuardRangedAttack(bot, in self, in target, fallback, tick);
-        }
+            return true;
+        if (!projectiles.IsCurrentRangedTarget(capturedTarget) || !IsCurrentRangedCommand(command) ||
+            bot.Configuration.WeaponPolicy != RuntimeBotWeaponPolicy.Automatic)
+            return false;
+        RuntimeBotAttackKind fallback = attack == RuntimeBotAttackKind.Gun
+            ? RuntimeBotAttackKind.Bow
+            : RuntimeBotAttackKind.Gun;
+        return TryGuardRangedAttack(bot, in self, in target, fallback, tick);
     }
 
     private bool TryGuardRangedAttack(
@@ -56,6 +63,10 @@ internal sealed class RuntimeBotCombat(
         RuntimeBotAttackKind attack,
         long tick)
     {
+        var command = CaptureRangedCommand();
+        if (tick != bot.CurrentTick || tick < 0 || self.Player != bot.Player || !self.HasHealth ||
+            self.Life <= 0 || self.IsDead || !bot.OwnsCurrentActor(serverPlayers) ||
+            !projectiles.TryCaptureRangedTarget(target.Npc, target.Player, out var targetCapture)) return false;
         if (!TryResolveRangedLoadout(bot, attack, out _, out ItemTypeId ammoItem,
                 out VanillaProjectileWeaponCombatDefinition weapon, out VanillaProjectileAmmoCombatDefinition ammo) ||
             !RuntimeBotInventory.TryFindAmmoSlot(serverPlayers, bot.ServerPlayerId, ammoItem, out short ammoSlot, out ServerPlayerItemState ammoState) ||
@@ -100,19 +111,11 @@ internal sealed class RuntimeBotCombat(
         }
 
         byte weaponSlot = ResolveWeaponSlot(bot.Configuration.WeaponPolicy, attack);
-        if (!serverPlayers.SetHeldItem(bot.ServerPlayerId, weaponSlot, useItem: true))
-            return false;
-
-        // Consume first, rollback if projectile allocation fails. This keeps the world-writer path duplication-safe.
+        // This bounded BOT policy consumes one item per single predictive projectile.
+        // Source Minishark conservation and client Shoot RNG remain separately scoped.
         var consumed = ammoState.Stack == 1
             ? new ServerPlayerItemState(ammoSlot, VanillaItemIds.None, 0, VanillaPrefixIds.None, 0)
             : ammoState with { Stack = checked((short)(ammoState.Stack - 1)) };
-        if (!serverPlayers.SetItem(bot.ServerPlayerId, in consumed))
-        {
-            _ = serverPlayers.SetHeldItem(bot.ServerPlayerId, weaponSlot, useItem: false);
-            return false;
-        }
-
         var projectile = new ProjectileStateUpdate(
             projectileType,
             bot.Player.Slot.Value,
@@ -125,18 +128,36 @@ internal sealed class RuntimeBotCombat(
             Damage: checked((short)damage),
             KnockBack: knockBack,
             OriginalDamage: 0);
-        if (!projectiles.TrySpawnTrustedServerPlayerProjectile(bot.Player, in projectile, out _))
-        {
-            if (!serverPlayers.SetItem(bot.ServerPlayerId, in ammoState))
-                throw new InvalidOperationException("Bot ammo rollback failed after rejected trusted projectile spawn.");
-            _ = serverPlayers.SetHeldItem(bot.ServerPlayerId, weaponSlot, useItem: false);
+        int useTime = Math.Max(1, weapon.UseTimeTicks);
+        int animation = Math.Max(1, weapon.AnimationTicks);
+        if (tick > long.MaxValue - useTime || tick > long.MaxValue - animation) return false;
+        int direction = velocityX < 0f ? -1 : 1;
+        float rotation = MathF.Atan2(velocityY * direction, velocityX * direction);
+        var presentation = new TerraRuntime.Core.Players.ServerPlayerStateStore.ItemUsePresentation(
+            weaponSlot, true, direction, rotation, animation);
+        if (!serverPlayers.TryPrepareItemMutation(bot.ServerPlayerId, self, ammoState, consumed,
+                out var item, presentation: presentation) || item is null ||
+            !projectiles.TryPrepareTrustedServerPlayerProjectile(self, projectile, tick, useTime, out var spawn) || spawn is null)
             return false;
+        using (spawn)
+        {
+            // Complete every provider call before the final pure player/BOT/allocator checks.
+            if (!spawn.IsCurrent || !projectiles.IsCurrentRangedTarget(targetCapture) ||
+                !spawn.TrySealPublicationRecipients() ||
+                !TryResolveProjectileLaunch(originX, originY, projectileType, projectileDefinition, speed,
+                    target, out float currentVelocityX, out float currentVelocityY) ||
+                currentVelocityX != velocityX || currentVelocityY != velocityY ||
+                !item.IsCurrent || !IsCurrentRangedCommand(command))
+                return false;
+            if (!spawn.TryAdoptUnpublished()) return false;
+            if (!item.TryAdoptUnpublished())
+                throw new InvalidOperationException("Validated BOT ammo changed during callback-free adoption.");
+            spawn.AcceptItemUse();
+            bot.NextAttackTick = tick + useTime;
+            bot.UseItemUntilTick = tick + animation;
+            PublishRangedUse(item, spawn);
+            return true;
         }
-
-        bot.NextAttackTick = tick + Math.Max(1, weapon.UseTimeTicks);
-        bot.UseItemUntilTick = tick + Math.Max(1, weapon.AnimationTicks);
-        _ = serverPlayers.PresentItemUse(bot.ServerPlayerId, velocityX, velocityY, Math.Max(1, weapon.AnimationTicks));
-        return true;
     }
 
     internal bool SquadBlocksShot(BotState bot, float x, float y, float targetX, float targetY)

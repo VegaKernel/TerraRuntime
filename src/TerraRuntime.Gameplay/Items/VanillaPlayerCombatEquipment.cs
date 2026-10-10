@@ -102,7 +102,15 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
 
     public static bool TryBuild(ReadOnlySpan<PlayerEquipmentCommitRequest> equipment,
         in VanillaPlayerCombatEquipmentContext context, out VanillaPlayerCombatSnapshot snapshot)
+        => TryBuild(equipment, in context, out snapshot, out _);
+
+    // Player.UpdateEquips (1.4.5.8) grants Arcane's mana maximum in the same
+    // effective functional-slot loop as combat benefits, before the caller's cap400.
+    public static bool TryBuild(ReadOnlySpan<PlayerEquipmentCommitRequest> equipment,
+        in VanillaPlayerCombatEquipmentContext context, out VanillaPlayerCombatSnapshot snapshot,
+        out int manaMaximumBonus)
     {
+        manaMaximumBonus = 0;
         snapshot = VanillaPlayerCombatSnapshot.Baseline;
         if (context.MasterMode && !context.ExpertMode) return false;
         Span<PlayerEquipmentCommitRequest> effective = stackalloc PlayerEquipmentCommitRequest[VanillaPlayerItemSlotCatalog.FunctionalArmorCount];
@@ -145,6 +153,8 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
 
             if (!TryApplyAccessory(type, request.PrefixId, ref snapshot))
                 return false;
+            if (request.PrefixId.Value == 66)
+                manaMaximumBonus += 20;
         }
 
         // ArmorSetBonuses.Initialize (1.4.5.8): the ordinary metal sets and their ancient

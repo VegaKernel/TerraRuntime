@@ -51,7 +51,7 @@ internal sealed partial class RuntimeProjectileReplicationRegistry
         }
         finalIndices.Sort();
         journal = new(this, retained, retainedKeys, frames, bindings, finalIndices.ToArray(), excludedSource);
-        return true;
+        return journal.TrySealRecipients();
     }
 
     internal sealed class SpawnBirthJournalPreparation(
@@ -63,6 +63,9 @@ internal sealed partial class RuntimeProjectileReplicationRegistry
         int[] finalIndices,
         GameCommandSourceId excludedSource)
     {
+        private readonly record struct Recipient(GameCommandSourceId Source, Endpoint Endpoint, object Occupation);
+        private Recipient[] recipients = [];
+        private bool recipientsSealed;
         private bool adopted;
         private bool published;
         private bool framesPublished;
@@ -71,6 +74,26 @@ internal sealed partial class RuntimeProjectileReplicationRegistry
         private bool observing;
         private readonly RuntimeProjectileWireIdentityRegistry.BindingFacts[] acceptedBindings =
             new RuntimeProjectileWireIdentityRegistry.BindingFacts[finalIndices.Length];
+
+        internal bool TrySealRecipients()
+        {
+            if (adopted || published)
+                return false;
+            // Allocate the final recipient census before any producer owner is written.
+            // Bot callers reseal after external providers; other callers finish only pure guards.
+            var captured = new List<Recipient>();
+            foreach (var pair in registry.endpoints)
+            {
+                if (!excludedSource.IsSystem && pair.Key == excludedSource)
+                    continue;
+                var occupation = pair.Value.CapturePlayingOccupation();
+                if (occupation is not null && pair.Value.IsCurrentPlayingOccupation(occupation))
+                    captured.Add(new(pair.Key, pair.Value, occupation));
+            }
+            recipients = captured.ToArray();
+            recipientsSealed = true;
+            return true;
+        }
 
         internal bool IsCurrentOwned
         {
@@ -87,7 +110,7 @@ internal sealed partial class RuntimeProjectileReplicationRegistry
 
         internal bool TryAdoptBaselines(RuntimeProjectileStore store)
         {
-            if (!IsCurrentOwned) return false;
+            if (!recipientsSealed || !IsCurrentOwned) return false;
             foreach (int index in finalIndices)
                 if (!store.TryGet(births[index].Handle, out var current) || current != births[index])
                     return false;
@@ -125,9 +148,23 @@ internal sealed partial class RuntimeProjectileReplicationRegistry
                     binding != acceptedBindings[i])
                     return false;
             }
-            // Ordinary Broadcast only enqueues immutable frames; it neither binds identities nor calls providers.
-            foreach (byte[] frame in frames)
-                registry.Broadcast(frame, excludeSource: !excludedSource.IsSystem, excludedSource);
+            // New playing occupations already receive the adopted baseline. Only the sealed recipients
+            // receive this birth journal, avoiding baseline-plus-birth duplicates during observer reentry.
+            foreach (byte[] encoded in frames)
+            {
+                var frame = new TerraRuntime.Network.OutboundFrame(encoded);
+                foreach (var recipient in recipients)
+                {
+                    if (!registry.endpoints.TryGetValue(recipient.Source, out var current) ||
+                        !ReferenceEquals(current, recipient.Endpoint) ||
+                        !current.IsCurrentPlayingOccupation(recipient.Occupation))
+                        continue;
+                    if (current.Outbound.TryEnqueue(frame) == TerraRuntime.Network.OutboundEnqueueResult.Enqueued)
+                        Interlocked.Increment(ref registry.relayedFrames);
+                    else
+                        Interlocked.Increment(ref registry.rejectedFrames);
+                }
+            }
             framesPublished = true;
             return true;
         }

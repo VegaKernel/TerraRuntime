@@ -6,14 +6,15 @@ namespace TerraRuntime.Core.Players;
 
 public sealed partial class ServerPlayerStateStore
 {
+    internal readonly record struct ItemUsePresentation(byte SelectedItem, bool UseItem, int Direction, float Rotation, int Animation);
     internal bool TryPrepareItem(
         in PlayerStateSnapshot expected,
         in ServerPlayerItemState oldItem,
         in ServerPlayerItemState next,
         out ItemPreparation? plan,
-        ServerPlayerVitalsState? vitals = null)
+        ServerPlayerVitalsState? vitals = null, ItemUsePresentation? presentation = null)
     {
-        return TryPrepareItems(expected, [oldItem], [next], out plan, vitals);
+        return TryPrepareItems(expected, [oldItem], [next], out plan, vitals, presentation);
     }
 
     // Use the existing complete bounded player slot space; callers own narrower producer policies.
@@ -24,7 +25,7 @@ public sealed partial class ServerPlayerStateStore
         ReadOnlySpan<ServerPlayerItemState> oldItems,
         ReadOnlySpan<ServerPlayerItemState> nextItems,
         out ItemPreparation? plan,
-        ServerPlayerVitalsState? vitals = null)
+        ServerPlayerVitalsState? vitals = null, ItemUsePresentation? presentation = null)
     {
         plan = null;
         if (oldItems.Length == 0 || oldItems.Length > MaximumPreparedItemChanges ||
@@ -32,6 +33,9 @@ public sealed partial class ServerPlayerStateStore
             state.CaptureSnapshot() != expected || state.Revision == ulong.MaxValue)
             return false;
 
+        if (presentation is { } use && (use.SelectedItem >= 10 || use.Direction is not (-1 or 1) ||
+            !float.IsFinite(use.Rotation) || use.Animation is < 1 or > short.MaxValue || expected.IsDead))
+            return false;
         var normalizedItems = new ServerPlayerItemState[nextItems.Length];
         for (int i = 0; i < nextItems.Length; i++)
         {
@@ -50,7 +54,7 @@ public sealed partial class ServerPlayerStateStore
             var acceptedHealth = VanillaVitalsRules.NormalizeHealth(health);
             normalizedVitals = value with { Life = acceptedHealth.Life, MaxLife = acceptedHealth.MaxLife };
         }
-        plan = new(this, expected, normalizedItems, normalizedVitals);
+        plan = new(this, expected, normalizedItems, normalizedVitals, presentation);
         return true;
     }
 
@@ -68,7 +72,7 @@ public sealed partial class ServerPlayerStateStore
         private PlayerStateSnapshot accepted;
         private bool adopted;
 
-        internal ItemPreparation(ServerPlayerStateStore owner, PlayerStateSnapshot before, ServerPlayerItemState[] nextItems, ServerPlayerVitalsState? vitals)
+        internal ItemPreparation(ServerPlayerStateStore owner, PlayerStateSnapshot before, ServerPlayerItemState[] nextItems, ServerPlayerVitalsState? vitals, ItemUsePresentation? presentation)
         {
             if (!owner.TryGetState(before.Player, out var captured))
                 throw new InvalidOperationException("Prepared server-player source is missing.");
@@ -77,6 +81,7 @@ public sealed partial class ServerPlayerStateStore
             this.before = before;
             this.nextItems = nextItems;
             Vitals = vitals;
+            Presentation = presentation;
             // Retain the bounded owned item dictionary, including empty-slot absence.
             // Exact reference, generation and snapshot revision guards also catch same-value writes.
             originalItems = state.Items;
@@ -102,6 +107,14 @@ public sealed partial class ServerPlayerStateStore
         internal int ItemCount => nextItems.Length;
         internal ServerPlayerItemState GetNext(int index) => nextItems[index];
         internal ServerPlayerVitalsState? Vitals { get; }
+        internal ItemUsePresentation? Presentation { get; }
+        internal PlayerStateSnapshot AcceptedSnapshot => accepted;
+        internal bool IsAcceptedMovementCurrent => adopted && Presentation.HasValue && SameIdentity() &&
+            state.PositionX == accepted.PositionX && state.PositionY == accepted.PositionY &&
+            state.VelocityX == accepted.VelocityX && state.VelocityY == accepted.VelocityY &&
+            state.ControlFlags == accepted.ControlFlags && state.SelectedItem == accepted.SelectedItem;
+        internal bool IsAcceptedPresentationCurrent => adopted && Presentation.HasValue && SameIdentity() &&
+            state.ItemRotation == accepted.ItemRotation && state.ItemAnimation == accepted.ItemAnimation;
         internal bool IsCurrent => !adopted && SameActor(before) && SameItems(after: false);
         internal bool IsAcceptedCurrent => adopted && SameActor(accepted) && SameItems(after: true);
 
@@ -160,6 +173,16 @@ public sealed partial class ServerPlayerStateStore
                 state.HasMana = true;
                 state.Mana = vitals.Mana;
                 state.MaxMana = vitals.MaxMana;
+            }
+            if (Presentation is { } presentation)
+            {
+                state.SelectedItem = presentation.SelectedItem;
+                byte controls = (byte)(state.ControlFlags & ~((1 << 5) | (1 << 6)));
+                if (presentation.UseItem) controls |= 1 << 5;
+                if (presentation.Direction > 0) controls |= 1 << 6;
+                state.ControlFlags = controls;
+                state.ItemRotation = presentation.Rotation;
+                state.ItemAnimation = presentation.Animation;
             }
             accepted = state.CaptureSnapshot();
             adopted = true;

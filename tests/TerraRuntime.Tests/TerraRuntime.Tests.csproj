@@ -429,5 +429,8 @@
     <EmbeddedResource Include="Fixtures/item-retained-identity-official-1458.json.gz" LogicalName="ItemRetainedIdentity1458" />
     <EmbeddedResource Include="Fixtures/bot-quick-consumable-source-official-1458.json.gz" LogicalName="BotQuickConsumableSource1458" />
     <EmbeddedResource Include="Fixtures/bot-partial-getitem-source-official-1458.json.gz" LogicalName="BotPartialGetItemSource1458" />
+    <EmbeddedResource Include="Fixtures/bot-ammo-birth-order-source-official-1458.json.gz" LogicalName="BotAmmoBirthOrderSource1458" />
+    <EmbeddedResource Include="Fixtures/arcane-derived-mana-original-1458.json.gz" LogicalName="ArcaneDerivedManaSource1458" />
+    <EmbeddedResource Include="Fixtures/arcane-vanity-blockers-original-1458.json.gz" LogicalName="ArcaneVanityBlockerSource1458" />
   </ItemGroup>
 </Project>

@@ -11,11 +11,11 @@ internal sealed partial class ServerPlayerAuthority
         in ServerPlayerItemState oldItem,
         in ServerPlayerItemState next,
         out PreparedItem? plan,
-        ServerPlayerVitalsState? vitals = null)
+        ServerPlayerVitalsState? vitals = null, ServerPlayerStateStore.ItemUsePresentation? presentation = null)
     {
         plan = null;
         if (!TryGetPlayer(id, out var player) || player != expected.Player ||
-            !states.TryPrepareItem(expected, oldItem, next, out var state, vitals))
+            !states.TryPrepareItem(expected, oldItem, next, out var state, vitals, presentation))
         {
             return false;
         }
@@ -50,6 +50,43 @@ internal sealed partial class ServerPlayerAuthority
     {
         private bool published;
         private bool vitalsPublished;
+        private bool movementPublished;
+        private bool presentationPublished;
+
+        internal bool TryPublishRangedUse()
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+            try
+            {
+                if (!movementPublished && OwnsIdentity && state.IsAcceptedMovementCurrent)
+                {
+                    movementPublished = true;
+                    var accepted = state.AcceptedSnapshot;
+                    owner.events?.ServerPlayerMoved(in accepted);
+                }
+            }
+            catch (Exception exception)
+            {
+                failure = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception);
+            }
+            try
+            {
+                if (!presentationPublished && OwnsIdentity && state.IsAcceptedPresentationCurrent)
+                {
+                    presentationPublished = true;
+                    var use = state.Presentation!.Value;
+                    owner.events?.ServerPlayerItemUsePresented(player, use.Rotation, checked((short)use.Animation));
+                }
+            }
+            catch (Exception exception)
+            {
+                failure ??= System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception);
+            }
+            failure?.Throw();
+            return true;
+        }
+
+        internal bool TryPublishAcceptedItemComponent() => TryPublishItemComponent();
 
         internal bool IsCurrent =>
             owner.TryGetPlayer(id, out var current) && current == player && state.IsCurrent;
