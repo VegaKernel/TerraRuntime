@@ -1,3 +1,5 @@
+using TerraRuntime.Core;
+using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core.Projectiles;
 using TerraRuntime.Protocol;
@@ -47,11 +49,24 @@ internal sealed partial class ProjectileAuthority
             currentPlayer == player;
     }
 
+    // Reuse the projectile phase cursor; rejected preparation never advances its live owner.
+    internal bool PrepareTrustedAmmoConservation(in VanillaProjectileWeaponCombatDefinition weapon,
+        in VanillaProjectileAmmoCombatDefinition ammo, in VanillaPlayerCombatSnapshot combat,
+        out VanillaUnifiedRandom1458 before, out VanillaUnifiedRandom1458 after)
+    {
+        before = projectileRandom.Clone();
+        after = before.Clone();
+        return PrepareAmmoConservation(in weapon, in ammo, in combat, after);
+    }
+
     internal bool TryPrepareTrustedServerPlayerProjectile(in PlayerStateSnapshot expected,
-        in ProjectileStateUpdate state, long tick, int useTime, out TrustedServerPlayerSpawnPreparation? plan)
+        in ProjectileStateUpdate state, long tick, int useTime, out TrustedServerPlayerSpawnPreparation? plan,
+        VanillaUnifiedRandom1458? randomBefore = null, VanillaUnifiedRandom1458? randomAfter = null)
     {
         plan = null;
-        if (tick < 0 || useTime < 1 || trustedClientUseCadence.IsOnCooldown(expected.Player, tick) ||
+        if ((randomBefore is null) != (randomAfter is null) ||
+            randomBefore is not null && !projectileRandom.HasSameState(randomBefore) ||
+            tick < 0 || useTime < 1 || trustedClientUseCadence.IsOnCooldown(expected.Player, tick) ||
             !expected.Player.IsAssigned || state.Spawner != expected.Player.Slot.Value ||
             !playerSnapshots.TryGetPlayer(expected.Player.Slot, out var current) || current != expected ||
             !projectiles.TryPrepareVanillaSpawnBatch([new(state)], out var prepared) || prepared is null)
@@ -66,20 +81,22 @@ internal sealed partial class ProjectileAuthority
                 return false;
             }
         }
-        plan = new(this, expected, tick, useTime, prepared, journal);
+        plan = new(this, expected, tick, useTime, prepared, journal, randomBefore, randomAfter);
         return true;
     }
 
     internal sealed class TrustedServerPlayerSpawnPreparation(
         ProjectileAuthority owner, PlayerStateSnapshot expected, long tick, int useTime,
         RuntimeProjectileStore.SpawnBatchPreparation prepared,
-        RuntimeProjectileReplicationRegistry.SpawnBirthJournalPreparation? journal) : IDisposable
+        RuntimeProjectileReplicationRegistry.SpawnBirthJournalPreparation? journal,
+        VanillaUnifiedRandom1458? randomBefore, VanillaUnifiedRandom1458? randomAfter) : IDisposable
     {
         private bool adopted;
         private bool published;
         private bool useAccepted;
         // This provider check belongs before the final pure player/BOT guards, never between writes.
-        internal bool IsCurrent => !adopted && owner.playerSnapshots.TryGetPlayer(expected.Player.Slot, out var current) &&
+        internal bool IsCurrent => !adopted &&
+            (randomBefore is null || owner.projectileRandom.HasSameState(randomBefore)) && owner.playerSnapshots.TryGetPlayer(expected.Player.Slot, out var current) &&
             current == expected && !owner.trustedClientUseCadence.IsOnCooldown(expected.Player, tick) &&
             prepared.IsCurrentOwned && (journal is null || journal.IsCurrentOwned);
 
@@ -89,7 +106,8 @@ internal sealed partial class ProjectileAuthority
         internal bool TryAdoptUnpublished()
         {
             // Callers have completed provider captures and pure owner validation on the game thread.
-            if (adopted || owner.trustedClientUseCadence.IsOnCooldown(expected.Player, tick) ||
+            if (adopted || randomBefore is not null && !owner.projectileRandom.HasSameState(randomBefore) ||
+                owner.trustedClientUseCadence.IsOnCooldown(expected.Player, tick) ||
                 !prepared.IsCurrentOwned || (journal is not null && !journal.IsCurrentOwned) ||
                 !prepared.TryCommitUnpublished())
                 return false;
@@ -97,6 +115,7 @@ internal sealed partial class ProjectileAuthority
             if (!owner.projectiles.TryMarkCombatTrusted(birth.Handle, expected.Player) ||
                 (journal is not null && !journal.TryAdoptBaselines(owner.projectiles)))
                 throw new InvalidOperationException("Validated trusted BOT spawn lost its callback-free ownership.");
+            if (randomAfter is not null) owner.projectileRandom.CopyStateFrom(randomAfter);
             adopted = true;
             return true;
         }

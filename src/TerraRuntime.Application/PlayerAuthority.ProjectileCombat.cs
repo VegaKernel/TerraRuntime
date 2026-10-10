@@ -13,7 +13,8 @@ internal sealed partial class PlayerAuthority
 
         // Player.Update derives the whole represented projection before ItemCheck. Later
         // selection/equipment reports cannot splice current gear into a prior phase's fields.
-        // Keep the equipment-only projection for direct melee, which adds its own item crit.
+        // Never-bound direct-melee components keep the equipment-only projection; bound callers
+        // use this retained class crit without adding selected Item.crit again.
         snapshot = combat;
         return true;
     }

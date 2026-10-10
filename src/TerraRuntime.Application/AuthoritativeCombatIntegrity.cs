@@ -1,6 +1,7 @@
 using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core;
+using TerraRuntime.Core.Npcs;
 using TerraRuntime.Gameplay.Items;
 using TerraRuntime.Gameplay.Npcs;
 using TerraRuntime.Protocol;
@@ -26,7 +27,9 @@ internal enum CombatIntegrityReason : byte
     AttackCadence = 7,
     DamageOutsideEnvelope = 8,
     DpsCeiling = 9,
-    UnmodeledTargetGeometry = 10
+    UnmodeledTargetGeometry = 10,
+    UnownedPhase = 11,
+    OwnerChanged = 12
 }
 
 internal readonly record struct CombatIntegrityDiagnostic(
@@ -87,8 +90,22 @@ internal sealed class AuthoritativeCombatCalculator
         if (!VanillaItemCombatCatalog.TryGetPrefixModifiers(item.Prefix, out VanillaCombatPrefixModifiers prefix))
             return CombatIntegrityReason.UnsupportedPrefix;
 
-        if (!players.TryCaptureCombatSnapshot(connection, out VanillaPlayerCombatSnapshot attackerCombat))
+        // Capture the complete selected-item owner before virtual random callbacks. A source-bound
+        // retained class crit already contains selected Item.crit; the common formula must not add it again.
+        if (!players.TryCaptureProjectileUse(player.Player, out var ownerCapture) || ownerCapture is null ||
+            ownerCapture.Player != player)
+            return CombatIntegrityReason.OwnerChanged;
+        bool phaseBound = players.HasRemotePlayerPhaseBinding;
+        VanillaPlayerCombatSnapshot attackerCombat;
+        if (phaseBound)
+        {
+            if (!players.TryCaptureProjectileCombatSnapshot(player.Player, out attackerCombat))
+                return CombatIntegrityReason.UnownedPhase;
+        }
+        else if (!players.TryCaptureCombatSnapshot(connection, out attackerCombat))
             return CombatIntegrityReason.UnmodeledEquipment;
+        if (!players.IsCurrentProjectileUse(ownerCapture))
+            return CombatIntegrityReason.OwnerChanged;
 
         VanillaResolvedDirectMeleeUse resolved = VanillaDirectMeleeCombatMath.Resolve(
             in weapon,
@@ -96,7 +113,11 @@ internal sealed class AuthoritativeCombatCalculator
             in attackerCombat,
             random.Next(-15, 16),
             random.Next(1, 101),
-            pvp: false);
+            pvp: false,
+            finalNpcCrit: phaseBound ? attackerCombat.MeleeCrit : null);
+
+        if (players.HasRemotePlayerPhaseBinding != phaseBound || !players.IsCurrentProjectileUse(ownerCapture))
+            return CombatIntegrityReason.OwnerChanged;
 
         DamageSource source = DamageSource.FromPlayerItem(connection.Player);
         var context = new AttackContext(connection.Player, source, item.ItemType, item.Prefix, Pvp: false);
@@ -374,12 +395,14 @@ internal sealed class RuntimeCombatIntegrity
     private readonly PlayerAuthority players;
     private readonly AuthoritativeCombatCalculator calculator;
     private readonly CombatValidator validator;
+    private readonly RuntimeNpcStore npcs;
 
-    public RuntimeCombatIntegrity(PlayerAuthority players, int npcCapacity)
+    public RuntimeCombatIntegrity(PlayerAuthority players, RuntimeNpcStore npcs, Random? random = null)
     {
         this.players = players;
-        calculator = new AuthoritativeCombatCalculator(players);
-        validator = new CombatValidator(npcCapacity);
+        this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
+        calculator = new AuthoritativeCombatCalculator(players, random);
+        validator = new CombatValidator(npcs.Capacity);
     }
 
     public CombatIntegrityResolveResult ResolveClientNpcHit(
@@ -392,6 +415,10 @@ internal sealed class RuntimeCombatIntegrity
     {
         request = default;
         diagnostic = default;
+        // The virtual tick provider has already run. Captured geometry/HP must still be exact,
+        // and a virtual random callback must not poison accepted cadence/DPS history either.
+        if (!npcs.TryGet(target.Handle, out var beforeTarget) || beforeTarget != target)
+            return CombatIntegrityResolveResult.Rejected;
         int direction = Math.Clamp(wire.HitDirection, -1, 1);
         CombatIntegrityReason calculation = calculator.TryCalculate(connection, in target, direction, out AuthoritativeCombatRoll roll);
         if (calculation != CombatIntegrityReason.None)
@@ -415,6 +442,8 @@ internal sealed class RuntimeCombatIntegrity
             return CombatIntegrityResolveResult.Rejected;
         }
 
+        if (!npcs.TryGet(target.Handle, out var afterTarget) || afterTarget != target)
+            return CombatIntegrityResolveResult.Rejected;
         if (!validator.TryValidate(tick, in player, in target, in wire, in roll, out diagnostic))
             return CombatIntegrityResolveResult.Rejected;
 

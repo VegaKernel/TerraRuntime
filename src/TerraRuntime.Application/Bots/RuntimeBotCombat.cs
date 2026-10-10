@@ -48,15 +48,15 @@ internal sealed partial class RuntimeBotCombat(
         }
         if (!projectiles.TryCaptureRangedTarget(target.Npc, target.Player, out var capturedTarget))
             return false;
-        if (TryGuardRangedAttack(bot, in self, in target, attack, tick))
+        if (TryGuardRangedAttack(bot, in self, in target, attack, tick, out bool rangedOwned))
             return true;
-        if (!projectiles.IsCurrentRangedTarget(capturedTarget) || !IsCurrentAttackCommand(command) ||
+        if (rangedOwned || !projectiles.IsCurrentRangedTarget(capturedTarget) || !IsCurrentAttackCommand(command) ||
             bot.Configuration.WeaponPolicy != RuntimeBotWeaponPolicy.Automatic)
             return false;
         RuntimeBotAttackKind fallback = attack == RuntimeBotAttackKind.Gun
             ? RuntimeBotAttackKind.Bow
             : RuntimeBotAttackKind.Gun;
-        return TryGuardRangedAttack(bot, in self, in target, fallback, tick);
+        return TryGuardRangedAttack(bot, in self, in target, fallback, tick, out _);
     }
 
     private bool TryGuardRangedAttack(
@@ -64,8 +64,9 @@ internal sealed partial class RuntimeBotCombat(
         in PlayerStateSnapshot self,
         in BotGuardTarget target,
         RuntimeBotAttackKind attack,
-        long tick)
+        long tick, out bool owned)
     {
+        owned = false;
         var command = CaptureAttackCommand();
         if (tick != bot.CurrentTick || tick < 0 || self.Player != bot.Player || !self.HasHealth ||
             self.Life <= 0 || self.IsDead || !bot.OwnsCurrentActor(serverPlayers) ||
@@ -117,8 +118,9 @@ internal sealed partial class RuntimeBotCombat(
             return false;
         }
 
-        // This bounded BOT policy consumes one item per single predictive projectile.
-        // Source Minishark conservation and client Shoot RNG remain separately scoped.
+        owned = true;
+        bool conserved = projectiles.PrepareTrustedAmmoConservation(in weapon, in ammo, in combat,
+            out var randomBefore, out var randomAfter);
         var consumed = ammoState.Stack == 1
             ? new ServerPlayerItemState(ammoSlot, VanillaItemIds.None, 0, VanillaPrefixIds.None, 0)
             : ammoState with { Stack = checked((short)(ammoState.Stack - 1)) };
@@ -141,9 +143,14 @@ internal sealed partial class RuntimeBotCombat(
         float rotation = MathF.Atan2(velocityY * direction, velocityX * direction);
         var presentation = new TerraRuntime.Core.Players.ServerPlayerStateStore.ItemUsePresentation(
             weaponSlot, true, direction, rotation, animation);
-        if (!serverPlayers.TryPrepareItemMutation(bot.ServerPlayerId, self, ammoState, consumed,
-                out var item, presentation: presentation) || item is null ||
-            !projectiles.TryPrepareTrustedServerPlayerProjectile(self, projectile, tick, useTime, out var spawn) || spawn is null)
+        ServerPlayerAuthority.PreparedItem? item;
+        bool preparedItem = conserved
+            ? serverPlayers.TryPrepareItemUse(bot.ServerPlayerId, self, in presentation, out item)
+            : serverPlayers.TryPrepareItemMutation(bot.ServerPlayerId, self, ammoState, consumed,
+                out item, presentation: presentation);
+        if (!preparedItem || item is null ||
+            !projectiles.TryPrepareTrustedServerPlayerProjectile(self, projectile, tick, useTime, out var spawn,
+                randomBefore, randomAfter) || spawn is null)
             return false;
         using (spawn)
         {
@@ -204,12 +211,17 @@ internal sealed partial class RuntimeBotCombat(
             return;
         }
 
-        // This bounded BOT producer requires its configured neutral weapon in the actual policy slot.
+        // This bounded BOT producer requires its configured represented weapon in the actual policy slot.
         // Canonical positive-stack inventory remains BOT policy; no original malformed-stack claim.
         byte weaponSlot = ResolveWeaponSlot(bot.Configuration.WeaponPolicy, RuntimeBotAttackKind.Melee);
         if (!serverPlayers.TryGetItem(bot.ServerPlayerId, weaponSlot, out var heldWeapon) ||
-            heldWeapon.IsEmpty || heldWeapon.ItemType != bot.Loadout.MeleeWeapon ||
-            heldWeapon.Prefix != VanillaPrefixIds.None)
+            heldWeapon.IsEmpty || heldWeapon.ItemType != bot.Loadout.MeleeWeapon)
+            return;
+        var resolvedWeapon = weapon;
+        // Existing neutral direct catalog entries keep their prior component policy.
+        if (heldWeapon.Prefix != VanillaPrefixIds.None &&
+            !VanillaMuramasaItemStats1458.TryResolve(heldWeapon.ItemType, heldWeapon.Prefix,
+                itemPrefixArithmetic, out resolvedWeapon))
             return;
 
         float sourceCenterX = self.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
@@ -223,7 +235,7 @@ internal sealed partial class RuntimeBotCombat(
         if (!inventory.TryBuildBotCombatSnapshot(bot, tick, out VanillaPlayerCombatSnapshot combat))
             return;
         VanillaResolvedDirectMeleeUse resolved = VanillaDirectMeleeCombatMath.Resolve(
-            in weapon,
+            in resolvedWeapon,
             VanillaCombatPrefixModifiers.Identity,
             combat,
             Random.Shared.Next(-15, 16),

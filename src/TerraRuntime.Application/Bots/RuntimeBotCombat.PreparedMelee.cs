@@ -18,15 +18,20 @@ internal sealed partial class RuntimeBotCombat
             !VanillaItemCombatCatalog.TryGetDirectMelee(bot.Loadout.MeleeWeapon, out var weapon)) return false;
         byte slot = ResolveWeaponSlot(bot.Configuration.WeaponPolicy, RuntimeBotAttackKind.Melee);
         if (!serverPlayers.TryGetItem(bot.ServerPlayerId, slot, out var held) || held.IsEmpty ||
-            held.ItemType != weapon.Type || held.Prefix != VanillaPrefixIds.None ||
-            !inventory.TryBuildBotCombatSnapshot(bot, tick, out var combat) ||
+            held.ItemType != weapon.Type) return false;
+        var resolvedWeapon = weapon;
+        // Preserve the existing neutral direct catalog; nonneutral admission is source-proven only for155.
+        if (held.Prefix != VanillaPrefixIds.None &&
+            !VanillaMuramasaItemStats1458.TryResolve(held.ItemType, held.Prefix, itemPrefixArithmetic, out resolvedWeapon))
+            return false;
+        if (!inventory.TryBuildBotCombatSnapshot(bot, tick, out var combat) ||
             !npcs.TryCapture(target.Npc, out var initial) ||
             !VanillaNpcDefinitionCatalog.TryGet(initial.TypeIdentity, initial.NetIdentity, out var definition) ||
             !definition.TryResolveHitbox(initial.Simulation, out var body)) return false;
         float dx = initial.PositionX + body.Width * .5f - (expected.PositionX + PlayerAuthority.VanillaBasePlayerWidth * .5f);
         float dy = initial.PositionY + body.Height * .5f - (expected.PositionY + PlayerAuthority.VanillaBasePlayerHeight * .5f);
         int direction = dx < 0f ? -1 : 1;
-        var maximum = VanillaDirectMeleeCombatMath.Resolve(weapon, VanillaCombatPrefixModifiers.Identity,
+        var maximum = VanillaDirectMeleeCombatMath.Resolve(resolvedWeapon, VanillaCombatPrefixModifiers.Identity,
             combat, 15, 1, pvp: false);
         if (!npcs.TryCaptureOrdinaryNonlethalMelee(target.Npc, expected.Player, maximum.MaximumDamage,
                 maximum.ArmorPenetration, maximum.KnockBack, direction, out var captured)) return false;
@@ -47,7 +52,7 @@ internal sealed partial class RuntimeBotCombat
             npcs.TryCapture(captured.Handle, out var live) && live == captured;
         if (!Current()) return false;
         // Preserve the existing BOT Random.Shared component order; no Main/source cursor is claimed.
-        var resolved = VanillaDirectMeleeCombatMath.Resolve(weapon, VanillaCombatPrefixModifiers.Identity,
+        var resolved = VanillaDirectMeleeCombatMath.Resolve(resolvedWeapon, VanillaCombatPrefixModifiers.Identity,
             combat, Random.Shared.Next(-15, 16), Random.Shared.Next(1, 101), pvp: false);
         var request = new NpcDamageRequest(captured.Handle, DamageSource.FromPlayerItem(source.Player),
             resolved.Damage, resolved.ArmorPenetration, resolved.Critical, resolved.KnockBack, direction);

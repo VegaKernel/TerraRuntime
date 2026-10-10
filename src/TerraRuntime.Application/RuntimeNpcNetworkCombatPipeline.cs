@@ -174,7 +174,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline : IRuntimeTownNpcM
         this.requireOwnedPlayerHealth = requireOwnedPlayerHealth;
         this.rawPlayerSlots = rawPlayerSlots;
         this.tickProvider = tickProvider ?? throw new ArgumentNullException(nameof(tickProvider));
-        combatIntegrity = new RuntimeCombatIntegrity(playerAuthority, npcs.Capacity);
+        combatIntegrity = new RuntimeCombatIntegrity(playerAuthority, npcs);
         this.npcReplication = npcReplication;
         this.deathPrelude = deathPrelude ?? new(replication: npcReplication);
         this.onlyShimmerOceanWorlds = onlyShimmerOceanWorlds;

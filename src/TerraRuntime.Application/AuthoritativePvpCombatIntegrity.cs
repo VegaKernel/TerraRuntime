@@ -78,12 +78,18 @@ internal sealed class RuntimePvpCombatIntegrity
             !VanillaItemCombatCatalog.TryGetPrefixModifiers(item.Prefix, out VanillaCombatPrefixModifiers prefix))
             return PvpCombatResolveResult.LegacyFallback;
 
-        if (!players.TryCaptureCombatSnapshot(attackerConnection, out VanillaPlayerCombatSnapshot attackerCombat))
+        if (!players.TryCaptureProjectileUse(attacker.Player, out var ownerCapture) || ownerCapture is null || ownerCapture.Player != attacker)
+            return PvpCombatResolveResult.Rejected;
+        bool phaseBound = players.HasRemotePlayerPhaseBinding;
+        VanillaPlayerCombatSnapshot attackerCombat;
+        if (phaseBound)
+        {
+            if (!players.TryCaptureProjectileCombatSnapshot(attacker.Player, out attackerCombat))
+                return PvpCombatResolveResult.Rejected;
+        }
+        else if (!players.TryCaptureCombatSnapshot(attackerConnection, out attackerCombat))
             return PvpCombatResolveResult.LegacyFallback;
         if (!players.TryCaptureIncomingCombat(target.Player, out var targetCapture) || !targetCapture.IsAlive)
-            return PvpCombatResolveResult.Rejected;
-
-        if (!players.TryCaptureProjectileUse(attacker.Player, out var ownerCapture) || ownerCapture is null || ownerCapture.Player != attacker)
             return PvpCombatResolveResult.Rejected;
 
         VanillaResolvedDirectMeleeUse resolved = VanillaDirectMeleeCombatMath.Resolve(
@@ -94,7 +100,7 @@ internal sealed class RuntimePvpCombatIntegrity
             random.Next(1, 101),
             pvp: true);
 
-        if (!players.IsCurrentProjectileUse(ownerCapture) ||
+        if (players.HasRemotePlayerPhaseBinding != phaseBound || !players.IsCurrentProjectileUse(ownerCapture) ||
             !players.IsCurrentIncomingCombat(in targetCapture))
             return PvpCombatResolveResult.Rejected;
 

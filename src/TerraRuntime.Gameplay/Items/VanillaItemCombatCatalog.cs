@@ -283,7 +283,8 @@ public static class VanillaDirectMeleeCombatMath
         in VanillaPlayerCombatSnapshot attacker,
         int damageRollPercent,
         int critRollPercent,
-        bool pvp)
+        bool pvp,
+        int? finalNpcCrit = null)
     {
         damageRollPercent = Math.Clamp(damageRollPercent, -15, 15);
         critRollPercent = Math.Clamp(critRollPercent, 1, 100);
@@ -296,7 +297,7 @@ public static class VanillaDirectMeleeCombatMath
         int damage = Math.Max(1, (int)Math.Round(itemDamage * (1f + damageRollPercent / 100f)));
         int critChance = pvp
             ? PvpMeleeCritChance
-            : Math.Clamp(attacker.MeleeCrit + weapon.BaseCrit - VanillaItemCombatCatalog.VanillaBaseMeleeCrit + prefix.CritBonus, 0, 100);
+            : Math.Clamp(finalNpcCrit ?? (attacker.MeleeCrit + weapon.BaseCrit - VanillaItemCombatCatalog.VanillaBaseMeleeCrit + prefix.CritBonus), 0, 100);
         bool critical = critRollPercent <= critChance;
         int prefixedAnimation = Math.Max(1, (int)Math.Round(weapon.AnimationTicks * prefix.SpeedMultiplier));
         int prefixedUseTime = Math.Max(1, (int)Math.Round(weapon.UseTimeTicks * prefix.SpeedMultiplier));

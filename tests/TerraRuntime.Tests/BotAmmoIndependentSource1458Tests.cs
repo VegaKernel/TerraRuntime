@@ -19,8 +19,9 @@ using Xunit;
 
 namespace TerraRuntime.Tests;
 
-// Explicit BOT predictive, deterministic ammo policy; original Shoot rows only prove
-// retained ammo chronology. No original Minishark conservation/RNG or whole Main claim.
+// Atomic BOT predictive launch boundaries. These fixtures select source seed0,
+// whose represented Minishark conservation offer consumes; dedicated conservation
+// regressions separately cover retained ammo and cursor. No whole Shoot/Main claim.
 public sealed class BotAmmoIndependentSource1458Tests
 {
     [Fact]
@@ -430,8 +431,9 @@ public sealed class BotAmmoIndependentSource1458Tests
         internal readonly int UseTime;
         internal readonly int Animation;
         internal Action? OnTick;
+        internal readonly VanillaUnifiedRandom1458 ConservationRandom;
         private int ownerReads;
-        internal Fixture(int weapon, short stack, int? ammo = null, int capacity = 3, bool replication = false, VanillaBulletSourceArithmetic1458 itemPrefixArithmetic = VanillaBulletSourceArithmetic1458.CoreClrSingle)
+        internal Fixture(int weapon, short stack, int? ammo = null, int capacity = 3, bool replication = false, VanillaBulletSourceArithmetic1458 itemPrefixArithmetic = VanillaBulletSourceArithmetic1458.CoreClrSingle, int conservationSeed = 0)
         {
             Ammo = ammo ?? (weapon == 39 ? 40 : 97);
             UseTime = weapon == 39 ? 30 : weapon == 98 ? 8 : 14;
@@ -456,7 +458,8 @@ public sealed class BotAmmoIndependentSource1458Tests
             var inventory = Inventory = new RuntimeBotInventory(Bot, Players, worldItems, new(), World);
             Shots = new(capacity, replication ? new ProjectileEvents(Replication, Events) : Events);
             if (replication) Outbound = RegisterPeer(2, 7712);
-            Projectiles = new(Shots, human, new RuntimeNpcStore(), new Lookup(Players, created.Player, Target, () => { if (++ownerReads == 2) OnTick?.Invoke(); }), null, replication ? Replication : null, () => { OnTick?.Invoke(); return 0; });
+            ConservationRandom = new VanillaUnifiedRandom1458(conservationSeed);
+            Projectiles = new(Shots, human, new RuntimeNpcStore(), new Lookup(Players, created.Player, Target, () => { if (++ownerReads == 2) OnTick?.Invoke(); }), null, replication ? Replication : null, () => { OnTick?.Invoke(); return 0; }, projectileRandom: ConservationRandom);
             Combat = new(Bot, Players, null!, Projectiles, tiles, inventory, [Bot], World, itemPrefixArithmetic);
             Events.Seen.Clear();
             Events.Items.Clear();

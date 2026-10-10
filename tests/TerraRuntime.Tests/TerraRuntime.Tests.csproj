@@ -70,6 +70,9 @@
     <EmbeddedResource Include="Fixtures/remote-item-rotation-configured-official-1458.json.gz" LogicalName="RemoteItemRotation1458" />
     <EmbeddedResource Include="Fixtures/phase-vitals-hurt75-official-1458.json.gz" LogicalName="IncomingHumanVitalsHurt75" />
     <EmbeddedResource Include="Fixtures/phase-vitals-hurt-official-1458.json.gz" LogicalName="IncomingHumanVitalsHurt" />
+    <EmbeddedResource Include="Fixtures/bot-ammo-conservation-configured-original-1458.json.gz" LogicalName="BotAmmoConservationConfigured1458" />
+    <EmbeddedResource Include="Fixtures/bot-muramasa-prefix-stored-official-1458.json.gz" LogicalName="BotMuramasaPrefix1458" />
+    <EmbeddedResource Include="Fixtures/human-direct-melee-original-1458.json.gz" LogicalName="HumanDirectMelee1458" />
   </ItemGroup>
 
   <ItemGroup>
