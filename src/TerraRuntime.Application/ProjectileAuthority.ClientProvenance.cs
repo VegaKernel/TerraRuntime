@@ -79,6 +79,12 @@ internal sealed partial class ProjectileAuthority
 
         bool bullet = VanillaBulletWeaponLaunch1458.Supports(weapon.Type);
         bool bow = VanillaOrdinaryBowLaunch1458.Supports(weapon.Type);
+        // A bound retired player-phase custody cannot fall through to an untrusted
+        // generic birth, including when current equipment/prefix metadata is unsupported.
+        VanillaPlayerCombatSnapshot phaseCombat = default;
+        bool phaseOwned = (bow || bullet) && players.HasRemotePlayerPhaseBinding;
+        if (phaseOwned && !players.TryCaptureProjectileCombatSnapshot(connection.Player, out phaseCombat))
+            return ClientProjectileProvenanceResolveResult.Rejected;
         VanillaCombatPrefixModifiers prefix;
         bool sourceBowPrefix = bow && VanillaOrdinaryBowLaunch1458.TryGetPrefixModifiers(weapon.Type,
             weaponItem.Prefix, VanillaBulletSourceArithmetic1458.CoreClrSingle, out _);
@@ -99,9 +105,12 @@ internal sealed partial class ProjectileAuthority
             return ClientProjectileProvenanceResolveResult.NotApplicable;
         }
 
-        // Expanded bow prefixes are owned by the neutral source launch proof. Other modifier
-        // contexts retain the earlier generic catalog component mask instead of gaining trust.
-        if (bow && !VanillaOrdinaryBowLaunch1458.HasNeutralLaunchModifiers(in attackerCombat) &&
+        if (phaseOwned) attackerCombat = phaseCombat;
+
+        // Bound source profiles consume retained phase-owned combat. Never-bound component
+        // runtimes retain the existing equipment-only projection. Unsupported quiver or other
+        // modifier shapes keep the existing generic component prefix capability boundary.
+        if (bow && !VanillaOrdinaryBowLaunch1458.HasSupportedLaunchModifiers(in attackerCombat) &&
             !VanillaItemCombatCatalog.TryGetRangedPrefixModifiers(weaponItem.Prefix, out prefix))
             return ClientProjectileProvenanceResolveResult.NotApplicable;
 
@@ -140,7 +149,7 @@ internal sealed partial class ProjectileAuthority
         {
             if (ammoItem.ItemType == VanillaItemIds.WoodenArrow ||
                 VanillaOrdinaryBowLaunch1458.SupportsAmmo(ammoItem.ItemType) &&
-                VanillaOrdinaryBowLaunch1458.HasNeutralLaunchModifiers(in attackerCombat))
+                VanillaOrdinaryBowLaunch1458.HasSupportedLaunchModifiers(in attackerCombat))
             {
                 if (!sourceBowPrefix)
                     return ClientProjectileProvenanceResolveResult.NotApplicable;
@@ -184,7 +193,7 @@ internal sealed partial class ProjectileAuthority
         float knockBackTolerance = MathF.Max(0.001f, MathF.Abs(expectedKnockBack) * 0.00001f);
 
         if (bow && VanillaOrdinaryBowLaunch1458.SupportsAmmo(ammoItem.ItemType) &&
-            VanillaOrdinaryBowLaunch1458.HasNeutralLaunchModifiers(in attackerCombat))
+            VanillaOrdinaryBowLaunch1458.HasSupportedLaunchModifiers(in attackerCombat))
             return TryResolveOrdinaryBowSourceCandidates(connection, in packet, in weaponItem, in weapon,
                 in ammo, in ammoItem, in attackerCombat, ammoSlot, ammoBox, ammoPotion, playerCx, playerCy,
                 tick, plannedRandom, out authoritative);

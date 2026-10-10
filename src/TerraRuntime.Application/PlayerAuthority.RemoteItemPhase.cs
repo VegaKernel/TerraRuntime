@@ -143,7 +143,7 @@ internal sealed partial class PlayerAuthority
             member.NpcHealth is not { SourceProfileKnown: true } || member.HasMount || plan.GodMode ||
             (plan.Appearance?.ConsumableUnlockFlags ?? 0) != 0 ||
             !TryCaptureProvenRemoteEquipment(plan.Equipment, plan.Appearance, out var equipmentCombat, out int manaMaximumBonus) ||
-            plan.BuffTypes.Any(static type => type.Value is not (21 or 23 or 93 or 94 or 112)) ||
+            plan.BuffTypes.Any(static type => type.Value is not (16 or 21 or 23 or 93 or 94 or 112 or 117)) ||
             member.MiscFlags1 != 0 || (member.MiscFlags2 & ~(1 << 6)) != 0 ||
             (member.ControlFlags & ~0x7c) != 0 ||
             (member.MovementFlags & ~0x54) != 0 || physical.GravityDirection is not (1f or -1f) ||
@@ -162,6 +162,14 @@ internal sealed partial class PlayerAuthority
         int delay = item.Selected.PotionDelay;
         if (outside)
         {
+            bool combatBuff = plan.BuffTypes.Any(static type => type.Value is 16 or 117);
+            if (combatBuff)
+            {
+                if (item.DerivedCombat is not { } retained || !IsValidDerivedCombat(in retained) ||
+                    !VanillaPlayerCombatBuffs1458.TryApply(in retained, plan.BuffTypes, out var compounded) ||
+                    !IsValidDerivedCombat(in compounded)) return false;
+                item = item with { DerivedCombat = compounded };
+            }
             int duration = plan.Buffs.GetLastActiveDuration(new BuffTypeId(21));
             if (duration > 0) delay = duration;
             plan.Item = item with { Selected = item.Selected with { Animation = 0, PotionDelay = delay } };
@@ -230,10 +238,10 @@ internal sealed partial class PlayerAuthority
         // UpdateBuffs precedes the final magic-damage heat/sickness writer; ItemCheck's
         // new mana-potion buff is offered afterward and first affects the following phase.
         int sicknessDuration = plan.Buffs.GetLastActiveDuration(new BuffTypeId(94));
-        float magicDamage = equipmentCombat.MagicDamage;
-        if (sicknessDuration > 0) magicDamage *= 1f - 0.25f * ((float)sicknessDuration / 300f);
-        magicDamage *= heat;
-        var derivedCombat = equipmentCombat with
+        if (!VanillaPlayerCombatBuffs1458.TryApply(in equipmentCombat, plan.BuffTypes, out var buffCombat) ||
+            !VanillaPlayerCombatBuffs1458.TryResolveMagicDamage(buffCombat.MagicDamage, sicknessDuration, heat,
+                world.WindowsItemPrefixArithmetic, out float magicDamage)) return false;
+        var derivedCombat = buffCombat with
         {
             MeleeCrit = equipmentCombat.MeleeCrit + itemCrit,
             RangedCrit = equipmentCombat.RangedCrit + itemCrit,

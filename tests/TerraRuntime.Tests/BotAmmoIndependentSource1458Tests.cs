@@ -431,7 +431,7 @@ public sealed class BotAmmoIndependentSource1458Tests
         internal readonly int Animation;
         internal Action? OnTick;
         private int ownerReads;
-        internal Fixture(int weapon, short stack, int? ammo = null, int capacity = 3, bool replication = false)
+        internal Fixture(int weapon, short stack, int? ammo = null, int capacity = 3, bool replication = false, VanillaBulletSourceArithmetic1458 itemPrefixArithmetic = VanillaBulletSourceArithmetic1458.CoreClrSingle)
         {
             Ammo = ammo ?? (weapon == 39 ? 40 : 97);
             UseTime = weapon == 39 ? 30 : weapon == 98 ? 8 : 14;
@@ -457,7 +457,7 @@ public sealed class BotAmmoIndependentSource1458Tests
             Shots = new(capacity, replication ? new ProjectileEvents(Replication, Events) : Events);
             if (replication) Outbound = RegisterPeer(2, 7712);
             Projectiles = new(Shots, human, new RuntimeNpcStore(), new Lookup(Players, created.Player, Target, () => { if (++ownerReads == 2) OnTick?.Invoke(); }), null, replication ? Replication : null, () => { OnTick?.Invoke(); return 0; });
-            Combat = new(Bot, Players, null!, Projectiles, tiles, inventory, [Bot], World);
+            Combat = new(Bot, Players, null!, Projectiles, tiles, inventory, [Bot], World, itemPrefixArithmetic);
             Events.Seen.Clear();
             Events.Items.Clear();
         }

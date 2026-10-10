@@ -12,6 +12,7 @@ public readonly record struct VanillaOrdinaryBowLaunchFacts1458(
 
 /// <summary>
 /// Source-valid ordinary bow prefixes with five bounded arrow types from original 1.4.5.8 ItemCheck_Shoot.
+/// Retained Archery/Wrath source fields are supplied by the player phase, independently of live gear.
 /// This query adds no RNG offers and does not select or consume ammunition.
 /// </summary>
 public static class VanillaOrdinaryBowLaunch1458
@@ -36,7 +37,7 @@ public static class VanillaOrdinaryBowLaunch1458
         if (!SupportsAmmo(ammoType) ||
             !TryGetPrefixModifiers(weaponType, prefix, arithmetic, out var modifiers) ||
             !VanillaProjectileWeaponCombatCatalog.TryGetWeapon(weaponType, out var weapon) ||
-            !HasNeutralLaunchModifiers(in combat) ||
+            !HasSupportedLaunchModifiers(in combat) ||
             !VanillaProjectileWeaponCombatCatalog.TryGetArrowAmmo(ammoType, out var ammo))
             return false;
 
@@ -55,7 +56,9 @@ public static class VanillaOrdinaryBowLaunch1458
             !float.IsFinite(knockBack) || knockBack < 0f)
             return false;
 
-        launch = new(projectile, damage, knockBack, speed.CanonicalMagnitude,
+        float magnitude = speed.CanonicalMagnitude;
+        magnitude = ResolveArcherySpeed(magnitude, combat.Archery);
+        launch = new(projectile, damage, knockBack, magnitude,
             RoundProduct(weapon.UseTimeTicks, modifiers.SpeedMultiplier, windows));
         return true;
     }
@@ -79,12 +82,17 @@ public static class VanillaOrdinaryBowLaunch1458
         return true;
     }
 
+    /// <summary>Original PickAmmo applies Archery only below20; already-faster arrows stay faster.</summary>
+    public static float ResolveArcherySpeed(float speed, bool archery) =>
+        archery && speed < 20f ? Math.Min(speed * 1.2f, 20f) : speed;
+
     private static int RoundProduct(int value, float multiplier, bool windows) =>
         (int)Math.Round(windows ? value * (double)multiplier : value * multiplier);
 
-    /// <summary>Defense, class crit and armor penetration do not alter these launch fields.</summary>
-    public static bool HasNeutralLaunchModifiers(in VanillaPlayerCombatSnapshot combat) =>
-        !combat.MagicQuiver && combat.BowDamageMultiplier == 1f;
+    /// <summary>Bounded retained damage/Archery shape; this does not admit new equipped damage gear.</summary>
+    public static bool HasSupportedLaunchModifiers(in VanillaPlayerCombatSnapshot combat) =>
+        !combat.MagicQuiver && combat.RangedMultDamage == 1f && combat.ArrowDamageAdditiveStack == 0f &&
+        float.IsFinite(combat.BowDamageMultiplier) && combat.BowDamageMultiplier > 0f;
 
     /// <summary>
     /// Checks the reported source-normalized velocity without renormalizing its rounded components.

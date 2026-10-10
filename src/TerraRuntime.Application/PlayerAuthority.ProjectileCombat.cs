@@ -23,6 +23,7 @@ internal sealed partial class PlayerAuthority
         combat.ArmorPenetration >= 0 && combat.MeleeArmorPenetration >= 0 && combat.LavaProtectionTicks >= 0 &&
         float.IsFinite(combat.Endurance) && combat.Endurance is >= 0f and <= 1f &&
         IsNonnegativeFinite(combat.MeleeDamage) && IsNonnegativeFinite(combat.RangedDamage) &&
+        IsNonnegativeFinite(combat.MinionDamage) && combat.MinionDamage > 0f &&
         IsNonnegativeFinite(combat.MagicDamage) && float.IsFinite(combat.RangedMultDamage) && combat.RangedMultDamage > 0f &&
         IsNonnegativeFinite(combat.ArrowDamage) && IsNonnegativeFinite(combat.ArrowDamageAdditiveStack) &&
         IsNonnegativeFinite(combat.BulletDamage) && IsNonnegativeFinite(combat.MeleeAttackSpeed) &&

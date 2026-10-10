@@ -16,7 +16,8 @@ namespace TerraRuntime.Application.Bots;
 
 internal sealed partial class RuntimeBotCombat(
     BotState bot, ServerPlayerAuthority serverPlayers, NpcAuthority npcs, ProjectileAuthority projectiles,
-    WorldTileStore worldTiles, RuntimeBotInventory inventory, IEnumerable<BotState> bots, WorldRuntimeIdentity world) : IRuntimeBotCombat
+    WorldTileStore worldTiles, RuntimeBotInventory inventory, IEnumerable<BotState> bots, WorldRuntimeIdentity world,
+    VanillaBulletSourceArithmetic1458 itemPrefixArithmetic = VanillaBulletSourceArithmetic1458.CoreClrSingle) : IRuntimeBotCombat
 {
     public RuntimeBotActionResult Attack(in RuntimeBotObservationSnapshot observation)
     {
@@ -67,8 +68,11 @@ internal sealed partial class RuntimeBotCombat(
         if (tick != bot.CurrentTick || tick < 0 || self.Player != bot.Player || !self.HasHealth ||
             self.Life <= 0 || self.IsDead || !bot.OwnsCurrentActor(serverPlayers) ||
             !projectiles.TryCaptureRangedTarget(target.Npc, target.Player, out var targetCapture)) return false;
-        if (!TryResolveRangedLoadout(bot, attack, out _, out ItemTypeId ammoItem,
+        byte weaponSlot = ResolveWeaponSlot(bot.Configuration.WeaponPolicy, attack);
+        if (!TryResolveRangedLoadout(bot, attack, out ItemTypeId weaponItem, out ItemTypeId ammoItem,
                 out VanillaProjectileWeaponCombatDefinition weapon, out VanillaProjectileAmmoCombatDefinition ammo) ||
+            !serverPlayers.TryGetItem(bot.ServerPlayerId, weaponSlot, out var heldWeapon) ||
+            !TryResolveHeldWeapon(weaponItem, heldWeapon, weapon, out var resolvedWeapon) ||
             !RuntimeBotInventory.TryFindAmmoSlot(serverPlayers, bot.ServerPlayerId, ammoItem, out short ammoSlot, out ServerPlayerItemState ammoState) ||
             !VanillaProjectileWeaponCombatCatalog.TryResolveProjectileType(in weapon, in ammo, out ProjectileTypeId projectileType) ||
             !TerraRuntime.Gameplay.Projectiles.VanillaDefinitionCatalog.TryGet(
@@ -78,6 +82,7 @@ internal sealed partial class RuntimeBotCombat(
             return false;
         }
 
+        weapon = resolvedWeapon;
         if (!inventory.TryBuildBotCombatSnapshot(bot, tick, out VanillaPlayerCombatSnapshot combat))
             return false;
         VanillaCombatPrefixModifiers prefix = VanillaCombatPrefixModifiers.Identity;
@@ -110,7 +115,6 @@ internal sealed partial class RuntimeBotCombat(
             return false;
         }
 
-        byte weaponSlot = ResolveWeaponSlot(bot.Configuration.WeaponPolicy, attack);
         // This bounded BOT policy consumes one item per single predictive projectile.
         // Source Minishark conservation and client Shoot RNG remain separately scoped.
         var consumed = ammoState.Stack == 1
@@ -198,6 +202,14 @@ internal sealed partial class RuntimeBotCombat(
             return;
         }
 
+        // This bounded BOT producer requires its configured neutral weapon in the actual policy slot.
+        // Canonical positive-stack inventory remains BOT policy; no original malformed-stack claim.
+        byte weaponSlot = ResolveWeaponSlot(bot.Configuration.WeaponPolicy, RuntimeBotAttackKind.Melee);
+        if (!serverPlayers.TryGetItem(bot.ServerPlayerId, weaponSlot, out var heldWeapon) ||
+            heldWeapon.IsEmpty || heldWeapon.ItemType != bot.Loadout.MeleeWeapon ||
+            heldWeapon.Prefix != VanillaPrefixIds.None)
+            return;
+
         float sourceCenterX = self.PositionX + PlayerAuthority.VanillaBasePlayerWidth * 0.5f;
         float sourceCenterY = self.PositionY + PlayerAuthority.VanillaBasePlayerHeight * 0.5f;
         float dx = target.CenterX - sourceCenterX;
@@ -216,7 +228,6 @@ internal sealed partial class RuntimeBotCombat(
             Random.Shared.Next(1, 101),
             pvp: false);
         int hitDirection = dx < 0f ? -1 : 1;
-        byte weaponSlot = ResolveWeaponSlot(bot.Configuration.WeaponPolicy, RuntimeBotAttackKind.Melee);
         if (!serverPlayers.SetHeldItem(bot.ServerPlayerId, weaponSlot, useItem: true) ||
             !npcs.TryStrikeBotPlayerMelee(
                 bot.Player,

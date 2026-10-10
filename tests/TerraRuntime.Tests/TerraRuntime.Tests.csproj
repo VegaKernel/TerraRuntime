@@ -430,6 +430,10 @@
     <EmbeddedResource Include="Fixtures/bot-quick-consumable-source-official-1458.json.gz" LogicalName="BotQuickConsumableSource1458" />
     <EmbeddedResource Include="Fixtures/bot-partial-getitem-source-official-1458.json.gz" LogicalName="BotPartialGetItemSource1458" />
     <EmbeddedResource Include="Fixtures/bot-ammo-birth-order-source-official-1458.json.gz" LogicalName="BotAmmoBirthOrderSource1458" />
+    <EmbeddedResource Include="Fixtures/bot-held-weapon-source-cells-official-1458.json.gz" LogicalName="BotHeldWeaponSourceCells1458" />
+    <EmbeddedResource Include="Fixtures/human-combat-buff-phase-original-1458.json.gz" LogicalName="HumanCombatBuffPhase1458" />
+    <EmbeddedResource Include="Fixtures/human-combat-buffs-local-shoot-original-1458.json.gz" LogicalName="HumanCombatBuffShoot1458" />
+    <EmbeddedResource Include="Fixtures/archery-pick-ammo-cap-original-1458.json.gz" LogicalName="ArcheryPickAmmoCap1458" />
     <EmbeddedResource Include="Fixtures/arcane-derived-mana-original-1458.json.gz" LogicalName="ArcaneDerivedManaSource1458" />
     <EmbeddedResource Include="Fixtures/arcane-vanity-blockers-original-1458.json.gz" LogicalName="ArcaneVanityBlockerSource1458" />
   </ItemGroup>

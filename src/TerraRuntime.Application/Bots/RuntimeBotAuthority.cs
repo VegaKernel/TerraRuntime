@@ -34,6 +34,7 @@ internal sealed class RuntimeBotAuthority
     private readonly RuntimeBotResourceLeases leases = new();
     private readonly WorldRuntimeIdentity world;
     private readonly IRuntimeBotBrain brain;
+    private readonly VanillaBulletSourceArithmetic1458 itemPrefixArithmetic;
     private int nextId = 1;
     private long lastTelemetryTick = long.MinValue;
 
@@ -52,9 +53,13 @@ internal sealed class RuntimeBotAuthority
         float spawnY,
         Random? botRandom = null,
         WorldRuntimeIdentity world = default,
-        IRuntimeBotBrain? brain = null)
+        IRuntimeBotBrain? brain = null,
+        VanillaBulletSourceArithmetic1458 itemPrefixArithmetic = VanillaBulletSourceArithmetic1458.CoreClrSingle)
     {
         if (!world.IsAssigned) throw new ArgumentException("Bot world identity must be assigned.", nameof(world));
+        if (itemPrefixArithmetic is not (VanillaBulletSourceArithmetic1458.CoreClrSingle or VanillaBulletSourceArithmetic1458.WindowsClr4X86))
+            throw new ArgumentOutOfRangeException(nameof(itemPrefixArithmetic));
+        this.itemPrefixArithmetic = itemPrefixArithmetic;
         this.world = world;
         this.brain = brain ?? new DeterministicRuntimeBotBrain();
         this.serverPlayers = serverPlayers ?? throw new ArgumentNullException(nameof(serverPlayers));
@@ -531,7 +536,7 @@ internal sealed class RuntimeBotAuthority
     private RuntimeBotController CreateController(BotState bot)
     {
         var inventory = new RuntimeBotInventory(bot, serverPlayers, worldItems, leases, world);
-        var combat = new RuntimeBotCombat(bot, serverPlayers, npcs, projectiles, worldTiles, inventory, bots.Values, world);
+        var combat = new RuntimeBotCombat(bot, serverPlayers, npcs, projectiles, worldTiles, inventory, bots.Values, world, itemPrefixArithmetic);
         var navigation = new RuntimeBotNavigation(bot, serverPlayers, worldTiles, combat, bots.Values, leases, world);
         var mining = new RuntimeBotMining(bot, serverPlayers, worldTiles, tileAuthority, navigation, leases, world);
         var perception = new RuntimeBotPerception(bot, serverPlayers, players, playerSnapshots, npcs,

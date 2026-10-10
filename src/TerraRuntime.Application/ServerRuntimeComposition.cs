@@ -150,6 +150,9 @@ internal sealed class ServerRuntimeComposition
         var commands = new RuntimeCommandCounter();
         // Human world mitigation consumes retained Player.Update fields. The explicit component
         // policy exists for trusted standalone adapters; missing phase/world facts never select it.
+        var itemPrefixArithmetic = OperatingSystem.IsWindows()
+            ? VanillaBulletSourceArithmetic1458.WindowsClr4X86
+            : VanillaBulletSourceArithmetic1458.CoreClrSingle;
         var playersAuthority = new PlayerAuthority(playerEvents, worldTiles, expertMode, masterMode, serverPlayers,
             oceanTeleportSurface: townCommerceWorldFacts is { SkyblockWorld: false } oceanFacts ? oceanFacts.WorldSurface : null,
             chestCommands: chestCommands,
@@ -161,7 +164,7 @@ internal sealed class ServerRuntimeComposition
         {
             var sourceWorld = new RuntimePlayerUpdateWorld1458(worldTiles.Dimensions.WidthTiles,
                 worldTiles.Dimensions.HeightTiles, playerWorld.WorldSurface, playerWorld.RemixWorld, playerWorld.SkyblockWorld)
-            { WindowsItemPrefixArithmetic = OperatingSystem.IsWindows() };
+            { WindowsItemPrefixArithmetic = itemPrefixArithmetic == VanillaBulletSourceArithmetic1458.WindowsClr4X86 };
             if (sourceWorld.IsValid) playersAuthority.SetPlayerUpdateWorldFacts(in sourceWorld);
         }
         if (townCommerceWorldFacts is { } healthWorld)
@@ -182,7 +185,8 @@ internal sealed class ServerRuntimeComposition
             ?? new VanillaUnifiedRandom1458(Environment.TickCount);
         // Admitted MessageBuffer.GetData(5)/Item.Prefix proposals use this existing Main.rand
         // owner. This does not recover unowned callers or the separate UpdatePlayers schedule.
-        playersAuthority.BindReceiveEquipmentRandom(gameplayRandom, OperatingSystem.IsWindows(), itemPrefixWorld);
+        playersAuthority.BindReceiveEquipmentRandom(gameplayRandom,
+            itemPrefixArithmetic == VanillaBulletSourceArithmetic1458.WindowsClr4X86, itemPrefixWorld);
         IVanillaNpcRandom npcRandom = naturalSpawnRandom ?? new TerraRuntime.Core.Npcs.SystemVanillaNpcRandom(gameplayRandom);
         IWorldItemSpawnRandom spawnRandom = worldItemSpawnRandom ?? new SystemWorldItemSpawnRandom(gameplayRandom);
         // Player.UpdateEquips uses Main.expertMode/masterMode, derived from Difficulty including Good World.
@@ -306,7 +310,8 @@ internal sealed class ServerRuntimeComposition
                 () => updates.Current,
                 botSpawnX,
                 botSpawnY,
-                world: worldIdentity)
+                world: worldIdentity,
+                itemPrefixArithmetic: itemPrefixArithmetic)
             : null;
         var projectilePlayerCombat = new RuntimeProjectilePlayerCombatPass(
             projectileStore,

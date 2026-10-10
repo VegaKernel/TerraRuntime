@@ -9,6 +9,10 @@ internal sealed partial class PlayerAuthority
 {
     private VanillaUnifiedRandom1458? playerUpdateRandom;
     private bool playerUpdateRandomOwned;
+
+    // A never-bound component runtime has not claimed the whole UpdatePlayers stream.
+    // Binding is permanent even when represented phase custody is subsequently retired.
+    internal bool HasRemotePlayerPhaseBinding => playerUpdateRandom is not null;
     private RuntimePlayerUpdateWorld1458? playerUpdateWorld;
 
     internal void SetPlayerUpdateWorldFacts(in RuntimePlayerUpdateWorld1458 world)

@@ -32,6 +32,9 @@ public readonly record struct VanillaPlayerCombatSnapshot(
     public bool LavaRose { get; init; }
     public bool WaterWalk { get; init; }
 
+    public bool Archery { get; init; }
+    public float MinionDamage { get; init; } = 1f;
+
     public static VanillaPlayerCombatSnapshot Baseline => new(
         Defense: 0,
         Endurance: 0f,
@@ -49,7 +52,7 @@ public readonly record struct VanillaPlayerCombatSnapshot(
         ArmorPenetration: 0,
         MeleeArmorPenetration: 0,
         NoKnockback: false,
-        MagicQuiver: false);
+        MagicQuiver: false) { Archery = false, MinionDamage = 1f };
 
     /// <summary>Player.CapAttackSpeeds / TurnAttackSpeedToUseTimeMultiplier.</summary>
     public float MeleeAnimationMultiplier
