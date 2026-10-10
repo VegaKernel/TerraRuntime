@@ -129,7 +129,10 @@ internal static partial class VanillaProjectileBehaviorStepper
             return false;
         }
 
-        if (profile.RequiresDefaultAi2 && current.Ai.Ai2 != 0f)
+        // These two source post-hit bits mean consumed Harpy Charm; they do not
+        // enable homing. Other feature bits remain outside this motion profile.
+        if (profile.RequiresDefaultAi2 && current.Ai.Ai2 != 0f &&
+            !(current.Type.Value is 4 or 5 && BitConverter.SingleToInt32Bits(current.Ai.Ai2) == 3))
         {
             next = default;
             return false;

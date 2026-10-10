@@ -417,4 +417,7 @@
     <EmbeddedResource Include="Fixtures/arrow-npc-fire-proc-configured-official-1458.json.gz" LogicalName="ArrowFireProcNpc1458" />
     <EmbeddedResource Include="Fixtures/ordinary-bow-prefixed-arrow-shoot-configured-official-1458.json.gz" LogicalName="OrdinaryExtraArrowLaunch1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/ordinary-arrow-continuation-configured-official-1458.json.gz" LogicalName="OrdinaryArrowContinuation1458" />
+  </ItemGroup>
 </Project>

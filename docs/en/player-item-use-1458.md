@@ -1,5 +1,28 @@
 # Owned player item use 1.4.5.8
 
+## Retained ordinary-arrow subupdates — 2026-10-10, accepted local checkpoint
+
+The accepted block prepares motion and NPC hits in each source arrow subupdate. Jester has two local updates per world tick; source damage and immunity from the first must affect the next target and update. Genuine configured original36 Update calls distinguish equal-final-cursor cases with different second-hit HP. Stored future damage attenuation and raw AI2 flags accompany hit ordering; adding all RNG offers before the existing outer combat pass would preserve the defect.
+
+The implemented candidate covers trusted human Unholy/Jester projectiles4/5 with known plain terrain, neutral retained owner effects and reachable nonlethal canonical NPC3 with known-empty status. The direct concrete actor/registry replay passes1469 checks over18 contact cases, two no-contact cases and two repeated same-owner arrows; final motion, mapped lifecycle, source RNG and literal packet28/27 ordering agree with those original captures. The real ProjectileAuthority driver passes1455 checks over the same22 source rows, including final baseline bytes before the first observer, later join replay, shared immunity and no duplicate outer hits. Six actual driver guard cases pass. The corrected v2 design also proves subsequent expiry instead of freezing; independent positive/restored267 checks and six meaningful omission controls pass. Two compact durable Facts are frozen, with three old-design assertion failures. The typed managed/fresh WindowsNative prototype passes383 checks per runtime, using public seeded checkpoints and typed state/queue observers; Native literal packets/full56 are not claimed. Release Rebuild and focused705/705 pass. One full suite passes1563113 tests with zero failures/errors and one known skip. Fresh shipping WindowsNativeAOT/five smokes and typed383 checks per managed/Native runtime pass against exact32 references; AMD64 CLR directory is zero. Release/Native live82/49 pass. Full56/literal28/27/final-baseline bytes remain managed proof; Native checks use typed state/public seeded checkpoints/queue counts. Genuine LinuxNativeAOT is locally unverified; GitHub CI is not awaited. All retained actor/NPC/RNG/status/immunity/interaction state is adopted before observers. Historical packet27 publication must preserve the final state used for a joining player, including no-hit motion that generates no new packet. Owned late refusal prevents legacy motion and duplicate outer hits for that generation. Deterministic initial terminal penetration/expiry excludes the new lane early and retains the prior compatibility path, so arrows keep aging and retire. That human Remove path clears baseline/binding but differs from original terminal29 and visual RNG; complete semantic Kill parity remains open. Lethal or other intersecting NPCs, PvP, complete NumHits/oldPosition and Main/client scheduling remain open. Whole actor Prepare+Dispose allocation is about$10.7\,\mathrm{kB}$/actor in the diagnostic, not the isolated40-byte NPC lease; shipping driver allocation is not yet measured.
+
+```mermaid
+sequenceDiagram
+    participant Loop as world tick
+    participant Arrows as ProjectileAuthority
+    participant Combat as arrow continuation
+    participant Owners as retained stores and RNG
+    participant Wire as replication registries
+    Loop->>Arrows: TryTickState(combat)
+    Arrows->>Combat: prepare detached subupdate journal
+    Arrows->>Owners: adopt final state, immunity and interactions
+    Arrows->>Wire: retain final join baseline
+    Arrows->>Combat: publish ordered journal
+    Combat->>Wire: historical packets preserve final baseline
+    Loop->>Combat: outer combat pass
+    Note over Combat: Exact generation mark prevents duplicate hits
+```
+
 ## Additional arrow launch profiles and scoped NPC hit points — 2026-10-10, accepted local checkpoint
 
 The same source-candidate launch boundary is extended from wooden arrows40 to Flaming41, Unholy47, Jester51 and Endless3103. Independently repeated original2800 launches cover175 valid prefixes, two directions and both platforms. Rounded incoming Jester components are preserved; Endless stock is unchanged while consumable arrows debit one. The plain unmounted normal-gravity origin, complete candidate body and shorter surviving source use period remain required. Other non-neutral contexts retain their earlier catalog component scope.

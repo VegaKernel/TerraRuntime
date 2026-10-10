@@ -15,6 +15,7 @@ namespace TerraRuntime.Application;
 internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepper
 {
     private readonly VanillaProjectileWorldMotionResolver worldMotion;
+    private readonly WorldTileStore ordinaryTiles;
     private readonly IRuntimePlayerSlotSnapshotLookup? playerSnapshots;
     private readonly IVanillaProjectileNpcTargetResolver? npcTargets;
     private readonly VanillaProjectilePlayerTargetResolver? hostilePlayerTargets;
@@ -33,6 +34,7 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
     {
         WorldTileStore worldTiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
         worldMotion = new VanillaProjectileWorldMotionResolver(worldTiles);
+        ordinaryTiles = worldTiles;
         this.playerSnapshots = playerSnapshots;
         npcTargets = npcs is null
             ? null
@@ -140,4 +142,34 @@ internal sealed class VanillaProjectileWorldStateStepper : IProjectileStateStepp
 
     private static bool IsOutsideNegativeWorld(in ProjectileSnapshot projectile) =>
         projectile.PositionX <= 0f || projectile.PositionY <= 0f;
+    internal bool TryCaptureOrdinaryArrowTerrain(in ProjectileSnapshot projectile,
+        out OrdinaryArrowTerrainCapture capture)
+    {
+        capture = null!;
+        if (!TerraRuntime.Application.OrdinaryArrowTerrainCapture.TryCapture(ordinaryTiles,
+                in projectile, windPhysics, out var terrain) || terrain is null) return false;
+        capture = new(this,terrain);
+        return true;
+    }
+    internal sealed class OrdinaryArrowTerrainCapture
+    {
+        private readonly VanillaProjectileWorldStateStepper owner;
+        private readonly TerraRuntime.Application.OrdinaryArrowTerrainCapture terrain;
+        internal OrdinaryArrowTerrainCapture(VanillaProjectileWorldStateStepper owner,
+            TerraRuntime.Application.OrdinaryArrowTerrainCapture terrain)
+        {
+            this.owner = owner;
+            this.terrain = terrain;
+        }
+        internal bool IsCurrent
+        {
+            get
+            {
+                if (owner.windPhysics) return false;
+                return terrain.IsCurrent;
+            }
+        }
+        internal bool MayReach(float x,float y,int width,int height) => terrain.MayReach(x,y,width,height);
+    }
+
 }

@@ -128,11 +128,18 @@ public readonly record struct ProjectileStateTickSummary(
     int Applied,
     int Rejected);
 
+internal enum ProjectileActorSimulationResult : byte
+{
+    NotApplicable = 0,
+    Applied = 1,
+    Rejected = 2,
+}
+
 /// <summary>
-/// Runs allocation-stable projectile simulation against a pre-pass snapshot of the live table. Vanilla
-/// extraUpdates execute as local subupdates, but only the final state is committed to the authoritative store,
-/// so one world tick cannot amplify replication into one packet-27 commit per subupdate. Every final commit is
-/// generation-safe, therefore reentrant despawn/slot-reuse cannot let stale simulation mutate a replacement.
+/// Runs projectile simulation against a bounded pre-pass snapshot of the live table. The generic lane uses
+/// allocation-stable local subupdates and commits only the final state. An admitted concrete actor can instead
+/// own its complete state transition and source-ordered publication journal at the same physical slot.
+/// Generation checks prevent reentrant despawn/slot reuse from mutating a replacement.
 /// TerrariaServer 1.4.5.8 updates only slots 0..999; physical overflow slot 1000 is intentionally excluded.
 /// </summary>
 public sealed class RuntimeProjectileStateExecutor
@@ -159,7 +166,12 @@ public sealed class RuntimeProjectileStateExecutor
         _stepBuffer = new ProjectileSimulationStepResult[VanillaProjectileUpdateFacts.MaximumExtraUpdates + 1];
     }
 
-    public ProjectileStateTickSummary Tick(IProjectileStateStepper stepper)
+    public ProjectileStateTickSummary Tick(IProjectileStateStepper stepper) => Tick(stepper, null);
+
+    // The concrete Application arrow owner may prepare/adopt this actor before the generic motion lane.
+    // A handled refusal is final for this pass; it never falls through to speculative legacy motion.
+    internal ProjectileStateTickSummary Tick(IProjectileStateStepper stepper,
+        Func<ProjectileSnapshot, ProjectileActorSimulationResult>? simulateActor)
     {
         ArgumentNullException.ThrowIfNull(stepper);
 
@@ -180,6 +192,20 @@ public sealed class RuntimeProjectileStateExecutor
             {
                 rejected++;
                 continue;
+            }
+
+            if (simulateActor is not null)
+            {
+                ProjectileActorSimulationResult actorResult = simulateActor(projectile);
+                if (actorResult != ProjectileActorSimulationResult.NotApplicable)
+                {
+                    proposed++;
+                    if (actorResult == ProjectileActorSimulationResult.Applied)
+                        applied++;
+                    else
+                        rejected++;
+                    continue;
+                }
             }
 
             int subupdates = VanillaProjectileUpdateFacts.GetSubupdatesPerWorldTick(projectile.Type, projectile.Ai);

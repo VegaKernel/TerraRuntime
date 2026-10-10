@@ -1,5 +1,28 @@
 # Владение использованием предметов игрока 1.4.5.8
 
+## Удерживаемые subupdate обычных стрел — 2026-10-10, локальная проверка пройдена
+
+Принятый блок готовит движение и попадания в NPC на каждом source subupdate стрелы. У Jester два локальных обновления на мировой tick; damage и immunity после первого должны влиять на следующую цель и обновление. Настоящие configured36 Update-вызовы оригинала различают случаи с одинаковым итоговым cursor, но разным HP после второго попадания. Изменение сохранённого damage и raw AI2 flags связано с порядком hits; добавление всех RNG-вызовов перед прежним внешним combat pass сохранит ошибку.
+
+Реализованный кандидат охватывает доверенные человеческие Unholy/Jester projectiles4/5 с известной обычной местностью, нейтральными сохранёнными эффектами владельца и достижимыми нелетальными canonical NPC3 с известным пустым статусом. Прямой replay конкретного actor/registry проходит1469 проверок:18 случаев попадания, два без контакта и два повторных выстрела того же владельца. Конечное движение, представленные lifecycle-поля, исходный RNG и буквальный порядок packet28/27 совпадают с этими оригинальными захватами. Настоящий драйвер ProjectileAuthority проходит1455 проверок по тем же22 source-строкам, включая конечные baseline-байты до первого observer, поздний join replay, shared immunity и отсутствие повторных внешних hits. Шесть реальных driver guard-случаев проходят. Исправленный v2 также доказывает последующее истечение жизни вместо зависания; независимые positive/restored267 проверки и шесть содержательных omission controls проходят. Два компактных durable Facts заморожены; старый вариант даёт три assertion failures. Typed managed/fresh WindowsNative prototype проходит383 проверки на runtime, используя публичные seeded checkpoints и typed state/queue observers; Native literal packets/full56 не заявляются. Release Rebuild и focused705/705 проходят. Один full suite: 1563113 успешных тестов, ноль failures/errors и один известный skip. Свежие shipping WindowsNativeAOT/пять smokes и typed383 проверки на managed/Native runtime проходят с exact32 references; AMD64 CLR directory равен нулю. Release/Native live82/49 проходят. Full56/literal28/27/конечные baseline-байты остаются managed-доказательством; Native проверяет typed state/public seeded checkpoints/queue counts. Настоящий LinuxNativeAOT локально не проверен; GitHub CI не ожидается. Всё сохранённое состояние actor/NPC/RNG/status/immunity/interaction принимается до observers. Публикация исторических packet27 должна сохранять конечное состояние для подключающегося игрока, включая движение без попадания и без нового пакета. Поздний owned отказ запрещает старое движение и повторный внешний удар для этой generation. Детерминированные начальные terminal penetration/expiry рано исключают новую ветку и сохраняют прежний compatibility path: стрелы продолжают стареть и исчезают. Human Remove очищает baseline/binding, но отличается от оригинальных terminal29 и visual RNG; полная semantic Kill parity остаётся открытой. Летальные или другие пересекающиеся NPC, PvP, полные NumHits/oldPosition и Main/client scheduling остаются открытыми. Диагностическая аллокация всего actor Prepare+Dispose составляет около$10.7\,\mathrm{kB}$/actor, а не40 байт изолированного NPC lease; аллокация shipping driver пока не измерена.
+
+```mermaid
+sequenceDiagram
+    participant Loop as world tick
+    participant Arrows as ProjectileAuthority
+    participant Combat as arrow continuation
+    participant Owners as сохранённые stores и RNG
+    participant Wire as replication registries
+    Loop->>Arrows: TryTickState(combat)
+    Arrows->>Combat: подготовить отдельный subupdate journal
+    Arrows->>Owners: принять конечное состояние, immunity и interactions
+    Arrows->>Wire: сохранить конечный join baseline
+    Arrows->>Combat: опубликовать упорядоченный journal
+    Combat->>Wire: исторические пакеты сохраняют конечный baseline
+    Loop->>Combat: внешний combat pass
+    Note over Combat: Метка exact generation предотвращает повторные hits
+```
+
 ## Дополнительные стрелы и source hit-point при попадании в NPC — 2026-10-10, локальная проверка пройдена
 
 Тот же source-candidate контракт выстрела расширен с деревянных стрел40 на Flaming41, Unholy47, Jester51 и Endless3103. Независимо повторённые2800 выстрелов оригинала охватывают175 допустимых префиксов, два направления и обе платформы. Округлённые входящие компоненты Jester сохраняются; Endless не меняет запас, расходуемые стрелы списывают одну. По-прежнему нужны исходная позиция обычного игрока без mount с нормальной гравитацией, полный совпавший профиль выстрела и меньший из подтверждённых source-периодов. Другие ненейтральные контексты сохраняют прежние границы catalog-компонента.

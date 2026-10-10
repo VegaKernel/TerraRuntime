@@ -12,27 +12,42 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class ProjectileAuthority
 {
-    public bool TryTickState()
+    public bool TryTickState(RuntimeProjectileNpcCombatPass? ordinaryArrowCombat = null)
     {
-        ExpirePendingBulletVolleys();
+        if (activeOrdinaryArrowCombat is not null) return false;
         if (stepper is null)
+        {
+            ExpirePendingBulletVolleys();
             return false;
-
-        explosions.Reset();
-        tileExplosions.Reset();
-        childSpawns.Reset();
-        liveChildSpawns.Reset();
-        SynchronizeControlledProjectileReleaseInputs();
-        LastTick = executor.Tick(stepper);
-        // Source Projectile.UpdateProjectiles refunds one unit of each projectile's packet-27 budget per world
-        // tick, after the updates for that tick have been offered.
-        replication?.AdvanceNetSpamBudget();
-        FallingBlocks.ForgetDisplaced(projectiles);
-        ApplyPendingLiveChildSpawns();
-        ApplyPendingChildSpawns();
-        return true;
+        }
+        if (ordinaryArrowCombat is not null &&
+            !ordinaryArrowCombat.OwnsOrdinaryArrowWorld(projectiles, npcs, projectileRandom, players))
+            throw new ArgumentException("Arrow simulation must use this world's stores and source RNG.", nameof(ordinaryArrowCombat));
+        if (ordinaryArrowCombat is not null && !ordinaryArrowCombat.BeginOrdinaryArrowSimulation()) return false;
+        activeOrdinaryArrowCombat = ordinaryArrowCombat;
+        try
+        {
+            ExpirePendingBulletVolleys();
+            explosions.Reset();
+            tileExplosions.Reset();
+            childSpawns.Reset();
+            liveChildSpawns.Reset();
+            SynchronizeControlledProjectileReleaseInputs();
+            LastTick = ordinaryArrowCombat is not null && stepper is VanillaProjectileWorldStateStepper
+                ? executor.Tick(stepper, ordinaryArrowActor ??= TrySimulateOrdinaryArrowActor)
+                : executor.Tick(stepper);
+            replication?.AdvanceNetSpamBudget();
+            FallingBlocks.ForgetDisplaced(projectiles);
+            ApplyPendingLiveChildSpawns();
+            ApplyPendingChildSpawns();
+            return true;
+        }
+        finally
+        {
+            activeOrdinaryArrowCombat = null;
+            ordinaryArrowCombat?.EndOrdinaryArrowSimulation();
+        }
     }
-
 
     private void ApplyPendingLiveChildSpawns()
     {

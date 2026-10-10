@@ -175,6 +175,11 @@ internal sealed partial class RuntimeProjectileReplicationRegistry : IProjectile
         if (kind is not ProjectileStateCommitKind.Spawn and not ProjectileStateCommitKind.Update)
             throw new ArgumentOutOfRangeException(nameof(kind));
 
+        // A journal entry remains historical even if an observer displaced only its wire binding.
+        // Refuse that stale entry before it can recreate a binding or rewind a retained join baseline.
+        if (kind == ProjectileStateCommitKind.Update && IsStaleOrdinaryArrowJournalSnapshot(in snapshot))
+            return;
+
         TerrariaProjectileKeyState updateKey;
         if (clientCommit)
         {
@@ -208,7 +213,8 @@ internal sealed partial class RuntimeProjectileReplicationRegistry : IProjectile
             return;
         }
 
-        Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], updateFrame);
+        if (!IsRetainedOrdinaryArrowJournalSnapshot(in snapshot))
+            Volatile.Write(ref baselineFrames[snapshot.Handle.Slot], updateFrame);
         bool duplicate = UpdateLiveFrame(snapshot.Handle, updateFrame);
         if (kind == ProjectileStateCommitKind.Update && duplicate)
         {

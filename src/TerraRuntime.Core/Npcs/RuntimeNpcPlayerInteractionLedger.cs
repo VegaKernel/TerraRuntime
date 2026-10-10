@@ -8,7 +8,7 @@ namespace TerraRuntime.Core.Npcs;
 /// not by a long-lived account identity, and boss loot later re-checks whether that slot currently has an active
 /// player. TerraRuntime keeps the NPC side generation-safe so a reused NPC slot never inherits interactions.
 /// </summary>
-public sealed class RuntimeNpcPlayerInteractionLedger
+public sealed partial class RuntimeNpcPlayerInteractionLedger
 {
     private readonly RuntimeNpcStore _store;
     private readonly Dictionary<NpcHandle, PlayerSlotMask> _interactions = [];

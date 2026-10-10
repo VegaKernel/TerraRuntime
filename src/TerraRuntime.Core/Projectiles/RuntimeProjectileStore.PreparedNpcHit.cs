@@ -14,12 +14,12 @@ public sealed partial class RuntimeProjectileStore
         ref readonly SlotState state = ref _slots[expected.Handle.Slot];
         if (!state.Active || state.Generation != expected.Handle.Generation.Value ||
             Capture(expected.Handle.Slot, in state) != expected ||
-            !VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(state.Update.Type, out int initial))
+            !VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(state.Update.Type, out _))
         {
             return false;
         }
 
-        preparation = new NpcHitPreparation(this, expected.Handle.Slot, initial);
+        preparation = new NpcHitPreparation(this, expected.Handle.Slot);
         return preparation.CanAdopt;
     }
 
@@ -36,50 +36,13 @@ public sealed partial class RuntimeProjectileStore
         private bool adopted;
         private bool published;
 
-        internal NpcHitPreparation(RuntimeProjectileStore owner, ushort slot, int initial)
+        internal NpcHitPreparation(RuntimeProjectileStore owner, ushort slot)
         {
             this.owner = owner;
             this.slot = slot;
-            var state = owner._slots[slot];
-            before = state;
-            var planned = state;
-            reset = VanillaProjectileNpcCombatFacts.ShouldResetReleasedControlledMagicTargetAfterNpcHit(
-                state.Update.Type, state.Update.Ai.Ai0) && state.Update.Ai.Ai1 != -1f;
-            if (reset)
-            {
-                if (!TryAdvance(ref planned.Revision))
-                    return;
-                planned.Update = planned.Update with
-                {
-                    Ai = new ProjectileAiState(planned.Update.Ai.Ai0, -1f, planned.Update.Ai.Ai2),
-                };
-                resetSnapshot = Capture(slot, in planned);
-            }
-
-            int remaining = planned.Lifecycle.PenetrateOverride ?? initial;
-            despawn = remaining >= 0 && remaining <= 1;
-            if (despawn)
-            {
-                hitSnapshot = Capture(slot, in planned);
-                planned.Active = false;
-                planned.Revision = 0;
-                planned.Update = default;
-                planned.Lifecycle = default;
-                planned.CombatTrusted = false;
-                planned.CombatTrustedOwner = default;
-            }
-            else
-            {
-                if (remaining > 1)
-                {
-                    if (!TryAdvance(ref planned.Revision))
-                        return;
-                    planned.Lifecycle = planned.Lifecycle with { PenetrateOverride = remaining - 1 };
-                }
-                hitSnapshot = Capture(slot, in planned);
-            }
-            after = planned;
-            CanAdopt = true;
+            before = owner._slots[slot];
+            CanAdopt = TryProjectNpcHit(slot, in before, out after, out reset, out despawn,
+                out resetSnapshot, out hitSnapshot);
         }
 
         internal bool CanAdopt { get; }
@@ -127,5 +90,57 @@ public sealed partial class RuntimeProjectileStore
             left.Revision == right.Revision && left.Update == right.Update &&
             left.Lifecycle == right.Lifecycle && left.CombatTrusted == right.CombatTrusted &&
             left.CombatTrustedOwner == right.CombatTrustedOwner && left.SourceNpc == right.SourceNpc;
+    }
+
+    // Shared shadow projection; the live-hit token and detached simulation use the same semantics.
+    private static bool TryProjectNpcHit(ushort slot, in SlotState before, out SlotState after,
+        out bool reset, out bool despawn, out ProjectileSnapshot resetSnapshot, out ProjectileSnapshot hitSnapshot)
+    {
+        after = default;
+        reset = false;
+        despawn = false;
+        resetSnapshot = default;
+        hitSnapshot = default;
+        if (!before.Active || !VanillaProjectileNpcCombatFacts.TryGetInitialPenetration(before.Update.Type, out int initial))
+            return false;
+        var state = before;
+        var planned = state;
+        reset = VanillaProjectileNpcCombatFacts.ShouldResetReleasedControlledMagicTargetAfterNpcHit(
+            state.Update.Type, state.Update.Ai.Ai0) && state.Update.Ai.Ai1 != -1f;
+        if (reset)
+        {
+            if (!TryAdvance(ref planned.Revision))
+                return false;
+            planned.Update = planned.Update with
+            {
+                Ai = new ProjectileAiState(planned.Update.Ai.Ai0, -1f, planned.Update.Ai.Ai2),
+            };
+            resetSnapshot = Capture(slot, in planned);
+        }
+
+        int remaining = planned.Lifecycle.PenetrateOverride ?? initial;
+        despawn = remaining >= 0 && remaining <= 1;
+        if (despawn)
+        {
+            hitSnapshot = Capture(slot, in planned);
+            planned.Active = false;
+            planned.Revision = 0;
+            planned.Update = default;
+            planned.Lifecycle = default;
+            planned.CombatTrusted = false;
+            planned.CombatTrustedOwner = default;
+        }
+        else
+        {
+            if (remaining > 1)
+            {
+                if (!TryAdvance(ref planned.Revision))
+                    return false;
+                planned.Lifecycle = planned.Lifecycle with { PenetrateOverride = remaining - 1 };
+            }
+            hitSnapshot = Capture(slot, in planned);
+        }
+        after = planned;
+        return true;
     }
 }

@@ -36,6 +36,7 @@ internal sealed partial class NpcAuthority
     private readonly RuntimeNpcReplicationRegistry? npcReplication;
     private readonly RuntimeNpcLavaContactPass1458? lavaContact;
     private readonly RuntimeProjectileNpcCombatPass projectileNpcCombat;
+    internal RuntimeProjectileNpcCombatPass ProjectileNpcCombat => projectileNpcCombat;
     private readonly TownNpcAuthority townNpcAuthority;
     private readonly RuntimeMysticFrogCatchService1458? mysticFrogCatch;
     private readonly RuntimeWorldItemStore worldItems;
