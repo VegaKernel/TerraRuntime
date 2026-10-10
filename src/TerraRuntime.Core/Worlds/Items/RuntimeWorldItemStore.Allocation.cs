@@ -204,6 +204,29 @@ public sealed partial class RuntimeWorldItemStore
             steps.Add(new(start, operations.Count, slot, 0, pending[..pendingCount].ToArray(), null));
             return true;
         }
+        internal bool TryTakeSource(in WorldItemSnapshot item, int acceptedAmount)
+        {
+            if (acceptedAmount <= 0 || acceptedAmount > item.Stack)
+                return Fail();
+            if (acceptedAmount == item.Stack)
+                return TryRemoveSource(item);
+            if (disposed || claimed || failed || steps.Count != 0 || !item.Handle.IsAssigned ||
+                !IsValidSlot(item.Handle.Slot))
+                return Fail();
+            short slot = item.Handle.Slot;
+            ref var state = ref working[slot];
+            if (!state.Active || state.Claimed || state.Reserved || Capture(slot, in state) != item)
+                return Fail();
+            int start = operations.Count;
+            state.Update = state.Update with { Stack = checked((short)(item.Stack - acceptedAmount)) };
+            // Residual preserves body/generation and uses the existing revision/Drop publication owner.
+            // Overflow is refused while this is still a detached preview.
+            if (!RecordSync(slot, WorldItemStateCommitKind.Drop))
+                return Fail();
+            steps.Add(new(start, operations.Count, slot, 0, pending[..pendingCount].ToArray(), null));
+            return true;
+        }
+
         public bool IsCurrent => ValidateOwnerFacts() && IsCurrentOwned;
 
         // External owner queries finish before the callback-free final store guard/adoption.

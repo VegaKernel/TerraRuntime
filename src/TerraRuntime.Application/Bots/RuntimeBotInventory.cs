@@ -92,8 +92,8 @@ internal sealed partial class RuntimeBotInventory(
             if (requested.IsAssigned && item.Handle != requested) continue;
             if (!TryClassifyUsefulWorldItem(bot, in item, out VanillaBotItemDefinition1458 definition) ||
                 !IsTrustedPickupEligible(bot, in self, in item, in definition) ||
-                !TryPlanInventoryDeposit(bot, in item, in definition, out short slot, out ServerPlayerItemState before,
-                    out ServerPlayerItemState after))
+                !TryPlanInventoryDeposit(bot, in item, in definition, out ServerPlayerItemState[] before,
+                    out ServerPlayerItemState[] after, out int acceptedAmount))
             {
                 continue;
             }
@@ -110,9 +110,9 @@ internal sealed partial class RuntimeBotInventory(
             try
             {
                 if (!serverPlayers.TryGet(bot.Player, out var currentPlayer) || currentPlayer != self ||
-                    !serverPlayers.TryPrepareItemMutation(bot.ServerPlayerId, currentPlayer, before, after, out var inventoryPlan))
+                    !serverPlayers.TryPrepareItemMutations(bot.ServerPlayerId, currentPlayer, before, after, out var inventoryPlan))
                     continue;
-                if (!worldItems.TryPrepareTrustedTake(in item, out var stagedRemoval)) continue;
+                if (!worldItems.TryPrepareTrustedTake(in item, acceptedAmount, out var stagedRemoval)) continue;
                 using var removal = stagedRemoval!;
                 // Owner callbacks finish before final callback-free guards and adoption.
                 if (!removal.ValidateOwnerFacts() || !inventoryPlan!.IsCurrent || !removal.IsCurrentOwned || !removal.TryClaim())
@@ -128,11 +128,11 @@ internal sealed partial class RuntimeBotInventory(
                 bot.LastPickedItem = item.Handle;
                 try
                 {
-                    inventoryPlan.TryPublish();
+                    inventoryPlan.TryPublishItems();
                 }
                 finally
                 {
-                    // A later inventory mutation does not invalidate the committed world removal.
+                    // A later inventory mutation does not invalidate the committed residual or removal.
                     // The existing publication owner independently checks the exact final world slot.
                     publication!.TryPublishNext(out _);
                 }
@@ -200,61 +200,63 @@ internal sealed partial class RuntimeBotInventory(
             definition.Height);
     }
 
+    // Protected held slot 0; 49 main storage slots plus four required-ammo slots.
+    private const int MaximumPickupSlotChanges = VanillaPlayerItemSlotCatalog.MainInventoryCount - 1 + VanillaPlayerItemSlotCatalog.AmmoSlotCount;
+
     private bool TryPlanInventoryDeposit(
         BotState bot,
         in WorldItemSnapshot worldItem,
         in VanillaBotItemDefinition1458 definition,
-        out short slot,
-        out ServerPlayerItemState before,
-        out ServerPlayerItemState after)
+        out ServerPlayerItemState[] before,
+        out ServerPlayerItemState[] after,
+        out int acceptedAmount)
     {
-        slot = -1;
-        before = default;
-        after = default;
-        if (!worldItem.TryGetItemType(out ItemTypeId itemType) || worldItem.Stack <= 0)
+        before = [];
+        after = [];
+        acceptedAmount = 0;
+        if (!worldItem.TryGetItemType(out ItemTypeId itemType) || worldItem.Stack <= 0 ||
+            worldItem.Stack > VanillaBotItemDefinitionCatalog1458.CommonMaxStack)
             return false;
 
-        Span<short> candidateSlots = stackalloc short[VanillaPlayerItemSlotCatalog.OrdinaryInventoryCount - 1];
+        Span<short> candidateSlots = stackalloc short[MaximumPickupSlotChanges];
         int candidateCount = BuildStorageSlotOrder(definition.Kind, candidateSlots);
-        short firstEmpty = -1;
-        ServerPlayerItemState firstEmptyState = default;
+        Span<ServerPlayerItemState> captured = stackalloc ServerPlayerItemState[candidateCount];
         for (int i = 0; i < candidateCount; i++)
-        {
-            short candidate = candidateSlots[i];
-            if (!serverPlayers.TryGetItem(bot.ServerPlayerId, candidate, out ServerPlayerItemState state))
+            if (!serverPlayers.TryGetItem(bot.ServerPlayerId, candidateSlots[i], out captured[i]))
                 return false;
-            if (state.IsEmpty)
-            {
-                if (firstEmpty < 0)
-                {
-                    firstEmpty = candidate;
-                    firstEmptyState = state;
-                }
-                continue;
-            }
-            if (state.ItemType != itemType || state.Prefix != VanillaPrefixIds.None ||
-                state.Stack + worldItem.Stack > VanillaBotItemDefinitionCatalog1458.CommonMaxStack)
-            {
-                continue;
-            }
 
-            slot = candidate;
-            before = state;
-            after = state with { Stack = checked((short)(state.Stack + worldItem.Stack)) };
-            return true;
+        Span<ServerPlayerItemState> oldItems = stackalloc ServerPlayerItemState[candidateCount];
+        Span<ServerPlayerItemState> nextItems = stackalloc ServerPlayerItemState[candidateCount];
+        int count = 0;
+        int remaining = worldItem.Stack;
+        // Restricted BOT policy: matching stacks before ascending empty slots; held slot 0 stays protected.
+        // Official GetItem has additional favorite/hotbar/FillAmmo ordering not admitted by this producer.
+        for (int stage = 0; stage < 2 && remaining > 0; stage++)
+        {
+            for (int i = 0; i < candidateCount && remaining > 0; i++)
+            {
+                var state = captured[i];
+                if (stage == 0 ? state.IsEmpty || state.ItemType != itemType || state.Prefix != VanillaPrefixIds.None
+                    : !state.IsEmpty)
+                    continue;
+                int existingStack = state.IsEmpty ? 0 : state.Stack;
+                int capacity = VanillaBotItemDefinitionCatalog1458.CommonMaxStack - existingStack;
+                if (capacity <= 0)
+                    continue;
+                int amount = Math.Min(remaining, capacity);
+                oldItems[count] = state;
+                nextItems[count] = state.IsEmpty
+                    ? new(candidateSlots[i], itemType, checked((short)amount), VanillaPrefixIds.None, 0)
+                    : state with { Stack = checked((short)(existingStack + amount)) };
+                count++;
+                remaining -= amount;
+            }
         }
-
-        if (firstEmpty < 0)
+        if (count == 0)
             return false;
-
-        slot = firstEmpty;
-        before = firstEmptyState;
-        after = new ServerPlayerItemState(
-            firstEmpty,
-            itemType,
-            worldItem.Stack,
-            VanillaPrefixIds.None,
-            0);
+        before = oldItems[..count].ToArray();
+        after = nextItems[..count].ToArray();
+        acceptedAmount = worldItem.Stack - remaining;
         return true;
     }
 

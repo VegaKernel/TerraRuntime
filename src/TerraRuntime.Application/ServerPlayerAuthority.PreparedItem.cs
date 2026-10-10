@@ -27,6 +27,21 @@ internal sealed partial class ServerPlayerAuthority
         return true;
     }
 
+    internal bool TryPrepareItemMutations(
+        ServerPlayerId id,
+        in PlayerStateSnapshot expected,
+        ReadOnlySpan<ServerPlayerItemState> oldItems,
+        ReadOnlySpan<ServerPlayerItemState> nextItems,
+        out PreparedItem? plan)
+    {
+        plan = null;
+        if (!TryGetPlayer(id, out var player) || player != expected.Player ||
+            !states.TryPrepareItems(expected, oldItems, nextItems, out var state))
+            return false;
+        plan = new(this, id, player, state!);
+        return true;
+    }
+
     internal sealed class PreparedItem(
         ServerPlayerAuthority owner,
         ServerPlayerId id,
@@ -74,6 +89,35 @@ internal sealed partial class ServerPlayerAuthority
             vitalsPublished = true;
             owner.events?.ServerPlayerVitalsUpdated(player, vitals);
             return true;
+        }
+
+        internal bool TryPublishItems()
+        {
+            if (published || !IsAcceptedCurrent)
+                return false;
+            published = true; // A reentrant or throwing observer cannot replay this accepted journal.
+            PublishItemsFrom(0);
+            return true;
+        }
+
+        private void PublishItemsFrom(int firstIndex)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+            for (int index = firstIndex; index < state.ItemCount; index++)
+            {
+                try
+                {
+                    if (OwnsIdentity && state.IsAcceptedItemCurrentAt(index))
+                        owner.events?.ServerPlayerItemUpdated(player, state.GetNext(index));
+                }
+                catch (Exception exception)
+                {
+                    // Consume the complete journal once; keep publishing other still-current components.
+                    // Propagate the first observer failure after the bounded notification tail.
+                    failure ??= System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception);
+                }
+            }
+            failure?.Throw();
         }
 
         internal bool TryPublish()
