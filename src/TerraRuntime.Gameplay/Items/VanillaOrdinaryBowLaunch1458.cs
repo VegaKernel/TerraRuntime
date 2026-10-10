@@ -11,13 +11,18 @@ public readonly record struct VanillaOrdinaryBowLaunchFacts1458(
     int UseTime);
 
 /// <summary>
-/// Source-valid ordinary bow prefixes with wooden arrows from original 1.4.5.8 ItemCheck_Shoot.
+/// Source-valid ordinary bow prefixes with five bounded arrow types from original 1.4.5.8 ItemCheck_Shoot.
 /// This query adds no RNG offers and does not select or consume ammunition.
 /// </summary>
 public static class VanillaOrdinaryBowLaunch1458
 {
     public static bool Supports(ItemTypeId weapon) =>
         weapon.Value is 39 or 99 or 3480 or 3486 or 3492 or 3498 or 3504 or 3510 or 3516;
+
+    public static bool SupportsAmmo(ItemTypeId ammo) =>
+        ammo == VanillaItemIds.WoodenArrow || ammo == VanillaItemIds.FlamingArrow ||
+        ammo == VanillaItemIds.UnholyArrow || ammo == VanillaItemIds.JestersArrow ||
+        ammo == VanillaItemIds.EndlessQuiver;
 
     public static bool TryResolve(
         ItemTypeId weaponType,
@@ -28,7 +33,7 @@ public static class VanillaOrdinaryBowLaunch1458
         VanillaBulletSourceArithmetic1458 arithmetic = VanillaBulletSourceArithmetic1458.CoreClrSingle)
     {
         launch = default;
-        if (ammoType != VanillaItemIds.WoodenArrow ||
+        if (!SupportsAmmo(ammoType) ||
             !TryGetPrefixModifiers(weaponType, prefix, arithmetic, out var modifiers) ||
             !VanillaProjectileWeaponCombatCatalog.TryGetWeapon(weaponType, out var weapon) ||
             !HasNeutralLaunchModifiers(in combat) ||
@@ -94,7 +99,7 @@ public static class VanillaOrdinaryBowLaunch1458
     }
 
     /// <summary>
-    /// The caller supplies the source-owned RotatedRelativePoint(MountedCenter). Ordinary arrow1
+    /// The caller supplies the source-owned RotatedRelativePoint(MountedCenter). These ordinary arrow
     /// launches have no additional origin offset; plain unmounted players use their body center.
     /// </summary>
     public static bool IsValidSpawnCenter(float x, float y, float sourceX, float sourceY) =>

@@ -129,9 +129,10 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
             for (int npcIndex = 0; npcIndex < npcCount; npcIndex++)
             {
                 NpcSnapshot target = npcBuffer[npcIndex];
-                // A plain bullet has no intrinsic status. Reuse the retained status/death lane
-                // where it is owned without excluding other already-admitted NPC targets.
-                bool preparedPlainBullet = usesSourceRandom && status is not null && projectile.Type.Value == 14 &&
+                // Ordinary arrows 1/4/5 and plain bullet 14 have no intrinsic StatusNPC effect.
+                // Reuse the retained hit-point/status/death transaction for its owned NPC slice;
+                // a refused preparation must not fall through to the live generic random path.
+                bool preparedNoStatusHit = usesSourceRandom && status is not null && projectile.Type.Value is 1 or 4 or 5 or 14 &&
                     target.TypeIdentity.Value is 1 or 3 or 59;
                 if (!IsEligibleTarget(in target, out VanillaNpcHitboxSize npcHitbox) ||
                     !Intersects(in projectile, in projectileDefinition, in target, in npcHitbox) ||
@@ -141,7 +142,7 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
                     continue;
                 }
 
-                if (preparedStatusHit || preparedPlainBullet)
+                if (preparedStatusHit || preparedNoStatusHit)
                 {
                     if (TryPreparedStatusHit(projectile, target, ownerCombat, hitOwnerBuffer[projectileIndex],
                             hitStatusBuffer[npcIndex], ownerRow, tick, sharedOwnerImmunity, localImmunity,

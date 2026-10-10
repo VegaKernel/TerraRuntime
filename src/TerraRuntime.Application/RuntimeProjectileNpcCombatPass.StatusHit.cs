@@ -37,9 +37,10 @@ internal sealed partial class RuntimeProjectileNpcCombatPass
         _ = after.NextDouble();
         _ = after.NextDouble();
         ProjectileNpcStatusAddition1458? addition = null;
-        // Damage_PVE_Inner still chooses the hit point for a plain bullet; StatusNPC
-        // contributes no intrinsic buff or random offer for projectile14.
-        if (projectile.Type.Value != 14 &&
+        // Damage_PVE_Inner chooses the hit point for these ordinary arrows and plain bullet,
+        // while StatusNPC contributes no intrinsic buff or random offer for 1/4/5/14.
+        // Their Update/Kill random offers belong to a separate lifecycle boundary.
+        if (projectile.Type.Value is not (1 or 4 or 5 or 14) &&
             !VanillaProjectileNpcStatus1458.TrySelect(projectile.Type, after.Next, out addition)) return false;
         RuntimeNpcBuffAdditionPlan1458 buffPlan;
         if (addition is { } value)

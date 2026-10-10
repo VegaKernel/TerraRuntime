@@ -138,7 +138,9 @@ internal sealed partial class ProjectileAuthority
 
         if (bow)
         {
-            if (ammoItem.ItemType == VanillaItemIds.WoodenArrow)
+            if (ammoItem.ItemType == VanillaItemIds.WoodenArrow ||
+                VanillaOrdinaryBowLaunch1458.SupportsAmmo(ammoItem.ItemType) &&
+                VanillaOrdinaryBowLaunch1458.HasNeutralLaunchModifiers(in attackerCombat))
             {
                 if (!sourceBowPrefix)
                     return ClientProjectileProvenanceResolveResult.NotApplicable;
@@ -181,7 +183,7 @@ internal sealed partial class ProjectileAuthority
         long tick = tickProvider();
         float knockBackTolerance = MathF.Max(0.001f, MathF.Abs(expectedKnockBack) * 0.00001f);
 
-        if (bow && ammoItem.ItemType == VanillaItemIds.WoodenArrow &&
+        if (bow && VanillaOrdinaryBowLaunch1458.SupportsAmmo(ammoItem.ItemType) &&
             VanillaOrdinaryBowLaunch1458.HasNeutralLaunchModifiers(in attackerCombat))
             return TryResolveOrdinaryBowSourceCandidates(connection, in packet, in weaponItem, in weapon,
                 in ammo, in ammoItem, in attackerCombat, ammoSlot, ammoBox, ammoPotion, playerCx, playerCy,

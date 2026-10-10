@@ -412,4 +412,9 @@
     <EmbeddedResource Include="Fixtures/town-batches.json.gz" />
     <EmbeddedResource Include="Fixtures/town-wire.json.gz" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/arrow-npc-hit-kernel-configured-official-1458.json.gz" LogicalName="ArrowKernelNpc1458" />
+    <EmbeddedResource Include="Fixtures/arrow-npc-fire-proc-configured-official-1458.json.gz" LogicalName="ArrowFireProcNpc1458" />
+    <EmbeddedResource Include="Fixtures/ordinary-bow-prefixed-arrow-shoot-configured-official-1458.json.gz" LogicalName="OrdinaryExtraArrowLaunch1458" />
+  </ItemGroup>
 </Project>

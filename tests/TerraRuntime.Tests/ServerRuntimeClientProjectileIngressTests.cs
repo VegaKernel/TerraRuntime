@@ -27,14 +27,17 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         // Actual original 1.4.5.8 Item.SetDefaults/PickAmmo outputs, including Minishark's conservation branch.
         var launchRandom = new VanillaUnifiedRandom1458(1458);
         using var fixture = new Fixture(playerCount: 1, projectileStepper: new NoOpProjectileStepper(),
-            naturalSpawnRandom: weaponType == 98 ? new SystemVanillaNpcRandom(launchRandom) : null);
+            naturalSpawnRandom: weaponType == 98 ? new SystemVanillaNpcRandom(launchRandom) : null,
+            ownedBowWorld: weaponType == 39);
         ConnectionHandle owner = fixture.SpawnPlayer(connectionId: 201);
         fixture.SetInventoryItem(owner, 0, new ItemTypeId(weaponType), 1);
         fixture.SetInventoryItem(owner, slot, new ItemTypeId(ammoType), 1);
         fixture.SetCombatPlayer(owner, 100f, 100f, 100, false);
+        if (weaponType == 39)
+            SetPlainBowPose(fixture, owner, 1600f, 1606f);
         var valid = new TerrariaProjectileUpdateState(
             new TerrariaProjectileKeyState(owner.Player.Slot.Value, 701, 1),
-            projectileType, 120f, 100f, speed, 0f, 0f, 0f, 0f, 0, damage, knockBack, 0);
+            projectileType, weaponType == 39 ? 1605f : 120f, weaponType == 39 ? 1622f : 100f, speed, 0f, 0f, 0f, 0f, 0, damage, knockBack, 0);
         if (weaponType == 98)
         {
             var source = ProjectileItemUseAtomic1458Tests.ReadOriginalMinisharkShot(ammoType);
@@ -63,6 +66,8 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         Assert.False(fixture.Replication.WireIdentities.TryResolve(second.Key, out _));
         for (int tick = 0; tick < useTime; tick++)
             fixture.State.Tick();
+        if (weaponType == 39)
+            SetPlainBowPose(fixture, owner, 1600f, 1606f);
         fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, second));
         Assert.True(fixture.Replication.WireIdentities.TryResolve(second.Key, out ProjectileHandle next));
         Assert.True(fixture.Projectiles.IsCombatTrusted(next));
@@ -91,11 +96,13 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         fixture.SetInventoryItem(owner, VanillaPlayerItemSlotCatalog.AmmoSlotStart, new ItemTypeId(consumableType), 2);
         fixture.SetInventoryItem(owner, (short)(VanillaPlayerItemSlotCatalog.AmmoSlotStart + 1), new ItemTypeId(endlessType), 1);
         fixture.SetCombatPlayer(owner, 100f, 100f, 100, false);
+        if (weaponType == 39)
+            SetPlainBowPose(fixture, owner);
         if (weaponType == VanillaItemIds.WoodenBow.Value)
             SetPlainBowPose(fixture, owner);
         var packet = new TerrariaProjectileUpdateState(
             new TerrariaProjectileKeyState(owner.Player.Slot.Value, 703, 1),
-            projectileType, 120f, 100f, speed, 0f, 0f, 0f, 0f, 0, damage, knockBack, 0);
+            projectileType, weaponType == 39 ? 1605f : 120f, weaponType == 39 ? 1622f : 100f, speed, 0f, 0f, 0f, 0f, 0, damage, knockBack, 0);
         if (weaponType == VanillaItemIds.WoodenBow.Value)
             packet = packet with { PositionX = 105f, PositionY = 116f };
         fixture.State.Apply(new ClientProjectileUpdateRuntimeCommand(owner, packet));
@@ -321,12 +328,12 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         Assert.Equal((short)1, ammo.Stack);
     }
 
-    private static void SetPlainBowPose(Fixture fixture, ConnectionHandle owner)
+    private static void SetPlainBowPose(Fixture fixture, ConnectionHandle owner, float positionX = 100f, float positionY = 100f)
     {
         // Original ordinary bow source uses the unmounted normal-gravity center; arrow1 is 10x10.
         // Keep the other legacy projectile component fixtures and their inputs unchanged.
         fixture.State.Apply(new PlayerMovementRuntimeCommand(owner,
-            new PlayerMovementCommitRequest(owner.Player.Slot, 64, 16, 0, 0, 0, 100f, 100f,
+            new PlayerMovementCommitRequest(owner.Player.Slot, 64, 16, 0, 0, 0, positionX, positionY,
                 false, 0f, 0f, false, 0, false, 0f, 0f, 0f, 0f, false, 0f, 0f)));
     }
 
@@ -377,6 +384,7 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.WoodenBow, stack: 1);
         fixture.SetInventoryItem(owner, slot: VanillaPlayerItemSlotCatalog.AmmoSlotStart, VanillaItemIds.FlamingArrow, stack: 4);
         fixture.SetCombatPlayer(owner, positionX: 100f, positionY: 100f, life: 100, hostile: false);
+        SetPlainBowPose(fixture, owner, 115f, 84f);
 
         TerrariaProjectileUpdateState valid = new(
             new TerrariaProjectileKeyState(owner.Player.Slot.Value, 610, 1),
@@ -713,6 +721,7 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.WoodenBow, stack: 1);
         fixture.SetInventoryItem(owner, slot: VanillaPlayerItemSlotCatalog.AmmoSlotStart, VanillaItemIds.FlamingArrow, stack: 2);
         fixture.SetCombatPlayer(owner, positionX: 100f, positionY: 100f, life: 100, hostile: true);
+        SetPlainBowPose(fixture, owner, 115f, 84f);
         fixture.SetCombatPlayer(target, positionX: 120f, positionY: 100f, life: 100, hostile: true);
 
         var spawn = new TerrariaProjectileUpdateState(
@@ -757,6 +766,7 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.WoodenBow, stack: 1);
         fixture.SetInventoryItem(owner, slot: VanillaPlayerItemSlotCatalog.AmmoSlotStart, VanillaItemIds.FlamingArrow, stack: 2);
         fixture.SetCombatPlayer(owner, positionX: 100f, positionY: 100f, life: 100, hostile: true);
+        SetPlainBowPose(fixture, owner, 115f, 84f);
         fixture.SetCombatPlayer(target, positionX: 120f, positionY: 100f, life: 100, hostile: true);
         fixture.SetGodMode(target.Player, enabled: true);
 
@@ -799,6 +809,7 @@ public sealed class ServerRuntimeClientProjectileIngressTests
         fixture.SetInventoryItem(owner, slot: 0, VanillaItemIds.WoodenBow, stack: 1);
         fixture.SetInventoryItem(owner, slot: VanillaPlayerItemSlotCatalog.AmmoSlotStart, VanillaItemIds.FlamingArrow, stack: 2);
         fixture.SetCombatPlayer(owner, positionX: 100f, positionY: 100f, life: 100, hostile: true);
+        SetPlainBowPose(fixture, owner, 115f, 84f);
         fixture.SetCombatPlayer(target, positionX: 120f, positionY: 100f, life: 100, hostile: true);
 
         var spawn = new TerrariaProjectileUpdateState(
@@ -1082,12 +1093,13 @@ public sealed class ServerRuntimeClientProjectileIngressTests
             Random? projectilePlayerCombatRandom = null,
             IRuntimePlayerEventSink? playerEventObserver = null,
             IVanillaNpcRandom? naturalSpawnRandom = null,
-            IncomingHumanCombatPolicy1458 incomingHumanCombatPolicy = IncomingHumanCombatPolicy1458.PhaseOwned)
+            IncomingHumanCombatPolicy1458 incomingHumanCombatPolicy = IncomingHumanCombatPolicy1458.PhaseOwned,
+            bool ownedBowWorld = false)
         {
             slots = new PlayerSlotPool(playerCount);
             Replication = new RuntimeProjectileReplicationRegistry();
             Projectiles = new RuntimeProjectileStore(capacity: 8, commitSink: Replication);
-            WorldTileStore? worldTiles = withWorldTiles ? new WorldTileStore(new WorldDimensions(300, 200)) : null;
+            WorldTileStore? worldTiles = withWorldTiles || ownedBowWorld ? new WorldTileStore(new WorldDimensions(300, 200)) : null;
             IRuntimePlayerEventSink playerEvents = playerEventObserver is null
                 ? Replication
                 : new RuntimePlayerEventFanout(Replication, playerEventObserver);
@@ -1099,7 +1111,11 @@ public sealed class ServerRuntimeClientProjectileIngressTests
                 projectileReplication: Replication,
                 projectilePlayerCombatRandom: projectilePlayerCombatRandom,
                 naturalSpawnRandom: naturalSpawnRandom,
-                incomingHumanCombatPolicy: incomingHumanCombatPolicy);
+                incomingHumanCombatPolicy: incomingHumanCombatPolicy,
+                townCommerceWorldFacts: ownedBowWorld
+                    ? default(RuntimeTownCommerceWorldFacts1458) with { WorldSurface = 80 }
+                    : null,
+                playerUpdateRandomSeed: ownedBowWorld ? new PlayerUpdateRandomSeed1458(0) : null);
         }
 
         public RuntimeProjectileReplicationRegistry Replication { get; }
