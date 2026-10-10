@@ -30,6 +30,17 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         if (!applied)
             return false;
 
+        if (result.Lethal && plannedCaptainBirth is not null)
+        {
+            AdoptCaptainOwners(in committed);
+            var captainWire = new TerrariaNpcDamageState(committed.Handle.Slot,
+                RuntimeNpcPacketProjection.ToProtocolGeneration(committed.Handle.Generation),
+                (short)Math.Min(request.BaseDamage, short.MaxValue), request.KnockBack,
+                checked((byte)(request.HitDirection + 1)), request.Critical ? (byte)1 : (byte)0);
+            PublishCaptainDeath(in committed, in captainWire, default, prelude);
+            return true;
+        }
+
         bool preparedProjectile = pendingProjectileStrike is not null;
         if (preparedProjectile || pendingDebuffPrelude is not null)
         {

@@ -4,9 +4,11 @@
 
 The Pirate invasion now uses the ordered source `SpawnAnNPC` offers after the unconditional `GetZombieSettings` draw. A Flying Dutchman offer requires remaining size strictly below integer half of the starting size; its chance precedes the active ship cap and terrain check. Captain chance likewise precedes its active cap. Ordinary choices retain their original order and exact shared RNG cursor.
 
-The ship clearance check uses the source inclusive rectangle, actuated-tile and platform exclusions, and bottom-world margin. Final terrain stamps include the complete rectangle reachable from the bounded floor search. Selected ship `491` and Captain `216` are refused without adopting RNG or creating a substitute while their linked cannon and Ghost lifecycles remain unsupported. Ordinary types `212–215` and `252` reuse the existing detached birth and final owner checks. Independent fixed-floor creation records also cover Captain bodies and corrected defaults; that component proof grants no live Captain admission.
+The ship clearance check retains the source inclusive rectangle, actuated-tile/platform exclusions and bottom-world margin. Final terrain stamps cover the rectangle reachable from the bounded floor search. Selected ship `491` is refused without adopting RNG or creating a substitute while its linked cannon lifecycle remains unsupported. Captain `216` now joins ordinary types `212–215` and `252` through the existing detached birth and final owner checks, backed by linked Captain/Ghost death ownership. A fixed-seed actual `State.Tick` regression verifies Captain admission and its retained body/cursor; restoring the former Captain fence fails that assertion. The 19 original fixed-floor records still prove their narrower selection/birth component, not the complete natural spawner.
 
 The independent fixed-floor fixture contains 19 original selection/birth/sync records, including half-size, occupied-cap and terrain boundaries. It proves that component and literal `packet 23` bytes; it does not establish the complete spawn-priority table, full `Main` loop or linked ship encounter parity.
+
+This production change is integrated; combined checkpoint acceptance and fresh shipping Native checks remain pending. See [Captain/Ghost ownership](pirate-ghost-ai-1458.md) for currentness, publication and evidence limits.
 
 ## Live invasion context and bounded Goblin selection
 

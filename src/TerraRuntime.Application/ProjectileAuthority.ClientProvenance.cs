@@ -389,12 +389,21 @@ internal sealed partial class ProjectileAuthority
         authoritative = default;
         // Exact magic prefix formulas are deliberately not guessed in this slice. Prefix-free items plus the
         // source-backed equipment snapshot are enough to make damage/mana/cadence authoritative.
-        if (weaponItem.Prefix != VanillaPrefixIds.None || weaponItem.Stack <= 0 ||
-            !player.HasMana || player.Mana < weapon.ManaCost ||
-            !players.TryCaptureCombatSnapshot(connection, out VanillaPlayerCombatSnapshot attackerCombat))
+        int manaCost = weapon.ManaCost;
+        int period = weapon.UseTimeTicks;
+        RuntimePlayerMagicPayment1458? magicPayment = null;
+        VanillaPlayerCombatSnapshot attackerCombat;
+        if (players.HasRemotePlayerPhaseBinding)
         {
-            return ClientProjectileProvenanceResolveResult.NotApplicable;
+            if (!players.TryPrepareMagicPayment(connection, weaponItem, in weapon,
+                out var payment, out manaCost, out period, out attackerCombat))
+                return ClientProjectileProvenanceResolveResult.Rejected;
+            magicPayment = payment;
         }
+        else if (weaponItem.Prefix != VanillaPrefixIds.None || weaponItem.Stack <= 0 ||
+            !player.HasMana || player.Mana < weapon.ManaCost ||
+            !players.TryCaptureCombatSnapshot(connection, out attackerCombat))
+            return ClientProjectileProvenanceResolveResult.NotApplicable;
 
         int expectedDamage = VanillaProjectileWeaponCombatCatalog.ResolveChanneledMagicDamage(in weapon, in attackerCombat);
         float expectedKnockBack = weapon.BaseKnockBack;
@@ -439,9 +448,9 @@ internal sealed partial class ProjectileAuthority
         authoritative = new AuthoritativeClientProjectileSpawn(
             state,
             InventoryMutation: null,
-            ManaCost: weapon.ManaCost,
+            ManaCost: manaCost,
             speedEnvelope,
-            weapon.UseTimeTicks) { UseTick = tick };
+            period) { UseTick = tick, MagicPayment = magicPayment };
         return ClientProjectileProvenanceResolveResult.Accepted;
     }
 

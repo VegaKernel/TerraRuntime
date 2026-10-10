@@ -28,6 +28,7 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
     private bool unpublishedMode;
     private bool adoptedUnpublished;
     private bool publishingPhase;
+    private bool drainPublication;
     private RuntimeWorldItemStore.AllocationPreview.AllocationPublication? retainedPublication;
 
     public RuntimeNpcDeathDropPlan1458(NpcHandle owner, NpcRevision revision, VanillaUnifiedRandom1458 random)
@@ -46,16 +47,24 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
     public int Count => count;
     internal bool IsUnpublishedMode => unpublishedMode;
     internal bool IsAdoptedUnpublished => adoptedUnpublished;
+    private bool linkedPublicationStarted;
+    internal bool TryBeginLinkedPublication()
+    {
+        if (!adoptedUnpublished || linkedPublicationStarted) return false;
+        linkedPublicationStarted = true;
+        return true;
+    }
 
     internal bool TryEnableUnpublished(in NpcSnapshot expected)
     {
         if (unpublishedMode || failed || !accepted || borrowedAllocation || nextPhase != 0 ||
             expected.Handle != Owner || expected.Revision != Revision || expected.NetId != expected.Type ||
             (expected.TypeIdentity != VanillaNpcIds.Zombie && expected.TypeIdentity != VanillaNpcIds.BlueSlime &&
-             expected.TypeIdentity != VanillaNpcIds.LavaSlime)) return false;
+             expected.TypeIdentity != VanillaNpcIds.LavaSlime && expected.TypeIdentity != VanillaNpcIds.PirateCaptain && expected.TypeIdentity != VanillaNpcIds.PirateGhost)) return false;
         // Client-local rewards require their own unpublished lease adoption; this lane owns ordinary drops only.
         foreach (var drop in drops.AsSpan(0, count))
             if (drop.LeaseTicks != 0 || drop.Recipients.Length != 0) return false;
+        drainPublication = expected.TypeIdentity is var linked && (linked == VanillaNpcIds.PirateCaptain || linked == VanillaNpcIds.PirateGhost);
         unpublishedMode = true;
         return CanAdoptUnpublished();
     }
@@ -196,6 +205,7 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
     {
         if (failed || !adoptedUnpublished || publishingPhase || (int)phase != nextPhase) return false;
         publishingPhase = true;
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
         nextPhase++;
         try
         {
@@ -203,13 +213,22 @@ internal sealed class RuntimeNpcDeathDropPlan1458 : IDisposable
             {
                 // Consume each retained source step before a sink can reenter this same plan.
                 published++;
-                if (retainedPublication?.TryPublishNext(out _) != true) return false;
+                try
+                {
+                    if (retainedPublication?.TryPublishNext(out _) != true) return false;
+                }
+                catch (Exception exception)
+                {
+                    if (!drainPublication) throw;
+                    failure ??= System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception);
+                }
             }
         }
         finally
         {
             publishingPhase = false;
         }
+        failure?.Throw();
         return true;
     }
 

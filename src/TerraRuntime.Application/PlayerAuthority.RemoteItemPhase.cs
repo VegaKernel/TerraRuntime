@@ -162,6 +162,8 @@ internal sealed partial class PlayerAuthority
         int delay = item.Selected.PotionDelay;
         if (outside)
         {
+            if (item.MagicPayment is { } payment)
+                item = item with { MagicPayment = payment with { EligibleBirth = false, AwaitingPhase = false } };
             bool combatBuff = plan.BuffTypes.Any(static type => type.Value is 5 or 16 or 114 or 115 or 117 or 321);
             if (combatBuff)
             {
@@ -191,6 +193,8 @@ internal sealed partial class PlayerAuthority
         };
         if (ghost || member.IsDead)
         {
+            if (item.MagicPayment is { } payment)
+                item = item with { MagicPayment = payment with { EligibleBirth = false, AwaitingPhase = false } };
             // Stationary ghost/dead profiles with retained nonconstructor clocks are independently captured.
             // Moving ghosts and respawn side effects require their own retained state.
             if (ghost && (plan.Vx != 0f || plan.Vy != 0f || (member.ControlFlags & 0x1c) != 0)) return false;
@@ -205,6 +209,7 @@ internal sealed partial class PlayerAuthority
                 item = item with
                 {
                     ManaHeat = 1f,
+                    Channel = false,
                     ManaPotionDelay = 0,
                     DeadTime = item.DeadTime + 1,
                     RespawnTimer = Math.Clamp(item.RespawnTimer - 1, 0, 3_600),
@@ -228,7 +233,10 @@ internal sealed partial class PlayerAuthority
                     world.WindowsItemPrefixArithmetic) &&
                 !VanillaRemoteMeleeItemCheck1458.IsSupported(selected.ItemType, selected.Prefix,
                     world.WindowsItemPrefixArithmetic) &&
-                !VanillaRemotePassiveItemCheck1458.IsSupported(selected.ItemType, selected.Prefix))) return false;
+                !VanillaRemotePassiveItemCheck1458.IsSupported(selected.ItemType, selected.Prefix) &&
+                !VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType, selected.Prefix))) return false;
+        if (VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType, selected.Prefix) &&
+            (item.BaseManaMaximum <= 0 || item.MagicPayment is { } malformedPayment && !malformedPayment.IsValid)) return false;
         var critArithmetic = world.WindowsItemPrefixArithmetic
             ? VanillaBulletSourceArithmetic1458.WindowsClr4X86 : VanillaBulletSourceArithmetic1458.CoreClrSingle;
         if (!VanillaSelectedItemCrit1458.TryResolve(selected.ItemType, selected.Prefix, critArithmetic, out int itemCrit))
@@ -286,7 +294,39 @@ internal sealed partial class PlayerAuthority
         PlayerSelectedConsumableTransition1458 use;
         bool beganActualUse;
         bool mining = false;
-        if (VanillaRemoteRangedItemCheck1458.TryGetAmmoFamily(selected.ItemType, out var ammoFamily))
+        if (VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType, selected.Prefix))
+        {
+            var priorPayment = item.MagicPayment;
+            bool prepaid = priorPayment is { AwaitingPhase: true } paid &&
+                paid.Matches(member.Connection.Player, member.SelectedItem, selected, item.BaseManaMaximum);
+            var magicFacts = new PlayerRemoteChannelledMagicFacts1458(selected.ItemType, selected.Prefix,
+                mana.Mana, item.Channel, item.SlowMagicUse, facts.ControlUseItem, facts.LastUseSuccess,
+                facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered, prepaid,
+                prepaid && priorPayment!.Value.SlowMagicUse);
+            if (!VanillaRemoteChannelledMagic1458.TryStep(clocks, in magicFacts, random.Next, out var magicUse))
+                return false;
+            if (magicUse.AttemptedUse)
+            {
+                if (prepaid) item = item with { MagicPayment = priorPayment!.Value with { AwaitingPhase = false } };
+                else
+                {
+                    if (priorPayment is { Attempt: ulong.MaxValue }) return false;
+                    item = item with { MagicPayment = new(member.Connection.Player,
+                        (priorPayment?.Attempt ?? 0) + 1, member.SelectedItem, selected,
+                        item.BaseManaMaximum, magicUse.Mana, magicUse.SlowMagicUse,
+                        magicUse.BeganActualUse, false, false) };
+                }
+            }
+            else if (priorPayment is { } stale &&
+                (!facts.ControlUseItem || !stale.Matches(member.Connection.Player, member.SelectedItem, selected, item.BaseManaMaximum)))
+                item = item with { MagicPayment = stale with { EligibleBirth = false, AwaitingPhase = false } };
+            item = item with { Channel = magicUse.Channel, SlowMagicUse = magicUse.SlowMagicUse };
+            if (magicUse.RefreshManaDelay) mana = mana with { Delay = 4f };
+            use = new(magicUse.State, facts.Life, magicUse.Mana, false, 0, 0)
+            { PendingItemReuse = magicUse.PendingItemReuse };
+            beganActualUse = magicUse.BeganActualUse;
+        }
+        else if (VanillaRemoteRangedItemCheck1458.TryGetAmmoFamily(selected.ItemType, out var ammoFamily))
         {
             var rangedFacts = new PlayerRemoteRangedItemFacts1458(selected.ItemType,
                 CaptureRemoteRangedAmmo(member, ammoFamily), facts.ControlUseItem, facts.LastUseSuccess,

@@ -15,9 +15,9 @@ namespace TerraRuntime.Tests;
 public sealed class PirateSpawnBinding1458Tests
 {
     [Fact]
-    public void Real_tick_births_each_supported_ordinary_pirate_once_through_pending_publication()
+    public void Real_tick_births_each_supported_pirate_once_through_pending_publication()
     {
-        foreach (int type in new[] { 212, 213, 214, 215, 252 })
+        foreach (int type in new[] { 212, 213, 214, 215, 216, 252 })
         {
             using var fixture = new Fixture(FindSeed(type), large: false);
             fixture.Runtime.Tick();
@@ -31,18 +31,15 @@ public sealed class PirateSpawnBinding1458Tests
     }
 
     [Fact]
-    public void Selected_ship_and_unowned_Captain_refuse_without_substitution_or_rng_adoption()
+    public void Selected_ship_refuses_without_substitution_or_rng_adoption()
     {
-        foreach (int type in new[] { 491, 216 })
-        {
-            using var fixture = new Fixture(FindSeed(type), large: false, size: type == 491 ? 59 : 120);
-            var before = fixture.Random.SourceRandom.Clone();
-            fixture.Runtime.Tick();
-            Assert.Equal(0, fixture.Store.ActiveCount);
-            Assert.Equal(0, fixture.Runtime.AppliedNpcSpawns);
-            Assert.True(fixture.Random.SourceRandom.HasSameState(before));
-            Assert.Empty(fixture.Drain());
-        }
+        using var fixture = new Fixture(FindSeed(491), large: false, size: 59);
+        var before = fixture.Random.SourceRandom.Clone();
+        fixture.Runtime.Tick();
+        Assert.Equal(0, fixture.Store.ActiveCount);
+        Assert.Equal(0, fixture.Runtime.AppliedNpcSpawns);
+        Assert.True(fixture.Random.SourceRandom.HasSameState(before));
+        Assert.Empty(fixture.Drain());
     }
 
     [Fact]

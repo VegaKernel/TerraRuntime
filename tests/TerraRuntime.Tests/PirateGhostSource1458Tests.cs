@@ -24,11 +24,11 @@ public sealed class PirateGhostSource1458Tests
         foreach (var row in windows.RootElement.GetProperty("rows").EnumerateArray())
             AssertDefaults(row, row.GetProperty("type").GetInt32(), true);
         Assert.True(VanillaNpcDefinitionCatalog.TryGet(VanillaNpcIds.PirateGhost, out var definition));
-        Assert.True(definition.DefinitionOnly);
-        Assert.Equal(0, definition.BaseWidth);
-        Assert.Equal(0, definition.BaseHeight);
-        Assert.Equal(VanillaNpcBehaviorFamily.None, definition.BehaviorFamily);
-        Assert.Equal(VanillaNpcPhysicsFamily.None, definition.PhysicsFamily);
+        Assert.False(definition.DefinitionOnly);
+        Assert.Equal(18, definition.BaseWidth);
+        Assert.Equal(40, definition.BaseHeight);
+        Assert.Equal(VanillaNpcBehaviorFamily.PirateGhost, definition.BehaviorFamily);
+        Assert.Equal(VanillaNpcPhysicsFamily.NoClipFlight, definition.PhysicsFamily);
         Assert.False(VanillaNpcSpawnDefaults.TryResolve(in definition, new(1.5f, 1, false), out _));
     }
 

@@ -14,7 +14,9 @@ internal sealed partial class PlayerAuthority
         member.ItemRotation = command.Rotation;
         member.ItemAnimation = member.IsDead ? 0 : command.Animation;
         if (member.ItemPhase is { } phase)
-            member.ItemPhase = phase with { Selected = phase.Selected with { Animation = member.ItemAnimation } };
+            member.ItemPhase = phase with { Selected = phase.Selected with { Animation = member.ItemAnimation },
+                Channel = inventory.TryGet(command.Connection, member.SelectedItem, out var item) &&
+                    TerraRuntime.Gameplay.Players.VanillaRemoteChannelledMagic1458.IsSupported(item.ItemType, item.Prefix) };
         events?.PlayerItemAnimationUpdated(command.Connection, member.ItemRotation, checked((short)member.ItemAnimation));
     }
 

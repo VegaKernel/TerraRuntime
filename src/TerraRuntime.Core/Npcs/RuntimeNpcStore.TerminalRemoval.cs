@@ -4,6 +4,18 @@ namespace TerraRuntime.Core.Npcs;
 
 public sealed partial class RuntimeNpcStore
 {
+    internal bool TryPrepareProjectedTerminalRemoval(in NpcSnapshot projected, out TerminalRemoval? removal)
+    {
+        removal = null;
+        if ((projected.TypeIdentity != TerraRuntime.Contracts.Gameplay.VanillaNpcIds.PirateCaptain &&
+             projected.TypeIdentity != TerraRuntime.Contracts.Gameplay.VanillaNpcIds.PirateGhost) ||
+            projected.Simulation.Life != 0 || !TryGet(projected.Handle, out var current) ||
+            current.Revision != projected.Revision || current.Revision.Value == ulong.MaxValue)
+            return false;
+        removal = new(this, projected, true);
+        return true;
+    }
+
     internal bool TryPrepareTerminalRemoval(in NpcSnapshot expected, out TerminalRemoval? removal)
     {
         removal = null;
@@ -21,11 +33,19 @@ public sealed partial class RuntimeNpcStore
         private bool adopted;
         private bool published;
 
-        internal TerminalRemoval(RuntimeNpcStore owner, NpcSnapshot expected)
+        internal TerminalRemoval(RuntimeNpcStore owner, NpcSnapshot expected, bool projected = false)
         {
             this.owner = owner;
+            var retained = owner._slots[expected.Handle.Slot];
+            if (projected)
+            {
+                retained.Revision++;
+                retained.Update = new(expected.Type, expected.NetId, expected.PositionX, expected.PositionY,
+                    expected.VelocityX, expected.VelocityY, expected.Target, expected.Ai, expected.Simulation);
+                expected = Capture(expected.Handle.Slot, retained);
+            }
             this.expected = expected;
-            before = owner._slots[expected.Handle.Slot];
+            before = retained;
         }
 
         private static bool Same(in SlotState left, in SlotState right) =>
@@ -35,6 +55,8 @@ public sealed partial class RuntimeNpcStore
 
         internal bool IsCurrent => !adopted && owner.MatchesSource(in expected) &&
             Same(owner._slots[expected.Handle.Slot], before);
+
+        internal bool IsAcceptedCurrent => adopted && Same(owner._slots[expected.Handle.Slot], after);
 
         internal bool TryAdoptUnpublished()
         {

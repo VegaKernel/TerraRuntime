@@ -76,20 +76,34 @@ internal sealed partial class PlayerAuthority
     }
 
     internal bool CanCommitProjectileUse(RuntimePlayerProjectileUseCapture capture,
-        RuntimePlayerInventoryMutation? mutation, int manaCost)
+        RuntimePlayerInventoryMutation? mutation, int manaCost, RuntimePlayerMagicPayment1458? magicPayment = null)
     {
         if (!IsCurrentProjectileUse(capture) || manaCost < 0 ||
             (manaCost > 0 && mutation is not null)) return false;
+        if (magicPayment is { } payment)
+            return payment.IsValid && capture.ItemPhase is { } phase && payment.Player == capture.Connection.Player &&
+                payment.BaseManaMaximum == phase.BaseManaMaximum && capture.Player.HasMana &&
+                capture.Player.Mana >= manaCost && (manaCost == 0 || payment.PaidMana == capture.Player.Mana - manaCost);
         if (manaCost > 0) return capture.Player.HasMana && capture.Player.Mana >= manaCost;
         return mutation is not { } value ||
             (VanillaPlayerItemSlotCatalog.IsInventorySlot(value.Slot) && value.Item.IsCanonical);
     }
 
     internal bool TryCommitProjectileUseUnpublished(RuntimePlayerProjectileUseCapture capture,
-        RuntimePlayerInventoryMutation? mutation, int manaCost)
+        RuntimePlayerInventoryMutation? mutation, int manaCost, RuntimePlayerMagicPayment1458? magicPayment = null)
     {
         if (!IsCurrentProjectileUse(capture) || manaCost < 0 ||
             (manaCost > 0 && mutation is not null)) return false;
+        if (magicPayment is { } payment)
+        {
+            if (!CanCommitProjectileUse(capture, mutation, manaCost, payment) ||
+                !membership.TryGet(capture.Connection, out var paidMember) ||
+                paidMember.ItemPhase is not { } phase || !paidMember.TryAdvanceRevision()) return false;
+            paidMember.Mana = checked((short)(paidMember.Mana - manaCost));
+            paidMember.ItemPhase = phase with { Mana = phase.Mana with { Mana = paidMember.Mana },
+                Channel = true, SlowMagicUse = payment.SlowMagicUse, MagicPayment = payment };
+            return true;
+        }
         if (manaCost > 0)
         {
             if (!membership.TryGet(capture.Connection, out var member) || !member.HasMana ||

@@ -46,6 +46,12 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         if (!IsPreviewingDeath && pendingDeathPlan?.IsAdoptedUnpublished == true) return;
         AdvanceSlimeRainDeath(in dead);
         AdvanceMoonEventDeath(in dead);
+        if (dead.TypeIdentity == VanillaNpcIds.PirateCaptain)
+        {
+            if (!IsPreviewingDeath || !EnsurePreviewSpawnStream() ||
+                !DeathNpcs.TryStageCaptainGhost(in dead, out _)) deathPreviewFailed = true;
+            return;
+        }
         if (dead.TypeIdentity == VanillaNpcIds.KingSlime)
             ApplyKingSlimeDeathEffects(in dead);
         else if (dead.TypeIdentity == VanillaNpcIds.EyeOfCthulhu)
@@ -90,6 +96,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
 
     private bool TryPrepareDeathPlan(in NpcSnapshot dead)
     {
+        if ((dead.TypeIdentity == VanillaNpcIds.PirateCaptain || dead.TypeIdentity == VanillaNpcIds.PirateGhost) && !CaptureCaptainInvasion(dead.Type)) return false;
         if (pendingDeathPlan is not null || dead.Simulation.MoneyValue is not float value ||
             dead.Simulation.ExtraMoneyValue is not int extra || dead.Simulation.Midas is not bool midas)
             return false;
@@ -105,7 +112,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         plannedTownNameOwner = default;
         plannedTownName = null;
         plannedDeathSpawnSerial = null;
-        if (dead.TypeIdentity == VanillaNpcIds.MotherSlime || dead.TypeIdentity == VanillaNpcIds.Slimer ||
+        if (dead.TypeIdentity == VanillaNpcIds.PirateCaptain || dead.TypeIdentity == VanillaNpcIds.PirateGhost ||
+            dead.TypeIdentity == VanillaNpcIds.MotherSlime || dead.TypeIdentity == VanillaNpcIds.Slimer ||
             pendingTownStrike is not null)
         {
             if (!npcs.TryCaptureDeathMutationSerial(out ulong spawnSerial)) return false;
@@ -207,7 +215,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                 VanillaNpcPlayerInteractionFacts.InteractablePlayerSlots];
             if (!TryCaptureAllocationViews(allocationViews, out int viewCount) ||
                 !plan.TryReserve(worldItems, allocationViews[..viewCount]) || !plan.TryAccept(IsCurrentDeathOwner)) return false;
-            if (pendingProjectileStrike is not null || pendingDebuffPrelude is not null)
+            if (dead.TypeIdentity == VanillaNpcIds.PirateCaptain || dead.TypeIdentity == VanillaNpcIds.PirateGhost || pendingProjectileStrike is not null || pendingDebuffPrelude is not null)
             {
                 // Lava's Expert/Skyblock tile producer needs an owned world-tile death operation.
                 if (dead.TypeIdentity == VanillaNpcIds.LavaSlime &&
@@ -219,6 +227,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
                     !plan.CanAdoptUnpublished()) return false;
                 plannedUnpublishedClock = previewDeathClock;
             }
+            if ((dead.TypeIdentity == VanillaNpcIds.PirateCaptain || dead.TypeIdentity == VanillaNpcIds.PirateGhost) &&
+                (!allowLoot || !TryRetainCaptainOwners(in dead))) return false;
             plannedDaily = previewDaily;
             plannedPrelude = prelude;
             plannedLootAllowed = allowLoot;
@@ -270,6 +280,8 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         plannedPrelude = null; plannedPreludeRevision = 0; plannedLootAllowed = false;
         plannedUnpublishedClock = null;
         preparedDeathPreludePublication = null;
+        plannedCaptainBirth = null; plannedCaptainRemoval = null;
+        plannedCaptainBirthJournal = null;
     }
 
     private bool IsCurrentDeathOwner(NpcHandle handle, NpcRevision revision)
@@ -285,9 +297,14 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         bool worldCurrent = CaptureGlobalLootWorld() == plannedGlobalLootWorld;
         bool specificCurrent = IsSpecificLootContextCurrent();
         bool projectileCurrent = pendingProjectileStrike?.IsCurrent() ?? true;
-        bool clockCurrent = (pendingProjectileStrike is null && pendingDebuffPrelude is null) ||
+        bool captainCurrent = npcs.TryGet(handle, out var actor) &&
+            ((actor.TypeIdentity != VanillaNpcIds.PirateCaptain && actor.TypeIdentity != VanillaNpcIds.PirateGhost) || IsCaptainInvasionCurrent());
+        bool linkedDeath = actor.TypeIdentity == VanillaNpcIds.PirateCaptain || actor.TypeIdentity == VanillaNpcIds.PirateGhost;
+        bool clockCurrent = (pendingProjectileStrike is null && pendingDebuffPrelude is null && !linkedDeath) ||
             CaptureStrikeClock() == plannedStrikeClock && CaptureStrikeDaily() == plannedStrikeDaily;
-        return worldCurrent && specificCurrent && spawnCurrent && debuffCurrent && projectileCurrent && clockCurrent && fallbackCurrent &&
+        // Seal after the final external dependency read, before HP or any other owner write.
+        bool captainRecipientsCurrent = plannedCaptainBirthJournal?.TrySealRecipients() ?? true;
+        return captainRecipientsCurrent && captainCurrent && worldCurrent && specificCurrent && spawnCurrent && debuffCurrent && projectileCurrent && clockCurrent && fallbackCurrent &&
             npcs.TryGet(handle, out var current) && current.Revision == revision &&
             deathPrelude.Revision == plannedPreludeRevision && progression.CaptureSnapshot() == plannedDeathProgression &&
             (plannedDeathSpawnSerial is not { } serial ||

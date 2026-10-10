@@ -79,7 +79,7 @@ public sealed class NpcSourceDefaultRoster1458Tests
         }
         Assert.Equal(691, positive);
         Assert.Equal(65, signed);
-        Assert.Equal(326, definitionOnly);
+        Assert.Equal(325, definitionOnly);
     }
 
     [Fact]

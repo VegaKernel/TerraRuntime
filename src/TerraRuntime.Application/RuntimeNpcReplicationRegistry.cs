@@ -242,6 +242,12 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
 
     public void NpcStateCommitted(NpcStateCommitKind kind, in NpcSnapshot snapshot)
     {
+        if (kind == NpcStateCommitKind.Spawn &&
+            retainedBirthJournals[snapshot.Handle.Slot] is { } birthJournal && birthJournal.Matches(in snapshot))
+        {
+            birthJournal.TryPublish();
+            return;
+        }
         RuntimeNpcSyncKind syncKind = kind switch
         {
             NpcStateCommitKind.Spawn => RuntimeNpcSyncKind.Spawn,
@@ -584,20 +590,21 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
     {
         private readonly object proximityStreamGate = new();
         private readonly Dictionary<NpcHandle, byte> proximityStreamCounters = new();
-        private int playingSlot = -1;
-        private ulong playingGeneration;
+        private sealed record PlayingOccupation(PlayerHandle Player);
+        private PlayingOccupation? playing;
         private float reportedCameraX;
         private float reportedCameraY;
 
         public TerrariaConnectionOutboundQueue Outbound { get; } =
             outbound ?? throw new ArgumentNullException(nameof(outbound));
 
-        public bool MatchesPlayer(PlayerHandle player) => IsPlaying &&
-            Volatile.Read(ref playingSlot) == player.Slot.Value &&
-            Volatile.Read(ref playingGeneration) == player.Generation.Value;
+        public bool MatchesPlayer(PlayerHandle player) => Volatile.Read(ref playing)?.Player == player;
 
-        public bool IsPlaying =>
-            Volatile.Read(ref playingSlot) >= 0 && Volatile.Read(ref playingGeneration) != 0;
+        public bool IsPlaying => Volatile.Read(ref playing)?.Player.IsAssigned == true;
+
+        public object? CapturePlayingOccupation() => Volatile.Read(ref playing);
+        public bool IsCurrentPlayingOccupation(object captured) =>
+            ReferenceEquals(Volatile.Read(ref playing), captured) && IsPlaying;
 
         public void MarkPlaying(PlayerHandle player)
         {
@@ -607,28 +614,21 @@ internal sealed partial class RuntimeNpcReplicationRegistry : INpcStateCommitSin
                 reportedCameraX = 0f;
                 reportedCameraY = 0f;
             }
-            Volatile.Write(ref playingGeneration, player.Generation.Value);
-            Volatile.Write(ref playingSlot, player.Slot.Value);
+            Volatile.Write(ref playing, new PlayingOccupation(player));
         }
 
         public void ClearPlaying(PlayerHandle player)
         {
-            if (Volatile.Read(ref playingGeneration) != player.Generation.Value ||
-                Interlocked.CompareExchange(ref playingSlot, -1, player.Slot.Value) != player.Slot.Value)
-            {
-                return;
-            }
-
-            Volatile.Write(ref playingGeneration, 0);
+            var captured = Volatile.Read(ref playing);
+            if (captured?.Player != player ||
+                !ReferenceEquals(Interlocked.CompareExchange(ref playing, null, captured), captured)) return;
             lock (proximityStreamGate)
                 proximityStreamCounters.Clear();
         }
 
         public void UpdateReportedCameraPosition(PlayerHandle player, in PlayerMovementCommitRequest request)
         {
-            if (!IsPlaying ||
-                Volatile.Read(ref playingSlot) != player.Slot.Value ||
-                Volatile.Read(ref playingGeneration) != player.Generation.Value)
+            if (!MatchesPlayer(player))
             {
                 return;
             }

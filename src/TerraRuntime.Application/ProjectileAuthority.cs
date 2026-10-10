@@ -32,6 +32,7 @@ internal readonly record struct AuthoritativeClientProjectileSpawn(
     internal ProjectileStateUpdate[]? VolleyStates { get; init; }
     internal AlternativeBulletUse1458? AlternativeBulletUse { get; init; }
     internal bool RequiresPlainBowPose { get; init; }
+    internal RuntimePlayerMagicPayment1458? MagicPayment { get; init; }
 }
 
 internal sealed record AlternativeBulletUse1458(AuthoritativeClientProjectileSpawn Use);

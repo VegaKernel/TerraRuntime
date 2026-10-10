@@ -15,6 +15,9 @@ internal readonly record struct RuntimePlayerItemPhase1458(
     internal int RespawnTimer { get; init; }
     internal int ManaPotionDelay { get; init; }
     internal bool PendingItemReuse { get; init; }
+    internal bool Channel { get; init; }
+    internal bool SlowMagicUse { get; init; }
+    internal RuntimePlayerMagicPayment1458? MagicPayment { get; init; }
     internal int? ToolTime { get; init; }
     internal int? AttackCD { get; init; }
     internal VanillaPlayerCombatSnapshot? DerivedCombat { get; init; }

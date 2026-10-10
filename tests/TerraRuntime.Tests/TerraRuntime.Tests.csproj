@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Fixtures/client-placement-inventory-causality-official-1458.json.gz" LogicalName="ClientPlacementInventoryCausality1458" />
+    <EmbeddedResource Include="Fixtures/captain-ghost-linked-source-official-1458.json.gz" LogicalName="CaptainGhostLinkedSource1458" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit.v3" Version="3.0.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.0" />
@@ -442,6 +443,8 @@
     <EmbeddedResource Include="Fixtures/human-combat-buff-hit-neighbors-original-1458.json.gz" LogicalName="HumanDefensiveCritBuffHit1458" />
     <EmbeddedResource Include="Fixtures/human-buffed-arrow-update-original-1458.json.gz" LogicalName="HumanBuffedArrowUpdate1458" />
     <EmbeddedResource Include="Fixtures/arcane-derived-mana-original-1458.json.gz" LogicalName="ArcaneDerivedManaSource1458" />
+    <EmbeddedResource Include="Fixtures/human-channelled-magic-phase-official-1458.json.gz" LogicalName="HumanChannelledMagicPhase1458" />
+    <EmbeddedResource Include="Fixtures/human-channelled-magic-local-caller-official-1458.json.gz" LogicalName="HumanChannelledMagicLocalCaller1458" />
     <EmbeddedResource Include="Fixtures/arcane-vanity-blockers-original-1458.json.gz" LogicalName="ArcaneVanityBlockerSource1458" />
   </ItemGroup>
 </Project>

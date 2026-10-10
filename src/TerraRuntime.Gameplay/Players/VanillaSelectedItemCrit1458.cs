@@ -13,6 +13,7 @@ public static class VanillaSelectedItemCrit1458
         if (arithmetic is not (VanillaBulletSourceArithmetic1458.CoreClrSingle or
             VanillaBulletSourceArithmetic1458.WindowsClr4X86))
             return false;
+        if (VanillaRemoteChannelledMagic1458.IsSupported(item, prefix)) return true;
         if (VanillaSelectedConsumableCatalog1458.TryGet(item, out _))
             return prefix.Value == 0;
         if (VanillaRemotePassiveItemCatalog1458.TryGet(item, prefix, out _))

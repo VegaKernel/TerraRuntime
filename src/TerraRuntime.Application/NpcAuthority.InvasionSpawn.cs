@@ -89,9 +89,9 @@ internal sealed partial class NpcAuthority
             ? RuntimeInvasionSpawn1458.SelectGoblin(hardMode, summonerActive, random)
             : RuntimeInvasionSpawn1458.SelectPirate(in invasionState, shipActive, captainActive,
                 () => IsPirateShipRectangleBlocked(tileX, floorY), random);
-        // Ships require linked cannons; Captain deaths require the not-yet-admitted Ghost lifecycle.
-        // Preserve both selected identities without resampling or adopting the speculative stream.
-        if (selected.Value == 491 || selected == VanillaNpcIds.PirateCaptain)
+        // Ships still require linked cannons. Captain now reaches the retained Ghost/death lifecycle.
+        // Preserve an unsupported selected ship without resampling or adopting the speculative stream.
+        if (selected.Value == 491)
             return InvasionSpawnAttempt.Stop;
         if (!VanillaNpcDefinitionCatalog.TryGet(selected, out var admitted) || admitted.DefinitionOnly ||
             admitted.IsBoss || !VanillaNpcAiCoverageCatalog.TryGet(selected, out _))

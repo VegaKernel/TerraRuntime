@@ -109,6 +109,7 @@ internal sealed partial class PlayerAuthority
         RuntimePlayerTransferState transfer = command.Transfer;
         // Unknown imported clocks stay unknown; malformed represented clocks are not constructor facts.
         if (transfer.ItemPhase is { ToolTime: < 0 } or { AttackCD: < 0 } ||
+            (transfer.ItemPhase?.MagicPayment is { } importedPayment && !importedPayment.IsValid) ||
             (transfer.ItemPhase?.DerivedCombat is { } derivedCombat && !IsValidDerivedCombat(in derivedCombat)))
         {
             command.Completion.TrySetResult(false);
@@ -200,7 +201,9 @@ internal sealed partial class PlayerAuthority
             Mana = previous.Mana,
             MaxMana = previous.MaxMana,
             ItemPhase = transfer.ItemPhase is { } phase
-                ? phase with { Selected = phase.Selected with { Animation = preservePosition && !dead ? previous.ItemAnimation ?? 0 : 0 } }
+                ? phase with { Selected = phase.Selected with { Animation = preservePosition && !dead ? previous.ItemAnimation ?? 0 : 0 },
+                    MagicPayment = phase.MagicPayment is { } payment ? payment with
+                    { EligibleBirth = false, BirthConsumed = true, AwaitingPhase = false } : null }
                 : null,
             // Transfer attach executes a spawn boundary: source Spawn clears wet/lava contacts
             // while preserving jump/releaseJump. Missing imported provenance stays unknown.

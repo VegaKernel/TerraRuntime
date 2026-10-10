@@ -398,9 +398,9 @@ public sealed class VanillaNpcTargetingAiStepper :
     public bool TryGetCandidate(byte slot, out VanillaNpcTargetCandidate candidate) =>
         _context.TryFindCandidate(slot, out candidate);
 
-    internal bool TryPlanPirateGhost(in NpcSnapshot before, out NpcStateUpdate plannedAi, out bool fadeStrike) =>
+    internal bool TryPlanPirateGhost(in NpcSnapshot before, out NpcStateUpdate plannedAi, out bool fadeStrike, bool windowsVectorArithmetic = false) =>
         VanillaPirateGhostNpcBehaviorStrategy1458.TryPlan(in before,
-            VanillaPirateGhostNpcCatalog1458.Definition, _context, out plannedAi, out fadeStrike);
+            VanillaPirateGhostNpcCatalog1458.Definition, _context, out plannedAi, out fadeStrike, windowsVectorArithmetic);
 
     public bool TryStepState(in NpcSnapshot npc, out NpcStateUpdate next)
     {

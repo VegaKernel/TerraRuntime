@@ -596,6 +596,20 @@ internal sealed partial class PlayerAuthority
 
         if (membership.TryGet(request.PlayerSlot, out RuntimePlayerMember? activePlayer))
         {
+            if (activePlayer.ItemPhase is { MagicPayment: { } payment } owned &&
+                (request.MaxMana != owned.BaseManaMaximum ||
+                 (request.Mana != payment.PaidMana && request.Mana != activePlayer.Mana)))
+            {
+                RejectedManaUpdates++;
+                return;
+            }
+            if (activePlayer.ItemPhase is { MagicPayment: not null })
+            {
+                // Explained report acknowledgement preserves phase-owned regeneration and maximum epoch.
+                if (activePlayer.Connection != mana.Connection) { RejectedManaUpdates++; return; }
+                AppliedManaUpdates++;
+                return;
+            }
             if (activePlayer.Connection != mana.Connection || !activePlayer.TryAdvanceRevision())
             {
                 RejectedManaUpdates++;
@@ -887,6 +901,10 @@ internal sealed partial class PlayerAuthority
             return;
         }
 
+        if (player.ItemPhase is { MagicPayment: { } payment } paymentPhase &&
+            ((request.ControlFlags & 32) == 0 || player.SelectedItem != request.SelectedItem))
+            player.ItemPhase = paymentPhase with
+            { MagicPayment = payment with { EligibleBirth = false, AwaitingPhase = false } };
         player.ControlFlags = request.ControlFlags;
         player.MovementFlags = request.MovementFlags;
         if (player.PhysicsPhase is { } physics)

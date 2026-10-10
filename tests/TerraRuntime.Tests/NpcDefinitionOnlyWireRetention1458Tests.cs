@@ -43,7 +43,8 @@ public sealed class NpcDefinitionOnlyWireRetention1458Tests
             Assert.Equal(update.Simulation.SpawnDifficulty, updated.Simulation.SpawnDifficulty);
             Assert.Equal(update.Simulation.HitboxOverride, updated.Simulation.HitboxOverride);
         }
-        Assert.Equal(326, identities);
+        // Ghost662 now has a represented live lifecycle, leaving this metadata-only cohort.
+        Assert.Equal(325, identities);
     }
 
     [Fact]
@@ -61,7 +62,7 @@ public sealed class NpcDefinitionOnlyWireRetention1458Tests
             Assert.True(store.TryUpdate(imported.Handle, in state, out NpcSnapshot updated));
             CheckUnknown(updated);
         }
-        Assert.Equal(326, identities);
+        Assert.Equal(325, identities);
     }
 
     [Fact]
@@ -93,7 +94,7 @@ public sealed class NpcDefinitionOnlyWireRetention1458Tests
             if (!Convert.FromHexString(wire.GetProperty("frame").GetString()!).AsSpan().SequenceEqual(encoded))
                 mismatches.Add($"type={imported.Type} net={imported.NetId} mode={mode}: expected={wire.GetProperty("frame")} actual={Convert.ToHexString(encoded)}");
         }
-        Assert.Equal(652, frames);
+        Assert.Equal(650, frames);
         Assert.True(mismatches.Count == 0, string.Join(Environment.NewLine, mismatches));
     }
 

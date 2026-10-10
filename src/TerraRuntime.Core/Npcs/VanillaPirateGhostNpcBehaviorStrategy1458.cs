@@ -16,7 +16,7 @@ internal sealed class VanillaPirateGhostNpcBehaviorStrategy1458 : IVanillaNpcBeh
     }
 
     internal static bool TryPlan(in NpcSnapshot npc, in VanillaNpcDefinition definition,
-        VanillaNpcBehaviorContext context, out NpcStateUpdate next, out bool fadeStrike)
+        VanillaNpcBehaviorContext context, out NpcStateUpdate next, out bool fadeStrike, bool windowsVectorArithmetic = false)
     {
         next = default;
         fadeStrike = false;
@@ -69,7 +69,7 @@ internal sealed class VanillaPirateGhostNpcBehaviorStrategy1458 : IVanillaNpcBeh
             peers[at] = value;
         }
         if (!VanillaPirateGhostNpcCatalog1458.TryMove(in aimedActor, in body, aimed,
-            peers[..count], out var motion, out fadeStrike))
+            peers[..count], out var motion, out fadeStrike, windowsVectorArithmetic))
             return false;
         next = new(aimedActor.Type, aimedActor.NetId, aimedActor.PositionX, aimedActor.PositionY,
             motion.VelocityX, motion.VelocityY, aimedActor.Target, aimedActor.Ai,

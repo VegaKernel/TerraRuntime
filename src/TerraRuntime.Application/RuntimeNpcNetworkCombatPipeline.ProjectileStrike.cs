@@ -13,7 +13,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
     private NpcSnapshot preparedProjectileCommittedNpc;
 
     private sealed record ProjectileStrikePlan1458(VanillaUnifiedRandom1458 Before,
-        VanillaUnifiedRandom1458 After, Func<bool> IsCurrent, NpcHandle Target, PlayerHandle Player);
+        VanillaUnifiedRandom1458 After, Func<bool> IsCurrent, NpcHandle Target, PlayerHandle Player)
+    {
+        internal RuntimeNpcDeathDropPlan1458? AcceptedDeath { get; set; }
+    }
 
     internal RuntimeProjectileNpcDamageResult TryStrikePreparedProjectile(in ProjectileSnapshot projectile,
         in NpcSnapshot target, int hitDirection, int damageValue, int armorPenetration, bool critical,
@@ -26,12 +29,13 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
             !ProjectileNpcHitIntentBuilder.TryCreateNpcHit(in projectile, target.Handle, hitDirection,
                 damageValue, armorPenetration, critical, players, out var intent) ||
             !intent.TryCreateDamageRequest(out var request)) return RuntimeProjectileNpcDamageResult.Rejected;
-        pendingProjectileStrike = new(before, after, isCurrent, target.Handle, request.Source.Player);
+        var strike = new ProjectileStrikePlan1458(before, after, isCurrent, target.Handle, request.Source.Player);
+        pendingProjectileStrike = strike;
         bool Current() => random.SourceRandom.HasSameState(before) && isCurrent() &&
             IsPreparedDeathCurrent();
         void Publish(NpcSnapshot committed)
         {
-            AdoptPreparedStrikeOwners();
+            AdoptPreparedStrikeOwners(strike.AcceptedDeath);
             adoptAndPublish(committed);
         }
         var prelude = new NpcDamagePrelude1458(target, null, Current, Publish);
@@ -47,8 +51,10 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         }
     }
 
-    private void AdoptPreparedStrikeOwners()
+    private void AdoptPreparedStrikeOwners(RuntimeNpcDeathDropPlan1458? acceptedDeath = null)
     {
+        if (acceptedDeath?.IsAdoptedUnpublished == true) return;
+        if (pendingDeathPlan?.IsAdoptedUnpublished == true) return;
         if (pendingDeathPlan is { } death)
         {
             if (!death.TryAdoptUnpublished() || plannedPrelude is null ||

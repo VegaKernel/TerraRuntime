@@ -20,7 +20,7 @@ internal sealed partial class RuntimeNpcNetworkCombatPipeline
         if (!VanillaInvasionLifecycle1458.TryCreditDeath(capture.State, npc.Type, out var transition)) return false;
         if (!transition.Effects.Progress) return true;
         // Captain ghost creation and saucer world/boss effects require their own complete death producers.
-        return npc.Type is not (216 or 395) && invasion.CanAdopt(in capture, in transition);
+        return npc.Type != 395 && invasion.CanAdopt(in capture, in transition);
     }
 
     private bool TryCompleteInvasionDeath(in NpcSnapshot dead, RuntimeNpcInvasionDeathCredit1458? plan)

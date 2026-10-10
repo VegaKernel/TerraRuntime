@@ -209,7 +209,7 @@ internal sealed partial class ProjectileAuthority
             return false;
         }
 
-        bool channel = (player.ControlFlags & ControlUseItemFlag) != 0;
+        if (players.CaptureMagicChannel(trustedOwner) is not { } channel) return false;
         if (!channel || !IsHeldControlledMagicWeapon(trustedOwner, in player, in weapon))
             return TryReleaseControlledMagicProjectile(projectile, in current, in player);
 
@@ -242,7 +242,7 @@ internal sealed partial class ProjectileAuthority
                 continue;
             }
 
-            bool channel = (player.ControlFlags & ControlUseItemFlag) != 0;
+            if (players.CaptureMagicChannel(trustedOwner) is not { } channel) continue;
             if (channel && IsHeldControlledMagicWeapon(trustedOwner, in player, in weapon))
                 continue;
             _ = TryReleaseControlledMagicProjectile(current.Handle, in current, in player);
@@ -307,7 +307,7 @@ internal sealed partial class ProjectileAuthority
     {
         if (authoritative.PlayerCapture is not { } capture || authoritative.RandomBefore is not { } before ||
             authoritative.RandomAfter is not { } after || !projectileRandom.HasSameState(before) ||
-            !players.CanCommitProjectileUse(capture, authoritative.InventoryMutation, authoritative.ManaCost) ||
+            !players.CanCommitProjectileUse(capture, authoritative.InventoryMutation, authoritative.ManaCost, authoritative.MagicPayment) ||
             (authoritative.RequiresPlainBowPose && !players.IsCurrentPlainBowProjectilePose(capture)) ||
             !projectiles.TryPrepareVanillaSpawn(authoritative.State, timeLeftOverride, out var prepared) ||
             prepared is null || !prepared.IsCurrent)
@@ -324,7 +324,7 @@ internal sealed partial class ProjectileAuthority
         // The entire tail up to publication is callback-free on the authoritative writer. All owners were
         // validated before any generation, inventory, mana, RNG or cadence state can change.
         if (!prepared.TryCommitUnpublished(out var trusted)) return false;
-        if (!players.TryCommitProjectileUseUnpublished(capture, authoritative.InventoryMutation, authoritative.ManaCost) ||
+        if (!players.TryCommitProjectileUseUnpublished(capture, authoritative.InventoryMutation, authoritative.ManaCost, authoritative.MagicPayment) ||
             !projectiles.TryMarkCombatTrusted(trusted.Handle, connection.Player))
             throw new InvalidOperationException("Validated projectile use changed during callback-free adoption.");
         projectileRandom.CopyStateFrom(after);

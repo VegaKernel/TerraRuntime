@@ -11,11 +11,11 @@ public static class VanillaPirateGhostNpcCatalog1458
     public static readonly VanillaNpcDefinition Definition = new(
         VanillaNpcIds.PirateGhost, VanillaNpcAiStyles.PirateGhost, VanillaNpcBehaviorFamily.PirateGhost,
         VanillaNpcPhysicsFamily.NoClipFlight, NpcArchetypeRole.Ordinary,
-        18, 40, 75, 22, 500, .2f, 1f, true, true, VanillaNpcSyncAnchor.TopLeft) { DefinitionOnly = true, SourceHitboxAtSpawn = new(18, 40) };
+        18, 40, 75, 22, 500, .2f, 1f, true, true, VanillaNpcSyncAnchor.TopLeft) { DefinitionOnly = false, SourceHitboxAtSpawn = new(18, 40) };
 
     public static bool TryMove(in NpcSnapshot actor, in VanillaNpcHitboxSize body,
         VanillaNpcTargetCandidate? target, ReadOnlySpan<NpcSnapshot> peers,
-        out VanillaPirateGhostMotion1458 next, out bool fadeStrike)
+        out VanillaPirateGhostMotion1458 next, out bool fadeStrike, bool windowsVectorArithmetic = false)
     {
         next = default;
         fadeStrike = false;
@@ -38,8 +38,8 @@ public static class VanillaPirateGhostNpcCatalog1458
             float centerX = actor.PositionX + body.Width * .5f;
             float centerY = actor.PositionY + body.Height * .5f;
             float wantedX = 0f, wantedY = 0f;
-            MoveTowards(ref wantedX, ref wantedY, aimed.CenterX - centerX, aimed.CenterY - centerY, 4f);
-            MoveTowards(ref vx, ref vy, wantedX, wantedY, 2f / 15f);
+            MoveTowards(ref wantedX, ref wantedY, aimed.CenterX - centerX, aimed.CenterY - centerY, 4f, windowsVectorArithmetic);
+            MoveTowards(ref vx, ref vy, wantedX, wantedY, 2f / 15f, windowsVectorArithmetic);
             // Slot order is semantically observable through Single rounding; callers supply source ascending peers.
             int previousSlot = -1;
             foreach (var peer in peers)
@@ -52,14 +52,12 @@ public static class VanillaPirateGhostNpcCatalog1458
                 previousSlot = peer.Handle.Slot;
                 float dx = peer.PositionX + peerBody.Width * .5f - centerX;
                 float dy = peer.PositionY + peerBody.Height * .5f - centerY;
-                float distance = (float)Math.Sqrt(dx * dx + dy * dy);
+                float distance = Length(dx, dy, windowsVectorArithmetic);
                 if (!float.IsFinite(distance)) return false;
                 if (distance >= 50f) continue;
                 // The original Normalize produces NaN at coincident centers. Reject the entire owned plan.
                 if (distance == 0f) return false;
-                float inverse = 1f / distance;
-                dx *= inverse;
-                dy *= inverse;
+                Normalize(ref dx, ref dy, distance, windowsVectorArithmetic);
                 dx *= .1f;
                 dy *= .1f;
                 vx -= dx;
@@ -74,19 +72,39 @@ public static class VanillaPirateGhostNpcCatalog1458
         return true;
     }
 
-    private static void MoveTowards(ref float x, ref float y, float targetX, float targetY, float maximum)
+    // Original XNA CLR4/x86 retains the square products and reciprocal until the
+    // following explicit Single store. CoreCLR/FNA retains its existing Single path.
+    private static float Length(float x, float y, bool windowsVectorArithmetic) =>
+        windowsVectorArithmetic ? (float)Math.Sqrt((double)x * x + (double)y * y) :
+            (float)Math.Sqrt(x * x + y * y);
+
+    private static void Normalize(ref float x, ref float y, float length, bool windowsVectorArithmetic)
+    {
+        if (windowsVectorArithmetic)
+        {
+            double inverse = 1d / length;
+            x = (float)(x * inverse);
+            y = (float)(y * inverse);
+        }
+        else
+        {
+            float inverse = 1f / length;
+            x *= inverse;
+            y *= inverse;
+        }
+    }
+
+    private static void MoveTowards(ref float x, ref float y, float targetX, float targetY, float maximum, bool windowsVectorArithmetic)
     {
         float dx = targetX - x, dy = targetY - y;
-        float length = (float)Math.Sqrt(dx * dx + dy * dy);
+        float length = Length(dx, dy, windowsVectorArithmetic);
         if (length < maximum)
         {
             x = targetX;
             y = targetY;
             return;
         }
-        float inverse = 1f / length;
-        dx *= inverse;
-        dy *= inverse;
+        Normalize(ref dx, ref dy, length, windowsVectorArithmetic);
         x += dx * maximum;
         y += dy * maximum;
     }

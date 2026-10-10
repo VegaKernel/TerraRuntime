@@ -31,6 +31,7 @@ internal sealed partial class NpcAuthority
     private readonly INpcAiStateStepper aiStepper;
     private readonly VanillaNpcTargetingAiStepper? vanillaTargeting;
     private readonly VanillaNpcCheckActiveAiStepper? vanillaCheckActive;
+    private readonly VanillaNpcWorldMotionAiStepper? pirateGhostMotion;
     private readonly RuntimeNpcNetworkCombatPipeline combat;
     internal RuntimeNpcDeathPrelude1458 DeathPrelude => combat.DeathPrelude;
     private readonly RuntimeNpcReplicationRegistry? npcReplication;
@@ -326,6 +327,7 @@ internal sealed partial class NpcAuthority
                         worldItemSpawnRandom,
                         playerSnapshots: playerSnapshots),
                     progressionMutations: progression);
+                pirateGhostMotion = worldMotion;
                 vanillaCheckActive = new VanillaNpcCheckActiveAiStepper(worldMotion);
                 aiStepper = vanillaCheckActive;
             }
@@ -343,6 +345,9 @@ internal sealed partial class NpcAuthority
             worldClock?.GetGoodWorld ?? townCommerceWorldFacts?.GoodWorld ?? false,
             retainedSlimeStatuses: worldTiles is not null, debuffDeath: combat.TryStrikeDebuffDeath,
             buffPhase: combat.TryCommitZombieBuffPhase);
+        if (vanillaTargeting is not null && pirateGhostMotion is not null)
+            aiStepper = new RuntimePirateGhostOuterAiStepper1458(aiStepper, npcs, vanillaTargeting,
+                pirateGhostMotion, combat, npcBuffStatus, rawPlayerSlots, CapturePirateGhostPlayers);
     }
 
     public RuntimeNpcShopCatalogRegistry Shops => shops;
@@ -2058,6 +2063,13 @@ internal sealed partial class NpcAuthority
             TenthAnniversaryWorld = naturalSpawnWorldFacts?.TenthAnniversaryWorld ?? false,
             RemixWorld = naturalSpawnWorldFacts?.RemixWorld ?? false
         };
+    }
+
+    private VanillaNpcTargetCandidate[] CapturePirateGhostPlayers()
+    {
+        var captured = new VanillaNpcTargetCandidate[VanillaNpcTargetingAiStepper.MaximumPlayerCandidates];
+        int count = CopyTargetCandidates(captured);
+        return captured.AsSpan(0, count).ToArray();
     }
 
     private int CopyTargetCandidates(Span<VanillaNpcTargetCandidate> destination)
