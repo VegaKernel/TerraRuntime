@@ -81,8 +81,14 @@ public sealed class OwnedCoinPickupAuthority1458Tests
             Assert.True(f.Items.TryApplyOwner(item.Handle.Slot, new(0, 15, 1, 0, 1600, 1606), out item));
             f.Events.Seen.Clear(); f.State.Tick();
             Assert.True(f.Players.TryGetInventoryItem(f.Connection, 50, out var untouched));
-            Assert.Equal(99, (int)untouched.Stack); Assert.Empty(f.Events.Seen);
-            Assert.True(f.Items.TryGetActive(item.Handle.Slot, out _));
+            // The value owner now admits the physical source journal while preserving only
+            // the original one trusted copper unit; the raw second unit is not funded.
+            Assert.Equal(72, untouched.ItemType.Value); Assert.Equal(1, untouched.Stack);
+            Assert.Equal(71, f.ItemImage()[53].ItemType.Value); Assert.Equal(1, f.ItemImage()[53].Stack);
+            Assert.All(f.ItemImage().Take(50), i => Assert.True(i.IsEmpty)); Assert.NotEmpty(f.Events.Seen);
+            var inventory = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(f.Players)!;
+            Assert.Equal(1, inventory.CaptureFundedCoinValues(f.Connection).Sum());
+            Assert.False(f.Items.TryGetActive(item.Handle.Slot, out _));
         }
         using (var f = new OwnedHumanPickupAuthority1458Tests.Fixture())
         {
@@ -101,7 +107,7 @@ public sealed class OwnedCoinPickupAuthority1458Tests
             // Value-balanced but wrong destination: original nonfavorite empty profile uses slot53.
             Assert.False(store.TryPreparePickup(f.Connection, before, new[] { forged }, incoming, 1, out _));
             var correct = new RemotePhaseInventoryMutation(f.Connection, 53, before[53], incoming);
-            Assert.True(store.TryPreparePickup(f.Connection, before, new[] { correct }, incoming, 1, out var prepared));
+            Assert.True(store.TryPreparePickup(f.Connection, before, new[] { correct }, incoming, 1, out var prepared, fundedCoinCredit: 1));
             Assert.NotNull(prepared); f.Set(58, 3, 1); Assert.False(prepared.IsCurrent);
             Assert.False(prepared.TryAdoptUnpublished());
             Assert.True(f.Players.TryGetInventoryItem(f.Connection, 50, out var untouched)); Assert.True(untouched.IsEmpty);
@@ -119,6 +125,8 @@ public sealed class OwnedCoinPickupAuthority1458Tests
                     Assert.True(silver.IsEmpty);
                     Assert.True(f.Players.TryGetInventoryItem(f.Connection, 51, out var gold));
                     Assert.Equal(73, gold.ItemType.Value); Assert.Equal(1, (int)gold.Stack);
+                    var coinInventory = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(f.Players)!;
+                    Assert.True(coinInventory.TryGetFundedCoinValue(f.Connection, 51, out long fundedGold)); Assert.Equal(1, fundedGold);
                     if (replaceWorld) f.Drop(74, 1);
                     f.Set(51, 3, 77);
                     f.Events.Seen.Clear();

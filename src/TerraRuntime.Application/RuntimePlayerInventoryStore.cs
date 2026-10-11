@@ -241,6 +241,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         items.AsSpan(playerSlot * InventorySlotCount, InventorySlotCount).Clear();
         ClearOwnedQuantities(playerSlot);
         fundedQuantities.AsSpan(playerSlot * InventorySlotCount, InventorySlotCount).Clear();
+        coinFundedValues.AsSpan(playerSlot * InventorySlotCount, InventorySlotCount).Clear();
     }
 
     private static int GetOffset(int playerSlot, int inventorySlot) =>

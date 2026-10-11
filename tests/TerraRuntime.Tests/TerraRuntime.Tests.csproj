@@ -468,4 +468,13 @@
     <EmbeddedResource Include="Fixtures/functional-combat-equipment-hit-configured-official-1458.json.gz" LogicalName="FunctionalCombatEquipmentHit1458" />
     <EmbeddedResource Include="Fixtures/functional-combat-equipment-inherited-configured-official-1458.json.gz" LogicalName="FunctionalCombatEquipmentInherited1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/favorite-cursor-return-configured-official-1458.json.gz" LogicalName="FavoriteReturn1458" />
+    <EmbeddedResource Include="Fixtures/favorite-return-first-image-ambiguity-official-1458.json.gz" LogicalName="FavoriteReturnAmbiguity1458" />
+    <EmbeddedResource Include="Fixtures/owned-coin-value-configured-official-1458.json.gz" LogicalName="CoinValueOriginal1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/inventory-close-configured-official-1458.json.gz" LogicalName="InventoryClose1458" />
+    <EmbeddedResource Include="Fixtures/inventory-close-nonfavorite-configured-official-1458.json.gz" LogicalName="InventoryCloseNonfavorite1458" />
+  </ItemGroup>
 </Project>

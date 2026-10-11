@@ -8,7 +8,7 @@ internal sealed partial class PlayerAuthority
     private bool cursorMovePublishing;
 
     internal sealed record PendingCursorMove(PlayerStateSnapshot Before,
-        RuntimePlayerItemPhase1458? Phase, ulong InputRevision, RuntimePlayerInventoryStore.CursorMovePreparation Inventory);
+        RuntimePlayerItemPhase1458? Phase, ulong InputRevision, RuntimePlayerInventoryStore.CursorMovePreparation Inventory, PendingCursorReturn? Return = null);
 
     // Protocol 5 has no UI intent. This bounded authority policy accepts only a paired,
     // source-valid conserved context-0 transition over existing quantity custody.

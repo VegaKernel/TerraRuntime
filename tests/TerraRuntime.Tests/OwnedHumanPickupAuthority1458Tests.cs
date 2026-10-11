@@ -739,7 +739,7 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         if (!slotItem.IsEmpty && slotItem.ItemFlags != 0) f.Set(slot, checked((short)slotItem.ItemType.Value), slotItem.Stack, checked((byte)slotItem.Prefix.Value), slotItem.ItemFlags);
         if (!cursorItem.IsEmpty && cursorItem.ItemFlags != 0) f.Set(58, checked((short)cursorItem.ItemType.Value), cursorItem.Stack, checked((byte)cursorItem.Prefix.Value), cursorItem.ItemFlags);
     }
-    private static void SeedFundedCursorTuple(Fixture f, RuntimePlayerInventoryItem item, short wanted)
+    internal static void SeedFundedCursorTuple(Fixture f, RuntimePlayerInventoryItem item, short wanted)
     {
         if (item.IsEmpty) return;
         var grant = f.Drop(checked((short)item.ItemType.Value), item.Stack, prefix: checked((byte)item.Prefix.Value));

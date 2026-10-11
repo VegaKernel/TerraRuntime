@@ -9,6 +9,8 @@ internal sealed partial class WorldItemAuthority
     private bool TryApplyFundedDrop(WorldItemAllocateRuntimeCommand command, out WorldItemSnapshot snapshot)
     {
         snapshot = default;
+        if (command.State.Ownership == WorldItemOwnershipMode.ReserveForLocalPlayer)
+            return TryApplyInventoryClose(command, out snapshot);
         if (ownedPickupTransactionRunning || !players.TryPrepareFundedDrop(command.Connection, command.State, out var inventory) ||
             inventory is null) return false;
         ownedPickupTransactionRunning = true;

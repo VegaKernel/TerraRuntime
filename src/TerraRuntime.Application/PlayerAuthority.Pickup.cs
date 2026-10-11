@@ -12,7 +12,7 @@ internal sealed partial class PlayerAuthority
     internal bool IsPickupOutOfRange(in PlayerStateSnapshot state) => playerUpdateWorld is { } world &&
         VanillaPlayerHealthContext1458.IsRemoteOutOfRange(state.PositionX, state.PositionY, 20, 42, world.MaxTilesX, world.MaxTilesY);
     internal bool TryPrepareOwnedPickup(RuntimeItemOwnerPlayerCapture1458 capture,
-        WorldItemStoragePlan1458 storage, RuntimePlayerInventoryItem incoming, out OwnedPickupPreparation? prepared)
+        WorldItemStoragePlan1458 storage, RuntimePlayerInventoryItem incoming, out OwnedPickupPreparation? prepared, long fundedCoinCredit = 0)
     {
         prepared = null;
         if (!membership.TryGet(capture.Connection, out var member) || member.CaptureSnapshot() != capture.State ||
@@ -20,7 +20,7 @@ internal sealed partial class PlayerAuthority
         var mutations = storage.Mutations.Select(m => new RemotePhaseInventoryMutation(capture.Connection, m.Slot,
             capture.Inventory[m.Slot], incoming.ItemType.Value is >= 71 and <= 74 ? FromStorage(m.After) :
             FromStorage(m.After) with { ItemFlags = capture.Inventory[m.Slot].IsEmpty ? incoming.ItemFlags : capture.Inventory[m.Slot].ItemFlags })).ToArray();
-        if (!inventory.TryPreparePickup(capture.Connection, capture.Inventory, mutations, incoming, storage.Taken, out var items) || items is null) return false;
+        if (!inventory.TryPreparePickup(capture.Connection, capture.Inventory, mutations, incoming, storage.Taken, out var items, fundedCoinCredit) || items is null) return false;
         prepared = new(this, member, capture.State, phase, items, mutations);
         return true;
     }

@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Gameplay.Items;
 
@@ -200,17 +201,38 @@ public sealed partial class RuntimeWorldItemStore
             state.Active = false;
             state.Update = default;
             state.FundedQuantity = 0;
+            state.FundedCoinValue = 0;
             // Ordinary TryRemove preserves the slot's generation/revision until its next allocation.
             if (!Record(slot, WorldItemStateCommitKind.Remove)) return Fail();
             steps.Add(new(start, operations.Count, slot, 0, pending[..pendingCount].ToArray(), null));
             return true;
         }
+        internal bool TryTakeFundedCoinSource(in WorldItemSnapshot item, int acceptedAmount, out long fundedValue)
+        {
+            fundedValue = 0;
+            if (disposed || claimed || failed || steps.Count != 0 || !item.Handle.IsAssigned ||
+                !IsValidSlot(item.Handle.Slot) || acceptedAmount <= 0 || acceptedAmount > item.Stack)
+                return Fail();
+            var before = working[item.Handle.Slot];
+            long physicalValue = CoinPhysicalValue(item.ItemNetId, acceptedAmount);
+            if (!before.Active || before.Reserved || before.Claimed || Capture(item.Handle.Slot, in before) != item ||
+                physicalValue <= 0 || before.FundedCoinValue <= 0 ||
+                before.FundedCoinValue > CoinPhysicalValue(before.Update.ItemNetId, before.Update.Stack))
+                return Fail();
+            long transferredValue = Math.Min(before.FundedCoinValue, physicalValue);
+            if (!TryTakeSource(in item, acceptedAmount)) return false;
+            fundedValue = transferredValue;
+            return true;
+        }
+
         internal bool TryTakeSource(in WorldItemSnapshot item, int acceptedAmount, bool requireFundedQuantity = false)
         {
             if (acceptedAmount <= 0 || acceptedAmount > item.Stack)
                 return Fail();
             if (requireFundedQuantity && (!item.Handle.IsAssigned || !IsValidSlot(item.Handle.Slot) ||
-                working[item.Handle.Slot].FundedQuantity < acceptedAmount)) return Fail();
+                (CoinPhysicalValue(item.ItemNetId, 1) is var unit && unit > 0
+                    ? working[item.Handle.Slot].FundedCoinValue / unit < acceptedAmount
+                    : working[item.Handle.Slot].FundedQuantity < acceptedAmount))) return Fail();
             if (acceptedAmount == item.Stack)
                 return TryRemoveSource(item);
             if (disposed || claimed || failed || steps.Count != 0 || !item.Handle.IsAssigned ||
@@ -223,6 +245,7 @@ public sealed partial class RuntimeWorldItemStore
             int start = operations.Count;
             state.Update = state.Update with { Stack = checked((short)(item.Stack - acceptedAmount)) };
             state.FundedQuantity = Math.Max(0, state.FundedQuantity - acceptedAmount);
+            state.FundedCoinValue = Math.Max(0L, state.FundedCoinValue - CoinPhysicalValue(item.ItemNetId, acceptedAmount));
             // Residual preserves body/generation and uses the existing revision/Drop publication owner.
             // Overflow is refused while this is still a detached preview.
             if (!RecordSync(slot, WorldItemStateCommitKind.Drop))
@@ -329,7 +352,9 @@ public sealed partial class RuntimeWorldItemStore
                 state.Generation++; state.Revision = leaseTicks == 0 ? 1UL : 0UL;
                 state.Active = leaseTicks == 0; state.Reserved = leaseTicks != 0; state.SourceLease = leaseTicks != 0;
                 state.SourceReuseTicks = leaseTicks; state.SourceAge = facts.InitialAge; state.SourceOwnerAge = 0; state.SourceReleaseRequested = false; state.Update = CreateInitial(in publicationDrop);
-                state.FundedQuantity = creationSource == WorldItemCreationSource1458.NewItem ? publicationDrop.Stack : 0;
+                state.FundedCoinValue = creationSource == WorldItemCreationSource1458.NewItem
+                    ? CoinPhysicalValue(publicationDrop.ItemNetId, publicationDrop.Stack) : 0;
+                state.FundedQuantity = creationSource == WorldItemCreationSource1458.NewItem && state.FundedCoinValue == 0 ? publicationDrop.Stack : 0;
                 if (leaseTicks == 0) state.Update = state.Update with { Color = null };
                 if (leaseTicks == 0 && ownerFacts is not null)
                     state.Update = state.Update with { GrabDelayPlayer = 0 };
@@ -341,9 +366,10 @@ public sealed partial class RuntimeWorldItemStore
                     state.Update = state.Update with { GrabDelayTime = 100, GrabDelayPlayer = local };
                 }
                 if (!Record(slot, leaseTicks == 0 ? WorldItemStateCommitKind.Drop : null)) return Fail();
-                // Client MessageBuffer21 applies the requested reservation after its source21.
+                // MessageBuffer21 and explicit NewItem ReserveForLocalPlayer apply reservation after source21.
                 // Retain it in this claimed plan; an external owner update cannot mutate a claimed slot.
-                if (leaseTicks == 0 && creationSource == WorldItemCreationSource1458.ClientSynchronization &&
+                if (leaseTicks == 0 &&
+                    (creationSource == WorldItemCreationSource1458.ClientSynchronization || sourceLocalPlayerId is < byte.MaxValue) &&
                     drop.Ownership == WorldItemOwnershipMode.ReserveForLocalPlayer)
                 {
                     if (sourceLocalPlayerId is not { } local || local == byte.MaxValue) return Fail();
@@ -516,14 +542,34 @@ public sealed partial class RuntimeWorldItemStore
                 publishing = true;
                 try
                 {
+                    Exception? failure = null;
                     for (int index = step.Start; index < step.End; index++)
                     {
                         var operation = operations[index];
-                        if (operation.Kind is { } kind && owner._slots[operation.Slot] == final[operation.Slot])
+                        if (operation.Kind is not { } kind || owner._slots[operation.Slot] != final[operation.Slot])
+                            continue;
+                        try
+                        {
                             owner.Publish(kind, operation.Snapshot);
+                        }
+                        catch (Exception exception)
+                        {
+                            failure ??= exception;
+                        }
                     }
                     if (step.Transient is { } transient && owner._commitSink is IWorldItemSentinelCommitSink1458 sink)
-                        sink.WorldItemSentinelCommitted(in transient);
+                    {
+                        try
+                        {
+                            sink.WorldItemSentinelCommitted(in transient);
+                        }
+                        catch (Exception exception)
+                        {
+                            failure ??= exception;
+                        }
+                    }
+                    if (failure is not null)
+                        System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
                 }
                 finally
                 {
@@ -565,6 +611,9 @@ public sealed partial class RuntimeWorldItemStore
                         int amount = Math.Min(source.Update.Stack, targetFacts.MaximumStack - destination.Update.Stack);
                         if (amount > 0)
                         {
+                        long transferredCoinValue = Math.Min(CoinPhysicalValue(source.Update.ItemNetId, amount), source.FundedCoinValue);
+                        source.FundedCoinValue -= transferredCoinValue;
+                        destination.FundedCoinValue = checked(destination.FundedCoinValue + transferredCoinValue);
                         int transferredFunding = Math.Min(amount, source.FundedQuantity);
                         source.FundedQuantity -= transferredFunding;
                         destination.FundedQuantity += transferredFunding;
@@ -574,7 +623,7 @@ public sealed partial class RuntimeWorldItemStore
                             if (destination.Update.Stack == targetFacts.MaximumStack && destination.Update.ItemNetId is 71 or 72 or 73)
 {
                                 destination.Update = destination.Update with { ItemNetId = (short)(destination.Update.ItemNetId + 1), Stack = 1, Prefix = 0 };
-                            destination.FundedQuantity = destination.FundedQuantity == targetFacts.MaximumStack ? 1 : 0; // Fully funded 100-unit conversion only; mixed value fails closed.
+                            destination.FundedQuantity = 0; // Coin custody remains copper value across this owned source conversion.
     }
                             if (!RecordSync((short)target, WorldItemStateCommitKind.Drop) ||
                                 !RecordSync(transfer.Source, source.Active ? WorldItemStateCommitKind.Drop : WorldItemStateCommitKind.Remove)) return Fail();

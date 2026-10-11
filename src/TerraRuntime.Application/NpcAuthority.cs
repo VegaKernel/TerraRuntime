@@ -2028,10 +2028,12 @@ internal sealed partial class NpcAuthority
         {
             if (!worldItems.TryGetActive(itemSlot, out var item))
                 throw new InvalidOperationException("Accepted NPC catch item disappeared before ownership assignment.");
-            var owner = new WorldItemOwnerStateUpdate(command.Connection.Player.Slot.Value,
-                VanillaNpcCatchWorldItem1458.ReservationTicks, 0, 0, item.PositionX, item.PositionY);
-            if (!worldItems.TryApplyOwner(itemSlot, in owner, out _))
-                throw new InvalidOperationException("Caught NPC item could not be assigned to the authenticated player.");
+            // The source NewItem plan already adopts the authenticated reservation
+            // and publishes its single owner22. Do not overwrite a reentrant owner change.
+            if (item.OwnerPlayerId != command.Connection.Player.Slot.Value ||
+                item.TimeToKeepReservation != VanillaNpcCatchWorldItem1458.ReservationTicks ||
+                item.GrabDelayPlayer != 0 || item.GrabDelayTime != 0)
+                throw new InvalidOperationException("Caught NPC item reservation changed during publication.");
         }
         // Source CatchNPC creates/assigns its item before deactivating the NPC and publishing packet23.
         if (!npcs.TryDespawn(npc.Handle))

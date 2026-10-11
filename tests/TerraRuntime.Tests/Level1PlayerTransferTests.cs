@@ -596,7 +596,8 @@ public sealed class Level1PlayerTransferTests
              slot < VanillaPlayerItemSlotCatalog.MainInventoryEndExclusive;
              slot++)
         {
-            inventory[slot] = new RuntimePlayerInventoryItem(VanillaItemIds.DirtBlock, 1, VanillaPrefixIds.None, 0);
+            inventory[slot] = new RuntimePlayerInventoryItem(
+                VanillaItemIds.DirtBlock, VanillaDefinitionCatalog.CommonMaximumStack, VanillaPrefixIds.None, 0);
         }
         inventory[VanillaPlayerItemSlotCatalog.InventoryMouseItem] =
             new RuntimePlayerInventoryItem(VanillaItemIds.DirtBlock, 7, VanillaPrefixIds.None, 0);
@@ -621,7 +622,10 @@ public sealed class Level1PlayerTransferTests
             VanillaPlayerItemSlotCatalog.InventoryMouseItem,
             out RuntimePlayerInventoryItem cursor));
         Assert.Equal((short)7, cursor.Stack);
-        Assert.Equal(57, CountInventoryItems(primary.State, player));
+        Assert.Equal(
+            (VanillaPlayerItemSlotCatalog.MainInventoryEndExclusive - VanillaPlayerItemSlotCatalog.MainInventoryStart) *
+                VanillaDefinitionCatalog.CommonMaximumStack + 7,
+            CountInventoryItems(primary.State, player));
     }
 
     [Fact]

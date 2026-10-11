@@ -262,6 +262,7 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
             state.Revision = 0;
             state.Update = default;
             state.FundedQuantity = 0;
+            state.FundedCoinValue = 0;
             return true;
         }
         finally
@@ -316,8 +317,14 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
                 : CreateInitial(in drop);
             int funded = state.Active && state.Update.ItemNetId == merged.ItemNetId && state.Update.Prefix == merged.Prefix
                 ? Math.Min(state.FundedQuantity, merged.Stack) : 0;
+            long fundedCoinValue = state.Active && state.Update.ItemNetId == merged.ItemNetId && state.Update.Prefix == merged.Prefix
+                ? Math.Min(state.FundedCoinValue, CoinPhysicalValue(merged.ItemNetId, merged.Stack)) : 0;
             committed = TryUpsertSingleWriter(slot, in merged, out snapshot);
-            if (committed) state.FundedQuantity = funded;
+            if (committed)
+            {
+                state.FundedQuantity = funded;
+                state.FundedCoinValue = fundedCoinValue;
+            }
         }
         finally
         {
@@ -456,6 +463,7 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
             state.Active = false;
             state.Update = default;
             state.FundedQuantity = 0;
+            state.FundedCoinValue = 0;
             _activeCount--;
         }
         finally
@@ -567,6 +575,7 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
             state.SourceAge = InitialSourceAge(update.ItemNetId); state.SourceOwnerAge = 0;
             state.Update = update;
             state.FundedQuantity = 0;
+            state.FundedCoinValue = 0;
             _activeCount++;
             snapshot = Capture(slot, in state);
             return true;
@@ -588,6 +597,7 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
             state.Reserved = true;
             state.Update = default;
             state.FundedQuantity = 0;
+            state.FundedCoinValue = 0;
             reservation = new WorldItemDropReservation(slot, new WorldItemGeneration(state.Generation));
             return true;
         }
@@ -630,7 +640,8 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
                 return false;
             }
 
-            state.FundedQuantity = state.Update.Stack; // Reserved commit is the existing trusted server-drop producer.
+            state.FundedCoinValue = CoinPhysicalValue(state.Update.ItemNetId, state.Update.Stack);
+            state.FundedQuantity = state.FundedCoinValue > 0 ? 0 : state.Update.Stack; // Existing trusted server-drop producer.
             state.Reserved = false;
             state.Active = true;
             state.SourceAge = InitialSourceAge(state.Update.ItemNetId); state.SourceOwnerAge = 0;
@@ -678,7 +689,8 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
         }
 
         state.Update = update;
-        state.FundedQuantity = 0; // Generic upsert/import is not a funded producer.
+        state.FundedQuantity = 0;
+            state.FundedCoinValue = 0; // Generic upsert/import is not a funded producer.
         snapshot = Capture(slot, in state);
         return true;
     }
@@ -817,7 +829,8 @@ public sealed partial class RuntimeWorldItemStore : IWorldItemSnapshotReader
     private record struct SlotState
     {
         public bool Active;
-        public int FundedQuantity; // Generation-owned quantity from an explicit server producer; never serialized/imported.
+        public int FundedQuantity; // Generation-owned noncoin quantity; never serialized/imported.
+        public long FundedCoinValue; // Copper-unit custody survives owned denomination conversion; raw snapshots never seed it.
         public bool Reserved;
         public bool Claimed;
         public int SourceAge;

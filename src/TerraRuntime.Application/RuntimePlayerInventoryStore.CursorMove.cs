@@ -15,6 +15,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         int player = connection.Player.Slot.Value;
         // A conserved pair may move custody; the reports themselves never create it.
         if (fundedQuantities[GetOffset(player, slot)] == 0 && fundedQuantities[GetOffset(player, 58)] == 0 &&
+            coinFundedValues[GetOffset(player, slot)] == 0 && coinFundedValues[GetOffset(player, 58)] == 0 &&
             !HasQuantityLane(player, slot, beforeSlot) && !HasQuantityLane(player, 58, beforeCursor)) return false;
         var source = StorageTuple(beforeSlot); var cursor = StorageTuple(beforeCursor);
         var reported = StorageTuple(reportedSlot);
@@ -41,7 +42,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             if (!image[index].IsCanonical || (image[index].ItemFlags & ~PlayerEquipmentCommitRequest.FavoriteItemFlag) != 0 ||
                 !CanAcceptOwnedQuantityReport(connection, image[index].ToCommitRequest(connection.Player.Slot, index))) return false;
         prepared = new(this, connection, playerMutationStamps[connection.Player.Slot.Value], slot, image, reportedSlot, afterCursor, leftAllowed, rightAllowed,
-            CaptureFundedQuantities(connection), CaptureOwnedQuantities(connection));
+            CaptureFundedQuantities(connection), CaptureFundedCoinValues(connection), CaptureOwnedQuantities(connection));
         return true;
     }
 
@@ -57,7 +58,7 @@ internal sealed partial class RuntimePlayerInventoryStore
 
     internal sealed class CursorMovePreparation(RuntimePlayerInventoryStore owner, ConnectionHandle connection,
         ulong stamp, short slot, RuntimePlayerInventoryItem[] before, RuntimePlayerInventoryItem afterSlot,
-        RuntimePlayerInventoryItem afterCursor, bool leftAllowed, bool rightAllowed, short[] funding, OwnedInventoryQuantity1458[] caps)
+        RuntimePlayerInventoryItem afterCursor, bool leftAllowed, bool rightAllowed, short[] funding, long[] coinFunding, OwnedInventoryQuantity1458[] caps)
     {
         private RuntimePlayerInventoryItem selectedCursor = afterCursor;
         private bool toCursor = !leftAllowed;
@@ -78,7 +79,9 @@ internal sealed partial class RuntimePlayerInventoryStore
                 for (short index = 0; index < before.Length; index++)
                     if (!owner.TryGet(connection, index, out var current) || current != (debitApplied && index == slot ? afterSlot : before[index]) ||
                         owner.fundedQuantities[GetOffset(connection.Player.Slot.Value, index)] !=
-                            (debitApplied && index == slot ? Math.Min(funding[index], afterSlot.Stack) : funding[index])) return false;
+                            (debitApplied && index == slot ? Math.Min(funding[index], afterSlot.Stack) : funding[index]) ||
+                        owner.coinFundedValues[GetOffset(connection.Player.Slot.Value, index)] !=
+                            (debitApplied && index == slot ? Math.Min(coinFunding[index], CoinValue(afterSlot)) : coinFunding[index])) return false;
                 return owner.CaptureOwnedQuantities(connection).AsSpan().SequenceEqual(caps);
             }
         }
@@ -104,6 +107,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             // paired credit or any intervening owner change retires it.
             owner.items[GetOffset(connection.Player.Slot.Value, slot)] = afterSlot;
             owner.fundedQuantities[GetOffset(connection.Player.Slot.Value, slot)] = Math.Min(funding[slot], afterSlot.Stack);
+            owner.coinFundedValues[GetOffset(connection.Player.Slot.Value, slot)] = Math.Min(coinFunding[slot], CoinValue(afterSlot));
             owner.Changed(connection.Player.Slot.Value);
             expectedStamp = owner.playerMutationStamps[connection.Player.Slot.Value];
             debitApplied = true;
@@ -129,7 +133,23 @@ internal sealed partial class RuntimePlayerInventoryStore
                 cursorFunding = checked((short)(funding[slot] - fundedMoved));
             }
             else { slotFunding = funding[58]; cursorFunding = funding[slot]; }
-            if (slotFunding > afterSlot.Stack || cursorFunding > selectedCursor.Stack) return false;
+            long slotCoinFunding, cursorCoinFunding;
+            if (toCursor)
+            {
+                long movedValue = Math.Min(coinFunding[slot], CoinValue(before[slot] with { Stack = checked((short)(before[slot].Stack - afterSlot.Stack)) }));
+                slotCoinFunding = coinFunding[slot] - movedValue;
+                cursorCoinFunding = checked(coinFunding[58] + movedValue);
+            }
+            else if (matching && !afterSlot.IsEmpty && afterSlot.Stack >= before[58].Stack && selectedCursor.Stack <= before[slot].Stack)
+            {
+                long movedValue = Math.Min(coinFunding[slot], CoinValue(before[slot] with { Stack = checked((short)(afterSlot.Stack - before[58].Stack)) }));
+                slotCoinFunding = checked(coinFunding[58] + movedValue);
+                cursorCoinFunding = coinFunding[slot] - movedValue;
+            }
+            else { slotCoinFunding = coinFunding[58]; cursorCoinFunding = coinFunding[slot]; }
+            if (slotFunding > afterSlot.Stack || cursorFunding > selectedCursor.Stack ||
+                slotCoinFunding > CoinValue(afterSlot) || cursorCoinFunding > CoinValue(selectedCursor) ||
+                checked(slotCoinFunding + cursorCoinFunding) != checked(coinFunding[slot] + coinFunding[58])) return false;
             adopted = true;
             // Each identity's old ceiling follows the real moved quantity. Other historical
             // lanes remain obligations, so swapping a different item cannot erase them.
@@ -146,6 +166,8 @@ internal sealed partial class RuntimePlayerInventoryStore
             owner.items[GetOffset(player, 58)] = selectedCursor;
             owner.fundedQuantities[GetOffset(player, slot)] = slotFunding;
             owner.fundedQuantities[GetOffset(player, 58)] = cursorFunding;
+            owner.coinFundedValues[GetOffset(player, slot)] = slotCoinFunding;
+            owner.coinFundedValues[GetOffset(player, 58)] = cursorCoinFunding;
             owner.Changed(connection.Player.Slot.Value);
             return true;
         }

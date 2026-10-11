@@ -95,9 +95,9 @@ public static class VanillaInventoryCursorMove1458
     private static bool IsValid(in WorldItemPickupSlot1458 item)
     {
         if (item.Type == 0) return item == default; // gameplay-domain-literal-audit: allow raw-entity-type-decision - Zero validates the canonical Air representation, not a content-specific rule.
-        // Physical coin counts cannot represent funded value through denomination conversion.
+        // This source tuple transform does not assign value custody or perform DoCoins conversion.
         return item.Type > 0 && item.Type < VanillaItemIds.Count && // gameplay-domain-literal-audit: allow raw-entity-type-decision - Canonical storage rejects signed variant IDs before retained-identity validation.
-            !(item.Type >= VanillaCoinFacts.CopperCoin.Value && item.Type <= VanillaCoinFacts.PlatinumCoin.Value) &&
+            (!VanillaCoinFacts.TryGetValue(new ItemTypeId(item.Type), out _) || item.Prefix == VanillaPrefixIds.NoneValue) &&
             item.Prefix is >= 0 and <= byte.MaxValue && item.Stack > 0 &&
             VanillaItemRetainedIdentity1458.TryResolve(new ItemTypeId(item.Type), out var retained) &&
             retained.Value == item.Type && VanillaWorldItemAllocationCatalog1458.TryGet(item.Type, out var facts) &&

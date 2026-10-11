@@ -9,7 +9,7 @@ internal sealed partial class RuntimePlayerInventoryStore
     // An owned world-item grant, unlike a receive-5 image, may advance consumed quantity custody.
     internal bool TryPreparePickup(ConnectionHandle connection, ReadOnlySpan<RuntimePlayerInventoryItem> before,
         ReadOnlySpan<RemotePhaseInventoryMutation> mutations, RuntimePlayerInventoryItem incoming,
-        int accepted, out PickupPreparation? preparation)
+        int accepted, out PickupPreparation? preparation, long fundedCoinCredit = 0)
     {
         preparation = null;
         if (!connection.IsAssigned || !CanAccept(connection) || Serial >= ulong.MaxValue - 1 ||
@@ -42,7 +42,11 @@ internal sealed partial class RuntimePlayerInventoryStore
         if (!coin && total != accepted) return false;
         var image = new RuntimePlayerInventoryItem[InventorySlotCount];
         if (!TryCopyInventory(connection, image) || !image.AsSpan().SequenceEqual(before)) return false;
-        preparation = new(this, connection, Serial, image, mutations.ToArray());
+        var changes = mutations.ToArray();
+        long[]? afterCoinFunding = null;
+        if (coin && (fundedCoinCredit <= 0 || fundedCoinCredit > CoinValue(incoming with { Stack = checked((short)accepted) }) ||
+            !TryPlanCoinFunding(connection, image, changes, fundedCoinCredit, out afterCoinFunding))) return false;
+        preparation = new(this, connection, Serial, image, changes, afterCoinFunding);
         return true;
     }
 
@@ -83,7 +87,7 @@ internal sealed partial class RuntimePlayerInventoryStore
     };
 
     internal sealed class PickupPreparation(RuntimePlayerInventoryStore owner, ConnectionHandle connection,
-        ulong serial, RuntimePlayerInventoryItem[] before, RemotePhaseInventoryMutation[] mutations)
+        ulong serial, RuntimePlayerInventoryItem[] before, RemotePhaseInventoryMutation[] mutations, long[]? afterCoinFunding)
     {
         private bool adopted;
         internal bool IsCurrent
@@ -100,6 +104,8 @@ internal sealed partial class RuntimePlayerInventoryStore
         {
             if (!IsCurrent) return false;
             adopted = true;
+            if (afterCoinFunding is not null)
+                afterCoinFunding.CopyTo(owner.coinFundedValues, connection.Player.Slot.Value * InventorySlotCount);
             foreach (var mutation in mutations)
             {
                 int offset = GetOffset(connection.Player.Slot.Value, mutation.Slot);
@@ -116,6 +122,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             return true;
         }
         internal bool IsAcceptedItemCurrent(int index) => adopted && (uint)index < (uint)mutations.Length &&
-            owner.TryGet(connection, mutations[index].Slot, out var item) && item == mutations[index].After;
+            owner.TryGet(connection, mutations[index].Slot, out var item) && item == mutations[index].After &&
+            (afterCoinFunding is null || owner.coinFundedValues[GetOffset(connection.Player.Slot.Value, mutations[index].Slot)] == afterCoinFunding[mutations[index].Slot]);
     }
 }

@@ -12,6 +12,8 @@ internal sealed partial class RuntimePlayerInventoryStore
     {
         int offset = GetOffset(player, slot);
         var before = items[offset];
+        coinFundedValues[offset] = before.ItemType == after.ItemType && before.Prefix == after.Prefix
+            ? Math.Min(coinFundedValues[offset], CoinValue(after)) : 0;
         fundedQuantities[offset] = !after.IsEmpty && before.ItemType == after.ItemType && before.Prefix == after.Prefix
             ? Math.Min(fundedQuantities[offset], after.Stack) : (short)0;
     }
@@ -20,7 +22,9 @@ internal sealed partial class RuntimePlayerInventoryStore
     {
         quantity = 0;
         if (!TryGet(connection, slot, out var item)) return false;
-        quantity = fundedQuantities[GetOffset(connection.Player.Slot.Value, slot)];
+        long physical = CoinValue(item);
+        quantity = physical > 0 ? checked((short)(coinFundedValues[GetOffset(connection.Player.Slot.Value, slot)] / (physical / item.Stack)))
+            : fundedQuantities[GetOffset(connection.Player.Slot.Value, slot)];
         return quantity >= 0 && quantity <= item.Stack;
     }
 
@@ -42,9 +46,11 @@ internal sealed partial class RuntimePlayerInventoryStore
         return true;
     }
 
-    internal void AdoptFundedQuantities(ConnectionHandle connection, ReadOnlySpan<short> quantities)
+    internal void AdoptFundedQuantities(ConnectionHandle connection, ReadOnlySpan<short> quantities, ReadOnlySpan<long> coinValues = default)
     {
         quantities.CopyTo(fundedQuantities.AsSpan(connection.Player.Slot.Value * InventorySlotCount, InventorySlotCount));
+        if (coinValues.Length == InventorySlotCount)
+            coinValues.CopyTo(coinFundedValues.AsSpan(connection.Player.Slot.Value * InventorySlotCount, InventorySlotCount));
         Changed(connection.Player.Slot.Value);
     }
 
@@ -52,7 +58,7 @@ internal sealed partial class RuntimePlayerInventoryStore
     {
         preparation = null;
         if (Serial >= ulong.MaxValue - 1 || !TryGet(connection, slot, out var item) || item.IsEmpty ||
-            !item.IsCanonical || item.ItemFlags != 0 || item.ItemType.Value is >= 71 and <= 74 || !TryGetFundedQuantity(connection, slot, out var funded) ||
+            !item.IsCanonical || item.ItemFlags != 0 || !TryGetFundedQuantity(connection, slot, out var funded) ||
             funded != item.Stack || !CanAcceptOwnedQuantityReport(connection, item.ToCommitRequest(connection.Player.Slot, slot))) return false;
         var image = new RuntimePlayerInventoryItem[InventorySlotCount];
         if (!TryCopyInventory(connection, image)) return false;
@@ -86,6 +92,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             if (lane >= 0) owner.ownedQuantityCaps[QuantityOffset(connection.Player.Slot.Value, slot, lane)] = 0;
             owner.items[offset] = default;
             owner.fundedQuantities[offset] = 0;
+            owner.coinFundedValues[offset] = 0;
             owner.Changed(connection.Player.Slot.Value);
             return true;
         }

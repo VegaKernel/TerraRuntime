@@ -10,7 +10,8 @@ internal sealed partial class PlayerAuthority
     {
         if (!membership.TryGet(connection, out var member) || !inventory.TryGet(connection, 58, out var mouse)) return false;
         int slot = mouse.IsEmpty ? member.SelectedItem : 58;
-        return inventory.TryGetFundedQuantity(connection, slot, out var quantity) && quantity > 0;
+        return inventory.TryGetFundedQuantity(connection, slot, out var quantity) && quantity > 0 ||
+            inventory.TryGetFundedCoinValue(connection, slot, out long value) && value > 0;
     }
 
     internal bool TryPrepareFundedDrop(ConnectionHandle connection, in WorldItemDropStateUpdate proposal,
@@ -23,8 +24,20 @@ internal sealed partial class PlayerAuthority
         if (state.IsDead || (state.MovementFlags & VanillaPlayerHealthContext1458.GhostMovementFlag) != 0 ||
             IsPickupOutOfRange(in state) || !inventory.TryGet(connection, 58, out var mouse)) return false;
         short slot = mouse.IsEmpty ? state.SelectedItem : (short)58;
-        if (!inventory.TryPrepareFundedDrop(connection, slot, out var items) || items is null) return false;
-        var item = items.Item;
+        RuntimePlayerInventoryStore.FundedDropPreparation? items = null;
+        CursorReturnPreparation? cursorReturn = null;
+        RuntimePlayerInventoryItem item;
+        if (slot == 58 && (mouse.ItemFlags & PlayerEquipmentCommitRequest.FavoriteItemFlag) != 0)
+        {
+            if (!TryPrepareCursorReturn(connection, true, out cursorReturn) || cursorReturn is null ||
+                cursorReturn.Residual.IsEmpty) return false;
+            item = cursorReturn.Residual;
+        }
+        else
+        {
+            if (!inventory.TryPrepareFundedDrop(connection, slot, out items) || items is null) return false;
+            item = items.Item;
+        }
         var body = state.HasMount ? VanillaPlayerMountHitbox1458.Resolve(state.MountType) : (Width: 20f, Height: 42f);
         int direction = (state.ControlFlags & 64) != 0 ? 1 : -1;
         // Source DropSelectedItem requests NewItem at player Center; the world item's 16x16 body is centered there.
@@ -33,22 +46,28 @@ internal sealed partial class PlayerAuthority
             direction * 4f + state.VelocityX, -2f, item.Stack, checked((byte)item.Prefix.Value),
             WorldItemOwnershipMode.GrabDelayForLocalPlayer, checked((short)item.ItemType.Value), false, 0f, 100);
         if (proposal != expected) return false;
-        preparation = new(this, member, state, phase, items);
+        preparation = new(this, member, state, phase, items, cursorReturn);
         return true;
     }
 
     internal sealed class FundedDropPreparation(PlayerAuthority owner, RuntimePlayerMember member,
-        PlayerStateSnapshot before, RuntimePlayerItemPhase1458 phase, RuntimePlayerInventoryStore.FundedDropPreparation items)
+        PlayerStateSnapshot before, RuntimePlayerItemPhase1458 phase, RuntimePlayerInventoryStore.FundedDropPreparation? items, CursorReturnPreparation? cursorReturn)
     {
         private bool adopted;
         private bool published;
         internal bool IsCurrent => !adopted && owner.HasOwnedPickupContext && owner.membership.TryGet(member.Connection, out var current) &&
             ReferenceEquals(current, member) && member.CaptureSnapshot() == before && member.ItemPhase == phase &&
-            member.Revision != ulong.MaxValue && items.IsCurrent;
+            member.Revision != ulong.MaxValue && (cursorReturn?.IsCurrent ?? items!.IsCurrent);
         internal bool TryAdoptUnpublished()
         {
             if (!IsCurrent) return false;
-            if (!member.TryAdvanceRevision() || !items.TryAdoptUnpublished())
+            if (cursorReturn is not null)
+            {
+                if (!cursorReturn.TryAdoptUnpublished()) return false;
+                adopted = true;
+                return true;
+            }
+            if (!member.TryAdvanceRevision() || !items!.TryAdoptUnpublished())
                 throw new InvalidOperationException("Prepared funded drop lost callback-free inventory adoption.");
             member.ItemPhase = phase with { Selected = phase.Selected with { Animation = 10, AnimationMax = 10 } };
             member.ItemAnimation = 10;
@@ -59,9 +78,10 @@ internal sealed partial class PlayerAuthority
         {
             if (!adopted || published) return;
             published = true;
+            if (cursorReturn is not null) { cursorReturn.Publish(); return; }
             if (!owner.membership.TryGet(member.Connection, out var current) || !ReferenceEquals(current, member) ||
-                !items.IsAcceptedCurrent) return;
-            var request = default(RuntimePlayerInventoryItem).ToCommitRequest(member.Connection.Player.Slot, items.Slot);
+                !items!.IsAcceptedCurrent) return;
+            var request = default(RuntimePlayerInventoryItem).ToCommitRequest(member.Connection.Player.Slot, items!.Slot);
             owner.events?.PlayerEquipmentUpdated(member.Connection, in request);
         }
     }

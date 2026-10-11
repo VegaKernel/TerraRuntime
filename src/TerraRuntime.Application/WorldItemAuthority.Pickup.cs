@@ -1,3 +1,4 @@
+using TerraRuntime.Contracts.Gameplay;
 using TerraRuntime.Contracts.Runtime;
 using TerraRuntime.Core.Worlds;
 using TerraRuntime.Gameplay.Items;
@@ -70,9 +71,15 @@ internal sealed partial class WorldItemAuthority
             (int)state.PositionX + body.Width <= (int)item.PositionX ||
             (int)state.PositionY >= (int)item.PositionY + VanillaWorldItemOwner1458.PhysicalHeight ||
             (int)state.PositionY + body.Height <= (int)item.PositionY) return false;
-        if (!worldItems.TryGetFundedQuantity(in item, out int funded) || funded <= 0) return false;
-        // Converted denominations cannot represent a mixed trusted/unknown ground stack.
-        if (type.Value is >= 71 and <= 74 && funded != item.Stack) return false;
+        bool coin = VanillaCoinFacts.TryGetValue(type, out long coinUnit);
+        long fundedCoinValue = 0;
+        int funded;
+        if (coin)
+        {
+            if (!worldItems.TryGetFundedCoinValue(in item, out fundedCoinValue) || fundedCoinValue <= 0) return false;
+            funded = item.Stack; // Physical storage and copper-value custody remain distinct.
+        }
+        else if (!worldItems.TryGetFundedQuantity(in item, out funded) || funded <= 0) return false;
         // Capture the bounded whole census only after cheap reservation and contact gates.
         // The exact member/phase used above must also match the detached capture.
         var captures = players.CaptureItemOwnerPlayers();
@@ -96,8 +103,9 @@ internal sealed partial class WorldItemAuthority
         }
         var tuple = new RuntimePlayerInventoryItem(type,
             type.Value is >= 71 and <= 74 ? checked((short)funded) : item.Stack, item.PrefixId, 0);
-        if (!players.TryPrepareOwnedPickup(capture, storage, tuple, out var inventory) || inventory is null ||
-            !TryPrepareTrustedTake(item, storage.Taken, out var world, requireFundedQuantity: true) || world is null) return false;
+        long acceptedCoinValue = coin ? Math.Min(fundedCoinValue, checked(coinUnit * storage.Taken)) : 0;
+        if (!players.TryPrepareOwnedPickup(capture, storage, tuple, out var inventory, acceptedCoinValue) || inventory is null ||
+            !TryPrepareTrustedTake(item, storage.Taken, out var world, requireFundedQuantity: !coin, expectedCoinValue: coin ? acceptedCoinValue : null) || world is null) return false;
         using (world)
         {
             if (!world.TryClaim() || !players.IsCurrentItemOwnerPlayers(captures) || !inventory.IsCurrent) return false;

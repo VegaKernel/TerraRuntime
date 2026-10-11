@@ -280,7 +280,7 @@ public sealed class RuntimeTownNpcConversation1458Tests
     {
         var f = new Fixture(5f, 300f, 17f);
         var state = new ServerRuntimeState(npcs: f.Npcs, npcAiStepper: new NoNpcStep(),
-            worldTiles: f.Tiles, townNpcs: f.Town);
+            worldTiles: f.Tiles, townNpcs: f.Town, naturalSpawnRandom: new QuietNpcRandom());
         var runtime = (ServerRuntimeComposition)typeof(ServerRuntimeState)
             .GetField("_runtime", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(state)!;
         var slots = new PlayerSlotPool(1);
