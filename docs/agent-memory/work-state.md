@@ -1,5 +1,22 @@
 # Work state
 
+## Selected potion review checkpoint - not production acceptance, 2026-10-11
+
+User requested an immediate commit/push of current tracked work. Production remains the accepted Restock/Sort implementation from `8b009ba6`; selected potion changes and tests remain isolated under `.cache/`.
+
+Corrected original-source v2 initializes original localization and preserves genuine positive-stack packet5. Root independently verified all source pins, four matching platform/repeat captures, 576 sequences / 11520 phases, complete59 inventory tuples, crit, indexed44 buffs and RNG56/Next; 176 inventory and144 vital frames decode to captured state. Frozen final Game v2 additionally covers32 early-sync last-stack sequences (12160 total phase comparisons); its two grouped managed Facts pass. Earlier v1 environment limitations below remain historical evidence, not the current source capture.
+
+Connected App cache builds passed warnings-as-errors and focused payment/ACK probes. Independent review found and preserved actual assertion failures for receipt retirement and split-budget ingress: source5, then a real owned hit before paid phase, then delayed source16 could restore five lost HP. App v4 fixes retirement but still fails the split-budget invariant; a bounded existing-receipt correction is being developed as v5. No production promotion, NativeAOT acceptance, or full potion compatibility claim is made. Resume with v5 and unchanged independent split-budget tests, then coherent graph checks before integration.
+
+## Selected potion owned-use root review - cache only, 2026-10-11
+
+Restock/Sort checkpoint is committed and pushed as `8b009ba6`; main and origin/main were verified equal with a clean tree before this next-block memory update. Root independently verified the immutable Game handoff327 pins and32 references, unchanged remote TryStep body,576 source sequences/11520 configured phases, then ran its two managed Facts successfully. Evidence: `.cache/selected-potion-game-root-audit-v1.json` and `.cache/selected-potion-root-component-check-v1/root-component-v1.trx`. This is not connected App or shipping acceptance. The component test compares selected stack, indexed44 buffs and RNG56/Next; it substitutes actual revolver crit rather than checking source crit and does not compare the remaining58 inventory tuples. Game is correcting this in a separately pinned successor.
+
+The original v1 capture environment omitted localization initialization. Official NetMessage.SendData5 normalizes an item whose Name is empty to Air, so v1 ordinary positive-stack sync frames erase it. Pre-sync ItemCheck effects/debit/clocks/RNG remain usable; ordinary packet5 and post-sync inventory from that environment are diagnostic. Preserve frozen v1 bytes; a distinct corrected v2 must initialize original localization without storing game text and cover real pre-use controls/throttled vitals. No natural Main/UI claim.
+
+NPC continues cache-only existing-phase report-first/phase-first reconciliation and generic funded quantity payment; Town owns independent ACK/callback tests and paired doc proposals; Game owns corrected independent source evidence. Require q1/physical3 to become q0/physical2 exactly once, q0 refusal without freezing other actors, exact delayed/duplicate16/42/50 without replay or duration truncation, and complete-batch/split-budget ingress. Keep five quantity lanes unchanged. Source35/43 are presentation-only relays and remain an explicit separate wire gap; they cannot prove paid use or grant vitals.
+
+
 ## Restock and sorting custody - accepted local checkpoint, 2026-10-11
 
 Source-backed Restock, localized main/bank Sort, represented coin overflow and retained coin-slot cursor moves are integrated with the existing bounded inventory owners. Positive retained coin tuples may reach the signed wire bound32767; nominal100/9999 remain merge capacities, and the source wallet availability clamp remains9999999999 copper. Owner-specific prefix validation is preserved. Zero/fractional prepared coin sources retain physical provenance without gaining economic funding. Sorting keeps exact private custody alternatives, including ordinary cursor credits; obsolete sorted observations cannot consume a valid ordinary transfer. Genuine indistinguishable closed cursor cycles with different funding still reject.
