@@ -28,7 +28,7 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// large pile families (types <c>186</c> and <c>187</c>), <c>CheckJunglePlant</c> for the jungle plant family
 /// (types <c>233</c>, <c>236</c>, <c>238</c> and <c>702</c>), ordinary torch <c>4</c> through
 /// <c>CheckTorch</c>, all five <c>IsADripTile</c> identities, dart trap <c>136</c>, directional tiles
-/// <c>129</c>/<c>149</c>/<c>178</c>, type-<c>235</c> three-cell objects, one-cell type-<c>185</c>
+/// <c>129</c>/<c>149</c>/<c>178</c>, type-<c>235</c> three-cell objects, one- and two-cell type-<c>185</c>
 /// piles, dye <c>227</c>,
 /// cactus <c>80</c>, rock-golem head <c>579</c>,
 /// the <c>12</c>/<c>31</c>/<c>639</c>/<c>696</c> orb family, echo stalactites <c>693</c>/<c>694</c>,
@@ -118,7 +118,13 @@ internal sealed class GenerationTileFraming1458(
             return;
         }
 
-        if (tile.Type == 185 && tile.FrameY != 18)
+        if (tile.Type == 185 && tile.FrameY == 18)
+        {
+            FrameDoublePile(i, j);
+            return;
+        }
+
+        if (tile.Type == 185)
         {
             FrameSinglePile(i, j);
             return;
@@ -532,6 +538,64 @@ internal sealed class GenerationTileFraming1458(
         if (snowStyle && floor is not (147 or 161 or 163 or 164 or 200 or 162 or 224) ||
             sandStyle && floor is not (53 or 112 or 116 or 234 or 397 or 398 or 402 or 399 or 396 or 400 or 403 or 401))
             KillTile(i, j);
+    }
+
+    /// <summary>
+    /// The geometry and substrate arm of TerrariaServer 1.4.5.8 <c>WorldGen.Check2x1</c> for type185.
+    /// Rare treasure styles have additional <c>Item.NewItem</c>/<c>genRand</c> effects on destruction; this
+    /// generation-framing slice does not publish those drops yet.
+    /// </summary>
+    private void FrameDoublePile(int i, int j)
+    {
+        if (destroyingObject)
+            return;
+
+        int left = i - (At(i, j).FrameX / 18 & 1);
+        if (!Contains(left, j) || !Contains(left + 1, j) || !Contains(left, j + 1) ||
+            !Contains(left + 1, j + 1))
+            return;
+
+        ref WorldTile first = ref At(left, j);
+        ref WorldTile second = ref At(left + 1, j);
+        bool broken = !first.IsActive || first.Type != 185 ||
+            !second.IsActive || second.Type != 185 || second.FrameX != first.FrameX + 18;
+
+        for (int x = left; x <= left + 1; x++)
+        {
+            if (!SolidTileAllowBottomSlope(x, j + 1) || IsBoulder(x, j + 1))
+                broken = true;
+        }
+
+        // Check2x1 downgrades a grass-only appearance before it validates either substrate.
+        if (first.FrameX is >= 1368 and <= 1458 &&
+            TypeAt(left, j + 1) is not (2 or 477 or 492) &&
+            TypeAt(left + 1, j + 1) is not (2 or 477 or 492))
+        {
+            first.FrameX -= 1368;
+            second.FrameX -= 1368;
+        }
+
+        int style = first.FrameX / 36 + (first.FrameY / 18 - 1) * 52;
+        for (int x = left; x <= left + 1; x++)
+        {
+            ushort floor = TypeAt(x, j + 1);
+            if (style is >= 25 and <= 30 && floor is not (147 or 161 or 163 or 164 or 200 or 162 or 224) ||
+                style is >= 41 and <= 46 or >= 62 and <= 64 &&
+                floor is not (53 or 112 or 116 or 234 or 397 or 398 or 402 or 399 or 396 or 400 or 403 or 401))
+                broken = true;
+        }
+
+        if (!broken)
+            return;
+
+        destroyingObject = true;
+        if (first.Type == 185)
+            KillTile(left, j);
+        if (second.Type == 185)
+            KillTile(left + 1, j);
+        destroyingObject = false;
+        SquareTileFrame(left, j);
+        SquareTileFrame(left + 1, j);
     }
 
     /// <summary>

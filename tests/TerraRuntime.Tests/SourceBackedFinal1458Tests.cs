@@ -850,7 +850,7 @@ public sealed class SourceBackedFinal1458Tests
     }
 
     [Fact]
-    public void Final_cleanup_single_pile_type185_matches_official_substrate_rules()
+    public void Final_cleanup_type185_one_and_two_cell_piles_match_official_substrate_rules()
     {
         var workspace = new Workspace(1000, 500);
         Assert.True(workspace.TrySetLayers(140, 200));
@@ -866,6 +866,20 @@ public sealed class SourceBackedFinal1458Tests
         Set(560, 100, 185, 972); Set(560, 101, 1);
         Set(580, 100, 185, 864); Set(580, 101, 1);
         Set(600, 100, 185);
+        foreach (int left in new[] { 640, 660, 680, 700, 720, 740, 760, 780 })
+        {
+            short frame = (short)(left is 680 or 700 ? 900 : left is 720 or 740 ? 1476 : left is 760 or 780 ? 1368 : 0);
+            var first = new WorldTile { Type = 185, Flags = WorldTileFlags.Active, FrameX = frame, FrameY = 18 };
+            workspace.TileStore.Set(left, 100, in first);
+            if (left != 660)
+            {
+                var second = new WorldTile { Type = 185, Flags = WorldTileFlags.Active, FrameX = (short)(frame + 18), FrameY = 18 };
+                workspace.TileStore.Set(left + 1, 100, in second);
+            }
+            ushort floor = (ushort)(left is 680 or 700 ? 147 : left is 720 or 740 ? 53 : left == 780 ? 2 : 1);
+            Set(left, 101, left is 700 or 740 ? (ushort)1 : floor);
+            Set(left + 1, 101, left is 700 or 740 ? (ushort)1 : left == 780 ? (ushort)1 : floor);
+        }
 
         var random = new RandomAdapter(1458);
         new FinalPass1458(FinalStage1458.FinalCleanup, new FinalState1458()).Execute(
@@ -877,9 +891,17 @@ public sealed class SourceBackedFinal1458Tests
         Assert.False(workspace.TileStore.Get(560, 100).IsActive);
         Assert.Equal((ushort)185, workspace.TileStore.Get(580, 100).Type);
         Assert.False(workspace.TileStore.Get(600, 100).IsActive);
+        Assert.True(workspace.TileStore.Get(640, 100).IsActive);
+        Assert.False(workspace.TileStore.Get(660, 100).IsActive);
+        Assert.True(workspace.TileStore.Get(680, 100).IsActive);
+        Assert.False(workspace.TileStore.Get(700, 100).IsActive);
+        Assert.True(workspace.TileStore.Get(720, 100).IsActive);
+        Assert.False(workspace.TileStore.Get(740, 100).IsActive);
+        Assert.Equal((short)0, workspace.TileStore.Get(760, 100).FrameX);
+        Assert.Equal((short)1368, workspace.TileStore.Get(780, 100).FrameX);
         for (int y = 101; y <= 112; y++)
             Assert.Equal(y <= 111 ? (ushort)53 : (ushort)397, workspace.TileStore.Get(540, y).Type);
-        Assert.Equal("0E72B46350B830E800A8EABAB91783B361821F5E1B70347A830CEDBE93FD0DB0", HashFixture(workspace));
+        Assert.Equal("D954C20684F75C4613C670C8971995C2FA7DA89EFD28D63FDD52D2BBA525DB75", HashFixture(workspace));
         Assert.Equal(1056314798, random.Next());
     }
 
