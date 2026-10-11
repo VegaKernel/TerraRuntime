@@ -1,0 +1,165 @@
+using TerraRuntime.Contracts.Runtime;
+using TerraRuntime.Gameplay.Items;
+
+namespace TerraRuntime.Application;
+
+internal sealed partial class RuntimePlayerInventoryStore
+{
+    internal bool TryPrepareReportedCursorMove(ConnectionHandle connection, short slot,
+        RuntimePlayerInventoryItem reportedSlot, int animation, int itemTime, out CursorMovePreparation? prepared)
+    {
+        prepared = null;
+        if (slot is < 0 or >= 58 || VanillaPlayerItemSlotCatalog.IsCoinSlot(slot) ||
+            !connection.IsAssigned || Serial >= ulong.MaxValue - 1 || !reportedSlot.IsCanonical ||
+            !TryGet(connection, slot, out var beforeSlot) || !TryGet(connection, 58, out var beforeCursor)) return false;
+        int player = connection.Player.Slot.Value;
+        // A conserved pair may move custody; the reports themselves never create it.
+        if (fundedQuantities[GetOffset(player, slot)] == 0 && fundedQuantities[GetOffset(player, 58)] == 0 &&
+            !HasQuantityLane(player, slot, beforeSlot) && !HasQuantityLane(player, 58, beforeCursor)) return false;
+        var source = StorageTuple(beforeSlot); var cursor = StorageTuple(beforeCursor);
+        var reported = StorageTuple(reportedSlot);
+        bool leftAllowed = animation == 0 && itemTime == 0 &&
+            VanillaInventoryCursorMove1458.TryPlanLeftClick(in source, in cursor, out var leftSlot, out _) && leftSlot == reported;
+        bool rightAllowed = animation == 0 &&
+            VanillaInventoryCursorMove1458.TryPlanToCursor(in source, in cursor, source.Stack - reported.Stack,
+                out var rightSlot, out _) && rightSlot == reported;
+        if (!leftAllowed && !rightAllowed) return false;
+        RuntimePlayerInventoryItem afterCursor;
+        if (leftAllowed)
+        {
+            _ = VanillaInventoryCursorMove1458.TryPlanLeftClick(in source, in cursor, out _, out var leftCursor);
+            afterCursor = InventoryTuple(leftCursor);
+        }
+        else
+        {
+            _ = VanillaInventoryCursorMove1458.TryPlanToCursor(in source, in cursor, source.Stack - reported.Stack, out _, out var rightCursor);
+            afterCursor = InventoryTuple(rightCursor);
+        }
+        var image = new RuntimePlayerInventoryItem[InventorySlotCount];
+        if (!TryCopyInventory(connection, image)) return false;
+        for (short index = 0; index < image.Length; index++)
+            if (!image[index].IsCanonical || (image[index].ItemFlags & ~PlayerEquipmentCommitRequest.FavoriteItemFlag) != 0 ||
+                !CanAcceptOwnedQuantityReport(connection, image[index].ToCommitRequest(connection.Player.Slot, index))) return false;
+        prepared = new(this, connection, playerMutationStamps[connection.Player.Slot.Value], slot, image, reportedSlot, afterCursor, leftAllowed, rightAllowed,
+            CaptureFundedQuantities(connection), CaptureOwnedQuantities(connection));
+        return true;
+    }
+
+    private bool HasQuantityLane(int player, short slot, RuntimePlayerInventoryItem item)
+    {
+        int lane = QuantityLane(item.ItemType);
+        return lane >= 0 && ownedQuantityCaps[QuantityOffset(player, slot, lane)] >= 0;
+    }
+    private static WorldItemPickupSlot1458 StorageTuple(RuntimePlayerInventoryItem item) => item.IsEmpty ? default :
+        new(item.ItemType.Value, item.Stack, item.Prefix.Value, (item.ItemFlags & PlayerEquipmentCommitRequest.FavoriteItemFlag) != 0);
+    private static RuntimePlayerInventoryItem InventoryTuple(WorldItemPickupSlot1458 item) => item.Type == 0 ? default :
+        new(new(item.Type), checked((short)item.Stack), new(item.Prefix), item.Favorite ? PlayerEquipmentCommitRequest.FavoriteItemFlag : (byte)0);
+
+    internal sealed class CursorMovePreparation(RuntimePlayerInventoryStore owner, ConnectionHandle connection,
+        ulong stamp, short slot, RuntimePlayerInventoryItem[] before, RuntimePlayerInventoryItem afterSlot,
+        RuntimePlayerInventoryItem afterCursor, bool leftAllowed, bool rightAllowed, short[] funding, OwnedInventoryQuantity1458[] caps)
+    {
+        private RuntimePlayerInventoryItem selectedCursor = afterCursor;
+        private bool toCursor = !leftAllowed;
+        private bool adopted;
+        private bool debitApplied;
+        private ulong expectedStamp = stamp;
+        internal bool DebitApplied => debitApplied;
+        internal bool CanEagerDebit => afterSlot.IsEmpty || (afterSlot.ItemType == before[slot].ItemType &&
+            afterSlot.Prefix == before[slot].Prefix && afterSlot.Stack < before[slot].Stack);
+        internal short Slot => slot;
+        internal RuntimePlayerInventoryItem AfterSlot => afterSlot;
+        internal RuntimePlayerInventoryItem AfterCursor => selectedCursor;
+        internal bool IsCurrent
+        {
+            get
+            {
+                if (adopted || !owner.IsCurrentCursorInventory(connection, expectedStamp)) return false;
+                for (short index = 0; index < before.Length; index++)
+                    if (!owner.TryGet(connection, index, out var current) || current != (debitApplied && index == slot ? afterSlot : before[index]) ||
+                        owner.fundedQuantities[GetOffset(connection.Player.Slot.Value, index)] !=
+                            (debitApplied && index == slot ? Math.Min(funding[index], afterSlot.Stack) : funding[index])) return false;
+                return owner.CaptureOwnedQuantities(connection).AsSpan().SequenceEqual(caps);
+            }
+        }
+        internal bool TrySelectCursorImage(RuntimePlayerInventoryItem reported)
+        {
+            var source = StorageTuple(before[slot]); var cursor = StorageTuple(before[58]);
+            var nextSource = StorageTuple(afterSlot); var nextCursor = StorageTuple(reported);
+            if (leftAllowed && VanillaInventoryCursorMove1458.TryPlanLeftClick(in source, in cursor,
+                out var leftSlot, out var leftCursor) && leftSlot == nextSource && leftCursor == nextCursor)
+                toCursor = false;
+            else if (rightAllowed && VanillaInventoryCursorMove1458.TryPlanToCursor(in source, in cursor,
+                source.Stack - nextSource.Stack, out var rightSlot, out var rightCursor) && rightSlot == nextSource && rightCursor == nextCursor)
+                toCursor = true;
+            else return false;
+            selectedCursor = reported;
+            return true;
+        }
+        internal bool TryAdoptDebitUnpublished()
+        {
+            if (!CanEagerDebit || !IsCurrent || owner.Serial == ulong.MaxValue) return false;
+            // This is the existing report-debit boundary, not completion of a UI move.
+            // The exact before budget remains in this one-use preparation until the
+            // paired credit or any intervening owner change retires it.
+            owner.items[GetOffset(connection.Player.Slot.Value, slot)] = afterSlot;
+            owner.fundedQuantities[GetOffset(connection.Player.Slot.Value, slot)] = Math.Min(funding[slot], afterSlot.Stack);
+            owner.Changed(connection.Player.Slot.Value);
+            expectedStamp = owner.playerMutationStamps[connection.Player.Slot.Value];
+            debitApplied = true;
+            return true;
+        }
+        internal bool TryAdoptUnpublished()
+        {
+            if (!IsCurrent) return false;
+            int player = connection.Player.Slot.Value;
+            short slotFunding, cursorFunding;
+            bool matching = !before[slot].IsEmpty && before[slot].ItemType == before[58].ItemType && before[slot].Prefix == before[58].Prefix;
+            if (toCursor)
+            {
+                short moved = checked((short)Math.Min(funding[slot], before[slot].Stack - afterSlot.Stack));
+                slotFunding = checked((short)(funding[slot] - moved));
+                cursorFunding = checked((short)(funding[58] + moved));
+            }
+            else if (matching && !afterSlot.IsEmpty && afterSlot.Stack >= before[58].Stack && selectedCursor.Stack <= before[slot].Stack)
+            {
+                int moved = afterSlot.Stack - before[58].Stack;
+                short fundedMoved = checked((short)Math.Min(funding[slot], moved));
+                slotFunding = checked((short)(funding[58] + fundedMoved));
+                cursorFunding = checked((short)(funding[slot] - fundedMoved));
+            }
+            else { slotFunding = funding[58]; cursorFunding = funding[slot]; }
+            if (slotFunding > afterSlot.Stack || cursorFunding > selectedCursor.Stack) return false;
+            adopted = true;
+            // Each identity's old ceiling follows the real moved quantity. Other historical
+            // lanes remain obligations, so swapping a different item cannot erase them.
+            for (int lane = 0; lane < OwnedQuantityTypes.Length; lane++)
+            {
+                int type = OwnedQuantityTypes[lane];
+                int oldSlot = before[slot].ItemType.Value == type ? before[slot].Stack : 0;
+                int oldCursor = before[58].ItemType.Value == type ? before[58].Stack : 0;
+                int nextSlot = afterSlot.ItemType.Value == type ? afterSlot.Stack : 0;
+                int nextCursor = selectedCursor.ItemType.Value == type ? selectedCursor.Stack : 0;
+                MoveQuantityCeiling(player, slot, 58, lane, oldSlot, oldCursor, nextSlot, nextCursor);
+            }
+            owner.items[GetOffset(player, slot)] = afterSlot;
+            owner.items[GetOffset(player, 58)] = selectedCursor;
+            owner.fundedQuantities[GetOffset(player, slot)] = slotFunding;
+            owner.fundedQuantities[GetOffset(player, 58)] = cursorFunding;
+            owner.Changed(connection.Player.Slot.Value);
+            return true;
+        }
+        private void MoveQuantityCeiling(int player, short slot, short cursor, int lane, int oldSlot, int oldCursor, int nextSlot, int nextCursor)
+        {
+            int a = QuantityOffset(player, slot, lane), b = QuantityOffset(player, cursor, lane);
+            if (nextSlot < oldSlot && owner.ownedQuantityCaps[a] >= 0)
+                owner.ownedQuantityCaps[a] = checked((short)Math.Max(0, owner.ownedQuantityCaps[a] - (oldSlot - nextSlot)));
+            if (nextCursor < oldCursor && owner.ownedQuantityCaps[b] >= 0)
+                owner.ownedQuantityCaps[b] = checked((short)Math.Max(0, owner.ownedQuantityCaps[b] - (oldCursor - nextCursor)));
+            if (nextSlot > oldSlot) owner.ownedQuantityCaps[a] = checked((short)nextSlot);
+            if (nextCursor > oldCursor) owner.ownedQuantityCaps[b] = checked((short)nextCursor);
+        }
+        internal bool IsAcceptedCurrent(short publishedSlot) => adopted && owner.TryGet(connection, publishedSlot, out var current) &&
+            current == (publishedSlot == slot ? afterSlot : selectedCursor);
+    }
+}

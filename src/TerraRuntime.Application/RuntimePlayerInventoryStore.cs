@@ -72,6 +72,17 @@ internal sealed partial class RuntimePlayerInventoryStore
 {
     internal ulong Serial { get; private set; } = 1;
     private void Changed() { if (Serial < ulong.MaxValue) Serial++; }
+    // Deferred source sync pairs belong to one occupation, not another player's writes.
+    private readonly ulong[] playerMutationStamps = new ulong[PlayerSlotCount];
+    private void Changed(int player)
+    {
+        Changed();
+        playerMutationStamps[player] = Serial;
+    }
+    private bool IsCurrentCursorInventory(ConnectionHandle connection, ulong stamp) =>
+        Serial != ulong.MaxValue && connection.IsAssigned &&
+        connections[connection.Player.Slot.Value] == connection &&
+        playerMutationStamps[connection.Player.Slot.Value] == stamp;
     private const int PlayerSlotCount = byte.MaxValue + 1;
     private const int InventorySlotCount = VanillaPlayerItemSlotCatalog.InventoryCount;
 
@@ -94,7 +105,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             return false;
 
         connections[connection.Player.Slot.Value] = connection;
-        Changed();
+        Changed(connection.Player.Slot.Value);
         return true;
     }
 
@@ -112,8 +123,9 @@ internal sealed partial class RuntimePlayerInventoryStore
 
         int playerSlot = connection.Player.Slot.Value;
         connections[playerSlot] = connection;
+        PreserveReportedFunding(playerSlot, request.SlotId, in item);
         items[GetOffset(playerSlot, request.SlotId)] = item;
-        Changed();
+        Changed(playerSlot);
         return true;
     }
 
@@ -188,12 +200,13 @@ internal sealed partial class RuntimePlayerInventoryStore
         for (int index = 0; index < mutations.Length; index++)
         {
             RuntimePlayerInventoryMutation mutation = mutations[index];
+            PreserveReportedFunding(playerSlot, mutation.Slot, mutation.Item);
             items[GetOffset(playerSlot, mutation.Slot)] = mutation.Item.IsEmpty
                 ? default
                 : mutation.Item;
         }
 
-        if (mutations.Length > 0) Changed();
+        if (mutations.Length > 0) Changed(playerSlot);
         return true;
     }
 
@@ -224,9 +237,10 @@ internal sealed partial class RuntimePlayerInventoryStore
             return;
 
         connections[playerSlot] = default;
-        Changed();
+        Changed(playerSlot);
         items.AsSpan(playerSlot * InventorySlotCount, InventorySlotCount).Clear();
         ClearOwnedQuantities(playerSlot);
+        fundedQuantities.AsSpan(playerSlot * InventorySlotCount, InventorySlotCount).Clear();
     }
 
     private static int GetOffset(int playerSlot, int inventorySlot) =>

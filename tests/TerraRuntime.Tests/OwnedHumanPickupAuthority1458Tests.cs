@@ -386,6 +386,373 @@ public sealed class OwnedHumanPickupAuthority1458Tests
         }
     }
 
+    [Fact]
+    public async Task Funded_pickup_drop_and_report_images_preserve_quantity_custody()
+    {
+        await VerifyOriginalSelectedFundedDrops();
+        using var f = new Fixture();
+        var inventory = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(f.Players)!;
+        f.Drop(110, 3); f.State.Tick();
+        Assert.True(inventory.TryGetFundedQuantity(f.Connection, 0, out var funded)); Assert.Equal(3, funded);
+        var beforeDropRandom = ((SystemWorldItemSpawnRandom)f.Runtime.WorldItems.SpawnRandom).SourceRandom.Clone();
+        var proposed = new WorldItemDropStateUpdate(1602, 1619, 4, -2, 3, 0, WorldItemOwnershipMode.GrabDelayForLocalPlayer, 110, false, 0, 100);
+        int observed = 0;
+        f.WorldEvents.Callback = () =>
+        {
+            observed++;
+            Assert.True(f.Players.TryGetInventoryItem(f.Connection, 0, out var empty)); Assert.True(empty.IsEmpty);
+            Assert.True(inventory.TryGetFundedQuantity(f.Connection, 0, out var spent)); Assert.Equal(0, spent);
+            var image = new WorldItemSnapshot[400]; int count = f.Items.CopyActive(image);
+            var ground = Assert.Single(image.Take(count));
+            Assert.True(f.Items.TryGetFundedQuantity(in ground, out var quantity)); Assert.Equal(3, quantity);
+        };
+        var completion = new TaskCompletionSource<WorldItemSnapshot?>();
+        f.State.Apply(new WorldItemAllocateRuntimeCommand(f.Connection, proposed, completion));
+        Assert.NotNull(await completion.Task); Assert.True(observed > 0); Assert.Equal(10, f.Member.ItemAnimation);
+        Assert.True(((SystemWorldItemSpawnRandom)f.Runtime.WorldItems.SpawnRandom).SourceRandom.HasSameState(beforeDropRandom));
+        f.WorldEvents.Callback = null;
+        f.Set(0, 0, 0); // Exact later source5 is an acknowledgement, not another debit.
+        Assert.True(inventory.TryGetFundedQuantity(f.Connection, 0, out funded)); Assert.Equal(0, funded);
+        f.Set(0, 110, 3); // Reported restore cannot reconstruct funding or reopen the consumed/drop ceiling.
+        Assert.True(f.ItemImage()[0].IsEmpty);
+        Assert.True(inventory.TryGetFundedQuantity(f.Connection, 0, out funded)); Assert.Equal(0, funded);
+
+        var coinImage = new RuntimePlayerInventoryItem[59]; coinImage[0] = new(new(71), 1, new(0), 0);
+        var coinFunding = new short[59]; coinFunding[0] = 1;
+        Assert.False(RuntimePlayerInventoryStore.AreValidFundedQuantities(coinFunding, coinImage)); // Physical coin count cannot represent funded value.
+
+        using var mixed = new Fixture();
+        mixed.Set(0, 110, 7); mixed.Drop(110, 3); mixed.State.Tick();
+        var mixedInventory = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(mixed.Players)!;
+        Assert.True(mixedInventory.TryGetFundedQuantity(mixed.Connection, 0, out funded)); Assert.Equal(3, funded);
+        Assert.True(mixed.Players.TryGetInventoryItem(mixed.Connection, 0, out var ten)); Assert.Equal(10, ten.Stack);
+        var refused = new TaskCompletionSource<WorldItemSnapshot?>();
+        mixed.State.Apply(new WorldItemAllocateRuntimeCommand(mixed.Connection, proposed with { Stack = 10 }, refused));
+        Assert.Null(await refused.Task); Assert.Equal(ten, mixed.ItemImage()[0]);
+        Assert.Equal(0, mixed.Items.ActiveCount);
+        mixed.Set(0, 110, 1); mixed.Set(0, 110, 10);
+        Assert.True(mixedInventory.TryGetFundedQuantity(mixed.Connection, 0, out funded)); Assert.Equal(1, funded);
+        mixed.Set(0, 9, 10); mixed.Set(0, 110, 10);
+        Assert.True(mixedInventory.TryGetFundedQuantity(mixed.Connection, 0, out funded)); Assert.Equal(0, funded);
+    }
+
+    [Fact]
+    public async Task Funded_drop_transfer_provider_and_observer_guards_preserve_joint_owners()
+    {
+        using (var f = new Fixture())
+        {
+            f.Drop(110, 3); f.State.Tick();
+            var detach = new TaskCompletionSource<RuntimePlayerTransferState?>();
+            f.State.Apply(new PlayerTransferDetachRuntimeCommand(f.Connection, detach)); var transfer = await detach.Task; Assert.NotNull(transfer);
+            Assert.Equal(3, transfer!.FundedInventoryQuantities[0]);
+            f.Connection = new(GameCommandSourceId.FromConnection(98902), new(f.Connection.Player.Slot, new(f.Connection.Player.Generation.Value + 1)));
+            var attach = new TaskCompletionSource<bool>(); f.State.Apply(new PlayerTransferAttachRuntimeCommand(f.Connection, transfer, 100, 103, true, false, attach)); Assert.True(await attach.Task);
+            var inventory = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(f.Players)!;
+            Assert.True(inventory.TryGetFundedQuantity(f.Connection, 0, out var funded)); Assert.Equal(3, funded);
+            var before = f.Member.CaptureSnapshot();
+            var body = new WorldItemDropStateUpdate(before.PositionX + 2, before.PositionY + 13, 4, -2, 3, 0, WorldItemOwnershipMode.GrabDelayForLocalPlayer, 110, false, 0, 100);
+            var completion = new TaskCompletionSource<WorldItemSnapshot?>(); f.State.Apply(new WorldItemAllocateRuntimeCommand(f.Connection, body, completion)); Assert.NotNull(await completion.Task);
+        }
+        using (var f = new Fixture())
+        {
+            f.Drop(110, 3); f.State.Tick(); f.Events.Seen.Clear();
+            f.WorldEvents.Callback = () => throw new InvalidOperationException("drop-observer");
+            var body = new WorldItemDropStateUpdate(1602, 1619, 4, -2, 3, 0, WorldItemOwnershipMode.GrabDelayForLocalPlayer, 110, false, 0, 100);
+            var failure = Record.Exception(() => f.State.Apply(new WorldItemAllocateRuntimeCommand(f.Connection, body)));
+            Assert.IsType<InvalidOperationException>(failure); Assert.Equal("drop-observer", failure!.Message);
+            Assert.True(f.ItemImage()[0].IsEmpty); Assert.Contains((short)0, f.Events.Seen); Assert.Equal(1, f.Items.ActiveCount);
+        }
+        using (var f = new Fixture())
+        {
+            f.Drop(110, 3); f.State.Tick();
+            var store = new RuntimeWorldItemStore();
+            store.AttachOwnerFactsProvider(new LateCurrentnessProvider(() => f.Set(2, 9, 1)));
+            var authority = new WorldItemAuthority(f.Players, store, new SystemWorldItemSpawnRandom(0), null);
+            var body = new WorldItemDropStateUpdate(1602, 1619, 4, -2, 3, 0, WorldItemOwnershipMode.GrabDelayForLocalPlayer, 110, false, 0, 100);
+            var completion = new TaskCompletionSource<WorldItemSnapshot?>();
+            authority.TryApply(new WorldItemAllocateRuntimeCommand(f.Connection, body, completion)); Assert.Null(await completion.Task);
+            Assert.Equal(0, store.ActiveCount); Assert.Equal(3, f.ItemImage()[0].Stack); Assert.Equal(9, f.ItemImage()[2].ItemType.Value);
+        }
+    }
+
+    private static async Task VerifyOriginalSelectedFundedDrops()
+    {
+        using var resource = typeof(OwnedHumanPickupAuthority1458Tests).Assembly.GetManifestResourceStream("SourceHumanDrop1458");
+        Assert.NotNull(resource); using var gzip = new GZipStream(resource!, CompressionMode.Decompress); using var original = JsonDocument.Parse(gzip);
+        int compared = 0;
+        foreach (string platform in new[] { "linux", "windowsClr4X86" })
+            foreach (var row in original.RootElement.GetProperty(platform).GetProperty("rows").EnumerateArray())
+            {
+                int id = row.GetProperty("id").GetInt32(); string profile = row.GetProperty("profile").GetString()!;
+                // These six source items reach selected0 through the actual existing hotbar pickup owner.
+                // Ammo/cosmetic cursor and favorite-return profiles require the later owned move/UI producer.
+                if (id is not (2 or 3 or 24 or 109 or 110 or 219) || profile is not ("selected0" or "last1" or "leftmoving")) continue;
+                using var f = new Fixture(); var ground = row.GetProperty("ground"); var item = ground.GetProperty("item");
+                short stack = item.GetProperty("stack").GetInt16(); byte prefix = item.GetProperty("prefix").GetByte();
+                f.Drop((short)id, stack, prefix: prefix); f.State.Tick();
+                Assert.Equal(id, f.ItemImage()[0].ItemType.Value); Assert.Equal(stack, f.ItemImage()[0].Stack);
+                if (profile == "leftmoving") { f.Member.ControlFlags &= 191; f.Member.VelocityX = 1.25f; }
+                var position = ground.GetProperty("position"); var velocity = ground.GetProperty("velocity");
+                var proposal = new WorldItemDropStateUpdate(position.GetProperty("x").GetSingle() + 1200,
+                    position.GetProperty("y").GetSingle() + 1206, velocity.GetProperty("x").GetSingle(), velocity.GetProperty("y").GetSingle(),
+                    stack, prefix, WorldItemOwnershipMode.GrabDelayForLocalPlayer, (short)id, false, 0, ground.GetProperty("enemyGrabDelay").GetByte());
+                var completion = new TaskCompletionSource<WorldItemSnapshot?>(); f.State.Apply(new WorldItemAllocateRuntimeCommand(f.Connection, proposal, completion));
+                var accepted = await completion.Task; Assert.NotNull(accepted); Assert.Equal(id, accepted!.Value.ItemNetId); Assert.Equal(stack, accepted.Value.Stack);
+                Assert.True(f.ItemImage()[0].IsEmpty); Assert.Equal(row.GetProperty("afterClocks").GetProperty("animation").GetInt32(), f.Member.ItemAnimation);
+                Assert.True(f.Items.TryGetFundedQuantity(accepted.Value, out int quantity)); Assert.Equal(stack, quantity); compared++;
+            }
+        Assert.Equal(36, compared);
+    }
+
+    [Fact]
+    public async Task Paired_cursor_images_move_funding_and_consumed_caps_before_observers_and_transfer()
+    {
+        VerifyOriginalCursorImages();
+        using var f = new Fixture();
+        var inventory = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(f.Players)!;
+        f.Drop(110, 3); f.State.Tick(); f.Events.Seen.Clear();
+        f.Set(0, 0, 0); // First ascending source5: slot debit, cursor credit has not arrived.
+        Assert.True(f.ItemImage()[0].IsEmpty); Assert.True(f.ItemImage()[58].IsEmpty);
+        int observed = 0;
+        f.Events.Callback = () =>
+        {
+            observed++;
+            Assert.True(f.ItemImage()[0].IsEmpty); Assert.Equal(3, f.ItemImage()[58].Stack);
+            Assert.True(inventory.TryGetFundedQuantity(f.Connection, 0, out var sourceFunding)); Assert.Equal(0, sourceFunding);
+            Assert.True(inventory.TryGetFundedQuantity(f.Connection, 58, out var cursorFunding)); Assert.Equal(3, cursorFunding);
+            Assert.Contains(inventory.CaptureOwnedQuantities(f.Connection), c => c.Slot == 58 && c.ItemType.Value == 110 && c.Maximum == 3);
+        };
+        f.Set(58, 110, 3); Assert.Equal(1, observed);
+        f.Events.Callback = null;
+        // Deposit is the opposite source order: destination credit precedes cursor debit.
+        f.Set(2, 110, 3); Assert.True(f.ItemImage()[2].IsEmpty); Assert.Equal(3, f.ItemImage()[58].Stack);
+        f.Set(58, 0, 0); Assert.Equal(3, f.ItemImage()[2].Stack); Assert.True(f.ItemImage()[58].IsEmpty);
+        Assert.True(inventory.TryGetFundedQuantity(f.Connection, 2, out var deposited)); Assert.Equal(3, deposited);
+        f.Set(2, 0, 0); f.Set(58, 110, 3);
+        Assert.True(f.ItemImage()[2].IsEmpty); Assert.Equal(3, f.ItemImage()[58].Stack);
+        var detach = new TaskCompletionSource<RuntimePlayerTransferState?>();
+        f.State.Apply(new PlayerTransferDetachRuntimeCommand(f.Connection, detach)); var transfer = await detach.Task;
+        Assert.NotNull(transfer); Assert.True(transfer!.MouseItemNormalized); Assert.Equal(3, transfer.FundedInventoryQuantities[0]);
+        Assert.Equal(3, transfer.Inventory[0].Stack); Assert.True(transfer.Inventory[58].IsEmpty);
+        Assert.Contains(transfer.OwnedInventoryQuantities, c => c.Slot == 0 && c.ItemType.Value == 110 && c.Maximum == 3);
+        Assert.Contains(transfer.OwnedInventoryQuantities, c => c.Slot == 58 && c.ItemType.Value == 110 && c.Maximum == 0);
+        f.Connection = new(GameCommandSourceId.FromConnection(98902), new(f.Connection.Player.Slot, new(f.Connection.Player.Generation.Value + 1)));
+        var attach = new TaskCompletionSource<bool>();
+        f.State.Apply(new PlayerTransferAttachRuntimeCommand(f.Connection, transfer, 100, 103, true, false, attach)); Assert.True(await attach.Task);
+        Assert.Equal(3, f.ItemImage()[0].Stack); Assert.True(inventory.TryGetFundedQuantity(f.Connection, 0, out var received)); Assert.Equal(3, received);
+        Assert.Contains(inventory.CaptureOwnedQuantities(f.Connection), c => c.Slot == 0 && c.ItemType.Value == 110 && c.Maximum == 3);
+        using (var late = new Fixture())
+        {
+            late.Drop(110, 3); late.State.Tick();
+            late.Events.Callback = () => late.State.Apply(new PlayerHealthRuntimeCommand(late.Connection, new(late.Connection.Player.Slot, 399, 400)));
+            late.Set(0, 110, 2); // Eager component debit remains visible even if the eventual pair is refused.
+            late.Events.Callback = null;
+            late.Set(58, 110, 1);
+            Assert.Equal(2, late.ItemImage()[0].Stack); Assert.True(late.ItemImage()[58].IsEmpty);
+        }
+        using (var throwing = new Fixture())
+        {
+            throwing.Drop(110, 3); throwing.State.Tick(); throwing.Set(0, 0, 0); throwing.Set(58, 110, 3);
+            throwing.Events.Seen.Clear(); throwing.Set(2, 110, 3); // Credit first is deferred.
+            throwing.Events.Callback = () =>
+            {
+                Assert.Equal(3, throwing.ItemImage()[2].Stack); Assert.True(throwing.ItemImage()[58].IsEmpty);
+                throw new InvalidOperationException("owned cursor observer");
+            };
+            Assert.Throws<InvalidOperationException>(() => throwing.Set(58, 0, 0));
+            Assert.Equal(new short[] { 2, 58 }, throwing.Events.Seen); // Drain the independent accepted cursor image.
+            throwing.Events.Callback = null;
+            throwing.Set(2, 110, 3); throwing.Set(58, 0, 0); // Duplicate acknowledgements do not mint funding.
+            var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(throwing.Players)!;
+            Assert.True(store.TryGetFundedQuantity(throwing.Connection, 2, out var retained)); Assert.Equal(3, retained);
+            throwing.Set(58, 110, 3); Assert.True(throwing.ItemImage()[58].IsEmpty); // Emptied source cap persists.
+        }
+        using (var splitTick = new Fixture())
+        {
+            splitTick.Drop(110, 3); splitTick.State.Tick(); splitTick.Set(0, 0, 0);
+            splitTick.State.Tick(); splitTick.State.Tick(); splitTick.State.Tick(); splitTick.Set(58, 110, 3);
+            var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(splitTick.Players)!;
+            Assert.True(store.TryGetFundedQuantity(splitTick.Connection, 58, out var quantity)); Assert.Equal(3, quantity);
+        }
+        using (var leftTime = new Fixture())
+        {
+            leftTime.Drop(110, 3); leftTime.State.Tick(); leftTime.Set(0, 110, 3, flags: 1);
+            leftTime.Member.ItemPhase = leftTime.Member.ItemPhase!.Value with
+            { Selected = leftTime.Member.ItemPhase.Value.Selected with { ItemTime = 1 } };
+            leftTime.Set(0, 0, 0); leftTime.Set(58, 110, 3, flags: 1);
+            var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(leftTime.Players)!;
+            Assert.True(store.TryGetFundedQuantity(leftTime.Connection, 58, out var quantity)); Assert.Equal(0, quantity);
+        }
+        foreach (short sourceType in new short[] { 110, 109 })
+        {
+            using var mixedExchange = new Fixture();
+            mixedExchange.Set(0, sourceType, 9996); mixedExchange.Set(2, 110, 3);
+            mixedExchange.Drop(sourceType, 3); mixedExchange.State.Tick();
+            mixedExchange.Drop(110, 7); mixedExchange.State.Tick();
+            mixedExchange.Set(2, 0, 0); mixedExchange.Set(58, 110, 10);
+            mixedExchange.Set(0, sourceType, 9999, flags: 1);
+            mixedExchange.Set(0, 110, 10, flags: sourceType == 110 ? (byte)1 : (byte)0);
+            mixedExchange.Set(58, sourceType, 9999, flags: sourceType == 110 ? (byte)0 : (byte)1);
+            var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(mixedExchange.Players)!;
+            Assert.Equal(10, mixedExchange.ItemImage()[0].Stack); Assert.Equal(9999, mixedExchange.ItemImage()[58].Stack);
+            Assert.True(store.TryGetFundedQuantity(mixedExchange.Connection, 0, out var slotFunding)); Assert.Equal(7, slotFunding);
+            Assert.True(store.TryGetFundedQuantity(mixedExchange.Connection, 58, out var cursorFunding)); Assert.Equal(3, cursorFunding);
+            Assert.Equal(10, slotFunding + cursorFunding);
+        }
+        using (var unchangedFull = new Fixture())
+        {
+            unchangedFull.Set(0, 110, 9996); unchangedFull.Set(2, 110, 9992);
+            unchangedFull.Drop(110, 3); unchangedFull.State.Tick();
+            unchangedFull.Drop(110, 7); unchangedFull.State.Tick();
+            unchangedFull.Set(2, 0, 0); unchangedFull.Set(58, 110, 9999);
+            unchangedFull.Set(0, 110, 9999); unchangedFull.Set(58, 110, 9999);
+            var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(unchangedFull.Players)!;
+            Assert.True(store.TryGetFundedQuantity(unchangedFull.Connection, 0, out var slotFunding)); Assert.Equal(3, slotFunding);
+            Assert.True(store.TryGetFundedQuantity(unchangedFull.Connection, 58, out var cursorFunding)); Assert.Equal(7, cursorFunding);
+        }
+        using (var otherPlayer = new Fixture())
+        {
+            otherPlayer.Drop(110, 3); otherPlayer.State.Tick(); otherPlayer.Set(0, 0, 0);
+            var other = new ConnectionHandle(GameCommandSourceId.FromConnection(98903), new(new PlayerSlotId(1), new(1)));
+            otherPlayer.State.Apply(new PlayerEquipmentRuntimeCommand(other, new(other.Player.Slot, 0, 7, 0, 3, 0)));
+            var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(otherPlayer.Players)!;
+            Assert.True(store.TryGet(other, 0, out var disjoint)); Assert.Equal(7, disjoint.Stack);
+            otherPlayer.Set(58, 110, 3);
+            Assert.True(store.TryGetFundedQuantity(otherPlayer.Connection, 58, out var quantity)); Assert.Equal(3, quantity);
+        }
+        using (var directWriter = new Fixture())
+        {
+            directWriter.Drop(110, 3); directWriter.State.Tick(); directWriter.Set(0, 0, 0);
+            var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(directWriter.Players)!;
+            Assert.True(store.TrySet(directWriter.Connection, new(directWriter.Connection.Player.Slot, 2, 7, 0, 3, 0)));
+            Assert.True(store.TrySet(directWriter.Connection, new(directWriter.Connection.Player.Slot, 2, 0, 0, 0, 0)));
+            directWriter.Set(58, 110, 3);
+            Assert.True(store.TryGetFundedQuantity(directWriter.Connection, 58, out var quantity)); Assert.Equal(0, quantity);
+        }
+        using (var retired = new Fixture())
+        {
+            retired.Drop(110, 3); retired.State.Tick(); retired.Set(0, 0, 0);
+            retired.Member.ItemPhase = null;
+            retired.Member.ItemPhase = RuntimePlayerItemPhase1458.Constructor;
+            retired.Set(58, 110, 3);
+            var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(retired.Players)!;
+            Assert.True(store.TryGetFundedQuantity(retired.Connection, 58, out var quantity)); Assert.Equal(0, quantity);
+        }
+        using (var reentry = new Fixture())
+        {
+            reentry.Drop(110, 3); reentry.State.Tick();
+            bool entered = false;
+            reentry.Events.Callback = () => { if (entered) return; entered = true; reentry.Set(58, 110, 3); };
+            reentry.Set(0, 0, 0); reentry.Events.Callback = null;
+            Assert.True(reentry.ItemImage()[58].IsEmpty);
+            reentry.Set(58, 110, 3);
+            var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(reentry.Players)!;
+            Assert.True(store.TryGetFundedQuantity(reentry.Connection, 58, out var quantity)); Assert.Equal(0, quantity);
+        }
+        using (var wrongPlayer = new Fixture())
+        {
+            wrongPlayer.Drop(110, 3); wrongPlayer.State.Tick();
+            wrongPlayer.State.Apply(new PlayerEquipmentRuntimeCommand(wrongPlayer.Connection, new(new PlayerSlotId(2), 0, 0, 0, 0, 0)));
+            Assert.Equal(3, wrongPlayer.ItemImage()[0].Stack); Assert.True(wrongPlayer.ItemImage()[58].IsEmpty);
+        }
+        using (var unowned = new Fixture())
+        {
+            unowned.Set(0, 110, 3); unowned.Set(0, 0, 0); unowned.Set(58, 110, 3);
+            var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(unowned.Players)!;
+            Assert.True(store.TryGetFundedQuantity(unowned.Connection, 58, out var quantity)); Assert.Equal(0, quantity);
+        }
+    }
+
+    private static void VerifyOriginalCursorImages()
+    {
+        int compared = 0;
+        foreach (string resourceName in new[] { "OwnedCursorMove1458", "OwnedCursorMoveSupplement1458", "OwnedCursorClock1458" })
+        {
+        using var resource = typeof(OwnedHumanPickupAuthority1458Tests).Assembly.GetManifestResourceStream(resourceName);
+        Assert.NotNull(resource); using var gzip = new GZipStream(resource, CompressionMode.Decompress);
+        using var document = JsonDocument.Parse(gzip);
+        foreach (string platform in new[] { "linux", "windows" })
+        foreach (var row in document.RootElement.GetProperty(platform).GetProperty("rows").EnumerateArray())
+        {
+            string name = row.GetProperty("spec").GetProperty("Name").GetString()!;
+            // Configured original Item.Prefix retains82; this proves tuple movement, not GetData5 admission.
+            short slot = checked((short)row.GetProperty("spec").GetProperty("Slot").GetInt32());
+            var before = row.GetProperty("before"); var after = row.GetProperty("afterMirror");
+            using var f = new Fixture(platform == "windows");
+            SeedOriginalCursorBefore(f, ReadCursorTuple(before.GetProperty("inventory")[slot]), ReadCursorTuple(before.GetProperty("mouse")), slot);
+            var spec = row.GetProperty("spec");
+            f.Member.ItemAnimation = spec.GetProperty("Animation").GetInt32();
+            if (f.Member.ItemPhase is { } sourcePhase)
+                f.Member.ItemPhase = sourcePhase with { Selected = sourcePhase.Selected with
+                { Animation = f.Member.ItemAnimation, ItemTime = spec.TryGetProperty("Time", out var time) ? time.GetInt32() : 0 } };
+            var nextSlot = ReadCursorTuple(after.GetProperty("inventory")[slot]);
+            var nextCursor = ReadCursorTuple(after.GetProperty("mouse"));
+            f.Set(slot, checked((short)nextSlot.ItemType.Value), nextSlot.Stack, checked((byte)nextSlot.Prefix.Value), nextSlot.ItemFlags);
+            f.Set(58, checked((short)nextCursor.ItemType.Value), nextCursor.Stack, checked((byte)nextCursor.Prefix.Value), nextCursor.ItemFlags);
+            var image = f.ItemImage();
+            for (int index = 0; index < image.Length; index++) Assert.True(ReadCursorTuple(after.GetProperty("inventory")[index]) == image[index], $"{platform}/{name}/slot{index}: wanted={ReadCursorTuple(after.GetProperty("inventory")[index])} actual={image[index]}");
+            var store = (RuntimePlayerInventoryStore)typeof(PlayerAuthority).GetField("inventory", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(f.Players)!;
+            Assert.True(store.TryGetFundedQuantity(f.Connection, slot, out var slotFunding)); Assert.Equal(image[slot].Stack, slotFunding);
+            Assert.True(store.TryGetFundedQuantity(f.Connection, 58, out var cursorFunding)); Assert.Equal(image[58].Stack, cursorFunding);
+            compared++;
+        }
+        }
+        Assert.Equal(122, compared); // Includes unchanged UI-gated source tuples as ordinary acknowledgements.
+    }
+    private static RuntimePlayerInventoryItem ReadCursorTuple(JsonElement item) => I(item, "type") == 0 ? default :
+        new(new(I(item, "type")), checked((short)I(item, "stack")), new(I(item, "prefix")), item.GetProperty("favorite").GetBoolean() ? (byte)1 : (byte)0);
+    private static void SeedOriginalCursorBefore(Fixture f, RuntimePlayerInventoryItem slotItem, RuntimePlayerInventoryItem cursorItem, short slot)
+    {
+        bool matching = !slotItem.IsEmpty && slotItem.ItemType == cursorItem.ItemType && slotItem.Prefix == cursorItem.Prefix;
+        if (matching && slotItem.Stack + cursorItem.Stack <= 9999)
+        {
+            SeedFundedCursorTuple(f, slotItem with { Stack = checked((short)(slotItem.Stack + cursorItem.Stack)), ItemFlags = 0 }, slot);
+            for (short count = 1; count <= cursorItem.Stack; count++)
+            { f.Set(slot, checked((short)slotItem.ItemType.Value), checked((short)(slotItem.Stack + cursorItem.Stack - count))); f.Set(58, checked((short)cursorItem.ItemType.Value), count); }
+        }
+        else if (matching)
+        {
+            short excess = checked((short)(slotItem.Stack + cursorItem.Stack - 9999));
+            SeedFundedCursorTuple(f, slotItem with { Stack = 9999, ItemFlags = 0 }, slot);
+            SeedFundedCursorTuple(f, cursorItem with { Stack = excess, ItemFlags = 0 }, 58);
+            if (cursorItem.Stack == 9999)
+            { f.Set(slot, checked((short)slotItem.ItemType.Value), slotItem.Stack); f.Set(58, checked((short)cursorItem.ItemType.Value), cursorItem.Stack); }
+            else if (cursorItem.Stack - excess <= 4)
+            {
+                for (short count = excess; count < cursorItem.Stack; count++)
+                { f.Set(slot, checked((short)slotItem.ItemType.Value), checked((short)(9999 - (count - excess + 1)))); f.Set(58, checked((short)cursorItem.ItemType.Value), checked((short)(count + 1))); }
+            }
+            else
+            {
+                Assert.InRange(slotItem.Stack - excess, 0, 4);
+                f.Set(slot, checked((short)slotItem.ItemType.Value), excess); f.Set(58, checked((short)cursorItem.ItemType.Value), 9999);
+                short temp = slot == 49 ? (short)48 : (short)49;
+                f.Set(temp, checked((short)slotItem.ItemType.Value), 9999); f.Set(58, 0, 0);
+                short moved = checked((short)(slotItem.Stack - excess));
+                for (short count = 1; count <= moved; count++)
+                { f.Set(temp, checked((short)slotItem.ItemType.Value), checked((short)(9999 - count))); f.Set(58, checked((short)cursorItem.ItemType.Value), count); }
+                f.Set(slot, checked((short)slotItem.ItemType.Value), slotItem.Stack); f.Set(58, 0, 0);
+                f.Set(temp, 0, 0); f.Set(58, checked((short)cursorItem.ItemType.Value), cursorItem.Stack);
+            }
+        }
+        else { SeedFundedCursorTuple(f, slotItem with { ItemFlags = 0 }, slot); SeedFundedCursorTuple(f, cursorItem with { ItemFlags = 0 }, 58); }
+        if (!slotItem.IsEmpty && slotItem.ItemFlags != 0) f.Set(slot, checked((short)slotItem.ItemType.Value), slotItem.Stack, checked((byte)slotItem.Prefix.Value), slotItem.ItemFlags);
+        if (!cursorItem.IsEmpty && cursorItem.ItemFlags != 0) f.Set(58, checked((short)cursorItem.ItemType.Value), cursorItem.Stack, checked((byte)cursorItem.Prefix.Value), cursorItem.ItemFlags);
+    }
+    private static void SeedFundedCursorTuple(Fixture f, RuntimePlayerInventoryItem item, short wanted)
+    {
+        if (item.IsEmpty) return;
+        var grant = f.Drop(checked((short)item.ItemType.Value), item.Stack, prefix: checked((byte)item.Prefix.Value));
+        f.State.Apply(new WorldItemRemoveRuntimeCommand(f.Connection, grant.Handle));
+        var image = f.ItemImage();
+        short donor = checked((short)Array.FindIndex(image, value => value.ItemType == item.ItemType && value.Stack == item.Stack));
+        Assert.True(donor >= 0, $"seed{item}/wanted{wanted}: {string.Join(";", image.Where(value => !value.IsEmpty))}");
+        if (item.ItemFlags != 0) f.Set(donor, checked((short)item.ItemType.Value), item.Stack, checked((byte)item.Prefix.Value), item.ItemFlags);
+        f.Set(donor, 0, 0); f.Set(58, checked((short)item.ItemType.Value), item.Stack, checked((byte)item.Prefix.Value), item.ItemFlags);
+        Assert.Equal(item, f.ItemImage()[58]);
+        if (wanted != 58) { f.Set(wanted, checked((short)item.ItemType.Value), item.Stack, checked((byte)item.Prefix.Value), item.ItemFlags); f.Set(58, 0, 0); Assert.Equal(item, f.ItemImage()[wanted]); Assert.True(f.ItemImage()[58].IsEmpty); }
+    }
+
     internal sealed class Fixture : IDisposable
     {
         PlayerJoinSession session;

@@ -202,6 +202,14 @@ internal sealed partial class WorldItemAuthority
             return;
         }
 
+        if (players.HasDropFunding(command.Connection))
+        {
+            if (TryApplyFundedDrop(command, out var owned))
+            { AppliedAllocations++; command.Completion?.TrySetResult(owned.Handle.IsAssigned ? owned : null); }
+            else { RejectedAllocations++; command.Completion?.TrySetResult(null); }
+            return;
+        }
+
         WorldItemDropStateUpdate state = command.State;
         if (!TryPrepareClientCreation(in state, out var created, out var liveRandom, out var beforeRandom, out var afterRandom, out var calendar))
         { RejectedAllocations++; command.Completion?.TrySetResult(null); return; }

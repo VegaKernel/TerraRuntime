@@ -16,16 +16,16 @@ internal sealed partial class RuntimePlayerInventoryStore
     private readonly short[] ownedQuantityCaps = CreateQuantityCaps();
     private static short[] CreateQuantityCaps()
     {
-        var caps = new short[PlayerSlotCount * 58 * 5];
+        var caps = new short[PlayerSlotCount * InventorySlotCount * 5];
         Array.Fill(caps, (short)-1);
         return caps;
     }
     private static int QuantityLane(ItemTypeId type) => OwnedQuantityTypes.IndexOf(type.Value);
-    private static int QuantityOffset(int player, int slot, int lane) => (player * 58 + slot) * 5 + lane;
+    private static int QuantityOffset(int player, int slot, int lane) => (player * InventorySlotCount + slot) * 5 + lane;
 
     internal bool CanAcceptOwnedQuantityReport(ConnectionHandle connection, in PlayerEquipmentCommitRequest request)
     {
-        if (request.SlotId is < 0 or >= 58 || !request.TryGetCanonicalItemType(out var type)) return true;
+        if (request.SlotId is < 0 or >= InventorySlotCount || !request.TryGetCanonicalItemType(out var type)) return true;
         int lane = QuantityLane(type);
         if (lane < 0) return true;
         if (!connection.IsAssigned || !CanAccept(connection)) return false;
@@ -36,7 +36,7 @@ internal sealed partial class RuntimePlayerInventoryStore
     internal bool HasOwnedManaPotionQuantity(ConnectionHandle connection)
     {
         if (!connection.IsAssigned || connections[connection.Player.Slot.Value] != connection) return false;
-        for (int slot = 0; slot < 58; slot++)
+        for (int slot = 0; slot < InventorySlotCount; slot++)
         for (int lane = 1; lane < 5; lane++)
             if (ownedQuantityCaps[QuantityOffset(connection.Player.Slot.Value, slot, lane)] >= 0) return true;
         return false;
@@ -46,7 +46,7 @@ internal sealed partial class RuntimePlayerInventoryStore
     {
         var result = new List<OwnedInventoryQuantity1458>();
         if (!connection.IsAssigned || connections[connection.Player.Slot.Value] != connection) return [];
-        for (short slot = 0; slot < 58; slot++)
+        for (short slot = 0; slot < InventorySlotCount; slot++)
         for (int lane = 0; lane < 5; lane++)
         {
             short cap = ownedQuantityCaps[QuantityOffset(connection.Player.Slot.Value, slot, lane)];
@@ -57,13 +57,13 @@ internal sealed partial class RuntimePlayerInventoryStore
 
     internal static bool AreValidOwnedQuantities(ReadOnlySpan<OwnedInventoryQuantity1458> caps, ReadOnlySpan<RuntimePlayerInventoryItem> inventory)
     {
-        if (inventory.Length != InventorySlotCount || caps.Length > 58 * 5) return false;
-        Span<bool> seen = stackalloc bool[58 * 5];
+        if (inventory.Length != InventorySlotCount || caps.Length > InventorySlotCount * 5) return false;
+        Span<bool> seen = stackalloc bool[InventorySlotCount * 5];
         seen.Clear();
         foreach (var cap in caps)
         {
             int lane = QuantityLane(cap.ItemType);
-            if (cap.Slot is < 0 or >= 58 || lane < 0 || cap.Maximum < 0 || (cap.Maximum > 0 && !VanillaDefinitionCatalog.IsValidKnownStack(cap.ItemType, cap.Maximum)) || seen[cap.Slot * 5 + lane]) return false;
+            if (cap.Slot is < 0 or >= InventorySlotCount || lane < 0 || cap.Maximum < 0 || (cap.Maximum > 0 && !VanillaDefinitionCatalog.IsValidKnownStack(cap.ItemType, cap.Maximum)) || seen[cap.Slot * 5 + lane]) return false;
             if (inventory[cap.Slot].ItemType == cap.ItemType && inventory[cap.Slot].Stack > cap.Maximum) return false;
             seen[cap.Slot * 5 + lane] = true;
         }
@@ -76,11 +76,11 @@ internal sealed partial class RuntimePlayerInventoryStore
     {
         foreach (var cap in caps)
             ownedQuantityCaps[QuantityOffset(connection.Player.Slot.Value, cap.Slot, QuantityLane(cap.ItemType))] = cap.Maximum;
-        if (!caps.IsEmpty) Changed();
+        if (!caps.IsEmpty) Changed(connection.Player.Slot.Value);
     }
 
     private void ClearOwnedQuantities(int player) =>
-        ownedQuantityCaps.AsSpan(player * 58 * 5, 58 * 5).Fill(-1);
+        ownedQuantityCaps.AsSpan(player * InventorySlotCount * 5, InventorySlotCount * 5).Fill(-1);
 
     // One journal for the complete UpdatePlayers census. All validation and allocation precede
     // the first owner write; one serial advance covers its bounded, distinct physical slots.
@@ -142,6 +142,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             adopted = true;
             foreach (var mutation in mutations)
             {
+                owner.PreserveReportedFunding(mutation.Connection.Player.Slot.Value, mutation.Slot, mutation.After);
                 owner.items[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] = mutation.After;
                 int lane = QuantityLane(mutation.Before.ItemType);
                 if (lane >= 0 && mutation.After.Stack < mutation.Before.Stack &&
@@ -153,7 +154,19 @@ internal sealed partial class RuntimePlayerInventoryStore
                     owner.ownedQuantityCaps[offset] = prior < 0 ? after : Math.Min(prior, after);
                 }
             }
-            if (mutations.Length != 0) owner.Changed();
+            if (mutations.Length != 0)
+            {
+                owner.Changed();
+                Span<bool> stamped = stackalloc bool[PlayerSlotCount];
+                stamped.Clear();
+                foreach (var mutation in mutations)
+                {
+                    int player = mutation.Connection.Player.Slot.Value;
+                    if (stamped[player]) continue;
+                    stamped[player] = true;
+                    owner.playerMutationStamps[player] = owner.Serial;
+                }
+            }
             return true;
         }
 

@@ -19,6 +19,7 @@ internal sealed record RuntimePlayerTransferState(
     bool MouseItemNormalized = false)
 {
     internal bool OwnsManaMaximum { get; init; }
+    internal short[] FundedInventoryQuantities { get; init; } = new short[VanillaPlayerItemSlotCatalog.InventoryCount];
     internal OwnedInventoryQuantity1458[] OwnedInventoryQuantities { get; init; } = [];
     internal RuntimePlayerItemPhase1458? ItemPhase { get; init; }
     internal RuntimePlayerPhysicsPhase1458? PhysicsPhase { get; init; }

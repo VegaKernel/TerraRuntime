@@ -239,7 +239,17 @@ internal sealed class RuntimePlayerMember
     public short Mana { get; set; }
     public short MaxMana { get; set; }
     internal bool OwnsManaMaximum { get; set; }
-    internal RuntimePlayerItemPhase1458? ItemPhase { get; set; } = RuntimePlayerItemPhase1458.Constructor;
+    internal PlayerAuthority.PendingCursorMove? CursorMove { get; set; }
+    private RuntimePlayerItemPhase1458? itemPhase = RuntimePlayerItemPhase1458.Constructor;
+    internal RuntimePlayerItemPhase1458? ItemPhase
+    {
+        get => itemPhase;
+        set
+        {
+            if (value is null) CursorMove = null;
+            itemPhase = value;
+        }
+    }
     internal RuntimePlayerPhysicsPhase1458? PhysicsPhase { get; set; } = RuntimePlayerPhysicsPhase1458.Constructor;
     public byte ControlFlags { get; set; }
     public byte MovementFlags { get; set; }

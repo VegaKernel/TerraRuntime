@@ -37,9 +37,11 @@ internal sealed partial class PlayerAuthority
             return;
         }
 
+        var funded = this.inventory.CaptureFundedQuantities(connection);
+        var quantityCaps = this.inventory.CaptureOwnedQuantities(connection);
         var inventory = new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
         if (!this.inventory.TryCopyInventory(connection, inventory) ||
-            !TryNormalizeTransferMouseItem(inventory, out bool mouseItemNormalized))
+            !TryNormalizeTransferMouseItem(inventory, funded, quantityCaps, out quantityCaps, out bool mouseItemNormalized))
         {
             command.Completion.TrySetResult(null);
             return;
@@ -58,7 +60,7 @@ internal sealed partial class PlayerAuthority
             buffTypes,
             player.GodMode,
             mouseItemNormalized)
-        { OwnedInventoryQuantities = this.inventory.CaptureOwnedQuantities(connection), OwnsManaMaximum = player.OwnsManaMaximum, ItemPhase = player.ItemPhase, PhysicsPhase = player.PhysicsPhase,
+        { FundedInventoryQuantities = funded, OwnedInventoryQuantities = quantityCaps, OwnsManaMaximum = player.OwnsManaMaximum, ItemPhase = player.ItemPhase, PhysicsPhase = player.PhysicsPhase,
           BuffState = transferProfiles.CaptureBuffState(connection) };
 
         membership.ClearPending(connection);
@@ -76,9 +78,13 @@ internal sealed partial class PlayerAuthority
 
     private static bool TryNormalizeTransferMouseItem(
         RuntimePlayerInventoryItem[] inventory,
+        short[] funded,
+        OwnedInventoryQuantity1458[] beforeCaps,
+        out OwnedInventoryQuantity1458[] afterCaps,
         out bool normalized)
     {
         normalized = false;
+        afterCaps = beforeCaps;
         RuntimePlayerInventoryItem mouse = inventory[VanillaPlayerItemSlotCatalog.InventoryMouseItem];
         if (mouse.IsEmpty)
             return true;
@@ -94,6 +100,21 @@ internal sealed partial class PlayerAuthority
             if (!inventory[slot].IsEmpty)
                 continue;
 
+            // Move the source ceiling with the cursor image before validating the DTO.
+            // Keep every other identity/slot obligation, including the emptied cursor lane.
+            var caps = beforeCaps.ToList();
+            int cursorCap = caps.FindIndex(c => c.Slot == VanillaPlayerItemSlotCatalog.InventoryMouseItem && c.ItemType == mouse.ItemType);
+            int destinationCap = caps.FindIndex(c => c.Slot == slot && c.ItemType == mouse.ItemType);
+            if (cursorCap >= 0 || funded[VanillaPlayerItemSlotCatalog.InventoryMouseItem] == mouse.Stack)
+            {
+                if (cursorCap >= 0) caps[cursorCap] = caps[cursorCap] with { Maximum = checked((short)Math.Max(0, caps[cursorCap].Maximum - mouse.Stack)) };
+                var nextCap = new OwnedInventoryQuantity1458(slot, mouse.ItemType, mouse.Stack);
+                if (destinationCap >= 0) caps[destinationCap] = nextCap;
+                else if (mouse.ItemType.Value is 109 or 110 or 189 or 500 or 2209) caps.Add(nextCap);
+                afterCaps = caps.ToArray();
+            }
+            funded[slot] = funded[VanillaPlayerItemSlotCatalog.InventoryMouseItem];
+            funded[VanillaPlayerItemSlotCatalog.InventoryMouseItem] = 0;
             inventory[slot] = mouse;
             inventory[VanillaPlayerItemSlotCatalog.InventoryMouseItem] = default;
             normalized = true;
@@ -141,6 +162,8 @@ internal sealed partial class PlayerAuthority
             transfer.Slot != connection.Player.Slot ||
             membership.Contains(connection.Player.Slot) ||
             transfer.Inventory.Length != VanillaPlayerItemSlotCatalog.InventoryCount ||
+            !RuntimePlayerInventoryStore.AreValidFundedQuantities(transfer.FundedInventoryQuantities, transfer.Inventory) ||
+            inventory.Serial >= ulong.MaxValue - 4 ||
             transfer.OwnedInventoryQuantities is null ||
             !RuntimePlayerInventoryStore.AreValidOwnedQuantities(transfer.OwnedInventoryQuantities, transfer.Inventory) ||
             !inventory.CanAttachOwnedQuantities(transfer.OwnedInventoryQuantities.Length) ||
@@ -161,6 +184,7 @@ internal sealed partial class PlayerAuthority
         }
 
         inventory.AdoptOwnedQuantities(connection, transfer.OwnedInventoryQuantities);
+        inventory.AdoptFundedQuantities(connection, transfer.FundedInventoryQuantities);
         PlayerStateSnapshot previous = transfer.Player;
         // TerrariaServer 1.4.5.8 Player.Spawn_SetPosition treats SpawnX/SpawnY as the floor tile,
         // not as the player's top-left pixel position. Keep the authoritative snapshot aligned with the exact

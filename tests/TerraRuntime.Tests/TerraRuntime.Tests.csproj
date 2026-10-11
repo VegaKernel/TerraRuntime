@@ -456,4 +456,10 @@
     <EmbeddedResource Include="Fixtures/human-channelled-magic-local-caller-official-1458.json.gz" LogicalName="HumanChannelledMagicLocalCaller1458" />
     <EmbeddedResource Include="Fixtures/arcane-vanity-blockers-original-1458.json.gz" LogicalName="ArcaneVanityBlockerSource1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/owned-human-drop-configured-official-1458.json.gz" LogicalName="SourceHumanDrop1458" />
+    <EmbeddedResource Include="Fixtures/owned-human-cursor-move-configured-official-1458.json.gz" LogicalName="OwnedCursorMove1458" />
+    <EmbeddedResource Include="Fixtures/owned-human-cursor-move-supplement-official-1458.json.gz" LogicalName="OwnedCursorMoveSupplement1458" />
+    <EmbeddedResource Include="Fixtures/owned-human-cursor-clock-official-1458.json.gz" LogicalName="OwnedCursorClock1458" />
+  </ItemGroup>
 </Project>

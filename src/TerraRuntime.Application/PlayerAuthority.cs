@@ -474,6 +474,7 @@ internal sealed partial class PlayerAuthority
     private void ApplyPlayerEquipment(PlayerEquipmentRuntimeCommand equipment)
     {
         PlayerEquipmentCommitRequest request = equipment.Request;
+        if (TryReconcileOwnedCursorMove(equipment)) return;
         if (!inventory.CanAcceptOwnedQuantityReport(equipment.Connection, in request))
         {
             RejectedEquipmentUpdates++;

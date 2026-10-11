@@ -102,12 +102,17 @@ internal sealed partial class RuntimePlayerInventoryStore
             adopted = true;
             foreach (var mutation in mutations)
             {
+                int offset = GetOffset(connection.Player.Slot.Value, mutation.Slot);
+                // Denomination conversion never seeds physical-count funding.
+                owner.fundedQuantities[offset] = mutation.Before.ItemType.Value is >= 71 and <= 74 ||
+                    mutation.After.ItemType.Value is >= 71 and <= 74 ? (short)0
+                    : checked((short)(owner.fundedQuantities[offset] + mutation.After.Stack - mutation.Before.Stack));
                 owner.items[GetOffset(connection.Player.Slot.Value, mutation.Slot)] = mutation.After;
                 int lane = QuantityLane(mutation.After.ItemType);
                 if (lane >= 0)
                     owner.ownedQuantityCaps[QuantityOffset(connection.Player.Slot.Value, mutation.Slot, lane)] = mutation.After.Stack;
             }
-            owner.Changed();
+            owner.Changed(connection.Player.Slot.Value);
             return true;
         }
         internal bool IsAcceptedItemCurrent(int index) => adopted && (uint)index < (uint)mutations.Length &&

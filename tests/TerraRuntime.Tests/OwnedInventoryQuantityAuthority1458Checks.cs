@@ -107,7 +107,12 @@ internal static class OwnedInventoryQuantityAuthority1458Checks
             Check(inv.CaptureOwnedQuantities(first).All(x => x.Slot != 3) && inv.CaptureOwnedQuantities(second).Length == 0, "no partial new caps");
             Check(!inv.TryPrepareRemotePhase([new(first, 3, item, consumed), new(first, 3, item, consumed)], inv.Serial, out _), "duplicate physical mutation refuses");
             var image = new RuntimePlayerInventoryItem[59]; image[3] = item;
-            Check(!RuntimePlayerInventoryStore.AreValidOwnedQuantities([new(58, new(110), 2)], image), "mouse-slot cap malformed");
+            Check(!RuntimePlayerInventoryStore.AreValidOwnedQuantities([new(59, new(110), 2)], image), "outside inventory cap malformed");
+            // Conserved cursor moves now retain the same historical obligations in slot58.
+            Check(RuntimePlayerInventoryStore.AreValidOwnedQuantities([new(58, new(110), 2)], image), "empty cursor retains historical cap");
+            image[58] = item;
+            Check(!RuntimePlayerInventoryStore.AreValidOwnedQuantities([new(58, new(110), 2)], image), "over-cap cursor image malformed");
+            Check(RuntimePlayerInventoryStore.AreValidOwnedQuantities([new(58, new(110), 3)], image), "exact cursor cap accepted");
             Check(!RuntimePlayerInventoryStore.AreValidOwnedQuantities([new(3, new(28), 2)], image), "unsupported type cap malformed");
             Check(!RuntimePlayerInventoryStore.AreValidOwnedQuantities([new(3, new(110), -1)], image), "negative cap malformed");
             Check(!RuntimePlayerInventoryStore.AreValidOwnedQuantities([new(3, new(110), 2)], image), "over-cap image malformed");
