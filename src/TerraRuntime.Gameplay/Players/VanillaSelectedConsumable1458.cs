@@ -14,6 +14,8 @@ public readonly record struct PlayerSelectedConsumableTransition1458(
     PlayerSelectedConsumableState1458 State, int Life, int Mana,
     bool BeganUse, int PotionSicknessOffer, int ManaSicknessOffer)
 {
+    public BuffTypeId BuffOfferType { get; init; }
+    public int BuffDurationOffer { get; init; }
     public bool Consumed { get; init; }
     public int RemainingStack { get; init; }
     public bool PendingItemReuse { get; init; }
@@ -29,6 +31,11 @@ public static class VanillaSelectedConsumable1458
     public static bool TryStep(PlayerSelectedConsumableState1458? previous,
         in PlayerSelectedConsumableFacts1458 facts, Func<int, int, int> nextInteger,
         Func<double> nextDouble, out PlayerSelectedConsumableTransition1458 transition)
+        => TryStepCore(previous, in facts, nextInteger, nextDouble, localEffects: false, out transition);
+
+    private static bool TryStepCore(PlayerSelectedConsumableState1458? previous,
+        in PlayerSelectedConsumableFacts1458 facts, Func<int, int, int> nextInteger,
+        Func<double> nextDouble, bool localEffects, out PlayerSelectedConsumableTransition1458 transition)
     {
         transition = default;
         if (previous is not { } state ||
@@ -63,6 +70,8 @@ public static class VanillaSelectedConsumable1458
         int life = facts.Life;
         int mana = facts.Mana;
         int manaSickness = 0;
+        int buffOffer = 0;
+        int buffDuration = 0;
         if (facts.AllowedToHoldItems)
         {
             if (animation > 0 && item.DrinkColourCount > 0)
@@ -81,10 +90,21 @@ public static class VanillaSelectedConsumable1458
                 manaSickness = item.HealMana > 0 ? 300 : 0;
                 time = timeMax = item.UseTime;
             }
+            if (time == 0 && animation > 0 && item.BuffType > 0)
+            {
+                if (localEffects)
+                {
+                    buffOffer = item.BuffType;
+                    buffDuration = item.BuffTime;
+                }
+                time = timeMax = item.UseTime;
+            }
         }
         transition = new(new(time, timeMax, animation, animationMax, !facts.ControlUseItem,
             delay, crit), life, mana, begin, begin && item.HealingDelay ? delay : 0, manaSickness)
         {
+            BuffOfferType = new BuffTypeId((short)buffOffer),
+            BuffDurationOffer = buffDuration,
             PendingItemReuse = pending,
             ResetItemRotation = resetItemRotation
         };
@@ -100,13 +120,13 @@ public static class VanillaSelectedConsumable1458
     {
         transition = default;
         if (!VanillaSelectedConsumableCatalog1458.TryGet(facts.Item, out var item) ||
-            item.HealLife == 0 && item.HealMana == 0 ||
+            item.HealLife == 0 && item.HealMana == 0 && item.BuffType == 0 ||
             !VanillaWorldItemAllocationCatalog1458.TryGet(facts.Item.Value, out var allocation) ||
             selectedStack < 0 || selectedStack > allocation.MaximumStack) return false;
 
         // Local ItemCheck recomputes the ordinary use result; the retained success bit gates only remote players.
         var localFacts = facts with { LastUseSuccess = true };
-        if (!TryStep(previous, in localFacts, nextInteger, nextDouble, out transition)) return false;
+        if (!TryStepCore(previous, in localFacts, nextInteger, nextDouble, localEffects: true, out transition)) return false;
 
         // The source consumes after healing and ApplyItemTime, rather than at the start gate.
         bool consumptionPoint = facts.AllowedToHoldItems && !facts.CrowdControlled &&

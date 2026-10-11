@@ -56,9 +56,18 @@ internal sealed partial class PlayerAuthority
             return;
         }
 
-        if (activePlayer is not null && IsExplainedSelectedPotionBuffAcknowledgement(activePlayer,request.BuffTypes.Span))
+        if (activePlayer is not null &&
+            (IsExplainedSelectedPotionBuffAcknowledgement(activePlayer, request.BuffTypes.Span) ||
+             TryExplainDeniedSelectedBuffAcknowledgement(activePlayer, request.BuffTypes.Span)))
         {
             AppliedBuffSnapshots++;
+            return;
+        }
+        if (activePlayer is not null && TryApplySelectedBuffSubsetRemoval(activePlayer, in request))
+            return;
+        if (activePlayer is not null && IsKnownDeniedSelectedBuffIncrement(activePlayer, request.BuffTypes.Span))
+        {
+            RejectedBuffSnapshots++;
             return;
         }
         if (activePlayer is not null && !activePlayer.TryAdvanceRevision())

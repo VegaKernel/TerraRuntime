@@ -1,5 +1,9 @@
 # NativeAOT and CoreCLR hosting baseline
 
+## Current shipping versus preparation, 2026-10-11
+
+Accepted armor/standalone/relay shipping checkpoint is committed and pushed at bd384405ec3911c7003ca212d46636a7a3ce049d. Its Windows Native/local live evidence below remains valid; its processes are terminal. The new selected buff potion/Quiver block has no shipping Native acceptance yet. Game static three-Fact preparation awaits fresh combined32 shipping references; runtime-owned buff/equipment tests and matching static Native preparation remain integration work. Do not treat preparatory references or the root four-Fact managed preflight as new Native shipping evidence. Linux Native remains locally unverified; GitHub CI is not awaited.
+
 ## Armor, standalone consumption and35/43 relay - accepted checkpoint, 2026-10-11
 
 Local acceptance passed: Release warnings-as-errors builds; focused 81/81; fast 24959/24960 and full 1563252/1563253, with no failures/errors and one known skip. Windows NativeAOT passed five server smokes, the same two Game Facts with 500722 checks and three connected Facts with 2715 outer assertions. Release and Native passed real socket join 82/49/129 and 72 effects 35/43; both hosts stopped. Linux NativeAOT remains locally unverified; GitHub CI was not awaited.
@@ -614,3 +618,7 @@ For Vega-enabled deployments, sustained game-server performance plus drop-in DLL
 Neither NativeAOT nor CoreCLR requires TerraRuntime simulation to be split across processes. The authoritative game loop remains in-process with the host unless a real isolation or operational requirement justifies another process.
 
 Optional transport/sandbox processes may exist for isolation, tooling or operations, but IPC is not introduced into the normal gameplay hot path merely to satisfy a runtime-label preference.
+
+Selected buff/Quiver component Native checkpoint: Game3 Facts pass838059 typed checks and the new owned Fact passes88693 checks on managed and Windows Native against the same fresh v1 shipping32. The final gate successor changes only two obsolete unknown-equipment fixtures to still-unsupported Magma Stone1322. A source/ref/resource pin scope bridge must establish reuse; these are not new v2 executions. Server5smokes passed after an isolated-artifacts publish retry; the first shared-output attempt failedCS2012 and is retained as diagnostic evidence. Combined full/live acceptance and Linux Native remain pending.
+
+Accepted selected-buff/Quiver checkpoint: Release warnings-as-errors builds passed; focused54/54; fast24961/24962; one unfiltered full1563254/1563255. No failures/errors; fast/full retain the single known canonical-liquid skip. WindowsNative Game3Facts838059 checks and the new owned Fact88693 checks passed; the explicit identical32/source/resource bridge reuses those component executions after two neighboring unknown-gear fixtures changed. Five isolated WindowsNative server smokes and Release/Native live82/49/129 plus72signed35/43effects passed; both live hosts stopped. Linux Native remains locally unverified; GitHub CI was not awaited. See root-final-verification.json under selected-buff-potion-production-acceptance-v2 for exact accepted scope and fingerprint.

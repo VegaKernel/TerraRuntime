@@ -133,7 +133,7 @@ internal sealed partial class RuntimePlayerInventoryStore
             return source.Slot == mutation.Slot && source.TryCaptureSelectedPotionDebit(this,mutation.Connection,out _,out _);
         if (mutation.ConsumeFundedQuantity &&
             (!VanillaSelectedConsumableCatalog1458.TryGet(mutation.Before.ItemType, out var potion) ||
-             potion.HealLife <= 0 && potion.HealMana <= 0 ||
+             potion.HealLife <= 0 && potion.HealMana <= 0 && potion.BuffType <= 0 ||
              fundedQuantities[GetOffset(mutation.Connection.Player.Slot.Value, mutation.Slot)] <= 0)) return false;
         int lane = QuantityLane(mutation.CursorSourceDebit is { } paidSource ? paidSource.BeforePotionType : mutation.Before.ItemType);
         if (lane < 0) return true;

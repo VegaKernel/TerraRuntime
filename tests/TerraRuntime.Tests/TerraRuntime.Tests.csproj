@@ -554,4 +554,18 @@
     <EmbeddedResource Include="Fixtures/StandaloneArmorCheckpointLinux1458.json.gz" LogicalName="StandaloneArmorCheckpointLinux1458" />
     <EmbeddedResource Include="Fixtures/StandaloneArmorCheckpointWindows1458.json.gz" LogicalName="StandaloneArmorCheckpointWindows1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/SelectedBuffPotionLinuxFirst1458.json.gz" LogicalName="SelectedBuffPotionLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/SelectedBuffPotionLinuxRepeat1458.json.gz" LogicalName="SelectedBuffPotionLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/SelectedBuffPotionWindowsFirst1458.json.gz" LogicalName="SelectedBuffPotionWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/SelectedBuffPotionWindowsRepeat1458.json.gz" LogicalName="SelectedBuffPotionWindowsRepeat1458" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/SelectedBuffPotionNextBoundaryLinuxFirst1458.json.gz" LogicalName="SelectedBuffPotionNextBoundaryLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/SelectedBuffPotionNextBoundaryWindowsFirst1458.json.gz" LogicalName="SelectedBuffPotionNextBoundaryWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/SelectedBuffPotionRemoveLinuxFirst1458.json.gz" LogicalName="SelectedBuffPotionRemoveLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/SelectedBuffPotionSparseRemoveLinuxFirst1458.json.gz" LogicalName="SelectedBuffPotionSparseRemoveLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/MagicQuiverWeaponInputLinuxFirst1458.json.gz" LogicalName="MagicQuiverWeaponInputLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/MagicQuiverWeaponInputWindowsFirst1458.json.gz" LogicalName="MagicQuiverWeaponInputWindowsFirst1458" />
+  </ItemGroup>
 </Project>

@@ -196,10 +196,11 @@ public sealed class FunctionalCombatEquipmentPhase1458Tests
         using (var f = new HumanDefensiveCritBuffPhase1458Tests.Fixture(row, false))
         {
             var first = f.Member.ItemPhase; var second = f.SecondMember.ItemPhase; var random = f.Random.Clone();
-            // MagicQuiver writers are still unsupported; one unknown member cannot be skipped
+            // The magmaStone writer (Player.ApplyEquipFunctional 1.4.5.8) remains unsupported;
+            // one unknown member cannot be skipped
             // while the other commits a phase from the same source-owned UpdatePlayers cursor.
             f.State.Apply(new PlayerEquipmentRuntimeCommand(f.SecondConnection,
-                new(f.SecondConnection.Player.Slot, 62, 1, 0, 1321, 0)));
+                new(f.SecondConnection.Player.Slot, 62, 1, 0, 1322, 0)));
             Assert.False(f.Players.TryTickRemotePlayerPhase());
             Assert.Equal(first, f.Member.ItemPhase); Assert.Equal(second, f.SecondMember.ItemPhase);
             Assert.True(f.Random.HasSameState(random));

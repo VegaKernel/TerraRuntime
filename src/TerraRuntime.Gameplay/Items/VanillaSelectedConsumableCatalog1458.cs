@@ -4,7 +4,7 @@ namespace TerraRuntime.Gameplay.Items;
 
 public readonly record struct SelectedConsumableDefinition1458(
     ItemTypeId Type, int HealLife, int HealMana, bool HealingDelay, int UseTime,
-    int UseAnimation, int DrinkColourCount);
+    int UseAnimation, int DrinkColourCount, int BuffType = 0, int BuffTime = 0);
 
 public static class VanillaSelectedConsumableCatalog1458
 {
@@ -18,6 +18,21 @@ public static class VanillaSelectedConsumableCatalog1458
         if (type.Value == 109)
         {
             definition = new(type, 0, 0, false, 30, 30, 0);
+            return true;
+        }
+        (int buff, int duration) = type.Value switch
+        {
+            292 => (5, 28_800),
+            303 => (16, 28_800),
+            2344 => (112, 28_800),
+            2346 => (114, 14_400),
+            2347 => (115, 14_400),
+            2349 => (117, 14_400),
+            _ => (0, 0)
+        };
+        if (buff > 0)
+        {
+            definition = new(type, 0, 0, false, 17, 17, 3, buff, duration);
             return true;
         }
         // These ordinary SetDefaults families share useStyle9, neutral prefix, no mana cost and three drink colours.

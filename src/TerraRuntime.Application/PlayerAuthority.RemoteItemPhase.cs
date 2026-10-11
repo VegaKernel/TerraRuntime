@@ -487,7 +487,7 @@ internal sealed partial class PlayerAuthority
             beganActualUse = passiveUse.BeganActualUse;
         }
         else if (VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out var selectedPotion) &&
-            (selectedPotion.HealLife > 0 || selectedPotion.HealMana > 0))
+            (selectedPotion.HealLife > 0 || selectedPotion.HealMana > 0 || selectedPotion.BuffType > 0))
         {
             if (!TryPlanOwnedSelectedPotion(plan, selected, item, clocks, in facts, random,
                 out use, out item)) return false;
@@ -506,6 +506,8 @@ internal sealed partial class PlayerAuthority
             plan.Buffs.TryApplySelectedConsumable(new BuffTypeId(21), use.PotionSicknessOffer, false);
         if (use.ManaSicknessOffer > 0)
             plan.Buffs.TryApplySelectedConsumable(new BuffTypeId(94), use.ManaSicknessOffer, false);
+        if (use.BuffDurationOffer > 0)
+            plan.Buffs.TryApplySelectedConsumable(use.BuffOfferType, use.BuffDurationOffer, false);
         plan.Health = knownHealth with { Life = use.Life };
         plan.Item = item with
         {

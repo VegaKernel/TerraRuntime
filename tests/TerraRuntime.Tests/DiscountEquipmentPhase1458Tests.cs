@@ -94,10 +94,11 @@ public sealed class DiscountEquipmentPhase1458Tests
         using var normalized = Normalize(row, mixed: true);
         using (var f = new HumanDefensiveCritBuffPhase1458Tests.Fixture(normalized.RootElement, false))
         {
+            // Magma Stone 1322 remains unsupported (Player.ApplyEquipFunctional 1.4.5.8).
             // One unsupported actor retires the whole shared cursor rather than committing
             // only the actor whose equipment is represented.
             f.State.Apply(new PlayerEquipmentRuntimeCommand(f.SecondConnection,
-                new(f.SecondConnection.Player.Slot, 62, 1, 0, 1321, 0)));
+                new(f.SecondConnection.Player.Slot, 62, 1, 0, 1322, 0)));
             var first = f.Member.ItemPhase; var second = f.SecondMember.ItemPhase; var random = f.Random.Clone();
             Assert.False(f.Players.TryTickRemotePlayerPhase());
             Assert.Equal(first, f.Member.ItemPhase); Assert.Equal(second, f.SecondMember.ItemPhase);

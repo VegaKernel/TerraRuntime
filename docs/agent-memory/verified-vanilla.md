@@ -1,5 +1,23 @@
 # Verified vanilla facts
 
+## QuickBuff six: original source and hidden cursor-cycle evidence, 2026-10-11
+
+Cache-only next-block evidence, not production acceptance: `.cache/quick-buff-six-original-source-v1/manifest.json` SHA `d0cc41d155d6cf0bc374e549caa2b61fa20feb5605b470fa0b4c519c47ffe094` contains 112 unchanged original calls, four cross-platform/repeat captures, no errors. Root independently verified all pins and exact four captures in `.cache/quick-buff-source-root-review-v1.json`. QuickBuff scans main slots0..57 and eligible Void storage, excludes cursor58, skips existing/duplicate buff types, immediately clears the last consumed stack, and preserves captured clocks and RNG. Direct invocation emits no packets; local synchronization reports changed inventory before buff50 and13/138. These packets carry no QuickBuff intent discriminator.
+
+`.cache/quick-buff-closed-cursor-cycle-original-source-v1/manifest.json` SHA `a196d13e31f7e8ced93bb9279720e7a9184a1c3447e00124f95d25a6f22ae7cf` captures direct QuickBuff versus three original Left operations0/1/0 followed by QuickBuff. Two identical neutral nonfavorite292 stacks at actual maximum9999 exchange original object origins while returning their full physical image. Sixteen configured source profiles agree across platforms/repeats: full inventory/bank/buffs/clocks/RNG and subsequent literal synchronization bytes are indistinguishable. Root pin/capture review: `.cache/quick-buff-closed-cycle-root-review-v1.json`. With partial per-source funding, these histories imply different paid outcomes; this is a consequence for TerraRuntime custody policy, not an original game funding field. Do not relax the unchanged cursor ACK guard to adopt the hidden swap. The connected resolver must compare possible private outcomes and refuse disagreement before buff adoption.
+
+The cache runtime plan reuses the existing219 inventory journal and global64-step scheduler. It must retain candidate packet50 before its legacy60-duration adoption, reconcile complete funded debits and indexed buffs jointly at138, preserve currentness/callback boundaries and ordinary cursor alternatives, and retain a bounded multi-offer acknowledgement explanation. No QuickBuff production support, whole Main/UI intent proof, or new funding ledger is claimed by these captures.
+
+## Selected combat potions and Quiver - source checkpoint, 2026-10-11
+
+Original1.4.5.8 selected potion metadata:292->5/28800,303->16/28800,2344->112/28800,2346->114/14400,2347->115/14400,2349->117/14400. Local ItemCheck offers AddBuff and consumes; remote ItemCheck advances use clocks without the local effect/debit. Source-local next ResetEffects/UpdateBuffs applies the effect and ages the duration; existing runtime remote-presence duration policy is separate and is not silently replaced by local aging. The promoted Game Fact plus unchanged potion/ACK neighbors pass4/4; paid App integration is not yet accepted.
+
+Original paid Wrath then Ironskin followed by unique117 DelBuff retains indexed5 duration28800 and unchanged RNG. Four two-row captures are identical; root verified23pins, full44/59/RNG56 and literal50 frame0800320005000000. Evidence: .cache/selected-buff-potion-remove-root-source-review-v1.json; source manifest SHAe3193be53c492fb855b03ad1e08d70a61e95d73433a0bd8f5dcc1d60bc492022. Duplicate removal, full44 special43 and natural UI timing are outside this supplement.
+
+Quiver1321 is granted by ApplyEquipFunctional, not GrantArmorBenefits. Original UpdateEquips and isolated stages followed by PickAmmo39 are captured in216profiles per process/four runs. Root verified30pins, full inventory/equipment/buff/RNG fields and equal directly captured Single bits;32 raw decimal serialization differences remain recorded. Evidence: .cache/magic-quiver-equipment-root-source-review-v1.json. App effective-equipment admission remains pending; configured duplicate stacking does not prove natural duplicate UI admission.
+
+Previous armor/standalone/relay checkpoint is committed and pushed at bd384405ec3911c7003ca212d46636a7a3ce049d; older pending entries below are historical.
+
 ## Armor, standalone consumption and35/43 relay - accepted checkpoint, 2026-10-11
 
 Local acceptance passed: Release warnings-as-errors builds; focused 81/81; fast 24959/24960 and full 1563252/1563253, with no failures/errors and one known skip. Windows NativeAOT passed five server smokes, the same two Game Facts with 500722 checks and three connected Facts with 2715 outer assertions. Release and Native passed real socket join 82/49/129 and 72 effects 35/43; both hosts stopped. Linux NativeAOT remains locally unverified; GitHub CI was not awaited.

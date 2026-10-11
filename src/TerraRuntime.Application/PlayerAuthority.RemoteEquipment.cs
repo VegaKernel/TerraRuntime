@@ -25,7 +25,7 @@ internal sealed partial class PlayerAuthority
             {
                 // Original source records for these known None vanity accessories prove
                 // no functional grants, but they can block inherited matching favorites.
-                if (index is >= 13 and <= 19 && item.ItemNetId is 156 or 3212 or 489 or 490 or 491 or 2998 or 935 or 1301 or 1858 or 854 or 3033 or 3034 or 3035 &&
+                if (index is >= 13 and <= 19 && item.ItemNetId is 156 or 3212 or 489 or 490 or 491 or 2998 or 935 or 1301 or 1858 or 854 or 3033 or 3034 or 3035 or 1321 &&
                     item.PrefixId == default) continue;
                 if (index is >= 10 and <= 12)
                 {
@@ -48,7 +48,7 @@ internal sealed partial class PlayerAuthority
             // before armor grants; it may block a later favorite but grants no armor benefits.
             bool sharingBlocker = inactiveArmor && item.ItemNetId == VanillaItemIds.CopperBroadsword.Value;
             bool provenAccessory = index is >= 3 and <= 9 && item.ItemNetId is
-                156 or 3212 or 489 or 490 or 491 or 2998 or 935 or 1301 or 1858 or 854 or 3033 or 3034 or 3035;
+                156 or 3212 or 489 or 490 or 491 or 2998 or 935 or 1301 or 1858 or 854 or 3033 or 3034 or 3035 or 1321;
             if (index is >= 3 and <= 9 && item.ItemNetId is 555 or 854 or 3033 or 3034 or 3035)
             {
                 if (item.PrefixId != default) return false;
@@ -56,7 +56,7 @@ internal sealed partial class PlayerAuthority
             else if (provenAccessory)
             {
                 if (item.PrefixId.Value is >= 77 and <= 80 && item.ItemNetId is not
-                    (489 or 490 or 491 or 2998 or 935 or 1301 or 1858 or 854 or 3033 or 3034 or 3035)) return false;
+                    (489 or 490 or 491 or 2998 or 935 or 1301 or 1858 or 854 or 3033 or 3034 or 3035 or 1321)) return false;
                 // Arcane is staged through the common effective-slot mana owner; Ankh
                 // immunity writers still require a separate buff-phase owner.
                 if (item.PrefixId.Value is not (0 or 62 or 63 or 64 or 65 or 66 or 67 or 68 or 69 or 70 or 71 or 72 or 77 or 78 or 79 or 80)) return false;
@@ -80,6 +80,7 @@ internal sealed partial class PlayerAuthority
             MeleeCrit = 4, RangedCrit = 4, MagicCrit = 4, ManaFlower = false, ManaCostMultiplier = 1f,
             DiscountEquipped = false, GoldRing = false, HasLuckyCoin = false, HasLuckLuckyCoin = false,
             MeleeDamage = 1f, RangedDamage = 1f, MagicDamage = 1f, MinionDamage = 1f, MeleeAttackSpeed = 1f,
+            MagicQuiver = false, ArrowDamageAdditiveStack = 0f,
             HuntressAmmoCost90 = false, ChloroAmmoCost80 = false, AmmoCost80 = false, AmmoCost75 = false
         } == VanillaPlayerCombatSnapshot.Baseline;
     }
