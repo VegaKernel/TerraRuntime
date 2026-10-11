@@ -8,7 +8,7 @@ internal sealed partial class PlayerAuthority
     private bool cursorMovePublishing;
 
     internal sealed record PendingCursorMove(PlayerStateSnapshot Before,
-        RuntimePlayerItemPhase1458? Phase, ulong InputRevision, RuntimePlayerInventoryStore.CursorMovePreparation Inventory, PendingCursorReturn? Return = null);
+        RuntimePlayerItemPhase1458? Phase, ulong InputRevision, RuntimePlayerInventoryStore.CursorMovePreparation? Inventory, PendingCursorReturn? Return = null, PendingShopJournal? Shop = null);
 
     // Protocol 5 has no UI intent. This bounded authority policy accepts only a paired,
     // source-valid conserved context-0 transition over existing quantity custody.
@@ -21,7 +21,7 @@ internal sealed partial class PlayerAuthority
         if (cursorMovePublishing)
         { member.CursorMove = null; RejectedEquipmentUpdates++; return true; }
         var pending = member.CursorMove;
-        if (pending is not null)
+        if (pending is not null && pending.Inventory is not null)
         {
             if (request.SlotId == pending.Inventory.Slot && TryCursorReport(in request, out var duplicate) &&
                 duplicate == pending.Inventory.AfterSlot && pending.Inventory.IsCurrent && IsCurrentCursorActor(member, pending))

@@ -1,5 +1,15 @@
 # TerraRuntime roadmap
 
+## Standard-client shop/bank journal — accepted local checkpoint, 2026-10-11
+
+Source-backed cursor/bank moves use contexts `4` and `32`; the independent no-conversation replay covers 72 original rows and disjoint-player traffic. Without a captured shop quote, an ordinary cursor `58` report preserves immediate physical receive adoption and observers before `138`; retained funding is at most the earlier budget and the new physical quantity, never a minted grant. A compatible bank alternative retains the original image until matching bank reports and the delimiter complete it. With a known quote, the journal stages its reports and publishes the accepted batch after joint completion. Raw Bank4 retains normal receive normalization, RNG, input revision and transfer-profile mirroring; private bank state is adopted before callbacks. Other bank-movement families remain outside this producer.
+
+Local gates passed: focused 150/150, fast 24909/24910, full 1563202/1563203. Zero failures/errors, one known skip in fast/full. Typed managed and fresh Windows Native each passed 3015 checks, preserving all 2964 original predicates through static typed private-field access on the same authorities. Five Native server smokes and live Release/Native with two-client relay passed; both hosts stopped. Linux Native remains locally unverified; GitHub CI was not awaited. No whole Main/natural UI or full NPC/gameplay parity claim.
+
+Evidence: `.cache/shop-coherent-production-acceptance-v2/status.json`, `.cache/shop-coherent-production-focused-v4.xml`, `.cache/shop-root-three-native-preparation-v3/acceptance-manifest.json`, `.cache/shop-coherent-production-live-v2/results.json`. Source/test SHA256 `9e7a7326976450709b5a889872f8ff0fc11d56946e1fefd2f56305d42a47f925`. Earlier independent bank 40968/72 evidence is scoped separately from final32 verification. FullVanillaAiParity remains false. Earlier entries retain their historical status.
+
+Resume: complete the remaining multi-bank and multi-slot movement producers on the same bounded owners; this checkpoint admits only the represented cursor/bank families. Do not infer full gameplay or NPC parity from this accepted journal.
+
 ## Channelled magic stored prefixes — accepted local checkpoint, 2026-10-11
 
 Magic Missile113, Flamelash218 and Rainbow Rod495 now use their represented stored magic prefixes through existing owned phase, mana payment/Flower refill and trusted projectile birth. Source evidence covers5376 genuine remote phase calls,444 stored-prefix captures and432 configured local shoot-component calls across both original platforms/repeats. Managed durable checks retain full56/cursor; six sensitive omissions fail assertions and restoration passes2/2. No new RNG owner or selected/projectile-hit crit stream is introduced. Host item-prefix arithmetic remains distinct from unknown client shop-price arithmetic.

@@ -24,7 +24,7 @@ internal sealed partial class PlayerAuthority
     {
         foreach (RuntimePlayerMember member in membership.Members)
         {
-            if (member.IsDead) membership.TrySetTalkNpc(member.Connection, TerrariaNpcTalkCodec.NoNpc);
+            if (member.IsDead) TrySetTalkNpc(member.Connection, TerrariaNpcTalkCodec.NoNpc);
             if (member.ItemAnimation <= 0 || !member.TryAdvanceRevision()) continue;
             int decrement = 1;
             if ((member.ControlFlags & (1 << 5)) == 0 &&

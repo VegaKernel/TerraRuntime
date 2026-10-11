@@ -240,6 +240,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         Changed(playerSlot);
         items.AsSpan(playerSlot * InventorySlotCount, InventorySlotCount).Clear();
         ClearOwnedQuantities(playerSlot);
+        ClearShopBanks(playerSlot);
         fundedQuantities.AsSpan(playerSlot * InventorySlotCount, InventorySlotCount).Clear();
         coinFundedValues.AsSpan(playerSlot * InventorySlotCount, InventorySlotCount).Clear();
     }

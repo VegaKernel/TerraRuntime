@@ -15,6 +15,7 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
     private readonly TState state;
     private readonly Action<TState, TCommand> applyCommand;
     private readonly Action<TState> update;
+    private readonly Func<TState, GameCommandSourceId, TCommand, bool>? canApplyCommand;
     private readonly GameLoopOptions options;
     private readonly Channel<QueuedCommand> commands;
     private readonly ConcurrentDictionary<GameCommandSourceId, SourcePendingCounter> pendingSourceCommands = new();
@@ -55,11 +56,13 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
         TState state,
         Action<TState, TCommand> applyCommand,
         Action<TState> update,
-        GameLoopOptions? options = null)
+        GameLoopOptions? options = null,
+        Func<TState, GameCommandSourceId, TCommand, bool>? canApplyCommand = null)
     {
         this.state = state ?? throw new ArgumentNullException(nameof(state));
         this.applyCommand = applyCommand ?? throw new ArgumentNullException(nameof(applyCommand));
         this.update = update ?? throw new ArgumentNullException(nameof(update));
+        this.canApplyCommand = canApplyCommand;
         this.options = options ?? new GameLoopOptions();
         this.options.Validate();
 
@@ -276,6 +279,13 @@ public sealed class AuthoritativeGameLoop<TState, TCommand> : IDisposable
                 continue;
             }
 
+            // Retain the bounded queue head and its pending accounting. A blocked
+            // source is visited once in this drain; other source queues still run.
+            if (canApplyCommand is not null && !canApplyCommand(state, sourceQueue.Source, sourceQueue.Commands.Peek().Command))
+            {
+                throttledSources.Add(sourceQueue);
+                continue;
+            }
             QueuedCommand queued = sourceQueue.Commands.Dequeue();
             Interlocked.Decrement(ref pendingCommands);
             ReleaseSourcePendingSlot(queued.Source, queued.SourcePending);

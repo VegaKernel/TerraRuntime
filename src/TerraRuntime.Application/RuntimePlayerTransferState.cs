@@ -19,6 +19,14 @@ internal sealed record RuntimePlayerTransferState(
     bool MouseItemNormalized = false)
 {
     internal bool OwnsManaMaximum { get; init; }
+    internal RuntimePlayerInventoryItem[] ShopBankInventory { get; init; } = new RuntimePlayerInventoryItem[160];
+    internal long[] FundedShopBankCopper { get; init; } = new long[160];
+    internal short[] FundedShopBankQuantities { get; init; } = new short[160];
+    internal short[] OwnedShopBankQuantityCaps { get; init; } = UnknownShopBankCaps();
+    private static short[] UnknownShopBankCaps()
+    {
+        var caps = new short[800]; Array.Fill(caps, (short)-1); return caps;
+    }
     internal long[] FundedInventoryCoinValues { get; init; } = new long[VanillaPlayerItemSlotCatalog.InventoryCount];
     internal short[] FundedInventoryQuantities { get; init; } = new short[VanillaPlayerItemSlotCatalog.InventoryCount];
     internal OwnedInventoryQuantity1458[] OwnedInventoryQuantities { get; init; } = [];

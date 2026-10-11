@@ -8,6 +8,8 @@ internal sealed record PlayerEquipmentRuntimeCommand(
     ConnectionHandle Connection,
     PlayerEquipmentCommitRequest Request) : RuntimeCommand;
 
+internal sealed record PlayerInventorySyncCompleteRuntimeCommand(ConnectionHandle Connection) : RuntimeCommand;
+
 internal sealed class RuntimePlayerEquipmentIngress : IPlayerEquipmentIngress
 {
     private readonly IGameCommandIngress<RuntimeCommand> _ingress;
@@ -17,6 +19,10 @@ internal sealed class RuntimePlayerEquipmentIngress : IPlayerEquipmentIngress
         ArgumentNullException.ThrowIfNull(ingress);
         _ingress = ingress;
     }
+
+    public bool TryPostInventorySyncComplete(ConnectionHandle connection) =>
+        connection.IsAssigned && _ingress.TryPost(connection.Source,
+            new PlayerInventorySyncCompleteRuntimeCommand(connection));
 
     public bool TryPost(ConnectionHandle connection, in PlayerEquipmentCommitRequest request)
     {

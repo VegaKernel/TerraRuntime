@@ -27,6 +27,7 @@ internal sealed partial class ServerRuntimeState
         if (_runtime.WorldTiles is { } healthTiles)
             _runtime.ServerPlayers?.TickHealthContext(healthTiles);
         if (!remotePlayerPhase) _runtime.Players.TickItemAnimation();
+        _runtime.Players.TickShopJournalWork();
         _runtime.Players.TickPlayerLuck();
         _runtime.ServerPlayers?.TickItemAnimation();
         // Player.UpdateLifeRegen and lava collision precede movement. Vampire OnFire and unrepresented

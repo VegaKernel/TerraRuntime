@@ -19,6 +19,7 @@ internal sealed class TownNpcAuthority
     private const int MaxPlayerSlots = byte.MaxValue + 1;
 
     private readonly PlayerAuthority players;
+    private readonly RuntimeNpcStore npcs;
     private readonly RuntimeTownNpcStateStore? townNpcs;
     private readonly RuntimeTownNpcRescueService1458? rescue;
     private readonly RuntimePurificationPowderNpcInteraction1458? purificationPowderInteractions;
@@ -69,6 +70,7 @@ internal sealed class TownNpcAuthority
         RuntimeTownSocialWorld1458? townSocialWorldFacts = null)
     {
         this.players = players ?? throw new ArgumentNullException(nameof(players));
+        this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
         this.serverPlayers = serverPlayers;
         this.npcStatus = npcStatus ?? new RuntimeNpcBuffStatus1458(npcs);
         ownsStatus = npcStatus is null;
@@ -97,7 +99,7 @@ internal sealed class TownNpcAuthority
                 townSpawnWorldFacts?.InfectedSeed ?? false)
             : null;
         commerce = worldTiles is not null && townCommerceWorldFacts is RuntimeTownCommerceWorldFacts1458 commerceFacts
-            ? new RuntimeTownCommerceResolver1458(worldTiles, townNpcs, npcs, in commerceFacts)
+            ? new RuntimeTownCommerceResolver1458(worldTiles, townNpcs, npcs, in commerceFacts, this.npcStatus)
             : null;
         combat = worldTiles is not null &&
             townNpcs is not null
@@ -301,7 +303,8 @@ internal sealed class TownNpcAuthority
                     worldClock,
                     out RuntimeTownShopSession1458 session))
             {
-                players.TrySetTownShopSession(connection, session);
+                if (players.TrySetTownShopSession(connection, session))
+                    players.TryBindTownShopQuote(connection, session, npcs);
             }
         }
 

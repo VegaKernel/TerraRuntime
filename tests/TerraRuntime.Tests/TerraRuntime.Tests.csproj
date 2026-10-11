@@ -482,4 +482,14 @@
     <EmbeddedResource Include="Fixtures/channelled-magic-prefix-configured-official-1458.json.gz" LogicalName="MagicPrefixPhase1458" />
     <EmbeddedResource Include="Fixtures/channelled-magic-prefix-shoot-configured-official-1458.json.gz" LogicalName="MagicPrefixShoot1458" />
   </ItemGroup>
+
+  <!-- Root reviewed source-backed NPC shop custody resources. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/shop-connected-original-1458.json.gz" LogicalName="ShopConnectedOriginal1458" />
+    <EmbeddedResource Include="Fixtures/shop-wallet-original-1458.json.gz" LogicalName="ShopWallet1458" />
+    <EmbeddedResource Include="Fixtures/shop-ui-original-1458.json.gz" LogicalName="ShopUi1458" />
+    <EmbeddedResource Include="Fixtures/shop-value-metadata-original-1458.json.gz" LogicalName="ShopValueMetadata1458" />
+    <EmbeddedResource Include="Fixtures/discount-equipment-latch-configured-official-1458.json.gz" LogicalName="DiscountEquipmentPhaseSource1458" />
+    <EmbeddedResource Include="Fixtures/npc-shop-vendor-status-official-1458.json.gz" LogicalName="NpcShopVendorStatus1458" />
+  </ItemGroup>
 </Project>

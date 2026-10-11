@@ -20,12 +20,23 @@ internal sealed partial class PlayerAuthority
         transferProfiles.Clear(connection);
 
         if (!membership.TryRemove(connection, out _))
+        {
+            disconnect.Completion?.TrySetResult(false);
             return;
-        ResetNpcRawSlot(connection.Player);
-
-        DisconnectedPlayers++;
-        chestCommands?.ReleasePlayer(connection);
-        events?.PlayerDisconnected(connection);
+        }
+        try
+        {
+            ResetNpcRawSlot(connection.Player);
+            DisconnectedPlayers++;
+            chestCommands?.ReleasePlayer(connection);
+            events?.PlayerDisconnected(connection);
+        }
+        finally
+        {
+            // The exact actor has already been removed, including when an observer
+            // throws. Preserve that observer exception while completing cleanup.
+            disconnect.Completion?.TrySetResult(true);
+        }
     }
 
     private void ApplyPlayerTransferDetach(PlayerTransferDetachRuntimeCommand command)
@@ -37,6 +48,14 @@ internal sealed partial class PlayerAuthority
             return;
         }
 
+        var bankItems = new RuntimePlayerInventoryItem[160];
+        var bankCopper = new long[160];
+        if (!this.inventory.TryCaptureShopBanks(connection, bankItems, bankCopper) ||
+            !this.inventory.TryCaptureShopBankOwnership(connection, out var bankQuantities, out var bankCaps))
+        {
+            command.Completion.TrySetResult(null);
+            return;
+        }
         var funded = this.inventory.CaptureFundedQuantities(connection);
         var coinValues = this.inventory.CaptureFundedCoinValues(connection);
         var quantityCaps = this.inventory.CaptureOwnedQuantities(connection);
@@ -61,7 +80,7 @@ internal sealed partial class PlayerAuthority
             buffTypes,
             player.GodMode,
             mouseItemNormalized)
-        { FundedInventoryCoinValues = coinValues, FundedInventoryQuantities = funded, OwnedInventoryQuantities = quantityCaps, OwnsManaMaximum = player.OwnsManaMaximum, ItemPhase = player.ItemPhase, PhysicsPhase = player.PhysicsPhase,
+        { ShopBankInventory = bankItems, FundedShopBankCopper = bankCopper, FundedShopBankQuantities = bankQuantities, OwnedShopBankQuantityCaps = bankCaps, FundedInventoryCoinValues = coinValues, FundedInventoryQuantities = funded, OwnedInventoryQuantities = quantityCaps, OwnsManaMaximum = player.OwnsManaMaximum, ItemPhase = player.ItemPhase, PhysicsPhase = player.PhysicsPhase,
           BuffState = transferProfiles.CaptureBuffState(connection) };
 
         membership.ClearPending(connection);
@@ -147,13 +166,18 @@ internal sealed partial class PlayerAuthority
         ConnectionHandle connection = command.Connection;
         RuntimePlayerTransferState transfer = command.Transfer;
         // Unknown imported clocks stay unknown; malformed represented clocks are not constructor facts.
-        if (transfer.ItemPhase is { ToolTime: < 0 } or { AttackCD: < 0 } ||
+        if (transfer.ItemPhase is { ClientUiPriceArithmeticMask: > 3 } or { ShopDiscountStates: > 15 } or { ToolTime: < 0 } or { AttackCD: < 0 } ||
             (transfer.ItemPhase?.MagicPayment is { } importedPayment && (!importedPayment.IsValid || !transfer.OwnsManaMaximum)) ||
             (transfer.ItemPhase?.DerivedCombat is { } derivedCombat && !IsValidDerivedCombat(in derivedCombat)))
         {
             command.Completion.TrySetResult(false);
             return;
         }
+        // Destination membership has no source town session. Retain possible open
+        // latches while adding the closed alternatives before any owner writes;
+        // this is a transfer ownership boundary, not a claimed UI-close packet.
+        RuntimePlayerItemPhase1458? transferredPhase = transfer.ItemPhase is { } importedPhase
+            ? importedPhase.CloseShopUiUnknownContexts() : null;
         if (transfer.Player.DerivedLifeMax is < 0 || transfer.Player.BaseLifeMax is < 0 or > short.MaxValue)
         {
             command.Completion.TrySetResult(false);
@@ -182,7 +206,9 @@ internal sealed partial class PlayerAuthority
             transfer.Inventory.Length != VanillaPlayerItemSlotCatalog.InventoryCount ||
             !RuntimePlayerInventoryStore.AreValidFundedQuantities(transfer.FundedInventoryQuantities, transfer.Inventory) ||
             !RuntimePlayerInventoryStore.AreValidFundedCoinValues(transfer.FundedInventoryCoinValues, transfer.Inventory) ||
-            inventory.Serial >= ulong.MaxValue - 4 ||
+            !RuntimePlayerInventoryStore.AreValidShopBanks(transfer.ShopBankInventory, transfer.FundedShopBankCopper) ||
+            !RuntimePlayerInventoryStore.AreValidShopBankOwnership(transfer.ShopBankInventory, transfer.FundedShopBankQuantities, transfer.OwnedShopBankQuantityCaps) ||
+            inventory.Serial >= ulong.MaxValue - 5 ||
             transfer.OwnedInventoryQuantities is null ||
             !RuntimePlayerInventoryStore.AreValidOwnedQuantities(transfer.OwnedInventoryQuantities, transfer.Inventory) ||
             !inventory.CanAttachOwnedQuantities(transfer.OwnedInventoryQuantities.Length) ||
@@ -204,6 +230,8 @@ internal sealed partial class PlayerAuthority
 
         inventory.AdoptOwnedQuantities(connection, transfer.OwnedInventoryQuantities);
         inventory.AdoptFundedQuantities(connection, transfer.FundedInventoryQuantities, transfer.FundedInventoryCoinValues);
+        if (!inventory.TryAdoptShopBanks(connection, transfer.ShopBankInventory, transfer.FundedShopBankCopper, transfer.FundedShopBankQuantities, transfer.OwnedShopBankQuantityCaps))
+            throw new InvalidOperationException("Validated bank transfer changed during adoption.");
         PlayerStateSnapshot previous = transfer.Player;
         // TerrariaServer 1.4.5.8 Player.Spawn_SetPosition treats SpawnX/SpawnY as the floor tile,
         // not as the player's top-left pixel position. Keep the authoritative snapshot aligned with the exact
@@ -248,7 +276,7 @@ internal sealed partial class PlayerAuthority
             Mana = previous.Mana,
             MaxMana = previous.MaxMana,
             OwnsManaMaximum = transfer.OwnsManaMaximum,
-            ItemPhase = transfer.ItemPhase is { } phase
+            ItemPhase = transferredPhase is { } phase
                 ? phase with { ManaCrystalIntent = null, Selected = phase.Selected with { Animation = preservePosition && !dead ? previous.ItemAnimation ?? 0 : 0 },
                     MagicPayment = phase.MagicPayment is { } payment ? payment with
                     { EligibleBirth = false, BirthConsumed = true, AwaitingPhase = false, Refill = null } : null }

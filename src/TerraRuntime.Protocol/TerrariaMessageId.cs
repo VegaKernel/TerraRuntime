@@ -69,6 +69,8 @@ public enum TerrariaMessageId : byte
     NpcKillAchievement = 97,
     NotifyProgressionEvent = 98,
     PlayerLuckFactors = 134,
+    // Main.TrySyncingMyPlayer 1.4.5.8 sends this empty frame after all changed inventory/bank images.
+    ClientSyncedInventory = 138,
     WorldItemRemove = 151,
 
     /// <summary>

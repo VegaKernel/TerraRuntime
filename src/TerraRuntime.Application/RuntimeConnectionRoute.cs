@@ -312,11 +312,12 @@ internal sealed class RuntimeConnectionRoute :
                 using var cancellation = new CancellationTokenSource(timeout ?? DefaultTransferTimeout);
                 try
                 {
-                    RuntimePlayerTransferTransaction? detached = RuntimePlayerTransferTransaction.Detach(
-                        active.Runtime,
-                        new ConnectionHandle(source, player),
-                        cancellation.Token);
-                    detached?.Discard();
+                    // Final socket teardown removes the exact occupation through
+                    // the System lifecycle barrier; it cannot depend on whether
+                    // an abortable transfer can normalize a held cursor.
+                    _ = active.Runtime.DisconnectIngress.DisconnectAsync(
+                            new ConnectionHandle(source, player), cancellation.Token)
+                        .AsTask().GetAwaiter().GetResult();
                 }
                 catch (Exception exception) when (exception is OperationCanceledException or InvalidOperationException)
                 {

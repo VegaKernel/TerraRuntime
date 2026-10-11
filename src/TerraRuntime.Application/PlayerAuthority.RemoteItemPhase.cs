@@ -55,6 +55,8 @@ internal sealed partial class PlayerAuthority
                 return false;
             plans[i] = new(member, member.CaptureSnapshot(), member.ItemPhase, member.PhysicsPhase,
                 appearance, equipment, buffs, buffState, member.GodMode, member.OwnsManaMaximum);
+            membership.TryGetTownShopSession(member.Connection.Player, out var shopSession);
+            plans[i].BeforeShopSession = shopSession;
             if (!inventory.TryCopyInventory(member.Connection, plans[i].InventoryBefore)) return false;
         }
         foreach (var plan in plans)
@@ -108,7 +110,9 @@ internal sealed partial class PlayerAuthority
         foreach (var plan in plans)
         {
             var member = plan.Member;
-            if (!membership.TryGet(member.Connection, out var current) || !ReferenceEquals(current, member) ||
+            membership.TryGetTownShopSession(member.Connection.Player, out var shopSession);
+            if (!ReferenceEquals(shopSession, plan.BeforeShopSession) ||
+                !membership.TryGet(member.Connection, out var current) || !ReferenceEquals(current, member) ||
                 member.CaptureSnapshot() != plan.Before || member.ItemPhase != plan.BeforeItem ||
                 member.PhysicsPhase != plan.BeforePhysics || member.GodMode != plan.GodMode ||
                 member.OwnsManaMaximum != plan.BeforeOwnsManaMaximum ||
@@ -131,6 +135,7 @@ internal sealed partial class PlayerAuthority
             transferProfiles.TryAdoptBuffState(member.Connection, plan.BeforeBuffs, plan.Buffs);
             member.TryAdvanceRemotePhaseRevision();
             member.ItemPhase = plan.Item;
+            ObserveShopPricingPhase(member);
             if (plan.Item?.MagicPayment is not null) member.OwnsManaMaximum = true;
             member.PhysicsPhase = plan.Physics;
             member.ItemAnimation = plan.Item!.Value.Selected.Animation;
@@ -199,7 +204,7 @@ internal sealed partial class PlayerAuthority
         VanillaUnifiedRandom1458 random)
     {
         var member = plan.Member;
-        if (plan.Item is not { } item || plan.Physics is not { } physical ||
+        if (plan.Item is not { } item || (item.ShopDiscountStates & ~15) != 0 || item.ClientUiPriceArithmeticMask > 3 || plan.Physics is not { } physical ||
             item.DeadTime is < 0 or >= int.MaxValue || item.RespawnTimer < 0 || item.ManaPotionDelay < 0 ||
             member.NpcHealth is not { SourceProfileKnown: true } || member.HasMount || plan.GodMode ||
             (plan.Appearance?.ConsumableUnlockFlags ?? 0) != 0 ||
@@ -318,7 +323,9 @@ internal sealed partial class PlayerAuthority
             MagicDamage = magicDamage
         };
         if (!IsValidDerivedCombat(in derivedCombat)) return false;
-        item = item with { DerivedCombat = derivedCombat };
+        // UpdateEquips precedes this writer in original Player.Update. An open
+        // shop retains the prior availability even when functional gear changes.
+        item = (item with { DerivedCombat = derivedCombat }).AdvanceShopDiscount(derivedCombat.DiscountEquipped);
         if (plan.Maximum is not { } maximum || plan.HealthWorld is not { } capturedHealthWorld ||
             !TryPlanNpcHealth(member, maximum, false, false, out var health, selectedItemPhase: true,
                 selectedHealthInputs: (capturedHealthWorld, plan.Grappling)) ||
@@ -519,6 +526,7 @@ internal sealed partial class PlayerAuthority
         PlayerAppearanceCommitRequest? appearance, PlayerEquipmentCommitRequest[] equipment,
         BuffTypeId[] buffTypes, PlayerBuffState buffs, bool godMode, bool ownsManaMaximum)
     {
+        internal RuntimeTownShopSession1458? BeforeShopSession { get; set; }
         internal RuntimePlayerInventoryItem[] InventoryBefore { get; } = new RuntimePlayerInventoryItem[VanillaPlayerItemSlotCatalog.InventoryCount];
         internal List<RemotePhaseInventoryMutation> InventoryMutations { get; } = [];
         internal bool PublishMana { get; set; }

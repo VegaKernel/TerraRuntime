@@ -13,7 +13,10 @@ internal readonly record struct RuntimeNpcBuffSlot1458(ushort Type, int Duration
 internal struct RuntimeNpcBuffSlots1458 { private RuntimeNpcBuffSlot1458 element; }
 internal readonly record struct RuntimeNpcBuffPlan1458(NpcSnapshot Expected, ulong StatusRevision,
     RuntimeNpcBuffSlots1458 Slots, PlayerDebuffSnapshot1458 Flags, bool Stinky, bool Expired,
-    int LifeAfter, int? CounterAfter, int DotDamage);
+    int LifeAfter, int? CounterAfter, int DotDamage)
+{
+    internal bool LoveStruck { get; init; }
+}
 
 // One generation-owned source NPC.maxBuffs table. Preview never emits54, ages live slots or draws RNG.
 internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Action<NpcHandle>? buffListChanged = null)
@@ -29,6 +32,7 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
         internal PlayerDebuffSnapshot1458 PreviousFlags;
         internal bool Stinky;
         internal bool PreviousStinky;
+        internal bool LoveStruck;
         internal RuntimeNpcStinkyVisualOffer1458 VisualOffer;
         internal int DefinitionType;
         internal int DefinitionNetId;
@@ -53,6 +57,15 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
             type == VanillaNpcIds.GolemFistLeft.Value || type == VanillaNpcIds.GolemFistRight.Value)) return default;
         if (plan.Flags.Poisoned) _ = random.Next(30);
         if (plan.Flags.OnFire && random.Next(4) < 3) _ = random.Next(4);
+        // NPC.UpdateNPC_BuffApplyVFX119 evaluates arguments even when dedicated Gore.NewGore returns600.
+        if (plan.LoveStruck && random.Next(5) == 0 &&
+            VanillaNpcDefinitionCatalog.TryGet(plan.Expected.TypeIdentity, plan.Expected.NetIdentity, out var definition) &&
+            definition.TryResolveHitbox(plan.Expected.Simulation, out var body))
+        {
+            _ = random.Next(21); _ = random.Next(21);
+            _ = random.Next(body.Width + 1); _ = random.Next(body.Height + 1);
+            _ = random.Next(3); _ = random.Next(81);
+        }
         return plan.Stinky ? PlanVisualOffer(random) : default;
     }
 
@@ -113,7 +126,8 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
             // Town death chat/tombstones remain unowned. Reject before slots,54,counters or RNG change.
             if (life <= 0 && !allowLethal) return false;
         }
-        plan = new(before, entry.Revision, slots, flags, stinky, expired, life, counter, damage);
+        plan = new(before, entry.Revision, slots, flags, stinky, expired, life, counter, damage)
+        { LoveStruck = ReadLoveStruck(in entry.Slots) };
         return true;
     }
 
@@ -129,7 +143,8 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
             committed.Simulation.LifeRegenCounter != plan.CounterAfter) return false;
         ref Entry entry = ref entries[committed.Handle.Slot];
         if (entry.Handle != committed.Handle || entry.Revision != plan.StatusRevision || entry.Revision == ulong.MaxValue) return false;
-        entry.Slots = plan.Slots; entry.Flags = plan.Flags; entry.Stinky = plan.Stinky; entry.Revision++;
+        entry.Slots = plan.Slots; entry.Flags = plan.Flags; entry.Stinky = plan.Stinky;
+        entry.LoveStruck = plan.LoveStruck; entry.Revision++;
         return true;
     }
 
@@ -145,8 +160,10 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
     internal bool TryApply(NpcHandle handle, BuffTypeId type, int duration)
     {
         if (duration is < 0 or > short.MaxValue || !EnsureGeneration(handle) || !npcs.TryGet(handle, out var npc) ||
-            type != VanillaBuffIds.Stinky && type != VanillaBuffIds.Poisoned && type != VanillaBuffIds.OnFire) return false;
-        if (type != VanillaBuffIds.Stinky && !IsDotResident(npc.Type)) return false;
+            type != VanillaBuffIds.Stinky && type != VanillaBuffIds.Poisoned && type != VanillaBuffIds.OnFire &&
+            type.Value != LoveStruckBuffType) return false;
+        if (type.Value == LoveStruckBuffType && !HasVerifiedShoppingStatus(npc.Type)) return false;
+        if (type != VanillaBuffIds.Stinky && type.Value != LoveStruckBuffType && !IsDotResident(npc.Type)) return false;
         if ((npc.TypeIdentity == VanillaNpcIds.BlueSlime || npc.TypeIdentity == VanillaNpcIds.LavaSlime) &&
             (type == VanillaBuffIds.Poisoned || type == VanillaBuffIds.OnFire && npc.TypeIdentity == VanillaNpcIds.LavaSlime))
             return true;
@@ -163,7 +180,7 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
             }
             if (free < 0 && entry.Slots[i].Type == 0) free = i;
         }
-        // All three admitted identities are source debuffs; a full all-debuff table has no victim.
+        // All admitted identities are source debuffs; a full all-debuff table has no victim.
         if (free < 0) return true;
         entry.Slots[free] = new((ushort)type.Value, duration); entry.Revision++; return true;
     }
@@ -242,6 +259,23 @@ internal sealed partial class RuntimeNpcBuffStatus1458(RuntimeNpcStore npcs, Act
     {
         count = 0;
         return npcs.TryGetActive(slot, out var npc) && TryCopyWireBuffs(npc.Handle, destination, out count);
+    }
+    // Original NPC119/ShopHelper capture currently covers these eight vendors. Keep other vendors explicit.
+    private const int LoveStruckBuffType = 119;
+    private static bool HasVerifiedShoppingStatus(int type) => type is 17 or 19 or 38 or 108 or 160 or 208 or 368 or 453;
+    private static bool ReadLoveStruck(in RuntimeNpcBuffSlots1458 slots)
+    {
+        for (int i = 0; i < Capacity; i++)
+            if (slots[i].Type == LoveStruckBuffType && slots[i].Duration > 0) return true;
+        return false;
+    }
+    internal bool TryGetShoppingLoveStruck(NpcHandle handle, out bool loveStruck)
+    {
+        loveStruck = false;
+        if (!EnsureGeneration(handle) || !HasVerifiedShoppingStatus(entries[handle.Slot].DefinitionType)) return false;
+        // Read the last committed flag, including duration1 after physical expiry until the next NPC phase.
+        loveStruck = entries[handle.Slot].LoveStruck;
+        return true;
     }
     private static bool IsDotResident(int type) => type == VanillaNpcIds.Zombie.Value ||
         type == VanillaNpcIds.Merchant.Value ||

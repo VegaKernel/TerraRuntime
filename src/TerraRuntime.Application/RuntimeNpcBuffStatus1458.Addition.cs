@@ -6,7 +6,10 @@ namespace TerraRuntime.Application;
 internal readonly record struct RuntimeNpcBuffAdditionCheckpoint1458(NpcHandle Handle, ulong Revision,
     RuntimeNpcBuffSlots1458 Slots, PlayerDebuffSnapshot1458 Flags, PlayerDebuffSnapshot1458 PreviousFlags,
     bool Stinky, bool PreviousStinky, RuntimeNpcStinkyVisualOffer1458 VisualOffer,
-    int DefinitionType, int DefinitionNetId, bool TorchImmunity);
+    int DefinitionType, int DefinitionNetId, bool TorchImmunity)
+{
+    internal bool LoveStruck { get; init; }
+}
 
 internal sealed class RuntimeNpcBuffAdditionPlan1458
 {
@@ -147,11 +150,13 @@ internal sealed partial class RuntimeNpcBuffStatus1458
         return checkpoint.Handle == expected.Handle && checkpoint.Revision == expected.Revision &&
             checkpoint.Flags == expected.Flags && checkpoint.PreviousFlags == expected.PreviousFlags &&
             checkpoint.Stinky == expected.Stinky && checkpoint.PreviousStinky == expected.PreviousStinky &&
+            checkpoint.LoveStruck == expected.LoveStruck &&
             checkpoint.VisualOffer == expected.VisualOffer && checkpoint.DefinitionType == expected.DefinitionType &&
             checkpoint.DefinitionNetId == expected.DefinitionNetId && checkpoint.TorchImmunity == expected.TorchImmunity;
     }
 
     private static RuntimeNpcBuffAdditionCheckpoint1458 CaptureAdditionCheckpoint(in Entry entry) =>
         new(entry.Handle, entry.Revision, entry.Slots, entry.Flags, entry.PreviousFlags, entry.Stinky,
-            entry.PreviousStinky, entry.VisualOffer, entry.DefinitionType, entry.DefinitionNetId, entry.TorchImmunity);
+            entry.PreviousStinky, entry.VisualOffer, entry.DefinitionType, entry.DefinitionNetId, entry.TorchImmunity)
+        { LoveStruck = entry.LoveStruck };
 }

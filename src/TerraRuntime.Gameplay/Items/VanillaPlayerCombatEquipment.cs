@@ -32,6 +32,11 @@ public readonly record struct VanillaPlayerCombatSnapshot(
     public bool LavaRose { get; init; }
     public bool WaterWalk { get; init; }
 
+    public bool DiscountEquipped { get; init; }
+    public bool GoldRing { get; init; }
+    public bool HasLuckyCoin { get; init; }
+    public bool HasLuckLuckyCoin { get; init; }
+
     public bool ManaFlower { get; init; }
     public float ManaCostMultiplier { get; init; } = 1f;
 
@@ -261,6 +266,18 @@ public static partial class VanillaPlayerCombatEquipmentCatalog
     {
         switch (type.Value)
         {
+            case 854: // Player.ApplyEquipFunctional: Discount Card.
+                snapshot = snapshot with { DiscountEquipped = true };
+                break;
+            case 3033: // Gold Ring has no discount writer.
+                snapshot = snapshot with { GoldRing = true };
+                break;
+            case 3034: // Coin Ring has the two lucky-coin flags, but no discount.
+                snapshot = snapshot with { GoldRing = true, HasLuckyCoin = true, HasLuckLuckyCoin = true };
+                break;
+            case 3035: // Greedy Ring combines all four source flags.
+                snapshot = snapshot with { GoldRing = true, HasLuckyCoin = true, HasLuckLuckyCoin = true, DiscountEquipped = true };
+                break;
             case 555: // ApplyEquipFunctional owns a flag; UpdateEquips subtracts once.
                 snapshot = snapshot with { ManaFlower = true };
                 break;

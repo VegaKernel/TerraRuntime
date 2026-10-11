@@ -25,7 +25,8 @@ public enum PlayerBootstrapStopReason : byte
     DynamicEntityBootstrapFailure = 13,
     MalformedChat = 14,
     SectionWorkRateLimited = 15,
-    DuplicatePlayerName = 16
+    DuplicatePlayerName = 16,
+    MalformedInventorySync = 17
 }
 
 /// <summary>
@@ -213,6 +214,9 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
             case TerrariaMessageId.SyncEquipment:
                 return HandlePlayerEquipment(frame);
 
+            case TerrariaMessageId.ClientSyncedInventory:
+                return HandleInventorySyncComplete(in frame);
+
             case TerrariaMessageId.RequestWorldData:
                 return HandleWorldRequest(frame);
 
@@ -364,6 +368,18 @@ public sealed class PlayerBootstrapFrameSink : ITerrariaFrameSink, IDisposable
                 : Stop(PlayerBootstrapStopReason.GameIngressBackpressure);
         }
 
+        return TerrariaFrameSinkResult.Continue;
+    }
+
+    private TerrariaFrameSinkResult HandleInventorySyncComplete(in TerrariaFrame frame)
+    {
+        if (!frame.Payload.IsEmpty) return Stop(PlayerBootstrapStopReason.MalformedInventorySync);
+        if (_awaitingWorldTransferLanding || _session!.State != PlayerJoinState.Playing)
+            return TerrariaFrameSinkResult.Continue;
+        if (_equipmentIngress is null)
+            return _inner?.OnFrame(in frame) ?? TerrariaFrameSinkResult.Continue;
+        // Same authenticated source preserves ordering with preceding5. A missing delimiter never authorizes a grant.
+        _ = _equipmentIngress.TryPostInventorySyncComplete(new ConnectionHandle(_source, _session.Handle));
         return TerrariaFrameSinkResult.Continue;
     }
 

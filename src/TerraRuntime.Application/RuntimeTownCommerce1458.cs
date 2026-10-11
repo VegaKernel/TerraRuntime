@@ -310,7 +310,12 @@ internal sealed record RuntimeTownShopSession1458(
     bool MoodRuined,
     VanillaTownSceneMetrics1458 Scene,
     VanillaTownShopEntry1458[] Offers,
-    RuntimeTownCommerceMissingFacts1458 MissingFacts);
+    RuntimeTownCommerceMissingFacts1458 MissingFacts)
+{
+    internal RuntimeTownShopQuote1458? Quote { get; set; }
+    internal NpcHandle VendorHandle { get; init; }
+    internal RuntimeNpcStore? VendorStore { get; init; }
+}
 
 /// <summary>
 /// Builds the server-side mirror of Player.SetTalkNPC -> ShopHelper.GetShoppingSettings and Chest.SetupShop.
@@ -323,13 +328,16 @@ internal sealed class RuntimeTownCommerceResolver1458
     private readonly RuntimeNpcStore npcs;
     private readonly RuntimeTownCommerceWorldFacts1458 world;
     private readonly VanillaTownSceneMetricsScanner1458 sceneScanner;
+    private readonly RuntimeNpcBuffStatus1458? npcStatus;
 
     public RuntimeTownCommerceResolver1458(
         WorldTileStore tiles,
         RuntimeTownNpcStateStore? townNpcs,
         RuntimeNpcStore npcs,
-        in RuntimeTownCommerceWorldFacts1458 world)
+        in RuntimeTownCommerceWorldFacts1458 world,
+        RuntimeNpcBuffStatus1458? npcStatus = null)
     {
+        this.npcStatus = npcStatus;
         this.tiles = tiles ?? throw new ArgumentNullException(nameof(tiles));
         this.townNpcs = townNpcs;
         this.npcs = npcs ?? throw new ArgumentNullException(nameof(npcs));
@@ -448,11 +456,13 @@ internal sealed class RuntimeTownCommerceResolver1458
             MaxTilesX: tiles.Dimensions.WidthTiles,
             MaxTilesY: tiles.Dimensions.HeightTiles);
 
-        RuntimeTownCommerceMissingFacts1458 missing =
+        bool loveStruck = false;
+        bool ownedLoveStruck = npcStatus is not null && npcStatus.TryGetShoppingLoveStruck(vendor.Handle, out loveStruck);
+        RuntimeTownCommerceMissingFacts1458 missing = ownedLoveStruck ? RuntimeTownCommerceMissingFacts1458.None :
             RuntimeTownCommerceMissingFacts1458.LoveStruck;
         if (clock is null)
             missing |= RuntimeTownCommerceMissingFacts1458.LiveWeather;
-        VanillaTownHappinessResult1458 happiness = ResolveHappiness(npcSlot, npcType, in vendor, in scene);
+        VanillaTownHappinessResult1458 happiness = ResolveHappiness(npcSlot, npcType, in vendor, in scene, loveStruck);
         float priceAdjustment = happiness.PriceAdjustment;
         bool moodRuined = happiness.MoodRuined;
 
@@ -494,7 +504,7 @@ internal sealed class RuntimeTownCommerceResolver1458
             moodRuined,
             scene,
             offers,
-            missing);
+            missing) { VendorHandle = vendor.Handle, VendorStore = npcs };
         return true;
     }
 
@@ -502,12 +512,12 @@ internal sealed class RuntimeTownCommerceResolver1458
         short npcSlot,
         NpcTypeId npcType,
         in NpcSnapshot vendor,
-        in VanillaTownSceneMetrics1458 scene)
+        in VanillaTownSceneMetrics1458 scene, bool loveStruck)
     {
         if (world.RemixWorld || npcType.Value is 37 or 368 or 453 ||
             townNpcs is null || !townNpcs.TryGet(npcSlot, out WorldTownNpc town) || town.NetId != npcType.Value)
         {
-            return new VanillaTownHappinessResult1458(1f, false, 0, 0);
+            return new VanillaTownHappinessResult1458(loveStruck ? .9f : 1f, false, 0, 0);
         }
         if (!VanillaTownNpcFacts1458.TryGetHousingCategory(npcType, out int category) ||
             category == VanillaTownNpcFacts1458.PetHousingCategory)
@@ -562,7 +572,7 @@ internal sealed class RuntimeTownCommerceResolver1458
         float distanceFromHome = MathF.Sqrt(hx * hx + hy * hy);
         var happinessContext = new VanillaTownHappinessContext1458(
             RemixWorld: world.RemixWorld,
-            LoveStruck: false,
+            LoveStruck: loveStruck,
             Homeless: town.Homeless,
             DistanceFromHomeTiles: distanceFromHome,
             NpcsWithinHouse: house,

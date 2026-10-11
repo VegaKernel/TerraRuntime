@@ -55,6 +55,9 @@ internal sealed partial class RuntimePlayerInventoryStore
         return result.ToArray();
     }
 
+    private static bool IsValidOwnedQuantityMaximum(ItemTypeId type, int maximum) =>
+        maximum >= 0 && VanillaWorldItemAllocationCatalog1458.TryGet(type.Value, out var facts) && maximum <= facts.MaximumStack;
+
     internal static bool AreValidOwnedQuantities(ReadOnlySpan<OwnedInventoryQuantity1458> caps, ReadOnlySpan<RuntimePlayerInventoryItem> inventory)
     {
         if (inventory.Length != InventorySlotCount || caps.Length > InventorySlotCount * 5) return false;
@@ -63,7 +66,7 @@ internal sealed partial class RuntimePlayerInventoryStore
         foreach (var cap in caps)
         {
             int lane = QuantityLane(cap.ItemType);
-            if (cap.Slot is < 0 or >= InventorySlotCount || lane < 0 || cap.Maximum < 0 || (cap.Maximum > 0 && !VanillaDefinitionCatalog.IsValidKnownStack(cap.ItemType, cap.Maximum)) || seen[cap.Slot * 5 + lane]) return false;
+            if (cap.Slot is < 0 or >= InventorySlotCount || lane < 0 || cap.Maximum < 0 || !IsValidOwnedQuantityMaximum(cap.ItemType, cap.Maximum) || seen[cap.Slot * 5 + lane]) return false;
             if (inventory[cap.Slot].ItemType == cap.ItemType && inventory[cap.Slot].Stack > cap.Maximum) return false;
             seen[cap.Slot * 5 + lane] = true;
         }

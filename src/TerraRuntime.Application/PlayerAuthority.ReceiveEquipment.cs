@@ -87,8 +87,20 @@ internal sealed partial class PlayerAuthority
             return false;
         }
         byte normalized = checked((byte)resolution.Prefix.Value);
-        preparation = new(this, member, command.Connection, request with { Prefix = normalized }, random, before, after, inventorySlot);
+        request = request with { Prefix = normalized };
+        bool bankSlot = RuntimePlayerInventoryStore.TryGetShopBankOffset(request.SlotId, out _);
+        RuntimePlayerInventoryItem bankItem = default;
+        if (bankSlot && (!TryCaptureReceivedBankImage(in request, out bankItem) ||
+            !inventory.CanSetShopBankReport(command.Connection, request.SlotId, in bankItem))) return false;
+        preparation = new(this, member, command.Connection, request, random, before, after, inventorySlot, bankSlot, bankItem);
         return true;
+    }
+
+    private static bool TryCaptureReceivedBankImage(in PlayerEquipmentCommitRequest request,
+        out RuntimePlayerInventoryItem item)
+    {
+        var inventoryRequest = request with { SlotId = 58 };
+        return RuntimePlayerInventoryItem.TryFromNormalized(in inventoryRequest, out item) && item.IsCanonical;
     }
 
     internal sealed class ReceivedEquipmentPreparation
@@ -105,7 +117,8 @@ internal sealed partial class PlayerAuthority
         private readonly BuffTypeId[]? beforeBuffs;
         private readonly PlayerEquipmentCommitRequest[] afterEquipment;
         private readonly VanillaUnifiedRandom1458 random, before, after;
-        private readonly bool inventorySlot;
+        private readonly bool inventorySlot, bankSlot;
+        private readonly RuntimePlayerInventoryItem bankItem;
         private readonly VanillaItemPrefixWorld1458? prefixWorld;
         private PlayerStateSnapshot? acceptedPlayer;
         private RuntimePlayerItemPhase1458? acceptedPhase;
@@ -116,7 +129,7 @@ internal sealed partial class PlayerAuthority
         internal ReceivedEquipmentPreparation(PlayerAuthority owner, RuntimePlayerMember? member,
             ConnectionHandle connection, PlayerEquipmentCommitRequest request,
             VanillaUnifiedRandom1458 random, VanillaUnifiedRandom1458 before,
-            VanillaUnifiedRandom1458 after, bool inventorySlot)
+            VanillaUnifiedRandom1458 after, bool inventorySlot, bool bankSlot, RuntimePlayerInventoryItem bankItem)
         {
             this.owner = owner;
             this.member = member;
@@ -126,6 +139,8 @@ internal sealed partial class PlayerAuthority
             this.before = before;
             this.after = after;
             this.inventorySlot = inventorySlot;
+            this.bankSlot = bankSlot;
+            this.bankItem = bankItem;
             prefixWorld = owner.receivePrefixWorld;
             beforePlayer = member?.CaptureSnapshot();
             beforePhase = member?.ItemPhase;
@@ -156,7 +171,8 @@ internal sealed partial class PlayerAuthority
             random.HasSameState(before) && owner.membership.Serial == beforeMembership &&
             SameMember(beforePlayer, beforePhase, beforeInput) && ProfileCurrent(false) &&
             owner.inventory.Serial == beforeSerial && owner.inventory.CanAccept(connection) &&
-            owner.inventory.Serial < ulong.MaxValue - 1;
+            owner.inventory.Serial < ulong.MaxValue - 1 &&
+            (!bankSlot || owner.inventory.CanSetShopBankReport(connection, Request.SlotId, in bankItem));
 
         internal bool TryAdoptUnpublished()
         {
@@ -178,8 +194,11 @@ internal sealed partial class PlayerAuthority
             {
                 throw new InvalidOperationException("Admitted item owner changed.");
             }
+            if (bankSlot && !owner.inventory.TrySetShopBankReport(connection, request.SlotId, in bankItem))
+                throw new InvalidOperationException("Admitted bank owner changed.");
             random.CopyStateFrom(after);
             owner.AppliedEquipmentUpdates++;
+            owner.ObserveAcceptedBankCursorFirst(connection, in request);
             acceptedPlayer = member?.CaptureSnapshot();
             acceptedPhase = member?.ItemPhase;
             acceptedInput = member?.ProjectileUseInputRevision ?? 0;

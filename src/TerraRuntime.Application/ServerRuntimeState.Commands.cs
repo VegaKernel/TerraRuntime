@@ -11,6 +11,9 @@ namespace TerraRuntime.Application;
 
 internal sealed partial class ServerRuntimeState
 {
+    internal bool CanApplyCommand(GameCommandSourceId source, RuntimeCommand command) =>
+        _runtime.Players.CanApplyShopSource(source);
+
     public void Apply(RuntimeCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);

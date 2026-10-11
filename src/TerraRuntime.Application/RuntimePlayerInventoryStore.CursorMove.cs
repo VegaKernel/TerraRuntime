@@ -65,6 +65,20 @@ internal sealed partial class RuntimePlayerInventoryStore
         private bool adopted;
         private bool debitApplied;
         private ulong expectedStamp = stamp;
+        internal bool TryCaptureBankSource(out RuntimePlayerInventoryItem[] image, out short[] quantity,
+            out long[] copper)
+        {
+            image = []; quantity = []; copper = [];
+            if (!IsCurrent) return false;
+            image = before.ToArray(); quantity = funding.ToArray(); copper = coinFunding.ToArray();
+            return true;
+        }
+        internal bool TryConsumeForBank()
+        {
+            if (!IsCurrent) return false;
+            adopted = true;
+            return true;
+        }
         internal bool DebitApplied => debitApplied;
         internal bool CanEagerDebit => afterSlot.IsEmpty || (afterSlot.ItemType == before[slot].ItemType &&
             afterSlot.Prefix == before[slot].Prefix && afterSlot.Stack < before[slot].Stack);

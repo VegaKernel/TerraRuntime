@@ -304,7 +304,8 @@ public sealed partial class WorldRuntime : IDisposable
                 worldSave?.Tick();
                 RefreshWorldBootstrap();
             },
-            loopOptions);
+            loopOptions,
+            static (runtime, source, command) => runtime.CanApplyCommand(source, command));
 
         CommandIngress = new AuthoritativeCommandIngress<ServerRuntimeState, RuntimeCommand>(GameLoop);
         BotOperations = new RuntimeBotOperations(CommandIngress, BotTelemetry);

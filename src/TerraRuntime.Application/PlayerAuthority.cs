@@ -82,6 +82,9 @@ internal sealed partial class PlayerAuthority
             case PlayerEquipmentRuntimeCommand equipment:
                 ApplyPlayerEquipment(equipment);
                 return true;
+            case PlayerInventorySyncCompleteRuntimeCommand complete:
+                ApplyInventorySyncComplete(complete.Connection);
+                return true;
             case PlayerHealthRuntimeCommand health:
                 ApplyPlayerHealth(health);
                 return true;
@@ -398,8 +401,26 @@ internal sealed partial class PlayerAuthority
         return TryCaptureCombatSnapshot(member.Connection, out snapshot);
     }
 
-    public bool TrySetTalkNpc(ConnectionHandle connection, short npcSlot) =>
-        membership.TrySetTalkNpc(connection, npcSlot);
+    public bool TrySetTalkNpc(ConnectionHandle connection, short npcSlot)
+    {
+        if (!TerraRuntime.Protocol.Multiplicity.TerrariaNpcTalkCodec.IsValidNpcSlot(npcSlot) ||
+            !membership.TryGet(connection, out var member)) return false;
+        byte possiblePriceContexts = 0;
+        if (membership.TryGetTownShopSession(connection.Player, out var session) && session?.Quote is { } quote)
+        {
+            quote.TryCapturePossiblePriceContexts(out possiblePriceContexts);
+            if (npcSlot == TerraRuntime.Protocol.Multiplicity.TerrariaNpcTalkCodec.NoNpc &&
+                member.CursorMove?.Shop is { } journal)
+                quote.TryRetirePending(journal);
+            // Even without a pending receipt, a removed session cannot be rebound to revive this quote.
+            quote.Retire();
+        }
+        bool accepted = membership.TrySetTalkNpc(connection, npcSlot);
+        if (accepted && npcSlot == TerraRuntime.Protocol.Multiplicity.TerrariaNpcTalkCodec.NoNpc &&
+            member.ItemPhase is { } phase)
+            member.ItemPhase = phase.CloseShopUiUnknownContexts(possiblePriceContexts);
+        return accepted;
+    }
 
     public bool TryGetTalkNpc(PlayerHandle player, out short npcSlot) =>
         membership.TryGetTalkNpc(player, out npcSlot);
@@ -474,6 +495,7 @@ internal sealed partial class PlayerAuthority
     private void ApplyPlayerEquipment(PlayerEquipmentRuntimeCommand equipment)
     {
         PlayerEquipmentCommitRequest request = equipment.Request;
+        if (TryReconcileShopInventoryReport(equipment)) return;
         if (TryReconcileFavoriteCursorReturn(equipment)) return;
         if (TryReconcileOwnedCursorMove(equipment)) return;
         if (!inventory.CanAcceptOwnedQuantityReport(equipment.Connection, in request))
@@ -522,6 +544,15 @@ internal sealed partial class PlayerAuthority
             return;
         }
 
+        bool bankSlot = RuntimePlayerInventoryStore.TryGetShopBankOffset(request.SlotId, out _);
+        RuntimePlayerInventoryItem bankItem = default;
+        if (bankSlot && (!TryCaptureReceivedBankImage(in request, out bankItem) ||
+            !inventory.CanSetShopBankReport(equipment.Connection, request.SlotId, in bankItem)))
+        {
+            RejectedEquipmentUpdates++;
+            return;
+        }
+
         if (activePlayer is not null && !activePlayer.TryAdvanceRevision())
         {
             RejectedEquipmentUpdates++;
@@ -536,8 +567,11 @@ internal sealed partial class PlayerAuthority
 
         if (!inventorySlot && VanillaPlayerItemSlotCatalog.CanRelay(request.SlotId))
             transferProfiles.TrySetEquipment(equipment.Connection, in request);
+        if (bankSlot && !inventory.TrySetShopBankReport(equipment.Connection, request.SlotId, in bankItem))
+            throw new InvalidOperationException("Admitted bank owner changed.");
 
         AppliedEquipmentUpdates++;
+        ObserveAcceptedBankCursorFirst(equipment.Connection, in request);
         events?.PlayerEquipmentUpdated(equipment.Connection, in request);
     }
 
@@ -741,7 +775,7 @@ internal sealed partial class PlayerAuthority
         if (!player.TryAdvanceRevision())
             return;
 
-        membership.TrySetTalkNpc(player.Connection, TerraRuntime.Protocol.Multiplicity.TerrariaNpcTalkCodec.NoNpc);
+        TrySetTalkNpc(player.Connection, TerraRuntime.Protocol.Multiplicity.TerrariaNpcTalkCodec.NoNpc);
         player.Team = request.Team;
         VanillaPlayerSpawnPosition1458.FromFloorTile(request.SpawnX, request.SpawnY, out float respawnPositionX, out float respawnPositionY);
         player.PositionX = respawnPositionX;
