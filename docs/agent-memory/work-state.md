@@ -1,5 +1,10 @@
 # Work state
 
+## Final concurrent merge verified, 2026-10-11
+
+The first push was safely rejected because concurrent main advanced to8285407a. Merged as2613f2f1; only three memory files conflicted, resolved by preserving both potion and FinalCleanup records. Final merged Release build WAE0/0; fast24954/24955 and focused148/149 pass, failed/errors0, one known liquid skip. Docs103pairs/245files and diff checks pass. Evidence .cache/selected-potion-merged-main-verification-v2.json. Premerge potion full/Native/live proofs retain their original scope. No root test process remains live; no full repetition or GitHub CI wait. Next35/43 raw-pipe/state-apply cache probe658 checks and nineteen neighbors pass, but relay remains unpromoted and its configured membership is not a live socket acceptance claim. Push ordinary main, then integrate the relay with separately frozen final shipping references.
+
+
 ## Potion checkpoint merged with concurrent main, 2026-10-11
 
 Potion implementation committed as271aefc5. Concurrent main6f2e0946 adds three FinalCleanup/world-generation commits; merged cleanly by ort as0865f8a3, preserving both branches and the merged test resource list. Postmerge Release tests build has zero warnings/errors; fast24948/24949 and focused142/143 (changed FinalCleanup/inactive frames/startup plus Game/ACK potion cases) pass with zero failures/errors and the same known liquid skip. Evidence .cache/selected-potion-merged-main-verification-v1.json. No full rerun was launched for this merge. Potion full, fresh WindowsNative and live proofs below remain explicitly scoped to the premerge source/test digest; do not relabel them as the new merged binary. The next relay block will freeze its own coherent merged graph and batch shipping checks. No root test process remains active for the potion/merge block. Push follows local checks; no GitHub CI wait.
