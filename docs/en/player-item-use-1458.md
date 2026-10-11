@@ -1,5 +1,17 @@
 # Owned player item use 1.4.5.8
 
+## Permanent consumables — scoped local checkpoint
+
+The detached gameplay calculation now represents Life Crystal `29`, Mana Crystal `109` and Life Fruit `1291`. It separates source-local effects from remote clock progression and explicitly receives the effective `noItems` gate. A raw `cursed` field alone differs from buff `23`, whose source producer also sets `noItems`.
+
+Life Crystal adds 20 to base maximum, derived maximum and current life when base maximum is below 400. Life Fruit adds 5 when base maximum is at least 400 and below 500. These effects do not immediately clamp an off-grid imported maximum: configured source cases include `390 → 410` and `499 → 504`. These methods do not use separate consumption counters.
+
+Owned Life Crystal and Life Fruit effects require a captured local-use intent and exactly one funded inventory unit. Raw inventory and health reports do not create funding. Binding this family protects maximum life even after an unfunded attempt, receipt retirement or player transfer. Before binding, initial unrelated health imports retain their existing policy. Exact anticipated and paid health reports acknowledge the bounded latest use without overwriting intervening owned damage.
+
+Completed receipts and imported animation `41` cannot grant another effect. Releasing use or changing selection retires an unfinished intent; a fresh genuine use can pay normally. Cancelling a provisional inventory acknowledgement retains the server's physical before-image, so the next use must decrement that actual image. The existing Mana Crystal contract and five historical quantity-cap lanes remain unchanged.
+
+The grouped differential test compares all 8,160 original ItemCheck phases across four captures. Four Game omissions and four authority omissions fail assertions; restoration passes. The grouped authority proof passes 44,788 checks through actual owned commands/ticks, with configured caller cases explicitly separated from captured frames. Raw source zero-stack behavior does not authorize canonical Air or provide funding. Fresh Release builds, focused235/235, exact managed/Windows Native Facts and Native server/five plus Release/Native live acceptance pass. The unfiltered full executed1,563,261 cases with one known skip and one failed exact-ammo bot fixture: random Vortex/Shroomite armor can conserve arrows. A test-only setup correction removes those offers and retains all original assertions; corrected bot69/69 and fresh fast are separate follow-up evidence. The original full remains failed and is preserved; it was not repeated. Production source and all32 shipping references remain unchanged. General health authority, persistence, natural whole Main/UI and Linux Native remain outside this checkpoint.
+
 ## Void Vault storage role — scoped local acceptance passed
 
 Release WAE0/0, focused231/231 and fast24965/24966 pass with zero failures/errors and one known liquid skip. Exact Game/runtime Facts pass106345/2688 checks on managed and Windows Native; five Native server smokes and Release/Native live82/49/129 plus72 signed health/mana effects pass. Both hosts are stopped. A second full run was deferred as requested; the preceding full is historical evidence for its own inputs.

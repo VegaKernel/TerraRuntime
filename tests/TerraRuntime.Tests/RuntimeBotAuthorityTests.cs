@@ -755,7 +755,7 @@ public sealed class RuntimeBotAuthorityTests
             WeaponPolicy = RuntimeBotWeaponPolicy.Bow
         };
         _ = Assert.IsType<RuntimeBotSnapshot>(await fixture.ConfigureAsync(bot.Id, configuration));
-        fixture.RemoveMagicQuiver(bot.ServerPlayerId);
+        fixture.RemoveAmmoConservationEquipment(bot.ServerPlayerId);
         _ = fixture.SpawnNpc(VanillaNpcIds.BlueSlime, x: 520f, y: 160f);
 
         Assert.True(fixture.ServerPlayers.TryGetItem(
@@ -1030,7 +1030,7 @@ public sealed class RuntimeBotAuthorityTests
         };
         _ = Assert.IsType<RuntimeBotSnapshot>(await fixture.ConfigureAsync(bot.Id, configuration));
 
-        fixture.RemoveMagicQuiver(bot.ServerPlayerId);
+        fixture.RemoveAmmoConservationEquipment(bot.ServerPlayerId);
 
         fixture.State.Apply(new PlayerPvpToggleRuntimeCommand(target, Hostile: true));
         fixture.State.Tick();
@@ -1265,10 +1265,16 @@ public sealed class RuntimeBotAuthorityTests
         public RuntimeProjectileStore Projectiles { get; }
         public RuntimeBotTelemetry Telemetry { get; }
 
-        public void RemoveMagicQuiver(ServerPlayerId id)
+        public void RemoveAmmoConservationEquipment(ServerPlayerId id)
         {
-            // The randomized Shroomite preset can conserve arrows. Tests requiring an exact
-            // debit remove its quiver while retaining their original ammo/trust assertions.
+            // Randomized ranged presets conserve ammo through individual breastplates as well
+            // as Magic Quiver. Exact-debit tests exclude both source-backed offers.
+            short bodySlot = checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 1));
+            Assert.True(ServerPlayers.TryGetItem(id, bodySlot, out ServerPlayerItemState body));
+            if (body.ItemType == VanillaItemIds.VortexBreastplate ||
+                body.ItemType == VanillaItemIds.ShroomiteBreastplate)
+                Assert.True(ServerPlayers.SetItem(id, new ServerPlayerItemState(
+                    bodySlot, VanillaItemIds.None, 0, VanillaPrefixIds.None, 0)));
             short slot = checked((short)(VanillaPlayerItemSlotCatalog.ArmorStart + 7));
             Assert.True(ServerPlayers.TryGetItem(id, slot, out ServerPlayerItemState item));
             if (item.ItemType == VanillaItemIds.MagicQuiver)

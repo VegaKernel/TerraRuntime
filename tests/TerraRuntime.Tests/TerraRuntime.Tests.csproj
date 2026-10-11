@@ -600,4 +600,10 @@
     <EmbeddedResource Include="Fixtures/VoidStorageRoleWindowsFirst1458.json.gz" LogicalName="VoidStorageRoleWindowsFirst1458" />
     <EmbeddedResource Include="Fixtures/VoidStorageRoleWindowsRepeat1458.json.gz" LogicalName="VoidStorageRoleWindowsRepeat1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/life-progression-linux-first-official-1458.json.gz" LogicalName="LifeProgressionLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/life-progression-linux-repeat-official-1458.json.gz" LogicalName="LifeProgressionLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/life-progression-windows-first-official-1458.json.gz" LogicalName="LifeProgressionWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/life-progression-windows-repeat-official-1458.json.gz" LogicalName="LifeProgressionWindowsRepeat1458" />
+  </ItemGroup>
 </Project>

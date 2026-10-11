@@ -10,6 +10,55 @@ internal sealed partial class PlayerAuthority
     private void CaptureManaCrystalIntent(RuntimePlayerMember member, in PlayerMovementCommitRequest request)
     {
         if (member.ItemPhase is not { } phase) return;
+        // Releasing or changing selection retires only the unfinished local life
+        // action. The permanent custody guard and exact delayed ACK explanation
+        // survive; imported animation reports cannot revive this paid intent.
+        if (((request.ControlFlags & 32) == 0 || request.SelectedItem != member.SelectedItem) &&
+            phase.SelectedPotionUse is { Completed: false } interruptedLife &&
+            interruptedLife.Before.ItemType.Value is 29 or 1291)
+            phase = phase with
+            {
+                SelectedPotionUse = interruptedLife with { Completed = true, DeniedLifeUse = true }
+            };
+        inventory.TryGet(member.Connection, request.SelectedItem, out var lifeItem);
+        if (lifeItem.IsEmpty && phase.SelectedPotionUse is { } beforeUse &&
+            beforeUse.Player == member.Connection.Player && beforeUse.Slot == request.SelectedItem &&
+            beforeUse.Before.ItemType.Value is 29 or 1291 && beforeUse.After == lifeItem)
+            lifeItem = beforeUse.Before;
+        // Capture the source-local selected action, not a maximum inferred from packet16.
+        // Payment remains a separate journal preflight; q0 attempts also bind this guard.
+        if ((request.ControlFlags & 32) != 0 && (request.MiscFlags2 & 64) != 0 &&
+            request.SelectedItem == member.SelectedItem && !member.IsDead && member.HasHealth &&
+            phase.Selected.ReleaseUseItem && phase.Selected.Animation == 0 && phase.Selected.ItemTime == 0 &&
+            playerUpdateRandomOwned &&
+            lifeItem.IsCanonical && !lifeItem.IsEmpty && lifeItem.Prefix.Value == 0 &&
+            lifeItem.ItemType.Value is 29 or 1291)
+        {
+            member.OwnsLifeMaximum = true;
+            // The permanent custody flag is not a use certificate. Retain this
+            // exact fresh local input in the existing selected-use envelope.
+            if (phase.SelectedPotionUse is not { Completed: false } retainedLife ||
+                retainedLife.Player != member.Connection.Player || retainedLife.Slot != request.SelectedItem ||
+                retainedLife.Before != lifeItem)
+            {
+                int increase = PermanentLifeIncrease(lifeItem.ItemType, member.BaseLifeMax);
+                var afterLife = lifeItem.Stack == 1 ? default : lifeItem with { Stack = (short)(lifeItem.Stack - 1) };
+                bool fundedLife = inventory.CaptureFundedQuantities(member.Connection)[request.SelectedItem] > 0;
+                phase = phase with
+                {
+                    SelectedPotionUse = new(member.Connection.Player, phase.SelectedPotionUse?.Attempt ?? 0,
+                        request.SelectedItem, lifeItem, afterLife, member.NpcHealth?.Life ?? member.Life,
+                        member.Mana, member.BaseLifeMax, phase.BaseManaMaximum, phase.Selected)
+                    {
+                        Completed = !fundedLife, DeniedLifeUse = !fundedLife,
+                        AnticipatedLife = (member.NpcHealth?.Life ?? member.Life) + increase,
+                        AnticipatedBaseLifeMaximum = member.BaseLifeMax + increase,
+                        AnticipatedBuffTypes = transferProfiles.CaptureBuffState(member.Connection)?.CaptureTypes()
+                    }
+                };
+            }
+        }
+
         if ((request.ControlFlags & 32) == 0 || request.SelectedItem != member.SelectedItem)
             phase = phase with { ManaCrystalIntent = null };
         if ((request.ControlFlags & 32) != 0 && (request.MiscFlags2 & 64) != 0 &&

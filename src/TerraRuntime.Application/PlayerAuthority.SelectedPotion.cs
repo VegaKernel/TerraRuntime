@@ -16,6 +16,8 @@ internal readonly record struct RuntimePlayerSelectedPotionUse1458(
 {
     internal bool Completed { get; init; }
     internal bool DeniedBuffUse { get; init; }
+    internal bool DeniedLifeUse { get; init; }
+    internal int? AnticipatedBaseLifeMaximum { get; init; }
     internal bool InventoryAcknowledged { get; init; }
     internal BuffTypeId[]? ExpectedBuffTypes { get; init; }
     internal BuffTypeId[]? AnticipatedBuffTypes { get; init; }
@@ -26,6 +28,13 @@ internal readonly record struct RuntimePlayerSelectedPotionUse1458(
 internal sealed partial class PlayerAuthority
 {
     private bool selectedPotionRawFallback;
+    private static int PermanentLifeIncrease(ItemTypeId item, int? maximum) => item.Value switch
+    {
+        29 when maximum < 400 => 20,
+        1291 when maximum is >= 400 and < 500 => 5,
+        _ => 0
+    };
+
     private bool TryPlanOwnedSelectedPotion(RemoteItemPhasePlan1458 plan,
         RuntimePlayerInventoryItem selected, RuntimePlayerItemPhase1458 item,
         PlayerSelectedConsumableState1458 clocks, in PlayerSelectedConsumableFacts1458 facts,
@@ -33,6 +42,7 @@ internal sealed partial class PlayerAuthority
         out RuntimePlayerItemPhase1458 nextItem)
     {
         nextItem = item;
+        use = default;
         bool quickBuffOwnsDebit = plan.Member.CursorMove?.Shop is { QuickBuffSealed: true };
         RuntimePlayerInventoryStore.CursorMovePreparation? sourceDebit = null;
         RemotePhaseInventoryMutation admittedDebit;
@@ -54,7 +64,14 @@ internal sealed partial class PlayerAuthority
             // The effective use prohibition prevents a new idle begin; any effect
             // at an imported active clock is stripped because no unit can pay it.
             var deniedFacts = facts with { Cursed = true };
-            if (!VanillaSelectedConsumable1458.TryStepOwned(clocks, in deniedFacts,
+            if (selected.ItemType.Value is 29 or 1291)
+            {
+                if (!VanillaSelectedConsumable1458.TryStepPermanentConsumable(clocks, in deniedFacts,
+                    plan.Member.BaseLifeMax ?? plan.Member.MaxLife, item.BaseManaMaximum,
+                    selected.Stack, true, true, random.Next, random.NextDouble, out var deniedPermanent)) return false;
+                use = deniedPermanent.Use;
+            }
+            else if (!VanillaSelectedConsumable1458.TryStepOwned(clocks, in deniedFacts,
                 selected.Stack, random.Next, random.NextDouble, out use)) return false;
             if (!quickBuffOwnsDebit && VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out var deniedPotion) &&
                 deniedPotion.BuffType > 0 &&
@@ -80,7 +97,24 @@ internal sealed partial class PlayerAuthority
             };
             return true;
         }
-        if (!VanillaSelectedConsumable1458.TryStepOwned(clocks, in facts, selected.Stack,
+        if (selected.ItemType.Value is 29 or 1291)
+        {
+            bool currentLocalLifeInput = item.SelectedPotionUse is { } lifeUse &&
+                lifeUse.Player == plan.Member.Connection.Player && lifeUse.Slot == plan.Member.SelectedItem &&
+                lifeUse.Before.ItemType == selected.ItemType &&
+                !lifeUse.Completed && lifeUse.Before == selected;
+            if (!VanillaSelectedConsumable1458.TryStepPermanentConsumable(clocks, in facts,
+                    plan.Member.BaseLifeMax ?? plan.Member.MaxLife, item.BaseManaMaximum,
+                    selected.Stack, currentLocalLifeInput, plan.Buffs.CountActive(new(23)) > 0,
+                    random.Next, random.NextDouble, out var permanent)) return false;
+            use = permanent.Use;
+            if (permanent.Applied)
+            {
+                plan.AcceptedBaseLifeMaximum = permanent.BaseLifeMaximum;
+                plan.Maximum = permanent.DerivedLifeMaximum;
+            }
+        }
+        else if (!VanillaSelectedConsumable1458.TryStepOwned(clocks, in facts, selected.Stack,
             random.Next, random.NextDouble, out use)) return false;
         if (!use.Consumed) return true;
         if (item.SelectedPotionUse is { Attempt: ulong.MaxValue } ||
@@ -101,13 +135,14 @@ internal sealed partial class PlayerAuthority
         {
             SelectedPotionUse = new(plan.Member.Connection.Player,
             (item.SelectedPotionUse?.Attempt ?? 0) + 1, plan.Member.SelectedItem,
-            selected, debit.After, use.Life, use.Mana, plan.Member.BaseLifeMax,
+            selected, debit.After, use.Life, use.Mana, plan.AcceptedBaseLifeMaximum ?? plan.Member.BaseLifeMax,
             item.BaseManaMaximum, use.State)
             {
                 Completed = true,
                 ExpectedBuffTypes = expectedBuffs.CaptureTypes(),
                 AnticipatedBuffTypes = pendingEpoch?.AnticipatedBuffTypes,
                 AnticipatedLife = pendingEpoch?.AnticipatedLife ?? use.Life,
+                AnticipatedBaseLifeMaximum = pendingEpoch?.AnticipatedBaseLifeMaximum ?? plan.AcceptedBaseLifeMaximum,
                 AnticipatedMana = pendingEpoch?.AnticipatedMana ?? use.Mana,
                 InventoryAcknowledged = item.SelectedPotionUse is { Completed: false } pending && pending.Slot == plan.Member.SelectedItem && pending.Before == selected && pending.InventoryAcknowledged
             }
@@ -141,6 +176,31 @@ internal sealed partial class PlayerAuthority
                 return false;
             }
 
+        }
+        if (!canBeginReportedUse && HasOwnedPickupContext && !member.IsDead &&
+            phase.Selected.Animation == 0 && phase.Selected.ItemTime == 0 && phase.Selected.ReleaseUseItem &&
+            inventory.TryGet(command.Connection, member.SelectedItem, out var deniedLifeItem) &&
+            deniedLifeItem.IsCanonical && !deniedLifeItem.IsEmpty && deniedLifeItem.Prefix.Value == 0 &&
+            deniedLifeItem.ItemType.Value is 29 or 1291 &&
+            inventory.CaptureFundedQuantities(command.Connection)[member.SelectedItem] == 0)
+        {
+            var expectedAfter = deniedLifeItem.Stack == 1 ? default : deniedLifeItem with { Stack = (short)(deniedLifeItem.Stack - 1) };
+            if (command.Request == expectedAfter.ToCommitRequest(member.Slot, member.SelectedItem))
+            {
+                int increase = PermanentLifeIncrease(deniedLifeItem.ItemType, member.BaseLifeMax);
+                member.ItemPhase = phase with
+                {
+                    SelectedPotionUse = new(member.Connection.Player, phase.SelectedPotionUse?.Attempt ?? 0,
+                        member.SelectedItem, deniedLifeItem, expectedAfter, member.NpcHealth?.Life ?? member.Life,
+                        member.Mana, member.BaseLifeMax, phase.BaseManaMaximum, phase.Selected)
+                    {
+                        Completed = true, DeniedLifeUse = true,
+                        AnticipatedLife = (member.NpcHealth?.Life ?? member.Life) + increase,
+                        AnticipatedBaseLifeMaximum = member.BaseLifeMax + increase
+                    }
+                };
+            }
+            return false;
         }
         if (!canBeginReportedUse)
         {
@@ -180,7 +240,11 @@ internal sealed partial class PlayerAuthority
             member.BaseLifeMax, phase.BaseManaMaximum, phase.Selected)
             {
                 InventoryAcknowledged = true,
-                AnticipatedLife = Math.Min(member.DerivedLifeMax ?? member.MaxLife, (member.NpcHealth?.Life ?? member.Life) + potion.HealLife),
+                AnticipatedLife = debit.Before.ItemType.Value is 29 or 1291
+                    ? (member.NpcHealth?.Life ?? member.Life) + PermanentLifeIncrease(debit.Before.ItemType, member.BaseLifeMax)
+                    : Math.Min(member.DerivedLifeMax ?? member.MaxLife, (member.NpcHealth?.Life ?? member.Life) + potion.HealLife),
+                AnticipatedBaseLifeMaximum = debit.Before.ItemType.Value is 29 or 1291
+                    ? member.BaseLifeMax + PermanentLifeIncrease(debit.Before.ItemType, member.BaseLifeMax) : null,
                 AnticipatedMana = Math.Min(phase.Mana.Maximum, member.Mana + potion.HealMana),
                 AnticipatedBuffTypes = anticipatedBuffs?.CaptureTypes()
             }
@@ -273,7 +337,7 @@ internal sealed partial class PlayerAuthority
             command.Request.PlayerSlot != member.Slot) return false;
         if (!VanillaSelectedConsumableCatalog1458.TryGet(use.Before.ItemType, out var potion) || potion.BuffType > 0 && potion.HealLife <= 0) return false;
         int expected = use.Completed ? use.Life : use.AnticipatedLife ?? Math.Min(member.DerivedLifeMax ?? member.MaxLife, use.Life + potion.HealLife);
-        if ((command.Request.Life != expected && command.Request.Life != use.AnticipatedLife) || command.Request.MaxLife != use.BaseLifeMaximum) return false;
+        if ((command.Request.Life != expected && command.Request.Life != use.AnticipatedLife) || command.Request.MaxLife != (use.AnticipatedBaseLifeMaximum ?? use.BaseLifeMaximum)) return false;
         AppliedHealthUpdates++;
         return true;
     }
@@ -282,7 +346,7 @@ internal sealed partial class PlayerAuthority
     {
         if (!membership.TryGet(command.Connection, out var member) ||
             member.ItemPhase?.SelectedPotionUse is not { } use || use.Player != command.Connection.Player ||
-            command.Request.PlayerSlot != member.Slot ||
+            command.Request.PlayerSlot != member.Slot || use.Before.ItemType.Value is 29 or 1291 ||
             !VanillaSelectedConsumableCatalog1458.TryGet(use.Before.ItemType, out var potion) || potion.BuffType > 0 && potion.HealMana <= 0) return false;
         int expected = use.Completed ? use.Mana : use.AnticipatedMana ?? Math.Min(member.MaxMana, use.Mana + potion.HealMana);
         if ((command.Request.Mana != expected && command.Request.Mana != use.AnticipatedMana) || command.Request.MaxMana != use.BaseManaMaximum) return false;

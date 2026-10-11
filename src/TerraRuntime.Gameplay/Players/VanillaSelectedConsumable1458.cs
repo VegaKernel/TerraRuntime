@@ -23,6 +23,10 @@ public readonly record struct PlayerSelectedConsumableTransition1458(
     public bool ResetItemRotation { get; init; }
 }
 
+public readonly record struct PlayerPermanentConsumableTransition1458(
+    PlayerSelectedConsumableTransition1458 Use, int BaseLifeMaximum, int DerivedLifeMaximum,
+    int BaseManaMaximum, int DerivedManaMaximum, bool Applied);
+
 public readonly record struct QuickBuffEligibility1458(bool PendingInventoryActions, bool Cursed,
     bool CrowdControlled, bool Dead, bool Spectating, bool NoItems);
 
@@ -149,6 +153,72 @@ public static class VanillaSelectedConsumable1458
         if (consumptionPoint && remaining == 0)
             state = state with { ItemTime = state.Animation };
         transition = transition with { State = state, Consumed = consumed, RemainingStack = remaining };
+        return true;
+    }
+
+    /// <summary>Configured ItemCheck for Life Crystal29, Mana Crystal109 and Life Fruit1291.
+    /// Local ownership is explicit: remote ItemCheck advances clocks but never invokes these effects.
+    /// The explicit noItems input owns the start gate; a raw cursed field alone is not that gate.
+    /// Raw zero-stack source identity is retained here; authoritative custody belongs to the caller.</summary>
+    public static bool TryStepPermanentConsumable(PlayerSelectedConsumableState1458? previous,
+        in PlayerSelectedConsumableFacts1458 facts, int baseLifeMaximum, int baseManaMaximum,
+        int selectedStack, bool localEffects, bool noItems, Func<int, int, int> nextInteger,
+        Func<double> nextDouble, out PlayerPermanentConsumableTransition1458 transition)
+    {
+        transition = default;
+        if (facts.Item.Value is not (29 or 109 or 1291) ||
+            baseLifeMaximum is < 0 or > short.MaxValue || baseManaMaximum is < 0 or > 400 ||
+            !VanillaWorldItemAllocationCatalog1458.TryGet(facts.Item.Value, out var allocation) ||
+            selectedStack < 0 || selectedStack > allocation.MaximumStack)
+        {
+            return false;
+        }
+
+        var useFacts = facts with { Cursed = noItems,
+            LastUseSuccess = localEffects || facts.LastUseSuccess };
+        if (!TryStepCore(previous, in useFacts, nextInteger, nextDouble, localEffects: false, out var use))
+        {
+            return false;
+        }
+
+        int derivedLifeMaximum = facts.LifeMaximum;
+        int derivedManaMaximum = facts.ManaMaximum;
+        bool effectPoint = localEffects && facts.AllowedToHoldItems &&
+            use.State.Animation > 0 && use.State.ItemTime == 0;
+        int lifeIncrease = effectPoint ? facts.Item.Value switch
+        {
+            29 when baseLifeMaximum < 400 => 20,
+            1291 when baseLifeMaximum is >= 400 and < 500 => 5,
+            _ => 0
+        } : 0;
+        int manaIncrease = effectPoint && facts.Item.Value == 109 && baseManaMaximum < 200 ? 20 : 0;
+        bool applied = lifeIncrease != 0 || manaIncrease != 0;
+        if (applied)
+        {
+            baseLifeMaximum += lifeIncrease;
+            derivedLifeMaximum += lifeIncrease;
+            baseManaMaximum += manaIncrease;
+            derivedManaMaximum += manaIncrease;
+            use = use with
+            {
+                Life = use.Life + lifeIncrease,
+                Mana = use.Mana + manaIncrease,
+                State = use.State with { ItemTime = 30, ItemTimeMax = 30 }
+            };
+        }
+
+        bool consumptionPoint = localEffects && facts.AllowedToHoldItems && !facts.CrowdControlled &&
+            use.State.ItemTimeMax != 0 && use.State.ItemTime == use.State.ItemTimeMax;
+        bool consumed = consumptionPoint && selectedStack > 0;
+        int remaining = selectedStack - (consumed ? 1 : 0);
+        var state = use.State;
+        if (consumptionPoint && remaining == 0)
+        {
+            state = state with { ItemTime = state.Animation };
+        }
+        use = use with { State = state, Consumed = consumed, RemainingStack = remaining };
+        transition = new(use, baseLifeMaximum, derivedLifeMaximum,
+            baseManaMaximum, derivedManaMaximum, applied);
         return true;
     }
 

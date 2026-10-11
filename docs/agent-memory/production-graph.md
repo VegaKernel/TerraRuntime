@@ -1,5 +1,15 @@
 # Production graph
 
+## Life progression local checkpoint; failed full preserved, 2026-10-11
+
+Fresh Release/server WAE builds pass with zero warnings/errors; focused235/235 and exact managed/WindowsNative Game/runtime Facts2081222/44788 pass. WindowsNative server/five smokes and actual Release/Native82/49/129/two-client/72 signed effects pass; both hosts stopped. ONE unfiltered full executed1563261 cases:1563259 passed, one known liquid skip and one failed RuntimeBotAuthorityTests exact-ammo fixture. The randomized Vortex/Shroomite breastplate legitimately conserves arrows; the fixture removed only MagicQuiver. A test-only setup correction removes both offers while retaining every original debit/projectile/PvP assertion. Original failed full is preserved and never declared green; corrected bot69/69 and fresh fast acceptance are recorded separately in D:/TerraRuntime-cache/life-bot-fixture-followup-v1. Production source and all32 shipping references remain byte-identical. No second full or GitHub CI wait; LinuxNative remains unverified. This scoped checkpoint does not establish wholeMain/UI, persistence, unrestricted health authority or full vanilla parity. Goal active.
+
+Next: all eight permanent upgrades3335/5326/5337..5342, including paid flag custody and real next-phase consumers. Cache-only source/design/prototypes are not shipping acceptance. Historical entries below retain their original status.
+
+## Life progression integrated; gates pending, 2026-10-11
+
+Two existing Game owners and ten existing App owners implement29/1291 through the existing selected-use envelope, inventory funding, callback-free phase adoption and transfer DTO. Permanent maximum custody is distinct from per-attempt local intent; no new project, dependency, queue, ledger or quantity-lane ABI. Existing109 policy stays unchanged. Root promotion proofs `.cache/life-app-root-promotion-v5.json` and `.cache/life-runtime-root-promotion-v1.json`; combined shipping gates remain pending.
+
 ## Voidstorage source role — accepted local checkpoint, 2026-10-11
 
 Fresh Release/serverWAE0/0; focused231/231; fast24965/24966, errors/failures0, known canonical-liquid skip1. Exact Game ONE Fact106345 and owned ONE Fact2688 typed checks pass managed/fresh WindowsNative on identical fresh32 shipping references. Isolated WindowsNative server/five smokes and actual Release/Native82/49/129/two-client relay/72signed35/43effects pass; both hosts stopped. Source/test fingerprintf641f0f1ae2f3f1f512932142678a243cf4d15d2c8a7669311f24b08b1414698; root verification .cache/void-storage-production-acceptance-v1/root-final-verification.json. Original QuickBuff full1563256/1563257 remains historical only; no new full executed for this block per user's infrequent-full instruction. Its disk-full XML export error is preserved. Next full follows a broader coherent block, with heavy report output on D. LinuxNative remains unverified; no CI wait.

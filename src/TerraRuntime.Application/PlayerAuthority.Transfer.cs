@@ -80,7 +80,7 @@ internal sealed partial class PlayerAuthority
             buffTypes,
             player.GodMode,
             mouseItemNormalized)
-        { ShopBankInventory = bankItems, FundedShopBankCopper = bankCopper, FundedShopBankQuantities = bankQuantities, OwnedShopBankQuantityCaps = bankCaps, FundedInventoryCoinValues = coinValues, FundedInventoryQuantities = funded, OwnedInventoryQuantities = quantityCaps, OwnsManaMaximum = player.OwnsManaMaximum, ItemPhase = player.ItemPhase, PhysicsPhase = player.PhysicsPhase,
+        { ShopBankInventory = bankItems, FundedShopBankCopper = bankCopper, FundedShopBankQuantities = bankQuantities, OwnedShopBankQuantityCaps = bankCaps, FundedInventoryCoinValues = coinValues, FundedInventoryQuantities = funded, OwnedInventoryQuantities = quantityCaps, OwnsManaMaximum = player.OwnsManaMaximum, OwnsLifeMaximum = player.OwnsLifeMaximum, ItemPhase = player.ItemPhase, PhysicsPhase = player.PhysicsPhase,
           BuffState = transferProfiles.CaptureBuffState(connection) };
 
         membership.ClearPending(connection);
@@ -276,6 +276,7 @@ internal sealed partial class PlayerAuthority
             Mana = previous.Mana,
             MaxMana = previous.MaxMana,
             OwnsManaMaximum = transfer.OwnsManaMaximum,
+            OwnsLifeMaximum = transfer.OwnsLifeMaximum,
             ItemPhase = transferredPhase is { } phase
                 ? phase with { ManaCrystalIntent = null, SelectedPotionUse = null, QuickBuffExplanation = null, Selected = phase.Selected with { Animation = preservePosition && !dead ? previous.ItemAnimation ?? 0 : 0 },
                     MagicPayment = phase.MagicPayment is { } payment ? payment with

@@ -601,6 +601,15 @@ internal sealed partial class PlayerAuthority
                 return;
             }
 
+            // Initial unrelated character imports retain the established policy.
+            // Once a local permanent-life attempt is bound, only its exact receipt
+            // may explain a changed maximum; external same-maximum HP updates stay separate.
+            if (activePlayer.OwnsLifeMaximum && request.MaxLife != activePlayer.BaseLifeMax)
+            {
+                RejectedHealthUpdates++;
+                return;
+            }
+
             if (!activePlayer.TryAdvanceRevision())
             {
                 RejectedHealthUpdates++;

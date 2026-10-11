@@ -239,6 +239,8 @@ internal sealed class RuntimePlayerMember
     public short Mana { get; set; }
     public short MaxMana { get; set; }
     internal bool OwnsManaMaximum { get; set; }
+    // A bound owned life-family attempt closes later raw maximum imports, even when unfunded.
+    internal bool OwnsLifeMaximum { get; set; }
     internal PlayerAuthority.PendingCursorMove? CursorMove { get; set; }
     private RuntimePlayerItemPhase1458? itemPhase = RuntimePlayerItemPhase1458.Constructor;
     internal RuntimePlayerItemPhase1458? ItemPhase

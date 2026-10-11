@@ -54,7 +54,7 @@ internal sealed partial class PlayerAuthority
                 buffs is null || transferProfiles.CaptureBuffState(member.Connection) is not { } buffState)
                 return false;
             plans[i] = new(member, member.CaptureSnapshot(), member.ItemPhase, member.PhysicsPhase,
-                appearance, equipment, buffs, buffState, member.GodMode, member.OwnsManaMaximum);
+                appearance, equipment, buffs, buffState, member.GodMode, member.OwnsManaMaximum, member.OwnsLifeMaximum);
             membership.TryGetTownShopSession(member.Connection.Player, out var shopSession);
             plans[i].BeforeShopSession = shopSession;
             if (!inventory.TryCopyInventory(member.Connection, plans[i].InventoryBefore)) return false;
@@ -120,7 +120,7 @@ internal sealed partial class PlayerAuthority
                 !membership.TryGet(member.Connection, out var current) || !ReferenceEquals(current, member) ||
                 member.CaptureSnapshot() != plan.Before || member.ItemPhase != plan.BeforeItem ||
                 member.PhysicsPhase != plan.BeforePhysics || member.GodMode != plan.GodMode ||
-                member.OwnsManaMaximum != plan.BeforeOwnsManaMaximum ||
+                member.OwnsManaMaximum != plan.BeforeOwnsManaMaximum || member.OwnsLifeMaximum != plan.BeforeOwnsLifeMaximum ||
                 member.Revision == ulong.MaxValue ||
                 !transferProfiles.TryCapture(member.Connection, out var appearance, out var equipment, out var buffs) ||
                 appearance != plan.Appearance || !equipment.AsSpan().SequenceEqual(plan.Equipment) ||
@@ -152,6 +152,12 @@ internal sealed partial class PlayerAuthority
             member.NpcHealth = plan.Health;
             member.NpcLifeCurrent = plan.Health is not null;
             member.DerivedLifeMax = plan.Maximum;
+            if (plan.AcceptedBaseLifeMaximum is { } acceptedBase)
+            {
+                member.BaseLifeMax = acceptedBase;
+                member.MaxLife = checked((short)acceptedBase);
+                member.OwnsLifeMaximum = true;
+            }
             member.Debuffs = plan.Debuffs;
             member.Mana = checked((short)plan.Item.Value.Mana.Mana);
             if (plan.PublishMana) member.MaxMana = checked((short)plan.Item.Value.BaseManaMaximum);
@@ -492,7 +498,8 @@ internal sealed partial class PlayerAuthority
             beganActualUse = passiveUse.BeganActualUse;
         }
         else if (VanillaSelectedConsumableCatalog1458.TryGet(selected.ItemType, out var selectedPotion) &&
-            (selectedPotion.HealLife > 0 || selectedPotion.HealMana > 0 || selectedPotion.BuffType > 0))
+            (selectedPotion.HealLife > 0 || selectedPotion.HealMana > 0 || selectedPotion.BuffType > 0 ||
+                selected.ItemType.Value is 29 or 1291))
         {
             if (!TryPlanOwnedSelectedPotion(plan, selected, item, clocks, in facts, random,
                 out use, out item)) return false;
@@ -558,7 +565,7 @@ internal sealed partial class PlayerAuthority
     private sealed class RemoteItemPhasePlan1458(RuntimePlayerMember member, PlayerStateSnapshot before,
         RuntimePlayerItemPhase1458? item, RuntimePlayerPhysicsPhase1458? physics,
         PlayerAppearanceCommitRequest? appearance, PlayerEquipmentCommitRequest[] equipment,
-        BuffTypeId[] buffTypes, PlayerBuffState buffs, bool godMode, bool ownsManaMaximum)
+        BuffTypeId[] buffTypes, PlayerBuffState buffs, bool godMode, bool ownsManaMaximum, bool ownsLifeMaximum)
     {
         internal bool VoidStorageOpen { get; set; }
         internal RuntimeTownShopSession1458? BeforeShopSession { get; set; }
@@ -578,6 +585,8 @@ internal sealed partial class PlayerAuthority
         internal PlayerBuffState BeforeBuffs { get; } = buffs;
         internal bool GodMode { get; } = godMode;
         internal bool BeforeOwnsManaMaximum { get; } = ownsManaMaximum;
+        internal bool BeforeOwnsLifeMaximum { get; } = ownsLifeMaximum;
+        internal int? AcceptedBaseLifeMaximum { get; set; }
         internal PlayerBuffState Buffs { get; } = buffs.Clone();
         internal RuntimePlayerItemPhase1458? Item { get; set; } = item;
         internal RuntimePlayerPhysicsPhase1458? Physics { get; set; } = physics;
