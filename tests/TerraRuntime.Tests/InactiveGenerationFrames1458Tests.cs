@@ -12,21 +12,41 @@ public sealed class InactiveGenerationFrames1458Tests
     [InlineData(-1, 0, 0, false)]
     [InlineData(0, -1, 0, false)]
     [InlineData(18, 18, 0, false)]
+    [InlineData(18, 0, 0, false)]
+    [InlineData(36, 18, 0, false)]
     [InlineData(-2, -2, 0, false)]
     [InlineData(-1, -1, 1, false)]
     [InlineData(0, 0, 1, false)]
-    public void Both_validators_admit_only_the_normalized_generation_frame_pairs(
+    public void Vanilla_validator_preserves_source_stale_inactive_frames_while_structural_validator_stays_normalized(
         short frameX, short frameY, byte shape, bool admitted)
     {
         var workspace = new Workspace(600, 500);
         ref var tile = ref workspace.TileStore.Tiles[workspace.TileStore.GetUncheckedIndex(300, 200)];
         tile.FrameX = frameX; tile.FrameY = frameY; tile.Shape = shape;
         var metadata = Metadata();
-        Assert.Equal(admitted ? WorldValidationStatus.Valid : WorldValidationStatus.InvalidFlags,
+        bool vanillaAdmitted = admitted || frameX >= 0 && frameY >= 0 && shape == 0;
+        Assert.Equal(vanillaAdmitted ? WorldValidationStatus.Valid : WorldValidationStatus.InvalidFlags,
             Validator1458.Validate(workspace, metadata).Status);
         Assert.Equal(admitted ? WorldValidationStatus.Valid : WorldValidationStatus.InvalidFlags,
             StructuralValidator.Validate(workspace, metadata).Status);
         Assert.Equal((frameX, frameY, shape), (tile.FrameX, tile.FrameY, tile.Shape));
+    }
+
+    [Fact]
+    public void Vanilla_validator_admits_stale_inactive_object_frames_left_by_the_final_pass()
+    {
+        var workspace = new Workspace(600, 500);
+        for (int dx = 0; dx < 3; dx++)
+        for (int dy = 0; dy < 2; dy++)
+        {
+            ref WorldTile tile = ref workspace.TileStore.Tiles[workspace.TileStore.GetUncheckedIndex(300 + dx, 200 + dy)];
+            tile.Type = 25;
+            tile.FrameX = (short)(dx * 18);
+            tile.FrameY = (short)(dy * 18);
+        }
+
+        Assert.Equal(WorldValidationStatus.Valid, Validator1458.Validate(workspace, Metadata()).Status);
+        Assert.Equal(WorldValidationStatus.InvalidFlags, StructuralValidator.Validate(workspace, Metadata()).Status);
     }
 
     [Fact]

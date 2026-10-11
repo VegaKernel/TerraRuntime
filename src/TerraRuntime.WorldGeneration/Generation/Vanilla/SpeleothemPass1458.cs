@@ -52,6 +52,9 @@ internal sealed class SpeleothemPass1458(
     private readonly int width = store.Dimensions.WidthTiles;
     private readonly int height = store.Dimensions.HeightTiles;
 
+    /// <summary>Reuse the source-backed validator when Final Cleanup frames an existing type-165 cell.</summary>
+    internal void FrameExistingStalactite(int x, int y) => CheckStalactite(x, y);
+
     /// <summary>Source <c>WorldGen.oceanLevel</c>.</summary>
     private double OceanLevel => ((worldSurface + rockLayer) / 2.0) + 40.0;
 

@@ -209,9 +209,10 @@ public static class Validator1458
                 }
                 else
                 {
-                    // FinalCleanup TileFrame can invoke source KillTile after zero-frame normalization.
-                    // Admit its paired unset frames; other pairs remain outside this generator's contract.
-                    if (tile.Shape != 0 || !((tile.FrameX == 0 && tile.FrameY == 0) ||
+                    // Source FinalCleanup frames inactive cells without clearing their old frame coordinates.
+                    // Positive coordinates are transient: SaveWorldTiles omits frames for inactive cells.
+                    // Preserve them for pass parity, but reject mixed/other negative sentinels and shape.
+                    if (tile.Shape != 0 || !((tile.FrameX >= 0 && tile.FrameY >= 0) ||
                         (tile.FrameX == -1 && tile.FrameY == -1)))
                         return new(WorldValidationStatus.InvalidFlags, $"Inactive tile at ({x},{y}) has non-zero frame/shape {tile.FrameX},{tile.FrameY} shape {tile.Shape}.");
                 }

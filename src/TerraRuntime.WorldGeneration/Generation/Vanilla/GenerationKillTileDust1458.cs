@@ -27,6 +27,9 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// breaks one has to be measured before it can be trusted. Six identities answer differently for different
 /// frames - the multi-cell objects whose origin the kill re-derives - and their frame-zero cost is what is
 /// recorded, because generation does not break them at any other frame.
+/// Type <c>178</c> is the one later correction: the initial headless probe had null elements in its dust
+/// pool, so its special dust branch threw. A registered official FinalCleanup kill fixture with a complete
+/// dust pool measures zero shared draws and supplies that table entry.
 /// </para>
 /// </remarks>
 internal static class GenerationKillTileDust1458
@@ -41,7 +44,7 @@ internal static class GenerationKillTileDust1458
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 10, 0,
         0, 0, 0, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
