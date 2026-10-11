@@ -1020,17 +1020,6 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
 
                 if (GenerationObsidianDoorFraming1458.Check(grid.Store, x, y))
                     normalized++;
-                // TerrariaServer 1.4.5.8 restores the entire 2x2 boulder footprint here, before
-                // TileFrame reaches Check2x2 later in this same cell. Do not validate an incomplete
-                // 484/485 fragment first: FinalCleanup repairs it rather than deleting it.
-                if (tile.IsActive && GenerationObjectSupport1458.IsBoulder(tile.Type))
-                {
-                    RepairFinalCleanupBoulder(grid, x, y, tile.Type, tile.FrameX, tile.FrameY);
-                    normalized++;
-                }
-                if (GenerationDesertObjectFraming1458.Check(grid.Store, x, y))
-                    normalized++;
-
                 // TerrariaServer 1.4.5.8 FinalCleanup first stabilizes unsupported surface sand-family
                 // cells before its per-cell framing tail.  This deliberately changes only identity/activity/
                 // shape; it does not normalize unrelated packed tile state.
@@ -1070,6 +1059,15 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                     tile.Shape = 0;
                     normalized++;
                 }
+                // WorldGen.FinalCleanup repairs boulder footprints after loose-material, lava-wall and
+                // trap handling, but before liquid-plant cleanup and the final TileFrame dispatch.
+                if (tile.IsActive && GenerationObjectSupport1458.IsBoulder(tile.Type))
+                {
+                    RepairFinalCleanupBoulder(grid, x, y, tile.Type, tile.FrameX, tile.FrameY);
+                    normalized++;
+                }
+                if (GenerationDesertObjectFraming1458.Check(grid.Store, x, y))
+                    normalized++;
                 if (tile.IsActive && tile.Type == 323 && tile.LiquidAmount > 0)
                 {
                     KillSingleTileDuringCleanup(ref tile);
@@ -1109,13 +1107,6 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
                 if (tile.IsActive && y + 1 < grid.Height && IsUnsupportedSingleTilePlant(in tile, in grid.At(x, y + 1)))
                 {
                     ClearTile(ref tile, preserveLiquid: true);
-                    normalized++;
-                }
-                if (!tile.IsActive && (tile.FrameX != 0 || tile.FrameY != 0 || tile.Shape != 0))
-                {
-                    tile.FrameX = 0;
-                    tile.FrameY = 0;
-                    tile.Shape = 0;
                     normalized++;
                 }
                 if (tile.LiquidAmount == 0 && tile.LiquidKind != WorldLiquidKind.Water)
@@ -1297,6 +1288,17 @@ internal sealed class FinalPass1458 : IWorldGenerationPass
         ref WorldTile source = ref grid.At(x, y);
         int destinationY = y + 1;
         int remaining = 10;
+        // WorldGen.FinalCleanup scans the next ten cells before any extension. A rail (314)
+        // anywhere in that look-ahead suppresses the whole descending brush, even if the rail
+        // is not the immediately adjacent cell.
+        for (int checkY = destinationY; checkY < Math.Min(destinationY + 10, grid.Height); checkY++)
+        {
+            if (grid.At(x, checkY).IsActive && grid.At(x, checkY).Type == 314)
+            {
+                remaining = 0;
+                break;
+            }
+        }
         while (destinationY < grid.Height - 50 && remaining > 0 &&
                (!grid.At(x, destinationY).IsActive || VanillaProjectileTileCutFacts.IsCuttable(grid.At(x, destinationY).TileType)))
         {

@@ -189,9 +189,9 @@
     <EmbeddedResource Include="Fixtures/newnpcrng-windows-1458.json.gz" LogicalName="NewNpcRngWindows1458" />
     <EmbeddedResource Include="Fixtures/npc-scaling-linux-1458.json.gz" LogicalName="NpcScalingLinux1458" />
     <EmbeddedResource Include="Fixtures/npc-scaling-windows-1458.json.gz" LogicalName="NpcScalingWindows1458" />
-    <EmbeddedResource Include="Fixtures/lunar-event-headers-1458.bin.gz" LogicalName="LunarEventHeaders1458" />
+    <EmbeddedResource Include="Fixtures/lunar-event-headers-1458.bin.gz" LogicalName="LunarEventHeaders1458" WithCulture="false" />
     <EmbeddedResource Include="Fixtures/moon-lord-intro-1458.json.gz" LogicalName="MoonLordIntroduction1458" />
-    <EmbeddedResource Include="Fixtures/late-boss-headers-1458.bin.gz" LogicalName="LateBossHeaders1458" />
+    <EmbeddedResource Include="Fixtures/late-boss-headers-1458.bin.gz" LogicalName="LateBossHeaders1458" WithCulture="false" />
     <EmbeddedResource Include="Fixtures/eclipse-ground-ai003-linux-1458.json.gz" LogicalName="EclipseGroundAi003Linux1458" />
     <EmbeddedResource Include="Fixtures/eclipse-fighters-ai003-linux-1458.json.gz" LogicalName="eclipse-fightersAi003Linux1458" />
     <EmbeddedResource Include="Fixtures/drmanfly-targets-ai003-linux-1458.json.gz" LogicalName="drmanfly-targetsAi003Linux1458" />

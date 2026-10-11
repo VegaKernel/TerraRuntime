@@ -26,7 +26,15 @@ namespace TerraRuntime.WorldGeneration.Vanilla;
 /// This is a bounded slice, not the whole primitive. It carries the parts <c>TileFrame</c> reaches during world
 /// generation: the bounds guard, the inactive-cell cleanup, the platform frame table, <c>Check3x2</c> for the
 /// large pile families (types <c>186</c> and <c>187</c>), <c>CheckJunglePlant</c> for the jungle plant family
-/// (types <c>233</c>, <c>236</c>, <c>238</c> and <c>702</c>) and the generation-time part of <c>KillTile</c>.
+/// (types <c>233</c>, <c>236</c>, <c>238</c> and <c>702</c>), ordinary torch <c>4</c> through
+/// <c>CheckTorch</c>, all five <c>IsADripTile</c> identities, dart trap <c>136</c>, directional tiles
+/// <c>129</c>/<c>149</c>/<c>178</c>, type-<c>235</c> three-cell objects, one-cell type-<c>185</c>
+/// piles, dye <c>227</c>,
+/// cactus <c>80</c>, rock-golem head <c>579</c>,
+/// the <c>12</c>/<c>31</c>/<c>639</c>/<c>696</c> orb family, echo stalactites <c>693</c>/<c>694</c>,
+/// underwater plants <c>549</c>, projectile pressure pads <c>442</c>, bamboo <c>571</c>,
+/// lily pads <c>518</c>, cat tails <c>519</c>, stalactites <c>165</c>,
+/// and the generation-time part of <c>KillTile</c>.
 /// The cosmetic branch is genuinely absent during generation - the source guards it with
 /// <c>!generatingWorld</c> - so nothing is dropped there. Frame-important identities outside those families
 /// keep their own validators in the source; this slice does not run them, and callers must not use it to frame
@@ -62,6 +70,7 @@ internal sealed class GenerationTileFraming1458(
     /// same validation, and lowers it before re-framing the block around what it removed.
     /// </summary>
     private bool destroyingObject;
+    private SpeleothemPass1458? speleothemFramer;
 
     /// <summary>Source <c>WorldGen.SquareTileFrame</c>: only the centre call resets the frame.</summary>
     public void SquareTileFrame(int i, int j, bool resetFrame = true)
@@ -103,6 +112,18 @@ internal sealed class GenerationTileFraming1458(
             return;
         }
 
+        if (tile.Type == 235)
+        {
+            CheckThreeByOne(i, j);
+            return;
+        }
+
+        if (tile.Type == 185 && tile.FrameY != 18)
+        {
+            FrameSinglePile(i, j);
+            return;
+        }
+
         if (tile.Type is PlantDetritus or JungleBulb or LifeFruit or JungleBulb702)
         {
             CheckJunglePlant(i, j, tile.Type);
@@ -130,6 +151,104 @@ internal sealed class GenerationTileFraming1458(
         if (tile.Type == 324)
         {
             FramePileOrSpeleothem(i, j);
+            return;
+        }
+
+        if (tile.Type == 4)
+        {
+            FrameOrdinaryTorch(i, j);
+            return;
+        }
+
+        if (tile.Type == 136)
+        {
+            FrameDartTrap(i, j);
+            return;
+        }
+
+        if (tile.Type is 129 or 149)
+        {
+            FrameMultiDirectionalSwitch(i, j);
+            return;
+        }
+
+        if (tile.Type == 178)
+        {
+            FrameMultiDirectionalDecoration(i, j, resetFrame);
+            return;
+        }
+
+        if (tile.Type == 227)
+        {
+            FrameDyePlant(i, j);
+            return;
+        }
+
+        if (tile.Type == 80)
+        {
+            FrameCactus(i, j);
+            return;
+        }
+
+        if (tile.Type is 12 or 31 or 639 or 696)
+        {
+            FrameOrb(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type is 693 or 694)
+        {
+            FrameEchoStalactite(i, j, tile.Type);
+            return;
+        }
+
+        if (tile.Type == 549)
+        {
+            FrameUnderwaterPlant(i, j);
+            return;
+        }
+
+        if (tile.Type == 442)
+        {
+            FrameProjectilePressurePad(i, j);
+            return;
+        }
+
+        if (tile.Type == 571)
+        {
+            FrameBamboo(i, j);
+            return;
+        }
+
+        if (tile.Type == 518)
+        {
+            FrameLilyPad(i, j);
+            return;
+        }
+
+        if (tile.Type == 519)
+        {
+            FrameCatTail(i, j);
+            return;
+        }
+
+        if (tile.Type == 165)
+        {
+            (speleothemFramer ??= new SpeleothemPass1458(store, random, 0, 0, 0,
+                CancellationToken.None)).FrameExistingStalactite(i, j);
+            return;
+        }
+
+        if (tile.Type == 579)
+        {
+            if (!SolidTileAllowBottomSlope(i, j + 1))
+                KillTile(i, j);
+            return;
+        }
+
+        if (tile.Type is 373 or 374 or 375 or 461 or 709)
+        {
+            FrameDripTile(i, j);
             return;
         }
 
@@ -346,6 +465,74 @@ internal sealed class GenerationTileFraming1458(
     /// framing entirely, which no generated platform reaches because framing never runs on the map's edge.
     /// </summary>
     private WorldTile Neighbour(int x, int y) => Contains(x, y) ? At(x, y) : default;
+
+    /// <summary>
+    /// Source <c>WorldGen.Check3x1</c> for type 235. A broken footprint removes its remaining matching cells,
+    /// then frames the surrounding rectangle in the source's x/y order.
+    /// </summary>
+    private void CheckThreeByOne(int i, int j)
+    {
+        if (destroyingObject)
+            return;
+
+        int column = At(i, j).FrameX / 18;
+        int style = 0;
+        while (column > 2)
+        {
+            column -= 3;
+            style++;
+        }
+
+        int left = i - column;
+        bool broken = false;
+        for (int x = left; x < left + 3; x++)
+        {
+            if (!Contains(x, j))
+            {
+                broken = true;
+                continue;
+            }
+
+            WorldTile cell = At(x, j);
+            if (!cell.IsActive || cell.Type != 235 ||
+                cell.FrameX != (x - left) * 18 + style * 54 || cell.FrameY != 0 ||
+                !SolidTileAllowBottomSlope(x, j + 1))
+                broken = true;
+        }
+
+        if (!broken)
+            return;
+
+        destroyingObject = true;
+        for (int x = left; x < left + 3; x++)
+        {
+            if (Contains(x, j) && At(x, j) is { IsActive: true, Type: 235 })
+                KillTile(x, j);
+        }
+
+        destroyingObject = false;
+        for (int x = left - 1; x < left + 4; x++)
+        for (int y = j - 1; y < j + 2; y++)
+            TileFrame(x, y);
+    }
+
+    /// <summary>The one-cell branch of TerrariaServer 1.4.5.8 <c>WorldGen.CheckPile</c>.</summary>
+    private void FrameSinglePile(int i, int j)
+    {
+        if (!SolidTileAllowBottomSlope(i, j + 1))
+        {
+            KillTile(i, j);
+            return;
+        }
+
+        int style = At(i, j).FrameX / 18;
+        ushort floor = At(i, j + 1).Type;
+        bool snowStyle = style is >= 36 and <= 47;
+        bool sandStyle = style is >= 54 and <= 59 or >= 73 and <= 76;
+        if (snowStyle && floor is not (147 or 161 or 163 or 164 or 200 or 162 or 224) ||
+            sandStyle && floor is not (53 or 112 or 116 or 234 or 397 or 398 or 402 or 399 or 396 or 400 or 403 or 401))
+            KillTile(i, j);
+    }
 
     /// <summary>
     /// Source <c>WorldGen.Check3x2</c> for the pile family. The origin is re-derived from the cell's own frame,
@@ -842,6 +1029,606 @@ internal sealed class GenerationTileFraming1458(
         SquareTileFrame(i, j);
     }
 
+    /// <summary>The ordinary torch identity's generation-time <c>CheckTorch</c> dispatch.</summary>
+    private void FrameOrdinaryTorch(int i, int j)
+    {
+        ref WorldTile torch = ref At(i, j);
+        short styleBand = torch.FrameX >= 66 ? (short)66 : (short)0;
+        WorldTile below = At(i, j + 1);
+        WorldTile left = At(i - 1, j);
+        WorldTile right = At(i + 1, j);
+
+        bool belowPlatform = VanillaTileIds.IsPlatform(below.TileType);
+        bool belowTop = below.IsActive && below.Shape != 1 &&
+            (below.Shape is not (2 or 3) ||
+             belowPlatform && PlatformProperTopFrame(below.FrameX));
+        if (belowTop && VanillaTileCollisionCatalog.IsSolid(below.TileType) &&
+            (!GenerationObjectSupport1458.DisallowsAttachment(below.Type) || belowPlatform))
+        {
+            torch.FrameX = styleBand;
+            return;
+        }
+
+        if (TorchSideSupport(i - 1, j, left, isLeft: true))
+        {
+            torch.FrameX = (short)(22 + styleBand);
+            return;
+        }
+
+        if (TorchSideSupport(i + 1, j, right, isLeft: false))
+        {
+            torch.FrameX = (short)(44 + styleBand);
+            return;
+        }
+
+        if (torch.Wall > 0)
+            torch.FrameX = styleBand;
+        else
+            KillTile(i, j);
+    }
+
+    private bool TorchSideSupport(int x, int y, in WorldTile side, bool isLeft)
+    {
+        if (!side.IsActive ||
+            (isLeft && side.Shape is 2 or 4) ||
+            (!isLeft && side.Shape is 3 or 5))
+            return false;
+        if (VanillaTileCollisionCatalog.IsSolid(side.TileType) &&
+            !GenerationObjectSupport1458.DisallowsAttachment(side.Type))
+            return true;
+        if (side.Type is 124 or 561 or 574 or 575 or 576 or 577 or 578)
+            return true;
+        return IsTorchTree(side.Type) && IsTorchTree(At(x, y - 1).Type) && At(x, y - 1).IsActive &&
+            IsTorchTree(At(x, y + 1).Type) && At(x, y + 1).IsActive;
+    }
+
+    private static bool PlatformProperTopFrame(short frameX)
+    {
+        int frame = frameX / 18;
+        return frame is >= 0 and <= 7 or >= 12 and <= 16 or >= 25 and <= 26;
+    }
+
+    private static bool IsTorchTree(ushort type) =>
+        type is 5 or 72 or 583 or 584 or 585 or 586 or 587 or 588 or 589 or 596 or 616 or 634;
+
+    /// <summary><c>WorldGen.TileFrameImportant</c> type 136 attachment priority.</summary>
+    private void FrameDartTrap(int i, int j)
+    {
+        ref WorldTile trap = ref At(i, j);
+        WorldTile below = At(i, j + 1);
+        if (below.IsActive && !below.IsActuated && below.Shape != 1 &&
+            below.Shape is not (2 or 3) &&
+            VanillaTileCollisionCatalog.IsSolid(below.TileType) &&
+            !GenerationObjectSupport1458.DisallowsAttachment(below.Type))
+        {
+            trap.FrameX = 0;
+            return;
+        }
+
+        WorldTile left = At(i - 1, j);
+        if (DartTrapSideSupport(i - 1, j, left, isLeft: true))
+        {
+            trap.FrameX = 18;
+            return;
+        }
+
+        WorldTile right = At(i + 1, j);
+        if (DartTrapSideSupport(i + 1, j, right, isLeft: false))
+        {
+            trap.FrameX = 36;
+            return;
+        }
+
+        if (trap.Wall > 0)
+            trap.FrameX = 54;
+        else
+            KillTile(i, j);
+    }
+
+    private bool DartTrapSideSupport(int x, int y, in WorldTile side, bool isLeft)
+    {
+        if (!side.IsActive || side.IsActuated)
+            return false;
+        bool solidSide = side.Shape != 1 &&
+            (isLeft ? side.Shape is not (2 or 4) : side.Shape is not (3 or 5)) &&
+            VanillaTileCollisionCatalog.IsSolid(side.TileType) &&
+            !GenerationObjectSupport1458.DisallowsAttachment(side.Type);
+        bool beam = side.Type is 124 or 561 or 574 or 575 or 576 or 577 or 578;
+        bool tree = IsTorchTree(side.Type) &&
+            At(x, y - 1) is { IsActive: true } upper && IsTorchTree(upper.Type) &&
+            At(x, y + 1) is { IsActive: true } lower && IsTorchTree(lower.Type);
+        return solidSide || beam || tree;
+    }
+
+    /// <summary><c>WorldGen.CheckProjectilePressurePad</c>: keep a valid direction, else choose down/up/left/right.</summary>
+    private void FrameProjectilePressurePad(int i, int j)
+    {
+        ref WorldTile pad = ref At(i, j);
+        WorldTile below = At(i, j + 1);
+        WorldTile above = At(i, j - 1);
+        bool down = below.IsActive && !below.IsActuated && below.Shape is 0 or 4 or 5 &&
+            VanillaTileCollisionCatalog.IsSolid(below.TileType) &&
+            (!GenerationObjectSupport1458.DisallowsAttachment(below.Type) ||
+             VanillaTileIds.IsPlatform(below.TileType));
+        bool up = above.IsActive && !above.IsActuated && above.Shape is 0 or 1 or 2 or 3 &&
+            VanillaTileCollisionCatalog.IsSolid(above.TileType) &&
+            (!GenerationObjectSupport1458.DisallowsAttachment(above.Type) ||
+             VanillaTileIds.IsPlatform(above.TileType) && above.Shape == 1);
+        WorldTile leftTile = At(i - 1, j);
+        WorldTile rightTile = At(i + 1, j);
+        bool left = DartTrapSideSupport(i - 1, j, leftTile, isLeft: true);
+        bool right = DartTrapSideSupport(i + 1, j, rightTile, isLeft: false);
+        bool valid = (pad.FrameX / 22) switch
+        {
+            0 => down,
+            1 => up,
+            2 => left,
+            3 => right,
+            _ => false
+        };
+        if (valid) return;
+        if (down) pad.FrameX = 0;
+        else if (up) pad.FrameX = 22;
+        else if (left) pad.FrameX = 44;
+        else if (right) pad.FrameX = 66;
+        else KillTile(i, j);
+    }
+
+    /// <summary><c>WorldGen.CheckAndAdjustMultiDirectionalTile</c> for frame-important types 129/149.</summary>
+    private void FrameMultiDirectionalSwitch(int i, int j)
+    {
+        ref WorldTile tile = ref At(i, j);
+        // Source preference is below, left, right, then above. Its reported directions
+        // map to frameY 0, 54, 36 and 18 respectively for these two identities.
+        if (ValidMultiDirectionalAnchor(i, j + 1, 1))
+            tile.FrameY = 0;
+        else if (ValidMultiDirectionalAnchor(i - 1, j, 2))
+            tile.FrameY = 54;
+        else if (ValidMultiDirectionalAnchor(i + 1, j, 3))
+            tile.FrameY = 36;
+        else if (ValidMultiDirectionalAnchor(i, j - 1, 0))
+            tile.FrameY = 18;
+        else
+            KillTile(i, j);
+    }
+
+    /// <summary><c>WorldGen.TileFrameImportant</c> type 178 keeps one of three styles in each direction band.</summary>
+    private void FrameMultiDirectionalDecoration(int i, int j, bool resetFrame)
+    {
+        ref WorldTile tile = ref At(i, j);
+        int direction = ValidMultiDirectionalAnchor(i, j + 1, 1) ? 0 :
+            ValidMultiDirectionalAnchor(i - 1, j, 2) ? 2 :
+            ValidMultiDirectionalAnchor(i + 1, j, 3) ? 3 :
+            ValidMultiDirectionalAnchor(i, j - 1, 0) ? 1 : -1;
+        if (direction < 0)
+        {
+            KillTile(i, j);
+            return;
+        }
+
+        int band = direction * 54;
+        int current = tile.FrameY;
+        // The source evaluates this draw before it checks whether the current band is already valid.
+        int style = resetFrame ? random.Next(3) * 18 : current % 54;
+        if (current >= band && current <= band + 36)
+            return;
+
+        // FinalCleanup invokes TileFrame without resetFrame, preserving the existing style remainder.
+        tile.FrameY = (short)(band + style);
+    }
+
+    private bool ValidMultiDirectionalAnchor(int x, int y, int direction)
+    {
+        WorldTile anchor = At(x, y);
+        if (GenerationObjectSupport1458.IsBoulder(anchor.Type) || anchor.Type == 10 ||
+            !anchor.IsActive || anchor.IsActuated ||
+            !VanillaTileCollisionCatalog.IsSolid(anchor.TileType) ||
+            VanillaTileCollisionCatalog.IsSolidTop(anchor.TileType))
+            return false;
+        return direction switch
+        {
+            0 => (anchor.Type == 380 || !VanillaTileIds.IsPlatform(anchor.TileType) &&
+                anchor.Shape is not (4 or 5)) ||
+                VanillaTileIds.IsPlatform(anchor.TileType) && anchor.Shape == 1,
+            1 => anchor.Shape != 1 &&
+                (anchor.Shape is not (2 or 3) ||
+                 VanillaTileIds.IsPlatform(anchor.TileType) && PlatformProperTopFrame(anchor.FrameX)),
+            2 => anchor.Shape != 1 && anchor.Shape is not (3 or 5) &&
+                !VanillaTileIds.IsPlatform(anchor.TileType),
+            3 => anchor.Shape != 1 && anchor.Shape is not (2 or 4) &&
+                !VanillaTileIds.IsPlatform(anchor.TileType),
+            _ => false
+        };
+    }
+
+    /// <summary><c>WorldGen.CheckDye</c>: style 7 hangs, style 6 grows on type 80, others stand.</summary>
+    private void FrameDyePlant(int i, int j)
+    {
+        WorldTile dye = At(i, j);
+        bool supported = (dye.FrameX / 34) switch
+        {
+            7 => SolidTile(i, j - 1),
+            6 => At(i, j + 1) is { IsActive: true, IsActuated: false, Type: 80 },
+            _ => SolidTile(i, j + 1)
+        };
+        if (!supported)
+            KillTile(i, j);
+    }
+
+    /// <summary><c>WorldGen.CheckCactus</c>: follow the trunk to its sand-family root.</summary>
+    private void FrameCactus(int i, int j)
+    {
+        int rootX = i;
+        int rootY = j;
+        while (Contains(rootX, rootY) && At(rootX, rootY) is { IsActive: true, Type: 80 })
+        {
+            rootY++;
+            if (!Contains(rootX, rootY))
+                return;
+            if (At(rootX, rootY) is not { IsActive: true, Type: 80 })
+            {
+                if (rootX > 0 && At(rootX - 1, rootY) is { IsActive: true, Type: 80 } &&
+                    At(rootX - 1, rootY - 1) is { IsActive: true, Type: 80 } && rootX >= i)
+                    rootX--;
+                if (rootX + 1 < width && At(rootX + 1, rootY) is { IsActive: true, Type: 80 } &&
+                    At(rootX + 1, rootY - 1) is { IsActive: true, Type: 80 } && rootX <= i)
+                    rootX++;
+            }
+        }
+
+        WorldTile root = At(rootX, rootY);
+        bool rooted = root.IsActive && !root.IsActuated && root.Shape == 0 &&
+            root.Type is 53 or 112 or 116 or 234;
+        if (!rooted)
+        {
+            KillTile(i, j);
+            return;
+        }
+
+        WorldTile below = At(i, j + 1);
+        if (rootX != i)
+        {
+            bool attached = below.IsActive && below.Type == 80 ||
+                At(i - 1, j) is { IsActive: true, Type: 80 } ||
+                At(i + 1, j) is { IsActive: true, Type: 80 };
+            if (!attached)
+                KillTile(i, j);
+        }
+        else if (!below.IsActive || below.Type is not (80 or 53 or 112 or 116 or 234))
+        {
+            KillTile(i, j);
+        }
+    }
+
+    /// <summary><c>WorldGen.CheckOrb</c> validates the two-by-two body and the supported-orb floor.</summary>
+    private void FrameOrb(int i, int j, ushort type)
+    {
+        if (destroyingObject)
+            return;
+
+        WorldTile tile = At(i, j);
+        int left = tile.FrameX is 0 or 36 ? i : i - 1;
+        int top = tile.FrameY == 0 ? j : j - 1;
+        bool broken = false;
+        for (int x = left; x < left + 2; x++)
+        {
+            for (int y = top; y < top + 2; y++)
+            {
+                if (!Contains(x, y) || At(x, y) is not { IsActive: true } cell ||
+                    cell.IsActuated || cell.Type != type)
+                    broken = true;
+            }
+            if (type is 12 or 639 && !SolidTileAllowBottomSlope(x, top + 2))
+                broken = true;
+        }
+        if (!broken)
+            return;
+
+        destroyingObject = true;
+        for (int x = left; x < left + 2; x++)
+        for (int y = top; y < top + 2; y++)
+            if (Contains(x, y) && At(x, y).Type == type)
+                KillTile(x, y);
+        destroyingObject = false;
+    }
+
+    /// <summary><c>WorldGen.CheckStalactiteEcho</c> support and one-/two-cell footprint.</summary>
+    private void FrameEchoStalactite(int i, int j, ushort type)
+    {
+        if (destroyingObject)
+            return;
+
+        WorldTile cell = At(i, j);
+        int length = type == 694 ? 2 : 1;
+        bool hanging = cell.FrameY < length * 18;
+        int top = j - cell.FrameY % (length * 18) / 18;
+        if (!Contains(i, top) || !Contains(i, top + length - 1))
+            return;
+        int frameBand = hanging ? 0 : length * 18;
+        int supportY = hanging ? top - 1 : top + length;
+        bool broken = hanging ? !SolidTileAllowTopSlope(i, supportY) :
+            !SolidTileAllowBottomSlope(i, supportY);
+        for (int dy = 0; dy < length && !broken; dy++)
+        {
+            WorldTile segment = At(i, top + dy);
+            if (segment.Type != type || segment.FrameX != cell.FrameX ||
+                segment.FrameY != frameBand + dy * 18)
+                broken = true;
+        }
+        if (!broken)
+            return;
+
+        destroyingObject = true;
+        for (int dy = 0; dy < length; dy++)
+            if (At(i, top + dy).Type == type)
+                KillTile(i, top + dy);
+        destroyingObject = false;
+    }
+
+    /// <summary><c>WorldGen.SolidTileAllowTopSlope</c> support used by hanging echo stalactites.</summary>
+    private bool SolidTileAllowTopSlope(int i, int j)
+    {
+        if (!Contains(i, j))
+            return false;
+        WorldTile support = At(i, j);
+        bool platform = VanillaTileIds.IsPlatform(support.TileType);
+        return support.IsActive && !support.IsActuated &&
+            (VanillaTileCollisionCatalog.IsSolid(support.TileType) || support.Type == 380) &&
+            (platform ? support.Shape == 1 : support.Shape is not (4 or 5));
+    }
+
+    /// <summary><c>WorldGen.CheckUnderwaterPlant</c> for the generated seaweed identity.</summary>
+    private void FrameUnderwaterPlant(int i, int j)
+    {
+        if (i < 50 || j < 50 || i >= width - 50 || j >= height - 50 ||
+            !IsWater(i, j) || !IsWater(i, j - 1) || !IsWater(i, j - 2) ||
+            !CanSupportUnderwaterPlant(i, j + 1) ||
+            At(i, j).Wall is not (0 or >= 63 and <= 69 or 80 or 81))
+        {
+            KillTile(i, j);
+            SquareTileFrame(i, j);
+            return;
+        }
+
+        ref WorldTile tile = ref At(i, j);
+        int style = tile.FrameX / 18;
+        tile.FrameY = 0;
+        if (At(i, j - 1).IsActive && At(i, j - 1).Type == 549)
+        {
+            if (style is < 1 or > 7)
+                tile.FrameX = (short)(random.Next(1, 8) * 18);
+        }
+        else if (At(i, j + 1).IsActive && At(i, j + 1).Type == 549)
+        {
+            if (style is < 7 or > 12)
+                tile.FrameX = (short)(random.Next(7, 13) * 18);
+        }
+        else if (style != 0)
+            tile.FrameX = 0;
+    }
+
+    private bool IsWater(int i, int j)
+    {
+        WorldTile tile = At(i, j);
+        return tile.LiquidAmount != 0 && tile.LiquidKind == WorldLiquidKind.Water;
+    }
+
+    private bool CanSupportUnderwaterPlant(int i, int j)
+    {
+        WorldTile support = At(i, j);
+        if (!support.IsActive || support.IsActuated)
+            return false;
+        if (support.Type == 549)
+            return true;
+        if (!WorldSmoothingCatalog1458.IsSandConversion(support.TileType) ||
+            support.Shape == 1 || support.Shape is 2 or 3)
+            return false;
+        return VanillaTileCollisionCatalog.IsSolid(support.TileType) ||
+            VanillaTileCollisionCatalog.IsSolidTop(support.TileType);
+    }
+
+    /// <summary><c>WorldGen.CheckBamboo</c> support and neighbor-dependent frame bands.</summary>
+    private void FrameBamboo(int i, int j)
+    {
+        WorldTile below = At(i, j + 1);
+        if (!below.IsActive || below.Type is not (60 or 571))
+        {
+            KillTile(i, j);
+            SquareTileFrame(i, j);
+            return;
+        }
+        ref WorldTile bamboo = ref At(i, j);
+        bool aboveBamboo = At(i, j - 1) is { IsActive: true, Type: 571 };
+        bool belowBamboo = below.Type == 571;
+        int style = bamboo.FrameX / 18;
+        bamboo.FrameY = 0;
+        if (aboveBamboo && belowBamboo)
+        {
+            if (style is < 5 or > 14)
+                bamboo.FrameX = (short)(random.Next(5, 15) * 18);
+        }
+        else if (aboveBamboo)
+        {
+            if (style is < 1 or > 4)
+                bamboo.FrameX = (short)(random.Next(1, 5) * 18);
+        }
+        else if (belowBamboo)
+        {
+            if (style is < 15 or > 19)
+                bamboo.FrameX = (short)(random.Next(15, 20) * 18);
+        }
+        else if (style != 0)
+            bamboo.FrameX = 0;
+    }
+
+    /// <summary><c>WorldGen.CheckLilyPad</c> substrate style and surface-following motion during generation.</summary>
+    private void FrameLilyPad(int i, int j)
+    {
+        if (At(i, j).LiquidKind != WorldLiquidKind.Water)
+        {
+            KillTile(i, j);
+            return;
+        }
+
+        int supportY = j;
+        while (supportY < height - 50)
+        {
+            WorldTile candidate = At(i, supportY);
+            if (candidate.IsActive && VanillaTileCollisionCatalog.IsSolid(candidate.TileType) &&
+                !VanillaTileCollisionCatalog.IsSolidTop(candidate.TileType))
+                break;
+            supportY++;
+        }
+        ushort support = At(i, supportY).Type;
+        int frameY = support switch
+        {
+            2 or 477 => 0,
+            109 or 116 => 18,
+            60 => 36,
+            _ => -1
+        };
+        if (frameY < 0)
+        {
+            KillTile(i, j);
+            return;
+        }
+
+        ref WorldTile pad = ref At(i, j);
+        pad.FrameY = (short)frameY;
+        if (At(i, j - 1) is { IsActive: false, LiquidAmount: > 0 })
+        {
+            MoveLilyPad(i, j, j - 1);
+            return;
+        }
+        if (pad.LiquidAmount != 0)
+            return;
+        WorldTile below = At(i, j + 1);
+        if (!below.IsActive)
+            MoveLilyPad(i, j, j + 1);
+        else if (!VanillaTileIds.IsPlatform(below.TileType) &&
+                 (!VanillaTileCollisionCatalog.IsSolid(below.TileType) ||
+                  VanillaTileCollisionCatalog.IsSolidTop(below.TileType)))
+            KillTile(i, j);
+    }
+
+    private void MoveLilyPad(int i, int sourceY, int targetY)
+    {
+        WorldTile source = At(i, sourceY);
+        ref WorldTile target = ref At(i, targetY);
+        target.Flags |= WorldTileFlags.Active;
+        target.Type = 518;
+        target.FrameX = source.FrameX;
+        target.FrameY = source.FrameY;
+        target.Shape = 0;
+        target.TileColor = source.TileColor;
+        ref WorldTile old = ref At(i, sourceY);
+        old.Flags &= ~WorldTileFlags.Active;
+        old.Type = 0;
+        SquareTileFrame(i, targetY, resetFrame: false);
+    }
+
+    /// <summary><c>WorldGen.CheckCatTail</c> water-column, floor and stalk validation.</summary>
+    private void FrameCatTail(int i, int j)
+    {
+        bool broken = false;
+        int floor = j;
+        while (floor < height - 50)
+        {
+            WorldTile cell = At(i, floor);
+            if (cell.IsActive && VanillaTileCollisionCatalog.IsSolid(cell.TileType) &&
+                !VanillaTileCollisionCatalog.IsSolidTop(cell.TileType))
+                break;
+            if (cell.IsActive && cell.Type != 519)
+                broken = true;
+            if (!cell.IsActive)
+                break;
+            floor++;
+        }
+        int surface = Math.Max(0, floor - 1);
+        while (surface > 50 && At(i, surface).LiquidAmount > 0)
+        {
+            WorldTile wet = At(i, surface);
+            if (wet.IsActive && wet.Type != 519 || wet.LiquidKind != WorldLiquidKind.Water)
+                broken = true;
+            surface--;
+        }
+        surface++;
+        if (floor - surface > 8)
+            broken = true;
+        WorldTile ground = At(i, floor);
+        short targetFrameY = ground.Type switch
+        {
+            2 or 477 => 0,
+            53 => 18,
+            199 or 234 or 662 => 54,
+            23 or 112 or 661 => 72,
+            70 => 90,
+            _ => -1
+        };
+        if (!ground.IsActive || ground.IsActuated || targetFrameY < 0)
+            broken = true;
+
+        int top = Math.Max(0, floor - 1);
+        if (!At(i, top).IsActive)
+        {
+            for (int row = top; row >= surface; row--)
+            {
+                if (At(i, row) is { IsActive: true, Type: 519 })
+                {
+                    top = row;
+                    break;
+                }
+            }
+        }
+        while (top > 0 && At(i, top) is { IsActive: true, Type: 519 })
+            top--;
+        top++;
+
+        if (floor > 0 && At(i, floor - 1).LiquidAmount < 127)
+            broken = true;
+        if (Contains(i, top) && At(i, top).FrameX >= 180 && At(i, top).LiquidAmount > 127)
+            broken = true;
+        if (Contains(i, top) && floor > 0 && At(i, top).FrameX > 18)
+        {
+            short lastFrameX = At(i, floor - 1).FrameX;
+            if (lastFrameX is < 36 or > 72 || At(i, top).FrameX < 90)
+                broken = true;
+            else if (At(i, top).FrameX is >= 108 and <= 162)
+                At(i, top).FrameX = 90;
+        }
+        if (floor > top + 4 && Contains(i, top + 4) && Contains(i, top + 3) &&
+            At(i, top + 4).LiquidAmount == 0 && At(i, top + 3).Type == 519)
+            broken = true;
+
+        if (broken)
+        {
+            int first = Math.Max(0, Math.Min(surface, top) - 4);
+            for (int row = first; row <= floor && row < height; row++)
+            {
+                if (At(i, row) is not { IsActive: true, Type: 519 })
+                    continue;
+                KillTile(i, row);
+                SquareTileFrame(i, row);
+            }
+            return;
+        }
+        if (At(i, top).FrameY == targetFrameY)
+            return;
+        for (int row = top; row < floor; row++)
+            if (At(i, row) is { IsActive: true, Type: 519 })
+                At(i, row).FrameY = targetFrameY;
+    }
+
+    /// <summary><c>TileID.Sets.IsADripTile</c> attachment check in <c>TileFrameImportant</c>.</summary>
+    private void FrameDripTile(int i, int j)
+    {
+        WorldTile above = At(i, j - 1);
+        if (!above.IsActive || above.Shape is 4 or 5 ||
+            !VanillaTileCollisionCatalog.IsSolid(above.TileType) ||
+            VanillaTileCollisionCatalog.IsSolidTop(above.TileType))
+            KillTile(i, j);
+    }
+
     /// <summary>
     /// Source <c>WorldGen.TileFrameImportant</c>'s case for long moss, which is where the Moss Grass pass
     /// actually decides what a strand looks like and whether it lives at all.
@@ -942,7 +1729,8 @@ internal sealed class GenerationTileFraming1458(
 
     /// <summary>
     /// Source <c>WorldGen.SolidTileAllowBottomSlope</c>. Out of world reads as solid, which is what keeps the
-    /// source from destroying an object that reaches the border.
+    /// source from destroying an object that reaches the border. A top-sloped platform still supports an
+    /// object when its horizontal frame belongs to <c>PlatformProperTopFrame</c>.
     /// </summary>
     private bool SolidTileAllowBottomSlope(int i, int j)
     {
@@ -953,7 +1741,8 @@ internal sealed class GenerationTileFraming1458(
         return tile.IsActive &&
             (VanillaTileCollisionCatalog.IsSolid(tile.TileType) ||
              VanillaTileCollisionCatalog.IsSolidTop(tile.TileType)) &&
-            tile.Shape is not (2 or 3) &&
+            (tile.Shape is not (2 or 3) ||
+             VanillaTileIds.IsPlatform(tile.TileType) && PlatformProperTopFrame(tile.FrameX)) &&
             tile.Shape != 1 &&
             !tile.IsActuated;
     }
