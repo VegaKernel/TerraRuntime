@@ -479,6 +479,12 @@ internal sealed partial class PlayerAuthority
             return;
         }
 
+        if (activePlayer is not null && !TryPreparePermanentAppearance(activePlayer, in request, out request))
+        {
+            RejectedAppearances++;
+            return;
+        }
+
         if (activePlayer is not null && !activePlayer.TryAdvanceRevision())
         {
             RejectedAppearances++;

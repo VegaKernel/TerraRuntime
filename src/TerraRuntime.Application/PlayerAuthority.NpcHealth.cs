@@ -30,7 +30,7 @@ internal sealed partial class PlayerAuthority
             profileCaptured && buffs is not null &&
             member.NpcHealth is { SourceProfileKnown: true } && (member.ItemAnimation == 0 || selectedItemPhase) &&
             !member.HasMount && (member.MiscFlags1 & (1 << 2)) == 0 && (member.MiscFlags2 & 1) == 0 &&
-            (appearance?.ConsumableUnlockFlags ?? 0) == 0 &&
+            ((appearance?.ConsumableUnlockFlags ?? 0) & ~127) == 0 &&
             (selectedItemPhase ? TryCaptureProvenRemoteEquipment(equipment, appearance, out _, out _, selectedVoidStorageOpen) :
                 !equipment.Any(static item => item.Stack > 0 && VanillaPlayerItemSlotCatalog.IsFunctionalArmorSlot(item.SlotId)));
         int regeneration = 0;
@@ -98,7 +98,8 @@ internal sealed partial class PlayerAuthority
             member.IsDead, supported, world?.ExpertMode ?? false, moving && grappling != true, regeneration,
             buffs?.Any(static b => b == VanillaBuffIds.Poisoned) == true,
             buffs?.Any(static b => b == VanillaBuffIds.OnFire) == true,
-            buffs?.Any(static b => b == VanillaBuffIds.CursedInferno) == true);
+            buffs?.Any(static b => b == VanillaBuffIds.CursedInferno) == true,
+            ((appearance?.ConsumableUnlockFlags ?? 0) & 1) != 0);
         return true;
     }
 

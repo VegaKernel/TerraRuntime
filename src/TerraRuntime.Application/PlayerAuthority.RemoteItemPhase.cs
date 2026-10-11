@@ -57,6 +57,7 @@ internal sealed partial class PlayerAuthority
                 appearance, equipment, buffs, buffState, member.GodMode, member.OwnsManaMaximum, member.OwnsLifeMaximum);
             membership.TryGetTownShopSession(member.Connection.Player, out var shopSession);
             plans[i].BeforeShopSession = shopSession;
+            plans[i].BeforePermanentUpgradeMask = member.OwnedPermanentUpgradeMask;
             if (!inventory.TryCopyInventory(member.Connection, plans[i].InventoryBefore)) return false;
             // Capture source UpdateEquips' bag gate before any external provider.
             // Cursor 58 and stored bags cannot open Void storage.
@@ -120,6 +121,7 @@ internal sealed partial class PlayerAuthority
                 !membership.TryGet(member.Connection, out var current) || !ReferenceEquals(current, member) ||
                 member.CaptureSnapshot() != plan.Before || member.ItemPhase != plan.BeforeItem ||
                 member.PhysicsPhase != plan.BeforePhysics || member.GodMode != plan.GodMode ||
+                member.OwnedPermanentUpgradeMask != plan.BeforePermanentUpgradeMask ||
                 member.OwnsManaMaximum != plan.BeforeOwnsManaMaximum || member.OwnsLifeMaximum != plan.BeforeOwnsLifeMaximum ||
                 member.Revision == ulong.MaxValue ||
                 !transferProfiles.TryCapture(member.Connection, out var appearance, out var equipment, out var buffs) ||
@@ -138,6 +140,8 @@ internal sealed partial class PlayerAuthority
             var member = plan.Member;
             // Every condition was checked above; these owned assignments invoke no callbacks.
             transferProfiles.TryAdoptBuffState(member.Connection, plan.BeforeBuffs, plan.Buffs);
+            if (plan.AcceptedPermanentAppearance is { } acceptedAppearance)
+                transferProfiles.TrySetAppearance(member.Connection, in acceptedAppearance);
             member.TryAdvanceRemotePhaseRevision();
             member.ItemPhase = plan.Item;
             if (plan.InventoryMutations.Any(static mutation => mutation.CursorSourceDebit is not null) &&
@@ -187,6 +191,15 @@ internal sealed partial class PlayerAuthority
                     catch (Exception error) { first ??= error; }
                 }
             }
+            if (plan.AcceptedPermanentAppearance is { } publishedAppearance &&
+                membership.TryGet(plan.Member.Connection, out var appearanceMember) &&
+                ReferenceEquals(appearanceMember, plan.Member) &&
+                transferProfiles.TryCapture(plan.Member.Connection, out var currentAppearance, out _, out _) &&
+                currentAppearance == publishedAppearance)
+            {
+                try { events?.PlayerAppearanceUpdated(plan.Member.Connection, in publishedAppearance); }
+                catch (Exception error) { first ??= error; }
+            }
             if (plan.PublishHealth && membership.TryGet(plan.Member.Connection, out var healthMember) &&
                 ReferenceEquals(healthMember, plan.Member) && healthMember.NpcHealth == plan.Health &&
                 healthMember.ItemPhase == plan.Item)
@@ -234,7 +247,7 @@ internal sealed partial class PlayerAuthority
         if (plan.Item is not { } item || (item.ShopDiscountStates & ~15) != 0 || item.ClientUiPriceArithmeticMask > 3 || plan.Physics is not { } physical ||
             item.DeadTime is < 0 or >= int.MaxValue || item.RespawnTimer < 0 || item.ManaPotionDelay < 0 ||
             member.NpcHealth is not { SourceProfileKnown: true } || member.HasMount || plan.GodMode ||
-            (plan.Appearance?.ConsumableUnlockFlags ?? 0) != 0 ||
+            ((plan.Appearance?.ConsumableUnlockFlags ?? 0) & ~127) != 0 ||
             !TryCaptureProvenRemoteEquipment(plan.Equipment, plan.Appearance, out var equipmentCombat, out int manaMaximumBonus, plan.VoidStorageOpen) ||
             plan.BuffTypes.Any(static type => type.Value is not (5 or 16 or 21 or 23 or 93 or 94 or 112 or 114 or 115 or 117 or 321)) ||
             member.MiscFlags1 != 0 || (member.MiscFlags2 & ~((1 << 6) | (1 << 7))) != 0 ||
@@ -348,11 +361,31 @@ internal sealed partial class PlayerAuthority
                 world.WindowsItemPrefixArithmetic, out float magicDamage)) return false;
         var derivedCombat = buffCombat with
         {
+            Defense = buffCombat.Defense,
             MeleeCrit = buffCombat.MeleeCrit + itemCrit,
             RangedCrit = buffCombat.RangedCrit + itemCrit,
             MagicCrit = buffCombat.MagicCrit + itemCrit,
             MagicDamage = magicDamage
         };
+        var capturedUnlocks = new PlayerPermanentUnlockState1458(plan.Appearance is { } phaseAppearance
+            ? PermanentUpgradeFlags(in phaseAppearance) : (byte)0);
+        if (member.OwnedPermanentUpgradeMask != 0)
+            item = item with { PermanentPhaseFlags = capturedUnlocks.Flags };
+        if (capturedUnlocks.Flags != 0 || item.PermanentBoosters is not null || member.OwnedPermanentUpgradeMask != 0)
+        {
+            var resetBoosters = new PlayerPermanentBoosterState1458(derivedCombat.Defense, 0, 1f, 1f, 1f);
+            if (!VanillaSelectedConsumable1458.TryApplyPermanentBoosters(in resetBoosters, in capturedUnlocks, out var boosters) ||
+                !VanillaSelectedConsumable1458.TryFinalizePermanentSpeeds(in boosters, out var speeds) ||
+                !VanillaSelectedConsumable1458.TryGetPermanentCraftingRegion(plan.X, plan.Y, 20, 42, 5, 4,
+                    in capturedUnlocks, out var craftingRegion)) return false;
+            derivedCombat = derivedCombat with { Defense = boosters.Defense };
+            item = item with
+            {
+                PermanentBoosters = boosters,
+                PermanentSpeeds = speeds,
+                PermanentCraftingRegion = craftingRegion
+            };
+        }
         if (!IsValidDerivedCombat(in derivedCombat)) return false;
         // UpdateEquips precedes this writer in original Player.Update. An open
         // shop retains the prior availability even when functional gear changes.
@@ -364,7 +397,7 @@ internal sealed partial class PlayerAuthority
 
         int potionDuration = plan.Buffs.GetLastActiveDuration(new BuffTypeId(21));
         if (potionDuration > 0) delay = potionDuration;
-        var manaFacts = new PlayerManaRegenerationFacts1458(plan.Vx, plan.Vy, plan.Grappling!.Value, false, false, 0, 0f, 0);
+        var manaFacts = new PlayerManaRegenerationFacts1458(plan.Vx, plan.Vy, plan.Grappling!.Value, false, ((plan.Appearance?.ConsumableUnlockFlags ?? 0) & 4) != 0, 0, 0f, 0);
         if (!VanillaRemoteManaRegeneration1458.TryStep(item.Mana with { Maximum = (int)Math.Min((long)item.BaseManaMaximum + manaMaximumBonus, 400) },
             in manaFacts, out var mana, out _)) return false;
         mana = mana with { Mana = Math.Min(mana.Mana, mana.Maximum), Count = Math.Max(0, mana.Count) };
@@ -397,6 +430,12 @@ internal sealed partial class PlayerAuthority
         {
             if (!TryPlanManaCrystal(plan, selected, item, clocks, in facts, random, out use, out item)) return false;
             if (plan.PublishMana) mana = mana with { Maximum = item.Mana.Maximum };
+            beganActualUse = use.BeganUse;
+        }
+        else if (PermanentUpgradeBit(selected.ItemType.Value) != 0)
+        {
+            if (!TryPlanOwnedPermanentUpgrade(plan, selected, item, clocks, in facts, random,
+                out use, out item)) return false;
             beganActualUse = use.BeganUse;
         }
         else if (VanillaRemoteChannelledMagic1458.IsSupported(selected.ItemType, selected.Prefix, world.WindowsItemPrefixArithmetic))
@@ -488,7 +527,17 @@ internal sealed partial class PlayerAuthority
         {
             var passiveFacts = new PlayerRemotePassiveItemFacts1458(selected.ItemType, facts.ControlUseItem,
                 facts.LastUseSuccess, facts.Cursed, facts.CrowdControlled, facts.SelectionBuffered, selected.Prefix);
-            if (!VanillaRemotePassiveItemCheck1458.TryStep(clocks, in passiveFacts, random.Next, out var passiveUse))
+            float placementAnimationMultiplier = 1f;
+            if (item.PermanentSpeeds is { } placementSpeeds &&
+                VanillaItemPlacementTable1458.TryGet(selected.ItemType, out var placement))
+            {
+                // ApplyItemAnimation reads capped/inverted tile speed first,
+                // otherwise wall speed. Mining pickSpeed does not alter this clock.
+                if (placement.PlacesTile) placementAnimationMultiplier = placementSpeeds.TileAnimationMultiplier;
+                else if (placement.PlacesWall) placementAnimationMultiplier = placementSpeeds.WallAnimationMultiplier;
+            }
+            if (!VanillaRemotePassiveItemCheck1458.TryStep(clocks, in passiveFacts, random.Next,
+                out var passiveUse, placementAnimationMultiplier))
                 return false;
             use = new(passiveUse.State, facts.Life, facts.Mana, false, 0, 0)
             {
@@ -586,6 +635,8 @@ internal sealed partial class PlayerAuthority
         internal bool GodMode { get; } = godMode;
         internal bool BeforeOwnsManaMaximum { get; } = ownsManaMaximum;
         internal bool BeforeOwnsLifeMaximum { get; } = ownsLifeMaximum;
+        internal byte BeforePermanentUpgradeMask { get; set; }
+        internal PlayerAppearanceCommitRequest? AcceptedPermanentAppearance { get; set; }
         internal int? AcceptedBaseLifeMaximum { get; set; }
         internal PlayerBuffState Buffs { get; } = buffs.Clone();
         internal RuntimePlayerItemPhase1458? Item { get; set; } = item;

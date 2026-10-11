@@ -94,17 +94,19 @@ public readonly record struct VanillaPlayerCombatEquipmentContext(bool? ExtraAcc
     /// <summary>Actual source Main.LocalPlayer vanity armor; absent ownership is not empty armor.</summary>
     public VanillaPlayerLocalVanityArmor1458? LocalVanityArmor { get; init; }
 
+    public bool GameMenu { get; init; }
+
     public bool TryIsSlotUsable(int armorIndex, out bool usable)
     {
         usable = true;
         if (MasterMode && !ExpertMode) return false;
-        if (armorIndex == 8)
+        if (armorIndex is 8 or 18)
         {
-            if (!ExpertMode) { usable = false; return true; }
+            if (!ExpertMode && !GameMenu) { usable = false; return true; }
             if (ExtraAccessory is not { } unlocked) return false;
             usable = unlocked;
         }
-        else if (armorIndex == 9) usable = MasterMode;
+        else if (armorIndex is 9 or 19) usable = MasterMode || GameMenu;
         return true;
     }
 }

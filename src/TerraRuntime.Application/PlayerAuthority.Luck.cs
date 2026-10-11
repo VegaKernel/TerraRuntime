@@ -18,7 +18,11 @@ internal sealed partial class PlayerAuthority
     }
 
     private float CalculatePlayerLuck(RuntimePlayerMember member, in VanillaPlayerLuckComponents1458 factors) =>
-        VanillaPlayerLuckFacts1458.Recalculate(factors, transferProfiles.HasUsedGalaxyPearl(member.Connection),
+        VanillaPlayerLuckFacts1458.Recalculate(factors,
+            (member.OwnedPermanentUpgradeMask & 8) != 0
+                ? (member.ItemPhase?.PermanentPhaseFlags is { } flags
+                    ? (flags & 8) != 0 : transferProfiles.HasUsedGalaxyPearl(member.Connection))
+                : transferProfiles.HasUsedGalaxyPearl(member.Connection),
             lanternsUp == true, HasNaturalSpawnBuffSnapshot(member.Slot.Value, VanillaBuffIds.Stinky));
 
     private void RecalculatePlayerLuck(RuntimePlayerMember? member)

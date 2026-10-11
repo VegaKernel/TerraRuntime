@@ -20,6 +20,17 @@ public static class VanillaSelectedConsumableCatalog1458
             definition = new(type, 0, 0, false, 30, 30, 0);
             return true;
         }
+        if (type.Value == 3335)
+        {
+            definition = new(type, 0, 0, false, 30, 30, 0);
+            return true;
+        }
+        if (type.Value == 5326 || type.Value is >= 5337 and <= 5342)
+        {
+            int useDuration = type.Value == 5326 ? 17 : 45;
+            definition = new(type, 0, 0, false, useDuration, useDuration, 0);
+            return true;
+        }
         (int buff, int duration) = type.Value switch
         {
             292 => (5, 28_800),

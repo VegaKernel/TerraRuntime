@@ -1,5 +1,14 @@
 # Owned player item use 1.4.5.8
 
+## Eight personal permanent upgrades
+
+The gameplay rules represent Demon Heart `3335`, Artisan Loaf `5326`, Aegis Crystal `5337`, Aegis Fruit `5338`, Arcane Crystal `5339`, Galaxy Pearl `5340`, Gummy Worm `5341` and Ambrosia `5342`. Demon Heart requires expert mode and an unused extra-accessory flag. The other seven retain their packet `4` unlock positions. A captured use requires one funded inventory unit; an appearance report before inventory synchronization is only an acknowledgement candidate. Permanent flag custody survives receipt retirement and player transfer.
+
+Permanent effects are calculated from the flags at phase entry, after equipment. Newly paid flags affect the following phase: Aegis Crystal adds `0.2` to regeneration time; Aegis Fruit adds four defense; Arcane Crystal feeds the existing mana regeneration owner; Galaxy Pearl adds `0.03` luck; Gummy Worm adds three fishing skill. Ambrosia changes raw pick speed by `-0.05` and tile/wall speed by `+0.05`, followed by source caps and reciprocals. Tile/wall placement animation uses the captured multiplier for all 3,368 source-qualified existing placements. Pick speed does not shorten remote mining animation. Demon Heart also controls the source functional and vanity accessory slot gates.
+
+Artisan Loaf extends the raw crafting region by four tiles. Crafting station aliases, liquid context and recipe grants still require their owned consumer integration. Fishing skill and pick speed are retained inputs; owned bait/pole/world conditions, bobber catches and local mining timing remain unfinished world-use paths. These limits remain on the roadmap. Fresh Release builds pass with warnings treated as errors; focused620/620 and fast24972/24973 pass with one known liquid skip. The exact grouped source/runtime Facts pass on managed and Windows Native. Native server/five smokes and Release/Native live82/49/129 pass. No new unfiltered full or GitHub CI wait was performed for this scoped closing checkpoint; Linux Native remains unverified. The previous Life checkpoint is separate evidence.
+
+
 ## Permanent consumables — scoped local checkpoint
 
 The detached gameplay calculation now represents Life Crystal `29`, Mana Crystal `109` and Life Fruit `1291`. It separates source-local effects from remote clock progression and explicitly receives the effective `noItems` gate. A raw `cursed` field alone differs from buff `23`, whose source producer also sets `noItems`.

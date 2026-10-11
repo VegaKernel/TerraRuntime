@@ -606,4 +606,22 @@
     <EmbeddedResource Include="Fixtures/life-progression-windows-first-official-1458.json.gz" LogicalName="LifeProgressionWindowsFirst1458" />
     <EmbeddedResource Include="Fixtures/life-progression-windows-repeat-official-1458.json.gz" LogicalName="LifeProgressionWindowsRepeat1458" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/LinuxFirst.json.gz" LogicalName="PermanentUnlockLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/LinuxRepeat.json.gz" LogicalName="PermanentUnlockLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/WindowsFirst.json.gz" LogicalName="PermanentUnlockWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/WindowsRepeat.json.gz" LogicalName="PermanentUnlockWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ConsumersLinuxFirst.json.gz" LogicalName="PermanentConsumersLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/ConsumersLinuxRepeat.json.gz" LogicalName="PermanentConsumersLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/ConsumersWindowsFirst.json.gz" LogicalName="PermanentConsumersWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/ConsumersWindowsRepeat.json.gz" LogicalName="PermanentConsumersWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/AmbrosiaLinuxFirst.json.gz" LogicalName="AmbrosiaConsumersLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/AmbrosiaLinuxRepeat.json.gz" LogicalName="AmbrosiaConsumersLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/AmbrosiaWindowsFirst.json.gz" LogicalName="AmbrosiaConsumersWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/AmbrosiaWindowsRepeat.json.gz" LogicalName="AmbrosiaConsumersWindowsRepeat1458" />
+    <EmbeddedResource Include="Fixtures/AmbrosiaMetadataLinuxFirst.json.gz" LogicalName="AmbrosiaPlacementMetadataLinuxFirst1458" />
+    <EmbeddedResource Include="Fixtures/AmbrosiaMetadataLinuxRepeat.json.gz" LogicalName="AmbrosiaPlacementMetadataLinuxRepeat1458" />
+    <EmbeddedResource Include="Fixtures/AmbrosiaMetadataWindowsFirst.json.gz" LogicalName="AmbrosiaPlacementMetadataWindowsFirst1458" />
+    <EmbeddedResource Include="Fixtures/AmbrosiaMetadataWindowsRepeat.json.gz" LogicalName="AmbrosiaPlacementMetadataWindowsRepeat1458" />
+  </ItemGroup>
 </Project>

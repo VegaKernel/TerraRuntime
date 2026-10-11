@@ -27,6 +27,45 @@ public readonly record struct PlayerPermanentConsumableTransition1458(
     PlayerSelectedConsumableTransition1458 Use, int BaseLifeMaximum, int DerivedLifeMaximum,
     int BaseManaMaximum, int DerivedManaMaximum, bool Applied);
 
+/// <summary>Detached personal permanent flags, aligned with packet-4 unlock bits;
+/// Demon Heart occupies bit7 here and remains a difficulty flag in the caller.</summary>
+public readonly record struct PlayerPermanentUnlockState1458(byte Flags)
+{
+    public const byte AegisCrystalFlag = 1 << 0;
+    public const byte AegisFruitFlag = 1 << 1;
+    public const byte ArcaneCrystalFlag = 1 << 2;
+    public const byte GalaxyPearlFlag = 1 << 3;
+    public const byte GummyWormFlag = 1 << 4;
+    public const byte AmbrosiaFlag = 1 << 5;
+    public const byte ArtisanLoafFlag = 1 << 6;
+    public const byte DemonHeartFlag = 1 << 7;
+
+    public bool AegisCrystal => (Flags & AegisCrystalFlag) != 0;
+    public bool AegisFruit => (Flags & AegisFruitFlag) != 0;
+    public bool ArcaneCrystal => (Flags & ArcaneCrystalFlag) != 0;
+    public bool GalaxyPearl => (Flags & GalaxyPearlFlag) != 0;
+    public bool GummyWorm => (Flags & GummyWormFlag) != 0;
+    public bool Ambrosia => (Flags & AmbrosiaFlag) != 0;
+    public bool ArtisanLoaf => (Flags & ArtisanLoafFlag) != 0;
+    public bool DemonHeart => (Flags & DemonHeartFlag) != 0;
+}
+
+public readonly record struct PlayerPermanentUnlockTransition1458(
+    PlayerSelectedConsumableTransition1458 Use, PlayerPermanentUnlockState1458 Unlocks,
+    bool Applied, byte FamilyBit)
+{
+    public ItemTypeId SelectedItem { get; init; }
+}
+
+/// <summary>Inputs after equipment and before source UpdatePermanentBoosters.</summary>
+public readonly record struct PlayerPermanentBoosterState1458(
+    int Defense, int FishingSkill, float PickSpeed, float TileSpeed, float WallSpeed);
+
+public readonly record struct PlayerPermanentSpeedState1458(
+    float PickSpeed, float TileAnimationMultiplier, float WallAnimationMultiplier);
+
+public readonly record struct PlayerCraftingRegion1458(int Left, int Top, int Right, int Bottom);
+
 public readonly record struct QuickBuffEligibility1458(bool PendingInventoryActions, bool Cursed,
     bool CrowdControlled, bool Dead, bool Spectating, bool NoItems);
 
@@ -153,6 +192,132 @@ public static class VanillaSelectedConsumable1458
         if (consumptionPoint && remaining == 0)
             state = state with { ItemTime = state.Animation };
         transition = transition with { State = state, Consumed = consumed, RemainingStack = remaining };
+        return true;
+    }
+
+    public static byte GetPermanentUnlockFamilyBit(ItemTypeId item) => item.Value switch
+    {
+        5337 => PlayerPermanentUnlockState1458.AegisCrystalFlag,
+        5338 => PlayerPermanentUnlockState1458.AegisFruitFlag,
+        5339 => PlayerPermanentUnlockState1458.ArcaneCrystalFlag,
+        5340 => PlayerPermanentUnlockState1458.GalaxyPearlFlag,
+        5341 => PlayerPermanentUnlockState1458.GummyWormFlag,
+        5342 => PlayerPermanentUnlockState1458.AmbrosiaFlag,
+        5326 => PlayerPermanentUnlockState1458.ArtisanLoafFlag,
+        3335 => PlayerPermanentUnlockState1458.DemonHeartFlag,
+        _ => 0
+    };
+
+    /// <summary>Personal permanent ItemCheck. Only the explicit local branch invokes
+    /// the original owner-only effects and consumes; flags never grant funding or publish.</summary>
+    public static bool TryStepPermanentUnlock(PlayerSelectedConsumableState1458? previous,
+        in PlayerSelectedConsumableFacts1458 facts, in PlayerPermanentUnlockState1458 unlocks,
+        int selectedStack, bool localEffects, bool noItems, bool expert,
+        Func<int, int, int> nextInteger, Func<double> nextDouble,
+        out PlayerPermanentUnlockTransition1458 transition)
+    {
+        transition = default;
+        byte family = GetPermanentUnlockFamilyBit(facts.Item);
+        if (facts.Item == VanillaItemIds.None)
+        {
+            if (selectedStack != 0) return false;
+        }
+        else if (family == 0 || !VanillaWorldItemAllocationCatalog1458.TryGet(facts.Item.Value, out var allocation) ||
+            selectedStack < 0 || selectedStack > allocation.MaximumStack)
+            return false;
+
+        bool heartAllowed = facts.Item.Value != 3335 || expert && !unlocks.DemonHeart;
+        var useFacts = facts with
+        {
+            Cursed = noItems,
+            LastUseSuccess = heartAllowed && (localEffects || facts.LastUseSuccess)
+        };
+        if (!TryStepCore(previous, in useFacts, nextInteger, nextDouble, localEffects: false, out var use))
+            return false;
+
+        bool applied = family != 0 && localEffects && heartAllowed && facts.AllowedToHoldItems &&
+            use.State.Animation > 0 && use.State.ItemTime == 0 && (unlocks.Flags & family) == 0;
+        var nextUnlocks = unlocks;
+        if (applied)
+        {
+            nextUnlocks = new((byte)(unlocks.Flags | family));
+            VanillaSelectedConsumableCatalog1458.TryGet(facts.Item, out var item);
+            use = use with { State = use.State with { ItemTime = item.UseTime, ItemTimeMax = item.UseTime } };
+        }
+        bool consumptionPoint = localEffects && facts.AllowedToHoldItems && !facts.CrowdControlled &&
+            use.State.ItemTimeMax != 0 && use.State.ItemTime == use.State.ItemTimeMax;
+        bool consumed = consumptionPoint && selectedStack > 0;
+        int remaining = selectedStack - (consumed ? 1 : 0);
+        var state = use.State;
+        if (consumptionPoint && remaining == 0)
+            state = state with { ItemTime = state.Animation };
+        use = use with { State = state, Consumed = consumed, RemainingStack = remaining };
+        transition = new(use, nextUnlocks, applied, family)
+        {
+            SelectedItem = remaining == 0 && state.Animation == 0 ? VanillaItemIds.None : facts.Item
+        };
+        return true;
+    }
+
+    /// <summary>Source UpdatePermanentBoosters, applied after equipment from the
+    /// flags captured at phase entry. Calling this with newly adopted flags is a caller ordering error.</summary>
+    public static bool TryApplyPermanentBoosters(in PlayerPermanentBoosterState1458 before,
+        in PlayerPermanentUnlockState1458 unlocks, out PlayerPermanentBoosterState1458 after)
+    {
+        after = before;
+        if (before.Defense > int.MaxValue - 4 || before.FishingSkill > int.MaxValue - 3 ||
+            !float.IsFinite(before.PickSpeed) || !float.IsFinite(before.TileSpeed) || !float.IsFinite(before.WallSpeed))
+            return false;
+        int defense = before.Defense;
+        int fishing = before.FishingSkill;
+        float pick = before.PickSpeed, tile = before.TileSpeed, wall = before.WallSpeed;
+        if (unlocks.AegisFruit) defense += 4;
+        if (unlocks.GummyWorm) fishing += 3;
+        if (unlocks.Ambrosia)
+        {
+            pick -= .05f;
+            tile += .05f;
+            wall += .05f;
+        }
+        after = new(defense, fishing, pick, tile, wall);
+        return true;
+    }
+
+    /// <summary>Final speed inputs after source caps and reciprocals. This is not
+    /// mining animation speed: pickSpeed belongs to local tool ItemTime consumers.</summary>
+    public static bool TryFinalizePermanentSpeeds(in PlayerPermanentBoosterState1458 before,
+        out PlayerPermanentSpeedState1458 after)
+    {
+        after = default;
+        if (!float.IsFinite(before.PickSpeed) || !float.IsFinite(before.TileSpeed) ||
+            !float.IsFinite(before.WallSpeed) || before.TileSpeed <= 0f || before.WallSpeed <= 0f)
+            return false;
+        float tile = before.TileSpeed > 3f ? 3f : before.TileSpeed;
+        float wall = before.WallSpeed > 3f ? 3f : before.WallSpeed;
+        after = new(before.PickSpeed < .3f ? .3f : before.PickSpeed, 1f / tile, 1f / wall);
+        return true;
+    }
+
+    /// <summary>AdjTiles' inclusive raw Simple tile region. The crafting caller owns
+    /// world clamping and station/liquid scanning; this does not change ordinary reach checks.</summary>
+    public static bool TryGetPermanentCraftingRegion(float positionX, float positionY,
+        int width, int height, int tileRangeX, int tileRangeY,
+        in PlayerPermanentUnlockState1458 unlocks, out PlayerCraftingRegion1458 region)
+    {
+        region = default;
+        if (!float.IsFinite(positionX) || !float.IsFinite(positionY) ||
+            positionX is < 0 or > 16_000_000 || positionY is < 0 or > 16_000_000 ||
+            width is < 1 or > 1_000 || height is < 1 or > 1_000 ||
+            tileRangeX is < 0 or > 1_000 || tileRangeY is < 0 or > 1_000)
+            return false;
+        int extension = unlocks.ArtisanLoaf ? 4 : 0;
+        int reachX = Math.Min(tileRangeX, 20) + extension;
+        int reachY = Math.Min(tileRangeY, 20) + extension;
+        int left = (int)(positionX / 16f) - reachX;
+        int top = (int)(positionY / 16f) - reachY;
+        int right = (int)Math.Ceiling((positionX + width) / 16f) - 1 + reachX;
+        int bottom = (int)Math.Ceiling((positionY + height) / 16f) - 1 + reachY;
+        region = new(left, top, right, bottom);
         return true;
     }
 

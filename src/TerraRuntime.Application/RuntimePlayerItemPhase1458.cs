@@ -145,6 +145,12 @@ internal readonly record struct RuntimePlayerItemPhase1458(
 
     internal RuntimePlayerManaCrystalIntent1458? ManaCrystalIntent { get; init; }
     internal RuntimePlayerSelectedPotionUse1458? SelectedPotionUse { get; init; }
+    // Source ResetEffects/equipment/UpdatePermanentBoosters order, captured before
+    // this phase's selected use. New permanent flags affect the following phase.
+    internal byte? PermanentPhaseFlags { get; init; }
+    internal PlayerPermanentBoosterState1458? PermanentBoosters { get; init; }
+    internal PlayerPermanentSpeedState1458? PermanentSpeeds { get; init; }
+    internal PlayerCraftingRegion1458? PermanentCraftingRegion { get; init; }
     // Latest multi-use type explanation only; custody stays in the existing journal.
     internal RuntimePlayerQuickBuffExplanation1458? QuickBuffExplanation { get; init; }
     internal int DeadTime { get; init; }

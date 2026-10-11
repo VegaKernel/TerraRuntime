@@ -11,7 +11,7 @@ public static class VanillaRemotePlayerHealth1458
     public const int MaximumSupportedLifeMax = short.MaxValue + 44 * (short.MaxValue / 5 / 20 * 20);
     public static PlayerNpcHealthState1458? Step(PlayerNpcHealthState1458? previous, int maximum,
         bool outside, bool ghost, bool dead, bool supported, bool expert, bool moving,
-        int regenerationSlots, bool poisoned, bool onFire, bool cursedInferno)
+        int regenerationSlots, bool poisoned, bool onFire, bool cursedInferno, bool aegisCrystal = false)
     {
         // Player.Update returns outside the world before Ghost/UpdateDead and before regeneration.
         if (outside || ghost) return previous;
@@ -27,6 +27,7 @@ public static class VanillaRemotePlayerHealth1458
         if (onFire) ApplyDot(ref rate, ref time, 8);
         if (cursedInferno) ApplyDot(ref rate, ref time, 24);
         time++;
+        if (aegisCrystal) time += .2f;
         float natural = 0f;
         ReadOnlySpan<int> boundaries = [300, 600, 900, 1200, 1500, 1800, 2400, 3000];
         foreach (int boundary in boundaries)
